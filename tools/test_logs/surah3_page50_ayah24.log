@@ -1,0 +1,342 @@
+Reading lost
+Window inference 313ms — confirmed: ا, unconfirmed: بَمَاَ
+Match: ratio=0.66 pos=3:28:1 expected=3:23 near=true
+Grade end word 3:28:1: cov=1.50 acc=0.56 score=0.85 last=false → correct
+Preview inference 184ms — ذَاالِكَ
+Match: ratio=0.80 pos=3:24:1 expected=3:28:1 near=true
+Grade end word 3:24:1: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 191ms — ذَاالِكَبِءَ
+Match: ratio=0.79 pos=3:24:1 expected=3:24:1 near=true
+Grade end word 3:24:1: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 204ms — ذَاالِكَبِءَن
+Match: ratio=0.81 pos=3:24:2 expected=3:24:1 near=true
+Grade end word 3:24:2: cov=0.62 acc=1.00 score=0.62 last=false → correct
+Position → 3:24:2
+Preview inference 193ms — ذَاالِكَبِءَننَ
+Match: ratio=0.83 pos=3:24:2 expected=3:24:2 near=true
+Grade end word 3:24:2: cov=0.75 acc=1.00 score=0.75 last=false → correct
+Preview inference 200ms — ذَاالِكَبِءَننَهُ
+Match: ratio=0.85 pos=3:24:2 expected=3:24:2 near=true
+Grade end word 3:24:2: cov=0.88 acc=1.00 score=0.88 last=false → correct
+Preview inference 225ms — ذَاالِكَبِءَننَهُم
+Match: ratio=0.86 pos=3:24:2 expected=3:24:2 near=true
+Grade end word 3:24:2: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 238ms — ذَاالِكَبِءَننَهُمقَ
+Match: ratio=0.83 pos=3:24:2 expected=3:24:2 near=true
+Grade end word 3:24:2: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 247ms — ذَاالِكَبِءَنننَهُمقَاالُۥ
+Match: ratio=0.87 pos=3:24:3 expected=3:24:2 near=true
+Grade end word 3:24:3: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:24:3
+Preview inference 244ms — ذَاالِكَبِءَننَهُمقَاالُۥۥلَ
+Match: ratio=0.84 pos=3:24:3 expected=3:24:3 near=true
+Grade end word 3:24:3: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 264ms — ذَاالِكَبِءَنننَهُمقَاالُۥۥلَ
+Match: ratio=0.84 pos=3:24:3 expected=3:24:3 near=true
+Grade end word 3:24:3: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Window inference 314ms — confirmed: ذَاالِكَبِءَنن, unconfirmed: نَهُمقَاالُۥۥلَننن
+Match: ratio=0.85 pos=3:24:4 expected=3:24:3 near=true
+Grade end word 3:24:4: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:24:4
+Preview inference 176ms — هُمقَاالُۥۥلَںںںتَمَسسَ
+Match: ratio=0.82 pos=3:24:5 expected=3:24:4 near=true
+Grade end word 3:24:5: cov=0.80 acc=1.00 score=0.80 last=false → correct
+Position → 3:24:5
+Preview inference 186ms — هُمقَاالُۥۥلَںںںتَمَسسَنَ
+Match: ratio=0.83 pos=3:24:5 expected=3:24:5 near=true
+Grade end word 3:24:5: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 203ms — هُمقَاالُۥۥلَںںںتَمَسسَنَ
+Match: ratio=0.83 pos=3:24:5 expected=3:24:5 near=true
+Grade end word 3:24:5: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 245ms — هُمقَاالُۥۥلَںںںتَمَسسَنَننَا
+Match: ratio=0.83 pos=3:24:6 expected=3:24:5 near=true
+Grade end word 3:24:6: cov=1.50 acc=1.00 score=1.00 last=false → correct
+Position → 3:24:6
+Preview inference 219ms — هُمقَاالُۥۥلَںںںتَمَسسَنَنننَار
+Match: ratio=0.84 pos=3:24:6 expected=3:24:6 near=true
+Grade end word 3:24:6: cov=1.75 acc=1.00 score=1.00 last=false → correct
+Preview inference 234ms — هُمقَاالُۥۥلَںںںتَمَسسَنَنننَاارُِ
+Match: ratio=0.84 pos=3:24:6 expected=3:24:6 near=true
+Grade end word 3:24:6: cov=1.75 acc=1.00 score=1.00 last=false → correct
+Preview inference 250ms — هُمقَاالُۥۥلَںںںتَمَسسَنَنننَاارُءِللَاا
+Match: ratio=0.84 pos=3:24:7 expected=3:24:6 near=true
+Grade end word 3:24:7: cov=1.75 acc=1.00 score=1.00 last=false → correct
+Position → 3:24:7
+Preview inference 253ms — هُمقَاالُۥۥلَںںںتَمَسسَنَنننَاارُءِللَاا
+Match: ratio=0.84 pos=3:24:7 expected=3:24:7 near=true
+Grade end word 3:24:7: cov=1.75 acc=1.00 score=1.00 last=false → correct
+Window inference 314ms — confirmed: هُمقَاالُۥۥلَںںںتَمَسسَنَ, unconfirmed: نننَاارُءِللَاا
+Match: ratio=0.84 pos=3:24:7 expected=3:24:7 near=true
+Grade end word 3:24:7: cov=1.75 acc=1.00 score=1.00 last=false → correct
+Preview inference 200ms — نَاارُءِللَااااءَييَاا
+Match: ratio=0.84 pos=3:24:8 expected=3:24:7 near=true
+Grade end word 3:24:8: cov=0.83 acc=1.00 score=0.83 last=false → correct
+Position → 3:24:8
+Preview inference 204ms — نَاارُءِللَااااءَييَاامَم
+Match: ratio=0.84 pos=3:24:8 expected=3:24:8 near=true
+Grade end word 3:24:8: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 205ms — نَاارُءِللَااااءَييَاامَممم
+Match: ratio=0.84 pos=3:24:8 expected=3:24:8 near=true
+Grade end word 3:24:8: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 272ms — نَاارُءِللَااااءَييَاامَممممَعَ
+Match: ratio=0.84 pos=3:24:9 expected=3:24:8 near=true
+Grade end word 3:24:9: cov=0.71 acc=1.00 score=0.71 last=false → tashkeelError
+Position → 3:24:9
+Preview inference 239ms — نَاارُءِللَااااءَييَاامَممممَعدُ
+Match: ratio=0.85 pos=3:24:9 expected=3:24:9 near=true
+Grade end word 3:24:9: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Preview inference 248ms — نَاارُءِللَااااءييَاامَممممَعدُۥۥدَا
+Match: ratio=0.86 pos=3:24:9 expected=3:24:9 near=true
+Grade end word 3:24:9: cov=1.29 acc=1.00 score=1.00 last=false → correct
+Preview inference 270ms — نَاارُءِللَااااءييَاامَممممَعدُۥۥدَاا
+Match: ratio=0.86 pos=3:24:9 expected=3:24:9 near=true
+Grade end word 3:24:9: cov=1.29 acc=1.00 score=1.00 last=false → correct
+Window inference 319ms — confirmed: نَاارُءِللَااااءييَاامَ, unconfirmed: ممممَعدُۥۥدَاا
+Match: ratio=0.88 pos=3:24:9 expected=3:24:9 near=true
+Grade end word 3:24:9: cov=1.29 acc=1.00 score=1.00 last=false → correct
+Preview inference 195ms — مممَعدُۥۥدَاات
+Match: ratio=0.88 pos=3:24:9 expected=3:24:9 near=true
+Grade end word 3:24:9: cov=1.43 acc=1.00 score=1.00 last=false → correct
+Preview inference 259ms — ممممَعدُۥۥدَااااتقُلِ
+Match: ratio=0.84 pos=3:24:9 expected=3:24:9 near=true
+Grade end word 3:24:9: cov=1.43 acc=1.00 score=1.00 last=false → correct
+Preview inference 228ms — مممَعدُۥۥدَااااتقُلِللَا
+Match: ratio=0.77 pos=3:24:9 expected=3:24:9 near=true
+Grade end word 3:24:9: cov=1.43 acc=1.00 score=1.00 last=false → correct
+Preview inference 233ms — ممممَعدُۥۥدَااااتقُلِللَااهُ
+Match: ratio=0.77 pos=3:24:10 expected=3:24:9 near=true
+Grade end word 3:24:10: cov=0.83 acc=0.25 score=0.21 last=false → wrong
+Position → 3:24:10
+Preview inference 238ms — ممممَعدُۥۥدَااااتقُلِللَااهُم
+Match: ratio=0.78 pos=3:24:10 expected=3:24:10 near=true
+Grade end word 3:24:10: cov=1.00 acc=0.37 score=0.37 last=false → minor
+Preview inference 253ms — ممممَعدُۥۥدَااااتقُلِللَااهُممممَ
+Match: ratio=0.76 pos=3:24:10 expected=3:24:10 near=true
+Grade end word 3:24:10: cov=1.00 acc=0.37 score=0.37 last=false → minor
+Window inference 301ms — confirmed: ممممَعدُۥۥدَاااات, unconfirmed: قُلِللَااهُمممَ
+Match: ratio=0.73 pos=3:24:10 expected=3:24:10 near=true
+Grade end word 3:24:10: cov=1.00 acc=0.37 score=0.37 last=false → minor
+Preview inference 187ms — قُلِللَااهُممممَمَاالِكَ
+Match: ratio=0.71 pos=3:24:13 expected=3:24:10 near=true
+Grade end word 3:24:13: cov=3.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:24:13
+Preview inference 188ms — قلِللَااهُممممَمَاالِكَلمُ
+Match: ratio=0.68 pos=3:24:14 expected=3:24:13 near=true
+Grade end word 3:24:14: cov=1.00 acc=0.36 score=0.44 last=false → minor
+Position → 3:24:14
+Preview inference 193ms — قُلِللَهُممممَمَاالِكَلمُلك
+Match: ratio=0.66 pos=3:24:14 expected=3:24:14 near=true
+Grade end word 3:24:14: cov=1.00 acc=0.36 score=0.44 last=false → minor
+Preview inference 207ms — قُلِللَهُممممَمَاالِكَلمُلكِ
+Match: ratio=0.66 pos=3:24:14 expected=3:24:14 near=true
+Grade end word 3:24:14: cov=1.00 acc=0.36 score=0.44 last=false → minor
+Preview inference 219ms — قُلِللَهُممممَمَاالِكَلمُلكِتُء
+Match: ratio=0.64 pos=3:24:15 expected=3:24:14 near=true
+Grade end word 3:24:15: cov=0.75 acc=0.42 score=0.41 last=true → minor
+Position → 3:24:15
+Preview inference 223ms — قُلِللَهُممممَمَاالِكَلمُلكِتُءتِل
+Match: ratio=0.62 pos=3:25:3 expected=3:24:15 near=true
+Grade end word 3:25:3: cov=1.00 acc=0.00 score=0.00 last=false → wrong
+Position → 3:25:3
+Preview inference 230ms — قُلِللَهُممممَمَاالِكَلمُلكِتُءتِلمُ
+Match: ratio=0.63 pos=3:26:6 expected=3:25:3 near=true
+Grade end word 3:26:6: cov=0.50 acc=1.00 score=1.00 last=false → correct
+Position → 3:26:6
+Preview inference 236ms — قُلِللَهُممممَمَاالِكَلمُلكِتُءتِلمُلكَ
+Match: ratio=0.64 pos=3:26:6 expected=3:26:6 near=true
+Grade end word 3:26:6: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 250ms — قُلِللَهُممممَمَاالِكَلمُلكِتُءتِلمُلكَم
+Match: ratio=0.64 pos=3:26:6 expected=3:26:6 near=true
+Grade end word 3:26:6: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Window inference 260ms — confirmed: قُلِللَهُممممَمَاالِكَلمُل, unconfirmed: كِتُءتِلمُلكَمَن
+Match: ratio=0.60 pos=3:26:7 expected=3:26:6 near=true
+Grade end word 3:26:7: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:26:7
+Preview inference 243ms — تُءتِلمُلكَمَںںںتَشَا
+Match: ratio=0.60 pos=3:26:8 expected=3:26:7 near=true
+Grade end word 3:26:8: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Position → 3:26:8
+Preview inference 198ms — تُءتِلمُلكَمَںںںتَشَااا
+Match: ratio=0.60 pos=3:26:8 expected=3:26:8 near=true
+Grade end word 3:26:8: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Preview inference 279ms — ِتُءتِلمُلكَمَںںںتَشَااااء
+Match: ratio=0.61 pos=3:26:8 expected=3:26:8 near=true
+Grade end word 3:26:8: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 271ms — ِتُءتِلمُلكَمَںںںتَشَااااءوَتَں
+Match: ratio=0.63 pos=3:26:9 expected=3:26:8 near=true
+Grade end word 3:26:9: cov=0.71 acc=1.00 score=0.71 last=false → correct
+Position → 3:26:9
+Window inference 319ms — confirmed: ِتُءتِلمُلكَمَںںںتَشَاا, unconfirmed: ااءوَتَںںں
+Match: ratio=0.79 pos=3:26:9 expected=3:26:9 near=true
+Grade end word 3:26:9: cov=0.71 acc=1.00 score=0.71 last=false → correct
+Preview inference 192ms — ااوَتَںںںزِعُلمُل
+Match: ratio=0.80 pos=3:26:10 expected=3:26:9 near=true
+Grade end word 3:26:10: cov=0.75 acc=1.00 score=0.75 last=false → correct
+Position → 3:26:10
+Preview inference 198ms — َاوَتَںںںزِعُلمُلكَ
+Match: ratio=0.77 pos=3:26:10 expected=3:26:10 near=true
+Grade end word 3:26:10: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 205ms — َاوَتَںںںزِعُلمُلكَمِ
+Match: ratio=0.76 pos=3:26:10 expected=3:26:10 near=true
+Grade end word 3:26:10: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 224ms — َاوَتَںںںزِعُلمُلكَمِمم
+Match: ratio=0.77 pos=3:26:11 expected=3:26:10 near=true
+Grade end word 3:26:11: cov=0.80 acc=1.00 score=1.00 last=false → correct
+Position → 3:26:11
+Preview inference 225ms — ااوَتَںںںزِعُلمُلكَمِممممَا
+Match: ratio=0.79 pos=3:26:12 expected=3:26:11 near=true
+Grade end word 3:26:12: cov=0.86 acc=0.67 score=0.57 last=false → correct
+Position → 3:26:12
+Preview inference 233ms — َاوَتَںںںزِعُلمُلكَمِممممَن
+Match: ratio=0.78 pos=3:26:11 expected=3:26:12 near=true
+Grade end word 3:26:11: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:26:11 (re-read)
+Preview inference 243ms — َاوَتَںںںزِعُلمُلكَمِممممَن
+Match: ratio=0.78 pos=3:26:11 expected=3:26:11 near=true
+Grade end word 3:26:11: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 257ms — َاوَتَںںںزِعُلمُلكَمِممممَنتَشَا
+Match: ratio=0.78 pos=3:26:12 expected=3:26:11 near=true
+Grade end word 3:26:12: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Position → 3:26:12
+Window inference 256ms — confirmed: ااوَتَںںںزِعُلمُل, unconfirmed: كَمِممممَنتَشَاا
+Match: ratio=0.86 pos=3:26:12 expected=3:26:12 near=true
+Grade end word 3:26:12: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Preview inference 265ms — َمِممممَنتَشَااااء
+Match: ratio=0.85 pos=3:26:12 expected=3:26:12 near=true
+Grade end word 3:26:12: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 230ms — مِممممَنتَشَااااءوَتُعِ
+Match: ratio=0.85 pos=3:26:13 expected=3:26:12 near=true
+Grade end word 3:26:13: cov=0.60 acc=1.00 score=0.60 last=false → correct
+Position → 3:26:13
+Preview inference 226ms — مِممممَنتَشَااااءوَتُعِز
+Match: ratio=0.86 pos=3:26:13 expected=3:26:13 near=true
+Grade end word 3:26:13: cov=0.80 acc=1.00 score=0.80 last=false → correct
+Preview inference 242ms — مِممممَنتَشَااااءوَتُعِزز
+Match: ratio=0.86 pos=3:26:13 expected=3:26:13 near=true
+Grade end word 3:26:13: cov=0.80 acc=1.00 score=0.80 last=false → correct
+Preview inference 260ms — مِممممَنتَشَااااءوَتُعِززُمَن
+Match: ratio=0.86 pos=3:26:14 expected=3:26:13 near=true
+Grade end word 3:26:14: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:26:14
+Window inference 258ms — confirmed: مِممممَنتَشَااااء, unconfirmed: وَتُعِززُمَننن
+Match: ratio=0.87 pos=3:26:14 expected=3:26:14 near=true
+Grade end word 3:26:14: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 228ms — وَتُعِززُمَںںںتَش
+Match: ratio=0.86 pos=3:26:14 expected=3:26:14 near=true
+Grade end word 3:26:14: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 195ms — وَتُعِززُمَںںںتَشَاا
+Match: ratio=0.86 pos=3:26:15 expected=3:26:14 near=true
+Grade end word 3:26:15: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Position → 3:26:15
+Preview inference 188ms — وَتُعِززُمَںںںتَشَااا
+Match: ratio=0.86 pos=3:26:15 expected=3:26:15 near=true
+Grade end word 3:26:15: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Preview inference 289ms — وَتُعِززُمَںںںتَشَااااءُوَتُ
+Match: ratio=0.86 pos=3:26:16 expected=3:26:15 near=true
+Grade end word 3:26:16: cov=0.40 acc=1.00 score=0.40 last=false → minor
+Position → 3:26:16
+Preview inference 241ms — وَتُعِززُمَںںںتَشَااااءُوَتُذِ
+Match: ratio=0.87 pos=3:26:16 expected=3:26:16 near=true
+Grade end word 3:26:16: cov=0.60 acc=1.00 score=0.60 last=false → correct
+Preview inference 265ms — وَتُعِززُمَںںںتَشَااااءُوَتُذِلل
+Match: ratio=0.87 pos=3:26:16 expected=3:26:16 near=true
+Grade end word 3:26:16: cov=0.80 acc=1.00 score=0.80 last=false → correct
+Window inference 262ms — confirmed: وَتُعِززُمَںںںتَشَااا, unconfirmed: اءُوَتُذِللم
+Match: ratio=0.86 pos=3:26:16 expected=3:26:16 near=true
+Grade end word 3:26:16: cov=1.00 acc=0.80 score=0.80 last=false → correct
+Preview inference 187ms — ءوَتُذِللُمَن
+Match: ratio=0.87 pos=3:26:17 expected=3:26:16 near=true
+Grade end word 3:26:17: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:26:17
+Preview inference 179ms — اءُوَتُذِللُمَںںںتَش
+Match: ratio=0.86 pos=3:26:17 expected=3:26:17 near=true
+Grade end word 3:26:17: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 202ms — ءُوَتُذِللُمَںںںتَشَا
+Match: ratio=0.87 pos=3:26:18 expected=3:26:17 near=true
+Grade end word 3:26:18: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Position → 3:26:18
+Preview inference 196ms — ءُوَتُذِللُمَںںںتَشَاا
+Match: ratio=0.87 pos=3:26:18 expected=3:26:18 near=true
+Grade end word 3:26:18: cov=0.86 acc=1.00 score=0.86 last=false → correct
+Window inference 307ms — confirmed: ااءُوَتُذِللُمَںںںتَشَا, unconfirmed: اااءلَا
+Match: ratio=0.82 pos=3:26:20 expected=3:26:18 near=true
+Grade end word 3:26:20: cov=0.50 acc=0.53 score=0.27 last=false → wrong
+Position → 3:26:20
+Preview inference 171ms — ااءلَاايَكتَ
+Match: ratio=0.77 pos=3:26:21 expected=3:26:20 near=true
+Grade end word 3:26:21: cov=1.00 acc=0.17 score=0.42 last=false → minor
+Position → 3:26:21
+Preview inference 171ms — اااءلَاايَتتَق
+Match: ratio=0.74 pos=3:26:20 expected=3:26:21 near=true
+Grade end word 3:26:20: cov=0.75 acc=0.69 score=0.52 last=false → minor
+Position → 3:26:20 (re-read)
+Preview inference 184ms — ااءلَاايَتتَخِ
+Match: ratio=0.75 pos=3:26:20 expected=3:26:20 near=true
+Grade end word 3:26:20: cov=0.50 acc=0.50 score=0.52 last=false → minor
+Preview inference 196ms — ااءلَاايَتتَخِذِل
+Match: ratio=0.71 pos=3:26:20 expected=3:26:20 near=true
+Grade end word 3:26:20: cov=1.00 acc=0.31 score=0.52 last=false → minor
+Preview inference 209ms — ااءلَاايَتتَخِذِلمُ
+Match: ratio=0.69 pos=3:26:20 expected=3:26:20 near=true
+Grade end word 3:26:20: cov=1.00 acc=0.31 score=0.52 last=false → minor
+Preview inference 219ms — اااءلَاايَتتَخِذِلمُءمِ
+Match: ratio=0.67 pos=3:26:21 expected=3:26:20 near=true
+Grade end word 3:26:21: cov=0.67 acc=0.40 score=0.31 last=false → minor
+Position → 3:26:21
+Preview inference 218ms — ااءلَاايَتتَخِذِلمُءمِنُۥ
+Match: ratio=0.66 pos=3:26:21 expected=3:26:21 near=true
+Grade end word 3:26:21: cov=0.83 acc=0.52 score=0.55 last=false → tashkeelError
+Preview inference 229ms — ااءلَاايَتتَخِذِلمُءمِنُۥۥن
+Match: ratio=0.65 pos=3:26:21 expected=3:26:21 near=true
+Grade end word 3:26:21: cov=0.83 acc=0.52 score=0.55 last=false → tashkeelError
+Preview inference 245ms — اءلَاايَتتَخِذِلمُءمِنُۥۥنَل
+Match: ratio=0.63 pos=3:26:22 expected=3:26:21 near=true
+Grade end word 3:26:22: cov=0.67 acc=0.56 score=0.40 last=false → minor
+Position → 3:26:22
+Preview inference 256ms — اااءلَاايَتتَخِذِلمُءمِنُۥۥنَلكَاا
+Match: ratio=0.62 pos=3:26:23 expected=3:26:22 near=true
+Grade end word 3:26:23: cov=0.67 acc=0.56 score=0.56 last=false → tashkeelError
+Position → 3:26:23
+Window inference 261ms — confirmed: ااءلَاايَتتَخِذِل, unconfirmed: مُءمِنُۥۥنَلكَاافِ
+Match: ratio=0.67 pos=3:27:1 expected=3:26:23 near=true
+Position → 3:27:1
+Preview inference 163ms — لمءمِنُۥۥنَلكَاافِرُۥۥن
+Match: ratio=0.66 pos=3:28:4 expected=3:27:1 near=true
+Grade end word 3:28:4: cov=1.00 acc=1.00 score=1.00 last=false → tashkeelError
+Position → 3:28:4
+Preview inference 174ms — مُءمِنُۥۥنَلكَاافِرُن
+Match: ratio=0.67 pos=3:28:4 expected=3:28:4 near=true
+Grade end word 3:28:4: cov=1.00 acc=1.00 score=1.00 last=false → tashkeelError
+Preview inference 185ms — مُءمِنُۥۥنَلكَاافِرُۥۥنَءم
+Match: ratio=0.65 pos=3:28:7 expected=3:28:4 near=true
+Grade end word 3:28:7: cov=1.00 acc=0.50 score=0.75 last=false → correct
+Position → 3:28:7
+Preview inference 192ms — لمءمِنُۥۥنَلكَاافِرُۥۥنَءَولِيَ
+Match: ratio=0.68 pos=3:28:5 expected=3:28:7 near=true
+Grade end word 3:28:5: cov=0.44 acc=1.00 score=0.67 last=false → correct
+Position → 3:28:5 (re-read)
+Preview inference 199ms — لمءمِنُۥۥنَلكَاافِرُۥۥنَءَولِيَاا
+Match: ratio=0.69 pos=3:28:5 expected=3:28:5 near=true
+Grade end word 3:28:5: cov=0.89 acc=1.00 score=0.89 last=false → correct
+Preview inference 288ms — مءمِنُۥۥنَلكَاافِرُۥۥنَءَولِيَااااءَم
+Match: ratio=0.69 pos=3:28:5 expected=3:28:5 near=true
+Grade end word 3:28:5: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 264ms — لمءمِنُۥۥنَلكَاافِرُۥۥنَءَولِيَااااءَمِنن
+Match: ratio=0.70 pos=3:28:6 expected=3:28:5 near=true
+Grade end word 3:28:6: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:28:6
+Window inference 312ms — confirmed: مءمِنُۥۥنَلكَاافِرُۥۥنَءَولِيَا, unconfirmed: ااااءَمِںں
+Match: ratio=0.81 pos=3:28:6 expected=3:28:6 near=true
+Grade end word 3:28:6: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Preview inference 192ms — َاااءَمِںںںدُۥۥنِلم
+Match: ratio=0.77 pos=3:28:7 expected=3:28:6 near=true
+Grade end word 3:28:7: cov=1.00 acc=1.00 score=1.00 last=false → correct
+Position → 3:28:7
+Preview inference 200ms — اءَمِںںںدُۥۥنِلمُءمِ
+Match: ratio=0.81 pos=3:28:8 expected=3:28:7 near=true
+Grade end word 3:28:8: cov=0.67 acc=1.00 score=0.67 last=false → correct
+Position → 3:28:8
+Preview inference 200ms — َااءَمِںںںدُۥۥنِلمُءمِنِ
+Match: ratio=0.79 pos=3:28:8 expected=3:28:8 near=true
+Grade end word 3:28:8: cov=0.83 acc=1.00 score=0.83 last=false → correct
+Window inference 307ms — confirmed: اءَمِںںںدُۥۥنِلمُءمِ, unconfirmed: ِنِ

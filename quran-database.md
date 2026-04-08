@@ -15,7 +15,6 @@ The app bundles a read-only SQLite database at `ios/Muraja/Resources/quran.db` c
 | `verses_count` | INTEGER | Number of ayahs in the surah |
 | `revelation_place` | TEXT | `makkah` or `madinah` |
 | `bismillah_pre` | INTEGER | `1` if surah has bismillah prefix, `0` otherwise |
-| `glyph_name` | TEXT | Ligature string for the surah-name-v2 font |
 
 ### `ayahs` — Ayah text and phonemes (6,236 rows)
 
@@ -87,7 +86,6 @@ Used for decorative elements like the surah header frame, bismillah text, and re
 | `data/qpc-hafs-word-by-word.json` | `words`, `ayahs.text`, `word_map` |
 | `data/ayah_phonemes.json` | `ayahs.phonemes`, `word_map` |
 | `data/quran-metadata-surah-name.json` | `surahs` |
-| `data/ligatures-surah-name.json` | `surahs.glyph_name` |
 | `data/ligatures-common.json` | `ligatures` |
 | `data/qpc-v2-15-lines.db` | `pages` |
 | `data/qpc-v2-glyphs.db` | `words.glyph_text` |

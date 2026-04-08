@@ -34,7 +34,6 @@ QPC_PATH = DATA_DIR / "qpc-hafs-word-by-word.json"
 MUSHAF_DB_PATH = DATA_DIR / "qpc-v2-15-lines.db"
 GLYPH_DB_PATH = DATA_DIR / "qpc-v2-glyphs.db"
 SURAH_META_PATH = DATA_DIR / "quran-metadata-surah-name.json"
-SURAH_LIGATURES_PATH = DATA_DIR / "ligatures-surah-name.json"
 COMMON_LIGATURES_PATH = DATA_DIR / "ligatures-common.json"
 OUTPUT_PATH = SCRIPT_DIR.parent / "ios" / "Muraja" / "Resources" / "quran.db"
 
@@ -311,8 +310,6 @@ def main():
         surah_meta = json.load(f)
 
     print("Loading ligature mappings...")
-    with open(SURAH_LIGATURES_PATH, "r", encoding="utf-8") as f:
-        surah_ligatures = json.load(f)
     with open(COMMON_LIGATURES_PATH, "r", encoding="utf-8") as f:
         common_ligatures = json.load(f)
 
@@ -332,17 +329,15 @@ def main():
             name_english TEXT NOT NULL,
             verses_count INTEGER NOT NULL,
             revelation_place TEXT,
-            bismillah_pre INTEGER NOT NULL DEFAULT 1,
-            glyph_name TEXT
+            bismillah_pre INTEGER NOT NULL DEFAULT 1
         )
     """)
     for sid, meta in surah_meta.items():
-        glyph = surah_ligatures.get(f"surah-{sid}", "").strip() or None
         cur.execute(
-            "INSERT INTO surahs VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO surahs VALUES (?, ?, ?, ?, ?, ?, ?)",
             (int(sid), meta["name_arabic"], meta["name_simple"], meta["name"],
              meta["verses_count"], meta.get("revelation_place"),
-             1 if meta.get("bismillah_pre", True) else 0, glyph),
+             1 if meta.get("bismillah_pre", True) else 0),
         )
 
     # --- Ligatures table ---

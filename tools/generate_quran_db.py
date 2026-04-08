@@ -35,7 +35,7 @@ MUSHAF_DB_PATH = DATA_DIR / "qpc-v2-15-lines.db"
 GLYPH_DB_PATH = DATA_DIR / "qpc-v2-glyphs.db"
 SURAH_META_PATH = DATA_DIR / "quran-metadata-surah-name.json"
 COMMON_LIGATURES_PATH = DATA_DIR / "ligatures-common.json"
-OUTPUT_PATH = SCRIPT_DIR.parent / "ios" / "Muraja" / "Resources" / "quran.db"
+OUTPUT_PATH = SCRIPT_DIR / "quran.db"
 
 try:
     from quran_transcript import Aya, quran_phonetizer, chunck_phonemes

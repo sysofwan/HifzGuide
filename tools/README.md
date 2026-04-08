@@ -39,6 +39,17 @@ Runs identical random inputs through both the PyTorch model and exported CoreML 
 python verify_coreml.py [--model-dir ./coreml_models] [--variant FP32|INT8|4BIT]
 ```
 
+### `compile_models.sh`
+
+Compiles palettized `.mlpackage` models to `.mlmodelc` bundles using Xcode's `coremlcompiler`. The compiled models can be loaded directly on-device without runtime compilation. Creates a `models.zip` for uploading to a GitHub Release.
+
+```bash
+bash compile_models.sh [input_dir] [output_dir]
+# Default input:  coreml_models_chunked/
+# Default output: compiled_models/
+# Output zip:     models.zip
+```
+
 ### `generate_quran_db.py`
 
 Builds the consolidated `quran.db` SQLite database from multiple Quran data sources. Creates tables for surahs, ayahs, words, word-phoneme mapping, mushaf page layout, and ligature mappings.

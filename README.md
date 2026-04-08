@@ -40,7 +40,7 @@ python palettize_chunks.py
 
 ## Acknowledgements
 
-- **[Muaalem Model](https://huggingface.co/obadx/muaalem-model-v2)** — Arabic phoneme recognition model by [obadx](https://huggingface.co/obadx), fine-tuned from Meta's [Wav2Vec2-BERT](https://huggingface.co/facebook/w2v-bert-2.0) for Quranic recitation analysis
+- **[Muaalem Model](https://huggingface.co/obadx/muaalem-model-v3_2)** — Arabic phoneme recognition model by [obadx](https://huggingface.co/obadx), fine-tuned from Meta's [Wav2Vec2-BERT](https://huggingface.co/facebook/w2v-bert-2.0) for Quranic recitation analysis
 - **[Quranic Universal Library (QUL)](https://qul.tarteel.ai/)** by [Tarteel AI](https://tarteel.ai/) — QPC V2 page fonts (QCF2), word-by-word glyph mappings, mushaf layout data, and Quran text resources
 
 ## License

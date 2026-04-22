@@ -7,6 +7,7 @@ Generate quran.db from multiple data sources:
   - qpc-v2-glyphs.db — per-page glyph text for QCF2 fonts
   - quran-metadata-surah-name.json — surah names/metadata
   - quran-transcript library — phoneme groups, char-level mappings
+  - imlaei.json — Imlai (MSA spelling) per-word data for device transcription
 
 Tables:
   surahs(id, name_arabic, name_simple, name_english, verses_count, revelation_place, bismillah_pre)
@@ -16,6 +17,7 @@ Tables:
   phoneme_groups(surah, ayah, group_idx, group_text, ph_start, ph_end, uthmani_word)
   phoneme_char_map(surah, ayah, uthmani_idx, ph_start, ph_end, deleted, uthmani_word)
   pages(page_number, line_number, line_type, is_centered, first_word_id, last_word_id, surah_number)
+  imlai_words(surah, ayah, word, text, normalized_text)
 
 Usage:
   python3 generate_quran_db.py
@@ -35,6 +37,7 @@ MUSHAF_DB_PATH = DATA_DIR / "qpc-v2-15-lines.db"
 GLYPH_DB_PATH = DATA_DIR / "qpc-v2-glyphs.db"
 SURAH_META_PATH = DATA_DIR / "quran-metadata-surah-name.json"
 COMMON_LIGATURES_PATH = DATA_DIR / "ligatures-common.json"
+IMLAEI_PATH = DATA_DIR / "imlaei.json"
 OUTPUT_PATH = SCRIPT_DIR / "quran.db"
 
 try:
@@ -63,6 +66,46 @@ def is_verse_number(text: str) -> bool:
         0x0660 <= ord(ch) <= 0x0669 or 0x06F0 <= ord(ch) <= 0x06F9
         for ch in stripped
     )
+
+
+def normalize_imlai(text: str) -> str:
+    """Normalize Imlai Arabic text for comparison with device transcription.
+    
+    Strips tashkeel/diacritics, waqf signs, and normalizes letter variants:
+    - Tashkeel (U+064B-U+065F, shadda U+0651, sukun U+0652)
+    - Superscript alef (U+0670) → alef (U+0627)
+    - Alef variants (hamza above/below, madda) → plain alef
+    - Taa marbuta (U+0629) → haa (U+0647)
+    - Alef maqsura (U+0649) → yaa (U+064A)
+    - Waqf signs (U+06D6-U+06DC)
+    """
+    result = []
+    for ch in text:
+        cp = ord(ch)
+        # Skip tashkeel range (fathatan through kasra)
+        if 0x064B <= cp <= 0x065F:
+            continue
+        # Skip waqf signs
+        if 0x06D6 <= cp <= 0x06DC:
+            continue
+        # Superscript alef → alef
+        if cp == 0x0670:
+            result.append('\u0627')
+            continue
+        # Alef variants → plain alef
+        if ch in '\u0622\u0623\u0625':  # alef-madda, alef-hamza-above, alef-hamza-below
+            result.append('\u0627')
+            continue
+        # Taa marbuta → haa
+        if cp == 0x0629:
+            result.append('\u0647')
+            continue
+        # Alef maqsura → yaa
+        if cp == 0x0649:
+            result.append('\u064A')
+            continue
+        result.append(ch)
+    return ''.join(result)
 
 
 # ---------------------------------------------------------------------------
@@ -439,6 +482,44 @@ def main():
         cur.execute("INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?)", row)
     mushaf_conn.close()
 
+    # --- Imlai words table ---
+    cur.execute("""
+        CREATE TABLE imlai_words (
+            surah INTEGER NOT NULL,
+            ayah INTEGER NOT NULL,
+            word INTEGER NOT NULL,
+            text TEXT NOT NULL,
+            normalized_text TEXT NOT NULL,
+            PRIMARY KEY (surah, ayah, word)
+        )
+    """)
+
+    # Import Imlai data
+    print("Importing Imlai word data...")
+    imlai_count = 0
+    imlai_skipped = 0
+    if IMLAEI_PATH.exists():
+        with open(IMLAEI_PATH, "r", encoding="utf-8") as f:
+            imlai_data = json.load(f)
+        for key, entry in imlai_data.items():
+            parts = key.split(":")
+            if len(parts) != 3:
+                continue
+            s, a, w = int(parts[0]), int(parts[1]), int(parts[2])
+            text = entry.get("text", "").strip()
+            if not text or is_verse_number(text):
+                imlai_skipped += 1
+                continue
+            normalized = normalize_imlai(text)
+            cur.execute(
+                "INSERT OR REPLACE INTO imlai_words VALUES (?, ?, ?, ?, ?)",
+                (s, a, w, text, normalized)
+            )
+            imlai_count += 1
+        print(f"  imlai_words: {imlai_count} imported, {imlai_skipped} skipped (verse numbers)")
+    else:
+        print(f"  WARNING: {IMLAEI_PATH} not found, imlai_words table will be empty")
+
     # Load glyph text
     print("Loading glyph text from qpc-v2-glyphs.db...")
     glyph_map: dict[int, str] = {}
@@ -553,6 +634,8 @@ def main():
     print(f"  pages: {cur.fetchone()[0]}")
     cur.execute("SELECT COUNT(*) FROM pages")
     print(f"  page lines: {cur.fetchone()[0]}")
+    cur.execute("SELECT COUNT(*) FROM imlai_words")
+    print(f"  imlai_words: {cur.fetchone()[0]}")
 
     # Verify samples
     cur.execute(

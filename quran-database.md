@@ -79,6 +79,18 @@ The 15-line-per-page layout comes from the QPC v2 dataset. Each page has lines o
 
 Used for decorative elements like the surah header frame, bismillah text, and revelation-place markers.
 
+### `imlai_words` — Imlai (MSA spelling) per-word data (77,432 rows)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `surah` | INTEGER | Surah number (PK part 1) |
+| `ayah` | INTEGER | Ayah number (PK part 2) |
+| `word` | INTEGER | 1-based word index within the ayah (PK part 3) |
+| `text` | TEXT | Imlai text with tashkeel (e.g. بِسْمِ) |
+| `normalized_text` | TEXT | Normalized form for comparison: tashkeel stripped, alef variants → alef, taa marbuta → haa, alef maqsura → yaa |
+
+Used by the device transcription follow-along mode (`ImlaiAlignmentStrategy`). The normalized text enables word-level comparison between iOS `SFSpeechRecognizer` output and Quran reference text. Verse-end number markers (6,236 entries) are excluded during import. Some entries contain multi-word text (e.g., `يَا أَيُّهَا`) which maps to a single Quran word position.
+
 ## Data Sources
 
 | Source file | Tables populated |
@@ -89,6 +101,7 @@ Used for decorative elements like the surah header frame, bismillah text, and re
 | `data/ligatures-common.json` | `ligatures` |
 | `data/qpc-v2-15-lines.db` | `pages` |
 | `data/qpc-v2-glyphs.db` | `words.glyph_text` |
+| `data/imlaei.json` | `imlai_words` |
 
 ## Regeneration
 
@@ -121,6 +134,9 @@ cd tools && python generate_quran_db.py
 | `versesCount(surah:)` | `Int` | — |
 | `hasBismillah(surah:)` | `Bool` | — |
 | `ayahs(from:to:)` | `[(QuranPosition, String)]` | — |
+| `imlaiWords(surah:ayah:)` | `[(word, text, normalized)]` | ImlaiIndex |
+| `imlaiNormalized(surah:ayah:word:)` | `String?` | ImlaiAlignmentStrategy |
+| `imlaiWordCount(surah:ayah:)` | `Int` | ImlaiAlignmentStrategy |
 
 ### How the app uses the database
 
@@ -131,3 +147,5 @@ cd tools && python generate_quran_db.py
 **Word highlighting** — `wordMap()` translates phoneme-level word positions (from the follow-along algorithm) to text-level word positions (for UI highlighting). This is necessary because phoneme tokenization doesn't always match Arabic text tokenization.
 
 **Page navigation** — `firstPositionOnPage()` and `pageForPosition()` enable bidirectional sync between the page-based mushaf view and the position-based follow-along tracker.
+
+**Device transcription** — `ImlaiIndex` loads per-word Imlai text from the `imlai_words` table to build reference windows for device transcription follow-along mode. The `ImlaiAlignmentStrategy` compares normalized SFSpeechRecognizer output against the pre-computed `normalized_text` column for word-level position tracking.

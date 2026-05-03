@@ -193,6 +193,32 @@ def _build_char_to_word(uthmani: str) -> list[int]:
     return char_to_word
 
 
+def _build_raw_to_merged(raw: str, merged: str) -> list[int]:
+    """Map raw phoneme positions to merged phoneme positions.
+
+    Both strings have the same non-space characters in the same order but
+    different spacing.  Returns an array of length ``len(raw) + 1`` so that
+    half-open ranges ``[start, end)`` can be remapped directly.  Spaces in the
+    raw string are forward-filled to the next non-space's merged position.
+    """
+    n = len(raw)
+    mapping = [-1] * (n + 1)
+    mi = 0
+    for ri in range(n):
+        if raw[ri] == ' ':
+            continue
+        while mi < len(merged) and merged[mi] == ' ':
+            mi += 1
+        mapping[ri] = mi
+        mi += 1
+    mapping[n] = mi
+    # Forward-fill spaces from the end so every position has a value.
+    for ri in range(n - 1, -1, -1):
+        if mapping[ri] == -1:
+            mapping[ri] = mapping[ri + 1]
+    return mapping
+
+
 def _build_ph_to_words(uthmani: str, phonemes: str, mappings, char_to_word: list[int]) -> list[set[int]]:
     """Map each phoneme character to the set of uthmani word indices it belongs to."""
     ph_to_words: list[set[int]] = [set() for _ in range(len(phonemes))]
@@ -262,6 +288,16 @@ def build_mappings_for_ayah(
     # Build phoneme char → uthmani word(s) from raw phonemes
     raw_phonemes = result.phonemes
     ph_to_words_raw = _build_ph_to_words(uthmani, raw_phonemes, mappings, char_to_word)
+
+    # Remap char_map positions from raw phoneme space to merged phonemes_str space.
+    # The raw positions come from quran-transcript's mappings which use the raw phoneme
+    # string, but phoneme_groups uses the merged phonemes_str with different spacing.
+    r2m = _build_raw_to_merged(raw_phonemes, phonemes_str)
+    n_raw = len(raw_phonemes)
+    char_map_rows = [
+        (uth_i, r2m[min(ph_s, n_raw)], r2m[min(ph_e, n_raw)], deleted, uw)
+        for uth_i, ph_s, ph_e, deleted, uw in char_map_rows
+    ]
 
     # Remap ph_to_words from raw phoneme positions to phonemes_str positions.
     # Both have the same non-space characters in the same order, but different spacing.

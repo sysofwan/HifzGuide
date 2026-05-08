@@ -412,6 +412,14 @@ a { text-decoration: none; color: inherit; }
   line-height: 1.7;
 }
 
+.cta-requirements {
+  margin-top: 16px !important;
+  margin-bottom: 0 !important;
+  font-size: 0.85rem !important;
+  color: rgba(255,255,255,0.4) !important;
+  letter-spacing: 0.02em;
+}
+
 /* ============================================================
    FOOTER
    ============================================================ */

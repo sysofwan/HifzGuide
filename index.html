@@ -39,121 +39,117 @@
     </div>
   </section>
 
-  <!-- Features Section -->
+  <!-- Features Carousel -->
   <section class="features" id="features">
     <div class="container">
       <h2 class="section-title">Powerful Features</h2>
       <p class="section-subtitle">Everything you need to perfect your Quran memorization</p>
     </div>
 
-    <!-- Feature 1: Real-Time Follow-Along -->
-    <div class="feature-row">
-      <div class="container feature-row-inner">
-        <div class="feature-text">
-          <div class="feature-icon">🎙️</div>
-          <h3>Real-Time Follow-Along</h3>
-          <p>Just recite — HifzGuide follows along word by word and highlights your position in the mushaf in real time.</p>
-        </div>
-        <div class="feature-phone">
-          <div class="phone-frame">
-            <img src="images/screenshot-follow-along.png" alt="Follow-along reading with real-time word tracking" loading="lazy">
+    <div class="carousel">
+      <button class="carousel-arrow carousel-prev" aria-label="Previous feature">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+
+      <div class="carousel-viewport">
+        <div class="carousel-track">
+
+          <div class="carousel-slide" data-index="0">
+            <div class="slide-phone">
+              <div class="phone-frame">
+                <img src="images/screenshot-follow-along.png" alt="Follow-along reading with real-time word tracking">
+              </div>
+            </div>
+            <div class="slide-text">
+              <span class="slide-badge">🎙️ Real-Time Follow-Along</span>
+              <p>Just recite — HifzGuide follows along word by word and highlights your position in the mushaf in real time.</p>
+            </div>
           </div>
+
+          <div class="carousel-slide" data-index="1">
+            <div class="slide-phone">
+              <div class="phone-frame">
+                <img src="images/screenshot-mistakes-overlay.png" alt="Mistakes popup showing tashkeel error">
+              </div>
+            </div>
+            <div class="slide-text">
+              <span class="slide-badge">✅ Word-Level Feedback</span>
+              <p>Get instant feedback on every word. Wrong words and tashkeel errors are detected and highlighted so you know exactly what to fix.</p>
+            </div>
+          </div>
+
+          <div class="carousel-slide" data-index="2">
+            <div class="slide-phone">
+              <div class="phone-frame">
+                <img src="images/screenshot-mistakes-detail.png" alt="Detailed mistakes view showing corrections">
+              </div>
+            </div>
+            <div class="slide-text">
+              <span class="slide-badge">🔄 Self-Correction Detection</span>
+              <p>Made a mistake and corrected yourself? HifzGuide notices when you re-read and updates your score automatically.</p>
+            </div>
+          </div>
+
+          <div class="carousel-slide" data-index="3">
+            <div class="slide-phone">
+              <div class="phone-frame">
+                <img src="images/screenshot-follow-along-2.png" alt="Full page Quran view for hifz practice">
+              </div>
+            </div>
+            <div class="slide-text">
+              <span class="slide-badge">📖 Check Your Hifz</span>
+              <p>Open any page in the mushaf and start reciting. Beautiful, authentic rendering with crisp glyph fonts — just like a printed Quran.</p>
+            </div>
+          </div>
+
+          <div class="carousel-slide" data-index="4">
+            <div class="slide-phone slide-phone-pair">
+              <div class="phone-frame phone-sm">
+                <img src="images/screenshot-home.png" alt="Home screen with hifz progress">
+              </div>
+              <div class="phone-frame phone-sm">
+                <img src="images/screenshot-hifz-details.png" alt="Hifz details by surah">
+              </div>
+            </div>
+            <div class="slide-text">
+              <span class="slide-badge">📊 Track Your Progress</span>
+              <p>Track pages, surahs, and streaks. See quality ratings for every page and get smart scheduling for what to review next.</p>
+            </div>
+          </div>
+
+          <div class="carousel-slide" data-index="5">
+            <div class="slide-phone slide-phone-pair">
+              <div class="phone-frame phone-sm">
+                <img src="images/screenshot-voice-search.png" alt="Voice search results">
+              </div>
+              <div class="phone-frame phone-sm">
+                <img src="images/screenshot-text-search.png" alt="Text search results">
+              </div>
+            </div>
+            <div class="slide-text">
+              <span class="slide-badge">🔍 Voice &amp; Text Search</span>
+              <p>Search the Quran by typing Arabic text — or by reciting a verse aloud. Find any passage instantly.</p>
+            </div>
+          </div>
+
         </div>
       </div>
+
+      <button class="carousel-arrow carousel-next" aria-label="Next feature">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
     </div>
 
-    <!-- Feature 2: Word-Level Feedback -->
-    <div class="feature-row feature-row-reverse">
-      <div class="container feature-row-inner">
-        <div class="feature-text">
-          <div class="feature-icon">✅</div>
-          <h3>Word-Level Feedback</h3>
-          <p>Get instant feedback on every word. Wrong words and tashkeel errors are detected and highlighted so you know exactly what to fix.</p>
-        </div>
-        <div class="feature-phone">
-          <div class="phone-frame">
-            <img src="images/screenshot-mistakes-overlay.png" alt="Mistakes popup showing tashkeel error with expected vs recited" loading="lazy">
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="carousel-dots"></div>
 
-    <!-- Feature 3: Self-Correction Detection -->
-    <div class="feature-row">
-      <div class="container feature-row-inner">
-        <div class="feature-text">
-          <div class="feature-icon">🔄</div>
-          <h3>Self-Correction Detection</h3>
-          <p>Made a mistake and corrected yourself? HifzGuide notices when you re-read and updates your score automatically.</p>
-        </div>
-        <div class="feature-phone">
-          <div class="phone-frame">
-            <img src="images/screenshot-mistakes-detail.png" alt="Detailed mistakes view showing wrong words and corrections" loading="lazy">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feature 4: Check Your Hifz -->
-    <div class="feature-row feature-row-reverse">
-      <div class="container feature-row-inner">
-        <div class="feature-text">
-          <div class="feature-icon">📖</div>
-          <h3>Check Your Hifz</h3>
-          <p>Open any page in the mushaf and start reciting. Beautiful, authentic rendering with crisp glyph fonts — just like a printed Quran.</p>
-        </div>
-        <div class="feature-phone">
-          <div class="phone-frame">
-            <img src="images/screenshot-follow-along-2.png" alt="Full page Quran view ready for hifz practice" loading="lazy">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feature 5: Track Your Progress (two phones) -->
-    <div class="feature-row">
-      <div class="container feature-row-inner">
-        <div class="feature-text">
-          <div class="feature-icon">📊</div>
-          <h3>Track Your Progress</h3>
-          <p>Track pages, surahs, and streaks. See quality ratings for every page — Perfect, Good, or needs review. Smart scheduling tells you which pages to revisit and when.</p>
-        </div>
-        <div class="feature-phone feature-phone-pair">
-          <div class="phone-frame phone-frame-small">
-            <img src="images/screenshot-home.png" alt="Home screen showing hifz progress and review recommendations" loading="lazy">
-          </div>
-          <div class="phone-frame phone-frame-small">
-            <img src="images/screenshot-hifz-details.png" alt="Hifz details showing progress by surah with quality ratings" loading="lazy">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feature 6: Voice & Text Search (two phones) -->
-    <div class="feature-row feature-row-reverse">
-      <div class="container feature-row-inner">
-        <div class="feature-text">
-          <div class="feature-icon">🔍</div>
-          <h3>Voice &amp; Text Search</h3>
-          <p>Search the Quran by typing Arabic text — or by reciting a verse aloud. Find any passage instantly.</p>
-        </div>
-        <div class="feature-phone feature-phone-pair">
-          <div class="phone-frame phone-frame-small">
-            <img src="images/screenshot-voice-search.png" alt="Voice search results from reciting a verse" loading="lazy">
-          </div>
-          <div class="phone-frame phone-frame-small">
-            <img src="images/screenshot-text-search.png" alt="Text search with matching Quran results" loading="lazy">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Highlight cards -->
+    <!-- Highlight card -->
     <div class="container highlights">
-      <div class="highlight-card">
-        <div class="feature-icon">🔒</div>
-        <h3>Fully On-Device AI</h3>
-        <p>All speech recognition runs locally on your iPhone using the Apple Neural Engine. Your recitation never leaves your device.</p>
+      <div class="highlight-card fade-in">
+        <span class="highlight-icon">🔒</span>
+        <div>
+          <h3>Fully On-Device AI</h3>
+          <p>All speech recognition runs locally on your iPhone using the Apple Neural Engine. Your recitation never leaves your device.</p>
+        </div>
       </div>
     </div>
 
@@ -193,18 +189,62 @@
       });
     });
 
+    // Carousel
+    (() => {
+      const track = document.querySelector('.carousel-track');
+      const slides = Array.from(track.children);
+      const dotsContainer = document.querySelector('.carousel-dots');
+      const prevBtn = document.querySelector('.carousel-prev');
+      const nextBtn = document.querySelector('.carousel-next');
+      let current = 0;
+
+      // Build dots
+      slides.forEach((_, i) => {
+        const dot = document.createElement('button');
+        dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+        dot.addEventListener('click', () => goTo(i));
+        dotsContainer.appendChild(dot);
+      });
+      const dots = Array.from(dotsContainer.children);
+
+      function goTo(index) {
+        current = index;
+        track.style.transform = `translateX(-${current * 100}%)`;
+        dots.forEach((d, i) => d.classList.toggle('active', i === current));
+      }
+
+      prevBtn.addEventListener('click', () => goTo((current - 1 + slides.length) % slides.length));
+      nextBtn.addEventListener('click', () => goTo((current + 1) % slides.length));
+
+      // Swipe support
+      let startX = 0;
+      let dragging = false;
+      track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dragging = true; }, { passive: true });
+      track.addEventListener('touchend', e => {
+        if (!dragging) return;
+        dragging = false;
+        const diff = startX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) {
+          diff > 0 ? nextBtn.click() : prevBtn.click();
+        }
+      }, { passive: true });
+
+      // Keyboard
+      document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowLeft') prevBtn.click();
+        if (e.key === 'ArrowRight') nextBtn.click();
+      });
+    })();
+
     // Fade-in on scroll
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
+        if (entry.isIntersecting) entry.target.classList.add('visible');
       });
     }, { threshold: 0.1 });
 
-    document.querySelectorAll('.feature-row, .highlight-card, .cta-card').forEach(el => {
-      observer.observe(el);
-    });
+    document.querySelectorAll('.fade-in, .cta-card').forEach(el => observer.observe(el));
   </script>
 
 </body>

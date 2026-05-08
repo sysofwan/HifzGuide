@@ -173,111 +173,82 @@ a { text-decoration: none; color: inherit; }
 }
 
 /* ============================================================
-   FEATURES
+   FEATURES (combined with screenshots)
    ============================================================ */
 .features {
-  padding: 100px 0;
+  padding: 100px 0 40px;
   background: var(--navy-deep);
 }
 
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 24px;
-}
-
-.feature-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
-  padding: 32px 28px;
-  transition: transform 0.3s, border-color 0.3s, opacity 0.6s, translateY 0.6s;
+/* Feature row: text + phone side by side */
+.feature-row {
+  padding: 60px 0;
   opacity: 0;
-  transform: translateY(24px);
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
 }
 
-.feature-card.visible {
+.feature-row.visible {
   opacity: 1;
   transform: translateY(0);
 }
 
-.feature-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(225,191,113,0.35);
+.feature-row-inner {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+}
+
+.feature-row-reverse .feature-row-inner {
+  flex-direction: row-reverse;
+}
+
+.feature-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .feature-icon {
-  font-size: 2rem;
+  font-size: 2.2rem;
   margin-bottom: 16px;
 }
 
-.feature-card h3 {
-  font-size: 1.15rem;
-  font-weight: 600;
+.feature-text h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--gold-light);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
-.feature-card p {
+.feature-text p {
   color: var(--white-muted);
-  font-size: 0.95rem;
-  line-height: 1.6;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  max-width: 480px;
 }
 
-/* ============================================================
-   SCREENSHOTS
-   ============================================================ */
-.screenshots {
-  padding: 100px 0 80px;
-  background: linear-gradient(180deg, var(--navy-deep) 0%, #021a2e 100%);
-}
-
-.screenshots-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: var(--gold-dark) transparent;
-  padding: 0 24px 20px;
-}
-
-.screenshots-scroll::-webkit-scrollbar {
-  height: 6px;
-}
-
-.screenshots-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.screenshots-scroll::-webkit-scrollbar-thumb {
-  background: var(--gold-dark);
-  border-radius: 3px;
-}
-
-.screenshots-track {
-  display: flex;
-  gap: 32px;
-  padding: 10px 0;
-  width: max-content;
-  margin: 0 auto;
-}
-
-.screenshot-item {
+.feature-phone {
   flex-shrink: 0;
-  text-align: center;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.5s, transform 0.5s;
 }
 
-.screenshot-item.visible {
-  opacity: 1;
-  transform: translateY(0);
+/* Single phone */
+.feature-phone .phone-frame {
+  width: 260px;
+}
+
+/* Paired phones (progress, search) */
+.feature-phone-pair {
+  display: flex;
+  gap: 16px;
+}
+
+.feature-phone-pair .phone-frame-small {
+  width: 210px;
 }
 
 /* Phone frame mockup */
 .phone-frame {
   position: relative;
-  width: 240px;
   padding: 12px;
   background: #1a1a2e;
   border-radius: 32px;
@@ -304,11 +275,42 @@ a { text-decoration: none; color: inherit; }
   width: 100%;
 }
 
-.screenshot-caption {
-  margin-top: 16px;
-  font-size: 0.9rem;
+/* Highlight cards at bottom */
+.highlights {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px 0 20px;
+}
+
+.highlight-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 32px 36px;
+  text-align: center;
+  max-width: 480px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s, transform 0.6s;
+}
+
+.highlight-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.highlight-card h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--gold-light);
+  margin-bottom: 8px;
+}
+
+.highlight-card p {
   color: var(--white-muted);
-  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 /* ============================================================
@@ -400,24 +402,39 @@ a { text-decoration: none; color: inherit; }
   }
 
   .features {
-    padding: 60px 0;
+    padding: 60px 0 20px;
   }
 
-  .features-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+  .feature-row {
+    padding: 40px 0;
   }
 
-  .screenshots {
-    padding: 60px 0 40px;
+  .feature-row-inner {
+    flex-direction: column !important;
+    gap: 32px;
+    text-align: center;
   }
 
-  .phone-frame {
-    width: 200px;
+  .feature-text p {
+    max-width: 100%;
   }
 
-  .screenshots-track {
-    gap: 20px;
+  .feature-phone .phone-frame {
+    width: 220px;
+    margin: 0 auto;
+  }
+
+  .feature-phone-pair {
+    justify-content: center;
+  }
+
+  .feature-phone-pair .phone-frame-small {
+    width: 170px;
+  }
+
+  .highlights {
+    flex-direction: column;
+    align-items: center;
   }
 
   .cta-section {
@@ -440,8 +457,15 @@ a { text-decoration: none; color: inherit; }
     height: 90px;
   }
 
+  .feature-phone .phone-frame {
+    width: 200px;
+  }
+
+  .feature-phone-pair .phone-frame-small {
+    width: 150px;
+  }
+
   .phone-frame {
-    width: 180px;
     padding: 10px;
     border-radius: 26px;
   }

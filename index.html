@@ -208,18 +208,34 @@
       prevBtn.addEventListener('click', () => goTo((current - 1 + slides.length) % slides.length));
       nextBtn.addEventListener('click', () => goTo((current + 1) % slides.length));
 
-      // Swipe support
+      // Swipe & drag support
+      const viewport = document.querySelector('.carousel-viewport');
       let startX = 0;
-      let dragging = false;
-      track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dragging = true; }, { passive: true });
-      track.addEventListener('touchend', e => {
-        if (!dragging) return;
-        dragging = false;
+      let isDragging = false;
+
+      // Touch swipe
+      viewport.addEventListener('touchstart', e => { startX = e.touches[0].clientX; isDragging = true; }, { passive: true });
+      viewport.addEventListener('touchmove', e => { /* allow default scroll */ }, { passive: true });
+      viewport.addEventListener('touchend', e => {
+        if (!isDragging) return;
+        isDragging = false;
         const diff = startX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 50) {
+        if (Math.abs(diff) > 40) {
           diff > 0 ? nextBtn.click() : prevBtn.click();
         }
       }, { passive: true });
+
+      // Mouse drag
+      viewport.addEventListener('mousedown', e => { startX = e.clientX; isDragging = true; e.preventDefault(); });
+      document.addEventListener('mousemove', e => { if (isDragging) e.preventDefault(); });
+      document.addEventListener('mouseup', e => {
+        if (!isDragging) return;
+        isDragging = false;
+        const diff = startX - e.clientX;
+        if (Math.abs(diff) > 40) {
+          diff > 0 ? nextBtn.click() : prevBtn.click();
+        }
+      });
 
       // Keyboard
       document.addEventListener('keydown', e => {

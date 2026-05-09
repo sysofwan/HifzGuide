@@ -191,6 +191,14 @@ a { text-decoration: none; color: inherit; }
 .carousel-viewport {
   overflow: hidden;
   border-radius: 12px;
+  touch-action: pan-y pinch-zoom;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.carousel-viewport:active {
+  cursor: grabbing;
 }
 
 .carousel-track {

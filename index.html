@@ -243,10 +243,11 @@
   <!-- FAQ Section -->
   <section class="faq-section" id="faq">
     <div class="container">
-      <h2 class="section-title">Frequently Asked Questions</h2>
-      <p class="section-subtitle">Everything you need to know about HifzGuide</p>
+      <div class="faq-card">
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <p class="section-subtitle">Everything you need to know about HifzGuide</p>
 
-      <div class="faq-list">
+        <div class="faq-list">
         <details class="faq-item">
           <summary>What is HifzGuide?</summary>
           <div class="faq-answer">
@@ -302,6 +303,7 @@
             <p>HifzGuide rates your recitation quality for every surah and page — Perfect, Good, or Needs Improvement. It uses smart scheduling to recommend which pages to revisit and when, so your review stays efficient and nothing falls through the cracks.</p>
           </div>
         </details>
+      </div>
       </div>
     </div>
   </section>
@@ -412,7 +414,7 @@
       });
     }, { threshold: 0.1 });
 
-    document.querySelectorAll('.fade-in, .cta-card').forEach(el => observer.observe(el));
+    document.querySelectorAll('.fade-in, .cta-card, .faq-card').forEach(el => observer.observe(el));
   </script>
 
 </body>

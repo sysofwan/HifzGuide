@@ -475,6 +475,7 @@ a { text-decoration: none; color: inherit; }
 }
 
 .faq-item[open] .faq-answer {
+  height: auto;
   opacity: 1;
 }
 

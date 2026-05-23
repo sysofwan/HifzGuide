@@ -381,6 +381,79 @@ a { text-decoration: none; color: inherit; }
 }
 
 /* ============================================================
+   FAQ SECTION
+   ============================================================ */
+.faq-section {
+  padding: 80px 0 60px;
+  background: var(--navy-deep);
+}
+
+.faq-list {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faq-item {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.faq-item[open] {
+  border-color: rgba(225,191,113,0.35);
+}
+
+.faq-item summary {
+  padding: 20px 24px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--gold-light);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: color 0.2s;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: '+';
+  font-size: 1.4rem;
+  font-weight: 300;
+  color: var(--gold);
+  flex-shrink: 0;
+  transition: transform 0.3s;
+}
+
+.faq-item[open] summary::after {
+  content: '−';
+}
+
+.faq-item summary:hover {
+  color: var(--gold);
+}
+
+.faq-answer {
+  padding: 0 24px 20px;
+}
+
+.faq-answer p {
+  color: var(--white-muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+/* ============================================================
    CTA SECTION
    ============================================================ */
 .cta-section {

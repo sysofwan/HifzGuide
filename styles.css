@@ -468,20 +468,17 @@ a { text-decoration: none; color: inherit; }
 }
 
 .faq-answer {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s ease;
+  overflow: hidden;
+  height: 0;
+  opacity: 0;
+  transition: height 0.3s ease, opacity 0.25s ease;
 }
 
 .faq-item[open] .faq-answer {
-  grid-template-rows: 1fr;
+  opacity: 1;
 }
 
-.faq-answer-inner {
-  overflow: hidden;
-}
-
-.faq-answer-inner p {
+.faq-answer p {
   padding: 0 4px 18px;
   color: var(--white-muted);
   font-size: 0.93rem;

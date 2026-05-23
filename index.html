@@ -258,65 +258,65 @@
         <div class="faq-list">
         <details class="faq-item">
           <summary>What is HifzGuide?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>HifzGuide is an AI-powered iOS app designed to help you memorize and review the Quran. It listens as you recite, tracks your position word by word, and gives you real-time feedback on your accuracy — helping you identify weak spots and perfect your hifz.</p>
-          </div></div>
+          </div>
         </details>
 
         <details class="faq-item">
           <summary>How does HifzGuide check my recitation?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>HifzGuide uses advanced speech recognition running on the Apple Neural Engine built into your iPhone. As you recite, it follows along word by word and detects mistakes including wrong words, skipped words, and tashkeel (diacritical) errors.</p>
-          </div></div>
+          </div>
         </details>
 
         <details class="faq-item">
           <summary>Do I need an internet connection?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>No. All speech recognition and Quran processing runs entirely on your device. You can practice your hifz anywhere — at the masjid, while traveling, or at home — without needing Wi-Fi or mobile data.</p>
-          </div></div>
+          </div>
         </details>
 
         <details class="faq-item">
           <summary>Is my recitation data private?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>Absolutely. Since all AI processing happens on-device, your audio never leaves your iPhone. No recordings are stored, uploaded, or shared — your recitation stays completely private.</p>
-          </div></div>
+          </div>
         </details>
 
         <details class="faq-item">
           <summary>What devices are supported?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>HifzGuide requires an iPhone 12 or newer running iOS. The app relies on the Apple Neural Engine for on-device speech recognition, which is available on A14 Bionic chips and later.</p>
-          </div></div>
+          </div>
         </details>
 
         <details class="faq-item">
           <summary>Is HifzGuide free?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>HifzGuide is currently in beta and available for free through Apple TestFlight. Sign up using the form on this page to get early access and help shape the app before its official release.</p>
-          </div></div>
+          </div>
         </details>
 
         <details class="faq-item">
           <summary>Why is HifzGuide still in beta?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>We're fine-tuning the AI to make sure it works accurately for a wide range of users — different recitation styles, speeds, and accents. The beta period lets us gather real-world feedback and improve the experience before the official launch.</p>
-          </div></div>
+          </div>
         </details>
 
         <details class="faq-item">
           <summary>Can I search for a specific verse?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>Yes! HifzGuide supports both text and voice search. Type Arabic text to find a verse, or simply recite a passage aloud and the app will locate it for you instantly.</p>
-          </div></div>
+          </div>
         </details>
 
         <details class="faq-item">
           <summary>How does the progress tracking work?</summary>
-          <div class="faq-answer"><div class="faq-answer-inner">
+          <div class="faq-answer">
             <p>HifzGuide rates your recitation quality for every surah and page — Perfect, Good, or Needs Improvement. It uses smart scheduling to recommend which pages to revisit and when, so your review stays efficient and nothing falls through the cracks.</p>
-          </div></div>
+          </div>
         </details>
       </div>
       </div>
@@ -354,6 +354,56 @@
         if (target) {
           e.preventDefault();
           target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    // FAQ accordion animation
+    document.querySelectorAll('.faq-item').forEach(details => {
+      const summary = details.querySelector('summary');
+      const answer = details.querySelector('.faq-answer');
+      let animation = null;
+
+      summary.addEventListener('click', e => {
+        e.preventDefault();
+        if (animation) animation.finish();
+
+        if (details.open) {
+          // Closing
+          const startHeight = answer.scrollHeight;
+          answer.style.height = startHeight + 'px';
+          answer.style.opacity = '1';
+          requestAnimationFrame(() => {
+            animation = answer.animate(
+              [
+                { height: startHeight + 'px', opacity: 1 },
+                { height: '0px', opacity: 0 }
+              ],
+              { duration: 250, easing: 'ease' }
+            );
+            animation.onfinish = () => {
+              details.open = false;
+              answer.style.height = '';
+              answer.style.opacity = '';
+              animation = null;
+            };
+          });
+        } else {
+          // Opening
+          details.open = true;
+          const endHeight = answer.scrollHeight;
+          animation = answer.animate(
+            [
+              { height: '0px', opacity: 0 },
+              { height: endHeight + 'px', opacity: 1 }
+            ],
+            { duration: 250, easing: 'ease' }
+          );
+          animation.onfinish = () => {
+            answer.style.height = '';
+            answer.style.opacity = '';
+            animation = null;
+          };
         }
       });
     });

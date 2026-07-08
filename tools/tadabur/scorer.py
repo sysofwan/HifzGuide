@@ -1,10 +1,10 @@
 """The ``.balanced`` scorer gate — the Tadabur training-data filter (ADR-0001).
 
 Ties together the three ported pieces — ``normalization`` (group collapse +
-tajweed folds + shadda-run suppression), ``smith_waterman`` (affine-gap local
-alignment), and ``phoneme_sifat`` (graduated articulatory substitution cost) —
-into the gate the filter uses to decide whether a decoded clip matches its
-reference ayah well enough to keep as a training example.
+tajweed folds), ``smith_waterman`` (affine-gap local alignment), and
+``phoneme_sifat`` (graduated articulatory substitution cost) — into the gate the
+filter uses to decide whether a decoded clip matches its reference ayah well
+enough to keep as a training example.
 
 Per ADR-0001 the gate is Muraja's ``.balanced`` behaviour **verbatim**: normalize
 both sides, run Smith-Waterman, and compare the alignment score against the query
@@ -13,6 +13,13 @@ phoneme count. We deliberately do **not** invent a bespoke matching score — no
 (those correspond to none of Muraja's tuned modes and break fixture parity).
 ``match_ratio = score / query_phoneme_count`` and the pass bar is the balanced
 mode's ``correct_threshold`` (0.65), exactly as in Muraja's transcription check.
+
+Note that Muraja's ``.balanced`` ``shaddahSuppression`` is a **word-scoring**
+refinement (it excludes shadda-expansion gaps from the phoneme gate's gap count in
+``QuranFollowAlong+WordScoring.swift``), *not* a normalization-time collapse:
+``normalize_phonemes`` faithfully keeps shadda expansion doubled. This coarse
+score-only filter gate does not reconstruct that per-word gap accounting, so the
+flag is carried on ``ScoringParameters`` for fidelity but has no effect here.
 """
 
 from __future__ import annotations
@@ -35,9 +42,11 @@ class ScoringParameters:
 
     ``correct_threshold`` is the pass bar for ``match_ratio``. ``soft_pairs_enabled``
     lets commonly-confused consonant pairs (``ذ↔ز`` …) count as soft rather than
-    hard mismatches (see ``is_soft_mismatch``). ``shaddah_suppression`` is realized
-    by ``normalize_phonemes`` collapsing shadda runs, so shadda expansion never
-    creates spurious alignment gaps in the first place.
+    hard mismatches (see ``is_soft_mismatch``). ``shaddah_suppression`` mirrors
+    Muraja's ``.balanced`` flag; there it excludes shadda-expansion gaps from the
+    per-word phoneme-gate gap count (``QuranFollowAlong+WordScoring.swift``), a
+    word-scoring refinement this coarse score-only gate does not reconstruct — it
+    is retained here only for parameter fidelity with Muraja.
     """
 
     correct_threshold: float
@@ -45,8 +54,8 @@ class ScoringParameters:
     shaddah_suppression: bool
 
 
-# Muraja's ``ScoringParameters.balanced`` values (strict correct_threshold 0.75
-# relaxed to 0.65, soft pairs + shaddah suppression enabled).
+# Muraja's ``ScoringParameters.balanced`` values: strict's correct_threshold 0.75
+# relaxed to 0.65, soft pairs + shaddah suppression enabled (see FollowAlongTypes.swift).
 BALANCED = ScoringParameters(
     correct_threshold=0.65,
     soft_pairs_enabled=True,

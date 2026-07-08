@@ -63,11 +63,17 @@ def test_gate_soft_pair_substitution_scores_high():
 
 
 def test_gate_reference_normalization_idempotent():
-    # A pre-normalized reference (the cache format) gates identically to its raw
-    # shadda-run form, since normalization collapses the run either way.
-    normalized = BALANCED_SCORER.gate("رب", "رب لمشرقين")
-    raw = BALANCED_SCORER.gate("رب", "رَببُ لمشرقين")
-    assert normalized == raw
+    # The gate normalizes its reference, so passing a raw reference gates
+    # identically to passing its already-normalized (cache) form. Swift-faithful
+    # normalization keeps shadda expansion doubled: رَببُ → ربب.
+    from tadabur.normalization import normalize_phonemes
+
+    raw_ref = "رَببُ لمشرقين"
+    pre_normalized = normalize_phonemes(raw_ref).normalized
+    assert pre_normalized == "ربب لمشرقين"
+    assert BALANCED_SCORER.gate("ربب", pre_normalized) == BALANCED_SCORER.gate(
+        "ربب", raw_ref
+    )
 
 
 def test_is_soft_mismatch_respects_mode():

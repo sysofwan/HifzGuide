@@ -14,9 +14,11 @@ _FOLD = {"\u06FE": "\u0645", "\u06BA": "\u0646"}
 
 def _chunck_oracle(text: str) -> str:
     """Ground truth from quran-transcript: fold tajweed variants, then collapse
-    each space-separated word with ``chunck_phonemes`` (the ``.balanced`` scorer's
-    canonical grouping), keeping the first (core) char of each group. Word
-    boundaries are preserved. Skips if quran-transcript is not installed."""
+    each space-separated word with ``chunck_phonemes``. Used only to cross-check
+    the cases where Swift's normalization *agrees* with quran-transcript (no
+    shadda-expansion divergence); it deliberately collapses shadda runs, so it is
+    NOT a parity oracle for the ``.balanced`` scorer. Skips if quran-transcript is
+    not installed."""
     sifa = pytest.importorskip("quran_transcript.phonetics.sifa")
     folded = "".join(_FOLD.get(ch, ch) for ch in text)
     return " ".join(
@@ -47,23 +49,42 @@ def test_normalize_repeated_consonants():
 @pytest.mark.parametrize(
     "raw,expected",
     [
-        # Shadda-style run + trailing diacritic collapses to one core (the review's
-        # ربب regression): رَ | ببُ → رب, not ربب.
-        ("رَببُ", "رب"),
-        ("ءَننَ", "ءن"),
+        # Cases where Swift's group-collapse agrees with quran-transcript's
+        # chunck_phonemes (no bare-core-then-same-core-with-combining pattern),
+        # so both the hand-written expectation and the oracle must agree.
         # A diacritic between cores keeps them in separate groups: بَ | بُ → بب.
         ("بَبُ", "بب"),
-        # ں folds to ن, the run collapses, madd ۥ stays: مِ | ںںں | جُ | ۥۥ.
+        # ں folds to ن, the bare run collapses, madd ۥ stays: مِ | ںںں | جُ | ۥۥ.
         ("مِںںںجُۥۥ", "منجۥ"),
-        ("هُممممِن", "همن"),
         # Non-combining ڇ acts as a trailing residual: جڇ → ج.
         ("نَجڇعَ", "نجع"),
     ],
 )
-def test_normalize_collapses_repetition_like_scorer(raw, expected):
+def test_normalize_agrees_with_chunck_oracle(raw, expected):
     got = normalize_phonemes(raw).normalized
     assert got == expected
     assert got == _chunck_oracle(raw)
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        # Shadda-style expansion: a bare core followed by the SAME core carrying a
+        # combining mark. Swift breaks before consuming the diacritic-bearing
+        # cluster, so the doubled core is preserved — this is exactly where a
+        # faithful port must diverge from chunck_phonemes (which would collapse to
+        # رب / ب). The downstream word scorer's shaddahSuppression, not this
+        # normalization, neutralises the extra core.
+        ("رَببُ", "ربب"),   # رَ | ب | بُ → ربب  (not رب)
+        ("ببَ", "بب"),       # ب | بَ → بب        (not ب)
+        ("للَ", "لل"),       # ل | لَ → لل        (not ل)
+        ("ءَننَ", "ءنن"),   # ءَ | ن | نَ → ءنن  (not ءن)
+        ("هُممممِن", "هممن"),  # هُ | ممم | مِ | ن → هممن (not همن)
+    ],
+)
+def test_normalize_keeps_shadda_expansion_doubled(raw, expected):
+    # Swift-faithful: doubled cores are preserved (parity with .balanced scores).
+    assert normalize_phonemes(raw).normalized == expected
 
 
 def test_normalize_consonant_with_diacritic():
@@ -112,9 +133,10 @@ def test_normalize_madd_markers():
 
 
 def test_normalize_word_boundaries():
+    # ببَ → بب (ب | بَ) and تتِ → تت (ت | تِ): shadda expansion stays doubled on
+    # both sides of the space, which is preserved.
     result = normalize_phonemes("ببَ تتِ")
-    assert result.normalized != ""
-    assert " " in result.normalized
+    assert result.normalized == "بب تت"
 
 
 def test_map_to_original_basic():

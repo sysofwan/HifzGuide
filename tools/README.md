@@ -49,6 +49,29 @@ dataset's small-row-group preview config for a quick check. The 43-class phoneme
 vocabulary (`tadabur.phoneme_vocab`) is asserted to match the live model in
 `tadabur/test_phoneme_vocab.py`.
 
+### `tadabur.filter` (Linux + CUDA)
+
+The Phase 3 filtering pipeline (PRD #1, ADR-0001): the passing-subset generator.
+Streams `FaisaI/tadabur` once, resamples each clip to 16 kHz mono, runs **batched**
+bf16 GPU inference in one variable-length full-ayah pass (no 250-frame windowing),
+greedy-CTC-decodes the phoneme head, and scores each decoded string against the
+cached `quran-transcript` reference for its `surah:ayah` (`tadabur.reference_phonemes`)
+with the ported `.balanced` gate (`tadabur.scorer`). Passers are appended to a JSONL
+manifest — `audio_filename`, `surah:ayah`, `match_ratio`, `ayah_duration_s`, `reciter_id`.
+
+```bash
+cd tools
+python -m tadabur.filter --manifest passing_subset.jsonl --batch-size 64
+python -m tadabur.filter --manifest passing_subset.jsonl --config-name preview --limit 200
+```
+
+Filtering is light on VRAM (~1.5 GB), so use a large `--batch-size` for throughput
+over the 365k+ clips. The run is **resumable and idempotent**: a sibling
+`<manifest>.progress.json` checkpoints how many clips have been scored, so a restart
+skips them (rejected clips leave no manifest line but are still skipped), and a
+per-`audio_filename` seen-set keeps the manifest duplicate-free if the last in-flight
+batch is replayed after a crash.
+
 ### `convert_to_coreml.py`
 
 Converts the Wav2Vec2-BERT TorchScript model (`obadx/muaalem-model-v3_2`) to CoreML format optimized for Apple Neural Engine. Traces the model with a fixed input shape `(1, 250, 160)`, exports to FP32 `.mlpackage`, and optionally creates INT8 and 4-bit compressed variants.

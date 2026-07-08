@@ -1,12 +1,23 @@
 ---
 name: thermo-nuclear-code-quality
-description: Write code that passes the thermo-nuclear code quality review bar. Applies the same structural quality standards proactively during implementation rather than reactively during review.
+description: Write code that passes the thermo-nuclear code quality review bar — pragmatic structural quality plus ML-correctness (reproducibility, data integrity, numerics). Applies the review standards proactively during implementation.
 disable-model-invocation: true
 ---
 
 # Thermo-Nuclear Code Quality — Implementation Standards
 
 These are the coding standards enforced by the review agent. Write code that meets this bar on the first pass.
+
+This is a Python + data / ML repo (data-generation, filtering, model fine-tuning, CoreML export). Hold code to a **demanding but pragmatic** bar: be ambitious about structure, but respect legitimate ML idioms and put the highest priority on the correctness issues that actually break models.
+
+## ML-code calibration (read first)
+
+These are **not** automatically smells — do not contort the code to avoid them:
+
+- **Long, linear training/data scripts are often fine.** A top-to-bottom `main()` that loads → transforms → trains → evaluates is readable *because* it is linear. Don't shatter it into tiny helpers or a class hierarchy to satisfy taste.
+- **Hyperparameters and constants are data, not magic.** Learning rates, thresholds, layer targets, batch/vocab sizes are expected literals — prefer a config/argparse/constants block, but their presence is not a defect.
+- **Some duplication is acceptable** when it keeps two experiments or pipeline stages independently legible. Extract shared logic to remove real drift risk, not merely to satisfy DRY.
+- **Vectorization vs. legibility is a real trade-off.** Judge by clarity and correctness, not dogma.
 
 ## Mindset
 
@@ -24,10 +35,10 @@ Before writing code, ask: **"Is there a code-judo move that makes this dramatica
    - If whole branches, helpers, modes, conditionals, or layers can disappear through a better design, pursue that.
    - The best implementation is the one where complexity never existed in the first place.
 
-1. **Do not push a file from under 1k lines to over 1k lines.**
-   - If your change would cross this threshold, extract helpers, subcomponents, or modules first.
-   - Keep files focused on a single cohesion boundary.
-   - Use `// MARK: -` sections to organize code within files.
+1. **Watch file growth, but treat size as advisory — not a hard gate.**
+   - A file growing large is a signal to *ask* whether it should be decomposed, not an automatic threshold.
+   - If a change mixes several unrelated concerns, extract helpers, subcomponents, or modules.
+   - A long but cohesive, top-to-bottom pipeline/training script can legitimately run long — judge by whether a reader can still follow it, not by a line count.
 
 2. **Do not add spaghetti to existing code.**
    - No ad-hoc conditionals scattered in unrelated flows.
@@ -59,6 +70,32 @@ Before writing code, ask: **"Is there a code-judo move that makes this dramatica
    - If independent work can run in parallel without adding complexity, let it.
    - If related updates can leave state half-applied, restructure for atomicity.
 
+## ML-Specific Standards (highest priority for this repo)
+
+These prevent the bugs that silently ruin models and datasets. Get them right first.
+
+8. **Reproducibility and determinism.**
+   - Set and thread seeds (Python, NumPy, torch) where determinism is expected.
+   - Keep generators idempotent — re-running should reproduce identical output. Pin ordering (sorted keys, stable iteration); don't rely on set/dict insertion accidents.
+
+9. **Data integrity — no leakage, no silent label corruption.**
+   - Split train/val/test so the same source unit (e.g. reciter/ayah) can't straddle splits.
+   - Never let val/test statistics leak into training (fit normalizers on train only).
+   - Treat reference labels/phonemes as source-of-truth; validate transforms rather than mutating them in place.
+
+10. **Device / dtype / numerical correctness.**
+    - Be explicit about device and dtype; don't move tensors across devices inside hot loops by accident.
+    - Handle NaN/Inf, padding, and ignore indices (`-100`) deliberately.
+    - Respect the cu128/Blackwell (sm_120) constraint — never reintroduce a default-index torch path.
+
+11. **Resource and failure honesty on long runs.**
+    - Fail fast and loudly on bad data/config; don't swallow exceptions in training/eval loops.
+    - Checkpoint and log enough to resume and diagnose. Stay within the VRAM budget.
+
+12. **Correctness parity with references.**
+    - When porting logic (e.g. the Swift scorer), validate against fixtures before trusting output.
+    - Preserve train-vs-inference preprocessing parity.
+
 ## Self-Check Before Committing
 
 Before you commit, verify:
@@ -66,13 +103,21 @@ Before you commit, verify:
 - [ ] Is there a simpler design I missed? Could I delete whole categories of complexity?
 - [ ] Did I add branching where a better abstraction should exist?
 - [ ] Is each piece of logic living in the right file and layer?
-- [ ] Did I enlarge a file past a healthy size boundary? Should I extract?
+- [ ] Did I enlarge a file to the point it mixes unrelated concerns? (Size alone is fine if it stays one clear linear flow.)
 - [ ] Are there repeated conditionals that signal a missing model or helper?
 - [ ] Is the implementation direct and legible, or does it rely on special cases?
 - [ ] Did I introduce unnecessary optionality or ad-hoc object shapes?
 - [ ] Am I reusing canonical helpers, or did I create a near-duplicate?
 - [ ] Is feature logic properly isolated, not leaking into shared paths?
 - [ ] Would a reader understand this code without excessive context?
+
+For ML / data changes:
+
+- [ ] Is the run reproducible — seeds set, ordering pinned, generation idempotent?
+- [ ] Could any split leak the same source unit across train/val/test, or corrupt reference labels?
+- [ ] Are device, dtype, NaN/Inf, and padding/`-100` handled deliberately (and no non-cu128 torch path)?
+- [ ] Did I validate any ported logic against fixtures and preserve train-vs-inference parity?
+- [ ] Does this respect the documented decisions (ADR-0001, VRAM budget)?
 
 ## What NOT To Do
 

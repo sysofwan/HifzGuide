@@ -7,9 +7,10 @@ the reference matches what the ``.balanced`` scorer compares against. Results ar
 cached to a single JSON file keyed by ``surah:ayah`` — computed once and reused
 across all reciters. The cache is wrapped in a versioned envelope
 (``CACHE_VERSION``, tied to ``normalization.ALGORITHM_VERSION``); a warm cache is
-trusted only when it validates (matching version, complete 6236-ayah set, and
-the normalized fallback sentinels), so a stale or partial cache is rebuilt rather
-than silently reused. Regeneration is deterministic and idempotent.
+trusted only when it validates (matching version, the exact canonical 6236
+``surah:ayah`` key set, and the normalized fallback sentinels), so a stale or
+partial cache is rebuilt rather than silently reused. Regeneration is
+deterministic and idempotent.
 
 Usage:
   python3 -m tadabur.reference_phonemes [--cache PATH] [--rebuild]
@@ -69,10 +70,11 @@ def expected_fallback_sentinels() -> dict[str, str]:
 def _is_valid_cache(payload: object) -> bool:
     """Whether an on-disk cache payload is trustworthy for the current algorithm.
 
-    Requires the versioned envelope, the complete 6236-ayah key set, and the
-    normalized fallback sentinels. Anything else (old bare-dict format, stale
-    version, partial/truncated set, tampered fallbacks) is rejected so the cache
-    is rebuilt rather than silently reused.
+    Requires the versioned envelope, the *exact* canonical 6236 ``surah:ayah`` key
+    set (``generate_phonemes.expected_ayah_keys``), and the normalized fallback
+    sentinels. A full-size cache that is missing a real ayah while carrying an
+    extra key, an old bare-dict format, a stale version, a partial/truncated set,
+    or tampered fallbacks is rejected so the cache is rebuilt rather than reused.
     """
     if not isinstance(payload, dict):
         return False
@@ -81,7 +83,7 @@ def _is_valid_cache(payload: object) -> bool:
     references = payload.get("references")
     if not isinstance(references, dict):
         return False
-    if len(references) != generate_phonemes.TOTAL_AYAT:
+    if references.keys() != generate_phonemes.expected_ayah_keys():
         return False
     return all(
         references.get(key) == value

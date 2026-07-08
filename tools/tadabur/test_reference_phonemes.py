@@ -35,13 +35,11 @@ def test_build_preserves_all_keys():
 
 
 def _valid_raw_set() -> dict[str, str]:
-    """A raw phoneme mapping that normalizes to a *valid* full cache: the 8
-    fallback ayat plus synthetic filler to reach exactly TOTAL_AYAT keys."""
-    raw = dict(generate_phonemes.FALLBACK_PHONEMES)
-    i = 0
-    while len(raw) < generate_phonemes.TOTAL_AYAT:
-        raw[f"filler:{i}"] = "بت"
-        i += 1
+    """A raw phoneme mapping that normalizes to a *valid* full cache: exactly the
+    canonical 6236 ``surah:ayah`` keys, with the 8 fallback ayat carrying their
+    real raw phonemes and every other ayah a placeholder."""
+    raw = {key: "بت" for key in generate_phonemes.expected_ayah_keys()}
+    raw.update(generate_phonemes.FALLBACK_PHONEMES)
     return raw
 
 
@@ -149,6 +147,27 @@ def test_bare_dict_cache_is_rebuilt(tmp_path, monkeypatch):
     result = reference_phonemes.load_reference_phonemes(cache)
     assert len(result) == generate_phonemes.TOTAL_AYAT
     assert result["55:17"] == "رب لمشرقين ورب لمغربين"
+
+
+def test_wrong_key_set_cache_is_rebuilt(tmp_path, monkeypatch):
+    # A full-size (6236-entry) cache that drops a real ayah (2:255) while carrying
+    # an extra key must be rejected: exact canonical key-set match is required, so
+    # count alone is not enough.
+    cache = tmp_path / "reference_phonemes.json"
+    refs = reference_phonemes.build_reference_phonemes(_valid_raw_set())
+    assert "2:255" in refs
+    refs["extra:0"] = refs.pop("2:255")  # still exactly TOTAL_AYAT entries
+    assert len(refs) == generate_phonemes.TOTAL_AYAT
+    _write_raw_payload(
+        cache,
+        {"cache_version": reference_phonemes.CACHE_VERSION, "references": refs},
+    )
+    _use_raw(monkeypatch, _valid_raw_set())
+
+    result = reference_phonemes.load_reference_phonemes(cache)
+    assert "2:255" in result
+    assert "extra:0" not in result
+    assert set(result) == generate_phonemes.expected_ayah_keys()
 
 
 def test_tampered_fallback_sentinel_cache_is_rebuilt(tmp_path, monkeypatch):

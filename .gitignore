@@ -30,3 +30,6 @@ compiled_models/
 *.mlpackage/
 *.mlmodelc/
 models.zip
+
+# AFK dual-agent loop (ralph-loop.sh) state
+.ralph/

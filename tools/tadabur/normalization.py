@@ -1,7 +1,7 @@
 """Phoneme group normalization — Python port of Muraja's ``PhonemeNormalization.swift``.
 
-Collapses runs of the same core phoneme character (a consonant or madd marker,
-optionally carrying one diacritic) into a single representative character, and
+Collapses runs of the same **bare** core phoneme character (a consonant or madd
+marker with no attached diacritic) into a single representative character, and
 maps tajweed ghunna variants (``۾→م``, ``ں→ن``) back to their base consonant.
 This is the normalization the ``.balanced`` scorer applies to both the model's
 decoded phonemes and the quran-transcript reference before alignment, so the two
@@ -11,6 +11,18 @@ Swift iterates over *Characters* (extended grapheme clusters), where a base
 letter plus its combining diacritic form a single unit (e.g. ``بَ`` is one
 Character, not two). We reproduce that by grouping each base scalar with the
 combining marks that follow it (``unicodedata.combining`` is non-zero).
+
+Crucially — and this is where a faithful port differs from quran-transcript's
+``chunck_phonemes`` — a *combining mark starts a NEW group*: when a run of bare
+cores is followed by the **same** core carrying a diacritic, Swift **breaks
+before consuming** that diacritic-bearing cluster and processes it as its own
+group. So a shadda-style run such as ``رَببُ`` normalizes to ``ربب`` (not ``رب``)
+and ``ببَ`` to ``بب`` (not ``ب``): shadda expansion stays DOUBLED here. It is the
+downstream word scorer's ``shaddahSuppression`` (a gap-count exclusion in
+``QuranFollowAlong+WordScoring.swift``), not this normalization, that neutralises
+those doubled cores — so we must reproduce Swift's doubling verbatim or the
+Smith-Waterman reference string, and thus the ``.balanced`` ``match_ratio``,
+would diverge.
 
 Shared with the ``.balanced`` scorer port (issue #3): keep this module the single
 home for phoneme normalization.
@@ -24,7 +36,7 @@ from dataclasses import dataclass
 # Bump whenever the normalization behaviour changes (grouping rules, tajweed
 # folds, residual set). Downstream caches key their validity on this so a cache
 # produced by an older algorithm is rebuilt rather than silently reused.
-ALGORITHM_VERSION = "1"
+ALGORITHM_VERSION = "2"
 
 # Core phoneme scalars (consonants + madd markers) used for group classification.
 _CORE_SCALARS: frozenset[str] = frozenset("ءبتثجحخدذرزسشصضطظعغفقكلمنهوياۥۦ۾ںـٲ")
@@ -77,12 +89,15 @@ def _folded_core(scalar: str) -> str:
 def normalize_phonemes(text: str) -> PhonemeNormalization:
     """Collapse each phoneme group into a single representative core character.
 
-    A *group* is quran-transcript's ``chunck_phonemes`` unit: one or more
-    consecutive repetitions of the **same** core scalar (a shadda-style run such
-    as ``ببُ``), optionally carrying **one** trailing residual/diacritic — the
-    regex ``(c+)[residuals]?``. A diacritic ends the run, so cores separated by a
-    diacritic (``بَبُ`` → ``بَ``,``بُ``) stay in distinct groups. Tajweed variants
-    (``۾``,``ں``) fold onto their base consonant before grouping. Spaces are word
+    Mirrors Swift's ``normalizePhonemes`` loop verbatim. A core cluster opens a
+    group; if that opening cluster is **bare** (no combining mark), the group
+    greedily consumes following **bare** clusters of the same folded core, then
+    absorbs at most one trailing standalone residual scalar (e.g. non-combining
+    ``ڇ``). A same-core cluster that *carries* a combining mark does **not** join
+    the run — Swift breaks before consuming it, so it becomes the start of a new
+    group. That is why shadda-style expansions stay doubled: ``رَببُ`` → ``ربب``,
+    ``ببَ`` → ``بب``, ``للَ`` → ``لل``. Tajweed variants (``۾``, ``ں``) fold onto
+    their base consonant before grouping and comparison. Spaces are word
     boundaries and are preserved verbatim.
     """
     clusters = _grapheme_clusters(text)
@@ -103,22 +118,24 @@ def normalize_phonemes(text: str) -> PhonemeNormalization:
         if base in _CORE_SCALARS:
             group_start = i
             core = _folded_core(base)
-            # The residual is either a combining mark attached to a cluster in the
-            # run, or a standalone residual scalar (e.g. non-combining ``ڇ``)
-            # trailing it. Either terminates the group; the ``c+`` run consumes
-            # only bare clusters of the same folded core until then.
-            carried_residual = len(clusters[i]) > 1
+            # A combining mark on the opening cluster terminates the group
+            # immediately (the diacritic acts as the residual); only a bare core
+            # continues consuming its shadda-style run of same-folded-core bares.
+            has_combining = len(clusters[i]) > 1
             i += 1
-            while not carried_residual and i < n:
-                nxt = clusters[i][0]
-                if nxt in _CORE_SCALARS and _folded_core(nxt) == core:
-                    carried_residual = len(clusters[i]) > 1
+            if not has_combining:
+                while i < n:
+                    if _folded_core(clusters[i][0]) != core:
+                        break
+                    if len(clusters[i]) > 1:
+                        # Same core but carrying a combining mark → NEW group.
+                        # Swift breaks WITHOUT consuming it, keeping shadda
+                        # expansion doubled. Leave it for the next iteration.
+                        break
                     i += 1
-                elif nxt in _RESIDUAL_SCALARS:  # standalone residual (e.g. ڇ)
+                # Absorb one trailing standalone residual (e.g. non-combining ڇ).
+                if i < n and clusters[i][0] in _RESIDUAL_SCALARS:
                     i += 1
-                    break
-                else:
-                    break
             normalized.append(core)
             offset_map.append((group_start, i))
             continue

@@ -169,6 +169,27 @@ def is_soft_mismatch(a: str, b: str, soft_pairs_enabled: bool) -> bool:
     return soft_pairs_enabled and frozenset((a, b)) in _BALANCED_SOFT_PAIRS
 
 
+def _contrast_label(pair: frozenset[str]) -> str:
+    """Canonical, order-independent label for a soft pair: its two characters
+    joined by ``↔`` in Unicode-codepoint order (e.g. ``ذ↔ز``)."""
+    return "\u2194".join(sorted(pair))
+
+
+def soft_pair_contrast(a: str, b: str) -> str | None:
+    """The canonical contrast label if ``{a, b}`` is a balanced soft pair, else
+    ``None``. Reuses ``_BALANCED_SOFT_PAIRS`` so the vocabulary is never
+    re-derived. Order-independent; the label is codepoint-ordered."""
+    pair = frozenset((a, b))
+    if pair not in _BALANCED_SOFT_PAIRS:
+        return None
+    return _contrast_label(pair)
+
+
+def soft_pair_contrasts() -> frozenset[str]:
+    """The canonical labels of all six balanced soft-pair contrasts."""
+    return frozenset(_contrast_label(pair) for pair in _BALANCED_SOFT_PAIRS)
+
+
 def phoneme_similarity(a: str, b: str) -> float | None:
     """Articulatory similarity between two consonants, in ``[0.0, 1.0]``.
 

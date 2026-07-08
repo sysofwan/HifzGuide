@@ -109,6 +109,19 @@ def test_score_batch_duration_reflects_actual_waveform():
     assert record.ayah_duration_s == pytest.approx(0.5, abs=1e-6)
 
 
+def test_score_batch_attaches_contrasts_to_passers():
+    # A soft-pair decode (ص for س) still passes and is tagged with that contrast;
+    # a clean decode passes with no contrasts.
+    references = {"3:82": "سلمن"}
+    clips = [_clip("soft.wav"), _clip("clean.wav")]
+    model = _FakeModel(["صلمن", "سلمن"])
+
+    by_name = {r.audio_filename: r for r in score_batch(clips, model, references, BALANCED_SCORER)}
+
+    assert by_name["soft.wav"].contrasts == ("\u0633\u2194\u0635",)  # س↔ص
+    assert by_name["clean.wav"].contrasts == ()
+
+
 def test_score_batch_fails_loudly_on_missing_reference():
     clips = [Clip("x.wav", "999:1", 88, _wav_bytes(TARGET_SAMPLE_RATE))]
     with pytest.raises(ValueError, match="No cached reference"):

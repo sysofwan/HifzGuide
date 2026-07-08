@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import phoneme_sifat
+from . import contrast_attribution, phoneme_sifat
 from .normalization import normalize_phonemes
 from .smith_waterman import smith_waterman
 
@@ -80,6 +80,19 @@ class Scorer:
     def is_soft_mismatch(self, a: str, b: str) -> bool:
         """Whether two consonants form a soft mismatch under this scorer's mode."""
         return phoneme_sifat.is_soft_mismatch(a, b, self.params.soft_pairs_enabled)
+
+    def attribute(self, predicted: str, reference: str) -> tuple[str, ...]:
+        """The contrasts (soft pairs + shadda) present in this pair's alignment.
+
+        Observational companion to :meth:`gate`: it re-runs the same
+        normalization and Smith-Waterman purely to label a passer for the P3.5
+        poison audit (#6), respecting this scorer's ``soft_pairs_enabled`` mode.
+        It does not affect ``passed``/``match_ratio``. Returns a deterministic,
+        codepoint-sorted tuple of contrast labels.
+        """
+        return contrast_attribution.attribute_contrasts(
+            predicted, reference, self.params.soft_pairs_enabled
+        )
 
     def gate(self, predicted: str, reference: str) -> GateResult:
         """Score a decoded ``predicted`` phoneme string against ``reference``.

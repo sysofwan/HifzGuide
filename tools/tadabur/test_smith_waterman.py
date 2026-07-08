@@ -137,3 +137,41 @@ def test_space_space_scores_zero():
 
 def test_space_only_input_scores_zero():
     assert local_alignment_score(query="   ", reference="   ") == pytest.approx(0.0, abs=1e-2)
+
+
+# MARK: - aligned columns (issue #16)
+
+
+def test_columns_perfect_match_are_all_pairs():
+    from tadabur.smith_waterman import AlignedColumn
+
+    result = smith_waterman(query="ابت", reference="ابت")
+    assert result.columns == [
+        AlignedColumn("ا", "ا"),
+        AlignedColumn("ب", "ب"),
+        AlignedColumn("ت", "ت"),
+    ]
+
+
+def test_columns_expose_reference_deletion_gap():
+    from tadabur.smith_waterman import AlignedColumn
+
+    # query drops the middle ت of the reference: a (None, ت) column.
+    result = smith_waterman(query="بث", reference="بتث")
+    assert AlignedColumn(None, "ت") in result.columns
+    # reference chars, read in column order, reconstruct the aligned reference span.
+    assert [c.ref_char for c in result.columns] == ["ب", "ت", "ث"]
+
+
+def test_columns_expose_query_insertion():
+    from tadabur.smith_waterman import AlignedColumn
+
+    # query has an extra ت the reference lacks: a (ت, None) insertion column,
+    # which the reference-indexed ref_matches cannot represent.
+    result = smith_waterman(query="بتث", reference="بث")
+    assert AlignedColumn("ت", None) in result.columns
+    assert [c.query_char for c in result.columns] == ["ب", "ت", "ث"]
+
+
+def test_empty_alignment_has_no_columns():
+    assert smith_waterman(query="", reference="ابت").columns == []

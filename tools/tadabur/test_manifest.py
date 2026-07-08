@@ -98,4 +98,38 @@ def test_record_is_json_serializable_with_arabic_surah_ayah(tmp_path):
         "match_ratio": 0.73,
         "ayah_duration_s": 10.9,
         "reciter_id": 88,
+        "contrasts": [],
     }
+
+
+def test_record_carries_contrasts_round_trip(tmp_path):
+    from tadabur.manifest import read_records
+
+    manifest_path = tmp_path / "subset.jsonl"
+    with FilterManifest.open(manifest_path) as manifest:
+        manifest.commit_batch(
+            [
+                ManifestRecord("a.wav", "3:82", 0.9, 10.0, 88, contrasts=("shadda", "س↔ص")),
+                ManifestRecord("b.wav", "3:82", 0.7, 9.0, 88),
+            ],
+            num_clips=2,
+        )
+
+    records = read_records(manifest_path)
+    assert [r.audio_filename for r in records] == ["a.wav", "b.wav"]
+    assert records[0].contrasts == ("shadda", "س↔ص")
+    assert records[1].contrasts == ()
+
+
+def test_read_records_tolerates_legacy_manifest_without_contrasts(tmp_path):
+    from tadabur.manifest import read_records
+
+    manifest_path = tmp_path / "legacy.jsonl"
+    manifest_path.write_text(
+        '{"audio_filename": "old.wav", "surah_ayah": "1:1", '
+        '"match_ratio": 0.8, "ayah_duration_s": 5.0, "reciter_id": 3}\n',
+        encoding="utf-8",
+    )
+    (record,) = read_records(manifest_path)
+    assert record.audio_filename == "old.wav"
+    assert record.contrasts == ()

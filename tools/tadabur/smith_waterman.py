@@ -48,6 +48,23 @@ MISMATCH = RefMatchInfo("mismatch")
 GAP = RefMatchInfo("gap")
 
 
+@dataclass(frozen=True)
+class AlignedColumn:
+    """One column of the recovered local alignment.
+
+    ``query_char`` is ``None`` for a reference-only column (the query dropped a
+    character — a gap), and ``ref_char`` is ``None`` for a query-only column (an
+    insertion). Both are set for a match or a substitution. Unlike
+    ``ref_matches``/``ref_to_query`` (indexed by reference position, so query
+    insertions are invisible), the column list is the *complete* aligned
+    sequence — which is what contrast attribution (issue #16) needs to see both
+    directions of a shadda present↔absent difference.
+    """
+
+    query_char: str | None
+    ref_char: str | None
+
+
 def tashkeel(expected: str | None, heard: str | None) -> RefMatchInfo:
     """A ``RefMatchInfo`` for a consonant match whose harakat differ."""
     return RefMatchInfo("tashkeel", expected, heard)
@@ -59,8 +76,10 @@ class AlignmentResult:
 
     ``ref_matches[i]`` / ``ref_to_query[i]`` describe reference position
     ``ref_start + i``: its outcome and the aligned query index (``-1`` for a
-    gap). ``runner_up_scores`` holds up to two next-best non-overlapping peak
-    scores, used downstream to judge how unambiguous the match is.
+    gap). ``columns`` is the complete aligned column sequence (including query
+    insertions, which the reference-indexed views omit). ``runner_up_scores``
+    holds up to two next-best non-overlapping peak scores, used downstream to
+    judge how unambiguous the match is.
     """
 
     score: float
@@ -71,6 +90,7 @@ class AlignmentResult:
     ref_matches: list[RefMatchInfo]
     ref_to_query: list[int]
     runner_up_scores: list[float]
+    columns: list[AlignedColumn]
 
 
 def _substitution_score(a: str, b: str) -> float:
@@ -180,7 +200,7 @@ def smith_waterman(query: str, reference: str) -> AlignmentResult:
     m = len(q)
     n = len(r)
     if m == 0 or n == 0:
-        return AlignmentResult(0.0, 0, 0, 0, 0, [], [], [])
+        return AlignmentResult(0.0, 0, 0, 0, 0, [], [], [], [])
 
     # Traceback pointer per cell (bit layout mirrors the Swift encoding):
     #   bits [1:0] = H source:  0=restart, 1=diag, 2=fromIq, 3=fromIr
@@ -254,6 +274,7 @@ def smith_waterman(query: str, reference: str) -> AlignmentResult:
     i, j = max_i, max_j
     current = "h"
     trace_steps: list[tuple[int, int, RefMatchInfo]] = []
+    columns_rev: list[AlignedColumn] = []
     while i > 0 and j > 0:
         tb = trace[i * stride + j]
         if current == "h":
@@ -263,6 +284,7 @@ def smith_waterman(query: str, reference: str) -> AlignmentResult:
             if h_source == 1:
                 info = MATCH if q[i - 1] == r[j - 1] else MISMATCH
                 trace_steps.append((j - 1, i - 1, info))
+                columns_rev.append(AlignedColumn(q[i - 1], r[j - 1]))
                 i -= 1
                 j -= 1
             elif h_source == 2:
@@ -271,15 +293,18 @@ def smith_waterman(query: str, reference: str) -> AlignmentResult:
                 current = "ir"
         elif current == "iq":
             trace_steps.append((j - 1, -1, GAP))
+            columns_rev.append(AlignedColumn(None, r[j - 1]))
             iq_source = (tb >> 2) & 0x01
             j -= 1
             current = "h" if iq_source == 0 else "iq"
         else:  # "ir"
+            columns_rev.append(AlignedColumn(q[i - 1], None))
             ir_source = (tb >> 3) & 0x01
             i -= 1
             current = "h" if ir_source == 0 else "ir"
 
     trace_steps.reverse()
+    columns = list(reversed(columns_rev))
 
     ref_start = j
     ref_end = max_j
@@ -301,4 +326,5 @@ def smith_waterman(query: str, reference: str) -> AlignmentResult:
         ref_matches=ref_matches,
         ref_to_query=ref_to_query,
         runner_up_scores=runner_up_scores,
+        columns=columns,
     )

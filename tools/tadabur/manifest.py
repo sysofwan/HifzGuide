@@ -8,7 +8,7 @@ Two files sit side by side:
 
 * the **manifest** — an append-only JSONL of one :class:`ManifestRecord` per
   passing clip (audio ref, ``surah:ayah``, ``match_ratio``, ``ayah_duration``,
-  reciter);
+  reciter, and the ``contrasts`` the ``.balanced`` alignment admitted it through);
 * the **progress checkpoint** — a tiny JSON holding ``clips_processed``, the number
   of clips consumed from the (deterministically-ordered) stream so far.
 
@@ -37,7 +37,11 @@ class ManifestRecord:
     ``audio_filename`` is Tadabur's stable per-clip audio reference (and the
     idempotency key). ``surah_ayah`` is ``"surah:ayah"``. ``match_ratio`` is the
     ``.balanced`` gate score and ``ayah_duration_s`` the duration of the 16 kHz
-    waveform actually scored.
+    waveform actually scored. ``contrasts`` is the codepoint-sorted set of
+    articulatory contrasts (soft pairs + shadda) the ``.balanced`` alignment
+    admitted this clip through — the per-contrast key the P3.5 poison audit (#6)
+    samples on. It is observational (see ``contrast_attribution``) and does not
+    affect the gate.
     """
 
     audio_filename: str
@@ -45,6 +49,7 @@ class ManifestRecord:
     match_ratio: float
     ayah_duration_s: float
     reciter_id: int
+    contrasts: tuple[str, ...] = ()
 
 
 def _checkpoint_path(manifest_path: Path) -> Path:
@@ -132,6 +137,32 @@ class FilterManifest:
         tb: TracebackType | None,
     ) -> None:
         self.close()
+
+
+def read_records(manifest_path: Path) -> list[ManifestRecord]:
+    """Load every :class:`ManifestRecord` from ``manifest_path`` in file order.
+
+    Tolerates manifests written before ``contrasts`` existed (defaults to an
+    empty tuple), so an older passing-subset manifest still loads for sampling.
+    """
+    records: list[ManifestRecord] = []
+    with open(manifest_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            data = json.loads(line)
+            records.append(
+                ManifestRecord(
+                    audio_filename=data["audio_filename"],
+                    surah_ayah=data["surah_ayah"],
+                    match_ratio=data["match_ratio"],
+                    ayah_duration_s=data["ayah_duration_s"],
+                    reciter_id=data["reciter_id"],
+                    contrasts=tuple(data.get("contrasts", ())),
+                )
+            )
+    return records
 
 
 def _read_seen_keys(manifest_path: Path) -> set[str]:

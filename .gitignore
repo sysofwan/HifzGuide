@@ -23,6 +23,9 @@ wandb/
 # Filtering manifests / intermediate data
 *.parquet
 *.jsonl
+# Curated eval fixtures are source-of-truth, not generated data — keep them tracked.
+!tools/tadabur/eval_fixtures/should_accept.jsonl
+!tools/tadabur/eval_fixtures/should_reject.jsonl
 # Tadabur reference-phoneme cache (regenerated deterministically)
 tools/tadabur/cache/
 # CoreML export outputs (macOS)

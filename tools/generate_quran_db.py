@@ -30,6 +30,8 @@ import sys
 from pathlib import Path
 from collections import defaultdict
 
+from generate_phonemes import FALLBACK_PHONEMES as _FALLBACK_PHONEMES
+
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
 QPC_PATH = DATA_DIR / "qpc-hafs-word-by-word.json"
@@ -163,21 +165,6 @@ def _phonetize_ayah(surah: int, ayah: int):
         return seg.uthmani, result
     except Exception:
         return None
-
-
-# Ayahs where quran-transcript's phonetizer fails (ending with sukoon).
-# Phonemes extracted from muaalem-annotated-v3 dataset with word boundaries
-# manually verified.
-_FALLBACK_PHONEMES: dict[str, str] = {
-    "55:17": "رَببُ لمَشرِقَينِ وَرَببُ لمَغرِبَين",
-    "90:8": "ءَلَم نَجڇعَللَهُۥۥ عَينَين",
-    "90:9": "وَلِسَاانَوووَشَفَتَين",
-    "90:10": "وَهَدَينَااهُ ننننَجڇدَين",
-    "106:1": "لِءِۦۦلَاافِ قُرَيش",
-    "106:2": "ءِۦۦلَاافِهِم رِحلَتَ ششِتَااااءِ وَصصَيف",
-    "106:3": "فَليَعبُدُۥۥ رَببَ هَااذَ لبَيت",
-    "106:4": "ءَللَذِۦۦ ءَطڇعَمَهُممممِںںںجُۥۥعِوووَءَاامَنَهُممممِن خَوف",
-}
 
 
 def _build_char_to_word(uthmani: str) -> list[int]:

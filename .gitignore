@@ -23,6 +23,8 @@ wandb/
 # Filtering manifests / intermediate data
 *.parquet
 *.jsonl
+# Tadabur reference-phoneme cache (regenerated deterministically)
+tools/tadabur/cache/
 # CoreML export outputs (macOS)
 coreml_models/
 coreml_models_chunked/

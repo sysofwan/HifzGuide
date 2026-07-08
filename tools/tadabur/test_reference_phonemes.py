@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 import generate_phonemes
 
 from tadabur import reference_phonemes
@@ -251,6 +253,7 @@ def test_full_reference_set_is_swift_faithful():
     # artifact, so this exercises the generator rather than a committed file.
     import unicodedata
 
+    pytest.importorskip("quran_transcript")
     raw = generate_phonemes.generate_reference_phonemes()
     built = reference_phonemes.build_reference_phonemes(raw)
     assert len(built) == generate_phonemes.TOTAL_AYAT

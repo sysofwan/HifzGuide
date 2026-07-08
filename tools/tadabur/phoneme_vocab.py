@@ -12,8 +12,11 @@ by three places that must agree exactly:
    ``tadabur.scorer``) compares against the ``quran-transcript`` reference.
 
 If any of these drift, the fine-tune labels or the on-device decode would be
-silently corrupted, so ``test_phoneme_vocab.py`` asserts (1) against this constant
-and fails loudly on mismatch.
+silently corrupted. The authoritative reference is a committed Muraja snapshot
+(``fixtures/muraja_phoneme_vocabulary.json``, exported from Muraja's Swift
+``PhonemeVocabulary``); ``test_phoneme_vocab.py`` asserts *both* this constant and
+the live model (1) equal that snapshot exactly and fails loudly on any mismatch — so
+this constant and the model can no longer silently agree while drifting from Muraja.
 
 Index ``0`` (``[PAD]``) is the CTC blank (``config.pad_token_id == 0``); greedy
 decode collapses repeats and drops it.
@@ -27,9 +30,10 @@ from collections.abc import Sequence
 PHONEME_PAD_ID = 0
 PAD_TOKEN = "[PAD]"
 
-# The 43 phoneme classes ordered by class id (index == id). Copied verbatim from
-# ``obadx/muaalem-model-v3_2``'s ``vocab.json`` ``phonemes`` level; do not reorder
-# or edit — the ids are the model's output classes. Includes the 29 Arabic
+# The 43 phoneme classes ordered by class id (index == id). Kept in lockstep with
+# Muraja's on-device ``PhonemeVocabulary`` (asserted by test against the committed
+# ``fixtures/muraja_phoneme_vocabulary.json`` snapshot and the live model); do not
+# reorder or edit — the ids are the model's output classes. Includes the 29 Arabic
 # consonants (with ``ٲ``/``ا``), the three short-vowel tashkeel (``َ ُ ِ``), the
 # madd/tajweed markers, and the ghunna variants (``۾``/``ں``) the normalizer folds.
 PHONEME_ID_TO_CHAR: tuple[str, ...] = (

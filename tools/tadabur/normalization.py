@@ -21,6 +21,11 @@ from __future__ import annotations
 import unicodedata
 from dataclasses import dataclass
 
+# Bump whenever the normalization behaviour changes (grouping rules, tajweed
+# folds, residual set). Downstream caches key their validity on this so a cache
+# produced by an older algorithm is rebuilt rather than silently reused.
+ALGORITHM_VERSION = "1"
+
 # Core phoneme scalars (consonants + madd markers) used for group classification.
 _CORE_SCALARS: frozenset[str] = frozenset("ءبتثجحخدذرزسشصضطظعغفقكلمنهوياۥۦ۾ںـٲ")
 

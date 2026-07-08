@@ -34,6 +34,23 @@ def test_build_preserves_all_keys():
     assert set(reference_phonemes.build_reference_phonemes(raw)) == {"1:1", "114:6"}
 
 
+def _valid_raw_set() -> dict[str, str]:
+    """A raw phoneme mapping that normalizes to a *valid* full cache: the 8
+    fallback ayat plus synthetic filler to reach exactly TOTAL_AYAT keys."""
+    raw = dict(generate_phonemes.FALLBACK_PHONEMES)
+    i = 0
+    while len(raw) < generate_phonemes.TOTAL_AYAT:
+        raw[f"filler:{i}"] = "بت"
+        i += 1
+    return raw
+
+
+def _use_raw(monkeypatch, raw: dict[str, str]) -> None:
+    monkeypatch.setattr(
+        generate_phonemes, "generate_reference_phonemes", lambda: dict(raw)
+    )
+
+
 def test_fallback_ayahs_are_present_and_normalized():
     # The 8 buggy ayahs must be carried through the fallback and collapsed to the
     # scorer's normalized form (no residual repetition artifacts).
@@ -44,17 +61,14 @@ def test_fallback_ayahs_are_present_and_normalized():
 
 def test_load_writes_cache_then_hits_it(tmp_path, monkeypatch):
     cache = tmp_path / "cache" / "reference_phonemes.json"
-    monkeypatch.setattr(
-        generate_phonemes,
-        "generate_reference_phonemes",
-        lambda: {"1:1": "ببب", "1:2": "تت"},
-    )
+    _use_raw(monkeypatch, _valid_raw_set())
 
     first = reference_phonemes.load_reference_phonemes(cache)
     assert cache.exists()
-    assert first == {"1:1": "ب", "1:2": "ت"}
+    assert len(first) == generate_phonemes.TOTAL_AYAT
+    assert first["55:17"] == "رب لمشرقين ورب لمغربين"
 
-    # A warm cache must not rebuild — force build to fail if it is called.
+    # A warm, valid cache must not rebuild — force build to fail if it is called.
     def _boom():
         raise AssertionError("cache miss: build was called on a warm cache")
 
@@ -64,11 +78,7 @@ def test_load_writes_cache_then_hits_it(tmp_path, monkeypatch):
 
 def test_cache_is_deterministic_utf8(tmp_path, monkeypatch):
     cache = tmp_path / "reference_phonemes.json"
-    monkeypatch.setattr(
-        generate_phonemes,
-        "generate_reference_phonemes",
-        lambda: {"2:1": "بب", "10:1": "تت", "1:1": "ثث"},
-    )
+    _use_raw(monkeypatch, _valid_raw_set())
 
     reference_phonemes.load_reference_phonemes(cache, rebuild=True)
     first_bytes = cache.read_bytes()
@@ -77,7 +87,84 @@ def test_cache_is_deterministic_utf8(tmp_path, monkeypatch):
 
     text = cache.read_text(encoding="utf-8")
     assert "\\u" not in text  # Arabic written literally (ensure_ascii=False)
-    assert list(json.loads(text)) == sorted(json.loads(text))  # stable key order
+    payload = json.loads(text)
+    assert payload["cache_version"] == reference_phonemes.CACHE_VERSION
+    refs = payload["references"]
+    assert list(refs) == sorted(refs)  # stable key order
+
+
+def _write_raw_payload(cache, payload) -> None:
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    with open(cache, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False)
+
+
+def test_stale_version_cache_is_rebuilt(tmp_path, monkeypatch):
+    # A cache written by an older algorithm carries a different cache_version.
+    cache = tmp_path / "reference_phonemes.json"
+    _use_raw(monkeypatch, _valid_raw_set())
+    valid_refs = reference_phonemes.build_reference_phonemes(_valid_raw_set())
+    _write_raw_payload(
+        cache, {"cache_version": "v0+norm0", "references": valid_refs}
+    )
+
+    rebuilt = {"flag": False}
+
+    def _tracked():
+        rebuilt["flag"] = True
+        return _valid_raw_set()
+
+    monkeypatch.setattr(generate_phonemes, "generate_reference_phonemes", _tracked)
+    result = reference_phonemes.load_reference_phonemes(cache)
+    assert rebuilt["flag"], "stale-version cache must trigger a rebuild"
+    assert len(result) == generate_phonemes.TOTAL_AYAT
+    # The rewritten cache now carries the current version.
+    assert json.loads(cache.read_text(encoding="utf-8"))["cache_version"] == (
+        reference_phonemes.CACHE_VERSION
+    )
+
+
+def test_partial_cache_is_rebuilt(tmp_path, monkeypatch):
+    # A truncated cache (fewer than 6236 keys) must not be trusted.
+    cache = tmp_path / "reference_phonemes.json"
+    partial = reference_phonemes.build_reference_phonemes(
+        dict(generate_phonemes.FALLBACK_PHONEMES)
+    )
+    _write_raw_payload(
+        cache,
+        {"cache_version": reference_phonemes.CACHE_VERSION, "references": partial},
+    )
+    _use_raw(monkeypatch, _valid_raw_set())
+
+    result = reference_phonemes.load_reference_phonemes(cache)
+    assert len(result) == generate_phonemes.TOTAL_AYAT
+
+
+def test_bare_dict_cache_is_rebuilt(tmp_path, monkeypatch):
+    # An old-format cache (bare surah:ayah dict, no envelope) must be rebuilt.
+    cache = tmp_path / "reference_phonemes.json"
+    _write_raw_payload(cache, {"55:17": "ربب", "1:1": "ب"})
+    _use_raw(monkeypatch, _valid_raw_set())
+
+    result = reference_phonemes.load_reference_phonemes(cache)
+    assert len(result) == generate_phonemes.TOTAL_AYAT
+    assert result["55:17"] == "رب لمشرقين ورب لمغربين"
+
+
+def test_tampered_fallback_sentinel_cache_is_rebuilt(tmp_path, monkeypatch):
+    # A full-size cache whose fallback value differs from the algorithm's output
+    # (e.g. the previous broken normalization's ربب) is rejected.
+    cache = tmp_path / "reference_phonemes.json"
+    refs = reference_phonemes.build_reference_phonemes(_valid_raw_set())
+    refs["55:17"] = "ربب لمشرقين ورب لمغربين"  # artifact from broken normalization
+    _write_raw_payload(
+        cache,
+        {"cache_version": reference_phonemes.CACHE_VERSION, "references": refs},
+    )
+    _use_raw(monkeypatch, _valid_raw_set())
+
+    result = reference_phonemes.load_reference_phonemes(cache)
+    assert result["55:17"] == "رب لمشرقين ورب لمغربين"
 
 
 def _scorer_oracle(raw: str, sifa) -> str:

@@ -28,6 +28,27 @@ pip install -r tools/requirements.txt
 
 ## Python Scripts
 
+### `tadabur.smoke_decode` (Linux + CUDA)
+
+Walking-skeleton smoke test for the Tadabur filter's PyTorch inference→decode path
+(PRD #1, Phase 0). Streams one clip from `FaisaI/tadabur` (no full-corpus download),
+resamples it to 16 kHz mono, loads Muaalem (`obadx/muaalem-model-v3_2`, vendored
+`Wav2Vec2BertForMultilevelCTC`) in bf16 on the GPU, runs one variable-length forward
+pass, and greedy-CTC-decodes the phoneme head to a sanity phoneme string (recording
+VRAM footprint, ~1.2 GB backbone).
+
+```bash
+cd tools
+python -m tadabur.smoke_decode --config-name preview   # small row groups → fast
+python -m tadabur.smoke_decode                          # default config (2.4 GB shards)
+```
+
+The default config's shards are a single ~2.4 GB / 1000-row Parquet row group, so
+streaming even one clip pulls that whole group; `--config-name preview` uses the
+dataset's small-row-group preview config for a quick check. The 43-class phoneme
+vocabulary (`tadabur.phoneme_vocab`) is asserted to match the live model in
+`tadabur/test_phoneme_vocab.py`.
+
 ### `convert_to_coreml.py`
 
 Converts the Wav2Vec2-BERT TorchScript model (`obadx/muaalem-model-v3_2`) to CoreML format optimized for Apple Neural Engine. Traces the model with a fixed input shape `(1, 250, 160)`, exports to FP32 `.mlpackage`, and optionally creates INT8 and 4-bit compressed variants.

@@ -1,0 +1,24 @@
+# Conda environment for HifzGuide ML development (filtering + fine-tuning) on
+# Linux + CUDA. Verified on an NVIDIA RTX 5060 Ti (16 GB, Blackwell / sm_120).
+#
+# This file provisions the conda-level pieces only (Python + audio system libs).
+# PyTorch is installed separately from the CUDA 12.8 wheel index because
+# Blackwell (sm_120) requires cu128 builds and conda-forge lags behind.
+#
+# Setup:
+#   conda env create -f tools/environment.yml
+#   conda activate hifzguide
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+#   pip install -r tools/requirements-train.txt
+#
+# The CoreML export path (convert_to_coreml.py / palettize_chunks.py /
+# compile_models.sh) is macOS-only — see tools/requirements.txt.
+name: hifzguide
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - ffmpeg
+  - libsndfile
+  - pip

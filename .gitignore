@@ -6,3 +6,27 @@ __pycache__/
 dist/
 build/
 tools/quran.db
+
+# --- ML / training artifacts (Linux + CUDA) ---
+# Conda / virtual envs created inside the repo
+/envs/
+.venv/
+# Hugging Face + dataset caches and local downloads
+.cache/
+data_cache/
+# Checkpoints, adapters, training runs, logs
+checkpoints/
+outputs/
+runs/
+wandb/
+*.ckpt
+# Filtering manifests / intermediate data
+*.parquet
+*.jsonl
+# CoreML export outputs (macOS)
+coreml_models/
+coreml_models_chunked/
+compiled_models/
+*.mlpackage/
+*.mlmodelc/
+models.zip

@@ -1,0 +1,28 @@
+# Linux + CUDA training & filtering dependencies (Tadabur filtering, LoRA
+# fine-tuning). Verified on an NVIDIA RTX 5060 Ti (16 GB, Blackwell / sm_120).
+#
+# IMPORTANT: install PyTorch FIRST, from the CUDA 12.8 wheel index — Blackwell
+# needs cu128, and a plain PyPI install would pull a CPU/old-CUDA build that
+# cannot run on sm_120:
+#
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+#   pip install -r tools/requirements-train.txt
+#
+# torch/torchaudio are intentionally omitted below so that `pip install -r`
+# cannot silently override the cu128 build.
+#
+# Verified snapshot (2026-07): torch 2.11.0+cu128, transformers 5.13.0,
+# peft 0.19.1, accelerate 1.14.0, datasets 5.0.0, quran-transcript 0.5.2,
+# bitsandbytes 0.49.2.
+
+numpy>=1.26
+transformers>=4.44
+peft>=0.11
+accelerate>=0.30
+datasets>=2.19
+huggingface_hub>=0.23
+soundfile>=0.12
+librosa>=0.10
+jiwer>=3.0
+quran-transcript>=0.5
+bitsandbytes>=0.45   # optional 8-bit optimizer; >=0.45 for Blackwell (sm_120)

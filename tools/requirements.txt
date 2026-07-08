@@ -1,3 +1,12 @@
+# macOS-only CoreML export / conversion dependencies.
+#
+# Used by convert_to_coreml.py, palettize_chunks.py, verify_coreml.py and
+# compile_models.sh (the last needs Xcode's `coremlcompiler`). coremltools
+# model compilation targets Apple Silicon, so this path runs on macOS.
+#
+# For Linux + CUDA filtering & fine-tuning, use tools/environment.yml +
+# tools/requirements-train.txt instead.
+
 torch>=2.0.0
 coremltools>=7.0
 transformers>=4.40.0

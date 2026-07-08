@@ -45,6 +45,32 @@ Canonical triage roles map to concrete repo labels in `docs/agents/triage-labels
 
 ## Repo notes
 
-HifzGuide is a **Python + data** repo (asset generation, no application UI). See
-`.github/copilot-instructions.md` for setup, structure, and Python conventions. The consuming iOS
-app lives in the separate `sysofwan/Muraja` repo — nothing iOS-specific belongs here.
+HifzGuide is a **Python + data** repo (asset generation, no application UI). The consuming iOS
+app lives in the separate `sysofwan/Muraja` repo — nothing iOS-specific belongs here. See
+`.github/copilot-instructions.md` for Python conventions.
+
+### Structure
+
+```
+tools/                    # Python generators, filtering & training tools
+  tadabur/                # Tadabur quality-filtering pipeline (Linux + CUDA)
+  training/               # LoRA fine-tune of the Muaalem phoneme head + eval (Linux + CUDA)
+  environment.yml         # conda env for Linux + CUDA
+  requirements-train.txt  # Linux + CUDA filtering/training deps
+  requirements.txt        # macOS-only CoreML export deps
+  generate_quran_db.py generate_phonemes.py convert_to_coreml.py
+  palettize_chunks.py verify_coreml.py compile_models.sh
+data/                     # Source data (Quran text, phonemes, mushaf layout, ligatures, fonts)
+docs/adr/                 # Architecture Decision Records
+CONTEXT.md                # Canonical domain glossary
+```
+
+### Environments
+
+Two environments target different platforms (see `tools/README.md` for full setup):
+
+- **Linux + CUDA** — filtering & fine-tuning. GPU is Blackwell (**sm_120**), so PyTorch **must**
+  come from the CUDA 12.8 (`cu128`) wheel index; a default `torch` will not run. Use the conda
+  env `hifzguide` (Python 3.11) via `tools/environment.yml` + `tools/requirements-train.txt`.
+- **macOS** — CoreML export (`compile_models.sh` needs Xcode's `coremlcompiler`). Use
+  `tools/requirements.txt`.

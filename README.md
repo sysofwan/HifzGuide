@@ -4,8 +4,13 @@ Assets and data generation tools for [Muraja](https://github.com/sysofwan/Muraja
 
 ## Contents
 
-- **`tools/`** — Python scripts for model conversion, data extraction, and DB generation
-- **`data/`** — Source data files (Quran text, phonemes, mushaf layout, ligatures)
+- **`tools/`** — Python scripts for data generation, model conversion, filtering, and fine-tuning
+  - **`tools/tadabur/`** — Tadabur quality-filtering pipeline (Linux + CUDA)
+  - **`tools/training/`** — LoRA fine-tuning of the Muaalem phoneme head + evaluation harness (Linux + CUDA)
+- **`data/`** — Source data files (Quran text, phonemes, mushaf layout, ligatures, fonts)
+- **`docs/adr/`** — Architecture Decision Records
+- **`CONTEXT.md`** — Canonical domain glossary
+- **`ml-model-transformation.md`**, **`quran-database.md`** — Pipeline write-ups
 
 ## Release Assets
 
@@ -22,21 +27,44 @@ Pre-built assets are published as [GitHub Releases](https://github.com/sysofwan/
 
 The Muraja iOS app downloads these assets on first launch.
 
-## Regenerating Assets
+## Environments
+
+This repo has two separate Python environments because the workstreams target different platforms.
+
+### Linux + CUDA — filtering & fine-tuning (`tools/tadabur/`, `tools/training/`)
+
+Verified on an NVIDIA RTX 5060 Ti (16 GB, **Blackwell / sm_120**). Blackwell requires
+CUDA 12.8 PyTorch wheels — a plain PyPI/conda `torch` will not run on this GPU, so PyTorch is
+installed separately from the `cu128` index.
 
 ```bash
-# Setup
-cd tools && pip install -r requirements.txt
-
-# Regenerate quran.db from source data
-python generate_quran_db.py
-
-# Convert ML model to CoreML
-python convert_to_coreml.py
-
-# Palettize model chunks to 6-bit
-python palettize_chunks.py
+conda env create -f tools/environment.yml
+conda activate hifzguide
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install -r tools/requirements-train.txt
 ```
+
+### macOS — CoreML export (`convert_to_coreml.py`, `palettize_chunks.py`, `verify_coreml.py`, `compile_models.sh`)
+
+`compile_models.sh` uses Xcode's `coremlcompiler`, so the export path runs on macOS / Apple Silicon.
+
+```bash
+pip install -r tools/requirements.txt
+```
+
+## Regenerating Assets
+
+`generate_quran_db.py` requires `quran-transcript` (bundled in the Linux + CUDA env; without it
+the phoneme tables are written empty):
+
+```bash
+conda activate hifzguide          # or: pip install quran-transcript
+python tools/generate_quran_db.py # builds quran.db from data/ sources
+```
+
+CoreML export (macOS) is a multi-step pipeline — trace → convert → **chunk** → palettize →
+compile — not a two-command flow. See [ml-model-transformation.md](ml-model-transformation.md)
+for the full sequence and `tools/README.md` for each script's inputs/outputs.
 
 ## Acknowledgements
 

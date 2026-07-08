@@ -2,6 +2,30 @@
 
 Scripts for model conversion, data processing, and Quran database generation.
 
+## Environments
+
+Two separate environments, because the training and export paths target different platforms:
+
+### Linux + CUDA — filtering & fine-tuning (`tools/tadabur/`, `tools/training/`)
+
+Verified on an NVIDIA RTX 5060 Ti (16 GB, **Blackwell / sm_120**). Blackwell requires
+CUDA 12.8 PyTorch wheels — a plain PyPI/conda torch will not run on this GPU.
+
+```bash
+conda env create -f tools/environment.yml
+conda activate hifzguide
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install -r tools/requirements-train.txt
+```
+
+### macOS — CoreML export (`convert_to_coreml.py`, `palettize_chunks.py`, `verify_coreml.py`, `compile_models.sh`)
+
+`compile_models.sh` uses Xcode's `coremlcompiler`, so this path runs on macOS / Apple Silicon.
+
+```bash
+pip install -r tools/requirements.txt
+```
+
 ## Python Scripts
 
 ### `convert_to_coreml.py`

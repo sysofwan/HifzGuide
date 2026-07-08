@@ -13,12 +13,15 @@ Usage:
 """
 
 import json
-import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
 OUTPUT_PATH = DATA_DIR / "ayah_phonemes.json"
+
+# Total ayat in the mushaf (Hafs). A complete reference set must have exactly this
+# many keys; a smaller count means an ayah was silently dropped.
+TOTAL_AYAT = 6236
 
 # Hafs recitation, matching the reference labels the Muaalem model was trained on.
 HAFS_MOSHAF = dict(
@@ -49,7 +52,9 @@ def generate_reference_phonemes() -> dict[str, str]:
     """Phonetize every ayah (1..6236) to its Hafs reference phoneme string.
 
     Returns a dict keyed by ``"surah:ayah"``. The 8 ayahs the phonetizer cannot
-    handle fall back to FALLBACK_PHONEMES so the output stays complete.
+    handle raise ``KeyError`` and fall back to FALLBACK_PHONEMES; any other
+    failure is unexpected and propagates so a partial cache is never produced.
+    The result is asserted complete (all 6236 ayat) before returning.
     """
     from quran_transcript import Aya, quran_phonetizer
     from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
@@ -64,11 +69,20 @@ def generate_reference_phonemes() -> dict[str, str]:
             try:
                 seg = Aya(sura, ayah).get()
                 phonemes[key] = quran_phonetizer(seg.uthmani, moshaf).phonemes
-            except Exception:
-                if key in FALLBACK_PHONEMES:
-                    phonemes[key] = FALLBACK_PHONEMES[key]
-                else:
-                    print(f"  WARNING: {key} failed with no fallback!", file=sys.stderr)
+            except KeyError:
+                # The phonetizer raises KeyError on the 8 leen-madd-on-sukoon
+                # ayahs; anything else with this key is unexpected — surface it.
+                if key not in FALLBACK_PHONEMES:
+                    raise
+                phonemes[key] = FALLBACK_PHONEMES[key]
+
+    if len(phonemes) != TOTAL_AYAT:
+        raise RuntimeError(
+            f"expected {TOTAL_AYAT} ayat, generated {len(phonemes)}"
+        )
+    missing_fallbacks = set(FALLBACK_PHONEMES) - phonemes.keys()
+    if missing_fallbacks:
+        raise RuntimeError(f"missing fallback ayat: {sorted(missing_fallbacks)}")
     return phonemes
 
 

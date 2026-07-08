@@ -5,15 +5,22 @@ seeded labelling worklist: ~N randomly-admitted clips **per contrast** (the seve
 buckets from ``contrast_attribution.all_contrasts`` — six soft pairs + shadda),
 plus a configurable sample from the marginal ``match_ratio`` band just above the
 gate threshold (ADR-0001's ~0.65–0.72 glance). Each worklist row is
-``(clip_id, contrast, match_ratio, audio_ref)`` so a human can bucket clips B
-(gold) vs C (poison) per contrast.
+``(clip_id, contrast, match_ratio, audio_ref, local_audio_path)`` so a human can
+bucket clips B (gold) vs C (poison) per contrast, and can locate every sampled
+clip's exported audio by its ``local_audio_path``.
 
 Sampling is pure and reproducible: each bucket draws from an independent
 per-bucket RNG seeded by ``(seed, contrast)``, over records sorted by
 ``audio_filename``, so the same manifest + seed always yields the same worklist
-regardless of bucket order. Exporting the sampled audio for listening streams the
-source dataset once (lazy, optional) and is kept out of the pure sampling path so
-the worklist can be produced — and unit-tested — without the dataset.
+regardless of bucket order. ``local_audio_path`` is a pure, deterministic function
+of ``audio_ref`` (a SHA-256 prefix + sanitized basename), so the worklist names
+each clip's export target up front — independent of whether audio is exported.
+
+Exporting the sampled audio for listening streams the source dataset once (lazy,
+optional) and is kept out of the pure sampling path so the worklist can be produced
+— and unit-tested — without the dataset. Export **fails loudly** if any sampled
+``audio_ref`` is absent from the chosen dataset/config/split, so a worklist is never
+silently left with unlistenable rows.
 
 Usage:
   python -m tadabur.audit_sampler --manifest passing_subset.jsonl \
@@ -25,6 +32,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 from dataclasses import asdict, dataclass
@@ -41,14 +49,35 @@ DEFAULT_THRESHOLD = 0.65
 DEFAULT_MARGINAL_BAND = 0.07
 
 
+def local_audio_path(audio_ref: str) -> str:
+    """A collision-proof, deterministic local filename for ``audio_ref``.
+
+    The 16-hex SHA-256 prefix of the *full* ref guarantees two distinct refs never
+    map to the same file — unlike a flat ``/``→``__`` rewrite, where ``a/b.wav`` and
+    ``a__b.wav`` would collide and silently overwrite one sampled clip with another.
+    The trailing sanitized basename keeps the name human-legible, and the flat
+    result (no separators) is immune to path traversal.
+    """
+    digest = hashlib.sha256(audio_ref.encode("utf-8")).hexdigest()[:16]
+    basename = audio_ref.replace("\\", "/").rsplit("/", 1)[-1]
+    safe = "".join(c if (c.isalnum() or c in "._-") else "_" for c in basename)
+    return f"{digest}_{safe}" if safe else digest
+
+
 @dataclass(frozen=True)
 class WorklistItem:
-    """One clip to audit for one contrast bucket."""
+    """One clip to audit for one contrast bucket.
+
+    ``local_audio_path`` is the deterministic filename this clip's audio is exported
+    to under ``--audio-dir`` (see :func:`local_audio_path`), so #6 can locate every
+    sampled row's audio even though export is optional and runs separately.
+    """
 
     clip_id: str
     contrast: str
     match_ratio: float
     audio_ref: str
+    local_audio_path: str
 
 
 def _sample(records: list[ManifestRecord], n: int, seed: object) -> list[ManifestRecord]:
@@ -76,6 +105,16 @@ def _marginal_bucket(
     return [r for r in records if threshold <= r.match_ratio <= threshold + band]
 
 
+def _item(record: ManifestRecord, contrast: str) -> WorklistItem:
+    return WorklistItem(
+        clip_id=record.audio_filename,
+        contrast=contrast,
+        match_ratio=record.match_ratio,
+        audio_ref=record.audio_filename,
+        local_audio_path=local_audio_path(record.audio_filename),
+    )
+
+
 def sample_worklist(
     records: list[ManifestRecord],
     per_contrast: int = DEFAULT_PER_CONTRAST,
@@ -96,14 +135,10 @@ def sample_worklist(
     items: list[WorklistItem] = []
     for contrast in all_contrasts():
         for record in _sample(_bucket(records, contrast), per_contrast, f"{seed}:{contrast}"):
-            items.append(
-                WorklistItem(record.audio_filename, contrast, record.match_ratio, record.audio_filename)
-            )
+            items.append(_item(record, contrast))
     marginal = _marginal_bucket(records, threshold, marginal_band)
     for record in _sample(marginal, marginal_n, f"{seed}:{MARGINAL_CONTRAST}"):
-        items.append(
-            WorklistItem(record.audio_filename, MARGINAL_CONTRAST, record.match_ratio, record.audio_filename)
-        )
+        items.append(_item(record, MARGINAL_CONTRAST))
     return items
 
 
@@ -115,9 +150,23 @@ def write_worklist(items: list[WorklistItem], path: Path) -> None:
             f.write(json.dumps(asdict(item), ensure_ascii=False, sort_keys=True) + "\n")
 
 
-def _safe_name(audio_ref: str) -> str:
-    """A flat, collision-free filename for an ``audio_ref`` (no path traversal)."""
-    return audio_ref.replace("/", "__").replace("\\", "__").lstrip(".")
+def _require_all_exported(wanted: set[str], found: set[str], dataset_id: str, split: str) -> None:
+    """Raise if any sampled ``audio_ref`` never turned up in the stream.
+
+    A worklist with unlistenable rows is worse than a loud failure: the P3.5 audit
+    (#6) would silently skip the missing clips. Listing the misses points the
+    operator at the wrong dataset/config/split (or a stale manifest).
+    """
+    missing = sorted(wanted - found)
+    if missing:
+        preview = ", ".join(missing[:10])
+        more = f" (+{len(missing) - 10} more)" if len(missing) > 10 else ""
+        raise ValueError(
+            f"{len(missing)} sampled clip(s) were not found in dataset "
+            f"{dataset_id!r} split {split!r}; cannot export their audio: "
+            f"{preview}{more}. Check --dataset/--config-name/--split match the "
+            f"manifest, or that the manifest is not stale."
+        )
 
 
 def export_audio(
@@ -126,32 +175,37 @@ def export_audio(
     dataset_id: str,
     config_name: str | None,
     split: str,
-) -> set[str]:
+) -> dict[str, str]:
     """Stream the source dataset once and write each sampled clip's audio to disk.
 
     Reads audio with ``decode=False`` (raw bytes, no ``torchcodec``), writing one
-    file per distinct ``audio_ref`` in the worklist so a human can listen. Returns
-    the set of ``audio_ref``s found. Imports ``datasets`` lazily so the pure
-    sampling path stays dependency-light.
+    file per distinct ``audio_ref`` to its :func:`local_audio_path` under ``out_dir``
+    — a collision-proof, deterministic name so two refs never overwrite each other.
+    Returns a mapping ``audio_ref -> local_audio_path`` for the clips written, and
+    **raises** if any sampled ref is missing so the worklist is never left with
+    rows a human cannot listen to. Imports ``datasets`` lazily so the pure sampling
+    path stays dependency-light.
     """
     from datasets import Audio, load_dataset
 
     from .filter import AUDIO_COLUMN
 
-    wanted = {item.audio_ref for item in items}
+    wanted = {item.audio_ref: item.local_audio_path for item in items}
     out_dir.mkdir(parents=True, exist_ok=True)
     dataset = load_dataset(dataset_id, name=config_name, split=split, streaming=True)
     dataset = dataset.cast_column(AUDIO_COLUMN, Audio(decode=False))
 
-    found: set[str] = set()
+    exported: dict[str, str] = {}
     for row in dataset:
         name = row.get("audio_filename")
-        if name in wanted and name not in found:
-            (out_dir / _safe_name(name)).write_bytes(row[AUDIO_COLUMN]["bytes"])
-            found.add(name)
-            if len(found) == len(wanted):
+        if name in wanted and name not in exported:
+            (out_dir / wanted[name]).write_bytes(row[AUDIO_COLUMN]["bytes"])
+            exported[name] = wanted[name]
+            if len(exported) == len(wanted):
                 break
-    return found
+
+    _require_all_exported(set(wanted), set(exported), dataset_id, split)
+    return exported
 
 
 def main() -> None:
@@ -187,8 +241,8 @@ def main() -> None:
     print(f"Wrote {len(items)} worklist rows from {len(records)} manifest passers to {args.worklist}.")
 
     if args.audio_dir is not None:
-        found = export_audio(items, args.audio_dir, args.dataset, args.config_name, args.split)
-        print(f"Exported audio for {len(found)} distinct clips to {args.audio_dir}.")
+        exported = export_audio(items, args.audio_dir, args.dataset, args.config_name, args.split)
+        print(f"Exported audio for {len(exported)} distinct clips to {args.audio_dir}.")
 
 
 if __name__ == "__main__":

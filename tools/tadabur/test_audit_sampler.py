@@ -3,9 +3,13 @@ per-contrast + marginal-band sampling."""
 
 from __future__ import annotations
 
+import pytest
+
 from tadabur.audit_sampler import (
     MARGINAL_CONTRAST,
     WorklistItem,
+    _require_all_exported,
+    local_audio_path,
     sample_worklist,
     write_worklist,
 )
@@ -98,6 +102,33 @@ def test_worklist_item_shape():
     assert item.clip_id == "c000.wav"
     assert item.audio_ref == "c000.wav"
     assert item.match_ratio == 0.9
+    assert item.local_audio_path == local_audio_path("c000.wav")
+
+
+def test_local_audio_path_is_deterministic():
+    assert local_audio_path("a/b/c.wav") == local_audio_path("a/b/c.wav")
+
+
+def test_local_audio_path_no_collision_between_slash_and_double_underscore():
+    # A flat "/"→"__" rewrite would map both of these to "a__b.wav" and overwrite
+    # one clip with the other; the hash prefix keeps them distinct.
+    assert local_audio_path("a/b.wav") != local_audio_path("a__b.wav")
+
+
+def test_local_audio_path_is_flat_and_traversal_safe():
+    name = local_audio_path("../../etc/passwd")
+    assert "/" not in name and "\\" not in name
+    assert not name.startswith(".")
+
+
+def test_require_all_exported_raises_when_any_ref_missing():
+    with pytest.raises(ValueError) as excinfo:
+        _require_all_exported({"a.wav", "b.wav"}, {"a.wav"}, "ds", "train")
+    assert "b.wav" in str(excinfo.value)
+
+
+def test_require_all_exported_silent_when_complete():
+    _require_all_exported({"a.wav"}, {"a.wav"}, "ds", "train")
 
 
 def test_write_and_reload_worklist_round_trip(tmp_path):

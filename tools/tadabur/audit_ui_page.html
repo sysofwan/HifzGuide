@@ -19,6 +19,8 @@
   .contrast-row:hover { background:#1e222b; }
   .contrast-row.active { background:#242a36; }
   .contrast-row.done .name::after { content:" ✓"; color:var(--accept); }
+  .toggle { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin:6px 0 4px; cursor:pointer; }
+  .toggle input { width:16px; height:16px; cursor:pointer; }
   .name { flex:1; font-variant-numeric:tabular-nums; }
   .arabic { font-size:17px; }
   .pill { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
@@ -117,6 +119,7 @@
   <h1>Poison audit — #6</h1>
   <div class="sub">B = accept (gold) · C = reject (poison)</div>
   <div id="overall" class="sub"></div>
+  <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideLabeled(this.checked)"> Hide labeled</label>
   <h2>Contrasts</h2>
   <div id="contrasts"></div>
   <div class="legend">
@@ -130,7 +133,8 @@
 </main>
 
 <script>
-const state = { items: [], stats: [], order: [], filter: null, idx: 0 };
+const state = { items: [], stats: [], order: [], filter: null, idx: 0,
+  hideLabeled: JSON.parse(localStorage.getItem("hideLabeled") || "false") };
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
@@ -138,7 +142,16 @@ async function api(path, opts) {
 }
 
 function visibleItems() {
-  return state.filter ? state.items.filter(i => i.contrast === state.filter) : state.items;
+  let items = state.filter ? state.items.filter(i => i.contrast === state.filter) : state.items;
+  if (state.hideLabeled) items = items.filter(i => !i.verdict);
+  return items;
+}
+
+function setHideLabeled(on) {
+  state.hideLabeled = on;
+  localStorage.setItem("hideLabeled", JSON.stringify(on));
+  state.idx = 0;
+  render();
 }
 
 function fmtRatio(r) { return r == null ? "—" : r.toFixed(3); }
@@ -153,6 +166,8 @@ function renderSidebar() {
   const summary = `${done} / ${state.items.length} rows labelled`;
   document.getElementById("overall").textContent = summary;
   document.getElementById("topprog").textContent = `${done}/${state.items.length}`;
+  const hl = document.getElementById("hidelabeled");
+  if (hl) hl.checked = state.hideLabeled;
 
   const box = document.getElementById("contrasts");
   box.innerHTML = "";
@@ -185,7 +200,11 @@ function renderSidebar() {
 function renderCard() {
   const wrap = document.getElementById("card-wrap");
   const items = visibleItems();
-  if (!items.length) { wrap.innerHTML = `<div class="empty">No rows in this bucket.</div>`; return; }
+  if (!items.length) {
+    const msg = state.hideLabeled ? "All rows in this bucket are labeled. 🎉"
+      : "No rows in this bucket.";
+    wrap.innerHTML = `<div class="empty">${msg}</div>`; return;
+  }
   if (state.idx >= items.length) state.idx = items.length - 1;
   const it = items[state.idx];
 
@@ -227,7 +246,7 @@ function esc(s) {
 
 function renderPhonemes(it) {
   const hasPred = it.predicted_phonemes && it.predicted_phonemes.trim();
-  if (!hasPred && !it.reference_phonemes) return "";
+  if (!hasPred && !it.reference_phonemes && !it.raw_reference_phonemes) return "";
   let diff = "";
   if (it.alignment && it.alignment.length) {
     const cols = it.alignment.map(c =>
@@ -240,8 +259,9 @@ function renderPhonemes(it) {
   }
   const pred = hasPred
     ? `<div class="plainphon arabic"><b>heard:</b> ${esc(it.predicted_phonemes)}</div>` : "";
-  const ref = it.reference_phonemes
-    ? `<div class="plainphon arabic"><b>reference:</b> ${esc(it.reference_phonemes)}</div>` : "";
+  const refText = it.raw_reference_phonemes || it.reference_phonemes;
+  const ref = refText
+    ? `<div class="plainphon arabic"><b>reference:</b> ${esc(refText)}</div>` : "";
   return `<div class="phon"><h4>Phoneme output</h4>${diff}${ref}${pred}</div>`;
 }
 
@@ -264,7 +284,11 @@ async function label(verdict) {
   if (res.error) { alert(res.error); return; }
   it.verdict = verdict; it.note = verdict ? note : "";
   state.stats = res.stats;
-  if (verdict) { renderSidebar(); go(1); } else { render(); }
+  if (verdict && state.hideLabeled) {
+    // The just-labeled row drops out of the list, so the same index now
+    // points at the next unlabeled row — re-render in place, don't advance.
+    render();
+  } else if (verdict) { renderSidebar(); go(1); } else { render(); }
 }
 
 document.addEventListener("keydown", e => {

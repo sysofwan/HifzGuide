@@ -23,6 +23,7 @@ from .audit_ui import (
     sniff_audio_content_type,
     surah_ayah_index,
     uthmani_index,
+    raw_reference_index,
 )
 from .eval_fixtures import ACCEPT, REJECT, EvalFixtureEntry
 from .manifest import ManifestRecord
@@ -174,6 +175,22 @@ def test_uthmani_index_reads_quran_db(tmp_path):
     assert uthmani_index(tmp_path / "nope.db", {"2:77"}) == {}
 
 
+def test_raw_reference_index_reads_phonemes_column(tmp_path):
+    import sqlite3
+    db = tmp_path / "quran.db"
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE ayahs (surah INTEGER, ayah INTEGER, text TEXT, phonemes TEXT)"
+    )
+    conn.execute("INSERT INTO ayahs VALUES (2, 77, 'نص', 'فَذُۥۥقُۥۥ')")
+    conn.commit()
+    conn.close()
+    # Returns the raw phonemes (with madd/idgham markers), not the normalized form.
+    assert raw_reference_index(db, {"2:77", "9:99"}) == {"2:77": "فَذُۥۥقُۥۥ"}
+    # Missing DB degrades to empty, never raises.
+    assert raw_reference_index(tmp_path / "nope.db", {"2:77"}) == {}
+
+
 def test_state_includes_ayah_text_and_phoneme_diff(tmp_path):
     accept, reject = _paths(tmp_path)
     items = [_item("a", "shadda")]
@@ -183,11 +200,14 @@ def test_state_includes_ayah_text_and_phoneme_diff(tmp_path):
         uthmani={"2:77": "نص الآية"},
         predicted={"a": "بتشج"},
         reference={"2:77": "بتثج"},
+        raw_reference={"2:77": "بتثثج"},
     )
     view = server.state()["items"][0]
     assert view["uthmani"] == "نص الآية"
     assert view["predicted_phonemes"] == "بتشج"
     assert view["reference_phonemes"] == "بتثج"
+    # Raw reference (with tajweed markers) is surfaced alongside the normalized one.
+    assert view["raw_reference_phonemes"] == "بتثثج"
     assert view["alignment"]  # non-empty aligned columns
 
 

@@ -75,6 +75,32 @@ def uthmani_index(quran_db_path: Path, surah_ayahs: set[str]) -> dict[str, str]:
 
 
 
+def raw_reference_index(quran_db_path: Path, surah_ayahs: set[str]) -> dict[str, str]:
+    """Map ``"surah:ayah"`` -> the *raw* reference phoneme string from ``quran.db``.
+
+    Unlike :func:`reference_phoneme_index` (which returns the normalized string the
+    gate scores against), this returns the full phonetization with madd length and
+    idgham/ghunna markers intact — what a human needs to judge tajweed by ear. Read
+    from the ``ayahs.phonemes`` column (the same DB used for Uthmani text). Missing
+    or malformed keys are skipped rather than failing the audit.
+    """
+    index: dict[str, str] = {}
+    if not quran_db_path.is_file():
+        return index
+    with sqlite3.connect(quran_db_path) as conn:
+        for key in surah_ayahs:
+            try:
+                surah, ayah = (int(part) for part in key.split(":"))
+            except ValueError:
+                continue
+            row = conn.execute(
+                "SELECT phonemes FROM ayahs WHERE surah = ? AND ayah = ?", (surah, ayah)
+            ).fetchone()
+            if row is not None:
+                index[key] = row[0]
+    return index
+
+
 def load_worklist(path: Path) -> list[WorklistItem]:
     """Read the sampler worklist (JSONL) into :class:`WorklistItem` rows, in order."""
     items: list[WorklistItem] = []
@@ -274,6 +300,7 @@ def item_view(server: "AuditServer", item: WorklistItem) -> dict[str, object]:
         "surah_ayah": surah_ayah,
         "uthmani": server.uthmani.get(surah_ayah, ""),
         "reference_phonemes": reference,
+        "raw_reference_phonemes": server.raw_reference.get(surah_ayah, ""),
         "predicted_phonemes": predicted,
         "alignment": align_phonemes(predicted, reference),
         "audio_url": f"/audio/{item.local_audio_path}",
@@ -299,6 +326,7 @@ class AuditServer:
         uthmani: dict[str, str] | None = None,
         predicted: dict[str, str] | None = None,
         reference: dict[str, str] | None = None,
+        raw_reference: dict[str, str] | None = None,
     ) -> None:
         self.items = items
         self.surah_ayah = surah_ayah
@@ -307,6 +335,7 @@ class AuditServer:
         self.uthmani = uthmani or {}
         self.predicted = predicted or {}
         self.reference = reference or {}
+        self.raw_reference = raw_reference or {}
         self._by_key = {(i.clip_id, i.contrast): i for i in items}
 
     def state(self) -> dict[str, object]:
@@ -441,8 +470,10 @@ def main() -> None:
     reference = reference_phoneme_index(set(surah_ayah.values()))
     store = LabelStore.load(args.accept, args.reject)
     uthmani = uthmani_index(args.quran_db, set(surah_ayah.values()))
+    raw_reference = raw_reference_index(args.quran_db, set(surah_ayah.values()))
     server_state = AuditServer(
-        items, surah_ayah, store, args.audio_dir, uthmani, predicted, reference
+        items, surah_ayah, store, args.audio_dir, uthmani, predicted, reference,
+        raw_reference,
     )
 
     httpd = serve(server_state, args.port, args.host)

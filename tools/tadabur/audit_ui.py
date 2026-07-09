@@ -298,18 +298,20 @@ class _Handler(BaseHTTPRequestHandler):
         self._send_bytes(data, sniff_audio_content_type(data))
 
 
-def serve(server_state: AuditServer, port: int) -> ThreadingHTTPServer:
+def serve(server_state: AuditServer, port: int, host: str = "127.0.0.1") -> ThreadingHTTPServer:
     """Build (but do not block on) the threading HTTP server for ``server_state``.
 
     The state is bound onto a per-server handler subclass so each request handler
     instance can reach the loaded worklist and label store without globals.
+    ``host`` defaults to loopback; pass ``0.0.0.0`` to expose the UI on the LAN so
+    a human on another device can grade the clips.
     """
 
     class _BoundHandler(_Handler):
         pass
 
     _BoundHandler.server_state = server_state
-    return ThreadingHTTPServer(("127.0.0.1", port), _BoundHandler)
+    return ThreadingHTTPServer((host, port), _BoundHandler)
 
 
 def main() -> None:
@@ -322,6 +324,8 @@ def main() -> None:
     parser.add_argument("--reject", type=Path, default=eval_fixtures.SHOULD_REJECT_PATH,
                         help="should-reject fixture file to write (default: canonical path).")
     parser.add_argument("--port", type=int, default=8000, help="Port to serve on (default: 8000).")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="Interface to bind (default: 127.0.0.1; use 0.0.0.0 to expose on the LAN).")
     args = parser.parse_args()
 
     items = load_worklist(args.worklist)
@@ -329,10 +333,10 @@ def main() -> None:
     store = LabelStore.load(args.accept, args.reject)
     server_state = AuditServer(items, surah_ayah, store, args.audio_dir)
 
-    httpd = serve(server_state, args.port)
+    httpd = serve(server_state, args.port, args.host)
     labelled = sum(1 for i in items if store.verdict_of(i.clip_id, i.contrast))
     print(f"Loaded {len(items)} worklist rows ({labelled} already labelled).")
-    print(f"Audit UI on http://127.0.0.1:{args.port}  (Ctrl-C to stop)")
+    print(f"Audit UI on http://{args.host}:{args.port}  (Ctrl-C to stop)")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -41,7 +41,9 @@ class ManifestRecord:
     articulatory contrasts (soft pairs + shadda) the ``.balanced`` alignment
     admitted this clip through — the per-contrast key the P3.5 poison audit (#6)
     samples on. It is observational (see ``contrast_attribution``) and does not
-    affect the gate.
+    affect the gate. ``predicted_phonemes`` is the model's decoded phoneme string
+    for the clip, kept so the audit UI can show it against the reference and the
+    reviewer can see exactly where a recitation diverged.
     """
 
     audio_filename: str
@@ -50,6 +52,7 @@ class ManifestRecord:
     ayah_duration_s: float
     reciter_id: int
     contrasts: tuple[str, ...] = ()
+    predicted_phonemes: str = ""
 
 
 def _checkpoint_path(manifest_path: Path) -> Path:
@@ -142,8 +145,9 @@ class FilterManifest:
 def read_records(manifest_path: Path) -> list[ManifestRecord]:
     """Load every :class:`ManifestRecord` from ``manifest_path`` in file order.
 
-    Tolerates manifests written before ``contrasts`` existed (defaults to an
-    empty tuple), so an older passing-subset manifest still loads for sampling.
+    Tolerates manifests written before ``contrasts``/``predicted_phonemes``
+    existed (both default to empty), so an older passing-subset manifest still
+    loads for sampling.
     """
     records: list[ManifestRecord] = []
     with open(manifest_path, encoding="utf-8") as f:
@@ -160,6 +164,7 @@ def read_records(manifest_path: Path) -> list[ManifestRecord]:
                     ayah_duration_s=data["ayah_duration_s"],
                     reciter_id=data["reciter_id"],
                     contrasts=tuple(data.get("contrasts", ())),
+                    predicted_phonemes=data.get("predicted_phonemes", ""),
                 )
             )
     return records

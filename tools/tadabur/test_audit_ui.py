@@ -16,10 +16,13 @@ from .audit_sampler import WorklistItem, write_worklist
 from .audit_ui import (
     AuditServer,
     LabelStore,
+    align_phonemes,
     contrast_stats,
     load_worklist,
+    predicted_phoneme_index,
     sniff_audio_content_type,
     surah_ayah_index,
+    uthmani_index,
 )
 from .eval_fixtures import ACCEPT, REJECT, EvalFixtureEntry
 from .manifest import ManifestRecord
@@ -129,6 +132,64 @@ def test_surah_ayah_index(tmp_path):
             }) + "\n")
     idx = surah_ayah_index(manifest)
     assert idx == {"a": "2:255", "b": "112:1"}
+
+
+def _write_manifest(path, recs):
+    from dataclasses import asdict
+    with open(path, "w", encoding="utf-8") as f:
+        for r in recs:
+            f.write(json.dumps(asdict(r), ensure_ascii=False) + "\n")
+
+
+def test_predicted_phoneme_index(tmp_path):
+    manifest = tmp_path / "m.jsonl"
+    _write_manifest(manifest, [
+        ManifestRecord("a", "2:255", 0.9, 3.0, 7, ("shadda",), "بتثج"),
+        ManifestRecord("b", "112:1", 0.7, 2.0, 7, (), ""),
+    ])
+    assert predicted_phoneme_index(manifest) == {"a": "بتثج", "b": ""}
+
+
+def test_align_phonemes_marks_match_sub_and_gaps():
+    cols = align_phonemes("بتثج", "بتثج")
+    assert cols and all(c["kind"] == "match" for c in cols)
+    # A substituted phoneme is flagged, not silently matched.
+    mixed = align_phonemes("بتشج", "بتثج")
+    kinds = {c["kind"] for c in mixed}
+    assert "match" in kinds and (kinds & {"sub", "del", "ins"})
+    # Empty input yields no columns rather than raising.
+    assert align_phonemes("", "بتثج") == []
+
+
+def test_uthmani_index_reads_quran_db(tmp_path):
+    import sqlite3
+    db = tmp_path / "quran.db"
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE ayahs (surah INTEGER, ayah INTEGER, text TEXT)")
+    conn.execute("INSERT INTO ayahs VALUES (2, 77, 'نص')")
+    conn.commit()
+    conn.close()
+    assert uthmani_index(db, {"2:77", "9:99"}) == {"2:77": "نص"}
+    # Missing DB degrades to empty, never raises.
+    assert uthmani_index(tmp_path / "nope.db", {"2:77"}) == {}
+
+
+def test_state_includes_ayah_text_and_phoneme_diff(tmp_path):
+    accept, reject = _paths(tmp_path)
+    items = [_item("a", "shadda")]
+    store = LabelStore.load(accept, reject)
+    server = AuditServer(
+        items, {"a": "2:77"}, store, tmp_path,
+        uthmani={"2:77": "نص الآية"},
+        predicted={"a": "بتشج"},
+        reference={"2:77": "بتثج"},
+    )
+    view = server.state()["items"][0]
+    assert view["uthmani"] == "نص الآية"
+    assert view["predicted_phonemes"] == "بتشج"
+    assert view["reference_phonemes"] == "بتثج"
+    assert view["alignment"]  # non-empty aligned columns
+
 
 
 def test_apply_label_enriches_and_rejects_unknown(tmp_path):

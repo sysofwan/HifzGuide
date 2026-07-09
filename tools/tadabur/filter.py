@@ -145,6 +145,7 @@ def score_batch(
                     ayah_duration_s=len(waveform) / TARGET_SAMPLE_RATE,
                     reciter_id=clip.reciter_id,
                     contrasts=scorer.attribute(decode.phonemes, reference),
+                    predicted_phonemes=decode.phonemes,
                 )
             )
     return records

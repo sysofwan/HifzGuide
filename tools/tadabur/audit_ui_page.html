@@ -47,6 +47,29 @@
   textarea { width:100%; min-height:52px; background:#12151b; color:var(--fg); border:1px solid var(--line);
              border-radius:8px; padding:8px 10px; font:inherit; resize:vertical; }
   .warn { color:var(--reject); font-size:12px; margin:8px 0; }
+  .ayah { font-size:30px; line-height:1.9; text-align:right; direction:rtl; margin:6px 0 14px;
+          padding:12px 14px; background:#12151b; border:1px solid var(--line); border-radius:8px; }
+  .phon { margin:12px 0; }
+  .phon h4 { margin:0 0 6px; font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase;
+             letter-spacing:.04em; }
+  .align { direction:rtl; text-align:right; background:#12151b; border:1px solid var(--line);
+           border-radius:8px; padding:10px 12px; font-size:22px; line-height:1.7;
+           overflow-x:auto; white-space:nowrap; }
+  .align .col { display:inline-flex; flex-direction:column; align-items:center; margin:0 1px;
+                vertical-align:top; border-radius:5px; padding:2px 3px; }
+  .align .col .r { color:var(--fg); }
+  .align .col .p { font-size:15px; color:var(--muted); }
+  .align .col.sub { background:rgba(214,69,65,.20); }
+  .align .col.sub .p { color:var(--reject); }
+  .align .col.del { background:rgba(214,69,65,.12); }
+  .align .col.del .p { color:var(--reject); }
+  .align .col.ins { background:rgba(224,168,0,.15); }
+  .align .col.ins .r { color:var(--mark); }
+  .align .col.ins .p { color:var(--mark); }
+  .align .col.match .p { color:#3f7d55; }
+  .plainphon { direction:rtl; text-align:right; font-size:16px; color:var(--muted); line-height:1.8;
+               margin:4px 0; word-break:break-word; }
+  .phonlegend { color:var(--muted); font-size:11px; margin-top:4px; }
   .nav { display:flex; justify-content:space-between; align-items:center; margin-top:16px; color:var(--muted); }
   kbd { font:11px monospace; background:#242a36; border:1px solid var(--line); border-bottom-width:2px;
         border-radius:4px; padding:1px 5px; }
@@ -135,9 +158,11 @@ function renderCard() {
         <span class="tag">row ${state.idx + 1} / ${items.length}</span>
       </div>
       <div class="sub">${it.clip_id}</div>
+      ${it.uthmani ? `<div class="ayah arabic">${esc(it.uthmani)}</div>` : ""}
       ${it.audio_available
         ? `<audio id="au" controls autoplay src="${it.audio_url}"></audio>`
         : `<div class="warn">⚠ audio not exported for this clip — re-run the sampler with --audio-dir.</div>`}
+      ${renderPhonemes(it)}
       <div class="btns">
         <button class="accept ${it.verdict==="accept"?"on-accept":""}" onclick="label('accept')">B · Accept (gold)</button>
         <button class="reject ${it.verdict==="reject"?"on-reject":""}" onclick="label('reject')">C · Reject (poison)</button>
@@ -153,6 +178,31 @@ function renderCard() {
 }
 
 function render() { renderSidebar(); renderCard(); }
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function renderPhonemes(it) {
+  const hasPred = it.predicted_phonemes && it.predicted_phonemes.trim();
+  if (!hasPred && !it.reference_phonemes) return "";
+  let diff = "";
+  if (it.alignment && it.alignment.length) {
+    const cols = it.alignment.map(c =>
+      `<span class="col ${c.kind}"><span class="r arabic">${esc(c.ref || "·")}</span>` +
+      `<span class="p arabic">${esc(c.pred || "·")}</span></span>`).join("");
+    diff = `<div class="align">${cols}</div>
+      <div class="phonlegend">top = reference (expected) · bottom = model output ·
+        <b style="color:var(--reject)">red</b> = substitution/drop ·
+        <b style="color:var(--mark)">amber</b> = inserted · · = gap</div>`;
+  }
+  const pred = hasPred
+    ? `<div class="plainphon arabic"><b>heard:</b> ${esc(it.predicted_phonemes)}</div>` : "";
+  const ref = it.reference_phonemes
+    ? `<div class="plainphon arabic"><b>reference:</b> ${esc(it.reference_phonemes)}</div>` : "";
+  return `<div class="phon"><h4>Phoneme output</h4>${diff}${ref}${pred}</div>`;
+}
 
 function go(delta) {
   const n = visibleItems().length;

@@ -99,6 +99,7 @@ def test_record_is_json_serializable_with_arabic_surah_ayah(tmp_path):
         "ayah_duration_s": 10.9,
         "reciter_id": 88,
         "contrasts": [],
+        "predicted_phonemes": "",
     }
 
 

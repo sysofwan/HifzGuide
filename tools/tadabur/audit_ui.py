@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -37,11 +38,41 @@ from .audit_sampler import WorklistItem
 from .contrast_attribution import MARGINAL_CONTRAST, all_contrasts
 from .eval_fixtures import ACCEPT, REJECT, EvalFixtureEntry
 from .manifest import read_records
+from .normalization import normalize_phonemes
+from .smith_waterman import smith_waterman
 
 _PAGE_PATH = Path(__file__).parent / "audit_ui_page.html"
 
+# The canonical quran.db (source of Uthmani ayah text), at the repo-root data/.
+DEFAULT_QURAN_DB = Path(__file__).parents[2] / "data" / "quran.db"
+
 # Bucket order shown in the UI: the seven attribution buckets, then marginal.
 CONTRAST_ORDER: tuple[str, ...] = all_contrasts() + (MARGINAL_CONTRAST,)
+
+
+def uthmani_index(quran_db_path: Path, surah_ayahs: set[str]) -> dict[str, str]:
+    """Map ``"surah:ayah"`` -> Uthmani ayah text from ``quran.db``.
+
+    Only the ``surah_ayah`` keys the worklist actually needs are looked up so the
+    reviewer can read the true ayah while grading. Missing or malformed keys are
+    skipped (the UI just shows no text for them) rather than failing the audit.
+    """
+    index: dict[str, str] = {}
+    if not quran_db_path.is_file():
+        return index
+    with sqlite3.connect(quran_db_path) as conn:
+        for key in surah_ayahs:
+            try:
+                surah, ayah = (int(part) for part in key.split(":"))
+            except ValueError:
+                continue
+            row = conn.execute(
+                "SELECT text FROM ayahs WHERE surah = ? AND ayah = ?", (surah, ayah)
+            ).fetchone()
+            if row is not None:
+                index[key] = row[0]
+    return index
+
 
 
 def load_worklist(path: Path) -> list[WorklistItem]:
@@ -63,6 +94,62 @@ def surah_ayah_index(manifest_path: Path) -> dict[str, str]:
     the UI looks it up here by the shared ``audio_filename`` key.
     """
     return {r.audio_filename: r.surah_ayah for r in read_records(manifest_path)}
+
+
+def predicted_phoneme_index(manifest_path: Path) -> dict[str, str]:
+    """Map ``clip_id`` -> the model's decoded phoneme string, from the manifest.
+
+    Lets the audit UI show what the model actually *heard* for each clip so the
+    reviewer can see where it diverged from the reference. Empty for clips whose
+    manifest predates the ``predicted_phonemes`` field.
+    """
+    return {r.audio_filename: r.predicted_phonemes for r in read_records(manifest_path)}
+
+
+def reference_phoneme_index(surah_ayahs: set[str]) -> dict[str, str]:
+    """Map ``"surah:ayah"`` -> the normalized reference phoneme string.
+
+    Loads the warm reference cache — the exact strings the ``.balanced`` gate
+    scores against — so the UI's reference/predicted diff matches what admitted
+    the clip. Degrades to ``{}`` if the cache is unavailable (rather than
+    triggering a slow rebuild inside the server), leaving the UI to simply omit
+    the reference line.
+    """
+    try:
+        from .reference_phonemes import load_reference_phonemes
+
+        references = load_reference_phonemes()
+    except Exception:
+        return {}
+    return {key: references[key] for key in surah_ayahs if key in references}
+
+
+def align_phonemes(predicted: str, reference: str) -> list[dict[str, str]]:
+    """Align ``predicted`` against ``reference`` into per-column diff cells.
+
+    Runs the same normalization + Smith-Waterman the gate uses, then turns the
+    recovered local alignment into a list of ``{"ref", "pred", "kind"}`` columns
+    the browser renders as a two-row diff. ``kind`` is ``match`` (same phoneme),
+    ``sub`` (different phoneme heard), ``del`` (reference phoneme dropped) or
+    ``ins`` (extra phoneme inserted). Returns ``[]`` when either side is empty.
+    """
+    query = normalize_phonemes(predicted).normalized
+    ref = normalize_phonemes(reference).normalized
+    if not query.strip() or not ref.strip():
+        return []
+    columns: list[dict[str, str]] = []
+    for col in smith_waterman(query=query, reference=ref).columns:
+        q, r = col.query_char, col.ref_char
+        if q is None:
+            kind = "del"
+        elif r is None:
+            kind = "ins"
+        elif q == r:
+            kind = "match"
+        else:
+            kind = "sub"
+        columns.append({"ref": r or "", "pred": q or "", "kind": kind})
+    return columns
 
 
 def sniff_audio_content_type(data: bytes) -> str:
@@ -170,17 +257,29 @@ def contrast_stats(
     return stats
 
 
-def item_view(item: WorklistItem, store: LabelStore, sa: dict[str, str], audio_dir: Path) -> dict[str, object]:
-    """The JSON shape one worklist row is sent to the browser as."""
+def item_view(server: "AuditServer", item: WorklistItem) -> dict[str, object]:
+    """The JSON shape one worklist row is sent to the browser as.
+
+    Bundles the clip's identity, its Uthmani ayah text, and a reference-vs-
+    predicted phoneme alignment so the reviewer can both read the true ayah and
+    see exactly where the model's decode diverged before grading B vs C.
+    """
+    surah_ayah = server.surah_ayah.get(item.clip_id, "")
+    predicted = server.predicted.get(item.clip_id, "")
+    reference = server.reference.get(surah_ayah, "")
     return {
         "clip_id": item.clip_id,
         "contrast": item.contrast,
         "match_ratio": item.match_ratio,
-        "surah_ayah": sa.get(item.clip_id, ""),
+        "surah_ayah": surah_ayah,
+        "uthmani": server.uthmani.get(surah_ayah, ""),
+        "reference_phonemes": reference,
+        "predicted_phonemes": predicted,
+        "alignment": align_phonemes(predicted, reference),
         "audio_url": f"/audio/{item.local_audio_path}",
-        "audio_available": (audio_dir / item.local_audio_path).is_file(),
-        "verdict": store.verdict_of(item.clip_id, item.contrast),
-        "note": store.note_of(item.clip_id, item.contrast),
+        "audio_available": (server.audio_dir / item.local_audio_path).is_file(),
+        "verdict": server.store.verdict_of(item.clip_id, item.contrast),
+        "note": server.store.note_of(item.clip_id, item.contrast),
     }
 
 
@@ -197,17 +296,23 @@ class AuditServer:
         surah_ayah: dict[str, str],
         store: LabelStore,
         audio_dir: Path,
+        uthmani: dict[str, str] | None = None,
+        predicted: dict[str, str] | None = None,
+        reference: dict[str, str] | None = None,
     ) -> None:
         self.items = items
         self.surah_ayah = surah_ayah
         self.store = store
         self.audio_dir = audio_dir
+        self.uthmani = uthmani or {}
+        self.predicted = predicted or {}
+        self.reference = reference or {}
         self._by_key = {(i.clip_id, i.contrast): i for i in items}
 
     def state(self) -> dict[str, object]:
         """The full UI payload: every row's view plus per-contrast stats."""
         return {
-            "items": [item_view(i, self.store, self.surah_ayah, self.audio_dir) for i in self.items],
+            "items": [item_view(self, i) for i in self.items],
             "stats": contrast_stats(self.items, self.store),
             "contrast_order": list(CONTRAST_ORDER),
         }
@@ -326,16 +431,24 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000, help="Port to serve on (default: 8000).")
     parser.add_argument("--host", default="127.0.0.1",
                         help="Interface to bind (default: 127.0.0.1; use 0.0.0.0 to expose on the LAN).")
+    parser.add_argument("--quran-db", type=Path, default=DEFAULT_QURAN_DB,
+                        help="quran.db for Uthmani ayah text (default: repo data/quran.db).")
     args = parser.parse_args()
 
     items = load_worklist(args.worklist)
     surah_ayah = surah_ayah_index(args.manifest)
+    predicted = predicted_phoneme_index(args.manifest)
+    reference = reference_phoneme_index(set(surah_ayah.values()))
     store = LabelStore.load(args.accept, args.reject)
-    server_state = AuditServer(items, surah_ayah, store, args.audio_dir)
+    uthmani = uthmani_index(args.quran_db, set(surah_ayah.values()))
+    server_state = AuditServer(
+        items, surah_ayah, store, args.audio_dir, uthmani, predicted, reference
+    )
 
     httpd = serve(server_state, args.port, args.host)
     labelled = sum(1 for i in items if store.verdict_of(i.clip_id, i.contrast))
-    print(f"Loaded {len(items)} worklist rows ({labelled} already labelled).")
+    print(f"Loaded {len(items)} worklist rows ({labelled} already labelled); "
+          f"{len(uthmani)} ayat with Uthmani text, {len(reference)} with reference phonemes.")
     print(f"Audit UI on http://{args.host}:{args.port}  (Ctrl-C to stop)")
     try:
         httpd.serve_forever()

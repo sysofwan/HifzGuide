@@ -105,15 +105,18 @@ def attribute_contrasts(
     """The sorted set of contrasts present in the ``predicted`` vs ``reference``
     alignment.
 
-    Normalizes both sides (idempotent for the pre-normalized reference cache),
-    aligns them with the same Smith-Waterman used by the gate, and scans the
-    aligned columns for soft-pair substitutions and shadda present↔absent
+    ``predicted`` is the model's raw decode and is normalized here; ``reference``
+    must already be normalized (the cache form). Normalization is not idempotent
+    — re-normalizing an already-normalized reference would collapse its shadda
+    doubling and mis-attribute shadda contrasts — so the reference is used
+    verbatim. Aligns the two with the same Smith-Waterman used by the gate, and
+    scans the aligned columns for soft-pair substitutions and shadda present↔absent
     differences. ``soft_pairs_enabled`` mirrors the scorer's mode (no soft pairs
     in strict). Returns a deterministic, codepoint-sorted tuple of contrast
     labels — empty when a passer matched cleanly on every contrast position.
     """
     query = normalize_phonemes(predicted).normalized
-    ref = normalize_phonemes(reference).normalized
+    ref = reference
     columns = smith_waterman(query=query, reference=ref).columns
 
     contrasts = _soft_pair_contrasts_in(columns, soft_pairs_enabled)

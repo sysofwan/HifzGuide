@@ -153,14 +153,18 @@ def reference_phoneme_index(surah_ayahs: set[str]) -> dict[str, str]:
 def align_phonemes(predicted: str, reference: str) -> list[dict[str, str]]:
     """Align ``predicted`` against ``reference`` into per-column diff cells.
 
-    Runs the same normalization + Smith-Waterman the gate uses, then turns the
-    recovered local alignment into a list of ``{"ref", "pred", "kind"}`` columns
-    the browser renders as a two-row diff. ``kind`` is ``match`` (same phoneme),
-    ``sub`` (different phoneme heard), ``del`` (reference phoneme dropped) or
-    ``ins`` (extra phoneme inserted). Returns ``[]`` when either side is empty.
+    Runs the same normalization + Smith-Waterman the gate uses: ``predicted`` is
+    the model's raw decode and is normalized here, while ``reference`` must
+    already be normalized (the cache form) and is used verbatim — normalization
+    is not idempotent, so re-normalizing it would collapse its shadda doubling
+    and drop madd markers from the diff. Turns the recovered local alignment into
+    a list of ``{"ref", "pred", "kind"}`` columns the browser renders as a
+    two-row diff. ``kind`` is ``match`` (same phoneme), ``sub`` (different phoneme
+    heard), ``del`` (reference phoneme dropped) or ``ins`` (extra phoneme
+    inserted). Returns ``[]`` when either side is empty.
     """
     query = normalize_phonemes(predicted).normalized
-    ref = normalize_phonemes(reference).normalized
+    ref = reference
     if not query.strip() or not ref.strip():
         return []
     columns: list[dict[str, str]] = []

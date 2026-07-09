@@ -62,18 +62,25 @@ def test_gate_soft_pair_substitution_scores_high():
     assert soft.match_ratio < baseline.match_ratio
 
 
-def test_gate_reference_normalization_idempotent():
-    # The gate normalizes its reference, so passing a raw reference gates
-    # identically to passing its already-normalized (cache) form. Swift-faithful
-    # normalization keeps shadda expansion doubled: رَببُ → ربب.
+def test_gate_uses_reference_verbatim_preserving_shadda():
+    # normalize_phonemes is a Swift-faithful port and is NOT idempotent: it uses
+    # combining marks to keep shadda gemination doubled, then strips them, so a
+    # second pass collapses the doubling (رَببُ → ربب → رب). The gate therefore
+    # must take an already-normalized reference (the cache form) verbatim, or it
+    # would wrongly collapse the reference's shadda. Passing the RAW reference
+    # (which the gate would re-normalize once, keeping shadda) and its correctly
+    # pre-normalized form must gate identically.
     from tadabur.normalization import normalize_phonemes
 
     raw_ref = "رَببُ لمشرقين"
     pre_normalized = normalize_phonemes(raw_ref).normalized
-    assert pre_normalized == "ربب لمشرقين"
-    assert BALANCED_SCORER.gate("ربب", pre_normalized) == BALANCED_SCORER.gate(
-        "ربب", raw_ref
-    )
+    assert pre_normalized == "ربب لمشرقين"  # shadda kept doubled (single pass)
+    # Query heard the doubled shadda too (raw, with marks, so its single
+    # normalization keeps the doubling); against the correctly-normalized
+    # reference both carry ربب, so it matches cleanly.
+    result = BALANCED_SCORER.gate("رَببُ لمشرقين", pre_normalized)
+    assert result.passed
+    assert result.match_ratio == pytest.approx(1.0, abs=1e-3)
 
 
 def test_is_soft_mismatch_respects_mode():

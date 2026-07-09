@@ -97,15 +97,20 @@ class Scorer:
     def gate(self, predicted: str, reference: str) -> GateResult:
         """Score a decoded ``predicted`` phoneme string against ``reference``.
 
-        Both strings are normalized (idempotent for the pre-normalized reference
-        cache), aligned with Smith-Waterman, and scored as
-        ``score / max(query_phoneme_count, 1)``. The pair passes when that ratio
-        clears ``params.correct_threshold``. A query with fewer than
-        ``MIN_QUERY_PHONEMES`` non-space phonemes, or no positive-scoring
+        ``predicted`` is the model's raw decode and is normalized here;
+        ``reference`` must already be normalized (the ``build_reference_phonemes``
+        / cache form). Normalization is a Swift-faithful port that is **not
+        idempotent** — it relies on combining marks to keep shadda gemination
+        doubled while collapsing madd runs, and it strips those marks — so
+        re-normalizing an already-normalized reference would wrongly collapse its
+        shadda (``للاه`` → ``لاه``). Both strings are aligned with Smith-Waterman
+        and scored as ``score / max(query_phoneme_count, 1)``. The pair passes
+        when that ratio clears ``params.correct_threshold``. A query with fewer
+        than ``MIN_QUERY_PHONEMES`` non-space phonemes, or no positive-scoring
         alignment, fails with ratio 0.0.
         """
         query = normalize_phonemes(predicted).normalized
-        ref = normalize_phonemes(reference).normalized
+        ref = reference
         query_phoneme_count = sum(1 for ch in query if ch != " ")
         if query_phoneme_count < MIN_QUERY_PHONEMES or not ref:
             return GateResult(passed=False, match_ratio=0.0)

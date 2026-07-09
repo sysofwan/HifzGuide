@@ -20,7 +20,8 @@ layout.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, fields
+import os
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
 from .contrast_attribution import contrast_vocabulary
@@ -108,3 +109,27 @@ def load_should_accept() -> list[EvalFixtureEntry]:
 def load_should_reject() -> list[EvalFixtureEntry]:
     """The should-reject set (genuinely-wrong clips the model must still reject)."""
     return load_eval_fixtures(SHOULD_REJECT_PATH, REJECT)
+
+
+def write_eval_fixtures(
+    entries: list[EvalFixtureEntry], path: Path, expected_verdict: str
+) -> None:
+    """Atomically (over)write one fixture set, validating every entry first.
+
+    Each entry is round-tripped through :func:`_parse_entry` so a wrong verdict or
+    unknown contrast fails loudly *before* anything touches disk — the file is
+    never left partially rewritten or holding an invalid line. Entries are written
+    in the given order as one JSON object per line, then ``os.replace``-swapped in.
+    The P3.5 audit UI (#6) uses this to persist labels through the same schema #7
+    reads back.
+    """
+    for entry in entries:
+        _parse_entry(asdict(entry), expected_verdict, "write_eval_fixtures")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        for entry in entries:
+            f.write(json.dumps(asdict(entry), ensure_ascii=False, sort_keys=True) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, path)

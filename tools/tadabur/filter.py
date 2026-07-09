@@ -51,6 +51,40 @@ class Clip:
     audio_bytes: bytes
 
 
+def resolve_audio_filename(row: dict) -> str:
+    """The clip's stable ``audio_filename`` across Tadabur configs.
+
+    The full ``default`` config carries ``audio_filename`` as a top-level column;
+    the fast ``preview`` config does not, but its ``audio`` feature still exposes
+    the same basename via ``path`` (e.g. ``tadabur_spk0106_S77_A30_...wav``). Fall
+    back to that so ``--config-name preview`` — advertised as the fast streaming
+    path — actually yields traceable, exportable clips. Fails loudly if neither is
+    present, since a clip with no stable id cannot be matched back to its audio.
+    """
+    name = row.get("audio_filename")
+    if name:
+        return name
+    audio = row.get(AUDIO_COLUMN) or {}
+    path = audio.get("path")
+    if path:
+        return Path(path).name
+    raise ValueError(f"Tadabur row has no audio_filename or audio.path: {row!r}")
+
+
+def canonical_surah_ayah(surah_id: int, ayah_id: int) -> str:
+    """Map a Tadabur ``(surah_id, ayah_id)`` to a canonical ``"surah:ayah"`` key.
+
+    Tadabur numbers ``surah_id`` **0-indexed** (0–113, a surah *array index*, and
+    the same 0-based number embedded in the audio filename, e.g. ``S77`` for
+    Al-Naba, the 78th surah) while ``ayah_id`` is the natural **1-indexed** ayah
+    number. Our reference cache is keyed by the canonical 1-indexed
+    ``surah:ayah`` (``quran-transcript``), so we shift the surah by one here.
+    Without this shift every clip gates against the wrong ayah and *nothing*
+    passes the filter.
+    """
+    return f"{surah_id + 1}:{ayah_id}"
+
+
 def parse_clip(row: dict) -> Clip:
     """Extract the audio bytes and required metadata from a streamed Tadabur row.
 
@@ -60,12 +94,12 @@ def parse_clip(row: dict) -> Clip:
     audio = row.get(AUDIO_COLUMN)
     if not audio or audio.get("bytes") is None:
         raise ValueError(f"Tadabur row has no decodable audio bytes: {row.get('audio_filename')!r}")
-    for field in ("audio_filename", "surah_id", "ayah_id", "reciter_id"):
+    for field in ("surah_id", "ayah_id", "reciter_id"):
         if row.get(field) is None:
             raise ValueError(f"Tadabur row missing required field {field!r}: {row!r}")
     return Clip(
-        audio_filename=row["audio_filename"],
-        surah_ayah=f"{row['surah_id']}:{row['ayah_id']}",
+        audio_filename=resolve_audio_filename(row),
+        surah_ayah=canonical_surah_ayah(int(row["surah_id"]), int(row["ayah_id"])),
         reciter_id=int(row["reciter_id"]),
         audio_bytes=row[AUDIO_COLUMN]["bytes"],
     )
@@ -76,13 +110,17 @@ def score_batch(
     model: MuaalemPhonemeModel,
     references: dict[str, str],
     scorer: Scorer,
+    skip_unknown_refs: bool = False,
 ) -> list[ManifestRecord]:
     """Decode and score a batch of clips, returning a record for each passer.
 
-    Each clip's decoded phonemes are gated against its cached reference; the
-    reference must exist (all 6236 canonical ayat are cached) or the row is bad
-    data and we fail loudly. ``ayah_duration_s`` is the duration of the 16 kHz
-    waveform actually scored.
+    Each clip's decoded phonemes are gated against its cached reference. By
+    default the reference must exist (all 6236 canonical ayat are cached) or the
+    row is bad data and we fail loudly. ``skip_unknown_refs`` relaxes that to
+    *skip* a clip whose ``surah:ayah`` is not canonical instead of raising — used
+    for the ``preview`` config, which mixes in non-canonical rows the strict full
+    run never sees. ``ayah_duration_s`` is the duration of the 16 kHz waveform
+    actually scored.
     """
     waveforms = [decode_to_mono_16k(clip.audio_bytes) for clip in clips]
     decodes = model.decode_batch(waveforms, TARGET_SAMPLE_RATE)
@@ -91,6 +129,8 @@ def score_batch(
     for clip, waveform, decode in zip(clips, waveforms, decodes):
         reference = references.get(clip.surah_ayah)
         if reference is None:
+            if skip_unknown_refs:
+                continue
             raise ValueError(
                 f"No cached reference for {clip.surah_ayah} "
                 f"(clip {clip.audio_filename}); outside the canonical 6236 ayat."
@@ -151,17 +191,19 @@ def run_filter(
     split: str = "train",
     batch_size: int = DEFAULT_BATCH_SIZE,
     limit: int | None = None,
+    skip_unknown_refs: bool = False,
 ) -> None:
     """Filter the stream in batches, committing passers to ``manifest`` as it goes.
 
     Resumes from ``manifest.clips_processed`` and commits after every batch so a
-    crash loses at most the last in-flight batch.
+    crash loses at most the last in-flight batch. ``skip_unknown_refs`` is passed
+    through to :func:`score_batch` (see there).
     """
     clips = stream_clips(
         dataset_id, config_name, split, start=manifest.clips_processed, limit=limit
     )
     for batch in _batched(clips, batch_size):
-        records = score_batch(batch, model, references, scorer)
+        records = score_batch(batch, model, references, scorer, skip_unknown_refs)
         manifest.commit_batch(records, num_clips=len(batch))
 
 
@@ -196,6 +238,12 @@ def main() -> None:
     parser.add_argument(
         "--device", default="cuda", help="Torch device (default: cuda)."
     )
+    parser.add_argument(
+        "--skip-unknown-refs",
+        action="store_true",
+        help="Skip (rather than fail on) clips whose surah:ayah is not a canonical "
+             "ayah. Needed for the 'preview' config, which mixes in non-canonical rows.",
+    )
     args = parser.parse_args()
 
     print(f"Loading references and {args.model_id} (bf16) on {args.device} ...")
@@ -215,6 +263,7 @@ def main() -> None:
             split=args.split,
             batch_size=args.batch_size,
             limit=args.limit,
+            skip_unknown_refs=args.skip_unknown_refs,
         )
         print(
             f"Done. {manifest.clips_processed} clips scored; "

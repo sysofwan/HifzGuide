@@ -38,3 +38,6 @@ models.zip
 
 # AFK dual-agent loop (ralph-loop.sh) state
 .ralph/
+
+# Local P3.5 audit run artifacts (manifest, worklist, exported audio)
+tools/tadabur/audit_run/

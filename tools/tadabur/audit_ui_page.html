@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tadabur poison audit — B/C labelling (#6)</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#252a34; --fg:#e6e9ef; --muted:#9aa4b2;
+          --accept:#1f9d55; --reject:#d64541; --mark:#f6c744; --accent:#4f8cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg);
+         display:grid; grid-template-columns:300px 1fr; grid-template-rows:100vh; }
+  aside { background:var(--panel); border-right:1px solid var(--line); overflow-y:auto; padding:16px; }
+  main { overflow-y:auto; padding:24px 28px; }
+  h1 { font-size:15px; margin:0 0 4px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:20px 0 8px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:12px; }
+  .contrast-row { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  .contrast-row:hover { background:#1e222b; }
+  .contrast-row.active { background:#242a36; }
+  .contrast-row.done .name::after { content:" ✓"; color:var(--accept); }
+  .name { flex:1; font-variant-numeric:tabular-nums; }
+  .arabic { font-size:17px; }
+  .pill { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .poison { font-weight:600; }
+  .poison.hot { color:var(--reject); }
+  .bar { height:4px; background:#2a2f3a; border-radius:2px; margin-top:3px; overflow:hidden; }
+  .bar > i { display:block; height:100%; background:var(--accent); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px 22px; max-width:760px; }
+  .card.accepted { border-color:var(--accept); }
+  .card.rejected { border-color:var(--reject); }
+  .head { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:4px; }
+  .head .big { font-size:24px; }
+  .head .ref { font-size:18px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .tag { font-size:12px; padding:2px 8px; border-radius:20px; background:#242a36; color:var(--muted); }
+  .tag.marginal { color:var(--mark); }
+  audio { width:100%; margin:16px 0; }
+  .btns { display:flex; gap:10px; margin:6px 0 14px; }
+  button { font:inherit; border:1px solid var(--line); background:#20252f; color:var(--fg);
+           padding:10px 16px; border-radius:8px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.accept { background:rgba(31,157,85,.16); border-color:var(--accept); }
+  button.reject { background:rgba(214,69,65,.16); border-color:var(--reject); }
+  button.on-accept { background:var(--accept); color:#fff; }
+  button.on-reject { background:var(--reject); color:#fff; }
+  button.ghost { background:transparent; }
+  textarea { width:100%; min-height:52px; background:#12151b; color:var(--fg); border:1px solid var(--line);
+             border-radius:8px; padding:8px 10px; font:inherit; resize:vertical; }
+  .warn { color:var(--reject); font-size:12px; margin:8px 0; }
+  .nav { display:flex; justify-content:space-between; align-items:center; margin-top:16px; color:var(--muted); }
+  kbd { font:11px monospace; background:#242a36; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:4px; padding:1px 5px; }
+  .legend { color:var(--muted); font-size:12px; margin-top:18px; line-height:1.9; }
+  .empty { color:var(--muted); padding:40px 0; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Poison audit — #6</h1>
+  <div class="sub">B = accept (gold) · C = reject (poison)</div>
+  <div id="overall" class="sub"></div>
+  <h2>Contrasts</h2>
+  <div id="contrasts"></div>
+  <div class="legend">
+    <div><kbd>A</kbd> accept · <kbd>R</kbd> reject</div>
+    <div><kbd>U</kbd> unmark · <kbd>←</kbd>/<kbd>→</kbd> prev/next</div>
+    <div><kbd>Space</kbd> replay audio</div>
+  </div>
+</aside>
+<main>
+  <div id="card-wrap"></div>
+</main>
+
+<script>
+const state = { items: [], stats: [], order: [], filter: null, idx: 0 };
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  return res.json();
+}
+
+function visibleItems() {
+  return state.filter ? state.items.filter(i => i.contrast === state.filter) : state.items;
+}
+
+function fmtRatio(r) { return r == null ? "—" : r.toFixed(3); }
+
+function renderSidebar() {
+  const done = state.items.filter(i => i.verdict).length;
+  document.getElementById("overall").textContent =
+    `${done} / ${state.items.length} rows labelled`;
+
+  const box = document.getElementById("contrasts");
+  box.innerHTML = "";
+  const byContrast = Object.fromEntries(state.stats.map(s => [s.contrast, s]));
+  const all = { contrast: "(all)", total: state.items.length, labelled: done, poison_rate: null };
+  [all, ...state.order.map(c => byContrast[c]).filter(Boolean)].forEach(s => {
+    const isAll = s.contrast === "(all)";
+    const entry = document.createElement("div");
+    const row = document.createElement("div");
+    row.className = "contrast-row" +
+      (((isAll && !state.filter) || state.filter === s.contrast) ? " active" : "") +
+      (!isAll && s.total && s.labelled === s.total ? " done" : "");
+    const pr = s.poison_rate;
+    row.innerHTML = `
+      <span class="name arabic">${s.contrast}</span>
+      <span class="pill">${s.labelled}/${s.total}${
+        pr != null ? ` · <span class="poison ${pr > 0.15 ? "hot" : ""}">${(pr*100).toFixed(0)}%C</span>` : ""
+      }</span>`;
+    const barPct = s.total ? (s.labelled / s.total * 100) : 0;
+    const bar = document.createElement("div"); bar.className = "bar";
+    bar.innerHTML = `<i style="width:${barPct}%"></i>`;
+    entry.appendChild(row);
+    entry.appendChild(bar);
+    entry.style.marginBottom = "4px";
+    entry.onclick = () => { state.filter = isAll ? null : s.contrast; state.idx = 0; render(); };
+    box.appendChild(entry);
+  });
+}
+
+function renderCard() {
+  const wrap = document.getElementById("card-wrap");
+  const items = visibleItems();
+  if (!items.length) { wrap.innerHTML = `<div class="empty">No rows in this bucket.</div>`; return; }
+  if (state.idx >= items.length) state.idx = items.length - 1;
+  const it = items[state.idx];
+
+  const cls = it.verdict === "accept" ? "accepted" : it.verdict === "reject" ? "rejected" : "";
+  wrap.innerHTML = `
+    <div class="card ${cls}">
+      <div class="head">
+        <span class="big arabic">${it.contrast}</span>
+        <span class="ref">${it.surah_ayah || "?:?"}</span>
+        <span class="tag ${it.contrast === "marginal" ? "marginal" : ""}">match ${fmtRatio(it.match_ratio)}</span>
+        <span class="tag">row ${state.idx + 1} / ${items.length}</span>
+      </div>
+      <div class="sub">${it.clip_id}</div>
+      ${it.audio_available
+        ? `<audio id="au" controls autoplay src="${it.audio_url}"></audio>`
+        : `<div class="warn">⚠ audio not exported for this clip — re-run the sampler with --audio-dir.</div>`}
+      <div class="btns">
+        <button class="accept ${it.verdict==="accept"?"on-accept":""}" onclick="label('accept')">B · Accept (gold)</button>
+        <button class="reject ${it.verdict==="reject"?"on-reject":""}" onclick="label('reject')">C · Reject (poison)</button>
+        <button class="ghost" onclick="label(null)">Unmark</button>
+      </div>
+      <textarea id="note" placeholder="Optional note (why B/C, what you heard)…">${it.note || ""}</textarea>
+      <div class="nav">
+        <button class="ghost" onclick="go(-1)">← Prev</button>
+        <span>${it.verdict ? it.verdict.toUpperCase() : "unlabelled"}</span>
+        <button class="ghost" onclick="go(1)">Next →</button>
+      </div>
+    </div>`;
+}
+
+function render() { renderSidebar(); renderCard(); }
+
+function go(delta) {
+  const n = visibleItems().length;
+  if (!n) return;
+  state.idx = Math.min(Math.max(state.idx + delta, 0), n - 1);
+  render();
+}
+
+async function label(verdict) {
+  const items = visibleItems();
+  if (!items.length) return;
+  const it = items[state.idx];
+  const note = document.getElementById("note") ? document.getElementById("note").value : "";
+  const res = await api("/api/label", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clip_id: it.clip_id, contrast: it.contrast, verdict, note }),
+  });
+  if (res.error) { alert(res.error); return; }
+  it.verdict = verdict; it.note = verdict ? note : "";
+  state.stats = res.stats;
+  if (verdict) { renderSidebar(); go(1); } else { render(); }
+}
+
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "TEXTAREA") return;
+  const k = e.key.toLowerCase();
+  if (k === "a") { label("accept"); e.preventDefault(); }
+  else if (k === "r") { label("reject"); e.preventDefault(); }
+  else if (k === "u") { label(null); e.preventDefault(); }
+  else if (e.key === "ArrowRight") { go(1); }
+  else if (e.key === "ArrowLeft") { go(-1); }
+  else if (e.key === " ") { const a = document.getElementById("au"); if (a) { a.currentTime = 0; a.play(); e.preventDefault(); } }
+});
+
+(async function init() {
+  const s = await api("/api/state");
+  state.items = s.items; state.stats = s.stats; state.order = s.contrast_order;
+  render();
+})();
+</script>
+</body>
+</html>

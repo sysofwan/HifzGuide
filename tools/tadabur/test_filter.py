@@ -64,7 +64,41 @@ def test_parse_clip_extracts_metadata():
             "reciter_id": 88,
         }
     )
-    assert clip == Clip("f.wav", "3:82", 88, b"xyz")
+    # surah_id is 0-indexed in Tadabur; canonical surah is surah_id + 1.
+    assert clip == Clip("f.wav", "4:82", 88, b"xyz")
+
+
+def test_canonical_surah_ayah_shifts_zero_indexed_surah():
+    # Tadabur labels Al-Naba (78th surah, ayah 30) as surah_id=77; the reference
+    # cache is canonical 1-indexed, so the surah must shift by one, ayah stays.
+    assert filter_mod.canonical_surah_ayah(77, 30) == "78:30"
+    assert filter_mod.canonical_surah_ayah(0, 1) == "1:1"
+    assert filter_mod.canonical_surah_ayah(113, 6) == "114:6"
+
+
+def test_parse_clip_falls_back_to_audio_path():
+    # The fast ``preview`` config has no top-level audio_filename; the basename
+    # comes from audio.path instead.
+    clip = parse_clip(
+        {
+            "audio": {"bytes": b"xyz", "path": "tadabur_spk0106_S77_A30_x_000016.wav"},
+            "surah_id": 77,
+            "ayah_id": 30,
+            "reciter_id": 106,
+        }
+    )
+    assert clip == Clip("tadabur_spk0106_S77_A30_x_000016.wav", "78:30", 106, b"xyz")
+
+
+def test_resolve_audio_filename_prefers_top_level_then_path_then_fails():
+    assert filter_mod.resolve_audio_filename(
+        {"audio_filename": "top.wav", "audio": {"path": "other.wav"}}
+    ) == "top.wav"
+    assert filter_mod.resolve_audio_filename(
+        {"audio": {"path": "/nested/dir/only.wav"}}
+    ) == "only.wav"
+    with pytest.raises(ValueError):
+        filter_mod.resolve_audio_filename({"audio": {"bytes": b"x"}})
 
 
 @pytest.mark.parametrize("missing", ["audio_filename", "surah_id", "ayah_id", "reciter_id"])
@@ -126,6 +160,18 @@ def test_score_batch_fails_loudly_on_missing_reference():
     clips = [Clip("x.wav", "999:1", 88, _wav_bytes(TARGET_SAMPLE_RATE))]
     with pytest.raises(ValueError, match="No cached reference"):
         score_batch(clips, _FakeModel(["بتثج"]), REFERENCES, BALANCED_SCORER)
+
+
+def test_score_batch_skips_unknown_refs_when_opted_in():
+    # A non-canonical clip (e.g. preview's 1:77) is skipped, not fatal; the
+    # canonical clip in the same batch still scores.
+    clips = [
+        Clip("bad.wav", "1:77", 88, _wav_bytes(TARGET_SAMPLE_RATE)),
+        _clip("good.wav", TARGET_SAMPLE_RATE),
+    ]
+    model = _FakeModel(["محك", "بتثج"])  # bad ref (skipped), then a clean match
+    records = score_batch(clips, model, REFERENCES, BALANCED_SCORER, skip_unknown_refs=True)
+    assert [r.audio_filename for r in records] == ["good.wav"]
 
 
 def test_run_filter_is_resumable(tmp_path, monkeypatch):

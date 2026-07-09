@@ -188,7 +188,7 @@ def export_audio(
     """
     from datasets import Audio, load_dataset
 
-    from .filter import AUDIO_COLUMN
+    from .filter import AUDIO_COLUMN, resolve_audio_filename
 
     wanted = {item.audio_ref: item.local_audio_path for item in items}
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -197,7 +197,7 @@ def export_audio(
 
     exported: dict[str, str] = {}
     for row in dataset:
-        name = row.get("audio_filename")
+        name = resolve_audio_filename(row)
         if name in wanted and name not in exported:
             (out_dir / wanted[name]).write_bytes(row[AUDIO_COLUMN]["bytes"])
             exported[name] = wanted[name]

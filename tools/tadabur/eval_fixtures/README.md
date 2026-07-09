@@ -15,6 +15,28 @@ here without going through the audit. Load them via
 `tadabur.eval_fixtures.load_should_accept()` / `load_should_reject()`, which
 validate every line against the schema below.
 
+## Labelling workflow (the audit UI)
+
+The audit is done in a small local web UI — no framework, stdlib only — that plays
+each admitted clip and records one **B (accept)** / **C (reject)** verdict per
+worklist row, writing straight into the two files above:
+
+```bash
+# 1. Sample the per-contrast worklist and export the clips' audio (see audit_sampler).
+python -m tadabur.audit_sampler --manifest passing_subset.jsonl \
+  --worklist audit_worklist.jsonl --seed 0 --audio-dir audit_audio/
+
+# 2. Label in the browser (writes should_accept.jsonl / should_reject.jsonl here).
+python -m tadabur.audit_ui --worklist audit_worklist.jsonl \
+  --manifest passing_subset.jsonl --audio-dir audit_audio/
+# → open http://127.0.0.1:8000  (A = accept, R = reject, ←/→ navigate)
+```
+
+The UI persists after every verdict and resumes from whatever these files already
+hold, so the audit can be paused and continued. It shows the **poison rate**
+(`reject / labelled`) per contrast live — the direct input to the #6 go/no-go gate.
+`accept` labels become the should-accept set, `reject` labels the should-reject set.
+
 ## Schema
 
 One JSON object per line (JSONL). Blank lines and lines starting with `#` are

@@ -27,6 +27,11 @@ Agent skills live in `.github/skills/`. Each has a `SKILL.md` (and optional refe
 - **`hifzguide-asset-release`** — publish a new GitHub asset release (`quran.db`, models, fonts,
   `manifest.json`) with correct checksums.
 
+### Tooling
+
+- **`launch-audit-ui`** — serve the Tadabur poison-audit web UI (`tadabur.audit_ui`) so it is
+  reachable from other machines on the LAN (`--host 0.0.0.0`, fully detached).
+
 ## Conventions
 
 ### Domain language

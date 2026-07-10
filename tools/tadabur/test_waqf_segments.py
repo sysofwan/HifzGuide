@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
+import numpy as np
 import pytest
 
 import tadabur.waqf_segments as ws
@@ -13,7 +14,9 @@ from tadabur.waqf_segments import (
     SegmentRecord,
     WordAlignment,
     build_clip_segments,
+    clip_speech_rms,
     hafs_phonetizer,
+    is_silent_gap,
     parse_word_alignments,
     read_segment_manifest,
     shadda_contrast_report,
@@ -90,6 +93,83 @@ def test_multiple_pauses_make_multiple_segments():
 
 def test_empty_alignments_yield_no_segments():
     assert split_at_pauses([], 0.25) == []
+
+
+# --- acoustic silence gate (madd vs waqf) -----------------------------------
+
+
+def _tone(sample_rate: int, seconds: float, amplitude: float) -> np.ndarray:
+    """A voiced-like sine burst; ``amplitude`` scales its loudness (0 = silence)."""
+    t = np.arange(int(seconds * sample_rate)) / sample_rate
+    return (amplitude * np.sin(2 * np.pi * 220.0 * t)).astype(np.float32)
+
+
+def test_is_silent_gap_true_for_silence():
+    sr = 16000
+    waveform = np.concatenate([_tone(sr, 0.5, 0.5), np.zeros(int(0.4 * sr), np.float32),
+                               _tone(sr, 0.5, 0.5)])
+    clip_rms = clip_speech_rms(waveform)
+    # The [0.5, 0.9) window is silent → a real stop.
+    assert is_silent_gap(waveform, sr, 0.5, 0.9, clip_rms, 0.15) is True
+
+
+def test_is_silent_gap_false_for_voiced_madd():
+    sr = 16000
+    # The "gap" is a held tone (a madd), not silence, at the same amplitude as speech.
+    waveform = np.concatenate([_tone(sr, 0.5, 0.5), _tone(sr, 0.4, 0.5),
+                               _tone(sr, 0.5, 0.5)])
+    clip_rms = clip_speech_rms(waveform)
+    assert is_silent_gap(waveform, sr, 0.5, 0.9, clip_rms, 0.15) is False
+
+
+def test_is_silent_gap_false_for_zero_width_window():
+    sr = 16000
+    waveform = _tone(sr, 1.0, 0.5)
+    assert is_silent_gap(waveform, sr, 0.5, 0.5, clip_speech_rms(waveform), 0.15) is False
+
+
+def test_acoustic_gate_keeps_madd_in_one_segment():
+    # Two words with a >0.25 s timestamp gap that is actually a sustained madd:
+    # the audio confirmation must NOT split them (one wasl segment).
+    sr = 16000
+    phonetize = hafs_phonetizer()
+    words = ["عَنِ", "ٱلنَّبَإِ", "ٱلْعَظِيمِ"]
+    alignments = [
+        _align("عَنِ", 0.0, 1.0),
+        _align("ٱلنَّبَإِ", 1.1, 2.0),
+        _align("ٱلْعَظِيمِ", 2.5, 3.5),  # 0.5 s timestamp gap before the last word
+    ]
+    voiced = _tone(sr, 4.0, 0.5)  # continuous voicing across the whole clip
+    record = _passing("clip.wav", "78:2")
+
+    segments = build_clip_segments(
+        record, alignments, words, phonetize, 0.25, waveform=voiced, sample_rate=sr
+    )
+    assert len(segments) == 1
+    assert segments[0].realized_reference_phonemes == phonetize(" ".join(words))
+
+
+def test_acoustic_gate_splits_on_true_silence():
+    # Same timestamps, but the gap [2.0, 2.5) is silent → a real waqf, so it splits.
+    sr = 16000
+    phonetize = hafs_phonetizer()
+    words = ["عَنِ", "ٱلنَّبَإِ", "ٱلْعَظِيمِ"]
+    alignments = [
+        _align("عَنِ", 0.0, 1.0),
+        _align("ٱلنَّبَإِ", 1.1, 2.0),
+        _align("ٱلْعَظِيمِ", 2.5, 3.5),
+    ]
+    waveform = np.concatenate([
+        _tone(sr, 2.0, 0.5),               # [0.0, 2.0) recitation
+        np.zeros(int(0.5 * sr), np.float32),  # [2.0, 2.5) silent stop
+        _tone(sr, 1.0, 0.5),               # [2.5, 3.5) recitation
+    ])
+    record = _passing("clip.wav", "78:2")
+
+    segments = build_clip_segments(
+        record, alignments, words, phonetize, 0.25, waveform=waveform, sample_rate=sr
+    )
+    assert [(s.word_start, s.word_end) for s in segments] == [(0, 2), (2, 3)]
 
 
 # --- realized reference (waqf vs wasl, real phonetizer) ---------------------
@@ -254,6 +334,7 @@ def test_found_clips_are_not_reported_missing(tmp_path, monkeypatch):
     }
     monkeypatch.setattr(ws, "_stream_passing_rows", lambda *a, **k: iter([(row, record)]))
     monkeypatch.setattr(ws, "_uthmani_words", lambda surah_ayah: ["عَنِ"])
+    monkeypatch.setattr(ws, "decode_to_mono_16k", lambda b: np.zeros(16000, dtype=np.float32))
     monkeypatch.setattr(ws, "_save_local_clip", lambda *a, **k: None)
 
     records, skips = ws.build_segments([record], lambda text: "X", audio_dir=tmp_path)

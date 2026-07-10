@@ -13,11 +13,16 @@ upstream Muaalem does — by making each training example's label match what was
 It needs no model and no GPU. Tadabur already ships a forced alignment per clip
 (``metadata.word_alignments``: per-word ``start``/``end``). An intra-ayah **waqf
 pause** shows up as an inter-word *gap* — ``word[i+1].start - word[i].end`` above a
-threshold — while continuous recitation shows overlapping/near-zero gaps. We split
-each clip's words at those pauses into contiguous **waqf segments** and phonetize
-each segment's Uthmani text on its own: ``quran_phonetizer``'s CleanEnd op puts the
-segment's terminal word in **waqf** form and leaves the interior words in **wasl**,
-which is exactly the realized reference.
+threshold — while continuous recitation shows overlapping/near-zero gaps. A gap in
+the timestamps is only a *candidate*, though: a **madd** (elongation, especially
+madd munfasil before a hamza) is sustained voicing the forced aligner leaves outside
+its word bounds, so it looks identical to a stop in the timestamps alone. We
+therefore confirm each candidate against the audio — a true waqf is (near-)silent, a
+madd is voiced — and split only where the gap window is actually silent
+(:func:`is_silent_gap`). Each confirmed segment's Uthmani text is phonetized on its
+own: ``quran_phonetizer``'s CleanEnd op puts the segment's terminal word in **waqf**
+form and leaves the interior words in **wasl**, which is exactly the realized
+reference.
 
 The output is an **offsets manifest** (:class:`SegmentRecord` JSONL), not new audio:
 each segment is a lightweight ``(start_s, end_s)`` view into the whole clip, sliced
@@ -34,7 +39,7 @@ handle (leen madd on a final sukoon — see ``generate_phonemes.FALLBACK_PHONEME
 Usage:
   python -m tadabur.waqf_segments --passing passing_subset.jsonl \
       --out segments.jsonl --audio-dir clips/ [--config-name preview] \
-      [--pause-threshold 0.25] [--limit N]
+      [--pause-threshold 0.25] [--silence-ratio 0.15] [--limit N]
 """
 
 from __future__ import annotations
@@ -48,6 +53,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+import numpy as np
 import soundfile as sf
 from datasets import Audio, load_dataset
 
@@ -68,6 +74,18 @@ from .reference_phonemes import load_reference_phonemes
 # pauses form a clear tail beyond ~0.15 s. 0.25 s sits in the stable middle of the
 # 0.15–0.30 s band, so it catches real stops without splitting on alignment slack.
 DEFAULT_PAUSE_THRESHOLD_S = 0.25
+
+# Fraction of the clip's overall speech RMS below which a gap window counts as
+# *silence* rather than sound. A timestamp gap is a necessary but not sufficient
+# sign of a waqf: a **madd** (elongation — esp. madd munfasil before a hamza) is
+# *sustained voicing* that the forced aligner leaves outside its word bounds, so it
+# looks identical to a stop in the timestamps alone. A true waqf is a breath/stop —
+# near-silent — while a madd fills the gap with energy. Measured over the audited
+# run, gap-window RMS is bimodal: genuine stops sit near 0.03–0.10× the clip RMS,
+# elongations near 0.5–1.0×; 0.15 sits in the empty band between them. Without this
+# gate ~84% of timestamp-only splits were madds/alignment slack wrongly cut into
+# waqf form.
+DEFAULT_SILENCE_RATIO = 0.15
 
 # A callable that turns Uthmani text into its phoneme string (a seam so the pure
 # segmentation logic is testable without quran-transcript).
@@ -124,8 +142,45 @@ def parse_word_alignments(metadata_json: str) -> list[WordAlignment]:
     ]
 
 
+def clip_speech_rms(waveform: np.ndarray) -> float:
+    """Root-mean-square amplitude of a whole clip — its reference speech loudness.
+
+    Used to normalize the silence test so it is robust to per-clip recording gain:
+    a gap is judged silent relative to how loud *this* clip's recitation is, not an
+    absolute floor. Returns a small positive epsilon for an all-zero clip so callers
+    can divide by it safely.
+    """
+    return float(np.sqrt(np.mean(np.square(waveform)))) or 1e-9
+
+
+def is_silent_gap(
+    waveform: np.ndarray,
+    sample_rate: int,
+    gap_start_s: float,
+    gap_end_s: float,
+    clip_rms: float,
+    silence_ratio: float,
+) -> bool:
+    """Whether the audio in ``[gap_start_s, gap_end_s)`` is silence, not sustained sound.
+
+    A true waqf pause is (near-)silent; a **madd** the aligner left between two words
+    is voiced. Confirms a candidate split only when the gap window's RMS is below
+    ``silence_ratio`` of the clip's overall speech RMS (:func:`clip_speech_rms`). A
+    zero-width or out-of-range window is treated as *not* silent — there is no
+    measurable pause to justify a waqf, so the words stay in one wasl segment.
+    """
+    start = max(0, int(gap_start_s * sample_rate))
+    end = min(len(waveform), int(gap_end_s * sample_rate))
+    if end <= start:
+        return False
+    gap_rms = float(np.sqrt(np.mean(np.square(waveform[start:end]))))
+    return gap_rms < silence_ratio * clip_rms
+
+
 def split_at_pauses(
-    alignments: list[WordAlignment], pause_threshold_s: float
+    alignments: list[WordAlignment],
+    pause_threshold_s: float,
+    confirm_pause: Callable[[WordAlignment, WordAlignment], bool] | None = None,
 ) -> list[tuple[int, int]]:
     """Split words into contiguous ``[start, end)`` ranges at waqf pauses.
 
@@ -133,13 +188,21 @@ def split_at_pauses(
     ``alignments[i+1].start_s - alignments[i].end_s`` is at least
     ``pause_threshold_s``. Continuous (wasl) recitation, whose words overlap or
     abut, yields a single range spanning the whole clip.
+
+    The timestamp gap is only a *candidate*: a madd elongation looks identical to a
+    stop in the timestamps. When ``confirm_pause`` is given it must also return
+    ``True`` for the boundary to split (see :func:`is_silent_gap`), so an elongation
+    the aligner left between words does not get cut into a spurious waqf. With no
+    ``confirm_pause`` the split is timestamp-only (the pure, audio-free behaviour).
     """
     if not alignments:
         return []
     boundaries = [0]
     for i in range(len(alignments) - 1):
         gap = alignments[i + 1].start_s - alignments[i].end_s
-        if gap >= pause_threshold_s:
+        if gap >= pause_threshold_s and (
+            confirm_pause is None or confirm_pause(alignments[i], alignments[i + 1])
+        ):
             boundaries.append(i + 1)
     boundaries.append(len(alignments))
     return list(zip(boundaries, boundaries[1:]))
@@ -151,6 +214,9 @@ def build_clip_segments(
     uthmani_words: list[str],
     phonetize: Phonetizer,
     pause_threshold_s: float,
+    waveform: np.ndarray | None = None,
+    sample_rate: int = TARGET_SAMPLE_RATE,
+    silence_ratio: float = DEFAULT_SILENCE_RATIO,
 ) -> list[SegmentRecord]:
     """Build the waqf-segment records for one passing clip.
 
@@ -160,11 +226,21 @@ def build_clip_segments(
     alignment) and its Uthmani text (for the realized reference). Each segment's
     reference is ``phonetize`` over its space-joined Uthmani words, which lands the
     terminal word in waqf form and the interior words in wasl.
+
+    When ``waveform`` is given, each candidate timestamp pause is confirmed against
+    the audio (:func:`is_silent_gap`) so a madd elongation the aligner left between
+    two words is not cut into a spurious waqf. Without it the split is timestamp-only.
     """
     assert len(alignments) == len(uthmani_words)
+    confirm_pause = None
+    if waveform is not None:
+        clip_rms = clip_speech_rms(waveform)
+        confirm_pause = lambda prev, nxt: is_silent_gap(  # noqa: E731
+            waveform, sample_rate, prev.end_s, nxt.start_s, clip_rms, silence_ratio
+        )
     records: list[SegmentRecord] = []
     for index, (start, end) in enumerate(
-        split_at_pauses(alignments, pause_threshold_s)
+        split_at_pauses(alignments, pause_threshold_s, confirm_pause)
     ):
         reference = phonetize(" ".join(uthmani_words[start:end]))
         records.append(
@@ -235,9 +311,8 @@ def _uthmani_words(surah_ayah: str) -> list[str]:
     return list(Aya(surah, ayah).get().uthmani_words)
 
 
-def _save_local_clip(audio_dir: Path, audio_filename: str, audio_bytes: bytes) -> None:
-    """Resample a streamed clip to 16 kHz mono and write it under ``audio_dir``."""
-    waveform = decode_to_mono_16k(audio_bytes)
+def _save_local_clip(audio_dir: Path, audio_filename: str, waveform: np.ndarray) -> None:
+    """Write an already-decoded 16 kHz mono clip under ``audio_dir`` as PCM_16 WAV."""
     sf.write(
         audio_dir / audio_filename, waveform, TARGET_SAMPLE_RATE, subtype="PCM_16"
     )
@@ -307,15 +382,18 @@ def build_segments(
     split: str = "train",
     limit: int | None = None,
     pause_threshold_s: float = DEFAULT_PAUSE_THRESHOLD_S,
+    silence_ratio: float = DEFAULT_SILENCE_RATIO,
 ) -> tuple[list[SegmentRecord], Counter]:
     """Stream the passing subset, save local audio, and build segment records.
 
     For each passing clip found in the stream, saves its whole 16 kHz-mono waveform
-    under ``audio_dir`` and splits it into waqf segments. Clips whose alignment word
-    count disagrees with their Uthmani word count, or that hit the phonetizer's
-    8-ayah gap, are skipped and tallied (returned :class:`~collections.Counter`)
-    rather than silently mislabeled. Returns the collected records and the skip
-    tally.
+    under ``audio_dir`` and splits it into waqf segments. Each candidate waqf pause
+    is confirmed against the saved audio (``silence_ratio``), so a madd elongation
+    the aligner left between two words is not mistaken for a stop. Clips whose
+    alignment word count disagrees with their Uthmani word count, or that hit the
+    phonetizer's 8-ayah gap, are skipped and tallied (returned
+    :class:`~collections.Counter`) rather than silently mislabeled. Returns the
+    collected records and the skip tally.
 
     Every passing clip must be located in the stream: a full build (``limit`` is
     ``None``) that cannot find one raises rather than emit a partial label source
@@ -338,9 +416,11 @@ def build_segments(
         if len(alignments) != len(uthmani_words):
             skips["word_count_mismatch"] += 1
             continue
+        waveform = decode_to_mono_16k(row[AUDIO_COLUMN]["bytes"])
         try:
             clip_records = build_clip_segments(
-                record, alignments, uthmani_words, phonetize, pause_threshold_s
+                record, alignments, uthmani_words, phonetize, pause_threshold_s,
+                waveform=waveform, silence_ratio=silence_ratio,
             )
         except KeyError:
             # quran_phonetizer raises KeyError on the 8 leen-madd-on-sukoon ayat
@@ -348,7 +428,7 @@ def build_segments(
             # per segment, so skip the clip rather than emit a bad reference.
             skips["phonetizer_unsupported"] += 1
             continue
-        _save_local_clip(audio_dir, record.audio_filename, row[AUDIO_COLUMN]["bytes"])
+        _save_local_clip(audio_dir, record.audio_filename, waveform)
         records.extend(clip_records)
 
     missing = set(passing) - found
@@ -448,7 +528,16 @@ def main() -> None:
         "--pause-threshold",
         type=float,
         default=DEFAULT_PAUSE_THRESHOLD_S,
-        help=f"Inter-word gap (s) that marks a waqf pause (default: {DEFAULT_PAUSE_THRESHOLD_S}).",
+        help=f"Inter-word gap (s) that marks a candidate waqf pause (default: {DEFAULT_PAUSE_THRESHOLD_S}).",
+    )
+    parser.add_argument(
+        "--silence-ratio",
+        type=float,
+        default=DEFAULT_SILENCE_RATIO,
+        help=(
+            "Fraction of clip RMS below which a candidate gap counts as silence "
+            f"(a stop, not a madd) (default: {DEFAULT_SILENCE_RATIO})."
+        ),
     )
     parser.add_argument(
         "--limit",
@@ -470,6 +559,7 @@ def main() -> None:
         split=args.split,
         limit=args.limit,
         pause_threshold_s=args.pause_threshold,
+        silence_ratio=args.silence_ratio,
     )
     write_segment_manifest(args.out, records)
 

@@ -1,19 +1,20 @@
-"""Per-segment decode + score pass over waqf segments, for the P3.5 audit (#6).
+"""Model-driven waqf segmentation + per-segment scoring for the P3.5 audit (#6).
 
-The waqf stage (:mod:`tadabur.waqf_segments`) splits each admitted Tadabur clip
-into **waqf segments** — contiguous word ranges bounded by the reciter's intra-ayah
-pauses — and labels each with its *realized* reference (terminal word in waqf form,
-interior words in wasl). Those segments, not the whole ayah, are the units that go
-to the fine-tune (#8), so the human poison audit (#6) must grade *them*.
+Each admitted Tadabur clip is split into **waqf segments** — contiguous word ranges
+bounded by the reciter's intra-ayah pauses — and each is labelled with its *realized*
+reference (terminal word in waqf form, interior words in wasl). Those segments, not
+the whole ayah, are the units that go to the fine-tune (#8), so the human poison
+audit (#6) must grade *them*.
 
-But a :class:`~tadabur.waqf_segments.SegmentRecord` is a training label only: it
-carries the realized reference and an audio ``(start_s, end_s)`` offset, **not** a
-model decode, a ``match_ratio``, or the contrasts the audit samples on. This module
-supplies them. For each segment it slices the whole-clip 16 kHz waveform to the
-segment span, decodes it with the Muaalem phoneme head, and scores that decode
-against the segment's *realized* reference with the ported ``.balanced`` gate — the
-same normalization / Smith-Waterman / contrast attribution the full-ayah filter
-uses, only per segment.
+This module owns the model pass end to end. For each passing clip staged on local
+disk (by :mod:`tadabur.waqf_segments`) it: (1) decodes the *whole* clip once to
+per-frame phoneme ids and hands them to :func:`tadabur.waqf_detect.segment_clip`,
+which places the pauses the model itself heard on word boundaries (see
+:mod:`tadabur.waqf_detect` for why the shipped forced alignment misses them); then
+(2) for each resulting segment, slices the clip waveform to the segment span, decodes
+*that* span, and scores its decode against the segment's realized reference with the
+ported ``.balanced`` gate — the same normalization / Smith-Waterman / contrast
+attribution the full-ayah filter uses, only per segment.
 
 Unlike the filter it does **not** gate-reject: every segment of an admitted clip is
 already in the training set, so all segments are emitted. ``match_ratio`` and
@@ -34,15 +35,16 @@ separate HF export step is needed.
 
 Usage:
   python -m tadabur.segment_score \
-      --segments segments.jsonl --clips-dir clips/ \
+      --passing passing_subset.jsonl --clips-dir clips/ \
       --out-manifest segment_manifest.jsonl --audio-out segment_audio/ \
-      [--batch-size 16]
+      [--min-pause 0.35] [--boundary-tol 3] [--batch-size 16]
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
 
@@ -52,13 +54,16 @@ import soundfile as sf
 from .audio import TARGET_SAMPLE_RATE
 from .audit_sampler import local_audio_path
 from .contrast_attribution import all_contrasts
-from .manifest import ManifestRecord
+from .manifest import ManifestRecord, read_records
 from .normalization import normalize_phonemes
 from .scorer import BALANCED_SCORER
+from . import waqf_detect
+from .waqf_detect import WaqfSpan
 from .waqf_segments import (
     SegmentRecord,
     _uthmani_words,
-    read_segment_manifest,
+    hafs_phonetizer,
+    hafs_word_reference,
 )
 
 DEFAULT_BATCH_SIZE = 16
@@ -107,6 +112,99 @@ def _uthmani_segment_text(surah_ayah: str, word_start: int, word_end: int) -> st
     """The space-joined Uthmani words a segment covers (for the UI display)."""
     words = _uthmani_words(surah_ayah)
     return " ".join(words[word_start:word_end])
+
+
+def _records_for_spans(
+    passing_record: ManifestRecord,
+    uthmani_words: list[str],
+    spans: tuple[WaqfSpan, ...],
+    phonetize,
+) -> list[SegmentRecord]:
+    """Turn a clip's waqf spans into realized-reference :class:`SegmentRecord`s.
+
+    Each span's realized reference is ``phonetize`` over its space-joined Uthmani
+    words — terminal word in waqf form, interior words in wasl. May raise
+    ``KeyError`` on the 8 leen-madd-on-sukoon ayat the phonetizer cannot handle
+    (``generate_phonemes.FALLBACK_PHONEMES``); the caller skips such a clip.
+    """
+    return [
+        SegmentRecord(
+            audio_filename=passing_record.audio_filename,
+            surah_ayah=passing_record.surah_ayah,
+            reciter_id=passing_record.reciter_id,
+            segment_index=index,
+            word_start=span.word_start,
+            word_end=span.word_end,
+            start_s=span.start_s,
+            end_s=span.end_s,
+            realized_reference_phonemes=phonetize(
+                " ".join(uthmani_words[span.word_start : span.word_end])
+            ),
+        )
+        for index, span in enumerate(spans)
+    ]
+
+
+def segment_clips(
+    passing_records: list[ManifestRecord],
+    clips_dir: Path,
+    model,
+    phonetize,
+    word_reference,
+    *,
+    min_pause_s: float = waqf_detect.DEFAULT_MIN_PAUSE_S,
+    boundary_tol: int = waqf_detect.DEFAULT_BOUNDARY_TOL,
+    max_decode_ratio: float = waqf_detect.DEFAULT_MAX_DECODE_RATIO,
+    min_align_ratio: float = waqf_detect.DEFAULT_MIN_ALIGN_RATIO,
+) -> tuple[list[SegmentRecord], Counter]:
+    """Split every passing clip at the waqf pauses the *model* hears.
+
+    For each passing clip staged under ``clips_dir`` (see ``tadabur.waqf_segments``),
+    decodes the whole clip **one at a time** (a batched decode of full clips OOMs —
+    attention is quadratic in length) to per-frame phoneme ids, phonetizes the ayah
+    once via ``word_reference`` into its spaceless phoneme reference + per-word
+    boundaries, and passes those to :func:`tadabur.waqf_detect.segment_clip` to place
+    the reciter's intra-ayah pauses on word boundaries. Each resulting word range
+    becomes a :class:`~tadabur.waqf_segments.SegmentRecord` with its realized reference.
+
+    A clip :func:`~tadabur.waqf_detect.segment_clip` cannot segment safely
+    (``repeated_recitation`` / ``low_alignment``) is tallied and kept whole — one
+    segment spanning the ayah — rather than dropped, so it still reaches the audit. A
+    clip whose reference cannot be phonetized (the 8-ayah leen-madd gap) is skipped and
+    tallied (``phonetizer_unsupported``); a passing clip missing from ``clips_dir`` is
+    tallied ``clip_missing``. Returns the records and the skip tally.
+    """
+    ordered = sorted(passing_records, key=lambda r: r.audio_filename)
+    records: list[SegmentRecord] = []
+    skips: Counter = Counter()
+    for passing in ordered:
+        if not (clips_dir / passing.audio_filename).exists():
+            skips["clip_missing"] += 1
+            continue
+        waveform = _load_clip(clips_dir, passing.audio_filename)
+        duration_s = len(waveform) / TARGET_SAMPLE_RATE
+        class_ids = list(model.decode(waveform, TARGET_SAMPLE_RATE).class_ids)
+        uthmani_words = _uthmani_words(passing.surah_ayah)
+        try:
+            reference, boundaries = word_reference(uthmani_words)
+            result = waqf_detect.segment_clip(
+                class_ids, duration_s, reference, boundaries,
+                min_pause_s=min_pause_s, boundary_tol=boundary_tol,
+                max_decode_ratio=max_decode_ratio, min_align_ratio=min_align_ratio,
+            )
+            if result.skip is not None:
+                skips[result.skip] += 1
+                spans = (WaqfSpan(0, len(uthmani_words), 0.0, duration_s),)
+            else:
+                spans = result.spans
+            clip_records = _records_for_spans(
+                passing, uthmani_words, spans, phonetize
+            )
+        except (KeyError, IndexError):
+            skips["phonetizer_unsupported"] += 1
+            continue
+        records.extend(clip_records)
+    return records, skips
 
 
 def _decode_all(
@@ -211,12 +309,12 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "--segments", type=Path, required=True,
-        help="Waqf offsets manifest from tadabur.waqf_segments (JSONL).",
+        "--passing", type=Path, required=True,
+        help="Passing-subset manifest from tadabur.filter (JSONL).",
     )
     parser.add_argument(
         "--clips-dir", type=Path, required=True,
-        help="Directory of whole 16 kHz mono clip WAVs (waqf_segments --audio-dir).",
+        help="Directory of whole 16 kHz mono clip WAVs (tadabur.waqf_segments --audio-dir).",
     )
     parser.add_argument(
         "--out-manifest", type=Path, required=True,
@@ -228,18 +326,43 @@ def main() -> None:
     )
     parser.add_argument(
         "--batch-size", type=int, default=DEFAULT_BATCH_SIZE,
-        help=f"Segments per decode batch (default: {DEFAULT_BATCH_SIZE}).",
+        help=f"Segments per scoring decode batch (default: {DEFAULT_BATCH_SIZE}).",
+    )
+    parser.add_argument(
+        "--min-pause", type=float, default=waqf_detect.DEFAULT_MIN_PAUSE_S,
+        help=(
+            "Blank-run length (s) the model must hear to mark a waqf "
+            f"(default: {waqf_detect.DEFAULT_MIN_PAUSE_S})."
+        ),
+    )
+    parser.add_argument(
+        "--boundary-tol", type=int, default=waqf_detect.DEFAULT_BOUNDARY_TOL,
+        help=(
+            "Max phonemes a pause may sit from a word edge to split there; farther "
+            f"is a mid-word stop (default: {waqf_detect.DEFAULT_BOUNDARY_TOL})."
+        ),
     )
     parser.add_argument(
         "--device", default="cuda", help="Torch device for the model (default: cuda).",
     )
     args = parser.parse_args()
 
-    segments = read_segment_manifest(args.segments)
+    passing = read_records(args.passing)
+    print(f"Loaded {len(passing)} passing clips from {args.passing}.")
 
     from .inference import MuaalemPhonemeModel
 
     model = MuaalemPhonemeModel.load(device=args.device)
+    segments, skips = segment_clips(
+        passing, args.clips_dir, model, hafs_phonetizer(), hafs_word_reference(),
+        min_pause_s=args.min_pause, boundary_tol=args.boundary_tol,
+    )
+    clips = len({s.audio_filename for s in segments})
+    print(
+        f"Segmented {clips} clips into {len(segments)} waqf segments. "
+        f"Skips/fallbacks: {dict(skips)}"
+    )
+
     rows = score_segments(segments, args.clips_dir, model, args.batch_size)
     write_segment_manifest(args.out_manifest, rows)
     stage_segment_audio(segments, args.clips_dir, args.audio_out)
@@ -247,9 +370,8 @@ def main() -> None:
     contrasted = sum(1 for r in rows if r["contrasts"])
     buckets = {c: sum(1 for r in rows if c in r["contrasts"]) for c in all_contrasts()}
     print(
-        f"Scored {len(rows)} segments from {len(segments)} waqf segments "
-        f"({contrasted} with contrasts). Wrote manifest to {args.out_manifest} and "
-        f"segment audio to {args.audio_out}."
+        f"Scored {len(rows)} segments ({contrasted} with contrasts). Wrote manifest "
+        f"to {args.out_manifest} and segment audio to {args.audio_out}."
     )
     print("Per-contrast segment counts: " + ", ".join(
         f"{c}={n}" for c, n in buckets.items() if n

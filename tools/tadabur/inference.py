@@ -40,6 +40,7 @@ class PhonemeDecode:
     phonemes: str
     num_feature_frames: int  # feature-extractor frames fed to the model
     num_logit_frames: int    # phoneme-head timesteps (feature frames // 2)
+    class_ids: tuple[int, ...] = ()  # per-frame argmax ids (blank == PHONEME_PAD_ID)
 
 
 class MuaalemPhonemeModel:
@@ -159,6 +160,7 @@ class MuaalemPhonemeModel:
                     phonemes=greedy_ctc_decode(ids),
                     num_feature_frames=int(feature_frames[i]),
                     num_logit_frames=valid_logit_frames,
+                    class_ids=tuple(ids),
                 )
             )
         return decodes

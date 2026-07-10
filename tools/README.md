@@ -72,36 +72,52 @@ skips them (rejected clips leave no manifest line but are still skipped), and a
 per-`audio_filename` seen-set keeps the manifest duplicate-free if the last in-flight
 batch is replayed after a crash.
 
-### `tadabur.waqf_segments` (Linux/macOS — no GPU)
+### `tadabur.waqf_segments` (Linux/macOS — no GPU) — clip staging
 
-Waqf-aware reference labelling (PRD #1, ADR-0002): turns the passing-subset manifest
-into an **offsets manifest** whose per-segment label matches what the reciter *actually*
-recited. It needs no model and no GPU — it reads Tadabur's shipped forced alignment
-(`metadata.word_alignments`), detects intra-ayah **waqf pauses** as inter-word gaps
-(`word[i+1].start - word[i].end ≥ --pause-threshold`, default `0.25 s`), splits each clip
-into contiguous **waqf segments**, and phonetizes each segment's Uthmani text on its own so
-`quran_phonetizer`'s CleanEnd lands the terminal word in **waqf** form and the interior words
-in **wasl**. Segments are lightweight `(start_s, end_s)` views — no per-segment audio and no
-derived HF dataset; whole passing clips are kept locally as 16 kHz mono WAV, and the full
-Tadabur source is streamed, never landed.
+Waqf-aware reference labelling (PRD #1, ADR-0002) splits each admitted clip at its intra-ayah
+**waqf pauses** and labels each segment in the form the reciter *actually* recited (terminal word
+in **waqf** form, interior words in **wasl**), removing phantom pre-waqf gemination mismatches from
+the fine-tune data. The work is split across two stages because pause detection needs the model
+(the shipped forced alignment *absorbs* pauses into word spans — see ADR-0002).
+
+`tadabur.waqf_segments` is the torch-free half: it **stages** each passing clip as a whole 16 kHz
+mono WAV on local disk (the full Tadabur source is streamed, never landed) and owns the shared
+realized-reference vocabulary (`SegmentRecord`, `hafs_phonetizer`, `hafs_word_reference`). No model,
+no GPU.
 
 ```bash
 cd tools
 python -m tadabur.waqf_segments --passing passing_subset.jsonl \
-    --out segments.jsonl --audio-dir clips/ --config-name preview
+    --audio-dir clips/ --config-name preview
 ```
 
-The output manifest is **deterministic and idempotent** (records sorted by
-`(audio_filename, segment_index)` and rewritten atomically). Clips whose alignment word count
-disagrees with their Uthmani word count (the vocative `يا` is a separate simple-text word but
-merged in Uthmani) or that hit the phonetizer's 8-ayah gap are **skipped and tallied**, never
-silently mislabeled. A full build that cannot locate a passing clip in the stream
-**fails loudly** (a partial label source is a data-integrity failure); a `--limit`
-smoke run instead tallies the unreached clips as `missing_due_to_limit`. After the
-build it prints a before/after report on the audit's shadda-contrast bucket — how
-many phantom pre-waqf gemination mismatches the realized labels remove. Feeds P4
-data-prep (#8): the manifest is the label source, the reciter split is
-computed over the post-segmentation units, and the collator slices audio by these offsets.
+A full build that cannot locate a passing clip in the stream **fails loudly** (a partial clip set
+is a data-integrity failure); a `--limit` smoke run instead tallies the unreached clips as
+`missing_due_to_limit`.
+
+### `tadabur.segment_score` (Linux — GPU) — model waqf pass + scoring
+
+Owns the model pass end to end. For each staged clip it decodes the **whole** clip once to per-
+frame phoneme ids and hands them to `tadabur.waqf_detect` — along with the ayah's per-word phoneme
+boundaries (`hafs_word_reference` derives these from the phonetizer's char `mappings`, robust to
+wasl word-merges) — which detects the pauses the model *heard* (runs of the CTC blank token) and
+maps each to a word boundary via Smith-Waterman, splitting at a word edge (waqf) but not mid-word (a
+stop-consonant closure). Each resulting segment is then decoded again and scored against its
+realized reference with the `.balanced` gate (same normalization / Smith-Waterman / contrast
+attribution as the full-ayah filter, per segment). Output is one scored segment manifest (carrying
+per-segment offsets — the P4 label source) plus each segment's sliced audio for the audit UI,
+feeding the audit sampler + UI.
+
+```bash
+python -m tadabur.segment_score --passing passing_subset.jsonl --clips-dir clips/ \
+    --out-manifest segment_manifest.jsonl --audio-out segment_audio/ \
+    [--min-pause 0.35] [--boundary-tol 3]
+```
+
+A clip that cannot be segmented safely (`repeated_recitation` / `low_alignment`) is kept whole (one
+whole-ayah segment) and tallied; the 8 phonetizer-gap ayat are skipped (`phonetizer_unsupported`).
+Feeds P4 data-prep (#8): the manifest is the label source, the reciter split is computed over the
+post-segmentation units, and the collator slices audio by these offsets.
 
 ### `convert_to_coreml.py`
 

@@ -1,56 +1,42 @@
-"""Waqf-aware segmentation of passing Tadabur clips into realized reference labels.
+"""Stage passing Tadabur clips locally, and the realized-reference label vocabulary.
 
 The Tadabur filter (``tadabur.filter``) admits a clip on a *single* full-ayah
 reference — one canonical guess at what was recited. But a reciter who **stops**
 (makes waqf) partway through an ayah realizes the words differently from one who
-recites it continuously (wasl): the word before the stop drops its final haraka
-and loses the cross-word gemination/idgham it would carry in continuation. Labelling
+recites it continuously (wasl): the word before the stop drops its final haraka and
+loses the cross-word gemination/idgham it would carry in continuation. Labelling
 every clip with the full-ayah wasl reference therefore injects *phantom* pre-waqf
-gemination mismatches into the fine-tune data. This module removes them the way
-upstream Muaalem does — by making each training example's label match what was
-*actually* recited.
+gemination mismatches into the fine-tune data. Splitting each clip at its intra-ayah
+pauses and phonetizing each segment on its own removes them — the segment's terminal
+word lands in waqf form (``quran_phonetizer``'s CleanEnd op) and the interior words
+in wasl, which is exactly the realized reference.
 
-It needs no model and no GPU. Tadabur already ships a forced alignment per clip
-(``metadata.word_alignments``: per-word ``start``/``end``). An intra-ayah **waqf
-pause** shows up as an inter-word *gap* — ``word[i+1].start - word[i].end`` above a
-threshold — while continuous recitation shows overlapping/near-zero gaps. A gap in
-the timestamps is only a *candidate*, though: a **madd** (elongation, especially
-madd munfasil before a hamza) is sustained voicing the forced aligner leaves outside
-its word bounds, so it looks identical to a stop in the timestamps alone. We
-therefore confirm each candidate against the audio — a true waqf is (near-)silent, a
-madd is voiced — and split only where the gap window is actually silent
-(:func:`is_silent_gap`). Each confirmed segment's Uthmani text is phonetized on its
-own: ``quran_phonetizer``'s CleanEnd op puts the segment's terminal word in **waqf**
-form and leaves the interior words in **wasl**, which is exactly the realized
-reference.
+*Where* those pauses are is decided by the model, not by timestamps: the forced
+alignment Tadabur ships absorbs waqf silence into adjacent word spans, so the
+inter-word gap is ~0 even at a real stop (see :mod:`tadabur.waqf_detect`). The
+segmentation + scoring therefore lives in :mod:`tadabur.segment_score`, which needs a
+GPU. This module is the torch-free half: it **stages** each passing clip as a whole
+16 kHz mono WAV on local disk (the full Tadabur source is streamed, never landed) so
+the model pass can decode it, and it owns the shared realized-reference label
+vocabulary — :class:`SegmentRecord`, :func:`hafs_phonetizer`, :func:`_uthmani_words`.
 
-The output is an **offsets manifest** (:class:`SegmentRecord` JSONL), not new audio:
-each segment is a lightweight ``(start_s, end_s)`` view into the whole clip, sliced
-at collate time by P4 (#8). Whole passing clips are kept locally as 16 kHz mono WAV;
-the full Tadabur source is streamed, never landed. The manifest is written by a
-deterministic full sort-then-rewrite, so re-running reproduces it byte-for-byte.
-
-Two per-clip data-quality cases are **skipped and tallied**, never silently
-mislabeled: a clip whose alignment word count differs from its Uthmani word count
-(the vocative ``يا`` is a separate simple-text word but merged in Uthmani, so the
-positional word map is unsafe), and one of the 8 ayat ``quran_phonetizer`` cannot
-handle (leen madd on a final sukoon — see ``generate_phonemes.FALLBACK_PHONEMES``).
+A full build must locate every passing clip in the stream: one it cannot find raises
+rather than stage a partial clip set (see :func:`_require_all_streamed`), while a
+``--limit`` smoke run — which may legitimately stop early — records the shortfall as
+the ``missing_due_to_limit`` tally instead.
 
 Usage:
   python -m tadabur.waqf_segments --passing passing_subset.jsonl \
-      --out segments.jsonl --audio-dir clips/ [--config-name preview] \
-      [--pause-threshold 0.25] [--silence-ratio 0.15] [--limit N]
+      --audio-dir clips/ [--config-name preview] [--limit N]
 """
 
 from __future__ import annotations
 
 import argparse
-import json
-import os
 import sys
 from collections import Counter
 from collections.abc import Callable, Iterator
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -66,39 +52,13 @@ import generate_phonemes  # noqa: E402  (tools/ sibling module)
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
 from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename
 from .manifest import ManifestRecord, read_records
-from .reference_phonemes import load_reference_phonemes
 
-# Inter-word gap (seconds) at or above which a boundary is a waqf pause. Validated
-# against 300 preview clips: inter-word gaps are overwhelmingly negative (words
-# overlap in continuous recitation; median ≈ -0.12 s, p95 ≈ 0.10 s), and genuine
-# pauses form a clear tail beyond ~0.15 s. 0.25 s sits in the stable middle of the
-# 0.15–0.30 s band, so it catches real stops without splitting on alignment slack.
-DEFAULT_PAUSE_THRESHOLD_S = 0.25
-
-# Fraction of the clip's overall speech RMS below which a gap window counts as
-# *silence* rather than sound. A timestamp gap is a necessary but not sufficient
-# sign of a waqf: a **madd** (elongation — esp. madd munfasil before a hamza) is
-# *sustained voicing* that the forced aligner leaves outside its word bounds, so it
-# looks identical to a stop in the timestamps alone. A true waqf is a breath/stop —
-# near-silent — while a madd fills the gap with energy. Measured over the audited
-# run, gap-window RMS is bimodal: genuine stops sit near 0.03–0.10× the clip RMS,
-# elongations near 0.5–1.0×; 0.15 sits in the empty band between them. Without this
-# gate ~84% of timestamp-only splits were madds/alignment slack wrongly cut into
-# waqf form.
-DEFAULT_SILENCE_RATIO = 0.15
-
-# A callable that turns Uthmani text into its phoneme string (a seam so the pure
-# segmentation logic is testable without quran-transcript).
+# A callable that turns Uthmani text into its phoneme string (a seam so the
+# segmentation logic in tadabur.segment_score is testable without quran-transcript).
 Phonetizer = Callable[[str], str]
-
-
-@dataclass(frozen=True)
-class WordAlignment:
-    """One force-aligned word from a clip's ``metadata.word_alignments``."""
-
-    word: str
-    start_s: float
-    end_s: float
+# A callable giving an ayah's spaceless phoneme reference + per-word phoneme offsets
+# (len == n_words + 1) — the alignment reference tadabur.waqf_detect.segment_clip uses.
+WordReference = Callable[[list[str]], "tuple[str, list[int]]"]
 
 
 @dataclass(frozen=True)
@@ -109,7 +69,7 @@ class SegmentRecord:
     ``(start_s, end_s)`` is the segment's span within it (sliced at collate time,
     never re-materialized). ``segment_index`` orders the segments within the clip
     and, with ``audio_filename``, is the manifest's stable key. ``word_start`` /
-    ``word_end`` are the half-open alignment/Uthmani word range the segment covers.
+    ``word_end`` are the half-open Uthmani word range the segment covers.
     ``realized_reference_phonemes`` is ``quran_phonetizer`` over the segment's
     Uthmani words — terminal word in waqf form, interior words in wasl.
     """
@@ -123,140 +83,6 @@ class SegmentRecord:
     start_s: float
     end_s: float
     realized_reference_phonemes: str
-
-
-def parse_word_alignments(metadata_json: str) -> list[WordAlignment]:
-    """Parse the ``word_alignments`` list out of a row's ``metadata`` JSON string.
-
-    Tadabur stores ``metadata`` as a JSON-encoded string; its ``word_alignments``
-    are the forced-alignment words in recitation order. Fails loudly if the field
-    is absent, since a clip with no alignment cannot be segmented.
-    """
-    metadata = json.loads(metadata_json)
-    alignments = metadata.get("word_alignments")
-    if not alignments:
-        raise ValueError("metadata has no word_alignments")
-    return [
-        WordAlignment(w["word"], float(w["start"]), float(w["end"]))
-        for w in alignments
-    ]
-
-
-def clip_speech_rms(waveform: np.ndarray) -> float:
-    """Root-mean-square amplitude of a whole clip — its reference speech loudness.
-
-    Used to normalize the silence test so it is robust to per-clip recording gain:
-    a gap is judged silent relative to how loud *this* clip's recitation is, not an
-    absolute floor. Returns a small positive epsilon for an all-zero clip so callers
-    can divide by it safely.
-    """
-    return float(np.sqrt(np.mean(np.square(waveform)))) or 1e-9
-
-
-def is_silent_gap(
-    waveform: np.ndarray,
-    sample_rate: int,
-    gap_start_s: float,
-    gap_end_s: float,
-    clip_rms: float,
-    silence_ratio: float,
-) -> bool:
-    """Whether the audio in ``[gap_start_s, gap_end_s)`` is silence, not sustained sound.
-
-    A true waqf pause is (near-)silent; a **madd** the aligner left between two words
-    is voiced. Confirms a candidate split only when the gap window's RMS is below
-    ``silence_ratio`` of the clip's overall speech RMS (:func:`clip_speech_rms`). A
-    zero-width or out-of-range window is treated as *not* silent — there is no
-    measurable pause to justify a waqf, so the words stay in one wasl segment.
-    """
-    start = max(0, int(gap_start_s * sample_rate))
-    end = min(len(waveform), int(gap_end_s * sample_rate))
-    if end <= start:
-        return False
-    gap_rms = float(np.sqrt(np.mean(np.square(waveform[start:end]))))
-    return gap_rms < silence_ratio * clip_rms
-
-
-def split_at_pauses(
-    alignments: list[WordAlignment],
-    pause_threshold_s: float,
-    confirm_pause: Callable[[WordAlignment, WordAlignment], bool] | None = None,
-) -> list[tuple[int, int]]:
-    """Split words into contiguous ``[start, end)`` ranges at waqf pauses.
-
-    A pause falls before word ``i+1`` when the inter-word gap
-    ``alignments[i+1].start_s - alignments[i].end_s`` is at least
-    ``pause_threshold_s``. Continuous (wasl) recitation, whose words overlap or
-    abut, yields a single range spanning the whole clip.
-
-    The timestamp gap is only a *candidate*: a madd elongation looks identical to a
-    stop in the timestamps. When ``confirm_pause`` is given it must also return
-    ``True`` for the boundary to split (see :func:`is_silent_gap`), so an elongation
-    the aligner left between words does not get cut into a spurious waqf. With no
-    ``confirm_pause`` the split is timestamp-only (the pure, audio-free behaviour).
-    """
-    if not alignments:
-        return []
-    boundaries = [0]
-    for i in range(len(alignments) - 1):
-        gap = alignments[i + 1].start_s - alignments[i].end_s
-        if gap >= pause_threshold_s and (
-            confirm_pause is None or confirm_pause(alignments[i], alignments[i + 1])
-        ):
-            boundaries.append(i + 1)
-    boundaries.append(len(alignments))
-    return list(zip(boundaries, boundaries[1:]))
-
-
-def build_clip_segments(
-    manifest_record: ManifestRecord,
-    alignments: list[WordAlignment],
-    uthmani_words: list[str],
-    phonetize: Phonetizer,
-    pause_threshold_s: float,
-    waveform: np.ndarray | None = None,
-    sample_rate: int = TARGET_SAMPLE_RATE,
-    silence_ratio: float = DEFAULT_SILENCE_RATIO,
-) -> list[SegmentRecord]:
-    """Build the waqf-segment records for one passing clip.
-
-    The alignment words and ``uthmani_words`` must correspond one-to-one and in
-    order (the caller guarantees equal length; see :func:`_segment_passing_rows`),
-    so word range ``[a, b)`` selects both the segment's time span (from the
-    alignment) and its Uthmani text (for the realized reference). Each segment's
-    reference is ``phonetize`` over its space-joined Uthmani words, which lands the
-    terminal word in waqf form and the interior words in wasl.
-
-    When ``waveform`` is given, each candidate timestamp pause is confirmed against
-    the audio (:func:`is_silent_gap`) so a madd elongation the aligner left between
-    two words is not cut into a spurious waqf. Without it the split is timestamp-only.
-    """
-    assert len(alignments) == len(uthmani_words)
-    confirm_pause = None
-    if waveform is not None:
-        clip_rms = clip_speech_rms(waveform)
-        confirm_pause = lambda prev, nxt: is_silent_gap(  # noqa: E731
-            waveform, sample_rate, prev.end_s, nxt.start_s, clip_rms, silence_ratio
-        )
-    records: list[SegmentRecord] = []
-    for index, (start, end) in enumerate(
-        split_at_pauses(alignments, pause_threshold_s, confirm_pause)
-    ):
-        reference = phonetize(" ".join(uthmani_words[start:end]))
-        records.append(
-            SegmentRecord(
-                audio_filename=manifest_record.audio_filename,
-                surah_ayah=manifest_record.surah_ayah,
-                reciter_id=manifest_record.reciter_id,
-                segment_index=index,
-                word_start=start,
-                word_end=end,
-                start_s=alignments[start].start_s,
-                end_s=alignments[end - 1].end_s,
-                realized_reference_phonemes=reference,
-            )
-        )
-    return records
 
 
 def hafs_phonetizer() -> Phonetizer:
@@ -273,34 +99,60 @@ def hafs_phonetizer() -> Phonetizer:
     return lambda text: quran_phonetizer(text, moshaf).phonemes
 
 
-def write_segment_manifest(path: Path, records: list[SegmentRecord]) -> None:
-    """Write ``records`` as a deterministic, idempotent JSONL offsets manifest.
+def _spaceless_word_offsets(
+    phonemes: str, mappings: list, uthmani_words: list[str]
+) -> tuple[str, list[int]]:
+    """Spaceless phoneme reference + per-word phoneme offsets from a phonetizer run.
 
-    Records are sorted by ``(audio_filename, segment_index)`` and written with
-    sorted JSON keys, then the file is replaced atomically, so re-running the build
-    over the same passing subset reproduces the manifest byte-for-byte.
+    ``mappings[i].pos[0]`` is the offset in ``phonemes`` the i-th input character maps
+    to; using the input-char offset of each Uthmani word start recovers each word's
+    phoneme boundary even where the phonetizer **merges words at a wasl** (so there is
+    no separating space to split on). The spaces the phonetizer keeps at un-merged
+    boundaries are then stripped, and the offsets remapped, to the spaceless string
+    the (space-free) model decode is aligned against. ``boundaries`` has
+    ``len(uthmani_words) + 1`` entries (word ``j`` starts at ``boundaries[j]``).
     """
-    ordered = sorted(records, key=lambda r: (r.audio_filename, r.segment_index))
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        for record in ordered:
-            f.write(json.dumps(asdict(record), ensure_ascii=False, sort_keys=True) + "\n")
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp_path, path)
+    input_starts: list[int] = []
+    cursor = 0
+    for word in uthmani_words:
+        input_starts.append(cursor)
+        cursor += len(word) + 1  # + the joining space
+    spaced_offsets = [mappings[s].pos[0] for s in input_starts] + [len(phonemes)]
+
+    spaceless: list[str] = []
+    remap: list[int] = []
+    kept = 0
+    for char in phonemes:
+        remap.append(kept)
+        if not char.isspace():
+            spaceless.append(char)
+            kept += 1
+    remap.append(kept)  # sentinel for the len(phonemes) end offset
+    return "".join(spaceless), [remap[offset] for offset in spaced_offsets]
 
 
-def read_segment_manifest(path: Path) -> list[SegmentRecord]:
-    """Load every :class:`SegmentRecord` from an offsets manifest in file order."""
-    records: list[SegmentRecord] = []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            records.append(SegmentRecord(**json.loads(line)))
-    return records
+def hafs_word_reference() -> WordReference:
+    """A callable giving an ayah's spaceless phoneme reference + per-word offsets.
+
+    Phonetizes the whole ayah once with the Hafs moshaf (single words fail the
+    phonetizer standalone) and derives per-word phoneme boundaries from the
+    phonetizer's char-level ``mappings`` (:func:`_spaceless_word_offsets`) — robust to
+    wasl word-merges, unlike splitting the phonetic output on spaces. Injected into
+    :func:`tadabur.waqf_detect.segment_clip` as its alignment ``reference`` /
+    ``boundaries``. Raises ``KeyError`` / ``IndexError`` on the ayat quran_phonetizer
+    cannot handle (leen madd on a final sukoon), which the caller tallies as
+    ``phonetizer_unsupported``.
+    """
+    from quran_transcript import quran_phonetizer
+    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
+
+    moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
+
+    def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
+        out = quran_phonetizer(" ".join(uthmani_words), moshaf)
+        return _spaceless_word_offsets(out.phonemes, out.mappings, uthmani_words)
+
+    return compute
 
 
 def _uthmani_words(surah_ayah: str) -> list[str]:
@@ -354,11 +206,11 @@ def _require_all_streamed(
 ) -> None:
     """Raise if any passing clip never turned up in a full (unlimited) stream.
 
-    A silently-partial offsets manifest is a data-integrity failure for the label
-    source: a stale passing subset or the wrong ``--config-name``/``--split`` would
-    drop labels (and their local audio) with no error. Listing the misses points the
-    operator at the cause. Only called for full builds; ``--limit`` runs surface
-    their shortfall as ``missing_due_to_limit`` instead (see :func:`build_segments`).
+    A silently-partial clip set is a data-integrity failure for the label source: a
+    stale passing subset or the wrong ``--config-name``/``--split`` would drop clips
+    (and their labels) with no error. Listing the misses points the operator at the
+    cause. Only called for full builds; ``--limit`` runs surface their shortfall as
+    ``missing_due_to_limit`` instead (see :func:`stage_clips`).
     """
     missing = sorted(requested - found)
     if missing:
@@ -366,135 +218,49 @@ def _require_all_streamed(
         more = f" (+{len(missing) - 10} more)" if len(missing) > 10 else ""
         raise ValueError(
             f"{len(missing)} passing clip(s) were not found in dataset "
-            f"{dataset_id!r} config {config_name!r} split {split!r}; the offsets "
-            f"manifest would be partial: {preview}{more}. Check "
+            f"{dataset_id!r} config {config_name!r} split {split!r}; the staged clip "
+            f"set would be partial: {preview}{more}. Check "
             f"--dataset/--config-name/--split match the passing subset, or that the "
             f"passing manifest is not stale."
         )
 
 
-def build_segments(
+def stage_clips(
     passing_records: list[ManifestRecord],
-    phonetize: Phonetizer,
     audio_dir: Path,
     dataset_id: str = DATASET_ID,
     config_name: str | None = None,
     split: str = "train",
     limit: int | None = None,
-    pause_threshold_s: float = DEFAULT_PAUSE_THRESHOLD_S,
-    silence_ratio: float = DEFAULT_SILENCE_RATIO,
-) -> tuple[list[SegmentRecord], Counter]:
-    """Stream the passing subset, save local audio, and build segment records.
+) -> Counter:
+    """Stream the passing subset and save each clip's whole 16 kHz-mono waveform.
 
-    For each passing clip found in the stream, saves its whole 16 kHz-mono waveform
-    under ``audio_dir`` and splits it into waqf segments. Each candidate waqf pause
-    is confirmed against the saved audio (``silence_ratio``), so a madd elongation
-    the aligner left between two words is not mistaken for a stop. Clips whose
-    alignment word count disagrees with their Uthmani word count, or that hit the
-    phonetizer's 8-ayah gap, are skipped and tallied (returned
-    :class:`~collections.Counter`) rather than silently mislabeled. Returns the
-    collected records and the skip tally.
-
-    Every passing clip must be located in the stream: a full build (``limit`` is
-    ``None``) that cannot find one raises rather than emit a partial label source
-    (see :func:`_require_all_streamed`), while a ``--limit`` smoke run — which may
-    legitimately stop before reaching every clip — records the shortfall as the
-    ``missing_due_to_limit`` skip tally instead.
+    For each passing clip found in the stream, decodes its audio to 16 kHz mono and
+    writes it under ``audio_dir`` as a PCM_16 WAV — the input the model pass
+    (:mod:`tadabur.segment_score`) reads. Returns a :class:`~collections.Counter` of
+    any clips missed; a full build (``limit`` is ``None``) that cannot find every
+    passing clip raises rather than stage a partial set (see
+    :func:`_require_all_streamed`), while a ``--limit`` smoke run records its
+    shortfall as ``missing_due_to_limit``.
     """
     audio_dir.mkdir(parents=True, exist_ok=True)
     passing = {record.audio_filename: record for record in passing_records}
 
-    records: list[SegmentRecord] = []
     skips: Counter = Counter()
     found: set[str] = set()
     for row, record in _stream_passing_rows(
         passing, dataset_id, config_name, split, limit
     ):
         found.add(record.audio_filename)
-        alignments = parse_word_alignments(row["metadata"])
-        uthmani_words = _uthmani_words(record.surah_ayah)
-        if len(alignments) != len(uthmani_words):
-            skips["word_count_mismatch"] += 1
-            continue
         waveform = decode_to_mono_16k(row[AUDIO_COLUMN]["bytes"])
-        try:
-            clip_records = build_clip_segments(
-                record, alignments, uthmani_words, phonetize, pause_threshold_s,
-                waveform=waveform, silence_ratio=silence_ratio,
-            )
-        except KeyError:
-            # quran_phonetizer raises KeyError on the 8 leen-madd-on-sukoon ayat
-            # (generate_phonemes.FALLBACK_PHONEMES); those cannot be re-phonetized
-            # per segment, so skip the clip rather than emit a bad reference.
-            skips["phonetizer_unsupported"] += 1
-            continue
         _save_local_clip(audio_dir, record.audio_filename, waveform)
-        records.extend(clip_records)
 
     missing = set(passing) - found
     if missing:
         if limit is None:
             _require_all_streamed(set(passing), found, dataset_id, config_name, split)
         skips["missing_due_to_limit"] = len(missing)
-    return records, skips
-
-
-def _normalized_realized_reference(records: list[SegmentRecord]) -> str:
-    """A clip's realized reference: its segments' phonemes joined and normalized.
-
-    Segments are ordered by ``segment_index`` and space-joined (the same word
-    separator the full-ayah reference uses), then run through the ``.balanced``
-    normalization so it can be compared on the same footing as the cached full-ayah
-    reference by :func:`shadda_contrast_report`.
-    """
-    from .normalization import normalize_phonemes
-
-    ordered = sorted(records, key=lambda r: r.segment_index)
-    joined = " ".join(r.realized_reference_phonemes for r in ordered)
-    return normalize_phonemes(joined).normalized
-
-
-def shadda_contrast_report(
-    passing_records: list[ManifestRecord],
-    segment_records: list[SegmentRecord],
-    references: dict[str, str],
-) -> dict[str, int]:
-    """Count phantom pre-waqf shadda contrasts the realized labels remove.
-
-    For every clip that split into more than one segment (i.e. it contained an
-    intra-ayah waqf), re-attributes the ``.balanced`` shadda-contrast bucket for the
-    model's stored decode against (a) the cached full-ayah reference — the label the
-    filter used — and (b) the realized (segmented) reference. A clip that showed a
-    shadda contrast under the full-ayah label but not under the realized one is a
-    phantom pre-waqf gemination mismatch that this stage removes. No model inference
-    — it reuses the decode already stored in the passing manifest.
-    """
-    from .contrast_attribution import SHADDA_CONTRAST, attribute_contrasts
-
-    by_clip: dict[str, list[SegmentRecord]] = {}
-    for record in segment_records:
-        by_clip.setdefault(record.audio_filename, []).append(record)
-    passing = {record.audio_filename: record for record in passing_records}
-
-    report = Counter()
-    for audio_filename, clip_segments in by_clip.items():
-        if len(clip_segments) < 2:
-            continue
-        clip = passing.get(audio_filename)
-        if clip is None or clip.surah_ayah not in references:
-            continue
-        report["clips_with_waqf"] += 1
-        predicted = clip.predicted_phonemes
-        before = SHADDA_CONTRAST in attribute_contrasts(
-            predicted, references[clip.surah_ayah]
-        )
-        after = SHADDA_CONTRAST in attribute_contrasts(
-            predicted, _normalized_realized_reference(clip_segments)
-        )
-        report["shadda_before"] += int(before)
-        report["shadda_after"] += int(after)
-        report["phantom_removed"] += int(before and not after)
-    return dict(report)
+    return skips
 
 
 def main() -> None:
@@ -504,12 +270,6 @@ def main() -> None:
         type=Path,
         required=True,
         help="Passing-subset manifest from tadabur.filter (JSONL).",
-    )
-    parser.add_argument(
-        "--out",
-        type=Path,
-        required=True,
-        help="Output offsets manifest (JSONL) of waqf segments.",
     )
     parser.add_argument(
         "--audio-dir",
@@ -525,21 +285,6 @@ def main() -> None:
     )
     parser.add_argument("--split", default="train", help="Dataset split.")
     parser.add_argument(
-        "--pause-threshold",
-        type=float,
-        default=DEFAULT_PAUSE_THRESHOLD_S,
-        help=f"Inter-word gap (s) that marks a candidate waqf pause (default: {DEFAULT_PAUSE_THRESHOLD_S}).",
-    )
-    parser.add_argument(
-        "--silence-ratio",
-        type=float,
-        default=DEFAULT_SILENCE_RATIO,
-        help=(
-            "Fraction of clip RMS below which a candidate gap counts as silence "
-            f"(a stop, not a madd) (default: {DEFAULT_SILENCE_RATIO})."
-        ),
-    )
-    parser.add_argument(
         "--limit",
         type=int,
         default=None,
@@ -550,28 +295,16 @@ def main() -> None:
     passing_records = read_records(args.passing)
     print(f"Loaded {len(passing_records)} passing clips from {args.passing}.")
 
-    records, skips = build_segments(
+    skips = stage_clips(
         passing_records,
-        hafs_phonetizer(),
         audio_dir=args.audio_dir,
         dataset_id=args.dataset,
         config_name=args.config_name,
         split=args.split,
         limit=args.limit,
-        pause_threshold_s=args.pause_threshold,
-        silence_ratio=args.silence_ratio,
     )
-    write_segment_manifest(args.out, records)
-
-    clips = len({r.audio_filename for r in records})
-    print(
-        f"Wrote {len(records)} segments over {clips} clips to {args.out} "
-        f"(audio in {args.audio_dir}). Skipped: {dict(skips)}"
-    )
-
-    references = load_reference_phonemes()
-    report = shadda_contrast_report(passing_records, records, references)
-    print(f"Pre-waqf shadda-contrast report: {report}")
+    staged = len(passing_records) - sum(skips.values())
+    print(f"Staged {staged} clips to {args.audio_dir}. Missed: {dict(skips)}")
 
 
 if __name__ == "__main__":

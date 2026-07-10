@@ -16,16 +16,19 @@ import soundfile as sf
 
 from .audio import TARGET_SAMPLE_RATE
 from .audit_sampler import local_audio_path
+from .manifest import ManifestRecord
 from .normalization import normalize_phonemes
 from . import segment_score
 from .segment_score import (
     score_segments,
+    segment_clips,
     segment_id,
     slice_segment,
     stage_segment_audio,
     write_segment_manifest,
 )
 from .waqf_segments import SegmentRecord
+from .phoneme_vocab import PHONEME_ID_TO_CHAR
 
 
 def _segment(index: int, start_s: float, end_s: float, ref: str) -> SegmentRecord:
@@ -55,6 +58,18 @@ class _StubModel:
                             num_logit_frames=0)
             for _ in waveforms
         ]
+
+
+class _ClassIdModel:
+    """Returns a queued per-frame class-id sequence per whole-clip ``decode`` call."""
+
+    def __init__(self, class_ids_per_clip: list[list[int]]) -> None:
+        self._queue = list(class_ids_per_clip)
+
+    def decode(self, waveform, sample_rate):
+        assert sample_rate == TARGET_SAMPLE_RATE
+        return SimpleNamespace(class_ids=tuple(self._queue.pop(0)))
+
 
 
 def _write_clip(clips_dir, name: str, seconds: float) -> None:
@@ -143,3 +158,107 @@ def test_stage_segment_audio_writes_local_audio_path(tmp_path):
     waveform, sr = sf.read(expected, dtype="float32")
     assert sr == TARGET_SAMPLE_RATE
     assert len(waveform) == int(0.5 * TARGET_SAMPLE_RATE)
+
+
+# --- segment_clips (model-driven segmentation wiring) ------------------------
+
+# Three "words" with distinct phoneme ids so the greedy decode never collapses
+# adjacent duplicates (see test_waqf_detect for the algorithm itself).
+_WORD0 = [2, 3, 4, 5, 6]
+_WORD1 = [7, 8, 9, 10, 11, 12, 13, 14, 15]
+_WORD2 = [16, 17, 18]
+_SPF = 0.04
+
+
+def _c(ids: list[int]) -> str:
+    return "".join(PHONEME_ID_TO_CHAR[i] for i in ids)
+
+
+def _phon(text: str) -> str:
+    return {
+        "w0 w1 w2": " ".join(_c(w) for w in (_WORD0, _WORD1, _WORD2)),
+        "w0": _c(_WORD0),
+        "w1 w2": _c(_WORD1 + _WORD2),
+    }[text]
+
+
+def _wordref(words: list[str]) -> tuple[str, list[int]]:
+    """Stub of ``hafs_word_reference``: spaceless reference + per-word offsets."""
+    assert words == ["w0", "w1", "w2"]
+    return _c(_WORD0 + _WORD1 + _WORD2), [0, 5, 14, 17]
+
+
+def _ids(spec: list[tuple[int, int]]) -> list[int]:
+    out: list[int] = []
+    for cid, count in spec:
+        out += [cid] * count
+    return out
+
+
+def _manifest_record(name: str, surah_ayah: str) -> ManifestRecord:
+    return ManifestRecord(
+        audio_filename=name, surah_ayah=surah_ayah, match_ratio=0.9,
+        ayah_duration_s=8.0, reciter_id=7, predicted_phonemes="",
+    )
+
+
+def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    class_ids = _ids(
+        [(cid, 2) for cid in _WORD0] + [(0, 12)]
+        + [(cid, 2) for cid in _WORD1 + _WORD2]
+    )
+    _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
+    model = _ClassIdModel([class_ids])
+
+    records, skips = segment_clips(
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref
+    )
+
+    assert not skips
+    assert [(r.word_start, r.word_end) for r in records] == [(0, 1), (1, 3)]
+    assert records[0].realized_reference_phonemes == _phon("w0")
+    assert records[1].realized_reference_phonemes == _phon("w1 w2")
+    assert records[0].segment_index == 0 and records[1].segment_index == 1
+
+
+def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    unrelated = _ids([(cid, 2) for cid in [19, 20, 21, 22, 23, 24, 25, 26]])
+    _write_clip(tmp_path, "a.wav", len(unrelated) * _SPF)
+    model = _ClassIdModel([unrelated])
+
+    records, skips = segment_clips(
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref
+    )
+
+    assert skips["low_alignment"] == 1
+    assert len(records) == 1
+    assert (records[0].word_start, records[0].word_end) == (0, 3)
+    assert records[0].realized_reference_phonemes == _phon("w0 w1 w2")
+
+
+def test_segment_clips_tallies_missing_clip(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    model = _ClassIdModel([])  # decode never called — clip file absent
+    records, skips = segment_clips(
+        [_manifest_record("gone.wav", "78:2")], tmp_path, model, _phon, _wordref
+    )
+    assert records == []
+    assert skips["clip_missing"] == 1
+
+
+def test_segment_clips_skips_unphonetizable_ayah(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    class_ids = _ids([(cid, 2) for cid in _WORD0 + _WORD1 + _WORD2])
+    _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
+    model = _ClassIdModel([class_ids])
+
+    def _raises(_words):
+        raise IndexError("leen madd on sukoon")
+
+    records, skips = segment_clips(
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _raises
+    )
+    assert records == []
+    assert skips["phonetizer_unsupported"] == 1

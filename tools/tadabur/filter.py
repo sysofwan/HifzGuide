@@ -31,13 +31,12 @@ from pathlib import Path
 from datasets import Audio, load_dataset
 
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename
 from .inference import MODEL_ID, MuaalemPhonemeModel
 from .manifest import FilterManifest, ManifestRecord
 from .reference_phonemes import load_reference_phonemes
 from .scorer import BALANCED_SCORER, Scorer
 
-DATASET_ID = "FaisaI/tadabur"
-AUDIO_COLUMN = "audio"
 DEFAULT_BATCH_SIZE = 64
 
 
@@ -49,26 +48,6 @@ class Clip:
     surah_ayah: str
     reciter_id: int
     audio_bytes: bytes
-
-
-def resolve_audio_filename(row: dict) -> str:
-    """The clip's stable ``audio_filename`` across Tadabur configs.
-
-    The full ``default`` config carries ``audio_filename`` as a top-level column;
-    the fast ``preview`` config does not, but its ``audio`` feature still exposes
-    the same basename via ``path`` (e.g. ``tadabur_spk0106_S77_A30_...wav``). Fall
-    back to that so ``--config-name preview`` — advertised as the fast streaming
-    path — actually yields traceable, exportable clips. Fails loudly if neither is
-    present, since a clip with no stable id cannot be matched back to its audio.
-    """
-    name = row.get("audio_filename")
-    if name:
-        return name
-    audio = row.get(AUDIO_COLUMN) or {}
-    path = audio.get("path")
-    if path:
-        return Path(path).name
-    raise ValueError(f"Tadabur row has no audio_filename or audio.path: {row!r}")
 
 
 def canonical_surah_ayah(surah_id: int, ayah_id: int) -> str:

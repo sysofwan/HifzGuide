@@ -211,6 +211,52 @@ def test_state_includes_ayah_text_and_phoneme_diff(tmp_path):
     assert view["alignment"]  # non-empty aligned columns
 
 
+def test_item_view_prefers_per_clip_reference_in_segment_mode(tmp_path):
+    # In waqf-segment mode reference/raw_reference/uthmani are keyed by clip_id
+    # (the segment id), not surah_ayah — two segments of one ayah must not collapse
+    # to the same full-ayah reference.
+    accept, reject = _paths(tmp_path)
+    items = [_item("seg0", "shadda"), _item("seg1", "shadda")]
+    store = LabelStore.load(accept, reject)
+    server = AuditServer(
+        items,
+        {"seg0": "2:77", "seg1": "2:77"},
+        store,
+        tmp_path,
+        uthmani={"seg0": "الأولى", "seg1": "الثانية"},
+        predicted={"seg0": "بتج", "seg1": "بتشج"},
+        reference={"seg0": "بتج", "seg1": "بتثج"},
+        raw_reference={"seg0": "بتج", "seg1": "بتثثج"},
+    )
+    views = {v["clip_id"]: v for v in server.state()["items"]}
+    assert views["seg0"]["uthmani"] == "الأولى"
+    assert views["seg1"]["uthmani"] == "الثانية"
+    assert views["seg0"]["reference_phonemes"] == "بتج"
+    assert views["seg1"]["reference_phonemes"] == "بتثج"
+    assert views["seg1"]["raw_reference_phonemes"] == "بتثثج"
+
+
+def test_segment_display_index_keys_by_clip_id(tmp_path):
+    from .audit_ui import segment_display_index
+
+    manifest = tmp_path / "segments.jsonl"
+    with open(manifest, "w", encoding="utf-8") as f:
+        f.write(json.dumps({
+            "audio_filename": "clip__seg0.wav", "surah_ayah": "2:77",
+            "predicted_phonemes": "بتج", "reference_phonemes": "بتج",
+            "raw_reference_phonemes": "بتج", "uthmani": "الأولى",
+        }, ensure_ascii=False) + "\n")
+        f.write(json.dumps({
+            "audio_filename": "clip__seg1.wav", "surah_ayah": "2:77",
+            "predicted_phonemes": "بتشج", "reference_phonemes": "بتثج",
+            "raw_reference_phonemes": "بتثثج", "uthmani": "الثانية",
+        }, ensure_ascii=False) + "\n")
+    idx = segment_display_index(manifest)
+    assert idx["surah_ayah"] == {"clip__seg0.wav": "2:77", "clip__seg1.wav": "2:77"}
+    assert idx["reference"]["clip__seg1.wav"] == "بتثج"
+    assert idx["uthmani"]["clip__seg0.wav"] == "الأولى"
+
+
 
 def test_apply_label_enriches_and_rejects_unknown(tmp_path):
     accept, reject = _paths(tmp_path)

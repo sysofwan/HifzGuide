@@ -150,6 +150,36 @@ def reference_phoneme_index(surah_ayahs: set[str]) -> dict[str, str]:
     return {key: references[key] for key in surah_ayahs if key in references}
 
 
+def segment_display_index(
+    segment_manifest_path: Path,
+) -> dict[str, dict[str, dict[str, str]]]:
+    """Per-clip (per-segment) display indexes from a scored segment manifest.
+
+    In waqf-segment audit mode the audit unit is a segment, not a whole ayah, so
+    its Uthmani text and realized (waqf-aware) reference differ from the ayah's and
+    must be keyed by the per-segment ``clip_id`` rather than ``surah:ayah``. Reads
+    :mod:`tadabur.segment_score`'s manifest — whose rows carry those per-segment
+    display fields alongside the :class:`~tadabur.manifest.ManifestRecord` ones —
+    and returns the ``surah_ayah`` / ``predicted`` / ``reference`` /
+    ``raw_reference`` / ``uthmani`` maps :func:`main` feeds the server, each keyed
+    by ``clip_id`` (the segment id).
+    """
+    out = {k: {} for k in ("surah_ayah", "predicted", "reference", "raw_reference", "uthmani")}
+    with open(segment_manifest_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            clip_id = row["audio_filename"]
+            out["surah_ayah"][clip_id] = row.get("surah_ayah", "")
+            out["predicted"][clip_id] = row.get("predicted_phonemes", "")
+            out["reference"][clip_id] = row.get("reference_phonemes", "")
+            out["raw_reference"][clip_id] = row.get("raw_reference_phonemes", "")
+            out["uthmani"][clip_id] = row.get("uthmani", "")
+    return out
+
+
 def align_phonemes(predicted: str, reference: str) -> list[dict[str, str]]:
     """Align ``predicted`` against ``reference`` into per-column diff cells.
 
@@ -296,15 +326,23 @@ def item_view(server: "AuditServer", item: WorklistItem) -> dict[str, object]:
     """
     surah_ayah = server.surah_ayah.get(item.clip_id, "")
     predicted = server.predicted.get(item.clip_id, "")
-    reference = server.reference.get(surah_ayah, "")
+    reference = server.reference.get(item.clip_id)
+    if reference is None:
+        reference = server.reference.get(surah_ayah, "")
+    raw_reference = server.raw_reference.get(item.clip_id)
+    if raw_reference is None:
+        raw_reference = server.raw_reference.get(surah_ayah, "")
+    uthmani = server.uthmani.get(item.clip_id)
+    if uthmani is None:
+        uthmani = server.uthmani.get(surah_ayah, "")
     return {
         "clip_id": item.clip_id,
         "contrast": item.contrast,
         "match_ratio": item.match_ratio,
         "surah_ayah": surah_ayah,
-        "uthmani": server.uthmani.get(surah_ayah, ""),
+        "uthmani": uthmani,
         "reference_phonemes": reference,
-        "raw_reference_phonemes": server.raw_reference.get(surah_ayah, ""),
+        "raw_reference_phonemes": raw_reference,
         "predicted_phonemes": predicted,
         "alignment": align_phonemes(predicted, reference),
         "audio_url": f"/audio/{item.local_audio_path}",
@@ -455,7 +493,11 @@ def serve(server_state: AuditServer, port: int, host: str = "127.0.0.1") -> Thre
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--worklist", type=Path, required=True, help="Sampler worklist (JSONL).")
-    parser.add_argument("--manifest", type=Path, required=True, help="Filter manifest (for surah:ayah).")
+    parser.add_argument("--manifest", type=Path, default=None,
+                        help="Filter manifest (full-ayah mode; for surah:ayah + predicted).")
+    parser.add_argument("--segment-manifest", type=Path, default=None,
+                        help="Scored segment manifest from tadabur.segment_score "
+                             "(waqf-segment mode; per-segment reference/uthmani/predicted).")
     parser.add_argument("--audio-dir", type=Path, required=True, help="Directory of exported clip audio.")
     parser.add_argument("--accept", type=Path, default=eval_fixtures.SHOULD_ACCEPT_PATH,
                         help="should-accept fixture file to write (default: canonical path).")
@@ -469,12 +511,23 @@ def main() -> None:
     args = parser.parse_args()
 
     items = load_worklist(args.worklist)
-    surah_ayah = surah_ayah_index(args.manifest)
-    predicted = predicted_phoneme_index(args.manifest)
-    reference = reference_phoneme_index(set(surah_ayah.values()))
     store = LabelStore.load(args.accept, args.reject)
-    uthmani = uthmani_index(args.quran_db, set(surah_ayah.values()))
-    raw_reference = raw_reference_index(args.quran_db, set(surah_ayah.values()))
+    if args.segment_manifest is not None:
+        # Waqf-segment mode: display fields are per-segment (keyed by clip_id).
+        idx = segment_display_index(args.segment_manifest)
+        surah_ayah = idx["surah_ayah"]
+        predicted = idx["predicted"]
+        reference = idx["reference"]
+        raw_reference = idx["raw_reference"]
+        uthmani = idx["uthmani"]
+    else:
+        if args.manifest is None:
+            parser.error("one of --manifest (full-ayah) or --segment-manifest is required")
+        surah_ayah = surah_ayah_index(args.manifest)
+        predicted = predicted_phoneme_index(args.manifest)
+        reference = reference_phoneme_index(set(surah_ayah.values()))
+        uthmani = uthmani_index(args.quran_db, set(surah_ayah.values()))
+        raw_reference = raw_reference_index(args.quran_db, set(surah_ayah.values()))
     server_state = AuditServer(
         items, surah_ayah, store, args.audio_dir, uthmani, predicted, reference,
         raw_reference,

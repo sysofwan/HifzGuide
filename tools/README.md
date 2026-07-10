@@ -72,6 +72,34 @@ skips them (rejected clips leave no manifest line but are still skipped), and a
 per-`audio_filename` seen-set keeps the manifest duplicate-free if the last in-flight
 batch is replayed after a crash.
 
+### `tadabur.waqf_segments` (Linux/macOS — no GPU)
+
+Waqf-aware reference labelling (PRD #1, ADR-0002): turns the passing-subset manifest
+into an **offsets manifest** whose per-segment label matches what the reciter *actually*
+recited. It needs no model and no GPU — it reads Tadabur's shipped forced alignment
+(`metadata.word_alignments`), detects intra-ayah **waqf pauses** as inter-word gaps
+(`word[i+1].start - word[i].end ≥ --pause-threshold`, default `0.25 s`), splits each clip
+into contiguous **waqf segments**, and phonetizes each segment's Uthmani text on its own so
+`quran_phonetizer`'s CleanEnd lands the terminal word in **waqf** form and the interior words
+in **wasl**. Segments are lightweight `(start_s, end_s)` views — no per-segment audio and no
+derived HF dataset; whole passing clips are kept locally as 16 kHz mono WAV, and the full
+Tadabur source is streamed, never landed.
+
+```bash
+cd tools
+python -m tadabur.waqf_segments --passing passing_subset.jsonl \
+    --out segments.jsonl --audio-dir clips/ --config-name preview
+```
+
+The output manifest is **deterministic and idempotent** (records sorted by
+`(audio_filename, segment_index)` and rewritten atomically). Clips whose alignment word count
+disagrees with their Uthmani word count (the vocative `يا` is a separate simple-text word but
+merged in Uthmani) or that hit the phonetizer's 8-ayah gap are **skipped and tallied**, never
+silently mislabeled. After the build it prints a before/after report on the audit's
+shadda-contrast bucket — how many phantom pre-waqf gemination mismatches the realized labels
+remove. Feeds P4 data-prep (#8): the manifest is the label source, the reciter split is
+computed over the post-segmentation units, and the collator slices audio by these offsets.
+
 ### `convert_to_coreml.py`
 
 Converts the Wav2Vec2-BERT TorchScript model (`obadx/muaalem-model-v3_2`) to CoreML format optimized for Apple Neural Engine. Traces the model with a fixed input shape `(1, 250, 160)`, exports to FP32 `.mlpackage`, and optionally creates INT8 and 4-bit compressed variants.

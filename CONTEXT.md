@@ -73,6 +73,26 @@ commit, ADR, or script, use the term as defined here and avoid the listed synony
 **Moshaf attributes**
 : The recitation configuration passed to the phonetizer (rewaya, madd lengths). Default is Hafs.
 
+**Waqf**
+: A stop/pause in recitation. At a waqf the final word drops its ending haraka and loses the
+  cross-word gemination/idgham it would carry in continuation; `quran_phonetizer`'s CleanEnd op
+  produces this realized form. _Avoid_: stop, pause (ambiguous).
+
+**Wasl**
+: Continuous recitation across a word boundary (no stop), carrying idgham/ikhfa/gemination.
+  The opposite of waqf.
+
+**Word alignment**
+: Tadabur's per-word forced-alignment timestamps (`metadata.word_alignments`: `word`, `start`,
+  `end`), in recitation order. The source for detecting waqf pauses.
+
+**Waqf segment**
+: A contiguous run of an ayah's words with no internal waqf, bounded by detected pauses (an
+  inter-word gap above the threshold) or the clip ends. Each segment gets a realized reference
+  (terminal word waqf, interior words wasl) and is a lightweight `(start_s, end_s)` view into the
+  whole clip. Distinct from **Chunk** (a CoreML encoder-layer segment).
+: _Avoid_: Segment (unqualified — collides with Chunk), split, clip
+
 ## ML Pipeline & Assets
 
 **CoreML pipeline**

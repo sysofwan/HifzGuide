@@ -75,6 +75,22 @@ def test_segment_clip_no_pauses_returns_whole_span():
     assert (span.start_s, span.end_s) == (0.0, dur)
 
 
+def test_segment_clip_flags_repeated_even_without_pauses():
+    # A repeated recitation must be flagged (not silently kept whole) even when the VAD
+    # found no interior pause — the safeguards run before the no-pause short-circuit.
+    ids, dur = _clip(_phonemes((WORD0 + WORD1 + WORD2) * 2))
+    result = segment_clip(ids, dur, REFERENCE, BOUNDARIES, [])
+    assert result.skip == "repeated_recitation"
+    assert result.spans == ()
+
+
+def test_segment_clip_flags_low_alignment_even_without_pauses():
+    ids, dur = _clip(_phonemes([19, 20, 21, 22, 23, 24, 25, 26]))
+    result = segment_clip(ids, dur, REFERENCE, BOUNDARIES, [])
+    assert result.skip == "low_alignment"
+    assert result.spans == ()
+
+
 def test_segment_clip_splits_at_interior_word_boundary():
     ids, dur = _clip(
         _phonemes(WORD0) + [(0, PAUSE)] + _phonemes(WORD1 + WORD2)

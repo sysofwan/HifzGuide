@@ -136,7 +136,7 @@ def segment_clip(
     """
     n_words = len(boundaries) - 1
     whole = SegmentationResult((WaqfSpan(0, n_words, 0.0, clip_duration_s),))
-    if not class_ids or n_words <= 0 or not reference or not pauses:
+    if not class_ids or n_words <= 0 or not reference:
         return whole
 
     seconds_per_frame = clip_duration_s / len(class_ids)
@@ -147,6 +147,11 @@ def segment_clip(
     alignment = smith_waterman(query, reference)
     if alignment.score < min_align_ratio * len(reference):
         return SegmentationResult((), skip="low_alignment")
+
+    # No interior pause: keep the clip whole, but only after the safeguards above so a
+    # repeated/unrelated clip is still flagged (not silently kept whole and mislabelled).
+    if not pauses:
+        return whole
     query_to_ref = sorted(
         (q, alignment.ref_start + i)
         for i, q in enumerate(alignment.ref_to_query)

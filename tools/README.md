@@ -95,9 +95,12 @@ The output manifest is **deterministic and idempotent** (records sorted by
 `(audio_filename, segment_index)` and rewritten atomically). Clips whose alignment word count
 disagrees with their Uthmani word count (the vocative `يا` is a separate simple-text word but
 merged in Uthmani) or that hit the phonetizer's 8-ayah gap are **skipped and tallied**, never
-silently mislabeled. After the build it prints a before/after report on the audit's
-shadda-contrast bucket — how many phantom pre-waqf gemination mismatches the realized labels
-remove. Feeds P4 data-prep (#8): the manifest is the label source, the reciter split is
+silently mislabeled. A full build that cannot locate a passing clip in the stream
+**fails loudly** (a partial label source is a data-integrity failure); a `--limit`
+smoke run instead tallies the unreached clips as `missing_due_to_limit`. After the
+build it prints a before/after report on the audit's shadda-contrast bucket — how
+many phantom pre-waqf gemination mismatches the realized labels remove. Feeds P4
+data-prep (#8): the manifest is the label source, the reciter split is
 computed over the post-segmentation units, and the collator slices audio by these offsets.
 
 ### `convert_to_coreml.py`

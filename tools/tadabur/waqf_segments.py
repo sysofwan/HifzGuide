@@ -58,13 +58,9 @@ if str(_TOOLS_DIR) not in sys.path:
 import generate_phonemes  # noqa: E402  (tools/ sibling module)
 
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename
 from .manifest import ManifestRecord, read_records
 from .reference_phonemes import load_reference_phonemes
-
-# Tadabur source identifiers, redefined locally (as in tadabur.smoke_decode) so this
-# no-model labelling stage need not import the GPU inference path from tadabur.filter.
-DATASET_ID = "FaisaI/tadabur"
-AUDIO_COLUMN = "audio"
 
 # Inter-word gap (seconds) at or above which a boundary is a waqf pause. Validated
 # against 300 preview clips: inter-word gaps are overwhelmingly negative (words
@@ -260,8 +256,6 @@ def _stream_passing_rows(
     each kept row with its passing :class:`ManifestRecord`, and stops as soon as
     every passing clip has been seen so the whole corpus need not be streamed.
     """
-    from .filter import resolve_audio_filename  # lazy: keeps this stage torch-free
-
     dataset = load_dataset(dataset_id, name=config_name, split=split, streaming=True)
     dataset = dataset.cast_column(AUDIO_COLUMN, Audio(decode=False))
     remaining = set(passing)
@@ -278,6 +272,30 @@ def _stream_passing_rows(
         remaining.discard(audio_filename)
         if not remaining:
             break
+
+
+def _require_all_streamed(
+    requested: set[str], found: set[str], dataset_id: str, config_name: str | None, split: str
+) -> None:
+    """Raise if any passing clip never turned up in a full (unlimited) stream.
+
+    A silently-partial offsets manifest is a data-integrity failure for the label
+    source: a stale passing subset or the wrong ``--config-name``/``--split`` would
+    drop labels (and their local audio) with no error. Listing the misses points the
+    operator at the cause. Only called for full builds; ``--limit`` runs surface
+    their shortfall as ``missing_due_to_limit`` instead (see :func:`build_segments`).
+    """
+    missing = sorted(requested - found)
+    if missing:
+        preview = ", ".join(missing[:10])
+        more = f" (+{len(missing) - 10} more)" if len(missing) > 10 else ""
+        raise ValueError(
+            f"{len(missing)} passing clip(s) were not found in dataset "
+            f"{dataset_id!r} config {config_name!r} split {split!r}; the offsets "
+            f"manifest would be partial: {preview}{more}. Check "
+            f"--dataset/--config-name/--split match the passing subset, or that the "
+            f"passing manifest is not stale."
+        )
 
 
 def build_segments(
@@ -298,15 +316,23 @@ def build_segments(
     8-ayah gap, are skipped and tallied (returned :class:`~collections.Counter`)
     rather than silently mislabeled. Returns the collected records and the skip
     tally.
+
+    Every passing clip must be located in the stream: a full build (``limit`` is
+    ``None``) that cannot find one raises rather than emit a partial label source
+    (see :func:`_require_all_streamed`), while a ``--limit`` smoke run — which may
+    legitimately stop before reaching every clip — records the shortfall as the
+    ``missing_due_to_limit`` skip tally instead.
     """
     audio_dir.mkdir(parents=True, exist_ok=True)
     passing = {record.audio_filename: record for record in passing_records}
 
     records: list[SegmentRecord] = []
     skips: Counter = Counter()
+    found: set[str] = set()
     for row, record in _stream_passing_rows(
         passing, dataset_id, config_name, split, limit
     ):
+        found.add(record.audio_filename)
         alignments = parse_word_alignments(row["metadata"])
         uthmani_words = _uthmani_words(record.surah_ayah)
         if len(alignments) != len(uthmani_words):
@@ -324,6 +350,12 @@ def build_segments(
             continue
         _save_local_clip(audio_dir, record.audio_filename, row[AUDIO_COLUMN]["bytes"])
         records.extend(clip_records)
+
+    missing = set(passing) - found
+    if missing:
+        if limit is None:
+            _require_all_streamed(set(passing), found, dataset_id, config_name, split)
+        skips["missing_due_to_limit"] = len(missing)
     return records, skips
 
 

@@ -188,7 +188,7 @@ def export_audio(
     """
     from datasets import Audio, load_dataset
 
-    from .filter import AUDIO_COLUMN, resolve_audio_filename
+    from .dataset_source import AUDIO_COLUMN, resolve_audio_filename
 
     wanted = {item.audio_ref: item.local_audio_path for item in items}
     out_dir.mkdir(parents=True, exist_ok=True)

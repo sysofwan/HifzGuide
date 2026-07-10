@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
+
 import pytest
 
+import tadabur.waqf_segments as ws
 from tadabur.manifest import ManifestRecord
 from tadabur.waqf_segments import (
     SegmentRecord,
@@ -216,3 +220,61 @@ def test_report_ignores_single_segment_clips():
     segments = [_segment("clip.wav", 0, ref="ءَب")]
     report = shadda_contrast_report(passing, segments, {"1:1": "ءَب"})
     assert report == {}
+
+
+# --- missing passing clips (data-integrity guard) ---------------------------
+
+
+def test_full_build_raises_when_a_passing_clip_is_never_streamed(tmp_path, monkeypatch):
+    # A full build (no --limit) whose stream drops a passing clip would emit a
+    # partial label source; that must fail loudly, naming the misses.
+    monkeypatch.setattr(ws, "_stream_passing_rows", lambda *a, **k: iter(()))
+    passing = [_passing("a.wav", "78:2"), _passing("b.wav", "78:2")]
+    with pytest.raises(ValueError, match="were not found"):
+        ws.build_segments(passing, lambda text: "x", audio_dir=tmp_path)
+
+
+def test_limited_run_records_missing_due_to_limit_instead_of_raising(tmp_path, monkeypatch):
+    # A --limit smoke run may legitimately stop before reaching every clip; the
+    # shortfall is tallied, not raised.
+    monkeypatch.setattr(ws, "_stream_passing_rows", lambda *a, **k: iter(()))
+    passing = [_passing("a.wav", "78:2"), _passing("b.wav", "78:2")]
+    records, skips = ws.build_segments(
+        passing, lambda text: "x", audio_dir=tmp_path, limit=1
+    )
+    assert records == []
+    assert skips["missing_due_to_limit"] == 2
+
+
+def test_found_clips_are_not_reported_missing(tmp_path, monkeypatch):
+    record = _passing("a.wav", "78:2")
+    row = {
+        "metadata": '{"word_alignments": [{"word": "عَنِ", "start": 0.0, "end": 1.0}]}',
+        "audio": {"bytes": b""},
+    }
+    monkeypatch.setattr(ws, "_stream_passing_rows", lambda *a, **k: iter([(row, record)]))
+    monkeypatch.setattr(ws, "_uthmani_words", lambda surah_ayah: ["عَنِ"])
+    monkeypatch.setattr(ws, "_save_local_clip", lambda *a, **k: None)
+
+    records, skips = ws.build_segments([record], lambda text: "X", audio_dir=tmp_path)
+    assert "missing_due_to_limit" not in skips
+    assert len(records) == 1
+
+
+# --- torch-free offline stage -----------------------------------------------
+
+
+def test_importing_waqf_segments_does_not_import_torch():
+    # The stage must run in the plain macOS/CPU env without pulling in the GPU
+    # inference path; a fresh interpreter proves nothing imports torch.
+    code = (
+        "import sys; import tadabur.waqf_segments; "
+        "assert 'torch' not in sys.modules, sorted(m for m in sys.modules if 'torch' in m)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        cwd=str(__import__("pathlib").Path(__file__).resolve().parent.parent),
+    )
+    assert result.returncode == 0, result.stderr

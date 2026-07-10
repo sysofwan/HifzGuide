@@ -210,9 +210,10 @@ def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
     )
     _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
     model = _ClassIdModel([class_ids])
+    pauses = {"a.wav": [(len(_WORD0) * 2 * _SPF, (len(_WORD0) * 2 + 12) * _SPF)]}
 
     records, skips = segment_clips(
-        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref, pauses
     )
 
     assert not skips
@@ -227,9 +228,10 @@ def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):
     unrelated = _ids([(cid, 2) for cid in [19, 20, 21, 22, 23, 24, 25, 26]])
     _write_clip(tmp_path, "a.wav", len(unrelated) * _SPF)
     model = _ClassIdModel([unrelated])
+    pauses = {"a.wav": [(0.2, 0.5)]}  # a pause exists, but the clip won't align
 
     records, skips = segment_clips(
-        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref, pauses
     )
 
     assert skips["low_alignment"] == 1
@@ -238,11 +240,26 @@ def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):
     assert records[0].realized_reference_phonemes == _phon("w0 w1 w2")
 
 
+def test_segment_clips_keeps_clip_whole_when_no_pauses(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    class_ids = _ids([(cid, 2) for cid in _WORD0 + _WORD1 + _WORD2])
+    _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
+    model = _ClassIdModel([class_ids])
+
+    records, skips = segment_clips(
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref, {}
+    )
+
+    assert not skips
+    assert len(records) == 1
+    assert (records[0].word_start, records[0].word_end) == (0, 3)
+
+
 def test_segment_clips_tallies_missing_clip(tmp_path, monkeypatch):
     monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
     model = _ClassIdModel([])  # decode never called — clip file absent
     records, skips = segment_clips(
-        [_manifest_record("gone.wav", "78:2")], tmp_path, model, _phon, _wordref
+        [_manifest_record("gone.wav", "78:2")], tmp_path, model, _phon, _wordref, {}
     )
     assert records == []
     assert skips["clip_missing"] == 1
@@ -258,7 +275,7 @@ def test_segment_clips_skips_unphonetizable_ayah(tmp_path, monkeypatch):
         raise IndexError("leen madd on sukoon")
 
     records, skips = segment_clips(
-        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _raises
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _raises, {}
     )
     assert records == []
     assert skips["phonetizer_unsupported"] == 1

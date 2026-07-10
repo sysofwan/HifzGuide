@@ -97,11 +97,14 @@ is a data-integrity failure); a `--limit` smoke run instead tallies the unreache
 
 ### `tadabur.segment_score` (Linux — GPU) — model waqf pass + scoring
 
-Owns the model pass end to end. For each staged clip it decodes the **whole** clip once to per-
-frame phoneme ids and hands them to `tadabur.waqf_detect` — along with the ayah's per-word phoneme
-boundaries (`hafs_word_reference` derives these from the phonetizer's char `mappings`, robust to
-wasl word-merges) — which detects the pauses the model *heard* (runs of the CTC blank token) and
-maps each to a word boundary via Smith-Waterman, splitting at a word edge (waqf) but not mid-word (a
+Owns the model pass end to end. It first runs a dedicated VAD (`obadx/recitation-segmenter-v2`
+via `tadabur.vad`) over all clips to find the **waqf pauses** — the interior silences between
+speech spans, with silences < `--min-silence-ms` merged away and speech < `--min-speech-ms`
+dropped (both from the VAD's training labels). Then, freeing the VAD, it decodes each staged clip's
+**whole** waveform once to per-frame phoneme ids and hands them, with the VAD pauses, to
+`tadabur.waqf_detect` — along with the ayah's per-word phoneme boundaries (`hafs_word_reference`
+derives these from the phonetizer's char `mappings`, robust to wasl word-merges) — which maps each
+pause to a word boundary via Smith-Waterman, splitting at a word edge (waqf) but not mid-word (a
 stop-consonant closure). Each resulting segment is then decoded again and scored against its
 realized reference with the `.balanced` gate (same normalization / Smith-Waterman / contrast
 attribution as the full-ayah filter, per segment). Output is one scored segment manifest (carrying
@@ -111,7 +114,7 @@ feeding the audit sampler + UI.
 ```bash
 python -m tadabur.segment_score --passing passing_subset.jsonl --clips-dir clips/ \
     --out-manifest segment_manifest.jsonl --audio-out segment_audio/ \
-    [--min-pause 0.35] [--boundary-tol 3]
+    [--min-silence-ms 300] [--min-speech-ms 700] [--boundary-tol 3] [--vad-dtype bfloat16]
 ```
 
 A clip that cannot be segmented safely (`repeated_recitation` / `low_alignment`) is kept whole (one

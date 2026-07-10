@@ -1,30 +1,27 @@
-"""Model-driven waqf detection: split a clip at pauses the *model* hears.
+"""Map a clip's waqf pauses to word boundaries, so each segment is phonetizable.
 
-The forced alignment Tadabur ships (``metadata.word_alignments``) misses many real
-waqf pauses: the aligner absorbs the silence into an adjacent word's span, so the
-inter-word *gap* is ~0 even though the reciter clearly stopped (verified on
-3:159, 40:20, …). Detecting waqf from those gaps therefore both over-splits on madd
-elongations (voiced, not a stop) and under-splits on absorbed pauses.
+The reciter's pauses come from the dedicated recitation VAD (:mod:`tadabur.vad`) as
+``(start_s, end_s)`` silence gaps. Detecting pauses from the Muaalem phoneme head's CTC
+blank runs (the earlier approach) was **over-eager** — a blank threshold fired on every
+inter-word micro-silence and cut tiny one-word segments; the phoneme head transcribes,
+it does not tell a genuine waqf from a breath. The VAD is fine-tuned for exactly that
+distinction (see :mod:`tadabur.vad`).
 
-This module detects pauses from the Muaalem phoneme head instead. Greedy CTC emits
-the **blank** token (``PHONEME_PAD_ID``) on silence, so a run of blank frames is a
-pause the model itself heard — independent of the aligner, and not fooled by a madd
-(which is voiced and decodes to real phonemes). To split at a *word* boundary (so
-each segment can be phonetized into its waqf/wasl realized form), each blank-run is
-mapped to a word edge: the model's decoded phonemes are Smith-Waterman-aligned to the
-ayah's per-word ``reference``, and the run is placed at the reference position of the
-last phoneme before it. A run that lands within a few phonemes of a word edge is a
-waqf; one that lands mid-word is a stop-consonant closure (qalqala on ق/ط, the hamza
-in شَيء) and is **not** split. This is all pure logic over a frame-id sequence plus
-the injected ``reference`` / per-word ``boundaries`` — the model forward and the
-phonetizer both live in :mod:`tadabur.segment_score` /
-:mod:`tadabur.waqf_segments`, so the segmentation is unit-testable with synthetic
-frame ids and a synthetic reference.
+This module turns a pause *time* into a *word* split (so each segment can be phonetized
+into its waqf/wasl realized form). The clip's decoded phonemes are Smith-Waterman-
+aligned to the ayah's per-word ``reference``, and each pause is placed at the reference
+position of the last phoneme before it. A pause that lands within a few phonemes of a
+word edge is a waqf; one that lands mid-word is dropped (a real waqf only ever falls on
+a word end). This is pure logic over a frame-id sequence, the injected pauses, and the
+``reference`` / per-word ``boundaries`` — the VAD, the model forward, and the phonetizer
+all live in :mod:`tadabur.vad` / :mod:`tadabur.segment_score` /
+:mod:`tadabur.waqf_segments`, so the segmentation is unit-testable with synthetic frame
+ids, pauses, and reference.
 
-Two whole-clip cases are skipped rather than mis-segmented: a clip whose decode is
-far longer than the ayah reference (``repeated_recitation`` — the reciter repeated
-the ayah, breaking the one-pass word map), and one whose best alignment barely
-matches the ayah at all (``low_alignment``).
+Two whole-clip cases are skipped rather than mis-segmented: a clip whose decode is far
+longer than the ayah reference (``repeated_recitation`` — the reciter repeated the ayah,
+breaking the one-pass word map), and one whose best alignment barely matches the ayah at
+all (``low_alignment``).
 """
 
 from __future__ import annotations
@@ -34,9 +31,6 @@ from dataclasses import dataclass
 from .phoneme_vocab import PHONEME_ID_TO_CHAR, PHONEME_PAD_ID
 from .smith_waterman import smith_waterman
 
-# A blank-run at least this long (seconds) is a waqf candidate. Shorter blank runs
-# are stop-consonant closures / inter-phoneme silence, not stops.
-DEFAULT_MIN_PAUSE_S = 0.35
 # A mapped pause must land within this many reference phonemes of a word edge to be a
 # waqf; farther in is mid-word (a stop closure), so it is not split.
 DEFAULT_BOUNDARY_TOL = 3
@@ -64,32 +58,6 @@ class SegmentationResult:
 
     spans: tuple[WaqfSpan, ...]
     skip: str | None = None
-
-
-def find_blank_runs(
-    class_ids: list[int],
-    seconds_per_frame: float,
-    min_pause_s: float = DEFAULT_MIN_PAUSE_S,
-) -> list[tuple[float, float]]:
-    """Runs of blank frames (in seconds) that are at least ``min_pause_s`` long.
-
-    Each maximal run of consecutive blank (``PHONEME_PAD_ID``) frames reaching
-    ``min_pause_s`` is returned as a ``(start_s, end_s)`` pair. Shorter blank runs —
-    the inter-phoneme / stop-closure silences — are dropped. Two long runs from one
-    breath (a decode blip between them) need no merging here: they map to the same
-    word edge and :func:`segment_clip` keeps one split per word edge.
-    """
-    min_frames = min_pause_s / seconds_per_frame if seconds_per_frame else 0
-    runs: list[tuple[float, float]] = []
-    start: int | None = None
-    for k, cid in enumerate(list(class_ids) + [1]):  # sentinel non-blank closes a run
-        if cid == PHONEME_PAD_ID and start is None:
-            start = k
-        elif cid != PHONEME_PAD_ID and start is not None:
-            if (k - start) >= min_frames:
-                runs.append((start * seconds_per_frame, k * seconds_per_frame))
-            start = None
-    return runs
 
 
 def collapse_with_times(
@@ -142,27 +110,33 @@ def segment_clip(
     clip_duration_s: float,
     reference: str,
     boundaries: list[int],
+    pauses: list[tuple[float, float]],
     *,
-    min_pause_s: float = DEFAULT_MIN_PAUSE_S,
     boundary_tol: int = DEFAULT_BOUNDARY_TOL,
     max_decode_ratio: float = DEFAULT_MAX_DECODE_RATIO,
     min_align_ratio: float = DEFAULT_MIN_ALIGN_RATIO,
 ) -> SegmentationResult:
-    """Split one clip into waqf spans from its per-frame phoneme ids.
+    """Split one clip into waqf spans at the reciter's pauses.
 
-    ``reference`` is the ayah's spaceless phoneme string and ``boundaries`` its per-
-    word phoneme offsets (``len == n_words + 1``, computed phonetizer-side so wasl
-    word-merges are handled — see ``tadabur.waqf_segments.hafs_word_reference``).
-    Returns a single whole-ayah span when the model heard no interior waqf, one span
-    per word-range between the confirmed pauses otherwise, or a
+    ``pauses`` are the clip's ``(start_s, end_s)`` waqf silences (the interior gaps the
+    recitation VAD found — see :mod:`tadabur.vad`); this function maps each to a *word*
+    boundary so a segment can be phonetized into its realized reference. ``reference``
+    is the ayah's spaceless phoneme string and ``boundaries`` its per-word phoneme
+    offsets (``len == n_words + 1``, computed phonetizer-side so wasl word-merges are
+    handled — see ``tadabur.waqf_segments.hafs_word_reference``).
+
+    Returns a single whole-ayah span when there is no interior pause on a word edge,
+    one span per word-range between the confirmed pauses otherwise, or a
     :class:`SegmentationResult` with a ``skip`` reason for a clip that cannot be
     segmented safely (``repeated_recitation`` / ``low_alignment``). Word ranges and
     time spans both come from the pauses: a split at word ``j`` cuts the words there
-    and the clip time at the pause itself.
+    and the clip time at the pause itself. A pause that maps mid-word (the alignment
+    places it away from any word edge) is dropped, not split — a real waqf only ever
+    lands on a word end.
     """
     n_words = len(boundaries) - 1
     whole = SegmentationResult((WaqfSpan(0, n_words, 0.0, clip_duration_s),))
-    if not class_ids or n_words <= 0 or not reference:
+    if not class_ids or n_words <= 0 or not reference or not pauses:
         return whole
 
     seconds_per_frame = clip_duration_s / len(class_ids)
@@ -179,22 +153,21 @@ def segment_clip(
         if q >= 0
     )
 
-    runs = find_blank_runs(class_ids, seconds_per_frame, min_pause_s)
     cuts: dict[int, tuple[float, float]] = {}
-    for run_start_s, run_end_s in runs:
+    for pause_start_s, pause_end_s in pauses:
         word = _map_run_to_word(
-            run_start_s, decode_times, query_to_ref, boundaries, boundary_tol
+            pause_start_s, decode_times, query_to_ref, boundaries, boundary_tol
         )
         if word is not None:
-            cuts[word] = (run_start_s, run_end_s)
+            cuts[word] = (pause_start_s, pause_end_s)
     if not cuts:
         return whole
 
     spans: list[WaqfSpan] = []
     prev_word, prev_time = 0, 0.0
     for word in sorted(cuts):
-        run_start_s, run_end_s = cuts[word]
-        spans.append(WaqfSpan(prev_word, word, prev_time, run_start_s))
-        prev_word, prev_time = word, run_end_s
+        pause_start_s, pause_end_s = cuts[word]
+        spans.append(WaqfSpan(prev_word, word, prev_time, pause_start_s))
+        prev_word, prev_time = word, pause_end_s
     spans.append(WaqfSpan(prev_word, n_words, prev_time, clip_duration_s))
     return SegmentationResult(tuple(spans))

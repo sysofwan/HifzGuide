@@ -7,14 +7,15 @@ the whole ayah, are the units that go to the fine-tune (#8), so the human poison
 audit (#6) must grade *them*.
 
 This module owns the model pass end to end. For each passing clip staged on local
-disk (by :mod:`tadabur.waqf_segments`) it: (1) decodes the *whole* clip once to
-per-frame phoneme ids and hands them to :func:`tadabur.waqf_detect.segment_clip`,
-which places the pauses the model itself heard on word boundaries (see
-:mod:`tadabur.waqf_detect` for why the shipped forced alignment misses them); then
-(2) for each resulting segment, slices the clip waveform to the segment span, decodes
-*that* span, and scores its decode against the segment's realized reference with the
-ported ``.balanced`` gate — the same normalization / Smith-Waterman / contrast
-attribution the full-ayah filter uses, only per segment.
+disk (by :mod:`tadabur.waqf_segments`) it: (1) runs the dedicated recitation VAD
+(:mod:`tadabur.vad`) over all clips to find the reciter's waqf pauses, decodes the
+*whole* clip once to per-frame phoneme ids, and hands both to
+:func:`tadabur.waqf_detect.segment_clip`, which places each VAD pause on a word
+boundary (see :mod:`tadabur.waqf_detect` for why the phoneme head's own blank runs
+over-split); then (2) for each resulting segment, slices the clip waveform to the
+segment span, decodes *that* span, and scores its decode against the segment's realized
+reference with the ported ``.balanced`` gate — the same normalization / Smith-Waterman
+/ contrast attribution the full-ayah filter uses, only per segment.
 
 Unlike the filter it does **not** gate-reject: every segment of an admitted clip is
 already in the training set, so all segments are emitted. ``match_ratio`` and
@@ -37,7 +38,7 @@ Usage:
   python -m tadabur.segment_score \
       --passing passing_subset.jsonl --clips-dir clips/ \
       --out-manifest segment_manifest.jsonl --audio-out segment_audio/ \
-      [--min-pause 0.35] [--boundary-tol 3] [--batch-size 16]
+      [--min-silence-ms 300] [--min-speech-ms 700] [--boundary-tol 3] [--batch-size 16]
 """
 
 from __future__ import annotations
@@ -57,7 +58,7 @@ from .contrast_attribution import all_contrasts
 from .manifest import ManifestRecord, read_records
 from .normalization import normalize_phonemes
 from .scorer import BALANCED_SCORER
-from . import waqf_detect
+from . import vad, waqf_detect
 from .waqf_detect import WaqfSpan
 from .waqf_segments import (
     SegmentRecord,
@@ -151,21 +152,23 @@ def segment_clips(
     model,
     phonetize,
     word_reference,
+    pauses_by_clip: dict[str, list[tuple[float, float]]],
     *,
-    min_pause_s: float = waqf_detect.DEFAULT_MIN_PAUSE_S,
     boundary_tol: int = waqf_detect.DEFAULT_BOUNDARY_TOL,
     max_decode_ratio: float = waqf_detect.DEFAULT_MAX_DECODE_RATIO,
     min_align_ratio: float = waqf_detect.DEFAULT_MIN_ALIGN_RATIO,
 ) -> tuple[list[SegmentRecord], Counter]:
-    """Split every passing clip at the waqf pauses the *model* hears.
+    """Split every passing clip at its VAD-detected waqf pauses.
 
-    For each passing clip staged under ``clips_dir`` (see ``tadabur.waqf_segments``),
-    decodes the whole clip **one at a time** (a batched decode of full clips OOMs —
-    attention is quadratic in length) to per-frame phoneme ids, phonetizes the ayah
-    once via ``word_reference`` into its spaceless phoneme reference + per-word
-    boundaries, and passes those to :func:`tadabur.waqf_detect.segment_clip` to place
-    the reciter's intra-ayah pauses on word boundaries. Each resulting word range
-    becomes a :class:`~tadabur.waqf_segments.SegmentRecord` with its realized reference.
+    ``pauses_by_clip`` maps each clip's ``audio_filename`` to its ``(start_s, end_s)``
+    waqf silence gaps (from :func:`tadabur.vad.compute_clip_pauses`). For each passing
+    clip staged under ``clips_dir`` (see ``tadabur.waqf_segments``), decodes the whole
+    clip **one at a time** (a batched decode of full clips OOMs — attention is quadratic
+    in length) to per-frame phoneme ids, phonetizes the ayah once via ``word_reference``
+    into its spaceless phoneme reference + per-word boundaries, and passes those plus the
+    clip's pauses to :func:`tadabur.waqf_detect.segment_clip` to place each pause on a
+    word boundary. Each resulting word range becomes a
+    :class:`~tadabur.waqf_segments.SegmentRecord` with its realized reference.
 
     A clip :func:`~tadabur.waqf_detect.segment_clip` cannot segment safely
     (``repeated_recitation`` / ``low_alignment``) is tallied and kept whole — one
@@ -185,11 +188,12 @@ def segment_clips(
         duration_s = len(waveform) / TARGET_SAMPLE_RATE
         class_ids = list(model.decode(waveform, TARGET_SAMPLE_RATE).class_ids)
         uthmani_words = _uthmani_words(passing.surah_ayah)
+        pauses = pauses_by_clip.get(passing.audio_filename, [])
         try:
             reference, boundaries = word_reference(uthmani_words)
             result = waqf_detect.segment_clip(
-                class_ids, duration_s, reference, boundaries,
-                min_pause_s=min_pause_s, boundary_tol=boundary_tol,
+                class_ids, duration_s, reference, boundaries, pauses,
+                boundary_tol=boundary_tol,
                 max_decode_ratio=max_decode_ratio, min_align_ratio=min_align_ratio,
             )
             if result.skip is not None:
@@ -329,10 +333,17 @@ def main() -> None:
         help=f"Segments per scoring decode batch (default: {DEFAULT_BATCH_SIZE}).",
     )
     parser.add_argument(
-        "--min-pause", type=float, default=waqf_detect.DEFAULT_MIN_PAUSE_S,
+        "--min-silence-ms", type=float, default=vad.DEFAULT_MIN_SILENCE_MS,
         help=(
-            "Blank-run length (s) the model must hear to mark a waqf "
-            f"(default: {waqf_detect.DEFAULT_MIN_PAUSE_S})."
+            "Min silence (ms) the recitation VAD counts as a waqf "
+            f"(default: {vad.DEFAULT_MIN_SILENCE_MS:g})."
+        ),
+    )
+    parser.add_argument(
+        "--min-speech-ms", type=float, default=vad.DEFAULT_MIN_SPEECH_MS,
+        help=(
+            "Min speech (ms) between pauses the VAD keeps as a segment "
+            f"(default: {vad.DEFAULT_MIN_SPEECH_MS:g})."
         ),
     )
     parser.add_argument(
@@ -345,17 +356,34 @@ def main() -> None:
     parser.add_argument(
         "--device", default="cuda", help="Torch device for the model (default: cuda).",
     )
+    parser.add_argument(
+        "--vad-dtype", default="bfloat16",
+        help="Torch dtype for the VAD forward (default: bfloat16).",
+    )
     args = parser.parse_args()
 
     passing = read_records(args.passing)
     print(f"Loaded {len(passing)} passing clips from {args.passing}.")
 
+    import torch
+
     from .inference import MuaalemPhonemeModel
+
+    pauses_by_clip = vad.compute_clip_pauses(
+        passing, args.clips_dir,
+        device=torch.device(args.device), dtype=getattr(torch, args.vad_dtype),
+        min_silence_ms=args.min_silence_ms, min_speech_ms=args.min_speech_ms,
+    )
+    total_pauses = sum(len(p) for p in pauses_by_clip.values())
+    print(
+        f"VAD found {total_pauses} interior waqf pauses across "
+        f"{len(pauses_by_clip)} clips."
+    )
 
     model = MuaalemPhonemeModel.load(device=args.device)
     segments, skips = segment_clips(
         passing, args.clips_dir, model, hafs_phonetizer(), hafs_word_reference(),
-        min_pause_s=args.min_pause, boundary_tol=args.boundary_tol,
+        pauses_by_clip, boundary_tol=args.boundary_tol,
     )
     clips = len({s.audio_filename for s in segments})
     print(

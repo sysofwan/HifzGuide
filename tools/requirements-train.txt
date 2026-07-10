@@ -25,4 +25,5 @@ soundfile>=0.12
 librosa>=0.10
 jiwer>=3.0
 quran-transcript>=0.5
+recitations-segmenter>=1.0   # obadx/recitation-segmenter-v2 VAD for waqf pause detection
 bitsandbytes>=0.45   # optional 8-bit optimizer; >=0.45 for Blackwell (sm_120)

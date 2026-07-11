@@ -28,6 +28,11 @@ the ``missing_due_to_limit`` tally instead.
 Usage:
   python -m tadabur.waqf_segments --passing passing_subset.jsonl \
       --audio-dir clips/ [--config-name preview] [--limit N]
+
+  For a full-config run, stage from the parquet shards the filter admitted from
+  (see :mod:`tadabur.shard_reader`) instead of the 300-row preview stream:
+  python -m tadabur.waqf_segments --passing passing_subset_full.jsonl \
+      --audio-dir clips/ --shards 0-19 [--delete-shards]
 """
 
 from __future__ import annotations
@@ -176,18 +181,23 @@ def _stream_passing_rows(
     config_name: str | None,
     split: str,
     limit: int | None,
+    row_source: Iterator[dict] | None = None,
 ) -> Iterator[tuple[dict, ManifestRecord]]:
     """Stream Tadabur, yielding only rows whose clip is in the passing subset.
 
     Reads audio undecoded (raw WAV bytes, no ``torchcodec``) like the filter, pairs
     each kept row with its passing :class:`ManifestRecord`, and stops as soon as
     every passing clip has been seen so the whole corpus need not be streamed.
+    ``row_source`` overrides the ``datasets`` stream with a caller-supplied row iterator
+    (the full-config parquet-shard reader; see :func:`stage_clips`), for the corpus the
+    300-row ``preview`` config is too small to cover.
     """
-    dataset = load_dataset(dataset_id, name=config_name, split=split, streaming=True)
-    dataset = dataset.cast_column(AUDIO_COLUMN, Audio(decode=False))
+    if row_source is None:
+        dataset = load_dataset(dataset_id, name=config_name, split=split, streaming=True)
+        row_source = iter(dataset.cast_column(AUDIO_COLUMN, Audio(decode=False)))
     remaining = set(passing)
     consumed = 0
-    for row in dataset:
+    for row in row_source:
         if limit is not None and consumed >= limit:
             break
         consumed += 1
@@ -232,6 +242,9 @@ def stage_clips(
     config_name: str | None = None,
     split: str = "train",
     limit: int | None = None,
+    shards: str | None = None,
+    shard_cache: Path | None = None,
+    delete_shards: bool = False,
 ) -> Counter:
     """Stream the passing subset and save each clip's whole 16 kHz-mono waveform.
 
@@ -242,14 +255,31 @@ def stage_clips(
     passing clip raises rather than stage a partial set (see
     :func:`_require_all_streamed`), while a ``--limit`` smoke run records its
     shortfall as ``missing_due_to_limit``.
+
+    With ``shards`` the audio is read from the full-config parquet shards (see
+    :mod:`tadabur.shard_reader`) rather than the 300-row ``preview`` stream. A shard scan
+    is deliberately partial — it stages only clips that live in the given shards — so any
+    passing clip outside them is recorded as ``missing_outside_shards`` (never raised),
+    matching the shard subset the filter admitted from.
     """
     audio_dir.mkdir(parents=True, exist_ok=True)
     passing = {record.audio_filename: record for record in passing_records}
 
+    row_source: Iterator[dict] | None = None
+    if shards is not None:
+        from .shard_reader import iter_shard_rows, parse_shard_spec
+
+        row_source = iter_shard_rows(
+            parse_shard_spec(shards),
+            dataset_id=dataset_id,
+            cache_dir=shard_cache,
+            delete_after=delete_shards,
+        )
+
     skips: Counter = Counter()
     found: set[str] = set()
     for row, record in _stream_passing_rows(
-        passing, dataset_id, config_name, split, limit
+        passing, dataset_id, config_name, split, limit, row_source
     ):
         found.add(record.audio_filename)
         waveform = decode_to_mono_16k(row[AUDIO_COLUMN]["bytes"])
@@ -257,9 +287,12 @@ def stage_clips(
 
     missing = set(passing) - found
     if missing:
-        if limit is None:
+        if shards is not None:
+            skips["missing_outside_shards"] = len(missing)
+        elif limit is None:
             _require_all_streamed(set(passing), found, dataset_id, config_name, split)
-        skips["missing_due_to_limit"] = len(missing)
+        else:
+            skips["missing_due_to_limit"] = len(missing)
     return skips
 
 
@@ -290,6 +323,24 @@ def main() -> None:
         default=None,
         help="Scan at most this many streamed rows (before the passing-subset filter).",
     )
+    parser.add_argument(
+        "--shards",
+        default=None,
+        help="Stage audio from the full 'default' config parquet shards instead of the "
+             "300-row 'preview' stream. A spec like '0-19' (see tadabur.shard_reader); "
+             "must match the shards the filter admitted the passing subset from.",
+    )
+    parser.add_argument(
+        "--shard-cache",
+        type=Path,
+        default=None,
+        help="Directory for downloaded shards (default: the shared HF cache).",
+    )
+    parser.add_argument(
+        "--delete-shards",
+        action="store_true",
+        help="Delete each 2.4 GB shard after staging from it, to bound disk.",
+    )
     args = parser.parse_args()
 
     passing_records = read_records(args.passing)
@@ -302,6 +353,9 @@ def main() -> None:
         config_name=args.config_name,
         split=args.split,
         limit=args.limit,
+        shards=args.shards,
+        shard_cache=args.shard_cache,
+        delete_shards=args.delete_shards,
     )
     staged = len(passing_records) - sum(skips.values())
     print(f"Staged {staged} clips to {args.audio_dir}. Missed: {dict(skips)}")

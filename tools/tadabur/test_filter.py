@@ -218,3 +218,56 @@ class _AllPassModel:
 
     def decode_batch(self, waveforms, sample_rate):
         return [PhonemeDecode("بتثج", 0, 0) for _ in waveforms]
+
+
+def test_shard_clip_source_resumes_by_whole_shard(monkeypatch):
+    from tadabur.filter import _shard_clip_source
+
+    # Two shards of raw Tadabur-shaped rows (audio struct + id ints).
+    def _row(surah_id, ayah_id, tag):
+        return {
+            "audio": {"bytes": _wav_bytes(TARGET_SAMPLE_RATE), "path": f"{tag}.wav"},
+            "surah_id": surah_id,
+            "ayah_id": ayah_id,
+            "reciter_id": 3,
+        }
+
+    shards = {
+        0: [_row(2, i, f"s0_c{i}") for i in range(3)],
+        1: [_row(2, i, f"s1_c{i}") for i in range(3)],
+    }
+
+    def fake_iter(indices, **kwargs):
+        for idx in indices:
+            yield from shards[idx]
+
+    monkeypatch.setattr("tadabur.shard_reader.iter_shard_rows", fake_iter)
+    monkeypatch.setattr("tadabur.shard_reader.ROWS_PER_SHARD", 3)
+
+    # 3 clips already processed = one finished shard, so resume skips shard 0.
+    clips = list(_shard_clip_source(
+        "0-1", clips_processed=3, dataset_id="d",
+        shard_cache=None, delete_shards=False, limit=None,
+    ))
+    assert [c.audio_filename for c in clips] == ["s1_c0.wav", "s1_c1.wav", "s1_c2.wav"]
+    # canonical surah shift (surah_id 2 -> "3:*") is applied by parse_clip.
+    assert clips[0].surah_ayah == "3:0"
+
+
+def test_shard_clip_source_applies_limit(monkeypatch):
+    from tadabur.filter import _shard_clip_source
+
+    rows = [
+        {"audio": {"bytes": _wav_bytes(TARGET_SAMPLE_RATE), "path": f"c{i}.wav"},
+         "surah_id": 0, "ayah_id": i, "reciter_id": 1}
+        for i in range(10)
+    ]
+    monkeypatch.setattr("tadabur.shard_reader.iter_shard_rows",
+                        lambda indices, **k: iter(rows))
+    monkeypatch.setattr("tadabur.shard_reader.ROWS_PER_SHARD", 1000)
+
+    clips = list(_shard_clip_source(
+        "0", clips_processed=0, dataset_id="d",
+        shard_cache=None, delete_shards=False, limit=4,
+    ))
+    assert [c.audio_filename for c in clips] == ["c0.wav", "c1.wav", "c2.wav", "c3.wav"]

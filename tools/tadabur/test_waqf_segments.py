@@ -93,6 +93,33 @@ def test_found_clips_are_not_reported_missing(tmp_path, monkeypatch):
     assert "missing_due_to_limit" not in skips
 
 
+def test_shard_staging_records_clips_outside_shards_without_raising(tmp_path, monkeypatch):
+    # A --shards scan is deliberately partial (it stages only clips living in the given
+    # shards), so a passing clip not in them is tallied, never raised — even though
+    # ``limit`` is None (which would raise on a full stream build).
+    staged = _passing("in_shard.wav", "78:2")
+    absent = _passing("elsewhere.wav", "78:2")
+    row = {"audio": {"bytes": b""}}
+
+    captured = {}
+
+    def fake_stream(passing, dataset_id, config_name, split, limit, row_source):
+        captured["row_source"] = row_source
+        return iter([(row, staged)])
+
+    monkeypatch.setattr(ws, "_stream_passing_rows", fake_stream)
+    monkeypatch.setattr(ws, "decode_to_mono_16k", lambda b: np.zeros(16000, dtype=np.float32))
+    monkeypatch.setattr(ws, "_save_local_clip", lambda *a, **k: None)
+    monkeypatch.setattr("tadabur.shard_reader.iter_shard_rows",
+                        lambda indices, **k: iter([{"marker": list(indices)}]))
+
+    skips = ws.stage_clips([staged, absent], audio_dir=tmp_path, shards="0-1")
+    assert skips["missing_outside_shards"] == 1
+    assert "missing_due_to_limit" not in skips
+    # A shard row source (not the datasets stream) was threaded into the streamer.
+    assert next(captured["row_source"]) == {"marker": [0, 1]}
+
+
 # --- _spaceless_word_offsets ------------------------------------------------
 
 

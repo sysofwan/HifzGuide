@@ -18,6 +18,11 @@ duplicating work.
 Usage:
   python -m tadabur.filter --manifest passing_subset.jsonl [--batch-size 64]
     [--config-name preview] [--limit N] [--device cuda]
+
+  The 'preview' config is a fixed 300-row sample; to filter the full 385-shard corpus
+  (the P3.5 audit needs it — see ``tadabur.shard_reader``) read parquet shards directly:
+  python -m tadabur.filter --manifest passing_subset_full.jsonl --shards 0-19
+    [--delete-shards] [--batch-size 4]
 """
 
 from __future__ import annotations
@@ -172,19 +177,56 @@ def run_filter(
     batch_size: int = DEFAULT_BATCH_SIZE,
     limit: int | None = None,
     skip_unknown_refs: bool = False,
+    clip_source: Iterable[Clip] | None = None,
 ) -> None:
     """Filter the stream in batches, committing passers to ``manifest`` as it goes.
 
     Resumes from ``manifest.clips_processed`` and commits after every batch so a
     crash loses at most the last in-flight batch. ``skip_unknown_refs`` is passed
-    through to :func:`score_batch` (see there).
+    through to :func:`score_batch` (see there). ``clip_source`` overrides the default
+    ``datasets`` stream with a caller-supplied iterable of :class:`Clip` (the full-config
+    parquet-shard reader; see :func:`main`) — the caller then owns resume-skipping and
+    ``limit``, since a shard source is positioned by shard, not stream offset.
     """
-    clips = stream_clips(
+    clips = clip_source if clip_source is not None else stream_clips(
         dataset_id, config_name, split, start=manifest.clips_processed, limit=limit
     )
     for batch in _batched(clips, batch_size):
         records = score_batch(batch, model, references, scorer, skip_unknown_refs)
         manifest.commit_batch(records, num_clips=len(batch))
+
+
+def _shard_clip_source(
+    spec: str,
+    clips_processed: int,
+    dataset_id: str,
+    shard_cache: Path | None,
+    delete_shards: bool,
+    limit: int | None,
+) -> Iterator[Clip]:
+    """Build a :class:`Clip` iterator over the full-config parquet shards named by ``spec``.
+
+    Resume is by whole shard: each shard is exactly :data:`~tadabur.shard_reader.ROWS_PER_SHARD`
+    rows, so the ``clips_processed`` checkpoint already reflects an integer number of
+    finished shards and the run skips those. A ``--limit`` (partial shard) is honoured for
+    this run but breaks the shard-boundary invariant, so it is meant for smoke probes into
+    a throwaway manifest, not resumable full runs.
+    """
+    from .shard_reader import ROWS_PER_SHARD, iter_shard_rows, parse_shard_spec
+
+    indices = parse_shard_spec(spec)
+    done_shards = clips_processed // ROWS_PER_SHARD
+    remaining = indices[done_shards:]
+    if done_shards:
+        print(f"Shard resume: skipping {done_shards} finished shard(s).")
+    rows = iter_shard_rows(
+        remaining,
+        dataset_id=dataset_id,
+        cache_dir=shard_cache,
+        delete_after=delete_shards,
+    )
+    clips = (parse_clip(row) for row in rows)
+    return itertools.islice(clips, limit) if limit is not None else clips
 
 
 def main() -> None:
@@ -214,6 +256,24 @@ def main() -> None:
         default=None,
         help="Process at most this many clips this run (after resume skip).",
     )
+    parser.add_argument(
+        "--shards",
+        default=None,
+        help="Read the full 'default' config directly from parquet shards instead of "
+             "the (300-row) 'preview' stream. A spec like '0-9' or '0,5,20-21' "
+             "(see tadabur.shard_reader); dodges the datasets nested-chunk bug.",
+    )
+    parser.add_argument(
+        "--shard-cache",
+        type=Path,
+        default=None,
+        help="Directory for downloaded shards (default: the shared HF cache).",
+    )
+    parser.add_argument(
+        "--delete-shards",
+        action="store_true",
+        help="Delete each 2.4 GB shard after scoring it, to bound disk on long runs.",
+    )
     parser.add_argument("--model-id", default=MODEL_ID, help="HF model id.")
     parser.add_argument(
         "--device", default="cuda", help="Torch device (default: cuda)."
@@ -233,6 +293,12 @@ def main() -> None:
     with FilterManifest.open(args.manifest) as manifest:
         if manifest.clips_processed:
             print(f"Resuming after {manifest.clips_processed} clips already scored.")
+        clip_source = None
+        if args.shards:
+            clip_source = _shard_clip_source(
+                args.shards, manifest.clips_processed, args.dataset,
+                args.shard_cache, args.delete_shards, args.limit,
+            )
         run_filter(
             manifest,
             model,
@@ -244,6 +310,7 @@ def main() -> None:
             batch_size=args.batch_size,
             limit=args.limit,
             skip_unknown_refs=args.skip_unknown_refs,
+            clip_source=clip_source,
         )
         print(
             f"Done. {manifest.clips_processed} clips scored; "

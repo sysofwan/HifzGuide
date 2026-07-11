@@ -111,6 +111,24 @@ def test_gate_perfect_match_has_no_insertion_run():
     assert BALANCED_SCORER.gate("بتثج", "بتثج").max_insertion_run == 0
 
 
+def test_gate_exposes_edge_trims_without_failing():
+    # Extra query phonemes trailing past the reference are trimmed by the local aligner,
+    # not scored as interior insertions. The gate exposes the trim observationally; it
+    # does NOT fail the pair (a whole clip may legitimately end mid-phrase — only
+    # segment_score treats an interior-boundary trim as a mislabel).
+    ref = "بتثجحخدذرز"
+    overrun = ref + "سشصضطظعغف"  # 9 extra trailing phonemes
+    result = BALANCED_SCORER.gate(overrun, ref)
+    assert result.trailing_trim >= 5
+    assert result.leading_trim == 0
+    assert result.max_insertion_run == 0  # a trailing overrun is trimmed, not an insertion
+
+
+def test_gate_perfect_match_has_no_edge_trims():
+    result = BALANCED_SCORER.gate("بتثج", "بتثج")
+    assert result.leading_trim == 0 and result.trailing_trim == 0
+
+
 def test_is_soft_mismatch_respects_mode():
     dhal, zai = "\u0630", "\u0632"
     assert BALANCED_SCORER.is_soft_mismatch(dhal, zai)

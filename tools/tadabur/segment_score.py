@@ -20,10 +20,13 @@ reference with the ported ``.balanced`` gate — the same normalization / Smith-
 Unlike the whole-clip filter it does **not** apply the ``match_ratio`` pass bar — every
 segment of an admitted clip is already in the training set, so low-scoring segments are
 still emitted (``match_ratio`` and ``contrasts`` are observational, driving the audit's
-per-contrast and marginal-band sampling). It does apply the gate's **repeated-phrase
-poison** reject: a segment whose decode has an interior insertion run of
-``scorer.MAX_INSERTION_RUN`` phonemes is dropped and tallied, since a repeated phrase is
-a mislabelled example, not a marginal one to audit.
+per-contrast and marginal-band sampling). It does drop two kinds of **mislabelled**
+segment: the gate's **repeated-phrase poison** (a decode with an interior insertion run of
+``scorer.MAX_INSERTION_RUN`` phonemes), and a **boundary mismatch** — a segment whose audio
+overruns its assigned reference at an *interior* waqf split by ``MAX_BOUNDARY_TRIM``+
+phonemes (a localized repeat straddling the pause corrupts the whole-clip decode→word map,
+so the reference is cut on the wrong word). Both are mislabelled examples, not marginal
+ones to audit, and are tallied by reason.
 
 The output is a single segment manifest (JSONL). Its :class:`ManifestRecord` fields
 (``audio_filename`` = the per-segment id, ``surah_ayah``, ``match_ratio``,
@@ -61,6 +64,17 @@ from .contrast_attribution import all_contrasts
 from .manifest import ManifestRecord, read_records
 from .normalization import normalize_phonemes
 from .scorer import BALANCED_SCORER, MAX_INSERTION_RUN
+
+# Segmentation boundary QC (a Tadabur segmentation policy, not a Muraja parameter): at an
+# *interior* waqf split, the segment's audio must be covered by its assigned reference. A
+# leading (non-first segment) or trailing (non-last segment) local-alignment trim of this
+# many or more query phonemes means the audio overran the reference boundary — a mis-placed
+# or repeat-straddled split (a localized repeat across the pause corrupts the whole-clip
+# decode→word map, so the reference is cut a word or two too early). Such a segment is
+# mislabelled and dropped. A trim at a clip's true start/end is benign (reciter began/ended
+# mid-phrase) and never counts. Threshold matches ``MAX_INSERTION_RUN``: the manifest shows a
+# clean gap (interior-edge trims are 0 for ~95% of splits, then jump to 7+).
+MAX_BOUNDARY_TRIM = 5
 from . import vad, waqf_detect
 from .waqf_detect import WaqfSpan
 from .waqf_segments import (
@@ -231,20 +245,39 @@ def score_segments(
     clips_dir: Path,
     model,
     batch_size: int = DEFAULT_BATCH_SIZE,
-) -> tuple[list[dict], list[SegmentRecord], int]:
-    """Decode and score every segment; return ``(rows, kept, poison_count)``.
+) -> tuple[list[dict], list[SegmentRecord], Counter]:
+    """Decode and score every segment; return ``(rows, kept, drops)``.
 
     Segments are processed in a stable ``(audio_filename, segment_index)`` order so
     the manifest is deterministic. Each surviving segment yields one manifest row (dict)
     carrying the :class:`ManifestRecord` fields the sampler needs plus the per-segment
     display fields the UI reads; the realized reference is normalized **once** here (the
     gate/attribution require a pre-normalized reference — normalization is not
-    idempotent). A segment whose decode has an interior insertion run of
-    :data:`~tadabur.scorer.MAX_INSERTION_RUN` phonemes is a repeated-phrase poison label
-    and is dropped (counted in ``poison_count``, not emitted); ``kept`` is the surviving
-    segments in row order, so the caller stages audio for exactly the emitted rows.
+    idempotent). Two kinds of mislabelled segment are dropped (not emitted) and tallied in
+    the ``drops`` counter, keyed by reason:
+
+    * ``repeated_phrase`` — the decode has an interior insertion run of
+      :data:`~tadabur.scorer.MAX_INSERTION_RUN` phonemes (the reciter repeated words).
+    * ``boundary_mismatch`` — at an *interior* waqf boundary (a leading trim on a non-first
+      segment or a trailing trim on a non-last segment) the audio overran its assigned
+      reference by :data:`MAX_BOUNDARY_TRIM`+ phonemes, i.e. the split landed on the wrong
+      word (typically a localized repeat straddling the pause).
+
+    A low ``match_ratio`` alone is **not** a drop — such a segment stays as an
+    observational passer the audit samples the marginal band from. ``kept`` is the
+    surviving segments in row order, so the caller stages audio for exactly the emitted
+    rows.
     """
     ordered = sorted(segments, key=lambda s: (s.audio_filename, s.segment_index))
+
+    # The last segment index per clip: a trailing trim on it is a true clip end (benign),
+    # not an interior split. A single whole-clip span is both first and last, so neither
+    # of its edges is ever boundary-checked.
+    last_index: dict[str, int] = {}
+    for seg in ordered:
+        last_index[seg.audio_filename] = max(
+            last_index.get(seg.audio_filename, -1), seg.segment_index
+        )
 
     clip_cache: dict[str, np.ndarray] = {}
     waveforms: list[np.ndarray] = []
@@ -259,7 +292,7 @@ def score_segments(
 
     rows: list[dict] = []
     kept: list[SegmentRecord] = []
-    poison = 0
+    drops: Counter = Counter()
     for seg, decode in zip(ordered, predicted):
         reference = normalize_phonemes(seg.realized_reference_phonemes).normalized
         result = BALANCED_SCORER.gate(decode, reference)
@@ -267,7 +300,19 @@ def score_segments(
         # from the training manifest (a low match_ratio alone stays — it is still an
         # observational passer the audit samples the marginal band from).
         if result.max_insertion_run >= MAX_INSERTION_RUN:
-            poison += 1
+            drops["repeated_phrase"] += 1
+            continue
+        # A large trim at an interior waqf boundary means the split landed on the wrong
+        # word (the segment's audio extends past, or before, its reference). Only edges
+        # that are interior splits count: a leading trim on a non-first segment, a
+        # trailing trim on a non-last segment.
+        interior_lead = 0 if seg.segment_index == 0 else result.leading_trim
+        interior_trail = (
+            0 if seg.segment_index == last_index[seg.audio_filename]
+            else result.trailing_trim
+        )
+        if max(interior_lead, interior_trail) >= MAX_BOUNDARY_TRIM:
+            drops["boundary_mismatch"] += 1
             continue
         record = ManifestRecord(
             audio_filename=segment_id(seg),
@@ -290,7 +335,7 @@ def score_segments(
         row["segment_index"] = seg.segment_index
         rows.append(row)
         kept.append(seg)
-    return rows, kept, poison
+    return rows, kept, drops
 
 
 def write_segment_manifest(path: Path, rows: list[dict]) -> None:
@@ -407,7 +452,7 @@ def main() -> None:
         f"Skips/fallbacks: {dict(skips)}"
     )
 
-    rows, kept, poison = score_segments(segments, args.clips_dir, model, args.batch_size)
+    rows, kept, drops = score_segments(segments, args.clips_dir, model, args.batch_size)
     write_segment_manifest(args.out_manifest, rows)
     stage_segment_audio(kept, args.clips_dir, args.audio_out)
 
@@ -415,7 +460,8 @@ def main() -> None:
     buckets = {c: sum(1 for r in rows if c in r["contrasts"]) for c in all_contrasts()}
     print(
         f"Scored {len(rows)} segments ({contrasted} with contrasts; "
-        f"rejected {poison} as repeated-phrase poison). Wrote manifest "
+        f"rejected {drops['repeated_phrase']} as repeated-phrase poison, "
+        f"{drops['boundary_mismatch']} as boundary mismatch). Wrote manifest "
         f"to {args.out_manifest} and segment audio to {args.audio_out}."
     )
     print("Per-contrast segment counts: " + ", ".join(

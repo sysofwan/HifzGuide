@@ -35,7 +35,7 @@ from dataclasses import dataclass
 
 from . import contrast_attribution, phoneme_sifat
 from .normalization import normalize_phonemes
-from .smith_waterman import longest_insertion_run, smith_waterman
+from .smith_waterman import edge_insertion_trims, longest_insertion_run, smith_waterman
 
 # Minimum non-space query phonemes before a match is trusted. Below this, short
 # transcriptions produce spurious alignments. Verbatim from Muraja's
@@ -87,11 +87,18 @@ class GateResult:
     insertion-poison policy). ``max_insertion_run`` is the longest interior run of
     query-only phonemes in the alignment; ``passed`` is ``False`` when it reaches
     :data:`MAX_INSERTION_RUN` even if ``match_ratio`` clears the threshold.
+    ``leading_trim`` / ``trailing_trim`` are the non-space query phonemes the local
+    aligner trimmed off each end; they are **observational** (they do not affect
+    ``passed``, since a whole clip legitimately begins/ends mid-phrase). Only the
+    segmentation layer, which knows an edge is an *interior* waqf split, treats a large
+    trim as a mis-segmented boundary (see :mod:`tadabur.segment_score`).
     """
 
     passed: bool
     match_ratio: float
     max_insertion_run: int = 0
+    leading_trim: int = 0
+    trailing_trim: int = 0
 
 
 @dataclass(frozen=True)
@@ -146,6 +153,9 @@ class Scorer:
 
         match_ratio = alignment.score / max(query_phoneme_count, 1)
         insertion_run = longest_insertion_run(alignment.columns)
+        leading_trim, trailing_trim = edge_insertion_trims(
+            query, alignment.query_start, alignment.query_end
+        )
         return GateResult(
             passed=(
                 match_ratio >= self.params.correct_threshold
@@ -153,6 +163,8 @@ class Scorer:
             ),
             match_ratio=match_ratio,
             max_insertion_run=insertion_run,
+            leading_trim=leading_trim,
+            trailing_trim=trailing_trim,
         )
 
 

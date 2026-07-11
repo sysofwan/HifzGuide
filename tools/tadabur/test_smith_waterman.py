@@ -9,6 +9,7 @@ from tadabur.smith_waterman import (
     MISMATCH,
     AlignedColumn,
     RefMatchInfo,
+    edge_insertion_trims,
     local_alignment_score,
     longest_insertion_run,
     smith_waterman,
@@ -209,3 +210,21 @@ def test_longest_insertion_run_broken_by_space_and_match():
     # A space column and a match column both reset the run.
     assert longest_insertion_run(_cols("ii mii")) == 2
     assert longest_insertion_run(_cols("iimii")) == 2
+
+
+# MARK: - edge_insertion_trims (non-parity boundary-QC helper)
+
+
+def test_edge_insertion_trims_counts_non_space_ends():
+    # query[:start] leading phonemes and query[end:] trailing phonemes are trimmed.
+    assert edge_insertion_trims("abcdefg", 2, 5) == (2, 2)
+
+
+def test_edge_insertion_trims_ignores_spaces():
+    # Spaces at the trimmed ends are word boundaries, not trimmed phonemes.
+    assert edge_insertion_trims("ab cd ef", 3, 5) == (2, 2)
+
+
+def test_edge_insertion_trims_zero_when_full_span_aligned():
+    q = "abcd"
+    assert edge_insertion_trims(q, 0, len(q)) == (0, 0)

@@ -117,6 +117,25 @@ def longest_insertion_run(columns: list[AlignedColumn]) -> int:
     return best
 
 
+def edge_insertion_trims(
+    query: str, query_start: int, query_end: int
+) -> tuple[int, int]:
+    """Non-space query phonemes the local alignment trimmed off each end.
+
+    Returns ``(leading, trailing)``: the count of non-space ``query`` phonemes before
+    ``query_start`` and at/after ``query_end`` — reciter material dropped because it
+    fell outside the best-scoring region. At a clip's *true* start/end this is benign
+    (the reciter began or ended mid-phrase); at an **interior** segment boundary a large
+    trim means the segment's audio overran its assigned reference, i.e. a mis-placed or
+    repeat-straddled waqf split (see :mod:`tadabur.segment_score`). Unlike
+    :func:`longest_insertion_run`, this measures the *ends*, which the local aligner
+    silently trims rather than scoring as interior insertions.
+    """
+    leading = sum(1 for ch in query[:query_start] if ch != " ")
+    trailing = sum(1 for ch in query[query_end:] if ch != " ")
+    return leading, trailing
+
+
 def _substitution_score(a: str, b: str) -> float:
     """Diagonal cell score for aligning query char ``a`` against ref char ``b``.
 

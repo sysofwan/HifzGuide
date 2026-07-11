@@ -48,3 +48,16 @@ what the *model* won't. We are fine-tuning the phoneme head on quality-filtered 
 - **Tolerance moves into a non-tunable artifact.** The scorer is tunable per-context; the model
   is not. Once tolerance is baked into weights it applies everywhere, so over-shooting into
   "soft pairs indistinguishable" is a real regression the should-reject eval must catch.
+
+- **Repeated-phrase poison reject (interior-insertion-run gate).** The Smith-Waterman scorer is a
+  *local* aligner — its real job in Muraja is to locate a reciter on a mushaf page, so it trims
+  unmatched query at the ends and, with the parity-locked affine gaps (`GAP_OPEN=-0.5`,
+  `GAP_EXTEND=-0.1`), shrugs off insertions: a repeated phrase barely dents `match_ratio` because
+  the score numerator hardly moves while only the denominator (query length) grows. Since madd is
+  already collapsed before alignment (`normalize_phonemes`), any interior insertion run surviving
+  to SW is genuine extra content — a strong mislabel signal when the ayah is already known. We add
+  a **parity-safe, filter-side** reject: `longest_insertion_run(columns) >= MAX_INSERTION_RUN`
+  (=5) fails the gate, leaving the Muraja-faithful scoring constants and `match_ratio` untouched.
+  The manifest shows a clean natural gap (legit reads ≤3, poison at 6/9/13/13/14). Both the
+  whole-clip filter (`filter.py`) and `segment_score.py` apply it; `segment_score` still keeps
+  low-`match_ratio` segments for audit but drops repeated-phrase poison outright.

@@ -105,9 +105,10 @@ def test_score_segments_builds_rows(tmp_path, monkeypatch):
     seg = _segment(0, 0.0, 1.5, raw)
     model = _StubModel(["ءنن"])
 
-    rows = score_segments([seg], tmp_path, model)
+    rows, kept, poison = score_segments([seg], tmp_path, model)
 
     assert len(rows) == 1
+    assert len(kept) == 1 and poison == 0
     row = rows[0]
     assert row["audio_filename"] == "clip__seg0.wav"
     assert row["surah_ayah"] == "2:77"
@@ -129,8 +130,24 @@ def test_score_segments_orders_by_clip_then_index(tmp_path, monkeypatch):
     segs = [_segment(2, 2.0, 3.0, "و"), _segment(0, 0.0, 1.0, "و"),
             _segment(1, 1.0, 2.0, "و")]
     model = _StubModel(["a", "b", "c"])  # decoded in sorted order
-    rows = score_segments(segs, tmp_path, model)
+    rows, _kept, _poison = score_segments(segs, tmp_path, model)
     assert [r["segment_index"] for r in rows] == [0, 1, 2]
+
+
+def test_score_segments_drops_repeated_phrase_poison(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"])
+    _write_clip(tmp_path, "clip.wav", 2.0)
+    ref = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
+    good = _segment(0, 0.0, 1.0, ref)
+    poison = _segment(1, 1.0, 2.0, ref)
+    # Second decode repeats سشصضطظ (a 6-phoneme interior insertion run) → poison.
+    model = _StubModel([ref, "بتثجحخدذرز" + "سشصضطظ" + "سشصضطظعغفقكلمنهوي"])
+
+    rows, kept, poison_count = score_segments([good, poison], tmp_path, model)
+
+    assert poison_count == 1
+    assert [r["segment_index"] for r in rows] == [0]  # only the clean segment survives
+    assert [s.segment_index for s in kept] == [0]  # audio staged for kept rows only
 
 
 def test_write_segment_manifest_is_deterministic(tmp_path):

@@ -5,6 +5,7 @@ import pytest
 from tadabur.scorer import (
     BALANCED,
     BALANCED_SCORER,
+    MAX_INSERTION_RUN,
     MIN_QUERY_PHONEMES,
     Scorer,
     ScoringParameters,
@@ -81,6 +82,33 @@ def test_gate_uses_reference_verbatim_preserving_shadda():
     result = BALANCED_SCORER.gate("رَببُ لمشرقين", pre_normalized)
     assert result.passed
     assert result.match_ratio == pytest.approx(1.0, abs=1e-3)
+
+
+def test_gate_rejects_repeated_phrase_despite_passing_ratio():
+    # A reciter who repeats a phrase inserts a run of query phonemes the reference
+    # lacks. The local aligner shrugs those off (match_ratio stays above the bar), but
+    # the poison policy rejects any interior insertion run >= MAX_INSERTION_RUN.
+    assert MAX_INSERTION_RUN == 5
+    ref = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
+    repeated = "بتثجحخدذرز" + "سشصضطظ" + "سشصضطظعغفقكلمنهوي"  # سشصضطظ said twice
+    result = BALANCED_SCORER.gate(repeated, ref)
+    assert result.max_insertion_run >= MAX_INSERTION_RUN
+    assert result.match_ratio >= BALANCED.correct_threshold  # would pass on ratio alone
+    assert not result.passed  # but the insertion-run poison policy rejects it
+
+
+def test_gate_tolerates_short_insertion_run():
+    # A single spurious inserted phoneme (below the run threshold) does not trip the
+    # poison policy; the pair still passes on match_ratio.
+    ref = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
+    one_extra = "بتثجحخدذرز" + "س" + "سشصضطظعغفقكلمنهوي"
+    result = BALANCED_SCORER.gate(one_extra, ref)
+    assert result.max_insertion_run < MAX_INSERTION_RUN
+    assert result.passed
+
+
+def test_gate_perfect_match_has_no_insertion_run():
+    assert BALANCED_SCORER.gate("بتثج", "بتثج").max_insertion_run == 0
 
 
 def test_is_soft_mismatch_respects_mode():

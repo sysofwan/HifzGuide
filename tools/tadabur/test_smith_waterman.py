@@ -7,8 +7,10 @@ from tadabur.smith_waterman import (
     GAP,
     MATCH,
     MISMATCH,
+    AlignedColumn,
     RefMatchInfo,
     local_alignment_score,
+    longest_insertion_run,
     smith_waterman,
     tashkeel,
 )
@@ -175,3 +177,35 @@ def test_columns_expose_query_insertion():
 
 def test_empty_alignment_has_no_columns():
     assert smith_waterman(query="", reference="ابت").columns == []
+
+
+# MARK: - longest_insertion_run (non-parity poison helper)
+
+
+def _cols(spec: str) -> list[AlignedColumn]:
+    """Build columns from a compact spec: 'i'=insertion, 'm'=match, ' '=space insert."""
+    out = []
+    for ch in spec:
+        if ch == "i":
+            out.append(AlignedColumn("ب", None))
+        elif ch == "m":
+            out.append(AlignedColumn("ب", "ب"))
+        elif ch == " ":
+            out.append(AlignedColumn(" ", None))
+    return out
+
+
+def test_longest_insertion_run_counts_consecutive_query_only_columns():
+    assert longest_insertion_run(_cols("mmiiiimm")) == 4
+    assert longest_insertion_run(_cols("iimmmiii")) == 3
+
+
+def test_longest_insertion_run_zero_when_no_insertions():
+    assert longest_insertion_run(_cols("mmmm")) == 0
+    assert longest_insertion_run([]) == 0
+
+
+def test_longest_insertion_run_broken_by_space_and_match():
+    # A space column and a match column both reset the run.
+    assert longest_insertion_run(_cols("ii mii")) == 2
+    assert longest_insertion_run(_cols("iimii")) == 2

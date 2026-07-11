@@ -93,6 +93,30 @@ class AlignmentResult:
     columns: list[AlignedColumn]
 
 
+def longest_insertion_run(columns: list[AlignedColumn]) -> int:
+    """The longest run of consecutive query-only columns (an *insertion*) in ``columns``.
+
+    A query-only column (``ref_char is None``, ``query_char`` a non-space) is a phoneme
+    the reciter emitted that the reference does not contain. Because this aligner is
+    **local** — it exists to locate a recitation on a page and so freely trims unmatched
+    query at the region's ends and pays only an affine-gap pittance to skip interior
+    material — an inserted *phrase* (a reciter repeating words) barely moves ``score``.
+    When the reference ayah is already known (the Tadabur filter case), a long interior
+    insertion run is instead a strong poison signal: madd elongations are already
+    collapsed by :func:`~tadabur.normalization.normalize_phonemes` before alignment, so a
+    surviving multi-phoneme insertion is genuine extra recitation, not a legitimate
+    stretch. Spaces break a run (word boundaries are not inserted phonemes).
+    """
+    best = current = 0
+    for column in columns:
+        if column.ref_char is None and column.query_char not in (None, " "):
+            current += 1
+            best = max(best, current)
+        else:
+            current = 0
+    return best
+
+
 def _substitution_score(a: str, b: str) -> float:
     """Diagonal cell score for aligning query char ``a`` against ref char ``b``.
 

@@ -20,6 +20,13 @@ refinement (it excludes shadda-expansion gaps from the phoneme gate's gap count 
 ``normalize_phonemes`` faithfully keeps shadda expansion doubled. This coarse
 score-only filter gate does not reconstruct that per-word gap accounting, so the
 flag is carried on ``ScoringParameters`` for fidelity but has no effect here.
+
+The gate layers **one** Tadabur-only reject on top of the Muraja-faithful score: a
+decode with a long interior *insertion* run (:data:`MAX_INSERTION_RUN`) fails as
+repeated-phrase poison. Muraja's local aligner is built to *follow* a recitation on a
+page, so it shrugs off inserted material; when the ayah is already known that leniency
+lets a repeated phrase through, which this policy catches. It does not touch
+``match_ratio`` or the parity-locked Smith-Waterman constants.
 """
 
 from __future__ import annotations
@@ -28,12 +35,21 @@ from dataclasses import dataclass
 
 from . import contrast_attribution, phoneme_sifat
 from .normalization import normalize_phonemes
-from .smith_waterman import smith_waterman
+from .smith_waterman import longest_insertion_run, smith_waterman
 
 # Minimum non-space query phonemes before a match is trusted. Below this, short
 # transcriptions produce spurious alignments. Verbatim from Muraja's
 # checkTranscription guard.
 MIN_QUERY_PHONEMES = 3
+
+# Tadabur poison policy (NOT a Muraja parameter): a decode whose best local alignment
+# contains an interior run of this many or more consecutive query-only phonemes
+# (an insertion the reference does not contain) fails the gate outright, regardless of
+# ``match_ratio``. Madd elongations are collapsed before alignment, so a run this long is
+# a repeated word/phrase — a mislabelled ("poison") training example. This is a
+# filter-side reject layered on top of the Muraja-faithful ``match_ratio``; it does not
+# alter the score itself (the parity-locked Smith-Waterman constants are untouched).
+MAX_INSERTION_RUN = 5
 
 
 @dataclass(frozen=True)
@@ -65,10 +81,17 @@ BALANCED = ScoringParameters(
 
 @dataclass(frozen=True)
 class GateResult:
-    """Outcome of the scorer gate for one (predicted, reference) pair."""
+    """Outcome of the scorer gate for one (predicted, reference) pair.
+
+    ``match_ratio`` is the Muraja-faithful ``.balanced`` score (unaffected by the
+    insertion-poison policy). ``max_insertion_run`` is the longest interior run of
+    query-only phonemes in the alignment; ``passed`` is ``False`` when it reaches
+    :data:`MAX_INSERTION_RUN` even if ``match_ratio`` clears the threshold.
+    """
 
     passed: bool
     match_ratio: float
+    max_insertion_run: int = 0
 
 
 @dataclass(frozen=True)
@@ -105,9 +128,11 @@ class Scorer:
         re-normalizing an already-normalized reference would wrongly collapse its
         shadda (``للاه`` → ``لاه``). Both strings are aligned with Smith-Waterman
         and scored as ``score / max(query_phoneme_count, 1)``. The pair passes
-        when that ratio clears ``params.correct_threshold``. A query with fewer
-        than ``MIN_QUERY_PHONEMES`` non-space phonemes, or no positive-scoring
-        alignment, fails with ratio 0.0.
+        when that ratio clears ``params.correct_threshold`` **and** the alignment
+        has no interior insertion run of :data:`MAX_INSERTION_RUN` phonemes (a
+        repeated-phrase poison reject that leaves ``match_ratio`` itself untouched).
+        A query with fewer than ``MIN_QUERY_PHONEMES`` non-space phonemes, or no
+        positive-scoring alignment, fails with ratio 0.0.
         """
         query = normalize_phonemes(predicted).normalized
         ref = reference
@@ -115,14 +140,19 @@ class Scorer:
         if query_phoneme_count < MIN_QUERY_PHONEMES or not ref:
             return GateResult(passed=False, match_ratio=0.0)
 
-        score = smith_waterman(query=query, reference=ref).score
-        if score <= 0:
+        alignment = smith_waterman(query=query, reference=ref)
+        if alignment.score <= 0:
             return GateResult(passed=False, match_ratio=0.0)
 
-        match_ratio = score / max(query_phoneme_count, 1)
+        match_ratio = alignment.score / max(query_phoneme_count, 1)
+        insertion_run = longest_insertion_run(alignment.columns)
         return GateResult(
-            passed=match_ratio >= self.params.correct_threshold,
+            passed=(
+                match_ratio >= self.params.correct_threshold
+                and insertion_run < MAX_INSERTION_RUN
+            ),
             match_ratio=match_ratio,
+            max_insertion_run=insertion_run,
         )
 
 

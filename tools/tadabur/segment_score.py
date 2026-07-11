@@ -17,10 +17,13 @@ segment span, decodes *that* span, and scores its decode against the segment's r
 reference with the ported ``.balanced`` gate — the same normalization / Smith-Waterman
 / contrast attribution the full-ayah filter uses, only per segment.
 
-Unlike the filter it does **not** gate-reject: every segment of an admitted clip is
-already in the training set, so all segments are emitted. ``match_ratio`` and
-``contrasts`` are observational here — they only drive the audit's per-contrast and
-marginal-band sampling.
+Unlike the whole-clip filter it does **not** apply the ``match_ratio`` pass bar — every
+segment of an admitted clip is already in the training set, so low-scoring segments are
+still emitted (``match_ratio`` and ``contrasts`` are observational, driving the audit's
+per-contrast and marginal-band sampling). It does apply the gate's **repeated-phrase
+poison** reject: a segment whose decode has an interior insertion run of
+``scorer.MAX_INSERTION_RUN`` phonemes is dropped and tallied, since a repeated phrase is
+a mislabelled example, not a marginal one to audit.
 
 The output is a single segment manifest (JSONL). Its :class:`ManifestRecord` fields
 (``audio_filename`` = the per-segment id, ``surah_ayah``, ``match_ratio``,
@@ -57,7 +60,7 @@ from .audit_sampler import local_audio_path
 from .contrast_attribution import all_contrasts
 from .manifest import ManifestRecord, read_records
 from .normalization import normalize_phonemes
-from .scorer import BALANCED_SCORER
+from .scorer import BALANCED_SCORER, MAX_INSERTION_RUN
 from . import vad, waqf_detect
 from .waqf_detect import WaqfSpan
 from .waqf_segments import (
@@ -228,14 +231,18 @@ def score_segments(
     clips_dir: Path,
     model,
     batch_size: int = DEFAULT_BATCH_SIZE,
-) -> list[dict]:
-    """Decode and score every segment, returning one manifest row (dict) per segment.
+) -> tuple[list[dict], list[SegmentRecord], int]:
+    """Decode and score every segment; return ``(rows, kept, poison_count)``.
 
     Segments are processed in a stable ``(audio_filename, segment_index)`` order so
-    the manifest is deterministic. Each row carries the :class:`ManifestRecord`
-    fields the sampler needs plus the per-segment display fields the UI reads; the
-    realized reference is normalized **once** here (the gate/attribution require a
-    pre-normalized reference — normalization is not idempotent).
+    the manifest is deterministic. Each surviving segment yields one manifest row (dict)
+    carrying the :class:`ManifestRecord` fields the sampler needs plus the per-segment
+    display fields the UI reads; the realized reference is normalized **once** here (the
+    gate/attribution require a pre-normalized reference — normalization is not
+    idempotent). A segment whose decode has an interior insertion run of
+    :data:`~tadabur.scorer.MAX_INSERTION_RUN` phonemes is a repeated-phrase poison label
+    and is dropped (counted in ``poison_count``, not emitted); ``kept`` is the surviving
+    segments in row order, so the caller stages audio for exactly the emitted rows.
     """
     ordered = sorted(segments, key=lambda s: (s.audio_filename, s.segment_index))
 
@@ -251,9 +258,17 @@ def score_segments(
     predicted = _decode_all(model, waveforms, batch_size)
 
     rows: list[dict] = []
+    kept: list[SegmentRecord] = []
+    poison = 0
     for seg, decode in zip(ordered, predicted):
         reference = normalize_phonemes(seg.realized_reference_phonemes).normalized
         result = BALANCED_SCORER.gate(decode, reference)
+        # A long interior insertion run is a repeated-phrase poison label: reject it
+        # from the training manifest (a low match_ratio alone stays — it is still an
+        # observational passer the audit samples the marginal band from).
+        if result.max_insertion_run >= MAX_INSERTION_RUN:
+            poison += 1
+            continue
         record = ManifestRecord(
             audio_filename=segment_id(seg),
             surah_ayah=seg.surah_ayah,
@@ -274,7 +289,8 @@ def score_segments(
         row["end_s"] = seg.end_s
         row["segment_index"] = seg.segment_index
         rows.append(row)
-    return rows
+        kept.append(seg)
+    return rows, kept, poison
 
 
 def write_segment_manifest(path: Path, rows: list[dict]) -> None:
@@ -391,14 +407,15 @@ def main() -> None:
         f"Skips/fallbacks: {dict(skips)}"
     )
 
-    rows = score_segments(segments, args.clips_dir, model, args.batch_size)
+    rows, kept, poison = score_segments(segments, args.clips_dir, model, args.batch_size)
     write_segment_manifest(args.out_manifest, rows)
-    stage_segment_audio(segments, args.clips_dir, args.audio_out)
+    stage_segment_audio(kept, args.clips_dir, args.audio_out)
 
     contrasted = sum(1 for r in rows if r["contrasts"])
     buckets = {c: sum(1 for r in rows if c in r["contrasts"]) for c in all_contrasts()}
     print(
-        f"Scored {len(rows)} segments ({contrasted} with contrasts). Wrote manifest "
+        f"Scored {len(rows)} segments ({contrasted} with contrasts; "
+        f"rejected {poison} as repeated-phrase poison). Wrote manifest "
         f"to {args.out_manifest} and segment audio to {args.audio_out}."
     )
     print("Per-contrast segment counts: " + ", ".join(

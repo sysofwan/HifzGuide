@@ -10,8 +10,10 @@ phonetizer is touched. Frame rate is fixed at 40ms/frame (``spf``) by choosing
 
 from __future__ import annotations
 
+import pytest
+
 from .phoneme_vocab import PHONEME_ID_TO_CHAR
-from .waqf_detect import collapse_with_times, segment_clip
+from .waqf_detect import EDGE_RECUT_PAD_S, collapse_with_times, segment_clip
 
 SPF = 0.04  # seconds per frame (matches the model's ~40ms logit frames)
 PH = 2  # frames per synthetic phoneme
@@ -65,14 +67,87 @@ def test_collapse_with_times_drops_blanks_and_collapses_repeats():
 # --- segment_clip ----------------------------------------------------------------
 
 
-def test_segment_clip_no_pauses_returns_whole_span():
+def test_segment_clip_no_pauses_recuts_outer_edges_to_matched_span():
+    # A clean single-segment clip (matched span == whole decode): the start clamps to 0.0
+    # and the end is re-cut to the last aligned phoneme's onset + outward pad (< dur,
+    # because the last decoded phoneme onset precedes the clip end).
     ids, dur = _clip(_phonemes(WORD0 + WORD1 + WORD2))
+    _, times = collapse_with_times(ids, SPF)
     result = segment_clip(ids, dur, REFERENCE, BOUNDARIES, [])
     assert result.skip is None
     assert len(result.spans) == 1
     span = result.spans[0]
     assert (span.word_start, span.word_end) == (0, 3)
-    assert (span.start_s, span.end_s) == (0.0, dur)
+    assert span.start_s == 0.0
+    assert span.end_s == pytest.approx(times[-1] + EDGE_RECUT_PAD_S)
+    assert span.end_s < dur
+
+
+def test_segment_clip_recuts_leading_bleed():
+    # Prepend a prev-ayah tail (phonemes absent from this ayah's reference): the local
+    # alignment trims it, so start_s re-cuts to the first matched phoneme's onset (minus
+    # pad), not the clip start 0.0.
+    lead = [19, 20, 21]  # غ ف ق — not in WORD0/WORD1/WORD2
+    ids, dur = _clip(_phonemes(lead + WORD0 + WORD1 + WORD2))
+    _, times = collapse_with_times(ids, SPF)
+    result = segment_clip(ids, dur, REFERENCE, BOUNDARIES, [])
+    assert result.skip is None
+    span = result.spans[0]
+    assert (span.word_start, span.word_end) == (0, 3)
+    assert span.start_s == pytest.approx(times[len(lead)] - EDGE_RECUT_PAD_S)
+    assert span.start_s > 0.0
+
+
+def test_segment_clip_recuts_trailing_bleed():
+    # Append a trailing next-word / takbir bleed: the local alignment trims it, so end_s
+    # re-cuts to the last matched phoneme's onset (plus pad), not the clip end.
+    trail = [19, 20, 21]  # غ ف ق — not in the reference
+    matched = WORD0 + WORD1 + WORD2
+    ids, dur = _clip(_phonemes(matched + trail))
+    _, times = collapse_with_times(ids, SPF)
+    result = segment_clip(ids, dur, REFERENCE, BOUNDARIES, [])
+    assert result.skip is None
+    span = result.spans[0]
+    assert (span.word_start, span.word_end) == (0, 3)
+    assert span.end_s == pytest.approx(times[len(matched) - 1] + EDGE_RECUT_PAD_S)
+    assert span.end_s < dur
+
+
+def test_segment_clip_recut_pads_outward_and_clamps_to_clip():
+    # One frame per phoneme so the outward pad exceeds both clip edges: start clamps to
+    # 0.0 and end clamps to the clip duration (never outside [0, dur]).
+    ids = list(WORD0)  # 5 phonemes, 1 frame each
+    dur = len(ids) * SPF
+    ref = _chars(WORD0)
+    result = segment_clip(ids, dur, ref, [0, 5], [])
+    span = result.spans[0]
+    assert span.start_s == 0.0
+    assert span.end_s == dur
+
+
+def test_segment_clip_recut_leaves_interior_boundaries_untouched():
+    # Leading bleed + an interior waqf pause: the outer edges re-cut, but the interior
+    # boundary stays exactly at the pause times.
+    lead = [19, 20]
+    ids, dur = _clip(
+        _phonemes(lead + WORD0) + [(0, PAUSE)] + _phonemes(WORD1 + WORD2)
+    )
+    _, times = collapse_with_times(ids, SPF)
+    pause = _pause_after(len(lead) + len(WORD0))
+    result = segment_clip(ids, dur, REFERENCE, BOUNDARIES, [pause])
+    assert result.skip is None
+    assert len(result.spans) == 2
+    first, second = result.spans
+    assert (first.word_start, first.word_end) == (0, 1)
+    assert (second.word_start, second.word_end) == (1, 3)
+    # Outer edges re-cut past the lead-in and before the clip end.
+    assert first.start_s == pytest.approx(times[len(lead)] - EDGE_RECUT_PAD_S)
+    assert first.start_s > 0.0
+    assert second.end_s == pytest.approx(times[-1] + EDGE_RECUT_PAD_S)
+    assert second.end_s < dur
+    # Interior boundary untouched: it sits exactly at the pause.
+    assert first.end_s == pytest.approx(pause[0])
+    assert second.start_s == pytest.approx(pause[1])
 
 
 def test_segment_clip_flags_repeated_even_without_pauses():

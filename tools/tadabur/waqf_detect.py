@@ -22,6 +22,15 @@ Two whole-clip cases are skipped rather than mis-segmented: a clip whose decode 
 longer than the ayah reference (``repeated_recitation`` — the reciter repeated the ayah,
 breaking the one-pass word map), and one whose best alignment barely matches the ayah at
 all (``low_alignment``).
+
+The clip's **outer** edges are re-cut to the whole-clip alignment's matched span. Tadabur
+clips carry the previous ayah's tail as lead-in (and sometimes a trailing next word or
+takbir) that no *interior* waqf pause ever trims — a single-segment clip would otherwise
+keep it whole and mislabel it (see #20). The matched span's onset/offset locate the first
+and last decoded phonemes that align to this ayah's reference, so the first segment's
+``start_s`` and the last segment's ``end_s`` are moved there; interior VAD-defined
+boundaries are untouched. This is a segmentation-*extent* change only — the parity-locked
+Muraja gate is not touched (ADR-0001).
 """
 
 from __future__ import annotations
@@ -40,6 +49,11 @@ DEFAULT_MAX_DECODE_RATIO = 1.6
 # Skip a clip whose best local alignment score is below this fraction of the
 # reference length: the decode does not match this ayah (bad clip / wrong label).
 DEFAULT_MIN_ALIGN_RATIO = 0.45
+# Outward safety pad (seconds) applied to a re-cut outer edge. The CTC spikes locating
+# the matched span fire late, so cutting exactly at the aligned onset frame would chop
+# the onset consonant's attack — self-defeating for the fine-tune. Pad both edges out by
+# this much and clamp back into the clip. ~50ms ≈ one Muaalem logit frame.
+EDGE_RECUT_PAD_S = 0.05
 
 
 @dataclass(frozen=True)
@@ -128,11 +142,13 @@ def segment_clip(
     Returns a single whole-ayah span when there is no interior pause on a word edge,
     one span per word-range between the confirmed pauses otherwise, or a
     :class:`SegmentationResult` with a ``skip`` reason for a clip that cannot be
-    segmented safely (``repeated_recitation`` / ``low_alignment``). Word ranges and
-    time spans both come from the pauses: a split at word ``j`` cuts the words there
-    and the clip time at the pause itself. A pause that maps mid-word (the alignment
-    places it away from any word edge) is dropped, not split — a real waqf only ever
-    lands on a word end.
+    segmented safely (``repeated_recitation`` / ``low_alignment``). Interior word ranges
+    and time spans both come from the pauses: a split at word ``j`` cuts the words there
+    and the clip time at the pause itself. The clip's **outer** edges (the first span's
+    ``start_s``, the last span's ``end_s``) are re-cut to the whole-clip alignment's
+    matched span (± :data:`EDGE_RECUT_PAD_S`) so a lead-in / trailing bleed the reference
+    does not cover is trimmed off. A pause that maps mid-word (the alignment places it away
+    from any word edge) is dropped, not split — a real waqf only ever lands on a word end.
     """
     n_words = len(boundaries) - 1
     whole = SegmentationResult((WaqfSpan(0, n_words, 0.0, clip_duration_s),))
@@ -148,10 +164,17 @@ def segment_clip(
     if alignment.score < min_align_ratio * len(reference):
         return SegmentationResult((), skip="low_alignment")
 
-    # No interior pause: keep the clip whole, but only after the safeguards above so a
-    # repeated/unrelated clip is still flagged (not silently kept whole and mislabelled).
+    # Re-cut the clip's outer edges to the matched span's onset/offset (raw 1:1 decode,
+    # padded outward and clamped) — this trims the neighbour-ayah lead-in / trailing bleed
+    # no interior pause covers. Interior boundaries below stay at their pause times.
+    start_s = max(0.0, decode_times[alignment.query_start] - EDGE_RECUT_PAD_S)
+    end_s = min(clip_duration_s, decode_times[alignment.query_end - 1] + EDGE_RECUT_PAD_S)
+    recut_whole = SegmentationResult((WaqfSpan(0, n_words, start_s, end_s),))
+
+    # No interior pause: keep the clip whole (with re-cut edges), but only after the
+    # safeguards above so a repeated/unrelated clip is still flagged (not silently kept).
     if not pauses:
-        return whole
+        return recut_whole
     query_to_ref = sorted(
         (q, alignment.ref_start + i)
         for i, q in enumerate(alignment.ref_to_query)
@@ -166,13 +189,13 @@ def segment_clip(
         if word is not None:
             cuts[word] = (pause_start_s, pause_end_s)
     if not cuts:
-        return whole
+        return recut_whole
 
     spans: list[WaqfSpan] = []
-    prev_word, prev_time = 0, 0.0
+    prev_word, prev_time = 0, start_s
     for word in sorted(cuts):
         pause_start_s, pause_end_s = cuts[word]
         spans.append(WaqfSpan(prev_word, word, prev_time, pause_start_s))
         prev_word, prev_time = word, pause_end_s
-    spans.append(WaqfSpan(prev_word, n_words, prev_time, clip_duration_s))
+    spans.append(WaqfSpan(prev_word, n_words, prev_time, end_s))
     return SegmentationResult(tuple(spans))

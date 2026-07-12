@@ -169,6 +169,24 @@ def test_score_segments_drops_boundary_mismatch(tmp_path, monkeypatch):
     assert [s.segment_index for s in kept] == [1]
 
 
+def test_score_segments_drops_edge_recut_failed(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"])
+    _write_clip(tmp_path, "clip.wav", 3.0)
+    # seg0 is the clip's FIRST segment: its leading edge was re-cut to the aligned matched
+    # span (tadabur.waqf_detect), so a large *leading* trim means the re-cut failed. Its
+    # decode carries 9 unmatched lead-in phonemes the local aligner trims before the
+    # reference → edge_recut_failed. seg1 is the last segment and decodes cleanly → kept.
+    seg0 = _segment(0, 0.0, 1.5, "قكلمنهوي")
+    seg1 = _segment(1, 1.5, 3.0, "بتثجحخدذرز")
+    model = _StubModel(["سشصضطظعغف" + "قكلمنهوي", "بتثجحخدذرز"])
+
+    rows, kept, drops = score_segments([seg0, seg1], tmp_path, model)
+
+    assert drops["edge_recut_failed"] == 1
+    assert [r["segment_index"] for r in rows] == [1]  # only the well-bounded segment
+    assert [s.segment_index for s in kept] == [1]
+
+
 def test_write_segment_manifest_is_deterministic(tmp_path):
     rows = [
         {"audio_filename": "b.wav", "contrasts": ["shadda"], "match_ratio": 0.9},

@@ -20,13 +20,14 @@ reference with the ported ``.balanced`` gate — the same normalization / Smith-
 Unlike the whole-clip filter it does **not** apply the ``match_ratio`` pass bar — every
 segment of an admitted clip is already in the training set, so low-scoring segments are
 still emitted (``match_ratio`` and ``contrasts`` are observational, driving the audit's
-per-contrast and marginal-band sampling). It does drop two kinds of **mislabelled**
+per-contrast and marginal-band sampling). It does drop three kinds of **mislabelled**
 segment: the gate's **repeated-phrase poison** (a decode with an interior insertion run of
-``scorer.MAX_INSERTION_RUN`` phonemes), and a **boundary mismatch** — a segment whose audio
+``scorer.MAX_INSERTION_RUN`` phonemes), a **boundary mismatch** — a segment whose audio
 overruns its assigned reference at an *interior* waqf split by ``MAX_BOUNDARY_TRIM``+
 phonemes (a localized repeat straddling the pause corrupts the whole-clip decode→word map,
-so the reference is cut on the wrong word). Both are mislabelled examples, not marginal
-ones to audit, and are tallied by reason.
+so the reference is cut on the wrong word) — and an **edge re-cut failure**, where a re-cut
+clip edge (:mod:`tadabur.waqf_detect`) still overruns the aligned span by the same margin.
+All are mislabelled examples, not marginal ones to audit, and are tallied by reason.
 
 The output is a single segment manifest (JSONL). Its :class:`ManifestRecord` fields
 (``audio_filename`` = the per-segment id, ``surah_ayah``, ``match_ratio``,
@@ -65,15 +66,17 @@ from .manifest import ManifestRecord, read_records
 from .normalization import normalize_phonemes
 from .scorer import BALANCED_SCORER, MAX_INSERTION_RUN
 
-# Segmentation boundary QC (a Tadabur segmentation policy, not a Muraja parameter): at an
-# *interior* waqf split, the segment's audio must be covered by its assigned reference. A
+# Segmentation boundary QC (a Tadabur segmentation policy, not a Muraja parameter): the
+# segment's audio must be covered by its assigned reference. At an *interior* waqf split, a
 # leading (non-first segment) or trailing (non-last segment) local-alignment trim of this
 # many or more query phonemes means the audio overran the reference boundary — a mis-placed
 # or repeat-straddled split (a localized repeat across the pause corrupts the whole-clip
-# decode→word map, so the reference is cut a word or two too early). Such a segment is
-# mislabelled and dropped. A trim at a clip's true start/end is benign (reciter began/ended
-# mid-phrase) and never counts. Threshold matches ``MAX_INSERTION_RUN``: the manifest shows a
-# clean gap (interior-edge trims are 0 for ~95% of splits, then jump to 7+).
+# decode→word map, so the reference is cut a word or two too early). At a **clip edge** the
+# outer extent was re-cut to the aligned matched span (:mod:`tadabur.waqf_detect`), so a
+# first-segment leading / last-segment trailing trim should be ~0; a survivor means the
+# re-cut failed. Either way the segment is mislabelled and dropped (by distinct reasons).
+# Threshold matches ``MAX_INSERTION_RUN``: the manifest shows a clean gap (edge trims are 0
+# for ~95% of splits, then jump to 7+).
 MAX_BOUNDARY_TRIM = 5
 from . import vad, waqf_detect
 from .waqf_detect import WaqfSpan
@@ -262,6 +265,11 @@ def score_segments(
       segment or a trailing trim on a non-last segment) the audio overran its assigned
       reference by :data:`MAX_BOUNDARY_TRIM`+ phonemes, i.e. the split landed on the wrong
       word (typically a localized repeat straddling the pause).
+    * ``edge_recut_failed`` — at a re-cut **clip edge** (a first-segment leading trim or a
+      last-segment trailing trim) the audio still overran the aligned matched span by
+      :data:`MAX_BOUNDARY_TRIM`+ phonemes, i.e. the outer-edge re-cut
+      (:func:`~tadabur.waqf_detect.segment_clip`) failed (e.g. a repeat past the decode-ratio
+      guard left the edge misaligned).
 
     A low ``match_ratio`` alone is **not** a drop — such a segment stays as an
     observational passer the audit samples the marginal band from. ``kept`` is the
@@ -302,17 +310,27 @@ def score_segments(
         if result.max_insertion_run >= MAX_INSERTION_RUN:
             drops["repeated_phrase"] += 1
             continue
-        # A large trim at an interior waqf boundary means the split landed on the wrong
-        # word (the segment's audio extends past, or before, its reference). Only edges
-        # that are interior splits count: a leading trim on a non-first segment, a
-        # trailing trim on a non-last segment.
-        interior_lead = 0 if seg.segment_index == 0 else result.leading_trim
-        interior_trail = (
-            0 if seg.segment_index == last_index[seg.audio_filename]
-            else result.trailing_trim
+        # A large trim at a *interior* waqf boundary means the split landed on the wrong
+        # word (the segment's audio extends past, or before, its reference): a leading trim
+        # on a non-first segment, a trailing trim on a non-last segment.
+        is_last = seg.segment_index == last_index[seg.audio_filename]
+        interior_trim = max(
+            0 if seg.segment_index == 0 else result.leading_trim,
+            0 if is_last else result.trailing_trim,
         )
-        if max(interior_lead, interior_trail) >= MAX_BOUNDARY_TRIM:
+        if interior_trim >= MAX_BOUNDARY_TRIM:
             drops["boundary_mismatch"] += 1
+            continue
+        # The clip's outer edges were re-cut to the aligned matched span
+        # (:func:`~tadabur.waqf_detect.segment_clip`), so a first-segment leading trim or a
+        # last-segment trailing trim should now be ~0. A surviving large edge trim means the
+        # re-cut failed (e.g. a repeat past the 1.6x decode-ratio guard) — drop it too.
+        edge_trim = max(
+            result.leading_trim if seg.segment_index == 0 else 0,
+            result.trailing_trim if is_last else 0,
+        )
+        if edge_trim >= MAX_BOUNDARY_TRIM:
+            drops["edge_recut_failed"] += 1
             continue
         record = ManifestRecord(
             audio_filename=segment_id(seg),

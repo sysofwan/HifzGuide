@@ -134,6 +134,23 @@ def test_score_batch_keeps_only_passers_with_computed_duration():
     assert records[0].reciter_id == 88
 
 
+def test_score_batch_skips_over_long_clips_before_decode():
+    from tadabur.filter import MAX_AYAH_DURATION_S
+
+    over_len = int((MAX_AYAH_DURATION_S + 1.0) * TARGET_SAMPLE_RATE)
+    clips = [
+        _clip("long.wav", over_len),
+        _clip("ok.wav", TARGET_SAMPLE_RATE),
+    ]
+    # The fake model asserts it receives exactly one waveform: the over-long clip
+    # must be dropped before the GPU decode so it never enters the batch.
+    model = _FakeModel(["بتثج"])
+
+    records = score_batch(clips, model, REFERENCES, BALANCED_SCORER)
+
+    assert [r.audio_filename for r in records] == ["ok.wav"]
+
+
 def test_score_batch_duration_reflects_actual_waveform():
     clips = [_clip("half.wav", TARGET_SAMPLE_RATE // 2)]
     model = _FakeModel(["بتثج"])

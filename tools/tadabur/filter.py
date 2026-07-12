@@ -44,6 +44,14 @@ from .scorer import BALANCED_SCORER, Scorer
 
 DEFAULT_BATCH_SIZE = 64
 
+# Skip clips longer than this before the single-pass GPU decode: the model runs one
+# variable-length full-ayah pass (no windowing), so a pathologically long clip (a
+# mis-segmented whole-page recording, not a real ayah) blows up the Wav2Vec2-BERT
+# activations and OOMs the whole batch. The longest *legitimately-scored* ayah is
+# ~82 s and p99 is ~44 s, so a 50 s cap keeps 99.5% of clips while dropping only the
+# monsters that cannot be decoded on a 16 GB GPU anyway.
+MAX_AYAH_DURATION_S = 50.0
+
 
 @dataclass(frozen=True)
 class Clip:
@@ -107,10 +115,21 @@ def score_batch(
     actually scored.
     """
     waveforms = [decode_to_mono_16k(clip.audio_bytes) for clip in clips]
-    decodes = model.decode_batch(waveforms, TARGET_SAMPLE_RATE)
+    scorable: list[tuple[Clip, "object"]] = []
+    for clip, waveform in zip(clips, waveforms):
+        if len(waveform) / TARGET_SAMPLE_RATE > MAX_AYAH_DURATION_S:
+            print(
+                f"Skipping over-long clip {clip.audio_filename} "
+                f"({len(waveform) / TARGET_SAMPLE_RATE:.1f}s > {MAX_AYAH_DURATION_S:.0f}s cap)."
+            )
+            continue
+        scorable.append((clip, waveform))
+    if not scorable:
+        return []
+    decodes = model.decode_batch([w for _, w in scorable], TARGET_SAMPLE_RATE)
 
     records: list[ManifestRecord] = []
-    for clip, waveform, decode in zip(clips, waveforms, decodes):
+    for (clip, waveform), decode in zip(scorable, decodes):
         reference = references.get(clip.surah_ayah)
         if reference is None:
             if skip_unknown_refs:

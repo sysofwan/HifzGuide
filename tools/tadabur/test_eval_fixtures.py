@@ -41,12 +41,15 @@ def test_schema_fields_match_dataclass():
     assert SCHEMA_FIELDS == ("clip_id", "audio_ref", "surah_ayah", "contrast", "verdict", "note")
 
 
-def test_shipped_sets_are_empty_and_load_cleanly():
-    # The committed fixture files ship empty; the loaders must return nothing.
+def test_shipped_sets_load_cleanly():
+    # The committed fixture files carry the P3.5 poison-audit verdicts; whatever they
+    # hold, the loaders must parse every line into a well-formed, correctly-labelled entry.
     assert SHOULD_ACCEPT_PATH.exists()
     assert SHOULD_REJECT_PATH.exists()
-    assert load_should_accept() == []
-    assert load_should_reject() == []
+    accept = load_should_accept()
+    reject = load_should_reject()
+    assert all(e.verdict == ACCEPT for e in accept)
+    assert all(e.verdict == REJECT for e in reject)
 
 
 def test_missing_file_yields_no_entries(tmp_path):

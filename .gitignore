@@ -41,3 +41,6 @@ models.zip
 
 # Local P3.5 audit run artifacts (manifest, worklist, exported audio)
 tools/tadabur/audit_run/
+
+# Local agent scratch file
+.copilot-scratch

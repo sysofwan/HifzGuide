@@ -61,3 +61,19 @@ what the *model* won't. We are fine-tuning the phoneme head on quality-filtered 
   The manifest shows a clean natural gap (legit reads ≤3, poison at 6/9/13/13/14). Both the
   whole-clip filter (`filter.py`) and `segment_score.py` apply it; `segment_score` still keeps
   low-`match_ratio` segments for audit but drops repeated-phrase poison outright.
+
+- **Two soft pairs are corpus-limited: the 30-per-contrast audit target is unreachable for
+  `ت↔ط` and `ح↔ه`.** The audit worklist is sampled from *admitted* segments, so a contrast can
+  only reach 30 if the corpus actually admits ≥30. Scaling the filter to shards 0–19
+  (20,202 clips → 18,075 passers → 25,850 scored waqf segments) yields comfortable supply for
+  `ذ↔ز`, `س↔ص`, `ض↔ظ`, `ق↔ك`, and shadda (all hit the 30 cap), but only **10** `ت↔ط` and **4**
+  `ح↔ه` segments carry the contrast at all — these phoneme pairs are simply infrequent in the
+  Tadabur reference distribution, and admitting more would require most of the remaining ~365
+  shards for a handful of extra clips. We therefore **audit `ت↔ط` and `ح↔ه` at their full
+  available supply rather than blocking the go/no-go on an unreachable n=30**. The rule-of-three
+  loses power at small n (10-with-0-poison ⇒ true rate <~26%; 4-with-0-poison is only
+  suggestive), so these two pairs give a weaker per-pair poison bound; if either shows *any*
+  poison, treat it as a signal to disable that soft pair for training rather than trusting the
+  thin sample. The over-long-clip skip in `filter.py` (`MAX_AYAH_DURATION_S`) does not affect
+  this: dropped clips are pathologically mis-segmented whole-page recordings, not carriers of
+  these rare contrasts.

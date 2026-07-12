@@ -20,14 +20,17 @@ reference with the ported ``.balanced`` gate — the same normalization / Smith-
 Unlike the whole-clip filter it does **not** apply the ``match_ratio`` pass bar — every
 segment of an admitted clip is already in the training set, so low-scoring segments are
 still emitted (``match_ratio`` and ``contrasts`` are observational, driving the audit's
-per-contrast and marginal-band sampling). It does drop three kinds of **mislabelled**
-segment: the gate's **repeated-phrase poison** (a decode with an interior insertion run of
+per-contrast and marginal-band sampling). It does drop four kinds of mislabelled or
+too-thin segment: a **short segment** — an interior-split piece under ``MIN_SEGMENT_WORDS``
+words (a false-pause / lead-in sliver; a whole-ayah single segment is exempt) — the gate's
+**repeated-phrase poison** (a decode with an interior insertion run of
 ``scorer.MAX_INSERTION_RUN`` phonemes), a **boundary mismatch** — a segment whose audio
 overruns its assigned reference at an *interior* waqf split by ``MAX_BOUNDARY_TRIM``+
 phonemes (a localized repeat straddling the pause corrupts the whole-clip decode→word map,
 so the reference is cut on the wrong word) — and an **edge re-cut failure**, where a re-cut
 clip edge (:mod:`tadabur.waqf_detect`) still overruns the aligned span by the same margin.
-All are mislabelled examples, not marginal ones to audit, and are tallied by reason.
+All are mislabelled or unusable examples, not marginal ones to audit, and are tallied by
+reason.
 
 The output is a single segment manifest (JSONL). Its :class:`ManifestRecord` fields
 (``audio_filename`` = the per-segment id, ``surah_ayah``, ``match_ratio``,
@@ -45,7 +48,8 @@ Usage:
   python -m tadabur.segment_score \
       --passing passing_subset.jsonl --clips-dir clips/ \
       --out-manifest segment_manifest.jsonl --audio-out segment_audio/ \
-      [--min-silence-ms 300] [--min-speech-ms 700] [--boundary-tol 3] [--batch-size 16]
+      [--min-silence-ms 300] [--min-speech-ms 700] [--boundary-tol 3] \
+      [--min-segment-words 3] [--batch-size 16]
 """
 
 from __future__ import annotations
@@ -78,6 +82,15 @@ from .scorer import BALANCED_SCORER, MAX_INSERTION_RUN
 # Threshold matches ``MAX_INSERTION_RUN``: the manifest shows a clean gap (edge trims are 0
 # for ~95% of splits, then jump to 7+).
 MAX_BOUNDARY_TRIM = 5
+
+# Minimum words an *interior-split* segment must span to be kept (a Tadabur segmentation
+# policy, not a Muraja parameter). A waqf pause that peels off a one- or two-word sliver
+# yields a micro-segment with too little context to be a useful fine-tune unit or to audit
+# reliably — often a false pause (breath) or a short lead-in the edge re-cut could not
+# fully trim. Such a piece is dropped (``short_segment``). A clip with **no** interior
+# split (one segment spanning the whole ayah) is exempt: a genuinely short ayah is a
+# legitimate whole-ayah unit, so it is kept whatever its word count.
+MIN_SEGMENT_WORDS = 3
 from . import vad, waqf_detect
 from .waqf_detect import WaqfSpan
 from .waqf_segments import (
@@ -248,6 +261,7 @@ def score_segments(
     clips_dir: Path,
     model,
     batch_size: int = DEFAULT_BATCH_SIZE,
+    min_segment_words: int = MIN_SEGMENT_WORDS,
 ) -> tuple[list[dict], list[SegmentRecord], Counter]:
     """Decode and score every segment; return ``(rows, kept, drops)``.
 
@@ -256,9 +270,12 @@ def score_segments(
     carrying the :class:`ManifestRecord` fields the sampler needs plus the per-segment
     display fields the UI reads; the realized reference is normalized **once** here (the
     gate/attribution require a pre-normalized reference — normalization is not
-    idempotent). Two kinds of mislabelled segment are dropped (not emitted) and tallied in
-    the ``drops`` counter, keyed by reason:
+    idempotent). Four kinds of mislabelled or too-thin segment are dropped (not emitted)
+    and tallied in the ``drops`` counter, keyed by reason:
 
+    * ``short_segment`` — an *interior-split* segment spanning fewer than
+      :data:`MIN_SEGMENT_WORDS` words (a false-pause / lead-in sliver). A whole-ayah
+      single segment is exempt (see :data:`MIN_SEGMENT_WORDS`).
     * ``repeated_phrase`` — the decode has an interior insertion run of
       :data:`~tadabur.scorer.MAX_INSERTION_RUN` phonemes (the reciter repeated words).
     * ``boundary_mismatch`` — at an *interior* waqf boundary (a leading trim on a non-first
@@ -287,6 +304,10 @@ def score_segments(
             last_index.get(seg.audio_filename, -1), seg.segment_index
         )
 
+    # A clip's segment count (indices are contiguous 0-based): >1 means the clip was cut at
+    # an interior waqf pause, so its short slivers are droppable; ==1 is a whole-ayah span.
+    segment_count: dict[str, int] = {af: idx + 1 for af, idx in last_index.items()}
+
     clip_cache: dict[str, np.ndarray] = {}
     waveforms: list[np.ndarray] = []
     for seg in ordered:
@@ -302,6 +323,14 @@ def score_segments(
     kept: list[SegmentRecord] = []
     drops: Counter = Counter()
     for seg, decode in zip(ordered, predicted):
+        # Structural QC (no decode needed): an interior-split segment thinner than
+        # min_segment_words is a sliver — drop it. A whole-ayah single segment is exempt.
+        if (
+            segment_count[seg.audio_filename] > 1
+            and seg.word_end - seg.word_start < min_segment_words
+        ):
+            drops["short_segment"] += 1
+            continue
         reference = normalize_phonemes(seg.realized_reference_phonemes).normalized
         result = BALANCED_SCORER.gate(decode, reference)
         # A long interior insertion run is a repeated-phrase poison label: reject it
@@ -433,6 +462,13 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--min-segment-words", type=int, default=MIN_SEGMENT_WORDS,
+        help=(
+            "Drop an interior-split segment spanning fewer than this many words "
+            f"(a whole-ayah single segment is exempt; default: {MIN_SEGMENT_WORDS})."
+        ),
+    )
+    parser.add_argument(
         "--device", default="cuda", help="Torch device for the model (default: cuda).",
     )
     parser.add_argument(
@@ -470,7 +506,10 @@ def main() -> None:
         f"Skips/fallbacks: {dict(skips)}"
     )
 
-    rows, kept, drops = score_segments(segments, args.clips_dir, model, args.batch_size)
+    rows, kept, drops = score_segments(
+        segments, args.clips_dir, model, args.batch_size,
+        min_segment_words=args.min_segment_words,
+    )
     write_segment_manifest(args.out_manifest, rows)
     stage_segment_audio(kept, args.clips_dir, args.audio_out)
 
@@ -478,8 +517,10 @@ def main() -> None:
     buckets = {c: sum(1 for r in rows if c in r["contrasts"]) for c in all_contrasts()}
     print(
         f"Scored {len(rows)} segments ({contrasted} with contrasts; "
-        f"rejected {drops['repeated_phrase']} as repeated-phrase poison, "
-        f"{drops['boundary_mismatch']} as boundary mismatch). Wrote manifest "
+        f"rejected {drops['short_segment']} as short segment, "
+        f"{drops['repeated_phrase']} as repeated-phrase poison, "
+        f"{drops['boundary_mismatch']} as boundary mismatch, "
+        f"{drops['edge_recut_failed']} as edge re-cut failure). Wrote manifest "
         f"to {args.out_manifest} and segment audio to {args.audio_out}."
     )
     print("Per-contrast segment counts: " + ", ".join(

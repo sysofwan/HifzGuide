@@ -31,14 +31,16 @@ from .waqf_segments import SegmentRecord
 from .phoneme_vocab import PHONEME_ID_TO_CHAR
 
 
-def _segment(index: int, start_s: float, end_s: float, ref: str) -> SegmentRecord:
+def _segment(
+    index: int, start_s: float, end_s: float, ref: str, words: int = 3
+) -> SegmentRecord:
     return SegmentRecord(
         audio_filename="clip.wav",
         surah_ayah="2:77",
         reciter_id=7,
         segment_index=index,
         word_start=index,
-        word_end=index + 1,
+        word_end=index + words,
         start_s=start_s,
         end_s=end_s,
         realized_reference_phonemes=ref,
@@ -102,7 +104,7 @@ def test_score_segments_builds_rows(tmp_path, monkeypatch):
                         lambda sa: ["أَوَّلْ", "ثَانِي"])
     _write_clip(tmp_path, "clip.wav", 2.0)
     raw = "ءَننننَ"
-    seg = _segment(0, 0.0, 1.5, raw)
+    seg = _segment(0, 0.0, 1.5, raw, words=1)
     model = _StubModel(["ءنن"])
 
     rows, kept, drops = score_segments([seg], tmp_path, model)
@@ -187,7 +189,51 @@ def test_score_segments_drops_edge_recut_failed(tmp_path, monkeypatch):
     assert [s.segment_index for s in kept] == [1]
 
 
-def test_write_segment_manifest_is_deterministic(tmp_path):
+def test_score_segments_drops_short_interior_segment(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"] * 6)
+    _write_clip(tmp_path, "clip.wav", 3.0)
+    # A 2-segment clip: seg0 is a 2-word interior sliver (< MIN_SEGMENT_WORDS) → dropped
+    # as short_segment without even being scored; seg1 is a 3-word segment → kept.
+    seg0 = _segment(0, 0.0, 1.0, "بت", words=2)
+    seg1 = _segment(1, 1.0, 3.0, "بتث", words=3)
+    model = _StubModel(["بت", "بتث"])
+
+    rows, kept, drops = score_segments([seg0, seg1], tmp_path, model)
+
+    assert drops["short_segment"] == 1
+    assert [r["segment_index"] for r in rows] == [1]
+    assert [s.segment_index for s in kept] == [1]
+
+
+def test_score_segments_keeps_short_whole_ayah_segment(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w", "w"])
+    _write_clip(tmp_path, "clip.wav", 2.0)
+    # A whole-ayah clip (single segment) under MIN_SEGMENT_WORDS is exempt from the
+    # short-segment drop — a genuinely short ayah is a legitimate unit.
+    seg = _segment(0, 0.0, 1.5, "بت", words=2)
+    model = _StubModel(["بت"])
+
+    rows, kept, drops = score_segments([seg], tmp_path, model)
+
+    assert sum(drops.values()) == 0
+    assert [r["segment_index"] for r in rows] == [0]
+    assert [s.segment_index for s in kept] == [0]
+
+
+def test_score_segments_honours_min_segment_words_override(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"] * 6)
+    _write_clip(tmp_path, "clip.wav", 3.0)
+    # With min_segment_words=1 a 2-word interior segment is no longer short → both kept.
+    seg0 = _segment(0, 0.0, 1.0, "بت", words=2)
+    seg1 = _segment(1, 1.0, 3.0, "بتث", words=3)
+    model = _StubModel(["بت", "بتث"])
+
+    rows, kept, drops = score_segments(
+        [seg0, seg1], tmp_path, model, min_segment_words=1
+    )
+
+    assert sum(drops.values()) == 0
+    assert [r["segment_index"] for r in rows] == [0, 1]
     rows = [
         {"audio_filename": "b.wav", "contrasts": ["shadda"], "match_ratio": 0.9},
         {"audio_filename": "a.wav", "contrasts": [], "match_ratio": 0.8},

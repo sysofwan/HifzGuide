@@ -20,17 +20,19 @@ reference with the ported ``.balanced`` gate — the same normalization / Smith-
 Unlike the whole-clip filter it does **not** apply the ``match_ratio`` pass bar — every
 segment of an admitted clip is already in the training set, so low-scoring segments are
 still emitted (``match_ratio`` and ``contrasts`` are observational, driving the audit's
-per-contrast and marginal-band sampling). It does drop four kinds of mislabelled or
-too-thin segment: a **short segment** — an interior-split piece under ``MIN_SEGMENT_WORDS``
-words (a false-pause / lead-in sliver; a whole-ayah single segment is exempt) — the gate's
-**repeated-phrase poison** (a decode with an interior insertion run of
+per-contrast and marginal-band sampling). It does drop five kinds of mislabelled or
+unusable segment: a **short segment** — an interior-split piece under ``MIN_SEGMENT_WORDS``
+words (a false-pause / lead-in sliver; a whole-ayah single segment is exempt) — a
+**degenerate span** (audio under ``MIN_DECODE_SAMPLES`` ≈ 25 ms, too short to feature-
+extract), the gate's **repeated-phrase poison** (a decode with an interior insertion run of
 ``scorer.MAX_INSERTION_RUN`` phonemes), a **boundary mismatch** — a segment whose audio
 overruns its assigned reference at an *interior* waqf split by ``MAX_BOUNDARY_TRIM``+
 phonemes (a localized repeat straddling the pause corrupts the whole-clip decode→word map,
 so the reference is cut on the wrong word) — and an **edge re-cut failure**, where a re-cut
 clip edge (:mod:`tadabur.waqf_detect`) still overruns the aligned span by the same margin.
-All are mislabelled or unusable examples, not marginal ones to audit, and are tallied by
-reason.
+The short-segment and degenerate-span drops are structural and applied before the decode;
+the rest need each segment's decode. All are mislabelled or unusable examples, not marginal
+ones to audit, and are tallied by reason.
 
 The output is a single segment manifest (JSONL). Its :class:`ManifestRecord` fields
 (``audio_filename`` = the per-segment id, ``surah_ayah``, ``match_ratio``,
@@ -91,6 +93,13 @@ MAX_BOUNDARY_TRIM = 5
 # split (one segment spanning the whole ayah) is exempt: a genuinely short ayah is a
 # legitimate whole-ayah unit, so it is kept whatever its word count.
 MIN_SEGMENT_WORDS = 3
+
+# The SeamlessM4T feature extractor needs at least this many samples to produce a mel
+# frame; a shorter slice throws (negative FFT dimensions). A degenerate span this short
+# (≈25 ms) is never a real waqf segment — two VAD pauses mapped onto near-adjacent word
+# edges, or an edge re-cut that collapsed the span — so it is dropped (``degenerate_span``)
+# before decoding rather than allowed to crash the batch.
+MIN_DECODE_SAMPLES = 400
 from . import vad, waqf_detect
 from .waqf_detect import WaqfSpan
 from .waqf_segments import (
@@ -276,6 +285,9 @@ def score_segments(
     * ``short_segment`` — an *interior-split* segment spanning fewer than
       :data:`MIN_SEGMENT_WORDS` words (a false-pause / lead-in sliver). A whole-ayah
       single segment is exempt (see :data:`MIN_SEGMENT_WORDS`).
+    * ``degenerate_span`` — the segment's audio slice is shorter than
+      :data:`MIN_DECODE_SAMPLES` (≈25 ms), too short for the feature extractor: two VAD
+      pauses landed on near-adjacent word edges, or an edge re-cut collapsed the span.
     * ``repeated_phrase`` — the decode has an interior insertion run of
       :data:`~tadabur.scorer.MAX_INSERTION_RUN` phonemes (the reciter repeated words).
     * ``boundary_mismatch`` — at an *interior* waqf boundary (a leading trim on a non-first
@@ -288,10 +300,13 @@ def score_segments(
       (:func:`~tadabur.waqf_detect.segment_clip`) failed (e.g. a repeat past the decode-ratio
       guard left the edge misaligned).
 
-    A low ``match_ratio`` alone is **not** a drop — such a segment stays as an
-    observational passer the audit samples the marginal band from. ``kept`` is the
-    surviving segments in row order, so the caller stages audio for exactly the emitted
-    rows.
+    The ``short_segment`` and ``degenerate_span`` drops are structural (no decode needed)
+    and applied **before** the batched decode, so a droppable segment is neither decoded
+    (wasted GPU) nor — for a degenerate slice — allowed to crash the batch; the remaining
+    gate-based drops need each segment's decode. A low ``match_ratio`` alone is **not** a
+    drop — such a segment stays as an observational passer the audit samples the marginal
+    band from. ``kept`` is the surviving segments in row order, so the caller stages audio
+    for exactly the emitted rows.
     """
     ordered = sorted(segments, key=lambda s: (s.audio_filename, s.segment_index))
 
@@ -308,29 +323,35 @@ def score_segments(
     # an interior waqf pause, so its short slivers are droppable; ==1 is a whole-ayah span.
     segment_count: dict[str, int] = {af: idx + 1 for af, idx in last_index.items()}
 
+    drops: Counter = Counter()
+
+    # Structural pre-filter (no decode): drop word-count slivers and audio-degenerate spans
+    # before the batched decode, so neither wastes GPU nor crashes the batch on a too-short
+    # slice. Only the survivors are decoded and gate-scored below.
     clip_cache: dict[str, np.ndarray] = {}
+    to_score: list[SegmentRecord] = []
     waveforms: list[np.ndarray] = []
     for seg in ordered:
-        if seg.audio_filename not in clip_cache:
-            clip_cache[seg.audio_filename] = _load_clip(clips_dir, seg.audio_filename)
-        waveforms.append(
-            slice_segment(clip_cache[seg.audio_filename], seg.start_s, seg.end_s)
-        )
-
-    predicted = _decode_all(model, waveforms, batch_size)
-
-    rows: list[dict] = []
-    kept: list[SegmentRecord] = []
-    drops: Counter = Counter()
-    for seg, decode in zip(ordered, predicted):
-        # Structural QC (no decode needed): an interior-split segment thinner than
-        # min_segment_words is a sliver — drop it. A whole-ayah single segment is exempt.
         if (
             segment_count[seg.audio_filename] > 1
             and seg.word_end - seg.word_start < min_segment_words
         ):
             drops["short_segment"] += 1
             continue
+        if seg.audio_filename not in clip_cache:
+            clip_cache[seg.audio_filename] = _load_clip(clips_dir, seg.audio_filename)
+        waveform = slice_segment(clip_cache[seg.audio_filename], seg.start_s, seg.end_s)
+        if len(waveform) < MIN_DECODE_SAMPLES:
+            drops["degenerate_span"] += 1
+            continue
+        to_score.append(seg)
+        waveforms.append(waveform)
+
+    predicted = _decode_all(model, waveforms, batch_size)
+
+    rows: list[dict] = []
+    kept: list[SegmentRecord] = []
+    for seg, decode in zip(to_score, predicted):
         reference = normalize_phonemes(seg.realized_reference_phonemes).normalized
         result = BALANCED_SCORER.gate(decode, reference)
         # A long interior insertion run is a repeated-phrase poison label: reject it
@@ -416,6 +437,41 @@ def stage_segment_audio(
         sf.write(audio_out / out_name, waveform, TARGET_SAMPLE_RATE, subtype="PCM_16")
 
 
+def _load_or_compute_pauses(passing, args, torch) -> dict[str, list[tuple[float, float]]]:
+    """The VAD waqf pauses per clip, from ``--pauses-cache`` if present else computed.
+
+    The VAD pass is the run's slow stage (~1 clip/s); caching its output as JSON lets a
+    re-run (e.g. after a later-stage fix) skip it. The cache is keyed by ``audio_filename``
+    with ``[start_s, end_s]`` pause lists; a cache missing any passing clip is treated as
+    stale and recomputed so a partial file is never silently trusted.
+    """
+    cache = args.pauses_cache
+    if cache is not None and cache.exists():
+        raw = json.loads(cache.read_text(encoding="utf-8"))
+        needed = {p.audio_filename for p in passing}
+        if needed <= set(raw):
+            print(f"Loaded VAD pauses for {len(raw)} clips from cache {cache}.")
+            return {af: [tuple(p) for p in spans] for af, spans in raw.items()}
+        print(f"Cache {cache} is missing {len(needed - set(raw))} clips; recomputing VAD.")
+
+    pauses_by_clip = vad.compute_clip_pauses(
+        passing, args.clips_dir,
+        device=torch.device(args.device), dtype=getattr(torch, args.vad_dtype),
+        min_silence_ms=args.min_silence_ms, min_speech_ms=args.min_speech_ms,
+    )
+    if cache is not None:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(
+            json.dumps(
+                {af: [list(p) for p in spans] for af, spans in pauses_by_clip.items()},
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        print(f"Wrote VAD pauses for {len(pauses_by_clip)} clips to cache {cache}.")
+    return pauses_by_clip
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -475,6 +531,14 @@ def main() -> None:
         "--vad-dtype", default="bfloat16",
         help="Torch dtype for the VAD forward (default: bfloat16).",
     )
+    parser.add_argument(
+        "--pauses-cache", type=Path, default=None,
+        help=(
+            "Optional JSON cache of the VAD waqf pauses (audio_filename -> [[start,end],"
+            " ...]). Loaded if it exists (skipping the ~1 clip/s VAD pass), else computed "
+            "and written. Lets a re-run reuse the slow VAD stage."
+        ),
+    )
     args = parser.parse_args()
 
     passing = read_records(args.passing)
@@ -484,11 +548,7 @@ def main() -> None:
 
     from .inference import MuaalemPhonemeModel
 
-    pauses_by_clip = vad.compute_clip_pauses(
-        passing, args.clips_dir,
-        device=torch.device(args.device), dtype=getattr(torch, args.vad_dtype),
-        min_silence_ms=args.min_silence_ms, min_speech_ms=args.min_speech_ms,
-    )
+    pauses_by_clip = _load_or_compute_pauses(passing, args, torch)
     total_pauses = sum(len(p) for p in pauses_by_clip.values())
     print(
         f"VAD found {total_pauses} interior waqf pauses across "
@@ -518,6 +578,7 @@ def main() -> None:
     print(
         f"Scored {len(rows)} segments ({contrasted} with contrasts; "
         f"rejected {drops['short_segment']} as short segment, "
+        f"{drops['degenerate_span']} as degenerate span, "
         f"{drops['repeated_phrase']} as repeated-phrase poison, "
         f"{drops['boundary_mismatch']} as boundary mismatch, "
         f"{drops['edge_recut_failed']} as edge re-cut failure). Wrote manifest "

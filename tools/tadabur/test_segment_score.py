@@ -234,6 +234,26 @@ def test_score_segments_honours_min_segment_words_override(tmp_path, monkeypatch
 
     assert sum(drops.values()) == 0
     assert [r["segment_index"] for r in rows] == [0, 1]
+
+
+def test_score_segments_drops_degenerate_span(tmp_path, monkeypatch):
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w"] * 6)
+    _write_clip(tmp_path, "clip.wav", 3.0)
+    # seg0's [start_s, end_s) slice is far shorter than MIN_DECODE_SAMPLES (~25 ms) — a
+    # collapsed span that would crash the feature extractor — so it is dropped before any
+    # decode; seg1 is a normal 3-word segment and is kept. Only one decode is consumed.
+    seg0 = _segment(0, 0.0, 0.005, "بتث", words=3)
+    seg1 = _segment(1, 1.0, 3.0, "بتث", words=3)
+    model = _StubModel(["بتث"])  # one output: only seg1 is decoded
+
+    rows, kept, drops = score_segments([seg0, seg1], tmp_path, model)
+
+    assert drops["degenerate_span"] == 1
+    assert [r["segment_index"] for r in rows] == [1]
+    assert [s.segment_index for s in kept] == [1]
+
+
+def test_write_segment_manifest_is_deterministic(tmp_path):
     rows = [
         {"audio_filename": "b.wav", "contrasts": ["shadda"], "match_ratio": 0.9},
         {"audio_filename": "a.wav", "contrasts": [], "match_ratio": 0.8},

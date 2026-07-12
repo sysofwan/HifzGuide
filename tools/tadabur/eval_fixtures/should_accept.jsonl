@@ -17,3 +17,7 @@
 {"audio_ref": "tadabur_spk0008_S18_A90_977dc332_000027__seg0.wav", "clip_id": "tadabur_spk0008_S18_A90_977dc332_000027__seg0.wav", "contrast": "ت↔ط", "note": "", "surah_ayah": "19:90", "verdict": "accept"}
 {"audio_ref": "tadabur_spk0039_S6_A168_f633d3d9_000048__seg0.wav", "clip_id": "tadabur_spk0039_S6_A168_f633d3d9_000048__seg0.wav", "contrast": "ت↔ط", "note": "", "surah_ayah": "7:168", "verdict": "accept"}
 {"audio_ref": "tadabur_spk0039_S71_A15_2c45abee_000178__seg0.wav", "clip_id": "tadabur_spk0039_S71_A15_2c45abee_000178__seg0.wav", "contrast": "ت↔ط", "note": "", "surah_ayah": "72:15", "verdict": "accept"}
+{"audio_ref": "tadabur_spk0099_S55_A31_12d569b0_000242__seg0.wav", "clip_id": "tadabur_spk0099_S55_A31_12d569b0_000242__seg0.wav", "contrast": "marginal", "note": "", "surah_ayah": "56:31", "verdict": "accept"}
+{"audio_ref": "tadabur_spk0107_S77_A39_8c227e50_000006__seg0.wav", "clip_id": "tadabur_spk0107_S77_A39_8c227e50_000006__seg0.wav", "contrast": "marginal", "note": "", "surah_ayah": "78:39", "verdict": "accept"}
+{"audio_ref": "tadabur_spk0116_S26_A44_93532c61_000021__seg0.wav", "clip_id": "tadabur_spk0116_S26_A44_93532c61_000021__seg0.wav", "contrast": "marginal", "note": "", "surah_ayah": "27:44", "verdict": "accept"}
+{"audio_ref": "tadabur_spk0717_S29_A26_c9058b4f_000000__seg0.wav", "clip_id": "tadabur_spk0717_S29_A26_c9058b4f_000000__seg0.wav", "contrast": "marginal", "note": "", "surah_ayah": "30:26", "verdict": "accept"}

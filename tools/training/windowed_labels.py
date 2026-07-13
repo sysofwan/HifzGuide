@@ -481,6 +481,13 @@ def read_labels(path: Path) -> dict[str, list[WindowLabel]]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--segments", type=Path, required=True,
+        help="Scored segment manifest (JSONL) from tadabur.segment_score.",
+    )
     parser.add_argument(
         "--clip-status", type=Path, required=True,
         help="Per-clip status sidecar (JSONL) from tadabur.segment_score.",

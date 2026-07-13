@@ -11,6 +11,8 @@ identity is checked here too without loading the VAD.
 from __future__ import annotations
 
 import json
+import sys
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -34,6 +36,8 @@ from training.windowed_labels import (
     assert_no_reciter_leakage,
     build_clip_windows,
     build_windowed_labels,
+    main,
+    read_labels,
     read_segments,
     split_by_reciter,
     write_labels,
@@ -436,3 +440,57 @@ def test_write_labels_is_sorted_and_tagged(tmp_path: Path):
     assert all(r["split"] == "train" for r in rows)
     assert all(isinstance(r["segment_indices"], list) for r in rows)
     assert all("recitation_start_sample" in r for r in rows)
+
+
+# --- CLI smoke test ----------------------------------------------------------
+
+
+def _write_segments(path: Path, segments) -> None:
+    """Serialize ``Segment`` rows to the JSONL manifest shape ``read_segments`` expects."""
+    with open(path, "w", encoding="utf-8") as f:
+        for seg in segments:
+            f.write(json.dumps(asdict(seg), ensure_ascii=False) + "\n")
+
+
+def test_main_cli_builds_labels_and_report(tmp_path, monkeypatch):
+    """End-to-end ``main()`` invocation guards the CLI wiring (parser + ``--segments``).
+
+    A previous regression deleted the ``ArgumentParser``/``--segments`` setup, so ``main()``
+    raised ``NameError`` before building anything. Running it here exercises argument parsing
+    and the ``read_segments(args.segments)`` path so a broken CLI fails loudly.
+    """
+    segs = [_seg("a.wav", 0, 0, 3, 0.0, 4.0, "ءبت")]
+    seg_path = tmp_path / "segments.jsonl"
+    status_path = tmp_path / "status.jsonl"
+    labels_path = tmp_path / "windowed_labels.jsonl"
+    report_path = tmp_path / "report.json"
+    _write_segments(seg_path, segs)
+    write_clip_status(status_path, [_status_for("a.wav", segs, n_words=3)])
+
+    monkeypatch.setattr(sys, "argv", [
+        "windowed_labels",
+        "--segments", str(seg_path),
+        "--clip-status", str(status_path),
+        "--out-labels", str(labels_path),
+        "--out-report", str(report_path),
+    ])
+    main()
+
+    by_split = read_labels(labels_path)
+    assert sum(len(v) for v in by_split.values()) == 1
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["clips_kept"] == 1
+    assert report["windows_total"] == 1
+
+
+def test_main_cli_requires_segments(monkeypatch):
+    """``main()`` must fail loudly (nonzero exit) when the required ``--segments`` is absent."""
+    monkeypatch.setattr(sys, "argv", [
+        "windowed_labels",
+        "--clip-status", "x.jsonl",
+        "--out-labels", "y.jsonl",
+        "--out-report", "z.json",
+    ])
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert exc.value.code != 0

@@ -73,6 +73,14 @@ TARGET_SAMPLE_RATE = 16000
 TEACHER_FRAME_MS = 20
 SAMPLES_PER_TEACHER_FRAME = TARGET_SAMPLE_RATE * TEACHER_FRAME_MS // 1000  # 320
 
+# A window start must land on an even teacher frame so its student frames line up with the
+# 40 ms lattice (:class:`WindowContract` enforces this for the hop). The recitation origin
+# the clip-relative grid is shifted to (:func:`recitation_window_span`) obeys the same
+# rule, so it is floored to a whole student-frame pair: 2 teacher frames × 320 samples =
+# 640 samples (40 ms). Flooring pulls in at most one 40 ms lead-in frame — well within the
+# ±50 ms edge pad ``waqf_detect`` already leaves — and never drops recitation audio.
+SAMPLES_PER_STUDENT_FRAME = SAMPLES_PER_TEACHER_FRAME * TEACHER_FRAMES_PER_STUDENT  # 640
+
 # The deployed fixed inference window: 250 feature frames ≈ 5 s at 20 ms
 # (``convert_to_coreml.py`` ``FIXED_SEQ_LEN``; ADR-0004). Its 40 ms length is 125.
 DEPLOYED_WINDOW_FEATURE_FRAMES = 250
@@ -211,6 +219,66 @@ class Window:
         return self.start_feature_frame // TEACHER_FRAMES_PER_STUDENT
 
 
+def recitation_window_span(start_s: float, end_s: float) -> tuple[int, int]:
+    """Clip-relative ``(start_sample, num_samples)`` of the recitation to be windowed.
+
+    The training unit is a fixed window over the **un-waqf-segmented recitation**
+    (ADR-0004), *not* the whole staged clip: a Tadabur clip keeps the previous ayah's
+    tail as lead-in and sometimes a trailing word/takbir (``waqf_detect`` re-cuts the
+    outer segment edges to the matched span, so ``start_s`` is generally > 0 and ``end_s``
+    < the clip duration). Both the phoneme CTC labels (:mod:`training.windowed_labels`)
+    and the waqf soft labels (:func:`generate_soft_labels`) window this same span so their
+    per-window targets pair on one grid; windowing the clip instead would (a) feed the CTC
+    head neighbour-ayah audio with no target and (b) put the two heads on different
+    window origins/counts — silent joint-label corruption (ADR-0004 "same window
+    contract"). ``start_sample`` is floored to a whole 40 ms student-frame pair
+    (:data:`SAMPLES_PER_STUDENT_FRAME`) so every window still begins on the 40 ms lattice;
+    ``num_samples`` spans to ``end_s``. The offset is **clip-relative**, so both artifacts
+    key their windows by the same clip-origin ``start_sample``.
+    """
+    start = (round(start_s * TARGET_SAMPLE_RATE) // SAMPLES_PER_STUDENT_FRAME) * SAMPLES_PER_STUDENT_FRAME
+    end = round(end_s * TARGET_SAMPLE_RATE)
+    return start, max(0, end - start)
+
+
+def enumerate_recitation_windows(
+    recitation_start_sample: int, recitation_num_samples: int, contract: WindowContract
+) -> list[Window]:
+    """Fixed windows tiling the recitation span, with **clip-relative** start samples.
+
+    Enumerates the same 0-based grid as :func:`enumerate_windows` over the recitation's
+    ``recitation_num_samples`` and shifts every window start by ``recitation_start_sample``
+    (a whole student-frame pair — see :func:`recitation_window_span`), so the returned
+    ``Window.start_sample`` locates the window in the **whole clip** while its length and
+    count come from the recitation. A **redundant trailing window** — one whose audio ends
+    no later than the previous window's (pure overlap the previous window already covers,
+    which the inference stitch discards) — is dropped, so the grid carries only windows
+    with new center audio. This is the single grid both the phoneme labels and the waqf
+    soft labels enumerate, guaranteeing identical ``(index, start_sample, num_samples)``
+    per clip.
+    """
+    if recitation_start_sample % SAMPLES_PER_STUDENT_FRAME != 0:
+        raise ValueError(
+            f"recitation_start_sample {recitation_start_sample} must be a multiple of "
+            f"{SAMPLES_PER_STUDENT_FRAME} (a 40 ms student-frame pair); use recitation_window_span"
+        )
+    windows: list[Window] = []
+    prev_end = -1
+    for w in enumerate_windows(recitation_num_samples, contract):
+        end = w.start_sample + w.num_samples
+        if end <= prev_end:
+            break  # a fully-overlapped tail window: no new center audio, drop it
+        windows.append(
+            Window(
+                index=w.index,
+                start_sample=recitation_start_sample + w.start_sample,
+                num_samples=w.num_samples,
+            )
+        )
+        prev_end = end
+    return windows
+
+
 def enumerate_windows(num_samples: int, contract: WindowContract) -> list[Window]:
     """Fixed training windows tiling ``num_samples`` of waveform under ``contract``.
 
@@ -246,6 +314,29 @@ def slice_windows(
     return [
         (w, np.asarray(waveform, dtype=np.float32)[w.start_sample : w.start_sample + w.num_samples])
         for w in enumerate_windows(len(waveform), contract)
+    ]
+
+
+def slice_recitation_windows(
+    waveform: np.ndarray,
+    recitation_start_sample: int,
+    recitation_num_samples: int,
+    contract: WindowContract,
+) -> list[tuple[Window, np.ndarray]]:
+    """Each recitation window paired with its waveform slice, clip-relative start samples.
+
+    Like :func:`slice_windows` but over the recitation span
+    (:func:`enumerate_recitation_windows`): the waveform slice is cut at the window's
+    **clip-relative** ``start_sample`` (``waveform`` is the whole clip), so the VAD sees
+    exactly the recitation audio the phoneme head is labelled on — no neighbour-ayah
+    lead-in / trailing bleed — on the shared grid.
+    """
+    wave = np.asarray(waveform, dtype=np.float32)
+    return [
+        (w, wave[w.start_sample : w.start_sample + w.num_samples])
+        for w in enumerate_recitation_windows(
+            recitation_start_sample, recitation_num_samples, contract
+        )
     ]
 
 
@@ -353,13 +444,17 @@ class SoftLabelStore:
         audio_filename: str,
         windows: list[tuple[Window, np.ndarray]],
         num_samples: int,
+        recitation_start_sample: int = 0,
     ) -> None:
         """Persist all of one clip's per-window 40 ms targets and index the clip once.
 
         A no-op if ``audio_filename`` is already stored, so replaying an interrupted
         clip adds no duplicate array or index line. Window arrays are written before the
         index line and the line is fsynced, so a crash before the line leaves the clip
-        un-indexed (re-done on resume), never half-indexed.
+        un-indexed (re-done on resume), never half-indexed. ``recitation_start_sample`` is
+        the clip-relative offset of the windowed recitation span (0 for a whole-clip run),
+        recorded so the phoneme labels — keyed by the same clip-relative ``start_sample`` —
+        join to these soft labels explicitly.
         """
         if audio_filename in self._seen:
             return
@@ -383,6 +478,7 @@ class SoftLabelStore:
                 {
                     "audio_filename": audio_filename,
                     "num_samples": int(num_samples),
+                    "recitation_start_sample": int(recitation_start_sample),
                     "windows": entries,
                 },
                 ensure_ascii=False,
@@ -440,6 +536,7 @@ def generate_soft_labels(
     clips_dir: Path,
     out_dir: Path,
     *,
+    recitation_spans: dict[str, tuple[int, int]] | None = None,
     contract: WindowContract | None = None,
     device: str = "cuda",
     dtype_str: str = "bfloat16",
@@ -449,20 +546,28 @@ def generate_soft_labels(
 
     Loads the Recitation VAD once (:class:`tadabur.vad.RecitationVad`) and, for each
     staged clip in deterministic ``audio_filename`` order, cuts the waveform into the
-    training windows the student sees (:func:`slice_windows`), runs the VAD over each
-    **window waveform** (batched), and pools each window's own 20 ms posteriors to its
-    exact 40 ms length (:func:`pool_window_posteriors`) — window-local labels, not a
-    sliced whole-clip pass. Each clip is written + fsynced to the :class:`SoftLabelStore`
-    before the next runs, so the ``has`` resume contract protects a multi-hour run: a
-    crash keeps every clip already written, the full manifest is never materialized, and
-    the store's contract metadata rejects a resume under different pooling/window params.
-    Returns the number of clips newly written.
+    training windows the student sees, runs the VAD over each **window waveform**
+    (batched), and pools each window's own 20 ms posteriors to its exact 40 ms length
+    (:func:`pool_window_posteriors`) — window-local labels, not a sliced whole-clip pass.
+
+    ``recitation_spans`` maps ``audio_filename`` → clip-relative ``(start_sample,
+    num_samples)`` of the un-waqf-segmented recitation (from the ``clip_status`` sidecar,
+    via :func:`recitation_window_span`). A clip with a span is windowed over **exactly
+    that recitation span on the shared clip-relative grid**
+    (:func:`slice_recitation_windows`), so its soft targets pair with the phoneme CTC
+    labels window-for-window (ADR-0004 "same window contract"); a clip absent from the map
+    (or ``recitation_spans is None``) falls back to whole-clip windowing. Each clip is
+    written + fsynced to the :class:`SoftLabelStore` before the next runs, so the ``has``
+    resume contract protects a multi-hour run: a crash keeps every clip already written,
+    the full manifest is never materialized, and the store's contract metadata rejects a
+    resume under different pooling/window params. Returns the number of clips newly written.
     """
     import torch
 
     from tadabur.vad import RecitationVad
 
     contract = contract or WindowContract()
+    spans = recitation_spans or {}
     with SoftLabelStore.open(out_dir, contract) as store:
         pending = [r for r in records if not store.has(r.audio_filename)]
         written = 0
@@ -470,7 +575,14 @@ def generate_soft_labels(
             device=torch.device(device), dtype=getattr(torch, dtype_str)
         ) as vad:
             for audio_filename, waveform in _iter_present_clips(pending, Path(clips_dir)):
-                windows = slice_windows(waveform, contract)
+                if audio_filename in spans:
+                    start_sample, num_samples = spans[audio_filename]
+                    windows = slice_recitation_windows(
+                        waveform, start_sample, num_samples, contract
+                    )
+                else:
+                    start_sample = 0
+                    windows = slice_windows(waveform, contract)
                 posteriors = vad.silence_posteriors(
                     [slice_wave for _, slice_wave in windows], batch_size=batch_size
                 )
@@ -478,7 +590,12 @@ def generate_soft_labels(
                     (window, pool_window_posteriors(posterior))
                     for (window, _), posterior in zip(windows, posteriors)
                 ]
-                store.write_clip(audio_filename, labelled, num_samples=len(waveform))
+                store.write_clip(
+                    audio_filename,
+                    labelled,
+                    num_samples=len(waveform),
+                    recitation_start_sample=start_sample,
+                )
                 written += 1
     return written
 
@@ -488,6 +605,14 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, required=True, help="passing-subset JSONL manifest")
     parser.add_argument("--clips-dir", type=Path, required=True, help="staged 16 kHz clips directory")
     parser.add_argument("--out-dir", type=Path, required=True, help="soft-label artifact directory")
+    parser.add_argument(
+        "--clip-status",
+        type=Path,
+        default=None,
+        help="per-clip status sidecar (JSONL) from tadabur.segment_score; when given, each "
+        "clip is windowed over its recitation span so the soft labels share the phoneme "
+        "CTC labels' clip-relative window grid (ADR-0004). Omit for whole-clip windowing.",
+    )
     parser.add_argument(
         "--window-feature-frames",
         type=int,
@@ -511,16 +636,44 @@ def main() -> None:
         hop_feature_frames=args.hop_feature_frames or FROZEN_HOP_FEATURE_FRAMES,
     )
     records = read_records(args.manifest)
+    recitation_spans = _recitation_spans_from_clip_status(args.clip_status)
     written = generate_soft_labels(
         records,
         args.clips_dir,
         args.out_dir,
+        recitation_spans=recitation_spans,
         contract=contract,
         device=args.device,
         dtype_str=args.dtype,
         batch_size=args.batch_size,
     )
     print(f"Wrote {written} new soft-label clips to {args.out_dir} ({len(records)} in manifest).")
+
+
+def _recitation_spans_from_clip_status(
+    clip_status_path: Path | None,
+) -> dict[str, tuple[int, int]] | None:
+    """Clip-relative recitation ``(start_sample, num_samples)`` per clip, or ``None``.
+
+    Reads the ``clip_status`` sidecar and maps every clip the segmenter could split
+    safely (``skip_reason is None``) to its recitation window span
+    (:func:`recitation_window_span`). Skipped clips are omitted: they are excluded from
+    the phoneme labels too, so their soft labels are unpaired and windowing them over a
+    (meaningless) recitation span would only waste work — they fall back to whole-clip.
+    Returns ``None`` when no sidecar is given (whole-clip windowing for every clip).
+    """
+    if clip_status_path is None:
+        return None
+    from tadabur.clip_status import read_clip_status
+
+    spans: dict[str, tuple[int, int]] = {}
+    for status in read_clip_status(clip_status_path):
+        if status.skip_reason is not None:
+            continue
+        spans[status.audio_filename] = recitation_window_span(
+            status.recitation_start_s, status.recitation_end_s
+        )
+    return spans
 
 
 if __name__ == "__main__":

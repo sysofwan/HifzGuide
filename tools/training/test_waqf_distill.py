@@ -20,15 +20,19 @@ import pytest
 
 from training.waqf_distill import (
     DEPLOYED_WINDOW_FEATURE_FRAMES,
+    SAMPLES_PER_STUDENT_FRAME,
     SAMPLES_PER_TEACHER_FRAME,
     SoftLabelStore,
     Window,
     WindowContract,
+    enumerate_recitation_windows,
     enumerate_windows,
     generation_contract,
     muaalem_lattice_length,
     pool_silence_2to1,
     pool_window_posteriors,
+    recitation_window_span,
+    slice_recitation_windows,
     slice_windows,
 )
 
@@ -262,6 +266,62 @@ def test_slice_windows_is_deterministic():
     b = slice_windows(waveform, contract)
     for (_, sa), (_, sb) in zip(a, b):
         np.testing.assert_array_equal(sa, sb)
+
+
+# --- recitation-span windowing: the shared clip-relative grid ----------------
+
+
+def test_recitation_window_span_floors_the_start_to_a_student_frame_pair():
+    # The recitation onset is floored to a whole 40 ms student-frame pair so window starts
+    # stay on the 40 ms lattice (pulling in <=40 ms of lead-in, within the edge pad).
+    start_sample, num_samples = recitation_window_span(0.641, 4.641)
+    assert start_sample % SAMPLES_PER_STUDENT_FRAME == 0
+    assert start_sample == (round(0.641 * 16000) // SAMPLES_PER_STUDENT_FRAME) * SAMPLES_PER_STUDENT_FRAME
+    assert num_samples == round(4.641 * 16000) - start_sample
+
+
+def test_recitation_windows_are_clip_relative_and_match_the_zero_based_grid():
+    # A lead-in-trimmed recitation windows on the SAME 0-based grid as the whole clip, only
+    # shifted by the clip-relative onset, so the phoneme and waqf artifacts pair per window.
+    contract = WindowContract()
+    start_sample, num_samples = recitation_window_span(0.6, 8.6)  # 9600, 128000
+    windows = enumerate_recitation_windows(start_sample, num_samples, contract)
+    base = enumerate_windows(num_samples, contract)
+    assert [w.index for w in windows] == [w.index for w in base]
+    assert [w.num_samples for w in windows] == [w.num_samples for w in base]
+    assert [w.start_sample for w in windows] == [start_sample + w.start_sample for w in base]
+
+
+def test_recitation_windows_drop_the_redundant_overlap_tail():
+    # A recitation just past the 4 s hop yields a trailing window that is pure overlap the
+    # previous window already covers (its audio ends no later). The inference stitch discards
+    # it, so the shared grid must too — otherwise a segment crossing that tail's edge would
+    # wrongly exclude the clip and the two artifacts could disagree on window count.
+    contract = WindowContract()
+    start_sample, num_samples = recitation_window_span(0.0, 4.4)  # 0, 70400 (< 5 s, > 4 s hop)
+    base = enumerate_windows(num_samples, contract)
+    windows = enumerate_recitation_windows(start_sample, num_samples, contract)
+    assert len(base) == 2 and base[1].start_sample + base[1].num_samples == num_samples
+    assert [w.index for w in windows] == [0]  # the redundant second window is dropped
+
+
+def test_slice_recitation_windows_cuts_the_clip_on_the_shared_grid():
+    # The waqf side slices the WHOLE clip waveform on the shared clip-relative grid, so each
+    # slice is exactly the window's clip span — the same grid the phoneme labels enumerate.
+    contract = WindowContract()
+    clip = np.arange(int(10.0 * 16000), dtype=np.float32)
+    start_sample, num_samples = recitation_window_span(0.6, 8.6)
+    sliced = slice_recitation_windows(clip, start_sample, num_samples, contract)
+    windows = enumerate_recitation_windows(start_sample, num_samples, contract)
+    assert [w.index for w, _ in sliced] == [w.index for w in windows]
+    for window, wave_slice in sliced:
+        expected = clip[window.start_sample : window.start_sample + window.num_samples]
+        np.testing.assert_array_equal(wave_slice, expected)
+
+
+def test_enumerate_recitation_windows_rejects_an_unaligned_onset():
+    with pytest.raises(ValueError):
+        enumerate_recitation_windows(9601, 64000, WindowContract())
 
 
 # --- SoftLabelStore: per-window, manifest-keyed, idempotent, resumable --------

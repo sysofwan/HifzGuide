@@ -48,8 +48,15 @@ class ClipStatus:
     ``clip_audio_filename`` points back to). ``n_words`` is the ayah's Uthmani word
     count — the full word range ``[0, n_words)`` the clip's kept segments must cover
     contiguously to be eligible. ``duration_s`` is the whole 16 kHz clip's duration.
-    ``skip_reason`` is one of :data:`CLIP_SKIP_REASONS` when the segmenter could not
-    produce trustworthy per-segment labels for the clip, else ``None``.
+    ``recitation_start_s`` / ``recitation_end_s`` are the clip-relative bounds of the
+    **un-waqf-segmented recitation** — the first kept segment's onset and the last's
+    offset (after ``waqf_detect`` re-cut the outer edges to the ayah-aligned span, so they
+    trim the neighbour-ayah lead-in / trailing bleed the staged clip retains). Both the
+    phoneme CTC labels and the waqf soft labels window *this* span on one shared
+    clip-relative grid (ADR-0004), so it is carried here as the single source of the window
+    origin. ``skip_reason`` is one of :data:`CLIP_SKIP_REASONS` when the segmenter could
+    not produce trustworthy per-segment labels for the clip, else ``None`` (a skipped clip
+    is excluded from training, so its recitation span defaults to the whole clip).
     """
 
     audio_filename: str
@@ -57,6 +64,8 @@ class ClipStatus:
     reciter_id: int
     n_words: int
     duration_s: float
+    recitation_start_s: float = 0.0
+    recitation_end_s: float = 0.0
     skip_reason: str | None = None
 
 
@@ -88,6 +97,8 @@ def read_clip_status(path: Path) -> list[ClipStatus]:
                     reciter_id=data["reciter_id"],
                     n_words=data["n_words"],
                     duration_s=data["duration_s"],
+                    recitation_start_s=data.get("recitation_start_s", 0.0),
+                    recitation_end_s=data.get("recitation_end_s", data["duration_s"]),
                     skip_reason=data.get("skip_reason"),
                 )
             )

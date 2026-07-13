@@ -343,6 +343,10 @@ def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
     assert records[0].segment_index == 0 and records[1].segment_index == 1
     assert [s.audio_filename for s in statuses] == ["a.wav"]
     assert statuses[0].skip_reason is None and statuses[0].n_words == 3
+    # The clip-status recitation span is the first segment's onset to the last's offset —
+    # the shared window origin the phoneme labels and waqf soft labels both enumerate over.
+    assert statuses[0].recitation_start_s == records[0].start_s
+    assert statuses[0].recitation_end_s == records[-1].end_s
 
 
 def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):

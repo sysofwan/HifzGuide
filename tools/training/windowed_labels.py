@@ -20,14 +20,31 @@ consume, and it owns the two data-integrity gates ADR-0004 requires around them:
 
 * **Per-window labels reconstructed from segment word ranges.** The clip's phoneme label
   is the concatenation of its per-segment realized references (waqf form at each interior
-  stop, wasl inside each run — ADR-0002). Each fixed window owns the segments whose audio
-  falls in its **center-trusted band** (the frozen #24 ownership rule, reused here at
-  segment granularity), and its label is those segments' references concatenated in order.
-  The build **asserts** the resulting per-window word ranges have no dropped or duplicated
-  word and tile the recitation contiguously; a violation is a bug, not bad data, so it
-  raises. ``target_len < logit_frames`` is checked against the **post-adapter 40 ms**
-  length of each window (:func:`training.waqf_distill.muaalem_lattice_length`), the CTC
-  feasibility bound.
+  stop, wasl inside each run — ADR-0002). Each fixed window's label is the references of
+  the segments whose audio falls inside that window's audio span, concatenated in order.
+  Because the persisted manifest carries only *segment*-level audio timing (no per-word
+  timestamps), a window can only be labelled when **every segment overlapping its audio is
+  fully contained in it**: then we can prove every spoken word in the window audio is a
+  full CTC target. A segment that crosses a window edge (its audio reaches past the
+  boundary) leaves a partially-spoken word we cannot represent, so the whole clip is
+  excluded (``segment_crosses_window``) rather than mislabelled — the same
+  exclude-don't-corrupt rule as a dropped segment. Interior waqf is still learned: a clip
+  whose whole recitation fits one 5 s window keeps all its interior segments. The build
+  **asserts** each window's owned segments are word-contiguous and that the windows cover
+  ``[0, n_words)``. ``target_len < logit_frames`` is checked against the **post-adapter
+  40 ms** length of each window
+  (:func:`training.waqf_distill.muaalem_lattice_length`), the CTC feasibility bound.
+
+* **One shared clip-relative window grid with the waqf soft labels.** Windows are
+  enumerated over the **recitation span** (``[recitation_start_s, recitation_end_s]`` from
+  the status sidecar — the un-waqf-segmented recitation, trimming the neighbour-ayah
+  lead-in / trailing bleed the staged clip keeps), on the **identical grid**
+  :func:`training.waqf_distill.generate_soft_labels` uses
+  (:func:`training.waqf_distill.enumerate_recitation_windows`). ``start_sample`` is
+  **clip-relative** (the recitation offset is folded in and persisted as
+  ``recitation_start_sample``), so a window's phoneme CTC target and its waqf soft target
+  share the same ``(window_index, start_sample, num_samples)`` and the joint fine-tune
+  (#28/#29/#31) pairs them without misalignment (ADR-0004 "same window contract").
 
 * **Whole-clip reciter split.** The train/val partition is drawn at the **reciter** level,
   so no reciter — and therefore no clip, and therefore none of a clip's windows — can
@@ -35,13 +52,16 @@ consume, and it owns the two data-integrity gates ADR-0004 requires around them:
 
 **Conservative windowing (documented limitation).** Ownership is at *segment* granularity
 because that is the finest audio↔phoneme correspondence the persisted manifest carries
-(per-word audio timestamps are not stored). A single waqf segment whose audio spans more
-than one window's center band — a long single-breath run with no interior pause (in
-practice a recitation beyond ~4.5 s with no waqf) — cannot be split across the windows its
-audio covers, so a later window would be left with audio but no owned segment. Rather than
-mislabel it, such a clip is excluded as ``empty_window`` (ADR-0004: "flagged for review,
-not silently truncated"). Recovering these clips would require per-word timestamps threaded
-from the alignment; that is out of scope here.
+(per-word audio timestamps are not stored). A recitation longer than one 5 s window whose
+segment (waqf) boundaries do not happen to fall on the window grid has at least one segment
+crossing a window edge, so it is excluded (``segment_crosses_window``): with only
+segment-level timing we cannot prove that window's edge word is a full target, and a
+mislabelled window is worse than a dropped clip (ADR-0004 "flagged for review, not silently
+truncated"). Also excluded: a **dropped** segment (``dropped_segment`` word-coverage gap),
+an **over-long** recitation (``over_long``), a window overlapping **no** segment
+(``empty_window`` defensive guard), or a target longer than its lattice
+(``target_too_long``). Recovering the longer clips would require per-word timestamps
+threaded from the alignment; that is out of scope here.
 
 Usage:
   python -m training.windowed_labels --segments segment_manifest.jsonl \\
@@ -64,8 +84,9 @@ from training.waqf_distill import (
     SAMPLES_PER_TEACHER_FRAME,
     TARGET_SAMPLE_RATE,
     WindowContract,
-    enumerate_windows,
+    enumerate_recitation_windows,
     muaalem_lattice_length,
+    recitation_window_span,
 )
 
 # The provisional per-clip cap from the frozen A2 contract (ADR-0004 "Frozen windowing
@@ -81,6 +102,7 @@ EXCLUDE_DROPPED_SEGMENT = "dropped_segment"
 EXCLUDE_OVER_LONG = "over_long"
 EXCLUDE_EMPTY_WINDOW = "empty_window"
 EXCLUDE_TARGET_TOO_LONG = "target_too_long"
+EXCLUDE_SEGMENT_CROSSES_WINDOW = "segment_crosses_window"
 
 
 @dataclass(frozen=True)
@@ -108,12 +130,16 @@ class Segment:
 class WindowLabel:
     """One fixed training window's phoneme CTC label over a recitation.
 
-    ``start_sample`` / ``num_samples`` are relative to the **recitation** start (the first
-    segment's onset, after the neighbour-ayah lead-in was trimmed), the offsets the
-    collator (#8) slices the window audio at. ``feature_frames`` is the window's 20 ms
-    length and ``logit_frames`` its post-adapter 40 ms length — the CTC lattice the
-    ``phoneme_label`` must be shorter than. ``word_start`` / ``word_end`` and
-    ``segment_indices`` record which segments' realized references were concatenated.
+    ``start_sample`` / ``num_samples`` are **clip-relative** (the recitation offset is
+    folded in), so they name the exact whole-clip sample span the collator (#8) slices the
+    window audio at and the key the waqf soft label
+    (:class:`training.waqf_distill.SoftLabelStore`) is joined on. ``recitation_start_sample``
+    records that clip-relative offset explicitly (window 0's ``start_sample``).
+    ``feature_frames`` is the window's 20 ms length and ``logit_frames`` its post-adapter
+    40 ms length — the CTC lattice the ``phoneme_label`` must be shorter than.
+    ``word_start`` / ``word_end`` and ``segment_indices`` record which segments' realized
+    references were concatenated (segments in a window overlap are labelled in both
+    neighbouring windows).
     """
 
     clip_audio_filename: str
@@ -122,6 +148,7 @@ class WindowLabel:
     window_index: int
     start_sample: int
     num_samples: int
+    recitation_start_sample: int
     feature_frames: int
     logit_frames: int
     phoneme_label: str
@@ -193,37 +220,30 @@ def _covers_all_words(segments: list[Segment], n_words: int) -> bool:
     return expected == n_words
 
 
-def _owner_window(midpoint_sample: int, contract: WindowContract, n_windows: int) -> int:
-    """The window index whose center-trusted band owns a segment at ``midpoint_sample``.
+def _window_segments(
+    ordered: list[Segment], clip_start_sample: int, clip_end_sample: int
+) -> tuple[list[Segment], bool]:
+    """The segments inside a window's clip-relative span, and whether any one crosses it.
 
-    The frozen #24 contract makes each window authoritative over its central band (the
-    outer 0.5 s is the overlap owned by the nearer-center neighbour). With a fixed hop the
-    bands tile the recitation timeline, so a segment belongs to the single window whose
-    band contains its temporal midpoint — ``floor((mid - edge) / hop)``, clamped so the
-    leading edge maps to window 0 and the trailing edge to the last window.
+    A segment's audio overlaps ``[clip_start_sample, clip_end_sample)`` when it starts
+    before the window ends and ends after the window starts (segment times are converted
+    to the same clip-relative sample grid the window spans use). It is **fully contained**
+    only when it also starts at/after ``clip_start_sample`` and ends at/before
+    ``clip_end_sample``. Returns the overlapping segments in order and a flag that is true
+    if any overlapping segment is *not* fully contained — i.e. it crosses the window edge,
+    so with segment-level timing alone we cannot prove that window's edge word is a full
+    CTC target and the clip must be excluded.
     """
-    edge = (contract.window_samples - contract.hop_samples) // 2
-    index = (midpoint_sample - edge) // contract.hop_samples
-    return max(0, min(n_windows - 1, index))
-
-
-def _needed_windows(recitation_samples: int, contract: WindowContract, n_windows: int) -> int:
-    """How many of the tiled windows carry a distinct center band over the recitation.
-
-    :func:`training.waqf_distill.enumerate_windows` steps a window every hop while its
-    *start* is inside the clip, so a recitation that overruns the last full window by less
-    than the overlap gets a trailing window whose center band lies entirely at/after the
-    recitation end — pure overlap the previous window already center-owns. Such redundant
-    tails carry no new coverage and own no segment, so they are excluded from the label
-    windows; only windows whose band starts before the recitation end are "needed".
-    """
-    edge = (contract.window_samples - contract.hop_samples) // 2
-    needed = 1
-    for w in range(1, n_windows):
-        if w * contract.hop_samples + edge >= recitation_samples:
-            break
-        needed = w + 1
-    return needed
+    overlapping: list[Segment] = []
+    crosses = False
+    for seg in ordered:
+        seg_start = round(seg.start_s * TARGET_SAMPLE_RATE)
+        seg_end = round(seg.end_s * TARGET_SAMPLE_RATE)
+        if seg_end > clip_start_sample and seg_start < clip_end_sample:
+            overlapping.append(seg)
+            if seg_start < clip_start_sample or seg_end > clip_end_sample:
+                crosses = True
+    return overlapping, crosses
 
 
 def build_clip_windows(
@@ -235,11 +255,17 @@ def build_clip_windows(
     """Windowed labels for one clip, or ``(_, reason)`` when the clip is ineligible.
 
     Applies the clip-level eligibility gates in order (skip reason → dropped-segment
-    coverage → over-long → per-window coverage/target length) and, for an eligible clip,
-    assigns each segment to its owning window and concatenates the owned segments'
-    realized references into that window's CTC label. Raises ``AssertionError`` if the
-    per-window word ranges ever drop, duplicate, or fail to tile the recitation — those
-    are invariants of an eligible clip, not data conditions, so a violation is a bug.
+    coverage → over-long → per-window containment/target length) and, for an eligible clip,
+    labels each window with the concatenated realized references of the segments **fully
+    contained in that window's clip-relative span**. If a segment's audio crosses a window
+    edge, segment-level timing cannot prove that window's edge word is a full CTC target,
+    so the clip is excluded (``segment_crosses_window``) rather than mislabelled. Windows
+    are enumerated on the shared clip-relative grid the waqf soft labels use
+    (:func:`training.waqf_distill.enumerate_recitation_windows`), so the two artifacts'
+    ``(window_index, start_sample, num_samples)`` match. Raises ``AssertionError`` if a
+    kept window's segments are not word-contiguous or the windows fail to cover the
+    recitation's words — invariants of an eligible clip, so a violation is a bug, not a
+    data condition.
     """
     if status.skip_reason is not None:
         return [], status.skip_reason
@@ -248,29 +274,32 @@ def build_clip_windows(
     if not _covers_all_words(ordered, status.n_words):
         return [], EXCLUDE_DROPPED_SEGMENT
 
-    recitation_start_s = ordered[0].start_s
-    recitation_samples = round((ordered[-1].end_s - recitation_start_s) * TARGET_SAMPLE_RATE)
-    if recitation_samples // SAMPLES_PER_TEACHER_FRAME > cap_feature_frames:
+    recitation_start_sample, recitation_num_samples = recitation_window_span(
+        status.recitation_start_s, status.recitation_end_s
+    )
+    if recitation_num_samples // SAMPLES_PER_TEACHER_FRAME > cap_feature_frames:
         return [], EXCLUDE_OVER_LONG
 
-    all_windows = enumerate_windows(recitation_samples, contract)
-    needed = _needed_windows(recitation_samples, contract, len(all_windows))
-    windows = all_windows[:needed]
-    owned: list[list[Segment]] = [[] for _ in windows]
-    for seg in ordered:
-        start = round((seg.start_s - recitation_start_s) * TARGET_SAMPLE_RATE)
-        end = round((seg.end_s - recitation_start_s) * TARGET_SAMPLE_RATE)
-        owner = _owner_window((start + end) // 2, contract, needed)
-        owned[owner].append(seg)
-
+    windows = enumerate_recitation_windows(
+        recitation_start_sample, recitation_num_samples, contract
+    )
     labels: list[WindowLabel] = []
-    next_word = 0
-    for window, window_segments in zip(windows, owned):
+    covered_end = 0
+    for window in windows:
+        clip_end_sample = window.start_sample + window.num_samples
+        window_segments, crosses = _window_segments(
+            ordered, window.start_sample, clip_end_sample
+        )
+        if crosses:
+            # A segment reaches past this window's edge: its edge word is only partly in
+            # the window audio, so with segment-level timing we cannot label the window
+            # without corrupting the target. Exclude the whole clip (ADR-0004).
+            return [], EXCLUDE_SEGMENT_CROSSES_WINDOW
         if not window_segments:
-            # A needed window (its band adds new coverage) with no owned segment: a waqf
-            # segment longer than the hop spanned it (see the module docstring). Flag it.
+            # A window overlapping no segment: its audio carries no labellable word. A 5 s
+            # window never fits inside a sub-second waqf pause, so this is a defensive
+            # guard against a degenerate span, not a normal outcome.
             return [], EXCLUDE_EMPTY_WINDOW
-        assert window_segments[0].word_start == next_word, "window word range not contiguous"
         for prev, cur in zip(window_segments, window_segments[1:]):
             assert cur.word_start == prev.word_end, "duplicated/dropped word within window"
         phoneme_label = "".join(seg.reference_phonemes for seg in window_segments)
@@ -286,6 +315,7 @@ def build_clip_windows(
                 window_index=window.index,
                 start_sample=window.start_sample,
                 num_samples=window.num_samples,
+                recitation_start_sample=recitation_start_sample,
                 feature_frames=feature_frames,
                 logit_frames=logit_frames,
                 phoneme_label=phoneme_label,
@@ -294,8 +324,12 @@ def build_clip_windows(
                 segment_indices=tuple(seg.segment_index for seg in window_segments),
             )
         )
-        next_word = window_segments[-1].word_end
-    assert next_word == status.n_words, "windows do not tile the recitation's words"
+        # Consecutive windows overlap, so a later window's first word may repeat the
+        # previous window's last; coverage must still advance to the ayah's final word
+        # with no gap between what the windows cover.
+        assert window_segments[0].word_start <= covered_end, "window coverage gap"
+        covered_end = max(covered_end, window_segments[-1].word_end)
+    assert covered_end == status.n_words, "windows do not cover the recitation's words"
     return labels, None
 
 

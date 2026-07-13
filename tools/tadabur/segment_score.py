@@ -233,7 +233,9 @@ def segment_clips(
         uthmani_words = _uthmani_words(passing.surah_ayah)
         if not (clips_dir / passing.audio_filename).exists():
             skips["clip_missing"] += 1
-            statuses.append(_clip_status(passing, len(uthmani_words), 0.0, "clip_missing"))
+            statuses.append(
+                _clip_status(passing, len(uthmani_words), 0.0, 0.0, 0.0, "clip_missing")
+            )
             continue
         waveform = _load_clip(clips_dir, passing.audio_filename)
         duration_s = len(waveform) / TARGET_SAMPLE_RATE
@@ -257,26 +259,47 @@ def segment_clips(
         except (KeyError, IndexError):
             skips["phonetizer_unsupported"] += 1
             statuses.append(
-                _clip_status(passing, len(uthmani_words), duration_s, "phonetizer_unsupported")
+                _clip_status(
+                    passing, len(uthmani_words), duration_s, 0.0, duration_s,
+                    "phonetizer_unsupported",
+                )
             )
             continue
         records.extend(clip_records)
         statuses.append(
-            _clip_status(passing, len(uthmani_words), duration_s, result.skip)
+            _clip_status(
+                passing, len(uthmani_words), duration_s,
+                spans[0].start_s, spans[-1].end_s, result.skip,
+            )
         )
     return records, skips, statuses
 
 
 def _clip_status(
-    passing: ManifestRecord, n_words: int, duration_s: float, skip_reason: str | None
+    passing: ManifestRecord,
+    n_words: int,
+    duration_s: float,
+    recitation_start_s: float,
+    recitation_end_s: float,
+    skip_reason: str | None,
 ) -> ClipStatus:
-    """One :class:`ClipStatus` for a passing clip, carrying its eligibility inputs."""
+    """One :class:`ClipStatus` for a passing clip, carrying its eligibility inputs.
+
+    ``recitation_start_s`` / ``recitation_end_s`` are the first/last kept span's edges —
+    the un-waqf-segmented recitation bounds both label artifacts window over. A skipped
+    clip is kept whole (``[0, duration_s]``) and excluded downstream anyway.
+    """
     return ClipStatus(
         audio_filename=passing.audio_filename,
         surah_ayah=passing.surah_ayah,
         reciter_id=passing.reciter_id,
         n_words=n_words,
         duration_s=round(duration_s, 3),
+        # Unrounded so ``round(recitation_end_s * SR)`` matches the segment manifest's own
+        # ``end_s`` sample conversion exactly — a 3-decimal round could shift the last
+        # segment a few samples past the final window edge and falsely exclude the clip.
+        recitation_start_s=recitation_start_s,
+        recitation_end_s=recitation_end_s,
         skip_reason=skip_reason,
     )
 

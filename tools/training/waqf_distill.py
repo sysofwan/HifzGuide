@@ -581,6 +581,105 @@ class SoftLabelStore:
         self.close()
 
 
+@dataclass(frozen=True)
+class WindowSilenceTarget:
+    """One training window's pooled 40 ms silence teacher, keyed to its phoneme window.
+
+    ``audio_filename`` + ``window_index`` are the same identity the phoneme CTC label
+    (:class:`training.windowed_labels.WindowLabel`) carries, and ``start_sample`` /
+    ``num_samples`` are the same clip-relative audio span, so the joint fine-tune pairs a
+    window's phoneme target and its ``silence_40ms`` teacher without re-deriving either
+    (ADR-0004 "same window contract"). ``silence_40ms`` ``(num_student_frames,)`` is the
+    pooled ``P(silence)`` the waqf head is distilled against.
+    """
+
+    audio_filename: str
+    window_index: int
+    start_sample: int
+    num_samples: int
+    silence_40ms: np.ndarray
+
+
+class SoftLabelReader:
+    """Read-side join partner of :class:`SoftLabelStore` for the joint fine-tune (#31).
+
+    Loads the store's ``soft_labels.jsonl`` index once and serves each window's pooled
+    silence teacher by ``(audio_filename, window_index)`` — the key the phoneme CTC labels
+    share. Opening **asserts the store was generated on the recitation grid** (its
+    ``contract.json`` ``window_origin``): a whole-clip store must never be joined with the
+    recitation-relative phoneme labels (ADR-0004), so the mismatch fails fast here rather
+    than silently pairing windows off two different grids. Arrays are loaded lazily and
+    validated to the length the index recorded, so a truncated/overwritten ``.npy`` raises
+    instead of feeding a short teacher into the KL.
+    """
+
+    def __init__(self, root: Path, index: dict[tuple[str, int], dict]) -> None:
+        self.root = root
+        self._index = index
+
+    @classmethod
+    def open(
+        cls, root: Path, window_origin: str = WINDOW_ORIGIN_RECITATION
+    ) -> "SoftLabelReader":
+        root = Path(root)
+        contract_path = root / SoftLabelStore.CONTRACT_NAME
+        if not contract_path.exists():
+            raise FileNotFoundError(
+                f"no soft-label store at {root} (missing {SoftLabelStore.CONTRACT_NAME}); "
+                "generate it with training.waqf_distill before the joint run."
+            )
+        stored_origin = json.loads(contract_path.read_text(encoding="utf-8")).get(
+            "window_origin"
+        )
+        if stored_origin != window_origin:
+            raise ValueError(
+                f"soft-label store at {root} was generated on the {stored_origin!r} grid, "
+                f"but the joint fine-tune joins on {window_origin!r}; pairing these windows "
+                "would misalign the silence teacher against the recitation-relative phoneme "
+                "labels. Regenerate the store on the recitation grid."
+            )
+        index: dict[tuple[str, int], dict] = {}
+        with open(root / SoftLabelStore.INDEX_NAME, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                for window in record["windows"]:
+                    key = (record["audio_filename"], int(window["window_index"]))
+                    index[key] = {**window, "num_samples": int(window["num_samples"])}
+        return cls(root, index)
+
+    def has(self, audio_filename: str, window_index: int) -> bool:
+        return (audio_filename, window_index) in self._index
+
+    def target(self, audio_filename: str, window_index: int) -> WindowSilenceTarget:
+        """Load one window's pooled silence teacher, validating its recorded length."""
+        try:
+            entry = self._index[(audio_filename, window_index)]
+        except KeyError as exc:
+            raise KeyError(
+                f"soft-label store {self.root} has no window {window_index} for "
+                f"{audio_filename!r}; the phoneme labels and the soft labels are out of "
+                "sync — regenerate both on the same recitation grid."
+            ) from exc
+        silence = np.load(self.root / entry["array_path"]).astype(np.float32)
+        expected = int(entry["num_student_frames"])
+        if silence.shape != (expected,):
+            raise ValueError(
+                f"soft-label array {entry['array_path']} has shape {silence.shape}, but the "
+                f"index records {expected} student frames for window {window_index} of "
+                f"{audio_filename!r} — the store is corrupt; regenerate it."
+            )
+        return WindowSilenceTarget(
+            audio_filename=audio_filename,
+            window_index=window_index,
+            start_sample=int(entry["start_sample"]),
+            num_samples=entry["num_samples"],
+            silence_40ms=silence,
+        )
+
+
 def _read_index_spans(index_path: Path) -> dict[str, tuple[int, int]]:
     """Recover ``audio_filename`` → ``(recitation_start_sample, recitation_num_samples)``.
 

@@ -200,3 +200,115 @@ def test_read_labels_round_trips_by_split(tmp_path):
     assert {w.window_index for w in by_split["train"]} == {0, 1}
     assert by_split["val"][0].clip_audio_filename == "clipB.wav"
     assert by_split["train"][0].segment_indices == (0, 1)  # tuple restored, not list
+
+
+# --- joint batch: phoneme + pooled VAD silence teacher (ADR-0004 D3, #31) -----
+
+from training.windowed_batch import (  # noqa: E402
+    JointWindowedCollator,
+    JointWindowedExample,
+    load_joint_examples,
+    pad_target_silence,
+)
+
+
+def _joint_example(feature_frames, logit_frames, label_len, silence_len, key=("c", 0)):
+    return JointWindowedExample(
+        ctc=_example(feature_frames, logit_frames, label_len, key=key),
+        target_silence=np.zeros(silence_len, dtype=np.float32),
+    )
+
+
+def test_joint_example_rejects_silence_length_mismatch():
+    # The silence teacher must be exactly logit_frames long (same 40 ms lattice as the head).
+    with pytest.raises(ValueError, match="different window grids"):
+        _joint_example(feature_frames=20, logit_frames=10, label_len=5, silence_len=9)
+
+
+def test_joint_example_delegates_key_and_feature_frames():
+    ex = _joint_example(feature_frames=40, logit_frames=20, label_len=5, silence_len=20,
+                        key=("clip", 3))
+    assert ex.key == ("clip", 3)
+    assert ex.feature_frames == 40
+
+
+def test_pad_target_silence_pads_with_speech_zero():
+    padded = pad_target_silence(
+        [np.array([0.2, 0.9, 0.1], np.float32), np.array([0.5], np.float32)]
+    )
+    assert padded.shape == (2, 3)
+    assert padded[0].tolist() == pytest.approx([0.2, 0.9, 0.1])
+    assert padded[1].tolist() == pytest.approx([0.5, 0.0, 0.0])  # speech-padded tail
+
+
+def test_joint_collator_pads_phoneme_and_silence():
+    examples = [
+        JointWindowedExample(
+            WindowedCtcExample(("c", 0), np.zeros(160 * 30, np.float32), (1, 2), 30, 15),
+            np.full(15, 0.3, np.float32),
+        ),
+        JointWindowedExample(
+            WindowedCtcExample(("c", 1), np.zeros(160 * 20, np.float32), (3,), 20, 10),
+            np.full(10, 0.7, np.float32),
+        ),
+    ]
+    batch = JointWindowedCollator(_StubFeatureExtractor())(examples)
+    assert batch.phoneme.input_features.shape == (2, 30, 4)
+    assert batch.target_silence.shape == (2, 15)  # padded to the longest window's lattice
+    assert batch.target_silence[1, :10].tolist() == pytest.approx([0.7] * 10)
+    assert batch.target_silence[1, 10:].tolist() == pytest.approx([0.0] * 5)
+    assert batch.keys == [("c", 0), ("c", 1)]
+
+
+def test_joint_collator_rejects_empty_batch():
+    with pytest.raises(ValueError, match="empty batch"):
+        JointWindowedCollator(_StubFeatureExtractor())([])
+
+
+# --- load_joint_examples: the phoneme↔soft-label join integrity ---------------
+
+
+def _write_joint_fixture(tmp_path, *, soft_num_samples=80000):
+    """Write windowed phoneme labels, a 16 kHz clip, and a matching recitation soft store."""
+    import soundfile as sf
+
+    from tadabur.audit_sampler import local_audio_path
+    from training.waqf_distill import SoftLabelStore, WindowContract, Window
+    from training.waqf_distill import WINDOW_ORIGIN_RECITATION
+
+    labels_path = tmp_path / "labels.jsonl"
+    write_labels(labels_path, [_label("clipA.wav", 0, 1), _label("clipA.wav", 1, 1)], "train")
+
+    audio_dir = tmp_path / "audio"
+    audio_dir.mkdir()
+    sf.write(audio_dir / local_audio_path("clipA.wav"),
+             np.zeros(160000, dtype=np.float32), 16000)
+
+    soft_root = tmp_path / "soft"
+    windows = [
+        (Window(index=0, start_sample=0, num_samples=soft_num_samples),
+         np.full(125, 0.2, np.float32)),
+        (Window(index=1, start_sample=64000, num_samples=soft_num_samples),
+         np.full(125, 0.8, np.float32)),
+    ]
+    with SoftLabelStore.open(
+        soft_root, WindowContract(), window_origin=WINDOW_ORIGIN_RECITATION
+    ) as store:
+        store.write_clip("clipA.wav", windows, num_samples=160000,
+                         recitation_num_samples=160000)
+    return labels_path, audio_dir, soft_root
+
+
+def test_load_joint_examples_pairs_phoneme_and_silence(tmp_path):
+    labels_path, audio_dir, soft_root = _write_joint_fixture(tmp_path)
+    examples = load_joint_examples(labels_path, audio_dir, soft_root, "train")
+    assert [e.key for e in examples] == [("clipA.wav", 0), ("clipA.wav", 1)]
+    assert examples[0].target_silence.shape == (125,)
+    np.testing.assert_allclose(examples[1].target_silence, 0.8, atol=1e-6)
+
+
+def test_load_joint_examples_rejects_span_drift(tmp_path):
+    # Soft target on a different audio span than the phoneme label → fail fast, no pairing.
+    labels_path, audio_dir, soft_root = _write_joint_fixture(tmp_path, soft_num_samples=79000)
+    with pytest.raises(ValueError, match="different window grids"):
+        load_joint_examples(labels_path, audio_dir, soft_root, "train")

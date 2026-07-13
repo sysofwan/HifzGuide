@@ -3,20 +3,37 @@ Convert muaalem-v3_2 model to CoreML for iPhone 13 (ANE-optimized).
 
 This script:
 1. Downloads the original HuggingFace model (obadx/muaalem-model-v3_2)
-2. Wraps it to extract only the phonemes CTC head
+2. Wraps it to emit the phonemes CTC head **and** the waqf silence head
+   (ChunkF ships phoneme + waqf per ADR-0004; the sifat heads are dropped)
 3. Monkey-patches the adapter to skip dynamic attention mask computation
    (which uses gather_nd, logical_and, cast etc. that break ANE/Metal)
-4. Traces with a fixed input shape (100 frames = 2s sliding window)
+4. Traces with a fixed input shape (250 frames = 5s sliding window)
 5. Converts to CoreML (.mlpackage) and creates INT8 quantized version
 
 The resulting model has only ANE-friendly ops: linear, conv, matmul,
 layer_norm, softmax, silu, sigmoid, add, mul, reshape, transpose.
 
 No attention_mask input — the model always assumes all frames are valid.
-The app feeds fixed 2s windows of audio, so no padding is needed.
+The app feeds fixed 5s windows of audio, so no padding is needed.
+
+Model I/O schema (ADR-0004):
+    input  input_features (1, 250, 160) — mel features, fixed 5 s window.
+    output phoneme_logits (1, 125, 43)  — CTC logits on the 40 ms post-adapter
+           lattice; argmax over 43 classes (blank = pad_token_id).
+    output waqf_logits    (1, 125)      — per-frame silence logit on the *same*
+           40 ms lattice; sigmoid(logit) = P(silence), so a high value means a
+           pause/waqf and a low value means speech/wasl. Distilled from the 20 ms
+           Recitation VAD pooled 2:1 to this grid; scorer-side snapping + the
+           300/700 ms post-processing consume it.
+
+The waqf head weights come from the joint fine-tune (--waqf-head STATE_DICT).
+Without that flag the head is randomly initialised — enough to pin the export
+graph, output names, and golden fixtures on an untrained model, but not a
+shippable waqf signal.
 
 Usage:
     python convert_to_coreml.py [--output-dir OUTPUT_DIR] [--skip-quantization]
+                                [--waqf-head STATE_DICT]
 """
 
 import argparse
@@ -74,44 +91,93 @@ def _register_custom_ops():
 # Model wrapper
 # ---------------------------------------------------------------------------
 
-class PhonemesOnlyWrapper(nn.Module):
-    """Wraps the multi-head CTC model to output only phoneme logits.
-    
+class PhonemesWaqfWrapper(nn.Module):
+    """Wraps the multi-head CTC model to emit phoneme + waqf logits (ChunkF).
+
+    Runs the backbone once and reads the post-adapter states that the phoneme
+    CTC head reads; the phoneme head and the detached-in-training waqf head ride
+    the same 40 ms lattice, exactly as ADR-0004 requires. The sifat heads are
+    never invoked, so they leave the export graph entirely.
+
     Hardcodes attention_mask to all-ones (registered buffer) so the trace
     constant-folds all mask-dependent branches. The adapter's mask computation
     is also bypassed via monkey-patching (see trace_and_save).
-    
+
     Single input: input_features (1, T, 160).
+    Outputs: phoneme_logits (1, T//2, 43), waqf_logits (1, T//2).
     """
 
-    def __init__(self, hf_model, seq_len):
+    def __init__(self, hf_model, waqf_head, seq_len, phoneme_level="phonemes"):
         super().__init__()
         self.model = hf_model
+        self.waqf_head = waqf_head
+        self.phoneme_level = phoneme_level
         self.register_buffer('fixed_mask', torch.ones(1, seq_len, dtype=torch.long))
 
     def forward(self, input_features):
-        output = self.model(
-            input_features=input_features, attention_mask=self.fixed_mask
+        outputs = self.model.wav2vec2_bert(
+            input_features, attention_mask=self.fixed_mask, return_dict=True
         )
-        return output.logits["phonemes"]
+        hidden_states = outputs[0]
+        phoneme_logits = self.model.level_to_lm_head[self.phoneme_level](
+            self.model.dropout(hidden_states)
+        )
+        # classify() (not forward) so the exported graph carries no training-time
+        # stop-gradient; the values are identical.
+        waqf_logits = self.waqf_head.classify(hidden_states)
+        return phoneme_logits, waqf_logits
 
 
 # ---------------------------------------------------------------------------
 # Step 1: Trace and convert
 # ---------------------------------------------------------------------------
 
-def trace_and_save(traced_path="muaalem_phonemes_traced.pt", pruned_model_path=None):
-    """Load HF model, wrap for phonemes-only, trace, and save TorchScript.
-    
+def _build_waqf_head(model, phoneme_level="phonemes", waqf_head_path=None):
+    """Attach the waqf silence head, loading trained weights if provided.
+
+    The head is a per-frame binary silence classifier on the post-adapter feature
+    dim — the same feature the phoneme head reads. ``waqf_head_path`` loads a
+    state_dict from the joint fine-tune; without it the head is randomly
+    initialised (untrained-export plumbing / golden fixtures only).
+    """
+    import sys
+
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from training.waqf_head import WaqfHead
+
+    feature_dim = model.level_to_lm_head[phoneme_level].in_features
+    waqf_head = WaqfHead(feature_dim)
+    if waqf_head_path:
+        print(f"Loading waqf head weights from {waqf_head_path}...")
+        state_dict = torch.load(waqf_head_path, map_location="cpu")
+        waqf_head.load_state_dict(state_dict)
+    else:
+        print(
+            "WARNING: no --waqf-head weights given; exporting a RANDOM waqf head "
+            "(schema/golden-fixture plumbing only, not a shippable waqf signal)."
+        )
+    waqf_head.eval()
+    return waqf_head
+
+
+def trace_and_save(
+    traced_path="muaalem_phonemes_traced.pt",
+    pruned_model_path=None,
+    waqf_head_path=None,
+):
+    """Load HF model, wrap for phoneme + waqf, trace, and save TorchScript.
+
     Monkey-patches the adapter to skip attention mask computation. The adapter
     normally calls _compute_new_attention_mask + create_bidirectional_mask which
     produce gather_nd/logical_and/cast ops that break Metal and ANE compilation.
     Since all frames are always valid (no padding), we can safely skip this.
-    
+
     Args:
         traced_path: Path to save the traced TorchScript model.
         pruned_model_path: If set, load a pruned model from this local directory
                           instead of the full model from HuggingFace.
+        waqf_head_path: If set, load trained waqf-head weights (state_dict) from
+                          this path; otherwise the waqf head is random.
     """
     from quran_muaalem.modeling.modeling_multi_level_ctc import (
         Wav2Vec2BertForMultilevelCTC,
@@ -146,7 +212,8 @@ def trace_and_save(traced_path="muaalem_phonemes_traced.pt", pruned_model_path=N
         return _orig_adapter_fwd(self, hidden_states, attention_mask=None)
     Wav2Vec2BertAdapter.forward = _adapter_no_mask
 
-    wrapper = PhonemesOnlyWrapper(model, FIXED_SEQ_LEN)
+    waqf_head = _build_waqf_head(model, waqf_head_path=waqf_head_path)
+    wrapper = PhonemesWaqfWrapper(model, waqf_head, FIXED_SEQ_LEN)
     wrapper.eval()
 
     example_features = torch.randn(1, FIXED_SEQ_LEN, 160)
@@ -156,14 +223,17 @@ def trace_and_save(traced_path="muaalem_phonemes_traced.pt", pruned_model_path=N
         traced = torch.jit.trace(wrapper, (example_features,))
         ref_out = wrapper(example_features)
         traced_out = traced(example_features)
-        diff = (ref_out - traced_out).abs().max().item()
-        print(f"Trace verification — max abs diff: {diff:.2e}")
+        for name, ref, got in zip(
+            ("phoneme_logits", "waqf_logits"), ref_out, traced_out
+        ):
+            diff = (ref - got).abs().max().item()
+            print(f"Trace verification — {name} max abs diff: {diff:.2e}")
 
     traced.save(traced_path)
     print(f"Traced model saved: {os.path.getsize(traced_path) / 1e6:.0f} MB")
 
     # Free all PyTorch memory before CoreML conversion
-    del model, wrapper, traced, ref_out, traced_out, example_features
+    del model, wrapper, waqf_head, traced, ref_out, traced_out, example_features
     gc.collect()
 
     return traced_path
@@ -195,7 +265,10 @@ def convert_traced_to_coreml(traced_path, output_dir):
                 dtype=np.float32,
             ),
         ],
-        outputs=[ct.TensorType(name="phoneme_logits")],
+        outputs=[
+            ct.TensorType(name="phoneme_logits"),
+            ct.TensorType(name="waqf_logits"),
+        ],
         minimum_deployment_target=ct.target.iOS17,
         # FP16 compute precision is critical for ANE — ANE natively operates in
         # FP16 and the on-device MLIR compiler fails on FP32 graphs.
@@ -208,10 +281,12 @@ def convert_traced_to_coreml(traced_path, output_dir):
 
     mlmodel.author = "Converted from obadx/muaalem-model-v3_2"
     mlmodel.short_description = (
-        f"Quran phoneme recognition (ANE-optimized). "
-        f"Input: (1, {FIXED_SEQ_LEN}, 160) mel features. "
-        f"Output: (1, {FIXED_SEQ_LEN // 2}, 43) phoneme logits. "
-        f"Fixed {FIXED_SEQ_LEN}-frame window, no attention_mask input."
+        f"Quran phoneme recognition + waqf silence detection (ANE-optimized). "
+        f"Input: (1, {FIXED_SEQ_LEN}, 160) mel features, fixed 5s window. "
+        f"Outputs: phoneme_logits (1, {FIXED_SEQ_LEN // 2}, 43) CTC logits and "
+        f"waqf_logits (1, {FIXED_SEQ_LEN // 2}) per-frame silence logits "
+        f"[sigmoid = P(silence), high = pause/waqf], both on the 40ms lattice. "
+        f"No attention_mask input."
     )
     mlmodel.version = "3.2"
 
@@ -323,10 +398,17 @@ def main():
         "--pruned-model", default=None,
         help="Path to a pruned model directory (from prune_model.py)",
     )
+    parser.add_argument(
+        "--waqf-head", default=None,
+        help="Path to trained waqf-head weights (state_dict). If omitted, the "
+             "waqf head is randomly initialised (export/schema plumbing only).",
+    )
     args = parser.parse_args()
 
     # Step 1: Trace -> CoreML FP32
-    traced_path = trace_and_save(pruned_model_path=args.pruned_model)
+    traced_path = trace_and_save(
+        pruned_model_path=args.pruned_model, waqf_head_path=args.waqf_head
+    )
     fp32_path = convert_traced_to_coreml(traced_path, args.output_dir)
 
     # Clean up traced model

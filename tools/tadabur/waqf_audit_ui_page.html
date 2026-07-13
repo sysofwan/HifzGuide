@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tadabur waqf audit — event adjudication (#27)</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#252a34; --fg:#e6e9ef; --muted:#9aa4b2;
+          --waqf:#1f9d55; --wasl:#4f8cff; --closure:#d64541; --mark:#f6c744; --accent:#4f8cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg);
+         display:grid; grid-template-columns:320px 1fr; grid-template-rows:100vh; }
+  aside { background:var(--panel); border-right:1px solid var(--line); overflow-y:auto; padding:16px; }
+  main { overflow-y:auto; padding:24px 28px; }
+  h1 { font-size:15px; margin:0 0 4px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:20px 0 8px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:12px; }
+  .class-row { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  .class-row:hover { background:#1e222b; }
+  .class-row.active { background:#242a36; }
+  .class-row.done .name::after { content:" ✓"; color:var(--waqf); }
+  .toggle { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin:6px 0 4px; cursor:pointer; }
+  .toggle input { width:16px; height:16px; cursor:pointer; }
+  .name { flex:1; font-variant-numeric:tabular-nums; }
+  .pill { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .confusion { color:var(--muted); font-size:11px; margin:2px 0 4px 8px; font-variant-numeric:tabular-nums; }
+  .confusion .bad { color:var(--closure); font-weight:600; }
+  .bar { height:4px; background:#2a2f3a; border-radius:2px; margin-top:3px; overflow:hidden; }
+  .bar > i { display:block; height:100%; background:var(--accent); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px 22px; max-width:760px; }
+  .card.waqf { border-color:var(--waqf); }
+  .card.wasl { border-color:var(--wasl); }
+  .card.mid_word_closure { border-color:var(--closure); }
+  .head { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:4px; }
+  .head .ref { font-size:18px; color:var(--fg); font-variant-numeric:tabular-nums; }
+  .tag { font-size:12px; padding:2px 8px; border-radius:20px; background:#242a36; color:var(--muted); }
+  .tag.pred-waqf { color:var(--waqf); }
+  .tag.pred-wasl { color:var(--wasl); }
+  .tag.pred-mid_word_closure { color:var(--closure); }
+  audio { width:100%; margin:16px 0 6px; }
+  .seek { color:var(--muted); font-size:12px; margin-bottom:10px; }
+  .seek button { padding:5px 10px; font-size:12px; }
+  .btns { display:flex; gap:10px; margin:6px 0 14px; flex-wrap:wrap; }
+  button { font:inherit; border:1px solid var(--line); background:#20252f; color:var(--fg);
+           padding:10px 16px; border-radius:8px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.waqf { background:rgba(31,157,85,.16); border-color:var(--waqf); }
+  button.wasl { background:rgba(79,140,255,.16); border-color:var(--wasl); }
+  button.mid_word_closure { background:rgba(214,69,65,.16); border-color:var(--closure); }
+  button.on-waqf { background:var(--waqf); color:#fff; }
+  button.on-wasl { background:var(--wasl); color:#fff; }
+  button.on-mid_word_closure { background:var(--closure); color:#fff; }
+  button.ghost { background:transparent; }
+  textarea { width:100%; min-height:52px; background:#12151b; color:var(--fg); border:1px solid var(--line);
+             border-radius:8px; padding:8px 10px; font:inherit; resize:vertical; }
+  .warn { color:var(--closure); font-size:12px; margin:8px 0; }
+  .ayah { font-size:30px; line-height:1.9; text-align:right; direction:rtl; margin:6px 0 4px;
+          padding:12px 14px; background:#12151b; border:1px solid var(--line); border-radius:8px; }
+  .wordnote { color:var(--muted); font-size:12px; margin:0 0 12px; }
+  .nav { display:flex; justify-content:space-between; align-items:center; margin-top:16px; color:var(--muted); }
+  kbd { font:11px monospace; background:#242a36; border:1px solid var(--line); border-bottom-width:2px;
+        border-radius:4px; padding:1px 5px; }
+  .legend { color:var(--muted); font-size:12px; margin-top:18px; line-height:1.9; }
+  .empty { color:var(--muted); padding:40px 0; }
+  .topbar { display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--panel);
+            border-bottom:1px solid var(--line); position:sticky; top:0; z-index:20; }
+  .topbar .menu { padding:8px 12px; font-size:18px; line-height:1; }
+  .topbar .title { font-size:14px; font-weight:600; }
+  .topbar .prog { margin-left:auto; color:var(--muted); font-size:12px; }
+  .scrim { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:30; }
+  @media (max-width:720px) {
+    body { display:block; height:auto; min-height:100vh; }
+    .topbar { display:flex; }
+    aside { position:fixed; top:0; left:0; bottom:0; width:84%; max-width:320px; height:100vh;
+            transform:translateX(-100%); transition:transform .2s ease; z-index:40; }
+    body.drawer-open aside { transform:none; }
+    body.drawer-open .scrim { display:block; }
+    main { overflow:visible; padding:14px; }
+    .card { padding:16px 14px; max-width:none; }
+    .ayah { font-size:24px; padding:10px 12px; }
+    .legend { display:none; }
+    .btns { position:sticky; bottom:0; gap:8px; margin:10px 0 6px; padding:10px 0;
+            background:linear-gradient(to top, var(--bg) 78%, transparent); z-index:5; }
+    .btns button { flex:1; min-height:48px; padding:10px 8px; }
+    .btns .ghost { flex:0 0 auto; }
+    .nav button { min-height:44px; padding:10px 18px; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="menu" onclick="toggleDrawer()" aria-label="Toggle class menu">☰</button>
+  <span class="title">Waqf audit — #27</span>
+  <span id="topprog" class="prog"></span>
+</header>
+<div class="scrim" onclick="toggleDrawer(false)"></div>
+<aside>
+  <h1>Waqf event audit — #27</h1>
+  <div class="sub">waqf = true stop · wasl = continuation · mid-word-closure = qalqala/hamza silence</div>
+  <div id="overall" class="sub"></div>
+  <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideLabeled(this.checked)"> Hide adjudicated</label>
+  <h2>Predicted class</h2>
+  <div id="classes"></div>
+  <div class="legend">
+    <div><kbd>Q</kbd> waqf · <kbd>W</kbd> wasl · <kbd>C</kbd> closure</div>
+    <div><kbd>U</kbd> unmark · <kbd>←</kbd>/<kbd>→</kbd> prev/next</div>
+    <div><kbd>Space</kbd> replay from boundary</div>
+  </div>
+</aside>
+<main>
+  <div id="card-wrap"></div>
+</main>
+
+<script>
+const CLASSES = ["waqf", "wasl", "mid_word_closure"];
+const LABELS = { waqf: "Waqf", wasl: "Wasl", mid_word_closure: "Mid-word closure" };
+const state = { items: [], stats: [], classes: [], filter: null, idx: 0,
+  hideLabeled: JSON.parse(localStorage.getItem("waqfHideLabeled") || "false") };
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  return res.json();
+}
+
+function keyOf(it) { return it.clip_id + "#" + it.boundary_index; }
+
+function visibleItems() {
+  let items = state.filter ? state.items.filter(i => i.predicted === state.filter) : state.items;
+  if (state.hideLabeled) items = items.filter(i => !i.verdict);
+  return items;
+}
+
+function setHideLabeled(on) {
+  state.hideLabeled = on;
+  localStorage.setItem("waqfHideLabeled", JSON.stringify(on));
+  state.idx = 0;
+  render();
+}
+
+function fmtTime(s) { return s == null ? "—" : s.toFixed(2) + "s"; }
+
+function toggleDrawer(force) {
+  const open = force === undefined ? !document.body.classList.contains("drawer-open") : force;
+  document.body.classList.toggle("drawer-open", open);
+}
+
+function renderSidebar() {
+  const done = state.items.filter(i => i.verdict).length;
+  document.getElementById("overall").textContent = `${done} / ${state.items.length} boundaries adjudicated`;
+  document.getElementById("topprog").textContent = `${done}/${state.items.length}`;
+  const hl = document.getElementById("hidelabeled");
+  if (hl) hl.checked = state.hideLabeled;
+
+  const box = document.getElementById("classes");
+  box.innerHTML = "";
+  const byClass = Object.fromEntries(state.stats.map(s => [s.predicted, s]));
+  const all = { predicted: "(all)", total: state.items.length, labelled: done };
+  [all, ...state.classes.map(c => byClass[c]).filter(Boolean)].forEach(s => {
+    const isAll = s.predicted === "(all)";
+    const entry = document.createElement("div");
+    const row = document.createElement("div");
+    row.className = "class-row" +
+      (((isAll && !state.filter) || state.filter === s.predicted) ? " active" : "") +
+      (!isAll && s.total && s.labelled === s.total ? " done" : "");
+    row.innerHTML = `
+      <span class="name">${isAll ? "(all)" : LABELS[s.predicted]}</span>
+      <span class="pill">${s.labelled}/${s.total}</span>`;
+    const barPct = s.total ? (s.labelled / s.total * 100) : 0;
+    const bar = document.createElement("div"); bar.className = "bar";
+    bar.innerHTML = `<i style="width:${barPct}%"></i>`;
+    entry.appendChild(row);
+    entry.appendChild(bar);
+    // Confusion line: how boundaries predicted this class actually resolved. A verdict
+    // other than the predicted class is a detector error the F0 eval counts.
+    if (!isAll && s.verdicts && s.labelled) {
+      const conf = document.createElement("div");
+      conf.className = "confusion";
+      conf.innerHTML = CLASSES.map(v => {
+        const n = s.verdicts[v] || 0;
+        if (!n) return "";
+        return `<span class="${v !== s.predicted ? "bad" : ""}">${LABELS[v]}: ${n}</span>`;
+      }).filter(Boolean).join(" · ");
+      entry.appendChild(conf);
+    }
+    entry.style.marginBottom = "4px";
+    entry.onclick = () => { state.filter = isAll ? null : s.predicted; state.idx = 0; toggleDrawer(false); render(); };
+    box.appendChild(entry);
+  });
+}
+
+function renderCard() {
+  const wrap = document.getElementById("card-wrap");
+  const items = visibleItems();
+  if (!items.length) {
+    const msg = state.hideLabeled ? "All boundaries in this class are adjudicated. 🎉"
+      : "No boundaries in this class.";
+    wrap.innerHTML = `<div class="empty">${msg}</div>`; return;
+  }
+  if (state.idx >= items.length) state.idx = items.length - 1;
+  const it = items[state.idx];
+
+  wrap.innerHTML = `
+    <div class="card ${it.verdict || ""}">
+      <div class="head">
+        <span class="ref">${it.surah_ayah || "?:?"}</span>
+        <span class="tag pred-${it.predicted}">predicted ${LABELS[it.predicted]}</span>
+        <span class="tag">after word ${it.word_index}</span>
+        <span class="tag">boundary ${state.idx + 1} / ${items.length}</span>
+      </div>
+      <div class="sub">${esc(it.clip_id)} · boundary #${it.boundary_index}</div>
+      ${it.uthmani ? `<div class="ayah arabic">${esc(it.uthmani)}</div>` : ""}
+      <div class="wordnote">Candidate boundary falls after Uthmani word ${it.word_index},
+        at ${fmtTime(it.start_s)}–${fmtTime(it.end_s)} in the clip.</div>
+      ${it.audio_available
+        ? `<audio id="au" controls src="${it.audio_url}"></audio>
+           <div class="seek"><button onclick="seekBoundary()">▶ Play from boundary</button>
+             &nbsp; then judge: did the reciter stop here?</div>`
+        : `<div class="warn">⚠ audio not exported for this clip — re-run the sampler with --audio-dir.</div>`}
+      <div class="btns">
+        <button class="waqf ${it.verdict==="waqf"?"on-waqf":""}" onclick="label('waqf')">Q · Waqf (stop)</button>
+        <button class="wasl ${it.verdict==="wasl"?"on-wasl":""}" onclick="label('wasl')">W · Wasl (continued)</button>
+        <button class="mid_word_closure ${it.verdict==="mid_word_closure"?"on-mid_word_closure":""}" onclick="label('mid_word_closure')">C · Mid-word closure</button>
+        <button class="ghost" onclick="label(null)">Unmark</button>
+      </div>
+      <textarea id="note" placeholder="Optional note (what you heard)…">${esc(it.note || "")}</textarea>
+      <div class="nav">
+        <button class="ghost" onclick="go(-1)">← Prev</button>
+        <span>${it.verdict ? LABELS[it.verdict] : "unadjudicated"}</span>
+        <button class="ghost" onclick="go(1)">Next →</button>
+      </div>
+    </div>`;
+  seekBoundary();
+}
+
+function render() { renderSidebar(); renderCard(); }
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+// Seek the clip to shortly before the candidate boundary so the reviewer hears the
+// approach to the stop, not the whole clip from the start.
+function seekBoundary() {
+  const items = visibleItems();
+  if (!items.length) return;
+  const it = items[state.idx];
+  const a = document.getElementById("au");
+  if (!a || it.start_s == null) return;
+  const to = Math.max(0, it.start_s - 1.0);
+  const go = () => { try { a.currentTime = to; a.play(); } catch (e) {} };
+  if (a.readyState >= 1) go(); else a.addEventListener("loadedmetadata", go, { once: true });
+}
+
+function go(delta) {
+  const n = visibleItems().length;
+  if (!n) return;
+  state.idx = Math.min(Math.max(state.idx + delta, 0), n - 1);
+  render();
+}
+
+async function label(verdict) {
+  const items = visibleItems();
+  if (!items.length) return;
+  const it = items[state.idx];
+  const note = document.getElementById("note") ? document.getElementById("note").value : "";
+  const res = await api("/api/label", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clip_id: it.clip_id, boundary_index: it.boundary_index, verdict, note }),
+  });
+  if (res.error) { alert(res.error); return; }
+  it.verdict = verdict; it.note = verdict ? note : "";
+  state.stats = res.stats;
+  if (verdict && state.hideLabeled) {
+    render();
+  } else if (verdict) { renderSidebar(); go(1); } else { render(); }
+}
+
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "TEXTAREA") return;
+  const k = e.key.toLowerCase();
+  if (k === "q") { label("waqf"); e.preventDefault(); }
+  else if (k === "w") { label("wasl"); e.preventDefault(); }
+  else if (k === "c") { label("mid_word_closure"); e.preventDefault(); }
+  else if (k === "u") { label(null); e.preventDefault(); }
+  else if (e.key === "ArrowRight") { go(1); }
+  else if (e.key === "ArrowLeft") { go(-1); }
+  else if (e.key === " ") { seekBoundary(); e.preventDefault(); }
+});
+
+(async function init() {
+  const s = await api("/api/state");
+  state.items = s.items; state.stats = s.stats; state.classes = s.classes;
+  render();
+})();
+</script>
+</body>
+</html>

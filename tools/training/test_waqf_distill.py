@@ -27,6 +27,7 @@ from training.waqf_distill import (
     SoftLabelStore,
     Window,
     WindowContract,
+    _read_index_spans,
     enumerate_recitation_windows,
     enumerate_windows,
     generation_contract,
@@ -412,22 +413,66 @@ def test_store_resume_across_window_origins_fails_fast(tmp_path):
 
 
 def test_store_needs_write_rejects_a_drifted_recitation_span(tmp_path):
-    # Same recitation-grid origin, but a clip already written at one recitation onset is
+    # Same recitation-grid origin, but a clip already written at one recitation span is
     # re-run with a different (stale) span: the stored windows are on a different grid, so
-    # resuming must raise rather than skip the clip with its old windows.
+    # resuming must raise rather than skip the clip with its old windows. Both axes of the
+    # span — the start AND the num_samples — are validated: a clip whose floored start is
+    # unchanged but whose recitation length drifted (different decode/segmentation → a
+    # different tail-window length / window count) must also refuse, not skip with stale
+    # windows that would pair with full-length phoneme CTC targets.
     with SoftLabelStore.open(tmp_path, WindowContract(), WINDOW_ORIGIN_RECITATION) as store:
         store.write_clip(
             "clip_a.wav",
             _windows_for([np.array([0.5], dtype=np.float32)]),
-            num_samples=80000,
+            num_samples=96000,
             recitation_start_sample=640,
+            recitation_num_samples=80000,
         )
     resumed = SoftLabelStore.open(tmp_path, WindowContract(), WINDOW_ORIGIN_RECITATION)
-    assert resumed.needs_write("clip_b.wav", 0) is True  # unseen clip → write it
-    assert resumed.needs_write("clip_a.wav", 640) is False  # same span → skip
+    assert resumed.needs_write("clip_b.wav", 0, 80000) is True  # unseen clip → write it
+    assert resumed.needs_write("clip_a.wav", 640, 80000) is False  # same span → skip
     with pytest.raises(ValueError, match="different recitation grid"):
-        resumed.needs_write("clip_a.wav", 1280)  # drifted span → refuse to skip
+        resumed.needs_write("clip_a.wav", 1280, 80000)  # drifted start → refuse to skip
+    with pytest.raises(ValueError, match="different recitation grid"):
+        # Same floored start, drifted recitation length (end_s drift): still refuse. This is
+        # the num_samples-axis corruption the start-only guard missed — the tail window's
+        # 40 ms length / window count differs while the start is unchanged.
+        resumed.needs_write("clip_a.wav", 640, 81920)
     resumed.close()
+
+
+def test_store_needs_write_recovers_full_span_from_the_index(tmp_path):
+    # The persisted index carries BOTH recitation_start_sample and recitation_num_samples,
+    # so a fresh store reopened from disk validates the full span (not just the start).
+    with SoftLabelStore.open(tmp_path, WindowContract(), WINDOW_ORIGIN_RECITATION) as store:
+        store.write_clip(
+            "clip_a.wav",
+            _windows_for([np.array([0.5], dtype=np.float32)]),
+            num_samples=96000,
+            recitation_start_sample=640,
+            recitation_num_samples=80000,
+        )
+    record = json.loads(
+        (tmp_path / SoftLabelStore.INDEX_NAME).read_text().strip().splitlines()[0]
+    )
+    assert record["recitation_start_sample"] == 640
+    assert record["recitation_num_samples"] == 80000
+
+    reopened = _read_index_spans(tmp_path / SoftLabelStore.INDEX_NAME)
+    assert reopened["clip_a.wav"] == (640, 80000)
+
+
+def test_read_index_spans_defaults_old_rows_to_the_whole_clip_span(tmp_path):
+    # An older index line (written before recitation_num_samples existed) defaults to the
+    # whole-clip span (0, num_samples) so needs_write never mistakes a legacy row for a
+    # drifted recitation grid.
+    index_path = tmp_path / SoftLabelStore.INDEX_NAME
+    index_path.write_text(
+        json.dumps({"audio_filename": "legacy.wav", "num_samples": 48000, "windows": []})
+        + "\n",
+        encoding="utf-8",
+    )
+    assert _read_index_spans(index_path) == {"legacy.wav": (0, 48000)}
 
 
 def test_store_resume_under_a_different_contract_fails_fast(tmp_path):

@@ -10,7 +10,11 @@ lattice with a stop-gradient backbone.
 
 The whole-clip phoneme-only fine-tune (ADR-0004's ablation rung (2)) lives in
 ``whole_clip_phoneme`` — LoRA on the phoneme head over fixed windows, with a 16 GB memory
-preflight — fed by the phoneme-only windowed CTC collator in ``windowed_batch``.
+preflight — fed by the phoneme-only windowed CTC collator in ``windowed_batch``. The joint
+detached-waqf run (rung (3)) is ``joint_waqf``, and ``ablation_ladder`` ties the two to the
+segmented rung (1): the deterministic (2)↔(3) phoneme identity check, the should-accept /
+should-reject deltas across all three rungs, and the LoRA-native lever fired when the
+whole-clip move regresses should-reject.
 
 Runs on Linux + CUDA (see tools/environment.yml).
 """

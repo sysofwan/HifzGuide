@@ -112,6 +112,10 @@ class TrainConfig:
     max_frames_per_batch: int = 1000
     max_windows_per_batch: int = 8
     seed: int = 0
+    # L2-SP anchor on the LoRA adapters — the second LoRA-native lever the ablation
+    # ladder (#33) fires when the whole-clip move regresses should-reject (ADR-0004:
+    # "L2-SP on the adapters"). 0.0 is the default rung-(2) run (no anchor).
+    l2_sp: float = 0.0
     lora: LoRASettings = field(default_factory=LoRASettings)
 
 
@@ -313,6 +317,39 @@ def _step_loss(base, batch: WindowedCtcBatch) -> torch.Tensor:
     )
 
 
+def _trainable_lora_params(peft_model):
+    """The trainable LoRA adapter tensors — the bounded backbone drift L2-SP anchors.
+
+    The phoneme head (``modules_to_save``) is excluded: it is the ADR-0001 objective and
+    must train freely; only the adapters (the backbone drift) are anchored.
+    """
+    return [
+        (name, param)
+        for name, param in peft_model.named_parameters()
+        if param.requires_grad and "lora_" in name
+    ]
+
+
+def lora_anchor_snapshot(peft_model) -> dict[str, torch.Tensor]:
+    """Detached clones of the adapters at init — the L2-SP starting point (ADR-0004 lever)."""
+    return {name: param.detach().clone() for name, param in _trainable_lora_params(peft_model)}
+
+
+def lora_l2sp_penalty(peft_model, anchors: dict[str, torch.Tensor]) -> torch.Tensor:
+    """Squared-distance of the adapters from their starting point — the L2-SP term.
+
+    Anchoring the LoRA adapters to their initialization (delta ≈ 0, i.e. the frozen
+    backbone) tightens the bounded drift harder than rank/alpha alone — the second
+    LoRA-native lever ADR-0004 names after lowering rank/alpha.
+    """
+    params = _trainable_lora_params(peft_model)
+    device = params[0][1].device
+    penalty = torch.zeros((), device=device, dtype=torch.float32)
+    for name, param in params:
+        penalty = penalty + (param - anchors[name]).pow(2).sum()
+    return penalty
+
+
 @torch.no_grad()
 def evaluate_ctc_loss(
     peft_model,
@@ -365,6 +402,7 @@ def train(
     base = base_of(peft_model)
     enable_gradient_checkpointing(base)
     peft_model.train()
+    anchors = lora_anchor_snapshot(peft_model) if config.l2_sp > 0 else None
 
     optimizer = torch.optim.AdamW(
         (p for p in peft_model.parameters() if p.requires_grad),
@@ -389,7 +427,12 @@ def train(
         for step, examples in enumerate(batches):
             batch = collate(examples).to(device, dtype)
             loss = _step_loss(base, batch)
-            (loss / config.grad_accum_steps).backward()
+            step_loss = (
+                loss + config.l2_sp * lora_l2sp_penalty(peft_model, anchors)
+                if anchors is not None
+                else loss
+            )
+            (step_loss / config.grad_accum_steps).backward()
             epoch_total += float(loss.item())
             epoch_windows += len(examples)
             if (step + 1) % config.grad_accum_steps == 0 or step + 1 == len(batches):
@@ -503,6 +546,8 @@ def _cmd_train(args: argparse.Namespace) -> None:
         max_frames_per_batch=args.max_frames_per_batch,
         max_windows_per_batch=args.max_windows_per_batch,
         seed=args.seed,
+        l2_sp=args.l2_sp,
+        lora=LoRASettings(rank=args.lora_rank, alpha=args.lora_alpha),
     )
     train(args.labels, args.audio_dir, args.out_dir, config, device)
     if args.eval_segment_manifest and args.eval_audio_dir:
@@ -540,6 +585,12 @@ def main() -> None:
     tr.add_argument("--max-frames-per-batch", type=int, default=TrainConfig.max_frames_per_batch)
     tr.add_argument("--max-windows-per-batch", type=int, default=TrainConfig.max_windows_per_batch)
     tr.add_argument("--seed", type=int, default=TrainConfig.seed)
+    tr.add_argument("--lora-rank", type=int, default=LoRASettings.rank,
+                    help="LoRA rank — lowered by the ablation ladder's first LoRA-native lever.")
+    tr.add_argument("--lora-alpha", type=int, default=LoRASettings.alpha,
+                    help="LoRA alpha — lowered alongside rank by the first LoRA-native lever.")
+    tr.add_argument("--l2-sp", type=float, default=TrainConfig.l2_sp,
+                    help="L2-SP adapter-anchor weight — the ladder's second LoRA-native lever.")
     tr.add_argument("--eval-segment-manifest", type=Path, default=None,
                     help="segment manifest for the #7 eval (with --eval-audio-dir).")
     tr.add_argument("--eval-audio-dir", type=Path, default=None)

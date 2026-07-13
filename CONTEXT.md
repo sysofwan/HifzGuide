@@ -62,6 +62,17 @@ commit, ADR, or script, use the term as defined here and avoid the listed synony
 **Multi-level CTC**
 : The Muaalem architecture — one CTC head per aspect (phoneme identity + 10 sifat attributes).
 
+**Recitation VAD**
+: `obadx/recitation-segmenter-v2` — a Wav2Vec2-BERT frame-level speech/silence classifier
+  (20 ms frames) fine-tuned for waqf. The teacher for the waqf head and the source of waqf
+  pauses in the Tadabur labelling pipeline (`tadabur.vad`).
+
+**Waqf head**
+: A per-frame speech/silence classification head on the Muaalem backbone, distilled from the
+  Recitation VAD. It rides the adapter + CTC output at the phoneme head's **40 ms** lattice, so the
+  20 ms VAD teacher is pooled 2:1; unlike the CTC phoneme/sifat heads it is per-frame (no blank
+  collapse). The scorer consumes it to detect waqf and pick the realized (waqf vs wasl) reference form.
+
 **Sifat**
 : Articulatory attributes of Arabic letters in tajweed (e.g. hams/jahr, shidda/rakhawa,
   tafkheem/tarqeeq). Modeled by the non-phoneme CTC heads.

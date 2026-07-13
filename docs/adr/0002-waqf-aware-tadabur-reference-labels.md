@@ -100,6 +100,11 @@ alignment does not expose. The model-driven approach above replaces it wholesale
 - **Feeds P4 data-prep (#8).** The offsets manifest is the label source; the reciter split is
   computed over the **post-segmentation** units; the CTC collator slices audio by the offsets.
 
+  > **Amended by ADR-0004.** Training no longer slices audio: the fine-tune runs on **whole clips**
+  > (so the new waqf head sees interior waqf in context), and the phoneme CTC label is the
+  > **concatenation** of these per-segment realized references. Segmentation is retained here as the
+  > label-construction step and as the poison-audit unit (#6).
+
 - **One VAD pass, then the clip decoded twice.** A dedicated VAD pass over all clips finds the
   pauses; the VAD is then freed and Muaalem loaded. The whole clip is decoded once for segmentation
   (frame ids, mapping pauses to word edges) and each resulting segment is decoded again for scoring

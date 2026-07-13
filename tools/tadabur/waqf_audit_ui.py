@@ -89,17 +89,30 @@ class WaqfEventStore:
         return entry.note if entry else ""
 
     def set(self, entry: WaqfEventEntry) -> None:
-        """Record (or overwrite) a boundary's verdict and persist the fixture set."""
-        self.entries[(entry.clip_id, entry.boundary_index)] = entry
-        self._persist()
+        """Record (or overwrite) a boundary's verdict and persist the fixture set.
+
+        The change is staged in a copy and the on-disk file rewritten *before*
+        ``self.entries`` is swapped in, so a rejected entry (e.g. an invalid verdict
+        class the schema refuses to write) leaves both the store and the fixture file
+        exactly as they were — the adjudication session never holds a line that could
+        not be persisted.
+        """
+        staged = dict(self.entries)
+        staged[(entry.clip_id, entry.boundary_index)] = entry
+        self._persist(staged)
+        self.entries = staged
 
     def clear(self, key: BoundaryKey) -> None:
         """Un-adjudicate a boundary (moves it back to pending) and persist."""
-        if self.entries.pop(key, None) is not None:
-            self._persist()
+        if key not in self.entries:
+            return
+        staged = dict(self.entries)
+        del staged[key]
+        self._persist(staged)
+        self.entries = staged
 
-    def _persist(self) -> None:
-        ordered = sorted(self.entries.values(), key=lambda e: (e.clip_id, e.boundary_index))
+    def _persist(self, entries: dict[BoundaryKey, WaqfEventEntry]) -> None:
+        ordered = sorted(entries.values(), key=lambda e: (e.clip_id, e.boundary_index))
         write_waqf_events(ordered, self.path)
 
 

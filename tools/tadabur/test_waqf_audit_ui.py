@@ -74,6 +74,29 @@ def test_apply_label_rejects_unknown_boundary(tmp_path):
         server.apply_label({"clip_id": "a", "boundary_index": 9, "verdict": WAQF})
 
 
+def test_invalid_verdict_leaves_store_and_state_unchanged(tmp_path):
+    # An invalid verdict class must be atomic: the schema refuses to write it, and
+    # neither the in-memory store nor /api/state may be mutated — otherwise class_stats
+    # would later KeyError on the bogus verdict and every subsequent valid write would
+    # keep re-failing until restart.
+    path = tmp_path / "waqf_events.jsonl"
+    server = _server(tmp_path, [_item("a", 0, WASL)])
+    server.apply_label({"clip_id": "a", "boundary_index": 0, "verdict": WAQF})
+    before_entries = dict(server.store.entries)
+    before_state = server.state()
+
+    with pytest.raises(ValueError):
+        server.apply_label({"clip_id": "a", "boundary_index": 0, "verdict": "bogus"})
+
+    assert server.store.entries == before_entries
+    assert server.store.verdict_of(("a", 0)) == WAQF
+    assert server.state() == before_state
+    # The on-disk fixture still round-trips and a later valid write still succeeds.
+    assert WaqfEventStore.load(path).verdict_of(("a", 0)) == WAQF
+    server.apply_label({"clip_id": "a", "boundary_index": 0, "verdict": MID_WORD_CLOSURE})
+    assert server.store.verdict_of(("a", 0)) == MID_WORD_CLOSURE
+
+
 def test_class_stats_confusion(tmp_path):
     items = [_item("a", 0, WASL), _item("b", 0, WASL), _item("c", 0, WASL), _item("d", 0, WAQF)]
     server = _server(tmp_path, items)

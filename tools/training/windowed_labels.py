@@ -443,14 +443,44 @@ def write_labels(path: Path, labels: list[WindowLabel], split: str) -> None:
             f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def read_labels(path: Path) -> dict[str, list[WindowLabel]]:
+    """Inverse of :func:`write_labels`: JSONL rows back into ``WindowLabel`` lists by split.
+
+    Returns a mapping ``split -> labels`` (``"train"`` / ``"val"``) so the training run
+    (#29/#31) consumes exactly the partitions the label build wrote, without re-deriving
+    the reciter split. Rows are read in file order (already key-sorted by the writer), so
+    the reconstruction is deterministic. A row missing the split tag or any window field
+    raises ``KeyError`` rather than silently dropping a window.
+    """
+    by_split: dict[str, list[WindowLabel]] = {}
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            split = row["split"]
+            by_split.setdefault(split, []).append(
+                WindowLabel(
+                    clip_audio_filename=row["clip_audio_filename"],
+                    surah_ayah=row["surah_ayah"],
+                    reciter_id=row["reciter_id"],
+                    window_index=row["window_index"],
+                    start_sample=row["start_sample"],
+                    num_samples=row["num_samples"],
+                    recitation_start_sample=row["recitation_start_sample"],
+                    feature_frames=row["feature_frames"],
+                    logit_frames=row["logit_frames"],
+                    phoneme_label=row["phoneme_label"],
+                    word_start=row["word_start"],
+                    word_end=row["word_end"],
+                    segment_indices=tuple(row["segment_indices"]),
+                )
+            )
+    return by_split
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "--segments", type=Path, required=True,
-        help="Scored segment manifest (JSONL) from tadabur.segment_score.",
-    )
     parser.add_argument(
         "--clip-status", type=Path, required=True,
         help="Per-clip status sidecar (JSONL) from tadabur.segment_score.",

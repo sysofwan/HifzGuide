@@ -90,6 +90,49 @@ class WaqfHead(nn.Module):
 
 
 @dataclass
+class PhonemeForward:
+    """The backbone→phoneme-head result shared by the phoneme-only and joint runs.
+
+    ``phoneme_logits`` ``(B, T, V)`` are the 40 ms lattice logits; ``hidden_states``
+    ``(B, T, feature_dim)`` is the **pre-dropout** post-adapter output the waqf head rides;
+    ``student_lengths`` ``(B,)`` is each example's valid 40 ms frame count.
+    """
+
+    phoneme_logits: torch.Tensor
+    hidden_states: torch.Tensor
+    student_lengths: torch.Tensor
+
+
+def phoneme_forward(
+    muaalem: nn.Module,
+    phoneme_level: str,
+    input_features: torch.Tensor,
+    attention_mask: Optional[torch.Tensor] = None,
+) -> PhonemeForward:
+    """One backbone pass → phoneme head, the path both ablation rungs share.
+
+    ADR-0004's ablation ladder needs rung (2) *whole-clip phoneme-only* and rung (3)
+    *whole-clip phoneme + detached waqf* to be **bit-identical on the phoneme path** so a
+    regression is attributable to the waqf head, not to incidental code drift. Both the
+    phoneme-only model (:mod:`training.whole_clip_phoneme`) and :class:`WaqfJointModel`
+    compute their phoneme logits here, so that identity is structural, not asserted: the
+    waqf head only *adds* a detached branch on ``hidden_states``, it cannot change them.
+    """
+    if attention_mask is None:
+        attention_mask = torch.ones(
+            input_features.shape[:2], device=input_features.device, dtype=torch.long
+        )
+    hidden_states = muaalem.wav2vec2_bert(
+        input_features, attention_mask=attention_mask, return_dict=True
+    )[0]
+    phoneme_logits = muaalem.level_to_lm_head[phoneme_level](muaalem.dropout(hidden_states))
+    student_lengths = muaalem._get_feat_extract_output_lengths(
+        attention_mask.sum(-1)
+    ).to(torch.long)
+    return PhonemeForward(phoneme_logits, hidden_states, student_lengths)
+
+
+@dataclass
 class WaqfJointOutput:
     """One backbone forward pass, phoneme + waqf heads, sifat dropped.
 
@@ -139,27 +182,19 @@ class WaqfJointModel(nn.Module):
                 input_features.shape[:2], device=input_features.device, dtype=torch.long
             )
 
-        outputs = self.muaalem.wav2vec2_bert(
-            input_features, attention_mask=attention_mask, return_dict=True
+        # The phoneme path is factored into phoneme_forward so it is bit-identical to the
+        # phoneme-only rung (2) run (ADR-0004 isolation). The waqf head only adds a
+        # detached branch on the pre-dropout hidden states — the sifat heads never enter
+        # the graph.
+        forward = phoneme_forward(
+            self.muaalem, self.phoneme_level, input_features, attention_mask
         )
-        hidden_states = outputs[0]
-
-        # The waqf head reads the post-adapter states (detached inside the head); the
-        # phoneme head reads them through final-dropout, its own regulariser. Only the
-        # phoneme head is invoked here — the sifat heads never enter the graph.
-        phoneme_logits = self.muaalem.level_to_lm_head[self.phoneme_level](
-            self.muaalem.dropout(hidden_states)
-        )
-        silence_logits = self.waqf_head(hidden_states)
-
-        student_lengths = self.muaalem._get_feat_extract_output_lengths(
-            attention_mask.sum(-1)
-        ).to(torch.long)
+        silence_logits = self.waqf_head(forward.hidden_states)
 
         return WaqfJointOutput(
-            phoneme_logits=phoneme_logits,
+            phoneme_logits=forward.phoneme_logits,
             silence_logits=silence_logits,
-            student_lengths=student_lengths,
+            student_lengths=forward.student_lengths,
         )
 
 
@@ -349,6 +384,8 @@ __all__ = [
     "WaqfHead",
     "WaqfJointModel",
     "WaqfJointOutput",
+    "PhonemeForward",
+    "phoneme_forward",
     "JointLoss",
     "PauseCollapseDiagnostic",
     "frame_mask_from_lengths",

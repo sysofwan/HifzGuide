@@ -1,14 +1,15 @@
-"""Tests for the torch-free waqf distillation pooling, alignment, and soft-label store.
+"""Tests for the torch-free waqf distillation pooling, windowing, and soft-label store.
 
-The pooling and frame-alignment (:mod:`training.waqf_distill`) are the pinned rule the
-whole ADR-0004 waqf head depends on: a 1–2 frame shift between the 20 ms VAD teacher and
-the 40 ms Muaalem student moves a boundary snap across a word edge. These golden fixtures
-prove the correspondence exactly, without a GPU. The VAD forward pass (torch) lives in
-``tadabur.vad`` and is not exercised here.
+The pooling and per-window frame-alignment (:mod:`training.waqf_distill`) are the pinned
+rule the whole ADR-0004 waqf head depends on: a 1–2 frame shift between the 20 ms VAD
+teacher and the 40 ms Muaalem student moves a boundary snap across a word edge. These
+golden fixtures prove the correspondence exactly — per training window — without a GPU.
+The VAD forward pass (torch) lives in ``tadabur.vad`` and is not exercised here.
 """
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -17,10 +18,15 @@ import numpy as np
 import pytest
 
 from training.waqf_distill import (
+    DEPLOYED_WINDOW_FEATURE_FRAMES,
     SoftLabelStore,
-    clip_silence_soft_labels,
+    Window,
+    WindowContract,
+    clip_window_soft_labels,
+    enumerate_windows,
     muaalem_lattice_length,
     pool_silence_2to1,
+    window_silence_soft_labels,
 )
 
 
@@ -111,52 +117,177 @@ def test_zero_student_frames_is_empty():
     assert pool_silence_2to1(np.array([0.5, 0.5], dtype=np.float32), 0).tolist() == []
 
 
-# --- clip_silence_soft_labels: whole-clip pooling via the conv length --------
+# --- WindowContract: the deployed 5 s window + provisional even-frame spacing --
 
 
-def test_clip_soft_labels_length_tracks_the_lattice():
-    # A 249-frame teacher (5 s) pools to a 125-frame student clip, matching Muaalem.
-    teacher = np.random.default_rng(0).random(249).astype(np.float32)
-    labels = clip_silence_soft_labels(teacher)
-    assert len(labels) == muaalem_lattice_length(249) == 125
+def test_default_contract_is_the_deployed_non_overlapping_5s_window():
+    contract = WindowContract()
+    assert contract.feature_frames == DEPLOYED_WINDOW_FEATURE_FRAMES == 250
+    assert contract.hop_feature_frames == 250  # non-overlapping (provisional, #24)
+    assert contract.student_frames == 125
 
 
-def test_clip_soft_labels_are_deterministic():
-    teacher = np.random.default_rng(1).random(60).astype(np.float32)
-    np.testing.assert_array_equal(
-        clip_silence_soft_labels(teacher), clip_silence_soft_labels(teacher)
-    )
+@pytest.mark.parametrize("bad", [0, -2, 251, 3])
+def test_contract_rejects_non_positive_or_odd_frames(bad):
+    # Odd window/hop would split a teacher pair across two windows and reintroduce the
+    # ±1-frame drift the alignment pins — rejected up front.
+    with pytest.raises(ValueError):
+        WindowContract(feature_frames=bad)
+    with pytest.raises(ValueError):
+        WindowContract(hop_feature_frames=bad)
 
 
-# --- SoftLabelStore: deterministic, idempotent, manifest-keyed ---------------
+# --- enumerate_windows: deterministic tiling on the teacher grid --------------
 
 
-def test_store_persists_and_reloads_keyed_by_audio_filename(tmp_path):
-    labels = np.array([0.1, 0.9, 0.4], dtype=np.float32)
+def test_non_overlapping_tiling_covers_the_clip():
+    # 600 teacher frames, 250-frame non-overlapping windows: [0,250), [250,500),
+    # [500,600) — the tail window carries the 100 remaining frames only.
+    windows = enumerate_windows(600, WindowContract())
+    assert [(w.index, w.start_feature_frame, w.num_feature_frames) for w in windows] == [
+        (0, 0, 250),
+        (1, 250, 250),
+        (2, 500, 100),
+    ]
+    # Each window's student count is its own slice's exact Muaalem 40 ms length.
+    assert [w.num_student_frames for w in windows] == [125, 125, 50]
+    # Even starts → student start is exactly start // 2 (clip-lattice aligned).
+    assert [w.start_student_frame for w in windows] == [0, 125, 250]
+
+
+def test_clip_shorter_than_one_window_is_a_single_window():
+    windows = enumerate_windows(249, WindowContract())
+    assert len(windows) == 1
+    assert windows[0].num_feature_frames == 249
+    assert windows[0].num_student_frames == muaalem_lattice_length(249) == 125
+
+
+def test_no_teacher_frames_yields_no_windows():
+    assert enumerate_windows(0, WindowContract()) == []
+
+
+def test_overlapping_hop_shares_student_start_grid():
+    # A 50/25-frame overlapping contract: starts step by the hop, every start even so
+    # every window still lands on the clip's 40 ms lattice.
+    contract = WindowContract(feature_frames=50, hop_feature_frames=24)
+    windows = enumerate_windows(100, contract)
+    assert [w.start_feature_frame for w in windows] == [0, 24, 48, 72, 96]
+    assert [w.start_student_frame for w in windows] == [0, 12, 24, 36, 48]
+
+
+# --- window_silence_soft_labels: per-window teacher→student correspondence ----
+
+
+def test_window_target_maps_teacher_run_to_the_right_student_frames():
+    # A clip-wide teacher with a silence run at teacher frames [254, 258). Under the
+    # 250/250 tiling that run is inside window 1 (teacher [250,500) → student [125,250)),
+    # at window-local teacher frames [4,8) → window-local student frames [2,4). It must
+    # NOT appear in window 0, proving windowing preserves the pinned 2:1 mapping.
+    teacher = np.zeros(600, dtype=np.float32)
+    teacher[254:258] = 1.0
+    windows = enumerate_windows(len(teacher), WindowContract())
+
+    w0 = window_silence_soft_labels(teacher, windows[0])
+    w1 = window_silence_soft_labels(teacher, windows[1])
+    assert w0.max() == 0.0  # nothing bled into the previous window
+    assert w1[2] == 1.0 and w1[3] == 1.0
+    assert w1[:2].max() == 0.0 and w1[4:].max() == 0.0
+
+
+def test_window_boundary_run_is_owned_by_exactly_one_window():
+    # A silence run straddling a window edge at teacher frame 250 (the window-1 start):
+    # frames [248,252). Non-overlapping windows split it — frames 248-249 belong to
+    # window 0's last student frame, 250-251 to window 1's first — and neither window
+    # sees the other half. This is the drift-sensitive edge the fixtures must pin.
+    teacher = np.zeros(600, dtype=np.float32)
+    teacher[248:252] = 1.0
+    windows = enumerate_windows(len(teacher), WindowContract())
+
+    w0 = window_silence_soft_labels(teacher, windows[0])  # student [0,125)
+    w1 = window_silence_soft_labels(teacher, windows[1])  # student [0,125)
+    assert w0[124] == 1.0 and w0[:124].max() == 0.0  # last student frame of window 0
+    assert w1[0] == 1.0 and w1[1:].max() == 0.0       # first student frame of window 1
+
+
+def test_tail_window_target_length_tracks_its_own_slice():
+    teacher = np.random.default_rng(3).random(600).astype(np.float32)
+    windows = enumerate_windows(len(teacher), WindowContract())
+    labels = window_silence_soft_labels(teacher, windows[2])  # 100-frame tail window
+    assert len(labels) == windows[2].num_student_frames == 50
+
+
+# --- clip_window_soft_labels: whole-clip per-window artifact ------------------
+
+
+def test_clip_window_soft_labels_pairs_each_window_with_its_target():
+    teacher = np.random.default_rng(0).random(600).astype(np.float32)
+    pairs = clip_window_soft_labels(teacher, WindowContract())
+    assert [w.index for w, _ in pairs] == [0, 1, 2]
+    for window, labels in pairs:
+        assert len(labels) == window.num_student_frames
+
+
+def test_clip_window_soft_labels_are_deterministic():
+    teacher = np.random.default_rng(1).random(320).astype(np.float32)
+    a = clip_window_soft_labels(teacher, WindowContract())
+    b = clip_window_soft_labels(teacher, WindowContract())
+    for (_, la), (_, lb) in zip(a, b):
+        np.testing.assert_array_equal(la, lb)
+
+
+# --- SoftLabelStore: per-window, manifest-keyed, idempotent, resumable --------
+
+
+def _windows_for(labels_by_index):
+    return [
+        (
+            Window(
+                index=i,
+                start_feature_frame=i * 250,
+                start_student_frame=i * 125,
+                num_feature_frames=250,
+                num_student_frames=len(lab),
+            ),
+            lab,
+        )
+        for i, lab in enumerate(labels_by_index)
+    ]
+
+
+def test_store_persists_each_window_and_indexes_the_clip_once(tmp_path):
+    w0 = np.array([0.1, 0.9], dtype=np.float32)
+    w1 = np.array([0.4, 0.2, 0.7], dtype=np.float32)
     with SoftLabelStore.open(tmp_path) as store:
-        store.write("clip_a.wav", labels, num_teacher_frames=6)
+        store.write_clip("clip_a.wav", _windows_for([w0, w1]), num_teacher_frames=500)
 
-    reopened = SoftLabelStore.open(tmp_path)
-    assert reopened.has("clip_a.wav")
-    reopened.close()
+    # One index line for the clip, listing both windows keyed by window_index.
+    lines = (tmp_path / SoftLabelStore.INDEX_NAME).read_text().strip().splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["audio_filename"] == "clip_a.wav"
+    assert [w["window_index"] for w in record["windows"]] == [0, 1]
+    assert [w["start_student_frame"] for w in record["windows"]] == [0, 125]
 
-    saved = np.load(tmp_path / SoftLabelStore.ARRAYS_SUBDIR / "clip_a.wav.npy")
-    np.testing.assert_array_equal(saved, labels)
+    arrays_dir = tmp_path / SoftLabelStore.ARRAYS_SUBDIR
+    np.testing.assert_array_equal(np.load(arrays_dir / "clip_a.wav#w0.npy"), w0)
+    np.testing.assert_array_equal(np.load(arrays_dir / "clip_a.wav#w1.npy"), w1)
 
 
-def test_store_write_is_idempotent(tmp_path):
-    labels = np.array([0.2, 0.8], dtype=np.float32)
+def test_store_write_clip_is_idempotent(tmp_path):
+    labels = _windows_for([np.array([0.2, 0.8], dtype=np.float32)])
     with SoftLabelStore.open(tmp_path) as store:
-        store.write("clip_a.wav", labels, num_teacher_frames=4)
-        store.write("clip_a.wav", labels, num_teacher_frames=4)  # replayed → no-op
+        store.write_clip("clip_a.wav", labels, num_teacher_frames=250)
+        store.write_clip("clip_a.wav", labels, num_teacher_frames=250)  # replay → no-op
 
-    index_lines = (tmp_path / SoftLabelStore.INDEX_NAME).read_text().strip().splitlines()
-    assert len(index_lines) == 1
+    lines = (tmp_path / SoftLabelStore.INDEX_NAME).read_text().strip().splitlines()
+    assert len(lines) == 1
 
 
 def test_store_resumes_skipping_written_clips(tmp_path):
     with SoftLabelStore.open(tmp_path) as store:
-        store.write("clip_a.wav", np.array([0.5], dtype=np.float32), num_teacher_frames=2)
+        store.write_clip(
+            "clip_a.wav", _windows_for([np.array([0.5], dtype=np.float32)]), num_teacher_frames=2
+        )
 
     resumed = SoftLabelStore.open(tmp_path)
     assert resumed.has("clip_a.wav")
@@ -168,8 +299,8 @@ def test_store_resumes_skipping_written_clips(tmp_path):
 
 
 def test_importing_waqf_distill_does_not_import_torch():
-    # The pooling/alignment must run in the plain CPU env without pulling in the GPU
-    # inference path; a fresh interpreter proves the module import stays torch-free.
+    # The pooling/windowing/alignment must run in the plain CPU env without pulling in
+    # the GPU inference path; a fresh interpreter proves the import stays torch-free.
     code = (
         "import sys; import training.waqf_distill; "
         "assert 'torch' not in sys.modules, sorted(m for m in sys.modules if 'torch' in m)"

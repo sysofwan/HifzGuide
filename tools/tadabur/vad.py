@@ -121,30 +121,36 @@ def frame_silence_posteriors(
     return posteriors
 
 
-def compute_clip_silence_posteriors(
+def iter_clip_silence_posteriors(
     records: list[ManifestRecord],
     clips_dir: Path,
     *,
     device,
     dtype,
     batch_size: int = 8,
-) -> dict[str, np.ndarray]:
-    """Per-20 ms silence posteriors per staged clip, keyed by ``audio_filename``.
+):
+    """Stream per-20 ms silence posteriors per staged clip, one clip at a time.
 
-    The teacher half of the waqf distillation (ADR-0004): loads the VAD, decodes
-    every clip present under ``clips_dir`` to its per-frame ``P(silence)``
-    (:func:`frame_silence_posteriors`), and frees the VAD before returning so the
-    Muaalem model can be loaded without holding both on the GPU. Clips missing from
-    ``clips_dir`` are omitted (the caller tallies them), matching
-    :func:`compute_clip_pauses`. Pooling to the 40 ms Muaalem lattice is left to the
-    torch-free :mod:`training.waqf_distill`.
+    The teacher half of the waqf distillation (ADR-0004): loads the VAD **once**, then
+    yields ``(audio_filename, silence_20ms)`` for every clip present under ``clips_dir``
+    in deterministic ``audio_filename`` order, decoding each to its per-frame
+    ``P(silence)`` (:func:`frame_silence_posteriors`). Yielding per clip — rather than
+    returning one big dict — lets the caller pool, persist and fsync each clip's soft
+    labels before the next batch runs, so an interrupted multi-hour run keeps every
+    already-written clip and never holds the whole manifest in memory. Clips missing
+    from ``clips_dir`` are skipped (the caller tallies them), matching
+    :func:`compute_clip_pauses`. The VAD is freed when the generator is exhausted (or
+    closed) so the Muaalem model can be loaded without holding both on the GPU. Pooling
+    to the 40 ms Muaalem lattice is the torch-free :mod:`training.waqf_distill`.
     """
     import soundfile as sf
     import torch
 
-    present = [r for r in records if (clips_dir / r.audio_filename).exists()]
+    present = sorted(
+        (r for r in records if (clips_dir / r.audio_filename).exists()),
+        key=lambda r: r.audio_filename,
+    )
     model, processor = _load_vad(device, dtype)
-    posteriors: dict[str, np.ndarray] = {}
     try:
         for start in range(0, len(present), batch_size):
             batch = present[start : start + batch_size]
@@ -158,12 +164,11 @@ def compute_clip_silence_posteriors(
                     device=device, dtype=dtype, batch_size=batch_size,
                 ),
             ):
-                posteriors[record.audio_filename] = silence
+                yield record.audio_filename, silence
     finally:
         del model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-    return posteriors
 
 
 def _clip_intervals(

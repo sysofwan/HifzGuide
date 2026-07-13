@@ -129,17 +129,26 @@ The teacher half of the waqf-head distillation (ADR-0004). Runs the same Recitat
 **per-20 ms silence posteriors** (`P(silence)`, not the cleaned intervals), then **pools them 2:1 to
 Muaalem's 40 ms CTC lattice** by a pinned rule: student frame `i` owns teacher frames `2i`/`2i+1`
 and is silent iff *both* are (min-pool silence / max-pool speech), left-anchored so a ±few-frame
-feature-extractor drift is absorbed at the clip tail, never by shifting an interior boundary. The
-40 ms soft targets are written per clip, keyed to the passing-subset manifest (`audio_filename`),
-into a deterministic, idempotent `SoftLabelStore` (`.npy` arrays + a `soft_labels.jsonl` index) that
-a resumed run skips. The pooling/alignment is torch-free and covered by golden fixtures
-(`training/test_waqf_distill.py`); only the VAD forward pass needs the GPU. A windowed collator (#8)
-re-slices these 40 ms targets per training window against the phoneme lattice.
+feature-extractor drift is absorbed at the tail, never by shifting an interior boundary. Because the
+deployed model runs **fixed 5 s windows** (250 feature → 125 student frames), the soft targets are
+emitted **per training window**: each clip's posteriors are sliced into windows and pooled, keyed to
+the passing-subset manifest by `(audio_filename, window_index)`. An even window start lands on the
+clip's 40 ms lattice (`start // 2`), so the per-window mapping is independent of window *spacing* —
+which is exactly what lets this run before the inference-window contract (#24, overlap/edge/stitch)
+is frozen; the window length is the deployed 5 s and the spacing defaults to a **provisional
+non-overlapping tiling** (`--hop-feature-frames`). Output goes into a deterministic, idempotent
+`SoftLabelStore` (per-window `.npy` arrays + a `soft_labels.jsonl` index, one line per clip listing
+its windows). Generation **streams one clip at a time** and fsyncs each clip before the next, so a
+crash mid-run keeps every clip already written and a resumed run skips them — the whole manifest is
+never held in memory. The pooling/windowing/alignment is torch-free and covered by golden fixtures
+(`training/test_waqf_distill.py`); only the VAD forward pass needs the GPU. The windowed collator
+(#8) consumes these per-window targets against the phoneme lattice.
 
 ```bash
 cd tools
 python -m training.waqf_distill --manifest passing_subset.jsonl --clips-dir clips/ \
-    --out-dir waqf_soft_labels/ [--device cuda] [--dtype bfloat16] [--batch-size 8]
+    --out-dir waqf_soft_labels/ [--window-feature-frames 250] [--hop-feature-frames 250] \
+    [--device cuda] [--dtype bfloat16] [--batch-size 8]
 ```
 
 ### `convert_to_coreml.py`

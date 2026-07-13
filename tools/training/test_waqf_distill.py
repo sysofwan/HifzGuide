@@ -157,17 +157,18 @@ def test_window_posteriors_odd_length_ceils_and_edge_holds_tail():
     assert student[-1] == pytest.approx(0.7)  # min(teacher[248], edge-held teacher[248])
 
 
-# --- WindowContract: the deployed 5 s window + provisional even-frame spacing --
+# --- WindowContract: the deployed 5 s window + frozen center-trusted overlap --
 
 
-def test_default_contract_is_the_deployed_non_overlapping_5s_window():
+def test_default_contract_is_the_frozen_center_trusted_overlap_5s_window():
     contract = WindowContract()
     assert contract.feature_frames == DEPLOYED_WINDOW_FEATURE_FRAMES == 250
-    assert contract.hop_feature_frames == 250  # non-overlapping (provisional, #24)
+    assert contract.hop_feature_frames == 200  # frozen 1 s overlap (4 s hop), #24 A2
     assert contract.student_frames == 125
     # 250 teacher frames × 320 samples = 80 000 samples ≈ 5 s at 16 kHz.
     assert contract.window_samples == 250 * SAMPLES_PER_TEACHER_FRAME == 80000
-    assert contract.hop_samples == 80000
+    # 200 teacher frames × 320 samples = 64 000 samples ≈ 4 s hop (1 s overlap).
+    assert contract.hop_samples == 200 * SAMPLES_PER_TEACHER_FRAME == 64000
 
 
 @pytest.mark.parametrize("bad", [0, -2, 251, 3])
@@ -184,11 +185,11 @@ def test_contract_rejects_non_positive_or_odd_frames(bad):
 
 
 def test_non_overlapping_tiling_covers_the_clip():
-    # 600 teacher frames of audio (600×320 samples), 250-frame non-overlapping windows:
-    # sample spans [0,80k), [80k,160k), [160k,192k) — the tail window carries the
-    # remaining 100 teacher frames (32 000 samples) only.
+    # 600 teacher frames of audio (600×320 samples), 250-frame non-overlapping windows
+    # (explicit hop == window): sample spans [0,80k), [80k,160k), [160k,192k) — the tail
+    # window carries the remaining 100 teacher frames (32 000 samples) only.
     num_samples = 600 * SAMPLES_PER_TEACHER_FRAME
-    windows = enumerate_windows(num_samples, WindowContract())
+    windows = enumerate_windows(num_samples, WindowContract(hop_feature_frames=250))
     assert [(w.index, w.start_sample, w.num_samples) for w in windows] == [
         (0, 0, 80000),
         (1, 80000, 80000),
@@ -199,10 +200,27 @@ def test_non_overlapping_tiling_covers_the_clip():
     assert [w.start_student_frame for w in windows] == [0, 125, 250]
 
 
-def test_clip_shorter_than_one_window_is_a_single_window():
-    windows = enumerate_windows(249 * SAMPLES_PER_TEACHER_FRAME, WindowContract())
+def test_frozen_center_trusted_overlap_windows_step_by_the_4s_hop():
+    # 700 teacher frames of audio, frozen default (250-frame window, 200-frame hop = 1 s
+    # overlap): windows start every 64 000 samples and overlap the previous by 16 000.
+    num_samples = 700 * SAMPLES_PER_TEACHER_FRAME
+    windows = enumerate_windows(num_samples, WindowContract())
+    assert [(w.index, w.start_sample, w.num_samples) for w in windows] == [
+        (0, 0, 80000),
+        (1, 64000, 80000),
+        (2, 128000, 80000),
+        (3, 192000, 32000),
+    ]
+    assert [w.start_feature_frame for w in windows] == [0, 200, 400, 600]
+    assert [w.start_student_frame for w in windows] == [0, 100, 200, 300]
+
+
+def test_clip_no_longer_than_one_hop_is_a_single_window():
+    # Under the frozen 200-frame hop, a clip no longer than one hop yields a single
+    # window (the next start would fall at/after the clip end).
+    windows = enumerate_windows(200 * SAMPLES_PER_TEACHER_FRAME, WindowContract())
     assert len(windows) == 1
-    assert windows[0].num_samples == 249 * SAMPLES_PER_TEACHER_FRAME
+    assert windows[0].num_samples == 200 * SAMPLES_PER_TEACHER_FRAME
 
 
 def test_no_samples_yields_no_windows():
@@ -223,8 +241,9 @@ def test_overlapping_hop_shares_student_start_grid():
 
 def test_slice_windows_cuts_the_waveform_on_window_boundaries():
     # A clip 2.5 windows long: the VAD must see each window's OWN samples, so slicing
-    # (not whole-clip posterior slicing) is what the generator feeds the model.
-    contract = WindowContract()
+    # (not whole-clip posterior slicing) is what the generator feeds the model. Use an
+    # explicit non-overlapping tiling so the slices reconstruct the clip exactly.
+    contract = WindowContract(hop_feature_frames=250)
     waveform = np.arange(int(2.5 * contract.window_samples), dtype=np.float32)
     windows = slice_windows(waveform, contract)
     assert [w.index for w, _ in windows] == [0, 1, 2]
@@ -275,8 +294,8 @@ def test_store_persists_each_window_and_indexes_the_clip_once(tmp_path):
     record = json.loads(lines[0])
     assert record["audio_filename"] == "clip_a.wav"
     assert [w["window_index"] for w in record["windows"]] == [0, 1]
-    assert [w["start_student_frame"] for w in record["windows"]] == [0, 125]
-    assert [w["start_sample"] for w in record["windows"]] == [0, 80000]
+    assert [w["start_student_frame"] for w in record["windows"]] == [0, 100]
+    assert [w["start_sample"] for w in record["windows"]] == [0, 64000]
 
     arrays_dir = tmp_path / SoftLabelStore.ARRAYS_SUBDIR
     np.testing.assert_array_equal(np.load(arrays_dir / "clip_a.wav#w0.npy"), w0)

@@ -31,13 +31,14 @@ unit-tested (golden fixtures) without a GPU. The pinned rule is:
 
 The window *length* (5 s / 250 feature frames) is the already-deployed inference window
 (``convert_to_coreml.py``, ``ml-model-transformation.md``). The window **spacing**
-(overlap / edge-ownership / stitch) is the frozen inference contract owned by #24 (HITL,
-still open); :class:`WindowContract` takes it as a parameter and defaults to a
-**provisional non-overlapping tiling** so this artifact can be built now. The exact
-generation contract (window/hop, pooling rule, adapter + frame geometry, VAD id) is
-persisted as :class:`SoftLabelStore` metadata, so a resumed run that would mix labels
-from a *different* contract **fails fast** instead of silently corrupting the artifact;
-regenerating under a new contract (e.g. once #24 freezes the spacing) is a fresh store.
+(overlap / edge-ownership / stitch) is the inference contract frozen by #24 (A2 HITL): a
+**center-trusted 1 s overlap** (4 s hop / 200 feature frames), used identically in train,
+eval, and export (ADR-0004 "Frozen windowing contract"). :class:`WindowContract` defaults
+to that spacing and takes it as a parameter. The exact generation contract (window/hop,
+pooling rule, adapter + frame geometry, VAD id) is persisted as :class:`SoftLabelStore`
+metadata, so a resumed run that would mix labels from a *different* contract **fails fast**
+instead of silently corrupting the artifact; regenerating under a new contract is a fresh
+store.
 """
 
 from __future__ import annotations
@@ -75,6 +76,13 @@ SAMPLES_PER_TEACHER_FRAME = TARGET_SAMPLE_RATE * TEACHER_FRAME_MS // 1000  # 320
 # The deployed fixed inference window: 250 feature frames ≈ 5 s at 20 ms
 # (``convert_to_coreml.py`` ``FIXED_SEQ_LEN``; ADR-0004). Its 40 ms length is 125.
 DEPLOYED_WINDOW_FEATURE_FRAMES = 250
+
+# The frozen window spacing (#24, A2 HITL freeze): a 4 s hop = 1 s overlap over the
+# 5 s window (center-trusted overlap; see ADR-0004 "Frozen windowing contract"). 200
+# feature frames is even, so every window still starts on an even teacher frame and its
+# student frames line up with the clip's 40 ms lattice. Train, eval, and export use this
+# identical spacing.
+FROZEN_HOP_FEATURE_FRAMES = 200
 
 # The pinned pooling rule, recorded in the store contract so a resume under a different
 # rule is rejected rather than silently mixed into an existing artifact.
@@ -136,11 +144,10 @@ class WindowContract:
 
     ``feature_frames`` is the window length on the 20 ms teacher/encoder grid — the
     deployed 5 s inference window (250). ``hop_feature_frames`` is the step between
-    consecutive window starts on that grid; the default equals ``feature_frames``, a
-    **non-overlapping tiling**. The final overlap / edge-ownership / stitch policy is
-    the frozen inference contract owned by #24 (HITL); until it lands this default is
-    **provisional**, and because the artifact is deterministic it is regenerated cheaply
-    when #24 fixes the spacing.
+    consecutive window starts on that grid; the default is
+    :data:`FROZEN_HOP_FEATURE_FRAMES` (200 = a 4 s hop, 1 s overlap), the
+    **center-trusted overlap** frozen by #24 (A2 HITL). Train, eval, and export use this
+    identical spacing (ADR-0004 "Frozen windowing contract").
 
     Both are required to be **even** so every window starts on an even teacher frame and
     its student frames line up exactly with the clip's 40 ms lattice (``start // 2``);
@@ -151,7 +158,7 @@ class WindowContract:
     """
 
     feature_frames: int = DEPLOYED_WINDOW_FEATURE_FRAMES
-    hop_feature_frames: int = DEPLOYED_WINDOW_FEATURE_FRAMES
+    hop_feature_frames: int = FROZEN_HOP_FEATURE_FRAMES
 
     def __post_init__(self) -> None:
         if self.feature_frames <= 0 or self.feature_frames % 2 != 0:
@@ -491,8 +498,8 @@ def main() -> None:
         "--hop-feature-frames",
         type=int,
         default=None,
-        help="window step on the 20 ms grid; default = window length (non-overlapping, "
-        "provisional pending the #24 inference-contract freeze)",
+        help="window step on the 20 ms grid; default = frozen center-trusted 1 s overlap "
+        "(4 s hop = 200 frames, #24 A2 freeze)",
     )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bfloat16")
@@ -501,7 +508,7 @@ def main() -> None:
 
     contract = WindowContract(
         feature_frames=args.window_feature_frames,
-        hop_feature_frames=args.hop_feature_frames or args.window_feature_frames,
+        hop_feature_frames=args.hop_feature_frames or FROZEN_HOP_FEATURE_FRAMES,
     )
     records = read_records(args.manifest)
     written = generate_soft_labels(

@@ -121,54 +121,59 @@ def frame_silence_posteriors(
     return posteriors
 
 
-def iter_clip_silence_posteriors(
-    records: list[ManifestRecord],
-    clips_dir: Path,
-    *,
-    device,
-    dtype,
-    batch_size: int = 8,
-):
-    """Stream per-20 ms silence posteriors per staged clip, one clip at a time.
+class RecitationVad:
+    """The loaded Recitation VAD as a reusable per-waveform silence-posterior source.
 
-    The teacher half of the waqf distillation (ADR-0004): loads the VAD **once**, then
-    yields ``(audio_filename, silence_20ms)`` for every clip present under ``clips_dir``
-    in deterministic ``audio_filename`` order, decoding each to its per-frame
-    ``P(silence)`` (:func:`frame_silence_posteriors`). Yielding per clip — rather than
-    returning one big dict — lets the caller pool, persist and fsync each clip's soft
-    labels before the next batch runs, so an interrupted multi-hour run keeps every
-    already-written clip and never holds the whole manifest in memory. Clips missing
-    from ``clips_dir`` are skipped (the caller tallies them), matching
-    :func:`compute_clip_pauses`. The VAD is freed when the generator is exhausted (or
-    closed) so the Muaalem model can be loaded without holding both on the GPU. Pooling
-    to the 40 ms Muaalem lattice is the torch-free :mod:`training.waqf_distill`.
+    The teacher half of the waqf distillation (ADR-0004) runs the VAD over the **fixed
+    training windows** the student sees — a transformer frame classifier's window-local
+    posteriors differ from whole-clip ones (attention context, window-edge padding), so
+    the labels must come from the same window waveforms, not from slicing a whole-clip
+    pass. This handle loads the model + feature extractor **once** (:func:`_load_vad`)
+    and exposes :meth:`silence_posteriors` so a caller can stream many window waveforms
+    through the single GPU-resident model, then :meth:`close` it (or use the context
+    manager) before the Muaalem model is loaded — the two never co-reside on the GPU.
+    The forward pass and float32 softmax are :func:`frame_silence_posteriors`; pooling
+    each window to the 40 ms Muaalem lattice is the torch-free :mod:`training.waqf_distill`.
     """
-    import soundfile as sf
-    import torch
 
-    present = sorted(
-        (r for r in records if (clips_dir / r.audio_filename).exists()),
-        key=lambda r: r.audio_filename,
-    )
-    model, processor = _load_vad(device, dtype)
-    try:
-        for start in range(0, len(present), batch_size):
-            batch = present[start : start + batch_size]
-            waveforms = [
-                sf.read(clips_dir / r.audio_filename, dtype="float32")[0] for r in batch
-            ]
-            for record, silence in zip(
-                batch,
-                frame_silence_posteriors(
-                    waveforms, model, processor,
-                    device=device, dtype=dtype, batch_size=batch_size,
-                ),
-            ):
-                yield record.audio_filename, silence
-    finally:
-        del model
+    def __init__(self, model, processor, device, dtype) -> None:
+        self._model = model
+        self._processor = processor
+        self._device = device
+        self._dtype = dtype
+
+    @classmethod
+    def load(cls, device, dtype) -> "RecitationVad":
+        model, processor = _load_vad(device, dtype)
+        return cls(model, processor, device, dtype)
+
+    def silence_posteriors(
+        self, waveforms: list[np.ndarray], *, batch_size: int = 8
+    ) -> list[np.ndarray]:
+        """Per-20 ms ``P(silence)`` for each waveform (e.g. one training window)."""
+        return frame_silence_posteriors(
+            waveforms,
+            self._model,
+            self._processor,
+            device=self._device,
+            dtype=self._dtype,
+            batch_size=batch_size,
+        )
+
+    def close(self) -> None:
+        """Free the VAD from the GPU so the Muaalem model can be loaded after it."""
+        import torch
+
+        self._model = None
+        self._processor = None
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+    def __enter__(self) -> "RecitationVad":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
 
 
 def _clip_intervals(

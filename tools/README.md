@@ -124,25 +124,31 @@ post-segmentation units, and the collator slices audio by these offsets.
 
 ### `training.waqf_distill` (Linux — GPU teacher, CPU pooling) — waqf soft labels
 
-The teacher half of the waqf-head distillation (ADR-0004). Runs the same Recitation VAD
-(`obadx/recitation-segmenter-v2` via `tadabur.vad`) over the staged clips, but keeps its raw
-**per-20 ms silence posteriors** (`P(silence)`, not the cleaned intervals), then **pools them 2:1 to
-Muaalem's 40 ms CTC lattice** by a pinned rule: student frame `i` owns teacher frames `2i`/`2i+1`
-and is silent iff *both* are (min-pool silence / max-pool speech), left-anchored so a ±few-frame
-feature-extractor drift is absorbed at the tail, never by shifting an interior boundary. Because the
-deployed model runs **fixed 5 s windows** (250 feature → 125 student frames), the soft targets are
-emitted **per training window**: each clip's posteriors are sliced into windows and pooled, keyed to
-the passing-subset manifest by `(audio_filename, window_index)`. An even window start lands on the
-clip's 40 ms lattice (`start // 2`), so the per-window mapping is independent of window *spacing* —
-which is exactly what lets this run before the inference-window contract (#24, overlap/edge/stitch)
-is frozen; the window length is the deployed 5 s and the spacing defaults to a **provisional
-non-overlapping tiling** (`--hop-feature-frames`). Output goes into a deterministic, idempotent
-`SoftLabelStore` (per-window `.npy` arrays + a `soft_labels.jsonl` index, one line per clip listing
-its windows). Generation **streams one clip at a time** and fsyncs each clip before the next, so a
-crash mid-run keeps every clip already written and a resumed run skips them — the whole manifest is
-never held in memory. The pooling/windowing/alignment is torch-free and covered by golden fixtures
-(`training/test_waqf_distill.py`); only the VAD forward pass needs the GPU. The windowed collator
-(#8) consumes these per-window targets against the phoneme lattice.
+The teacher half of the waqf-head distillation (ADR-0004). Because the deployed / student
+model sees **fixed 5 s windows** (250 feature → 125 student frames), the teacher must too:
+a transformer frame classifier's window-local posteriors differ from a whole-clip pass
+(attention context, window-edge padding), so the generator cuts each clip's waveform into
+the same fixed windows the student uses and runs the same Recitation VAD
+(`obadx/recitation-segmenter-v2` via `tadabur.vad`) over each **window waveform**. It keeps
+the raw **per-20 ms silence posteriors** (`P(silence)`, not the cleaned intervals) and
+**pools each window 2:1 to Muaalem's 40 ms CTC lattice** by a pinned rule: student frame
+`i` owns teacher frames `2i`/`2i+1` and is silent iff *both* are (min-pool silence /
+max-pool speech), left-anchored so a ±few-frame feature-extractor drift is absorbed at the
+window tail, never by shifting an interior boundary. Targets are emitted **per training
+window**, keyed to the passing-subset manifest by `(audio_filename, window_index)`. The
+window length is the deployed 5 s and the spacing defaults to a **provisional
+non-overlapping tiling** (`--hop-feature-frames`) pending the #24 inference-window contract
+(overlap/edge/stitch). Output goes into a deterministic, idempotent `SoftLabelStore`
+(per-window `.npy` arrays + a `soft_labels.jsonl` index, one line per clip listing its
+windows). The exact generation contract (window/hop, pooling rule, adapter + frame
+geometry, VAD id) is stored as `contract.json` and **re-checked on resume**, so a run that
+would append labels built under a different contract **fails fast** instead of silently
+corrupting the artifact. Generation **streams one clip at a time** and fsyncs each clip
+before the next, so a crash mid-run keeps every clip already written and a resumed run
+skips them — the whole manifest is never held in memory. The pooling/windowing/alignment is
+torch-free and covered by golden fixtures (`training/test_waqf_distill.py`); only the VAD
+forward pass needs the GPU. The windowed collator (#8) consumes these per-window targets
+against the phoneme lattice.
 
 ```bash
 cd tools

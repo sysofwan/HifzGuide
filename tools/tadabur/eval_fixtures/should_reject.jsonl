@@ -10,3 +10,8 @@
 {"audio_ref": "tadabur_spk0038_S57_A6_a11dbc60_000004__seg2.wav", "clip_id": "tadabur_spk0038_S57_A6_a11dbc60_000004__seg2.wav", "contrast": "marginal", "note": "segmentation, too short", "surah_ayah": "58:6", "verdict": "reject"}
 {"audio_ref": "tadabur_spk0038_S20_A22_7023b007_000019__seg0.wav", "clip_id": "tadabur_spk0038_S20_A22_7023b007_000019__seg0.wav", "contrast": "marginal", "note": "Segmentation issue", "surah_ayah": "21:22", "verdict": "reject"}
 {"audio_ref": "tadabur_spk0038_S1_A135_35953415_000105__seg1.wav", "clip_id": "tadabur_spk0038_S1_A135_35953415_000105__seg1.wav", "contrast": "marginal", "note": "Not hafs", "surah_ayah": "2:135", "verdict": "reject"}
+{"audio_ref": "tadabur_spk0074_S110_A5_e10b69bb_000000__seg0.wav", "clip_id": "tadabur_spk0074_S110_A5_e10b69bb_000000__seg0.wav", "contrast": "marginal", "note": "Segmentation issue", "surah_ayah": "111:5", "verdict": "reject"}
+{"audio_ref": "tadabur_spk0508_S29_A2_61e10c18_000023__seg0.wav", "clip_id": "tadabur_spk0508_S29_A2_61e10c18_000023__seg0.wav", "contrast": "marginal", "note": "Segmentation issue", "surah_ayah": "30:2", "verdict": "reject"}
+{"audio_ref": "tadabur_spk0435_S26_A22_7d409ec0_000018__seg0.wav", "clip_id": "tadabur_spk0435_S26_A22_7d409ec0_000018__seg0.wav", "contrast": "ت↔ط", "note": "Not hafs ", "surah_ayah": "27:22", "verdict": "reject"}
+{"audio_ref": "tadabur_spk0414_S14_A19_4a59c60d_000017__seg0.wav", "clip_id": "tadabur_spk0414_S14_A19_4a59c60d_000017__seg0.wav", "contrast": "ذ↔ز", "note": "", "surah_ayah": "15:19", "verdict": "reject"}
+{"audio_ref": "tadabur_spk0591_S39_A69_b5dee3a0_000000__seg0.wav", "clip_id": "tadabur_spk0591_S39_A69_b5dee3a0_000000__seg0.wav", "contrast": "س↔ص", "note": "", "surah_ayah": "40:69", "verdict": "reject"}

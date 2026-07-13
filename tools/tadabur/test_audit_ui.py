@@ -12,6 +12,7 @@ import json
 import pytest
 
 from . import eval_fixtures
+from .audit_http import sniff_audio_content_type
 from .audit_sampler import WorklistItem, write_worklist
 from .audit_ui import (
     AuditServer,
@@ -20,7 +21,6 @@ from .audit_ui import (
     contrast_stats,
     load_worklist,
     predicted_phoneme_index,
-    sniff_audio_content_type,
     surah_ayah_index,
     uthmani_index,
     raw_reference_index,

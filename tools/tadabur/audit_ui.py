@@ -29,11 +29,11 @@ import argparse
 import json
 import sqlite3
 from dataclasses import dataclass
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from . import eval_fixtures
+from .audit_http import AuditHandler, serve
 from .audit_sampler import WorklistItem
 from .contrast_attribution import MARGINAL_CONTRAST, all_contrasts
 from .eval_fixtures import ACCEPT, REJECT, EvalFixtureEntry
@@ -210,25 +210,6 @@ def align_phonemes(predicted: str, reference: str) -> list[dict[str, str]]:
             kind = "sub"
         columns.append({"ref": r or "", "pred": q or "", "kind": kind})
     return columns
-
-
-def sniff_audio_content_type(data: bytes) -> str:
-    """Best-effort ``Content-Type`` for raw audio bytes, by magic number.
-
-    Tadabur clips are exported as their original bytes with no reliable extension,
-    so the browser ``<audio>`` element needs the type sniffed from the header
-    (RIFF/WAVE, ID3 or MPEG-frame MP3, Ogg, fLaC). Falls back to
-    ``application/octet-stream`` when unrecognised.
-    """
-    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
-        return "audio/wav"
-    if data[:4] == b"OggS":
-        return "audio/ogg"
-    if data[:4] == b"fLaC":
-        return "audio/flac"
-    if data[:3] == b"ID3" or (len(data) >= 2 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0):
-        return "audio/mpeg"
-    return "application/octet-stream"
 
 
 @dataclass
@@ -416,78 +397,33 @@ class AuditServer:
         return {"stats": contrast_stats(self.items, self.store)}
 
 
-class _Handler(BaseHTTPRequestHandler):
+class _Handler(AuditHandler):
     """Routes ``/`` (page), ``/api/state``, ``/api/label`` and ``/audio/<file>``."""
 
-    server_state: AuditServer  # injected via functools.partial
-
-    def log_message(self, *args: object) -> None:  # noqa: D401 - quiet the default stderr spam
-        return
-
-    def _send_json(self, obj: object, status: int = 200) -> None:
-        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def _send_bytes(self, data: bytes, content_type: str, status: int = 200) -> None:
-        self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+    state: AuditServer  # bound onto the subclass by serve()
 
     def do_GET(self) -> None:
         path = unquote(urlparse(self.path).path)
         if path == "/":
-            self._send_bytes(_PAGE_PATH.read_bytes(), "text/html; charset=utf-8")
+            self.send_bytes(_PAGE_PATH.read_bytes(), "text/html; charset=utf-8")
         elif path == "/api/state":
-            self._send_json(self.server_state.state())
+            self.send_json(self.state.state())
         elif path.startswith("/audio/"):
-            self._serve_audio(path[len("/audio/"):])
+            self.serve_audio(self.state.audio_dir, path[len("/audio/"):])
         else:
-            self._send_json({"error": "not found"}, status=404)
+            self.send_json({"error": "not found"}, status=404)
 
     def do_POST(self) -> None:
         path = unquote(urlparse(self.path).path)
         if path != "/api/label":
-            self._send_json({"error": "not found"}, status=404)
+            self.send_json({"error": "not found"}, status=404)
             return
         length = int(self.headers.get("Content-Length", 0))
         payload = json.loads(self.rfile.read(length) or b"{}")
         try:
-            self._send_json(self.server_state.apply_label(payload))
+            self.send_json(self.state.apply_label(payload))
         except (KeyError, ValueError) as exc:
-            self._send_json({"error": str(exc)}, status=400)
-
-    def _serve_audio(self, name: str) -> None:
-        # ``name`` is a sampler ``local_audio_path`` (a flat, separator-free name);
-        # resolve under audio_dir and refuse anything that escapes it.
-        audio_dir = self.server_state.audio_dir.resolve()
-        target = (audio_dir / name).resolve()
-        if audio_dir not in target.parents or not target.is_file():
-            self._send_json({"error": "audio not found"}, status=404)
-            return
-        data = target.read_bytes()
-        self._send_bytes(data, sniff_audio_content_type(data))
-
-
-def serve(server_state: AuditServer, port: int, host: str = "127.0.0.1") -> ThreadingHTTPServer:
-    """Build (but do not block on) the threading HTTP server for ``server_state``.
-
-    The state is bound onto a per-server handler subclass so each request handler
-    instance can reach the loaded worklist and label store without globals.
-    ``host`` defaults to loopback; pass ``0.0.0.0`` to expose the UI on the LAN so
-    a human on another device can grade the clips.
-    """
-
-    class _BoundHandler(_Handler):
-        pass
-
-    _BoundHandler.server_state = server_state
-    return ThreadingHTTPServer((host, port), _BoundHandler)
+            self.send_json({"error": str(exc)}, status=400)
 
 
 def main() -> None:
@@ -533,7 +469,7 @@ def main() -> None:
         raw_reference,
     )
 
-    httpd = serve(server_state, args.port, args.host)
+    httpd = serve(_Handler, server_state, args.port, args.host)
     labelled = sum(1 for i in items if store.verdict_of(i.clip_id, i.contrast))
     print(f"Loaded {len(items)} worklist rows ({labelled} already labelled); "
           f"{len(uthmani)} ayat with Uthmani text, {len(reference)} with reference phonemes.")

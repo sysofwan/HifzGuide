@@ -1,11 +1,13 @@
-"""Phoneme-only windowed CTC batches for the whole-clip fine-tune (ADR-0004 P7.D2).
+"""Windowed CTC batches for the whole-clip fine-tune (ADR-0004 P7.D2/D3).
 
-The whole-clip phoneme-only run (rung (2) of ADR-0004's ablation ladder,
-:mod:`training.whole_clip_phoneme`) trains on **fixed 5 s windows over the
-un-waqf-segmented recitation** — the A2 frozen contract. This module is the data path that
-turns the per-window CTC labels :mod:`training.windowed_labels` wrote, plus the staged clip
-audio, into padded feature batches the CTC loss consumes. It is the phoneme half of the
-data collator (#8); the waqf soft-label half is added by the joint run (#31).
+The whole-clip runs train on **fixed 5 s windows over the un-waqf-segmented recitation**
+(the A2 frozen contract, :mod:`training.waqf_distill`), *not* on the individual waqf
+segments. This module is the data path that turns the per-window CTC labels
+:mod:`training.windowed_labels` wrote, plus the staged clip audio, into padded feature
+batches. It carries both halves of the collator (#8): the **phoneme** batch the rung-(2)
+phoneme-only run (:mod:`training.whole_clip_phoneme`) consumes, and the **joint** batch the
+rung-(3) detached-waqf run (:mod:`training.joint_waqf`) consumes — the phoneme batch plus
+each window's 2:1-pooled VAD silence teacher, joined on the shared window key.
 
 Three things are pinned here:
 
@@ -74,17 +76,24 @@ def encode_phoneme_label(reference_phonemes: str) -> list[int]:
 
 @dataclass(frozen=True)
 class WindowedCtcExample:
-    """One training window: its audio slice, CTC target, and its 20 ms length.
+    """One training window: its audio slice, CTC target, and its clip-relative span.
 
     ``key`` is ``(clip_audio_filename, window_index)`` — the stable identity the bucketing
-    and any join with the waqf soft labels share. ``feature_frames`` is the window's 20 ms
-    length, the sort key the length bucketing groups on; ``logit_frames`` its post-adapter
-    40 ms length, asserted ``>= len(label_ids)`` so the window is a feasible CTC target.
+    and any join with the waqf soft labels share. ``start_sample`` / ``num_samples`` are the
+    **clip-relative** span the window audio was sliced at (carried verbatim from
+    :class:`~training.windowed_labels.WindowLabel`), so a join with the waqf soft labels can
+    assert *both* windows describe the same audio span — not merely the same length — and
+    reject a store on a shifted hop/origin that reuses the same ``window_index``.
+    ``feature_frames`` is the window's 20 ms length, the sort key the length bucketing groups
+    on; ``logit_frames`` its post-adapter 40 ms length, asserted ``>= len(label_ids)`` so the
+    window is a feasible CTC target.
     """
 
     key: tuple[str, int]
     audio: np.ndarray
     label_ids: tuple[int, ...]
+    start_sample: int
+    num_samples: int
     feature_frames: int
     logit_frames: int
 
@@ -141,6 +150,8 @@ def build_example(label: WindowLabel, audio: ClipAudioCache) -> WindowedCtcExamp
         key=(label.clip_audio_filename, label.window_index),
         audio=window_audio,
         label_ids=tuple(encode_phoneme_label(label.phoneme_label)),
+        start_sample=label.start_sample,
+        num_samples=label.num_samples,
         feature_frames=label.feature_frames,
         logit_frames=label.logit_frames,
     )
@@ -280,6 +291,138 @@ class WindowedCtcCollator:
         )
 
 
+@dataclass(frozen=True)
+class JointWindowedExample:
+    """One joint-run window: the phoneme CTC example plus its pooled silence teacher.
+
+    ``ctc`` is the exact :class:`WindowedCtcExample` the phoneme-only run (#29) uses — the
+    joint run adds *only* the waqf target, so the phoneme path stays bit-identical to rung
+    (2) (ADR-0004 isolation). ``target_silence`` ``(logit_frames,)`` is the 2:1-pooled VAD
+    ``P(silence)`` on the window's 40 ms lattice
+    (:class:`training.waqf_distill.WindowSilenceTarget`); its length equals the window's
+    ``logit_frames``, so it lines up frame-for-frame with the CTC lattice the waqf head
+    rides. ``feature_frames`` / ``key`` delegate to ``ctc`` so the same length bucketing
+    (:func:`length_bucketed_batches`) groups joint windows unchanged.
+    """
+
+    ctc: WindowedCtcExample
+    target_silence: np.ndarray
+
+    def __post_init__(self) -> None:
+        if self.target_silence.shape != (self.ctc.logit_frames,):
+            raise ValueError(
+                f"window {self.ctc.key} has {self.ctc.logit_frames} logit frames but its "
+                f"silence teacher is shape {self.target_silence.shape} — the phoneme labels "
+                "and the soft labels are on different window grids; regenerate both."
+            )
+
+    @property
+    def key(self) -> tuple[str, int]:
+        return self.ctc.key
+
+    @property
+    def feature_frames(self) -> int:
+        return self.ctc.feature_frames
+
+
+@dataclass
+class JointWindowedBatch:
+    """A collated joint batch: the phoneme :class:`WindowedCtcBatch` plus the silence target.
+
+    ``phoneme`` carries the features / mask / ``-100``-padded CTC labels unchanged; the joint
+    run adds ``target_silence`` ``(B, T)``, the pooled VAD teacher padded to the batch's 40 ms
+    lattice length with ``0`` (speech) on the trailing frames. Those padded frames are the same
+    ones the model's ``student_lengths`` exclude, so the padding value is never scored — the
+    frame mask (:func:`training.waqf_head.frame_mask_from_lengths`) drops it from the KL.
+    """
+
+    phoneme: WindowedCtcBatch
+    target_silence: torch.Tensor
+
+    @property
+    def keys(self) -> list[tuple[str, int]]:
+        return self.phoneme.keys
+
+    def to(self, device: torch.device, dtype: torch.dtype) -> "JointWindowedBatch":
+        """Move to ``device``/``dtype``; the silence teacher rides the feature dtype."""
+        return JointWindowedBatch(
+            phoneme=self.phoneme.to(device, dtype),
+            target_silence=self.target_silence.to(device, dtype),
+        )
+
+
+def pad_target_silence(targets: list[np.ndarray]) -> torch.Tensor:
+    """``(B, max_frames)`` silence-teacher tensor, short rows right-padded with ``0`` (speech).
+
+    The pad value is speech (``P(silence) = 0``); the training step masks padded frames out
+    of the KL by ``student_lengths``, so the value only has to be a valid, non-silence float.
+    """
+    max_frames = max((len(t) for t in targets), default=0)
+    padded = torch.zeros(len(targets), max_frames, dtype=torch.float32)
+    for row, target in enumerate(targets):
+        if len(target):
+            padded[row, : len(target)] = torch.from_numpy(np.asarray(target, dtype=np.float32))
+    return padded
+
+
+class JointWindowedCollator:
+    """Collate joint windows: the phoneme collator plus the padded silence teacher.
+
+    Delegates the feature extraction and CTC-label padding to :class:`WindowedCtcCollator`
+    (so the phoneme half is byte-for-byte the rung-(2) path) and pads each window's
+    ``target_silence`` to the batch's 40 ms lattice length. The padded silence length equals
+    the longest window's ``logit_frames``, which is the model's output frame count for the
+    padded feature batch — so the teacher lines up with ``silence_logits`` frame-for-frame.
+    """
+
+    def __init__(self, feature_extractor) -> None:
+        self._phoneme = WindowedCtcCollator(feature_extractor)
+
+    def __call__(self, examples: list[JointWindowedExample]) -> JointWindowedBatch:
+        if not examples:
+            raise ValueError("cannot collate an empty batch")
+        return JointWindowedBatch(
+            phoneme=self._phoneme([e.ctc for e in examples]),
+            target_silence=pad_target_silence([e.target_silence for e in examples]),
+        )
+
+
+def load_joint_examples(
+    labels_path: Path, audio_dir: Path, soft_label_root: Path, split: str
+) -> list[JointWindowedExample]:
+    """Load one split's windows and join each to its pooled silence teacher.
+
+    Builds the phoneme examples exactly as the phoneme-only run does
+    (:func:`load_examples`), then attaches each window's silence teacher from the
+    recitation-grid soft-label store (:class:`training.waqf_distill.SoftLabelReader`),
+    joining on the shared ``(clip_audio_filename, window_index)`` key. The join **asserts the
+    two artifacts describe the same clip-relative audio span** — the soft target's
+    ``start_sample`` *and* ``num_samples`` must both equal the phoneme window's — so a store
+    on a shifted hop/origin that reuses the same ``window_index`` (same length, different
+    start) is rejected rather than pairing a misaligned silence teacher into the joint loss
+    (ADR-0004 fail-fast on silent label corruption). Order is the deterministic key order
+    :func:`load_examples` returns.
+    """
+    from training.waqf_distill import SoftLabelReader
+
+    reader = SoftLabelReader.open(soft_label_root)
+    joint: list[JointWindowedExample] = []
+    for ctc in load_examples(labels_path, audio_dir, split):
+        clip_audio_filename, window_index = ctc.key
+        target = reader.target(clip_audio_filename, window_index)
+        if (target.start_sample, target.num_samples) != (ctc.start_sample, ctc.num_samples):
+            raise ValueError(
+                f"window {ctc.key}: phoneme label spans clip-relative samples "
+                f"[{ctc.start_sample}, {ctc.start_sample + ctc.num_samples}) but its silence "
+                f"teacher spans [{target.start_sample}, "
+                f"{target.start_sample + target.num_samples}) — the phoneme and soft labels "
+                "are on different window grids (shifted origin/hop or length); regenerate both "
+                "on the same recitation grid."
+            )
+        joint.append(JointWindowedExample(ctc=ctc, target_silence=target.silence_40ms))
+    return joint
+
+
 __all__ = [
     "WORD_SEPARATOR",
     "encode_phoneme_label",
@@ -291,4 +434,8 @@ __all__ = [
     "WindowedCtcBatch",
     "pad_labels",
     "WindowedCtcCollator",
+    "JointWindowedExample",
+    "JointWindowedBatch",
+    "JointWindowedCollator",
+    "load_joint_examples",
 ]

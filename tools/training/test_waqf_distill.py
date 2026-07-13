@@ -547,3 +547,78 @@ def test_importing_waqf_distill_does_not_import_torch():
         cwd=str(Path(__file__).resolve().parent.parent),
     )
     assert result.returncode == 0, result.stderr
+
+
+# --- SoftLabelReader: the read-side join partner for the joint fine-tune ------
+
+
+def _write_recitation_store(tmp_path, windows):
+    """Write a recitation-grid store (the only grid the joint run may join) and return root."""
+    with SoftLabelStore.open(
+        tmp_path, WindowContract(), window_origin=WINDOW_ORIGIN_RECITATION
+    ) as store:
+        store.write_clip(
+            "clip_a.wav",
+            _windows_for(windows),
+            num_samples=500 * SAMPLES_PER_TEACHER_FRAME,
+            recitation_num_samples=500 * SAMPLES_PER_TEACHER_FRAME,
+        )
+    return tmp_path
+
+
+def test_reader_serves_each_window_by_key(tmp_path):
+    from training.waqf_distill import SoftLabelReader
+
+    w0 = np.array([0.1, 0.9], dtype=np.float32)
+    w1 = np.array([0.4, 0.2, 0.7], dtype=np.float32)
+    root = _write_recitation_store(tmp_path, [w0, w1])
+
+    reader = SoftLabelReader.open(root)
+    assert reader.has("clip_a.wav", 0)
+    assert not reader.has("clip_a.wav", 5)
+    target = reader.target("clip_a.wav", 1)
+    assert target.window_index == 1
+    assert target.start_sample == WindowContract().hop_samples
+    np.testing.assert_array_equal(target.silence_40ms, w1)
+
+
+def test_reader_rejects_a_whole_clip_store(tmp_path):
+    from training.waqf_distill import SoftLabelReader
+
+    # A whole-clip store must NEVER be joined with recitation-relative phoneme labels.
+    with SoftLabelStore.open(
+        tmp_path, WindowContract(), window_origin=WINDOW_ORIGIN_WHOLE_CLIP
+    ) as store:
+        store.write_clip(
+            "clip_a.wav", _windows_for([np.array([0.5], dtype=np.float32)]), num_samples=80000
+        )
+    with pytest.raises(ValueError, match="grid"):
+        SoftLabelReader.open(tmp_path)
+
+
+def test_reader_raises_on_unknown_window(tmp_path):
+    from training.waqf_distill import SoftLabelReader
+
+    root = _write_recitation_store(tmp_path, [np.array([0.5, 0.5], dtype=np.float32)])
+    reader = SoftLabelReader.open(root)
+    with pytest.raises(KeyError, match="no window"):
+        reader.target("clip_a.wav", 9)
+
+
+def test_reader_raises_on_truncated_array(tmp_path):
+    from training.waqf_distill import SoftLabelReader
+
+    root = _write_recitation_store(tmp_path, [np.array([0.5, 0.5, 0.5], dtype=np.float32)])
+    # Corrupt the stored array so its length no longer matches the index.
+    np.save(root / SoftLabelStore.ARRAYS_SUBDIR / "clip_a.wav#w0.npy",
+            np.array([0.5], dtype=np.float32))
+    reader = SoftLabelReader.open(root)
+    with pytest.raises(ValueError, match="student frames"):
+        reader.target("clip_a.wav", 0)
+
+
+def test_reader_raises_when_store_missing(tmp_path):
+    from training.waqf_distill import SoftLabelReader
+
+    with pytest.raises(FileNotFoundError):
+        SoftLabelReader.open(tmp_path / "nonexistent")

@@ -14,13 +14,15 @@ import pytest
 
 from .audit_http import sniff_audio_content_type
 from .waqf_event_fixtures import MID_WORD_CLOSURE, WAQF, WASL, load_waqf_events
-from .waqf_event_sampler import WaqfCandidateItem, write_worklist
+from .waqf_event_sampler import WaqfCandidate, WaqfCandidateItem, sample_worklist, write_worklist
 from .waqf_audit_ui import (
     WaqfAuditServer,
     WaqfEventStore,
     class_stats,
+    item_view,
     load_worklist,
 )
+from .waqf_segments import _save_local_clip
 
 
 def _item(clip, idx, predicted=WAQF) -> WaqfCandidateItem:
@@ -117,3 +119,26 @@ def test_apply_label_enriches_fixture_from_worklist(tmp_path):
     # are recovered from the worklist row, not trusted from the request.
     assert entry.audio_ref == "a.wav" and entry.surah_ayah == "2:5"
     assert entry.word_index == 1 and entry.predicted == WASL
+
+
+def test_ui_audio_dir_is_populated_by_waqf_segments_staging(tmp_path):
+    # End-to-end audio contract: a clip staged by tadabur.waqf_segments (under its
+    # raw audio_filename) is served by the UI under the exact name the sampler put in
+    # the worklist — so a human can actually play every sampled boundary's clip.
+    import numpy as np
+
+    audio_ref = "tadabur_spk0106_S77_A30_000.wav"
+    candidate = WaqfCandidate(
+        clip_id=audio_ref, audio_ref=audio_ref, surah_ayah="2:5", boundary_index=0,
+        word_index=1, start_s=0.0, end_s=0.3, predicted=WAQF,
+    )
+    item = sample_worklist([candidate], per_class=5, seed=0)[0]
+
+    # Stage the whole clip exactly as waqf_segments.stage_clips does: audio_dir / audio_filename.
+    _save_local_clip(tmp_path, audio_ref, np.zeros(16, dtype=np.float32))
+
+    server = WaqfAuditServer([item], {}, WaqfEventStore.load(tmp_path / "events.jsonl"), tmp_path)
+    view = item_view(server, item)
+    assert view["audio_url"] == f"/audio/{audio_ref}"
+    assert view["audio_available"] is True
+    assert (tmp_path / item.local_audio_path).is_file()

@@ -11,12 +11,17 @@ the UI resumes from — and is interchangeable with — whatever that file alrea
 
 Each worklist row ``(clip_id, boundary_index)`` is one adjudication unit and one
 fixture line. The clip's Uthmani ayah text (which the worklist omits) is recovered
-from ``quran.db`` for context, and the clip audio is served from ``--audio-dir`` by
-the ``local_audio_path`` the sampler assigned it.
+from ``quran.db`` for context, and the clip audio is served from ``--audio-dir`` —
+the whole-clip staging directory :mod:`tadabur.waqf_segments` writes, where each clip
+already lives under its raw ``audio_filename`` (the row's ``local_audio_path``).
 
 Usage:
   python -m tadabur.waqf_audit_ui --worklist waqf_worklist.jsonl \\
-    --audio-dir clip_audio/ [--port 8000] [--host 0.0.0.0]
+    --audio-dir clips/ [--port 8000] [--host 0.0.0.0]
+
+  ``--audio-dir`` is the same directory ``tadabur.waqf_segments`` staged the whole
+  passing clips into (the audio the VAD/segmentation pass analysed to propose these
+  candidate boundaries); no separate audio-export step is needed.
 """
 
 from __future__ import annotations
@@ -243,7 +248,8 @@ class _Handler(AuditHandler):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--worklist", type=Path, required=True, help="Sampler worklist (JSONL).")
-    parser.add_argument("--audio-dir", type=Path, required=True, help="Directory of exported clip audio.")
+    parser.add_argument("--audio-dir", type=Path, required=True,
+                        help="Whole-clip staging dir from tadabur.waqf_segments (clips served by audio_filename).")
     parser.add_argument("--fixtures", type=Path, default=WAQF_EVENTS_PATH,
                         help="Waqf event-fixture file to write (default: canonical path).")
     parser.add_argument("--port", type=int, default=8000, help="Port to serve on (default: 8000).")

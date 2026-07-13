@@ -15,6 +15,11 @@ data. The adjudication UI (`python -m tadabur.waqf_audit_ui`) fills it in from a
 candidate-boundary worklist (`python -m tadabur.waqf_event_sampler`), and F0's
 event-level eval reads it back through `load_waqf_events`.
 
+The UI plays whole clips from `--audio-dir`, which is the staging directory
+`tadabur.waqf_segments` already wrote (each clip under its `audio_filename` — the same
+16 kHz clips the VAD/segmentation pass analysed to propose the candidates). No
+separate audio-export step is needed: the worklist serves each row by that filename.
+
 Each line carries: `clip_id`, `audio_ref`, `surah_ayah`, `boundary_index`,
 `word_index`, `start_s`, `end_s`, `predicted`, `verdict`, `note`. Both `predicted`
 (the detector's class) and `verdict` (the human's) are one of `waqf` / `wasl` /

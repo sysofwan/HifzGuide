@@ -1,8 +1,9 @@
 """Unit tests for the waqf candidate-boundary sampler (``tadabur.waqf_event_sampler``).
 
 Covers the per-class stratified draw, its determinism / class-order-independence,
-the ``local_audio_path`` enrichment, the worklist JSONL round-trip, and the
-loud rejection of an unknown predicted class in the candidate manifest.
+that a row is served under its clip's staged ``audio_filename`` (``audio_ref``), the
+worklist JSONL round-trip, and the loud rejection of an unknown predicted class in
+the candidate manifest.
 """
 
 from __future__ import annotations
@@ -11,7 +12,6 @@ import json
 
 import pytest
 
-from .audit_sampler import local_audio_path
 from .waqf_event_fixtures import MID_WORD_CLOSURE, WAQF, WASL
 from .waqf_event_sampler import (
     WaqfCandidate,
@@ -48,9 +48,12 @@ def test_sample_is_stratified_and_capped():
     assert len(by_class[MID_WORD_CLOSURE]) == 1
 
 
-def test_sample_enriches_local_audio_path():
+def test_sample_serves_clip_under_its_staged_filename():
+    # The whole clips are staged by tadabur.waqf_segments under their raw
+    # audio_filename, so the worklist serves each row by that exact name (audio_ref),
+    # not a hashed export name — the UI's --audio-dir is that staging directory.
     items = sample_worklist([_cand("clipA", 0, WAQF)], per_class=5, seed=0)
-    assert items[0].local_audio_path == local_audio_path("clipA.wav")
+    assert items[0].local_audio_path == items[0].audio_ref == "clipA.wav"
 
 
 def test_sample_is_deterministic_and_order_independent():

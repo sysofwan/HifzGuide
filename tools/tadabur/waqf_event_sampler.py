@@ -13,9 +13,15 @@ common case.
 Sampling is pure and reproducible, mirroring :mod:`tadabur.audit_sampler`: each
 class draws from an independent ``(seed, predicted)`` RNG over records sorted by
 ``(clip_id, boundary_index)``, so the same manifest + seed always yields the same
-worklist regardless of class order. ``local_audio_path`` is the deterministic name
-the boundary's **whole** clip audio is served under — the adjudication UI plays the
-clip and seeks to ``(start_s, end_s)``.
+worklist regardless of class order. ``local_audio_path`` is the filename the
+boundary's **whole** clip audio is served under — the adjudication UI plays the clip
+and seeks to ``(start_s, end_s)``. Unlike the poison audit — which exports its own
+audio and so hashes ``audio_ref`` into a fresh collision-proof name — the waqf whole
+clips are already staged on disk by :mod:`tadabur.waqf_segments` (the same 16 kHz
+clips the VAD/segmentation pass that produced these candidates analysed), each under
+its raw ``audio_filename``. ``local_audio_path`` is therefore just ``audio_ref``, so
+the UI's ``--audio-dir`` *is* that staging directory and every served name already
+exists in it — no separate export step, and no rows the human cannot adjudicate.
 
 Usage:
   python -m tadabur.waqf_event_sampler --candidates candidates.jsonl \
@@ -30,7 +36,6 @@ import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from .audit_sampler import local_audio_path
 from .waqf_event_fixtures import WAQF_EVENT_CLASSES
 
 DEFAULT_PER_CLASS = 50
@@ -63,9 +68,11 @@ class WaqfCandidate:
 class WaqfCandidateItem:
     """One worklist row: a :class:`WaqfCandidate` plus its clip's audio filename.
 
-    ``local_audio_path`` is the deterministic name the boundary's whole clip audio
-    is exported to (see :func:`~tadabur.audit_sampler.local_audio_path`), so the UI
-    can locate every sampled row's audio.
+    ``local_audio_path`` is the filename the boundary's whole clip audio is served
+    under. The waqf whole clips are staged on disk by :mod:`tadabur.waqf_segments`
+    under their raw ``audio_filename``, so this is simply ``audio_ref`` — the UI's
+    ``--audio-dir`` is that staging directory and every row's audio already exists
+    in it (no separate export, unlike :mod:`tadabur.audit_sampler`).
     """
 
     clip_id: str
@@ -120,7 +127,7 @@ def _sample(records: list[WaqfCandidate], n: int, seed: object) -> list[WaqfCand
 def _item(candidate: WaqfCandidate) -> WaqfCandidateItem:
     return WaqfCandidateItem(
         **asdict(candidate),
-        local_audio_path=local_audio_path(candidate.audio_ref),
+        local_audio_path=candidate.audio_ref,
     )
 
 

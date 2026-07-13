@@ -215,7 +215,7 @@ function renderCard() {
         ? `<audio id="au" controls src="${it.audio_url}"></audio>
            <div class="seek"><button onclick="seekBoundary()">▶ Play from boundary</button>
              &nbsp; then judge: did the reciter stop here?</div>`
-        : `<div class="warn">⚠ audio not exported for this clip — re-run the sampler with --audio-dir.</div>`}
+        : `<div class="warn">⚠ clip not staged — run tadabur.waqf_segments so this clip is in --audio-dir.</div>`}
       <div class="btns">
         <button class="waqf ${it.verdict==="waqf"?"on-waqf":""}" onclick="label('waqf')">Q · Waqf (stop)</button>
         <button class="wasl ${it.verdict==="wasl"?"on-wasl":""}" onclick="label('wasl')">W · Wasl (continued)</button>

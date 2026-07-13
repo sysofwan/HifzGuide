@@ -24,7 +24,9 @@ What this module owns (ADR-0004 D3):
 * **The held-out distillation floor.** :func:`evaluate_distillation` scores the waqf head on
   held-out windows (silence-frame F1 against the pooled teacher + the no-pause-collapse
   diagnostic). This is a *distillation* sanity floor, never the product gate — event-level and
-  integration evals live in the F/H slices (#34/#35).
+  integration evals live in the F/H slices (#34/#35). :func:`train` **fails fast when the
+  held-out split has no windows**: without a floor verdict a run could never trigger the
+  fallback ladder and would report a false pass, so every successful run must score the floor.
 
 * **The capacity-fallback gate (:mod:`the ladder below`).** A linear head on detached features
   may not reproduce the VAD if the silence cues are not linearly present. When the floor is
@@ -94,6 +96,7 @@ from training.whole_clip_phoneme import (
     merge_checkpoint,
     set_seed,
 )
+from training.windowed_labels import read_labels
 
 # The small-MLP fallback's hidden width (ADR-0004 "small MLP head"). Only used when the
 # linear head misses the distillation floor; a knob, not a constant of the linear default.
@@ -229,6 +232,7 @@ class JointTrainConfig:
     waqf_loss_weight: float = DEFAULT_WAQF_LOSS_WEIGHT
     min_silence_f1: float = DEFAULT_MIN_SILENCE_F1
     stage_name: str = "linear"
+    held_out_split: str = "val"
     lora: LoRASettings = field(default_factory=LoRASettings)
 
     @property
@@ -522,6 +526,8 @@ def _worst_case_joint_batch(
                 key=("__preflight__", i),
                 audio=window_audio,
                 label_ids=label_ids,
+                start_sample=0,
+                num_samples=samples,
                 feature_frames=window_feature_frames,
                 logit_frames=logit_frames,
             ),
@@ -613,14 +619,12 @@ class JointRunReport:
     stage_name: str
     trace: list[EpochStats]
     isolation: IsolationReport
-    distillation: Optional[DistillationReport]
+    distillation: DistillationReport
     recommended_fallback: Optional[str]
     requires_reablation: bool
 
 
 def _has_split(labels_path: Path, split: str) -> bool:
-    from training.windowed_labels import read_labels
-
     return bool(read_labels(labels_path).get(split))
 
 
@@ -640,6 +644,12 @@ def train(
     scores the held-out distillation floor, and — if the floor is missed — recommends the next
     fallback rung. Saves the LoRA adapters, the waqf head, the loss trace, and the run report
     under ``out_dir``. Deterministic for a given ``config.seed``.
+
+    The issue acceptance requires every successful run to produce a held-out floor verdict, so
+    a missing/empty ``config.held_out_split`` **fails fast**: without held-out windows the run
+    could never trigger the fallback ladder and would report a false pass. Point the labels
+    build at a split (``config.held_out_split``, default ``"val"``) that actually carries
+    windows.
     """
     stage = config.stage
     if not stage.is_head_only:
@@ -648,16 +658,23 @@ def train(
             "only the detached head-only rungs. An unfreeze must go through the re-ablation "
             "path (#33/#35) and the blank-run is a scorer-side reference, not a training run."
         )
+    if not _has_split(labels_path, config.held_out_split):
+        raise ValueError(
+            f"labels {labels_path} has no {config.held_out_split!r} split, so the detached "
+            "joint run has no held-out windows to score the waqf distillation floor on. The "
+            "issue acceptance requires every successful run to produce a floor verdict (and "
+            "trigger the fallback ladder on failure) — regenerate the labels with a held-out "
+            f"split or pass --held-out-split naming one (have "
+            f"{sorted(read_labels(labels_path))})."
+        )
     set_seed(config.seed)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     feature_extractor = load_feature_extractor()
     collate = JointWindowedCollator(feature_extractor)
     train_examples = load_joint_examples(labels_path, audio_dir, soft_label_root, "train")
-    val_examples = (
-        load_joint_examples(labels_path, audio_dir, soft_label_root, "val")
-        if _has_split(labels_path, "val")
-        else []
+    val_examples = load_joint_examples(
+        labels_path, audio_dir, soft_label_root, config.held_out_split
     )
 
     peft_model = attach_phoneme_lora(load_muaalem(dtype=dtype), config.lora).to(device)
@@ -674,7 +691,13 @@ def train(
 
     val_batches = length_bucketed_batches(
         val_examples, config.max_frames_per_batch, config.max_windows_per_batch, config.seed
-    ) if val_examples else []
+    )
+    if not val_batches:
+        raise ValueError(
+            f"the {config.held_out_split!r} split produced no held-out batches, so the waqf "
+            "distillation floor cannot be scored — the run would falsely pass. Check the "
+            "labels/soft-labels/audio inputs for that split."
+        )
 
     isolation: Optional[IsolationReport] = None
     trace: list[EpochStats] = []
@@ -728,19 +751,11 @@ def train(
     if isolation is None:
         raise ValueError("no training batches — check the labels/soft-labels/audio inputs.")
 
-    distillation = (
-        evaluate_distillation(
-            joint_model, val_batches, collate, device, dtype,
-            stage.pause_weight, config.min_silence_f1,
-        )
-        if val_batches
-        else None
+    distillation = evaluate_distillation(
+        joint_model, val_batches, collate, device, dtype,
+        stage.pause_weight, config.min_silence_f1,
     )
-    fallback = (
-        next_fallback(stage)
-        if distillation is not None and not distillation.meets_floor
-        else None
-    )
+    fallback = next_fallback(stage) if not distillation.meets_floor else None
 
     peft_model.save_pretrained(out_dir / "lora_adapter")
     torch.save(joint_model.waqf_head.state_dict(), out_dir / "waqf_head.pt")
@@ -767,7 +782,7 @@ def _write_report(out_dir: Path, report: JointRunReport) -> None:
         "stage_name": report.stage_name,
         "trace": [asdict(s) for s in report.trace],
         "isolation": asdict(report.isolation),
-        "distillation": asdict(report.distillation) if report.distillation else None,
+        "distillation": asdict(report.distillation),
         "recommended_fallback": report.recommended_fallback,
         "requires_reablation": report.requires_reablation,
     }
@@ -849,6 +864,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
         waqf_loss_weight=args.waqf_loss_weight,
         min_silence_f1=args.min_silence_f1,
         stage_name=args.stage,
+        held_out_split=args.held_out_split,
     )
     train(args.labels, args.audio_dir, args.soft_labels, args.out_dir, config, device)
     if args.eval_segment_manifest and args.eval_audio_dir:
@@ -894,6 +910,8 @@ def main() -> None:
     tr.add_argument("--seed", type=int, default=JointTrainConfig.seed)
     tr.add_argument("--waqf-loss-weight", type=float, default=DEFAULT_WAQF_LOSS_WEIGHT)
     tr.add_argument("--min-silence-f1", type=float, default=DEFAULT_MIN_SILENCE_F1)
+    tr.add_argument("--held-out-split", type=str, default=JointTrainConfig.held_out_split,
+                    help="labels split scored for the distillation floor; must carry windows.")
     tr.add_argument("--stage", type=str, default="linear",
                     help=f"head-only fallback rung: {[s.name for s in FALLBACK_LADDER if s.is_head_only]}.")
     tr.add_argument("--eval-segment-manifest", type=Path, default=None,

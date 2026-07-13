@@ -54,6 +54,8 @@ def _example(feature_frames, logit_frames, label_len, key=("clip", 0)):
         key=key,
         audio=np.zeros(feature_frames * 320, dtype=np.float32),
         label_ids=tuple(range(1, label_len + 1)),
+        start_sample=0,
+        num_samples=feature_frames * 320,
         feature_frames=feature_frames,
         logit_frames=logit_frames,
     )
@@ -145,8 +147,8 @@ class _StubFeatureExtractor:
 
 def test_collator_pads_features_labels_and_mask():
     examples = [
-        WindowedCtcExample(("c", 0), np.zeros(160 * 30, np.float32), (1, 2), 30, 15),
-        WindowedCtcExample(("c", 1), np.zeros(160 * 20, np.float32), (3,), 20, 10),
+        WindowedCtcExample(("c", 0), np.zeros(160 * 30, np.float32), (1, 2), 0, 160 * 30, 30, 15),
+        WindowedCtcExample(("c", 1), np.zeros(160 * 20, np.float32), (3,), 0, 160 * 20, 20, 10),
     ]
     batch = WindowedCtcCollator(_StubFeatureExtractor())(examples)
     assert batch.input_features.shape == (2, 30, 4)
@@ -244,11 +246,11 @@ def test_pad_target_silence_pads_with_speech_zero():
 def test_joint_collator_pads_phoneme_and_silence():
     examples = [
         JointWindowedExample(
-            WindowedCtcExample(("c", 0), np.zeros(160 * 30, np.float32), (1, 2), 30, 15),
+            WindowedCtcExample(("c", 0), np.zeros(160 * 30, np.float32), (1, 2), 0, 160 * 30, 30, 15),
             np.full(15, 0.3, np.float32),
         ),
         JointWindowedExample(
-            WindowedCtcExample(("c", 1), np.zeros(160 * 20, np.float32), (3,), 20, 10),
+            WindowedCtcExample(("c", 1), np.zeros(160 * 20, np.float32), (3,), 0, 160 * 20, 20, 10),
             np.full(10, 0.7, np.float32),
         ),
     ]
@@ -268,8 +270,12 @@ def test_joint_collator_rejects_empty_batch():
 # --- load_joint_examples: the phoneme↔soft-label join integrity ---------------
 
 
-def _write_joint_fixture(tmp_path, *, soft_num_samples=80000):
-    """Write windowed phoneme labels, a 16 kHz clip, and a matching recitation soft store."""
+def _write_joint_fixture(tmp_path, *, soft_num_samples=80000, soft_start_shift=0):
+    """Write windowed phoneme labels, a 16 kHz clip, and a matching recitation soft store.
+
+    ``soft_num_samples`` / ``soft_start_shift`` deliberately drift the soft store's window
+    span (length / origin) from the phoneme labels so the join's fail-fast can be exercised.
+    """
     import soundfile as sf
 
     from tadabur.audit_sampler import local_audio_path
@@ -286,9 +292,9 @@ def _write_joint_fixture(tmp_path, *, soft_num_samples=80000):
 
     soft_root = tmp_path / "soft"
     windows = [
-        (Window(index=0, start_sample=0, num_samples=soft_num_samples),
+        (Window(index=0, start_sample=0 + soft_start_shift, num_samples=soft_num_samples),
          np.full(125, 0.2, np.float32)),
-        (Window(index=1, start_sample=64000, num_samples=soft_num_samples),
+        (Window(index=1, start_sample=64000 + soft_start_shift, num_samples=soft_num_samples),
          np.full(125, 0.8, np.float32)),
     ]
     with SoftLabelStore.open(
@@ -308,7 +314,15 @@ def test_load_joint_examples_pairs_phoneme_and_silence(tmp_path):
 
 
 def test_load_joint_examples_rejects_span_drift(tmp_path):
-    # Soft target on a different audio span than the phoneme label → fail fast, no pairing.
+    # Soft target on a different-length audio span than the phoneme label → fail fast.
     labels_path, audio_dir, soft_root = _write_joint_fixture(tmp_path, soft_num_samples=79000)
+    with pytest.raises(ValueError, match="different window grids"):
+        load_joint_examples(labels_path, audio_dir, soft_root, "train")
+
+
+def test_load_joint_examples_rejects_same_length_shifted_start(tmp_path):
+    # Same window length but a shifted hop/origin (same window_index) must be rejected — a
+    # length-only check would silently pair a misaligned silence teacher (ADR-0004).
+    labels_path, audio_dir, soft_root = _write_joint_fixture(tmp_path, soft_start_shift=640)
     with pytest.raises(ValueError, match="different window grids"):
         load_joint_examples(labels_path, audio_dir, soft_root, "train")

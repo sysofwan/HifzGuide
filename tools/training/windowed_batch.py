@@ -76,17 +76,24 @@ def encode_phoneme_label(reference_phonemes: str) -> list[int]:
 
 @dataclass(frozen=True)
 class WindowedCtcExample:
-    """One training window: its audio slice, CTC target, and its 20 ms length.
+    """One training window: its audio slice, CTC target, and its clip-relative span.
 
     ``key`` is ``(clip_audio_filename, window_index)`` — the stable identity the bucketing
-    and any join with the waqf soft labels share. ``feature_frames`` is the window's 20 ms
-    length, the sort key the length bucketing groups on; ``logit_frames`` its post-adapter
-    40 ms length, asserted ``>= len(label_ids)`` so the window is a feasible CTC target.
+    and any join with the waqf soft labels share. ``start_sample`` / ``num_samples`` are the
+    **clip-relative** span the window audio was sliced at (carried verbatim from
+    :class:`~training.windowed_labels.WindowLabel`), so a join with the waqf soft labels can
+    assert *both* windows describe the same audio span — not merely the same length — and
+    reject a store on a shifted hop/origin that reuses the same ``window_index``.
+    ``feature_frames`` is the window's 20 ms length, the sort key the length bucketing groups
+    on; ``logit_frames`` its post-adapter 40 ms length, asserted ``>= len(label_ids)`` so the
+    window is a feasible CTC target.
     """
 
     key: tuple[str, int]
     audio: np.ndarray
     label_ids: tuple[int, ...]
+    start_sample: int
+    num_samples: int
     feature_frames: int
     logit_frames: int
 
@@ -143,6 +150,8 @@ def build_example(label: WindowLabel, audio: ClipAudioCache) -> WindowedCtcExamp
         key=(label.clip_audio_filename, label.window_index),
         audio=window_audio,
         label_ids=tuple(encode_phoneme_label(label.phoneme_label)),
+        start_sample=label.start_sample,
+        num_samples=label.num_samples,
         feature_frames=label.feature_frames,
         logit_frames=label.logit_frames,
     )
@@ -387,10 +396,12 @@ def load_joint_examples(
     (:func:`load_examples`), then attaches each window's silence teacher from the
     recitation-grid soft-label store (:class:`training.waqf_distill.SoftLabelReader`),
     joining on the shared ``(clip_audio_filename, window_index)`` key. The join **asserts the
-    two artifacts describe the same audio span** — the soft target's ``start_sample`` /
-    ``num_samples`` must equal the phoneme window's — so a drift between the phoneme-label
-    build and the soft-label build fails fast rather than pairing mismatched windows into the
-    joint loss (ADR-0004). Order is the deterministic key order :func:`load_examples` returns.
+    two artifacts describe the same clip-relative audio span** — the soft target's
+    ``start_sample`` *and* ``num_samples`` must both equal the phoneme window's — so a store
+    on a shifted hop/origin that reuses the same ``window_index`` (same length, different
+    start) is rejected rather than pairing a misaligned silence teacher into the joint loss
+    (ADR-0004 fail-fast on silent label corruption). Order is the deterministic key order
+    :func:`load_examples` returns.
     """
     from training.waqf_distill import SoftLabelReader
 
@@ -399,13 +410,14 @@ def load_joint_examples(
     for ctc in load_examples(labels_path, audio_dir, split):
         clip_audio_filename, window_index = ctc.key
         target = reader.target(clip_audio_filename, window_index)
-        expected_samples = ctc.feature_frames * (TARGET_SAMPLE_RATE * 20 // 1000)
-        if target.num_samples != expected_samples:
+        if (target.start_sample, target.num_samples) != (ctc.start_sample, ctc.num_samples):
             raise ValueError(
-                f"window {ctc.key}: phoneme label spans {expected_samples} samples "
-                f"({ctc.feature_frames} feature frames) but its silence teacher spans "
-                f"{target.num_samples} — the phoneme and soft labels are on different window "
-                "grids; regenerate both on the same recitation grid."
+                f"window {ctc.key}: phoneme label spans clip-relative samples "
+                f"[{ctc.start_sample}, {ctc.start_sample + ctc.num_samples}) but its silence "
+                f"teacher spans [{target.start_sample}, "
+                f"{target.start_sample + target.num_samples}) — the phoneme and soft labels "
+                "are on different window grids (shifted origin/hop or length); regenerate both "
+                "on the same recitation grid."
             )
         joint.append(JointWindowedExample(ctc=ctc, target_silence=target.silence_40ms))
     return joint

@@ -231,6 +231,8 @@ def _worst_case_batch(
             key=("__preflight__", i),
             audio=window_audio,
             label_ids=label_ids,
+            start_sample=0,
+            num_samples=samples,
             feature_frames=window_feature_frames,
             logit_frames=logit_frames,
         )

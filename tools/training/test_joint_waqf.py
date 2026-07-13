@@ -242,3 +242,23 @@ def test_train_refuses_non_head_only_stage(tmp_path):
     with pytest.raises(ValueError, match="not head-only"):
         train(tmp_path / "labels.jsonl", tmp_path / "audio", tmp_path / "soft",
               tmp_path / "out", config, torch.device("cpu"))
+
+
+def test_train_fails_fast_without_held_out_split(tmp_path):
+    # No held-out split → no floor could ever be scored; the run must refuse rather than
+    # report a false pass (issue #31 acceptance: every successful run produces a floor verdict).
+    from training.windowed_labels import WindowLabel, write_labels
+
+    label = WindowLabel(
+        clip_audio_filename="clipA.wav", surah_ayah="101:2", reciter_id=1, window_index=0,
+        start_sample=0, num_samples=80000, recitation_start_sample=0, feature_frames=250,
+        logit_frames=125, phoneme_label="\u0645", word_start=0, word_end=1,
+        segment_indices=(0,),
+    )
+    labels_path = tmp_path / "labels.jsonl"
+    write_labels(labels_path, [label], "train")  # train-only: no "val"
+
+    config = JointTrainConfig(stage_name="linear")
+    with pytest.raises(ValueError, match="no 'val' split"):
+        train(labels_path, tmp_path / "audio", tmp_path / "soft",
+              tmp_path / "out", config, torch.device("cpu"))

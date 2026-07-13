@@ -1,0 +1,211 @@
+{
+  "confusion_matrix": {
+    "shadda": {
+      "added": 8,
+      "dropped": 28
+    },
+    "soft_pairs": {
+      "ت↔ط": {
+        "ت": {
+          "other": 9,
+          "ت": 245,
+          "ط": 4
+        },
+        "ط": {
+          "other": 4,
+          "ت": 6,
+          "ط": 35
+        }
+      },
+      "ح↔ه": {
+        "ح": {
+          "other": 1,
+          "ح": 93,
+          "ه": 3
+        },
+        "ه": {
+          "other": 4,
+          "ح": 0,
+          "ه": 310
+        }
+      },
+      "ذ↔ز": {
+        "ذ": {
+          "other": 3,
+          "ذ": 90,
+          "ز": 0
+        },
+        "ز": {
+          "other": 2,
+          "ذ": 44,
+          "ز": 41
+        }
+      },
+      "س↔ص": {
+        "س": {
+          "other": 8,
+          "س": 131,
+          "ص": 21
+        },
+        "ص": {
+          "other": 0,
+          "س": 2,
+          "ص": 55
+        }
+      },
+      "ض↔ظ": {
+        "ض": {
+          "other": 0,
+          "ض": 41,
+          "ظ": 3
+        },
+        "ظ": {
+          "other": 2,
+          "ض": 27,
+          "ظ": 21
+        }
+      },
+      "ق↔ك": {
+        "ق": {
+          "other": 1,
+          "ق": 157,
+          "ك": 7
+        },
+        "ك": {
+          "other": 5,
+          "ق": 20,
+          "ك": 208
+        }
+      }
+    }
+  },
+  "model_id": "obadx/muaalem-model-v3_2",
+  "per_contrast": {
+    "marginal": {
+      "should_accept": {
+        "accepted": 11,
+        "recall": 0.4782608695652174,
+        "rejected": 12,
+        "total": 23
+      },
+      "should_reject": {
+        "accepted": 2,
+        "discrimination": 0.8333333333333334,
+        "rejected": 10,
+        "total": 12
+      }
+    },
+    "shadda": {
+      "should_accept": {
+        "accepted": 18,
+        "recall": 1.0,
+        "rejected": 0,
+        "total": 18
+      },
+      "should_reject": {
+        "accepted": 12,
+        "discrimination": 0.0,
+        "rejected": 0,
+        "total": 12
+      }
+    },
+    "ت↔ط": {
+      "should_accept": {
+        "accepted": 4,
+        "recall": 0.3076923076923077,
+        "rejected": 9,
+        "total": 13
+      },
+      "should_reject": {
+        "accepted": 0,
+        "discrimination": 1.0,
+        "rejected": 1,
+        "total": 1
+      }
+    },
+    "ح↔ه": {
+      "should_accept": {
+        "accepted": 0,
+        "recall": 0.0,
+        "rejected": 4,
+        "total": 4
+      },
+      "should_reject": {
+        "accepted": 0,
+        "discrimination": null,
+        "rejected": 0,
+        "total": 0
+      }
+    },
+    "ذ↔ز": {
+      "should_accept": {
+        "accepted": 2,
+        "recall": 0.06060606060606061,
+        "rejected": 31,
+        "total": 33
+      },
+      "should_reject": {
+        "accepted": 0,
+        "discrimination": 1.0,
+        "rejected": 3,
+        "total": 3
+      }
+    },
+    "س↔ص": {
+      "should_accept": {
+        "accepted": 7,
+        "recall": 0.25,
+        "rejected": 21,
+        "total": 28
+      },
+      "should_reject": {
+        "accepted": 1,
+        "discrimination": 0.5,
+        "rejected": 1,
+        "total": 2
+      }
+    },
+    "ض↔ظ": {
+      "should_accept": {
+        "accepted": 3,
+        "recall": 0.10714285714285714,
+        "rejected": 25,
+        "total": 28
+      },
+      "should_reject": {
+        "accepted": 0,
+        "discrimination": 1.0,
+        "rejected": 2,
+        "total": 2
+      }
+    },
+    "ق↔ك": {
+      "should_accept": {
+        "accepted": 4,
+        "recall": 0.14814814814814814,
+        "rejected": 23,
+        "total": 27
+      },
+      "should_reject": {
+        "accepted": 1,
+        "discrimination": 0.6666666666666666,
+        "rejected": 2,
+        "total": 3
+      }
+    }
+  },
+  "should_accept": {
+    "accepted": 49,
+    "recall": 0.28160919540229884,
+    "rejected": 125,
+    "total": 174
+  },
+  "should_reject": {
+    "accepted": 16,
+    "discrimination": 0.5428571428571428,
+    "rejected": 19,
+    "total": 35
+  },
+  "strict_threshold": 0.75,
+  "success_criterion": "The fine-tuned model lets Muraja default to .strict (correct_threshold 0.75, soft pairs off) WITHOUT raising false-negatives on acceptable recitation: should-accept recall rises vs the base model while should-reject discrimination is retained (not collapsed)."
+}

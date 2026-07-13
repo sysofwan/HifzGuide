@@ -24,6 +24,8 @@ this is a labelling heuristic for the human audit, not an exhaustive diff.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from . import phoneme_sifat
 from .normalization import normalize_phonemes
 from .smith_waterman import AlignedColumn, smith_waterman
@@ -78,13 +80,33 @@ def _is_exact_match(col: AlignedColumn, core: str) -> bool:
     return col.query_char == core and col.ref_char == core
 
 
-def _has_shadda_contrast(columns: list[AlignedColumn]) -> bool:
-    """Whether a doubled core is aligned against a single core anywhere.
+@dataclass(frozen=True)
+class ShaddaEvents:
+    """Directional gemination-mismatch occurrences in one alignment.
+
+    ``added`` counts *query-only* (insertion) cores the decode doubled that the
+    reference has singly ("non-shadda made shadda"); ``dropped`` counts *reference-
+    only* (gap) cores the decode omitted that the reference geminates ("omit when
+    unsure"). Each is a one-sided column whose core equals an immediately adjacent
+    exact-match column of the same core. The two directions are audited separately
+    because the P3.5 audit (#6) found them asymmetric — added is 86% genuinely-wrong
+    recitation, dropped 26% (ADR-0003) — and the eval's confusion matrix (#7) reports
+    both to show whether that discrimination survives fine-tuning.
+    """
+
+    added: int
+    dropped: int
+
+
+def shadda_events(columns: list[AlignedColumn]) -> ShaddaEvents:
+    """Count added vs dropped gemination occurrences across ``columns``.
 
     A shadda difference is a one-sided column (a dropped or inserted core) whose
-    core equals an immediately adjacent exact-match column of the same core —
-    i.e. one side had the core twice and the other once.
+    core equals an immediately adjacent exact-match column of the same core — i.e.
+    one side had the core twice and the other once. A query-only such column is an
+    *added* gemination, a reference-only one a *dropped* gemination.
     """
+    added = dropped = 0
     for idx, col in enumerate(columns):
         core = _gap_core(col)
         if core is None:
@@ -94,37 +116,35 @@ def _has_shadda_contrast(columns: list[AlignedColumn]) -> bool:
             neighbors.append(columns[idx - 1])
         if idx + 1 < len(columns):
             neighbors.append(columns[idx + 1])
-        if any(_is_exact_match(n, core) for n in neighbors):
-            return True
-    return False
+        if not any(_is_exact_match(n, core) for n in neighbors):
+            continue
+        if col.ref_char is None:
+            added += 1
+        else:
+            dropped += 1
+    return ShaddaEvents(added=added, dropped=dropped)
+
+
+def _has_shadda_contrast(columns: list[AlignedColumn]) -> bool:
+    """Whether a doubled core is aligned against a single core anywhere (either
+    direction) — the present↔absent shadda difference the P3.5 audit samples on."""
+    events = shadda_events(columns)
+    return events.added > 0 or events.dropped > 0
 
 
 def has_added_shadda(columns: list[AlignedColumn]) -> bool:
     """Whether the *predicted* side carries a gemination the reference lacks.
 
-    The directional half of the shadda present↔absent difference: a **query-only**
-    (insertion) column whose core equals an immediately adjacent exact-match column
-    of the same core — i.e. the decode doubled a consonant the reference has singly
-    ("non-shadda made shadda"). This is the reject-worthy direction. In the P3.5
-    poison audit (#6) the *added-shadda* direction was 86% genuinely-wrong
-    recitations (vs 26% for the *dropped* direction, which is the model's benign
-    "omit when unsure" behaviour, ADR-0003); and since shadda is not a trainable
-    phoneme-head class, admitting extra gemination has no training value. The
-    mirror *dropped* direction (a reference-only core) is intentionally not
-    reported here — it is kept, so the filter's shadda tolerance is asymmetric.
+    The directional half of the shadda present↔absent difference — a decode that
+    doubled a consonant the reference has singly. This is the reject-worthy
+    direction: in the P3.5 poison audit (#6) *added* shadda was 86% genuinely-wrong
+    recitations (vs 26% for the *dropped* direction, the model's benign "omit when
+    unsure" behaviour, ADR-0003), and since shadda is not a trainable phoneme-head
+    class, admitting extra gemination has no training value. The mirror *dropped*
+    direction is intentionally not rejected — it is kept, so the filter's shadda
+    tolerance is asymmetric.
     """
-    for idx, col in enumerate(columns):
-        if col.ref_char is not None or col.query_char in (None, " "):
-            continue
-        core = col.query_char
-        neighbors = []
-        if idx > 0:
-            neighbors.append(columns[idx - 1])
-        if idx + 1 < len(columns):
-            neighbors.append(columns[idx + 1])
-        if any(_is_exact_match(n, core) for n in neighbors):
-            return True
-    return False
+    return shadda_events(columns).added > 0
 
 
 def attribute_contrasts(

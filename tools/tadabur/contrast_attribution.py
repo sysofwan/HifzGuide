@@ -99,6 +99,34 @@ def _has_shadda_contrast(columns: list[AlignedColumn]) -> bool:
     return False
 
 
+def has_added_shadda(columns: list[AlignedColumn]) -> bool:
+    """Whether the *predicted* side carries a gemination the reference lacks.
+
+    The directional half of the shadda present↔absent difference: a **query-only**
+    (insertion) column whose core equals an immediately adjacent exact-match column
+    of the same core — i.e. the decode doubled a consonant the reference has singly
+    ("non-shadda made shadda"). This is the reject-worthy direction. In the P3.5
+    poison audit (#6) the *added-shadda* direction was 86% genuinely-wrong
+    recitations (vs 26% for the *dropped* direction, which is the model's benign
+    "omit when unsure" behaviour, ADR-0003); and since shadda is not a trainable
+    phoneme-head class, admitting extra gemination has no training value. The
+    mirror *dropped* direction (a reference-only core) is intentionally not
+    reported here — it is kept, so the filter's shadda tolerance is asymmetric.
+    """
+    for idx, col in enumerate(columns):
+        if col.ref_char is not None or col.query_char in (None, " "):
+            continue
+        core = col.query_char
+        neighbors = []
+        if idx > 0:
+            neighbors.append(columns[idx - 1])
+        if idx + 1 < len(columns):
+            neighbors.append(columns[idx + 1])
+        if any(_is_exact_match(n, core) for n in neighbors):
+            return True
+    return False
+
+
 def attribute_contrasts(
     predicted: str, reference: str, soft_pairs_enabled: bool = True
 ) -> tuple[str, ...]:

@@ -12,6 +12,7 @@ from tadabur.contrast_attribution import (
     all_contrasts,
     attribute_contrasts,
     contrast_vocabulary,
+    has_added_shadda,
 )
 from tadabur.phoneme_sifat import soft_pair_contrast, soft_pair_contrasts
 from tadabur.scorer import BALANCED_SCORER, Scorer, ScoringParameters
@@ -108,6 +109,22 @@ def test_shadda_detected_from_hand_built_columns_both_directions():
     insertion = [AlignedColumn(ba, ba), AlignedColumn(ba, None)]  # query بب, ref ب
     assert _has_shadda_contrast(deletion)
     assert _has_shadda_contrast(insertion)
+
+
+def test_has_added_shadda_only_fires_on_query_side_gemination():
+    # has_added_shadda is the directional half used by the gate's poison reject: only
+    # a query-only (insertion) doubled core counts. The mirror dropped direction
+    # (reference-only core) must NOT fire, so the filter's tolerance stays asymmetric.
+    ba = "\u0628"
+    added = [AlignedColumn(ba, ba), AlignedColumn(ba, None)]     # query بب, ref ب
+    dropped = [AlignedColumn(ba, ba), AlignedColumn(None, ba)]   # ref بب, query ب
+    assert has_added_shadda(added)
+    assert not has_added_shadda(dropped)
+    # a plain interior deletion (core matches neither neighbour) is not a shadda at all
+    ta = "\u062A"
+    plain = [AlignedColumn(ba, ba), AlignedColumn(ta, None), AlignedColumn(ba, ba)]
+    assert not has_added_shadda([AlignedColumn(ba, ba), AlignedColumn(None, ta)])
+    assert has_added_shadda(plain) is False  # ta gemination has no matching neighbour
 
 
 # MARK: - attribution is observational (does not touch the gate)

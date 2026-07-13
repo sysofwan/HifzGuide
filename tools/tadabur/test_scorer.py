@@ -111,6 +111,36 @@ def test_gate_perfect_match_has_no_insertion_run():
     assert BALANCED_SCORER.gate("بتثج", "بتثج").max_insertion_run == 0
 
 
+def test_gate_rejects_added_shadda_despite_passing_ratio():
+    # ADR-0001 P3.5 mitigation (#6): the decode DOUBLED a consonant the reference has
+    # singly ("non-shadda made shadda"). The cheap single-core gap keeps match_ratio
+    # above the bar, but the audit found this direction is 86% genuinely-wrong
+    # recitation, so the asymmetric shadda poison policy rejects it.
+    from tadabur.normalization import normalize_phonemes
+
+    ref_single = normalize_phonemes("رَبُ لمشرقين").normalized  # reference: single ب
+    result = BALANCED_SCORER.gate("رَببُ لمشرقين", ref_single)  # decode: doubled ب
+    assert result.added_shadda
+    assert result.match_ratio >= BALANCED.correct_threshold  # would pass on ratio alone
+    assert not result.passed
+
+
+def test_gate_keeps_dropped_shadda():
+    # The mirror (benign) direction: the reference has the gemination and the decode
+    # OMITTED it (the model's "omit when unsure" mode, ADR-0003). This is the useful
+    # training signal, so shadda tolerance is kept asymmetric — the pair still passes.
+    from tadabur.normalization import normalize_phonemes
+
+    ref_double = normalize_phonemes("رَببُ لمشرقين").normalized  # reference: doubled ب
+    result = BALANCED_SCORER.gate("رَبُ لمشرقين", ref_double)  # decode: single ب
+    assert not result.added_shadda
+    assert result.passed
+
+
+def test_gate_perfect_match_has_no_added_shadda():
+    assert not BALANCED_SCORER.gate("بتثج", "بتثج").added_shadda
+
+
 def test_gate_exposes_edge_trims_without_failing():
     # Extra query phonemes trailing past the reference are trimmed by the local aligner,
     # not scored as interior insertions. The gate exposes the trim observationally; it

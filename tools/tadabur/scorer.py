@@ -21,12 +21,18 @@ refinement (it excludes shadda-expansion gaps from the phoneme gate's gap count 
 score-only filter gate does not reconstruct that per-word gap accounting, so the
 flag is carried on ``ScoringParameters`` for fidelity but has no effect here.
 
-The gate layers **one** Tadabur-only reject on top of the Muraja-faithful score: a
-decode with a long interior *insertion* run (:data:`MAX_INSERTION_RUN`) fails as
-repeated-phrase poison. Muraja's local aligner is built to *follow* a recitation on a
-page, so it shrugs off inserted material; when the ayah is already known that leniency
-lets a repeated phrase through, which this policy catches. It does not touch
-``match_ratio`` or the parity-locked Smith-Waterman constants.
+The gate layers **two** Tadabur-only rejects on top of the Muraja-faithful score, both
+of which leave ``match_ratio`` and the parity-locked Smith-Waterman constants untouched:
+
+1. A decode with a long interior *insertion* run (:data:`MAX_INSERTION_RUN`) fails as
+   repeated-phrase poison. Muraja's local aligner is built to *follow* a recitation on a
+   page, so it shrugs off inserted material; when the ayah is already known that leniency
+   lets a repeated phrase through, which this policy catches.
+2. A decode with an *added* shadda (:data:`REJECT_ADDED_SHADDA`) — a gemination the
+   reference lacks — fails as shadda poison. The P3.5 audit (#6) found this direction of
+   the gate's emergent shadda tolerance is 86% genuinely-wrong recitation, so the
+   tolerance is made asymmetric: the benign *dropped* direction is kept, the *added*
+   direction rejected (ADR-0001 mitigation, ADR-0003).
 """
 
 from __future__ import annotations
@@ -50,6 +56,20 @@ MIN_QUERY_PHONEMES = 3
 # filter-side reject layered on top of the Muraja-faithful ``match_ratio``; it does not
 # alter the score itself (the parity-locked Smith-Waterman constants are untouched).
 MAX_INSERTION_RUN = 5
+
+# Tadabur shadda poison policy (NOT a Muraja parameter, ADR-0001 mitigation from the
+# P3.5 audit #6): the gate tolerates a shadda present↔absent difference emergently (the
+# cheap single-core gap barely dents ``match_ratio``), which admits BOTH benign and
+# poison clips. The audit measured this tolerance is directional — the *dropped* side
+# (decode omits a gemination the reference has) is 74% gold (the model's "omit when
+# unsure" mode, ADR-0003) and is the useful training signal, whereas the *added* side
+# (decode DOUBLES a consonant the reference has singly — "non-shadda made shadda") was
+# 86% genuinely-wrong recitation with no training value (shadda is not a trainable
+# phoneme-head class, ADR-0003). We therefore make shadda tolerance **asymmetric**:
+# reject an *added*-shadda decode outright, keep the *dropped* side. Like the insertion
+# reject this is filter-side and leaves ``match_ratio`` and the parity-locked
+# Smith-Waterman constants untouched.
+REJECT_ADDED_SHADDA = True
 
 
 @dataclass(frozen=True)
@@ -87,6 +107,9 @@ class GateResult:
     insertion-poison policy). ``max_insertion_run`` is the longest interior run of
     query-only phonemes in the alignment; ``passed`` is ``False`` when it reaches
     :data:`MAX_INSERTION_RUN` even if ``match_ratio`` clears the threshold.
+    ``added_shadda`` flags an *added*-shadda decode (the decode doubled a consonant
+    the reference has singly); when :data:`REJECT_ADDED_SHADDA` is set this also
+    forces ``passed`` to ``False`` (ADR-0001 P3.5 shadda mitigation, #6).
     ``leading_trim`` / ``trailing_trim`` are the non-space query phonemes the local
     aligner trimmed off each end; they are **observational** (they do not affect
     ``passed``, since a whole clip legitimately begins/ends mid-phrase). Only the
@@ -99,6 +122,7 @@ class GateResult:
     max_insertion_run: int = 0
     leading_trim: int = 0
     trailing_trim: int = 0
+    added_shadda: bool = False
 
 
 @dataclass(frozen=True)
@@ -137,9 +161,11 @@ class Scorer:
         and scored as ``score / max(query_phoneme_count, 1)``. The pair passes
         when that ratio clears ``params.correct_threshold`` **and** the alignment
         has no interior insertion run of :data:`MAX_INSERTION_RUN` phonemes (a
-        repeated-phrase poison reject that leaves ``match_ratio`` itself untouched).
-        A query with fewer than ``MIN_QUERY_PHONEMES`` non-space phonemes, or no
-        positive-scoring alignment, fails with ratio 0.0.
+        repeated-phrase poison reject) **and** carries no *added* shadda (the decode
+        doubling a consonant the reference has singly — an asymmetric shadda poison
+        reject, :data:`REJECT_ADDED_SHADDA`); both leave ``match_ratio`` itself
+        untouched. A query with fewer than ``MIN_QUERY_PHONEMES`` non-space
+        phonemes, or no positive-scoring alignment, fails with ratio 0.0.
         """
         query = normalize_phonemes(predicted).normalized
         ref = reference
@@ -153,6 +179,7 @@ class Scorer:
 
         match_ratio = alignment.score / max(query_phoneme_count, 1)
         insertion_run = longest_insertion_run(alignment.columns)
+        added_shadda = contrast_attribution.has_added_shadda(alignment.columns)
         leading_trim, trailing_trim = edge_insertion_trims(
             query, alignment.query_start, alignment.query_end
         )
@@ -160,11 +187,13 @@ class Scorer:
             passed=(
                 match_ratio >= self.params.correct_threshold
                 and insertion_run < MAX_INSERTION_RUN
+                and not (REJECT_ADDED_SHADDA and added_shadda)
             ),
             match_ratio=match_ratio,
             max_insertion_run=insertion_run,
             leading_trim=leading_trim,
             trailing_trim=trailing_trim,
+            added_shadda=added_shadda,
         )
 
 

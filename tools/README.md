@@ -122,6 +122,26 @@ whole-ayah segment) and tallied; the 8 phonetizer-gap ayat are skipped (`phoneti
 Feeds P4 data-prep (#8): the manifest is the label source, the reciter split is computed over the
 post-segmentation units, and the collator slices audio by these offsets.
 
+### `training.waqf_distill` (Linux — GPU teacher, CPU pooling) — waqf soft labels
+
+The teacher half of the waqf-head distillation (ADR-0004). Runs the same Recitation VAD
+(`obadx/recitation-segmenter-v2` via `tadabur.vad`) over the staged clips, but keeps its raw
+**per-20 ms silence posteriors** (`P(silence)`, not the cleaned intervals), then **pools them 2:1 to
+Muaalem's 40 ms CTC lattice** by a pinned rule: student frame `i` owns teacher frames `2i`/`2i+1`
+and is silent iff *both* are (min-pool silence / max-pool speech), left-anchored so a ±few-frame
+feature-extractor drift is absorbed at the clip tail, never by shifting an interior boundary. The
+40 ms soft targets are written per clip, keyed to the passing-subset manifest (`audio_filename`),
+into a deterministic, idempotent `SoftLabelStore` (`.npy` arrays + a `soft_labels.jsonl` index) that
+a resumed run skips. The pooling/alignment is torch-free and covered by golden fixtures
+(`training/test_waqf_distill.py`); only the VAD forward pass needs the GPU. A windowed collator (#8)
+re-slices these 40 ms targets per training window against the phoneme lattice.
+
+```bash
+cd tools
+python -m training.waqf_distill --manifest passing_subset.jsonl --clips-dir clips/ \
+    --out-dir waqf_soft_labels/ [--device cuda] [--dtype bfloat16] [--batch-size 8]
+```
+
 ### `convert_to_coreml.py`
 
 Converts the Wav2Vec2-BERT TorchScript model (`obadx/muaalem-model-v3_2`) to CoreML format optimized for Apple Neural Engine. Traces the model with a fixed input shape `(1, 250, 160)`, exports to FP32 `.mlpackage`, and optionally creates INT8 and 4-bit compressed variants.

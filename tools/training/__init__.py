@@ -8,5 +8,9 @@ Recitation VAD teacher pooled 2:1 to Muaalem's 40 ms lattice, per ADR-0004; and 
 waqf frame-classification head + detached joint loss (``waqf_head``) that rides that
 lattice with a stop-gradient backbone.
 
+The whole-clip phoneme-only fine-tune (ADR-0004's ablation rung (2)) lives in
+``whole_clip_phoneme`` — LoRA on the phoneme head over fixed windows, with a 16 GB memory
+preflight — fed by the phoneme-only windowed CTC collator in ``windowed_batch``.
+
 Runs on Linux + CUDA (see tools/environment.yml).
 """

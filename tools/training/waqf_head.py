@@ -74,12 +74,19 @@ class WaqfHead(nn.Module):
                 nn.Linear(hidden_dim, 1),
             )
 
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+    def classify(self, hidden_states: torch.Tensor) -> torch.Tensor:
         """``(B, T, feature_dim)`` post-adapter states → ``(B, T)`` silence logits.
 
-        ``hidden_states`` is detached here so no gradient reaches the backbone.
+        Pure classification, no gradient control — this is the path the exported
+        ChunkF traces (inference wants the logits, not the isolation). ``forward``
+        wraps it with the training-time stop-gradient.
         """
-        return self.classifier(hidden_states.detach()).squeeze(-1)
+        return self.classifier(hidden_states).squeeze(-1)
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        """Training path: classify the **detached** states so no gradient reaches
+        the backbone — the deliberate isolation of ADR-0004's ablation ladder."""
+        return self.classify(hidden_states.detach())
 
 
 @dataclass

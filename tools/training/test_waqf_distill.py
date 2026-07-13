@@ -22,6 +22,8 @@ from training.waqf_distill import (
     DEPLOYED_WINDOW_FEATURE_FRAMES,
     SAMPLES_PER_STUDENT_FRAME,
     SAMPLES_PER_TEACHER_FRAME,
+    WINDOW_ORIGIN_RECITATION,
+    WINDOW_ORIGIN_WHOLE_CLIP,
     SoftLabelStore,
     Window,
     WindowContract,
@@ -392,10 +394,40 @@ def test_store_records_the_generation_contract(tmp_path):
     with SoftLabelStore.open(tmp_path, contract):
         pass
     stored = json.loads((tmp_path / SoftLabelStore.CONTRACT_NAME).read_text())
-    assert stored == generation_contract(contract)
+    assert stored == generation_contract(contract, WINDOW_ORIGIN_WHOLE_CLIP)
     assert stored["window_feature_frames"] == 50
     assert stored["hop_feature_frames"] == 24
     assert stored["pooling_rule"] == "min-silence-2to1-left-anchored"
+    assert stored["window_origin"] == WINDOW_ORIGIN_WHOLE_CLIP
+
+
+def test_store_resume_across_window_origins_fails_fast(tmp_path):
+    # A whole-clip store re-opened for the ADR-0004 recitation grid must NOT silently skip
+    # its whole-clip clips and leave their (0-origin) windows to be paired with
+    # recitation-relative phoneme labels — the joint-label misalignment guard.
+    with SoftLabelStore.open(tmp_path, WindowContract(), WINDOW_ORIGIN_WHOLE_CLIP):
+        pass
+    with pytest.raises(ValueError, match="different contract"):
+        SoftLabelStore.open(tmp_path, WindowContract(), WINDOW_ORIGIN_RECITATION)
+
+
+def test_store_needs_write_rejects_a_drifted_recitation_span(tmp_path):
+    # Same recitation-grid origin, but a clip already written at one recitation onset is
+    # re-run with a different (stale) span: the stored windows are on a different grid, so
+    # resuming must raise rather than skip the clip with its old windows.
+    with SoftLabelStore.open(tmp_path, WindowContract(), WINDOW_ORIGIN_RECITATION) as store:
+        store.write_clip(
+            "clip_a.wav",
+            _windows_for([np.array([0.5], dtype=np.float32)]),
+            num_samples=80000,
+            recitation_start_sample=640,
+        )
+    resumed = SoftLabelStore.open(tmp_path, WindowContract(), WINDOW_ORIGIN_RECITATION)
+    assert resumed.needs_write("clip_b.wav", 0) is True  # unseen clip → write it
+    assert resumed.needs_write("clip_a.wav", 640) is False  # same span → skip
+    with pytest.raises(ValueError, match="different recitation grid"):
+        resumed.needs_write("clip_a.wav", 1280)  # drifted span → refuse to skip
+    resumed.close()
 
 
 def test_store_resume_under_a_different_contract_fails_fast(tmp_path):
@@ -414,6 +446,43 @@ def test_store_resume_under_the_same_contract_is_allowed(tmp_path):
     resumed = SoftLabelStore.open(tmp_path, contract)  # identical contract → no raise
     assert resumed.has("clip_a.wav")
     resumed.close()
+
+
+# --- generate_soft_labels: no silent whole-clip reuse under the recitation grid ----
+
+
+def test_generate_refuses_to_resume_a_whole_clip_store_with_recitation_spans(tmp_path):
+    # The reviewer's scenario: an existing store was generated WITHOUT recitation spans
+    # (whole-clip, 0-origin windows). Re-running generate_soft_labels with a lead-in
+    # recitation span must REFUSE — reusing the stale whole-clip windows would pair them
+    # with the new recitation-relative phoneme labels (silent joint-label corruption).
+    pytest.importorskip("torch")  # generate_soft_labels imports torch before it opens the store
+    from tadabur.manifest import ManifestRecord
+    from training.waqf_distill import generate_soft_labels
+
+    clips_dir = tmp_path / "clips"
+    clips_dir.mkdir()
+    out_dir = tmp_path / "soft_labels"
+
+    # A pre-existing whole-clip store (origin whole-clip, one clip at start_sample 0).
+    with SoftLabelStore.open(out_dir, WindowContract(), WINDOW_ORIGIN_WHOLE_CLIP) as store:
+        store.write_clip(
+            "clip_a.wav",
+            _windows_for([np.array([0.5], dtype=np.float32)]),
+            num_samples=80000,
+            recitation_start_sample=0,
+        )
+
+    records = [ManifestRecord("clip_a.wav", "1:1", 1.0, 5.0, 7)]
+    # A lead-in span (start_sample > 0): the recitation-grid origin differs from the stored
+    # whole-clip origin, so the run must raise before touching the VAD.
+    with pytest.raises(ValueError, match="different contract"):
+        generate_soft_labels(
+            records,
+            clips_dir,
+            out_dir,
+            recitation_spans={"clip_a.wav": (SAMPLES_PER_STUDENT_FRAME, 60000)},
+        )
 
 
 # --- torch-free offline stage ------------------------------------------------

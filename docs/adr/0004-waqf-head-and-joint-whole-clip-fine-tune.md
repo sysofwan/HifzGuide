@@ -147,3 +147,32 @@ that tolerance out of a blunt hack and into the model, the same philosophy as AD
   model-I/O schema (output names, 40 ms lattice shape, speech-vs-silence polarity, logit/probability
   semantics) + golden fixtures on an untrained model; the final palettized artifact and refreshed
   release manifest/checksums come after sign-off.
+
+## Frozen windowing contract (A2, #24)
+
+The mandatory contract above (window length, overlap, edge ownership, straddle rule, stitch) is
+**frozen** by the P7.A2 HITL sign-off (#24), on the measured envelope from A1 (#22,
+`docs/window-envelope.md`). It is used **identically** in training-data construction (C), eval
+(F1/F2), and the deferred CoreML export.
+
+- **Window length — 5 s (250 feature frames → 125 frames @ 40 ms).** Not a free choice: pinned by
+  the ANE fixed-shape requirement (`convert_to_coreml.py`, `ml-model-transformation.md`). Training
+  memory is not the binding constraint at this length.
+- **Overlap / hop — 1 s overlap, 4 s hop (200 feature frames).** Windows step by 200 teacher frames
+  (even, so every window starts on an even teacher frame and lands on the clip's 40 ms lattice). A2
+  moved off A1's provisional non-overlapping tiling because ~84% of whole recitations and ~75% of
+  waqf segments span multiple windows, so an interior stop on a seam would be a blind spot.
+- **Edge-frame ownership / straddle rule — center-trusted.** Each window is authoritative only over
+  its central `[0.5 s, 4.5 s)` band; its outer 0.5 s is discarded. Every interior position is owned
+  by the window whose center is nearer. Because the 1 s overlap exceeds the 700 ms waqf
+  post-processing window plus a short word, no interior waqf/word straddling a seam is ever trapped
+  in a discarded edge.
+- **Per-window waqf-frame stitch — nearest-center wins, no averaging.** For each 40 ms frame, keep
+  the silence posterior from the owning (nearer-center) window, so every boundary is graded by the
+  window that saw it in full context. Requires the frozen hop/overlap and the 2:1 pooling applied
+  identically in train, eval, and export.
+- **Provisional per-clip cap — ~40 s (~2000 feature frames, ~8 windows).** The ~99th percentile of
+  whole-clip durations bounds per-clip window count and the longest CTC target C/#25 must preflight.
+  Clips beyond the cap are **flagged for review, not silently truncated**.
+
+Implemented in `training.waqf_distill.WindowContract` (`FROZEN_HOP_FEATURE_FRAMES = 200` default).

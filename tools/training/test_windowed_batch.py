@@ -326,3 +326,62 @@ def test_load_joint_examples_rejects_same_length_shifted_start(tmp_path):
     labels_path, audio_dir, soft_root = _write_joint_fixture(tmp_path, soft_start_shift=640)
     with pytest.raises(ValueError, match="different window grids"):
         load_joint_examples(labels_path, audio_dir, soft_root, "train")
+
+
+# --- real SeamlessM4TFeatureExtractor parity (ADR-0004 A2 frozen 5 s window, #8) ---
+#
+# Every other collator test above uses a stub extractor. Acceptance criterion #1 of #8 is
+# *train/inference parity*: features must come from the model's own SeamlessM4TFeatureExtractor
+# at the frozen 5 s window, and the window must land on the 40 ms lattice length the CTC
+# feasibility check and the waqf silence grid assume. That contract is only real against the
+# actual extractor, so it is pinned here — guarded to skip cleanly offline (the extractor's
+# preprocessor config is a small download, not the model weights).
+
+
+def _real_feature_extractor():
+    pytest.importorskip("transformers")
+    from transformers import SeamlessM4TFeatureExtractor
+
+    from tadabur.inference import MODEL_ID
+
+    try:
+        return SeamlessM4TFeatureExtractor.from_pretrained(MODEL_ID)
+    except Exception as exc:  # noqa: BLE001 — offline / config not cached → skip, don't fail
+        pytest.skip(f"SeamlessM4TFeatureExtractor for {MODEL_ID} unavailable: {exc}")
+
+
+def test_real_extractor_5s_window_lands_on_frozen_40ms_lattice():
+    from training.waqf_distill import (
+        DEPLOYED_WINDOW_FEATURE_FRAMES,
+        SAMPLES_PER_TEACHER_FRAME,
+        WindowContract,
+        muaalem_lattice_length,
+    )
+
+    fe = _real_feature_extractor()
+    window_samples = DEPLOYED_WINDOW_FEATURE_FRAMES * SAMPLES_PER_TEACHER_FRAME  # 80 000 = 5 s
+    student_frames = WindowContract().student_frames  # 125 (the frozen 40 ms lattice)
+    example = WindowedCtcExample(
+        key=("clip", 0),
+        audio=np.zeros(window_samples, dtype=np.float32),
+        label_ids=(1, 2, 3),
+        start_sample=0,
+        num_samples=window_samples,
+        feature_frames=DEPLOYED_WINDOW_FEATURE_FRAMES,
+        logit_frames=student_frames,
+    )
+
+    batch = WindowedCtcCollator(fe)([example])
+
+    # The extractor emits the model's 160-d SeamlessM4T features — the exact input inference
+    # feeds the backbone (tadabur.inference), so training preprocessing is identical.
+    assert batch.input_features.shape[0] == 1
+    assert batch.input_features.shape[-1] == 160
+
+    # The real extractor emits 249 frames for a 5 s window, not the analytical 250 — but both
+    # map through the model's adapter-lattice rule to the same frozen 125-frame 40 ms lattice
+    # the label's logit_frames was built on. That ≤1-frame tail drift must never move the
+    # lattice length the CTC feasibility check and the waqf silence teacher are asserted against.
+    real_feature_frames = int(batch.attention_mask[0].sum())
+    assert abs(real_feature_frames - DEPLOYED_WINDOW_FEATURE_FRAMES) <= 1
+    assert muaalem_lattice_length(real_feature_frames) == student_frames == 125

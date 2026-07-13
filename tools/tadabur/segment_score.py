@@ -67,6 +67,7 @@ import soundfile as sf
 
 from .audio import TARGET_SAMPLE_RATE
 from .audit_sampler import local_audio_path
+from .clip_status import ClipStatus, write_clip_status
 from .contrast_attribution import all_contrasts
 from .manifest import ManifestRecord, read_records
 from .normalization import normalize_phonemes
@@ -199,7 +200,7 @@ def segment_clips(
     boundary_tol: int = waqf_detect.DEFAULT_BOUNDARY_TOL,
     max_decode_ratio: float = waqf_detect.DEFAULT_MAX_DECODE_RATIO,
     min_align_ratio: float = waqf_detect.DEFAULT_MIN_ALIGN_RATIO,
-) -> tuple[list[SegmentRecord], Counter]:
+) -> tuple[list[SegmentRecord], Counter, list[ClipStatus]]:
     """Split every passing clip at its VAD-detected waqf pauses.
 
     ``pauses_by_clip`` maps each clip's ``audio_filename`` to its ``(start_s, end_s)``
@@ -217,19 +218,28 @@ def segment_clips(
     segment spanning the ayah — rather than dropped, so it still reaches the audit. A
     clip whose reference cannot be phonetized (the 8-ayah leen-madd gap) is skipped and
     tallied (``phonetizer_unsupported``); a passing clip missing from ``clips_dir`` is
-    tallied ``clip_missing``. Returns the records and the skip tally.
+    tallied ``clip_missing``. Returns the records, the skip tally, and a
+    :class:`~tadabur.clip_status.ClipStatus` per passing clip — the whole-clip
+    eligibility sidecar the windowed-label builder (#25) needs to exclude a clip whose
+    segments are unusable, since a kept-whole skip is indistinguishable from a genuine
+    no-pause clip in the segment manifest and a missing/unphonetizable clip leaves no
+    rows at all.
     """
     ordered = sorted(passing_records, key=lambda r: r.audio_filename)
     records: list[SegmentRecord] = []
     skips: Counter = Counter()
+    statuses: list[ClipStatus] = []
     for passing in ordered:
+        uthmani_words = _uthmani_words(passing.surah_ayah)
         if not (clips_dir / passing.audio_filename).exists():
             skips["clip_missing"] += 1
+            statuses.append(
+                _clip_status(passing, len(uthmani_words), 0.0, 0.0, 0.0, "clip_missing")
+            )
             continue
         waveform = _load_clip(clips_dir, passing.audio_filename)
         duration_s = len(waveform) / TARGET_SAMPLE_RATE
         class_ids = list(model.decode(waveform, TARGET_SAMPLE_RATE).class_ids)
-        uthmani_words = _uthmani_words(passing.surah_ayah)
         pauses = pauses_by_clip.get(passing.audio_filename, [])
         try:
             reference, boundaries = word_reference(uthmani_words)
@@ -248,9 +258,50 @@ def segment_clips(
             )
         except (KeyError, IndexError):
             skips["phonetizer_unsupported"] += 1
+            statuses.append(
+                _clip_status(
+                    passing, len(uthmani_words), duration_s, 0.0, duration_s,
+                    "phonetizer_unsupported",
+                )
+            )
             continue
         records.extend(clip_records)
-    return records, skips
+        statuses.append(
+            _clip_status(
+                passing, len(uthmani_words), duration_s,
+                spans[0].start_s, spans[-1].end_s, result.skip,
+            )
+        )
+    return records, skips, statuses
+
+
+def _clip_status(
+    passing: ManifestRecord,
+    n_words: int,
+    duration_s: float,
+    recitation_start_s: float,
+    recitation_end_s: float,
+    skip_reason: str | None,
+) -> ClipStatus:
+    """One :class:`ClipStatus` for a passing clip, carrying its eligibility inputs.
+
+    ``recitation_start_s`` / ``recitation_end_s`` are the first/last kept span's edges —
+    the un-waqf-segmented recitation bounds both label artifacts window over. A skipped
+    clip is kept whole (``[0, duration_s]``) and excluded downstream anyway.
+    """
+    return ClipStatus(
+        audio_filename=passing.audio_filename,
+        surah_ayah=passing.surah_ayah,
+        reciter_id=passing.reciter_id,
+        n_words=n_words,
+        duration_s=round(duration_s, 3),
+        # Unrounded so ``round(recitation_end_s * SR)`` matches the segment manifest's own
+        # ``end_s`` sample conversion exactly — a 3-decimal round could shift the last
+        # segment a few samples past the final window edge and falsely exclude the clip.
+        recitation_start_s=recitation_start_s,
+        recitation_end_s=recitation_end_s,
+        skip_reason=skip_reason,
+    )
 
 
 def _decode_all(
@@ -393,6 +444,9 @@ def score_segments(
         )
         row = asdict(record)
         row["contrasts"] = list(record.contrasts)
+        row["clip_audio_filename"] = seg.audio_filename
+        row["word_start"] = seg.word_start
+        row["word_end"] = seg.word_end
         row["uthmani"] = _uthmani_segment_text(
             seg.surah_ayah, seg.word_start, seg.word_end
         )
@@ -489,6 +543,13 @@ def main() -> None:
         help="Output scored segment manifest (JSONL) for the sampler + UI.",
     )
     parser.add_argument(
+        "--out-clip-status", type=Path, default=None,
+        help=(
+            "Output per-clip status sidecar (JSONL) for the windowed-label builder "
+            "(#25); defaults to <out-manifest>.clip_status.jsonl."
+        ),
+    )
+    parser.add_argument(
         "--audio-out", type=Path, required=True,
         help="Directory to write each segment's sliced audio for listening.",
     )
@@ -556,7 +617,7 @@ def main() -> None:
     )
 
     model = MuaalemPhonemeModel.load(device=args.device)
-    segments, skips = segment_clips(
+    segments, skips, clip_statuses = segment_clips(
         passing, args.clips_dir, model, hafs_phonetizer(), hafs_word_reference(),
         pauses_by_clip, boundary_tol=args.boundary_tol,
     )
@@ -565,6 +626,12 @@ def main() -> None:
         f"Segmented {clips} clips into {len(segments)} waqf segments. "
         f"Skips/fallbacks: {dict(skips)}"
     )
+
+    clip_status_path = args.out_clip_status or args.out_manifest.with_suffix(
+        args.out_manifest.suffix + ".clip_status.jsonl"
+    )
+    write_clip_status(clip_status_path, clip_statuses)
+    print(f"Wrote {len(clip_statuses)} per-clip statuses to {clip_status_path}.")
 
     rows, kept, drops = score_segments(
         segments, args.clips_dir, model, args.batch_size,

@@ -28,9 +28,11 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlparse
+
+from training.whole_clip_audit import WholeClipAudit, build_whole_clip_audit
 
 from . import eval_fixtures
 from .audit_http import AuditHandler, serve
@@ -42,6 +44,7 @@ from .normalization import normalize_phonemes
 from .smith_waterman import smith_waterman
 
 _PAGE_PATH = Path(__file__).parent / "audit_ui_page.html"
+_WHOLE_CLIP_PAGE_PATH = Path(__file__).parent / "whole_clip_audit_page.html"
 
 # The canonical quran.db (source of Uthmani ayah text), at the repo-root data/.
 DEFAULT_QURAN_DB = Path(__file__).parents[2] / "data" / "quran.db"
@@ -350,6 +353,7 @@ class AuditServer:
         predicted: dict[str, str] | None = None,
         reference: dict[str, str] | None = None,
         raw_reference: dict[str, str] | None = None,
+        whole_clip_audit: WholeClipAudit | None = None,
     ) -> None:
         self.items = items
         self.surah_ayah = surah_ayah
@@ -359,6 +363,7 @@ class AuditServer:
         self.predicted = predicted or {}
         self.reference = reference or {}
         self.raw_reference = raw_reference or {}
+        self.whole_clip_audit = whole_clip_audit
         self._by_key = {(i.clip_id, i.contrast): i for i in items}
 
     def state(self) -> dict[str, object]:
@@ -367,6 +372,28 @@ class AuditServer:
             "items": [item_view(self, i) for i in self.items],
             "stats": contrast_stats(self.items, self.store),
             "contrast_order": list(CONTRAST_ORDER),
+            "whole_clip_available": self.whole_clip_audit is not None,
+        }
+
+    def whole_clip_state(self) -> dict[str, object]:
+        """The whole-clip data-path payload for the read-only training-data view.
+
+        ``available`` is false when the UI was launched without ``--clip-status`` (no
+        whole-clip reconstruction), so the page can explain how to enable it rather than
+        render an empty list. When available it carries every clip's view (each a plain
+        nested dict via :func:`dataclasses.asdict`) and the training-eligibility summary.
+        """
+        audit = self.whole_clip_audit
+        if audit is None:
+            return {"available": False}
+        return {
+            "available": True,
+            "clips": [asdict(view) for view in audit.views],
+            "summary": {
+                "clips_included": audit.clips_included,
+                "clips_excluded": audit.clips_excluded,
+                "exclusions_by_reason": audit.exclusions_by_reason,
+            },
         }
 
     def apply_label(self, payload: dict) -> dict[str, object]:
@@ -406,8 +433,12 @@ class _Handler(AuditHandler):
         path = unquote(urlparse(self.path).path)
         if path == "/":
             self.send_bytes(_PAGE_PATH.read_bytes(), "text/html; charset=utf-8")
+        elif path == "/whole-clip":
+            self.send_bytes(_WHOLE_CLIP_PAGE_PATH.read_bytes(), "text/html; charset=utf-8")
         elif path == "/api/state":
             self.send_json(self.state.state())
+        elif path == "/api/whole-clip":
+            self.send_json(self.state.whole_clip_state())
         elif path.startswith("/audio/"):
             self.serve_audio(self.state.audio_dir, path[len("/audio/"):])
         else:
@@ -434,6 +465,10 @@ def main() -> None:
     parser.add_argument("--segment-manifest", type=Path, default=None,
                         help="Scored segment manifest from tadabur.segment_score "
                              "(waqf-segment mode; per-segment reference/uthmani/predicted).")
+    parser.add_argument("--clip-status", type=Path, default=None,
+                        help="Per-clip status sidecar from tadabur.segment_score. With "
+                             "--segment-manifest, enables the read-only /whole-clip view that "
+                             "reconstructs the whole-clip training data path C (#25) feeds.")
     parser.add_argument("--audio-dir", type=Path, required=True, help="Directory of exported clip audio.")
     parser.add_argument("--accept", type=Path, default=eval_fixtures.SHOULD_ACCEPT_PATH,
                         help="should-accept fixture file to write (default: canonical path).")
@@ -464,15 +499,26 @@ def main() -> None:
         reference = reference_phoneme_index(set(surah_ayah.values()))
         uthmani = uthmani_index(args.quran_db, set(surah_ayah.values()))
         raw_reference = raw_reference_index(args.quran_db, set(surah_ayah.values()))
+
+    whole_clip_audit = None
+    if args.clip_status is not None:
+        if args.segment_manifest is None:
+            parser.error("--clip-status requires --segment-manifest (whole-clip view).")
+        whole_clip_audit = build_whole_clip_audit(args.segment_manifest, args.clip_status)
+
     server_state = AuditServer(
         items, surah_ayah, store, args.audio_dir, uthmani, predicted, reference,
-        raw_reference,
+        raw_reference, whole_clip_audit,
     )
 
     httpd = serve(_Handler, server_state, args.port, args.host)
     labelled = sum(1 for i in items if store.verdict_of(i.clip_id, i.contrast))
     print(f"Loaded {len(items)} worklist rows ({labelled} already labelled); "
           f"{len(uthmani)} ayat with Uthmani text, {len(reference)} with reference phonemes.")
+    if whole_clip_audit is not None:
+        print(f"Whole-clip data path: {whole_clip_audit.clips_included} clips feed training, "
+              f"{whole_clip_audit.clips_excluded} excluded "
+              f"({whole_clip_audit.exclusions_by_reason}) — /whole-clip")
     print(f"Audit UI on http://{args.host}:{args.port}  (Ctrl-C to stop)")
     try:
         httpd.serve_forever()

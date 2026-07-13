@@ -281,3 +281,46 @@ def test_apply_label_clear(tmp_path):
     server.apply_label({"clip_id": "a", "contrast": "shadda", "verdict": ACCEPT})
     server.apply_label({"clip_id": "a", "contrast": "shadda", "verdict": None})
     assert store.verdict_of("a", "shadda") is None
+
+
+def test_whole_clip_state_absent_by_default(tmp_path):
+    # No --clip-status: the state flags the whole-clip view unavailable rather than 500ing.
+    accept, reject = _paths(tmp_path)
+    store = LabelStore.load(accept, reject)
+    server = AuditServer([_item("a", "shadda")], {"a": "2:5"}, store, tmp_path)
+    assert server.state()["whole_clip_available"] is False
+    assert server.whole_clip_state() == {"available": False}
+
+
+def test_whole_clip_state_serializes_audit(tmp_path):
+    from tadabur.clip_status import ClipStatus, write_clip_status
+    from training.whole_clip_audit import build_whole_clip_audit
+
+    manifest = tmp_path / "segments.jsonl"
+    with open(manifest, "w", encoding="utf-8") as f:
+        f.write(json.dumps({
+            "audio_filename": "a__seg0", "clip_audio_filename": "a.wav", "surah_ayah": "78:2",
+            "reciter_id": 1, "segment_index": 0, "word_start": 0, "word_end": 3,
+            "start_s": 0.0, "end_s": 4.0, "reference_phonemes": "ءبت", "uthmani": "أ ب ت",
+        }, ensure_ascii=False) + "\n")
+    status_path = tmp_path / "clip_status.jsonl"
+    write_clip_status(status_path, [ClipStatus(
+        audio_filename="a.wav", surah_ayah="78:2", reciter_id=1, n_words=3,
+        duration_s=4.0, recitation_start_s=0.0, recitation_end_s=4.0,
+    )])
+
+    audit = build_whole_clip_audit(manifest, status_path)
+    accept, reject = _paths(tmp_path)
+    store = LabelStore.load(accept, reject)
+    server = AuditServer([], {}, store, tmp_path, whole_clip_audit=audit)
+
+    assert server.state()["whole_clip_available"] is True
+    payload = server.whole_clip_state()
+    assert payload["available"] is True
+    assert payload["summary"]["clips_included"] == 1
+    clip = payload["clips"][0]
+    assert clip["clip_id"] == "a.wav" and clip["included"] is True
+    assert clip["whole_clip_label"] == "ءبت"
+    assert clip["windows"][0]["phoneme_label"] == "ءبت"
+    # asdict serializes cleanly to JSON (segment_indices tuple -> array).
+    assert json.dumps(payload, ensure_ascii=False)

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Whole-clip data path — training-label audit (#26)</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#252a34; --fg:#e6e9ef; --muted:#9aa4b2;
+          --ok:#1f9d55; --drop:#d64541; --mark:#f6c744; --accent:#4f8cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg);
+         color:var(--fg); }
+  header { position:sticky; top:0; z-index:10; background:var(--panel); border-bottom:1px solid var(--line);
+           padding:14px 24px; }
+  header h1 { font-size:16px; margin:0 0 2px; }
+  header .sub { color:var(--muted); font-size:12px; }
+  header a { color:var(--accent); text-decoration:none; font-size:12px; }
+  main { padding:20px 24px; max-width:1000px; margin:0 auto; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
+       margin:26px 0 10px; }
+  .summary { display:flex; gap:22px; flex-wrap:wrap; margin-top:8px; }
+  .summary .stat { font-variant-numeric:tabular-nums; }
+  .summary .stat b { font-size:20px; }
+  .summary .stat.ok b { color:var(--ok); }
+  .summary .stat.drop b { color:var(--drop); }
+  .reasons { color:var(--muted); font-size:12px; margin-top:6px; }
+  .reasons code { color:var(--mark); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+          padding:16px 18px; margin-bottom:14px; }
+  .card.included { border-left:3px solid var(--ok); }
+  .card.excluded { border-left:3px solid var(--drop); }
+  .card .head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+  .card .head .ref { font-size:17px; font-variant-numeric:tabular-nums; }
+  .card .head .clip { color:var(--muted); font-size:12px; word-break:break-all; }
+  .badge { font-size:11px; padding:2px 9px; border-radius:20px; }
+  .badge.ok { background:rgba(31,157,85,.16); color:var(--ok); }
+  .badge.drop { background:rgba(214,69,65,.16); color:var(--drop); }
+  .label { direction:rtl; text-align:right; background:#12151b; border:1px solid var(--line);
+           border-radius:8px; padding:10px 12px; font-size:20px; line-height:1.7; margin:6px 0;
+           word-break:break-word; }
+  .label.empty { color:var(--muted); font-size:13px; direction:ltr; text-align:left; }
+  h4 { margin:14px 0 6px; font-size:12px; font-weight:600; color:var(--muted);
+       text-transform:uppercase; letter-spacing:.04em; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; }
+  td.words { font-variant-numeric:tabular-nums; color:var(--muted); white-space:nowrap; }
+  td.arabic { direction:rtl; text-align:right; font-size:17px; }
+  td.phon { direction:rtl; text-align:right; font-size:16px; color:var(--fg); word-break:break-word; }
+  .win { direction:rtl; text-align:right; background:#12151b; border:1px solid var(--line);
+         border-radius:8px; padding:8px 10px; font-size:16px; margin:5px 0; }
+  .win .meta { direction:ltr; text-align:left; color:var(--muted); font-size:11px;
+               font-variant-numeric:tabular-nums; margin-top:3px; }
+  .note { color:var(--muted); font-size:12px; margin:6px 0; }
+  .empty { color:var(--muted); padding:40px 0; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Whole-clip data path — training-label audit (#26)</h1>
+  <div class="sub">The exact fixed-window data C (#25) feeds training, reconstructed from the
+    audited waqf segments. <a href="/">← back to B/C grading</a></div>
+</header>
+<main>
+  <div id="content"><div class="empty">Loading…</div></div>
+</main>
+
+<script>
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function words(a, b) { return b - a === 1 ? `w${a}` : `w${a}–${b - 1}`; }
+
+function segmentTable(segments) {
+  if (!segments.length) return `<div class="note">No kept segments for this clip.</div>`;
+  const rows = segments.map(s => `
+    <tr>
+      <td class="words">#${s.segment_index}</td>
+      <td class="words">${words(s.word_start, s.word_end)}</td>
+      <td class="arabic">${esc(s.uthmani)}</td>
+      <td class="phon">${esc(s.reference)}</td>
+    </tr>`).join("");
+  return `<table>
+    <thead><tr><th>seg</th><th>words</th><th>uthmani</th><th>realized reference</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+function windowList(windows) {
+  return windows.map(w => `
+    <div class="win">
+      <div class="arabic">${esc(w.phoneme_label)}</div>
+      <div class="meta">window ${w.window_index} · ${words(w.word_start, w.word_end)} ·
+        segments ${w.segment_indices.join(", ")} ·
+        target ${w.phoneme_label.length}/${w.logit_frames} frames (${w.feature_frames} feat)</div>
+    </div>`).join("");
+}
+
+function card(c) {
+  const cls = c.included ? "included" : "excluded";
+  const badge = c.included
+    ? `<span class="badge ok">feeds training · ${c.windows.length} window${c.windows.length === 1 ? "" : "s"}</span>`
+    : `<span class="badge drop">excluded · ${esc(c.exclusion_reason)}</span>`;
+  const label = c.whole_clip_label
+    ? `<div class="label arabic">${esc(c.whole_clip_label)}</div>`
+    : `<div class="label empty">— no reconstructed label (segmenter produced no usable segments) —</div>`;
+  const windows = c.included
+    ? `<h4>Training windows (exact CTC targets)</h4>${windowList(c.windows)}`
+    : `<div class="note">This clip is <b>not</b> fed to training — its audio would carry
+        words with no valid target. Reason: <b>${esc(c.exclusion_reason)}</b>.</div>`;
+  return `
+    <div class="card ${cls}">
+      <div class="head">
+        <span class="ref">${esc(c.surah_ayah) || "?:?"}</span>
+        ${badge}
+        <span class="clip">${esc(c.clip_id)} · reciter ${c.reciter_id} · ${c.n_words} words</span>
+      </div>
+      <h4>Whole-clip concatenated label</h4>
+      ${label}
+      <h4>Per-segment breakdown</h4>
+      ${segmentTable(c.segments)}
+      ${windows}
+    </div>`;
+}
+
+function render(data) {
+  const content = document.getElementById("content");
+  if (!data.available) {
+    content.innerHTML = `<div class="empty">No whole-clip data. Launch the audit UI with
+      <code>--segment-manifest</code> and <code>--clip-status</code> to reconstruct the
+      training data path.</div>`;
+    return;
+  }
+  const s = data.summary;
+  const reasons = Object.entries(s.exclusions_by_reason);
+  const reasonHtml = reasons.length
+    ? `<div class="reasons">excluded by: ${reasons.map(([r, n]) =>
+        `<code>${esc(r)}</code> ${n}`).join(" · ")}</div>` : "";
+  const included = data.clips.filter(c => c.included);
+  const excluded = data.clips.filter(c => !c.included);
+  content.innerHTML = `
+    <div class="summary">
+      <div class="stat ok"><b>${s.clips_included}</b> clips feed training</div>
+      <div class="stat drop"><b>${s.clips_excluded}</b> excluded</div>
+    </div>
+    ${reasonHtml}
+    <h2>Included — ${included.length} clip${included.length === 1 ? "" : "s"}</h2>
+    ${included.length ? included.map(card).join("") : `<div class="note">None.</div>`}
+    <h2>Excluded — ${excluded.length} clip${excluded.length === 1 ? "" : "s"}</h2>
+    ${excluded.length ? excluded.map(card).join("") : `<div class="note">None.</div>`}`;
+}
+
+(async function init() {
+  const res = await fetch("/api/whole-clip");
+  render(await res.json());
+})();
+</script>
+</body>
+</html>

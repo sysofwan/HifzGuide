@@ -122,6 +122,8 @@
   <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideLabeled(this.checked)"> Hide labeled</label>
   <h2>Contrasts</h2>
   <div id="contrasts"></div>
+  <a id="wholeclip-link" href="/whole-clip" style="display:none; margin-top:16px;
+     color:var(--accent); font-size:12px; text-decoration:none;">→ Whole-clip data path (#26)</a>
   <div class="legend">
     <div><kbd>A</kbd> accept · <kbd>R</kbd> reject</div>
     <div><kbd>U</kbd> unmark · <kbd>←</kbd>/<kbd>→</kbd> prev/next</div>
@@ -305,6 +307,9 @@ document.addEventListener("keydown", e => {
 (async function init() {
   const s = await api("/api/state");
   state.items = s.items; state.stats = s.stats; state.order = s.contrast_order;
+  if (s.whole_clip_available) {
+    document.getElementById("wholeclip-link").style.display = "block";
+  }
   render();
 })();
 </script>

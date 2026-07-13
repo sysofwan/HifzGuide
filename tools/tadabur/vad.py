@@ -27,10 +27,16 @@ from pathlib import Path
 
 import numpy as np
 
+from .audio import TARGET_SAMPLE_RATE
 from .manifest import ManifestRecord
 
 # The pretrained recitation VAD (speech/silence frame classifier, 20 ms resolution).
 VAD_MODEL_ID = "obadx/recitation-segmenter-v2"
+
+# The VAD's two per-frame softmax classes. Silence is the waqf-head distillation
+# target (ADR-0004), so :func:`frame_silence_posteriors` reads class ``VAD_SILENCE_LABEL``.
+VAD_SILENCE_LABEL = 0
+VAD_SPEECH_LABEL = 1
 
 # Waqf definition the VAD was trained on: silence ≥ 300 ms between speech ≥ 700 ms,
 # each interval padded 30 ms. Reusing the training thresholds keeps inference on-model.
@@ -67,7 +73,107 @@ def _load_vad(device, dtype):
     processor = AutoFeatureExtractor.from_pretrained(VAD_MODEL_ID)
     model = AutoModelForAudioFrameClassification.from_pretrained(VAD_MODEL_ID)
     model.to(device, dtype=dtype)
+    model.eval()
     return model, processor
+
+
+def frame_silence_posteriors(
+    waveforms: list[np.ndarray],
+    model,
+    processor,
+    *,
+    device,
+    dtype,
+    batch_size: int,
+) -> list[np.ndarray]:
+    """Per-20 ms-frame silence posteriors ``P(silence)`` for each waveform.
+
+    Runs the VAD forward in fixed-size batches and returns, per waveform, the
+    softmax probability of the **silence** class (``VAD_SILENCE_LABEL``) at each
+    20 ms frame — the soft teacher signal the waqf head is distilled from (ADR-0004),
+    *before* any 300/700 ms interval cleaning. The softmax is taken in float32 (the
+    model runs in ``dtype``, typically bf16) so the posteriors are deterministic and
+    numerically stable. Each waveform is trimmed to its own valid frame count via the
+    feature-extractor attention mask, so batch padding never leaks a frame.
+    """
+    import torch
+
+    posteriors: list[np.ndarray] = []
+    for start in range(0, len(waveforms), batch_size):
+        batch = [np.asarray(w, dtype=np.float32) for w in waveforms[start : start + batch_size]]
+        features = processor(
+            batch,
+            sampling_rate=TARGET_SAMPLE_RATE,
+            return_tensors="pt",
+            padding=True,
+        )
+        input_features = features.input_features.to(device, dtype=dtype)
+        attention_mask = features.attention_mask.to(device)
+        with torch.inference_mode():
+            logits = model(
+                input_features=input_features, attention_mask=attention_mask
+            ).logits
+        silence = torch.softmax(logits.float(), dim=-1)[..., VAD_SILENCE_LABEL]
+        valid_frames = attention_mask.sum(dim=1).to(torch.long)
+        for i in range(len(batch)):
+            frames = int(valid_frames[i])
+            posteriors.append(silence[i, :frames].cpu().numpy().astype(np.float32))
+    return posteriors
+
+
+class RecitationVad:
+    """The loaded Recitation VAD as a reusable per-waveform silence-posterior source.
+
+    The teacher half of the waqf distillation (ADR-0004) runs the VAD over the **fixed
+    training windows** the student sees — a transformer frame classifier's window-local
+    posteriors differ from whole-clip ones (attention context, window-edge padding), so
+    the labels must come from the same window waveforms, not from slicing a whole-clip
+    pass. This handle loads the model + feature extractor **once** (:func:`_load_vad`)
+    and exposes :meth:`silence_posteriors` so a caller can stream many window waveforms
+    through the single GPU-resident model, then :meth:`close` it (or use the context
+    manager) before the Muaalem model is loaded — the two never co-reside on the GPU.
+    The forward pass and float32 softmax are :func:`frame_silence_posteriors`; pooling
+    each window to the 40 ms Muaalem lattice is the torch-free :mod:`training.waqf_distill`.
+    """
+
+    def __init__(self, model, processor, device, dtype) -> None:
+        self._model = model
+        self._processor = processor
+        self._device = device
+        self._dtype = dtype
+
+    @classmethod
+    def load(cls, device, dtype) -> "RecitationVad":
+        model, processor = _load_vad(device, dtype)
+        return cls(model, processor, device, dtype)
+
+    def silence_posteriors(
+        self, waveforms: list[np.ndarray], *, batch_size: int = 8
+    ) -> list[np.ndarray]:
+        """Per-20 ms ``P(silence)`` for each waveform (e.g. one training window)."""
+        return frame_silence_posteriors(
+            waveforms,
+            self._model,
+            self._processor,
+            device=self._device,
+            dtype=self._dtype,
+            batch_size=batch_size,
+        )
+
+    def close(self) -> None:
+        """Free the VAD from the GPU so the Muaalem model can be loaded after it."""
+        import torch
+
+        self._model = None
+        self._processor = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def __enter__(self) -> "RecitationVad":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
 
 
 def _clip_intervals(

@@ -122,6 +122,41 @@ whole-ayah segment) and tallied; the 8 phonetizer-gap ayat are skipped (`phoneti
 Feeds P4 data-prep (#8): the manifest is the label source, the reciter split is computed over the
 post-segmentation units, and the collator slices audio by these offsets.
 
+### `training.waqf_distill` (Linux — GPU teacher, CPU pooling) — waqf soft labels
+
+The teacher half of the waqf-head distillation (ADR-0004). Because the deployed / student
+model sees **fixed 5 s windows** (250 feature → 125 student frames), the teacher must too:
+a transformer frame classifier's window-local posteriors differ from a whole-clip pass
+(attention context, window-edge padding), so the generator cuts each clip's waveform into
+the same fixed windows the student uses and runs the same Recitation VAD
+(`obadx/recitation-segmenter-v2` via `tadabur.vad`) over each **window waveform**. It keeps
+the raw **per-20 ms silence posteriors** (`P(silence)`, not the cleaned intervals) and
+**pools each window 2:1 to Muaalem's 40 ms CTC lattice** by a pinned rule: student frame
+`i` owns teacher frames `2i`/`2i+1` and is silent iff *both* are (min-pool silence /
+max-pool speech), left-anchored so a ±few-frame feature-extractor drift is absorbed at the
+window tail, never by shifting an interior boundary. Targets are emitted **per training
+window**, keyed to the passing-subset manifest by `(audio_filename, window_index)`. The
+window length is the deployed 5 s and the spacing defaults to a **provisional
+non-overlapping tiling** (`--hop-feature-frames`) pending the #24 inference-window contract
+(overlap/edge/stitch). Output goes into a deterministic, idempotent `SoftLabelStore`
+(per-window `.npy` arrays + a `soft_labels.jsonl` index, one line per clip listing its
+windows). The exact generation contract (window/hop, pooling rule, adapter + frame
+geometry, VAD id) is stored as `contract.json` and **re-checked on resume**, so a run that
+would append labels built under a different contract **fails fast** instead of silently
+corrupting the artifact. Generation **streams one clip at a time** and fsyncs each clip
+before the next, so a crash mid-run keeps every clip already written and a resumed run
+skips them — the whole manifest is never held in memory. The pooling/windowing/alignment is
+torch-free and covered by golden fixtures (`training/test_waqf_distill.py`); only the VAD
+forward pass needs the GPU. The windowed collator (#8) consumes these per-window targets
+against the phoneme lattice.
+
+```bash
+cd tools
+python -m training.waqf_distill --manifest passing_subset.jsonl --clips-dir clips/ \
+    --out-dir waqf_soft_labels/ [--window-feature-frames 250] [--hop-feature-frames 250] \
+    [--device cuda] [--dtype bfloat16] [--batch-size 8]
+```
+
 ### `convert_to_coreml.py`
 
 Converts the Wav2Vec2-BERT TorchScript model (`obadx/muaalem-model-v3_2`) to CoreML format optimized for Apple Neural Engine. Traces the model with a fixed input shape `(1, 250, 160)`, exports to FP32 `.mlpackage`, and optionally creates INT8 and 4-bit compressed variants.

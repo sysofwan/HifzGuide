@@ -190,6 +190,19 @@ def soft_pair_contrasts() -> frozenset[str]:
     return frozenset(_contrast_label(pair) for pair in _BALANCED_SOFT_PAIRS)
 
 
+def soft_pair_partner(char: str) -> str | None:
+    """The consonant ``char`` is soft-paired with, or ``None`` if it is in no pair.
+
+    Reuses ``_BALANCED_SOFT_PAIRS`` so the vocabulary is never re-derived. Lets the
+    eval's confusion matrix (#7) name, for a reference phoneme sitting on a soft pair,
+    the specific *confusable* substitution the model might emit instead of it."""
+    for pair in _BALANCED_SOFT_PAIRS:
+        if char in pair:
+            (partner,) = pair - {char}
+            return partner
+    return None
+
+
 def phoneme_similarity(a: str, b: str) -> float | None:
     """Articulatory similarity between two consonants, in ``[0.0, 1.0]``.
 

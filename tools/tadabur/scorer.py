@@ -99,6 +99,21 @@ BALANCED = ScoringParameters(
 )
 
 
+# Muraja's ``ScoringParameters.strict`` values: the tighter pass bar (0.75) with soft
+# pairs and shaddah suppression OFF (see FollowAlongTypes.swift). This is the mode the
+# fine-tune (ADR-0001) aims to let Muraja default to; the two-sided eval (#7) scores the
+# fixtures against it. In this score-only port ``match_ratio`` does not depend on
+# ``soft_pairs_enabled``/``shaddah_suppression`` (the Smith-Waterman score is mode-
+# independent), so strict differs from balanced purely in ``correct_threshold``; the
+# recall/discrimination shift between base and fine-tuned models therefore comes from the
+# *decode* changing, not the mode flags.
+STRICT = ScoringParameters(
+    correct_threshold=0.75,
+    soft_pairs_enabled=False,
+    shaddah_suppression=False,
+)
+
+
 @dataclass(frozen=True)
 class GateResult:
     """Outcome of the scorer gate for one (predicted, reference) pair.
@@ -198,3 +213,4 @@ class Scorer:
 
 
 BALANCED_SCORER = Scorer(BALANCED)
+STRICT_SCORER = Scorer(STRICT)

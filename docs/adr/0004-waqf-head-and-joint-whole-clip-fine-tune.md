@@ -9,6 +9,15 @@ reciter does **not** pause (wasl). A frame-level waqf signal, running in the *sa
 the phoneme head, lets the scorer tell waqf from wasl and pick the realized reference form — moving
 that tolerance out of a blunt hack and into the model, the same philosophy as ADR-0001.
 
+> **Scope note (Linux-only stage).** The current iteration runs entirely on **Linux + CUDA** and
+> ends at the trained/merged PyTorch **phoneme + waqf** checkpoint, validated by the event-level and
+> integration evals. **CoreML export is deferred to a later macOS stage** — the export decisions and
+> the "export supersedes #11" consequence below still stand as the future contract, but the export
+> slices (#36 / #38) are **closed for now** and re-opened when that stage begins. Where the text below
+> says "train, eval, and export", read the export leg as the deferred stage that must honour the same
+> frozen windowing contract; alignment that this stage "verifies through export" is verified in the
+> PyTorch eval now and re-verified at export later.
+
 ## Decision
 
 - **Add a waqf head that rides the adapter + CTC output.** A per-frame binary speech/silence head on

@@ -46,9 +46,12 @@
   .tl-track { position:relative; height:46px; background:#12151b; border:1px solid var(--line);
               border-radius:8px; cursor:pointer; overflow:hidden; }
   .tl-mark { position:absolute; top:0; bottom:0; min-width:2px; background:rgba(31,157,85,.28);
-             border-left:2px solid var(--waqf); border-right:2px solid var(--waqf); z-index:1; }
+             border-left:2px solid var(--waqf); border-right:2px solid var(--waqf); z-index:1;
+             cursor:pointer; }
   .tl-mark.wasl { background:rgba(79,140,255,.28); border-color:var(--wasl); }
   .tl-mark.mid_word_closure { background:rgba(214,69,65,.28); border-color:var(--closure); }
+  .tl-mark.ctx { opacity:.4; z-index:1; }
+  .tl-mark.active { opacity:1; z-index:2; }
   .tl-flag { position:absolute; top:3px; left:50%; transform:translateX(-50%); font-size:10px;
              color:var(--fg); background:#242a36; border:1px solid var(--line); padding:1px 7px;
              border-radius:10px; white-space:nowrap; pointer-events:none; }
@@ -75,10 +78,12 @@
   .ayah .w-mark { border-bottom:3px solid var(--waqf); border-radius:2px; padding:0 3px; }
   .ayah .w-mark.wasl { border-color:var(--wasl); }
   .ayah .w-mark.mid_word_closure { border-color:var(--closure); }
+  .ayah .w-mark.ctx { border-bottom-style:dotted; opacity:.55; }
   .ayah-mark { color:var(--waqf); font-size:.62em; vertical-align:middle; margin:0 5px;
                -webkit-text-stroke:0; }
   .ayah-mark.wasl { color:var(--wasl); }
   .ayah-mark.mid_word_closure { color:var(--closure); }
+  .ayah-mark.ctx { opacity:.4; }
   .wordnote { color:var(--muted); font-size:12px; margin:0 0 12px; }
   .nav { display:flex; justify-content:space-between; align-items:center; margin-top:16px; color:var(--muted); }
   kbd { font:11px monospace; background:#242a36; border:1px solid var(--line); border-bottom-width:2px;
@@ -231,14 +236,14 @@ function renderCard() {
         <span class="tag">boundary ${state.idx + 1} / ${items.length}</span>
       </div>
       <div class="sub">${esc(it.clip_id)} · boundary #${it.boundary_index}</div>
-      ${it.uthmani ? `<div class="ayah arabic">${renderAyah(it.uthmani, it.word_index, it.predicted)}</div>` : ""}
+      ${it.uthmani ? `<div class="ayah arabic">${renderAyah(it.uthmani, it.clip_boundaries, it.boundary_index)}</div>` : ""}
       <div class="wordnote">Candidate boundary falls after Uthmani word ${it.word_index},
-        at ${fmtTime(it.start_s)}–${fmtTime(it.end_s)} in the clip.</div>
+        at ${fmtTime(it.start_s)}–${fmtTime(it.end_s)} in the clip.${clipPointsNote(it)}</div>
       ${it.audio_available
         ? `<audio id="au" controls src="${it.audio_url}"></audio>
            <div class="timeline">
              <div class="tl-track" id="tltrack">
-               <div class="tl-mark ${it.predicted}" id="tlmark"><span class="tl-flag">predicted ${LABELS[it.predicted]}</span></div>
+               ${timelineMarks(it)}
                <div class="tl-play" id="tlplay"></div>
              </div>
              <div class="tl-labels">
@@ -248,7 +253,7 @@ function renderCard() {
              </div>
            </div>
            <div class="seek"><button onclick="seekBoundary()">▶ Play from boundary</button>
-             &nbsp; click the timeline to seek · did the reciter stop at the marker?</div>`
+             &nbsp; click a marker to hear it · did the reciter stop at the bright marker?</div>`
         : `<div class="warn">⚠ clip not staged — run tadabur.waqf_segments so this clip is in --audio-dir.</div>`}
       <div class="btns">
         <button class="waqf ${it.verdict==="waqf"?"on-waqf":""}" onclick="label('waqf')">Q · Waqf (stop)</button>
@@ -269,16 +274,59 @@ function renderCard() {
 
 function render() { renderSidebar(); renderCard(); }
 
-// Show the ayah with the candidate word underlined and a boundary marker inserted right
-// after it (visually to its left, RTL), coloured by the predicted class — so "after word
-// N" is where the reviewer actually reads it, not a number to count out by hand.
-function renderAyah(uthmani, wordIndex, predicted) {
+// All candidate boundaries for the current clip, with the active one first-choice per word.
+function boundariesOf(it) {
+  return (it.clip_boundaries && it.clip_boundaries.length)
+    ? it.clip_boundaries
+    : [{ boundary_index: it.boundary_index, word_index: it.word_index,
+         start_s: it.start_s, end_s: it.end_s, predicted: it.predicted }];
+}
+
+// Which boundaries to draw as context. Every word edge is a wasl candidate, so drawing
+// them all is noise; show only the clip's *stops* (waqf / mid-word-closure) plus whichever
+// boundary is being judged — that is what "multiple waqf points in this clip" means.
+const STOP_CLASSES = ["waqf", "mid_word_closure"];
+function contextBoundaries(it) {
+  return boundariesOf(it).filter(b =>
+    b.boundary_index === it.boundary_index || STOP_CLASSES.includes(b.predicted));
+}
+
+function clipPointsNote(it) {
+  const stops = boundariesOf(it).filter(b => STOP_CLASSES.includes(b.predicted)).length;
+  if (!stops) return "";
+  return ` <span style="color:var(--muted)">— ${stops} stop point${stops > 1 ? "s" : ""} ` +
+         `in this clip (bright = the one you're judging).</span>`;
+}
+
+// Show the ayah with the clip's stop boundaries marked after their word (plus the active
+// one): the active boundary bright, the rest dimmed (dotted), coloured by predicted class.
+function renderAyah(uthmani, boundaries, activeIdx) {
   const words = String(uthmani).split(/\s+/).filter(Boolean);
+  const it = { clip_boundaries: boundaries, boundary_index: activeIdx };
+  const shown = contextBoundaries(it);
+  const byWord = {};
+  shown.forEach(b => {
+    if (byWord[b.word_index] === undefined || b.boundary_index === activeIdx) byWord[b.word_index] = b;
+  });
   return words.map((w, i) => {
-    if (i !== wordIndex) return `<span>${esc(w)}</span>`;
-    return `<span class="w-mark ${predicted}">${esc(w)}</span>` +
-           `<span class="ayah-mark ${predicted}" title="predicted ${predicted} boundary">◆</span>`;
+    const b = byWord[i];
+    if (b === undefined) return `<span>${esc(w)}</span>`;
+    const active = b.boundary_index === activeIdx;
+    const dim = active ? "" : " ctx";
+    return `<span class="w-mark ${b.predicted}${dim}">${esc(w)}</span>` +
+           `<span class="ayah-mark ${b.predicted}${dim}" title="predicted ${b.predicted} boundary">◆</span>`;
   }).join(" ");
+}
+
+// Timeline marker divs — the clip's stop boundaries plus the active one; positioned in
+// setupTimeline once the clip duration is known. Active carries the flag, rest dimmed.
+function timelineMarks(it) {
+  return contextBoundaries(it).map(b => {
+    const active = b.boundary_index === it.boundary_index;
+    const flag = active ? `<span class="tl-flag">predicted ${LABELS[b.predicted]}</span>` : "";
+    return `<div class="tl-mark ${b.predicted} ${active ? "active" : "ctx"}" ` +
+           `data-start="${b.start_s}" data-end="${b.end_s == null ? b.start_s : b.end_s}">${flag}</div>`;
+  }).join("");
 }
 
 function fmtClock(s) {
@@ -296,20 +344,22 @@ function setupTimeline() {
   const it = items[state.idx];
   const a = document.getElementById("au");
   const track = document.getElementById("tltrack");
-  const mark = document.getElementById("tlmark");
   const play = document.getElementById("tlplay");
   const durEl = document.getElementById("tldur");
   const curEl = document.getElementById("tlcur");
-  if (!a || !track || !mark) return;
+  if (!a || !track) return;
+  const marks = Array.from(track.querySelectorAll(".tl-mark"));
 
   const place = () => {
     const d = a.duration;
     if (!d || !isFinite(d)) return;
     durEl.textContent = fmtClock(d);
-    const s = it.start_s == null ? 0 : it.start_s;
-    const e = it.end_s == null ? s : it.end_s;
-    mark.style.left = Math.max(0, Math.min(100, (s / d) * 100)) + "%";
-    mark.style.width = Math.max(0.6, ((e - s) / d) * 100) + "%";
+    marks.forEach(m => {
+      const s = parseFloat(m.dataset.start) || 0;
+      const e = parseFloat(m.dataset.end);
+      m.style.left = Math.max(0, Math.min(100, (s / d) * 100)) + "%";
+      m.style.width = Math.max(0.6, (((isFinite(e) ? e : s) - s) / d) * 100) + "%";
+    });
   };
   const tick = () => {
     const d = a.duration;
@@ -319,6 +369,13 @@ function setupTimeline() {
   };
   if (a.readyState >= 1) place(); else a.addEventListener("loadedmetadata", place, { once: true });
   a.ontimeupdate = tick;
+  // Click a marker to hear that boundary; click empty track to seek by position.
+  marks.forEach(m => m.addEventListener("click", ev => {
+    ev.stopPropagation();
+    const s = parseFloat(m.dataset.start) || 0;
+    a.currentTime = Math.max(0, s - 1.0);
+    a.play().catch(() => {});
+  }));
   track.onclick = ev => {
     const d = a.duration;
     if (!d || !isFinite(d)) return;

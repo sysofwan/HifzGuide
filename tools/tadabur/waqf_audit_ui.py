@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -59,6 +59,49 @@ def load_worklist(path: Path) -> list[WaqfCandidateItem]:
                 continue
             items.append(WaqfCandidateItem(**json.loads(line)))
     return items
+
+
+# One clip's full set of candidate boundaries, shown as context on the card so the reviewer
+# sees every waqf/wasl/closure point in the clip (dimmed) while judging the active one.
+BOUNDARY_CONTEXT_FIELDS = ("boundary_index", "word_index", "start_s", "end_s", "predicted")
+
+
+def _boundary_context(row: dict) -> dict[str, object]:
+    return {field: row[field] for field in BOUNDARY_CONTEXT_FIELDS}
+
+
+def clip_boundaries_from_candidates(path: Path) -> dict[str, list[dict[str, object]]]:
+    """Group *all* candidate boundaries (JSONL of ``WaqfCandidate``) by clip id.
+
+    Read from the full candidate manifest so a clip's boundaries that the sampler did not
+    draw into the worklist still show as context. Each clip's boundaries are ordered by
+    ``boundary_index``.
+    """
+    by_clip: dict[str, list[dict[str, object]]] = {}
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            by_clip.setdefault(row["clip_id"], []).append(_boundary_context(row))
+    for boundaries in by_clip.values():
+        boundaries.sort(key=lambda b: b["boundary_index"])
+    return by_clip
+
+
+def clip_boundaries_from_items(items: list[WaqfCandidateItem]) -> dict[str, list[dict[str, object]]]:
+    """Fallback per-clip boundary context built from the worklist itself.
+
+    Used when no full candidate manifest is supplied: shows the clip's boundaries that
+    *are* in the worklist (the sampled subset), still ordered by ``boundary_index``.
+    """
+    by_clip: dict[str, list[dict[str, object]]] = {}
+    for item in items:
+        by_clip.setdefault(item.clip_id, []).append(_boundary_context(asdict(item)))
+    for boundaries in by_clip.values():
+        boundaries.sort(key=lambda b: b["boundary_index"])
+    return by_clip
 
 
 @dataclass
@@ -160,6 +203,7 @@ def item_view(server: "WaqfAuditServer", item: WaqfCandidateItem) -> dict[str, o
         "start_s": item.start_s,
         "end_s": item.end_s,
         "predicted": item.predicted,
+        "clip_boundaries": server.clip_boundaries.get(item.clip_id, [_boundary_context(asdict(item))]),
         "audio_url": f"/audio/{item.local_audio_path}",
         "audio_available": (server.audio_dir / item.local_audio_path).is_file(),
         "verdict": server.store.verdict_of(key),
@@ -180,11 +224,16 @@ class WaqfAuditServer:
         uthmani: dict[str, str],
         store: WaqfEventStore,
         audio_dir: Path,
+        clip_boundaries: dict[str, list[dict[str, object]]] | None = None,
     ) -> None:
         self.items = items
         self.uthmani = uthmani
         self.store = store
         self.audio_dir = audio_dir
+        self.clip_boundaries = (
+            clip_boundaries if clip_boundaries is not None
+            else clip_boundaries_from_items(items)
+        )
         self._by_key: dict[BoundaryKey, WaqfCandidateItem] = {
             (i.clip_id, i.boundary_index): i for i in items
         }
@@ -263,6 +312,9 @@ def main() -> None:
     parser.add_argument("--worklist", type=Path, required=True, help="Sampler worklist (JSONL).")
     parser.add_argument("--audio-dir", type=Path, required=True,
                         help="Whole-clip staging dir from tadabur.waqf_segments (clips served by audio_filename).")
+    parser.add_argument("--candidates", type=Path, default=None,
+                        help="Full candidate manifest (tadabur.waqf_candidates) for per-clip boundary "
+                             "context; defaults to the worklist's own (sampled) boundaries.")
     parser.add_argument("--fixtures", type=Path, default=WAQF_EVENTS_PATH,
                         help="Waqf event-fixture file to write (default: canonical path).")
     parser.add_argument("--port", type=int, default=8000, help="Port to serve on (default: 8000).")
@@ -275,7 +327,10 @@ def main() -> None:
     items = load_worklist(args.worklist)
     store = WaqfEventStore.load(args.fixtures)
     uthmani = uthmani_index(args.quran_db, {i.surah_ayah for i in items})
-    server_state = WaqfAuditServer(items, uthmani, store, args.audio_dir)
+    clip_boundaries = (
+        clip_boundaries_from_candidates(args.candidates) if args.candidates is not None else None
+    )
+    server_state = WaqfAuditServer(items, uthmani, store, args.audio_dir, clip_boundaries)
 
     httpd = serve(_Handler, server_state, args.port, args.host)
     labelled = sum(1 for i in items if store.verdict_of((i.clip_id, i.boundary_index)))

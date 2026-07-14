@@ -127,6 +127,37 @@ def test_state_item_view_carries_boundary_context(tmp_path):
     assert server.state()["classes"] == [WAQF, WASL, MID_WORD_CLOSURE]
 
 
+def test_clip_boundaries_default_to_all_worklist_rows_of_the_clip(tmp_path):
+    # Two boundaries of clip "a" plus one of clip "b": each "a" card sees both "a" points.
+    items = [_item("a", 0, WAQF), _item("a", 1, WASL), _item("b", 0, WAQF)]
+    server = _server(tmp_path, items)
+    views = {(v["clip_id"], v["boundary_index"]): v for v in server.state()["items"]}
+    ctx = views[("a", 0)]["clip_boundaries"]
+    assert [b["boundary_index"] for b in ctx] == [0, 1]
+    assert [b["predicted"] for b in ctx] == [WAQF, WASL]
+    assert len(views[("b", 0)]["clip_boundaries"]) == 1
+
+
+def test_clip_boundaries_from_full_candidate_manifest(tmp_path):
+    # The worklist samples only boundary 1, but the candidate manifest holds 0/1/2.
+    from .waqf_audit_ui import clip_boundaries_from_candidates
+
+    candidates = tmp_path / "candidates.jsonl"
+    with open(candidates, "w", encoding="utf-8") as f:
+        for idx, predicted in [(2, WASL), (0, WAQF), (1, MID_WORD_CLOSURE)]:
+            f.write(json.dumps({
+                "clip_id": "a", "audio_ref": "a.wav", "surah_ayah": "2:5",
+                "boundary_index": idx, "word_index": idx, "start_s": float(idx),
+                "end_s": idx + 0.3, "predicted": predicted,
+            }) + "\n")
+    ctx_map = clip_boundaries_from_candidates(candidates)
+    store = WaqfEventStore.load(tmp_path / "waqf_events.jsonl")
+    server = WaqfAuditServer([_item("a", 1, MID_WORD_CLOSURE)], {}, store, tmp_path, ctx_map)
+    ctx = server.state()["items"][0]["clip_boundaries"]
+    assert [b["boundary_index"] for b in ctx] == [0, 1, 2]  # full clip, sorted, not just sampled
+
+
+
 def test_load_worklist_roundtrip(tmp_path):
     items = [_item("a", 0, WAQF), _item("a", 1, WASL)]
     path = tmp_path / "worklist.jsonl"

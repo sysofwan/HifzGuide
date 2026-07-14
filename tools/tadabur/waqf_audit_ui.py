@@ -36,7 +36,6 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from .audit_http import AuditHandler, serve
-from .audit_ui import DEFAULT_QURAN_DB, uthmani_index
 from .waqf_event_fixtures import (
     MID_WORD_CLOSURE,
     WAQF,
@@ -110,6 +109,21 @@ def load_clip_worklist(path: Path) -> list[str]:
                 seen.add(cid)
                 clips.append(cid)
     return clips
+
+
+def uthmani_words_index(surah_ayat: set[str]) -> dict[str, str]:
+    """Display Uthmani text keyed to the SAME tokenization ``word_index`` counts against.
+
+    Boundary ``word_index`` is defined over quran-transcript's ``Aya(...).uthmani_words``
+    — the token stream the segmentation pass indexed. quran.db's Uthmani instead carries
+    mushaf ornaments (e.g. the ۞ rub-el-hizb) as leading space-delimited tokens, so
+    rendering it would shift every waqf/closure marker one word off its stop. We build the
+    display string from those same ``uthmani_words``, space-joined, so a front-end split on
+    whitespace reproduces the exact index basis and markers land on the right word.
+    """
+    from .waqf_segments import _uthmani_words
+
+    return {sa: " ".join(_uthmani_words(sa)) for sa in surah_ayat}
 
 
 @dataclass
@@ -424,8 +438,6 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000, help="Port to serve on (default: 8000).")
     parser.add_argument("--host", default="127.0.0.1",
                         help="Interface to bind (default: 127.0.0.1; use 0.0.0.0 to expose on the LAN).")
-    parser.add_argument("--quran-db", type=Path, default=DEFAULT_QURAN_DB,
-                        help="quran.db for Uthmani ayah text (default: repo data/quran.db).")
     args = parser.parse_args()
     if not args.clips and not args.worklist:
         parser.error("one of --clips or --worklist is required to select the review clips")
@@ -436,7 +448,7 @@ def main() -> None:
     store = WaqfEventStore.load(args.fixtures)
     reviewed = ReviewedClipStore.load(reviewed_path_for(args.fixtures))
     surah_ayat = {rows[0]["surah_ayah"] for rows in selected.values() if rows}
-    uthmani = uthmani_index(args.quran_db, surah_ayat)
+    uthmani = uthmani_words_index(surah_ayat)
     server_state = WaqfAuditServer(clips, selected, uthmani, store, reviewed, args.audio_dir)
 
     httpd = serve(_Handler, server_state, args.port, args.host)

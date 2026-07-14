@@ -19,7 +19,7 @@ from .waqf_audit_ui import (
     WaqfAuditServer,
     WaqfEventStore,
     class_stats,
-    item_view,
+    clip_view,
     load_worklist,
 )
 from .waqf_segments import _save_local_clip
@@ -114,28 +114,44 @@ def test_class_stats_confusion(tmp_path):
     assert stats[MID_WORD_CLOSURE]["total"] == 0
 
 
-def test_state_item_view_carries_boundary_context(tmp_path):
+def test_state_groups_boundaries_into_one_page_per_clip(tmp_path):
     items = [_item("a", 2, MID_WORD_CLOSURE)]
     server = _server(tmp_path, items, uthmani={"2:5": "نص الآية"})
-    view = server.state()["items"][0]
-    assert view["clip_id"] == "a" and view["boundary_index"] == 2
-    assert view["predicted"] == MID_WORD_CLOSURE
-    assert view["word_index"] == 3 and view["start_s"] == 2.0
-    assert view["uthmani"] == "نص الآية"
-    assert view["audio_url"] == "/audio/aa_a"
-    assert view["audio_available"] is False
+    clips = server.state()["clips"]
+    assert len(clips) == 1
+    clip = clips[0]
+    assert clip["clip_id"] == "a" and clip["surah_ayah"] == "2:5"
+    assert clip["uthmani"] == "نص الآية"
+    assert clip["audio_url"] == "/audio/aa_a"
+    assert clip["audio_available"] is False
+    # The clip carries its boundaries as adjudication rows.
+    assert len(clip["judge"]) == 1
+    row = clip["judge"][0]
+    assert row["boundary_index"] == 2 and row["predicted"] == MID_WORD_CLOSURE
+    assert row["word_index"] == 3 and row["start_s"] == 2.0
     assert server.state()["classes"] == [WAQF, WASL, MID_WORD_CLOSURE]
 
 
-def test_clip_boundaries_default_to_all_worklist_rows_of_the_clip(tmp_path):
-    # Two boundaries of clip "a" plus one of clip "b": each "a" card sees both "a" points.
+def test_state_one_page_per_clip_bundles_all_clip_boundaries(tmp_path):
+    # Three sampled boundaries across two clips → two clip pages; clip "a" lists both its rows.
     items = [_item("a", 0, WAQF), _item("a", 1, WASL), _item("b", 0, WAQF)]
     server = _server(tmp_path, items)
-    views = {(v["clip_id"], v["boundary_index"]): v for v in server.state()["items"]}
-    ctx = views[("a", 0)]["clip_boundaries"]
+    clips = {c["clip_id"]: c for c in server.state()["clips"]}
+    assert set(clips) == {"a", "b"}
+    assert [j["boundary_index"] for j in clips["a"]["judge"]] == [0, 1]
+    assert [j["predicted"] for j in clips["a"]["judge"]] == [WAQF, WASL]
+    assert len(clips["b"]["judge"]) == 1
+
+
+def test_clip_boundaries_default_to_all_worklist_rows_of_the_clip(tmp_path):
+    # Absent a candidate manifest, a clip's stop-context markers are its own worklist rows.
+    items = [_item("a", 0, WAQF), _item("a", 1, WASL), _item("b", 0, WAQF)]
+    server = _server(tmp_path, items)
+    clips = {c["clip_id"]: c for c in server.state()["clips"]}
+    ctx = clips["a"]["clip_boundaries"]
     assert [b["boundary_index"] for b in ctx] == [0, 1]
     assert [b["predicted"] for b in ctx] == [WAQF, WASL]
-    assert len(views[("b", 0)]["clip_boundaries"]) == 1
+    assert len(clips["b"]["clip_boundaries"]) == 1
 
 
 def test_clip_boundaries_from_full_candidate_manifest(tmp_path):
@@ -153,7 +169,7 @@ def test_clip_boundaries_from_full_candidate_manifest(tmp_path):
     ctx_map = clip_boundaries_from_candidates(candidates)
     store = WaqfEventStore.load(tmp_path / "waqf_events.jsonl")
     server = WaqfAuditServer([_item("a", 1, MID_WORD_CLOSURE)], {}, store, tmp_path, ctx_map)
-    ctx = server.state()["items"][0]["clip_boundaries"]
+    ctx = server.state()["clips"][0]["clip_boundaries"]
     assert [b["boundary_index"] for b in ctx] == [0, 1, 2]  # full clip, sorted, not just sampled
 
 
@@ -192,7 +208,7 @@ def test_ui_audio_dir_is_populated_by_waqf_segments_staging(tmp_path):
     _save_local_clip(tmp_path, audio_ref, np.zeros(16, dtype=np.float32))
 
     server = WaqfAuditServer([item], {}, WaqfEventStore.load(tmp_path / "events.jsonl"), tmp_path)
-    view = item_view(server, item)
+    view = clip_view(server, item.clip_id, [item])
     assert view["audio_url"] == f"/audio/{audio_ref}"
     assert view["audio_available"] is True
     assert (tmp_path / item.local_audio_path).is_file()

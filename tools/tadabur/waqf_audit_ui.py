@@ -187,27 +187,45 @@ def class_stats(items: list[WaqfCandidateItem], store: WaqfEventStore) -> list[d
 
 
 def item_view(server: "WaqfAuditServer", item: WaqfCandidateItem) -> dict[str, object]:
-    """The JSON shape one candidate boundary is sent to the browser as.
+    """One worklist boundary as an adjudication row: its span, class, and current verdict.
 
-    Bundles the boundary's identity, its clip's Uthmani ayah text and audio URL, and
-    its clip time span so the UI can play the whole clip and seek to the boundary
-    before the reviewer calls waqf / wasl / mid-word-closure.
+    A row inside a clip page (see :func:`clip_view`); carries the boundary's identity and
+    time span so the reviewer can seek to it and call waqf / wasl / mid-word-closure, plus
+    the verdict/note already on file so the page resumes where they left off.
     """
     key = (item.clip_id, item.boundary_index)
     return {
         "clip_id": item.clip_id,
         "surah_ayah": item.surah_ayah,
-        "uthmani": server.uthmani.get(item.surah_ayah, ""),
         "boundary_index": item.boundary_index,
         "word_index": item.word_index,
         "start_s": item.start_s,
         "end_s": item.end_s,
         "predicted": item.predicted,
-        "clip_boundaries": server.clip_boundaries.get(item.clip_id, [_boundary_context(asdict(item))]),
-        "audio_url": f"/audio/{item.local_audio_path}",
-        "audio_available": (server.audio_dir / item.local_audio_path).is_file(),
         "verdict": server.store.verdict_of(key),
         "note": server.store.note_of(key),
+    }
+
+
+def clip_view(server: "WaqfAuditServer", clip_id: str, items: list[WaqfCandidateItem]) -> dict[str, object]:
+    """One clip page: its audio + ayah, the boundaries to adjudicate, and stop context.
+
+    ``judge`` is every worklist boundary in this clip — the rows the reviewer marks, ordered
+    by clip time. ``clip_boundaries`` is the clip's full candidate set (or the sampled subset
+    when no candidate manifest was given), from which the page draws the *stop* markers
+    (waqf / mid-word-closure) so the reviewer sees all pause points while playing the clip
+    once. Audio is served under the clip's staged filename.
+    """
+    first = items[0]
+    return {
+        "clip_id": clip_id,
+        "surah_ayah": first.surah_ayah,
+        "uthmani": server.uthmani.get(first.surah_ayah, ""),
+        "audio_url": f"/audio/{first.local_audio_path}",
+        "audio_available": (server.audio_dir / first.local_audio_path).is_file(),
+        "judge": [item_view(server, i) for i in sorted(items, key=lambda i: (i.start_s, i.boundary_index))],
+        "clip_boundaries": server.clip_boundaries.get(
+            clip_id, [_boundary_context(asdict(i)) for i in items]),
     }
 
 
@@ -237,11 +255,16 @@ class WaqfAuditServer:
         self._by_key: dict[BoundaryKey, WaqfCandidateItem] = {
             (i.clip_id, i.boundary_index): i for i in items
         }
+        # Clips in first-appearance order, each with its worklist boundaries.
+        self._clips: dict[str, list[WaqfCandidateItem]] = {}
+        for item in items:
+            self._clips.setdefault(item.clip_id, []).append(item)
 
     def state(self) -> dict[str, object]:
-        """The full UI payload: every boundary's view plus per-class stats."""
+        """The full UI payload: one page per clip, plus per-class stats."""
         return {
-            "items": [item_view(self, i) for i in self.items],
+            "clips": [clip_view(self, clip_id, clip_items)
+                      for clip_id, clip_items in self._clips.items()],
             "stats": class_stats(self.items, self.store),
             "classes": list(WAQF_EVENT_CLASSES),
         }

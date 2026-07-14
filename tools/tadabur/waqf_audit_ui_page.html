@@ -168,7 +168,7 @@
   <div class="sub">Assume the detector is right; mark only the exceptions. <b>Waqf</b> = true stop ·
     <b>Wasl</b> = no stop (continued) · <b>Closure</b> = mid-word qalqala/hamza silence.</div>
   <div id="overall" class="sub"></div>
-  <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideReviewed(this.checked)"> Hide reviewed clips</label>
+  <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideReviewed(this.checked)"> Hide handled clips (reviewed or flagged)</label>
   <h2>Corrections</h2>
   <div id="classes"></div>
   <h2>Flagged to revisit</h2>
@@ -211,6 +211,10 @@ function fmtClock(s) {
   return m + ":" + String(ss).padStart(2, "0");
 }
 function isStop(cls) { return STOPS.includes(cls); }
+// A clip is "handled" for the triage queue once it is either reviewed (confirmed into the
+// eval set) or flagged to revisit later — both drop it from the pending queue. Flagging does
+// NOT admit it to the eval set; it just parks it so triage can move on.
+function isHandled(c) { return c.reviewed || c.flagged; }
 
 function toggleDrawer(force) {
   const open = force === undefined ? !document.body.classList.contains("drawer-open") : force;
@@ -220,7 +224,7 @@ function toggleDrawer(force) {
 // ---- clip / word selection -----------------------------------------------------
 
 function visibleClips() {
-  return state.hideReviewed ? state.clips.filter(c => !c.reviewed) : state.clips;
+  return state.hideReviewed ? state.clips.filter(c => !isHandled(c)) : state.clips;
 }
 function currentClip() {
   const cs = visibleClips();
@@ -259,8 +263,10 @@ function boundaryKind(b) {
 
 function renderSidebar() {
   const s = state.stats;
+  const flaggedN = s.clips_flagged || 0;
+  const remaining = state.clips.filter(c => !isHandled(c)).length;
   document.getElementById("overall").textContent =
-    `${s.clips_reviewed || 0} / ${s.clips_total || 0} clips reviewed`;
+    `${s.clips_reviewed || 0} reviewed · ${flaggedN} flagged · ${remaining} left in queue`;
   document.getElementById("topprog").textContent = `${s.clips_reviewed || 0}/${s.clips_total || 0}`;
   const hl = document.getElementById("hidelabeled");
   if (hl) hl.checked = state.hideReviewed;
@@ -270,6 +276,7 @@ function renderSidebar() {
     <div class="class-row"><span class="name">Clips reviewed</span>
       <span class="pill">${s.clips_reviewed || 0}/${s.clips_total || 0}</span></div>
     <div class="bar"><i style="width:${s.clips_total ? (s.clips_reviewed / s.clips_total * 100) : 0}%"></i></div>
+    <div class="confusion">Flagged to revisit: ${flaggedN} · queue remaining: ${remaining}</div>
     <div class="confusion"><span class="bad">False positives: ${s.false_positive || 0}</span></div>
     <div class="confusion"><span class="bad">False negatives: ${s.false_negative || 0}</span></div>
     <div class="confusion">Class fixes (waqf↔closure): ${s.class_fix || 0}</div>`;
@@ -365,7 +372,7 @@ function renderCard() {
   if (!clips.length) {
     renderedClip = null;
     wrap.innerHTML = `<div class="empty">${state.hideReviewed
-      ? "All clips reviewed. 🎉" : "No clips to review."}</div>`;
+      ? "Triage queue clear — all clips reviewed or flagged. 🎉" : "No clips to review."}</div>`;
     return;
   }
   if (state.idx >= clips.length) state.idx = clips.length - 1;

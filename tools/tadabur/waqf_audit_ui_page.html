@@ -40,6 +40,22 @@
   audio { width:100%; margin:16px 0 6px; }
   .seek { color:var(--muted); font-size:12px; margin-bottom:10px; }
   .seek button { padding:5px 10px; font-size:12px; }
+  /* Clip timeline with the predicted-boundary marker so the reviewer sees *where* the
+     detector fired before judging, instead of scrubbing the raw audio bar blind. */
+  .timeline { margin:6px 0 12px; }
+  .tl-track { position:relative; height:46px; background:#12151b; border:1px solid var(--line);
+              border-radius:8px; cursor:pointer; overflow:hidden; }
+  .tl-mark { position:absolute; top:0; bottom:0; min-width:2px; background:rgba(31,157,85,.28);
+             border-left:2px solid var(--waqf); border-right:2px solid var(--waqf); z-index:1; }
+  .tl-mark.wasl { background:rgba(79,140,255,.28); border-color:var(--wasl); }
+  .tl-mark.mid_word_closure { background:rgba(214,69,65,.28); border-color:var(--closure); }
+  .tl-flag { position:absolute; top:3px; left:50%; transform:translateX(-50%); font-size:10px;
+             color:var(--fg); background:#242a36; border:1px solid var(--line); padding:1px 7px;
+             border-radius:10px; white-space:nowrap; pointer-events:none; }
+  .tl-play { position:absolute; top:0; bottom:0; width:2px; background:var(--mark); z-index:3; left:0; }
+  .tl-labels { display:flex; justify-content:space-between; color:var(--muted); font-size:11px;
+               margin-top:3px; font-variant-numeric:tabular-nums; }
+  .tl-labels .mid { color:var(--fg); }
   .btns { display:flex; gap:10px; margin:6px 0 14px; flex-wrap:wrap; }
   button { font:inherit; border:1px solid var(--line); background:#20252f; color:var(--fg);
            padding:10px 16px; border-radius:8px; cursor:pointer; }
@@ -56,6 +72,13 @@
   .warn { color:var(--closure); font-size:12px; margin:8px 0; }
   .ayah { font-size:30px; line-height:1.9; text-align:right; direction:rtl; margin:6px 0 4px;
           padding:12px 14px; background:#12151b; border:1px solid var(--line); border-radius:8px; }
+  .ayah .w-mark { border-bottom:3px solid var(--waqf); border-radius:2px; padding:0 3px; }
+  .ayah .w-mark.wasl { border-color:var(--wasl); }
+  .ayah .w-mark.mid_word_closure { border-color:var(--closure); }
+  .ayah-mark { color:var(--waqf); font-size:.62em; vertical-align:middle; margin:0 5px;
+               -webkit-text-stroke:0; }
+  .ayah-mark.wasl { color:var(--wasl); }
+  .ayah-mark.mid_word_closure { color:var(--closure); }
   .wordnote { color:var(--muted); font-size:12px; margin:0 0 12px; }
   .nav { display:flex; justify-content:space-between; align-items:center; margin-top:16px; color:var(--muted); }
   kbd { font:11px monospace; background:#242a36; border:1px solid var(--line); border-bottom-width:2px;
@@ -208,13 +231,24 @@ function renderCard() {
         <span class="tag">boundary ${state.idx + 1} / ${items.length}</span>
       </div>
       <div class="sub">${esc(it.clip_id)} · boundary #${it.boundary_index}</div>
-      ${it.uthmani ? `<div class="ayah arabic">${esc(it.uthmani)}</div>` : ""}
+      ${it.uthmani ? `<div class="ayah arabic">${renderAyah(it.uthmani, it.word_index, it.predicted)}</div>` : ""}
       <div class="wordnote">Candidate boundary falls after Uthmani word ${it.word_index},
         at ${fmtTime(it.start_s)}–${fmtTime(it.end_s)} in the clip.</div>
       ${it.audio_available
         ? `<audio id="au" controls src="${it.audio_url}"></audio>
+           <div class="timeline">
+             <div class="tl-track" id="tltrack">
+               <div class="tl-mark ${it.predicted}" id="tlmark"><span class="tl-flag">predicted ${LABELS[it.predicted]}</span></div>
+               <div class="tl-play" id="tlplay"></div>
+             </div>
+             <div class="tl-labels">
+               <span id="tlcur">0:00</span>
+               <span class="mid">◆ boundary ${fmtTime(it.start_s)}${it.end_s > it.start_s ? "–" + fmtTime(it.end_s) : ""}</span>
+               <span id="tldur">0:00</span>
+             </div>
+           </div>
            <div class="seek"><button onclick="seekBoundary()">▶ Play from boundary</button>
-             &nbsp; then judge: did the reciter stop here?</div>`
+             &nbsp; click the timeline to seek · did the reciter stop at the marker?</div>`
         : `<div class="warn">⚠ clip not staged — run tadabur.waqf_segments so this clip is in --audio-dir.</div>`}
       <div class="btns">
         <button class="waqf ${it.verdict==="waqf"?"on-waqf":""}" onclick="label('waqf')">Q · Waqf (stop)</button>
@@ -230,9 +264,69 @@ function renderCard() {
       </div>
     </div>`;
   seekBoundary();
+  setupTimeline();
 }
 
 function render() { renderSidebar(); renderCard(); }
+
+// Show the ayah with the candidate word underlined and a boundary marker inserted right
+// after it (visually to its left, RTL), coloured by the predicted class — so "after word
+// N" is where the reviewer actually reads it, not a number to count out by hand.
+function renderAyah(uthmani, wordIndex, predicted) {
+  const words = String(uthmani).split(/\s+/).filter(Boolean);
+  return words.map((w, i) => {
+    if (i !== wordIndex) return `<span>${esc(w)}</span>`;
+    return `<span class="w-mark ${predicted}">${esc(w)}</span>` +
+           `<span class="ayah-mark ${predicted}" title="predicted ${predicted} boundary">◆</span>`;
+  }).join(" ");
+}
+
+function fmtClock(s) {
+  if (s == null || !isFinite(s)) return "0:00";
+  const m = Math.floor(s / 60), ss = Math.floor(s % 60);
+  return m + ":" + String(ss).padStart(2, "0");
+}
+
+// Draw the predicted-boundary marker and a live playhead over a clip-duration timeline,
+// so the reviewer sees exactly where the detector fired (and can click to seek there)
+// rather than judging off the bare audio scrubber.
+function setupTimeline() {
+  const items = visibleItems();
+  if (!items.length) return;
+  const it = items[state.idx];
+  const a = document.getElementById("au");
+  const track = document.getElementById("tltrack");
+  const mark = document.getElementById("tlmark");
+  const play = document.getElementById("tlplay");
+  const durEl = document.getElementById("tldur");
+  const curEl = document.getElementById("tlcur");
+  if (!a || !track || !mark) return;
+
+  const place = () => {
+    const d = a.duration;
+    if (!d || !isFinite(d)) return;
+    durEl.textContent = fmtClock(d);
+    const s = it.start_s == null ? 0 : it.start_s;
+    const e = it.end_s == null ? s : it.end_s;
+    mark.style.left = Math.max(0, Math.min(100, (s / d) * 100)) + "%";
+    mark.style.width = Math.max(0.6, ((e - s) / d) * 100) + "%";
+  };
+  const tick = () => {
+    const d = a.duration;
+    if (!d || !isFinite(d)) return;
+    play.style.left = (a.currentTime / d) * 100 + "%";
+    curEl.textContent = fmtClock(a.currentTime);
+  };
+  if (a.readyState >= 1) place(); else a.addEventListener("loadedmetadata", place, { once: true });
+  a.ontimeupdate = tick;
+  track.onclick = ev => {
+    const d = a.duration;
+    if (!d || !isFinite(d)) return;
+    const r = track.getBoundingClientRect();
+    a.currentTime = Math.max(0, Math.min(d, ((ev.clientX - r.left) / r.width) * d));
+    a.play().catch(() => {});
+  };
+}
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c =>

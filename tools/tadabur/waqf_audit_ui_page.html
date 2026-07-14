@@ -91,6 +91,21 @@
   .ayah-mark.added::after { content:"+"; font-size:.7em; vertical-align:super; color:var(--mark); }
   .wordnote { color:var(--muted); font-size:12px; margin:0 0 12px; }
   .nav { display:flex; justify-content:space-between; align-items:center; margin-top:16px; color:var(--muted); }
+  /* Flag-to-revisit: a personal bookmark with a comment, independent of the eval set. */
+  .flagrow { display:flex; gap:10px; align-items:center; margin-top:12px; padding:10px;
+             border:1px dashed var(--line); border-radius:8px; }
+  .flagrow.on { border-color:var(--mark); background:rgba(246,199,68,.06); }
+  .flagbtn { padding:7px 12px; font-size:13px; background:#242a36; color:var(--fg);
+             border:1px solid var(--line); border-radius:6px; cursor:pointer; white-space:nowrap; }
+  .flagbtn.on { background:var(--mark); color:#20160a; border-color:var(--mark); font-weight:600; }
+  .flaginput { flex:1; min-width:0; padding:7px 10px; font-size:13px; background:#12151b;
+               color:var(--fg); border:1px solid var(--line); border-radius:6px; }
+  .tag.flagtag { color:#20160a; background:var(--mark); font-weight:600; }
+  .flagitem { padding:7px 9px; margin:4px 0; background:#12151b; border:1px solid var(--line);
+              border-left:3px solid var(--mark); border-radius:6px; cursor:pointer; font-size:12px; }
+  .flagitem:hover { background:#1c2028; }
+  .flagitem-ref { color:var(--mark); font-weight:600; }
+  .flagitem-note { color:var(--muted); margin-top:2px; word-break:break-word; }
   kbd { font:11px monospace; background:#242a36; border:1px solid var(--line); border-bottom-width:2px;
         border-radius:4px; padding:1px 5px; }
   .legend { color:var(--muted); font-size:12px; margin-top:18px; line-height:1.9; }
@@ -156,6 +171,8 @@
   <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideReviewed(this.checked)"> Hide reviewed clips</label>
   <h2>Corrections</h2>
   <div id="classes"></div>
+  <h2>Flagged to revisit</h2>
+  <div id="flagged"></div>
   <div class="legend">
     <div>One page per clip — play it once. Every VAD stop is pre-marked; every other word is
       assumed wasl. Only record what's wrong:</div>
@@ -163,7 +180,7 @@
     <div><b>False negative</b> — focus a plain word where the reciter stopped, press <kbd>Q</kbd>.</div>
     <div><kbd>Q</kbd> waqf · <kbd>W</kbd> wasl · <kbd>C</kbd> closure · <kbd>U</kbd> reset to predicted</div>
     <div><kbd>←</kbd>/<kbd>→</kbd> focus word · <kbd>↑</kbd>/<kbd>↓</kbd> prev/next stop · <kbd>[</kbd>/<kbd>]</kbd> prev/next clip</div>
-    <div><kbd>Enter</kbd> mark clip reviewed · <kbd>Space</kbd> hear focused word</div>
+    <div><kbd>Enter</kbd> mark clip reviewed · <kbd>F</kbd> flag to revisit · <kbd>Space</kbd> hear focused word</div>
   </div>
 </aside>
 <main>
@@ -256,6 +273,24 @@ function renderSidebar() {
     <div class="confusion"><span class="bad">False positives: ${s.false_positive || 0}</span></div>
     <div class="confusion"><span class="bad">False negatives: ${s.false_negative || 0}</span></div>
     <div class="confusion">Class fixes (waqf↔closure): ${s.class_fix || 0}</div>`;
+
+  renderFlaggedList();
+}
+
+// The revisit list: every flagged clip, its comment, and a click to jump straight to it.
+function renderFlaggedList() {
+  const box = document.getElementById("flagged");
+  if (!box) return;
+  const flagged = state.clips.filter(c => c.flagged);
+  if (!flagged.length) {
+    box.innerHTML = `<div class="sub">None flagged. Press <kbd>F</kbd> on a clip to bookmark it.</div>`;
+    return;
+  }
+  box.innerHTML = flagged.map(c => `
+    <div class="flagitem" onclick="jumpToClip('${esc(c.clip_id)}')" title="${esc(c.clip_id)}">
+      <div class="flagitem-ref">⚑ ${esc(c.surah_ayah || "?:?")}</div>
+      ${c.flag_comment ? `<div class="flagitem-note">${esc(c.flag_comment)}</div>` : ""}
+    </div>`).join("");
 }
 
 function renderAyah(clip) {
@@ -353,6 +388,7 @@ function renderCard() {
         <span class="tag">clip ${state.idx + 1} / ${clips.length}</span>
         <span class="tag">${stops} stop${stops === 1 ? "" : "s"} · ${edits} correction${edits === 1 ? "" : "s"}</span>
         ${clip.reviewed ? `<span class="tag pred-waqf">reviewed ✓</span>` : ""}
+        ${clip.flagged ? `<span class="tag flagtag">flagged ⚑</span>` : ""}
       </div>
       <div class="sub">${esc(clip.clip_id)}</div>
       ${clip.uthmani ? `<div class="ayah arabic">${renderAyah(clip)}</div>` : `<div class="warn">No Uthmani text for ${esc(clip.surah_ayah)}.</div>`}
@@ -382,6 +418,13 @@ function renderCard() {
         <button class="reviewbtn ${clip.reviewed ? "done" : ""}" onclick="toggleReviewed()">
           ${clip.reviewed ? "Reviewed ✓ (click to undo)" : "Mark clip reviewed ⏎"}</button>
         <button class="ghost" onclick="goClip(1)">Next clip →</button>
+      </div>
+      <div class="flagrow ${clip.flagged ? "on" : ""}">
+        <button class="flagbtn ${clip.flagged ? "on" : ""}" onclick="toggleFlag()">
+          ${clip.flagged ? "⚑ Flagged — click to clear" : "⚑ Flag to revisit (F)"}</button>
+        <input id="flagcomment" class="flaginput" placeholder="comment — why revisit this clip?"
+          value="${esc(clip.flag_comment || "")}" onkeydown="if(event.key==='Enter'){event.preventDefault();saveFlag(true);}"
+          onblur="if(currentClip()&&currentClip().flagged)saveFlag(true)">
       </div>
     </div>`;
 
@@ -514,14 +557,49 @@ async function toggleReviewed() {
   if (clip.reviewed) { render(); goClip(1); } else { render(); }
 }
 
+// Flag the current clip for a later revisit (a personal bookmark, independent of the eval
+// set). ``flagged`` sets/clears the flag; the comment box travels with it.
+async function saveFlag(flagged) {
+  const clip = currentClip();
+  if (!clip) return;
+  const input = document.getElementById("flagcomment");
+  const comment = input ? input.value : (clip.flag_comment || "");
+  const res = await api("/api/flag", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clip_id: clip.clip_id, flagged, comment }),
+  });
+  if (res.error) { alert(res.error); return; }
+  clip.flagged = flagged;
+  clip.flag_comment = flagged ? comment : "";
+  state.stats = res.stats;
+  render();
+}
+
+function toggleFlag() {
+  const clip = currentClip();
+  if (!clip) return;
+  saveFlag(!clip.flagged);
+}
+
+// Jump straight to a flagged clip from the sidebar list, revealing it if reviewed-clips
+// are hidden.
+function jumpToClip(clipId) {
+  let vis = visibleClips();
+  let i = vis.findIndex(c => c.clip_id === clipId);
+  if (i < 0 && state.hideReviewed) { setHideReviewed(false); vis = visibleClips(); i = vis.findIndex(c => c.clip_id === clipId); }
+  if (i < 0) return;
+  state.idx = i; state.focus = null; render();
+}
+
 document.addEventListener("keydown", e => {
-  if (e.target.tagName === "TEXTAREA") return;
+  if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
   const clip = currentClip();
   const k = e.key.toLowerCase();
   if (clip && state.focus != null && k === "q") { labelFocus("waqf"); e.preventDefault(); }
   else if (clip && state.focus != null && k === "w") { labelFocus("wasl"); e.preventDefault(); }
   else if (clip && state.focus != null && k === "c") { labelFocus("mid_word_closure"); e.preventDefault(); }
   else if (clip && state.focus != null && k === "u") { labelFocus(null); e.preventDefault(); }
+  else if (clip && k === "f") { toggleFlag(); e.preventDefault(); }
   else if (e.key === "ArrowRight") { moveFocus(1, false); e.preventDefault(); }
   else if (e.key === "ArrowLeft") { moveFocus(-1, false); e.preventDefault(); }
   else if (e.key === "ArrowDown") { moveFocus(1, true); e.preventDefault(); }

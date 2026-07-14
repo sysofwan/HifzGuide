@@ -44,6 +44,7 @@ tools/tadabur/audit_run/
 
 # Local waqf-audit review state (per-reviewer, not source-of-truth)
 tools/tadabur/waqf_event_fixtures/waqf_reviewed_clips.json
+tools/tadabur/waqf_event_fixtures/waqf_flagged_clips.json
 
 # Local agent scratch file
 .copilot-scratch

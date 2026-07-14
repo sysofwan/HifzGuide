@@ -187,6 +187,11 @@ def reviewed_path_for(fixtures: Path) -> Path:
     return fixtures.with_name("waqf_reviewed_clips.json")
 
 
+def flagged_path_for(fixtures: Path) -> Path:
+    """Sibling file that records clips flagged for a later revisit (beside the fixtures JSONL)."""
+    return fixtures.with_name("waqf_flagged_clips.json")
+
+
 @dataclass
 class ReviewedClipStore:
     """Which clips the reviewer has confirmed reviewed end-to-end.
@@ -222,6 +227,45 @@ class ReviewedClipStore:
         self.path.write_text(json.dumps(payload, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+@dataclass
+class FlaggedClipStore:
+    """Clips the reviewer flagged to revisit later, each with a free-text comment.
+
+    Independent of the reviewed/override state: flagging is a personal "come back to this"
+    bookmark (an unclear stop, ambiguous audio, a suspected data issue) and does not affect
+    the eval set. Persisted as ``{clip_id: comment}`` beside the fixtures so flags survive a
+    restart. An empty comment is allowed; flagging with a blank comment still bookmarks the clip.
+    """
+
+    path: Path
+    comments: dict[str, str]
+
+    @classmethod
+    def load(cls, path: Path) -> "FlaggedClipStore":
+        comments: dict[str, str] = {}
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8") or "{}")
+            comments = dict(data.get("flagged", {}))
+        return cls(path, comments)
+
+    def is_flagged(self, clip_id: str) -> bool:
+        return clip_id in self.comments
+
+    def comment_of(self, clip_id: str) -> str:
+        return self.comments.get(clip_id, "")
+
+    def set_flagged(self, clip_id: str, flagged: bool, comment: str = "") -> None:
+        if flagged:
+            self.comments[clip_id] = comment
+        else:
+            self.comments.pop(clip_id, None)
+        self._persist()
+
+    def _persist(self) -> None:
+        payload = {"flagged": {c: self.comments[c] for c in sorted(self.comments)}}
+        self.path.write_text(json.dumps(payload, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def review_stats(server: "WaqfAuditServer") -> dict[str, int]:
     """Clip-review progress plus the correction tallies ADR-0004's eval reads.
 
@@ -245,6 +289,7 @@ def review_stats(server: "WaqfAuditServer") -> dict[str, int]:
     return {
         "clips_total": len(server.clips),
         "clips_reviewed": sum(1 for c in server.clips if server.reviewed.is_reviewed(c)),
+        "clips_flagged": sum(1 for c in server.clips if server.flagged.is_flagged(c)),
         "false_positive": fp,
         "false_negative": fn,
         "class_fix": class_fix,
@@ -296,6 +341,8 @@ def clip_view(server: "WaqfAuditServer", clip_id: str) -> dict[str, object]:
         "audio_url": f"/audio/{audio_ref}",
         "audio_available": (server.audio_dir / audio_ref).is_file(),
         "reviewed": server.reviewed.is_reviewed(clip_id),
+        "flagged": server.flagged.is_flagged(clip_id),
+        "flag_comment": server.flagged.comment_of(clip_id),
         "boundaries": boundaries,
     }
 
@@ -315,12 +362,14 @@ class WaqfAuditServer:
         store: WaqfEventStore,
         reviewed: ReviewedClipStore,
         audio_dir: Path,
+        flagged: FlaggedClipStore | None = None,
     ) -> None:
         self.clips = clips
         self.candidates_by_clip = candidates_by_clip
         self.uthmani = uthmani
         self.store = store
         self.reviewed = reviewed
+        self.flagged = flagged if flagged is not None else FlaggedClipStore(Path(), {})
         self.audio_dir = audio_dir
         self._boundary_rows: dict[BoundaryKey, dict] = {
             (cid, r["boundary_index"]): r
@@ -376,10 +425,23 @@ class WaqfAuditServer:
         self.reviewed.set_reviewed(clip_id, bool(payload.get("reviewed", True)))
         return {"stats": review_stats(self)}
 
+    def apply_flag(self, payload: dict) -> dict[str, object]:
+        """Flag (or clear) a clip for a later revisit, with an optional free-text comment.
+
+        Independent of review/override state — a personal bookmark that never affects the eval
+        set. ``flagged=False`` clears the flag and its comment; the comment defaults to blank.
+        """
+        clip_id = payload["clip_id"]
+        if clip_id not in self.candidates_by_clip:
+            raise KeyError(f"unknown clip {clip_id!r}")
+        flagged = bool(payload.get("flagged", True))
+        self.flagged.set_flagged(clip_id, flagged, str(payload.get("comment", "")))
+        return {"stats": review_stats(self), "clip": clip_view(self, clip_id)}
+
 
 
 class _Handler(AuditHandler):
-    """Routes ``/`` (page), ``/api/state``, ``/api/label``, ``/api/review`` and ``/audio/<file>``."""
+    """Routes ``/`` (page), ``/api/state``, ``/api/label``, ``/api/review``, ``/api/flag`` and ``/audio/<file>``."""
 
     state: WaqfAuditServer  # bound onto the subclass by serve()
 
@@ -396,7 +458,11 @@ class _Handler(AuditHandler):
 
     def do_POST(self) -> None:
         path = unquote(urlparse(self.path).path)
-        handlers = {"/api/label": self.state.apply_label, "/api/review": self.state.apply_review}
+        handlers = {
+            "/api/label": self.state.apply_label,
+            "/api/review": self.state.apply_review,
+            "/api/flag": self.state.apply_flag,
+        }
         handler = handlers.get(path)
         if handler is None:
             self.send_json({"error": "not found"}, status=404)
@@ -447,15 +513,17 @@ def main() -> None:
     selected = {c: candidates_by_clip[c] for c in clips}
     store = WaqfEventStore.load(args.fixtures)
     reviewed = ReviewedClipStore.load(reviewed_path_for(args.fixtures))
+    flagged = FlaggedClipStore.load(flagged_path_for(args.fixtures))
     surah_ayat = {rows[0]["surah_ayah"] for rows in selected.values() if rows}
     uthmani = uthmani_words_index(surah_ayat)
-    server_state = WaqfAuditServer(clips, selected, uthmani, store, reviewed, args.audio_dir)
+    server_state = WaqfAuditServer(clips, selected, uthmani, store, reviewed, args.audio_dir, flagged)
 
     httpd = serve(_Handler, server_state, args.port, args.host)
     n_bounds = sum(len(rows) for rows in selected.values())
     n_reviewed = sum(1 for c in clips if reviewed.is_reviewed(c))
+    n_flagged = sum(1 for c in clips if flagged.is_flagged(c))
     print(f"Loaded {len(clips)} review clips ({n_bounds} candidate boundaries; "
-          f"{n_reviewed} already reviewed); {len(uthmani)} ayat with Uthmani text.")
+          f"{n_reviewed} already reviewed, {n_flagged} flagged); {len(uthmani)} ayat with Uthmani text.")
     print(f"Waqf audit UI on http://{args.host}:{args.port}  (Ctrl-C to stop)")
     try:
         httpd.serve_forever()

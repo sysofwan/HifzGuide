@@ -72,6 +72,12 @@ ground truth for a clip is `predicted ⊕ overrides`. A clip must be explicitly 
 from "never seen". Reviewed clip ids persist in a sibling `waqf_reviewed_clips.json`
 next to the fixtures file, so the per-line event schema stays unchanged.
 
+The reviewer can also **flag** a clip to revisit later (an unclear stop, ambiguous
+audio, a suspected data issue) with a free-text comment — press `F` or use the "Flag to
+revisit" button. Flags are a personal bookmark that never affects the eval set; they
+persist in a sibling `waqf_flagged_clips.json` (`{clip_id: comment}`) and are listed in
+the sidebar for quick jump-back. Both sibling state files are per-reviewer and git-ignored.
+
 The UI plays whole clips from `--audio-dir`, which is the staging directory
 `tadabur.waqf_segments` already wrote (each clip under its `audio_filename` — the same
 16 kHz clips the VAD/segmentation pass analysed to propose the candidates). No

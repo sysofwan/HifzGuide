@@ -16,10 +16,12 @@ import pytest
 from .audit_http import sniff_audio_content_type
 from .waqf_event_fixtures import MID_WORD_CLOSURE, WAQF, WASL, load_waqf_events
 from .waqf_audit_ui import (
+    FlaggedClipStore,
     ReviewedClipStore,
     WaqfAuditServer,
     WaqfEventStore,
     boundary_view,
+    flagged_path_for,
     load_candidates_by_clip,
     load_clip_worklist,
     review_stats,
@@ -37,11 +39,12 @@ def _cand(clip, idx, predicted=WASL, surah_ayah="2:5"):
     }
 
 
-def _server(tmp_path, by_clip, uthmani=None, reviewed=None):
+def _server(tmp_path, by_clip, uthmani=None, reviewed=None, flagged=None):
     store = WaqfEventStore.load(tmp_path / "waqf_events.jsonl")
     rev = ReviewedClipStore(tmp_path / "waqf_reviewed_clips.json", set(reviewed or []))
+    flag = FlaggedClipStore(tmp_path / "waqf_flagged_clips.json", dict(flagged or {}))
     clips = list(by_clip.keys())
-    return WaqfAuditServer(clips, by_clip, uthmani or {}, store, rev, tmp_path)
+    return WaqfAuditServer(clips, by_clip, uthmani or {}, store, rev, tmp_path, flag)
 
 
 def test_sniff_shared_helper_reachable():
@@ -195,6 +198,46 @@ def test_load_candidates_by_clip_and_clip_worklist(tmp_path):
 
 def test_reviewed_path_is_beside_fixtures(tmp_path):
     assert reviewed_path_for(tmp_path / "waqf_events.jsonl") == tmp_path / "waqf_reviewed_clips.json"
+
+
+def test_flag_stores_comment_persists_and_exposes_in_clip_view(tmp_path):
+    server = _server(tmp_path, {"a": [_cand("a", 0, WAQF)], "b": [_cand("b", 0, WAQF)]})
+    out = server.apply_flag({"clip_id": "a", "flagged": True, "comment": "unclear stop"})
+    assert out["stats"]["clips_flagged"] == 1
+    assert out["clip"]["flagged"] is True and out["clip"]["flag_comment"] == "unclear stop"
+    # Surfaced in the full state payload for the clip page.
+    clip_a = server.state()["clips"][0]
+    assert clip_a["flagged"] is True and clip_a["flag_comment"] == "unclear stop"
+    # Persisted to the sibling file and reloadable.
+    reloaded = FlaggedClipStore.load(tmp_path / "waqf_flagged_clips.json")
+    assert reloaded.is_flagged("a") and reloaded.comment_of("a") == "unclear stop"
+    assert not reloaded.is_flagged("b")
+
+
+def test_flag_is_independent_of_reviewed_and_clears(tmp_path):
+    server = _server(tmp_path, {"a": [_cand("a", 0, WAQF)]})
+    server.apply_flag({"clip_id": "a", "flagged": True, "comment": "check tashkeel"})
+    server.apply_review({"clip_id": "a", "reviewed": True})
+    stats = review_stats(server)
+    assert stats["clips_flagged"] == 1 and stats["clips_reviewed"] == 1  # orthogonal
+    # Clearing the flag drops the comment but leaves reviewed untouched.
+    server.apply_flag({"clip_id": "a", "flagged": False})
+    assert review_stats(server)["clips_flagged"] == 0
+    assert server.reviewed.is_reviewed("a")
+    assert not FlaggedClipStore.load(tmp_path / "waqf_flagged_clips.json").is_flagged("a")
+    with pytest.raises(KeyError):
+        server.apply_flag({"clip_id": "ghost", "flagged": True})
+
+
+def test_flag_allows_blank_comment(tmp_path):
+    server = _server(tmp_path, {"a": [_cand("a", 0, WAQF)]})
+    out = server.apply_flag({"clip_id": "a"})  # flagged defaults True, comment blank
+    assert out["stats"]["clips_flagged"] == 1
+    assert out["clip"]["flagged"] is True and out["clip"]["flag_comment"] == ""
+
+
+def test_flagged_path_is_beside_fixtures(tmp_path):
+    assert flagged_path_for(tmp_path / "waqf_events.jsonl") == tmp_path / "waqf_flagged_clips.json"
 
 
 def test_ui_audio_dir_is_populated_by_waqf_segments_staging(tmp_path):

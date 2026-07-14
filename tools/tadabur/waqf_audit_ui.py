@@ -9,15 +9,18 @@ a genuine **wasl**; the reviewer calls each, and the verdict is persisted straig
 into the canonical waqf event-fixture JSONL (:mod:`tadabur.waqf_event_fixtures`), so
 the UI resumes from — and is interchangeable with — whatever that file already holds.
 
-Each worklist row ``(clip_id, boundary_index)`` is one adjudication unit and one
-fixture line. The clip's Uthmani ayah text (which the worklist omits) is recovered
-from ``quran.db`` for context, and the clip audio is served from ``--audio-dir`` —
-the whole-clip staging directory :mod:`tadabur.waqf_segments` writes, where each clip
-already lives under its raw ``audio_filename`` (the row's ``local_audio_path``).
+Each **clip** is one review unit. Its Uthmani ayah text (which the manifest omits) is
+recovered from ``quran.db`` for context, and the clip audio is served from ``--audio-dir``
+— the whole-clip staging directory :mod:`tadabur.waqf_segments` writes, where each clip
+already lives under its raw ``audio_filename`` (the candidate's ``audio_ref``). Assume-correct
+by default: every boundary keeps its VAD-derived ``predicted`` class unless the reviewer
+overrides it (a false positive → ``wasl``, a false negative → a stop). Only overrides are
+persisted (:mod:`tadabur.waqf_event_fixtures`), plus a per-clip *reviewed* flag; ground truth
+for the eval is each reviewed clip's predicted labels ⊕ those corrections.
 
 Usage:
-  python -m tadabur.waqf_audit_ui --worklist waqf_worklist.jsonl \\
-    --audio-dir clips/ [--port 8000] [--host 0.0.0.0]
+  python -m tadabur.waqf_audit_ui --candidates waqf_candidates.jsonl \\
+    --clips waqf_clip_worklist.jsonl --audio-dir clips/ [--port 8000] [--host 0.0.0.0]
 
   ``--audio-dir`` is the same directory ``tadabur.waqf_segments`` staged the whole
   passing clips into (the audio the VAD/segmentation pass analysed to propose these
@@ -28,15 +31,18 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from .audit_http import AuditHandler, serve
 from .audit_ui import DEFAULT_QURAN_DB, uthmani_index
 from .waqf_event_fixtures import (
+    MID_WORD_CLOSURE,
+    WAQF,
     WAQF_EVENT_CLASSES,
     WAQF_EVENTS_PATH,
+    WASL,
     WaqfEventEntry,
     load_waqf_events,
     write_waqf_events,
@@ -60,58 +66,62 @@ def load_worklist(path: Path) -> list[WaqfCandidateItem]:
             items.append(WaqfCandidateItem(**json.loads(line)))
     return items
 
+# ---- assumed-correct baseline: the full candidate manifest ---------------------
 
-# One clip's full set of candidate boundaries, shown as context on the card so the reviewer
-# sees every waqf/wasl/closure point in the clip (dimmed) while judging the active one.
-BOUNDARY_CONTEXT_FIELDS = ("boundary_index", "word_index", "start_s", "end_s", "predicted")
+def load_candidates_by_clip(path: Path) -> dict[str, list[dict]]:
+    """Group the full candidate manifest (JSONL of ``WaqfCandidate`` rows) by clip id.
 
-
-def _boundary_context(row: dict) -> dict[str, object]:
-    return {field: row[field] for field in BOUNDARY_CONTEXT_FIELDS}
-
-
-def clip_boundaries_from_candidates(path: Path) -> dict[str, list[dict[str, object]]]:
-    """Group *all* candidate boundaries (JSONL of ``WaqfCandidate``) by clip id.
-
-    Read from the full candidate manifest so a clip's boundaries that the sampler did not
-    draw into the worklist still show as context. Each clip's boundaries are ordered by
-    ``boundary_index``.
+    This is the *assumed-correct baseline*: every word edge of every clip, each carrying
+    the VAD-derived ``predicted`` class (``waqf`` / ``mid_word_closure`` where a pause was
+    found, ``wasl`` otherwise). In the correction-based model the reviewer overrides only
+    the boundaries they judge wrong — a **false positive** (a predicted stop the reciter did
+    not stop at → ``wasl``) or a **false negative** (a predicted ``wasl`` the reciter did stop
+    at → ``waqf`` / ``mid_word_closure``); everything untouched keeps its predicted class.
+    Rows are ordered by ``boundary_index``.
     """
-    by_clip: dict[str, list[dict[str, object]]] = {}
+    by_clip: dict[str, list[dict]] = {}
     with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             row = json.loads(line)
-            by_clip.setdefault(row["clip_id"], []).append(_boundary_context(row))
-    for boundaries in by_clip.values():
-        boundaries.sort(key=lambda b: b["boundary_index"])
+            by_clip.setdefault(row["clip_id"], []).append(row)
+    for rows in by_clip.values():
+        rows.sort(key=lambda r: r["boundary_index"])
     return by_clip
 
 
-def clip_boundaries_from_items(items: list[WaqfCandidateItem]) -> dict[str, list[dict[str, object]]]:
-    """Fallback per-clip boundary context built from the worklist itself.
+def load_clip_worklist(path: Path) -> list[str]:
+    """Read the sampled clip review-list (JSONL of ``{"clip_id": ...}``), in order, de-duped.
 
-    Used when no full candidate manifest is supplied: shows the clip's boundaries that
-    *are* in the worklist (the sampled subset), still ordered by ``boundary_index``.
+    The eval-set sample is now a set of *clips* to review end-to-end (not a set of sampled
+    boundaries): the review unit that makes assume-correct-by-default trustworthy.
     """
-    by_clip: dict[str, list[dict[str, object]]] = {}
-    for item in items:
-        by_clip.setdefault(item.clip_id, []).append(_boundary_context(asdict(item)))
-    for boundaries in by_clip.values():
-        boundaries.sort(key=lambda b: b["boundary_index"])
-    return by_clip
+    clips: list[str] = []
+    seen: set[str] = set()
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            cid = json.loads(line)["clip_id"]
+            if cid not in seen:
+                seen.add(cid)
+                clips.append(cid)
+    return clips
 
 
 @dataclass
 class WaqfEventStore:
-    """The current per-boundary verdicts, persisted as the waqf event-fixture set.
+    """The reviewer's **overrides** to the assumed-correct baseline, persisted as fixtures.
 
-    Verdicts are keyed by ``(clip_id, boundary_index)`` — one worklist row, one
-    fixture line. :meth:`set` and :meth:`clear` rewrite the file atomically through
-    the schema module, so the on-disk fixtures always equal the UI state and a
-    restart resumes exactly where the human left off.
+    Only boundaries whose ground truth differs from the predicted class are stored — one
+    :class:`WaqfEventEntry` per correction, keyed by ``(clip_id, boundary_index)``. Untouched
+    boundaries keep their predicted class (assume-correct-by-default), so the fixture file
+    holds just the corrections. :meth:`set` and :meth:`clear` rewrite the file atomically
+    through the schema module, so the on-disk fixtures always equal the UI state and a restart
+    resumes exactly where the human left off.
     """
 
     path: Path
@@ -119,7 +129,7 @@ class WaqfEventStore:
 
     @classmethod
     def load(cls, path: Path) -> "WaqfEventStore":
-        """Build a store from any already-adjudicated entries in the fixture file."""
+        """Build a store from any already-recorded corrections in the fixture file."""
         entries = {(e.clip_id, e.boundary_index): e for e in load_waqf_events(path)}
         return cls(path, entries)
 
@@ -132,13 +142,12 @@ class WaqfEventStore:
         return entry.note if entry else ""
 
     def set(self, entry: WaqfEventEntry) -> None:
-        """Record (or overwrite) a boundary's verdict and persist the fixture set.
+        """Record (or overwrite) a boundary's correction and persist the fixture set.
 
         The change is staged in a copy and the on-disk file rewritten *before*
-        ``self.entries`` is swapped in, so a rejected entry (e.g. an invalid verdict
-        class the schema refuses to write) leaves both the store and the fixture file
-        exactly as they were — the adjudication session never holds a line that could
-        not be persisted.
+        ``self.entries`` is swapped in, so a rejected entry (e.g. an invalid verdict class
+        the schema refuses to write) leaves both the store and the fixture file exactly as
+        they were — the review session never holds a line that could not be persisted.
         """
         staged = dict(self.entries)
         staged[(entry.clip_id, entry.boundary_index)] = entry
@@ -146,7 +155,7 @@ class WaqfEventStore:
         self.entries = staged
 
     def clear(self, key: BoundaryKey) -> None:
-        """Un-adjudicate a boundary (moves it back to pending) and persist."""
+        """Drop a boundary's override (back to its assumed-correct predicted class) and persist."""
         if key not in self.entries:
             return
         staged = dict(self.entries)
@@ -159,150 +168,204 @@ class WaqfEventStore:
         write_waqf_events(ordered, self.path)
 
 
-def class_stats(items: list[WaqfCandidateItem], store: WaqfEventStore) -> list[dict[str, object]]:
-    """Per predicted-class progress and the verdict confusion over the worklist.
+def reviewed_path_for(fixtures: Path) -> Path:
+    """Sibling file that records which clips are reviewed (beside the fixtures JSONL)."""
+    return fixtures.with_name("waqf_reviewed_clips.json")
 
-    For each predicted class, ``verdicts`` counts how the adjudicated boundaries in
-    that stratum actually resolved — the confusion ADR-0004's eval reads (e.g. a
-    ``predicted=wasl`` boundary the human calls ``waqf`` is a **false-wasl**; a
-    ``predicted=waqf`` boundary called ``mid_word_closure`` is a bad snap). Classes
-    are returned in :data:`WAQF_EVENT_CLASSES` order.
+
+@dataclass
+class ReviewedClipStore:
+    """Which clips the reviewer has confirmed reviewed end-to-end.
+
+    A clip becomes an eval unit only once it is reviewed: its untouched boundaries can then
+    be trusted as *confirmed* predicted labels (assume-correct-by-default), not merely unseen.
+    Persisted as a small JSON list beside the fixtures so a restart resumes the review scope.
     """
-    counts = {
-        c: {"total": 0, "labelled": 0, "verdicts": {v: 0 for v in WAQF_EVENT_CLASSES}}
-        for c in WAQF_EVENT_CLASSES
-    }
-    for item in items:
-        bucket = counts[item.predicted]
-        bucket["total"] += 1
-        verdict = store.verdict_of((item.clip_id, item.boundary_index))
-        if verdict is not None:
-            bucket["labelled"] += 1
-            bucket["verdicts"][verdict] += 1
-    return [
-        {"predicted": c, "total": counts[c]["total"], "labelled": counts[c]["labelled"],
-         "verdicts": counts[c]["verdicts"]}
-        for c in WAQF_EVENT_CLASSES
-    ]
+
+    path: Path
+    clips: set[str]
+
+    @classmethod
+    def load(cls, path: Path) -> "ReviewedClipStore":
+        clips: set[str] = set()
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8") or "{}")
+            clips = set(data.get("reviewed", []))
+        return cls(path, clips)
+
+    def is_reviewed(self, clip_id: str) -> bool:
+        return clip_id in self.clips
+
+    def set_reviewed(self, clip_id: str, reviewed: bool) -> None:
+        if reviewed:
+            self.clips.add(clip_id)
+        else:
+            self.clips.discard(clip_id)
+        self._persist()
+
+    def _persist(self) -> None:
+        payload = {"reviewed": sorted(self.clips)}
+        self.path.write_text(json.dumps(payload, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def item_view(server: "WaqfAuditServer", item: WaqfCandidateItem) -> dict[str, object]:
-    """One worklist boundary as an adjudication row: its span, class, and current verdict.
+def review_stats(server: "WaqfAuditServer") -> dict[str, int]:
+    """Clip-review progress plus the correction tallies ADR-0004's eval reads.
 
-    A row inside a clip page (see :func:`clip_view`); carries the boundary's identity and
-    time span so the reviewer can seek to it and call waqf / wasl / mid-word-closure, plus
-    the verdict/note already on file so the page resumes where they left off.
+    Corrections are classified against the predicted baseline: a predicted stop the reviewer
+    calls ``wasl`` is a **false positive**; a predicted ``wasl`` called a stop is a **false
+    negative**; a ``waqf`` ↔ ``mid_word_closure`` swap is a class fix. Counted over every
+    stored override (which only exist inside clips the reviewer has opened).
     """
-    key = (item.clip_id, item.boundary_index)
+    stops = {WAQF, MID_WORD_CLOSURE}
+    fp = fn = class_fix = 0
+    for entry in server.store.entries.values():
+        pred, truth = entry.predicted, entry.verdict
+        if pred == truth:
+            continue
+        if pred in stops and truth == WASL:
+            fp += 1
+        elif pred == WASL and truth in stops:
+            fn += 1
+        else:
+            class_fix += 1
     return {
-        "clip_id": item.clip_id,
-        "surah_ayah": item.surah_ayah,
-        "boundary_index": item.boundary_index,
-        "word_index": item.word_index,
-        "start_s": item.start_s,
-        "end_s": item.end_s,
-        "predicted": item.predicted,
-        "verdict": server.store.verdict_of(key),
-        "note": server.store.note_of(key),
+        "clips_total": len(server.clips),
+        "clips_reviewed": sum(1 for c in server.clips if server.reviewed.is_reviewed(c)),
+        "false_positive": fp,
+        "false_negative": fn,
+        "class_fix": class_fix,
     }
 
 
-def clip_view(server: "WaqfAuditServer", clip_id: str, items: list[WaqfCandidateItem]) -> dict[str, object]:
-    """One clip page: its audio + ayah, the boundaries to adjudicate, and stop context.
+def boundary_view(row: dict, verdict: str | None, note: str) -> dict[str, object]:
+    """One word-edge boundary as the UI sees it: its span, predicted class, and any override.
 
-    ``judge`` is every worklist boundary in this clip — the rows the reviewer marks, ordered
-    by clip time. ``clip_boundaries`` is the clip's full candidate set (or the sampled subset
-    when no candidate manifest was given), from which the page draws the *stop* markers
-    (waqf / mid-word-closure) so the reviewer sees all pause points while playing the clip
-    once. Audio is served under the clip's staged filename.
+    ``verdict`` is the reviewer's override (``None`` when untouched — the boundary keeps its
+    predicted class as assumed-correct ground truth). ``truth`` is the effective ground-truth
+    class the UI marks the ayah / timeline with: the override if present, else the prediction.
     """
-    first = items[0]
+    return {
+        "boundary_index": row["boundary_index"],
+        "word_index": row["word_index"],
+        "start_s": row["start_s"],
+        "end_s": row["end_s"],
+        "predicted": row["predicted"],
+        "verdict": verdict,
+        "truth": verdict if verdict is not None else row["predicted"],
+        "note": note,
+    }
+
+
+def clip_view(server: "WaqfAuditServer", clip_id: str) -> dict[str, object]:
+    """One clip page: the whole recitation, every word-edge boundary, and its reviewed flag.
+
+    ``boundaries`` is the clip's full candidate set (every word edge) with each boundary's
+    predicted class, current override, and effective ``truth`` — the reviewer plays the clip
+    once and only flips the exceptions. Audio is served under the clip's staged filename.
+    """
+    rows = server.candidates_by_clip.get(clip_id, [])
+    first = rows[0] if rows else None
+    audio_ref = first["audio_ref"] if first else clip_id
+    surah_ayah = first["surah_ayah"] if first else ""
+    boundaries = [
+        boundary_view(
+            r,
+            server.store.verdict_of((clip_id, r["boundary_index"])),
+            server.store.note_of((clip_id, r["boundary_index"])),
+        )
+        for r in rows
+    ]
     return {
         "clip_id": clip_id,
-        "surah_ayah": first.surah_ayah,
-        "uthmani": server.uthmani.get(first.surah_ayah, ""),
-        "audio_url": f"/audio/{first.local_audio_path}",
-        "audio_available": (server.audio_dir / first.local_audio_path).is_file(),
-        "judge": [item_view(server, i) for i in sorted(items, key=lambda i: (i.start_s, i.boundary_index))],
-        "clip_boundaries": server.clip_boundaries.get(
-            clip_id, [_boundary_context(asdict(i)) for i in items]),
+        "surah_ayah": surah_ayah,
+        "uthmani": server.uthmani.get(surah_ayah, ""),
+        "audio_url": f"/audio/{audio_ref}",
+        "audio_available": (server.audio_dir / audio_ref).is_file(),
+        "reviewed": server.reviewed.is_reviewed(clip_id),
+        "boundaries": boundaries,
     }
 
 
 class WaqfAuditServer:
-    """Holds the loaded worklist, Uthmani index, event store and audio dir.
+    """Holds the review clip list, the candidate baseline, Uthmani index and both stores.
 
-    A thin state object the request handler reads; keeps the handler free of globals
-    and makes the request logic unit-testable in isolation.
+    A thin state object the request handler reads; keeps the handler free of globals and
+    makes the request logic unit-testable in isolation.
     """
 
     def __init__(
         self,
-        items: list[WaqfCandidateItem],
+        clips: list[str],
+        candidates_by_clip: dict[str, list[dict]],
         uthmani: dict[str, str],
         store: WaqfEventStore,
+        reviewed: ReviewedClipStore,
         audio_dir: Path,
-        clip_boundaries: dict[str, list[dict[str, object]]] | None = None,
     ) -> None:
-        self.items = items
+        self.clips = clips
+        self.candidates_by_clip = candidates_by_clip
         self.uthmani = uthmani
         self.store = store
+        self.reviewed = reviewed
         self.audio_dir = audio_dir
-        self.clip_boundaries = (
-            clip_boundaries if clip_boundaries is not None
-            else clip_boundaries_from_items(items)
-        )
-        self._by_key: dict[BoundaryKey, WaqfCandidateItem] = {
-            (i.clip_id, i.boundary_index): i for i in items
+        self._boundary_rows: dict[BoundaryKey, dict] = {
+            (cid, r["boundary_index"]): r
+            for cid, rows in candidates_by_clip.items() for r in rows
         }
-        # Clips in first-appearance order, each with its worklist boundaries.
-        self._clips: dict[str, list[WaqfCandidateItem]] = {}
-        for item in items:
-            self._clips.setdefault(item.clip_id, []).append(item)
 
     def state(self) -> dict[str, object]:
-        """The full UI payload: one page per clip, plus per-class stats."""
+        """The full UI payload: one page per reviewed-or-pending clip, plus review stats."""
         return {
-            "clips": [clip_view(self, clip_id, clip_items)
-                      for clip_id, clip_items in self._clips.items()],
-            "stats": class_stats(self.items, self.store),
+            "clips": [clip_view(self, c) for c in self.clips],
+            "stats": review_stats(self),
             "classes": list(WAQF_EVENT_CLASSES),
         }
 
     def apply_label(self, payload: dict) -> dict[str, object]:
-        """Handle a verdict POST: set or clear one boundary's verdict, return stats.
+        """Set or clear one boundary's override against the assumed-correct baseline.
 
-        ``verdict`` of ``None`` (or missing) clears the boundary. An unknown
-        ``(clip_id, boundary_index)`` — not in the worklist — is rejected so a stray
-        request cannot write a fixture line with no adjudication unit behind it. An
-        invalid ``verdict`` class is rejected by the schema on write.
+        A ``verdict`` of ``None`` — or one equal to the boundary's predicted class — clears
+        the override, returning the boundary to its assumed-correct predicted class (so the
+        fixtures never carry a redundant "confirmation" line). An unknown boundary — not in
+        any reviewed/sampled clip's candidate set — is rejected. The stored entry recovers
+        every non-verdict field from the candidate manifest, so the request is trusted only
+        for the verdict and note.
         """
         key = (payload["clip_id"], payload["boundary_index"])
-        item = self._by_key.get(key)
-        if item is None:
-            raise KeyError(f"no worklist boundary for {key!r}")
+        row = self._boundary_rows.get(key)
+        if row is None:
+            raise KeyError(f"no candidate boundary for {key!r}")
 
         verdict = payload.get("verdict")
-        if verdict is None:
+        if verdict is None or verdict == row["predicted"]:
             self.store.clear(key)
         else:
             self.store.set(WaqfEventEntry(
-                clip_id=item.clip_id,
-                audio_ref=item.audio_ref,
-                surah_ayah=item.surah_ayah,
-                boundary_index=item.boundary_index,
-                word_index=item.word_index,
-                start_s=item.start_s,
-                end_s=item.end_s,
-                predicted=item.predicted,
+                clip_id=row["clip_id"],
+                audio_ref=row["audio_ref"],
+                surah_ayah=row["surah_ayah"],
+                boundary_index=row["boundary_index"],
+                word_index=row["word_index"],
+                start_s=row["start_s"],
+                end_s=row["end_s"],
+                predicted=row["predicted"],
                 verdict=verdict,
                 note=payload.get("note", ""),
             ))
-        return {"stats": class_stats(self.items, self.store)}
+        return {"stats": review_stats(self)}
+
+    def apply_review(self, payload: dict) -> dict[str, object]:
+        """Mark (or unmark) a clip reviewed end-to-end — the flag that admits it to the eval set."""
+        clip_id = payload["clip_id"]
+        if clip_id not in self.candidates_by_clip:
+            raise KeyError(f"unknown clip {clip_id!r}")
+        self.reviewed.set_reviewed(clip_id, bool(payload.get("reviewed", True)))
+        return {"stats": review_stats(self)}
+
 
 
 class _Handler(AuditHandler):
-    """Routes ``/`` (page), ``/api/state``, ``/api/label`` and ``/audio/<file>``."""
+    """Routes ``/`` (page), ``/api/state``, ``/api/label``, ``/api/review`` and ``/audio/<file>``."""
 
     state: WaqfAuditServer  # bound onto the subclass by serve()
 
@@ -319,46 +382,68 @@ class _Handler(AuditHandler):
 
     def do_POST(self) -> None:
         path = unquote(urlparse(self.path).path)
-        if path != "/api/label":
+        handlers = {"/api/label": self.state.apply_label, "/api/review": self.state.apply_review}
+        handler = handlers.get(path)
+        if handler is None:
             self.send_json({"error": "not found"}, status=404)
             return
         length = int(self.headers.get("Content-Length", 0))
         payload = json.loads(self.rfile.read(length) or b"{}")
         try:
-            self.send_json(self.state.apply_label(payload))
+            self.send_json(handler(payload))
         except (KeyError, ValueError) as exc:
             self.send_json({"error": str(exc)}, status=400)
 
 
+def _review_clips(args, candidates_by_clip: dict[str, list[dict]]) -> list[str]:
+    """The ordered set of clips to review: an explicit ``--clips`` list, else the distinct
+    clips a legacy boundary ``--worklist`` sampled. Clips absent from the manifest are dropped."""
+    if args.clips:
+        return [c for c in load_clip_worklist(args.clips) if c in candidates_by_clip]
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for item in load_worklist(args.worklist):
+        if item.clip_id in candidates_by_clip and item.clip_id not in seen:
+            seen.add(item.clip_id)
+            ordered.append(item.clip_id)
+    return ordered
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--worklist", type=Path, required=True, help="Sampler worklist (JSONL).")
+    parser.add_argument("--candidates", type=Path, required=True,
+                        help="Full candidate manifest (tadabur.waqf_candidates) — the assumed-correct baseline.")
+    parser.add_argument("--clips", type=Path, default=None,
+                        help="Sampled clip review-list (JSONL of {\"clip_id\": ...}). The eval sample.")
+    parser.add_argument("--worklist", type=Path, default=None,
+                        help="Legacy boundary worklist; its distinct clips are reviewed when --clips is omitted.")
     parser.add_argument("--audio-dir", type=Path, required=True,
                         help="Whole-clip staging dir from tadabur.waqf_segments (clips served by audio_filename).")
-    parser.add_argument("--candidates", type=Path, default=None,
-                        help="Full candidate manifest (tadabur.waqf_candidates) for per-clip boundary "
-                             "context; defaults to the worklist's own (sampled) boundaries.")
     parser.add_argument("--fixtures", type=Path, default=WAQF_EVENTS_PATH,
-                        help="Waqf event-fixture file to write (default: canonical path).")
+                        help="Waqf event-fixture file for corrections (default: canonical path).")
     parser.add_argument("--port", type=int, default=8000, help="Port to serve on (default: 8000).")
     parser.add_argument("--host", default="127.0.0.1",
                         help="Interface to bind (default: 127.0.0.1; use 0.0.0.0 to expose on the LAN).")
     parser.add_argument("--quran-db", type=Path, default=DEFAULT_QURAN_DB,
                         help="quran.db for Uthmani ayah text (default: repo data/quran.db).")
     args = parser.parse_args()
+    if not args.clips and not args.worklist:
+        parser.error("one of --clips or --worklist is required to select the review clips")
 
-    items = load_worklist(args.worklist)
+    candidates_by_clip = load_candidates_by_clip(args.candidates)
+    clips = _review_clips(args, candidates_by_clip)
+    selected = {c: candidates_by_clip[c] for c in clips}
     store = WaqfEventStore.load(args.fixtures)
-    uthmani = uthmani_index(args.quran_db, {i.surah_ayah for i in items})
-    clip_boundaries = (
-        clip_boundaries_from_candidates(args.candidates) if args.candidates is not None else None
-    )
-    server_state = WaqfAuditServer(items, uthmani, store, args.audio_dir, clip_boundaries)
+    reviewed = ReviewedClipStore.load(reviewed_path_for(args.fixtures))
+    surah_ayat = {rows[0]["surah_ayah"] for rows in selected.values() if rows}
+    uthmani = uthmani_index(args.quran_db, surah_ayat)
+    server_state = WaqfAuditServer(clips, selected, uthmani, store, reviewed, args.audio_dir)
 
     httpd = serve(_Handler, server_state, args.port, args.host)
-    labelled = sum(1 for i in items if store.verdict_of((i.clip_id, i.boundary_index)))
-    print(f"Loaded {len(items)} candidate boundaries ({labelled} already adjudicated); "
-          f"{len(uthmani)} ayat with Uthmani text.")
+    n_bounds = sum(len(rows) for rows in selected.values())
+    n_reviewed = sum(1 for c in clips if reviewed.is_reviewed(c))
+    print(f"Loaded {len(clips)} review clips ({n_bounds} candidate boundaries; "
+          f"{n_reviewed} already reviewed); {len(uthmani)} ayat with Uthmani text.")
     print(f"Waqf audit UI on http://{args.host}:{args.port}  (Ctrl-C to stop)")
     try:
         httpd.serve_forever()

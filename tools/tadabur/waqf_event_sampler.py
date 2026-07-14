@@ -25,7 +25,7 @@ exists in it — no separate export step, and no rows the human cannot adjudicat
 
 Usage:
   python -m tadabur.waqf_event_sampler --candidates candidates.jsonl \
-    --worklist waqf_worklist.jsonl --seed 0 [--per-class 50]
+    --clips waqf_clip_worklist.jsonl --seed 0 [--per-class 50]
 """
 
 from __future__ import annotations
@@ -161,20 +161,61 @@ def write_worklist(items: list[WaqfCandidateItem], path: Path) -> None:
             f.write(json.dumps(asdict(item), ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def sample_clips(
+    candidates: list[WaqfCandidate],
+    per_class: int = DEFAULT_PER_CLASS,
+    seed: int = 0,
+) -> list[str]:
+    """The distinct clips the correction-based per-clip UI walks through.
+
+    The UI (:mod:`tadabur.waqf_audit_ui`) reviews a whole **clip** at a time —
+    the candidate manifest is the assumed-correct baseline and the human only marks
+    the boundaries the detector got wrong. The worklist is therefore a set of clips,
+    not boundaries. We reuse :func:`sample_worklist`'s stratified per-class draw so
+    every clip that carries a sampled ``waqf`` / ``wasl`` / ``mid_word_closure``
+    boundary is included, then collapse to the distinct clips in first-seen order.
+    Deterministic in ``(seed, per_class)``.
+    """
+    seen: dict[str, None] = {}
+    for item in sample_worklist(candidates, per_class=per_class, seed=seed):
+        seen.setdefault(item.clip_id, None)
+    return list(seen)
+
+
+def write_clip_worklist(clip_ids: list[str], path: Path) -> None:
+    """Write the clip worklist as JSONL, one ``{"clip_id": ...}`` per line."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        for clip_id in clip_ids:
+            f.write(json.dumps({"clip_id": clip_id}, ensure_ascii=False) + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--candidates", type=Path, required=True,
                         help="Candidate-boundary manifest (JSONL of WaqfCandidate rows).")
-    parser.add_argument("--worklist", type=Path, required=True, help="Output worklist (JSONL).")
+    parser.add_argument("--worklist", type=Path, default=None,
+                        help="Output per-boundary worklist (JSONL of WaqfCandidateItem rows).")
+    parser.add_argument("--clips", type=Path, default=None,
+                        help="Output clip worklist (JSONL of {\"clip_id\": ...}) for the "
+                             "correction-based per-clip UI.")
     parser.add_argument("--seed", type=int, default=0, help="Sampling seed (default: 0).")
     parser.add_argument("--per-class", type=int, default=DEFAULT_PER_CLASS,
                         help=f"Candidates to sample per predicted class (default: {DEFAULT_PER_CLASS}).")
     args = parser.parse_args()
 
+    if args.worklist is None and args.clips is None:
+        parser.error("at least one of --worklist or --clips is required")
+
     candidates = read_candidates(args.candidates)
-    items = sample_worklist(candidates, per_class=args.per_class, seed=args.seed)
-    write_worklist(items, args.worklist)
-    print(f"Wrote {len(items)} worklist rows from {len(candidates)} candidate boundaries to {args.worklist}.")
+    if args.worklist is not None:
+        items = sample_worklist(candidates, per_class=args.per_class, seed=args.seed)
+        write_worklist(items, args.worklist)
+        print(f"Wrote {len(items)} worklist rows from {len(candidates)} candidate boundaries to {args.worklist}.")
+    if args.clips is not None:
+        clip_ids = sample_clips(candidates, per_class=args.per_class, seed=args.seed)
+        write_clip_worklist(clip_ids, args.clips)
+        print(f"Wrote {len(clip_ids)} clips from {len(candidates)} candidate boundaries to {args.clips}.")
 
 
 if __name__ == "__main__":

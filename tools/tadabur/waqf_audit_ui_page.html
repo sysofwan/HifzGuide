@@ -73,42 +73,49 @@
   textarea { width:100%; min-height:52px; background:#12151b; color:var(--fg); border:1px solid var(--line);
              border-radius:8px; padding:8px 10px; font:inherit; resize:vertical; }
   .warn { color:var(--closure); font-size:12px; margin:8px 0; }
-  .ayah { font-size:30px; line-height:1.9; text-align:right; direction:rtl; margin:6px 0 4px;
-          padding:12px 14px; background:#12151b; border:1px solid var(--line); border-radius:8px; }
-  .ayah .w-mark { border-bottom:3px solid var(--waqf); border-radius:2px; padding:0 3px; }
-  .ayah .w-mark.wasl { border-color:var(--wasl); }
-  .ayah .w-mark.mid_word_closure { border-color:var(--closure); }
-  .ayah .w-mark.ctx { border-bottom-style:dotted; opacity:.55; }
-  .ayah-mark { color:var(--waqf); font-size:.62em; vertical-align:middle; margin:0 5px;
-               -webkit-text-stroke:0; }
-  .ayah-mark.wasl { color:var(--wasl); }
+  .ayah { font-size:30px; line-height:2.1; text-align:right; direction:rtl; margin:6px 0 4px;
+          padding:14px 16px; background:#12151b; border:1px solid var(--line); border-radius:8px; }
+  /* Each ayah word is a click/focus target. Words the reciter stops at (truth = waqf/closure)
+     are underlined in the class colour with a ◆ after them; a plain word is assumed wasl.
+     An overridden word (reviewer deviated from the prediction) gets an "edited" ring; the
+     focused word (keyboard target) gets a bright outline. */
+  .ayah .w { cursor:pointer; padding:1px 4px; border-radius:4px; border-bottom:3px solid transparent; }
+  .ayah .w:hover { background:#1c2028; }
+  .ayah .w.stop-waqf { border-bottom-color:var(--waqf); }
+  .ayah .w.stop-mid_word_closure { border-bottom-color:var(--closure); }
+  .ayah .w.edited { background:rgba(246,199,68,.12); box-shadow:inset 0 0 0 1px rgba(246,199,68,.5); }
+  .ayah .w.fp { text-decoration:line-through; text-decoration-color:var(--closure); opacity:.7; }
+  .ayah .w.focus { outline:2px solid var(--mark); outline-offset:1px; }
+  .ayah-mark { color:var(--waqf); font-size:.6em; vertical-align:middle; margin:0 4px; }
   .ayah-mark.mid_word_closure { color:var(--closure); }
-  .ayah-mark.ctx { opacity:.4; }
+  .ayah-mark.added::after { content:"+"; font-size:.7em; vertical-align:super; color:var(--mark); }
   .wordnote { color:var(--muted); font-size:12px; margin:0 0 12px; }
   .nav { display:flex; justify-content:space-between; align-items:center; margin-top:16px; color:var(--muted); }
   kbd { font:11px monospace; background:#242a36; border:1px solid var(--line); border-bottom-width:2px;
         border-radius:4px; padding:1px 5px; }
   .legend { color:var(--muted); font-size:12px; margin-top:18px; line-height:1.9; }
+  .legend b { color:var(--fg); }
   .empty { color:var(--muted); padding:40px 0; }
-  /* One page per clip: the whole recitation is played once and every sampled boundary in
-     it is adjudicated inline. Each boundary is a row; the focused one (keyboard target)
-     is ringed, and its marker on the timeline / ayah is highlighted over the rest. */
+  /* Correction-based per clip: play the whole recitation once, flip only the exceptions.
+     The focused word is the keyboard target; its timeline marker is ringed. */
   .tl-mark.focus { box-shadow:0 0 0 2px var(--mark); opacity:1; z-index:3; }
-  .ayah .w-mark.focus { background:rgba(246,199,68,.14); }
   .playclip { padding:6px 12px; font-size:13px; }
-  .brows { display:flex; flex-direction:column; gap:10px; margin:12px 0; }
-  .brow { border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:#12151b;
-          cursor:pointer; }
-  .brow.focus { border-color:var(--mark); }
-  .brow.waqf { border-left:3px solid var(--waqf); }
-  .brow.wasl { border-left:3px solid var(--wasl); }
-  .brow.mid_word_closure { border-left:3px solid var(--closure); }
-  .brow-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
-  .brow .idx { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
-  .brow .verdict-state { margin-left:auto; font-size:12px; color:var(--muted); }
-  .brow .btns { margin:0; }
-  .brow button { padding:8px 12px; }
-  .brow textarea { min-height:38px; margin-top:8px; }
+  /* The focused word's inline verdict controls + a running list of this clip's corrections. */
+  .focusbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 6px;
+              padding:12px; background:#12151b; border:1px solid var(--line); border-radius:8px; }
+  .focusbar .cur { font-size:13px; color:var(--muted); }
+  .focusbar .cur b { color:var(--fg); }
+  .focusbar .btns { margin:0; }
+  .focusbar button { padding:8px 12px; }
+  .corrections { margin:10px 0; }
+  .corrections .crow { display:flex; align-items:center; gap:8px; font-size:13px; padding:4px 0;
+                       border-bottom:1px solid var(--line); cursor:pointer; }
+  .corrections .crow:hover { background:#1c2028; }
+  .corrections .kind-fp { color:var(--closure); }
+  .corrections .kind-fn { color:var(--waqf); }
+  .corrections .kind-fix { color:var(--mark); }
+  .reviewbtn { padding:10px 18px; }
+  .reviewbtn.done { background:var(--waqf); color:#fff; border-color:var(--waqf); }
   .topbar { display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--panel);
             border-bottom:1px solid var(--line); position:sticky; top:0; z-index:20; }
   .topbar .menu { padding:8px 12px; font-size:18px; line-height:1; }
@@ -143,16 +150,20 @@
 <div class="scrim" onclick="toggleDrawer(false)"></div>
 <aside>
   <h1>Waqf event audit — #27</h1>
-  <div class="sub">waqf = true stop · wasl = continuation · mid-word-closure = qalqala/hamza silence</div>
+  <div class="sub">Assume the detector is right; mark only the exceptions. <b>Waqf</b> = true stop ·
+    <b>Wasl</b> = no stop (continued) · <b>Closure</b> = mid-word qalqala/hamza silence.</div>
   <div id="overall" class="sub"></div>
-  <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideLabeled(this.checked)"> Hide adjudicated</label>
-  <h2>Predicted class</h2>
+  <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideReviewed(this.checked)"> Hide reviewed clips</label>
+  <h2>Corrections</h2>
   <div id="classes"></div>
   <div class="legend">
-    <div>One page per clip — play it once, judge every marked boundary.</div>
-    <div><kbd>Q</kbd> waqf · <kbd>W</kbd> wasl · <kbd>C</kbd> closure · <kbd>U</kbd> unmark (focused row)</div>
-    <div><kbd>↑</kbd>/<kbd>↓</kbd> focus boundary · <kbd>←</kbd>/<kbd>→</kbd> prev/next clip</div>
-    <div><kbd>Space</kbd> hear focused boundary</div>
+    <div>One page per clip — play it once. Every VAD stop is pre-marked; every other word is
+      assumed wasl. Only record what's wrong:</div>
+    <div><b>False positive</b> — focus a marked stop, press <kbd>W</kbd> (reciter didn't stop).</div>
+    <div><b>False negative</b> — focus a plain word where the reciter stopped, press <kbd>Q</kbd>.</div>
+    <div><kbd>Q</kbd> waqf · <kbd>W</kbd> wasl · <kbd>C</kbd> closure · <kbd>U</kbd> reset to predicted</div>
+    <div><kbd>←</kbd>/<kbd>→</kbd> focus word · <kbd>↑</kbd>/<kbd>↓</kbd> prev/next stop · <kbd>[</kbd>/<kbd>]</kbd> prev/next clip</div>
+    <div><kbd>Enter</kbd> mark clip reviewed · <kbd>Space</kbd> hear focused word</div>
   </div>
 </aside>
 <main>
@@ -162,10 +173,10 @@
 <script>
 const CLASSES = ["waqf", "wasl", "mid_word_closure"];
 const LABELS = { waqf: "Waqf", wasl: "Wasl", mid_word_closure: "Mid-word closure" };
-const STOP_CLASSES = ["waqf", "mid_word_closure"];
-const state = { clips: [], stats: [], classes: [], filter: null, idx: 0, focus: null,
-  hideLabeled: JSON.parse(localStorage.getItem("waqfHideLabeled") || "false") };
-let renderedClip = null;  // clip_id whose <audio> is currently mounted (for playback continuity)
+const STOPS = ["waqf", "mid_word_closure"];
+const state = { clips: [], stats: {}, classes: [], idx: 0, focus: null,
+  hideReviewed: JSON.parse(localStorage.getItem("waqfHideReviewed") || "false") };
+let renderedClip = null;  // clip_id whose <audio> is mounted (playback continuity)
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
@@ -182,169 +193,134 @@ function fmtClock(s) {
   const m = Math.floor(s / 60), ss = Math.floor(s % 60);
   return m + ":" + String(ss).padStart(2, "0");
 }
+function isStop(cls) { return STOPS.includes(cls); }
 
 function toggleDrawer(force) {
   const open = force === undefined ? !document.body.classList.contains("drawer-open") : force;
   document.body.classList.toggle("drawer-open", open);
 }
 
-// ---- clip / boundary selection -------------------------------------------------
-
-function allJudge() { return state.clips.flatMap(c => c.judge); }
-
-function clipMatchesFilter(c) { return !state.filter || c.judge.some(j => j.predicted === state.filter); }
-function clipHasUnlabeled(c) { return c.judge.some(j => !j.verdict); }
+// ---- clip / word selection -----------------------------------------------------
 
 function visibleClips() {
-  let cs = state.clips.filter(clipMatchesFilter);
-  if (state.hideLabeled) cs = cs.filter(clipHasUnlabeled);
-  return cs;
+  return state.hideReviewed ? state.clips.filter(c => !c.reviewed) : state.clips;
 }
-
-// The boundaries a reviewer marks on this clip page, ordered by clip time. When a class
-// filter is on, non-matching boundaries stay visible as context but are not the focus.
-function judgeRows(clip) { return clip.judge; }
-
-function focusRow(clip) {
-  return clip.judge.find(j => j.boundary_index === state.focus) || null;
+function currentClip() {
+  const cs = visibleClips();
+  return cs.length ? cs[Math.min(state.idx, cs.length - 1)] : null;
 }
-
-// Pick a sensible focus when landing on a clip: first unadjudicated boundary (matching the
-// active class filter if any), else the first boundary.
+function focusBoundary(clip) {
+  return clip ? clip.boundaries.find(b => b.boundary_index === state.focus) || null : null;
+}
+// Land focus on the first stop of the clip (the thing most likely to be a false positive),
+// else the first word — so the keyboard is always live.
 function ensureFocus(clip) {
-  if (focusRow(clip)) return;
-  const pool = state.filter ? clip.judge.filter(j => j.predicted === state.filter) : clip.judge;
-  const rows = pool.length ? pool : clip.judge;
-  const next = rows.find(j => !j.verdict) || rows[0];
-  state.focus = next ? next.boundary_index : null;
+  if (focusBoundary(clip)) return;
+  const stop = clip.boundaries.find(b => isStop(b.truth));
+  const first = stop || clip.boundaries[0];
+  state.focus = first ? first.boundary_index : null;
 }
 
-function setHideLabeled(on) {
-  state.hideLabeled = on;
-  localStorage.setItem("waqfHideLabeled", JSON.stringify(on));
+function setHideReviewed(on) {
+  state.hideReviewed = on;
+  localStorage.setItem("waqfHideReviewed", JSON.stringify(on));
   state.idx = 0; state.focus = null;
   render();
 }
 
-// ---- markers (timeline + ayah) -------------------------------------------------
-
-// One drawable marker per boundary shown on the clip. Every sampled (judge) boundary is
-// bright; the focused one is ringed; the clip's other *stops* (waqf / mid-word-closure that
-// weren't sampled) are dim context so the reviewer sees all pause points at a glance. Wasl
-// context is omitted — every word edge is a wasl candidate, which would be pure noise.
-function markersOf(clip) {
-  const judged = new Set(clip.judge.map(j => j.boundary_index));
-  const out = clip.judge.map(j => ({ ...j,
-    kind: j.boundary_index === state.focus ? "focus" : "judge" }));
-  (clip.clip_boundaries || []).forEach(b => {
-    if (judged.has(b.boundary_index)) return;
-    if (STOP_CLASSES.includes(b.predicted)) out.push({ ...b, kind: "ctx" });
-  });
-  return out;
-}
-
-const KIND_RANK = { ctx: 0, judge: 1, focus: 2 };
-
-function renderAyah(clip) {
-  const words = String(clip.uthmani || "").split(/\s+/).filter(Boolean);
-  const marks = markersOf(clip);
-  const byWord = {};
-  marks.forEach(m => {
-    const cur = byWord[m.word_index];
-    if (!cur || KIND_RANK[m.kind] > KIND_RANK[cur.kind]) byWord[m.word_index] = m;
-  });
-  return words.map((w, i) => {
-    const m = byWord[i];
-    if (m === undefined) return `<span>${esc(w)}</span>`;
-    const cls = m.kind === "ctx" ? " ctx" : (m.kind === "focus" ? " focus" : "");
-    return `<span class="w-mark ${m.predicted}${cls}">${esc(w)}</span>` +
-           `<span class="ayah-mark ${m.predicted}${m.kind === "ctx" ? " ctx" : ""}" ` +
-           `title="predicted ${m.predicted} after word ${m.word_index}">◆</span>`;
-  }).join(" ");
-}
-
-function timelineMarks(clip) {
-  return markersOf(clip).map(m => {
-    const cls = m.kind === "ctx" ? "ctx" : "active";
-    const focus = m.kind === "focus" ? " focus" : "";
-    const flag = m.kind === "focus"
-      ? `<span class="tl-flag">${LABELS[m.predicted]}${m.verdict ? " ✓" : ""}</span>` : "";
-    return `<div class="tl-mark ${m.predicted} ${cls}${focus}" ` +
-           `data-start="${m.start_s}" data-end="${m.end_s == null ? m.start_s : m.end_s}" ` +
-           `data-bidx="${m.boundary_index}" data-judge="${m.kind !== "ctx"}">${flag}</div>`;
-  }).join("");
+// A word's kind for styling: is its ground truth a stop, and was it overridden (edited)?
+// fp = predicted stop the reviewer cleared to wasl; fn = predicted wasl marked a stop.
+function boundaryKind(b) {
+  const edited = b.verdict !== null && b.verdict !== undefined;
+  const stop = isStop(b.truth);
+  const fp = edited && isStop(b.predicted) && b.truth === "wasl";
+  const fn = edited && b.predicted === "wasl" && stop;
+  return { edited, stop, fp, fn };
 }
 
 // ---- rendering -----------------------------------------------------------------
 
 function renderSidebar() {
-  const judge = allJudge();
-  const done = judge.filter(j => j.verdict).length;
-  document.getElementById("overall").textContent = `${done} / ${judge.length} boundaries adjudicated`;
-  document.getElementById("topprog").textContent = `${done}/${judge.length}`;
+  const s = state.stats;
+  document.getElementById("overall").textContent =
+    `${s.clips_reviewed || 0} / ${s.clips_total || 0} clips reviewed`;
+  document.getElementById("topprog").textContent = `${s.clips_reviewed || 0}/${s.clips_total || 0}`;
   const hl = document.getElementById("hidelabeled");
-  if (hl) hl.checked = state.hideLabeled;
+  if (hl) hl.checked = state.hideReviewed;
 
   const box = document.getElementById("classes");
-  box.innerHTML = "";
-  const byClass = Object.fromEntries(state.stats.map(s => [s.predicted, s]));
-  const all = { predicted: "(all)", total: judge.length, labelled: done };
-  [all, ...state.classes.map(c => byClass[c]).filter(Boolean)].forEach(s => {
-    const isAll = s.predicted === "(all)";
-    const entry = document.createElement("div");
-    const row = document.createElement("div");
-    row.className = "class-row" +
-      (((isAll && !state.filter) || state.filter === s.predicted) ? " active" : "") +
-      (!isAll && s.total && s.labelled === s.total ? " done" : "");
-    row.innerHTML = `
-      <span class="name">${isAll ? "(all)" : LABELS[s.predicted]}</span>
-      <span class="pill">${s.labelled}/${s.total}</span>`;
-    const barPct = s.total ? (s.labelled / s.total * 100) : 0;
-    const bar = document.createElement("div"); bar.className = "bar";
-    bar.innerHTML = `<i style="width:${barPct}%"></i>`;
-    entry.appendChild(row);
-    entry.appendChild(bar);
-    if (!isAll && s.verdicts && s.labelled) {
-      const conf = document.createElement("div");
-      conf.className = "confusion";
-      conf.innerHTML = CLASSES.map(v => {
-        const n = s.verdicts[v] || 0;
-        if (!n) return "";
-        return `<span class="${v !== s.predicted ? "bad" : ""}">${LABELS[v]}: ${n}</span>`;
-      }).filter(Boolean).join(" · ");
-      entry.appendChild(conf);
-    }
-    entry.style.marginBottom = "4px";
-    entry.onclick = () => { state.filter = isAll ? null : s.predicted; state.idx = 0; state.focus = null; toggleDrawer(false); render(); };
-    box.appendChild(entry);
+  box.innerHTML = `
+    <div class="class-row"><span class="name">Clips reviewed</span>
+      <span class="pill">${s.clips_reviewed || 0}/${s.clips_total || 0}</span></div>
+    <div class="bar"><i style="width:${s.clips_total ? (s.clips_reviewed / s.clips_total * 100) : 0}%"></i></div>
+    <div class="confusion"><span class="bad">False positives: ${s.false_positive || 0}</span></div>
+    <div class="confusion"><span class="bad">False negatives: ${s.false_negative || 0}</span></div>
+    <div class="confusion">Class fixes (waqf↔closure): ${s.class_fix || 0}</div>`;
+}
+
+function renderAyah(clip) {
+  const words = String(clip.uthmani || "").split(/\s+/).filter(Boolean);
+  const byWord = {};
+  clip.boundaries.forEach(b => { byWord[b.word_index] = b; });
+  return words.map((w, i) => {
+    const b = byWord[i];
+    if (b === undefined) return `<span>${esc(w)}</span>`;
+    const k = boundaryKind(b);
+    const cls = ["w"];
+    if (k.stop) cls.push("stop-" + b.truth);
+    if (k.edited) cls.push("edited");
+    if (k.fp) cls.push("fp");
+    if (b.boundary_index === state.focus) cls.push("focus");
+    const mark = k.stop
+      ? `<span class="ayah-mark ${b.truth}${k.fn ? " added" : ""}" title="stop (${LABELS[b.truth]})">◆</span>`
+      : "";
+    return `<span class="${cls.join(" ")}" data-b="${b.boundary_index}" onclick="pickWord(${b.boundary_index})">${esc(w)}</span>${mark}`;
+  }).join(" ");
+}
+
+// Timeline markers: one per ground-truth stop (bright), the focused one ringed. Deleted
+// stops (false positives) are not drawn — the reviewer said no stop happened there.
+function timelineMarks(clip) {
+  return clip.boundaries.filter(b => isStop(b.truth)).map(b => {
+    const focus = b.boundary_index === state.focus ? " focus" : "";
+    const flag = focus ? `<span class="tl-flag">${LABELS[b.truth]}</span>` : "";
+    return `<div class="tl-mark ${b.truth} active${focus}" data-start="${b.start_s}" ` +
+           `data-end="${b.end_s == null ? b.start_s : b.end_s}" data-bidx="${b.boundary_index}">${flag}</div>`;
+  }).join("");
+}
+
+function correctionsList(clip) {
+  const rows = clip.boundaries.filter(b => {
+    const k = boundaryKind(b); return k.edited;
+  }).map(b => {
+    const k = boundaryKind(b);
+    const kind = k.fp ? ["kind-fp", "false positive → wasl"]
+      : k.fn ? ["kind-fn", "false negative → " + LABELS[b.truth]]
+      : ["kind-fix", "class fix → " + LABELS[b.truth]];
+    return `<div class="crow ${kind[0]}" onclick="pickWord(${b.boundary_index})">
+      <span>word ${b.word_index}</span><span>·</span><span>${kind[1]}</span>
+      <span style="margin-left:auto;color:var(--muted)">${fmtTime(b.start_s)}</span></div>`;
   });
+  if (!rows.length) return `<div class="sub">No corrections yet — the prediction is assumed correct.</div>`;
+  return rows.join("");
 }
 
-function wordNote(clip, stops) {
-  const n = clip.judge.length;
-  let s = `${n} sampled boundar${n === 1 ? "y" : "ies"} to judge`;
-  if (stops) s += ` · ${stops} more stop point${stops > 1 ? "s" : ""} shown dimmed for context`;
-  return s + " — play the clip once, judge each below.";
-}
-
-function boundaryRow(clip, j) {  const foc = j.boundary_index === state.focus;
-  const b = j.boundary_index;
-  const span = fmtTime(j.start_s) + (j.end_s > j.start_s ? "–" + fmtTime(j.end_s) : "");
+function focusBar(clip) {
+  const b = focusBoundary(clip);
+  if (!b) return "";
+  const cur = isStop(b.truth) ? `stop (<b>${LABELS[b.truth]}</b>)` : "<b>no stop</b> (wasl)";
+  const pred = `<span class="cur">predicted ${LABELS[b.predicted]}${b.verdict ? " · overridden" : ""}</span>`;
   return `
-    <div class="brow ${foc ? "focus" : ""} ${j.verdict || ""}" onclick="setFocus(${b})">
-      <div class="brow-head">
-        <span class="tag pred-${j.predicted}">predicted ${LABELS[j.predicted]}</span>
-        <span class="idx">after word ${j.word_index} · ${span} · #${b}</span>
-        <button class="playclip ghost" onclick="event.stopPropagation();playFrom(${j.start_s})">▶ hear</button>
-        <span class="verdict-state">${j.verdict ? LABELS[j.verdict] : "unadjudicated"}</span>
+    <div class="focusbar">
+      <div class="cur">Focused: <b>word ${b.word_index}</b> · ${fmtTime(b.start_s)} · now ${cur}</div>
+      ${pred}
+      <button class="playclip ghost" onclick="playFrom(${b.start_s})">▶ hear</button>
+      <div class="btns">
+        <button class="waqf ${b.truth==="waqf"?"on-waqf":""}" onclick="labelFocus('waqf')">Q · Waqf (stop)</button>
+        <button class="wasl ${b.truth==="wasl"?"on-wasl":""}" onclick="labelFocus('wasl')">W · Wasl (no stop)</button>
+        <button class="mid_word_closure ${b.truth==="mid_word_closure"?"on-mid_word_closure":""}" onclick="labelFocus('mid_word_closure')">C · Closure</button>
+        <button class="ghost" onclick="labelFocus(null)">U · reset to predicted</button>
       </div>
-      <div class="btns" onclick="event.stopPropagation()">
-        <button class="waqf ${j.verdict==="waqf"?"on-waqf":""}" onclick="labelBoundary(${b},'waqf')">Q · Waqf (stop)</button>
-        <button class="wasl ${j.verdict==="wasl"?"on-wasl":""}" onclick="labelBoundary(${b},'wasl')">W · Wasl (continued)</button>
-        <button class="mid_word_closure ${j.verdict==="mid_word_closure"?"on-mid_word_closure":""}" onclick="labelBoundary(${b},'mid_word_closure')">C · Mid-word closure</button>
-        <button class="ghost" onclick="labelBoundary(${b},null)">Unmark</button>
-      </div>
-      <textarea id="note-${b}" placeholder="Optional note (what you heard)…" onclick="event.stopPropagation()">${esc(j.note || "")}</textarea>
     </div>`;
 }
 
@@ -353,20 +329,19 @@ function renderCard() {
   const clips = visibleClips();
   if (!clips.length) {
     renderedClip = null;
-    const msg = state.hideLabeled ? "All boundaries in this view are adjudicated. 🎉"
-      : "No clips in this view.";
-    wrap.innerHTML = `<div class="empty">${msg}</div>`; return;
+    wrap.innerHTML = `<div class="empty">${state.hideReviewed
+      ? "All clips reviewed. 🎉" : "No clips to review."}</div>`;
+    return;
   }
   if (state.idx >= clips.length) state.idx = clips.length - 1;
   const clip = clips[state.idx];
   ensureFocus(clip);
 
-  const judged = clip.judge.filter(j => j.verdict).length;
-  const stops = markersOf(clip).filter(m => m.kind === "ctx").length;
+  const stops = clip.boundaries.filter(b => isStop(b.truth)).length;
+  const edits = clip.boundaries.filter(b => boundaryKind(b).edited).length;
 
   // Preserve audio playback across in-clip re-renders (focus / labelling), so the reviewer
-  // hears the whole recitation once while marking each boundary. Only reset when the clip
-  // changes.
+  // hears the whole recitation once. Only reset when the clip changes.
   const prev = document.getElementById("au");
   const keep = (prev && renderedClip === clip.clip_id)
     ? { t: prev.currentTime, playing: !prev.paused } : null;
@@ -376,11 +351,13 @@ function renderCard() {
       <div class="head">
         <span class="ref">${clip.surah_ayah || "?:?"}</span>
         <span class="tag">clip ${state.idx + 1} / ${clips.length}</span>
-        <span class="tag">${judged}/${clip.judge.length} boundaries done</span>
+        <span class="tag">${stops} stop${stops === 1 ? "" : "s"} · ${edits} correction${edits === 1 ? "" : "s"}</span>
+        ${clip.reviewed ? `<span class="tag pred-waqf">reviewed ✓</span>` : ""}
       </div>
       <div class="sub">${esc(clip.clip_id)}</div>
-      ${clip.uthmani ? `<div class="ayah arabic">${renderAyah(clip)}</div>` : ""}
-      <div class="wordnote">${wordNote(clip, stops)}</div>
+      ${clip.uthmani ? `<div class="ayah arabic">${renderAyah(clip)}</div>` : `<div class="warn">No Uthmani text for ${esc(clip.surah_ayah)}.</div>`}
+      <div class="wordnote">Underlined + ◆ = a stop the reciter made · plain word = assumed continuation.
+        Click a word (or ←/→) to focus it, then Q/W/C to correct.</div>
       ${clip.audio_available
         ? `<audio id="au" controls src="${clip.audio_url}"></audio>
            <div class="timeline">
@@ -390,18 +367,21 @@ function renderCard() {
              </div>
              <div class="tl-labels">
                <span id="tlcur">0:00</span>
-               <span class="mid">◆ boundaries in this clip</span>
+               <span class="mid">◆ stops in this clip</span>
                <span id="tldur">0:00</span>
              </div>
            </div>
            <div class="seek"><button class="playclip" onclick="playFrom(0)">▶ Play clip from start</button>
-             &nbsp; click a marker to hear it · did the reciter stop at each bright marker?</div>`
+             &nbsp; click a marker to hear that stop</div>`
         : `<div class="warn">⚠ clip not staged — run tadabur.waqf_segments so this clip is in --audio-dir.</div>`}
-      <div class="brows">${clip.judge.map(j => boundaryRow(clip, j)).join("")}</div>
+      ${focusBar(clip)}
+      <h2 style="margin-top:18px">Corrections in this clip</h2>
+      <div class="corrections">${correctionsList(clip)}</div>
       <div class="nav">
-        <button class="ghost" onclick="go(-1)">← Prev clip</button>
-        <span>${judged === clip.judge.length ? "clip complete ✓" : "in progress"}</span>
-        <button class="ghost" onclick="go(1)">Next clip →</button>
+        <button class="ghost" onclick="goClip(-1)">← Prev clip</button>
+        <button class="reviewbtn ${clip.reviewed ? "done" : ""}" onclick="toggleReviewed()">
+          ${clip.reviewed ? "Reviewed ✓ (click to undo)" : "Mark clip reviewed ⏎"}</button>
+        <button class="ghost" onclick="goClip(1)">Next clip →</button>
       </div>
     </div>`;
 
@@ -411,14 +391,14 @@ function renderCard() {
     const restore = () => { try { a.currentTime = keep.t; if (keep.playing) a.play(); } catch (e) {} };
     if (a.readyState >= 1) restore(); else a.addEventListener("loadedmetadata", restore, { once: true });
   }
-  setupTimeline(clip);
+  setupTimeline();
 }
 
 function render() { renderSidebar(); renderCard(); }
 
 // ---- timeline wiring -----------------------------------------------------------
 
-function setupTimeline(clip) {
+function setupTimeline() {
   const a = document.getElementById("au");
   const track = document.getElementById("tltrack");
   const play = document.getElementById("tlplay");
@@ -426,7 +406,6 @@ function setupTimeline(clip) {
   const curEl = document.getElementById("tlcur");
   if (!a || !track) return;
   const marks = Array.from(track.querySelectorAll(".tl-mark"));
-
   const place = () => {
     const d = a.duration;
     if (!d || !isFinite(d)) return;
@@ -446,11 +425,11 @@ function setupTimeline(clip) {
   };
   if (a.readyState >= 1) place(); else a.addEventListener("loadedmetadata", place, { once: true });
   a.ontimeupdate = tick;
-  // Click a marker: focus it (if it's a judge boundary) and hear it.
   marks.forEach(m => m.addEventListener("click", ev => {
     ev.stopPropagation();
+    state.focus = parseInt(m.dataset.bidx, 10);
+    render();
     const s = parseFloat(m.dataset.start) || 0;
-    if (m.dataset.judge === "true") { state.focus = parseInt(m.dataset.bidx, 10); render(); }
     a.currentTime = Math.max(0, s - 1.0);
     a.play().catch(() => {});
   }));
@@ -473,14 +452,15 @@ function playFrom(s) {
 
 // ---- interaction ---------------------------------------------------------------
 
-function currentClip() {
-  const clips = visibleClips();
-  return clips.length ? clips[Math.min(state.idx, clips.length - 1)] : null;
+function pickWord(bidx) {
+  state.focus = bidx;
+  const clip = currentClip();
+  const b = focusBoundary(clip);
+  render();
+  if (b) playFrom(b.start_s);
 }
 
-function setFocus(bidx) { state.focus = bidx; render(); }
-
-function go(delta) {
+function goClip(delta) {
   const n = visibleClips().length;
   if (!n) return;
   state.idx = Math.min(Math.max(state.idx + delta, 0), n - 1);
@@ -488,63 +468,72 @@ function go(delta) {
   render();
 }
 
-// Move focus to the next/prev boundary within the current clip (wrapping into adjacent
-// clips at the ends), so the reviewer can walk every boundary with the keyboard.
-function moveFocus(delta) {
+// Move focus across words (←/→) or across stops only (↑/↓), wrapping into adjacent clips.
+function moveFocus(delta, stopsOnly) {
   const clip = currentClip();
   if (!clip) return;
   ensureFocus(clip);
-  const order = clip.judge.map(j => j.boundary_index);
+  const pool = stopsOnly ? clip.boundaries.filter(b => isStop(b.truth)) : clip.boundaries;
+  const order = pool.map(b => b.boundary_index);
   const at = order.indexOf(state.focus);
+  if (stopsOnly && at === -1) { if (order.length) state.focus = order[0]; render(); return; }
   const next = at + delta;
-  if (next < 0) { go(-1); return; }
-  if (next >= order.length) { go(1); return; }
+  if (next < 0) { goClip(-1); return; }
+  if (next >= order.length) { if (stopsOnly) return; goClip(1); return; }
   state.focus = order[next];
   render();
 }
 
-async function labelBoundary(bidx, verdict) {
+async function labelFocus(verdict) {
   const clip = currentClip();
-  if (!clip) return;
-  const j = clip.judge.find(x => x.boundary_index === bidx);
-  if (!j) return;
-  const noteEl = document.getElementById("note-" + bidx);
-  const note = noteEl ? noteEl.value : "";
+  const b = focusBoundary(clip);
+  if (!clip || !b) return;
   const res = await api("/api/label", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clip_id: j.clip_id || clip.clip_id, boundary_index: bidx, verdict, note }),
+    body: JSON.stringify({ clip_id: clip.clip_id, boundary_index: b.boundary_index, verdict }),
   });
   if (res.error) { alert(res.error); return; }
-  j.verdict = verdict; j.note = verdict ? note : "";
+  // verdict === predicted (or null) clears the override server-side; reflect that locally.
+  b.verdict = (verdict === null || verdict === b.predicted) ? null : verdict;
+  b.truth = b.verdict !== null ? b.verdict : b.predicted;
   state.stats = res.stats;
-  // Advance focus to the next unadjudicated boundary in this clip when marking.
-  if (verdict) {
-    const nextUn = clip.judge.find(x => x.boundary_index !== bidx && !x.verdict);
-    if (nextUn && bidx === state.focus) state.focus = nextUn.boundary_index;
-  }
   render();
+}
+
+async function toggleReviewed() {
+  const clip = currentClip();
+  if (!clip) return;
+  const res = await api("/api/review", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clip_id: clip.clip_id, reviewed: !clip.reviewed }),
+  });
+  if (res.error) { alert(res.error); return; }
+  clip.reviewed = !clip.reviewed;
+  state.stats = res.stats;
+  // Advancing after marking reviewed keeps the reviewer moving through the clip list.
+  if (clip.reviewed) { render(); goClip(1); } else { render(); }
 }
 
 document.addEventListener("keydown", e => {
   if (e.target.tagName === "TEXTAREA") return;
   const clip = currentClip();
-  const focus = clip ? state.focus : null;
   const k = e.key.toLowerCase();
-  if (focus != null && k === "q") { labelBoundary(focus, "waqf"); e.preventDefault(); }
-  else if (focus != null && k === "w") { labelBoundary(focus, "wasl"); e.preventDefault(); }
-  else if (focus != null && k === "c") { labelBoundary(focus, "mid_word_closure"); e.preventDefault(); }
-  else if (focus != null && k === "u") { labelBoundary(focus, null); e.preventDefault(); }
-  else if (e.key === "ArrowRight") { go(1); }
-  else if (e.key === "ArrowLeft") { go(-1); }
-  else if (e.key === "ArrowDown") { moveFocus(1); e.preventDefault(); }
-  else if (e.key === "ArrowUp") { moveFocus(-1); e.preventDefault(); }
-  else if (e.key === " ") { const f = clip && focusRow(clip); if (f) playFrom(f.start_s); e.preventDefault(); }
+  if (clip && state.focus != null && k === "q") { labelFocus("waqf"); e.preventDefault(); }
+  else if (clip && state.focus != null && k === "w") { labelFocus("wasl"); e.preventDefault(); }
+  else if (clip && state.focus != null && k === "c") { labelFocus("mid_word_closure"); e.preventDefault(); }
+  else if (clip && state.focus != null && k === "u") { labelFocus(null); e.preventDefault(); }
+  else if (e.key === "ArrowRight") { moveFocus(1, false); e.preventDefault(); }
+  else if (e.key === "ArrowLeft") { moveFocus(-1, false); e.preventDefault(); }
+  else if (e.key === "ArrowDown") { moveFocus(1, true); e.preventDefault(); }
+  else if (e.key === "ArrowUp") { moveFocus(-1, true); e.preventDefault(); }
+  else if (e.key === "[") { goClip(-1); }
+  else if (e.key === "]") { goClip(1); }
+  else if (e.key === "Enter") { toggleReviewed(); e.preventDefault(); }
+  else if (e.key === " ") { const b = focusBoundary(clip); if (b) playFrom(b.start_s); e.preventDefault(); }
 });
 
 (async function init() {
   const s = await api("/api/state");
-  // Tag each judge row with its clip so keyboard/label paths never lose the clip_id.
-  s.clips.forEach(c => c.judge.forEach(j => { j.clip_id = c.clip_id; }));
   state.clips = s.clips; state.stats = s.stats; state.classes = s.classes;
   render();
 })();

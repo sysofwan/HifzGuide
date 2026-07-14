@@ -16,7 +16,9 @@ from .waqf_event_fixtures import MID_WORD_CLOSURE, WAQF, WASL
 from .waqf_event_sampler import (
     WaqfCandidate,
     read_candidates,
+    sample_clips,
     sample_worklist,
+    write_clip_worklist,
     write_worklist,
 )
 
@@ -74,6 +76,29 @@ def test_worklist_jsonl_roundtrip(tmp_path):
         loaded = [json.loads(line) for line in f]
     assert len(loaded) == len(items)
     assert loaded[0]["local_audio_path"] == items[0].local_audio_path
+
+
+def test_sample_clips_is_distinct_and_covers_sampled_boundaries():
+    # Two boundaries on clip0 (waqf + mid_word_closure) collapse to one clip entry.
+    clips = sample_clips(_population(), per_class=2, seed=0)
+    assert len(clips) == len(set(clips))  # distinct
+    items = sample_worklist(_population(), per_class=2, seed=0)
+    assert set(clips) == {i.clip_id for i in items}  # exactly the sampled clips
+
+
+def test_sample_clips_is_deterministic():
+    a = sample_clips(_population(), per_class=2, seed=0)
+    b = sample_clips(_population(), per_class=2, seed=0)
+    assert a == b
+
+
+def test_clip_worklist_jsonl_roundtrip(tmp_path):
+    clips = sample_clips(_population(), per_class=2, seed=0)
+    path = tmp_path / "clips.jsonl"
+    write_clip_worklist(clips, path)
+    with open(path, encoding="utf-8") as f:
+        loaded = [json.loads(line)["clip_id"] for line in f]
+    assert loaded == clips
 
 
 def test_read_candidates_rejects_unknown_class(tmp_path):

@@ -38,27 +38,44 @@ python -m tadabur.waqf_partition \
   --test        audit_run/waqf_cand.test.jsonl \
   --test-fraction 0.5 --seed 0 --report audit_run/waqf_partition.json
 
-# 3. Sample a stratified worklist per partition (up to --per-class per predicted class).
+# 3. Sample a per-partition clip worklist (the clips the reviewer walks through).
 python -m tadabur.waqf_event_sampler \
   --candidates audit_run/waqf_cand.calibration.jsonl \
-  --worklist audit_run/waqf_worklist.calibration.jsonl --seed 0
+  --clips audit_run/waqf_clip_worklist.calibration.jsonl --seed 0
 
 # 4. Adjudicate each partition into its own frozen fixture file (repeat for --test).
 python -m tadabur.waqf_audit_ui \
-  --worklist audit_run/waqf_worklist.calibration.jsonl \
-  --audio-dir audit_run/clips_v2 \
-  --fixtures  waqf_event_fixtures/waqf_events.calibration.jsonl
+  --candidates audit_run/waqf_cand.calibration.jsonl \
+  --clips      audit_run/waqf_clip_worklist.calibration.jsonl \
+  --audio-dir  audit_run/clips_v2 \
+  --fixtures   waqf_event_fixtures/waqf_events.calibration.jsonl
 ```
 
 Freeze both fixture files (and `waqf_partition.json`) once adjudicated — they are the
 versioned calibration/test sets F1/F2 read, both held out of training. Candidate class
-tallies are approximate on purpose: `wasl` covers every interior word edge (the sampler
-subsamples it), while `mid_word_closure` is rare (only VAD pauses that fell mid-word).
+tallies are approximate on purpose: `wasl` covers every interior word edge, while
+`mid_word_closure` is rare (only VAD pauses that fell mid-word).
+
+## Correction-based per-clip adjudication
+
+The UI works on the **clip** as the review unit, not one card per boundary. The
+candidate manifest (`--candidates`) is treated as the **assumed-correct baseline**: for
+each clip the reviewer plays the whole recitation, and only marks the boundaries the
+detector got wrong — a **false positive** (a predicted stop that is really `wasl`), a
+**false negative** (a word edge the detector called `wasl` that is actually a stop), or
+a **class fix** (`waqf` ↔ `mid_word_closure`). Every word edge is a candidate, so a
+false negative can be marked on any edge, not just the sampled ones.
+
+Only **overrides** (`verdict` ≠ `predicted`) are written to `waqf_events.jsonl`; the
+ground truth for a clip is `predicted ⊕ overrides`. A clip must be explicitly marked
+**reviewed** to enter the eval set — this distinguishes "reviewed, no errors found"
+from "never seen". Reviewed clip ids persist in a sibling `waqf_reviewed_clips.json`
+next to the fixtures file, so the per-line event schema stays unchanged.
 
 The UI plays whole clips from `--audio-dir`, which is the staging directory
 `tadabur.waqf_segments` already wrote (each clip under its `audio_filename` — the same
 16 kHz clips the VAD/segmentation pass analysed to propose the candidates). No
-separate audio-export step is needed: the worklist serves each row by that filename.
+separate audio-export step is needed: each clip is served by that filename.
 
 Each line carries: `clip_id`, `audio_ref`, `surah_ayah`, `boundary_index`,
 `word_index`, `start_s`, `end_s`, `predicted`, `verdict`, `note`. Both `predicted`

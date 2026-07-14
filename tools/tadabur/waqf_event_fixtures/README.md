@@ -15,6 +15,46 @@ data. The adjudication UI (`python -m tadabur.waqf_audit_ui`) fills it in from a
 candidate-boundary worklist (`python -m tadabur.waqf_event_sampler`), and F0's
 event-level eval reads it back through `load_waqf_events`.
 
+## Pipeline (F0, #30)
+
+The whole flow is **torch-free** — every candidate is read off the segmentation pass's
+existing artifacts (`segment_score` manifest + its VAD pause map), no model re-run:
+
+```bash
+# 1. Derive the candidate-boundary manifest (waqf / wasl / mid-word-closure) from the
+#    segmentation artifacts. Emits one WaqfCandidate per boundary.
+python -m tadabur.waqf_candidates \
+  --segment-manifest audit_run/segment_manifest_v4.jsonl \
+  --vad-pauses audit_run/vad_pauses_v4.json \
+  --out audit_run/waqf_candidates.jsonl
+
+# 2. Split into reciter-disjoint calibration + test partitions, both excluding the
+#    D2/D3 fine-tune reciters (pass their ids and/or the training manifest). A reciter
+#    lands wholly on one side, so calibration/test/training share no reciter.
+python -m tadabur.waqf_partition \
+  --candidates audit_run/waqf_candidates.jsonl \
+  --train-reciters <D2/D3 reciter ids...> [--train-manifest <fine-tune manifest.jsonl>] \
+  --calibration audit_run/waqf_cand.calibration.jsonl \
+  --test        audit_run/waqf_cand.test.jsonl \
+  --test-fraction 0.5 --seed 0 --report audit_run/waqf_partition.json
+
+# 3. Sample a stratified worklist per partition (up to --per-class per predicted class).
+python -m tadabur.waqf_event_sampler \
+  --candidates audit_run/waqf_cand.calibration.jsonl \
+  --worklist audit_run/waqf_worklist.calibration.jsonl --seed 0
+
+# 4. Adjudicate each partition into its own frozen fixture file (repeat for --test).
+python -m tadabur.waqf_audit_ui \
+  --worklist audit_run/waqf_worklist.calibration.jsonl \
+  --audio-dir audit_run/clips_v2 \
+  --fixtures  waqf_event_fixtures/waqf_events.calibration.jsonl
+```
+
+Freeze both fixture files (and `waqf_partition.json`) once adjudicated — they are the
+versioned calibration/test sets F1/F2 read, both held out of training. Candidate class
+tallies are approximate on purpose: `wasl` covers every interior word edge (the sampler
+subsamples it), while `mid_word_closure` is rare (only VAD pauses that fell mid-word).
+
 The UI plays whole clips from `--audio-dir`, which is the staging directory
 `tadabur.waqf_segments` already wrote (each clip under its `audio_filename` — the same
 16 kHz clips the VAD/segmentation pass analysed to propose the candidates). No

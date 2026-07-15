@@ -57,6 +57,10 @@ class ClipStatus:
     origin. ``skip_reason`` is one of :data:`CLIP_SKIP_REASONS` when the segmenter could
     not produce trustworthy per-segment labels for the clip, else ``None`` (a skipped clip
     is excluded from training, so its recitation span defaults to the whole clip).
+    ``re_reads`` counts the re-read seams the segmenter cut the clip at (0 for an ordinary
+    clip): a positive count means the kept segments overlap in words rather than tiling
+    ``[0, n_words)`` contiguously, so the whole-clip windowed label excludes the clip (its
+    per-segment rows stay valid single-pass pairs). It is surfaced for manual review.
     """
 
     audio_filename: str
@@ -67,6 +71,7 @@ class ClipStatus:
     recitation_start_s: float = 0.0
     recitation_end_s: float = 0.0
     skip_reason: str | None = None
+    re_reads: int = 0
 
 
 def write_clip_status(path: Path, statuses: list[ClipStatus]) -> None:
@@ -100,6 +105,7 @@ def read_clip_status(path: Path) -> list[ClipStatus]:
                     recitation_start_s=data.get("recitation_start_s", 0.0),
                     recitation_end_s=data.get("recitation_end_s", data["duration_s"]),
                     skip_reason=data.get("skip_reason"),
+                    re_reads=data.get("re_reads", 0),
                 )
             )
     return statuses

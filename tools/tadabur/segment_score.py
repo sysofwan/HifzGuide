@@ -200,7 +200,7 @@ def segment_clips(
     boundary_tol: int = waqf_detect.DEFAULT_BOUNDARY_TOL,
     max_decode_ratio: float = waqf_detect.DEFAULT_MAX_DECODE_RATIO,
     min_align_ratio: float = waqf_detect.DEFAULT_MIN_ALIGN_RATIO,
-) -> tuple[list[SegmentRecord], Counter, list[ClipStatus]]:
+) -> tuple[list[SegmentRecord], Counter, list[ClipStatus], dict[str, tuple[waqf_detect.PauseAttribution, ...]]]:
     """Split every passing clip at its VAD-detected waqf pauses.
 
     ``pauses_by_clip`` maps each clip's ``audio_filename`` to its ``(start_s, end_s)``
@@ -218,17 +218,21 @@ def segment_clips(
     segment spanning the ayah — rather than dropped, so it still reaches the audit. A
     clip whose reference cannot be phonetized (the 8-ayah leen-madd gap) is skipped and
     tallied (``phonetizer_unsupported``); a passing clip missing from ``clips_dir`` is
-    tallied ``clip_missing``. Returns the records, the skip tally, and a
+    tallied ``clip_missing``. Returns the records, the skip tally, a
     :class:`~tadabur.clip_status.ClipStatus` per passing clip — the whole-clip
     eligibility sidecar the windowed-label builder (#25) needs to exclude a clip whose
     segments are unusable, since a kept-whole skip is indistinguishable from a genuine
     no-pause clip in the segment manifest and a missing/unphonetizable clip leaves no
-    rows at all.
+    rows at all — and a per-clip map of each pause's phoneme-aligned attribution
+    (:class:`~tadabur.waqf_detect.PauseAttribution`), which the audit candidate layer
+    (:mod:`tadabur.waqf_candidates`) uses to place a mid-word closure on the word the
+    decode reached instead of interpolating time across the segment.
     """
     ordered = sorted(passing_records, key=lambda r: r.audio_filename)
     records: list[SegmentRecord] = []
     skips: Counter = Counter()
     statuses: list[ClipStatus] = []
+    pause_attrib_by_clip: dict[str, tuple[waqf_detect.PauseAttribution, ...]] = {}
     for passing in ordered:
         uthmani_words = _uthmani_words(passing.surah_ayah)
         if not (clips_dir / passing.audio_filename).exists():
@@ -253,6 +257,8 @@ def segment_clips(
                 spans = (WaqfSpan(0, len(uthmani_words), 0.0, duration_s),)
             else:
                 spans = result.spans
+                if result.re_reads:
+                    skips["re_read"] += 1
             clip_records = _records_for_spans(
                 passing, uthmani_words, spans, phonetize
             )
@@ -266,13 +272,16 @@ def segment_clips(
             )
             continue
         records.extend(clip_records)
+        if result.pauses:
+            pause_attrib_by_clip[passing.audio_filename] = result.pauses
         statuses.append(
             _clip_status(
                 passing, len(uthmani_words), duration_s,
                 spans[0].start_s, spans[-1].end_s, result.skip,
+                re_reads=result.re_reads,
             )
         )
-    return records, skips, statuses
+    return records, skips, statuses, pause_attrib_by_clip
 
 
 def _clip_status(
@@ -282,12 +291,16 @@ def _clip_status(
     recitation_start_s: float,
     recitation_end_s: float,
     skip_reason: str | None,
+    re_reads: int = 0,
 ) -> ClipStatus:
     """One :class:`ClipStatus` for a passing clip, carrying its eligibility inputs.
 
     ``recitation_start_s`` / ``recitation_end_s`` are the first/last kept span's edges —
     the un-waqf-segmented recitation bounds both label artifacts window over. A skipped
-    clip is kept whole (``[0, duration_s]``) and excluded downstream anyway.
+    clip is kept whole (``[0, duration_s]``) and excluded downstream anyway. ``re_reads``
+    is the count of re-read seams the segmentation cut the clip at (0 for an ordinary clip):
+    a positive count means the clip's segments overlap in words, so the whole-clip windowed
+    label excludes it — but its per-segment rows are still valid single-pass training pairs.
     """
     return ClipStatus(
         audio_filename=passing.audio_filename,
@@ -301,6 +314,7 @@ def _clip_status(
         recitation_start_s=recitation_start_s,
         recitation_end_s=recitation_end_s,
         skip_reason=skip_reason,
+        re_reads=re_reads,
     )
 
 
@@ -468,6 +482,45 @@ def write_segment_manifest(path: Path, rows: list[dict]) -> None:
             f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def write_pause_attributions(
+    path: Path,
+    pause_attrib_by_clip: dict[str, tuple[waqf_detect.PauseAttribution, ...]],
+) -> None:
+    """Write each clip's per-pause phoneme-aligned attribution as a JSONL sidecar.
+
+    One row per clip that has at least one interior pause::
+
+        {"clip_audio_filename": "<clip>.wav",
+         "pauses": [{"start_s": .., "end_s": .., "kind": "mid_word_closure",
+                     "word_index": 12}, ...]}
+
+    ``word_index`` is the 0-based Uthmani word the whole-clip decode had *completed* when
+    the pause fell (from :func:`tadabur.waqf_detect.segment_clip`'s Smith-Waterman word
+    alignment), or ``null`` when the neighbouring chunks were too unreliable to place it.
+    :mod:`tadabur.waqf_candidates` matches these back to the VAD pauses by ``start_s`` and
+    uses the phoneme-aligned word for a ``mid_word_closure`` marker instead of
+    interpolating time across the segment (which drifts a word on pause silence). Rows and
+    each pause list are key-sorted for a deterministic, diffable sidecar.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        for clip in sorted(pause_attrib_by_clip):
+            pauses = sorted(pause_attrib_by_clip[clip], key=lambda p: p.start_s)
+            row = {
+                "clip_audio_filename": clip,
+                "pauses": [
+                    {
+                        "start_s": p.start_s,
+                        "end_s": p.end_s,
+                        "kind": p.kind,
+                        "word_index": p.word_index,
+                    }
+                    for p in pauses
+                ],
+            }
+            f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+
+
 def stage_segment_audio(
     segments: list[SegmentRecord],
     clips_dir: Path,
@@ -550,6 +603,14 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--out-pause-attrib", type=Path, default=None,
+        help=(
+            "Output per-clip pause-attribution sidecar (JSONL) giving each interior "
+            "pause's phoneme-aligned word for the audit candidate layer; defaults to "
+            "<out-manifest>.pause_attrib.jsonl."
+        ),
+    )
+    parser.add_argument(
         "--audio-out", type=Path, required=True,
         help="Directory to write each segment's sliced audio for listening.",
     )
@@ -617,7 +678,7 @@ def main() -> None:
     )
 
     model = MuaalemPhonemeModel.load(device=args.device)
-    segments, skips, clip_statuses = segment_clips(
+    segments, skips, clip_statuses, pause_attrib_by_clip = segment_clips(
         passing, args.clips_dir, model, hafs_phonetizer(), hafs_word_reference(),
         pauses_by_clip, boundary_tol=args.boundary_tol,
     )
@@ -632,6 +693,16 @@ def main() -> None:
     )
     write_clip_status(clip_status_path, clip_statuses)
     print(f"Wrote {len(clip_statuses)} per-clip statuses to {clip_status_path}.")
+
+    pause_attrib_path = args.out_pause_attrib or args.out_manifest.with_suffix(
+        args.out_manifest.suffix + ".pause_attrib.jsonl"
+    )
+    write_pause_attributions(pause_attrib_path, pause_attrib_by_clip)
+    total_attrib = sum(len(p) for p in pause_attrib_by_clip.values())
+    print(
+        f"Wrote {total_attrib} pause attributions across "
+        f"{len(pause_attrib_by_clip)} clips to {pause_attrib_path}."
+    )
 
     rows, kept, drops = score_segments(
         segments, args.clips_dir, model, args.batch_size,

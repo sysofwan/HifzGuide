@@ -298,6 +298,7 @@ def _phon(text: str) -> str:
     return {
         "w0 w1 w2": " ".join(_c(w) for w in (_WORD0, _WORD1, _WORD2)),
         "w0": _c(_WORD0),
+        "w0 w1": _c(_WORD0 + _WORD1),
         "w1 w2": _c(_WORD1 + _WORD2),
     }[text]
 
@@ -332,7 +333,7 @@ def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
     model = _ClassIdModel([class_ids])
     pauses = {"a.wav": [(len(_WORD0) * 2 * _SPF, (len(_WORD0) * 2 + 12) * _SPF)]}
 
-    records, skips, statuses = segment_clips(
+    records, skips, statuses, _pa = segment_clips(
         [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref, pauses
     )
 
@@ -349,6 +350,31 @@ def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
     assert statuses[0].recitation_end_s == records[-1].end_s
 
 
+def test_segment_clips_splits_reread_clip(tmp_path, monkeypatch):
+    # WORD0 WORD1 [waqf] WORD1 WORD2: a re-read is split into two time-consecutive segments
+    # whose word ranges overlap on w1, each phonetized as its own single-pass reference.
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    class_ids = _ids(
+        [(cid, 2) for cid in _WORD0 + _WORD1] + [(0, 12)]
+        + [(cid, 2) for cid in _WORD1 + _WORD2]
+    )
+    _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
+    model = _ClassIdModel([class_ids])
+    seam = len(_WORD0 + _WORD1) * 2
+    pauses = {"a.wav": [(seam * _SPF, (seam + 12) * _SPF)]}
+
+    records, skips, statuses, _pa = segment_clips(
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref, pauses
+    )
+
+    assert skips["re_read"] == 1
+    assert [(r.word_start, r.word_end) for r in records] == [(0, 2), (1, 3)]
+    assert records[0].realized_reference_phonemes == _phon("w0 w1")
+    assert records[1].realized_reference_phonemes == _phon("w1 w2")
+    assert statuses[0].skip_reason is None
+    assert statuses[0].re_reads == 1
+
+
 def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):
     monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
     unrelated = _ids([(cid, 2) for cid in [19, 20, 21, 22, 23, 24, 25, 26]])
@@ -356,7 +382,7 @@ def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):
     model = _ClassIdModel([unrelated])
     pauses = {"a.wav": [(0.2, 0.5)]}  # a pause exists, but the clip won't align
 
-    records, skips, statuses = segment_clips(
+    records, skips, statuses, _pa = segment_clips(
         [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref, pauses
     )
 
@@ -373,7 +399,7 @@ def test_segment_clips_keeps_clip_whole_when_no_pauses(tmp_path, monkeypatch):
     _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
     model = _ClassIdModel([class_ids])
 
-    records, skips, statuses = segment_clips(
+    records, skips, statuses, _pa = segment_clips(
         [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref, {}
     )
 
@@ -386,7 +412,7 @@ def test_segment_clips_keeps_clip_whole_when_no_pauses(tmp_path, monkeypatch):
 def test_segment_clips_tallies_missing_clip(tmp_path, monkeypatch):
     monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
     model = _ClassIdModel([])  # decode never called — clip file absent
-    records, skips, statuses = segment_clips(
+    records, skips, statuses, _pa = segment_clips(
         [_manifest_record("gone.wav", "78:2")], tmp_path, model, _phon, _wordref, {}
     )
     assert records == []
@@ -403,7 +429,7 @@ def test_segment_clips_skips_unphonetizable_ayah(tmp_path, monkeypatch):
     def _raises(_words):
         raise IndexError("leen madd on sukoon")
 
-    records, skips, statuses = segment_clips(
+    records, skips, statuses, _pa = segment_clips(
         [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _raises, {}
     )
     assert records == []

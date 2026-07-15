@@ -303,7 +303,13 @@ function renderFlaggedList() {
 function renderAyah(clip) {
   const words = String(clip.uthmani || "").split(/\s+/).filter(Boolean);
   const byWord = {};
-  clip.boundaries.forEach(b => { byWord[b.word_index] = b; });
+  clip.boundaries.forEach(b => {
+    const prev = byWord[b.word_index];
+    // A re-read (or any overlap) can land two boundaries on one word: the pass-1 stop and
+    // the pass-2 continuation (wasl). Keep the stop so its ◆ still shows here — the
+    // timeline already draws every stop. Among same-kind boundaries, last wins (as before).
+    if (prev === undefined || isStop(b.truth) || !isStop(prev.truth)) byWord[b.word_index] = b;
+  });
   return words.map((w, i) => {
     const b = byWord[i];
     if (b === undefined) return `<span>${esc(w)}</span>`;

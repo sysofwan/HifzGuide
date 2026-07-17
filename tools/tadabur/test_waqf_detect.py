@@ -19,6 +19,9 @@ from .waqf_detect import (
     RE_READ,
     UNPLACED,
     WAQF,
+    _ChunkAlign,
+    _supported_end,
+    _word_supported,
     collapse_with_times,
     segment_clip,
 )
@@ -268,6 +271,10 @@ def test_segment_clip_splits_reread_into_two_overlapping_segments():
     assert first.end_s == pytest.approx(pause[0])
     assert second.start_s == pytest.approx(pause[1])
     assert second.end_s == pytest.approx(dur, abs=EDGE_RECUT_PAD_S + 1e-6)
+    # The seam is a genuine re-read; the marker sits on the STOP word (word1, the last word
+    # recited before the pause), not the resume word — this is the re-read marker fix.
+    assert result.pauses[0].kind == RE_READ
+    assert result.pauses[0].word_index == 1
 
 
 def test_segment_clip_splits_whole_ayah_repeat_at_seam_into_two_clips():
@@ -360,9 +367,10 @@ def test_segment_clip_mid_word_closure_attributes_completed_word_when_tail_dropp
 def test_segment_clip_reread_attributes_over_run_word_not_backward_resume():
     # A re-read (spk0518, 8:47): the reciter over-runs into word 2, pauses, then backs up
     # and resumes at word 1. Both chunk edges land on word boundaries with a backward jump,
-    # so it is classified RE_READ. ``reached`` (the over-run to word 1) must win over the
-    # backward resume, so the pause stays on word 1 (the last word cleanly finished before
-    # the aborted over-run), not word 0.
+    # so it is classified RE_READ. A re-read marker takes the decode-supported stop frontier
+    # (``_supported_end`` = 2 here — words 0-1 fully recited, the lone phoneme of word 2 not
+    # supported), so the pause stays on word 1, the last word cleanly finished before the
+    # aborted over-run, ignoring the backward resume entirely.
     ids, dur = _clip(
         _phonemes(WORD0 + WORD1 + WORD2[:1])
         + [(0, PAUSE)]
@@ -441,3 +449,95 @@ def test_segment_clip_empty_reference_returns_whole_span():
     assert result.skip is None
     assert len(result.spans) == 1
     assert (result.spans[0].word_start, result.spans[0].word_end) == (0, 0)
+
+# --- decode-support discriminator (_word_supported / _supported_end) --------------
+#
+# These exercise the phantom-over-read vs genuine-re-read discriminator directly on
+# crafted chunk alignments. A synthetic Smith-Waterman pass is monotonic and always
+# prefers the nearest match, so it cannot manufacture a phantom over-read (an end that
+# snaps forward past a duplicate word) the way messy real decodes do; the unit level is
+# where that branch is pinned. ``BOUNDARIES = [0, 5, 14, 17]`` gives word lengths 5/9/3.
+
+
+def _chunk(
+    start_word: int,
+    end_word: int,
+    ref_start: int,
+    ref_kinds: tuple[str, ...],
+    *,
+    reliable: bool = True,
+) -> _ChunkAlign:
+    """A minimal ``_ChunkAlign`` carrying just the fields the discriminator reads."""
+    return _ChunkAlign(
+        q_lo=0, q_hi=0, t_lo=0.0, t_hi=0.0,
+        start_word=start_word, start_dist=0, end_word=end_word, end_dist=0,
+        reliable=reliable, ref_start=ref_start,
+        ref_end=ref_start + len(ref_kinds), ref_kinds=ref_kinds,
+    )
+
+
+def test_word_supported_requires_prefix_anchored_coverage():
+    # Word 0 spans ref [0, 5): a chunk that matched all five phonemes covers it.
+    chunk = _chunk(0, 1, 0, ("match",) * 5)
+    assert _word_supported(chunk, BOUNDARIES, 0)
+
+
+def test_word_supported_tolerates_a_dropped_terminal_phoneme():
+    # Word 1 spans ref [5, 14) (len 9): 8 matched + a dropped tail (gap) is still 0.89
+    # coverage, prefix-anchored — a CTC tail-drop must not read as "not recited".
+    chunk = _chunk(1, 2, 5, ("match",) * 8 + ("gap",))
+    assert _word_supported(chunk, BOUNDARIES, 1)
+
+
+def test_word_supported_rejects_a_lone_over_snapped_phoneme():
+    # Word 2 spans ref [14, 17) (len 3): a matched span that only clips its first phoneme
+    # (a phantom over-read snapping one phoneme into the word) is < min(2, 3) diagonal and
+    # 0.33 coverage — not recited.
+    chunk = _chunk(2, 3, 14, ("match", "gap", "gap"))
+    assert not _word_supported(chunk, BOUNDARIES, 2)
+
+
+def test_supported_end_reports_true_coverage_for_a_clean_chunk():
+    # A chunk that cleanly recited words 0-1 (snapped end 2) reports end 2.
+    chunk = _chunk(0, 2, 0, ("match",) * 14)
+    assert _supported_end(chunk, BOUNDARIES, n_words=3) == 2
+
+
+def test_supported_end_truncates_a_phantom_over_read_at_the_support_gap():
+    # A chunk whose matched span over-snapped to end_word 3 but only truly recited words 0-1
+    # (word 2's ref [14, 17) is all gaps) reports end 2 — the word the reciter actually
+    # reached — so the segment is un-inflated to a contiguous waqf, not a phantom re-read.
+    chunk = _chunk(0, 3, 0, ("match",) * 14 + ("gap",) * 3)
+    assert _supported_end(chunk, BOUNDARIES, n_words=3) == 2
+
+
+def test_supported_end_repairs_a_tail_dropped_final_word():
+    # A chunk that recited word 1 but tail-dropped its last phoneme snapped its end to 1;
+    # the inclusive scan still credits word 1 (0.89 coverage), reporting end 2.
+    chunk = _chunk(0, 1, 0, ("match",) * 5 + ("match",) * 8 + ("gap",))
+    assert _supported_end(chunk, BOUNDARIES, n_words=3) == 2
+
+
+def test_supported_end_trusts_the_snap_when_nothing_is_supported():
+    # A fully unreliable decode (no diagonal support anywhere) must not collapse the segment
+    # to zero words: the snapped end_word is trusted instead.
+    chunk = _chunk(0, 2, 0, ("gap",) * 14)
+    assert _supported_end(chunk, BOUNDARIES, n_words=3) == 2
+
+
+def test_supported_end_bridges_a_single_word_mid_recitation_dropout():
+    # earlier recited words 0-3 contiguously but the decode dropped word 1 (a single-word CTC
+    # omission); a bare contiguity break would truncate at word 0 and lose the rest of a real
+    # recitation. A one-word gap is bridged, so the end reaches word 3 (end 4).
+    boundaries = [0, 5, 14, 17, 22]  # 4 words
+    chunk = _chunk(0, 4, 0, ("match",) * 5 + ("gap",) * 9 + ("match",) * 3 + ("match",) * 5)
+    assert _supported_end(chunk, boundaries, n_words=4) == 4
+
+
+def test_supported_end_stops_at_a_multi_word_gap_before_an_isolated_duplicate():
+    # earlier recited word 0, then a TWO-word gap (words 1-2 unsupported), then an isolated
+    # duplicate at word 3 (the phantom over-read's far snap). A gap longer than one word is
+    # not bridged, so the end stays at word 1 — the phantom does not drag coverage forward.
+    boundaries = [0, 5, 14, 17, 22]  # 4 words
+    chunk = _chunk(0, 4, 0, ("match",) * 5 + ("gap",) * 12 + ("match",) * 5)
+    assert _supported_end(chunk, boundaries, n_words=4) == 1

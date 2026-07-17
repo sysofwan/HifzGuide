@@ -41,10 +41,24 @@ import argparse
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, NamedTuple
 
+from .waqf_detect import RE_READ
 from .waqf_event_fixtures import MID_WORD_CLOSURE, WAQF, WASL
 from .waqf_event_sampler import WaqfCandidate
+
+
+class _PauseAttrib(NamedTuple):
+    """A pause's phoneme-aligned attribution as read from the segmentation sidecar.
+
+    ``kind`` is the segmenter's class for the pause (``waqf`` / ``re_read`` /
+    ``mid_word_closure`` / ``unplaced``) and ``word_index`` is the word its decode had
+    completed, or ``None`` when the segmenter could not place it. The candidate layer needs
+    ``kind`` because only a genuine re-read's marker moves off the resume anchor.
+    """
+
+    kind: str
+    word_index: int | None
 
 # A pause is a *boundary* pause (already a waqf segment split) when its onset sits within
 # this many seconds of a segment's end. The segmentation sets ``seg_i.end_s`` exactly to a
@@ -141,36 +155,38 @@ def load_pauses(path: Path) -> dict[str, list[tuple[float, float]]]:
 ATTRIB_MATCH_TOL_S = 0.02
 
 
-def load_pause_attributions(path: Path) -> dict[str, dict[str, int | None]]:
-    """Read the pause-attribution sidecar into ``{clip: {onset_key: word_index}}``.
+def load_pause_attributions(path: Path) -> dict[str, dict[str, _PauseAttrib]]:
+    """Read the pause-attribution sidecar into ``{clip: {onset_key: _PauseAttrib}}``.
 
     :func:`tadabur.segment_score.write_pause_attributions` writes one row per clip with a
     ``pauses`` list of ``{start_s, end_s, kind, word_index}`` — **every** interior pause the
     segmenter saw, of every kind. All are indexed here (not just ``mid_word_closure``): the
     phoneme-aligned ``word_index`` is the word the decode had completed when the pause fell,
-    computed identically regardless of kind, so a pause the segmenter split on (``waqf``)
-    still carries the right word for the audit even if the scored manifest later dropped the
-    neighbouring segment and the candidate layer re-reads that pause as an interior stop.
+    so a pause the segmenter split on (``waqf`` / ``re_read``) still carries the right word
+    for the audit even if the scored manifest later dropped the neighbouring segment and the
+    candidate layer re-reads that pause as an interior stop.
 
     Each pause is keyed by its onset rounded to the millisecond (:func:`_onset_key`) so
-    :func:`clip_candidates` can look a pause's word up by ``start_s`` without a float-equality
-    hazard, and its value is the phoneme-aligned word (``int``) or ``None`` when the segmenter
-    could not place it. Keeping the ``None`` entries — rather than dropping them — lets the
-    consumer tell an *explicitly unplaceable* pause (fall back to interpolation) apart from a
-    pause **missing** from the sidecar (a stale / mismatched artifact, which it rejects).
+    :func:`clip_candidates` can look a pause up by ``start_s`` without a float-equality
+    hazard, and its value is a :class:`_PauseAttrib` carrying the segmenter's ``kind`` and
+    the phoneme-aligned word (``int``) or ``None`` when it could not be placed. Keeping the
+    ``None`` entries — rather than dropping them — lets the consumer tell an *explicitly
+    unplaceable* pause (fall back to interpolation) apart from a pause **missing** from the
+    sidecar (a stale / mismatched artifact, which it rejects).
     """
-    attributions: dict[str, dict[str, int | None]] = {}
+    attributions: dict[str, dict[str, _PauseAttrib]] = {}
     with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             row = json.loads(line)
-            placed: dict[str, int | None] = {}
+            placed: dict[str, _PauseAttrib] = {}
             for pause in row["pauses"]:
                 word_index = pause["word_index"]
-                placed[_onset_key(float(pause["start_s"]))] = (
-                    None if word_index is None else int(word_index)
+                placed[_onset_key(float(pause["start_s"]))] = _PauseAttrib(
+                    kind=pause["kind"],
+                    word_index=None if word_index is None else int(word_index),
                 )
             attributions[row["clip_audio_filename"]] = placed
     return attributions
@@ -240,7 +256,7 @@ def clip_candidates(
     segments: list[Segment],
     pauses: list[tuple[float, float]],
     word_boundaries: WordBoundaries,
-    pause_attributions: dict[str, int | None] | None = None,
+    pause_attributions: dict[str, _PauseAttrib] | None = None,
 ) -> list[WaqfCandidate]:
     """All waqf/wasl/mid-word-closure candidate boundaries for one clip.
 
@@ -249,17 +265,17 @@ def clip_candidates(
     inside a segment (i.e. was not promoted to a boundary). Rows are ordered by clip
     time and assigned a contiguous ``boundary_index``.
 
-    ``pause_attributions`` (``{onset_key: word_index}`` for *this clip* from
-    :func:`load_pause_attributions`) is the phoneme-aligned word each pause fell after,
-    computed the runtime-faithful way — Smith-Waterman aligning the decode to the
+    ``pause_attributions`` (``{onset_key: _PauseAttrib}`` for *this clip* from
+    :func:`load_pause_attributions`) carries, per pause, its phoneme-aligned word and its
+    kind, computed the runtime-faithful way — Smith-Waterman aligning the decode to the
     reference, exactly as the app must at inference when no timestamps exist. Passing it
     switches the clip into phoneme-aligned mode: every interior pause **must** be in the
     map (the segmenter emits one attribution per VAD pause it saw, so a missing onset means
-    a stale / mismatched sidecar and raises), a placed word (``int``) is used verbatim, and
-    only an explicitly unplaceable pause (``None``) falls back to :func:`_word_at_time`'s
-    time interpolation (which drifts a word because the pause silence inflates the segment
-    span). ``None`` for the whole argument keeps the pure-interpolation legacy path, for a
-    clip with no sidecar (e.g. a kept-whole skip) or a run given no sidecar at all.
+    a stale / mismatched sidecar and raises). A mid-word pause uses its placed word verbatim
+    (falling back to :func:`_word_at_time` only when the word is ``None``); a waqf split moves
+    off the range anchor only for a genuine re-read (see :func:`_waqf_index`). ``None`` for
+    the whole argument keeps the pure-interpolation / range-anchor legacy path, for a clip
+    with no sidecar (e.g. a kept-whole skip) or a run given no sidecar at all.
     """
     if not segments:
         return []
@@ -277,17 +293,13 @@ def clip_candidates(
             edge = times[i]
             raw.append((edge, edge, seg.word_start + i - 1, WASL))
 
-    # waqf: the gap between each pair of adjacent segments is a confirmed stop.
-    # Anchor the marker to ``nxt.word_start - 1`` (the word right before the next
-    # segment resumes), not ``prev.word_end - 1``. On a re-read the duplicate seam
-    # word inflates ``prev.word_end`` (or a coverage gap leaves ``prev.word_end``
-    # one short), so ``prev.word_end`` drifts from the audio; ``nxt.word_start`` is
-    # firmly anchored by where the reciter picks the recitation back up. For a
-    # contiguous seam the two are identical, so this is a no-op there. Floor at
-    # ``prev.word_start`` so a full re-read from the ayah start (``nxt.word_start``
-    # 0) cannot produce a negative index.
+    # waqf: the gap between each pair of adjacent segments is a confirmed stop. The marker
+    # sits on the word the reciter stopped on before resuming at the next segment — the range
+    # anchor ``max(nxt.word_start - 1, prev.word_start)``. Only a genuine re-read (the sidecar
+    # kind is RE_READ, the reciter resumed *behind* the stop) moves the marker forward to the
+    # sidecar's decode-supported stop word; an ordinary forward waqf keeps the anchor.
     for prev, nxt in zip(segments, segments[1:]):
-        word_index = max(nxt.word_start - 1, prev.word_start)
+        word_index = _waqf_index(prev, nxt, clip_id, pause_attributions)
         raw.append((prev.end_s, nxt.start_s, word_index, WAQF))
 
     # mid_word_closure: VAD pauses that landed inside a segment (never became a split).
@@ -324,7 +336,7 @@ def _mid_word_index(
     edge_times: list[float],
     pause_start: float,
     clip_id: str,
-    pause_attributions: dict[str, int | None] | None,
+    pause_attributions: dict[str, _PauseAttrib] | None,
 ) -> int:
     """The word a mid-word-closure pause falls after — phoneme-aligned when available.
 
@@ -343,17 +355,52 @@ def _mid_word_index(
             f"attribution in the sidecar — the pause-attribution artifact is stale or "
             f"from a different segmentation run."
         )
-    aligned = pause_attributions[key]
+    aligned = pause_attributions[key].word_index
     if aligned is not None:
         return aligned
     return _word_at_time(seg, edge_times, pause_start)
+
+
+def _waqf_index(
+    prev: Segment,
+    nxt: Segment,
+    clip_id: str,
+    pause_attributions: dict[str, _PauseAttrib] | None,
+) -> int:
+    """The word a waqf split falls after — the resume anchor, moved only for a re-read.
+
+    The default is the range anchor ``max(nxt.word_start - 1, prev.word_start)`` — the word
+    before the next segment resumes, floored at the previous segment's start. For an ordinary
+    forward waqf this is the stop word and is robust to the decode dropping a short final
+    word or snapping the resume a hair left of its edge, so it is kept verbatim (with or
+    without a sidecar). Only a genuine **re-read** breaks the anchor: the reciter resumes
+    *behind* the stop, so the anchor points at the re-read word instead of the stop. There
+    the sidecar's decode-supported stop word — the last word truly recited before the pause —
+    is used. The pause is keyed by ``prev.end_s`` (the interior segment end sits exactly on
+    its split pause); a pause the sidecar does not mention at all is a stale / mismatched
+    artifact and raises.
+    """
+    anchor = max(nxt.word_start - 1, prev.word_start)
+    if pause_attributions is None:
+        return anchor
+    key = _onset_key(prev.end_s)
+    if key not in pause_attributions:
+        raise ValueError(
+            f"{clip_id}: waqf split pause at {prev.end_s:.3f}s has no phoneme-aligned "
+            f"attribution in the sidecar — the pause-attribution artifact is stale or "
+            f"from a different segmentation run."
+        )
+    attrib = pause_attributions[key]
+    if attrib.kind == RE_READ and attrib.word_index is not None:
+        return attrib.word_index
+    return anchor
 
 
 def build_candidates(
     segments_by_clip: dict[str, list[Segment]],
     pauses_by_clip: dict[str, list[tuple[float, float]]],
     word_boundaries: WordBoundaries,
-    pause_attributions_by_clip: dict[str, dict[str, int | None]] | None = None,
+    pause_attributions_by_clip: dict[str, dict[str, _PauseAttrib]] | None = None,
 ) -> list[WaqfCandidate]:
     """Candidate boundaries for every clip, in clip-id then boundary order.
 
@@ -412,7 +459,7 @@ def hafs_word_boundaries() -> WordBoundaries:
     return boundaries
 
 
-def _resolve_pause_attributions(args) -> dict[str, dict[str, int | None]] | None:
+def _resolve_pause_attributions(args) -> dict[str, dict[str, _PauseAttrib]] | None:
     """Load the pause-attribution sidecar for :func:`main`, defaulting to the one
     ``segment_score`` writes next to the manifest.
 

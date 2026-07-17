@@ -40,6 +40,30 @@ gives upstream Muaalem its accuracy: every clip's label matches what was *actual
   cleanly separates a real waqf (Δ≈0) from a mid-word closure (Δ≫tol) — the discriminator the
   acoustic gate lacked.
 
+- **Split a re-read at its seam; separate a genuine re-read from a phantom over-read by the
+  earlier chunk's own decode support.** When a pause's two neighbouring chunks overlap in reference
+  words (the post-pause chunk resumes *behind* where the pre-pause chunk ended) the seam is
+  ambiguous: either the reciter genuinely stopped and re-read the overlap word (a real waqf seam,
+  overlapping realized references), or the pre-pause decode merely **over-snapped** its end a word or
+  two past where the reciter actually stopped (a phantom — an ordinary forward waqf that must stay a
+  clean contiguous cut). Segment word ranges alone cannot tell these apart. The discriminator is the
+  runtime-faithful signal the app also has: whether the *earlier chunk's own local decode*
+  contiguously **recited** each overlap word (`_word_supported`: prefix-anchored, ≥1 exact match,
+  ≥0.55 coverage of the word's phoneme span). `_supported_end` scans forward from the chunk's start
+  over the words it keeps supporting — bridging a **one-word** interior gap (a routine single-word
+  CTC dropout mid-recitation) but stopping at a ≥2-word gap (the phantom's far snap onto an isolated
+  duplicate) — and returns the half-open word end the reciter actually reached. The seam is a genuine
+  **re-read** when the later chunk resumes inside that real coverage (`later.start_word <
+  supported_end`), which covers both an adjacent re-read and a gross whole-ayah restart; otherwise it
+  is an ordinary forward waqf and the phantom over-read is **un-inflated**, the segment ending at
+  `supported_end` instead of the over-snapped word. This changes the segment manifest for the
+  phantom cases only (a segment's `word_end` shrinks to the truly-recited word; the interior wasl
+  edges shift accordingly) and correctly keeps a re-read's overlap and a restart's whole-ayah span
+  intact. Thresholds (`_MAX_SUPPORT_GAP = 1`, coverage `0.55`) are uncalibrated but empirically
+  validated on the audit worklist; the "nothing supported" fallback (trust the snap) never fires
+  there. **The display marker** (`waqf_candidates`) moves off the resume anchor **only for a genuine
+  re-read** — to the decode-supported stop word — so ordinary forward-waqf markers are unchanged.
+
 - **Per-word phoneme boundaries come from the phonetizer's char `mappings`, not a space-split.**
   `quran_phonetizer` **merges adjacent words at a wasl** (liaison), so the phonetized whole ayah has
   *fewer* space-parts than Uthmani words for ~62 % of ayat — splitting the output on spaces would

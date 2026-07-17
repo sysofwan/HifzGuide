@@ -103,6 +103,20 @@ that tolerance out of a blunt hack and into the model, the same philosophy as AD
   haraka or a cross-word idgham, compared against today's "ignore end-word tashkeel" behaviour. This
   is what the sign-off (#10) must actually clear — not frame-F1, not event-F1 alone.
 
+- **Genuine re-reads stay excluded from whole-clip training; the discriminator rescues phantom
+  over-reads back into it.** Whole-clip labelling (`training.windowed_labels`) excludes any clip with
+  `status.re_reads > 0` under `EXCLUDE_RE_READ`: a genuine re-read's two segments overlap in words
+  (two passes over a phrase), so they cannot tile the recitation into one contiguous linear CTC
+  target — the overlap is real repeated audio but the frozen windowing contract cannot represent it,
+  a pragmatic tiling limitation, not a data-quality problem. The value of the ADR-0002 decode-support
+  discriminator here is that it stops **phantom over-reads** from being miscounted as re-reads: before
+  it, a forward waqf whose pre-pause decode over-snapped its end produced overlapping ranges and
+  inflated `re_reads`, so those clips were **wrongly excluded** from training (and, had they slipped
+  through, their concatenated label would have double-counted words the reciter said once). With the
+  discriminator such a clip is correctly classified as an ordinary forward waqf, un-inflated to
+  contiguous single coverage, and is therefore **eligible** again with a correct label — recovering
+  training data without weakening the genuine-re-read exclusion or the word-contiguity assertion.
+
 - **The windowing/overlap/stitch contract is mandatory, not conditional.** The deployed pipeline is
   *already* fixed 5 s windows at a 40 ms lattice with a hardcoded full-window mask — so "single-pass
   whole-recitation" is not available. The contract (window length, overlap, edge-frame ownership, how a

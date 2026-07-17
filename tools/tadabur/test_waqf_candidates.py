@@ -7,6 +7,7 @@ import json
 import pytest
 
 from tadabur import waqf_candidates as wc
+from tadabur.waqf_detect import RE_READ
 from tadabur.waqf_event_fixtures import MID_WORD_CLOSURE, WAQF, WASL
 
 
@@ -175,7 +176,7 @@ def test_mid_word_closure_prefers_phoneme_aligned_attribution():
     # above), but the phoneme-aligned sidecar says the decode had reached word 15 when
     # the pause fell. The sidecar word wins verbatim.
     segs = [wc.Segment("c_spk0001.wav", "2:2", 1, 10.0, 19.0, 9, 10, 19)]
-    attributions = {wc._onset_key(13.05): 15}
+    attributions = {wc._onset_key(13.05): wc._PauseAttrib(MID_WORD_CLOSURE, 15)}
     cands = wc.clip_candidates(
         segs, [(13.05, 13.5)], word_boundaries=_uniform_boundaries,
         pause_attributions=attributions,
@@ -214,9 +215,9 @@ def test_load_pause_attributions_indexes_all_pauses_including_null(tmp_path):
         f.write("\n")  # blank line tolerated
     attributions = wc.load_pause_attributions(path)
     assert attributions == {"c_spk0001.wav": {
-        wc._onset_key(13.05): 15,
-        wc._onset_key(6.0): None,
-        wc._onset_key(8.9): 9,
+        wc._onset_key(13.05): wc._PauseAttrib(MID_WORD_CLOSURE, 15),
+        wc._onset_key(6.0): wc._PauseAttrib(MID_WORD_CLOSURE, None),
+        wc._onset_key(8.9): wc._PauseAttrib(WAQF, 9),
     }}
 
 
@@ -224,7 +225,7 @@ def test_mid_word_closure_raises_on_missing_attribution():
     # A sidecar is supplied for the clip but does not mention this pause's onset — a stale
     # or mismatched artifact. Rather than silently interpolating, that must raise.
     segs = [wc.Segment("c_spk0001.wav", "2:2", 1, 10.0, 19.0, 9, 10, 19)]
-    attributions = {wc._onset_key(99.0): 3}  # unrelated onset
+    attributions = {wc._onset_key(99.0): wc._PauseAttrib(MID_WORD_CLOSURE, 3)}  # unrelated onset
     with pytest.raises(ValueError, match="stale or"):
         wc.clip_candidates(
             segs, [(13.05, 13.5)], word_boundaries=_uniform_boundaries,
@@ -239,7 +240,7 @@ def test_build_candidates_raises_when_sidecar_missing_a_whole_clip():
     # artifact — it must raise, not silently interpolate.
     segs = {"c_spk0001.wav": [wc.Segment("c_spk0001.wav", "2:2", 1, 10.0, 19.0, 9, 10, 19)]}
     pauses = {"c_spk0001.wav": [(13.05, 13.5)]}
-    other_clip_sidecar = {"c_spk9999.wav": {wc._onset_key(1.0): 3}}
+    other_clip_sidecar = {"c_spk9999.wav": {wc._onset_key(1.0): wc._PauseAttrib(MID_WORD_CLOSURE, 3)}}
     with pytest.raises(ValueError, match="stale or"):
         wc.build_candidates(
             segs, pauses, _uniform_boundaries,
@@ -253,7 +254,7 @@ def test_build_candidates_pause_free_clip_absent_from_sidecar_is_fine():
     segs = {"c_spk0001.wav": [wc.Segment("c_spk0001.wav", "2:2", 0, 0.0, 3.0, 3, 0, 3)]}
     cands = wc.build_candidates(
         segs, {}, _uniform_boundaries,
-        pause_attributions_by_clip={"c_spk9999.wav": {wc._onset_key(1.0): 3}},
+        pause_attributions_by_clip={"c_spk9999.wav": {wc._onset_key(1.0): wc._PauseAttrib(MID_WORD_CLOSURE, 3)}},
     )
     assert not [c for c in cands if c.predicted == MID_WORD_CLOSURE]
 
@@ -262,7 +263,7 @@ def test_mid_word_closure_falls_back_on_explicit_null_attribution():
     # An explicitly unplaceable pause (None) falls back to the last-completed-word
     # interpolation (word 12), without raising.
     segs = [wc.Segment("c_spk0001.wav", "2:2", 1, 10.0, 19.0, 9, 10, 19)]
-    attributions = {wc._onset_key(13.05): None}
+    attributions = {wc._onset_key(13.05): wc._PauseAttrib(MID_WORD_CLOSURE, None)}
     cands = wc.clip_candidates(
         segs, [(13.05, 13.5)], word_boundaries=_uniform_boundaries,
         pause_attributions=attributions,
@@ -270,6 +271,55 @@ def test_mid_word_closure_falls_back_on_explicit_null_attribution():
     mids = [c for c in cands if c.predicted == MID_WORD_CLOSURE]
     assert len(mids) == 1
     assert mids[0].word_index == 12
+
+
+def test_waqf_marker_moves_to_stop_word_only_for_re_read():
+    # Two segments overlap in word range (nxt resumes at word 5, prev claims through word 8):
+    # an ambiguous seam. The range anchor is max(5 - 1, 0) = 4 (the resume word). A sidecar
+    # RE_READ attribution says the decode truly reached word 7 before the stop, so the marker
+    # advances to the stop word 7 — the fix for the re-read off-by-one.
+    segs = [
+        wc.Segment("c_spk0001.wav", "2:2", 0, 0.0, 9.0, 8, 0, 8),
+        wc.Segment("c_spk0001.wav", "2:2", 1, 10.0, 15.0, 5, 5, 10),
+    ]
+    attributions = {wc._onset_key(9.0): wc._PauseAttrib(RE_READ, 7)}
+    cands = wc.clip_candidates(
+        segs, [], word_boundaries=_uniform_boundaries,
+        pause_attributions=attributions,
+    )
+    waqfs = [c for c in cands if c.predicted == WAQF]
+    assert len(waqfs) == 1
+    assert waqfs[0].word_index == 7
+
+
+def test_waqf_marker_keeps_anchor_for_forward_waqf():
+    # The same overlapping seam, but the sidecar classifies it WAQF (a phantom over-read, not
+    # a re-read). The marker must stay on the legacy range anchor (word 4) byte-identical to
+    # the no-sidecar result — the fix must not disturb ordinary forward waqfs.
+    segs = [
+        wc.Segment("c_spk0001.wav", "2:2", 0, 0.0, 9.0, 8, 0, 8),
+        wc.Segment("c_spk0001.wav", "2:2", 1, 10.0, 15.0, 5, 5, 10),
+    ]
+    attributions = {wc._onset_key(9.0): wc._PauseAttrib(WAQF, 7)}
+    cands = wc.clip_candidates(
+        segs, [], word_boundaries=_uniform_boundaries,
+        pause_attributions=attributions,
+    )
+    waqfs = [c for c in cands if c.predicted == WAQF]
+    assert len(waqfs) == 1
+    assert waqfs[0].word_index == 4
+
+
+def test_waqf_marker_anchor_without_sidecar():
+    # No sidecar at all: the waqf marker is the pure range anchor (word 4), the legacy path.
+    segs = [
+        wc.Segment("c_spk0001.wav", "2:2", 0, 0.0, 9.0, 8, 0, 8),
+        wc.Segment("c_spk0001.wav", "2:2", 1, 10.0, 15.0, 5, 5, 10),
+    ]
+    cands = wc.clip_candidates(segs, [], word_boundaries=_uniform_boundaries)
+    waqfs = [c for c in cands if c.predicted == WAQF]
+    assert len(waqfs) == 1
+    assert waqfs[0].word_index == 4
 
 
 def test_boundary_index_is_contiguous_and_time_ordered():

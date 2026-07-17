@@ -176,6 +176,11 @@ class _ChunkAlign:
     ``reliable`` is False for an empty,
     barely-aligning, or sub-word chunk, which then anchors no split (it is merged with a
     neighbour and never contributes a fabricated word range).
+
+    ``ref_kinds[i]`` is the Smith-Waterman outcome (``"match"`` / ``"mismatch"`` / ``"gap"``)
+    for reference position ``ref_start + i``, retained so :func:`_word_supported` can ask
+    whether this chunk's own decode independently covered a given word — the signal that
+    tells a genuine re-read apart from a phantom over-read.
     """
 
     q_lo: int
@@ -189,6 +194,7 @@ class _ChunkAlign:
     reliable: bool
     ref_start: int = 0
     ref_end: int = 0
+    ref_kinds: tuple[str, ...] = ()
 
 
 def _nearest_boundary(boundaries: list[int], pos: int) -> tuple[int, int]:
@@ -221,6 +227,119 @@ def _completed_word(boundaries: list[int], ref_pos: int) -> int:
     ``-1`` for a position before the first word end (caller clamps into the word range).
     """
     return sum(1 for b in boundaries[1:] if b <= ref_pos) - 1
+
+
+# A word counts as covered by a chunk when at least this fraction of its reference
+# phonemes aligned diagonally (matched or substituted) in that chunk's own local
+# alignment. Prefix-anchored, so a chunk that only over-snaps into a word's first
+# phoneme (a phantom over-read) does not clear the bar, while a real utterance that
+# tail-dropped its last phoneme still does.
+_MIN_WORD_SUPPORT_COVERAGE = 0.55
+
+
+def _word_supported(chunk: _ChunkAlign, boundaries: list[int], word: int) -> bool:
+    """True if ``chunk``'s own decode independently recited Uthmani ``word``.
+
+    Looks only at this chunk's local alignment (not the whole-clip pass): over the word's
+    reference span it requires the aligned-diagonal phonemes to be prefix-anchored (start
+    within the first phoneme), include at least one exact match, and cover at least
+    :data:`_MIN_WORD_SUPPORT_COVERAGE` of the word (and ``min(2, len)`` phonemes). This is
+    the runtime-faithful signal that separates a genuine re-read — the earlier chunk truly
+    re-uttered the overlap word — from a phantom over-read, where the earlier chunk's
+    matched span merely over-snapped its end past where the reciter actually stopped.
+    """
+    lo, hi = boundaries[word], boundaries[word + 1]
+    length = hi - lo
+    if length <= 0:
+        return False
+    diagonal = exact = 0
+    first: int | None = None
+    for pos in range(lo, hi):
+        local = pos - chunk.ref_start
+        if 0 <= local < len(chunk.ref_kinds) and chunk.ref_kinds[local] in ("match", "mismatch"):
+            diagonal += 1
+            if first is None:
+                first = pos - lo
+            if chunk.ref_kinds[local] == "match":
+                exact += 1
+    return (
+        first is not None
+        and first <= 1
+        and exact >= 1
+        and diagonal >= min(2, length)
+        and diagonal / length >= _MIN_WORD_SUPPORT_COVERAGE
+    )
+
+
+# The largest run of consecutive unsupported reference words `_supported_end` will bridge
+# while still treating the recitation as ongoing. A single dropped word is a routine CTC
+# omission mid-recitation (the reciter kept going); a run of two or more skipped reference
+# words means the decode genuinely left the contiguous recitation — the signature of a
+# phantom over-read that snapped its end onto a far, isolated duplicate word.
+_MAX_SUPPORT_GAP = 1
+
+
+def _supported_end(chunk: _ChunkAlign, boundaries: list[int], n_words: int) -> int:
+    """Half-open word end of the words ``chunk``'s own decode actually recited.
+
+    Scans forward from the chunk's snapped start through the words it keeps supporting, up
+    to its snapped end (inclusive, so a tail-dropped final phoneme is still credited),
+    bridging interior gaps of up to :data:`_MAX_SUPPORT_GAP` unsupported words (a routine
+    single-word CTC dropout) but stopping once a longer unsupported run appears. A phantom
+    over-read — whose matched span over-snapped past a multi-word gap onto an isolated
+    later duplicate — is therefore truncated at that gap, reporting the word the reciter
+    actually reached rather than the inflated snap. If the chunk supports none of its words
+    (a fully unreliable decode) the snapped ``end_word`` is trusted rather than collapsing
+    the segment to nothing.
+    """
+    last_supported: int | None = None
+    gap = 0
+    upper = min(n_words - 1, chunk.end_word)
+    for word in range(chunk.start_word, upper + 1):
+        if _word_supported(chunk, boundaries, word):
+            last_supported = word
+            gap = 0
+        else:
+            gap += 1
+            if gap > _MAX_SUPPORT_GAP:
+                break
+    # Nothing word-supported: a fully unreliable decode over the chunk's claimed words. Fall
+    # back to the snapped ``end_word`` (the pre-support-check baseline) rather than collapsing
+    # the segment to nothing. This only reaches here for an on-edge chunk that is otherwise
+    # reliable, and empirically never fires on the audit worklist — it is a defensive floor.
+    return last_supported + 1 if last_supported is not None else chunk.end_word
+
+
+def _mid_word_attribution(
+    earlier: _ChunkAlign,
+    later: _ChunkAlign,
+    boundaries: list[int],
+    n_words: int,
+    boundary_tol: int,
+) -> int | None:
+    """Word a mid-word closure falls after — the furthest of two phoneme-aligned estimates.
+
+    ``reached`` is the last word the pre-pause chunk's matched span fully covered; ``resume``
+    is the word before the post-pause chunk cleanly restarts on a word edge. A forward stop
+    with a CTC tail-drop under-counts ``reached``, so ``resume`` rescues it; a re-read that
+    over-ran and backed up makes ``resume`` earlier, so ``reached`` wins. ``resume`` counts
+    only when the post-pause chunk begins on or right of its snapped edge (``ref_start`` not
+    left of the boundary) — a resume that snaps within tolerance but sits left of the edge is
+    the same unfinished word continuing (a mid-word breath), which ``reached`` handles. Either
+    may be ``None``; the result is ``None`` only when both are.
+    """
+    reached = _completed_word(boundaries, earlier.ref_end) if earlier.reliable else None
+    resume = (
+        later.start_word - 1
+        if later.reliable
+        and later.start_dist <= boundary_tol
+        and later.ref_start >= boundaries[later.start_word]
+        else None
+    )
+    candidates = [w for w in (reached, resume) if w is not None]
+    if not candidates:
+        return None
+    return max(0, min(max(candidates), n_words - 1))
 
 
 def _align_chunk(
@@ -262,6 +381,7 @@ def _align_chunk(
         reliable=True,
         ref_start=alignment.ref_start,
         ref_end=alignment.ref_end,
+        ref_kinds=tuple(m.kind for m in alignment.ref_matches),
     )
 
 
@@ -346,61 +466,52 @@ def segment_clip(
         for i in range(len(q_bounds) - 1)
     ]
 
-    # Classify the pause between each adjacent chunk pair: a split (waqf or re-read) only
-    # when both chunk edges land on a word boundary; a re-read when the later chunk starts
-    # before the earlier one ended. A non-split pause merges the chunks into one segment.
+    # Classify and attribute each pause between an adjacent chunk pair. A split (waqf or
+    # re-read) only when both chunk edges land on a word boundary; a non-split pause merges
+    # the chunks into one segment. ``supported_end`` is the word the *earlier* chunk's own
+    # decode actually reached — the phoneme-alignment signal runtime has, with no forced-
+    # alignment timing. It classifies the seam and, un-inflating a phantom over-read whose
+    # matched span over-snapped past where the reciter stopped, sets the segment's true extent:
+    # the seam is a re-read when the later chunk resumes inside that real coverage
+    # (``later.start_word < supported_end`` — true for an adjacent re-read and a gross restart
+    # alike); otherwise the later chunk merely continues forward, an ordinary waqf. The MARKER
+    # is dispatched on that classification: a re-read takes the stop frontier ``supported_end-1``
+    # (its resume word points backward, so the reached/resume estimate would mislocate it),
+    # while a forward waqf keeps the reached/resume estimate (its resume word pins the stop even
+    # when the decode dropped a short final word). A mid-word closure falls off any word edge and
+    # also uses the reached/resume estimate.
     split_after: list[bool] = []
-    kinds: list[str] = []
+    supported_ends: list[int | None] = []  # supported end per split pause; None for a merge
+    pause_attrib: list[PauseAttribution] = []
     re_reads = 0
-    for earlier, later in zip(chunks, chunks[1:]):
+    for i, (pause_start, pause_end) in enumerate(pauses):
+        earlier, later = chunks[i], chunks[i + 1]
         on_edge = (
             earlier.reliable and later.reliable
             and earlier.end_dist <= boundary_tol
             and later.start_dist <= boundary_tol
         )
         split_after.append(on_edge)
-        if on_edge and later.start_word < earlier.end_word:
-            re_reads += 1
-            kinds.append(RE_READ)
-        elif on_edge:
-            kinds.append(WAQF)
+        if on_edge:
+            supported_end = _supported_end(earlier, boundaries, n_words)
+            genuine = later.start_word < supported_end
+            kind = RE_READ if genuine else WAQF
+            re_reads += genuine
+            supported_ends.append(supported_end)
         else:
-            kinds.append(MID_WORD_CLOSURE)
-
-    # Attribute each pause to the furthest word the reciter had reached when it fell — the
-    # phoneme-alignment signal runtime has, no forced-alignment timing. Two independent
-    # estimates, taking whichever is further along:
-    #   * ``reached`` — the last word the pre-pause chunk's matched span fully covered.
-    #   * ``resume`` — the word before the post-pause chunk cleanly resumes on a word edge.
-    # For a forward waqf ``resume`` wins: it rescues a CTC tail-drop (an elongated / hamza
-    # word ending short of its last phoneme) that would make ``reached`` under-count by one.
-    # For a re-read the reciter over-ran and then backed up, so the resume is *earlier* than
-    # where they got to and ``reached`` wins. Either may be ``None`` when its chunk did not
-    # align reliably (or resumed mid-word); the pause is ``None`` only when neither did.
-    #
-    # ``resume`` counts only when the post-pause chunk begins *on or after* its snapped word
-    # edge — a genuine restart at ``start_word``. A resume that snaps within tolerance but
-    # sits to the *left* of the edge is the same unfinished word continuing (a mid-word
-    # breath), so crediting ``start_word - 1`` would over-count; ``reached`` (the floor)
-    # handles that case instead.
-    pause_attrib: list[PauseAttribution] = []
-    for i, (pause_start, pause_end) in enumerate(pauses):
-        earlier, later = chunks[i], chunks[i + 1]
-        reached = _completed_word(boundaries, earlier.ref_end) if earlier.reliable else None
-        resume = (
-            later.start_word - 1
-            if later.reliable
-            and later.start_dist <= boundary_tol
-            and later.ref_start >= boundaries[later.start_word]
-            else None
-        )
-        candidates = [w for w in (reached, resume) if w is not None]
-        word_index: int | None = max(candidates) if candidates else None
-        if word_index is not None:
-            word_index = max(0, min(word_index, n_words - 1))
-        pause_attrib.append(
-            PauseAttribution(pause_start, pause_end, kinds[i], word_index)
-        )
+            kind = MID_WORD_CLOSURE
+            supported_ends.append(None)
+        if kind == RE_READ:
+            # A re-read resumes behind the stop, so the stop is the last word the earlier
+            # chunk reached — not the reached/resume estimate, whose resume anchor points back
+            # at the (earlier) re-read word.
+            word_index: int | None = max(0, min(supported_end - 1, n_words - 1))
+        else:
+            # An ordinary forward waqf or a mid-word closure: the reciter stopped and moved on.
+            # The resume word pins the stop even when the decode dropped a short final word's
+            # phonemes, so the reached/resume estimate beats the support frontier here.
+            word_index = _mid_word_attribution(earlier, later, boundaries, n_words, boundary_tol)
+        pause_attrib.append(PauseAttribution(pause_start, pause_end, kind, word_index))
 
     groups: list[list[int]] = [[0]]
     for i, do_split in enumerate(split_after):
@@ -417,7 +528,15 @@ def segment_clip(
         # The clip is admitted as this whole ayah, so its first segment starts at word 0 and
         # its last ends at the final word; interior split words come from the chunk aligns.
         word_start = 0 if gi == 0 else (starts[0] if starts else 0)
-        word_end = n_words if gi == len(groups) - 1 else (ends[-1] if ends else n_words)
+        if gi == len(groups) - 1:
+            word_end = n_words
+        else:
+            # The segment ends at its terminating split pause, so its extent is the word the
+            # pre-pause chunk's decode actually reached (``_supported_end``): this un-inflates
+            # a phantom over-read into a contiguous waqf while leaving a genuine re-read's
+            # overlap and a full-restart's whole-ayah span intact.
+            term_end = supported_ends[group[-1]]
+            word_end = term_end if term_end is not None else (ends[-1] if ends else n_words)
         if word_end <= word_start:
             word_end = min(n_words, word_start + 1)
             word_start = max(0, word_end - 1)

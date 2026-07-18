@@ -344,6 +344,8 @@ def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
     assert records[0].segment_index == 0 and records[1].segment_index == 1
     assert [s.audio_filename for s in statuses] == ["a.wav"]
     assert statuses[0].skip_reason is None and statuses[0].n_words == 3
+    # Recited to the end: the last segment reaches word_end 3, so nothing is an early stop.
+    assert statuses[0].recited_words == 3
     # The clip-status recitation span is the first segment's onset to the last's offset —
     # the shared window origin the phoneme labels and waqf soft labels both enumerate over.
     assert statuses[0].recitation_start_s == records[0].start_s
@@ -407,6 +409,25 @@ def test_segment_clips_keeps_clip_whole_when_no_pauses(tmp_path, monkeypatch):
     assert len(records) == 1
     assert (records[0].word_start, records[0].word_end) == (0, 3)
     assert statuses[0].skip_reason is None
+    assert statuses[0].recited_words == 3  # full ayah recited → nothing hidden
+
+
+def test_segment_clips_reports_recited_words_for_early_stop(tmp_path, monkeypatch):
+    # The reciter ends mid-ayah: the decode reaches only w0 w1, never w2. The single kept
+    # segment un-inflates to word_end 2, so recited_words (2) is below n_words (3) — the
+    # signal the audit UI uses to hide the never-recited tail (w2).
+    monkeypatch.setattr(segment_score, "_uthmani_words", lambda sa: ["w0", "w1", "w2"])
+    class_ids = _ids([(cid, 2) for cid in _WORD0 + _WORD1])
+    _write_clip(tmp_path, "a.wav", len(class_ids) * _SPF)
+    model = _ClassIdModel([class_ids])
+
+    records, skips, statuses, _pa = segment_clips(
+        [_manifest_record("a.wav", "78:2")], tmp_path, model, _phon, _wordref, {}
+    )
+
+    assert not skips
+    assert (records[0].word_start, records[0].word_end) == (0, 2)
+    assert statuses[0].n_words == 3 and statuses[0].recited_words == 2
 
 
 def test_segment_clips_tallies_missing_clip(tmp_path, monkeypatch):

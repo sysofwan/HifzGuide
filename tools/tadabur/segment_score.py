@@ -279,6 +279,7 @@ def segment_clips(
                 passing, len(uthmani_words), duration_s,
                 spans[0].start_s, spans[-1].end_s, result.skip,
                 re_reads=result.re_reads,
+                recited_words=max(span.word_end for span in spans),
             )
         )
     return records, skips, statuses, pause_attrib_by_clip
@@ -292,6 +293,7 @@ def _clip_status(
     recitation_end_s: float,
     skip_reason: str | None,
     re_reads: int = 0,
+    recited_words: int | None = None,
 ) -> ClipStatus:
     """One :class:`ClipStatus` for a passing clip, carrying its eligibility inputs.
 
@@ -301,6 +303,10 @@ def _clip_status(
     is the count of re-read seams the segmentation cut the clip at (0 for an ordinary clip):
     a positive count means the clip's segments overlap in words, so the whole-clip windowed
     label excludes it — but its per-segment rows are still valid single-pass training pairs.
+    ``recited_words`` is the half-open count of words the reciter actually recited (``max``
+    segmentation-span ``word_end``), ``n_words`` for a clip recited to the end and lower for
+    an early stop; ``None`` when the clip was never scored (no spans), which consumers read
+    as "whole ayah recited".
     """
     return ClipStatus(
         audio_filename=passing.audio_filename,
@@ -315,6 +321,7 @@ def _clip_status(
         recitation_end_s=recitation_end_s,
         skip_reason=skip_reason,
         re_reads=re_reads,
+        recited_words=recited_words,
     )
 
 

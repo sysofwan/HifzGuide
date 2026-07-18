@@ -86,6 +86,7 @@
   .ayah .w.edited { background:rgba(246,199,68,.12); box-shadow:inset 0 0 0 1px rgba(246,199,68,.5); }
   .ayah .w.fp { text-decoration:line-through; text-decoration-color:var(--closure); opacity:.7; }
   .ayah .w.focus { outline:2px solid var(--mark); outline-offset:1px; }
+  .ayah .not-recited { opacity:.28; font-style:italic; }
   .ayah-mark { color:var(--waqf); font-size:.6em; vertical-align:middle; margin:0 4px; }
   .ayah-mark.mid_word_closure { color:var(--closure); }
   .ayah-mark.added::after { content:"+"; font-size:.7em; vertical-align:super; color:var(--mark); }
@@ -302,6 +303,11 @@ function renderFlaggedList() {
 
 function renderAyah(clip) {
   const words = String(clip.uthmani || "").split(/\s+/).filter(Boolean);
+  // recited_words (from the clip-status sidecar) is how many leading words the reciter
+  // actually recited. For an early-stop clip it is < words.length; the never-recited tail
+  // is dimmed and carries no marker, so the reviewer isn't shown phantom stops on words
+  // the audio never reached. Absent (null) means "whole ayah recited" — nothing hidden.
+  const recited = clip.recited_words == null ? words.length : clip.recited_words;
   const byWord = {};
   clip.boundaries.forEach(b => {
     const prev = byWord[b.word_index];
@@ -311,6 +317,7 @@ function renderAyah(clip) {
     if (prev === undefined || isStop(b.truth) || !isStop(prev.truth)) byWord[b.word_index] = b;
   });
   return words.map((w, i) => {
+    if (i >= recited) return `<span class="not-recited" title="not recited — clip ends early">${esc(w)}</span>`;
     const b = byWord[i];
     if (b === undefined) return `<span>${esc(w)}</span>`;
     const k = boundaryKind(b);

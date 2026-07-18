@@ -61,6 +61,11 @@ class ClipStatus:
     clip): a positive count means the kept segments overlap in words rather than tiling
     ``[0, n_words)`` contiguously, so the whole-clip windowed label excludes the clip (its
     per-segment rows stay valid single-pass pairs). It is surfaced for manual review.
+    ``recited_words`` is the half-open count of Uthmani words the reciter actually recited —
+    the ``max`` segmentation-span ``word_end``. It equals ``n_words`` for a clip recited to
+    the end and is *lower* for an early stop (the reciter ended mid-ayah), which is exactly
+    the never-recited tail the audit UI hides. ``None`` when unknown (a clip the segmenter
+    never scored); consumers then treat the whole ayah as recited.
     """
 
     audio_filename: str
@@ -72,6 +77,7 @@ class ClipStatus:
     recitation_end_s: float = 0.0
     skip_reason: str | None = None
     re_reads: int = 0
+    recited_words: int | None = None
 
 
 def write_clip_status(path: Path, statuses: list[ClipStatus]) -> None:
@@ -106,6 +112,7 @@ def read_clip_status(path: Path) -> list[ClipStatus]:
                     recitation_end_s=data.get("recitation_end_s", data["duration_s"]),
                     skip_reason=data.get("skip_reason"),
                     re_reads=data.get("re_reads", 0),
+                    recited_words=data.get("recited_words"),
                 )
             )
     return statuses

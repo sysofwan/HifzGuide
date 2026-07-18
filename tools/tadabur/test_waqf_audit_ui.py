@@ -39,12 +39,12 @@ def _cand(clip, idx, predicted=WASL, surah_ayah="2:5"):
     }
 
 
-def _server(tmp_path, by_clip, uthmani=None, reviewed=None, flagged=None):
+def _server(tmp_path, by_clip, uthmani=None, reviewed=None, flagged=None, recited=None):
     store = WaqfEventStore.load(tmp_path / "waqf_events.jsonl")
     rev = ReviewedClipStore(tmp_path / "waqf_reviewed_clips.json", set(reviewed or []))
     flag = FlaggedClipStore(tmp_path / "waqf_flagged_clips.json", dict(flagged or {}))
     clips = list(by_clip.keys())
-    return WaqfAuditServer(clips, by_clip, uthmani or {}, store, rev, tmp_path, flag)
+    return WaqfAuditServer(clips, by_clip, uthmani or {}, store, rev, tmp_path, flag, recited)
 
 
 def test_sniff_shared_helper_reachable():
@@ -146,6 +146,15 @@ def test_clip_view_truth_is_prediction_overlaid_with_override(tmp_path):
     assert bounds[1]["verdict"] is None and bounds[1]["truth"] == WASL      # untouched
     assert bounds[2]["verdict"] is None and bounds[2]["truth"] == MID_WORD_CLOSURE
     assert server.state()["classes"] == [WAQF, WASL, MID_WORD_CLOSURE]
+
+
+def test_clip_view_surfaces_recited_words_for_early_stop_and_defaults_none(tmp_path):
+    by_clip = {"early": [_cand("early", 0, WAQF)], "full": [_cand("full", 0, WAQF)]}
+    # Only the early-stop clip is in the clip-status map; the other is absent (whole ayah).
+    server = _server(tmp_path, by_clip, recited={"early": 21})
+    clips = {c["clip_id"]: c for c in server.state()["clips"]}
+    assert clips["early"]["recited_words"] == 21   # early stop: page hides the tail past word 21
+    assert clips["full"]["recited_words"] is None   # absent → nothing hidden (whole ayah recited)
 
 
 def test_state_is_one_page_per_clip(tmp_path):

@@ -117,6 +117,18 @@ that tolerance out of a blunt hack and into the model, the same philosophy as AD
   contiguous single coverage, and is therefore **eligible** again with a correct label — recovering
   training data without weakening the genuine-re-read exclusion or the word-contiguity assertion.
 
+- **Early-stop clips are now correctly EXCLUDED from whole-clip training instead of corrupting it.**
+  When the reciter ends mid-ayah, the final segment's `word_end` is bounded by the last reliable
+  chunk's decode-support frontier (ADR-0002) rather than snapping to `n_words`. Its kept segments
+  therefore no longer tile `[0, n_words)`, so `windowed_labels._covers_all_words` returns False and
+  the clip is dropped from whole-clip labelling (`status.n_words` stays the full ayah count — the
+  coverage gap is the exclusion signal). This is the intended outcome: a clip whose audio does not
+  contain the whole ayah must not become a whole-clip CTC target. **Before** this fix the early-stop
+  final segment claimed `word_end = n_words`, so the clip *passed* coverage and was trained on a
+  label asserting tail words the audio never contained — a silent label corruption. The
+  segment-level manifest (realized-reference labels and audit candidates) likewise now stops at the
+  truly-recited word. Empirically 3 worklist clips.
+
 - **The windowing/overlap/stitch contract is mandatory, not conditional.** The deployed pipeline is
   *already* fixed 5 s windows at a 40 ms lattice with a hardcoded full-window mask — so "single-pass
   whole-recitation" is not available. The contract (window length, overlap, edge-frame ownership, how a

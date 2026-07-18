@@ -64,6 +64,18 @@ gives upstream Muaalem its accuracy: every clip's label matches what was *actual
   there. **The display marker** (`waqf_candidates`) moves off the resume anchor **only for a genuine
   re-read** — to the decode-supported stop word — so ordinary forward-waqf markers are unchanged.
 
+- **Bound the final segment by the last reliable chunk's decode support, not a blind snap to the
+  whole ayah.** The final segment has no terminating split pause, so its `word_end` used to snap to
+  `n_words` unconditionally — which invents word markers for words never recited when the reciter
+  **stops early** (ends mid-ayah). It now reuses the same `_supported_end` frontier: `word_end` is
+  where the last *reliable* chunk in the final group actually reached. The *last reliable* chunk is
+  used (not simply the last chunk) so a trailing **unreliable** fragment — an elongated final-word
+  tail or a post-ayah artifact chunk after a pause — cannot collapse a completed recitation (those
+  keep `word_end = n_words`). This changes the segment manifest for genuine early stops only (the
+  final segment's `word_end` shrinks to the truly-recited word; phantom wasl markers for the
+  never-recited tail words are dropped and the surviving interior wasl edges re-interpolate over the
+  true, shorter range). Empirically 3 worklist clips (17:88, 18:110, 58:20).
+
 - **Per-word phoneme boundaries come from the phonetizer's char `mappings`, not a space-split.**
   `quran_phonetizer` **merges adjacent words at a wasl** (liaison), so the phonetized whole ayah has
   *fewer* space-parts than Uthmani words for ~62 % of ayat — splitting the output on spaces would

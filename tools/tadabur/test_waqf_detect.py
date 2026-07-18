@@ -307,6 +307,33 @@ def test_segment_clip_splits_reread_of_final_word_only():
     assert (second.word_start, second.word_end) == (2, 3)
 
 
+def test_segment_clip_final_segment_uninflates_an_early_stop():
+    # The reciter stops mid-ayah after word1; the reference still has word2. The final
+    # segment's extent must bound to where the decode actually reached (words 0-1), not snap
+    # to the whole ayah and invent a marker for the never-recited word2.
+    ids, dur = _clip(_phonemes(WORD0 + WORD1))
+    result = segment_clip(ids, dur, REFERENCE, BOUNDARIES, [])
+    assert result.skip is None
+    assert len(result.spans) == 1
+    assert (result.spans[0].word_start, result.spans[0].word_end) == (0, 2)
+
+
+def test_segment_clip_final_segment_keeps_full_ayah_despite_trailing_fragment():
+    # A COMPLETE recitation (words 0-2), a pause, then a tiny unreliable trailing fragment
+    # (e.g. an elongated final-word tail or a post-ayah artifact). The final segment's extent
+    # must come from the last RELIABLE chunk (the whole ayah), not the unreliable trailing
+    # chunk, which would otherwise collapse the completed range.
+    trail = [19, 20]  # غ ف — not in the reference; sub-word, so unreliable
+    ids, dur = _clip(
+        _phonemes(WORD0 + WORD1 + WORD2) + [(0, PAUSE)] + _phonemes(trail)
+    )
+    pause = _pause_after(len(WORD0 + WORD1 + WORD2))
+    result = segment_clip(ids, dur, REFERENCE, BOUNDARIES, [pause])
+    assert result.skip is None
+    assert len(result.spans) == 1
+    assert (result.spans[0].word_start, result.spans[0].word_end) == (0, 3)
+
+
 def test_segment_clip_emits_waqf_pause_attribution_on_word_edge():
     # An interior waqf after word0: the pause is attributed to the last completed word
     # (word 0), phoneme-aligned, with kind WAQF.

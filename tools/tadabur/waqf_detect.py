@@ -523,20 +523,30 @@ def segment_clip(
     spans: list[WaqfSpan] = []
     for gi, group in enumerate(groups):
         first, last = chunks[group[0]], chunks[group[-1]]
-        starts = [chunks[c].start_word for c in group if chunks[c].reliable]
-        ends = [chunks[c].end_word for c in group if chunks[c].reliable]
+        reliable = [chunks[c] for c in group if chunks[c].reliable]
+        starts = [c.start_word for c in reliable]
         # The clip is admitted as this whole ayah, so its first segment starts at word 0 and
-        # its last ends at the final word; interior split words come from the chunk aligns.
+        # interior split words come from the chunk aligns.
         word_start = 0 if gi == 0 else (starts[0] if starts else 0)
         if gi == len(groups) - 1:
-            word_end = n_words
+            # Final segment: bound the extent by where the last *reliable* chunk's own decode
+            # actually reached (``_supported_end``), not a blind snap to the whole ayah. This
+            # un-inflates an early stop — the reciter ended mid-ayah, so trusting ``n_words``
+            # invents word markers for words never recited. The last reliable chunk (not simply
+            # ``last``) is used so a trailing unreliable fragment — e.g. an elongated final-word
+            # tail or a post-ayah artifact chunk — cannot collapse a completed recitation.
+            word_end = (
+                _supported_end(reliable[-1], boundaries, n_words) if reliable else n_words
+            )
         else:
             # The segment ends at its terminating split pause, so its extent is the word the
             # pre-pause chunk's decode actually reached (``_supported_end``): this un-inflates
             # a phantom over-read into a contiguous waqf while leaving a genuine re-read's
             # overlap and a full-restart's whole-ayah span intact.
             term_end = supported_ends[group[-1]]
-            word_end = term_end if term_end is not None else (ends[-1] if ends else n_words)
+            word_end = term_end if term_end is not None else (
+                reliable[-1].end_word if reliable else n_words
+            )
         if word_end <= word_start:
             word_end = min(n_words, word_start + 1)
             word_start = max(0, word_end - 1)

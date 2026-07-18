@@ -37,6 +37,7 @@ from urllib.parse import unquote, urlparse
 
 from .audit_http import AuditHandler, serve
 from .clip_status import read_clip_status
+from .waqf_candidates import BOUNDARY_MATCH_TOL_S
 from .waqf_event_fixtures import (
     MID_WORD_CLOSURE,
     WAQF,
@@ -156,6 +157,31 @@ class WaqfEventStore:
         entry = self.entries.get(key)
         return entry.note if entry else ""
 
+    def live_entry(self, row: dict) -> WaqfEventEntry | None:
+        """The override recorded for a live candidate ``row``, honoured only when it still
+        describes the **same word edge at the same instant**.
+
+        ``boundary_index`` orders the candidate boundaries within a clip and is re-assigned
+        every time the candidates are re-segmented, so a stored override can end up sharing a
+        slot with a *different* event that now occupies that index. Matching on it alone (or
+        even ``+ word_index``) is unsafe: a re-read clip can carry several boundaries on the
+        **same** Uthmani word — a stop and its re-read wasl — so identity also needs the
+        boundary's timing. We require the stored ``word_index`` to match *and* the stored
+        ``(start_s, end_s)`` to agree within :data:`BOUNDARY_MATCH_TOL_S` (candidate timing is
+        deterministic, so a genuine match is essentially exact — the tolerance only absorbs the
+        JSON float round-trip). A relocated boundary therefore reads as un-reviewed until a
+        human re-confirms it, instead of silently attaching an old verdict to a new boundary.
+        This is the single join both the per-clip view and the correction tally use, so they
+        can never disagree about what is a live correction.
+        """
+        entry = self.entries.get((row["clip_id"], row["boundary_index"]))
+        if entry is None or entry.word_index != row["word_index"]:
+            return None
+        if (abs(entry.start_s - row["start_s"]) > BOUNDARY_MATCH_TOL_S
+                or abs(entry.end_s - row["end_s"]) > BOUNDARY_MATCH_TOL_S):
+            return None
+        return entry
+
     def set(self, entry: WaqfEventEntry) -> None:
         """Record (or overwrite) a boundary's correction and persist the fixture set.
 
@@ -270,15 +296,21 @@ class FlaggedClipStore:
 def review_stats(server: "WaqfAuditServer") -> dict[str, int]:
     """Clip-review progress plus the correction tallies ADR-0004's eval reads.
 
-    Corrections are classified against the predicted baseline: a predicted stop the reviewer
-    calls ``wasl`` is a **false positive**; a predicted ``wasl`` called a stop is a **false
-    negative**; a ``waqf`` ↔ ``mid_word_closure`` swap is a class fix. Counted over every
-    stored override (which only exist inside clips the reviewer has opened).
+    Corrections are classified against the **current** candidate baseline: a predicted stop
+    the reviewer calls ``wasl`` is a **false positive**; a predicted ``wasl`` called a stop is
+    a **false negative**; a ``waqf`` ↔ ``mid_word_closure`` swap is a class fix. The predicted
+    class is read live from the candidate rows, not the (possibly stale) snapshot stored with
+    the override, and each override is resolved through :meth:`WaqfEventStore.live_entry` so a
+    relocated boundary is ignored — re-segmenting the candidates keeps the tally honest and
+    identical to the per-clip correction list the page navigates by.
     """
     stops = {WAQF, MID_WORD_CLOSURE}
     fp = fn = class_fix = 0
-    for entry in server.store.entries.values():
-        pred, truth = entry.predicted, entry.verdict
+    for row in server._boundary_rows.values():
+        entry = server.store.live_entry(row)
+        if entry is None:
+            continue
+        pred, truth = row["predicted"], entry.verdict
         if pred == truth:
             continue
         if pred in stops and truth == WASL:
@@ -321,23 +353,26 @@ def clip_view(server: "WaqfAuditServer", clip_id: str) -> dict[str, object]:
 
     ``boundaries`` is the clip's full candidate set (every word edge) with each boundary's
     predicted class, current override, and effective ``truth`` — the reviewer plays the clip
-    once and only flips the exceptions. Audio is served under the clip's staged filename.
-    ``recited_words`` (from the clip-status sidecar, ``None`` when absent) is how many
-    leading Uthmani words the reciter actually recited; the page hides the never-recited
-    tail of an early-stop clip so it draws no phantom markers.
+    once and only flips the exceptions. Overrides are resolved through
+    :meth:`WaqfEventStore.live_entry`, so a verdict left on a boundary that re-segmentation
+    has since relocated is dropped (the boundary shows as un-reviewed) rather than mislabelled.
+    Audio is served under the clip's staged filename. ``recited_words`` (from the clip-status
+    sidecar, ``None`` when absent) is how many leading Uthmani words the reciter actually
+    recited; the page hides the never-recited tail of an early-stop clip so it draws no
+    phantom markers.
     """
     rows = server.candidates_by_clip.get(clip_id, [])
     first = rows[0] if rows else None
     audio_ref = first["audio_ref"] if first else clip_id
     surah_ayah = first["surah_ayah"] if first else ""
-    boundaries = [
-        boundary_view(
+    boundaries = []
+    for r in rows:
+        entry = server.store.live_entry(r)
+        boundaries.append(boundary_view(
             r,
-            server.store.verdict_of((clip_id, r["boundary_index"])),
-            server.store.note_of((clip_id, r["boundary_index"])),
-        )
-        for r in rows
-    ]
+            entry.verdict if entry else None,
+            entry.note if entry else "",
+        ))
     return {
         "clip_id": clip_id,
         "surah_ayah": surah_ayah,

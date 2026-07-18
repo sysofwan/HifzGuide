@@ -107,6 +107,11 @@
   .flagitem:hover { background:#1c2028; }
   .flagitem-ref { color:var(--mark); font-weight:600; }
   .flagitem-note { color:var(--muted); margin-top:2px; word-break:break-word; }
+  .corritem { border-left-color:var(--accent); }
+  .corritem .flagitem-ref { color:var(--fg); display:flex; align-items:center; gap:6px; }
+  .ctag { font-size:10px; font-weight:700; padding:1px 5px; border-radius:8px; letter-spacing:.03em; border:1px solid transparent; }
+  .ctag.fp { background:rgba(214,69,65,.18); color:var(--closure); border-color:var(--closure); }
+  .ctag.fn { background:rgba(246,199,68,.16); color:var(--mark); border-color:var(--mark); }
   kbd { font:11px monospace; background:#242a36; border:1px solid var(--line); border-bottom-width:2px;
         border-radius:4px; padding:1px 5px; }
   .legend { color:var(--muted); font-size:12px; margin-top:18px; line-height:1.9; }
@@ -172,6 +177,8 @@
   <label class="toggle"><input type="checkbox" id="hidelabeled" onchange="setHideReviewed(this.checked)"> Hide handled clips (reviewed or flagged)</label>
   <h2>Corrections</h2>
   <div id="classes"></div>
+  <h2>Corrections to review</h2>
+  <div id="corrections"></div>
   <h2>Flagged to revisit</h2>
   <div id="flagged"></div>
   <div class="legend">
@@ -283,6 +290,45 @@ function renderSidebar() {
     <div class="confusion">Class fixes (waqf↔closure): ${s.class_fix || 0}</div>`;
 
   renderFlaggedList();
+  renderCorrectionsList();
+}
+
+// Every false positive / false negative correction on a clip, split by kind, using the
+// same predicted-vs-truth rule as boundaryKind. Lets the sidebar list the clips that carry
+// adjudicated mistakes so they can be revisited without hunting through the queue.
+function correctionsOf(clip) {
+  const fp = [], fn = [];
+  clip.boundaries.forEach(b => {
+    const k = boundaryKind(b);
+    if (k.fp) fp.push(b);
+    else if (k.fn) fn.push(b);
+  });
+  return { fp, fn };
+}
+
+// The correction list: every clip carrying a false positive or false negative, tagged with
+// its FP/FN counts and a click that jumps straight to the clip with the first such boundary
+// focused — the review queue for the mistakes the reviewer has recorded so far.
+function renderCorrectionsList() {
+  const box = document.getElementById("corrections");
+  if (!box) return;
+  const items = state.clips
+    .map(c => ({ c, corr: correctionsOf(c) }))
+    .filter(x => x.corr.fp.length || x.corr.fn.length);
+  if (!items.length) {
+    box.innerHTML = `<div class="sub">No false positives or negatives recorded yet. Press <kbd>W</kbd> on a marked stop (false positive) or <kbd>Q</kbd> on a plain word (false negative).</div>`;
+    return;
+  }
+  box.innerHTML = items.map(({ c, corr }) => {
+    const first = (corr.fp[0] || corr.fn[0]).boundary_index;
+    const tags = [];
+    if (corr.fp.length) tags.push(`<span class="ctag fp">FP ${corr.fp.length}</span>`);
+    if (corr.fn.length) tags.push(`<span class="ctag fn">FN ${corr.fn.length}</span>`);
+    return `
+    <div class="flagitem corritem" onclick="jumpToClip('${esc(c.clip_id)}', ${first})" title="${esc(c.clip_id)}">
+      <div class="flagitem-ref">${esc(c.surah_ayah || "?:?")} ${tags.join(" ")}</div>
+    </div>`;
+  }).join("");
 }
 
 // The revisit list: every flagged clip, its comment, and a click to jump straight to it.
@@ -603,12 +649,12 @@ function toggleFlag() {
 
 // Jump straight to a flagged clip from the sidebar list, revealing it if reviewed-clips
 // are hidden.
-function jumpToClip(clipId) {
+function jumpToClip(clipId, focusIndex) {
   let vis = visibleClips();
   let i = vis.findIndex(c => c.clip_id === clipId);
   if (i < 0 && state.hideReviewed) { setHideReviewed(false); vis = visibleClips(); i = vis.findIndex(c => c.clip_id === clipId); }
   if (i < 0) return;
-  state.idx = i; state.focus = null; render();
+  state.idx = i; state.focus = focusIndex == null ? null : focusIndex; render();
 }
 
 document.addEventListener("keydown", e => {

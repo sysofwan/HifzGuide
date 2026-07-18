@@ -21,6 +21,7 @@ from .waqf_audit_ui import (
     WaqfAuditServer,
     WaqfEventStore,
     boundary_view,
+    clip_view,
     flagged_path_for,
     load_candidates_by_clip,
     load_clip_worklist,
@@ -30,12 +31,12 @@ from .waqf_audit_ui import (
 from .waqf_segments import _save_local_clip
 
 
-def _cand(clip, idx, predicted=WASL, surah_ayah="2:5"):
+def _cand(clip, idx, predicted=WASL, surah_ayah="2:5", word_index=None):
     """One candidate-manifest row (a word edge) as a plain dict."""
     return {
         "clip_id": clip, "audio_ref": f"{clip}.wav", "surah_ayah": surah_ayah,
-        "boundary_index": idx, "word_index": idx, "start_s": float(idx),
-        "end_s": float(idx), "predicted": predicted,
+        "boundary_index": idx, "word_index": idx if word_index is None else word_index,
+        "start_s": float(idx), "end_s": float(idx), "predicted": predicted,
     }
 
 
@@ -129,6 +130,63 @@ def test_review_stats_classifies_false_positive_negative_and_class_fix(tmp_path)
     assert stats["false_negative"] == 1
     assert stats["class_fix"] == 1
     assert stats["clips_total"] == 1 and stats["clips_reviewed"] == 0
+
+
+def test_review_stats_classifies_against_live_prediction_not_stale_override(tmp_path):
+    # An override is stored, then the candidate baseline is re-segmented so the same boundary
+    # index now predicts a different class. The tally must follow the *current* prediction:
+    # a boundary whose new prediction equals the verdict is no longer a correction, and an
+    # override whose boundary no longer exists at all is skipped.
+    by_clip = {"a": [_cand("a", 0, MID_WORD_CLOSURE), _cand("a", 1, WAQF)]}
+    server = _server(tmp_path, by_clip)
+    server.apply_label({"clip_id": "a", "boundary_index": 0, "verdict": WASL})  # FP vs closure
+    server.apply_label({"clip_id": "a", "boundary_index": 1, "verdict": WASL})  # FP vs waqf
+    assert review_stats(server)["false_positive"] == 2
+
+    # Re-segment: boundary 0 now predicts wasl (matches the verdict → no longer a correction),
+    # boundary 1 is gone entirely (orphaned override).
+    server.candidates_by_clip = {"a": [_cand("a", 0, WASL)]}
+    server._boundary_rows = {("a", 0): server.candidates_by_clip["a"][0]}
+    stats = review_stats(server)
+    assert stats["false_positive"] == 0 and stats["false_negative"] == 0 and stats["class_fix"] == 0
+
+
+def test_index_reuse_after_resegmentation_drops_relocated_override(tmp_path):
+    # ``boundary_index`` is a positional id re-assigned when candidates are re-segmented, so a
+    # stored override can end up sharing a slot with a *different* event. A verdict recorded on
+    # a waqf at word 3 must not silently attach to a new event that later reuses index 0 — it is
+    # neither counted (would be a phantom FN) nor shown as ground truth on the new boundary.
+    by_clip = {"a": [_cand("a", 0, WASL, word_index=3)]}
+    server = _server(tmp_path, by_clip, uthmani={"2:5": "و ن ن ن ن"})
+    server.apply_label({"clip_id": "a", "boundary_index": 0, "verdict": WAQF})  # FN on word 3
+    assert review_stats(server)["false_negative"] == 1
+
+    # Re-segment: index 0 now denotes a different word edge (word 1), still predicting wasl.
+    server.candidates_by_clip = {"a": [_cand("a", 0, WASL, word_index=1)]}
+    server._boundary_rows = {("a", 0): server.candidates_by_clip["a"][0]}
+    assert review_stats(server)["false_negative"] == 0                       # relocated → not counted
+    bound = clip_view(server, "a")["boundaries"][0]
+    assert bound["word_index"] == 1
+    assert bound["verdict"] is None and bound["truth"] == WASL               # relocated → un-reviewed
+
+
+def test_reread_same_word_different_time_drops_stale_override(tmp_path):
+    # A re-read clip can carry two boundaries on the SAME Uthmani word (a stop then its re-read
+    # wasl), so index + word_index can both collide across occurrences. Timing disambiguates:
+    # an override recorded on the stop (t≈10s) must not attach to a re-segmented boundary that
+    # reuses the same index and word but sits at a different instant (t≈14s).
+    stop = {**_cand("a", 0, WAQF, word_index=5), "start_s": 10.0, "end_s": 10.4}
+    server = _server(tmp_path, {"a": [stop]}, uthmani={"2:5": "و ن ن ن ن ن"})
+    server.apply_label({"clip_id": "a", "boundary_index": 0, "verdict": WASL})  # FP on the stop
+    assert review_stats(server)["false_positive"] == 1
+
+    # Re-segment: index 0 / word 5 survive, but the boundary now sits ~4s later (a distinct event).
+    moved = {**_cand("a", 0, WAQF, word_index=5), "start_s": 14.0, "end_s": 14.3}
+    server.candidates_by_clip = {"a": [moved]}
+    server._boundary_rows = {("a", 0): moved}
+    assert review_stats(server)["false_positive"] == 0                        # moved in time → not counted
+    bound = clip_view(server, "a")["boundaries"][0]
+    assert bound["verdict"] is None and bound["truth"] == WAQF               # moved in time → un-reviewed
 
 
 def test_clip_view_truth_is_prediction_overlaid_with_override(tmp_path):

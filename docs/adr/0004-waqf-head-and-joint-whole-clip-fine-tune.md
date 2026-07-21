@@ -129,6 +129,22 @@ that tolerance out of a blunt hack and into the model, the same philosophy as AD
   segment-level manifest (realized-reference labels and audit candidates) likewise now stops at the
   truly-recited word. Empirically 3 worklist clips.
 
+- **The F0 event eval set is frozen from the reviewed audit as reciter-disjoint partitions
+  (`tadabur.waqf_freeze`).** The correction-based audit leaves an overrides-only event store plus a
+  reviewed-clip roster; `waqf_freeze` materializes the per-boundary ground truth (candidate baseline
+  ⊕ human overrides) over the reviewed clips and splits it **reciter-disjoint** into a `calibration`
+  partition (F2 tunes the inference threshold on it) and a `test` partition (reported once). Because
+  the D2/D3 fine-tune has **not** yet fixed a training-reciter set, disjointness from training is
+  guaranteed the other way round: the freeze emits `must_exclude_reciters` (every reciter in either
+  partition) for the eventual training run to hold out, so the eval stays leak-free by construction
+  rather than by matching a run that does not exist yet. The audit's reliability depends on the
+  data-quality fixes above — the re-read stop-word attribution, the early-stop tail un-inflation, and
+  the ayah-aligned recut-bounds playback (ADR-0002) — without which a reviewer would grade phantom
+  tail markers or neighbour-ayah bleed. One consequence surfaced at freeze time: an override recorded
+  against an earlier candidate version whose boundary a later fix removed (e.g. a never-recited
+  early-stop tail word) is **stale** — it names no current baseline boundary, so `waqf_freeze` drops
+  it and records it under `stale_overrides` rather than misplacing it onto the ground truth.
+
 - **The windowing/overlap/stitch contract is mandatory, not conditional.** The deployed pipeline is
   *already* fixed 5 s windows at a 40 ms lattice with a hardcoded full-window mask — so "single-pass
   whole-recitation" is not available. The contract (window length, overlap, edge-frame ownership, how a

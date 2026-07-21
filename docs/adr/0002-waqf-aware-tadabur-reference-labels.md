@@ -76,6 +76,22 @@ gives upstream Muaalem its accuracy: every clip's label matches what was *actual
   never-recited tail words are dropped and the surviving interior wasl edges re-interpolate over the
   true, shorter range). Empirically 3 worklist clips (17:88, 18:110, 58:20).
 
+- **The ayah-aligned span is the `ClipStatus` recut bounds, not the raw staged clip.** A staged
+  clip often carries a **neighbour-ayah lead-in or trailing bleed** — audio of the previous/next
+  ayah the reciter ran into (e.g. 11:52/spk0345 carries `afalā taʿqilūn` from 11:51 for its first
+  2.833 s). `segment_clip` already recuts to the ayah's true onset/offset and records them as
+  `recitation_start_s` / `recitation_end_s` on `ClipStatus`; those bounds — not `[0, clip_duration]`
+  — are the span every downstream reader must trust. This matters **most for training, not just the
+  audit**: `windowed_labels` and `waqf_distill` enumerate the fixed 5 s windows over the *recitation
+  span* (`recitation_start_sample` .. `+ recitation_num_samples`) on the shared grid, so a window's
+  phoneme CTC target and its waqf soft target both exclude the bleed — otherwise the fine-tune would
+  be trained to transcribe (and to place stops in) a neighbouring ayah's audio (the `--whole-clip`
+  flag deliberately re-includes the bleed, and is exactly what the labels must *not* use). The audit
+  UI keys off the same bounds: it starts playback at `recitation_start_s`, floors the marker/seek
+  pre-roll there, shades the trimmed regions, and auto-pauses at `recitation_end_s`, so a reviewer
+  grades the ayah itself and a neighbour-ayah stop is never mis-heard as an in-ayah waqf (native
+  scrub stays unrestricted so the trimmed audio is still inspectable).
+
 - **Per-word phoneme boundaries come from the phonetizer's char `mappings`, not a space-split.**
   `quran_phonetizer` **merges adjacent words at a wasl** (liaison), so the phonetized whole ayah has
   *fewer* space-parts than Uthmani words for ~62 % of ayat — splitting the output on spaces would

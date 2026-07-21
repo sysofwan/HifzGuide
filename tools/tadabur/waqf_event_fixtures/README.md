@@ -90,3 +90,36 @@ Each line carries: `clip_id`, `audio_ref`, `surah_ayah`, `boundary_index`,
 `word_index`, `start_s`, `end_s`, `predicted`, `verdict`, `note`. Both `predicted`
 (the detector's class) and `verdict` (the human's) are one of `waqf` / `wasl` /
 `mid_word_closure`; their disagreement is the metric.
+
+## Freezing the reviewed audit (`waqf_freeze`)
+
+Once the audit is done, `tadabur.waqf_freeze` **materializes** the ground truth over the
+reviewed clips (every candidate boundary carried with its human `verdict` — an override
+where one exists, else the detector's `predicted`) and splits it **reciter-disjoint** into
+the two versioned partitions F1/F2 read:
+
+```bash
+python -m tadabur.waqf_freeze \
+  --candidates audit_run/waqf_candidates.jsonl \
+  --events     waqf_event_fixtures/waqf_events.jsonl \
+  --reviewed   waqf_event_fixtures/waqf_reviewed_clips.json \
+  --out-dir    waqf_event_fixtures --test-fraction 0.5 --seed 0
+```
+
+Outputs (all tracked, unlike the per-reviewer `waqf_events.jsonl` / `waqf_reviewed_clips.json`):
+
+- `waqf_events.calibration.jsonl`, `waqf_events.test.jsonl` — the frozen, self-contained
+  per-boundary ground truth (`WaqfEventEntry` schema), so F2 needs no access to the giant
+  candidate manifest at eval time.
+- `waqf_partition.json` — the reciter→partition assignment, counts, and
+  `must_exclude_reciters`.
+
+**Training disjointness runs the other way.** Because the D2/D3 fine-tune has not yet
+fixed a training-reciter set, the freeze emits `must_exclude_reciters` (every reciter in
+either partition) for the eventual training run to hold out — so calibration/test stay
+leak-free by construction rather than by matching a run that does not exist yet.
+
+An override whose `(clip_id, boundary_index)` no longer names a boundary in the current
+candidate baseline (a false negative recorded before the early-stop/re-read fixes trimmed
+that clip's boundaries) is **stale**: it is dropped from the frozen set and listed under
+`waqf_partition.json`'s `stale_overrides`, never silently distorting the ground truth.

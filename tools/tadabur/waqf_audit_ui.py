@@ -36,7 +36,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from .audit_http import AuditHandler, serve
-from .clip_status import read_clip_status
+from .clip_status import ClipStatus, read_clip_status
 from .waqf_candidates import BOUNDARY_MATCH_TOL_S
 from .waqf_event_fixtures import (
     MID_WORD_CLOSURE,
@@ -356,10 +356,13 @@ def clip_view(server: "WaqfAuditServer", clip_id: str) -> dict[str, object]:
     once and only flips the exceptions. Overrides are resolved through
     :meth:`WaqfEventStore.live_entry`, so a verdict left on a boundary that re-segmentation
     has since relocated is dropped (the boundary shows as un-reviewed) rather than mislabelled.
-    Audio is served under the clip's staged filename. ``recited_words`` (from the clip-status
-    sidecar, ``None`` when absent) is how many leading Uthmani words the reciter actually
-    recited; the page hides the never-recited tail of an early-stop clip so it draws no
-    phantom markers.
+    Audio is served under the clip's staged filename. The clip-status sidecar (``None`` when
+    absent) supplies the trim treatment: ``recited_words`` is how many leading Uthmani words the
+    reciter actually recited, so the page hides the never-recited tail of an early-stop clip; and
+    ``recitation_start_s`` / ``recitation_end_s`` are the ayah-aligned recut bounds within the raw
+    clip, so the page starts playback at the ayah onset and shades the neighbour-ayah lead-in /
+    trailing bleed the raw clip retains outside ``[start, end]`` (the page scales these against the
+    ``<audio>`` element's own decoded duration).
     """
     rows = server.candidates_by_clip.get(clip_id, [])
     first = rows[0] if rows else None
@@ -373,6 +376,7 @@ def clip_view(server: "WaqfAuditServer", clip_id: str) -> dict[str, object]:
             entry.verdict if entry else None,
             entry.note if entry else "",
         ))
+    status = server.clip_status_by_clip.get(clip_id)
     return {
         "clip_id": clip_id,
         "surah_ayah": surah_ayah,
@@ -382,7 +386,9 @@ def clip_view(server: "WaqfAuditServer", clip_id: str) -> dict[str, object]:
         "reviewed": server.reviewed.is_reviewed(clip_id),
         "flagged": server.flagged.is_flagged(clip_id),
         "flag_comment": server.flagged.comment_of(clip_id),
-        "recited_words": server.recited_words_by_clip.get(clip_id),
+        "recited_words": status.recited_words if status else None,
+        "recitation_start_s": status.recitation_start_s if status else None,
+        "recitation_end_s": status.recitation_end_s if status else None,
         "boundaries": boundaries,
     }
 
@@ -403,7 +409,7 @@ class WaqfAuditServer:
         reviewed: ReviewedClipStore,
         audio_dir: Path,
         flagged: FlaggedClipStore | None = None,
-        recited_words_by_clip: dict[str, int | None] | None = None,
+        clip_status_by_clip: dict[str, ClipStatus] | None = None,
     ) -> None:
         self.clips = clips
         self.candidates_by_clip = candidates_by_clip
@@ -412,7 +418,7 @@ class WaqfAuditServer:
         self.reviewed = reviewed
         self.flagged = flagged if flagged is not None else FlaggedClipStore(Path(), {})
         self.audio_dir = audio_dir
-        self.recited_words_by_clip = recited_words_by_clip or {}
+        self.clip_status_by_clip = clip_status_by_clip or {}
         self._boundary_rows: dict[BoundaryKey, dict] = {
             (cid, r["boundary_index"]): r
             for cid, rows in candidates_by_clip.items() for r in rows
@@ -545,7 +551,9 @@ def main() -> None:
                         help="Waqf event-fixture file for corrections (default: canonical path).")
     parser.add_argument("--clip-status", type=Path, default=None,
                         help="Per-clip segmentation status sidecar (tadabur.clip_status) — supplies "
-                             "recited_words so the page hides the never-recited tail of an early-stop clip.")
+                             "recited_words (to hide an early-stop clip's never-recited tail) and the "
+                             "ayah-aligned recut bounds (to start playback at the onset and shade the "
+                             "neighbour-ayah lead-in / trailing bleed).")
     parser.add_argument("--port", type=int, default=8000, help="Port to serve on (default: 8000).")
     parser.add_argument("--host", default="127.0.0.1",
                         help="Interface to bind (default: 127.0.0.1; use 0.0.0.0 to expose on the LAN).")
@@ -561,13 +569,13 @@ def main() -> None:
     flagged = FlaggedClipStore.load(flagged_path_for(args.fixtures))
     surah_ayat = {rows[0]["surah_ayah"] for rows in selected.values() if rows}
     uthmani = uthmani_words_index(surah_ayat)
-    recited_words_by_clip = (
-        {s.audio_filename: s.recited_words for s in read_clip_status(args.clip_status)}
+    clip_status_by_clip = (
+        {s.audio_filename: s for s in read_clip_status(args.clip_status)}
         if args.clip_status else {}
     )
     server_state = WaqfAuditServer(
         clips, selected, uthmani, store, reviewed, args.audio_dir, flagged,
-        recited_words_by_clip,
+        clip_status_by_clip,
     )
 
     httpd = serve(_Handler, server_state, args.port, args.host)

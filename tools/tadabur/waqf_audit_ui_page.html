@@ -56,6 +56,12 @@
              color:var(--fg); background:#242a36; border:1px solid var(--line); padding:1px 7px;
              border-radius:10px; white-space:nowrap; pointer-events:none; }
   .tl-play { position:absolute; top:0; bottom:0; width:2px; background:var(--mark); z-index:3; left:0; }
+  /* Neighbour-ayah lead-in / trailing bleed the raw clip retains outside the ayah-aligned
+     recut span: shaded so the reviewer sees it is trimmed (playback starts at the onset). */
+  .tl-trim { position:absolute; top:0; bottom:0; z-index:0; background:repeating-linear-gradient(
+             -45deg, rgba(120,130,150,.18) 0 6px, rgba(120,130,150,.06) 6px 12px);
+             border-right:1px dashed rgba(150,160,180,.5); }
+  .tl-trim.tail { border-right:none; border-left:1px dashed rgba(150,160,180,.5); }
   .tl-labels { display:flex; justify-content:space-between; color:var(--muted); font-size:11px;
                margin-top:3px; font-variant-numeric:tabular-nums; }
   .tl-labels .mid { color:var(--fg); }
@@ -464,6 +470,8 @@ function renderCard() {
         ? `<audio id="au" controls src="${clip.audio_url}"></audio>
            <div class="timeline">
              <div class="tl-track" id="tltrack">
+               <div class="tl-trim" id="tltrimlead" style="display:none"></div>
+               <div class="tl-trim tail" id="tltrimtail" style="display:none"></div>
                ${timelineMarks(clip)}
                <div class="tl-play" id="tlplay"></div>
              </div>
@@ -500,20 +508,33 @@ function renderCard() {
     const restore = () => { try { a.currentTime = keep.t; if (keep.playing) a.play(); } catch (e) {} };
     if (a.readyState >= 1) restore(); else a.addEventListener("loadedmetadata", restore, { once: true });
   }
-  setupTimeline();
+  setupTimeline(!keep);
 }
 
 function render() { renderSidebar(); renderCard(); }
 
 // ---- timeline wiring -----------------------------------------------------------
 
-function setupTimeline() {
+// The ayah-aligned recut bounds (clip-status sidecar) within the raw clip. Playback and the
+// pre-roll floor respect the onset so the reviewer never hears the neighbour-ayah lead-in;
+// null (no sidecar) means the whole raw clip is the recitation — play from 0, no shading.
+function recStart(clip) { return clip && clip.recitation_start_s != null ? clip.recitation_start_s : 0; }
+function recEnd(clip) { return clip && clip.recitation_end_s != null ? clip.recitation_end_s : Infinity; }
+
+// ``freshMount`` is true when renderCard mounted a NEW <audio> for a different clip (the same
+// signal that governs the keep/restore in renderCard: a fresh mount has no position to keep). A
+// fresh mount seeds playback at the ayah onset; an in-clip re-render keeps the reviewer's position.
+function setupTimeline(freshMount) {
   const a = document.getElementById("au");
   const track = document.getElementById("tltrack");
   const play = document.getElementById("tlplay");
   const durEl = document.getElementById("tldur");
   const curEl = document.getElementById("tlcur");
   if (!a || !track) return;
+  const clip = currentClip();
+  const start = recStart(clip), end = recEnd(clip);
+  const lead = document.getElementById("tltrimlead");
+  const tail = document.getElementById("tltrimtail");
   const marks = Array.from(track.querySelectorAll(".tl-mark"));
   const place = () => {
     const d = a.duration;
@@ -525,22 +546,30 @@ function setupTimeline() {
       m.style.left = Math.max(0, Math.min(100, (s / d) * 100)) + "%";
       m.style.width = Math.max(0.6, (((isFinite(e) ? e : s) - s) / d) * 100) + "%";
     });
+    // Shade the trimmed neighbour-ayah lead-in [0, start] and trailing bleed [end, duration].
+    if (lead) { const on = start > 0.01; lead.style.display = on ? "block" : "none";
+      if (on) { lead.style.left = "0%"; lead.style.width = Math.min(100, (start / d) * 100) + "%"; } }
+    if (tail) { const on = isFinite(end) && end < d - 0.01; tail.style.display = on ? "block" : "none";
+      if (on) { tail.style.left = (end / d) * 100 + "%"; tail.style.width = Math.max(0, 100 - (end / d) * 100) + "%"; } }
   };
   const tick = () => {
     const d = a.duration;
     if (!d || !isFinite(d)) return;
+    // Auto-pause at the recitation end so forward playback never runs into the trailing bleed.
+    if (!a.paused && a.currentTime >= end) { a.pause(); a.currentTime = end; }
     play.style.left = (a.currentTime / d) * 100 + "%";
     curEl.textContent = fmtClock(a.currentTime);
   };
-  if (a.readyState >= 1) place(); else a.addEventListener("loadedmetadata", place, { once: true });
+  // Start a freshly-mounted clip at the ayah onset (skip the lead-in); keep position on re-render.
+  const seedOnset = () => { if (freshMount && start > 0.01) a.currentTime = start; };
+  if (a.readyState >= 1) { place(); seedOnset(); }
+  else a.addEventListener("loadedmetadata", () => { place(); seedOnset(); }, { once: true });
   a.ontimeupdate = tick;
   marks.forEach(m => m.addEventListener("click", ev => {
     ev.stopPropagation();
     state.focus = parseInt(m.dataset.bidx, 10);
-    render();
-    const s = parseFloat(m.dataset.start) || 0;
-    a.currentTime = Math.max(0, s - 1.0);
-    a.play().catch(() => {});
+    render();  // replaces <audio>; playFrom re-grabs the fresh element and floors at the onset.
+    playFrom(parseFloat(m.dataset.start) || 0);
   }));
   track.onclick = ev => {
     const d = a.duration;
@@ -554,7 +583,7 @@ function setupTimeline() {
 function playFrom(s) {
   const a = document.getElementById("au");
   if (!a) return;
-  const to = Math.max(0, (s || 0) - 1.0);
+  const to = Math.max(recStart(currentClip()), (s || 0) - 1.0);
   const go = () => { try { a.currentTime = to; a.play(); } catch (e) {} };
   if (a.readyState >= 1) go(); else a.addEventListener("loadedmetadata", go, { once: true });
 }

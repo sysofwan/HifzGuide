@@ -30,6 +30,7 @@ from training.windowed_labels import (
     EXCLUDE_DROPPED_SEGMENT,
     EXCLUDE_EMPTY_WINDOW,
     EXCLUDE_OVER_LONG,
+    EXCLUDE_RE_READ,
     EXCLUDE_SEGMENT_CROSSES_WINDOW,
     EXCLUDE_TARGET_TOO_LONG,
     Segment,
@@ -61,7 +62,7 @@ def _seg(clip, index, w0, w1, s0, s1, ref, reciter=1, surah="78:2"):
 
 
 def _status(clip, n_words, duration_s, rec_start=0.0, rec_end=None, reciter=1,
-            surah="78:2", skip=None):
+            surah="78:2", skip=None, re_reads=0):
     return ClipStatus(
         audio_filename=clip,
         surah_ayah=surah,
@@ -71,6 +72,7 @@ def _status(clip, n_words, duration_s, rec_start=0.0, rec_end=None, reciter=1,
         recitation_start_s=rec_start,
         recitation_end_s=duration_s if rec_end is None else rec_end,
         skip_reason=skip,
+        re_reads=re_reads,
     )
 
 
@@ -253,6 +255,22 @@ def test_skip_reason_excludes_whole_clip():
 
     assert labels == []
     assert reason == "repeated_recitation"
+
+
+def test_reread_clip_excluded_under_own_reason():
+    # A re-read clip's segments overlap in words (segment 1 re-covers word 1) and cannot
+    # tile the recitation contiguously, so it is excluded — under EXCLUDE_RE_READ, not the
+    # misleading dropped_segment.
+    segs = [
+        _seg("a.wav", 0, 0, 2, 0.0, 4.0, "ءبت"),
+        _seg("a.wav", 1, 1, 3, 4.5, 8.0, "بتث"),
+    ]
+    status = _status_for("a.wav", segs, n_words=3, re_reads=1)
+
+    labels, reason = build_clip_windows(segs, status, CONTRACT)
+
+    assert labels == []
+    assert reason == EXCLUDE_RE_READ
 
 
 def test_dropped_segment_leaves_word_gap_and_excludes_clip():

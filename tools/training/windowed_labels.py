@@ -99,6 +99,7 @@ PROVISIONAL_CAP_FEATURE_FRAMES = 2000
 # from :data:`tadabur.clip_status.CLIP_SKIP_REASONS`. Enumerated so the report keys and the
 # tests share one vocabulary.
 EXCLUDE_DROPPED_SEGMENT = "dropped_segment"
+EXCLUDE_RE_READ = "re_read"
 EXCLUDE_OVER_LONG = "over_long"
 EXCLUDE_EMPTY_WINDOW = "empty_window"
 EXCLUDE_TARGET_TOO_LONG = "target_too_long"
@@ -254,21 +255,27 @@ def build_clip_windows(
 ) -> tuple[list[WindowLabel], str | None]:
     """Windowed labels for one clip, or ``(_, reason)`` when the clip is ineligible.
 
-    Applies the clip-level eligibility gates in order (skip reason → dropped-segment
-    coverage → over-long → per-window containment/target length) and, for an eligible clip,
-    labels each window with the concatenated realized references of the segments **fully
-    contained in that window's clip-relative span**. If a segment's audio crosses a window
-    edge, segment-level timing cannot prove that window's edge word is a full CTC target,
-    so the clip is excluded (``segment_crosses_window``) rather than mislabelled. Windows
-    are enumerated on the shared clip-relative grid the waqf soft labels use
-    (:func:`training.waqf_distill.enumerate_recitation_windows`), so the two artifacts'
-    ``(window_index, start_sample, num_samples)`` match. Raises ``AssertionError`` if a
-    kept window's segments are not word-contiguous or the windows fail to cover the
-    recitation's words — invariants of an eligible clip, so a violation is a bug, not a
-    data condition.
+    Applies the clip-level eligibility gates in order (skip reason → re-read → dropped-
+    segment coverage → over-long → per-window containment/target length) and, for an
+    eligible clip, labels each window with the concatenated realized references of the
+    segments **fully contained in that window's clip-relative span**. If a segment's audio
+    crosses a window edge, segment-level timing cannot prove that window's edge word is a
+    full CTC target, so the clip is excluded (``segment_crosses_window``) rather than
+    mislabelled. Windows are enumerated on the shared clip-relative grid the waqf soft
+    labels use (:func:`training.waqf_distill.enumerate_recitation_windows`), so the two
+    artifacts' ``(window_index, start_sample, num_samples)`` match. Raises
+    ``AssertionError`` if a kept window's segments are not word-contiguous or the windows
+    fail to cover the recitation's words — invariants of an eligible clip, so a violation is
+    a bug, not a data condition.
     """
     if status.skip_reason is not None:
         return [], status.skip_reason
+
+    # A re-read clip's segments overlap in words (two passes over a phrase), so they cannot
+    # tile the recitation into one contiguous whole-clip target. Exclude it under its own
+    # reason rather than the misleading ``dropped_segment`` (nothing was dropped).
+    if status.re_reads:
+        return [], EXCLUDE_RE_READ
 
     ordered = sorted(segments, key=lambda s: s.segment_index)
     if not _covers_all_words(ordered, status.n_words):

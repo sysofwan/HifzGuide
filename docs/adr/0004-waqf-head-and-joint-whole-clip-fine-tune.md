@@ -230,3 +230,39 @@ The mandatory contract above (window length, overlap, edge ownership, straddle r
   Clips beyond the cap are **flagged for review, not silently truncated**.
 
 Implemented in `training.waqf_distill.WindowContract` (`FROZEN_HOP_FEATURE_FRAMES = 200` default).
+
+### Amendment — training windows are snapped inward to whole words
+
+The contract above governs **inference**: fixed 5 s windows on the 4 s hop, center-trusted stitch.
+Training-data construction adds one refinement on top of it, and nothing else changes.
+
+A fixed window edge almost never falls on a word boundary, so a training window's raw audio holds a
+*fragment* of its edge word. Labelling that fragment as a whole word corrupts the CTC target;
+omitting it leaves spoken audio with no target. The original build resolved this by **excluding any
+clip with a segment crossing a window edge**, which in practice meant excluding every recitation
+longer than one 5 s window: simulated over the full corpus that kept **2 872 / 17 763 clips (16.2 %)
+and 9 windows containing an interior waqf** — i.e. the waqf head would have been trained almost
+entirely on recitations with no interior stop, precisely the signal this ADR exists to teach.
+
+So each grid window is now **snapped inward** to the whole words its audio contains
+(`training.waqf_distill.snap_window_to_words`), using per-word onset times derived for free from the
+whole-clip Smith-Waterman alignment plus the decode's own frame times
+(`tadabur.waqf_detect.word_onset_times`, persisted on `ClipStatus.word_times`).
+
+- The snapped span is a **sub-span of its nominal window**, so window length, hop, cap and the
+  frozen grid's positions are untouched — a training example is only ever *narrower* than the
+  window the deployed model runs.
+- `clip_recitation_windows` is the single enumerator both the phoneme CTC labels and the waqf soft
+  labels call, so the shared-grid contract `windowed_batch.load_joint_examples` checks holds by
+  construction.
+- A window's label slices each overlapping segment's **own persisted phonetization** at word
+  offsets (`waqf_segments.hafs_segment_reference` → `normalization.map_char_offsets` → the manifest's
+  `word_offsets`). It is never re-phonetized: re-phonetizing a window's word range would apply the
+  phonetizer's CleanEnd and invent a waqf at what is only a window edge. The realized reference the
+  `.balanced` gate scores is byte-identical.
+- A word longer than the grid's 1 s overlap (a long madd) fits in no window. It is simply **not
+  trained on**, and no window holds its audio either, so no target is corrupted.
+
+Measured on a 125-clip re-scored slice: **101/125 clips kept (was 5/126) → 437 windows (was 5), 43
+of them spanning an interior waqf.** Remaining exclusions are the legitimate ones (`re_read`,
+`dropped_segment`, `over_long`).

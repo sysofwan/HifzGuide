@@ -13,11 +13,15 @@ dropped-i'raab / missed-idgham **error** mid-continuation — only the waqf head
 
 Each line is one :class:`IntegrationCase` as JSON. A case fixes one **boundary** (a word edge in
 one ayah) and one **reciter realization** of it, and carries the two *pre-resolved, normalized*
-realized references so the eval is a pure function of the scorer — no ``quran_transcript`` or model
-at eval/test time (the phoneme forms are frozen here, exactly as :mod:`tadabur.waqf_freeze` freezes
-the F0 event ground truth). The generator that resolves the forms from the phonetizer is
-:mod:`tadabur.waqf_integration_gen`; it re-derives and re-validates every field, so this file is a
-deterministic, auditable artifact, never hand-edited.
+realized references **and a frozen silence-posterior lattice + word-frame spans** so the eval can
+run the *actual* scorer-side waqf post-processing (:func:`tadabur.waqf_postprocess.waqf_events`)
+and select the realized reference from the **snapped predicted class** — the full product path
+``phoneme decode + predicted waqf events → snap → realized-reference selection → strict scoring``.
+Everything is frozen here, exactly as :mod:`tadabur.waqf_freeze` freezes the F0 event ground truth,
+so the eval needs no ``quran_transcript`` or model at eval/test time. The generator that resolves
+the forms from the phonetizer and synthesises the lattices is :mod:`tadabur.waqf_integration_gen`;
+it re-derives and re-validates every field, so this file is a deterministic, auditable artifact,
+never hand-edited.
 
 Per case:
 
@@ -25,8 +29,18 @@ Per case:
   pausal madd present, no cross-word idgham). Normalized (the scorer's cache form).
 * ``wasl_reference`` — the realized reference if the reciter **continued** (terminal in
   continuation: pausal madd absent, the tanwin's noon/ghunna carried onto the next word).
+* ``silence`` — the frozen per-frame ``P(silence)`` posterior lattice (40 ms frames) the reciter's
+  realization produced across the boundary word and the next word. A genuine stop carries a
+  ≥ 300 ms silence run in the gap between the two words; a continuation is contiguous speech.
+  :func:`tadabur.waqf_postprocess.waqf_events` turns this + ``word_spans`` into the **predicted**
+  waqf class the conditional path selects its reference from — so the gate exercises the real
+  post-processing/snap, not an oracle label.
+* ``word_spans`` — each ``[word_index, start_frame, end_frame)`` speech span on that same lattice
+  (the phoneme alignment the snap reasons over); the boundary word carries ``word_index ==
+  boundary_word_index``.
 * ``true_class`` — what the reciter actually did (``waqf`` / ``wasl``), the adjudicated ground
-  truth the waqf head must recover.
+  truth the waqf head must recover (used only by the explanatory *oracle* control, never by the
+  gated predicted path).
 * ``recitation`` — how they realized it: ``correct`` (matches the realized form of ``true_class``),
   ``dropped`` (a true **wasl** rendered with the pausal ending — the i'raab/idgham **error** a
   false waqf would forgive), or ``interior`` (a genuine mistake *inside* the word, not at its edge —
@@ -86,10 +100,13 @@ class IntegrationCase:
     ``surah_ayah`` is ``"surah:ayah"`` and ``boundary_word_index`` the Uthmani word the boundary
     falls after; ``word`` / ``next_word`` are those two Uthmani words (audit only). ``phenomenon``
     is the ADR discrimination exercised. ``waqf_reference`` / ``wasl_reference`` are the two
-    *normalized* realized references (paused vs continued). ``true_class`` is the adjudicated
-    ground-truth boundary class, ``recitation`` how the reciter realized it, ``decode`` their
-    raw phoneme realization (the scorer normalizes it), and ``expected_strict`` the correct
-    `.strict` verdict. ``note`` is optional free text.
+    *normalized* realized references (paused vs continued). ``silence`` is the frozen per-frame
+    ``P(silence)`` posterior lattice (40 ms frames) and ``word_spans`` the ``[word_index,
+    start_frame, end_frame]`` speech spans on it; :func:`tadabur.waqf_postprocess.waqf_events` turns
+    them into the **predicted** waqf class the conditional path selects from. ``true_class`` is the
+    adjudicated ground-truth boundary class (used only by the oracle control), ``recitation`` how
+    the reciter realized it, ``decode`` their raw phoneme realization (the scorer normalizes it),
+    and ``expected_strict`` the correct `.strict` verdict. ``note`` is optional free text.
     """
 
     case_id: str
@@ -100,6 +117,8 @@ class IntegrationCase:
     phenomenon: str
     waqf_reference: str
     wasl_reference: str
+    silence: list
+    word_spans: list
     true_class: str
     recitation: str
     decode: str
@@ -143,7 +162,48 @@ def _parse_entry(data: dict, source: str) -> IntegrationCase:
             f"{source}: case {entry.case_id!r} recitation 'dropped' requires true_class 'wasl', "
             f"got {entry.true_class!r}"
         )
+    _validate_lattice(entry, source)
     return entry
+
+
+def _validate_lattice(entry: IntegrationCase, source: str) -> None:
+    """Structural check of the frozen silence lattice + word spans the snap runs over.
+
+    The eval feeds ``silence`` / ``word_spans`` to :func:`tadabur.waqf_postprocess.waqf_events`, so
+    a malformed lattice would silently mis-predict the boundary class. Guard the shape here — every
+    span is ``[word_index, start_frame, end_frame]`` with ``start < end``, the silence track covers
+    the last frame, and the boundary word itself is present — so a corrupt lattice fails loudly
+    rather than distorting the product gate. The *semantics* (a stop carries a silence run) are the
+    generator's self-validation; here we only guarantee ``waqf_events`` can run at all.
+    """
+    if not entry.word_spans:
+        raise ValueError(f"{source}: case {entry.case_id!r} has no word_spans")
+    max_end = 0
+    indices: set[int] = set()
+    for span in entry.word_spans:
+        if len(span) != 3:
+            raise ValueError(
+                f"{source}: case {entry.case_id!r} word_span {span!r} is not "
+                "[word_index, start_frame, end_frame]"
+            )
+        word_index, start, end = span
+        if start < 0 or end <= start:
+            raise ValueError(
+                f"{source}: case {entry.case_id!r} word_span {span!r} is not a valid "
+                "[start_frame, end_frame) span (start >= 0, start < end)"
+            )
+        indices.add(word_index)
+        max_end = max(max_end, end)
+    if len(entry.silence) < max_end:
+        raise ValueError(
+            f"{source}: case {entry.case_id!r} silence track ({len(entry.silence)} frames) does "
+            f"not cover the last word frame ({max_end})"
+        )
+    if entry.boundary_word_index not in indices:
+        raise ValueError(
+            f"{source}: case {entry.case_id!r} word_spans {sorted(indices)} omit the boundary "
+            f"word index {entry.boundary_word_index}"
+        )
 
 
 def load_integration_cases(path: Path = WAQF_INTEGRATION_PATH) -> list[IntegrationCase]:

@@ -16,17 +16,24 @@ form (a tanwin becomes a madd, the final haraka drops, no cross-word idgham); a 
 word, the desinence is realized). The *same* phoneme realization is therefore **correct** after a
 genuine stop but a **dropped-i'raab / missed-idgham error** mid-continuation. The waqf head is what
 tells the two apart, so its prediction **selects which realized reference** the `.strict` gate
-scores against. The frozen fixtures (:mod:`tadabur.waqf_integration_fixtures`) carry, per
-adjudicated boundary realization, the two pre-resolved normalized references and the reciter's
-decode; this harness is a pure function of the scorer over them.
+scores against. Each frozen case (:mod:`tadabur.waqf_integration_fixtures`) carries, per adjudicated
+boundary realization, the two pre-resolved normalized references, the reciter's decode, **and a
+silence-posterior lattice + word-frame spans**. The gated path runs that lattice through the real
+scorer-side post-processing (:func:`tadabur.waqf_postprocess.waqf_events`) to get the **snapped
+predicted class**, and selects the realized reference from *that* — so the gate exercises the full
+``decode + predicted waqf events → snap → realized-reference selection → strict scoring`` path, not
+an oracle label.
 
-**Four scenarios, one `.strict` gate.** Each case is scored under four reference-selection rules,
+**Five scenarios, one `.strict` gate.** Each case is scored under five reference-selection rules,
 so the eval demonstrates *both* the win and the two failure directions ADR-0004 names:
 
-* **conditional (oracle waqf head)** — reference = the realized form of the **true** boundary
-  class. This is the product path with a perfect waqf head (the ceiling the trained head is judged
-  against). When the trained head lands, its per-boundary prediction (from
-  :mod:`tadabur.waqf_event_eval` / :mod:`tadabur.waqf_postprocess`) drops in here unchanged.
+* **conditional (predicted waqf head)** — reference = the realized form of the class
+  :func:`predicted_class` **snaps from the case's silence lattice** (the actual post-processing).
+  This is the *gated* product path. When the trained head lands, the per-boundary silence posterior
+  it produces (from :mod:`tadabur.waqf_event_eval` / :mod:`tadabur.waqf_postprocess`) drops in here
+  unchanged. **`passed` is decided on this scenario, never on `true_class`.**
+* **oracle (perfect waqf head)** — reference = the realized form of the **true** boundary class.
+  The ceiling the predicted path is judged against; an explanatory control, not gated.
 * **baseline (ignore-end-word-tashkeel)** — today's behaviour: score against the continuation
   reference but **forgive the terminal edge** (discount the local aligner's ``trailing_trim`` from
   the denominator), so a legitimate pause is never punished — and neither is a boundary error.
@@ -35,13 +42,13 @@ so the eval demonstrates *both* the win and the two failure directions ADR-0004 
 * **false-wasl** — a missed stop: always select the **wasl** reference under full strict. It
   **rejects** a legitimately-paused recitation.
 
-**The gate (`passed`).** The conditional path *regains discrimination the baseline lacks without
-regressing legitimate-pause acceptance*: (1) conditional scores every case correctly
+**The gate (`passed`).** The conditional (predicted) path *regains discrimination the baseline
+lacks without regressing legitimate-pause acceptance*: (1) conditional scores every case correctly
 (``accept`` for a correct recitation, ``reject`` for a dropped/interior error); (2) it **rejects
 every** error case the **baseline forgives** (≥1 such case, so the regain is real); (3) it keeps
-**accepting every legitimate pause** the baseline accepts. The two failure scenarios are surfaced
-as evidence, not gated on. Nothing here is torch or model dependent; identical fixtures yield an
-identical report.
+**accepting every legitimate pause** the baseline accepts. The oracle and two failure scenarios are
+surfaced as evidence, not gated on. Nothing here is torch or model dependent; identical fixtures
+yield an identical report.
 
 Consumer contract (:mod:`tadabur.signoff_results`): the report carries top-level ``passed`` (bool)
 and ``summary`` (str); the full detail is passed through.
@@ -57,6 +64,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
+
 from .scorer import MIN_QUERY_PHONEMES, STRICT, STRICT_SCORER
 from .waqf_integration_fixtures import (
     ACCEPT,
@@ -67,25 +76,48 @@ from .waqf_integration_fixtures import (
     IntegrationCase,
     load_integration_cases,
 )
+from .waqf_postprocess import WordSpan, waqf_events
 
-# The four reference-selection scenarios the eval scores every case under (see the module docstring).
+# The reference-selection scenarios the eval scores every case under (see the module docstring).
+# CONDITIONAL is the **gated** product path: its class is the one snapped from the case's predicted
+# waqf events. ORACLE / FALSE_WAQF / FALSE_WASL are explanatory controls that select a reference
+# directly (a perfect head, a spurious stop, a missed stop) and are surfaced as evidence, not gated.
 CONDITIONAL = "conditional"
+ORACLE = "oracle"
 BASELINE = "baseline"
 FALSE_WAQF = "false_waqf"
 FALSE_WASL = "false_wasl"
-SCENARIOS: tuple[str, ...] = (CONDITIONAL, BASELINE, FALSE_WAQF, FALSE_WASL)
+SCENARIOS: tuple[str, ...] = (CONDITIONAL, ORACLE, BASELINE, FALSE_WAQF, FALSE_WASL)
 
 # Recorded verbatim on the report so a reader cannot mistake this `.strict` product gate for the
 # frame-F1 or event-F1 checks (ADR-0004: "This is what the sign-off (#10) must actually clear").
 PRODUCT_GATE_NOTE = (
     "The product gate is `.strict` conditional-reference scoring, not frame-F1 or event-F1. It "
-    "consumes the phoneme decode and the predicted waqf events together (snap -> per-run realized-"
-    "reference selection -> strict scoring) on adjudicated i'raab / cross-word-idgham boundaries, "
-    "and asks whether selecting the realized (waqf vs wasl) reference regains the wasl-sensitive "
-    "discrimination the ignore-end-word-tashkeel baseline throws away (ADR-0004). The conditional "
-    "scenario uses an oracle waqf head (the ceiling); the trained head's per-boundary prediction "
-    "from tadabur.waqf_event_eval / tadabur.waqf_postprocess drops into it unchanged."
+    "consumes the phoneme decode and the predicted waqf events together (run the silence-posterior "
+    "lattice through tadabur.waqf_postprocess.waqf_events -> snap -> per-run realized-reference "
+    "selection -> strict scoring) on adjudicated i'raab / cross-word-idgham boundaries, and asks "
+    "whether selecting the realized (waqf vs wasl) reference regains the wasl-sensitive "
+    "discrimination the ignore-end-word-tashkeel baseline throws away (ADR-0004). `passed` is "
+    "decided on that predicted full path; the oracle scenario (perfect head, using true_class) is "
+    "the ceiling control the predicted path is judged against."
 )
+
+
+def predicted_class(case: IntegrationCase) -> str:
+    """The waqf class snapped from ``case``'s frozen silence lattice — the actual post-processing.
+
+    Runs the case's per-frame ``P(silence)`` posterior + word-frame spans through
+    :func:`tadabur.waqf_postprocess.waqf_events` (the scorer-side 300/700 ms cleaning + boundary
+    snap) and reports :data:`WAQF` iff a stop is snapped **to the boundary word's edge**, else
+    :data:`WASL`. This is the trained head's per-boundary prediction path, exercised end-to-end, so
+    the conditional scenario selects its realized reference from a real prediction rather than an
+    oracle label.
+    """
+    silence = np.asarray(case.silence, dtype=np.float32)
+    words = [WordSpan(int(wi), int(start), int(end)) for wi, start, end in case.word_spans]
+    result = waqf_events(silence, words)
+    stopped = any(event.word_index == case.boundary_word_index for event in result.waqf)
+    return WAQF if stopped else WASL
 
 
 def strict_accepts(decode: str, reference: str) -> bool:
@@ -124,8 +156,16 @@ def _normalized_query(decode: str) -> str:
 
 
 def _reference_for(case: IntegrationCase, scenario: str) -> str:
-    """The realized reference ``scenario`` selects for ``case`` (baseline is handled separately)."""
+    """The realized reference ``scenario`` selects for ``case`` (baseline is handled separately).
+
+    ``conditional`` selects from the class :func:`predicted_class` snaps from the case's silence
+    lattice (the gated full path); ``oracle`` from the adjudicated ``true_class`` (the ceiling
+    control). ``false_waqf`` / ``false_wasl`` fix the reference to demonstrate the two error
+    directions.
+    """
     if scenario == CONDITIONAL:
+        return case.waqf_reference if predicted_class(case) == WAQF else case.wasl_reference
+    if scenario == ORACLE:
         return case.waqf_reference if case.true_class == WAQF else case.wasl_reference
     if scenario == FALSE_WAQF:
         return case.waqf_reference
@@ -195,6 +235,7 @@ class CaseOutcome:
     case_id: str
     phenomenon: str
     true_class: str
+    predicted_class: str
     recitation: str
     expected_strict: str
     verdicts: dict[str, str]
@@ -204,6 +245,7 @@ class CaseOutcome:
             "case_id": self.case_id,
             "phenomenon": self.phenomenon,
             "true_class": self.true_class,
+            "predicted_class": self.predicted_class,
             "recitation": self.recitation,
             "expected_strict": self.expected_strict,
             "verdicts": self.verdicts,
@@ -283,6 +325,7 @@ def run_eval(cases: list[IntegrationCase]) -> IntegrationReport:
             case_id=case.case_id,
             phenomenon=case.phenomenon,
             true_class=case.true_class,
+            predicted_class=predicted_class(case),
             recitation=case.recitation,
             expected_strict=case.expected_strict,
             verdicts={name: verdict(case, name) for name in SCENARIOS},

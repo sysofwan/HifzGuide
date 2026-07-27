@@ -35,6 +35,13 @@ emit a **wasl/interior** control (a genuine mistake *inside* the word) when one 
 that both the strict and the end-word-forgiven gate reject, proving the baseline still catches
 non-boundary errors.
 
+Every case also carries a synthesised **silence-posterior lattice + word-frame spans** encoding the
+reciter's actual stop/continue behaviour: a true-waqf case gets a lattice with a ≥ 300 ms silence
+run in the gap after the boundary word (a detectable stop), a true-wasl case a contiguous-speech
+lattice (no stop). The generator self-validates that
+:func:`tadabur.waqf_postprocess.waqf_events` snaps each lattice back to the labelled class, so the
+eval's *predicted* full path (not an oracle label) drives the gate.
+
 Usage:
   python -m tadabur.waqf_integration_gen [--out PATH]
 """
@@ -88,6 +95,47 @@ _TASHKEEL = "ًٌٍَُِّْـٰ"
 # the mistake sits *inside* the word, not at its forgiven edge.
 _INTERIOR_SWAPS = {"\u0635": "\u0643", "\u0643": "\u0635"}  # ص↔ك
 _INTERIOR_FALLBACK = ("\u0635", "\u0643")  # (from, to) when neither swap key is present
+
+# Synthesised silence lattice geometry (40 ms frames, matching tadabur.waqf_postprocess). Each word
+# gets a speech span comfortably above the 700 ms min-speech (so it survives the VAD cleaning) and a
+# stop gets a silence gap comfortably above the 300 ms min-silence (so it is detected). These are the
+# *reciter behaviour* encoded per case: waqf_events snaps a stopped lattice back to `waqf`, a
+# contiguous lattice to `wasl` — the predicted class the eval's conditional path selects from.
+_SPEECH_FRAMES = 20  # 800 ms >= DEFAULT_MIN_SPEECH_MS (700 ms)
+_GAP_FRAMES = 10  # 400 ms >= DEFAULT_MIN_SILENCE_MS (300 ms)
+
+
+def _stopped_lattice(word_index: int) -> tuple[list[float], list[list[int]]]:
+    """A lattice with a detectable stop after ``word_index`` (the true-waqf behaviour)."""
+    total = _SPEECH_FRAMES + _GAP_FRAMES + _SPEECH_FRAMES
+    silence = [0.0] * total
+    for frame in range(_SPEECH_FRAMES, _SPEECH_FRAMES + _GAP_FRAMES):
+        silence[frame] = 1.0
+    word_spans = [
+        [word_index, 0, _SPEECH_FRAMES],
+        [word_index + 1, _SPEECH_FRAMES + _GAP_FRAMES, total],
+    ]
+    return silence, word_spans
+
+
+def _continued_lattice(word_index: int) -> tuple[list[float], list[list[int]]]:
+    """A contiguous-speech lattice with no stop (the true-wasl behaviour)."""
+    total = _SPEECH_FRAMES + _SPEECH_FRAMES
+    silence = [0.0] * total
+    word_spans = [
+        [word_index, 0, _SPEECH_FRAMES],
+        [word_index + 1, _SPEECH_FRAMES, total],
+    ]
+    return silence, word_spans
+
+
+def _lattice_for(true_class: str, word_index: int) -> tuple[list[float], list[list[int]]]:
+    """The silence lattice a reciter of ``true_class`` produced at ``word_index``."""
+    return (
+        _stopped_lattice(word_index)
+        if true_class == WAQF
+        else _continued_lattice(word_index)
+    )
 
 
 def _phonetizers():
@@ -198,6 +246,25 @@ def _validate_discriminating(
         raise ValueError(f"{source}: continuation decode is not accepted against the wasl reference")
 
 
+def _validate_predicted_path(case: IntegrationCase, source: str) -> None:
+    """Assert the synthesised lattice snaps back to the case's labelled ``true_class``.
+
+    The eval selects the conditional path's reference from the class
+    :func:`tadabur.waqf_integration_eval.predicted_class` snaps from the case's silence lattice, so
+    a lattice that mis-predicts would silently break the product gate. Re-run the real
+    post-processing here and fail loudly if the snapped class disagrees with the label the case was
+    built for.
+    """
+    from .waqf_integration_eval import predicted_class
+
+    got = predicted_class(case)
+    if got != case.true_class:
+        raise ValueError(
+            f"{source}: synthesised lattice snaps to {got!r} but case is labelled "
+            f"true_class {case.true_class!r} — the lattice does not encode its behaviour"
+        )
+
+
 def build_cases(
     boundaries: tuple[tuple[str, int], ...] = CURATED_BOUNDARIES,
 ) -> list[IntegrationCase]:
@@ -219,7 +286,8 @@ def build_cases(
         phen = _phenomenon(word, next_word)
 
         def case(recitation: str, true_class: str, decode: str) -> IntegrationCase:
-            return IntegrationCase(
+            silence, word_spans = _lattice_for(true_class, word_index)
+            built = IntegrationCase(
                 case_id=f"{source}/{recitation}",
                 surah_ayah=surah_ayah,
                 boundary_word_index=word_index,
@@ -228,11 +296,15 @@ def build_cases(
                 phenomenon=phen,
                 waqf_reference=waqf_ref,
                 wasl_reference=wasl_ref,
+                silence=silence,
+                word_spans=word_spans,
                 true_class=true_class,
                 recitation=recitation,
                 decode=decode,
                 expected_strict=ACCEPT if recitation == CORRECT else REJECT,
             )
+            _validate_predicted_path(built, source)
+            return built
 
         cases.append(case(CORRECT, WAQF, waqf_raw))  # legitimate pause: pausal decode
         cases.append(case(CORRECT, WASL, wasl_raw))  # continuation: continuation decode

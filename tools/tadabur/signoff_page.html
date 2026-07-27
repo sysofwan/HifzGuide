@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fine-tune sign-off results — HITL go/no-go (#10)</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#252a34; --fg:#e6e9ef; --muted:#9aa4b2;
+          --ok:#1f9d55; --drop:#d64541; --mark:#f6c744; --accent:#4f8cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg);
+         color:var(--fg); }
+  header { position:sticky; top:0; z-index:10; background:var(--panel); border-bottom:1px solid var(--line);
+           padding:14px 24px; }
+  header h1 { font-size:16px; margin:0 0 2px; }
+  header .sub { color:var(--muted); font-size:12px; }
+  header a { color:var(--accent); text-decoration:none; font-size:12px; }
+  main { padding:20px 24px; max-width:960px; margin:0 auto; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
+       margin:26px 0 10px; }
+  .verdict { border-radius:10px; padding:16px 18px; margin-bottom:6px; border:1px solid var(--line); }
+  .verdict.ready { background:rgba(31,157,85,.12); border-left:3px solid var(--ok); }
+  .verdict.blocked { background:rgba(214,69,65,.12); border-left:3px solid var(--drop); }
+  .verdict.pending { background:rgba(246,199,68,.10); border-left:3px solid var(--mark); }
+  .verdict b { font-size:18px; }
+  .verdict ul { margin:8px 0 0; padding-left:20px; }
+  .verdict li { margin:3px 0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+          padding:16px 18px; margin-bottom:14px; }
+  .card h3 { margin:0 0 4px; font-size:14px; }
+  .card .note { color:var(--muted); font-size:12px; margin:2px 0 10px; }
+  .badge { font-size:11px; padding:2px 9px; border-radius:20px; margin-left:8px; }
+  .badge.ok { background:rgba(31,157,85,.16); color:var(--ok); }
+  .badge.drop { background:rgba(214,69,65,.16); color:var(--drop); }
+  .badge.mark { background:rgba(246,199,68,.16); color:var(--mark); }
+  .badge.muted { background:rgba(154,164,178,.16); color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:6px 0; }
+  th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  td.pos { color:var(--ok); } td.neg { color:var(--drop); }
+  td.danger { color:var(--mark); font-weight:600; }
+  .kv { display:flex; gap:22px; flex-wrap:wrap; margin:8px 0; }
+  .kv .stat { font-variant-numeric:tabular-nums; }
+  .kv .stat b { font-size:20px; display:block; }
+  .kv .stat span { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  .unavail { color:var(--muted); font-size:13px; }
+  code { color:var(--mark); }
+  .empty { color:var(--muted); padding:40px 0; text-align:center; }
+  details { margin-top:8px; }
+  summary { cursor:pointer; color:var(--accent); font-size:12px; }
+  pre { background:#12151b; border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+        overflow:auto; font-size:12px; color:var(--fg); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Fine-tune sign-off results — HITL go/no-go (#10)</h1>
+  <div class="sub">Ablation ladder (E) · waqf event eval (F2) · integration eval (H), per ADR-0004.
+    <a href="/">← back to poison audit</a></div>
+</header>
+<main>
+  <div id="content"><div class="empty">Loading…</div></div>
+</main>
+
+<script>
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function pct(x) { return x == null ? "—" : (x * 100).toFixed(1) + "%"; }
+function num(x, d = 3) { return x == null ? "—" : Number(x).toFixed(d); }
+function signed(x) {
+  if (x == null) return "—";
+  const v = Number(x);
+  return (v > 0 ? "+" : "") + v.toFixed(4);
+}
+function deltaCell(x) {
+  const cls = x == null ? "" : x < 0 ? "neg" : x > 0 ? "pos" : "";
+  return `<td class="num ${cls}">${signed(x)}</td>`;
+}
+
+function readinessBlock(r) {
+  let cls, head;
+  if (r.ready) { cls = "ready"; head = "READY — no blockers, all signals present, H passed"; }
+  else if (r.blocking.length) { cls = "blocked"; head = "NO-GO — blocking condition(s) present"; }
+  else { cls = "pending"; head = "NOT YET — signals still pending"; }
+  const list = items => items.length
+    ? `<ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>` : "";
+  return `<div class="verdict ${cls}">
+      <b>${head}</b>
+      ${r.blocking.length ? `<div style="margin-top:8px;color:var(--drop)">Blocking:</div>${list(r.blocking)}` : ""}
+      ${r.pending.length ? `<div style="margin-top:8px;color:var(--mark)">Pending:</div>${list(r.pending)}` : ""}
+    </div>`;
+}
+
+function unavail(section) {
+  return `<div class="unavail">Unavailable — ${esc(section.reason)}.</div>`;
+}
+
+function ladderCard(l) {
+  if (!l.available) return card("Ablation ladder (E) — should-accept / should-reject deltas",
+    "The whole-clip move (1)→(2) is the transition that must clear the should-reject bar.", unavail(l));
+  const order = ["segmented_phoneme_only", "whole_clip_phoneme_only", "whole_clip_joint_waqf"];
+  const names = { segmented_phoneme_only: "(1) segmented", whole_clip_phoneme_only: "(2) whole-clip",
+                  whole_clip_joint_waqf: "(3) joint waqf" };
+  const rungRows = order.filter(k => l.rungs[k]).map(k => `
+    <tr><td>${names[k] || esc(k)}</td>
+        <td class="num">${pct(l.rungs[k].should_accept_recall)}</td>
+        <td class="num">${num(l.rungs[k].should_reject_discrimination)}</td></tr>`).join("");
+  const t = l.transitions;
+  const trRow = (label, tr) => `<tr><td>${label}</td>${deltaCell(tr.recall_delta)}${deltaCell(tr.discrimination_delta)}</tr>`;
+  const regBadge = l.whole_clip_move_regressed
+    ? `<span class="badge drop">whole-clip move regressed should-reject</span>`
+    : `<span class="badge ok">whole-clip move held should-reject</span>`;
+  const lever = l.recommended_lora_lever
+    ? `<div class="note">Recommended LoRA-native lever:
+        <code>${esc(l.recommended_lora_lever.name)}</code> — ${esc(l.recommended_lora_lever.description || "")}</div>`
+    : "";
+  const body = `${regBadge}
+    <table><thead><tr><th>rung</th><th class="num">should-accept recall</th>
+      <th class="num">should-reject discrimination</th></tr></thead>
+      <tbody>${rungRows}</tbody></table>
+    <table><thead><tr><th>transition</th><th class="num">Δ recall</th>
+      <th class="num">Δ discrimination</th></tr></thead>
+      <tbody>${trRow("(1)→(2) whole-clip move", t.whole_clip_move)}
+             ${trRow("(2)→(3) waqf-head add", t.waqf_head_addition)}</tbody></table>
+    ${lever}`;
+  return card("Ablation ladder (E) — should-accept / should-reject deltas",
+    "(1)→(2) must independently clear should-reject; (2)→(3) is pinned near-zero by the identity check.",
+    body);
+}
+
+function metricsRow(label, m, danger) {
+  const dcls = danger ? "danger" : "num";
+  return `<tr><td>${label}</td>
+    <td class="num">${pct(m.metrics.f1)}</td>
+    <td class="num">${pct(m.metrics.precision)}</td>
+    <td class="num">${pct(m.metrics.recall)}</td>
+    <td class="${dcls}">${pct(m.metrics.false_waqf_at_wasl_rate)}</td>
+    <td class="num">${pct(m.metrics.false_wasl_at_genuine_stop_rate)}</td>
+    <td class="num">${pct(m.metrics.mid_word_closure_rejection_rate)}</td>
+    <td class="num">${pct(m.metrics.boundary_snap_accuracy)}</td></tr>`;
+}
+
+function eventCard(e) {
+  if (!e.available) return card("Waqf event eval (F2) — calibrated threshold + event metrics",
+    "Event-level, measured after F1 post-processing; frame-F1 is only a sanity check.", unavail(e));
+  const blank = e.blank_run_available
+    ? `<span class="badge muted">blank-run reference present</span>`
+    : `<span class="badge muted">blank-run reference unavailable</span>`;
+  const body = `
+    <div class="kv">
+      <div class="stat"><b>${num(e.calibrated_silence_threshold, 4)}</b><span>calibrated P(silence) threshold</span></div>
+      <div class="stat"><b>${e.duration_gate_ms} ms</b><span>fixed duration gate</span></div>
+    </div>
+    <table><thead><tr><th>partition</th><th class="num">waqf F1</th><th class="num">prec</th>
+      <th class="num">recall</th><th class="num">false-waqf@wasl ⚠</th><th class="num">false-wasl@stop</th>
+      <th class="num">mwc-reject</th><th class="num">snap-acc</th></tr></thead>
+      <tbody>${metricsRow("test (gate)", e.test, true)}${metricsRow("calibration", e.calibration, false)}</tbody>
+    </table>
+    <div class="note">${blank} &nbsp; <span style="color:var(--mark)">⚠ false-waqf@wasl</span> is the
+      dangerous error (a spurious stop forgives a dropped haraka / missed idgham) — ADR-0004.</div>
+    ${e.teacher_circularity_note ? `<div class="note">${esc(e.teacher_circularity_note)}</div>` : ""}`;
+  return card("Waqf event eval (F2) — calibrated threshold + event metrics",
+    "Test partition scored once at the calibrated threshold (no leakage).", body);
+}
+
+function integrationCard(i) {
+  if (!i.available) return card("Integration eval (H) — conditional-reference product gate",
+    "The end-to-end .strict gate #10 must clear: does the fine-tune regain wasl-sensitive i'raab / idgham discrimination?",
+    unavail(i));
+  const badge = i.passed === true ? `<span class="badge ok">PASSED</span>`
+    : i.passed === false ? `<span class="badge drop">DID NOT PASS</span>`
+    : `<span class="badge mark">outcome unknown (report has no <code>passed</code> field)</span>`;
+  const body = `<div>${badge}</div>
+    ${i.summary ? `<p>${esc(i.summary)}</p>` : ""}
+    <details><summary>Full integration-eval report</summary>
+      <pre>${esc(JSON.stringify(i.report, null, 2))}</pre></details>`;
+  return card("Integration eval (H) — conditional-reference product gate",
+    "Phoneme decode → snap → realized-reference selection → strict scoring, vs the ignore-end-word-tashkeel baseline.",
+    body);
+}
+
+function card(title, note, bodyHtml) {
+  return `<div class="card"><h3>${esc(title)}</h3><div class="note">${esc(note)}</div>${bodyHtml}</div>`;
+}
+
+function render(data) {
+  const content = document.getElementById("content");
+  if (!data.available) {
+    content.innerHTML = `<div class="empty">No sign-off reports. Launch the audit UI with
+      <code>--ladder-report</code> (E), <code>--event-eval-report</code> (F2), and/or
+      <code>--integration-report</code> (H) to show the fine-tune sign-off results.</div>`;
+    return;
+  }
+  content.innerHTML = `
+    <h2>Go / no-go</h2>
+    ${readinessBlock(data.readiness)}
+    <h2>Signals</h2>
+    ${ladderCard(data.ladder)}
+    ${eventCard(data.event_eval)}
+    ${integrationCard(data.integration)}`;
+}
+
+(async function init() {
+  const res = await fetch("/api/sign-off");
+  render(await res.json());
+})();
+</script>
+</body>
+</html>

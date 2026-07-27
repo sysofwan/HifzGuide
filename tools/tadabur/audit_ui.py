@@ -41,10 +41,30 @@ from .contrast_attribution import MARGINAL_CONTRAST, all_contrasts
 from .eval_fixtures import ACCEPT, REJECT, EvalFixtureEntry
 from .manifest import read_records
 from .normalization import normalize_phonemes
+from .signoff_results import build_signoff_view
 from .smith_waterman import smith_waterman
 
 _PAGE_PATH = Path(__file__).parent / "audit_ui_page.html"
 _WHOLE_CLIP_PAGE_PATH = Path(__file__).parent / "whole_clip_audit_page.html"
+_SIGNOFF_PAGE_PATH = Path(__file__).parent / "signoff_page.html"
+
+
+@dataclass(frozen=True)
+class SignoffReports:
+    """Paths to the three fine-tune sign-off report artifacts (#37, helper for #10).
+
+    Each is optional — the E ablation ladder, the F2 event eval, and the H integration eval are
+    produced by separate offline runs, and the sign-off view renders whichever exist. ``enabled``
+    is true once any is provided, which is what turns the ``/sign-off`` view on in the UI.
+    """
+
+    ladder: Path | None = None
+    event_eval: Path | None = None
+    integration: Path | None = None
+
+    @property
+    def enabled(self) -> bool:
+        return any((self.ladder, self.event_eval, self.integration))
 
 # The canonical quran.db (source of Uthmani ayah text), at the repo-root data/.
 DEFAULT_QURAN_DB = Path(__file__).parents[2] / "data" / "quran.db"
@@ -354,6 +374,7 @@ class AuditServer:
         reference: dict[str, str] | None = None,
         raw_reference: dict[str, str] | None = None,
         whole_clip_audit: WholeClipAudit | None = None,
+        signoff_reports: SignoffReports | None = None,
     ) -> None:
         self.items = items
         self.surah_ayah = surah_ayah
@@ -364,6 +385,7 @@ class AuditServer:
         self.reference = reference or {}
         self.raw_reference = raw_reference or {}
         self.whole_clip_audit = whole_clip_audit
+        self.signoff_reports = signoff_reports or SignoffReports()
         self._by_key = {(i.clip_id, i.contrast): i for i in items}
 
     def state(self) -> dict[str, object]:
@@ -373,7 +395,22 @@ class AuditServer:
             "stats": contrast_stats(self.items, self.store),
             "contrast_order": list(CONTRAST_ORDER),
             "whole_clip_available": self.whole_clip_audit is not None,
+            "signoff_available": self.signoff_reports.enabled,
         }
+
+    def signoff_state(self) -> dict[str, object]:
+        """The fine-tune sign-off results payload (#37) — the go/no-go for the #10 HITL gate.
+
+        ``available`` is false when the UI was launched without any sign-off report, so the page
+        can explain how to enable it. When available the three report artifacts are read *fresh*
+        each request (via :func:`signoff_results.build_signoff_view`), so re-running an eval and
+        refreshing shows the new numbers without restarting the server.
+        """
+        reports = self.signoff_reports
+        if not reports.enabled:
+            return {"available": False}
+        view = build_signoff_view(reports.ladder, reports.event_eval, reports.integration)
+        return {"available": True, **view}
 
     def whole_clip_state(self) -> dict[str, object]:
         """The whole-clip data-path payload for the read-only training-data view.
@@ -435,10 +472,14 @@ class _Handler(AuditHandler):
             self.send_bytes(_PAGE_PATH.read_bytes(), "text/html; charset=utf-8")
         elif path == "/whole-clip":
             self.send_bytes(_WHOLE_CLIP_PAGE_PATH.read_bytes(), "text/html; charset=utf-8")
+        elif path == "/sign-off":
+            self.send_bytes(_SIGNOFF_PAGE_PATH.read_bytes(), "text/html; charset=utf-8")
         elif path == "/api/state":
             self.send_json(self.state.state())
         elif path == "/api/whole-clip":
             self.send_json(self.state.whole_clip_state())
+        elif path == "/api/sign-off":
+            self.send_json(self.state.signoff_state())
         elif path.startswith("/audio/"):
             self.serve_audio(self.state.audio_dir, path[len("/audio/"):])
         else:
@@ -479,6 +520,13 @@ def main() -> None:
                         help="Interface to bind (default: 127.0.0.1; use 0.0.0.0 to expose on the LAN).")
     parser.add_argument("--quran-db", type=Path, default=DEFAULT_QURAN_DB,
                         help="quran.db for Uthmani ayah text (default: repo data/quran.db).")
+    parser.add_argument("--ladder-report", type=Path, default=None,
+                        help="ablation-ladder report JSON (training.ablation_ladder report; E). "
+                             "Enables the read-only /sign-off results view (#37, helper for #10).")
+    parser.add_argument("--event-eval-report", type=Path, default=None,
+                        help="waqf event-eval report JSON (tadabur.waqf_event_eval; F2) for /sign-off.")
+    parser.add_argument("--integration-report", type=Path, default=None,
+                        help="conditional-reference integration-eval report JSON (#35, H) for /sign-off.")
     args = parser.parse_args()
 
     items = load_worklist(args.worklist)
@@ -509,6 +557,7 @@ def main() -> None:
     server_state = AuditServer(
         items, surah_ayah, store, args.audio_dir, uthmani, predicted, reference,
         raw_reference, whole_clip_audit,
+        SignoffReports(args.ladder_report, args.event_eval_report, args.integration_report),
     )
 
     httpd = serve(_Handler, server_state, args.port, args.host)
@@ -519,6 +568,8 @@ def main() -> None:
         print(f"Whole-clip data path: {whole_clip_audit.clips_included} clips feed training, "
               f"{whole_clip_audit.clips_excluded} excluded "
               f"({whole_clip_audit.exclusions_by_reason}) — /whole-clip")
+    if server_state.signoff_reports.enabled:
+        print("Fine-tune sign-off results (E/F2/H) — /sign-off")
     print(f"Audit UI on http://{args.host}:{args.port}  (Ctrl-C to stop)")
     try:
         httpd.serve_forever()

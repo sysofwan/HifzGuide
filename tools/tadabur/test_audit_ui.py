@@ -324,3 +324,40 @@ def test_whole_clip_state_serializes_audit(tmp_path):
     assert clip["windows"][0]["phoneme_label"] == "ءبت"
     # asdict serializes cleanly to JSON (segment_indices tuple -> array).
     assert json.dumps(payload, ensure_ascii=False)
+
+
+def test_signoff_state_unavailable_without_reports(tmp_path):
+    from .audit_ui import SignoffReports
+
+    accept, reject = _paths(tmp_path)
+    store = LabelStore.load(accept, reject)
+    server = AuditServer([], {}, store, tmp_path)
+    assert server.state()["signoff_available"] is False
+    assert server.signoff_state() == {"available": False}
+
+
+def test_signoff_state_reads_reports(tmp_path):
+    from .audit_ui import SignoffReports
+
+    event = tmp_path / "f2.json"
+    event.write_text(json.dumps({
+        "calibrated_silence_threshold": 0.5, "duration_gate_ms": 300,
+        "test": {"silence_threshold": 0.5, "counts": {}, "metrics": {"f1": 0.9}},
+        "calibration": {"silence_threshold": 0.5, "counts": {}, "metrics": {"f1": 0.9}},
+        "blank_run_reference": {"available": False, "reason": "no decode"},
+    }), encoding="utf-8")
+    integration = tmp_path / "h.json"
+    integration.write_text(json.dumps({"passed": True, "summary": "ok"}), encoding="utf-8")
+
+    accept, reject = _paths(tmp_path)
+    store = LabelStore.load(accept, reject)
+    server = AuditServer([], {}, store, tmp_path,
+                         signoff_reports=SignoffReports(event_eval=event, integration=integration))
+    assert server.state()["signoff_available"] is True
+    payload = server.signoff_state()
+    assert payload["available"] is True
+    assert payload["event_eval"]["available"] is True
+    assert payload["integration"]["passed"] is True
+    # E absent → pending, so not ready.
+    assert payload["readiness"]["ready"] is False
+    assert json.dumps(payload, ensure_ascii=False)

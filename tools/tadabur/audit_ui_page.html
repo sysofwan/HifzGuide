@@ -124,6 +124,8 @@
   <div id="contrasts"></div>
   <a id="wholeclip-link" href="/whole-clip" style="display:none; margin-top:16px;
      color:var(--accent); font-size:12px; text-decoration:none;">→ Whole-clip data path (#26)</a>
+  <a id="signoff-link" href="/sign-off" style="display:none; margin-top:8px;
+     color:var(--accent); font-size:12px; text-decoration:none;">→ Fine-tune sign-off results (#10)</a>
   <div class="legend">
     <div><kbd>A</kbd> accept · <kbd>R</kbd> reject</div>
     <div><kbd>U</kbd> unmark · <kbd>←</kbd>/<kbd>→</kbd> prev/next</div>
@@ -309,6 +311,9 @@ document.addEventListener("keydown", e => {
   state.items = s.items; state.stats = s.stats; state.order = s.contrast_order;
   if (s.whole_clip_available) {
     document.getElementById("wholeclip-link").style.display = "block";
+  }
+  if (s.signoff_available) {
+    document.getElementById("signoff-link").style.display = "block";
   }
   render();
 })();

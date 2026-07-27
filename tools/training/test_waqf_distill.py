@@ -22,6 +22,7 @@ from training.waqf_distill import (
     DEPLOYED_WINDOW_FEATURE_FRAMES,
     SAMPLES_PER_STUDENT_FRAME,
     SAMPLES_PER_TEACHER_FRAME,
+    FEATURE_FRAME_SAMPLE_OFFSET,
     WINDOW_ORIGIN_RECITATION,
     WINDOW_ORIGIN_WHOLE_CLIP,
     SoftLabelStore,
@@ -34,6 +35,8 @@ from training.waqf_distill import (
     muaalem_lattice_length,
     pool_silence_2to1,
     pool_window_posteriors,
+    window_student_frames,
+    feature_frames_for_samples,
     recitation_window_span,
     slice_recitation_windows,
     slice_windows,
@@ -137,7 +140,7 @@ def test_window_posteriors_map_teacher_run_to_the_right_student_frames():
     # student j owns window teacher {2j, 2j+1}.
     window_teacher = np.zeros(250, dtype=np.float32)  # a full 5 s window's VAD output
     window_teacher[4:8] = 1.0
-    student = pool_window_posteriors(window_teacher)
+    student = pool_window_posteriors(window_teacher, samples_for_feature_frames(250))
     assert len(student) == muaalem_lattice_length(250) == 125
     assert student[2] == 1.0 and student[3] == 1.0
     assert student[:2].max() == 0.0 and student[4:].max() == 0.0
@@ -150,18 +153,39 @@ def test_window_posteriors_one_frame_shift_moves_the_boundary():
     aligned[4:8] = 1.0
     shifted = np.zeros(20, dtype=np.float32)
     shifted[5:9] = 1.0
-    assert pool_window_posteriors(aligned)[:5].tolist() == [0, 0, 1, 1, 0]
-    assert pool_window_posteriors(shifted)[:5].tolist() == [0, 0, 0, 1, 0]
+    span = samples_for_feature_frames(20)
+    assert pool_window_posteriors(aligned, span)[:5].tolist() == [0, 0, 1, 1, 0]
+    assert pool_window_posteriors(shifted, span)[:5].tolist() == [0, 0, 0, 1, 0]
 
 
 def test_window_posteriors_odd_length_ceils_and_edge_holds_tail():
-    # A window the VAD frames as an odd 249 gets 125 student frames (ceil), the missing
-    # 250th teacher frame edge-held — drift absorbed at the window tail.
+    # A 249-frame window span gets 125 student frames (ceil), the missing 250th teacher
+    # frame edge-held — drift absorbed at the window tail.
     window_teacher = np.zeros(249, dtype=np.float32)
     window_teacher[-1] = 0.7
-    student = pool_window_posteriors(window_teacher)
+    student = pool_window_posteriors(window_teacher, samples_for_feature_frames(249))
     assert len(student) == 125
     assert student[-1] == pytest.approx(0.7)  # min(teacher[248], edge-held teacher[248])
+
+
+@pytest.mark.parametrize("vad_frames", [205, 206, 207, 208, 209])
+def test_window_student_length_follows_the_span_not_the_vad_frame_count(vad_frames):
+    # The VAD's emitted frame count drifts against ``num_samples // 320`` on a window
+    # shorter than the full 5 s, but the student lattice is fixed by the window's audio
+    # span — the identical expression ``training.windowed_labels`` uses for
+    # ``logit_frames``. Deriving it from ``len(vad_output)`` instead gave a
+    # 66287-sample window a 103-frame teacher against its 104-frame phoneme target, and
+    # the joint loader rejected the pair as "different window grids".
+    num_samples = 66287
+    # The real extractor emits 206 feature frames here — the naive ``num_samples // 320``
+    # says 207, and the extra frame is exactly what broke the joint loss.
+    assert feature_frames_for_samples(num_samples) == 206
+    assert num_samples // SAMPLES_PER_TEACHER_FRAME == 207
+    expected = muaalem_lattice_length(206)
+    assert expected == 103
+    assert window_student_frames(num_samples) == expected
+    student = pool_window_posteriors(np.zeros(vad_frames, dtype=np.float32), num_samples)
+    assert len(student) == expected
 
 
 # --- WindowContract: the deployed 5 s window + frozen center-trusted overlap --
@@ -398,7 +422,7 @@ def test_store_records_the_generation_contract(tmp_path):
     assert stored == generation_contract(contract, WINDOW_ORIGIN_WHOLE_CLIP)
     assert stored["window_feature_frames"] == 50
     assert stored["hop_feature_frames"] == 24
-    assert stored["pooling_rule"] == "min-silence-2to1-left-anchored"
+    assert stored["pooling_rule"] == "min-silence-2to1-left-anchored-span"
     assert stored["window_origin"] == WINDOW_ORIGIN_WHOLE_CLIP
 
 
@@ -622,3 +646,25 @@ def test_reader_raises_when_store_missing(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         SoftLabelReader.open(tmp_path / "nonexistent")
+
+
+def samples_for_feature_frames(feature_frames: int) -> int:
+    """The shortest audio span the feature extractor frames as ``feature_frames``."""
+    return feature_frames * SAMPLES_PER_TEACHER_FRAME + FEATURE_FRAME_SAMPLE_OFFSET
+
+
+@pytest.mark.parametrize(
+    "num_samples,expected_frames",
+    # Golden values read off the real ``SeamlessM4TFeatureExtractor`` for
+    # ``obadx/muaalem-model-v3_2`` — the grid the model (and the VAD, which shares the
+    # extractor) actually produces. The naive ``num_samples // 320`` disagrees on most of
+    # these, which is the off-by-one that made the joint loss reject its own targets.
+    [(66287, 206), (58870, 183), (62574, 195), (55648, 173), (47024, 146), (80000, 249)],
+)
+def test_feature_frames_match_the_real_extractor(num_samples, expected_frames):
+    assert feature_frames_for_samples(num_samples) == expected_frames
+
+
+def test_feature_frames_never_negative_for_sub_frame_audio():
+    assert feature_frames_for_samples(0) == 0
+    assert feature_frames_for_samples(FEATURE_FRAME_SAMPLE_OFFSET) == 0

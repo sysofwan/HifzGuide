@@ -134,8 +134,13 @@ the raw **per-20 ms silence posteriors** (`P(silence)`, not the cleaned interval
 **pools each window 2:1 to Muaalem's 40 ms CTC lattice** by a pinned rule: student frame
 `i` owns teacher frames `2i`/`2i+1` and is silent iff *both* are (min-pool silence /
 max-pool speech), left-anchored so a ±few-frame feature-extractor drift is absorbed at the
-window tail, never by shifting an interior boundary. Targets are emitted **per training
-window**, keyed to the passing-subset manifest by `(audio_filename, window_index)`. The
+window tail, never by shifting an interior boundary. **A window's student-frame count comes
+from its audio span, not from how many frames the VAD emitted** — `feature_frames_for_samples`
+reproduces the `SeamlessM4TFeatureExtractor` length exactly (`(num_samples - 80) // 320`, *not*
+the naive `num_samples // 320`, which over-counts by one on most spans), and
+`training.windowed_labels` derives its `logit_frames` from the same expression, so the phoneme
+CTC target and its silence teacher always land on the grid the model itself produces. Targets
+are emitted **per training window**, keyed to the passing-subset manifest by `(audio_filename, window_index)`. The
 window length is the deployed 5 s and the spacing defaults to a **provisional
 non-overlapping tiling** (`--hop-feature-frames`) pending the #24 inference-window contract
 (overlap/edge/stitch). Output goes into a deterministic, idempotent `SoftLabelStore`

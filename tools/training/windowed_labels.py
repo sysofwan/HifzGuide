@@ -81,10 +81,10 @@ from pathlib import Path
 
 from tadabur.clip_status import ClipStatus, read_clip_status
 from training.waqf_distill import (
-    SAMPLES_PER_TEACHER_FRAME,
     TARGET_SAMPLE_RATE,
     WindowContract,
     enumerate_recitation_windows,
+    feature_frames_for_samples,
     muaalem_lattice_length,
     recitation_window_span,
 )
@@ -284,7 +284,7 @@ def build_clip_windows(
     recitation_start_sample, recitation_num_samples = recitation_window_span(
         status.recitation_start_s, status.recitation_end_s
     )
-    if recitation_num_samples // SAMPLES_PER_TEACHER_FRAME > cap_feature_frames:
+    if feature_frames_for_samples(recitation_num_samples) > cap_feature_frames:
         return [], EXCLUDE_OVER_LONG
 
     windows = enumerate_recitation_windows(
@@ -310,7 +310,7 @@ def build_clip_windows(
         for prev, cur in zip(window_segments, window_segments[1:]):
             assert cur.word_start == prev.word_end, "duplicated/dropped word within window"
         phoneme_label = "".join(seg.reference_phonemes for seg in window_segments)
-        feature_frames = window.num_samples // SAMPLES_PER_TEACHER_FRAME
+        feature_frames = feature_frames_for_samples(window.num_samples)
         logit_frames = muaalem_lattice_length(feature_frames)
         if len(phoneme_label) >= logit_frames:
             return [], EXCLUDE_TARGET_TOO_LONG

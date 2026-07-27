@@ -81,6 +81,27 @@ SAMPLES_PER_TEACHER_FRAME = TARGET_SAMPLE_RATE * TEACHER_FRAME_MS // 1000  # 320
 # ±50 ms edge pad ``waqf_detect`` already leaves — and never drops recitation audio.
 SAMPLES_PER_STUDENT_FRAME = SAMPLES_PER_TEACHER_FRAME * TEACHER_FRAMES_PER_STUDENT  # 640
 
+# The constant offset in the feature extractor's frame count (see
+# :func:`feature_frames_for_samples`): a 25 ms Kaldi analysis window over a 10 ms shift,
+# stacked 2:1, loses half a 10 ms hop worth of samples relative to the naive
+# ``num_samples // 320``.
+FEATURE_FRAME_SAMPLE_OFFSET = 80
+
+def feature_frames_for_samples(num_samples: int) -> int:
+    """The 20 ms encoder frames the Muaalem feature extractor emits for ``num_samples``.
+
+    ``SeamlessM4TFeatureExtractor`` computes 10 ms Kaldi fbank frames and stacks them
+    ``stride=2``, dropping the odd remainder, which comes out **exactly**
+    ``(num_samples - 80) // 320`` — *not* the naive ``num_samples // 320``, which
+    over-counts by one for most window lengths (e.g. a 66 287-sample window: 207 vs the
+    real 206). The Recitation VAD shares this feature extractor, so this one expression is
+    what makes the phoneme CTC lattice (:mod:`training.windowed_labels`) and the pooled
+    silence teacher land on the same grid — and makes both match what the model actually
+    emits. Verified against the real extractor in ``test_waqf_distill``.
+    """
+    return max((num_samples - FEATURE_FRAME_SAMPLE_OFFSET) // SAMPLES_PER_TEACHER_FRAME, 0)
+
+
 # The deployed fixed inference window: 250 feature frames ≈ 5 s at 20 ms
 # (``convert_to_coreml.py`` ``FIXED_SEQ_LEN``; ADR-0004). Its 40 ms length is 125.
 DEPLOYED_WINDOW_FEATURE_FRAMES = 250
@@ -93,8 +114,11 @@ DEPLOYED_WINDOW_FEATURE_FRAMES = 250
 FROZEN_HOP_FEATURE_FRAMES = 200
 
 # The pinned pooling rule, recorded in the store contract so a resume under a different
-# rule is rejected rather than silently mixed into an existing artifact.
-POOLING_RULE = "min-silence-2to1-left-anchored"
+# rule is rejected rather than silently mixed into an existing artifact. The ``span``
+# suffix pins that the student length comes from the window's *audio span*, not from the
+# VAD's emitted frame count; stores written before that fix carry the unsuffixed rule and
+# are rejected on resume rather than mixed with the corrected grid.
+POOLING_RULE = "min-silence-2to1-left-anchored-span"
 
 # The window origin a store's rows are keyed on, recorded in the store contract so a
 # resume that would mix the two grids fails fast (a whole-clip store re-opened for the
@@ -350,17 +374,30 @@ def slice_recitation_windows(
     ]
 
 
-def pool_window_posteriors(window_silence_20ms: np.ndarray) -> np.ndarray:
+def window_student_frames(window_num_samples: int) -> int:
+    """The 40 ms student-lattice length of a window ``window_num_samples`` long.
+
+    Derived from the window's **audio span** through the real feature-extractor length
+    (:func:`feature_frames_for_samples`), never from how many frames the VAD happened to
+    emit. :mod:`training.windowed_labels` computes its ``logit_frames`` from the same
+    expression, so both halves of a window's target land on one grid — the grid the model
+    itself produces — and :class:`training.windowed_batch.JointWindowedExample` pairs them.
+    """
+    return muaalem_lattice_length(feature_frames_for_samples(window_num_samples))
+
+
+def pool_window_posteriors(
+    window_silence_20ms: np.ndarray, window_num_samples: int
+) -> np.ndarray:
     """Pool one window's own 20 ms VAD posteriors to its exact Muaalem 40 ms length.
 
-    The student length is :func:`muaalem_lattice_length` of the teacher frames the VAD
-    emitted for this window slice, so student frame ``j`` owns window teacher frames
-    ``2j`` / ``2j+1`` (:func:`pool_silence_2to1`) — the pinned, drift-checked mapping,
-    now anchored at the window start rather than the clip start.
+    The student length is :func:`window_student_frames` of the window's audio span, so
+    student frame ``j`` owns window teacher frames ``2j`` / ``2j+1``
+    (:func:`pool_silence_2to1`) — the pinned mapping, anchored at the window start. Any
+    ±few-frame drift in what the VAD emitted is reconciled at the window tail by
+    :func:`_reconcile_teacher_length`, never by moving an interior boundary.
     """
-    return pool_silence_2to1(
-        window_silence_20ms, muaalem_lattice_length(len(window_silence_20ms))
-    )
+    return pool_silence_2to1(window_silence_20ms, window_student_frames(window_num_samples))
 
 
 def generation_contract(contract: WindowContract, window_origin: str) -> dict:
@@ -805,7 +842,7 @@ def generate_soft_labels(
                     [slice_wave for _, slice_wave in windows], batch_size=batch_size
                 )
                 labelled = [
-                    (window, pool_window_posteriors(posterior))
+                    (window, pool_window_posteriors(posterior, window.num_samples))
                     for (window, _), posterior in zip(windows, posteriors)
                 ]
                 store.write_clip(

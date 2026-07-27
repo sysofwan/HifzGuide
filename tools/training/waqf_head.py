@@ -79,9 +79,15 @@ class WaqfHead(nn.Module):
 
         Pure classification, no gradient control — this is the path the exported
         ChunkF traces (inference wants the logits, not the isolation). ``forward``
-        wraps it with the training-time stop-gradient.
+        wraps it with the training-time stop-gradient. The states are cast to the
+        classifier's own dtype first: the backbone runs in bf16 while this head is a
+        handful of parameters that stay in fp32 for optimizer precision, so without the
+        cast a real joint run dies in ``F.linear`` on mismatched dtypes.
         """
-        return self.classifier(hidden_states).squeeze(-1)
+        return self.classifier(hidden_states.to(self._param_dtype())).squeeze(-1)
+
+    def _param_dtype(self) -> torch.dtype:
+        return next(self.classifier.parameters()).dtype
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         """Training path: classify the **detached** states so no gradient reaches

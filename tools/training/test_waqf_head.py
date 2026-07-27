@@ -70,6 +70,27 @@ def test_mlp_fallback_head_shape():
     assert head(torch.randn(2, 4, 8)).shape == (2, 4)
 
 
+@pytest.mark.parametrize("hidden_dim", [None, 16])
+def test_head_accepts_bf16_backbone_features_while_staying_fp32(hidden_dim):
+    # The backbone is loaded in bf16 but the joint runs only move the head to the device,
+    # not to the backbone dtype, and a few-parameter head is better trained in fp32. So
+    # the head must cast its input: without it a real joint run dies in ``F.linear`` with
+    # "mat1 and mat2 must have the same dtype, but got BFloat16 and Float".
+    head = WaqfHead(feature_dim=8, hidden_dim=hidden_dim)
+    logits = head(torch.randn(2, 5, 8, dtype=torch.bfloat16))
+    assert logits.shape == (2, 5)
+    assert logits.dtype == torch.float32
+
+
+def test_head_cast_to_bf16_still_classifies_bf16_features():
+    # The preflight path casts the whole joint model to the backbone dtype; the head must
+    # keep working there too (no unconditional up-cast to fp32).
+    head = WaqfHead(feature_dim=8).to(torch.bfloat16)
+    logits = head(torch.randn(2, 5, 8, dtype=torch.bfloat16))
+    assert logits.shape == (2, 5)
+    assert logits.dtype == torch.bfloat16
+
+
 # --- WaqfJointModel: one forward, phoneme + waqf, sifat dropped ---------------
 
 

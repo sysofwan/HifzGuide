@@ -112,6 +112,11 @@ from .waqf_segments import (
 
 DEFAULT_BATCH_SIZE = 16
 
+# Padded-audio budget per decode batch, as seconds per batch slot. ``decode_batch`` pads to
+# its longest member, so this caps ``batch_size * MAX_DECODE_BATCH_SECONDS`` seconds of
+# padded audio per forward pass and keeps one long segment from OOMing a full batch.
+MAX_DECODE_BATCH_SECONDS = 10
+
 
 def segment_id(record: SegmentRecord) -> str:
     """A stable, unique per-segment audio id derived from the clip + index.
@@ -337,12 +342,36 @@ def _clip_status(
 def _decode_all(
     model, waveforms: list[np.ndarray], batch_size: int
 ) -> list[str]:
-    """Greedy-CTC-decode every segment waveform, in fixed-size batches, in order."""
+    """Greedy-CTC-decode every segment waveform in order, batched by **padded** samples.
+
+    ``decode_batch`` pads a batch to its longest member, so batching purely by count makes
+    peak activation memory a function of the single longest segment in each batch — at
+    corpus scale one long segment landing in a full batch is enough to OOM the GPU. Batches
+    are therefore also capped at ``batch_size * MAX_DECODE_BATCH_SECONDS`` seconds of padded
+    audio, which bounds peak memory regardless of how the segment lengths happen to fall.
+    Output order matches ``waveforms``.
+    """
     phonemes: list[str] = []
-    for start in range(0, len(waveforms), batch_size):
-        batch = waveforms[start : start + batch_size]
-        for decode in model.decode_batch(batch, TARGET_SAMPLE_RATE):
-            phonemes.append(decode.phonemes)
+    batch: list[np.ndarray] = []
+    longest = 0
+    budget = batch_size * MAX_DECODE_BATCH_SECONDS * TARGET_SAMPLE_RATE
+
+    def flush() -> None:
+        if batch:
+            for decode in model.decode_batch(batch, TARGET_SAMPLE_RATE):
+                phonemes.append(decode.phonemes)
+
+    for waveform in waveforms:
+        candidate = max(longest, len(waveform))
+        if batch and (
+            len(batch) >= batch_size or candidate * (len(batch) + 1) > budget
+        ):
+            flush()
+            batch, longest = [], 0
+            candidate = len(waveform)
+        batch.append(waveform)
+        longest = candidate
+    flush()
     return phonemes
 
 

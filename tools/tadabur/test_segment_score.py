@@ -464,3 +464,29 @@ def test_segment_clips_skips_unphonetizable_ayah(tmp_path, monkeypatch):
     assert records == []
     assert skips["phonetizer_unsupported"] == 1
     assert statuses[0].skip_reason == "phonetizer_unsupported"
+
+
+def test_decode_all_caps_batches_by_padded_audio_not_just_count():
+    """One long segment must not be padded onto a full batch — that is what OOMs the GPU."""
+    import numpy as np
+    from tadabur.segment_score import MAX_DECODE_BATCH_SECONDS, TARGET_SAMPLE_RATE, _decode_all
+
+    class _Model:
+        def __init__(self):
+            self.batches = []
+
+        def decode_batch(self, batch, sample_rate):
+            self.batches.append([len(w) for w in batch])
+            return [type("D", (), {"phonemes": str(len(w))})() for w in batch]
+
+    long_s = 4 * MAX_DECODE_BATCH_SECONDS
+    waveforms = [np.zeros(TARGET_SAMPLE_RATE, dtype=np.float32) for _ in range(8)]
+    waveforms.append(np.zeros(long_s * TARGET_SAMPLE_RATE, dtype=np.float32))
+    model = _Model()
+
+    decoded = _decode_all(model, waveforms, batch_size=16)
+
+    assert decoded == [str(len(w)) for w in waveforms]  # order preserved
+    budget = 16 * MAX_DECODE_BATCH_SECONDS * TARGET_SAMPLE_RATE
+    assert all(max(b) * len(b) <= budget for b in model.batches)
+    assert len(model.batches) > 1, "the long segment should have opened a new batch"

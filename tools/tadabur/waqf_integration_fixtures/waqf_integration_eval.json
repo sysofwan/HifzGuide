@@ -1,0 +1,511 @@
+{
+  "baseline_forgave": 10,
+  "cases": [
+    {
+      "case_id": "2:38#7/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:38#7/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "2:38#7/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:38#7/interior",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "interior",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "reject",
+        "conditional": "reject",
+        "false_waqf": "reject",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "3:186#14/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "3:186#14/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "3:186#14/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "3:186#14/interior",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "interior",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "reject",
+        "conditional": "reject",
+        "false_waqf": "reject",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:259#18/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:259#18/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "2:259#18/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:259#18/interior",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "interior",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "reject",
+        "conditional": "reject",
+        "false_waqf": "reject",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:249#50/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:249#50/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "2:249#50/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "3:13#7/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "3:13#7/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "3:13#7/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:71#14/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:71#14/correct",
+      "expected_strict": "accept",
+      "phenomenon": "iraab",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "2:71#14/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:71#14/interior",
+      "expected_strict": "reject",
+      "phenomenon": "iraab",
+      "recitation": "interior",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "reject",
+        "conditional": "reject",
+        "false_waqf": "reject",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:96#13/correct",
+      "expected_strict": "accept",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:96#13/correct",
+      "expected_strict": "accept",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "2:96#13/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:255#9/correct",
+      "expected_strict": "accept",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:255#9/correct",
+      "expected_strict": "accept",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "2:255#9/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:263#7/correct",
+      "expected_strict": "accept",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:263#7/correct",
+      "expected_strict": "accept",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "2:263#7/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "2:263#7/interior",
+      "expected_strict": "reject",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "interior",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "reject",
+        "conditional": "reject",
+        "false_waqf": "reject",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "3:111#3/correct",
+      "expected_strict": "accept",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "correct",
+      "true_class": "waqf",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "3:111#3/correct",
+      "expected_strict": "accept",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "correct",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "accept",
+        "false_waqf": "reject",
+        "false_wasl": "accept"
+      }
+    },
+    {
+      "case_id": "3:111#3/dropped",
+      "expected_strict": "reject",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "dropped",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "accept",
+        "conditional": "reject",
+        "false_waqf": "accept",
+        "false_wasl": "reject"
+      }
+    },
+    {
+      "case_id": "3:111#3/interior",
+      "expected_strict": "reject",
+      "phenomenon": "cross_word_idgham",
+      "recitation": "interior",
+      "true_class": "wasl",
+      "verdicts": {
+        "baseline": "reject",
+        "conditional": "reject",
+        "false_waqf": "reject",
+        "false_wasl": "reject"
+      }
+    }
+  ],
+  "passed": true,
+  "product_gate_note": "The product gate is `.strict` conditional-reference scoring, not frame-F1 or event-F1. It consumes the phoneme decode and the predicted waqf events together (snap -> per-run realized-reference selection -> strict scoring) on adjudicated i'raab / cross-word-idgham boundaries, and asks whether selecting the realized (waqf vs wasl) reference regains the wasl-sensitive discrimination the ignore-end-word-tashkeel baseline throws away (ADR-0004). The conditional scenario uses an oracle waqf head (the ceiling); the trained head's per-boundary prediction from tadabur.waqf_event_eval / tadabur.waqf_postprocess drops into it unchanged.",
+  "regained_discrimination": 10,
+  "scenarios": {
+    "baseline": {
+      "accuracy": 0.7222222222222222,
+      "correct": 26,
+      "forgave_errors": 10,
+      "rejected_valid": 0,
+      "scenario": "baseline",
+      "total": 36
+    },
+    "conditional": {
+      "accuracy": 1.0,
+      "correct": 36,
+      "forgave_errors": 0,
+      "rejected_valid": 0,
+      "scenario": "conditional",
+      "total": 36
+    },
+    "false_waqf": {
+      "accuracy": 0.4444444444444444,
+      "correct": 16,
+      "forgave_errors": 10,
+      "rejected_valid": 10,
+      "scenario": "false_waqf",
+      "total": 36
+    },
+    "false_wasl": {
+      "accuracy": 0.7222222222222222,
+      "correct": 26,
+      "forgave_errors": 0,
+      "rejected_valid": 10,
+      "scenario": "false_wasl",
+      "total": 36
+    }
+  },
+  "summary": "PASS: conditional-reference (.strict) scored 36/36 adjudicated i'raab/idgham cases correctly and regained discrimination on all 10 boundary errors the ignore-end-word-tashkeel baseline forgave (baseline 26/36); false-waqf forgave 10, false-wasl rejected 10 legitimate pauses."
+}

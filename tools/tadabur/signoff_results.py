@@ -140,11 +140,12 @@ def _partition_view(partition: dict) -> dict:
 def integration_section(path: Optional[Path]) -> dict:
     """The H conditional-reference integration outcome (#35, the product gate).
 
-    #35 is the end-to-end gate #10 must actually clear, but it is **not built yet**, so its report
-    is typically absent — the section is then *unavailable* with a reason (the human cannot sign off
-    on H until it exists). When the report lands it is surfaced whole, with the consumer contract's
-    ``passed`` / ``summary`` lifted out; a report that omits ``passed`` leaves the outcome unknown
-    (``passed`` is ``None``) rather than being read as a pass.
+    #35 is the end-to-end gate #10 must actually clear. Its report (from
+    :mod:`tadabur.waqf_integration_eval`) is absent until the eval has been run, so the section is
+    then *unavailable* with a reason (the human cannot sign off on H until it exists). When the
+    report lands it is surfaced whole, with the consumer contract's ``passed`` / ``summary`` lifted
+    out; a report that omits ``passed`` leaves the outcome unknown (``passed`` is ``None``) rather
+    than being read as a pass.
     """
     report, reason = _load_report(path)
     if report is None:

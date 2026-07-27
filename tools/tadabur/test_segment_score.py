@@ -294,13 +294,21 @@ def _c(ids: list[int]) -> str:
     return "".join(PHONEME_ID_TO_CHAR[i] for i in ids)
 
 
-def _phon(text: str) -> str:
-    return {
+def _phon(words: list[str]) -> tuple[str, list[int]]:
+    """Stub of ``hafs_segment_reference``: realized reference + per-word char offsets."""
+    phonemes = {
         "w0 w1 w2": " ".join(_c(w) for w in (_WORD0, _WORD1, _WORD2)),
         "w0": _c(_WORD0),
         "w0 w1": _c(_WORD0 + _WORD1),
         "w1 w2": _c(_WORD1 + _WORD2),
-    }[text]
+    }[" ".join(words)]
+    ids = {"w0": _WORD0, "w1": _WORD1, "w2": _WORD2}
+    spaced = " " in phonemes
+    offsets = [0]
+    for word in words:
+        offsets.append(offsets[-1] + len(_c(ids[word])) + (1 if spaced else 0))
+    offsets[-1] = len(phonemes)
+    return phonemes, offsets
 
 
 def _wordref(words: list[str]) -> tuple[str, list[int]]:
@@ -339,8 +347,8 @@ def test_segment_clips_splits_at_model_heard_pause(tmp_path, monkeypatch):
 
     assert not skips
     assert [(r.word_start, r.word_end) for r in records] == [(0, 1), (1, 3)]
-    assert records[0].realized_reference_phonemes == _phon("w0")
-    assert records[1].realized_reference_phonemes == _phon("w1 w2")
+    assert records[0].realized_reference_phonemes == _phon(["w0"])[0]
+    assert records[1].realized_reference_phonemes == _phon(["w1", "w2"])[0]
     assert records[0].segment_index == 0 and records[1].segment_index == 1
     assert [s.audio_filename for s in statuses] == ["a.wav"]
     assert statuses[0].skip_reason is None and statuses[0].n_words == 3
@@ -371,8 +379,8 @@ def test_segment_clips_splits_reread_clip(tmp_path, monkeypatch):
 
     assert skips["re_read"] == 1
     assert [(r.word_start, r.word_end) for r in records] == [(0, 2), (1, 3)]
-    assert records[0].realized_reference_phonemes == _phon("w0 w1")
-    assert records[1].realized_reference_phonemes == _phon("w1 w2")
+    assert records[0].realized_reference_phonemes == _phon(["w0", "w1"])[0]
+    assert records[1].realized_reference_phonemes == _phon(["w1", "w2"])[0]
     assert statuses[0].skip_reason is None
     assert statuses[0].re_reads == 1
 
@@ -391,7 +399,7 @@ def test_segment_clips_keeps_unsegmentable_clip_whole(tmp_path, monkeypatch):
     assert skips["low_alignment"] == 1
     assert len(records) == 1
     assert (records[0].word_start, records[0].word_end) == (0, 3)
-    assert records[0].realized_reference_phonemes == _phon("w0 w1 w2")
+    assert records[0].realized_reference_phonemes == _phon(["w0", "w1", "w2"])[0]
     assert statuses[0].skip_reason == "low_alignment"
 
 

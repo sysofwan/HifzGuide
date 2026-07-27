@@ -47,7 +47,7 @@ from training.windowed_labels import (
 CONTRACT = WindowContract()  # 5 s window (250 frames), frozen 4 s hop (200 frames)
 
 
-def _seg(clip, index, w0, w1, s0, s1, ref, reciter=1, surah="78:2"):
+def _seg(clip, index, w0, w1, s0, s1, ref, reciter=1, surah="78:2", offsets=()):
     return Segment(
         clip_audio_filename=clip,
         surah_ayah=surah,
@@ -58,11 +58,12 @@ def _seg(clip, index, w0, w1, s0, s1, ref, reciter=1, surah="78:2"):
         start_s=s0,
         end_s=s1,
         reference_phonemes=ref,
+        word_offsets=offsets,
     )
 
 
 def _status(clip, n_words, duration_s, rec_start=0.0, rec_end=None, reciter=1,
-            surah="78:2", skip=None, re_reads=0):
+            surah="78:2", skip=None, re_reads=0, word_times=()):
     return ClipStatus(
         audio_filename=clip,
         surah_ayah=surah,
@@ -73,6 +74,7 @@ def _status(clip, n_words, duration_s, rec_start=0.0, rec_end=None, reciter=1,
         recitation_end_s=duration_s if rec_end is None else rec_end,
         skip_reason=skip,
         re_reads=re_reads,
+        word_times=word_times,
     )
 
 
@@ -512,3 +514,98 @@ def test_main_cli_requires_segments(monkeypatch):
     with pytest.raises(SystemExit) as exc:
         main()
     assert exc.value.code != 0
+
+
+# --- word-snapped windowing (long recitations) --------------------------------
+
+
+def _one_char_per_word(clip, n_words, seconds_per_word, index=0, w0=0):
+    """One segment of ``n_words`` evenly-spaced words, one phoneme char each."""
+    ref = "".join(chr(0x0621 + i) for i in range(n_words))
+    return _seg(
+        clip,
+        index,
+        w0,
+        w0 + n_words,
+        w0 * seconds_per_word,
+        (w0 + n_words) * seconds_per_word,
+        ref,
+        offsets=tuple(range(n_words + 1)),
+    )
+
+
+def test_long_recitation_is_windowed_at_word_edges_not_excluded():
+    """With per-word timing a 12 s recitation trains instead of being discarded."""
+    seg = _one_char_per_word("a.wav", n_words=12, seconds_per_word=1.0)
+    word_times = tuple(float(i) for i in range(13))
+    status = _status_for("a.wav", [seg], n_words=12, word_times=word_times)
+
+    labels, reason = build_clip_windows([seg], status, CONTRACT)
+
+    assert reason is None
+    assert len(labels) > 1
+    # Every window's audio holds exactly the words its label spells, at word edges.
+    for label in labels:
+        assert label.phoneme_label == seg.slice_words(label.word_start, label.word_end)
+        assert label.start_sample >= round(word_times[label.word_start] * 16000) - 640
+        end = label.start_sample + label.num_samples
+        assert end <= round(word_times[label.word_end] * 16000) + 640
+    # ...and the same clip is excluded outright without the timing.
+    _, no_timing = build_clip_windows(
+        [seg], _status_for("a.wav", [seg], n_words=12), CONTRACT
+    )
+    assert no_timing == EXCLUDE_SEGMENT_CROSSES_WINDOW
+
+
+def test_window_spanning_a_waqf_concatenates_both_segments_word_sliced():
+    """An interior waqf inside a window is labelled from both segments' own phonetizations."""
+    first = _one_char_per_word("a.wav", n_words=4, seconds_per_word=1.0, index=0, w0=0)
+    second = _one_char_per_word("a.wav", n_words=8, seconds_per_word=1.0, index=1, w0=4)
+    word_times = tuple(float(i) for i in range(13))
+    status = _status_for("a.wav", [first, second], n_words=12, word_times=word_times)
+
+    labels, reason = build_clip_windows([first, second], status, CONTRACT)
+
+    assert reason is None
+    spanning = [lab for lab in labels if len(lab.segment_indices) == 2]
+    assert spanning, "expected a window straddling the interior waqf"
+    for label in spanning:
+        assert label.phoneme_label == first.slice_words(
+            label.word_start, first.word_end
+        ) + second.slice_words(second.word_start, label.word_end)
+
+
+def test_phoneme_and_soft_label_grids_match_under_word_snapping():
+    """Both artifacts enumerate the identical snapped grid — the joint pairing contract."""
+    from training.waqf_distill import clip_recitation_windows, recitation_window_span
+
+    seg = _one_char_per_word("a.wav", n_words=12, seconds_per_word=1.0)
+    word_times = tuple(float(i) for i in range(13))
+    status = _status_for("a.wav", [seg], n_words=12, word_times=word_times)
+
+    labels, _ = build_clip_windows([seg], status, CONTRACT)
+    start_sample, num_samples = recitation_window_span(
+        status.recitation_start_s, status.recitation_end_s
+    )
+    windows = clip_recitation_windows(start_sample, num_samples, CONTRACT, word_times)
+
+    assert [(lab.window_index, lab.start_sample, lab.num_samples) for lab in labels] == [
+        (w.index, w.start_sample, w.num_samples) for w in windows
+    ]
+
+
+def test_word_longer_than_the_window_overlap_is_left_untrained_not_mislabelled():
+    """A word in no window contributes no label — and no window holds its audio either."""
+    ref = "".join(chr(0x0621 + i) for i in range(3))
+    seg = _seg("a.wav", 0, 0, 3, 0.0, 11.0, ref, offsets=(0, 1, 2, 3))
+    # Word 1 spans 2 s -> 8 s: it straddles every 5 s window edge on the 4 s hop grid.
+    word_times = (0.0, 2.0, 8.0, 11.0)
+    status = _status_for("a.wav", [seg], n_words=3, word_times=word_times)
+
+    labels, reason = build_clip_windows([seg], status, CONTRACT)
+
+    assert reason is None
+    assert all(1 not in range(lab.word_start, lab.word_end) for lab in labels)
+    for label in labels:
+        end = label.start_sample + label.num_samples
+        assert end <= 2 * 16000 + 640 or label.start_sample >= 8 * 16000 - 640

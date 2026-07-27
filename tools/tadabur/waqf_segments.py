@@ -64,6 +64,11 @@ Phonetizer = Callable[[str], str]
 # A callable giving an ayah's spaceless phoneme reference + per-word phoneme offsets
 # (len == n_words + 1) — the alignment reference tadabur.waqf_detect.segment_clip uses.
 WordReference = Callable[[list[str]], "tuple[str, list[int]]"]
+# A callable giving one waqf segment's realized reference (the phonetizer's own
+# space-bearing output, terminal word in waqf form) plus the per-word character offsets
+# into it (len == n_words_in_segment + 1) — what lets a training window end inside a
+# segment without re-phonetizing (and so without inventing a waqf there).
+SegmentReference = Callable[[list[str]], "tuple[str, list[int]]"]
 
 
 @dataclass(frozen=True)
@@ -77,6 +82,10 @@ class SegmentRecord:
     ``word_end`` are the half-open Uthmani word range the segment covers.
     ``realized_reference_phonemes`` is ``quran_phonetizer`` over the segment's
     Uthmani words — terminal word in waqf form, interior words in wasl.
+    ``word_offsets`` are the per-word character offsets into that string
+    (``len == word_end - word_start + 1``), so a training window whose edge falls inside
+    this segment can slice out exactly the words it fully contains. Empty when the
+    producer did not compute them.
     """
 
     audio_filename: str
@@ -88,6 +97,7 @@ class SegmentRecord:
     start_s: float
     end_s: float
     realized_reference_phonemes: str
+    word_offsets: tuple[int, ...] = ()
 
 
 def hafs_phonetizer() -> Phonetizer:
@@ -102,6 +112,25 @@ def hafs_phonetizer() -> Phonetizer:
 
     moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
     return lambda text: quran_phonetizer(text, moshaf).phonemes
+
+
+def _spaced_word_offsets(
+    phonemes: str, mappings: list, uthmani_words: list[str]
+) -> list[int]:
+    """Per-word character offsets into the phonetizer's own (space-bearing) output.
+
+    The same ``mappings[i].pos[0]`` trick :func:`_spaceless_word_offsets` uses — robust
+    to the wasl word-merges that leave no separating space — but *without* the spaceless
+    remap, so the offsets index the exact string :data:`Phonetizer` returns and a
+    segment's realized reference can be sliced per word. ``len == len(uthmani_words) + 1``
+    (word ``j`` spans ``[offsets[j], offsets[j + 1])``).
+    """
+    input_starts: list[int] = []
+    cursor = 0
+    for word in uthmani_words:
+        input_starts.append(cursor)
+        cursor += len(word) + 1  # + the joining space
+    return [mappings[s].pos[0] for s in input_starts] + [len(phonemes)]
 
 
 def _spaceless_word_offsets(
@@ -134,6 +163,30 @@ def _spaceless_word_offsets(
             kept += 1
     remap.append(kept)  # sentinel for the len(phonemes) end offset
     return "".join(spaceless), [remap[offset] for offset in spaced_offsets]
+
+
+def hafs_segment_reference() -> SegmentReference:
+    """A :data:`SegmentReference` over a waqf segment's Uthmani words.
+
+    Returns exactly what :func:`hafs_phonetizer` would for the same space-joined words —
+    the realized reference, terminal word in waqf form — **plus** the per-word character
+    offsets into it (:func:`_spaced_word_offsets`). The offsets are what lets a training
+    window end inside a segment: a window edge that falls mid-segment is *not* a waqf, so
+    its last word must keep the wasl form the segment phonetization gave it, which means
+    slicing that phonetization rather than re-phonetizing the window's words (which would
+    inject a phantom CleanEnd). Raises the same ``KeyError`` / ``IndexError`` as
+    :func:`hafs_word_reference` on the ayat quran_phonetizer cannot handle.
+    """
+    from quran_transcript import quran_phonetizer
+    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
+
+    moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
+
+    def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
+        out = quran_phonetizer(" ".join(uthmani_words), moshaf)
+        return out.phonemes, _spaced_word_offsets(out.phonemes, out.mappings, uthmani_words)
+
+    return compute
 
 
 def hafs_word_reference() -> WordReference:

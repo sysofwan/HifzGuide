@@ -118,7 +118,7 @@ FROZEN_HOP_FEATURE_FRAMES = 200
 # suffix pins that the student length comes from the window's *audio span*, not from the
 # VAD's emitted frame count; stores written before that fix carry the unsuffixed rule and
 # are rejected on resume rather than mixed with the corrected grid.
-POOLING_RULE = "min-silence-2to1-left-anchored-span"
+POOLING_RULE = "min-silence-2to1-left-anchored-word-snapped-span"
 
 # The window origin a store's rows are keyed on, recorded in the store contract so a
 # resume that would mix the two grids fails fast (a whole-clip store re-opened for the
@@ -313,6 +313,85 @@ def enumerate_recitation_windows(
     return windows
 
 
+def snap_window_to_words(
+    window: Window, word_times: tuple[float, ...]
+) -> Window | None:
+    """``window`` shrunk to the whole words its audio contains, or ``None`` if none fit.
+
+    A fixed grid window's edge almost never falls on a word boundary, so its raw audio
+    holds a fragment of the edge word: labelling that fragment as a whole word corrupts
+    the CTC target, and omitting it leaves spoken audio with no target. Snapping the
+    window **inward** to the first/last whole word (word ``j`` spans
+    ``[word_times[j], word_times[j + 1])``, clip-relative seconds) removes both failure
+    modes, and because the snapped span is a sub-span of the fixed window the shared grid
+    is preserved: the same nominal window still produces the same audio span on both the
+    phoneme-label and waqf-soft-label sides. Edges are rounded **in** to the window's own
+    640-sample (40 ms student-frame) lattice so the snapped window still starts and ends
+    on a whole student frame; that trims at most one 40 ms frame into each edge word.
+    Returns ``None`` when no whole word fits (the window sits inside one long word), and
+    the caller drops that window from the grid — deterministically on both sides.
+    """
+    start = window.start_sample
+    end = start + window.num_samples
+    first = last = None
+    for index in range(len(word_times) - 1):
+        onset = round(word_times[index] * TARGET_SAMPLE_RATE)
+        offset = round(word_times[index + 1] * TARGET_SAMPLE_RATE)
+        if onset >= start and offset <= end:
+            if first is None:
+                first = onset
+            last = offset
+    if first is None or last is None or last <= first:
+        return None
+    frame = SAMPLES_PER_STUDENT_FRAME
+    snapped_start = start + -(-(first - start) // frame) * frame
+    snapped_end = start + ((last - start) // frame) * frame
+    if snapped_end <= snapped_start:
+        return None
+    return Window(
+        index=window.index,
+        start_sample=snapped_start,
+        num_samples=snapped_end - snapped_start,
+    )
+
+
+def clip_recitation_windows(
+    recitation_start_sample: int,
+    recitation_num_samples: int,
+    contract: WindowContract,
+    word_times: tuple[float, ...] = (),
+) -> list[Window]:
+    """The clip's training windows: the fixed recitation grid, word-snapped when possible.
+
+    With ``word_times`` this is :func:`enumerate_recitation_windows` followed by
+    :func:`snap_window_to_words` per window (dropping the windows no whole word fits in);
+    without it, the raw fixed grid. **This is the single entry point both artifacts use**
+    — :mod:`training.windowed_labels` for the phoneme CTC targets and
+    :func:`generate_soft_labels` for the waqf soft targets — so a clip's
+    ``(index, start_sample, num_samples)`` triples are identical on both sides by
+    construction, which is what :func:`training.windowed_batch.load_joint_examples`
+    checks. Window indices come from the nominal grid and may therefore skip.
+    """
+    windows = enumerate_recitation_windows(
+        recitation_start_sample, recitation_num_samples, contract
+    )
+    if not word_times:
+        return windows
+    snapped = [snap_window_to_words(w, word_times) for w in windows]
+    kept = [w for w in snapped if w is not None]
+    # Snapping can collapse two neighbouring windows onto the same word run; keep the
+    # first of each duplicate span so the grid carries no redundant training example.
+    unique: list[Window] = []
+    for window in kept:
+        if unique and (
+            window.start_sample == unique[-1].start_sample
+            and window.num_samples == unique[-1].num_samples
+        ):
+            continue
+        unique.append(window)
+    return unique
+
+
 def enumerate_windows(num_samples: int, contract: WindowContract) -> list[Window]:
     """Fixed training windows tiling ``num_samples`` of waveform under ``contract``.
 
@@ -356,6 +435,7 @@ def slice_recitation_windows(
     recitation_start_sample: int,
     recitation_num_samples: int,
     contract: WindowContract,
+    word_times: tuple[float, ...] = (),
 ) -> list[tuple[Window, np.ndarray]]:
     """Each recitation window paired with its waveform slice, clip-relative start samples.
 
@@ -368,8 +448,8 @@ def slice_recitation_windows(
     wave = np.asarray(waveform, dtype=np.float32)
     return [
         (w, wave[w.start_sample : w.start_sample + w.num_samples])
-        for w in enumerate_recitation_windows(
-            recitation_start_sample, recitation_num_samples, contract
+        for w in clip_recitation_windows(
+            recitation_start_sample, recitation_num_samples, contract, word_times
         )
     ]
 
@@ -768,7 +848,7 @@ def generate_soft_labels(
     clips_dir: Path,
     out_dir: Path,
     *,
-    recitation_spans: dict[str, tuple[int, int]] | None = None,
+    recitation_spans: dict[str, tuple[int, int, tuple[float, ...]]] | None = None,
     contract: WindowContract | None = None,
     device: str = "cuda",
     dtype_str: str = "bfloat16",
@@ -834,9 +914,15 @@ def generate_soft_labels(
                     recitation_num_samples = len(waveform)
                     windows = slice_windows(waveform, contract)
                 else:
-                    start_sample, recitation_num_samples = recitation_spans[audio_filename]
+                    start_sample, recitation_num_samples, word_times = recitation_spans[
+                        audio_filename
+                    ]
                     windows = slice_recitation_windows(
-                        waveform, start_sample, recitation_num_samples, contract
+                        waveform,
+                        start_sample,
+                        recitation_num_samples,
+                        contract,
+                        word_times,
                     )
                 posteriors = vad.silence_posteriors(
                     [slice_wave for _, slice_wave in windows], batch_size=batch_size
@@ -924,7 +1010,7 @@ def main() -> None:
 
 def _recitation_spans_from_clip_status(
     clip_status_path: Path | None,
-) -> dict[str, tuple[int, int]] | None:
+) -> dict[str, tuple[int, int, tuple[float, ...]]] | None:
     """Clip-relative recitation ``(start_sample, num_samples)`` per clip, or ``None``.
 
     Reads the ``clip_status`` sidecar and maps every clip the segmenter could split
@@ -939,13 +1025,14 @@ def _recitation_spans_from_clip_status(
         return None
     from tadabur.clip_status import read_clip_status
 
-    spans: dict[str, tuple[int, int]] = {}
+    spans: dict[str, tuple[int, int, tuple[float, ...]]] = {}
     for status in read_clip_status(clip_status_path):
         if status.skip_reason is not None:
             continue
-        spans[status.audio_filename] = recitation_window_span(
+        start_sample, num_samples = recitation_window_span(
             status.recitation_start_s, status.recitation_end_s
         )
+        spans[status.audio_filename] = (start_sample, num_samples, status.word_times)
     return spans
 
 

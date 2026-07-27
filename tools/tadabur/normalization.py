@@ -30,7 +30,9 @@ home for phoneme normalization.
 
 from __future__ import annotations
 
+import bisect
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 # Bump whenever the normalization behaviour changes (grouping rules, tajweed
@@ -162,3 +164,38 @@ def map_to_original_end(normalized_idx: int, offset_map: list[tuple[int, int]]) 
     if normalized_idx > len(offset_map):
         return offset_map[-1][1] if offset_map else 0
     return offset_map[normalized_idx - 1][1]
+
+
+def map_char_offsets(
+    text: str, normalization: PhonemeNormalization, char_offsets: Sequence[int]
+) -> list[int]:
+    """Map character offsets in ``text`` to indices in its normalized form.
+
+    ``offset_map`` is indexed by *grapheme cluster*, not character, so a raw offset
+    (e.g. a word boundary in the phonetizer's output) must first be converted to a
+    cluster index. Each returned index is the first normalized character whose source
+    cluster range starts at or after that cluster — i.e. the normalized offset a slice
+    should cut at. Offsets are clamped and forced non-decreasing so the returned
+    sequence always describes a valid set of consecutive slices.
+    """
+    clusters = _grapheme_clusters(text)
+    cluster_starts: list[int] = []
+    pos = 0
+    for cluster in clusters:
+        cluster_starts.append(pos)
+        pos += len(cluster)
+    offset_map = normalization.offset_map
+
+    mapped: list[int] = []
+    previous = 0
+    for raw in char_offsets:
+        cluster_index = bisect.bisect_left(cluster_starts, min(max(raw, 0), len(text)))
+        index = len(normalization.normalized)
+        for i, (start, _end) in enumerate(offset_map):
+            if start >= cluster_index:
+                index = i
+                break
+        index = max(previous, min(index, len(normalization.normalized)))
+        mapped.append(index)
+        previous = index
+    return mapped

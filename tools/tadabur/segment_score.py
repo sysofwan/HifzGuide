@@ -70,7 +70,7 @@ from .audit_sampler import local_audio_path
 from .clip_status import ClipStatus, write_clip_status
 from .contrast_attribution import all_contrasts
 from .manifest import ManifestRecord, read_records
-from .normalization import normalize_phonemes
+from .normalization import map_char_offsets, normalize_phonemes
 from .scorer import BALANCED_SCORER, MAX_INSERTION_RUN
 
 # Segmentation boundary QC (a Tadabur segmentation policy, not a Muraja parameter): the
@@ -106,7 +106,7 @@ from .waqf_detect import WaqfSpan
 from .waqf_segments import (
     SegmentRecord,
     _uthmani_words,
-    hafs_phonetizer,
+    hafs_segment_reference,
     hafs_word_reference,
 )
 
@@ -162,38 +162,44 @@ def _records_for_spans(
     passing_record: ManifestRecord,
     uthmani_words: list[str],
     spans: tuple[WaqfSpan, ...],
-    phonetize,
+    segment_reference,
 ) -> list[SegmentRecord]:
     """Turn a clip's waqf spans into realized-reference :class:`SegmentRecord`s.
 
-    Each span's realized reference is ``phonetize`` over its space-joined Uthmani
-    words — terminal word in waqf form, interior words in wasl. May raise
-    ``KeyError`` on the 8 leen-madd-on-sukoon ayat the phonetizer cannot handle
+    Each span's realized reference is ``segment_reference`` over its Uthmani words —
+    terminal word in waqf form, interior words in wasl — together with the per-word
+    character offsets into that string, so a training window may end inside the segment
+    without re-phonetizing (which would invent a waqf there). May raise ``KeyError`` on
+    the 8 leen-madd-on-sukoon ayat the phonetizer cannot handle
     (``generate_phonemes.FALLBACK_PHONEMES``); the caller skips such a clip.
     """
-    return [
-        SegmentRecord(
-            audio_filename=passing_record.audio_filename,
-            surah_ayah=passing_record.surah_ayah,
-            reciter_id=passing_record.reciter_id,
-            segment_index=index,
-            word_start=span.word_start,
-            word_end=span.word_end,
-            start_s=span.start_s,
-            end_s=span.end_s,
-            realized_reference_phonemes=phonetize(
-                " ".join(uthmani_words[span.word_start : span.word_end])
-            ),
+    records: list[SegmentRecord] = []
+    for index, span in enumerate(spans):
+        phonemes, offsets = segment_reference(
+            uthmani_words[span.word_start : span.word_end]
         )
-        for index, span in enumerate(spans)
-    ]
+        records.append(
+            SegmentRecord(
+                audio_filename=passing_record.audio_filename,
+                surah_ayah=passing_record.surah_ayah,
+                reciter_id=passing_record.reciter_id,
+                segment_index=index,
+                word_start=span.word_start,
+                word_end=span.word_end,
+                start_s=span.start_s,
+                end_s=span.end_s,
+                realized_reference_phonemes=phonemes,
+                word_offsets=tuple(offsets),
+            )
+        )
+    return records
 
 
 def segment_clips(
     passing_records: list[ManifestRecord],
     clips_dir: Path,
     model,
-    phonetize,
+    segment_reference,
     word_reference,
     pauses_by_clip: dict[str, list[tuple[float, float]]],
     *,
@@ -260,7 +266,7 @@ def segment_clips(
                 if result.re_reads:
                     skips["re_read"] += 1
             clip_records = _records_for_spans(
-                passing, uthmani_words, spans, phonetize
+                passing, uthmani_words, spans, segment_reference
             )
         except (KeyError, IndexError):
             skips["phonetizer_unsupported"] += 1
@@ -280,6 +286,7 @@ def segment_clips(
                 spans[0].start_s, spans[-1].end_s, result.skip,
                 re_reads=result.re_reads,
                 recited_words=max(span.word_end for span in spans),
+                word_times=result.word_times,
             )
         )
     return records, skips, statuses, pause_attrib_by_clip
@@ -294,6 +301,7 @@ def _clip_status(
     skip_reason: str | None,
     re_reads: int = 0,
     recited_words: int | None = None,
+    word_times: tuple[float, ...] = (),
 ) -> ClipStatus:
     """One :class:`ClipStatus` for a passing clip, carrying its eligibility inputs.
 
@@ -322,6 +330,7 @@ def _clip_status(
         skip_reason=skip_reason,
         re_reads=re_reads,
         recited_words=recited_words,
+        word_times=word_times,
     )
 
 
@@ -424,7 +433,8 @@ def score_segments(
     rows: list[dict] = []
     kept: list[SegmentRecord] = []
     for seg, decode in zip(to_score, predicted):
-        reference = normalize_phonemes(seg.realized_reference_phonemes).normalized
+        normalization = normalize_phonemes(seg.realized_reference_phonemes)
+        reference = normalization.normalized
         result = BALANCED_SCORER.gate(decode, reference)
         # A long interior insertion run is a repeated-phrase poison label: reject it
         # from the training manifest (a low match_ratio alone stays — it is still an
@@ -473,6 +483,11 @@ def score_segments(
         )
         row["raw_reference_phonemes"] = seg.realized_reference_phonemes
         row["reference_phonemes"] = reference
+        # Word boundaries in the *normalized* reference, so a training window may cut this
+        # segment at a word edge without re-phonetizing (which would invent a waqf there).
+        row["word_offsets"] = map_char_offsets(
+            seg.realized_reference_phonemes, normalization, seg.word_offsets
+        )
         row["start_s"] = seg.start_s
         row["end_s"] = seg.end_s
         row["segment_index"] = seg.segment_index
@@ -686,7 +701,7 @@ def main() -> None:
 
     model = MuaalemPhonemeModel.load(device=args.device)
     segments, skips, clip_statuses, pause_attrib_by_clip = segment_clips(
-        passing, args.clips_dir, model, hafs_phonetizer(), hafs_word_reference(),
+        passing, args.clips_dir, model, hafs_segment_reference(), hafs_word_reference(),
         pauses_by_clip, boundary_tol=args.boundary_tol,
     )
     clips = len({s.audio_filename for s in segments})

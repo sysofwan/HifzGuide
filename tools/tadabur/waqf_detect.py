@@ -127,12 +127,20 @@ class SegmentationResult:
     when it keeps the clip whole or skips it (as :data:`UNPLACED`, ``word_index=None``), so
     the sidecar lists every processed clip; ``pauses`` is empty only when the clip had no
     VAD pauses at all.
+
+    ``word_times`` is the clip-relative onset of every Uthmani word plus a final offset
+    (``len == n_words + 1``), read off the whole-clip alignment
+    (:func:`word_onset_times`). It is what lets the whole-clip windowed labels
+    (:mod:`training.windowed_labels`) cut a recitation longer than one 5 s window at a
+    *word* edge instead of discarding the clip. Empty when the clip was skipped or the
+    alignment gave nothing usable.
     """
 
     spans: tuple[WaqfSpan, ...]
     skip: str | None = None
     re_reads: int = 0
     pauses: tuple[PauseAttribution, ...] = ()
+    word_times: tuple[float, ...] = ()
 
 
 def collapse_with_times(
@@ -195,6 +203,59 @@ class _ChunkAlign:
     ref_start: int = 0
     ref_end: int = 0
     ref_kinds: tuple[str, ...] = ()
+
+
+def word_onset_times(
+    alignment,
+    decode_times: list[float],
+    boundaries: list[int],
+    start_s: float,
+    end_s: float,
+) -> tuple[float, ...]:
+    """Clip-relative onset of each Uthmani word, plus the recitation's end offset.
+
+    The whole-clip Smith-Waterman alignment already says which decoded phoneme each
+    reference position was matched by (``ref_to_query``), and
+    :func:`collapse_with_times` already says when each decoded phoneme was emitted. Word
+    edge ``w`` therefore lands at the time of the first decoded phoneme at or after
+    reference offset ``boundaries[w]`` — a forced alignment for free, at the decode's own
+    frame resolution, with no second model pass.
+
+    A word edge outside the matched span (lead-in the reciter never recited, or a tail the
+    decode dropped) has no aligned query position; it is pinned to ``start_s`` / ``end_s``
+    so the result stays monotone and inside the recitation. The result is clamped and
+    made non-decreasing, so consumers can slice ``[times[i], times[j]]`` for any
+    ``i <= j`` without re-checking. Returns ``()`` when the alignment covers nothing.
+    """
+    span = alignment.ref_end - alignment.ref_start
+    if span <= 0 or not decode_times:
+        return ()
+
+    # First aligned query index at or after each reference offset, scanning once.
+    next_query: list[int] = [-1] * (span + 1)
+    running = -1
+    for local in range(span - 1, -1, -1):
+        q = alignment.ref_to_query[local]
+        if q >= 0:
+            running = q
+        next_query[local] = running
+
+    times: list[float] = []
+    for position in boundaries:
+        local = position - alignment.ref_start
+        if local < 0:
+            times.append(start_s)
+            continue
+        query_index = next_query[local] if local < span else -1
+        if query_index < 0 or query_index >= len(decode_times):
+            times.append(end_s)
+            continue
+        times.append(min(max(decode_times[query_index], start_s), end_s))
+
+    for i in range(1, len(times)):
+        if times[i] < times[i - 1]:
+            times[i] = times[i - 1]
+    return tuple(times)
 
 
 def _nearest_boundary(boundaries: list[int], pos: int) -> tuple[int, int]:
@@ -450,6 +511,9 @@ def segment_clip(
     # ``query`` is non-empty and these indices are valid here.
     recut_start = max(0.0, decode_times[alignment.query_start] - EDGE_RECUT_PAD_S)
     recut_end = min(clip_duration_s, decode_times[alignment.query_end - 1] + EDGE_RECUT_PAD_S)
+    word_times = word_onset_times(
+        alignment, decode_times, boundaries, recut_start, recut_end
+    )
 
     # Split the query (and clip time) at each pause into chunks: chunk i spans the decoded
     # phonemes whose onset falls between pause i-1's end and pause i's start.
@@ -565,5 +629,8 @@ def segment_clip(
             )
 
     return SegmentationResult(
-        tuple(spans), re_reads=re_reads, pauses=tuple(pause_attrib)
+        tuple(spans),
+        re_reads=re_reads,
+        pauses=tuple(pause_attrib),
+        word_times=word_times,
     )

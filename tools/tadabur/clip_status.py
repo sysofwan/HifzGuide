@@ -66,6 +66,12 @@ class ClipStatus:
     the end and is *lower* for an early stop (the reciter ended mid-ayah), which is exactly
     the never-recited tail the audit UI hides. ``None`` when unknown (a clip the segmenter
     never scored); consumers then treat the whole ayah as recited.
+    ``word_times`` is the clip-relative onset of each Uthmani word plus a final offset
+    (``len == n_words + 1``), from the whole-clip alignment
+    (:func:`tadabur.waqf_detect.word_onset_times`). It is what lets
+    :mod:`training.windowed_labels` cut a recitation longer than one 5 s window at a
+    *word* edge instead of discarding the clip; empty for a skipped or unaligned clip,
+    which is then ineligible for windowed training.
     """
 
     audio_filename: str
@@ -78,6 +84,7 @@ class ClipStatus:
     skip_reason: str | None = None
     re_reads: int = 0
     recited_words: int | None = None
+    word_times: tuple[float, ...] = ()
 
 
 def write_clip_status(path: Path, statuses: list[ClipStatus]) -> None:
@@ -113,6 +120,7 @@ def read_clip_status(path: Path) -> list[ClipStatus]:
                     skip_reason=data.get("skip_reason"),
                     re_reads=data.get("re_reads", 0),
                     recited_words=data.get("recited_words"),
+                    word_times=tuple(data.get("word_times") or ()),
                 )
             )
     return statuses

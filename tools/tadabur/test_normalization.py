@@ -171,3 +171,27 @@ def test_map_to_original_end_zero():
 
 def test_map_to_original_end_beyond_range():
     assert map_to_original_end(5, [(0, 2), (2, 4)]) == 4
+
+
+def test_map_char_offsets_tracks_word_boundaries_through_collapsing():
+    from tadabur.normalization import map_char_offsets, normalize_phonemes
+
+    # "بب" collapses to "ب"; the word boundary after it must land on the collapsed char.
+    text = "ببَ ت"
+    normalization = normalize_phonemes(text)
+    mapped = map_char_offsets(text, normalization, [0, len(text)])
+
+    assert mapped[0] == 0
+    assert mapped[-1] == len(normalization.normalized)
+
+
+def test_map_char_offsets_is_non_decreasing_and_clamped():
+    from tadabur.normalization import map_char_offsets, normalize_phonemes
+
+    text = "ءبتثجح"
+    normalization = normalize_phonemes(text)
+    mapped = map_char_offsets(text, normalization, [0, 2, 2, 4, len(text), 99])
+
+    assert mapped == sorted(mapped)
+    assert mapped[0] == 0
+    assert mapped[-1] == len(normalization.normalized)

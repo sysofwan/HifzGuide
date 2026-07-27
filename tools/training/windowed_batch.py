@@ -110,9 +110,11 @@ class ClipAudioCache:
     """Decode each staged clip once, reuse its waveform across all its windows.
 
     A clip has up to ~8 windows (the A2 cap); decoding it once and slicing keeps the data
-    path from re-reading and re-decoding the same file per window. ``audio_dir`` holds the
-    staged clips under their :func:`tadabur.audit_sampler.local_audio_path` names — the
-    same layout :mod:`tadabur.eval_harness` reads.
+    path from re-reading and re-decoding the same file per window. ``audio_dir`` may use
+    either staged layout: the :func:`tadabur.audit_sampler.local_audio_path` hash-prefixed
+    name :mod:`tadabur.eval_harness` reads, or the plain ``audio_filename`` that
+    :mod:`tadabur.segment_score` and :mod:`training.waqf_distill` read — so one staged clip
+    directory drives the label build, the distillation and the training run alike.
     """
 
     def __init__(self, audio_dir: Path) -> None:
@@ -124,9 +126,12 @@ class ClipAudioCache:
         if cached is None:
             path = self._audio_dir / local_audio_path(clip_audio_filename)
             if not path.is_file():
+                path = self._audio_dir / clip_audio_filename
+            if not path.is_file():
                 raise FileNotFoundError(
-                    f"clip audio {path} for {clip_audio_filename!r} not found under "
-                    f"{self._audio_dir} — stage it (tadabur.audit_sampler) before training."
+                    f"clip audio for {clip_audio_filename!r} not found under "
+                    f"{self._audio_dir} under either the hash-prefixed "
+                    f"(tadabur.audit_sampler) or plain name — stage it before training."
                 )
             cached = decode_to_mono_16k(path.read_bytes())
             self._cache[clip_audio_filename] = cached

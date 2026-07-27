@@ -422,7 +422,7 @@ def test_store_records_the_generation_contract(tmp_path):
     assert stored == generation_contract(contract, WINDOW_ORIGIN_WHOLE_CLIP)
     assert stored["window_feature_frames"] == 50
     assert stored["hop_feature_frames"] == 24
-    assert stored["pooling_rule"] == "min-silence-2to1-left-anchored-span"
+    assert stored["pooling_rule"] == "min-silence-2to1-left-anchored-word-snapped-span"
     assert stored["window_origin"] == WINDOW_ORIGIN_WHOLE_CLIP
 
 
@@ -668,3 +668,52 @@ def test_feature_frames_match_the_real_extractor(num_samples, expected_frames):
 def test_feature_frames_never_negative_for_sub_frame_audio():
     assert feature_frames_for_samples(0) == 0
     assert feature_frames_for_samples(FEATURE_FRAME_SAMPLE_OFFSET) == 0
+
+
+# --- word-snapped windows ------------------------------------------------------
+
+
+def test_snap_window_shrinks_to_whole_words_on_the_student_lattice():
+    from training.waqf_distill import Window, snap_window_to_words
+
+    # Words at 0.5-1.9 s, 1.9-3.1 s, 3.1-6.0 s within a 0-5 s window.
+    snapped = snap_window_to_words(
+        Window(index=0, start_sample=0, num_samples=5 * 16000), (0.5, 1.9, 3.1, 6.0)
+    )
+
+    assert snapped is not None
+    assert snapped.index == 0
+    assert snapped.start_sample % 640 == 0 and snapped.num_samples % 640 == 0
+    # Rounded *in*: no audio from the words it excludes.
+    assert snapped.start_sample >= round(0.5 * 16000)
+    assert snapped.start_sample + snapped.num_samples <= round(3.1 * 16000)
+
+
+def test_snap_window_returns_none_when_no_whole_word_fits():
+    from training.waqf_distill import Window, snap_window_to_words
+
+    # One 9 s word: no whole word fits in the 5 s window.
+    assert snap_window_to_words(
+        Window(index=1, start_sample=0, num_samples=5 * 16000), (0.0, 9.0)
+    ) is None
+
+
+def test_clip_recitation_windows_without_word_times_is_the_fixed_grid():
+    from training.waqf_distill import clip_recitation_windows, enumerate_recitation_windows
+
+    contract = WindowContract()
+    assert clip_recitation_windows(0, 12 * 16000, contract) == (
+        enumerate_recitation_windows(0, 12 * 16000, contract)
+    )
+
+
+def test_clip_recitation_windows_drops_duplicate_snapped_spans():
+    from training.waqf_distill import clip_recitation_windows
+
+    contract = WindowContract()
+    # Two windows both snap onto the same single word run -> one training example.
+    word_times = (0.0, 1.0, 2.0, 3.0, 20.0)
+    windows = clip_recitation_windows(0, 20 * 16000, contract, word_times)
+
+    spans = [(w.start_sample, w.num_samples) for w in windows]
+    assert len(spans) == len(set(spans))

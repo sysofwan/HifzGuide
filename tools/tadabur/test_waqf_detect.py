@@ -568,3 +568,44 @@ def test_supported_end_stops_at_a_multi_word_gap_before_an_isolated_duplicate():
     boundaries = [0, 5, 14, 17, 22]  # 4 words
     chunk = _chunk(0, 4, 0, ("match",) * 5 + ("gap",) * 12 + ("match",) * 5)
     assert _supported_end(chunk, boundaries, n_words=4) == 1
+
+
+# --- per-word onset times ------------------------------------------------------
+
+
+def test_word_onset_times_places_each_word_at_its_first_aligned_phoneme():
+    from tadabur.smith_waterman import smith_waterman
+    from tadabur.waqf_detect import word_onset_times
+
+    reference = "ءبتثجح"
+    alignment = smith_waterman(reference, reference)
+    decode_times = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+    times = word_onset_times(alignment, decode_times, [0, 2, 4, 6], 0.0, 1.2)
+
+    assert times == (0.0, 0.4, 0.8, 1.2)
+
+
+def test_word_onset_times_are_monotone_and_inside_the_recitation():
+    from tadabur.smith_waterman import smith_waterman
+    from tadabur.waqf_detect import word_onset_times
+
+    reference = "ءبتثجح"
+    alignment = smith_waterman(reference, reference)
+    decode_times = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+    times = word_onset_times(alignment, decode_times, [0, 2, 4, 6], 0.5, 0.9)
+
+    assert list(times) == sorted(times)
+    assert all(0.5 <= t <= 0.9 for t in times)
+
+
+def test_word_onset_times_empty_without_an_alignment():
+    from tadabur.waqf_detect import word_onset_times
+
+    class _Empty:
+        ref_start = 0
+        ref_end = 0
+        ref_to_query: list[int] = []
+
+    assert word_onset_times(_Empty(), [0.0], [0, 1], 0.0, 1.0) == ()

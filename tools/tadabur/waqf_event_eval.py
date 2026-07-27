@@ -46,13 +46,20 @@ threshold, per the ADR.
 chosen threshold and is the reported gate. ``waqf_freeze`` already made the two
 reciter-disjoint, and :func:`run_eval` additionally asserts they share no clip.
 
-**The blank-run baseline is a recorded reference, never a gate.** ADR-0004 keeps the
-blank-run + post-processing number as a *documented reference point* only (CTC blank-runs
-over-split and fail on madd — a known-inadequate waqf signal). The reference block scores the
-**same** reconstructed lattice through F1's duration cleaning but **without** the phoneme
-word-edge snap (a blank run has no word alignment to reject a closure with) — silence ⇒ stop
-— so the number shows what the snap buys and holds the exact non-gated slot ADR-0004's
-blank-run number occupies once a model decode exists. It is scored, recorded, and never gated.
+**The blank-run baseline is a documented reference slot, never a gate — and here it is
+recorded as unavailable.** ADR-0004 keeps a *blank-run + post-processing* number as a
+documented reference point only (CTC blank-runs over-split and fail on madd — a known-
+inadequate waqf signal), never a ship gate. A genuine blank-run reference is the CTC
+blank-run spans of the same F0 clips — from the model's decoded frame ids / logits — fed
+through F1's duration cleaning **without** the phoneme word-edge snap (a blank run has no word
+alignment to reject a closure), then scored. The frozen F0 fixtures carry only each
+candidate's adjudicated span timing + human verdict — **no** CTC logits, decoded frame ids, or
+blank-run spans — and this harness is torch-free with no trained waqf-head decode yet, so no
+blank-run lattice exists to score. Rather than substitute a different (VAD silence-lattice,
+snap-disabled) baseline under the blank-run name — which would measure a duration-only silence
+baseline, not CTC blank runs — the slot is recorded as **unavailable**
+(:func:`blank_run_reference`). When a decode lands, its blank-run spans fill this same slot,
+scored but never gated, with no change to the gated path.
 
 **Beware teacher circularity.** Frame-F1 against the VAD teacher is a distillation *sanity
 check only* (the VAD both labels the head and is the frame-F1 target, so a systematic VAD
@@ -94,7 +101,6 @@ from .waqf_postprocess import (
     STUDENT_FRAME_MS,
     SilenceRun,
     WordSpan,
-    detect_pauses,
     waqf_events,
 )
 
@@ -110,17 +116,32 @@ TEACHER_CIRCULARITY_NOTE = (
     "lattice of the human-adjudicated F0 fixtures."
 )
 
-# The blank-run baseline recorded (never gated) as ADR-0004's documented reference point: the
-# same reconstructed lattice through F1's duration cleaning but WITHOUT the phoneme word-edge
-# snap (a CTC blank run has no word alignment to reject a mid-word closure), so silence ⇒ stop.
-# CTC blank-runs over-split and fail on madd; kept as a reference, never a ship gate.
+# The blank-run baseline is ADR-0004's documented, non-gated reference point (CTC blank-runs
+# over-split and fail on madd). A genuine blank-run reference needs the CTC blank-run spans of
+# the same F0 clips (decoded frame ids / logits) through F1's duration cleaning WITHOUT the
+# phoneme word-edge snap. It is recorded on the report, never a ship gate.
 REFERENCE_NOTE = (
-    "Non-gated reference operating point (ADR-0004): the blank-run baseline — the same "
-    "reconstructed silence lattice fed through F1's 300/700 ms duration cleaning but WITHOUT "
-    "the phoneme word-edge snap, so every silence run fires as a stop (blank runs have no "
-    "word alignment to reject a mid-word closure). Scored at the calibrated threshold and "
-    "recorded, never gated: CTC blank-runs over-split and fail on madd. ADR-0004's model "
-    "blank-run number occupies this same non-gated slot once a decode exists."
+    "Non-gated reference operating point (ADR-0004): the blank-run baseline — the CTC "
+    "blank-run spans of the same F0 clips (from the model's decoded frame ids / logits) fed "
+    "through F1's 300/700 ms duration cleaning but WITHOUT the phoneme word-edge snap (a blank "
+    "run has no word alignment to reject a mid-word closure). Recorded, never gated: CTC "
+    "blank-runs over-split and fail on madd. This slot holds ADR-0004's model blank-run number "
+    "once a decode exists; see the report's blank_run_reference for its current availability."
+)
+
+# Why the blank-run reference is unavailable in this torch-free harness. Recorded verbatim in
+# the report's blank_run_reference.reason so a reader is never handed a substitute metric under
+# the blank-run name (see the cycle-2 review): the fixtures carry no CTC decode, and there is
+# no trained waqf head to produce one yet.
+BLANK_RUN_UNAVAILABLE_REASON = (
+    "No CTC blank-run reference is available. The frozen F0 fixtures carry only each "
+    "candidate's adjudicated span timing and human verdict — no CTC logits, decoded frame "
+    "ids, or blank-run spans — and this torch-free harness has no trained waqf-head decode to "
+    "produce them. The slot is recorded as unavailable until a model decode exists, at which "
+    "point its blank-run spans (through F1's duration cleaning, no word-edge snap) fill this "
+    "same non-gated slot — scored, never gated. It is deliberately NOT substituted by the VAD "
+    "silence lattice with the snap disabled, which measures a duration-only silence baseline, "
+    "not CTC blank runs (ADR-0004)."
 )
 
 # The calibration objective, recorded on the report so the chosen threshold is auditable.
@@ -254,21 +275,17 @@ def _overlaps(pause: SilenceRun, span: SilenceRun) -> bool:
     return pause.start_frame < span.end_frame and span.start_frame < pause.end_frame
 
 
-def _fired_boundaries(lattice: ClipLattice, threshold: float, *, snap: bool) -> set[int]:
-    """The clip's candidate boundaries that fire a stop under F1 at ``threshold``.
+def _fired_boundaries(lattice: ClipLattice, threshold: float) -> set[int]:
+    """The clip's candidate boundaries that fire a waqf stop under F1 at ``threshold``.
 
-    With ``snap`` (the gated path) each candidate fires iff a :func:`waqf_events` waqf pause
-    overlaps its span — the full F1 post-processing (duration gate + word-edge snap). Without
-    ``snap`` (the blank-run reference) it fires iff any :func:`detect_pauses` silence run
-    overlaps its span — duration cleaning only, no phoneme snap, so a mid-word closure fires.
+    Each candidate fires iff a :func:`waqf_events` waqf pause overlaps its span — the full F1
+    post-processing: 300/700 ms duration cleaning followed by the phoneme word-edge snap (which
+    rejects a mid-word closure). This is the gated inference path the eval calibrates.
     """
-    if snap:
-        pauses = [
-            event.pause
-            for event in waqf_events(lattice.silence, lattice.words, threshold=threshold).waqf
-        ]
-    else:
-        pauses = detect_pauses(lattice.silence, threshold=threshold)
+    pauses = [
+        event.pause
+        for event in waqf_events(lattice.silence, lattice.words, threshold=threshold).waqf
+    ]
     return {
         boundary_index
         for boundary_index, span in lattice.candidate_spans.items()
@@ -380,19 +397,18 @@ def compute_metrics(
     threshold: float,
     *,
     label: str,
-    snap: bool,
 ) -> EventMetrics:
     """Confuse F1's fired stops (run through :func:`waqf_events`) against the human verdicts.
 
-    Each clip's lattice is run through F1 once at ``threshold`` (``snap`` selects the gated
-    word-edge-snapped path or the blank-run reference); a boundary is a fired stop iff F1's
-    output overlaps it. The snap-accuracy count is a property of the reconstruction geometry
+    Each clip's lattice is run through F1's gated post-processing once at ``threshold`` (the
+    300/700 ms duration gate + word-edge snap); a boundary is a fired stop iff F1's output
+    overlaps it. The snap-accuracy count is a property of the reconstruction geometry
     (``verdict == waqf`` boundaries that reached a word edge) and so is threshold-independent.
     """
     fired: set[tuple[str, int]] = {
         (clip, boundary_index)
         for clip, lattice in lattices.items()
-        for boundary_index in _fired_boundaries(lattice, threshold, snap=snap)
+        for boundary_index in _fired_boundaries(lattice, threshold)
     }
     waqf_total = wasl_total = closure_total = 0
     true_positive = false_wasl = 0
@@ -456,7 +472,7 @@ def calibrate(
     """
     sweep = [
         compute_metrics(
-            entries, lattices, threshold, label=f"calibration@{threshold:.6g}", snap=True
+            entries, lattices, threshold, label=f"calibration@{threshold:.6g}"
         )
         for threshold in calibration_grid(lattices)
     ]
@@ -473,14 +489,50 @@ def calibrate(
 
 
 @dataclass(frozen=True)
+class BlankRunReference:
+    """ADR-0004's non-gated blank-run reference slot: recorded on the report, never a gate.
+
+    A genuine blank-run reference is the CTC blank-run spans of the same F0 clips (from the
+    model's decoded frame ids / logits) fed through F1's duration cleaning **without** the
+    phoneme word-edge snap, then scored (:data:`REFERENCE_NOTE`). ``available`` is ``False``
+    while no such decode exists — the frozen fixtures carry no CTC lattice and this harness is
+    torch-free — in which case ``metrics`` is ``None`` and ``reason`` records **why** the slot
+    is empty (:data:`BLANK_RUN_UNAVAILABLE_REASON`) rather than the slot being back-filled with
+    a different silence baseline. When a decode lands, ``available`` becomes ``True`` and
+    ``metrics`` carries its blank-run score (still non-gated).
+    """
+
+    available: bool
+    reason: str
+    metrics: EventMetrics | None = None
+
+    def to_json_dict(self) -> dict:
+        payload: dict = {"available": self.available, "reason": self.reason}
+        if self.metrics is not None:
+            payload["metrics"] = self.metrics.to_json_dict()
+        return payload
+
+
+def blank_run_reference() -> BlankRunReference:
+    """The blank-run reference for the frozen F0 fixtures: unavailable in this torch-free harness.
+
+    The fixtures carry no CTC logits/decoded frame ids/blank-run spans and there is no trained
+    waqf-head decode, so there is no blank-run lattice to score. Returns an explicitly
+    unavailable record (:data:`BLANK_RUN_UNAVAILABLE_REASON`) instead of substituting the VAD
+    silence lattice with the snap disabled, which would be a duration-only silence baseline —
+    not CTC blank runs — mislabelled as a blank-run reference.
+    """
+    return BlankRunReference(available=False, reason=BLANK_RUN_UNAVAILABLE_REASON)
+
+
+@dataclass(frozen=True)
 class EventEvalReport:
     """The full F2 event-level eval: the calibrated threshold and the once-scored test gate."""
 
     calibrated_silence_threshold: float
     calibration: EventMetrics
     test: EventMetrics
-    calibration_reference: EventMetrics
-    test_reference: EventMetrics
+    blank_run_reference: BlankRunReference
     sweep: list[EventMetrics]
 
     def to_json_dict(self) -> dict:
@@ -492,10 +544,7 @@ class EventEvalReport:
             "reference_note": REFERENCE_NOTE,
             "test": self.test.to_json_dict(),
             "calibration": self.calibration.to_json_dict(),
-            "reference": {
-                "test": self.test_reference.to_json_dict(),
-                "calibration": self.calibration_reference.to_json_dict(),
-            },
+            "blank_run_reference": self.blank_run_reference.to_json_dict(),
             "calibration_sweep": [m.to_json_dict() for m in self.sweep],
         }
 
@@ -510,7 +559,8 @@ def run_eval(
     calibration through F1's :func:`waqf_events`, then scores test once at the chosen
     threshold. Asserts the two partitions share no clip (a belt-and-braces leak check on top
     of ``waqf_freeze``'s reciter-disjoint split) before the threshold is ever applied to test.
-    The blank-run reference is scored on both partitions at the same threshold and recorded.
+    The blank-run reference is recorded (:func:`blank_run_reference`) — unavailable in this
+    torch-free harness — never gated.
     """
     shared = {e.clip_id for e in calibration_entries} & {e.clip_id for e in test_entries}
     if shared:
@@ -526,20 +576,12 @@ def run_eval(
     return EventEvalReport(
         calibrated_silence_threshold=threshold,
         calibration=compute_metrics(
-            calibration_entries, calibration_lattices, threshold,
-            label="calibration", snap=True,
+            calibration_entries, calibration_lattices, threshold, label="calibration",
         ),
         test=compute_metrics(
-            test_entries, test_lattices, threshold, label="test", snap=True,
+            test_entries, test_lattices, threshold, label="test",
         ),
-        calibration_reference=compute_metrics(
-            calibration_entries, calibration_lattices, threshold,
-            label="calibration_blank_run_reference", snap=False,
-        ),
-        test_reference=compute_metrics(
-            test_entries, test_lattices, threshold,
-            label="test_blank_run_reference", snap=False,
-        ),
+        blank_run_reference=blank_run_reference(),
         sweep=sweep,
     )
 
@@ -554,7 +596,11 @@ def _print_summary(report: EventEvalReport) -> None:
             f"mwc-reject {metrics.mid_word_closure_rejection_rate}  "
             f"snap-acc {metrics.boundary_snap_accuracy}"
         )
-    print(f"blank-run reference (not gated): test waqf F1 {report.test_reference.f1}")
+    ref = report.blank_run_reference
+    if ref.available and ref.metrics is not None:
+        print(f"blank-run reference (not gated): waqf F1 {ref.metrics.f1}")
+    else:
+        print(f"blank-run reference (not gated): unavailable — {ref.reason}")
 
 
 def main() -> None:

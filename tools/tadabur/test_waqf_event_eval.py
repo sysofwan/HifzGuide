@@ -22,6 +22,7 @@ from .waqf_event_fixtures import (
 from .waqf_event_eval import (
     _PAD_FRAMES,
     _partition_lattices,
+    blank_run_reference,
     calibrate,
     calibration_grid,
     compute_metrics,
@@ -55,14 +56,14 @@ def test_wasl_edge_carries_no_silence_and_never_fires():
     entries = [_entry("c", 0, WASL, WASL, 0.0, start_s=1.0)]
     lattice = reconstruct_clip(entries)
     assert lattice.candidate_spans == {}  # zero-width edge → no silence run
-    m = compute_metrics(entries, {"c": lattice}, 0.5, label="t", snap=True)
+    m = compute_metrics(entries, {"c": lattice}, 0.5, label="t")
     assert m.false_waqf_at_wasl == 0
 
 
 def test_waqf_gap_fires_as_a_stop_through_waqf_events():
     # A 0.6 s stop, well above the 300 ms gate, fires at the VAD's 0.5 argmax threshold.
     entries = [_entry("c", 0, WAQF, WAQF, 0.6, start_s=1.0)]
-    m = compute_metrics(entries, _partition_lattices(entries), 0.5, label="t", snap=True)
+    m = compute_metrics(entries, _partition_lattices(entries), 0.5, label="t")
     assert m.true_positive == 1
     assert m.false_wasl == 0
 
@@ -70,7 +71,7 @@ def test_waqf_gap_fires_as_a_stop_through_waqf_events():
 def test_mid_word_closure_is_rejected_by_the_word_edge_snap_regardless_of_duration():
     # A long interior silence must NOT fire — waqf_events' snap rejects it as mid-word.
     entries = [_entry("c", 0, MID_WORD_CLOSURE, MID_WORD_CLOSURE, 2.0, start_s=1.0)]
-    m = compute_metrics(entries, _partition_lattices(entries), 0.5, label="t", snap=True)
+    m = compute_metrics(entries, _partition_lattices(entries), 0.5, label="t")
     assert m.false_waqf_at_closure == 0
     assert m.mid_word_closure_rejection_rate == pytest.approx(1.0)
 
@@ -81,8 +82,8 @@ def test_silence_posterior_threshold_moves_the_duration_gate_at_the_frame_edge()
     # excluding it (threshold > 0.5) drops one frame below the gate and suppresses the stop.
     entries = [_entry("c", 0, WAQF, WAQF, 0.30, start_s=1.0)]
     lattices = _partition_lattices(entries)
-    lenient = compute_metrics(entries, lattices, 0.5, label="t", snap=True)
-    strict = compute_metrics(entries, lattices, 0.6, label="t", snap=True)
+    lenient = compute_metrics(entries, lattices, 0.5, label="t")
+    strict = compute_metrics(entries, lattices, 0.6, label="t")
     assert lenient.true_positive == 1
     assert strict.true_positive == 0  # the posterior threshold suppressed the borderline stop
 
@@ -107,7 +108,7 @@ def _mixed_clip():
 
 def test_event_metrics_confusion_and_rates():
     entries = _mixed_clip()
-    m = compute_metrics(entries, _partition_lattices(entries), 0.5, label="t", snap=True)
+    m = compute_metrics(entries, _partition_lattices(entries), 0.5, label="t")
     assert (m.waqf_total, m.wasl_total, m.closure_total) == (3, 2, 2)
     assert m.true_positive == 1
     assert m.false_wasl == 2  # the short stop + the mid-word-mis-snapped stop
@@ -124,32 +125,33 @@ def test_event_metrics_confusion_and_rates():
 def test_snap_accuracy_is_threshold_independent():
     entries = _mixed_clip()
     lattices = _partition_lattices(entries)
-    lo = compute_metrics(entries, lattices, 0.2, label="t", snap=True)
-    hi = compute_metrics(entries, lattices, 0.9, label="t", snap=True)
+    lo = compute_metrics(entries, lattices, 0.2, label="t")
+    hi = compute_metrics(entries, lattices, 0.9, label="t")
     assert lo.boundary_snap_accuracy == hi.boundary_snap_accuracy
 
 
 def test_rates_are_none_for_absent_classes():
     entries = [_entry("c", 0, WAQF, WAQF, 0.6, start_s=1.0)]
-    m = compute_metrics(entries, _partition_lattices(entries), 0.5, label="t", snap=True)
+    m = compute_metrics(entries, _partition_lattices(entries), 0.5, label="t")
     assert m.false_waqf_rate is None  # no wasl boundaries
     assert m.mid_word_closure_rejection_rate is None
 
 
 # ---------------------------------------------------------------------------
-# Blank-run reference: silence ⇒ stop, no word-edge snap (non-gated).
+# Blank-run reference: recorded as explicitly unavailable (non-gated slot).
 # ---------------------------------------------------------------------------
 
 
-def test_blank_run_reference_fires_on_a_mid_word_closure_the_snap_rejects():
-    # The gated path rejects a long interior closure; the blank-run baseline (no snap) fires
-    # on it — exactly the known-inadequate behaviour ADR-0004 records but never gates.
-    entries = [_entry("c", 0, MID_WORD_CLOSURE, MID_WORD_CLOSURE, 0.6, start_s=1.0)]
-    lattices = _partition_lattices(entries)
-    gated = compute_metrics(entries, lattices, 0.5, label="t", snap=True)
-    reference = compute_metrics(entries, lattices, 0.5, label="t", snap=False)
-    assert gated.false_waqf_at_closure == 0
-    assert reference.false_waqf_at_closure == 1
+def test_blank_run_reference_is_recorded_unavailable_not_substituted():
+    # The frozen fixtures carry no CTC decode, so the blank-run slot is recorded as
+    # unavailable rather than back-filled with a different silence baseline (cycle-2 review).
+    ref = blank_run_reference()
+    assert ref.available is False
+    assert ref.metrics is None
+    assert "No CTC blank-run reference is available" in ref.reason
+    doc = ref.to_json_dict()
+    assert doc == {"available": False, "reason": ref.reason}
+    assert "metrics" not in doc  # nothing substituted under the blank-run name
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +177,7 @@ def test_calibrate_picks_a_threshold_suppressing_borderline_false_waqf():
     )
     lattices = _partition_lattices(entries)
     threshold, sweep = calibrate(entries, lattices)
-    chosen = compute_metrics(entries, lattices, threshold, label="t", snap=True)
+    chosen = compute_metrics(entries, lattices, threshold, label="t")
     assert chosen.false_waqf_rate == 0.0  # borderline false-waqf boundaries suppressed
     assert chosen.recall == 1.0  # every genuine stop retained
     assert threshold > DEFAULT_SILENCE_THRESHOLD
@@ -197,9 +199,13 @@ def test_run_eval_scores_test_once_at_the_calibration_threshold():
     report = run_eval(calib, test)
     assert report.test.silence_threshold == report.calibrated_silence_threshold
     assert report.calibration.silence_threshold == report.calibrated_silence_threshold
-    # The blank-run reference is recorded (not gated).
-    assert report.test_reference.label == "test_blank_run_reference"
+    # The blank-run reference is recorded as unavailable (never gated, not substituted).
+    assert report.blank_run_reference.available is False
     doc = report.to_json_dict()
+    assert doc["blank_run_reference"] == {
+        "available": False,
+        "reason": report.blank_run_reference.reason,
+    }
     assert "sanity check" in doc["teacher_circularity_note"]
     assert "blank-run" in doc["reference_note"].lower()
 

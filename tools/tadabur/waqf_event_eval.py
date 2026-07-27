@@ -4,7 +4,7 @@ A silence VAD detects *silence*, not whether a waqf-vs-wasl was correctly realiz
 ADR-0004 (``docs/adr/0004-waqf-head-and-joint-whole-clip-fine-tune.md``) makes the
 scorer-facing gate **event-level**, measured *after* F1's post-processing
 (:mod:`tadabur.waqf_postprocess`) on the frozen F0 fixtures
-(:mod:`tadabur.waqf_event_fixtures`, split by :mod:`tadabur.waqf_freeze`):
+(:mod:`tadabur.waqf_event_fixtures`, split reciter-disjoint by :mod:`tadabur.waqf_freeze`):
 
 * **false-waqf @ wasl** — a spurious stop fired at a true continuation. The dangerous
   error ADR-0004 calls out: a false waqf lets the scorer forgive a dropped final haraka
@@ -15,42 +15,49 @@ scorer-facing gate **event-level**, measured *after* F1's post-processing
   madd): a silence the snap must **not** treat as a waqf. Measured as the fraction rejected.
 * **boundary-snap accuracy** — of the genuine stops, how many the snap placed at a word
   edge rather than mis-snapping a real stop into a mid-word closure. Threshold-independent
-  (it is the geometry step, not the duration gate).
+  (it is the geometry step, not the posterior/duration gate).
 
-**F1 post-processing on the frozen candidate fixtures.** F1's frame-level reference turns a
-model's per-frame ``P(silence)`` lattice into snapped waqf events with two operative rules:
-a **duration gate** (a silence run is a pause only at ≥ ``min_silence_ms``,
-:func:`tadabur.waqf_postprocess.detect_pauses`) and a **word-edge snap** that rejects a
-silence falling inside a word (:func:`tadabur.waqf_postprocess.snap_pauses`). The trained
-waqf head does not exist yet, so there is no per-frame lattice to feed F1; what the frozen
-fixtures carry is the torch-free candidate detector's output — each boundary's phoneme
--aligned snap class (``predicted``: ``mid_word_closure`` = interior, else a word edge) and
-its **measured** silence span (``start_s``/``end_s``). F1's two rules therefore specialise,
-on the fixtures, to one decision per candidate boundary
-(:func:`predict_waqf`): a boundary fires a waqf iff it snapped to a word edge **and** its
-silence run clears the duration threshold — one silence run per candidate, quantised on the
-same 40 ms lattice F1 reasons over. When the trained model lands, the identical event
-metrics consume :func:`tadabur.waqf_postprocess.waqf_events` over the model's real lattice;
-only the source of the per-boundary decision changes, not the scoring.
+**The eval input is per-clip frame scores, run through F1 unchanged.** ADR-0004's inference
+knob is the **silence posterior threshold** — ``P(silence) >= threshold``, the argmax
+boundary of the VAD's two-class softmax (:data:`tadabur.waqf_postprocess.DEFAULT_SILENCE_THRESHOLD`,
+the ``threshold`` of :func:`tadabur.waqf_postprocess.detect_pauses` / ``waqf_events``). The
+eval "only tunes the inference threshold" (ADR-0004). So this harness does not re-decide a
+waqf itself: it **reconstructs each clip's silence-posterior lattice + word alignment** from
+the frozen candidate fixtures (:func:`reconstruct_clip`) and feeds them straight through
+:func:`tadabur.waqf_postprocess.waqf_events`, the identical F1 post-processing (300/700 ms
+duration cleaning + word-edge snap). The calibrated number is therefore the real inference
+threshold, and the event metrics are the real post-processing output. When the trained waqf
+head lands, its per-frame ``P(silence)`` lattice replaces the reconstruction and the same
+:func:`run_eval` calibrates the same threshold — no scoring code changes.
 
-**Calibration is leak-free by construction.** The inference threshold (the pause-duration
-cut — the knob available on the frozen candidate silences) is tuned **only** on the
-``calibration`` partition; the ``test`` partition is scored **once** at the chosen threshold
-and is the reported gate. ``waqf_freeze`` already made the two reciter-disjoint, and
-:func:`run_eval` additionally asserts they share no clip.
+*How the lattice is reconstructed (torch-free, from the frozen candidates):* a clip's
+silence-posterior track carries every candidate silence (``waqf`` **and**
+``mid_word_closure`` spans), graded by each 40 ms frame's fractional silence coverage — so
+the posterior threshold genuinely moves the silence-run edges, exactly as it would on a real
+lattice. The **word** spans come from the phoneme alignment, not the silence, so they are
+reconstructed from the ``waqf`` gaps alone (a ``mid_word_closure`` is *interior* speech the
+word continues through); this is what lets :func:`snap_pauses` reject a long closure as a
+mid-word silence while firing a genuine gap as a stop. The duration gate stays at F1's fixed
+300/700 ms VAD definition (:data:`DEFAULT_MIN_SILENCE_MS`); the *tuned* knob is the posterior
+threshold, per the ADR.
 
-**References are recorded, never gated.** ADR-0004 keeps the blank-run + post-processing
-number as a *documented reference point*, not a ship gate (CTC blank-runs are a known-
-inadequate waqf signal — they over-split and fail on madd). The report carries a
-``reference`` block for exactly that role; with no model decode yet it holds the candidate
-detector's own operating point (``predicted`` as-is), and the ADR's blank-run number plugs
-into the same non-gated slot once a decode exists.
+**Calibration is leak-free by construction.** The silence posterior threshold is tuned
+**only** on the ``calibration`` partition; the ``test`` partition is scored **once** at the
+chosen threshold and is the reported gate. ``waqf_freeze`` already made the two
+reciter-disjoint, and :func:`run_eval` additionally asserts they share no clip.
+
+**The blank-run baseline is a recorded reference, never a gate.** ADR-0004 keeps the
+blank-run + post-processing number as a *documented reference point* only (CTC blank-runs
+over-split and fail on madd — a known-inadequate waqf signal). The reference block scores the
+**same** reconstructed lattice through F1's duration cleaning but **without** the phoneme
+word-edge snap (a blank run has no word alignment to reject a closure with) — silence ⇒ stop
+— so the number shows what the snap buys and holds the exact non-gated slot ADR-0004's
+blank-run number occupies once a model decode exists. It is scored, recorded, and never gated.
 
 **Beware teacher circularity.** Frame-F1 against the VAD teacher is a distillation *sanity
 check only* (the VAD both labels the head and is the frame-F1 target, so a systematic VAD
 error can pass frame-F1 while failing the recitation task). These event-level metrics — not
-frame-F1 — are the product gate. Recorded verbatim on every report
-(:data:`TEACHER_CIRCULARITY_NOTE`).
+frame-F1 — are the product gate (:data:`TEACHER_CIRCULARITY_NOTE`).
 
 Everything here is pure, torch-free, deterministic: identical fixtures + threshold yield an
 identical report.
@@ -66,9 +73,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+
+import numpy as np
 
 from .waqf_event_fixtures import (
     MID_WORD_CLOSURE,
@@ -78,7 +87,16 @@ from .waqf_event_fixtures import (
     _FIXTURE_DIR,
     load_waqf_events,
 )
-from .waqf_postprocess import DEFAULT_MIN_SILENCE_MS, STUDENT_FRAME_MS, seconds_to_frame
+from .waqf_postprocess import (
+    DEFAULT_MIN_SILENCE_MS,
+    DEFAULT_MIN_SPEECH_MS,
+    DEFAULT_SILENCE_THRESHOLD,
+    STUDENT_FRAME_MS,
+    SilenceRun,
+    WordSpan,
+    detect_pauses,
+    waqf_events,
+)
 
 # Frame-F1 vs the VAD teacher is a distillation sanity check, not the product gate — recorded
 # verbatim on every report so a reader cannot mistake the two (ADR-0004 "Consequences").
@@ -87,70 +105,175 @@ TEACHER_CIRCULARITY_NOTE = (
     "the product gate: the VAD both labels the waqf head and is the frame-F1 target, so a "
     "systematic VAD error in amateur audio can pass frame-F1 while failing the recitation "
     "task. The gate is the event-level metrics below (false-waqf@wasl, false-wasl@genuine-"
-    "stop, mid-word-closure rejection, boundary-snap accuracy), computed after F1 post-"
-    "processing on the human-adjudicated F0 fixtures."
+    "stop, mid-word-closure rejection, boundary-snap accuracy), computed by running F1 "
+    "post-processing (tadabur.waqf_postprocess.waqf_events) on the reconstructed silence "
+    "lattice of the human-adjudicated F0 fixtures."
 )
 
-# The candidate-detector operating point recorded (not gated) as the reference baseline, and
-# the non-gated slot ADR-0004's blank-run + post-processing number occupies once a model
-# decode exists (CTC blank-runs are a known-inadequate waqf signal — kept as a reference,
-# never a ship gate).
+# The blank-run baseline recorded (never gated) as ADR-0004's documented reference point: the
+# same reconstructed lattice through F1's duration cleaning but WITHOUT the phoneme word-edge
+# snap (a CTC blank run has no word alignment to reject a mid-word closure), so silence ⇒ stop.
+# CTC blank-runs over-split and fail on madd; kept as a reference, never a ship gate.
 REFERENCE_NOTE = (
-    "Non-gated reference operating point: the torch-free candidate detector's own class "
-    "(predicted == 'waqf'), scored against the same human verdicts. ADR-0004's blank-run + "
-    "post-processing number occupies this same non-gated slot once a model decode exists."
+    "Non-gated reference operating point (ADR-0004): the blank-run baseline — the same "
+    "reconstructed silence lattice fed through F1's 300/700 ms duration cleaning but WITHOUT "
+    "the phoneme word-edge snap, so every silence run fires as a stop (blank runs have no "
+    "word alignment to reject a mid-word closure). Scored at the calibrated threshold and "
+    "recorded, never gated: CTC blank-runs over-split and fail on madd. ADR-0004's model "
+    "blank-run number occupies this same non-gated slot once a decode exists."
 )
 
 # The calibration objective, recorded on the report so the chosen threshold is auditable.
 CALIBRATION_OBJECTIVE = (
-    "Tune the pause-duration threshold on the calibration partition to maximise waqf F1, "
-    "tie-broken by the lower false-waqf@wasl rate (the more damaging error) then the higher "
-    "threshold (fewer spurious fires). The test partition is scored once at the chosen "
-    "threshold and is the reported gate."
+    "Tune the silence posterior threshold (P(silence) >= threshold in waqf_postprocess) on "
+    "the calibration partition to maximise waqf F1, tie-broken by the lower false-waqf@wasl "
+    "rate (the more damaging error) then the threshold nearest the VAD's 0.5 argmax. The "
+    "test partition is scored once at the chosen threshold through the same F1 post-"
+    "processing and is the reported gate. The 300/700 ms duration gate stays at F1's fixed "
+    "VAD definition; only the posterior threshold is tuned (ADR-0004)."
 )
 
-
-def silence_ms(entry: WaqfEventEntry) -> int:
-    """A candidate boundary's silence-run length in ms, quantised on the 40 ms lattice.
-
-    Measured from the fixture's ``[start_s, end_s]`` span on the same 40 ms post-adapter
-    lattice F1 reasons over (:func:`tadabur.waqf_postprocess.seconds_to_frame`), so the
-    duration gate here matches F1's frame-level ``detect_pauses`` exactly. A ``wasl``
-    candidate is a zero-width word edge, so its silence is 0 ms and it never fires.
-    """
-    frames = seconds_to_frame(entry.end_s) - seconds_to_frame(entry.start_s)
-    return frames * STUDENT_FRAME_MS
-
-
-def snapped_to_word_edge(entry: WaqfEventEntry) -> bool:
-    """F1's snap decision on the fixture: the candidate sat at a word edge, not inside a word.
-
-    ``mid_word_closure`` is precisely the class :func:`tadabur.waqf_postprocess.snap_pauses`
-    rejects (a silence overlapping a word's interior span); ``waqf`` / ``wasl`` are word
-    edges. The phoneme-aligned candidate detector already made this snap, carried as
-    ``predicted``.
-    """
-    return entry.predicted != MID_WORD_CLOSURE
-
-
-def predict_waqf(entry: WaqfEventEntry, min_silence_ms: int) -> bool:
-    """F1 post-processing on one frozen candidate boundary: does it fire a waqf?
-
-    The two operative F1 rules, specialised to the fixtures (one silence run per candidate):
-    the silence must snap to a **word edge** (:func:`snapped_to_word_edge`) and its run must
-    clear the **duration gate** (:func:`silence_ms` ≥ ``min_silence_ms``, the tuned knob).
-    """
-    return snapped_to_word_edge(entry) and silence_ms(entry) >= min_silence_ms
-
-
-def _reference_predict(entry: WaqfEventEntry) -> bool:
-    """The non-gated reference operating point: the detector's own ``predicted == waqf``."""
-    return entry.predicted == WAQF
+# Leading/trailing speech padding (in 40 ms frames) around a reconstructed clip's silences, so
+# every candidate silence is scored as an *interior* pause flanked by >= min-speech frames
+# rather than being trimmed as a clip edge. One min-speech span (700 ms) each side isolates
+# F1's duration/snap decision from a synthetic clip boundary; inter-candidate speech is left
+# untouched so F1's real short-speech merging still applies where two stops sit close together.
+_PAD_FRAMES = math.ceil(DEFAULT_MIN_SPEECH_MS / STUDENT_FRAME_MS)
 
 
 def _rate(numerator: int, denominator: int) -> float | None:
     """A rate, or ``None`` when the subset is empty (so an absent class never reads as 0.0)."""
     return numerator / denominator if denominator else None
+
+
+def snapped_to_word_edge(entry: WaqfEventEntry) -> bool:
+    """F1's snap geometry on the fixture: the candidate sat at a word edge, not inside a word.
+
+    ``mid_word_closure`` is precisely the interior class :func:`tadabur.waqf_postprocess.snap_pauses`
+    rejects; ``waqf`` / ``wasl`` are word edges. The phoneme-aligned candidate detector already
+    made this snap (carried as ``predicted``), and the reconstruction reproduces it: only a
+    ``waqf`` span opens a gap between reconstructed words, so a genuine stop the detector
+    mis-snapped as ``mid_word_closure`` never reaches a word edge. Boundary-snap accuracy is a
+    property of this geometry alone, so it is threshold-independent.
+    """
+    return entry.predicted != MID_WORD_CLOSURE
+
+
+@dataclass(frozen=True)
+class ClipLattice:
+    """One clip's reconstructed F1 inputs: a silence-posterior track + word alignment.
+
+    ``silence`` is the per-40 ms-frame ``P(silence)`` reconstructed from the clip's candidate
+    silences (graded by fractional frame coverage, so the posterior threshold moves the run
+    edges); ``words`` are the phoneme-alignment word spans (from the ``waqf`` gaps only, a
+    ``mid_word_closure`` being interior speech); ``candidate_spans`` maps each silence-bearing
+    candidate's ``boundary_index`` to its nominal frame span, so an F1 output pause can be
+    attributed back to the boundary it fired (or failed to fire) at.
+    """
+
+    clip_id: str
+    silence: np.ndarray
+    words: list[WordSpan]
+    candidate_spans: dict[int, SilenceRun]
+
+
+def _fractional_frames(entry: WaqfEventEntry) -> tuple[float, float]:
+    """A candidate silence's ``[start, end)`` extent in fractional 40 ms frames, padded."""
+    scale = 1000.0 / STUDENT_FRAME_MS
+    return _PAD_FRAMES + entry.start_s * scale, _PAD_FRAMES + entry.end_s * scale
+
+
+def _add_coverage(track: np.ndarray, frame_start: float, frame_end: float) -> None:
+    """Paint each frame's fractional silence coverage of ``[frame_start, frame_end)`` in place.
+
+    A frame fully inside the span reads 1.0; an edge frame reads the fraction of its 40 ms it
+    covers. Overlapping spans take the max (coverage is a probability, not additive), so the
+    track stays in ``[0, 1]``. This is the honest 40 ms quantisation of a known silence
+    interval — the finest per-frame ``P(silence)`` the frozen candidate carries — so the
+    posterior threshold ``P(silence) >= t`` genuinely lengthens/shortens the run at its edges.
+    """
+    for frame in range(int(math.floor(frame_start)), int(math.ceil(frame_end))):
+        coverage = min(frame + 1, frame_end) - max(frame, frame_start)
+        if coverage > 0:
+            track[frame] = max(track[frame], coverage)
+
+
+def _word_spans(waqf_gaps: list[SilenceRun], n_frames: int) -> list[WordSpan]:
+    """The word speech spans between the ``waqf`` gaps — the phoneme-alignment analogue.
+
+    Words come from the phoneme head, not the silence VAD, so they break only at genuine
+    stops (``waqf`` gaps); a ``mid_word_closure`` silence stays *inside* a word span, which is
+    exactly what lets :func:`snap_pauses` reject its pause as a mid-word closure. Numbered in
+    clip order; the index is only carried through to any fired :class:`WaqfEvent`.
+    """
+    is_gap = np.zeros(n_frames, dtype=bool)
+    for gap in waqf_gaps:
+        is_gap[gap.start_frame : gap.end_frame] = True
+    spans: list[WordSpan] = []
+    start: int | None = None
+    for frame in range(n_frames + 1):
+        speech = frame < n_frames and not is_gap[frame]
+        if speech and start is None:
+            start = frame
+        elif not speech and start is not None:
+            spans.append(WordSpan(len(spans), start, frame))
+            start = None
+    return spans
+
+
+def reconstruct_clip(entries: list[WaqfEventEntry]) -> ClipLattice:
+    """Reconstruct one clip's F1 inputs (silence lattice + word spans) from its candidates.
+
+    ``entries`` are all of one clip's adjudicated candidate boundaries. Every ``waqf`` and
+    ``mid_word_closure`` candidate contributes a graded silence run to the posterior track;
+    only the ``waqf`` gaps break the word spans (a ``mid_word_closure`` is interior speech,
+    a ``wasl`` a zero-width contiguous edge). The track is padded with leading/trailing
+    speech (:data:`_PAD_FRAMES`) so each silence is scored as an interior pause.
+    """
+    clip_id = entries[0].clip_id
+    silences = [e for e in entries if e.end_s > e.start_s]
+    if not silences:
+        return ClipLattice(clip_id, np.zeros(_PAD_FRAMES, dtype=np.float32), [], {})
+
+    n_frames = math.ceil(max(_fractional_frames(e)[1] for e in silences)) + _PAD_FRAMES
+    track = np.zeros(n_frames, dtype=np.float32)
+    waqf_gaps: list[SilenceRun] = []
+    candidate_spans: dict[int, SilenceRun] = {}
+    for entry in silences:
+        frame_start, frame_end = _fractional_frames(entry)
+        _add_coverage(track, frame_start, frame_end)
+        span = SilenceRun(round(frame_start), round(frame_end))
+        candidate_spans[entry.boundary_index] = span
+        if entry.predicted == WAQF:
+            waqf_gaps.append(span)
+    return ClipLattice(clip_id, track, _word_spans(waqf_gaps, n_frames), candidate_spans)
+
+
+def _overlaps(pause: SilenceRun, span: SilenceRun) -> bool:
+    """True if two half-open frame runs share any frame."""
+    return pause.start_frame < span.end_frame and span.start_frame < pause.end_frame
+
+
+def _fired_boundaries(lattice: ClipLattice, threshold: float, *, snap: bool) -> set[int]:
+    """The clip's candidate boundaries that fire a stop under F1 at ``threshold``.
+
+    With ``snap`` (the gated path) each candidate fires iff a :func:`waqf_events` waqf pause
+    overlaps its span — the full F1 post-processing (duration gate + word-edge snap). Without
+    ``snap`` (the blank-run reference) it fires iff any :func:`detect_pauses` silence run
+    overlaps its span — duration cleaning only, no phoneme snap, so a mid-word closure fires.
+    """
+    if snap:
+        pauses = [
+            event.pause
+            for event in waqf_events(lattice.silence, lattice.words, threshold=threshold).waqf
+        ]
+    else:
+        pauses = detect_pauses(lattice.silence, threshold=threshold)
+    return {
+        boundary_index
+        for boundary_index, span in lattice.candidate_spans.items()
+        if any(_overlaps(pause, span) for pause in pauses)
+    }
 
 
 @dataclass(frozen=True)
@@ -160,12 +283,12 @@ class EventMetrics:
     Counts are split by the human ``verdict`` class so ADR-0004's four named metrics fall
     straight out (a false waqf is separated into its ``@wasl`` and ``@closure`` sub-counts
     because the two negatives — a true continuation vs a hard-negative closure — are the
-    distinct errors the ADR names). ``label`` identifies the rule; ``min_silence_ms`` is the
-    duration threshold, or ``None`` for the threshold-free reference operating point.
+    distinct errors the ADR names). ``label`` identifies the rule; ``silence_threshold`` is
+    the ``P(silence)`` posterior threshold the F1 pass ran at.
     """
 
     label: str
-    min_silence_ms: int | None
+    silence_threshold: float
     boundaries: int
     waqf_total: int
     wasl_total: int
@@ -179,10 +302,6 @@ class EventMetrics:
     @property
     def predicted_waqf(self) -> int:
         return self.true_positive + self.false_waqf_at_wasl + self.false_waqf_at_closure
-
-    @property
-    def false_positive(self) -> int:
-        return self.false_waqf_at_wasl + self.false_waqf_at_closure
 
     @property
     def precision(self) -> float | None:
@@ -222,7 +341,7 @@ class EventMetrics:
     def to_json_dict(self) -> dict:
         return {
             "label": self.label,
-            "min_silence_ms": self.min_silence_ms,
+            "silence_threshold": self.silence_threshold,
             "counts": {
                 "boundaries": self.boundaries,
                 "waqf_total": self.waqf_total,
@@ -247,45 +366,54 @@ class EventMetrics:
         }
 
 
+def _partition_lattices(entries: list[WaqfEventEntry]) -> dict[str, ClipLattice]:
+    """Group a partition's boundaries by clip and reconstruct each clip's F1 inputs once."""
+    by_clip: dict[str, list[WaqfEventEntry]] = {}
+    for entry in entries:
+        by_clip.setdefault(entry.clip_id, []).append(entry)
+    return {clip: reconstruct_clip(rows) for clip, rows in by_clip.items()}
+
+
 def compute_metrics(
     entries: list[WaqfEventEntry],
-    predict: Callable[[WaqfEventEntry], bool],
+    lattices: dict[str, ClipLattice],
+    threshold: float,
     *,
     label: str,
-    min_silence_ms: int | None,
+    snap: bool,
 ) -> EventMetrics:
-    """Confuse each boundary's ``predict`` outcome against its human verdict, once.
+    """Confuse F1's fired stops (run through :func:`waqf_events`) against the human verdicts.
 
-    ``predict`` is the prediction rule (a threshold-bound :func:`predict_waqf` or the
-    reference :func:`_reference_predict`); the snap-accuracy count is a property of the snap
-    alone (``verdict == waqf`` boundaries the detector placed at a word edge) and so is
-    independent of ``predict``.
+    Each clip's lattice is run through F1 once at ``threshold`` (``snap`` selects the gated
+    word-edge-snapped path or the blank-run reference); a boundary is a fired stop iff F1's
+    output overlaps it. The snap-accuracy count is a property of the reconstruction geometry
+    (``verdict == waqf`` boundaries that reached a word edge) and so is threshold-independent.
     """
+    fired: set[tuple[str, int]] = {
+        (clip, boundary_index)
+        for clip, lattice in lattices.items()
+        for boundary_index in _fired_boundaries(lattice, threshold, snap=snap)
+    }
     waqf_total = wasl_total = closure_total = 0
     true_positive = false_wasl = 0
     false_waqf_at_wasl = false_waqf_at_closure = 0
     snap_correct = 0
     for entry in entries:
-        fired = predict(entry)
+        is_fired = (entry.clip_id, entry.boundary_index) in fired
         if entry.verdict == WAQF:
             waqf_total += 1
-            if fired:
-                true_positive += 1
-            else:
-                false_wasl += 1
-            if snapped_to_word_edge(entry):
-                snap_correct += 1
+            true_positive += is_fired
+            false_wasl += not is_fired
+            snap_correct += snapped_to_word_edge(entry)
         elif entry.verdict == WASL:
             wasl_total += 1
-            if fired:
-                false_waqf_at_wasl += 1
+            false_waqf_at_wasl += is_fired
         elif entry.verdict == MID_WORD_CLOSURE:
             closure_total += 1
-            if fired:
-                false_waqf_at_closure += 1
+            false_waqf_at_closure += is_fired
     return EventMetrics(
         label=label,
-        min_silence_ms=min_silence_ms,
+        silence_threshold=threshold,
         boundaries=len(entries),
         waqf_total=waqf_total,
         wasl_total=wasl_total,
@@ -298,53 +426,57 @@ def compute_metrics(
     )
 
 
-def calibration_grid(entries: list[WaqfEventEntry]) -> list[int]:
-    """The pause-duration thresholds to sweep: every edge candidate's measured duration.
+def calibration_grid(lattices: dict[str, ClipLattice]) -> list[float]:
+    """The silence posterior thresholds to sweep: every distinct frame-coverage flip point.
 
-    A threshold is only distinguishable at a value where some candidate's silence run
-    crosses it, so the grid is the distinct 40 ms-quantised durations of the word-edge
-    candidates (the only ones that can fire), anchored on the VAD's own 300 ms waqf
-    definition (:data:`tadabur.waqf_postprocess.DEFAULT_MIN_SILENCE_MS`). Data-derived from
-    the given (calibration) entries only, so no test statistic can leak into the threshold.
+    A threshold changes the binarisation only where some frame's fractional silence coverage
+    crosses it, so the grid is the distinct partial-coverage values on the calibration
+    lattices' edge frames, anchored on the VAD's own 0.5 argmax
+    (:data:`tadabur.waqf_postprocess.DEFAULT_SILENCE_THRESHOLD`). Derived from the calibration
+    lattices only, so no test statistic can leak into the threshold.
     """
-    durations = {
-        silence_ms(e) for e in entries if snapped_to_word_edge(e) and silence_ms(e) > 0
+    thresholds = {
+        round(float(value), 6)
+        for lattice in lattices.values()
+        for value in lattice.silence
+        if 0.0 < value <= 1.0
     }
-    durations.add(DEFAULT_MIN_SILENCE_MS)
-    return sorted(durations)
+    thresholds.add(DEFAULT_SILENCE_THRESHOLD)
+    return sorted(thresholds)
 
 
-def calibrate(entries: list[WaqfEventEntry]) -> tuple[int, list[EventMetrics]]:
-    """Pick the pause-duration threshold on the calibration partition (:data:`CALIBRATION_OBJECTIVE`).
+def calibrate(
+    entries: list[WaqfEventEntry], lattices: dict[str, ClipLattice]
+) -> tuple[float, list[EventMetrics]]:
+    """Pick the silence posterior threshold on calibration (:data:`CALIBRATION_OBJECTIVE`).
 
-    Returns the chosen ``min_silence_ms`` and the full per-threshold sweep (for audit). The
-    objective maximises waqf F1, tie-broken by the lower false-waqf@wasl rate then the higher
-    threshold — deterministic, so a rerun reproduces the same operating point.
+    Returns the chosen threshold and the full per-threshold sweep (for audit). The objective
+    maximises waqf F1, tie-broken by the lower false-waqf@wasl rate then the threshold nearest
+    the VAD's 0.5 argmax — deterministic, so a rerun reproduces the same operating point.
     """
     sweep = [
         compute_metrics(
-            entries, lambda e, t=t: predict_waqf(e, t),
-            label=f"calibration@{t}ms", min_silence_ms=t,
+            entries, lattices, threshold, label=f"calibration@{threshold:.6g}", snap=True
         )
-        for t in calibration_grid(entries)
+        for threshold in calibration_grid(lattices)
     ]
 
-    def objective(metrics: EventMetrics) -> tuple[float, float, int]:
+    def objective(metrics: EventMetrics) -> tuple[float, float, float]:
         return (
             metrics.f1 or 0.0,
             -(metrics.false_waqf_rate or 0.0),
-            metrics.min_silence_ms or 0,
+            -abs(metrics.silence_threshold - DEFAULT_SILENCE_THRESHOLD),
         )
 
     best = max(sweep, key=objective)
-    return best.min_silence_ms, sweep
+    return best.silence_threshold, sweep
 
 
 @dataclass(frozen=True)
 class EventEvalReport:
     """The full F2 event-level eval: the calibrated threshold and the once-scored test gate."""
 
-    calibrated_min_silence_ms: int
+    calibrated_silence_threshold: float
     calibration: EventMetrics
     test: EventMetrics
     calibration_reference: EventMetrics
@@ -353,7 +485,8 @@ class EventEvalReport:
 
     def to_json_dict(self) -> dict:
         return {
-            "calibrated_min_silence_ms": self.calibrated_min_silence_ms,
+            "calibrated_silence_threshold": self.calibrated_silence_threshold,
+            "duration_gate_ms": DEFAULT_MIN_SILENCE_MS,
             "calibration_objective": CALIBRATION_OBJECTIVE,
             "teacher_circularity_note": TEACHER_CIRCULARITY_NOTE,
             "reference_note": REFERENCE_NOTE,
@@ -371,10 +504,13 @@ def run_eval(
     calibration_entries: list[WaqfEventEntry],
     test_entries: list[WaqfEventEntry],
 ) -> EventEvalReport:
-    """Calibrate the threshold on ``calibration_entries``, score ``test_entries`` once.
+    """Calibrate the posterior threshold on ``calibration_entries``, score ``test_entries`` once.
 
-    Asserts the two partitions share no clip (a belt-and-braces leak check on top of
-    ``waqf_freeze``'s reciter-disjoint split) before the threshold is ever applied to test.
+    Reconstructs each partition's per-clip silence lattices, sweeps the threshold on
+    calibration through F1's :func:`waqf_events`, then scores test once at the chosen
+    threshold. Asserts the two partitions share no clip (a belt-and-braces leak check on top
+    of ``waqf_freeze``'s reciter-disjoint split) before the threshold is ever applied to test.
+    The blank-run reference is scored on both partitions at the same threshold and recorded.
     """
     shared = {e.clip_id for e in calibration_entries} & {e.clip_id for e in test_entries}
     if shared:
@@ -383,34 +519,33 @@ def run_eval(
             f"{sorted(shared)[:5]}"
         )
 
-    threshold, sweep = calibrate(calibration_entries)
-    calibration = compute_metrics(
-        calibration_entries, lambda e: predict_waqf(e, threshold),
-        label="calibration", min_silence_ms=threshold,
-    )
-    test = compute_metrics(
-        test_entries, lambda e: predict_waqf(e, threshold),
-        label="test", min_silence_ms=threshold,
-    )
-    calibration_reference = compute_metrics(
-        calibration_entries, _reference_predict,
-        label="calibration_reference", min_silence_ms=None,
-    )
-    test_reference = compute_metrics(
-        test_entries, _reference_predict, label="test_reference", min_silence_ms=None,
-    )
+    calibration_lattices = _partition_lattices(calibration_entries)
+    test_lattices = _partition_lattices(test_entries)
+    threshold, sweep = calibrate(calibration_entries, calibration_lattices)
+
     return EventEvalReport(
-        calibrated_min_silence_ms=threshold,
-        calibration=calibration,
-        test=test,
-        calibration_reference=calibration_reference,
-        test_reference=test_reference,
+        calibrated_silence_threshold=threshold,
+        calibration=compute_metrics(
+            calibration_entries, calibration_lattices, threshold,
+            label="calibration", snap=True,
+        ),
+        test=compute_metrics(
+            test_entries, test_lattices, threshold, label="test", snap=True,
+        ),
+        calibration_reference=compute_metrics(
+            calibration_entries, calibration_lattices, threshold,
+            label="calibration_blank_run_reference", snap=False,
+        ),
+        test_reference=compute_metrics(
+            test_entries, test_lattices, threshold,
+            label="test_blank_run_reference", snap=False,
+        ),
         sweep=sweep,
     )
 
 
 def _print_summary(report: EventEvalReport) -> None:
-    print(f"Calibrated pause-duration threshold: {report.calibrated_min_silence_ms} ms")
+    print(f"Calibrated silence posterior threshold: {report.calibrated_silence_threshold}")
     for name, metrics in (("test (gate)", report.test), ("calibration", report.calibration)):
         print(
             f"{name}: waqf F1 {metrics.f1}  "
@@ -419,7 +554,7 @@ def _print_summary(report: EventEvalReport) -> None:
             f"mwc-reject {metrics.mid_word_closure_rejection_rate}  "
             f"snap-acc {metrics.boundary_snap_accuracy}"
         )
-    print(f"reference (not gated): test waqf F1 {report.test_reference.f1}")
+    print(f"blank-run reference (not gated): test waqf F1 {report.test_reference.f1}")
 
 
 def main() -> None:

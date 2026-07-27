@@ -145,6 +145,18 @@ that tolerance out of a blunt hack and into the model, the same philosophy as AD
   early-stop tail word) is **stale** — it names no current baseline boundary, so `waqf_freeze` drops
   it and records it under `stale_overrides` rather than misplacing it onto the ground truth.
 
+- **The frozen eval is scored binary — `mid_word_closure` is a diagnostic tag, not a third class.**
+  The deployed system only decides waqf vs not-waqf, so the F0 gate scores `verdict == "waqf"` as the
+  only positive; both `wasl` and `mid_word_closure` are not-waqf. `mid_word_closure` is the
+  hard-negative *rejection* subset from the bullet above (qalqala ق/ط, hamza شَيء, madd — a VAD
+  silence the snap must **not** fire waqf on), retained only as a best-effort diagnostic tag to report
+  the rejection rate; a reviewer may collapse an interior silence straight to `wasl`, so it
+  under-counts, but it never moves the binary ground truth. This resolves a review ambiguity: because
+  a mid-word closure is "not a definite waqf or wasl", collapsing it into the binary decision is
+  correct, and it was also underpowered (14 true examples across both partitions) — never reportable
+  as its own class. `waqf_freeze` emits a `binary` block (waqf / not-waqf / `closure_tag` per
+  partition) so the scoring convention is explicit in the frozen artifact.
+
 - **The windowing/overlap/stitch contract is mandatory, not conditional.** The deployed pipeline is
   *already* fixed 5 s windows at a 40 ms lattice with a hardcoded full-window mask — so "single-pass
   whole-recitation" is not available. The contract (window length, overlap, edge-frame ownership, how a

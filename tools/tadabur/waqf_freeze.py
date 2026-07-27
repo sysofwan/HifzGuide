@@ -10,6 +10,16 @@ exists, else the detector's ``predicted`` class) — split **reciter-disjoint** 
 calibration partition (F2 tunes the inference threshold on it) and a test partition
 (reported once), so no reciter — hence no clip — straddles the two.
 
+The gate is **binary**: a boundary is scored as ``waqf`` (a real stop) versus *not-waqf*
+(``wasl`` continuation or ``mid_word_closure``). ``mid_word_closure`` — a VAD silence the
+segmenter did **not** treat as a segment boundary, i.e. a within-word articulation closure
+(qalqala on ق/ط, hamza in شَيء, madd elongation) — is not a distinct product outcome but a
+*diagnostic tag* on the not-waqf class, kept only to report the hard-negative rejection
+rate. It is best-effort: the human reviewer collapsed some interior silences straight to
+``wasl``, so the tag under-counts, but every ``mid_word_closure`` is unambiguously not-waqf
+and so never moves the binary ground truth. Only ``verdict == "waqf"`` is a positive; the
+report's ``binary`` block records this split per partition.
+
 Because the D2/D3 fine-tune has not yet fixed a training-reciter set, disjointness from
 training is guaranteed the other way round: this freeze emits ``must_exclude_reciters``
 (every reciter in either eval partition) for the eventual training run to hold out, so
@@ -36,7 +46,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .waqf_event_fixtures import WaqfEventEntry, write_waqf_events
+from .waqf_event_fixtures import WAQF, WaqfEventEntry, write_waqf_events
 from .waqf_partition import partition, reciter_of
 
 
@@ -112,6 +122,24 @@ def materialize(
     return by_clip, stale
 
 
+def _binary_counts(entries: list[WaqfEventEntry]) -> dict:
+    """Binary waqf-vs-not scoring summary for one partition.
+
+    Positives are ``verdict == "waqf"``; everything else is not-waqf. ``mid_word_closure``
+    is reported only as a diagnostic tag on the not-waqf class (the hard-negative subset),
+    never as a distinct outcome.
+    """
+    positives = sum(1 for e in entries if e.verdict == WAQF)
+    negatives = len(entries) - positives
+    closure_tag = sum(1 for e in entries if e.verdict == "mid_word_closure")
+    return {
+        "boundaries": len(entries),
+        "waqf": positives,
+        "not_waqf": negatives,
+        "closure_tag": closure_tag,
+    }
+
+
 def freeze(
     by_clip: dict[str, list[WaqfEventEntry]],
     reviewed: set[str],
@@ -160,6 +188,15 @@ def freeze(
             "calibration_reciters": len(calibration_reciters),
             "test_reciters": len(test_reciters),
         },
+        "binary": {
+            "note": (
+                "Gate is waqf vs not-waqf; verdict=='waqf' is the only positive. "
+                "mid_word_closure is a diagnostic tag on not-waqf (best-effort, "
+                "under-counts), not a separate class."
+            ),
+            "calibration": _binary_counts(calibration),
+            "test": _binary_counts(test),
+        },
     }
     return calibration, test, report
 
@@ -203,6 +240,7 @@ def main() -> None:
     )
 
     counts = report["counts"]
+    binary = report["binary"]
     print(
         f"Froze {counts['reviewed_clips']} reviewed clips "
         f"({counts['calibration_boundaries'] + counts['test_boundaries']} boundaries): "
@@ -210,6 +248,13 @@ def main() -> None:
         f"test {counts['test_clips']} clips / {counts['test_reciters']} reciters; "
         f"{len(stale)} stale override(s) dropped; "
         f"{len(report['must_exclude_reciters'])} reciters to exclude from training."
+    )
+    print(
+        "  binary waqf/not-waqf: "
+        f"calibration {binary['calibration']['waqf']}/{binary['calibration']['not_waqf']} "
+        f"(mwc tag {binary['calibration']['closure_tag']}), "
+        f"test {binary['test']['waqf']}/{binary['test']['not_waqf']} "
+        f"(mwc tag {binary['test']['closure_tag']})."
     )
 
 

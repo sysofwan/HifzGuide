@@ -89,7 +89,8 @@ separate audio-export step is needed: each clip is served by that filename.
 Each line carries: `clip_id`, `audio_ref`, `surah_ayah`, `boundary_index`,
 `word_index`, `start_s`, `end_s`, `predicted`, `verdict`, `note`. Both `predicted`
 (the detector's class) and `verdict` (the human's) are one of `waqf` / `wasl` /
-`mid_word_closure`; their disagreement is the metric.
+`mid_word_closure`. **Scoring is binary** (see below): a boundary is a positive iff
+`verdict == "waqf"`; `wasl` and `mid_word_closure` are both *not-waqf*.
 
 ## Freezing the reviewed audit (`waqf_freeze`)
 
@@ -123,3 +124,17 @@ An override whose `(clip_id, boundary_index)` no longer names a boundary in the 
 candidate baseline (a false negative recorded before the early-stop/re-read fixes trimmed
 that clip's boundaries) is **stale**: it is dropped from the frozen set and listed under
 `waqf_partition.json`'s `stale_overrides`, never silently distorting the ground truth.
+
+## Scoring is binary (waqf vs not-waqf)
+
+The deployed system only ever decides **waqf** (a real stop) vs **not-waqf**, so the eval
+is scored that way: `verdict == "waqf"` is the only positive; both `wasl` and
+`mid_word_closure` are not-waqf. `mid_word_closure` is **not a third product outcome** — it
+is a VAD silence the segmenter did *not* treat as a segment boundary, i.e. a within-word
+articulation closure (qalqala on ق/ط, hamza in شَيء, madd elongation) — and it is kept only
+as a **diagnostic tag** on the not-waqf class to report the hard-negative rejection rate.
+That tag is best-effort: reviewers may collapse an interior silence straight to `wasl`, so
+it under-counts, but every `mid_word_closure` is unambiguously not-waqf and so never moves
+the binary ground truth. `waqf_partition.json`'s `binary` block records the
+waqf / not-waqf / `closure_tag` counts per partition.
+

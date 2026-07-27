@@ -1,4 +1,19 @@
 {
+  "binary": {
+    "calibration": {
+      "boundaries": 1203,
+      "closure_tag": 6,
+      "not_waqf": 1105,
+      "waqf": 98
+    },
+    "note": "Gate is waqf vs not-waqf; verdict=='waqf' is the only positive. mid_word_closure is a diagnostic tag on not-waqf (best-effort, under-counts), not a separate class.",
+    "test": {
+      "boundaries": 847,
+      "closure_tag": 8,
+      "not_waqf": 766,
+      "waqf": 81
+    }
+  },
   "calibration_clips": [
     "tadabur_spk0008_S27_A5_2b2e62da_000001.wav",
     "tadabur_spk0008_S8_A7_f931bc7f_000033.wav",

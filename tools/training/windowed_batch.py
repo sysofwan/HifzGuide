@@ -110,7 +110,9 @@ class ClipAudioCache:
     """Decode each staged clip once, reuse its waveform across all its windows.
 
     A clip has up to ~8 windows (the A2 cap); decoding it once and slicing keeps the data
-    path from re-reading and re-decoding the same file per window. ``audio_dir`` may use
+    path from re-reading and re-decoding the same file per window. Only the **current**
+    clip is retained (callers build examples in clip order), so the cache costs one clip
+    of RAM rather than the whole corpus. ``audio_dir`` may use
     either staged layout: the :func:`tadabur.audit_sampler.local_audio_path` hash-prefixed
     name :mod:`tadabur.eval_harness` reads, or the plain ``audio_filename`` that
     :mod:`tadabur.segment_score` and :mod:`training.waqf_distill` read — so one staged clip
@@ -119,11 +121,16 @@ class ClipAudioCache:
 
     def __init__(self, audio_dir: Path) -> None:
         self._audio_dir = audio_dir
+        # Only the most recently decoded clip is retained. Callers build examples in clip
+        # order, so a clip is decoded exactly once either way — but holding every clip
+        # would cost ~10 GB of host RAM at corpus scale (16 k clips), which is enough to
+        # push a 24 GB box into thrashing before the first training step.
         self._cache: dict[str, np.ndarray] = {}
 
     def waveform(self, clip_audio_filename: str) -> np.ndarray:
         cached = self._cache.get(clip_audio_filename)
         if cached is None:
+            self._cache.clear()
             path = self._audio_dir / local_audio_path(clip_audio_filename)
             if not path.is_file():
                 path = self._audio_dir / clip_audio_filename

@@ -385,3 +385,20 @@ def test_real_extractor_5s_window_lands_on_frozen_40ms_lattice():
     real_feature_frames = int(batch.attention_mask[0].sum())
     assert abs(real_feature_frames - DEPLOYED_WINDOW_FEATURE_FRAMES) <= 1
     assert muaalem_lattice_length(real_feature_frames) == student_frames == 125
+
+
+def test_clip_audio_cache_retains_only_the_current_clip(tmp_path):
+    """The corpus-scale RAM guard: caching every clip costs ~10 GB and thrashes the box."""
+    import numpy as np
+    import soundfile as sf
+    from training.windowed_batch import ClipAudioCache
+
+    for name in ("a.wav", "b.wav"):
+        sf.write(tmp_path / name, np.zeros(1600, dtype=np.float32), 16000, subtype="PCM_16")
+    cache = ClipAudioCache(tmp_path)
+
+    first = cache.waveform("a.wav")
+    cache.waveform("b.wav")
+
+    assert len(cache._cache) == 1
+    assert len(first) == 1600  # the handed-out array stays valid after eviction

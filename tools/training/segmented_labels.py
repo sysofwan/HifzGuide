@@ -68,6 +68,8 @@ from training.windowed_labels import (
     _contained_word_range,
     _covers_all_words,
     assert_no_reciter_leakage,
+    EXCLUDE_HELD_OUT_EVAL_CLIP,
+    read_held_out_clips,
     read_segments,
     split_by_reciter,
     write_labels,
@@ -170,12 +172,14 @@ def build_segmented_labels(
     statuses: list[ClipStatus],
     contract: WindowContract | None = None,
     cap_feature_frames: int = PROVISIONAL_CAP_FEATURE_FRAMES,
+    held_out_clips: frozenset[str] = frozenset(),
 ) -> WindowedLabels:
     """Every eligible clip's segment-scoped windows plus the exclusion-by-reason report.
 
     Mirrors :func:`training.windowed_labels.build_windowed_labels` (stable
-    ``audio_filename`` order, orphan segments raise) so the two builds are directly
-    comparable clip for clip.
+    ``audio_filename`` order, orphan segments raise, same ``held_out_clips`` eval-clip
+    exclusion) so the two builds are directly comparable clip for clip — which is the whole
+    point of this rung-(1) control.
     """
     contract = contract or WindowContract()
     by_clip: dict[str, list[Segment]] = {}
@@ -193,6 +197,9 @@ def build_segmented_labels(
     labels: list[WindowLabel] = []
     exclusions: list[tuple[str, str]] = []
     for status in sorted(statuses, key=lambda s: s.audio_filename):
+        if status.audio_filename in held_out_clips:
+            exclusions.append((status.audio_filename, EXCLUDE_HELD_OUT_EVAL_CLIP))
+            continue
         clip_labels, reason = build_clip_segment_windows(
             by_clip.get(status.audio_filename, []), status, contract, cap_feature_frames
         )
@@ -212,11 +219,15 @@ def main() -> None:
                         help="output JSONL (train + val splits, windowed_labels format).")
     parser.add_argument("--val-fraction", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--held-out-clips", type=Path, default=None,
+                        help="waqf_freeze partition report (JSON); its calibration+test "
+                             "clips are excluded from training.")
     args = parser.parse_args()
 
     segments = read_segments(args.manifest)
     statuses = read_clip_status(Path(f"{args.manifest}.clip_status.jsonl"))
-    built = build_segmented_labels(segments, statuses)
+    held_out = read_held_out_clips(args.held_out_clips) if args.held_out_clips else frozenset()
+    built = build_segmented_labels(segments, statuses, held_out_clips=held_out)
     train, val = split_by_reciter(built.labels, args.val_fraction, args.seed)
     assert_no_reciter_leakage(train, val)
 

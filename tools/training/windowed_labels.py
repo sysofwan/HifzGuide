@@ -106,6 +106,23 @@ EXCLUDE_TARGET_TOO_LONG = "target_too_long"
 EXCLUDE_SEGMENT_CROSSES_WINDOW = "segment_crosses_window"
 EXCLUDE_NO_WORD_TIMES = "no_word_times"
 EXCLUDE_WORD_UNCOVERED = "word_uncovered"
+EXCLUDE_HELD_OUT_EVAL_CLIP = "held_out_eval_clip"
+
+
+def read_held_out_clips(path: Path) -> frozenset[str]:
+    """Clip ids reserved for evaluation, from ``tadabur.waqf_freeze``'s partition report.
+
+    The #34 waqf event eval scores the calibration and test clips named in that report. They
+    must not also be training examples, or the eval measures memorization of those exact
+    clips rather than the waqf head's behaviour. The freeze emits the clip lists (and a
+    stricter ``must_exclude_reciters``); this reads the clip lists, which is the leak that
+    makes the reported number meaningless rather than merely optimistic.
+    """
+    report = json.loads(Path(path).read_text(encoding="utf-8"))
+    missing = {"calibration_clips", "test_clips"} - set(report)
+    if missing:
+        raise KeyError(f"{path} is not a waqf_freeze partition report (no {sorted(missing)})")
+    return frozenset(report["calibration_clips"]) | frozenset(report["test_clips"])
 
 
 @dataclass(frozen=True)
@@ -465,6 +482,7 @@ def build_windowed_labels(
     statuses: list[ClipStatus],
     contract: WindowContract | None = None,
     cap_feature_frames: int = PROVISIONAL_CAP_FEATURE_FRAMES,
+    held_out_clips: frozenset[str] = frozenset(),
 ) -> WindowedLabels:
     """Build every eligible clip's windowed labels and the exclusion-by-reason report.
 
@@ -472,6 +490,9 @@ def build_windowed_labels(
     so the output is deterministic and idempotent. Every scored clip must have a status
     record; a segment whose clip is absent from ``statuses`` is a data-integrity failure
     (a stale/mismatched sidecar) and raises rather than being silently dropped.
+
+    ``held_out_clips`` (see :func:`read_held_out_clips`) are dropped before any other test so
+    an eval clip can never become a training example, whatever its data condition.
     """
     contract = contract or WindowContract()
     by_clip: dict[str, list[Segment]] = {}
@@ -489,6 +510,9 @@ def build_windowed_labels(
     labels: list[WindowLabel] = []
     exclusions: list[tuple[str, str]] = []
     for status in sorted(statuses, key=lambda s: s.audio_filename):
+        if status.audio_filename in held_out_clips:
+            exclusions.append((status.audio_filename, EXCLUDE_HELD_OUT_EVAL_CLIP))
+            continue
         clip_labels, reason = build_clip_windows(
             by_clip.get(status.audio_filename, []), status, contract, cap_feature_frames
         )
@@ -642,6 +666,11 @@ def main() -> None:
         "--cap-feature-frames", type=int, default=PROVISIONAL_CAP_FEATURE_FRAMES,
         help=f"Over-long recitation cap in 20 ms frames (default: {PROVISIONAL_CAP_FEATURE_FRAMES}).",
     )
+    parser.add_argument(
+        "--held-out-clips", type=Path, default=None,
+        help="waqf_freeze partition report (JSON); its calibration+test clips are excluded "
+             "from training so the #34 event eval is not scored on its own training data.",
+    )
     args = parser.parse_args()
 
     contract = WindowContract(
@@ -651,7 +680,13 @@ def main() -> None:
     statuses = read_clip_status(args.clip_status)
     print(f"Loaded {len(segments)} segments across {len(statuses)} clips.")
 
-    built = build_windowed_labels(segments, statuses, contract, args.cap_feature_frames)
+    held_out = read_held_out_clips(args.held_out_clips) if args.held_out_clips else frozenset()
+    if held_out:
+        print(f"Holding out {len(held_out)} eval clips from training.")
+
+    built = build_windowed_labels(
+        segments, statuses, contract, args.cap_feature_frames, held_out
+    )
     train, val = split_by_reciter(built.labels, args.val_fraction, args.seed)
     proof = assert_no_reciter_leakage(train, val)
 

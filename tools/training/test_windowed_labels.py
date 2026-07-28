@@ -37,6 +37,8 @@ from training.windowed_labels import (
     assert_no_reciter_leakage,
     build_clip_windows,
     build_windowed_labels,
+    EXCLUDE_HELD_OUT_EVAL_CLIP,
+    read_held_out_clips,
     main,
     read_labels,
     read_segments,
@@ -695,3 +697,45 @@ def test_the_label_is_the_raw_reference_not_the_normalized_one(tmp_path: Path):
     assert segment.label_phonemes == raw
     assert segment.slice_words(0, 2) == raw
     assert segment.slice_words(0, 1) == f"\u0621{FATHA}"
+
+
+def test_held_out_eval_clips_never_become_training_examples(tmp_path: Path):
+    """A clip named in the waqf freeze is excluded even though it is otherwise eligible.
+
+    The #34 event eval scores those clips; if they are also training examples the reported
+    waqf F1 measures memorization of the exact eval audio.
+    """
+    keep = [_seg("keep.wav", 0, 0, 3, 0.0, 4.0, "ءبت", reciter=1)]
+    held = [_seg("held.wav", 0, 0, 3, 0.0, 4.0, "ءبت", reciter=2)]
+    statuses = [_status_for("keep.wav", keep, 3, reciter=1),
+                _status_for("held.wav", held, 3, reciter=2)]
+
+    # Both clips are eligible when nothing is held out.
+    assert build_windowed_labels(keep + held, statuses, CONTRACT).clips_kept == 2
+
+    built = build_windowed_labels(
+        keep + held, statuses, CONTRACT, held_out_clips=frozenset({"held.wav"})
+    )
+
+    assert built.clips_kept == 1
+    assert {c for c, _ in built.exclusions} == {"held.wav"}
+    assert dict(built.reasons) == {EXCLUDE_HELD_OUT_EVAL_CLIP: 1}
+    assert all(lab.clip_audio_filename != "held.wav" for lab in built.labels)
+
+
+def test_read_held_out_clips_unions_calibration_and_test(tmp_path: Path):
+    path = tmp_path / "waqf_partition.json"
+    path.write_text(json.dumps({
+        "calibration_clips": ["a.wav", "b.wav"], "test_clips": ["c.wav"],
+        "must_exclude_reciters": [1, 2],
+    }), encoding="utf-8")
+
+    assert read_held_out_clips(path) == frozenset({"a.wav", "b.wav", "c.wav"})
+
+
+def test_read_held_out_clips_rejects_a_non_partition_json(tmp_path: Path):
+    path = tmp_path / "other.json"
+    path.write_text(json.dumps({"test_clips": ["c.wav"]}), encoding="utf-8")
+
+    with pytest.raises(KeyError, match="calibration_clips"):
+        read_held_out_clips(path)

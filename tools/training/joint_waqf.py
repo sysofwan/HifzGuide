@@ -877,6 +877,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
         min_silence_f1=args.min_silence_f1,
         stage_name=args.stage,
         held_out_split=args.held_out_split,
+        lora=LoRASettings(rank=args.lora_rank, alpha=args.lora_alpha),
     )
     train(args.labels, args.audio_dir, args.soft_labels, args.out_dir, config, device)
     if args.eval_segment_manifest and args.eval_audio_dir:
@@ -926,6 +927,11 @@ def main() -> None:
                     help="labels split scored for the distillation floor; must carry windows.")
     tr.add_argument("--stage", type=str, default="linear",
                     help=f"head-only fallback rung: {[s.name for s in FALLBACK_LADDER if s.is_head_only]}.")
+    tr.add_argument("--lora-rank", type=int, default=LoRASettings.rank,
+                    help="LoRA rank; must match the rung-(2) run this rung is compared against "
+                         "in the #33 ablation ladder.")
+    tr.add_argument("--lora-alpha", type=int, default=LoRASettings.alpha,
+                    help="LoRA alpha; see --lora-rank.")
     tr.add_argument("--eval-segment-manifest", type=Path, default=None,
                     help="segment manifest for the #7 phoneme eval (with --eval-audio-dir).")
     tr.add_argument("--eval-audio-dir", type=Path, default=None)

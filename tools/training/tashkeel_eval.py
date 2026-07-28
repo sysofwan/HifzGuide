@@ -139,15 +139,25 @@ def score_vowels(decode: str, reference: str) -> VowelCounts:
                 counts += VowelCounts(swapped=1)
             else:
                 counts += VowelCounts(omitted=1)
-        elif ref_char is None and query_char in SHORT_VOWELS:
+        elif query_char in SHORT_VOWELS:
+            # ref_char is None (an insertion) or a non-vowel the model voweled anyway.
+            # Both are vowels emitted with no reference vowel behind them.
             counts += VowelCounts(spurious=1)
 
-    # Smith-Waterman is *local*: reference positions outside the aligned span produced no
-    # column at all. Those vowels were still expected and not delivered, so counting only
-    # the aligned span would let a decode that matched a short fragment score a perfect
-    # recall. Charge the unaligned remainder as omissions.
+    # Smith-Waterman is *local*, so both strings have unaligned ends that produced no column
+    # at all. Each side needs charging, or the metric flatters the model twice over.
+    #
+    # Reference side: those vowels were expected and not delivered, so counting only the
+    # aligned span would let a decode matching a short fragment score a perfect recall.
     unaligned = sum(1 for c in reference if c in SHORT_VOWELS) - aligned_reference_vowels
-    return counts + VowelCounts(omitted=max(0, unaligned))
+    # Decode side: symmetrically, a vowel the model invented outside the aligned span is
+    # still an emitted vowel with no reference behind it. Ignoring it inflates precision --
+    # the trimmed ends are exactly where a hallucinated vowel is most likely to appear.
+    edge_spurious = sum(
+        1 for c in decode[:alignment.query_start] + decode[alignment.query_end:]
+        if c in SHORT_VOWELS
+    )
+    return counts + VowelCounts(omitted=max(0, unaligned), spurious=edge_spurious)
 
 
 @dataclass(frozen=True)
@@ -239,21 +249,55 @@ def gate(
     floor can be applied, and the verdict records that the regression check was skipped —
     the check that actually catches a destroyed capability, so a missing baseline is a
     weaker verdict, never a silent pass.
+
+    Pooled recall alone is not sufficient. ADR-0003 requires this eval to catch "aggregate
+    vowel accuracy improving while that discrimination collapses", so three further
+    regressions fail the gate independently of the pooled number:
+
+    * **swap rate rising** — a confidently *wrong* i'raab is the poisonous failure; a model
+      may trade omissions for swaps and leave recall flattered.
+    * **precision falling** — recall is trivially maxed by voweling everything.
+    * **a single colour collapsing** — kasra is the weakest class, so it can be sacrificed
+      while fatha's larger count holds the pooled recall up.
     """
     meets_floor = candidate.counts.recall >= min_recall
-    regressed = (
+    regressed_recall = (
         baseline is not None
         and candidate.counts.recall < baseline.counts.recall - tolerance
+    )
+    regressed_swap = (
+        baseline is not None
+        and candidate.counts.swap_rate > baseline.counts.swap_rate + tolerance
+    )
+    regressed_precision = (
+        baseline is not None
+        and candidate.counts.precision < baseline.counts.precision - tolerance
+    )
+    collapsed = sorted(
+        name for name, base in (baseline.per_vowel.items() if baseline else ())
+        if base.reference_total
+        and candidate.per_vowel.get(name, VowelCounts()).recall < base.recall - tolerance
+    )
+    regressed = bool(
+        regressed_recall or regressed_swap or regressed_precision or collapsed
     )
     return {
         "passed": bool(meets_floor and not regressed),
         "meets_floor": bool(meets_floor),
         "min_recall": min_recall,
-        "regressed_vs_baseline": bool(regressed),
+        "regressed_vs_baseline": regressed,
+        "regressed_recall": bool(regressed_recall),
+        "regressed_swap_rate": bool(regressed_swap),
+        "regressed_precision": bool(regressed_precision),
+        "collapsed_vowels": collapsed,
         "regression_tolerance": tolerance,
         "baseline_compared": baseline is not None,
         "candidate_recall": round(candidate.counts.recall, 4),
         "baseline_recall": round(baseline.counts.recall, 4) if baseline else None,
+        "candidate_swap_rate": round(candidate.counts.swap_rate, 4),
+        "baseline_swap_rate": round(baseline.counts.swap_rate, 4) if baseline else None,
+        "candidate_precision": round(candidate.counts.precision, 4),
+        "baseline_precision": round(baseline.counts.precision, 4) if baseline else None,
         "recall_delta": (
             round(candidate.counts.recall - baseline.counts.recall, 4) if baseline else None
         ),

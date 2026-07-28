@@ -55,6 +55,21 @@ def backfill_row(row: dict, segment_reference) -> dict:
             f"segment {row['clip_audio_filename']}#{row['segment_index']}: got "
             f"{len(offsets)} offsets for {len(words)} words (expected {len(words) + 1})."
         )
+    # String equality alone does not prove the *boundaries* are sane: the phonetizer emits
+    # the string and the mapping as separate artifacts, so a mapping change could reproduce
+    # the same phonemes with different (or crossed) cuts. Assert the offsets really do
+    # partition that exact string, left to right.
+    if list(offsets) != sorted(offsets):
+        raise ValueError(
+            f"segment {row['clip_audio_filename']}#{row['segment_index']}: word offsets "
+            f"{list(offsets)} are not monotonic; the word slices would cross."
+        )
+    if offsets[0] != 0 or offsets[-1] != len(phonemes):
+        raise ValueError(
+            f"segment {row['clip_audio_filename']}#{row['segment_index']}: offsets span "
+            f"{offsets[0]}..{offsets[-1]} but the reference is {len(phonemes)} chars; the "
+            "word slices would not cover the whole reference."
+        )
     return {**row, "raw_word_offsets": list(offsets)}
 
 

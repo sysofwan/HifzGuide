@@ -70,6 +70,7 @@ from training.windowed_labels import (
     assert_no_reciter_leakage,
     EXCLUDE_HELD_OUT_EVAL_CLIP,
     read_held_out_clips,
+    resolve_held_out_clips,
     read_segments,
     split_by_reciter,
     write_labels,
@@ -222,11 +223,14 @@ def main() -> None:
     parser.add_argument("--held-out-clips", type=Path, default=None,
                         help="waqf_freeze partition report (JSON); its calibration+test "
                              "clips are excluded from training.")
+    parser.add_argument("--allow-eval-clips-in-training", action="store_true",
+                        help="build without the partition, knowingly training on the "
+                             "#34 eval clips.")
     args = parser.parse_args()
 
     segments = read_segments(args.manifest)
     statuses = read_clip_status(Path(f"{args.manifest}.clip_status.jsonl"))
-    held_out = read_held_out_clips(args.held_out_clips) if args.held_out_clips else frozenset()
+    held_out = resolve_held_out_clips(args.held_out_clips, args.allow_eval_clips_in_training)
     built = build_segmented_labels(segments, statuses, held_out_clips=held_out)
     train, val = split_by_reciter(built.labels, args.val_fraction, args.seed)
     assert_no_reciter_leakage(train, val)

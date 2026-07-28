@@ -125,6 +125,27 @@ def read_held_out_clips(path: Path) -> frozenset[str]:
     return frozenset(report["calibration_clips"]) | frozenset(report["test_clips"])
 
 
+def resolve_held_out_clips(path: Path | None, allow_leak: bool) -> frozenset[str]:
+    """The eval clips to withhold, refusing to build leaky labels by default.
+
+    Exclusion used to be silently optional: ``--held-out-clips`` defaulted to ``None``, so
+    the *normal* invocation trained on the frozen #34 eval clips and produced a corpus that
+    looked fine. That is the same shape as the tashkeel defect -- a quiet default yielding
+    wrong labels with no failure anywhere -- so omitting the partition is now an error, and
+    training on the eval set has to be asked for explicitly.
+    """
+    if path is not None:
+        return read_held_out_clips(path)
+    if allow_leak:
+        return frozenset()
+    raise SystemExit(
+        "refusing to build labels without --held-out-clips: the waqf_freeze partition's "
+        "calibration+test clips would become training examples and the #34 eval would "
+        "score memorization. Pass --held-out-clips <partition.json>, or "
+        "--allow-eval-clips-in-training to accept a knowingly leaky build."
+    )
+
+
 @dataclass(frozen=True)
 class Segment:
     """One kept waqf segment, as read back from the scored segment manifest.
@@ -671,6 +692,10 @@ def main() -> None:
         help="waqf_freeze partition report (JSON); its calibration+test clips are excluded "
              "from training so the #34 event eval is not scored on its own training data.",
     )
+    parser.add_argument(
+        "--allow-eval-clips-in-training", action="store_true",
+        help="build without the partition, knowingly training on the #34 eval clips.",
+    )
     args = parser.parse_args()
 
     contract = WindowContract(
@@ -680,7 +705,7 @@ def main() -> None:
     statuses = read_clip_status(args.clip_status)
     print(f"Loaded {len(segments)} segments across {len(statuses)} clips.")
 
-    held_out = read_held_out_clips(args.held_out_clips) if args.held_out_clips else frozenset()
+    held_out = resolve_held_out_clips(args.held_out_clips, args.allow_eval_clips_in_training)
     if held_out:
         print(f"Holding out {len(held_out)} eval clips from training.")
 

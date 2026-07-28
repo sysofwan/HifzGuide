@@ -92,6 +92,21 @@ def test_vowels_outside_the_local_alignment_count_as_omissions():
     assert counts.recall == pytest.approx(0.25)
 
 
+def test_vowels_the_model_invents_outside_the_alignment_still_count_as_spurious():
+    """The mirror of the omission case above.
+
+    A hallucinated vowel is most likely at the trimmed ends, which is exactly where local
+    alignment produces no column. Charging only interior insertions inflates precision.
+    """
+    leading = score_vowels(f"{FATHA}{REFERENCE}", REFERENCE)
+    trailing = score_vowels(f"{REFERENCE}{KASRA}", REFERENCE)
+
+    assert leading.spurious == 1, "a vowel before the aligned span is still emitted"
+    assert trailing.spurious == 1, "a vowel after the aligned span is still emitted"
+    assert leading.recall == 1.0 and trailing.recall == 1.0  # recall is untouched
+    assert leading.precision < 1.0 and trailing.precision < 1.0
+
+
 def test_empty_reference_scores_nothing_rather_than_dividing_by_zero():
     counts = score_vowels("anything", "")
 
@@ -125,6 +140,53 @@ def test_gate_fails_a_candidate_that_lost_the_capability_the_baseline_had():
     assert verdict["meets_floor"] is False
     assert verdict["regressed_vs_baseline"] is True
     assert verdict["recall_delta"] == pytest.approx(-0.8)
+
+
+def test_gate_fails_a_candidate_that_traded_omissions_for_wrong_colours():
+    """ADR-0003's named failure: pooled accuracy holds while discrimination collapses.
+
+    The candidate matches the baseline's recall exactly, but every vowel it stopped
+    omitting it now mis-colours -- asserting a wrong i'raab, the poisonous failure.
+    """
+    base = TashkeelReport("base", 1, VowelCounts(matched=8, omitted=2), {})
+    swapper = TashkeelReport("swapper", 1, VowelCounts(matched=8, swapped=2), {})
+
+    verdict = gate(swapper, base)
+
+    assert verdict["recall_delta"] == pytest.approx(0.0), "pooled recall is unchanged"
+    assert verdict["regressed_swap_rate"] is True
+    assert verdict["passed"] is False
+
+
+def test_gate_fails_a_candidate_that_bought_recall_by_voweling_everything():
+    base = TashkeelReport("base", 1, VowelCounts(matched=8, omitted=2), {})
+    spammer = TashkeelReport("spammer", 1, VowelCounts(matched=10, spurious=40), {})
+
+    verdict = gate(spammer, base)
+
+    assert verdict["candidate_recall"] == pytest.approx(1.0)  # recall improved
+    assert verdict["regressed_precision"] is True
+    assert verdict["passed"] is False
+
+
+def test_gate_fails_a_candidate_that_sacrificed_one_colour():
+    """Kasra is the weakest class, so fatha's larger count can mask its collapse."""
+    per_vowel_base = {
+        "fatha": VowelCounts(matched=80, omitted=20),
+        "kasra": VowelCounts(matched=8, omitted=2),
+    }
+    per_vowel_cand = {
+        "fatha": VowelCounts(matched=98, omitted=2),
+        "kasra": VowelCounts(matched=0, omitted=10),
+    }
+    base = TashkeelReport("base", 1, VowelCounts(matched=88, omitted=22), per_vowel_base)
+    cand = TashkeelReport("cand", 1, VowelCounts(matched=98, omitted=12), per_vowel_cand)
+
+    verdict = gate(cand, base)
+
+    assert verdict["recall_delta"] > 0, "pooled recall actually improved"
+    assert verdict["collapsed_vowels"] == ["kasra"]
+    assert verdict["passed"] is False
 
 
 def test_gate_passes_a_candidate_that_matches_the_baseline():

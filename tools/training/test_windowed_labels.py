@@ -39,6 +39,7 @@ from training.windowed_labels import (
     build_windowed_labels,
     EXCLUDE_HELD_OUT_EVAL_CLIP,
     read_held_out_clips,
+    resolve_held_out_clips,
     main,
     read_labels,
     read_segments,
@@ -525,6 +526,8 @@ def test_main_cli_builds_labels_and_report(tmp_path, monkeypatch):
         "--clip-status", str(status_path),
         "--out-labels", str(labels_path),
         "--out-report", str(report_path),
+        # the build now refuses to silently train on the #34 eval clips
+        "--allow-eval-clips-in-training",
     ])
     main()
 
@@ -739,3 +742,23 @@ def test_read_held_out_clips_rejects_a_non_partition_json(tmp_path: Path):
 
     with pytest.raises(KeyError, match="calibration_clips"):
         read_held_out_clips(path)
+
+
+def test_resolve_held_out_clips_refuses_a_silently_leaky_build():
+    """Omitting the partition must fail, not quietly train on the #34 eval clips."""
+    with pytest.raises(SystemExit, match="refusing to build labels"):
+        resolve_held_out_clips(None, allow_leak=False)
+
+
+def test_resolve_held_out_clips_allows_an_explicitly_leaky_build():
+    assert resolve_held_out_clips(None, allow_leak=True) == frozenset()
+
+
+def test_resolve_held_out_clips_reads_the_partition_when_given(tmp_path: Path):
+    path = tmp_path / "partition.json"
+    path.write_text(
+        json.dumps({"calibration_clips": ["a.wav"], "test_clips": ["b.wav"]}),
+        encoding="utf-8",
+    )
+
+    assert resolve_held_out_clips(path, allow_leak=False) == frozenset({"a.wav", "b.wav"})

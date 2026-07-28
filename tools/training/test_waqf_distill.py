@@ -717,3 +717,41 @@ def test_clip_recitation_windows_drops_duplicate_snapped_spans():
 
     spans = [(w.start_sample, w.num_samples) for w in windows]
     assert len(spans) == len(set(spans))
+
+
+def test_snapped_windows_stay_inside_their_nominal_grid_window():
+    """#24 parity: snapping never moves a window off the frozen 5 s / 4 s-hop grid.
+
+    The frozen contract owns *which* audio a training example may see; word snapping may
+    only shrink that span. Asserted over randomised word layouts so the property holds
+    for every clip shape the corpus produces, not just a hand-picked one.
+    """
+    import random
+
+    from training.waqf_distill import (
+        SAMPLES_PER_STUDENT_FRAME,
+        clip_recitation_windows,
+        enumerate_recitation_windows,
+        snap_window_to_words,
+    )
+
+    contract = WindowContract()
+    rng = random.Random(24)
+    for _ in range(200):
+        duration = rng.uniform(1.0, 40.0)
+        edges = sorted(rng.uniform(0.0, duration) for _ in range(rng.randint(1, 30)))
+        word_times = (0.0, *edges, duration)
+        num_samples = round(duration * 16000)
+
+        nominal = {w.index: w for w in enumerate_recitation_windows(0, num_samples, contract)}
+        for snapped in clip_recitation_windows(0, num_samples, contract, word_times):
+            base = nominal[snapped.index]
+            assert snapped.start_sample >= base.start_sample
+            assert (
+                snapped.start_sample + snapped.num_samples
+                <= base.start_sample + base.num_samples
+            )
+            assert (snapped.start_sample - base.start_sample) % SAMPLES_PER_STUDENT_FRAME == 0
+            assert snapped.num_samples % SAMPLES_PER_STUDENT_FRAME == 0
+            assert snapped.num_samples > 0
+            assert snapped == snap_window_to_words(base, word_times)

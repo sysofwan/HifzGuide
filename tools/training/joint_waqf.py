@@ -93,6 +93,8 @@ from training.whole_clip_phoneme import (
     base_of,
     enable_gradient_checkpointing,
     load_feature_extractor,
+    lora_anchor_snapshot,
+    lora_l2sp_penalty,
     load_muaalem,
     merge_checkpoint,
     set_seed,
@@ -235,6 +237,7 @@ class JointTrainConfig:
     stage_name: str = "linear"
     held_out_split: str = "val"
     lora: LoRASettings = field(default_factory=LoRASettings)
+    l2_sp: float = 0.0
 
     @property
     def stage(self) -> FallbackStage:
@@ -683,6 +686,7 @@ def train(
     enable_gradient_checkpointing(base)
     joint_model = build_joint_model(peft_model, stage).to(device)
     joint_model.train()
+    anchors = lora_anchor_snapshot(peft_model) if config.l2_sp > 0 else None
 
     optimizer = torch.optim.AdamW(
         (p for p in joint_model.parameters() if p.requires_grad),
@@ -733,7 +737,12 @@ def train(
                 pause_weight=stage.pause_weight,
                 waqf_loss_weight=config.waqf_loss_weight,
             )
-            (loss.total / config.grad_accum_steps).backward()
+            step_loss = (
+                loss.total + config.l2_sp * lora_l2sp_penalty(peft_model, anchors)
+                if anchors is not None
+                else loss.total
+            )
+            (step_loss / config.grad_accum_steps).backward()
             totals["total"] += float(loss.total.item())
             totals["phoneme_ctc"] += float(loss.phoneme_ctc.item())
             totals["waqf_kl"] += float(loss.waqf_kl.item())
@@ -878,6 +887,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
         stage_name=args.stage,
         held_out_split=args.held_out_split,
         lora=LoRASettings(rank=args.lora_rank, alpha=args.lora_alpha),
+        l2_sp=args.l2_sp,
     )
     train(args.labels, args.audio_dir, args.soft_labels, args.out_dir, config, device)
     if args.eval_segment_manifest and args.eval_audio_dir:
@@ -932,6 +942,9 @@ def main() -> None:
                          "in the #33 ablation ladder.")
     tr.add_argument("--lora-alpha", type=int, default=LoRASettings.alpha,
                     help="LoRA alpha; see --lora-rank.")
+    tr.add_argument("--l2-sp", type=float, default=JointTrainConfig.l2_sp,
+                    help="L2-SP anchor on the adapters (the ADR-0004 drift bound); see "
+                         "--lora-rank for why it must match the rung-(2) run.")
     tr.add_argument("--eval-segment-manifest", type=Path, default=None,
                     help="segment manifest for the #7 phoneme eval (with --eval-audio-dir).")
     tr.add_argument("--eval-audio-dir", type=Path, default=None)

@@ -115,7 +115,16 @@ class Segment:
     Only the fields the windowing needs are parsed: the whole-clip key
     (``clip_audio_filename``), the segment's ``segment_index`` order, its half-open
     Uthmani ``word_start`` / ``word_end`` range, its ``(start_s, end_s)`` span within the
-    clip, and its normalized realized-reference phoneme string (the CTC label piece).
+    clip, and its realized-reference phoneme string (the CTC label piece).
+
+    That label piece is the **tashkeel-bearing** ``raw_reference_phonemes``, per ADR-0003:
+    the fine-tune's whole point is to raise the model's short-vowel reliability, and the
+    model emits fatha/damma/kasra as real output classes (ids 32-34). The manifest's other
+    reference, ``reference_phonemes``, is ``.balanced``-normalized — it exists to mirror
+    the gate's vowel-blind tolerance, and training on it would leave classes 32-34 with no
+    positive target anywhere in the corpus. Since the phoneme head trains in full
+    (``modules_to_save``), that does not merely fail to teach tashkeel: it actively
+    suppresses the classes, destroying a capability the base checkpoint already has.
     """
 
     clip_audio_filename: str
@@ -126,8 +135,8 @@ class Segment:
     word_end: int
     start_s: float
     end_s: float
-    reference_phonemes: str
-    word_offsets: tuple[int, ...] = ()
+    label_phonemes: str
+    label_word_offsets: tuple[int, ...] = ()
 
     def slice_words(self, word_start: int, word_end: int) -> str:
         """This segment's realized reference restricted to ``[word_start, word_end)``.
@@ -137,11 +146,11 @@ class Segment:
         word keeps the wasl form the segment gave it. Requires ``word_offsets``; the
         range must lie inside this segment's word span.
         """
-        assert self.word_offsets, "segment has no per-word phoneme offsets"
+        assert self.label_word_offsets, "segment has no per-word phoneme offsets"
         assert self.word_start <= word_start <= word_end <= self.word_end
-        return self.reference_phonemes[
-            self.word_offsets[word_start - self.word_start] :
-            self.word_offsets[word_end - self.word_start]
+        return self.label_phonemes[
+            self.label_word_offsets[word_start - self.word_start] :
+            self.label_word_offsets[word_end - self.word_start]
         ]
 
 
@@ -200,6 +209,13 @@ def read_segments(path: Path) -> list[Segment]:
     Requires the whole-clip windowing fields ``segment_score`` now emits
     (``clip_audio_filename`` / ``word_start`` / ``word_end``); a manifest written before
     they existed raises ``KeyError`` rather than silently mis-grouping segments.
+
+    The CTC label is read from the **tashkeel-bearing** ``raw_reference_phonemes`` and
+    sliced with the offsets that index *it* (``raw_word_offsets``) — see :class:`Segment`
+    for why the vowel-stripped ``reference_phonemes`` must not be used. A manifest written
+    before ``raw_word_offsets`` existed raises with a regeneration instruction rather than
+    falling back to the normalized offsets, which index a *different string* and would
+    silently slice the label at the wrong characters.
     """
     segments: list[Segment] = []
     with open(path, encoding="utf-8") as f:
@@ -208,6 +224,14 @@ def read_segments(path: Path) -> list[Segment]:
             if not line:
                 continue
             row = json.loads(line)
+            if "raw_word_offsets" not in row:
+                raise KeyError(
+                    f"{path} predates 'raw_word_offsets' — its 'word_offsets' index the "
+                    "vowel-stripped reference, so training on it would drop every "
+                    "fatha/damma/kasra from the CTC target (ADR-0003). Regenerate the "
+                    "manifest with tadabur.segment_score, or backfill it with "
+                    "tadabur.backfill_raw_word_offsets."
+                )
             segments.append(
                 Segment(
                     clip_audio_filename=row["clip_audio_filename"],
@@ -218,8 +242,8 @@ def read_segments(path: Path) -> list[Segment]:
                     word_end=row["word_end"],
                     start_s=row["start_s"],
                     end_s=row["end_s"],
-                    reference_phonemes=row["reference_phonemes"],
-                    word_offsets=tuple(row.get("word_offsets") or ()),
+                    label_phonemes=row["raw_reference_phonemes"],
+                    label_word_offsets=tuple(row["raw_word_offsets"]),
                 )
             )
     return segments
@@ -366,7 +390,7 @@ def build_clip_windows(
     windows = clip_recitation_windows(
         recitation_start_sample, recitation_num_samples, contract, status.word_times
     )
-    word_level = bool(status.word_times) and all(seg.word_offsets for seg in ordered)
+    word_level = bool(status.word_times) and all(seg.label_word_offsets for seg in ordered)
     if word_level and len(status.word_times) != status.n_words + 1:
         return [], EXCLUDE_NO_WORD_TIMES
 
@@ -398,7 +422,7 @@ def build_clip_windows(
                 return [], EXCLUDE_EMPTY_WINDOW
             for prev, cur in zip(window_segments, window_segments[1:]):
                 assert cur.word_start == prev.word_end, "duplicated/dropped word in window"
-            phoneme_label = "".join(seg.reference_phonemes for seg in window_segments)
+            phoneme_label = "".join(seg.label_phonemes for seg in window_segments)
             segment_indices = tuple(seg.segment_index for seg in window_segments)
             word_start = window_segments[0].word_start
             word_end = window_segments[-1].word_end

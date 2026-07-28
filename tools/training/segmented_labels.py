@@ -107,7 +107,7 @@ def build_clip_segment_windows(
     ordered = sorted(segments, key=lambda s: s.segment_index)
     if not _covers_all_words(ordered, status.n_words):
         return [], EXCLUDE_DROPPED_SEGMENT
-    if not status.word_times or not all(seg.word_offsets for seg in ordered):
+    if not status.word_times or not all(seg.label_word_offsets for seg in ordered):
         return [], EXCLUDE_NO_WORD_TIMES
     if len(status.word_times) != status.n_words + 1:
         return [], EXCLUDE_NO_WORD_TIMES

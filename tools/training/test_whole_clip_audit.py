@@ -21,9 +21,25 @@ from training.windowed_labels import (
 from training.whole_clip_audit import build_whole_clip_audit
 
 
+def _raw(ref):
+    """A tashkeel-bearing counterpart of ``ref`` — a fatha after its first phoneme.
+
+    The audit reads the *raw* reference (ADR-0003), so making it differ from the
+    vowel-stripped ``reference_phonemes`` keeps these tests honest about which one is used.
+    """
+    return ref[0] + "\u064e" + ref[1:]
+
+
 def _row(clip, index, w0, w1, s0, s1, ref, uthmani, reciter=1, surah="78:2"):
     """One scored segment-manifest row, as ``tadabur.segment_score`` emits it."""
+    raw = _raw(ref)
+    n_words = w1 - w0
+    # Any partition of ``raw`` into ``n_words`` pieces will do: these tests assert whole-segment
+    # labels, so only the endpoints of the offset list are load-bearing.
+    bounds = [round(i * len(raw) / n_words) for i in range(n_words)] + [len(raw)]
     return {
+        "raw_reference_phonemes": raw,
+        "raw_word_offsets": bounds,
         "audio_filename": f"{clip}__seg{index}",
         "clip_audio_filename": clip,
         "surah_ayah": surah,
@@ -77,15 +93,16 @@ def test_included_clip_reconstructs_label_breakdown_and_windows(tmp_path):
     view = audit.views[0]
     assert view.clip_id == "a.wav"
     assert view.included is True and view.exclusion_reason is None
-    assert view.whole_clip_label == "ءاببتت"
+    assert view.whole_clip_label == "ءَابَبتَت"  # tashkeel survives (ADR-0003)
     # Per-segment breakdown carries word ranges + Uthmani words + realized reference, ordered.
     assert [(s.segment_index, s.word_start, s.word_end, s.uthmani, s.reference)
             for s in view.segments] == [
-        (0, 0, 1, "أ", "ءا"), (1, 1, 2, "ب", "بب"), (2, 2, 4, "ت ث", "تت")]
+        (0, 0, 1, "أ", _raw("ءا")), (1, 1, 2, "ب", _raw("بب")),
+        (2, 2, 4, "ت ث", _raw("تت"))]
     # The exact training unit: one window whose CTC target is the concatenation.
     assert len(view.windows) == 1
     win = view.windows[0]
-    assert win.phoneme_label == "ءاببتت"
+    assert win.phoneme_label == "ءَابَبتَت"
     assert win.segment_indices == (0, 1, 2)
     assert (win.word_start, win.word_end) == (0, 4)
     assert len(win.phoneme_label) < win.logit_frames

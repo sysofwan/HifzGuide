@@ -512,8 +512,16 @@ def score_segments(
         )
         row["raw_reference_phonemes"] = seg.realized_reference_phonemes
         row["reference_phonemes"] = reference
-        # Word boundaries in the *normalized* reference, so a training window may cut this
-        # segment at a word edge without re-phonetizing (which would invent a waqf there).
+        # Two parallel word-boundary sets, because the two consumers index different
+        # strings. Both let a training window cut this segment at a word edge without
+        # re-phonetizing (which would invent a waqf there).
+        #   raw_word_offsets -> raw_reference_phonemes, the TASHKEEL-BEARING string that
+        #     is the CTC training label (ADR-0003: "the CTC label for the fine-tune is the
+        #     tashkeel-bearing raw_reference_phonemes, *not* the vowel-stripped
+        #     reference_phonemes"). training.windowed_labels slices this one.
+        #   word_offsets -> reference_phonemes, the .balanced-normalized string the gate
+        #     and the audit display compare against, which strips the short vowels.
+        row["raw_word_offsets"] = list(seg.word_offsets)
         row["word_offsets"] = map_char_offsets(
             seg.realized_reference_phonemes, normalization, seg.word_offsets
         )

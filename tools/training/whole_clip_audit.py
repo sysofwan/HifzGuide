@@ -148,7 +148,7 @@ def _breakdown(
             word_start=seg.word_start,
             word_end=seg.word_end,
             uthmani=uthmani.get((seg.clip_audio_filename, seg.segment_index), ""),
-            reference=seg.reference_phonemes,
+            reference=seg.label_phonemes,
         )
         for seg in sorted(segments, key=lambda s: s.segment_index)
     )

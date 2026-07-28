@@ -57,8 +57,8 @@ def _seg(clip, index, w0, w1, s0, s1, ref, reciter=1, surah="78:2", offsets=()):
         word_end=w1,
         start_s=s0,
         end_s=s1,
-        reference_phonemes=ref,
-        word_offsets=offsets,
+        label_phonemes=ref,
+        label_word_offsets=offsets,
     )
 
 
@@ -423,14 +423,36 @@ def test_read_segments_round_trips_manifest_rows(tmp_path: Path):
     row = {
         "clip_audio_filename": "a.wav", "surah_ayah": "78:2", "reciter_id": 5,
         "segment_index": 0, "word_start": 0, "word_end": 3,
-        "start_s": 0.0, "end_s": 4.0, "reference_phonemes": "ءبت",
+        "start_s": 0.0, "end_s": 4.0,
+        # The label is the tashkeel-bearing raw reference, sliced by the offsets that
+        # index *it* — never the vowel-stripped one (ADR-0003).
+        "raw_reference_phonemes": "ءَبِتُ", "raw_word_offsets": [0, 2, 4, 6],
+        "reference_phonemes": "ءبت", "word_offsets": [0, 1, 2, 3],
     }
     path = tmp_path / "segments.jsonl"
-    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(row, ensure_ascii=False) + "\n", encoding="utf-8")
 
     segments = read_segments(path)
 
-    assert segments == [_seg("a.wav", 0, 0, 3, 0.0, 4.0, "ءبت", reciter=5)]
+    assert segments == [
+        _seg("a.wav", 0, 0, 3, 0.0, 4.0, "ءَبِتُ", reciter=5, offsets=(0, 2, 4, 6))
+    ]
+
+
+def test_read_segments_rejects_a_manifest_without_raw_word_offsets(tmp_path: Path):
+    """A pre-ADR-0003 manifest must fail loudly, not silently drop every short vowel."""
+    row = {
+        "clip_audio_filename": "a.wav", "surah_ayah": "78:2", "reciter_id": 5,
+        "segment_index": 0, "word_start": 0, "word_end": 3,
+        "start_s": 0.0, "end_s": 4.0,
+        "raw_reference_phonemes": "ءَبِتُ",
+        "reference_phonemes": "ءبت", "word_offsets": [0, 1, 2, 3],
+    }
+    path = tmp_path / "segments.jsonl"
+    path.write_text(json.dumps(row, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    with pytest.raises(KeyError, match="raw_word_offsets"):
+        read_segments(path)
 
 
 def test_clip_status_sidecar_round_trips(tmp_path: Path):
@@ -466,10 +488,18 @@ def test_write_labels_is_sorted_and_tagged(tmp_path: Path):
 
 
 def _write_segments(path: Path, segments) -> None:
-    """Serialize ``Segment`` rows to the JSONL manifest shape ``read_segments`` expects."""
+    """Serialize ``Segment`` rows to the JSONL manifest shape ``read_segments`` expects.
+
+    The manifest names the label fields after the string they index, so a ``Segment``'s
+    ``label_phonemes`` / ``label_word_offsets`` are written as the tashkeel-bearing
+    ``raw_reference_phonemes`` / ``raw_word_offsets`` (ADR-0003).
+    """
     with open(path, "w", encoding="utf-8") as f:
         for seg in segments:
-            f.write(json.dumps(asdict(seg), ensure_ascii=False) + "\n")
+            row = asdict(seg)
+            row["raw_reference_phonemes"] = row.pop("label_phonemes")
+            row["raw_word_offsets"] = list(row.pop("label_word_offsets"))
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def test_main_cli_builds_labels_and_report(tmp_path, monkeypatch):
@@ -609,3 +639,59 @@ def test_word_longer_than_the_window_overlap_is_left_untrained_not_mislabelled()
     for label in labels:
         end = label.start_sample + label.num_samples
         assert end <= 2 * 16000 + 640 or label.start_sample >= 8 * 16000 - 640
+
+
+# --- ADR-0003: tashkeel must survive into the CTC target ----------------------
+
+
+#: The Muaalem phoneme head's three short-vowel output classes (ADR-0003).
+FATHA, DAMMA, KASRA = "\u064e", "\u064f", "\u0650"
+
+
+def test_short_vowels_survive_manifest_to_encoded_ctc_target(tmp_path: Path):
+    """End-to-end guard: fatha/damma/kasra reach the encoded CTC target as ids 32-34.
+
+    The label path once sliced the ``.balanced``-normalized ``reference_phonemes``, which
+    strips every short vowel, so classes 32-34 had **no positive target anywhere in the
+    corpus**. Because the phoneme head trains in full (``modules_to_save``), that actively
+    suppressed them — a fine-tuned checkpoint emitted zero vowels where the base emitted
+    the reference's full count. Every gate normalizes both sides before scoring, so none
+    of them could see it; this test is the tripwire that can.
+    """
+    from tadabur.phoneme_vocab import PHONEME_CHAR_TO_ID
+    from training.windowed_batch import encode_phoneme_label
+
+    raw = f"\u0621{FATHA}\u0628{KASRA}\u062a{DAMMA}"  # ءَبِتُ — one vowel per word
+    seg = _seg("a.wav", 0, 0, 3, 0.0, 4.0, raw, offsets=(0, 2, 4, 6))
+    status = _status_for("a.wav", [seg], n_words=3, word_times=(0.0, 1.0, 2.0, 4.0))
+
+    path = tmp_path / "segments.jsonl"
+    _write_segments(path, [seg])
+    labels, reason = build_clip_windows(read_segments(path), status, CONTRACT)
+
+    assert reason is None and labels
+    label = "".join(lab.phoneme_label for lab in labels)
+    assert {FATHA, DAMMA, KASRA} <= set(label)
+    encoded = set(encode_phoneme_label(label))
+    assert {PHONEME_CHAR_TO_ID[v] for v in (FATHA, DAMMA, KASRA)} <= encoded
+    assert {32, 33, 34} <= encoded
+
+
+def test_the_label_is_the_raw_reference_not_the_normalized_one(tmp_path: Path):
+    """The two manifest references differ; the label must come from the tashkeel-bearing one."""
+    raw = f"\u0621{FATHA}\u0628{KASRA}"
+    row = {
+        "clip_audio_filename": "a.wav", "surah_ayah": "78:2", "reciter_id": 1,
+        "segment_index": 0, "word_start": 0, "word_end": 2,
+        "start_s": 0.0, "end_s": 4.0,
+        "raw_reference_phonemes": raw, "raw_word_offsets": [0, 2, 4],
+        "reference_phonemes": "\u0621\u0628", "word_offsets": [0, 1, 2],
+    }
+    path = tmp_path / "segments.jsonl"
+    path.write_text(json.dumps(row, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    (segment,) = read_segments(path)
+
+    assert segment.label_phonemes == raw
+    assert segment.slice_words(0, 2) == raw
+    assert segment.slice_words(0, 1) == f"\u0621{FATHA}"

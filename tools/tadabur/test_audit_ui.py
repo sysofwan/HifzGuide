@@ -302,6 +302,7 @@ def test_whole_clip_state_serializes_audit(tmp_path):
             "audio_filename": "a__seg0", "clip_audio_filename": "a.wav", "surah_ayah": "78:2",
             "reciter_id": 1, "segment_index": 0, "word_start": 0, "word_end": 3,
             "start_s": 0.0, "end_s": 4.0, "reference_phonemes": "ءبت", "uthmani": "أ ب ت",
+            "raw_reference_phonemes": "ءَبِتُ", "raw_word_offsets": [0, 2, 4, 6],
         }, ensure_ascii=False) + "\n")
     status_path = tmp_path / "clip_status.jsonl"
     write_clip_status(status_path, [ClipStatus(
@@ -320,8 +321,8 @@ def test_whole_clip_state_serializes_audit(tmp_path):
     assert payload["summary"]["clips_included"] == 1
     clip = payload["clips"][0]
     assert clip["clip_id"] == "a.wav" and clip["included"] is True
-    assert clip["whole_clip_label"] == "ءبت"
-    assert clip["windows"][0]["phoneme_label"] == "ءبت"
+    assert clip["whole_clip_label"] == "ءَبِتُ"  # the raw, tashkeel-bearing label (ADR-0003)
+    assert clip["windows"][0]["phoneme_label"] == "ءَبِتُ"
     # asdict serializes cleanly to JSON (segment_indices tuple -> array).
     assert json.dumps(payload, ensure_ascii=False)
 

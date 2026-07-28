@@ -55,6 +55,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from peft import LoraConfig, get_peft_model
+from tqdm.auto import tqdm
 from transformers import SeamlessM4TFeatureExtractor
 
 from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
@@ -424,7 +425,12 @@ def train(
         )
         epoch_total, epoch_windows = 0.0, 0
         optimizer.zero_grad(set_to_none=True)
-        for step, examples in enumerate(batches):
+        # A corpus epoch is tens of thousands of windows and runs for hours; the bar is
+        # the only way to see rate and ETA before the epoch's single summary line.
+        progress = tqdm(
+            batches, desc=f"epoch {epoch}/{config.epochs - 1}", unit="batch", leave=False
+        )
+        for step, examples in enumerate(progress):
             batch = collate(examples).to(device, dtype)
             loss = _step_loss(base, batch)
             step_loss = (
@@ -438,6 +444,8 @@ def train(
             if (step + 1) % config.grad_accum_steps == 0 or step + 1 == len(batches):
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
+            progress.set_postfix(loss=f"{epoch_total / max(epoch_windows, 1):.4f}")
+        progress.close()
 
         val_loss = (
             evaluate_ctc_loss(peft_model, base, val_batches, collate, device, dtype)
@@ -447,7 +455,8 @@ def train(
         stats = EpochStats(epoch, epoch_total / max(epoch_windows, 1), val_loss)
         trace.append(stats)
         print(f"epoch {epoch}: train {stats.train_loss:.4f}"
-              + (f"  val {val_loss:.4f}" if val_loss is not None else ""))
+              + (f"  val {val_loss:.4f}" if val_loss is not None else ""),
+              flush=True)
 
     peft_model.save_pretrained(out_dir / "lora_adapter")
     (out_dir / "loss_trace.json").write_text(

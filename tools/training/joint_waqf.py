@@ -61,6 +61,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+from tqdm.auto import tqdm
 
 from tadabur.inference import PHONEME_LEVEL
 from tadabur.muaalem import Wav2Vec2BertForMultilevelCTC
@@ -711,7 +712,12 @@ def train(
         totals = {"total": 0.0, "phoneme_ctc": 0.0, "waqf_kl": 0.0}
         windows = 0
         optimizer.zero_grad(set_to_none=True)
-        for step, examples in enumerate(batches):
+        # See :mod:`training.whole_clip_phoneme` — a corpus epoch runs for hours, so the
+        # bar carries the rate/ETA the single per-epoch summary line cannot.
+        progress = tqdm(
+            batches, desc=f"epoch {epoch}/{config.epochs - 1}", unit="batch", leave=False
+        )
+        for step, examples in enumerate(progress):
             batch = collate(examples).to(device, dtype)
             if isolation is None:
                 # Prove the detach before the first optimizer step touches the backbone.
@@ -735,6 +741,11 @@ def train(
             if (step + 1) % config.grad_accum_steps == 0 or step + 1 == len(batches):
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
+            progress.set_postfix(
+                ctc=f"{totals['phoneme_ctc'] / max(windows, 1):.4f}",
+                kl=f"{totals['waqf_kl'] / max(windows, 1):.4f}",
+            )
+        progress.close()
 
         stats = EpochStats(
             epoch,
@@ -745,7 +756,8 @@ def train(
         trace.append(stats)
         print(
             f"epoch {epoch}: total {stats.total_loss:.4f}  ctc {stats.phoneme_ctc:.4f}  "
-            f"waqf_kl {stats.waqf_kl:.4f}"
+            f"waqf_kl {stats.waqf_kl:.4f}",
+            flush=True,
         )
 
     if isolation is None:

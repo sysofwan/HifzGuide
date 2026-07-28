@@ -151,6 +151,12 @@ def load_muaalem(
             f"{model_id} phoneme head has {phoneme_classes} classes, expected "
             f"{NUM_PHONEME_CLASSES} — label mapping would be corrupt."
         )
+    # The upstream config ships ctc_zero_infinity=False, so a single unalignable target
+    # returns inf and the next backward pass NaNs every weight -- the run keeps going,
+    # looking healthy, and produces a corrupt checkpoint hours later. The label builders
+    # now reject such targets (``ctc_target_slots``), but this is the cheap backstop that
+    # keeps one bad row from costing another multi-hour run.
+    config.ctc_zero_infinity = True
     return Wav2Vec2BertForMultilevelCTC.from_pretrained(model_id, config=config, dtype=dtype)
 
 

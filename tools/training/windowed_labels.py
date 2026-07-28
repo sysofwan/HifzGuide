@@ -125,6 +125,21 @@ def read_held_out_clips(path: Path) -> frozenset[str]:
     return frozenset(report["calibration_clips"]) | frozenset(report["test_clips"])
 
 
+def ctc_target_slots(label: str) -> int:
+    """Lattice frames CTC needs in order to emit ``label``.
+
+    CTC collapses repeated symbols, so two *adjacent* identical characters are only
+    recoverable when a blank separates them. A label of length n therefore needs
+    n + (adjacent duplicate pairs) frames, not n.
+
+    Counting only ``len(label)`` lets an unalignable target through. ``F.ctc_loss`` then
+    returns ``inf``, and because the Muaalem config ships ``ctc_zero_infinity=False`` the
+    very next backward pass fills every weight with NaN -- one bad row silently destroys
+    the entire run. That is exactly how the rung-1 fine-tune died at batch 4072.
+    """
+    return len(label) + sum(1 for a, b in zip(label, label[1:]) if a == b)
+
+
 def resolve_held_out_clips(path: Path | None, allow_leak: bool) -> frozenset[str]:
     """The eval clips to withhold, refusing to build leaky labels by default.
 
@@ -466,7 +481,7 @@ def build_clip_windows(
             word_end = window_segments[-1].word_end
         feature_frames = feature_frames_for_samples(window.num_samples)
         logit_frames = muaalem_lattice_length(feature_frames)
-        if len(phoneme_label) >= logit_frames:
+        if ctc_target_slots(phoneme_label) >= logit_frames:
             return [], EXCLUDE_TARGET_TOO_LONG
         labels.append(
             WindowLabel(

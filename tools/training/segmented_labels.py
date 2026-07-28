@@ -69,6 +69,7 @@ from training.windowed_labels import (
     _covers_all_words,
     assert_no_reciter_leakage,
     EXCLUDE_HELD_OUT_EVAL_CLIP,
+    ctc_target_slots,
     read_held_out_clips,
     resolve_held_out_clips,
     read_segments,
@@ -144,7 +145,7 @@ def build_clip_segment_windows(
             phoneme_label = seg.slice_words(word_start, word_end)
             feature_frames = feature_frames_for_samples(window.num_samples)
             logit_frames = muaalem_lattice_length(feature_frames)
-            if len(phoneme_label) >= logit_frames:
+            if ctc_target_slots(phoneme_label) >= logit_frames:
                 continue
             labels.append(
                 WindowLabel(

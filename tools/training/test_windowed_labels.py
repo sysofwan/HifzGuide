@@ -38,6 +38,7 @@ from training.windowed_labels import (
     build_clip_windows,
     build_windowed_labels,
     EXCLUDE_HELD_OUT_EVAL_CLIP,
+    ctc_target_slots,
     read_held_out_clips,
     resolve_held_out_clips,
     main,
@@ -762,3 +763,23 @@ def test_resolve_held_out_clips_reads_the_partition_when_given(tmp_path: Path):
     )
 
     assert resolve_held_out_clips(path, allow_leak=False) == frozenset({"a.wav", "b.wav"})
+
+
+def test_ctc_target_slots_counts_the_blank_adjacent_duplicates_need():
+    """CTC collapses repeats, so "aa" cannot be recovered from two frames."""
+    assert ctc_target_slots("abc") == 3
+    assert ctc_target_slots("aab") == 4  # a, blank, a, b
+    assert ctc_target_slots("aaa") == 5
+    assert ctc_target_slots("") == 0
+
+
+def test_ctc_target_slots_rejects_the_label_that_nand_the_rung1_run():
+    """The real row: 7 symbols needing 10 slots, with only 9 logit frames.
+
+    ``len(label) < logit_frames`` passes it, which is how it reached the trainer and
+    returned an infinite CTC loss.
+    """
+    label, logit_frames = "\u0628\u0628\u062a\u062a\u0631\u0631\u0645", 9
+
+    assert len(label) < logit_frames, "the old length-only rule let this through"
+    assert ctc_target_slots(label) > logit_frames, "the real requirement is not satisfiable"

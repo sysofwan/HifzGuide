@@ -16,16 +16,31 @@ instead of flagging it. The capability only fails where it matters, so no amount
 held-out correct recitation can expose it.
 
 This module isolates the two by restricting attention to **ambiguous skeletons**: consonant
-skeletons that appear in training with *more than one* vowelization. There, the text prior is
-genuinely uncertain, so the two models make different predictions:
+skeletons that appear in training with *more than one* vowelization. There, a memorizer
+keyed on the word alone is genuinely uncertain.
 
-* the text-inferring model can do no better than the training text's majority vowelization,
-* a model that hears the audio should stay near its overall accuracy.
+That is not enough on its own. The model is bidirectional and decodes the surrounding
+consonants reliably, so it can condition its vowel guess on the neighbouring words without
+hearing a single harakah — and the Quran's text is fixed, so that context very nearly
+determines the vowelization. The module therefore scores **two** text-only baselines built
+from the training split's references (no audio, no model):
 
-The majority-vowelization prior is computed from the **training** split's references (text
-only, no audio, no model) and evaluated on the **val** split, which is exactly what a
-memorizer could have learned. It is the control the headline number lacks: on this corpus it
-scores ~0.71, far enough below ~0.98 that the two hypotheses are cleanly separable.
+* ``unigram`` — majority vowelization for the word's own skeleton, and
+* ``context`` — majority vowelization given both neighbouring skeletons.
+
+On this corpus the unigram prior scores ~0.71 but the context prior scores ~0.97, above
+every checkpoint measured. Judging against the unigram prior alone would therefore have
+"proved" the model hears tashkeel when all it had beaten was a strawman. :func:`verdict`
+judges against the **strongest** baseline and declines to rule when that baseline already
+explains the words, because at that point the corpus simply cannot separate the two
+hypotheses.
+
+Two structural limits are reported rather than hidden. The split is by clip, so it separates
+*reciters* but not Quranic *content*: :func:`ayah_overlap` measures how much of the val text
+also appears in train. And every clip here is **correct** recitation, so no observation can
+show what the model does when the audio and the canonical text disagree. Settling the
+question needs counterfactual audio — the same word in the same context with a different
+vowel actually spoken — which this corpus does not contain.
 
 Usage::
 
@@ -63,11 +78,18 @@ def vowelization(word: str) -> str:
 
 @dataclass(frozen=True)
 class WordOccurrence:
-    """One reference word in one segment, with the model's vowels for it."""
+    """One reference word site in one segment, with the model's vowels for it."""
 
-    skeleton: str
-    reference_vowels: str
+    site: WordSite
     decoded_vowels: str
+
+    @property
+    def skeleton(self) -> str:
+        return self.site.skeleton
+
+    @property
+    def reference_vowels(self) -> str:
+        return self.site.reference_vowels
 
     @property
     def correct(self) -> bool:
@@ -101,25 +123,124 @@ def read_segments(manifest_path: Path) -> list[dict]:
     return rows
 
 
-def text_prior(segments: list[dict], clips: frozenset[str]) -> dict[str, Counter]:
-    """Skeleton → vowelization counts, from reference text alone.
+@dataclass(frozen=True)
+class WordSite:
+    """One vowel-bearing reference word together with its textual neighbours.
 
-    No audio and no model: this is precisely the knowledge a text-memorizing model could
-    have absorbed from the training split.
+    The neighbours are what make the memorizer baseline honest. The model is bidirectional
+    and decodes the consonants of the surrounding words reliably, so it can condition a
+    vowel guess on that context without hearing the harakah at all — which is exactly the
+    failure mode under test.
     """
-    prior: dict[str, Counter] = defaultdict(Counter)
+
+    skeleton: str
+    prev_skeleton: str
+    next_skeleton: str
+    reference_vowels: str
+
+    @property
+    def context_key(self) -> tuple[str, str, str]:
+        return (self.prev_skeleton, self.skeleton, self.next_skeleton)
+
+
+BOUNDARY = ("^", "$")
+
+
+def reference_sites(reference: str, offsets: list[int]) -> list[tuple[int, int, WordSite]]:
+    """Every vowel-bearing word in one segment, with its span and its neighbours."""
+    words = [reference[s:e] for s, e in zip(offsets, offsets[1:])]
+    skeletons = [skeleton(w) for w in words]
+    sites = []
+    for i, (start, end) in enumerate(zip(offsets, offsets[1:])):
+        if not any(c in SHORT_VOWELS for c in words[i]):
+            continue
+        sites.append((
+            start,
+            end,
+            WordSite(
+                skeleton=skeletons[i],
+                prev_skeleton=skeletons[i - 1] if i > 0 else BOUNDARY[0],
+                next_skeleton=skeletons[i + 1] if i + 1 < len(skeletons) else BOUNDARY[1],
+                reference_vowels=vowelization(words[i]),
+            ),
+        ))
+    return sites
+
+
+@dataclass
+class TextPriors:
+    """What a model could predict from the canonical text alone, at two strengths.
+
+    ``unigram`` keys on the word's own skeleton; ``context`` also keys on both neighbouring
+    skeletons. The unigram prior alone is a **strawman**: the Quran's text is fixed, so
+    knowing the neighbouring words very nearly determines the vowelization. Measuring
+    against the weak baseline only rules out a context-free memorizer, which is not the
+    model anyone was worried about.
+    """
+
+    unigram: dict[str, Counter]
+    context: dict[tuple[str, str, str], Counter]
+
+    @property
+    def ambiguous_skeletons(self) -> set[str]:
+        return {sk for sk, counts in self.unigram.items() if len(counts) > 1}
+
+    def guess_unigram(self, site: WordSite) -> str:
+        counts = self.unigram.get(site.skeleton)
+        return counts.most_common(1)[0][0] if counts else ""
+
+    def guess_context(self, site: WordSite) -> str:
+        """The context prediction, falling back to the unigram guess when unseen."""
+        counts = self.context.get(site.context_key)
+        return counts.most_common(1)[0][0] if counts else self.guess_unigram(site)
+
+
+def text_prior(segments: list[dict], clips: frozenset[str]) -> TextPriors:
+    """Build both memorizer baselines from reference text alone.
+
+    No audio and no model: precisely the knowledge a text-memorizing model could have
+    absorbed from the training split.
+    """
+    unigram: dict[str, Counter] = defaultdict(Counter)
+    context: dict[tuple[str, str, str], Counter] = defaultdict(Counter)
     for row in segments:
         if row["clip_audio_filename"] not in clips:
             continue
-        reference, offsets = row["raw_reference_phonemes"], row["raw_word_offsets"]
-        for start, end in zip(offsets, offsets[1:]):
-            word = reference[start:end]
-            if any(c in SHORT_VOWELS for c in word):
-                prior[skeleton(word)][vowelization(word)] += 1
-    return prior
+        for _, _, site in reference_sites(
+            row["raw_reference_phonemes"], row["raw_word_offsets"]
+        ):
+            unigram[site.skeleton][site.reference_vowels] += 1
+            context[site.context_key][site.reference_vowels] += 1
+    return TextPriors(unigram=dict(unigram), context=dict(context))
 
 
-def decoded_words(decode: str, reference: str, offsets: list[int]) -> list[tuple[str, str]]:
+def ayah_overlap(segments: list[dict], train: frozenset[str], val: frozenset[str]) -> dict:
+    """How much of the val *text* the train split also contains.
+
+    The split is by clip, so it separates reciters but not Quranic content. A val ayah that
+    also appears in train is an ayah a text-memorizer could have learned outright, which
+    caps what any held-out score here can prove.
+    """
+    def ayahs(clips: frozenset[str]) -> set:
+        return {
+            (r.get("surah"), r.get("ayah"))
+            for r in segments
+            if r["clip_audio_filename"] in clips and r.get("surah") is not None
+        }
+
+    train_ayahs, val_ayahs = ayahs(train), ayahs(val)
+    shared = train_ayahs & val_ayahs
+    return {
+        "train_ayahs": len(train_ayahs),
+        "val_ayahs": len(val_ayahs),
+        "shared_ayahs": len(shared),
+        "val_ayahs_also_in_train": (
+            round(len(shared) / len(val_ayahs), 4) if val_ayahs else None
+        ),
+    }
+
+
+def decoded_words(decode: str, reference: str, offsets: list[int]) -> list[tuple[WordSite, str]]:
     """Pair each reference word with the decode's vowels over that word's span.
 
     The decode is aligned to the whole reference once, then each word's reference span is
@@ -135,48 +256,46 @@ def decoded_words(decode: str, reference: str, offsets: list[int]) -> list[tuple
     }
 
     pairs = []
-    for start, end in zip(offsets, offsets[1:]):
-        word = reference[start:end]
-        if not any(c in SHORT_VOWELS for c in word):
-            continue
+    for start, end, site in reference_sites(reference, offsets):
         query_positions = [ref_to_query[i] for i in range(start, end) if i in ref_to_query]
         span = (
             decode[min(query_positions) : max(query_positions) + 1]
             if query_positions
             else ""
         )
-        pairs.append((word, vowelization(span)))
+        pairs.append((site, vowelization(span)))
     return pairs
 
 
-def score(
-    occurrences: list[WordOccurrence], prior: dict[str, Counter]
-) -> dict:
-    """Model accuracy vs the text-only prior, overall and on ambiguous skeletons."""
-    ambiguous = {s for s, counts in prior.items() if len(counts) > 1}
+def score(occurrences: list[WordOccurrence], priors: TextPriors) -> dict:
+    """Model accuracy against both memorizer baselines, on the ambiguous slice.
 
-    def prior_guess(sk: str) -> str:
-        counts = prior.get(sk)
-        return counts.most_common(1)[0][0] if counts else ""
+    The **context** prior is the one that decides the question. The unigram prior is kept
+    only to show how much of the model's apparent advantage is an artifact of a weak
+    baseline.
+    """
+    ambiguous = priors.ambiguous_skeletons
 
     def block(items: list[WordOccurrence]) -> dict:
         if not items:
             return {"words": 0}
-        model_hits = sum(1 for o in items if o.correct)
-        prior_hits = sum(1 for o in items if prior_guess(o.skeleton) == o.reference_vowels)
+        n = len(items)
+        model = sum(1 for o in items if o.correct) / n
+        unigram = sum(1 for o in items if priors.guess_unigram(o.site) == o.reference_vowels) / n
+        context = sum(1 for o in items if priors.guess_context(o.site) == o.reference_vowels) / n
         return {
-            "words": len(items),
-            "model_accuracy": round(model_hits / len(items), 4),
-            "text_prior_accuracy": round(prior_hits / len(items), 4),
-            "model_minus_prior": round((model_hits - prior_hits) / len(items), 4),
+            "words": n,
+            "model_accuracy": round(model, 4),
+            "unigram_prior_accuracy": round(unigram, 4),
+            "context_prior_accuracy": round(context, 4),
+            "model_minus_unigram_prior": round(model - unigram, 4),
+            "model_minus_context_prior": round(model - context, 4),
         }
 
-    on_ambiguous = [o for o in occurrences if o.skeleton in ambiguous]
-    unambiguous = [o for o in occurrences if o.skeleton not in ambiguous]
     return {
         "all_words": block(occurrences),
-        "ambiguous_skeletons": block(on_ambiguous),
-        "unambiguous_skeletons": block(unambiguous),
+        "ambiguous_skeletons": block([o for o in occurrences if o.skeleton in ambiguous]),
+        "unambiguous_skeletons": block([o for o in occurrences if o.skeleton not in ambiguous]),
         "distinct_ambiguous_skeletons": len(ambiguous),
     }
 
@@ -184,31 +303,44 @@ def score(
 def verdict(report: dict, margin: float = 0.10) -> dict:
     """Did the model beat what the canonical text alone can explain?
 
-    The test is only meaningful when the prior is actually uncertain, so a corpus whose
-    ambiguous slice is too small or too predictable is reported as inconclusive rather than
-    as a pass.
+    Judged against the **strongest** available text-only baseline. Beating only the weak
+    unigram prior rules out a context-free memorizer and nothing more, so a model that
+    fails to clear the context prior leaves the question open rather than answered.
+
+    The test is only meaningful when that baseline is genuinely uncertain, so a corpus whose
+    ambiguous slice is too small or whose text already explains the vowels is reported as
+    inconclusive rather than as a pass.
     """
     amb = report["ambiguous_skeletons"]
     if amb.get("words", 0) < 100:
         return {"conclusive": False, "reason": "too few ambiguous-skeleton words to judge"}
-    if amb["text_prior_accuracy"] > 0.95:
+
+    bar = max(amb["unigram_prior_accuracy"], amb["context_prior_accuracy"])
+    if bar > 0.95:
         return {
             "conclusive": False,
-            "reason": "the text prior alone already explains these words",
+            "reason": (
+                "the canonical text alone already explains these words "
+                f"(best text-only baseline {bar:.4f}) — this corpus cannot separate "
+                "hearing from text reconstruction; a counterfactual test is required"
+            ),
+            "best_text_baseline": bar,
+            "model_accuracy": amb["model_accuracy"],
         }
-    hears = amb["model_minus_prior"] >= margin
+
+    hears = (amb["model_accuracy"] - bar) >= margin
     return {
         "conclusive": True,
         "hears_tashkeel": bool(hears),
         "margin_required": margin,
         "model_accuracy": amb["model_accuracy"],
-        "text_prior_accuracy": amb["text_prior_accuracy"],
-        "model_minus_prior": amb["model_minus_prior"],
+        "best_text_baseline": bar,
+        "model_minus_best_baseline": round(amb["model_accuracy"] - bar, 4),
         "interpretation": (
             "model beats what the canonical text can explain — it is using the audio"
             if hears
-            else "model is at or below the text prior — the tashkeel number may be "
-            "reconstruction from known text, not hearing"
+            else "model is at or below the strongest text-only baseline — the tashkeel "
+            "number may be reconstruction from known text, not hearing"
         ),
     }
 
@@ -295,17 +427,16 @@ def main() -> None:
 
     occurrences: list[WordOccurrence] = []
     for row, decode in zip(val_rows, decodes):
-        for word, decoded in decoded_words(
+        for site, decoded in decoded_words(
             decode, row["raw_reference_phonemes"], row["raw_word_offsets"]
         ):
-            occurrences.append(
-                WordOccurrence(skeleton(word), vowelization(word), decoded)
-            )
+            occurrences.append(WordOccurrence(site, decoded))
 
     report = score(occurrences, prior)
     report["model"] = args.model
     report["val_segments"] = len(val_rows)
     report["val_segments_unstaged"] = unstaged
+    report["ayah_overlap"] = ayah_overlap(segments, train_clips, val_clips)
     report["verdict"] = verdict(report, args.margin)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

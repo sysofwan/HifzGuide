@@ -229,6 +229,12 @@ def _score_single_vowel(decodes: list[str], references: list[str], vowel: str) -
 
     Alignment still runs on the full strings — dropping the other vowels first would change
     the alignment and measure a different model.
+
+    Carrier-anchored on the same rule as :func:`score_vowels`, and for the same reason.
+    This path feeds :func:`gate`'s per-colour collapse check, so leaving it unanchored made
+    exactly the check ADR-0003 relies on the weakest one in the report: a vowels-only decode
+    scored 0.0 pooled recall but 1.0 on every individual colour, so a model could have
+    collapsed a colour onto misheard carriers and still shown a healthy per-colour recall.
     """
     total = VowelCounts()
     for decode, reference in zip(decodes, references):
@@ -237,12 +243,15 @@ def _score_single_vowel(decodes: list[str], references: list[str], vowel: str) -
         alignment = smith_waterman(decode, reference)
         aligned = 0
         counts = VowelCounts()
+        carrier_matched = False
         for column in alignment.columns:
+            if column.ref_char is not None and column.ref_char not in SHORT_VOWELS:
+                carrier_matched = column.query_char == column.ref_char
             if column.ref_char != vowel:
                 continue
             aligned += 1
             if column.query_char == vowel:
-                counts += VowelCounts(matched=1)
+                counts += VowelCounts(matched=1) if carrier_matched else VowelCounts(unanchored=1)
             elif column.query_char in SHORT_VOWELS:
                 counts += VowelCounts(swapped=1)
             else:

@@ -242,3 +242,35 @@ def test_a_vowel_on_a_misheard_consonant_is_not_credited():
 
     assert counts.unanchored == 1
     assert counts.matched == 3
+
+
+def test_the_per_vowel_breakdown_is_carrier_anchored_too():
+    """The pooled gaming test above passed while the per-colour path stayed gameable.
+
+    ``gate`` reads per-colour recall to detect the collapse ADR-0003 names, so an unanchored
+    per-vowel path made the report's aggregate strict and its collapse check trivially
+    fooled: the same vowels-only decode scored 0.0 pooled and 1.0 on every colour.
+    """
+    vowels_only = "".join(c for c in REFERENCE if c in {FATHA, DAMMA, KASRA})
+
+    report = score_windows([vowels_only], [REFERENCE], "m")
+
+    assert report.counts.recall == 0.0
+    for colour in ("fatha", "damma", "kasra"):
+        counts = report.per_vowel[colour]
+        assert counts.matched == 0, f"{colour} credited a vowel with no carrier"
+        assert counts.recall == 0.0
+
+
+def test_per_vowel_matched_never_exceeds_the_pooled_matched_total():
+    """The arithmetic that exposed the defect, pinned as an invariant.
+
+    Both paths anchor on the same rule, so each colour's matches must partition the pooled
+    matches. In the full artifact they differed by exactly ``unanchored``.
+    """
+    decode = REFERENCE.replace(f"\u0644\u0642{FATHA}", f"\u0644\u0643{FATHA}")
+
+    report = score_windows([decode], [REFERENCE], "m")
+
+    per_vowel_matched = sum(c.matched for c in report.per_vowel.values())
+    assert per_vowel_matched == report.counts.matched

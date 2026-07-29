@@ -66,6 +66,29 @@ model cannot decode the target word correctly even when it is recited *correctly
 says nothing about hearing, and the scorer drops it rather than counting it as "failed to
 follow the audio".
 
+### Recording UI
+
+`tadabur.counterfactual_record_ui` serves the items one at a time and captures both takes:
+
+```bash
+cd tools && python -m tadabur.counterfactual_record_ui
+# then open http://127.0.0.1:8000
+```
+
+Takes are written to `--out-dir` (default `tadabur/audit_run/counterfactual_audio/`, which is
+gitignored — audio does not belong in this directory), under the exact `take_1_file` /
+`take_2_file` names the sheet specifies. The output directory is the only state, so the
+session is resumable: restarting lands on the first item still missing a take.
+
+Two things the UI does deliberately:
+
+- **It serves on loopback only.** Browsers expose the microphone only in a secure context
+  (HTTPS, `localhost` or `127.0.0.1`), so a LAN address records nothing. To record from
+  another device, forward the port: `ssh -L 8000:127.0.0.1:8000 <server>`.
+- **It refuses audio the scorer could not read.** The page encodes 16 kHz mono WAV itself
+  rather than using `MediaRecorder` (whose WebM/Opus output `soundfile` cannot open), and
+  every upload is decoded through `tadabur.audio.decode_to_mono_16k` before it is written.
+
 ## Why these words
 
 Each item is a held-out word chosen so the recording is scorable and the result decisive:

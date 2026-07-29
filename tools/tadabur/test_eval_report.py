@@ -140,3 +140,33 @@ def test_empty_clips_yield_null_headline_metrics():
     assert j["should_reject"]["discrimination"] is None
     # Confusion matrix still lists every soft pair with zeroed cells.
     assert len(j["confusion_matrix"]["soft_pairs"]) == 6
+
+
+def test_clip_outcomes_expose_disagreement_that_equal_counts_hide():
+    """Why per-clip outcomes exist: the aggregate counts are not a paired comparison.
+
+    Two checkpoints can post an identical ``accepted`` total while disagreeing on
+    individual clips in both directions. Comparing only the totals reports "no change";
+    McNemar over the discordant clips is the correct paired test, and it needs these rows.
+    """
+    good, bad = f"{ZAY}{BA}{NOON}", f"{DHAL}{BA}{NOON}"
+    rung_a = [_reject("c1", good, good), _reject("c2", bad, good)]
+    rung_b = [_reject("c1", bad, good), _reject("c2", good, good)]
+
+    report_a, report_b = evaluate(rung_a, "a"), evaluate(rung_b, "b")
+    assert report_a.should_reject.accepted == report_b.should_reject.accepted
+
+    def by_clip(report):
+        return {o.clip_id: o.accepted for o in report.clip_outcomes}
+
+    discordant = [c for c in by_clip(report_a) if by_clip(report_a)[c] != by_clip(report_b)[c]]
+    assert sorted(discordant) == ["c1", "c2"]
+
+
+def test_clip_outcomes_serialize_deterministically_by_clip_id():
+    clips = [_accept("z", f"{ZAY}{BA}", f"{ZAY}{BA}"), _accept("a", f"{DHAL}{BA}", f"{ZAY}{BA}")]
+    payload = evaluate(clips, "m").to_json_dict()["clip_outcomes"]
+    assert [row["clip_id"] for row in payload] == ["a", "z"]
+    assert payload[0] == {"clip_id": "a", "contrast": CONTRAST_DZ, "verdict": ACCEPT,
+                          "accepted": False}
+    assert json.dumps(payload)

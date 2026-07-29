@@ -135,6 +135,25 @@ class ShaddaConfusion:
 
 
 @dataclass(frozen=True)
+class ClipOutcome:
+    """Whether one fixture clip cleared the ``.strict`` gate.
+
+    The aggregate ``SideMetrics`` counts are enough to report one checkpoint, but not to
+    *compare* two: the same clips are scored by every rung, so a rung-vs-rung difference
+    is a paired observation and needs McNemar's test over the discordant clips rather than
+    an unpaired test over the totals. Two rungs can post an identical ``accepted`` count
+    while disagreeing on several clips in both directions, so the counts alone can hide
+    real movement. Emitting the per-clip outcome keeps that test possible from the
+    artifacts, without re-decoding.
+    """
+
+    clip_id: str
+    contrast: str
+    verdict: str
+    accepted: bool
+
+
+@dataclass(frozen=True)
 class EvalReport:
     """The full two-sided eval of one model checkpoint over the curated fixtures."""
 
@@ -145,6 +164,7 @@ class EvalReport:
     per_contrast: dict[str, dict[str, SideMetrics]]
     soft_pair_confusion: list[SoftPairConfusion]
     shadda_confusion: ShaddaConfusion
+    clip_outcomes: tuple[ClipOutcome, ...] = ()
     success_criterion: str = SUCCESS_CRITERION
 
     def to_json_dict(self) -> dict:
@@ -162,6 +182,15 @@ class EvalReport:
                 }
                 for contrast, sides in sorted(self.per_contrast.items())
             },
+            "clip_outcomes": [
+                {
+                    "clip_id": outcome.clip_id,
+                    "contrast": outcome.contrast,
+                    "verdict": outcome.verdict,
+                    "accepted": outcome.accepted,
+                }
+                for outcome in sorted(self.clip_outcomes, key=lambda o: o.clip_id)
+            ],
             "confusion_matrix": {
                 "soft_pairs": {
                     conf.contrast: {
@@ -318,4 +347,13 @@ def evaluate(clips: list[ClipDecode], model_id: str) -> EvalReport:
         per_contrast=per_contrast,
         soft_pair_confusion=_soft_pair_confusion(clips),
         shadda_confusion=_shadda_confusion(clips),
+        clip_outcomes=tuple(
+            ClipOutcome(
+                clip_id=clip.clip_id,
+                contrast=clip.contrast,
+                verdict=clip.verdict,
+                accepted=strict_accept(clip),
+            )
+            for clip in clips
+        ),
     )

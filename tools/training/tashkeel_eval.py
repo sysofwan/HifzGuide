@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -77,6 +78,7 @@ class VowelCounts:
     swapped: int = 0
     omitted: int = 0
     spurious: int = 0
+    unanchored: int = 0
 
     def __add__(self, other: "VowelCounts") -> "VowelCounts":
         return VowelCounts(
@@ -84,11 +86,12 @@ class VowelCounts:
             self.swapped + other.swapped,
             self.omitted + other.omitted,
             self.spurious + other.spurious,
+            self.unanchored + other.unanchored,
         )
 
     @property
     def reference_total(self) -> int:
-        return self.matched + self.swapped + self.omitted
+        return self.matched + self.swapped + self.omitted + self.unanchored
 
     @property
     def recall(self) -> float:
@@ -122,6 +125,14 @@ def score_vowels(decode: str, reference: str) -> VowelCounts:
     Both strings are the **raw, un-normalized** phoneme forms — normalizing either side
     would delete the very characters being measured. Uses the aligner's complete column
     sequence so a decode-only column (an insertion) is visible as ``spurious``.
+
+    A vowel only counts as ``matched`` when its **carrier consonant also matched**. Without
+    that anchor the metric is trivially gameable: Smith-Waterman is local and will happily
+    gap over every consonant, so a "decode" consisting of nothing but the reference's vowel
+    sequence scored a perfect 1.000 recall *and* 1.000 precision. Requiring the carrier
+    makes the metric mean "the right vowel on the right consonant", which is the capability
+    ADR-0003 actually cares about. Correct-colour vowels on an unheard carrier are counted
+    as ``unanchored`` rather than credited.
     """
     if not reference:
         return VowelCounts()
@@ -129,12 +140,16 @@ def score_vowels(decode: str, reference: str) -> VowelCounts:
 
     counts = VowelCounts()
     aligned_reference_vowels = 0
+    carrier_matched = False
     for column in alignment.columns:
         ref_char, query_char = column.ref_char, column.query_char
+        if ref_char is not None and ref_char not in SHORT_VOWELS:
+            # The consonant (or long vowel) this harakah will sit on.
+            carrier_matched = query_char == ref_char
         if ref_char in SHORT_VOWELS:
             aligned_reference_vowels += 1
             if query_char == ref_char:
-                counts += VowelCounts(matched=1)
+                counts += VowelCounts(matched=1) if carrier_matched else VowelCounts(unanchored=1)
             elif query_char in SHORT_VOWELS:
                 counts += VowelCounts(swapped=1)
             else:
@@ -314,7 +329,23 @@ def _load_windows(labels_path: Path, split: str, limit: int | None):
         raise ValueError(
             f"{labels_path} has no '{split}' windows (splits: {sorted(by_split)})."
         )
-    return labels[:limit] if limit else labels
+    if not limit or limit >= len(labels):
+        return labels
+    # Labels are written in filename order, so labels[:limit] is a *contiguous* slice --
+    # 400 of 5,227 val windows turned out to cover only 2 of 45 reciters, and the report
+    # said nothing about it. Sample deterministically across the whole split instead.
+    sampled = random.Random(0).sample(labels, limit)
+    return sorted(sampled, key=lambda w: (w.clip_audio_filename, w.window_index))
+
+
+def coverage_of(labels) -> dict:
+    """What the scored sample actually spans, so a partial eval can never look total."""
+    return {
+        "windows": len(labels),
+        "reciters": len({w.reciter_id for w in labels}),
+        "clips": len({w.clip_audio_filename for w in labels}),
+        "ayahs": len({w.surah_ayah for w in labels}),
+    }
 
 
 def _decode_windows(model_id: str, labels, audio_dir: Path, batch_size: int, device: str):
@@ -351,8 +382,9 @@ def main() -> None:
                              "'none' to skip the no-regression check.")
     parser.add_argument("--split", default="val",
                         help="label split to score (default: the held-out val split).")
-    parser.add_argument("--limit", type=int, default=400,
-                        help="score at most this many windows (0 = all).")
+    parser.add_argument("--limit", type=int, default=0,
+                        help="score at most this many windows, sampled deterministically "
+                             "across the whole split (default 0 = all of it).")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--min-recall", type=float, default=DEFAULT_MIN_RECALL)
@@ -368,7 +400,13 @@ def main() -> None:
             "from the normalized reference (ADR-0003). Rebuild from raw_reference_phonemes; "
             "scoring tashkeel against a vowel-free reference would report a vacuous pass."
         )
-    print(f"Scoring {len(labels)} '{args.split}' windows.", flush=True)
+    coverage = coverage_of(labels)
+    print(
+        f"Scoring {coverage['windows']} '{args.split}' windows — "
+        f"{coverage['reciters']} reciters, {coverage['clips']} clips, "
+        f"{coverage['ayahs']} ayahs.",
+        flush=True,
+    )
 
     candidate = score_windows(
         _decode_windows(args.model, labels, args.audio_dir, args.batch_size, args.device),
@@ -385,6 +423,7 @@ def main() -> None:
 
     verdict = gate(candidate, baseline, args.min_recall, args.tolerance)
     report = {
+        "coverage": coverage,
         "candidate": candidate.to_dict(),
         "baseline": baseline.to_dict() if baseline else None,
         "gate": verdict,

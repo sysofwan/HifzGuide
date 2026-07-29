@@ -216,3 +216,29 @@ def test_gate_fails_a_candidate_below_the_floor_even_without_a_baseline():
     verdict = gate(_report((1, 9), "finetuned"), None)
 
     assert verdict["passed"] is False and verdict["meets_floor"] is False
+
+
+def test_a_vowels_only_decode_cannot_score_a_perfect_recall():
+    """Smith-Waterman is local, so it will gap over every consonant.
+
+    Before carrier-anchoring, a "decode" of nothing but the reference's vowel sequence --
+    no consonants at all, an obviously worthless transcription -- scored recall 1.000 AND
+    precision 1.000. The vowel must land on a consonant the model actually heard.
+    """
+    vowels_only = "".join(c for c in REFERENCE if c in {FATHA, DAMMA, KASRA})
+
+    counts = score_vowels(vowels_only, REFERENCE)
+
+    assert counts.matched == 0, "no vowel sat on a correctly heard carrier"
+    assert counts.unanchored == 4
+    assert counts.recall == 0.0
+
+
+def test_a_vowel_on_a_misheard_consonant_is_not_credited():
+    """The carrier is wrong, so the model did not put the right vowel in the right place."""
+    misheard = REFERENCE.replace(f"\u0644\u0642{FATHA}", f"\u0644\u0643{FATHA}")
+
+    counts = score_vowels(misheard, REFERENCE)
+
+    assert counts.unanchored == 1
+    assert counts.matched == 3

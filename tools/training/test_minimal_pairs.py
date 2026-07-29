@@ -209,13 +209,21 @@ def test_margin_controls_how_far_above_the_prior_counts_as_hearing(margin, expec
 def test_ayah_overlap_reports_shared_text_between_the_splits():
     """The split separates reciters, not Quranic content — that limit must be visible."""
     segments = [
-        {"clip_audio_filename": "t.wav", "surah": 2, "ayah": 1},
-        {"clip_audio_filename": "t.wav", "surah": 2, "ayah": 2},
-        {"clip_audio_filename": "v.wav", "surah": 2, "ayah": 1},
+        {"clip_audio_filename": "t.wav", "surah_ayah": "2:1"},
+        {"clip_audio_filename": "t.wav", "surah_ayah": "2:2"},
+        {"clip_audio_filename": "v.wav", "surah_ayah": "2:1"},
     ]
     overlap = ayah_overlap(segments, frozenset({"t.wav"}), frozenset({"v.wav"}))
     assert overlap["shared_ayahs"] == 1
     assert overlap["val_ayahs_also_in_train"] == 1.0
+
+
+def test_ayah_overlap_refuses_to_report_zero_when_the_key_is_missing():
+    """Silently reporting no overlap would understate the very limit it exists to expose."""
+    with pytest.raises(KeyError, match="surah_ayah"):
+        ayah_overlap(
+            [{"clip_audio_filename": "t.wav"}], frozenset({"t.wav"}), frozenset()
+        )
 
 
 def test_unstaged_segment_audio_resolves_to_none(tmp_path):

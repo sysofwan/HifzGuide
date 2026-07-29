@@ -223,10 +223,15 @@ def ayah_overlap(segments: list[dict], train: frozenset[str], val: frozenset[str
     """
     def ayahs(clips: frozenset[str]) -> set:
         return {
-            (r.get("surah"), r.get("ayah"))
-            for r in segments
-            if r["clip_audio_filename"] in clips and r.get("surah") is not None
+            r["surah_ayah"] for r in segments if r["clip_audio_filename"] in clips
         }
+
+    missing = [r for r in segments if "surah_ayah" not in r]
+    if missing:
+        raise KeyError(
+            f"{len(missing)} manifest rows lack 'surah_ayah' — the ayah-overlap limit "
+            "cannot be measured, and reporting zero overlap would understate it."
+        )
 
     train_ayahs, val_ayahs = ayahs(train), ayahs(val)
     shared = train_ayahs & val_ayahs
@@ -416,7 +421,7 @@ def main() -> None:
     if not val_rows:
         raise SystemExit("no val segments found — is --labels the split the model trained on?")
     print(
-        f"{len(segments)} segments; prior over {len(prior)} skeletons from train; "
+        f"{len(segments)} segments; prior over {len(prior.unigram)} skeletons from train; "
         f"decoding {len(val_rows)} val segments ({unstaged} skipped, audio not staged).",
         flush=True,
     )

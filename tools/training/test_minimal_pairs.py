@@ -13,6 +13,7 @@ from training.minimal_pairs import (
     WordOccurrence,
     decoded_words,
     score,
+    segment_audio_path,
     skeleton,
     text_prior,
     verdict,
@@ -173,3 +174,14 @@ def test_margin_controls_how_far_above_the_prior_counts_as_hearing(margin, expec
     )
     report = score(occurrences, PRIOR)
     assert verdict(report, margin)["hears_tashkeel"] is expected
+
+
+def test_unstaged_segment_audio_resolves_to_none(tmp_path):
+    """A partially staged segment directory is normal, so this reports rather than raises.
+
+    The caller pre-filters on it and prints the skipped count, which keeps missing audio a
+    visible reduction in sample size instead of a silent one.
+    """
+    assert segment_audio_path(tmp_path, "nope.wav") is None
+    (tmp_path / "yes.wav").write_bytes(b"")
+    assert segment_audio_path(tmp_path, "yes.wav") == tmp_path / "yes.wav"

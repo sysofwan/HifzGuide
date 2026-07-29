@@ -213,17 +213,19 @@ def verdict(report: dict, margin: float = 0.10) -> dict:
     }
 
 
-def segment_audio_path(audio_dir: Path, audio_filename: str) -> Path:
-    """Resolve a segment's audio under either staged layout, as ``ClipAudioCache`` does."""
+def segment_audio_path(audio_dir: Path, audio_filename: str) -> Path | None:
+    """Resolve a segment's audio under either staged layout, or ``None`` if unstaged.
+
+    ``ClipAudioCache`` raises here, but a partially staged segment directory is normal:
+    callers pre-filter and *report* how many segments they dropped, so missing audio
+    shrinks the sample visibly rather than biasing it silently.
+    """
     from tadabur.audit_sampler import local_audio_path
 
     for candidate in (audio_dir / local_audio_path(audio_filename), audio_dir / audio_filename):
         if candidate.is_file():
             return candidate
-    raise FileNotFoundError(
-        f"segment audio for {audio_filename!r} not found under {audio_dir} under either "
-        "the hash-prefixed (tadabur.audit_sampler) or plain name — stage it first."
-    )
+    return None
 
 
 def _decode_segments(model_id: str, rows: list[dict], audio_dir: Path, batch_size: int,
@@ -274,13 +276,16 @@ def main() -> None:
     train_clips, val_clips = split_clips(args.labels)
     prior = text_prior(segments, train_clips)
     val_rows = [r for r in segments if r["clip_audio_filename"] in val_clips]
+    staged = [r for r in val_rows if segment_audio_path(args.audio_dir, r["audio_filename"])]
+    unstaged = len(val_rows) - len(staged)
+    val_rows = staged
     if args.limit:
         val_rows = val_rows[: args.limit]
     if not val_rows:
         raise SystemExit("no val segments found — is --labels the split the model trained on?")
     print(
         f"{len(segments)} segments; prior over {len(prior)} skeletons from train; "
-        f"decoding {len(val_rows)} val segments.",
+        f"decoding {len(val_rows)} val segments ({unstaged} skipped, audio not staged).",
         flush=True,
     )
 
@@ -300,6 +305,7 @@ def main() -> None:
     report = score(occurrences, prior)
     report["model"] = args.model
     report["val_segments"] = len(val_rows)
+    report["val_segments_unstaged"] = unstaged
     report["verdict"] = verdict(report, args.margin)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

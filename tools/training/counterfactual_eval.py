@@ -68,6 +68,11 @@ MAX_SILENT_CORRECTION_RATE = 0.05
 # The real gate (ADR-0003): how much tashkeel discrimination the fine-tune may lose relative
 # to base. Relaxing madd and similar over-strict phenomena is the point; letting that
 # relaxation bleed into tashkeel is the failure. Taken against the upper confidence bound.
+#
+# This margin, NOT the choice of interval, is the operative lever (ADR-0006). At the sample
+# sizes this eval can reach, one discordant item is worth ~2.4%, so the margin is barely
+# coarser than the measurement's own resolution. It is a product tolerance -- how often a
+# student's wrong vowel may go unflagged relative to base -- and must be argued as one.
 MAX_REGRESSION = 0.05
 
 
@@ -85,6 +90,104 @@ def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float,
     centre = (p + z * z / (2 * total)) / denominator
     margin = z * sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / denominator
     return (round(max(0.0, centre - margin), 12), round(min(1.0, centre + margin), 12))
+
+
+def paired_score_interval(b: int, c: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Tango score interval for the paired net difference ``(b - c) / n``.
+
+    ``b`` and ``c`` are the two discordant counts of a paired binary comparison and ``n`` the
+    number of paired items; concordant items enter only through ``n``.
+
+    A **Wald** interval must not be used here. Its width is proportional to ``b + c``, so at
+    ``b == c == 0`` it collapses to zero and would certify non-inferiority on ten items — a
+    looser rule than the one this replaces, which is the opposite of the intent. The score
+    interval degrades gracefully instead: with no discordant pairs at all it reduces exactly
+    to the Wilson bound ``z^2 / (n + z^2)``, so certification still costs sample size.
+
+    When ``c == 0`` — the case this corpus actually presents, because the base model silently
+    corrects nothing — the upper bound coincides with the Wilson bound on ``b / n``. That
+    coincidence is why adopting this interval changes no verdict on the recorded sets; see
+    ADR-0006. It matters only once recoveries exist to offset regressions.
+    """
+    if n <= 0:
+        return (0.0, 0.0)
+
+    def score(delta: float) -> float:
+        numerator = b - c - n * delta
+        a = 2 * n
+        beta = -b - c + (2 * n - b + c) * delta
+        gamma = -c * delta * (1 - delta)
+        p21 = (-beta + sqrt(max(beta * beta - 4 * a * gamma, 0.0))) / (2 * a)
+        variance = n * (2 * p21 + delta * (1 - delta))
+        if variance <= 0:
+            # Only reachable at the degenerate point where the interval is a single mass;
+            # a zero numerator there is agreement with ``delta``, not infinite evidence.
+            return 0.0 if numerator == 0 else (1 if numerator > 0 else -1) * float("inf")
+        return numerator / sqrt(variance)
+
+    def solve(accept) -> float:
+        low, high = -1.0 + 1e-12, 1.0 - 1e-12
+        for _ in range(60):
+            mid = (low + high) / 2
+            if accept(score(mid)):
+                low = mid
+            else:
+                high = mid
+        return low
+
+    # ``score`` decreases in delta, so the interval is the band where it stays within +-z.
+    upper = solve(lambda s: s >= -z)
+    lower = solve(lambda s: s > z)
+    return (round(max(-1.0, lower), 12), round(min(1.0, upper), 12))
+
+
+def required_items(
+    regression_rate: float,
+    recovery_rate: float = 0.0,
+    max_regression: float = MAX_REGRESSION,
+    limit: int = 500_000,
+) -> int | None:
+    """Paired items needed to certify non-inferiority at an assumed discordance rate.
+
+    Returns ``None`` when no sample size suffices. That is not a corner case: certification
+    requires the *point* estimate ``regression_rate - recovery_rate`` to sit strictly below
+    the margin, since the interval only ever shrinks onto it. A checkpoint whose observed net
+    regression already exceeds the margin cannot be rescued by recording more audio, and a
+    checkpoint sitting just under it needs an unreachable amount — which is the whole reason
+    #60 withdrew the earlier "collect ~35 more items" advice.
+
+    Rounding the rates to whole items makes certification non-monotone in ``n``: at a 2% rate
+    and a 5% margin, 173 and 174 items clear the bound but 175 does not, because the third
+    regression rounds up to a fourth. Reporting such an island as the answer would send a
+    recollection to a sample size it could fall straight back out of, so this returns the
+    start of the first **contiguous** run that certifies (202, there) instead.
+    """
+    if regression_rate - recovery_rate >= max_regression:
+        return None
+
+    def certifies(n: int) -> bool:
+        b, c = round(regression_rate * n), round(recovery_rate * n)
+        return paired_score_interval(b, c, n)[1] <= max_regression
+
+    # The bound tightens with n, so double until it clears, then bisect. Rounding the two
+    # rates to whole items makes that only near-monotone and leaves isolated islands that
+    # certify while n+1 does not, so step back to the start of the run rather than reporting
+    # the island. See the docstring for the 2%/173 case.
+    n = 1
+    while n <= limit and not certifies(n):
+        n *= 2
+    if n > limit:
+        return None
+    low, high = n // 2, n
+    while low + 1 < high:
+        mid = (low + high) // 2
+        if certifies(mid):
+            high = mid
+        else:
+            low = mid
+    while high > 1 and certifies(high - 1):
+        high -= 1
+    return high
 
 
 def substitute_vowel(reference: str, start: int, end: int, vowel: str) -> str:
@@ -276,6 +379,9 @@ def compare_to_baseline(
     Paired on item id, because both models saw identical audio; only the discordant items
     carry information. Reported as an exact McNemar test alongside the regression count, so a
     handful of discordant pairs cannot masquerade as a verdict.
+
+    Non-inferiority is certified on the upper bound of the paired net difference
+    ``(b - c) / n`` (ADR-0006), never on the point estimate and never on ``b`` alone.
     """
     mine = {r["item_id"]: r for r in results if r["scored"]}
     theirs = {r["item_id"]: r for r in baseline if r["scored"]}
@@ -296,6 +402,9 @@ def compare_to_baseline(
     )
     rate = b / len(shared) if shared else None
     _, high = wilson_interval(b, len(shared)) if shared else (None, None)
+    needed = (
+        required_items(b / len(shared), c / len(shared), max_regression) if shared else None
+    )
 
     # Three-state, because a paired set this size can rarely prove non-inferiority. Requiring
     # BOTH directional evidence and magnitude keeps a single discordant item from reading as a
@@ -309,10 +418,19 @@ def compare_to_baseline(
             f"the fine-tune silently corrected {b} vowel errors base still flagged "
             f"(recovered {c}, exact p={p_value}) — the relaxation has reached tashkeel"
         )
+    elif needed is None:
+        # Underpowered but not fixable: the observed net regression is at or above the margin,
+        # so the interval can never shrink under it. Calling this "more items needed" is what
+        # #60 withdrew — it sends the project recording audio that cannot change the answer.
+        finding, detail = "disqualified", (
+            f"{b} regressed vs {c} recovered (exact p={p_value}) — the net regression "
+            f"{(b - c) / len(shared):.1%} is not below the {max_regression:.0%} margin, so no "
+            "sample size can certify this checkpoint; it needs a human decision, not more audio"
+        )
     else:
         finding, detail = "inconclusive", (
             f"{b} regressed vs {c} recovered (exact p={p_value}) — directional but "
-            "underpowered; more items needed to rule"
+            f"underpowered; certifying at this rate would take {needed} paired items"
         )
 
     # ``finding`` says what we OBSERVED; ``certified`` says whether the set was big enough for
@@ -321,15 +439,16 @@ def compare_to_baseline(
     # over 42 items still leaves an 8% upper bound — above the 5% margin — so it certifies
     # nothing. Non-inferiority is a statement about the bound, never the point estimate.
     #
-    # Both quantities below are about b/n alone -- the RAW regression rate, not the paired net
-    # difference (b-c)/n. They were once named "net_*", which was simply wrong whenever c > 0.
-    # Requiring b <= c on top of the bound is deliberately CONSERVATIVE rather than general: a
-    # proper paired non-inferiority test on (b-c)/n could certify a set with b > c if n were
-    # large enough (one regression in 10,000 items clears a 5% margin easily). At n=42 that
-    # distinction cannot arise, so the strict rule is safe here -- but this is not a reusable
-    # non-inferiority implementation, and it must not be lifted into one without replacing the
-    # bound with a paired-difference interval.
-    certified = bool(shared) and b <= c and high is not None and high <= max_regression
+    # Certification is taken on the PAIRED NET DIFFERENCE (b-c)/n (ADR-0006). The rule this
+    # replaced also required ``b <= c``, which was not conservatism but a zero-tolerance rule
+    # in disguise: ``c`` counts items base got wrong and the fine-tune got right, so whenever
+    # base is clean on the set — it is, 0 silent corrections in 41 — ``c`` is pinned at 0 and
+    # ``b <= c`` degenerates to ``b == 0``. No quantity of additional audio could ever satisfy
+    # it, because concordant items move neither count. Dropping it is a real loosening and is
+    # recorded as one; on the sets scored to date it changes no verdict, since with ``c == 0``
+    # the net-difference bound equals the Wilson bound on ``b / n``.
+    net_low, net_high = paired_score_interval(b, c, len(shared)) if shared else (None, None)
+    certified = bool(shared) and net_high is not None and net_high <= max_regression
 
     return {
         "paired_items": len(shared),
@@ -338,11 +457,18 @@ def compare_to_baseline(
         "recovered": c,
         "regression_rate": round(rate, 4) if rate is not None else None,
         "regression_upper95": round(high, 4) if high is not None else None,
+        "net_difference": round((b - c) / len(shared), 4) if shared else None,
+        "net_difference_ci95": (
+            [round(net_low, 4), round(net_high, 4)] if net_high is not None else None
+        ),
         "mcnemar_exact_p": round(p_value, 4),
         "max_regression": max_regression,
         "observed_direction": "tied" if b == c else ("worse" if b > c else "better"),
         "equality_finding": finding,
         "non_inferiority_certified": certified,
+        # What it would take to settle this set, at the discordance rate it actually shows.
+        # ``None`` means no amount of recording can — see ``required_items``.
+        "items_needed_at_observed_rate": needed,
         "detail": detail,
     }
 
@@ -418,10 +544,10 @@ def _decode_takes(model_id: str, items: list[dict], audio_dir: Path, batch_size:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--items", type=Path, required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--audio-dir", type=Path, required=True)
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--items", type=Path)
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--audio-dir", type=Path)
+    parser.add_argument("--model")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", default="cuda")
     parser.add_argument(
@@ -433,6 +559,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="a report from the base model; enables the ADR-0003 non-inferiority gate",
     )
     parser.add_argument("--max-regression", type=float, default=MAX_REGRESSION)
+    parser.add_argument(
+        "--rescore", type=Path,
+        help="re-judge an existing report's stored per-item outcomes under the current rule, "
+             "instead of decoding audio — no model or GPU needed",
+    )
     parser.add_argument("--out", type=Path, required=True)
     return parser
 
@@ -440,23 +571,34 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
 
-    items = [json.loads(line) for line in args.items.read_text(encoding="utf-8").splitlines() if line.strip()]
-    segments = {row["audio_filename"]: row for row in read_segments(args.manifest)}
-    missing = [
-        f"{item['item_id']}_{take}.wav"
-        for item in items
-        for take in ("control", "counterfactual")
-        if not (args.audio_dir / f"{item['item_id']}_{take}.wav").is_file()
-    ]
-    if missing:
-        raise SystemExit(f"{len(missing)} recordings missing, e.g. {missing[:3]}")
+    if args.rescore:
+        existing = json.loads(args.rescore.read_text(encoding="utf-8"))
+        results, model = existing["items"], existing.get("model")
+    else:
+        required = {"--items": args.items, "--manifest": args.manifest,
+                    "--audio-dir": args.audio_dir, "--model": args.model}
+        absent = [flag for flag, value in required.items() if value is None]
+        if absent:
+            raise SystemExit(f"{', '.join(absent)} are required unless --rescore is given")
+        items = [json.loads(line)
+                 for line in args.items.read_text(encoding="utf-8").splitlines() if line.strip()]
+        segments = {row["audio_filename"]: row for row in read_segments(args.manifest)}
+        missing = [
+            f"{item['item_id']}_{take}.wav"
+            for item in items
+            for take in ("control", "counterfactual")
+            if not (args.audio_dir / f"{item['item_id']}_{take}.wav").is_file()
+        ]
+        if missing:
+            raise SystemExit(f"{len(missing)} recordings missing, e.g. {missing[:3]}")
 
-    decodes = _decode_takes(args.model, items, args.audio_dir, args.batch_size, args.device)
-    results = [score_item(item, segments[item["audio_filename"]], decodes[item["item_id"]])
-               for item in items]
+        decodes = _decode_takes(args.model, items, args.audio_dir, args.batch_size, args.device)
+        results = [score_item(item, segments[item["audio_filename"]], decodes[item["item_id"]])
+                   for item in items]
+        model = args.model
 
     report = {
-        "model": args.model,
+        "model": model,
         "summary": summarize(results),
         "items": results,
     }

@@ -10,10 +10,13 @@ import pytest
 from training.counterfactual_eval import (
     FOLLOWED_AUDIO,
     FOLLOWED_TEXT,
+    MAX_REGRESSION,
     NO_VOWEL,
     OTHER_VOWEL,
     classify,
     compare_to_baseline,
+    paired_score_interval,
+    required_items,
     score_item,
     substitute_vowel,
     summarize,
@@ -321,12 +324,36 @@ def test_a_regression_offset_by_an_equal_recovery_is_not_significant():
 
 
 def test_a_directional_but_underpowered_difference_is_not_called_clean():
-    """The rung3 case: 4 regressed vs 1 recovered is not significant, but not nothing."""
+    """A net regression under the margin but too thinly sampled to certify.
+
+    2 regressed against 1 recovered is a 2.6% net — inside the 5% margin, so volume could
+    still settle it — but at 39 items the bound is nowhere near. The report must say how much
+    volume, rather than the bare "more items needed" that sent #60 chasing an unreachable set.
+    """
+    base = _outcome_rows([FOLLOWED_AUDIO] * 38 + [FOLLOWED_TEXT])
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 2 + [FOLLOWED_AUDIO] * 36 + [FOLLOWED_AUDIO])
+    comparison = compare_to_baseline(tuned, base)
+    assert comparison["regressed"] == 2 and comparison["recovered"] == 1
+    assert comparison["equality_finding"] == "inconclusive"
+    assert comparison["non_inferiority_certified"] is False
+    assert comparison["items_needed_at_observed_rate"] > 39
+
+
+def test_a_checkpoint_no_recollection_can_rescue_is_not_called_inconclusive():
+    """The rung3_v2 shape: 4 regressed vs 1 recovered, a 7.7% net regression.
+
+    "Inconclusive" invites more recording. Here recording cannot help — the interval only
+    shrinks onto a point estimate that is already past the margin — so the finding must say
+    so and hand the decision to a human.
+    """
     base = _outcome_rows([FOLLOWED_AUDIO] * 38 + [FOLLOWED_TEXT])
     tuned = _outcome_rows([FOLLOWED_TEXT] * 4 + [FOLLOWED_AUDIO] * 34 + [FOLLOWED_AUDIO])
+
     comparison = compare_to_baseline(tuned, base)
+
     assert comparison["regressed"] == 4 and comparison["recovered"] == 1
-    assert comparison["equality_finding"] == "inconclusive"
+    assert comparison["equality_finding"] == "disqualified"
+    assert comparison["items_needed_at_observed_rate"] is None
 
 
 def test_only_items_both_models_scored_are_compared():
@@ -372,6 +399,107 @@ def test_a_large_enough_clean_set_does_certify():
 
     assert comparison["regression_upper95"] <= comparison["max_regression"]
     assert comparison["non_inferiority_certified"] is True
+
+
+def test_regressions_offset_by_recoveries_certify_once_the_set_is_large_enough():
+    """ADR-0006's loosening, stated as a test.
+
+    The rule this replaced also demanded ``b <= c``, so this set — 20 regressions against 10
+    recoveries — could never certify however much audio was collected. Non-inferiority is a
+    claim about the *net* difference: 1% net over 1,000 paired items is comfortably inside a
+    5% margin, and refusing it was a zero-tolerance rule wearing non-inferiority's clothes.
+    """
+    base = _outcome_rows([FOLLOWED_AUDIO] * 20 + [FOLLOWED_TEXT] * 10 + [FOLLOWED_AUDIO] * 970)
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 20 + [FOLLOWED_AUDIO] * 10 + [FOLLOWED_AUDIO] * 970)
+
+    comparison = compare_to_baseline(tuned, base)
+
+    assert comparison["regressed"] == 20 and comparison["recovered"] == 10
+    assert comparison["net_difference"] == 0.01
+    assert comparison["non_inferiority_certified"] is True
+
+
+def test_the_recorded_forty_one_item_set_still_certifies_nothing():
+    """The rung1_v3 result — 2 regressed, 0 recovered on 41 paired items.
+
+    The loosening above must not reach back and pass the sets that motivated it. With no
+    recoveries the net-difference bound is just the Wilson bound on b/n, so it lands where it
+    always did: 16%, three times the margin.
+    """
+    base = _outcome_rows([FOLLOWED_AUDIO] * 41)
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 2 + [FOLLOWED_AUDIO] * 39)
+
+    comparison = compare_to_baseline(tuned, base)
+
+    assert comparison["net_difference_ci95"][1] == pytest.approx(0.1614, abs=1e-4)
+    assert comparison["non_inferiority_certified"] is False
+
+
+def test_a_flawless_baseline_makes_recoveries_impossible():
+    """Why the old ``b <= c`` clause could never be satisfied, not merely rarely.
+
+    ``c`` counts items the base model got wrong and the fine-tune got right. Base silently
+    corrects nothing on the recorded set, so ``c`` is pinned at zero and ``b <= c`` collapses
+    to ``b == 0``. Concordant items move neither count, so no amount of extra recording could
+    ever have changed it — the withdrawn "collect ~35 more items" advice was unreachable.
+    """
+    base = _outcome_rows([FOLLOWED_AUDIO] * 400)
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 2 + [FOLLOWED_AUDIO] * 398)
+
+    comparison = compare_to_baseline(tuned, base)
+
+    assert comparison["recovered"] == 0
+    assert comparison["regressed"] == 2
+    assert comparison["non_inferiority_certified"] is True
+
+
+def test_a_paired_interval_without_discordant_pairs_still_costs_sample_size():
+    """The trap a Wald interval would have walked into.
+
+    Wald's width is proportional to ``b + c``, so with no discordant pairs it is zero and ten
+    items would "certify" — looser than the rule being replaced, which is the opposite of the
+    intent. The score interval reduces to the Wilson bound instead, so certifying zero
+    regressions still costs 73 items.
+    """
+    assert paired_score_interval(0, 0, 10)[1] == pytest.approx(0.2775, abs=1e-4)
+    assert paired_score_interval(0, 0, 72)[1] > MAX_REGRESSION
+    assert paired_score_interval(0, 0, 73)[1] <= MAX_REGRESSION
+
+
+def test_the_power_calculation_replaces_the_withdrawn_seventy_three():
+    """~73 was the sample size for a *flawless* run, never for the observed regressions.
+
+    Stating it per assumed discordance rate is what #60 asks for, because the cost explodes as
+    the rate approaches the margin.
+    """
+    assert required_items(0.0) == 73
+    assert required_items(0.01) == 110
+    assert required_items(0.02) == 202
+    assert required_items(0.03) == 414
+
+
+def test_the_power_calculation_skips_rounding_islands():
+    """173 items certify at a 2% rate and 175 do not — the third regression rounds to a fourth.
+
+    Reporting an island as "the" sample size would send a recollection to a target it can fall
+    straight back out of by recording one more item, so the answer is the start of the first
+    contiguous run.
+    """
+    assert paired_score_interval(round(0.02 * 173), 0, 173)[1] <= MAX_REGRESSION
+    assert paired_score_interval(round(0.02 * 175), 0, 175)[1] > MAX_REGRESSION
+    assert required_items(0.02) > 175
+
+
+def test_a_net_regression_at_or_above_the_margin_can_never_be_certified():
+    """rung3_v2: 4 of 41, a 9.8% net regression. No recollection can rescue it.
+
+    The interval only ever shrinks onto the point estimate, so a set whose net difference
+    already exceeds the margin is disqualified outright — the decision belongs to a human on
+    #10, and asking for more audio would be a stall dressed as diligence.
+    """
+    assert required_items(4 / 41) is None
+    assert required_items(0.05) is None
+    assert required_items(0.049) is not None
 
 
 def test_an_item_the_two_alignments_disagree_about_is_not_scored(monkeypatch):

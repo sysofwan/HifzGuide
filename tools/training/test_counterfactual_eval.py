@@ -297,7 +297,7 @@ def test_relaxing_without_touching_tashkeel_is_not_a_regression():
     rows = _outcome_rows([FOLLOWED_AUDIO] * 38 + [FOLLOWED_TEXT])
     comparison = compare_to_baseline(rows, rows)
     assert comparison["regressed"] == 0
-    assert comparison["finding"] == "no_evidence_of_regression"
+    assert comparison["equality_finding"] == "no_evidence_of_regression"
 
 
 def test_losing_vowel_errors_the_base_model_flagged_is_a_regression():
@@ -306,7 +306,7 @@ def test_losing_vowel_errors_the_base_model_flagged_is_a_regression():
     tuned = _outcome_rows([FOLLOWED_TEXT] * 10 + [FOLLOWED_AUDIO] * 30)
     comparison = compare_to_baseline(tuned, base)
     assert comparison["regressed"] == 10 and comparison["recovered"] == 0
-    assert comparison["finding"] == "regression"
+    assert comparison["equality_finding"] == "regression"
     assert comparison["mcnemar_exact_p"] < 0.01
 
 
@@ -317,7 +317,7 @@ def test_a_regression_offset_by_an_equal_recovery_is_not_significant():
     comparison = compare_to_baseline(tuned, base)
     assert comparison["regressed"] == 4 and comparison["recovered"] == 4
     assert comparison["mcnemar_exact_p"] == 1.0
-    assert comparison["finding"] == "no_evidence_of_regression"
+    assert comparison["equality_finding"] == "no_evidence_of_regression"
 
 
 def test_a_directional_but_underpowered_difference_is_not_called_clean():
@@ -326,7 +326,7 @@ def test_a_directional_but_underpowered_difference_is_not_called_clean():
     tuned = _outcome_rows([FOLLOWED_TEXT] * 4 + [FOLLOWED_AUDIO] * 34 + [FOLLOWED_AUDIO])
     comparison = compare_to_baseline(tuned, base)
     assert comparison["regressed"] == 4 and comparison["recovered"] == 1
-    assert comparison["finding"] == "inconclusive"
+    assert comparison["equality_finding"] == "inconclusive"
 
 
 def test_only_items_both_models_scored_are_compared():
@@ -348,8 +348,8 @@ def test_finding_no_regression_is_not_the_same_as_certifying_non_inferiority():
 
     comparison = compare_to_baseline(rows, rows)
 
-    assert comparison["finding"] == "no_evidence_of_regression"
-    assert comparison["net_regression_upper95"] > comparison["max_regression"]
+    assert comparison["equality_finding"] == "no_evidence_of_regression"
+    assert comparison["regression_upper95"] > comparison["max_regression"]
     assert comparison["non_inferiority_certified"] is False
 
 
@@ -370,5 +370,30 @@ def test_a_large_enough_clean_set_does_certify():
 
     comparison = compare_to_baseline(rows, rows)
 
-    assert comparison["net_regression_upper95"] <= comparison["max_regression"]
+    assert comparison["regression_upper95"] <= comparison["max_regression"]
     assert comparison["non_inferiority_certified"] is True
+
+
+def test_an_item_the_two_alignments_disagree_about_is_not_scored(monkeypatch):
+    """An unstable item's verdict depends on which reference the decode was aligned against.
+
+    Those two references are the canonical and the spoken text -- the two hypotheses under
+    test -- so scoring such an item would let the answer depend on the question. cf026 was
+    exactly this: alignment_stable false, yet counted in the base model's headline. It must be
+    reported for audit and excluded from the denominator, never silently resolved in favour of
+    whichever reference happened to win.
+    """
+    import training.counterfactual_eval as module
+
+    canonical, spoken = FATHA, DAMMA
+    # The counterfactual take reads as the spoken vowel against one reference and the
+    # canonical vowel against the other -- followed_audio or followed_text, take your pick.
+    calls = iter([canonical, canonical, spoken, canonical])
+    monkeypatch.setattr(module, "vowel_in_span", lambda *a, **k: next(calls))
+
+    row = module.score_item(_item(canonical, spoken), SEGMENT, _decodes(canonical, spoken))
+
+    assert row["control_passed"] is True, "the control take is clean; only stability is at issue"
+    assert row["alignment_stable"] is False
+    assert row["scored"] is False
+    assert row["outcome"] == FOLLOWED_AUDIO, "still reported, so the exclusion can be audited"

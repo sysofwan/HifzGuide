@@ -201,6 +201,8 @@ def score_item(item: dict, segment: dict, decodes: dict[str, str]) -> dict:
     # already exists, so they are dropped here rather than silently scored.
     excluded_madd = _is_madd_word(item["target_word"])
 
+    stable = control.stable and counterfactual.stable
+
     return {
         "item_id": item["item_id"],
         "surah_ayah": item["surah_ayah"],
@@ -212,9 +214,13 @@ def score_item(item: dict, segment: dict, decodes: dict[str, str]) -> dict:
         "counterfactual_vowel": counterfactual.decoded_vowel,
         "control_passed": control_ok,
         "excluded_madd": excluded_madd,
-        "alignment_stable": control.stable and counterfactual.stable,
+        "alignment_stable": stable,
         "outcome": classify(counterfactual.decoded_vowel, canonical, spoken),
-        "scored": control_ok and not excluded_madd,
+        # An unstable item is one the two alignment references disagree about, so its verdict
+        # is an artifact of which reference was chosen -- and the two references here are the
+        # canonical and the spoken text, exactly the hypotheses under test. Counting it would
+        # let the answer depend on the question. It is reported, not scored.
+        "scored": control_ok and not excluded_madd and stable,
     }
 
 
@@ -314,6 +320,15 @@ def compare_to_baseline(
     # how "no_evidence_of_regression" gets read as "passes non-inferiority". Zero regressions
     # over 42 items still leaves an 8% upper bound — above the 5% margin — so it certifies
     # nothing. Non-inferiority is a statement about the bound, never the point estimate.
+    #
+    # Both quantities below are about b/n alone -- the RAW regression rate, not the paired net
+    # difference (b-c)/n. They were once named "net_*", which was simply wrong whenever c > 0.
+    # Requiring b <= c on top of the bound is deliberately CONSERVATIVE rather than general: a
+    # proper paired non-inferiority test on (b-c)/n could certify a set with b > c if n were
+    # large enough (one regression in 10,000 items clears a 5% margin easily). At n=42 that
+    # distinction cannot arise, so the strict rule is safe here -- but this is not a reusable
+    # non-inferiority implementation, and it must not be lifted into one without replacing the
+    # bound with a paired-difference interval.
     certified = bool(shared) and b <= c and high is not None and high <= max_regression
 
     return {
@@ -321,11 +336,12 @@ def compare_to_baseline(
         "regressed": b,
         "regressed_items": regressed,
         "recovered": c,
-        "net_regression_rate": round(rate, 4) if rate is not None else None,
-        "net_regression_upper95": round(high, 4) if high is not None else None,
+        "regression_rate": round(rate, 4) if rate is not None else None,
+        "regression_upper95": round(high, 4) if high is not None else None,
         "mcnemar_exact_p": round(p_value, 4),
         "max_regression": max_regression,
-        "finding": finding,
+        "observed_direction": "tied" if b == c else ("worse" if b > c else "better"),
+        "equality_finding": finding,
         "non_inferiority_certified": certified,
         "detail": detail,
     }

@@ -66,3 +66,9 @@ so it is not a training-label defect.
   so this decision covers only the three short vowels the model actually emits.
 - **Preview-scale caveat:** the 387-segment preview subset is enough to establish the error mode
   (~97% match, ~1.3% swap); the rates are re-checked before scaling to the full corpus.
+  **Fulfilled by [ADR-0005](0005-tashkeel-filtering-and-gating.md)**, which re-measures on all
+  499,863 reference vowels: the error mode holds and the swap rate drops to **0.0005** once
+  carrier-anchored. ADR-0005 also amends the "no per-vowel color-swap reject gate" decision above
+  — it stands at the *segment* level, but a **reciter**-level swap filter is added, since
+  thousands of aggregated vowels can separate a systematically non-Hafs reciter where one segment
+  cannot.

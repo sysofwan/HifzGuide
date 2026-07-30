@@ -40,7 +40,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from math import sqrt
+from math import comb, sqrt
 from pathlib import Path
 
 import numpy as np
@@ -59,11 +59,16 @@ NO_VOWEL = "no_vowel"
 # the span on a couple of incidental characters and return the wrong word's vowel.
 MIN_SKELETON_COVERAGE = 0.5
 
-# Default ceiling on the silent-correction rate. Muraja is a recitation *checker*, so the
-# quantity that decides fitness is how often a genuinely wrong vowel is transcribed as the
-# canonical one — such an error is invisible to the student. The verdict is taken against the
-# UPPER confidence bound, so a small sample cannot buy a pass it has not earned.
+# Ceiling on the silent-correction rate: how often a genuinely wrong vowel is transcribed as
+# the canonical one, an error the student is never told about. Reported as context, NOT as the
+# gate — Muraja deliberately relaxes the base model's strictness, so an absolute bar would
+# fail the fine-tune for succeeding at its actual goal. See ADR-0003.
 MAX_SILENT_CORRECTION_RATE = 0.05
+
+# The real gate (ADR-0003): how much tashkeel discrimination the fine-tune may lose relative
+# to base. Relaxing madd and similar over-strict phenomena is the point; letting that
+# relaxation bleed into tashkeel is the failure. Taken against the upper confidence bound.
+MAX_REGRESSION = 0.05
 
 
 def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
@@ -245,6 +250,73 @@ def summarize(results: list[dict]) -> dict:
     }
 
 
+def compare_to_baseline(
+    results: list[dict], baseline: list[dict], max_regression: float = MAX_REGRESSION
+) -> dict:
+    """Did the fine-tune lose vowel errors the base model still flagged?
+
+    This is the gate ADR-0003 actually asks for. Muraja deliberately *relaxes* the base
+    model's strictness — it ignores madd markers and other phenomena Muaalem over-flags — so
+    an absolute miss-rate ceiling would fail the fine-tune for doing its job. What must not
+    happen is the relaxation bleeding into tashkeel: "aggregate vowel accuracy improving
+    while that discrimination collapses is the failure this eval must catch."
+
+    Paired on item id, because both models saw identical audio; only the discordant items
+    carry information. Reported as an exact McNemar test alongside the regression count, so a
+    handful of discordant pairs cannot masquerade as a verdict.
+    """
+    mine = {r["item_id"]: r for r in results if r["scored"]}
+    theirs = {r["item_id"]: r for r in baseline if r["scored"]}
+    shared = sorted(set(mine) & set(theirs))
+
+    def flags(row):
+        return row["outcome"] != FOLLOWED_TEXT
+
+    regressed = [i for i in shared if flags(theirs[i]) and not flags(mine[i])]
+    recovered = [i for i in shared if not flags(theirs[i]) and flags(mine[i])]
+
+    b, c = len(regressed), len(recovered)
+    discordant = b + c
+    p_value = (
+        min(1.0, 2 * sum(comb(discordant, k) for k in range(min(b, c) + 1)) / 2**discordant)
+        if discordant
+        else 1.0
+    )
+    rate = b / len(shared) if shared else None
+    _, high = wilson_interval(b, len(shared)) if shared else (None, None)
+
+    # Three-state, because a paired set this size can rarely prove non-inferiority. Requiring
+    # BOTH directional evidence and magnitude keeps a single discordant item from reading as a
+    # regression, while refusing to call a directional-but-underpowered result "clean".
+    if b <= c:
+        finding, detail = "no_evidence_of_regression", (
+            f"the fine-tune silently corrected no more vowel errors than base ({b} vs {c})"
+        )
+    elif p_value < 0.05 and high > max_regression:
+        finding, detail = "regression", (
+            f"the fine-tune silently corrected {b} vowel errors base still flagged "
+            f"(recovered {c}, exact p={p_value}) — the relaxation has reached tashkeel"
+        )
+    else:
+        finding, detail = "inconclusive", (
+            f"{b} regressed vs {c} recovered (exact p={p_value}) — directional but "
+            "underpowered; more items needed to rule"
+        )
+
+    return {
+        "paired_items": len(shared),
+        "regressed": b,
+        "regressed_items": regressed,
+        "recovered": c,
+        "net_regression_rate": round(rate, 4) if rate is not None else None,
+        "net_regression_upper95": round(high, 4) if high is not None else None,
+        "mcnemar_exact_p": round(p_value, 4),
+        "max_regression": max_regression,
+        "finding": finding,
+        "detail": detail,
+    }
+
+
 def verdict(summary: dict, max_silent_correction: float = MAX_SILENT_CORRECTION_RATE) -> dict:
     """Is the model fit to flag a student's vowel error?
 
@@ -326,6 +398,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-silent-correction", type=float, default=MAX_SILENT_CORRECTION_RATE,
         help="ceiling on the rate at which a wrong vowel is transcribed as the canonical one",
     )
+    parser.add_argument(
+        "--baseline", type=Path,
+        help="a report from the base model; enables the ADR-0003 non-inferiority gate",
+    )
+    parser.add_argument("--max-regression", type=float, default=MAX_REGRESSION)
     parser.add_argument("--out", type=Path, required=True)
     return parser
 
@@ -354,6 +431,11 @@ def main() -> None:
         "items": results,
     }
     report["verdict"] = verdict(report["summary"], args.max_silent_correction)
+    if args.baseline:
+        baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
+        report["vs_baseline"] = compare_to_baseline(
+            report["items"], baseline["items"], args.max_regression
+        )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")

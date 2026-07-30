@@ -13,6 +13,7 @@ from training.counterfactual_eval import (
     NO_VOWEL,
     OTHER_VOWEL,
     classify,
+    compare_to_baseline,
     score_item,
     substitute_vowel,
     summarize,
@@ -258,3 +259,59 @@ def test_the_cli_default_tolerance_is_the_product_tolerance():
     )
     assert args.max_silent_correction == MAX_SILENT_CORRECTION_RATE
     assert verdict(summarize(_results(35, 4)), args.max_silent_correction)["conclusive"] is False
+
+
+def _outcome_rows(outcomes):
+    return [
+        {"item_id": f"cf{i:03d}", "swap": "a->b", "outcome": o,
+         "control_passed": True, "alignment_stable": True, "scored": True}
+        for i, o in enumerate(outcomes)
+    ]
+
+
+def test_relaxing_without_touching_tashkeel_is_not_a_regression():
+    """The fine-tune's whole purpose is to relax phenomena Muraja ignores.
+
+    Identical tashkeel behaviour must therefore pass, however much else changed.
+    """
+    rows = _outcome_rows([FOLLOWED_AUDIO] * 38 + [FOLLOWED_TEXT])
+    comparison = compare_to_baseline(rows, rows)
+    assert comparison["regressed"] == 0
+    assert comparison["finding"] == "no_evidence_of_regression"
+
+
+def test_losing_vowel_errors_the_base_model_flagged_is_a_regression():
+    """ADR-0003's named failure: accuracy rises while discrimination collapses."""
+    base = _outcome_rows([FOLLOWED_AUDIO] * 40)
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 10 + [FOLLOWED_AUDIO] * 30)
+    comparison = compare_to_baseline(tuned, base)
+    assert comparison["regressed"] == 10 and comparison["recovered"] == 0
+    assert comparison["finding"] == "regression"
+    assert comparison["mcnemar_exact_p"] < 0.01
+
+
+def test_a_regression_offset_by_an_equal_recovery_is_not_significant():
+    """Churn on individual items is not directional evidence."""
+    base = _outcome_rows([FOLLOWED_AUDIO] * 4 + [FOLLOWED_TEXT] * 4 + [FOLLOWED_AUDIO] * 32)
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 4 + [FOLLOWED_AUDIO] * 4 + [FOLLOWED_AUDIO] * 32)
+    comparison = compare_to_baseline(tuned, base)
+    assert comparison["regressed"] == 4 and comparison["recovered"] == 4
+    assert comparison["mcnemar_exact_p"] == 1.0
+    assert comparison["finding"] == "no_evidence_of_regression"
+
+
+def test_a_directional_but_underpowered_difference_is_not_called_clean():
+    """The rung3 case: 4 regressed vs 1 recovered is not significant, but not nothing."""
+    base = _outcome_rows([FOLLOWED_AUDIO] * 38 + [FOLLOWED_TEXT])
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 4 + [FOLLOWED_AUDIO] * 34 + [FOLLOWED_AUDIO])
+    comparison = compare_to_baseline(tuned, base)
+    assert comparison["regressed"] == 4 and comparison["recovered"] == 1
+    assert comparison["finding"] == "inconclusive"
+
+
+def test_only_items_both_models_scored_are_compared():
+    """An item one model could not score is not evidence about the other."""
+    base = _outcome_rows([FOLLOWED_AUDIO] * 3)
+    tuned = _outcome_rows([FOLLOWED_AUDIO] * 3)
+    tuned[2]["scored"] = False
+    assert compare_to_baseline(tuned, base)["paired_items"] == 2

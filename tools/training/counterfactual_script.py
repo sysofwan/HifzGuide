@@ -69,7 +69,7 @@ SWAP_DIRECTIONS = [(a, b) for a in (FATHA, DAMMA, KASRA) for b in (FATHA, DAMMA,
 # of an elongation, not a free choice. Substituting it is not naturally producible (there is
 # no such word as مُا for مَا), and ADR-0003 documents madd carriers as an alignment-artifact
 # source, so these words are excluded rather than recorded.
-MADD_LETTERS = frozenset("\u0627\u0648\u064a\u06e5\u06e6")
+MADD_LETTERS = frozenset("\u0627\u0648\u064a\u06e5\u06e6\u0649")
 
 
 # How many times the training text must show this word-in-context before its vowelization
@@ -122,7 +122,10 @@ def candidate_items(segments: list[dict], val_clips, priors) -> list[Counterfact
             if sum(1 for c in words[index] if c in SHORT_VOWELS) != 1:
                 continue
             phonemes = row["raw_reference_phonemes"][start:end]
-            if _vowel_is_madd(phonemes):
+            # Checked on BOTH forms. The phonetizer often absorbs the elongation carrier into
+            # the vowel, so the phoneme span alone misses words like فِى and مَا -- and those
+            # cannot be recited with a substituted vowel at all.
+            if _vowel_is_madd(phonemes) or _vowel_is_madd(words[index]):
                 continue
             counts = priors.context.get(site.context_key)
             if not counts or len(counts) != 1:
@@ -145,11 +148,16 @@ def candidate_items(segments: list[dict], val_clips, priors) -> list[Counterfact
     return items
 
 
-def _vowel_is_madd(phonemes: str) -> bool:
-    """Whether the word's single short vowel opens an elongation."""
+def _vowel_is_madd(text: str) -> bool:
+    """Whether the word's short vowel opens an elongation.
+
+    Such a word cannot carry the substitution the sheet asks for: مَا cannot be recited as
+    مُا, because the alef is holding the fatha long. Also true of a vowel sitting at the end
+    of the word, where the carrier is the next word's opening.
+    """
     return any(
-        c in SHORT_VOWELS and i + 1 < len(phonemes) and phonemes[i + 1] in MADD_LETTERS
-        for i, c in enumerate(phonemes)
+        c in SHORT_VOWELS and (i + 1 >= len(text) or text[i + 1] in MADD_LETTERS)
+        for i, c in enumerate(text)
     )
 
 

@@ -54,6 +54,17 @@ FOLLOWED_TEXT = "followed_text"
 OTHER_VOWEL = "other_vowel"
 NO_VOWEL = "no_vowel"
 
+# Fraction of the target word's consonant skeleton the alignment must match before the
+# projected span is trusted. Without this, a repeated word elsewhere in the ayah can capture
+# the span on a couple of incidental characters and return the wrong word's vowel.
+MIN_SKELETON_COVERAGE = 0.5
+
+# Default ceiling on the silent-correction rate. Muraja is a recitation *checker*, so the
+# quantity that decides fitness is how often a genuinely wrong vowel is transcribed as the
+# canonical one — such an error is invisible to the student. The verdict is taken against the
+# UPPER confidence bound, so a small sample cannot buy a pass it has not earned.
+MAX_SILENT_CORRECTION_RATE = 0.05
+
 
 def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
     """Wilson score interval — usable at the extreme proportions this test expects.
@@ -80,8 +91,15 @@ def substitute_vowel(reference: str, start: int, end: int, vowel: str) -> str:
 def vowel_in_span(decode: str, reference: str, start: int, end: int) -> str | None:
     """The vowel the decode placed on the reference word at ``[start, end)``.
 
-    Returns ``None`` when the alignment never reached the word — a word the model did not
-    transcribe is not evidence about which vowel it heard.
+    Returns ``None`` when the projection is not trustworthy, rather than guessing. Three
+    things make it untrustworthy, and all three occur in practice:
+
+    * the alignment never reached the word — a word the model did not transcribe is not
+      evidence about which vowel it heard;
+    * too little of the word's consonant skeleton was matched, which is how a repeated word
+      elsewhere in the ayah can capture the span and hand back the wrong word's vowel;
+    * the projected span carries more than one distinct short vowel, so which one belongs to
+      the target is ambiguous.
     """
     alignment = smith_waterman(decode, reference)
     positions = [
@@ -91,9 +109,16 @@ def vowel_in_span(decode: str, reference: str, start: int, end: int) -> str | No
     ]
     if not positions:
         return None
+
+    skeleton = [c for c in reference[start:end] if c not in SHORT_VOWELS and not c.isspace()]
+    if skeleton and len(positions) < MIN_SKELETON_COVERAGE * len(skeleton):
+        return None
+
     span = decode[min(positions) : max(positions) + 1]
-    vowels = [c for c in span if c in SHORT_VOWELS]
-    return vowels[0] if vowels else ""
+    vowels = {c for c in span if c in SHORT_VOWELS}
+    if len(vowels) > 1:
+        return None
+    return next(iter(vowels)) if vowels else ""
 
 
 @dataclass(frozen=True)
@@ -124,6 +149,21 @@ def classify(vowel: str | None, canonical: str, spoken: str) -> str:
     return OTHER_VOWEL
 
 
+MADD_LETTERS = frozenset("\u0627\u0648\u064a\u06e5\u06e6\u0649")
+
+
+def _is_madd_word(word: str) -> bool:
+    """Whether a short vowel in ``word`` is held long by a following carrier.
+
+    Such an item is not a valid probe: the reciter cannot say مَا as مُا, so the
+    "counterfactual" take does not contain the vowel the sheet asked for.
+    """
+    return any(
+        c in SHORT_VOWELS and (i + 1 >= len(word) or word[i + 1] in MADD_LETTERS)
+        for i, c in enumerate(word)
+    )
+
+
 def score_item(item: dict, segment: dict, decodes: dict[str, str]) -> dict:
     """One item's verdict, given its control and counterfactual decodes."""
     offsets = segment["raw_word_offsets"]
@@ -145,6 +185,10 @@ def score_item(item: dict, segment: dict, decodes: dict[str, str]) -> dict:
     # The control take must show the model rendering this word's vowel correctly in this
     # voice; otherwise the counterfactual take measures general inaccuracy, not hearing.
     control_ok = control.decoded_vowel == canonical
+    # Five items in the recorded set carry an elongation the reciter could not actually
+    # substitute (فِى، ذُو، ذِى، ذَا، مَا). The generator now rejects these, but the audio
+    # already exists, so they are dropped here rather than silently scored.
+    excluded_madd = _is_madd_word(item["target_word"])
 
     return {
         "item_id": item["item_id"],
@@ -156,9 +200,10 @@ def score_item(item: dict, segment: dict, decodes: dict[str, str]) -> dict:
         "control_vowel": control.decoded_vowel,
         "counterfactual_vowel": counterfactual.decoded_vowel,
         "control_passed": control_ok,
+        "excluded_madd": excluded_madd,
         "alignment_stable": control.stable and counterfactual.stable,
         "outcome": classify(counterfactual.decoded_vowel, canonical, spoken),
-        "scored": control_ok,
+        "scored": control_ok and not excluded_madd,
     }
 
 
@@ -172,6 +217,7 @@ def summarize(results: list[dict]) -> dict:
     total = len(scored)
     followed = outcomes[FOLLOWED_AUDIO]
     low, high = wilson_interval(followed, total)
+    silent_low, silent_high = wilson_interval(outcomes[FOLLOWED_TEXT], total)
 
     by_swap = {}
     for swap in sorted({r["swap"] for r in scored}):
@@ -184,43 +230,63 @@ def summarize(results: list[dict]) -> dict:
 
     return {
         "items": len(results),
-        "control_failures_dropped": sum(1 for r in results if not r["control_passed"]),
+        "excluded_madd": sum(1 for r in results if r.get("excluded_madd")),
+        "control_failures_dropped": sum(
+            1 for r in results if not r["control_passed"] and not r.get("excluded_madd")
+        ),
         "alignment_unstable": sum(1 for r in results if not r["alignment_stable"]),
         "scored": total,
         "outcomes": outcomes,
+        "silent_correction_rate": round(outcomes[FOLLOWED_TEXT] / total, 4) if total else None,
+        "silent_correction_ci95": [round(silent_low, 4), round(silent_high, 4)],
         "followed_audio_rate": round(followed / total, 4) if total else None,
         "followed_audio_ci95": [round(low, 4), round(high, 4)],
         "by_swap": by_swap,
     }
 
 
-def verdict(summary: dict, margin: float = 0.5) -> dict:
-    """Does the model follow the audio or the canonical text?
+def verdict(summary: dict, max_silent_correction: float = MAX_SILENT_CORRECTION_RATE) -> dict:
+    """Is the model fit to flag a student's vowel error?
 
-    Judged on the confidence interval rather than the point estimate: with a few dozen items
-    a bare proportion can look decisive when it is not. ``margin`` is the boundary between
-    the two hypotheses — a hearing model should sit well above it, a reconstructing one well
-    below — and the interval must clear it entirely for the result to count as settled.
+    Deliberately NOT "does it follow the audio more often than not". Muraja is a recitation
+    checker, so the decisive quantity is the **silent-correction rate**: how often a
+    deliberately wrong vowel is transcribed as the canonical one. Every such case is an error
+    the student is never told about. A model could follow the audio on 60% of items — clearing
+    any coin-flip bar comfortably — and still be unfit.
+
+    Judged against the UPPER 95% bound, not the point estimate, so a handful of items cannot
+    buy a pass. Note that a low rate here is necessary but not sufficient: it is measured on
+    deliberate, clearly-articulated errors from a single voice.
     """
     if summary["scored"] < 20:
         return {
             "conclusive": False,
             "reason": f"only {summary['scored']} scorable items — too few to rule",
         }
-    low, high = summary["followed_audio_ci95"]
-    if low > margin:
-        return {"conclusive": True, "hears_tashkeel": True,
-                "interpretation": "the model transcribes the vowel that was spoken, not the "
-                                  "one the canonical text prescribes — it is hearing tashkeel"}
-    if high < margin:
-        return {"conclusive": True, "hears_tashkeel": False,
-                "interpretation": "the model transcribes the canonical vowel even when a "
-                                  "different one was spoken — it is reconstructing from text, "
-                                  "and cannot flag a student's vowel error"}
+    low, high = summary["silent_correction_ci95"]
+    tolerance = max_silent_correction
+    if high <= tolerance:
+        return {
+            "conclusive": True, "fit_to_flag_vowel_errors": True,
+            "tolerance": tolerance,
+            "interpretation": f"silent-correction rate is at most {high:.1%} with 95% "
+                              f"confidence, within the {tolerance:.0%} tolerance — on this "
+                              "voice the model flags rather than silently corrects vowel errors",
+        }
+    if low > tolerance:
+        return {
+            "conclusive": True, "fit_to_flag_vowel_errors": False,
+            "tolerance": tolerance,
+            "interpretation": f"silent-correction rate is at least {low:.1%} with 95% "
+                              f"confidence, above the {tolerance:.0%} tolerance — the model "
+                              "reconstructs the canonical vowel too often to be trusted to "
+                              "flag a student's error",
+        }
     return {
         "conclusive": False,
-        "reason": f"95% CI [{low}, {high}] spans {margin} — more items needed to separate "
-                  "hearing from reconstruction",
+        "tolerance": tolerance,
+        "reason": f"95% CI on the silent-correction rate [{low}, {high}] spans the "
+                  f"{tolerance:.0%} tolerance — more items needed to rule",
     }
 
 
@@ -248,7 +314,7 @@ def _decode_takes(model_id: str, items: list[dict], audio_dir: Path, batch_size:
     return decodes
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--items", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
@@ -256,9 +322,16 @@ def main() -> None:
     parser.add_argument("--model", required=True)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", default="cuda")
-    parser.add_argument("--margin", type=float, default=0.5)
+    parser.add_argument(
+        "--max-silent-correction", type=float, default=MAX_SILENT_CORRECTION_RATE,
+        help="ceiling on the rate at which a wrong vowel is transcribed as the canonical one",
+    )
     parser.add_argument("--out", type=Path, required=True)
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
 
     items = [json.loads(line) for line in args.items.read_text(encoding="utf-8").splitlines() if line.strip()]
     segments = {row["audio_filename"]: row for row in read_segments(args.manifest)}
@@ -280,7 +353,7 @@ def main() -> None:
         "summary": summarize(results),
         "items": results,
     }
-    report["verdict"] = verdict(report["summary"], args.margin)
+    report["verdict"] = verdict(report["summary"], args.max_silent_correction)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")

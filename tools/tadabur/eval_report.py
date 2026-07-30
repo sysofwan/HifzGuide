@@ -246,6 +246,14 @@ def strict_accept(clip: ClipDecode) -> bool:
     and is rejected, so a *collapsed* model (wrong sound decoded as the right phoneme)
     is what would silently start passing. The filter-side poison rejects are not applied
     — they are training-data hygiene, not ``.strict`` behaviour.
+
+    **This models only the alignment half of ``.strict``, so it is a lower bound.** What this
+    repo ported from Muraja is the alignment score; the app aligns in normalized space and then
+    expands the alignment back to *original* space to compare the harakat that normalization
+    stripped, emitting a ``tashkeelError`` word grade, and ``.strict`` additionally does not
+    suppress shaddah-expansion gaps in its phoneme gate. Neither is reproduced here, so a decode
+    with a wrong vowel or a missing shadda can pass this function while the app would flag it.
+    See ADR-0005.
     """
     columns = _aligned_columns(clip.predicted, clip.reference)
     if _has_soft_pair_substitution(columns):

@@ -1,4 +1,4 @@
-# Tashkeel is unfiltered by the data gate and ungated in the product
+# Tashkeel is unfiltered by the data gate and unmodelled by our port of it
 
 **Status:** Accepted. Amends the "No per-vowel color-swap reject gate" decision in
 [ADR-0003](0003-tashkeel-fine-tune-labels.md) and fulfils its "preview-scale caveat"
@@ -7,7 +7,6 @@
 ADR-0003 put tashkeel into the training target. Two things were assumed rather than checked:
 that *something* upstream would keep grossly wrong-vowel recitation out of the labels, and
 that the eval harness could see the capability it was training. Neither is true.
-
 ## The measurement
 
 `tadabur.normalization.normalize_phonemes` collapses every phoneme group to its **bare core**,
@@ -26,10 +25,33 @@ A recitation with every vowel wrong is a **perfect** match. Two consequences fol
 - **The ADR-0001 filter cannot have rejected a single clip for wrong tashkeel.** Whatever
   tashkeel error exists in the corpus — qira'at variation, reciter i'raab slips, plain
   mistakes — reached the training labels unfiltered. There is no protection anywhere.
-- **Muraja's `.strict` gate cannot flag wrong tashkeel or wrong shadda.**
-  `eval_report.strict_accept` rejects only on soft-pair substitution plus `match_ratio`. This
-  is why shadda scores **0/12** should-reject for the base model and every fine-tune alike —
-  a scorer property being misread as a model regression.
+- **Our `.strict` model is alignment-only, and understates the real gate.** What this repo
+  ported from Muraja is the *alignment* score, and `eval_report.strict_accept` reconstructs
+  `.strict` from it plus a soft-pair rule. Muraja itself does **not** stop there: it aligns in
+  normalized space and then **expands the alignment back to original space** to compare the
+  harakat it stripped for alignment, emitting a distinct `tashkeelError` word grade. So the
+  blindness is real in *this* repo and total for the data filter, but it is **not** a product
+  gap. Any tashkeel conclusion drawn from our harness is void; conclusions about the app are
+  not this ADR's to draw.
+
+### What the real gate does, and why it matters here
+
+`.strict` is `correctThreshold 0.75`, `shaddahSuppression: false`, `suppressHarakaDrop: false`.
+Three rules of it bear directly on the decisions below:
+
+| rule | behaviour |
+|---|---|
+| **wrong** haraka (damma heard as kasra) | flagged in **every** mode, never exempt |
+| **dropped** haraka (no vowel emitted) | exempt only on waw/alif/hamzah/ya — the letters that double as madd carriers — unless lenient, which exempts all |
+| shaddah-expansion gaps | **not** suppressed in `.strict`; they demote a word through the phoneme gate |
+
+The first two are the same swap/omission split this ADR arrives at from the corpus side: a
+confident wrong vowel is an error, a declined vowel on an unstable carrier is not. Two
+independent derivations landing on the same rule is the strongest evidence either has.
+
+The third means our `per_contrast` shadda row scoring **0/12** for every model including base is
+our harness lacking the phoneme gate, **not** the app being blind to shadda. I previously
+reported that as a scorer blind spot in the product; that was wrong.
 
 ## Full-corpus vowel rates
 
@@ -68,7 +90,8 @@ not a wrong vowel.
 - **Do not filter on the `omitted` rate.** It is 3.6× spread across reciters (median 0.0225,
   max 0.0821) and tracks audio quality, pace and accent — model uncertainty, not reciter error.
   Gating on it would silently delete hard-but-correct audio, which is the opposite of ADR-0003's
-  goal.
+  goal. Muraja reaches the same conclusion from the product side: a dropped haraka is exempt on
+  exactly the letters where the model is unstable, while a *wrong* haraka never is.
 - **`text_ar_uthmani` cannot supply a qira'ah label.** Over 979 comparable ayat the upstream
   text is identical to our Hafs reference modulo Quranic annotation signs (U+06D6–U+06ED) and
   our own per-segment truncation — **0 genuine text differences**, and **0 of 910 ayat carry
@@ -77,13 +100,16 @@ not a wrong vowel.
 
 ## Consequences
 
-- **The tashkeel objective still has no product gate.** ADR-0003 asked the eval harness to
+- **The tashkeel objective has no gate *in this repo*.** ADR-0003 asked the eval harness to
   verify tashkeel recall rose "without collapsing the model's ability to still flag a genuinely
   wrong vowel". `training.tashkeel_eval` and `training.counterfactual_eval` measure it, but
-  `.strict` — what actually ships — remains blind. Closing that is out of scope here and needs
-  its own decision.
-- **Any tashkeel conclusion drawn from `match_ratio`, `.strict`, or the `per_contrast` shadda
-  row is void by construction.** Use the vowel-aware harnesses.
+  `eval_report.strict_accept` — what the ablation ladder and the #10 gates are read off — models
+  only the alignment half of `.strict`. Until it models the original-space expansion, our
+  should-reject numbers are a **lower bound** on what the app would catch, and the fine-tune is
+  being judged by a weaker gate than the one it ships behind. Porting that layer is out of scope
+  here and needs its own issue.
+- **Any tashkeel conclusion drawn from `match_ratio`, `strict_accept`, or the `per_contrast`
+  shadda row is void by construction.** Use the vowel-aware harnesses.
 - **The reciter filter is measurement-mediated.** Swap is observed through the model's own
   decode, so a model that reconstructs vowels from the fixed Quran text would mask the
   deviations the filter hunts. `training.counterfactual_eval` is what bounds that failure mode,

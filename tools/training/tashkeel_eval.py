@@ -14,10 +14,18 @@ compares the decode against the raw reference **without normalizing either side*
 vowel is a first-class outcome:
 
 * **matched** — the reference vowel is aligned to the same vowel in the decode.
-* **swapped** — aligned to a *different* short vowel (confident-wrong i'raab, the dangerous
-  error: it asserts the wrong case ending rather than declining to guess).
+* **swapped** — aligned to a *different* short vowel **on a carrier the decode also got
+  right** (confident-wrong i'raab, the dangerous error: it asserts the wrong case ending
+  rather than declining to guess).
 * **omitted** — aligned to a gap or a non-vowel (the model declined to mark the vowel).
 * **spurious** — a decode vowel with no reference vowel behind it.
+* **unanchored** / **unanchored_wrong** — the right or the wrong colour sitting on a carrier
+  the decode did *not* reproduce. Neither is evidence about i'raab: if the model misheard the
+  consonant, the vowel it hung there says nothing about the vowel the reciter said.
+
+Both unanchored buckets exist because the carrier is what makes this metric mean anything.
+Smith-Waterman is local and will happily gap over every consonant, so without the anchor a
+"decode" consisting of nothing but the reference's vowel sequence scores a perfect 1.000.
 
 Alignment is :func:`tadabur.smith_waterman.smith_waterman` over the *un-normalized* strings,
 using its full column sequence so decode-side insertions stay visible (the reference-indexed
@@ -79,6 +87,7 @@ class VowelCounts:
     omitted: int = 0
     spurious: int = 0
     unanchored: int = 0
+    unanchored_wrong: int = 0
 
     def __add__(self, other: "VowelCounts") -> "VowelCounts":
         return VowelCounts(
@@ -87,11 +96,14 @@ class VowelCounts:
             self.omitted + other.omitted,
             self.spurious + other.spurious,
             self.unanchored + other.unanchored,
+            self.unanchored_wrong + other.unanchored_wrong,
         )
 
     @property
     def reference_total(self) -> int:
-        return self.matched + self.swapped + self.omitted + self.unanchored
+        return (
+            self.matched + self.swapped + self.omitted + self.unanchored + self.unanchored_wrong
+        )
 
     @property
     def recall(self) -> float:
@@ -111,10 +123,13 @@ class VowelCounts:
 
     @property
     def swap_rate(self) -> float:
-        """Share of reference vowels given a *confidently wrong* colour.
+        """Share of reference vowels given a *confidently wrong* colour on the right carrier.
 
         Tracked separately from omission because the two are not equally harmful: an omitted
         vowel leaves the scorer no signal, while a swapped one asserts the wrong i'raab.
+        Excludes ``unanchored_wrong`` — a wrong vowel on a *misheard* consonant is a decode
+        failure, not an i'raab assertion, and counting it here would let consonant errors
+        inflate a rate the reciter filter reads as evidence of a different qira'ah.
         """
         return self.swapped / self.reference_total if self.reference_total else 0.0
 
@@ -151,7 +166,9 @@ def score_vowels(decode: str, reference: str) -> VowelCounts:
             if query_char == ref_char:
                 counts += VowelCounts(matched=1) if carrier_matched else VowelCounts(unanchored=1)
             elif query_char in SHORT_VOWELS:
-                counts += VowelCounts(swapped=1)
+                counts += (
+                    VowelCounts(swapped=1) if carrier_matched else VowelCounts(unanchored_wrong=1)
+                )
             else:
                 counts += VowelCounts(omitted=1)
         elif query_char in SHORT_VOWELS:
@@ -253,7 +270,9 @@ def _score_single_vowel(decodes: list[str], references: list[str], vowel: str) -
             if column.query_char == vowel:
                 counts += VowelCounts(matched=1) if carrier_matched else VowelCounts(unanchored=1)
             elif column.query_char in SHORT_VOWELS:
-                counts += VowelCounts(swapped=1)
+                counts += (
+                    VowelCounts(swapped=1) if carrier_matched else VowelCounts(unanchored_wrong=1)
+                )
             else:
                 counts += VowelCounts(omitted=1)
         unaligned = reference.count(vowel) - aligned

@@ -25,33 +25,45 @@ A recitation with every vowel wrong is a **perfect** match. Two consequences fol
 - **The ADR-0001 filter cannot have rejected a single clip for wrong tashkeel.** Whatever
   tashkeel error exists in the corpus — qira'at variation, reciter i'raab slips, plain
   mistakes — reached the training labels unfiltered. There is no protection anywhere.
-- **Our `.strict` model is alignment-only, and understates the real gate.** What this repo
-  ported from Muraja is the *alignment* score, and `eval_report.strict_accept` reconstructs
-  `.strict` from it plus a soft-pair rule. Muraja itself does **not** stop there: it aligns in
-  normalized space and then **expands the alignment back to original space** to compare the
-  harakat it stripped for alignment, emitting a distinct `tashkeelError` word grade. So the
-  blindness is real in *this* repo and total for the data filter, but it is **not** a product
-  gap. Any tashkeel conclusion drawn from our harness is void; conclusions about the app are
-  not this ADR's to draw.
+- **Our `.strict` model is neither layer, and understates both.** What this repo ported from
+  Muraja is the *alignment* score, and `eval_report.strict_accept` reconstructs `.strict` from
+  it plus a soft-pair rule. The app's **advancement** decision genuinely is vowel-blind, but its
+  **word grading** is not — it expands the alignment back to original space and emits a
+  `tashkeelError` grade. Our harness applies the word-level threshold to the clip-level blind
+  ratio, so it models neither. The blindness is real in *this* repo; it is **not** a product gap.
 
-### What the real gate does, and why it matters here
+### The two layers
 
-`.strict` is `correctThreshold 0.75`, `shaddahSuppression: false`, `suppressHarakaDrop: false`.
-Three rules of it bear directly on the decisions below:
+Muraja decides two different things with two different sensitivities, and conflating them is
+what produced both of my wrong claims above.
+
+| decision | where | vowel-sensitive? |
+|---|---|---|
+| **advancement** — does the reciter move forward | `QuranFollowAlong.swift`, `matchRatio` on the *normalized* strings vs a hard-coded `correctThreshold = 0.70` | **No.** Vowel-blind, and `scoringMode` does not touch it |
+| **word grading** — what the user is shown, what feeds the page score | `computeWordStatuses`, original-space expansion | **Yes.** Emits a `tashkeelError` grade |
+
+So an all-vowels-wrong recitation still **advances** — its normalized ratio is 1.0 — while every
+word is **graded** `tashkeelError`. The app catches the mistake by showing it, not by refusing
+to move.
+
+`.strict` (`correctThreshold 0.75`, `shaddahSuppression: false`, `suppressHarakaDrop: false`)
+is a **word-grading** parameter set. Three of its rules bear on the decisions below:
 
 | rule | behaviour |
 |---|---|
 | **wrong** haraka (damma heard as kasra) | flagged in **every** mode, never exempt |
-| **dropped** haraka (no vowel emitted) | exempt only on waw/alif/hamzah/ya — the letters that double as madd carriers — unless lenient, which exempts all |
+| **dropped** haraka (no vowel emitted) | exempt only on waw/alif/hamzah/ya — the letters that double as madd carriers — and at waqf-final; lenient exempts all |
 | shaddah-expansion gaps | **not** suppressed in `.strict`; they demote a word through the phoneme gate |
 
 The first two are the same swap/omission split this ADR arrives at from the corpus side: a
 confident wrong vowel is an error, a declined vowel on an unstable carrier is not. Two
 independent derivations landing on the same rule is the strongest evidence either has.
 
-The third means our `per_contrast` shadda row scoring **0/12** for every model including base is
-our harness lacking the phoneme gate, **not** the app being blind to shadda. I previously
-reported that as a scorer blind spot in the product; that was wrong.
+`eval_report.strict_accept` sits between the two layers: it applies the `.strict` **word**
+threshold of 0.75 to a **clip-level, vowel-blind** ratio. It is therefore not a faithful model
+of either decision, and the `per_contrast` shadda row scoring **0/12** for every model
+including base follows from that, not from any property of the app. Resolving which decision
+the harness should predict is a design question, not a port — see issue #55.
 
 ## Full-corpus vowel rates
 
@@ -63,13 +75,21 @@ carrier-anchored via `training.tashkeel_eval.score_vowels`) rather than the 387-
 | matched | 0.9617 | 0.969 |
 | omitted (model declined to commit) | 0.0234 | 0.018 |
 | unanchored (right vowel, carrier missed) | 0.0144 | — |
-| **swapped (confidently wrong colour)** | **0.0005** | 0.013 |
+| **swapped (wrong colour on a carrier the decode got right)** | **0.0005** | 0.013 |
+| unanchored_wrong (wrong colour on a misheard carrier) | 0.00004 | — |
 | spurious (decode-side, no reference vowel) | 0.0029 | — |
+
+**Both unanchored buckets are excluded from `swap_rate`.** A vowel hung on a consonant the
+model misheard says nothing about i'raab — it is a decode failure. Counting it as a swap would
+let consonant errors inflate the very rate the reciter filter reads as evidence of a different
+qira'ah. This was wrong when the ADR was first written: 21 of the 262 reported swaps sat on
+mismatched carriers, and the `swapped` branch checked no anchor even though `matched` did.
 
 ADR-0003's core claim is **confirmed and strengthened**: the model omits when unsure, it does
 not confidently swap. The preview's 1.3% "swap" is, at full scale and with carrier anchoring,
 almost entirely the 1.44% *unanchored* bucket — the right vowel on a carrier the model missed,
-not a wrong vowel.
+not a wrong vowel. That said, the preview subset has not been re-scored under the current
+classifier, so this is an inference about the mechanism rather than a direct re-measurement.
 
 ## Decision
 
@@ -81,11 +101,16 @@ not a wrong vowel.
   separable where a single segment is not. Exclusion is by the **Wilson lower bound** on the
   reciter's swap rate, so a reciter is never dropped on a handful of noisy vowels.
 
-- **This filter currently excludes nobody, and that is the finding.** Across 163 reciters with
-  ≥500 reference vowels: swap rate median **0.0000**, p90 0.0017, max 0.0056 — every reciter is
-  an order of magnitude below the 1% default threshold. The distribution is **unimodal with no
-  outlier population**. A qira'ah differing from Hafs on even 1% of vowels would stand out
-  clearly here; nothing does. The gate ships as a **standing guard**, not as a corpus edit.
+- **This filter currently excludes nobody, and that is the finding — with a stated limit.**
+  Across the 163 reciters clearing the 500-vowel evidence floor: swap rate median **0.0000**,
+  p90 0.0017, max 0.0056 — every one an order of magnitude below the 1% default threshold, with
+  no separated high-rate group. Those 163 cover ~91% of the corpus's reference vowels, so this
+  is strong evidence about *corpus mass*; it says little about the 339 low-volume reciter IDs,
+  and median/p90/max is not a modality test. The 1% threshold also has **no validated positive
+  control** — no known non-Hafs reciter has been run through it to confirm it would fire. So the
+  honest claim is "no high-swap population detected among the reciters carrying almost all the
+  data", not "no qira'ah contamination". The gate ships as a **standing guard**, not as a corpus
+  edit, and not as proof.
 
 - **Do not filter on the `omitted` rate.** It is 3.6× spread across reciters (median 0.0225,
   max 0.0821) and tracks audio quality, pace and accent — model uncertainty, not reciter error.

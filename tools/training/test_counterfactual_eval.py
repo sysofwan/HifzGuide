@@ -228,6 +228,26 @@ def test_a_word_with_a_freely_substitutable_vowel_is_not_excluded():
     assert score_item(_item(), SEGMENT, _decodes(FATHA, DAMMA))["excluded_madd"] is False
 
 
+@pytest.mark.parametrize(
+    "word",
+    [
+        "\u0671\u0628\u0652\u0646\u064f",  # ٱبْنُ  (43:57, followed by مَرْيَمَ)
+        "\u0671\u062f\u0652\u0639\u064f",  # ٱدْعُ  (2:70, followed by لَنَا)
+        "\u0671\u0633\u0652\u0645\u064e",  # ٱسْمَ  (87:15, followed by رَبِّهِۦ)
+    ],
+)
+def test_an_ordinary_word_final_haraka_is_not_madd(word):
+    """The end of a word is not a carrier — these are valid probes, not madd.
+
+    Treating ``i + 1 >= len(word)`` as elongation discarded these three real items and
+    shrank the scorable set from 42 to 39, weakening an already-underpowered comparison.
+    Nothing holds a final damma long here; a reciter can say ٱبْنَ as easily as ٱبْنُ.
+    """
+    item = dict(_item(), target_word=word)
+    segment = {"raw_reference_phonemes": word, "raw_word_offsets": [0, len(word)]}
+    assert score_item(item, segment, _decodes(FATHA, DAMMA))["excluded_madd"] is False
+
+
 def test_a_span_matched_on_too_little_of_the_word_is_refused():
     """A sliver of incidental agreement is not evidence about the target word.
 
@@ -315,3 +335,40 @@ def test_only_items_both_models_scored_are_compared():
     tuned = _outcome_rows([FOLLOWED_AUDIO] * 3)
     tuned[2]["scored"] = False
     assert compare_to_baseline(tuned, base)["paired_items"] == 2
+
+
+def test_finding_no_regression_is_not_the_same_as_certifying_non_inferiority():
+    """The distinction that let me read an underpowered result as a pass on #10.
+
+    Two identical models over 42 items produce zero regressions — there is genuinely no
+    evidence of one — but the upper bound is still ~8%, above the 5% margin. Nothing is
+    certified. Non-inferiority is a claim about the bound, never the point estimate.
+    """
+    rows = _outcome_rows([FOLLOWED_AUDIO] * 42)
+
+    comparison = compare_to_baseline(rows, rows)
+
+    assert comparison["finding"] == "no_evidence_of_regression"
+    assert comparison["net_regression_upper95"] > comparison["max_regression"]
+    assert comparison["non_inferiority_certified"] is False
+
+
+def test_churn_in_both_directions_certifies_nothing_even_at_zero_net():
+    """5 regressed against 5 recovered nets to zero while the model churns a quarter of the set."""
+    base = _outcome_rows([FOLLOWED_AUDIO] * 5 + [FOLLOWED_TEXT] * 5 + [FOLLOWED_AUDIO] * 32)
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 5 + [FOLLOWED_AUDIO] * 5 + [FOLLOWED_AUDIO] * 32)
+
+    comparison = compare_to_baseline(tuned, base)
+
+    assert comparison["regressed"] == comparison["recovered"] == 5
+    assert comparison["non_inferiority_certified"] is False
+
+
+def test_a_large_enough_clean_set_does_certify():
+    """Only volume closes it: zero regressions over 200 items clears the 5% margin."""
+    rows = _outcome_rows([FOLLOWED_AUDIO] * 200)
+
+    comparison = compare_to_baseline(rows, rows)
+
+    assert comparison["net_regression_upper95"] <= comparison["max_regression"]
+    assert comparison["non_inferiority_certified"] is True

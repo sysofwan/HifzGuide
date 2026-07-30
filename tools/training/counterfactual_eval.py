@@ -162,9 +162,15 @@ def _is_madd_word(word: str) -> bool:
 
     Such an item is not a valid probe: the reciter cannot say مَا as مُا, so the
     "counterfactual" take does not contain the vowel the sheet asked for.
+
+    A **word-final** haraka is not madd and must not be excluded — ٱبْنُ, ٱدْعُ and
+    ٱسْمَ carry an ordinary final vowel a reciter can freely change, and they are
+    exactly the probes this harness needs. An earlier version treated the end of the
+    word as if it were a carrier, silently discarding three valid items and shrinking
+    the scorable set from 42 to 39.
     """
     return any(
-        c in SHORT_VOWELS and (i + 1 >= len(word) or word[i + 1] in MADD_LETTERS)
+        c in SHORT_VOWELS and i + 1 < len(word) and word[i + 1] in MADD_LETTERS
         for i, c in enumerate(word)
     )
 
@@ -303,6 +309,13 @@ def compare_to_baseline(
             "underpowered; more items needed to rule"
         )
 
+    # ``finding`` says what we OBSERVED; ``certified`` says whether the set was big enough for
+    # that observation to mean anything. They are not the same claim, and conflating them is
+    # how "no_evidence_of_regression" gets read as "passes non-inferiority". Zero regressions
+    # over 42 items still leaves an 8% upper bound — above the 5% margin — so it certifies
+    # nothing. Non-inferiority is a statement about the bound, never the point estimate.
+    certified = bool(shared) and b <= c and high is not None and high <= max_regression
+
     return {
         "paired_items": len(shared),
         "regressed": b,
@@ -313,6 +326,7 @@ def compare_to_baseline(
         "mcnemar_exact_p": round(p_value, 4),
         "max_regression": max_regression,
         "finding": finding,
+        "non_inferiority_certified": certified,
         "detail": detail,
     }
 

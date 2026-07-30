@@ -14,17 +14,22 @@ systematically non-Hafs reciter becomes separable where a single segment never w
 Two design choices keep this honest:
 
 * **Swap, not omission.** ``swapped`` means the model confidently decoded a *different* vowel
-  than Hafs prescribes, which is what a different qira'ah produces. ``omitted`` means the model
-  declined to commit; it varies 3.6x across reciters and tracks audio quality, pace and accent,
-  so gating on it would delete hard-but-correct audio.
+  than Hafs prescribes **on a carrier consonant it also got right**, which is what a different
+  qira'ah produces. A wrong vowel on a *misheard* consonant is a decode failure and is counted
+  separately (``unanchored_wrong``), or bad audio would look like bad recitation. ``omitted``
+  means the model declined to commit; it varies 3.6x across reciters and tracks audio quality,
+  pace and accent, so gating on it would delete hard-but-correct audio.
 * **The Wilson lower bound, not the point estimate.** A reciter with 40 vowels and one unlucky
   swap sits at 2.5%, far above any sane threshold. Requiring the *lower* bound to clear it means
   a reciter is only excluded when the evidence supports it.
 
 On the corpus as it stands this excludes nobody — swap rate is median 0.0000 / max 0.0056 over
-163 reciters, unimodal, with no outlier population, while the default threshold is 1%. That is
-the finding, not a failure: it is evidence against widespread qira'ah contamination. The module
-ships as a standing guard so the next corpus does not have to rediscover it.
+the 163 reciters clearing the evidence floor, who between them carry ~91% of the corpus's
+reference vowels, while the default threshold is 1%. That is the finding, not a failure: no
+high-swap population exists among the reciters supplying almost all the data. It is *not* proof
+that the corpus is free of qira'ah contamination — 339 low-volume reciters go unjudged, and the
+threshold has no validated positive control. The module ships as a standing guard so the next
+corpus does not have to rediscover it.
 
 Torch-free: it reads a scored manifest and writes a report, no model and no GPU.
 
@@ -49,10 +54,11 @@ from training.tashkeel_eval import VowelCounts, score_vowels
 # "insufficient evidence" is more useful than an exclusion that reflects sample size.
 MIN_REFERENCE_VOWELS = 500
 
-# Ceiling on a reciter's confidently-wrong-vowel rate. The corpus baseline is 0.0004 and the
-# worst observed reciter is 0.0056, so 1% sits an order of magnitude clear of reciter noise
-# while staying far below what a genuinely different qira'ah would produce -- qira'at differ on
-# well over 1% of vowels, so a non-Hafs reciter cannot hide under this.
+# Ceiling on a reciter's confidently-wrong-vowel rate. The corpus baseline is 0.0005 and the
+# worst observed reciter is 0.0056, so 1% sits an order of magnitude clear of reciter noise.
+# It has NOT been validated against a known non-Hafs positive control, so it is calibrated to
+# separate from observed noise, not proven to catch a real qira'ah difference. Treat a
+# non-zero exclusion as a prompt to investigate, never as a proven verdict.
 MAX_SWAP_RATE = 0.01
 
 

@@ -244,6 +244,23 @@ def test_a_vowel_on_a_misheard_consonant_is_not_credited():
     assert counts.matched == 3
 
 
+def test_a_wrong_vowel_on_a_misheard_consonant_is_not_counted_as_a_swap():
+    """A swap must assert the wrong i'raab, which requires hearing the consonant.
+
+    ``swapped`` is what the ADR-0005 reciter filter reads as evidence of a different
+    qira'ah, so letting a consonant error land in that bucket would let bad audio look
+    like bad recitation. Corpus-wide this was 21 of 262 reported swaps.
+    """
+    misheard = REFERENCE.replace(f"\u0644\u0642{FATHA}", f"\u0644\u0643{DAMMA}")
+
+    counts = score_vowels(misheard, REFERENCE)
+
+    assert counts.swapped == 0
+    assert counts.unanchored_wrong == 1
+    assert counts.swap_rate == 0.0
+    assert counts.reference_total == 4, "still a reference vowel, just not an anchored one"
+
+
 def test_the_per_vowel_breakdown_is_carrier_anchored_too():
     """The pooled gaming test above passed while the per-colour path stayed gameable.
 

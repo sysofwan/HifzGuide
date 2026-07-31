@@ -41,12 +41,21 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import NormalDist
 
 from training.counterfactual_eval import wilson_interval
-from training.tashkeel_worklist import RECOVERED, REGRESSED, TashkeelSite, read_worklist
+from training.tashkeel_eval import FAILED_OUTCOMES
+from training.tashkeel_outcomes import SiteOutcome, read_outcomes
+from training.tashkeel_worklist import (
+    RECOVERED,
+    REGRESSED,
+    STATIC_STRATA,
+    TashkeelSite,
+    read_worklist,
+)
 
 from .tashkeel_fixtures import UNCLEAR, Adjudication, read_adjudications
 
@@ -293,6 +302,155 @@ def compare(
     }
 
 
+def _failed(outcome: str) -> bool:
+    """Whether a checkpoint got this position wrong, by ``tashkeel_eval``'s vocabulary."""
+    return outcome in FAILED_OUTCOMES
+
+
+def summarize_failures(
+    sites: list[TashkeelSite],
+    adjudications: dict[str, Adjudication],
+    outcome_of: Callable[[TashkeelSite], str],
+    stratum: str,
+    strata_population: dict[str, int],
+) -> DirectionResult:
+    """One checkpoint's confirmed false rejections in one static stratum, per colour.
+
+    ``confirmed`` here means *this checkpoint failed a position the listener confirms was
+    recited correctly* — a false rejection. The denominator is still every scoreable site in
+    the stratum, so the ratio is a plain binomial proportion and Wilson applies unchanged.
+
+    It degenerates the way it should. In ``base_failed`` every site is by construction a base
+    failure, so the base's count is just the confirmations; in ``base_matched`` the base
+    failed nothing and scores zero. Neither is a special case in the code.
+    """
+    tallies: dict[str, dict[str, int]] = {
+        vowel: {CONFIRMED: 0, SAID_OTHERWISE: 0, UNCLEAR: 0} for vowel in strata_population
+    }
+    for site in sites:
+        if site.direction != stratum:
+            continue
+        verdict = adjudications.get(site.site_id)
+        if verdict is None:
+            continue
+        if site.vowel_name not in tallies:
+            raise ValueError(
+                f"site {site.site_id} is a {stratum}/{site.vowel_name} site but the summary "
+                "sidecar records no population for that stratum — the worklist and the "
+                "summary came from different mining runs."
+            )
+        outcome = _classify(site, verdict)
+        if outcome == CONFIRMED and not _failed(outcome_of(site)):
+            # Correct recitation this checkpoint got right: scoreable, but not a rejection.
+            outcome = SAID_OTHERWISE
+        tallies[site.vowel_name][outcome] += 1
+    return DirectionResult(
+        direction=stratum,
+        strata=[
+            StratumResult(
+                direction=stratum,
+                vowel_name=vowel,
+                confirmed=tally[CONFIRMED],
+                said_otherwise=tally[SAID_OTHERWISE],
+                unclear=tally[UNCLEAR],
+                population=strata_population[vowel],
+            )
+            for vowel, tally in sorted(tallies.items())
+        ],
+    )
+
+
+def _checkpoint_estimate(
+    sites: list[TashkeelSite],
+    adjudications: dict[str, Adjudication],
+    outcome_of: Callable[[TashkeelSite], str],
+    strata: dict[str, dict[str, int]],
+) -> list[DirectionResult]:
+    return [
+        summarize_failures(sites, adjudications, outcome_of, stratum, strata[stratum])
+        for stratum in STATIC_STRATA
+    ]
+
+
+def compare_static(
+    sites: list[TashkeelSite],
+    adjudications: dict[str, Adjudication],
+    outcomes: dict[str, SiteOutcome],
+    population: dict,
+) -> dict:
+    """Base against a candidate over the **candidate-free** static labelled set.
+
+    The paired :func:`compare` can only run once a candidate exists, because the worklist it
+    reads is mined from the two checkpoints' disagreements. That pins the listening behind
+    every training run. This path removes the dependency: the sites were stratified on the
+    frozen base model, the verdicts are about the audio, and the candidate enters only
+    through :mod:`training.tashkeel_outcomes` — a decode, not an audit sitting.
+
+    Both checkpoints are estimated at the *same* sites, so the difference is still paired.
+    The interval treats the two as independent, which over-widens it: positively correlated
+    estimates have a smaller variance for their difference than independent ones. That is the
+    safe direction, and cheaper than carrying a covariance term through the stratification.
+
+    Unlike :func:`compare` this yields each checkpoint's **absolute** false-rejection rate,
+    not just the discordant cells — the static strata partition every reference vowel, so
+    there is a denominator here that the paired mining throws away.
+    """
+    total_vowels = population["reference_vowels"]
+    strata = population["strata"]
+    missing = [s.site_id for s in sites if s.site_id in adjudications and s.site_id not in outcomes]
+    if missing:
+        raise ValueError(
+            f"{len(missing)} adjudicated sites have no candidate outcome (e.g. {missing[0]}). "
+            "Run training.tashkeel_outcomes against this worklist and checkpoint; scoring "
+            "without them would count a site as accepted purely because it was not decoded."
+        )
+
+    base = _checkpoint_estimate(sites, adjudications, lambda s: s.base_outcome, strata)
+    candidate = _checkpoint_estimate(
+        sites, adjudications, lambda s: outcomes[s.site_id].outcome, strata
+    )
+
+    components = sum(len(d.strata) for d in base + candidate)
+    z = component_z(components)
+
+    def rate(count: float) -> float:
+        return count / total_vowels if total_vowels else 0.0
+
+    def total(results: list[DirectionResult]) -> float:
+        return sum(d.estimate() for d in results)
+
+    def span(results: list[DirectionResult]) -> tuple[float, float]:
+        pairs = [d.bounds(z) for d in results]
+        return sum(low for low, _ in pairs), sum(high for _, high in pairs)
+
+    base_low, base_high = span(base)
+    candidate_low, candidate_high = span(candidate)
+    audited = sum(d.audited for d in base)
+
+    return {
+        "mode": "static",
+        "reference_vowels": total_vowels,
+        "base": {stratum.direction: stratum.to_dict(z) for stratum in base},
+        "candidate": {stratum.direction: stratum.to_dict(z) for stratum in candidate},
+        "base_false_rejection_rate": round(rate(total(base)), 5),
+        "candidate_false_rejection_rate": round(rate(total(candidate)), 5),
+        "acceptance_gain": round(rate(total(base)) - rate(total(candidate)), 5),
+        "acceptance_gain_ci95": [
+            round(rate(base_low) - rate(candidate_high), 5),
+            round(rate(base_high) - rate(candidate_low), 5),
+        ],
+        "interval_method": {
+            "family": "Wilson per stratum, Bonferroni-corrected, summed",
+            "alpha": ALPHA,
+            "components": components,
+            "component_z": round(z, 4),
+            "pairing": "estimated as independent; the true paired interval is narrower",
+        },
+        "audited": audited,
+        "pending": sum(1 for s in sites if s.site_id not in adjudications),
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worklist", type=Path, required=True,
@@ -302,6 +460,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--summary", type=Path, default=None,
                         help="the worklist's '.summary.json' sidecar, holding the per-stratum "
                              "population counts (default: alongside --worklist).")
+    parser.add_argument("--outcomes", type=Path, default=None,
+                        help="candidate outcomes JSONL (training.tashkeel_outcomes). Required "
+                             "for a static worklist, where the candidate is not baked into "
+                             "the mined sites; omit for a paired worklist.")
     parser.add_argument("--out", type=Path, default=None,
                         help="write the report here as well as to stdout.")
     return parser
@@ -319,15 +481,31 @@ def main() -> None:
             "read as a census of the corpus. Pass --summary."
         )
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    sites = read_worklist(args.worklist)
+    adjudications = read_adjudications(args.adjudications)
+    static = summary.get("mode") == "static"
+    if static and not args.outcomes:
+        raise SystemExit(
+            f"{summary_path} is a static worklist, so it names no candidate. Pass --outcomes "
+            "from training.tashkeel_outcomes for the checkpoint you are scoring; that decode "
+            "is what replaces a second audit sitting."
+        )
+    if args.outcomes and not static:
+        raise SystemExit(
+            "--outcomes is for a static worklist. This one was mined against "
+            f"{summary.get('candidate')!r}, whose outcomes are already in the sites."
+        )
+    if static:
+        result = compare_static(
+            sites, adjudications, read_outcomes(args.outcomes), summary["population"]
+        )
+    else:
+        result = compare(sites, adjudications, summary["population"])
     report = {
         "base": summary.get("base"),
-        "candidate": summary.get("candidate"),
+        "candidate": str(args.outcomes) if static else summary.get("candidate"),
         "coverage": summary.get("coverage"),
-        **compare(
-            read_worklist(args.worklist),
-            read_adjudications(args.adjudications),
-            summary["population"],
-        ),
+        **result,
     }
     text = json.dumps(report, indent=2, ensure_ascii=False)
     if args.out:

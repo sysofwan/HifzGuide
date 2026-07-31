@@ -42,7 +42,40 @@ by ear.
   `tadabur.tashkeel_fixtures` stores the verdicts; `tadabur.tashkeel_acceptance` reports the
   comparison.
 
-### Only discordant positions are mined
+### The labelled set is mined without a candidate, so the listening is not pinned behind training
+
+Mining base-against-candidate disagreements makes the worklist — and therefore every hour of
+listening — a downstream dependency of whichever fine-tune is being scored. Each training run
+would restart the audit.
+
+But the verdict a listener gives is *"the reciter said fatha"*: a fact about the audio, with no
+model in it. Only the **selection** was ever coupled, and it needs to be coupled to the *base*
+checkpoint, which is frozen. `training.tashkeel_worklist.static_sites` therefore stratifies on
+the base outcome alone — `base_failed` / `base_matched` — which can be labelled before the next
+candidate is trained. `training.tashkeel_outcomes` then supplies any later checkpoint's result
+at those sites by decode, and `tashkeel_acceptance.compare_static` joins the two.
+
+This is the same shape as `should_accept.jsonl`: the base model helped *find* the clips, the
+human verdict is model-free, and every rung since has been scored against it without re-auditing
+anything.
+
+The efficiency is asymmetric, and the asymmetry decides the design:
+
+| stratum | population | contains | yield for a good candidate |
+|---|---|---|---|
+| `base_failed` | 7,145 (15.9%) | every recovery any candidate can make | **≥ 88%** (`7145 − 839`) |
+| `base_matched` | 37,796 | every regression any candidate can make | **≤ 2.2%** (`839 / 37796`) |
+
+So the **gain side banks almost perfectly and the cost side does not bank at all**. `base_failed`
+draws 100 per colour and `base_matched` 50 — enough to keep the estimator unbiased, not enough
+to measure regressions precisely. Precision on the cost side is bought two other ways: a small
+per-run `discordant_sites` top-up, and ADR-0006's counterfactual gate, which exists for exactly
+that direction.
+
+Unlike the paired path this yields each checkpoint's **absolute** false-rejection rate, because
+the static strata partition every reference vowel rather than keeping only the discordant cells.
+
+### Only discordant positions are mined (the per-run top-up)
 
 The comparison is McNemar-shaped: a paired difference is a function of the discordant cells
 alone. Adjudicating positions both checkpoints got right would cost audit hours and move no
@@ -95,7 +128,14 @@ by Bonferroni to `alpha / (2 * strata)`, and the report names the method and the
   a listener could submit anything, watch which tally moved, and revise it knowing which answer
   flatters the fine-tune. `tadabur.tashkeel_acceptance` reports after the fact.
 - **Sites are keyed by clip/window/reference-index**, not by sampling order, so re-mining with a
-  different seed, bucket size or candidate checkpoint resumes an audit already done.
+  different seed, bucket size or candidate checkpoint resumes an audit already done. For that to
+  be worth anything the draw must also be stable under a changing population: buckets are ranked
+  by a hash of the site id rather than sampled positionally, because two positional draws of 50
+  from ~4,300 intersect in about 3 sites even when the populations are 95% identical.
+- **The cost side is deliberately under-powered here.** `base_matched` is 84% of the corpus with
+  a ~2% regression rate, so a candidate's estimate in that stratum extrapolates hard from few
+  sites and carries a wide interval. That is honest rather than broken — the interval shows it —
+  but a regression claim should be read off ADR-0006's counterfactual gate, not off this.
 - **The audit UI plays the exact window span both checkpoints decoded**, re-encoded as 16-bit
   PCM WAV in memory, not the whole clip. Grading a vowel the model never heard would answer a
   different question. A padded "with context" take exists because a 5 s window boundary can cut

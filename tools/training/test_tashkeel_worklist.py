@@ -20,14 +20,18 @@ from training.tashkeel_eval import (
     vowel_sites,
 )
 from training.tashkeel_worklist import (
+    BASE_FAILED,
+    BASE_MATCHED,
     RECOVERED,
     REGRESSED,
+    STATIC_STRATA,
     TashkeelSite,
     discordant_sites,
     population_counts,
     read_worklist,
     sample_worklist,
     site_id,
+    static_sites,
     write_worklist,
 )
 
@@ -214,3 +218,38 @@ def test_reading_rejects_a_row_missing_a_schema_field(tmp_path):
     path.write_text(json.dumps({"site_id": "abc"}) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="worklist schema"):
         read_worklist(path)
+
+
+def test_static_mining_needs_no_candidate_and_partitions_every_reference_vowel():
+    # The whole point of the static set: it can be labelled before the next fine-tune exists.
+    reference = f"م{FATHA}ال{KASRA}ك{DAMMA}"
+    rows = static_sites(reference, f"م{FATHA}الك{DAMMA}", FakeLabel())
+    assert [r.direction for r in rows] == [BASE_FAILED if r.vowel_name == "kasra" else BASE_MATCHED
+                                           for r in rows]
+    assert {r.vowel_name for r in rows} == {"fatha", "damma", "kasra"}
+    # No candidate has been decoded, so nothing may claim to know one.
+    assert all(r.candidate_outcome == "" and r.candidate_vowel is None for r in rows)
+    counts = population_counts([reference], rows, STATIC_STRATA)
+    assert counts[BASE_FAILED] + counts[BASE_MATCHED] == counts["reference_vowels"] == 3
+    assert counts["concordant"] == 0
+
+
+def test_static_sites_carry_the_same_ids_the_paired_mining_would_have_given_them():
+    # Verdicts collected against the static set must be reusable by a later paired top-up,
+    # and vice versa; both key on site_id, so the two minings have to agree on it.
+    reference = f"م{FATHA}ال{KASRA}ك{DAMMA}"
+    base_decode = f"م{FATHA}الك{DAMMA}"
+    static = {r.site_id: r for r in static_sites(reference, base_decode, FakeLabel())}
+    paired = discordant_sites(reference, base_decode, reference, FakeLabel())
+    assert paired and all(row.site_id in static for row in paired)
+    assert all(static[row.site_id].direction == BASE_FAILED for row in paired)
+
+
+def test_static_sampling_draws_unevenly_because_the_strata_yield_unevenly():
+    # base_failed is ~88% recoveries for a good candidate; base_matched ~2% regressions.
+    # A flat cap would spend half the listening on the stratum that answers almost nothing.
+    rows = [_row(i, BASE_FAILED, FATHA) for i in range(200)]
+    rows += [_row(500 + i, BASE_MATCHED, FATHA) for i in range(200)]
+    drawn = sample_worklist(rows, {BASE_FAILED: 100, BASE_MATCHED: 50})
+    assert sum(1 for r in drawn if r.direction == BASE_FAILED) == 100
+    assert sum(1 for r in drawn if r.direction == BASE_MATCHED) == 50

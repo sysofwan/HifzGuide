@@ -10,15 +10,35 @@ from __future__ import annotations
 import io
 import json
 import wave
+from types import SimpleNamespace
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from training.tashkeel_eval import DAMMA, FATHA, KASRA, MATCHED, OMITTED
-from training.tashkeel_worklist import RECOVERED, REGRESSED, TashkeelSite, site_id, write_worklist
+from training.tashkeel_outcomes import (
+    SiteOutcome,
+    outcomes_for_window,
+    read_outcomes,
+    write_outcomes,
+)
+from training.tashkeel_worklist import (
+    BASE_FAILED,
+    BASE_MATCHED,
+    RECOVERED,
+    REGRESSED,
+    TashkeelSite,
+    site_id,
+    write_worklist,
+)
 
-from .tashkeel_acceptance import compare, component_z, summarize_direction
+from .tashkeel_acceptance import (
+    compare,
+    compare_static,
+    component_z,
+    summarize_direction,
+)
 from .tashkeel_audit_ui import AuditState, ClipCache, encode_wav
 from .tashkeel_fixtures import (
     NONE,
@@ -356,3 +376,124 @@ def test_the_state_resumes_from_whatever_the_file_already_holds(tmp_path):
     )
     assert resumed.progress() == {"total": 2, "judged": 1}
     assert resumed.view(resumed.sites[1])["verdict"] == "kasra"
+
+
+# --- the candidate-free static set ------------------------------------------------------
+def _static_site(index: int, stratum: str, vowel: str = FATHA) -> TashkeelSite:
+    """A site mined without any candidate: base outcome known, candidate fields empty."""
+    return TashkeelSite(
+        site_id=site_id("clip.wav", 0, index),
+        clip_audio_filename="clip.wav",
+        surah_ayah="2:1",
+        reciter_id=3,
+        window_index=0,
+        start_sample=16000,
+        num_samples=32000,
+        reference=f"م{vowel}الك",
+        reference_index=index,
+        reference_vowel=vowel,
+        vowel_name=_VOWEL_NAMES[vowel],
+        carrier="م",
+        direction=stratum,
+        base_outcome=MATCHED if stratum == BASE_MATCHED else OMITTED,
+        candidate_outcome="",
+        base_vowel=vowel if stratum == BASE_MATCHED else None,
+        candidate_vowel=None,
+    )
+
+
+def _static_population(failed: dict, matched: dict, vowels: int) -> dict:
+    return {
+        "reference_vowels": vowels,
+        "strata": {BASE_FAILED: failed, BASE_MATCHED: matched},
+        BASE_FAILED: sum(failed.values()),
+        BASE_MATCHED: sum(matched.values()),
+        "concordant": 0,
+    }
+
+
+def _outcomes(**by_site: str) -> dict[str, SiteOutcome]:
+    return {sid: SiteOutcome(sid, outcome, None) for sid, outcome in by_site.items()}
+
+
+def test_the_static_set_scores_a_candidate_that_did_not_exist_when_it_was_labelled():
+    # The decoupling this exists for: no candidate is baked into the sites, so a checkpoint
+    # trained after the listening is scored by a decode alone.
+    sites = [_static_site(i, BASE_FAILED) for i in range(4)]
+    adjudications = {s.site_id: _verdict(s, "fatha") for s in sites}
+    # The candidate recovers three of the four positions the base model failed.
+    outcomes = _outcomes(**{
+        s.site_id: (MATCHED if i < 3 else OMITTED) for i, s in enumerate(sites)
+    })
+    report = compare_static(
+        sites, adjudications, outcomes,
+        _static_population({"fatha": 400, "damma": 0, "kasra": 0}, _strata(), 4000),
+    )
+    # Base failed all four confirmed sites; the candidate failed one.
+    assert report["base_false_rejection_rate"] == pytest.approx(400 / 4000)
+    assert report["candidate_false_rejection_rate"] == pytest.approx(100 / 4000)
+    assert report["acceptance_gain"] > 0
+
+
+def test_the_static_estimator_gives_the_base_no_credit_in_the_stratum_it_never_failed():
+    sites = [_static_site(i, BASE_MATCHED) for i in range(3)]
+    adjudications = {s.site_id: _verdict(s, "fatha") for s in sites}
+    # A regression: the candidate loses a position the base had right.
+    outcomes = _outcomes(**{
+        s.site_id: (OMITTED if i == 0 else MATCHED) for i, s in enumerate(sites)
+    })
+    report = compare_static(
+        sites, adjudications, outcomes,
+        _static_population(_strata(), {"fatha": 300, "damma": 0, "kasra": 0}, 3000),
+    )
+    assert report["base_false_rejection_rate"] == 0.0
+    assert report["candidate_false_rejection_rate"] == pytest.approx(100 / 3000, abs=1e-5)
+    assert report["acceptance_gain"] < 0
+
+
+def test_a_site_the_candidate_was_never_decoded_at_is_refused_not_treated_as_accepted():
+    # Silently skipping it would count a missing decode as the candidate getting it right,
+    # which flatters the candidate exactly where the audit is meant to be sceptical.
+    sites = [_static_site(1, BASE_FAILED)]
+    adjudications = {sites[0].site_id: _verdict(sites[0], "fatha")}
+    with pytest.raises(ValueError, match="no candidate outcome"):
+        compare_static(
+            sites, adjudications, {},
+            _static_population({"fatha": 10, "damma": 0, "kasra": 0}, _strata(), 100),
+        )
+
+
+def test_unclear_leaves_the_static_denominator_too():
+    sites = [_static_site(i, BASE_FAILED) for i in range(2)]
+    adjudications = {
+        sites[0].site_id: _verdict(sites[0], "fatha"),
+        sites[1].site_id: _verdict(sites[1], UNCLEAR),
+    }
+    outcomes = _outcomes(**{s.site_id: OMITTED for s in sites})
+    report = compare_static(
+        sites, adjudications, outcomes,
+        _static_population({"fatha": 100, "damma": 0, "kasra": 0}, _strata(), 1000),
+    )
+    fatha = next(s for s in report["base"][BASE_FAILED]["strata"] if s["vowel"] == "fatha")
+    assert fatha["audited"] == 2 and fatha["unclear"] == 1
+    # One scoreable site, confirmed, so the whole stratum estimates as a false rejection.
+    assert fatha["confirmed_share"] == 1.0
+
+
+def test_outcomes_round_trip_and_reject_a_foreign_schema(tmp_path):
+    path = tmp_path / "outcomes.jsonl"
+    rows = [SiteOutcome("a" * 16, MATCHED, FATHA), SiteOutcome("b" * 16, OMITTED, None)]
+    write_outcomes(path, rows)
+    assert read_outcomes(path) == {row.site_id: row for row in rows}
+    path.write_text('{"site_id": "x", "outcome": "matched"}\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="outcome schema"):
+        read_outcomes(path)
+
+
+def test_outcomes_are_keyed_by_the_same_site_id_the_worklist_uses():
+    # The join between a labelled site and a later checkpoint's decode is site_id alone.
+    reference = f"م{FATHA}الك"
+    label = SimpleNamespace(clip_audio_filename="clip.wav", window_index=0)
+    found = outcomes_for_window(reference, f"م{FATHA}الك", label, {site_id("clip.wav", 0, 1)})
+    assert [row.site_id for row in found] == [site_id("clip.wav", 0, 1)]
+    assert found[0].outcome == MATCHED

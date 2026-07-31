@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tashkeel audit</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 1.5rem;
+         max-width: 52rem; margin-inline: auto; }
+  header { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+  h1 { font-size: 1.1rem; margin: 0; }
+  .muted { opacity: .65; }
+  progress { width: 12rem; }
+  .card { border: 1px solid currentColor; border-radius: .5rem; padding: 1rem;
+          margin-top: 1rem; }
+  .meta { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: .85rem; }
+  .reference { direction: rtl; text-align: right; font-size: 1.9rem; line-height: 2.2;
+               word-break: break-word; margin: .75rem 0; font-family: serif; }
+  .reference .target { background: #ffd34d; color: #000; border-radius: .2rem;
+                       padding: 0 .1rem; outline: 2px solid #d99b00; }
+  .prompt { font-weight: 600; margin-top: .5rem; }
+  .verdicts { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
+  button { font: inherit; padding: .5rem .85rem; border-radius: .4rem;
+           border: 1px solid currentColor; background: transparent; cursor: pointer; }
+  button:hover { background: rgba(128,128,128,.15); }
+  button.chosen { background: #2b7a2b; color: #fff; border-color: #2b7a2b; }
+  button kbd { font-size: .75em; opacity: .7; margin-inline-start: .35rem; }
+  .arabic { font-family: serif; font-size: 1.25em; }
+  audio { width: 100%; margin-top: .5rem; }
+  .row { display: flex; gap: .5rem; align-items: center; margin-top: .75rem;
+         flex-wrap: wrap; }
+  input[type=text] { font: inherit; padding: .4rem; flex: 1 1 14rem;
+                     border-radius: .4rem; border: 1px solid currentColor;
+                     background: transparent; color: inherit; }
+  pre { overflow-x: auto; font-size: .8rem; }
+  .hint { font-size: .8rem; opacity: .7; margin-top: .75rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tashkeel audit</h1>
+  <progress id="bar" value="0" max="1"></progress>
+  <span class="muted" id="count"></span>
+  <button id="jump">Next unjudged <kbd>u</kbd></button>
+  <button id="toggle-results">Show results</button>
+</header>
+
+<p class="muted">
+  You are judging <strong>what the reciter said</strong> — not whether any model was right.
+  The vowel the mushaf prescribes is deliberately hidden, so your answer cannot be primed
+  by it. Which short vowel do you hear on the highlighted letter?
+</p>
+
+<div class="card" id="card">
+  <div class="meta">
+    <span id="position"></span>
+    <span id="ayah"></span>
+    <span id="reciter"></span>
+  </div>
+  <div class="reference" id="reference"></div>
+  <div class="prompt" id="prompt"></div>
+  <audio id="player" controls preload="none"></audio>
+  <div class="row">
+    <button id="play-window">Play window <kbd>space</kbd></button>
+    <button id="play-context">Play with context <kbd>c</kbd></button>
+  </div>
+  <div class="verdicts" id="verdicts"></div>
+  <div class="row">
+    <input type="text" id="note" placeholder="Note (optional)">
+    <button id="prev">&larr; Prev</button>
+    <button id="next">Next &rarr;</button>
+  </div>
+  <p class="hint">
+    Keys: <kbd>1</kbd> fatha &middot; <kbd>2</kbd> damma &middot; <kbd>3</kbd> kasra &middot;
+    <kbd>4</kbd> none &middot; <kbd>5</kbd> unclear &middot; <kbd>&larr;</kbd>/<kbd>&rarr;</kbd>
+    move. Recording a verdict advances automatically.
+  </p>
+</div>
+
+<div class="card" id="results" hidden><pre id="results-body">Loading…</pre></div>
+
+<script>
+const VERDICTS = [
+  { id: "fatha",   label: "Fatha",   arabic: "\u0640\u064E", key: "1" },
+  { id: "damma",   label: "Damma",   arabic: "\u0640\u064F", key: "2" },
+  { id: "kasra",   label: "Kasra",   arabic: "\u0640\u0650", key: "3" },
+  { id: "none",    label: "No vowel", arabic: "",            key: "4" },
+  { id: "unclear", label: "Unclear",  arabic: "",            key: "5" },
+];
+
+let sites = [];
+let index = 0;
+
+const $ = (id) => document.getElementById(id);
+
+async function load() {
+  const data = await (await fetch("/api/sites")).json();
+  sites = data.sites;
+  renderVerdictButtons();
+  index = Math.max(0, firstUnjudged());
+  render();
+}
+
+function firstUnjudged() {
+  return sites.findIndex((s) => s.verdict === null);
+}
+
+function renderVerdictButtons() {
+  $("verdicts").innerHTML = "";
+  for (const verdict of VERDICTS) {
+    const button = document.createElement("button");
+    button.dataset.verdict = verdict.id;
+    button.innerHTML =
+      `${verdict.label}` +
+      (verdict.arabic ? ` <span class="arabic">${verdict.arabic}</span>` : "") +
+      ` <kbd>${verdict.key}</kbd>`;
+    button.onclick = () => submit(verdict.id);
+    $("verdicts").appendChild(button);
+  }
+}
+
+// The reference is a raw phoneme string with the target harakah *removed* — the listener
+// must not be primed with the vowel the mushaf prescribes. Only the carrier is marked.
+function renderReference(site) {
+  const container = $("reference");
+  container.innerHTML = "";
+  [...site.reference].forEach((char, i) => {
+    const span = document.createElement("span");
+    span.textContent = char;
+    if (i === site.carrier_index) span.className = "target";
+    container.appendChild(span);
+  });
+}
+
+function render() {
+  const site = sites[index];
+  if (!site) return;
+  $("position").textContent = `Site ${index + 1} of ${sites.length}`;
+  $("ayah").textContent = `Ayah ${site.surah_ayah}`;
+  $("reciter").textContent = `Reciter ${site.reciter_id}`;
+  renderReference(site);
+  $("prompt").textContent =
+    "Which short vowel do you hear on the highlighted letter" +
+    (site.carrier ? ` (${site.carrier})` : "") + "?";
+  $("note").value = site.note || "";
+  for (const button of $("verdicts").children) {
+    button.classList.toggle("chosen", button.dataset.verdict === site.verdict);
+  }
+  play(0);
+  updateProgress();
+}
+
+function updateProgress() {
+  const judged = sites.filter((s) => s.verdict !== null).length;
+  $("bar").max = sites.length || 1;
+  $("bar").value = judged;
+  $("count").textContent = `${judged}/${sites.length} judged`;
+}
+
+function play(pad) {
+  const site = sites[index];
+  if (!site) return;
+  $("player").src = `/api/audio?site=${encodeURIComponent(site.site_id)}&pad=${pad}`;
+  $("player").play().catch(() => {}); // autoplay may be blocked; the controls still work
+}
+
+async function submit(verdict) {
+  const site = sites[index];
+  if (!site) return;
+  const note = $("note").value;
+  const response = await fetch("/api/verdict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ site_id: site.site_id, verdict, note }),
+  });
+  if (!response.ok) {
+    alert((await response.json()).error || "could not save");
+    return;
+  }
+  site.verdict = verdict;
+  site.note = note;
+  move(1);
+}
+
+function move(delta) {
+  index = Math.min(sites.length - 1, Math.max(0, index + delta));
+  render();
+}
+
+$("prev").onclick = () => move(-1);
+$("next").onclick = () => move(1);
+$("play-window").onclick = () => play(0);
+$("play-context").onclick = () => play(1);
+$("jump").onclick = () => {
+  const next = firstUnjudged();
+  if (next < 0) { alert("Every site has been judged."); return; }
+  index = next;
+  render();
+};
+$("toggle-results").onclick = async () => {
+  const panel = $("results");
+  panel.hidden = !panel.hidden;
+  $("toggle-results").textContent = panel.hidden ? "Show results" : "Hide results";
+  if (panel.hidden) return;
+  $("results-body").textContent = JSON.stringify(
+    await (await fetch("/api/results")).json(), null, 2);
+};
+
+document.addEventListener("keydown", (event) => {
+  if (event.target === $("note")) return;
+  const verdict = VERDICTS.find((v) => v.key === event.key);
+  if (verdict) { event.preventDefault(); submit(verdict.id); return; }
+  if (event.key === " ") { event.preventDefault(); play(0); }
+  else if (event.key === "c") { event.preventDefault(); play(1); }
+  else if (event.key === "u") { event.preventDefault(); $("jump").click(); }
+  else if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); }
+  else if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
+});
+
+load();
+</script>
+</body>
+</html>

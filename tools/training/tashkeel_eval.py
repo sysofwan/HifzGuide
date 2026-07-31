@@ -68,6 +68,21 @@ from tadabur.smith_waterman import smith_waterman
 FATHA, DAMMA, KASRA = "\u064e", "\u064f", "\u0650"
 SHORT_VOWELS = frozenset({FATHA, DAMMA, KASRA})
 
+#: The six outcomes a vowel position can take. Named because the audit worklist (#60) and
+#: the fixture schema both key off them, and a typo'd literal would silently drop a bucket.
+MATCHED = "matched"
+SWAPPED = "swapped"
+OMITTED = "omitted"
+SPURIOUS = "spurious"
+UNANCHORED = "unanchored"
+UNANCHORED_WRONG = "unanchored_wrong"
+VOWEL_OUTCOMES = (MATCHED, SWAPPED, OMITTED, SPURIOUS, UNANCHORED, UNANCHORED_WRONG)
+
+#: Outcomes in which the decode failed to reproduce the reference vowel. These are the
+#: candidate rows for the acceptance audit: each is *either* the model being over-strict or
+#: the reciter genuinely saying something else, and only a human ear can tell which.
+FAILED_OUTCOMES = frozenset({SWAPPED, OMITTED, UNANCHORED, UNANCHORED_WRONG})
+
 #: Absolute floor on vowel recall. Deliberately low: this catches collapse (a head that has
 #: stopped emitting vowels at all), not marginal quality, which the regression check owns.
 DEFAULT_MIN_RECALL = 0.50
@@ -134,6 +149,117 @@ class VowelCounts:
         return self.swapped / self.reference_total if self.reference_total else 0.0
 
 
+@dataclass(frozen=True)
+class VowelSite:
+    """One vowel position and what the decode did with it.
+
+    The per-position record behind :class:`VowelCounts`. A count says *how many* vowels the
+    model dropped; a site says *which* — which clip position, which colour, on which carrier
+    — which is what makes the failure auditable by ear. ``reference_index`` indexes the raw
+    reference string and ``decode_index`` the raw decode; either is ``None`` when that side
+    has nothing there (a spurious vowel has no reference, an omitted one no decode).
+    """
+
+    outcome: str
+    reference_index: int | None
+    decode_index: int | None
+    reference_vowel: str | None
+    decoded_vowel: str | None
+    carrier: str | None
+    carrier_matched: bool
+
+
+def vowel_sites(decode: str, reference: str) -> list[VowelSite]:
+    """Every reference vowel and every spurious decode vowel, classified in place.
+
+    The single source of truth for vowel outcomes: :func:`score_vowels` is a fold of this
+    list, so the aggregate gate and the audit worklist can never disagree about what
+    happened at a position. See :func:`score_vowels` for why a match requires its carrier.
+
+    Sites are returned in reference order, with edge sites (outside the local alignment
+    span) last: a locally-aligned decode leaves unmatched material at both ends, and those
+    reference vowels were still expected and not delivered.
+    """
+    if not reference:
+        return []
+    alignment = smith_waterman(decode, reference)
+
+    sites: list[VowelSite] = []
+    aligned_reference_indices: set[int] = set()
+    ref_index, decode_index = alignment.ref_start, alignment.query_start
+    carrier, carrier_matched = None, False
+    for column in alignment.columns:
+        ref_char, query_char = column.ref_char, column.query_char
+        if ref_char is not None and ref_char not in SHORT_VOWELS:
+            # The consonant (or long vowel) this harakah will sit on.
+            carrier, carrier_matched = ref_char, query_char == ref_char
+        if ref_char in SHORT_VOWELS:
+            aligned_reference_indices.add(ref_index)
+            if query_char == ref_char:
+                outcome = MATCHED if carrier_matched else UNANCHORED
+            elif query_char in SHORT_VOWELS:
+                outcome = SWAPPED if carrier_matched else UNANCHORED_WRONG
+            else:
+                outcome = OMITTED
+            sites.append(
+                VowelSite(
+                    outcome=outcome,
+                    reference_index=ref_index,
+                    decode_index=decode_index if query_char is not None else None,
+                    reference_vowel=ref_char,
+                    decoded_vowel=query_char if query_char in SHORT_VOWELS else None,
+                    carrier=carrier,
+                    carrier_matched=carrier_matched,
+                )
+            )
+        elif query_char in SHORT_VOWELS:
+            # ref_char is None (an insertion) or a non-vowel the model voweled anyway.
+            # Both are vowels emitted with no reference vowel behind them.
+            sites.append(
+                VowelSite(
+                    outcome=SPURIOUS,
+                    reference_index=ref_index if ref_char is not None else None,
+                    decode_index=decode_index,
+                    reference_vowel=None,
+                    decoded_vowel=query_char,
+                    carrier=carrier,
+                    carrier_matched=carrier_matched,
+                )
+            )
+        if ref_char is not None:
+            ref_index += 1
+        if query_char is not None:
+            decode_index += 1
+
+    # Smith-Waterman is *local*, so both strings have unaligned ends that produced no column
+    # at all. Each side needs charging, or the metric flatters the model twice over.
+    #
+    # Reference side: those vowels were expected and not delivered, so counting only the
+    # aligned span would let a decode matching a short fragment score a perfect recall.
+    sites.extend(
+        VowelSite(OMITTED, i, None, char, None, _carrier_before(reference, i), False)
+        for i, char in enumerate(reference)
+        if char in SHORT_VOWELS and i not in aligned_reference_indices
+    )
+    # Decode side: symmetrically, a vowel the model invented outside the aligned span is
+    # still an emitted vowel with no reference behind it. Ignoring it inflates precision --
+    # the trimmed ends are exactly where a hallucinated vowel is most likely to appear.
+    sites.extend(
+        VowelSite(SPURIOUS, None, i, None, char, None, False)
+        for i, char in enumerate(decode)
+        if char in SHORT_VOWELS and not alignment.query_start <= i < alignment.query_end
+    )
+    return sites
+
+
+def _carrier_before(reference: str, index: int) -> str | None:
+    """The nearest non-vowel reference character before ``index`` — the vowel's carrier."""
+    for char in reversed(reference[:index]):
+        if char not in SHORT_VOWELS:
+            return char
+    return None
+
+
 def score_vowels(decode: str, reference: str) -> VowelCounts:
     """Classify every short vowel in ``reference`` (and every spurious one in ``decode``).
 
@@ -148,48 +274,19 @@ def score_vowels(decode: str, reference: str) -> VowelCounts:
     makes the metric mean "the right vowel on the right consonant", which is the capability
     ADR-0003 actually cares about. Correct-colour vowels on an unheard carrier are counted
     as ``unanchored`` rather than credited.
+
+    A pure fold of :func:`vowel_sites`, so the number this gate reports and the positions
+    the audit worklist offers a human are the same classification, not two of them.
     """
-    if not reference:
-        return VowelCounts()
-    alignment = smith_waterman(decode, reference)
+    return count_sites(vowel_sites(decode, reference))
 
-    counts = VowelCounts()
-    aligned_reference_vowels = 0
-    carrier_matched = False
-    for column in alignment.columns:
-        ref_char, query_char = column.ref_char, column.query_char
-        if ref_char is not None and ref_char not in SHORT_VOWELS:
-            # The consonant (or long vowel) this harakah will sit on.
-            carrier_matched = query_char == ref_char
-        if ref_char in SHORT_VOWELS:
-            aligned_reference_vowels += 1
-            if query_char == ref_char:
-                counts += VowelCounts(matched=1) if carrier_matched else VowelCounts(unanchored=1)
-            elif query_char in SHORT_VOWELS:
-                counts += (
-                    VowelCounts(swapped=1) if carrier_matched else VowelCounts(unanchored_wrong=1)
-                )
-            else:
-                counts += VowelCounts(omitted=1)
-        elif query_char in SHORT_VOWELS:
-            # ref_char is None (an insertion) or a non-vowel the model voweled anyway.
-            # Both are vowels emitted with no reference vowel behind them.
-            counts += VowelCounts(spurious=1)
 
-    # Smith-Waterman is *local*, so both strings have unaligned ends that produced no column
-    # at all. Each side needs charging, or the metric flatters the model twice over.
-    #
-    # Reference side: those vowels were expected and not delivered, so counting only the
-    # aligned span would let a decode matching a short fragment score a perfect recall.
-    unaligned = sum(1 for c in reference if c in SHORT_VOWELS) - aligned_reference_vowels
-    # Decode side: symmetrically, a vowel the model invented outside the aligned span is
-    # still an emitted vowel with no reference behind it. Ignoring it inflates precision --
-    # the trimmed ends are exactly where a hallucinated vowel is most likely to appear.
-    edge_spurious = sum(
-        1 for c in decode[:alignment.query_start] + decode[alignment.query_end:]
-        if c in SHORT_VOWELS
-    )
-    return counts + VowelCounts(omitted=max(0, unaligned), spurious=edge_spurious)
+def count_sites(sites: list[VowelSite]) -> VowelCounts:
+    """Tally :class:`VowelSite` outcomes into a :class:`VowelCounts`."""
+    total = VowelCounts()
+    for site in sites:
+        total += VowelCounts(**{site.outcome: 1})
+    return total
 
 
 @dataclass(frozen=True)

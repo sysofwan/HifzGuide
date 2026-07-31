@@ -232,10 +232,22 @@ def sample_worklist(
     The result is shuffled across buckets, because a listener working through fifty
     consecutive "candidate recovered this" sites will infer the direction from the run
     length alone — which is exactly the knowledge the blind audit exists to withhold.
+
+    The draw is **consistent under a changing population**: sites are ranked by a hash of
+    their id and the top ``per_bucket`` taken, rather than sampled positionally. Both are
+    uniform, but only the former re-draws the *same* sites when the bucket changes. That
+    matters because every training run re-mines against a new candidate, and adjudications
+    key on :func:`site_id`, so overlap between successive worklists is audit hours that do
+    not have to be spent twice. Positional sampling gets no overlap worth having: fifty
+    drawn from ~4,300 twice intersect in about one site even when the populations are 95%
+    identical, so each run would restart the audit from nothing.
     """
     buckets: dict[tuple[str, str], list[TashkeelSite]] = {}
     for row in sorted(rows, key=lambda r: r.site_id):
         buckets.setdefault((row.direction, row.vowel_name), []).append(row)
+
+    def rank(key: tuple[str, str], row: TashkeelSite) -> str:
+        return hashlib.sha256(f"{seed}:{key}:{row.site_id}".encode("utf-8")).hexdigest()
 
     drawn: list[TashkeelSite] = []
     for key in sorted(buckets):
@@ -243,7 +255,7 @@ def sample_worklist(
         if len(bucket) <= per_bucket:
             drawn.extend(bucket)
         else:
-            drawn.extend(random.Random(f"{seed}:{key}").sample(bucket, per_bucket))
+            drawn.extend(sorted(bucket, key=lambda r: rank(key, r))[:per_bucket])
     random.Random(f"{seed}:order").shuffle(drawn)
     return drawn
 

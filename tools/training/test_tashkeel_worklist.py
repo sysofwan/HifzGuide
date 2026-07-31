@@ -189,6 +189,19 @@ def test_sampling_is_reproducible_but_not_ordered_by_bucket():
     assert len(set(directions[:10])) == 2
 
 
+def test_the_draw_survives_re_mining_against_a_new_candidate_checkpoint():
+    # Every training run re-mines, and adjudications key on site_id, so overlap between
+    # successive worklists is audit hours saved. Positional sampling would throw that away:
+    # ten drawn positionally from a hundred twice barely intersect even when the two
+    # populations are nearly identical, so each run would restart the audit from scratch.
+    before = [_row(i, RECOVERED, FATHA) for i in range(100)]
+    # The next checkpoint fixes five of the sites the old one missed and misses five others.
+    after = before[5:] + [_row(200 + i, RECOVERED, FATHA) for i in range(5)]
+    kept = {r.site_id for r in sample_worklist(before, per_bucket=10)}
+    redrawn = {r.site_id for r in sample_worklist(after, per_bucket=10)}
+    assert len(kept & redrawn) >= 8
+
+
 def test_a_worklist_round_trips_through_disk(tmp_path):
     rows = [_row(1, RECOVERED, FATHA), _row(2, REGRESSED, KASRA)]
     path = tmp_path / "worklist.jsonl"

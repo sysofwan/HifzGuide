@@ -39,7 +39,12 @@ import json
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
-from training.tashkeel_eval import _decode_windows, _load_windows, vowel_sites
+from training.tashkeel_eval import (
+    VOWEL_OUTCOMES,
+    _decode_windows,
+    _load_windows,
+    vowel_sites,
+)
 from training.tashkeel_worklist import TashkeelSite, read_worklist, site_id
 
 
@@ -55,9 +60,46 @@ class SiteOutcome:
 OUTCOME_FIELDS = tuple(f.name for f in fields(SiteOutcome))
 
 
-def _windows_for(worklist: list[TashkeelSite]) -> set[tuple[str, int]]:
-    """The ``(clip, window)`` pairs the worklist touches — the only ones worth decoding."""
-    return {(row.clip_audio_filename, row.window_index) for row in worklist}
+def _windows_for(worklist: list[TashkeelSite]) -> dict[tuple[str, int], TashkeelSite]:
+    """The ``(clip, window)`` pairs the worklist touches, each with one representative site.
+
+    The representative carries the reference the listener was actually shown, which
+    :func:`check_references` needs: ``site_id`` hashes only clip, window and reference index,
+    so it cannot by itself detect that a *different* label file put a different phoneme string
+    at that coordinate.
+    """
+    return {(row.clip_audio_filename, row.window_index): row for row in worklist}
+
+
+def check_references(labels, windows: dict[tuple[str, int], TashkeelSite]) -> None:
+    """Refuse to score if a window's reference is not the one the sites were mined from.
+
+    ``site_id`` is deliberately model-free and coordinate-only, which is what lets a verdict
+    outlive the checkpoint that surfaced it. The cost is that it is also *reference*-free: run
+    this against a label file whose window 0 of ``clip.wav`` holds a different phoneme string
+    and every id still matches, so outcomes computed against one reference would be joined to
+    verdicts collected against another. Nothing downstream could detect it — the counts would
+    simply be wrong.
+
+    The span is checked too. Same coordinate, different windowing, is the same failure with a
+    different cause: the listener graded audio the decode never saw.
+    """
+    for label in labels:
+        site = windows[(label.clip_audio_filename, label.window_index)]
+        if label.phoneme_label != site.reference:
+            raise ValueError(
+                f"{label.clip_audio_filename} window {label.window_index} has a different "
+                "reference in the labels than the worklist recorded. The sites were "
+                "adjudicated against the worklist's reference, so scoring against this one "
+                "would join a decode of one text to verdicts about another."
+            )
+        if (label.start_sample, label.num_samples) != (site.start_sample, site.num_samples):
+            raise ValueError(
+                f"{label.clip_audio_filename} window {label.window_index} spans "
+                f"({label.start_sample}, {label.num_samples}) in the labels but "
+                f"({site.start_sample}, {site.num_samples}) in the worklist — the listener "
+                "graded a different span of audio than this decode would cover."
+            )
 
 
 def outcomes_for_window(
@@ -98,6 +140,16 @@ def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
 
     A silently-tolerated stray field here would be a checkpoint's result being read into the
     wrong column of a comparison, so the schema is checked rather than trusted.
+
+    Outcome *values* are checked against :data:`VOWEL_OUTCOMES` too, because
+    :func:`tadabur.tashkeel_acceptance._failed` asks whether an outcome is in the failed set —
+    a denylist. Under a denylist a typo (``"omited"``) reads as the checkpoint having got the
+    position right, quietly shrinking its false-rejection estimate, which is the one direction
+    an audit of over-strictness must never fail in.
+
+    Duplicate site ids are rejected rather than last-wins. Unlike an adjudications file, where
+    a listener revising a verdict is expected, two outcomes for one site means two decodes were
+    concatenated and there is no way to tell which checkpoint the survivor came from.
     """
     rows: dict[str, SiteOutcome] = {}
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -110,6 +162,17 @@ def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
             raise ValueError(
                 f"{path}:{number} does not match the outcome schema "
                 f"(missing: {sorted(missing)}, unknown: {sorted(unknown)})."
+            )
+        if record["outcome"] not in VOWEL_OUTCOMES:
+            raise ValueError(
+                f"{path}:{number} has outcome {record['outcome']!r}, which is not one of "
+                f"{sorted(VOWEL_OUTCOMES)}. Anything unrecognised would score as the "
+                "checkpoint having got this position right."
+            )
+        if record["site_id"] in rows:
+            raise ValueError(
+                f"{path}:{number} repeats site {record['site_id']}. Two outcomes for one site "
+                "means two decodes were concatenated; which checkpoint won is not recoverable."
             )
         rows[record["site_id"]] = SiteOutcome(**record)
     return rows
@@ -145,12 +208,20 @@ def main() -> None:
         for label in _load_windows(args.labels, args.split, None)
         if (label.clip_audio_filename, label.window_index) in windows
     ]
-    if len(labels) < len(windows):
+    seen = {(label.clip_audio_filename, label.window_index) for label in labels}
+    if len(seen) < len(windows):
         raise ValueError(
-            f"{args.labels} '{args.split}' is missing {len(windows) - len(labels)} of the "
+            f"{args.labels} '{args.split}' is missing {len(windows) - len(seen)} of the "
             f"{len(windows)} windows the worklist references — the worklist was mined from "
             "a different label file or split, and scoring it here would silently drop sites."
         )
+    if len(labels) != len(seen):
+        raise ValueError(
+            f"{args.labels} '{args.split}' has {len(labels) - len(seen)} duplicate "
+            "(clip, window) rows among the windows this worklist references. Decoding one "
+            "coordinate twice would emit two outcomes for the same site."
+        )
+    check_references(labels, windows)
     print(
         f"Scoring {args.model} at {len(wanted)} sites across {len(labels)} windows.",
         flush=True,

@@ -19,6 +19,8 @@ import pytest
 from training.tashkeel_eval import DAMMA, FATHA, KASRA, MATCHED, OMITTED
 from training.tashkeel_outcomes import (
     SiteOutcome,
+    _windows_for,
+    check_references,
     outcomes_for_window,
     read_outcomes,
     write_outcomes,
@@ -497,3 +499,53 @@ def test_outcomes_are_keyed_by_the_same_site_id_the_worklist_uses():
     found = outcomes_for_window(reference, f"م{FATHA}الك", label, {site_id("clip.wav", 0, 1)})
     assert [row.site_id for row in found] == [site_id("clip.wav", 0, 1)]
     assert found[0].outcome == MATCHED
+
+
+def test_an_unrecognised_outcome_is_refused_rather_than_read_as_a_success(tmp_path):
+    # _failed() is a denylist, so a typo would score as the checkpoint getting the position
+    # right -- shrinking its false-rejection estimate, the one direction this audit must not
+    # fail in. Caught at read time instead.
+    path = tmp_path / "outcomes.jsonl"
+    path.write_text(
+        json.dumps({"site_id": "a" * 16, "outcome": "omited", "decoded_vowel": None}) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="not one of"):
+        read_outcomes(path)
+
+
+def test_two_outcomes_for_one_site_are_refused_rather_than_last_wins(tmp_path):
+    # A listener revising a verdict is expected; two decodes concatenated is not, and which
+    # checkpoint the survivor came from is unrecoverable.
+    path = tmp_path / "outcomes.jsonl"
+    path.write_text(
+        json.dumps({"site_id": "a" * 16, "outcome": MATCHED, "decoded_vowel": FATHA}) + "\n"
+        + json.dumps({"site_id": "a" * 16, "outcome": OMITTED, "decoded_vowel": None}) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="repeats site"):
+        read_outcomes(path)
+
+
+def test_scoring_refuses_a_label_file_that_moved_the_reference_under_the_verdicts():
+    # site_id hashes only clip/window/index, which is what lets a verdict outlive a
+    # checkpoint -- but it means a different label file at the same coordinate still matches.
+    site = _static_site(1, BASE_FAILED)
+    windows = _windows_for([site])
+    moved = SimpleNamespace(
+        clip_audio_filename="clip.wav", window_index=0,
+        phoneme_label="something else", start_sample=16000, num_samples=32000,
+    )
+    with pytest.raises(ValueError, match="different reference"):
+        check_references([moved], windows)
+
+
+def test_scoring_refuses_a_window_whose_span_moved():
+    site = _static_site(1, BASE_FAILED)
+    windows = _windows_for([site])
+    moved = SimpleNamespace(
+        clip_audio_filename="clip.wav", window_index=0,
+        phoneme_label=site.reference, start_sample=0, num_samples=32000,
+    )
+    with pytest.raises(ValueError, match="spans"):
+        check_references([moved], windows)

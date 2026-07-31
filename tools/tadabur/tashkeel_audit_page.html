@@ -32,7 +32,6 @@
   input[type=text] { font: inherit; padding: .4rem; flex: 1 1 14rem;
                      border-radius: .4rem; border: 1px solid currentColor;
                      background: transparent; color: inherit; }
-  pre { overflow-x: auto; font-size: .8rem; }
   .hint { font-size: .8rem; opacity: .7; margin-top: .75rem; }
 </style>
 </head>
@@ -42,7 +41,6 @@
   <progress id="bar" value="0" max="1"></progress>
   <span class="muted" id="count"></span>
   <button id="jump">Next unjudged <kbd>u</kbd></button>
-  <button id="toggle-results">Show results</button>
 </header>
 
 <p class="muted">
@@ -76,8 +74,6 @@
     move. Recording a verdict advances automatically.
   </p>
 </div>
-
-<div class="card" id="results" hidden><pre id="results-body">Loading…</pre></div>
 
 <script>
 const VERDICTS = [
@@ -196,14 +192,6 @@ $("jump").onclick = () => {
   if (next < 0) { alert("Every site has been judged."); return; }
   index = next;
   render();
-};
-$("toggle-results").onclick = async () => {
-  const panel = $("results");
-  panel.hidden = !panel.hidden;
-  $("toggle-results").textContent = panel.hidden ? "Show results" : "Hide results";
-  if (panel.hidden) return;
-  $("results-body").textContent = JSON.stringify(
-    await (await fetch("/api/results")).json(), null, 2);
 };
 
 document.addEventListener("keydown", (event) => {

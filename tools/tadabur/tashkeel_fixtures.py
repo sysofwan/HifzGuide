@@ -26,6 +26,7 @@ candidate checkpoint resumes an audit already done.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import MISSING, asdict, dataclass, fields
 from pathlib import Path
 
@@ -107,10 +108,21 @@ def write_adjudications(path: Path, adjudications: dict[str, Adjudication]) -> N
 
     A full rewrite rather than an append keeps the file free of superseded verdicts, so its
     line count is the number of sites judged — the progress figure the UI shows.
+
+    Written to a sibling temporary file, flushed to disk, then moved into place with
+    :func:`os.replace`, which is atomic within a filesystem. The UI calls this on **every**
+    verdict, so writing in place would put the whole accumulated audit inside the truncation
+    window of each keystroke: a crash there would leave a half-written file and silently
+    cost hours of listening rather than the one verdict being submitted.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         json.dumps(asdict(adjudications[key]), ensure_ascii=False)
         for key in sorted(adjudications)
     ]
-    path.write_text("".join(line + "\n" for line in lines), encoding="utf-8")
+    temporary = path.with_name(path.name + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write("".join(line + "\n" for line in lines))
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)

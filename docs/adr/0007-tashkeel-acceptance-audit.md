@@ -63,22 +63,37 @@ what the mushaf prescribes — so when a checkpoint declines to mark a vowel the
 cannot distinguish an over-strict model from a reciter who genuinely said something else. Only
 the ear can, and only if it is not told which answer helps.
 
-### Sampling is per (direction, colour), and the report is two layers
+### Sampling is per (direction, colour), and estimation must be too
 
 Fatha outnumbers kasra and damma together, and ADR-0003's collapse check is per-colour, so a
-pooled draw would leave the audit unable to speak per-colour. Because the worklist is a
-*sample*, the report never presents audited counts as corpus counts: each direction yields a
-confirmed **share** with a Wilson interval, which is then scaled onto the population counts the
-mining run recorded in its `.summary.json` sidecar. Running the comparison without that sidecar
-is a hard error, not a default.
+pooled draw would leave the audit unable to speak per-colour. But equal draws from unequal
+buckets make the *estimator* the hard part: pooling a direction's verdicts and scaling the
+pooled share onto the direction's total weights each colour by its **sample** size rather than
+its **population** size. With 10,000 fatha recoveries confirmed at 100% and 100 kasra
+recoveries confirmed at 0%, fifty draws from each give a pooled 50% and an estimate of 5,050
+confirmed sites against a true 10,000. Each stratum is therefore estimated against its own
+population count, which the mining run records per `(direction, colour)` in its
+`.summary.json` sidecar. Running the comparison without that sidecar is a hard error.
 
-The interval on the difference combines the two directions' Wilson bounds at their worst rather
-than jointly. That is cruder and wider than necessary. Given ADR-0006's history — a Wald
-interval whose width collapses to zero at `b = c = 0` would have certified non-inferiority at
-`n = 10` — an interval that can only ever be too cautious is the right trade.
+`unclear` verdicts leave the denominator rather than counting against confirmation: a
+recording nobody can make out is not evidence that the reciter said the wrong vowel. The
+report carries `unclear_share` so the weight resting on that assumption stays visible.
+
+### The interval is simultaneous, not a difference of two 95% intervals
+
+Differencing two independent 95% bounds yields at most 90.25% joint coverage; across six strata
+the naive construction leaves roughly 74%. Labelling that `ci95` would be *anti*-conservative —
+the opposite of the intended caution, and precisely the failure mode ADR-0006 already found
+once, where a Wald interval whose width collapses to zero at `b = c = 0` would have certified
+non-inferiority at `n = 10`. Every stratum bound entering the difference is therefore widened
+by Bonferroni to `alpha / (2 * strata)`, and the report names the method and the `z` it used.
 
 ## Consequences
 
+- **No result is shown while grading.** Exposing the running recovered/regressed tallies
+  defeats the blinding on its own: verdicts are replaceable and the UI navigates backwards, so
+  a listener could submit anything, watch which tally moved, and revise it knowing which answer
+  flatters the fine-tune. `tadabur.tashkeel_acceptance` reports after the fact.
 - **Sites are keyed by clip/window/reference-index**, not by sampling order, so re-mining with a
   different seed, bucket size or candidate checkpoint resumes an audit already done.
 - **The audit UI plays the exact window span both checkpoints decoded**, re-encoded as 16-bit

@@ -191,16 +191,28 @@ def population_counts(references: list[str], rows: list[TashkeelSite]) -> dict:
     thing in 50 discordant sites and another in 5,000. :func:`tadabur.tashkeel_acceptance`
     reads ``reference_vowels`` as the denominator both rates are expressed over.
 
+    ``strata`` counts each ``(direction, colour)`` cell separately, because that is the unit
+    :func:`sample_worklist` draws on. Scaling a direction's *pooled* audited share onto its
+    total would weight the colours by sample size rather than population size — with equal
+    draws from a bucket of 10,000 fatha and one of 100 kasra, a colour-dependent
+    confirmation rate makes the pooled estimate wrong by orders of magnitude.
+
     Derived from the mined ``rows`` rather than re-aligned, so the population a result is
     scaled onto and the sites offered for audit are guaranteed to be the same partition.
     ``reference_vowels`` needs no alignment at all: every short vowel in every reference is
     classified by exactly one site (:func:`training.tashkeel_eval.vowel_sites` covers the
     unaligned ends too), so counting the characters is counting the positions.
     """
+    strata: dict[str, dict[str, int]] = {
+        direction: {name: 0 for name in VOWEL_NAMES.values()} for direction in DIRECTIONS
+    }
+    for row in rows:
+        strata[row.direction][row.vowel_name] += 1
     totals = {
         "reference_vowels": sum(1 for ref in references for c in ref if c in SHORT_VOWELS),
-        RECOVERED: sum(1 for row in rows if row.direction == RECOVERED),
-        REGRESSED: sum(1 for row in rows if row.direction == REGRESSED),
+        "strata": strata,
+        RECOVERED: sum(strata[RECOVERED].values()),
+        REGRESSED: sum(strata[REGRESSED].values()),
     }
     totals["concordant"] = (
         totals["reference_vowels"] - totals[RECOVERED] - totals[REGRESSED]

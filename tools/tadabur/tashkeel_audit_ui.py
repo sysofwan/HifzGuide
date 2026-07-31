@@ -18,6 +18,12 @@ grading a vowel the model never heard would be adjudicating a different question
 "with context" take is available separately, because a bare 5 s window can cut mid-word and
 the surrounding syllable is often what makes a case ending audible.
 
+**No result is shown while grading.** Exposing the running recovered/regressed tallies
+would undo the blinding on its own: a listener could submit any verdict, watch which tally
+moved, and — verdicts are replaceable, and Prev navigates back — revise it knowing which
+answer flatters the fine-tune. Results come from :mod:`tadabur.tashkeel_acceptance` after
+the fact.
+
 There is no database and no framework: verdicts are persisted straight into the
 adjudications JSONL, so the UI resumes from — and is interchangeable with — whatever that
 file already holds.
@@ -48,7 +54,6 @@ from training.tashkeel_worklist import TashkeelSite, read_worklist
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
 from .audit_http import AuditHandler, serve
 from .audit_sampler import local_audio_path
-from .tashkeel_acceptance import compare
 from .tashkeel_fixtures import (
     VERDICTS,
     Adjudication,
@@ -97,13 +102,20 @@ class ClipCache:
         self._cache: dict[str, np.ndarray] = {}
 
     def _path(self, clip_audio_filename: str) -> Path:
-        """Resolve either staged layout: hash-prefixed sampler name, or the plain name."""
-        hashed = self._audio_dir / local_audio_path(clip_audio_filename)
-        if hashed.is_file():
-            return hashed
-        plain = self._audio_dir / clip_audio_filename
-        if plain.is_file():
-            return plain
+        """Resolve either staged layout: hash-prefixed sampler name, or the plain name.
+
+        ``local_audio_path`` is flat and separator-free by construction, but the plain
+        fallback appends a worklist field verbatim — and ``read_worklist`` validates field
+        *names*, not their contents. A ``clip_audio_filename`` of ``../../etc/passwd`` would
+        otherwise escape the clip store, which matters because this server is meant to be
+        bound to ``0.0.0.0`` so a listener can grade from another device. Every candidate is
+        therefore resolved and rejected unless it lands inside ``audio_dir``.
+        """
+        root = self._audio_dir.resolve()
+        for candidate in (local_audio_path(clip_audio_filename), clip_audio_filename):
+            target = (root / candidate).resolve()
+            if root in target.parents and target.is_file():
+                return target
         raise FileNotFoundError(
             f"clip audio for {clip_audio_filename!r} not found under {self._audio_dir} "
             "under either the hash-prefixed (tadabur.audit_sampler) or plain name."
@@ -153,19 +165,15 @@ class AuditState:
     sites: list[TashkeelSite]
     adjudications_path: Path
     clips: ClipCache
-    population: dict
     adjudications: dict[str, Adjudication] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
     @classmethod
-    def load(
-        cls, worklist: Path, adjudications: Path, audio_dir: Path, population: dict
-    ) -> "AuditState":
+    def load(cls, worklist: Path, adjudications: Path, audio_dir: Path) -> "AuditState":
         state = cls(
             sites=read_worklist(worklist),
             adjudications_path=adjudications,
             clips=ClipCache(audio_dir),
-            population=population,
         )
         state.adjudications = read_adjudications(adjudications)
         return state
@@ -222,14 +230,6 @@ class AuditState:
         judged = sum(1 for s in self.sites if s.site_id in self.adjudications)
         return {"total": len(self.sites), "judged": judged}
 
-    def results(self) -> dict:
-        """The live over-strictness comparison, so progress is visible mid-audit.
-
-        Shown behind a click rather than on the grading screen: a listener who can watch the
-        gain move as they grade is being handed exactly the bias the blind view removes.
-        """
-        return compare(self.sites, self.adjudications, self.population)
-
 
 class TashkeelAuditHandler(AuditHandler):
     """Routes: the page, the worklist API, window audio, and verdict submission."""
@@ -248,8 +248,6 @@ class TashkeelAuditHandler(AuditHandler):
                     "progress": self.state.progress(),
                 }
             )
-        elif parsed.path == "/api/results":
-            self.send_json(self.state.results())
         elif parsed.path == "/api/audio":
             self._send_window_audio(query)
         else:
@@ -280,8 +278,15 @@ class TashkeelAuditHandler(AuditHandler):
         if urlparse(self.path).path != "/api/verdict":
             self.send_json({"error": "not found"}, status=404)
             return
-        length = int(self.headers.get("Content-Length") or 0)
-        payload = json.loads(self.rfile.read(length) or b"{}")
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            payload = json.loads(self.rfile.read(length) or b"{}")
+        except (TypeError, ValueError):
+            self.send_json({"error": "body must be JSON"}, status=400)
+            return
+        if not isinstance(payload, dict):
+            self.send_json({"error": "body must be a JSON object"}, status=400)
+            return
         verdict = payload.get("verdict")
         if verdict not in VERDICTS:
             self.send_json(
@@ -304,8 +309,6 @@ def build_parser() -> argparse.ArgumentParser:
                         help="verdict JSONL; created on the first save, resumed if present.")
     parser.add_argument("--audio-dir", type=Path, required=True,
                         help="staged 16 kHz clip directory the windows are sliced from.")
-    parser.add_argument("--summary", type=Path, default=None,
-                        help="the worklist's '.summary.json' sidecar (default: beside it).")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1",
                         help="bind address; pass 0.0.0.0 to grade from another device on "
@@ -315,16 +318,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    summary_path = args.summary or args.worklist.with_suffix(
-        args.worklist.suffix + ".summary.json"
-    )
-    if not summary_path.is_file():
-        raise SystemExit(
-            f"{summary_path} not found — it holds the population counts the live results "
-            "view needs. Pass --summary."
-        )
-    population = json.loads(summary_path.read_text(encoding="utf-8"))["population"]
-    state = AuditState.load(args.worklist, args.adjudications, args.audio_dir, population)
+    state = AuditState.load(args.worklist, args.adjudications, args.audio_dir)
     progress = state.progress()
     print(
         f"{progress['judged']}/{progress['total']} sites already judged. "

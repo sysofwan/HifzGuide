@@ -124,6 +124,18 @@ def test_population_counts_partition_every_reference_vowel():
     assert counts[RECOVERED] == 1
     assert counts[REGRESSED] == 1
     assert counts["concordant"] == 1
+    assert counts["strata"][RECOVERED]["fatha"] == 1
+    assert counts["strata"][REGRESSED]["kasra"] == 1
+
+
+def test_the_population_is_counted_per_colour_because_the_sample_is_drawn_per_colour():
+    # sample_worklist caps each (direction, colour) bucket separately, so scaling an
+    # audited share onto a direction *total* would weight the colours by sample size.
+    reference = f"م{FATHA}ال{KASRA}ك{DAMMA}"
+    rows = discordant_sites(reference, "مالك", reference, FakeLabel())
+    strata = population_counts([reference], rows)["strata"]
+    assert strata[RECOVERED] == {"fatha": 1, "damma": 1, "kasra": 1}
+    assert strata[REGRESSED] == {"fatha": 0, "damma": 0, "kasra": 0}
 
 
 def test_the_population_is_counted_off_the_same_rows_that_are_offered_for_audit():

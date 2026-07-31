@@ -14,6 +14,8 @@ from training.counterfactual_eval import (
     NO_VOWEL,
     OTHER_VOWEL,
     classify,
+    CERTIFICATION_POWER,
+    certification_power,
     compare_to_baseline,
     paired_score_interval,
     required_items,
@@ -339,12 +341,12 @@ def test_a_directional_but_underpowered_difference_is_not_called_clean():
     assert comparison["items_needed_at_observed_rate"] > 39
 
 
-def test_a_checkpoint_no_recollection_can_rescue_is_not_called_inconclusive():
+def test_a_checkpoint_more_of_the_same_audio_cannot_rescue_is_not_called_inconclusive():
     """The rung3_v2 shape: 4 regressed vs 1 recovered, a 7.7% net regression.
 
-    "Inconclusive" invites more recording. Here recording cannot help — the interval only
-    shrinks onto a point estimate that is already past the margin — so the finding must say
-    so and hand the decision to a human.
+    "Inconclusive" invites more recording. Recording more *at this rate* cannot help, so the
+    finding must say so and hand the decision to a human — while stopping short of calling
+    the checkpoint inferior, which this set does not establish either.
     """
     base = _outcome_rows([FOLLOWED_AUDIO] * 38 + [FOLLOWED_TEXT])
     tuned = _outcome_rows([FOLLOWED_TEXT] * 4 + [FOLLOWED_AUDIO] * 34 + [FOLLOWED_AUDIO])
@@ -352,8 +354,10 @@ def test_a_checkpoint_no_recollection_can_rescue_is_not_called_inconclusive():
     comparison = compare_to_baseline(tuned, base)
 
     assert comparison["regressed"] == 4 and comparison["recovered"] == 1
-    assert comparison["equality_finding"] == "disqualified"
+    assert comparison["equality_finding"] == "above_margin"
     assert comparison["items_needed_at_observed_rate"] is None
+    assert "cannot certify" in comparison["detail"]
+    assert "unresolved" in comparison["detail"], "not a finding of inferiority"
 
 
 def test_only_items_both_models_scored_are_compared():
@@ -419,6 +423,24 @@ def test_regressions_offset_by_recoveries_certify_once_the_set_is_large_enough()
     assert comparison["non_inferiority_certified"] is True
 
 
+def test_a_certified_set_is_never_described_as_needing_more_items():
+    """A certified set that still has ``b > c`` must not be filed under "underpowered".
+
+    The same 20-vs-10 set is *powered* — that is the point of measuring the net difference —
+    yet the finding used to read "directional but underpowered; certifying at this rate would
+    take 150 paired items" over a set of 1,000. Advice to collect more audio for an already
+    settled result is the exact failure #60 was opened about, pointed the other way.
+    """
+    base = _outcome_rows([FOLLOWED_AUDIO] * 20 + [FOLLOWED_TEXT] * 10 + [FOLLOWED_AUDIO] * 970)
+    tuned = _outcome_rows([FOLLOWED_TEXT] * 20 + [FOLLOWED_AUDIO] * 10 + [FOLLOWED_AUDIO] * 970)
+
+    comparison = compare_to_baseline(tuned, base)
+
+    assert comparison["non_inferiority_certified"] is True
+    assert comparison["equality_finding"] == "within_margin"
+    assert "underpowered" not in comparison["detail"]
+
+
 def test_the_recorded_forty_one_item_set_still_certifies_nothing():
     """The rung1_v3 result — 2 regressed, 0 recovered on 41 paired items.
 
@@ -473,33 +495,68 @@ def test_the_power_calculation_replaces_the_withdrawn_seventy_three():
     the rate approaches the margin.
     """
     assert required_items(0.0) == 73
-    assert required_items(0.01) == 110
-    assert required_items(0.02) == 202
-    assert required_items(0.03) == 414
+    assert required_items(0.01) == 173
+    assert required_items(0.02) == 337
+    assert required_items(0.03) == 826
 
 
-def test_the_power_calculation_skips_rounding_islands():
-    """173 items certify at a 2% rate and 175 do not — the third regression rounds to a fourth.
+def test_a_sample_size_is_quoted_at_a_stated_power_not_at_a_coin_flip():
+    """Asking whether the single most likely table certifies is not a power calculation.
 
-    Reporting an island as "the" sample size would send a recollection to a target it can fall
-    straight back out of by recording one more item, so the answer is the start of the first
-    contiguous run.
+    Round the assumed rate to whole items, test that one table, take the smallest n that
+    passes, and you get 202 items at a 2% rate — which actually certifies 62% of the time.
+    Half of a recollection built on that number would come back unsettled, having spent the
+    audio. The quoted size must clear a stated power.
     """
-    assert paired_score_interval(round(0.02 * 173), 0, 173)[1] <= MAX_REGRESSION
-    assert paired_score_interval(round(0.02 * 175), 0, 175)[1] > MAX_REGRESSION
-    assert required_items(0.02) > 175
+    assert certification_power(202, 0.02) == pytest.approx(0.62, abs=0.01)
+    assert certification_power(required_items(0.02), 0.02) >= CERTIFICATION_POWER
 
 
-def test_a_net_regression_at_or_above_the_margin_can_never_be_certified():
-    """rung3_v2: 4 of 41, a 9.8% net regression. No recollection can rescue it.
+def test_the_quoted_size_is_one_you_cannot_fall_off_by_recording_more():
+    """Power is sawtoothed in n: the certifying threshold is an integer, so power leaps when
+    it increments and decays until the next leap.
 
-    The interval only ever shrinks onto the point estimate, so a set whose net difference
-    already exceeds the margin is disqualified outright — the decision belongs to a human on
-    #10, and asking for more audio would be a stall dressed as diligence.
+    At a 1% rate, 142 items reach 83% power and 160 items — MORE audio — fall back to 78%.
+    Quoting 142 would send a recollection to a target it can miss by overshooting, so the
+    answer must be a size the target holds from, not the first size to touch it.
+    """
+    assert certification_power(142, 0.01) > CERTIFICATION_POWER
+    assert certification_power(160, 0.01) < CERTIFICATION_POWER, "more items, less power"
+
+    n = required_items(0.01)
+    assert n > 160
+    assert all(
+        certification_power(m, 0.01) >= CERTIFICATION_POWER
+        for m in range(n, 2 * n + 1, max(1, n // 64))
+    )
+
+
+def test_the_search_does_not_step_over_its_own_limit():
+    """Doubling from 1 lands on powers of two, which need not straddle the limit usefully.
+
+    The last power of two under a limit can fail while the limit itself passes; stepping over
+    it and giving up would report a reachable sample size as unreachable, and ``None`` is what
+    the report renders as "recording more audio cannot certify it".
+    """
+    assert required_items(0.01, limit=400) == 173
+    assert required_items(0.01, limit=128) is None
+
+
+def test_a_net_regression_at_or_above_the_margin_is_unreachable_at_that_rate():
+    """rung3_v2: 4 of 41, a 9.8% net regression. Recording more at that rate cannot rescue it.
+
+    The claim is about the assumed rate, not the checkpoint: certification probability at a
+    net difference above the margin tends to the one-sided alpha, never to the target power.
+    What it does NOT establish is that the checkpoint is inferior — 4 of 41 is a loose
+    estimate, and a fresh set drawn at a genuinely lower true rate certifies at 202 items.
     """
     assert required_items(4 / 41) is None
     assert required_items(0.05) is None
     assert required_items(0.049) is not None
+    assert paired_score_interval(4, 0, 202)[1] <= MAX_REGRESSION, (
+        "the same four regressions diluted by concordant items would certify -- 'no sample "
+        "size can certify this checkpoint' would be an overclaim"
+    )
 
 
 def test_an_item_the_two_alignments_disagree_about_is_not_scored(monkeypatch):
@@ -525,3 +582,116 @@ def test_an_item_the_two_alignments_disagree_about_is_not_scored(monkeypatch):
     assert row["alignment_stable"] is False
     assert row["scored"] is False
     assert row["outcome"] == FOLLOWED_AUDIO, "still reported, so the exclusion can be audited"
+
+
+def test_rescoring_refuses_to_silently_drop_a_baseline_comparison(tmp_path, monkeypatch):
+    """``--rescore report --out report`` writes over its own input.
+
+    A report decoded with ``--baseline`` carries the gate result in ``vs_baseline``. Rescoring
+    without ``--baseline`` would rebuild the report from the stored per-item outcomes alone and
+    overwrite the gate away — losing the only thing #10 reads — so refuse instead.
+    """
+    import json
+    import sys
+
+    import training.counterfactual_eval as module
+
+    report = tmp_path / "counterfactual_rung.json"
+    report.write_text(
+        json.dumps({"model": "m", "items": _outcome_rows([FOLLOWED_AUDIO] * 3),
+                    "vs_baseline": {"non_inferiority_certified": False}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys, "argv",
+        ["counterfactual_eval", "--rescore", str(report), "--out", str(report)],
+    )
+
+    with pytest.raises(SystemExit, match="--baseline"):
+        module.main()
+
+    assert json.loads(report.read_text(encoding="utf-8"))["vs_baseline"] is not None
+
+
+def test_rescoring_rejudges_stored_outcomes_without_a_model(tmp_path, monkeypatch):
+    """The rule changed after the audio was decoded, and re-decoding needs a GPU.
+
+    Rescoring must reproduce the summary and gate from the stored per-item outcomes alone, so
+    a rule change never costs a decode pass.
+    """
+    import json
+    import sys
+
+    import training.counterfactual_eval as module
+
+    rows = _outcome_rows([FOLLOWED_AUDIO] * 41)
+    baseline = tmp_path / "base.json"
+    baseline.write_text(json.dumps({"model": "base", "items": rows}), encoding="utf-8")
+    report = tmp_path / "rung.json"
+    report.write_text(
+        json.dumps({"model": "rung", "items": _outcome_rows([FOLLOWED_TEXT] * 2 + [FOLLOWED_AUDIO] * 39)}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys, "argv",
+        ["counterfactual_eval", "--rescore", str(report), "--baseline", str(baseline),
+         "--out", str(report)],
+    )
+
+    module.main()
+
+    rescored = json.loads(report.read_text(encoding="utf-8"))
+    assert rescored["model"] == "rung", "the decoding model is part of the result, not the rule"
+    assert rescored["vs_baseline"]["regressed"] == 2
+    assert rescored["vs_baseline"]["non_inferiority_certified"] is False
+
+
+def test_rescoring_is_the_only_way_to_omit_the_decode_inputs(tmp_path, monkeypatch):
+    """The four decode arguments stopped being argparse-required so ``--rescore`` could work.
+
+    Without ``--rescore`` they are still mandatory; dropping them must fail on the argument,
+    not later on a None path.
+    """
+    import sys
+
+    import training.counterfactual_eval as module
+
+    monkeypatch.setattr(sys, "argv", ["counterfactual_eval", "--out", str(tmp_path / "o.json")])
+
+    with pytest.raises(SystemExit, match="--items"):
+        module.main()
+
+
+def test_the_certification_shortcut_agrees_with_the_full_interval():
+    """``certifies`` skips the 60-step bisection by testing the margin directly.
+
+    The power calculation asks the question millions of times, so the shortcut is what makes
+    it usable — but it is only safe while it agrees exactly with the interval it stands in for.
+    """
+    import random
+
+    from training.counterfactual_eval import certifies
+
+    random.seed(0)
+    for _ in range(2000):
+        n = random.randint(1, 600)
+        b = random.randint(0, n)
+        c = random.randint(0, n - b)
+        assert certifies(b, c, n) == (paired_score_interval(b, c, n)[1] <= MAX_REGRESSION), (
+            f"disagreement at b={b} c={c} n={n}"
+        )
+
+
+def test_the_non_inferiority_level_is_one_sided_two_and_a_half_percent():
+    """z=1.96 is a 95% TWO-sided interval, so the upper bound is a 97.5% one-sided one.
+
+    Naming it matters because the looser conventional choice is a real one: a 95% one-sided
+    bound (z=1.645) would certify a flawless run at 52 items rather than 73, and the margin
+    would be doing correspondingly less work.
+    """
+    from training.counterfactual_eval import NON_INFERIORITY_Z
+
+    assert NON_INFERIORITY_Z == 1.96
+    assert paired_score_interval(0, 0, 73, 1.96)[1] <= MAX_REGRESSION
+    assert paired_score_interval(0, 0, 72, 1.96)[1] > MAX_REGRESSION
+    assert paired_score_interval(0, 0, 52, 1.645)[1] <= MAX_REGRESSION

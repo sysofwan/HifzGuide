@@ -40,7 +40,8 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from math import comb, sqrt
+from functools import lru_cache
+from math import comb, exp, lgamma, log, sqrt
 from pathlib import Path
 
 import numpy as np
@@ -75,6 +76,19 @@ MAX_SILENT_CORRECTION_RATE = 0.05
 # student's wrong vowel may go unflagged relative to base -- and must be argued as one.
 MAX_REGRESSION = 0.05
 
+# One-sided type-I error for the non-inferiority claim. ``z = 1.96`` is a 95% TWO-sided
+# interval, so the upper bound it yields is a 97.5% one-sided bound -- alpha = 0.025, the
+# conventional non-inferiority level, and the stricter reading. Naming it here because a
+# 95% one-sided bound (z = 1.645) is a materially different test: it would certify a
+# zero-regression run at 52 items rather than 73.
+NON_INFERIORITY_Z = 1.96
+
+# Probability that a set of the prescribed size actually certifies, if the assumed rates are
+# the true ones. Sample sizes are quoted at this power; without it a "required n" is only the
+# size at which the single most likely table happens to clear the bound, which certifies
+# barely half the time.
+CERTIFICATION_POWER = 0.8
+
 
 def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
     """Wilson score interval — usable at the extreme proportions this test expects.
@@ -92,6 +106,39 @@ def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float,
     return (round(max(0.0, centre - margin), 12), round(min(1.0, centre + margin), 12))
 
 
+def _tango_score(delta: float, b: int, c: int, n: int) -> float:
+    """Tango's score statistic for the paired difference at ``delta``, decreasing in ``delta``.
+
+    The nuisance parameter is profiled out by the constrained MLE of the recovery cell, which
+    is the positive root of the quadratic below.
+    """
+    numerator = b - c - n * delta
+    a = 2 * n
+    beta = -b - c + (2 * n - b + c) * delta
+    gamma = -c * delta * (1 - delta)
+    p21 = (-beta + sqrt(max(beta * beta - 4 * a * gamma, 0.0))) / (2 * a)
+    variance = n * (2 * p21 + delta * (1 - delta))
+    if variance <= 0:
+        # Only reachable at the degenerate point where the interval is a single mass; a zero
+        # numerator there is agreement with ``delta``, not infinite evidence.
+        return 0.0 if numerator == 0 else (1 if numerator > 0 else -1) * float("inf")
+    return numerator / sqrt(variance)
+
+
+def certifies(b: int, c: int, n: int, max_regression: float = MAX_REGRESSION,
+              z: float = NON_INFERIORITY_Z) -> bool:
+    """Does this table's upper bound on the net difference sit inside the margin?
+
+    Equivalent to ``paired_score_interval(b, c, n, z)[1] <= max_regression`` but a single
+    score evaluation rather than a 60-step bisection: the bound clears the margin exactly when
+    the margin itself is already rejected as too high. The power calculation asks this
+    millions of times, so the shortcut is the difference between a usable tool and a stalled
+    test suite.
+    """
+    return n > 0 and _tango_score(max_regression, b, c, n) <= -z
+
+
+@lru_cache(maxsize=None)
 def paired_score_interval(b: int, c: int, n: int, z: float = 1.96) -> tuple[float, float]:
     """Tango score interval for the paired net difference ``(b - c) / n``.
 
@@ -112,80 +159,174 @@ def paired_score_interval(b: int, c: int, n: int, z: float = 1.96) -> tuple[floa
     if n <= 0:
         return (0.0, 0.0)
 
-    def score(delta: float) -> float:
-        numerator = b - c - n * delta
-        a = 2 * n
-        beta = -b - c + (2 * n - b + c) * delta
-        gamma = -c * delta * (1 - delta)
-        p21 = (-beta + sqrt(max(beta * beta - 4 * a * gamma, 0.0))) / (2 * a)
-        variance = n * (2 * p21 + delta * (1 - delta))
-        if variance <= 0:
-            # Only reachable at the degenerate point where the interval is a single mass;
-            # a zero numerator there is agreement with ``delta``, not infinite evidence.
-            return 0.0 if numerator == 0 else (1 if numerator > 0 else -1) * float("inf")
-        return numerator / sqrt(variance)
-
     def solve(accept) -> float:
         low, high = -1.0 + 1e-12, 1.0 - 1e-12
         for _ in range(60):
             mid = (low + high) / 2
-            if accept(score(mid)):
+            if accept(_tango_score(mid, b, c, n)):
                 low = mid
             else:
                 high = mid
         return low
 
-    # ``score`` decreases in delta, so the interval is the band where it stays within +-z.
+    # The score decreases in delta, so the interval is the band where it stays within +-z.
     upper = solve(lambda s: s >= -z)
     lower = solve(lambda s: s > z)
     return (round(max(-1.0, lower), 12), round(min(1.0, upper), 12))
+
+
+@lru_cache(maxsize=None)
+def certifying_regressions(c: int, n: int, max_regression: float = MAX_REGRESSION,
+                           z: float = NON_INFERIORITY_Z) -> int:
+    """Most regressions a set of ``n`` items with ``c`` recoveries can carry and still certify.
+
+    ``-1`` when even a flawless ``b = 0`` misses the margin, which is the usual answer at the
+    sample sizes this eval reaches. The bound rises with ``b``, so this is a clean threshold
+    and the certifying region is ``b <= certifying_regressions(c, n)``.
+    """
+    if not certifies(0, c, n, max_regression, z):
+        return -1
+    low, high = 0, n - c
+    if certifies(high, c, n, max_regression, z):
+        return high
+    while low + 1 < high:
+        mid = (low + high) // 2
+        if certifies(mid, c, n, max_regression, z):
+            low = mid
+        else:
+            high = mid
+    return low
+
+
+def _binomial_at_most(k: int, n: int, p: float) -> float:
+    """``P(X <= k)`` for ``X ~ Binomial(n, p)``, summed over the mass that matters.
+
+    Written out rather than pulled from scipy: this module's dependency floor is numpy plus
+    the standard library. Only the ~12 standard deviations around the mean carry any mass, and
+    within that window each term follows from the last by ``(n-j)/(j+1) * p/(1-p)``, so the
+    six-figure sample sizes the power table reaches cost O(sqrt(n)) multiplications rather
+    than O(n) log-gammas — the difference between the test suite taking seconds and minutes.
+    """
+    if k < 0:
+        return 0.0
+    if k >= n or p <= 0:
+        return 1.0
+    if p >= 1:
+        return 0.0
+    mean, sd = n * p, sqrt(n * p * (1 - p))
+    if k >= mean + 12 * sd:
+        return 1.0
+    low = max(0, int(mean - 12 * sd))
+    if k < low:
+        return 0.0
+    term = exp(
+        lgamma(n + 1) - lgamma(low + 1) - lgamma(n - low + 1)
+        + low * log(p) + (n - low) * log(1 - p)
+    )
+    ratio = p / (1 - p)
+    total = term
+    for j in range(low, k):
+        term *= (n - j) / (j + 1) * ratio
+        total += term
+    return min(1.0, total)
+
+
+@lru_cache(maxsize=None)
+def certification_power(
+    n: int,
+    regression_rate: float,
+    recovery_rate: float = 0.0,
+    max_regression: float = MAX_REGRESSION,
+    z: float = NON_INFERIORITY_Z,
+) -> float:
+    """Probability that ``n`` paired items certify, if the assumed rates are the true ones.
+
+    The quantity a sample size must be quoted against. Asking instead whether the single most
+    likely table certifies — round the rates to whole items, test that one table — answers a
+    different question and flatters itself: at a 2% regression rate the smallest ``n`` passing
+    that test certifies barely 62% of the time, so half the recollections built on it would
+    come back unsettled.
+
+    Regressions and recoveries are drawn together (an item is one, the other, or concordant),
+    so this sums over the recovery count and, conditional on it, the regressions that still
+    leave the bound inside the margin.
+    """
+    if n <= 0:
+        return 0.0
+    if recovery_rate <= 0:
+        return _binomial_at_most(certifying_regressions(0, n, max_regression, z), n, regression_rate)
+
+    mean, sd = n * recovery_rate, sqrt(n * recovery_rate * (1 - recovery_rate))
+    conditional = regression_rate / (1 - recovery_rate)
+    total = 0.0
+    for c in range(max(0, int(mean - 12 * sd)), min(n, int(mean + 12 * sd) + 1) + 1):
+        weight = exp(
+            lgamma(n + 1) - lgamma(c + 1) - lgamma(n - c + 1)
+            + c * log(recovery_rate) + (n - c) * log(1 - recovery_rate)
+        )
+        if weight < 1e-15:
+            continue
+        threshold = certifying_regressions(c, n, max_regression, z)
+        total += weight * _binomial_at_most(threshold, n - c, conditional)
+    return min(1.0, total)
 
 
 def required_items(
     regression_rate: float,
     recovery_rate: float = 0.0,
     max_regression: float = MAX_REGRESSION,
+    power: float = CERTIFICATION_POWER,
     limit: int = 500_000,
 ) -> int | None:
-    """Paired items needed to certify non-inferiority at an assumed discordance rate.
+    """Paired items needed to certify with probability ``power``, at assumed true rates.
 
-    Returns ``None`` when no sample size suffices. That is not a corner case: certification
-    requires the *point* estimate ``regression_rate - recovery_rate`` to sit strictly below
-    the margin, since the interval only ever shrinks onto it. A checkpoint whose observed net
-    regression already exceeds the margin cannot be rescued by recording more audio, and a
-    checkpoint sitting just under it needs an unreachable amount — which is the whole reason
-    #60 withdrew the earlier "collect ~35 more items" advice.
+    This is a **power calculation, and it is conditional on its assumption**. It answers "if
+    the true regression and recovery rates are these, how much audio settles it", not "what
+    this checkpoint needs" — the observed rates are themselves estimates, and on 41 items very
+    loose ones. A checkpoint whose *observed* net regression exceeds the margin has not been
+    shown to be inferior; it has failed to be shown non-inferior, and a fresh set drawn at a
+    genuinely lower true rate can still certify. Quote this against a stated assumed rate or
+    it will be misread as a verdict.
 
-    Rounding the rates to whole items makes certification non-monotone in ``n``: at a 2% rate
-    and a 5% margin, 173 and 174 items clear the bound but 175 does not, because the third
-    regression rounds up to a fourth. Reporting such an island as the answer would send a
-    recollection to a sample size it could fall straight back out of, so this returns the
-    start of the first **contiguous** run that certifies (202, there) instead.
+    Power is **sawtoothed** in ``n``, because the largest certifying regression count is an
+    integer: it leaps when that threshold increments and decays until the next leap. At a 1%
+    rate, 142 items reach 83% power and 160 items fall back to 78%. So the first ``n`` to
+    touch the target is a trap — a recollection aiming at it that overshoots by a dozen items
+    ends up *less* likely to certify. This returns the first ``n`` from which the target holds
+    across ``[n, 2n]``, i.e. one you cannot fall off by recording more.
+
+    ``None`` means no size up to ``limit`` qualifies. Where the assumed net difference is at
+    or above the margin that is exact rather than a search artefact: certification probability
+    then tends to the one-sided alpha (2.5%) at best, never to ``power``.
     """
     if regression_rate - recovery_rate >= max_regression:
         return None
 
-    def certifies(n: int) -> bool:
-        b, c = round(regression_rate * n), round(recovery_rate * n)
-        return paired_score_interval(b, c, n)[1] <= max_regression
+    def holds(n: int) -> bool:
+        # Sampled rather than exhaustive: the teeth are narrow relative to n, and the point is
+        # to reject an n sitting on one, not to certify the interval item by item.
+        span = max(1, n // 64)
+        return all(
+            certification_power(m, regression_rate, recovery_rate, max_regression) >= power
+            for m in range(n, 2 * n + 1, span)
+        )
 
-    # The bound tightens with n, so double until it clears, then bisect. Rounding the two
-    # rates to whole items makes that only near-monotone and leaves isolated islands that
-    # certify while n+1 does not, so step back to the start of the run rather than reporting
-    # the island. See the docstring for the 2%/173 case.
+    # Power rises with n between teeth, so double until it holds — clamped to ``limit``, since
+    # the last power of two below a limit can fail while the limit itself passes — then
+    # bisect and walk back to the start of the run.
     n = 1
-    while n <= limit and not certifies(n):
-        n *= 2
-    if n > limit:
+    while n < limit and not holds(n):
+        n = min(n * 2, limit)
+    if not holds(n):
         return None
-    low, high = n // 2, n
+    low, high = max(n // 2, 0), n
     while low + 1 < high:
         mid = (low + high) // 2
-        if certifies(mid):
+        if holds(mid):
             high = mid
         else:
             low = mid
-    while high > 1 and certifies(high - 1):
+    while high > 1 and holds(high - 1):
         high -= 1
     return high
 
@@ -405,32 +546,49 @@ def compare_to_baseline(
     needed = (
         required_items(b / len(shared), c / len(shared), max_regression) if shared else None
     )
+    net_low, net_high = paired_score_interval(b, c, len(shared)) if shared else (None, None)
+    within_margin = net_high is not None and net_high <= max_regression
 
-    # Three-state, because a paired set this size can rarely prove non-inferiority. Requiring
-    # BOTH directional evidence and magnitude keeps a single discordant item from reading as a
-    # regression, while refusing to call a directional-but-underpowered result "clean".
+    # Requiring BOTH directional evidence and magnitude keeps a single discordant item from
+    # reading as a regression, while refusing to call a directional-but-underpowered result
+    # "clean". The states below are ordered from settled to unsettled.
     if b <= c:
         finding, detail = "no_evidence_of_regression", (
             f"the fine-tune silently corrected no more vowel errors than base ({b} vs {c})"
         )
-    elif p_value < 0.05 and high > max_regression:
+    elif within_margin:
+        # More regressions than recoveries, but the set is large enough to bound the net
+        # difference inside the margin. That is exactly what non-inferiority means, and it is
+        # what the old ``b <= c`` clause made unreachable, so it must not be reported as
+        # "underpowered" — the whole point is that this set is powered.
+        finding, detail = "within_margin", (
+            f"{b} regressed vs {c} recovered over {len(shared)} items (exact p={p_value}) — "
+            f"the net difference is bounded above by {net_high:.1%}, inside the "
+            f"{max_regression:.0%} margin"
+        )
+    elif p_value < 0.05:
         finding, detail = "regression", (
             f"the fine-tune silently corrected {b} vowel errors base still flagged "
             f"(recovered {c}, exact p={p_value}) — the relaxation has reached tashkeel"
         )
     elif needed is None:
-        # Underpowered but not fixable: the observed net regression is at or above the margin,
-        # so the interval can never shrink under it. Calling this "more items needed" is what
-        # #60 withdrew — it sends the project recording audio that cannot change the answer.
-        finding, detail = "disqualified", (
-            f"{b} regressed vs {c} recovered (exact p={p_value}) — the net regression "
-            f"{(b - c) / len(shared):.1%} is not below the {max_regression:.0%} margin, so no "
-            "sample size can certify this checkpoint; it needs a human decision, not more audio"
+        # Underpowered, and not fixable *at this rate*: if the observed proportions are the
+        # true ones, certification probability never reaches the target however much audio is
+        # recorded. That is a statement about the assumed rate, NOT proof of inferiority —
+        # 4 regressions in 41 items is a very loose estimate, and a fresh set drawn at a
+        # genuinely lower rate could still certify. What it rules out is the specific plan of
+        # "record more of the same and expect the number to move", which is what #60 withdrew.
+        finding, detail = "above_margin", (
+            f"{b} regressed vs {c} recovered (exact p={p_value}) — the observed net "
+            f"regression {(b - c) / len(shared):.1%} is not below the {max_regression:.0%} "
+            "margin, so recording more audio at this rate cannot certify it; whether the true "
+            "rate is this high is unresolved, and the call belongs to a human"
         )
     else:
         finding, detail = "inconclusive", (
             f"{b} regressed vs {c} recovered (exact p={p_value}) — directional but "
-            f"underpowered; certifying at this rate would take {needed} paired items"
+            f"underpowered; settling this at the observed rate would take {needed} paired "
+            f"items for a {CERTIFICATION_POWER:.0%} chance of certifying"
         )
 
     # ``finding`` says what we OBSERVED; ``certified`` says whether the set was big enough for
@@ -447,8 +605,7 @@ def compare_to_baseline(
     # it, because concordant items move neither count. Dropping it is a real loosening and is
     # recorded as one; on the sets scored to date it changes no verdict, since with ``c == 0``
     # the net-difference bound equals the Wilson bound on ``b / n``.
-    net_low, net_high = paired_score_interval(b, c, len(shared)) if shared else (None, None)
-    certified = bool(shared) and net_high is not None and net_high <= max_regression
+    certified = bool(shared) and within_margin
 
     return {
         "paired_items": len(shared),
@@ -466,9 +623,13 @@ def compare_to_baseline(
         "observed_direction": "tied" if b == c else ("worse" if b > c else "better"),
         "equality_finding": finding,
         "non_inferiority_certified": certified,
-        # What it would take to settle this set, at the discordance rate it actually shows.
-        # ``None`` means no amount of recording can — see ``required_items``.
+        # What it would take to settle a set drawn at the discordance rate this one shows, for
+        # a CERTIFICATION_POWER chance of certifying. Conditional on that rate being the true
+        # one, which on 41 items it is only loosely: read it as the cost of a plan, not as a
+        # property of the checkpoint. ``None`` means the assumed rate never reaches that
+        # power — see ``required_items``.
         "items_needed_at_observed_rate": needed,
+        "power": CERTIFICATION_POWER,
         "detail": detail,
     }
 
@@ -574,6 +735,12 @@ def main() -> None:
     if args.rescore:
         existing = json.loads(args.rescore.read_text(encoding="utf-8"))
         results, model = existing["items"], existing.get("model")
+        if existing.get("vs_baseline") and not args.baseline:
+            # --out may be the input path, so silently omitting the gate would delete it.
+            raise SystemExit(
+                f"{args.rescore} carries a vs_baseline comparison; pass --baseline to "
+                "recompute it, or the rescored report would drop the gate result"
+            )
     else:
         required = {"--items": args.items, "--manifest": args.manifest,
                     "--audio-dir": args.audio_dir, "--model": args.model}

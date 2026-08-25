@@ -1,9 +1,10 @@
 # The two-sided eval measures the decode, not the gate
 
-**Status:** Draft. Resolves [#55](https://github.com/sysofwan/HifzGuide/issues/55), which asked
-"what should the `.strict` eval gate predict — advancement or word grading?". The answer is
-**neither**: the gate should not be the headline metric at all. Amends the reporting layer of
-[ADR-0001](0001-tadabur-filter-and-finetune-methodology.md); leaves its filter untouched.
+**Status:** Accepted. Answers the design question in
+[#55](https://github.com/sysofwan/HifzGuide/issues/55) — "what should the `.strict` eval gate
+predict, advancement or word grading?" — with **neither**: the gate should not be the headline
+metric at all. #55 stays open as the implementation of this decision. Amends the reporting layer
+of [ADR-0001](0001-tadabur-filter-and-finetune-methodology.md); leaves its filter untouched.
 
 ## The confusion this corrects
 

@@ -134,6 +134,39 @@ Checkpoint selection, early stopping and the LoRA lever select on decode-level f
 per-colour vowel outcomes from `tashkeel_eval` and per-pair confusion from `eval_report`, each
 split by fixture side. Not `strict_accept`, in any form.
 
+### What #35 measures (amendment)
+
+Everything above reasons about **model-vs-model** comparison on fixed fixtures: two checkpoints,
+one reference, per-side confusion matrices. #35's conditional-reference integration eval is
+structurally different — it is **reference-vs-reference on a fixed model**. The decode is held
+constant; what varies is which reference string it is compared against (the realized waqf form,
+the realized wasl form, or today's tashkeel-stripped baseline). "Report decode-level agreement"
+does not transfer unmodified, because the reference is the thing changing.
+
+The resolution follows from where the two reference forms actually differ: **only at the boundary
+word's ending**. So the comparison is restricted to that span, and the question becomes
+
+> at the boundary span, does the decode match the form the reciter actually produced?
+
+with no threshold and no clip-level accept bit. The product claim restates cleanly in those
+terms: conditional selection **compares** that span against the realized form, while the
+ignore-end-word-tashkeel baseline **deletes** the span from the comparison — which is precisely
+why a dropped i'raab or a missed idgham is invisible to it.
+
+**This widens what the eval can cover.** `tadabur.waqf_integration_gen` admits a boundary only
+when *"the difference the `.strict` gate actually resolves"*, and its docstring records the
+consequence: *"a pure short-vowel final haraka is stripped by normalization and so is **not**
+gradeable; the admitted i'raab cases are the consonantal desinences (tanwin → madd) and the
+idgham cases the tanwin's ghunna."* That was honest under a vowel-blind gate, but it means the
+admitted set excludes, by construction, the case ADR-0004 named first — boundaries that turn on a
+final haraka. A span-restricted decode comparison can grade a bare haraka, so the set should be
+**widened** to include vowel-only boundaries, with the original and widened sets reported
+separately so the existing result stays comparable.
+
+Note the general hazard this is an instance of: **an eval set admitted by a scorer inherits that
+scorer's blind spots**, and replacing the scorer does not by itself repair the set. Re-derive the
+admission criterion whenever the metric changes.
+
 ## Consequences
 
 - **Every headline number in the #10 table is superseded**, including the ones already retracted.
@@ -151,7 +184,10 @@ split by fixture side. Not `strict_accept`, in any form.
 - **#59's integration half is unblocked in form but not in content.** `waqf_integration_eval`
   calls its own `strict_accepts`; under this ADR that gate stops being the product criterion, and
   what #35 should show is that conditional-reference selection improves the **decode's** agreement
-  with the realized reference. That needs restating in #59 before it runs.
+  with the realized reference at the boundary span. Specified in *What #35 measures* above, which
+  also requires the admitted boundary set to be widened rather than merely re-run. #59's
+  calibration leg is governed separately by
+  [ADR-0009](0009-waqf-operating-point-asymmetric-cost.md).
 
 - **The fixture labels are clip-level; the confusion cells are column-level.** A clip labelled
   should-accept can still contain unrelated positions, so a per-side matrix must be restricted to

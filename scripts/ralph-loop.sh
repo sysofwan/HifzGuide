@@ -2,8 +2,8 @@
 # ralph-loop.sh — AFK dual-agent loop (Ralph pattern)
 #
 # Picks up `ready-for-agent` issues and runs a code→review loop:
-#   1. Coding Agent (Opus 4.8) implements the fix/feature
-#   2. Review Agent (GPT-5.5 + Opus 4.8) reviews the diff
+#   1. Coding Agent (Claude Code, Opus 5) implements the fix/feature
+#   2. Review Agent (Copilot CLI GPT-5.6 Sol + Claude Code Opus 5) reviews the diff
 #   3. Loop until both approve (max 3 cycles) or file HITL issue
 #   4. On approval, commit directly to target branch (default: main)
 #
@@ -15,7 +15,10 @@
 #   ./scripts/ralph-loop.sh --dry-run    # show what would be picked up
 #   ./scripts/ralph-loop.sh --issue 38   # work on a specific issue
 #
-# Requirements: gh, jq, copilot (GitHub Copilot CLI)
+# Requirements: gh, jq, claude (Claude Code CLI), copilot (GitHub Copilot CLI)
+#
+# Claude Code drives every agent role. The GitHub Copilot CLI is kept for one
+# job only: the GPT-5.6 Sol reviewer, so the review pair stays cross-vendor.
 
 set -euo pipefail
 
@@ -34,14 +37,16 @@ COOLDOWN_SECONDS="${RALPH_COOLDOWN:-30}"
 MAX_ITERATIONS="${RALPH_MAX_ITERATIONS:-50}"
 MAX_REVIEW_CYCLES=3
 MAX_TOTAL_CYCLES=10
-EVALUATOR_MODEL="gpt-5.5"
+EVALUATOR_MODEL="claude-opus-5"
+CLAUDE_CMD="${RALPH_CLAUDE_CMD:-claude}"
 COPILOT_CMD="${RALPH_COPILOT_CMD:-copilot}"
 DEFAULT_TARGET_BRANCH="main"
 
 # Agent model configuration
-CODING_MODEL="claude-opus-4.8"
-REVIEW_MODEL_1="gpt-5.5"
-REVIEW_MODEL_2="claude-opus-4.8"
+# Every role runs on Claude Code except REVIEW_MODEL_1, which runs on Copilot CLI.
+CODING_MODEL="claude-opus-5"
+REVIEW_MODEL_1="gpt-5.6-sol"   # Copilot CLI
+REVIEW_MODEL_2="claude-opus-5"
 PR_MODEL="claude-sonnet-5"
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -49,9 +54,31 @@ PR_MODEL="claude-sonnet-5"
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >&2; }
 err() { log "ERROR: $*"; }
 
+# Run one headless agent turn on Claude Code. The prompt is piped on stdin
+# rather than passed as an argv string so long prompts can't blow the
+# argument-length limit.
+run_claude() {
+  local model="$1" prompt_file="$2" log_file="$3"
+  local exit_code=0
+  "$CLAUDE_CMD" -p --model "$model" \
+    --dangerously-skip-permissions \
+    --output-format text \
+    < "$prompt_file" > "$log_file" 2>&1 || exit_code=$?
+  return "$exit_code"
+}
+
+# Run one headless agent turn on the Copilot CLI — GPT-5.6 Sol review only.
+run_copilot() {
+  local model="$1" prompt_file="$2" log_file="$3"
+  local exit_code=0
+  "$COPILOT_CMD" --model "$model" -p "$(cat "$prompt_file")" --allow-all \
+    > "$log_file" 2>&1 || exit_code=$?
+  return "$exit_code"
+}
+
 ensure_deps() {
   local cmd
-  for cmd in gh jq "$COPILOT_CMD"; do
+  for cmd in gh jq "$CLAUDE_CMD" "$COPILOT_CMD"; do
     if ! command -v "$cmd" &>/dev/null; then
       err "Required command not found: $cmd"
       exit 1
@@ -373,7 +400,7 @@ run_coding_agent() {
   log "  [CODE] Cycle $cycle — starting coding agent (${CODING_MODEL})"
 
   local exit_code=0
-  "$COPILOT_CMD" --model "$CODING_MODEL" -p "$(cat "$prompt_file")" --allow-all > "$log_file" 2>&1 || exit_code=$?
+  run_claude "$CODING_MODEL" "$prompt_file" "$log_file" || exit_code=$?
 
   return "$exit_code"
 }
@@ -521,8 +548,8 @@ $(cat "$dn_file")
   sed "s|${review_file}|${review_file_2}|g" "$prompt_file" > "$prompt_file_2"
 
   local exit_1=0 exit_2=0
-  "$COPILOT_CMD" --model "$REVIEW_MODEL_1" -p "$(cat "$prompt_file_1")" --allow-all > "$log_file_1" 2>&1 || exit_1=$?
-  "$COPILOT_CMD" --model "$REVIEW_MODEL_2" -p "$(cat "$prompt_file_2")" --allow-all > "$log_file_2" 2>&1 || exit_2=$?
+  run_copilot "$REVIEW_MODEL_1" "$prompt_file_1" "$log_file_1" || exit_1=$?
+  run_claude  "$REVIEW_MODEL_2" "$prompt_file_2" "$log_file_2" || exit_2=$?
 
   if [[ "$exit_1" -ne 0 ]]; then
     log "  [REVIEW] Warning: ${REVIEW_MODEL_1} exited with code $exit_1"
@@ -679,7 +706,7 @@ $(cat "$dn_file")
   local log_file="$LOG_DIR/issue-${issue_num}-eval-cycle${cycle}-$(date +%Y%m%d-%H%M%S).log"
   log "  [EVAL] Running evaluator (${EVALUATOR_MODEL})"
 
-  "$COPILOT_CMD" --model "$EVALUATOR_MODEL" -p "$(cat "$prompt_file")" --allow-all > "$log_file" 2>&1 || true
+  run_claude "$EVALUATOR_MODEL" "$prompt_file" "$log_file" || true
 
   # Parse decision
   if [[ ! -f "$eval_file" ]]; then
@@ -1059,7 +1086,7 @@ $(cat "$dn_file")
   local log_file="$LOG_DIR/issue-${issue_num}-pr-summary-$(date +%Y%m%d-%H%M%S).log"
   log "  [PR] Generating PR summary (${PR_MODEL})"
 
-  "$COPILOT_CMD" --model "$PR_MODEL" -p "$(cat "$prompt_file")" --allow-all > "$log_file" 2>&1 || true
+  run_claude "$PR_MODEL" "$prompt_file" "$log_file" || true
 
   # Fallback if agent didn't produce the file
   if [[ ! -f "$pr_body_file" ]] || [[ ! -s "$pr_body_file" ]]; then
@@ -1376,6 +1403,7 @@ main() {
 Usage: $0 [--once | --dry-run | --issue NUM]
 
 AFK dual-agent loop: code (${CODING_MODEL}) → review (${REVIEW_MODEL_1} + ${REVIEW_MODEL_2})
+Claude Code runs every role; Copilot CLI runs only the ${REVIEW_MODEL_1} reviewer.
 Max ${MAX_REVIEW_CYCLES} cycles per issue. Commits directly to target branch on approval.
 
 Options:
@@ -1387,7 +1415,8 @@ Environment:
   RALPH_STATE_DIR        State directory (default: .ralph)
   RALPH_COOLDOWN         Seconds between iterations (default: 30)
   RALPH_MAX_ITERATIONS   Max loops before exit (default: 50)
-  RALPH_COPILOT_CMD      Agent command (default: copilot)
+  RALPH_CLAUDE_CMD       Claude Code command (default: claude)
+  RALPH_COPILOT_CMD      Copilot CLI command, ${REVIEW_MODEL_1} only (default: copilot)
 EOF
         exit 0
         ;;

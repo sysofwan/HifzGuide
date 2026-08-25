@@ -51,6 +51,11 @@ models.zip
 # AFK dual-agent loop (ralph-loop.sh) state
 .ralph/
 
+# Claude Code local state (shared config in .claude/skills/ IS tracked)
+.claude/settings.local.json
+.claude/projects/
+.claude/sessions/
+
 # Local P3.5 audit run artifacts (manifest, worklist, exported audio)
 tools/tadabur/audit_run/
 

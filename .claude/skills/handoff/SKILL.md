@@ -16,7 +16,7 @@ Write a handoff document summarising the current conversation so a fresh agent c
    - Linux: `/tmp/`
    - Windows: `%TEMP%`
    - Filename format: `handoff-YYYY-MM-DD-HHMMSS.md`
-3. **Include a "Suggested Skills" section** listing skills the next agent should invoke (from `.github/skills/`), with a one-line rationale for each.
+3. **Include a "Suggested Skills" section** listing skills the next agent should invoke (from `.claude/skills/`), with a one-line rationale for each.
 4. **Do not duplicate** content already captured in other artifacts (PRDs, plans, ADRs in `docs/adr/`, issues, commits, diffs). Reference them by path or URL instead.
 5. **Redact** any sensitive information such as API keys, passwords, tokens, or personally identifiable information.
 6. If the user passed **arguments**, treat them as a description of what the next session will focus on and tailor the document accordingly — emphasise relevant context and suppress unrelated details.

@@ -57,6 +57,10 @@ that tolerance out of a blunt hack and into the model, the same philosophy as AD
   still exploits the phoneme-tuned sukun / madd-ʿaariḍ cues; it just cannot reshape them. Unfreeze
   into the backbone only if detached distillation misses the VAD's F1 — and only knowing that
   unfreezing **re-confounds** the eval (treat as a deliberate second backbone objective).
+  **[ADR-0008](0008-the-eval-measures-the-decode-not-the-gate.md) re-points those
+  bars**: they are decode-level, per-fixture-side contrast fidelity, not the `strict_accept` clip
+  bits `training.ablation_ladder` reads today. Ladder numbers recorded before that change describe
+  a different quantity and must not be compared across it.
 
 - **Sifat heads: dropped; forgetting is bounded by LoRA, not a KD anchor.** The fine-tune is **LoRA
   on the phoneme head** (ADR-0001), so the backbone's base weights are **frozen** and drift is bounded
@@ -64,8 +68,9 @@ that tolerance out of a blunt hack and into the model, the same philosophy as AD
   what LoRA prevents. Default: **drop the sifat heads** (backbone stays phoneme-only, isolation
   holds). A KD-to-base sifat anchor is *not* neutral — to do anything its gradient must reach the
   backbone, making it a second backbone objective that **confounds** the isolation; detached, it does
-  nothing. So it is a **last resort**, and only if ablation (2) shows should-reject regression the
-  first levers are **LoRA-native** (lower rank/alpha, or L2-SP on the adapters), not reattaching
+  nothing. So it is a **last resort**, and only if ablation (2) shows should-reject regression
+  (read per [ADR-0008](0008-the-eval-measures-the-decode-not-the-gate.md), not off
+  `strict_accept`) the first levers are **LoRA-native** (lower rank/alpha, or L2-SP on the adapters), not reattaching
   sifat. The exported CoreML model ships **phoneme + waqf heads only** regardless.
 
 - **Inference reuses the deployed fixed-window pipeline.** ChunkF now emits the **waqf frame output

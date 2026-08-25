@@ -55,6 +55,11 @@ so it is not a training-label defect.
   should-reject harness for tashkeel: after fine-tuning, verify recall rose (kasra is the weakest,
   ~91–97%) **without** collapsing the model's ability to still flag a genuinely wrong vowel. Aggregate
   vowel accuracy improving while that discrimination collapses is the failure this eval must catch.
+  **Restated and finally implemented by [ADR-0008](0008-the-eval-measures-the-decode-not-the-gate.md).**
+  This decision was made here and then not carried out: no vowel bucket was ever added to the
+  should-accept / should-reject fixture sets, and the headline numbers were read off the `.strict` gate instead. ADR-0008 is this
+  bullet, enforced — with the confusion matrices split by fixture side, which this ADR did not
+  say and which pooling silently cancels.
 
 ## Consequences
 
@@ -62,6 +67,16 @@ so it is not a training-label defect.
   as the label; the eval harness (#9–11) adds the per-vowel confusion matrix computed word-level.
 - **Evaluate tashkeel word-level, never per-position** — the ±1 madd-carrier offset makes
   column-wise harakah metrics unusable; bucket vowels per reference word (multiset compare).
+  **Superseded by [ADR-0008](0008-the-eval-measures-the-decode-not-the-gate.md).** The rule was right
+  about the artifact and wrong about the only remedy. `training.tashkeel_eval` measures
+  **per-position with carrier anchoring**: a vowel is credited only when the carrier consonant it hangs on also matched, so the ±1 case lands in
+  the `unanchored` / `unanchored_wrong` buckets instead of masquerading as a swap. That
+  neutralises the same artifact at higher resolution — and the resolution is now required, because
+  [ADR-0007](0007-tashkeel-acceptance-audit.md) adjudicates individual sites keyed on
+  `clip#window@reference_index`, which a word-level multiset cannot address. Word-level bucketing
+  is therefore **retired, not supplemented**. Read [ADR-0005](0005-tashkeel-filtering-and-gating.md)'s
+  rate table with that in mind: its "ADR-0003 preview" column is this ADR's word-level measurement
+  beside carrier-anchored full-corpus numbers — two classifiers, not one measurement at two scales.
 - **Out of scope:** shadda/sukun as trainable targets — they are not distinct phoneme-head classes,
   so this decision covers only the three short vowels the model actually emits.
 - **Preview-scale caveat:** the 387-segment preview subset is enough to establish the error mode

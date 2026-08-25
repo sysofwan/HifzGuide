@@ -104,6 +104,58 @@ commit, ADR, or script, use the term as defined here and avoid the listed synony
   whole clip. Distinct from **Chunk** (a CoreML encoder-layer segment).
 : _Avoid_: Segment (unqualified — collides with Chunk), split, clip
 
+## Scoring & Evaluation
+
+The distinction between the first two entries is load-bearing: conflating them is what produced
+the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you mean.
+
+**Decode**
+: The model's raw output phoneme string for a clip or window — what the model *heard*. The
+  fine-tune is judged on this: does the decode carry the vowel and the consonant the reciter
+  actually produced (ADR-0003, ADR-0008).
+: _Avoid_: Transcription, prediction, output (all too generic)
+
+**Scorer gate**
+: The ported `.balanced` Smith-Waterman scorer (`tadabur.scorer`) used as ADR-0001's
+  **training-data filter**: it decides whether a clip's decode matches its reference closely
+  enough to keep as a training example. It is not a model of any decision Muraja ships, and it is
+  **not** the fine-tune's success metric (ADR-0005, ADR-0008).
+: _Avoid_: Eval, metric, the scorer (unqualified)
+
+**match_ratio**
+: The gate's score — Smith-Waterman alignment score over query phoneme count. Computed after
+  `normalize_phonemes`, so it is **vowel-blind by construction**: a decode with every short vowel
+  wrong scores 1.0 (ADR-0005). Never quote it, or anything derived from it, as tashkeel evidence.
+
+**Scoring mode**
+: Muraja's `ScoringParameters` presets — `.strict` / `.balanced` / `.lenient`. In Muraja these are
+  **word-grading** parameters; in this repo only `correct_threshold` has any effect, because the
+  port is score-only. `.strict` here therefore means a threshold, not the app's grading behaviour.
+
+**Soft pair**
+: One of the six confusable consonant pairs (`ذ↔ز`, `ت↔ط`, `ض↔ظ`, `ك↔ق`, `س↔ص`, `ح↔ه`) that
+  `.balanced` forgives and `.strict` does not. The discrimination the fine-tune must sharpen
+  rather than collapse (ADR-0001).
+
+**should-accept set / should-reject set**
+: The curated, human-labelled fixture clips from the P3.5 poison audit (#6): acceptable-imperfect
+  recitation that the model should render faithfully, and genuinely-wrong recitation whose
+  deviation the model should still emit. The two sides carry **opposite sign** — the same
+  confusion cell is a mishearing on one and correct behaviour on the other — so they are always
+  reported separately (ADR-0008).
+: _Avoid_: Positive/negative set (loses the sign convention)
+
+**Vowel outcome**
+: How one reference short vowel fared in a decode, carrier-anchored
+  (`training.tashkeel_eval`): `matched`, `omitted` (no vowel emitted), `swapped` (a different
+  vowel on a carrier the decode got right), `unanchored` / `unanchored_wrong` (right or wrong
+  vowel on a **misheard** carrier — a decode failure, not an i'raab claim), `spurious`.
+: _Avoid_: Color swap (ADR-0003's informal term; say `swapped`)
+
+**Poison**
+: A training example whose label does not match what was recited — the mislabel risk ADR-0001's
+  filter and the P3.5 audit exist to bound. A property of the *corpus*, never of a checkpoint.
+
 ## ML Pipeline & Assets
 
 **CoreML pipeline**

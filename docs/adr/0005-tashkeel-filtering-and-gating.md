@@ -3,6 +3,11 @@
 **Status:** Accepted. Amends the "No per-vowel color-swap reject gate" decision in
 [ADR-0003](0003-tashkeel-fine-tune-labels.md) and fulfils its "preview-scale caveat"
 (re-check the rates before scaling to the full corpus).
+**Amended by [ADR-0008](0008-the-eval-measures-the-decode-not-the-gate.md):** the "unmodelled by our
+port" half of this ADR's title is withdrawn as a defect. Our `.strict` model *is* neither of Muraja's two layers — the measurement
+below stands — but that is no longer something to fix, because the gate is ADR-0001's
+training-data filter and not the fine-tune's metric. The first consequence below is superseded
+accordingly; everything about the **filter** and the corpus rates is unaffected.
 
 ADR-0003 put tashkeel into the training target. Two things were assumed rather than checked:
 that *something* upstream would keep grossly wrong-vowel recitation out of the labels, and
@@ -133,6 +138,13 @@ classifier, so this is an inference about the mechanism rather than a direct re-
   should-reject numbers are a **lower bound** on what the app would catch, and the fine-tune is
   being judged by a weaker gate than the one it ships behind. Porting that layer is out of scope
   here and needs its own issue.
+  **Superseded by [ADR-0008](0008-the-eval-measures-the-decode-not-the-gate.md).** That issue was #55,
+  and the answer is that the layer is not ported at all. The premise above — that `strict_accept` should model what the app ships — is the
+  category error ADR-0008 corrects: the fine-tune is judged on the **decode** (does the model emit
+  the vowel and the consonant the reciter actually said), and `strict_accept` reverts to being the
+  ADR-0001 training-data filter. Its vowel-blindness stays a real finding about the **training
+  corpus** — the first bullet of the Decision above, wired report-only by #58 — and stops being a
+  defect in the eval.
 - **Any tashkeel conclusion drawn from `match_ratio`, `strict_accept`, or the `per_contrast`
   shadda row is void by construction.** Use the vowel-aware harnesses.
 - **The reciter filter is measurement-mediated.** Swap is observed through the model's own

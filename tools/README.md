@@ -72,6 +72,53 @@ skips them (rejected clips leave no manifest line but are still skipped), and a
 per-`audio_filename` seen-set keeps the manifest duplicate-free if the last in-flight
 batch is replayed after a crash.
 
+### `tadabur/run_corpus.sh` (Linux — GPU) — the whole re-read corpus run, in order
+
+The five stages behind an ADR-0016 corpus, wired. The order is not cosmetic: **only stage 1 is
+resumable and only stage 1 costs per shard**, so it runs across every shard first and the rest
+run once over the accumulated sink. Chaining all five per shard would pay the downstream tail
+eleven times.
+
+| | stage | cost |
+| --- | --- | --- |
+| 1 | `tadabur.filter` — mine rejects, stage the clean re-read WAVs | per shard, resumable |
+| 2 | `tadabur.bleed_stage` — timed decode + VAD intervals | once |
+| 3 | `tadabur.bleed_recut` — clip bleed, re-gate, keep or drop | once |
+| 4 | `tadabur.scenario` — stage the bundle and the excision pairs | once |
+| 5 | `tadabur.reject_yield` + `tadabur.bleed_detect` — the numbers | once, no GPU |
+
+```bash
+cd tools
+RUN=tadabur/corpus_run SHARDS=20-30 bash tadabur/run_corpus.sh          # all five
+RUN=tadabur/corpus_run bash tadabur/run_corpus.sh scenario report       # or some of them
+```
+
+Run it detached (`tmux`) — stage 1 is ~3.6 minutes per shard and the sink is checkpointed, so
+the right way to use it is to start it, disconnect, and read the artifacts back. Two wirings it
+exists to get right, both silent when wrong: `--delete-shards` throws away the parquet but must
+keep the staged clips, and stage 4 must be given `--recuts` or it stages un-re-cut audio.
+`docs/tadabur-corpus-run.md` is the 11-shard run's report.
+
+### `tadabur.bleed_stage` (Linux — GPU) — the timed decode the re-cut reads
+
+The reject sink carries a decode *string* and the staged WAV carries audio; neither carries a
+**time**. This pass produces what `tadabur.bleed_recut` needs from both: per-frame CTC class ids
+(so `waqf_detect.collapse_with_times` can put an onset on every phoneme) and the recitation VAD's
+clean speech intervals (so a cut can prefer a pause over a signal).
+
+It decodes the **staged WAV**, not the source shard. The shards are 2.4 GB each and
+`--delete-shards` discards them as the filter walks; re-reading parquet for a timed decode would
+re-download the entire run. The staged WAV is the same 16 kHz mono waveform the gate scored, and
+the run reports how often the restaged decode reproduces the stored one — reading the wrong audio
+is then visible rather than silent. Only clean re-reads are staged; prevalence over the whole
+reject pile is `tadabur.bleed_detect`, which needs no audio at all.
+
+```bash
+cd tools
+python -m tadabur.bleed_stage --rejects corpus_run/rejects.jsonl \
+    --clips corpus_run/clips --out corpus_run/decodes.jsonl [--limit N]
+```
+
 ### `tadabur.waqf_segments` (Linux/macOS — no GPU) — clip staging
 
 Waqf-aware reference labelling (PRD #1, ADR-0002) splits each admitted clip at its intra-ayah
@@ -177,6 +224,28 @@ neither is an assertion, and both describe audio the gate re-scored.
 
 A sibling `staging.json` carries the run's tallies (selected, staged, seams, pairs attempted and
 kept, refusal reasons, early starts, truncated clips).
+
+### `tadabur.reread_audit` (Linux/macOS — no GPU) — the sampled listening audit
+
+ADR-0016 decision 10 no longer requires every corpus clip to be heard. A **vowel-only** non-Hafs
+divergence cannot move the alignment cursor — alignment runs on the normalized string, and
+normalization deletes short vowels — so it is inert to cycles-to-resync and falsely-skipped
+words alike. What replaces the full pass is a ~50-clip random audit, and that audit is not a
+screen: it is the test of the inertness argument's one premise, that vowel-only divergence
+dominates. So it records **how** a non-Hafs reading diverges, and a `nonhafs` verdict with no
+mode is reported as `unclassified` rather than assumed inert.
+
+```bash
+cd tools
+python -m tadabur.reread_audit --bundle corpus_run/scenario --out corpus_run/audit \
+    [--size 50] [--seed 0]     # stage the worklist and its audio
+python -m tadabur.reread_audit --summary   # what the verdicts so far say
+```
+
+Sampling is off the staged bundle, so what is heard is what Muraja replays: post-re-cut audio at
+the boundaries the corpus asserts. The draw is seeded and sorted, so the same bundle and seed
+reproduce it and a re-run tops the sample up rather than redrawing it. Verdicts are appended to
+`tadabur/eval_fixtures/reject_reread_verdicts.jsonl`; its schema is in that directory's README.
 
 ### `training.waqf_distill` (Linux — GPU teacher, CPU pooling) — waqf soft labels
 

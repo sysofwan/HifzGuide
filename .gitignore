@@ -26,6 +26,8 @@ wandb/
 # Curated eval fixtures are source-of-truth, not generated data — keep them tracked.
 !tools/tadabur/eval_fixtures/should_accept.jsonl
 !tools/tadabur/eval_fixtures/should_reject.jsonl
+# Human-adjudicated verdicts on the reject pile's repeat-carrying clips (#66).
+!tools/tadabur/eval_fixtures/reject_reread_verdicts.jsonl
 # Frozen, reciter-disjoint waqf eval partitions (#30) — versioned source-of-truth for F1/F2.
 !tools/tadabur/waqf_event_fixtures/waqf_events.calibration.jsonl
 !tools/tadabur/waqf_event_fixtures/waqf_events.test.jsonl

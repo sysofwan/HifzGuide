@@ -82,7 +82,8 @@ reads "Bleed into next ayah". Its decode ends on this ayah's own `تحصنۥن`,
 runs to 15.17 s of a 15.33 s clip — 0.16 s of tail, nothing left untranscribed. The adjacent row
 in the listening order, **12:48/spk0002** (ratio 0.681 against 0.688, near-identical decodes from a
 different reciter), *does* end on `ثم`, the opening of 12:49, and carries no note. The note is on
-the wrong row of the pair.
+the wrong row of the pair — confirmed by the reviewer on #67: "the final thumma comes from the
+next ayah".
 
 Two labels also go *beyond* their notes, in the same direction: 18:18 and 18:57 are labelled with
 trailing bleed the detector finds (18 and 26 phonemes of the following ayah, at purity 1.00) and

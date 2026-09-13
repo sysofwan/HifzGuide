@@ -12,13 +12,21 @@ Two files sit side by side:
 * the **progress checkpoint** — a tiny JSON holding ``clips_processed``, the number
   of clips consumed from the (deterministically-ordered) stream so far.
 
+A third, **optional** file joins them when the filter is run with ``--rejects``: the
+reject sink (:mod:`tadabur.rejects`), which keeps the ``GateResult`` of every clip the
+gate turned away. It is attached here rather than run beside the filter because resume
+correctness is not separable — ``clips_processed`` is the one position that governs
+what a resumed run re-scores, so both files must be durable before it advances or they
+drift. The sink therefore has no checkpoint of its own, and a run without ``--rejects``
+opens none and writes exactly the bytes it wrote before the sink existed.
+
 Resumability rests on two guarantees. The checkpoint lets the filter ``skip`` the
 clips it already scored — including the rejected ones that leave no manifest line —
 so a resumed run does not re-infer them. And every commit is ordered
-manifest-then-checkpoint with an fsync between, so the only crash window replays the
-last (uncheckpointed) batch; a per-``audio_filename`` seen-set makes that replay
-append no duplicate manifest lines. The manifest is therefore idempotent across any
-number of resumes.
+rejects-then-manifest-then-checkpoint with an fsync after each sink, so the only crash
+window replays the last (uncheckpointed) batch; a per-``audio_filename`` seen-set in
+each sink makes that replay append no duplicate lines. Both files are therefore
+idempotent across any number of resumes.
 """
 
 from __future__ import annotations
@@ -28,6 +36,8 @@ import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from types import TracebackType
+
+from .rejects import RejectRecord, RejectSink
 
 
 @dataclass(frozen=True)
@@ -65,7 +75,8 @@ class FilterManifest:
     Open with :meth:`open` (a context manager) so the resume state is read from any
     existing manifest and checkpoint on disk. :attr:`clips_processed` is where the
     filter should resume the stream; :meth:`commit_batch` records a scored batch's
-    passers and advances that position atomically.
+    passers — and, when a ``rejects_path`` was given, its rejects — and advances that
+    position atomically.
     """
 
     def __init__(
@@ -75,20 +86,28 @@ class FilterManifest:
         file,  # type: ignore[no-untyped-def]  (an open text file handle)
         seen: set[str],
         clips_processed: int,
+        rejects: RejectSink | None = None,
     ) -> None:
         self.manifest_path = manifest_path
         self.checkpoint_path = checkpoint_path
         self._file = file
         self._seen = seen
         self.clips_processed = clips_processed
+        self._rejects = rejects
 
     @classmethod
-    def open(cls, manifest_path: Path) -> "FilterManifest":
+    def open(
+        cls, manifest_path: Path, rejects_path: Path | None = None
+    ) -> "FilterManifest":
         """Open ``manifest_path`` for appending, reading any prior resume state.
 
         Recovers the set of already-written ``audio_filename`` keys from an existing
         manifest and ``clips_processed`` from the sibling checkpoint, so a resumed
         run neither re-scores earlier clips nor rewrites their manifest lines.
+        ``rejects_path`` opens the optional reject sink (:mod:`tadabur.rejects`)
+        alongside, recovering its keys the same way; left ``None`` — the default, and
+        what the filter passes without ``--rejects`` — no sink is opened and no file
+        is created.
         """
         manifest_path = Path(manifest_path)
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,10 +116,14 @@ class FilterManifest:
         seen = _read_seen_keys(manifest_path)
         clips_processed = _read_clips_processed(checkpoint_path)
         file = open(manifest_path, "a", encoding="utf-8")
-        return cls(manifest_path, checkpoint_path, file, seen, clips_processed)
+        rejects = RejectSink.open(rejects_path) if rejects_path is not None else None
+        return cls(manifest_path, checkpoint_path, file, seen, clips_processed, rejects)
 
     def commit_batch(
-        self, records: list[ManifestRecord], num_clips: int
+        self,
+        records: list[ManifestRecord],
+        num_clips: int,
+        rejects: list[RejectRecord] | None = None,
     ) -> None:
         """Append a scored batch's ``records`` and advance the checkpoint by ``num_clips``.
 
@@ -108,7 +131,14 @@ class FilterManifest:
         atomically rewrites the checkpoint. Records whose ``audio_filename`` is
         already present are skipped, so replaying an uncheckpointed batch after a
         crash adds no duplicates.
+
+        ``rejects`` are committed to the reject sink **first**, so both files are
+        durable before the checkpoint that would let a resume skip past this batch.
+        They are dropped when no sink is open, which keeps the caller free to compute
+        them unconditionally rather than branching on the flag.
         """
+        if rejects and self._rejects is not None:
+            self._rejects.append_batch(rejects)
         for record in records:
             if record.audio_filename in self._seen:
                 continue
@@ -124,11 +154,18 @@ class FilterManifest:
 
     def close(self) -> None:
         self._file.close()
+        if self._rejects is not None:
+            self._rejects.close()
 
     @property
     def passers_written(self) -> int:
         """Number of distinct passing clips written to the manifest so far."""
         return len(self._seen)
+
+    @property
+    def rejects_written(self) -> int:
+        """Number of distinct rejected clips written to the sink (0 when none is open)."""
+        return self._rejects.rejects_written if self._rejects is not None else 0
 
     def __enter__(self) -> "FilterManifest":
         return self

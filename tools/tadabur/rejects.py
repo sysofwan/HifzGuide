@@ -35,13 +35,13 @@ import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from types import TracebackType
+from typing import TYPE_CHECKING
 
-import numpy as np
-import soundfile as sf
-
-from .audio import TARGET_SAMPLE_RATE
 from .normalization import normalize_phonemes
 from .scorer import MAX_INSERTION_RUN, MIN_QUERY_PHONEMES, GateResult, Scorer
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    import numpy as np
 
 # Reject-cause vocabulary. A clip can fail on more than one of the last three at once
 # (a low-ratio decode may also carry a long insertion run), so :func:`reject_causes`
@@ -270,7 +270,7 @@ def read_reject_records(path: Path) -> list[RejectRecord]:
     return records
 
 
-def write_clip_wav(directory: Path, audio_filename: str, waveform: np.ndarray) -> Path:
+def write_clip_wav(directory: Path, audio_filename: str, waveform: "np.ndarray") -> Path:
     """Write ``waveform`` as a 16 kHz mono WAV named ``audio_filename`` under ``directory``.
 
     This is the staged audio the Muraja half of ADR-0016 replays, so it is written at
@@ -279,6 +279,14 @@ def write_clip_wav(directory: Path, audio_filename: str, waveform: np.ndarray) -
     join key back to the reject manifest row. Rewriting the same clip after a crash
     replay reproduces identical bytes, so the staging directory is idempotent too.
     """
+    # Imported here, not at module scope: reading the sink (:func:`read_reject_records`,
+    # and everything :mod:`tadabur.reject_yield` and :mod:`tadabur.bleed_detect` do with
+    # it) is pure JSON over signals the run already computed, and must not drag in the
+    # audio stack. Only *writing* a clip's audio needs it.
+    import soundfile as sf
+
+    from .audio import TARGET_SAMPLE_RATE
+
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / audio_filename

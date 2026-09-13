@@ -28,6 +28,9 @@ wandb/
 !tools/tadabur/eval_fixtures/should_reject.jsonl
 # Human-adjudicated verdicts on the reject pile's repeat-carrying clips (#66).
 !tools/tadabur/eval_fixtures/reject_reread_verdicts.jsonl
+# Per-edge neighbour-ayah bleed labels for those same clips (#67) — the bleed detector's
+# regression set. Carries each clip's decode, so a re-score needs no filtering run.
+!tools/tadabur/eval_fixtures/reject_bleed_labels.jsonl
 # Frozen, reciter-disjoint waqf eval partitions (#30) — versioned source-of-truth for F1/F2.
 !tools/tadabur/waqf_event_fixtures/waqf_events.calibration.jsonl
 !tools/tadabur/waqf_event_fixtures/waqf_events.test.jsonl

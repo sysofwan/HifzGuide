@@ -73,6 +73,11 @@ tools/tadabur/reject_run_*.log
 # docs/tadabur-bleed-recut.md carries the numbers; this is the run's own output.
 tools/tadabur/bleed_run/
 
+# Local re-read corpus run artifacts (#70): the reject sink, the staged clean re-read
+# WAVs, the timed decodes, the recuts and the bundle. docs/tadabur-corpus-run.md carries
+# the numbers; the bundle itself is shipped to the Mac rather than committed.
+tools/tadabur/corpus_run/
+
 # Local scenario-staging run artifacts (the bundle Muraja consumes: scenario.jsonl, staged
 # WAVs, excised control clips). docs/tadabur-excision-yield.md carries the numbers, and the
 # bundle itself is shipped to the Mac rather than committed.

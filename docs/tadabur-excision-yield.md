@@ -44,6 +44,16 @@ double back twice). No run falls outside its clip's post-re-cut recitation span.
 These are words and phrases, not stumbles — which is what dropping the ratio floor was
 for.
 
+> **These counts are measured on the pre-re-cut decodes** — `tadabur.seam` reads
+> `bleed_run/decodes.jsonl`, which is what existed when this measurement was taken, before
+> staging. The staged manifest re-decodes each clip *after* #68's bleed re-cut is applied and
+> reports **51 seams over 4 multi-seam clips**, against the 50 over 3 here. The whole difference
+> is 18:18, the one clip that is both multi-seam and re-cut: it carried 13 + 18 phonemes of
+> neighbour bleed, and removing 31 phonemes changed the alignment enough to split one insertion
+> run in two. The same shift moves the opening-anchor count from 21/50 here to 19/51 in the
+> manifest. Both are correct for the audio they describe, and the result below — **0 seams
+> anchored at both edges** — holds either way.
+
 ### The pause coverage
 
 A cut can only be snapped to a pause it can *reach*: one lying wholly inside the window

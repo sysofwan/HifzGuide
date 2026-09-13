@@ -45,16 +45,18 @@ def test_clean_re_read_shares_are_reported_against_both_denominators():
     rejects = [
         _reject("clean.wav"),
         _reject("short.wav", max_insertion_run=2, causes=(CAUSE_LOW_RATIO,)),
-        _reject("lowratio.wav", match_ratio=0.4, causes=(CAUSE_LOW_RATIO,)),
+        # A long repeat that dragged its own ratio down — admitted since #66 dropped the
+        # floor, because the floor was filtering repeat length rather than correctness.
+        _reject("longrepeat.wav", match_ratio=0.4, causes=(CAUSE_LOW_RATIO,)),
         _reject("shadda.wav", added_shadda=True, causes=(CAUSE_ADDED_SHADDA,)),
     ]
     result = compute_yield(passers=96, rejects=rejects, clips_processed=100)
 
-    assert result.clean_re_reads == 1
+    assert result.clean_re_reads == 2
     # Richness of the reject pile is what sizes a budget; share of all clips is what
     # sizes the stream.
-    assert result.clean_re_read_share_of_rejects == 0.25
-    assert result.clean_re_read_share_of_clips == 0.01
+    assert result.clean_re_read_share_of_rejects == 0.5
+    assert result.clean_re_read_share_of_clips == 0.02
 
 
 def test_causes_overlap_and_are_counted_independently():
@@ -74,7 +76,7 @@ def test_causes_with_no_clips_are_omitted():
     assert result.cause_counts == {CAUSE_INSERTION_RUN: 1}
 
 
-def test_both_predicate_thresholds_get_a_histogram_over_all_rejects():
+def test_both_argued_thresholds_get_a_histogram_over_all_rejects():
     rejects = [
         _reject("a.wav", match_ratio=0.66, max_insertion_run=5),
         _reject("b.wav", match_ratio=0.75, max_insertion_run=5),
@@ -83,8 +85,9 @@ def test_both_predicate_thresholds_get_a_histogram_over_all_rejects():
     result = compute_yield(passers=0, rejects=rejects, clips_processed=3)
 
     assert result.insertion_run_histogram == {"12": 1, "5": 2}
-    # The 0.75 floor lands on a bucket edge, so the bucket below it holds only clips
-    # the predicate excludes.
+    # The two bars the predicate was argued over — the gate's 0.65 and the dropped 0.75
+    # floor — land on bucket edges, so neither is straddled by the bucket meant to
+    # justify it.
     assert result.match_ratio_histogram == {"0.65-0.70": 1, "0.75-0.80": 2}
 
 

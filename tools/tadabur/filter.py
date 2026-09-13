@@ -23,6 +23,11 @@ Usage:
   (the P3.5 audit needs it — see ``tadabur.shard_reader``) read parquet shards directly:
   python -m tadabur.filter --manifest passing_subset_full.jsonl --shards 0-19
     [--delete-shards] [--batch-size 4]
+
+  ``--rejects`` additionally keeps what the gate turned away (``tadabur.rejects``), and
+  ``--reject-audio-out`` stages the 16 kHz WAV of every reject matching the clean-re-read
+  predicate — the mining pass Muraja ADR-0016 builds its follow-along corpus from. Both
+  are off by default, and without them this writes exactly the bytes it always did.
 """
 
 from __future__ import annotations
@@ -40,6 +45,7 @@ from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename
 from .inference import MODEL_ID, MuaalemPhonemeModel
 from .manifest import FilterManifest, ManifestRecord
 from .reference_phonemes import load_reference_phonemes
+from .rejects import RejectRecord, build_reject_record, write_clip_wav
 from .scorer import BALANCED_SCORER, Scorer
 
 DEFAULT_BATCH_SIZE = 64
@@ -61,6 +67,25 @@ class Clip:
     surah_ayah: str
     reciter_id: int
     audio_bytes: bytes
+
+
+@dataclass(frozen=True)
+class ScoredBatch:
+    """What one decoded batch yielded: the passers, the rejects, and staged audio.
+
+    ``passers`` is the manifest's input, exactly as before. ``rejects`` is the sink's,
+    and is built unconditionally — every field on it is a ``GateResult`` the gate
+    already computed, so producing it costs nothing a run can notice, and making it
+    conditional would mean the reject path only ever runs when it is also being
+    written, which is the path least likely to be exercised by a test.
+    ``clean_re_read_audio`` pairs a clip's stable filename with the 16 kHz waveform the
+    gate actually scored, for the subset matching the clean-re-read predicate; the
+    caller stages it (or, with no ``--reject-audio-out``, does not).
+    """
+
+    passers: list[ManifestRecord]
+    rejects: list[RejectRecord]
+    clean_re_read_audio: list[tuple[str, "object"]]
 
 
 def canonical_surah_ayah(surah_id: int, ayah_id: int) -> str:
@@ -103,8 +128,8 @@ def score_batch(
     references: dict[str, str],
     scorer: Scorer,
     skip_unknown_refs: bool = False,
-) -> list[ManifestRecord]:
-    """Decode and score a batch of clips, returning a record for each passer.
+) -> ScoredBatch:
+    """Decode and score a batch of clips into a :class:`ScoredBatch`.
 
     Each clip's decoded phonemes are gated against its cached reference. By
     default the reference must exist (all 6236 canonical ayat are cached) or the
@@ -113,6 +138,10 @@ def score_batch(
     for the ``preview`` config, which mixes in non-canonical rows the strict full
     run never sees. ``ayah_duration_s`` is the duration of the 16 kHz waveform
     actually scored.
+
+    A clip dropped before the decode — over-long, or (under ``skip_unknown_refs``)
+    without a reference — is in neither list: it was never gated, so calling it a
+    reject would put a verdict in the sink that no gate ever reached.
     """
     waveforms = [decode_to_mono_16k(clip.audio_bytes) for clip in clips]
     scorable: list[tuple[Clip, "object"]] = []
@@ -129,6 +158,8 @@ def score_batch(
     decodes = model.decode_batch([w for _, w in scorable], TARGET_SAMPLE_RATE)
 
     records: list[ManifestRecord] = []
+    rejects: list[RejectRecord] = []
+    clean_re_read_audio: list[tuple[str, "object"]] = []
     for (clip, waveform), decode in zip(scorable, decodes):
         reference = references.get(clip.surah_ayah)
         if reference is None:
@@ -139,19 +170,33 @@ def score_batch(
                 f"(clip {clip.audio_filename}); outside the canonical 6236 ayat."
             )
         result = scorer.gate(decode.phonemes, reference)
+        duration_s = len(waveform) / TARGET_SAMPLE_RATE
         if result.passed:
             records.append(
                 ManifestRecord(
                     audio_filename=clip.audio_filename,
                     surah_ayah=clip.surah_ayah,
                     match_ratio=result.match_ratio,
-                    ayah_duration_s=len(waveform) / TARGET_SAMPLE_RATE,
+                    ayah_duration_s=duration_s,
                     reciter_id=clip.reciter_id,
                     contrasts=scorer.attribute(decode.phonemes, reference),
                     predicted_phonemes=decode.phonemes,
                 )
             )
-    return records
+            continue
+        reject = build_reject_record(
+            audio_filename=clip.audio_filename,
+            surah_ayah=clip.surah_ayah,
+            reciter_id=clip.reciter_id,
+            ayah_duration_s=duration_s,
+            predicted=decode.phonemes,
+            result=result,
+            scorer=scorer,
+        )
+        rejects.append(reject)
+        if reject.is_clean_re_read:
+            clean_re_read_audio.append((clip.audio_filename, waveform))
+    return ScoredBatch(records, rejects, clean_re_read_audio)
 
 
 def _batched(iterable: Iterable, size: int) -> Iterator[list]:
@@ -197,6 +242,7 @@ def run_filter(
     limit: int | None = None,
     skip_unknown_refs: bool = False,
     clip_source: Iterable[Clip] | None = None,
+    reject_audio_dir: Path | None = None,
 ) -> None:
     """Filter the stream in batches, committing passers to ``manifest`` as it goes.
 
@@ -206,13 +252,24 @@ def run_filter(
     ``datasets`` stream with a caller-supplied iterable of :class:`Clip` (the full-config
     parquet-shard reader; see :func:`main`) — the caller then owns resume-skipping and
     ``limit``, since a shard source is positioned by shard, not stream offset.
+
+    ``reject_audio_dir`` stages the clean-re-read WAVs. They are written *before* the
+    commit, so the checkpoint never advances past a clip whose audio is missing; a
+    replayed batch rewrites identical bytes. Whether the manifest actually keeps the
+    rejects is the manifest's business (it opened the sink, or did not), which is why
+    they are handed over unconditionally.
     """
     clips = clip_source if clip_source is not None else stream_clips(
         dataset_id, config_name, split, start=manifest.clips_processed, limit=limit
     )
     for batch in _batched(clips, batch_size):
-        records = score_batch(batch, model, references, scorer, skip_unknown_refs)
-        manifest.commit_batch(records, num_clips=len(batch))
+        scored = score_batch(batch, model, references, scorer, skip_unknown_refs)
+        if reject_audio_dir is not None:
+            for audio_filename, waveform in scored.clean_re_read_audio:
+                write_clip_wav(reject_audio_dir, audio_filename, waveform)
+        manifest.commit_batch(
+            scored.passers, num_clips=len(batch), rejects=scored.rejects
+        )
 
 
 def _shard_clip_source(
@@ -293,6 +350,22 @@ def main() -> None:
         action="store_true",
         help="Delete each 2.4 GB shard after scoring it, to bound disk on long runs.",
     )
+    parser.add_argument(
+        "--rejects",
+        type=Path,
+        default=None,
+        help="Also write a JSONL of every clip the gate rejected, with the GateResult "
+             "behind the verdict (tadabur.rejects). Omitted, no reject file is opened "
+             "and the passing manifest is byte-identical to a run without this flag.",
+    )
+    parser.add_argument(
+        "--reject-audio-out",
+        type=Path,
+        default=None,
+        help="Directory to stage the 16 kHz mono WAV of each reject matching the "
+             "clean-re-read predicate (Muraja ADR-0016). Independent of --rejects, "
+             "though a run normally wants both.",
+    )
     parser.add_argument("--model-id", default=MODEL_ID, help="HF model id.")
     parser.add_argument(
         "--device", default="cuda", help="Torch device (default: cuda)."
@@ -309,7 +382,7 @@ def main() -> None:
     references = load_reference_phonemes()
     model = MuaalemPhonemeModel.load(args.model_id, device=args.device)
 
-    with FilterManifest.open(args.manifest) as manifest:
+    with FilterManifest.open(args.manifest, rejects_path=args.rejects) as manifest:
         if manifest.clips_processed:
             print(f"Resuming after {manifest.clips_processed} clips already scored.")
         clip_source = None
@@ -330,11 +403,14 @@ def main() -> None:
             limit=args.limit,
             skip_unknown_refs=args.skip_unknown_refs,
             clip_source=clip_source,
+            reject_audio_dir=args.reject_audio_out,
         )
         print(
             f"Done. {manifest.clips_processed} clips scored; "
             f"{manifest.passers_written} passers in {args.manifest}."
         )
+        if args.rejects:
+            print(f"{manifest.rejects_written} rejects in {args.rejects}.")
 
 
 if __name__ == "__main__":

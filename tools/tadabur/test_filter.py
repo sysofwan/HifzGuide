@@ -125,13 +125,15 @@ def test_score_batch_keeps_only_passers_with_computed_duration():
     clips = [_clip("pass.wav", TARGET_SAMPLE_RATE), _clip("fail.wav", TARGET_SAMPLE_RATE)]
     model = _FakeModel(["بتثج", "محك"])  # match, then unrelated
 
-    records = score_batch(clips, model, REFERENCES, BALANCED_SCORER)
+    scored = score_batch(clips, model, REFERENCES, BALANCED_SCORER)
 
-    assert [r.audio_filename for r in records] == ["pass.wav"]
-    assert records[0].match_ratio == pytest.approx(1.0, abs=1e-3)
-    assert records[0].ayah_duration_s == pytest.approx(1.0, abs=1e-6)
-    assert records[0].surah_ayah == "3:82"
-    assert records[0].reciter_id == 88
+    assert [r.audio_filename for r in scored.passers] == ["pass.wav"]
+    assert scored.passers[0].match_ratio == pytest.approx(1.0, abs=1e-3)
+    assert scored.passers[0].ayah_duration_s == pytest.approx(1.0, abs=1e-6)
+    assert scored.passers[0].surah_ayah == "3:82"
+    assert scored.passers[0].reciter_id == 88
+    # The failing clip lands in the reject list rather than vanishing.
+    assert [r.audio_filename for r in scored.rejects] == ["fail.wav"]
 
 
 def test_score_batch_skips_over_long_clips_before_decode():
@@ -146,16 +148,18 @@ def test_score_batch_skips_over_long_clips_before_decode():
     # must be dropped before the GPU decode so it never enters the batch.
     model = _FakeModel(["بتثج"])
 
-    records = score_batch(clips, model, REFERENCES, BALANCED_SCORER)
+    scored = score_batch(clips, model, REFERENCES, BALANCED_SCORER)
 
-    assert [r.audio_filename for r in records] == ["ok.wav"]
+    assert [r.audio_filename for r in scored.passers] == ["ok.wav"]
+    # A clip dropped before the decode was never gated, so it is not a reject either.
+    assert scored.rejects == []
 
 
 def test_score_batch_duration_reflects_actual_waveform():
     clips = [_clip("half.wav", TARGET_SAMPLE_RATE // 2)]
     model = _FakeModel(["بتثج"])
 
-    (record,) = score_batch(clips, model, REFERENCES, BALANCED_SCORER)
+    (record,) = score_batch(clips, model, REFERENCES, BALANCED_SCORER).passers
 
     assert record.ayah_duration_s == pytest.approx(0.5, abs=1e-6)
 
@@ -167,7 +171,8 @@ def test_score_batch_attaches_contrasts_to_passers():
     clips = [_clip("soft.wav"), _clip("clean.wav")]
     model = _FakeModel(["صلمن", "سلمن"])
 
-    by_name = {r.audio_filename: r for r in score_batch(clips, model, references, BALANCED_SCORER)}
+    scored = score_batch(clips, model, references, BALANCED_SCORER)
+    by_name = {r.audio_filename: r for r in scored.passers}
 
     assert by_name["soft.wav"].contrasts == ("\u0633\u2194\u0635",)  # س↔ص
     assert by_name["clean.wav"].contrasts == ()
@@ -187,8 +192,10 @@ def test_score_batch_skips_unknown_refs_when_opted_in():
         _clip("good.wav", TARGET_SAMPLE_RATE),
     ]
     model = _FakeModel(["محك", "بتثج"])  # bad ref (skipped), then a clean match
-    records = score_batch(clips, model, REFERENCES, BALANCED_SCORER, skip_unknown_refs=True)
-    assert [r.audio_filename for r in records] == ["good.wav"]
+    scored = score_batch(clips, model, REFERENCES, BALANCED_SCORER, skip_unknown_refs=True)
+    assert [r.audio_filename for r in scored.passers] == ["good.wav"]
+    # The unknown-reference clip is skipped, not recorded as a gate reject.
+    assert scored.rejects == []
 
 
 def test_run_filter_is_resumable(tmp_path, monkeypatch):
@@ -288,3 +295,149 @@ def test_shard_clip_source_applies_limit(monkeypatch):
         shard_cache=None, delete_shards=False, limit=4,
     ))
     assert [c.audio_filename for c in clips] == ["c0.wav", "c1.wav", "c2.wav", "c3.wav"]
+
+
+# --- the reject sink (ADR-0016 decision 2) -----------------------------------------
+
+# A 20-phoneme reference and a decode repeating its phonemes 5..10 in the middle — the
+# clean-re-read shape; see tadabur.test_rejects for why these exact strings.
+RE_READ_REFERENCES = {"3:82": "بتثجحخدذرزسشصضطظعغفق"}
+RE_READ_DECODE = (
+    RE_READ_REFERENCES["3:82"][:10]
+    + RE_READ_REFERENCES["3:82"][5:10]
+    + RE_READ_REFERENCES["3:82"][10:]
+)
+
+
+def test_score_batch_classifies_a_clean_re_read_and_hands_back_its_waveform():
+    from tadabur.rejects import CAUSE_INSERTION_RUN
+
+    clips = [_clip("reread.wav", TARGET_SAMPLE_RATE), _clip("junk.wav", TARGET_SAMPLE_RATE)]
+    model = _FakeModel([RE_READ_DECODE, "مهنيول"])
+
+    scored = score_batch(clips, model, RE_READ_REFERENCES, BALANCED_SCORER)
+
+    assert scored.passers == []
+    assert [r.audio_filename for r in scored.rejects] == ["reread.wav", "junk.wav"]
+    assert scored.rejects[0].causes == (CAUSE_INSERTION_RUN,)
+    # Only the clean re-read is handed back for staging, paired with the 16 kHz
+    # waveform the gate actually scored.
+    assert [name for name, _ in scored.clean_re_read_audio] == ["reread.wav"]
+    assert len(scored.clean_re_read_audio[0][1]) == TARGET_SAMPLE_RATE
+
+
+def test_run_filter_writes_rejects_and_stages_clean_re_read_audio(tmp_path, monkeypatch):
+    from tadabur.rejects import read_reject_records
+
+    clips = [_clip("reread.wav"), _clip("junk.wav"), _clip("pass.wav")]
+    decodes = [RE_READ_DECODE, "مهنيول", RE_READ_REFERENCES["3:82"]]
+    monkeypatch.setattr(
+        filter_mod, "stream_clips", lambda *a, **k: iter(clips)
+    )
+
+    manifest_path = tmp_path / "subset.jsonl"
+    rejects_path = tmp_path / "rejects.jsonl"
+    audio_dir = tmp_path / "reject_audio"
+    with FilterManifest.open(manifest_path, rejects_path=rejects_path) as manifest:
+        run_filter(
+            manifest,
+            _FakeModel(decodes),
+            RE_READ_REFERENCES,
+            BALANCED_SCORER,
+            batch_size=3,
+            reject_audio_dir=audio_dir,
+        )
+        assert manifest.passers_written == 1
+        assert manifest.rejects_written == 2
+
+    assert [r.audio_filename for r in read_reject_records(rejects_path)] == [
+        "reread.wav",
+        "junk.wav",
+    ]
+    # Only the clean re-read is staged — the sink records every reject, the audio
+    # directory holds only the ones the corpus will replay.
+    assert sorted(p.name for p in audio_dir.iterdir()) == ["reread.wav"]
+
+
+class _ScriptedModel:
+    """Decodes clips in order from a script, across however many batches they arrive in."""
+
+    def __init__(self, phonemes: list[str]) -> None:
+        self._remaining = list(phonemes)
+
+    def decode_batch(self, waveforms, sample_rate):
+        assert sample_rate == TARGET_SAMPLE_RATE
+        taken, self._remaining = (
+            self._remaining[: len(waveforms)],
+            self._remaining[len(waveforms):],
+        )
+        return [PhonemeDecode(p, 0, 0) for p in taken]
+
+
+def test_omitting_rejects_leaves_the_manifest_byte_identical(tmp_path, monkeypatch):
+    # The acceptance guarantee: adding the sink changes nothing for a run that does not
+    # ask for it — same manifest bytes, same checkpoint, and no new files on disk.
+    # Run over two batches, since the sink writes on the same per-batch commit path.
+    clips = [_clip("reread.wav"), _clip("junk.wav"), _clip("pass.wav")]
+    decodes = [RE_READ_DECODE, "مهنيول", RE_READ_REFERENCES["3:82"]]
+    monkeypatch.setattr(filter_mod, "stream_clips", lambda *a, **k: iter(clips))
+
+    def _run(directory, rejects_path):
+        directory.mkdir()
+        manifest_path = directory / "subset.jsonl"
+        with FilterManifest.open(manifest_path, rejects_path=rejects_path) as manifest:
+            run_filter(
+                manifest,
+                _ScriptedModel(decodes),
+                RE_READ_REFERENCES,
+                BALANCED_SCORER,
+                batch_size=2,
+            )
+        return manifest_path
+
+    without = _run(tmp_path / "without", None)
+    with_sink = _run(tmp_path / "with", tmp_path / "with" / "rejects.jsonl")
+
+    assert without.read_bytes() == with_sink.read_bytes()
+    assert (
+        (tmp_path / "without" / "subset.jsonl.progress.json").read_bytes()
+        == (tmp_path / "with" / "subset.jsonl.progress.json").read_bytes()
+    )
+    # Nothing but the manifest and its checkpoint exists in the plain run.
+    assert sorted(p.name for p in (tmp_path / "without").iterdir()) == [
+        "subset.jsonl",
+        "subset.jsonl.progress.json",
+    ]
+
+
+def test_reject_sink_resumes_without_duplicating_a_replayed_batch(tmp_path, monkeypatch):
+    from tadabur.rejects import read_reject_records
+
+    clips = [_clip("j0.wav"), _clip("j1.wav"), _clip("j2.wav")]
+    manifest_path = tmp_path / "subset.jsonl"
+    rejects_path = tmp_path / "rejects.jsonl"
+
+    def _stream(dataset_id, config_name, split, start, limit):
+        rows = clips[start:]
+        return iter(rows[:limit] if limit is not None else rows)
+
+    monkeypatch.setattr(filter_mod, "stream_clips", _stream)
+
+    # First run stops after two clips; the resume must not re-record them.
+    with FilterManifest.open(manifest_path, rejects_path=rejects_path) as manifest:
+        run_filter(
+            manifest, _FakeModel(["مهنيول"] * 2), RE_READ_REFERENCES,
+            BALANCED_SCORER, batch_size=2, limit=2,
+        )
+    with FilterManifest.open(manifest_path, rejects_path=rejects_path) as manifest:
+        assert manifest.clips_processed == 2
+        assert manifest.rejects_written == 2
+        run_filter(
+            manifest, _FakeModel(["مهنيول"]), RE_READ_REFERENCES,
+            BALANCED_SCORER, batch_size=2,
+        )
+        assert manifest.clips_processed == 3
+
+    assert [r.audio_filename for r in read_reject_records(rejects_path)] == [
+        "j0.wav", "j1.wav", "j2.wav",
+    ]

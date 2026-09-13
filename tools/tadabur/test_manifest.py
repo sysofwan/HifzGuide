@@ -134,3 +134,42 @@ def test_read_records_tolerates_legacy_manifest_without_contrasts(tmp_path):
     (record,) = read_records(manifest_path)
     assert record.audio_filename == "old.wav"
     assert record.contrasts == ()
+
+
+def test_rejects_are_dropped_when_no_sink_is_open(tmp_path):
+    # The filter computes rejects unconditionally; a manifest opened without a sink
+    # must swallow them rather than fail, and leave no trace on disk.
+    from tadabur.rejects import RejectRecord
+
+    reject = RejectRecord("r.wav", "3:82", 88, 9.0, 0.8, 7, 0, 0, False, "بتثج")
+    manifest_path = tmp_path / "subset.jsonl"
+    with FilterManifest.open(manifest_path) as manifest:
+        manifest.commit_batch([_record("a.wav")], num_clips=2, rejects=[reject])
+        assert manifest.rejects_written == 0
+
+    assert [r["audio_filename"] for r in _read_lines(manifest_path)] == ["a.wav"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "subset.jsonl",
+        "subset.jsonl.progress.json",
+    ]
+
+
+def test_rejects_are_durable_before_the_checkpoint_advances(tmp_path):
+    # Ordering is the resume contract: one checkpoint governs both files, so a reject
+    # must be on disk before clips_processed could let a resume skip past its clip.
+    from tadabur.rejects import RejectRecord, read_reject_records
+
+    manifest_path = tmp_path / "subset.jsonl"
+    rejects_path = tmp_path / "rejects.jsonl"
+    reject = RejectRecord("r.wav", "3:82", 88, 9.0, 0.8, 7, 0, 0, False, "بتثج")
+
+    with FilterManifest.open(manifest_path, rejects_path=rejects_path) as manifest:
+        manifest.commit_batch([_record("a.wav")], num_clips=2, rejects=[reject])
+        # Both sinks are flushed and fsynced inside commit_batch, before the
+        # checkpoint write — readable here without closing the manifest.
+        assert [r.audio_filename for r in read_reject_records(rejects_path)] == ["r.wav"]
+        assert manifest.rejects_written == 1
+
+    with FilterManifest.open(manifest_path, rejects_path=rejects_path) as manifest:
+        assert manifest.clips_processed == 2
+        assert manifest.rejects_written == 1

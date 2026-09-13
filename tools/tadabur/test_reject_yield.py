@@ -127,3 +127,21 @@ def test_an_empty_run_produces_zero_rates_rather_than_dividing_by_zero():
     result = compute_yield(passers=0, rejects=[], clips_processed=0)
     assert result.pass_rate == 0.0
     assert result.clean_re_read_share_of_rejects == 0.0
+
+
+def test_the_corpus_repeat_lengths_are_reported_apart_from_every_reject_s():
+    # The threshold argument reads every reject; the question "did the corpus keep the
+    # long re-reads?" reads only the matching subset. A reject with no repeat at all
+    # belongs in the first histogram and must not dilute the second.
+    rejects = [
+        _reject("no-repeat.wav", max_insertion_run=0, causes=(CAUSE_LOW_RATIO,)),
+        _reject("short.wav", max_insertion_run=5),
+        _reject("long.wav", max_insertion_run=18),
+        _reject("shadda.wav", max_insertion_run=9, added_shadda=True,
+                causes=(CAUSE_INSERTION_RUN, CAUSE_ADDED_SHADDA)),
+    ]
+
+    result = compute_yield(passers=0, rejects=rejects, clips_processed=4)
+
+    assert result.insertion_run_histogram == {"0": 1, "18": 1, "5": 1, "9": 1}
+    assert result.clean_re_read_run_histogram == {"18": 1, "5": 1}

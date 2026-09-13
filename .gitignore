@@ -69,6 +69,10 @@ tools/tadabur/audit_run/
 tools/tadabur/reject_run/
 tools/tadabur/reject_run_*.log
 
+# Local bleed-recut run artifacts (staged WAVs, timed decodes, recut records, recut audio).
+# docs/tadabur-bleed-recut.md carries the numbers; this is the run's own output.
+tools/tadabur/bleed_run/
+
 # Local waqf-audit review state (per-reviewer, not source-of-truth)
 tools/tadabur/waqf_event_fixtures/waqf_reviewed_clips.json
 tools/tadabur/waqf_event_fixtures/waqf_flagged_clips.json

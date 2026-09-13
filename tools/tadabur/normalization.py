@@ -83,6 +83,22 @@ def _grapheme_clusters(text: str) -> list[list[str]]:
     return clusters
 
 
+def cluster_offsets(text: str) -> list[int]:
+    """Character offset at which each Swift-style Character of ``text`` begins.
+
+    The grapheme-cluster index is the currency ``PhonemeNormalization.offset_map`` speaks
+    in, while a per-*character* sequence — the phonetizer's word offsets, or
+    :func:`tadabur.waqf_detect.collapse_with_times`' per-phoneme onsets — is indexed by
+    character. This is the translation between them, and the single place it is computed.
+    """
+    offsets: list[int] = []
+    position = 0
+    for cluster in _grapheme_clusters(text):
+        offsets.append(position)
+        position += len(cluster)
+    return offsets
+
+
 def _folded_core(scalar: str) -> str:
     """The tajweed-folded core for ``scalar`` (identity if not a core scalar)."""
     return _TAJWEED_EQUIVALENTS.get(scalar, scalar)
@@ -178,12 +194,7 @@ def map_char_offsets(
     should cut at. Offsets are clamped and forced non-decreasing so the returned
     sequence always describes a valid set of consecutive slices.
     """
-    clusters = _grapheme_clusters(text)
-    cluster_starts: list[int] = []
-    pos = 0
-    for cluster in clusters:
-        cluster_starts.append(pos)
-        pos += len(cluster)
+    cluster_starts = cluster_offsets(text)
     offset_map = normalization.offset_map
 
     mapped: list[int] = []

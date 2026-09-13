@@ -122,6 +122,62 @@ whole-ayah segment) and tallied; the 8 phonetizer-gap ayat are skipped (`phoneti
 Feeds P4 data-prep (#8): the manifest is the label source, the reciter split is computed over the
 post-segmentation units, and the collator slices audio by these offsets.
 
+### `tadabur.scenario` (Linux — GPU) — the re-read corpus Muraja consumes
+
+Stages the **clean re-reads** the reject sink mined (`tadabur.rejects`) into the cross-repo
+interface of Muraja ADR-0016: a `scenario.jsonl` plus 16 kHz mono WAVs, one record per clip.
+It re-cuts each clip to the recitation span `tadabur.bleed_recut` found (#67/#68), decodes the
+result once with timing, locates the re-read seam in phoneme space (`tadabur.seam`), maps the
+alignment's reference span to a **word** range, and then cuts the repeat out and re-gates the
+result (`tadabur.excision`) to produce the paired control clip decision 4's second oracle needs.
+
+```bash
+cd tools
+python -m tadabur.scenario --rejects reject_run/rejects.jsonl \
+    --clips bleed_run/clips/ --recuts bleed_run/recuts.jsonl \
+    --out scenario_run/shard20 [--limit N] [--batch-size 4]
+
+# On the Mac, after the transfer — no model, GPU or reference cache needed:
+python -m tadabur.scenario --verify tadabur_corpus/
+```
+
+Clips are processed in `clip_id` order, so a `--limit` run is a prefix of the full one and two
+runs of the same command produce byte-identical output. Measured on shard 20: 45 clips in 47 s,
+64 MB (35 MB staged audio, 30 MB control clips, 68 KB manifest). See
+`docs/tadabur-excision-yield.md` for the yield and its limits.
+
+#### The `scenario.jsonl` schema
+
+One JSON object per line, keys sorted, written in `clip_id` order. Paths are **relative to the
+manifest**, so the bundle moves as one directory. `schema_version` is `v1+norm<N>`, tied to
+`tadabur.normalization.ALGORITHM_VERSION` because every phoneme offset in the record indexes
+into a normalized string.
+
+| field | meaning |
+| --- | --- |
+| `schema_version` | `v1+norm2` — reject a bundle whose version you do not know |
+| `clip_id` | stable identity; the reject sink's join key is `<clip_id>.wav` |
+| `audio` | `audio/<clip_id>.wav` — the staged clip, 16 kHz mono PCM_16, bleed already cut |
+| `surah_ayah`, `reciter_id`, `duration_s` | the clip's ayah, reciter, and staged length |
+| `match_ratio`, `max_insertion_run`, `leading_trim`, `trailing_trim`, `added_shadda` | the `.balanced` gate over the **staged** audio (`tadabur.scorer.GateResult`) |
+| `predicted_phonemes` | the staged clip's decode — what the seam offsets index into, once normalized |
+| `word_start`, `word_end` | **half-open, 0-indexed Uthmani word range the oracle may assert over.** Words only fully covered by the alignment; ADR-0016 decision 1 |
+| `ref_covered_start`, `ref_covered_end`, `ref_length` | the same span in reference-phoneme space, as provenance |
+| `uncovered_head`, `uncovered_tail` | reference phonemes before/after the covered span — a clip begun late or left unfinished |
+| `early_start` | the lead-in is long enough (`leading_trim >= 5`) that starting a session one ayah earlier may help. Rare since #68 re-cuts bleed; read it per clip, do not apply a blanket policy |
+| `recut_applied`, `recitation_start_s`, `recitation_end_s` | what was kept of the source clip, shaped like `ClipStatus`'s fields |
+| `seams` | one entry per re-read: `query_start`/`query_end` (normalized-decode indices), `ref_position`, `phonemes`, `start_s`/`end_s` (where a cut lands), `pause_anchored_start`/`pause_anchored_end` |
+| `excised_audio` | `excised/<clip_id>.wav`, or **null** when the pair did not survive re-gating |
+| `excised_duration_s`, `excised_phonemes` | the control clip's length and decode — kept for a refused pair too, so a discard can be explained |
+| `excision` | always carries `reason`; carries the full re-gate numbers when a cut was made |
+
+**No timestamp from Tadabur's `word_alignments` or from `ClipStatus.word_times` appears in this
+file.** The seconds that do appear are the clip's own duration and the spans cut out of it —
+neither is an assertion, and both describe audio the gate re-scored.
+
+A sibling `staging.json` carries the run's tallies (selected, staged, seams, pairs attempted and
+kept, refusal reasons, early starts, truncated clips).
+
 ### `training.waqf_distill` (Linux — GPU teacher, CPU pooling) — waqf soft labels
 
 The teacher half of the waqf-head distillation (ADR-0004). Because the deployed / student

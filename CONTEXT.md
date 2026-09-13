@@ -156,6 +156,56 @@ the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you
 : A training example whose label does not match what was recited — the mislabel risk ADR-0001's
   filter and the P3.5 audit exist to bound. A property of the *corpus*, never of a checkpoint.
 
+## Re-read Corpus
+
+The vocabulary of Muraja ADR-0016, which mines the Tadabur clips the ADR-0001 gate **rejects**
+for the natural re-reads its follow-along tuning needs. Nothing here is a training-data concept.
+
+**Reject pile**
+: The clips `tadabur.filter` turned away, kept with the `GateResult` behind the verdict
+  (`tadabur.rejects`). The population the corpus is mined from — the *passing* subset holds no
+  re-reads at all, by construction, since a long repeat is itself a gate reject.
+
+**Re-read**
+: A reciter saying a span of words again before carrying on. In an alignment it is an
+  **insertion run** — decoded phonemes the reference does not contain — which is why it barely
+  dents `match_ratio` and is caught by `max_insertion_run` instead.
+: _Avoid_: repetition, stumble (a stumble is shorter than the gate's bar and stays in the
+  passing subset)
+
+**Clean re-read**
+: A reject meeting the mining predicate — `max_insertion_run >= 5 and not added_shadda` — i.e. a
+  recitation that matches its reference everywhere except for a repeated span. The `match_ratio`
+  floor was dropped (`docs/tadabur-ratio-floor.md`): it filtered repeat *length*, not correctness.
+
+**Seam**
+: Where a re-read joins the recitation around it — the two edges of the insertion run, in the
+  clip's own time. Measured, not assumed, to carry a waqf: 0% of shard-20 seams have a usable
+  VAD silence at *both* edges (`docs/tadabur-excision-yield.md`).
+: _Avoid_: boundary (collides with waqf boundary), cut point
+
+**Excision differential**
+: The pair ADR-0016 decision 4 asserts over: a clip and the same clip with its repeat cut out.
+  Both must drive the engine to the same terminal state. The control clip is re-decoded and
+  re-gated, so a bad cut costs a **pair**, never a finding.
+
+**Covered word range**
+: The half-open Uthmani word range of a clip's own ayah that its decode actually reached, taken
+  from the alignment's reference span and mapped through the phonetizer's per-word phoneme
+  boundaries. The only range an oracle may grade over (ADR-0016 decision 1) — and it is word
+  space, never time.
+
+**Bleed**
+: Audio of the neighbouring ayah a staged clip carries because it was cut from a continuous
+  recitation. Detected by aligning the decode against `prev | this | next` and reading off the
+  reference consumed outside this ayah, then clipped (`tadabur.bleed_detect`,
+  `tadabur.bleed_recut`).
+: _Avoid_: lead-in, spill, overlap (unqualified)
+
+**Scenario record**
+: One line of `scenario.jsonl` — the cross-repo interface HifzGuide hands Muraja for one mined
+  re-read. See `tools/README.md` for the schema.
+
 ## ML Pipeline & Assets
 
 **CoreML pipeline**

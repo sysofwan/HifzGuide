@@ -220,6 +220,55 @@ def _clip_intervals(
     return intervals
 
 
+def compute_clip_intervals(
+    audio_filenames: list[str],
+    clips_dir: Path,
+    *,
+    device,
+    dtype,
+    batch_size: int = 8,
+    min_silence_ms: float = DEFAULT_MIN_SILENCE_MS,
+    min_speech_ms: float = DEFAULT_MIN_SPEECH_MS,
+    pad_ms: float = DEFAULT_PAD_MS,
+) -> dict[str, list[tuple[float, float]]]:
+    """Clean speech intervals (seconds) per staged clip, keyed by ``audio_filename``.
+
+    Loads the VAD, decodes every named clip present under ``clips_dir`` in fixed-size
+    batches, and returns the intervals verbatim. Clips missing from ``clips_dir`` are
+    omitted (the caller tallies them). The VAD is freed before returning so the Muaalem
+    phoneme model can be loaded without holding both on the GPU.
+
+    Callers wanting the *pauses* between intervals want :func:`compute_clip_pauses`;
+    callers placing a cut inside one (:mod:`tadabur.bleed_recut`, via
+    :mod:`tadabur.bleed_stage`) need the speech spans themselves.
+    """
+    import soundfile as sf
+    import torch
+
+    present = [name for name in audio_filenames if (clips_dir / name).exists()]
+    model, processor = _load_vad(device, dtype)
+    intervals: dict[str, list[tuple[float, float]]] = {}
+    try:
+        for start in range(0, len(present), batch_size):
+            batch = present[start : start + batch_size]
+            waveforms = [sf.read(clips_dir / name, dtype="float32")[0] for name in batch]
+            for name, clip in zip(
+                batch,
+                _clip_intervals(
+                    waveforms, model, processor,
+                    device=device, dtype=dtype, batch_size=batch_size,
+                    min_silence_ms=min_silence_ms, min_speech_ms=min_speech_ms,
+                    pad_ms=pad_ms,
+                ),
+            ):
+                intervals[name] = clip
+    finally:
+        del model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    return intervals
+
+
 def compute_clip_pauses(
     records: list[ManifestRecord],
     clips_dir: Path,
@@ -233,36 +282,15 @@ def compute_clip_pauses(
 ) -> dict[str, list[tuple[float, float]]]:
     """Waqf pause gaps (seconds) per staged clip, keyed by ``audio_filename``.
 
-    Loads the VAD, decodes every clip present under ``clips_dir`` to clean speech
-    intervals in fixed-size batches, and returns the interior silence gaps
-    (:func:`pauses_from_intervals`). Clips missing from ``clips_dir`` are omitted (the
-    caller tallies them). The VAD is freed before returning so the Muaalem phoneme
-    model can be loaded without holding both on the GPU.
+    The interior silence gaps (:func:`pauses_from_intervals`) of every clip
+    :func:`compute_clip_intervals` finds under ``clips_dir``; clips missing from it are
+    omitted (the caller tallies them).
     """
-    import soundfile as sf
-    import torch
-
-    present = [r for r in records if (clips_dir / r.audio_filename).exists()]
-    model, processor = _load_vad(device, dtype)
-    pauses: dict[str, list[tuple[float, float]]] = {}
-    try:
-        for start in range(0, len(present), batch_size):
-            batch = present[start : start + batch_size]
-            waveforms = [
-                sf.read(clips_dir / r.audio_filename, dtype="float32")[0] for r in batch
-            ]
-            for record, intervals in zip(
-                batch,
-                _clip_intervals(
-                    waveforms, model, processor,
-                    device=device, dtype=dtype, batch_size=batch_size,
-                    min_silence_ms=min_silence_ms, min_speech_ms=min_speech_ms,
-                    pad_ms=pad_ms,
-                ),
-            ):
-                pauses[record.audio_filename] = pauses_from_intervals(intervals)
-    finally:
-        del model
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    return pauses
+    return {
+        name: pauses_from_intervals(intervals)
+        for name, intervals in compute_clip_intervals(
+            [r.audio_filename for r in records], clips_dir,
+            device=device, dtype=dtype, batch_size=batch_size,
+            min_silence_ms=min_silence_ms, min_speech_ms=min_speech_ms, pad_ms=pad_ms,
+        ).items()
+    }

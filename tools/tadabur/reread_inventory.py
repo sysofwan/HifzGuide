@@ -109,9 +109,7 @@ def take_inventory(
 
         result = scorer.gate(record.predicted_phonemes, references[record.surah_ayah])
         insertion_runs[result.max_insertion_run] += 1
-        if is_clean_re_read(
-            result.match_ratio, result.max_insertion_run, result.added_shadda
-        ):
+        if is_clean_re_read(result.max_insertion_run, result.added_shadda):
             clean_re_reads += 1
 
         status = by_clip.get(record.audio_filename)

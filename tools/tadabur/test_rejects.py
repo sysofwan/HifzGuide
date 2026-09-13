@@ -21,7 +21,6 @@ from tadabur.rejects import (
     CAUSE_LOW_RATIO,
     CAUSE_MIN_QUERY,
     CAUSE_NO_ALIGNMENT,
-    CLEAN_RE_READ_MIN_RATIO,
     RejectRecord,
     RejectSink,
     build_reject_record,
@@ -35,9 +34,10 @@ from tadabur.scorer import BALANCED_SCORER, MAX_INSERTION_RUN, GateResult
 # A 20-phoneme reference and a decode that repeats its phonemes 5..10 in the middle —
 # the shape of a real re-read. The repeat is an interior insertion run of exactly
 # MAX_INSERTION_RUN, and 20 matches less one 5-long affine gap over 25 query phonemes
-# leaves match_ratio at 0.764, so it clears the clean-re-read ratio floor. Kept off the
-# clip edges on purpose: a repeat at either end is trimmed by the local aligner and
-# shows up as leading/trailing_trim, not as an insertion run.
+# leaves match_ratio at 0.764 — high, which is the point: a repeated phrase barely dents
+# the ratio, so the run is what catches it. Kept off the clip edges on purpose: a repeat
+# at either end is trimmed by the local aligner and shows up as leading/trailing_trim,
+# not as an insertion run.
 REFERENCE = "بتثجحخدذرزسشصضطظعغفق"
 RE_READ_DECODE = REFERENCE[:10] + REFERENCE[5:10] + REFERENCE[10:]
 
@@ -66,29 +66,28 @@ def test_real_gate_rejects_a_repeated_span_as_a_clean_re_read():
 
     assert not result.passed
     assert result.max_insertion_run == MAX_INSERTION_RUN
-    assert result.match_ratio >= CLEAN_RE_READ_MIN_RATIO
+    assert result.match_ratio >= 0.75
     assert not result.added_shadda
-    assert is_clean_re_read(
-        result.match_ratio, result.max_insertion_run, result.added_shadda
-    )
+    assert is_clean_re_read(result.max_insertion_run, result.added_shadda)
 
 
 def test_a_short_insertion_run_is_not_a_clean_re_read():
     # One below the gate's own reject bar: such a clip would have passed, so by
     # construction it cannot be in the reject pile this predicate mines.
-    assert not is_clean_re_read(0.9, MAX_INSERTION_RUN - 1, False)
-    assert is_clean_re_read(0.9, MAX_INSERTION_RUN, False)
+    assert not is_clean_re_read(MAX_INSERTION_RUN - 1, False)
+    assert is_clean_re_read(MAX_INSERTION_RUN, False)
 
 
-def test_ratio_floor_is_half_open_at_the_threshold():
-    assert is_clean_re_read(CLEAN_RE_READ_MIN_RATIO, MAX_INSERTION_RUN, False)
-    assert not is_clean_re_read(CLEAN_RE_READ_MIN_RATIO - 0.01, MAX_INSERTION_RUN, False)
+def test_a_low_ratio_no_longer_disqualifies_a_re_read():
+    # The floor #66 dropped: it filtered repeat *length*, not correctness, so it removed
+    # the longest re-reads first — the hard cases ADR-0016 exists to tune against.
+    assert is_clean_re_read(MAX_INSERTION_RUN, False)
 
 
 def test_added_shadda_disqualifies_an_otherwise_clean_re_read():
     # A repeat plus a gemination the reference lacks is a mispronunciation as well as a
     # re-read, which is not the thing the word-space oracle can judge.
-    assert not is_clean_re_read(0.9, MAX_INSERTION_RUN, True)
+    assert not is_clean_re_read(MAX_INSERTION_RUN, True)
 
 
 def test_record_exposes_the_predicate_over_its_own_fields():

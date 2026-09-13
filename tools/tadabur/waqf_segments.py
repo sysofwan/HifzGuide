@@ -57,6 +57,7 @@ import generate_phonemes  # noqa: E402  (tools/ sibling module)
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
 from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename
 from .manifest import ManifestRecord, read_records
+from .normalization import map_char_offsets, normalize_phonemes
 
 # A callable that turns Uthmani text into its phoneme string (a seam so the
 # segmentation logic in tadabur.segment_score is testable without quran-transcript).
@@ -64,6 +65,10 @@ Phonetizer = Callable[[str], str]
 # A callable giving an ayah's spaceless phoneme reference + per-word phoneme offsets
 # (len == n_words + 1) — the alignment reference tadabur.waqf_detect.segment_clip uses.
 WordReference = Callable[[list[str]], "tuple[str, list[int]]"]
+# The same shape, but in the *normalized* alphabet the scorer gate aligns in rather than
+# the phonetizer's raw one — what tadabur.scenario maps an alignment's reference span
+# through to reach words (Muraja ADR-0016 decision 1).
+NormalizedWordReference = Callable[[list[str]], "tuple[str, list[int]]"]
 # A callable giving one waqf segment's realized reference (the phonetizer's own
 # space-bearing output, terminal word in waqf form) plus the per-word character offsets
 # into it (len == n_words_in_segment + 1) — what lets a training window end inside a
@@ -209,6 +214,47 @@ def hafs_word_reference() -> WordReference:
     def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
         out = quran_phonetizer(" ".join(uthmani_words), moshaf)
         return _spaceless_word_offsets(out.phonemes, out.mappings, uthmani_words)
+
+    return compute
+
+
+def hafs_normalized_word_reference() -> NormalizedWordReference:
+    """An ayah's **normalized** phoneme reference plus per-word offsets into it.
+
+    :func:`hafs_word_reference` speaks the phonetizer's raw, spaceless alphabet. That is
+    the right alphabet for :func:`tadabur.waqf_detect.segment_clip`, which aligns against
+    it directly — but it is *not* the alphabet the scorer gate aligns in. The gate
+    compares a normalized decode against ``normalize_phonemes`` of the phonetizer's
+    **space-bearing** output (:mod:`tadabur.reference_phonemes`), so a reference position
+    the gate reports is an index into that string and cannot be looked up in this one.
+
+    The route between them is fixed and short: phonetize the ayah once, take the per-word
+    character offsets from the phonetizer's own char ``mappings``
+    (:func:`_spaced_word_offsets` — robust to the wasl merges that leave no separating
+    space), normalize the spaced string, and carry the offsets across with
+    :func:`~tadabur.normalization.map_char_offsets`. Normalizing the *spaceless* string
+    instead would be wrong in exactly the case the mappings exist for: a run of the same
+    core consonant straddling a word boundary would collapse across it, and the boundary
+    would move.
+
+    The returned reference is the same string :func:`load_reference_phonemes` caches for
+    this ayah — callers assert that rather than assume it, since a mismatch means the two
+    phonetizer calls disagree and any word range read off the offsets would be fiction.
+    Raises the same ``KeyError`` / ``IndexError`` as :func:`hafs_word_reference` on the
+    eight ayat quran_phonetizer cannot handle.
+    """
+    from quran_transcript import quran_phonetizer
+    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
+
+    moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
+
+    def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
+        out = quran_phonetizer(" ".join(uthmani_words), moshaf)
+        normalization = normalize_phonemes(out.phonemes)
+        offsets = _spaced_word_offsets(out.phonemes, out.mappings, uthmani_words)
+        return normalization.normalized, map_char_offsets(
+            out.phonemes, normalization, offsets
+        )
 
     return compute
 

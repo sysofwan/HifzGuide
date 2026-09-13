@@ -536,6 +536,12 @@ def reference_baseline(
 # rejects (``max_insertion_run >= MAX_INSERTION_RUN``) split by where ``match_ratio`` falls
 # relative to the dropped clean-re-read floor, with added-shadda clips held aside. Restated
 # here so the prevalence table is keyed the same way the human verdicts are.
+# The two ``match_ratio`` edges the listening order was cut at. 0.75 is the clean-re-read
+# floor #66 dropped; it survives here because the human verdicts are keyed to it, so a
+# prevalence table that re-bucketed would not be comparable with them.
+BAND_CLEAN_RATIO = 0.75
+BAND_MARGINAL_RATIO = 0.70
+
 BAND_SHADDA = "shadda"
 BAND_CLEAN = "clean"
 BAND_MARGINAL = "band"
@@ -546,16 +552,15 @@ REJECT_BANDS = (BAND_LOW, BAND_MARGINAL, BAND_CLEAN, BAND_SHADDA, BAND_NOT_REPEA
 
 def reject_band(record) -> str:
     """Which adjudication band a reject falls in (see :data:`REJECT_BANDS`)."""
-    from .rejects import CLEAN_RE_READ_MIN_RATIO
     from .scorer import MAX_INSERTION_RUN
 
     if record.max_insertion_run < MAX_INSERTION_RUN:
         return BAND_NOT_REPEAT
     if record.added_shadda:
         return BAND_SHADDA
-    if record.match_ratio >= CLEAN_RE_READ_MIN_RATIO:
+    if record.match_ratio >= BAND_CLEAN_RATIO:
         return BAND_CLEAN
-    if record.match_ratio >= 0.70:
+    if record.match_ratio >= BAND_MARGINAL_RATIO:
         return BAND_MARGINAL
     return BAND_LOW
 

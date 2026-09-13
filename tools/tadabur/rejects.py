@@ -11,7 +11,8 @@ subset**. ADR-0001's ``scorer.MAX_INSERTION_RUN`` reject exists precisely becaus
 repeated phrase barely dents ``match_ratio``", and a re-read *is* a repeated phrase,
 so a clip with a substantial re-read cannot pass the gate. Muraja ADR-0016 mines that
 reject pile for the natural re-reads its follow-along tuning corpus needs, on one
-stated predicate (:func:`is_clean_re_read`).
+stated predicate (:func:`is_clean_re_read`), and :mod:`tadabur.scenario` stages what the
+predicate admits.
 
 Two pieces live here:
 
@@ -62,17 +63,23 @@ REJECT_CAUSES = (
     CAUSE_ADDED_SHADDA,
 )
 
-# The **clean re-read** predicate (Muraja ADR-0016 decision 2): a recitation that matches
-# its reference everywhere except for a repeated span. The insertion-run floor is the
-# gate's own reject bar — a clip clearing it would have passed — so it is read from
-# :mod:`tadabur.scorer` rather than restated. The ratio floor is a separate *mining*
-# policy: it keeps the repeat as the only substantial divergence, so that what is left
-# after the repeat is recitation the oracle can grade word-for-word. It coincides
-# numerically with ``scorer.STRICT.correct_threshold`` but is not derived from it — the
-# strict gate is a training-data bar, this is a corpus-selection bar, and they are free
-# to move apart. ``added_shadda`` is excluded because a clip carrying one is a
-# mispronunciation as well as a repeat, which muddies a re-read oracle.
-CLEAN_RE_READ_MIN_RATIO = 0.75
+# The **clean re-read** predicate (Muraja ADR-0016 decision 2, as amended): a recitation
+# that matches its reference everywhere except for a repeated span. Two terms, both read
+# from :mod:`tadabur.scorer` rather than restated — the insertion-run floor is the gate's
+# own reject bar, so a clip clearing it would have passed and would not be here at all;
+# and ``added_shadda`` is excluded because a clip carrying one is a mispronunciation as
+# well as a repeat, which muddies a re-read oracle.
+#
+# A third term, ``match_ratio >= 0.75``, was **dropped** (``docs/tadabur-ratio-floor.md``,
+# #66). It was meant to keep the repeat as the only substantial divergence, but
+# ``match_ratio = score / query_phoneme_count``, so a repeat of length R inflates the
+# denominator while the numerator pays only the affine gap cost: the floor filters
+# *repeat length*, not correctness (``corr(match_ratio, run / query_length) = -0.825``,
+# median repeat 8 phonemes above the floor against 15 below it). It therefore removed the
+# longest re-reads first — the hard cases for Muraja's commit-and-trim (ADR-0009) — and
+# every one of the 17 adjudicated clips in the 0.70-0.75 band is a correct Hafs
+# recitation. Quality is assured downstream instead, by ADR-0016 decision 9's per-word
+# divergence mask and decision 10's adjudication by ear.
 
 
 @dataclass(frozen=True)
@@ -105,28 +112,22 @@ class RejectRecord:
     def is_clean_re_read(self) -> bool:
         """Whether this reject matches the clean-re-read predicate (see module docs)."""
         return is_clean_re_read(
-            match_ratio=self.match_ratio,
-            max_insertion_run=self.max_insertion_run,
-            added_shadda=self.added_shadda,
+            max_insertion_run=self.max_insertion_run, added_shadda=self.added_shadda
         )
 
 
-def is_clean_re_read(
-    match_ratio: float, max_insertion_run: int, added_shadda: bool
-) -> bool:
+def is_clean_re_read(max_insertion_run: int, added_shadda: bool) -> bool:
     """Whether a *rejected* clip's gate signals mark it as a clean re-read.
 
     Callers pass signals from a clip that already failed the gate; the predicate does
     not re-check ``passed``, because the insertion-run floor
-    (:data:`~tadabur.scorer.MAX_INSERTION_RUN`) is itself a gate reject — a clip
-    clearing it and this ratio would have passed. See the module docstring for why
-    each term is there.
+    (:data:`~tadabur.scorer.MAX_INSERTION_RUN`) is itself a gate reject — a clip clearing
+    it would have passed. ``match_ratio`` is deliberately **absent**: see the module
+    docstring for why the floor that read it was dropped, and
+    :func:`tadabur.bleed_detect.reject_band` for where the ratio still earns its keep — as
+    the *reporting* band the adjudication was organised into, not as an admission bar.
     """
-    return (
-        max_insertion_run >= MAX_INSERTION_RUN
-        and match_ratio >= CLEAN_RE_READ_MIN_RATIO
-        and not added_shadda
-    )
+    return max_insertion_run >= MAX_INSERTION_RUN and not added_shadda
 
 
 def reject_causes(predicted: str, result: GateResult, scorer: Scorer) -> tuple[str, ...]:

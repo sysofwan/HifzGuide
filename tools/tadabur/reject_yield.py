@@ -8,9 +8,10 @@ of them are the **clean re-reads** Muraja ADR-0016 actually wants.
 
 Two distributions are reported over the whole reject pile rather than just the matching
 subset, on purpose: ``max_insertion_run`` and ``match_ratio`` are the two thresholds the
-clean-re-read predicate is built from, so seeing their shape across *all* rejects is what
-lets the thresholds be second-guessed from data instead of re-argued from first
-principles. Causes are counted independently and therefore **overlap** — a clip can fail
+clean-re-read predicate was argued over, so seeing their shape across *all* rejects is
+what lets them be second-guessed from data instead of re-argued from first principles.
+That is how the ratio floor came to be dropped (#66) — it was the histogram, not an
+argument, that showed it filtering repeat length. Causes are counted independently and therefore **overlap** — a clip can fail
 the ratio bar and carry a long insertion run — so the shares sum to more than 100%; the
 alternative, a made-up precedence order, would hide exactly the clips worth looking at.
 
@@ -33,8 +34,10 @@ from .manifest import read_clips_processed, read_records
 from .rejects import REJECT_CAUSES, RejectRecord, read_reject_records
 
 # Width of a ``match_ratio`` histogram bucket. 0.05 puts the two bars that matter — the
-# ``.balanced`` pass bar at 0.65 and the clean-re-read floor at 0.75 — on bucket edges,
-# so neither threshold is straddled by the bucket that is supposed to justify it.
+# ``.balanced`` pass bar at 0.65 and the 0.75 floor #66 dropped from the clean-re-read
+# predicate — on bucket edges, so neither is straddled by the bucket that is supposed to
+# justify it. The dropped floor stays a bucket edge because the adjudication is keyed to
+# it (:data:`tadabur.bleed_detect.BAND_CLEAN_RATIO`).
 RATIO_BUCKET = 0.05
 
 

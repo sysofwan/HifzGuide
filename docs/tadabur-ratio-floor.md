@@ -31,11 +31,17 @@ a validity problem, not a sample-size one.
 `eval_fixtures/reject_reread_verdicts.jsonl` — 26 clips, by ear, against the audio, the Uthmani
 text, the Hafs reference and the vowel-retaining decode.
 
-| band | n | clean | non-Hafs |
+| band | judged / staged | clean | non-Hafs |
 | --- | --- | --- | --- |
-| 0.70 – 0.75 | 17 | **17** | 0 |
-| below 0.70 | 9 | 8 | **1** |
-| **total** | **26** | **25** | **1 (3.8%)** |
+| 0.70 – 0.75 | 17 / 17 | **17** | 0 |
+| below 0.70 | 9 / 9 | 8 | **1** |
+| >= 0.75 | 4 / 19 (spot check) | 4 | 0 |
+| shadda | 1 / 1 | 1 | 0 |
+| **total** | **31 / 46** | **30** | **1 (3.2%)** |
+
+The `>= 0.75` row is a spot check, not a pass: 4 of 19, all at the low end of the bucket
+(0.753–0.779). It is reassurance that the bucket behaves like the band, not clearance of it.
+Dropping the floor makes hearing every corpus clip mandatory regardless.
 
 **Every clip in the 0.70–0.75 band is a correct Hafs recitation** whose score was dragged down by
 the re-read itself. Below 0.70 the picture holds, with two qualifications recorded in the notes:

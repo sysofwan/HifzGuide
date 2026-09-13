@@ -179,6 +179,16 @@ class FilterManifest:
         self.close()
 
 
+def read_clips_processed(manifest_path: Path) -> int:
+    """The resume position recorded beside ``manifest_path``, or 0 if there is none.
+
+    The count of clips consumed from the stream, which is **not** recoverable from the
+    manifest itself: rejected and pre-gate-skipped clips leave no line there. A reader
+    reporting on a finished run needs it to turn passer counts into rates.
+    """
+    return _read_clips_processed(_checkpoint_path(Path(manifest_path)))
+
+
 def read_records(manifest_path: Path) -> list[ManifestRecord]:
     """Load every :class:`ManifestRecord` from ``manifest_path`` in file order.
 

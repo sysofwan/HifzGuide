@@ -22,6 +22,7 @@ from tadabur.scenario import (
     build_seams,
     covered_word_range,
     read_scenario_records,
+    unusable_reason,
     verify_bundle,
     warrants_early_start,
     write_scenario_records,
@@ -259,3 +260,27 @@ def test_a_record_the_oracle_could_not_use_is_caught_here_not_in_the_scoreboard(
     bundle = _bundle(tmp_path, _record("a", word_start=3, word_end=3, seams=()))
 
     assert verify_bundle(bundle) == ["a: covers no words", "a: carries no re-read seam"]
+
+
+# --- what a re-decode can cost a selected clip ---------------------------------------
+#
+# The stager applies these before writing a row; verify_bundle applies the same two
+# checks on the Mac after the transfer. The test above
+# (`..._caught_here_not_in_the_scoreboard`) pins the second half.
+
+
+def test_a_clip_that_lost_its_repeat_on_the_re_decode_is_dropped_not_staged():
+    # Selection reads the sink's decode of the *source* clip; the staged decode is of
+    # re-cut audio and can disagree. With no seam there is no re-read left to resolve.
+    assert unusable_reason([], 0, 5) == "no_seam"
+
+
+def test_a_clip_covering_no_whole_word_is_dropped_even_though_it_has_a_seam():
+    # Decision 1 asserts only over words wholly inside the alignment span. An empty
+    # range is an oracle with nothing to say, which scores as a silent zero if shipped.
+    assert unusable_reason([_coverage(anchored=True)], 7, 7) == "no_words"
+    assert unusable_reason([_coverage(anchored=True)], 7, 6) == "no_words"
+
+
+def test_a_clip_with_a_seam_and_covered_words_is_staged():
+    assert unusable_reason([_coverage(anchored=False)], 0, 5) is None

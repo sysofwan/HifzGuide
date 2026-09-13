@@ -189,6 +189,26 @@ def warrants_early_start(leading_trim: int) -> bool:
     return leading_trim >= EARLY_START_TRIM
 
 
+def unusable_reason(
+    seams: "list[SeamCoverage]", word_start: int, word_end: int
+) -> str | None:
+    """Why a re-decoded clip cannot enter the corpus, or ``None`` if it can.
+
+    The mirror of :func:`verify_bundle`'s last two checks, applied *before* the row is
+    written rather than after it ships. Selection reads the reject sink's stored decode;
+    by the time a clip has been re-cut and re-decoded it can have lost the repeat that
+    selected it, or have no word falling wholly inside the alignment's span. Either way
+    the oracle has nothing to assert — ADR-0016 decision 1 asserts only over covered
+    words, and there is nothing to resolve without a seam — so the clip is dropped and
+    counted, not shipped for the scoreboard to score as a silent zero.
+    """
+    if not seams:
+        return "no_seam"
+    if word_end <= word_start:
+        return "no_words"
+    return None
+
+
 def build_seams(seams: list[SeamCoverage]) -> tuple[Seam, ...]:
     """The record's seam list, from the seams found — not from the cuts that succeeded.
 
@@ -243,6 +263,9 @@ class StagingTally:
     Skips are named rather than summed into one number: an ayah the phonetizer cannot
     handle and an ayah whose word offsets disagree with the cached reference are different
     problems, and only the second would mean something is wrong.
+
+    ``drops`` is the same idea one stage later: a clip that was *selected* and then turned
+    out unusable once re-cut and re-decoded (:func:`unusable_reason`).
     """
 
     selected: int = 0
@@ -258,9 +281,13 @@ class StagingTally:
     pairs_attempted: int = 0
     pairs_kept: int = 0
     pair_refusals: dict[str, int] = field(default_factory=dict)
+    drops: dict[str, int] = field(default_factory=dict)
 
     def refuse(self, reason: str) -> None:
         self.pair_refusals[reason] = self.pair_refusals.get(reason, 0) + 1
+
+    def drop(self, reason: str) -> None:
+        self.drops[reason] = self.drops.get(reason, 0) + 1
 
 
 def verify_bundle(directory: Path) -> list[str]:
@@ -512,6 +539,10 @@ def main() -> None:
         )
 
         clip_id = Path(record.audio_filename).stem
+        reason = unusable_reason(seams, word_start, word_end)
+        if reason is not None:
+            tally.drop(reason)
+            continue
         sf.write(
             audio_dir / f"{clip_id}.wav", waveform, TARGET_SAMPLE_RATE, subtype="PCM_16"
         )

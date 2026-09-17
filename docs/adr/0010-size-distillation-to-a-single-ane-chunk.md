@@ -112,6 +112,22 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
     rather than being masked — they still drive the provisional display and the hallucination
     gate — but the region that becomes the transcript is worth more.
 
+- **A CTC anchor on the teacher's decoded sequence is part of the objective, not an
+  optional extra.** The frame-weighted KL and the feature loss are both *per-frame*
+  objectives, and a per-frame objective cannot break alignment symmetry: until the student
+  knows which frames carry which phoneme, blank is the locally optimal answer at every
+  individual frame, so all-blank is a stable fixed point. Reweighting frames does not help,
+  because the problem is not which frames are weighted.
+
+  Measured, not assumed. Running the KL-only recipe to step 2000 and then measuring over
+  teacher-non-blank frames gave P(teacher's class) = **0.027** at rank **8.2**, against
+  P(blank) = **0.822** — while top-5 agreement of **0.51** (chance: 0.12) showed the encoder
+  had genuinely learned. The representation was forming; the alignment was not.
+
+  `ctc_anchor_loss` is the standard fix: a *sequence* objective whose forward-backward sums
+  over every valid alignment, under which an all-blank output has probability zero for any
+  non-empty target. The basin stops being a fixed point.
+
 - **The release gate is confirmed-stream agreement, not frame agreement.** Frame agreement is
   cheap and smooth and so is used during training, but it averages over 100 timesteps the
   user never sees. `training.distill_eval` replays the deployed sliding-window protocol —
@@ -125,12 +141,18 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   training windows at a 2.5 s stride. Unlabelled, unfiltered audio is usable, so this scales
   to the remaining Tadabur shards whenever the student needs more.
 
-- **Blank collapse is the main training risk.** The trivial solution — predict blank
-  everywhere — scores ~67% frame agreement for free, because that is the teacher's blank
-  rate. It is the observed starting basin in practice. `agreement_stats` reports
-  `blank_collapse_margin` and `nonblank_agreement` every logging step precisely so a run
-  parked there is visible immediately rather than at the end, and `--nonblank-weight` is the
-  knob for it.
+- **Blank collapse is the main training risk, and argmax metrics cannot diagnose it.** The
+  trivial solution — predict blank everywhere — scores ~67% frame agreement for free,
+  because that is the teacher's blank rate, and it is the observed starting basin in
+  practice. `agreement_stats` makes a parked run visible immediately via
+  `blank_collapse_margin` and `nonblank_agreement`.
+
+  But those cannot tell you whether to keep waiting: `nonblank_agreement` reads a flat 0.0
+  for thousands of steps whether the teacher's class holds 40% of the student's mass or
+  0.1%, because argmax is a step function. `breakout_stats` reports the continuous
+  quantities instead — `target_prob`, `target_rank`, `prob_margin` — so the decision to
+  intervene is measured. It is what turned "this looks slow" into the concrete finding
+  above, and it corrected an earlier read of the same run as nearly escaped.
 
 - **Palettization itself behaves exactly as advertised; the risk is accuracy, not size.**
   Both measured exports land at the nominal 6/8 bytes per graph value (0.753 and 0.756), so

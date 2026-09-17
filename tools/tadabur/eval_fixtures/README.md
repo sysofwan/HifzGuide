@@ -60,3 +60,41 @@ ignored. Fields (see `EvalFixtureEntry` in `../eval_fixtures.py`):
 ```json
 {"clip_id": "acc-0001", "audio_ref": "reciter42/002/000123.wav", "surah_ayah": "2:255", "contrast": "س↔ص", "verdict": "accept", "note": "amateur س reads slightly emphatic; still acceptable"}
 ```
+
+---
+
+# `reject_reread_verdicts.jsonl` — what the ear says about a mined re-read
+
+A different fixture with a different job. The two files above label *pronunciation* on
+clips the gate **admitted**; this one labels *transmission* on clips the gate
+**rejected** and ADR-0016 mines anyway (`tadabur.rejects.is_clean_re_read`).
+
+The question it answers is narrow. `normalize_phonemes` deletes short vowels, so a
+wholly non-Hafs recitation can score a perfect `match_ratio` — no automated screen can
+see it. ADR-0016 decision 10 originally answered that by requiring every corpus clip to
+be heard; the amendment replaced that with a **sampled audit** (`tadabur.reread_audit`),
+on the argument that a *vowel-only* divergence cannot move the alignment cursor and is
+therefore inert to everything the corpus measures.
+
+That argument is only as good as vowel-only dominance, which is why the schema carries
+`divergence` and why a blank one on a `nonhafs` row is reported as `unclassified` rather
+than folded into the inert bucket.
+
+| field               | type   | notes                                                            |
+| ------------------- | ------ | ---------------------------------------------------------------- |
+| `clip_id`           | string | staged clip id; `audio/<clip_id>.wav` in the scenario bundle      |
+| `audio_ref`         | string | Tadabur `audio_filename`                                          |
+| `surah_ayah`        | string | `"surah:ayah"`                                                    |
+| `reciter_id`        | int    | joins to the manifest                                             |
+| `match_ratio`       | float  | the gate's ratio, for context — never the basis of the verdict    |
+| `band`              | string | which ratio band the clip was drawn from                          |
+| `verdict`           | string | `"clean"` or `"nonhafs"`                                          |
+| `divergence`        | string | on `nonhafs`: `"vowel_only"` or `"consonantal"`; else `""`        |
+| `note`              | string | optional free text (bleed, unfinished ayah, anything heard)       |
+
+```bash
+# Draw the sample and stage its audio off a bundle, then listen and append rows here.
+python -m tadabur.reread_audit --bundle corpus_run/scenario --out corpus_run/audit --size 50
+# What the verdicts so far say.
+python -m tadabur.reread_audit --summary
+```

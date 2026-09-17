@@ -45,6 +45,14 @@ RATIO_BUCKET = 0.05
 class RejectYield:
     """What one filtering run yielded, from the gate's verdicts alone.
 
+    Two ``max_insertion_run`` histograms are kept apart on purpose.
+    ``insertion_run_histogram`` spans every reject — the shape the predicate's threshold
+    is argued against — while ``clean_re_read_run_histogram`` spans only the matching
+    subset, and is the **corpus's own repeat-length distribution**. ADR-0016 dropped the
+    ratio floor to keep the long re-reads (ADR-0009's hard case), so a corpus whose runs
+    cluster at the 5-phoneme threshold is not the one the decision intended, and only the
+    second histogram can say so.
+
     ``clips_processed`` is the checkpoint's count — every clip consumed from the stream,
     including the ``skipped_before_gate`` ones (over-long, or without a cached reference)
     that were dropped before the decode and so are in neither other bucket. Rates are
@@ -67,6 +75,7 @@ class RejectYield:
     cause_counts: dict[str, int] = field(default_factory=dict)
     cause_shares_of_rejects: dict[str, float] = field(default_factory=dict)
     insertion_run_histogram: dict[str, int] = field(default_factory=dict)
+    clean_re_read_run_histogram: dict[str, int] = field(default_factory=dict)
     match_ratio_histogram: dict[str, int] = field(default_factory=dict)
     clean_re_read_top_reciters: list[tuple[int, int]] = field(default_factory=list)
 
@@ -104,6 +113,9 @@ def compute_yield(
         },
         insertion_run_histogram=_histogram(
             Counter(record.max_insertion_run for record in rejects)
+        ),
+        clean_re_read_run_histogram=_histogram(
+            Counter(record.max_insertion_run for record in clean)
         ),
         match_ratio_histogram=_histogram(
             Counter(_ratio_bucket(record.match_ratio) for record in rejects)

@@ -1,0 +1,121 @@
+"""Tests for the thin-student sizing ladder.
+
+The analytic path is torch-free and always runs. The instantiation tests need torch and
+the vendored Muaalem package, so they are skipped when those are unavailable -- the CI
+box for this repo is the CUDA machine, but the sizing arithmetic must stay checkable
+anywhere.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from training import distill_student as ds
+
+
+# --- The shape contract is what makes a student a drop-in at all ---------------------
+
+
+def test_presets_all_keep_teacher_depth():
+    """Depth is the axis we do not cut -- see the module docstring and section 6."""
+    for spec in ds.PRESETS.values():
+        assert spec.num_hidden_layers == ds.TEACHER_NUM_LAYERS
+
+
+def test_presets_hold_the_teacher_ffn_ratio():
+    """One axis varies, so the agreement-vs-size curve is interpretable."""
+    teacher_ratio = ds.TEACHER_INTERMEDIATE_SIZE / ds.TEACHER_HIDDEN_SIZE
+    for spec in ds.PRESETS.values():
+        assert spec.intermediate_size / spec.hidden_size == teacher_ratio
+
+
+def test_head_divides_width():
+    for spec in ds.PRESETS.values():
+        assert spec.hidden_size % spec.num_attention_heads == 0
+
+
+def test_rejects_indivisible_width():
+    with pytest.raises(ValueError, match="not divisible"):
+        ds.StudentSpec("bad", hidden_size=384, intermediate_size=1536, num_attention_heads=7)
+
+
+# --- The size model is calibrated against a measurement, so pin it to that ----------
+
+
+def test_six_bit_model_reproduces_the_measured_teacher():
+    """504 MB measured at 6-bit (section 3.3). The calibrated model must land near it.
+
+    The analytic parameter count runs ~3.5% under the instantiated count (it omits the
+    relative-position embeddings), so the reproduction is checked at 5%.
+    """
+    teacher = ds.teacher_sizing()
+    assert teacher.size_6bit_mb == pytest.approx(504.0, rel=0.05)
+
+
+def test_six_bit_is_three_quarters_of_int8():
+    """The measured 504/672 ratio is exactly 6/8; a regression here breaks the table."""
+    assert ds.PALETTIZED_6BIT_RATIO == pytest.approx(0.75)
+    assert ds.BYTES_PER_PARAM_6BIT == pytest.approx(ds.BYTES_PER_PARAM_INT8 * 0.75)
+
+
+def test_chunking_follows_the_demonstrated_ceiling():
+    """A student at or under the proven 99 MB chunk is one chunk; past it, more."""
+    one_chunk_params = int(90 * 1024 * 1024 / ds.BYTES_PER_PARAM_6BIT)
+    assert ds.estimated_chunks(one_chunk_params) == 1
+
+    two_chunk_params = int(120 * 1024 * 1024 / ds.BYTES_PER_PARAM_6BIT)
+    assert ds.estimated_chunks(two_chunk_params) == 2
+
+
+def test_h384_is_a_single_chunk_and_h512_is_not():
+    """The load-bearing sizing claim: h384 fits one ANE chunk, h512 needs two."""
+    h384 = ds.size_student(ds.PRESETS["h384"])
+    h512 = ds.size_student(ds.PRESETS["h512"])
+    assert h384.chunks == 1
+    assert h384.size_6bit_mb < ds.PROVEN_MAX_CHUNK_MB
+    assert h512.chunks == 2
+
+
+def test_flop_ratio_is_quadratic_in_width_at_equal_depth():
+    h512 = ds.PRESETS["h512"]
+    assert h512.flop_ratio == pytest.approx(0.25)     # (512/1024)^2
+    assert ds.PRESETS["h256"].flop_ratio == pytest.approx(0.0625)
+
+
+def test_flop_ratio_accounts_for_depth():
+    half_depth = ds.replace(ds.PRESETS["h512"], num_hidden_layers=12)
+    assert half_depth.flop_ratio == pytest.approx(0.125)
+
+
+# --- Instantiation: the analytic table must track the real model --------------------
+
+torch = pytest.importorskip("torch", reason="instantiation tests need torch")
+pytest.importorskip("tadabur.muaalem", reason="needs the vendored Muaalem package")
+
+
+@pytest.mark.parametrize("name", sorted(ds.PRESETS))
+def test_student_honours_the_deployed_shape_contract(name):
+    """(1, 250, 160) -> (1, 125, 43), or it cannot replace the teacher."""
+    model = ds.build_student(ds.PRESETS[name])
+    frames, classes = ds.verify_shape_contract(model)
+    assert (frames, classes) == (ds.DEPLOYED_LOGIT_FRAMES, ds.NUM_PHONEME_CLASSES)
+
+
+@pytest.mark.parametrize("name", sorted(ds.PRESETS))
+def test_analytic_estimate_tracks_the_real_parameter_count(name):
+    """The table is a planning tool; it may under-count but must not drift far.
+
+    The known gap is the relative-position embeddings, which the estimate omits; it runs
+    consistently ~3.5% low. Anything past 6% means the architecture changed under us.
+    """
+    spec = ds.PRESETS[name]
+    model = ds.build_student(spec)
+    measured = ds.count_parameters(model)
+    assert ds.estimate_params(spec) == pytest.approx(measured, rel=0.06)
+
+
+@pytest.mark.parametrize("name", sorted(ds.PRESETS))
+def test_student_carries_only_the_phoneme_head(name):
+    """The 10 sifat heads must cost no parameters and take no gradient."""
+    model = ds.build_student(ds.PRESETS[name])
+    assert set(model.level_to_lm_head.keys()) == {ds.PHONEME_LEVEL}

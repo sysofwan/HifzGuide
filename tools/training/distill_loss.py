@@ -328,6 +328,25 @@ def ctc_anchor_loss(
     Uses ``zero_infinity=True``: a window whose teacher decode is longer than the 125-frame
     lattice can accommodate has infinite loss, and one such window would otherwise destroy
     the batch's gradient.
+
+    **Reference scale, measured on 32 windows of the Tadabur corpus** (teacher targets
+    average 29 tokens over the 125-frame lattice, none empty):
+
+    ===========================  ==========
+    student                      ctc loss
+    ===========================  ==========
+    argmax blank everywhere       **17.76**
+    matching the teacher           **0.19**
+    ===========================  ==========
+
+    Worth knowing because the number is not read the way it looks. A student whose *argmax*
+    is blank on 100% of frames still scored **3.3** here -- far nearer the floor than the
+    ceiling -- because CTC marginalises over every alignment, so spreading a little
+    probability onto the target tokens satisfies it without ever winning an argmax. That is
+    the classic non-peaky CTC regime, and it means a plateau around 3 is not the term
+    failing to apply; it is the term being nearly satisfied while the decode is still empty.
+    Driving it the rest of the way to ~0.2 is what forces peaky, decodable output, and
+    ``--ctc-weight`` is the lever if that descent stalls.
     """
     log_probs = F.log_softmax(student_logits.float(), dim=-1).transpose(0, 1)
     targets, target_lengths = teacher_target_sequences(teacher_logits)

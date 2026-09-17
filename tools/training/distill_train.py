@@ -62,6 +62,7 @@ from training.distill_loss import (
     DistillLossConfig,
     FeatureProjector,
     agreement_stats,
+    breakout_stats,
     distillation_loss,
 )
 from training.distill_student import (
@@ -244,7 +245,11 @@ def evaluate(
         with torch.autocast("cuda", dtype=torch.bfloat16):
             teacher_logits = teacher(features, return_dict=True)["logits"]["phonemes"]
             student_logits = student(features, return_dict=True)["logits"]["phonemes"]
+        # Agreement plus the continuous distance-from-breakout. While the student sits in
+        # the all-blank basin, argmax agreement is a flat 0 whether the run is converging
+        # or stuck; target_prob / target_rank are what move.
         stats = agreement_stats(student_logits, teacher_logits).as_dict()
+        stats.update(breakout_stats(student_logits, teacher_logits).as_dict())
         for key, value in stats.items():
             totals[key] = totals.get(key, 0.0) + value
         count += 1

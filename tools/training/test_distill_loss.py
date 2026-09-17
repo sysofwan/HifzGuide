@@ -187,6 +187,74 @@ def test_confirmed_agreement_tracks_only_the_confirmed_region():
     assert stats.overall_agreement < 0.3
 
 
+# --- Distance from breakout ---------------------------------------------------------
+
+
+def test_breakout_reports_agreement_as_rank_one():
+    """A student that already matches the teacher is rank 1 with no margin to close."""
+    teacher = _blank_dominated_logits(nonblank_frames=tuple(range(40, 90)))
+    stats = dl.breakout_stats(teacher.clone(), teacher)
+    assert stats.target_rank == pytest.approx(1.0)
+    assert stats.prob_margin < 0
+    assert stats.top5_agreement == pytest.approx(1.0)
+
+
+def test_breakout_separates_nearly_escaped_from_hopeless():
+    """The distinction argmax agreement cannot make: both score nonblank_agreement 0."""
+    teacher = _blank_dominated_logits(nonblank_frames=tuple(range(40, 90)))
+
+    # Nearly escaped: blank narrowly ahead of the correct class.
+    close = torch.full_like(teacher, -5.0)
+    close[:, :, dl.BLANK_ID] = 1.0
+    close[:, 40:90, 7] = 0.9
+
+    # Hopeless: blank overwhelming, and a crowd of distractors above the correct class,
+    # which is where it actually sits when the student has learned nothing useful.
+    far = torch.full_like(teacher, -5.0)
+    far[:, :, dl.BLANK_ID] = 10.0
+    far[:, 40:90, 11:20] = 2.0   # nine distractors outrank the target
+    far[:, 40:90, 7] = -5.0
+
+    close_stats = dl.breakout_stats(close, teacher)
+    far_stats = dl.breakout_stats(far, teacher)
+
+    # Argmax cannot tell them apart...
+    assert dl.agreement_stats(close, teacher).nonblank_agreement == pytest.approx(0.0)
+    assert dl.agreement_stats(far, teacher).nonblank_agreement == pytest.approx(0.0)
+
+    # ...but the continuous view can.
+    assert close_stats.target_rank < far_stats.target_rank
+    assert close_stats.target_prob > far_stats.target_prob
+    assert close_stats.prob_margin < far_stats.prob_margin
+
+
+def test_breakout_rank_counts_classes_scoring_higher():
+    teacher = _blank_dominated_logits(nonblank_frames=(10,))
+    student = torch.full_like(teacher, -5.0)
+    student[:, 10, dl.BLANK_ID] = 3.0   # blank highest
+    student[:, 10, 11] = 2.0            # a distractor second
+    student[:, 10, 7] = 1.0             # teacher's class third
+    stats = dl.breakout_stats(student, teacher)
+    assert stats.target_rank == pytest.approx(3.0)
+
+
+def test_breakout_ignores_blank_frames():
+    """Measured only where the student is failing -- teacher-non-blank frames."""
+    teacher = _blank_dominated_logits(nonblank_frames=(10,))
+    student = _blank_dominated_logits(nonblank_frames=(10,))
+    stats = dl.breakout_stats(student, teacher)
+    # Only frame 10 is scored; the student matches there, so rank is 1.
+    assert stats.target_rank == pytest.approx(1.0)
+
+
+def test_breakout_handles_an_all_blank_teacher():
+    """No non-blank frames to score -- must not divide by zero."""
+    teacher = _blank_dominated_logits()
+    stats = dl.breakout_stats(teacher.clone(), teacher)
+    assert stats.target_prob == 0.0
+    assert stats.target_rank == 0.0
+
+
 # --- The assembled objective --------------------------------------------------------
 
 

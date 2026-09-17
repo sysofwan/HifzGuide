@@ -56,7 +56,7 @@ from training.distill_data import (
     discover_clips,
     split_clips,
 )
-from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS
+from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS, breakout_stats
 from training.distill_student import PRESETS, build_student
 
 # The device advances its buffer by 1 s per confirmed pass; at 125 timesteps per 5 s window
@@ -253,12 +253,58 @@ def load_student_from_checkpoint(checkpoint_path: Path, device: torch.device):
     return student, preset, state["step"]
 
 
+def run_breakout_diagnostic(
+    checkpoint: Path, audio_root: Path, val_fraction: float, num_windows: int
+) -> dict:
+    """Is a blank-collapsed student converging or stuck? Measured, not guessed.
+
+    Exists because argmax agreement is useless inside the all-blank basin: it reads a flat
+    0 for thousands of steps whether the correct class holds 40% of the student's mass or
+    0.1%. This reports the continuous quantities instead -- see
+    :class:`training.distill_loss.BreakoutStats`.
+    """
+    import torch as _torch
+    from torch.utils.data import DataLoader
+
+    from training.distill_data import DistillWindowDataset, build_window_index
+    from training.distill_train import load_teacher
+
+    device = _torch.device("cuda")
+    student, preset, step = load_student_from_checkpoint(checkpoint, device)
+    teacher = load_teacher(device)
+
+    _, val_clips = split_clips(discover_clips(audio_root), val_fraction)
+    refs = build_window_index(val_clips)[:num_windows]
+    loader = DataLoader(DistillWindowDataset(refs), batch_size=16, num_workers=4)
+
+    totals: dict[str, float] = {}
+    batches = 0
+    for features in loader:
+        features = features.to(device)
+        with _torch.no_grad(), _torch.autocast("cuda", dtype=_torch.bfloat16):
+            teacher_logits = teacher(features, return_dict=True)["logits"]["phonemes"]
+            student_logits = student(features, return_dict=True)["logits"]["phonemes"]
+        for key, value in breakout_stats(student_logits, teacher_logits).as_dict().items():
+            totals[key] = totals.get(key, 0.0) + value
+        batches += 1
+
+    averaged = {k: round(v / max(1, batches), 4) for k, v in totals.items()}
+    return {"preset": preset, "step": step, "windows": len(refs), **averaged}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Confirmed-stream agreement between a distilled student and the teacher"
     )
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--audio-root", type=Path, required=True)
+    parser.add_argument(
+        "--breakout",
+        action="store_true",
+        help="report distance-from-breakout instead of stream agreement; use while the "
+        "student is still blank-collapsed, when argmax agreement is uninformative",
+    )
+    parser.add_argument("--num-windows", type=int, default=320)
     parser.add_argument(
         "--num-clips", type=int, default=200, help="held-out clips to evaluate"
     )
@@ -270,6 +316,22 @@ def main() -> None:
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is required")
     device = torch.device("cuda")
+
+    if args.breakout:
+        report = run_breakout_diagnostic(
+            args.checkpoint, args.audio_root, args.val_fraction, args.num_windows
+        )
+        if args.json:
+            print(json.dumps(report, indent=2))
+            return
+        print(f"\nBreakout diagnostic -- {report['preset']} @ step {report['step']}")
+        print(f"  windows              {report['windows']}")
+        print(f"  P(teacher's class)   {report['target_prob']:.4f}")
+        print(f"  rank of that class   {report['target_rank']:.2f}   (1.0 = agrees)")
+        print(f"  P(blank)             {report['blank_prob']:.4f}")
+        print(f"  margin blank-target  {report['prob_margin']:+.4f}  (<=0 means escaped)")
+        print(f"  top-5 agreement      {report['top5_agreement']:.4f}")
+        return
 
     import soundfile as sf
     from transformers import SeamlessM4TFeatureExtractor

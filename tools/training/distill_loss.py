@@ -263,6 +263,70 @@ def agreement_stats(
 
 
 @dataclass(frozen=True)
+class BreakoutStats:
+    """How far a blank-collapsed student is from emitting phonemes at all.
+
+    Early in distillation the student parks in the all-blank basin, where
+    :class:`AgreementStats` reports ``nonblank_agreement == 0`` and stays there for
+    thousands of steps whether the run is healthy or genuinely stuck. Argmax is a step
+    function; it cannot distinguish "the right class holds 40% and is about to overtake
+    blank" from "the right class holds 0.1%". These are the continuous quantities that can,
+    all measured **on teacher-non-blank frames only** -- the frames the student is failing.
+
+    ``target_prob`` is the probability the student puts on the class the teacher chose, and
+    ``target_rank`` is where that class sits in the student's own ranking (1 = argmax). A
+    run with rank near 2 and target_prob climbing is converging normally; rank in the tens
+    with flat target_prob is stuck, and no amount of further patience will fix it.
+    """
+
+    target_prob: float          # student P(teacher's argmax class)
+    target_rank: float          # 1 = student already agrees
+    blank_prob: float           # student P(blank) on those same frames
+    top5_agreement: float       # teacher's class within the student's top 5
+
+    @property
+    def prob_margin(self) -> float:
+        """How much more probability blank holds than the correct class. <=0 means escaped."""
+        return self.blank_prob - self.target_prob
+
+    def as_dict(self) -> dict:
+        return {
+            "target_prob": round(self.target_prob, 4),
+            "target_rank": round(self.target_rank, 2),
+            "blank_prob": round(self.blank_prob, 4),
+            "top5_agreement": round(self.top5_agreement, 4),
+            "prob_margin": round(self.prob_margin, 4),
+        }
+
+
+@torch.no_grad()
+def breakout_stats(
+    student_logits: torch.Tensor, teacher_logits: torch.Tensor
+) -> BreakoutStats:
+    """Continuous distance-from-breakout, over teacher-non-blank frames only."""
+    teacher_ids = teacher_logits.argmax(dim=-1)
+    nonblank = teacher_ids != BLANK_ID
+    if not bool(nonblank.any()):
+        return BreakoutStats(0.0, 0.0, 0.0, 0.0)
+
+    probs = F.softmax(student_logits.float(), dim=-1)[nonblank]
+    targets = teacher_ids[nonblank]
+
+    target_prob = probs.gather(1, targets.unsqueeze(1)).squeeze(1)
+    # Rank of the target class: 1 + how many classes the student scores strictly higher.
+    rank = (probs > target_prob.unsqueeze(1)).sum(dim=1) + 1
+    top5 = probs.topk(min(5, probs.shape[1]), dim=-1).indices
+    in_top5 = (top5 == targets.unsqueeze(1)).any(dim=1)
+
+    return BreakoutStats(
+        target_prob=target_prob.mean().item(),
+        target_rank=rank.float().mean().item(),
+        blank_prob=probs[:, BLANK_ID].mean().item(),
+        top5_agreement=in_top5.float().mean().item(),
+    )
+
+
+@dataclass(frozen=True)
 class DistillLossConfig:
     """Weights and knobs for :func:`distillation_loss`."""
 

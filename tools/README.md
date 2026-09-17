@@ -321,14 +321,25 @@ target, so any recitation audio is training data) and **only the phoneme head is
   windows are kept and zero-padded because the device pads too (5 of its ~6 inferences per
   second run on a partially filled buffer). The train/val split hashes the **clip** name, so
   overlapping windows cannot leak across it.
-- **`distill_loss`** — frame-weighted logit KL + tapped feature matching. Non-blank frames are
-  up-weighted because CTC output is blank-dominated (per Muraja's `CTCStats`, 30–60% blank
-  during speech, 85–98% during silence), so a flat KL is mostly a lesson in predicting blank;
-  this is the mirror image of what `training.waqf_head` solved with `pause_frame_weights`, and
-  takes the same two answers — a weighting and a collapse diagnostic. The first **25**
-  timesteps are up-weighted because `predictSplit` commits only those to the transcript
-  (`seg.midpoint < 25`), a phoneme being confirmed when its window position is *oldest* and it
-  has the full 4 s of right context.
+- **`distill_loss`** — frame-weighted logit KL + tapped feature matching + a CTC anchor.
+  Non-blank frames are up-weighted because CTC output is blank-dominated (per Muraja's
+  `CTCStats`, 30–60% blank during speech, 85–98% during silence), so a flat KL is mostly a
+  lesson in predicting blank; this is the mirror image of what `training.waqf_head` solved
+  with `pause_frame_weights`, and takes the same two answers — a weighting and a collapse
+  diagnostic. The first **25** timesteps are up-weighted because `predictSplit` commits only
+  those to the transcript (`seg.midpoint < 25`), a phoneme being confirmed when its window
+  position is *oldest* and it has the full 4 s of right context.
+
+  **Neither of those escapes the all-blank basin**, which is why `ctc_anchor_loss` exists.
+  Both are *per-frame* objectives, and a per-frame objective cannot break alignment
+  symmetry: until the student knows which frames carry which phoneme, blank is locally
+  optimal at every frame, so all-blank is a stable fixed point — reweighting frames does not
+  help, because the problem is not which frames are weighted. Measured on the KL-only recipe
+  at step 2000, the teacher's class sat at rank **8.2** with P=**0.027** against blank's
+  **0.822**, while top-5 agreement of 0.51 (chance 0.12) showed the encoder had genuinely
+  learned. The CTC anchor is a *sequence* objective against the teacher's decoded tokens: its
+  forward-backward sums over every valid alignment, and an all-blank output has probability
+  zero under any alignment of a non-empty target. `--ctc-weight 0` reproduces the old recipe.
 - **`distill_train`** — frozen bf16 teacher **online** rather than cached: caching its logits
   is cheap but forfeits feature matching, and caching hidden states costs ~3 MB/window
   (terabytes). Carries the `whole_clip_phoneme` VRAM preflight pattern — measured **10.97 GiB

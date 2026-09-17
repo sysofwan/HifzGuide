@@ -283,8 +283,82 @@ def test_loss_weights_are_respected():
     teacher_hidden = tuple(torch.randn(2, 250, 32) for _ in range(25))
     projector = dl.FeatureProjector(16, 32, num_taps=len(dl.DEFAULT_TAP_LAYERS))
 
-    config = dl.DistillLossConfig(feature_weight=0.0)
+    config = dl.DistillLossConfig(feature_weight=0.0, ctc_weight=0.0)
     output = dl.distillation_loss(
         student_logits, teacher_logits, student_hidden, teacher_hidden, projector, config
     )
     assert float(output.total.detach()) == pytest.approx(output.logit_loss, rel=1e-5)
+
+
+# --- The CTC anchor: the term that makes all-blank unstable --------------------------
+
+
+def test_teacher_targets_collapse_repeats_and_drop_blanks():
+    """Standard CTC collapse -- the same one scanCTC does on device."""
+    logits = torch.full((1, 8, 43), -5.0)
+    # sequence: blank, 7, 7, blank, 7, 9, 9, blank  ->  [7, 7, 9]
+    for step, token in enumerate([0, 7, 7, 0, 7, 9, 9, 0]):
+        logits[0, step, token] = 5.0
+    targets, lengths = dl.teacher_target_sequences(logits)
+    assert lengths.tolist() == [3]
+    assert targets.tolist() == [7, 7, 9]
+
+
+def test_all_blank_teacher_yields_an_empty_target():
+    logits = _blank_dominated_logits(batch=1)
+    targets, lengths = dl.teacher_target_sequences(logits)
+    assert lengths.tolist() == [0]
+    assert targets.numel() == 0
+
+
+def test_ctc_anchor_punishes_the_all_blank_student():
+    """The load-bearing property: all-blank has probability zero under any alignment.
+
+    This is precisely what the frame-wise KL cannot express -- an all-blank student scores
+    a *better* per-frame KL than a wrong-token one, which is why the basin is stable
+    without this term.
+    """
+    teacher = _blank_dominated_logits(nonblank_frames=tuple(range(40, 60)))
+    all_blank = _blank_dominated_logits()
+    matching = teacher.clone()
+
+    assert dl.ctc_anchor_loss(all_blank, teacher) > dl.ctc_anchor_loss(matching, teacher)
+
+
+def test_ctc_anchor_is_finite_and_small_for_a_matching_student():
+    teacher = _blank_dominated_logits(nonblank_frames=tuple(range(40, 60)))
+    loss = dl.ctc_anchor_loss(teacher.clone(), teacher)
+    assert torch.isfinite(loss)
+    assert loss.item() >= 0.0
+
+
+def test_ctc_anchor_is_zero_when_the_teacher_decodes_to_nothing():
+    """No target means no sequence constraint -- must not produce NaN."""
+    teacher = _blank_dominated_logits()
+    loss = dl.ctc_anchor_loss(_logits(), teacher)
+    assert loss.item() == pytest.approx(0.0)
+
+
+def test_ctc_anchor_backprops():
+    teacher = _blank_dominated_logits(nonblank_frames=tuple(range(40, 60)))
+    student = _blank_dominated_logits().requires_grad_(True)
+    dl.ctc_anchor_loss(student, teacher).backward()
+    assert student.grad is not None
+    assert torch.isfinite(student.grad).all()
+
+
+def test_ctc_weight_zero_reproduces_the_old_objective():
+    student_logits = _logits(seed=11)
+    teacher_logits = _logits(seed=12)
+    student_hidden = tuple(torch.randn(2, 250, 16) for _ in range(25))
+    teacher_hidden = tuple(torch.randn(2, 250, 32) for _ in range(25))
+    projector = dl.FeatureProjector(16, 32, num_taps=len(dl.DEFAULT_TAP_LAYERS))
+
+    off = dl.distillation_loss(
+        student_logits, teacher_logits, student_hidden, teacher_hidden, projector,
+        dl.DistillLossConfig(ctc_weight=0.0),
+    )
+    assert off.ctc_loss == 0.0
+    assert float(off.total.detach()) == pytest.approx(
+        off.logit_loss + off.feature_loss, rel=1e-5
+    )

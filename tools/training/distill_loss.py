@@ -31,6 +31,18 @@ representation per 20 ms. :func:`feature_matching_loss` regresses the student's 
 states onto the teacher's at several tapped depths through a learned projection, which is
 what DistilHuBERT/FitHuBERT-style recipes use to keep fine phonetic structure alive in a
 thin student.
+
+**Neither of those escapes the all-blank basin, so there is a third term.** Both the KL and
+the feature loss are *per-frame* objectives, and per-frame objectives have no way to break
+alignment symmetry: if the student has not yet learned which frames carry which phoneme,
+answering blank everywhere is locally optimal at every single frame, and all-blank is a
+stable fixed point. Measured on this exact recipe at step 2000, the teacher's class sat at
+rank **8.2** with probability **0.027** against blank's **0.822** -- not remotely close to
+escaping, despite top-5 agreement of 0.51 showing the encoder had learned real signal.
+:func:`ctc_anchor_loss` adds the standard fix: a *sequence* objective whose
+forward-backward sums over every valid alignment, under which an all-blank output has
+probability zero for any non-empty target. See :class:`BreakoutStats` for the measurement
+that distinguishes "converging slowly" from "stuck", which argmax agreement cannot.
 """
 
 from __future__ import annotations
@@ -262,6 +274,83 @@ def agreement_stats(
     )
 
 
+@torch.no_grad()
+def teacher_target_sequences(
+    teacher_logits: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Greedy-decode the teacher into CTC target sequences: ``(flat_targets, lengths)``.
+
+    Standard CTC collapse of the teacher's argmax -- merge runs of the same token, drop
+    blanks -- which is exactly what ``MuaalemInference.scanCTC`` does on device, so the
+    targets are the tokens the teacher would actually have put on screen.
+
+    Returned flat (concatenated) rather than padded because that is the form
+    ``F.ctc_loss`` takes without needing a padding value that could collide with a real
+    class id.
+    """
+    ids = teacher_logits.argmax(dim=-1)
+    sequences = []
+    for row in ids:
+        previous = -1
+        tokens = []
+        for token in row.tolist():
+            if token != previous and token != BLANK_ID:
+                tokens.append(token)
+            previous = token
+        sequences.append(tokens)
+
+    lengths = torch.tensor(
+        [len(s) for s in sequences], dtype=torch.long, device=teacher_logits.device
+    )
+    flat = torch.tensor(
+        [t for s in sequences for t in s], dtype=torch.long, device=teacher_logits.device
+    )
+    return flat, lengths
+
+
+def ctc_anchor_loss(
+    student_logits: torch.Tensor, teacher_logits: torch.Tensor
+) -> torch.Tensor:
+    """CTC loss against the teacher's decoded sequence -- the term that breaks blank collapse.
+
+    Frame-weighted KL alone has no mechanism to escape the all-blank basin. It is a
+    *per-frame* objective: it can tell the student that frame 61 should have been a qaf,
+    but if the student's representation does not yet align phonemes to frames, every
+    individual frame is cheapest to answer with blank, and there is no gradient pressure
+    toward emitting the token *somewhere*. All-blank is a stable fixed point.
+
+    CTC loss is the standard answer because it is a *sequence* objective. Its
+    forward-backward sums over every valid alignment of the target to the input, so the
+    student is rewarded for emitting the right tokens in the right order regardless of
+    which frames it picks -- and the all-blank output has probability zero under any
+    alignment of a non-empty target, so the basin is not a fixed point at all.
+
+    Uses ``zero_infinity=True``: a window whose teacher decode is longer than the 125-frame
+    lattice can accommodate has infinite loss, and one such window would otherwise destroy
+    the batch's gradient.
+    """
+    log_probs = F.log_softmax(student_logits.float(), dim=-1).transpose(0, 1)
+    targets, target_lengths = teacher_target_sequences(teacher_logits)
+
+    batch, frames, _ = student_logits.shape
+    input_lengths = torch.full(
+        (batch,), frames, dtype=torch.long, device=student_logits.device
+    )
+
+    if targets.numel() == 0:
+        return torch.zeros((), device=student_logits.device, dtype=torch.float32)
+
+    return F.ctc_loss(
+        log_probs,
+        targets,
+        input_lengths,
+        target_lengths,
+        blank=BLANK_ID,
+        reduction="mean",
+        zero_infinity=True,
+    )
+
+
 @dataclass(frozen=True)
 class BreakoutStats:
     """How far a blank-collapsed student is from emitting phonemes at all.
@@ -332,6 +421,10 @@ class DistillLossConfig:
 
     logit_weight: float = 1.0
     feature_weight: float = 1.0
+    # The sequence term that makes all-blank unstable. On by default: measured at step
+    # 2000 without it, the teacher's class sat at rank 8.2 with P=0.027 against blank's
+    # P=0.822, i.e. nowhere near escaping by frame-KL alone.
+    ctc_weight: float = 1.0
     temperature: float = DEFAULT_TEMPERATURE
     nonblank_weight: float = DEFAULT_NONBLANK_WEIGHT
     confirm_weight: float = DEFAULT_CONFIRM_WEIGHT
@@ -346,6 +439,7 @@ class DistillLossOutput:
     total: torch.Tensor
     logit_loss: float
     feature_loss: float
+    ctc_loss: float
     feature_cosine: float
     stats: AgreementStats
 
@@ -354,6 +448,7 @@ class DistillLossOutput:
             "total": float(self.total.detach()),
             "logit_loss": round(self.logit_loss, 5),
             "feature_loss": round(self.feature_loss, 5),
+            "ctc_loss": round(self.ctc_loss, 5),
             "feature_cosine": round(self.feature_cosine, 4),
             **self.stats.as_dict(),
         }
@@ -383,10 +478,18 @@ def distillation_loss(
 
     total = config.logit_weight * logit_loss + config.feature_weight * feature_loss
 
+    if config.ctc_weight:
+        ctc = ctc_anchor_loss(student_logits, teacher_logits)
+        total = total + config.ctc_weight * ctc
+        ctc_value = float(ctc.detach())
+    else:
+        ctc_value = 0.0
+
     return DistillLossOutput(
         total=total,
         logit_loss=float(logit_loss.detach()),
         feature_loss=float(feature_loss.detach()),
+        ctc_loss=ctc_value,
         feature_cosine=cosine,
         stats=agreement_stats(student_logits, teacher_logits, config.confirm_timesteps),
     )

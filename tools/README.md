@@ -341,6 +341,14 @@ target, so any recitation audio is training data) and **only the phoneme head is
   `ml-model-transformation.md` §1.3. Frame agreement is used during training but is not the
   gate — it averages over 100 timesteps the user never sees.
 
+  `--breakout` answers a different question, for use while the student is still
+  blank-collapsed: *is this run converging or stuck?* `nonblank_agreement` reads a flat 0.0
+  for thousands of steps either way, because argmax cannot distinguish "the teacher's class
+  holds 40% and is about to overtake blank" from "it holds 0.1%". The diagnostic reports the
+  continuous quantities over teacher-non-blank frames — `target_prob`, `target_rank`
+  (1 = agrees), `prob_margin` (≤0 means escaped) — so the decision to keep waiting or
+  intervene is measured rather than guessed.
+
 ```bash
 cd tools
 python -m training.distill_student --verify            # sizing ladder + shape contract

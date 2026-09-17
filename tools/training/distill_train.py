@@ -107,6 +107,7 @@ class TrainConfig:
     seed: int = DEFAULT_SEED
     logit_weight: float = 1.0
     feature_weight: float = 1.0
+    ctc_weight: float = 1.0
     temperature: float = 2.0
     nonblank_weight: float = 3.0
     confirm_weight: float = 2.0
@@ -115,6 +116,7 @@ class TrainConfig:
         return DistillLossConfig(
             logit_weight=self.logit_weight,
             feature_weight=self.feature_weight,
+            ctc_weight=self.ctc_weight,
             temperature=self.temperature,
             nonblank_weight=self.nonblank_weight,
             confirm_weight=self.confirm_weight,
@@ -415,6 +417,7 @@ def train(config: TrainConfig, resume: bool = False) -> None:
                 print(
                     f"[{step:>6}/{config.steps}] loss {record['total']:.4f} "
                     f"kl {record['logit_loss']:.4f} feat {record['feature_loss']:.4f} "
+                    f"ctc {record['ctc_loss']:.4f} "
                     f"cos {record['feature_cosine']:.3f} "
                     f"conf-agree {record['confirmed_agreement']:.3f} "
                     f"blank-margin {record['blank_collapse_margin']:+.3f}",
@@ -464,6 +467,13 @@ def main() -> None:
     parser.add_argument("--save-every", type=int, default=2_000)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--feature-weight", type=float, default=1.0)
+    parser.add_argument(
+        "--ctc-weight",
+        type=float,
+        default=1.0,
+        help="weight on the CTC anchor against the teacher's decoded sequence; 0 disables "
+        "it, which reproduces the frame-KL-only recipe that parks in the all-blank basin",
+    )
     parser.add_argument("--temperature", type=float, default=2.0)
     parser.add_argument(
         "--nonblank-weight",
@@ -498,6 +508,7 @@ def main() -> None:
         save_every=args.save_every,
         seed=args.seed,
         feature_weight=args.feature_weight,
+        ctc_weight=args.ctc_weight,
         temperature=args.temperature,
         nonblank_weight=args.nonblank_weight,
         confirm_weight=args.confirm_weight,

@@ -141,6 +141,40 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   training windows at a 2.5 s stride. Unlabelled, unfiltered audio is usable, so this scales
   to the remaining Tadabur shards whenever the student needs more.
 
+- **The student must be deterministic in `train()` mode, and this is not the default.**
+  Distillation asks the student to reproduce a teacher running in `eval()` on clean input.
+  Any train-time stochasticity therefore makes the target unlearnable at the perturbed
+  positions *and* changes the input on every step. Three sources were inherited from the
+  teacher's config and all three were missed on the first pass:
+
+  - `apply_spec_augment` left `True`. **Zeroing `mask_time_prob` does not disable it** —
+    transformers computes `max(num_masked_span, min_masks)`, and the teacher config carries
+    `mask_time_min_masks=2`, so a zero probability still masked two 10-frame spans per
+    sequence: 20 of 250 frames randomised every step.
+  - `conformer_conv_dropout` at 0.1, firing in all 24 layers.
+  - `final_dropout` at 0.1, directly on the CTC head's input.
+
+  The last two survived because they do not share the naming of the four obvious dropout
+  fields, so zeroing those four left them on. Measured: two identical train-mode forwards
+  differed by **1.70**, and the model could not overfit 32 fixed windows in 1500 steps.
+  With them off, the forward is bit-identical and the same overfit reaches ctc **0.052**,
+  non-blank agreement **0.979** and rank **1.02** by step 600.
+
+  This cost two full training runs. From the outside it is indistinguishable from a
+  converged model: the loss curve flattens, the metrics plateau, and every plausible
+  explanation points at the objective or the learning rate. The tests enumerate the config
+  rather than naming fields, so the next such default is caught.
+
+- **Overfit a fixed batch at the first plateau, not the third.** A model that cannot drive
+  the loss toward zero on 32 examples it sees repeatedly has a structural problem that no
+  amount of data, patience or loss reweighting will fix; one that can is telling you the
+  architecture and objective are sound and the problem is elsewhere. That single test found
+  the above in minutes, after three runs had been spent on the loss design, the position
+  embeddings and the learning rate. `training.distill_overfit` exists so the next stall
+  starts there, and it also reports the **pre-clip gradient norm** that `distill_train`
+  hides — a run clipping 100 down to 5 trains at a twentieth of its nominal rate and looks
+  exactly like convergence.
+
 - **Blank collapse is the main training risk, and argmax metrics cannot diagnose it.** The
   trivial solution — predict blank everywhere — scores ~67% frame agreement for free,
   because that is the teacher's blank rate, and it is the observed starting basin in

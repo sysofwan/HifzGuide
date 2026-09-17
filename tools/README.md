@@ -340,6 +340,16 @@ target, so any recitation audio is training data) and **only the phoneme head is
   learned. The CTC anchor is a *sequence* objective against the teacher's decoded tokens: its
   forward-backward sums over every valid alignment, and an all-blank output has probability
   zero under any alignment of a non-empty target. `--ctc-weight 0` reproduces the old recipe.
+- **`distill_overfit`** — the first thing to run when a run plateaus. Overfits a fixed batch:
+  a model that cannot drive the loss toward zero on 32 examples it sees repeatedly has a
+  structural problem no amount of data or loss-tuning will fix. It found the bug that cost
+  two runs — the student was training with SpecAugment and two 0.1 dropouts active against a
+  teacher running deterministic in `eval()`, so the target was unlearnable and the input
+  changed every step. (`mask_time_prob=0.0` does **not** disable SpecAugment: transformers
+  applies `max(num_masked_span, min_masks)` and the teacher config carries
+  `mask_time_min_masks=2`.) Also reports the **pre-clip gradient norm** `distill_train`
+  hides. Reference points: `ctc` is 17.8 for an all-blank student and 0.19 for one matching
+  the teacher; `feat` near 0.203 means "predicting the mean", i.e. no representation learned.
 - **`distill_train`** — frozen bf16 teacher **online** rather than cached: caching its logits
   is cheap but forfeits feature matching, and caching hidden states costs ~3 MB/window
   (terabytes). Carries the `whole_clip_phoneme` VRAM preflight pattern — measured **10.97 GiB

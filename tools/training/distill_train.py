@@ -433,6 +433,7 @@ def train(config: TrainConfig, resume: bool = False) -> None:
     loss_config = config.loss_config()
     metrics_path = out_dir / METRICS_FILENAME
     step = start_step
+    grad_norm = 0.0
     started = time.time()
 
     def log(record: dict) -> None:
@@ -449,10 +450,14 @@ def train(config: TrainConfig, resume: bool = False) -> None:
             (output.total / config.grad_accum).backward()
 
             if (step + 1) % config.grad_accum == 0:
-                torch.nn.utils.clip_grad_norm_(
+                # Keep the pre-clip norm: it is the direct evidence for an unstable
+                # learning rate, and without it a run that is being clipped every step --
+                # i.e. training far below its nominal rate, or diverging and being reined
+                # in -- is indistinguishable from one that has converged.
+                grad_norm = torch.nn.utils.clip_grad_norm_(
                     list(student.parameters()) + list(projector.parameters()),
                     config.max_grad_norm,
-                )
+                ).item()
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
             scheduler.step()
@@ -462,6 +467,8 @@ def train(config: TrainConfig, resume: bool = False) -> None:
                 record = {
                     "step": step,
                     "lr": round(scheduler.get_last_lr()[0], 7),
+                    "grad_norm_preclip": round(grad_norm, 3),
+                    "clipped": grad_norm > config.max_grad_norm,
                     "elapsed_s": round(time.time() - started, 1),
                     **output.as_dict(),
                 }
@@ -472,7 +479,9 @@ def train(config: TrainConfig, resume: bool = False) -> None:
                     f"ctc {record['ctc_loss']:.4f} "
                     f"cos {record['feature_cosine']:.3f} "
                     f"conf-agree {record['confirmed_agreement']:.3f} "
-                    f"blank-margin {record['blank_collapse_margin']:+.3f}",
+                    f"blank-margin {record['blank_collapse_margin']:+.3f} "
+                    f"|g| {record['grad_norm_preclip']:.1f}"
+                    f"{'*' if record['clipped'] else ''}",
                     flush=True,
                 )
                 if output.stats.is_collapsing():

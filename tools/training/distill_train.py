@@ -124,6 +124,57 @@ class TrainConfig:
         )
 
 
+# Fields a resume must reproduce exactly. Changing any of them mid-run makes the metrics
+# log describe two different experiments spliced together -- and the first four would
+# silently corrupt the run outright, since the optimiser and LR schedule being restored
+# were fitted under them. Deliberately excludes the operational knobs (num_workers,
+# log_every, eval_every, save_every, eval_batches), which a resume may legitimately change.
+RESUME_CRITICAL_FIELDS = (
+    "preset",
+    "steps",
+    "batch_size",
+    "grad_accum",
+    "learning_rate",
+    "weight_decay",
+    "warmup_steps",
+    "max_grad_norm",
+    "hop_seconds",
+    "val_fraction",
+    "seed",
+    "audio_root",
+    "logit_weight",
+    "feature_weight",
+    "ctc_weight",
+    "temperature",
+    "nonblank_weight",
+    "confirm_weight",
+)
+
+
+def check_resume_compatible(saved: dict, current: TrainConfig) -> None:
+    """Fail fast when a resume would splice two different experiments together.
+
+    The same guarantee ``training.waqf_distill``'s ``SoftLabelStore`` gives its generation
+    contract, for the same reason: a silently divergent resume produces an artifact that
+    looks fine and is not. A run resumed at a different ``ctc_weight`` or ``learning_rate``
+    carries an optimiser state and LR schedule fitted under the old values, and its metrics
+    log reads as one continuous curve.
+    """
+    current_values = asdict(current)
+    mismatches = [
+        f"  {field}: checkpoint={saved[field]!r} current={current_values[field]!r}"
+        for field in RESUME_CRITICAL_FIELDS
+        if field in saved and saved[field] != current_values[field]
+    ]
+    if mismatches:
+        raise SystemExit(
+            "refusing to resume: this run's config differs from the checkpoint's on "
+            "fields the restored optimiser and schedule depend on.\n"
+            + "\n".join(mismatches)
+            + "\n\nEither match them, or start a fresh --out-dir."
+        )
+
+
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -365,6 +416,7 @@ def train(config: TrainConfig, resume: bool = False) -> None:
     checkpoint_path = out_dir / CHECKPOINT_FILENAME
     if resume and checkpoint_path.exists():
         state = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        check_resume_compatible(state.get("config", {}), config)
         student.load_state_dict(state["student"])
         projector.load_state_dict(state["projector"])
         optimizer.load_state_dict(state["optimizer"])

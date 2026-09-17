@@ -207,13 +207,29 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   intervene is measured. It is what turned "this looks slow" into the concrete finding
   above, and it corrected an earlier read of the same run as nearly escaped.
 
-- **Palettization itself behaves exactly as advertised; the risk is accuracy, not size.**
-  Both measured exports land at the nominal 6/8 bytes per graph value (0.753 and 0.756), so
-  there is no compression surcharge to budget for. What may not transfer is §1.3's *quality*
-  result: 6-bit held argmax-identical to INT8 on the teacher because a 586M model is heavily
-  overparameterized, and an 85.5M student trained to the edge of its capacity has far less
-  redundancy. 8-bit is the fallback at ~82 MB — still a single chunk, so the architecture
-  does not change either way — but it must be measured as its own row rather than assumed.
+- **Palettization costs nothing in size predictability and something real in quality.** Both
+  measured exports land at the nominal 6/8 bytes per graph value (0.753 and 0.756), so there
+  is no compression surcharge to budget for, and the palettized size does not drift with
+  training (62.3 MB at step 2000 and again at step 10000).
+
+  §1.3's *quality* result does not transfer, exactly as feared. On the teacher, 6-bit was
+  argmax-identical to INT8, because a 586M model is heavily overparameterized. On the
+  85.5M student it is not. Measured against the uncompressed FP16 export, over real windows
+  from a step-10000 checkpoint:
+
+  | | size | frame argmax agreement | windows fully identical | chunks |
+  | --- | --- | --- | --- | --- |
+  | FP16 (uncompressed) | 164.0 MB | reference | — | 2 |
+  | 6-bit | **62.3 MB** | 98.91% | 2/11 | 1 |
+  | 8-bit | **82.8 MB** | **99.85%** | **9/11** | 1 |
+
+  8-bit removes ~7/8 of the disagreement for 20.5 MB, and **both are a single chunk**, so
+  this is a quality decision with no architectural consequence. Two caveats keep it from
+  being final: the checkpoint is not converged (a sharper model is likely *more* robust, so
+  this reads pessimistic), and frame-level disagreement is not the metric that matters —
+  low-confidence flips often survive CTC collapse unchanged. The decision belongs to
+  confirmed-stream agreement of the palettized export against the PyTorch student at the end
+  of training, not to this table.
 
 - **Trace the student only after a warmup forward.** `Wav2Vec2BertRotaryPositionalEmbedding`
   caches its cos/sin table on first use, so the first and second forward passes produce

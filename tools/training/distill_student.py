@@ -324,14 +324,35 @@ def build_student_config(spec: StudentSpec):
         adapter_kernel_size=ADAPTER_KERNEL_SIZE,
         adapter_stride=ADAPTER_STRIDE,
         output_hidden_size=spec.hidden_size,
-        # Distillation supplies the targets; dropout and SpecAugment are set by the
-        # training script, not baked into the architecture.
+        # Distillation supplies the targets, so the student must see exactly the input the
+        # teacher saw. Every source of train-time stochasticity is therefore off.
         hidden_dropout=0.0,
         attention_dropout=0.0,
         feat_proj_dropout=0.0,
         activation_dropout=0.0,
-        mask_time_prob=0.0,
         layerdrop=0.0,
+        # These two default to 0.1 and are easy to miss -- neither shares the "dropout"
+        # prefix of the ones above in the teacher's config JSON, so zeroing the obvious
+        # four leaves them on. ``final_dropout`` sits directly on the CTC head's input and
+        # ``conformer_conv_dropout`` fires in all 24 layers, so together they inject noise
+        # on every step against a teacher that is deterministic in eval().
+        final_dropout=0.0,
+        conformer_conv_dropout=0.0,
+        # SpecAugment must be disabled with THIS flag, not by zeroing the probabilities.
+        # ``mask_time_prob=0.0`` alone does not disable it: transformers computes
+        # ``num_masked_span = max(num_masked_span, min_masks)``, and the teacher config
+        # carries ``mask_time_min_masks=2``, so a zero probability still masks two spans of
+        # ``mask_time_length=10`` per sequence in train() mode. That is 20 of 250 frames
+        # randomised every step, against a teacher running in eval() on clean input -- an
+        # unlearnable target at the masked positions, and a different input every step.
+        # Measured: with it on, two identical train-mode forwards differed by 1.70, and the
+        # student could not overfit 32 fixed windows. The probabilities are zeroed as well
+        # so the intent survives anyone flipping this flag back on.
+        apply_spec_augment=False,
+        mask_time_prob=0.0,
+        mask_time_min_masks=0,
+        mask_feature_prob=0.0,
+        mask_feature_min_masks=0,
     )
 
 

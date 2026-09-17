@@ -20,10 +20,12 @@ single chunk is **not**: that budget is enforced at `MLModel` load on the device
 raising. The size reported here against the 99 MB largest-chunk-we-have-shipped is strong
 evidence, not proof; the device test is the proof.
 
-**The waqf head is not exported here.** The shipped ChunkF emits `phoneme_logits` *and*
-`waqf_logits` (ADR-0004), but the waqf head is a separate track against the same teacher and
-adds only ``hidden_size`` parameters per frame. A student that ships will need it grafted on;
-for sizing it is noise.
+**The waqf head is not exported here, and is not needed.** It is not integrated today --
+the Swift side reads only `phoneme_logits`, and no shipped asset carries trained waqf
+weights (`convert_to_coreml.py` now makes it opt-in for the same reason). If the ADR-0004
+joint fine-tune later produces weights, the head is a per-frame linear on the same 40 ms
+lattice, so it costs ``hidden_size`` parameters and is noise for sizing -- but it would
+also have to be distilled onto the student first, which is out of scope here.
 
 Usage::
 

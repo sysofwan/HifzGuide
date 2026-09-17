@@ -161,11 +161,19 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   99 MB demonstrated ceiling is strong evidence, not proof; a device load test is the proof,
   and it can be run on the untrained export without waiting for training.
 
-- **The shipped student will need the waqf head grafted on.** `convert_to_coreml.py` already
-  exports ChunkF as phoneme **and** waqf logits (ADR-0004), whereas the distillation student
-  is phoneme-only. The head is a per-frame linear on the same 40 ms lattice, so it is
-  negligible for sizing, but it is a real integration step before a student can replace the
-  current pipeline.
+- **The waqf head is not a blocker, and is now opt-in at export.** `convert_to_coreml.py`
+  used to emit `waqf_logits` on every export, falling back to a **randomly-initialised**
+  head when no `--waqf-head` weights were passed. Nothing consumes it: the Swift side reads
+  only `phoneme_logits` (`MuaalemInference.predictSplit`), and no shipped asset carries
+  trained waqf weights. So every export embedded a random signal under an output name that
+  looks load-bearing — a trap for whoever wires it up later without checking whether the
+  weights were real. The head is now exported only when `--waqf-head` is supplied, which
+  also makes the default export match what the app actually reads.
+
+  A phoneme-only student is therefore a complete replacement for what ships today. If the
+  ADR-0004 fine-tune later produces weights worth shipping, the head is a per-frame linear
+  on the same 40 ms lattice — negligible for sizing, but it would have to be distilled onto
+  the student, which is out of scope here.
 
 - **This must not be confounded with the ADR-0001 track.** That fine-tune deliberately
   *increases* tolerance on the soft pairs; width distillation will involuntarily *reduce*

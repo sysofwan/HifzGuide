@@ -287,6 +287,68 @@ python -m training.waqf_distill --manifest passing_subset.jsonl --clips-dir clip
     [--device cuda] [--dtype bfloat16] [--batch-size 8]
 ```
 
+### `training.distill_*` (Linux — GPU) — size distillation to a single ANE chunk
+
+Distils the 578M teacher's **phoneme head** into a thin student so the deployed model can
+drop from six 6-bit CoreML chunks (504 MB) to one (ADR-0010). The driver is per-window cost,
+not size for its own sake: Muraja issues **~6 inferences per audio-second** — one full-window
+pass plus ~5 throttled previews (`previewMinNewSamples` = 200 ms) — and each pays the full
+static `(1, 250, 160)` cost, which at the 150–200 ms A15 figure saturates the ANE. The
+5 s/1 s windowing contract is frozen, so per-window cost is the only remaining lever.
+
+The objective is **behavioural cloning, not accuracy**: the student is correct insofar as it
+reproduces the teacher, because the teacher's behaviour is what Muraja's scorer and fixtures
+are tuned against. Two things follow — **no labels are needed** (the teacher generates every
+target, so any recitation audio is training data) and **only the phoneme head is built**
+(Muraja consumes 1 of the teacher's 11 heads).
+
+- **`distill_student`** — the width ladder. Every preset keeps all **24 layers** and shrinks
+  `hidden_size`, because `ml-model-transformation.md` §6 shows depth is the axis that
+  destroys this backbone (24→12 gave 99.4% CER). Measured: `h512` 151.9M → 126.0 MB → 2
+  chunks; **`h384` 85.7M → 71.1 MB → 1 chunk** at 7.1x less compute; `h256` 38.3M → 31.8 MB.
+  The 6-bit size model is calibrated against our own measured 504 MB / 672 MB INT8 chunk
+  table, and chunk count is taken against the 99 MB largest chunk we have actually compiled.
+  `--verify` instantiates each preset and asserts the `(1, 250, 160) → (1, 125, 43)` contract.
+- **`distill_data`** — windows are cut from the **waveform before** feature extraction, never
+  after: `SeamlessM4TFeatureExtractor` normalizes per utterance while the device normalizes
+  per 5 s window, so slicing extracted features would train off-distribution. Short trailing
+  windows are kept and zero-padded because the device pads too (5 of its ~6 inferences per
+  second run on a partially filled buffer). The train/val split hashes the **clip** name, so
+  overlapping windows cannot leak across it.
+- **`distill_loss`** — frame-weighted logit KL + tapped feature matching. Non-blank frames are
+  up-weighted because CTC output is blank-dominated (per Muraja's `CTCStats`, 30–60% blank
+  during speech, 85–98% during silence), so a flat KL is mostly a lesson in predicting blank;
+  this is the mirror image of what `training.waqf_head` solved with `pause_frame_weights`, and
+  takes the same two answers — a weighting and a collapse diagnostic. The first **25**
+  timesteps are up-weighted because `predictSplit` commits only those to the transcript
+  (`seg.midpoint < 25`), a phoneme being confirmed when its window position is *oldest* and it
+  has the full 4 s of right context.
+- **`distill_train`** — frozen bf16 teacher **online** rather than cached: caching its logits
+  is cheap but forfeits feature matching, and caching hidden states costs ~3 MB/window
+  (terabytes). Carries the `whole_clip_phoneme` VRAM preflight pattern — measured **10.97 GiB
+  at batch 32** on the 16 GB card; batch 48 OOMs. Watch `blank_collapse_margin` and
+  `nonblank_agreement`: the all-blank basin scores ~67% frame agreement for free and is the
+  observed starting point, with `--nonblank-weight` as the knob.
+- **`distill_eval`** — the release gate. Replays the deployed protocol (5 s window, 1 s hop,
+  `scanCTC` collapse, `midpoint < 25` confirmation) and compares the **confirmed transcripts**,
+  reporting exact-match and char-accuracy in the same shape as the quantization rows in
+  `ml-model-transformation.md` §1.3. Frame agreement is used during training but is not the
+  gate — it averages over 100 timesteps the user never sees.
+
+```bash
+cd tools
+python -m training.distill_student --verify            # sizing ladder + shape contract
+python -m training.distill_data --audio-root <wav-dir> # clips, hours, window counts
+
+python -m training.distill_train --preset h384 --audio-root <wav-dir> \
+    --out-dir runs/h384 --batch-size 32 --preflight-only   # check VRAM before committing
+python -m training.distill_train --preset h384 --audio-root <wav-dir> \
+    --out-dir runs/h384 --batch-size 32 --steps 60000 [--resume]
+
+python -m training.distill_eval --checkpoint runs/h384/checkpoint.pt \
+    --audio-root <wav-dir> --num-clips 200
+```
+
 ### `convert_to_coreml.py`
 
 Converts the Wav2Vec2-BERT TorchScript model (`obadx/muaalem-model-v3_2`) to CoreML format optimized for Apple Neural Engine. Traces the model with a fixed input shape `(1, 250, 160)`, exports to FP32 `.mlpackage`, and optionally creates INT8 and 4-bit compressed variants.

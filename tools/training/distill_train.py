@@ -93,7 +93,13 @@ class TrainConfig:
     steps: int = 60_000
     batch_size: int = 16
     grad_accum: int = 1
-    learning_rate: float = 3e-4
+    # 1e-4, not 3e-4. At 3e-4 the run improved through warmup and then regressed the
+    # moment the rate reached peak (non-blank agreement 0.002 -> 0.000, rank 8.19 -> 8.35
+    # between steps 2000 and 4000). Even at 1e-4 the pre-clip gradient norm runs 3-7 and
+    # hits the 5.0 clip about half the time, so 3e-4 was clipped on essentially every step:
+    # training far below its nominal rate while the loss curve looked converged. See
+    # ADR-0010.
+    learning_rate: float = 1e-4
     weight_decay: float = 0.01
     warmup_steps: int = 2_000
     max_grad_norm: float = 5.0
@@ -518,7 +524,7 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=60_000)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--grad-accum", type=int, default=1)
-    parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--warmup-steps", type=int, default=2_000)
     parser.add_argument("--hop-seconds", type=float, default=2.5)
     parser.add_argument("--num-workers", type=int, default=8)

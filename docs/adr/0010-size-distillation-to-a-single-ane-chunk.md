@@ -165,6 +165,25 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   explanation points at the objective or the learning rate. The tests enumerate the config
   rather than naming fields, so the next such default is caught.
 
+- **Train at 1e-4, not 3e-4, and watch the pre-clip gradient norm.** With the determinism
+  bug fixed, the run still failed — but differently, and the difference is the diagnosis. It
+  improved all the way through warmup and then **regressed** the moment the learning rate
+  reached its 3e-4 peak: between steps 2000 and 4000, non-blank agreement went 0.002 → 0.000,
+  blank probability 0.749 → 0.801, rank 8.19 → 8.35. Improving at the ~1.5e-4 warmup average
+  and regressing at 3e-4 is a learning rate that is too high, and the gradient norm confirms
+  it: even at **1e-4** the pre-clip norm runs 3–7 and hits the 5.0 clip about half the time,
+  so at 3e-4 it would have been clipped on essentially every step — training far below its
+  nominal rate while the loss curve looks converged.
+
+  At 1e-4 the same measurements move for the first time. By step 2000: rank **8.13 → 6.97**
+  (the first real drop in any run), non-blank agreement **0.0002 → 0.0469**, top-5 **0.52 →
+  0.61**, margin **0.736 → 0.534**, and `ctc` finally descending (3.19 → 2.86).
+
+  Note that the overfit test converged fine at 3e-4. A 32-example landscape is far more
+  forgiving than 78k diverse windows, so **the overfit test settles "broken or slow", not
+  the hyperparameters** — a distinction worth keeping, since treating it as evidence about
+  the real run would have pointed the wrong way here.
+
 - **Overfit a fixed batch at the first plateau, not the third.** A model that cannot drive
   the loss toward zero on 32 examples it sees repeatedly has a structural problem that no
   amount of data, patience or loss reweighting will fix; one that can is telling you the

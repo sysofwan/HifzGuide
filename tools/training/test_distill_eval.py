@@ -164,3 +164,49 @@ def test_compare_streams_survives_an_empty_corpus():
     report = de.compare_streams([])
     assert report.num_clips == 0
     assert report.char_accuracy == pytest.approx(1.0)
+
+
+# --- Head health: is a stuck run a head problem or an encoder problem? ---------------
+
+
+def _head(blank_bias, other_bias, blank_norm=0.4, other_norm=0.4):
+    return de.HeadHealth(
+        blank_bias=blank_bias,
+        other_bias_mean=other_bias,
+        other_bias_max=other_bias,
+        blank_weight_norm=blank_norm,
+        other_weight_norm_mean=other_norm,
+        other_weight_norm_max=other_norm,
+    )
+
+
+def test_a_large_blank_bias_reads_as_a_head_shortcut():
+    """The majority-class shortcut: more training will not fix this."""
+    head = _head(blank_bias=4.0, other_bias=-0.2)
+    assert head.bias_lead == pytest.approx(4.2)
+    assert head.is_degenerate()
+
+
+def test_the_measured_h384_head_is_not_degenerate():
+    """Step 2000 of the real run: blank led by 0.004, so the collapse was upstream.
+
+    Pinned because it is the observation that ruled out a whole class of interventions --
+    if this ever reads degenerate, the diagnosis flips.
+    """
+    head = _head(blank_bias=0.011, other_bias=0.007)
+    assert head.bias_lead == pytest.approx(0.004, abs=1e-6)
+    assert not head.is_degenerate()
+
+
+def test_bias_lead_is_measured_against_the_best_competitor():
+    """Against the max, not the mean -- the mean would hide one strong rival class."""
+    head = de.HeadHealth(
+        blank_bias=1.0,
+        other_bias_mean=-2.0,
+        other_bias_max=0.9,
+        blank_weight_norm=0.4,
+        other_weight_norm_mean=0.4,
+        other_weight_norm_max=0.4,
+    )
+    assert head.bias_lead == pytest.approx(0.1)
+    assert not head.is_degenerate()

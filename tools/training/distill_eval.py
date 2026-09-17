@@ -253,6 +253,66 @@ def load_student_from_checkpoint(checkpoint_path: Path, device: torch.device):
     return student, preset, state["step"]
 
 
+@dataclass(frozen=True)
+class HeadHealth:
+    """Whether a blank-collapsed student's CTC head has gone degenerate.
+
+    There are two very different reasons a student can emit blank everywhere, and they call
+    for opposite responses. Either the **head** has learned a large blank bias -- the
+    classic majority-class shortcut, since blank is ~67% of frames -- in which case the fix
+    is a loss or initialisation change and more training will not help. Or the head is
+    fine and the **encoder** has not yet learned frame-level phoneme discrimination, in
+    which case the only fix is more training and changing the loss is wasted effort.
+
+    Measured on the h384 run at step 2000, blank led the next-highest bias by **0.004** and
+    its weight-row norm sat inside the non-blank spread -- i.e. no head pathology at all,
+    and the collapse was entirely upstream. That ruled out a whole class of interventions.
+    """
+
+    blank_bias: float
+    other_bias_mean: float
+    other_bias_max: float
+    blank_weight_norm: float
+    other_weight_norm_mean: float
+    other_weight_norm_max: float
+
+    @property
+    def bias_lead(self) -> float:
+        """How far blank's bias exceeds the best non-blank one. Large => head shortcut."""
+        return self.blank_bias - self.other_bias_max
+
+    def is_degenerate(self, threshold: float = 1.0) -> bool:
+        """A blank bias this far ahead is a head problem, not a representation problem."""
+        return self.bias_lead > threshold
+
+    def as_dict(self) -> dict:
+        return {
+            "blank_bias": round(self.blank_bias, 4),
+            "other_bias_mean": round(self.other_bias_mean, 4),
+            "other_bias_max": round(self.other_bias_max, 4),
+            "bias_lead": round(self.bias_lead, 4),
+            "blank_weight_norm": round(self.blank_weight_norm, 4),
+            "other_weight_norm_mean": round(self.other_weight_norm_mean, 4),
+            "other_weight_norm_max": round(self.other_weight_norm_max, 4),
+        }
+
+
+def head_health(student) -> HeadHealth:
+    """Blank-vs-rest statistics of the student's phoneme CTC head."""
+    head = student.level_to_lm_head["phonemes"]
+    bias = head.bias.detach().float().cpu()
+    norms = head.weight.detach().float().cpu().norm(dim=1)
+
+    return HeadHealth(
+        blank_bias=bias[BLANK_ID].item(),
+        other_bias_mean=bias[BLANK_ID + 1 :].mean().item(),
+        other_bias_max=bias[BLANK_ID + 1 :].max().item(),
+        blank_weight_norm=norms[BLANK_ID].item(),
+        other_weight_norm_mean=norms[BLANK_ID + 1 :].mean().item(),
+        other_weight_norm_max=norms[BLANK_ID + 1 :].max().item(),
+    )
+
+
 def run_breakout_diagnostic(
     checkpoint: Path, audio_root: Path, val_fraction: float, num_windows: int
 ) -> dict:
@@ -289,7 +349,13 @@ def run_breakout_diagnostic(
         batches += 1
 
     averaged = {k: round(v / max(1, batches), 4) for k, v in totals.items()}
-    return {"preset": preset, "step": step, "windows": len(refs), **averaged}
+    return {
+        "preset": preset,
+        "step": step,
+        "windows": len(refs),
+        **averaged,
+        "head": head_health(student).as_dict(),
+    }
 
 
 def main() -> None:
@@ -331,6 +397,13 @@ def main() -> None:
         print(f"  P(blank)             {report['blank_prob']:.4f}")
         print(f"  margin blank-target  {report['prob_margin']:+.4f}  (<=0 means escaped)")
         print(f"  top-5 agreement      {report['top5_agreement']:.4f}")
+        head = report["head"]
+        verdict = (
+            "head shortcut -- change the loss, not the step count"
+            if head["bias_lead"] > 1.0
+            else "head is clean -- the collapse is upstream, in the encoder"
+        )
+        print(f"  blank bias lead      {head['bias_lead']:+.4f}   ({verdict})")
         return
 
     import soundfile as sf

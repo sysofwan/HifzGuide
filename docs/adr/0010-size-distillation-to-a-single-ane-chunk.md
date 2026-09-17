@@ -31,22 +31,34 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   `training.distill_student` keeps all **24 layers** and shrinks `hidden_size`. Depth
   reduction is deliberately not offered as a preset.
 
-- **Target `h384`; ship whatever the agreement curve justifies.** Measured by instantiating
-  each preset, with the 6-bit size model calibrated against our own 504 MB / 672 MB INT8
-  chunk table:
+- **Students use rotary position embeddings, not the teacher's `relative_key`.** This is the
+  single decision that determines whether `h384` is one chunk or two, and it was found by
+  exporting rather than by estimating. A traced `relative_key` attention bakes one
+  `(250, 64, 250)` fp16 constant into the CoreML graph **per layer** — 4M values each, 96M
+  over 24 layers. That cost is set by sequence length and head dim, both frozen, and is
+  **independent of `hidden_size`**: it is 16% of the 586M teacher and would be 53% of an
+  `h384` student. Measured, exporting `h384` with `relative_key` produced a **130.3 MB**
+  6-bit package against a 71.1 MB parameter-based prediction, putting it over budget; the
+  same student with rotary produced **61.7 MB**. Students are trained from random init, so
+  they are under no obligation to inherit the teacher's positional scheme.
 
-  | preset | params | 6-bit | chunks | compute vs teacher |
-  | --- | --- | --- | --- | --- |
-  | teacher | 586.4M | 486.5 MB* | 6 (actual) | 1.0x |
-  | h512 | 151.9M | 126.0 MB | 2 | 4.0x less |
-  | **h384** | **85.7M** | **71.1 MB** | **1** | **7.1x less** |
-  | h256 | 38.3M | 31.8 MB | 1 | 16.0x less |
+  The corollary is that **package size must be estimated over graph constants, not
+  parameters**. Sizing on parameters alone under-predicts a thin model badly, because the
+  fixed positional cost it omits is precisely the term that stops shrinking.
 
-  (*the analytic count runs ~3.5% under the real teacher, which measures 504 MB.)
+- **Target `h384`; ship whatever the agreement curve justifies.** Parameter counts from
+  instantiating each preset; `h384` size confirmed by a real CoreML export:
 
-  `h384` is the knee: it clears the 99 MB largest-chunk-we-have-actually-compiled with
-  margin, and 7.1x less compute takes the A15 duty cycle from ~90–120% to roughly 20%. Two
-  chunks (`h512`) is an acceptable fallback if agreement does not hold; the goal is the
+  | preset | params | graph constants | 6-bit | chunks | compute vs teacher |
+  | --- | --- | --- | --- | --- | --- |
+  | teacher (`relative_key`) | 586.4M | 682.4M | 504 MB (measured) | 6 (actual) | 1.0x |
+  | h512 (rotary) | 151.8M | 151.8M | 108.6 MB | 2 | 4.0x less |
+  | **h384 (rotary)** | **85.5M** | **85.5M** | **61.7 MB (measured)** | **1** | **7.1x less** |
+  | h256 (rotary) | 38.2M | 38.2M | 27.3 MB | 1 | 16.0x less |
+
+  `h384` is the knee: 61.7 MB clears the 99 MB largest-chunk-we-have-actually-compiled with
+  real margin, and 7.1x less compute takes the A15 duty cycle from ~90–120% to roughly 20%.
+  Two chunks (`h512`) is an acceptable fallback if agreement does not hold; the goal is the
   smallest model without significant tradeoff, decided by measurement rather than by this
   table.
 
@@ -103,11 +115,20 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   parked there is visible immediately rather than at the end, and `--nonblank-weight` is the
   knob for it.
 
-- **The §1.3 palettization results may not transfer.** 6-bit held argmax-identical to INT8 on
-  the teacher because a 578M model is heavily overparameterized. An 85.7M student trained to
-  the edge of its capacity has far less redundancy. 8-bit is the fallback at ~99 MB, which is
-  still a single chunk, so the architecture does not change either way — but it must be
-  measured as its own row rather than assumed.
+- **Palettization itself behaves exactly as advertised; the risk is accuracy, not size.**
+  Both measured exports land at the nominal 6/8 bytes per graph value (0.753 and 0.756), so
+  there is no compression surcharge to budget for. What may not transfer is §1.3's *quality*
+  result: 6-bit held argmax-identical to INT8 on the teacher because a 586M model is heavily
+  overparameterized, and an 85.5M student trained to the edge of its capacity has far less
+  redundancy. 8-bit is the fallback at ~82 MB — still a single chunk, so the architecture
+  does not change either way — but it must be measured as its own row rather than assumed.
+
+- **Trace the student only after a warmup forward.** `Wav2Vec2BertRotaryPositionalEmbedding`
+  caches its cos/sin table on first use, so the first and second forward passes produce
+  structurally different graphs and `torch.jit.trace`'s `check_trace` fails with "Graphs
+  differed across invocations". One warmup call settles it; the deployed shape is static, so
+  the cache never invalidates afterwards. `export_student_coreml.py` does this, and with it
+  the traced graph matches eager exactly (max abs diff 0.00e+00).
 
 - **A single chunk removes more than parameters.** Five `copyToFresh` FP16→FP32 conversions
   and five CoreML dispatches per window disappear, so the realised speedup should exceed the
@@ -115,11 +136,19 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   `ml-model-transformation.md` §5 documents as a shipped bug, and the `errno 28` ANE
   temp-cache pressure from compiling six models on low-storage devices.
 
-- **The single-chunk claim is inferred, not measured.** 99 MB is the largest chunk we have
-  demonstrably compiled (chunk F); Apple publishes no budget, and §2.5 warns that exceeding
-  it fails **silently** to CPU rather than raising. A throwaway export of a
-  randomly-initialised `h384` through `convert_to_coreml.py` + `compile_models.sh` settles it
-  in a day and should precede the full training run.
+- **The size is now measured; the ANE acceptance is still inferred.** The throwaway export
+  has been done: a randomly-initialised `h384` converts cleanly, palettizes to **61.7 MB**
+  and compiles to a 61.8 MB `.mlmodelc`. What that does *not* establish is that the iPhone 13
+  ANE compiler accepts it as one chunk — that budget is enforced at `MLModel` load on the
+  device, and §2.5 warns it fails **silently** to CPU rather than raising. 61.7 MB against a
+  99 MB demonstrated ceiling is strong evidence, not proof; a device load test is the proof,
+  and it can be run on the untrained export without waiting for training.
+
+- **The shipped student will need the waqf head grafted on.** `convert_to_coreml.py` already
+  exports ChunkF as phoneme **and** waqf logits (ADR-0004), whereas the distillation student
+  is phoneme-only. The head is a per-frame linear on the same 40 ms lattice, so it is
+  negligible for sizing, but it is a real integration step before a student can replace the
+  current pipeline.
 
 - **This must not be confounded with the ADR-0001 track.** That fine-tune deliberately
   *increases* tolerance on the soft pairs; width distillation will involuntarily *reduce*

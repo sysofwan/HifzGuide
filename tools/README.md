@@ -304,11 +304,17 @@ target, so any recitation audio is training data) and **only the phoneme head is
 
 - **`distill_student`** — the width ladder. Every preset keeps all **24 layers** and shrinks
   `hidden_size`, because `ml-model-transformation.md` §6 shows depth is the axis that
-  destroys this backbone (24→12 gave 99.4% CER). Measured: `h512` 151.9M → 126.0 MB → 2
-  chunks; **`h384` 85.7M → 71.1 MB → 1 chunk** at 7.1x less compute; `h256` 38.3M → 31.8 MB.
-  The 6-bit size model is calibrated against our own measured 504 MB / 672 MB INT8 chunk
-  table, and chunk count is taken against the 99 MB largest chunk we have actually compiled.
+  destroys this backbone (24→12 gave 99.4% CER). `h512` 151.8M → 108.6 MB → 2 chunks;
+  **`h384` 85.5M → 61.7 MB → 1 chunk** at 7.1x less compute; `h256` 38.2M → 27.3 MB.
   `--verify` instantiates each preset and asserts the `(1, 250, 160) → (1, 125, 43)` contract.
+
+  Size is modelled over **graph constants, not parameters**, and students use **rotary**
+  position embeddings rather than the teacher's `relative_key`. A traced `relative_key`
+  attention bakes a `(250, 64, 250)` constant into the graph *per layer* — 96M values over
+  24 layers, set by sequence length and head dim and **independent of width**. That is 16%
+  of the teacher and would be 53% of `h384`: exporting `h384` with `relative_key` measured
+  **130.3 MB** (over budget, 2 chunks) against the same student with rotary at **61.7 MB**.
+  Since students train from random init, they need not inherit the teacher's scheme.
 - **`distill_data`** — windows are cut from the **waveform before** feature extraction, never
   after: `SeamlessM4TFeatureExtractor` normalizes per utterance while the device normalizes
   per 5 s window, so slicing extracted features would train off-distribution. Short trailing

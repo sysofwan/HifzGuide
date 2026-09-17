@@ -43,28 +43,70 @@ def test_rejects_indivisible_width():
 
 
 def test_six_bit_model_reproduces_the_measured_teacher():
-    """504 MB measured at 6-bit (section 3.3). The calibrated model must land near it.
+    """504 MB measured at 6-bit (section 3.3). The size model must land near it.
 
-    The analytic parameter count runs ~3.5% under the instantiated count (it omits the
-    relative-position embeddings), so the reproduction is checked at 5%.
+    Checked at 6%: the analytic parameter count runs ~3.5% under the instantiated count,
+    and the teacher pays per-package metadata six times over.
     """
     teacher = ds.teacher_sizing()
-    assert teacher.size_6bit_mb == pytest.approx(504.0, rel=0.05)
+    assert teacher.size_6bit_mb == pytest.approx(504.0, rel=0.06)
 
 
-def test_six_bit_is_three_quarters_of_int8():
-    """The measured 504/672 ratio is exactly 6/8; a regression here breaks the table."""
+def test_six_bit_model_reproduces_the_measured_h384_exports():
+    """Both measured exports, which differ only in position-embedding type.
+
+    rotary measured 61.7 MB over 85.55M graph values; relative_key measured 130.3 MB over
+    181.30M. Predicting each from its own graph-constant count pins the bytes/value.
+    """
+    assert ds.palettized_6bit_mb(85_545_963) == pytest.approx(61.7, rel=0.02)
+    assert ds.palettized_6bit_mb(181_300_000) == pytest.approx(130.3, rel=0.02)
+    assert ds.PRESETS["h384"].position_embeddings_type == "rotary"
+
+
+def test_relative_key_adds_position_constants_and_rotary_does_not():
+    """The finding that decides the chunk count: ~96M values, independent of width."""
+    rotary = ds.PRESETS["h384"]
+    relative = ds.replace(rotary, position_embeddings_type=ds.TEACHER_POSITION_EMBEDDINGS)
+
+    assert ds.estimate_position_constant_params(rotary) == 0
+    assert ds.estimate_position_constant_params(relative) == pytest.approx(
+        96_000_000, rel=0.01
+    )
+
+    # Independent of hidden_size -- the whole reason it dominates a thin student.
+    narrow = ds.replace(
+        relative, name="n", hidden_size=256, intermediate_size=1024, num_attention_heads=4
+    )
+    assert ds.estimate_position_constant_params(narrow) == (
+        ds.estimate_position_constant_params(relative)
+    )
+
+
+def test_position_constants_flip_h384_across_the_chunk_budget():
+    """h384 is one chunk with rotary and two with relative_key. Measured both ways."""
+    rotary = ds.size_student(ds.PRESETS["h384"])
+    relative = ds.size_student(
+        ds.replace(
+            ds.PRESETS["h384"], position_embeddings_type=ds.TEACHER_POSITION_EMBEDDINGS
+        )
+    )
+    assert rotary.chunks == 1
+    assert relative.chunks == 2
+
+
+def test_six_bit_hits_its_nominal_ratio():
+    """Measured 0.753 and 0.756 bytes/value across two exports -- nominal 6/8."""
     assert ds.PALETTIZED_6BIT_RATIO == pytest.approx(0.75)
-    assert ds.BYTES_PER_PARAM_6BIT == pytest.approx(ds.BYTES_PER_PARAM_INT8 * 0.75)
+    assert ds.BYTES_PER_GRAPH_VALUE_6BIT == pytest.approx(0.75)
 
 
 def test_chunking_follows_the_demonstrated_ceiling():
     """A student at or under the proven 99 MB chunk is one chunk; past it, more."""
-    one_chunk_params = int(90 * 1024 * 1024 / ds.BYTES_PER_PARAM_6BIT)
-    assert ds.estimated_chunks(one_chunk_params) == 1
+    one_chunk = int(90 * 1024 * 1024 / ds.BYTES_PER_GRAPH_VALUE_6BIT)
+    assert ds.estimated_chunks(one_chunk) == 1
 
-    two_chunk_params = int(120 * 1024 * 1024 / ds.BYTES_PER_PARAM_6BIT)
-    assert ds.estimated_chunks(two_chunk_params) == 2
+    two_chunk = int(120 * 1024 * 1024 / ds.BYTES_PER_GRAPH_VALUE_6BIT)
+    assert ds.estimated_chunks(two_chunk) == 2
 
 
 def test_h384_is_a_single_chunk_and_h512_is_not():

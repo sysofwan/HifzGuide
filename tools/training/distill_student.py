@@ -75,24 +75,40 @@ ADAPTER_NUM_LAYERS = 1
 ADAPTER_KERNEL_SIZE = 3
 ADAPTER_STRIDE = 2
 
-# --- On-device size model, calibrated against our own measured CoreML chunk table ---
+# The teacher uses ``relative_key``, which the CoreML trace materialises as one
+# ``(250, 64, 250)`` fp16 constant **per layer** -- 4M values each, 96M across 24 layers.
+# That cost is fixed by sequence length and head dim, not by model width, so it barely
+# registers on the 586M teacher (16%) and dominates a thin student: measured, it was 53% of
+# an ``h384`` export's graph and pushed the 6-bit package to 130.3 MB against a predicted
+# 71.1 MB. Students are trained from random init, so they are under no obligation to copy
+# the teacher's positional scheme; ``rotary`` computes its embedding instead of storing it.
+# See :func:`estimate_position_constant_params` and ADR-0010.
+DEFAULT_POSITION_EMBEDDINGS = "rotary"
+TEACHER_POSITION_EMBEDDINGS = "relative_key"
+
+# Per-layer constant emitted by a traced ``relative_key`` attention: (T, head_dim, T).
+RELATIVE_KEY_CONSTANT_SHAPE = (DEPLOYED_FEATURE_FRAMES, 64, DEPLOYED_FEATURE_FRAMES)
+
+# --- On-device size model, over GRAPH CONSTANTS rather than parameters ---
 #
-# ``ml-model-transformation.md`` section 3.3 measures the deployed teacher at
-# **672 MB INT8** and **504 MB** at 6-bit palettization, summed over the six chunks.
-# Two constants fall out of those two numbers and are used here rather than a naive
-# bits/8 estimate:
+# The quantity that determines package size is the number of constant values in the
+# converted CoreML graph, which is **not** the model's parameter count: a traced
+# ``relative_key`` attention bakes one ``(250, 64, 250)`` constant per layer into the graph
+# on top of the weights. Sizing on parameters alone under-predicts badly for a thin model.
 #
-#   * 6-bit / INT8 = 504 / 672 = 0.75 exactly -- palettization hits its nominal 6/8 ratio
-#     with no measured overhead of its own.
-#   * INT8 bytes / parameter = 672 MB / 578M params = 1.16 -- i.e. a ~16% surcharge over
-#     the nominal 1 byte/param for mlpackage metadata plus the biases, layer norms and
-#     embeddings that are *not* quantized.
+# Measured directly from two ``h384`` exports:
+#   * relative_key: 181.30M graph values (85.3M weights + 96.0M position constants)
+#                   -> 130.3 MB at 6-bit  => 0.753 bytes/value
+#   * rotary:        85.55M graph values (no position constants)
+#                   -> 61.7 MB at 6-bit   => 0.756 bytes/value
+# Palettization hits its nominal 6/8 = 0.75 in both cases with no measurable surcharge; the
+# 2.1x package-size difference between them is entirely the position constants.
 #
-# Together: 6-bit bytes ~= params * 0.75 * 1.16 = params * 0.87. Checking that against the
-# measurement it was derived from, 578M * 0.87 = 503 MB vs the 504 MB actually measured.
-BYTES_PER_PARAM_INT8 = 1.16
+# Cross-checking the teacher: 586.4M params + 96.0M position constants = 682.4M values,
+# predicting 488 MB against the 504 MB actually measured across its six packages (3% under,
+# the gap being per-package metadata paid six times over).
 PALETTIZED_6BIT_RATIO = 0.75
-BYTES_PER_PARAM_6BIT = BYTES_PER_PARAM_INT8 * PALETTIZED_6BIT_RATIO
+BYTES_PER_GRAPH_VALUE_6BIT = PALETTIZED_6BIT_RATIO
 
 # The largest single chunk we have actually compiled onto the iPhone 13 ANE. Chunks A-E are
 # 81 MB at 6-bit and chunk F is 99 MB, and all six load (section 3.3). 99 MB is therefore a
@@ -118,6 +134,7 @@ class StudentSpec:
     intermediate_size: int
     num_attention_heads: int
     num_hidden_layers: int = TEACHER_NUM_LAYERS
+    position_embeddings_type: str = DEFAULT_POSITION_EMBEDDINGS
 
     def __post_init__(self) -> None:
         if self.hidden_size % self.num_attention_heads != 0:
@@ -188,19 +205,40 @@ def estimate_params(spec: StudentSpec) -> int:
     return encoder + feature_projection + adapter + head
 
 
-def palettized_6bit_mb(num_params: int) -> float:
-    """On-device size at 6-bit palettization, per the calibrated model above."""
-    return num_params * BYTES_PER_PARAM_6BIT / (1024 * 1024)
+def estimate_position_constant_params(spec: StudentSpec) -> int:
+    """Constants a traced ``relative_key`` attention bakes into the graph.
+
+    One ``(T, head_dim, T)`` fp16 tensor per layer. Note what this does *not* depend on:
+    ``hidden_size``. Head dim is 64 for both the teacher (1024/16) and every preset here, so
+    the cost is a flat ~4M values per layer whatever the width -- which is why it is
+    invisible on the teacher and decisive on a thin student. ``rotary`` computes its
+    positional term instead of storing it, so it contributes nothing.
+    """
+    if spec.position_embeddings_type != TEACHER_POSITION_EMBEDDINGS:
+        return 0
+    frames, head_dim, _ = RELATIVE_KEY_CONSTANT_SHAPE
+    return spec.num_hidden_layers * frames * head_dim * frames
 
 
-def estimated_chunks(num_params: int, max_chunk_mb: float = PROVEN_MAX_CHUNK_MB) -> int:
+def estimate_graph_constants(spec: StudentSpec, num_params: int | None = None) -> int:
+    """Total constant values in the converted graph -- what package size is actually made of."""
+    params = estimate_params(spec) if num_params is None else num_params
+    return params + estimate_position_constant_params(spec)
+
+
+def palettized_6bit_mb(num_graph_values: int) -> float:
+    """On-device size at 6-bit palettization, per the measured model above."""
+    return num_graph_values * BYTES_PER_GRAPH_VALUE_6BIT / (1024 * 1024)
+
+
+def estimated_chunks(num_graph_values: int, max_chunk_mb: float = PROVEN_MAX_CHUNK_MB) -> int:
     """How many ANE chunks a 6-bit student of this size needs.
 
     Ceiling division against the largest chunk we have demonstrably compiled. This is a
     planning estimate: the real answer comes from ``compile_models.sh``, which is why
-    ``--verify`` exists and why the plan front-loads a throwaway export.
+    ``export_student_coreml.py`` exists and why the plan front-loads a throwaway export.
     """
-    size_mb = palettized_6bit_mb(num_params)
+    size_mb = palettized_6bit_mb(num_graph_values)
     return max(1, -(-int(size_mb * 100) // int(max_chunk_mb * 100)))
 
 
@@ -210,6 +248,7 @@ class Sizing:
 
     spec: StudentSpec
     num_params: int
+    graph_constants: int
     size_6bit_mb: float
     chunks: int
     flop_ratio: float
@@ -226,7 +265,9 @@ class Sizing:
             "intermediate_size": self.spec.intermediate_size,
             "num_attention_heads": self.spec.num_attention_heads,
             "num_hidden_layers": self.spec.num_hidden_layers,
+            "position_embeddings_type": self.spec.position_embeddings_type,
             "num_params": self.num_params,
+            "graph_constants": self.graph_constants,
             "size_6bit_mb": round(self.size_6bit_mb, 1),
             "chunks": self.chunks,
             "flop_ratio": round(self.flop_ratio, 4),
@@ -237,11 +278,13 @@ class Sizing:
 def size_student(spec: StudentSpec, num_params: int | None = None) -> Sizing:
     """Sizing for one student; pass ``num_params`` to size a *measured* count."""
     params = estimate_params(spec) if num_params is None else num_params
+    constants = estimate_graph_constants(spec, params)
     return Sizing(
         spec=spec,
         num_params=params,
-        size_6bit_mb=palettized_6bit_mb(params),
-        chunks=estimated_chunks(params),
+        graph_constants=constants,
+        size_6bit_mb=palettized_6bit_mb(constants),
+        chunks=estimated_chunks(constants),
         flop_ratio=spec.flop_ratio,
     )
 
@@ -254,6 +297,7 @@ def teacher_sizing() -> Sizing:
         intermediate_size=TEACHER_INTERMEDIATE_SIZE,
         num_attention_heads=TEACHER_NUM_HEADS,
         num_hidden_layers=TEACHER_NUM_LAYERS,
+        position_embeddings_type=TEACHER_POSITION_EMBEDDINGS,
     )
     return size_student(spec)
 
@@ -273,6 +317,7 @@ def build_student_config(spec: StudentSpec):
         num_attention_heads=spec.num_attention_heads,
         intermediate_size=spec.intermediate_size,
         feature_projection_input_dim=FEATURE_INPUT_DIM,
+        position_embeddings_type=spec.position_embeddings_type,
         # The 250 -> 125 adapter, verbatim from the teacher.
         add_adapter=True,
         num_adapter_layers=ADAPTER_NUM_LAYERS,
@@ -326,16 +371,17 @@ def verify_shape_contract(model) -> tuple[int, int]:
 
 def _format_table(rows: list[Sizing]) -> str:
     header = (
-        f"{'name':<9} {'layers':>6} {'hidden':>7} {'params':>10} "
+        f"{'name':<9} {'pos-emb':<12} {'hidden':>7} {'params':>9} {'graph':>9} "
         f"{'6-bit MB':>9} {'chunks':>7} {'vs teacher':>11}"
     )
     lines = [header, "-" * len(header)]
     for row in rows:
         speed = "1.0x (ref)" if row.spec.name == "teacher" else f"{row.speedup:.1f}x less"
         lines.append(
-            f"{row.spec.name:<9} {row.spec.num_hidden_layers:>6} {row.spec.hidden_size:>7} "
-            f"{row.num_params / 1e6:>9.1f}M {row.size_6bit_mb:>9.1f} {row.chunks:>7} "
-            f"{speed:>11}"
+            f"{row.spec.name:<9} {row.spec.position_embeddings_type:<12} "
+            f"{row.spec.hidden_size:>7} {row.num_params / 1e6:>8.1f}M "
+            f"{row.graph_constants / 1e6:>8.1f}M {row.size_6bit_mb:>9.1f} "
+            f"{row.chunks:>7} {speed:>11}"
         )
     return "\n".join(lines)
 
@@ -386,7 +432,12 @@ def main() -> None:
 
     label = "measured" if args.verify else "analytic"
     print(f"Muaalem distillation sizing ladder ({label} parameter counts)")
-    print(f"6-bit size model calibrated to the measured 504 MB / 672 MB INT8 teacher.")
+    print(
+        "Size is over GRAPH CONSTANTS, not parameters: a traced relative_key attention "
+        "bakes\n~4M values per layer into the graph regardless of width (96M over 24 "
+        "layers), which\nis 16% of the teacher and would be 53% of an h384 student. "
+        "rotary stores nothing."
+    )
     print(f"Chunk count assumes the demonstrated {PROVEN_MAX_CHUNK_MB:.0f} MB ANE ceiling.\n")
     print(_format_table(rows))
 

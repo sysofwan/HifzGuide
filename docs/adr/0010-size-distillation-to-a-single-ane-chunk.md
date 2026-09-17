@@ -49,18 +49,35 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
 - **Target `h384`; ship whatever the agreement curve justifies.** Parameter counts from
   instantiating each preset; `h384` size confirmed by a real CoreML export:
 
-  | preset | params | graph constants | 6-bit | chunks | compute vs teacher |
-  | --- | --- | --- | --- | --- | --- |
-  | teacher (`relative_key`) | 586.4M | 682.4M | 504 MB (measured) | 6 (actual) | 1.0x |
-  | h512 (rotary) | 151.8M | 151.8M | 108.6 MB | 2 | 4.0x less |
-  | **h384 (rotary)** | **85.5M** | **85.5M** | **61.7 MB (measured)** | **1** | **7.1x less** |
-  | h256 (rotary) | 38.2M | 38.2M | 27.3 MB | 1 | 16.0x less |
+  All three presets were exported untrained and benchmarked on an **M4 ANE**, against the
+  real six-chunk teacher through the identical harness. That harness reproduces ADR-0016's
+  independently measured 42.0 ms teacher figure at 42.4 ms, so the comparison is sound:
 
-  `h384` is the knee: 61.7 MB clears the 99 MB largest-chunk-we-have-actually-compiled with
-  real margin, and 7.1x less compute takes the A15 duty cycle from ~90–120% to roughly 20%.
-  Two chunks (`h512`) is an acceptable fallback if agreement does not hold; the goal is the
-  smallest model without significant tradeoff, decided by measurement rather than by this
-  table.
+  | preset | params | 6-bit | chunks | M4 ANE | speedup | duty @ 6/s |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | teacher (`relative_key`) | 586.4M | 504 MB | 6 | 41.9 ms | 1.0x | 25.2% |
+  | h512 (rotary) | 151.8M | 109.0 MB | 2 | 15.2 ms | 2.8x | 9.1% |
+  | **h384 (rotary)** | **85.5M** | **61.7 MB** | **1** | **12.7 ms** | **3.3x** | **7.6%** |
+  | h256 (rotary) | 38.2M | 27.9 MB | 1 | 8.7 ms | 4.8x | 5.2% |
+
+  Run-to-run variance on these timings is roughly ±10% (repeat `h384` runs gave 11.4 and
+  12.7 ms, i.e. 3.3–3.7x), so treat the ratios as one significant figure.
+
+  **The measured speedups are far below the FLOP ratios** (4.0x / 7.1x / 16.0x predicted).
+  At these sizes the model is overhead-bound on the ANE, not compute-bound, so latency
+  scales much more slowly than parameters: h256 is 2.2x smaller than h384 but only 1.5x
+  faster. Any argument for a smaller rung has to be made on size, not on speed.
+
+  `h384` is the knee. 61.7 MB clears the 99 MB largest-chunk-we-have-actually-compiled with
+  real margin, and 3.3x takes the A15 duty cycle from a saturated ~90–120% to roughly
+  27–36%. `h256` buys another 1.5x for a 2.2x parameter cut, which is the worst
+  agreement-per-millisecond trade on the ladder; `h512` is the fallback if agreement does
+  not hold at `h384`. Which one ships is decided by the agreement curve, not by this table.
+
+  Note that `h512` loaded and ran as a **single** model on the M4 ANE at 109 MB, above the
+  99 MB iPhone-13 ceiling this ADR sizes against. The M-series ANE budget is evidently
+  larger than the A15's, which is exactly why the chunk-count column is keyed to the iPhone
+  figure and why the device test below is not optional.
 
 - **The objective is behavioural cloning, not accuracy.** The student is correct exactly
   insofar as it reproduces the teacher, because the teacher's behaviour is what Muraja's

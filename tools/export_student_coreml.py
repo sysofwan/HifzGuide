@@ -45,6 +45,7 @@ import gc
 import json
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 import torch
@@ -199,6 +200,83 @@ def directory_size_mb(path: Path) -> float:
     return sum(f.stat().st_size for f in path.rglob("*") if f.is_file()) / (1024 * 1024)
 
 
+def benchmark_ane(mlpackage_path: Path, runs: int = 20, warmup: int = 5) -> float | None:
+    """Median wall-clock ms for one ``(1, 250, 160)`` window on the ANE.
+
+    Deliberately matches ADR-0016's protocol -- ``CPU_AND_NE``, median of 20 runs after
+    warmup -- so a student's number is directly comparable to the 42.0 ms it measured for
+    the six-chunk teacher. Running :func:`benchmark_teacher_pipeline` on the same machine
+    reproduces that figure and confirms the harness before trusting a student's.
+
+    Python ``predict`` adds marshalling overhead on both sides of the comparison, which
+    matters proportionally more for a fast student, so a measured speedup here is a mild
+    *under*-estimate of what Swift will see.
+    """
+    import coremltools as ct
+    import numpy as np
+
+    model = ct.models.MLModel(str(mlpackage_path), compute_units=ct.ComputeUnit.CPU_AND_NE)
+    features = {
+        "input_features": np.random.randn(
+            1, DEPLOYED_FEATURE_FRAMES, FEATURE_INPUT_DIM
+        ).astype(np.float32)
+    }
+
+    for _ in range(warmup):
+        model.predict(features)
+
+    timings = []
+    for _ in range(runs):
+        start = time.perf_counter()
+        model.predict(features)
+        timings.append((time.perf_counter() - start) * 1000)
+
+    return float(np.median(timings))
+
+
+def benchmark_teacher_pipeline(
+    chunks_dir: Path, runs: int = 20, warmup: int = 5
+) -> float | None:
+    """The same measurement over the deployed six-chunk teacher, for a same-machine ratio.
+
+    ``chunks_dir`` holds the compiled ``MuaalemChunk{A..F}_6BIT.mlmodelc`` that
+    ``compile_models.sh`` produces. Returns ``None`` if they are not there.
+    """
+    import coremltools as ct
+    import numpy as np
+
+    names = [f"MuaalemChunk{letter}_6BIT.mlmodelc" for letter in "ABCDEF"]
+    paths = [chunks_dir / name for name in names]
+    if not all(path.exists() for path in paths):
+        return None
+
+    chunks = [
+        ct.models.CompiledMLModel(str(path), compute_units=ct.ComputeUnit.CPU_AND_NE)
+        for path in paths
+    ]
+    features = np.random.randn(1, DEPLOYED_FEATURE_FRAMES, FEATURE_INPUT_DIM).astype(
+        np.float32
+    )
+
+    def run_pipeline():
+        current = {"input_features": features}
+        for chunk in chunks:
+            output = chunk.predict(current)
+            name = list(output.keys())[0]
+            current = {"hidden_states": np.asarray(output[name], dtype=np.float32)}
+
+    for _ in range(warmup):
+        run_pipeline()
+
+    timings = []
+    for _ in range(runs):
+        start = time.perf_counter()
+        run_pipeline()
+        timings.append((time.perf_counter() - start) * 1000)
+
+    return float(np.median(timings))
+
+
 def compile_model(mlpackage_path: Path, output_dir: Path) -> Path | None:
     """Run Xcode's ``coremlcompiler``, as ``compile_models.sh`` does for the chunks."""
     if shutil.which("xcrun") is None:
@@ -230,6 +308,17 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=Path("student_coreml"))
     parser.add_argument("--nbits", type=int, default=6)
     parser.add_argument("--compile", action="store_true", help="also run coremlcompiler")
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="time one window on the ANE (ADR-0016 protocol: median of 20 after warmup)",
+    )
+    parser.add_argument(
+        "--teacher-chunks",
+        type=Path,
+        help="directory of compiled MuaalemChunk*_6BIT.mlmodelc, to get a same-machine "
+        "teacher baseline alongside the student's number",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -267,6 +356,20 @@ def main() -> None:
             compiled_mb = directory_size_mb(compiled)
             print(f"  compiled .mlmodelc: {compiled_mb:.1f} MB")
 
+    student_ms = teacher_ms = None
+    if args.benchmark:
+        student_ms = benchmark_ane(palettized_path)
+        print(f"  ANE median: {student_ms:.1f} ms/window")
+        if args.teacher_chunks:
+            teacher_ms = benchmark_teacher_pipeline(args.teacher_chunks)
+            if teacher_ms is None:
+                print(f"  teacher chunks not found under {args.teacher_chunks}")
+            else:
+                print(
+                    f"  teacher median: {teacher_ms:.1f} ms/window "
+                    f"-> {teacher_ms / student_ms:.1f}x speedup"
+                )
+
     fits = palettized_mb <= PROVEN_MAX_CHUNK_MB
     report = {
         "preset": preset,
@@ -278,6 +381,15 @@ def main() -> None:
         "compiled_mb": round(compiled_mb, 1) if compiled_mb else None,
         "proven_max_chunk_mb": PROVEN_MAX_CHUNK_MB,
         "within_proven_chunk_budget": fits,
+        "ane_ms": round(student_ms, 1) if student_ms else None,
+        "teacher_ane_ms": round(teacher_ms, 1) if teacher_ms else None,
+        "speedup_vs_teacher": (
+            round(teacher_ms / student_ms, 2) if student_ms and teacher_ms else None
+        ),
+        # Muraja issues ~6 inferences per audio-second (one full window + ~5 previews).
+        "ane_duty_cycle_at_6_per_second": (
+            round(student_ms * 6 / 1000, 3) if student_ms else None
+        ),
     }
     (args.output_dir / f"sizing_{preset}.json").write_text(
         json.dumps(report, indent=2), encoding="utf-8"

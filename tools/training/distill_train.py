@@ -189,6 +189,22 @@ def check_resume_compatible(saved: dict, current: TrainConfig) -> None:
         )
 
 
+def _init_worker(worker_id: int) -> None:
+    """Pin each DataLoader worker to a single compute thread.
+
+    PyTorch gives every process intra-op threads up to the core count, so N workers on a
+    12-core box spawn ~14 threads each and oversubscribe it by an order of magnitude --
+    measured here: 8 workers, 112 threads, load average 68, and step rate dropping from
+    0.95/s to 0.69/s as the contention built. A worker's job is feature extraction on one
+    window at a time, which does not benefit from intra-op parallelism; the parallelism
+    that matters is across workers.
+
+    Set ``OMP_NUM_THREADS=1`` in the launching environment as well: this covers torch, but
+    numpy and the feature extractor read the env var directly.
+    """
+    torch.set_num_threads(1)
+
+
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -248,6 +264,7 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
             pin_memory=True,
             drop_last=True,
             persistent_workers=config.num_workers > 0,
+            worker_init_fn=_init_worker,
         )
     else:
         train_refs = build_window_index(train_clips, config.hop_seconds)
@@ -261,6 +278,7 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
             pin_memory=True,
             drop_last=True,
             persistent_workers=config.num_workers > 0,
+            worker_init_fn=_init_worker,
         )
     val_loader = DataLoader(
         DistillWindowDataset(val_refs),
@@ -270,6 +288,7 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
         pin_memory=True,
         drop_last=False,
         persistent_workers=config.num_workers > 0,
+        worker_init_fn=_init_worker,
     )
     return train_loader, val_loader
 

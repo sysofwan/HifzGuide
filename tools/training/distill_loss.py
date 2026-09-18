@@ -534,12 +534,29 @@ def distillation_loss(
         confirm_timesteps=config.confirm_timesteps,
         confirm_weight=config.confirm_weight,
     )
-    logit_loss = weighted_kl(
-        student_logits, teacher_logits, weights, temperature=config.temperature
-    )
-    feature_loss, cosine = feature_matching_loss(
-        student_hidden, teacher_hidden, projector, config.tap_layers
-    )
+    # Zero-weighted terms are skipped rather than multiplied by 0. Each still costs a real
+    # forward (a 43-way softmax KL, and six projector matmuls for the feature term), which
+    # is ~10% of a step that does not need them -- and a finishing run deliberately turns
+    # both off. They are still *reported* when computed, because a rising KL under a
+    # hard-label objective is informative: it shows the student trading distributional
+    # fidelity for the argmax the release gate actually reads.
+    if config.logit_weight:
+        logit_loss = weighted_kl(
+            student_logits, teacher_logits, weights, temperature=config.temperature
+        )
+        logit_value = float(logit_loss.detach())
+    else:
+        logit_loss = torch.zeros((), device=student_logits.device)
+        logit_value = 0.0
+
+    if config.feature_weight:
+        feature_loss, cosine = feature_matching_loss(
+            student_hidden, teacher_hidden, projector, config.tap_layers
+        )
+        feature_value = float(feature_loss.detach())
+    else:
+        feature_loss = torch.zeros((), device=student_logits.device)
+        feature_value, cosine = 0.0, 0.0
 
     total = config.logit_weight * logit_loss + config.feature_weight * feature_loss
 
@@ -559,8 +576,8 @@ def distillation_loss(
 
     return DistillLossOutput(
         total=total,
-        logit_loss=float(logit_loss.detach()),
-        feature_loss=float(feature_loss.detach()),
+        logit_loss=logit_value,
+        feature_loss=feature_value,
         hard_loss=hard_value,
         ctc_loss=ctc_value,
         feature_cosine=cosine,

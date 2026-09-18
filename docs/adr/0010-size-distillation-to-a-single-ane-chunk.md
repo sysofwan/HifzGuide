@@ -164,6 +164,37 @@ hours DistilHuBERT-class recipes use. Expanding the corpus is the next move, and
 that does it make sense to ask whether `h384` has the capacity -- running `h512` now would
 confound a capacity question with a data limit.
 
+## What has been ruled out for the 84.58% ceiling
+
+Four candidate explanations, three eliminated by measurement. Recorded because each cost
+real GPU time and the negative results are what stop them being re-tried.
+
+| hypothesis | verdict | evidence |
+| --- | --- | --- |
+| **more data** | ruled out | train **84.98%** vs val **84.16%** at step 40000. A 0.82-point gap: the student cannot reproduce the teacher on windows it has seen ~16 times, so more audio cannot be the fix. |
+| **more steps** | ruled out | char accuracy 45.4 → 75.1 → 83.8 → 84.6 at 4k/10k/20k/40k. Doubling 20k→40k bought 0.76 points. |
+| **objective mismatch** | ruled out | Two hard-label runs warm-started from the 40k checkpoint: with the 3x non-blank weighting **82.93%**, with neutral weighting **82.76%**. Both lose to the 84.16% baseline. |
+| **capacity** | under test | `h448` (116.3M, 83.2 MB, still one chunk) on the identical corpus, recipe and step budget. |
+
+The objective experiment was worth running — `target_rank` 1.25 with top-5 agreement 0.992
+says the teacher's class is nearly always present and merely loses the argmax, which looks
+exactly like a margin problem a hard-label loss should fix. It does not, and the reason is
+the more useful finding:
+
+**Frame agreement and decoded agreement are not the same objective.** Under hard labels,
+frame `confirmed_agreement` *rose* (0.8819 → 0.8842) while decoded char accuracy *fell*
+(84.16% → 82.76%). After the `scanCTC` collapse, **where** an error lands matters more than
+how many there are: a flip in the middle of a run is absorbed, a flip at a segment boundary
+splits or merges a token and costs an edit. Optimising per-frame agreement -- softly or
+hard -- therefore does not straightforwardly optimise the gate. Any future objective work
+should be evaluated on the decoded stream from the start, not on frame metrics.
+
+A second trap surfaced in the same experiment. The 3x non-blank frame weighting exists to
+escape the blank basin, and under a soft KL its effect is moderated by the target
+distribution. Under **hard** labels it becomes a direct bias on the class prior, and the
+student flipped from under-emitting (46.0 vs 47.2 tokens/clip) to over-emitting (55.5 vs
+55.2). A weighting introduced for one objective does not transfer to another unexamined.
+
 ## Consequences
 
 - **The corpus problem disappears, and a small corpus suffices to start.** 61.8 hours of

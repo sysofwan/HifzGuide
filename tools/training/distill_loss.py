@@ -370,6 +370,46 @@ def ctc_anchor_loss(
     )
 
 
+def hard_label_ce(
+    student_logits: torch.Tensor,
+    teacher_logits: torch.Tensor,
+    weights: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Frame cross-entropy against the teacher's **argmax**, not its distribution.
+
+    Exists because of a measured mismatch between what we optimise and what we score. The
+    release gate is decoded-stream agreement, which depends only on the student's argmax;
+    the KL term instead asks it to reproduce a temperature-2 *distribution*, spending
+    capacity on the probability tail that no metric reads.
+
+    The evidence that this matters: at the end of the first full run the teacher's class sat
+    at mean rank **1.25** with top-5 agreement **0.992**, yet frame agreement was 0.882.
+    The correct class is almost always present and merely loses the argmax, which is a
+    margin failure rather than a representation failure -- and a hard-label objective
+    optimises exactly that margin.
+
+    Takes the same frame weighting as :func:`weighted_kl` so the non-blank and
+    confirmed-region emphasis carries over unchanged.
+    """
+    if student_logits.shape != teacher_logits.shape:
+        raise ValueError(
+            f"shape mismatch: student {tuple(student_logits.shape)} vs "
+            f"teacher {tuple(teacher_logits.shape)}"
+        )
+
+    targets = teacher_logits.argmax(dim=-1)
+    per_frame = F.cross_entropy(
+        student_logits.float().flatten(0, 1),
+        targets.flatten(0, 1),
+        reduction="none",
+    ).view(targets.shape)
+
+    if weights is None:
+        return per_frame.mean()
+    weights = weights.float()
+    return (per_frame * weights).sum() / weights.sum().clamp_min(1e-8)
+
+
 @dataclass(frozen=True)
 class BreakoutStats:
     """How far a blank-collapsed student is from emitting phonemes at all.
@@ -440,6 +480,10 @@ class DistillLossConfig:
 
     logit_weight: float = 1.0
     feature_weight: float = 1.0
+    # Cross-entropy on the teacher's argmax. Off by default: it optimises the metric
+    # directly but carries no distributional information, so it is a *finishing* objective
+    # for a student that has already escaped the blank basin, not a from-scratch one.
+    hard_weight: float = 0.0
     # The sequence term that makes all-blank unstable. On by default: measured at step
     # 2000 without it, the teacher's class sat at rank 8.2 with P=0.027 against blank's
     # P=0.822, i.e. nowhere near escaping by frame-KL alone.
@@ -458,6 +502,7 @@ class DistillLossOutput:
     total: torch.Tensor
     logit_loss: float
     feature_loss: float
+    hard_loss: float
     ctc_loss: float
     feature_cosine: float
     stats: AgreementStats
@@ -467,6 +512,7 @@ class DistillLossOutput:
             "total": float(self.total.detach()),
             "logit_loss": round(self.logit_loss, 5),
             "feature_loss": round(self.feature_loss, 5),
+            "hard_loss": round(self.hard_loss, 5),
             "ctc_loss": round(self.ctc_loss, 5),
             "feature_cosine": round(self.feature_cosine, 4),
             **self.stats.as_dict(),
@@ -497,6 +543,13 @@ def distillation_loss(
 
     total = config.logit_weight * logit_loss + config.feature_weight * feature_loss
 
+    if config.hard_weight:
+        hard = hard_label_ce(student_logits, teacher_logits, weights)
+        total = total + config.hard_weight * hard
+        hard_value = float(hard.detach())
+    else:
+        hard_value = 0.0
+
     if config.ctc_weight:
         ctc = ctc_anchor_loss(student_logits, teacher_logits)
         total = total + config.ctc_weight * ctc
@@ -508,6 +561,7 @@ def distillation_loss(
         total=total,
         logit_loss=float(logit_loss.detach()),
         feature_loss=float(feature_loss.detach()),
+        hard_loss=hard_value,
         ctc_loss=ctc_value,
         feature_cosine=cosine,
         stats=agreement_stats(student_logits, teacher_logits, config.confirm_timesteps),

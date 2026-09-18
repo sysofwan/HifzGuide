@@ -105,6 +105,10 @@ class TrainConfig:
     max_grad_norm: float = 5.0
     hop_seconds: float = 2.5
     val_fraction: float = 0.02
+    # When set, training windows are streamed from Tadabur parquet shards instead of read
+    # from --audio-root, which stays the (held-out) validation source. Peak disk is one
+    # shard per worker; see training.distill_stream.
+    stream_shards: str = ""
     num_workers: int = 8
     log_every: int = 50
     eval_every: int = 2_000
@@ -114,6 +118,7 @@ class TrainConfig:
     logit_weight: float = 1.0
     feature_weight: float = 1.0
     ctc_weight: float = 1.0
+    hard_weight: float = 0.0
     temperature: float = 2.0
     nonblank_weight: float = 3.0
     confirm_weight: float = 2.0
@@ -123,6 +128,7 @@ class TrainConfig:
             logit_weight=self.logit_weight,
             feature_weight=self.feature_weight,
             ctc_weight=self.ctc_weight,
+            hard_weight=self.hard_weight,
             temperature=self.temperature,
             nonblank_weight=self.nonblank_weight,
             confirm_weight=self.confirm_weight,
@@ -146,11 +152,13 @@ RESUME_CRITICAL_FIELDS = (
     "max_grad_norm",
     "hop_seconds",
     "val_fraction",
+    "stream_shards",
     "seed",
     "audio_root",
     "logit_weight",
     "feature_weight",
     "ctc_weight",
+    "hard_weight",
     "temperature",
     "nonblank_weight",
     "confirm_weight",
@@ -220,20 +228,40 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
         raise SystemExit(f"no .wav files under {audio_root}")
     train_clips, val_clips = split_clips(clips, config.val_fraction)
 
-    train_refs = build_window_index(train_clips, config.hop_seconds)
     val_refs = build_window_index(val_clips, config.hop_seconds)
-    if not train_refs:
-        raise SystemExit("no training windows -- check --audio-root and --hop-seconds")
 
-    train_loader = DataLoader(
-        DistillWindowDataset(train_refs),
-        batch_size=config.batch_size,
-        shuffle=True,
-        num_workers=config.num_workers,
-        pin_memory=True,
-        drop_last=True,
-        persistent_workers=config.num_workers > 0,
-    )
+    if config.stream_shards:
+        # Streaming: the staged corpus is validation only, and the shards it was built
+        # from are refused by StreamingWindowDataset so the split cannot leak.
+        from tadabur.shard_reader import parse_shard_spec
+        from training.distill_stream import StreamingWindowDataset
+
+        train_dataset = StreamingWindowDataset(
+            parse_shard_spec(config.stream_shards),
+            hop_seconds=config.hop_seconds,
+            seed=config.seed,
+        )
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=config.batch_size,
+            num_workers=config.num_workers,
+            pin_memory=True,
+            drop_last=True,
+            persistent_workers=config.num_workers > 0,
+        )
+    else:
+        train_refs = build_window_index(train_clips, config.hop_seconds)
+        if not train_refs:
+            raise SystemExit("no training windows -- check --audio-root and --hop-seconds")
+        train_loader = DataLoader(
+            DistillWindowDataset(train_refs),
+            batch_size=config.batch_size,
+            shuffle=True,
+            num_workers=config.num_workers,
+            pin_memory=True,
+            drop_last=True,
+            persistent_workers=config.num_workers > 0,
+        )
     val_loader = DataLoader(
         DistillWindowDataset(val_refs),
         batch_size=config.batch_size,
@@ -385,7 +413,25 @@ def save_checkpoint(
     tmp.replace(path)
 
 
-def train(config: TrainConfig, resume: bool = False) -> None:
+def load_student_weights(checkpoint_path: Path, student, projector, device) -> int:
+    """Warm-start weights from another run, without its optimiser or schedule.
+
+    Distinct from ``--resume`` on purpose. A resume continues one experiment and therefore
+    demands an identical config (:func:`check_resume_compatible`); this deliberately starts
+    a *new* experiment -- different objective, fresh learning-rate schedule -- from another
+    run's learned weights. Using resume for that would either be refused by the guard or,
+    without it, silently splice two objectives onto one optimiser state.
+
+    Returns the step the source checkpoint reached, for the log only.
+    """
+    state = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    student.load_state_dict(state["student"])
+    if "projector" in state:
+        projector.load_state_dict(state["projector"])
+    return state.get("step", 0)
+
+
+def train(config: TrainConfig, resume: bool = False, init_from: Path | None = None) -> None:
     device = torch.device("cuda")
     seed_everything(config.seed)
 
@@ -419,6 +465,11 @@ def train(config: TrainConfig, resume: bool = False) -> None:
     )
 
     start_step = 0
+    if init_from is not None:
+        source_step = load_student_weights(init_from, student, projector, device)
+        print(f"[init] warm-started from {init_from} (its step {source_step}); "
+              f"fresh optimiser and schedule")
+
     checkpoint_path = out_dir / CHECKPOINT_FILENAME
     if resume and checkpoint_path.exists():
         state = torch.load(checkpoint_path, map_location=device, weights_only=False)
@@ -431,10 +482,17 @@ def train(config: TrainConfig, resume: bool = False) -> None:
         print(f"[resume] restored from step {start_step}")
 
     train_loader, val_loader = build_dataloaders(config)
-    print(
-        f"[data] {len(train_loader.dataset):,} train windows, "
-        f"{len(val_loader.dataset):,} val windows"
-    )
+    if config.stream_shards:
+        print(
+            f"[data] streaming shards {config.stream_shards} "
+            f"(one shard per worker on disk), "
+            f"{len(val_loader.dataset):,} held-out val windows"
+        )
+    else:
+        print(
+            f"[data] {len(train_loader.dataset):,} train windows, "
+            f"{len(val_loader.dataset):,} val windows"
+        )
 
     loss_config = config.loss_config()
     metrics_path = out_dir / METRICS_FILENAME
@@ -482,7 +540,7 @@ def train(config: TrainConfig, resume: bool = False) -> None:
                 print(
                     f"[{step:>6}/{config.steps}] loss {record['total']:.4f} "
                     f"kl {record['logit_loss']:.4f} feat {record['feature_loss']:.4f} "
-                    f"ctc {record['ctc_loss']:.4f} "
+                    f"ctc {record['ctc_loss']:.4f} hard {record['hard_loss']:.4f} "
                     f"cos {record['feature_cosine']:.3f} "
                     f"conf-agree {record['confirmed_agreement']:.3f} "
                     f"blank-margin {record['blank_collapse_margin']:+.3f} "
@@ -527,6 +585,13 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--warmup-steps", type=int, default=2_000)
     parser.add_argument("--hop-seconds", type=float, default=2.5)
+    parser.add_argument(
+        "--stream-shards",
+        default="",
+        help='stream training windows from Tadabur shards, e.g. "20-384", instead of '
+        "reading --audio-root (which then serves only the held-out validation clips). "
+        "Peak disk is one ~2.5 GB shard per worker however many shards the run covers.",
+    )
     parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument("--log-every", type=int, default=50)
     parser.add_argument("--eval-batches", type=int, default=40)
@@ -534,6 +599,13 @@ def main() -> None:
     parser.add_argument("--save-every", type=int, default=2_000)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--feature-weight", type=float, default=1.0)
+    parser.add_argument(
+        "--logit-weight",
+        type=float,
+        default=1.0,
+        help="weight on the temperature-scaled KL. Set to 0 with --hard-weight 1 to train "
+        "purely on the teacher's argmax, which is what the release gate measures.",
+    )
     parser.add_argument(
         "--ctc-weight",
         type=float,
@@ -551,6 +623,20 @@ def main() -> None:
     )
     parser.add_argument("--confirm-weight", type=float, default=2.0)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--init-from",
+        type=Path,
+        help="warm-start student/projector weights from another run's checkpoint with a "
+        "fresh optimiser and schedule. Use this, not --resume, when changing the objective.",
+    )
+    parser.add_argument(
+        "--hard-weight",
+        type=float,
+        default=0.0,
+        help="weight on cross-entropy against the teacher's argmax. Optimises the decoded "
+        "metric directly; intended as a finishing objective once the student is past the "
+        "blank basin.",
+    )
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--budget-gib", type=float, default=DEFAULT_VRAM_BUDGET_GIB)
     args = parser.parse_args()
@@ -568,14 +654,17 @@ def main() -> None:
         learning_rate=args.learning_rate,
         warmup_steps=args.warmup_steps,
         hop_seconds=args.hop_seconds,
+        stream_shards=args.stream_shards,
         num_workers=args.num_workers,
         log_every=args.log_every,
         eval_batches=args.eval_batches,
         eval_every=args.eval_every,
         save_every=args.save_every,
         seed=args.seed,
+        logit_weight=args.logit_weight,
         feature_weight=args.feature_weight,
         ctc_weight=args.ctc_weight,
+        hard_weight=args.hard_weight,
         temperature=args.temperature,
         nonblank_weight=args.nonblank_weight,
         confirm_weight=args.confirm_weight,
@@ -600,7 +689,7 @@ def main() -> None:
     if args.preflight_only:
         return
 
-    train(config, resume=args.resume)
+    train(config, resume=args.resume, init_from=args.init_from)
 
 
 if __name__ == "__main__":

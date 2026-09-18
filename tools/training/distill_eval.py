@@ -372,6 +372,14 @@ def main() -> None:
     )
     parser.add_argument("--num-windows", type=int, default=320)
     parser.add_argument(
+        "--split",
+        choices=("val", "train"),
+        default="val",
+        help="which side of the clip split to score. Running both separates a "
+        "generalisation gap from a ceiling: if TRAIN agreement is also stuck at the val "
+        "number, more data cannot be the fix and the objective or capacity is the limit.",
+    )
+    parser.add_argument(
         "--num-clips", type=int, default=200, help="held-out clips to evaluate"
     )
     parser.add_argument("--val-fraction", type=float, default=0.02)
@@ -415,12 +423,13 @@ def main() -> None:
     teacher = load_teacher(device)
     extractor = SeamlessM4TFeatureExtractor.from_pretrained("obadx/muaalem-model-v3_2")
 
-    # Evaluate on the *validation* clips only -- the same hash split training used, so no
-    # clip the student was fit on can inflate the number.
-    _, val_clips = split_clips(discover_clips(args.audio_root), args.val_fraction)
-    clips = val_clips[: args.num_clips]
+    # Default is the *validation* side -- the same hash split training used, so no clip the
+    # student was fit on can inflate the number. --split train scores seen clips instead,
+    # which is only useful as the paired comparison described in the flag's help.
+    train_clips, val_clips = split_clips(discover_clips(args.audio_root), args.val_fraction)
+    clips = (train_clips if args.split == "train" else val_clips)[: args.num_clips]
     if not clips:
-        raise SystemExit("no validation clips found")
+        raise SystemExit(f"no {args.split} clips found")
 
     pairs: list[tuple[list[int], list[int]]] = []
     for index, path in enumerate(clips, start=1):
@@ -449,6 +458,7 @@ def main() -> None:
         "checkpoint": str(args.checkpoint),
         "preset": preset,
         "step": step,
+        "split": args.split,
         **report.as_dict(),
     }
 
@@ -456,7 +466,7 @@ def main() -> None:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
 
-    print(f"\nConfirmed-stream agreement -- {preset} @ step {step}")
+    print(f"\nConfirmed-stream agreement -- {preset} @ step {step} [{args.split}]")
     print(f"  clips evaluated      {report.num_clips}")
     print(f"  exact match          {report.exact_match:.1%}")
     print(f"  char accuracy        {report.char_accuracy:.2%}")

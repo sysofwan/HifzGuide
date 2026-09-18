@@ -94,6 +94,12 @@ class GateAgreement:
     mean_abs_ratio_delta: float
     mean_teacher_ratio: float
     mean_student_ratio: float
+    ratio_correlation: float = 0.0
+    best_threshold: float = 0.0
+    best_threshold_agreement: float = 0.0
+    # Agreement from the trivial "pass everything" policy, i.e. the teacher's own pass
+    # rate. A recalibrated threshold only means something if it beats this.
+    always_pass_agreement: float = 0.0
 
     @property
     def decision_agreement(self) -> float:
@@ -103,6 +109,13 @@ class GateAgreement:
         return {
             "num_clips": self.num_clips,
             "decision_agreement": round(self.decision_agreement, 4),
+            "ratio_correlation": round(self.ratio_correlation, 4),
+            "best_threshold": round(self.best_threshold, 3),
+            "best_threshold_agreement": round(self.best_threshold_agreement, 4),
+            "always_pass_agreement": round(self.always_pass_agreement, 4),
+            "recalibration_beats_trivial": bool(
+                self.best_threshold_agreement > self.always_pass_agreement + 0.01
+            ),
             "both_passed": self.both_passed,
             "both_failed": self.both_failed,
             "teacher_only_passed": self.teacher_only_passed,
@@ -111,6 +124,24 @@ class GateAgreement:
             "mean_teacher_ratio": round(self.mean_teacher_ratio, 4),
             "mean_student_ratio": round(self.mean_student_ratio, 4),
         }
+
+
+def recalibrated_agreement(
+    pairs: list[tuple[bool, float, bool, float]], threshold: float
+) -> float:
+    """Decision agreement if the student were gated at ``threshold`` instead of the default.
+
+    The teacher keeps the shipped ``.balanced`` bar; only the student's threshold moves.
+    This asks whether the student is simply *offset* from the teacher -- in which case a
+    recalibrated bar restores the decisions -- or genuinely noisier, in which case no
+    single threshold helps and the disagreement is irreducible.
+    """
+    same = sum(
+        1
+        for teacher_passed, _, _, student_ratio in pairs
+        if teacher_passed == (student_ratio >= threshold)
+    )
+    return same / max(1, len(pairs))
 
 
 def compare_gates(pairs: list[tuple[bool, float, bool, float]]) -> GateAgreement:
@@ -134,6 +165,31 @@ def compare_gates(pairs: list[tuple[bool, float, bool, float]]) -> GateAgreement
         student_ratios.append(student_ratio)
 
     count = max(1, len(pairs))
+
+    # Is the student a shifted copy of the teacher, or a noisier one? A high correlation
+    # with a large mean offset is recoverable by moving the student's threshold; a low
+    # correlation is not, whatever the threshold.
+    correlation = 0.0
+    if len(pairs) > 1:
+        import statistics
+
+        try:
+            correlation = statistics.correlation(teacher_ratios, student_ratios)
+        except statistics.StatisticsError:
+            correlation = 0.0
+
+    # The trivial baseline the search must beat: gate nothing, pass everything. It scores
+    # exactly the teacher's pass rate, so a "best threshold" near zero is not a
+    # recalibration win -- it is the search rediscovering pass-everything.
+    always_pass = sum(1 for teacher_passed, _, _, _ in pairs if teacher_passed) / count
+
+    best_threshold, best_agreement = 0.0, 0.0
+    for step in range(0, 101):
+        threshold = step / 100
+        agreement = recalibrated_agreement(pairs, threshold)
+        if agreement > best_agreement:
+            best_threshold, best_agreement = threshold, agreement
+
     return GateAgreement(
         num_clips=len(pairs),
         same_decision=same,
@@ -144,6 +200,10 @@ def compare_gates(pairs: list[tuple[bool, float, bool, float]]) -> GateAgreement
         mean_abs_ratio_delta=sum(deltas) / count,
         mean_teacher_ratio=sum(teacher_ratios) / count,
         mean_student_ratio=sum(student_ratios) / count,
+        ratio_correlation=correlation,
+        best_threshold=best_threshold,
+        best_threshold_agreement=best_agreement,
+        always_pass_agreement=always_pass,
     )
 
 
@@ -242,6 +302,22 @@ def main() -> None:
         f"  mean match_ratio      teacher {report.mean_teacher_ratio:.4f}, "
         f"student {report.mean_student_ratio:.4f}"
     )
+    print(f"  ratio correlation     {report.ratio_correlation:.4f}")
+    print(
+        f"  best student bar      {report.best_threshold:.2f} -> "
+        f"{report.best_threshold_agreement:.1%} agreement "
+        f"(shipped bar is 0.65 -> {report.decision_agreement:.1%})"
+    )
+    print(
+        f"  pass-everything       {report.always_pass_agreement:.1%} "
+        f"-- the trivial baseline any recalibration must beat"
+    )
+    if report.best_threshold_agreement <= report.always_pass_agreement + 0.01:
+        print(
+            "  => recalibration is NOT a fix: the best bar merely rediscovers "
+            "pass-everything, so the student is noisier than the teacher, not offset "
+            f"from it (ratio correlation {report.ratio_correlation:.2f})."
+        )
 
 
 if __name__ == "__main__":

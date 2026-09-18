@@ -117,3 +117,37 @@ def test_a_real_decode_is_not_empty():
     """The assertion that would have caught the bug immediately."""
     pytest.importorskip("tadabur.phoneme_vocab")
     assert len(dg.tokens_to_phonemes([7, 7, 32, 10, 32, 26])) == 6
+
+
+# --- Recalibration must beat the trivial policy -------------------------------------
+
+
+def test_pass_everything_baseline_is_the_teacher_pass_rate():
+    """The number any threshold search has to beat, and usually does not.
+
+    If the teacher passes 88 of 100 clips, gating nothing scores 88% agreement. A "best
+    threshold" near zero is the search rediscovering that, not a recalibration win -- which
+    is exactly what the first h384 measurement produced (best bar 0.01 -> 89.0% against an
+    88% baseline).
+    """
+    pairs = [_pair(True, True) for _ in range(88)] + [_pair(False, False) for _ in range(12)]
+    report = dg.compare_gates(pairs)
+    assert report.always_pass_agreement == pytest.approx(0.88)
+
+
+def test_recalibration_flag_is_false_when_it_only_matches_trivial():
+    # Student ratios carry no information: every clip scores the same, so no threshold
+    # can separate them and the best available is pass-everything.
+    pairs = [_pair(True, True, 0.9, 0.5) for _ in range(9)] + [_pair(False, False, 0.1, 0.5)]
+    report = dg.compare_gates(pairs)
+    assert report.as_dict()["recalibration_beats_trivial"] is False
+
+
+def test_recalibration_flag_is_true_when_a_threshold_genuinely_separates():
+    """A student that is merely *offset* is recoverable, and must be reported as such."""
+    pairs = [_pair(True, False, 0.9, 0.55) for _ in range(6)] + [
+        _pair(False, False, 0.3, 0.2) for _ in range(4)
+    ]
+    report = dg.compare_gates(pairs)
+    assert report.as_dict()["recalibration_beats_trivial"] is True
+    assert report.best_threshold_agreement == pytest.approx(1.0)

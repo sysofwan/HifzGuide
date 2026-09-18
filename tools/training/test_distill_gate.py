@@ -85,3 +85,35 @@ def test_agreement_counts_decisions_not_ratios():
     report = dg.compare_gates([_pair(True, True, 0.99, 0.66)])
     assert report.decision_agreement == pytest.approx(1.0)
     assert report.mean_abs_ratio_delta == pytest.approx(0.33)
+
+
+# --- Token -> phoneme mapping -------------------------------------------------------
+
+
+def test_tokens_map_to_phonemes_by_index():
+    """PHONEME_ID_TO_CHAR is a tuple indexed by class id, not a mapping.
+
+    Pinned because getting this wrong is silent: an `id in PHONEME_ID_TO_CHAR` membership
+    test asks whether the integer is one of the characters, always false, so every decode
+    becomes the empty string and every gate scores 0.0. That reads as a model producing
+    nothing rather than a broken lookup, which is exactly how it was first observed.
+    """
+    pytest.importorskip("tadabur.phoneme_vocab")
+    from tadabur.phoneme_vocab import PHONEME_ID_TO_CHAR
+
+    assert dg.tokens_to_phonemes([1, 2, 3]) == "".join(PHONEME_ID_TO_CHAR[i] for i in (1, 2, 3))
+    assert dg.tokens_to_phonemes([]) == ""
+
+
+def test_blank_is_dropped_and_out_of_range_ids_are_ignored():
+    pytest.importorskip("tadabur.phoneme_vocab")
+    from tadabur.phoneme_vocab import PHONEME_PAD_ID
+
+    assert dg.tokens_to_phonemes([PHONEME_PAD_ID]) == ""
+    assert dg.tokens_to_phonemes([9999, -1]) == ""
+
+
+def test_a_real_decode_is_not_empty():
+    """The assertion that would have caught the bug immediately."""
+    pytest.importorskip("tadabur.phoneme_vocab")
+    assert len(dg.tokens_to_phonemes([7, 7, 32, 10, 32, 26])) == 6

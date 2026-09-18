@@ -64,10 +64,21 @@ def parse_surah_ayah(filename: str) -> str | None:
 
 
 def tokens_to_phonemes(token_ids: list[int]) -> str:
-    """Map already-collapsed CTC token ids to their phoneme characters."""
-    from tadabur.phoneme_vocab import PHONEME_ID_TO_CHAR
+    """Map already-collapsed CTC token ids to their phoneme characters.
 
-    return "".join(PHONEME_ID_TO_CHAR[t] for t in token_ids if t in PHONEME_ID_TO_CHAR)
+    ``PHONEME_ID_TO_CHAR`` is a **tuple indexed by class id**, not a mapping. Testing
+    ``id in PHONEME_ID_TO_CHAR`` therefore asks whether the *integer* is one of the
+    characters, which is never true -- it silently yields an empty string, every gate
+    scores 0.0, and the result reads as "the model produces nothing" rather than "the
+    lookup is wrong". Guard the range explicitly instead.
+    """
+    from tadabur.phoneme_vocab import PHONEME_ID_TO_CHAR, PHONEME_PAD_ID
+
+    return "".join(
+        PHONEME_ID_TO_CHAR[t]
+        for t in token_ids
+        if t != PHONEME_PAD_ID and 0 <= t < len(PHONEME_ID_TO_CHAR)
+    )
 
 
 @dataclass

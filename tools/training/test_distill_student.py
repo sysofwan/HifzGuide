@@ -118,6 +118,23 @@ def test_h384_is_a_single_chunk_and_h512_is_not():
     assert h512.chunks == 2
 
 
+def test_h448_is_the_widest_single_chunk_preset():
+    """The band a 256/384/512 ladder skips.
+
+    h384 uses only ~63% of the demonstrated 99 MB chunk budget, so there is real width to
+    be had for free. h448 must stay one chunk while carrying meaningfully more capacity
+    than h384; if it ever crosses the ceiling the ladder needs rethinking, not silence.
+    """
+    h384 = ds.size_student(ds.PRESETS["h384"])
+    h448 = ds.size_student(ds.PRESETS["h448"])
+
+    assert h448.chunks == 1
+    assert h448.size_6bit_mb < ds.PROVEN_MAX_CHUNK_MB
+    assert h448.num_params > h384.num_params * 1.3
+    # ...and it is genuinely the widest that fits: h512 does not.
+    assert ds.size_student(ds.PRESETS["h512"]).chunks == 2
+
+
 def test_flop_ratio_is_quadratic_in_width_at_equal_depth():
     h512 = ds.PRESETS["h512"]
     assert h512.flop_ratio == pytest.approx(0.25)     # (512/1024)^2

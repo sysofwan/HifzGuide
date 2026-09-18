@@ -170,6 +170,12 @@ class StudentSpec:
 # tradeoff" an empirical question rather than a guess.
 PRESETS: dict[str, StudentSpec] = {
     "h512": StudentSpec("h512", hidden_size=512, intermediate_size=2048, num_attention_heads=8),
+    # The widest preset that is still ONE chunk, and the reason the ladder is not just
+    # powers of two. h384 lands at 62.3 MB against a demonstrated 99 MB ceiling -- only 63%
+    # of the budget -- so there is a whole width band between "comfortably one chunk" and
+    # "needs two" that a 256/384/512 ladder skips entirely. h448 is 80.5 MB: ~36% more
+    # parameters than h384 for no extra ANE dispatch.
+    "h448": StudentSpec("h448", hidden_size=448, intermediate_size=1792, num_attention_heads=7),
     "h384": StudentSpec("h384", hidden_size=384, intermediate_size=1536, num_attention_heads=6),
     "h256": StudentSpec("h256", hidden_size=256, intermediate_size=1024, num_attention_heads=4),
 }

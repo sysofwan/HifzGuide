@@ -44,10 +44,16 @@ from torch.utils.data import DataLoader
 from training.distill_data import DistillWindowDataset, build_window_index, discover_clips
 from training.distill_loss import (
     DEFAULT_TAP_LAYERS,
+    CONFIRM_TIMESTEPS,
     DistillLossConfig,
     FeatureProjector,
     breakout_stats,
+    ctc_anchor_loss,
     distillation_loss,
+    feature_matching_loss,
+    frame_weights,
+    hard_label_ce,
+    weighted_kl,
 )
 from training.distill_student import PRESETS, TEACHER_HIDDEN_SIZE, build_student
 from training.distill_train import load_teacher, seed_everything
@@ -57,20 +63,114 @@ from training.distill_train import load_teacher, seed_everything
 PREDICT_MEAN_FEATURE_MSE = 0.203
 
 
-def fixed_batch(audio_root: Path, batch_size: int, device: torch.device) -> torch.Tensor:
-    """One fixed batch of real windows, loaded once and reused every step."""
+def fixed_batches(
+    audio_root: Path, num_windows: int, batch_size: int, device: torch.device
+) -> list[torch.Tensor]:
+    """A fixed, repeatedly-cycled set of real windows, loaded once.
+
+    ``num_windows`` controls the *difficulty* of the probe and is the whole point of it. A
+    model that fits 32 windows perfectly but stalls at 2048 has an optimisation or capacity
+    problem that reveals itself with scale, not a data shortage -- and the size at which it
+    breaks localises the failure far better than any single-point test.
+    """
     clips = discover_clips(audio_root)
     if not clips:
         raise SystemExit(f"no .wav files under {audio_root}")
-    refs = build_window_index(clips)[:batch_size]
-    dataset = DistillWindowDataset(refs)
-    loader = DataLoader(dataset, batch_size=batch_size, num_workers=0)
-    return next(iter(loader)).to(device)
+    refs = build_window_index(clips)[:num_windows]
+    loader = DataLoader(
+        DistillWindowDataset(refs), batch_size=batch_size, num_workers=8, drop_last=True
+    )
+    return [batch.to(device) for batch in loader]
+
+
+def term_gradient_shares(
+    student_logits,
+    teacher_logits,
+    student_hidden,
+    teacher_hidden,
+    projector,
+    parameters,
+    config: DistillLossConfig,
+) -> dict:
+    """Gradient norm each loss term contributes on its own, as a share of the total.
+
+    Loss *magnitudes* say nothing about influence -- a term can read 0.18 against another's
+    6.5 and still dominate the update. This backwards each term separately (retaining the
+    graph) and measures the norm it actually puts on the parameters.
+
+    The specific suspicion it exists to test: the feature term is an **unnormalised** MSE
+    against teacher hidden states whose scale varies several-fold across tapped layers
+    (measured on this teacher: std 0.15 at layer 24, 0.66 at layer 12). Under a plain MSE
+    the large-scale layers dominate, so the term can quietly consume the update budget while
+    its printed value looks negligible.
+    """
+    weights = frame_weights(
+        teacher_logits,
+        nonblank_weight=config.nonblank_weight,
+        confirm_timesteps=config.confirm_timesteps,
+        confirm_weight=config.confirm_weight,
+    )
+    terms = {
+        "kl": config.logit_weight
+        * weighted_kl(student_logits, teacher_logits, weights, config.temperature),
+        "feature": config.feature_weight
+        * feature_matching_loss(
+            student_hidden, teacher_hidden, projector, config.tap_layers
+        )[0],
+        "ctc": config.ctc_weight * ctc_anchor_loss(student_logits, teacher_logits),
+        "hard": config.hard_weight
+        * hard_label_ce(student_logits, teacher_logits, weights),
+    }
+
+    norms: dict[str, float] = {}
+    for name, term in terms.items():
+        if not float(term.detach()):
+            norms[name] = 0.0
+            continue
+        for parameter in parameters:
+            parameter.grad = None
+        term.backward(retain_graph=True)
+        total = torch.sqrt(
+            sum(
+                (p.grad.detach() ** 2).sum()
+                for p in parameters
+                if p.grad is not None
+            )
+        )
+        norms[name] = float(total)
+
+    for parameter in parameters:
+        parameter.grad = None
+
+    denominator = sum(norms.values()) or 1.0
+    return {f"grad_share_{k}": round(v / denominator, 4) for k, v in norms.items()}
+
+
+@torch.no_grad()
+def decoded_agreement(student_logits, teacher_logits) -> float:
+    """Character agreement of the CONFIRMED decode on the overfit batch itself.
+
+    Frame agreement can look healthy while the decoded stream does not, so the overfit probe
+    has to score what the release gate scores. If the model cannot reach near-1.0 here --
+    on data it is being shown repeatedly -- no amount of data or capacity is the answer.
+    """
+    from training.distill_eval import confirmed_tokens, levenshtein
+
+    student_ids = student_logits.argmax(dim=-1).cpu().numpy()
+    teacher_ids = teacher_logits.argmax(dim=-1).cpu().numpy()
+
+    edits = tokens = 0
+    for student_row, teacher_row in zip(student_ids, teacher_ids):
+        reference = confirmed_tokens(teacher_row, CONFIRM_TIMESTEPS)
+        hypothesis = confirmed_tokens(student_row, CONFIRM_TIMESTEPS)
+        edits += levenshtein(reference, hypothesis)
+        tokens += len(reference)
+    return 1.0 - edits / max(1, tokens)
 
 
 def overfit(
     preset: str,
-    features: torch.Tensor,
+    batches: list[torch.Tensor],
     teacher,
     device: torch.device,
     steps: int,
@@ -90,13 +190,19 @@ def overfit(
     parameters = list(student.parameters()) + list(projector.parameters())
     optimizer = torch.optim.AdamW(parameters, lr=learning_rate)
 
-    with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
-        teacher_out = teacher(features, output_hidden_states=True, return_dict=True)
-    teacher_logits = teacher_out["logits"]["phonemes"]
-    teacher_hidden = teacher_out["hidden_states"]
-
+    # Teacher outputs are recomputed each step rather than cached. Caching looks obvious --
+    # the probe shows the same windows repeatedly -- but the hidden states are 25 layers x
+    # B x 250 x d, ~150 MB per batch of 32, so caching even 64 batches needs ~10 GB and
+    # OOMs the card. Recomputing costs one no-grad forward, which the real training pays
+    # anyway.
     history = []
     for step in range(1, steps + 1):
+        features = batches[(step - 1) % len(batches)]
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+            teacher_out = teacher(features, output_hidden_states=True, return_dict=True)
+        teacher_logits = teacher_out["logits"]["phonemes"]
+        teacher_hidden = teacher_out["hidden_states"]
+
         with torch.autocast("cuda", dtype=torch.bfloat16):
             student_out = student(features, output_hidden_states=True, return_dict=True)
 
@@ -108,6 +214,15 @@ def overfit(
             projector=projector,
             config=loss_config,
         )
+        if step == 1:
+            # Must run BEFORE the main backward: each term backwards with retain_graph so
+            # the graph survives for the real step, but the main backward frees it.
+            print(
+                "  gradient share by term: "
+                f"{term_gradient_shares(student_out['logits']['phonemes'], teacher_logits, student_out['hidden_states'], teacher_hidden, projector, parameters, loss_config)}",
+                flush=True,
+            )
+
         optimizer.zero_grad(set_to_none=True)
         output.total.backward()
 
@@ -124,6 +239,12 @@ def overfit(
                 "step": step,
                 "grad_norm_preclip": round(grad_norm, 2),
                 "clipped": grad_norm > max_grad_norm,
+                "decoded_agreement": round(
+                    decoded_agreement(
+                        student_out["logits"]["phonemes"], teacher_logits
+                    ),
+                    4,
+                ),
                 **output.as_dict(),
                 **breakout.as_dict(),
             }
@@ -132,7 +253,8 @@ def overfit(
                 f"  [{step:>4}] loss {record['total']:.3f} kl {record['logit_loss']:.3f} "
                 f"ctc {record['ctc_loss']:.3f} feat {record['feature_loss']:.4f} "
                 f"|g| {grad_norm:>8.1f}{'*' if record['clipped'] else ' '} "
-                f"nb {record['nonblank_agreement']:.3f} rank {record['target_rank']:.2f}",
+                f"nb {record['nonblank_agreement']:.3f} "
+                f"DECODED {record['decoded_agreement']:.3f}",
                 flush=True,
             )
 
@@ -160,6 +282,13 @@ def main() -> None:
     parser.add_argument("--preset", choices=sorted(PRESETS), default="h384")
     parser.add_argument("--audio-root", type=Path, required=True)
     parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument(
+        "--num-windows",
+        type=int,
+        default=32,
+        help="how many distinct windows to fit. The probe's difficulty knob: sweep it to "
+        "find where the model stops being able to reproduce the teacher.",
+    )
     parser.add_argument("--steps", type=int, default=400)
     parser.add_argument("--log-every", type=int, default=50)
     parser.add_argument("--max-grad-norm", type=float, default=5.0)
@@ -188,7 +317,10 @@ def main() -> None:
         raise SystemExit("CUDA is required")
     device = torch.device("cuda")
 
-    features = fixed_batch(args.audio_root, args.batch_size, device)
+    batches = fixed_batches(
+        args.audio_root, max(args.num_windows, args.batch_size), args.batch_size, device
+    )
+    print(f"fitting {len(batches) * args.batch_size} windows in {len(batches)} batches")
     teacher = load_teacher(device)
     loss_config = DistillLossConfig(
         logit_weight=args.logit_weight,
@@ -207,7 +339,7 @@ def main() -> None:
         results.append(
             overfit(
                 args.preset,
-                features,
+                batches,
                 teacher,
                 device,
                 args.steps,

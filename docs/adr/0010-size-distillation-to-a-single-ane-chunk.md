@@ -134,6 +134,36 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   5 s window, 1 s hop, `scanCTC` collapse, `midpoint < 25` confirmation — and compares the
   resulting transcripts. That is the number that predicts what Muraja does.
 
+## Result of the first full run
+
+`h384`, rotary, 40,000 steps at 1e-4 over the 61.8-hour `audit_run/clips_v2` corpus
+(78,578 windows), 11.67 h on the RTX 5060 Ti.
+
+| | value |
+| --- | --- |
+| on-device size | **62.3 MB**, 6-bit, **single ANE chunk** |
+| M4 ANE latency | **11.1 ms**/window vs the teacher's 42.3 ms (**3.8x**) |
+| frame confirmed-agreement | 0.882 |
+| top-5 agreement | 0.992 |
+| target rank | 1.25 |
+| blank rate | 0.650 vs the teacher's 0.664 |
+| **confirmed-stream char accuracy** | **84.58%** (200 held-out clips) |
+| confirmed-stream exact match | 10.5% |
+
+**The size goal is met and the quality goal is not.** 84.58% against the 97-99% that
+section 1.3 measured for the teacher's own quantization variants is not a drop-in
+replacement; it is a model that gets roughly six characters in seven right.
+
+**The corpus is the binding constraint, and the plateau proves it.** Char accuracy went
+45.4% -> 75.1% -> 83.8% -> 84.6% at steps 4k/10k/20k/40k: **doubling the steps from 20k to
+40k bought 0.76 points.** More training is worthless at this corpus size. Nor is there more
+audio staged -- `seg_v21`, `segment_audio_v2` and `segment_audio_v4` are all waqf cuts of
+the same 18,075 source clips, so the 61.8 hours is the whole of it. Upstream Tadabur has
+385 shards of which ~20 are processed, i.e. roughly 1,200 hours available, against the ~960
+hours DistilHuBERT-class recipes use. Expanding the corpus is the next move, and only after
+that does it make sense to ask whether `h384` has the capacity -- running `h512` now would
+confound a capacity question with a data limit.
+
 ## Consequences
 
 - **The corpus problem disappears, and a small corpus suffices to start.** 61.8 hours of

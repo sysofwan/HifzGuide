@@ -465,3 +465,28 @@ def test_the_bias_is_not_rescaled_with_the_branch(pair, spec):
     name = "wav2vec2_bert.encoder.layers.0.self_attn.linear_out.bias"
     expected = teacher.state_dict()[name].index_select(0, selection.residual)
     assert torch.equal(student.state_dict()[name], expected)
+
+
+def test_the_two_aggregations_rank_channels_differently(pair, spec):
+    """Otherwise the flag is decoration and the Minitron ablation cannot be reproduced."""
+    teacher, _, features = pair
+    l2 = collect_importance(teacher, features, "l2_over_examples").residual_importance
+    mean = collect_importance(teacher, features, "mean_over_examples").residual_importance
+
+    assert l2.shape == mean.shape
+    assert not torch.allclose(l2, mean)
+    # L2 over examples is >= the mean over examples, elementwise, by Cauchy-Schwarz once the
+    # per-example scores are non-negative -- which they are, being means of absolute values.
+    assert (l2 >= 0).all() and (mean >= 0).all()
+
+
+def test_an_unknown_aggregation_is_refused(pair):
+    teacher, _, features = pair
+    with pytest.raises(ValueError, match="unknown aggregation"):
+        collect_importance(teacher, features, "whatever_scores_best")
+
+
+def test_the_default_aggregation_is_the_one_with_evidence():
+    from training.teacher_init import DEFAULT_AGGREGATION
+
+    assert DEFAULT_AGGREGATION == "l2_over_examples"

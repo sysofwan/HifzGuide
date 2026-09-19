@@ -96,6 +96,12 @@ HEAD_SCORE_TOKENS = 4096
 
 LAYER_INDEX = re.compile(r"\.layers\.(\d+)\.")
 
+# How the residual-channel score reduces the example axis once time has been averaged out.
+# Minitron's ablation over exactly this pairing reports (batch = L2, seq = mean) as clearly
+# best: LM loss 7.18 and WikiText2 perplexity 7.23, against 8.73 / 8.37 for L2 on both axes.
+# Untested on this backbone -- carried on their evidence, with the alternative kept runnable.
+DEFAULT_AGGREGATION = "l2_over_examples"
+
 
 def _layer_key(name: str) -> str:
     """The module path a per-layer statistic is filed under."""
@@ -170,18 +176,27 @@ def _is_hidden_layernorm(module, hidden_size: int) -> bool:
 
 
 @torch.no_grad()
-def collect_importance(teacher, batches: list[torch.Tensor]) -> CalibrationStats:
+def collect_importance(
+    teacher, batches: list[torch.Tensor], aggregate: str = DEFAULT_AGGREGATION
+) -> CalibrationStats:
     """Pass one: what each residual channel, attention head and FFN unit actually contributes.
 
     Hooks accumulate into fixed-size vectors rather than storing activations: the FFN sites
     alone would be 48 tensors of ``(B, 250, 4096)``, which is tens of gigabytes across a
     calibration batch, and none of it is needed beyond its column sums.
+
+    ``aggregate`` controls how the residual-channel score reduces the batch axis after the
+    time axis has been averaged. Minitron ablated precisely this and found **L2 over examples
+    with a mean over time** clearly best; ``"mean_over_examples"`` is the earlier behaviour,
+    kept so the comparison stays runnable rather than because it should be the default.
     """
     device = next(teacher.parameters()).device
     hidden = teacher.config.hidden_size
     num_heads = teacher.config.num_attention_heads
     head_dim = hidden // num_heads
     intermediate = teacher.config.intermediate_size
+    if aggregate not in ("l2_over_examples", "mean_over_examples"):
+        raise ValueError(f"unknown aggregation {aggregate!r}")
     residual = torch.zeros(hidden, device=device, dtype=torch.float32)
     head_scores: dict[str, torch.Tensor] = {}
     ffn_scores: dict[str, torch.Tensor] = {}
@@ -252,11 +267,21 @@ def collect_importance(teacher, batches: list[torch.Tensor]) -> CalibrationStats
                 # Standardise per layer before pooling: without it the deepest layers' scale
                 # decides the ranking for all 24.
                 scale = state.pow(2).mean().sqrt().clamp_min(1e-6)
-                residual += state.abs().mean(dim=(0, 1)) / scale
+                per_example = state.abs().mean(dim=1) / scale  # mean over time -> (B, C)
+                if aggregate == "l2_over_examples":
+                    # Minitron ablated exactly this choice and found (batch = L2, seq = mean)
+                    # clearly best -- LM loss 7.18 / PPL 7.23 against 8.73 / 8.37 for L2 on
+                    # both axes. Accumulating the sum of squares here and rooting at the end
+                    # makes it an L2 over every example seen, not per batch.
+                    residual += per_example.pow(2).sum(dim=0)
+                else:
+                    residual += per_example.sum(dim=0)
     finally:
         for handle in handles:
             handle.remove()
 
+    if aggregate == "l2_over_examples":
+        residual = residual.sqrt()
     return CalibrationStats(
         residual_importance=residual.cpu(),
         head_importance={k: v.cpu() for k, v in head_scores.items()},
@@ -849,6 +874,14 @@ def main() -> None:
     )
     parser.add_argument("--qk-scale", type=float, default=0.5)
     parser.add_argument(
+        "--aggregate",
+        choices=("l2_over_examples", "mean_over_examples"),
+        default=DEFAULT_AGGREGATION,
+        help="how the residual-channel score reduces the example axis. The default is the "
+        "pairing Minitron's ablation found best; the alternative is this project's earlier "
+        "behaviour, kept so the two stay comparable.",
+    )
+    parser.add_argument(
         "--no-branch-gain",
         action="store_true",
         help="skip the least-squares rescaling of each kept branch. Only to measure what "
@@ -878,7 +911,7 @@ def main() -> None:
     )
     print(f"[calib] {len(batches)} batches of {args.batch_size} windows", flush=True)
 
-    stats = collect_importance(teacher, batches)
+    stats = collect_importance(teacher, batches, args.aggregate)
     selection = choose(spec, stats, teacher.config.hidden_size // teacher.config.num_attention_heads)
     stats.layernorm_moments = collect_layernorm_moments(teacher, batches, selection)
     gains = {} if args.no_branch_gain else collect_branch_gains(teacher, batches, selection)
@@ -909,6 +942,7 @@ def main() -> None:
     del weights
     student.eval()
     report["qk_mode"] = args.qk
+    report["aggregate"] = args.aggregate
     report["branch_gains"] = {name: round(value, 4) for name, value in gains.items()}
     report["captured_importance_share"] = round(
         stats.captured_variance_share(selection.residual), 4

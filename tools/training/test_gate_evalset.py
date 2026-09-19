@@ -152,9 +152,22 @@ def test_reweighted_agreement_recovers_the_population_number():
 
 
 def test_reweighted_agreement_renormalises_over_covered_strata_only():
+    """Renormalising is fine when the covered strata ARE nearly all of the population."""
     scanned = {"fail_clear": 0, "near_fail": 50, "near_pass": 50, "pass_clear": 0}
     assert reweighted_agreement({"near_fail": 0.8, "near_pass": 0.6}, scanned) == pytest.approx(0.7)
-    assert reweighted_agreement({"near_fail": 1.0}, {name: 0 for name in STRATA}) == 0.0
+
+
+def test_reweighting_refuses_when_the_sample_misses_most_of_the_population():
+    """Renormalising over a sliver is not an estimate; it is a confident wrong number.
+
+    A sample covering one 1%-mass stratum at 100% agreement would otherwise report "100%
+    population agreement" while saying nothing about the other 99%.
+    """
+    scanned = {"fail_clear": 10, "near_fail": 10, "near_pass": 10, "pass_clear": 970}
+    assert reweighted_agreement({"near_fail": 1.0}, scanned) is None
+    assert reweighted_agreement({name: 1.0 for name in STRATA}, scanned) == pytest.approx(1.0)
+    # No population at all cannot be reweighted either.
+    assert reweighted_agreement({"near_fail": 1.0}, {name: 0 for name in STRATA}) is None
 
 
 def test_population_weights_of_an_empty_scan_are_zero_not_a_crash():
@@ -329,76 +342,50 @@ def test_the_default_training_spec_is_exactly_the_complement():
     assert len(trainable) + len(held_out_shards()) == 385
 
 
-# --- Which gate condition produced each disagreement ---
+def test_gate_definitions_differ_only_by_threshold_and_that_matters():
+    from training.gate_evalset import gate_verdicts
+
+    assert gate_verdicts(0.90) == {"advancement": True, "bar_0_65": True}
+    assert gate_verdicts(0.40) == {"advancement": False, "bar_0_65": False}
+    # THE THRESHOLD IS THE POINT. 0.67 clears the Tadabur filter's 0.65 and fails Muraja's
+    # 0.70 (ADR-0005), so a definition differing only in threshold is not a formality.
+    assert gate_verdicts(0.67) == {"advancement": False, "bar_0_65": True}
+    # The bar passes at >=, so exactly-at-bar advances.
+    assert gate_verdicts(0.70)["advancement"] is True
 
 
-def test_flip_causes_attribute_a_rejection_to_poison_when_its_own_ratio_cleared_the_bar():
-    from training.gate_evalset import flip_causes
+def test_no_definition_consults_the_corpus_filters_poison_rejects():
+    """Filtering is fine-tune-side (ADR-0001); a distillation is not scored against it."""
+    from training.gate_evalset import GATE_DEFINITIONS
 
-    rows = [
-        # (teacher_passed, teacher_ratio, student_passed, student_ratio)
-        (False, 0.92, True, 0.90),   # teacher rejected at a high ratio -> poison
-        (False, 0.30, True, 0.70),   # teacher rejected on the ratio
-        (True, 0.88, False, 0.86),   # student rejected at a high ratio -> poison
-        (True, 0.88, False, 0.40),   # student's ratio fell below the bar
-        (True, 0.90, True, 0.91),    # agreement, ignored
-        (False, 0.20, False, 0.21),  # agreement, ignored
-    ]
-    causes = flip_causes(rows, 0.65)
-    assert causes.false_pass_on_poison == 1
-    assert causes.false_pass_on_ratio == 1
-    assert causes.false_fail_on_poison == 1
-    assert causes.false_fail_on_ratio == 1
-    assert causes.total == 4
-    assert causes.poison_share == pytest.approx(0.5)
+    for definition in GATE_DEFINITIONS:
+        assert set(vars(definition)) == {"name", "label", "threshold"}
+    import inspect
+
+    from training import gate_evalset
+
+    source = inspect.getsource(gate_evalset.GateDefinition.verdict)
+    assert "insertion" not in source and "shadda" not in source
 
 
-def test_flip_causes_of_a_perfect_student_are_empty_not_a_divide_by_zero():
-    from training.gate_evalset import flip_causes
-
-    causes = flip_causes([(True, 0.9, True, 0.9)], 0.65)
-    assert causes.total == 0
-    assert causes.poison_share == 0.0
-
-
-def test_a_rejection_exactly_at_the_bar_is_not_a_ratio_rejection():
-    """The gate passes at ``>= threshold``, so a rejection at the bar came from elsewhere."""
-    from training.gate_evalset import flip_causes
-
-    causes = flip_causes([(True, 0.80, False, 0.65)], 0.65)
-    assert causes.false_fail_on_poison == 1
-    assert causes.false_fail_on_ratio == 0
-
-
-def test_the_duplicated_insertion_run_limit_matches_the_scorer():
-    """This module stays torch-free, so the limit is a literal. Pin it to its source."""
-    from tadabur.scorer import MAX_INSERTION_RUN as SCORER_LIMIT
-
-    from training.gate_evalset import MAX_INSERTION_RUN
-
-    assert MAX_INSERTION_RUN == SCORER_LIMIT
-
-
-def test_gate_verdicts_separate_the_ratio_from_the_poison_rejects():
-    from training.gate_evalset import MAX_INSERTION_RUN, gate_verdicts
-
-    # A clip the shipped gate rejects only because of an added shadda.
-    shadda_only = gate_verdicts(passed=False, match_ratio=0.90, insertion_run=0, threshold=0.65)
-    assert shadda_only == {"full": False, "no_added_shadda": True, "ratio_only": True}
-
-    # One rejected by a long insertion run: relaxing added-shadda does not rescue it.
-    run = gate_verdicts(
-        passed=False, match_ratio=0.90, insertion_run=MAX_INSERTION_RUN, threshold=0.65
+def test_the_distillation_criterion_is_the_product_decision_not_the_best_number():
+    """It must be pinned to a product decision, not chosen for scoring well."""
+    from training.gate_evalset import (
+        DISTILLATION_CRITERION,
+        gate_definition,
     )
-    assert run == {"full": False, "no_added_shadda": False, "ratio_only": True}
 
-    # One rejected on the ratio: every definition rejects it.
-    low = gate_verdicts(passed=False, match_ratio=0.40, insertion_run=0, threshold=0.65)
-    assert low == {"full": False, "no_added_shadda": False, "ratio_only": False}
+    chosen = gate_definition(DISTILLATION_CRITERION)
+    # ADR-0005: Muraja's advancement is matchRatio against a hard-coded 0.70 that
+    # scoringMode does not touch. 0.65 is the Tadabur filter's bar, not the app's.
+    assert chosen.threshold == 0.70
 
-    # A pass is a pass under all three.
-    ok = gate_verdicts(passed=True, match_ratio=0.90, insertion_run=1, threshold=0.65)
-    assert all(ok.values())
+
+def test_gate_definition_refuses_an_unknown_name():
+    from training.gate_evalset import gate_definition
+
+    with pytest.raises(ValueError, match="unknown gate definition"):
+        gate_definition("the_one_that_scores_best")
 
 
 # --- Clustering: the clips are not independent observations ---
@@ -459,3 +446,28 @@ def test_a_single_cluster_falls_back_rather_than_returning_a_point():
 
     outcomes = [True] * 9 + [False]
     assert cluster_bootstrap_interval(outcomes, [7] * 10) == wilson_interval(9, 10)
+
+
+def test_the_fingerprint_changes_when_the_cached_truth_does():
+    """Filenames repeat across rebuilds; the teacher's decodes underneath them may not."""
+    base = _evalset([_clip("a.wav", 0.9, True)], protocol_version="v2")
+    assert base.fingerprint() == _evalset(
+        [_clip("a.wav", 0.9, True)], protocol_version="v2"
+    ).fingerprint()
+
+    moved_truth = _evalset([_clip("a.wav", 0.61, False)], protocol_version="v2")
+    assert moved_truth.fingerprint() != base.fingerprint()
+
+    other_protocol = _evalset([_clip("a.wav", 0.9, True)], protocol_version="v1")
+    assert other_protocol.fingerprint() != base.fingerprint()
+
+
+def test_the_training_spec_excludes_the_shards_a_set_was_actually_built_on():
+    """`--shards` can override the canonical reservation; the guard must follow it."""
+    from tadabur.shard_reader import parse_shard_spec
+
+    spec = training_shard_spec(reserved_shards=[200, 201])
+    trainable = set(parse_shard_spec(spec))
+    assert not ({200, 201} & trainable)
+    # And the canonical block is no longer reserved when it was not what was used.
+    assert gate_eval_shards()[5] in trainable

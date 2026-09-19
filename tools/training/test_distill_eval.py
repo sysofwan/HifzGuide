@@ -244,12 +244,13 @@ def test_the_flush_can_be_turned_off_to_reproduce_the_old_protocol():
     assert confirm_split_for_window(0, 0, flush_tail=False) == CONFIRM_TIMESTEPS
 
 
-def test_flushing_commits_the_tail_no_earlier_window_could_have():
-    """The flush must add timesteps, never re-add ones an earlier window already committed.
+def test_flushing_adds_the_tail_of_its_own_window():
+    """The flush adds this window's steps [25, 125), which no later window exists to decode.
 
-    Window k commits steps [0, 25) of its own frame, which is audio second k. The flush adds
-    steps [25, 125) of the *final* window -- audio no later window exists to decode -- so the
-    two never overlap and no token is emitted twice.
+    Scoped deliberately to one window. It does NOT show that no token is emitted twice across
+    the corpus: a run straddling the confirmation boundary commits in one window by midpoint
+    and again from the next window's opening steps, which predates the flush and is faithful
+    to ``predictSplit``. See the module docstring.
     """
     import numpy as np
 
@@ -261,3 +262,23 @@ def test_flushing_commits_the_tail_no_earlier_window_could_have():
     flushed = confirmed_tokens(ids, 125)
     assert flushed == [5, 7]
     assert flushed[: len(confirmed_tokens(ids, CONFIRM_TIMESTEPS))] == [5]
+
+
+def test_a_segment_straddling_the_boundary_is_emitted_by_both_windows():
+    """Documents a real double-emission, so nobody re-derives it as a surprise.
+
+    A run at steps 18-29 has midpoint 23.5 and commits from this window. One second later the
+    same audio sits at steps 0-4 of the next window and commits again. This predates the
+    flush and is faithful to ``predictSplit``; it is pinned here so the behaviour is a
+    recorded property rather than an assumed absence.
+    """
+    import numpy as np
+
+    from training.distill_eval import CONFIRM_TIMESTEPS, confirmed_tokens
+
+    window_k = np.array([0] * 18 + [9] * 12 + [0] * 95)
+    assert confirmed_tokens(window_k, CONFIRM_TIMESTEPS) == [9]
+
+    # Advance one second: 25 timesteps. The run's surviving portion opens the next window.
+    window_k1 = np.array([9] * 5 + [0] * 120)
+    assert confirmed_tokens(window_k1, CONFIRM_TIMESTEPS) == [9]

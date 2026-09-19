@@ -33,12 +33,21 @@ of audio. ``flush_tail`` is therefore on by default and :data:`PROTOCOL_VERSION`
 because it moves every number this module and the gate produce. Pass ``flush_tail=False``
 only to reproduce a pre-flush measurement.
 
-Two simplifications remain, neither of which favours the student. The VAD gate that skips
-inference during silence is ignored, because it gates *both* models identically and so cannot
-move the agreement; and the preview inferences are skipped -- they are provisional and never
-enter the transcript, though they are why per-window cost matters so much. A tail of under
-one second past the last full window is also not replayed, since the window grid advances in
-whole seconds.
+Three gaps to the deployed protocol remain, and none of them is established to be harmless.
+The VAD gate that skips inference during silence is ignored: it treats both models
+identically, but that is not the same as not moving the agreement -- it selects which regions
+are scored, and the two models need not disagree at the same rate inside and outside them.
+The preview inferences are skipped, which is safe in that they never enter the transcript.
+And a tail of under one second past the last full window is never decoded at all -- a 5.9 s
+clip is one window covering its first 5 s, and no confirmation rule can recover audio the
+model never saw. Closing these needs a deployment replay fixture (fractional endings, short
+clips, seam-spanning runs, silence), not a choice between policies by which scores better.
+
+One thing the flush does **not** fix, because it predates it: a segment straddling the
+confirmation boundary can be emitted twice. A run at steps 18-29 of one window has midpoint
+23.5 and commits; the same audio lands at steps 0-4 of the next window and commits again.
+``confirmed_stream`` concatenates without reconciliation, faithfully to ``predictSplit``.
+Whether the device dedupes is unverified here.
 
 Usage::
 

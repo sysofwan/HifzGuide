@@ -125,12 +125,6 @@ DEFAULT_BOUNDARY_TARGET = 1000
 # this, so including them would measure the student on audio the product pipeline never
 # reaches -- and each one costs ~46 teacher window passes.
 MAX_CLIP_SECONDS = 50.0
-
-# Mirrors ``tadabur.scorer.MAX_INSERTION_RUN``. Duplicated as a literal for the same reason
-# the vocabulary size is in ``distill_student``: the statistics here must stay importable
-# without dragging in the scorer (and therefore torch) for a torch-free test run. The test
-# suite pins the two against each other.
-MAX_INSERTION_RUN = 5
 # Below this there is not enough audio for one confirmed window to mean anything.
 MIN_CLIP_SECONDS = 1.5
 
@@ -154,15 +148,21 @@ def gate_eval_shards() -> list[int]:
 def training_shard_spec(
     held_out_below: int = GATE_EVAL_SHARD_START,
     num_shards: int = NUM_TADABUR_SHARDS,
+    reserved_shards: list[int] | None = None,
 ) -> str:
     """The ``--stream-shards`` spec that excludes both held-out blocks.
 
-    Shards below ``held_out_below`` produced the staged corpus; the strided evaluation
-    shards are removed on top of that. Returned as the compact range spec
-    ``training.distill_stream`` already parses, so a run cannot accidentally be configured
-    with a hand-typed range that clips the reservation.
+    Shards below ``held_out_below`` produced the staged corpus; the evaluation shards are
+    removed on top of that. Returned as the compact range spec ``training.distill_stream``
+    already parses, so a run cannot be configured with a hand-typed range that clips the
+    reservation.
+
+    ``reserved_shards`` must be the shards a set was **actually built on**, which is not
+    always :func:`gate_eval_shards`: ``--shards`` can override it. Defaulting to the
+    canonical block while a set was built on some other shard is how the advertised leakage
+    guard quietly stops guarding, so the CLI reads this from the built manifest.
     """
-    reserved = set(gate_eval_shards())
+    reserved = set(gate_eval_shards() if reserved_shards is None else reserved_shards)
     available = [i for i in range(held_out_below, num_shards) if i not in reserved]
     if not available:
         raise ValueError("no training shards left after the reservation")
@@ -232,6 +232,9 @@ class EvalClip:
     teacher_text: str
     teacher_ratio: float
     teacher_passed: bool
+    # Recorded but unused by any distillation metric: they are the inputs to the Tadabur
+    # corpus filter's poison rejects, which belong to the ADR-0001 fine-tune track. Kept in
+    # the manifest so a filter-side question can be asked of this set later without a rebuild.
     teacher_insertion_run: int
     teacher_added_shadda: bool
 
@@ -271,6 +274,28 @@ class EvalSet:
     num_skipped: int
     provenance: dict
 
+    def fingerprint(self) -> str:
+        """A stable id for *this* evaluation: its clips, their cached teacher truth, its rules.
+
+        Two sets built from the same shards under different protocols share filenames, so
+        comparing a saved decisions file by name alone can silently score one checkpoint
+        against another's truth. Hashing the clip list with the teacher's decodes and the
+        provenance makes that mismatch detectable.
+        """
+        payload = json.dumps(
+            {
+                "schema": self.schema_version,
+                "provenance": self.provenance,
+                "clips": [
+                    [clip.filename, clip.teacher_text, round(clip.teacher_ratio, 6)]
+                    for clip in self.clips
+                ],
+            },
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
     def subset(self, view: str, split: str | None = None) -> tuple[EvalClip, ...]:
         """The clips in one view (``"population"`` / ``"boundary"`` / ``"all"``)."""
         if view == "population":
@@ -309,18 +334,27 @@ def population_weights(scanned_by_stratum: dict[str, int]) -> dict[str, float]:
     return {name: count / total for name, count in scanned_by_stratum.items()}
 
 
+MIN_REWEIGHTING_COVERAGE = 0.95
+
+
 def reweighted_agreement(
-    per_stratum_agreement: dict[str, float], scanned_by_stratum: dict[str, int]
-) -> float:
+    per_stratum_agreement: dict[str, float],
+    scanned_by_stratum: dict[str, int],
+    min_coverage: float = MIN_REWEIGHTING_COVERAGE,
+) -> float | None:
     """Population agreement implied by per-stratum agreement and the scan counts.
 
-    Renormalised over the strata that actually have samples, so a stratum the scan never
-    populated cannot contribute a silent zero to the estimate.
+    Renormalised over the strata that actually have samples -- but **only when those strata
+    carry almost all of the population**. Renormalising over a sliver is not an estimate of
+    anything: a sample covering one 1%-mass stratum at 100% agreement would otherwise report
+    "100% population agreement" while saying nothing about the other 99%. Returns ``None``
+    when coverage is below ``min_coverage``, so the caller has to print "unavailable" rather
+    than a confident wrong number.
     """
     weights = population_weights(scanned_by_stratum)
     covered = sum(weights.get(name, 0.0) for name in per_stratum_agreement)
-    if covered <= 0:
-        return 0.0
+    if covered < min_coverage:
+        return None
     return sum(
         agreement * weights.get(name, 0.0) / covered
         for name, agreement in per_stratum_agreement.items()
@@ -477,131 +511,51 @@ def directional_errors(decisions: list[tuple[bool, bool]]) -> DirectionalErrors:
 # agreement under each in turn is what separates "the student decodes differently" from "one
 # asymmetric heuristic is unreproducible", and on the h384 baseline those are 3.2 and 5.4
 # points of the same 8.6-point gap.
-GATE_CONDITIONS: tuple[tuple[str, str], ...] = (
-    ("full", "Tadabur filter gate (both poison rejects)"),
-    ("no_added_shadda", "without the added-shadda reject"),
-    ("ratio_only", "Muraja-faithful: match_ratio alone"),
+@dataclass(frozen=True)
+class GateDefinition:
+    """One decision the scorer can be asked to make, named by its threshold.
+
+    **The Tadabur poison rejects are not here, and that is deliberate.** ``Scorer.gate``
+    layers two of them on the Muraja-faithful ``match_ratio`` -- a long interior insertion
+    run and an added shadda -- and its own comments call both "NOT a Muraja parameter",
+    "Tadabur-only", "filter-side". They decide which clips enter the ADR-0001 **fine-tune**
+    corpus. A size distillation is behavioural cloning of the teacher's decode; the corpus
+    filter is not part of that question, and ADR-0008 (Accepted) already ruled that this gate
+    "should not be the headline metric at all".
+
+    What is left is the threshold, and it is not a formality. ADR-0005 records that Muraja's
+    **advancement** decision is ``matchRatio`` against a hard-coded ``0.70`` which
+    ``scoringMode`` does not touch. ``.balanced``'s ``0.65`` is the filter's bar. A clip at
+    0.67 advances under one and not the other.
+    """
+
+    name: str
+    label: str
+    threshold: float
+
+    def verdict(self, match_ratio: float) -> bool:
+        return match_ratio >= self.threshold
+
+
+GATE_DEFINITIONS: tuple[GateDefinition, ...] = (
+    GateDefinition("advancement", "Muraja advancement, ratio >= 0.70 (ADR-0005)", 0.70),
+    GateDefinition("bar_0_65", "at the Tadabur filter's 0.65 bar, for comparison", 0.65),
 )
 
-# What a *distillation* run is scored on, and it is not the first row. `tadabur.scorer` says
-# so itself: both poison rejects are "NOT a Muraja parameter", "Tadabur-only", "filter-side"
-# -- they exist to decide which clips enter the ADR-0001 fine-tune corpus, not what Muraja
-# shows a reciter. Holding a size distillation to them measures a corpus-filtering policy,
-# and the added-shadda reject in particular is an asymmetric ADR-0001 P3.5 mitigation whose
-# verdict turns on where one geminate lands, and it is the most edit-sensitive part of the
-# gate by roughly nine to one against the ratio. ADR-0010 already carries the principle -- "must
-# not be confounded with the ADR-0001 track" -- and this constant is that principle applied.
-#
-# The insertion-run reject is kept because it is stable under the same perturbation (0.2%)
-# and excluding it changes nothing (96.85% against 96.50%); dropping a condition that costs
-# nothing would only make the criterion look tuned.
-DISTILLATION_CRITERION = "no_added_shadda"
+# The decision the **product** makes. Deliberately not the definition that scores best.
+DISTILLATION_CRITERION = "advancement"
 
 
-def gate_verdicts(
-    passed: bool, match_ratio: float, insertion_run: int, threshold: float
-) -> dict[str, bool]:
-    """One side's verdict under each progressively-relaxed definition of the gate.
-
-    ``tadabur.scorer.Scorer.gate`` ands three conditions together, and they are not
-    comparable objects. ``match_ratio`` is a smooth function of the decode. The insertion-run
-    and added-shadda rejects are discrete alignment properties: a *single* phoneme edit to
-    the teacher's own decode flips the shipped gate on 1.5% of clips, of which 1.3 points are
-    added shadda against 0.2 for the ratio.
-
-    So a single agreement number over the shipped gate answers two questions at once and
-    reports neither. Measured separately on the h384 baseline: 91.4% on the shipped gate,
-    96.9% without the added-shadda reject, 96.5% on the ratio alone. Reproducing an
-    8.5%-base-rate heuristic that turns on one geminate's placement is a decode-fidelity
-    target of roughly *one edit per clip*; the rest of the gate was already met.
-    """
-    ratio_ok = match_ratio >= threshold
-    return {
-        "full": passed,
-        "no_added_shadda": ratio_ok and insertion_run < MAX_INSERTION_RUN,
-        "ratio_only": ratio_ok,
-    }
+def gate_verdicts(match_ratio: float) -> dict[str, bool]:
+    """Every definition's verdict on one side's ``match_ratio``."""
+    return {d.name: d.verdict(match_ratio) for d in GATE_DEFINITIONS}
 
 
-@dataclass(frozen=True)
-class FlipCauses:
-    """Which of the gate's conditions produced each disagreement.
-
-    ``tadabur.scorer.Scorer.gate`` passes a clip only when its ``match_ratio`` clears the bar
-    **and** the alignment has no long interior insertion run **and** the decode adds no
-    shadda. The last two are the poison rejects, and they behave nothing like the first: the
-    ratio is a smooth function of the decode that a distillation loss pushes on directly,
-    while an insertion run is a discrete structural property of the decode's alignment -- a
-    repeated phrase, a doubled consonant -- that per-frame KL barely constrains.
-
-    Attribution needs no extra cached fields, only the ratio and the decision. A rejection
-    whose own ratio still cleared the bar can only have come from a poison condition; one
-    whose ratio fell below it is explained by the ratio alone. That is the question worth
-    asking -- "was the ratio enough to explain this?" -- not which specific poison fired.
-
-    This is the table to read first. On the h384 baseline it showed that **68% of all gate
-    disagreements involve a poison condition rather than the ratio**, which is not what
-    either the issue or ADR-0010 assumed the problem was.
-    """
-
-    false_pass_on_poison: int
-    false_pass_on_ratio: int
-    false_fail_on_poison: int
-    false_fail_on_ratio: int
-
-    @property
-    def total(self) -> int:
-        return (
-            self.false_pass_on_poison
-            + self.false_pass_on_ratio
-            + self.false_fail_on_poison
-            + self.false_fail_on_ratio
-        )
-
-    @property
-    def poison_share(self) -> float:
-        """Fraction of disagreements a ratio-only view of the gate cannot explain."""
-        return (self.false_pass_on_poison + self.false_fail_on_poison) / max(1, self.total)
-
-    def as_dict(self) -> dict:
-        return {
-            "flip_false_pass_on_poison": self.false_pass_on_poison,
-            "flip_false_pass_on_ratio": self.false_pass_on_ratio,
-            "flip_false_fail_on_poison": self.false_fail_on_poison,
-            "flip_false_fail_on_ratio": self.false_fail_on_ratio,
-            "flip_poison_share": round(self.poison_share, 4),
-        }
-
-
-def flip_causes(
-    rows: list[tuple[bool, float, bool, float]], threshold: float
-) -> FlipCauses:
-    """Attribute every disagreement in ``(teacher_passed, teacher_ratio, student_passed,
-    student_ratio)`` to the ratio or to a poison condition."""
-    false_pass_poison = false_pass_ratio = 0
-    false_fail_poison = false_fail_ratio = 0
-
-    for teacher_passed, teacher_ratio, student_passed, student_ratio in rows:
-        if teacher_passed == student_passed:
-            continue
-        if student_passed:
-            # The teacher rejected it. Did its own ratio explain that?
-            if teacher_ratio >= threshold:
-                false_pass_poison += 1
-            else:
-                false_pass_ratio += 1
-        else:
-            if student_ratio >= threshold:
-                false_fail_poison += 1
-            else:
-                false_fail_ratio += 1
-
-    return FlipCauses(
-        false_pass_on_poison=false_pass_poison,
-        false_pass_on_ratio=false_pass_ratio,
-        false_fail_on_poison=false_fail_poison,
-        false_fail_on_ratio=false_fail_ratio,
-    )
+def gate_definition(name: str) -> GateDefinition:
+    for definition in GATE_DEFINITIONS:
+        if definition.name == name:
+            return definition
+    raise ValueError(f"unknown gate definition {name!r}")
 
 
 def cluster_bootstrap_interval(
@@ -1052,7 +1006,15 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.print_training_shards:
-        print(training_shard_spec())
+        # From the built manifest when there is one, so a set built with --shards does not
+        # get a spec that still permits the shards it was drawn from.
+        manifest = Path(args.out_dir) / MANIFEST_FILENAME
+        reserved = (
+            load_manifest(args.out_dir).provenance.get("shards")
+            if manifest.exists()
+            else None
+        )
+        print(training_shard_spec(reserved_shards=reserved))
         return
 
     if args.describe:
@@ -1077,7 +1039,10 @@ def main() -> None:
     print()
     print(describe(evalset))
     print(f"\nwrote {args.out_dir / MANIFEST_FILENAME}")
-    print(f"training runs must use --stream-shards {training_shard_spec()}")
+    print(
+        f"training runs must use --stream-shards "
+        f"{training_shard_spec(reserved_shards=shards)}"
+    )
 
 
 if __name__ == "__main__":

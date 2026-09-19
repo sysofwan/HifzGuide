@@ -156,7 +156,8 @@ def test_recalibration_flag_is_true_when_a_threshold_genuinely_separates():
 # --- Scoring against a frozen evaluation set ---
 
 
-def _eval_clip(name, ratio, passed, stratum=None, split="dev", reciter_id=None):
+def _eval_clip(name, ratio, passed, stratum=None, split="dev", reciter_id=None,
+               added_shadda=False):
     from training.gate_evalset import EvalClip, stratum_for
 
     return EvalClip(
@@ -173,20 +174,15 @@ def _eval_clip(name, ratio, passed, stratum=None, split="dev", reciter_id=None):
         teacher_ratio=ratio,
         teacher_passed=passed,
         teacher_insertion_run=0,
-        teacher_added_shadda=False,
+        teacher_added_shadda=added_shadda,
     )
 
 
-def _decision(name, ratio, passed, insertion_run=0, added_shadda=False):
+def _decision(name, ratio, passed):
     from training.distill_gate import StudentDecision
 
     return StudentDecision(
-        filename=name,
-        student_text="ab",
-        student_ratio=ratio,
-        student_passed=passed,
-        student_insertion_run=insertion_run,
-        student_added_shadda=added_shadda,
+        filename=name, student_text="ab", student_ratio=ratio, student_passed=passed
     )
 
 
@@ -205,7 +201,9 @@ def test_view_report_separates_false_rejections_from_false_acceptances():
         "c.wav": _decision("c.wav", 0.41, False),
         "d.wav": _decision("d.wav", 0.68, True),
     }
-    report = build_view_report("boundary", "dev", clips, decisions, {"near_pass": 10}, 0.65)
+    report = build_view_report(
+        "boundary", "dev", clips, decisions, {"near_pass": 10}, 0.65, "bar_0_65"
+    )
 
     assert report.num_clips == 4
     assert report.agreement == 0.5
@@ -276,8 +274,8 @@ def test_agreement_is_reported_under_each_definition_of_the_gate():
     # reproduces neither. Under the shipped gate that is two flips; under either relaxed
     # definition both sides agree.
     clips = [
-        _eval_clip("a.wav", 0.90, False, stratum="pass_clear"),
-        _eval_clip("b.wav", 0.88, False, stratum="pass_clear"),
+        _eval_clip("a.wav", 0.90, False, stratum="pass_clear", added_shadda=True),
+        _eval_clip("b.wav", 0.88, False, stratum="pass_clear", added_shadda=True),
         _eval_clip("c.wav", 0.30, False, stratum="fail_clear"),
     ]
     decisions = {
@@ -288,18 +286,15 @@ def test_agreement_is_reported_under_each_definition_of_the_gate():
     report = build_view_report(
         "population", "dev", clips, decisions, {"pass_clear": 10}, 0.65
     )
-    assert report.agreement_by_condition["full"] == pytest.approx(1 / 3)
-    assert report.agreement_by_condition["no_added_shadda"] == pytest.approx(1.0)
-    assert report.agreement_by_condition["ratio_only"] == pytest.approx(1.0)
+    assert report.agreement_by_condition["bar_0_65"] == pytest.approx(1.0)
 
     # The headline follows the criterion, and the criterion is named in the output so a
-    # number can never be read without knowing which gate produced it.
-    assert report.criterion == "no_added_shadda"
-    assert report.agreement == pytest.approx(1.0)
+    # number can never be read without knowing which decision produced it.
+    assert report.criterion == "advancement"
     rendered = __import__(
         "training.distill_gate", fromlist=["format_view_report"]
     ).format_view_report(report)
-    assert "without the added-shadda reject" in rendered
+    assert "ADR-0005" in rendered
     assert "<- scored" in rendered
 
 
@@ -310,29 +305,20 @@ def test_the_criterion_selects_which_gate_the_headline_is_scored_on():
     # Two clips the teacher rejects only on added shadda, which the student does not
     # reproduce. Under the shipped filter gate that is two flips; under the distillation
     # criterion it is none.
-    clips = [_eval_clip(f"s{i}.wav", 0.90, False, stratum="pass_clear") for i in range(2)]
+    clips = [
+        _eval_clip(f"s{i}.wav", 0.90, False, stratum="pass_clear", added_shadda=True)
+        for i in range(2)
+    ]
     decisions = {c.filename: _decision(c.filename, 0.89, True) for c in clips}
 
     scored = {
         criterion: build_view_report(
             "population", "dev", clips, decisions, {"pass_clear": 10}, 0.65, criterion
         ).agreement
-        for criterion in ("full", "no_added_shadda", "ratio_only")
+        for criterion in ("advancement", "bar_0_65")
     }
-    assert scored == {"full": 0.0, "no_added_shadda": 1.0, "ratio_only": 1.0}
-
-
-def test_comparing_against_a_file_without_the_insertion_run_is_refused_not_guessed():
-    """Defaulting the missing field to zero would read as a small, plausible, wrong delta."""
-    from training.distill_gate import _correct
-
-    clip = _eval_clip("a.wav", 0.90, True)
-    stale = {"filename": "a.wav", "student_passed": True, "student_ratio": 0.90}
-
-    assert _correct(clip, stale, "ratio_only", 0.65) is True
-    assert _correct(clip, stale, "full", 0.65) is True
-    with pytest.raises(SystemExit, match="insertion run"):
-        _correct(clip, stale, "no_added_shadda", 0.65)
+    # Both teacher and student sit at 0.89/0.90: over the filter's bar, under Muraja's.
+    assert scored == {"advancement": 1.0, "bar_0_65": 1.0}
 
 
 def test_the_reported_interval_is_the_clustered_one_and_the_naive_one_is_shown_beside_it():

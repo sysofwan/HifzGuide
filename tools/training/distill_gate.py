@@ -86,15 +86,13 @@ import torch
 from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
 from training.gate_evalset import (
     DISTILLATION_CRITERION,
-    GATE_CONDITIONS,
+    GATE_DEFINITIONS,
     STRATA,
     DirectionalErrors,
-    FlipCauses,
     PairedComparison,
     cluster_bootstrap_interval,
     directional_errors,
-    flip_causes,
-    gate_verdicts,
+    gate_definition,
     paired_comparison,
     reweighted_agreement,
     wilson_interval,
@@ -286,12 +284,10 @@ class StudentDecision:
     filename: str
     student_text: str
     student_ratio: float
+    # ``student_passed`` is the Tadabur *filter's* verdict, recorded for provenance only. No
+    # distillation metric reads it: the filter's poison rejects belong to the ADR-0001
+    # fine-tune track, so every number here is computed from ``student_ratio``.
     student_passed: bool
-    # Cached so agreement can be scored under each of the gate's conditions separately. The
-    # teacher's are already in the manifest; without the student's, the decisive table --
-    # which condition is actually costing the agreement -- cannot be built at all.
-    student_insertion_run: int = 0
-    student_added_shadda: bool = False
 
     def as_dict(self) -> dict:
         return {
@@ -299,8 +295,6 @@ class StudentDecision:
             "student_text": self.student_text,
             "student_ratio": round(self.student_ratio, 6),
             "student_passed": self.student_passed,
-            "student_insertion_run": self.student_insertion_run,
-            "student_added_shadda": self.student_added_shadda,
         }
 
 
@@ -346,8 +340,6 @@ def score_student_on_evalset(
             student_text=text,
             student_ratio=result.match_ratio,
             student_passed=result.passed,
-            student_insertion_run=result.max_insertion_run,
-            student_added_shadda=result.added_shadda,
         )
         if index % 100 == 0:
             print(f"  {index}/{len(evalset.clips)} clips", flush=True)
@@ -355,32 +347,18 @@ def score_student_on_evalset(
     return decisions
 
 
-def _correct(clip, decision: dict, criterion: str, threshold: float) -> bool:
+def _correct(clip, decision: dict, criterion: str) -> bool:
     """Did one student's saved decision reach the teacher's verdict, under ``criterion``?
 
     Takes the saved dict rather than a :class:`StudentDecision` because the other side of a
     ``--compare-decisions`` run is a file, possibly written before the insertion run was
-    cached. Only ``no_added_shadda`` reads that field, so a file without it is refused for
-    exactly that criterion rather than silently scored as if the run were zero -- which would
-    read as a small, plausible, wrong difference between two checkpoints.
+    cached. Every definition here is a threshold on ``match_ratio``, which every saved file
+    carries, so no field can be silently missing.
     """
-    if criterion == "no_added_shadda" and "student_insertion_run" not in decision:
-        raise SystemExit(
-            f"{decision.get('filename', '?')} in the comparison file predates the cached "
-            f"insertion run, so it cannot be scored under --criterion no_added_shadda. "
-            f"Re-run distill_gate on that checkpoint, or compare under --criterion "
-            f"ratio_only or full."
-        )
-    student = gate_verdicts(
-        decision["student_passed"],
-        decision["student_ratio"],
-        decision.get("student_insertion_run", 0),
-        threshold,
-    )[criterion]
-    teacher = gate_verdicts(
-        clip.teacher_passed, clip.teacher_ratio, clip.teacher_insertion_run, threshold
-    )[criterion]
-    return teacher == student
+    definition = gate_definition(criterion)
+    return definition.verdict(clip.teacher_ratio) == definition.verdict(
+        decision["student_ratio"]
+    )
 
 
 @dataclass(frozen=True)
@@ -410,8 +388,9 @@ class ViewReport:
     ratio_p95_abs_delta: float
     ratio_offset: float
     per_stratum_agreement: dict[str, float]
-    reweighted_agreement: float
-    causes: FlipCauses
+    # None when the sampled strata do not cover enough of the population to reweight; see
+    # gate_evalset.reweighted_agreement. Printed as "unavailable", never as a number.
+    reweighted_agreement: float | None
     agreement_by_condition: dict[str, float]
     trivial_guard: PairedComparison
 
@@ -436,7 +415,10 @@ class ViewReport:
             ],
             "agreement_ci95_naive": [round(self.ci_low, 4), round(self.ci_high, 4)],
             "always_pass_agreement": round(self.always_pass_agreement, 4),
-            "population_reweighted_agreement": round(self.reweighted_agreement, 4),
+            "population_reweighted_agreement": (
+                None if self.reweighted_agreement is None
+                else round(self.reweighted_agreement, 4)
+            ),
             "ratio_rmse": round(self.ratio_rmse, 4),
             "ratio_p95_abs_delta": round(self.ratio_p95_abs_delta, 4),
             "ratio_offset": round(self.ratio_offset, 4),
@@ -444,7 +426,6 @@ class ViewReport:
                 name: round(value, 4) for name, value in self.per_stratum_agreement.items()
             },
             **self.errors.as_dict(),
-            **self.causes.as_dict(),
             "agreement_by_condition": {
                 name: round(value, 4)
                 for name, value in self.agreement_by_condition.items()
@@ -467,26 +448,11 @@ def build_view_report(
     # distillation is not accountable for the Tadabur filter's poison policy; see
     # ``gate_evalset.DISTILLATION_CRITERION``. ``agreement_by_condition`` below still reports
     # every definition, so nothing is hidden by the choice.
-    def verdict(passed: bool, ratio: float, insertion_run: int) -> bool:
-        return gate_verdicts(passed, ratio, insertion_run, threshold)[criterion]
-
+    definition = gate_definition(criterion)
     pairs = [
         (
-            verdict(clip.teacher_passed, clip.teacher_ratio, clip.teacher_insertion_run),
-            verdict(
-                decisions[clip.filename].student_passed,
-                decisions[clip.filename].student_ratio,
-                decisions[clip.filename].student_insertion_run,
-            ),
-        )
-        for clip in clips
-    ]
-    rows = [
-        (
-            clip.teacher_passed,
-            clip.teacher_ratio,
-            decisions[clip.filename].student_passed,
-            decisions[clip.filename].student_ratio,
+            definition.verdict(clip.teacher_ratio),
+            definition.verdict(decisions[clip.filename].student_ratio),
         )
         for clip in clips
     ]
@@ -530,26 +496,15 @@ def build_view_report(
         ratio_offset=sum(deltas) / count,
         per_stratum_agreement=per_stratum,
         reweighted_agreement=reweighted_agreement(per_stratum, scanned_by_stratum),
-        causes=flip_causes(rows, threshold),
         agreement_by_condition={
-            condition: sum(
+            other.name: sum(
                 1
                 for clip in clips
-                if gate_verdicts(
-                    clip.teacher_passed,
-                    clip.teacher_ratio,
-                    clip.teacher_insertion_run,
-                    threshold,
-                )[condition]
-                == gate_verdicts(
-                    decisions[clip.filename].student_passed,
-                    decisions[clip.filename].student_ratio,
-                    decisions[clip.filename].student_insertion_run,
-                    threshold,
-                )[condition]
+                if other.verdict(clip.teacher_ratio)
+                == other.verdict(decisions[clip.filename].student_ratio)
             )
             / max(1, len(clips))
-            for condition, _ in GATE_CONDITIONS
+            for other in GATE_DEFINITIONS
         },
         # A guard, not evidence: on a view balanced around the bar, any competent student
         # beats pass-everything. It stays printed because a student that does NOT beat it is
@@ -568,14 +523,19 @@ def format_view_report(report: ViewReport) -> str:
     errors = report.errors
     lines = [
         f"  [{report.view}/{report.split}] {report.num_clips} clips "
-        f"-- scored on: {dict(GATE_CONDITIONS)[report.criterion]}",
+        f"-- scored on: {gate_definition(report.criterion).label}",
         f"    FLIP RATE           {report.flip_rate:.2%}  (agreement {report.agreement:.2%})",
         f"    95% CI              [{report.ci_cluster_low:.2%}, "
         f"{report.ci_cluster_high:.2%}]  bootstrapped over reciters"
         f"  (naive [{report.ci_low:.2%}, {report.ci_high:.2%}] -- too narrow, the clips "
         f"are not independent)",
-        f"    population estimate {1 - report.reweighted_agreement:.2%} flips "
-        f"-- the same student on an unstratified sample",
+        (
+            f"    population estimate {1 - report.reweighted_agreement:.2%} flips "
+            f"-- the same student on an unstratified sample"
+            if report.reweighted_agreement is not None
+            else "    population estimate unavailable -- the sampled strata do not cover "
+                 "enough of the population to reweight"
+        ),
         f"    false rejections    {errors.false_fails}/{errors.teacher_passes} "
         f"({errors.false_fail_rate:.2%}) -- teacher passed, student failed",
         f"    false acceptances   {errors.false_passes}/{errors.teacher_fails} "
@@ -586,20 +546,10 @@ def format_view_report(report: ViewReport) -> str:
         f"-- the floor this must clear",
         "    every definition of the gate, for reference:",
         *[
-            f"      {label:<44}{report.agreement_by_condition[name]:>7.2%}"
-            + ("   <- scored" if name == report.criterion else "")
-            for name, label in GATE_CONDITIONS
+            f"      {other.label:<46}{report.agreement_by_condition[other.name]:>7.2%}"
+            + ("   <- scored" if other.name == report.criterion else "")
+            for other in GATE_DEFINITIONS
         ],
-        f"    flips by condition  {report.causes.poison_share:.0%} involve a POISON reject "
-        f"(insertion run / added shadda), not the ratio",
-        f"                        teacher rejected on poison, student passed  "
-        f"{report.causes.false_pass_on_poison}",
-        f"                        teacher rejected on ratio,  student passed  "
-        f"{report.causes.false_pass_on_ratio}",
-        f"                        student rejected on poison, teacher passed  "
-        f"{report.causes.false_fail_on_poison}",
-        f"                        student rejected on ratio,  teacher passed  "
-        f"{report.causes.false_fail_on_ratio}",
     ]
     if report.per_stratum_agreement:
         by_stratum = "  ".join(
@@ -651,6 +601,23 @@ def run_evalset(args, device) -> None:
     comparisons = []
     if args.compare_decisions:
         previous = json.loads(Path(args.compare_decisions).read_text(encoding="utf-8"))
+        # Filenames alone do not make two runs comparable. Rebuild a set under a different
+        # protocol and the names repeat while the cached teacher truth has moved underneath
+        # them, and McNemar then attributes the protocol change to the checkpoint.
+        mismatched = [
+            f"  {key}: this run={mine!r} comparison file={previous.get(key)!r}"
+            for key, mine in (
+                ("evalset_fingerprint", evalset.fingerprint()),
+                ("protocol_version", PROTOCOL_VERSION),
+                ("criterion", args.criterion),
+            )
+            if previous.get(key) != mine
+        ]
+        if mismatched:
+            raise SystemExit(
+                "refusing to compare: the saved decisions were produced against a different "
+                "evaluation.\n" + "\n".join(mismatched)
+            )
         other = previous["decisions"]
         for report in reports:
             clips = [
@@ -670,14 +637,12 @@ def run_evalset(args, device) -> None:
                         [
                             _correct(
                                 clip, decisions[clip.filename].as_dict(), args.criterion,
-                                BALANCED.correct_threshold,
                             )
                             for clip in clips
                         ],
                         [
                             _correct(
                                 clip, other[clip.filename], args.criterion,
-                                BALANCED.correct_threshold,
                             )
                             for clip in clips
                         ],
@@ -695,6 +660,7 @@ def run_evalset(args, device) -> None:
         "protocol_version": PROTOCOL_VERSION,
         "criterion": args.criterion,
         "eval_set": str(args.eval_set),
+        "evalset_fingerprint": evalset.fingerprint(),
         "views": [report.as_dict() for report in reports],
         "comparisons": comparisons,
     }
@@ -774,7 +740,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--criterion",
-        choices=[name for name, _ in GATE_CONDITIONS],
+        choices=[definition.name for definition in GATE_DEFINITIONS],
         default=DISTILLATION_CRITERION,
         help="which definition of the gate the headline is scored on. Defaults to the "
         "distillation criterion: both of the gate's poison rejects are Tadabur "

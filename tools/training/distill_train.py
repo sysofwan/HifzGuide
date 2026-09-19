@@ -576,7 +576,7 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
               f"fresh optimiser and schedule")
 
     checkpoint_path = out_dir / CHECKPOINT_FILENAME
-    averager = WeightAverage(student, config.ema_decay) if config.ema_decay else None
+    restored_ema = None
     if resume and checkpoint_path.exists():
         state = torch.load(checkpoint_path, map_location=device, weights_only=False)
         check_resume_compatible(state.get("config", {}), config)
@@ -584,11 +584,26 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
         projector.load_state_dict(state["projector"])
         optimizer.load_state_dict(state["optimizer"])
         scheduler.load_state_dict(state["scheduler"])
-        if averager is not None and "ema_state" in state:
-            averager.load_state_dict(state["ema_state"])
+        restored_ema = state.get("ema_state")
         start_step = state["step"]
         print(f"[resume] restored from step {start_step}")
+        if config.ema_decay and restored_ema is None:
+            # A pre-EMA checkpoint has no `ema_decay` in its config, so the resume guard
+            # cannot catch this. Seeding a fresh average from the restored weights is right;
+            # the danger is doing it from the *random* ones, which is what happened when the
+            # averager was constructed before the restore -- a run that then saved random
+            # weights as its EMA result.
+            print(
+                "[resume] checkpoint carries no averaged weights; starting the average from "
+                "the restored student rather than from initialisation"
+            )
+
+    # Constructed AFTER the restore, so the shadow starts from the weights training will
+    # actually continue from -- whether those came from --resume or --init-from.
+    averager = WeightAverage(student, config.ema_decay) if config.ema_decay else None
     if averager is not None:
+        if restored_ema is not None:
+            averager.load_state_dict(restored_ema)
         print(f"[setup] weight averaging on, decay {config.ema_decay}")
 
     train_loader, val_loader = build_dataloaders(config)

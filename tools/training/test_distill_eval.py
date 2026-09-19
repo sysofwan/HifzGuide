@@ -217,3 +217,47 @@ def test_bias_lead_is_measured_against_the_best_competitor():
     )
     assert head.bias_lead == pytest.approx(0.1)
     assert not head.is_degenerate()
+
+
+# --- The silence flush (PROTOCOL_VERSION confirmed-stream-v2-flush) ---
+
+
+def test_only_the_last_window_flushes():
+    from training.distill_eval import CONFIRM_TIMESTEPS, DEPLOYED_LOGIT_FRAMES, confirm_split_for_window
+
+    assert confirm_split_for_window(0, 4) == CONFIRM_TIMESTEPS
+    assert confirm_split_for_window(3, 4) == CONFIRM_TIMESTEPS
+    assert confirm_split_for_window(4, 4) == DEPLOYED_LOGIT_FRAMES
+
+
+def test_a_single_window_clip_is_flushed_entirely():
+    """A clip under 5 s is one padded window. Unflushed, it is gated on its first second."""
+    from training.distill_eval import DEPLOYED_LOGIT_FRAMES, confirm_split_for_window
+
+    assert confirm_split_for_window(0, 0) == DEPLOYED_LOGIT_FRAMES
+
+
+def test_the_flush_can_be_turned_off_to_reproduce_the_old_protocol():
+    from training.distill_eval import CONFIRM_TIMESTEPS, confirm_split_for_window
+
+    assert confirm_split_for_window(4, 4, flush_tail=False) == CONFIRM_TIMESTEPS
+    assert confirm_split_for_window(0, 0, flush_tail=False) == CONFIRM_TIMESTEPS
+
+
+def test_flushing_commits_the_tail_no_earlier_window_could_have():
+    """The flush must add timesteps, never re-add ones an earlier window already committed.
+
+    Window k commits steps [0, 25) of its own frame, which is audio second k. The flush adds
+    steps [25, 125) of the *final* window -- audio no later window exists to decode -- so the
+    two never overlap and no token is emitted twice.
+    """
+    import numpy as np
+
+    from training.distill_eval import CONFIRM_TIMESTEPS, confirmed_tokens
+
+    # A run in the confirmed region and a run in the flushed tail.
+    ids = np.array([5] * 10 + [0] * 40 + [7] * 20 + [0] * 55)
+    assert confirmed_tokens(ids, CONFIRM_TIMESTEPS) == [5]
+    flushed = confirmed_tokens(ids, 125)
+    assert flushed == [5, 7]
+    assert flushed[: len(confirmed_tokens(ids, CONFIRM_TIMESTEPS))] == [5]

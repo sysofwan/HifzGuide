@@ -22,12 +22,23 @@ The protocol, replicated from ``MuaalemInference.predictSplit`` and ``RealtimeTr
 Concatenating the confirmed segments across a clip gives the transcript the user sees. We
 build that stream for both models and compare them.
 
-Two deliberate simplifications, neither of which favours the student. The silence flush
-(which confirms whatever is pending when speech stops) is not replayed, so we measure the
-steady-state stream; and the VAD gate that skips inference during silence is ignored,
-because it gates *both* models identically and so cannot move the agreement. The preview
-inferences are likewise skipped -- they are provisional and never enter the transcript,
-though they are why per-window cost matters so much.
+**The final window is flushed.** Confirmation commits only the oldest second of each
+window, so without a flush the last 4 s of every clip -- and for a clip under 5 s, everything
+past the first second -- is decoded and then thrown away. Muraja does not do that: it flushes
+whatever is pending when speech stops. Leaving the flush out was defensible while this module
+only reported *character* agreement, where both models lose the same tail; it is not
+defensible for :mod:`training.distill_gate`, where the tail is missing phonemes in a
+``match_ratio`` computed against the whole ayah, and a 3 s clip was being gated on one second
+of audio. ``flush_tail`` is therefore on by default and :data:`PROTOCOL_VERSION` records it,
+because it moves every number this module and the gate produce. Pass ``flush_tail=False``
+only to reproduce a pre-flush measurement.
+
+Two simplifications remain, neither of which favours the student. The VAD gate that skips
+inference during silence is ignored, because it gates *both* models identically and so cannot
+move the agreement; and the preview inferences are skipped -- they are provisional and never
+enter the transcript, though they are why per-window cost matters so much. A tail of under
+one second past the last full window is also not replayed, since the window grid advances in
+whole seconds.
 
 Usage::
 
@@ -62,6 +73,11 @@ from training.distill_student import DEPLOYED_LOGIT_FRAMES, PRESETS, build_stude
 # The device advances its buffer by 1 s per confirmed pass; at 125 timesteps per 5 s window
 # that is 25 timesteps, which is also ``CONFIRM_TIMESTEPS``.
 HOP_SAMPLES = SAMPLE_RATE
+
+# Bumped whenever the replayed protocol changes what a clip decodes to. Cached teacher
+# decodes carry it (``training.gate_evalset``) so a manifest built under one protocol cannot
+# be silently scored under another. v1 was the unflushed stream; v2 flushes the last window.
+PROTOCOL_VERSION = "confirmed-stream-v2-flush"
 
 
 @dataclass(frozen=True)
@@ -134,6 +150,23 @@ def levenshtein(a: list[int], b: list[int]) -> int:
     return previous[-1]
 
 
+def confirm_split_for_window(
+    position: int, last_index: int, flush_tail: bool = True
+) -> int:
+    """How many of a window's 125 timesteps commit to the transcript.
+
+    Every window commits its oldest second (``CONFIRM_TIMESTEPS``), because the next window
+    will re-decode the rest with more right context. The **last** window has no next window,
+    so its remaining timesteps are either flushed or silently discarded -- and discarding
+    them drops the last 4 s of every clip, or all but the first second of a clip shorter than
+    one window. Muraja flushes them when speech stops; so does this, unless ``flush_tail`` is
+    off for a pre-``PROTOCOL_VERSION`` comparison.
+    """
+    if flush_tail and position == last_index:
+        return DEPLOYED_LOGIT_FRAMES
+    return CONFIRM_TIMESTEPS
+
+
 def clip_windows(num_samples: int, hop_samples: int = HOP_SAMPLES) -> list[int]:
     """Window starts for the deployed protocol: advance 1 s while audio remains.
 
@@ -153,8 +186,16 @@ def confirmed_stream(
     samples: np.ndarray,
     device: torch.device,
     batch_size: int = 16,
+    flush_tail: bool = True,
 ) -> list[int]:
-    """Replay the deployed protocol over one clip and return its confirmed tokens."""
+    """Replay the deployed protocol over one clip and return its confirmed tokens.
+
+    Every window commits the segments in its oldest second. The **last** window additionally
+    commits everything still pending, which is the silence flush: no later window exists to
+    re-decode those timesteps, so they are either flushed or lost. Without the flush a clip
+    is transcribed only up to its last 4 seconds, and a clip shorter than one window is
+    transcribed from its first second alone.
+    """
     starts = clip_windows(len(samples))
 
     windows = []
@@ -164,6 +205,7 @@ def confirmed_stream(
             chunk = np.pad(chunk, (0, WINDOW_SAMPLES - len(chunk)))
         windows.append(chunk)
 
+    last_index = len(windows) - 1
     stream: list[int] = []
     for offset in range(0, len(windows), batch_size):
         batch = windows[offset : offset + batch_size]
@@ -174,8 +216,13 @@ def confirmed_stream(
         with torch.autocast("cuda", dtype=torch.bfloat16):
             logits = model(features, return_dict=True)["logits"]["phonemes"]
         ids = logits.float().argmax(dim=-1).cpu().numpy()
-        for row in ids:
-            stream.extend(confirmed_tokens(row[:DEPLOYED_LOGIT_FRAMES]))
+        for position, row in enumerate(ids, start=offset):
+            stream.extend(
+                confirmed_tokens(
+                    row[:DEPLOYED_LOGIT_FRAMES],
+                    confirm_split_for_window(position, last_index, flush_tail),
+                )
+            )
 
     return stream
 
@@ -414,6 +461,14 @@ def main() -> None:
     )
     parser.add_argument("--val-fraction", type=float, default=0.02)
     parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument(
+        "--no-flush-tail",
+        dest="flush_tail",
+        action="store_false",
+        help="drop the silence flush, i.e. transcribe only up to the last 4 s of each clip. "
+        "Only for reproducing a pre-" + PROTOCOL_VERSION + " measurement; the numbers are "
+        "not comparable to a flushed run.",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -483,10 +538,10 @@ def main() -> None:
             samples = samples.mean(axis=1)
 
         teacher_stream = confirmed_stream(
-            teacher, extractor, samples, device, args.batch_size
+            teacher, extractor, samples, device, args.batch_size, args.flush_tail
         )
         student_stream = confirmed_stream(
-            student, extractor, samples, device, args.batch_size
+            student, extractor, samples, device, args.batch_size, args.flush_tail
         )
         pairs.append((teacher_stream, student_stream))
 

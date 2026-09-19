@@ -151,3 +151,108 @@ def test_recalibration_flag_is_true_when_a_threshold_genuinely_separates():
     report = dg.compare_gates(pairs)
     assert report.as_dict()["recalibration_beats_trivial"] is True
     assert report.best_threshold_agreement == pytest.approx(1.0)
+
+
+# --- Scoring against a frozen evaluation set ---
+
+
+def _eval_clip(name, ratio, passed, stratum=None, split="dev"):
+    from training.gate_evalset import EvalClip, stratum_for
+
+    return EvalClip(
+        filename=name,
+        surah_ayah="78:1",
+        reciter_id=1,
+        shard=20,
+        duration_s=4.0,
+        stratum=stratum or stratum_for(ratio, 0.65),
+        split=split,
+        in_population=True,
+        in_boundary=True,
+        teacher_text="ab",
+        teacher_ratio=ratio,
+        teacher_passed=passed,
+        teacher_insertion_run=0,
+        teacher_added_shadda=False,
+    )
+
+
+def _decision(name, ratio, passed):
+    from training.distill_gate import StudentDecision
+
+    return StudentDecision(
+        filename=name, student_text="ab", student_ratio=ratio, student_passed=passed
+    )
+
+
+def test_view_report_separates_false_rejections_from_false_acceptances():
+    from training.distill_gate import build_view_report
+
+    clips = [
+        _eval_clip("a.wav", 0.90, True),
+        _eval_clip("b.wav", 0.70, True),     # student flips it to fail -> false rejection
+        _eval_clip("c.wav", 0.40, False),
+        _eval_clip("d.wav", 0.60, False),    # student flips it to pass -> false acceptance
+    ]
+    decisions = {
+        "a.wav": _decision("a.wav", 0.91, True),
+        "b.wav": _decision("b.wav", 0.60, False),
+        "c.wav": _decision("c.wav", 0.41, False),
+        "d.wav": _decision("d.wav", 0.68, True),
+    }
+    report = build_view_report("boundary", "dev", clips, decisions, {"near_pass": 10})
+
+    assert report.num_clips == 4
+    assert report.agreement == 0.5
+    assert report.flip_rate == 0.5
+    assert report.errors.false_fails == 1
+    assert report.errors.false_passes == 1
+    # Same aggregate agreement, opposite product consequences: the report must not merge them.
+    assert report.errors.false_fail_rate == 0.5
+    assert report.errors.false_pass_rate == 0.5
+
+
+def test_view_report_ratio_error_records_direction_not_only_magnitude():
+    from training.distill_gate import build_view_report
+
+    clips = [_eval_clip("a.wav", 0.80, True), _eval_clip("b.wav", 0.80, True)]
+    decisions = {
+        "a.wav": _decision("a.wav", 0.70, True),
+        "b.wav": _decision("b.wav", 0.70, True),
+    }
+    report = build_view_report("population", "dev", clips, decisions, {"pass_clear": 5})
+    assert report.ratio_offset == pytest.approx(-0.10)
+    assert report.ratio_rmse == pytest.approx(0.10)
+    assert report.ratio_p95_abs_delta == pytest.approx(0.10)
+
+
+def test_view_report_flags_a_student_that_only_matches_pass_everything():
+    """A rubber stamp must be called one, whatever its raw agreement looks like."""
+    from training.distill_gate import build_view_report
+
+    clips = [_eval_clip(f"p{i}.wav", 0.90, True) for i in range(9)]
+    clips.append(_eval_clip("f0.wav", 0.10, False))
+    decisions = {clip.filename: _decision(clip.filename, 0.9, True) for clip in clips}
+
+    report = build_view_report("population", "dev", clips, decisions, {"pass_clear": 9})
+    assert report.agreement == 0.9
+    assert report.always_pass_agreement == 0.9
+    assert not report.trivial_guard.as_dict()["a_beats_b"]
+    assert "NOT significantly better" in __import__(
+        "training.distill_gate", fromlist=["format_view_report"]
+    ).format_view_report(report)
+
+
+def test_view_report_reweights_enriched_strata_back_to_the_population():
+    from training.distill_gate import build_view_report
+
+    # The boundary view is half near-bar, but near-bar clips are 4% of the real corpus.
+    clips = [_eval_clip(f"n{i}.wav", 0.60, False, stratum="near_fail") for i in range(2)]
+    clips += [_eval_clip(f"p{i}.wav", 0.95, True, stratum="pass_clear") for i in range(2)]
+    decisions = {clip.filename: _decision(clip.filename, clip.teacher_ratio, True) for clip in clips}
+    # Both near_fail clips flip, both pass_clear agree -> raw 50%.
+    report = build_view_report(
+        "boundary", "dev", clips, decisions, {"near_fail": 4, "pass_clear": 96}
+    )
+    assert report.agreement == 0.5
+    assert report.reweighted_agreement == pytest.approx(0.96)

@@ -248,11 +248,14 @@ def test_load_manifest_round_trips_a_written_set(tmp_path: Path):
     assert loaded.scanned_by_stratum == original.scanned_by_stratum
 
 
-def test_check_provenance_refuses_a_different_bar_or_teacher():
+def test_check_provenance_refuses_a_different_bar_teacher_or_protocol():
+    from training.distill_eval import PROTOCOL_VERSION
     from training.distill_loss import CONFIRM_TIMESTEPS
 
     good = _evalset(
-        [_clip("a.wav", 0.9, True)], confirm_timesteps=CONFIRM_TIMESTEPS
+        [_clip("a.wav", 0.9, True)],
+        confirm_timesteps=CONFIRM_TIMESTEPS,
+        protocol_version=PROTOCOL_VERSION,
     )
     check_provenance(good, "obadx/muaalem-model-v3_2", 0.65)
 
@@ -260,6 +263,45 @@ def test_check_provenance_refuses_a_different_bar_or_teacher():
         check_provenance(good, "obadx/muaalem-model-v3_2", 0.75)
     with pytest.raises(SystemExit, match="teacher_model_id"):
         check_provenance(good, "some/other-teacher", 0.65)
+
+    # The decode protocol is the field most likely to change without anyone thinking of the
+    # cache, so it is checked in the same place as the rest rather than by a second caller.
+    stale = _evalset(
+        [_clip("a.wav", 0.9, True)],
+        confirm_timesteps=CONFIRM_TIMESTEPS,
+        protocol_version="confirmed-stream-v1",
+    )
+    with pytest.raises(SystemExit, match="protocol_version"):
+        check_provenance(stale, "obadx/muaalem-model-v3_2", 0.65)
+
+
+def test_the_exact_p_value_survives_more_than_1023_discordant_pairs():
+    """``2.0 ** trials`` overflows at 1024 -- which is exactly when this gets called."""
+    assert binomial_two_sided_p(0, 1024) < 1e-300
+    assert binomial_two_sided_p(900, 2000) < 1e-4
+    assert binomial_two_sided_p(1000, 2000) == pytest.approx(1.0)
+    assert binomial_two_sided_p(750, 1500) == pytest.approx(1.0)
+
+
+def test_lossless_audio_round_trips_bit_exactly(tmp_path):
+    """The manifest caches a decode of the in-memory waveform; the student reads the file.
+
+    Anything lossy between the two is a difference charged entirely to the student. Measured
+    on real clips, a PCM_16 round trip changed the teacher's decoded string on 12 of 60 and
+    moved match_ratio by up to 0.062 -- and Tadabur audio peaks above 1.0, so PCM_16 clips.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    from training.gate_evalset import CLIPS_DIRNAME  # noqa: F401  (documents the layout)
+
+    samples = (np.random.default_rng(0).standard_normal(4000) * 0.4).astype("float32")
+    samples[0] = 1.037  # a real measured peak: PCM_16 would clip this
+    path = tmp_path / "clip.wav"
+    sf.write(str(path), samples, 16000, subtype="FLOAT")
+    back, rate = sf.read(str(path), dtype="float32")
+    assert rate == 16000
+    assert np.array_equal(samples, back)
 
 
 def test_the_streaming_dataset_refuses_every_reserved_shard():

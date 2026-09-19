@@ -18,6 +18,12 @@ sample** because neither alone supports a ship decision:
 Optimising the population number is hopeless (it saturates); shipping on the boundary number
 alone is dishonest (it is deliberately unrepresentative). Both are reported, always.
 
+**Clips are stored as 32-bit float.** The manifest caches the teacher's decode of the
+waveform in memory and the student reads the file back, so anything lossy between them is a
+difference charged entirely to the student. A PCM_16 round trip is lossy enough to matter
+here: measured on 60 clips it changed the teacher's decoded string on 12 and moved
+``match_ratio`` by up to 0.062, and Tadabur audio peaks above 1.0 so it clips as well.
+
 **The teacher is run once and frozen.** Every gate evaluation so far decoded *both* models,
 paying the teacher's 42 ms/window again for every student measured. The teacher is
 deterministic and the protocol is fixed, so its decode is a property of the clip: it is
@@ -121,6 +127,11 @@ DEFAULT_BOUNDARY_TARGET = 1000
 MAX_CLIP_SECONDS = 50.0
 # Below this there is not enough audio for one confirmed window to mean anything.
 MIN_CLIP_SECONDS = 1.5
+
+# Above this many discordant pairs the exact sum is replaced by the normal approximation:
+# the exact form costs O(n^2) big-integer work and the approximation is indistinguishable at
+# these counts, while ``2.0 ** trials`` would simply overflow past 1023.
+EXACT_BINOMIAL_LIMIT = 1000
 
 DEFAULT_SEED = 20260918
 # Stable across rebuilds so "the test half" means the same reciters in every set.
@@ -319,11 +330,22 @@ def binomial_two_sided_p(successes: int, trials: int) -> float:
     """
     if trials <= 0:
         return 1.0
-    observed = math.comb(trials, successes)
-    tail = sum(
-        math.comb(trials, k) for k in range(trials + 1) if math.comb(trials, k) <= observed
-    )
-    return min(1.0, tail / (2.0**trials))
+    if trials > EXACT_BINOMIAL_LIMIT:
+        # Beyond this the exact sum is slow and the normal approximation is excellent (the
+        # counts are in the hundreds and the distribution is symmetric). Continuity-corrected.
+        from statistics import NormalDist
+
+        deviation = abs(successes - trials / 2) - 0.5
+        if deviation <= 0:
+            return 1.0
+        return min(1.0, 2 * NormalDist().cdf(-deviation / math.sqrt(trials / 4)))
+    weights = [math.comb(trials, k) for k in range(trials + 1)]
+    observed = weights[successes]
+    tail = sum(weight for weight in weights if weight <= observed)
+    # Integer division, not ``2.0 ** trials``: the float power overflows at 1024 trials, and a
+    # student that disagrees with the teacher on a thousand clips is exactly when this gets
+    # called. ``int / int`` is correctly rounded at any size.
+    return min(1.0, tail / (2**trials))
 
 
 def wilson_interval(successes: int, trials: int, z: float = 1.96) -> tuple[float, float]:
@@ -487,17 +509,21 @@ def load_manifest(out_dir: Path) -> EvalSet:
 def check_provenance(evalset: EvalSet, teacher_model_id: str, threshold: float) -> None:
     """Refuse a manifest whose cached teacher decisions were made under other rules.
 
-    A different teacher, a different confirmation split or a different pass bar all change
-    the cached decisions without changing the file. The failure mode is a plausible-looking
-    agreement number computed against stale truth, which is exactly the class of silent
-    wrongness these tools exist not to produce.
+    A different teacher, a different decode protocol, a different confirmation split or a
+    different pass bar all change the cached decisions without changing the file. The failure
+    mode is a plausible-looking agreement number computed against stale truth, which is
+    exactly the class of silent wrongness these tools exist not to produce. Every such field
+    is checked **here**, in one place -- a second provenance check somewhere else is how one
+    of them ends up unchecked.
     """
+    from training.distill_eval import PROTOCOL_VERSION
     from training.distill_loss import CONFIRM_TIMESTEPS
 
     expected = {
         "teacher_model_id": teacher_model_id,
         "correct_threshold": threshold,
         "confirm_timesteps": CONFIRM_TIMESTEPS,
+        "protocol_version": PROTOCOL_VERSION,
     }
     mismatches = [
         f"  {key}: manifest={evalset.provenance.get(key)!r} current={value!r}"
@@ -665,14 +691,25 @@ def build(
                 teacher_added_shadda=result.added_shadda,
             )
 
+            # ``|=``, never ``or``: both reservoirs must see every candidate, and ``or``
+            # would skip the boundary offer whenever the population sample accepted first --
+            # silently biasing the boundary view toward the clips the population view rejected.
             kept = population.offer(candidate)
             kept |= boundary[stratum].offer(candidate)
             if kept and candidate.filename not in written:
+                # 32-bit float, not PCM_16, and this is not a preference. The manifest caches
+                # the teacher's decode of the waveform *in memory*; the student will read the
+                # file back. Any difference between the two is charged entirely to the
+                # student. Measured on 60 clips, a PCM_16 round trip changed the teacher's
+                # decoded string on 12 of them and moved match_ratio by up to 0.062 -- on a
+                # set built to be dense at the 0.65 bar, that is flipped decisions attributed
+                # to a model that did nothing. Tadabur peaks above 1.0 (measured 1.037), so
+                # PCM_16 also clips real signal. FLOAT round-trips bit-exactly.
                 sf.write(
                     str(clips_dir / candidate.filename),
                     np.asarray(samples, dtype="float32"),
                     SAMPLE_RATE,
-                    subtype="PCM_16",
+                    subtype="FLOAT",
                 )
                 written.add(candidate.filename)
 

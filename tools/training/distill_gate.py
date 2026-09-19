@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -72,6 +73,15 @@ import numpy as np
 import torch
 
 from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
+from training.gate_evalset import (
+    STRATA,
+    DirectionalErrors,
+    PairedComparison,
+    directional_errors,
+    paired_comparison,
+    reweighted_agreement,
+    wilson_interval,
+)
 from training.distill_eval import (
     check_split_matches_checkpoint,
     confirmed_stream,
@@ -336,13 +346,13 @@ class ViewReport:
     ci_low: float
     ci_high: float
     always_pass_agreement: float
-    errors: object
+    errors: DirectionalErrors
     ratio_rmse: float
     ratio_p95_abs_delta: float
     ratio_offset: float
     per_stratum_agreement: dict[str, float]
     reweighted_agreement: float
-    trivial_guard: object
+    trivial_guard: PairedComparison
 
     @property
     def agreement(self) -> float:
@@ -381,16 +391,6 @@ def build_view_report(
     scanned_by_stratum: dict[str, int],
 ) -> ViewReport:
     """Aggregate one view's clips into the report a ship decision can be read off."""
-    import math
-
-    from training.gate_evalset import (
-        STRATA,
-        directional_errors,
-        paired_comparison,
-        reweighted_agreement,
-        wilson_interval,
-    )
-
     pairs = [(clip.teacher_passed, decisions[clip.filename].student_passed) for clip in clips]
     deltas = [
         decisions[clip.filename].student_ratio - clip.teacher_ratio for clip in clips
@@ -473,25 +473,15 @@ def run_evalset(args, device) -> None:
     """Score one checkpoint against a frozen evaluation set and report every view."""
     from transformers import SeamlessM4TFeatureExtractor
 
-    from training.gate_evalset import (
-        CLIPS_DIRNAME,
-        check_provenance,
-        load_manifest,
-        paired_comparison,
-    )
+    from training.gate_evalset import CLIPS_DIRNAME, check_provenance, load_manifest
     from training.distill_eval import PROTOCOL_VERSION
     from training.distill_student import TEACHER_MODEL_ID
     from tadabur.scorer import BALANCED
 
     evalset = load_manifest(args.eval_set)
+    # One call, and it covers the decode protocol too: a second check here is how a field
+    # ends up validated in one caller and not the other.
     check_provenance(evalset, TEACHER_MODEL_ID, BALANCED.correct_threshold)
-    manifest_protocol = evalset.provenance.get("protocol_version")
-    if manifest_protocol != PROTOCOL_VERSION:
-        raise SystemExit(
-            f"the evaluation set was built under protocol {manifest_protocol!r} and this "
-            f"code decodes under {PROTOCOL_VERSION!r}. The cached teacher decodes would be "
-            f"compared against a student decoded differently. Rebuild the set."
-        )
 
     student, state_config, step = load_student_from_checkpoint(
         args.checkpoint, device, use_ema=args.ema

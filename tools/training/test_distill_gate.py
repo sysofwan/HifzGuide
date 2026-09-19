@@ -156,13 +156,13 @@ def test_recalibration_flag_is_true_when_a_threshold_genuinely_separates():
 # --- Scoring against a frozen evaluation set ---
 
 
-def _eval_clip(name, ratio, passed, stratum=None, split="dev"):
+def _eval_clip(name, ratio, passed, stratum=None, split="dev", reciter_id=None):
     from training.gate_evalset import EvalClip, stratum_for
 
     return EvalClip(
         filename=name,
         surah_ayah="78:1",
-        reciter_id=1,
+        reciter_id=reciter_id if reciter_id is not None else abs(hash(name)) % 997,
         shard=20,
         duration_s=4.0,
         stratum=stratum or stratum_for(ratio, 0.65),
@@ -333,3 +333,28 @@ def test_comparing_against_a_file_without_the_insertion_run_is_refused_not_guess
     assert _correct(clip, stale, "full", 0.65) is True
     with pytest.raises(SystemExit, match="insertion run"):
         _correct(clip, stale, "no_added_shadda", 0.65)
+
+
+def test_the_reported_interval_is_the_clustered_one_and_the_naive_one_is_shown_beside_it():
+    """A reader must not be able to quote the too-narrow interval without seeing it labelled."""
+    from training.distill_gate import build_view_report, format_view_report
+
+    # Ten reciters, four clips each; one reciter wrong on all four. Clustered by construction.
+    clips, decisions = [], {}
+    for reciter in range(10):
+        for i in range(4):
+            name = f"r{reciter}c{i}.wav"
+            clips.append(_eval_clip(name, 0.90, True, stratum="pass_clear", reciter_id=reciter))
+            wrong = reciter == 0
+            decisions[name] = _decision(name, 0.40 if wrong else 0.90, not wrong)
+    report = build_view_report(
+        "population", "dev", clips, decisions, {"pass_clear": 40}, 0.65
+    )
+    assert report.agreement == pytest.approx(0.9)
+    clustered = report.ci_cluster_high - report.ci_cluster_low
+    naive = report.ci_high - report.ci_low
+    assert clustered > naive
+    rendered = format_view_report(report)
+    assert "bootstrapped over reciters" in rendered
+    assert "too narrow" in rendered
+    assert "agreement_ci95_clustered" in report.as_dict()

@@ -91,6 +91,7 @@ from training.gate_evalset import (
     DirectionalErrors,
     FlipCauses,
     PairedComparison,
+    cluster_bootstrap_interval,
     directional_errors,
     flip_causes,
     gate_verdicts,
@@ -399,6 +400,10 @@ class ViewReport:
     same_decision: int
     ci_low: float
     ci_high: float
+    # Resampled over reciters, not clips. The clips are not independent observations and the
+    # naive interval is too narrow on exactly the question a ship decision asks.
+    ci_cluster_low: float
+    ci_cluster_high: float
     always_pass_agreement: float
     errors: DirectionalErrors
     ratio_rmse: float
@@ -426,7 +431,10 @@ class ViewReport:
             "num_clips": self.num_clips,
             "agreement": round(self.agreement, 4),
             "flip_rate": round(self.flip_rate, 4),
-            "agreement_ci95": [round(self.ci_low, 4), round(self.ci_high, 4)],
+            "agreement_ci95_clustered": [
+                round(self.ci_cluster_low, 4), round(self.ci_cluster_high, 4)
+            ],
+            "agreement_ci95_naive": [round(self.ci_low, 4), round(self.ci_high, 4)],
             "always_pass_agreement": round(self.always_pass_agreement, 4),
             "population_reweighted_agreement": round(self.reweighted_agreement, 4),
             "ratio_rmse": round(self.ratio_rmse, 4),
@@ -499,6 +507,10 @@ def build_view_report(
             ) / len(members)
 
     low, high = wilson_interval(same, len(clips))
+    matched = [teacher == student for teacher, student in pairs]
+    cluster_low, cluster_high = cluster_bootstrap_interval(
+        matched, [clip.reciter_id for clip in clips]
+    )
     return ViewReport(
         view=view,
         split=split,
@@ -507,6 +519,8 @@ def build_view_report(
         same_decision=same,
         ci_low=low,
         ci_high=high,
+        ci_cluster_low=cluster_low,
+        ci_cluster_high=cluster_high,
         always_pass_agreement=sum(1 for teacher, _ in pairs if teacher) / count,
         errors=directional_errors(pairs),
         ratio_rmse=math.sqrt(sum(delta**2 for delta in deltas) / count),
@@ -555,9 +569,11 @@ def format_view_report(report: ViewReport) -> str:
     lines = [
         f"  [{report.view}/{report.split}] {report.num_clips} clips "
         f"-- scored on: {dict(GATE_CONDITIONS)[report.criterion]}",
-        f"    FLIP RATE           {report.flip_rate:.2%}  "
-        f"(agreement {report.agreement:.2%}, 95% CI "
-        f"[{report.ci_low:.2%}, {report.ci_high:.2%}])",
+        f"    FLIP RATE           {report.flip_rate:.2%}  (agreement {report.agreement:.2%})",
+        f"    95% CI              [{report.ci_cluster_low:.2%}, "
+        f"{report.ci_cluster_high:.2%}]  bootstrapped over reciters"
+        f"  (naive [{report.ci_low:.2%}, {report.ci_high:.2%}] -- too narrow, the clips "
+        f"are not independent)",
         f"    population estimate {1 - report.reweighted_agreement:.2%} flips "
         f"-- the same student on an unstratified sample",
         f"    false rejections    {errors.false_fails}/{errors.teacher_passes} "

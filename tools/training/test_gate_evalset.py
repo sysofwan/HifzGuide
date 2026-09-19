@@ -399,3 +399,63 @@ def test_gate_verdicts_separate_the_ratio_from_the_poison_rejects():
     # A pass is a pass under all three.
     ok = gate_verdicts(passed=True, match_ratio=0.90, insertion_run=1, threshold=0.65)
     assert all(ok.values())
+
+
+# --- Clustering: the clips are not independent observations ---
+
+
+def test_cluster_bootstrap_is_wider_than_wilson_when_outcomes_cluster():
+    """Whether the student agrees is correlated within a reciter, so the naive interval lies.
+
+    Constructed so the marginal proportion is identical either way and only the clustering
+    differs: the naive interval cannot tell them apart, and that is the whole problem.
+    """
+    from training.gate_evalset import cluster_bootstrap_interval
+
+    # 40 reciters of 10 clips. Clustered: each reciter is all-right or all-wrong.
+    clustered_outcomes, clustered_ids = [], []
+    for reciter in range(40):
+        clustered_outcomes += [reciter % 5 != 0] * 10
+        clustered_ids += [reciter] * 10
+    # Same 80% overall, but spread evenly inside every reciter.
+    spread_outcomes, spread_ids = [], []
+    for reciter in range(40):
+        spread_outcomes += [i % 5 != 0 for i in range(10)]
+        spread_ids += [reciter] * 10
+
+    assert sum(clustered_outcomes) == sum(spread_outcomes)
+    clustered = cluster_bootstrap_interval(clustered_outcomes, clustered_ids)
+    spread = cluster_bootstrap_interval(spread_outcomes, spread_ids)
+    naive = wilson_interval(sum(clustered_outcomes), len(clustered_outcomes))
+
+    assert (clustered[1] - clustered[0]) > (spread[1] - spread[0])
+    assert (clustered[1] - clustered[0]) > (naive[1] - naive[0])
+
+
+def test_cluster_bootstrap_brackets_the_estimate():
+    from training.gate_evalset import cluster_bootstrap_interval
+
+    outcomes = [i % 10 != 0 for i in range(500)]
+    clusters = [i // 5 for i in range(500)]
+    low, high = cluster_bootstrap_interval(outcomes, clusters)
+    assert low <= 0.9 <= high
+    assert 0.0 <= low <= high <= 1.0
+
+
+def test_cluster_bootstrap_is_deterministic_and_validated():
+    from training.gate_evalset import cluster_bootstrap_interval
+
+    outcomes = [i % 3 != 0 for i in range(90)]
+    clusters = [i // 3 for i in range(90)]
+    assert cluster_bootstrap_interval(outcomes, clusters) == cluster_bootstrap_interval(
+        outcomes, clusters
+    )
+    with pytest.raises(ValueError, match="one cluster label per outcome"):
+        cluster_bootstrap_interval([True, False], [1])
+
+
+def test_a_single_cluster_falls_back_rather_than_returning_a_point():
+    from training.gate_evalset import cluster_bootstrap_interval
+
+    outcomes = [True] * 9 + [False]
+    assert cluster_bootstrap_interval(outcomes, [7] * 10) == wilson_interval(9, 10)

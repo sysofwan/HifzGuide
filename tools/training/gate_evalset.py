@@ -604,6 +604,55 @@ def flip_causes(
     )
 
 
+def cluster_bootstrap_interval(
+    outcomes: list[bool],
+    clusters: list,
+    iterations: int = 4000,
+    seed: int = 12345,
+    alpha: float = 0.05,
+) -> tuple[float, float]:
+    """Percentile bootstrap resampling **reciters**, not clips.
+
+    :func:`wilson_interval` assumes the observations are independent. These are not: 2,000
+    evaluation clips come from ~286 reciters, and whether the student agrees with the teacher
+    on a clip is correlated within a voice -- same channel, same pace, same articulation. The
+    independent-sample interval is therefore too narrow, and it is too narrow on exactly the
+    question a ship decision asks ("is the lower bound above the bar?").
+
+    Resampling whole reciters with replacement makes no assumption about the size of that
+    correlation, which is the right trade when there is one clustering variable and enough of
+    them to resample. The total clip count varies between draws, as it should -- a corpus
+    with a different set of reciters really would have a different number of clips.
+
+    Returns the naive interval unchanged when there is effectively no clustering to find (one
+    cluster, or fewer than two), because a bootstrap over one cluster is not an interval.
+    """
+    if not outcomes or len(outcomes) != len(clusters):
+        raise ValueError(
+            f"need one cluster label per outcome: {len(outcomes)} vs {len(clusters)}"
+        )
+    grouped: dict = {}
+    for outcome, cluster in zip(outcomes, clusters):
+        grouped.setdefault(cluster, []).append(outcome)
+    keys = list(grouped)
+    if len(keys) < 2:
+        return wilson_interval(sum(outcomes), len(outcomes))
+
+    rng = random.Random(seed)
+    estimates = []
+    for _ in range(iterations):
+        hits = total = 0
+        for _ in keys:
+            drawn = grouped[keys[rng.randrange(len(keys))]]
+            hits += sum(drawn)
+            total += len(drawn)
+        estimates.append(hits / total)
+    estimates.sort()
+    low = estimates[int(alpha / 2 * iterations)]
+    high = estimates[min(iterations - 1, int((1 - alpha / 2) * iterations))]
+    return (low, high)
+
+
 def load_manifest(out_dir: Path) -> EvalSet:
     """Read a built set, refusing one this code cannot honestly interpret."""
     path = Path(out_dir) / MANIFEST_FILENAME

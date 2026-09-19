@@ -279,126 +279,89 @@ distribution. Under **hard** labels it becomes a direct bias on the class prior,
 student flipped from under-emitting (46.0 vs 47.2 tokens/clip) to over-emitting (55.5 vs
 55.2). A weighting introduced for one objective does not transfer to another unexamined.
 
-## The 91.5% gate number was a property of the panel, not of the model
+## The metric was wrong before the model was: measure the decode, not a gate
 
-Everything above measures gate agreement on 200 random `clips_v2` clips. That panel cannot
-answer the question, for three separate reasons, and fixing them changed the conclusion
-without changing the model.
+Everything above scores this work on "gate agreement" — 91.5% on 200 random `clips_v2` clips.
+Three separate things are wrong with that, and the third is the one that matters.
 
-**A rubber stamp scored 88.0% on it.** 91.5% against that floor is McNemar p ~ 0.23 at
-n=200. Recorded already; it is what the follow-up issue was opened for.
+**A rubber stamp scored 88.0% on that panel**, so 91.5% carried a Wilson interval of roughly
+[86.8%, 94.6%] and could not have established >95% whatever the model did.
 
-**`clips_v2` is the teacher's own gate passers.** It *is* `passing_subset_full.jsonl` — every
-clip in it cleared the whole-clip gate during staging. So it contains almost no teacher
-rejections, and a panel drawn from it **cannot measure false acceptance at all**, which is
-half of what a gate does. The 8 "student passed, teacher failed" clips in the original 200
-were artefacts of the windowed protocol, not recitation the teacher judged bad.
+**`clips_v2` is the teacher's own gate passers** — it *is* `passing_subset_full.jsonl` — so
+it contains almost no teacher rejections.
 
-**The protocol was transcribing only part of each clip.** `confirmed_stream` commits the
-segments in a window's oldest second, because the next window re-decodes the rest with more
-right context. It did that for the **last** window too, so the final four seconds of every
-clip were decoded and discarded — and a clip shorter than one window was gated on its first
-second alone. Muraja flushes what is pending when speech stops. That omission was harmless
-while the module reported only *character* agreement, where both models lose the same tail;
-it is not harmless for a `match_ratio` computed against the whole ayah. The flush is now
-replayed, `PROTOCOL_VERSION` records it, and cached teacher decodes carry the version so a
-set built under one protocol cannot be scored under another. **Numbers from before and after
-this change are not comparable.**
+**And a gate is the wrong kind of number for a distillation at all.** Size distillation is
+behavioural cloning of the teacher's **phoneme decode**. `tadabur.scorer` takes a decode,
+aligns it against an ayah reference with Smith-Waterman, and thresholds the result. None of
+that apparatus appears in "does the student emit what the teacher emits". Worse, the
+apparatus belongs to two *other* tracks:
 
-### The replacement, and why it has two views
+- the two poison rejects layered on the score are, in the scorer's own comments, "NOT a
+  Muraja parameter", "Tadabur-only", "filter-side" — they decide which clips enter the
+  ADR-0001 **fine-tune corpus**;
+- the threshold is not the product's either. ADR-0005 records Muraja's **advancement**
+  decision as `matchRatio` against a hard-coded **0.70** that `scoringMode` does not touch;
+  `.balanced`'s 0.65 is the filter's bar;
+- and **ADR-0008 (Accepted) already ruled on exactly this**: that gate *is* ADR-0001's
+  training-data filter and "should not be the headline metric at all".
 
-`training.gate_evalset` scans 20 **strided** reserved Tadabur shards — strided rather than a
-block at the top of the range, because nothing guarantees shard order does not group reciters
-and a tail block would then be a distribution shift rather than a sample. `distill_stream`
-refuses both reservations in its constructor; the old "shards 0-19 are reserved" comment was
-a reservation that held until someone typed a range by hand.
+All of that was already written down in this repo. Two passes of this work were spent
+improving agreement with a corpus filter, then with an advancement decision, before reading
+it. The cost was a rebuilt measurement aimed at the wrong question and a "target met" claim
+that had to be withdrawn twice.
 
-One scan draws two samples, because neither alone supports a decision. Only **4% of raw
-Tadabur clips fall below the 0.65 bar**, so a population sample is saturated by construction
-(pass-everything floor 85.2%) and nothing done to the model moves it. A sample enriched
-around the bar has a 40.6% floor and is sensitive — and is deliberately unrepresentative, so
-shipping on it alone would be dishonest. Both are always reported, with the scan's
-per-stratum counts, which are the only route back from the enriched number to a population
-one. Clips are split dev/test **by reciter**.
+### What is measured instead
 
-The teacher is decoded once and frozen into the manifest. Besides halving every later
-evaluation, it makes two checkpoints comparable by construction rather than by hoping the
-teacher ran identically twice.
+`training.decode_evalset` freezes a held-out clip set with the **teacher's decoded phoneme
+string** cached per clip, and `distill_eval --eval-set` scores a student's decode against it.
+No reference, no aligner, no threshold.
 
-**Store the clips as 32-bit float, not PCM_16.** The manifest caches the teacher's decode of
-the in-memory waveform and the student reads the file back, so anything lossy between them is
-a disagreement charged to a model that did nothing. Measured on 60 clips, a PCM_16 round trip
-changes the *teacher's own* decoded string on 12 of them and moves `match_ratio` by up to
-0.062; Tadabur audio also peaks at 1.037, so PCM_16 clips real signal. This was caught forty
-minutes into a build and cost a rebuild.
+- 20 **strided** reserved shards, never trained on — strided because shard order may group
+  reciters and a tail block would be a distribution shift rather than a sample.
+  `distill_stream` refuses both reservations in its constructor.
+- A plain **uniform** reservoir draw. The metric is a pooled character accuracy over ~168k
+  phonemes; there is no threshold to saturate and nothing to enrich around, which is what an
+  earlier ratio-stratified second sample existed for. Legacy manifests carry it and
+  `load_manifest` drops it, since it is not a uniform draw.
+- Split dev/test **by reciter**.
+- Clips stored as **32-bit float**: the manifest caches the teacher's decode of the in-memory
+  waveform and the student reads the file back, so anything lossy between them is charged to
+  the student. A PCM_16 round trip changed the teacher's *own* decode on 12 of 60 clips, and
+  Tadabur audio peaks at 1.037 so it clips real signal too.
+- The teacher decodes once. Besides halving every later evaluation it makes two checkpoints
+  comparable by construction rather than by hoping the teacher ran identically twice.
 
-### The gate this was being scored against is not the one the product uses
+**The decode protocol also had a defect.** `confirmed_stream` committed only the oldest second
+of each window *including the last*, so the final four seconds of every clip were decoded and
+discarded, and a clip under 5 s was transcribed from its first second alone. Muraja flushes
+what is pending when speech stops. The flush is replayed now, behind `PROTOCOL_VERSION`, which
+cached decodes carry so a set built under one protocol cannot be scored under another. Numbers
+either side of that change are not comparable.
 
-Two accepted ADRs say so, and both were missed on the first pass.
+### What the h384 checkpoint scores
 
-**ADR-0005:** Muraja's **advancement** decision — does the reciter move forward — is
-`matchRatio` against a hard-coded **`correctThreshold = 0.70`** that `scoringMode` does not
-touch. `.balanced`'s `0.65` is the Tadabur filter's bar. A clip at 0.67 advances under one
-and not the other.
+Unchanged, 2,000 held-out clips over 286 reciters, 167,473 teacher phonemes:
 
-**ADR-0008 (Accepted):** the `.balanced` Smith-Waterman gate **is** ADR-0001's training-data
-filter, its job is "keep mislabelled clips out of the fine-tune corpus", and it "should not
-be the headline metric at all". Reading it as the product decision is precisely the
-conflation ADR-0008 exists to correct.
-
-On top of the threshold, `Scorer.gate` layers two rejects its own comments call "NOT a Muraja
-parameter", "Tadabur-only", "filter-side": a long interior insertion run, and an added
-shadda. **Filtering is fine-tune-side. A size distillation is behavioural cloning of the
-teacher's decode and is not accountable for the corpus filter**, so none of it is in the
-distillation criterion — `GateDefinition` is a threshold and nothing else.
-
-### What the h384 checkpoint scores, and against what
-
-| decision | population (n=2000) | boundary (n=1000) |
-| --- | --- | --- |
-| **advancement, ratio >= 0.70** — what Muraja decides | **94.60%** [93.23, 95.84] | **94.80%** [93.00, 96.30] |
-| at the filter's 0.65 bar, for comparison | 96.50% [95.43, 97.47] | 95.70% [94.22, 97.01] |
-| confirmed-stream character accuracy | 90.35% | 87.22% |
-
-Intervals are bootstrapped over **reciters**, not clips. The clips are not independent —
-2,000 of them come from 286 voices — and the independent-sample interval is about 23% too
-narrow on exactly the question a ship decision asks. It does not change the verdict here, but
-it had to be measured rather than assumed.
-
-**The >95% target is not met on the decision the product makes.** An earlier revision of this
-section claimed it was; that claim used the filter's 0.65 threshold and is withdrawn. At 0.70
-the population view is 94.60% with an interval straddling 95%, and the boundary view is
-94.80%.
-
-Two cautions on reading the table. On the population view the always-pass floor at 0.70 is
-94.8%, so agreement of 94.60% is **at or below a rubber stamp there** — that view is
-saturated for this decision and carries no evidence; the boundary view (floor 49.2%) is where
-it is informative. And ADR-0008's own preference is that a distillation's headline should be
-**decode fidelity**, the third row, not a decision bit at all.
-
-### What it would take, and what that estimate is worth
-
-Bucketing the 2,000 population clips by the measured edit distance between the two decodes:
-
-| edits | clips | agreement at 0.70 | share of all flips |
+| | dev (970) | test (1030) | both |
 | --- | --- | --- | --- |
-| 0 | 155 | 100.0% | 0% |
-| 1 | 186 | 100.0% | 0% |
-| 2–3 | 352 | 98.9% | 4% |
-| 4–7 | 527 | 97.3% | 13% |
-| 8–15 | 489 | 92.2% | 35% |
-| 16+ | 291 | 82.1% | 48% |
+| **character accuracy** | 90.15% | 90.54% | **90.35%** [89.74, 90.88] |
+| exact-match clips | 8.4% | 7.2% | 7.8% |
+| per-clip error, median | 7.82% | 7.95% | 7.89% |
+| per-clip error, p90 | 17.39% | 15.79% | 16.22% |
 
-Agreement is a steep monotone function of decode fidelity and the errors sit in a tail: the
-**39% of clips with eight or more edits carry 83% of the 108 flips**, and they are long clips
-(median 25 s against 9 s) — which is **not** a train/eval duration mismatch, both
-distributions were measured and match closely.
+The interval is bootstrapped over **reciters**, not clips: 2,000 clips come from 286 voices
+and agreement correlates within one, so an independent-sample interval is about 23% too
+narrow on exactly the question a checkpoint comparison asks.
 
-Shifting every clip one bucket left computes to flips of 5.40% → 2.08%. **That is an
-illustration, not a forecast.** It assumes the intervention effect it is meant to estimate,
-borrows each bucket's observed error rate for clips that did not come from it, and absolute
-edit count is confounded with clip length and with the number of opportunities to flip. It
-says the lever is decode fidelity concentrated in a tail; it does not say what training buys.
+Two things the pooled number hides, which is why the median and p90 sit beside it. Accuracy
+is **90.4% pooled but 92.1% by the median clip** — the pooled figure is dominated by long
+clips, and long clips are worse (91.82% at or below the median duration against 89.82% above
+it, and that is **not** a train/eval duration mismatch: both distributions were measured and
+match). And only 7.8% of clips are reproduced exactly.
+
+So the headline for this work is **90.35% character agreement**, not a percentage of
+preserved gate decisions, and the issue's ">95%" target needs restating in those terms before
+it means anything.
 
 ## Teacher-weight initialisation: what transfers, and what does not
 
@@ -601,31 +564,31 @@ ones.
   on the same 40 ms lattice — negligible for sizing, but it would have to be distilled onto
   the student, which is out of scope here.
 
-- **Check what the metric is a metric *of* before optimising it.** This work spent its first
-  pass improving agreement with `Scorer.gate` on the assumption that it was the product's
-  decision. It is not: ADR-0005 puts Muraja's advancement bar at **0.70**, and ADR-0008
-  (Accepted) says in as many words that this gate is ADR-0001's **training-data filter** and
-  "should not be the headline metric at all". Both were already written down. The cost of not
-  reading them was a measurement rebuilt around the wrong decision and a "target met" claim
-  that had to be withdrawn. When an issue states a target in a metric's terms, resolve what
-  the metric decides before treating the number as the goal.
+- **Check what the metric is a metric *of* before optimising it.** This work spent two passes
+  improving agreement with `Scorer.gate`, first at the corpus filter's threshold and then at
+  Muraja's, before noticing that a distillation should not be scored through an aligner at
+  all. ADR-0005 and ADR-0008 already said so and were in this repo the whole time. When an
+  issue states a target in a metric's terms, resolve what that metric decides — and whose
+  decision it is — before treating the number as the goal.
 
-- **Filtering is fine-tune-side; a distillation is not accountable for it.** The two poison
-  rejects keep mislabelled clips out of the corpus. Cloning the teacher's decode is a
-  different question, and mixing them makes a size distillation answer for a corpus policy.
-  They are out of the criterion entirely rather than reported and ignored.
+- **The distillation metric is decode fidelity.** Cloning the teacher's phoneme stream is the
+  objective, so the measurement is that stream against the student's. Filtering is
+  fine-tune-side and follow-along grading is product-side; both take a decode as input and
+  neither is a property of the student. Reporting either as the headline makes a size
+  distillation answer for someone else's policy.
 
 - **Interval clustered data as clustered.** 2,000 evaluation clips come from 286 reciters and
   agreement correlates within a voice, so the independent-sample interval is ~23% too narrow
-  on exactly the question a ship decision asks. Resampling reciters costs nothing and removes
-  an assumption nobody had checked.
+  on exactly the question a checkpoint comparison asks. Resampling reciters costs nothing.
 
-- **A synthetic perturbation is only evidence if its edit distribution is neutral with
-  respect to what is being measured.** The first version of the gate-sensitivity probe
-  inserted a *duplicate* of the neighbouring phoneme — which is literally a geminate — and so
-  manufactured the added-shadda finding it was then used to support, inflating it five-fold.
-  Perturbing the teacher to see which condition carries the sensitivity is still the right
-  cheap check; it has to be designed not to plant its own answer.
+- **Report the pooled number and the per-clip distribution together.** Pooled accuracy is
+  dominated by long clips; the median clip is 1.7 points better and moves independently. One
+  of them alone will eventually say a change helped when it did not.
+
+- **A synthetic perturbation is only evidence if its edit distribution is neutral with respect
+  to what is being measured.** A gate-sensitivity probe here inserted a *duplicate* of the
+  neighbouring phoneme — which is literally a geminate — and so manufactured the
+  added-shadda finding it was used to support, inflating it five-fold.
 
 - **This must not be confounded with the ADR-0001 track.** That fine-tune deliberately
   *increases* tolerance on the soft pairs; width distillation will involuntarily *reduce*

@@ -1,72 +1,65 @@
-"""A gate-evaluation set on which ">95% agreement" is a statement about the model.
+"""A held-out clip set with the teacher's decode frozen into it.
 
-``training.distill_gate`` scores student-vs-teacher gate decisions on whatever clips it is
-pointed at. Pointed at a random sample it measures almost nothing: on the 200 random clips
-used throughout ADR-0010, **88.0% of them pass the gate**, so a student that rubber-stamped
-every clip scores 88.0% and the measured 91.5% is 3.5 points of daylight at n=200 --
-McNemar p ~ 0.23. Nothing done to the model can move a number that saturated.
+Size distillation is behavioural cloning of the teacher's **phoneme decode**. The thing to
+measure is therefore the thing being cloned: the teacher's confirmed phoneme stream against
+the student's, string to string.
 
-This module builds the set that makes the number move, and it builds **two views of one
-sample** because neither alone supports a ship decision:
+It is worth being explicit about what is *not* measured here, because this work spent two
+passes measuring it by mistake. ``tadabur.scorer`` aligns a decode against an ayah reference
+with Smith-Waterman and thresholds the result. That machinery answers two other questions:
+which clips are clean enough for the ADR-0001 **fine-tune corpus** (the filter, whose two
+poison rejects its own comments call "NOT a Muraja parameter"), and whether Muraja **advances**
+the reciter (ADR-0005, a different threshold again). Neither is a distillation question -- no
+reference string, no aligner and no threshold appears in "does the student emit what the
+teacher emits" -- and ADR-0008 already records that the gate "should not be the headline
+metric at all". So this module caches the teacher's decoded string and nothing downstream of
+it.
 
-* a **population** sample -- a uniform draw over eligible clips, which answers "what would
-  a user see"; and
-* a **boundary** sample -- enriched near the ``.balanced`` bar (``correct_threshold`` 0.65),
-  which answers "is this student better than a rubber stamp", because that is where a
-  student can plausibly flip a decision and where the flip costs something.
+**The teacher is decoded once and frozen.** Every evaluation used to decode both models,
+paying the teacher's 42 ms/window again for every student measured. The teacher is
+deterministic and the protocol is fixed, so its decode is a property of the clip: it is
+computed here and written into the manifest, and :mod:`training.distill_eval` then scores a
+student against it. Besides halving the work it makes two checkpoints comparable by
+construction rather than by hoping the teacher ran identically twice. The manifest records
+the teacher id, the decode protocol and the bounds it was built under, and
+:func:`check_provenance` refuses one whose rules no longer match the code loading it.
 
-Optimising the population number is hopeless (it saturates); shipping on the boundary number
-alone is dishonest (it is deliberately unrepresentative). Both are reported, always.
+**A uniform sample, because the metric has no threshold.** Pooled character accuracy over
+~168k phonemes is informative on any sample of clips; there is nothing to saturate and no
+decision boundary to enrich around, so the set is a plain reservoir draw over eligible clips.
+(An earlier revision drew a second sample stratified by the scorer's ``match_ratio``, for a
+pass/fail metric that is no longer computed. Legacy manifests carry it; it is **not** a
+uniform draw, so :func:`load_manifest` drops it rather than pooling it into a fidelity
+estimate.)
 
 **Clips are stored as 32-bit float.** The manifest caches the teacher's decode of the
 waveform in memory and the student reads the file back, so anything lossy between them is a
-difference charged entirely to the student. A PCM_16 round trip is lossy enough to matter
-here: measured on 60 clips it changed the teacher's decoded string on 12 and moved
-``match_ratio`` by up to 0.062, and Tadabur audio peaks above 1.0 so it clips as well.
+difference charged entirely to the student. A PCM_16 round trip is lossy enough to matter:
+measured on 60 clips it changed the teacher's own decoded string on 12 and Tadabur audio peaks
+above 1.0, so it clips as well.
 
-**The teacher is run once and frozen.** Every gate evaluation so far decoded *both* models,
-paying the teacher's 42 ms/window again for every student measured. The teacher is
-deterministic and the protocol is fixed, so its decode is a property of the clip: it is
-computed here and written into the manifest, and :mod:`training.distill_gate` then scores a
-student against cached decisions. The manifest records the teacher id, the confirmation
-split and the scorer bar it was built under, and :func:`check_provenance` refuses a manifest
-whose rules no longer match the code loading it -- a cache that outlives the thing it caches
-is worse than no cache.
+**Provenance: strided shards, never contiguous.** Candidates come from Tadabur shards no
+training run may touch. Shards 0-19 produced the staged ``clips_v2`` corpus, so they are
+already reserved; :func:`gate_eval_shards` reserves a strided block on top of that, held out
+from streaming runs and never staged, so one set is valid for the staged-corpus baseline and
+every streaming successor. Strided rather than a block at one end because nothing guarantees
+shard order does not group reciters, and a tail block would then be a distribution shift
+rather than a sample.
 
-**Provenance: strided shards, never contiguous.** Candidates come from Tadabur shards that
-no training run may touch. Shards 0-19 already produced the staged ``clips_v2`` corpus, so
-one eval set drawn from a block at the *top* of the range would be valid -- but a contiguous
-block is a poor population sample if shard order groups reciters or recording sources, which
-nothing guarantees it does not. :data:`GATE_EVAL_SHARDS` therefore takes every 24th shard
-across the whole training range, and :func:`training_shard_spec` returns the complement for
-``--stream-shards``. The cost is 15 shards (~4%) of training data for a sample that spans
-the corpus.
+**A dev/test boundary inside the set**, split by **reciter** -- one voice's recordings share
+channel, pace and style, so a clip-level split puts near-duplicates on both sides and a
+"held-out" test number quietly measures the dev set again.
 
-**A dev/test boundary inside the set.** Tuning against the whole set eventually makes all of
-it development data. Clips are split by **reciter** (not by clip -- the same reciter's
-recordings share channel and style), so a finalist can be scored on clips no intermediate
-decision was ever made against.
-
-**The candidates are unfiltered.** Tadabur's staging filter never saw these rows. That is
-deliberate: gate agreement is a teacher-vs-student question, and the clips the filter would
-have rejected -- the poor, the partial, the mis-assigned -- are exactly the ambiguous ones
-that land near the bar. It does mean this set measures agreement on a *broader* input
-distribution than ``clips_v2``, so the two are not comparable and the manifest says which
-one it is.
+The candidates are **unfiltered**: Tadabur's staging filter never saw them. For cloning that
+is right, since the student has to reproduce the teacher on whatever it is given.
 
 Usage::
 
-    # Build the frozen set (downloads and deletes one shard at a time)
-    python -m training.gate_evalset --out-dir ../tadabur/gate_eval
+    python -m training.decode_evalset --out-dir ../tadabur/gate_eval
+    python -m training.decode_evalset --out-dir ../tadabur/gate_eval --describe
+    python -m training.decode_evalset --print-training-shards
 
-    # Report what a built set contains, without a GPU
-    python -m training.gate_evalset --out-dir ../tadabur/gate_eval --describe
-
-    # The shard spec a training run must use so it never sees these clips
-    python -m training.gate_evalset --print-training-shards
-
-Linux + CUDA for the build (the teacher must be resident); loading, the statistics helpers
-and the shard arithmetic are torch-free so they can be unit-tested anywhere.
+Linux + CUDA for the build; loading, the statistics and the shard arithmetic are torch-free.
 """
 
 from __future__ import annotations
@@ -82,7 +75,7 @@ from pathlib import Path
 
 # Bumped whenever the manifest layout, the strata, or anything the cached teacher decisions
 # depend on changes, so a stale set is refused rather than silently reused.
-SCHEMA_VERSION = "gate-evalset-v1"
+SCHEMA_VERSION = "decode-evalset-v2"
 
 MANIFEST_FILENAME = "manifest.json"
 CLIPS_DIRNAME = "clips"
@@ -96,30 +89,10 @@ GATE_EVAL_SHARD_STRIDE = 19
 GATE_EVAL_SHARD_START = 20
 NUM_TADABUR_SHARDS = 385
 
-# Half-width of the band counted as "near the bar". 0.20 around 0.65 spans [0.45, 0.85]:
-# wide enough that a real corpus populates it, narrow enough that a clip inside it is one a
-# plausible student could flip.
-NEAR_BAND_HALF_WIDTH = 0.20
-
-# Share of the BOUNDARY sample each stratum gets. Near-bar clips dominate because they carry
-# the information; the clear tails are kept so a student that breaks the easy cases is still
-# caught. Chosen so the teacher's pass rate on the boundary sample lands near 50%, which is
-# what turns ``always_pass_agreement`` into an informative floor instead of the headline.
-BOUNDARY_QUOTA_SHARE: dict[str, float] = {
-    "fail_clear": 0.20,
-    "near_fail": 0.30,
-    "near_pass": 0.30,
-    "pass_clear": 0.20,
-}
-STRATA = tuple(BOUNDARY_QUOTA_SHARE)
-
-# n=1000 is not a free choice. At an observed 95.0%, the 95% Wilson interval is roughly
-# [93.5%, 96.2%] -- so 1000 clips cannot *establish* ">95%", only fail to rule it out. 2000
-# narrows that to about [94.0%, 95.8%]. The target is sized for the population sample, which
-# is the one a ship claim rests on; the boundary sample is a comparison instrument and is
-# smaller.
-DEFAULT_POPULATION_TARGET = 2000
-DEFAULT_BOUNDARY_TARGET = 1000
+# The evaluation is a pooled character accuracy over ~168k phonemes, not a per-clip
+# proportion, so n is generous at 2,000: the reciter-clustered interval on it is +/-0.6
+# points, which resolves the differences between checkpoints this work produces.
+DEFAULT_TARGET = 2000
 
 # Matches ``tadabur.filter.MAX_AYAH_DURATION_S``: the staging filter drops clips longer than
 # this, so including them would measure the student on audio the product pipeline never
@@ -179,32 +152,6 @@ def training_shard_spec(
     return ",".join(terms)
 
 
-def stratum_for(match_ratio: float, threshold: float) -> str:
-    """Which stratum a clip belongs to, from the **teacher's** match_ratio.
-
-    The split is around the shipped bar, not around the middle of [0, 1]: "near" has to mean
-    "a student could plausibly flip this", which is a statement about distance from 0.65.
-    """
-    if match_ratio < threshold - NEAR_BAND_HALF_WIDTH:
-        return "fail_clear"
-    if match_ratio < threshold:
-        return "near_fail"
-    if match_ratio < threshold + NEAR_BAND_HALF_WIDTH:
-        return "near_pass"
-    return "pass_clear"
-
-
-def boundary_quotas(target: int) -> dict[str, int]:
-    """Per-stratum caps for the boundary sample, summing to ``target``."""
-    quotas = {name: int(target * share) for name, share in BOUNDARY_QUOTA_SHARE.items()}
-    # Truncation can leave several clips unassigned, not just one per stratum. They go to
-    # the near-bar strata, which is where an extra clip buys the most resolution.
-    near = ("near_fail", "near_pass")
-    for offset in range(target - sum(quotas.values())):
-        quotas[near[offset % len(near)]] += 1
-    return quotas
-
-
 def reciter_split(reciter_id: int) -> str:
     """``"dev"`` or ``"test"`` for one reciter, stably and without a stored table.
 
@@ -218,25 +165,25 @@ def reciter_split(reciter_id: int) -> str:
 
 @dataclass(frozen=True)
 class EvalClip:
-    """One frozen evaluation clip and the teacher decision cached for it."""
+    """One frozen clip and the teacher decode cached for it.
+
+    ``teacher_text`` is the whole target: the confirmed phoneme stream the student has to
+    reproduce. The scorer-derived fields below are recorded for provenance only -- no
+    distillation metric reads them -- so that a filter-side or advancement question can be
+    asked of this set later without re-running the teacher.
+    """
 
     filename: str
     surah_ayah: str
     reciter_id: int
     shard: int
     duration_s: float
-    stratum: str
     split: str
-    in_population: bool
-    in_boundary: bool
     teacher_text: str
-    teacher_ratio: float
-    teacher_passed: bool
-    # Recorded but unused by any distillation metric: they are the inputs to the Tadabur
-    # corpus filter's poison rejects, which belong to the ADR-0001 fine-tune track. Kept in
-    # the manifest so a filter-side question can be asked of this set later without a rebuild.
-    teacher_insertion_run: int
-    teacher_added_shadda: bool
+    teacher_ratio: float = 0.0
+    teacher_passed: bool = False
+    teacher_insertion_run: int = 0
+    teacher_added_shadda: bool = False
 
     def as_dict(self) -> dict:
         return {
@@ -245,10 +192,7 @@ class EvalClip:
             "reciter_id": self.reciter_id,
             "shard": self.shard,
             "duration_s": round(self.duration_s, 2),
-            "stratum": self.stratum,
             "split": self.split,
-            "in_population": self.in_population,
-            "in_boundary": self.in_boundary,
             "teacher_text": self.teacher_text,
             "teacher_ratio": round(self.teacher_ratio, 6),
             "teacher_passed": self.teacher_passed,
@@ -259,23 +203,16 @@ class EvalClip:
 
 @dataclass(frozen=True)
 class EvalSet:
-    """A built evaluation set: its clips, its provenance, and what the scan saw.
-
-    ``scanned_by_stratum`` is the field that is easy to omit and impossible to reconstruct
-    later. Without it the boundary sample is a bag of clips with no route back to the
-    population it came from, and every number computed on it silently reads as a population
-    number while being an enriched one.
-    """
+    """A built set: its clips, its provenance, and what the scan had to discard."""
 
     schema_version: str
     clips: tuple[EvalClip, ...]
-    scanned_by_stratum: dict[str, int]
     num_scanned: int
     num_skipped: int
     provenance: dict
 
     def fingerprint(self) -> str:
-        """A stable id for *this* evaluation: its clips, their cached teacher truth, its rules.
+        """A stable id for *this* evaluation: its clips, their cached truth, its rules.
 
         Two sets built from the same shards under different protocols share filenames, so
         comparing a saved decisions file by name alone can silently score one checkpoint
@@ -286,29 +223,20 @@ class EvalSet:
             {
                 "schema": self.schema_version,
                 "provenance": self.provenance,
-                "clips": [
-                    [clip.filename, clip.teacher_text, round(clip.teacher_ratio, 6)]
-                    for clip in self.clips
-                ],
+                "clips": [[c.filename, c.teacher_text] for c in self.clips],
             },
             sort_keys=True,
             ensure_ascii=False,
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
-    def subset(self, view: str, split: str | None = None) -> tuple[EvalClip, ...]:
-        """The clips in one view (``"population"`` / ``"boundary"`` / ``"all"``)."""
-        if view == "population":
-            chosen = [clip for clip in self.clips if clip.in_population]
-        elif view == "boundary":
-            chosen = [clip for clip in self.clips if clip.in_boundary]
-        elif view == "all":
-            chosen = list(self.clips)
-        else:
-            raise ValueError(f"unknown view {view!r}")
-        if split is not None:
-            chosen = [clip for clip in chosen if clip.split == split]
-        return tuple(chosen)
+    def subset(self, split: str | None = None) -> tuple[EvalClip, ...]:
+        """All clips, or one side of the reciter split."""
+        if split in (None, "both"):
+            return self.clips
+        if split not in ("dev", "test"):
+            raise ValueError(f"unknown split {split!r}")
+        return tuple(clip for clip in self.clips if clip.split == split)
 
     def as_dict(self) -> dict:
         return {
@@ -316,49 +244,9 @@ class EvalSet:
             "provenance": self.provenance,
             "num_scanned": self.num_scanned,
             "num_skipped": self.num_skipped,
-            "scanned_by_stratum": self.scanned_by_stratum,
-            "num_population": sum(1 for clip in self.clips if clip.in_population),
-            "num_boundary": sum(1 for clip in self.clips if clip.in_boundary),
+            "num_clips": len(self.clips),
             "clips": [clip.as_dict() for clip in self.clips],
         }
-
-
-# --- Statistics. Torch-free, so the numbers a ship decision turns on are unit-testable. ---
-
-
-def population_weights(scanned_by_stratum: dict[str, int]) -> dict[str, float]:
-    """Each stratum's share of the *scanned* population, for un-stratifying an estimate."""
-    total = sum(scanned_by_stratum.values())
-    if total <= 0:
-        return {name: 0.0 for name in scanned_by_stratum}
-    return {name: count / total for name, count in scanned_by_stratum.items()}
-
-
-MIN_REWEIGHTING_COVERAGE = 0.95
-
-
-def reweighted_agreement(
-    per_stratum_agreement: dict[str, float],
-    scanned_by_stratum: dict[str, int],
-    min_coverage: float = MIN_REWEIGHTING_COVERAGE,
-) -> float | None:
-    """Population agreement implied by per-stratum agreement and the scan counts.
-
-    Renormalised over the strata that actually have samples -- but **only when those strata
-    carry almost all of the population**. Renormalising over a sliver is not an estimate of
-    anything: a sample covering one 1%-mass stratum at 100% agreement would otherwise report
-    "100% population agreement" while saying nothing about the other 99%. Returns ``None``
-    when coverage is below ``min_coverage``, so the caller has to print "unavailable" rather
-    than a confident wrong number.
-    """
-    weights = population_weights(scanned_by_stratum)
-    covered = sum(weights.get(name, 0.0) for name in per_stratum_agreement)
-    if covered < min_coverage:
-        return None
-    return sum(
-        agreement * weights.get(name, 0.0) / covered
-        for name, agreement in per_stratum_agreement.items()
-    )
 
 
 def binomial_two_sided_p(successes: int, trials: int) -> float:
@@ -459,105 +347,6 @@ def paired_comparison(
     )
 
 
-@dataclass(frozen=True)
-class DirectionalErrors:
-    """Which way the student is wrong -- the thing an aggregate percentage hides.
-
-    ``false_fail_rate`` is what a user feels: the teacher would have accepted the recitation
-    and the student rejects it. ``false_pass_rate`` is what silently degrades the product:
-    the student accepts a recitation the teacher would have flagged. A student can reach the
-    same agreement by being too strict or too lax and the two call for opposite fixes.
-    """
-
-    teacher_passes: int
-    teacher_fails: int
-    false_fails: int
-    false_passes: int
-
-    @property
-    def false_fail_rate(self) -> float:
-        return self.false_fails / max(1, self.teacher_passes)
-
-    @property
-    def false_pass_rate(self) -> float:
-        return self.false_passes / max(1, self.teacher_fails)
-
-    def as_dict(self) -> dict:
-        return {
-            "teacher_passes": self.teacher_passes,
-            "teacher_fails": self.teacher_fails,
-            "false_fails": self.false_fails,
-            "false_passes": self.false_passes,
-            "false_fail_rate": round(self.false_fail_rate, 4),
-            "false_pass_rate": round(self.false_pass_rate, 4),
-        }
-
-
-def directional_errors(decisions: list[tuple[bool, bool]]) -> DirectionalErrors:
-    """Split disagreements by direction over ``(teacher_passed, student_passed)`` pairs."""
-    return DirectionalErrors(
-        teacher_passes=sum(1 for teacher, _ in decisions if teacher),
-        teacher_fails=sum(1 for teacher, _ in decisions if not teacher),
-        false_fails=sum(
-            1 for teacher, student in decisions if teacher and not student
-        ),
-        false_passes=sum(
-            1 for teacher, student in decisions if not teacher and student
-        ),
-    )
-
-
-# The gate's three conditions, as predicates over one side's ``GateResult`` fields. Scoring
-# agreement under each in turn is what separates "the student decodes differently" from "one
-# asymmetric heuristic is unreproducible", and on the h384 baseline those are 3.2 and 5.4
-# points of the same 8.6-point gap.
-@dataclass(frozen=True)
-class GateDefinition:
-    """One decision the scorer can be asked to make, named by its threshold.
-
-    **The Tadabur poison rejects are not here, and that is deliberate.** ``Scorer.gate``
-    layers two of them on the Muraja-faithful ``match_ratio`` -- a long interior insertion
-    run and an added shadda -- and its own comments call both "NOT a Muraja parameter",
-    "Tadabur-only", "filter-side". They decide which clips enter the ADR-0001 **fine-tune**
-    corpus. A size distillation is behavioural cloning of the teacher's decode; the corpus
-    filter is not part of that question, and ADR-0008 (Accepted) already ruled that this gate
-    "should not be the headline metric at all".
-
-    What is left is the threshold, and it is not a formality. ADR-0005 records that Muraja's
-    **advancement** decision is ``matchRatio`` against a hard-coded ``0.70`` which
-    ``scoringMode`` does not touch. ``.balanced``'s ``0.65`` is the filter's bar. A clip at
-    0.67 advances under one and not the other.
-    """
-
-    name: str
-    label: str
-    threshold: float
-
-    def verdict(self, match_ratio: float) -> bool:
-        return match_ratio >= self.threshold
-
-
-GATE_DEFINITIONS: tuple[GateDefinition, ...] = (
-    GateDefinition("advancement", "Muraja advancement, ratio >= 0.70 (ADR-0005)", 0.70),
-    GateDefinition("bar_0_65", "at the Tadabur filter's 0.65 bar, for comparison", 0.65),
-)
-
-# The decision the **product** makes. Deliberately not the definition that scores best.
-DISTILLATION_CRITERION = "advancement"
-
-
-def gate_verdicts(match_ratio: float) -> dict[str, bool]:
-    """Every definition's verdict on one side's ``match_ratio``."""
-    return {d.name: d.verdict(match_ratio) for d in GATE_DEFINITIONS}
-
-
-def gate_definition(name: str) -> GateDefinition:
-    for definition in GATE_DEFINITIONS:
-        if definition.name == name:
-            return definition
-    raise ValueError(f"unknown gate definition {name!r}")
-
-
 def cluster_bootstrap_interval(
     outcomes: list[bool],
     clusters: list,
@@ -607,50 +396,62 @@ def cluster_bootstrap_interval(
     return (low, high)
 
 
+# The on-disk format id. Legacy sets carry the old name; the layout they describe is the
+# one this code reads, so they are accepted rather than forcing a 90-minute rebuild.
+COMPATIBLE_SCHEMAS = (SCHEMA_VERSION, "gate-evalset-v1")
+
+
 def load_manifest(out_dir: Path) -> EvalSet:
-    """Read a built set, refusing one this code cannot honestly interpret."""
+    """Read a built set, refusing one this code cannot honestly interpret.
+
+    Legacy sets carry a second sample stratified by the scorer's ``match_ratio``, drawn for a
+    pass/fail metric this code no longer computes. It is **not** a uniform draw, so pooling it
+    into a character-accuracy estimate would bias that estimate toward clips near a threshold
+    that no longer appears anywhere. Those clips are dropped on load.
+    """
     path = Path(out_dir) / MANIFEST_FILENAME
     payload = json.loads(path.read_text(encoding="utf-8"))
     version = payload.get("schema_version")
-    if version != SCHEMA_VERSION:
+    if version not in COMPATIBLE_SCHEMAS:
         raise SystemExit(
-            f"{path} was written by schema {version!r}; this code speaks {SCHEMA_VERSION!r}. "
-            f"Rebuild it -- the cached teacher decisions are only valid for the protocol "
-            f"and scorer the manifest was built under."
+            f"{path} was written by schema {version!r}; this code reads "
+            f"{COMPATIBLE_SCHEMAS}. Rebuild it -- the cached teacher decodes are only valid "
+            f"for the protocol the manifest was built under."
         )
+
+    records = payload["clips"]
+    uniform = [r for r in records if r.get("in_population", True)]
+    clips = tuple(
+        EvalClip(
+            filename=r["filename"],
+            surah_ayah=r["surah_ayah"],
+            reciter_id=r["reciter_id"],
+            shard=r["shard"],
+            duration_s=r["duration_s"],
+            split=r["split"],
+            teacher_text=r["teacher_text"],
+            teacher_ratio=r.get("teacher_ratio", 0.0),
+            teacher_passed=r.get("teacher_passed", False),
+            teacher_insertion_run=r.get("teacher_insertion_run", 0),
+            teacher_added_shadda=r.get("teacher_added_shadda", False),
+        )
+        for r in uniform
+    )
     return EvalSet(
         schema_version=version,
-        clips=tuple(
-            EvalClip(
-                filename=record["filename"],
-                surah_ayah=record["surah_ayah"],
-                reciter_id=record["reciter_id"],
-                shard=record["shard"],
-                duration_s=record["duration_s"],
-                stratum=record["stratum"],
-                split=record["split"],
-                in_population=record["in_population"],
-                in_boundary=record["in_boundary"],
-                teacher_text=record["teacher_text"],
-                teacher_ratio=record["teacher_ratio"],
-                teacher_passed=record["teacher_passed"],
-                teacher_insertion_run=record["teacher_insertion_run"],
-                teacher_added_shadda=record["teacher_added_shadda"],
-            )
-            for record in payload["clips"]
-        ),
-        scanned_by_stratum=payload["scanned_by_stratum"],
+        clips=clips,
         num_scanned=payload["num_scanned"],
         num_skipped=payload["num_skipped"],
-        provenance=payload["provenance"],
+        provenance={**payload["provenance"], "dropped_stratified_clips":
+                    len(records) - len(uniform)},
     )
 
 
-def check_provenance(evalset: EvalSet, teacher_model_id: str, threshold: float) -> None:
+def check_provenance(evalset: EvalSet, teacher_model_id: str) -> None:
     """Refuse a manifest whose cached teacher decisions were made under other rules.
 
-    A different teacher, a different decode protocol, a different confirmation split or a
-    different pass bar all change the cached decisions without changing the file. The failure
+    A different teacher, a different decode protocol or a different confirmation split all
+    change the cached decode without changing the file. The failure
     mode is a plausible-looking agreement number computed against stale truth, which is
     exactly the class of silent wrongness these tools exist not to produce. Every such field
     is checked **here**, in one place -- a second provenance check somewhere else is how one
@@ -659,9 +460,9 @@ def check_provenance(evalset: EvalSet, teacher_model_id: str, threshold: float) 
     from training.distill_eval import PROTOCOL_VERSION
     from training.distill_loss import CONFIRM_TIMESTEPS
 
+    # No threshold here: nothing this set is used for has one.
     expected = {
         "teacher_model_id": teacher_model_id,
-        "correct_threshold": threshold,
         "confirm_timesteps": CONFIRM_TIMESTEPS,
         "protocol_version": PROTOCOL_VERSION,
     }
@@ -723,8 +524,7 @@ def _clip_filename(shard: int, row_index: int, surah_id: int, ayah_id: int) -> s
 def build(
     out_dir: Path,
     shards: list[int],
-    population_target: int,
-    boundary_target: int,
+    target: int,
     row_sample: float,
     max_scan: int,
     seed: int,
@@ -733,8 +533,8 @@ def build(
     """Scan the reserved shards once, decode each clip with the teacher, sample, freeze.
 
     One pass does everything: the teacher decode is the expensive part and is never repeated,
-    the two samples are drawn with reservoirs so they stay uniform over the whole scan, and
-    shard blobs are deleted as they are consumed so peak disk is one shard.
+    the sample is a reservoir so it stays uniform over the whole scan, and shard blobs are
+    deleted as they are consumed so peak disk is one shard.
     """
     import numpy as np
     import soundfile as sf
@@ -744,12 +544,11 @@ def build(
     from tadabur.audio import decode_to_mono_16k
     from tadabur.filter import canonical_surah_ayah
     from tadabur.reference_phonemes import load_reference_phonemes
-    from tadabur.scorer import BALANCED, BALANCED_SCORER
     from tadabur.shard_reader import iter_shard_rows
     from training.distill_data import SAMPLE_RATE
     from training.distill_eval import PROTOCOL_VERSION, confirmed_stream
-    from training.distill_loss import CONFIRM_TIMESTEPS
     from training.distill_gate import tokens_to_phonemes
+    from training.distill_loss import CONFIRM_TIMESTEPS
     from training.distill_student import TEACHER_MODEL_ID
     from training.distill_train import load_teacher
 
@@ -762,26 +561,21 @@ def build(
 
     teacher = load_teacher(device)
     extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    # Only to resolve which ayah a clip is, so a row with no canonical reference can be
+    # skipped -- the reference string itself plays no part in the decode or the metric.
     references = load_reference_phonemes()
 
-    population = _Reservoir(population_target, seed)
-    quotas = boundary_quotas(boundary_target)
-    boundary = {
-        name: _Reservoir(quota, seed + index + 1)
-        for index, (name, quota) in enumerate(sorted(quotas.items()))
-    }
-
+    reservoir = _Reservoir(target, seed)
     # Rows are skipped *before* the teacher pass, so a sub-1.0 rate buys coverage across all
     # reserved shards at a fraction of the GPU cost -- which is the right trade: a scan that
     # exhausts its budget inside the first few shards samples reciters, not the corpus.
     sampler = random.Random(seed ^ 0x5EED)
 
-    scanned_by_stratum = {name: 0 for name in STRATA}
     written: set[str] = set()
     num_scanned = num_skipped = 0
     started = time.time()
 
-    for shard_position, shard in enumerate(shards):
+    for position, shard in enumerate(shards):
         for row_index, row in enumerate(iter_shard_rows([shard], delete_after=True)):
             if max_scan and num_scanned >= max_scan:
                 break
@@ -789,8 +583,7 @@ def build(
                 continue
 
             key = canonical_surah_ayah(int(row["surah_id"]), int(row["ayah_id"]))
-            reference = references.get(key)
-            if reference is None:
+            if references.get(key) is None:
                 num_skipped += 1
                 continue
             try:
@@ -806,11 +599,7 @@ def build(
             text = tokens_to_phonemes(
                 confirmed_stream(teacher, extractor, samples, device, batch_size)
             )
-            result = BALANCED_SCORER.gate(text, reference)
-            stratum = stratum_for(result.match_ratio, BALANCED.correct_threshold)
-            scanned_by_stratum[stratum] += 1
             num_scanned += 1
-
             reciter_id = int(row["reciter_id"])
             candidate = EvalClip(
                 filename=_clip_filename(
@@ -820,31 +609,17 @@ def build(
                 reciter_id=reciter_id,
                 shard=shard,
                 duration_s=duration,
-                stratum=stratum,
                 split=reciter_split(reciter_id),
-                in_population=False,
-                in_boundary=False,
                 teacher_text=text,
-                teacher_ratio=result.match_ratio,
-                teacher_passed=result.passed,
-                teacher_insertion_run=result.max_insertion_run,
-                teacher_added_shadda=result.added_shadda,
             )
 
-            # ``|=``, never ``or``: both reservoirs must see every candidate, and ``or``
-            # would skip the boundary offer whenever the population sample accepted first --
-            # silently biasing the boundary view toward the clips the population view rejected.
-            kept = population.offer(candidate)
-            kept |= boundary[stratum].offer(candidate)
-            if kept and candidate.filename not in written:
+            if reservoir.offer(candidate) and candidate.filename not in written:
                 # 32-bit float, not PCM_16, and this is not a preference. The manifest caches
                 # the teacher's decode of the waveform *in memory*; the student will read the
-                # file back. Any difference between the two is charged entirely to the
-                # student. Measured on 60 clips, a PCM_16 round trip changed the teacher's
-                # decoded string on 12 of them and moved match_ratio by up to 0.062 -- on a
-                # set built to be dense at the 0.65 bar, that is flipped decisions attributed
-                # to a model that did nothing. Tadabur peaks above 1.0 (measured 1.037), so
-                # PCM_16 also clips real signal. FLOAT round-trips bit-exactly.
+                # file back, and any difference between the two is charged to the student.
+                # Measured on 60 clips, a PCM_16 round trip changed the teacher's own decoded
+                # string on 12 of them, and Tadabur peaks above 1.0 (measured 1.037) so
+                # PCM_16 clips real signal. FLOAT round-trips bit-exactly.
                 sf.write(
                     str(clips_dir / candidate.filename),
                     np.asarray(samples, dtype="float32"),
@@ -855,43 +630,21 @@ def build(
 
             if num_scanned % 100 == 0:
                 rate = num_scanned / max(1e-6, time.time() - started)
-                fill = " ".join(
-                    f"{name}:{len(boundary[name].kept)}/{boundary[name].quota}"
-                    for name in sorted(boundary)
-                )
                 print(
-                    f"  shard {shard} ({shard_position + 1}/{len(shards)}) "
-                    f"scanned {num_scanned} at {rate:.2f} clips/s -- "
-                    f"pop {len(population.kept)}/{population.quota} {fill}",
+                    f"  shard {shard} ({position + 1}/{len(shards)}) scanned "
+                    f"{num_scanned} at {rate:.2f} clips/s -- kept "
+                    f"{len(reservoir.kept)}/{reservoir.quota}",
                     flush=True,
                 )
         if max_scan and num_scanned >= max_scan:
             break
 
-    selected: dict[str, EvalClip] = {}
-    for clip in population.kept:
-        selected[clip.filename] = clip
-    for reservoir in boundary.values():
-        for clip in reservoir.kept:
-            selected[clip.filename] = clip
+    selected = {clip.filename: clip for clip in reservoir.kept}
+    final = tuple(sorted(selected.values(), key=lambda c: c.filename))
 
-    population_names = {clip.filename for clip in population.kept}
-    boundary_names = {
-        clip.filename for reservoir in boundary.values() for clip in reservoir.kept
-    }
-    final = tuple(
-        replace(
-            clip,
-            in_population=clip.filename in population_names,
-            in_boundary=clip.filename in boundary_names,
-        )
-        for clip in sorted(selected.values(), key=lambda c: c.filename)
-    )
-
-    # Reservoir sampling writes every clip it ever accepts and evicts some of them later, so
-    # the clips directory is a superset of the final sample. Sweep the difference rather than
-    # refcounting during the scan: a clip can sit in either sample or both, and getting that
-    # bookkeeping wrong deletes audio the manifest still references.
+    # Reservoir sampling writes every clip it ever accepts and evicts some later, so the
+    # directory is a superset of the final sample. Sweep the difference at the end rather
+    # than refcounting during the scan.
     for path in clips_dir.glob("*.wav"):
         if path.name not in selected:
             path.unlink()
@@ -899,24 +652,17 @@ def build(
     evalset = EvalSet(
         schema_version=SCHEMA_VERSION,
         clips=final,
-        scanned_by_stratum=scanned_by_stratum,
         num_scanned=num_scanned,
         num_skipped=num_skipped,
         provenance={
             "teacher_model_id": TEACHER_MODEL_ID,
-            "correct_threshold": BALANCED.correct_threshold,
-            "confirm_timesteps": CONFIRM_TIMESTEPS,
-            # The cached decodes are only meaningful under the protocol that produced them;
-            # the flush alone moves a short clip's transcript from one second of audio to all
-            # of it. training.distill_gate refuses a mismatch.
             "protocol_version": PROTOCOL_VERSION,
+            "confirm_timesteps": CONFIRM_TIMESTEPS,
             "shards": shards,
             "row_sample": row_sample,
             "max_scan": max_scan,
             "seed": seed,
-            "population_target": population_target,
-            "boundary_target": boundary_target,
-            "near_band_half_width": NEAR_BAND_HALF_WIDTH,
+            "target": target,
             "min_clip_seconds": MIN_CLIP_SECONDS,
             "max_clip_seconds": MAX_CLIP_SECONDS,
             "source": "tadabur-shards-unfiltered",
@@ -930,45 +676,36 @@ def build(
 
 
 def describe(evalset: EvalSet) -> str:
-    """A human summary of what a built set contains and what it can resolve."""
-    lines = [
-        f"gate evaluation set -- {evalset.schema_version}",
-        f"  scanned                 {evalset.num_scanned} clips "
-        f"({evalset.num_skipped} skipped) from shards {evalset.provenance['shards']}",
-        "  population of the scan:",
-    ]
-    weights = population_weights(evalset.scanned_by_stratum)
-    for name in STRATA:
-        lines.append(
-            f"    {name:<12} {evalset.scanned_by_stratum.get(name, 0):>6} "
-            f"({weights.get(name, 0.0):.1%})"
-        )
+    """A human summary of what a built set contains."""
+    import statistics
 
-    for view in ("population", "boundary"):
-        clips = evalset.subset(view)
-        if not clips:
-            continue
-        passes = sum(1 for clip in clips if clip.teacher_passed)
-        low, high = wilson_interval(int(0.95 * len(clips)), len(clips))
-        lines.append(f"  {view} sample: {len(clips)} clips")
+    clips = evalset.clips
+    reciters = {clip.reciter_id for clip in clips}
+    phonemes = sum(len(clip.teacher_text) for clip in clips)
+    lines = [
+        f"decode evaluation set -- {evalset.schema_version}",
+        f"  scanned                {evalset.num_scanned} clips "
+        f"({evalset.num_skipped} skipped) from shards {evalset.provenance['shards']}",
+        f"  kept                   {len(clips)} clips over {len(reciters)} reciters",
+        f"  teacher phonemes       {phonemes:,} "
+        f"(median {statistics.median(len(c.teacher_text) for c in clips):.0f} per clip)",
+        f"  clip duration          median "
+        f"{statistics.median(c.duration_s for c in clips):.1f}s",
+    ]
+    for split in ("dev", "test"):
+        lines.append(f"    {split:<20} {len(evalset.subset(split))} clips")
+    dropped = evalset.provenance.get("dropped_stratified_clips", 0)
+    if dropped:
         lines.append(
-            f"    teacher pass rate     {passes / len(clips):.1%} "
-            f"-- the pass-everything floor"
-        )
-        for split in ("dev", "test"):
-            lines.append(
-                f"    {split:<20}  {len(evalset.subset(view, split))} clips"
-            )
-        lines.append(
-            f"    resolution            a measured 95.0% here has a 95% CI of "
-            f"[{low:.1%}, {high:.1%}]"
+            f"  dropped on load        {dropped} clips from a legacy ratio-stratified sample "
+            f"-- not a uniform draw, so not pooled into a fidelity estimate"
         )
     return "\n".join(lines)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build the frozen, stratified gate-evaluation set"
+        description="Build a held-out clip set with the teacher's decode frozen into it"
     )
     parser.add_argument("--out-dir", type=Path, default=Path("../tadabur/gate_eval"))
     parser.add_argument(
@@ -977,8 +714,7 @@ def main() -> None:
         help="override the reserved shard list (default: every "
         f"{GATE_EVAL_SHARD_STRIDE}th shard from {GATE_EVAL_SHARD_START})",
     )
-    parser.add_argument("--population-target", type=int, default=DEFAULT_POPULATION_TARGET)
-    parser.add_argument("--boundary-target", type=int, default=DEFAULT_BOUNDARY_TARGET)
+    parser.add_argument("--target", type=int, default=DEFAULT_TARGET)
     parser.add_argument(
         "--row-sample",
         type=float,
@@ -1029,8 +765,7 @@ def main() -> None:
     evalset = build(
         out_dir=args.out_dir,
         shards=shards,
-        population_target=args.population_target,
-        boundary_target=args.boundary_target,
+        target=args.target,
         row_sample=args.row_sample,
         max_scan=args.max_scan,
         seed=args.seed,

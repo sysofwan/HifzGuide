@@ -84,7 +84,7 @@ from training.distill_student import DEPLOYED_LOGIT_FRAMES, PRESETS, build_stude
 HOP_SAMPLES = SAMPLE_RATE
 
 # Bumped whenever the replayed protocol changes what a clip decodes to. Cached teacher
-# decodes carry it (``training.gate_evalset``) so a manifest built under one protocol cannot
+# decodes carry it (``training.decode_evalset``) so a manifest built under one protocol cannot
 # be silently scored under another. v1 was the unflushed stream; v2 flushes the last window.
 PROTOCOL_VERSION = "confirmed-stream-v2-flush"
 
@@ -459,12 +459,261 @@ def run_breakout_diagnostic(
     }
 
 
+# --- Scoring a student against a frozen set with the teacher's decode cached ---
+
+
+@dataclass(frozen=True)
+class DecodeAgreement:
+    """Teacher decode against student decode, and nothing downstream of them.
+
+    This is the distillation metric. Size distillation is behavioural cloning of the
+    teacher's phoneme stream, so the measurement is that stream against the student's --
+    no ayah reference, no Smith-Waterman alignment, no threshold. Those belong to the
+    ADR-0001 corpus filter and to Muraja's follow-along grading, which are different
+    questions on different tracks; ADR-0008 records that the gate "should not be the
+    headline metric at all", and for a distillation it is not even the right *kind* of
+    number.
+
+    ``char_accuracy`` pools edits over the corpus rather than averaging per clip, so one
+    short clip cannot swing it. ``median_clip_error`` is reported beside it because the
+    pooled figure is dominated by long clips and the two move apart: a model can improve
+    the median while a heavy tail holds the pooled number down.
+    """
+
+    num_clips: int
+    num_reciters: int
+    char_accuracy: float
+    ci_low: float
+    ci_high: float
+    exact_match: float
+    median_clip_error: float
+    p90_clip_error: float
+    total_edits: int
+    total_teacher_phonemes: int
+
+    def as_dict(self) -> dict:
+        return {
+            "num_clips": self.num_clips,
+            "num_reciters": self.num_reciters,
+            "char_accuracy": round(self.char_accuracy, 4),
+            "char_accuracy_ci95_clustered": [round(self.ci_low, 4), round(self.ci_high, 4)],
+            "exact_match": round(self.exact_match, 4),
+            "median_clip_error": round(self.median_clip_error, 4),
+            "p90_clip_error": round(self.p90_clip_error, 4),
+            "total_edits": self.total_edits,
+            "total_teacher_phonemes": self.total_teacher_phonemes,
+        }
+
+
+def score_decode_agreement(per_clip: list[tuple[int, int, int]]) -> DecodeAgreement:
+    """Aggregate ``(edits, teacher_phonemes, reciter_id)`` triples.
+
+    The interval is bootstrapped over **reciters**. The clips are not independent -- 2,000 of
+    them come from 286 voices and agreement correlates within one -- so an independent-sample
+    interval is too narrow on exactly the question a checkpoint comparison asks.
+    """
+    import random
+    import statistics
+
+    from training.decode_evalset import wilson_interval
+
+    if not per_clip:
+        # 1 - 0/0 has no answer and 1 - 0/1 is 1.0, which would print as perfect agreement
+        # produced by scoring nothing. Report zero so a failure looks like a failure.
+        return DecodeAgreement(0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0)
+
+    edits = sum(e for e, _, _ in per_clip)
+    phonemes = sum(t for _, t, _ in per_clip)
+    rates = sorted(e / max(1, t) for e, t, _ in per_clip)
+
+    grouped: dict[int, list[tuple[int, int]]] = {}
+    for edit_count, tokens, reciter in per_clip:
+        grouped.setdefault(reciter, []).append((edit_count, tokens))
+    keys = list(grouped)
+    if len(keys) < 2:
+        low, high = wilson_interval(phonemes - edits, max(1, phonemes))
+    else:
+        rng = random.Random(7)
+        draws = []
+        for _ in range(4000):
+            drawn_edits = drawn_tokens = 0
+            for _ in keys:
+                for edit_count, tokens in grouped[keys[rng.randrange(len(keys))]]:
+                    drawn_edits += edit_count
+                    drawn_tokens += tokens
+            draws.append(1 - drawn_edits / max(1, drawn_tokens))
+        draws.sort()
+        low, high = draws[100], draws[3899]
+
+    return DecodeAgreement(
+        num_clips=len(per_clip),
+        num_reciters=len(keys),
+        char_accuracy=1.0 - edits / max(1, phonemes),
+        ci_low=low,
+        ci_high=high,
+        exact_match=sum(1 for e, _, _ in per_clip if e == 0) / len(per_clip),
+        median_clip_error=statistics.median(rates),
+        p90_clip_error=rates[min(len(rates) - 1, int(0.90 * len(rates)))],
+        total_edits=edits,
+        total_teacher_phonemes=phonemes,
+    )
+
+
+def run_evalset(args, device) -> None:
+    """Score one checkpoint's decode against a frozen set's cached teacher decode."""
+    import soundfile as sf
+    from transformers import SeamlessM4TFeatureExtractor
+
+    from training.decode_evalset import (
+        CLIPS_DIRNAME,
+        check_provenance,
+        load_manifest,
+        paired_comparison,
+    )
+    from training.distill_gate import tokens_to_phonemes
+    from training.distill_student import TEACHER_MODEL_ID
+
+    evalset = load_manifest(args.eval_set)
+    check_provenance(evalset, TEACHER_MODEL_ID)
+    student, state_config, step = load_student_from_checkpoint(
+        args.checkpoint, device, use_ema=args.ema
+    )
+    extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    clips_dir = Path(args.eval_set) / CLIPS_DIRNAME
+
+    decodes: dict[str, str] = {}
+    for index, clip in enumerate(evalset.clips, start=1):
+        samples, rate = sf.read(str(clips_dir / clip.filename), dtype="float32")
+        if rate != SAMPLE_RATE:
+            raise SystemExit(f"{clip.filename} is {rate} Hz, not {SAMPLE_RATE}")
+        if samples.ndim > 1:
+            samples = samples.mean(axis=1)
+        decodes[clip.filename] = tokens_to_phonemes(
+            confirmed_stream(student, extractor, samples, device, args.batch_size)
+        )
+        if index % 200 == 0:
+            print(f"  {index}/{len(evalset.clips)} clips", flush=True)
+
+    reports = {}
+    for split in ("both", "dev", "test"):
+        clips = evalset.subset(split)
+        if clips:
+            reports[split] = score_decode_agreement(
+                [
+                    (
+                        levenshtein(list(c.teacher_text), list(decodes[c.filename])),
+                        len(c.teacher_text),
+                        c.reciter_id,
+                    )
+                    for c in clips
+                ]
+            )
+
+    comparison = None
+    if args.compare_decodes:
+        previous = json.loads(Path(args.compare_decodes).read_text(encoding="utf-8"))
+        mismatched = [
+            f"  {key}: this run={mine!r} comparison file={previous.get(key)!r}"
+            for key, mine in (
+                ("evalset_fingerprint", evalset.fingerprint()),
+                ("protocol_version", PROTOCOL_VERSION),
+            )
+            if previous.get(key) != mine
+        ]
+        if mismatched:
+            raise SystemExit(
+                "refusing to compare: those decodes were produced against a different "
+                "evaluation.\n" + "\n".join(mismatched)
+            )
+        other = previous["decodes"]
+        # Paired per clip: did this checkpoint get strictly closer to the teacher than the
+        # other one did? Ties (equal edit distance) are concordant and drop out, which is
+        # what McNemar wants.
+        comparison = paired_comparison(
+            [
+                levenshtein(list(c.teacher_text), list(decodes[c.filename]))
+                < levenshtein(list(c.teacher_text), list(other[c.filename]))
+                for c in evalset.clips if c.filename in other
+            ],
+            [
+                levenshtein(list(c.teacher_text), list(other[c.filename]))
+                < levenshtein(list(c.teacher_text), list(decodes[c.filename]))
+                for c in evalset.clips if c.filename in other
+            ],
+            "this",
+            "other",
+        ).as_dict()
+
+    payload = {
+        "checkpoint": str(args.checkpoint),
+        "preset": state_config["preset"],
+        "step": step,
+        "weights": "ema" if args.ema else "live",
+        "protocol_version": PROTOCOL_VERSION,
+        "eval_set": str(args.eval_set),
+        "evalset_fingerprint": evalset.fingerprint(),
+        "splits": {name: report.as_dict() for name, report in reports.items()},
+        "comparison": comparison,
+    }
+    if args.save_decodes:
+        Path(args.save_decodes).write_text(
+            json.dumps({**payload, "decodes": decodes}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+
+    print(f"\nPhoneme-decode agreement -- {payload['preset']} @ step {step} "
+          f"({payload['weights']} weights) vs the cached teacher")
+    for name, report in reports.items():
+        print(
+            f"  [{name}] {report.num_clips} clips / {report.num_reciters} reciters\n"
+            f"    character accuracy  {report.char_accuracy:.2%}  "
+            f"95% CI [{report.ci_low:.2%}, {report.ci_high:.2%}] over reciters\n"
+            f"    exact-match clips   {report.exact_match:.1%}\n"
+            f"    per-clip error      median {report.median_clip_error:.2%}, "
+            f"p90 {report.p90_clip_error:.2%}\n"
+            f"    edits / phonemes    {report.total_edits:,} / "
+            f"{report.total_teacher_phonemes:,}"
+        )
+    if comparison:
+        print(
+            f"  paired vs {args.compare_decodes}: this-closer {comparison['this_only_correct']}, "
+            f"other-closer {comparison['other_only_correct']}, p {comparison['p_value']:.4f}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Confirmed-stream agreement between a distilled student and the teacher"
     )
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--audio-root", type=Path, required=True)
+    parser.add_argument(
+        "--eval-set",
+        type=Path,
+        help="a frozen set from training.decode_evalset. Preferred: the teacher's decode is "
+        "cached in it, so only the student runs and two checkpoints are scored against "
+        "identical targets.",
+    )
+    parser.add_argument(
+        "--audio-root",
+        type=Path,
+        help="decode BOTH models over a clip directory instead (the older path)",
+    )
+    parser.add_argument(
+        "--save-decodes", type=Path, help="write this student's per-clip decodes"
+    )
+    parser.add_argument(
+        "--compare-decodes",
+        type=Path,
+        help="another run's saved decodes; adds a paired test over per-clip edit distance",
+    )
+    parser.add_argument(
+        "--ema",
+        action="store_true",
+        help="score the averaged weights a --ema-decay run stored beside the live ones",
+    )
     parser.add_argument(
         "--breakout",
         action="store_true",
@@ -500,6 +749,12 @@ def main() -> None:
         raise SystemExit("CUDA is required")
     device = torch.device("cuda")
 
+    if args.eval_set:
+        run_evalset(args, device)
+        return
+    if not args.audio_root:
+        raise SystemExit("pass --eval-set (preferred) or --audio-root")
+
     if args.breakout:
         report = run_breakout_diagnostic(
             args.checkpoint, args.audio_root, args.val_fraction, args.num_windows
@@ -528,7 +783,9 @@ def main() -> None:
 
     from training.distill_train import load_teacher
 
-    student, state_config, step = load_student_from_checkpoint(args.checkpoint, device)
+    student, state_config, step = load_student_from_checkpoint(
+        args.checkpoint, device, use_ema=args.ema
+    )
     preset = state_config["preset"]
     check_split_matches_checkpoint(state_config, args.val_fraction)
     teacher = load_teacher(device)

@@ -12,57 +12,24 @@ from pathlib import Path
 
 import pytest
 
-from training.gate_evalset import (
-    BOUNDARY_QUOTA_SHARE,
+from training.decode_evalset import (
     GATE_EVAL_SHARD_START,
-    NEAR_BAND_HALF_WIDTH,
     SCHEMA_VERSION,
-    STRATA,
     EvalClip,
     EvalSet,
     _Reservoir,
     binomial_two_sided_p,
-    boundary_quotas,
     check_provenance,
-    directional_errors,
+    cluster_bootstrap_interval,
     gate_eval_shards,
     load_manifest,
     paired_comparison,
-    population_weights,
     reciter_split,
-    reweighted_agreement,
-    stratum_for,
     training_shard_spec,
     wilson_interval,
 )
 
 THRESHOLD = 0.65
-
-
-def test_strata_partition_the_ratio_line_at_the_shipped_bar():
-    assert stratum_for(0.0, THRESHOLD) == "fail_clear"
-    assert stratum_for(THRESHOLD - NEAR_BAND_HALF_WIDTH - 1e-9, THRESHOLD) == "fail_clear"
-    assert stratum_for(THRESHOLD - NEAR_BAND_HALF_WIDTH, THRESHOLD) == "near_fail"
-    assert stratum_for(THRESHOLD - 1e-9, THRESHOLD) == "near_fail"
-    # The bar itself passes, so it belongs to the pass side -- getting this off by one
-    # epsilon would put every exactly-at-bar clip in the wrong stratum.
-    assert stratum_for(THRESHOLD, THRESHOLD) == "near_pass"
-    assert stratum_for(THRESHOLD + NEAR_BAND_HALF_WIDTH, THRESHOLD) == "pass_clear"
-    assert stratum_for(1.0, THRESHOLD) == "pass_clear"
-
-
-def test_boundary_quotas_sum_to_the_target_and_favour_the_near_strata():
-    for target in (100, 999, 1000, 1001):
-        quotas = boundary_quotas(target)
-        assert sum(quotas.values()) == target
-        assert set(quotas) == set(STRATA)
-        assert quotas["near_fail"] + quotas["near_pass"] > target // 2
-
-
-def test_boundary_quota_shares_balance_the_trivial_baseline():
-    """The pass strata must be ~half the boundary sample, or always-pass stays the headline."""
-    pass_share = BOUNDARY_QUOTA_SHARE["near_pass"] + BOUNDARY_QUOTA_SHARE["pass_clear"]
-    assert 0.45 <= pass_share <= 0.55
 
 
 def test_reserved_shards_are_strided_and_outside_the_staged_block():
@@ -127,53 +94,6 @@ def test_paired_comparison_refuses_unmatched_clip_sets():
         paired_comparison([True], [True, False], "a", "b")
 
 
-def test_directional_errors_separate_too_strict_from_too_lax():
-    # (teacher_passed, student_passed)
-    decisions = [(True, True), (True, False), (False, False), (False, True), (False, True)]
-    errors = directional_errors(decisions)
-    assert errors.teacher_passes == 2
-    assert errors.teacher_fails == 3
-    assert errors.false_fails == 1
-    assert errors.false_passes == 2
-    assert errors.false_fail_rate == pytest.approx(0.5)
-    assert errors.false_pass_rate == pytest.approx(2 / 3)
-
-
-def test_reweighted_agreement_recovers_the_population_number():
-    scanned = {"fail_clear": 100, "near_fail": 100, "near_pass": 100, "pass_clear": 700}
-    per_stratum = {
-        "fail_clear": 1.0,
-        "near_fail": 0.5,
-        "near_pass": 0.5,
-        "pass_clear": 1.0,
-    }
-    # 0.1 + 0.05 + 0.05 + 0.7 = 0.90, i.e. the enriched near-bar errors are diluted back.
-    assert reweighted_agreement(per_stratum, scanned) == pytest.approx(0.90)
-
-
-def test_reweighted_agreement_renormalises_over_covered_strata_only():
-    """Renormalising is fine when the covered strata ARE nearly all of the population."""
-    scanned = {"fail_clear": 0, "near_fail": 50, "near_pass": 50, "pass_clear": 0}
-    assert reweighted_agreement({"near_fail": 0.8, "near_pass": 0.6}, scanned) == pytest.approx(0.7)
-
-
-def test_reweighting_refuses_when_the_sample_misses_most_of_the_population():
-    """Renormalising over a sliver is not an estimate; it is a confident wrong number.
-
-    A sample covering one 1%-mass stratum at 100% agreement would otherwise report "100%
-    population agreement" while saying nothing about the other 99%.
-    """
-    scanned = {"fail_clear": 10, "near_fail": 10, "near_pass": 10, "pass_clear": 970}
-    assert reweighted_agreement({"near_fail": 1.0}, scanned) is None
-    assert reweighted_agreement({name: 1.0 for name in STRATA}, scanned) == pytest.approx(1.0)
-    # No population at all cannot be reweighted either.
-    assert reweighted_agreement({"near_fail": 1.0}, {name: 0 for name in STRATA}) is None
-
-
-def test_population_weights_of_an_empty_scan_are_zero_not_a_crash():
-    assert population_weights({"near_fail": 0}) == {"near_fail": 0.0}
-
-
 def test_reservoir_caps_at_its_quota_and_keeps_every_item_reachable():
     reservoir = _Reservoir(3, seed=1)
     for index in range(50):
@@ -194,56 +114,34 @@ def test_reservoir_below_quota_keeps_everything():
     assert not reservoir.is_full
 
 
-def _clip(name: str, ratio: float, passed: bool, **overrides) -> EvalClip:
+def _clip(name: str, text: str = "abc", **overrides) -> EvalClip:
     base = dict(
         filename=name,
         surah_ayah="78:1",
         reciter_id=3,
         shard=20,
         duration_s=4.0,
-        stratum=stratum_for(ratio, THRESHOLD),
         split="dev",
-        in_population=True,
-        in_boundary=False,
-        teacher_text="ab",
-        teacher_ratio=ratio,
-        teacher_passed=passed,
-        teacher_insertion_run=0,
-        teacher_added_shadda=False,
+        teacher_text=text,
     )
     base.update(overrides)
     return EvalClip(**base)
 
 
 def _evalset(clips, **provenance) -> EvalSet:
-    base = {"teacher_model_id": "obadx/muaalem-model-v3_2", "correct_threshold": 0.65}
+    base = {"teacher_model_id": "obadx/muaalem-model-v3_2"}
     base.update(provenance)
     return EvalSet(
         schema_version=SCHEMA_VERSION,
         clips=tuple(clips),
-        scanned_by_stratum={name: 10 for name in STRATA},
         num_scanned=40,
         num_skipped=0,
         provenance=base,
     )
 
 
-def test_subset_selects_by_view_and_split():
-    clips = [
-        _clip("a.wav", 0.9, True),
-        _clip("b.wav", 0.5, False, in_population=False, in_boundary=True, split="test"),
-    ]
-    evalset = _evalset(clips)
-    assert [c.filename for c in evalset.subset("population")] == ["a.wav"]
-    assert [c.filename for c in evalset.subset("boundary")] == ["b.wav"]
-    assert len(evalset.subset("all")) == 2
-    assert [c.filename for c in evalset.subset("all", "test")] == ["b.wav"]
-    with pytest.raises(ValueError):
-        evalset.subset("nonsense")
-
-
 def test_load_manifest_refuses_a_foreign_schema(tmp_path: Path):
-    payload = _evalset([_clip("a.wav", 0.9, True)]).as_dict()
+    payload = _evalset([_clip("a.wav")]).as_dict()
     payload["schema_version"] = "gate-evalset-v0"
     (tmp_path / "manifest.json").write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(SystemExit, match="gate-evalset-v0"):
@@ -251,14 +149,13 @@ def test_load_manifest_refuses_a_foreign_schema(tmp_path: Path):
 
 
 def test_load_manifest_round_trips_a_written_set(tmp_path: Path):
-    original = _evalset([_clip("a.wav", 0.9, True), _clip("b.wav", 0.42, False)])
+    original = _evalset([_clip("a.wav"), _clip("b.wav")])
     (tmp_path / "manifest.json").write_text(
         json.dumps(original.as_dict(), ensure_ascii=False), encoding="utf-8"
     )
     loaded = load_manifest(tmp_path)
     assert [c.filename for c in loaded.clips] == ["a.wav", "b.wav"]
-    assert loaded.clips[1].stratum == "fail_clear"
-    assert loaded.scanned_by_stratum == original.scanned_by_stratum
+    assert loaded.clips[0].teacher_text == "abc"
 
 
 def test_check_provenance_refuses_a_different_bar_teacher_or_protocol():
@@ -266,26 +163,24 @@ def test_check_provenance_refuses_a_different_bar_teacher_or_protocol():
     from training.distill_loss import CONFIRM_TIMESTEPS
 
     good = _evalset(
-        [_clip("a.wav", 0.9, True)],
+        [_clip("a.wav")],
         confirm_timesteps=CONFIRM_TIMESTEPS,
         protocol_version=PROTOCOL_VERSION,
     )
-    check_provenance(good, "obadx/muaalem-model-v3_2", 0.65)
+    check_provenance(good, "obadx/muaalem-model-v3_2")
 
-    with pytest.raises(SystemExit, match="correct_threshold"):
-        check_provenance(good, "obadx/muaalem-model-v3_2", 0.75)
     with pytest.raises(SystemExit, match="teacher_model_id"):
-        check_provenance(good, "some/other-teacher", 0.65)
+        check_provenance(good, "some/other-teacher")
 
     # The decode protocol is the field most likely to change without anyone thinking of the
     # cache, so it is checked in the same place as the rest rather than by a second caller.
     stale = _evalset(
-        [_clip("a.wav", 0.9, True)],
+        [_clip("a.wav")],
         confirm_timesteps=CONFIRM_TIMESTEPS,
         protocol_version="confirmed-stream-v1",
     )
     with pytest.raises(SystemExit, match="protocol_version"):
-        check_provenance(stale, "obadx/muaalem-model-v3_2", 0.65)
+        check_provenance(stale, "obadx/muaalem-model-v3_2")
 
 
 def test_the_exact_p_value_survives_more_than_1023_discordant_pairs():
@@ -306,7 +201,7 @@ def test_lossless_audio_round_trips_bit_exactly(tmp_path):
     import numpy as np
     import soundfile as sf
 
-    from training.gate_evalset import CLIPS_DIRNAME  # noqa: F401  (documents the layout)
+    from training.decode_evalset import CLIPS_DIRNAME  # noqa: F401  (documents the layout)
 
     samples = (np.random.default_rng(0).standard_normal(4000) * 0.4).astype("float32")
     samples[0] = 1.037  # a real measured peak: PCM_16 would clip this
@@ -342,62 +237,13 @@ def test_the_default_training_spec_is_exactly_the_complement():
     assert len(trainable) + len(held_out_shards()) == 385
 
 
-def test_gate_definitions_differ_only_by_threshold_and_that_matters():
-    from training.gate_evalset import gate_verdicts
-
-    assert gate_verdicts(0.90) == {"advancement": True, "bar_0_65": True}
-    assert gate_verdicts(0.40) == {"advancement": False, "bar_0_65": False}
-    # THE THRESHOLD IS THE POINT. 0.67 clears the Tadabur filter's 0.65 and fails Muraja's
-    # 0.70 (ADR-0005), so a definition differing only in threshold is not a formality.
-    assert gate_verdicts(0.67) == {"advancement": False, "bar_0_65": True}
-    # The bar passes at >=, so exactly-at-bar advances.
-    assert gate_verdicts(0.70)["advancement"] is True
-
-
-def test_no_definition_consults_the_corpus_filters_poison_rejects():
-    """Filtering is fine-tune-side (ADR-0001); a distillation is not scored against it."""
-    from training.gate_evalset import GATE_DEFINITIONS
-
-    for definition in GATE_DEFINITIONS:
-        assert set(vars(definition)) == {"name", "label", "threshold"}
-    import inspect
-
-    from training import gate_evalset
-
-    source = inspect.getsource(gate_evalset.GateDefinition.verdict)
-    assert "insertion" not in source and "shadda" not in source
-
-
-def test_the_distillation_criterion_is_the_product_decision_not_the_best_number():
-    """It must be pinned to a product decision, not chosen for scoring well."""
-    from training.gate_evalset import (
-        DISTILLATION_CRITERION,
-        gate_definition,
-    )
-
-    chosen = gate_definition(DISTILLATION_CRITERION)
-    # ADR-0005: Muraja's advancement is matchRatio against a hard-coded 0.70 that
-    # scoringMode does not touch. 0.65 is the Tadabur filter's bar, not the app's.
-    assert chosen.threshold == 0.70
-
-
-def test_gate_definition_refuses_an_unknown_name():
-    from training.gate_evalset import gate_definition
-
-    with pytest.raises(ValueError, match="unknown gate definition"):
-        gate_definition("the_one_that_scores_best")
-
-
-# --- Clustering: the clips are not independent observations ---
-
-
 def test_cluster_bootstrap_is_wider_than_wilson_when_outcomes_cluster():
     """Whether the student agrees is correlated within a reciter, so the naive interval lies.
 
     Constructed so the marginal proportion is identical either way and only the clustering
     differs: the naive interval cannot tell them apart, and that is the whole problem.
     """
-    from training.gate_evalset import cluster_bootstrap_interval
+    from training.decode_evalset import cluster_bootstrap_interval
 
     # 40 reciters of 10 clips. Clustered: each reciter is all-right or all-wrong.
     clustered_outcomes, clustered_ids = [], []
@@ -420,7 +266,7 @@ def test_cluster_bootstrap_is_wider_than_wilson_when_outcomes_cluster():
 
 
 def test_cluster_bootstrap_brackets_the_estimate():
-    from training.gate_evalset import cluster_bootstrap_interval
+    from training.decode_evalset import cluster_bootstrap_interval
 
     outcomes = [i % 10 != 0 for i in range(500)]
     clusters = [i // 5 for i in range(500)]
@@ -430,7 +276,7 @@ def test_cluster_bootstrap_brackets_the_estimate():
 
 
 def test_cluster_bootstrap_is_deterministic_and_validated():
-    from training.gate_evalset import cluster_bootstrap_interval
+    from training.decode_evalset import cluster_bootstrap_interval
 
     outcomes = [i % 3 != 0 for i in range(90)]
     clusters = [i // 3 for i in range(90)]
@@ -442,7 +288,7 @@ def test_cluster_bootstrap_is_deterministic_and_validated():
 
 
 def test_a_single_cluster_falls_back_rather_than_returning_a_point():
-    from training.gate_evalset import cluster_bootstrap_interval
+    from training.decode_evalset import cluster_bootstrap_interval
 
     outcomes = [True] * 9 + [False]
     assert cluster_bootstrap_interval(outcomes, [7] * 10) == wilson_interval(9, 10)
@@ -450,15 +296,13 @@ def test_a_single_cluster_falls_back_rather_than_returning_a_point():
 
 def test_the_fingerprint_changes_when_the_cached_truth_does():
     """Filenames repeat across rebuilds; the teacher's decodes underneath them may not."""
-    base = _evalset([_clip("a.wav", 0.9, True)], protocol_version="v2")
-    assert base.fingerprint() == _evalset(
-        [_clip("a.wav", 0.9, True)], protocol_version="v2"
-    ).fingerprint()
+    base = _evalset([_clip("a.wav")], protocol_version="v2")
+    assert base.fingerprint() == _evalset([_clip("a.wav")], protocol_version="v2").fingerprint()
 
-    moved_truth = _evalset([_clip("a.wav", 0.61, False)], protocol_version="v2")
+    moved_truth = _evalset([_clip("a.wav", text="abd")], protocol_version="v2")
     assert moved_truth.fingerprint() != base.fingerprint()
 
-    other_protocol = _evalset([_clip("a.wav", 0.9, True)], protocol_version="v1")
+    other_protocol = _evalset([_clip("a.wav")], protocol_version="v1")
     assert other_protocol.fingerprint() != base.fingerprint()
 
 

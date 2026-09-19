@@ -30,7 +30,7 @@ shard permutation, so ``--steps`` beyond ~59,000 does repeat windows.
 **Train and validation are split by shard, not by clip, and there are now two
 reservations.** Shards 0-19 are the filtered source of the staged ``clips_v2`` corpus, so
 training on them leaks into the validation clips every earlier number was measured on. A
-strided block on top of that (``training.gate_evalset.gate_eval_shards``) feeds the frozen
+strided block on top of that (``training.decode_evalset.gate_eval_shards``) feeds the frozen
 gate-evaluation set, and is reserved so one evaluation set stays valid for the
 staged-corpus baseline *and* for every streaming successor. :func:`held_out_shards` is the
 single place both are stated and :class:`StreamingWindowDataset` refuses either by
@@ -43,11 +43,11 @@ Usage::
     python -m training.distill_stream --shards 200 --probe
 
     # The shard spec a run should use (the complement of both reservations)
-    python -m training.gate_evalset --print-training-shards
+    python -m training.decode_evalset --print-training-shards
 
     # Used by distill_train via --stream-shards
     python -m training.distill_train --preset h384 \\
-        --stream-shards "$(python -m training.gate_evalset --print-training-shards)" \\
+        --stream-shards "$(python -m training.decode_evalset --print-training-shards)" \\
         --audio-root ../tadabur/audit_run/clips_v2 --out-dir runs/h384_full
 
 Linux + CUDA (the class subclasses ``IterableDataset``, so torch is a hard import).
@@ -80,18 +80,18 @@ def held_out_shards() -> frozenset[int]:
     """Every shard a training run must not touch, from both reservations.
 
     The staged block (0-19) and the strided gate-evaluation block
-    (``training.gate_evalset.gate_eval_shards``). Computed rather than written down twice:
+    (``training.decode_evalset.gate_eval_shards``). Computed rather than written down twice:
     a hand-typed range that has drifted from the reservation is a leak that shows up as an
     unexplained jump in agreement, months later, with nothing in the logs to explain it.
     """
-    from training.gate_evalset import gate_eval_shards
+    from training.decode_evalset import gate_eval_shards
 
     return frozenset(STAGED_CORPUS_SHARDS) | frozenset(gate_eval_shards())
 
 
 def default_train_shards() -> str:
     """The shard spec a training run should use -- the complement of both reservations."""
-    from training.gate_evalset import training_shard_spec
+    from training.decode_evalset import training_shard_spec
 
     return training_shard_spec()
 

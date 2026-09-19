@@ -282,3 +282,58 @@ def test_a_segment_straddling_the_boundary_is_emitted_by_both_windows():
     # Advance one second: 25 timesteps. The run's surviving portion opens the next window.
     window_k1 = np.array([9] * 5 + [0] * 120)
     assert confirmed_tokens(window_k1, CONFIRM_TIMESTEPS) == [9]
+
+
+# --- Decode agreement: the distillation metric ---
+
+
+def test_decode_agreement_pools_edits_and_reports_the_tail_beside_them():
+    """The pooled number is dominated by long clips; the median is not, and they move apart."""
+    from training.distill_eval import score_decode_agreement
+
+    # Three short perfect clips and one long bad one, all from different reciters.
+    per_clip = [(0, 10, 1), (0, 10, 2), (0, 10, 3), (60, 200, 4)]
+    report = score_decode_agreement(per_clip)
+
+    assert report.num_clips == 4
+    assert report.num_reciters == 4
+    assert report.char_accuracy == pytest.approx(1 - 60 / 230)
+    assert report.exact_match == pytest.approx(0.75)
+    # Median per-clip error is 0, while pooled accuracy is 74% -- the point of showing both.
+    assert report.median_clip_error == pytest.approx(0.0)
+    assert report.p90_clip_error > 0.0
+
+
+def test_decode_agreement_of_an_empty_set_is_zero_not_one():
+    """`1 - 0/1` is 1.0, which prints as perfect agreement produced by scoring nothing."""
+    from training.distill_eval import score_decode_agreement
+
+    report = score_decode_agreement([])
+    assert report.char_accuracy == 0.0
+    assert report.num_clips == 0
+
+
+def test_decode_agreement_interval_widens_when_the_errors_cluster_by_reciter():
+    from training.distill_eval import score_decode_agreement
+
+    # Same pooled accuracy either way; only the clustering differs.
+    clustered = []
+    spread = []
+    for reciter in range(20):
+        for i in range(5):
+            clustered.append((10 if reciter < 4 else 0, 50, reciter))
+            spread.append((10 if i == 0 else 0, 50, reciter))
+    assert sum(e for e, _, _ in clustered) == sum(e for e, _, _ in spread)
+
+    wide = score_decode_agreement(clustered)
+    narrow = score_decode_agreement(spread)
+    assert wide.char_accuracy == pytest.approx(narrow.char_accuracy)
+    assert (wide.ci_high - wide.ci_low) > (narrow.ci_high - narrow.ci_low)
+
+
+def test_a_single_reciter_falls_back_to_the_unclustered_interval():
+    from training.distill_eval import score_decode_agreement
+
+    report = score_decode_agreement([(5, 100, 7), (5, 100, 7)])
+    assert report.num_reciters == 1
+    assert report.ci_low < report.char_accuracy < report.ci_high

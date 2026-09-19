@@ -400,13 +400,17 @@ moves by half a hop. Three consequences:
    checkpoints — they are all scored on the same grid — and it is *not* a prediction of what
    transcript the device produces, because on a device the grid phase relative to speech
    onset is arbitrary.
-3. **It points at what the remaining error probably is.** If grid phase alone moves 18-21% of
-   characters, the student's 7% gap on a fixed grid is plausibly dominated by small
-   differences in *spike timing* rather than in phoneme identity. That is the same mechanism,
-   and it is exactly what the CTC-distillation literature calls frame-level alignment
-   disagreement — which makes timing-targeted objectives (weighting the frames adjacent to a
-   teacher spike, rather than all non-blank frames uniformly) the indicated next move rather
-   than a guess.
+3. **It does not, however, contaminate the measurement.** Scoring *both* models on the same
+   shifted grid holds agreement flat — 93.27% as measured, 93.19% at +0.25 s, 92.87% at
+   +0.50 s — so the reported number is a property of the model and not of the grid it was
+   taken on. Phase sensitivity affects both sides identically and cancels.
+
+   It remains a reasonable hypothesis that the student's residual gap is weighted toward
+   *spike timing* rather than phoneme identity, since the protocol demonstrably amplifies
+   timing differences into character differences; the CTC-distillation literature calls this
+   frame-level alignment disagreement and prescribes weighting the frames adjacent to a
+   teacher spike rather than all non-blank frames uniformly. But the cross-phase result
+   neither confirms nor refutes it, and it should be tested before it is acted on as fact.
 
 ### How stable the decode is, and what that does *not* tell us
 

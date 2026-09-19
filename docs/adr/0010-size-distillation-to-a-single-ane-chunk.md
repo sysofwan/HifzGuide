@@ -403,6 +403,37 @@ and 16/6 would have amplified noise while looking principled. The fitted gain st
 place at the end of the stack, where the adapter output the CTC head reads goes from cosine
 0.29 to 0.53.
 
+### And it works: 5x fewer steps, and the blank basin disappears
+
+`distill_overfit`, 1,024 fixed windows, batch 32, lr 1e-4 — matched to the ablation above, so
+the random arm is directly comparable and does reproduce its 0.171 at step 1000. Decoded
+agreement:
+
+| step | random init | teacher init `--qk random` | `--qk copy` | `--qk damp` | `--qk random`, lr 3e-5 |
+| --- | --- | --- | --- | --- | --- |
+| 300 | 0.000 | **0.827** | 0.776 | 0.810 | 0.659 |
+| 600 | 0.000 | 0.856 | 0.847 | 0.847 | 0.703 |
+| 900 | 0.007 | 0.899 | 0.905 | 0.932 | 0.838 |
+| 1200 | **0.232** | **0.919** | **0.929** | **0.939** | 0.899 |
+
+Teacher init reaches 0.847 at step 600; random init needs 3,000. By 1,200 steps it is above
+anything random init reached in the whole 3,000-step ablation.
+
+**The all-blank basin is simply absent.** Random init sits at decoded 0.000 through step 900
+— the failure mode that motivated the CTC anchor, cost this project multiple runs, and is
+the reason `breakout_stats` exists. A transplanted student never enters it.
+
+Two secondary results. The query/key variant is within single-seed noise, consistent with the
+init-time KL, so the positional mismatch genuinely is not the obstacle. And **lr 3e-5 is
+worse than 1e-4** (0.899 against 0.919 at 1,200): the usual advice to lower the rate for a
+warm-started model does not hold here, it is just slower.
+
+This is evidence about **optimisation**, which is what fitting a fixed set measures. It does
+not displace the trained checkpoint — `h384_klonly@40k` has already paid the 40,000 steps
+this saves, and the transplant is a better start than noise, not than a trained model. Where
+it pays is every student not yet trained: the `h448` capacity retest, or any re-architecture,
+no longer has to buy its way out of the blank basin first.
+
 **The loss is intrinsic to the width cut, and it happens in one block.** The transplant is
 mechanically exact at the feature projection (cosine 1.0000 against the teacher on the kept
 channels) and a single conformer block takes it to 0.81, settling around 0.4–0.5. Keeping

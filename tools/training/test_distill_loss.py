@@ -362,3 +362,38 @@ def test_ctc_weight_zero_reproduces_the_old_objective():
     assert float(off.total.detach()) == pytest.approx(
         off.logit_loss + off.feature_loss, rel=1e-5
     )
+
+
+# --- The shipped objective must match the one the ADR says shipped ------------------
+
+
+def test_shipped_defaults_are_pure_weighted_kl():
+    """The objective the code runs by default must be the one ADR-0010 documents.
+
+    This test exists because that was once false and nobody noticed. The ADR recorded that
+    the CTC and feature terms were removed -- and quoted the 84.58% -> 89.37% gain from
+    removing them -- while every default in the code still enabled both. The winning run
+    only got the documented objective because the flags were passed by hand; anyone running
+    the documented command would have reproduced the broken recipe and burned ~12 GPU-hours
+    landing back at 84.58%.
+    """
+    config = dl.DistillLossConfig()
+    assert config.logit_weight == 1.0
+    assert config.ctc_weight == 0.0, "CTC destabilises training; ADR-0010 removed it"
+    assert config.feature_weight == 0.0, "0.5% gradient share; ADR-0010 removed it"
+    assert config.hard_weight == 0.0
+
+
+def test_default_config_computes_only_the_kl_term():
+    """End-to-end: with defaults, the other three terms must contribute nothing."""
+    student = _logits(seed=21)
+    teacher = _logits(seed=22)
+    hidden_s = tuple(torch.randn(2, 250, 16) for _ in range(25))
+    hidden_t = tuple(torch.randn(2, 250, 32) for _ in range(25))
+    projector = dl.FeatureProjector(16, 32, num_taps=len(dl.DEFAULT_TAP_LAYERS))
+
+    out = dl.distillation_loss(student, teacher, hidden_s, hidden_t, projector)
+    assert out.ctc_loss == 0.0
+    assert out.feature_loss == 0.0
+    assert out.hard_loss == 0.0
+    assert float(out.total.detach()) == pytest.approx(out.logit_loss, rel=1e-5)

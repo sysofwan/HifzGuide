@@ -300,8 +300,8 @@ def main() -> None:
         help="learning rates to try in turn; separates 'cannot learn' from 'lr is wrong'",
     )
     parser.add_argument("--learning-rate", type=float, default=3e-4)
-    parser.add_argument("--ctc-weight", type=float, default=1.0)
-    parser.add_argument("--feature-weight", type=float, default=1.0)
+    parser.add_argument("--ctc-weight", type=float, default=0.0)
+    parser.add_argument("--feature-weight", type=float, default=0.0)
     parser.add_argument(
         "--logit-weight",
         type=float,

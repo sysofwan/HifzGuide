@@ -231,15 +231,38 @@ def compare_streams(pairs: list[tuple[list[int], list[int]]]) -> AgreementReport
         student_lengths.append(len(student_stream))
 
     count = max(1, len(pairs))
+    # An empty corpus scored 1.0 here, because `1 - 0/1` is 1.0. That prints
+    # "clips evaluated 0 / char accuracy 100.00%", which is the most dangerous possible
+    # reading: a headline of perfect agreement produced by scoring nothing. It happens
+    # whenever every clip is skipped -- a wrong --audio-root, a non-16 kHz staging
+    # directory, unreadable files. Report 0.0 so the failure looks like a failure.
     return AgreementReport(
         num_clips=len(pairs),
         exact_match=exact / count,
-        char_accuracy=1.0 - (edits / max(1, teacher_tokens)),
+        char_accuracy=(1.0 - edits / teacher_tokens) if teacher_tokens else 0.0,
         mean_teacher_length=sum(teacher_lengths) / count,
         mean_student_length=sum(student_lengths) / count,
         total_edits=edits,
         total_teacher_tokens=teacher_tokens,
     )
+
+
+def check_split_matches_checkpoint(saved: dict, val_fraction: float) -> None:
+    """Refuse to score a split the checkpoint was not trained under.
+
+    ``clip_split`` is a monotone hash bucket, so a *larger* ``--val-fraction`` is a
+    superset: evaluating at 0.1 a run trained at 0.02 puts ~80% training clips into the
+    set the report labels ``[val]``. The number looks like held-out agreement, is inflated
+    by memorised clips, and nothing in the output says so -- exactly the class of silent
+    wrongness this tool exists to avoid producing.
+    """
+    trained = saved.get("val_fraction")
+    if trained is not None and trained != val_fraction:
+        raise SystemExit(
+            f"--val-fraction {val_fraction} does not match the checkpoint's {trained}. "
+            f"The hash split is monotone, so this would score clips the student trained "
+            f"on and label them held-out. Pass --val-fraction {trained}."
+        )
 
 
 def load_student_from_checkpoint(checkpoint_path: Path, device: torch.device):

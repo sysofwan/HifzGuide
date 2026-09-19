@@ -116,8 +116,10 @@ class TrainConfig:
     eval_batches: int = 40
     seed: int = DEFAULT_SEED
     logit_weight: float = 1.0
-    feature_weight: float = 1.0
-    ctc_weight: float = 1.0
+    # Both OFF by default -- see DistillLossConfig for the measurements. The shipped
+    # objective is pure weighted KL.
+    feature_weight: float = 0.0
+    ctc_weight: float = 0.0
     hard_weight: float = 0.0
     temperature: float = 2.0
     nonblank_weight: float = 3.0
@@ -617,7 +619,13 @@ def main() -> None:
     parser.add_argument("--eval-every", type=int, default=2_000)
     parser.add_argument("--save-every", type=int, default=2_000)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
-    parser.add_argument("--feature-weight", type=float, default=1.0)
+    parser.add_argument(
+        "--feature-weight",
+        type=float,
+        default=0.0,
+        help="tapped hidden-state matching. Off: it earned 0.5%% of the gradient and scored "
+        "0.886x the predict-the-mean baseline. Kept for ablation only.",
+    )
     parser.add_argument(
         "--logit-weight",
         type=float,
@@ -628,9 +636,11 @@ def main() -> None:
     parser.add_argument(
         "--ctc-weight",
         type=float,
-        default=1.0,
-        help="weight on the CTC anchor against the teacher's decoded sequence; 0 disables "
-        "it, which reproduces the frame-KL-only recipe that parks in the all-blank basin",
+        default=0.0,
+        help="CTC anchor against the teacher's decoded sequence. OFF by default: it "
+        "destabilises training as the data diversifies (at 1024 fixed windows KL-only "
+        "reached decoded 0.847, KL+CTC collapsed to 0.000). Set >0 only to reproduce the "
+        "ablation.",
     )
     parser.add_argument("--temperature", type=float, default=2.0)
     parser.add_argument(

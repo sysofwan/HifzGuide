@@ -148,10 +148,25 @@ def test_flop_ratio_accounts_for_depth():
 
 # --- Instantiation: the analytic table must track the real model --------------------
 
-torch = pytest.importorskip("torch", reason="instantiation tests need torch")
-pytest.importorskip("tadabur.muaalem", reason="needs the vendored Muaalem package")
+# NOT `pytest.importorskip` at module level: that raises Skipped during *import*, so pytest
+# skips the whole file -- including the torch-free sizing tests above, which are the ones
+# guarding the load-bearing "h384 is one chunk" claim and are supposed to run anywhere.
+# Verified: a mid-module importorskip in a 2-test file reports "1 skipped", not "1 passed,
+# 1 skipped".
+try:
+    import torch
+    import tadabur.muaalem  # noqa: F401
+
+    HAS_TORCH = True
+except Exception:  # pragma: no cover - depends on the box
+    HAS_TORCH = False
+
+needs_torch = pytest.mark.skipif(
+    not HAS_TORCH, reason="instantiation tests need torch + the vendored Muaalem package"
+)
 
 
+@needs_torch
 @pytest.mark.parametrize("name", sorted(ds.PRESETS))
 def test_student_honours_the_deployed_shape_contract(name):
     """(1, 250, 160) -> (1, 125, 43), or it cannot replace the teacher."""
@@ -160,12 +175,14 @@ def test_student_honours_the_deployed_shape_contract(name):
     assert (frames, classes) == (ds.DEPLOYED_LOGIT_FRAMES, ds.NUM_PHONEME_CLASSES)
 
 
+@needs_torch
 @pytest.mark.parametrize("name", sorted(ds.PRESETS))
 def test_analytic_estimate_tracks_the_real_parameter_count(name):
     """The table is a planning tool; it may under-count but must not drift far.
 
-    The known gap is the relative-position embeddings, which the estimate omits; it runs
-    consistently ~3.5% low. Anything past 6% means the architecture changed under us.
+    It runs consistently ~3.5% low. The cause is the layer-norm/bias approximation in
+    `_conformer_layer_params`, NOT relative-position embeddings -- every preset is rotary
+    and has none. Anything past 6% means the architecture changed under us.
     """
     spec = ds.PRESETS[name]
     model = ds.build_student(spec)
@@ -173,6 +190,7 @@ def test_analytic_estimate_tracks_the_real_parameter_count(name):
     assert ds.estimate_params(spec) == pytest.approx(measured, rel=0.06)
 
 
+@needs_torch
 @pytest.mark.parametrize("name", sorted(ds.PRESETS))
 def test_student_carries_only_the_phoneme_head(name):
     """The 10 sifat heads must cost no parameters and take no gradient."""
@@ -220,6 +238,7 @@ def test_spec_augment_is_disabled_by_its_own_flag():
     assert config.mask_feature_min_masks == 0
 
 
+@needs_torch
 @pytest.mark.parametrize("name", sorted(ds.PRESETS))
 def test_train_mode_forward_is_deterministic(name):
     """The property all of the above exists to guarantee, asserted end to end."""
@@ -232,6 +251,7 @@ def test_train_mode_forward_is_deterministic(name):
     assert torch.equal(first, second)
 
 
+@needs_torch
 def test_train_and_eval_modes_agree():
     """A train/eval gap is the signature of exactly this class of bug."""
     model = ds.build_student(ds.PRESETS["h256"])

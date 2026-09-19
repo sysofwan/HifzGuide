@@ -160,10 +160,17 @@ def test_an_empty_student_stream_is_scored_not_skipped():
     assert report.mean_student_length == pytest.approx(0.0)
 
 
-def test_compare_streams_survives_an_empty_corpus():
+def test_an_empty_corpus_scores_zero_not_one():
+    """Scoring nothing must not read as perfect agreement.
+
+    This previously returned 1.0 -- `1 - 0/1` -- so a run that skipped every clip (wrong
+    --audio-root, non-16 kHz staging directory, unreadable files) printed
+    "clips evaluated 0 / char accuracy 100.00%". The old test asserted that value, pinning
+    the deceptive behaviour instead of catching it.
+    """
     report = de.compare_streams([])
     assert report.num_clips == 0
-    assert report.char_accuracy == pytest.approx(1.0)
+    assert report.char_accuracy == pytest.approx(0.0)
 
 
 # --- Head health: is a stuck run a head problem or an encoder problem? ---------------

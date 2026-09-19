@@ -479,15 +479,22 @@ class DistillLossConfig:
     """Weights and knobs for :func:`distillation_loss`."""
 
     logit_weight: float = 1.0
-    feature_weight: float = 1.0
+    # OFF by default. Measured on the full corpus it earned 0.5% of the gradient and scored
+    # 0.886x the predict-the-mean baseline -- it was never doing work. Kept as a flag so the
+    # ablation stays reproducible, not because the default should ever be 1.0 again.
+    feature_weight: float = 0.0
     # Cross-entropy on the teacher's argmax. Off by default: it optimises the metric
     # directly but carries no distributional information, so it is a *finishing* objective
     # for a student that has already escaped the blank basin, not a from-scratch one.
     hard_weight: float = 0.0
-    # The sequence term that makes all-blank unstable. On by default: measured at step
-    # 2000 without it, the teacher's class sat at rank 8.2 with P=0.027 against blank's
-    # P=0.822, i.e. nowhere near escaping by frame-KL alone.
-    ctc_weight: float = 1.0
+    # OFF by default, and the reason is the most expensive finding in this work. This term
+    # was added to escape a blank collapse at step 2000, when the real cause was the
+    # SpecAugment/dropout determinism bug fixed later. It was never re-examined, and
+    # measurement then showed it taking most of the gradient and destabilising training as
+    # the data diversified: at 1024 fixed windows, KL-only reached decoded 0.847 while
+    # KL+CTC collapsed to 0.000. Removing it moved the full run 84.58% -> 89.37% decoded and
+    # 77.0% -> 91.5% gate agreement. See ADR-0010.
+    ctc_weight: float = 0.0
     temperature: float = DEFAULT_TEMPERATURE
     nonblank_weight: float = DEFAULT_NONBLANK_WEIGHT
     confirm_weight: float = DEFAULT_CONFIRM_WEIGHT

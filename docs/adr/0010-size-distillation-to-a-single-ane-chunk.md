@@ -112,21 +112,25 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
     rather than being masked — they still drive the provisional display and the hallucination
     gate — but the region that becomes the transcript is worth more.
 
-- **A CTC anchor on the teacher's decoded sequence is part of the objective, not an
-  optional extra.** The frame-weighted KL and the feature loss are both *per-frame*
-  objectives, and a per-frame objective cannot break alignment symmetry: until the student
-  knows which frames carry which phoneme, blank is the locally optimal answer at every
-  individual frame, so all-blank is a stable fixed point. Reweighting frames does not help,
-  because the problem is not which frames are weighted.
+- **The objective is pure weighted KL. The CTC anchor was REMOVED, and the feature term with
+  it.** This bullet previously argued the opposite, and the reversal is the single most
+  important finding in this ADR, so the original reasoning is kept here rather than deleted.
 
-  Measured, not assumed. Running the KL-only recipe to step 2000 and then measuring over
-  teacher-non-blank frames gave P(teacher's class) = **0.027** at rank **8.2**, against
-  P(blank) = **0.822** — while top-5 agreement of **0.51** (chance: 0.12) showed the encoder
-  had genuinely learned. The representation was forming; the alignment was not.
+  The argument *for* a CTC anchor was that the KL and feature losses are per-frame, and a
+  per-frame objective cannot break alignment symmetry: until the student knows which frames
+  carry which phoneme, blank is locally optimal everywhere, so all-blank is a stable fixed
+  point. That reasoning is sound in general and was supported by a real measurement — at
+  step 2000 the teacher's class sat at rank 8.2 with P=0.027 against blank's 0.822.
 
-  `ctc_anchor_loss` is the standard fix: a *sequence* objective whose forward-backward sums
-  over every valid alignment, under which an all-blank output has probability zero for any
-  non-empty target. The basin stops being a fixed point.
+  It was still wrong here, because the blank collapse it was diagnosing had a different
+  cause: the SpecAugment/dropout determinism bug (below). Once that was fixed the anchor was
+  never re-examined, and measurement later showed it holding **71% of the gradient** and
+  actively destabilising training as the data diversified — the ablation is in "The 84.58%
+  ceiling was a self-inflicted objective bug" above. Removing it moved decoded agreement
+  84.58% → 89.37% and gate agreement 77.0% → 91.5%.
+
+  The feature-matching term is removed for a duller reason: it earned 0.5% of the gradient
+  and scored 0.886x the predict-the-mean baseline. It was never doing work.
 
 - **The release gate is confirmed-stream agreement, not frame agreement.** Frame agreement is
   cheap and smooth and so is used during training, but it averages over 100 timesteps the

@@ -1,7 +1,6 @@
 ---
 name: thermo-nuclear-code-quality
 description: Write code that passes the thermo-nuclear code quality review bar — pragmatic structural quality plus ML-correctness (reproducibility, data integrity, numerics). Applies the review standards proactively during implementation.
-disable-model-invocation: true
 ---
 
 # Thermo-Nuclear Code Quality — Implementation Standards

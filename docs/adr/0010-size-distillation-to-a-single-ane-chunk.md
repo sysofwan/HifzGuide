@@ -164,7 +164,49 @@ hours DistilHuBERT-class recipes use. Expanding the corpus is the next move, and
 that does it make sense to ask whether `h384` has the capacity -- running `h512` now would
 confound a capacity question with a data limit.
 
-## What has been ruled out for the 84.58% ceiling
+## The 84.58% ceiling was a self-inflicted objective bug
+
+**The CTC anchor caused it.** It was added to escape blank collapse at step 2000, when the
+real cause was the SpecAugment/dropout determinism bug found later. It was never
+re-examined after that fix, and it held **71% of the gradient** while the feature term held
+0.5%.
+
+Three measurements found it, none of which existed while the four hypotheses below were
+being tested — which is why none of them explained anything:
+
+* **Gradient share per term.** Loss magnitude says nothing about influence: the CTC term
+  read 3.3 against the KL's 6.5 and owned 71% of the update.
+* **A scaling probe** asking *where* fitting breaks, at the working learning rate:
+  32 windows decoded **1.000**, 256 windows **1.000**, 1024 windows **0.000** (collapsed,
+  gradient norm spiking to 36.9). Not data -- 78,578 windows are available and it could not
+  use 1,024. Not capacity -- it reproduced 256 windows exactly.
+* **Term ablation at that scale:** KL-only **0.847** and climbing; CTC-only **0.000**;
+  KL+CTC **0.000**. Adding CTC to a working KL destroys it.
+
+Retraining with **pure weighted KL** -- no CTC, no feature matching -- on the identical
+corpus, model and step budget:
+
+| | old recipe | KL-only |
+| --- | --- | --- |
+| confirmed-stream char accuracy | 84.58% | **89.37%** |
+| exact match | 10.5% | **14.5%** |
+| **gate-decision agreement** | **77.0%** | **91.5%** (trivial baseline 88.0%) |
+| teacher passed / student failed | 18 in 100 | **9 in 200** |
+| student passed / teacher failed | 5 in 100 | 8 in 200 |
+| mean match_ratio | 0.745 | **0.809** (teacher 0.847) |
+| ratio correlation | 0.648 | **0.874** |
+| frame confirmed_agreement | 0.8819 | **0.9177** |
+| target_rank | 1.249 | **1.167** |
+
+The directional failure that made the student unshippable -- rejecting recitation the
+teacher accepts -- is gone: 18-vs-5 became 9-vs-8, and the false-rejection rate fell from
+18% to 4.5%.
+
+**The lesson worth keeping is procedural.** Every term in a distillation loss should be
+justified by a measurement, and re-justified whenever the diagnosis that motivated it
+changes. A term added to fix a misdiagnosed problem will not remove itself.
+
+## What had been ruled out for the 84.58% ceiling
 
 Four candidate explanations, three eliminated by measurement. Recorded because each cost
 real GPU time and the negative results are what stop them being re-tried.
@@ -174,7 +216,11 @@ real GPU time and the negative results are what stop them being re-tried.
 | **more data** | ruled out | train **84.98%** vs val **84.16%** at step 40000. A 0.82-point gap: the student cannot reproduce the teacher on windows it has seen ~16 times, so more audio cannot be the fix. |
 | **more steps** | ruled out | char accuracy 45.4 → 75.1 → 83.8 → 84.6 at 4k/10k/20k/40k. Doubling 20k→40k bought 0.76 points. |
 | **objective mismatch** | ruled out | Two hard-label runs warm-started from the 40k checkpoint: with the 3x non-blank weighting **82.93%**, with neutral weighting **82.76%**. Both lose to the 84.16% baseline. |
-| **capacity** | under test | `h448` (116.3M, 83.2 MB, still one chunk) on the identical corpus, recipe and step budget. |
+| **capacity** | ruled out | `h448` (116.3M) trailed `h384` at every matched step and finished worse -- but note this was measured under the broken objective, so it is evidence about that objective, not a clean capacity result. |
+
+Every one of these was measured **through the broken objective**, which is why none of them
+explained the ceiling and why the two that looked most convincing (no train/val gap; a
+larger student performing worse) were the most misleading.
 
 The objective experiment was worth running — `target_rank` 1.25 with top-5 agreement 0.992
 says the teacher's class is nearly always present and merely loses the argmax, which looks

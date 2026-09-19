@@ -304,11 +304,12 @@ are needed** (any recitation audio is training data) and **only the phoneme head
 teacher's 42.3 ms, reproducing **89.37%** of the teacher's decoded characters and **91.5%** of
 its product gate decisions.
 
-**This is not shippable yet.** On the 200-clip eval set a gate that passes everything scores
-88.0%, and 91.5% vs 88.0% is not statistically significant (McNemar p ~ 0.23). The student
-beats the previous recipe convincingly (81.0% -> 91.5% on identical clips, p ~ 0.002); it does
-not yet beat a rubber stamp. Raising the score and enlarging the eval set is tracked in the
-follow-up issue.
+**This is not shippable yet, and the 91.5% predates the measurement rebuild.** It was taken
+on 200 random clips, 88.0% of which pass the gate, so a rubber stamp scored 88.0% and the
+margin was not significant (McNemar p ~ 0.23). It was also taken under a protocol that
+dropped the silence flush and therefore transcribed only up to each clip's last four seconds.
+Both are fixed (`gate_evalset`, `PROTOCOL_VERSION`), so numbers before and after are not
+comparable and the baseline has been re-measured on the frozen set. See ADR-0010.
 
 - **`distill_student`** — the width ladder. Every preset keeps all **24 layers** and shrinks
   `hidden_size`; §6 of `ml-model-transformation.md` shows depth is the axis that destroys this
@@ -331,9 +332,10 @@ follow-up issue.
 
 - **`distill_stream`** — the corpus without the disk. Each window is read once, so shards are
   fetched, consumed and deleted: peak disk is one ~2.5 GB shard per worker however many
-  shards the run covers. 365 shards ≈ **1,369 hours** ≈ 56k steps at batch 32. Shards 0–19
-  are refused by construction because they produced the staged validation clips. Used via
-  `distill_train --stream-shards 20-384`.
+  shards the run covers. 345 trainable shards ≈ **1,170 hours** ≈ 53k steps at batch 32.
+  **Two** shard blocks are refused by construction — 0–19, which produced the staged
+  validation clips, and the strided block feeding the frozen gate evaluation set. Get the
+  spec from `gate_evalset --print-training-shards` rather than typing a range.
 
 - **`distill_loss`** — **frame-weighted KL, and nothing else.** Non-blank frames are
   up-weighted (blank is 67% of frames) and the first **25** timesteps are up-weighted because
@@ -363,9 +365,37 @@ follow-up issue.
   argmax agreement is a flat 0.0 either way.
 
 - **`distill_gate`** — the product question: does swapping the teacher for the student change
-  what Muraja *decides*? Scores both decodes through the ported `.balanced` gate and reports
-  decision agreement, split by direction — the student rejecting recitation the teacher
-  accepts is a different risk from the reverse.
+  what Muraja *decides*? Scores decodes through the ported `.balanced` gate. With
+  `--eval-set` it reads the teacher's **cached** decisions from a frozen set, so only the
+  student runs and two checkpoints are scored against identical truth. It reports the **flip
+  rate with a Wilson interval**, split into false rejections and false acceptances (the same
+  aggregate agreement can be either, and they call for opposite fixes), the
+  population-reweighted estimate, continuous `match_ratio` error, and a **paired McNemar**
+  against another checkpoint's saved decisions. Beating pass-everything is printed as a
+  guard, not as evidence — on a set balanced around the bar, any competent student wins it.
+
+- **`gate_evalset`** — builds that frozen set, and is the prerequisite for any claim about
+  gate agreement. One scan of 20 **strided** reserved shards (strided because a contiguous
+  block is a distribution shift, not a sample, if shard order groups reciters) draws two
+  views: a **population** sample for what a user would meet, and a sample **enriched around
+  the 0.65 bar** for whether the student beats a rubber stamp. Optimising the first is
+  hopeless — only ~4% of raw clips fall below the bar — and shipping on the second alone is
+  dishonest, so both are always reported along with the scan's per-stratum counts, which are
+  what make the reweighting possible at all. Clips are split dev/test **by reciter**; keep
+  test for finalists. The teacher runs once and is frozen into the manifest, which halves
+  every later evaluation.
+
+- **`teacher_init`** — starts a student from a selected sub-network of the teacher instead of
+  from noise, and writes it in `distill_train`'s checkpoint format for `--init-from`.
+  Selection, not a PCA rotation: LayerNorm does not commute with a rotation, the residual
+  stream is added to in every block, and transformers applies the rotary embedding to the
+  hidden states **before** `linear_q`/`linear_k` in blocks of the *input* space, which a
+  rotation scrambles. Channels, heads and FFN units are ranked by their measured contribution
+  to the residual stream; heads are kept whole; each LayerNorm's affine is corrected for
+  normalising over 384 dims rather than 1024. Encoder query/key are a flag (`--qk
+  random|copy|damp`) because the teacher fitted them under a `relative_key` positional bias
+  on unrotated inputs — the adapter's attention has no positional embedding at all and always
+  copies.
 
 ```bash
 cd tools
@@ -377,14 +407,27 @@ python -m training.distill_train --preset h384 --audio-root <wav-dir> \
     --out-dir runs/h384 --batch-size 32 --preflight-only      # check VRAM first
 python -m training.distill_train --preset h384 --audio-root <wav-dir> \
     --out-dir runs/h384 --batch-size 32 --steps 40000 [--resume]
-python -m training.distill_train --preset h384 --stream-shards 20-384 \
-    --audio-root <held-out-wav-dir> --out-dir runs/h384_full   # 1,369 h, bounded disk
+python -m training.distill_train --preset h384 \
+    --stream-shards "$(python -m training.gate_evalset --print-training-shards)" \
+    --audio-root <held-out-wav-dir> --out-dir runs/h384_full   # 1,170 h, bounded disk
 
 python -m training.distill_overfit --preset h384 --audio-root <wav-dir> --num-windows 1024
 python -m training.distill_eval --checkpoint runs/h384/checkpoint.pt \
     --audio-root <wav-dir> --num-clips 200
+
+# The frozen gate set: build once (~2 h of teacher), then score every checkpoint against it
+python -m training.gate_evalset --out-dir tadabur/gate_eval
 python -m training.distill_gate --checkpoint runs/h384/checkpoint.pt \
-    --audio-root <wav-dir> --num-clips 200
+    --eval-set tadabur/gate_eval --save-decisions runs/h384/gate_decisions.json
+python -m training.distill_gate --checkpoint runs/h384_next/checkpoint.pt \
+    --eval-set tadabur/gate_eval --compare-decisions runs/h384/gate_decisions.json
+
+# Teacher initialisation, and the probe that decides whether it is worth a real run
+python -m training.teacher_init --preset h384 --audio-root <wav-dir> \
+    --out runs/tinit/checkpoint.pt --qk random --baseline
+python -m training.distill_overfit --preset h384 --audio-root <wav-dir> \
+    --num-windows 1024 --steps 1200 --learning-rate 1e-4 \
+    --init-from runs/tinit/checkpoint.pt
 ```
 
 ### `convert_to_coreml.py`

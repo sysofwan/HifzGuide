@@ -539,10 +539,10 @@ ones.
   is no compression surcharge to budget for, and the palettized size does not drift with
   training (62.3 MB at step 2000 and again at step 10000).
 
-  §1.3's *quality* result does not transfer, exactly as feared. On the teacher, 6-bit was
-  argmax-identical to INT8, because a 586M model is heavily overparameterized. On the
-  85.5M student it is not. Measured against the uncompressed FP16 export, over real windows
-  from a step-10000 checkpoint:
+  §1.3's *quality* result does not transfer at the frame level, exactly as feared. On the
+  teacher, 6-bit was argmax-identical to INT8, because a 586M model is heavily
+  overparameterized. On the 85.5M student it is not. Measured against the uncompressed FP16
+  export, over real windows from a step-10000 checkpoint:
 
   | | size | frame argmax agreement | windows fully identical | chunks |
   | --- | --- | --- | --- | --- |
@@ -550,13 +550,39 @@ ones.
   | 6-bit | **62.3 MB** | 98.91% | 2/11 | 1 |
   | 8-bit | **82.8 MB** | **99.85%** | **9/11** | 1 |
 
-  8-bit removes ~7/8 of the disagreement for 20.5 MB, and **both are a single chunk**, so
-  this is a quality decision with no architectural consequence. Two caveats keep it from
-  being final: the checkpoint is not converged (a sharper model is likely *more* robust, so
-  this reads pessimistic), and frame-level disagreement is not the metric that matters —
-  low-confidence flips often survive CTC collapse unchanged. The decision belongs to
-  confirmed-stream agreement of the palettized export against the PyTorch student at the end
-  of training, not to this table.
+  **That table is the wrong scale, and reading it as a quality decision would have cost
+  20.5 MB for nothing.** A flipped frame may leave the decoded string untouched — it is
+  inside a run that collapses to the same token — or split a run and cost several edits, so a
+  frame-agreement figure cannot be subtracted from a character accuracy. `verify_student_export.py`
+  measures the thing itself, replaying the deployed protocol through the CoreML model and
+  comparing the resulting phoneme string to the teacher's cached decode. On 300 held-out
+  clips (24,390 teacher phonemes) of a mid-run h384:
+
+  | | agreement with the teacher | cost | characters moved vs PyTorch |
+  | --- | --- | --- | --- |
+  | PyTorch fp32 | 90.94% | — | — |
+  | CoreML fp16 | 90.87% | −0.07 | 0.32% |
+  | CoreML **8-bit** | 90.91% | **−0.03** | 0.31% |
+  | CoreML **6-bit** | 90.84% | **−0.10** | 0.75% |
+
+  **Palettization is not a constraint on the training target**: 6-bit costs a tenth of a
+  point, so a student that reaches X in PyTorch ships at about X, and there is no need to
+  inflate the target to pay for quantization. 8-bit buys back 0.07 points for 20.5 MB, which
+  is not worth it — and note that the conversion to fp16 accounts for essentially all of the
+  drift 8-bit shows, so 8-bit adds almost no error of its own.
+
+  The gap between *drift* and *cost* is the interesting part: 6-bit moves 0.75% of characters
+  while costing 0.10 points, because the moves are roughly orthogonal to the teacher rather
+  than away from it. Frame-level tables cannot see that and will always read pessimistic.
+
+  **The consequence for sizing.** h384 at 8-bit is 82.8 MB and h448 at 6-bit is 83.2 MB — the
+  same byte budget, one chunk either way. Since precision is nearly free and capacity is not,
+  the same bytes should be spent on **width**, not on bits.
+
+  Two caveats: the checkpoint is mid-training (a sharper model is expected to be *more*
+  robust, so read the costs as an upper bound), and this runs on a Mac's ANE rather than an
+  iPhone 13's. Single-chunk acceptance is still enforced at `MLModel` load on device and
+  still unproven.
 
 - **Trace the student only after a warmup forward.** `Wav2Vec2BertRotaryPositionalEmbedding`
   caches its cos/sin table on first use, so the first and second forward passes produce

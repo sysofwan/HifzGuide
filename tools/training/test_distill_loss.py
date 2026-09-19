@@ -438,3 +438,44 @@ def test_a_single_enabled_term_is_a_valid_objective():
     """The guard must not reject the ablation arms themselves."""
     assert dl.DistillLossConfig(logit_weight=0.0, feature_weight=1.0).feature_weight == 1.0
     assert dl.DistillLossConfig(logit_weight=0.0, ctc_weight=1.0).ctc_weight == 1.0
+
+
+# --- log-line formatting ------------------------------------------------------------
+#
+# These exist because the whole suite passed while both training loops were broken.
+# Reporting disabled terms as None made every `:.3f` consumer raise TypeError, and under
+# the default KL-only objective four of the five components are None on every step -- so
+# `distill_train` would have died at its first log line. Nothing tested the print path.
+
+
+def test_fmt_term_renders_a_disabled_term_without_raising():
+    assert dl.fmt_term(None) == "  off"
+    assert dl.fmt_term(None, 4) == "   off"
+
+
+def test_fmt_term_keeps_columns_aligned():
+    """A disabled term must occupy the same width as the number it replaces."""
+    for digits in (3, 4):
+        assert len(dl.fmt_term(None, digits)) == len(dl.fmt_term(1.5, digits))
+
+
+def test_fmt_term_still_formats_numbers():
+    assert dl.fmt_term(0.1234, 3) == "0.123"
+    assert dl.fmt_term(0.1234, 4) == "0.1234"
+
+
+def test_the_default_objective_can_render_its_own_log_line():
+    """The exact failure: KL-only leaves four of five components None."""
+    output = dl.distillation_loss(
+        _logits(seed=1), _logits(seed=2), None, None, None, dl.DistillLossConfig(),
+    )
+    record = output.as_dict()
+    assert record["feature_loss"] is None and record["ctc_loss"] is None
+    line = (
+        f"kl {dl.fmt_term(record['logit_loss'], 4)} "
+        f"feat {dl.fmt_term(record['feature_loss'], 4)} "
+        f"ctc {dl.fmt_term(record['ctc_loss'], 4)} "
+        f"hard {dl.fmt_term(record['hard_loss'], 4)} "
+        f"cos {dl.fmt_term(record['feature_cosine'])}"
+    )
+    assert "off" in line

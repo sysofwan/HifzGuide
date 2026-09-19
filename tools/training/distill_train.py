@@ -68,6 +68,7 @@ from training.distill_loss import (
     agreement_stats,
     breakout_stats,
     distillation_loss,
+    fmt_term,
 )
 from training.distill_student import (
     PRESETS,
@@ -576,9 +577,11 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
                 log(record)
                 print(
                     f"[{step:>6}/{config.steps}] loss {record['total']:.4f} "
-                    f"kl {record['logit_loss']:.4f} feat {record['feature_loss']:.4f} "
-                    f"ctc {record['ctc_loss']:.4f} hard {record['hard_loss']:.4f} "
-                    f"cos {record['feature_cosine']:.3f} "
+                    f"kl {fmt_term(record['logit_loss'], 4)} "
+                    f"feat {fmt_term(record['feature_loss'], 4)} "
+                    f"ctc {fmt_term(record['ctc_loss'], 4)} "
+                    f"hard {fmt_term(record['hard_loss'], 4)} "
+                    f"cos {fmt_term(record['feature_cosine'])} "
                     f"conf-agree {record['confirmed_agreement']:.3f} "
                     f"blank-margin {record['blank_collapse_margin']:+.3f} "
                     f"|g| {record['grad_norm_preclip']:.1f}"

@@ -520,6 +520,19 @@ def _round_or_none(value: float | None, digits: int) -> float | None:
     return None if value is None else round(value, digits)
 
 
+def fmt_term(value: float | None, digits: int = 3) -> str:
+    """Render one loss component for a log line, including the disabled ones.
+
+    Disabled terms are ``None``, and a ``:.3f`` spec raises ``TypeError`` on ``None``.
+    Every consumer of these fields therefore needs this, not a format spec -- under the
+    default KL-only objective four of the five components are ``None`` on every step,
+    so the alternative is a training loop that dies at its first log line.
+
+    Padded to the width the number would occupy, so the columns still line up.
+    """
+    return "off".rjust(digits + 2) if value is None else f"{value:.{digits}f}"
+
+
 @dataclass
 class DistillLossOutput:
     """The scalar to backprop plus every component, for logging."""

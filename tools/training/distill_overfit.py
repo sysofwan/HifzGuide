@@ -43,14 +43,15 @@ from torch.utils.data import DataLoader
 
 from training.distill_data import DistillWindowDataset, build_window_index, discover_clips
 from training.distill_loss import (
-    DEFAULT_TAP_LAYERS,
     CONFIRM_TIMESTEPS,
+    DEFAULT_TAP_LAYERS,
     DistillLossConfig,
     FeatureProjector,
     breakout_stats,
     ctc_anchor_loss,
     distillation_loss,
     feature_matching_loss,
+    fmt_term,
     frame_weights,
     hard_label_ce,
     weighted_kl,
@@ -257,8 +258,10 @@ def overfit(
             }
             history.append(record)
             print(
-                f"  [{step:>4}] loss {record['total']:.3f} kl {record['logit_loss']:.3f} "
-                f"ctc {record['ctc_loss']:.3f} feat {record['feature_loss']:.4f} "
+                f"  [{step:>4}] loss {record['total']:.3f} "
+                f"kl {fmt_term(record['logit_loss'])} "
+                f"ctc {fmt_term(record['ctc_loss'])} "
+                f"feat {fmt_term(record['feature_loss'], 4)} "
                 f"|g| {grad_norm:>8.1f}{'*' if record['clipped'] else ' '} "
                 f"nb {record['nonblank_agreement']:.3f} "
                 f"DECODED {record['decoded_agreement']:.3f}",
@@ -272,8 +275,11 @@ def overfit(
         "first": first,
         "last": last,
         "total_dropped": round(first["total"] - last["total"], 3),
-        "feature_vs_predict_mean": round(
-            last["feature_loss"] / PREDICT_MEAN_FEATURE_MSE, 3
+        # None when feature matching is off, which is the default -- a ratio against the
+        # predict-the-mean baseline means nothing for a term that never ran.
+        "feature_vs_predict_mean": (
+            None if last["feature_loss"] is None
+            else round(last["feature_loss"] / PREDICT_MEAN_FEATURE_MSE, 3)
         ),
         "escaped_blank": last["nonblank_agreement"] > 0.0,
         "clipped_fraction": round(
@@ -362,18 +368,27 @@ def main() -> None:
         print(json.dumps(results, indent=2))
         return
 
-    print(f"\n{'lr':>9} {'loss drop':>10} {'feat/mean':>10} {'clipped':>8} {'escaped':>8}")
-    print("-" * 50)
+    # The feat/mean column only means something when feature matching ran, and it is off
+    # by default now, so a whole column of "off" plus a footnote about it is pure noise.
+    shows_feature = any(r["feature_vs_predict_mean"] is not None for r in results)
+    feature_header = f" {'feat/mean':>10}" if shows_feature else ""
+
+    print(f"\n{'lr':>9} {'loss drop':>10}{feature_header} {'clipped':>8} {'escaped':>8}")
+    print("-" * (50 if shows_feature else 39))
     for result in results:
+        feature_cell = (
+            f" {fmt_term(result['feature_vs_predict_mean']):>10}" if shows_feature else ""
+        )
         print(
-            f"{result['learning_rate']:>9.1e} {result['total_dropped']:>10.3f} "
-            f"{result['feature_vs_predict_mean']:>10.3f} "
+            f"{result['learning_rate']:>9.1e} {result['total_dropped']:>10.3f}"
+            f"{feature_cell} "
             f"{result['clipped_fraction']:>8.2f} {str(result['escaped_blank']):>8}"
         )
-    print(
-        "\nfeat/mean < 1.0 means better than predicting the teacher's mean; "
-        "near 1.0 means no representation was learned."
-    )
+    if shows_feature:
+        print(
+            "\nfeat/mean < 1.0 means better than predicting the teacher's mean; "
+            "near 1.0 means no representation was learned."
+        )
 
 
 if __name__ == "__main__":

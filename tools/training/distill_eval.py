@@ -337,12 +337,26 @@ def load_student_from_checkpoint(
     config = state["config"]
     student = build_student(PRESETS[config["preset"]])
     if use_ema:
-        if "student_ema" not in state:
+        # Reconstructed from the averager's shadow rather than read from a second stored
+        # copy: the shadow holds only the floating-point tensors, so the live state supplies
+        # the remaining buffers. Older checkpoints carry a materialised ``student_ema`` and
+        # are still read directly.
+        if "student_ema" in state:
+            student.load_state_dict(state["student_ema"])
+        elif "ema_state" in state:
+            live = state["student"]
+            shadow = state["ema_state"]["shadow"]
+            student.load_state_dict(
+                {
+                    name: (shadow[name].to(value.dtype) if name in shadow else value)
+                    for name, value in live.items()
+                }
+            )
+        else:
             raise SystemExit(
                 f"{checkpoint_path} carries no averaged weights -- it was trained without "
                 f"--ema-decay. Drop --ema, or train a run that keeps an average."
             )
-        student.load_state_dict(state["student_ema"])
     else:
         student.load_state_dict(state["student"])
     student = student.to(device)

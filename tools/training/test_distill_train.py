@@ -194,3 +194,46 @@ def test_ema_decay_is_a_resume_critical_field():
     from training.distill_train import RESUME_CRITICAL_FIELDS
 
     assert "ema_decay" in RESUME_CRITICAL_FIELDS
+
+
+def test_the_checkpoint_stores_the_average_once(tmp_path):
+    """Two copies of 85.5M values is 342 MB a save on a box that runs at 93% full."""
+    import torch
+
+    from training.distill_train import TrainConfig, WeightAverage, save_checkpoint
+
+    model = torch.nn.Linear(4, 3)
+    averager = WeightAverage(model, 0.9)
+    averager.update(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: 1.0)
+    path = tmp_path / "checkpoint.pt"
+    save_checkpoint(
+        path, 10, model, model, optimizer, scheduler,
+        TrainConfig(preset="h384", audio_root="", out_dir=str(tmp_path), ema_decay=0.9),
+        averager,
+    )
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    assert "ema_state" in state
+    assert "student_ema" not in state
+
+
+def test_the_averaged_weights_are_reconstructed_from_the_shadow(tmp_path):
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    model = torch.nn.Linear(4, 3)
+    averager = WeightAverage(model, 0.5)
+    with torch.no_grad():
+        model.weight.fill_(3.0)
+    averager.update(model)
+
+    live = model.state_dict()
+    shadow = averager.state_dict()["shadow"]
+    rebuilt = {
+        name: (shadow[name].to(value.dtype) if name in shadow else value)
+        for name, value in live.items()
+    }
+    for name, value in averager.apply_to(model).items():
+        assert torch.allclose(rebuilt[name], value)

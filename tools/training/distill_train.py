@@ -501,6 +501,11 @@ def save_checkpoint(
     The averaged weights are stored **beside** the live ones, never instead of them: which of
     the two is better is an empirical question the eval tools answer with ``--ema``, and a
     checkpoint that had quietly overwritten one with the other could not be asked.
+
+    They are stored **once**, as the averager's shadow. An earlier version also wrote a
+    materialised ``student_ema`` state dict, which is the same 85.5M values a second time --
+    342 MB per save on a 1.38 GB checkpoint, written every 2,000 steps onto a box that runs
+    at 93% full. ``load_student_from_checkpoint`` reconstructs it, which costs nothing.
     """
     tmp = path.with_suffix(".tmp")
     payload = {
@@ -512,7 +517,6 @@ def save_checkpoint(
         "config": asdict(config),
     }
     if averager is not None:
-        payload["student_ema"] = averager.apply_to(student)
         payload["ema_state"] = averager.state_dict()
     torch.save(payload, tmp)
     tmp.replace(path)

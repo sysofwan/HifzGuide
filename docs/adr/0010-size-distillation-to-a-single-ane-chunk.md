@@ -97,8 +97,8 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   forward with no gradient, optimiser state or stored activations costs ~1.2 GB resident,
   which the 16 GB card absorbs: measured peak is **10.97 GiB at batch 32** (batch 48 OOMs).
 
-- **The loss is a frame-weighted logit KL plus tapped feature matching**, and both weightings
-  exist because an unweighted mean optimises the wrong thing:
+- **Two frame weightings shape the KL**, because an unweighted mean optimises the wrong
+  thing:
 
   - *Non-blank frames are up-weighted.* CTC output is blank-dominated — per Muraja's own
     `CTCStats`, blank holds 30–60% of timesteps during speech and 85–98% during silence — so
@@ -111,6 +111,10 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
     *oldest*, having accumulated the full 4 s of right context. The other 100 keep weight 1.0
     rather than being masked — they still drive the provisional display and the hallucination
     gate — but the region that becomes the transcript is worth more.
+
+  One caution: **the non-blank boost does not transfer to other objectives.** Under a soft
+  KL its effect is moderated by the target distribution; under hard labels it became a
+  direct class-prior bias and flipped the student from under- to over-emitting.
 
 - **The objective is pure weighted KL. The CTC anchor was REMOVED, and the feature term with
   it.** This bullet previously argued the opposite, and the reversal is the single most
@@ -127,7 +131,7 @@ the waqf head (ADR-0004) are a separate track against the same teacher.
   never re-examined, and measurement later showed it holding **71% of the gradient** and
   actively destabilising training as the data diversified — the ablation is in "The 84.58%
   ceiling was a self-inflicted objective bug" above. Removing it moved decoded agreement
-  84.58% → 89.37% and gate agreement 77.0% → 91.5%.
+  84.58% → 89.37% and gate agreement 81.0% → 91.5%.
 
   The feature-matching term is removed for a duller reason: it earned 0.5% of the gradient
   and scored 0.886x the predict-the-mean baseline. It was never doing work.
@@ -190,21 +194,33 @@ being tested — which is why none of them explained anything:
 Retraining with **pure weighted KL** -- no CTC, no feature matching -- on the identical
 corpus, model and step budget:
 
+Every row below is measured on the **same 200 held-out clips** for both checkpoints. An
+earlier version of this table compared the old recipe on 100 clips against the new one on
+200, which is not a comparison; the old checkpoint was re-run at 200 to replace it.
+
 | | old recipe | KL-only |
 | --- | --- | --- |
 | confirmed-stream char accuracy | 84.58% | **89.37%** |
 | exact match | 10.5% | **14.5%** |
-| **gate-decision agreement** | **77.0%** | **91.5%** (trivial baseline 88.0%) |
-| teacher passed / student failed | 18 in 100 | **9 in 200** |
-| student passed / teacher failed | 5 in 100 | 8 in 200 |
-| mean match_ratio | 0.745 | **0.809** (teacher 0.847) |
-| ratio correlation | 0.648 | **0.874** |
+| **gate-decision agreement** | **81.0%** | **91.5%** |
+| teacher passed / student failed | 27 in 200 | **9 in 200** |
+| student passed / teacher failed | 11 in 200 | 8 in 200 |
+| mean match_ratio | 0.751 | **0.809** (teacher 0.847) |
+| ratio correlation | 0.653 | **0.874** |
 | frame confirmed_agreement | 0.8819 | **0.9177** |
 | target_rank | 1.249 | **1.167** |
 
 The directional failure that made the student unshippable -- rejecting recitation the
-teacher accepts -- is gone: 18-vs-5 became 9-vs-8, and the false-rejection rate fell from
-18% to 4.5%.
+teacher accepts -- is gone: 27-vs-11 became 9-vs-8, and the false-rejection rate fell from
+13.5% to 4.5%. On identical clips the agreement gain (81.0% -> 91.5%) clears an unpaired
+two-proportion test at p ~ 0.002, and the paired test on the same clips can only be
+stronger, so the recipe change is real rather than sampling noise.
+
+**But 91.5% is not yet distinguishable from doing nothing.** A gate that passes every clip
+scores 88.0% on this set, and 91.5% vs 88.0% is *not* significant (McNemar p ~ 0.23,
+n=200). The KL-only recipe is measurably better than the old recipe; it is not yet
+measurably better than a rubber stamp. Closing that gap needs both a higher score and a
+larger evaluation set -- see the follow-up issue.
 
 **The lesson worth keeping is procedural.** Every term in a distillation loss should be
 justified by a measurement, and re-justified whenever the diagnosis that motivated it

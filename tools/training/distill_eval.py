@@ -57,12 +57,11 @@ from training.distill_data import (
     split_clips,
 )
 from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS, breakout_stats
-from training.distill_student import PRESETS, build_student
+from training.distill_student import DEPLOYED_LOGIT_FRAMES, PRESETS, build_student
 
 # The device advances its buffer by 1 s per confirmed pass; at 125 timesteps per 5 s window
 # that is 25 timesteps, which is also ``CONFIRM_TIMESTEPS``.
 HOP_SAMPLES = SAMPLE_RATE
-LOGIT_FRAMES = 125
 
 
 @dataclass(frozen=True)
@@ -176,7 +175,7 @@ def confirmed_stream(
             logits = model(features, return_dict=True)["logits"]["phonemes"]
         ids = logits.float().argmax(dim=-1).cpu().numpy()
         for row in ids:
-            stream.extend(confirmed_tokens(row[:LOGIT_FRAMES]))
+            stream.extend(confirmed_tokens(row[:DEPLOYED_LOGIT_FRAMES]))
 
     return stream
 
@@ -266,14 +265,18 @@ def check_split_matches_checkpoint(saved: dict, val_fraction: float) -> None:
 
 
 def load_student_from_checkpoint(checkpoint_path: Path, device: torch.device):
-    """Rebuild the student described by a checkpoint and load its weights."""
+    """Rebuild the student described by a checkpoint and load its weights.
+
+    Returns the run's persisted config alongside the model: the eval tools need it to
+    refuse a split the checkpoint was not trained under.
+    """
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    preset = state["config"]["preset"]
-    student = build_student(PRESETS[preset])
+    config = state["config"]
+    student = build_student(PRESETS[config["preset"]])
     student.load_state_dict(state["student"])
     student = student.to(device)
     student.eval()
-    return student, preset, state["step"]
+    return student, config, state["step"]
 
 
 @dataclass(frozen=True)
@@ -346,25 +349,29 @@ def run_breakout_diagnostic(
     0.1%. This reports the continuous quantities instead -- see
     :class:`training.distill_loss.BreakoutStats`.
     """
-    import torch as _torch
     from torch.utils.data import DataLoader
 
     from training.distill_data import DistillWindowDataset, build_window_index
-    from training.distill_train import load_teacher
+    from training.distill_train import _init_worker, load_teacher
 
-    device = _torch.device("cuda")
+    device = torch.device("cuda")
     student, preset, step = load_student_from_checkpoint(checkpoint, device)
     teacher = load_teacher(device)
 
     _, val_clips = split_clips(discover_clips(audio_root), val_fraction)
     refs = build_window_index(val_clips)[:num_windows]
-    loader = DataLoader(DistillWindowDataset(refs), batch_size=16, num_workers=4)
+    loader = DataLoader(
+        DistillWindowDataset(refs),
+        batch_size=16,
+        num_workers=4,
+        worker_init_fn=_init_worker,
+    )
 
     totals: dict[str, float] = {}
     batches = 0
     for features in loader:
         features = features.to(device)
-        with _torch.no_grad(), _torch.autocast("cuda", dtype=_torch.bfloat16):
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
             teacher_logits = teacher(features, return_dict=True)["logits"]["phonemes"]
             student_logits = student(features, return_dict=True)["logits"]["phonemes"]
         for key, value in breakout_stats(student_logits, teacher_logits).as_dict().items():
@@ -442,7 +449,9 @@ def main() -> None:
 
     from training.distill_train import load_teacher
 
-    student, preset, step = load_student_from_checkpoint(args.checkpoint, device)
+    student, state_config, step = load_student_from_checkpoint(args.checkpoint, device)
+    preset = state_config["preset"]
+    check_split_matches_checkpoint(state_config, args.val_fraction)
     teacher = load_teacher(device)
     extractor = SeamlessM4TFeatureExtractor.from_pretrained("obadx/muaalem-model-v3_2")
 
@@ -450,6 +459,14 @@ def main() -> None:
     # student was fit on can inflate the number. --split train scores seen clips instead,
     # which is only useful as the paired comparison described in the flag's help.
     train_clips, val_clips = split_clips(discover_clips(args.audio_root), args.val_fraction)
+    if args.split == "train" and state_config.get("stream_shards"):
+        raise SystemExit(
+            "--split train is meaningless for this checkpoint: it was trained with "
+            f"--stream-shards {state_config['stream_shards']!r}, so every clip under "
+            "--audio-root is held out and the 'train' side was never seen. Comparing the "
+            "two splits would show no gap for a reason that has nothing to do with "
+            "generalisation."
+        )
     clips = (train_clips if args.split == "train" else val_clips)[: args.num_clips]
     if not clips:
         raise SystemExit(f"no {args.split} clips found")

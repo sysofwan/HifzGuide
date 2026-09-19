@@ -6,7 +6,16 @@ already produces, because that is the behaviour Muraja's scorer, fixtures and th
 are all tuned against. Everything here therefore measures student-vs-teacher, never
 student-vs-reference.
 
-Two weightings shape the frame loss, and both exist because an unweighted mean over the
+**The objective is a single term: frame-weighted KL on the logits.** It arrived there by
+subtraction, and the removals are the useful part of the story.
+
+A tapped hidden-state matching term and a CTC anchor against the teacher's decoded sequence
+were both tried and both removed. :func:`feature_matching_loss` and :func:`ctc_anchor_loss`
+survive as flags so the ablations stay reproducible; neither should be switched on again
+without new evidence. See ADR-0010 for the measurements, and :class:`DistillLossConfig` for
+the short version.
+
+Two weightings shape the remaining term, and both exist because an unweighted mean over the
 125-timestep lattice optimises the wrong thing.
 
 **Non-blank frames are up-weighted.** CTC output is blank-dominated -- per Muraja's own
@@ -25,24 +34,11 @@ full 4 s of right context. The remaining 100 timesteps only ever drive the provi
 overlap display and the hallucination gate. They still matter, so they keep weight 1.0
 rather than being masked out, but the region that becomes the transcript is worth more.
 
-The feature term is the other half of the recipe. At a 7x width cut, logit matching alone
-is weak supervision -- one 43-way distribution per 40 ms against a 1024-dimensional teacher
-representation per 20 ms. :func:`feature_matching_loss` regresses the student's hidden
-states onto the teacher's at several tapped depths through a learned projection, which is
-what DistilHuBERT/FitHuBERT-style recipes use to keep fine phonetic structure alive in a
-thin student.
-
-**Neither of those escapes the all-blank basin, so there is a third term.** Both the KL and
-the feature loss are *per-frame* objectives, and per-frame objectives have no way to break
-alignment symmetry: if the student has not yet learned which frames carry which phoneme,
-answering blank everywhere is locally optimal at every single frame, and all-blank is a
-stable fixed point. Measured on this exact recipe at step 2000, the teacher's class sat at
-rank **8.2** with probability **0.027** against blank's **0.822** -- not remotely close to
-escaping, despite top-5 agreement of 0.51 showing the encoder had learned real signal.
-:func:`ctc_anchor_loss` adds the standard fix: a *sequence* objective whose
-forward-backward sums over every valid alignment, under which an all-blank output has
-probability zero for any non-empty target. See :class:`BreakoutStats` for the measurement
-that distinguishes "converging slowly" from "stuck", which argmax agreement cannot.
+One caution carried over from the removals: **frame agreement and decoded agreement are not
+the same objective.** Under a hard-label variant, frame ``confirmed_agreement`` rose while
+decoded char accuracy fell. After the ``scanCTC`` collapse, *where* an error lands matters
+more than how many there are, so any future objective work should be scored on the decoded
+stream from the start.
 """
 
 from __future__ import annotations
@@ -332,21 +328,24 @@ def ctc_anchor_loss(
     **Reference scale, measured on 32 windows of the Tadabur corpus** (teacher targets
     average 29 tokens over the 125-frame lattice, none empty):
 
-    ===========================  ==========
-    student                      ctc loss
-    ===========================  ==========
-    argmax blank everywhere       **17.76**
-    matching the teacher           **0.19**
-    ===========================  ==========
+    ==================================  ==========
+    student                             ctc loss
+    ==================================  ==========
+    *saturated* blank (one-hot)          **17.76**
+    argmax blank, but soft elsewhere      **~3.3**
+    matching the teacher                  **0.19**
+    ==================================  ==========
 
-    Worth knowing because the number is not read the way it looks. A student whose *argmax*
-    is blank on 100% of frames still scored **3.3** here -- far nearer the floor than the
-    ceiling -- because CTC marginalises over every alignment, so spreading a little
-    probability onto the target tokens satisfies it without ever winning an argmax. That is
-    the classic non-peaky CTC regime, and it means a plateau around 3 is not the term
-    failing to apply; it is the term being nearly satisfied while the decode is still empty.
-    Driving it the rest of the way to ~0.2 is what forces peaky, decodable output, and
-    ``--ctc-weight`` is the lever if that descent stalls.
+    The middle row is the one that matters and the one the table used to omit, which made
+    the other two actively misleading.
+
+    The number is not read the way it looks: 3.3 is much nearer the 0.19 floor than the
+    17.76 ceiling, so a student sitting there looks 80% converged while decoding to nothing.
+    CTC marginalises over every alignment, so spreading a little probability onto the target
+    tokens satisfies it without ever winning an argmax -- the classic non-peaky regime.
+
+    In this work that descent never completed, and pushing on it was the wrong response:
+    the term was removed instead. See :class:`DistillLossConfig`.
     """
     log_probs = F.log_softmax(student_logits.float(), dim=-1).transpose(0, 1)
     targets, target_lengths = teacher_target_sequences(teacher_logits)
@@ -502,26 +501,33 @@ class DistillLossConfig:
     tap_layers: tuple[int, ...] = DEFAULT_TAP_LAYERS
 
 
+def _round_or_none(value: float | None, digits: int) -> float | None:
+    return None if value is None else round(value, digits)
+
+
 @dataclass
 class DistillLossOutput:
     """The scalar to backprop plus every component, for logging."""
 
     total: torch.Tensor
-    logit_loss: float
-    feature_loss: float
-    hard_loss: float
-    ctc_loss: float
-    feature_cosine: float
+    logit_loss: float | None
+    feature_loss: float | None
+    hard_loss: float | None
+    ctc_loss: float | None
+    feature_cosine: float | None
     stats: AgreementStats
 
     def as_dict(self) -> dict:
         return {
             "total": float(self.total.detach()),
-            "logit_loss": round(self.logit_loss, 5),
-            "feature_loss": round(self.feature_loss, 5),
-            "hard_loss": round(self.hard_loss, 5),
-            "ctc_loss": round(self.ctc_loss, 5),
-            "feature_cosine": round(self.feature_cosine, 4),
+            # None, not 0.0, for a term that was not computed. For MSE and CTC zero IS the
+            # optimum, so a disabled term logged as 0.0000 reads as a perfect match, and a
+            # disabled cosine reads as orthogonal rather than absent.
+            "logit_loss": _round_or_none(self.logit_loss, 5),
+            "feature_loss": _round_or_none(self.feature_loss, 5),
+            "hard_loss": _round_or_none(self.hard_loss, 5),
+            "ctc_loss": _round_or_none(self.ctc_loss, 5),
+            "feature_cosine": _round_or_none(self.feature_cosine, 4),
             **self.stats.as_dict(),
         }
 
@@ -534,7 +540,11 @@ def distillation_loss(
     projector: FeatureProjector,
     config: DistillLossConfig = DistillLossConfig(),
 ) -> DistillLossOutput:
-    """The full objective: weighted logit KL + tapped feature matching."""
+    """The objective: frame-weighted logit KL, plus any ablation term switched on.
+
+    Only the KL is enabled by default. Terms at weight 0 are skipped rather than multiplied
+    by zero -- each costs a real forward -- and report ``None`` rather than 0.0.
+    """
     weights = frame_weights(
         teacher_logits,
         nonblank_weight=config.nonblank_weight,
@@ -554,7 +564,7 @@ def distillation_loss(
         logit_value = float(logit_loss.detach())
     else:
         logit_loss = torch.zeros((), device=student_logits.device)
-        logit_value = 0.0
+        logit_value = None
 
     if config.feature_weight:
         feature_loss, cosine = feature_matching_loss(
@@ -563,7 +573,7 @@ def distillation_loss(
         feature_value = float(feature_loss.detach())
     else:
         feature_loss = torch.zeros((), device=student_logits.device)
-        feature_value, cosine = 0.0, 0.0
+        feature_value, cosine = None, None
 
     total = config.logit_weight * logit_loss + config.feature_weight * feature_loss
 
@@ -572,14 +582,14 @@ def distillation_loss(
         total = total + config.hard_weight * hard
         hard_value = float(hard.detach())
     else:
-        hard_value = 0.0
+        hard_value = None
 
     if config.ctc_weight:
         ctc = ctc_anchor_loss(student_logits, teacher_logits)
         total = total + config.ctc_weight * ctc
         ctc_value = float(ctc.detach())
     else:
-        ctc_value = 0.0
+        ctc_value = None
 
     return DistillLossOutput(
         total=total,

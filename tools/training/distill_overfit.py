@@ -56,7 +56,7 @@ from training.distill_loss import (
     weighted_kl,
 )
 from training.distill_student import PRESETS, TEACHER_HIDDEN_SIZE, build_student
-from training.distill_train import load_teacher, seed_everything
+from training.distill_train import _init_worker, load_teacher, seed_everything
 
 # The MSE a constant predictor achieves on the teacher's tapped hidden states, averaged
 # over DEFAULT_TAP_LAYERS. Measured on this corpus; see the module docstring.
@@ -77,8 +77,15 @@ def fixed_batches(
     if not clips:
         raise SystemExit(f"no .wav files under {audio_root}")
     refs = build_window_index(clips)[:num_windows]
+    # Pinned to one thread per worker like the training loop: both of these tools are
+    # documented as things you run ALONGSIDE a training job, so unpinned workers reintroduce
+    # exactly the oversubscription that was costing the run being measured 30% of its rate.
     loader = DataLoader(
-        DistillWindowDataset(refs), batch_size=batch_size, num_workers=8, drop_last=True
+        DistillWindowDataset(refs),
+        batch_size=batch_size,
+        num_workers=8,
+        drop_last=True,
+        worker_init_fn=_init_worker,
     )
     return [batch.to(device) for batch in loader]
 

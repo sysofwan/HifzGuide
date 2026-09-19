@@ -19,10 +19,13 @@ The arithmetic that makes it work, measured on this box:
 * a shard holds ~1000 clips ≈ 3.4 h of audio ≈ 4,920 windows ≈ **154 steps** at batch 32;
 * 154 steps at ~0.95 steps/s is **162 s** of training.
 
-Download is ~4.4x faster than consumption, so the stream keeps ahead of the GPU with a
-single shard in flight and the disk never grows. Over all 385 shards that is ~1,310 hours
+Download is ~4.4x faster than consumption **per worker**, so one stream stays ahead of the
+GPU and the disk never grows. Note that ``distill_train`` defaults to 8 workers and each
+fetches its own shard, so the real run has 8 concurrent downloads sharing one link and up
+to ~20 GB of shards in flight -- the headroom above is per-stream, not aggregate. Over all 385 shards that is ~1,310 hours
 and ~1.89M windows -- **one epoch is ~59,000 steps**, more than the 40,000 the staged-corpus
-run used, with every window seen exactly once and therefore no way to overfit.
+run used. Past one epoch the loader restarts with the same ``seed`` and replays the same
+shard permutation, so ``--steps`` beyond ~59,000 does repeat windows.
 
 **Train and validation are split by shard, not by clip.** The staged ``clips_v2`` corpus is
 the filtered output of shards 0-19, so training on those shards would leak into the
@@ -192,9 +195,10 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
     def __iter__(self):
         """Shuffle-buffered feature windows.
 
-        Waveforms are buffered rather than features: same reordering, ~4x less memory, and
-        the feature extraction then happens on the shuffled order so it parallelises the
-        same way.
+        Waveforms are buffered rather than features. That is the **more** expensive choice
+        -- a 5 s float32 waveform is 320 KB against a feature window's 160 KB, see
+        :data:`DEFAULT_SHUFFLE_BUFFER` -- and is kept only so the shuffle stays independent
+        of the feature extractor. If RAM binds again, buffering features is the cheaper fix.
         """
         rng = random.Random(self.seed + 1)
         buffer: list = []

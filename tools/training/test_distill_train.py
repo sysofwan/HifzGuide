@@ -107,13 +107,17 @@ def test_resume_tolerates_a_checkpoint_missing_a_field():
 
 
 def test_every_loss_weight_is_guarded():
-    """A new loss term added without guarding it would resume silently divergent."""
-    loss_fields = {
-        "logit_weight",
-        "feature_weight",
-        "ctc_weight",
-        "temperature",
-        "nonblank_weight",
-        "confirm_weight",
-    }
-    assert loss_fields <= set(dt.RESUME_CRITICAL_FIELDS)
+    """A new loss term added without guarding it would resume silently divergent.
+
+    Derived from TrainConfig rather than hand-listed. The hand-written version had already
+    gone stale -- it omitted `hard_weight` -- so it would have passed for a newly added
+    `*_weight` that nobody added to RESUME_CRITICAL_FIELDS, which is the exact regression
+    the docstring claims it catches.
+    """
+    from dataclasses import fields
+
+    weights = {f.name for f in fields(dt.TrainConfig) if f.name.endswith("_weight")}
+    assert weights, "no *_weight fields found -- has TrainConfig been renamed?"
+    assert weights <= set(dt.RESUME_CRITICAL_FIELDS), (
+        f"unguarded loss weights: {sorted(weights - set(dt.RESUME_CRITICAL_FIELDS))}"
+    )

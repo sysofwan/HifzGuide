@@ -56,13 +56,12 @@ import torch.nn as nn
 from training.distill_student import (
     DEPLOYED_FEATURE_FRAMES,
     FEATURE_INPUT_DIM,
+    PHONEME_LEVEL,
     PRESETS,
     PROVEN_MAX_CHUNK_MB,
     build_student,
     count_parameters,
 )
-
-PHONEME_LEVEL = "phonemes"
 
 
 class PhonemesOnlyWrapper(nn.Module):
@@ -135,10 +134,14 @@ def trace_student(model, traced_path: Path) -> Path:
 
         with torch.no_grad():
             traced = torch.jit.trace(wrapper, (example,))
-            reference = wrapper(example)
-            got = traced(example)
-            drift = (reference - got).abs().max().item()
-        print(f"Trace verification -- max abs diff: {drift:.2e}")
+            # Verify on a SECOND, independently drawn input. Checking the tracing input
+            # back against itself is guaranteed to agree -- anything constant-folded FROM
+            # that tensor reproduces it exactly -- so it proves nothing about whether the
+            # trace baked the input in. The `new_ones`/`new_zeros` converters and the
+            # adapter-mask patch are exactly the machinery that could do that.
+            probe = torch.randn(1, DEPLOYED_FEATURE_FRAMES, FEATURE_INPUT_DIM)
+            drift = (wrapper(probe) - traced(probe)).abs().max().item()
+        print(f"Trace verification (unseen input) -- max abs diff: {drift:.2e}")
         if drift > 1e-3:
             raise SystemExit(f"trace diverged from eager by {drift:.2e}")
 

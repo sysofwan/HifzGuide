@@ -347,7 +347,12 @@ def test_ctc_anchor_backprops():
     assert torch.isfinite(student.grad).all()
 
 
-def test_ctc_weight_zero_reproduces_the_old_objective():
+def test_a_zero_weight_removes_a_term_from_the_total():
+    """Weights must actually gate terms, since the ablations are run by setting them to 0.
+
+    Feature matching is enabled explicitly here: it is off by default now, so a test that
+    wants KL+feature has to ask for it rather than inherit it.
+    """
     student_logits = _logits(seed=11)
     teacher_logits = _logits(seed=12)
     student_hidden = tuple(torch.randn(2, 250, 16) for _ in range(25))
@@ -356,9 +361,10 @@ def test_ctc_weight_zero_reproduces_the_old_objective():
 
     off = dl.distillation_loss(
         student_logits, teacher_logits, student_hidden, teacher_hidden, projector,
-        dl.DistillLossConfig(ctc_weight=0.0),
+        dl.DistillLossConfig(ctc_weight=0.0, feature_weight=1.0),
     )
-    assert off.ctc_loss == 0.0
+    # None, not 0.0: a skipped term must be distinguishable from a perfectly-satisfied one.
+    assert off.ctc_loss is None
     assert float(off.total.detach()) == pytest.approx(
         off.logit_loss + off.feature_loss, rel=1e-5
     )
@@ -393,7 +399,23 @@ def test_default_config_computes_only_the_kl_term():
     projector = dl.FeatureProjector(16, 32, num_taps=len(dl.DEFAULT_TAP_LAYERS))
 
     out = dl.distillation_loss(student, teacher, hidden_s, hidden_t, projector)
-    assert out.ctc_loss == 0.0
-    assert out.feature_loss == 0.0
-    assert out.hard_loss == 0.0
+    # None rather than 0.0 -- for MSE and CTC zero IS the optimum, so a disabled term
+    # logged as 0.0000 reads as a perfect match in the metrics.
+    assert out.ctc_loss is None
+    assert out.feature_loss is None
+    assert out.hard_loss is None
+    assert out.feature_cosine is None
     assert float(out.total.detach()) == pytest.approx(out.logit_loss, rel=1e-5)
+
+
+def test_disabled_terms_serialise_as_null_not_zero():
+    """metrics.jsonl must distinguish "not computed" from "achieved the optimum"."""
+    student, teacher = _logits(seed=31), _logits(seed=32)
+    hidden = tuple(torch.randn(2, 250, 16) for _ in range(25))
+    hidden_t = tuple(torch.randn(2, 250, 32) for _ in range(25))
+    projector = dl.FeatureProjector(16, 32, num_taps=len(dl.DEFAULT_TAP_LAYERS))
+
+    record = dl.distillation_loss(student, teacher, hidden, hidden_t, projector).as_dict()
+    assert record["ctc_loss"] is None
+    assert record["feature_loss"] is None
+    assert record["logit_loss"] is not None

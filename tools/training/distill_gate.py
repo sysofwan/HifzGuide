@@ -43,7 +43,11 @@ import numpy as np
 import torch
 
 from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
-from training.distill_eval import confirmed_stream, load_student_from_checkpoint
+from training.distill_eval import (
+    check_split_matches_checkpoint,
+    confirmed_stream,
+    load_student_from_checkpoint,
+)
 
 # ``tadabur_spk0039_S5_A31_60e0c708_000042.wav`` -> surah index 5 (0-based), ayah 31.
 CLIP_NAME_PATTERN = re.compile(r"_S(\d+)_A(\d+)_")
@@ -135,6 +139,15 @@ def recalibrated_agreement(
     This asks whether the student is simply *offset* from the teacher -- in which case a
     recalibrated bar restores the decisions -- or genuinely noisier, in which case no
     single threshold helps and the disagreement is irreducible.
+
+    **This models only the match_ratio condition.** The real gate
+    (``tadabur.scorer.Scorer.gate``) also rejects on ``max_insertion_run`` and on
+    ``added_shadda``, and ``pairs`` does not carry either, so a clip the real gate fails at
+    a high ratio is counted here as passing at any threshold below it. An over-emitting
+    student -- long interior insertion runs -- would therefore be scored optimistically, and
+    the sweep can report a "recalibration win" that the shipped gate would not deliver.
+    Treat the result as an upper bound on what moving the bar could buy, never as a
+    replacement for measuring the real gate at that bar.
     """
     same = sum(
         1
@@ -237,7 +250,9 @@ def main() -> None:
     from tadabur.scorer import BALANCED_SCORER
     from training.distill_train import load_teacher
 
-    student, preset, step = load_student_from_checkpoint(args.checkpoint, device)
+    student, state_config, step = load_student_from_checkpoint(args.checkpoint, device)
+    preset = state_config["preset"]
+    check_split_matches_checkpoint(state_config, args.val_fraction)
     teacher = load_teacher(device)
     extractor = SeamlessM4TFeatureExtractor.from_pretrained("obadx/muaalem-model-v3_2")
     references = load_reference_phonemes()
@@ -303,10 +318,13 @@ def main() -> None:
         f"student {report.mean_student_ratio:.4f}"
     )
     print(f"  ratio correlation     {report.ratio_correlation:.4f}")
+    from tadabur.scorer import BALANCED
+
     print(
         f"  best student bar      {report.best_threshold:.2f} -> "
-        f"{report.best_threshold_agreement:.1%} agreement "
-        f"(shipped bar is 0.65 -> {report.decision_agreement:.1%})"
+        f"{report.best_threshold_agreement:.1%} agreement (ratio condition only; "
+        f"shipped bar is {BALANCED.correct_threshold:.2f} -> "
+        f"{report.decision_agreement:.1%} on the FULL gate)"
     )
     print(
         f"  pass-everything       {report.always_pass_agreement:.1%} "

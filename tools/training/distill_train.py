@@ -6,13 +6,17 @@ chunks to one. The objective and its rationale live in ``training.distill_loss``
 module owns the run: the frozen teacher, the optimiser, the VRAM preflight, checkpointing
 and the metrics log.
 
-**The teacher runs online rather than from a cache.** Caching only its 43-way logits would
-be cheap (~11 KB/window) but would forfeit the feature-matching term, which is what carries
-a 7x width cut; caching its hidden states instead would cost ~3 MB/window, i.e. terabytes
-over the corpus. Running it live costs one bf16 forward per step with no gradient, no
-optimiser state and no stored activations -- about 1.2 GB resident -- which the 16 GB card
-absorbs comfortably. It also keeps teacher and student pointwise aligned on identical
-input by construction, with no cache-staleness failure mode.
+**The teacher runs online.** A live bf16 forward per step costs no gradient, no optimiser
+state and no stored activations -- about 1.2 GB resident -- which the 16 GB card absorbs,
+and it keeps teacher and student pointwise aligned on identical input with no
+cache-staleness failure mode.
+
+That was once also forced: caching the teacher's 43-way logits (~11 KB/window) would have
+forfeited the feature-matching term, which needed its hidden states (~3 MB/window,
+terabytes over the corpus). With feature matching removed the constraint is gone and
+**logit caching is now viable** -- one teacher forward per window instead of one per step,
+~19 GB for the staged corpus. It is not implemented, but it is the obvious speedup for
+anyone sweeping objectives or learning rates.
 
 **Preflight before commit.** ``training.whole_clip_phoneme`` established the pattern this
 follows: run one real worst-case forward/backward, measure peak VRAM against a budget, and
@@ -245,6 +249,9 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
     if not clips:
         raise SystemExit(f"no .wav files under {audio_root}")
     train_clips, val_clips = split_clips(clips, config.val_fraction)
+    # Under --stream-shards, train_clips is unused: training windows come from shards
+    # 20-384 and the whole of --audio-root is held out (StreamingWindowDataset refuses the
+    # shards that produced it).
 
     val_refs = build_window_index(val_clips, config.hop_seconds)
 
@@ -311,18 +318,27 @@ def forward_step(
     projector: FeatureProjector,
     loss_config: DistillLossConfig,
 ):
-    """One teacher+student forward and the loss over them."""
+    """One teacher+student forward and the loss over them.
+
+    Hidden states are requested only when the feature term is on. They are 25 layers x
+    B x 250 x d per model -- ~410 MB for the teacher at batch 32 in bf16, plus the
+    student's stack retained for autograd -- so materialising them for a disabled term
+    wastes most of a gigabyte every step and inflates what ``preflight`` reports as the
+    batch's true cost.
+    """
+    want_hidden = bool(loss_config.feature_weight)
+
     with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
-        teacher_out = teacher(features, output_hidden_states=True, return_dict=True)
+        teacher_out = teacher(features, output_hidden_states=want_hidden, return_dict=True)
 
     with torch.autocast("cuda", dtype=torch.bfloat16):
-        student_out = student(features, output_hidden_states=True, return_dict=True)
+        student_out = student(features, output_hidden_states=want_hidden, return_dict=True)
 
     return distillation_loss(
         student_logits=student_out["logits"]["phonemes"],
         teacher_logits=teacher_out["logits"]["phonemes"],
-        student_hidden=student_out["hidden_states"],
-        teacher_hidden=teacher_out["hidden_states"],
+        student_hidden=student_out["hidden_states"] if want_hidden else (),
+        teacher_hidden=teacher_out["hidden_states"] if want_hidden else (),
         projector=projector,
         config=loss_config,
     )

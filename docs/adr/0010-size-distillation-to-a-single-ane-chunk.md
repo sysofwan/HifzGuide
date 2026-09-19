@@ -188,8 +188,12 @@ being tested — which is why none of them explained anything:
   32 windows decoded **1.000**, 256 windows **1.000**, 1024 windows **0.000** (collapsed,
   gradient norm spiking to 36.9). Not data -- 78,578 windows are available and it could not
   use 1,024. Not capacity -- it reproduced 256 windows exactly.
-* **Term ablation at that scale:** KL-only **0.847** and climbing; CTC-only **0.000**;
-  KL+CTC **0.000**. Adding CTC to a working KL destroys it.
+* **Term ablation at that scale** (decoded agreement at step 3000): KL-only **0.847** and
+  climbing; CTC-only **0.000**; KL+CTC **0.000**; KL+feature **0.676**. Adding CTC to a
+  working KL destroys it, and feature matching -- worth only 1.7% of the gradient --
+  still costs 0.17 of decoded agreement at a matched step budget. The two terms were
+  removed together in the full run, so each was later re-ablated on its own to confirm
+  neither removal was carried by the other.
 
 Retraining with **pure weighted KL** -- no CTC, no feature matching -- on the identical
 corpus, model and step budget:

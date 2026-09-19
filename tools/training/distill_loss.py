@@ -492,13 +492,28 @@ class DistillLossConfig:
     # measurement then showed it taking most of the gradient and destabilising training as
     # the data diversified: at 1024 fixed windows, KL-only reached decoded 0.847 while
     # KL+CTC collapsed to 0.000. Removing it moved the full run 84.58% -> 89.37% decoded and
-    # 77.0% -> 91.5% gate agreement. See ADR-0010.
+    # 81.0% -> 91.5% gate agreement. See ADR-0010.
     ctc_weight: float = 0.0
     temperature: float = DEFAULT_TEMPERATURE
     nonblank_weight: float = DEFAULT_NONBLANK_WEIGHT
     confirm_weight: float = DEFAULT_CONFIRM_WEIGHT
     confirm_timesteps: int = CONFIRM_TIMESTEPS
     tap_layers: tuple[int, ...] = DEFAULT_TAP_LAYERS
+
+    def __post_init__(self) -> None:
+        # Every weight zero makes `total` a constant, and the failure surfaces three
+        # minutes later inside backward() as "element 0 of tensors does not require
+        # grad" -- after the teacher has loaded and the batches have been fit. It is
+        # always a config mistake, so say so before any of that work happens. This
+        # bit an ablation script that passed --logit-weight 0 --ctc-weight 0 and
+        # relied on feature_weight still defaulting to 1.0, which it no longer does.
+        if not any((self.logit_weight, self.feature_weight,
+                    self.hard_weight, self.ctc_weight)):
+            raise ValueError(
+                "every loss weight is zero, so there is nothing to optimise. "
+                "Enable at least one of logit_weight, feature_weight, hard_weight, "
+                "ctc_weight -- note that only logit_weight defaults to 1.0."
+            )
 
 
 def _round_or_none(value: float | None, digits: int) -> float | None:

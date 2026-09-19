@@ -419,3 +419,22 @@ def test_disabled_terms_serialise_as_null_not_zero():
     assert record["ctc_loss"] is None
     assert record["feature_loss"] is None
     assert record["logit_loss"] is not None
+
+
+def test_an_all_zero_objective_is_refused_at_config_time():
+    """Otherwise it surfaces minutes later as an autograd error inside backward().
+
+    This is not hypothetical: an ablation script passed --logit-weight 0 --ctc-weight 0
+    and relied on feature_weight still defaulting to 1.0. It does not any more, so all
+    four weights were zero, `total` was a constant, and the run died in backward() after
+    loading the teacher -- with a message that says nothing about loss weights.
+    """
+    with pytest.raises(ValueError, match="nothing to optimise"):
+        dl.DistillLossConfig(logit_weight=0.0, feature_weight=0.0,
+                             hard_weight=0.0, ctc_weight=0.0)
+
+
+def test_a_single_enabled_term_is_a_valid_objective():
+    """The guard must not reject the ablation arms themselves."""
+    assert dl.DistillLossConfig(logit_weight=0.0, feature_weight=1.0).feature_weight == 1.0
+    assert dl.DistillLossConfig(logit_weight=0.0, ctc_weight=1.0).ctc_weight == 1.0

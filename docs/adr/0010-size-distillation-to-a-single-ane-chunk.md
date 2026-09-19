@@ -368,12 +368,36 @@ The condition has an 8.5% base rate and turns on where a *single* geminate lands
 counts already match (student 13.16 per clip against the teacher's 13.56, 0.97x), so this is
 placement, not rate.
 
-Driving full-gate flips below 5% therefore requires the student's decode to sit within about
-**one phoneme edit** of the teacher's on most clips — roughly 99% character accuracy against
-today's 89.37%. That is a different problem from the one the ">95%" target was written for,
-and it is not a step-count problem. The target should be restated per condition, and the
-heuristic's own fragility is an ADR-0001 P3.5 question: a shipped gate condition that flips
-on 6.5% of clips under a one-phoneme decode change is fragile for the teacher too.
+That perturbation is a **pessimistic** model of a real student, though, and the difference
+matters enough that acting on the synthetic curve alone would have misdirected the work. Its
+edits are uniformly distributed; a student's are not. Bucketing the 2,000 population clips by
+the actual edit distance between the two decodes:
+
+| edits | clips | gate agreement | share of all flips |
+| --- | --- | --- | --- |
+| 0 | 155 | **100.0%** | 0% |
+| 1 | 186 | **100.0%** | 0% |
+| 2–3 | 352 | 97.2% | 6% |
+| 4–7 | 527 | 93.5% | 20% |
+| 8–15 | 489 | 86.1% | 40% |
+| 16+ | 291 | 79.4% | 35% |
+
+Within one edit the gate never flips — 341 clips, zero disagreements — and **75% of all flips
+come from the 39% of clips with eight or more edits**. Gate agreement is a steep, monotone
+function of decode fidelity, and the errors are concentrated in a tail rather than spread
+thin.
+
+So the target is reachable after all, and the budget is legible: moving the edit distribution
+one bucket left takes flips from 8.6% to roughly 4.4%, i.e. past the bar. That is character
+accuracy around 95% against today's 90.4% on this set — a large jump, but a *training* jump,
+not the ~99% the uniform-perturbation model implied. The efficient version targets the tail:
+291 clips carry a third of the disagreement.
+
+Two things are true at once and both belong in the decision. The gap is reducible by better
+decodes, and `REJECT_ADDED_SHADDA` is what converts a decode error into a flipped decision at
+an 8.5% base rate on the placement of a single geminate. The first is this issue's work; the
+second is an ADR-0001 P3.5 question, because a shipped gate condition that flips on 6.5% of
+clips under a one-phoneme decode change is fragile for the teacher too.
 
 ## Teacher-weight initialisation: what transfers, and what does not
 

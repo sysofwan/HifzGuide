@@ -19,8 +19,8 @@ Muraja parameter", "Tadabur-only", "filter-side": a long interior insertion run,
 *added* shadda. They exist to keep poison clips out of the ADR-0001 fine-tune corpus, not to
 decide what a reciter is shown. Scoring a size distillation against them measures a
 corpus-filtering policy, and the added-shadda one is an asymmetric P3.5 mitigation whose
-verdict turns on where a single geminate lands -- one phoneme edit to the **teacher's own**
-decode flips it on 6.3% of clips. ADR-0010's standing rule is that this work must not be
+verdict turns on where a single geminate lands, and it is the most edit-sensitive part of the
+gate by roughly nine to one against the ratio. ADR-0010's standing rule is that this must not be
 confounded with the ADR-0001 track, so ``--criterion`` defaults to
 ``gate_evalset.DISTILLATION_CRITERION`` and every definition is printed alongside, because
 the choice should be visible in the output rather than argued from memory.
@@ -763,8 +763,8 @@ def main() -> None:
         help="which definition of the gate the headline is scored on. Defaults to the "
         "distillation criterion: both of the gate's poison rejects are Tadabur "
         "filter-side policy rather than Muraja parameters, and the added-shadda one is an "
-        "ADR-0001 mitigation whose verdict flips on 6.3%% of clips under a single phoneme "
-        "edit to the teacher's OWN decode. Every definition is printed regardless.",
+        "ADR-0001 mitigation, and the most edit-sensitive part of the gate by roughly nine "
+        "to one against the ratio. Every definition is printed regardless.",
     )
     parser.add_argument(
         "--ema",

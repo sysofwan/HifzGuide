@@ -339,8 +339,8 @@ own comments label both "NOT a Muraja parameter", "Tadabur-only" and "filter-sid
 interior insertion run, and an *added* shadda (the ADR-0001 P3.5 asymmetric mitigation).
 They exist to keep poison clips out of the fine-tune corpus, not to decide what a reciter is
 shown. Holding a **size distillation** to them scores it against a corpus-filtering policy —
-and against a condition whose verdict turns on the placement of one geminate, which a single
-phoneme edit to the *teacher's own* decode flips on 6.3% of clips.
+and against a condition whose verdict turns on the placement of one geminate — the most
+edit-sensitive part of the gate by roughly nine to one against the ratio.
 
 This ADR already carries the rule: the distillation "must not be confounded with the
 ADR-0001 track". `gate_evalset.DISTILLATION_CRITERION` is that rule applied, and
@@ -382,17 +382,30 @@ self-inflicted ones. Removing that one out-of-scope condition is the whole diffe
 
 ### Why more training does not close the rest
 
-Perturb **the teacher's own decode** by N random single-phoneme edits and re-gate it, 600
-clips:
+Perturb **the teacher's own decode** by N random single-phoneme edits — a third deletions, a
+third substitutions, a third insertions of a random phoneme — and re-gate it, 600 clips:
 
-| edits | gate flips | of which added-shadda | of which ratio |
-| --- | --- | --- | --- |
-| 1 | 6.5% | 6.3% | 0.2% |
-| 2 | 12.5% | 12.5% | 0.0% |
-| 4 | 18.2% | 17.7% | 0.2% |
-| 8 | 30.7% | 29.3% | 1.3% |
+| edits | gate flips | added-shadda | insertion-run | ratio |
+| --- | --- | --- | --- | --- |
+| 1 | 1.5% | 1.3% | 0.0% | 0.2% |
+| 2 | 3.0% | 2.0% | 0.2% | 0.8% |
+| 4 | 10.2% | 5.0% | 0.0% | 5.2% |
+| 8 | 30.8% | 8.2% | 0.3% | 22.3% |
 
-One edit flips the shipped gate on 6.5% of clips and essentially all of it is added shadda.
+The edit model matters and a first version of this got it wrong. Inserting a *duplicate* of
+the neighbouring phoneme — which is literally a geminate — put added shadda at 6.3% on one
+edit and made it look like the whole story at every edit count. That was circular. With
+neutral insertions, **one edit flips the gate on 1.5% of clips and added shadda is 1.3 of
+those 1.5 points against the ratio's 0.2** — still by far the most edit-sensitive condition,
+at roughly nine times the ratio's rate, but a fifth of the headline the biased model gave.
+
+Note also that by eight edits the *ratio* dominates this simulation (22.3% against 8.2%),
+which is the opposite of what the real decodes show. That gap is informative rather than
+contradictory: a student's errors are not random, and it keeps `match_ratio` far closer to
+the teacher's than random edits do (RMSE 0.079, offset −0.043) while still flipping discrete
+geminate decisions. Random-edit simulations over-move the ratio and under-state added
+shadda's real share.
+
 The condition has an 8.5% base rate and turns on where a *single* geminate lands; geminate
 counts already match (student 13.16 per clip against the teacher's 13.56, 0.97x), so this is
 placement, not rate.
@@ -425,8 +438,9 @@ not the ~99% the uniform-perturbation model implied. The efficient version targe
 Two things are true at once and both belong in the decision. The gap is reducible by better
 decodes, and `REJECT_ADDED_SHADDA` is what converts a decode error into a flipped decision at
 an 8.5% base rate on the placement of a single geminate. The first is this issue's work; the
-second is an ADR-0001 P3.5 question, because a shipped gate condition that flips on 6.5% of
-clips under a one-phoneme decode change is fragile for the teacher too.
+second is an ADR-0001 P3.5 question: a filter condition that accounts for 1.3 of the 1.5
+points a single phoneme edit moves, against the ratio's 0.2, is admitting and rejecting
+corpus clips partly on decode noise.
 
 ## Teacher-weight initialisation: what transfers, and what does not
 
@@ -637,10 +651,18 @@ ones.
   per-condition row exist so that split is in every report rather than being rediscovered.
 
 - **Before optimising an agreement target, measure what the target does under a trivial
-  perturbation of the *teacher*.** Perturbing the teacher's own decode by one phoneme flips
-  the shipped gate on 6.5% of clips. That number is the ceiling any student is being measured
-  against, it cost minutes of CPU to obtain, and it would have redirected this issue before a
-  single GPU hour was spent on it. The same check applies to every future agreement bar.
+  perturbation of the *teacher*.** Perturbing the teacher's own decode by one phoneme shows
+  which of the gate's conditions is carrying the sensitivity — here, added shadda at nine
+  times the ratio's rate. It cost minutes of CPU and would have redirected this issue before
+  a single GPU hour was spent on it.
+
+  **And design the perturbation carefully**, because the first version of this was circular:
+  inserting a duplicate of the neighbouring phoneme *is* an added shadda, so it manufactured
+  the finding it was used to support and inflated it five-fold. A synthetic perturbation is
+  only evidence about the metric if its edit distribution is neutral with respect to the
+  thing being measured. The conclusion survived because it rests on the direct measurement
+  (91.40% against 96.85% on real decodes), not on the simulation — but it was stated with
+  the simulation's number.
 
 - **This must not be confounded with the ADR-0001 track.** That fine-tune deliberately
   *increases* tolerance on the soft pairs; width distillation will involuntarily *reduce*

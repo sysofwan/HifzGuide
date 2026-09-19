@@ -488,8 +488,8 @@ GATE_CONDITIONS: tuple[tuple[str, str], ...] = (
 # -- they exist to decide which clips enter the ADR-0001 fine-tune corpus, not what Muraja
 # shows a reciter. Holding a size distillation to them measures a corpus-filtering policy,
 # and the added-shadda reject in particular is an asymmetric ADR-0001 P3.5 mitigation whose
-# verdict turns on where one geminate lands: a single phoneme edit to the *teacher's own*
-# decode flips it on 6.3% of clips. ADR-0010 already carries the principle -- this work "must
+# verdict turns on where one geminate lands, and it is the most edit-sensitive part of the
+# gate by roughly nine to one against the ratio. ADR-0010 already carries the principle -- "must
 # not be confounded with the ADR-0001 track" -- and this constant is that principle applied.
 #
 # The insertion-run reject is kept because it is stable under the same perturbation (0.2%)
@@ -506,8 +506,8 @@ def gate_verdicts(
     ``tadabur.scorer.Scorer.gate`` ands three conditions together, and they are not
     comparable objects. ``match_ratio`` is a smooth function of the decode. The insertion-run
     and added-shadda rejects are discrete alignment properties: a *single* phoneme edit to
-    the teacher's own decode flips the shipped gate on 6.5% of clips, and 6.3 of those points
-    are added shadda against 0.2 for the ratio.
+    the teacher's own decode flips the shipped gate on 1.5% of clips, of which 1.3 points are
+    added shadda against 0.2 for the ratio.
 
     So a single agreement number over the shipped gate answers two questions at once and
     reports neither. Measured separately on the h384 baseline: 91.4% on the shipped gate,

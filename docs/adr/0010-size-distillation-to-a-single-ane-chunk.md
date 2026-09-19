@@ -332,115 +332,73 @@ changes the *teacher's own* decoded string on 12 of them and moves `match_ratio`
 0.062; Tadabur audio also peaks at 1.037, so PCM_16 clips real signal. This was caught forty
 minutes into a build and cost a rebuild.
 
-### Score the distillation on Muraja's decision, not on the filter's
+### The gate this was being scored against is not the one the product uses
 
-`tadabur.scorer` layers **two** rejects on top of the Muraja-faithful `match_ratio`, and its
-own comments label both "NOT a Muraja parameter", "Tadabur-only" and "filter-side": a long
-interior insertion run, and an *added* shadda (the ADR-0001 P3.5 asymmetric mitigation).
-They exist to keep poison clips out of the fine-tune corpus, not to decide what a reciter is
-shown. Holding a **size distillation** to them scores it against a corpus-filtering policy —
-and against a condition whose verdict turns on the placement of one geminate — the most
-edit-sensitive part of the gate by roughly nine to one against the ratio.
+Two accepted ADRs say so, and both were missed on the first pass.
 
-This ADR already carries the rule: the distillation "must not be confounded with the
-ADR-0001 track". `gate_evalset.DISTILLATION_CRITERION` is that rule applied, and
-`distill_gate --criterion` makes the choice visible in every report rather than assumed. The
-insertion-run reject is **kept** — it is stable under the same perturbation (0.2%) and
-excluding it changes nothing (96.85% against 96.50%), so dropping it would only make the
-criterion look tuned.
+**ADR-0005:** Muraja's **advancement** decision — does the reciter move forward — is
+`matchRatio` against a hard-coded **`correctThreshold = 0.70`** that `scoringMode` does not
+touch. `.balanced`'s `0.65` is the Tadabur filter's bar. A clip at 0.67 advances under one
+and not the other.
 
-### What the h384 checkpoint actually scores, and on which condition
+**ADR-0008 (Accepted):** the `.balanced` Smith-Waterman gate **is** ADR-0001's training-data
+filter, its job is "keep mislabelled clips out of the fine-tune corpus", and it "should not
+be the headline metric at all". Reading it as the product decision is precisely the
+conflation ADR-0008 exists to correct.
 
-Unchanged, no retraining, 2,000 population and 1,000 boundary clips:
+On top of the threshold, `Scorer.gate` layers two rejects its own comments call "NOT a Muraja
+parameter", "Tadabur-only", "filter-side": a long interior insertion run, and an added
+shadda. **Filtering is fine-tune-side. A size distillation is behavioural cloning of the
+teacher's decode and is not accountable for the corpus filter**, so none of it is in the
+distillation criterion — `GateDefinition` is a threshold and nothing else.
 
-| gate definition | population (n=2000) | boundary (n=1000) |
+### What the h384 checkpoint scores, and against what
+
+| decision | population (n=2000) | boundary (n=1000) |
 | --- | --- | --- |
-| Tadabur filter gate, both poison rejects | 91.40% | 92.40% |
-| **without the added-shadda reject** — the distillation criterion | **96.85%** [95.99, 97.53] | **95.80%** [94.37, 96.88] |
-| Muraja-faithful: `match_ratio` alone | 96.50% [95.60, 97.22] | 95.70% [94.26, 96.79] |
+| **advancement, ratio >= 0.70** — what Muraja decides | **94.60%** [93.23, 95.84] | **94.80%** [93.00, 96.30] |
+| at the filter's 0.65 bar, for comparison | 96.50% [95.43, 97.47] | 95.70% [94.22, 97.01] |
+| confirmed-stream character accuracy | 90.35% | 87.22% |
 
-**The >95% target is met.** On the population view the Wilson lower bound clears 95% outright;
-on the boundary view the point estimate clears it and the lower bound (94.4%) does not, so
-that view is met without margin. Directionally the student is slightly strict: 3.14% false
-rejections against 3.31% false acceptances on the population view.
+Intervals are bootstrapped over **reciters**, not clips. The clips are not independent —
+2,000 of them come from 286 voices — and the independent-sample interval is about 23% too
+narrow on exactly the question a ship decision asks. It does not change the verdict here, but
+it had to be measured rather than assumed.
 
-One caveat on reading the `ratio_only` row: on the population view its pass-everything floor
-is 96.10% against 96.50% agreement (McNemar p = 0.56), i.e. **that row is saturated and
-carries no evidence on that view**. Only ~4% of raw clips fail on ratio alone. The boundary
-view is where it is informative (floor 50.0%, p = 4e-108), which is what the two-view design
-is for.
+**The >95% target is not met on the decision the product makes.** An earlier revision of this
+section claimed it was; that claim used the filter's 0.65 threshold and is withdrawn. At 0.70
+the population view is 94.60% with an interval straddling 95%, and the boundary view is
+94.80%.
 
-`Scorer.gate` ands three conditions together and they are not comparable objects.
-`match_ratio` is a smooth function of the decode that frame-weighted KL pushes on directly;
-the insertion-run and added-shadda rejects are discrete alignment properties. A single number
-over the filter gate answers two questions and reports neither.
+Two cautions on reading the table. On the population view the always-pass floor at 0.70 is
+94.8%, so agreement of 94.60% is **at or below a rubber stamp there** — that view is
+saturated for this decision and carries no evidence; the boundary view (floor 49.2%) is where
+it is informative. And ADR-0008's own preference is that a distillation's headline should be
+**decode fidelity**, the third row, not a decision bit at all.
 
-Of 239 disagreements under the filter gate, **68% involve a poison reject rather than the
-ratio**, and that is almost entirely added shadda: 52 of 54 missed rejections and 65 of 68
-self-inflicted ones. Removing that one out-of-scope condition is the whole difference between
-91.40% and 96.85%.
+### What it would take, and what that estimate is worth
 
-### Why more training does not close the rest
+Bucketing the 2,000 population clips by the measured edit distance between the two decodes:
 
-Perturb **the teacher's own decode** by N random single-phoneme edits — a third deletions, a
-third substitutions, a third insertions of a random phoneme — and re-gate it, 600 clips:
-
-| edits | gate flips | added-shadda | insertion-run | ratio |
-| --- | --- | --- | --- | --- |
-| 1 | 1.5% | 1.3% | 0.0% | 0.2% |
-| 2 | 3.0% | 2.0% | 0.2% | 0.8% |
-| 4 | 10.2% | 5.0% | 0.0% | 5.2% |
-| 8 | 30.8% | 8.2% | 0.3% | 22.3% |
-
-The edit model matters and a first version of this got it wrong. Inserting a *duplicate* of
-the neighbouring phoneme — which is literally a geminate — put added shadda at 6.3% on one
-edit and made it look like the whole story at every edit count. That was circular. With
-neutral insertions, **one edit flips the gate on 1.5% of clips and added shadda is 1.3 of
-those 1.5 points against the ratio's 0.2** — still by far the most edit-sensitive condition,
-at roughly nine times the ratio's rate, but a fifth of the headline the biased model gave.
-
-Note also that by eight edits the *ratio* dominates this simulation (22.3% against 8.2%),
-which is the opposite of what the real decodes show. That gap is informative rather than
-contradictory: a student's errors are not random, and it keeps `match_ratio` far closer to
-the teacher's than random edits do (RMSE 0.079, offset −0.043) while still flipping discrete
-geminate decisions. Random-edit simulations over-move the ratio and under-state added
-shadda's real share.
-
-The condition has an 8.5% base rate and turns on where a *single* geminate lands; geminate
-counts already match (student 13.16 per clip against the teacher's 13.56, 0.97x), so this is
-placement, not rate.
-
-That perturbation is a **pessimistic** model of a real student, though, and the difference
-matters enough that acting on the synthetic curve alone would have misdirected the work. Its
-edits are uniformly distributed; a student's are not. Bucketing the 2,000 population clips by
-the actual edit distance between the two decodes:
-
-| edits | clips | gate agreement | share of all flips |
+| edits | clips | agreement at 0.70 | share of all flips |
 | --- | --- | --- | --- |
-| 0 | 155 | **100.0%** | 0% |
-| 1 | 186 | **100.0%** | 0% |
-| 2–3 | 352 | 97.2% | 6% |
-| 4–7 | 527 | 93.5% | 20% |
-| 8–15 | 489 | 86.1% | 40% |
-| 16+ | 291 | 79.4% | 35% |
+| 0 | 155 | 100.0% | 0% |
+| 1 | 186 | 100.0% | 0% |
+| 2–3 | 352 | 98.9% | 4% |
+| 4–7 | 527 | 97.3% | 13% |
+| 8–15 | 489 | 92.2% | 35% |
+| 16+ | 291 | 82.1% | 48% |
 
-Within one edit the gate never flips — 341 clips, zero disagreements — and **75% of all flips
-come from the 39% of clips with eight or more edits**. Gate agreement is a steep, monotone
-function of decode fidelity, and the errors are concentrated in a tail rather than spread
-thin.
+Agreement is a steep monotone function of decode fidelity and the errors sit in a tail: the
+**39% of clips with eight or more edits carry 83% of the 108 flips**, and they are long clips
+(median 25 s against 9 s) — which is **not** a train/eval duration mismatch, both
+distributions were measured and match closely.
 
-So the target is reachable after all, and the budget is legible: moving the edit distribution
-one bucket left takes flips from 8.6% to roughly 4.4%, i.e. past the bar. That is character
-accuracy around 95% against today's 90.4% on this set — a large jump, but a *training* jump,
-not the ~99% the uniform-perturbation model implied. The efficient version targets the tail:
-291 clips carry a third of the disagreement.
-
-Two things are true at once and both belong in the decision. The gap is reducible by better
-decodes, and `REJECT_ADDED_SHADDA` is what converts a decode error into a flipped decision at
-an 8.5% base rate on the placement of a single geminate. The first is this issue's work; the
-second is an ADR-0001 P3.5 question: a filter condition that accounts for 1.3 of the 1.5
-points a single phoneme edit moves, against the ratio's 0.2, is admitting and rejecting
-corpus clips partly on decode noise.
+Shifting every clip one bucket left computes to flips of 5.40% → 2.08%. **That is an
+illustration, not a forecast.** It assumes the intervention effect it is meant to estimate,
+borrows each bucket's observed error rate for clips that did not come from it, and absolute
+edit count is confounded with clip length and with the number of opportunities to flip. It
+says the lever is decode fidelity concentrated in a tail; it does not say what training buys.
 
 ## Teacher-weight initialisation: what transfers, and what does not
 
@@ -643,26 +601,31 @@ ones.
   on the same 40 ms lattice — negligible for sizing, but it would have to be distilled onto
   the student, which is out of scope here.
 
-- **Measure the gate one condition at a time.** `Scorer.gate` is three conditions anded
-  together and only one of them is a smooth function of the decode. Reported as a single
-  number, a student that reproduces the ratio almost perfectly and the added-shadda heuristic
-  poorly is indistinguishable from one that is uniformly mediocre — and the two call for
-  completely different work. `training.gate_evalset.gate_verdicts` and `distill_gate`'s
-  per-condition row exist so that split is in every report rather than being rediscovered.
+- **Check what the metric is a metric *of* before optimising it.** This work spent its first
+  pass improving agreement with `Scorer.gate` on the assumption that it was the product's
+  decision. It is not: ADR-0005 puts Muraja's advancement bar at **0.70**, and ADR-0008
+  (Accepted) says in as many words that this gate is ADR-0001's **training-data filter** and
+  "should not be the headline metric at all". Both were already written down. The cost of not
+  reading them was a measurement rebuilt around the wrong decision and a "target met" claim
+  that had to be withdrawn. When an issue states a target in a metric's terms, resolve what
+  the metric decides before treating the number as the goal.
 
-- **Before optimising an agreement target, measure what the target does under a trivial
-  perturbation of the *teacher*.** Perturbing the teacher's own decode by one phoneme shows
-  which of the gate's conditions is carrying the sensitivity — here, added shadda at nine
-  times the ratio's rate. It cost minutes of CPU and would have redirected this issue before
-  a single GPU hour was spent on it.
+- **Filtering is fine-tune-side; a distillation is not accountable for it.** The two poison
+  rejects keep mislabelled clips out of the corpus. Cloning the teacher's decode is a
+  different question, and mixing them makes a size distillation answer for a corpus policy.
+  They are out of the criterion entirely rather than reported and ignored.
 
-  **And design the perturbation carefully**, because the first version of this was circular:
-  inserting a duplicate of the neighbouring phoneme *is* an added shadda, so it manufactured
-  the finding it was used to support and inflated it five-fold. A synthetic perturbation is
-  only evidence about the metric if its edit distribution is neutral with respect to the
-  thing being measured. The conclusion survived because it rests on the direct measurement
-  (91.40% against 96.85% on real decodes), not on the simulation — but it was stated with
-  the simulation's number.
+- **Interval clustered data as clustered.** 2,000 evaluation clips come from 286 reciters and
+  agreement correlates within a voice, so the independent-sample interval is ~23% too narrow
+  on exactly the question a ship decision asks. Resampling reciters costs nothing and removes
+  an assumption nobody had checked.
+
+- **A synthetic perturbation is only evidence if its edit distribution is neutral with
+  respect to what is being measured.** The first version of the gate-sensitivity probe
+  inserted a *duplicate* of the neighbouring phoneme — which is literally a geminate — and so
+  manufactured the added-shadda finding it was then used to support, inflating it five-fold.
+  Perturbing the teacher to see which condition carries the sensitivity is still the right
+  cheap check; it has to be designed not to plant its own answer.
 
 - **This must not be confounded with the ADR-0001 track.** That fine-tune deliberately
   *increases* tolerance on the soft pairs; width distillation will involuntarily *reduce*

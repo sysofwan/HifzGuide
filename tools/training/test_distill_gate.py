@@ -251,11 +251,12 @@ def test_view_report_flags_a_student_that_only_matches_pass_everything():
 def test_view_report_reweights_enriched_strata_back_to_the_population():
     from training.distill_gate import build_view_report
 
-    # The boundary view is half near-bar, but near-bar clips are 4% of the real corpus.
+    # The boundary view is half near-bar, but near-bar clips are 4% of the real corpus. The
+    # near_fail clips flip (student's ratio clears the bar, teacher's does not); the
+    # pass_clear clips agree.
     clips = [_eval_clip(f"n{i}.wav", 0.60, False, stratum="near_fail") for i in range(2)]
     clips += [_eval_clip(f"p{i}.wav", 0.95, True, stratum="pass_clear") for i in range(2)]
-    decisions = {clip.filename: _decision(clip.filename, clip.teacher_ratio, True) for clip in clips}
-    # Both near_fail clips flip, both pass_clear agree -> raw 50%.
+    decisions = {c.filename: _decision(c.filename, 0.90, True) for c in clips}
     report = build_view_report(
         "boundary", "dev", clips, decisions, {"near_fail": 4, "pass_clear": 96}, 0.65
     )
@@ -290,6 +291,45 @@ def test_agreement_is_reported_under_each_definition_of_the_gate():
     assert report.agreement_by_condition["full"] == pytest.approx(1 / 3)
     assert report.agreement_by_condition["no_added_shadda"] == pytest.approx(1.0)
     assert report.agreement_by_condition["ratio_only"] == pytest.approx(1.0)
-    assert "REJECT_ADDED_SHADDA" in __import__(
+
+    # The headline follows the criterion, and the criterion is named in the output so a
+    # number can never be read without knowing which gate produced it.
+    assert report.criterion == "no_added_shadda"
+    assert report.agreement == pytest.approx(1.0)
+    rendered = __import__(
         "training.distill_gate", fromlist=["format_view_report"]
     ).format_view_report(report)
+    assert "without the added-shadda reject" in rendered
+    assert "<- scored" in rendered
+
+
+def test_the_criterion_selects_which_gate_the_headline_is_scored_on():
+    """A size distillation is not accountable for the Tadabur filter's poison policy."""
+    from training.distill_gate import build_view_report
+
+    # Two clips the teacher rejects only on added shadda, which the student does not
+    # reproduce. Under the shipped filter gate that is two flips; under the distillation
+    # criterion it is none.
+    clips = [_eval_clip(f"s{i}.wav", 0.90, False, stratum="pass_clear") for i in range(2)]
+    decisions = {c.filename: _decision(c.filename, 0.89, True) for c in clips}
+
+    scored = {
+        criterion: build_view_report(
+            "population", "dev", clips, decisions, {"pass_clear": 10}, 0.65, criterion
+        ).agreement
+        for criterion in ("full", "no_added_shadda", "ratio_only")
+    }
+    assert scored == {"full": 0.0, "no_added_shadda": 1.0, "ratio_only": 1.0}
+
+
+def test_comparing_against_a_file_without_the_insertion_run_is_refused_not_guessed():
+    """Defaulting the missing field to zero would read as a small, plausible, wrong delta."""
+    from training.distill_gate import _correct
+
+    clip = _eval_clip("a.wav", 0.90, True)
+    stale = {"filename": "a.wav", "student_passed": True, "student_ratio": 0.90}
+
+    assert _correct(clip, stale, "ratio_only", 0.65) is True
+    assert _correct(clip, stale, "full", 0.65) is True
+    with pytest.raises(SystemExit, match="insertion run"):
+        _correct(clip, stale, "no_added_shadda", 0.65)

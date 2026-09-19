@@ -9,10 +9,21 @@ Muraja's ``.balanced`` ``ScoringParameters``). A student whose decode differs fr
 teacher's in ways the aligner absorbs -- a boundary shifted by a frame, a soft-pair
 substitution -- changes the string while changing no decision at all.
 
-So this module scores both decodes through the **real gate** and asks how often they
-disagree about the outcome. That is the number a ship decision should turn on. An 84%
-character agreement that preserves 99% of gate decisions is a different proposition from
-one that flips them.
+So this module scores both decodes through the gate and asks how often they disagree about
+the outcome. An 84% character agreement that preserves 99% of gate decisions is a different
+proposition from one that flips them.
+
+**But "the gate" is three conditions, and only one of them is Muraja's.** `tadabur.scorer`
+layers two rejects on top of the Muraja-faithful ``match_ratio`` and labels both "NOT a
+Muraja parameter", "Tadabur-only", "filter-side": a long interior insertion run, and an
+*added* shadda. They exist to keep poison clips out of the ADR-0001 fine-tune corpus, not to
+decide what a reciter is shown. Scoring a size distillation against them measures a
+corpus-filtering policy, and the added-shadda one is an asymmetric P3.5 mitigation whose
+verdict turns on where a single geminate lands -- one phoneme edit to the **teacher's own**
+decode flips it on 6.3% of clips. ADR-0010's standing rule is that this work must not be
+confounded with the ADR-0001 track, so ``--criterion`` defaults to
+``gate_evalset.DISTILLATION_CRITERION`` and every definition is printed alongside, because
+the choice should be visible in the output rather than argued from memory.
 
 Both models are decoded through the **deployed** protocol
 (``training.distill_eval.confirmed_stream``: 5 s window, 1 s hop, ``midpoint < 25``
@@ -74,6 +85,7 @@ import torch
 
 from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
 from training.gate_evalset import (
+    DISTILLATION_CRITERION,
     GATE_CONDITIONS,
     STRATA,
     DirectionalErrors,
@@ -342,6 +354,34 @@ def score_student_on_evalset(
     return decisions
 
 
+def _correct(clip, decision: dict, criterion: str, threshold: float) -> bool:
+    """Did one student's saved decision reach the teacher's verdict, under ``criterion``?
+
+    Takes the saved dict rather than a :class:`StudentDecision` because the other side of a
+    ``--compare-decisions`` run is a file, possibly written before the insertion run was
+    cached. Only ``no_added_shadda`` reads that field, so a file without it is refused for
+    exactly that criterion rather than silently scored as if the run were zero -- which would
+    read as a small, plausible, wrong difference between two checkpoints.
+    """
+    if criterion == "no_added_shadda" and "student_insertion_run" not in decision:
+        raise SystemExit(
+            f"{decision.get('filename', '?')} in the comparison file predates the cached "
+            f"insertion run, so it cannot be scored under --criterion no_added_shadda. "
+            f"Re-run distill_gate on that checkpoint, or compare under --criterion "
+            f"ratio_only or full."
+        )
+    student = gate_verdicts(
+        decision["student_passed"],
+        decision["student_ratio"],
+        decision.get("student_insertion_run", 0),
+        threshold,
+    )[criterion]
+    teacher = gate_verdicts(
+        clip.teacher_passed, clip.teacher_ratio, clip.teacher_insertion_run, threshold
+    )[criterion]
+    return teacher == student
+
+
 @dataclass(frozen=True)
 class ViewReport:
     """One view of the frozen set (population or boundary), scored for one student.
@@ -354,6 +394,7 @@ class ViewReport:
 
     view: str
     split: str
+    criterion: str
     num_clips: int
     same_decision: int
     ci_low: float
@@ -381,6 +422,7 @@ class ViewReport:
         return {
             "view": self.view,
             "split": self.split,
+            "criterion": self.criterion,
             "num_clips": self.num_clips,
             "agreement": round(self.agreement, 4),
             "flip_rate": round(self.flip_rate, 4),
@@ -410,9 +452,27 @@ def build_view_report(
     decisions: dict[str, StudentDecision],
     scanned_by_stratum: dict[str, int],
     threshold: float,
+    criterion: str = DISTILLATION_CRITERION,
 ) -> ViewReport:
     """Aggregate one view's clips into the report a ship decision can be read off."""
-    pairs = [(clip.teacher_passed, decisions[clip.filename].student_passed) for clip in clips]
+    # The headline is scored under ``criterion``, not under ``clip.teacher_passed``. A size
+    # distillation is not accountable for the Tadabur filter's poison policy; see
+    # ``gate_evalset.DISTILLATION_CRITERION``. ``agreement_by_condition`` below still reports
+    # every definition, so nothing is hidden by the choice.
+    def verdict(passed: bool, ratio: float, insertion_run: int) -> bool:
+        return gate_verdicts(passed, ratio, insertion_run, threshold)[criterion]
+
+    pairs = [
+        (
+            verdict(clip.teacher_passed, clip.teacher_ratio, clip.teacher_insertion_run),
+            verdict(
+                decisions[clip.filename].student_passed,
+                decisions[clip.filename].student_ratio,
+                decisions[clip.filename].student_insertion_run,
+            ),
+        )
+        for clip in clips
+    ]
     rows = [
         (
             clip.teacher_passed,
@@ -429,20 +489,20 @@ def build_view_report(
     count = max(1, len(clips))
     absolute = sorted(abs(delta) for delta in deltas)
 
+    by_name = {clip.filename: pair for clip, pair in zip(clips, pairs)}
     per_stratum: dict[str, float] = {}
     for name in STRATA:
         members = [clip for clip in clips if clip.stratum == name]
         if members:
             per_stratum[name] = sum(
-                1
-                for clip in members
-                if clip.teacher_passed == decisions[clip.filename].student_passed
+                1 for clip in members if by_name[clip.filename][0] == by_name[clip.filename][1]
             ) / len(members)
 
     low, high = wilson_interval(same, len(clips))
     return ViewReport(
         view=view,
         split=split,
+        criterion=criterion,
         num_clips=len(clips),
         same_decision=same,
         ci_low=low,
@@ -493,7 +553,8 @@ def format_view_report(report: ViewReport) -> str:
     """The human rendering. Flip rate leads; agreement follows it."""
     errors = report.errors
     lines = [
-        f"  [{report.view}/{report.split}] {report.num_clips} clips",
+        f"  [{report.view}/{report.split}] {report.num_clips} clips "
+        f"-- scored on: {dict(GATE_CONDITIONS)[report.criterion]}",
         f"    FLIP RATE           {report.flip_rate:.2%}  "
         f"(agreement {report.agreement:.2%}, 95% CI "
         f"[{report.ci_low:.2%}, {report.ci_high:.2%}])",
@@ -507,9 +568,10 @@ def format_view_report(report: ViewReport) -> str:
         f"p95 {report.ratio_p95_abs_delta:.4f}, offset {report.ratio_offset:+.4f}",
         f"    pass-everything     {report.always_pass_agreement:.2%} agreement "
         f"-- the floor this must clear",
+        "    every definition of the gate, for reference:",
         *[
-            f"    {'agreement, ' + label:<20}{report.agreement_by_condition[name]:>7.2%}"
-            + ("   <- the number a ship decision turns on" if name == "full" else "")
+            f"      {label:<44}{report.agreement_by_condition[name]:>7.2%}"
+            + ("   <- scored" if name == report.criterion else "")
             for name, label in GATE_CONDITIONS
         ],
         f"    flips by condition  {report.causes.poison_share:.0%} involve a POISON reject "
@@ -566,7 +628,7 @@ def run_evalset(args, device) -> None:
                 reports.append(
                     build_view_report(
                     view, split, clips, decisions, evalset.scanned_by_stratum,
-                    BALANCED.correct_threshold,
+                    BALANCED.correct_threshold, args.criterion,
                 )
                 )
 
@@ -590,11 +652,17 @@ def run_evalset(args, device) -> None:
                     "num_clips": len(clips),
                     **paired_comparison(
                         [
-                            clip.teacher_passed == decisions[clip.filename].student_passed
+                            _correct(
+                                clip, decisions[clip.filename].as_dict(), args.criterion,
+                                BALANCED.correct_threshold,
+                            )
                             for clip in clips
                         ],
                         [
-                            clip.teacher_passed == other[clip.filename]["student_passed"]
+                            _correct(
+                                clip, other[clip.filename], args.criterion,
+                                BALANCED.correct_threshold,
+                            )
                             for clip in clips
                         ],
                         "this",
@@ -609,6 +677,7 @@ def run_evalset(args, device) -> None:
         "step": step,
         "weights": "ema" if args.ema else "live",
         "protocol_version": PROTOCOL_VERSION,
+        "criterion": args.criterion,
         "eval_set": str(args.eval_set),
         "views": [report.as_dict() for report in reports],
         "comparisons": comparisons,
@@ -686,6 +755,16 @@ def main() -> None:
         default=16,
         help="windows per forward. Lower it (4 or less) to run alongside a training job; "
         "both models must be resident and a training run may leave under 2 GB free.",
+    )
+    parser.add_argument(
+        "--criterion",
+        choices=[name for name, _ in GATE_CONDITIONS],
+        default=DISTILLATION_CRITERION,
+        help="which definition of the gate the headline is scored on. Defaults to the "
+        "distillation criterion: both of the gate's poison rejects are Tadabur "
+        "filter-side policy rather than Muraja parameters, and the added-shadda one is an "
+        "ADR-0001 mitigation whose verdict flips on 6.3%% of clips under a single phoneme "
+        "edit to the teacher's OWN decode. Every definition is printed regardless.",
     )
     parser.add_argument(
         "--ema",

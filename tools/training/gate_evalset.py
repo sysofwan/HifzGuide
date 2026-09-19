@@ -478,10 +478,24 @@ def directional_errors(decisions: list[tuple[bool, bool]]) -> DirectionalErrors:
 # asymmetric heuristic is unreproducible", and on the h384 baseline those are 3.2 and 5.4
 # points of the same 8.6-point gap.
 GATE_CONDITIONS: tuple[tuple[str, str], ...] = (
-    ("full", "the shipped gate"),
-    ("no_added_shadda", "without REJECT_ADDED_SHADDA"),
-    ("ratio_only", "match_ratio condition alone"),
+    ("full", "Tadabur filter gate (both poison rejects)"),
+    ("no_added_shadda", "without the added-shadda reject"),
+    ("ratio_only", "Muraja-faithful: match_ratio alone"),
 )
+
+# What a *distillation* run is scored on, and it is not the first row. `tadabur.scorer` says
+# so itself: both poison rejects are "NOT a Muraja parameter", "Tadabur-only", "filter-side"
+# -- they exist to decide which clips enter the ADR-0001 fine-tune corpus, not what Muraja
+# shows a reciter. Holding a size distillation to them measures a corpus-filtering policy,
+# and the added-shadda reject in particular is an asymmetric ADR-0001 P3.5 mitigation whose
+# verdict turns on where one geminate lands: a single phoneme edit to the *teacher's own*
+# decode flips it on 6.3% of clips. ADR-0010 already carries the principle -- this work "must
+# not be confounded with the ADR-0001 track" -- and this constant is that principle applied.
+#
+# The insertion-run reject is kept because it is stable under the same perturbation (0.2%)
+# and excluding it changes nothing (96.85% against 96.50%); dropping a condition that costs
+# nothing would only make the criterion look tuned.
+DISTILLATION_CRITERION = "no_added_shadda"
 
 
 def gate_verdicts(

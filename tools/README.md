@@ -287,6 +287,106 @@ python -m training.waqf_distill --manifest passing_subset.jsonl --clips-dir clip
     [--device cuda] [--dtype bfloat16] [--batch-size 8]
 ```
 
+### `training.distill_*` (Linux — GPU) — size distillation to a single ANE chunk
+
+Distils the 578M teacher's **phoneme head** into a thin student so the deployed model drops
+from six 6-bit CoreML chunks (504 MB) to one (ADR-0010). The driver is per-window cost:
+Muraja issues **~6 inferences per audio-second** — one full-window pass plus ~5 throttled
+previews — and each pays the full static `(1, 250, 160)` cost, which at the 150–200 ms A15
+figure saturates the ANE. The 5 s/1 s windowing contract is frozen, so per-window cost is
+the only lever.
+
+The objective is **behavioural cloning**: the student is correct insofar as it reproduces the
+teacher, because that is what Muraja's scorer and fixtures are tuned against. So **no labels
+are needed** (any recitation audio is training data) and **only the phoneme head is built**.
+
+**Result:** h384 at **62.3 MB, one ANE chunk, 11.1 ms/window on an M4 ANE** against the
+teacher's 42.3 ms, reproducing **89.37%** of the teacher's decoded characters and **91.5%** of
+its product gate decisions.
+
+**This is not shippable yet.** On the 200-clip eval set a gate that passes everything scores
+88.0%, and 91.5% vs 88.0% is not statistically significant (McNemar p ~ 0.23). The student
+beats the previous recipe convincingly (81.0% -> 91.5% on identical clips, p ~ 0.002); it does
+not yet beat a rubber stamp. Raising the score and enlarging the eval set is tracked in the
+follow-up issue.
+
+- **`distill_student`** — the width ladder. Every preset keeps all **24 layers** and shrinks
+  `hidden_size`; §6 of `ml-model-transformation.md` shows depth is the axis that destroys this
+  backbone. `h512` 151.8M → 109.0 MB → 2 chunks; **`h384` 85.5M → 62.3 MB → 1 chunk**;
+  `h448` 116.3M → 83.2 MB → 1 chunk (the widest that still fits); `h256` 38.2M → 27.9 MB.
+  `--verify` asserts the `(1, 250, 160) → (1, 125, 43)` contract.
+
+  Size is modelled over **graph constants, not parameters**, and students use **rotary**
+  position embeddings rather than the teacher's `relative_key`. A traced `relative_key`
+  attention bakes a `(250, 64, 250)` constant into the graph *per layer* — 96M values,
+  independent of width — which measured **130.3 MB** for h384 against **61.7 MB** with rotary.
+
+  Quote the **measured** latency, not the FLOP ratio: h384 is 3.3–3.8× faster in practice
+  against a 7.1× FLOP prediction, because at these sizes the ANE is overhead-bound.
+
+- **`distill_data`** — windows are cut from the **waveform before** feature extraction, since
+  the extractor normalizes per utterance while the device normalizes per 5 s window. Short
+  trailing windows are kept and zero-padded because the device pads too. The train/val split
+  hashes the **clip** name so overlapping windows cannot leak across it.
+
+- **`distill_stream`** — the corpus without the disk. Each window is read once, so shards are
+  fetched, consumed and deleted: peak disk is one ~2.5 GB shard per worker however many
+  shards the run covers. 365 shards ≈ **1,369 hours** ≈ 56k steps at batch 32. Shards 0–19
+  are refused by construction because they produced the staged validation clips. Used via
+  `distill_train --stream-shards 20-384`.
+
+- **`distill_loss`** — **frame-weighted KL, and nothing else.** Non-blank frames are
+  up-weighted (blank is 67% of frames) and the first **25** timesteps are up-weighted because
+  `predictSplit` commits only those to the transcript.
+
+  A feature-matching term and a CTC anchor were both tried and **both removed**; they survive
+  as zero-weighted flags so the ablations reproduce. The CTC term is the more important
+  removal: it was added to escape a blank collapse whose real cause turned out to be a
+  determinism bug, was never re-examined, and took most of the gradient while destabilising
+  training as the data diversified. At 1024 fixed windows, KL-only reached decoded 0.847 while
+  KL+CTC collapsed to 0.000. Removing both moved the full run **84.58% → 89.37%**.
+
+- **`distill_train`** — frozen bf16 teacher online, the `whole_clip_phoneme` VRAM preflight,
+  and a resume guard that refuses a config differing from the checkpoint's. Defaults are
+  lr **1e-4** (3e-4 destabilises once warmup ends) and the KL-only objective. Watch
+  `blank_collapse_margin`, `nonblank_agreement` and the pre-clip `|g|`.
+
+- **`distill_overfit`** — the first thing to run when a run plateaus, and the tool that found
+  the CTC problem. `--num-windows` sweeps how many distinct windows the model must fit and it
+  scores the **decoded** stream: 32 ✓, 256 ✓, 1024 ✗ localised the failure in about an hour,
+  after four full runs had been spent on the wrong hypotheses. Also reports per-term gradient
+  norms, which is how a term reading 3.3 against the KL's 6.5 was found to dominate the update.
+
+- **`distill_eval`** — the release gate. Replays the deployed protocol (5 s window, 1 s hop,
+  `scanCTC` collapse, `midpoint < 25` confirmation) and compares the **confirmed transcripts**.
+  `--breakout` reports distance-from-breakout while a student is still blank-collapsed, when
+  argmax agreement is a flat 0.0 either way.
+
+- **`distill_gate`** — the product question: does swapping the teacher for the student change
+  what Muraja *decides*? Scores both decodes through the ported `.balanced` gate and reports
+  decision agreement, split by direction — the student rejecting recitation the teacher
+  accepts is a different risk from the reverse.
+
+```bash
+cd tools
+python -m training.distill_student --verify              # sizing ladder + shape contract
+python -m training.distill_data --audio-root <wav-dir>   # clips, hours, window counts
+python -m training.distill_stream --shards 200 --probe   # what one streamed shard yields
+
+python -m training.distill_train --preset h384 --audio-root <wav-dir> \
+    --out-dir runs/h384 --batch-size 32 --preflight-only      # check VRAM first
+python -m training.distill_train --preset h384 --audio-root <wav-dir> \
+    --out-dir runs/h384 --batch-size 32 --steps 40000 [--resume]
+python -m training.distill_train --preset h384 --stream-shards 20-384 \
+    --audio-root <held-out-wav-dir> --out-dir runs/h384_full   # 1,369 h, bounded disk
+
+python -m training.distill_overfit --preset h384 --audio-root <wav-dir> --num-windows 1024
+python -m training.distill_eval --checkpoint runs/h384/checkpoint.pt \
+    --audio-root <wav-dir> --num-clips 200
+python -m training.distill_gate --checkpoint runs/h384/checkpoint.pt \
+    --audio-root <wav-dir> --num-clips 200
+```
+
 ### `convert_to_coreml.py`
 
 Converts the Wav2Vec2-BERT TorchScript model (`obadx/muaalem-model-v3_2`) to CoreML format optimized for Apple Neural Engine. Traces the model with a fixed input shape `(1, 250, 160)`, exports to FP32 `.mlpackage`, and optionally creates INT8 and 4-bit compressed variants.

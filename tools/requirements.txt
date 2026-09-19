@@ -9,7 +9,15 @@
 
 torch>=2.0.0
 coremltools>=7.0
-transformers>=4.40.0
+# Upper bound is load-bearing: transformers 5.14+ removed
+# _HIDDEN_STATES_START_POSITION from modeling_wav2vec2_bert, which the vendored
+# Muaalem modeling code imports. 5.13.0 is the verified snapshot (see
+# requirements-train.txt).
+transformers>=4.40.0,<5.14
+# Required by coremltools for k-means palettization of the smaller weight tensors
+# in a thin student (palettize_chunks.py / export_student_coreml.py). Large tensors
+# take an internal fast path, so this only surfaces on narrow models.
+scikit-learn>=1.0
 huggingface_hub>=0.20.0
 numpy>=1.24.0
 soundfile>=0.12.0

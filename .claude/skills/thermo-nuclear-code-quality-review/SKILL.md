@@ -1,7 +1,6 @@
 ---
 name: thermo-nuclear-code-quality-review
 description: Run a pragmatic maintainability + ML-correctness review for abstraction quality, spaghetti growth, and the reproducibility/data/numerical issues that matter most in ML code. Use for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, or ML code review.
-disable-model-invocation: true
 source: https://github.com/cursor/plugins/blob/main/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md
 ---
 

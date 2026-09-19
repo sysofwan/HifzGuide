@@ -493,7 +493,9 @@ def run_evalset(args, device) -> None:
             f"compared against a student decoded differently. Rebuild the set."
         )
 
-    student, state_config, step = load_student_from_checkpoint(args.checkpoint, device)
+    student, state_config, step = load_student_from_checkpoint(
+        args.checkpoint, device, use_ema=args.ema
+    )
     extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
     decisions = score_student_on_evalset(
         student, extractor, evalset, Path(args.eval_set) / CLIPS_DIRNAME, device,
@@ -546,6 +548,7 @@ def run_evalset(args, device) -> None:
         "checkpoint": str(args.checkpoint),
         "preset": state_config["preset"],
         "step": step,
+        "weights": "ema" if args.ema else "live",
         "protocol_version": PROTOCOL_VERSION,
         "eval_set": str(args.eval_set),
         "views": [report.as_dict() for report in reports],
@@ -625,6 +628,11 @@ def main() -> None:
         help="windows per forward. Lower it (4 or less) to run alongside a training job; "
         "both models must be resident and a training run may leave under 2 GB free.",
     )
+    parser.add_argument(
+        "--ema",
+        action="store_true",
+        help="score the averaged weights a --ema-decay run stored beside the live ones",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -649,7 +657,9 @@ def main() -> None:
     from tadabur.scorer import BALANCED_SCORER
     from training.distill_train import load_teacher
 
-    student, state_config, step = load_student_from_checkpoint(args.checkpoint, device)
+    student, state_config, step = load_student_from_checkpoint(
+        args.checkpoint, device, use_ema=args.ema
+    )
     preset = state_config["preset"]
     check_split_matches_checkpoint(state_config, args.val_fraction)
     teacher = load_teacher(device)

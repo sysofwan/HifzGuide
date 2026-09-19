@@ -129,6 +129,9 @@ class TrainConfig:
     temperature: float = 2.0
     nonblank_weight: float = 3.0
     confirm_weight: float = 2.0
+    # 0.0 disables averaging. 0.999 is ~1000 steps of memory, which at ~1 step/s is the
+    # timescale over which this run's loss visibly oscillates.
+    ema_decay: float = 0.0
 
     def loss_config(self) -> DistillLossConfig:
         return DistillLossConfig(
@@ -169,6 +172,7 @@ RESUME_CRITICAL_FIELDS = (
     "temperature",
     "nonblank_weight",
     "confirm_weight",
+    "ema_decay",
 )
 
 
@@ -210,6 +214,56 @@ def _init_worker(worker_id: int) -> None:
     numpy and the feature extractor read the env var directly.
     """
     torch.set_num_threads(1)
+
+
+class WeightAverage:
+    """An exponential moving average of the student's weights, kept alongside the live ones.
+
+    Distillation is optimising an argmax-derived metric -- the gate reads
+    ``logits.argmax``, so a parameter that oscillates around a good value spends half its
+    time producing a different decode. Averaging removes that oscillation at no training
+    cost and one model's worth of memory, and it is evaluated separately so the run reports
+    whether it actually helped rather than assuming it.
+
+    The decay is ramped in (``min(decay, (1 + step) / (10 + step))``) rather than held at its
+    final value from step 0. Held fixed, the average is dominated by the random
+    initialisation for the first few thousand steps and reads far worse than the live weights
+    for reasons that have nothing to do with averaging.
+    """
+
+    def __init__(self, student, decay: float) -> None:
+        if not 0.0 < decay < 1.0:
+            raise ValueError(f"ema decay must be in (0, 1), got {decay}")
+        self.decay = decay
+        self.step = 0
+        self.shadow = {
+            name: value.detach().clone().float()
+            for name, value in student.state_dict().items()
+            if value.is_floating_point()
+        }
+
+    @torch.no_grad()
+    def update(self, student) -> None:
+        self.step += 1
+        rate = min(self.decay, (1.0 + self.step) / (10.0 + self.step))
+        state = student.state_dict()
+        for name, average in self.shadow.items():
+            average.mul_(rate).add_(state[name].detach().float(), alpha=1.0 - rate)
+
+    def apply_to(self, student) -> dict:
+        """A state dict of the student with the averaged weights substituted in."""
+        return {
+            name: (self.shadow[name].to(value.dtype) if name in self.shadow else value)
+            for name, value in student.state_dict().items()
+        }
+
+    def state_dict(self) -> dict:
+        return {"decay": self.decay, "step": self.step, "shadow": self.shadow}
+
+    def load_state_dict(self, state: dict) -> None:
+        self.decay = state["decay"]
+        self.step = state["step"]
+        self.shadow = {name: value.clone() for name, value in state["shadow"].items()}
 
 
 def seed_everything(seed: int) -> None:
@@ -432,22 +486,35 @@ def preflight(
 
 
 def save_checkpoint(
-    path: Path, step: int, student, projector, optimizer, scheduler, config: TrainConfig
+    path: Path,
+    step: int,
+    student,
+    projector,
+    optimizer,
+    scheduler,
+    config: TrainConfig,
+    averager: "WeightAverage | None" = None,
 ) -> None:
     """Atomic checkpoint write -- temp file then rename, so a kill mid-save cannot
-    leave a truncated checkpoint that fails to load on resume."""
+    leave a truncated checkpoint that fails to load on resume.
+
+    The averaged weights are stored **beside** the live ones, never instead of them: which of
+    the two is better is an empirical question the eval tools answer with ``--ema``, and a
+    checkpoint that had quietly overwritten one with the other could not be asked.
+    """
     tmp = path.with_suffix(".tmp")
-    torch.save(
-        {
-            "step": step,
-            "student": student.state_dict(),
-            "projector": projector.state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "scheduler": scheduler.state_dict(),
-            "config": asdict(config),
-        },
-        tmp,
-    )
+    payload = {
+        "step": step,
+        "student": student.state_dict(),
+        "projector": projector.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "scheduler": scheduler.state_dict(),
+        "config": asdict(config),
+    }
+    if averager is not None:
+        payload["student_ema"] = averager.apply_to(student)
+        payload["ema_state"] = averager.state_dict()
+    torch.save(payload, tmp)
     tmp.replace(path)
 
 
@@ -509,6 +576,7 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
               f"fresh optimiser and schedule")
 
     checkpoint_path = out_dir / CHECKPOINT_FILENAME
+    averager = WeightAverage(student, config.ema_decay) if config.ema_decay else None
     if resume and checkpoint_path.exists():
         state = torch.load(checkpoint_path, map_location=device, weights_only=False)
         check_resume_compatible(state.get("config", {}), config)
@@ -516,8 +584,12 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
         projector.load_state_dict(state["projector"])
         optimizer.load_state_dict(state["optimizer"])
         scheduler.load_state_dict(state["scheduler"])
+        if averager is not None and "ema_state" in state:
+            averager.load_state_dict(state["ema_state"])
         start_step = state["step"]
         print(f"[resume] restored from step {start_step}")
+    if averager is not None:
+        print(f"[setup] weight averaging on, decay {config.ema_decay}")
 
     train_loader, val_loader = build_dataloaders(config)
     if config.stream_shards:
@@ -562,6 +634,8 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
                 ).item()
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
+                if averager is not None:
+                    averager.update(student)
             scheduler.step()
             step += 1
 
@@ -603,11 +677,12 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
 
             if step % config.save_every == 0:
                 save_checkpoint(
-                    checkpoint_path, step, student, projector, optimizer, scheduler, config
+                    checkpoint_path, step, student, projector, optimizer, scheduler,
+                    config, averager,
                 )
 
     save_checkpoint(
-        checkpoint_path, step, student, projector, optimizer, scheduler, config
+        checkpoint_path, step, student, projector, optimizer, scheduler, config, averager
     )
     val = evaluate(val_loader, teacher, student, device, config.eval_batches)
     log({"step": step, "split": "val", "final": True, **val})
@@ -670,6 +745,14 @@ def main() -> None:
         "student parks in the all-blank basin (watch blank_collapse_margin)",
     )
     parser.add_argument("--confirm-weight", type=float, default=2.0)
+    parser.add_argument(
+        "--ema-decay",
+        type=float,
+        default=0.0,
+        help="keep an exponential moving average of the student's weights alongside the "
+        "live ones (0 = off, 0.999 is a sensible on). Costs one model's memory and no "
+        "training time; score it with distill_gate --ema before trusting it.",
+    )
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
         "--init-from",
@@ -716,6 +799,7 @@ def main() -> None:
         temperature=args.temperature,
         nonblank_weight=args.nonblank_weight,
         confirm_weight=args.confirm_weight,
+        ema_decay=args.ema_decay,
     )
 
     device = torch.device("cuda")

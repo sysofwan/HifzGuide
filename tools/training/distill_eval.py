@@ -311,16 +311,31 @@ def check_split_matches_checkpoint(saved: dict, val_fraction: float) -> None:
         )
 
 
-def load_student_from_checkpoint(checkpoint_path: Path, device: torch.device):
+def load_student_from_checkpoint(
+    checkpoint_path: Path, device: torch.device, use_ema: bool = False
+):
     """Rebuild the student described by a checkpoint and load its weights.
 
     Returns the run's persisted config alongside the model: the eval tools need it to
     refuse a split the checkpoint was not trained under.
+
+    ``use_ema`` selects the averaged weights a run with ``--ema-decay`` stored beside the
+    live ones. It raises rather than falling back when they are absent: silently scoring the
+    live weights under an ``--ema`` flag would report the wrong model's number, and the two
+    are meant to be compared.
     """
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     config = state["config"]
     student = build_student(PRESETS[config["preset"]])
-    student.load_state_dict(state["student"])
+    if use_ema:
+        if "student_ema" not in state:
+            raise SystemExit(
+                f"{checkpoint_path} carries no averaged weights -- it was trained without "
+                f"--ema-decay. Drop --ema, or train a run that keeps an average."
+            )
+        student.load_state_dict(state["student_ema"])
+    else:
+        student.load_state_dict(state["student"])
     student = student.to(device)
     student.eval()
     return student, config, state["step"]

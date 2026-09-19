@@ -121,3 +121,76 @@ def test_every_loss_weight_is_guarded():
     assert weights <= set(dt.RESUME_CRITICAL_FIELDS), (
         f"unguarded loss weights: {sorted(weights - set(dt.RESUME_CRITICAL_FIELDS))}"
     )
+
+
+# --- Weight averaging ---
+
+
+def test_weight_average_tracks_a_constant_exactly():
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    model = torch.nn.Linear(4, 3)
+    averager = WeightAverage(model, 0.9)
+    for _ in range(200):
+        averager.update(model)
+    for name, value in model.state_dict().items():
+        assert torch.allclose(averager.shadow[name], value.float(), atol=1e-5)
+
+
+def test_weight_average_ramps_in_so_it_is_not_pinned_to_the_random_init():
+    """A fixed 0.999 decay leaves the average ~63% initialisation after 1000 steps.
+
+    That reads as "averaging made the model worse" for the first several thousand steps of
+    every run, for a reason that has nothing to do with averaging.
+    """
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    model = torch.nn.Linear(2, 2)
+    with torch.no_grad():
+        for parameter in model.parameters():
+            parameter.zero_()
+    averager = WeightAverage(model, 0.999)
+    with torch.no_grad():
+        for parameter in model.parameters():
+            parameter.fill_(1.0)
+    for _ in range(20):
+        averager.update(model)
+    # With a fixed 0.999 this would still be ~0.02; the ramp gets it most of the way there.
+    assert float(averager.shadow["weight"].mean()) > 0.5
+
+
+def test_weight_average_refuses_a_decay_outside_the_open_unit_interval():
+    import pytest
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    for decay in (0.0, 1.0, -0.1, 1.5):
+        with pytest.raises(ValueError):
+            WeightAverage(torch.nn.Linear(2, 2), decay)
+
+
+def test_apply_to_substitutes_only_the_floating_point_tensors():
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    model = torch.nn.Linear(2, 2)
+    averager = WeightAverage(model, 0.5)
+    with torch.no_grad():
+        model.weight.fill_(5.0)
+    averager.update(model)
+    substituted = averager.apply_to(model)
+    assert set(substituted) == set(model.state_dict())
+    assert not torch.allclose(substituted["weight"], model.weight)
+
+
+def test_ema_decay_is_a_resume_critical_field():
+    """Resuming at a different decay splices two different averages into one tensor."""
+    from training.distill_train import RESUME_CRITICAL_FIELDS
+
+    assert "ema_decay" in RESUME_CRITICAL_FIELDS

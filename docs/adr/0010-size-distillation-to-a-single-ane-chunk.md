@@ -188,12 +188,26 @@ being tested — which is why none of them explained anything:
   32 windows decoded **1.000**, 256 windows **1.000**, 1024 windows **0.000** (collapsed,
   gradient norm spiking to 36.9). Not data -- 78,578 windows are available and it could not
   use 1,024. Not capacity -- it reproduced 256 windows exactly.
-* **Term ablation at that scale** (decoded agreement at step 3000): KL-only **0.847** and
-  climbing; CTC-only **0.000**; KL+CTC **0.000**; KL+feature **0.676**. Adding CTC to a
-  working KL destroys it, and feature matching -- worth only 1.7% of the gradient --
-  still costs 0.17 of decoded agreement at a matched step budget. The two terms were
-  removed together in the full run, so each was later re-ablated on its own to confirm
-  neither removal was carried by the other.
+* **Term ablation at that scale**, decoded agreement at step 3000. The two terms were
+  removed together in the full run, so each was re-ablated on its own afterwards to
+  confirm neither removal was being carried by the other:
+
+  | terms | step 1000 | step 2000 | step 3000 |
+  | --- | --- | --- | --- |
+  | **KL only** | 0.171 | 0.742 | **0.847** |
+  | KL + feature | 0.000 | 0.283 | **0.676** |
+  | KL + CTC | 0.015 | 0.000 | **0.000** |
+  | CTC only | 0.150 | 0.111 | **0.000** |
+  | feature only | -0.010 | -0.091 | **-0.252** |
+
+  Adding CTC to a working KL destroys it. Feature matching is worth only 1.7% of the
+  gradient and still costs 0.17 of decoded agreement at a matched step budget. The
+  feature-only arm explains why: its own loss falls 0.610 -> 0.076, a clean 8x, while
+  decoded agreement goes *negative and keeps falling*. Matching the teacher's hidden
+  states is not a weak proxy for matching its output distribution -- on this backbone it
+  is very nearly an unrelated objective, and optimising it well is not evidence of
+  anything. That is the argument for scoring objective work on the decoded stream from
+  the first step rather than on whichever loss happens to be falling.
 
 Retraining with **pure weighted KL** -- no CTC, no feature matching -- on the identical
 corpus, model and step budget:

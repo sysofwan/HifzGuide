@@ -125,6 +125,12 @@ DEFAULT_BOUNDARY_TARGET = 1000
 # this, so including them would measure the student on audio the product pipeline never
 # reaches -- and each one costs ~46 teacher window passes.
 MAX_CLIP_SECONDS = 50.0
+
+# Mirrors ``tadabur.scorer.MAX_INSERTION_RUN``. Duplicated as a literal for the same reason
+# the vocabulary size is in ``distill_student``: the statistics here must stay importable
+# without dragging in the scorer (and therefore torch) for a torch-free test run. The test
+# suite pins the two against each other.
+MAX_INSERTION_RUN = 5
 # Below this there is not enough audio for one confirmed window to mean anything.
 MIN_CLIP_SECONDS = 1.5
 
@@ -465,6 +471,42 @@ def directional_errors(decisions: list[tuple[bool, bool]]) -> DirectionalErrors:
             1 for teacher, student in decisions if not teacher and student
         ),
     )
+
+
+# The gate's three conditions, as predicates over one side's ``GateResult`` fields. Scoring
+# agreement under each in turn is what separates "the student decodes differently" from "one
+# asymmetric heuristic is unreproducible", and on the h384 baseline those are 3.2 and 5.4
+# points of the same 8.6-point gap.
+GATE_CONDITIONS: tuple[tuple[str, str], ...] = (
+    ("full", "the shipped gate"),
+    ("no_added_shadda", "without REJECT_ADDED_SHADDA"),
+    ("ratio_only", "match_ratio condition alone"),
+)
+
+
+def gate_verdicts(
+    passed: bool, match_ratio: float, insertion_run: int, threshold: float
+) -> dict[str, bool]:
+    """One side's verdict under each progressively-relaxed definition of the gate.
+
+    ``tadabur.scorer.Scorer.gate`` ands three conditions together, and they are not
+    comparable objects. ``match_ratio`` is a smooth function of the decode. The insertion-run
+    and added-shadda rejects are discrete alignment properties: a *single* phoneme edit to
+    the teacher's own decode flips the shipped gate on 6.5% of clips, and 6.3 of those points
+    are added shadda against 0.2 for the ratio.
+
+    So a single agreement number over the shipped gate answers two questions at once and
+    reports neither. Measured separately on the h384 baseline: 91.4% on the shipped gate,
+    96.9% without the added-shadda reject, 96.5% on the ratio alone. Reproducing an
+    8.5%-base-rate heuristic that turns on one geminate's placement is a decode-fidelity
+    target of roughly *one edit per clip*; the rest of the gate was already met.
+    """
+    ratio_ok = match_ratio >= threshold
+    return {
+        "full": passed,
+        "no_added_shadda": ratio_ok and insertion_run < MAX_INSERTION_RUN,
+        "ratio_only": ratio_ok,
+    }
 
 
 @dataclass(frozen=True)

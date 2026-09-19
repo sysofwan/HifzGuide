@@ -177,11 +177,16 @@ def _eval_clip(name, ratio, passed, stratum=None, split="dev"):
     )
 
 
-def _decision(name, ratio, passed):
+def _decision(name, ratio, passed, insertion_run=0, added_shadda=False):
     from training.distill_gate import StudentDecision
 
     return StudentDecision(
-        filename=name, student_text="ab", student_ratio=ratio, student_passed=passed
+        filename=name,
+        student_text="ab",
+        student_ratio=ratio,
+        student_passed=passed,
+        student_insertion_run=insertion_run,
+        student_added_shadda=added_shadda,
     )
 
 
@@ -256,3 +261,35 @@ def test_view_report_reweights_enriched_strata_back_to_the_population():
     )
     assert report.agreement == 0.5
     assert report.reweighted_agreement == pytest.approx(0.96)
+
+
+def test_agreement_is_reported_under_each_definition_of_the_gate():
+    """One number over the shipped gate answers two questions and reports neither.
+
+    On the real baseline the same 8.6-point gap is 3.2 points of decode fidelity and 5.4
+    points of one asymmetric poison heuristic, and only the split says which to work on.
+    """
+    from training.distill_gate import build_view_report
+
+    # Teacher rejects both on added shadda (ratio high, no insertion run); the student
+    # reproduces neither. Under the shipped gate that is two flips; under either relaxed
+    # definition both sides agree.
+    clips = [
+        _eval_clip("a.wav", 0.90, False, stratum="pass_clear"),
+        _eval_clip("b.wav", 0.88, False, stratum="pass_clear"),
+        _eval_clip("c.wav", 0.30, False, stratum="fail_clear"),
+    ]
+    decisions = {
+        "a.wav": _decision("a.wav", 0.89, True),
+        "b.wav": _decision("b.wav", 0.87, True),
+        "c.wav": _decision("c.wav", 0.31, False),
+    }
+    report = build_view_report(
+        "population", "dev", clips, decisions, {"pass_clear": 10}, 0.65
+    )
+    assert report.agreement_by_condition["full"] == pytest.approx(1 / 3)
+    assert report.agreement_by_condition["no_added_shadda"] == pytest.approx(1.0)
+    assert report.agreement_by_condition["ratio_only"] == pytest.approx(1.0)
+    assert "REJECT_ADDED_SHADDA" in __import__(
+        "training.distill_gate", fromlist=["format_view_report"]
+    ).format_view_report(report)

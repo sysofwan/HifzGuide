@@ -368,3 +368,34 @@ def test_a_rejection_exactly_at_the_bar_is_not_a_ratio_rejection():
     causes = flip_causes([(True, 0.80, False, 0.65)], 0.65)
     assert causes.false_fail_on_poison == 1
     assert causes.false_fail_on_ratio == 0
+
+
+def test_the_duplicated_insertion_run_limit_matches_the_scorer():
+    """This module stays torch-free, so the limit is a literal. Pin it to its source."""
+    from tadabur.scorer import MAX_INSERTION_RUN as SCORER_LIMIT
+
+    from training.gate_evalset import MAX_INSERTION_RUN
+
+    assert MAX_INSERTION_RUN == SCORER_LIMIT
+
+
+def test_gate_verdicts_separate_the_ratio_from_the_poison_rejects():
+    from training.gate_evalset import MAX_INSERTION_RUN, gate_verdicts
+
+    # A clip the shipped gate rejects only because of an added shadda.
+    shadda_only = gate_verdicts(passed=False, match_ratio=0.90, insertion_run=0, threshold=0.65)
+    assert shadda_only == {"full": False, "no_added_shadda": True, "ratio_only": True}
+
+    # One rejected by a long insertion run: relaxing added-shadda does not rescue it.
+    run = gate_verdicts(
+        passed=False, match_ratio=0.90, insertion_run=MAX_INSERTION_RUN, threshold=0.65
+    )
+    assert run == {"full": False, "no_added_shadda": False, "ratio_only": True}
+
+    # One rejected on the ratio: every definition rejects it.
+    low = gate_verdicts(passed=False, match_ratio=0.40, insertion_run=0, threshold=0.65)
+    assert low == {"full": False, "no_added_shadda": False, "ratio_only": False}
+
+    # A pass is a pass under all three.
+    ok = gate_verdicts(passed=True, match_ratio=0.90, insertion_run=1, threshold=0.65)
+    assert all(ok.values())

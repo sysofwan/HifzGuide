@@ -74,12 +74,14 @@ import torch
 
 from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
 from training.gate_evalset import (
+    GATE_CONDITIONS,
     STRATA,
     DirectionalErrors,
     FlipCauses,
     PairedComparison,
     directional_errors,
     flip_causes,
+    gate_verdicts,
     paired_comparison,
     reweighted_agreement,
     wilson_interval,
@@ -272,6 +274,11 @@ class StudentDecision:
     student_text: str
     student_ratio: float
     student_passed: bool
+    # Cached so agreement can be scored under each of the gate's conditions separately. The
+    # teacher's are already in the manifest; without the student's, the decisive table --
+    # which condition is actually costing the agreement -- cannot be built at all.
+    student_insertion_run: int = 0
+    student_added_shadda: bool = False
 
     def as_dict(self) -> dict:
         return {
@@ -279,6 +286,8 @@ class StudentDecision:
             "student_text": self.student_text,
             "student_ratio": round(self.student_ratio, 6),
             "student_passed": self.student_passed,
+            "student_insertion_run": self.student_insertion_run,
+            "student_added_shadda": self.student_added_shadda,
         }
 
 
@@ -324,6 +333,8 @@ def score_student_on_evalset(
             student_text=text,
             student_ratio=result.match_ratio,
             student_passed=result.passed,
+            student_insertion_run=result.max_insertion_run,
+            student_added_shadda=result.added_shadda,
         )
         if index % 100 == 0:
             print(f"  {index}/{len(evalset.clips)} clips", flush=True)
@@ -355,6 +366,7 @@ class ViewReport:
     per_stratum_agreement: dict[str, float]
     reweighted_agreement: float
     causes: FlipCauses
+    agreement_by_condition: dict[str, float]
     trivial_guard: PairedComparison
 
     @property
@@ -383,6 +395,10 @@ class ViewReport:
             },
             **self.errors.as_dict(),
             **self.causes.as_dict(),
+            "agreement_by_condition": {
+                name: round(value, 4)
+                for name, value in self.agreement_by_condition.items()
+            },
             "guard_vs_always_pass": self.trivial_guard.as_dict(),
         }
 
@@ -441,6 +457,26 @@ def build_view_report(
         per_stratum_agreement=per_stratum,
         reweighted_agreement=reweighted_agreement(per_stratum, scanned_by_stratum),
         causes=flip_causes(rows, threshold),
+        agreement_by_condition={
+            condition: sum(
+                1
+                for clip in clips
+                if gate_verdicts(
+                    clip.teacher_passed,
+                    clip.teacher_ratio,
+                    clip.teacher_insertion_run,
+                    threshold,
+                )[condition]
+                == gate_verdicts(
+                    decisions[clip.filename].student_passed,
+                    decisions[clip.filename].student_ratio,
+                    decisions[clip.filename].student_insertion_run,
+                    threshold,
+                )[condition]
+            )
+            / max(1, len(clips))
+            for condition, _ in GATE_CONDITIONS
+        },
         # A guard, not evidence: on a view balanced around the bar, any competent student
         # beats pass-everything. It stays printed because a student that does NOT beat it is
         # a rubber stamp, and that has happened.
@@ -471,6 +507,11 @@ def format_view_report(report: ViewReport) -> str:
         f"p95 {report.ratio_p95_abs_delta:.4f}, offset {report.ratio_offset:+.4f}",
         f"    pass-everything     {report.always_pass_agreement:.2%} agreement "
         f"-- the floor this must clear",
+        *[
+            f"    {'agreement, ' + label:<20}{report.agreement_by_condition[name]:>7.2%}"
+            + ("   <- the number a ship decision turns on" if name == "full" else "")
+            for name, label in GATE_CONDITIONS
+        ],
         f"    flips by condition  {report.causes.poison_share:.0%} involve a POISON reject "
         f"(insertion run / added shadda), not the ratio",
         f"                        teacher rejected on poison, student passed  "

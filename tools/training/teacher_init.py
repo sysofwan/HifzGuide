@@ -78,6 +78,7 @@ import torch
 from training.distill_student import (
     PRESETS,
     TEACHER_HIDDEN_SIZE,
+    TEACHER_MODEL_ID,
     TEACHER_NUM_HEADS,
     StudentSpec,
     build_student,
@@ -101,6 +102,39 @@ def _layer_key(name: str) -> str:
     return name
 
 
+def _teacher_forward(teacher, features, **kwargs):
+    """One teacher forward under the same autocast the training step uses.
+
+    ``load_teacher`` returns a **bf16** teacher, so calling it on fp32 features outside
+    autocast raises a dtype mismatch inside the first Linear. Every forward here goes through
+    this, which also keeps the activations these statistics are measured on identical to the
+    ones training actually produces.
+    """
+    if features.is_cuda:
+        with torch.autocast("cuda", dtype=torch.bfloat16):
+            return teacher(features, **kwargs)
+    return teacher(features, **kwargs)
+
+
+def load_teacher_weights(model_id: str = TEACHER_MODEL_ID):
+    """The teacher in **fp32 on the CPU**, for the weight copy only.
+
+    ``training.distill_train.load_teacher`` casts to bf16, which is right for running the
+    teacher and wrong for copying it: bf16 keeps 8 mantissa bits, so a transplant taken from
+    it starts the student on rounded weights for no reason. The statistics passes use the
+    bf16 GPU teacher; only the copy uses this one, and it never touches the GPU.
+    """
+    from tadabur.muaalem import (
+        Wav2Vec2BertForMultilevelCTC,
+        Wav2Vec2BertForMultilevelCTCConfig,
+    )
+
+    config = Wav2Vec2BertForMultilevelCTCConfig.from_pretrained(model_id)
+    weights = Wav2Vec2BertForMultilevelCTC.from_pretrained(model_id, config=config)
+    weights.eval()
+    return weights
+
+
 @dataclass
 class CalibrationStats:
     """Everything measured from the teacher on real audio, before anything is copied.
@@ -112,6 +146,7 @@ class CalibrationStats:
     residual_importance: torch.Tensor
     head_importance: dict[str, torch.Tensor] = field(default_factory=dict)
     ffn_importance: dict[str, torch.Tensor] = field(default_factory=dict)
+    conv_importance: dict[str, torch.Tensor] = field(default_factory=dict)
     layernorm_moments: dict[str, tuple[float, float, float, float]] = field(
         default_factory=dict
     )
@@ -150,6 +185,7 @@ def collect_importance(teacher, batches: list[torch.Tensor]) -> CalibrationStats
     residual = torch.zeros(hidden, device=device, dtype=torch.float32)
     head_scores: dict[str, torch.Tensor] = {}
     ffn_scores: dict[str, torch.Tensor] = {}
+    conv_scores: dict[str, torch.Tensor] = {}
     handles = []
 
     def attention_hook(name):
@@ -182,15 +218,35 @@ def collect_importance(teacher, batches: list[torch.Tensor]) -> CalibrationStats
             scores += activations.abs().mean(dim=0) * column_norms
         return hook
 
+    def conv_hook(name):
+        def hook(module, args):
+            # The conv module's internal channels are NOT the residual stream. They are a
+            # separate learned space that happens to have the same width, produced by the
+            # GLU and consumed by this 1x1 convolution. Ranking them by residual importance
+            # -- which is what a single global selection would do -- keeps an arbitrary
+            # subset of them. Input here is channels-first: (batch, channel, time).
+            activations = args[0].float()
+            column_norms = module.weight.float().squeeze(-1).norm(dim=0)
+            scores = conv_scores.setdefault(
+                name,
+                torch.zeros(activations.shape[1], device=device, dtype=torch.float32),
+            )
+            scores += activations.abs().mean(dim=(0, 2)) * column_norms
+        return hook
+
     for name, module in teacher.named_modules():
         if name.endswith("self_attn.linear_out"):
             handles.append(module.register_forward_pre_hook(attention_hook(name)))
         elif name.endswith(".output_dense"):
             handles.append(module.register_forward_pre_hook(ffn_hook(name)))
+        elif name.endswith("conv_module.pointwise_conv2"):
+            handles.append(module.register_forward_pre_hook(conv_hook(name)))
 
     try:
         for features in batches:
-            outputs = teacher(features, output_hidden_states=True, return_dict=True)
+            outputs = _teacher_forward(
+                teacher, features, output_hidden_states=True, return_dict=True
+            )
             for state in outputs["hidden_states"]:
                 state = state.float()
                 # Standardise per layer before pooling: without it the deepest layers' scale
@@ -205,12 +261,13 @@ def collect_importance(teacher, batches: list[torch.Tensor]) -> CalibrationStats
         residual_importance=residual.cpu(),
         head_importance={k: v.cpu() for k, v in head_scores.items()},
         ffn_importance={k: v.cpu() for k, v in ffn_scores.items()},
+        conv_importance={k: v.cpu() for k, v in conv_scores.items()},
     )
 
 
 @torch.no_grad()
 def collect_layernorm_moments(
-    teacher, batches: list[torch.Tensor], selected: torch.Tensor
+    teacher, batches: list[torch.Tensor], selection: "Selection | torch.Tensor"
 ) -> dict[str, tuple[float, float, float, float]]:
     """Pass two: each LayerNorm's mean and sd over all 1024 dims and over the kept 384.
 
@@ -221,10 +278,20 @@ def collect_layernorm_moments(
     """
     moments: dict[str, list[float]] = {}
     handles = []
-    index = selected.to(next(teacher.parameters()).device)
+    device = next(teacher.parameters()).device
     hidden = teacher.config.hidden_size
 
+    def index_for(site: str) -> torch.Tensor:
+        chosen = (
+            selection.index_for_layernorm(site)
+            if isinstance(selection, Selection)
+            else selection
+        )
+        return chosen.to(device)
+
     def hook(name):
+        index = index_for(name)
+
         def capture(module, args):
             x = args[0].float()
             full_mean = x.mean(dim=-1)
@@ -246,7 +313,7 @@ def collect_layernorm_moments(
 
     try:
         for features in batches:
-            teacher(features, return_dict=True)
+            _teacher_forward(teacher, features, return_dict=True)
     finally:
         for handle in handles:
             handle.remove()
@@ -259,6 +326,95 @@ def collect_layernorm_moments(
             totals[3] / totals[4],
         )
         for name, totals in moments.items()
+    }
+
+
+@torch.no_grad()
+def collect_branch_gains(
+    teacher, batches: list[torch.Tensor], selection: "Selection"
+) -> dict[str, float]:
+    """Pass three: how much each kept branch must be scaled to replace the whole one.
+
+    A Conformer block adds four branch outputs into the residual stream, and each is a *sum*
+    over units -- 16 attention heads, 4096 FFN units, 1024 conv channels. Keeping 6, 1536 and
+    384 of them keeps a fraction of that sum, and the received wisdom is to scale what
+    survives by ``16/6`` to make up the difference.
+
+    This measures the right number instead: the least-squares optimum
+    ``a = <kept, full> / <kept, kept>``, restricted to the residual channels the student
+    actually has, fitted per branch per layer on the calibration batch and folded into the
+    copied output weight.
+
+    **Read the value, not just apply it.** The closed form is ``1 + <kept, dropped>/<kept,
+    kept>``, so it is 1 exactly when the dropped units contribute *orthogonally* to the kept
+    ones -- and then no rescaling recovers anything, because what is missing is a direction
+    the student cannot express, not a magnitude. A gain near ``16/6`` would mean the units
+    are largely redundant and the branch really was just quieter. Which regime this teacher
+    is in is an empirical question the printed median answers, and applying ``16/6`` blind
+    would amplify noise in the first regime while looking like a principled fix.
+    """
+    device = next(teacher.parameters()).device
+    residual = selection.residual.to(device)
+    numerator: dict[str, float] = {}
+    denominator: dict[str, float] = {}
+    handles = []
+
+    def accumulate(name: str, kept: torch.Tensor, full: torch.Tensor) -> None:
+        kept = kept.index_select(-1, residual)
+        full = full.index_select(-1, residual)
+        numerator[name] = numerator.get(name, 0.0) + float((kept * full).sum())
+        denominator[name] = denominator.get(name, 0.0) + float((kept * kept).sum())
+
+    def linear_hook(name, columns):
+        def hook(module, args):
+            activations = args[0].reshape(-1, args[0].shape[-1]).float()
+            weight = module.weight.float()
+            index = columns.to(device)
+            accumulate(
+                name,
+                activations.index_select(-1, index) @ weight.index_select(1, index).T,
+                activations @ weight.T,
+            )
+        return hook
+
+    def conv_hook(name, channels):
+        def hook(module, args):
+            # (batch, channel, time) -- transposed to match the linear case.
+            activations = args[0].transpose(1, 2).reshape(-1, args[0].shape[1]).float()
+            weight = module.weight.float().squeeze(-1)
+            index = channels.to(device)
+            accumulate(
+                name,
+                activations.index_select(-1, index) @ weight.index_select(1, index).T,
+                activations @ weight.T,
+            )
+        return hook
+
+    for name, module in teacher.named_modules():
+        if name in selection.heads:
+            handles.append(
+                module.register_forward_pre_hook(linear_hook(name, selection.heads[name]))
+            )
+        elif name in selection.ffn:
+            handles.append(
+                module.register_forward_pre_hook(linear_hook(name, selection.ffn[name]))
+            )
+        elif name in selection.conv:
+            handles.append(
+                module.register_forward_pre_hook(conv_hook(name, selection.conv[name]))
+            )
+
+    try:
+        for features in batches:
+            _teacher_forward(teacher, features, return_dict=True)
+    finally:
+        for handle in handles:
+            handle.remove()
+
+    return {
+        name: numerator[name] / denominator[name]
+        for name in numerator
+        if denominator.get(name, 0.0) > 1e-9
     }
 
 
@@ -330,6 +486,21 @@ class Selection:
     residual: torch.Tensor
     heads: dict[str, torch.Tensor]
     ffn: dict[str, torch.Tensor]
+    conv: dict[str, torch.Tensor] = field(default_factory=dict)
+
+    def index_for_layernorm(self, site: str) -> torch.Tensor:
+        """Which channels a LayerNorm site normalises over.
+
+        Almost every hidden-width norm sits on the residual stream. ``depthwise_layer_norm``
+        does not -- it normalises the conv module's internal channels, so measuring its
+        moments over the residual selection compares two different spaces and produces a
+        correction that is worse than none.
+        """
+        if site.endswith("conv_module.depthwise_layer_norm"):
+            consumer = site.replace("depthwise_layer_norm", "pointwise_conv2")
+            if consumer in self.conv:
+                return self.conv[consumer]
+        return self.residual
 
 
 def choose(
@@ -359,6 +530,10 @@ def choose(
             name: select_top(scores, spec.intermediate_size)
             for name, scores in stats.ffn_importance.items()
         },
+        conv={
+            name: select_top(scores, spec.hidden_size)
+            for name, scores in stats.conv_importance.items()
+        },
     )
 
 
@@ -386,6 +561,7 @@ def transplant(
     moments: dict[str, tuple[float, float, float, float]],
     qk_mode: str = "random",
     qk_scale: float = 0.5,
+    branch_gains: dict[str, float] | None = None,
 ) -> dict:
     """Copy the selected sub-network of ``teacher`` into ``student`` in place.
 
@@ -401,6 +577,7 @@ def transplant(
     student_state = student.state_dict()
     residual = selection.residual
     hidden = teacher.config.hidden_size
+    gains = branch_gains or {}
     copied: list[str] = []
     skipped: list[str] = []
 
@@ -432,11 +609,12 @@ def transplant(
         elif name.rsplit(".", 1)[0].endswith("layer_norm"):
             site = name.rsplit(".", 1)[0]
             gamma, beta = source(f"{site}.weight"), source(f"{site}.bias")
+            kept = selection.index_for_layernorm(site)
             if site in moments:
-                gamma, beta = layernorm_correction(gamma, beta, residual, moments[site])
+                gamma, beta = layernorm_correction(gamma, beta, kept, moments[site])
             else:
-                gamma = gamma.index_select(0, residual)
-                beta = beta.index_select(0, residual)
+                gamma = gamma.index_select(0, kept)
+                beta = beta.index_select(0, kept)
             value = gamma if name.endswith(".weight") else beta
 
         # --- attention ---
@@ -453,11 +631,14 @@ def transplant(
                 continue
             weight = source(name)
             if leaf == "out":
-                value = (
-                    weight.index_select(0, residual).index_select(1, heads)
-                    if weight.dim() == 2
-                    else weight.index_select(0, residual)
-                )
+                if weight.dim() == 2:
+                    # Six of sixteen heads survive; the fitted gain is the least-squares best
+                    # rescaling of what is left (see collect_branch_gains -- it is ~1.0 when
+                    # the dropped heads were contributing orthogonally).
+                    value = weight.index_select(0, residual).index_select(1, heads)
+                    value = value * gains.get(consumer, 1.0)
+                else:
+                    value = weight.index_select(0, residual)
             else:
                 value = (
                     weight.index_select(0, heads).index_select(1, residual)
@@ -480,18 +661,31 @@ def transplant(
                 else weight.index_select(0, units)
             )
         elif ".output_dense." in name:
-            units = selection.ffn[name.rsplit(".", 2)[0] + ".output_dense"]
+            consumer = name.rsplit(".", 2)[0] + ".output_dense"
+            units = selection.ffn[consumer]
             weight = source(name)
-            value = (
-                weight.index_select(0, residual).index_select(1, units)
-                if weight.dim() == 2
-                else weight.index_select(0, residual)
-            )
+            if weight.dim() == 2:
+                value = weight.index_select(0, residual).index_select(1, units)
+                value = value * gains.get(consumer, 1.0)
+            else:
+                value = weight.index_select(0, residual)
 
         # --- convolutions ---
-        elif name.endswith("pointwise_conv1.weight") or ".residual_conv." in name or (
-            ".self_attn_conv." in name
-        ):
+        elif name.endswith("pointwise_conv1.weight"):
+            # Output channels live in the conv module's own space, input channels in the
+            # residual stream. The GLU pairs output channel c with channel c + hidden, so the
+            # two halves must be selected together or every kept value channel is gated by a
+            # stranger.
+            internal = selection.conv[
+                name.replace("pointwise_conv1.weight", "pointwise_conv2")
+            ]
+            value = (
+                source(name).index_select(0, _glu_rows(internal, hidden))
+                .index_select(1, residual)
+            )
+        elif ".residual_conv." in name or ".self_attn_conv." in name:
+            # The adapter's convolutions are different: their GLU output *is* the residual
+            # stream (one branch is added straight back), so both halves index by it.
             rows = _glu_rows(residual, hidden)
             weight = source(name)
             value = (
@@ -500,9 +694,17 @@ def transplant(
                 else weight.index_select(0, rows)
             )
         elif name.endswith("depthwise_conv.weight"):
-            value = source(name).index_select(0, residual)
+            internal = selection.conv[
+                name.replace("depthwise_conv.weight", "pointwise_conv2")
+            ]
+            value = source(name).index_select(0, internal)
         elif name.endswith("pointwise_conv2.weight"):
-            value = source(name).index_select(0, residual).index_select(1, residual)
+            consumer = name.rsplit(".", 1)[0]
+            internal = selection.conv[consumer]
+            value = (
+                source(name).index_select(0, residual).index_select(1, internal)
+                * gains.get(consumer, 1.0)
+            )
 
         if value is None:
             skipped.append(f"{name} (no rule)")
@@ -539,7 +741,7 @@ def initial_agreement(student, teacher, batches: list[torch.Tensor]) -> dict:
     from training.distill_eval import confirmed_tokens, levenshtein
     from training.distill_loss import CONFIRM_TIMESTEPS, agreement_stats, frame_weights, weighted_kl
 
-    totals = {"kl": 0.0, "frame_agreement": 0.0, "nonblank_agreement": 0.0}
+    totals = {"kl": 0.0, "confirmed_agreement": 0.0, "nonblank_agreement": 0.0}
     edits = tokens = 0
 
     for features in batches:
@@ -550,7 +752,10 @@ def initial_agreement(student, teacher, batches: list[torch.Tensor]) -> dict:
             weighted_kl(student_logits, teacher_logits, frame_weights(teacher_logits))
         )
         stats = agreement_stats(student_logits, teacher_logits)
-        totals["frame_agreement"] += stats.frame_agreement
+        # confirmed_agreement, not overall: overall is dominated by blank, which is 67% of
+        # frames, so an initialisation that predicts blank everywhere would score 0.67 there
+        # and read as two-thirds of the way to the teacher.
+        totals["confirmed_agreement"] += stats.confirmed_agreement
         totals["nonblank_agreement"] += stats.nonblank_agreement
 
         student_ids = student_logits.argmax(dim=-1).cpu().numpy()
@@ -563,7 +768,7 @@ def initial_agreement(student, teacher, batches: list[torch.Tensor]) -> dict:
     count = max(1, len(batches))
     return {
         "kl": round(totals["kl"] / count, 4),
-        "frame_agreement": round(totals["frame_agreement"] / count, 4),
+        "confirmed_agreement": round(totals["confirmed_agreement"] / count, 4),
         "nonblank_agreement": round(totals["nonblank_agreement"] / count, 4),
         "decoded_agreement": round(1.0 - edits / max(1, tokens), 4),
     }
@@ -644,6 +849,13 @@ def main() -> None:
     )
     parser.add_argument("--qk-scale", type=float, default=0.5)
     parser.add_argument(
+        "--no-branch-gain",
+        action="store_true",
+        help="skip the least-squares rescaling of each kept branch. Only to measure what "
+        "the rescaling is worth -- without it every branch under-drives the residual stream "
+        "by roughly the fraction of units that were dropped.",
+    )
+    parser.add_argument(
         "--baseline",
         action="store_true",
         help="also score a randomly-initialised student on the same windows, which is the "
@@ -668,7 +880,8 @@ def main() -> None:
 
     stats = collect_importance(teacher, batches)
     selection = choose(spec, stats, teacher.config.hidden_size // teacher.config.num_attention_heads)
-    stats.layernorm_moments = collect_layernorm_moments(teacher, batches, selection.residual)
+    stats.layernorm_moments = collect_layernorm_moments(teacher, batches, selection)
+    gains = {} if args.no_branch_gain else collect_branch_gains(teacher, batches, selection)
     print(
         f"[select] {spec.hidden_size}/{TEACHER_HIDDEN_SIZE} channels carry "
         f"{stats.captured_variance_share(selection.residual):.1%} of the pooled residual "
@@ -678,12 +891,25 @@ def main() -> None:
     )
     print(f"[select] {len(stats.layernorm_moments)} LayerNorm sites corrected", flush=True)
 
+    if gains:
+        values = sorted(gains.values())
+        print(
+            f"[select] {len(gains)} branch gains fitted, median "
+            f"{values[len(values) // 2]:.2f}, range "
+            f"[{values[0]:.2f}, {values[-1]:.2f}] -- 1.0 means the dropped units contributed "
+            f"orthogonally and no rescaling recovers them",
+            flush=True,
+        )
+
     student = build_student(spec).to(device)
+    weights = load_teacher_weights()
     report = transplant(
-        student, teacher, selection, stats.layernorm_moments, args.qk, args.qk_scale
+        student, weights, selection, stats.layernorm_moments, args.qk, args.qk_scale, gains
     )
+    del weights
     student.eval()
     report["qk_mode"] = args.qk
+    report["branch_gains"] = {name: round(value, 4) for name, value in gains.items()}
     report["captured_importance_share"] = round(
         stats.captured_variance_share(selection.residual), 4
     )
@@ -716,7 +942,8 @@ def main() -> None:
         if key in report:
             scores = report[key]
             print(
-                f"    {label:<14} kl {scores['kl']:.4f}  frame {scores['frame_agreement']:.3f}"
+                f"    {label:<14} kl {scores['kl']:.4f}  "
+                f"confirmed {scores['confirmed_agreement']:.3f}"
                 f"  non-blank {scores['nonblank_agreement']:.3f}"
                 f"  DECODED {scores['decoded_agreement']:.3f}"
             )

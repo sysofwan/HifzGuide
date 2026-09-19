@@ -304,12 +304,17 @@ are needed** (any recitation audio is training data) and **only the phoneme head
 teacher's 42.3 ms, reproducing **89.37%** of the teacher's decoded characters and **91.5%** of
 its product gate decisions.
 
-**This is not shippable yet, and the 91.5% predates the measurement rebuild.** It was taken
-on 200 random clips, 88.0% of which pass the gate, so a rubber stamp scored 88.0% and the
-margin was not significant (McNemar p ~ 0.23). It was also taken under a protocol that
-dropped the silence flush and therefore transcribed only up to each clip's last four seconds.
-Both are fixed (`gate_evalset`, `PROTOCOL_VERSION`), so numbers before and after are not
-comparable and the baseline has been re-measured on the frozen set. See ADR-0010.
+**The 91.5% predates the measurement rebuild and does not carry over.** It was taken on 200
+random clips, 88.0% of which pass the gate — so a rubber stamp scored 88.0% and the margin
+was not significant — and under a protocol that dropped the silence flush, transcribing only
+up to each clip's last four seconds. Both are fixed (`gate_evalset`, `PROTOCOL_VERSION`).
+
+Re-measured on the frozen set, the same checkpoint scores **96.85%** (population, n=2000,
+95% CI [95.99, 97.53]) and **95.80%** (boundary, n=1000) on the distillation criterion, so
+the >95% target is met. Scored against the full Tadabur *filter* gate it reads 91.40% —
+but both of that gate's poison rejects are ADR-0001 filter-side policy rather than Muraja
+parameters, and holding a size distillation to them confounds the two tracks. `distill_gate
+--criterion` makes which gate is being scored explicit. See ADR-0010.
 
 - **`distill_student`** — the width ladder. Every preset keeps all **24 layers** and shrinks
   `hidden_size`; §6 of `ml-model-transformation.md` shows depth is the axis that destroys this
@@ -364,8 +369,11 @@ comparable and the baseline has been re-measured on the frozen set. See ADR-0010
   `--breakout` reports distance-from-breakout while a student is still blank-collapsed, when
   argmax agreement is a flat 0.0 either way.
 
-- **`distill_gate`** — the product question: does swapping the teacher for the student change
-  what Muraja *decides*? Scores decodes through the ported `.balanced` gate. With
+- **`distill_gate`** — does swapping the teacher for the student change what the gate
+  decides? Scores decodes through the ported `.balanced` gate — but "the gate" is three
+  conditions and only `match_ratio` is Muraja's; the two poison rejects are Tadabur
+  filter-side policy, so `--criterion` selects which definition the headline uses (default:
+  the distillation criterion) and all three are printed. With
   `--eval-set` it reads the teacher's **cached** decisions from a frozen set, so only the
   student runs and two checkpoints are scored against identical truth. It reports the **flip
   rate with a Wilson interval**, split into false rejections and false acceptances (the same

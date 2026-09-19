@@ -373,6 +373,41 @@ not a threshold.
 (120 clips, zero edits), so differences are real rather than jitter — but the decode is bf16
 and moves 0.17% of characters between batch 4 and batch 32, which the manifest now pins.
 
+### The protocol is far less stable than the model
+
+The perturbations above change the *audio*. This one changes only **where the 1 s window grid
+falls**, by prepending silence — not one phoneme of content moves. Teacher against teacher,
+250 clips:
+
+| grid shift | char agreement | exact-match clips |
+| --- | --- | --- |
+| none (same grid) | 100.00% | 100% |
+| 1/4 hop (0.25 s) | 82.44% | 7.2% |
+| **1/2 hop (0.50 s)** | **78.86%** | 5.6% |
+| 3/4 hop (0.75 s) | 82.29% | 5.6% |
+
+The result validates itself: agreement is symmetric about the half-hop and worst exactly
+there, which is the signature of grid phase (distance to the nearest original boundary is
+1/4, 1/2, 1/4) and not of the added silence.
+
+**The teacher reproduces itself far worse than the student reproduces the teacher.** The
+student is at 92.85% on a fixed grid; the teacher is at 78.9% against itself when the grid
+moves by half a hop. Three consequences:
+
+1. **The 95% target is not near a noise floor.** On a fixed grid the teacher is bit-exact, so
+   the ceiling for the metric as measured is 100%. The target stands.
+2. **But the absolute number is grid-specific.** It is a valid basis for comparing
+   checkpoints — they are all scored on the same grid — and it is *not* a prediction of what
+   transcript the device produces, because on a device the grid phase relative to speech
+   onset is arbitrary.
+3. **It points at what the remaining error probably is.** If grid phase alone moves 18-21% of
+   characters, the student's 7% gap on a fixed grid is plausibly dominated by small
+   differences in *spike timing* rather than in phoneme identity. That is the same mechanism,
+   and it is exactly what the CTC-distillation literature calls frame-level alignment
+   disagreement — which makes timing-targeted objectives (weighting the frames adjacent to a
+   teacher spike, rather than all non-blank frames uniformly) the indicated next move rather
+   than a guess.
+
 ### How stable the decode is, and what that does *not* tell us
 
 The teacher against itself, 250 clips, under perturbations that carry no information:

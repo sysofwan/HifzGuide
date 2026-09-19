@@ -279,6 +279,140 @@ distribution. Under **hard** labels it becomes a direct bias on the class prior,
 student flipped from under-emitting (46.0 vs 47.2 tokens/clip) to over-emitting (55.5 vs
 55.2). A weighting introduced for one objective does not transfer to another unexamined.
 
+## The 91.5% gate number was a property of the panel, not of the model
+
+Everything above measures gate agreement on 200 random `clips_v2` clips. That panel cannot
+answer the question, for three separate reasons, and fixing them changed the conclusion
+without changing the model.
+
+**A rubber stamp scored 88.0% on it.** 91.5% against that floor is McNemar p ~ 0.23 at
+n=200. Recorded already; it is what the follow-up issue was opened for.
+
+**`clips_v2` is the teacher's own gate passers.** It *is* `passing_subset_full.jsonl` — every
+clip in it cleared the whole-clip gate during staging. So it contains almost no teacher
+rejections, and a panel drawn from it **cannot measure false acceptance at all**, which is
+half of what a gate does. The 8 "student passed, teacher failed" clips in the original 200
+were artefacts of the windowed protocol, not recitation the teacher judged bad.
+
+**The protocol was transcribing only part of each clip.** `confirmed_stream` commits the
+segments in a window's oldest second, because the next window re-decodes the rest with more
+right context. It did that for the **last** window too, so the final four seconds of every
+clip were decoded and discarded — and a clip shorter than one window was gated on its first
+second alone. Muraja flushes what is pending when speech stops. That omission was harmless
+while the module reported only *character* agreement, where both models lose the same tail;
+it is not harmless for a `match_ratio` computed against the whole ayah. The flush is now
+replayed, `PROTOCOL_VERSION` records it, and cached teacher decodes carry the version so a
+set built under one protocol cannot be scored under another. **Numbers from before and after
+this change are not comparable.**
+
+### The replacement, and why it has two views
+
+`training.gate_evalset` scans 20 **strided** reserved Tadabur shards — strided rather than a
+block at the top of the range, because nothing guarantees shard order does not group reciters
+and a tail block would then be a distribution shift rather than a sample. `distill_stream`
+refuses both reservations in its constructor; the old "shards 0-19 are reserved" comment was
+a reservation that held until someone typed a range by hand.
+
+One scan draws two samples, because neither alone supports a decision. Only **4% of raw
+Tadabur clips fall below the 0.65 bar**, so a population sample is saturated by construction
+(pass-everything floor 85.2%) and nothing done to the model moves it. A sample enriched
+around the bar has a 40.6% floor and is sensitive — and is deliberately unrepresentative, so
+shipping on it alone would be dishonest. Both are always reported, with the scan's
+per-stratum counts, which are the only route back from the enriched number to a population
+one. Clips are split dev/test **by reciter**.
+
+The teacher is decoded once and frozen into the manifest. Besides halving every later
+evaluation, it makes two checkpoints comparable by construction rather than by hoping the
+teacher ran identically twice.
+
+**Store the clips as 32-bit float, not PCM_16.** The manifest caches the teacher's decode of
+the in-memory waveform and the student reads the file back, so anything lossy between them is
+a disagreement charged to a model that did nothing. Measured on 60 clips, a PCM_16 round trip
+changes the *teacher's own* decoded string on 12 of them and moves `match_ratio` by up to
+0.062; Tadabur audio also peaks at 1.037, so PCM_16 clips real signal. This was caught forty
+minutes into a build and cost a rebuild.
+
+### What the h384 checkpoint actually scores, and on which condition
+
+Unchanged, no retraining, 2,000 population and 1,000 boundary clips:
+
+| gate definition | population | boundary |
+| --- | --- | --- |
+| **the shipped gate** | 91.40% | 92.40% |
+| without `REJECT_ADDED_SHADDA` | **96.85%** | **95.80%** |
+| `match_ratio` condition alone | 96.50% | 95.70% |
+
+`Scorer.gate` ands three conditions together and they are not comparable objects.
+`match_ratio` is a smooth function of the decode that frame-weighted KL pushes on directly;
+the insertion-run and added-shadda rejects are discrete alignment properties. A single number
+over the shipped gate answers two questions and reports neither.
+
+Of 239 disagreements, **68% involve a poison reject rather than the ratio**, and that is
+almost entirely added shadda: 52 of 54 missed rejections and 65 of 68 self-inflicted ones. On
+pure ratio rejections the student is already at ~97.5%.
+
+### Why more training does not close the rest
+
+Perturb **the teacher's own decode** by N random single-phoneme edits and re-gate it, 600
+clips:
+
+| edits | gate flips | of which added-shadda | of which ratio |
+| --- | --- | --- | --- |
+| 1 | 6.5% | 6.3% | 0.2% |
+| 2 | 12.5% | 12.5% | 0.0% |
+| 4 | 18.2% | 17.7% | 0.2% |
+| 8 | 30.7% | 29.3% | 1.3% |
+
+One edit flips the shipped gate on 6.5% of clips and essentially all of it is added shadda.
+The condition has an 8.5% base rate and turns on where a *single* geminate lands; geminate
+counts already match (student 13.16 per clip against the teacher's 13.56, 0.97x), so this is
+placement, not rate.
+
+Driving full-gate flips below 5% therefore requires the student's decode to sit within about
+**one phoneme edit** of the teacher's on most clips — roughly 99% character accuracy against
+today's 89.37%. That is a different problem from the one the ">95%" target was written for,
+and it is not a step-count problem. The target should be restated per condition, and the
+heuristic's own fragility is an ADR-0001 P3.5 question: a shipped gate condition that flips
+on 6.5% of clips under a one-phoneme decode change is fragile for the teacher too.
+
+## Teacher-weight initialisation: what transfers, and what does not
+
+`training.teacher_init` starts a student from a **selected sub-network** of the teacher
+rather than a PCA rotation of it. The rotation is what the literature reaches for and it is
+wrong on this backbone three times over: LayerNorm does not commute with a rotation, the
+residual stream is added to in every block so a rotation must be globally consistent, and —
+decisively — transformers' `Wav2Vec2BertSelfAttention` applies the rotary embedding to the
+**hidden states, before** `linear_q`/`linear_k`, in `num_heads` contiguous blocks of the
+*input* space. After an arbitrary rotation those blocks are groups of unrelated directions.
+Selection keeps every student channel equal to one teacher channel, so LayerNorm gains
+index-select exactly and the transplant is verifiable by reading it.
+
+Three findings, all measured before any training:
+
+**Copying query and key across `relative_key` → rotary is worth nothing.** Initial weighted
+KL is 8.5765 with them left random, 8.5699 copied, 8.5751 copied-and-damped, against 10.4714
+for a random student. Layer-by-layer cosine against the teacher moves by 0.003. The positional
+mismatch is real — the teacher learned a separate `q·E[clamp(j−i, −64, 8)]` bias term that
+rotary has no slot for — but it is not what costs the transfer.
+
+**The folklore rescaling is wrong here.** Each branch is a sum over units and the student
+keeps 37.5% of them, so the received fix is to scale the survivors by 16/6. The least-squares
+optimum measures **median 1.10, range [0.76, 1.70]**: the dropped units contribute
+*orthogonally*, so what is missing is a direction the student cannot express, not a magnitude,
+and 16/6 would have amplified noise while looking principled. The fitted gain still earns its
+place at the end of the stack, where the adapter output the CTC head reads goes from cosine
+0.29 to 0.53.
+
+**The loss is intrinsic to the width cut, and it happens in one block.** The transplant is
+mechanically exact at the feature projection (cosine 1.0000 against the teacher on the kept
+channels) and a single conformer block takes it to 0.81, settling around 0.4–0.5. Keeping
+37.5% of each block's additive contributions is what costs it. Two corrections were found by
+running that check rather than by reading the code: the conv module's internal channels are
+*not* the residual stream — they are a separate learned space of the same width — and were
+being selected by residual importance with every shape still lining up; and `depthwise_layer_norm`
+normalises over that space, so its scale correction was being measured across two different
+ones.
+
 ## Consequences
 
 - **The corpus problem disappears, and a small corpus suffices to start.** 61.8 hours of
@@ -410,6 +544,19 @@ student flipped from under-emitting (46.0 vs 47.2 tokens/clip) to over-emitting 
   ADR-0004 fine-tune later produces weights worth shipping, the head is a per-frame linear
   on the same 40 ms lattice — negligible for sizing, but it would have to be distilled onto
   the student, which is out of scope here.
+
+- **Measure the gate one condition at a time.** `Scorer.gate` is three conditions anded
+  together and only one of them is a smooth function of the decode. Reported as a single
+  number, a student that reproduces the ratio almost perfectly and the added-shadda heuristic
+  poorly is indistinguishable from one that is uniformly mediocre — and the two call for
+  completely different work. `training.gate_evalset.gate_verdicts` and `distill_gate`'s
+  per-condition row exist so that split is in every report rather than being rediscovered.
+
+- **Before optimising an agreement target, measure what the target does under a trivial
+  perturbation of the *teacher*.** Perturbing the teacher's own decode by one phoneme flips
+  the shipped gate on 6.5% of clips. That number is the ceiling any student is being measured
+  against, it cost minutes of CPU to obtain, and it would have redirected this issue before a
+  single GPU hour was spent on it. The same check applies to every future agreement bar.
 
 - **This must not be confounded with the ADR-0001 track.** That fine-tune deliberately
   *increases* tolerance on the soft pairs; width distillation will involuntarily *reduce*

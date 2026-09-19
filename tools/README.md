@@ -339,7 +339,7 @@ number this work is accountable for. See ADR-0010.
   shards the run covers. 345 trainable shards ≈ **1,170 hours** ≈ 53k steps at batch 32.
   **Two** shard blocks are refused by construction — 0–19, which produced the staged
   validation clips, and the strided block feeding the frozen gate evaluation set. Get the
-  spec from `gate_evalset --print-training-shards` rather than typing a range.
+  spec from `decode_evalset --print-training-shards` rather than typing a range.
 
 - **`distill_loss`** — **frame-weighted KL, and nothing else.** Non-blank frames are
   up-weighted (blank is 67% of frames) and the first **25** timesteps are up-weighted because

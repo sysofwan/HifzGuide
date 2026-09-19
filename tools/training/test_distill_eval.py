@@ -337,3 +337,63 @@ def test_a_single_reciter_falls_back_to_the_unclustered_interval():
     report = score_decode_agreement([(5, 100, 7), (5, 100, 7)])
     assert report.num_reciters == 1
     assert report.ci_low < report.char_accuracy < report.ci_high
+
+
+def test_a_paired_comparison_reports_the_pooled_delta_not_a_sign_test():
+    """Counting clips that improved is a sign test; the claim made from it is a rate change.
+
+    Constructed so the two disagree: this checkpoint is worse on more clips, but by a little,
+    while being much better on a few. The sign test would call that a regression.
+    """
+    from training.distill_eval import paired_reciter_bootstrap
+
+    rows = []
+    for reciter in range(30):
+        # Three clips slightly worse ...
+        for _ in range(3):
+            rows.append((11, 10, 100, reciter))
+        # ... and one hugely better.
+        rows.append((5, 60, 100, reciter))
+    result = paired_reciter_bootstrap(rows)
+
+    assert result.clips_further > result.clips_closer  # the sign test's view
+    assert result.delta > 0  # and the pooled rate says the opposite
+    assert result.significant
+    assert result.ci_low > 0
+
+
+def test_the_paired_interval_widens_when_the_difference_clusters_by_reciter():
+    from training.distill_eval import paired_reciter_bootstrap
+
+    # Identical totals; only the arrangement across reciters differs.
+    clustered, spread = [], []
+    for reciter in range(20):
+        for i in range(10):
+            clustered.append((0 if reciter < 10 else 20, 10, 100, reciter))
+            spread.append((0 if i < 5 else 20, 10, 100, reciter))
+    assert sum(r[0] for r in clustered) == sum(r[0] for r in spread)
+    wide = paired_reciter_bootstrap(clustered)
+    narrow = paired_reciter_bootstrap(spread)
+    assert wide.delta == pytest.approx(narrow.delta)
+    assert (wide.ci_high - wide.ci_low) > (narrow.ci_high - narrow.ci_low)
+
+
+def test_an_identical_pair_has_no_difference_and_no_significance():
+    from training.distill_eval import paired_reciter_bootstrap
+
+    rows = [(7, 7, 100, i // 3) for i in range(60)]
+    result = paired_reciter_bootstrap(rows)
+    assert result.delta == 0.0
+    assert not result.significant
+    assert paired_reciter_bootstrap([]).delta == 0.0
+
+
+def test_the_test_half_is_not_scored_unless_it_is_asked_for():
+    """Printing the held-out panel on every experiment is how it stops being held out."""
+    import inspect
+
+    from training import distill_eval
+
+    source = inspect.getsource(distill_eval.run_evalset)
+    assert "evalset.subset(args.split)" in source
+    assert 'for split in ("both", "dev", "test")' not in source

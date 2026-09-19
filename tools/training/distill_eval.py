@@ -559,6 +559,79 @@ def score_decode_agreement(per_clip: list[tuple[int, int, int]]) -> DecodeAgreem
     )
 
 
+@dataclass(frozen=True)
+class PairedDelta:
+    """Two checkpoints' pooled accuracy difference, with a paired reciter-clustered interval.
+
+    The obvious comparison -- count clips where this checkpoint is closer than the other --
+    is a **sign test**. It asks whether more clips improved than worsened, which is not the
+    claim anyone makes from it: the headline is a pooled edit-rate difference, and a sign
+    test neither weights by how much a clip moved nor accounts for the clips of one reciter
+    not being independent. Both errors push the p-value the same way, toward significance.
+
+    This resamples whole reciters and recomputes the pooled difference inside each draw, so
+    the pairing (both checkpoints see the same clips), the clustering and the magnitude all
+    survive.
+    """
+
+    delta: float
+    ci_low: float
+    ci_high: float
+    clips_closer: int
+    clips_further: int
+
+    @property
+    def significant(self) -> bool:
+        """Whether the interval excludes zero -- the actual claim, not the sign test's."""
+        return self.ci_low > 0.0 or self.ci_high < 0.0
+
+    def as_dict(self) -> dict:
+        return {
+            "pooled_accuracy_delta": round(self.delta, 5),
+            "delta_ci95_clustered": [round(self.ci_low, 5), round(self.ci_high, 5)],
+            "clips_closer": self.clips_closer,
+            "clips_further": self.clips_further,
+            "significant": self.significant,
+        }
+
+
+def paired_reciter_bootstrap(
+    rows: list[tuple[int, int, int, int]], iterations: int = 4000, seed: int = 11
+) -> PairedDelta:
+    """``(edits_this, edits_other, teacher_phonemes, reciter_id)`` -> pooled delta and interval."""
+    import random
+
+    if not rows:
+        return PairedDelta(0.0, 0.0, 0.0, 0, 0)
+
+    def pooled(sample):
+        this = sum(r[0] for r in sample)
+        other = sum(r[1] for r in sample)
+        tokens = max(1, sum(r[2] for r in sample))
+        return (other - this) / tokens  # positive = this checkpoint is closer
+
+    grouped: dict[int, list] = {}
+    for row in rows:
+        grouped.setdefault(row[3], []).append(row)
+    keys = list(grouped)
+
+    rng = random.Random(seed)
+    draws = []
+    for _ in range(iterations):
+        sample = []
+        for _ in keys:
+            sample.extend(grouped[keys[rng.randrange(len(keys))]])
+        draws.append(pooled(sample))
+    draws.sort()
+    return PairedDelta(
+        delta=pooled(rows),
+        ci_low=draws[int(0.025 * iterations)],
+        ci_high=draws[int(0.975 * iterations)],
+        clips_closer=sum(1 for r in rows if r[0] < r[1]),
+        clips_further=sum(1 for r in rows if r[0] > r[1]),
+    )
+
+
 def run_evalset(args, device) -> None:
     """Score one checkpoint's decode against a frozen set's cached teacher decode."""
     import soundfile as sf
@@ -606,20 +679,24 @@ def run_evalset(args, device) -> None:
         if index % 200 == 0:
             print(f"  {index}/{len(evalset.clips)} clips", flush=True)
 
-    reports = {}
-    for split in ("both", "dev", "test"):
-        clips = evalset.subset(split)
-        if clips:
-            reports[split] = score_decode_agreement(
-                [
-                    (
-                        levenshtein(list(c.teacher_text), list(decodes[c.filename])),
-                        len(c.teacher_text),
-                        c.reciter_id,
-                    )
-                    for c in clips
-                ]
-            )
+    # dev by default. A reciter-disjoint test half is only a held-out panel while nothing
+    # has been chosen by looking at it, and printing it on every experiment is how it stops
+    # being one. --split test is an explicit act.
+    scored_clips = evalset.subset(args.split)
+    if not scored_clips:
+        raise SystemExit(f"no clips in split {args.split!r}")
+    reports = {
+        args.split: score_decode_agreement(
+            [
+                (
+                    levenshtein(list(c.teacher_text), list(decodes[c.filename])),
+                    len(c.teacher_text),
+                    c.reciter_id,
+                )
+                for c in scored_clips
+            ]
+        )
+    }
 
     comparison = None
     if args.compare_decodes:
@@ -639,22 +716,17 @@ def run_evalset(args, device) -> None:
                 "evaluation.\n" + "\n".join(mismatched)
             )
         other = previous["decodes"]
-        # Paired per clip: did this checkpoint get strictly closer to the teacher than the
-        # other one did? Ties (equal edit distance) are concordant and drop out, which is
-        # what McNemar wants.
-        comparison = paired_comparison(
+        comparison = paired_reciter_bootstrap(
             [
-                levenshtein(list(c.teacher_text), list(decodes[c.filename]))
-                < levenshtein(list(c.teacher_text), list(other[c.filename]))
-                for c in evalset.clips if c.filename in other
-            ],
-            [
-                levenshtein(list(c.teacher_text), list(other[c.filename]))
-                < levenshtein(list(c.teacher_text), list(decodes[c.filename]))
-                for c in evalset.clips if c.filename in other
-            ],
-            "this",
-            "other",
+                (
+                    levenshtein(list(c.teacher_text), list(decodes[c.filename])),
+                    levenshtein(list(c.teacher_text), list(other[c.filename])),
+                    len(c.teacher_text),
+                    c.reciter_id,
+                )
+                for c in scored_clips
+                if c.filename in other
+            ]
         ).as_dict()
 
     payload = {
@@ -666,6 +738,7 @@ def run_evalset(args, device) -> None:
         "eval_set": str(args.eval_set),
         "evalset_fingerprint": evalset.fingerprint(),
         "batch_size": batch_size,
+        "split": args.split,
         "splits": {name: report.as_dict() for name, report in reports.items()},
         "comparison": comparison,
     }
@@ -692,9 +765,15 @@ def run_evalset(args, device) -> None:
             f"{report.total_teacher_phonemes:,}"
         )
     if comparison:
+        low, high = comparison["delta_ci95_clustered"]
         print(
-            f"  paired vs {args.compare_decodes}: this-closer {comparison['this_only_correct']}, "
-            f"other-closer {comparison['other_only_correct']}, p {comparison['p_value']:.4f}"
+            f"  paired vs {args.compare_decodes}:\n"
+            f"    pooled accuracy delta {comparison['pooled_accuracy_delta']:+.2%}  "
+            f"95% CI [{low:+.2%}, {high:+.2%}] over reciters"
+            f"  {'(excludes zero)' if comparison['significant'] else '(includes zero)'}\n"
+            f"    clips closer {comparison['clips_closer']}, "
+            f"further {comparison['clips_further']}  "
+            f"-- descriptive only; the delta above is the claim"
         )
 
 
@@ -737,11 +816,11 @@ def main() -> None:
     parser.add_argument("--num-windows", type=int, default=320)
     parser.add_argument(
         "--split",
-        choices=("val", "train"),
-        default="val",
-        help="which side of the clip split to score. Running both separates a "
-        "generalisation gap from a ceiling: if TRAIN agreement is also stuck at the val "
-        "number, more data cannot be the fix and the objective or capacity is the limit.",
+        default="dev",
+        help="with --eval-set: dev (default), test or both. The reciter-disjoint test half "
+        "is a held-out panel only while nothing has been chosen by looking at it, so asking "
+        "for it is an explicit act. With --audio-root: val or train -- running both "
+        "separates a generalisation gap from a ceiling.",
     )
     parser.add_argument(
         "--num-clips", type=int, default=200, help="held-out clips to evaluate"
@@ -771,10 +850,16 @@ def main() -> None:
     device = torch.device("cuda")
 
     if args.eval_set:
+        if args.split not in ("dev", "test", "both"):
+            raise SystemExit("--split must be dev, test or both when using --eval-set")
         run_evalset(args, device)
         return
     if not args.audio_root:
         raise SystemExit("pass --eval-set (preferred) or --audio-root")
+    if args.split == "dev":
+        args.split = "val"
+    if args.split not in ("val", "train"):
+        raise SystemExit("--split must be val or train when using --audio-root")
 
     if args.breakout:
         report = run_breakout_diagnostic(

@@ -268,10 +268,18 @@ the more useful finding:
 **Frame agreement and decoded agreement are not the same objective.** Under hard labels,
 frame `confirmed_agreement` *rose* (0.8819 → 0.8842) while decoded char accuracy *fell*
 (84.16% → 82.76%). After the `scanCTC` collapse, **where** an error lands matters more than
-how many there are: a flip in the middle of a run is absorbed, a flip at a segment boundary
-splits or merges a token and costs an edit. Optimising per-frame agreement -- softly or
-hard -- therefore does not straightforwardly optimise the gate. Any future objective work
-should be evaluated on the decoded stream from the start, not on frame metrics.
+how many there are.
+
+An earlier revision explained that as "a flip in the middle of a run is absorbed", which is
+**wrong** and was checked only later: a mid-run substitution turns `AAA` into `ABA`, which
+decodes to three tokens instead of one — two extra edits, the *most* expensive case, not the
+cheapest. A mid-run blank turns `AAA` into `A_A`, decoding to `AA`, one extra edit. What
+collapse actually absorbs is **duration** variation that leaves the run structure intact:
+`AAA` and `AAAA` both decode to `A`.
+
+The conclusion is unchanged and if anything stronger — per-frame agreement does not
+straightforwardly optimise the decode, and frame flips inside a run are expensive rather than
+free. Any objective work should be evaluated on the decoded stream from the start.
 
 A second trap surfaced in the same experiment. The 3x non-blank frame weighting exists to
 escape the blank basin, and under a soft KL its effect is moderated by the target
@@ -340,28 +348,49 @@ either side of that change are not comparable.
 
 ### What the h384 checkpoint scores
 
-Unchanged, 2,000 held-out clips over 286 reciters, 167,473 teacher phonemes:
+Unchanged, 2,000 held-out clips over 286 reciters, 167,473 teacher phonemes, scored at the
+manifest's batch size:
 
-| | dev (970) | test (1030) | both |
-| --- | --- | --- | --- |
-| **character accuracy** | 90.15% | 90.54% | **90.35%** [89.74, 90.88] |
-| exact-match clips | 8.4% | 7.2% | 7.8% |
-| per-clip error, median | 7.82% | 7.95% | 7.89% |
-| per-clip error, p90 | 17.39% | 15.79% | 16.22% |
+| | `h384_klonly` @40k | warm-start, +10k steps on unseen audio |
+| --- | --- | --- |
+| **pooled character accuracy** | **90.35%** [89.74, 90.89] | **91.12%** [90.59, 91.58] |
+| macro (per-clip mean) | 91.02% | 91.69% |
+| median clip | 92.11% | 92.67% |
+| exact-match clips | 7.8% | 8.2% |
+| per-clip error p90 | 16.22% | 15.38% |
+| short clips / long clips | 91.82% / 89.82% | 92.49% / 90.62% |
 
-The interval is bootstrapped over **reciters**, not clips: 2,000 clips come from 286 voices
-and agreement correlates within one, so an independent-sample interval is about 23% too
-narrow on exactly the question a checkpoint comparison asks.
+Intervals are bootstrapped over **reciters**: 2,000 clips come from 286 voices and agreement
+correlates within one, so an independent-sample interval is about 23% too narrow.
 
-Two things the pooled number hides, which is why the median and p90 sit beside it. Accuracy
-is **90.4% pooled but 92.1% by the median clip** — the pooled figure is dominated by long
-clips, and long clips are worse (91.82% at or below the median duration against 89.82% above
-it, and that is **not** a train/eval duration mismatch: both distributions were measured and
-match). And only 7.8% of clips are reproduced exactly.
+**Pooled is the target and macro is a diagnostic.** For cloning, every teacher phoneme is a
+behaviour to reproduce and should count once, which is what pooling does; a per-clip mean
+answers "how good is a uniformly chosen clip", a different question with a different error
+budget. The two differ by ~0.7 points here, so a threshold stated without the aggregation is
+not a threshold.
 
-So the headline for this work is **90.35% character agreement**, not a percentage of
-preserved gate decisions, and the issue's ">95%" target needs restating in those terms before
-it means anything.
+**Measurement precision.** The teacher is **bit-identical** on a re-run at the same batch size
+(120 clips, zero edits), so differences are real rather than jitter — but the decode is bf16
+and moves 0.17% of characters between batch 4 and batch 32, which the manifest now pins.
+
+### How stable the decode is, and what that does *not* tell us
+
+The teacher against itself, 250 clips, under perturbations that carry no information:
+
+| perturbation | char agreement |
+| --- | --- |
+| byte-identical, same batch size | 100.0000% |
+| shift by one sample (62 µs) | 99.50% |
+| gain +0.1 dB | 99.78% |
+| additive noise at −60 dBFS | 98.54% |
+
+These are **robustness probes, not a ceiling on achievable agreement**, and an earlier
+revision of this section used them as one. The teacher is deterministic on a fixed input and
+the student is given that same input, so a perfect clone would score 100% — nothing here
+bounds the target from above. What they do establish is that the teacher is exactly
+reproducible at fixed batch size, so the evaluation has no intrinsic floor to subtract, and
+that the decode is sensitive enough to sub-perceptual input changes that the *robustness* of
+any deployed variant is worth measuring separately.
 
 ## Teacher-weight initialisation: what transfers, and what does not
 

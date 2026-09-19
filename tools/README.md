@@ -304,20 +304,16 @@ are needed** (any recitation audio is training data) and **only the phoneme head
 teacher's 42.3 ms, reproducing **89.37%** of the teacher's decoded characters and **91.5%** of
 its product gate decisions.
 
-**The 91.5% predates the measurement rebuild and does not carry over.** It was taken on 200
-random clips, 88.0% of which pass the gate — so a rubber stamp scored 88.0% and the margin
-was not significant — and under a protocol that dropped the silence flush, transcribing only
-up to each clip's last four seconds. Both are fixed (`gate_evalset`, `PROTOCOL_VERSION`).
+**The 91.5% "gate agreement" does not carry over, and was the wrong metric.** A distillation
+clones the teacher's phoneme decode; `tadabur.scorer` aligns a decode against an ayah
+reference and thresholds it, which is ADR-0001 corpus filtering and Muraja follow-along
+grading, not a property of the student. ADR-0008 already records that gate "should not be the
+headline metric at all".
 
-Re-measured on the frozen set, the same checkpoint scores **94.60%** (population, n=2000) and
-**94.80%** (boundary, n=1000) on **Muraja's advancement decision** — `match_ratio >= 0.70`,
-per ADR-0005 — with intervals bootstrapped over reciters. **The >95% target is not met.**
-
-Note what is *not* the criterion. `Scorer.gate` uses the Tadabur filter's 0.65 bar and layers
-two poison rejects its own comments call "NOT a Muraja parameter"; ADR-0008 records that this
-gate is ADR-0001's training-data **filter** and "should not be the headline metric at all".
-Filtering is fine-tune-side, so none of it is in the distillation criterion.
-`distill_gate --criterion` names which decision a number came from. See ADR-0010.
+Measured on a frozen held-out set of 2,000 clips over 286 reciters, the same checkpoint
+reproduces **90.35%** of the teacher's confirmed phoneme characters (95% CI [89.74, 90.88],
+bootstrapped over reciters; dev 90.15% / test 90.54%), with 7.8% of clips exact. That is the
+number this work is accountable for. See ADR-0010.
 
 - **`distill_student`** — the width ladder. Every preset keeps all **24 layers** and shrinks
   `hidden_size`; §6 of `ml-model-transformation.md` shows depth is the axis that destroys this
@@ -372,11 +368,10 @@ Filtering is fine-tune-side, so none of it is in the distillation criterion.
   `--breakout` reports distance-from-breakout while a student is still blank-collapsed, when
   argmax agreement is a flat 0.0 either way.
 
-- **`distill_gate`** — does swapping the teacher for the student change what Muraja
-  *advances* on? Scores both decodes' `match_ratio` through the ported Smith-Waterman aligner
-  and compares the decisions at ADR-0005's 0.70 bar. The Tadabur filter's poison rejects are
-  deliberately absent — filtering is fine-tune-side — and `--criterion` names which threshold
-  produced a number. With
+- **`distill_gate`** — scores both decodes through the ported `.balanced` gate and asks how
+  often they lead to the same verdict. **Not the distillation metric**: that gate is
+  ADR-0001's corpus filter at a threshold Muraja does not use (ADR-0005 puts advancement at
+  0.70), so it answers a fine-tune/product question. Kept for that question. With
   `--eval-set` it reads the teacher's **cached** decisions from a frozen set, so only the
   student runs and two checkpoints are scored against identical truth. It reports the **flip
   rate with a Wilson interval**, split into false rejections and false acceptances (the same
@@ -385,16 +380,13 @@ Filtering is fine-tune-side, so none of it is in the distillation criterion.
   against another checkpoint's saved decisions. Beating pass-everything is printed as a
   guard, not as evidence — on a set balanced around the bar, any competent student wins it.
 
-- **`gate_evalset`** — builds that frozen set, and is the prerequisite for any claim about
-  gate agreement. One scan of 20 **strided** reserved shards (strided because a contiguous
-  block is a distribution shift, not a sample, if shard order groups reciters) draws two
-  views: a **population** sample for what a user would meet, and a sample **enriched around
-  the 0.65 bar** for whether the student beats a rubber stamp. Optimising the first is
-  hopeless — only ~4% of raw clips fall below the bar — and shipping on the second alone is
-  dishonest, so both are always reported along with the scan's per-stratum counts, which are
-  what make the reweighting possible at all. Clips are split dev/test **by reciter**; keep
-  test for finalists. The teacher runs once and is frozen into the manifest, which halves
-  every later evaluation.
+- **`decode_evalset`** — builds the frozen set every fidelity claim rests on: one scan of 20
+  **strided** reserved shards (strided because a contiguous block is a distribution shift,
+  not a sample, if shard order groups reciters), a uniform reservoir draw, and the
+  **teacher's decoded phoneme string cached per clip** so later evaluations run the student
+  alone and two checkpoints are scored against identical targets. Clips are stored as 32-bit
+  float — a PCM_16 round trip changes the teacher's *own* decode on 1 clip in 5 — and split
+  dev/test **by reciter**, since one voice's recordings share channel and style.
 
 - **`teacher_init`** — starts a student from a selected sub-network of the teacher instead of
   from noise, and writes it in `distill_train`'s checkpoint format for `--init-from`.
@@ -419,19 +411,19 @@ python -m training.distill_train --preset h384 --audio-root <wav-dir> \
 python -m training.distill_train --preset h384 --audio-root <wav-dir> \
     --out-dir runs/h384 --batch-size 32 --steps 40000 [--resume]
 python -m training.distill_train --preset h384 \
-    --stream-shards "$(python -m training.gate_evalset --print-training-shards)" \
+    --stream-shards "$(python -m training.decode_evalset --print-training-shards)" \
     --audio-root <held-out-wav-dir> --out-dir runs/h384_full   # 1,170 h, bounded disk
 
 python -m training.distill_overfit --preset h384 --audio-root <wav-dir> --num-windows 1024
 python -m training.distill_eval --checkpoint runs/h384/checkpoint.pt \
     --audio-root <wav-dir> --num-clips 200
 
-# The frozen gate set: build once (~2 h of teacher), then score every checkpoint against it
-python -m training.gate_evalset --out-dir tadabur/gate_eval
-python -m training.distill_gate --checkpoint runs/h384/checkpoint.pt \
-    --eval-set tadabur/gate_eval --save-decisions runs/h384/gate_decisions.json
-python -m training.distill_gate --checkpoint runs/h384_next/checkpoint.pt \
-    --eval-set tadabur/gate_eval --compare-decisions runs/h384/gate_decisions.json
+# The frozen decode set: build once (~90 min of teacher), then score every checkpoint on it
+python -m training.decode_evalset --out-dir tadabur/gate_eval
+python -m training.distill_eval --checkpoint runs/h384/checkpoint.pt \
+    --eval-set tadabur/gate_eval --save-decodes runs/h384/decodes.json
+python -m training.distill_eval --checkpoint runs/h384_next/checkpoint.pt \
+    --eval-set tadabur/gate_eval --compare-decodes runs/h384/decodes.json
 
 # Teacher initialisation, and the probe that decides whether it is worth a real run
 python -m training.teacher_init --preset h384 --audio-root <wav-dir> \

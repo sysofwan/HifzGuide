@@ -15,6 +15,12 @@ teacher emits" -- and ADR-0008 already records that the gate "should not be the 
 metric at all". So this module caches the teacher's decoded string and nothing downstream of
 it.
 
+**Batch size is part of the protocol.** The teacher is bit-identical at a fixed batch size
+(120 clips re-decoded at the manifest's batch 32: zero edits) and drifts **0.17% of
+characters** at batch 4, from bf16 accumulation over different padding and matmul groupings.
+That is the same order as the difference between two checkpoints, so the manifest records the
+batch size it was built with and evaluations inherit it rather than choosing their own.
+
 **The teacher is decoded once and frozen.** Every evaluation used to decode both models,
 paying the teacher's 42 ms/window again for every student measured. The teacher is
 deterministic and the protocol is fixed, so its decode is a property of the clip: it is
@@ -663,6 +669,12 @@ def build(
             "max_scan": max_scan,
             "seed": seed,
             "target": target,
+            # Recorded because it changes the decode. The teacher is bit-identical at a fixed
+            # batch size -- re-decoding 120 clips at batch 32 reproduced the cached strings
+            # exactly, 0 edits -- but at batch 4 it drifts 0.17% of characters, from bf16
+            # accumulation over different padding and matmul groupings. That is the same
+            # order as a real improvement between two checkpoints, so it cannot float.
+            "batch_size": batch_size,
             "min_clip_seconds": MIN_CLIP_SECONDS,
             "max_clip_seconds": MAX_CLIP_SECONDS,
             "source": "tadabur-shards-unfiltered",

@@ -575,6 +575,18 @@ def run_evalset(args, device) -> None:
 
     evalset = load_manifest(args.eval_set)
     check_provenance(evalset, TEACHER_MODEL_ID)
+    # Inherit the manifest's batch size unless told otherwise. bf16 accumulation makes the
+    # decode depend on it -- bit-identical at the same batch, 0.17% adrift at batch 4 -- and
+    # that is the same order as a real gain, so letting it float would let a rerun look like
+    # progress.
+    batch_size = args.batch_size or evalset.provenance.get("batch_size", 16)
+    if args.batch_size and args.batch_size != evalset.provenance.get("batch_size"):
+        print(
+            f"[warn] scoring at batch {args.batch_size}, manifest built at "
+            f"{evalset.provenance.get('batch_size')}: expect ~0.2% of characters to move "
+            f"for that reason alone. Comparisons across batch sizes are refused.",
+            flush=True,
+        )
     student, state_config, step = load_student_from_checkpoint(
         args.checkpoint, device, use_ema=args.ema
     )
@@ -589,7 +601,7 @@ def run_evalset(args, device) -> None:
         if samples.ndim > 1:
             samples = samples.mean(axis=1)
         decodes[clip.filename] = tokens_to_phonemes(
-            confirmed_stream(student, extractor, samples, device, args.batch_size)
+            confirmed_stream(student, extractor, samples, device, batch_size)
         )
         if index % 200 == 0:
             print(f"  {index}/{len(evalset.clips)} clips", flush=True)
@@ -617,6 +629,7 @@ def run_evalset(args, device) -> None:
             for key, mine in (
                 ("evalset_fingerprint", evalset.fingerprint()),
                 ("protocol_version", PROTOCOL_VERSION),
+                ("batch_size", batch_size),
             )
             if previous.get(key) != mine
         ]
@@ -652,6 +665,7 @@ def run_evalset(args, device) -> None:
         "protocol_version": PROTOCOL_VERSION,
         "eval_set": str(args.eval_set),
         "evalset_fingerprint": evalset.fingerprint(),
+        "batch_size": batch_size,
         "splits": {name: report.as_dict() for name, report in reports.items()},
         "comparison": comparison,
     }
@@ -733,7 +747,14 @@ def main() -> None:
         "--num-clips", type=int, default=200, help="held-out clips to evaluate"
     )
     parser.add_argument("--val-fraction", type=float, default=0.02)
-    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=0,
+        help="0 inherits the evaluation set's own batch size, which is what keeps two "
+        "checkpoints comparable; the decode is bf16 and moves ~0.2%% of characters between "
+        "batch sizes. Only the --audio-root path needs this set explicitly.",
+    )
     parser.add_argument(
         "--no-flush-tail",
         dest="flush_tail",
@@ -819,10 +840,10 @@ def main() -> None:
             samples = samples.mean(axis=1)
 
         teacher_stream = confirmed_stream(
-            teacher, extractor, samples, device, args.batch_size, args.flush_tail
+            teacher, extractor, samples, device, args.batch_size or 16, args.flush_tail
         )
         student_stream = confirmed_stream(
-            student, extractor, samples, device, args.batch_size, args.flush_tail
+            student, extractor, samples, device, args.batch_size or 16, args.flush_tail
         )
         pairs.append((teacher_stream, student_stream))
 

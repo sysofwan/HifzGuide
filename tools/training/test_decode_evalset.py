@@ -315,3 +315,21 @@ def test_the_training_spec_excludes_the_shards_a_set_was_actually_built_on():
     assert not ({200, 201} & trainable)
     # And the canonical block is no longer reserved when it was not what was used.
     assert gate_eval_shards()[5] in trainable
+
+
+def test_the_manifest_records_the_batch_size_it_was_decoded_at():
+    """bf16 makes the decode depend on batch size; two checkpoints must share one.
+
+    Measured: re-decoding 120 clips at the manifest's batch 32 reproduced the cached strings
+    exactly (0 edits); at batch 4 it moved 0.17% of characters. That is the same order as the
+    difference between two checkpoints, so it cannot be left to whoever runs the eval.
+    """
+    import inspect
+
+    from training import decode_evalset, distill_eval
+
+    assert '"batch_size": batch_size,' in inspect.getsource(decode_evalset.build)
+    scorer = inspect.getsource(distill_eval.run_evalset)
+    # Inherited from the manifest, and a cross-batch comparison is refused, not warned about.
+    assert 'evalset.provenance.get("batch_size"' in scorer
+    assert '("batch_size", batch_size)' in scorer

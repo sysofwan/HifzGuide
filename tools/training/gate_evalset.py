@@ -467,6 +467,87 @@ def directional_errors(decisions: list[tuple[bool, bool]]) -> DirectionalErrors:
     )
 
 
+@dataclass(frozen=True)
+class FlipCauses:
+    """Which of the gate's conditions produced each disagreement.
+
+    ``tadabur.scorer.Scorer.gate`` passes a clip only when its ``match_ratio`` clears the bar
+    **and** the alignment has no long interior insertion run **and** the decode adds no
+    shadda. The last two are the poison rejects, and they behave nothing like the first: the
+    ratio is a smooth function of the decode that a distillation loss pushes on directly,
+    while an insertion run is a discrete structural property of the decode's alignment -- a
+    repeated phrase, a doubled consonant -- that per-frame KL barely constrains.
+
+    Attribution needs no extra cached fields, only the ratio and the decision. A rejection
+    whose own ratio still cleared the bar can only have come from a poison condition; one
+    whose ratio fell below it is explained by the ratio alone. That is the question worth
+    asking -- "was the ratio enough to explain this?" -- not which specific poison fired.
+
+    This is the table to read first. On the h384 baseline it showed that **68% of all gate
+    disagreements involve a poison condition rather than the ratio**, which is not what
+    either the issue or ADR-0010 assumed the problem was.
+    """
+
+    false_pass_on_poison: int
+    false_pass_on_ratio: int
+    false_fail_on_poison: int
+    false_fail_on_ratio: int
+
+    @property
+    def total(self) -> int:
+        return (
+            self.false_pass_on_poison
+            + self.false_pass_on_ratio
+            + self.false_fail_on_poison
+            + self.false_fail_on_ratio
+        )
+
+    @property
+    def poison_share(self) -> float:
+        """Fraction of disagreements a ratio-only view of the gate cannot explain."""
+        return (self.false_pass_on_poison + self.false_fail_on_poison) / max(1, self.total)
+
+    def as_dict(self) -> dict:
+        return {
+            "flip_false_pass_on_poison": self.false_pass_on_poison,
+            "flip_false_pass_on_ratio": self.false_pass_on_ratio,
+            "flip_false_fail_on_poison": self.false_fail_on_poison,
+            "flip_false_fail_on_ratio": self.false_fail_on_ratio,
+            "flip_poison_share": round(self.poison_share, 4),
+        }
+
+
+def flip_causes(
+    rows: list[tuple[bool, float, bool, float]], threshold: float
+) -> FlipCauses:
+    """Attribute every disagreement in ``(teacher_passed, teacher_ratio, student_passed,
+    student_ratio)`` to the ratio or to a poison condition."""
+    false_pass_poison = false_pass_ratio = 0
+    false_fail_poison = false_fail_ratio = 0
+
+    for teacher_passed, teacher_ratio, student_passed, student_ratio in rows:
+        if teacher_passed == student_passed:
+            continue
+        if student_passed:
+            # The teacher rejected it. Did its own ratio explain that?
+            if teacher_ratio >= threshold:
+                false_pass_poison += 1
+            else:
+                false_pass_ratio += 1
+        else:
+            if student_ratio >= threshold:
+                false_fail_poison += 1
+            else:
+                false_fail_ratio += 1
+
+    return FlipCauses(
+        false_pass_on_poison=false_pass_poison,
+        false_pass_on_ratio=false_pass_ratio,
+        false_fail_on_poison=false_fail_poison,
+        false_fail_on_ratio=false_fail_ratio,
+    )
+
+
 def load_manifest(out_dir: Path) -> EvalSet:
     """Read a built set, refusing one this code cannot honestly interpret."""
     path = Path(out_dir) / MANIFEST_FILENAME

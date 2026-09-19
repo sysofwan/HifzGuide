@@ -327,3 +327,44 @@ def test_the_default_training_spec_is_exactly_the_complement():
     trainable = set(parse_shard_spec(default_train_shards()))
     assert not (trainable & held_out_shards())
     assert len(trainable) + len(held_out_shards()) == 385
+
+
+# --- Which gate condition produced each disagreement ---
+
+
+def test_flip_causes_attribute_a_rejection_to_poison_when_its_own_ratio_cleared_the_bar():
+    from training.gate_evalset import flip_causes
+
+    rows = [
+        # (teacher_passed, teacher_ratio, student_passed, student_ratio)
+        (False, 0.92, True, 0.90),   # teacher rejected at a high ratio -> poison
+        (False, 0.30, True, 0.70),   # teacher rejected on the ratio
+        (True, 0.88, False, 0.86),   # student rejected at a high ratio -> poison
+        (True, 0.88, False, 0.40),   # student's ratio fell below the bar
+        (True, 0.90, True, 0.91),    # agreement, ignored
+        (False, 0.20, False, 0.21),  # agreement, ignored
+    ]
+    causes = flip_causes(rows, 0.65)
+    assert causes.false_pass_on_poison == 1
+    assert causes.false_pass_on_ratio == 1
+    assert causes.false_fail_on_poison == 1
+    assert causes.false_fail_on_ratio == 1
+    assert causes.total == 4
+    assert causes.poison_share == pytest.approx(0.5)
+
+
+def test_flip_causes_of_a_perfect_student_are_empty_not_a_divide_by_zero():
+    from training.gate_evalset import flip_causes
+
+    causes = flip_causes([(True, 0.9, True, 0.9)], 0.65)
+    assert causes.total == 0
+    assert causes.poison_share == 0.0
+
+
+def test_a_rejection_exactly_at_the_bar_is_not_a_ratio_rejection():
+    """The gate passes at ``>= threshold``, so a rejection at the bar came from elsewhere."""
+    from training.gate_evalset import flip_causes
+
+    causes = flip_causes([(True, 0.80, False, 0.65)], 0.65)
+    assert causes.false_fail_on_poison == 1
+    assert causes.false_fail_on_ratio == 0

@@ -76,8 +76,10 @@ from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
 from training.gate_evalset import (
     STRATA,
     DirectionalErrors,
+    FlipCauses,
     PairedComparison,
     directional_errors,
+    flip_causes,
     paired_comparison,
     reweighted_agreement,
     wilson_interval,
@@ -352,6 +354,7 @@ class ViewReport:
     ratio_offset: float
     per_stratum_agreement: dict[str, float]
     reweighted_agreement: float
+    causes: FlipCauses
     trivial_guard: PairedComparison
 
     @property
@@ -379,6 +382,7 @@ class ViewReport:
                 name: round(value, 4) for name, value in self.per_stratum_agreement.items()
             },
             **self.errors.as_dict(),
+            **self.causes.as_dict(),
             "guard_vs_always_pass": self.trivial_guard.as_dict(),
         }
 
@@ -389,9 +393,19 @@ def build_view_report(
     clips,
     decisions: dict[str, StudentDecision],
     scanned_by_stratum: dict[str, int],
+    threshold: float,
 ) -> ViewReport:
     """Aggregate one view's clips into the report a ship decision can be read off."""
     pairs = [(clip.teacher_passed, decisions[clip.filename].student_passed) for clip in clips]
+    rows = [
+        (
+            clip.teacher_passed,
+            clip.teacher_ratio,
+            decisions[clip.filename].student_passed,
+            decisions[clip.filename].student_ratio,
+        )
+        for clip in clips
+    ]
     deltas = [
         decisions[clip.filename].student_ratio - clip.teacher_ratio for clip in clips
     ]
@@ -426,6 +440,7 @@ def build_view_report(
         ratio_offset=sum(deltas) / count,
         per_stratum_agreement=per_stratum,
         reweighted_agreement=reweighted_agreement(per_stratum, scanned_by_stratum),
+        causes=flip_causes(rows, threshold),
         # A guard, not evidence: on a view balanced around the bar, any competent student
         # beats pass-everything. It stays printed because a student that does NOT beat it is
         # a rubber stamp, and that has happened.
@@ -456,6 +471,16 @@ def format_view_report(report: ViewReport) -> str:
         f"p95 {report.ratio_p95_abs_delta:.4f}, offset {report.ratio_offset:+.4f}",
         f"    pass-everything     {report.always_pass_agreement:.2%} agreement "
         f"-- the floor this must clear",
+        f"    flips by condition  {report.causes.poison_share:.0%} involve a POISON reject "
+        f"(insertion run / added shadda), not the ratio",
+        f"                        teacher rejected on poison, student passed  "
+        f"{report.causes.false_pass_on_poison}",
+        f"                        teacher rejected on ratio,  student passed  "
+        f"{report.causes.false_pass_on_ratio}",
+        f"                        student rejected on poison, teacher passed  "
+        f"{report.causes.false_fail_on_poison}",
+        f"                        student rejected on ratio,  teacher passed  "
+        f"{report.causes.false_fail_on_ratio}",
     ]
     if report.per_stratum_agreement:
         by_stratum = "  ".join(
@@ -498,7 +523,10 @@ def run_evalset(args, device) -> None:
             clips = evalset.subset(view, split)
             if clips:
                 reports.append(
-                    build_view_report(view, split, clips, decisions, evalset.scanned_by_stratum)
+                    build_view_report(
+                    view, split, clips, decisions, evalset.scanned_by_stratum,
+                    BALANCED.correct_threshold,
+                )
                 )
 
     comparisons = []

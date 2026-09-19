@@ -200,7 +200,7 @@ def test_view_report_separates_false_rejections_from_false_acceptances():
         "c.wav": _decision("c.wav", 0.41, False),
         "d.wav": _decision("d.wav", 0.68, True),
     }
-    report = build_view_report("boundary", "dev", clips, decisions, {"near_pass": 10})
+    report = build_view_report("boundary", "dev", clips, decisions, {"near_pass": 10}, 0.65)
 
     assert report.num_clips == 4
     assert report.agreement == 0.5
@@ -220,7 +220,7 @@ def test_view_report_ratio_error_records_direction_not_only_magnitude():
         "a.wav": _decision("a.wav", 0.70, True),
         "b.wav": _decision("b.wav", 0.70, True),
     }
-    report = build_view_report("population", "dev", clips, decisions, {"pass_clear": 5})
+    report = build_view_report("population", "dev", clips, decisions, {"pass_clear": 5}, 0.65)
     assert report.ratio_offset == pytest.approx(-0.10)
     assert report.ratio_rmse == pytest.approx(0.10)
     assert report.ratio_p95_abs_delta == pytest.approx(0.10)
@@ -234,7 +234,7 @@ def test_view_report_flags_a_student_that_only_matches_pass_everything():
     clips.append(_eval_clip("f0.wav", 0.10, False))
     decisions = {clip.filename: _decision(clip.filename, 0.9, True) for clip in clips}
 
-    report = build_view_report("population", "dev", clips, decisions, {"pass_clear": 9})
+    report = build_view_report("population", "dev", clips, decisions, {"pass_clear": 9}, 0.65)
     assert report.agreement == 0.9
     assert report.always_pass_agreement == 0.9
     assert not report.trivial_guard.as_dict()["a_beats_b"]
@@ -252,7 +252,7 @@ def test_view_report_reweights_enriched_strata_back_to_the_population():
     decisions = {clip.filename: _decision(clip.filename, clip.teacher_ratio, True) for clip in clips}
     # Both near_fail clips flip, both pass_clear agree -> raw 50%.
     report = build_view_report(
-        "boundary", "dev", clips, decisions, {"near_fail": 4, "pass_clear": 96}
+        "boundary", "dev", clips, decisions, {"near_fail": 4, "pass_clear": 96}, 0.65
     )
     assert report.agreement == 0.5
     assert report.reweighted_agreement == pytest.approx(0.96)

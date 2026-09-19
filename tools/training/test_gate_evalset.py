@@ -260,3 +260,28 @@ def test_check_provenance_refuses_a_different_bar_or_teacher():
         check_provenance(good, "obadx/muaalem-model-v3_2", 0.75)
     with pytest.raises(SystemExit, match="teacher_model_id"):
         check_provenance(good, "some/other-teacher", 0.65)
+
+
+def test_the_streaming_dataset_refuses_every_reserved_shard():
+    """"Remember not to train on those" is not a mechanism; the constructor is."""
+    import pytest
+
+    from training.distill_stream import StreamingWindowDataset, held_out_shards
+
+    reserved = sorted(held_out_shards())
+    assert set(gate_eval_shards()) <= set(reserved)
+    assert set(range(0, GATE_EVAL_SHARD_START)) <= set(reserved)
+
+    for shard in (0, 19, gate_eval_shards()[0], gate_eval_shards()[-1]):
+        with pytest.raises(ValueError, match="held out"):
+            StreamingWindowDataset([shard])
+
+
+def test_the_default_training_spec_is_exactly_the_complement():
+    from tadabur.shard_reader import parse_shard_spec
+
+    from training.distill_stream import default_train_shards, held_out_shards
+
+    trainable = set(parse_shard_spec(default_train_shards()))
+    assert not (trainable & held_out_shards())
+    assert len(trainable) + len(held_out_shards()) == 385

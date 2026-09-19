@@ -27,19 +27,27 @@ and ~1.89M windows -- **one epoch is ~59,000 steps**, more than the 40,000 the s
 run used. Past one epoch the loader restarts with the same ``seed`` and replays the same
 shard permutation, so ``--steps`` beyond ~59,000 does repeat windows.
 
-**Train and validation are split by shard, not by clip.** The staged ``clips_v2`` corpus is
-the filtered output of shards 0-19, so training on those shards would leak into the
-existing validation clips and make the new number incomparable to the 84.58% baseline.
-:data:`DEFAULT_TRAIN_SHARDS` therefore starts at 20, leaving the whole of 0-19 -- and hence
-every staged validation clip -- unseen.
+**Train and validation are split by shard, not by clip, and there are now two
+reservations.** Shards 0-19 are the filtered source of the staged ``clips_v2`` corpus, so
+training on them leaks into the validation clips every earlier number was measured on. A
+strided block on top of that (``training.gate_evalset.gate_eval_shards``) feeds the frozen
+gate-evaluation set, and is reserved so one evaluation set stays valid for the
+staged-corpus baseline *and* for every streaming successor. :func:`held_out_shards` is the
+single place both are stated and :class:`StreamingWindowDataset` refuses either by
+construction -- "remember not to train on those" is not a mechanism, and a hand-typed range
+that has drifted from the reservation leaks silently.
 
 Usage::
 
     # What one shard yields, and how fast (downloads and deletes a single shard)
     python -m training.distill_stream --shards 200 --probe
 
+    # The shard spec a run should use (the complement of both reservations)
+    python -m training.gate_evalset --print-training-shards
+
     # Used by distill_train via --stream-shards
-    python -m training.distill_train --preset h384 --stream-shards 20-384 \\
+    python -m training.distill_train --preset h384 \\
+        --stream-shards "$(python -m training.gate_evalset --print-training-shards)" \\
         --audio-root ../tadabur/audit_run/clips_v2 --out-dir runs/h384_full
 
 Linux + CUDA (the class subclasses ``IterableDataset``, so torch is a hard import).
@@ -65,8 +73,30 @@ from training.distill_data import (
 
 # Shards 0-19 produced the staged ``clips_v2`` corpus, so they are reserved: training on
 # them would leak into the validation clips every reported number so far is measured on.
-HELD_OUT_SHARDS = range(0, 20)
-DEFAULT_TRAIN_SHARDS = "20-384"
+STAGED_CORPUS_SHARDS = range(0, 20)
+
+
+def held_out_shards() -> frozenset[int]:
+    """Every shard a training run must not touch, from both reservations.
+
+    The staged block (0-19) and the strided gate-evaluation block
+    (``training.gate_evalset.gate_eval_shards``). Computed rather than written down twice:
+    a hand-typed range that has drifted from the reservation is a leak that shows up as an
+    unexplained jump in agreement, months later, with nothing in the logs to explain it.
+    """
+    from training.gate_evalset import gate_eval_shards
+
+    return frozenset(STAGED_CORPUS_SHARDS) | frozenset(gate_eval_shards())
+
+
+def default_train_shards() -> str:
+    """The shard spec a training run should use -- the complement of both reservations."""
+    from training.gate_evalset import training_shard_spec
+
+    return training_shard_spec()
+
+
+
 
 # Windows buffered before yielding, to break up the strong correlation of a stream that
 # arrives clip-by-clip and shard-by-shard: a pure stream would hand the optimiser ~5000
@@ -134,11 +164,13 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         seed: int = 1234,
         delete_after: bool = True,
     ) -> None:
-        overlap = sorted(set(shard_indices) & set(HELD_OUT_SHARDS))
+        overlap = sorted(set(shard_indices) & held_out_shards())
         if overlap:
             raise ValueError(
-                f"shards {overlap} produced the staged validation clips; training on them "
-                f"would leak. Use {DEFAULT_TRAIN_SHARDS} or another disjoint range."
+                f"shards {overlap} are held out: 0-{STAGED_CORPUS_SHARDS.stop - 1} produced "
+                f"the staged validation clips and the strided block feeds the frozen gate "
+                f"evaluation set. Training on either leaks into a number this project "
+                f"reports. Use --stream-shards {default_train_shards()}"
             )
         self.shard_indices = list(shard_indices)
         self.model_id = model_id
@@ -263,15 +295,16 @@ def main() -> None:
         report = probe(indices[0], args.hop_seconds)
         for key, value in report.items():
             print(f"  {key:<20} {value}")
-        full = len(parse_shard_spec(DEFAULT_TRAIN_SHARDS))
-        print(f"\nExtrapolated over {full} training shards ({DEFAULT_TRAIN_SHARDS}):")
+        trainable = default_train_shards()
+        full = len(parse_shard_spec(trainable))
+        print(f"\nExtrapolated over {full} trainable shards:")
         print(f"  audio_hours          {report['audio_hours'] * full:,.0f}")
         print(f"  windows              {report['windows'] * full:,}")
         print(f"  steps_at_batch_32    {report['steps_at_batch_32'] * full:,}")
         return
 
     print(f"{len(indices)} shards of {NUM_SHARDS}: {indices[:5]}...{indices[-3:]}")
-    print(f"held out (never trained on): {HELD_OUT_SHARDS.start}-{HELD_OUT_SHARDS.stop - 1}")
+    print(f"held out (never trained on): {sorted(held_out_shards())}")
     print(f"peak disk: one shard per worker (~2.5 GB), independent of shard count")
 
 

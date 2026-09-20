@@ -336,7 +336,7 @@ number this work is accountable for. See ADR-0010.
 
 - **`distill_stream`** — the corpus without the disk. Each window is read once, so shards are
   fetched, consumed and deleted: peak disk is one ~2.5 GB shard per worker however many
-  shards the run covers. 345 trainable shards ≈ **1,170 hours** ≈ 53k steps at batch 32.
+  shards the run covers. 345 trainable shards ≈ **1,294 hours** ≈ 53k steps at batch 32.
   **Two** shard blocks are refused by construction — 0–19, which produced the staged
   validation clips, and the strided block feeding the frozen gate evaluation set. Get the
   spec from `decode_evalset --print-training-shards` rather than typing a range.
@@ -369,16 +369,10 @@ number this work is accountable for. See ADR-0010.
   argmax agreement is a flat 0.0 either way.
 
 - **`distill_gate`** — scores both decodes through the ported `.balanced` gate and asks how
-  often they lead to the same verdict. **Not the distillation metric**: that gate is
-  ADR-0001's corpus filter at a threshold Muraja does not use (ADR-0005 puts advancement at
-  0.70), so it answers a fine-tune/product question. Kept for that question. With
-  `--eval-set` it reads the teacher's **cached** decisions from a frozen set, so only the
-  student runs and two checkpoints are scored against identical truth. It reports the **flip
-  rate with a Wilson interval**, split into false rejections and false acceptances (the same
-  aggregate agreement can be either, and they call for opposite fixes), the
-  population-reweighted estimate, continuous `match_ratio` error, and a **paired McNemar**
-  against another checkpoint's saved decisions. Beating pass-everything is printed as a
-  guard, not as evidence — on a set balanced around the bar, any competent student wins it.
+  often they lead to the same verdict. **Not the distillation metric, and unchanged by that
+  work**: that gate is ADR-0001's corpus filter at a threshold Muraja does not use (ADR-0005
+  puts advancement at 0.70), so it answers a fine-tune/product question. It takes
+  `--checkpoint --audio-root` and decodes both models; there is no cached-teacher path.
 
 - **`decode_evalset`** — builds the frozen set every fidelity claim rests on: one scan of 20
   **strided** reserved shards (strided because a contiguous block is a distribution shift,

@@ -81,12 +81,25 @@ def _model(hidden, heads, intermediate, position_embeddings_type):
 
 
 @pytest.fixture(scope="module")
-def pair():
+def teacher_and_features():
+    """Expensive and read-only, so shared."""
     torch.manual_seed(0)
     teacher = _model(TEACHER_HIDDEN, TEACHER_HEADS, INTERMEDIATE_TEACHER, "relative_key")
-    student = _model(STUDENT_HIDDEN, STUDENT_HEADS, INTERMEDIATE_STUDENT, "rotary")
-    features = [torch.randn(2, FRAMES, FEATURE_DIM) for _ in range(2)]
-    return teacher, student, features
+    return teacher, [torch.randn(2, FRAMES, FEATURE_DIM) for _ in range(2)]
+
+
+@pytest.fixture
+def pair(teacher_and_features):
+    """A **fresh** student per test.
+
+    It used to be module-scoped, so every `transplant` left the model in whatever state the
+    previous test produced, in whatever order pytest happened to run them. That cost a real
+    assertion: the `--qk random` test could only check the report, because by the time it ran
+    the query/key weights were already the copied teacher weights from an earlier arm.
+    """
+    torch.manual_seed(1)
+    teacher, features = teacher_and_features
+    return teacher, _model(STUDENT_HIDDEN, STUDENT_HEADS, INTERMEDIATE_STUDENT, "rotary"), features
 
 
 @pytest.fixture(scope="module")
@@ -193,13 +206,27 @@ def test_random_query_key_mode_leaves_exactly_those_tensors_alone(pair, spec):
     stats = collect_importance(teacher, features)
     selection = choose(spec, stats, HEAD_DIM)
     moments = collect_layernorm_moments(teacher, features, selection)
+
+    # Snapshot before the transplant. Only possible because the student is now a fresh
+    # per-test fixture; under the old module-scoped one it already held a previous arm's
+    # copied weights and this assertion could not be written at all.
+    before = {k: v.clone() for k, v in student.state_dict().items()}
     report = transplant(student, teacher, selection, moments, qk_mode="random")
+    after = student.state_dict()
 
     left = [name for name in report["left_random_names"] if "--qk random" in name]
     assert left, "expected encoder q/k to be reported as left at init"
     assert all(".linear_q." in name or ".linear_k." in name for name in left)
     # The adapter's attention carries no positional embedding at all, so it always copies.
     assert not any(".adapter." in name for name in left)
+
+    for entry in left:
+        name = entry.split(" (")[0]
+        assert torch.equal(after[name], before[name]), f"{name} was modified"
+    # ... and value, which sits in the same attention block, WAS copied. That contrast is
+    # the point: --qk random is selective, not a no-op on the whole module.
+    value = "wav2vec2_bert.encoder.layers.0.self_attn.linear_v.weight"
+    assert not torch.equal(after[value], before[value])
 
 
 def test_damped_query_key_is_the_copy_scaled(pair, spec):
@@ -291,17 +318,28 @@ def test_transplant_preserves_full_precision_from_an_fp32_source(pair, spec):
     assert torch.equal(got, exact)
 
 
-def test_calibration_forwards_go_through_the_autocast_helper(pair):
-    """A bf16 teacher on fp32 features raises inside the first Linear without autocast."""
-    import inspect
+def test_no_calibration_forward_escapes_the_autocast_helper(pair, spec, monkeypatch):
+    """A bf16 teacher on fp32 features raises inside the first Linear without autocast.
 
+    Asserts the invariant by counting calls rather than by matching source text, so an
+    ordinary refactor does not fail it and a new raw `teacher(...)` call does.
+    """
     from training import teacher_init
 
-    source = inspect.getsource(teacher_init.collect_importance)
-    assert "_teacher_forward(" in source
-    assert inspect.getsource(teacher_init.collect_layernorm_moments).count(
-        "_teacher_forward("
-    ) == 1
+    teacher, _, features = pair
+    calls = []
+    real = teacher_init._teacher_forward
+    monkeypatch.setattr(
+        teacher_init, "_teacher_forward",
+        lambda *a, **k: (calls.append(1), real(*a, **k))[1],
+    )
+    stats = teacher_init.collect_importance(teacher, features)
+    assert len(calls) == len(features)
+
+    selection = choose(spec, stats, HEAD_DIM)
+    calls.clear()
+    collect_layernorm_moments(teacher, features, selection)
+    assert len(calls) == len(features)
 
 
 def test_conv_internal_channels_are_selected_in_their_own_space(pair, spec):

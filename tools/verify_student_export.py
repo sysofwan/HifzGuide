@@ -116,11 +116,17 @@ def main() -> None:
     import torch
     from transformers import SeamlessM4TFeatureExtractor
 
-    from training.decode_evalset import CLIPS_DIRNAME, load_manifest
+    from training.decode_evalset import CLIPS_DIRNAME, check_provenance, load_manifest
+    from training.distill_data import SAMPLE_RATE
     from training.distill_eval import levenshtein, score_decode_agreement
-    from training.distill_student import PRESETS, build_student
+    from training.distill_student import PRESETS, TEACHER_MODEL_ID, build_student
 
     evalset = load_manifest(args.eval_set)
+    # This is the one tool that runs on a different machine, against assets copied across a
+    # boundary, so it is the one that most needs the guard every other consumer applies. A
+    # manifest built under a different teacher or a pre-flush protocol would otherwise print
+    # a plausible absolute number next to figures from the Linux path.
+    check_provenance(evalset, TEACHER_MODEL_ID)
     clips = evalset.subset(args.split)[: args.num_clips]
     if not clips:
         raise SystemExit(f"no clips in split {args.split!r}")
@@ -140,17 +146,26 @@ def main() -> None:
     scorers = {"pytorch fp32": torch_logits}
     for package in sorted(Path(args.export).glob("*.mlpackage")):
         model = ct.models.MLModel(str(package), compute_units=ct.ComputeUnit.CPU_AND_NE)
-        label = package.stem.rsplit("_", 1)[-1].lower()
+        label = f"coreml {package.stem.rsplit('_', 1)[-1].lower()}"
+        if label in scorers:
+            raise SystemExit(
+                f"two exports in {args.export} reduce to the label {label!r} "
+                f"({package.name}); one would silently replace the other."
+            )
 
         def coreml_logits(features, model=model):
             return model.predict({"input_features": features[None, ...]})["phoneme_logits"][0]
 
-        scorers[f"coreml {label}"] = coreml_logits
+        scorers[label] = coreml_logits
 
     decodes: dict[str, dict[str, str]] = {name: {} for name in scorers}
     started = time.time()
     for index, clip in enumerate(clips, start=1):
-        samples, _ = sf.read(str(clips_dir / clip.filename), dtype="float32")
+        samples, rate = sf.read(str(clips_dir / clip.filename), dtype="float32")
+        if rate != SAMPLE_RATE:
+            raise SystemExit(f"{clip.filename} is {rate} Hz, not {SAMPLE_RATE}")
+        if samples.ndim > 1:
+            samples = samples.mean(axis=1)
         windows = window_features(extractor, samples)
         for name, logits_for_window in scorers.items():
             decodes[name][clip.filename] = decode_windows(logits_for_window, windows)

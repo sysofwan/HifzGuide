@@ -218,22 +218,61 @@ def test_the_checkpoint_stores_the_average_once(tmp_path):
     assert "student_ema" not in state
 
 
-def test_the_averaged_weights_are_reconstructed_from_the_shadow(tmp_path):
+def test_the_averaged_weights_round_trip_through_the_loader(tmp_path):
+    """Exercise `load_student_from_checkpoint`, not a copy of its expression.
+
+    The previous version of this test pasted the reconstruction out of the loader into the
+    test and asserted that copy matched `apply_to`. Changing the loader's `if name in shadow`
+    to `if name in live` left it passing.
+    """
     import torch
 
-    from training.distill_train import WeightAverage
+    from training.distill_eval import load_student_from_checkpoint
+    from training.distill_student import PRESETS, build_student
+    from training.distill_train import TrainConfig, WeightAverage, save_checkpoint
 
-    model = torch.nn.Linear(4, 3)
-    averager = WeightAverage(model, 0.5)
+    spec = PRESETS["h256"]
+    student = build_student(spec)
+    averager = WeightAverage(student, 0.5)
     with torch.no_grad():
-        model.weight.fill_(3.0)
-    averager.update(model)
+        for parameter in student.parameters():
+            parameter.mul_(0.0).add_(0.25)
+    averager.update(student)
 
-    live = model.state_dict()
+    optimizer = torch.optim.SGD(student.parameters(), lr=0.1)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: 1.0)
+    path = tmp_path / "checkpoint.pt"
+    save_checkpoint(
+        path, 10, student, student, optimizer, scheduler,
+        TrainConfig(preset="h256", audio_root="", out_dir=str(tmp_path), ema_decay=0.5),
+        averager,
+    )
+
+    device = torch.device("cpu")
+    loaded, _, step = load_student_from_checkpoint(path, device, use_ema=True)
+    assert step == 10
     shadow = averager.state_dict()["shadow"]
-    rebuilt = {
-        name: (shadow[name].to(value.dtype) if name in shadow else value)
-        for name, value in live.items()
-    }
-    for name, value in averager.apply_to(model).items():
-        assert torch.allclose(rebuilt[name], value)
+    for name, value in loaded.state_dict().items():
+        if name in shadow:
+            assert torch.allclose(value, shadow[name].to(value.dtype)), name
+
+
+def test_asking_for_averaged_weights_a_run_never_kept_is_an_error(tmp_path):
+    """Silently falling back to the live weights would report the wrong model's number."""
+    import pytest
+    import torch
+
+    from training.distill_eval import load_student_from_checkpoint
+    from training.distill_student import PRESETS, build_student
+    from training.distill_train import TrainConfig, save_checkpoint
+
+    student = build_student(PRESETS["h256"])
+    optimizer = torch.optim.SGD(student.parameters(), lr=0.1)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: 1.0)
+    path = tmp_path / "checkpoint.pt"
+    save_checkpoint(
+        path, 5, student, student, optimizer, scheduler,
+        TrainConfig(preset="h256", audio_root="", out_dir=str(tmp_path)), None,
+    )
+    with pytest.raises(SystemExit, match="no averaged weights"):
+        load_student_from_checkpoint(path, torch.device("cpu"), use_ema=True)

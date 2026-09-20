@@ -770,7 +770,7 @@ def main() -> None:
         default=0.0,
         help="keep an exponential moving average of the student's weights alongside the "
         "live ones (0 = off, 0.999 is a sensible on). Costs one model's memory and no "
-        "training time; score it with distill_gate --ema before trusting it.",
+        "training time; score it with distill_eval --ema before trusting it.",
     )
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(

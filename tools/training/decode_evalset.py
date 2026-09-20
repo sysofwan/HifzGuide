@@ -76,7 +76,7 @@ import json
 import math
 import random
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 # Bumped whenever the manifest layout, the strata, or anything the cached teacher decisions
@@ -87,10 +87,10 @@ MANIFEST_FILENAME = "manifest.json"
 CLIPS_DIRNAME = "clips"
 
 # Every 19th shard from 20: 20 shards spread across the corpus rather than a block at one
-# end (see the module docstring on why contiguous is the wrong choice). The stride is set by
-# what the boundary view needs, not by taste: measured on two shards, only ~4% of raw Tadabur
-# clips fall below the 0.65 bar under the teacher, so filling a 500-clip failing quota takes
-# ~13,000 candidates. 20 shards yield ~20,000, which leaves margin; 15 would not have.
+# end (see the module docstring on why contiguous is the wrong choice). 20 shards yield
+# ~20,000 candidates, comfortably more than the sample needs; the count was originally set by
+# a ratio-stratified second sample that no longer exists, and is kept because a larger
+# candidate pool costs only scan time and reserves only 5% of the training corpus.
 GATE_EVAL_SHARD_STRIDE = 19
 GATE_EVAL_SHARD_START = 20
 NUM_TADABUR_SHARDS = 385
@@ -174,9 +174,13 @@ class EvalClip:
     """One frozen clip and the teacher decode cached for it.
 
     ``teacher_text`` is the whole target: the confirmed phoneme stream the student has to
-    reproduce. The scorer-derived fields below are recorded for provenance only -- no
-    distillation metric reads them -- so that a filter-side or advancement question can be
-    asked of this set later without re-running the teacher.
+    reproduce, and it is the only thing here a distillation metric reads.
+
+    Scorer-derived fields (``match_ratio`` and the filter's poison flags) are deliberately
+    absent. An earlier revision carried them "for provenance", but ``build`` never populated
+    them once the scorer left this module, so every new manifest wrote zeros for all 2,000
+    clips and the promise was false. Legacy ``gate-evalset-v1`` files on disk still contain
+    real values; read the JSON directly if a filter-side question ever needs them.
     """
 
     filename: str
@@ -186,10 +190,6 @@ class EvalClip:
     duration_s: float
     split: str
     teacher_text: str
-    teacher_ratio: float = 0.0
-    teacher_passed: bool = False
-    teacher_insertion_run: int = 0
-    teacher_added_shadda: bool = False
 
     def as_dict(self) -> dict:
         return {
@@ -200,10 +200,6 @@ class EvalClip:
             "duration_s": round(self.duration_s, 2),
             "split": self.split,
             "teacher_text": self.teacher_text,
-            "teacher_ratio": round(self.teacher_ratio, 6),
-            "teacher_passed": self.teacher_passed,
-            "teacher_insertion_run": self.teacher_insertion_run,
-            "teacher_added_shadda": self.teacher_added_shadda,
         }
 
 
@@ -236,9 +232,9 @@ class EvalSet:
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
-    def subset(self, split: str | None = None) -> tuple[EvalClip, ...]:
+    def subset(self, split: str = "both") -> tuple[EvalClip, ...]:
         """All clips, or one side of the reciter split."""
-        if split in (None, "both"):
+        if split == "both":
             return self.clips
         if split not in ("dev", "test"):
             raise ValueError(f"unknown split {split!r}")
@@ -255,150 +251,65 @@ class EvalSet:
         }
 
 
-def binomial_two_sided_p(successes: int, trials: int) -> float:
-    """Exact two-sided binomial p-value at p=0.5 -- the McNemar test's exact form.
-
-    The chi-square approximation is unreliable at the discordant-pair counts this evaluation
-    produces (often under 25), and it is the approximation that would decide whether a
-    reported gain is real. ``math.comb`` is exact and fast enough at these sizes.
-    """
-    if trials <= 0:
-        return 1.0
-    if trials > EXACT_BINOMIAL_LIMIT:
-        # Beyond this the exact sum is slow and the normal approximation is excellent (the
-        # counts are in the hundreds and the distribution is symmetric). Continuity-corrected.
-        from statistics import NormalDist
-
-        deviation = abs(successes - trials / 2) - 0.5
-        if deviation <= 0:
-            return 1.0
-        return min(1.0, 2 * NormalDist().cdf(-deviation / math.sqrt(trials / 4)))
-    weights = [math.comb(trials, k) for k in range(trials + 1)]
-    observed = weights[successes]
-    tail = sum(weight for weight in weights if weight <= observed)
-    # Integer division, not ``2.0 ** trials``: the float power overflows at 1024 trials, and a
-    # student that disagrees with the teacher on a thousand clips is exactly when this gets
-    # called. ``int / int`` is correctly rounded at any size.
-    return min(1.0, tail / (2**trials))
-
-
 def wilson_interval(successes: int, trials: int, z: float = 1.96) -> tuple[float, float]:
-    """Wilson score interval -- the one that stays inside [0, 1] near the extremes.
+    """Wilson score interval. Thin wrapper over the project's existing implementation.
 
-    A 95% target is measured close enough to 1.0 that the normal-approximation interval
-    overshoots, and the entire purpose of this evaluation set is to say whether an interval
-    excludes a value.
+    ``training.counterfactual_eval`` already owns this and ``tadabur.tashkeel_acceptance``
+    already imports it from there; re-deriving it here would be a second copy of a formula
+    that is easy to get subtly wrong near the extremes. Re-exported rather than imported
+    at the call sites only so this module stays the single place the evaluation's statistics
+    are looked up.
     """
-    if trials <= 0:
-        return (0.0, 0.0)
-    proportion = successes / trials
-    denominator = 1 + z**2 / trials
-    centre = (proportion + z**2 / (2 * trials)) / denominator
-    spread = (
-        z * math.sqrt(proportion * (1 - proportion) / trials + z**2 / (4 * trials**2))
-    ) / denominator
-    return (max(0.0, centre - spread), min(1.0, centre + spread))
+    from training.counterfactual_eval import wilson_interval as canonical
+
+    return canonical(successes, trials, z)
 
 
-@dataclass(frozen=True)
-class PairedComparison:
-    """One decision policy against another, on the same clips, as predictors of the teacher.
-
-    Built for two uses: student versus the pass-everything policy (is this better than a
-    rubber stamp?) and student versus another student (did this intervention help?). The
-    second is the one that should decide an experiment -- against pass-everything, any
-    competent student wins once the sample is balanced near the bar, so a small p-value there
-    is not evidence the target is met.
-    """
-
-    name_a: str
-    name_b: str
-    a_only_correct: int
-    b_only_correct: int
-    p_value: float
-
-    @property
-    def discordant(self) -> int:
-        return self.a_only_correct + self.b_only_correct
-
-    def as_dict(self) -> dict:
-        return {
-            "comparison": f"{self.name_a} vs {self.name_b}",
-            f"{self.name_a}_only_correct": self.a_only_correct,
-            f"{self.name_b}_only_correct": self.b_only_correct,
-            "discordant": self.discordant,
-            "p_value": round(self.p_value, 6),
-            "a_beats_b": bool(
-                self.a_only_correct > self.b_only_correct and self.p_value < 0.05
-            ),
-        }
-
-
-def paired_comparison(
-    correct_a: list[bool], correct_b: list[bool], name_a: str, name_b: str
-) -> PairedComparison:
-    """Exact McNemar over two per-clip correctness vectors of the same length."""
-    if len(correct_a) != len(correct_b):
-        raise ValueError(
-            f"paired comparison needs matched clips: {len(correct_a)} vs {len(correct_b)}"
-        )
-    a_only = sum(1 for a, b in zip(correct_a, correct_b) if a and not b)
-    b_only = sum(1 for a, b in zip(correct_a, correct_b) if b and not a)
-    return PairedComparison(
-        name_a=name_a,
-        name_b=name_b,
-        a_only_correct=a_only,
-        b_only_correct=b_only,
-        p_value=binomial_two_sided_p(min(a_only, b_only), a_only + b_only),
-    )
-
-
-def cluster_bootstrap_interval(
-    outcomes: list[bool],
-    clusters: list,
+def cluster_bootstrap(
+    rows: list,
+    cluster_of,
+    statistic,
+    *,
+    seed: int,
     iterations: int = 4000,
-    seed: int = 12345,
     alpha: float = 0.05,
 ) -> tuple[float, float]:
-    """Percentile bootstrap resampling **reciters**, not clips.
+    """Percentile bootstrap that resamples whole **clusters**, not observations.
 
-    :func:`wilson_interval` assumes the observations are independent. These are not: 2,000
-    evaluation clips come from ~286 reciters, and whether the student agrees with the teacher
-    on a clip is correlated within a voice -- same channel, same pace, same articulation. The
-    independent-sample interval is therefore too narrow, and it is too narrow on exactly the
-    question a ship decision asks ("is the lower bound above the bar?").
+    Every interval this evaluation reports is over clips that are not independent: 2,000 of
+    them come from 286 reciters, and whether the student matches the teacher correlates
+    within a voice. An independent-sample interval is therefore too narrow on exactly the
+    question a ship decision asks -- measured here, about 23% too narrow.
 
-    Resampling whole reciters with replacement makes no assumption about the size of that
-    correlation, which is the right trade when there is one clustering variable and enough of
-    them to resample. The total clip count varies between draws, as it should -- a corpus
-    with a different set of reciters really would have a different number of clips.
+    ``statistic`` pools a list of rows into one number, so the same resampling serves a
+    proportion, a pooled ratio of sums, and a paired difference of pooled ratios. Those were
+    three separate loops with three different percentile conventions and three different
+    hardcoded seeds until this existed; one of them indexed ``draws[100], draws[3899]``
+    against a literal ``range(4000)``, which is a wrong interval the moment either number
+    moves. Written once, the arithmetic is wrong at most once.
 
-    Returns the naive interval unchanged when there is effectively no clustering to find (one
-    cluster, or fewer than two), because a bootstrap over one cluster is not an interval.
+    Resampling clusters makes no assumption about the size of the correlation, which is the
+    right trade when there is one clustering variable and enough of them to resample. The
+    total row count varies between draws, as it should: a corpus with a different set of
+    reciters really would have a different number of clips.
     """
-    if not outcomes or len(outcomes) != len(clusters):
-        raise ValueError(
-            f"need one cluster label per outcome: {len(outcomes)} vs {len(clusters)}"
-        )
+    if not rows:
+        return (0.0, 0.0)
     grouped: dict = {}
-    for outcome, cluster in zip(outcomes, clusters):
-        grouped.setdefault(cluster, []).append(outcome)
+    for row in rows:
+        grouped.setdefault(cluster_of(row), []).append(row)
     keys = list(grouped)
-    if len(keys) < 2:
-        return wilson_interval(sum(outcomes), len(outcomes))
 
     rng = random.Random(seed)
-    estimates = []
+    draws = []
     for _ in range(iterations):
-        hits = total = 0
+        sample: list = []
         for _ in keys:
-            drawn = grouped[keys[rng.randrange(len(keys))]]
-            hits += sum(drawn)
-            total += len(drawn)
-        estimates.append(hits / total)
-    estimates.sort()
-    low = estimates[int(alpha / 2 * iterations)]
-    high = estimates[min(iterations - 1, int((1 - alpha / 2) * iterations))]
+            sample.extend(grouped[keys[rng.randrange(len(keys))]])
+        draws.append(statistic(sample))
+    draws.sort()
+    low = draws[int(alpha / 2 * iterations)]
+    high = draws[min(iterations - 1, int((1 - alpha / 2) * iterations))]
     return (low, high)
 
 
@@ -436,10 +347,6 @@ def load_manifest(out_dir: Path) -> EvalSet:
             duration_s=r["duration_s"],
             split=r["split"],
             teacher_text=r["teacher_text"],
-            teacher_ratio=r.get("teacher_ratio", 0.0),
-            teacher_passed=r.get("teacher_passed", False),
-            teacher_insertion_run=r.get("teacher_insertion_run", 0),
-            teacher_added_shadda=r.get("teacher_added_shadda", False),
         )
         for r in uniform
     )

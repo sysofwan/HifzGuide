@@ -88,6 +88,10 @@ HOP_SAMPLES = SAMPLE_RATE
 # be silently scored under another. v1 was the unflushed stream; v2 flushes the last window.
 PROTOCOL_VERSION = "confirmed-stream-v2-flush"
 
+# Default for the older --audio-root path. Named so the --eval-set path can tell "the user
+# passed --num-clips" from "the user did not", and refuse the former.
+DEFAULT_AUDIO_ROOT_CLIPS = 200
+
 
 @dataclass(frozen=True)
 class Segment:
@@ -526,10 +530,9 @@ def score_decode_agreement(per_clip: list[tuple[int, int, int]]) -> DecodeAgreem
     them come from 286 voices and agreement correlates within one -- so an independent-sample
     interval is too narrow on exactly the question a checkpoint comparison asks.
     """
-    import random
     import statistics
 
-    from training.decode_evalset import wilson_interval
+    from training.decode_evalset import cluster_bootstrap, wilson_interval
 
     if not per_clip:
         # 1 - 0/0 has no answer and 1 - 0/1 is 1.0, which would print as perfect agreement
@@ -539,29 +542,22 @@ def score_decode_agreement(per_clip: list[tuple[int, int, int]]) -> DecodeAgreem
     edits = sum(e for e, _, _ in per_clip)
     phonemes = sum(t for _, t, _ in per_clip)
     rates = sorted(e / max(1, t) for e, t, _ in per_clip)
+    reciters = {r for _, _, r in per_clip}
 
-    grouped: dict[int, list[tuple[int, int]]] = {}
-    for edit_count, tokens, reciter in per_clip:
-        grouped.setdefault(reciter, []).append((edit_count, tokens))
-    keys = list(grouped)
-    if len(keys) < 2:
+    if len(reciters) < 2:
         low, high = wilson_interval(phonemes - edits, max(1, phonemes))
     else:
-        rng = random.Random(7)
-        draws = []
-        for _ in range(4000):
-            drawn_edits = drawn_tokens = 0
-            for _ in keys:
-                for edit_count, tokens in grouped[keys[rng.randrange(len(keys))]]:
-                    drawn_edits += edit_count
-                    drawn_tokens += tokens
-            draws.append(1 - drawn_edits / max(1, drawn_tokens))
-        draws.sort()
-        low, high = draws[100], draws[3899]
+        low, high = cluster_bootstrap(
+            per_clip,
+            cluster_of=lambda row: row[2],
+            statistic=lambda rows: 1
+            - sum(e for e, _, _ in rows) / max(1, sum(t for _, t, _ in rows)),
+            seed=7,
+        )
 
     return DecodeAgreement(
         num_clips=len(per_clip),
-        num_reciters=len(keys),
+        num_reciters=len(reciters),
         char_accuracy=1.0 - edits / max(1, phonemes),
         ci_low=low,
         ci_high=high,
@@ -577,15 +573,11 @@ def score_decode_agreement(per_clip: list[tuple[int, int, int]]) -> DecodeAgreem
 class PairedDelta:
     """Two checkpoints' pooled accuracy difference, with a paired reciter-clustered interval.
 
-    The obvious comparison -- count clips where this checkpoint is closer than the other --
-    is a **sign test**. It asks whether more clips improved than worsened, which is not the
-    claim anyone makes from it: the headline is a pooled edit-rate difference, and a sign
-    test neither weights by how much a clip moved nor accounts for the clips of one reciter
-    not being independent. Both errors push the p-value the same way, toward significance.
-
-    This resamples whole reciters and recomputes the pooled difference inside each draw, so
-    the pairing (both checkpoints see the same clips), the clustering and the magnitude all
-    survive.
+    The obvious comparison -- count clips where this checkpoint is closer -- is a **sign
+    test**. It asks whether more clips improved than worsened, which is not the claim anyone
+    makes from it: the headline is a pooled edit-rate difference, and a sign test neither
+    weights by how much a clip moved nor accounts for one reciter's clips not being
+    independent. Both errors push the p-value the same way, toward significance.
     """
 
     delta: float
@@ -613,36 +605,30 @@ def paired_reciter_bootstrap(
     rows: list[tuple[int, int, int, int]], iterations: int = 4000, seed: int = 11
 ) -> PairedDelta:
     """``(edits_this, edits_other, teacher_phonemes, reciter_id)`` -> pooled delta and interval."""
-    import random
+    from training.decode_evalset import cluster_bootstrap
 
     if not rows:
         return PairedDelta(0.0, 0.0, 0.0, 0, 0)
 
     def pooled(sample):
-        this = sum(r[0] for r in sample)
-        other = sum(r[1] for r in sample)
-        tokens = max(1, sum(r[2] for r in sample))
+        this = sum(row[0] for row in sample)
+        other = sum(row[1] for row in sample)
+        tokens = max(1, sum(row[2] for row in sample))
         return (other - this) / tokens  # positive = this checkpoint is closer
 
-    grouped: dict[int, list] = {}
-    for row in rows:
-        grouped.setdefault(row[3], []).append(row)
-    keys = list(grouped)
-
-    rng = random.Random(seed)
-    draws = []
-    for _ in range(iterations):
-        sample = []
-        for _ in keys:
-            sample.extend(grouped[keys[rng.randrange(len(keys))]])
-        draws.append(pooled(sample))
-    draws.sort()
+    low, high = cluster_bootstrap(
+        rows,
+        cluster_of=lambda row: row[3],
+        statistic=pooled,
+        seed=seed,
+        iterations=iterations,
+    )
     return PairedDelta(
         delta=pooled(rows),
-        ci_low=draws[int(0.025 * iterations)],
-        ci_high=draws[int(0.975 * iterations)],
-        clips_closer=sum(1 for r in rows if r[0] < r[1]),
-        clips_further=sum(1 for r in rows if r[0] > r[1]),
+        ci_low=low,
+        ci_high=high,
+        clips_closer=sum(1 for row in rows if row[0] < row[1]),
+        clips_further=sum(1 for row in rows if row[0] > row[1]),
     )
 
 
@@ -651,12 +637,7 @@ def run_evalset(args, device) -> None:
     import soundfile as sf
     from transformers import SeamlessM4TFeatureExtractor
 
-    from training.decode_evalset import (
-        CLIPS_DIRNAME,
-        check_provenance,
-        load_manifest,
-        paired_comparison,
-    )
+    from training.decode_evalset import CLIPS_DIRNAME, check_provenance, load_manifest
     from training.distill_gate import tokens_to_phonemes
     from training.distill_student import TEACHER_MODEL_ID
 
@@ -730,6 +711,13 @@ def run_evalset(args, device) -> None:
                 "evaluation.\n" + "\n".join(mismatched)
             )
         other = previous["decodes"]
+        missing = [c.filename for c in scored_clips if c.filename not in other]
+        if missing:
+            raise SystemExit(
+                f"the comparison file is missing {len(missing)} of {len(scored_clips)} "
+                f"clips in this split (first: {missing[0]}). Comparing the intersection "
+                f"would report a paired delta over an unannounced subset."
+            )
         comparison = paired_reciter_bootstrap(
             [
                 (
@@ -739,7 +727,6 @@ def run_evalset(args, device) -> None:
                     c.reciter_id,
                 )
                 for c in scored_clips
-                if c.filename in other
             ]
         ).as_dict()
 
@@ -837,7 +824,10 @@ def main() -> None:
         "separates a generalisation gap from a ceiling.",
     )
     parser.add_argument(
-        "--num-clips", type=int, default=200, help="held-out clips to evaluate"
+        "--num-clips",
+        type=int,
+        default=DEFAULT_AUDIO_ROOT_CLIPS,
+        help="held-out clips to evaluate (--audio-root path only)",
     )
     parser.add_argument("--val-fraction", type=float, default=0.02)
     parser.add_argument(
@@ -866,6 +856,23 @@ def main() -> None:
     if args.eval_set:
         if args.split not in ("dev", "test", "both"):
             raise SystemExit("--split must be dev, test or both when using --eval-set")
+        # Accepting a flag and ignoring it is the one behaviour that cannot be right: the
+        # protocol and the clip set are pinned by the manifest, and --num-clips/--breakout
+        # belong to the --audio-root path. Refuse rather than silently do something else.
+        ignored = [
+            name
+            for name, used in (
+                ("--no-flush-tail", not args.flush_tail),
+                ("--num-clips", args.num_clips != DEFAULT_AUDIO_ROOT_CLIPS),
+                ("--breakout", args.breakout),
+            )
+            if used
+        ]
+        if ignored:
+            raise SystemExit(
+                f"{', '.join(ignored)} has no meaning with --eval-set: the evaluation set "
+                f"pins its own protocol and clip list. Drop the flag, or use --audio-root."
+            )
         run_evalset(args, device)
         return
     if not args.audio_root:

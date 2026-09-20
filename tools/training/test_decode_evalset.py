@@ -1,8 +1,8 @@
-"""Tests for the frozen gate-evaluation set: strata, sampling, statistics, provenance.
+"""Tests for the frozen decode-evaluation set: shards, sampling, statistics, provenance.
 
 Everything here is torch-free on purpose. The numbers a ship decision turns on -- the
-interval, the paired test, the population reweighting -- are arithmetic, and arithmetic that
-only runs on a GPU box is arithmetic nobody checks.
+clustered interval, the reciter split, the provenance guards -- are arithmetic, and
+arithmetic that only runs on a GPU box is arithmetic nobody checks.
 """
 
 from __future__ import annotations
@@ -18,19 +18,14 @@ from training.decode_evalset import (
     EvalClip,
     EvalSet,
     _Reservoir,
-    binomial_two_sided_p,
     check_provenance,
-    cluster_bootstrap_interval,
+    cluster_bootstrap,
     gate_eval_shards,
     load_manifest,
-    paired_comparison,
     reciter_split,
     training_shard_spec,
     wilson_interval,
 )
-
-THRESHOLD = 0.65
-
 
 def test_reserved_shards_are_strided_and_outside_the_staged_block():
     shards = gate_eval_shards()
@@ -59,15 +54,6 @@ def test_reciter_split_is_stable_and_roughly_balanced():
     assert 0.4 < splits.count("test") / len(splits) < 0.6
 
 
-def test_binomial_two_sided_p_matches_hand_computed_values():
-    assert binomial_two_sided_p(0, 0) == 1.0
-    # All ten discordant pairs on one side: 2 * (1/1024).
-    assert binomial_two_sided_p(0, 10) == pytest.approx(2 / 1024)
-    # A perfectly even split cannot be evidence of anything.
-    assert binomial_two_sided_p(5, 10) == pytest.approx(1.0)
-    assert binomial_two_sided_p(1, 10) == pytest.approx(22 / 1024)
-
-
 def test_wilson_interval_brackets_the_estimate_and_narrows_with_n():
     low_small, high_small = wilson_interval(950, 1000)
     low_big, high_big = wilson_interval(1900, 2000)
@@ -77,21 +63,6 @@ def test_wilson_interval_brackets_the_estimate_and_narrows_with_n():
     assert low_small < 0.95
     assert wilson_interval(0, 0) == (0.0, 0.0)
     assert wilson_interval(10, 10)[1] <= 1.0
-
-
-def test_paired_comparison_counts_only_discordant_clips():
-    student = [True, True, False, False, True]
-    other = [True, False, True, False, False]
-    result = paired_comparison(student, other, "student", "other")
-    assert result.a_only_correct == 2
-    assert result.b_only_correct == 1
-    assert result.discordant == 3
-    assert result.as_dict()["comparison"] == "student vs other"
-
-
-def test_paired_comparison_refuses_unmatched_clip_sets():
-    with pytest.raises(ValueError):
-        paired_comparison([True], [True, False], "a", "b")
 
 
 def test_reservoir_caps_at_its_quota_and_keeps_every_item_reachable():
@@ -183,14 +154,6 @@ def test_check_provenance_refuses_a_different_bar_teacher_or_protocol():
         check_provenance(stale, "obadx/muaalem-model-v3_2")
 
 
-def test_the_exact_p_value_survives_more_than_1023_discordant_pairs():
-    """``2.0 ** trials`` overflows at 1024 -- which is exactly when this gets called."""
-    assert binomial_two_sided_p(0, 1024) < 1e-300
-    assert binomial_two_sided_p(900, 2000) < 1e-4
-    assert binomial_two_sided_p(1000, 2000) == pytest.approx(1.0)
-    assert binomial_two_sided_p(750, 1500) == pytest.approx(1.0)
-
-
 def test_lossless_audio_round_trips_bit_exactly(tmp_path):
     """The manifest caches a decode of the in-memory waveform; the student reads the file.
 
@@ -214,8 +177,6 @@ def test_lossless_audio_round_trips_bit_exactly(tmp_path):
 
 def test_the_streaming_dataset_refuses_every_reserved_shard():
     """"Remember not to train on those" is not a mechanism; the constructor is."""
-    import pytest
-
     from training.distill_stream import StreamingWindowDataset, held_out_shards
 
     reserved = sorted(held_out_shards())
@@ -235,63 +196,6 @@ def test_the_default_training_spec_is_exactly_the_complement():
     trainable = set(parse_shard_spec(default_train_shards()))
     assert not (trainable & held_out_shards())
     assert len(trainable) + len(held_out_shards()) == 385
-
-
-def test_cluster_bootstrap_is_wider_than_wilson_when_outcomes_cluster():
-    """Whether the student agrees is correlated within a reciter, so the naive interval lies.
-
-    Constructed so the marginal proportion is identical either way and only the clustering
-    differs: the naive interval cannot tell them apart, and that is the whole problem.
-    """
-    from training.decode_evalset import cluster_bootstrap_interval
-
-    # 40 reciters of 10 clips. Clustered: each reciter is all-right or all-wrong.
-    clustered_outcomes, clustered_ids = [], []
-    for reciter in range(40):
-        clustered_outcomes += [reciter % 5 != 0] * 10
-        clustered_ids += [reciter] * 10
-    # Same 80% overall, but spread evenly inside every reciter.
-    spread_outcomes, spread_ids = [], []
-    for reciter in range(40):
-        spread_outcomes += [i % 5 != 0 for i in range(10)]
-        spread_ids += [reciter] * 10
-
-    assert sum(clustered_outcomes) == sum(spread_outcomes)
-    clustered = cluster_bootstrap_interval(clustered_outcomes, clustered_ids)
-    spread = cluster_bootstrap_interval(spread_outcomes, spread_ids)
-    naive = wilson_interval(sum(clustered_outcomes), len(clustered_outcomes))
-
-    assert (clustered[1] - clustered[0]) > (spread[1] - spread[0])
-    assert (clustered[1] - clustered[0]) > (naive[1] - naive[0])
-
-
-def test_cluster_bootstrap_brackets_the_estimate():
-    from training.decode_evalset import cluster_bootstrap_interval
-
-    outcomes = [i % 10 != 0 for i in range(500)]
-    clusters = [i // 5 for i in range(500)]
-    low, high = cluster_bootstrap_interval(outcomes, clusters)
-    assert low <= 0.9 <= high
-    assert 0.0 <= low <= high <= 1.0
-
-
-def test_cluster_bootstrap_is_deterministic_and_validated():
-    from training.decode_evalset import cluster_bootstrap_interval
-
-    outcomes = [i % 3 != 0 for i in range(90)]
-    clusters = [i // 3 for i in range(90)]
-    assert cluster_bootstrap_interval(outcomes, clusters) == cluster_bootstrap_interval(
-        outcomes, clusters
-    )
-    with pytest.raises(ValueError, match="one cluster label per outcome"):
-        cluster_bootstrap_interval([True, False], [1])
-
-
-def test_a_single_cluster_falls_back_rather_than_returning_a_point():
-    from training.decode_evalset import cluster_bootstrap_interval
-
-    outcomes = [True] * 9 + [False]
-    assert cluster_bootstrap_interval(outcomes, [7] * 10) == wilson_interval(9, 10)
 
 
 def test_the_fingerprint_changes_when_the_cached_truth_does():
@@ -317,19 +221,74 @@ def test_the_training_spec_excludes_the_shards_a_set_was_actually_built_on():
     assert gate_eval_shards()[5] in trainable
 
 
-def test_the_manifest_records_the_batch_size_it_was_decoded_at():
-    """bf16 makes the decode depend on batch size; two checkpoints must share one.
+# --- The one bootstrap, exercised as the shipping code calls it ---
 
-    Measured: re-decoding 120 clips at the manifest's batch 32 reproduced the cached strings
-    exactly (0 edits); at batch 4 it moved 0.17% of characters. That is the same order as the
-    difference between two checkpoints, so it cannot be left to whoever runs the eval.
+
+def test_cluster_bootstrap_is_wider_when_the_outcome_clusters_by_reciter():
+    """Same marginal proportion either way; only the clustering differs.
+
+    The independent-sample interval cannot tell these apart, which is the whole problem.
     """
-    import inspect
+    clustered = [(reciter % 5 != 0, reciter) for reciter in range(40) for _ in range(10)]
+    spread = [(i % 5 != 0, reciter) for reciter in range(40) for i in range(10)]
+    assert sum(o for o, _ in clustered) == sum(o for o, _ in spread)
 
-    from training import decode_evalset, distill_eval
+    mean = lambda rows: sum(o for o, _ in rows) / len(rows)  # noqa: E731
+    wide = cluster_bootstrap(clustered, lambda r: r[1], mean, seed=1)
+    narrow = cluster_bootstrap(spread, lambda r: r[1], mean, seed=1)
+    naive = wilson_interval(sum(o for o, _ in clustered), len(clustered))
 
-    assert '"batch_size": batch_size,' in inspect.getsource(decode_evalset.build)
-    scorer = inspect.getsource(distill_eval.run_evalset)
-    # Inherited from the manifest, and a cross-batch comparison is refused, not warned about.
-    assert 'evalset.provenance.get("batch_size"' in scorer
-    assert '("batch_size", batch_size)' in scorer
+    assert (wide[1] - wide[0]) > (narrow[1] - narrow[0])
+    assert (wide[1] - wide[0]) > (naive[1] - naive[0])
+
+
+def test_cluster_bootstrap_brackets_the_estimate_and_is_deterministic():
+    rows = [(i % 10 != 0, i // 5) for i in range(500)]
+    mean = lambda r: sum(o for o, _ in r) / len(r)  # noqa: E731
+    low, high = cluster_bootstrap(rows, lambda r: r[1], mean, seed=3)
+    assert low <= 0.9 <= high and 0.0 <= low <= high <= 1.0
+    assert (low, high) == cluster_bootstrap(rows, lambda r: r[1], mean, seed=3)
+    assert cluster_bootstrap([], lambda r: r[1], mean, seed=3) == (0.0, 0.0)
+
+
+def test_the_percentile_indices_track_the_iteration_count():
+    """They were once literals (`draws[100], draws[3899]`) beside a literal `range(4000)`.
+
+    Changing either produced a wrong interval with no error, so pin that they move together.
+    """
+    rows = [(i % 4 != 0, i) for i in range(200)]
+    mean = lambda r: sum(o for o, _ in r) / len(r)  # noqa: E731
+    for iterations in (200, 1000, 4000):
+        low, high = cluster_bootstrap(
+            rows, lambda r: r[1], mean, seed=5, iterations=iterations
+        )
+        assert 0.0 <= low <= high <= 1.0
+
+
+def test_wilson_interval_is_the_project_wide_one():
+    """A second copy of this formula is a second chance to get the extremes wrong."""
+    from training.counterfactual_eval import wilson_interval as canonical
+
+    for successes, trials in ((0, 10), (10, 10), (950, 1000), (1, 3)):
+        assert wilson_interval(successes, trials) == canonical(successes, trials)
+
+
+def test_legacy_stratified_clips_are_dropped_rather_than_pooled(tmp_path: Path):
+    """They are not a uniform draw, so pooling them would bias the headline toward the bar."""
+    payload = _evalset([_clip("keep.wav")]).as_dict()
+    payload["clips"].append({**payload["clips"][0], "filename": "drop.wav",
+                             "in_population": False})
+    payload["clips"][0]["in_population"] = True
+    (tmp_path / "manifest.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    loaded = load_manifest(tmp_path)
+    assert [c.filename for c in loaded.clips] == ["keep.wav"]
+    assert loaded.provenance["dropped_stratified_clips"] == 1
+
+
+def test_a_manifest_without_the_legacy_flag_keeps_every_clip(tmp_path: Path):
+    payload = _evalset([_clip("a.wav"), _clip("b.wav")]).as_dict()
+    (tmp_path / "manifest.json").write_text(json.dumps(payload), encoding="utf-8")
+    loaded = load_manifest(tmp_path)
+    assert len(loaded.clips) == 2
+    assert loaded.provenance["dropped_stratified_clips"] == 0

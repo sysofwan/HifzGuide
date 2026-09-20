@@ -96,8 +96,6 @@ def default_train_shards() -> str:
     return training_shard_spec()
 
 
-
-
 # Windows buffered before yielding, to break up the strong correlation of a stream that
 # arrives clip-by-clip and shard-by-shard: a pure stream would hand the optimiser ~5000
 # consecutive windows from one shard's reciters.

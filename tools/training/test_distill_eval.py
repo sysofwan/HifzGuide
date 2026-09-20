@@ -12,6 +12,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from training.decode_evalset import SCHEMA_VERSION
+
 from training import distill_eval as de
 from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS
 
@@ -388,12 +390,20 @@ def test_an_identical_pair_has_no_difference_and_no_significance():
     assert paired_reciter_bootstrap([]).delta == 0.0
 
 
-def test_the_test_half_is_not_scored_unless_it_is_asked_for():
-    """Printing the held-out panel on every experiment is how it stops being held out."""
-    import inspect
+def test_the_two_halves_are_disjoint_and_selectable():
+    """`--split dev` must not be able to see a test-half clip, and vice versa."""
+    from training.decode_evalset import EvalClip, EvalSet, reciter_split
 
-    from training import distill_eval
+    clips = [
+        EvalClip(f"c{i}.wav", "78:1", i, 20, 4.0, reciter_split(i), "abc")
+        for i in range(200)
+    ]
+    evalset = EvalSet(SCHEMA_VERSION, tuple(clips), 200, 0, {})
+    dev = {c.filename for c in evalset.subset("dev")}
+    test = {c.filename for c in evalset.subset("test")}
 
-    source = inspect.getsource(distill_eval.run_evalset)
-    assert "evalset.subset(args.split)" in source
-    assert 'for split in ("both", "dev", "test")' not in source
+    assert dev and test
+    assert not (dev & test)
+    assert dev | test == {c.filename for c in evalset.subset("both")}
+    # And the split follows the reciter, not the clip.
+    assert all(reciter_split(c.reciter_id) == c.split for c in evalset.clips)

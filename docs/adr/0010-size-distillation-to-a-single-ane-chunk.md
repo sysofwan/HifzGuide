@@ -412,6 +412,44 @@ moves by half a hop. Three consequences:
    teacher spike rather than all non-blank frames uniformly. But the cross-phase result
    neither confirms nor refutes it, and it should be tested before it is acted on as fact.
 
+### The streaming warm-start: 90.15% -> 93.09%, and where it stopped
+
+40,000 steps warm-started from the staged-corpus checkpoint onto ~1,170 h of Tadabur audio
+the student had never seen, lr 5e-5, warmup 500, cosine, EMA 0.999. Dev split, 970 clips:
+
+| step | 8k | 18k | 24k | 30k | 40k |
+| --- | --- | --- | --- | --- | --- |
+| char accuracy | 90.94% | 92.17% | 92.59% | 92.85% | **93.09%** |
+| per 1k steps | — | +0.124 | +0.068 | +0.044 | +0.024 |
+
+Paired against the baseline over the same clips: **+2.94%** [+2.52, +3.44], 628 clips closer
+against 123. The per-step rate halves roughly every window, which is the shape of a cosine
+tail as much as of a model running out of room — the two are not separable from this run
+alone, and a warm-restart probe is what would tell them apart.
+
+**EMA is worth nothing at convergence.** Live and averaged weights at step 40,000 score
+93.09% and 93.09%, 5,572 against 5,571 edits. That is the expected result once the schedule
+has annealed to ~1% of peak — there is no oscillation left to average away — and it means the
+value of keeping it is confined to the middle of a run.
+
+**An inference-time blank bias is not a free win either.** The residual decomposition shows
+the student over-emitting (1,534 insertions against 1,102 deletions on 600 clips), which
+invites a scalar on the blank logit before the argmax. Swept over the dev split, the optimum
+is **zero**: 92.77% at −0.25, **93.09% at 0.00**, 93.02% at +0.25, 92.49% at +0.50. The
+student's blank threshold is already calibrated; the insertion excess is distributed, not a
+global offset. Twenty minutes of GPU to close a plausible-sounding lever.
+
+**What the residual is made of**, 600 dev clips, 3,570 edits: identity substitutions
+**26.2%**, split/merge-shaped adjacent duplicates **18.0%**, missing or extra whole runs the
+rest. Top confusions are acoustically sensible (ن→ل, ن→م, ا→َ). Neither a clean identity
+problem nor a clean timing one.
+
+**And a training/evaluation mismatch worth fixing before the next objective experiment:**
+because the final window is flushed, **39.7% of all scored timesteps come from frames 25-124
+of one window** — 50% at the median clip length, 83% at 6 s — and training weights those at
+1x while giving the committed region 2x. Raising ``confirm_weight`` would push weight further
+away from two fifths of the scored output. The indicated experiment is the opposite one.
+
 ### How stable the decode is, and what that does *not* tell us
 
 The teacher against itself, 250 clips, under perturbations that carry no information:

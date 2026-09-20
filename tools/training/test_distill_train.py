@@ -121,3 +121,158 @@ def test_every_loss_weight_is_guarded():
     assert weights <= set(dt.RESUME_CRITICAL_FIELDS), (
         f"unguarded loss weights: {sorted(weights - set(dt.RESUME_CRITICAL_FIELDS))}"
     )
+
+
+# --- Weight averaging ---
+
+
+def test_weight_average_tracks_a_constant_exactly():
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    model = torch.nn.Linear(4, 3)
+    averager = WeightAverage(model, 0.9)
+    for _ in range(200):
+        averager.update(model)
+    for name, value in model.state_dict().items():
+        assert torch.allclose(averager.shadow[name], value.float(), atol=1e-5)
+
+
+def test_weight_average_ramps_in_so_it_is_not_pinned_to_the_random_init():
+    """A fixed 0.999 decay leaves the average ~63% initialisation after 1000 steps.
+
+    That reads as "averaging made the model worse" for the first several thousand steps of
+    every run, for a reason that has nothing to do with averaging.
+    """
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    model = torch.nn.Linear(2, 2)
+    with torch.no_grad():
+        for parameter in model.parameters():
+            parameter.zero_()
+    averager = WeightAverage(model, 0.999)
+    with torch.no_grad():
+        for parameter in model.parameters():
+            parameter.fill_(1.0)
+    for _ in range(20):
+        averager.update(model)
+    # With a fixed 0.999 this would still be ~0.02; the ramp gets it most of the way there.
+    assert float(averager.shadow["weight"].mean()) > 0.5
+
+
+def test_weight_average_refuses_a_decay_outside_the_open_unit_interval():
+    import pytest
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    for decay in (0.0, 1.0, -0.1, 1.5):
+        with pytest.raises(ValueError):
+            WeightAverage(torch.nn.Linear(2, 2), decay)
+
+
+def test_apply_to_substitutes_only_the_floating_point_tensors():
+    import torch
+
+    from training.distill_train import WeightAverage
+
+    model = torch.nn.Linear(2, 2)
+    averager = WeightAverage(model, 0.5)
+    with torch.no_grad():
+        model.weight.fill_(5.0)
+    averager.update(model)
+    substituted = averager.apply_to(model)
+    assert set(substituted) == set(model.state_dict())
+    assert not torch.allclose(substituted["weight"], model.weight)
+
+
+def test_ema_decay_is_a_resume_critical_field():
+    """Resuming at a different decay splices two different averages into one tensor."""
+    from training.distill_train import RESUME_CRITICAL_FIELDS
+
+    assert "ema_decay" in RESUME_CRITICAL_FIELDS
+
+
+def test_the_checkpoint_stores_the_average_once(tmp_path):
+    """Two copies of 85.5M values is 342 MB a save on a box that runs at 93% full."""
+    import torch
+
+    from training.distill_train import TrainConfig, WeightAverage, save_checkpoint
+
+    model = torch.nn.Linear(4, 3)
+    averager = WeightAverage(model, 0.9)
+    averager.update(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: 1.0)
+    path = tmp_path / "checkpoint.pt"
+    save_checkpoint(
+        path, 10, model, model, optimizer, scheduler,
+        TrainConfig(preset="h384", audio_root="", out_dir=str(tmp_path), ema_decay=0.9),
+        averager,
+    )
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    assert "ema_state" in state
+    assert "student_ema" not in state
+
+
+def test_the_averaged_weights_round_trip_through_the_loader(tmp_path):
+    """Exercise `load_student_from_checkpoint`, not a copy of its expression.
+
+    The previous version of this test pasted the reconstruction out of the loader into the
+    test and asserted that copy matched `apply_to`. Changing the loader's `if name in shadow`
+    to `if name in live` left it passing.
+    """
+    import torch
+
+    from training.distill_eval import load_student_from_checkpoint
+    from training.distill_student import PRESETS, build_student
+    from training.distill_train import TrainConfig, WeightAverage, save_checkpoint
+
+    spec = PRESETS["h256"]
+    student = build_student(spec)
+    averager = WeightAverage(student, 0.5)
+    with torch.no_grad():
+        for parameter in student.parameters():
+            parameter.mul_(0.0).add_(0.25)
+    averager.update(student)
+
+    optimizer = torch.optim.SGD(student.parameters(), lr=0.1)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: 1.0)
+    path = tmp_path / "checkpoint.pt"
+    save_checkpoint(
+        path, 10, student, student, optimizer, scheduler,
+        TrainConfig(preset="h256", audio_root="", out_dir=str(tmp_path), ema_decay=0.5),
+        averager,
+    )
+
+    device = torch.device("cpu")
+    loaded, _, step = load_student_from_checkpoint(path, device, use_ema=True)
+    assert step == 10
+    shadow = averager.state_dict()["shadow"]
+    for name, value in loaded.state_dict().items():
+        if name in shadow:
+            assert torch.allclose(value, shadow[name].to(value.dtype)), name
+
+
+def test_asking_for_averaged_weights_a_run_never_kept_is_an_error(tmp_path):
+    """Silently falling back to the live weights would report the wrong model's number."""
+    import pytest
+    import torch
+
+    from training.distill_eval import load_student_from_checkpoint
+    from training.distill_student import PRESETS, build_student
+    from training.distill_train import TrainConfig, save_checkpoint
+
+    student = build_student(PRESETS["h256"])
+    optimizer = torch.optim.SGD(student.parameters(), lr=0.1)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: 1.0)
+    path = tmp_path / "checkpoint.pt"
+    save_checkpoint(
+        path, 5, student, student, optimizer, scheduler,
+        TrainConfig(preset="h256", audio_root="", out_dir=str(tmp_path)), None,
+    )
+    with pytest.raises(SystemExit, match="no averaged weights"):
+        load_student_from_checkpoint(path, torch.device("cpu"), use_ema=True)

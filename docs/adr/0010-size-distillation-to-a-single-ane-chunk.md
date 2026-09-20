@@ -268,16 +268,275 @@ the more useful finding:
 **Frame agreement and decoded agreement are not the same objective.** Under hard labels,
 frame `confirmed_agreement` *rose* (0.8819 → 0.8842) while decoded char accuracy *fell*
 (84.16% → 82.76%). After the `scanCTC` collapse, **where** an error lands matters more than
-how many there are: a flip in the middle of a run is absorbed, a flip at a segment boundary
-splits or merges a token and costs an edit. Optimising per-frame agreement -- softly or
-hard -- therefore does not straightforwardly optimise the gate. Any future objective work
-should be evaluated on the decoded stream from the start, not on frame metrics.
+how many there are.
+
+An earlier revision explained that as "a flip in the middle of a run is absorbed", which is
+**wrong** and was checked only later: a mid-run substitution turns `AAA` into `ABA`, which
+decodes to three tokens instead of one — two extra edits, the *most* expensive case, not the
+cheapest. A mid-run blank turns `AAA` into `A_A`, decoding to `AA`, one extra edit. What
+collapse actually absorbs is **duration** variation that leaves the run structure intact:
+`AAA` and `AAAA` both decode to `A`.
+
+The conclusion is unchanged and if anything stronger — per-frame agreement does not
+straightforwardly optimise the decode, and frame flips inside a run are expensive rather than
+free. Any objective work should be evaluated on the decoded stream from the start.
 
 A second trap surfaced in the same experiment. The 3x non-blank frame weighting exists to
 escape the blank basin, and under a soft KL its effect is moderated by the target
 distribution. Under **hard** labels it becomes a direct bias on the class prior, and the
 student flipped from under-emitting (46.0 vs 47.2 tokens/clip) to over-emitting (55.5 vs
 55.2). A weighting introduced for one objective does not transfer to another unexamined.
+
+## The metric was wrong before the model was: measure the decode, not a gate
+
+Everything above scores this work on "gate agreement" — 91.5% on 200 random `clips_v2` clips.
+Three separate things are wrong with that, and the third is the one that matters.
+
+**A rubber stamp scored 88.0% on that panel**, so 91.5% carried a Wilson interval of roughly
+[86.8%, 94.6%] and could not have established >95% whatever the model did.
+
+**`clips_v2` is the teacher's own gate passers** — it *is* `passing_subset_full.jsonl` — so
+it contains almost no teacher rejections.
+
+**And a gate is the wrong kind of number for a distillation at all.** Size distillation is
+behavioural cloning of the teacher's **phoneme decode**. `tadabur.scorer` takes a decode,
+aligns it against an ayah reference with Smith-Waterman, and thresholds the result. None of
+that apparatus appears in "does the student emit what the teacher emits". Worse, the
+apparatus belongs to two *other* tracks:
+
+- the two poison rejects layered on the score are, in the scorer's own comments, "NOT a
+  Muraja parameter", "Tadabur-only", "filter-side" — they decide which clips enter the
+  ADR-0001 **fine-tune corpus**;
+- the threshold is not the product's either. ADR-0005 records Muraja's **advancement**
+  decision as `matchRatio` against a hard-coded **0.70** that `scoringMode` does not touch;
+  `.balanced`'s 0.65 is the filter's bar;
+- and **ADR-0008 (Accepted) already ruled on exactly this**: that gate *is* ADR-0001's
+  training-data filter and "should not be the headline metric at all".
+
+All of that was already written down in this repo. Two passes of this work were spent
+improving agreement with a corpus filter, then with an advancement decision, before reading
+it. The cost was a rebuilt measurement aimed at the wrong question and a "target met" claim
+that had to be withdrawn twice.
+
+### What is measured instead
+
+`training.decode_evalset` freezes a held-out clip set with the **teacher's decoded phoneme
+string** cached per clip, and `distill_eval --eval-set` scores a student's decode against it.
+No reference, no aligner, no threshold.
+
+- 20 **strided** reserved shards, never trained on — strided because shard order may group
+  reciters and a tail block would be a distribution shift rather than a sample.
+  `distill_stream` refuses both reservations in its constructor.
+- A plain **uniform** reservoir draw. The metric is a pooled character accuracy over ~168k
+  phonemes; there is no threshold to saturate and nothing to enrich around, which is what an
+  earlier ratio-stratified second sample existed for. Legacy manifests carry it and
+  `load_manifest` drops it, since it is not a uniform draw.
+- Split dev/test **by reciter**.
+- Clips stored as **32-bit float**: the manifest caches the teacher's decode of the in-memory
+  waveform and the student reads the file back, so anything lossy between them is charged to
+  the student. A PCM_16 round trip changed the teacher's *own* decode on 12 of 60 clips, and
+  Tadabur audio peaks at 1.037 so it clips real signal too.
+- The teacher decodes once. Besides halving every later evaluation it makes two checkpoints
+  comparable by construction rather than by hoping the teacher ran identically twice.
+
+**The decode protocol also had a defect.** `confirmed_stream` committed only the oldest second
+of each window *including the last*, so the final four seconds of every clip were decoded and
+discarded, and a clip under 5 s was transcribed from its first second alone. Muraja flushes
+what is pending when speech stops. The flush is replayed now, behind `PROTOCOL_VERSION`, which
+cached decodes carry so a set built under one protocol cannot be scored under another. Numbers
+either side of that change are not comparable.
+
+### What the h384 checkpoint scores
+
+Unchanged, 2,000 held-out clips over 286 reciters, 167,473 teacher phonemes, scored at the
+manifest's batch size:
+
+| | `h384_klonly` @40k | warm-start, +10k steps on unseen audio |
+| --- | --- | --- |
+| **pooled character accuracy** | **90.35%** [89.74, 90.89] | **91.12%** [90.59, 91.58] |
+| macro (per-clip mean) | 91.02% | 91.69% |
+| median clip | 92.11% | 92.67% |
+| exact-match clips | 7.8% | 8.2% |
+| per-clip error p90 | 16.22% | 15.38% |
+| short clips / long clips | 91.82% / 89.82% | 92.49% / 90.62% |
+
+Intervals are bootstrapped over **reciters**: 2,000 clips come from 286 voices and agreement
+correlates within one, so an independent-sample interval is about 23% too narrow.
+
+**Pooled is the target and macro is a diagnostic.** For cloning, every teacher phoneme is a
+behaviour to reproduce and should count once, which is what pooling does; a per-clip mean
+answers "how good is a uniformly chosen clip", a different question with a different error
+budget. The two differ by ~0.7 points here, so a threshold stated without the aggregation is
+not a threshold.
+
+**Measurement precision.** The teacher is **bit-identical** on a re-run at the same batch size
+(120 clips, zero edits), so differences are real rather than jitter — but the decode is bf16
+and moves 0.17% of characters between batch 4 and batch 32, which the manifest now pins.
+
+### The protocol is far less stable than the model
+
+The perturbations above change the *audio*. This one changes only **where the 1 s window grid
+falls**, by prepending silence — not one phoneme of content moves. Teacher against teacher,
+250 clips:
+
+| grid shift | char agreement | exact-match clips |
+| --- | --- | --- |
+| none (same grid) | 100.00% | 100% |
+| 1/4 hop (0.25 s) | 82.44% | 7.2% |
+| **1/2 hop (0.50 s)** | **78.86%** | 5.6% |
+| 3/4 hop (0.75 s) | 82.29% | 5.6% |
+
+The result validates itself: agreement is symmetric about the half-hop and worst exactly
+there, which is the signature of grid phase (distance to the nearest original boundary is
+1/4, 1/2, 1/4) and not of the added silence.
+
+**The teacher reproduces itself far worse than the student reproduces the teacher.** The
+student is at 92.85% on a fixed grid; the teacher is at 78.9% against itself when the grid
+moves by half a hop. Three consequences:
+
+1. **The 95% target is not near a noise floor.** On a fixed grid the teacher is bit-exact, so
+   the ceiling for the metric as measured is 100%. The target stands.
+2. **But the absolute number is grid-specific.** It is a valid basis for comparing
+   checkpoints — they are all scored on the same grid — and it is *not* a prediction of what
+   transcript the device produces, because on a device the grid phase relative to speech
+   onset is arbitrary.
+3. **It does not, however, contaminate the measurement.** Scoring *both* models on the same
+   shifted grid holds agreement flat — 93.27% as measured, 93.19% at +0.25 s, 92.87% at
+   +0.50 s — so the reported number is a property of the model and not of the grid it was
+   taken on. Phase sensitivity affects both sides identically and cancels.
+
+   It remains a reasonable hypothesis that the student's residual gap is weighted toward
+   *spike timing* rather than phoneme identity, since the protocol demonstrably amplifies
+   timing differences into character differences; the CTC-distillation literature calls this
+   frame-level alignment disagreement and prescribes weighting the frames adjacent to a
+   teacher spike rather than all non-blank frames uniformly. But the cross-phase result
+   neither confirms nor refutes it, and it should be tested before it is acted on as fact.
+
+### The streaming warm-start: 90.15% -> 93.09%, and where it stopped
+
+40,000 steps warm-started from the staged-corpus checkpoint onto ~1,170 h of Tadabur audio
+the student had never seen, lr 5e-5, warmup 500, cosine, EMA 0.999. Dev split, 970 clips:
+
+| step | 8k | 18k | 24k | 30k | 40k |
+| --- | --- | --- | --- | --- | --- |
+| char accuracy | 90.94% | 92.17% | 92.59% | 92.85% | **93.09%** |
+| per 1k steps | — | +0.124 | +0.068 | +0.044 | +0.024 |
+
+Paired against the baseline over the same clips: **+2.94%** [+2.52, +3.44], 628 clips closer
+against 123. The per-step rate halves roughly every window, which is the shape of a cosine
+tail as much as of a model running out of room — the two are not separable from this run
+alone, and a warm-restart probe is what would tell them apart.
+
+**EMA is worth nothing at convergence.** Live and averaged weights at step 40,000 score
+93.09% and 93.09%, 5,572 against 5,571 edits. That is the expected result once the schedule
+has annealed to ~1% of peak — there is no oscillation left to average away — and it means the
+value of keeping it is confined to the middle of a run.
+
+**An inference-time blank bias is not a free win either.** The residual decomposition shows
+the student over-emitting (1,534 insertions against 1,102 deletions on 600 clips), which
+invites a scalar on the blank logit before the argmax. Swept over the dev split, the optimum
+is **zero**: 92.77% at −0.25, **93.09% at 0.00**, 93.02% at +0.25, 92.49% at +0.50. The
+student's blank threshold is already calibrated; the insertion excess is distributed, not a
+global offset. Twenty minutes of GPU to close a plausible-sounding lever.
+
+**What the residual is made of**, 600 dev clips, 3,570 edits: identity substitutions
+**26.2%**, split/merge-shaped adjacent duplicates **18.0%**, missing or extra whole runs the
+rest. Top confusions are acoustically sensible (ن→ل, ن→م, ا→َ). Neither a clean identity
+problem nor a clean timing one.
+
+**And a training/evaluation mismatch worth fixing before the next objective experiment:**
+because the final window is flushed, **39.7% of all scored timesteps come from frames 25-124
+of one window** — 50% at the median clip length, 83% at 6 s — and training weights those at
+1x while giving the committed region 2x. Raising ``confirm_weight`` would push weight further
+away from two fifths of the scored output. The indicated experiment is the opposite one.
+
+### How stable the decode is, and what that does *not* tell us
+
+The teacher against itself, 250 clips, under perturbations that carry no information:
+
+| perturbation | char agreement |
+| --- | --- |
+| byte-identical, same batch size | 100.0000% |
+| shift by one sample (62 µs) | 99.50% |
+| gain +0.1 dB | 99.78% |
+| additive noise at −60 dBFS | 98.54% |
+
+These are **robustness probes, not a ceiling on achievable agreement**, and an earlier
+revision of this section used them as one. The teacher is deterministic on a fixed input and
+the student is given that same input, so a perfect clone would score 100% — nothing here
+bounds the target from above. What they do establish is that the teacher is exactly
+reproducible at fixed batch size, so the evaluation has no intrinsic floor to subtract, and
+that the decode is sensitive enough to sub-perceptual input changes that the *robustness* of
+any deployed variant is worth measuring separately.
+
+## Teacher-weight initialisation: what transfers, and what does not
+
+`training.teacher_init` starts a student from a **selected sub-network** of the teacher
+rather than a PCA rotation of it. The rotation is what the literature reaches for and it is
+wrong on this backbone three times over: LayerNorm does not commute with a rotation, the
+residual stream is added to in every block so a rotation must be globally consistent, and —
+decisively — transformers' `Wav2Vec2BertSelfAttention` applies the rotary embedding to the
+**hidden states, before** `linear_q`/`linear_k`, in `num_heads` contiguous blocks of the
+*input* space. After an arbitrary rotation those blocks are groups of unrelated directions.
+Selection keeps every student channel equal to one teacher channel, so LayerNorm gains
+index-select exactly and the transplant is verifiable by reading it.
+
+Three findings, all measured before any training:
+
+**Copying query and key across `relative_key` → rotary is worth nothing.** Initial weighted
+KL is 8.5765 with them left random, 8.5699 copied, 8.5751 copied-and-damped, against 10.4714
+for a random student. Layer-by-layer cosine against the teacher moves by 0.003. The positional
+mismatch is real — the teacher learned a separate `q·E[clamp(j−i, −64, 8)]` bias term that
+rotary has no slot for — but it is not what costs the transfer.
+
+**The folklore rescaling is wrong here.** Each branch is a sum over units and the student
+keeps 37.5% of them, so the received fix is to scale the survivors by 16/6. The least-squares
+optimum measures **median 1.10, range [0.76, 1.70]**: the dropped units contribute
+*orthogonally*, so what is missing is a direction the student cannot express, not a magnitude,
+and 16/6 would have amplified noise while looking principled. The fitted gain still earns its
+place at the end of the stack, where the adapter output the CTC head reads goes from cosine
+0.29 to 0.53.
+
+### And it works: 5x fewer steps, and the blank basin disappears
+
+`distill_overfit`, 1,024 fixed windows, batch 32, lr 1e-4 — matched to the ablation above, so
+the random arm is directly comparable and does reproduce its 0.171 at step 1000. Decoded
+agreement:
+
+| step | random init | teacher init `--qk random` | `--qk copy` | `--qk damp` | `--qk random`, lr 3e-5 |
+| --- | --- | --- | --- | --- | --- |
+| 300 | 0.000 | **0.827** | 0.776 | 0.810 | 0.659 |
+| 600 | 0.000 | 0.856 | 0.847 | 0.847 | 0.703 |
+| 900 | 0.007 | 0.899 | 0.905 | 0.932 | 0.838 |
+| 1200 | **0.232** | **0.919** | **0.929** | **0.939** | 0.899 |
+
+Teacher init reaches 0.847 at step 600; random init needs 3,000. By 1,200 steps it is above
+anything random init reached in the whole 3,000-step ablation.
+
+**The all-blank basin is simply absent.** Random init sits at decoded 0.000 through step 900
+— the failure mode that motivated the CTC anchor, cost this project multiple runs, and is
+the reason `breakout_stats` exists. A transplanted student never enters it.
+
+Two secondary results. The query/key variant is within single-seed noise, consistent with the
+init-time KL, so the positional mismatch genuinely is not the obstacle. And **lr 3e-5 is
+worse than 1e-4** (0.899 against 0.919 at 1,200): the usual advice to lower the rate for a
+warm-started model does not hold here, it is just slower.
+
+This is evidence about **optimisation**, which is what fitting a fixed set measures. It does
+not displace the trained checkpoint — `h384_klonly@40k` has already paid the 40,000 steps
+this saves, and the transplant is a better start than noise, not than a trained model. Where
+it pays is every student not yet trained: the `h448` capacity retest, or any re-architecture,
+no longer has to buy its way out of the blank basin first.
+
+**The loss is intrinsic to the width cut, and it happens in one block.** The transplant is
+mechanically exact at the feature projection (cosine 1.0000 against the teacher on the kept
+channels) and a single conformer block takes it to 0.81, settling around 0.4–0.5. Keeping
+37.5% of each block's additive contributions is what costs it. Two corrections were found by
+running that check rather than by reading the code: the conv module's internal channels are
+*not* the residual stream — they are a separate learned space of the same width — and were
+being selected by residual importance with every shape still lining up; and `depthwise_layer_norm`
+normalises over that space, so its scale correction was being measured across two different
+ones.
 
 ## Consequences
 
@@ -357,10 +616,10 @@ student flipped from under-emitting (46.0 vs 47.2 tokens/clip) to over-emitting 
   is no compression surcharge to budget for, and the palettized size does not drift with
   training (62.3 MB at step 2000 and again at step 10000).
 
-  §1.3's *quality* result does not transfer, exactly as feared. On the teacher, 6-bit was
-  argmax-identical to INT8, because a 586M model is heavily overparameterized. On the
-  85.5M student it is not. Measured against the uncompressed FP16 export, over real windows
-  from a step-10000 checkpoint:
+  §1.3's *quality* result does not transfer at the frame level, exactly as feared. On the
+  teacher, 6-bit was argmax-identical to INT8, because a 586M model is heavily
+  overparameterized. On the 85.5M student it is not. Measured against the uncompressed FP16
+  export, over real windows from a step-10000 checkpoint:
 
   | | size | frame argmax agreement | windows fully identical | chunks |
   | --- | --- | --- | --- | --- |
@@ -368,13 +627,39 @@ student flipped from under-emitting (46.0 vs 47.2 tokens/clip) to over-emitting 
   | 6-bit | **62.3 MB** | 98.91% | 2/11 | 1 |
   | 8-bit | **82.8 MB** | **99.85%** | **9/11** | 1 |
 
-  8-bit removes ~7/8 of the disagreement for 20.5 MB, and **both are a single chunk**, so
-  this is a quality decision with no architectural consequence. Two caveats keep it from
-  being final: the checkpoint is not converged (a sharper model is likely *more* robust, so
-  this reads pessimistic), and frame-level disagreement is not the metric that matters —
-  low-confidence flips often survive CTC collapse unchanged. The decision belongs to
-  confirmed-stream agreement of the palettized export against the PyTorch student at the end
-  of training, not to this table.
+  **That table is the wrong scale, and reading it as a quality decision would have cost
+  20.5 MB for nothing.** A flipped frame may leave the decoded string untouched — it is
+  inside a run that collapses to the same token — or split a run and cost several edits, so a
+  frame-agreement figure cannot be subtracted from a character accuracy. `verify_student_export.py`
+  measures the thing itself, replaying the deployed protocol through the CoreML model and
+  comparing the resulting phoneme string to the teacher's cached decode. On 300 held-out
+  clips (24,390 teacher phonemes) of a mid-run h384:
+
+  | | agreement with the teacher | cost | characters moved vs PyTorch |
+  | --- | --- | --- | --- |
+  | PyTorch fp32 | 90.94% | — | — |
+  | CoreML fp16 | 90.87% | −0.07 | 0.32% |
+  | CoreML **8-bit** | 90.91% | **−0.03** | 0.31% |
+  | CoreML **6-bit** | 90.84% | **−0.10** | 0.75% |
+
+  **Palettization is not a constraint on the training target**: 6-bit costs a tenth of a
+  point, so a student that reaches X in PyTorch ships at about X, and there is no need to
+  inflate the target to pay for quantization. 8-bit buys back 0.07 points for 20.5 MB, which
+  is not worth it — and note that the conversion to fp16 accounts for essentially all of the
+  drift 8-bit shows, so 8-bit adds almost no error of its own.
+
+  The gap between *drift* and *cost* is the interesting part: 6-bit moves 0.75% of characters
+  while costing 0.10 points, because the moves are roughly orthogonal to the teacher rather
+  than away from it. Frame-level tables cannot see that and will always read pessimistic.
+
+  **The consequence for sizing.** h384 at 8-bit is 82.8 MB and h448 at 6-bit is 83.2 MB — the
+  same byte budget, one chunk either way. Since precision is nearly free and capacity is not,
+  the same bytes should be spent on **width**, not on bits.
+
+  Two caveats: the checkpoint is mid-training (a sharper model is expected to be *more*
+  robust, so read the costs as an upper bound), and this runs on a Mac's ANE rather than an
+  iPhone 13's. Single-chunk acceptance is still enforced at `MLModel` load on device and
+  still unproven.
 
 - **Trace the student only after a warmup forward.** `Wav2Vec2BertRotaryPositionalEmbedding`
   caches its cos/sin table on first use, so the first and second forward passes produce
@@ -410,6 +695,32 @@ student flipped from under-emitting (46.0 vs 47.2 tokens/clip) to over-emitting 
   ADR-0004 fine-tune later produces weights worth shipping, the head is a per-frame linear
   on the same 40 ms lattice — negligible for sizing, but it would have to be distilled onto
   the student, which is out of scope here.
+
+- **Check what the metric is a metric *of* before optimising it.** This work spent two passes
+  improving agreement with `Scorer.gate`, first at the corpus filter's threshold and then at
+  Muraja's, before noticing that a distillation should not be scored through an aligner at
+  all. ADR-0005 and ADR-0008 already said so and were in this repo the whole time. When an
+  issue states a target in a metric's terms, resolve what that metric decides — and whose
+  decision it is — before treating the number as the goal.
+
+- **The distillation metric is decode fidelity.** Cloning the teacher's phoneme stream is the
+  objective, so the measurement is that stream against the student's. Filtering is
+  fine-tune-side and follow-along grading is product-side; both take a decode as input and
+  neither is a property of the student. Reporting either as the headline makes a size
+  distillation answer for someone else's policy.
+
+- **Interval clustered data as clustered.** 2,000 evaluation clips come from 286 reciters and
+  agreement correlates within a voice, so the independent-sample interval is ~23% too narrow
+  on exactly the question a checkpoint comparison asks. Resampling reciters costs nothing.
+
+- **Report the pooled number and the per-clip distribution together.** Pooled accuracy is
+  dominated by long clips; the median clip is 1.7 points better and moves independently. One
+  of them alone will eventually say a change helped when it did not.
+
+- **A synthetic perturbation is only evidence if its edit distribution is neutral with respect
+  to what is being measured.** A gate-sensitivity probe here inserted a *duplicate* of the
+  neighbouring phoneme — which is literally a geminate — and so manufactured the
+  added-shadda finding it was used to support, inflating it five-fold.
 
 - **This must not be confounded with the ADR-0001 track.** That fine-tune deliberately
   *increases* tolerance on the soft pairs; width distillation will involuntarily *reduce*

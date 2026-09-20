@@ -22,12 +22,32 @@ The protocol, replicated from ``MuaalemInference.predictSplit`` and ``RealtimeTr
 Concatenating the confirmed segments across a clip gives the transcript the user sees. We
 build that stream for both models and compare them.
 
-Two deliberate simplifications, neither of which favours the student. The silence flush
-(which confirms whatever is pending when speech stops) is not replayed, so we measure the
-steady-state stream; and the VAD gate that skips inference during silence is ignored,
-because it gates *both* models identically and so cannot move the agreement. The preview
-inferences are likewise skipped -- they are provisional and never enter the transcript,
-though they are why per-window cost matters so much.
+**The final window is flushed.** Confirmation commits only the oldest second of each
+window, so without a flush the last 4 s of every clip -- and for a clip under 5 s, everything
+past the first second -- is decoded and then thrown away. Muraja does not do that: it flushes
+whatever is pending when speech stops. Leaving the flush out was defensible while this module
+only reported *character* agreement, where both models lose the same tail; it is not
+defensible for :mod:`training.distill_gate`, where the tail is missing phonemes in a
+``match_ratio`` computed against the whole ayah, and a 3 s clip was being gated on one second
+of audio. ``flush_tail`` is therefore on by default and :data:`PROTOCOL_VERSION` records it,
+because it moves every number this module and the gate produce. Pass ``flush_tail=False``
+only to reproduce a pre-flush measurement.
+
+Three gaps to the deployed protocol remain, and none of them is established to be harmless.
+The VAD gate that skips inference during silence is ignored: it treats both models
+identically, but that is not the same as not moving the agreement -- it selects which regions
+are scored, and the two models need not disagree at the same rate inside and outside them.
+The preview inferences are skipped, which is safe in that they never enter the transcript.
+And a tail of under one second past the last full window is never decoded at all -- a 5.9 s
+clip is one window covering its first 5 s, and no confirmation rule can recover audio the
+model never saw. Closing these needs a deployment replay fixture (fractional endings, short
+clips, seam-spanning runs, silence), not a choice between policies by which scores better.
+
+One thing the flush does **not** fix, because it predates it: a segment straddling the
+confirmation boundary can be emitted twice. A run at steps 18-29 of one window has midpoint
+23.5 and commits; the same audio lands at steps 0-4 of the next window and commits again.
+``confirmed_stream`` concatenates without reconciliation, faithfully to ``predictSplit``.
+Whether the device dedupes is unverified here.
 
 Usage::
 
@@ -62,6 +82,15 @@ from training.distill_student import DEPLOYED_LOGIT_FRAMES, PRESETS, build_stude
 # The device advances its buffer by 1 s per confirmed pass; at 125 timesteps per 5 s window
 # that is 25 timesteps, which is also ``CONFIRM_TIMESTEPS``.
 HOP_SAMPLES = SAMPLE_RATE
+
+# Bumped whenever the replayed protocol changes what a clip decodes to. Cached teacher
+# decodes carry it (``training.decode_evalset``) so a manifest built under one protocol cannot
+# be silently scored under another. v1 was the unflushed stream; v2 flushes the last window.
+PROTOCOL_VERSION = "confirmed-stream-v2-flush"
+
+# Default for the older --audio-root path. Named so the --eval-set path can tell "the user
+# passed --num-clips" from "the user did not", and refuse the former.
+DEFAULT_AUDIO_ROOT_CLIPS = 200
 
 
 @dataclass(frozen=True)
@@ -134,6 +163,23 @@ def levenshtein(a: list[int], b: list[int]) -> int:
     return previous[-1]
 
 
+def confirm_split_for_window(
+    position: int, last_index: int, flush_tail: bool = True
+) -> int:
+    """How many of a window's 125 timesteps commit to the transcript.
+
+    Every window commits its oldest second (``CONFIRM_TIMESTEPS``), because the next window
+    will re-decode the rest with more right context. The **last** window has no next window,
+    so its remaining timesteps are either flushed or silently discarded -- and discarding
+    them drops the last 4 s of every clip, or all but the first second of a clip shorter than
+    one window. Muraja flushes them when speech stops; so does this, unless ``flush_tail`` is
+    off for a pre-``PROTOCOL_VERSION`` comparison.
+    """
+    if flush_tail and position == last_index:
+        return DEPLOYED_LOGIT_FRAMES
+    return CONFIRM_TIMESTEPS
+
+
 def clip_windows(num_samples: int, hop_samples: int = HOP_SAMPLES) -> list[int]:
     """Window starts for the deployed protocol: advance 1 s while audio remains.
 
@@ -153,8 +199,16 @@ def confirmed_stream(
     samples: np.ndarray,
     device: torch.device,
     batch_size: int = 16,
+    flush_tail: bool = True,
 ) -> list[int]:
-    """Replay the deployed protocol over one clip and return its confirmed tokens."""
+    """Replay the deployed protocol over one clip and return its confirmed tokens.
+
+    Every window commits the segments in its oldest second. The **last** window additionally
+    commits everything still pending, which is the silence flush: no later window exists to
+    re-decode those timesteps, so they are either flushed or lost. Without the flush a clip
+    is transcribed only up to its last 4 seconds, and a clip shorter than one window is
+    transcribed from its first second alone.
+    """
     starts = clip_windows(len(samples))
 
     windows = []
@@ -164,6 +218,7 @@ def confirmed_stream(
             chunk = np.pad(chunk, (0, WINDOW_SAMPLES - len(chunk)))
         windows.append(chunk)
 
+    last_index = len(windows) - 1
     stream: list[int] = []
     for offset in range(0, len(windows), batch_size):
         batch = windows[offset : offset + batch_size]
@@ -174,8 +229,13 @@ def confirmed_stream(
         with torch.autocast("cuda", dtype=torch.bfloat16):
             logits = model(features, return_dict=True)["logits"]["phonemes"]
         ids = logits.float().argmax(dim=-1).cpu().numpy()
-        for row in ids:
-            stream.extend(confirmed_tokens(row[:DEPLOYED_LOGIT_FRAMES]))
+        for position, row in enumerate(ids, start=offset):
+            stream.extend(
+                confirmed_tokens(
+                    row[:DEPLOYED_LOGIT_FRAMES],
+                    confirm_split_for_window(position, last_index, flush_tail),
+                )
+            )
 
     return stream
 
@@ -264,16 +324,45 @@ def check_split_matches_checkpoint(saved: dict, val_fraction: float) -> None:
         )
 
 
-def load_student_from_checkpoint(checkpoint_path: Path, device: torch.device):
+def load_student_from_checkpoint(
+    checkpoint_path: Path, device: torch.device, use_ema: bool = False
+):
     """Rebuild the student described by a checkpoint and load its weights.
 
     Returns the run's persisted config alongside the model: the eval tools need it to
     refuse a split the checkpoint was not trained under.
+
+    ``use_ema`` selects the averaged weights a run with ``--ema-decay`` stored beside the
+    live ones. It raises rather than falling back when they are absent: silently scoring the
+    live weights under an ``--ema`` flag would report the wrong model's number, and the two
+    are meant to be compared.
     """
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     config = state["config"]
     student = build_student(PRESETS[config["preset"]])
-    student.load_state_dict(state["student"])
+    if use_ema:
+        # Reconstructed from the averager's shadow rather than read from a second stored
+        # copy: the shadow holds only the floating-point tensors, so the live state supplies
+        # the remaining buffers. Older checkpoints carry a materialised ``student_ema`` and
+        # are still read directly.
+        if "student_ema" in state:
+            student.load_state_dict(state["student_ema"])
+        elif "ema_state" in state:
+            live = state["student"]
+            shadow = state["ema_state"]["shadow"]
+            student.load_state_dict(
+                {
+                    name: (shadow[name].to(value.dtype) if name in shadow else value)
+                    for name, value in live.items()
+                }
+            )
+        else:
+            raise SystemExit(
+                f"{checkpoint_path} carries no averaged weights -- it was trained without "
+                f"--ema-decay. Drop --ema, or train a run that keeps an average."
+            )
+    else:
+        student.load_state_dict(state["student"])
     student = student.to(device)
     student.eval()
     return student, config, state["step"]
@@ -388,12 +477,337 @@ def run_breakout_diagnostic(
     }
 
 
+# --- Scoring a student against a frozen set with the teacher's decode cached ---
+
+
+@dataclass(frozen=True)
+class DecodeAgreement:
+    """Teacher decode against student decode, and nothing downstream of them.
+
+    This is the distillation metric. Size distillation is behavioural cloning of the
+    teacher's phoneme stream, so the measurement is that stream against the student's --
+    no ayah reference, no Smith-Waterman alignment, no threshold. Those belong to the
+    ADR-0001 corpus filter and to Muraja's follow-along grading, which are different
+    questions on different tracks; ADR-0008 records that the gate "should not be the
+    headline metric at all", and for a distillation it is not even the right *kind* of
+    number.
+
+    ``char_accuracy`` pools edits over the corpus rather than averaging per clip, so one
+    short clip cannot swing it. ``median_clip_error`` is reported beside it because the
+    pooled figure is dominated by long clips and the two move apart: a model can improve
+    the median while a heavy tail holds the pooled number down.
+    """
+
+    num_clips: int
+    num_reciters: int
+    char_accuracy: float
+    ci_low: float
+    ci_high: float
+    exact_match: float
+    median_clip_error: float
+    p90_clip_error: float
+    total_edits: int
+    total_teacher_phonemes: int
+
+    def as_dict(self) -> dict:
+        return {
+            "num_clips": self.num_clips,
+            "num_reciters": self.num_reciters,
+            "char_accuracy": round(self.char_accuracy, 4),
+            "char_accuracy_ci95_clustered": [round(self.ci_low, 4), round(self.ci_high, 4)],
+            "exact_match": round(self.exact_match, 4),
+            "median_clip_error": round(self.median_clip_error, 4),
+            "p90_clip_error": round(self.p90_clip_error, 4),
+            "total_edits": self.total_edits,
+            "total_teacher_phonemes": self.total_teacher_phonemes,
+        }
+
+
+def score_decode_agreement(per_clip: list[tuple[int, int, int]]) -> DecodeAgreement:
+    """Aggregate ``(edits, teacher_phonemes, reciter_id)`` triples.
+
+    The interval is bootstrapped over **reciters**. The clips are not independent -- 2,000 of
+    them come from 286 voices and agreement correlates within one -- so an independent-sample
+    interval is too narrow on exactly the question a checkpoint comparison asks.
+    """
+    import statistics
+
+    from training.decode_evalset import cluster_bootstrap, wilson_interval
+
+    if not per_clip:
+        # 1 - 0/0 has no answer and 1 - 0/1 is 1.0, which would print as perfect agreement
+        # produced by scoring nothing. Report zero so a failure looks like a failure.
+        return DecodeAgreement(0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0)
+
+    edits = sum(e for e, _, _ in per_clip)
+    phonemes = sum(t for _, t, _ in per_clip)
+    rates = sorted(e / max(1, t) for e, t, _ in per_clip)
+    reciters = {r for _, _, r in per_clip}
+
+    if len(reciters) < 2:
+        low, high = wilson_interval(phonemes - edits, max(1, phonemes))
+    else:
+        low, high = cluster_bootstrap(
+            per_clip,
+            cluster_of=lambda row: row[2],
+            statistic=lambda rows: 1
+            - sum(e for e, _, _ in rows) / max(1, sum(t for _, t, _ in rows)),
+            seed=7,
+        )
+
+    return DecodeAgreement(
+        num_clips=len(per_clip),
+        num_reciters=len(reciters),
+        char_accuracy=1.0 - edits / max(1, phonemes),
+        ci_low=low,
+        ci_high=high,
+        exact_match=sum(1 for e, _, _ in per_clip if e == 0) / len(per_clip),
+        median_clip_error=statistics.median(rates),
+        p90_clip_error=rates[min(len(rates) - 1, int(0.90 * len(rates)))],
+        total_edits=edits,
+        total_teacher_phonemes=phonemes,
+    )
+
+
+@dataclass(frozen=True)
+class PairedDelta:
+    """Two checkpoints' pooled accuracy difference, with a paired reciter-clustered interval.
+
+    The obvious comparison -- count clips where this checkpoint is closer -- is a **sign
+    test**. It asks whether more clips improved than worsened, which is not the claim anyone
+    makes from it: the headline is a pooled edit-rate difference, and a sign test neither
+    weights by how much a clip moved nor accounts for one reciter's clips not being
+    independent. Both errors push the p-value the same way, toward significance.
+    """
+
+    delta: float
+    ci_low: float
+    ci_high: float
+    clips_closer: int
+    clips_further: int
+
+    @property
+    def significant(self) -> bool:
+        """Whether the interval excludes zero -- the actual claim, not the sign test's."""
+        return self.ci_low > 0.0 or self.ci_high < 0.0
+
+    def as_dict(self) -> dict:
+        return {
+            "pooled_accuracy_delta": round(self.delta, 5),
+            "delta_ci95_clustered": [round(self.ci_low, 5), round(self.ci_high, 5)],
+            "clips_closer": self.clips_closer,
+            "clips_further": self.clips_further,
+            "significant": self.significant,
+        }
+
+
+def paired_reciter_bootstrap(
+    rows: list[tuple[int, int, int, int]], iterations: int = 4000, seed: int = 11
+) -> PairedDelta:
+    """``(edits_this, edits_other, teacher_phonemes, reciter_id)`` -> pooled delta and interval."""
+    from training.decode_evalset import cluster_bootstrap
+
+    if not rows:
+        return PairedDelta(0.0, 0.0, 0.0, 0, 0)
+
+    def pooled(sample):
+        this = sum(row[0] for row in sample)
+        other = sum(row[1] for row in sample)
+        tokens = max(1, sum(row[2] for row in sample))
+        return (other - this) / tokens  # positive = this checkpoint is closer
+
+    low, high = cluster_bootstrap(
+        rows,
+        cluster_of=lambda row: row[3],
+        statistic=pooled,
+        seed=seed,
+        iterations=iterations,
+    )
+    return PairedDelta(
+        delta=pooled(rows),
+        ci_low=low,
+        ci_high=high,
+        clips_closer=sum(1 for row in rows if row[0] < row[1]),
+        clips_further=sum(1 for row in rows if row[0] > row[1]),
+    )
+
+
+def run_evalset(args, device) -> None:
+    """Score one checkpoint's decode against a frozen set's cached teacher decode."""
+    import soundfile as sf
+    from transformers import SeamlessM4TFeatureExtractor
+
+    from training.decode_evalset import CLIPS_DIRNAME, check_provenance, load_manifest
+    from training.distill_gate import tokens_to_phonemes
+    from training.distill_student import TEACHER_MODEL_ID
+
+    evalset = load_manifest(args.eval_set)
+    check_provenance(evalset, TEACHER_MODEL_ID)
+    # Inherit the manifest's batch size unless told otherwise. bf16 accumulation makes the
+    # decode depend on it -- bit-identical at the same batch, 0.17% adrift at batch 4 -- and
+    # that is the same order as a real gain, so letting it float would let a rerun look like
+    # progress.
+    batch_size = args.batch_size or evalset.provenance.get("batch_size", 16)
+    if args.batch_size and args.batch_size != evalset.provenance.get("batch_size"):
+        print(
+            f"[warn] scoring at batch {args.batch_size}, manifest built at "
+            f"{evalset.provenance.get('batch_size')}: expect ~0.2% of characters to move "
+            f"for that reason alone. Comparisons across batch sizes are refused.",
+            flush=True,
+        )
+    student, state_config, step = load_student_from_checkpoint(
+        args.checkpoint, device, use_ema=args.ema
+    )
+    extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    clips_dir = Path(args.eval_set) / CLIPS_DIRNAME
+
+    decodes: dict[str, str] = {}
+    for index, clip in enumerate(evalset.clips, start=1):
+        samples, rate = sf.read(str(clips_dir / clip.filename), dtype="float32")
+        if rate != SAMPLE_RATE:
+            raise SystemExit(f"{clip.filename} is {rate} Hz, not {SAMPLE_RATE}")
+        if samples.ndim > 1:
+            samples = samples.mean(axis=1)
+        decodes[clip.filename] = tokens_to_phonemes(
+            confirmed_stream(student, extractor, samples, device, batch_size)
+        )
+        if index % 200 == 0:
+            print(f"  {index}/{len(evalset.clips)} clips", flush=True)
+
+    # dev by default. A reciter-disjoint test half is only a held-out panel while nothing
+    # has been chosen by looking at it, and printing it on every experiment is how it stops
+    # being one. --split test is an explicit act.
+    scored_clips = evalset.subset(args.split)
+    if not scored_clips:
+        raise SystemExit(f"no clips in split {args.split!r}")
+    reports = {
+        args.split: score_decode_agreement(
+            [
+                (
+                    levenshtein(list(c.teacher_text), list(decodes[c.filename])),
+                    len(c.teacher_text),
+                    c.reciter_id,
+                )
+                for c in scored_clips
+            ]
+        )
+    }
+
+    comparison = None
+    if args.compare_decodes:
+        previous = json.loads(Path(args.compare_decodes).read_text(encoding="utf-8"))
+        mismatched = [
+            f"  {key}: this run={mine!r} comparison file={previous.get(key)!r}"
+            for key, mine in (
+                ("evalset_fingerprint", evalset.fingerprint()),
+                ("protocol_version", PROTOCOL_VERSION),
+                ("batch_size", batch_size),
+            )
+            if previous.get(key) != mine
+        ]
+        if mismatched:
+            raise SystemExit(
+                "refusing to compare: those decodes were produced against a different "
+                "evaluation.\n" + "\n".join(mismatched)
+            )
+        other = previous["decodes"]
+        missing = [c.filename for c in scored_clips if c.filename not in other]
+        if missing:
+            raise SystemExit(
+                f"the comparison file is missing {len(missing)} of {len(scored_clips)} "
+                f"clips in this split (first: {missing[0]}). Comparing the intersection "
+                f"would report a paired delta over an unannounced subset."
+            )
+        comparison = paired_reciter_bootstrap(
+            [
+                (
+                    levenshtein(list(c.teacher_text), list(decodes[c.filename])),
+                    levenshtein(list(c.teacher_text), list(other[c.filename])),
+                    len(c.teacher_text),
+                    c.reciter_id,
+                )
+                for c in scored_clips
+            ]
+        ).as_dict()
+
+    payload = {
+        "checkpoint": str(args.checkpoint),
+        "preset": state_config["preset"],
+        "step": step,
+        "weights": "ema" if args.ema else "live",
+        "protocol_version": PROTOCOL_VERSION,
+        "eval_set": str(args.eval_set),
+        "evalset_fingerprint": evalset.fingerprint(),
+        "batch_size": batch_size,
+        "split": args.split,
+        "splits": {name: report.as_dict() for name, report in reports.items()},
+        "comparison": comparison,
+    }
+    if args.save_decodes:
+        Path(args.save_decodes).write_text(
+            json.dumps({**payload, "decodes": decodes}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+
+    print(f"\nPhoneme-decode agreement -- {payload['preset']} @ step {step} "
+          f"({payload['weights']} weights) vs the cached teacher")
+    for name, report in reports.items():
+        print(
+            f"  [{name}] {report.num_clips} clips / {report.num_reciters} reciters\n"
+            f"    character accuracy  {report.char_accuracy:.2%}  "
+            f"95% CI [{report.ci_low:.2%}, {report.ci_high:.2%}] over reciters\n"
+            f"    exact-match clips   {report.exact_match:.1%}\n"
+            f"    per-clip error      median {report.median_clip_error:.2%}, "
+            f"p90 {report.p90_clip_error:.2%}\n"
+            f"    edits / phonemes    {report.total_edits:,} / "
+            f"{report.total_teacher_phonemes:,}"
+        )
+    if comparison:
+        low, high = comparison["delta_ci95_clustered"]
+        print(
+            f"  paired vs {args.compare_decodes}:\n"
+            f"    pooled accuracy delta {comparison['pooled_accuracy_delta']:+.2%}  "
+            f"95% CI [{low:+.2%}, {high:+.2%}] over reciters"
+            f"  {'(excludes zero)' if comparison['significant'] else '(includes zero)'}\n"
+            f"    clips closer {comparison['clips_closer']}, "
+            f"further {comparison['clips_further']}  "
+            f"-- descriptive only; the delta above is the claim"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Confirmed-stream agreement between a distilled student and the teacher"
     )
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--audio-root", type=Path, required=True)
+    parser.add_argument(
+        "--eval-set",
+        type=Path,
+        help="a frozen set from training.decode_evalset. Preferred: the teacher's decode is "
+        "cached in it, so only the student runs and two checkpoints are scored against "
+        "identical targets.",
+    )
+    parser.add_argument(
+        "--audio-root",
+        type=Path,
+        help="decode BOTH models over a clip directory instead (the older path)",
+    )
+    parser.add_argument(
+        "--save-decodes", type=Path, help="write this student's per-clip decodes"
+    )
+    parser.add_argument(
+        "--compare-decodes",
+        type=Path,
+        help="another run's saved decodes; adds a paired test over per-clip edit distance",
+    )
+    parser.add_argument(
+        "--ema",
+        action="store_true",
+        help="score the averaged weights a --ema-decay run stored beside the live ones",
+    )
     parser.add_argument(
         "--breakout",
         action="store_true",
@@ -403,23 +817,70 @@ def main() -> None:
     parser.add_argument("--num-windows", type=int, default=320)
     parser.add_argument(
         "--split",
-        choices=("val", "train"),
-        default="val",
-        help="which side of the clip split to score. Running both separates a "
-        "generalisation gap from a ceiling: if TRAIN agreement is also stuck at the val "
-        "number, more data cannot be the fix and the objective or capacity is the limit.",
+        default="dev",
+        help="with --eval-set: dev (default), test or both. The reciter-disjoint test half "
+        "is a held-out panel only while nothing has been chosen by looking at it, so asking "
+        "for it is an explicit act. With --audio-root: val or train -- running both "
+        "separates a generalisation gap from a ceiling.",
     )
     parser.add_argument(
-        "--num-clips", type=int, default=200, help="held-out clips to evaluate"
+        "--num-clips",
+        type=int,
+        default=DEFAULT_AUDIO_ROOT_CLIPS,
+        help="held-out clips to evaluate (--audio-root path only)",
     )
     parser.add_argument("--val-fraction", type=float, default=0.02)
-    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=0,
+        help="0 inherits the evaluation set's own batch size, which is what keeps two "
+        "checkpoints comparable; the decode is bf16 and moves ~0.2%% of characters between "
+        "batch sizes. Only the --audio-root path needs this set explicitly.",
+    )
+    parser.add_argument(
+        "--no-flush-tail",
+        dest="flush_tail",
+        action="store_false",
+        help="drop the silence flush, i.e. transcribe only up to the last 4 s of each clip. "
+        "Only for reproducing a pre-" + PROTOCOL_VERSION + " measurement; the numbers are "
+        "not comparable to a flushed run.",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is required")
     device = torch.device("cuda")
+
+    if args.eval_set:
+        if args.split not in ("dev", "test", "both"):
+            raise SystemExit("--split must be dev, test or both when using --eval-set")
+        # Accepting a flag and ignoring it is the one behaviour that cannot be right: the
+        # protocol and the clip set are pinned by the manifest, and --num-clips/--breakout
+        # belong to the --audio-root path. Refuse rather than silently do something else.
+        ignored = [
+            name
+            for name, used in (
+                ("--no-flush-tail", not args.flush_tail),
+                ("--num-clips", args.num_clips != DEFAULT_AUDIO_ROOT_CLIPS),
+                ("--breakout", args.breakout),
+            )
+            if used
+        ]
+        if ignored:
+            raise SystemExit(
+                f"{', '.join(ignored)} has no meaning with --eval-set: the evaluation set "
+                f"pins its own protocol and clip list. Drop the flag, or use --audio-root."
+            )
+        run_evalset(args, device)
+        return
+    if not args.audio_root:
+        raise SystemExit("pass --eval-set (preferred) or --audio-root")
+    if args.split == "dev":
+        args.split = "val"
+    if args.split not in ("val", "train"):
+        raise SystemExit("--split must be val or train when using --audio-root")
 
     if args.breakout:
         report = run_breakout_diagnostic(
@@ -449,7 +910,9 @@ def main() -> None:
 
     from training.distill_train import load_teacher
 
-    student, state_config, step = load_student_from_checkpoint(args.checkpoint, device)
+    student, state_config, step = load_student_from_checkpoint(
+        args.checkpoint, device, use_ema=args.ema
+    )
     preset = state_config["preset"]
     check_split_matches_checkpoint(state_config, args.val_fraction)
     teacher = load_teacher(device)
@@ -483,10 +946,10 @@ def main() -> None:
             samples = samples.mean(axis=1)
 
         teacher_stream = confirmed_stream(
-            teacher, extractor, samples, device, args.batch_size
+            teacher, extractor, samples, device, args.batch_size or 16, args.flush_tail
         )
         student_stream = confirmed_stream(
-            student, extractor, samples, device, args.batch_size
+            student, extractor, samples, device, args.batch_size or 16, args.flush_tail
         )
         pairs.append((teacher_stream, student_stream))
 

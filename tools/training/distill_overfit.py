@@ -186,11 +186,22 @@ def overfit(
     max_grad_norm: float,
     log_every: int,
     loss_config: DistillLossConfig,
+    init_from: Path | None = None,
 ) -> dict:
-    """Train on one fixed batch and report whether the loss actually moves."""
+    """Train on one fixed batch and report whether the loss actually moves.
+
+    ``init_from`` starts from another checkpoint's weights -- in practice one written by
+    ``training.teacher_init``. Comparing an initialisation here is what this probe is *for*:
+    an initialisation changes the optimisation problem, which is exactly what fitting a fixed
+    set measures, and the answer arrives in twenty minutes instead of twelve hours.
+    """
     seed_everything(1234)
     spec = PRESETS[preset]
     student = build_student(spec).to(device)
+    if init_from is not None:
+        state = torch.load(init_from, map_location=device, weights_only=False)
+        student.load_state_dict(state["student"])
+        print(f"  initialised from {init_from}", flush=True)
     student.train()
     projector = FeatureProjector(
         spec.hidden_size, TEACHER_HIDDEN_SIZE, len(DEFAULT_TAP_LAYERS)
@@ -323,6 +334,13 @@ def main() -> None:
         "the model or the optimiser, whereas terms that only plateau together point at a "
         "conflict between them",
     )
+    parser.add_argument(
+        "--init-from",
+        type=Path,
+        help="start from another checkpoint's student weights, e.g. one written by "
+        "training.teacher_init. Run the same probe with and without it: the pair is the "
+        "measurement, a single initialised curve is not.",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -360,6 +378,7 @@ def main() -> None:
                 args.max_grad_norm,
                 args.log_every,
                 loss_config,
+                args.init_from,
             )
         )
         torch.cuda.empty_cache()

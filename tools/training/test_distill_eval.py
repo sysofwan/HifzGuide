@@ -12,6 +12,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from training.decode_evalset import SCHEMA_VERSION
+
 from training import distill_eval as de
 from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS
 
@@ -217,3 +219,191 @@ def test_bias_lead_is_measured_against_the_best_competitor():
     )
     assert head.bias_lead == pytest.approx(0.1)
     assert not head.is_degenerate()
+
+
+# --- The silence flush (PROTOCOL_VERSION confirmed-stream-v2-flush) ---
+
+
+def test_only_the_last_window_flushes():
+    from training.distill_eval import CONFIRM_TIMESTEPS, DEPLOYED_LOGIT_FRAMES, confirm_split_for_window
+
+    assert confirm_split_for_window(0, 4) == CONFIRM_TIMESTEPS
+    assert confirm_split_for_window(3, 4) == CONFIRM_TIMESTEPS
+    assert confirm_split_for_window(4, 4) == DEPLOYED_LOGIT_FRAMES
+
+
+def test_a_single_window_clip_is_flushed_entirely():
+    """A clip under 5 s is one padded window. Unflushed, it is gated on its first second."""
+    from training.distill_eval import DEPLOYED_LOGIT_FRAMES, confirm_split_for_window
+
+    assert confirm_split_for_window(0, 0) == DEPLOYED_LOGIT_FRAMES
+
+
+def test_the_flush_can_be_turned_off_to_reproduce_the_old_protocol():
+    from training.distill_eval import CONFIRM_TIMESTEPS, confirm_split_for_window
+
+    assert confirm_split_for_window(4, 4, flush_tail=False) == CONFIRM_TIMESTEPS
+    assert confirm_split_for_window(0, 0, flush_tail=False) == CONFIRM_TIMESTEPS
+
+
+def test_flushing_adds_the_tail_of_its_own_window():
+    """The flush adds this window's steps [25, 125), which no later window exists to decode.
+
+    Scoped deliberately to one window. It does NOT show that no token is emitted twice across
+    the corpus: a run straddling the confirmation boundary commits in one window by midpoint
+    and again from the next window's opening steps, which predates the flush and is faithful
+    to ``predictSplit``. See the module docstring.
+    """
+    import numpy as np
+
+    from training.distill_eval import CONFIRM_TIMESTEPS, confirmed_tokens
+
+    # A run in the confirmed region and a run in the flushed tail.
+    ids = np.array([5] * 10 + [0] * 40 + [7] * 20 + [0] * 55)
+    assert confirmed_tokens(ids, CONFIRM_TIMESTEPS) == [5]
+    flushed = confirmed_tokens(ids, 125)
+    assert flushed == [5, 7]
+    assert flushed[: len(confirmed_tokens(ids, CONFIRM_TIMESTEPS))] == [5]
+
+
+def test_a_segment_straddling_the_boundary_is_emitted_by_both_windows():
+    """Documents a real double-emission, so nobody re-derives it as a surprise.
+
+    A run at steps 18-29 has midpoint 23.5 and commits from this window. One second later the
+    same audio sits at steps 0-4 of the next window and commits again. This predates the
+    flush and is faithful to ``predictSplit``; it is pinned here so the behaviour is a
+    recorded property rather than an assumed absence.
+    """
+    import numpy as np
+
+    from training.distill_eval import CONFIRM_TIMESTEPS, confirmed_tokens
+
+    window_k = np.array([0] * 18 + [9] * 12 + [0] * 95)
+    assert confirmed_tokens(window_k, CONFIRM_TIMESTEPS) == [9]
+
+    # Advance one second: 25 timesteps. The run's surviving portion opens the next window.
+    window_k1 = np.array([9] * 5 + [0] * 120)
+    assert confirmed_tokens(window_k1, CONFIRM_TIMESTEPS) == [9]
+
+
+# --- Decode agreement: the distillation metric ---
+
+
+def test_decode_agreement_pools_edits_and_reports_the_tail_beside_them():
+    """The pooled number is dominated by long clips; the median is not, and they move apart."""
+    from training.distill_eval import score_decode_agreement
+
+    # Three short perfect clips and one long bad one, all from different reciters.
+    per_clip = [(0, 10, 1), (0, 10, 2), (0, 10, 3), (60, 200, 4)]
+    report = score_decode_agreement(per_clip)
+
+    assert report.num_clips == 4
+    assert report.num_reciters == 4
+    assert report.char_accuracy == pytest.approx(1 - 60 / 230)
+    assert report.exact_match == pytest.approx(0.75)
+    # Median per-clip error is 0, while pooled accuracy is 74% -- the point of showing both.
+    assert report.median_clip_error == pytest.approx(0.0)
+    assert report.p90_clip_error > 0.0
+
+
+def test_decode_agreement_of_an_empty_set_is_zero_not_one():
+    """`1 - 0/1` is 1.0, which prints as perfect agreement produced by scoring nothing."""
+    from training.distill_eval import score_decode_agreement
+
+    report = score_decode_agreement([])
+    assert report.char_accuracy == 0.0
+    assert report.num_clips == 0
+
+
+def test_decode_agreement_interval_widens_when_the_errors_cluster_by_reciter():
+    from training.distill_eval import score_decode_agreement
+
+    # Same pooled accuracy either way; only the clustering differs.
+    clustered = []
+    spread = []
+    for reciter in range(20):
+        for i in range(5):
+            clustered.append((10 if reciter < 4 else 0, 50, reciter))
+            spread.append((10 if i == 0 else 0, 50, reciter))
+    assert sum(e for e, _, _ in clustered) == sum(e for e, _, _ in spread)
+
+    wide = score_decode_agreement(clustered)
+    narrow = score_decode_agreement(spread)
+    assert wide.char_accuracy == pytest.approx(narrow.char_accuracy)
+    assert (wide.ci_high - wide.ci_low) > (narrow.ci_high - narrow.ci_low)
+
+
+def test_a_single_reciter_falls_back_to_the_unclustered_interval():
+    from training.distill_eval import score_decode_agreement
+
+    report = score_decode_agreement([(5, 100, 7), (5, 100, 7)])
+    assert report.num_reciters == 1
+    assert report.ci_low < report.char_accuracy < report.ci_high
+
+
+def test_a_paired_comparison_reports_the_pooled_delta_not_a_sign_test():
+    """Counting clips that improved is a sign test; the claim made from it is a rate change.
+
+    Constructed so the two disagree: this checkpoint is worse on more clips, but by a little,
+    while being much better on a few. The sign test would call that a regression.
+    """
+    from training.distill_eval import paired_reciter_bootstrap
+
+    rows = []
+    for reciter in range(30):
+        # Three clips slightly worse ...
+        for _ in range(3):
+            rows.append((11, 10, 100, reciter))
+        # ... and one hugely better.
+        rows.append((5, 60, 100, reciter))
+    result = paired_reciter_bootstrap(rows)
+
+    assert result.clips_further > result.clips_closer  # the sign test's view
+    assert result.delta > 0  # and the pooled rate says the opposite
+    assert result.significant
+    assert result.ci_low > 0
+
+
+def test_the_paired_interval_widens_when_the_difference_clusters_by_reciter():
+    from training.distill_eval import paired_reciter_bootstrap
+
+    # Identical totals; only the arrangement across reciters differs.
+    clustered, spread = [], []
+    for reciter in range(20):
+        for i in range(10):
+            clustered.append((0 if reciter < 10 else 20, 10, 100, reciter))
+            spread.append((0 if i < 5 else 20, 10, 100, reciter))
+    assert sum(r[0] for r in clustered) == sum(r[0] for r in spread)
+    wide = paired_reciter_bootstrap(clustered)
+    narrow = paired_reciter_bootstrap(spread)
+    assert wide.delta == pytest.approx(narrow.delta)
+    assert (wide.ci_high - wide.ci_low) > (narrow.ci_high - narrow.ci_low)
+
+
+def test_an_identical_pair_has_no_difference_and_no_significance():
+    from training.distill_eval import paired_reciter_bootstrap
+
+    rows = [(7, 7, 100, i // 3) for i in range(60)]
+    result = paired_reciter_bootstrap(rows)
+    assert result.delta == 0.0
+    assert not result.significant
+    assert paired_reciter_bootstrap([]).delta == 0.0
+
+
+def test_the_two_halves_are_disjoint_and_selectable():
+    """`--split dev` must not be able to see a test-half clip, and vice versa."""
+    from training.decode_evalset import EvalClip, EvalSet, reciter_split
+
+    clips = [
+        EvalClip(f"c{i}.wav", "78:1", i, 20, 4.0, reciter_split(i), "abc")
+        for i in range(200)
+    ]
+    evalset = EvalSet(SCHEMA_VERSION, tuple(clips), 200, 0, {})
+    dev = {c.filename for c in evalset.subset("dev")}
+    test = {c.filename for c in evalset.subset("test")}
+
+    assert dev and test
+    assert not (dev & test)
+    assert dev | test == {c.filename for c in evalset.subset("both")}
+    # And the split follows the reciter, not the clip.
+    assert all(reciter_split(c.reciter_id) == c.split for c in evalset.clips)

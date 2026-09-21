@@ -112,11 +112,15 @@ def main() -> None:
     args = parser.parse_args()
 
     import coremltools as ct
-    import soundfile as sf
     import torch
     from transformers import SeamlessM4TFeatureExtractor
 
-    from training.decode_evalset import CLIPS_DIRNAME, check_provenance, load_manifest
+    from training.decode_evalset import (
+        CLIPS_DIRNAME,
+        check_provenance,
+        load_manifest,
+        read_clip_audio,
+    )
     from training.distill_data import SAMPLE_RATE
     from training.distill_eval import levenshtein, score_decode_agreement
     from training.distill_student import PRESETS, TEACHER_MODEL_ID, build_student
@@ -161,11 +165,7 @@ def main() -> None:
     decodes: dict[str, dict[str, str]] = {name: {} for name in scorers}
     started = time.time()
     for index, clip in enumerate(clips, start=1):
-        samples, rate = sf.read(str(clips_dir / clip.filename), dtype="float32")
-        if rate != SAMPLE_RATE:
-            raise SystemExit(f"{clip.filename} is {rate} Hz, not {SAMPLE_RATE}")
-        if samples.ndim > 1:
-            samples = samples.mean(axis=1)
+        samples = read_clip_audio(clips_dir, clip.filename)
         windows = window_features(extractor, samples)
         for name, logits_for_window in scorers.items():
             decodes[name][clip.filename] = decode_windows(logits_for_window, windows)

@@ -254,7 +254,7 @@ real GPU time and the negative results are what stop them being re-tried.
 | **more data** | ruled out | train **84.98%** vs val **84.16%** at step 40000. A 0.82-point gap: the student cannot reproduce the teacher on windows it has seen ~16 times, so more audio cannot be the fix. |
 | **more steps** | ruled out | char accuracy 45.4 → 75.1 → 83.8 → 84.6 at 4k/10k/20k/40k. Doubling 20k→40k bought 0.76 points. |
 | **objective mismatch** | ruled out | Two hard-label runs warm-started from the 40k checkpoint: with the 3x non-blank weighting **82.93%**, with neutral weighting **82.76%**. Both lose to the 84.16% baseline. |
-| **capacity** | ruled out | `h448` (116.3M) trailed `h384` at every matched step and finished worse -- but note this was measured under the broken objective, so it is evidence about that objective, not a clean capacity result. |
+| **capacity** | ~~ruled out~~ **OVERTURNED** | `h448` (116.3M) trailed `h384` at every matched step and finished worse -- but this was measured under the broken objective. Re-run under the corrected objective, **`h448` is the lever**: 94.97% against `h384`'s 93.09%. See [Outcome](#outcome-h448-met-the-target-and-capacity-was-the-lever-after-all). Do not read this row as evidence against width. |
 
 Every one of these was measured **through the broken objective**, which is why none of them
 explained the ceiling and why the two that looked most convincing (no train/val gap; a
@@ -727,3 +727,120 @@ ones.
   discrimination on those same pairs. Distil against the current teacher and gate on
   agreement first; apply tolerance changes separately, or distil from an already-fine-tuned
   teacher. Doing both at once makes ADR-0001's success criterion unmeasurable.
+
+## Outcome: h448 met the target, and capacity was the lever after all
+
+Issue #75 set out to raise decode agreement from 93.09% to 94%. Resolved at **94.97%**, on
+the held-out reciter-disjoint test half, against a pre-registered acceptance rule.
+
+| | `h384_stream_warm` | **`h448_stream`** |
+| --- | --- | --- |
+| dev char accuracy (970 clips / 146 reciters) | 93.09% [92.47, 93.60] | **94.87%** [94.47, 95.20] |
+| **test char accuracy (1,030 / 140)** | — | **94.97%** [94.63, 95.27] |
+| paired delta vs h384, test | — | **+1.67** [+1.49, +1.87] |
+| edits / characters, test | — | 4,368 / 86,862 |
+| exact-match clips | 12.7% | 17.4% (dev) |
+| median / p90 clip error | 5.56% / 12.33% | 4.00% / 9.15% (dev) |
+
+Recipe: `teacher_init --qk damp`, 40k streamed steps, WSD (1000 warmup, hold, 4000 cooldown),
+lr 1e-4, batch 32, EMA 0.999, 11.5 h on one RTX 5060 Ti. lr 1e-4 rather than the 5e-5 of
+`h384_stream_warm` because that was a *warm-start* rate; the comparable from-init stage is
+`h384_klonly`, which used 1e-4 / warmup 1000.
+
+**Width is not isolated.** `h448` trained on the streamed corpus from step one, while
+`h384`'s first 40k ran on the 61.8 h staged corpus. Width, recipe and data exposure all
+differ, so the established claim is that *this h448 recipe* beats the benchmark. A clean
+width attribution would need a matched `h384` teacher-init run on the same stream, which the
+target no longer requires.
+
+### The export is verified and the size holds
+
+| | |
+| --- | --- |
+| parameters | 116,318,635 |
+| trace verification | max abs diff 0.00e+00 |
+| FP16 `.mlpackage` | 222.6 MB |
+| **6-bit `.mlpackage`** | **84.4 MB** |
+| compiled `.mlmodelc` | 84.5 MB |
+| largest chunk previously shipped | 99.0 MB |
+
+**6-bit costs nothing on a converged model.** On 300 dev clips (24,390 phonemes): pytorch
+fp32 94.71%, coreml 6-bit 94.74%, coreml fp16 94.70% — a spread of ~10 characters, i.e.
+zero. The −0.10 recorded earlier in this ADR came from a *mid-run* h384 and should be read
+as an upper bound, exactly as `verify_student_export.py` predicted. Precision is not a
+constraint on this pipeline: a student that reaches X in PyTorch ships at X, and h448 at
+6-bit (84.4 MB) is cheaper than h384 at 8-bit would have been.
+
+Note the sizes are **MB, not MiB**. The 80.5 figure quoted for a 112.5M student earlier in
+this work was MiB; idealised 6-bit weight arithmetic for 116.3M gives 87.2 MB and the real
+artifact is 84.4 MB, because not every tensor palettizes to 6 bits. Only the compiled
+artifact answers this question — state the unit and measure the bytes.
+
+**Single-chunk acceptance on device is still unproven.** That budget is enforced at
+`MLModel` load on the iPhone ANE and, per `ml-model-transformation.md` §2.5, fails
+*silently to CPU* rather than raising. 84.4 MB against a 99 MB proven ceiling is strong
+evidence, not proof, and `ane_ms` for h448 is unmeasured.
+
+### What did not move it
+
+Every cheap lever was tried first as a 10k-step warm restart from the 93.09% checkpoint,
+each paired against a matched control. All were within noise of zero:
+
+| arm | changed | paired delta |
+| --- | --- | --- |
+| WSD restart | LR schedule | +0.012 [−0.091, +0.120] |
+| `confirm_weight` 2→4 | objective weighting | −0.024 [−0.102, +0.059] |
+| unseen shards (live) | training data | +0.036 [−0.078, +0.145] |
+| unseen shards (EMA) | training data | +0.113 [+0.013, +0.221] |
+
+Only the last excludes zero, and it is one result among six paired tests with 77% of its
+net gain concentrated in 10 of 146 reciters — worth ~+0.05 to +0.08 after shrinkage. Set
+against h448's +1.78, none of these was the lever. Fresh data is also nearly exhausted:
+~20 of 345 trainable shards remain untouched (~68 h), against the ~1,170 h that once bought
++2.94.
+
+### The commit position is Pareto-dominated, and that is a product finding
+
+`training/window_position.py` generalises the commit rule to all five within-window blocks.
+Block *b* of window *w* covers absolute `[w+b, w+b+1)`, so the same audio second can be
+decoded five ways. Student-teacher agreement, h384 / h448:
+
+| block | left context | lookahead | agreement |
+| --- | --- | --- | --- |
+| **b=0 — deployed** | 0.0 s | **4 s** | **91.63% / 93.57%** |
+| b=1 | 1.0 s | 3 s | 97.40% / 98.39% |
+| b=2 | 2.0 s | 2 s | 97.52% / 98.44% |
+| b=3 | 3.0 s | 1 s | 97.22% / 98.18% |
+| b=4 | 4.0 s | 0 s | 81.49% / 85.35% |
+
+Lookahead is `4 − b` seconds, because window `[w, w+5)` completes at `w+5` while block *b*
+ends at `w+b+1`. **b=1 therefore beats the deployed b=0 on both axes at once** — roughly
+five points of agreement *and* one second less latency. The two truncated-context positions
+are the two weak ones, and h448's capacity narrowed the b=0 penalty (b=1 − b=0: 5.77 → 4.82)
+rather than leaving it untouched.
+
+**The qualifier is load-bearing.** The teacher disagrees with *itself* ~17% between b=0 and
+b=1, so committing b=1 moves the reference as well as the student. The table shows agreement
+is better at b=1; it does **not** show b=1 is more *correct*. Deciding that needs an
+independent transcript reference, not teacher agreement. Startup also needs a rule (output
+second 0 under b=1 would want window −1), and the change interacts with ADR-0009's
+asymmetric-cost operating point. This belongs in its own issue and its own ADR.
+
+### Lessons this round added
+
+- **A null with a wide interval is not a falsification.** The `confirm_weight` arm moved the
+  committed-region error rate from 8.1839% to 8.1821% and that was reported as "no response
+  from the targeted region". It is ~1 edit in 55,800 characters — noise at that precision,
+  and the arm's CI was wide enough to contain a useful effect.
+- **Compute directional claims; do not eyeball them.** Four claims about the block table —
+  which block was worst, whether capacity closed the gap, whether the blocks improved
+  uniformly, and which direction latency moved — were each wrong and each one line of
+  arithmetic from being right. The latency error pointed the wrong way on a change that is
+  free on both axes.
+- **Pre-register before opening a held-out panel.** The candidate, endpoint and acceptance
+  rule for the test half were fixed in writing before it was scored. The test half is now
+  spent; any future candidate needs a freshly built one.
+- **Normalising a weighted loss removes the scale, not the mixture.** `weighted_kl` is a
+  weighted mean, so re-weighting cannot change loss scale — but it still changes gradient
+  norm, direction and conditioning, and "loss scale cannot change" was too strong a claim.
+

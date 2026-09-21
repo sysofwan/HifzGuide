@@ -711,27 +711,21 @@ def paired_reciter_bootstrap(
 
 def run_evalset(args, device) -> None:
     """Score one checkpoint's decode against a frozen set's cached teacher decode."""
-    import soundfile as sf
     from transformers import SeamlessM4TFeatureExtractor
 
-    from training.decode_evalset import CLIPS_DIRNAME, check_provenance, load_manifest
+    from training.decode_evalset import (
+        CLIPS_DIRNAME,
+        check_provenance,
+        load_manifest,
+        read_clip_audio,
+        scoring_batch_size,
+    )
     from training.distill_gate import tokens_to_phonemes
     from training.distill_student import TEACHER_MODEL_ID
 
     evalset = load_manifest(args.eval_set)
     check_provenance(evalset, TEACHER_MODEL_ID)
-    # Inherit the manifest's batch size unless told otherwise. bf16 accumulation makes the
-    # decode depend on it -- bit-identical at the same batch, 0.17% adrift at batch 4 -- and
-    # that is the same order as a real gain, so letting it float would let a rerun look like
-    # progress.
-    batch_size = args.batch_size or evalset.provenance.get("batch_size", 16)
-    if args.batch_size and args.batch_size != evalset.provenance.get("batch_size"):
-        print(
-            f"[warn] scoring at batch {args.batch_size}, manifest built at "
-            f"{evalset.provenance.get('batch_size')}: expect ~0.2% of characters to move "
-            f"for that reason alone. Comparisons across batch sizes are refused.",
-            flush=True,
-        )
+    batch_size = scoring_batch_size(evalset, args.batch_size)
     student, state_config, step = load_student_from_checkpoint(
         args.checkpoint, device, use_ema=args.ema
     )
@@ -740,11 +734,7 @@ def run_evalset(args, device) -> None:
 
     decodes: dict[str, str] = {}
     for index, clip in enumerate(evalset.clips, start=1):
-        samples, rate = sf.read(str(clips_dir / clip.filename), dtype="float32")
-        if rate != SAMPLE_RATE:
-            raise SystemExit(f"{clip.filename} is {rate} Hz, not {SAMPLE_RATE}")
-        if samples.ndim > 1:
-            samples = samples.mean(axis=1)
+        samples = read_clip_audio(clips_dir, clip.filename)
         decodes[clip.filename] = tokens_to_phonemes(
             confirmed_stream(student, extractor, samples, device, batch_size)
         )

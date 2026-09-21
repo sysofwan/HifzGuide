@@ -130,11 +130,16 @@ def tally_positions(
 
 def main() -> None:
     import numpy as np
-    import soundfile as sf
     import torch
     from transformers import SeamlessM4TFeatureExtractor
 
-    from training.decode_evalset import CLIPS_DIRNAME, check_provenance, load_manifest
+    from training.decode_evalset import (
+        CLIPS_DIRNAME,
+        check_provenance,
+        load_manifest,
+        read_clip_audio,
+        scoring_batch_size,
+    )
     from training.distill_eval import (
         SAMPLE_RATE,
         WINDOW_SAMPLES,
@@ -157,7 +162,7 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     evalset = load_manifest(args.eval_set)
     check_provenance(evalset, TEACHER_MODEL_ID)
-    batch_size = args.batch_size or evalset.provenance.get("batch_size", 16)
+    batch_size = scoring_batch_size(evalset, args.batch_size)
 
     teacher = load_teacher(device)
     student, _, step = load_student_from_checkpoint(
@@ -187,11 +192,7 @@ def main() -> None:
     consistency = [PositionTally() for _ in range(NUM_BLOCKS)]
 
     for index, clip in enumerate(clips, start=1):
-        samples, rate = sf.read(str(clips_dir / clip.filename), dtype="float32")
-        if rate != SAMPLE_RATE:
-            raise SystemExit(f"{clip.filename} is {rate} Hz, not {SAMPLE_RATE}")
-        if samples.ndim > 1:
-            samples = samples.mean(axis=1)
+        samples = read_clip_audio(clips_dir, clip.filename)
         starts = clip_windows(len(samples))
         if len(starts) < 2:
             continue  # a single-window clip cannot compare positions

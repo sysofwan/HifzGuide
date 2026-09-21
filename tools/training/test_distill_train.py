@@ -47,6 +47,57 @@ def test_zero_warmup_does_not_divide_by_zero():
     assert dt.lr_lambda(0, 0, 1000) > 0
 
 
+# --- WSD schedule -------------------------------------------------------------------
+
+
+def test_wsd_holds_the_peak_through_the_stable_phase():
+    """The point of the probe: the rate must not drift while the plateau is measured."""
+    held = [dt.lr_lambda(s, 500, 10000, 2000) for s in range(500, 8000, 250)]
+    assert held == [pytest.approx(1.0)] * len(held)
+
+
+def test_wsd_warms_up_before_holding():
+    assert dt.lr_lambda(0, 500, 10000, 2000) == pytest.approx(1 / 500)
+    assert dt.lr_lambda(499, 500, 10000, 2000) == pytest.approx(1.0)
+
+
+def test_wsd_cooldown_starts_exactly_cooldown_steps_from_the_end():
+    assert dt.lr_lambda(7999, 500, 10000, 2000) == pytest.approx(1.0)
+    assert dt.lr_lambda(8000, 500, 10000, 2000) == pytest.approx(1.0)
+    assert dt.lr_lambda(9000, 500, 10000, 2000) == pytest.approx(0.505, abs=1e-6)
+
+
+def test_wsd_lands_on_the_same_floor_as_cosine():
+    """Common terminal rate is what makes a WSD arm comparable to a cosine one."""
+    assert dt.lr_lambda(10000, 500, 10000, 2000) == pytest.approx(dt.LR_FLOOR, abs=1e-9)
+
+
+def test_wsd_is_monotonic_and_clamped_past_the_end():
+    values = [dt.lr_lambda(s, 500, 10000, 2000) for s in range(500, 12000, 100)]
+    assert all(later <= earlier for earlier, later in zip(values, values[1:]))
+    assert dt.lr_lambda(20000, 500, 10000, 2000) == pytest.approx(dt.LR_FLOOR, abs=1e-9)
+
+
+def test_a_cooldown_longer_than_the_run_still_warms_up_first():
+    """Clamping the cooldown start protects the warmup rather than overrunning it."""
+    assert dt.lr_lambda(499, 500, 10000, 50000) == pytest.approx(1.0)
+    assert dt.lr_lambda(500, 500, 10000, 50000) == pytest.approx(1.0)
+    assert dt.lr_lambda(10000, 500, 10000, 50000) == pytest.approx(dt.LR_FLOOR, abs=1e-9)
+
+
+def test_zero_cooldown_is_the_cosine_schedule():
+    """The default must be bit-identical to the schedule every prior run was trained on."""
+    for step in (0, 1999, 5000, 20000, 39999, 40000, 50000):
+        assert dt.lr_lambda(step, 2000, 40000, 0) == dt.lr_lambda(step, 2000, 40000)
+
+
+def test_cooldown_steps_is_a_resume_critical_field():
+    """Restoring a WSD optimiser state under a cosine lambda silently changes the run."""
+    saved = dt.asdict(_config(cooldown_steps=2000))
+    with pytest.raises(SystemExit, match="cooldown_steps"):
+        dt.check_resume_compatible(saved, _config(cooldown_steps=0))
+
+
 # --- Resume guard -------------------------------------------------------------------
 
 

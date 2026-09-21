@@ -117,6 +117,53 @@ DEFAULT_SEED = 20260918
 SPLIT_SALT = "gate-evalset-reciter-split-v1"
 
 
+def read_clip_audio(clips_dir: Path, filename: str):
+    """One frozen clip's waveform: mono, float32, at the expected rate.
+
+    Every tool that scores the frozen set reads its audio through here, because the two
+    guards are load-bearing rather than incidental. A clip at another rate would be decoded
+    as the wrong duration by a pipeline that never resamples, and a stereo clip averaged in
+    one tool but not another would hand two tools different audio for the same filename --
+    the kind of silent divergence that makes two measurements quietly incomparable.
+
+    float32 is also not incidental: writing the set as PCM_16 moved the *teacher's own*
+    decode on 12 of 60 clips, and Tadabur audio peaks at 1.037 so it clips.
+    """
+    import soundfile as sf
+
+    from training.distill_data import SAMPLE_RATE
+
+    samples, rate = sf.read(str(clips_dir / filename), dtype="float32")
+    if rate != SAMPLE_RATE:
+        raise SystemExit(f"{filename} is {rate} Hz, not {SAMPLE_RATE}")
+    if samples.ndim > 1:
+        samples = samples.mean(axis=1)
+    return samples
+
+
+def scoring_batch_size(evalset: "EvalSet", requested: int = 0) -> int:
+    """The batch to decode at: the manifest's, unless explicitly overridden.
+
+    The teacher is bit-identical at a fixed batch size and moves **0.17% of characters**
+    between batch 4 and 32 -- bf16 accumulation over different padding and matmul groupings.
+    That is the same order as a real gain, so letting it float would let a rerun look like
+    progress. Inheriting the manifest's value is what keeps two checkpoints comparable; an
+    override is honoured but warned about, because its numbers are not comparable to
+    anything else scored against this set.
+    """
+    manifest_batch = evalset.provenance.get("batch_size", 16)
+    if not requested:
+        return manifest_batch
+    if requested != manifest_batch:
+        print(
+            f"[warn] scoring at batch {requested}, manifest built at {manifest_batch}: "
+            "expect ~0.2% of characters to move for that reason alone. Comparisons across "
+            "batch sizes are refused.",
+            flush=True,
+        )
+    return requested
+
+
 def gate_eval_shards() -> list[int]:
     """The shards reserved for evaluation -- strided, never trained on."""
     return list(

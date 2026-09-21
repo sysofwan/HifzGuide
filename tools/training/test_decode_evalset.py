@@ -292,3 +292,88 @@ def test_a_manifest_without_the_legacy_flag_keeps_every_clip(tmp_path: Path):
     loaded = load_manifest(tmp_path)
     assert len(loaded.clips) == 2
     assert loaded.provenance["dropped_stratified_clips"] == 0
+
+
+# --- canonical clip loading and batch-size inheritance -------------------------------
+#
+# Four tools score the frozen set and every one of them used to carry its own copy of the
+# audio-loading guards. These pin the shared versions, because a divergence between copies
+# is silent: two tools would score different audio for the same filename and their numbers
+# would quietly stop being comparable.
+
+
+def test_batch_size_is_inherited_from_the_manifest_by_default():
+    """Inheriting is what keeps two checkpoints comparable; the decode depends on it."""
+    from training.decode_evalset import scoring_batch_size
+
+    assert scoring_batch_size(_evalset([], batch_size=32), 0) == 32
+
+
+def test_a_manifest_without_a_batch_size_falls_back_to_sixteen():
+    from training.decode_evalset import scoring_batch_size
+
+    assert scoring_batch_size(_evalset([]), 0) == 16
+
+
+def test_an_explicit_batch_size_matching_the_manifest_is_silent(capsys):
+    from training.decode_evalset import scoring_batch_size
+
+    assert scoring_batch_size(_evalset([], batch_size=32), 32) == 32
+    assert capsys.readouterr().out == ""
+
+
+def test_an_overriding_batch_size_is_honoured_but_warned_about(capsys):
+    """0.17% of characters move between batch 4 and 32 -- the size of a real gain."""
+    from training.decode_evalset import scoring_batch_size
+
+    assert scoring_batch_size(_evalset([], batch_size=32), 4) == 4
+    warning = capsys.readouterr().out
+    assert "[warn]" in warning and "batch 4" in warning and "32" in warning
+
+
+def _write_wav(path, data, rate=16000):
+    """float32, not the PCM_16 default: PCM_16 quantizes, and this project has already been
+    bitten by that -- writing eval clips as PCM_16 moved the teacher's own decode on 12 of
+    60 clips. A fixture that quantizes would test the wrong thing."""
+    import soundfile as sf
+
+    sf.write(str(path), data, rate, subtype="FLOAT")
+    return path
+
+
+def test_a_mono_clip_is_returned_unchanged(tmp_path):
+    import numpy as np
+
+    from training.decode_evalset import read_clip_audio
+
+    samples = np.linspace(-0.5, 0.5, 1600, dtype="float32")
+    _write_wav(tmp_path / "a.wav", samples)
+    loaded = read_clip_audio(tmp_path, "a.wav")
+    assert loaded.ndim == 1
+    assert np.allclose(loaded, samples, atol=1e-6)
+
+
+def test_a_stereo_clip_is_mixed_down(tmp_path):
+    """Averaged in one tool and not another would be two different clips."""
+    import numpy as np
+
+    from training.decode_evalset import read_clip_audio
+
+    left = np.full(800, 0.5, dtype="float32")
+    right = np.full(800, -0.1, dtype="float32")
+    _write_wav(tmp_path / "s.wav", np.stack([left, right], axis=1))
+    loaded = read_clip_audio(tmp_path, "s.wav")
+    assert loaded.ndim == 1
+    assert np.allclose(loaded, 0.2, atol=1e-4)
+
+
+def test_a_clip_at_the_wrong_rate_is_refused_not_silently_decoded(tmp_path):
+    """Nothing downstream resamples, so a 22 kHz clip would decode as the wrong duration."""
+    import numpy as np
+    import pytest as _pytest
+
+    from training.decode_evalset import read_clip_audio
+
+    _write_wav(tmp_path / "w.wav", np.zeros(800, dtype="float32"), rate=22050)
+    with _pytest.raises(SystemExit, match="22050"):
+        read_clip_audio(tmp_path, "w.wav")

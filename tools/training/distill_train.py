@@ -107,6 +107,9 @@ class TrainConfig:
     learning_rate: float = 1e-4
     weight_decay: float = 0.01
     warmup_steps: int = 2_000
+    # 0 = cosine decay over the whole run. >0 = WSD: hold peak, then decay linearly over the
+    # final `cooldown_steps`. See lr_lambda.
+    cooldown_steps: int = 0
     max_grad_norm: float = 5.0
     hop_seconds: float = 2.5
     val_fraction: float = 0.02
@@ -159,6 +162,7 @@ RESUME_CRITICAL_FIELDS = (
     "learning_rate",
     "weight_decay",
     "warmup_steps",
+    "cooldown_steps",
     "max_grad_norm",
     "hop_seconds",
     "val_fraction",
@@ -357,13 +361,42 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
     return train_loader, val_loader
 
 
-def lr_lambda(step: int, warmup_steps: int, total_steps: int) -> float:
-    """Linear warmup then cosine decay to 1% of peak."""
+# Both schedules end here, at 1% of peak. Keeping the terminal rate common to cosine and
+# WSD is what makes a run of one comparable to a run of the other: the arms then differ in
+# the *shape* of the decay and not in where they stop.
+LR_FLOOR = 0.01
+
+
+def lr_lambda(
+    step: int, warmup_steps: int, total_steps: int, cooldown_steps: int = 0
+) -> float:
+    """Linear warmup, then a decay to :data:`LR_FLOOR` whose shape ``cooldown_steps`` picks.
+
+    ``cooldown_steps == 0`` gives cosine decay across the whole post-warmup run: the rate is
+    already at a third of peak by the halfway point and spends the last quarter of the run
+    below 8% of it. That is the right shape for a run trained once to a known budget, and the
+    wrong one for measuring whether a model has stopped improving -- a run whose gains decay
+    as its rate decays cannot say which caused which. ``h384_stream_warm`` finished at 5e-7.
+
+    ``cooldown_steps > 0`` gives WSD instead (warmup-stable-decay): hold peak until
+    ``cooldown_steps`` remain, then decay linearly. The hold keeps the rate constant while
+    the measurement is taken, so a plateau under it is the model's and not the schedule's,
+    and the run stays extendable -- a constant phase has no horizon baked into it.
+    """
     if step < warmup_steps:
         return (step + 1) / max(1, warmup_steps)
-    progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
+    if cooldown_steps <= 0:
+        progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
+        progress = min(1.0, max(0.0, progress))
+        return LR_FLOOR + (1.0 - LR_FLOOR) * 0.5 * (1.0 + math.cos(math.pi * progress))
+    # A cooldown longer than the post-warmup run leaves no hold phase rather than starting
+    # the decay before warmup has finished.
+    cooldown_start = max(warmup_steps, total_steps - cooldown_steps)
+    if step < cooldown_start:
+        return 1.0
+    progress = (step - cooldown_start) / max(1, total_steps - cooldown_start)
     progress = min(1.0, max(0.0, progress))
-    return 0.01 + 0.99 * 0.5 * (1.0 + math.cos(math.pi * progress))
+    return 1.0 - (1.0 - LR_FLOOR) * progress
 
 
 def forward_step(
@@ -570,7 +603,10 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
         weight_decay=config.weight_decay,
     )
     scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda s: lr_lambda(s, config.warmup_steps, config.steps)
+        optimizer,
+        lambda s: lr_lambda(
+            s, config.warmup_steps, config.steps, config.cooldown_steps
+        ),
     )
 
     start_step = 0
@@ -718,6 +754,14 @@ def main() -> None:
     parser.add_argument("--grad-accum", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--warmup-steps", type=int, default=2_000)
+    parser.add_argument(
+        "--cooldown-steps",
+        type=int,
+        default=0,
+        help="switch from cosine decay to a WSD schedule: hold the peak rate after warmup "
+        "and decay linearly over this many final steps. Use it when the run has to answer "
+        "whether the model stopped improving, which a decaying rate confounds.",
+    )
     parser.add_argument("--hop-seconds", type=float, default=2.5)
     parser.add_argument(
         "--stream-shards",
@@ -803,6 +847,7 @@ def main() -> None:
         grad_accum=args.grad_accum,
         learning_rate=args.learning_rate,
         warmup_steps=args.warmup_steps,
+        cooldown_steps=args.cooldown_steps,
         hop_seconds=args.hop_seconds,
         stream_shards=args.stream_shards,
         num_workers=args.num_workers,

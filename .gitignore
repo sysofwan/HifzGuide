@@ -94,3 +94,10 @@ tools/tadabur/waqf_event_fixtures/waqf_flagged_clips.json
 
 # Local agent scratch file
 .copilot-scratch
+
+# The frozen decode-evaluation set: 2,000 float32 clips (~2.5 GB) built by
+# training.decode_evalset and rsync'd between the GPU box and a Mac for CoreML checks.
+# It is a build artifact of a seeded scan, not source -- rebuild it or copy it, never
+# commit it. A `git add -A tools/` once swept all 2,903 files into a commit and the push
+# was rejected by GitHub with an HTTP 500.
+tools/tadabur/gate_eval/

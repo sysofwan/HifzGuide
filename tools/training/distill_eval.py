@@ -130,15 +130,69 @@ def scan_ctc(class_ids: np.ndarray) -> list[Segment]:
     return segments
 
 
+@dataclass(frozen=True)
+class Emission:
+    """One committed token, tagged with where in the protocol it came from.
+
+    The bare token stream is what the metric scores, but it cannot say *which part of the
+    protocol* produced a given error -- and that is the question the objective arms turn on:
+    two fifths of scored timesteps come from the flushed final window, which training weights
+    at 1x. Provenance is carried here rather than recomputed by a second pass so that there
+    stays exactly one implementation of the commit rule; a divergent second copy of this
+    protocol is the defect that hid the missing silence flush.
+    """
+
+    token_id: int
+    window: int
+    start_step: int
+    end_step: int  # inclusive
+    is_final_window: bool
+
+    @property
+    def midpoint(self) -> float:
+        return (self.start_step + self.end_step) / 2.0
+
+    @property
+    def is_flush(self) -> bool:
+        """Committed only because no later window exists to re-decode these timesteps."""
+        return self.is_final_window and self.midpoint >= float(CONFIRM_TIMESTEPS)
+
+    @property
+    def straddles_seam(self) -> bool:
+        """The run crosses the confirmation boundary, so its commit is timing-sensitive.
+
+        A segment ending one frame either side of the split is committed by a different
+        window, which is how a student that is right about the token can still be charged an
+        insertion or a deletion.
+        """
+        return self.start_step < CONFIRM_TIMESTEPS <= self.end_step
+
+
+def window_emissions(
+    class_ids: np.ndarray,
+    confirm_timesteps: int = CONFIRM_TIMESTEPS,
+    window: int = 0,
+    is_final_window: bool = False,
+) -> list[Emission]:
+    """The emissions one window commits: segments with midpoint < split, with provenance."""
+    return [
+        Emission(
+            token_id=seg.token_id,
+            window=window,
+            start_step=seg.start_step,
+            end_step=seg.end_step,
+            is_final_window=is_final_window,
+        )
+        for seg in scan_ctc(class_ids)
+        if seg.midpoint < float(confirm_timesteps)
+    ]
+
+
 def confirmed_tokens(
     class_ids: np.ndarray, confirm_timesteps: int = CONFIRM_TIMESTEPS
 ) -> list[int]:
     """The tokens one window commits to the transcript: segments with midpoint < split."""
-    return [
-        seg.token_id
-        for seg in scan_ctc(class_ids)
-        if seg.midpoint < float(confirm_timesteps)
-    ]
+    return [e.token_id for e in window_emissions(class_ids, confirm_timesteps)]
 
 
 def levenshtein(a: list[int], b: list[int]) -> int:
@@ -193,15 +247,15 @@ def clip_windows(num_samples: int, hop_samples: int = HOP_SAMPLES) -> list[int]:
 
 
 @torch.no_grad()
-def confirmed_stream(
+def confirmed_emissions(
     model,
     extractor,
     samples: np.ndarray,
     device: torch.device,
     batch_size: int = 16,
     flush_tail: bool = True,
-) -> list[int]:
-    """Replay the deployed protocol over one clip and return its confirmed tokens.
+) -> list[Emission]:
+    """Replay the deployed protocol over one clip and return its committed emissions.
 
     Every window commits the segments in its oldest second. The **last** window additionally
     commits everything still pending, which is the silence flush: no later window exists to
@@ -219,7 +273,7 @@ def confirmed_stream(
         windows.append(chunk)
 
     last_index = len(windows) - 1
-    stream: list[int] = []
+    stream: list[Emission] = []
     for offset in range(0, len(windows), batch_size):
         batch = windows[offset : offset + batch_size]
         extracted = extractor(
@@ -231,13 +285,36 @@ def confirmed_stream(
         ids = logits.float().argmax(dim=-1).cpu().numpy()
         for position, row in enumerate(ids, start=offset):
             stream.extend(
-                confirmed_tokens(
+                window_emissions(
                     row[:DEPLOYED_LOGIT_FRAMES],
                     confirm_split_for_window(position, last_index, flush_tail),
+                    window=position,
+                    is_final_window=position == last_index,
                 )
             )
 
     return stream
+
+
+def confirmed_stream(
+    model,
+    extractor,
+    samples: np.ndarray,
+    device: torch.device,
+    batch_size: int = 16,
+    flush_tail: bool = True,
+) -> list[int]:
+    """The committed token stream -- :func:`confirmed_emissions` without the provenance.
+
+    This is what the metric scores. Every caller that only needs tokens uses this, so the
+    provenance fields cost nothing where they are not wanted.
+    """
+    return [
+        e.token_id
+        for e in confirmed_emissions(
+            model, extractor, samples, device, batch_size, flush_tail
+        )
+    ]
 
 
 @dataclass
@@ -634,27 +711,21 @@ def paired_reciter_bootstrap(
 
 def run_evalset(args, device) -> None:
     """Score one checkpoint's decode against a frozen set's cached teacher decode."""
-    import soundfile as sf
     from transformers import SeamlessM4TFeatureExtractor
 
-    from training.decode_evalset import CLIPS_DIRNAME, check_provenance, load_manifest
+    from training.decode_evalset import (
+        CLIPS_DIRNAME,
+        check_provenance,
+        load_manifest,
+        read_clip_audio,
+        scoring_batch_size,
+    )
     from training.distill_gate import tokens_to_phonemes
     from training.distill_student import TEACHER_MODEL_ID
 
     evalset = load_manifest(args.eval_set)
     check_provenance(evalset, TEACHER_MODEL_ID)
-    # Inherit the manifest's batch size unless told otherwise. bf16 accumulation makes the
-    # decode depend on it -- bit-identical at the same batch, 0.17% adrift at batch 4 -- and
-    # that is the same order as a real gain, so letting it float would let a rerun look like
-    # progress.
-    batch_size = args.batch_size or evalset.provenance.get("batch_size", 16)
-    if args.batch_size and args.batch_size != evalset.provenance.get("batch_size"):
-        print(
-            f"[warn] scoring at batch {args.batch_size}, manifest built at "
-            f"{evalset.provenance.get('batch_size')}: expect ~0.2% of characters to move "
-            f"for that reason alone. Comparisons across batch sizes are refused.",
-            flush=True,
-        )
+    batch_size = scoring_batch_size(evalset, args.batch_size)
     student, state_config, step = load_student_from_checkpoint(
         args.checkpoint, device, use_ema=args.ema
     )
@@ -663,11 +734,7 @@ def run_evalset(args, device) -> None:
 
     decodes: dict[str, str] = {}
     for index, clip in enumerate(evalset.clips, start=1):
-        samples, rate = sf.read(str(clips_dir / clip.filename), dtype="float32")
-        if rate != SAMPLE_RATE:
-            raise SystemExit(f"{clip.filename} is {rate} Hz, not {SAMPLE_RATE}")
-        if samples.ndim > 1:
-            samples = samples.mean(axis=1)
+        samples = read_clip_audio(clips_dir, clip.filename)
         decodes[clip.filename] = tokens_to_phonemes(
             confirmed_stream(student, extractor, samples, device, batch_size)
         )

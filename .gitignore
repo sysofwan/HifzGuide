@@ -101,3 +101,9 @@ tools/tadabur/waqf_event_fixtures/waqf_flagged_clips.json
 # commit it. A `git add -A tools/` once swept all 2,903 files into a commit and the push
 # was rejected by GitHub with an HTTP 500.
 tools/tadabur/gate_eval/
+
+# Hugging Face publish staging (tools/training/publish_hf.py output): a full-precision
+# PyTorch/safetensors export, hundreds of MB, rebuilt from a checkpoint on demand. Never
+# source, and `git add -A` already swept an eval-set directory into a commit once (see the
+# gate_eval entry above) -- same failure mode, bigger blast radius.
+tools/export/

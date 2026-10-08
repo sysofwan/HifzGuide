@@ -20,6 +20,11 @@ checkpoint put the reference vowel on the reference carrier, and everything in
 recorded as ``unanchored`` by the same rules the aggregate report uses, so a number from
 here and a number from ``tashkeel_eval`` cannot disagree about what "failed" means.
 
+The file opens with a ``{"decode": ...}`` header holding the
+:class:`training.decoding.DecodeFingerprint` of the decode behind it;
+:mod:`tadabur.tashkeel_acceptance` refuses outcomes whose fingerprint does not match the
+worklist's frozen base decode, and refuses a file with none.
+
 ``--model`` is any reference :class:`training.decoding.Decoder` loads -- the base teacher's
 hub id, a merged model directory, or a distilled student's checkpoint -- so the base model
 and ``h448`` are scored at the same sites the same way.
@@ -43,6 +48,7 @@ import json
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
+from training.decoding import DecodeFingerprint
 from training.tashkeel_eval import (
     VOWEL_OUTCOMES,
     _decode_windows,
@@ -131,16 +137,24 @@ def outcomes_for_window(
     return found
 
 
-def write_outcomes(path: Path, rows: list[SiteOutcome]) -> None:
-    """One JSON object per line, ordered by site id so two runs diff cleanly."""
+def write_outcomes(path: Path, rows: list[SiteOutcome], decode: DecodeFingerprint) -> None:
+    """A ``{"decode": ...}`` header line, then one outcome per line ordered by site id.
+
+    The header is the decode's fingerprint: these outcomes are compared against a worklist's
+    frozen base outcomes, which is only sound under the same decode settings.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
+        handle.write(json.dumps({"decode": decode.as_dict()}, ensure_ascii=False) + "\n")
         for row in sorted(rows, key=lambda r: r.site_id):
             handle.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
 
 
-def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
-    """Read outcomes keyed by site id, rejecting anything that is not this schema.
+def read_outcomes(path: Path) -> tuple[DecodeFingerprint, dict[str, SiteOutcome]]:
+    """Read the decode fingerprint and the outcomes keyed by site id, rejecting anything else.
+
+    A file with no fingerprint header predates it (a legacy decode) and is refused: nothing
+    can say whether it is comparable to the worklist it would be joined to.
 
     A silently-tolerated stray field here would be a checkpoint's result being read into the
     wrong column of a comparison, so the schema is checked rather than trusted.
@@ -155,10 +169,17 @@ def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
     a listener revising a verdict is expected, two outcomes for one site means two decodes were
     concatenated and there is no way to tell which checkpoint the survivor came from.
     """
+    lines = [
+        (number, line)
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+        if line.strip()
+    ]
+    header = json.loads(lines[0][1]) if lines else {}
+    decode = DecodeFingerprint.from_dict(
+        header.get("decode") if set(header) == {"decode"} else None, str(path)
+    )
     rows: dict[str, SiteOutcome] = {}
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        if not line.strip():
-            continue
+    for number, line in lines[1:]:
         record = json.loads(line)
         missing = set(OUTCOME_FIELDS) - set(record)
         unknown = set(record) - set(OUTCOME_FIELDS)
@@ -179,7 +200,7 @@ def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
                 "means two decodes were concatenated; which checkpoint won is not recoverable."
             )
         rows[record["site_id"]] = SiteOutcome(**record)
-    return rows
+    return decode, rows
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -234,7 +255,7 @@ def main() -> None:
         flush=True,
     )
 
-    decodes = _decode_windows(
+    decodes, decode = _decode_windows(
         args.model, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
     )
 
@@ -250,7 +271,7 @@ def main() -> None:
             "labels disagree about a window's reference — not that the model skipped them."
         )
 
-    write_outcomes(args.out, rows)
+    write_outcomes(args.out, rows, decode)
     print(f"Wrote {len(rows)} outcomes to {args.out}")
 
 

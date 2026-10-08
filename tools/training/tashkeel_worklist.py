@@ -418,16 +418,17 @@ def main() -> None:
         flush=True,
     )
 
-    def decode(model_ref: str) -> list[str]:
+    def decode(model_ref: str):
         return _decode_windows(
             model_ref, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
         )
 
-    base = decode(args.base)
+    base, base_decode = decode(args.base)
+    candidate_decode = None
 
     rows: list[TashkeelSite] = []
     if args.candidate:
-        candidate = decode(args.candidate)
+        candidate, candidate_decode = decode(args.candidate)
         for label, reference, base_decode, candidate_decode in zip(
             labels, references, base, candidate
         ):
@@ -446,6 +447,11 @@ def main() -> None:
         "coverage": coverage,
         "base": args.base,
         "candidate": args.candidate,
+        # Which decode the sites' base (and candidate) outcomes came from. A static
+        # worklist's frozen base outcomes are compared against outcomes decoded later, which
+        # tadabur.tashkeel_acceptance allows only under a matching fingerprint.
+        "base_decode": base_decode.as_dict(),
+        "candidate_decode": candidate_decode.as_dict() if candidate_decode else None,
         "mode": "paired" if args.candidate else "static",
         "population": population_counts(references, rows, strata_names),
         "sampled": len(drawn),

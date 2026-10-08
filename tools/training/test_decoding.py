@@ -10,6 +10,9 @@ no download.
 from __future__ import annotations
 
 import random
+import subprocess
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -17,7 +20,8 @@ import torch
 
 from training import decoding as dc
 from training.distill_data import SAMPLE_RATE, WINDOW_SAMPLES
-from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS
+from training.decoding import CONFIRM_TIMESTEPS
+from training.distill_loss import BLANK_ID
 from training.distill_student import DEPLOYED_LOGIT_FRAMES, NUM_PHONEME_CLASSES
 from training.window_position import block_tokens
 
@@ -228,6 +232,54 @@ def test_provenance_follows_the_committed_block():
     assert by_token[4].straddles_seam  # crosses step 50, the end of block 1
     assert by_token[5].is_flush  # block 2 of the last window: only the flush commits it
     assert {e.block for e in by_token.values()} == {1}
+
+
+# --- Identity of a stored decode -------------------------------------------------------
+
+
+def test_the_deployed_stream_keeps_its_protocol_version_and_other_blocks_get_their_own():
+    """Frozen eval sets carry PROTOCOL_VERSION; it must not move, and b>0 must not reuse it."""
+    assert dc.PROTOCOL_VERSION == "confirmed-stream-v2-flush" == dc.stream_protocol()
+    names = {dc.stream_protocol(b, flush) for b in range(dc.NUM_BLOCKS) for flush in (True, False)}
+    assert len(names) == 2 * dc.NUM_BLOCKS
+    assert dc.stream_protocol(0, flush_tail=False) == "confirmed-stream-v1"
+
+
+def test_fingerprints_compare_models_but_not_settings():
+    base = dc.DecodeFingerprint.for_stream("teacher", "bf16", 16)
+    base.check_comparable(dc.DecodeFingerprint.for_stream("h448.pt", "bf16", 16), "two models")
+    for other in (
+        dc.DecodeFingerprint.for_stream("h448.pt", "bf16", 16, block=1),
+        dc.DecodeFingerprint.for_spans("h448.pt", "bf16", 16),
+        dc.DecodeFingerprint.for_stream("h448.pt", "fp32", 16),
+        dc.DecodeFingerprint.for_stream("h448.pt", "bf16", 8),
+    ):
+        with pytest.raises(ValueError, match="Regenerate the baseline"):
+            base.check_comparable(other, "two models")
+
+
+def test_a_fingerprint_round_trips_and_a_malformed_one_is_refused():
+    fingerprint = dc.DecodeFingerprint.for_spans("teacher", "bf16", 8)
+    assert dc.DecodeFingerprint.from_dict(fingerprint.as_dict(), "x") == fingerprint
+    with pytest.raises(ValueError, match="malformed"):
+        dc.DecodeFingerprint.from_dict({"model": "teacher"}, "x")
+    with pytest.raises(ValueError, match="no decode fingerprint"):
+        dc.DecodeFingerprint.from_dict(None, "x")
+
+
+def test_importing_the_decoding_module_does_not_import_torch():
+    """The protocol and the fingerprint are read by torch-free tools (the audit UI)."""
+    code = (
+        "import sys; import training.decoding, tadabur.tashkeel_acceptance; "
+        "assert 'torch' not in sys.modules, sorted(m for m in sys.modules if 'torch' in m)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        cwd=str(Path(__file__).resolve().parent.parent),
+    )
+    assert result.returncode == 0, result.stderr
 
 
 # --- b=0 reproduces the pre-refactor distill_eval protocol exactly --------------------
@@ -472,7 +524,7 @@ def test_the_same_weights_decode_identically_through_either_loader(tiny_student)
     spans = [clip[: int(1.3 * SAMPLE_RATE)], clip[SAMPLE_RATE : 4 * SAMPLE_RATE]]
 
     decoders = [
-        dc.Decoder.load(ref, CPU, weights_dtype=torch.float32, batch_size=2)
+        dc.Decoder.load(ref, CPU, weights_dtype="fp32", batch_size=2)
         for ref in (checkpoint, hf_dir)
     ]
     from_checkpoint, from_hf = decoders
@@ -490,13 +542,13 @@ def test_the_same_weights_decode_identically_through_either_loader(tiny_student)
 def test_bf16_weights_are_refused_without_cuda_autocast(tiny_student):
     checkpoint, _ = tiny_student
     with pytest.raises(ValueError, match="autocast"):
-        dc.Decoder.load(checkpoint, CPU, weights_dtype=torch.bfloat16)
+        dc.Decoder.load(checkpoint, CPU, weights_dtype="bf16")
 
 
 def test_averaged_weights_cannot_be_asked_of_a_hugging_face_reference(tiny_student):
     _, hf_dir = tiny_student
     with pytest.raises(ValueError, match="averaged"):
-        dc.Decoder.load(hf_dir, CPU, weights_dtype=torch.float32, use_ema=True)
+        dc.Decoder.load(hf_dir, CPU, weights_dtype="fp32", use_ema=True)
 
 
 def test_a_head_with_another_vocabulary_is_refused(tmp_path):

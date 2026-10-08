@@ -49,12 +49,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# The timesteps of each window that become the user-visible transcript: owned by the
+# streaming protocol, and up-weighted by this loss.
+from training.decoding import CONFIRM_TIMESTEPS
+
 # Blank/pad class of the phoneme head (``tadabur.phoneme_vocab.PHONEME_PAD_ID``).
 BLANK_ID = 0
-
-# Timesteps of each 125-frame window that become the user-visible transcript
-# (``MuaalemInference.predictSplit``; ``hopTimeSteps = outputTimeSteps / 5``).
-CONFIRM_TIMESTEPS = 25
 
 # Defaults chosen so neither weighting dominates: with ~50% non-blank during speech, a 3x
 # non-blank boost moves the effective mass to roughly 3:1 toward the frames that carry

@@ -342,7 +342,11 @@ number this work is accountable for. See ADR-0010.
   protocol committing block `b` of each 5 s window (`decode_stream`, `emissions`; `b=0` is
   what Muraja ships). It is the only implementation of that protocol; the module docstring
   states the startup rule for `b > 0`. `tashkeel_eval`, `tashkeel_outcomes` and
-  `tashkeel_worklist` decode through it, so they take a student checkpoint too.
+  `tashkeel_worklist` decode through it, so they take a student checkpoint too. Each records
+  the `DecodeFingerprint` of its decode (model, mode — whole spans or the stream protocol,
+  which names the block — weights dtype, batch size and `INFERENCE_POLICY`), and
+  `tashkeel_acceptance` refuses to compare outcomes whose fingerprints differ or are missing.
+  Worklists and outcomes written before this carry none: re-mine and re-score them.
 
 - **`distill_eval`** — the release gate. Replays the deployed protocol (5 s window, 1 s hop,
   `scanCTC` collapse, `midpoint < 25` confirmation) and compares the **confirmed transcripts**.

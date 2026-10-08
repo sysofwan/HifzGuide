@@ -76,22 +76,31 @@ and commits again. The stream concatenates without reconciliation, faithfully to
 ``predictSplit``. Whether the device dedupes is unverified here.
 
 The commit rule (:func:`stream_emissions`) is pure numpy over per-window argmax rows, so
-the protocol is tested on synthetic logits with no model at all.
+the protocol is tested on synthetic logits with no model at all, and importing this module
+does not import torch.
+
+Identifying a stored decode
+---------------------------
+
+A stored decode is only comparable to another made the same way. :class:`DecodeFingerprint`
+names everything besides the audio that decides one -- model reference, mode (whole spans,
+or the stream's :func:`stream_protocol`, which folds in the commit block and the flush),
+weights dtype, batch size and :data:`INFERENCE_POLICY` -- and tools that persist decodes or
+outcomes record it, so a comparison across runs can refuse a mismatched or missing one.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, fields
 from itertools import islice
 from pathlib import Path
 
 import numpy as np
-import torch
 
-from tadabur.phoneme_vocab import PHONEME_ID_TO_CHAR, PHONEME_PAD_ID
+from tadabur.phoneme_vocab import PHONEME_ID_TO_CHAR
+from tadabur.phoneme_vocab import PHONEME_PAD_ID as BLANK_ID
 from training.distill_data import SAMPLE_RATE, WINDOW_SAMPLES
-from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS
 from training.distill_student import (
     DEPLOYED_LOGIT_FRAMES,
     NUM_PHONEME_CLASSES,
@@ -101,8 +110,11 @@ from training.distill_student import (
     build_student,
 )
 
-# The device advances its buffer by 1 s per pass; at 125 timesteps per 5 s window that is
-# 25 timesteps, which is also ``CONFIRM_TIMESTEPS`` -- one block.
+# Timesteps of each 125-step window that become the user-visible transcript -- one second,
+# one block (``MuaalemInference.predictSplit``; ``hopTimeSteps = outputTimeSteps / 5``).
+CONFIRM_TIMESTEPS = 25
+
+# The device advances its buffer by 1 s per pass: 25 timesteps, one block.
 HOP_SAMPLES = SAMPLE_RATE
 
 # Five 25-step blocks per 125-step window, one per second of the 5 s window.
@@ -111,19 +123,23 @@ NUM_BLOCKS = DEPLOYED_LOGIT_FRAMES // CONFIRM_TIMESTEPS
 # The block Muraja commits today: the oldest second of the buffer.
 DEPLOYED_BLOCK = 0
 
-# Bumped whenever the replayed **deployed** (b=0) protocol changes what a clip decodes to.
-# Cached teacher decodes carry it (``training.decode_evalset``) so a manifest built under
-# one protocol cannot be silently scored under another. v1 was the unflushed stream; v2
-# flushes the last window. A stream committed at another block is a different protocol
-# and is never cached under this version.
-PROTOCOL_VERSION = "confirmed-stream-v2-flush"
-
 # Students are distilled on the teacher's own front-end, and a checkpoint carries no
 # feature extractor of its own, so a checkpoint decodes through the teacher's.
 STUDENT_FEATURE_EXTRACTOR = TEACHER_MODEL_ID
 
-# The two weight precisions this repo has decoded with; see the module docstring.
-WEIGHTS_DTYPES = {"bf16": torch.bfloat16, "fp32": torch.float32}
+# The two weight precisions this repo has decoded with, by the torch dtype each names; see
+# the module docstring.
+WEIGHTS_DTYPES = {"bf16": "bfloat16", "fp32": "float32"}
+
+# Bumped whenever the forward pass changes what a model decodes for the same weights and
+# audio: feature extraction, autocast, the dtype the features enter at. v1 is fp32 features
+# under CUDA bf16 autocast, which is how distill_eval always streamed. The haraka tools
+# decoded whole spans differently before this module (``tadabur.inference``: bf16 features,
+# no autocast); their outputs carry no fingerprint and are refused as legacy.
+INFERENCE_POLICY = "fp32-features-cuda-bf16-autocast-v1"
+
+# The decode mode of a whole-span decode; a stream's mode is its :func:`stream_protocol`.
+SPANS = "whole-spans"
 
 
 # --- The protocol, on argmax rows ------------------------------------------------------
@@ -177,6 +193,23 @@ def block_bounds(block: int) -> tuple[int, int]:
         raise ValueError(f"block must be in [0, {NUM_BLOCKS}), got {block}")
     low = block * CONFIRM_TIMESTEPS
     return low, low + CONFIRM_TIMESTEPS
+
+
+def stream_protocol(block: int = DEPLOYED_BLOCK, flush_tail: bool = True) -> str:
+    """The name of the streaming protocol committing ``block``, with or without the flush.
+
+    v1 was the unflushed stream; v2 flushes the last window. A stream committed at another
+    block is a different protocol, so it gets a different name -- the deployed one is
+    :data:`PROTOCOL_VERSION`.
+    """
+    block_bounds(block)
+    name = "confirmed-stream-v2-flush" if flush_tail else "confirmed-stream-v1"
+    return name if block == DEPLOYED_BLOCK else f"{name}-b{block}"
+
+
+# The deployed protocol. Cached teacher decodes carry it (``training.decode_evalset``) so a
+# manifest built under one protocol cannot be silently scored under another.
+PROTOCOL_VERSION = stream_protocol()
 
 
 def commit_bounds(
@@ -310,8 +343,78 @@ def tokens_to_phonemes(token_ids: Iterable[int]) -> str:
     return "".join(
         PHONEME_ID_TO_CHAR[t]
         for t in token_ids
-        if t != PHONEME_PAD_ID and 0 <= t < len(PHONEME_ID_TO_CHAR)
+        if t != BLANK_ID and 0 <= t < len(PHONEME_ID_TO_CHAR)
     )
+
+
+# --- What produced a decode ------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DecodeFingerprint:
+    """Everything besides the audio that decides a stored decode: its identity.
+
+    Two stored results may be compared only when every field but ``model`` agrees -- the
+    model being the thing under comparison. Otherwise part of any difference between them is
+    numerics or protocol rather than the models, and nothing downstream could tell how much.
+    The b=0 stream's ``mode`` is :data:`PROTOCOL_VERSION`, so the streaming protocol's
+    version and this fingerprint are one scheme, not two.
+    """
+
+    model: str
+    mode: str  # SPANS, or a stream_protocol()
+    weights_dtype: str
+    batch_size: int
+    policy: str = INFERENCE_POLICY
+
+    @classmethod
+    def for_spans(cls, model: str, weights_dtype: str, batch_size: int) -> "DecodeFingerprint":
+        return cls(str(model), SPANS, weights_dtype, batch_size)
+
+    @classmethod
+    def for_stream(
+        cls,
+        model: str,
+        weights_dtype: str,
+        batch_size: int,
+        block: int = DEPLOYED_BLOCK,
+        flush_tail: bool = True,
+    ) -> "DecodeFingerprint":
+        return cls(str(model), stream_protocol(block, flush_tail), weights_dtype, batch_size)
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, record: dict | None, source: str) -> "DecodeFingerprint":
+        """Read a stored fingerprint, refusing a legacy artifact that has none."""
+        if record is None:
+            raise ValueError(
+                f"{source} records no decode fingerprint, so it predates "
+                f"{INFERENCE_POLICY} and was decoded under numerics nothing can compare "
+                "against. Regenerate it with the current tools."
+            )
+        expected = {f.name for f in fields(cls)}
+        if set(record) != expected:
+            raise ValueError(
+                f"{source} has a malformed decode fingerprint: fields {sorted(record)}, "
+                f"expected {sorted(expected)}."
+            )
+        return cls(**record)
+
+    def check_comparable(self, other: "DecodeFingerprint", what: str) -> None:
+        """Refuse to compare two decodes made under different settings."""
+        mismatched = [
+            f"{name}: {getattr(self, name)!r} vs {getattr(other, name)!r}"
+            for name in ("policy", "mode", "weights_dtype", "batch_size")
+            if getattr(self, name) != getattr(other, name)
+        ]
+        if mismatched:
+            raise ValueError(
+                f"refusing to compare {what}: they were decoded under different settings "
+                f"({'; '.join(mismatched)}), so part of any difference would be the decode, "
+                "not the model. Regenerate the baseline with the same settings."
+            )
 
 
 # --- Loading a model reference ---------------------------------------------------------
@@ -357,9 +460,7 @@ def load_hf_model(model_ref: str):
     return model.eval()
 
 
-def load_student_from_checkpoint(
-    checkpoint_path: Path, device: torch.device, use_ema: bool = False
-):
+def load_student_from_checkpoint(checkpoint_path: Path, device, use_ema: bool = False):
     """Rebuild the student described by a checkpoint and load its weights.
 
     Returns the run's persisted config alongside the model: the eval tools need it to
@@ -370,6 +471,8 @@ def load_student_from_checkpoint(
     live weights under an ``--ema`` flag would report the wrong model's number, and the two
     are meant to be compared.
     """
+    import torch
+
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     config = state["config"]
     student = build_student(PRESETS[config["preset"]])
@@ -413,7 +516,9 @@ class Decoder:
     two decodes are comparable only at the same batch size.
     """
 
-    def __init__(self, model, extractor, device: torch.device, batch_size: int = 16) -> None:
+    def __init__(self, model, extractor, device, batch_size: int = 16) -> None:
+        import torch
+
         if batch_size < 1:
             raise ValueError(f"batch_size must be positive, got {batch_size}")
         self.model = model
@@ -425,23 +530,25 @@ class Decoder:
     def load(
         cls,
         model_ref: str | Path,
-        device: str | torch.device,
+        device,
         *,
-        weights_dtype: torch.dtype,
+        weights_dtype: str,
         batch_size: int = 16,
         use_ema: bool = False,
     ) -> "Decoder":
         """Load a hub id, a saved model directory, or a distillation checkpoint file.
 
-        ``use_ema`` selects a checkpoint's averaged weights; asking for them from anything
-        else is an error rather than a silent no-op.
+        ``weights_dtype`` is a key of :data:`WEIGHTS_DTYPES`. ``use_ema`` selects a
+        checkpoint's averaged weights; asking for them from anything else is an error rather
+        than a silent no-op.
         """
+        import torch
         from transformers import SeamlessM4TFeatureExtractor
 
         device = torch.device(device)
-        if weights_dtype not in WEIGHTS_DTYPES.values():
+        if weights_dtype not in WEIGHTS_DTYPES:
             raise ValueError(f"weights_dtype must be one of {sorted(WEIGHTS_DTYPES)}")
-        if device.type != "cuda" and weights_dtype != torch.float32:
+        if device.type != "cuda" and weights_dtype != "fp32":
             raise ValueError(
                 f"{weights_dtype} weights on {device} would run without the CUDA autocast "
                 "that reconciles them with fp32 features; decode on CUDA or with fp32."
@@ -458,14 +565,17 @@ class Decoder:
                 )
             model = load_hf_model(str(model_ref))
             extractor_source = str(model_ref)
-        model = model.to(device=device, dtype=weights_dtype)
+        model = model.to(device=device, dtype=getattr(torch, WEIGHTS_DTYPES[weights_dtype]))
         extractor = SeamlessM4TFeatureExtractor.from_pretrained(extractor_source)
         return cls(model, extractor, device, batch_size)
 
-    @torch.no_grad()
     def _class_ids(self, features, attention_mask=None) -> np.ndarray:
         """Per-timestep argmax over the phoneme head, ``(batch, timesteps)``."""
-        with torch.autocast("cuda", dtype=torch.bfloat16, enabled=self.device.type == "cuda"):
+        import torch
+
+        with torch.no_grad(), torch.autocast(
+            "cuda", dtype=torch.bfloat16, enabled=self.device.type == "cuda"
+        ):
             logits = self.model(
                 features.to(self.device),
                 attention_mask=attention_mask,

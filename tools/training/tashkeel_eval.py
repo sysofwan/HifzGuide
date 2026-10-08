@@ -478,27 +478,30 @@ def coverage_of(labels) -> dict:
 
 def _decode_windows(
     model_ref: str, labels, audio_dir: Path, batch_size: int, device: str, weights_dtype: str
-) -> list[str]:
+):
     """Decode each window's exact training audio span, whole, with ``model_ref``.
 
     ``model_ref`` is anything :meth:`training.decoding.Decoder.load` resolves -- the base
     teacher's hub id or a distilled student's checkpoint -- so every model is scored through
-    one loader and one numeric policy. The model is released on return, so a candidate and
-    its baseline are never resident together.
+    one loader and one numeric policy. Returns the decodes with the
+    :class:`training.decoding.DecodeFingerprint` that identifies them, which every output
+    built on them records. The model is released on return, so a candidate and its baseline
+    are never resident together.
     """
-    from training.decoding import WEIGHTS_DTYPES, Decoder
+    from training.decoding import DecodeFingerprint, Decoder
     from training.windowed_batch import ClipAudioCache
 
     cache = ClipAudioCache(audio_dir)
     decoder = Decoder.load(
-        model_ref, device, weights_dtype=WEIGHTS_DTYPES[weights_dtype], batch_size=batch_size
+        model_ref, device, weights_dtype=weights_dtype, batch_size=batch_size
     )
-    return decoder.decode_spans(
+    decodes = decoder.decode_spans(
         cache.waveform(label.clip_audio_filename)[
             label.start_sample : label.start_sample + label.num_samples
         ]
         for label in labels
     )
+    return decodes, DecodeFingerprint.for_spans(model_ref, weights_dtype, batch_size)
 
 
 def main() -> None:
@@ -543,20 +546,25 @@ def main() -> None:
         flush=True,
     )
 
-    def decode(model_ref: str) -> list[str]:
+    def decode(model_ref: str):
         return _decode_windows(
             model_ref, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
         )
 
-    candidate = score_windows(decode(args.model), references, args.model)
-    baseline = None
+    candidate_decodes, candidate_decode = decode(args.model)
+    candidate = score_windows(candidate_decodes, references, args.model)
+    baseline, baseline_decode = None, None
     if args.baseline.lower() != "none":
-        baseline = score_windows(decode(args.baseline), references, args.baseline)
+        baseline_decodes, baseline_decode = decode(args.baseline)
+        baseline = score_windows(baseline_decodes, references, args.baseline)
 
     verdict = gate(candidate, baseline, args.min_recall, args.tolerance)
     report = {
         "coverage": coverage,
-        "weights_dtype": args.weights_dtype,
+        "decode": {
+            "candidate": candidate_decode.as_dict(),
+            "baseline": baseline_decode.as_dict() if baseline_decode else None,
+        },
         "candidate": candidate.to_dict(),
         "baseline": baseline.to_dict() if baseline else None,
         "gate": verdict,

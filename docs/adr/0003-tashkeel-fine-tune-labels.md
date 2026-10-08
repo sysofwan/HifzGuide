@@ -1,5 +1,13 @@
 # Tashkeel in the Tadabur fine-tune labels
 
+> **Amended by [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md)
+> (2026-10-08).** Tashkeel stays in scope, but the training target is no longer the
+> mushaf's `raw_reference_phonemes`. The rationale "CTC absorbs minority label noise" is
+> **retracted**: fine-tunes trained on the corrected, haraka-bearing labels drifted toward the
+> text (`followed_text` 0/41 → 4/42). The "out of scope: shadda/sukun" consequence is
+> **reversed**: sukun gets an explicit output and shaddah needs three states (held, not held,
+> unsure). This ADR's "vowel" means haraka; the glossary term is tashkeel.
+
 The `.balanced` scorer normalizes both sides before Smith-Waterman by collapsing each phoneme
 group to its **bare core** consonant, which **strips every short vowel** (fatha/damma/kasra) —
 correct for the gate (it mirrors Muraja's tolerance), but it means the filter is *blind* to

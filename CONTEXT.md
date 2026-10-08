@@ -35,8 +35,25 @@ commit, ADR, or script, use the term as defined here and avoid the listed synony
 
 **Tashkeel**
 : Diacritical vowel marks (حركات) on Arabic letters. Includes fatha, damma, kasra, sukun,
-  shadda, tanween.
+  shadda, tanween. In the model's output, only fatha/damma/kasra (**haraka**) have their own
+  classes. Sukun is today an *empty* slot, shaddah is a doubled consonant with a CTC blank
+  between the two, and tanween is a haraka followed by ن or ں (ADR-0011).
 : _Avoid_: Diacritics (too generic), vowels
+
+**Haraka**
+: One of the three short-vowel marks fatha, damma, kasra — the tashkeel the model emits as
+  classes 32–34.
+: _Avoid_: vowel
+
+**Empty tashkeel slot**
+: A letter on which the model emits no tashkeel. Today it means *either* sukun *or* the model
+  being unsure, which is why Muraja cannot grade it reliably. Under ADR-0011 sukun gets its own
+  output, so an empty slot means only **unsure**, and Muraja does not grade it.
+
+**Commit rate**
+: Of the tashkeel a reciter actually said, the share the model emitted a mark for (right or
+  wrong) instead of leaving the slot empty. Reported with the **accuracy of committed marks**,
+  never alone (ADR-0011).
 
 **Uthmani script**
 : The canonical Uthmani orthography of the Quran text, source for phonetic transcription.
@@ -64,14 +81,13 @@ commit, ADR, or script, use the term as defined here and avoid the listed synony
 
 **Recitation VAD**
 : `obadx/recitation-segmenter-v2` — a Wav2Vec2-BERT frame-level speech/silence classifier
-  (20 ms frames) fine-tuned for waqf. The teacher for the waqf head and the source of waqf
-  pauses in the Tadabur labelling pipeline (`tadabur.vad`).
+  (20 ms frames) fine-tuned for waqf. The source of waqf pauses in the Tadabur labelling
+  pipeline (`tadabur.vad`). It was also the teacher for the retired waqf head.
 
-**Waqf head**
-: A per-frame speech/silence classification head on the Muaalem backbone, distilled from the
-  Recitation VAD. It rides the adapter + CTC output at the phoneme head's **40 ms** lattice, so the
-  20 ms VAD teacher is pooled 2:1; unlike the CTC phoneme/sifat heads it is per-frame (no blank
-  collapse). The scorer consumes it to detect waqf and pick the realized (waqf vs wasl) reference form.
+**Waqf head** _(retired, ADR-0011)_
+: A per-frame speech/silence head on the Muaalem backbone, distilled from the Recitation VAD,
+  meant to let the scorer tell waqf from wasl (ADR-0004). Dropped as a requirement on
+  2026-10-08; Muraja keeps its end-word allowance instead.
 
 **Sifat**
 : Articulatory attributes of Arabic letters in tajweed (e.g. hams/jahr, shidda/rakhawa,

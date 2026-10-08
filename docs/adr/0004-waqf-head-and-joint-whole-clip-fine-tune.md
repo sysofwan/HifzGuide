@@ -1,5 +1,16 @@
 # Waqf head and joint whole-clip fine-tune
 
+> **Superseded by [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md)
+> (2026-10-08). The waqf head is no longer a requirement.** Kept for history. Two things to
+> read carefully if you consult it:
+>
+> - **The "frozen windowing contract" below does not describe the device.** It specifies a
+>   4 s hop with a center-trusted `[0.5 s, 4.5 s)` stitch. Muraja runs a **1 s hop** and
+>   commits only each window's **first second** (`midpoint < 25` of 125 frames) — see
+>   ADR-0010. The contract below is the training-label grid this ADR built, nothing more.
+> - The inward word-snapping of training windows and the clip-level eligibility rules remain
+>   valid wherever windowed labels are still built.
+
 The fine-tune goal (ADR-0001/0003: soft-pair + tashkeel discrimination) is **extended** with a new
 **waqf head** distilled from the **Recitation VAD** (`obadx/recitation-segmenter-v2`). Muaalem was
 trained on waqf-pre-segmented clips, so it has no notion of waqf; and Muraja today handles waqf at

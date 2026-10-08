@@ -101,6 +101,13 @@ Publishing a new asset release is handled by the **`hifzguide-asset-release`** s
 - `data/` holds source-of-truth inputs; generated artifacts (`quran.db`, models) are release
   assets, not hand-edited.
 - Never edit `quran.db` by hand — regenerate it via `generate_quran_db.py`.
+- **Commit the data this repo depends on.** Gitignored run directories and the GPU box are
+  disposable scratch: `tools/tadabur/audit_run/` was cleared to free disk and took
+  irreplaceable human recordings with it. Commit every human verdict and recording (audio via
+  Git LFS), every labelled-site definition with its population counts, frozen eval-set
+  manifests, and exact audio provenance for each labelled item (Tadabur `audio_filename`,
+  shard, sample span, checksum). Don't commit re-downloadable Tadabur audio or checkpoints.
+  `*.jsonl` is ignored by default, so each new label file needs a `!` entry in `.gitignore`.
 - Any asset change must go through a new release with a freshly generated `manifest.json`
   (checksums must match the actual files).
 

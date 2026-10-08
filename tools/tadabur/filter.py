@@ -41,7 +41,12 @@ from pathlib import Path
 from datasets import Audio, load_dataset
 
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
-from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename
+from .dataset_source import (
+    AUDIO_COLUMN,
+    DATASET_ID,
+    canonical_surah_ayah,
+    resolve_audio_filename,
+)
 from .inference import MODEL_ID, MuaalemPhonemeModel
 from .manifest import FilterManifest, ManifestRecord
 from .reference_phonemes import load_reference_phonemes
@@ -86,20 +91,6 @@ class ScoredBatch:
     passers: list[ManifestRecord]
     rejects: list[RejectRecord]
     clean_re_read_audio: list[tuple[str, "object"]]
-
-
-def canonical_surah_ayah(surah_id: int, ayah_id: int) -> str:
-    """Map a Tadabur ``(surah_id, ayah_id)`` to a canonical ``"surah:ayah"`` key.
-
-    Tadabur numbers ``surah_id`` **0-indexed** (0–113, a surah *array index*, and
-    the same 0-based number embedded in the audio filename, e.g. ``S77`` for
-    Al-Naba, the 78th surah) while ``ayah_id`` is the natural **1-indexed** ayah
-    number. Our reference cache is keyed by the canonical 1-indexed
-    ``surah:ayah`` (``quran-transcript``), so we shift the surah by one here.
-    Without this shift every clip gates against the wrong ayah and *nothing*
-    passes the filter.
-    """
-    return f"{surah_id + 1}:{ayah_id}"
 
 
 def parse_clip(row: dict) -> Clip:

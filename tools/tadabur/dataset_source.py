@@ -1,6 +1,6 @@
 """Torch-free identifiers and helpers for streaming the Tadabur source dataset.
 
-The Tadabur constants and the ``audio_filename`` resolver are needed by both the
+The Tadabur constants, the ``audio_filename`` resolver and the ``surah:ayah`` key are needed by both the
 GPU filtering path (``tadabur.filter``) and the no-model offline stages
 (``tadabur.waqf_segments``, ``tadabur.audit_sampler``). Keeping them here — a
 module that imports nothing heavier than the standard library — lets the offline
@@ -35,3 +35,17 @@ def resolve_audio_filename(row: dict) -> str:
     if path:
         return Path(path).name
     raise ValueError(f"Tadabur row has no audio_filename or audio.path: {row!r}")
+
+
+def canonical_surah_ayah(surah_id: int, ayah_id: int) -> str:
+    """Map a Tadabur ``(surah_id, ayah_id)`` to a canonical ``"surah:ayah"`` key.
+
+    Tadabur numbers ``surah_id`` **0-indexed** (0–113, a surah *array index*, and
+    the same 0-based number embedded in the audio filename, e.g. ``S77`` for
+    Al-Naba, the 78th surah) while ``ayah_id`` is the natural **1-indexed** ayah
+    number. Our reference cache is keyed by the canonical 1-indexed
+    ``surah:ayah`` (``quran-transcript``), so we shift the surah by one here.
+    Without this shift every clip gates against the wrong ayah and *nothing*
+    passes the filter.
+    """
+    return f"{surah_id + 1}:{ayah_id}"

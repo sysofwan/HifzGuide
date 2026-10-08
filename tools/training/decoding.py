@@ -631,15 +631,17 @@ class Decoder:
         """The decode the streaming protocol commits for one clip at ``block``."""
         return tokens_to_phonemes(e.token_id for e in self.emissions(samples, block, flush_tail))
 
-    def decode_spans(self, spans: Iterable[np.ndarray]) -> list[str]:
-        """Each 16 kHz span decoded whole, in one variable-length pass.
+    def span_class_ids(self, spans: Iterable[np.ndarray]) -> list[np.ndarray]:
+        """Each 16 kHz span's per-timestep argmax from one whole variable-length pass.
 
         Spans are batched with padding under a real attention mask, and each row is cut to
-        its own valid length (the model's own length mapping, the one the CTC loss uses)
-        before the collapse, so padding never reaches a decode. ``spans`` is consumed
-        lazily, one batch at a time, so a caller can stream them from disk.
+        its own valid length (the model's own length mapping, the one the CTC loss uses), so
+        padding never reaches a row. ``spans`` is consumed lazily, one batch at a time, so a
+        caller can stream them from disk. This is the frame-level view a tool needs to place
+        pauses on words (:func:`tadabur.waqf_detect.segment_clip`); :meth:`decode_spans`
+        collapses the same rows.
         """
-        decodes: list[str] = []
+        rows: list[np.ndarray] = []
         pending = iter(spans)
         while batch := list(islice(pending, self.batch_size)):
             extracted = self.extractor(
@@ -651,8 +653,12 @@ class Decoder:
             mask = extracted.attention_mask.to(self.device)
             class_ids = self._class_ids(extracted.input_features, mask)
             valid = self.model._get_feat_extract_output_lengths(mask.sum(dim=1)).tolist()
-            decodes.extend(
-                tokens_to_phonemes(seg.token_id for seg in scan_ctc(row[: int(length)]))
-                for row, length in zip(class_ids, valid)
-            )
-        return decodes
+            rows.extend(row[: int(length)] for row, length in zip(class_ids, valid))
+        return rows
+
+    def decode_spans(self, spans: Iterable[np.ndarray]) -> list[str]:
+        """Each 16 kHz span decoded whole: its :meth:`span_class_ids` row, collapsed."""
+        return [
+            tokens_to_phonemes(seg.token_id for seg in scan_ctc(row))
+            for row in self.span_class_ids(spans)
+        ]

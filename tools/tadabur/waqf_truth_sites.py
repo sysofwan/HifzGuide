@@ -17,8 +17,9 @@ A site's position is a ``reference_index`` into the **whole clip's realized refe
 the clip's words split at every human ``waqf``, each recited run phonetized on its own
 (terminal word in waqf form, the rest in wasl), the runs joined by a space. A reciter who
 re-reads appears as a run that restarts at an earlier word. The clip is the item, so its
-provenance is ``start_sample = 0`` with ``shard``, ``end_sample`` and ``audio_sha256``
-left for the re-staging step (#83) to fill.
+provenance is ``start_sample = 0``; ``shard``, ``end_sample`` (the staged clip's length)
+and ``audio_sha256`` come from the staged-clip registry (:mod:`tadabur.staged_audio`, #83),
+and a clip the registry lacks keeps them ``null`` and is listed in the summary.
 
 Every fixture row ends in exactly one place — a site, or one exclusion
 bucket — and the summary written beside the sites accounts for all of them. The fixture
@@ -43,6 +44,7 @@ from hafs_phonetizer import phonetize
 from hafs_phonetizer import pausal_taa_marbuta  # noqa: F401
 from training.tashkeel_worklist import VOWEL_NAMES
 
+from .staged_audio import REGISTRY_PATH, fill_staging, load_staged_clips
 from .truth_sites import (
     CONSONANTS,
     SUKUN,
@@ -515,11 +517,15 @@ def main() -> None:
                         help="truth-site JSONL to (over)write.")
     parser.add_argument("--summary", type=Path, default=SUMMARY_PATH,
                         help="summary JSON to (over)write.")
+    parser.add_argument("--registry", type=Path, default=REGISTRY_PATH,
+                        help="staged-clip registry the staging fields are filled from (#83).")
     args = parser.parse_args()
 
     from .waqf_segments import _uthmani_words
 
     sites, summary = convert(read_boundaries(), _uthmani_words, hafs_realizer())
+    sites, not_restaged = fill_staging(sites, load_staged_clips(args.registry))
+    summary["clips_not_restaged"] = not_restaged
     write_truth_sites(sites, args.out)
     args.summary.write_text(
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

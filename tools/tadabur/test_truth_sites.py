@@ -179,6 +179,26 @@ def test_a_state_the_mark_cannot_take_is_rejected(tmp_path, overrides, message):
         _load(tmp_path, [_row(**overrides)])
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {},
+        {"reference": "كَتَب", "reference_index": 4, "mark": "sukun", "prescribed": "sukun"},
+        {"reference": "رَببِ", "reference_index": 2, "mark": "shaddah", "prescribed": "held"},
+        {"reference": "ذَ", "reference_index": 0, "mark": "ذ↔ز", "prescribed": "ذ"},
+    ],
+)
+def test_every_mark_can_wait_for_a_verdict(tmp_path, overrides):
+    (site,) = _load(tmp_path, [_row(**overrides, heard="pending")])
+    assert site.heard == "pending"
+
+
+def test_pending_is_never_what_the_mushaf_prescribes(tmp_path):
+    with pytest.raises(ValueError, match="cannot prescribe 'pending'"):
+        _load(tmp_path, [_row(reference="ذَ", reference_index=0, mark="ذ↔ز",
+                              prescribed="pending", heard="pending")])
+
+
 @pytest.mark.parametrize("surah_ayah", ["2-255", "0:1", "115:1", "2:", ""])
 def test_a_malformed_surah_ayah_is_rejected(tmp_path, surah_ayah):
     with pytest.raises(ValueError, match="surah_ayah"):

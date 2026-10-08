@@ -61,6 +61,7 @@ import json
 from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
+from typing import Protocol
 
 import numpy as np
 import soundfile as sf
@@ -112,6 +113,16 @@ from .waqf_segments import (
 
 DEFAULT_BATCH_SIZE = 16
 
+
+class ClipRef(Protocol):
+    """What segmentation reads of a clip: a :class:`ManifestRecord` passer, or any clip
+    staged with its identity (e.g. :class:`tadabur.staged_audio.StagedClip`)."""
+
+    audio_filename: str
+    surah_ayah: str
+    reciter_id: int
+
+
 # Padded-audio budget per decode batch, as seconds per batch slot. ``decode_batch`` pads to
 # its longest member, so this caps ``batch_size * MAX_DECODE_BATCH_SECONDS`` seconds of
 # padded audio per forward pass and keeps one long segment from OOMing a full batch.
@@ -130,17 +141,36 @@ def segment_id(record: SegmentRecord) -> str:
     return f"{stem}__seg{record.segment_index}.wav"
 
 
+def parse_segment_id(segment_audio_id: str) -> tuple[str, int]:
+    """The whole clip and ``segment_index`` a :func:`segment_id` names.
+
+    ``"<stem>__seg2.wav"`` -> ``("<stem>.wav", 2)``. Raises on anything else, so a whole
+    clip's name is never mistaken for a segment's.
+    """
+    stem, sep, index = segment_audio_id.removesuffix(".wav").rpartition("__seg")
+    if not sep or not stem or not index.isdigit() or not segment_audio_id.endswith(".wav"):
+        raise ValueError(f"{segment_audio_id!r} is not a '<clip>__seg<n>.wav' segment id")
+    return f"{stem}.wav", int(index)
+
+
+def segment_sample_bounds(num_samples: int, start_s: float, end_s: float) -> tuple[int, int]:
+    """The ``[start, end)`` sample span of ``[start_s, end_s)`` in a 16 kHz clip.
+
+    Clamped to the clip so a segment whose alignment end slightly overshoots the decoded
+    audio still yields a valid span. The one conversion from a segment's times to the
+    samples it decodes, so a recorded span is exactly the audio that was decoded.
+    """
+    start = max(0, min(num_samples, int(round(start_s * TARGET_SAMPLE_RATE))))
+    end = max(start, min(num_samples, int(round(end_s * TARGET_SAMPLE_RATE))))
+    return start, end
+
+
 def slice_segment(
     clip_waveform: np.ndarray, start_s: float, end_s: float
 ) -> np.ndarray:
-    """The ``[start_s, end_s)`` span of a 16 kHz mono clip waveform.
-
-    Sample bounds are clamped to the waveform so a segment whose alignment end
-    slightly overshoots the decoded audio still yields a valid (non-empty) slice.
-    """
-    n = len(clip_waveform)
-    start = max(0, min(n, int(round(start_s * TARGET_SAMPLE_RATE))))
-    end = max(start, min(n, int(round(end_s * TARGET_SAMPLE_RATE))))
+    """The ``[start_s, end_s)`` span of a 16 kHz mono clip waveform
+    (:func:`segment_sample_bounds`)."""
+    start, end = segment_sample_bounds(len(clip_waveform), start_s, end_s)
     return np.ascontiguousarray(clip_waveform[start:end], dtype=np.float32)
 
 
@@ -164,7 +194,7 @@ def _uthmani_segment_text(surah_ayah: str, word_start: int, word_end: int) -> st
 
 
 def _records_for_spans(
-    passing_record: ManifestRecord,
+    passing_record: ClipRef,
     uthmani_words: list[str],
     spans: tuple[WaqfSpan, ...],
     segment_reference,
@@ -201,7 +231,7 @@ def _records_for_spans(
 
 
 def segment_clips(
-    passing_records: list[ManifestRecord],
+    passing_records: list[ClipRef],
     clips_dir: Path,
     model,
     segment_reference,
@@ -298,7 +328,7 @@ def segment_clips(
 
 
 def _clip_status(
-    passing: ManifestRecord,
+    passing: ClipRef,
     n_words: int,
     duration_s: float,
     recitation_start_s: float,

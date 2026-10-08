@@ -6,11 +6,15 @@ from __future__ import annotations
 import pytest
 
 from tadabur.contrast_attribution import (
+    ADDED,
+    DROPPED,
     MARGINAL_CONTRAST,
     SHADDA_CONTRAST,
+    ContrastSite,
     _has_shadda_contrast,
     all_contrasts,
     attribute_contrasts,
+    contrast_sites,
     contrast_vocabulary,
     has_added_shadda,
 )
@@ -153,3 +157,71 @@ def test_multiple_contrasts_are_sorted_and_deduped():
     reference = "\u0633\u0644\u062A"  # س ل ت
     contrasts = attribute_contrasts(predicted, reference)
     assert contrasts == tuple(sorted({soft_pair_contrast(SEEN, SAAD), soft_pair_contrast(TAA, TAH)}))
+
+
+# MARK: - contrast_sites: a contrast placed on the raw (tashkeel-bearing) reference
+
+
+FATHA, KASRA = "َ", "ِ"
+RAA, BAA, LAM, ALIF, NOON = "ر", "ب", "ل", "ا", "ن"
+
+
+def test_a_soft_pair_substitution_lands_on_its_raw_carrier():
+    # ذَالِكَ: the haraka and the madd alif sit between consonants in the raw string.
+    reference = DHAL + FATHA + ALIF + ALIF + LAM + KASRA + KAF + FATHA
+    decode = ZAI + FATHA + ALIF + ALIF + LAM + KASRA + KAF + FATHA
+    assert contrast_sites(decode, reference, "ذ↔ز") == [ContrastSite(0, ZAI)]
+
+
+def test_a_carrier_after_tashkeel_is_indexed_in_the_raw_string():
+    reference = LAM + FATHA + RAA + FATHA + SAAD + FATHA + BAA
+    decode = LAM + FATHA + RAA + FATHA + SEEN + FATHA + BAA
+    (site,) = contrast_sites(decode, reference, "س↔ص")
+    assert site == ContrastSite(4, SEEN) and reference[site.reference_index] == SAAD
+
+
+def test_a_matching_decode_has_no_site():
+    reference = DHAL + FATHA + LAM + KASRA + KAF
+    assert contrast_sites(reference, reference, "ذ↔ز") == []
+
+
+def test_another_pairs_substitution_is_not_this_contrast():
+    reference = LAM + FATHA + QAF + FATHA + RAA
+    decode = LAM + FATHA + KAF + FATHA + RAA
+    assert contrast_sites(decode, reference, "ذ↔ز") == []
+    assert contrast_sites(decode, reference, "ق↔ك") == [ContrastSite(2, KAF)]
+
+
+def test_a_pair_outside_the_soft_pairs_is_located_too():
+    reference = LAM + FATHA + ZAH + FATHA + RAA
+    decode = LAM + FATHA + DHAL + FATHA + RAA
+    assert contrast_sites(decode, reference, "ذ↔ظ") == [ContrastSite(2, DHAL)]
+
+
+def test_a_geminate_substituted_whole_is_one_site_on_its_first_half():
+    reference = QAF + FATHA + DHAL + DHAL + FATHA + RAA
+    decode = QAF + FATHA + ZAI + ZAI + FATHA + RAA
+    assert contrast_sites(decode, reference, "ذ↔ز") == [ContrastSite(2, ZAI)]
+
+
+def test_two_occurrences_are_two_sites_in_reference_order():
+    reference = DHAL + FATHA + RAA + FATHA + DHAL + FATHA + LAM
+    decode = ZAI + FATHA + RAA + FATHA + ZAI + FATHA + LAM
+    assert [s.reference_index for s in contrast_sites(decode, reference, "ذ↔ز")] == [0, 4]
+
+
+def test_a_dropped_shaddah_lands_on_the_first_of_the_doubled_pair():
+    reference = RAA + FATHA + BAA + BAA + KASRA + LAM  # رَببِل
+    decode = RAA + FATHA + BAA + KASRA + LAM
+    assert contrast_sites(decode, reference, SHADDA_CONTRAST) == [ContrastSite(2, DROPPED)]
+
+
+def test_an_added_shaddah_lands_on_the_single_consonant():
+    reference = RAA + FATHA + BAA + KASRA + LAM
+    decode = RAA + FATHA + BAA + BAA + KASRA + LAM
+    assert contrast_sites(decode, reference, SHADDA_CONTRAST) == [ContrastSite(2, ADDED)]
+
+
+def test_a_held_geminate_has_no_shaddah_site():
+    reference = RAA + FATHA + BAA + BAA + KASRA + LAM
+    assert contrast_sites(reference, reference, SHADDA_CONTRAST) == []

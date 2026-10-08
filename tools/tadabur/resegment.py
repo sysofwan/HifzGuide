@@ -12,11 +12,11 @@ decoded whole and passed through the same drop rules. Two things differ from
   beside the outputs, so the decodes these artifacts carry are comparable with every later
   one. ``segment_score`` drives a ``decode`` / ``decode_batch`` duck type;
   :class:`DecoderSegmentationModel` serves it from the decoder.
-* **References end in the right pausal form.** quran-transcript 0.5.2 realizes a
-  run-final ``ةً`` as ``تَاا`` instead of ``ه`` (#79). Both references a segment needs (the
-  whole-ayah alignment reference and each segment's realized reference) take their last
-  word through :func:`tadabur.waqf_truth_sites.pausal_taa_marbuta` first. The rewrite is
-  idempotent, so it composes with a phonetizer-level fix (#100).
+* **References are built after #100.** Both references a segment needs (the whole-ayah
+  alignment reference and each segment's realized reference) come from
+  :mod:`tadabur.waqf_segments`, which phonetizes through ``hafs_phonetizer.phonetize``, so a
+  segment that ends on ``ةً`` is realized ``ه``, not quran-transcript 0.5.2's ``تَاا``.
+  Segment manifests built on the GPU box before that fix must not be reused.
 
 Audio is read back from the staged PCM_16 WAV, so every decode is of the file whose
 checksum the registry records.
@@ -61,7 +61,6 @@ from .segment_score import (
 )
 from .staged_audio import USES, StagedClip, load_staged_clips
 from .waqf_segments import SegmentRecord, hafs_segment_reference, hafs_word_reference
-from .waqf_truth_sites import pausal_taa_marbuta
 
 #: The model every segmentation decode is made with: the frozen base teacher, in the bf16
 #: weights it has always been decoded at, one span per forward pass so no padding or batch
@@ -69,11 +68,6 @@ from .waqf_truth_sites import pausal_taa_marbuta
 BASE_TEACHER = "obadx/muaalem-model-v3_2"
 WEIGHTS_DTYPE = "bf16"
 DECODE_BATCH_SIZE = 1
-
-
-def with_pausal_taa_marbuta(reference):
-    """``reference`` (a word-list phonetizer) with its last word in correct pausal form."""
-    return lambda words: reference([*words[:-1], pausal_taa_marbuta(words[-1])])
 
 
 @dataclass(frozen=True)
@@ -157,6 +151,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=0, help="first N clips only (smoke)")
     args = parser.parse_args()
 
+    import hafs_phonetizer
     import torch
 
     from training.decoding import SPANS, Decoder
@@ -185,8 +180,8 @@ def main() -> None:
     model = DecoderSegmentationModel(decoder)
     segments, skips, statuses, attributions = segment_clips(
         clips, args.audio_dir, model,
-        with_pausal_taa_marbuta(hafs_segment_reference()),
-        with_pausal_taa_marbuta(hafs_word_reference()),
+        hafs_segment_reference(),
+        hafs_word_reference(),
         pauses,
     )
     print(f"Segmented into {len(segments)} segments; skips {dict(skips)}", flush=True)
@@ -224,7 +219,7 @@ def main() -> None:
             "pad_ms": vad.DEFAULT_PAD_MS,
         },
         "segmentation_skips": dict(sorted(skips.items())),
-        "pausal_taa_marbuta": True,
+        "phonetizer_revision": hafs_phonetizer.REVISION,
     }
     (out / "run.json").write_text(json.dumps(run, indent=2, sort_keys=True) + "\n")
     print(f"Wrote {out}")

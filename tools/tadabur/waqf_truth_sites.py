@@ -40,8 +40,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from hafs_phonetizer import phonetize
-# Re-exported while #83 still imports it from here; new code imports hafs_phonetizer.
-from hafs_phonetizer import pausal_taa_marbuta  # noqa: F401
 from training.tashkeel_worklist import VOWEL_NAMES
 
 from .staged_audio import REGISTRY_PATH, fill_staging, load_staged_clips
@@ -509,6 +507,18 @@ def _markdown_table(corner: str, table: dict[str, dict[str, int]]) -> str:
     return "\n".join(lines)
 
 
+def build(staged: dict) -> tuple[list[TruthSite], dict]:
+    """The committed sites and summary: :func:`convert` over the frozen fixture with the
+    Hafs realizer, staging fields filled from the staged-clip registry ``staged``. The
+    summary lists, under ``clips_not_restaged``, every clip the registry lacks."""
+    from .waqf_segments import _uthmani_words
+
+    sites, summary = convert(read_boundaries(), _uthmani_words, hafs_realizer())
+    sites, not_restaged = fill_staging(sites, staged)
+    summary["clips_not_restaged"] = not_restaged
+    return sites, summary
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -521,11 +531,7 @@ def main() -> None:
                         help="staged-clip registry the staging fields are filled from (#83).")
     args = parser.parse_args()
 
-    from .waqf_segments import _uthmani_words
-
-    sites, summary = convert(read_boundaries(), _uthmani_words, hafs_realizer())
-    sites, not_restaged = fill_staging(sites, load_staged_clips(args.registry))
-    summary["clips_not_restaged"] = not_restaged
+    sites, summary = build(load_staged_clips(args.registry))
     write_truth_sites(sites, args.out)
     args.summary.write_text(
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

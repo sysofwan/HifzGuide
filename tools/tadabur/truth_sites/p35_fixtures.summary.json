@@ -98,5 +98,5 @@
     "policy": "fp32-features-v1",
     "weights_dtype": "bf16"
   },
-  "pausal_taa_marbuta": true
+  "phonetizer_revision": "1"
 }

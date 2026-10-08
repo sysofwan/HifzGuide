@@ -336,7 +336,8 @@ def test_committed_sites_load_and_match_their_summary():
         counts[site.stratum][site.mark] += 1
     assert counts == summary["sites_by_stratum_and_mark"]
     assert all(s.source == "waqf_boundary" for s in sites)
-    assert all(s.audio_sha256 is None for s in sites)  # filled when #83 re-stages
+    assert all(s.audio_sha256 is not None for s in sites)  # re-staged by #83
+    assert summary["clips_not_restaged"] == []
 
 
 def test_readme_carries_the_committed_counts():
@@ -348,12 +349,11 @@ def test_readme_carries_the_committed_counts():
 
 def test_the_committed_file_regenerates_identically():
     pytest.importorskip("quran_transcript")
-    waqf_segments = pytest.importorskip("tadabur.waqf_segments")
-    from tadabur.waqf_truth_sites import hafs_realizer
+    pytest.importorskip("tadabur.waqf_segments")
+    from tadabur.staged_audio import load_staged_clips
+    from tadabur.waqf_truth_sites import build
 
-    sites, summary = convert(
-        read_boundaries(), waqf_segments._uthmani_words, hafs_realizer()
-    )
+    sites, summary = build(load_staged_clips())
     assert sites == load_truth_sites(SITES_PATH)
     assert summary == json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
 

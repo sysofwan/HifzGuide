@@ -350,7 +350,7 @@ def summarize(clips: list[PoolClip], staged: dict, capacity_counts: dict, run: d
         "segments": len(segments),
         "segments_kept": sum(seg.kept for seg in segments),
         "decode_fingerprint": run["decode_fingerprint"],
-        "pausal_taa_marbuta": run["pausal_taa_marbuta"],
+        "phonetizer_revision": run["phonetizer_revision"],
         "vad": run["vad"],
         "capacity": capacity_counts,
     }

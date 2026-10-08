@@ -277,7 +277,7 @@ def summary(sites: list[TruthSite], relocations: list[Relocation], run: dict) ->
         "outcomes_by_bucket": {k: dict(sorted(v.items())) for k, v in sorted(outcomes.items())},
         "sites_by_stratum": {k: dict(sorted(v.items())) for k, v in sorted(heard.items())},
         "decode_fingerprint": run["decode_fingerprint"],
-        "pausal_taa_marbuta": run["pausal_taa_marbuta"],
+        "phonetizer_revision": run["phonetizer_revision"],
     }
 
 

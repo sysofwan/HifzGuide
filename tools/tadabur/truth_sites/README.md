@@ -183,8 +183,9 @@ python -m tadabur.p35_truth_sites --seg-dir stage/seg_p35
 `tadabur.resegment` runs today's segmentation (`tadabur.segment_score`: the recitation VAD,
 pause-to-word placement, the drop rules), with every decode made through
 `training.decoding.Decoder` by the base teacher (`obadx/muaalem-model-v3_2`, bf16 weights,
-whole spans, batch size 1; the fingerprint is in the summary). Its references take the
-run-final word through `pausal_taa_marbuta` (#79, #100), so no segment ends in `تَاا`.
+whole spans, batch size 1; the fingerprint is in the summary). Its references come from
+`hafs_phonetizer.phonetize` (#100), so no segment that ends on `ةً` is realized `تَاا`; the
+summary records the phonetizer's `REVISION`.
 
 **The re-location rule** (`tadabur.p35_truth_sites.relocate`). A fixture keeps its label
 only if its bucket names a contrast, segment `n` of its re-staged clip exists and survives

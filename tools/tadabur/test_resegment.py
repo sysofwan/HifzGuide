@@ -1,5 +1,5 @@
-"""Tests for the torch-free parts of re-segmentation (#83): the decoder adapter, the pausal
-reference wrapper and the per-clip segmentation record. The GPU driver itself is ``main``."""
+"""Tests for the torch-free parts of re-segmentation (#83): the decoder adapter and the
+per-clip segmentation record. The GPU driver itself is ``main``."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ import pytest
 from tadabur.resegment import (
     DecoderSegmentationModel,
     segmentation_rows,
-    with_pausal_taa_marbuta,
 )
 from tadabur.waqf_segments import SegmentRecord
 
@@ -38,14 +37,6 @@ def test_the_adapter_serves_frame_ids_for_a_clip_and_strings_for_segments():
 def test_the_adapter_refuses_audio_at_another_rate():
     with pytest.raises(ValueError, match="16000 Hz"):
         DecoderSegmentationModel(_FakeDecoder()).decode(np.zeros(4), 8000)
-
-
-def test_only_the_last_word_is_put_in_pausal_form():
-    seen = []
-    reference = with_pausal_taa_marbuta(lambda words: seen.append(words) or "x")
-    rahmatan = "رَحْمَةًۭ"
-    reference([rahmatan, "وَ", rahmatan])
-    assert seen == [[rahmatan, "وَ", "رَحْمَةَ"]]
 
 
 def _segment(index: int, clip: str = "a.wav") -> SegmentRecord:

@@ -47,7 +47,7 @@ python -m tadabur.mining_pool build --seg-dir stage/seg_pool
 pause-to-word placement, drop rules) on the staged PCM_16 WAVs, with every decode through
 `training.decoding.Decoder`: base teacher `obadx/muaalem-model-v3_2`, bf16 weights, whole
 spans, batch size 1 (the fingerprint is in `base_decodes.json` and `summary.json`). References
-end in the correct pausal form (`pausal_taa_marbuta`, #79 / #100). Its native outputs
+come from `hafs_phonetizer.phonetize` (#100), so they end in the correct pausal form. Its native outputs
 (`segment_manifest.jsonl`, `clip_status.jsonl`, `pause_attrib.jsonl`) stay on the GPU box in
 `segment_score`'s formats; `clips.jsonl` here carries the same segmentation in one committed
 file, and `mining_pool.load_manifest` checks it against the staged-clip registry.

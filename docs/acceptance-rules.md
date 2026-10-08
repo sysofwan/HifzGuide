@@ -35,7 +35,7 @@ tested on the intersection of sites both arms committed.
 | Weighting | Stratum weight = population count / sampled count, from the frozen mining frame. Sites lost to re-location (#83) are reported as exclusions; weights are not inflated to cover them. |
 | Source manifests | Every gate names a frozen source/partition manifest. The **headline population is the sampled subpopulation**: the strata #87 mines, with their inclusion probabilities. It extends to all correct recitation only if every outcome stratum is sampled with positive probability. |
 | Targeted safeguards | The re-located P3.5 fixtures are reported as separate targeted safeguards and are not pooled into headline rates. Synthetic edits never enter a real-mistake rate. |
-| Weak labels | The 1,625 `waqf_boundary:wasl` sites assume a competent reciter: **diagnostic only**, in no gate. Sukun-at-pause sites (`waqf_boundary:waqf`, 124 sukun) form their own row and are not the in-scope sukun population. |
+| Weak labels | The 1,622 `waqf_boundary:wasl` sites and the 35 long-vowel haraka sites in `waqf_boundary:waqf` assume a competent reciter: **diagnostic only**, in no gate. The 135 sukun-at-pause sites (`waqf_boundary:waqf`, 170 sites = 135 sukun + 35 long-vowel haraka) form their own row and are not the in-scope sukun population. |
 | Shaddah | Every shaddah rule is **provisional** until #92 freezes the held / not held / unsure state table. Until then shaddah cells report descriptively and return `cannot_certify`. |
 
 ### Intervals and verdicts
@@ -76,7 +76,7 @@ pooled with correct recitation.
 
 | rule | formula | population | threshold |
 |---|---|---|---|
-| Commit rate, correct side | ΣwC / Σw | correct-recitation sites, per haraka (fatha, damma, kasra) and per consonant pair | lower bound ≥ **−2 pts** |
+| Commit rate, correct side | ΣwC / Σw | correct-recitation sites, per haraka (fatha, damma, kasra), per consonant pair, and shaddah (provisional until #92 freezes its state table) | lower bound ≥ **−2 pts** |
 | Committed accuracy, correct side | ΣwA / ΣwC | correct-recitation sites, per haraka, per pair, and shaddah (provisional) | lower bound ≥ **−2 pts** |
 | Committed accuracy, mistake side | ΣwA / ΣwC | real-mistake sites, per mark and per pair | lower bound ≥ **−2 pts** |
 | Missed mistakes | Σw(1 − F) / Σw | real-mistake sites, pooled and per mark/pair (abstentions count as not flagged) | upper bound ≤ **+5 pts**; no count floor |
@@ -127,7 +127,7 @@ rate is the sites **that allowance affects**, not all correct sites.
 | Grid | δ ∈ {0, 0.125, 0.25, 0.5, 1, 1.5, 2, 3} logits; one δ shared by the three harakat |
 | Split | 50/50 by hash of the canonical reciter id, salt `issue-91-blank-bias-2026-10` (algorithm and serialization in §9) |
 | Spurious haraka | Σw·[any haraka emitted] / Σw over directly adjudicated heard-sukun sites; the in-scope and pause rows are reported separately. |
-| Guards | Each, δ vs δ = 0: committed accuracy on correct recitation per haraka, lower bound ≥ −2 pts; missed mistakes and silent corrections, upper bound ≤ +5 pts; spurious haraka per supported row, upper bound of the increase ≤ **+2 pts**. |
+| Guards | Each, δ vs δ = 0: committed accuracy on correct recitation per haraka, lower bound ≥ −2 pts; committed accuracy on real mistakes per mark and per pair, lower bound ≥ −2 pts (filling an empty slot with a third mark can cut missed mistakes while making the transcription worse); missed mistakes and silent corrections, upper bound ≤ +5 pts; spurious haraka per supported row, upper bound of the increase ≤ **+2 pts**. The same guards apply to tune-half selection and score-half certification. |
 | Admissibility | An offset is admissible only if **every** applicable guard passes. `cannot_certify` is not a pass. |
 | Selection | On the **tune half only**: the admissible δ maximising weighted correctly committed haraka on correct recitation (ΣwA / Σw). Ties go to the smaller δ. `no_admissible_offset` is a valid outcome. |
 | Scoring | The selected δ is locked and recorded **before** the score half is decoded. The score half is then evaluated once, and every guard is reapplied there; if any fails, the offset is rejected. The full score-half sweep is published afterwards as exploratory only. |
@@ -197,3 +197,4 @@ ADR-0011 §5. Each is recorded in the scorer's module docs and pinned by a test:
 | 2026-10-08 | GPT-6 Astra review returned REVISE (gates conflated model and product; interval and power gaps; sparse-cell and weak-label issues). Owner chose to split the probe gate (#95) from the ship criterion (#97) and to size the listening session after the #84 baseline. This document records the revised rules. |
 | 2026-10-08 | Owner confirmed: sukun judged by absolute floors on directly adjudicated in-scope sukun sites (commit rate ≥ 70%, committed accuracy ≥ 95%, its lower bound ≥ 90%) in place of a relative gain over the control; spurious-haraka guard ≤ +2 pts in bias selection; sparse-cell threshold of < 10 reciters or < 20 sites; power target of ≥ 80% at a true 60% reduction for sizing the listening session. |
 | 2026-10-08 | GPT-6 Astra round 2 returned CHANGES_REQUESTED. Revised without changing any owner number: per-site outcome definitions (C, A, F); an aggregation truth table and frozen required cells; statistic-specific sparse-cell rules and adverse endpoints; per-mark commit-rate guards restored; headline restricted to the sampled subpopulation; a human-truth final panel required before #97; bias comparator, admissibility and held-out guards; a pre-registered power simulation covering every gate, with a prescribed-sukun stratum; operational definitions frozen in #84. |
+| 2026-10-08 | GPT-6 Astra round 3: shaddah added to the correct-side commit-rate guard (provisional); the mistake-side committed-accuracy guard added to bias admissibility. Truth-site counts aligned with `tools/tadabur/truth_sites/README.md` on main. |

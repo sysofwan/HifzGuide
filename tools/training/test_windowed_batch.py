@@ -279,7 +279,8 @@ def _write_joint_fixture(tmp_path, *, soft_num_samples=80000, soft_start_shift=0
     import soundfile as sf
 
     from tadabur.audit_sampler import local_audio_path
-    from training.waqf_distill import SoftLabelStore, WindowContract, Window
+    from training.waqf_distill import SoftLabelStore
+    from training.windowing import Window, WindowContract
     from training.waqf_distill import WINDOW_ORIGIN_RECITATION
 
     labels_path = tmp_path / "labels.jsonl"
@@ -351,7 +352,7 @@ def _real_feature_extractor():
 
 
 def test_real_extractor_5s_window_lands_on_frozen_40ms_lattice():
-    from training.waqf_distill import (
+    from training.windowing import (
         DEPLOYED_WINDOW_FEATURE_FRAMES,
         SAMPLES_PER_TEACHER_FRAME,
         WindowContract,

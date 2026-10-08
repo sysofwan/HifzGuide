@@ -65,7 +65,7 @@ from tqdm.auto import tqdm
 
 from tadabur.inference import PHONEME_LEVEL
 from tadabur.muaalem import Wav2Vec2BertForMultilevelCTC
-from training.waqf_distill import DEPLOYED_WINDOW_FEATURE_FRAMES, muaalem_lattice_length
+from training.windowing import DEPLOYED_WINDOW_FEATURE_FRAMES, muaalem_lattice_length
 from training.waqf_head import (
     WaqfJointModel,
     frame_mask_from_lengths,

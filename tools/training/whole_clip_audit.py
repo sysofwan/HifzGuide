@@ -35,7 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tadabur.clip_status import ClipStatus, read_clip_status
-from training.waqf_distill import WindowContract
+from training.windowing import WindowContract
 from training.windowed_labels import (
     Segment,
     WindowLabel,

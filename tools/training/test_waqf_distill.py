@@ -19,27 +19,29 @@ import numpy as np
 import pytest
 
 from training.waqf_distill import (
-    DEPLOYED_WINDOW_FEATURE_FRAMES,
-    SAMPLES_PER_STUDENT_FRAME,
-    SAMPLES_PER_TEACHER_FRAME,
-    FEATURE_FRAME_SAMPLE_OFFSET,
     WINDOW_ORIGIN_RECITATION,
     WINDOW_ORIGIN_WHOLE_CLIP,
     SoftLabelStore,
-    Window,
-    WindowContract,
     _read_index_spans,
-    enumerate_recitation_windows,
-    enumerate_windows,
     generation_contract,
-    muaalem_lattice_length,
     pool_silence_2to1,
     pool_window_posteriors,
     window_student_frames,
-    feature_frames_for_samples,
-    recitation_window_span,
     slice_recitation_windows,
     slice_windows,
+)
+from training.windowing import (
+    DEPLOYED_WINDOW_FEATURE_FRAMES,
+    FEATURE_FRAME_SAMPLE_OFFSET,
+    SAMPLES_PER_STUDENT_FRAME,
+    SAMPLES_PER_TEACHER_FRAME,
+    Window,
+    WindowContract,
+    enumerate_recitation_windows,
+    enumerate_windows,
+    feature_frames_for_samples,
+    muaalem_lattice_length,
+    recitation_window_span,
 )
 
 
@@ -674,7 +676,7 @@ def test_feature_frames_never_negative_for_sub_frame_audio():
 
 
 def test_snap_window_shrinks_to_whole_words_on_the_student_lattice():
-    from training.waqf_distill import Window, snap_window_to_words
+    from training.windowing import Window, snap_window_to_words
 
     # Words at 0.5-1.9 s, 1.9-3.1 s, 3.1-6.0 s within a 0-5 s window.
     snapped = snap_window_to_words(
@@ -690,7 +692,7 @@ def test_snap_window_shrinks_to_whole_words_on_the_student_lattice():
 
 
 def test_snap_window_returns_none_when_no_whole_word_fits():
-    from training.waqf_distill import Window, snap_window_to_words
+    from training.windowing import Window, snap_window_to_words
 
     # One 9 s word: no whole word fits in the 5 s window.
     assert snap_window_to_words(
@@ -699,7 +701,7 @@ def test_snap_window_returns_none_when_no_whole_word_fits():
 
 
 def test_clip_recitation_windows_without_word_times_is_the_fixed_grid():
-    from training.waqf_distill import clip_recitation_windows, enumerate_recitation_windows
+    from training.windowing import clip_recitation_windows, enumerate_recitation_windows
 
     contract = WindowContract()
     assert clip_recitation_windows(0, 12 * 16000, contract) == (
@@ -708,7 +710,7 @@ def test_clip_recitation_windows_without_word_times_is_the_fixed_grid():
 
 
 def test_clip_recitation_windows_drops_duplicate_snapped_spans():
-    from training.waqf_distill import clip_recitation_windows
+    from training.windowing import clip_recitation_windows
 
     contract = WindowContract()
     # Two windows both snap onto the same single word run -> one training example.
@@ -728,7 +730,7 @@ def test_snapped_windows_stay_inside_their_nominal_grid_window():
     """
     import random
 
-    from training.waqf_distill import (
+    from training.windowing import (
         SAMPLES_PER_STUDENT_FRAME,
         clip_recitation_windows,
         enumerate_recitation_windows,

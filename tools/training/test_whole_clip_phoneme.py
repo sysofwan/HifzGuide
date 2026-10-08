@@ -16,7 +16,8 @@ from tadabur.muaalem.configuration_multi_level_ctc import (
     Wav2Vec2BertForMultilevelCTCConfig,
 )
 from tadabur.muaalem.modeling_multi_level_ctc import Wav2Vec2BertForMultilevelCTC
-from training.waqf_head import WaqfJointModel, phoneme_forward
+from training.waqf_head import WaqfJointModel
+from training.whole_clip_phoneme import phoneme_forward
 from training.whole_clip_phoneme import (
     LoRASettings,
     attach_phoneme_lora,

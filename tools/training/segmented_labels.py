@@ -19,7 +19,7 @@ free, manufacturing a (1) → (2) "regression" out of the baseline rather than t
 
 This module builds that control. It reuses :mod:`training.windowed_labels` wholesale — the
 same clip-level eligibility gates, the same frozen grid
-(:func:`training.waqf_distill.clip_recitation_windows`), the same inward word snapping, and
+(:func:`training.windowing.clip_recitation_windows`), the same inward word snapping, and
 the same slice-never-re-phonetize labelling — and changes one thing: the grid is enumerated
 over each **waqf segment's** span (``[start_s, end_s)``) instead of the whole recitation
 span. So rung (1) and rung (2) see the same clips, the same reciter split, and window audio
@@ -48,7 +48,7 @@ from collections import Counter
 from pathlib import Path
 
 from tadabur.clip_status import ClipStatus, read_clip_status
-from training.waqf_distill import (
+from training.windowing import (
     TARGET_SAMPLE_RATE,
     WindowContract,
     clip_recitation_windows,

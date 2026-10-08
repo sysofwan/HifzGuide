@@ -45,7 +45,8 @@ from typing import Optional
 import torch
 
 from tadabur.inference import PHONEME_LEVEL
-from training.waqf_head import WaqfJointModel, phoneme_ctc_loss, phoneme_forward
+from training.waqf_head import WaqfJointModel
+from training.whole_clip_phoneme import phoneme_ctc_loss, phoneme_forward
 from training.whole_clip_phoneme import LoRASettings
 
 # Any measured drop in should-reject discrimination across the whole-clip move (1)→(2) is a

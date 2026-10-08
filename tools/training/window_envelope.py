@@ -16,7 +16,7 @@ It answers three questions, all torch-free so they run without a GPU:
   central stitching is to the design.
 
 * **What is the per-window CTC logit length, and does a batch fit 16 GB?** Each candidate
-  window's 40 ms lattice length is :func:`training.waqf_distill.muaalem_lattice_length`
+  window's 40 ms lattice length is :func:`training.windowing.muaalem_lattice_length`
   of its 20 ms frame count (250 → 125 for the deployed 5 s window). :func:`memory_estimate`
   models activation memory with the standard activation-recomputation formula so the
   16 GB RTX 5060 Ti budget (ADR-0004's OOM consequence) becomes a per-window max batch.
@@ -47,13 +47,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tadabur.manifest import read_records
-from training.waqf_distill import (
+from training.windowing import (
     TEACHER_FRAME_MS,
     muaalem_lattice_length,
 )
 
 # ---------------------------------------------------------------------------
-# Frame ↔ time geometry (shared with training.waqf_distill, restated for reports).
+# Frame ↔ time geometry (shared with training.windowing, restated for reports).
 # ---------------------------------------------------------------------------
 
 # One 20 ms encoder/teacher frame per this many seconds; 50 frames per second, so the
@@ -422,7 +422,7 @@ def policy_options() -> list[PolicyOption]:
                 "window and its tail in the later one, and neither sees the whole pause. The "
                 "boundary event is attributed to the window containing the frame where "
                 "silence crosses the threshold (the earlier window for a pause that starts "
-                "before the seam). Matches training.waqf_distill.WindowContract's default "
+                "before the seam). Matches training.windowing.WindowContract's default "
                 "(hop == window)."
             ),
             stitch=(
@@ -485,7 +485,7 @@ def recommendation(candidates: list[WindowCandidate]) -> str:
         f"length**. Provisional recommendation: move from the current non-overlapping tiling "
         f"to the **center-trusted 1 s overlap**, so no interior waqf lands on a seam blind "
         f"spot; the exact overlap is A2's to freeze. The current code default "
-        f"(`training.waqf_distill.WindowContract`, hop == window) stays valid until then. "
+        f"(`training.windowing.WindowContract`, hop == window) stays valid until then. "
         f"A **provisional cap** of ~{_PROVISIONAL_CAP_SECONDS:g} s "
         f"(~99th percentile of whole clips, {cap_frames} feature frames, ~{cap_windows} "
         f"windows) bounds the per-clip window count and the longest CTC target A2/#25 must "

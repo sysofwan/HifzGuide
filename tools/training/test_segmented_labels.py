@@ -17,7 +17,7 @@ from training.segmented_labels import (
     build_segmented_labels,
 )
 from training.test_windowed_labels import CONTRACT, _seg, _status, _status_for
-from training.waqf_distill import TARGET_SAMPLE_RATE
+from training.windowing import TARGET_SAMPLE_RATE
 from training.windowed_labels import (
     EXCLUDE_DROPPED_SEGMENT,
     EXCLUDE_RE_READ,

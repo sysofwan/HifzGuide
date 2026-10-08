@@ -17,7 +17,7 @@ What it pins:
   The exported model ships phoneme(+waqf) only.
 
 * **The phoneme forward is shared with the joint rung.** Training runs
-  :func:`training.waqf_head.phoneme_forward`, the exact path :class:`WaqfJointModel` uses, so
+  :func:`phoneme_forward` (this module), the exact path :class:`WaqfJointModel` uses, so
   rung (2) and rung (3) are bit-identical on the phoneme path *by construction* — the
   isolation ADR-0004's go/no-go (#33) verifies.
 
@@ -54,6 +54,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from peft import LoraConfig, get_peft_model
 from tqdm.auto import tqdm
 from transformers import SeamlessM4TFeatureExtractor
@@ -65,7 +66,6 @@ from tadabur.muaalem import (
     Wav2Vec2BertForMultilevelCTCConfig,
 )
 from tadabur.phoneme_vocab import NUM_PHONEME_CLASSES
-from training.waqf_head import phoneme_forward, phoneme_ctc_loss
 from training.windowed_batch import (
     WindowedCtcBatch,
     WindowedCtcCollator,
@@ -73,7 +73,7 @@ from training.windowed_batch import (
     length_bucketed_batches,
     load_examples,
 )
-from training.waqf_distill import DEPLOYED_WINDOW_FEATURE_FRAMES
+from training.windowing import DEPLOYED_WINDOW_FEATURE_FRAMES
 
 # 16 GB card, headroom for the CUDA context / allocator fragmentation. A batch whose peak
 # stays under this is safe to commit (ADR-0004 "verify one real batch fits before committing").
@@ -118,6 +118,77 @@ class TrainConfig:
     # "L2-SP on the adapters"). 0.0 is the default rung-(2) run (no anchor).
     l2_sp: float = 0.0
     lora: LoRASettings = field(default_factory=LoRASettings)
+
+
+# --- phoneme forward + CTC objective ------------------------------------------
+
+
+@dataclass
+class PhonemeForward:
+    """One backbone→phoneme-head pass.
+
+    ``phoneme_logits`` ``(B, T, V)`` are the 40 ms lattice logits; ``hidden_states``
+    ``(B, T, feature_dim)`` is the **pre-dropout** post-adapter output;
+    ``student_lengths`` ``(B,)`` is each example's valid 40 ms frame count.
+    """
+
+    phoneme_logits: torch.Tensor
+    hidden_states: torch.Tensor
+    student_lengths: torch.Tensor
+
+
+def phoneme_forward(
+    muaalem: torch.nn.Module,
+    phoneme_level: str,
+    input_features: torch.Tensor,
+    attention_mask: torch.Tensor | None = None,
+) -> PhonemeForward:
+    """One backbone pass → phoneme head, with the sifat heads never invoked.
+
+    Reads the post-adapter encoder output the phoneme CTC head reads and skips the sifat
+    heads entirely, so they cost no compute and take no gradient.
+    """
+    if attention_mask is None:
+        attention_mask = torch.ones(
+            input_features.shape[:2], device=input_features.device, dtype=torch.long
+        )
+    hidden_states = muaalem.wav2vec2_bert(
+        input_features, attention_mask=attention_mask, return_dict=True
+    )[0]
+    phoneme_logits = muaalem.level_to_lm_head[phoneme_level](muaalem.dropout(hidden_states))
+    student_lengths = muaalem._get_feat_extract_output_lengths(
+        attention_mask.sum(-1)
+    ).to(torch.long)
+    return PhonemeForward(phoneme_logits, hidden_states, student_lengths)
+
+
+def phoneme_ctc_loss(
+    phoneme_logits: torch.Tensor,
+    labels: torch.Tensor,
+    input_lengths: torch.Tensor,
+    config,
+) -> torch.Tensor:
+    """CTC loss on the phoneme head — the ADR-0001/#9 objective, unchanged.
+
+    ``labels`` ``(B, L)`` uses ``-100`` for padding (ignored). Mirrors the multi-level
+    model's own CTC call (blank ``= pad_token_id``, ``config`` reduction / zero-infinity)
+    so this run's objective is bit-for-bit the model's own phoneme CTC.
+    """
+    labels_mask = labels >= 0
+    target_lengths = labels_mask.sum(-1)
+    flattened_targets = labels.masked_select(labels_mask)
+
+    log_probs = F.log_softmax(phoneme_logits, dim=-1, dtype=torch.float32).transpose(0, 1)
+    with torch.backends.cudnn.flags(enabled=False):
+        return F.ctc_loss(
+            log_probs,
+            flattened_targets,
+            input_lengths,
+            target_lengths,
+            blank=config.pad_token_id,
+            reduction=config.ctc_loss_reduction,
+            zero_infinity=config.ctc_zero_infinity,
+        )
 
 
 def set_seed(seed: int) -> None:

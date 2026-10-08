@@ -1,7 +1,7 @@
 """Whole-clip windowed phoneme CTC labels + preflight + reciter split (ADR-0004 P7.C).
 
 The fine-tune runs on **fixed windows over the un-waqf-segmented recitation** (the A2
-frozen contract, :mod:`training.waqf_distill`), *not* on the individual waqf segments.
+frozen contract, :mod:`training.windowing`), *not* on the individual waqf segments.
 This module turns the scored **segment manifest** (:mod:`tadabur.segment_score`) into the
 per-window phoneme CTC labels the collator (#8) and the training runs (#28/#29/#31)
 consume, and it owns the two data-integrity gates ADR-0004 requires around them:
@@ -22,30 +22,26 @@ consume, and it owns the two data-integrity gates ADR-0004 requires around them:
   of its per-segment realized references (waqf form at each interior stop, wasl inside each
   run — ADR-0002). A fixed window edge almost never falls on a word boundary, so each
   window is first **snapped inward to the whole words its audio contains**
-  (:func:`training.waqf_distill.snap_window_to_words`, using the per-word onset times the
+  (:func:`training.windowing.snap_window_to_words`, using the per-word onset times the
   segment scorer persists on the clip-status sidecar). Its label is then the concatenation
   of each overlapping segment's own phonetization *sliced* at those words
   (:meth:`Segment.slice_words`) — sliced, never re-phonetized, because re-phonetizing a
   window's word range would apply the phonetizer's CleanEnd and invent a waqf at what is
-  only a window edge. Because the snapped span is a sub-span of the fixed window and both
-  artifacts snap identically, the shared grid survives. This is what makes recitations
-  **longer than one window** trainable — and with them the interior waqf ADR-0004 needs the
-  waqf head to see in context. ``target_len < logit_frames`` is checked against the
+  only a window edge. Because the snapped span is a sub-span of the fixed window, the frozen
+  grid survives. This is what makes recitations **longer than one window** trainable.
+  ``target_len < logit_frames`` is checked against the
   **post-adapter 40 ms** length of each window
-  (:func:`training.waqf_distill.muaalem_lattice_length`), the CTC feasibility bound.
+  (:func:`training.windowing.muaalem_lattice_length`), the CTC feasibility bound.
   A manifest without per-word offsets falls back to the older segment-granularity rule
   below, which excludes any clip whose segment crosses a window edge.
 
-* **One shared clip-relative window grid with the waqf soft labels.** Windows are
-  enumerated over the **recitation span** (``[recitation_start_s, recitation_end_s]`` from
-  the status sidecar — the un-waqf-segmented recitation, trimming the neighbour-ayah
-  lead-in / trailing bleed the staged clip keeps), on the **identical grid**
-  :func:`training.waqf_distill.generate_soft_labels` uses
-  (:func:`training.waqf_distill.enumerate_recitation_windows`). ``start_sample`` is
-  **clip-relative** (the recitation offset is folded in and persisted as
-  ``recitation_start_sample``), so a window's phoneme CTC target and its waqf soft target
-  share the same ``(window_index, start_sample, num_samples)`` and the joint fine-tune
-  (#28/#29/#31) pairs them without misalignment (ADR-0004 "same window contract").
+* **One shared clip-relative window grid.** Windows are enumerated over the **recitation
+  span** (``[recitation_start_s, recitation_end_s]`` from the status sidecar — the
+  un-waqf-segmented recitation, trimming the neighbour-ayah lead-in / trailing bleed the
+  staged clip keeps) by :func:`training.windowing.clip_recitation_windows`, the grid every
+  window consumer cuts. ``start_sample`` is **clip-relative** (the recitation offset is
+  folded in and persisted as ``recitation_start_sample``), so a window is identified by the
+  same ``(window_index, start_sample, num_samples)`` wherever it is cut.
 
 * **Whole-clip reciter split.** The train/val partition is drawn at the **reciter** level,
   so no reciter — and therefore no clip, and therefore none of a clip's windows — can
@@ -79,7 +75,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from tadabur.clip_status import ClipStatus, read_clip_status
-from training.waqf_distill import (
+from training.windowing import (
     SAMPLES_PER_STUDENT_FRAME,
     TARGET_SAMPLE_RATE,
     WindowContract,
@@ -213,8 +209,7 @@ class WindowLabel:
 
     ``start_sample`` / ``num_samples`` are **clip-relative** (the recitation offset is
     folded in), so they name the exact whole-clip sample span the collator (#8) slices the
-    window audio at and the key the waqf soft label
-    (:class:`training.waqf_distill.SoftLabelStore`) is joined on. ``recitation_start_sample``
+    window audio at. ``recitation_start_sample``
     records that clip-relative offset explicitly (window 0's ``start_sample``).
     ``feature_frames`` is the window's 20 ms length and ``logit_frames`` its post-adapter
     40 ms length — the CTC lattice the ``phoneme_label`` must be shorter than.
@@ -356,7 +351,7 @@ def _contained_word_range(
     the whole-clip alignment, :func:`tadabur.waqf_detect.word_onset_times`), so it is a
     full CTC target for this window only when both edges lie inside the window's audio.
     The window was already snapped to whole words
-    (:func:`training.waqf_distill.snap_window_to_words`) but its edges were then rounded
+    (:func:`training.windowing.snap_window_to_words`) but its edges were then rounded
     **in** to the 40 ms student lattice, so an edge word can start/end up to one student
     frame outside the snapped span; the comparison allows exactly that slack. No other
     word can sneak in through it — every recited word is far longer than 40 ms.
@@ -414,9 +409,8 @@ def build_clip_windows(
     segments **fully contained in that window's clip-relative span**. If a segment's audio
     crosses a window edge, segment-level timing cannot prove that window's edge word is a
     full CTC target, so the clip is excluded (``segment_crosses_window``) rather than
-    mislabelled. Windows are enumerated on the shared clip-relative grid the waqf soft
-    labels use (:func:`training.waqf_distill.enumerate_recitation_windows`), so the two
-    artifacts' ``(window_index, start_sample, num_samples)`` match. Raises
+    mislabelled. Windows are enumerated on the shared clip-relative grid
+    (:func:`training.windowing.clip_recitation_windows`). Raises
     ``AssertionError`` if a kept window's segments are not word-contiguous or the windows
     fail to cover the recitation's words — invariants of an eligible clip, so a violation is
     a bug, not a data condition.

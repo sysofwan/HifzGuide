@@ -234,6 +234,28 @@ def test_a_reused_file_that_no_longer_matches_its_checksum_is_refused(tmp_path, 
         verify_staged(staged["a.wav"], tmp_path)
 
 
+def test_a_checkpoint_keeps_the_checksum_of_a_clip_still_waiting_on_a_later_shard(tmp_path):
+    index = {"a.wav": _index("a.wav", 2, 0), "b.wav": _index("b.wav", 4, 0)}
+    requests = {"a.wav": frozenset({MINING_POOL}), "b.wav": frozenset({MINING_POOL})}
+    original = {2: _shard(["a.wav"]), 4: _shard(["b.wav"])}
+    registry, _ = stage_clips(requests, index, tmp_path, lambda shard: iter(original[shard]))
+    for name in ("a.wav", "b.wav"):
+        (tmp_path / name).unlink()
+
+    changed = {2: original[2], 4: [{**original[4][0], "audio": {
+        "bytes": _wav_bytes(999, 42), "path": "b.wav"}}]}
+    checkpoints: list[dict] = []
+    with pytest.raises(ValueError, match="re-staged with sha256"):
+        stage_clips(requests, index, tmp_path, lambda shard: iter(changed[shard]), registry,
+                    on_shard_done=lambda staged: checkpoints.append(dict(staged)))
+    (checkpoint,) = checkpoints  # written after shard 2, before shard 4 failed
+    assert checkpoint["b.wav"] == registry["b.wav"]
+    assert not (tmp_path / "b.wav").exists()  # the rejected bytes are not left behind
+
+    with pytest.raises(ValueError, match="re-staged with sha256"):
+        stage_clips(requests, index, tmp_path, lambda shard: iter(changed[shard]), checkpoint)
+
+
 def test_a_registry_row_that_disagrees_with_the_index_is_refused(tmp_path):
     index = {"a.wav": _index("a.wav", 4, 0)}
     with pytest.raises(ValueError, match="different rows"):

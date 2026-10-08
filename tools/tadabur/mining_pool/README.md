@@ -71,9 +71,13 @@ pool **given the 394 drawn reciters**, counting the strata as a union:
 1,239 pool clips have probability 1 and 1,269 less (down to 0.0116). `frame.json` freezes
 what the probabilities are computed from: eligible and excluded rows per shard (with the
 reason), and per reciter its eligible clips, the clips the uniform stratum took, and whether
-it was drawn. The reciters are the first 394 of 500 in salted-hash order; an estimate that
-reaches past them can treat that as a simple random sample of reciters (394 / 500), and one
-that does not is restricted to the drawn reciters.
+it was drawn. Inference from the pool is **restricted to the realized reciter allocation**:
+the 394 drawn reciters with the within-reciter probabilities recorded here. The reciter
+draw is not a simple random sample of the 500 eligible reciters with probability 394 / 500.
+It stops at 2,000 *clips*, so how many reciters it takes depends on their unequal capped
+clip counts (with eligible counts 1, 1 and 2 and a cap and target of 2, the three reciters'
+inclusion probabilities over all hash orders are 1/2, 1/2 and 2/3). No probability is
+recorded for reaching reciters outside the allocation.
 
 ### The scan's provenance
 

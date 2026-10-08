@@ -220,9 +220,11 @@ def inclusion_probabilities(
     clips by a salted hash, a simple random sample of them: ``k / n``. A census stratum
     takes every clip of the drawn reciters with an event, so a clip in one has
     probability 1 whatever its uniform chance (the union counts the overlap once). The
-    reciters themselves are the first 394 of 500 in salted-hash order; an analysis that
-    reaches past them treats that as a simple random sample of reciters
-    (``frame.json`` records both counts).
+    probabilities are conditional on the realized reciter allocation and say nothing
+    about reciters outside it: the draw stops at a number of *clips*, so how many
+    reciters it takes depends on their unequal capped counts, and a reciter's own chance
+    of being drawn is not a simple-random-sample fraction (``frame.json`` records the
+    allocation).
     """
     eligible_clips = Counter(row.reciter_id for row in frame)
     drawn = Counter(row.reciter_id for row in uniform)

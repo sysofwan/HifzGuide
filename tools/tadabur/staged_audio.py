@@ -281,8 +281,9 @@ def stage_clips(
     shard and row must be the index's. The rest are grouped by shard and each shard is
     read once, in shard order, through ``shard_rows``. A row is staged only after its
     filename and reciter are checked against the index, so a reordered shard can never
-    attach one clip's provenance to another's audio. ``on_shard_done`` receives the
-    registry after each shard so a long run can checkpoint it.
+    attach one clip's provenance to another's audio. ``on_shard_done`` receives a
+    checkpoint after each shard: the clips staged so far plus the recorded entries of
+    requested clips still waiting, so a run resumed from it cannot lose a checksum.
     """
     known = dict(registry or {})
     staged: dict[str, StagedClip] = {}
@@ -319,6 +320,7 @@ def stage_clips(
             if previous is not None and (previous.audio_sha256, previous.num_samples) != (
                 clip.audio_sha256, clip.num_samples
             ):
+                (audio_dir / name).unlink()  # never leave bytes the registry disowns
                 raise ValueError(
                     f"{name} re-staged with sha256 {clip.audio_sha256}, but the "
                     f"registry records {previous.audio_sha256}"
@@ -328,7 +330,10 @@ def stage_clips(
         if missed:
             raise ValueError(f"shard {shard} ended before rows for {missed[:3]}")
         if on_shard_done is not None:
-            on_shard_done(staged)
+            # A checkpoint keeps the recorded provenance of every requested clip still
+            # waiting on a later shard, so a resume from it enforces the same checksums.
+            waiting = {n: known[n] for n in requests if n in known and n not in staged}
+            on_shard_done({**waiting, **staged})
     return staged, unlocatable
 
 

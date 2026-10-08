@@ -7,6 +7,7 @@ fixture is one 9 s recitation of seven words in two waqf segments, which the fro
 
 from __future__ import annotations
 
+import hashlib
 import math
 
 import numpy as np
@@ -14,13 +15,20 @@ import pytest
 
 from tadabur.mining_pool import PoolClip, PoolSegment
 from training.decoding import (
+    BLANK_ID,
     CONFIRM_TIMESTEPS,
     DEPLOYED_LOGIT_FRAMES,
-    WINDOW_SAMPLES,
+    DecodeFingerprint,
     clip_windows,
-    commit_bounds,
+    stream_emissions,
+    stream_protocol,
 )
-from training.haraka_gap import WEIGHTS_DTYPE  # noqa: F401  (the CLI imports torch-free)
+from training.haraka_gap import (
+    cache_files,
+    validated_settings,
+    verified_provenance,
+    write_provenance,
+)
 from training.haraka_gap_arms import (
     BLOCK_MID,
     CLIP_NOT_WINDOWED,
@@ -40,8 +48,8 @@ from training.haraka_gap_arms import (
     STARTUP,
     STREAM,
     STREAM_CLASSES,
-    TIME_NEIGHBOUR,
-    TIME_OWN,
+    FROM_NEIGHBOUR,
+    FROM_OWN,
     UNDECODED,
     WINDOW,
     WINDOW_OCC,
@@ -53,7 +61,8 @@ from training.haraka_gap_arms import (
     model_observations,
     plan_clip,
     stream_region,
-    time_in_segment,
+    site_positions,
+    step_in_segment,
     unit_outcomes,
     window_position,
     windowed_population,
@@ -148,63 +157,90 @@ def test_word_position_names_the_haraka_among_its_words_harakat():
     assert [word_position(long_word, r) for r in (1, 3, 5)] == ["first", "inner", "last"]
 
 
-def _committing_window(seconds: float, num_samples: int, block: int) -> int:
-    """The window whose :func:`commit_bounds` hold the timestep at ``seconds``."""
-    windows = clip_windows(num_samples)
-    owners = [
-        w for w in range(len(windows))
-        if commit_bounds(w, len(windows) - 1, block)[0]
-        <= (seconds - w) / 0.04
-        < commit_bounds(w, len(windows) - 1, block)[1]
-    ]
-    assert len(owners) <= 1
-    return owners[0] if owners else -1
-
-
 @pytest.mark.parametrize("block", [0, 1])
 @pytest.mark.parametrize("seconds_long", [3.0, 5.0, 8.5, 12.3])
-def test_stream_region_agrees_with_the_commit_rule(block, seconds_long):
+def test_stream_region_names_the_window_the_protocol_commits_from(block, seconds_long):
+    """Place one CTC run (odd and even lengths, so integer and half-step midpoints) in
+    every window, replay :func:`stream_emissions`, and check the region of every run the
+    protocol commits; a reachable position no window commits must be undecoded."""
     num_samples = round(seconds_long * RATE)
-    last = len(clip_windows(num_samples)) - 1
-    for step in range(round(seconds_long / 0.04)):
-        t = (step + 0.5) * 0.04
-        region = stream_region(t, num_samples, block)
-        owner = _committing_window(t, num_samples, block)
-        if owner == -1:
-            assert region == UNDECODED and num_samples >= WINDOW_SAMPLES
-        elif owner == 0 and t < block + 1:
-            assert region == STARTUP
-        elif owner == last and t >= last + block + 1:
-            assert region == FLUSH
-        else:
-            assert region in {SEAM_START, BLOCK_MID, SEAM_END}
-            # Steady state: the owner commits exactly its block ``b``.
-            assert (t - owner) // 1 == block
+    windows = len(clip_windows(num_samples))
+    last = windows - 1
+    committed = set()
+    for window in range(windows):
+        for start in range(DEPLOYED_LOGIT_FRAMES):
+            for end in (start, start + 1):
+                if end >= DEPLOYED_LOGIT_FRAMES:
+                    continue
+                rows = [np.full(DEPLOYED_LOGIT_FRAMES, BLANK_ID) for _ in range(windows)]
+                rows[window][start:end + 1] = 5
+                if not stream_emissions(rows, block):
+                    continue
+                local = (start + end) / 2
+                position = window * CONFIRM_TIMESTEPS + local
+                committed.add(position)
+                region = stream_region(position, num_samples, block)
+                if window == 0 and local < (block + 1) * CONFIRM_TIMESTEPS:
+                    assert region == STARTUP, (window, local)
+                elif window == last and local >= (block + 1) * CONFIRM_TIMESTEPS:
+                    assert region == FLUSH, (window, local)
+                else:
+                    assert region in {SEAM_START, BLOCK_MID, SEAM_END}, (window, local)
+    # Every midpoint a run can have in some window, plus a few past the last window.
+    reachable = {
+        window * CONFIRM_TIMESTEPS + half / 2
+        for window in range(windows) for half in range(2 * DEPLOYED_LOGIT_FRAMES - 1)
+    }
+    beyond = last * CONFIRM_TIMESTEPS + DEPLOYED_LOGIT_FRAMES
+    for position in sorted(reachable - committed) + [beyond, beyond + 0.5, beyond + 10]:
+        assert stream_region(position, num_samples, block) == UNDECODED, position
 
 
-def test_stream_region_seam_bands_sit_either_side_of_a_commit_boundary():
-    eight_s = 8 * RATE  # windows 0..3, the last covering [3, 8)
-    assert stream_region(0.5, eight_s, 0) == STARTUP
-    assert stream_region(1.1, eight_s, 0) == SEAM_START
-    assert stream_region(1.5, eight_s, 0) == BLOCK_MID
-    assert stream_region(1.9, eight_s, 0) == SEAM_END
-    assert stream_region(1.5, eight_s, 1) == STARTUP
-    assert stream_region(3.99, eight_s, 0) == SEAM_END
-    assert stream_region(4.0, eight_s, 0) == FLUSH
-    assert stream_region(4.1, eight_s, 1) == SEAM_START
-    assert stream_region(4.5, eight_s, 1) == BLOCK_MID
-    assert stream_region(5.0, eight_s, 1) == FLUSH
-    assert stream_region(8.2, round(8.5 * RATE), 0) == UNDECODED
-    assert stream_region(2.9, 3 * RATE, 0) == FLUSH  # one padded window: nothing undecoded
+def test_stream_region_boundaries_in_ctc_steps():
+    eight_s = 8 * RATE  # windows 0..3, the last covering steps [75, 200)
+    assert stream_region(24.5, eight_s, 0) == STARTUP  # midpoint < 25: the first window's
+    assert stream_region(25.0, eight_s, 0) == SEAM_START
+    assert stream_region(29.5, eight_s, 0) == SEAM_START
+    assert stream_region(30.0, eight_s, 0) == BLOCK_MID
+    assert stream_region(44.5, eight_s, 0) == BLOCK_MID
+    assert stream_region(45.0, eight_s, 0) == SEAM_END
+    assert stream_region(49.5, eight_s, 1) == STARTUP
+    assert stream_region(50.0, eight_s, 1) == SEAM_START
+    assert stream_region(99.5, eight_s, 0) == SEAM_END
+    assert stream_region(100.0, eight_s, 0) == FLUSH
+    assert stream_region(124.5, eight_s, 1) == SEAM_END
+    assert stream_region(125.0, eight_s, 1) == FLUSH
+    eight_and_a_half = round(8.5 * RATE)
+    assert stream_region(199.5, eight_and_a_half, 0) == FLUSH
+    assert stream_region(200.0, eight_and_a_half, 0) == UNDECODED
+    three_s = 3 * RATE  # one padded window: startup, then flush, nothing undecoded
+    assert stream_region(24.5, three_s, 0) == STARTUP
+    assert stream_region(25.0, three_s, 0) == FLUSH
     assert set(STREAM_CLASSES) >= {STARTUP, FLUSH, UNDECODED}
 
 
-def test_time_in_segment_prefers_the_haraka_then_its_carrier():
-    mids = [0.1, 0.2, 0.3, 0.4]
-    assert time_in_segment(5, (4, 8), {5: 2}, mids) == (0.3, TIME_OWN)
-    assert time_in_segment(5, (4, 8), {4: 1, 6: 3}, mids) == (0.2, TIME_NEIGHBOUR)
-    assert time_in_segment(5, (4, 8), {6: 3}, mids) == (0.4, TIME_NEIGHBOUR)
-    assert time_in_segment(5, (4, 8), {2: 0, 9: 1}, mids) is None
+def test_step_in_segment_prefers_the_haraka_then_its_carrier():
+    mids = [0.5, 2.0, 3.5, 5.0]
+    assert step_in_segment(5, (4, 8), {5: 2}, mids) == (3.5, FROM_OWN)
+    assert step_in_segment(5, (4, 8), {4: 1, 6: 3}, mids) == (2.0, FROM_NEIGHBOUR)
+    assert step_in_segment(5, (4, 8), {6: 3}, mids) == (5.0, FROM_NEIGHBOUR)
+    assert step_in_segment(5, (4, 8), {2: 0, 9: 1}, mids) is None
+
+
+def test_site_positions_are_ctc_midpoints_on_the_stream_lattice():
+    plans, population, _ = _arms(_clip())
+    second = plans[0].segments[1]  # words 5-6, "شَ صِ", starting at 6.5 s = step 162.5
+    decode = second.reference.replace(" ", "")
+    base = {
+        f"a.wav#{seg.segment_index}": {"decode": seg.reference.replace(" ", ""),
+                                       "mid2": list(range(len(seg.reference)))}
+        for seg in plans[0].segments
+    }
+    base["a.wav#1"] = {"decode": decode, "mid2": [0, 3, 4, 7]}  # midpoints 0, 1.5, 2, 3.5
+    positions, sources = site_positions(plans, population, base)
+    assert positions[Site("a.wav", 1, 1)] == pytest.approx(162.5 + 1.5)
+    assert positions[Site("a.wav", 1, 4)] == pytest.approx(162.5 + 3.5)
+    assert sources[FROM_OWN] == len(population)
 
 
 # --- Arm bookkeeping ----------------------------------------------------------------------
@@ -213,7 +249,7 @@ def test_time_in_segment_prefers_the_haraka_then_its_carrier():
 def _arms(*clips: PoolClip):
     plans = [plan_clip(clip) for clip in clips]
     population = windowed_population(plans)
-    return plans, population, build_arms(plans, {site: 1.5 for site in population})
+    return plans, population, build_arms(plans, {site: 30.0 for site in population})
 
 
 def test_every_arm_maps_its_reference_back_to_the_same_segment_sites():
@@ -353,9 +389,8 @@ def test_the_gap_terms_add_up_to_the_adr_difference():
         "bootstrap": {"draws": 10_000, "seed": 20261008},
         "pool_clips": 1, "eligible_clips": 1, "reciters": 6, "exclusions": {},
         "windows": 1, "segments_eligible": 1, "segments_all": 1, "stream_seconds": 1,
-        "population_sites": 60, "eligible_sites_in_no_window": 0, "site_time_sources": {},
-        "base_segments_identical_to_pool_cache": [1, 1], "weights_dtype": "bf16",
-        "decode_batch_size": 1, "model_refs": {},
+        "population_sites": 60, "eligible_sites_in_no_window": 0, "site_position_sources": {},
+        "base_segments_identical_to_pool_cache": [1, 1], "decode_settings": {}, "models": {},
     })
     gap = report["gap"]
     terms = ["adr0005_minus_S_all", "clips_not_windowed", "words_in_no_window",
@@ -378,3 +413,56 @@ def test_the_ledger_sums_per_reciter():
 
 def test_the_window_constants_match_the_protocol():
     assert DEPLOYED_LOGIT_FRAMES == 5 * CONFIRM_TIMESTEPS
+
+
+# --- Fingerprints and provenance ----------------------------------------------------------
+
+
+def _fingerprints(model_ref: str, **overrides) -> dict:
+    modes = {"spans": "whole-spans", **{f"stream_b{b}": stream_protocol(b) for b in (0, 1)}}
+    return {
+        key: DecodeFingerprint(model_ref, mode, "bf16", 1, "cuda", True).as_dict()
+        | overrides.get(key, {})
+        for key, mode in modes.items()
+    }
+
+
+def _cache(model_ref: str, **overrides) -> dict:
+    return {"model_ref": model_ref, "fingerprints": _fingerprints(model_ref, **overrides)}
+
+
+def test_validated_settings_come_from_the_fingerprints():
+    settings = validated_settings({"base": _cache("t"), "h448": _cache("c.pt")})
+    assert settings["weights_dtype"] == "bf16" and settings["batch_size"] == 1
+
+
+@pytest.mark.parametrize("caches", [
+    {"base": {"model_ref": "t", "fingerprints": {}}},
+    {"base": {"model_ref": "t"}},
+    {"base": {"model_ref": "t", "fingerprints": {
+        k: v for k, v in _fingerprints("t").items() if k != "stream_b1"}}},
+    {"base": _cache("t", stream_b1={"mode": stream_protocol(0)})},
+    {"base": _cache("t", spans={"weights_dtype": "fp32"})},
+    {"base": _cache("t", stream_b0={"batch_size": 16})},
+    {"base": _cache("t", stream_b0={"model": "other"})},
+    {"base": _cache("t"), "h448": _cache("c.pt", spans={"weights_dtype": "fp32"},
+                                          stream_b0={"weights_dtype": "fp32"},
+                                          stream_b1={"weights_dtype": "fp32"})},
+    {},
+])
+def test_validated_settings_refuse_missing_modes_and_mixed_numerics(caches):
+    with pytest.raises(ValueError):
+        validated_settings(caches)
+
+
+def test_provenance_refuses_an_edited_cache(tmp_path):
+    checkpoint = tmp_path / "student.pt"
+    checkpoint.write_bytes(b"weights")
+    for name in cache_files(["h448"]):
+        (tmp_path / name).write_bytes(name.encode())
+    write_provenance(tmp_path, {"h448": str(checkpoint)})
+    record = verified_provenance(tmp_path, ["h448"])
+    assert record["models"]["h448"]["checkpoint_sha256"] == hashlib.sha256(b"weights").hexdigest()
+    (tmp_path / "h448.json").write_bytes(b"edited")
+    with pytest.raises(ValueError):
+        verified_provenance(tmp_path, ["h448"])

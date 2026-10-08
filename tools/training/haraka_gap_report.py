@@ -486,12 +486,12 @@ def render_markdown(report: dict) -> str:
         f"{meta['stream_seconds']:,} s streamed",
         f"- {meta['population_sites']:,} sites; {meta['eligible_sites_in_no_window']:,} haraka "
         "of eligible clips sit in no window and are left out of every arm",
-        f"- site times (stream regions): {meta['site_time_sources']}",
+        f"- site positions (stream regions): {meta['site_position_sources']}",
         f"- base whole-segment decodes identical to the #83 cache: "
         f"{meta['base_segments_identical_to_pool_cache'][0]:,} / "
         f"{meta['base_segments_identical_to_pool_cache'][1]:,}",
-        f"- decode: weights {meta['weights_dtype']}, batch size {meta['decode_batch_size']}; "
-        f"models {meta['model_refs']}",
+        f"- decode settings (validated from every arm's fingerprint): {meta['decode_settings']}",
+        f"- models: {meta['models']}",
         "",
     ]
     for model, section in report["models"].items():

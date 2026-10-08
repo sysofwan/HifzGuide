@@ -14,21 +14,24 @@ an **empty slot** is a reference haraka the decode left without a mark (`omitted
 
 ## The answer
 
-The gap between the base teacher's two numbers is the **decoding unit**, not the population
-of reciters or clips. On the mining pool the whole segments score **96.45%** [96.06, 96.78] and
-ADR-0007's windows **84.71%** [83.95, 85.37], intervals that contain both ADR figures (96.17
-and 84.1). On identical window occurrences, decoding the window instead of the whole segment
-costs **11.43 pts** (96.14% → 84.71%), 94.7% of the 12.07-point gap. That cost is **97.8% edge
+**On this mining pool, decoding ADR-0007's windows instead of whole waqf segments reproduces
+most of the gap.** The pool's whole segments score **96.45%** [96.06, 96.78] and its windows
+**84.71%** [83.95, 85.37]; on identical window occurrences, decoding the window instead of the
+whole segment costs **11.43 pts** (96.14% → 84.71%), 94.7% of the 12.07-point gap. How much
+of the original gap came from differences between the ADR-0005 corpus and the ADR-0007 val
+windows (reciters, segmentation, numerics) stays unidentified: both corpora are gone, so the
+two cross-corpus terms below are residuals, and their intervals containing zero does not rule
+a population effect out. That cost is **97.8% edge
 words** (11.18 of 11.43 pts) and sits mostly in two cells: the **word-final haraka of a
 window's last word when the window cuts through a segment** (56.62% empty, against 1.06% for
 the same sites on the whole segment) and the **word-initial haraka of a window's first word
 when it cuts through a segment** (40.79% empty, against 0.14%). Those two cells alone are
 6.86 pts, 56.9% of the gap.
 
-The deployed stream (b=0) costs the base teacher 9.74 pts against whole segments, more than
-half of it (5.70 pts) at the start of each commit block, where the window that commits it
-has no audio before it. At b=1 the steady state costs nothing measurable; the 2.02-point total
-is the tail (flush 0.91 + undecoded 1.20 = 2.11 pts, against +0.10 at startup, whose interval
+The deployed stream (b=0) costs the base teacher 9.74 pts against whole segments, 60.2% of
+it (5.86 pts) at the start of each commit block, where the window that commits it has no
+audio before it. At b=1 the steady state costs nothing measurable; the 2.02-point total is
+the tail (flush 1.02 + undecoded 1.10 = 2.12 pts, against +0.10 at startup, whose interval
 contains zero).
 
 ## What was measured
@@ -53,12 +56,14 @@ below.
 **Classes.** A window occurrence is an **edge** word (first, last or only word of the window)
 or an **interior** word; an edge is split by whether it is also a segment edge (a real pause
 beside it) or cuts through a segment (speech continues past it). A stream site is classed by
-the protocol region that commits it: **startup** (committed by the first window, `[0, b+1)` s),
-**seam** (the 0.2 s either side of a commit boundary in steady state), **block middle**,
-**flush** (the last window's blocks after b) and **undecoded** (past the last full window).
-Stream times come from the base teacher's whole-segment decode (56,728 sites from the haraka's
-own token, 1,285 from a neighbour in its word, 189 interpolated from word times), so a site's
-region is the same for both models and every arm.
+the protocol region whose window commits it: **startup** (the first window, up to the end of
+its block b), **seam** (the 5 CTC steps, 0.2 s, either side of a commit boundary in steady
+state), **block middle**, **flush** (the last window's blocks after b) and **undecoded** (past
+the last full window). A site's stream position is the CTC midpoint the base teacher's
+whole-segment decode gives it, on the stream's 40 ms lattice (56,728 sites from the haraka's
+own token, 1,285 from a neighbour in its word, 189 from its word's forced-alignment span), and
+its owning window is the one `training.decoding.commit_bounds` assigns that midpoint to, so a
+site's region is the same for both models and every arm.
 
 ## The gap, term by term (base teacher, all harakat, weighted)
 
@@ -81,9 +86,9 @@ window occurrence and `W_occ` the window decodes of those occurrences:
 | W_occ − 0.841 | this pool's windows vs ADR-0007's val windows; not measured here | +0.61 [−0.14, +1.27] | 5.1% |
 
 The terms add to 12.069 pts against 12.07 (rounding of the five-decimal JSON). The two
-unmeasured outer terms both have intervals containing zero, and their unweighted values are
-+0.15 and −0.36 pts: the pool reproduces both ADR numbers, so the gap is not a population
-difference. The windowing term splits exactly over the window classes:
+outer terms are residuals, not measurements: their intervals contain zero (unweighted values
++0.15 and −0.36 pts), so the pool reproduces both ADR numbers, but with both original corpora
+gone this cannot say how much population differences contributed to them. The windowing term splits exactly over the window classes:
 
 | window class | share of occurrences | empty %, window | empty %, same sites whole | pts of the gap [95% CI] | share of 12.07 |
 |---|---|---|---|---|---|
@@ -129,26 +134,29 @@ Same 58,202 sites, against the whole-segment decode (base teacher):
 
 | region | b=0: share | b=0: empty % (vs whole) | b=0: Δ matched, pts | b=1: share | b=1: empty % (vs whole) | b=1: Δ matched, pts |
 |---|---|---|---|---|---|---|
-| startup (first window) | 12.98% | 9.62 (12.16) | +0.07 [−0.05, +0.19] | 23.94% | 5.35 (6.83) | +0.10 [−0.03, +0.23] |
-| seam, block start | 10.82% | **39.35** (0.91) | **−5.70 [−6.11, −5.31]** | 10.47% | 1.09 (1.00) | −0.06 [−0.16, +0.04] |
-| block middle | 32.98% | 4.20 (0.99) | −1.73 [−1.95, −1.52] | 32.34% | 0.83 (1.02) | +0.04 [−0.02, +0.10] |
-| seam, block end | 10.39% | 3.04 (0.72) | −0.27 [−0.34, −0.19] | 10.15% | 0.64 (0.77) | +0.02 [−0.01, +0.04] |
-| flush (last window) | 31.54% | 3.56 (0.85) | −0.92 [−1.13, −0.73] | 21.82% | 4.84 (0.92) | −0.91 [−1.12, −0.73] |
-| undecoded tail | 1.28% | 99.50 (3.10) | −1.20 [−1.42, −0.99] | 1.28% | 99.50 (3.10) | −1.20 [−1.42, −0.99] |
+| startup (first window) | 13.32% | 9.43 (11.87) | +0.07 [−0.05, +0.19] | 24.14% | 5.31 (6.79) | +0.10 [−0.03, +0.23] |
+| seam, block start | 10.78% | **40.20** (0.99) | **−5.86 [−6.25, −5.50]** | 10.59% | 1.02 (1.07) | −0.05 [−0.15, +0.06] |
+| block middle | 32.79% | 3.64 (0.99) | −1.45 [−1.68, −1.25] | 32.00% | 0.85 (1.02) | +0.03 [−0.02, +0.09] |
+| seam, block end | 10.56% | 4.03 (0.64) | −0.37 [−0.45, −0.29] | 10.32% | 0.65 (0.69) | +0.01 [−0.02, +0.04] |
+| flush (last window) | 31.38% | 3.93 (0.86) | −1.03 [−1.23, −0.82] | 21.79% | 5.35 (0.90) | −1.02 [−1.22, −0.83] |
+| undecoded tail | 1.17% | 99.45 (3.40) | −1.10 [−1.34, −0.86] | 1.17% | 99.45 (3.40) | −1.10 [−1.34, −0.86] |
 | **total** | | 9.61 (2.39) | **−9.74 [−10.37, −9.16]** | | 4.06 (2.39) | **−2.02 [−2.40, −1.65]** |
 
-The contributions add to the totals (−9.74 and −2.02). Read separately:
+The contributions add to the totals (−9.74, and −2.03 against −2.02 after rounding each
+row). Each site's region is that of the window `training.decoding.commit_bounds` assigns its
+CTC midpoint to, so a run ending on a block boundary falls where the protocol commits it.
+Read separately:
 
 - **Startup** costs nothing measurable at either block (both intervals contain zero): the
   recitation's first second does no worse streamed than on the whole segment, where the onset
   is already hard.
 - **Seam.** At b=0 the block start is the start of the committing window's audio, with no
-  left context at all; it is 39.35% empty and carries 5.70 of the 9.74 pts (58.5%). The block
-  end costs 0.27. At b=1 the same boundaries have a second of left context and the seam,
-  block middle and their sum (0.00 pts) are indistinguishable from the whole segment.
-- **Tail.** The flush costs 0.92 (b=0) and 0.91 (b=1). The **undecoded** tail (under a second
+  left context at all; it is 40.20% empty and carries 5.86 of the 9.74 pts (60.2%). The block
+  end costs 0.37. At b=1 the same boundaries have a second of left context and the seam bands
+  and block middle (−0.05, +0.03, +0.01 pts) are indistinguishable from the whole segment.
+- **Tail.** The flush costs 1.03 (b=0) and 1.02 (b=1). The **undecoded** tail (under a second
   past the last full window, which the replay never decodes; `training.decoding` lists it as a
-  gap to the deployed protocol, whose handling on device is unverified) costs 1.20 at both
+  gap to the deployed protocol, whose handling on device is unverified) costs 1.10 at both
   blocks. It is a replay artefact as much as a protocol one, so it is reported apart.
 - b=1 minus b=0: **+7.72 pts matched [+7.25, +8.20]**, −5.55 pts empty [−5.94, −5.18].
 
@@ -169,8 +177,7 @@ one side only.
 Damma is the haraka the b=0 stream hurts most: −13.26 pts against the whole segment
 [−14.66, −11.93], against −8.60 for fatha [−9.25, −7.98] and −9.83 for kasra [−11.15, −8.52];
 damma's interval lies entirely below fatha's (two separate intervals, not a paired test of
-the difference). Its block-start seam is 37.36% empty (fatha 19.00%,
-kasra 15.26%). In the windows the three harakat lose similar amounts (−10.32, −10.17, −11.91
+the difference). Its block-start seam band is 67.76% empty (fatha 35.97%, kasra 26.21%). In the windows the three harakat lose similar amounts (−10.32, −10.17, −11.91
 pts on per-site counting, overlapping intervals). Intervals and counts per haraka, per arm and
 per class are in the tables.
 
@@ -189,8 +196,8 @@ lower on them than on its own b=1 stream (+1.82 pts), and its empty-slot rate at
 indistinguishable from whole segments (+0.10 pts [−0.31, +0.49], net −42 sites). Windows cost
 it 2.45 pts, not 11.43: it keeps the word-final haraka at a cut window end (5.66% empty
 against the base teacher's 56.62%) but still loses the word-initial one after a cut start
-(37.75% empty, 2.88 pts). On the stream at b=0 its block-start seam is 35.94% empty and costs
-5.17 pts; b=1 minus b=0 is +7.18 pts matched [+6.71, +7.64].
+(37.75% empty, 2.88 pts). On the stream at b=0 its block-start seam is 36.56% empty and costs
+5.35 pts; b=1 minus b=0 is +7.18 pts matched [+6.71, +7.64].
 
 ## What this does not show
 
@@ -206,18 +213,27 @@ against the base teacher's 56.62%) but still loses the word-initial one after a 
 
 ## Reproduce
 
-From `tools/` on the GPU box (decode needs the staged pool audio; `report` is CPU-only and
-deterministic, and ran in about a minute):
+The decode caches this report was built from are tracked in
+`tools/training/haraka_gap_cache/`: `base.json` and `h448.json` (every segment, window and
+stream decode, with each arm's fingerprint), each model's per-window stream argmax rows
+(`*_stream_rows.npz`), 8.8 MB together, and `provenance.json` with each file's sha256, the
+models' immutable identities (the base teacher's hub commit
+`01a1ef9fbe40d144ef845101e89ff924aed3fef5`, the `h448` checkpoint's sha256
+`eadc3f75…83aa7a`) and the hashes of the pool manifest, its base-decode cache and the
+staged-clip registry they were decoded against. From `tools/`, CPU only, about a minute:
 
 ```bash
-flock /root/scratch/gpu.lock python -m training.haraka_gap decode \
-    --audio-dir /root/scratch/issue-83/stage/clips --cache-dir /root/scratch/issue-85/cache \
-    --model base=obadx/muaalem-model-v3_2 \
-    --model h448=/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt \
-&& python -m training.haraka_gap report --cache-dir /root/scratch/issue-85/cache \
+python -m training.haraka_gap report \
     --out-json ../docs/haraka-gap.json --out-md ../docs/haraka-gap-tables.md
 ```
 
-The decode took roughly half an hour per model (one RTX 5060 Ti, batch size 1). The caches
-(`base.json`, `h448.json` and each model's per-window stream argmax rows, 8.8 MB together)
-stay in `/root/scratch/issue-85/cache`.
+`report` refuses a cache whose checksum or source manifest no longer matches, or whose arms
+were not all decoded under the same settings. To decode afresh (GPU box, staged pool audio,
+roughly half an hour per model on one RTX 5060 Ti at batch size 1):
+
+```bash
+flock /root/scratch/gpu.lock python -m training.haraka_gap decode \
+    --audio-dir /root/scratch/issue-83/stage/clips --cache-dir training/haraka_gap_cache \
+    --model base=obadx/muaalem-model-v3_2 \
+    --model h448=/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt
+```

@@ -50,17 +50,17 @@ segment (wasl audio continues past the edge) -- or an interior word.
 A **stream** site is classified by when it is spoken (:func:`stream_region`): committed by
 the first window (startup), in the last window's flushed blocks, past the last full window
 (never decoded), or in steady state, where the fifth of a second either side of a commit
-boundary is the **seam** and the rest the block middle. The time is the
-one the **base teacher's whole-segment decode** places the haraka (or its nearest aligned
-neighbour in the same word) at, so it is the same for both models and every arm; a word
-the base decode aligned nothing in falls back to interpolating its forced-alignment span.
+boundary is the **seam** and the rest the block middle. The position is the CTC midpoint
+the **base teacher's whole-segment decode** gives the haraka (or its nearest aligned
+neighbour in the same word), on the stream's lattice, and its owner is found with
+:func:`training.decoding.commit_bounds`; it is the same for both models and every arm. A
+word the base decode aligned nothing in falls back to its forced-alignment span.
 
 The decode, the scoring run and the report are driven by :mod:`training.haraka_gap`.
 """
 
 from __future__ import annotations
 
-import math
 from bisect import bisect_right
 from collections import Counter
 from collections.abc import Iterable, Mapping
@@ -86,10 +86,11 @@ from training.windowing import TARGET_SAMPLE_RATE, WindowContract, recitation_wi
 #: The two commit blocks compared: the deployed b=0 and b=1 (ADR-0010).
 BLOCKS = (0, 1)
 
-#: 40 ms CTC timesteps, and the width of the seam band either side of a commit boundary.
+#: One 40 ms CTC timestep, and the seam band either side of a commit boundary in timesteps
+#: (5 = 0.2 s). Stream positions are CTC midpoints on the stream's own lattice: timestep
+#: ``k`` of window ``w`` is stream step ``w * CONFIRM_TIMESTEPS + k`` (the hop is one block).
 STEP_SECONDS = 0.04
-SEAM_SECONDS = 0.2
-WINDOW_SECONDS = 5
+SEAM_STEPS = 5
 
 # --- Arms, classes, outcomes --------------------------------------------------------
 
@@ -146,8 +147,8 @@ ALL_HARAKAT = "all"
 FIRST_IN_WORD, INNER_IN_WORD, LAST_IN_WORD, SOLE_IN_WORD = "first", "inner", "last", "sole"
 WORD_POSITIONS = (FIRST_IN_WORD, INNER_IN_WORD, LAST_IN_WORD, SOLE_IN_WORD)
 
-# Where a site's time came from (:func:`site_times`).
-TIME_OWN, TIME_NEIGHBOUR, TIME_WORD = "own_token", "neighbour_token", "word_interpolation"
+# Where a site's stream position came from (:func:`site_positions`).
+FROM_OWN, FROM_NEIGHBOUR, FROM_WORD = "own_token", "neighbour_token", "word_interpolation"
 
 
 class Site(NamedTuple):
@@ -279,31 +280,41 @@ def window_position(word: int, window: WindowLabel, segment: PoolSegment) -> str
     return INTERIOR
 
 
-def stream_region(seconds: float, num_samples: int, block: int) -> str:
-    """Which part of the streaming protocol commits audio at ``seconds`` into the stream.
+def stream_region(midpoint: float, num_samples: int, block: int) -> str:
+    """Which part of the streaming protocol commits a token whose CTC midpoint sits at
+    stream step ``midpoint``.
 
-    Mirrors :func:`training.decoding.commit_bounds` on the time axis: window ``w`` starts at
-    second ``w`` and commits ``[w+b, w+b+1)``. **Startup** is everything the first window
-    commits, ``[0, b+1)``: the blocks before ``b`` by the startup rule and block ``b``
-    itself, which at b=0 is the recitation's first second, decoded with no audio before it
-    at all. **Flush** is what the last window commits after its block ``b``. A stream at
-    least one window long leaves the audio past its last full window **undecoded**. The
-    rest is steady state, split into the seam bands either side of a commit boundary and
-    the block middle.
+    The owning window is found with :func:`training.decoding.commit_bounds` itself, in the
+    coordinates the commit rule uses (a window's local midpoint), so a run that ends on a
+    block boundary is owned here by the same window that commits it. **Startup** is what the
+    first window commits up to the end of its block ``b`` (the blocks before ``b`` by the
+    startup rule, and block ``b``, which at b=0 has no audio before it at all). **Flush** is
+    what the last window commits after its block ``b``. A midpoint no window commits is
+    **undecoded** (the audio past the last full window). The rest is steady state: the
+    :data:`SEAM_STEPS` either side of the committed block's boundaries are the seam, the
+    rest the block middle.
     """
-    from training.decoding import WINDOW_SAMPLES, clip_windows
+    from training.decoding import CONFIRM_TIMESTEPS, block_bounds, clip_windows, commit_bounds
 
     last = len(clip_windows(num_samples)) - 1
-    if num_samples >= WINDOW_SAMPLES and seconds >= last + WINDOW_SECONDS:
+    owners = [
+        (window, midpoint - window * CONFIRM_TIMESTEPS)
+        for window in range(last + 1)
+        if commit_bounds(window, last, block)[0]
+        <= midpoint - window * CONFIRM_TIMESTEPS
+        < commit_bounds(window, last, block)[1]
+    ]
+    if not owners:
         return UNDECODED
-    if seconds >= last + block + 1:
-        return FLUSH
-    if seconds < block + 1:
+    ((window, local),) = owners
+    low, high = block_bounds(block)
+    if window == 0 and local < high:
         return STARTUP
-    into_block = seconds - math.floor(seconds)
-    if into_block < SEAM_SECONDS:
+    if window == last and local >= high:
+        return FLUSH
+    if local - low < SEAM_STEPS:
         return SEAM_START
-    if into_block >= 1 - SEAM_SECONDS:
+    if high - local <= SEAM_STEPS:
         return SEAM_END
     return BLOCK_MID
 
@@ -388,10 +399,11 @@ def window_unit(plan: ClipPlan, window: WindowLabel) -> Unit:
 
 
 def stream_unit(
-    plan: ClipPlan, block: int, population: frozenset[Site], times: Mapping[Site, float]
+    plan: ClipPlan, block: int, population: frozenset[Site], positions: Mapping[Site, float]
 ) -> Unit:
     """The whole recitation streamed at ``block``, scored against the concatenated
-    segment references; each site classed by the protocol region its time falls in."""
+    segment references; each site classed by the protocol region that commits its
+    stream position (:func:`site_positions`)."""
     sites: dict[int, Site] = {}
     classes: dict[int, str] = {}
     offset = 0
@@ -400,7 +412,8 @@ def stream_unit(
             site = Site(plan.clip.audio_filename, seg.segment_index, r)
             if site in population:
                 sites[offset + r] = site
-                classes[offset + r] = stream_region(times[site], plan.recitation_num_samples, block)
+                classes[offset + r] = stream_region(
+                    positions[site], plan.recitation_num_samples, block)
         offset += len(seg.reference)
     return Unit(
         key=stream_unit_key(plan.clip.audio_filename, block),
@@ -423,39 +436,44 @@ def windowed_population(plans: Iterable[ClipPlan]) -> frozenset[Site]:
     )
 
 
-# --- Site times (for the stream regions) -----------------------------------------------
+# --- Site positions (for the stream regions) -------------------------------------------
 
 
-def time_in_segment(
+def step_in_segment(
     ref_index: int, word_span: tuple[int, int], aligned: Mapping[int, int], token_mids: list[float]
 ) -> tuple[float, str] | None:
-    """Seconds into the segment at which its decode emits ``ref_index``, or ``None``.
+    """The CTC midpoint (in the segment's own timesteps) of the token that renders
+    ``ref_index``, or ``None``.
 
-    ``aligned`` maps reference index -> decode index; ``token_mids`` is each decode
-    token's midpoint in seconds. The haraka's own token is used when it was aligned,
-    otherwise the nearest aligned character of the same word (its carrier first).
+    ``aligned`` maps reference index -> decode index; ``token_mids`` is each decode token's
+    midpoint step. The haraka's own token is used when it was aligned, otherwise the
+    nearest aligned character of the same word (its carrier first).
     """
     if ref_index in aligned:
-        return token_mids[aligned[ref_index]], TIME_OWN
+        return token_mids[aligned[ref_index]], FROM_OWN
     lo, hi = word_span
     for neighbour in [*range(ref_index - 1, lo - 1, -1), *range(ref_index + 1, hi)]:
         if neighbour in aligned:
-            return token_mids[aligned[neighbour]], TIME_NEIGHBOUR
+            return token_mids[aligned[neighbour]], FROM_NEIGHBOUR
     return None
 
 
-def site_times(
+def site_positions(
     plans: Iterable[ClipPlan],
     population: frozenset[Site],
     base_segments: Mapping[str, dict],
 ) -> tuple[dict[Site, float], Counter]:
-    """Each site's time in seconds from its clip's stream start, and where it came from.
+    """Each site's CTC midpoint in stream steps from its clip's stream start, and its source.
 
     Taken from the base teacher's whole-segment decode (``base_segments``: per segment key
-    the decode and each token's doubled midpoint step), so it is one time per site for
-    every arm and model. Falls back to the word's forced-alignment span.
+    the decode and each token's doubled midpoint step ``start + end``), shifted by the
+    segment's offset into the stream, so it is one position per site for every arm and
+    model. Falls back to the centre of the haraka's share of its word's forced-alignment
+    span.
     """
-    times: dict[Site, float] = {}
+    from training.windowing import SAMPLES_PER_STUDENT_FRAME
+
+    positions: dict[Site, float] = {}
     sources: Counter = Counter()
     for plan in plans:
         if not plan.eligible:
@@ -467,8 +485,8 @@ def site_times(
             aligned = {
                 alignment.ref_start + i: q for i, q in enumerate(alignment.ref_to_query) if q >= 0
             }
-            token_mids = [(mid2 / 2 + 0.5) * STEP_SECONDS for mid2 in cached["mid2"]]
-            start = seg.start_sample / TARGET_SAMPLE_RATE - origin
+            token_mids = [mid2 / 2 for mid2 in cached["mid2"]]
+            offset = (seg.start_sample - plan.recitation_start_sample) / SAMPLES_PER_STUDENT_FRAME
             for r in haraka_sites(seg):
                 site = Site(plan.clip.audio_filename, seg.segment_index, r)
                 if site not in population:
@@ -476,16 +494,17 @@ def site_times(
                 word = word_of(seg, r)
                 k = word - seg.word_start
                 span = (seg.raw_word_offsets[k], seg.raw_word_offsets[k + 1])
-                found = time_in_segment(r, span, aligned, token_mids)
+                found = step_in_segment(r, span, aligned, token_mids)
                 if found is None:
                     t0, t1 = plan.clip.word_times[word], plan.clip.word_times[word + 1]
                     fraction = (r - span[0] + 0.5) / (span[1] - span[0])
-                    times[site] = max(0.0, t0 + fraction * (t1 - t0) - origin)
-                    sources[TIME_WORD] += 1
+                    centre = t0 + fraction * (t1 - t0) - origin
+                    positions[site] = max(0.0, centre / STEP_SECONDS - 0.5)
+                    sources[FROM_WORD] += 1
                 else:
-                    times[site] = max(0.0, start + found[0])
+                    positions[site] = max(0.0, offset + found[0])
                     sources[found[1]] += 1
-    return times, sources
+    return positions, sources
 
 
 # --- Scoring ------------------------------------------------------------------------------
@@ -573,7 +592,7 @@ class Arms:
     word_positions: dict[Site, str]
 
 
-def build_arms(plans: list[ClipPlan], times: Mapping[Site, float]) -> Arms:
+def build_arms(plans: list[ClipPlan], positions: Mapping[Site, float]) -> Arms:
     population = windowed_population(plans)
     eligible = [plan for plan in plans if plan.eligible]
     windows = [window_unit(plan, window) for plan in eligible for window in plan.windows]
@@ -583,7 +602,7 @@ def build_arms(plans: list[ClipPlan], times: Mapping[Site, float]) -> Arms:
         SEGMENT: [windowed_only(unit) for unit in segments],
         WINDOW: windows,
         WINDOW_OCC: windows,
-        **{STREAM[b]: [stream_unit(plan, b, population, times) for plan in eligible]
+        **{STREAM[b]: [stream_unit(plan, b, population, positions) for plan in eligible]
            for b in BLOCKS},
     }
     word_positions = {

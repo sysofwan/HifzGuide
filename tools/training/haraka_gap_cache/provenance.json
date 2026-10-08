@@ -1,0 +1,23 @@
+{
+ "files": {
+  "base.json": "166cbeaf62da6995a79026dcf3cd890435af5b4d043f82c927d8f275560efa28",
+  "base_stream_rows.npz": "c9cf56c22d806f3d691c5f312da531989404a1e96caba22beb625508a9d61747",
+  "h448.json": "84c021fca1e481b809503489248e44c63ac66bf2f27563436ee008dfacf27f10",
+  "h448_stream_rows.npz": "af786077e390b8172cd9832949b6b8f2bfcc7d677dbfacfe835f46dc772e43f6"
+ },
+ "models": {
+  "base": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "ref": "obadx/muaalem-model-v3_2"
+  },
+  "h448": {
+   "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+   "ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+  }
+ },
+ "sources": {
+  "mining_pool/base_decodes.json": "57f2b60727381bfa29019c5813835e1403c835784a73c1052b440f11026ed9d7",
+  "mining_pool/clips.jsonl": "885901089d5ed50f21f40405d0c8568a79fbe2319560b906ea429f46e629cf6e",
+  "staged_audio/clips.jsonl": "53be92d66562cbad358a3d1ecd36b465ab7ddc48eeeb0d967fb4bfa1b37bdd54"
+ }
+}

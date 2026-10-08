@@ -1,7 +1,7 @@
 {
   "fixtures": 209,
-  "fixtures_kept": 157,
-  "sites": 160,
+  "fixtures_kept": 151,
+  "sites": 154,
   "outcomes_by_bucket": {
     "marginal / accept": {
       "marginal_no_site": 23
@@ -10,8 +10,8 @@
       "marginal_no_site": 12
     },
     "shadda / accept": {
-      "contrast_not_expressible": 1,
-      "kept": 17
+      "contrast_absent": 7,
+      "kept": 11
     },
     "shadda / reject": {
       "kept": 12
@@ -62,7 +62,7 @@
   },
   "sites_by_stratum": {
     "p35_fixture:shadda": {
-      "heard_as_prescribed": 17,
+      "heard_as_prescribed": 11,
       "pending": 13
     },
     "p35_fixture:ت↔ط": {

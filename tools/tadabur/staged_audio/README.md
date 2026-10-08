@@ -52,11 +52,15 @@ python -m tadabur.staged_audio stage --index stage/shard_index.jsonl \
 shards). `stage` stages the clips behind the committed labels (the waqf-boundary truth
 sites and the P3.5 fixtures) plus the mining pool's selection, checks every row's filename
 and reciter against the index, and checkpoints this registry after each shard. With an
-existing registry it verifies every re-staged clip against its recorded checksum.
+existing registry it reuses a staged file only after checking its checksum and length
+against the registry (`verify_staged`), and a re-downloaded clip must reproduce both; any
+mismatch fails the run. The registry it writes is exactly the clips requested, with the uses
+requested, so a clip that leaves the pool leaves the registry. `tadabur.resegment` runs the
+same check on every clip before decoding it.
 
 ## The 2026-10-08 staging run
 
-3,026 clips, 12.7 h of audio, **1.4 GB** of PCM_16 WAV, staged on the GPU box under
+2,836 clips, 11.7 h of audio, **1.3 GB** of PCM_16 WAV, staged on the GPU box under
 `/root/scratch/issue-83/stage/clips/`. Shards were downloaded into a cache of the run's own
 and deleted once consumed, so no more than one 2.4 GB shard was ever on disk; the staged
 audio is the only lasting footprint.
@@ -66,7 +70,7 @@ audio is the only lasting footprint.
 | `waqf_boundary` | 122 | shards 0-19 |
 | `p35_fixture` | 205 | shards 0-19 |
 | `p35_fixture`, `waqf_boundary` | 1 | shards 0-19 |
-| `mining_pool` | 2,698 | the 19 reserve shards 39-381 |
+| `mining_pool` | 2,508 | the 19 reserve shards 39-381 |
 
 Every clip behind a committed label was found and re-staged: all 123 waqf-boundary clips
 with sites (1,792 sites, now carrying `shard`, `end_sample` and `audio_sha256`) and all 206

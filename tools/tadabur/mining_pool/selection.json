@@ -1,18 +1,9 @@
 {
   "census": {
     "clips_without_reference": 0,
-    "decode_fingerprint": {
-      "autocast": true,
-      "batch_size": 1,
-      "device_type": "cuda",
-      "mode": "whole-spans",
-      "model": "obadx/muaalem-model-v3_2",
-      "policy": "fp32-features-v1",
-      "weights_dtype": "bf16"
-    },
     "events": {
-      "shaddah_added": 67,
-      "shaddah_dropped": 712,
+      "shaddah_added": 54,
+      "shaddah_dropped": 468,
       "ت↔ط": 4,
       "ح↔ه": 5,
       "ذ↔ز": 31,
@@ -22,9 +13,23 @@
       "ق↔ك": 35
     },
     "frame_clips": 12413,
+    "phonetizer_revision": "1",
+    "scan": {
+      "census_clips": 12413,
+      "census_sha256": "1831c39a29e8eb932f79f7e9cb87e1c161e3550c5584fc30ae0d25bb1422af6a",
+      "decode_fingerprint": {
+        "autocast": true,
+        "batch_size": 1,
+        "device_type": "cuda",
+        "mode": "whole-spans",
+        "model": "obadx/muaalem-model-v3_2",
+        "policy": "fp32-features-v1",
+        "weights_dtype": "bf16"
+      }
+    },
     "stratum_clips": {
       "consonant_pair": 122,
-      "geminate": 734,
+      "geminate": 502,
       "uniform": 2000
     }
   },
@@ -37,7 +42,7 @@
   "frame_clips": 16023,
   "frame_reciters": 500,
   "per_reciter_cap": 8,
-  "pool_clips": 2698,
+  "pool_clips": 2508,
   "pool_reciters": 394,
   "pool_size": 2000,
   "salt": "issue-83-mining-pool-v1",

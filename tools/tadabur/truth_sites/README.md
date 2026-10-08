@@ -195,6 +195,9 @@ soft-pair substitution for a pair bucket, a gemination mismatch for `shadda`. Ea
 occurrence is one site, on its carrier: the substituted letter (a geminate substituted
 whole is one site, on its first half), the first of a doubled pair the decode left single
 (`prescribed: held`), or the single consonant the decode doubled (`prescribed: not_held`).
+A gemination mismatch is confirmed on the raw strings first: normalization merges a run of
+bare same-core consonants, so a decode that keeps both consonants of a geminate but drops
+the haraka after them (`رَببسَ` for `رَببِسَ`) would otherwise read as a dropped shaddah.
 An occurrence whose carrier the schema cannot hold (a folded ghunna noon) is skipped.
 
 **What the verdict says at the site.**
@@ -226,15 +229,17 @@ targeted safeguards of the acceptance rules (§1), never pooled into headline ra
 | `س↔ص` | accept | 28 | 28 | 0 | 0 | 0 | 0 | 0 | 28 |
 | `س↔ص` | reject | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 (pending) |
 | `ح↔ه` | accept | 4 | 3 | 0 | 0 | 1 | 0 | 0 | 3 |
-| `shadda` | accept | 18 | 17 | 0 | 0 | 0 | 1 | 0 | 17 |
+| `shadda` | accept | 18 | 11 | 7 | 0 | 0 | 0 | 0 | 11 |
 | `shadda` | reject | 12 | 12 | 0 | 0 | 0 | 0 | 0 | 13 (pending) |
 | `marginal` | accept | 23 | 0 | 0 | 0 | 0 | 0 | 23 | 0 |
 | `marginal` | reject | 12 | 0 | 0 | 0 | 0 | 0 | 12 | 0 |
-| **total** | | **209** | **157** | **9** | **4** | **4** | **1** | **35** | **160** |
+| **total** | | **209** | **151** | **16** | **4** | **3** | **0** | **35** | **154** |
 
-157 of the 174 contrast fixtures are kept: 135 of 151 accepts and 22 of the 23 nominal
-rejects. They give 160 sites: 137 heard as the mushaf (120 soft-pair; 17 shaddah, 16 `held`
-and 1 `not_held`), and 23 `pending` (10 soft-pair; 13 shaddah, 7 `held` and 6 `not_held`). The one reject lost
-(`ذ↔ز`, "Unclear reading") no longer shows the substitution. Every staged fixture clip
-was re-staged; none was lost to re-staging. `ح↔ه` has accepts only and `ت↔ط` one reject, so
-neither pair can support a per-pair claim (PRD #77).
+151 of the 174 contrast fixtures are kept: 129 of 151 accepts and 22 of the 23 nominal
+rejects. They give 154 sites: 131 heard as the mushaf (120 soft-pair; 11 shaddah, 10 `held`
+and 1 `not_held`), and 23 `pending` (10 soft-pair; 13 shaddah, 7 `held` and 6 `not_held`).
+Of the seven `shadda` accepts dropped as `contrast_absent`, six had a `held` site the raw
+check removes: the decode keeps both consonants of the geminate and only the haraka after
+it is missing. The seventh had no expressible site before the check either. The one reject lost (`ذ↔ز`, "Unclear reading") no longer shows the substitution.
+Every fixture clip was re-staged; none was lost to re-staging. `ح↔ه` has accepts only and
+`ت↔ط` one reject, so neither pair can support a per-pair claim (PRD #77).

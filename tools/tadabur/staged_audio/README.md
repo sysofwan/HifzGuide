@@ -32,8 +32,11 @@ checksum describe the same samples. A re-stage with different `librosa` / `sound
 versions could change the bytes; `stage_clips` then refuses the clip rather than silently
 replacing its checksum.
 
-This is the clip half of the exposure registry the acceptance rules (§6) ask for. Spans
-inside a clip live with the sites or pool segments that use them.
+The exposure registry the acceptance rules (§6) ask for is
+[`../exposure/`](../exposure/README.md): it lists these clips (with the truth sites' spans)
+beside every other use. The sealed panel's clips (#89) are staged with the same schema but
+recorded in [`../sealed_panel/staged_clips.jsonl`](../sealed_panel/README.md), never here,
+so no tool that walks this registry reaches them.
 
 ## Re-staging
 
@@ -83,5 +86,6 @@ by `tadabur.synthetic_edits stage` into a directory of their own
 through untouched.
 
 Reciters: the shards `h448` never trained on (0-20 and the 19 reserve shards) hold 581
-reciters. The labels use 148, the mining pool 394, together 430; **151 reciters (2,466
-clips in those shards) are untouched** by anything here, for the sealed panel (#89).
+reciters. The labels use 148, the mining pool 394, together 430; 151 reciters (2,466
+clips in those shards) are untouched by anything here. Most of those clips belong to
+`decode_evalset` reciters, so the sealed panel (#89) has far fewer: see its README.

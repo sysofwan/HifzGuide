@@ -20,9 +20,9 @@ This module owns that record (#83):
   **PCM_16** WAV (the format the labels were made on and ``truth_sites.audio_sha256``
   hashes), hash them, and delete the shard.
 
-The registry is the clip half of the exposure registry the acceptance rules ask for: the
-reciter id, source recording and checksum of every clip, with each use it has had. Spans
-within a clip live with the sites that use them.
+The exposure registry the acceptance rules ask for (:mod:`tadabur.exposure`) is built from
+this record and the others: the reciter id, source recording and checksum of every clip,
+with each use it has had.
 
 Usage (from ``tools/``; ``stage`` downloads ~2.4 GB per shard, one at a time)::
 
@@ -62,9 +62,13 @@ REGISTRY_PATH = STAGED_AUDIO_DIR / "clips.jsonl"
 
 #: The clip was staged for the h448-unseen mining pool (:mod:`tadabur.mining_pool`).
 MINING_POOL = "mining_pool"
-#: Why a clip was staged: truth sites of one source, the mining pool, or a synthetic-edit
-#: source or donor (:mod:`tadabur.synthetic_edits`, staged into a directory of its own).
-USES = frozenset({WAQF_BOUNDARY, P35_FIXTURE, MINING_POOL, SYNTHETIC_EDIT})
+#: The clip was staged for the sealed held-out panel (:mod:`tadabur.sealed_panel`). Panel
+#: clips are recorded in that panel's own registry, never in :data:`REGISTRY_PATH`.
+SEALED_PANEL = "sealed_panel"
+#: Why a clip was staged: truth sites of one source, the mining pool, a synthetic-edit
+#: source or donor (:mod:`tadabur.synthetic_edits`, staged into a directory of its own), or
+#: the sealed panel.
+USES = frozenset({WAQF_BOUNDARY, P35_FIXTURE, MINING_POOL, SYNTHETIC_EDIT, SEALED_PANEL})
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 

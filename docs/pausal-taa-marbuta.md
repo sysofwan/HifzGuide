@@ -13,9 +13,11 @@ its input as a waqf, so the bug hits every phonetized string that ends on `ةً`
 The workaround from #79 now lives in one place, `tools/hafs_phonetizer.py`. Its `phonetize(text)`
 is the only entry point to `quran_phonetizer` in the repo. It applies the Hafs moshaf
 (`HAFS_MOSHAF`, moved there from `generate_phonemes.py`) and rewrites only the input's last word
-with `pausal_taa_marbuta`. Its char mappings index the text as given: each dropped mark maps to a
-deleted, empty span at the end, which is exactly what quran-transcript 0.6.x returns. Every caller
-goes through it:
+with `pausal_taa_marbuta`. That rewrite covers `ةً` with no mark after it, with the small low
+meem (`ۭ`) and with the small high meem (`ۢ`). The last word is found the way the phonetizer finds it:
+any whitespace separates words, and trailing whitespace is not a word. Its char mappings index the
+text as given: a dropped mark maps to a deleted, empty span where the word's phonemes end, which
+is exactly what quran-transcript 0.6.x returns. Every caller goes through it:
 
 - `tools/generate_phonemes.py`: `generate_reference_phonemes`, the ayah phonemes, and through
   it `tadabur.reference_phonemes`, the scorer gate's reference cache.
@@ -31,6 +33,21 @@ goes through it:
 `quran_phonetizer` or `quran_transcript.phonetics`. `tadabur.reference_phonemes.CACHE_VERSION`
 now includes `hafs_phonetizer.REVISION`, so a reference cache built before the fix is rebuilt
 instead of trusted.
+
+`phonetize` takes only quran-transcript's own Uthmani text, which is what every caller passes
+(`Aya(...).uthmani` or its words). It raises `ValueError` on any character outside that
+alphabet. The phonetizer cannot handle such characters anywhere in a word, so this is not only
+about the pausal word. Examples:
+
+- **QPC spellings** (`data/qpc-hafs-word-by-word.json`) use 23 such characters, including
+  U+0656, U+0657 and U+065E for tanween and U+06E1 for sukun. 88:4:3 is spelled `حَامِيَةٗ`
+  there. The open-tanween block (U+08F0 and after) is just as unsupported.
+  quran-transcript passes these marks through into the phonemes (`رَحْمَةࣰ كَذَٰلِكَ` gives
+  `رَحمَتࣰ كَذَاالِك`) or raises `IndexError` (`عَلِيمࣰا`), on 0.5.2 and on 0.6.4 alike.
+  Rewriting only a final one would hide that the rest of the text is unsupported. No caller
+  phonetizes QPC text: `generate_quran_db.py` reads it only for the `words` table.
+- **Ayah-end markers and numbers** (`۝`, `١`) are passed through as phonemes, and the waqf is
+  not applied to the word before them.
 
 ## Affected ayahs: 9 of 6,236
 
@@ -89,8 +106,11 @@ regenerate identically.
 
 Upstream fixed the bug in commit `97d397d` (2026-08-16), "حل مشكلة الوقف بالهاء على هاء
 التأنيث المنونة بالفتح". It shipped in **0.6.0** (2026-08-17). 0.6.0, 0.6.1 and 0.6.4, the
-latest, all give `رَحمَه`. On these versions the wrapper changes nothing: its tests pass
-unchanged on 0.6.4, mappings included.
+latest, all give `رَحمَه`. On 0.6.4 the wrapper gives the same output as upstream, mappings
+included, with one exception: upstream's fix misses the small high meem spelling `ةًۢ`. 0.6.4
+still gives `غُرفَتَاا` for 2:249's `غُرْفَةًۢ` at a waqf, and the wrapper gives `غُرفَه`.
+None of the 10 `ةًۢ` words in the mushaf ends an ayah, so this matters only for a waqf inside
+an ayah.
 
 **Not upgraded**, because 0.6.4 also changes 52 other ayahs' reference phonemes (phoneme strings
 compared; mappings and sifat not compared). Most of these look like upstream corrections, but

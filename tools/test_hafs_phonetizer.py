@@ -14,7 +14,8 @@ TOOLS_DIR = Path(__file__).resolve().parent
 
 
 def test_pausal_taa_marbuta_rewrites_only_a_final_tanween_fatha_on_taa_marbuta():
-    assert pausal_taa_marbuta("رَحْمَةًۭ") == "رَحْمَةَ"
+    assert pausal_taa_marbuta("رَحْمَةًۭ") == "رَحْمَةَ"  # small low meem
+    assert pausal_taa_marbuta("غُرْفَةًۢ") == "غُرْفَةَ"  # small high meem
     assert pausal_taa_marbuta("وَٰحِدَةً") == "وَٰحِدَةَ"
     for word in ("رَحْمَةٌۭ", "رَحْمَةٍۢ", "رَحْمَةَ", "عَلِيمًا", "بِنَآءًۭ", "قَالَ"):
         assert pausal_taa_marbuta(word) == word
@@ -33,6 +34,18 @@ def _ayah(surah: int, ayah: int) -> str:
         ("جُمْلَةًۭ وَٰحِدَةًۭ", "جُملَتَوووَااحِدَه"),  # 25:32 at the waqf on وَٰحِدَةًۭ
         ("رَحْمَةٌۭ", "رَحمَه"),  # tanween damma was already right
         ("تَرْتِيلًۭا", "تَرتِۦۦلَاا"),  # madd al-iwad is untouched
+        # 2:249's غُرْفَةًۢ at a waqf: 0.6.4 still gives غُرفَتَاا with the small high meem.
+        ("غُرْفَةًۢ", "غُرفَه"),
+        # Trailing whitespace is not a word: the ةً before it is still the last word.
+        ("رَحْمَةًۭ ", "رَحمَه"),
+        (" رَحْمَةًۭ\n", "رَحمَه"),
+        ("جُمْلَةًۭ وَٰحِدَةًۭ \n", "جُملَتَوووَااحِدَه"),
+        # Any whitespace separates words, as in quran_phonetizer: the second word survives
+        # and the first ةً keeps its wasl form.
+        ("وَٰحِدَةًۭ\nكَذَٰلِكَ", "وَااحِدَتَںںںكَذَاالِك"),
+        ("وَٰحِدَةًۭ\tكَذَٰلِكَ", "وَااحِدَتَںںںكَذَاالِك"),
+        ("وَٰحِدَةًۭ\u00a0كَذَٰلِكَ", "وَااحِدَتَںںںكَذَاالِك"),
+        ("جُمْلَةًۭ\u00a0وَٰحِدَةًۭ", "جُملَتَوووَااحِدَه"),
     ],
 )
 def test_phonetize_gives_the_pausal_form_of_the_final_word(text, phonemes):
@@ -62,6 +75,45 @@ def test_phonetize_mappings_index_into_the_text_as_given():
     assert out.phonemes[slice(*out.mappings[taa].pos)] == "ه"
     # The tanween and the small meem after it became nothing.
     assert [(m.pos, m.deleted) for m in out.mappings[taa + 1 :]] == [((end, end), True)] * 2
+
+
+@pytest.mark.parametrize("text", ["رَحْمَةًۭ ", "رَحْمَةًۭ\nكَذَٰلِكَ", "جُمْلَةًۭ وَٰحِدَةًۭ \n"])
+def test_phonetize_mappings_survive_whitespace_around_the_rewrite(text):
+    pytest.importorskip("quran_transcript")
+    out = phonetize(text)
+    assert len(out.mappings) == len(text)
+    for i, char in enumerate(text):  # each ة is ت in wasl and ه at the waqf
+        if char == "ة":
+            assert out.phonemes[slice(*out.mappings[i].pos)] in ("ت", "ه")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "حَامِيَةࣰ",  # U+08F0 open fathatan
+        "حَامِيَةٗ",  # QPC's spelling of 88:4:3 (U+0657 for the tanween)
+        "عَلِيمࣰا",  # upstream raises IndexError on this one, at any position
+        "رَحْمَةࣰ كَذَٰلِكَ",  # and passes it through into the phonemes in wasl
+        "رَحْمَةًۭ ۝",  # ayah-end marker
+        "رَحْمَةًۭ ١",  # ayah number
+    ],
+)
+def test_phonetize_rejects_text_outside_the_uthmani_alphabet(text):
+    pytest.importorskip("quran_transcript")
+    with pytest.raises(ValueError, match="outside quran-transcript's Uthmani alphabet"):
+        phonetize(text)
+
+
+def test_the_qpc_spelling_is_rejected_and_quran_transcripts_own_text_is_not():
+    pytest.importorskip("quran_transcript")
+    import json
+
+    qpc = json.loads(
+        (TOOLS_DIR.parent / "data" / "qpc-hafs-word-by-word.json").read_text(encoding="utf-8")
+    )
+    with pytest.raises(ValueError):
+        phonetize(qpc["88:4:3"]["text"])
+    phonetize(_ayah(88, 4))  # quran-transcript's own text is what callers pass
 
 
 def _phonetizer_imports(path: Path) -> list[str]:

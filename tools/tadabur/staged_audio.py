@@ -244,6 +244,25 @@ def read_shard_index(path: Path) -> dict[str, IndexRow]:
 ShardRows = Callable[[int], Iterator[dict]]
 
 
+def verify_staged(clip: StagedClip, audio_dir: Path) -> None:
+    """Fail unless ``audio_dir`` holds ``clip``'s WAV with its recorded checksum and length.
+
+    Run before any staged file is reused or decoded, so a replaced or truncated file can
+    never be passed off under the provenance the registry records for the original.
+    """
+    import soundfile as sf
+
+    path = audio_dir / clip.audio_filename
+    if not path.exists():
+        raise FileNotFoundError(f"{path} is not staged")
+    found = (audio_sha256(path), sf.info(path).frames)
+    if found != (clip.audio_sha256, clip.num_samples):
+        raise ValueError(
+            f"{path} has sha256 {found[0]} and {found[1]} samples, but the registry "
+            f"records {clip.audio_sha256} and {clip.num_samples}"
+        )
+
+
 def stage_clips(
     requests: Mapping[str, frozenset[str]],
     index: Mapping[str, IndexRow],
@@ -254,24 +273,31 @@ def stage_clips(
 ) -> tuple[dict[str, StagedClip], list[str]]:
     """Stage every requested clip once, and list the ones no indexed shard holds.
 
-    ``requests`` maps each wanted ``audio_filename`` to its uses. Clips already in
-    ``registry`` with their WAV present under ``audio_dir`` are not staged again (a
-    resumed run); their uses are merged. The rest are grouped by shard and each shard is
+    ``requests`` maps each wanted ``audio_filename`` to its uses, and the returned
+    registry is exactly the requested clips that could be staged, with those uses: a
+    clip no longer requested leaves it. A clip ``registry`` already records is reused
+    when its WAV under ``audio_dir`` passes :func:`verify_staged` (a resumed run), and
+    must otherwise re-stage to the same checksum and length; either way its recorded
+    shard and row must be the index's. The rest are grouped by shard and each shard is
     read once, in shard order, through ``shard_rows``. A row is staged only after its
     filename and reciter are checked against the index, so a reordered shard can never
-    attach one clip's provenance to another's audio, and a clip the registry already
-    knows must re-stage to the checksum it records. ``on_shard_done`` receives the
+    attach one clip's provenance to another's audio. ``on_shard_done`` receives the
     registry after each shard so a long run can checkpoint it.
     """
-    staged = dict(registry or {})
+    known = dict(registry or {})
+    staged: dict[str, StagedClip] = {}
     unlocatable = sorted(name for name in requests if name not in index)
     pending: dict[int, dict[int, IndexRow]] = {}
     for name, uses in sorted(requests.items()):
-        if name in staged and (audio_dir / name).exists():
-            merged = tuple(sorted(set(staged[name].uses) | uses))
-            staged[name] = replace(staged[name], uses=merged)
-        elif name in index:
-            entry = index[name]
+        previous, entry = known.get(name), index.get(name)
+        if previous is not None and entry is not None and (
+            (previous.shard, previous.row_index) != (entry.shard, entry.row_index)
+        ):
+            raise ValueError(f"{name}: the registry and the index name different rows")
+        if previous is not None and (audio_dir / name).exists():
+            verify_staged(previous, audio_dir)
+            staged[name] = replace(previous, uses=tuple(sorted(uses)))
+        elif entry is not None:
             pending.setdefault(entry.shard, {})[entry.row_index] = entry
 
     audio_dir.mkdir(parents=True, exist_ok=True)
@@ -289,14 +315,14 @@ def stage_clips(
                     f"(reciter {entry.reciter_id})"
                 )
             clip = _stage_row(row, entry, audio_dir, requests[name])
-            previous = staged.get(name)
-            if previous is not None:
-                if previous.audio_sha256 != clip.audio_sha256:
-                    raise ValueError(
-                        f"{name} re-staged with sha256 {clip.audio_sha256}, but the "
-                        f"registry records {previous.audio_sha256}"
-                    )
-                clip = replace(clip, uses=tuple(sorted(set(previous.uses) | set(clip.uses))))
+            previous = known.get(name)
+            if previous is not None and (previous.audio_sha256, previous.num_samples) != (
+                clip.audio_sha256, clip.num_samples
+            ):
+                raise ValueError(
+                    f"{name} re-staged with sha256 {clip.audio_sha256}, but the "
+                    f"registry records {previous.audio_sha256}"
+                )
             staged[name] = clip
         missed = sorted(e.audio_filename for e in wanted.values() if e.audio_filename not in staged)
         if missed:
@@ -374,8 +400,9 @@ def main() -> None:
 
     stage = commands.add_parser("stage", help="re-stage the labelled clips and the pool")
     stage.add_argument("--index", type=Path, required=True)
-    stage.add_argument("--pool-selection", type=Path, default=None,
-                       help="JSONL of the mining pool's clips (tadabur.mining_pool select)")
+    stage.add_argument("--pool-selection", type=Path, required=True,
+                       help="JSONL of the mining pool's clips (tadabur.mining_pool select); "
+                       "the registry is rewritten to exactly the labelled clips and these")
     stage.add_argument("--audio-dir", type=Path, required=True)
     stage.add_argument("--shard-cache", type=Path, required=True,
                        help="a cache directory of this run's own; each shard is deleted "
@@ -394,9 +421,8 @@ def main() -> None:
         return
 
     requests = labelled_clip_requests()
-    if args.pool_selection is not None:
-        for name, uses in _pool_requests(args.pool_selection).items():
-            requests[name] = requests.get(name, frozenset()) | uses
+    for name, uses in _pool_requests(args.pool_selection).items():
+        requests[name] = requests.get(name, frozenset()) | uses
     registry = load_staged_clips(args.registry) if args.registry.exists() else {}
 
     def shard_rows(shard: int) -> Iterator[dict]:

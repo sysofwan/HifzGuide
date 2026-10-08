@@ -225,3 +225,16 @@ def test_an_added_shaddah_lands_on_the_single_consonant():
 def test_a_held_geminate_has_no_shaddah_site():
     reference = RAA + FATHA + BAA + BAA + KASRA + LAM
     assert contrast_sites(reference, reference, SHADDA_CONTRAST) == []
+
+
+def test_a_geminate_whose_haraka_was_dropped_is_not_a_dropped_shaddah():
+    # رَببسَل vs رَببِسَل: both ب are there; normalization merges the bare pair into one.
+    reference = RAA + FATHA + BAA + BAA + KASRA + SEEN + FATHA + LAM
+    decode = RAA + FATHA + BAA + BAA + SEEN + FATHA + LAM
+    assert contrast_sites(decode, reference, SHADDA_CONTRAST) == []
+
+
+def test_a_reference_geminate_with_no_haraka_is_not_an_added_shaddah():
+    reference = RAA + FATHA + BAA + BAA + SEEN + FATHA + LAM
+    decode = RAA + FATHA + BAA + BAA + KASRA + SEEN + FATHA + LAM
+    assert contrast_sites(decode, reference, SHADDA_CONTRAST) == []

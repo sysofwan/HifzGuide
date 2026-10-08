@@ -60,6 +60,7 @@ from .staged_audio import IndexRow, read_shard_index
 
 MINING_POOL_DIR = Path(__file__).parent / "mining_pool"
 SELECTION_PATH = MINING_POOL_DIR / "selection.json"
+FRAME_PATH = MINING_POOL_DIR / "frame.json"
 CLIPS_PATH = MINING_POOL_DIR / "clips.jsonl"
 DECODES_PATH = MINING_POOL_DIR / "base_decodes.json"
 SUMMARY_PATH = MINING_POOL_DIR / "summary.json"
@@ -118,23 +119,23 @@ def _rank(text: str) -> str:
 
 def eligible(
     rows: Iterable[IndexRow], evalset_rows: set[tuple[int, int]]
-) -> tuple[list[IndexRow], Counter]:
-    """The pool's frame, and why every other row in the pool shards was left out."""
+) -> tuple[list[IndexRow], list[tuple[IndexRow, str]]]:
+    """The pool's frame, and every other row in the pool shards with why it was left out."""
     import generate_phonemes
     from training.decode_evalset import MAX_CLIP_SECONDS, MIN_CLIP_SECONDS
 
     shards = set(pool_shards())
     kept: list[IndexRow] = []
-    excluded: Counter = Counter()
+    excluded: list[tuple[IndexRow, str]] = []
     for row in rows:
         if row.shard not in shards:
             continue
         if (row.shard, row.row_index) in evalset_rows:
-            excluded["in_decode_evalset"] += 1
+            excluded.append((row, "in_decode_evalset"))
         elif not MIN_CLIP_SECONDS <= row.duration_s <= MAX_CLIP_SECONDS:
-            excluded["duration"] += 1
+            excluded.append((row, "duration"))
         elif row.surah_ayah in generate_phonemes.FALLBACK_PHONEMES:
-            excluded["phonetizer_unsupported"] += 1
+            excluded.append((row, "phonetizer_unsupported"))
         else:
             kept.append(row)
     return kept, excluded
@@ -210,13 +211,82 @@ def stratify(
     return {name: tuple(s for s in STRATA if s in found) for name, found in sorted(strata.items())}
 
 
+def inclusion_probabilities(
+    frame: list[IndexRow], uniform: list[IndexRow], strata: dict[str, tuple[str, ...]]
+) -> dict[str, float]:
+    """Each pool clip's inclusion probability, **conditional on the drawn reciters**.
+
+    Within a drawn reciter the uniform stratum takes ``k`` of the reciter's ``n`` frame
+    clips by a salted hash, a simple random sample of them: ``k / n``. A census stratum
+    takes every clip of the drawn reciters with an event, so a clip in one has
+    probability 1 whatever its uniform chance (the union counts the overlap once). The
+    reciters themselves are the first 394 of 500 in salted-hash order; an analysis that
+    reaches past them treats that as a simple random sample of reciters
+    (``frame.json`` records both counts).
+    """
+    eligible_clips = Counter(row.reciter_id for row in frame)
+    drawn = Counter(row.reciter_id for row in uniform)
+    reciter = {row.audio_filename: row.reciter_id for row in frame}
+    return {
+        name: 1.0 if set(found) - {UNIFORM}
+        else drawn[reciter[name]] / eligible_clips[reciter[name]]
+        for name, found in strata.items()
+    }
+
+
+def frame_record(
+    frame: list[IndexRow], excluded: list[tuple[IndexRow, str]], uniform: list[IndexRow]
+) -> dict:
+    """The frame the draw was made from, per shard and per reciter: eligible clips, the
+    rows excluded and why, and how many clips the uniform stratum took from each."""
+    shards: dict[int, Counter] = {shard: Counter() for shard in pool_shards()}
+    for row in frame:
+        shards[row.shard]["eligible"] += 1
+    for row, reason in excluded:
+        shards[row.shard][f"excluded_{reason}"] += 1
+    reciters: dict[int, Counter] = {}
+    for row in frame:
+        reciters.setdefault(row.reciter_id, Counter())["eligible"] += 1
+    for row in uniform:
+        reciters[row.reciter_id]["uniform"] += 1
+    drawn = {row.reciter_id for row in uniform}
+    return {
+        "per_shard": {str(k): dict(sorted(v.items())) for k, v in sorted(shards.items())},
+        "per_reciter": {
+            str(k): {**dict(sorted(v.items())), "drawn": k in drawn}
+            for k, v in sorted(reciters.items())
+        },
+        "reciters_eligible": len(reciters),
+        "reciters_drawn": len(drawn),
+    }
+
+
+def scan_identity(census: list[IndexRow], fingerprint: dict) -> dict:
+    """What a scan's rows are a function of: the census frame (every clip's name, shard
+    and row) and the decode fingerprint. Events are not stored, so the phonetizer that
+    turns decodes into events is recorded by ``select``, not here."""
+    frame = "\n".join(f"{r.audio_filename}\t{r.shard}\t{r.row_index}" for r in census)
+    return {
+        "census_clips": len(census),
+        "census_sha256": hashlib.sha256(frame.encode("utf-8")).hexdigest(),
+        "decode_fingerprint": fingerprint,
+    }
+
+
+def _scan_run_path(scan: Path) -> Path:
+    return scan.with_suffix(".run.json")
+
+
 def _scan(args) -> None:
-    """Decode every census clip whole with the base teacher and record its events.
+    """Decode every census clip whole with the base teacher; one ``{audio_filename,
+    decode}`` row each.
 
     Each clip's audio is decoded exactly as staging would leave it (16 kHz mono through a
     PCM_16 round trip, :func:`tadabur.staged_audio.as_staged`), so a selected clip's scan
-    decode is the whole-clip decode its staged file gives. Appends to ``--out`` and skips
-    clips already in it, so an interrupted scan resumes.
+    decode is the whole-clip decode its staged file gives. The scan's identity
+    (:func:`scan_identity`) is written beside it when it starts; a resumed scan appends
+    only after checking its identity is the stored one, and refuses a row outside the
+    census frame, so earlier rows are never relabelled as a different run's.
     """
     from training.decoding import SPANS, Decoder
 
@@ -224,36 +294,31 @@ def _scan(args) -> None:
     from .resegment import BASE_TEACHER, DECODE_BATCH_SIZE, WEIGHTS_DTYPE
     from .shard_reader import iter_shard_rows
     from .staged_audio import as_staged
-    from .waqf_segments import _uthmani_words, hafs_segment_reference
 
     frame, _ = eligible(
         read_shard_index(args.index).values(), read_evalset_rows(args.evalset_manifest)
     )
     census = census_frame(frame, read_selection(args.uniform))
-    done = set()
+    decoder = Decoder.load(
+        BASE_TEACHER, args.device, weights_dtype=WEIGHTS_DTYPE, batch_size=DECODE_BATCH_SIZE
+    )
+    identity = scan_identity(census, decoder.fingerprint(SPANS).as_dict())
+    run_path = _scan_run_path(args.out)
+    done: set[str] = set()
     if args.out.exists():
-        done = {json.loads(raw)["audio_filename"] for raw in args.out.open(encoding="utf-8")}
+        if not run_path.exists() or json.loads(run_path.read_text()) != identity:
+            raise SystemExit(f"{args.out} was scanned under another identity; refusing to resume")
+        with open(args.out, encoding="utf-8") as f:
+            done = {json.loads(raw)["audio_filename"] for raw in f if raw.strip()}
+        if not done <= {row.audio_filename for row in census}:
+            raise SystemExit(f"{args.out} holds clips outside the census frame")
+    else:
+        run_path.write_text(json.dumps(identity, indent=2, sort_keys=True) + "\n")
     wanted: dict[int, dict[int, IndexRow]] = {}
     for row in census:
         if row.audio_filename not in done:
             wanted.setdefault(row.shard, {})[row.row_index] = row
     print(f"census frame {len(census)} clips; {len(done)} already scanned", flush=True)
-
-    decoder = Decoder.load(
-        BASE_TEACHER, args.device, weights_dtype=WEIGHTS_DTYPE, batch_size=DECODE_BATCH_SIZE
-    )
-    run = {"decode_fingerprint": decoder.fingerprint(SPANS).as_dict()}
-    args.out.with_suffix(".run.json").write_text(json.dumps(run, indent=2, sort_keys=True))
-    segment_reference = hafs_segment_reference()
-    references: dict[str, str | None] = {}
-
-    def reference_of(surah_ayah: str) -> str | None:
-        if surah_ayah not in references:
-            try:
-                references[surah_ayah] = segment_reference(_uthmani_words(surah_ayah))[0]
-            except (KeyError, IndexError):
-                references[surah_ayah] = None
-        return references[surah_ayah]
 
     with open(args.out, "a", encoding="utf-8") as out:
         for shard in sorted(wanted):
@@ -265,17 +330,32 @@ def _scan(args) -> None:
                     continue
                 if row["audio"]["path"] != entry.audio_filename:
                     raise ValueError(f"shard {shard} row {row_index} is not {entry.audio_filename}")
-                (decode,) = decoder.decode_spans([as_staged(decode_to_mono_16k(row["audio"]["bytes"]))])
-                reference = reference_of(entry.surah_ayah)
-                events = {"pairs": {}, "shaddah": {}} if reference is None else scan_events(decode, reference)
-                record = {"audio_filename": entry.audio_filename, "decode": decode,
-                          "reference_found": reference is not None, "events": events}
+                samples = as_staged(decode_to_mono_16k(row["audio"]["bytes"]))
+                (decode,) = decoder.decode_spans([samples])
+                record = {"audio_filename": entry.audio_filename, "decode": decode}
                 out.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
             out.flush()
             print(f"  shard {shard} scanned", flush=True)
 
 
+def whole_ayah_references(surah_ayahs: Iterable[str]) -> dict[str, str | None]:
+    """Each ayah's realized reference recited whole (wasl inside, waqf at its end), or
+    ``None`` where quran-transcript cannot phonetize it."""
+    from .waqf_segments import _uthmani_words, hafs_segment_reference
+
+    segment_reference = hafs_segment_reference()
+    references: dict[str, str | None] = {}
+    for surah_ayah in sorted(set(surah_ayahs)):
+        try:
+            references[surah_ayah] = segment_reference(_uthmani_words(surah_ayah))[0]
+        except (KeyError, IndexError):
+            references[surah_ayah] = None
+    return references
+
+
 def _select(args) -> None:
+    import hafs_phonetizer
+
     frame, excluded = eligible(
         read_shard_index(args.index).values(), read_evalset_rows(args.evalset_manifest)
     )
@@ -287,7 +367,7 @@ def _select(args) -> None:
         "shards": pool_shards(),
         "frame_clips": len(frame),
         "frame_reciters": len({r.reciter_id for r in frame}),
-        "excluded": dict(sorted(excluded.items())),
+        "excluded": dict(sorted(Counter(reason for _, reason in excluded).items())),
         "decode_evalset_manifest_sha256": hashlib.sha256(
             args.evalset_manifest.read_bytes()
         ).hexdigest(),
@@ -299,33 +379,52 @@ def _select(args) -> None:
         strata = {row.audio_filename: (UNIFORM,) for row in uniform}
     else:
         census = census_frame(frame, uniform)
+        identity = json.loads(_scan_run_path(args.scan).read_text(encoding="utf-8"))
+        if {k: v for k, v in scan_identity(census, {}).items() if k != "decode_fingerprint"} \
+                != {k: v for k, v in identity.items() if k != "decode_fingerprint"}:
+            raise SystemExit(f"{args.scan} was not scanned over this census frame")
         with open(args.scan, encoding="utf-8") as f:
-            scanned = {r["audio_filename"]: r for r in map(json.loads, f)}
-        strata = stratify(uniform, census, {n: r["events"] for n, r in scanned.items()})
+            decodes = {r["audio_filename"]: r["decode"] for r in map(json.loads, f)}
+        references = whole_ayah_references(by_name[n].surah_ayah for n in decodes)
+        scanned = {}
+        for name, decode in sorted(decodes.items()):
+            reference = references[by_name[name].surah_ayah]
+            scanned[name] = (
+                {"pairs": {}, "shaddah": {}} if reference is None else scan_events(decode, reference)
+            )
+        strata = stratify(uniform, census, scanned)
         populations = Counter(s for found in strata.values() for s in found)
         events = Counter()
-        for record in scanned.values():
-            events.update(record["events"]["pairs"])
-            events.update({f"shaddah_{k}": v for k, v in record["events"]["shaddah"].items()})
-        run = json.loads(args.scan.with_suffix(".run.json").read_text(encoding="utf-8"))
+        for found in scanned.values():
+            events.update(found["pairs"])
+            events.update({f"shaddah_{k}": v for k, v in found["shaddah"].items()})
         selection["census"] = {
             "frame_clips": len(census),
-            "clips_without_reference": sum(not r["reference_found"] for r in scanned.values()),
-            "decode_fingerprint": run["decode_fingerprint"],
+            "clips_without_reference": sum(
+                references[by_name[n].surah_ayah] is None for n in decodes
+            ),
+            "scan": identity,
+            "phonetizer_revision": hafs_phonetizer.REVISION,
             "events": dict(sorted(events.items())),
             "stratum_clips": {s: populations[s] for s in STRATA},
         }
     selection["pool_clips"] = len(strata)
     selection["pool_reciters"] = len({by_name[n].reciter_id for n in strata})
+    probabilities = inclusion_probabilities(frame, uniform, strata)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         for name, found in strata.items():
-            row = {**asdict(by_name[name]), "strata": list(found)}
+            row = {**asdict(by_name[name]), "strata": list(found),
+                   "inclusion_probability": probabilities[name]}
             f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
     SELECTION_PATH.parent.mkdir(parents=True, exist_ok=True)
     SELECTION_PATH.write_text(
         json.dumps(selection, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    FRAME_PATH.write_text(
+        json.dumps(frame_record(frame, excluded, uniform), indent=1, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     print(json.dumps(selection, indent=2, sort_keys=True, ensure_ascii=False))
@@ -352,13 +451,15 @@ class PoolSegment:
 
 @dataclass(frozen=True)
 class PoolClip:
-    """One pool clip as segmented: the strata it was drawn in, the
+    """One pool clip as segmented: the strata it was drawn in and its inclusion
+    probability given the drawn reciters (:func:`inclusion_probabilities`), the
     :class:`tadabur.clip_status.ClipStatus` fields (word times included) and every
     segment. Provenance (shard, row, checksum, length) is the clip's row in the
     staged-clip registry."""
 
     audio_filename: str
     strata: tuple[str, ...]
+    inclusion_probability: float
     surah_ayah: str
     reciter_id: int
     n_words: int
@@ -376,21 +477,39 @@ def segment_key(audio_filename: str, segment_index: int) -> str:
     return f"{audio_filename}#{segment_index}"
 
 
+@dataclass(frozen=True)
+class Selected:
+    """Why one clip is in the pool, as the selection recorded it."""
+
+    strata: tuple[str, ...]
+    inclusion_probability: float
+
+
+def read_selected(path: Path) -> dict[str, Selected]:
+    """A ``select`` output's strata and inclusion probability per clip."""
+    with open(path, encoding="utf-8") as f:
+        rows = [json.loads(raw) for raw in f if raw.strip()]
+    return {
+        row["audio_filename"]: Selected(tuple(row["strata"]), row["inclusion_probability"])
+        for row in rows
+    }
+
+
 def build_manifest(
     statuses: list[dict],
     segmentation: list[dict],
-    strata: dict[str, tuple[str, ...]],
+    selected: dict[str, Selected],
     staged: dict,
 ) -> list[PoolClip]:
     """The pool manifest from :mod:`tadabur.resegment`'s ``clip_status`` and
-    ``segmentation`` rows and the selection's ``strata``. Every selected clip must have
-    been segmented and staged for the pool; segment spans are converted to samples by
-    the same rule that sliced them for decoding."""
+    ``segmentation`` rows and the selection. Every selected clip must have been
+    segmented and staged for the pool; segment spans are converted to samples by the
+    same rule that sliced them for decoding."""
     from .segment_score import segment_sample_bounds
     from .staged_audio import MINING_POOL
 
     by_name = {status["audio_filename"]: status for status in statuses}
-    if set(by_name) != set(strata):
+    if set(by_name) != set(selected):
         raise ValueError("the segmentation and the selection name different clips")
     segments_of = {row["audio_filename"]: row["segments"] for row in segmentation}
     clips = []
@@ -416,7 +535,8 @@ def build_manifest(
         clips.append(
             PoolClip(
                 audio_filename=name,
-                strata=tuple(strata[name]),
+                strata=selected[name].strata,
+                inclusion_probability=selected[name].inclusion_probability,
                 surah_ayah=status["surah_ayah"],
                 reciter_id=status["reciter_id"],
                 n_words=status["n_words"],
@@ -468,6 +588,8 @@ def load_manifest(path: Path = CLIPS_PATH, registry: dict | None = None) -> list
                 raise ValueError(f"{where}: reciter or ayah disagrees with the registry")
             if not clip.strata or not set(clip.strata) <= set(STRATA):
                 raise ValueError(f"{where}: strata {clip.strata} are not {STRATA}")
+            if not 0 < clip.inclusion_probability <= 1:
+                raise ValueError(f"{where}: inclusion_probability is not in (0, 1]")
             for seg in clip.segments:
                 if not 0 <= seg.start_sample <= seg.end_sample <= entry.num_samples:
                     raise ValueError(f"{where}: segment {seg.segment_index} span is outside")
@@ -575,9 +697,9 @@ def _build(selection_path: Path, seg_dir: Path, registry_path: Path | None) -> N
 
     staged = load_staged_clips() if registry_path is None else load_staged_clips(registry_path)
     run = json.loads((seg_dir / "run.json").read_text(encoding="utf-8"))
-    strata = {row["audio_filename"]: tuple(row["strata"]) for row in rows(selection_path)}
     clips = build_manifest(
-        rows(seg_dir / "clip_status.jsonl"), rows(seg_dir / "segmentation.jsonl"), strata, staged
+        rows(seg_dir / "clip_status.jsonl"), rows(seg_dir / "segmentation.jsonl"),
+        read_selected(selection_path), staged,
     )
     decodes = {
         segment_key(row["clip_audio_filename"], row["segment_index"]): row["predicted_phonemes"]

@@ -24,6 +24,7 @@ from tadabur.staged_audio import (
     load_staged_clips,
     read_shard_index,
     stage_clips,
+    verify_staged,
     write_staged_clips,
 )
 from tadabur.truth_sites import TruthSite, audio_sha256
@@ -200,18 +201,44 @@ def test_a_reciter_that_disagrees_with_the_index_is_refused(tmp_path):
                     lambda shard: iter(_shard(["a.wav"])))
 
 
-def test_a_resumed_run_skips_staged_clips_and_merges_their_uses(tmp_path):
-    index = {"a.wav": _index("a.wav", 4, 0)}
-    staged, _ = stage_clips({"a.wav": frozenset({MINING_POOL})}, index, tmp_path,
-                            lambda shard: iter(_shard(["a.wav"])))
+def test_a_resumed_run_reuses_verified_clips_with_the_uses_now_requested(tmp_path):
+    index = {"a.wav": _index("a.wav", 4, 0), "b.wav": _index("b.wav", 4, 1)}
+    staged, _ = stage_clips(
+        {"a.wav": frozenset({MINING_POOL}), "b.wav": frozenset({MINING_POOL})}, index,
+        tmp_path, lambda shard: iter(_shard(["a.wav", "b.wav"])))
 
     def no_reads(shard):
         raise AssertionError("a staged clip must not be read again")
 
     again, _ = stage_clips({"a.wav": frozenset({"p35_fixture"})}, index, tmp_path, no_reads,
                            registry=staged)
-    assert again["a.wav"].uses == (MINING_POOL, "p35_fixture")
+    assert list(again) == ["a.wav"]  # b.wav is no longer requested
+    assert again["a.wav"].uses == ("p35_fixture",)
     assert again["a.wav"].audio_sha256 == staged["a.wav"].audio_sha256
+
+
+@pytest.mark.parametrize("damage", ["replace", "truncate"])
+def test_a_reused_file_that_no_longer_matches_its_checksum_is_refused(tmp_path, damage):
+    index = {"a.wav": _index("a.wav", 4, 0)}
+    staged, _ = stage_clips({"a.wav": frozenset({MINING_POOL})}, index, tmp_path,
+                            lambda shard: iter(_shard(["a.wav"])))
+    path = tmp_path / "a.wav"
+    if damage == "replace":
+        sf.write(path, np.zeros(410, dtype=np.float32), 16000, subtype="PCM_16")
+    else:
+        path.write_bytes(path.read_bytes()[:-100])
+    with pytest.raises(ValueError, match="registry records"):
+        stage_clips({"a.wav": frozenset({MINING_POOL})}, index, tmp_path,
+                    lambda shard: iter(()), registry=staged)
+    with pytest.raises(ValueError, match="registry records"):
+        verify_staged(staged["a.wav"], tmp_path)
+
+
+def test_a_registry_row_that_disagrees_with_the_index_is_refused(tmp_path):
+    index = {"a.wav": _index("a.wav", 4, 0)}
+    with pytest.raises(ValueError, match="different rows"):
+        stage_clips({"a.wav": frozenset({MINING_POOL})}, index, tmp_path,
+                    lambda shard: iter(()), registry={"a.wav": _clip(shard=5, row_index=0)})
 
 
 def test_re_staging_must_reproduce_the_recorded_checksum(tmp_path):

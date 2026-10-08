@@ -13,16 +13,20 @@ from tadabur.mining_pool import (
     UNIFORM,
     PoolClip,
     PoolSegment,
+    Selected,
     build_manifest,
     capacity,
     census_frame,
     eligible,
     event_strata,
+    frame_record,
+    inclusion_probabilities,
     load_manifest,
     pool_shards,
     read_evalset_rows,
     read_selection,
     scan_events,
+    scan_identity,
     segment_key,
     select_pool,
     stratify,
@@ -59,7 +63,9 @@ def test_ineligible_rows_are_counted_by_reason():
     ]
     frame, excluded = eligible(rows, evalset_rows={(39, 3)})
     assert [r.audio_filename for r in frame] == ["ok.wav"]
-    assert excluded == {"in_decode_evalset": 1, "duration": 2, "phonetizer_unsupported": 1}
+    assert [(row.audio_filename, reason) for row, reason in excluded] == [
+        ("evalset.wav", "in_decode_evalset"), ("long.wav", "duration"),
+        ("short.wav", "duration"), ("unsupported.wav", "phonetizer_unsupported")]
 
 
 def _frame() -> list[IndexRow]:
@@ -138,7 +144,7 @@ def _segmentation() -> dict:
 
 
 def test_the_manifest_carries_sample_spans_clamped_to_the_staged_clip(tmp_path):
-    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: (UNIFORM,)}, _staged())
+    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: Selected((UNIFORM,), 0.5)}, _staged())
     (seg,) = clip.segments
     assert (seg.start_sample, seg.end_sample) == (1600, 32000)
     assert clip.word_times == (0.1, 1.0, 1.9) and seg.raw_word_offsets == (0, 5, 9)
@@ -150,12 +156,12 @@ def test_the_manifest_carries_sample_spans_clamped_to_the_staged_clip(tmp_path):
 
 def test_a_clip_not_staged_for_the_pool_is_refused():
     with pytest.raises(ValueError, match="not staged for the mining pool"):
-        build_manifest([_status()], [_segmentation()], {CLIP: (UNIFORM,)},
+        build_manifest([_status()], [_segmentation()], {CLIP: Selected((UNIFORM,), 0.5)},
                        _staged(uses=("p35_fixture",)))
 
 
 def test_loading_refuses_a_clip_whose_reciter_disagrees_with_the_registry(tmp_path):
-    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: (UNIFORM,)}, _staged())
+    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: Selected((UNIFORM,), 0.5)}, _staged())
     path = tmp_path / "clips.jsonl"
     write_manifest([PoolClip(**{**clip.__dict__, "reciter_id": 4})], path)
     with pytest.raises(ValueError, match="reciter or ayah"):
@@ -165,7 +171,7 @@ def test_loading_refuses_a_clip_whose_reciter_disagrees_with_the_registry(tmp_pa
 def test_capacity_counts_each_stratum_from_the_base_decode():
     segment = PoolSegment(0, 0, 2, 0, 100, REFERENCE, (0, 5, 9), True)
     dropped = PoolSegment(1, 2, 3, 100, 200, REFERENCE, (0, 9), False)
-    clip = PoolClip(CLIP, (UNIFORM,), "2:2", 3, 2, None, 0, 2, 0.0, 1.0, (0.0, 1.0), (segment, dropped))
+    clip = PoolClip(CLIP, (UNIFORM,), 0.5, "2:2", 3, 2, None, 0, 2, 0.0, 1.0, (0.0, 1.0), (segment, dropped))
     counts = capacity([clip], {segment_key(CLIP, 0): DECODE})
 
     # The dropped segment has no decode and is not counted.
@@ -180,11 +186,11 @@ def test_capacity_counts_each_stratum_from_the_base_decode():
 
 def test_a_selection_without_segmentation_is_refused():
     with pytest.raises(ValueError, match="different clips"):
-        build_manifest([_status()], [_segmentation()], {"other.wav": (UNIFORM,)}, _staged())
+        build_manifest([_status()], [_segmentation()], {"other.wav": Selected((UNIFORM,), 0.5)}, _staged())
 
 
 def test_loading_refuses_an_unknown_stratum(tmp_path):
-    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: (UNIFORM,)}, _staged())
+    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: Selected((UNIFORM,), 0.5)}, _staged())
     path = tmp_path / "clips.jsonl"
     write_manifest([PoolClip(**{**clip.__dict__, "strata": ("enriched",)})], path)
     with pytest.raises(ValueError, match="strata"):
@@ -252,3 +258,35 @@ def test_the_committed_pool_loads_and_matches_its_summary_and_decodes():
     kept = {segment_key(c.audio_filename, s.segment_index) for c in clips for s in c.segments
             if s.kept}
     assert kept == set(decodes)
+
+
+# --- inclusion probabilities and the frame ---------------------------------------------
+
+
+def test_inclusion_is_the_within_reciter_share_or_one_in_a_census():
+    frame = [_row(f"r1_{i}.wav", 1, row=i) for i in range(4)] + [_row("r2.wav", 2, row=9)]
+    uniform = [frame[0], frame[1], frame[4]]
+    strata = {"r1_0.wav": (UNIFORM,), "r1_1.wav": (UNIFORM, GEMINATE),
+              "r1_3.wav": (CONSONANT_PAIR,), "r2.wav": (UNIFORM,)}
+    assert inclusion_probabilities(frame, uniform, strata) == {
+        "r1_0.wav": 0.5, "r1_1.wav": 1.0, "r1_3.wav": 1.0, "r2.wav": 1.0}
+
+
+def test_the_frame_record_counts_eligible_excluded_and_drawn_clips():
+    frame = [_row("a.wav", 1), _row("b.wav", 1, row=1), _row("c.wav", 2, shard=58)]
+    excluded = [(_row("x.wav", 3, row=2), "duration")]
+    record = frame_record(frame, excluded, [frame[0]])
+    assert record["per_shard"]["39"] == {"eligible": 2, "excluded_duration": 1}
+    assert record["per_shard"]["58"] == {"eligible": 1}
+    assert record["per_reciter"]["1"] == {"eligible": 2, "uniform": 1, "drawn": True}
+    assert record["per_reciter"]["2"] == {"eligible": 1, "drawn": False}
+    assert (record["reciters_eligible"], record["reciters_drawn"]) == (2, 1)
+
+
+def test_a_scan_identity_changes_with_the_census_frame_and_the_decoder():
+    census = [_row("a.wav", 1), _row("b.wav", 1, row=1)]
+    base = scan_identity(census, {"model": "m"})
+    assert base == scan_identity(list(census), {"model": "m"})
+    assert base != scan_identity(census[:1], {"model": "m"})
+    assert base != scan_identity([census[0], _row("b.wav", 1, row=2)], {"model": "m"})
+    assert base != scan_identity(census, {"model": "other"})

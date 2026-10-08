@@ -18,8 +18,8 @@ decoded whole and passed through the same drop rules. Two things differ from
   segment that ends on ``ةً`` is realized ``ه``, not quran-transcript 0.5.2's ``تَاا``.
   Segment manifests built on the GPU box before that fix must not be reused.
 
-Audio is read back from the staged PCM_16 WAV, so every decode is of the file whose
-checksum the registry records.
+Audio is read back from the staged PCM_16 WAV, and every clip's checksum and length are
+verified against the registry first, so every decode is of the file the registry records.
 
 Outputs in ``--out-dir``, the first three in ``segment_score``'s own formats so the tools
 downstream of it (``training.windowed_labels``, ``training.tashkeel_worklist``) run on
@@ -61,7 +61,7 @@ from .segment_score import (
     write_pause_attributions,
     write_segment_manifest,
 )
-from .staged_audio import USES, StagedClip, load_staged_clips
+from .staged_audio import USES, StagedClip, load_staged_clips, verify_staged
 from .waqf_segments import SegmentRecord, hafs_segment_reference, hafs_word_reference
 
 #: The model every segmentation decode is made with: the frozen base teacher, in the bf16
@@ -166,7 +166,9 @@ def main() -> None:
     )
     if args.limit:
         clips = clips[: args.limit]
-    print(f"{len(clips)} clips staged for {args.use}", flush=True)
+    for clip in clips:  # every decode below must be of the bytes the registry records
+        verify_staged(clip, args.audio_dir)
+    print(f"{len(clips)} clips staged for {args.use}, checksums verified", flush=True)
 
     pauses = vad.compute_clip_pauses(
         clips, args.audio_dir, device=torch.device(args.device),

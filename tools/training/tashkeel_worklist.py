@@ -369,17 +369,20 @@ def read_worklist(path: Path) -> list[TashkeelSite]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from training.decoding import MODEL_REF_HELP, add_weights_dtype_argument
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--labels", type=Path, required=True,
                         help="windowed CTC labels JSONL (training.windowed_labels).")
     parser.add_argument("--audio-dir", type=Path, required=True,
                         help="staged 16 kHz clip directory.")
     parser.add_argument("--candidate", default=None,
-                        help="fine-tuned checkpoint (merged model dir or hub id). Omit to "
+                        help=f"candidate model ({MODEL_REF_HELP}). Omit to "
                              "mine the candidate-free static set, stratified on the frozen "
                              "base outcome, which can be labelled before a candidate exists.")
     parser.add_argument("--base", default="obadx/muaalem-model-v3_2",
-                        help="base checkpoint the candidate is compared against.")
+                        help=f"base model the candidate is compared against "
+                             f"({MODEL_REF_HELP}).")
     parser.add_argument("--split", default="val",
                         help="label split to mine (default: the held-out val split).")
     parser.add_argument("--limit", type=int, default=0,
@@ -390,6 +393,7 @@ def build_parser() -> argparse.ArgumentParser:
                              f"{DEFAULT_PER_BUCKET}; static default {STATIC_PER_BUCKET}).")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", default="cuda")
+    add_weights_dtype_argument(parser)
     parser.add_argument("--out", type=Path, required=True,
                         help="worklist JSONL; a '.summary.json' sidecar is written beside it.")
     return parser
@@ -414,13 +418,16 @@ def main() -> None:
         flush=True,
     )
 
-    base = _decode_windows(args.base, labels, args.audio_dir, args.batch_size, args.device)
+    def decode(model_ref: str) -> list[str]:
+        return _decode_windows(
+            model_ref, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
+        )
+
+    base = decode(args.base)
 
     rows: list[TashkeelSite] = []
     if args.candidate:
-        candidate = _decode_windows(
-            args.candidate, labels, args.audio_dir, args.batch_size, args.device
-        )
+        candidate = decode(args.candidate)
         for label, reference, base_decode, candidate_decode in zip(
             labels, references, base, candidate
         ):

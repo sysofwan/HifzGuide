@@ -417,7 +417,7 @@ def check_provenance(evalset: EvalSet, teacher_model_id: str) -> None:
     is checked **here**, in one place -- a second provenance check somewhere else is how one
     of them ends up unchecked.
     """
-    from training.distill_eval import PROTOCOL_VERSION
+    from training.decoding import PROTOCOL_VERSION
     from training.distill_loss import CONFIRM_TIMESTEPS
 
     # No threshold here: nothing this set is used for has one.
@@ -506,8 +506,7 @@ def build(
     from tadabur.reference_phonemes import load_reference_phonemes
     from tadabur.shard_reader import iter_shard_rows
     from training.distill_data import SAMPLE_RATE
-    from training.distill_eval import PROTOCOL_VERSION, confirmed_stream
-    from training.distill_gate import tokens_to_phonemes
+    from training.decoding import PROTOCOL_VERSION, Decoder
     from training.distill_loss import CONFIRM_TIMESTEPS
     from training.distill_student import TEACHER_MODEL_ID
     from training.distill_train import load_teacher
@@ -519,8 +518,12 @@ def build(
     clips_dir = Path(out_dir) / CLIPS_DIRNAME
     clips_dir.mkdir(parents=True, exist_ok=True)
 
-    teacher = load_teacher(device)
-    extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    teacher = Decoder(
+        load_teacher(device),
+        SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID),
+        device,
+        batch_size,
+    )
     # Only to resolve which ayah a clip is, so a row with no canonical reference can be
     # skipped -- the reference string itself plays no part in the decode or the metric.
     references = load_reference_phonemes()
@@ -556,9 +559,7 @@ def build(
                 num_skipped += 1
                 continue
 
-            text = tokens_to_phonemes(
-                confirmed_stream(teacher, extractor, samples, device, batch_size)
-            )
+            text = teacher.decode_stream(samples)
             num_scanned += 1
             reciter_id = int(row["reciter_id"])
             candidate = EvalClip(

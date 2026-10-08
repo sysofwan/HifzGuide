@@ -47,26 +47,20 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from training.distill_eval import CONFIRM_TIMESTEPS, levenshtein, scan_ctc
-from training.distill_student import DEPLOYED_LOGIT_FRAMES
-
-# Five 25-frame blocks per 125-frame window, one per second of the 5 s window.
-NUM_BLOCKS = DEPLOYED_LOGIT_FRAMES // CONFIRM_TIMESTEPS
+from training.decoding import NUM_BLOCKS, block_bounds, segments_between
+from training.distill_eval import levenshtein
 
 
 def block_tokens(class_ids, block: int) -> list[int]:
     """Tokens this window would commit if it committed block ``block`` instead of block 0.
 
-    Generalises the deployed commit rule -- a segment belongs to the block its **midpoint**
-    falls in -- so block 0 reproduces :func:`training.distill_eval.confirmed_tokens` exactly
-    and the other blocks are the same rule at a later offset. Using the midpoint (rather
-    than the start) is what keeps a run that straddles a boundary owned by exactly one block.
+    The deployed commit rule -- a segment belongs to the block its **midpoint** falls in --
+    at a later offset, so block 0 reproduces :func:`training.decoding.confirmed_tokens`
+    exactly. Using the midpoint (rather than the start) is what keeps a run that straddles a
+    boundary owned by exactly one block. This is one window's view; a whole clip streamed
+    at block ``b``, with its startup and flush, is :meth:`training.decoding.Decoder.emissions`.
     """
-    if not 0 <= block < NUM_BLOCKS:
-        raise ValueError(f"block must be in [0, {NUM_BLOCKS}), got {block}")
-    low = float(block * CONFIRM_TIMESTEPS)
-    high = low + CONFIRM_TIMESTEPS
-    return [seg.token_id for seg in scan_ctc(class_ids) if low <= seg.midpoint < high]
+    return [seg.token_id for seg in segments_between(class_ids, *block_bounds(block))]
 
 
 @dataclass
@@ -129,7 +123,6 @@ def tally_positions(
 
 
 def main() -> None:
-    import numpy as np
     import torch
     from transformers import SeamlessM4TFeatureExtractor
 
@@ -140,12 +133,7 @@ def main() -> None:
         read_clip_audio,
         scoring_batch_size,
     )
-    from training.distill_eval import (
-        SAMPLE_RATE,
-        WINDOW_SAMPLES,
-        clip_windows,
-        load_student_from_checkpoint,
-    )
+    from training.decoding import Decoder, load_student_from_checkpoint, window_audio
     from training.distill_student import TEACHER_MODEL_ID
     from training.distill_train import load_teacher
 
@@ -164,46 +152,29 @@ def main() -> None:
     check_provenance(evalset, TEACHER_MODEL_ID)
     batch_size = scoring_batch_size(evalset, args.batch_size)
 
-    teacher = load_teacher(device)
     student, _, step = load_student_from_checkpoint(
         args.checkpoint, device, use_ema=args.ema
     )
     extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    teacher_decoder = Decoder(load_teacher(device), extractor, device, batch_size)
+    student_decoder = Decoder(student, extractor, device, batch_size)
     clips_dir = Path(args.eval_set) / CLIPS_DIRNAME
     clips = evalset.subset(args.split)
     if args.limit:
         clips = clips[: args.limit]
     print(f"[setup] {len(clips)} {args.split} clips, batch {batch_size}, step {step}")
 
-    @torch.no_grad()
-    def rows_for(model, windows):
-        out = []
-        for offset in range(0, len(windows), batch_size):
-            batch = windows[offset : offset + batch_size]
-            features = extractor(
-                batch, sampling_rate=SAMPLE_RATE, return_tensors="pt", padding=True
-            ).input_features.to(device)
-            with torch.autocast("cuda", dtype=torch.bfloat16):
-                logits = model(features, return_dict=True)["logits"]["phonemes"]
-            out.extend(logits.float().argmax(dim=-1).cpu().numpy()[:, :DEPLOYED_LOGIT_FRAMES])
-        return out
-
     agreement = [PositionTally() for _ in range(NUM_BLOCKS)]
     consistency = [PositionTally() for _ in range(NUM_BLOCKS)]
 
     for index, clip in enumerate(clips, start=1):
-        samples = read_clip_audio(clips_dir, clip.filename)
-        starts = clip_windows(len(samples))
-        if len(starts) < 2:
+        windows = window_audio(read_clip_audio(clips_dir, clip.filename))
+        if len(windows) < 2:
             continue  # a single-window clip cannot compare positions
-        windows = []
-        for start in starts:
-            chunk = samples[start : start + WINDOW_SAMPLES]
-            if len(chunk) < WINDOW_SAMPLES:
-                chunk = np.pad(chunk, (0, WINDOW_SAMPLES - len(chunk)))
-            windows.append(chunk)
 
-        a, c = tally_positions(rows_for(teacher, windows), rows_for(student, windows))
+        a, c = tally_positions(
+            teacher_decoder.window_rows(windows), student_decoder.window_rows(windows)
+        )
         for b in range(NUM_BLOCKS):
             for dst, src in ((agreement, a), (consistency, c)):
                 dst[b].edits += src[b].edits

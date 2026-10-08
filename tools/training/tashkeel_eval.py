@@ -42,13 +42,18 @@ train by construction (:func:`training.windowed_labels.split_by_reciter`), and c
 exact ``[start_sample, num_samples)`` training geometry, so the gate measures the model on the
 unit it was actually trained on.
 
+Each window is decoded whole through :class:`training.decoding.Decoder`, so ``--model`` and
+``--baseline`` take any model reference -- the base teacher's hub id, a merged model
+directory, or a distilled student's checkpoint -- and are decoded at one precision
+(``--weights-dtype``).
+
 Runs on Linux + CUDA (see ``tools/README.md``).
 
 Usage:
   python -m training.tashkeel_eval \\
       --labels audit_run/seg_v21/windowed_labels_v2.jsonl \\
       --audio-dir audit_run/clips_v2 \\
-      --model audit_run/seg_v21/rung3/merged \\
+      --model runs/h448_stream/checkpoint.pt \\
       --out audit_run/seg_v21/tashkeel_eval.json
 """
 
@@ -59,8 +64,6 @@ import json
 import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
-
-import numpy as np
 
 from tadabur.smith_waterman import smith_waterman
 
@@ -473,37 +476,43 @@ def coverage_of(labels) -> dict:
     }
 
 
-def _decode_windows(model_id: str, labels, audio_dir: Path, batch_size: int, device: str):
-    """Decode each window's exact training audio span with ``model_id``."""
-    from tadabur.audio import TARGET_SAMPLE_RATE
-    from tadabur.inference import MuaalemPhonemeModel
+def _decode_windows(
+    model_ref: str, labels, audio_dir: Path, batch_size: int, device: str, weights_dtype: str
+) -> list[str]:
+    """Decode each window's exact training audio span, whole, with ``model_ref``.
+
+    ``model_ref`` is anything :meth:`training.decoding.Decoder.load` resolves -- the base
+    teacher's hub id or a distilled student's checkpoint -- so every model is scored through
+    one loader and one numeric policy. The model is released on return, so a candidate and
+    its baseline are never resident together.
+    """
+    from training.decoding import WEIGHTS_DTYPES, Decoder
     from training.windowed_batch import ClipAudioCache
 
     cache = ClipAudioCache(audio_dir)
-    model = MuaalemPhonemeModel.load(model_id, device=device)
-    decodes: list[str] = []
-    for start in range(0, len(labels), batch_size):
-        chunk = labels[start : start + batch_size]
-        waves = []
-        for label in chunk:
-            waveform = cache.waveform(label.clip_audio_filename)
-            end = label.start_sample + label.num_samples
-            waves.append(np.asarray(waveform[label.start_sample : end], dtype=np.float32))
-        decodes.extend(d.phonemes for d in model.decode_batch(waves, TARGET_SAMPLE_RATE))
-    del model
-    return decodes
+    decoder = Decoder.load(
+        model_ref, device, weights_dtype=WEIGHTS_DTYPES[weights_dtype], batch_size=batch_size
+    )
+    return decoder.decode_spans(
+        cache.waveform(label.clip_audio_filename)[
+            label.start_sample : label.start_sample + label.num_samples
+        ]
+        for label in labels
+    )
 
 
 def main() -> None:
+    from training.decoding import MODEL_REF_HELP, add_weights_dtype_argument
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--labels", type=Path, required=True,
                         help="windowed CTC labels JSONL (training.windowed_labels).")
     parser.add_argument("--audio-dir", type=Path, required=True,
                         help="staged 16 kHz clip directory.")
     parser.add_argument("--model", required=True,
-                        help="candidate checkpoint (merged model dir or hub id).")
+                        help=f"candidate model: {MODEL_REF_HELP}.")
     parser.add_argument("--baseline", default="obadx/muaalem-model-v3_2",
-                        help="baseline checkpoint scored on the same windows; "
+                        help=f"baseline model scored on the same windows ({MODEL_REF_HELP}); "
                              "'none' to skip the no-regression check.")
     parser.add_argument("--split", default="val",
                         help="label split to score (default: the held-out val split).")
@@ -512,6 +521,7 @@ def main() -> None:
                              "across the whole split (default 0 = all of it).")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", default="cuda")
+    add_weights_dtype_argument(parser)
     parser.add_argument("--min-recall", type=float, default=DEFAULT_MIN_RECALL)
     parser.add_argument("--tolerance", type=float, default=DEFAULT_REGRESSION_TOLERANCE)
     parser.add_argument("--out", type=Path, required=True)
@@ -533,22 +543,20 @@ def main() -> None:
         flush=True,
     )
 
-    candidate = score_windows(
-        _decode_windows(args.model, labels, args.audio_dir, args.batch_size, args.device),
-        references, args.model,
-    )
+    def decode(model_ref: str) -> list[str]:
+        return _decode_windows(
+            model_ref, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
+        )
+
+    candidate = score_windows(decode(args.model), references, args.model)
     baseline = None
     if args.baseline.lower() != "none":
-        baseline = score_windows(
-            _decode_windows(
-                args.baseline, labels, args.audio_dir, args.batch_size, args.device
-            ),
-            references, args.baseline,
-        )
+        baseline = score_windows(decode(args.baseline), references, args.baseline)
 
     verdict = gate(candidate, baseline, args.min_recall, args.tolerance)
     report = {
         "coverage": coverage,
+        "weights_dtype": args.weights_dtype,
         "candidate": candidate.to_dict(),
         "baseline": baseline.to_dict() if baseline else None,
         "gate": verdict,

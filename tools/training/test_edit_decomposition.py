@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import pytest
 
-from training.distill_eval import CONFIRM_TIMESTEPS, Emission, levenshtein
+from training.decoding import Emission
+from training.distill_eval import levenshtein
+from training.distill_loss import CONFIRM_TIMESTEPS
 from training import edit_decomposition as ed
 
 

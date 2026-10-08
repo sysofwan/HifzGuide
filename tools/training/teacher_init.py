@@ -763,7 +763,8 @@ def initial_agreement(student, teacher, batches: list[torch.Tensor]) -> dict:
     transplant that improves KL while leaving decoded agreement at zero is a transplant that
     has learned the blank distribution and nothing else.
     """
-    from training.distill_eval import confirmed_tokens, levenshtein
+    from training.decoding import confirmed_tokens
+    from training.distill_eval import levenshtein
     from training.distill_loss import CONFIRM_TIMESTEPS, agreement_stats, frame_weights, weighted_kl
 
     totals = {"kl": 0.0, "confirmed_agreement": 0.0, "nonblank_agreement": 0.0}

@@ -336,6 +336,14 @@ number this work is accountable for. See ADR-0010.
   after four full runs had been spent on the wrong hypotheses. Also reports per-term gradient
   norms, which is how a term reading 3.3 against the KL's 6.5 was found to dominate the update.
 
+- **`decoding`** — the one decode interface. `Decoder.load(model_ref, device,
+  weights_dtype=...)` takes the teacher's hub id, a saved model directory or a distillation
+  checkpoint, and decodes either whole spans (`decode_spans`) or a clip through the streaming
+  protocol committing block `b` of each 5 s window (`decode_stream`, `emissions`; `b=0` is
+  what Muraja ships). It is the only implementation of that protocol; the module docstring
+  states the startup rule for `b > 0`. `tashkeel_eval`, `tashkeel_outcomes` and
+  `tashkeel_worklist` decode through it, so they take a student checkpoint too.
+
 - **`distill_eval`** — the release gate. Replays the deployed protocol (5 s window, 1 s hop,
   `scanCTC` collapse, `midpoint < 25` confirmation) and compares the **confirmed transcripts**.
   `--breakout` reports distance-from-breakout while a student is still blank-collapsed, when

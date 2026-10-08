@@ -130,7 +130,7 @@ def test_load_manifest_round_trips_a_written_set(tmp_path: Path):
 
 
 def test_check_provenance_refuses_a_different_bar_teacher_or_protocol():
-    from training.distill_eval import PROTOCOL_VERSION
+    from training.decoding import PROTOCOL_VERSION
     from training.distill_loss import CONFIRM_TIMESTEPS
 
     good = _evalset(

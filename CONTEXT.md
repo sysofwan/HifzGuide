@@ -138,6 +138,13 @@ the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you
   **not** the fine-tune's success metric (ADR-0005, ADR-0008).
 : _Avoid_: Eval, metric, the scorer (unqualified)
 
+**Commit block**
+: The one-second block of each 5 s streaming window (25 of its 125 CTC timesteps) that the
+  streaming protocol commits to the transcript; the rest is re-decoded by later windows.
+  Muraja commits **b=0**, the oldest second (no left context, 4 s of right). At `b > 0` the
+  first window also commits the blocks before `b`, because no earlier window covers them, and
+  the last window flushes the blocks after it (`training.decoding`).
+
 **match_ratio**
 : The gate's score — Smith-Waterman alignment score over query phoneme count. Computed after
   `normalize_phonemes`, so it is **vowel-blind by construction**: a decode with every short vowel

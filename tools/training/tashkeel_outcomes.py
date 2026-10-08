@@ -20,6 +20,10 @@ checkpoint put the reference vowel on the reference carrier, and everything in
 recorded as ``unanchored`` by the same rules the aggregate report uses, so a number from
 here and a number from ``tashkeel_eval`` cannot disagree about what "failed" means.
 
+``--model`` is any reference :class:`training.decoding.Decoder` loads -- the base teacher's
+hub id, a merged model directory, or a distilled student's checkpoint -- so the base model
+and ``h448`` are scored at the same sites the same way.
+
 Runs on Linux + CUDA (see ``tools/README.md``).
 
 Usage::
@@ -28,7 +32,7 @@ Usage::
         --worklist  audit_run/seg_v21/tashkeel_static.jsonl \\
         --labels    audit_run/seg_v21/windowed_labels_v2.jsonl \\
         --audio-dir audit_run/clips_v2 \\
-        --model     audit_run/seg_v21/rung4/merged \\
+        --model     runs/h448_stream/checkpoint.pt \\
         --out       audit_run/seg_v21/tashkeel_outcomes_rung4.jsonl
 """
 
@@ -179,6 +183,8 @@ def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from training.decoding import MODEL_REF_HELP, add_weights_dtype_argument
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worklist", type=Path, required=True,
                         help="the audited worklist (training.tashkeel_worklist).")
@@ -187,11 +193,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--audio-dir", type=Path, required=True,
                         help="staged 16 kHz clip directory.")
     parser.add_argument("--model", required=True,
-                        help="checkpoint to score at the audited sites.")
+                        help=f"model to score at the audited sites: {MODEL_REF_HELP}.")
     parser.add_argument("--split", default="val",
                         help="label split the worklist was mined from.")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", default="cuda")
+    add_weights_dtype_argument(parser)
     parser.add_argument("--out", type=Path, required=True, help="outcomes JSONL.")
     return parser
 
@@ -227,7 +234,9 @@ def main() -> None:
         flush=True,
     )
 
-    decodes = _decode_windows(args.model, labels, args.audio_dir, args.batch_size, args.device)
+    decodes = _decode_windows(
+        args.model, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
+    )
 
     rows: list[SiteOutcome] = []
     for label, decode in zip(labels, decodes):

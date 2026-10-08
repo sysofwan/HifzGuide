@@ -1,116 +1,15 @@
-"""Tests for the confirmed-stream release gate.
+"""Tests for the confirmed-stream release gate's metrics.
 
-The gate's job is to replay the deployed protocol exactly. If ``scan_ctc`` or the
-``midpoint < 25`` split drift from what ``MuaalemInference.predictSplit`` does, the number
-it reports stops predicting what Muraja will show and the whole measurement is worthless.
-These pin the replay against the Swift semantics; the model-running half needs a GPU and is
-exercised by the real eval run.
+The replay of the deployed protocol it scores is pinned in ``test_decoding``.
 """
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 from training.decode_evalset import SCHEMA_VERSION
 
 from training import distill_eval as de
-from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS
-
-
-def _ids(*tokens: int) -> np.ndarray:
-    return np.array(tokens, dtype=np.int64)
-
-
-# --- CTC collapse, mirroring Swift's scanCTC ----------------------------------------
-
-
-def test_scan_ctc_merges_a_run_into_one_segment():
-    segments = de.scan_ctc(_ids(0, 7, 7, 7, 0))
-    assert len(segments) == 1
-    assert segments[0].token_id == 7
-    assert (segments[0].start_step, segments[0].end_step) == (1, 3)
-
-
-def test_blank_separates_repeated_tokens():
-    """The entire point of the CTC blank: 7 blank 7 is two tokens, not one."""
-    segments = de.scan_ctc(_ids(7, 0, 7))
-    assert [s.token_id for s in segments] == [7, 7]
-
-
-def test_adjacent_identical_tokens_collapse_to_one():
-    segments = de.scan_ctc(_ids(7, 7, 7))
-    assert [s.token_id for s in segments] == [7]
-
-
-def test_blank_runs_are_never_emitted():
-    assert de.scan_ctc(_ids(0, 0, 0)) == []
-
-
-def test_a_segment_running_to_the_end_is_closed():
-    """A token still open at the last timestep must still be emitted."""
-    segments = de.scan_ctc(_ids(0, 9, 9))
-    assert [s.token_id for s in segments] == [9]
-    assert segments[0].end_step == 2
-
-
-def test_midpoint_is_the_centre_of_the_run():
-    segments = de.scan_ctc(_ids(0, 5, 5, 5, 0))
-    assert segments[0].midpoint == pytest.approx(2.0)
-
-
-# --- The confirmation split ---------------------------------------------------------
-
-
-def test_only_segments_before_the_split_are_confirmed():
-    """`predictSplit` commits on `seg.midpoint < 25` -- the OLDEST second of the buffer."""
-    ids = np.zeros(125, dtype=np.int64)
-    ids[5:8] = 7        # midpoint 6 -> confirmed
-    ids[60:63] = 9      # midpoint 61 -> not confirmed
-    assert de.confirmed_tokens(ids) == [7]
-
-
-def test_a_segment_straddling_the_split_goes_by_its_midpoint():
-    """Not by its start or end -- the midpoint is what Swift compares."""
-    ids = np.zeros(125, dtype=np.int64)
-    ids[20:32] = 7      # spans the boundary; midpoint 25.5 -> NOT confirmed
-    assert de.confirmed_tokens(ids) == []
-
-    ids = np.zeros(125, dtype=np.int64)
-    ids[18:30] = 7      # midpoint 23.5 -> confirmed
-    assert de.confirmed_tokens(ids) == [7]
-
-
-def test_confirmation_boundary_is_exclusive():
-    ids = np.zeros(125, dtype=np.int64)
-    ids[CONFIRM_TIMESTEPS] = 7          # midpoint exactly 25 -> not confirmed
-    assert de.confirmed_tokens(ids) == []
-
-    ids = np.zeros(125, dtype=np.int64)
-    ids[CONFIRM_TIMESTEPS - 1] = 7      # midpoint 24 -> confirmed
-    assert de.confirmed_tokens(ids) == [7]
-
-
-def test_blank_is_never_confirmed():
-    assert de.confirmed_tokens(np.zeros(125, dtype=np.int64)) == []
-    assert BLANK_ID == 0
-
-
-# --- Window scheduling --------------------------------------------------------------
-
-
-def test_windows_advance_by_one_second():
-    starts = de.clip_windows(de.WINDOW_SAMPLES + 3 * de.HOP_SAMPLES)
-    assert starts == [0, de.HOP_SAMPLES, 2 * de.HOP_SAMPLES, 3 * de.HOP_SAMPLES]
-
-
-def test_a_clip_shorter_than_one_window_yields_a_single_padded_pass():
-    assert de.clip_windows(de.WINDOW_SAMPLES // 2) == [0]
-
-
-def test_no_window_runs_off_the_end():
-    starts = de.clip_windows(de.WINDOW_SAMPLES + 12345)
-    assert all(s + de.WINDOW_SAMPLES <= de.WINDOW_SAMPLES + 12345 for s in starts)
 
 
 # --- Stream comparison --------------------------------------------------------------
@@ -219,71 +118,6 @@ def test_bias_lead_is_measured_against_the_best_competitor():
     )
     assert head.bias_lead == pytest.approx(0.1)
     assert not head.is_degenerate()
-
-
-# --- The silence flush (PROTOCOL_VERSION confirmed-stream-v2-flush) ---
-
-
-def test_only_the_last_window_flushes():
-    from training.distill_eval import CONFIRM_TIMESTEPS, DEPLOYED_LOGIT_FRAMES, confirm_split_for_window
-
-    assert confirm_split_for_window(0, 4) == CONFIRM_TIMESTEPS
-    assert confirm_split_for_window(3, 4) == CONFIRM_TIMESTEPS
-    assert confirm_split_for_window(4, 4) == DEPLOYED_LOGIT_FRAMES
-
-
-def test_a_single_window_clip_is_flushed_entirely():
-    """A clip under 5 s is one padded window. Unflushed, it is gated on its first second."""
-    from training.distill_eval import DEPLOYED_LOGIT_FRAMES, confirm_split_for_window
-
-    assert confirm_split_for_window(0, 0) == DEPLOYED_LOGIT_FRAMES
-
-
-def test_the_flush_can_be_turned_off_to_reproduce_the_old_protocol():
-    from training.distill_eval import CONFIRM_TIMESTEPS, confirm_split_for_window
-
-    assert confirm_split_for_window(4, 4, flush_tail=False) == CONFIRM_TIMESTEPS
-    assert confirm_split_for_window(0, 0, flush_tail=False) == CONFIRM_TIMESTEPS
-
-
-def test_flushing_adds_the_tail_of_its_own_window():
-    """The flush adds this window's steps [25, 125), which no later window exists to decode.
-
-    Scoped deliberately to one window. It does NOT show that no token is emitted twice across
-    the corpus: a run straddling the confirmation boundary commits in one window by midpoint
-    and again from the next window's opening steps, which predates the flush and is faithful
-    to ``predictSplit``. See the module docstring.
-    """
-    import numpy as np
-
-    from training.distill_eval import CONFIRM_TIMESTEPS, confirmed_tokens
-
-    # A run in the confirmed region and a run in the flushed tail.
-    ids = np.array([5] * 10 + [0] * 40 + [7] * 20 + [0] * 55)
-    assert confirmed_tokens(ids, CONFIRM_TIMESTEPS) == [5]
-    flushed = confirmed_tokens(ids, 125)
-    assert flushed == [5, 7]
-    assert flushed[: len(confirmed_tokens(ids, CONFIRM_TIMESTEPS))] == [5]
-
-
-def test_a_segment_straddling_the_boundary_is_emitted_by_both_windows():
-    """Documents a real double-emission, so nobody re-derives it as a surprise.
-
-    A run at steps 18-29 has midpoint 23.5 and commits from this window. One second later the
-    same audio sits at steps 0-4 of the next window and commits again. This predates the
-    flush and is faithful to ``predictSplit``; it is pinned here so the behaviour is a
-    recorded property rather than an assumed absence.
-    """
-    import numpy as np
-
-    from training.distill_eval import CONFIRM_TIMESTEPS, confirmed_tokens
-
-    window_k = np.array([0] * 18 + [9] * 12 + [0] * 95)
-    assert confirmed_tokens(window_k, CONFIRM_TIMESTEPS) == [9]
-
-    # Advance one second: 25 timesteps. The run's surviving portion opens the next window.
-    window_k1 = np.array([9] * 5 + [0] * 120)
-    assert confirmed_tokens(window_k1, CONFIRM_TIMESTEPS) == [9]
 
 
 # --- Decode agreement: the distillation metric ---

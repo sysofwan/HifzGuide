@@ -63,14 +63,11 @@ def window_features(extractor, samples, frames: int = 250):
     it is given and the device normalises over the 5 s window, so slicing afterwards trains
     and measures on a distribution the device never produces.
     """
-    from training.distill_data import SAMPLE_RATE, WINDOW_SAMPLES
-    from training.distill_eval import clip_windows
+    from training.decoding import window_audio
+    from training.distill_data import SAMPLE_RATE
 
     out = []
-    for start in clip_windows(len(samples)):
-        chunk = samples[start : start + WINDOW_SAMPLES]
-        if len(chunk) < WINDOW_SAMPLES:
-            chunk = np.pad(chunk, (0, WINDOW_SAMPLES - len(chunk)))
+    for chunk in window_audio(samples):
         extracted = extractor(
             chunk, sampling_rate=SAMPLE_RATE, return_tensors="np", padding=False
         )
@@ -82,16 +79,14 @@ def window_features(extractor, samples, frames: int = 250):
 
 
 def decode_windows(logits_for_window, windows) -> str:
-    """Confirm each window's oldest second, flush the last, and map to phonemes."""
-    from training.distill_eval import DEPLOYED_LOGIT_FRAMES, confirm_split_for_window, confirmed_tokens
-    from training.distill_gate import tokens_to_phonemes
+    """Stream the windows through the deployed protocol and map to phonemes."""
+    from training.decoding import stream_emissions, tokens_to_phonemes
+    from training.distill_student import DEPLOYED_LOGIT_FRAMES
 
-    last = len(windows) - 1
-    stream: list[int] = []
-    for index, features in enumerate(windows):
-        ids = logits_for_window(features)[:DEPLOYED_LOGIT_FRAMES].argmax(-1)
-        stream.extend(confirmed_tokens(ids, confirm_split_for_window(index, last)))
-    return tokens_to_phonemes(stream)
+    rows = [
+        logits_for_window(features)[:DEPLOYED_LOGIT_FRAMES].argmax(-1) for features in windows
+    ]
+    return tokens_to_phonemes(e.token_id for e in stream_emissions(rows))
 
 
 def main() -> None:

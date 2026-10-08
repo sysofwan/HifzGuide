@@ -6,11 +6,11 @@ fallback) and applying the scorer's normalization (``tadabur.normalization``) so
 the reference matches what the ``.balanced`` scorer compares against. Results are
 cached to a single JSON file keyed by ``surah:ayah`` — computed once and reused
 across all reciters. The cache is wrapped in a versioned envelope
-(``CACHE_VERSION``, tied to ``normalization.ALGORITHM_VERSION``); a warm cache is
-trusted only when it validates (matching version, the exact canonical 6236
-``surah:ayah`` key set, and the normalized fallback sentinels), so a stale or
-partial cache is rebuilt rather than silently reused. Regeneration is
-deterministic and idempotent.
+(``CACHE_VERSION``, tied to ``normalization.ALGORITHM_VERSION`` and
+``hafs_phonetizer.REVISION``); a warm cache is trusted only when it validates
+(matching version, the exact canonical 6236 ``surah:ayah`` key set, and the
+normalized fallback sentinels), so a stale or partial cache is rebuilt rather
+than silently reused. Regeneration is deterministic and idempotent.
 
 Usage:
   python3 -m tadabur.reference_phonemes [--cache PATH] [--rebuild]
@@ -28,6 +28,7 @@ if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
 import generate_phonemes  # noqa: E402  (tools/ sibling module)
+import hafs_phonetizer  # noqa: E402  (tools/ sibling module)
 
 from . import normalization
 from .normalization import normalize_phonemes
@@ -36,9 +37,12 @@ DEFAULT_CACHE_PATH = Path(__file__).parent / "cache" / "reference_phonemes.json"
 
 # Cache-envelope schema/version. A warm cache is only trusted when it carries a
 # matching version; this invalidates caches produced by an older normalization
-# algorithm (``normalization.ALGORITHM_VERSION``) or an earlier envelope schema.
+# algorithm (``normalization.ALGORITHM_VERSION``), an older revision of the shared
+# phonetizer entry point (``hafs_phonetizer.REVISION``) or an earlier envelope schema.
 # Bump the schema part ("v1") if the on-disk envelope layout changes.
-CACHE_VERSION = f"v1+norm{normalization.ALGORITHM_VERSION}"
+CACHE_VERSION = (
+    f"v1+norm{normalization.ALGORITHM_VERSION}+phon{hafs_phonetizer.REVISION}"
+)
 
 
 def build_reference_phonemes(

@@ -2,11 +2,12 @@
 """
 Generate ayah_phonemes.json using the quran-transcript library.
 
-Uses quran_phonetizer() to produce phonetic transcriptions from Uthmani text
-for all 6236 ayahs. Falls back to hardcoded phonemes for the 8 ayahs where the
+Uses hafs_phonetizer.phonetize() (quran_phonetizer with the Hafs moshaf and the
+pausal-form fix) to produce phonetic transcriptions from Uthmani text for all
+6236 ayahs. Falls back to hardcoded phonemes for the 8 ayahs where the
 library has a bug (leen madd handling on ayahs ending in sukoon).
 
-Requires: pip install quran-transcript
+Requires: pip install quran-transcript==0.5.2 (see tools/requirements-train.txt)
 
 Usage:
   python3 generate_phonemes.py
@@ -14,6 +15,8 @@ Usage:
 
 import json
 from pathlib import Path
+
+from hafs_phonetizer import phonetize
 
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
@@ -51,15 +54,6 @@ def expected_ayah_keys() -> frozenset[str]:
         for ayah in range(1, count + 1)
     )
 
-# Hafs recitation, matching the reference labels the Muaalem model was trained on.
-HAFS_MOSHAF = dict(
-    rewaya="hafs",
-    madd_monfasel_len=4,
-    madd_mottasel_len=4,
-    madd_mottasel_waqf=6,
-    madd_aared_len=2,
-)
-
 # Ayahs where quran-transcript's phonetizer raises (leen madd on a final sukoon).
 # Phonemes extracted from the muaalem-annotated-v3 dataset with word boundaries
 # manually verified. This is the canonical source of the 8-ayah fallback; other
@@ -85,10 +79,7 @@ def generate_reference_phonemes() -> dict[str, str]:
     The result is asserted to be the exact canonical key set (``expected_ayah_keys``)
     before returning, so a dropped or spurious ayah fails loudly.
     """
-    from quran_transcript import Aya, quran_phonetizer
-    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
-
-    moshaf = MoshafAttributes(**HAFS_MOSHAF)
+    from quran_transcript import Aya
 
     phonemes: dict[str, str] = {}
     for sura in range(1, 115):
@@ -97,7 +88,7 @@ def generate_reference_phonemes() -> dict[str, str]:
             key = f"{sura}:{ayah}"
             try:
                 seg = Aya(sura, ayah).get()
-                phonemes[key] = quran_phonetizer(seg.uthmani, moshaf).phonemes
+                phonemes[key] = phonetize(seg.uthmani).phonemes
             except KeyError:
                 # The phonetizer raises KeyError on the 8 leen-madd-on-sukoon
                 # ayahs; anything else with this key is unexpected — surface it.

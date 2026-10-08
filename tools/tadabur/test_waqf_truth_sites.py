@@ -33,7 +33,6 @@ from tadabur.waqf_truth_sites import (
     clip_edges,
     convert,
     final_mark,
-    pausal_taa_marbuta,
     read_boundaries,
     recited_runs,
     summary_table,
@@ -418,12 +417,6 @@ def test_hafs_realizer_reports_an_unsupported_waqf():
 
 
 # --- pausal forms ----------------------------------------------------------------------
-
-
-def test_pausal_taa_marbuta_rewrites_only_a_final_tanween_fatha_on_taa_marbuta():
-    assert pausal_taa_marbuta("رَحْمَةًۭ") == "رَحْمَةَ"
-    for word in ("رَحْمَةٌۭ", "رَحْمَةٍۢ", "عَلِيمًا", "بِنَآءًۭ", "قَالَ"):
-        assert pausal_taa_marbuta(word) == word
 
 
 @pytest.mark.parametrize(

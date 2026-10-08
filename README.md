@@ -58,7 +58,7 @@ pip install -r tools/requirements.txt
 the phoneme tables are written empty):
 
 ```bash
-conda activate hifzguide          # or: pip install quran-transcript
+conda activate hifzguide          # or: pip install quran-transcript==0.5.2
 python tools/generate_quran_db.py # builds quran.db from data/ sources
 ```
 

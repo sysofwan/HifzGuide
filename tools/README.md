@@ -422,12 +422,16 @@ python convert_to_coreml.py [--output-dir ./coreml_models] [--skip-quantization]
 
 ### `generate_phonemes.py`
 
-Downloads the `obadx/muaalem-annotated-v3` dataset from Hugging Face and reconstructs per-ayah phoneme reference strings. Merges overlapping segments, deduplicates, and selects the most complete variant per ayah.
+Phonetizes all 6,236 ayahs into per-ayah phoneme reference strings with `hafs_phonetizer.phonetize`. The 8 ayahs the phonetizer cannot handle use a hard-coded fallback.
 
 ```bash
 python generate_phonemes.py
-# Output: ayah_phonemes.json
+# Output: ../data/ayah_phonemes.json
 ```
+
+### `hafs_phonetizer.py`
+
+The repo's only entry point to quran-transcript's `quran_phonetizer`. It applies the Hafs moshaf and fixes the pausal form of a final `ةً`, which quran-transcript 0.5.2 renders as `تَاا` instead of `ه`. Every phonetized reference goes through it: `quran.db`, the scorer gate's reference cache, waqf-segment references and truth sites. See `docs/pausal-taa-marbuta.md` for the affected ayahs and for why the library is pinned to 0.5.2.
 
 ### `palettize_chunks.py`
 

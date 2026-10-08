@@ -31,6 +31,7 @@ from pathlib import Path
 from collections import defaultdict
 
 from generate_phonemes import FALLBACK_PHONEMES as _FALLBACK_PHONEMES
+from hafs_phonetizer import phonetize
 
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
@@ -43,16 +44,7 @@ IMLAEI_PATH = DATA_DIR / "imlaei.json"
 OUTPUT_PATH = SCRIPT_DIR / "quran.db"
 
 try:
-    from quran_transcript import Aya, quran_phonetizer, chunck_phonemes
-    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
-
-    MOSHAF = MoshafAttributes(
-        rewaya="hafs",
-        madd_monfasel_len=4,
-        madd_mottasel_len=4,
-        madd_mottasel_waqf=6,
-        madd_aared_len=2,
-    )
+    from quran_transcript import Aya, chunck_phonemes
     HAS_QURAN_TRANSCRIPT = True
 except ImportError:
     HAS_QURAN_TRANSCRIPT = False
@@ -156,12 +148,12 @@ def merge_muqattaat_phonemes(phon_str: str, text_words: list[tuple[int, str]]) -
 # ---------------------------------------------------------------------------
 
 def _phonetize_ayah(surah: int, ayah: int):
-    """Run quran_phonetizer for an ayah. Returns (uthmani, result) or None."""
+    """Phonetize an ayah (``hafs_phonetizer.phonetize``). Returns (uthmani, result) or None."""
     if not HAS_QURAN_TRANSCRIPT:
         return None
     try:
         seg = Aya(surah, ayah).get()
-        result = quran_phonetizer(seg.uthmani, MOSHAF)
+        result = phonetize(seg.uthmani)
         return seg.uthmani, result
     except Exception:
         return None

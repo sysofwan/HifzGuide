@@ -56,4 +56,23 @@ existing registry it verifies every re-staged clip against its recorded checksum
 
 ## The 2026-10-08 staging run
 
-STAGING_RUN_PLACEHOLDER
+3,026 clips, 12.7 h of audio, **1.4 GB** of PCM_16 WAV, staged on the GPU box under
+`/root/scratch/issue-83/stage/clips/`. Shards were downloaded into a cache of the run's own
+and deleted once consumed, so no more than one 2.4 GB shard was ever on disk; the staged
+audio is the only lasting footprint.
+
+| uses | clips | from |
+|---|---|---|
+| `waqf_boundary` | 122 | shards 0-19 |
+| `p35_fixture` | 205 | shards 0-19 |
+| `p35_fixture`, `waqf_boundary` | 1 | shards 0-19 |
+| `mining_pool` | 2,698 | the 19 reserve shards 39-381 |
+
+Every clip behind a committed label was found and re-staged: all 123 waqf-boundary clips
+with sites (1,792 sites, now carrying `shard`, `end_sample` and `audio_sha256`) and all 206
+P3.5 fixture clips. **No clip was lost.** Every truth site was verified against the staged
+audio with `load_truth_sites(path, audio_dir=...)`.
+
+Reciters: the shards `h448` never trained on (0-20 and the 19 reserve shards) hold 581
+reciters. The labels use 148, the mining pool 394, together 430; **151 reciters (2,466
+clips in those shards) are untouched** by anything here, for the sealed panel (#89).

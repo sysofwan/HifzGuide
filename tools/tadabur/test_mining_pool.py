@@ -235,3 +235,20 @@ def test_a_selection_reads_back_as_index_rows(tmp_path):
     row = _row("a.wav", 4, shard=58, row=9)
     path.write_text(json.dumps({**row.__dict__, "strata": ["uniform"]}) + "\n", encoding="utf-8")
     assert read_selection(path) == [row]
+
+
+# --- the committed pool ----------------------------------------------------------------
+
+
+def test_the_committed_pool_loads_and_matches_its_summary_and_decodes():
+    from tadabur.mining_pool import SUMMARY_PATH, load_base_decodes
+
+    clips = load_manifest()
+    summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
+    _, decodes = load_base_decodes()
+    assert len(clips) == summary["clips"]
+    assert {s: sum(s in c.strata for c in clips) for s in (UNIFORM, CONSONANT_PAIR, GEMINATE)} \
+        == summary["clips_per_stratum"]
+    kept = {segment_key(c.audio_filename, s.segment_index) for c in clips for s in c.segments
+            if s.kept}
+    assert kept == set(decodes)

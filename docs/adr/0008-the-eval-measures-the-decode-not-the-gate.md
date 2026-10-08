@@ -1,5 +1,12 @@
 # The two-sided eval measures the decode, not the gate
 
+> **Amended by [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md)
+> (2026-10-08).** The decode-level, per-side principle stands and now governs the whole
+> accuracy track. Three corrections: the fixtures hold **174** should-accept clips, not 87,
+> and only **11** of the 35 should-reject clips are confusable-pair clips (none for `ح↔ه`);
+> the *What #35 measures* section is void, since the waqf head is gone; and the headline
+> metric is ADR-0011's per-mark commit rate and committed accuracy, scored against truth.
+
 **Status:** Accepted. Answers the design question in
 [#55](https://github.com/sysofwan/HifzGuide/issues/55) — "what should the `.strict` eval gate
 predict, advancement or word grading?" — with **neither**: the gate should not be the headline

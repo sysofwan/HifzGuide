@@ -1,5 +1,15 @@
 # Tadabur filtering & Muaalem fine-tune methodology
 
+> **Objective superseded by [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md)
+> (2026-10-08).** The motivation below ("push the scorer's tolerance into the model"), the
+> B≫C label-poison bet, and the success criterion ("lets Muraja default to `.strict`") no
+> longer describe the goal. The goal is transcription fidelity in both directions; tolerance
+> stays in Muraja's scorer. Training on mushaf labels through this gate taught a text prior
+> (ADR-0011 has the numbers), and the poison was not a minority: 86% of admitted added-shadda
+> cases were genuinely wrong. **What survives:** the gate as corpus hygiene and reject-pile
+> miner, the interior-insertion-run reject, and the P3.5 fixtures, which are now reused as
+> per-site truth labels.
+
 The Muaalem phoneme head was trained on professional reciters and is **over-strict**: it
 rejects the imperfect-but-acceptable articulation ordinary users produce. Muraja compensates
 today by running its scorer in `.balanced` mode — enabling **soft pairs**

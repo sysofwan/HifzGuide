@@ -1,5 +1,14 @@
 # Size distillation of the Muaalem phoneme head to a single ANE chunk
 
+> **Amended by [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md)
+> (2026-10-08).** Behavioural cloning remains the right metric for the **size** stage this
+> ADR covers. The shipped student must now also be **more accurate than the teacher** on
+> truth-labelled sites, so accuracy enters through a supervised term on trusted signal, or
+> through the teacher it copies. The CTC-anchor collapse recorded below was measured **from
+> init**; it does not settle whether a small supervised term on a converged student is safe,
+> which must be measured. The waqf-head export option is to be removed, and the output
+> vocabulary may grow (an explicit sukun class) within the same byte budget.
+
 The deployed model is the 578M-parameter teacher (`obadx/muaalem-model-v3_2`) split into six
 6-bit CoreML chunks totalling 504 MB. The split exists only because a single model that size
 exceeds the on-device ANE compiler budget; it is what keeps every chunk on the ANE, and

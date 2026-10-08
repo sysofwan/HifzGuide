@@ -1,5 +1,9 @@
 # The counterfactual non-inferiority rule
 
+> **Note (2026-10-08):** the 47 counterfactual recordings this ADR scored were deleted with
+> `audit_run/`; only the item sheet survives in git. The rule stands for any re-recording, which
+> must alternate take order and commit its audio. See [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md).
+
 The tashkeel counterfactual eval (`training.counterfactual_eval`) asks whether a fine-tune has
 lost the base model's ability to *flag* a wrong short vowel. Each item was recited twice by the
 same reciter — once as written (`control`), once with the target word's single short vowel

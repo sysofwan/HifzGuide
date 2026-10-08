@@ -1,5 +1,10 @@
 # The waqf operating point is chosen against an asymmetric cost, not F1
 
+> **Superseded by [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md)
+> (2026-10-08).** There is no waqf head, so there is no operating point to choose. The
+> discipline it records — a bound argued from the product, fixed before results, with
+> `no_admissible_threshold` as a legitimate outcome — carries over to ADR-0011's acceptance rules.
+
 **Status:** Accepted. Makes operative the "calibrated bound" language in
 [ADR-0004](0004-waqf-head-and-joint-whole-clip-fine-tune.md), which was never built, and governs
 the calibration leg of #59. Touches only how the silence-posterior threshold is *chosen*; the

@@ -1,5 +1,11 @@
 # Waqf-aware Tadabur reference labels
 
+> **Amended by [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md)
+> (2026-10-08).** Realized-form (waqf / wasl) reference text is still the rule wherever a
+> reference is used — the filter, and locating truth sites for evaluation. It is **no longer
+> the training-label source**: training labels no longer come from the mushaf. The waqf head
+> is gone, so the ADR-0004 note below about whole-clip training is void.
+
 The Tadabur filter (ADR-0001) admits each clip on a **single full-ayah reference** — one
 canonical guess at the recitation. But a reciter who **stops** (makes waqf) partway through an
 ayah realizes the pre-stop word differently from one reciting continuously (wasl): the word

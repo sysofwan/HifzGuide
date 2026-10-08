@@ -1,5 +1,9 @@
 # Tashkeel is unfiltered by the data gate and unmodelled by our port of it
 
+> **Note (2026-10-08, [ADR-0011](0011-transcription-fidelity-and-tashkeel-abstention.md)):** the
+> measurement stands. The reciter-layer filter was never wired into data prep (#58, closed): it
+> guards mushaf-derived training labels, which ADR-0011 retires.
+
 **Status:** Accepted. Amends the "No per-vowel color-swap reject gate" decision in
 [ADR-0003](0003-tashkeel-fine-tune-labels.md) and fulfils its "preview-scale caveat"
 (re-check the rates before scaling to the full corpus).

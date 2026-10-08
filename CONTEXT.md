@@ -179,6 +179,14 @@ the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you
 : A training example whose label does not match what was recited — the mislabel risk ADR-0001's
   filter and the P3.5 audit exist to bound. A property of the *corpus*, never of a checkpoint.
 
+**Truth site**
+: One human-labelled position, independent of any model: an item's audio provenance, the
+  **carrier letter** in its realized reference, the mark under test, what the mushaf prescribes
+  and what the reciter was heard to say (`tadabur.truth_sites`, `tadabur/truth_sites/README.md`).
+  The unit ADR-0011 scores models against. A label that holds only if the reciter recited
+  correctly is flagged `assumes_competent_reciter`.
+: _Avoid_: fixture (the older per-clip label sets), ground truth (unqualified)
+
 ## Re-read Corpus
 
 The vocabulary of Muraja ADR-0016, which mines the Tadabur clips the ADR-0001 gate **rejects**

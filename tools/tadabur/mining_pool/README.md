@@ -19,6 +19,7 @@ decode).
 | `frame.json` | the frame the draw was made from: eligible and excluded rows per shard (by reason), and per reciter its eligible clips, how many the uniform stratum took, and whether it was drawn |
 | `clips.jsonl` | one row per clip: its strata and inclusion probability, word times, segmentation status, and every segment's sample span, realized reference and word offsets |
 | `base_decodes.json` | the base teacher's decode of every kept segment, with the decode fingerprint |
+| `h448_stream_decodes.json` | the shipped `h448`'s b=0 streaming decode of every clip (whole clip, fp32 weights, no bias), cut per kept segment by commit time, with the decode fingerprint and the checkpoint's SHA-256 (`tadabur.pool_stream`, #87) |
 | `summary.json` | counts per stratum, shard and reciter, segmentation outcomes, and per-stratum capacity |
 
 ## The draw

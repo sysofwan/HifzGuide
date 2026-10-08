@@ -65,6 +65,7 @@
   kbd { font: .75em ui-monospace, monospace; opacity: .7; }
   @media (hover: none) { kbd, .hint { display: none; } }
   #jump { min-height: 40px; padding: .3rem .8rem; flex: none; }
+  body.saving .choices button { opacity: .5; }
 </style>
 </head>
 <body>
@@ -94,39 +95,80 @@
   <audio id="player" preload="auto"></audio>
 </main>
 
-<script>
+<script type="module">
 // Answer what you hear, not what is written. Nothing on this page says what the mushaf
-// prescribes, what any model heard, or how any answer would score.
+// prescribes, what any model heard, or how any answer would score. The logic is in
+// /session.mjs; this script only wires it to the document.
+import { createSession } from "/session.mjs";
+
 const PROMPTS = {
   tashkeel: "Which mark do you hear on the highlighted letter?",
   shaddah: "Is the highlighted consonant held (doubled)?",
   consonant: "Which letter do you hear at the highlighted place?",
 };
 const LABELS = {
-  fatha: ["Fatha", "ـَ"], damma: ["Damma", "ـُ"],
-  kasra: ["Kasra", "ـِ"], sukun: ["Sukun", "ـْ"],
+  fatha: ["Fatha", "\u0640\u064E"], damma: ["Damma", "\u0640\u064F"],
+  kasra: ["Kasra", "\u0640\u0650"], sukun: ["Sukun", "\u0640\u0652"],
   held: ["Held", ""], not_held: ["Not held", ""], unclear: ["Unclear", ""],
 };
 const SLOW_RATE = 0.6;
-
-let sites = [];
-let index = 0;
 const $ = (id) => document.getElementById(id);
-const player = $("player");
+const audio = $("player");
+let shown = null;
 
-function answered() { return sites.filter((s) => s.heard !== null).length; }
-function firstUnanswered(from = 0) {
-  for (let k = 0; k < sites.length; k++) {
-    const i = (from + k) % sites.length;
-    if (sites[i].heard === null) return i;
-  }
-  return -1;
-}
+const player = {
+  stop() {
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+  },
+  play(key, { slow = false, whole = false } = {}) {
+    audio.src = `/api/audio?key=${key}&whole=${whole ? 1 : 0}`;
+    audio.defaultPlaybackRate = audio.playbackRate = slow ? SLOW_RATE : 1;
+    audio.preservesPitch = true;
+    audio.play().catch(() => {});
+  },
+};
 
-function showError(message) {
-  $("error").textContent = message;
-  $("error").style.display = message ? "block" : "none";
-}
+const view = {
+  render(site, { position, total, answered }) {
+    shown = site;
+    $("count").textContent = `${answered} of ${total} answered`;
+    $("prompt").textContent = PROMPTS[site.mode];
+    $("meta").textContent = `Site ${position} · ayah ${site.surah_ayah}`;
+    const ref = $("reference");
+    ref.textContent = "";
+    const mark = document.createElement("mark");
+    mark.textContent = site.carrier;
+    ref.append(site.before, mark, site.after);
+    $("note").value = site.note || "";
+    renderChoices(site);
+  },
+  saving(on) { document.body.classList.toggle("saving", on); },
+  error(message) {
+    $("error").textContent = message;
+    $("error").style.display = message ? "block" : "none";
+  },
+};
+
+const api = {
+  async sites() {
+    const response = await fetch("/api/sites");
+    return (await response.json()).sites;
+  },
+  async save(body) {
+    const response = await fetch("/api/verdict", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || `HTTP ${response.status}`);
+    }
+  },
+};
+
+const session = createSession({ api, player, view });
 
 function renderChoices(site) {
   const box = $("choices");
@@ -147,96 +189,39 @@ function renderChoices(site) {
     const kbd = document.createElement("kbd");
     kbd.textContent = String(i + 1);
     button.appendChild(kbd);
-    button.onclick = () => answer(choice);
+    button.onclick = () => session.answer(choice, $("note").value);
     box.appendChild(button);
   });
 }
 
-function render() {
-  const site = sites[index];
-  if (!site) return;
-  $("count").textContent = `${answered()} of ${sites.length} answered`;
-  $("prompt").textContent = PROMPTS[site.mode];
-  $("meta").textContent = `Site ${index + 1} · ayah ${site.surah_ayah}`;
-  const ref = $("reference");
-  ref.textContent = "";
-  ref.append(site.before);
-  const mark = document.createElement("mark");
-  mark.textContent = site.carrier;
-  ref.append(mark, site.after);
-  $("note").value = site.note || "";
-  renderChoices(site);
-}
-
-// Playback is started synchronously inside the tap or key handler, so a phone treats it
-// as user-initiated and lets it play.
-function play({ slow = false, whole = false } = {}) {
-  const site = sites[index];
-  if (!site) return;
-  const src = `/api/audio?key=${site.key}&whole=${whole ? 1 : 0}`;
-  if (!player.src.endsWith(src)) player.src = src;
-  player.currentTime = 0;
-  player.defaultPlaybackRate = player.playbackRate = slow ? SLOW_RATE : 1;
-  player.preservesPitch = true;
-  player.play().catch(() => {});
-}
-
-function move(delta) {
-  index = Math.min(sites.length - 1, Math.max(0, index + delta));
-  render();
-}
-
-function answer(heard) {
-  const site = sites[index];
-  const previous = [site.heard, site.note];
-  site.heard = heard;
-  site.note = $("note").value;
-  const body = JSON.stringify({ key: site.key, heard, note: site.note });
-  const next = firstUnanswered(index + 1);
-  if (next >= 0) { index = next; render(); play(); } else { render(); }
-  fetch("/api/verdict", { method: "POST", headers: { "Content-Type": "application/json" },
-                          body })
-    .then(async (response) => {
-      if (!response.ok) throw new Error((await response.json()).error || response.status);
-      showError("");
-    })
-    .catch((error) => {
-      [site.heard, site.note] = previous;
-      render();
-      showError(`Not saved (${error.message}). Go back and answer that site again.`);
-    });
-}
-
-$("play").onclick = () => play();
-$("slow").onclick = () => play({ slow: true });
-$("whole").onclick = () => play({ whole: true });
-$("prev").onclick = () => move(-1);
-$("next").onclick = () => move(1);
+$("play").onclick = () => session.play();
+$("slow").onclick = () => session.play({ slow: true });
+$("whole").onclick = () => session.play({ whole: true });
+$("prev").onclick = () => session.move(-1);
+$("next").onclick = () => session.move(1);
 $("jump").onclick = () => {
-  const next = firstUnanswered(index);
-  if (next < 0) { showError(""); $("count").textContent = "All answered"; return; }
-  index = next; render(); play();
+  const { answered, total } = session.state();
+  if (!session.jump() && answered === total) view.error("Every site is answered.");
 };
 
 document.addEventListener("keydown", (event) => {
-  if (event.target === $("note") || event.metaKey || event.ctrlKey) return;
-  const site = sites[index];
+  if (event.target === $("note") || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.repeat) { event.preventDefault(); return; }  // a held key answers nothing
   const n = Number(event.key);
-  if (site && n >= 1 && n <= site.choices.length) {
-    event.preventDefault(); answer(site.choices[n - 1]); return;
+  if (shown && n >= 1 && n <= shown.choices.length) {
+    event.preventDefault();
+    session.answer(shown.choices[n - 1], $("note").value);
+    return;
   }
   const actions = {
-    " ": () => play(), s: () => play({ slow: true }), w: () => play({ whole: true }),
-    u: () => $("jump").click(), ArrowLeft: () => move(-1), ArrowRight: () => move(1),
+    " ": () => session.play(), s: () => session.play({ slow: true }),
+    w: () => session.play({ whole: true }), u: () => session.jump(),
+    ArrowLeft: () => session.move(-1), ArrowRight: () => session.move(1),
   };
   if (actions[event.key]) { event.preventDefault(); actions[event.key](); }
 });
 
-fetch("/api/sites").then((r) => r.json()).then((data) => {
-  sites = data.sites;
-  index = Math.max(0, firstUnanswered());
-  render();
-}).catch((error) => showError(`Could not load the sites (${error.message}).`));
+session.load().catch((error) => view.error(`Could not load the sites (${error.message}).`));
 </script>
 </body>
 </html>

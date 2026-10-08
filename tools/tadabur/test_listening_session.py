@@ -32,6 +32,7 @@ from tadabur.listening_session import (
     shuffled,
     site_id,
     summarize,
+    tashkeel_stratum,
     word_limits,
     write_verdicts,
     write_worklist,
@@ -43,11 +44,17 @@ from tadabur.truth_sites import PENDING, TruthSite
 FATHA, DAMMA, KASRA = "َ", "ُ", "ِ"
 
 
-def _found(reference, decode, tanween=None, offsets=None):
+def T(mark: str, base: str, h448: str | None = None) -> str:
+    """A tashkeel stratum; the h448 outcome defaults to the base's."""
+    return tashkeel_stratum(mark, base, h448 or base)
+
+
+def _found(reference, decode, tanween=None, offsets=None, h448=None):
+    """The (stratum, carrier) of every site; the h448 decode defaults to the base's."""
     offsets = offsets or [0, len(reference)]
     tanween = tanween or [False] * (len(offsets) - 1)
-    return {(f.stratum, f.reference_index) for f in segment_sites(reference, decode, offsets,
-                                                                   tanween)}
+    found = segment_sites(reference, decode, decode if h448 is None else h448, offsets, tanween)
+    return {(f.stratum, f.reference_index) for f in found}
 
 
 def _tashkeel(found):
@@ -61,11 +68,21 @@ def test_the_base_decode_says_what_it_emitted_after_each_matched_carrier():
     assert carrier_marks(f"ك{FATHA}تب", f"ك{FATHA}ت{FATHA}ب") == {0: FATHA, 2: None, 4: None}
 
 
-def test_a_mid_word_haraka_is_stratified_by_what_the_base_emitted_there():
+def test_a_mid_word_haraka_is_stratified_by_what_each_decode_emitted_there():
     reference = f"ك{FATHA}ت{FATHA}ب"  # كَتَب: the fatha on ت is mid-word, ب is word-final
     assert _tashkeel(_found(reference, f"ك{FATHA}تب")) == {
-        ("new_audit:fatha:base_matched", 0), ("new_audit:fatha:base_empty", 2)}
-    assert ("new_audit:fatha:base_other", 2) in _found(reference, f"ك{FATHA}ت{KASRA}ب")
+        (T("fatha", "matched"), 0), (T("fatha", "empty"), 2)}
+    assert (T("fatha", "other"), 2) in _found(reference, f"ك{FATHA}ت{KASRA}ب")
+
+
+def test_the_h448_stream_is_a_second_axis_of_the_tashkeel_strata():
+    # The base heard the fatha on ت; the shipped student left the slot empty.
+    reference = f"ك{FATHA}ت{FATHA}ب"
+    found = _found(reference, reference, h448=f"ك{FATHA}تب")
+    assert (T("fatha", "matched", "empty"), 2) in found
+    # Its text is cut from a whole-clip stream, so it may carry a neighbour's letters.
+    padded = _found(reference, reference, h448=f"ملك{FATHA}تبلن")
+    assert (T("fatha", "matched", "empty"), 2) in padded
 
 
 def test_a_word_final_haraka_is_not_a_site():
@@ -78,9 +95,9 @@ def test_a_case_ending_before_a_realized_tanween_is_not_mid_word():
     reference = f"ع{KASRA}لم{DAMMA}ن"
     with_tanween = _tashkeel(_found(reference, reference, tanween=[True]))
     without = _tashkeel(_found(reference, reference, tanween=[False]))
-    assert ("new_audit:damma:base_matched", 3) not in with_tanween
-    assert ("new_audit:damma:base_matched", 3) in without
-    assert ("new_audit:sukun:base_empty", 2) in with_tanween  # the ل is a letter of the word
+    assert (T("damma", "matched"), 3) not in with_tanween
+    assert (T("damma", "matched"), 3) in without
+    assert (T("sukun", "empty"), 2) in with_tanween  # the ل is a letter of the word
 
 
 def test_word_spans_come_from_the_offsets_not_the_spaces():
@@ -95,14 +112,15 @@ def test_word_spans_come_from_the_offsets_not_the_spaces():
 
 def test_a_mid_word_sukun_is_stratified_by_whether_the_base_voweled_it():
     reference = f"ي{FATHA}علم{DAMMA}"  # يَعلَمُ without the fatha: ع and ل are sakin
-    assert ("new_audit:sukun:base_empty", 2) in _found(reference, reference)
-    assert ("new_audit:sukun:base_haraka", 2) in _found(reference, f"ي{FATHA}ع{FATHA}لم{DAMMA}")
+    assert (T("sukun", "empty"), 2) in _found(reference, reference)
+    assert (T("sukun", "haraka"), 2) in _found(reference, f"ي{FATHA}ع{FATHA}لم{DAMMA}")
+    assert (T("sukun", "empty", "other"), 2) in _found(reference, reference, h448="ي")
 
 
 def test_a_qalqala_letter_is_a_sukun_site_only_mid_word():
     mid = f"ي{FATHA}قڇت{DAMMA}ل"
     end = f"ي{FATHA}قڇ"
-    assert ("new_audit:sukun:base_empty", 2) in _found(mid, mid)
+    assert (T("sukun", "empty"), 2) in _found(mid, mid)
     assert not [s for s in _found(end, end) if s[0].startswith("new_audit:sukun")]
 
 
@@ -140,8 +158,8 @@ def test_eligibility_never_depends_on_the_decode():
                f"ي{FATHA}ظك{DAMMA}ر{FATHA}قتت{DAMMA}ل"]
     sites = [
         {(f.mark, f.prescribed, f.reference_index)
-         for f in segment_sites(reference, d, [0, len(reference)], [False])}
-        for d in decodes
+         for f in segment_sites(reference, base, h448, [0, len(reference)], [False])}
+        for base, h448 in zip(decodes, decodes[::-1])
     ]
     assert all(found == sites[0] for found in sites)
 
@@ -171,21 +189,30 @@ def _segment(**overrides) -> PoolSegment:
 WORD_TIMES = (0.0, 0.5, 1.0, 3.0, 5.0, 7.0, 9.0, 10.0)
 
 
-def test_the_excerpt_is_the_carrier_word_and_one_either_side():
-    # Reference index 4 is in local word 1, i.e. word 3, so words 2-4 play: from word 2's
-    # onset (1.0 s, padded and clamped to the segment's 1.0 s start) to word 5's (7.0 s).
-    assert excerpt_span(_segment(), WORD_TIMES, 0, 4) == (16000, 116000)
+CLIP_SAMPLES = 200000
+
+
+def test_the_excerpt_is_the_carrier_word_and_one_either_side_padded():
+    # Reference index 4 is in local word 1, i.e. word 3, so words 2-4 play: word 2's onset
+    # (1.0 s) to word 5's (7.0 s), padded 0.3 s each side, past the segment's 1.0 s start.
+    assert excerpt_span(_segment(), WORD_TIMES, 0, 4, CLIP_SAMPLES) == (11200, 116800)
     # Index 10 is in word 5, the segment's last: words 4-5, 5.0 s to 9.0 s, padded.
-    assert excerpt_span(_segment(), WORD_TIMES, 0, 10) == (76000, 148000)
+    assert excerpt_span(_segment(), WORD_TIMES, 0, 10, CLIP_SAMPLES) == (75200, 148800)
 
 
-def test_the_whole_segment_plays_when_the_word_times_cannot_be_trusted():
+def test_the_excerpt_is_clamped_only_to_the_clip():
+    assert excerpt_span(_segment(), WORD_TIMES, 0, 4, 115000) == (11200, 115000)
+
+
+def test_the_whole_segment_plays_when_the_word_times_cannot_place_the_words():
     whole = (16000, 160000)
-    assert excerpt_span(_segment(), WORD_TIMES, 1, 4) == whole  # a re-read clip
-    assert excerpt_span(_segment(), (), 0, 4) == whole
+    assert excerpt_span(_segment(), WORD_TIMES, 1, 4, CLIP_SAMPLES) == whole  # a re-read
+    assert excerpt_span(_segment(), (), 0, 4, CLIP_SAMPLES) == whole
+    late = _segment(start_sample=150000, end_sample=160000)  # words end before it starts
+    assert excerpt_span(late, WORD_TIMES, 0, 4, CLIP_SAMPLES) == (150000, 160000)
     squeezed = (0.0, 0.5, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5)
-    assert excerpt_span(_segment(start_sample=17600, end_sample=18000), squeezed, 0, 4) \
-        == (17600, 18000)
+    tiny = _segment(start_sample=17600, end_sample=18000)
+    assert excerpt_span(tiny, squeezed, 0, 4, CLIP_SAMPLES) == (17600, 18000)
 
 
 # --- provenance ------------------------------------------------------------------------
@@ -199,14 +226,36 @@ def test_pool_sites_take_their_provenance_from_the_registry_and_their_item_from_
                     WORD_TIMES[:5], (kept, dropped))
     registry = {"c.wav": StagedClip("c.wav", 77, 5, 9, "2:2", 200000, "b" * 64,
                                     ("mining_pool",))}
-    candidates = pool_candidates([clip], {"c.wav#0": reference}, registry,
-                                 lambda surah_ayah: [False] * 4)
+    candidates = pool_candidates([clip], {"c.wav#0": reference}, {"c.wav#0": reference},
+                                 registry, lambda surah_ayah: [False] * 4)
     assert candidates and all(c.clip_inclusion_probability == 0.25 for c in candidates)
-    site = next(c.site for c in candidates if c.site.mark == "sukun")
+    sukun = next(c for c in candidates if c.site.mark == "sukun")
+    site = sukun.site
     assert (site.shard, site.audio_sha256, site.start_sample, site.end_sample) == (
         77, "b" * 64, 16000, 160000)
     assert (site.site_id, site.heard, site.stratum) == (
-        "new_audit:c.wav#0@2:tashkeel", PENDING, "new_audit:sukun:base_empty")
+        "new_audit:c.wav#0@2:tashkeel", PENDING, T("sukun", "empty"))
+    assert (sukun.word_start, sukun.word_offsets) == (2, (0, len(reference)))
+
+
+def test_the_excerpt_never_depends_on_what_a_decode_emitted_at_the_carrier():
+    reference = f"ي{FATHA}علم{DAMMA}"
+    segment = _segment(reference=reference, raw_word_offsets=(0, len(reference)), word_end=3)
+    clip = PoolClip("c.wav", ("uniform",), 1.0, "2:2", 3, 4, None, 0, 4, 0.0, 10.0,
+                    WORD_TIMES[:5], (segment,))
+    registry = {"c.wav": StagedClip("c.wav", 77, 5, 9, "2:2", 200000, "b" * 64,
+                                    ("mining_pool",))}
+    voweled = f"ي{FATHA}ع{KASRA}لم{DAMMA}"
+
+    def sukun_site(base, h448):
+        (candidate,) = [c for c in pool_candidates([clip], {"c.wav#0": base}, {"c.wav#0": h448},
+                                                   registry, lambda _: [False] * 4)
+                        if c.site.reference_index == 2 and c.site.mark == "sukun"]
+        return candidate
+
+    plain, other = sukun_site(reference, reference), sukun_site(voweled, voweled)
+    assert plain.site.stratum != other.site.stratum
+    assert plain.excerpt == other.excerpt
 
 
 def test_only_pending_p35_sites_are_re_adjudicated_on_their_own_segment():
@@ -214,7 +263,7 @@ def test_only_pending_p35_sites_are_re_adjudicated_on_their_own_segment():
     pending = _site(1, "p35_fixture:ذ↔ز", source="p35_fixture", start_sample=16000,
                     end_sample=160000, stratum_population=30)
     heard = replace(pending, site_id="other", heard="fatha")
-    segments = {("clip1.wav", 16000): (segment, (), 0)}
+    segments = {("clip1.wav", 16000): (segment, (), 0, 200000)}
     (candidate,) = p35_candidates([pending, heard], segments)
     assert candidate.site is pending and candidate.excerpt == (16000, 160000)
     moved = replace(pending, end_sample=150000)
@@ -225,7 +274,11 @@ def test_only_pending_p35_sites_are_re_adjudicated_on_their_own_segment():
 # --- the draw --------------------------------------------------------------------------
 
 
-def _site(index: int, stratum: str = "new_audit:fatha:base_empty", **overrides) -> TruthSite:
+FATHA_EMPTY = T("fatha", "empty")
+SUKUN_HARAKA = T("sukun", "haraka")
+
+
+def _site(index: int, stratum: str = FATHA_EMPTY, **overrides) -> TruthSite:
     fields = dict(
         site_id=f"{stratum}#{index}", source="new_audit",
         assumes_competent_reciter=False, audio_filename=f"clip{index}.wav", shard=40,
@@ -236,15 +289,15 @@ def _site(index: int, stratum: str = "new_audit:fatha:base_empty", **overrides) 
     return TruthSite(**{**fields, **overrides})
 
 
-def _candidates(n: int, stratum: str = "new_audit:fatha:base_empty", clip_p: float = 0.5):
-    return [Candidate(_site(i, stratum), clip_p, (100, 16100)) for i in range(n)]
+def _candidates(n: int, stratum: str = FATHA_EMPTY, clip_p: float = 0.5):
+    return [Candidate(_site(i, stratum), clip_p, 0, (0, 5), (100, 16100)) for i in range(n)]
 
 
 def test_each_stratum_draws_its_size_with_its_population_and_probabilities():
-    rows = draw(_candidates(40) + _candidates(3, "new_audit:sukun:base_haraka"),
-                {"new_audit:fatha:base_empty": 10, "new_audit:sukun:base_haraka": 5})
-    fatha = [r for r in rows if r.site.stratum == "new_audit:fatha:base_empty"]
-    sukun = [r for r in rows if r.site.stratum == "new_audit:sukun:base_haraka"]
+    rows = draw(_candidates(40) + _candidates(3, SUKUN_HARAKA),
+                {FATHA_EMPTY: 10, SUKUN_HARAKA: 5})
+    fatha = [r for r in rows if r.site.stratum == FATHA_EMPTY]
+    sukun = [r for r in rows if r.site.stratum == SUKUN_HARAKA]
     assert len(fatha) == 10 and len(sukun) == 3
     assert {r.site.stratum_population for r in fatha} == {40}
     assert {(r.draw_probability, r.inclusion_probability) for r in fatha} == {(0.25, 0.125)}
@@ -257,33 +310,33 @@ def test_a_stratum_without_a_size_is_counted_but_not_drawn():
 
 def test_sizes_must_name_known_strata():
     with pytest.raises(ValueError, match="unknown strata"):
-        draw(_candidates(5), {"new_audit:fatha:empty": 2})
+        draw(_candidates(5), {"new_audit:fatha:base_empty": 2})
     assert set(DEFAULT_SIZES) <= set(STRATA)
 
 
 def test_the_draw_survives_re_mining_a_changed_population():
-    before = {r.site.site_id for r in draw(_candidates(200), {"new_audit:fatha:base_empty": 20})}
+    before = {r.site.site_id for r in draw(_candidates(200), {FATHA_EMPTY: 20})}
     grown = _candidates(210)[5:]  # five sites lost, fifteen found
-    after = {r.site.site_id for r in draw(grown, {"new_audit:fatha:base_empty": 20})}
+    after = {r.site.site_id for r in draw(grown, {FATHA_EMPTY: 20})}
     assert len(before & after) >= 17
 
 
 def test_the_draw_ignores_candidate_order():
     candidates = _candidates(50)
-    sizes = {"new_audit:fatha:base_empty": 7}
+    sizes = {FATHA_EMPTY: 7}
     assert draw(candidates, sizes) == draw(candidates[::-1], sizes)
 
 
 def test_census_rows_are_certain_and_keep_their_own_population():
     site = _site(1, "p35_fixture:shadda", stratum_population=24)
-    (row,) = census([Candidate(site, 1.0, (0, 32000))])
+    (row,) = census([Candidate(site, 1.0, 0, (0, 5), (0, 32000))])
     assert (row.draw_probability, row.inclusion_probability) == (1.0, 1.0)
     assert row.site.stratum_population == 24
 
 
 def test_the_queue_is_shuffled_across_strata_deterministically():
-    rows = draw(_candidates(30) + _candidates(30, "new_audit:sukun:base_empty"),
-                {"new_audit:fatha:base_empty": 30, "new_audit:sukun:base_empty": 30})
+    rows = draw(_candidates(30) + _candidates(30, T("sukun", "empty")),
+                {FATHA_EMPTY: 30, T("sukun", "empty"): 30})
     queue = shuffled(rows)
     assert queue == shuffled(rows[::-1])
     strata = [r.site.stratum for r in queue]
@@ -294,21 +347,21 @@ def test_the_summary_lists_every_stratum_and_the_listening_time():
     registry = {f"clip{i}.wav": StagedClip(f"clip{i}.wav", 40, i, i % 3, "2:2", 32000,
                                            "a" * 64, ("mining_pool",)) for i in range(40)}
     candidates = _candidates(40)
-    rows = draw(candidates, {"new_audit:fatha:base_empty": 4})
+    rows = draw(candidates, {FATHA_EMPTY: 4})
     summary = summarize([c.site for c in candidates], rows, registry)
     assert list(summary["strata"])[: len(STRATA)] == list(STRATA)
-    cell = summary["strata"]["new_audit:fatha:base_empty"]
+    cell = summary["strata"][FATHA_EMPTY]
     assert (cell["population"], cell["population_reciters"], cell["sampled"]) == (40, 3, 4)
     # 1 s excerpts, played twice, plus 4 s to answer: 6 s a site.
     assert summary["listening_minutes"] == round(4 * 6 / 60, 1)
-    assert summary["strata"]["new_audit:kasra:base_empty"]["population"] == 0
+    assert summary["strata"][T("kasra", "empty")]["population"] == 0
 
 
 # --- the worklist file -----------------------------------------------------------------
 
 
 def _rows():
-    return draw(_candidates(4), {"new_audit:fatha:base_empty": 4})
+    return draw(_candidates(4), {FATHA_EMPTY: 4})
 
 
 def test_the_worklist_round_trips(tmp_path):
@@ -322,7 +375,8 @@ def test_the_worklist_round_trips(tmp_path):
     [
         (lambda r: replace(r, site=replace(r.site, heard="fatha")), "skeleton"),
         (lambda r: replace(r, inclusion_probability=0.9), "clip x draw"),
-        (lambda r: replace(r, excerpt_end_sample=40000), "excerpt"),
+        (lambda r: replace(r, excerpt_start_sample=-1), "span of samples"),
+        (lambda r: replace(r, word_offsets=(0, 4)), "word_offsets"),
         (lambda r: replace(r, draw_probability=1), "floats"),
         (lambda r: replace(r, site=replace(r.site, reference_index=3)), "carry"),
     ],

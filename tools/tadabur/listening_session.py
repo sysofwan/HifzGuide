@@ -4,20 +4,24 @@ ADR-0011 judges every model against truth sites (:mod:`tadabur.truth_sites`). Th
 mines the sites the owner's one sitting adjudicates by ear, from the mining pool (#83), and
 stores what was heard.
 
-**What is mined.** Every site comes from the **frozen base teacher's** decode of a kept pool
-segment (``mining_pool/base_decodes.json``) against the segment's realized reference. No
-candidate model and no ``h448`` decode is involved, so the selection never has to be redone
-for a new checkpoint. Eligibility is decided by the reference alone (acceptance rules §1); the
-base decode only assigns each eligible site to a **stratum**:
+**What is mined.** Eligibility is decided by the realized reference alone (acceptance rules
+§1). Two frozen decodes of each kept pool segment only assign an eligible site to a
+**stratum**: the base teacher's (``mining_pool/base_decodes.json``) and, for tashkeel, the
+shipped student's, ``h448`` streamed at ``b=0`` with no bias (:mod:`tadabur.pool_stream`),
+because that is today's system in the ship criterion (§3). No candidate model is involved,
+so the selection never has to be redone for a new checkpoint.
 
-* **tashkeel** (one question for haraka and sukun: "which mark did you hear"):
+* **tashkeel** (one question for haraka and sukun: "which mark did you hear"), stratified by
+  both decodes:
 
-  - a **mid-word haraka** on a consonant, per haraka: the base left the slot empty
-    (``base_empty``), emitted that haraka (``base_matched``, the controls), or anything else
-    (``base_other``: another haraka, or a misheard or unaligned carrier);
+  - a **mid-word haraka** on a consonant, per haraka. Each decode left the slot empty
+    (``empty``: the carrier aligned, no haraka after it), emitted that haraka
+    (``matched``), or anything else (``other``: another haraka, or a misheard or unaligned
+    carrier), read by :func:`training.tashkeel_eval.vowel_sites`' carrier anchoring;
   - a **mid-word prescribed sukun**: a single consonant followed, inside its word, by another
-    consonant or the qalqala mark, so the mushaf writes sukun on it. The base emitted nothing
-    after it (``base_empty``), a haraka (``base_haraka``), or misheard it (``base_other``).
+    consonant or the qalqala mark, so the mushaf writes sukun on it. Each decode emitted
+    nothing after the aligned carrier (``empty``), a haraka (``haraka``), or misheard it
+    (``other``) (:func:`carrier_marks`).
 
   *Mid-word* means a letter of the same word follows the mark (``raw_word_offsets`` give the
   words). A word whose Uthmani text carries tanween ends at its last haraka: the ``ن`` /
@@ -46,8 +50,9 @@ sets it. :data:`DEFAULT_SIZES` realizes the ~1.5 h plan of #61.
 from the staged-clip registry; the segment as the item; ``stratum`` and its
 ``stratum_population`` in the pool) plus the sampling design: the clip's inclusion
 probability in the pool (given the drawn reciters, ``mining_pool/clips.jsonl``), the
-within-stratum draw probability ``n / N``, their product ``inclusion_probability``, and the
-excerpt the UI plays. A site's design weight is ``1 / inclusion_probability``.
+within-stratum draw probability ``n / N``, their product ``inclusion_probability``, the
+segment's words (``word_start``, ``word_offsets``) and the excerpt the UI plays. A site's
+design weight is ``1 / inclusion_probability``.
 
 **Verdicts** are written by the blind UI (:mod:`tadabur.tashkeel_audit_ui`) to
 ``listening_session/verdicts.jsonl``, a tracked file, keyed by site id. A verdict's ``heard``
@@ -70,7 +75,13 @@ from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, fields, replace
 from pathlib import Path
 
-from training.tashkeel_eval import SHORT_VOWELS, write_text_atomically
+from training.tashkeel_eval import MATCHED as VOWEL_MATCHED
+from training.tashkeel_eval import (
+    OMITTED,
+    SHORT_VOWELS,
+    vowel_sites,
+    write_text_atomically,
+)
 
 from .audio import TARGET_SAMPLE_RATE
 from .contrast_attribution import ADDED, DROPPED, SHADDA_CONTRAST, contrast_sites
@@ -83,6 +94,7 @@ from .mining_pool import (
     load_manifest,
     segment_key,
 )
+from .pool_stream import H448_DECODES_PATH, load_stream_decodes
 from .smith_waterman import smith_waterman
 from .staged_audio import StagedClip, load_staged_clips
 from .truth_sites import (
@@ -127,10 +139,18 @@ def mode_of(mark: str) -> str:
 
 
 # --- strata ----------------------------------------------------------------------------
-BASE_EMPTY = "base_empty"
-BASE_MATCHED = "base_matched"
-BASE_HARAKA = "base_haraka"
-BASE_OTHER = "base_other"
+#: What a decode did at a tashkeel site: left it empty, emitted the prescribed haraka,
+#: emitted a haraka at a prescribed sukun, or anything else.
+EMPTY = "empty"
+MATCHED = "matched"
+HARAKA = "haraka"
+OTHER = "other"
+HARAKA_OUTCOMES = (EMPTY, MATCHED, OTHER)
+SUKUN_OUTCOMES = (EMPTY, HARAKA, OTHER)
+#: The two frozen decodes a tashkeel stratum is crossed by.
+BASE = "base"
+H448 = "h448"
+
 BASE_SINGLE = "base_single"
 BASE_DOUBLE = "base_double"
 BASE_PARTNER = "base_partner"
@@ -142,11 +162,16 @@ _CHAR_TO_HARAKA = {char: name for name, char in HARAKA_CHARS.items()}
 QALQALA = "ڇ"
 #: Madd letters: after a haraka they lengthen it, so they reveal it on the page.
 MADD = frozenset("اۥۦ")
-_TANWEEN = frozenset("ًٌٍ")
+_TANWEEN = frozenset("\u064b\u064c\u064d")
 
 
 def _stratum(*parts: str) -> str:
     return ":".join((NEW_AUDIT, *parts))
+
+
+def tashkeel_stratum(mark: str, base: str, h448: str) -> str:
+    """``new_audit:<mark>:base_<outcome>:h448_<outcome>``."""
+    return _stratum(mark, f"{BASE}_{base}", f"{H448}_{h448}")
 
 
 def _direction(prescribed: str, partner: str) -> str:
@@ -163,8 +188,9 @@ def _pair_directions() -> list[tuple[str, str, str]]:
 
 
 STRATA: tuple[str, ...] = (
-    *(_stratum(h, o) for h in HARAKA_NAMES for o in (BASE_EMPTY, BASE_MATCHED, BASE_OTHER)),
-    *(_stratum(SUKUN, o) for o in (BASE_EMPTY, BASE_HARAKA, BASE_OTHER)),
+    *(tashkeel_stratum(h, b, s) for h in HARAKA_NAMES
+      for b in HARAKA_OUTCOMES for s in HARAKA_OUTCOMES),
+    *(tashkeel_stratum(SUKUN, b, s) for b in SUKUN_OUTCOMES for s in SUKUN_OUTCOMES),
     _stratum(SHADDAH, HELD, BASE_SINGLE),
     _stratum(SHADDAH, HELD, BASE_REST),
     _stratum(SHADDAH, NOT_HELD, BASE_DOUBLE),
@@ -173,17 +199,32 @@ STRATA: tuple[str, ...] = (
       for o in (BASE_PARTNER, BASE_REST)),
 )
 
-#: Sites drawn per stratum by default: the ~1.5 h plan of #61 plus the parts #82 added.
-#: 50 per haraka left empty and 17 matched controls per haraka (~200); 50 prescribed
-#: sukun (the sukun floors need 50 sites at a 70% commit rate, acceptance rules §8), 10 of
-#: them where the base heard a haraka; 60 geminates decoded single; 5 per consonant
-#: direction the base heard as its partner (~40 in all, the rare directions take what they
-#: have). Every other stratum is 0: its population is recorded, and #105 may size it.
+#: Default draw per haraka, by (base outcome, h448 outcome). Weighted toward the slots the
+#: shipped model leaves empty, above all where the base teacher heard the haraka (the
+#: failure the owner sees in the app); every other cell keeps a small positive draw, so each
+#: outcome stratum has positive inclusion probability. A cell smaller than its size is
+#: taken whole.
+HARAKA_SIZES = {
+    (EMPTY, EMPTY): 15, (MATCHED, EMPTY): 25, (OTHER, EMPTY): 5,
+    (EMPTY, MATCHED): 5, (MATCHED, MATCHED): 10, (OTHER, MATCHED): 3,
+    (EMPTY, OTHER): 3, (MATCHED, OTHER): 4, (OTHER, OTHER): 3,
+}
+#: The same for prescribed sukun: weighted toward a haraka the shipped model adds, with the
+#: concordant-empty cell as the controls the sukun floors are read on.
+SUKUN_SIZES = {
+    (EMPTY, EMPTY): 15, (EMPTY, HARAKA): 15, (EMPTY, OTHER): 5,
+    (HARAKA, EMPTY): 4, (HARAKA, HARAKA): 8, (HARAKA, OTHER): 2,
+    (OTHER, EMPTY): 3, (OTHER, HARAKA): 2, (OTHER, OTHER): 3,
+}
+
+#: Sites drawn per stratum by default, sized to the ~1.5 h plan of #61 with the parts #82
+#: added; #105's power simulation sets the final sizes. Tashkeel as above; 60 geminates the
+#: base decoded single; 5 per consonant direction the base heard as its partner (~40 in
+#: all, the rare directions take what they have). Every other stratum is 0: its population
+#: is recorded, and #105 may size it.
 DEFAULT_SIZES: dict[str, int] = {
-    **{_stratum(h, BASE_EMPTY): 50 for h in HARAKA_NAMES},
-    **{_stratum(h, BASE_MATCHED): 17 for h in HARAKA_NAMES},
-    _stratum(SUKUN, BASE_EMPTY): 40,
-    _stratum(SUKUN, BASE_HARAKA): 10,
+    **{tashkeel_stratum(h, b, s): n for h in HARAKA_NAMES for (b, s), n in HARAKA_SIZES.items()},
+    **{tashkeel_stratum(SUKUN, b, s): n for (b, s), n in SUKUN_SIZES.items()},
     _stratum(SHADDAH, HELD, BASE_SINGLE): 60,
     **{_stratum(_direction(a, b), BASE_PARTNER): 5 for _, a, b in _pair_directions()},
 }
@@ -194,7 +235,7 @@ PLAYS_PER_SITE = 2
 ANSWER_SECONDS = 4.0
 
 #: An excerpt is the carrier's word with one word either side, padded by this much.
-EXCERPT_PAD_S = 0.25
+EXCERPT_PAD_S = 0.3
 #: A shorter excerpt is taken as a failed word alignment: the whole segment plays instead.
 MIN_EXCERPT_S = 1.0
 
@@ -250,49 +291,72 @@ def _mid_word(reference: str, limits: list[int], mark_end: int) -> bool:
     return any(reference[j] in CONSONANTS for j in range(mark_end + 1, limits[mark_end]))
 
 
-def _run_start(reference: str, index: int) -> int:
+def run_start(reference: str, index: int) -> int:
+    """The first index of the run of identical characters that ``index`` is in."""
     while index > 0 and reference[index - 1] == reference[index]:
         index -= 1
     return index
 
 
-def _tashkeel_found(reference: str, decode: str, limits: list[int]) -> list[Found]:
-    emitted = carrier_marks(decode, reference)
+def haraka_outcomes(decode: str, reference: str) -> dict[int, str]:
+    """Per haraka carrier (the letter before the haraka): :data:`MATCHED` when the decode
+    emitted that haraka on the aligned carrier, :data:`EMPTY` when the carrier aligned and no
+    haraka followed it, else :data:`OTHER`. The anchoring is
+    :func:`training.tashkeel_eval.vowel_sites`', the repo's one rule for haraka outcomes."""
+    outcomes = {}
+    for site in vowel_sites(decode, reference):
+        if site.reference_vowel is None:
+            continue
+        if site.outcome == VOWEL_MATCHED:
+            outcome = MATCHED
+        elif site.outcome == OMITTED and site.carrier_matched:
+            outcome = EMPTY
+        else:
+            outcome = OTHER
+        outcomes[site.reference_index - 1] = outcome
+    return outcomes
+
+
+def sukun_outcomes(decode: str, reference: str) -> dict[int, str]:
+    """Per aligned consonant: :data:`EMPTY` when the decode emitted no haraka right after
+    it, :data:`HARAKA` when it did. A carrier missing here is :data:`OTHER`."""
+    return {
+        index: EMPTY if mark is None else HARAKA
+        for index, mark in carrier_marks(decode, reference).items()
+    }
+
+
+def _tashkeel_found(
+    reference: str, decodes: Mapping[str, str], limits: list[int]
+) -> list[Found]:
+    harakat = {model: haraka_outcomes(d, reference) for model, d in decodes.items()}
+    sukun = {model: sukun_outcomes(d, reference) for model, d in decodes.items()}
     found: list[Found] = []
     for i, carrier in enumerate(reference):
         if carrier not in CONSONANTS:
             continue
         following = reference[i + 1] if i + 1 < len(reference) else ""
-        run = range(_run_start(reference, i), i + 1)
-        matched = [emitted[j] for j in run if j in emitted]
         if following in SHORT_VOWELS and _mid_word(reference, limits, i + 1):
             name = _CHAR_TO_HARAKA[following]
-            if not matched:
-                outcome = BASE_OTHER
-            elif matched[-1] is None:
-                outcome = BASE_EMPTY
-            else:
-                outcome = BASE_MATCHED if matched[-1] == following else BASE_OTHER
-            found.append(Found(_stratum(name, outcome), name, name, i))
-        single = len(run) == 1 and following != carrier
+            stratum = tashkeel_stratum(name, harakat[BASE][i], harakat[H448][i])
+            found.append(Found(stratum, name, name, i))
+        single = run_start(reference, i) == i and following != carrier
         if single and (following in CONSONANTS or following == QALQALA) \
                 and _mid_word(reference, limits, i):
-            if not matched:
-                outcome = BASE_OTHER
-            else:
-                outcome = BASE_EMPTY if matched[-1] is None else BASE_HARAKA
-            found.append(Found(_stratum(SUKUN, outcome), SUKUN, SUKUN, i))
+            stratum = tashkeel_stratum(SUKUN, sukun[BASE].get(i, OTHER),
+                                       sukun[H448].get(i, OTHER))
+            found.append(Found(stratum, SUKUN, SUKUN, i))
     return found
 
 
 def _shaddah_found(reference: str, decode: str) -> list[Found]:
     changes = contrast_sites(decode, reference, SHADDA_CONTRAST)
-    dropped = {_run_start(reference, s.reference_index) for s in changes if s.change == DROPPED}
+    dropped = {run_start(reference, s.reference_index) for s in changes if s.change == DROPPED}
     found = [
         Found(_stratum(SHADDAH, HELD, BASE_SINGLE if i in dropped else BASE_REST),
               SHADDAH, HELD, i)
         for i, char in enumerate(reference[:-1])
-        if char in CONSONANTS and reference[i + 1] == char and _run_start(reference, i) == i
+        if char in CONSONANTS and reference[i + 1] == char and run_start(reference, i) == i
     ]
     doubled = {s.reference_index for s in changes if s.change == ADDED}
     found += [
@@ -310,7 +374,7 @@ def _pair_found(reference: str, decode: str) -> list[Found]:
         letters = pair.split("↔")
         partnered = {s.reference_index for s in contrast_sites(decode, reference, pair)}
         for i, char in enumerate(reference):
-            if char not in letters or _run_start(reference, i) != i:
+            if char not in letters or run_start(reference, i) != i:
                 continue  # a geminate is one site, on its first half
             (partner,) = set(letters) - {char}
             outcome = BASE_PARTNER if i in partnered else BASE_REST
@@ -319,14 +383,15 @@ def _pair_found(reference: str, decode: str) -> list[Found]:
 
 
 def segment_sites(
-    reference: str, decode: str, offsets: list[int], tanween: list[bool]
+    reference: str, base: str, h448: str, offsets: list[int], tanween: list[bool]
 ) -> list[Found]:
-    """Every eligible site in one kept segment, stratified by the base decode."""
+    """Every eligible site in one kept segment, stratified by the base decode and, for
+    tashkeel, by the ``h448`` b=0 stream's text for the segment too."""
     limits = word_limits(reference, offsets, tanween)
     return (
-        _tashkeel_found(reference, decode, limits)
-        + _shaddah_found(reference, decode)
-        + _pair_found(reference, decode)
+        _tashkeel_found(reference, {BASE: base, H448: h448}, limits)
+        + _shaddah_found(reference, base)
+        + _pair_found(reference, base)
     )
 
 
@@ -344,22 +409,33 @@ def site_id(audio_filename: str, segment_index: int, reference_index: int, mark:
 
 
 def excerpt_span(
-    segment: PoolSegment, word_times: tuple[float, ...], re_reads: int, reference_index: int
+    segment: PoolSegment,
+    word_times: tuple[float, ...],
+    re_reads: int,
+    reference_index: int,
+    clip_samples: int,
 ) -> tuple[int, int]:
     """The ``[start, end)`` samples the UI plays: the carrier's word and one word either
-    side, from the clip's word times, inside the segment.
+    side, padded by :data:`EXCERPT_PAD_S` on each side and clamped only to the clip, so it
+    never cuts inside those words.
 
-    The whole segment plays instead when the times cannot be trusted for it: a clip with
-    re-reads (its words are recited more than once, so a word's time names one pass), no
-    word times, or an excerpt shorter than :data:`MIN_EXCERPT_S` once clamped."""
+    The word times are the clip's whole-clip alignment (``ClipStatus.word_times``), the only
+    timings the pool has. They place *words*, so an excerpt is a function of the reference
+    and that alignment, never of the mark a decode emitted at the carrier. The whole
+    segment plays instead when the times cannot place the words: a clip with re-reads (its
+    words are recited more than once, so a word's time names one pass), no word times, a
+    word span that does not overlap the segment, or an excerpt shorter than
+    :data:`MIN_EXCERPT_S`."""
     whole = (segment.start_sample, segment.end_sample)
     if re_reads or len(word_times) <= segment.word_end:
         return whole
     word = segment.word_start + bisect.bisect_right(segment.raw_word_offsets, reference_index) - 1
     first, last = max(segment.word_start, word - 1), min(segment.word_end, word + 2)
-    start = round((word_times[first] - EXCERPT_PAD_S) * TARGET_SAMPLE_RATE)
-    end = round((word_times[last] + EXCERPT_PAD_S) * TARGET_SAMPLE_RATE)
-    start, end = max(start, segment.start_sample), min(end, segment.end_sample)
+    onset, offset = word_times[first] * TARGET_SAMPLE_RATE, word_times[last] * TARGET_SAMPLE_RATE
+    if not (onset < offset and onset < segment.end_sample and offset > segment.start_sample):
+        return whole
+    start = max(0, round(onset - EXCERPT_PAD_S * TARGET_SAMPLE_RATE))
+    end = min(clip_samples, round(offset + EXCERPT_PAD_S * TARGET_SAMPLE_RATE))
     if end - start < MIN_EXCERPT_S * TARGET_SAMPLE_RATE:
         return whole
     return start, end
@@ -368,16 +444,19 @@ def excerpt_span(
 @dataclass(frozen=True)
 class Candidate:
     """One eligible site before the draw: a truth-site skeleton whose population is not
-    known yet, its clip's pool inclusion probability and its excerpt."""
+    known yet, its clip's pool inclusion probability, its segment's words and its excerpt."""
 
     site: TruthSite
     clip_inclusion_probability: float
+    word_start: int
+    word_offsets: tuple[int, ...]
     excerpt: tuple[int, int]
 
 
 def pool_candidates(
     clips: list[PoolClip],
-    decodes: Mapping[str, str],
+    base_decodes: Mapping[str, str],
+    h448_decodes: Mapping[str, str],
     registry: Mapping[str, StagedClip],
     tanween_of: Callable[[str], list[bool]],
 ) -> list[Candidate]:
@@ -389,10 +468,11 @@ def pool_candidates(
         for segment in clip.segments:
             if not segment.kept:
                 continue
-            words = tanween[segment.word_start:segment.word_end]
-            decode = decodes[segment_key(clip.audio_filename, segment.segment_index)]
+            key = segment_key(clip.audio_filename, segment.segment_index)
             for found in segment_sites(
-                segment.reference, decode, list(segment.raw_word_offsets), words
+                segment.reference, base_decodes[key], h448_decodes[key],
+                list(segment.raw_word_offsets),
+                tanween[segment.word_start:segment.word_end],
             ):
                 site = TruthSite(
                     site_id=site_id(clip.audio_filename, segment.segment_index,
@@ -414,26 +494,27 @@ def pool_candidates(
                     stratum_population=0,  # set once the stratum is counted
                 )
                 excerpt = excerpt_span(segment, clip.word_times, clip.re_reads,
-                                       found.reference_index)
-                candidates.append(Candidate(site, clip.inclusion_probability, excerpt))
+                                       found.reference_index, staged.num_samples)
+                candidates.append(Candidate(site, clip.inclusion_probability,
+                                            segment.word_start, segment.raw_word_offsets,
+                                            excerpt))
     return candidates
 
 
 def p35_segments(
     clip_status: list[dict], segmentation: list[dict], registry: Mapping[str, StagedClip]
-) -> dict[tuple[str, int], tuple[PoolSegment, tuple[float, ...], int]]:
+) -> dict[tuple[str, int], tuple[PoolSegment, tuple[float, ...], int, int]]:
     """The P3.5 re-location's segments (``tadabur.resegment`` output) keyed by clip and
-    start sample, each with its clip's word times and re-read count."""
+    start sample, each with its clip's word times, re-read count and length."""
     from .segment_score import segment_sample_bounds
 
     status = {row["audio_filename"]: row for row in clip_status}
     segments = {}
     for row in segmentation:
         name = row["audio_filename"]
+        clip_samples = registry[name].num_samples
         for seg in row["segments"]:
-            start, end = segment_sample_bounds(
-                registry[name].num_samples, seg["start_s"], seg["end_s"]
-            )
+            start, end = segment_sample_bounds(clip_samples, seg["start_s"], seg["end_s"])
             segment = PoolSegment(
                 segment_index=seg["segment_index"], word_start=seg["word_start"],
                 word_end=seg["word_end"], start_sample=start, end_sample=end,
@@ -441,14 +522,15 @@ def p35_segments(
                 kept=seg["kept"],
             )
             segments[(name, start)] = (
-                segment, tuple(status[name]["word_times"]), status[name]["re_reads"]
+                segment, tuple(status[name]["word_times"]), status[name]["re_reads"],
+                clip_samples,
             )
     return segments
 
 
 def p35_candidates(
     sites: list[TruthSite],
-    segments: Mapping[tuple[str, int], tuple[PoolSegment, tuple[float, ...], int]],
+    segments: Mapping[tuple[str, int], tuple[PoolSegment, tuple[float, ...], int, int]],
 ) -> list[Candidate]:
     """The P3.5 sites still ``pending``: a census of the nominal rejects (inclusion
     probability 1), each on the re-location segment it was defined on."""
@@ -456,11 +538,15 @@ def p35_candidates(
     for site in sites:
         if site.heard != PENDING:
             continue
-        segment, word_times, re_reads = segments[(site.audio_filename, site.start_sample)]
+        segment, word_times, re_reads, clip_samples = segments[
+            (site.audio_filename, site.start_sample)
+        ]
         if (segment.end_sample, segment.reference) != (site.end_sample, site.reference):
             raise ValueError(f"{site.site_id}: its segment no longer matches the re-location")
-        excerpt = excerpt_span(segment, word_times, re_reads, site.reference_index)
-        candidates.append(Candidate(site, 1.0, excerpt))
+        excerpt = excerpt_span(segment, word_times, re_reads, site.reference_index,
+                               clip_samples)
+        candidates.append(Candidate(site, 1.0, segment.word_start, segment.raw_word_offsets,
+                                    excerpt))
     return candidates
 
 
@@ -475,6 +561,8 @@ class SessionSite:
     clip_inclusion_probability: float
     draw_probability: float
     inclusion_probability: float
+    word_start: int
+    word_offsets: tuple[int, ...]
     excerpt_start_sample: int
     excerpt_end_sample: int
 
@@ -505,27 +593,30 @@ def draw(candidates: list[Candidate], sizes: Mapping[str, int]) -> list[SessionS
         chosen = ranked[:sizes.get(stratum, 0)]
         draw_probability = len(chosen) / len(members)
         rows += [
-            SessionSite(
-                site=replace(c.site, stratum_population=len(members)),
-                clip_inclusion_probability=c.clip_inclusion_probability,
-                draw_probability=draw_probability,
-                inclusion_probability=c.clip_inclusion_probability * draw_probability,
-                excerpt_start_sample=c.excerpt[0],
-                excerpt_end_sample=c.excerpt[1],
-            )
+            _session_site(replace(c.site, stratum_population=len(members)), c,
+                          draw_probability)
             for c in chosen
         ]
     return rows
 
 
+def _session_site(site: TruthSite, candidate: Candidate, draw_probability: float) -> SessionSite:
+    return SessionSite(
+        site=site,
+        clip_inclusion_probability=candidate.clip_inclusion_probability,
+        draw_probability=draw_probability,
+        inclusion_probability=candidate.clip_inclusion_probability * draw_probability,
+        word_start=candidate.word_start,
+        word_offsets=candidate.word_offsets,
+        excerpt_start_sample=candidate.excerpt[0],
+        excerpt_end_sample=candidate.excerpt[1],
+    )
+
+
 def census(candidates: list[Candidate]) -> list[SessionSite]:
     """Every candidate, each certain to be listened to: the P3.5 safeguards, which keep
     their own strata and populations (acceptance rules §1, *Targeted safeguards*)."""
-    return [
-        SessionSite(c.site, c.clip_inclusion_probability, 1.0, c.clip_inclusion_probability,
-                    c.excerpt[0], c.excerpt[1])
-        for c in candidates
-    ]
+    return [_session_site(c.site, c, 1.0) for c in candidates]
 
 
 def shuffled(rows: list[SessionSite]) -> list[SessionSite]:
@@ -537,7 +628,8 @@ def shuffled(rows: list[SessionSite]) -> list[SessionSite]:
 
 
 def _row_json(row: SessionSite) -> dict:
-    return {**asdict(row.site), **{name: getattr(row, name) for name in DESIGN_FIELDS}}
+    design = {name: getattr(row, name) for name in DESIGN_FIELDS}
+    return {**asdict(row.site), **design, "word_offsets": list(row.word_offsets)}
 
 
 def parse_row(data: dict, where: str) -> SessionSite:
@@ -548,7 +640,13 @@ def parse_row(data: dict, where: str) -> SessionSite:
     site = parse_site({k: v for k, v in data.items() if k not in DESIGN_FIELDS}, where)
     if site.heard != PENDING:
         raise ValueError(f"{where}: a worklist row is a skeleton; heard must be pending")
-    row = SessionSite(site=site, **design)
+    offsets = design["word_offsets"]
+    if not (isinstance(offsets, list) and offsets and all(type(o) is int for o in offsets)
+            and offsets[0] == 0 and offsets[-1] == len(site.reference)
+            and offsets == sorted(offsets) and type(design["word_start"]) is int
+            and design["word_start"] >= 0):
+        raise ValueError(f"{where}: word_start and word_offsets do not describe the reference")
+    row = SessionSite(site=site, **{**design, "word_offsets": tuple(offsets)})
     probabilities = (row.clip_inclusion_probability, row.draw_probability,
                      row.inclusion_probability)
     if not all(type(p) is float and 0 < p <= 1 for p in probabilities):
@@ -557,9 +655,8 @@ def parse_row(data: dict, where: str) -> SessionSite:
            * row.draw_probability) > 1e-12:
         raise ValueError(f"{where}: inclusion_probability is not clip x draw")
     if not (type(row.excerpt_start_sample) is int and type(row.excerpt_end_sample) is int
-            and site.start_sample <= row.excerpt_start_sample < row.excerpt_end_sample
-            <= site.end_sample):
-        raise ValueError(f"{where}: the excerpt is not inside the segment")
+            and 0 <= row.excerpt_start_sample < row.excerpt_end_sample):
+        raise ValueError(f"{where}: the excerpt is not a span of samples")
     return row
 
 
@@ -720,8 +817,9 @@ def _mine(args) -> None:
     registry = load_staged_clips()
     clips = load_manifest(POOL_CLIPS_PATH, registry)
     fingerprint, decodes = load_base_decodes(POOL_DECODES_PATH)
+    h448_provenance, h448_decodes = load_stream_decodes(H448_DECODES_PATH)
     sizes = DEFAULT_SIZES if args.sizes is None else json.loads(args.sizes.read_text())
-    candidates = pool_candidates(clips, decodes, registry, _uthmani_tanween())
+    candidates = pool_candidates(clips, decodes, h448_decodes, registry, _uthmani_tanween())
     p35 = load_truth_sites(P35_SITES_PATH)
     safeguards = p35_candidates(
         p35,
@@ -736,9 +834,11 @@ def _mine(args) -> None:
             name: hashlib.sha256(path.read_bytes()).hexdigest()
             for name, path in (("mining_pool/clips.jsonl", POOL_CLIPS_PATH),
                                ("mining_pool/base_decodes.json", POOL_DECODES_PATH),
+                               ("mining_pool/h448_stream_decodes.json", H448_DECODES_PATH),
                                ("truth_sites/p35_fixtures.jsonl", P35_SITES_PATH))
         },
         "base_decode": fingerprint,
+        "h448_decode": h448_provenance,
         "sizes": {stratum: sizes.get(stratum, 0) for stratum in STRATA},
         **summarize(population, rows, registry),
     }
@@ -748,7 +848,7 @@ def _mine(args) -> None:
     )
     for stratum, counts in summary["strata"].items():
         if counts["population"]:
-            print(f"{stratum:40s} {counts['sampled']:4d} / {counts['population']:6d}"
+            print(f"{stratum:52s} {counts['sampled']:4d} / {counts['population']:6d}"
                   f"  {counts['listening_minutes']:5.1f} min")
     print(json.dumps({k: summary[k] for k in ("modes", "sites", "listening_minutes")},
                      ensure_ascii=False, indent=2))

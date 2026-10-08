@@ -1,0 +1,72 @@
+{
+  "census": {
+    "clips_without_reference": 0,
+    "events": {
+      "shaddah_added": 54,
+      "shaddah_dropped": 468,
+      "ت↔ط": 4,
+      "ح↔ه": 5,
+      "ذ↔ز": 31,
+      "ذ↔ظ": 4,
+      "س↔ص": 16,
+      "ض↔ظ": 32,
+      "ق↔ك": 35
+    },
+    "frame_clips": 12413,
+    "phonetizer_revision": "1",
+    "scan": {
+      "census_clips": 12413,
+      "census_sha256": "1831c39a29e8eb932f79f7e9cb87e1c161e3550c5584fc30ae0d25bb1422af6a",
+      "decode_fingerprint": {
+        "autocast": true,
+        "batch_size": 1,
+        "device_type": "cuda",
+        "mode": "whole-spans",
+        "model": "obadx/muaalem-model-v3_2",
+        "policy": "fp32-features-v1",
+        "weights_dtype": "bf16"
+      }
+    },
+    "stratum_clips": {
+      "consonant_pair": 122,
+      "geminate": 502,
+      "uniform": 2000
+    }
+  },
+  "decode_evalset_manifest_sha256": "3d5d237ac8530f6ccbd78d00697ff6fef27462afed39d07cde7d68fd0600ff4b",
+  "excluded": {
+    "duration": 197,
+    "in_decode_evalset": 2759,
+    "phonetizer_unsupported": 21
+  },
+  "frame_clips": 16023,
+  "frame_reciters": 500,
+  "per_reciter_cap": 8,
+  "pool_clips": 2508,
+  "pool_reciters": 394,
+  "pool_size": 2000,
+  "salt": "issue-83-mining-pool-v1",
+  "shards": [
+    39,
+    58,
+    77,
+    96,
+    115,
+    134,
+    153,
+    172,
+    191,
+    210,
+    229,
+    248,
+    267,
+    286,
+    305,
+    324,
+    343,
+    362,
+    381
+  ],
+  "uniform_clips": 2000,
+  "uniform_reciters": 394
+}

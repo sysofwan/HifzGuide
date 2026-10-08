@@ -105,3 +105,33 @@ def test_iter_shard_rows_deletes_shard_when_asked(tmp_path, monkeypatch):
 
     list(iter_shard_rows([0], batch_size=2, delete_after=True))
     assert not shard.exists()  # blob freed after the shard is consumed
+
+
+# MARK: - iter_shard_metadata
+
+
+def test_iter_shard_metadata_reads_identity_columns_with_row_positions(tmp_path, monkeypatch):
+    from tadabur.shard_reader import iter_shard_metadata
+
+    paths = {}
+    for shard, base in ((3, 0), (7, 100)):
+        path = tmp_path / f"train-{shard:05d}.parquet"
+        _write_shard(path, 3, base=base)
+        table = pq.read_table(path).append_column(
+            "ayah_duration_s", pa.array([1.5, 2.5, 3.5], type=pa.float32())
+        )
+        pq.write_table(table, path)
+        paths[f"datasets/FaisaI/tadabur/data/train-{shard:05d}.parquet"] = path
+
+    class _LocalFs:
+        def open(self, path, mode):
+            return open(paths[path], mode)
+
+    import huggingface_hub
+    monkeypatch.setattr(huggingface_hub, "HfFileSystem", _LocalFs)
+
+    rows = list(iter_shard_metadata([7, 3]))
+    assert [(r["shard"], r["row_index"], r["ayah_id"]) for r in rows] == [
+        (7, 0, 100), (7, 1, 101), (7, 2, 102), (3, 0, 0), (3, 1, 1), (3, 2, 2)]
+    assert rows[0]["audio_filename"] == "tadabur_spk0000_S1_A100_x.wav"
+    assert rows[0]["reciter_id"] == 7 and rows[0]["ayah_duration_s"] == 1.5

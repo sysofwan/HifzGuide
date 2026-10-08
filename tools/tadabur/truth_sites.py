@@ -11,8 +11,8 @@ labelled position in one piece of Tadabur audio, carrying
   phonetizer's output for what was recited, waqf/wasl as recited) and ``reference_index``,
   the **carrier letter** in it that the mark under test sits on;
 * **what** — the ``mark`` under test (a haraka, sukun, shaddah, or one soft pair), what the
-  mushaf ``prescribed`` there and what the human ``heard`` (``unclear`` leaves the
-  denominator);
+  mushaf ``prescribed`` there and what the human ``heard`` (``unclear``, and ``pending`` for
+  a site not adjudicated yet, leave the denominator);
 * **how it was labelled** — the ``source``, whether the label ``assumes_competent_reciter``
   (the human adjudicated something else and the mark follows only if the reciter recited
   correctly), and the ``stratum`` with that stratum's ``stratum_population`` so an
@@ -67,6 +67,12 @@ NOT_HELD = "not_held"
 GEMINATION_STATES = frozenset({HELD, NOT_HELD})
 #: The listener could not tell. Kept in the file; the scorer leaves it out of denominators.
 UNCLEAR = "unclear"
+#: No site-level verdict exists yet: the site is defined and staged, but what the reciter
+#: said there is still to be adjudicated (a P3.5 clip-level reject, #83). Like ``unclear``
+#: it leaves every denominator; unlike it, it is waiting to be replaced by a verdict.
+PENDING = "pending"
+#: The ``heard`` values that are not a verdict on the mark, valid for every mark.
+NO_VERDICT = frozenset({UNCLEAR, PENDING})
 
 #: The plain consonants of the phoneme vocabulary (ids 1-28, ``ء`` .. ``ي``): the only
 #: characters a mark can sit on. Madd (``ا ۥ ۦ``), ghunna and tashkeel are not carriers.
@@ -136,14 +142,15 @@ def label_states(mark: str) -> tuple[frozenset[str], frozenset[str]]:
     listener may hear any tashkeel mark. Shaddah is a gemination state: the mushaf
     prescribes ``held`` (a geminate) or ``not_held`` (a single consonant, the site of an
     *added* shaddah), and the listener heard either. A soft pair prescribes one of its two
-    letters and the listener heard one of them.
+    letters and the listener heard one of them. Every mark may also be heard as one of
+    :data:`NO_VERDICT`: ``unclear`` or still ``pending``.
     """
     if mark in TASHKEEL_MARKS:
-        return frozenset({mark}), TASHKEEL_MARKS | {UNCLEAR}
+        return frozenset({mark}), TASHKEEL_MARKS | NO_VERDICT
     if mark == SHADDAH:
-        return GEMINATION_STATES, GEMINATION_STATES | {UNCLEAR}
+        return GEMINATION_STATES, GEMINATION_STATES | NO_VERDICT
     letters = frozenset(mark.split("↔"))
-    return letters, letters | {UNCLEAR}
+    return letters, letters | NO_VERDICT
 
 
 def _check_types(data: dict, where: str) -> None:

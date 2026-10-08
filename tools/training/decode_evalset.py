@@ -502,7 +502,7 @@ def build(
     from transformers import SeamlessM4TFeatureExtractor
 
     from tadabur.audio import decode_to_mono_16k
-    from tadabur.filter import canonical_surah_ayah
+    from tadabur.dataset_source import canonical_surah_ayah
     from tadabur.reference_phonemes import load_reference_phonemes
     from tadabur.shard_reader import iter_shard_rows
     from training.distill_data import SAMPLE_RATE

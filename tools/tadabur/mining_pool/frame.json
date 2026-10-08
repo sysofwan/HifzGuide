@@ -1,0 +1,2509 @@
+{
+ "per_reciter": {
+  "0": {
+   "drawn": true,
+   "eligible": 209,
+   "uniform": 8
+  },
+  "1": {
+   "drawn": true,
+   "eligible": 236,
+   "uniform": 8
+  },
+  "100": {
+   "drawn": false,
+   "eligible": 118
+  },
+  "101": {
+   "drawn": true,
+   "eligible": 154,
+   "uniform": 8
+  },
+  "102": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "103": {
+   "drawn": true,
+   "eligible": 27,
+   "uniform": 8
+  },
+  "104": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "105": {
+   "drawn": false,
+   "eligible": 92
+  },
+  "106": {
+   "drawn": false,
+   "eligible": 53
+  },
+  "107": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "108": {
+   "drawn": false,
+   "eligible": 143
+  },
+  "109": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "11": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "110": {
+   "drawn": true,
+   "eligible": 20,
+   "uniform": 8
+  },
+  "111": {
+   "drawn": true,
+   "eligible": 9,
+   "uniform": 8
+  },
+  "112": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "113": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "114": {
+   "drawn": false,
+   "eligible": 24
+  },
+  "115": {
+   "drawn": false,
+   "eligible": 11
+  },
+  "116": {
+   "drawn": true,
+   "eligible": 94,
+   "uniform": 8
+  },
+  "117": {
+   "drawn": false,
+   "eligible": 80
+  },
+  "118": {
+   "drawn": true,
+   "eligible": 21,
+   "uniform": 8
+  },
+  "119": {
+   "drawn": true,
+   "eligible": 44,
+   "uniform": 8
+  },
+  "12": {
+   "drawn": true,
+   "eligible": 125,
+   "uniform": 8
+  },
+  "120": {
+   "drawn": true,
+   "eligible": 151,
+   "uniform": 8
+  },
+  "121": {
+   "drawn": false,
+   "eligible": 8
+  },
+  "122": {
+   "drawn": true,
+   "eligible": 17,
+   "uniform": 8
+  },
+  "125": {
+   "drawn": false,
+   "eligible": 17
+  },
+  "126": {
+   "drawn": true,
+   "eligible": 156,
+   "uniform": 8
+  },
+  "127": {
+   "drawn": true,
+   "eligible": 121,
+   "uniform": 8
+  },
+  "128": {
+   "drawn": true,
+   "eligible": 23,
+   "uniform": 8
+  },
+  "13": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "131": {
+   "drawn": true,
+   "eligible": 99,
+   "uniform": 8
+  },
+  "133": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "134": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "138": {
+   "drawn": false,
+   "eligible": 82
+  },
+  "139": {
+   "drawn": true,
+   "eligible": 122,
+   "uniform": 8
+  },
+  "14": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "140": {
+   "drawn": true,
+   "eligible": 9,
+   "uniform": 8
+  },
+  "143": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "145": {
+   "drawn": true,
+   "eligible": 52,
+   "uniform": 8
+  },
+  "146": {
+   "drawn": true,
+   "eligible": 148,
+   "uniform": 8
+  },
+  "147": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "148": {
+   "drawn": true,
+   "eligible": 137,
+   "uniform": 8
+  },
+  "149": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "15": {
+   "drawn": false,
+   "eligible": 40
+  },
+  "150": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "152": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "153": {
+   "drawn": true,
+   "eligible": 138,
+   "uniform": 8
+  },
+  "154": {
+   "drawn": true,
+   "eligible": 30,
+   "uniform": 8
+  },
+  "155": {
+   "drawn": false,
+   "eligible": 4
+  },
+  "156": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "157": {
+   "drawn": true,
+   "eligible": 111,
+   "uniform": 8
+  },
+  "158": {
+   "drawn": true,
+   "eligible": 170,
+   "uniform": 8
+  },
+  "159": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "16": {
+   "drawn": true,
+   "eligible": 97,
+   "uniform": 8
+  },
+  "161": {
+   "drawn": true,
+   "eligible": 23,
+   "uniform": 8
+  },
+  "162": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "163": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "165": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "166": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "167": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "168": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "17": {
+   "drawn": true,
+   "eligible": 295,
+   "uniform": 8
+  },
+  "170": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "173": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "174": {
+   "drawn": false,
+   "eligible": 12
+  },
+  "175": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "176": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "177": {
+   "drawn": false,
+   "eligible": 158
+  },
+  "178": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "179": {
+   "drawn": false,
+   "eligible": 13
+  },
+  "18": {
+   "drawn": true,
+   "eligible": 137,
+   "uniform": 8
+  },
+  "180": {
+   "drawn": true,
+   "eligible": 140,
+   "uniform": 8
+  },
+  "181": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "182": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "183": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 3
+  },
+  "184": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "185": {
+   "drawn": false,
+   "eligible": 4
+  },
+  "187": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "189": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "19": {
+   "drawn": true,
+   "eligible": 29,
+   "uniform": 8
+  },
+  "190": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "191": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "192": {
+   "drawn": false,
+   "eligible": 103
+  },
+  "195": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "196": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "197": {
+   "drawn": true,
+   "eligible": 113,
+   "uniform": 8
+  },
+  "198": {
+   "drawn": true,
+   "eligible": 53,
+   "uniform": 8
+  },
+  "199": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "2": {
+   "drawn": false,
+   "eligible": 213
+  },
+  "20": {
+   "drawn": true,
+   "eligible": 145,
+   "uniform": 8
+  },
+  "200": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "201": {
+   "drawn": false,
+   "eligible": 12
+  },
+  "202": {
+   "drawn": false,
+   "eligible": 93
+  },
+  "204": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "205": {
+   "drawn": true,
+   "eligible": 182,
+   "uniform": 8
+  },
+  "206": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "207": {
+   "drawn": true,
+   "eligible": 18,
+   "uniform": 8
+  },
+  "209": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "21": {
+   "drawn": false,
+   "eligible": 54
+  },
+  "210": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "211": {
+   "drawn": false,
+   "eligible": 5
+  },
+  "216": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "217": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "218": {
+   "drawn": false,
+   "eligible": 37
+  },
+  "219": {
+   "drawn": true,
+   "eligible": 87,
+   "uniform": 8
+  },
+  "22": {
+   "drawn": true,
+   "eligible": 145,
+   "uniform": 8
+  },
+  "220": {
+   "drawn": false,
+   "eligible": 4
+  },
+  "221": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "223": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "224": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "225": {
+   "drawn": true,
+   "eligible": 12,
+   "uniform": 8
+  },
+  "227": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "228": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "229": {
+   "drawn": true,
+   "eligible": 41,
+   "uniform": 8
+  },
+  "23": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "231": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "232": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "233": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "235": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "236": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "237": {
+   "drawn": true,
+   "eligible": 27,
+   "uniform": 8
+  },
+  "239": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "24": {
+   "drawn": true,
+   "eligible": 102,
+   "uniform": 8
+  },
+  "240": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "241": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "246": {
+   "drawn": false,
+   "eligible": 8
+  },
+  "247": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "25": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "250": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "251": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "252": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "253": {
+   "drawn": false,
+   "eligible": 5
+  },
+  "254": {
+   "drawn": true,
+   "eligible": 53,
+   "uniform": 8
+  },
+  "255": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "257": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "259": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "26": {
+   "drawn": true,
+   "eligible": 245,
+   "uniform": 8
+  },
+  "260": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "262": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "263": {
+   "drawn": true,
+   "eligible": 13,
+   "uniform": 8
+  },
+  "264": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "266": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "267": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "268": {
+   "drawn": true,
+   "eligible": 19,
+   "uniform": 8
+  },
+  "269": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "27": {
+   "drawn": false,
+   "eligible": 248
+  },
+  "271": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "273": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "275": {
+   "drawn": false,
+   "eligible": 5
+  },
+  "276": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "278": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "279": {
+   "drawn": true,
+   "eligible": 9,
+   "uniform": 8
+  },
+  "28": {
+   "drawn": true,
+   "eligible": 93,
+   "uniform": 8
+  },
+  "280": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "281": {
+   "drawn": false,
+   "eligible": 5
+  },
+  "282": {
+   "drawn": true,
+   "eligible": 54,
+   "uniform": 8
+  },
+  "285": {
+   "drawn": true,
+   "eligible": 9,
+   "uniform": 8
+  },
+  "286": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "287": {
+   "drawn": false,
+   "eligible": 5
+  },
+  "288": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "29": {
+   "drawn": true,
+   "eligible": 118,
+   "uniform": 8
+  },
+  "290": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "291": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "292": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "293": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "294": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "295": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "299": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "3": {
+   "drawn": true,
+   "eligible": 120,
+   "uniform": 8
+  },
+  "30": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "300": {
+   "drawn": false,
+   "eligible": 48
+  },
+  "301": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "302": {
+   "drawn": false,
+   "eligible": 77
+  },
+  "303": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "305": {
+   "drawn": false,
+   "eligible": 6
+  },
+  "306": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "307": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "308": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "309": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "31": {
+   "drawn": false,
+   "eligible": 145
+  },
+  "310": {
+   "drawn": false,
+   "eligible": 9
+  },
+  "311": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "312": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "315": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "316": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "318": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "319": {
+   "drawn": true,
+   "eligible": 37,
+   "uniform": 8
+  },
+  "32": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "321": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "324": {
+   "drawn": false,
+   "eligible": 27
+  },
+  "326": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "327": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "33": {
+   "drawn": true,
+   "eligible": 211,
+   "uniform": 8
+  },
+  "332": {
+   "drawn": false,
+   "eligible": 7
+  },
+  "333": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "336": {
+   "drawn": true,
+   "eligible": 25,
+   "uniform": 8
+  },
+  "337": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "338": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "34": {
+   "drawn": true,
+   "eligible": 109,
+   "uniform": 8
+  },
+  "340": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "343": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "345": {
+   "drawn": true,
+   "eligible": 18,
+   "uniform": 8
+  },
+  "346": {
+   "drawn": true,
+   "eligible": 31,
+   "uniform": 8
+  },
+  "35": {
+   "drawn": true,
+   "eligible": 21,
+   "uniform": 8
+  },
+  "350": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "351": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "354": {
+   "drawn": true,
+   "eligible": 21,
+   "uniform": 8
+  },
+  "355": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "356": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "357": {
+   "drawn": true,
+   "eligible": 58,
+   "uniform": 8
+  },
+  "36": {
+   "drawn": true,
+   "eligible": 158,
+   "uniform": 8
+  },
+  "360": {
+   "drawn": true,
+   "eligible": 30,
+   "uniform": 8
+  },
+  "361": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "362": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "364": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "365": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "367": {
+   "drawn": true,
+   "eligible": 9,
+   "uniform": 8
+  },
+  "37": {
+   "drawn": true,
+   "eligible": 12,
+   "uniform": 8
+  },
+  "370": {
+   "drawn": false,
+   "eligible": 14
+  },
+  "371": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "374": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "376": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "378": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "379": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "38": {
+   "drawn": true,
+   "eligible": 239,
+   "uniform": 8
+  },
+  "381": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "382": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "383": {
+   "drawn": true,
+   "eligible": 27,
+   "uniform": 8
+  },
+  "385": {
+   "drawn": true,
+   "eligible": 18,
+   "uniform": 8
+  },
+  "39": {
+   "drawn": true,
+   "eligible": 144,
+   "uniform": 8
+  },
+  "390": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "392": {
+   "drawn": false,
+   "eligible": 6
+  },
+  "394": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "396": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "397": {
+   "drawn": true,
+   "eligible": 9,
+   "uniform": 8
+  },
+  "399": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "4": {
+   "drawn": true,
+   "eligible": 99,
+   "uniform": 8
+  },
+  "40": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "400": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "401": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "402": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "403": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "404": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "405": {
+   "drawn": false,
+   "eligible": 11
+  },
+  "406": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "407": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "408": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "409": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "41": {
+   "drawn": true,
+   "eligible": 81,
+   "uniform": 8
+  },
+  "410": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "412": {
+   "drawn": true,
+   "eligible": 25,
+   "uniform": 8
+  },
+  "414": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "417": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "418": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "419": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "42": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "420": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "423": {
+   "drawn": true,
+   "eligible": 24,
+   "uniform": 8
+  },
+  "425": {
+   "drawn": true,
+   "eligible": 33,
+   "uniform": 8
+  },
+  "426": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "429": {
+   "drawn": false,
+   "eligible": 6
+  },
+  "43": {
+   "drawn": true,
+   "eligible": 21,
+   "uniform": 8
+  },
+  "430": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "432": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "433": {
+   "drawn": true,
+   "eligible": 26,
+   "uniform": 8
+  },
+  "434": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "435": {
+   "drawn": true,
+   "eligible": 41,
+   "uniform": 8
+  },
+  "436": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "437": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "44": {
+   "drawn": true,
+   "eligible": 49,
+   "uniform": 8
+  },
+  "442": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "445": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "447": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "448": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "449": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "45": {
+   "drawn": true,
+   "eligible": 212,
+   "uniform": 8
+  },
+  "450": {
+   "drawn": false,
+   "eligible": 6
+  },
+  "451": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "452": {
+   "drawn": true,
+   "eligible": 18,
+   "uniform": 8
+  },
+  "453": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "458": {
+   "drawn": true,
+   "eligible": 30,
+   "uniform": 8
+  },
+  "459": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "46": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "465": {
+   "drawn": false,
+   "eligible": 8
+  },
+  "468": {
+   "drawn": true,
+   "eligible": 14,
+   "uniform": 8
+  },
+  "469": {
+   "drawn": true,
+   "eligible": 22,
+   "uniform": 8
+  },
+  "47": {
+   "drawn": false,
+   "eligible": 14
+  },
+  "471": {
+   "drawn": true,
+   "eligible": 40,
+   "uniform": 8
+  },
+  "473": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "474": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "476": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "477": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "478": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "479": {
+   "drawn": true,
+   "eligible": 40,
+   "uniform": 8
+  },
+  "48": {
+   "drawn": true,
+   "eligible": 107,
+   "uniform": 8
+  },
+  "481": {
+   "drawn": false,
+   "eligible": 30
+  },
+  "483": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "484": {
+   "drawn": false,
+   "eligible": 18
+  },
+  "485": {
+   "drawn": true,
+   "eligible": 61,
+   "uniform": 8
+  },
+  "486": {
+   "drawn": true,
+   "eligible": 33,
+   "uniform": 8
+  },
+  "487": {
+   "drawn": false,
+   "eligible": 3
+  },
+  "488": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "489": {
+   "drawn": false,
+   "eligible": 63
+  },
+  "495": {
+   "drawn": true,
+   "eligible": 42,
+   "uniform": 8
+  },
+  "497": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "498": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "5": {
+   "drawn": true,
+   "eligible": 55,
+   "uniform": 8
+  },
+  "500": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "503": {
+   "drawn": false,
+   "eligible": 7
+  },
+  "505": {
+   "drawn": true,
+   "eligible": 12,
+   "uniform": 8
+  },
+  "506": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "507": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "508": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "509": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "51": {
+   "drawn": true,
+   "eligible": 216,
+   "uniform": 8
+  },
+  "510": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "511": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "512": {
+   "drawn": true,
+   "eligible": 17,
+   "uniform": 8
+  },
+  "513": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "514": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "515": {
+   "drawn": true,
+   "eligible": 15,
+   "uniform": 8
+  },
+  "516": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "518": {
+   "drawn": true,
+   "eligible": 78,
+   "uniform": 8
+  },
+  "52": {
+   "drawn": true,
+   "eligible": 137,
+   "uniform": 8
+  },
+  "521": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "522": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "525": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "526": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "527": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "529": {
+   "drawn": false,
+   "eligible": 27
+  },
+  "53": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "530": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "531": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "532": {
+   "drawn": true,
+   "eligible": 100,
+   "uniform": 8
+  },
+  "534": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "535": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "537": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "538": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "539": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "54": {
+   "drawn": true,
+   "eligible": 139,
+   "uniform": 8
+  },
+  "542": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "547": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "55": {
+   "drawn": true,
+   "eligible": 98,
+   "uniform": 8
+  },
+  "550": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "552": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "553": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "556": {
+   "drawn": true,
+   "eligible": 19,
+   "uniform": 8
+  },
+  "557": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "558": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "56": {
+   "drawn": true,
+   "eligible": 16,
+   "uniform": 8
+  },
+  "560": {
+   "drawn": true,
+   "eligible": 19,
+   "uniform": 8
+  },
+  "562": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "564": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "565": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "566": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "567": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "568": {
+   "drawn": false,
+   "eligible": 3
+  },
+  "57": {
+   "drawn": true,
+   "eligible": 162,
+   "uniform": 8
+  },
+  "573": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "575": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "578": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "579": {
+   "drawn": false,
+   "eligible": 4
+  },
+  "581": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "583": {
+   "drawn": true,
+   "eligible": 45,
+   "uniform": 8
+  },
+  "585": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "586": {
+   "drawn": true,
+   "eligible": 26,
+   "uniform": 8
+  },
+  "587": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "588": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "589": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "591": {
+   "drawn": false,
+   "eligible": 35
+  },
+  "592": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "593": {
+   "drawn": true,
+   "eligible": 30,
+   "uniform": 8
+  },
+  "594": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "596": {
+   "drawn": false,
+   "eligible": 11
+  },
+  "597": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "598": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "60": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "600": {
+   "drawn": false,
+   "eligible": 9
+  },
+  "602": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "603": {
+   "drawn": true,
+   "eligible": 61,
+   "uniform": 8
+  },
+  "609": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "61": {
+   "drawn": false,
+   "eligible": 11
+  },
+  "612": {
+   "drawn": true,
+   "eligible": 12,
+   "uniform": 8
+  },
+  "617": {
+   "drawn": true,
+   "eligible": 26,
+   "uniform": 8
+  },
+  "619": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "62": {
+   "drawn": true,
+   "eligible": 58,
+   "uniform": 8
+  },
+  "622": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "624": {
+   "drawn": false,
+   "eligible": 14
+  },
+  "625": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "628": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "629": {
+   "drawn": false,
+   "eligible": 15
+  },
+  "63": {
+   "drawn": true,
+   "eligible": 19,
+   "uniform": 8
+  },
+  "633": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "634": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "636": {
+   "drawn": false,
+   "eligible": 41
+  },
+  "639": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "64": {
+   "drawn": true,
+   "eligible": 117,
+   "uniform": 8
+  },
+  "640": {
+   "drawn": true,
+   "eligible": 12,
+   "uniform": 8
+  },
+  "641": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "642": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "644": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "645": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "647": {
+   "drawn": true,
+   "eligible": 26,
+   "uniform": 8
+  },
+  "648": {
+   "drawn": true,
+   "eligible": 13,
+   "uniform": 8
+  },
+  "649": {
+   "drawn": true,
+   "eligible": 33,
+   "uniform": 8
+  },
+  "65": {
+   "drawn": true,
+   "eligible": 88,
+   "uniform": 8
+  },
+  "650": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "651": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "655": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "656": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "657": {
+   "drawn": true,
+   "eligible": 42,
+   "uniform": 8
+  },
+  "658": {
+   "drawn": false,
+   "eligible": 50
+  },
+  "659": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "66": {
+   "drawn": true,
+   "eligible": 689,
+   "uniform": 8
+  },
+  "661": {
+   "drawn": false,
+   "eligible": 11
+  },
+  "662": {
+   "drawn": true,
+   "eligible": 19,
+   "uniform": 8
+  },
+  "664": {
+   "drawn": false,
+   "eligible": 53
+  },
+  "667": {
+   "drawn": true,
+   "eligible": 6,
+   "uniform": 6
+  },
+  "668": {
+   "drawn": true,
+   "eligible": 9,
+   "uniform": 8
+  },
+  "669": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "67": {
+   "drawn": true,
+   "eligible": 98,
+   "uniform": 8
+  },
+  "670": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "674": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "675": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "677": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "678": {
+   "drawn": true,
+   "eligible": 10,
+   "uniform": 8
+  },
+  "68": {
+   "drawn": true,
+   "eligible": 154,
+   "uniform": 8
+  },
+  "684": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "685": {
+   "drawn": true,
+   "eligible": 11,
+   "uniform": 8
+  },
+  "689": {
+   "drawn": false,
+   "eligible": 12
+  },
+  "69": {
+   "drawn": true,
+   "eligible": 12,
+   "uniform": 8
+  },
+  "690": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "691": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "692": {
+   "drawn": true,
+   "eligible": 12,
+   "uniform": 8
+  },
+  "693": {
+   "drawn": false,
+   "eligible": 51
+  },
+  "695": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "696": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "697": {
+   "drawn": false,
+   "eligible": 19
+  },
+  "698": {
+   "drawn": false,
+   "eligible": 2
+  },
+  "7": {
+   "drawn": false,
+   "eligible": 20
+  },
+  "70": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "700": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "702": {
+   "drawn": true,
+   "eligible": 42,
+   "uniform": 8
+  },
+  "703": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "704": {
+   "drawn": true,
+   "eligible": 13,
+   "uniform": 8
+  },
+  "706": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "709": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "71": {
+   "drawn": true,
+   "eligible": 117,
+   "uniform": 8
+  },
+  "710": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "712": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "713": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "715": {
+   "drawn": false,
+   "eligible": 3
+  },
+  "716": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "717": {
+   "drawn": false,
+   "eligible": 21
+  },
+  "72": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "720": {
+   "drawn": true,
+   "eligible": 29,
+   "uniform": 8
+  },
+  "721": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "722": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "724": {
+   "drawn": false,
+   "eligible": 23
+  },
+  "725": {
+   "drawn": true,
+   "eligible": 14,
+   "uniform": 8
+  },
+  "727": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "728": {
+   "drawn": true,
+   "eligible": 13,
+   "uniform": 8
+  },
+  "73": {
+   "drawn": true,
+   "eligible": 165,
+   "uniform": 8
+  },
+  "730": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "732": {
+   "drawn": true,
+   "eligible": 9,
+   "uniform": 8
+  },
+  "734": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "735": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "736": {
+   "drawn": true,
+   "eligible": 41,
+   "uniform": 8
+  },
+  "737": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "739": {
+   "drawn": true,
+   "eligible": 1,
+   "uniform": 1
+  },
+  "74": {
+   "drawn": true,
+   "eligible": 33,
+   "uniform": 8
+  },
+  "742": {
+   "drawn": false,
+   "eligible": 39
+  },
+  "743": {
+   "drawn": true,
+   "eligible": 5,
+   "uniform": 5
+  },
+  "75": {
+   "drawn": false,
+   "eligible": 240
+  },
+  "76": {
+   "drawn": false,
+   "eligible": 121
+  },
+  "77": {
+   "drawn": true,
+   "eligible": 174,
+   "uniform": 8
+  },
+  "78": {
+   "drawn": true,
+   "eligible": 209,
+   "uniform": 8
+  },
+  "79": {
+   "drawn": true,
+   "eligible": 168,
+   "uniform": 8
+  },
+  "8": {
+   "drawn": true,
+   "eligible": 228,
+   "uniform": 8
+  },
+  "80": {
+   "drawn": false,
+   "eligible": 133
+  },
+  "81": {
+   "drawn": false,
+   "eligible": 1
+  },
+  "82": {
+   "drawn": true,
+   "eligible": 2,
+   "uniform": 2
+  },
+  "83": {
+   "drawn": false,
+   "eligible": 29
+  },
+  "85": {
+   "drawn": true,
+   "eligible": 8,
+   "uniform": 8
+  },
+  "86": {
+   "drawn": true,
+   "eligible": 201,
+   "uniform": 8
+  },
+  "87": {
+   "drawn": true,
+   "eligible": 18,
+   "uniform": 8
+  },
+  "88": {
+   "drawn": true,
+   "eligible": 47,
+   "uniform": 8
+  },
+  "89": {
+   "drawn": true,
+   "eligible": 3,
+   "uniform": 3
+  },
+  "9": {
+   "drawn": false,
+   "eligible": 234
+  },
+  "90": {
+   "drawn": false,
+   "eligible": 54
+  },
+  "91": {
+   "drawn": true,
+   "eligible": 39,
+   "uniform": 8
+  },
+  "92": {
+   "drawn": true,
+   "eligible": 7,
+   "uniform": 7
+  },
+  "93": {
+   "drawn": true,
+   "eligible": 149,
+   "uniform": 8
+  },
+  "94": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "95": {
+   "drawn": true,
+   "eligible": 114,
+   "uniform": 8
+  },
+  "96": {
+   "drawn": true,
+   "eligible": 4,
+   "uniform": 4
+  },
+  "97": {
+   "drawn": true,
+   "eligible": 36,
+   "uniform": 8
+  },
+  "99": {
+   "drawn": false,
+   "eligible": 127
+  }
+ },
+ "per_shard": {
+  "115": {
+   "eligible": 839,
+   "excluded_duration": 10,
+   "excluded_in_decode_evalset": 150,
+   "excluded_phonetizer_unsupported": 1
+  },
+  "134": {
+   "eligible": 844,
+   "excluded_duration": 15,
+   "excluded_in_decode_evalset": 138,
+   "excluded_phonetizer_unsupported": 3
+  },
+  "153": {
+   "eligible": 847,
+   "excluded_duration": 10,
+   "excluded_in_decode_evalset": 142,
+   "excluded_phonetizer_unsupported": 1
+  },
+  "172": {
+   "eligible": 843,
+   "excluded_duration": 5,
+   "excluded_in_decode_evalset": 150,
+   "excluded_phonetizer_unsupported": 2
+  },
+  "191": {
+   "eligible": 863,
+   "excluded_duration": 10,
+   "excluded_in_decode_evalset": 126,
+   "excluded_phonetizer_unsupported": 1
+  },
+  "210": {
+   "eligible": 849,
+   "excluded_duration": 7,
+   "excluded_in_decode_evalset": 144
+  },
+  "229": {
+   "eligible": 825,
+   "excluded_duration": 12,
+   "excluded_in_decode_evalset": 161,
+   "excluded_phonetizer_unsupported": 2
+  },
+  "248": {
+   "eligible": 834,
+   "excluded_duration": 13,
+   "excluded_in_decode_evalset": 153
+  },
+  "267": {
+   "eligible": 835,
+   "excluded_duration": 9,
+   "excluded_in_decode_evalset": 155,
+   "excluded_phonetizer_unsupported": 1
+  },
+  "286": {
+   "eligible": 851,
+   "excluded_duration": 10,
+   "excluded_in_decode_evalset": 139
+  },
+  "305": {
+   "eligible": 862,
+   "excluded_duration": 11,
+   "excluded_in_decode_evalset": 127
+  },
+  "324": {
+   "eligible": 833,
+   "excluded_duration": 9,
+   "excluded_in_decode_evalset": 158
+  },
+  "343": {
+   "eligible": 833,
+   "excluded_duration": 10,
+   "excluded_in_decode_evalset": 157
+  },
+  "362": {
+   "eligible": 845,
+   "excluded_duration": 11,
+   "excluded_in_decode_evalset": 142,
+   "excluded_phonetizer_unsupported": 2
+  },
+  "381": {
+   "eligible": 844,
+   "excluded_duration": 11,
+   "excluded_in_decode_evalset": 145
+  },
+  "39": {
+   "eligible": 843,
+   "excluded_duration": 14,
+   "excluded_in_decode_evalset": 141,
+   "excluded_phonetizer_unsupported": 2
+  },
+  "58": {
+   "eligible": 853,
+   "excluded_duration": 8,
+   "excluded_in_decode_evalset": 138,
+   "excluded_phonetizer_unsupported": 1
+  },
+  "77": {
+   "eligible": 850,
+   "excluded_duration": 10,
+   "excluded_in_decode_evalset": 139,
+   "excluded_phonetizer_unsupported": 1
+  },
+  "96": {
+   "eligible": 830,
+   "excluded_duration": 12,
+   "excluded_in_decode_evalset": 154,
+   "excluded_phonetizer_unsupported": 4
+  }
+ },
+ "reciters_drawn": 394,
+ "reciters_eligible": 500
+}

@@ -12,6 +12,7 @@ import json
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 import soundfile as sf
 
 from .audio import TARGET_SAMPLE_RATE
@@ -490,3 +491,26 @@ def test_decode_all_caps_batches_by_padded_audio_not_just_count():
     budget = 16 * MAX_DECODE_BATCH_SECONDS * TARGET_SAMPLE_RATE
     assert all(max(b) * len(b) <= budget for b in model.batches)
     assert len(model.batches) > 1, "the long segment should have opened a new batch"
+
+
+# --- segment ids and spans (#83) -------------------------------------------------------
+
+
+def test_a_segment_id_parses_back_to_its_clip_and_index():
+    record = SegmentRecord("tadabur_spk0001_S1_A2_x_000003.wav", "2:2", 1, 4, 0, 3, 0.0, 1.0, "x")
+    assert segment_score.parse_segment_id(segment_score.segment_id(record)) == (
+        "tadabur_spk0001_S1_A2_x_000003.wav", 4)
+
+
+def test_a_whole_clip_name_is_not_a_segment_id():
+    for bad in ("tadabur_x.wav", "tadabur_x__segA.wav", "__seg1.wav", "tadabur_x__seg1"):
+        with pytest.raises(ValueError, match="segment id"):
+            segment_score.parse_segment_id(bad)
+
+
+def test_segment_sample_bounds_round_and_clamp_like_the_slice():
+    assert segment_score.segment_sample_bounds(32000, 0.10003, 1.5) == (1600, 24000)
+    assert segment_score.segment_sample_bounds(32000, -0.2, 9.0) == (0, 32000)
+    assert segment_score.segment_sample_bounds(32000, 1.5, 1.0) == (24000, 24000)
+    waveform = np.arange(32000, dtype=np.float32)
+    assert len(segment_score.slice_segment(waveform, 0.10003, 1.5)) == 24000 - 1600

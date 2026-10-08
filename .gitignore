@@ -40,6 +40,14 @@ wandb/
 # Truth sites (#79): one human-labelled position per row, the record ADR-0011 judges models
 # against. Source-of-truth, regenerated only from the committed labels they derive from.
 !tools/tadabur/truth_sites/waqf_boundaries.jsonl
+# The re-located P3.5 fixtures (#83) and the record of how each fixture was re-located
+# (segment span, realized reference and the base decode the rule was applied to).
+!tools/tadabur/truth_sites/p35_fixtures.jsonl
+!tools/tadabur/truth_sites/p35_fixtures.relocation.jsonl
+# Provenance of every re-staged Tadabur clip (#83): shard, row, reciter, length, checksum, uses.
+!tools/tadabur/staged_audio/clips.jsonl
+# The h448-unseen mining pool's manifest (#83): segments, realized references, word times.
+!tools/tadabur/mining_pool/clips.jsonl
 # Frozen P7.H conditional-reference integration cases (#35) — the product gate's source-of-truth.
 !tools/tadabur/waqf_integration_fixtures/waqf_integration_cases.jsonl
 # The tashkeel counterfactual item manifest (#10) — the recording sheet's machine-readable

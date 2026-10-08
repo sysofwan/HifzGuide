@@ -500,6 +500,15 @@ def test_spans_are_decoded_whole_and_cut_to_their_own_length():
     assert decoder.decode_spans([]) == []
 
 
+def test_span_class_ids_are_the_uncollapsed_rows_cut_to_each_span():
+    spans = [np.array([3, 3, 0, 0, 5, 5], dtype=np.float32), np.array([7, 7], dtype=np.float32)]
+    decoder = dc.Decoder("frames", _FrameModel(), _RawExtractor(pad=9.0), CPU, batch_size=2)
+
+    rows = decoder.span_class_ids(spans)
+
+    assert [row.tolist() for row in rows] == [[3, 0, 5], [7]]
+
+
 # --- Loading a model reference ---------------------------------------------------------
 
 

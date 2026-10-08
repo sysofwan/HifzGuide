@@ -123,6 +123,44 @@ def iter_shard_rows(
                 _remove_shard_blob(path)
 
 
+#: The light per-row columns :func:`iter_shard_metadata` reads: the clip's filename (the
+#: ``path`` leaf of the ``audio`` struct, ~23 KB per shard) and its ids, never the
+#: ~2.4 GB ``audio.bytes`` leaf beside it.
+METADATA_COLUMNS = ["audio.path", "reciter_id", "surah_id", "ayah_id", "ayah_duration_s"]
+
+
+def iter_shard_metadata(
+    shard_indices: Iterable[int], *, dataset_id: str = DATASET_ID
+) -> Iterator[dict]:
+    """Yield every row's identity in the given shards without downloading their audio.
+
+    Parquet stores each column leaf as its own byte range, so reading only
+    :data:`METADATA_COLUMNS` through ``HfFileSystem`` fetches a few hundred KB per shard
+    instead of the 2.4 GB blob: a whole-corpus index costs seconds per shard. Each row is
+    ``{"audio_filename", "shard", "row_index", "reciter_id", "surah_id", "ayah_id",
+    "ayah_duration_s"}``, where ``row_index`` is the row's position in its shard, the
+    same position :func:`iter_shard_rows` yields it at.
+    """
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfFileSystem
+
+    fs = HfFileSystem()
+    for shard in shard_indices:
+        path = f"datasets/{dataset_id}/{SHARD_TEMPLATE.format(index=shard)}"
+        with fs.open(path, "rb") as f:
+            table = pq.ParquetFile(f).read(columns=METADATA_COLUMNS)
+        for row_index, row in enumerate(table.to_pylist()):
+            yield {
+                "audio_filename": row["audio"]["path"],
+                "shard": shard,
+                "row_index": row_index,
+                "reciter_id": row["reciter_id"],
+                "surah_id": row["surah_id"],
+                "ayah_id": row["ayah_id"],
+                "ayah_duration_s": row["ayah_duration_s"],
+            }
+
+
 def _remove_shard_blob(path: str) -> None:
     """Best-effort delete of a downloaded shard, following the HF cache symlink to its blob.
 

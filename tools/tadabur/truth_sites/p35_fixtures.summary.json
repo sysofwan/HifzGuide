@@ -1,0 +1,102 @@
+{
+  "fixtures": 209,
+  "fixtures_kept": 151,
+  "sites": 154,
+  "outcomes_by_bucket": {
+    "marginal / accept": {
+      "marginal_no_site": 23
+    },
+    "marginal / reject": {
+      "marginal_no_site": 12
+    },
+    "shadda / accept": {
+      "contrast_absent": 7,
+      "kept": 11
+    },
+    "shadda / reject": {
+      "kept": 12
+    },
+    "ت↔ط / accept": {
+      "contrast_absent": 2,
+      "kept": 9,
+      "segment_dropped": 1,
+      "segment_missing": 1
+    },
+    "ت↔ط / reject": {
+      "kept": 1
+    },
+    "ح↔ه / accept": {
+      "kept": 3,
+      "segment_dropped": 1
+    },
+    "ذ↔ز / accept": {
+      "contrast_absent": 5,
+      "kept": 26,
+      "segment_missing": 2
+    },
+    "ذ↔ز / reject": {
+      "contrast_absent": 1,
+      "kept": 2
+    },
+    "س↔ص / accept": {
+      "kept": 28
+    },
+    "س↔ص / reject": {
+      "kept": 2
+    },
+    "ض↔ظ / accept": {
+      "contrast_absent": 1,
+      "kept": 25,
+      "segment_dropped": 1,
+      "segment_missing": 1
+    },
+    "ض↔ظ / reject": {
+      "kept": 2
+    },
+    "ق↔ك / accept": {
+      "kept": 27
+    },
+    "ق↔ك / reject": {
+      "kept": 3
+    }
+  },
+  "sites_by_stratum": {
+    "p35_fixture:shadda": {
+      "heard_as_prescribed": 11,
+      "pending": 13
+    },
+    "p35_fixture:ت↔ط": {
+      "heard_as_prescribed": 9,
+      "pending": 1
+    },
+    "p35_fixture:ح↔ه": {
+      "heard_as_prescribed": 3
+    },
+    "p35_fixture:ذ↔ز": {
+      "heard_as_prescribed": 28,
+      "pending": 2
+    },
+    "p35_fixture:س↔ص": {
+      "heard_as_prescribed": 28,
+      "pending": 2
+    },
+    "p35_fixture:ض↔ظ": {
+      "heard_as_prescribed": 25,
+      "pending": 2
+    },
+    "p35_fixture:ق↔ك": {
+      "heard_as_prescribed": 27,
+      "pending": 3
+    }
+  },
+  "decode_fingerprint": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+  },
+  "phonetizer_revision": "1"
+}

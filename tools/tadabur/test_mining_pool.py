@@ -8,16 +8,24 @@ import random
 import pytest
 
 from tadabur.mining_pool import (
+    CONSONANT_PAIR,
+    GEMINATE,
+    UNIFORM,
     PoolClip,
     PoolSegment,
     build_manifest,
     capacity,
+    census_frame,
     eligible,
+    event_strata,
     load_manifest,
     pool_shards,
     read_evalset_rows,
+    read_selection,
+    scan_events,
     segment_key,
     select_pool,
+    stratify,
     write_manifest,
 )
 from tadabur.staged_audio import IndexRow, StagedClip
@@ -130,7 +138,7 @@ def _segmentation() -> dict:
 
 
 def test_the_manifest_carries_sample_spans_clamped_to_the_staged_clip(tmp_path):
-    (clip,) = build_manifest([_status()], [_segmentation()], _staged())
+    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: (UNIFORM,)}, _staged())
     (seg,) = clip.segments
     assert (seg.start_sample, seg.end_sample) == (1600, 32000)
     assert clip.word_times == (0.1, 1.0, 1.9) and seg.raw_word_offsets == (0, 5, 9)
@@ -142,11 +150,12 @@ def test_the_manifest_carries_sample_spans_clamped_to_the_staged_clip(tmp_path):
 
 def test_a_clip_not_staged_for_the_pool_is_refused():
     with pytest.raises(ValueError, match="not staged for the mining pool"):
-        build_manifest([_status()], [_segmentation()], _staged(uses=("p35_fixture",)))
+        build_manifest([_status()], [_segmentation()], {CLIP: (UNIFORM,)},
+                       _staged(uses=("p35_fixture",)))
 
 
 def test_loading_refuses_a_clip_whose_reciter_disagrees_with_the_registry(tmp_path):
-    (clip,) = build_manifest([_status()], [_segmentation()], _staged())
+    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: (UNIFORM,)}, _staged())
     path = tmp_path / "clips.jsonl"
     write_manifest([PoolClip(**{**clip.__dict__, "reciter_id": 4})], path)
     with pytest.raises(ValueError, match="reciter or ayah"):
@@ -156,7 +165,7 @@ def test_loading_refuses_a_clip_whose_reciter_disagrees_with_the_registry(tmp_pa
 def test_capacity_counts_each_stratum_from_the_base_decode():
     segment = PoolSegment(0, 0, 2, 0, 100, REFERENCE, (0, 5, 9), True)
     dropped = PoolSegment(1, 2, 3, 100, 200, REFERENCE, (0, 9), False)
-    clip = PoolClip(CLIP, "2:2", 3, 2, None, 0, 2, 0.0, 1.0, (0.0, 1.0), (segment, dropped))
+    clip = PoolClip(CLIP, (UNIFORM,), "2:2", 3, 2, None, 0, 2, 0.0, 1.0, (0.0, 1.0), (segment, dropped))
     counts = capacity([clip], {segment_key(CLIP, 0): DECODE})
 
     # The dropped segment has no decode and is not counted.
@@ -167,3 +176,62 @@ def test_capacity_counts_each_stratum_from_the_base_decode():
     assert counts["pairs"]["ذ↔ز"] == {"base_other_letter": 1, "reference_carriers": 1}
     assert counts["pairs"]["ذ↔ظ"] == {"base_other_letter": 0, "reference_carriers": 1}
     assert counts["sukun_mid_word_carriers"] == 1  # the ل before ذ; not the geminate ب
+
+
+def test_a_selection_without_segmentation_is_refused():
+    with pytest.raises(ValueError, match="different clips"):
+        build_manifest([_status()], [_segmentation()], {"other.wav": (UNIFORM,)}, _staged())
+
+
+def test_loading_refuses_an_unknown_stratum(tmp_path):
+    (clip,) = build_manifest([_status()], [_segmentation()], {CLIP: (UNIFORM,)}, _staged())
+    path = tmp_path / "clips.jsonl"
+    write_manifest([PoolClip(**{**clip.__dict__, "strata": ("enriched",)})], path)
+    with pytest.raises(ValueError, match="strata"):
+        load_manifest(path, registry=_staged())
+
+
+# --- the census strata -----------------------------------------------------------------
+
+
+def test_scan_events_count_pair_substitutions_and_gemination_mismatches():
+    events = scan_events(DECODE, REFERENCE)
+    assert events == {"pairs": {"ذ↔ز": 1}, "shaddah": {"dropped": 1}}
+    assert event_strata(events) == (CONSONANT_PAIR, GEMINATE)
+    assert event_strata(scan_events(REFERENCE, REFERENCE)) == ()
+
+
+def test_the_census_frame_is_every_frame_clip_of_the_drawn_reciters():
+    frame = [_row("a.wav", 1), _row("b.wav", 2, row=1), _row("c.wav", 1, row=2)]
+    assert [r.audio_filename for r in census_frame(frame, [frame[0]])] == ["a.wav", "c.wav"]
+
+
+def test_census_clips_with_an_event_join_the_uniform_draw():
+    uniform = [_row("a.wav", 1), _row("b.wav", 1, row=1)]
+    census = uniform + [_row("c.wav", 1, row=2), _row("d.wav", 1, row=3)]
+    none = {"pairs": {}, "shaddah": {}}
+    scanned = {
+        "a.wav": {"pairs": {"ذ↔ز": 1}, "shaddah": {}},
+        "b.wav": none,
+        "c.wav": {"pairs": {}, "shaddah": {"added": 2}},
+        "d.wav": none,
+    }
+    assert stratify(uniform, census, scanned) == {
+        "a.wav": (UNIFORM, CONSONANT_PAIR),
+        "b.wav": (UNIFORM,),
+        "c.wav": (GEMINATE,),
+    }
+
+
+def test_a_scan_that_misses_part_of_the_census_frame_is_refused():
+    uniform = [_row("a.wav", 1)]
+    census = uniform + [_row("c.wav", 1, row=2)]
+    with pytest.raises(ValueError, match="unscanned"):
+        stratify(uniform, census, {"a.wav": {"pairs": {}, "shaddah": {}}})
+
+
+def test_a_selection_reads_back_as_index_rows(tmp_path):
+    path = tmp_path / "selection.jsonl"
+    row = _row("a.wav", 4, shard=58, row=9)
+    path.write_text(json.dumps({**row.__dict__, "strata": ["uniform"]}) + "\n", encoding="utf-8")
+    assert read_selection(path) == [row]

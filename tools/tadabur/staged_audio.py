@@ -35,12 +35,14 @@ Usage (from ``tools/``; ``stage`` downloads ~2.4 GB per shard, one at a time)::
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import re
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import asdict, dataclass, fields, replace
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .dataset_source import canonical_surah_ayah, resolve_audio_filename
 from .truth_sites import (
@@ -50,6 +52,9 @@ from .truth_sites import (
     TruthSite,
     audio_sha256,
 )
+
+if TYPE_CHECKING:
+    import numpy as np
 
 STAGED_AUDIO_DIR = Path(__file__).parent / "staged_audio"
 REGISTRY_PATH = STAGED_AUDIO_DIR / "clips.jsonl"
@@ -299,6 +304,19 @@ def stage_clips(
         if on_shard_done is not None:
             on_shard_done(staged)
     return staged, unlocatable
+
+
+def as_staged(waveform: "np.ndarray") -> "np.ndarray":
+    """The samples a staged clip holds for ``waveform``: written as 16 kHz PCM_16 WAV and
+    read back as float32, exactly as :func:`stage_clips` writes and every decode reads."""
+    import soundfile as sf
+
+    from .audio import TARGET_SAMPLE_RATE
+
+    buffer = io.BytesIO()
+    sf.write(buffer, waveform, TARGET_SAMPLE_RATE, format="WAV", subtype="PCM_16")
+    buffer.seek(0)
+    return sf.read(buffer, dtype="float32")[0]
 
 
 def _stage_row(row: dict, entry: IndexRow, audio_dir: Path, uses: frozenset[str]) -> StagedClip:

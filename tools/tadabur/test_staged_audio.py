@@ -14,10 +14,12 @@ import numpy as np
 import pytest
 import soundfile as sf
 
+from tadabur.audio import decode_to_mono_16k
 from tadabur.staged_audio import (
     MINING_POOL,
     IndexRow,
     StagedClip,
+    as_staged,
     fill_staging,
     load_staged_clips,
     read_shard_index,
@@ -173,6 +175,15 @@ def test_requested_rows_are_staged_once_per_shard_with_their_provenance(tmp_path
     assert a.num_samples == 410 and sf.info(tmp_path / "a.wav").subtype == "PCM_16"
     assert a.audio_sha256 == audio_sha256(tmp_path / "a.wav")
     assert staged["b.wav"].uses == ("p35_fixture", "waqf_boundary")
+
+
+def test_as_staged_gives_the_samples_a_staged_file_holds(tmp_path):
+    index = {"a.wav": _index("a.wav", 4, 0)}
+    stage_clips({"a.wav": frozenset({MINING_POOL})}, index, tmp_path,
+                lambda shard: iter(_shard(["a.wav"])))
+    in_memory = as_staged(decode_to_mono_16k(_shard(["a.wav"])[0]["audio"]["bytes"]))
+    on_disk, _ = sf.read(tmp_path / "a.wav", dtype="float32")
+    assert np.array_equal(in_memory, on_disk)
 
 
 def test_a_row_that_is_not_the_indexed_clip_is_refused(tmp_path):

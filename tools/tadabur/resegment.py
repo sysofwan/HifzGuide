@@ -50,6 +50,8 @@ from pathlib import Path
 
 import numpy as np
 
+from training.distill_student import TEACHER_MODEL_ID
+
 from .audio import TARGET_SAMPLE_RATE
 from .clip_status import write_clip_status
 from .segment_score import (
@@ -65,7 +67,7 @@ from .waqf_segments import SegmentRecord, hafs_segment_reference, hafs_word_refe
 #: The model every segmentation decode is made with: the frozen base teacher, in the bf16
 #: weights it has always been decoded at, one span per forward pass so no padding or batch
 #: composition enters a decode.
-BASE_TEACHER = "obadx/muaalem-model-v3_2"
+BASE_TEACHER = TEACHER_MODEL_ID
 WEIGHTS_DTYPE = "bf16"
 DECODE_BATCH_SIZE = 1
 

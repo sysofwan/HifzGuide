@@ -3,31 +3,44 @@
 The diagnostics (#85, #86) and the listening session's site mining (#87) all need the same
 thing: real recitations the shipped student has never seen, re-staged with provenance,
 segmented into waqf segments with realized references and word times, and decoded once by
-the frozen base teacher. This module fixes **which clips** (:func:`select_pool`) and
-writes the committed manifest of what they became (:func:`build_manifest`); the audio
-stays on the GPU box and is re-stageable from :mod:`tadabur.staged_audio`.
+the frozen base teacher. This module fixes **which clips** and writes the committed
+manifest of what they became; the audio stays on the GPU box and is re-stageable from
+:mod:`tadabur.staged_audio`.
 
-Selection is a pure function of the shard index:
+**The frame** is the strided reserve (:func:`training.decode_evalset.gate_eval_shards`)
+past the contiguous held-out block 0-20, so shard 20, which earlier runs used heavily, is
+not drawn twice. Of those rows, the eligible ones are: not in the frozen ``decode_evalset``
+(its dev half is the teacher-agreement guard, so a pool clip that later feeds training
+cannot leak into it), 1.5-50 s long (the evalset's bounds, which match the staging
+filter's cap), and on an ayah the phonetizer can realize
+(``generate_phonemes.FALLBACK_PHONEMES`` lists the eight it cannot).
 
-* **Frame** -- the strided reserve (:func:`training.decode_evalset.gate_eval_shards`)
-  past the contiguous held-out block 0-20, so shard 20, which earlier runs used heavily,
-  is not drawn twice. Of those rows, the eligible ones are: not in the frozen
-  ``decode_evalset`` (its dev half is the teacher-agreement guard, so a pool clip that
-  later feeds training cannot leak into it), 1.5-50 s long (the evalset's bounds, which
-  match the staging filter's cap), and on an ayah the phonetizer can realize
-  (``generate_phonemes.FALLBACK_PHONEMES`` lists the eight it cannot).
-* **Reciter-balanced, reciter-contiguous** -- reciters are ranked by a salted hash of the
-  canonical ``reciter_id``, clips within a reciter by a salted hash of the filename, and
-  the pool takes up to :data:`PER_RECITER_CAP` clips from each reciter in rank order
-  until :data:`POOL_SIZE` clips are drawn. The cap keeps one prolific reciter (one holds
-  ~800 of the reserve's clips) from dominating a reciter-clustered interval; taking whole
-  reciters in rank order leaves every lower-ranked reciter untouched, so the sealed panel
-  (#89) still has reciters that no part of this work has used.
+**Stratum ``uniform``** (:func:`select_pool`) is reciter-balanced and reciter-contiguous:
+reciters are ranked by a salted hash of the canonical ``reciter_id``, clips within a
+reciter by a salted hash of the filename, and up to :data:`PER_RECITER_CAP` clips are
+taken from each reciter in rank order until :data:`POOL_SIZE`. The cap keeps one prolific
+reciter (one holds ~800 of the reserve's clips) from dominating a reciter-clustered
+interval; taking whole reciters in rank order leaves every lower-ranked reciter untouched,
+so the sealed panel (#89) still has reciters no part of this work has used.
 
-Usage (from ``tools/``)::
+**Strata ``consonant_pair`` and ``geminate``** are censuses. The uniform draw holds too
+few of the rare events #87 mines (on the 2,000 uniform clips the base teacher heard the
+other letter of a target pair at 21 sites, none for ``ذ↔ظ``, and left a geminate single at
+56), so every frame clip **of the drawn reciters** is decoded whole by the base teacher
+(:func:`scan_events`, ``scan``) and every clip with a pair substitution or a gemination
+mismatch joins the pool. The census is complete within that sub-frame, so each stratum's
+population is its clip count (weight 1), and no reciter outside the uniform draw is
+touched.
+
+Usage (from ``tools/``; ``scan`` downloads the 19 pool shards again, one at a time)::
 
   python -m tadabur.mining_pool select --index stage/shard_index.jsonl \\
-      --evalset-manifest tadabur/gate_eval/manifest.json --out stage/pool_selection.jsonl
+      --evalset-manifest tadabur/gate_eval/manifest.json --out stage/pool_uniform.jsonl
+  python -m tadabur.mining_pool scan --index stage/shard_index.jsonl \\
+      --evalset-manifest tadabur/gate_eval/manifest.json --uniform stage/pool_uniform.jsonl \\
+      --out stage/scan.jsonl --shard-cache stage/hf_cache
+  python -m tadabur.mining_pool select ... --scan stage/scan.jsonl --out stage/pool_selection.jsonl
+  python -m tadabur.mining_pool build --selection stage/pool_selection.jsonl --seg-dir stage/seg_pool
 """
 
 from __future__ import annotations
@@ -42,22 +55,38 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from . import phoneme_sifat
+from .contrast_attribution import ADDED, DROPPED, SHADDA_CONTRAST, contrast_sites
 from .staged_audio import IndexRow, read_shard_index
 
 MINING_POOL_DIR = Path(__file__).parent / "mining_pool"
 SELECTION_PATH = MINING_POOL_DIR / "selection.json"
+CLIPS_PATH = MINING_POOL_DIR / "clips.jsonl"
+DECODES_PATH = MINING_POOL_DIR / "base_decodes.json"
+SUMMARY_PATH = MINING_POOL_DIR / "summary.json"
 
-#: About 2,000 clips (#83): enough for #87's ~200 haraka and ~60 geminate sites many
-#: times over; the summary's capacity counts show what each stratum actually holds.
+#: The uniform stratum's size (#83: "about 2,000 clips").
 POOL_SIZE = 2000
-#: At most this many clips per reciter. With ~500 eligible reciters this draws ~380 of
-#: them, leaving ~160 reciters (none in any truth site) for the sealed panel.
+#: At most this many uniform clips per reciter: the draw takes 394 of the frame's 500
+#: reciters.
 PER_RECITER_CAP = 8
 SALT = "issue-83-mining-pool-v1"
 #: Shards ``h448`` never trained on besides the strided reserve: the block 0-20.
 HELD_OUT_BLOCK = range(0, 21)
 
+#: Why a clip is in the pool (module docstring). A clip may be in several.
+UNIFORM = "uniform"
+CONSONANT_PAIR = "consonant_pair"
+GEMINATE = "geminate"
+STRATA = (UNIFORM, CONSONANT_PAIR, GEMINATE)
+
+#: The pairs the listening session mines (acceptance rules §7): the six soft pairs and
+#: ذ↔ظ, as ``a↔b`` labels in codepoint order.
+TARGET_PAIRS = tuple(sorted(phoneme_sifat.soft_pair_contrasts() | {"ذ↔ظ"}))
+
 _EVALSET_FILENAME = re.compile(r"tadabur_sh(\d{3})_i(\d{5})_")
+
+
+# --- the draw --------------------------------------------------------------------------
 
 
 def pool_shards() -> list[int]:
@@ -132,11 +161,177 @@ def select_pool(
     return pool
 
 
-# --- the committed manifest ------------------------------------------------------------
+def read_selection(path: Path) -> list[IndexRow]:
+    """The clips a ``select`` output lists (its ``strata`` field, if any, is ignored)."""
+    with open(path, encoding="utf-8") as f:
+        rows = [json.loads(raw) for raw in f if raw.strip()]
+    return [IndexRow(**{k: row[k] for k in IndexRow.__dataclass_fields__}) for row in rows]
 
-CLIPS_PATH = MINING_POOL_DIR / "clips.jsonl"
-DECODES_PATH = MINING_POOL_DIR / "base_decodes.json"
-SUMMARY_PATH = MINING_POOL_DIR / "summary.json"
+
+def census_frame(frame: Iterable[IndexRow], uniform: Iterable[IndexRow]) -> list[IndexRow]:
+    """The frame clips of the reciters the uniform draw took: what ``scan`` decodes."""
+    reciters = {row.reciter_id for row in uniform}
+    return sorted((r for r in frame if r.reciter_id in reciters), key=lambda r: r.audio_filename)
+
+
+def scan_events(decode: str, reference: str) -> dict:
+    """The rare events in one whole-clip base decode against the clip's reference: per
+    target pair, the sites where the decode has the other letter, and the gemination
+    mismatches by direction (:func:`tadabur.contrast_attribution.contrast_sites`)."""
+    pairs = {}
+    for pair in TARGET_PAIRS:
+        if found := len(contrast_sites(decode, reference, pair)):
+            pairs[pair] = found
+    changes = Counter(site.change for site in contrast_sites(decode, reference, SHADDA_CONTRAST))
+    return {"pairs": pairs, "shaddah": dict(sorted(changes.items()))}
+
+
+def event_strata(events: dict) -> tuple[str, ...]:
+    """The census strata a scanned clip's events put it in."""
+    hits = ((CONSONANT_PAIR, events["pairs"]), (GEMINATE, events["shaddah"]))
+    return tuple(stratum for stratum, found in hits if found)
+
+
+def stratify(
+    uniform: list[IndexRow], census: list[IndexRow], scanned: dict[str, dict]
+) -> dict[str, tuple[str, ...]]:
+    """Every pool clip and its strata: the uniform draw, plus each census clip whose scan
+    found an event. Refuses a scan that does not cover the census frame exactly."""
+    expected = {row.audio_filename for row in census}
+    if set(scanned) != expected:
+        raise ValueError(
+            f"the scan covers {len(scanned)} clips but the census frame holds "
+            f"{len(expected)} ({len(expected - set(scanned))} unscanned)"
+        )
+    strata: dict[str, set[str]] = {row.audio_filename: {UNIFORM} for row in uniform}
+    for name, events in scanned.items():
+        for stratum in event_strata(events):
+            strata.setdefault(name, set()).add(stratum)
+    return {name: tuple(s for s in STRATA if s in found) for name, found in sorted(strata.items())}
+
+
+def _scan(args) -> None:
+    """Decode every census clip whole with the base teacher and record its events.
+
+    Each clip's audio is decoded exactly as staging would leave it (16 kHz mono through a
+    PCM_16 round trip, :func:`tadabur.staged_audio.as_staged`), so a selected clip's scan
+    decode is the whole-clip decode its staged file gives. Appends to ``--out`` and skips
+    clips already in it, so an interrupted scan resumes.
+    """
+    from training.decoding import SPANS, Decoder
+
+    from .audio import decode_to_mono_16k
+    from .resegment import BASE_TEACHER, DECODE_BATCH_SIZE, WEIGHTS_DTYPE
+    from .shard_reader import iter_shard_rows
+    from .staged_audio import as_staged
+    from .waqf_segments import _uthmani_words, hafs_segment_reference
+
+    frame, _ = eligible(
+        read_shard_index(args.index).values(), read_evalset_rows(args.evalset_manifest)
+    )
+    census = census_frame(frame, read_selection(args.uniform))
+    done = set()
+    if args.out.exists():
+        done = {json.loads(raw)["audio_filename"] for raw in args.out.open(encoding="utf-8")}
+    wanted: dict[int, dict[int, IndexRow]] = {}
+    for row in census:
+        if row.audio_filename not in done:
+            wanted.setdefault(row.shard, {})[row.row_index] = row
+    print(f"census frame {len(census)} clips; {len(done)} already scanned", flush=True)
+
+    decoder = Decoder.load(
+        BASE_TEACHER, args.device, weights_dtype=WEIGHTS_DTYPE, batch_size=DECODE_BATCH_SIZE
+    )
+    run = {"decode_fingerprint": decoder.fingerprint(SPANS).as_dict()}
+    args.out.with_suffix(".run.json").write_text(json.dumps(run, indent=2, sort_keys=True))
+    segment_reference = hafs_segment_reference()
+    references: dict[str, str | None] = {}
+
+    def reference_of(surah_ayah: str) -> str | None:
+        if surah_ayah not in references:
+            try:
+                references[surah_ayah] = segment_reference(_uthmani_words(surah_ayah))[0]
+            except (KeyError, IndexError):
+                references[surah_ayah] = None
+        return references[surah_ayah]
+
+    with open(args.out, "a", encoding="utf-8") as out:
+        for shard in sorted(wanted):
+            rows = iter_shard_rows([shard], cache_dir=args.shard_cache, delete_after=True,
+                                   columns=["audio", "reciter_id"])
+            for row_index, row in enumerate(rows):
+                entry = wanted[shard].get(row_index)
+                if entry is None:
+                    continue
+                if row["audio"]["path"] != entry.audio_filename:
+                    raise ValueError(f"shard {shard} row {row_index} is not {entry.audio_filename}")
+                (decode,) = decoder.decode_spans([as_staged(decode_to_mono_16k(row["audio"]["bytes"]))])
+                reference = reference_of(entry.surah_ayah)
+                events = {"pairs": {}, "shaddah": {}} if reference is None else scan_events(decode, reference)
+                record = {"audio_filename": entry.audio_filename, "decode": decode,
+                          "reference_found": reference is not None, "events": events}
+                out.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+            out.flush()
+            print(f"  shard {shard} scanned", flush=True)
+
+
+def _select(args) -> None:
+    frame, excluded = eligible(
+        read_shard_index(args.index).values(), read_evalset_rows(args.evalset_manifest)
+    )
+    uniform = select_pool(frame)
+    selection = {
+        "salt": SALT,
+        "pool_size": POOL_SIZE,
+        "per_reciter_cap": PER_RECITER_CAP,
+        "shards": pool_shards(),
+        "frame_clips": len(frame),
+        "frame_reciters": len({r.reciter_id for r in frame}),
+        "excluded": dict(sorted(excluded.items())),
+        "decode_evalset_manifest_sha256": hashlib.sha256(
+            args.evalset_manifest.read_bytes()
+        ).hexdigest(),
+        "uniform_clips": len(uniform),
+        "uniform_reciters": len({r.reciter_id for r in uniform}),
+    }
+    by_name = {row.audio_filename: row for row in frame}
+    if args.scan is None:
+        strata = {row.audio_filename: (UNIFORM,) for row in uniform}
+    else:
+        census = census_frame(frame, uniform)
+        with open(args.scan, encoding="utf-8") as f:
+            scanned = {r["audio_filename"]: r for r in map(json.loads, f)}
+        strata = stratify(uniform, census, {n: r["events"] for n, r in scanned.items()})
+        populations = Counter(s for found in strata.values() for s in found)
+        events = Counter()
+        for record in scanned.values():
+            events.update(record["events"]["pairs"])
+            events.update({f"shaddah_{k}": v for k, v in record["events"]["shaddah"].items()})
+        run = json.loads(args.scan.with_suffix(".run.json").read_text(encoding="utf-8"))
+        selection["census"] = {
+            "frame_clips": len(census),
+            "clips_without_reference": sum(not r["reference_found"] for r in scanned.values()),
+            "decode_fingerprint": run["decode_fingerprint"],
+            "events": dict(sorted(events.items())),
+            "stratum_clips": {s: populations[s] for s in STRATA},
+        }
+    selection["pool_clips"] = len(strata)
+    selection["pool_reciters"] = len({by_name[n].reciter_id for n in strata})
+
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
+        for name, found in strata.items():
+            row = {**asdict(by_name[name]), "strata": list(found)}
+            f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+    SELECTION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SELECTION_PATH.write_text(
+        json.dumps(selection, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps(selection, indent=2, sort_keys=True, ensure_ascii=False))
+
+
+# --- the committed manifest ------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -157,11 +352,13 @@ class PoolSegment:
 
 @dataclass(frozen=True)
 class PoolClip:
-    """One pool clip as segmented: the :class:`tadabur.clip_status.ClipStatus` fields
-    (word times included) and every segment. Provenance (shard, row, checksum, length)
-    is the clip's row in the staged-clip registry."""
+    """One pool clip as segmented: the strata it was drawn in, the
+    :class:`tadabur.clip_status.ClipStatus` fields (word times included) and every
+    segment. Provenance (shard, row, checksum, length) is the clip's row in the
+    staged-clip registry."""
 
     audio_filename: str
+    strata: tuple[str, ...]
     surah_ayah: str
     reciter_id: int
     n_words: int
@@ -180,19 +377,25 @@ def segment_key(audio_filename: str, segment_index: int) -> str:
 
 
 def build_manifest(
-    statuses: list[dict], segmentation: list[dict], staged: dict
+    statuses: list[dict],
+    segmentation: list[dict],
+    strata: dict[str, tuple[str, ...]],
+    staged: dict,
 ) -> list[PoolClip]:
     """The pool manifest from :mod:`tadabur.resegment`'s ``clip_status`` and
-    ``segmentation`` rows. Every clip must be staged for the pool; segment spans are
-    converted to samples by the same rule that sliced them for decoding."""
+    ``segmentation`` rows and the selection's ``strata``. Every selected clip must have
+    been segmented and staged for the pool; segment spans are converted to samples by
+    the same rule that sliced them for decoding."""
     from .segment_score import segment_sample_bounds
     from .staged_audio import MINING_POOL
 
+    by_name = {status["audio_filename"]: status for status in statuses}
+    if set(by_name) != set(strata):
+        raise ValueError("the segmentation and the selection name different clips")
     segments_of = {row["audio_filename"]: row["segments"] for row in segmentation}
     clips = []
-    for status in sorted(statuses, key=lambda s: s["audio_filename"]):
-        name = status["audio_filename"]
-        clip = staged.get(name)
+    for name in sorted(by_name):
+        status, clip = by_name[name], staged.get(name)
         if clip is None or MINING_POOL not in clip.uses:
             raise ValueError(f"{name} is not staged for the mining pool")
         segments = []
@@ -213,6 +416,7 @@ def build_manifest(
         clips.append(
             PoolClip(
                 audio_filename=name,
+                strata=tuple(strata[name]),
                 surah_ayah=status["surah_ayah"],
                 reciter_id=status["reciter_id"],
                 n_words=status["n_words"],
@@ -238,7 +442,8 @@ def write_manifest(clips: list[PoolClip], path: Path = CLIPS_PATH) -> None:
 
 def load_manifest(path: Path = CLIPS_PATH, registry: dict | None = None) -> list[PoolClip]:
     """The committed pool, checked against the staged-clip registry: every clip staged
-    for the pool with the same reciter and ayah, and every segment span inside it."""
+    for the pool with the same reciter and ayah, in known strata, and every segment span
+    inside it."""
     from .staged_audio import MINING_POOL, load_staged_clips
 
     staged = load_staged_clips() if registry is None else registry
@@ -248,6 +453,7 @@ def load_manifest(path: Path = CLIPS_PATH, registry: dict | None = None) -> list
             if not raw.strip():
                 continue
             data = json.loads(raw)
+            data["strata"] = tuple(data["strata"])
             data["word_times"] = tuple(data["word_times"])
             data["segments"] = tuple(
                 PoolSegment(**{**seg, "raw_word_offsets": tuple(seg["raw_word_offsets"])})
@@ -260,6 +466,8 @@ def load_manifest(path: Path = CLIPS_PATH, registry: dict | None = None) -> list
                 raise ValueError(f"{where}: {clip.audio_filename} is not staged for the pool")
             if (entry.reciter_id, entry.surah_ayah) != (clip.reciter_id, clip.surah_ayah):
                 raise ValueError(f"{where}: reciter or ayah disagrees with the registry")
+            if not clip.strata or not set(clip.strata) <= set(STRATA):
+                raise ValueError(f"{where}: strata {clip.strata} are not {STRATA}")
             for seg in clip.segments:
                 if not 0 <= seg.start_sample <= seg.end_sample <= entry.num_samples:
                     raise ValueError(f"{where}: segment {seg.segment_index} span is outside")
@@ -273,11 +481,6 @@ def load_base_decodes(path: Path = DECODES_PATH) -> tuple[dict, dict[str, str]]:
     dict) they were made under."""
     data = json.loads(path.read_text(encoding="utf-8"))
     return data["decode_fingerprint"], data["decodes"]
-
-
-#: The pairs the listening session mines (acceptance rules §7): the six soft pairs and
-#: ذ↔ظ, as ``a↔b`` labels in codepoint order.
-TARGET_PAIRS = tuple(sorted(phoneme_sifat.soft_pair_contrasts() | {"\u0630\u2194\u0638"}))
 
 
 def capacity(clips: list[PoolClip], decodes: dict[str, str]) -> dict:
@@ -294,24 +497,24 @@ def capacity(clips: list[PoolClip], decodes: dict[str, str]) -> dict:
     from training.tashkeel_eval import MATCHED, OMITTED, vowel_sites
     from training.tashkeel_worklist import VOWEL_NAMES
 
-    from .contrast_attribution import ADDED, DROPPED, SHADDA_CONTRAST, contrast_sites
     from .truth_sites import CONSONANTS, HARAKA_CHARS
 
-    harakat = set(HARAKA_CHARS.values())
     haraka = {name: Counter() for name in sorted(HARAKA_CHARS)}
     shaddah: Counter = Counter()
     pairs = {pair: Counter() for pair in TARGET_PAIRS}
     sukun_mid_word = 0
+    directions = {DROPPED: "base_single_at_geminate", ADDED: "base_double_at_single"}
     for clip in clips:
         for seg in clip.segments:
             if not seg.kept:
                 continue
-            reference, decode = seg.reference, decodes[segment_key(clip.audio_filename, seg.segment_index)]
+            reference = seg.reference
+            decode = decodes[segment_key(clip.audio_filename, seg.segment_index)]
             for site in vowel_sites(decode, reference):
                 if site.outcome in (MATCHED, OMITTED) and site.reference_vowel in VOWEL_NAMES:
                     haraka[VOWEL_NAMES[site.reference_vowel]][site.outcome] += 1
             for site in contrast_sites(decode, reference, SHADDA_CONTRAST):
-                shaddah[{DROPPED: "base_single_at_geminate", ADDED: "base_double_at_single"}[site.change]] += 1
+                shaddah[directions[site.change]] += 1
             for i, char in enumerate(reference[:-1]):
                 following = reference[i + 1]
                 if char not in CONSONANTS:
@@ -321,7 +524,7 @@ def capacity(clips: list[PoolClip], decodes: dict[str, str]) -> dict:
                 elif following in CONSONANTS and (i == 0 or reference[i - 1] != char):
                     sukun_mid_word += 1
             for pair in TARGET_PAIRS:
-                letters = set(pair.split("\u2194"))
+                letters = set(pair.split("↔"))
                 pairs[pair]["reference_carriers"] += sum(c in letters for c in reference)
                 pairs[pair]["base_other_letter"] += len(contrast_sites(decode, reference, pair))
     return {
@@ -332,43 +535,53 @@ def capacity(clips: list[PoolClip], decodes: dict[str, str]) -> dict:
     }
 
 
-def summarize(clips: list[PoolClip], staged: dict, capacity_counts: dict, run: dict) -> dict:
-    """Counts per shard and reciter, segmentation outcomes, staged size, and capacity."""
+def summarize(clips: list[PoolClip], staged: dict, decodes: dict[str, str], run: dict) -> dict:
+    """Counts per shard, reciter and stratum, segmentation outcomes, and the capacity of
+    the whole pool and of its uniform stratum alone."""
     entries = [staged[c.audio_filename] for c in clips]
     segments = [seg for c in clips for seg in c.segments]
     per_reciter = Counter(c.reciter_id for c in clips)
     return {
         "clips": len(clips),
         "reciters": len(per_reciter),
-        "clips_per_shard": {str(k): v for k, v in sorted(Counter(e.shard for e in entries).items())},
+        "clips_per_stratum": {s: sum(s in c.strata for c in clips) for s in STRATA},
+        "clips_per_shard": {
+            str(k): v for k, v in sorted(Counter(e.shard for e in entries).items())
+        },
         "clips_per_reciter": {str(k): v for k, v in sorted(per_reciter.items())},
         "clips_per_reciter_histogram": {
             str(k): v for k, v in sorted(Counter(per_reciter.values()).items())
         },
         "audio_hours": round(sum(e.num_samples for e in entries) / 16000 / 3600, 2),
-        "clip_skip_reasons": dict(sorted(Counter(c.skip_reason or "none" for c in clips).items())),
+        "clip_skip_reasons": dict(
+            sorted(Counter(c.skip_reason or "none" for c in clips).items())
+        ),
         "segments": len(segments),
         "segments_kept": sum(seg.kept for seg in segments),
         "decode_fingerprint": run["decode_fingerprint"],
         "phonetizer_revision": run["phonetizer_revision"],
         "vad": run["vad"],
-        "capacity": capacity_counts,
+        "capacity": capacity(clips, decodes),
+        "capacity_uniform_only": capacity([c for c in clips if UNIFORM in c.strata], decodes),
     }
 
 
-def _build(seg_dir: Path, registry_path: Path | None) -> None:
+def _build(selection_path: Path, seg_dir: Path, registry_path: Path | None) -> None:
     from .staged_audio import load_staged_clips
 
-    def rows(name: str) -> list[dict]:
-        with open(seg_dir / name, encoding="utf-8") as f:
+    def rows(path: Path) -> list[dict]:
+        with open(path, encoding="utf-8") as f:
             return [json.loads(raw) for raw in f if raw.strip()]
 
     staged = load_staged_clips() if registry_path is None else load_staged_clips(registry_path)
     run = json.loads((seg_dir / "run.json").read_text(encoding="utf-8"))
-    clips = build_manifest(rows("clip_status.jsonl"), rows("segmentation.jsonl"), staged)
+    strata = {row["audio_filename"]: tuple(row["strata"]) for row in rows(selection_path)}
+    clips = build_manifest(
+        rows(seg_dir / "clip_status.jsonl"), rows(seg_dir / "segmentation.jsonl"), strata, staged
+    )
     decodes = {
         segment_key(row["clip_audio_filename"], row["segment_index"]): row["predicted_phonemes"]
-        for row in rows("segment_manifest.jsonl")
+        for row in rows(seg_dir / "segment_manifest.jsonl")
     }
     write_manifest(clips)
     DECODES_PATH.write_text(
@@ -379,7 +592,7 @@ def _build(seg_dir: Path, registry_path: Path | None) -> None:
         encoding="utf-8",
     )
     load_manifest(registry=staged)  # what was written must load against the registry
-    summary = summarize(clips, staged, capacity(clips, decodes), run)
+    summary = summarize(clips, staged, decodes, run)
     SUMMARY_PATH.write_text(
         json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -393,47 +606,34 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    select = commands.add_parser("select", help="draw the pool from a shard index")
-    select.add_argument("--index", type=Path, required=True)
-    select.add_argument("--evalset-manifest", type=Path, required=True,
-                        help="the frozen decode_evalset manifest.json whose clips to avoid")
-    select.add_argument("--out", type=Path, required=True)
+    for name, text in (("select", "draw the pool from a shard index"),
+                       ("scan", "decode the census frame and record its events")):
+        command = commands.add_parser(name, help=text)
+        command.add_argument("--index", type=Path, required=True)
+        command.add_argument("--evalset-manifest", type=Path, required=True,
+                             help="the frozen decode_evalset manifest.json whose clips to avoid")
+        command.add_argument("--out", type=Path, required=True)
+    select = commands.choices["select"]
+    select.add_argument("--scan", type=Path, default=None,
+                        help="the census scan; without it only the uniform stratum is drawn")
+    scan = commands.choices["scan"]
+    scan.add_argument("--uniform", type=Path, required=True,
+                      help="a `select` output without --scan: the uniform draw")
+    scan.add_argument("--shard-cache", type=Path, required=True)
+    scan.add_argument("--device", default="cuda")
     build = commands.add_parser("build", help="write the committed pool manifest")
+    build.add_argument("--selection", type=Path, required=True)
     build.add_argument("--seg-dir", type=Path, required=True,
                        help="output of `tadabur.resegment --use mining_pool`")
     build.add_argument("--registry", type=Path, default=None)
     args = parser.parse_args()
 
-    if args.command == "build":
-        _build(args.seg_dir, args.registry)
-        return
-
-
-    frame, excluded = eligible(
-        read_shard_index(args.index).values(), read_evalset_rows(args.evalset_manifest)
-    )
-    pool = select_pool(frame)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
-        for row in sorted(pool, key=lambda r: r.audio_filename):
-            f.write(json.dumps(asdict(row), ensure_ascii=False, sort_keys=True) + "\n")
-    selection = {
-        "salt": SALT,
-        "pool_size": POOL_SIZE,
-        "per_reciter_cap": PER_RECITER_CAP,
-        "shards": pool_shards(),
-        "frame_clips": len(frame),
-        "frame_reciters": len({r.reciter_id for r in frame}),
-        "excluded": dict(sorted(excluded.items())),
-        "decode_evalset_manifest_sha256": hashlib.sha256(
-            args.evalset_manifest.read_bytes()
-        ).hexdigest(),
-        "pool_clips": len(pool),
-        "pool_reciters": len({r.reciter_id for r in pool}),
-    }
-    SELECTION_PATH.parent.mkdir(parents=True, exist_ok=True)
-    SELECTION_PATH.write_text(json.dumps(selection, indent=2, sort_keys=True) + "\n")
-    print(json.dumps(selection, indent=2, sort_keys=True))
+    if args.command == "select":
+        _select(args)
+    elif args.command == "scan":
+        _scan(args)
+    else:
+        _build(args.selection, args.seg_dir, args.registry)
 
 
 if __name__ == "__main__":

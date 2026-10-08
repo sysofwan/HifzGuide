@@ -1,9 +1,8 @@
 """Tests for the whole-clip phoneme-only LoRA run (ADR-0004 rung (2), issue #29).
 
 The load-bearing claims: LoRA leaves the backbone base frozen and the sifat heads
-untrained (phoneme-only isolation), the phoneme forward is bit-identical to the joint
-model's (so rung (2)↔(3) differ only by the waqf head), and the memory preflight measures
-a real worst-case batch against the 16 GB budget. The heavy CUDA paths are guarded.
+untrained (phoneme-only isolation), the phoneme forward emits the 40 ms lattice, and the
+memory preflight measures a real worst-case batch against the 16 GB budget. The heavy CUDA paths are guarded.
 """
 
 from __future__ import annotations
@@ -16,12 +15,11 @@ from tadabur.muaalem.configuration_multi_level_ctc import (
     Wav2Vec2BertForMultilevelCTCConfig,
 )
 from tadabur.muaalem.modeling_multi_level_ctc import Wav2Vec2BertForMultilevelCTC
-from training.waqf_head import WaqfJointModel
-from training.whole_clip_phoneme import phoneme_forward
 from training.whole_clip_phoneme import (
     LoRASettings,
     attach_phoneme_lora,
     base_of,
+    phoneme_forward,
     preflight_batch_memory,
     set_seed,
 )
@@ -70,21 +68,7 @@ def test_lora_backbone_base_weight_is_frozen():
     assert frozen and all(not p.requires_grad for p in frozen)
 
 
-# --- phoneme forward is identical to the joint model's -----------------------
-
-
-def test_phoneme_forward_matches_joint_model_logits():
-    # rung (2) phoneme-only and rung (3) joint must share the phoneme path exactly.
-    model = _tiny_model()
-    features = torch.randn(2, 20, 160)
-    joint = WaqfJointModel(model)
-    joint.eval()
-    model.eval()
-    with torch.no_grad():
-        joint_out = joint(features)
-        solo = phoneme_forward(model, "phonemes", features)
-    assert torch.equal(joint_out.phoneme_logits, solo.phoneme_logits)
-    assert torch.equal(joint_out.student_lengths, solo.student_lengths)
+# --- phoneme forward ----------------------------------------------------------
 
 
 def test_phoneme_forward_shapes():

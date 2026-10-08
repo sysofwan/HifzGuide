@@ -21,8 +21,8 @@ presets already reach the latency budget.
 **The student carries one head.** The teacher computes 11 CTC heads (phonemes + 10 sifat);
 Muraja consumes only ``phonemes`` (43 classes). The students are built with
 ``level_to_vocab_size={"phonemes": 43}`` alone, so the sifat heads cost no parameters, no
-compute, and take no gradient -- the same simplification ``training.waqf_head`` already
-makes when it drops them from the graph.
+compute, and take no gradient -- the same simplification
+:func:`training.whole_clip_phoneme.phoneme_forward` makes when it never invokes them.
 
 **The adapter is preserved.** The teacher's single stride-2 adapter conv is what maps the
 250-frame 20 ms feature lattice to the 125-frame 40 ms CTC lattice. Muraja's decode, the

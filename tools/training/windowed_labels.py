@@ -106,18 +106,21 @@ EXCLUDE_HELD_OUT_EVAL_CLIP = "held_out_eval_clip"
 
 
 def read_held_out_clips(path: Path) -> frozenset[str]:
-    """Clip ids reserved for evaluation, from ``tadabur.waqf_freeze``'s partition report.
+    """Clip ids reserved for evaluation, from the committed waqf partition report.
+
+    The report is ``tadabur/waqf_event_fixtures/waqf_partition.json``, frozen with the
+    adjudicated waqf boundaries.
 
     The #34 waqf event eval scores the calibration and test clips named in that report. They
     must not also be training examples, or the eval measures memorization of those exact
-    clips rather than the waqf head's behaviour. The freeze emits the clip lists (and a
+    clips rather than the model's behaviour. The report carries the clip lists (and a
     stricter ``must_exclude_reciters``); this reads the clip lists, which is the leak that
     makes the reported number meaningless rather than merely optimistic.
     """
     report = json.loads(Path(path).read_text(encoding="utf-8"))
     missing = {"calibration_clips", "test_clips"} - set(report)
     if missing:
-        raise KeyError(f"{path} is not a waqf_freeze partition report (no {sorted(missing)})")
+        raise KeyError(f"{path} is not a waqf partition report (no {sorted(missing)})")
     return frozenset(report["calibration_clips"]) | frozenset(report["test_clips"])
 
 
@@ -150,7 +153,7 @@ def resolve_held_out_clips(path: Path | None, allow_leak: bool) -> frozenset[str
     if allow_leak:
         return frozenset()
     raise SystemExit(
-        "refusing to build labels without --held-out-clips: the waqf_freeze partition's "
+        "refusing to build labels without --held-out-clips: the waqf partition's "
         "calibration+test clips would become training examples and the #34 eval would "
         "score memorization. Pass --held-out-clips <partition.json>, or "
         "--allow-eval-clips-in-training to accept a knowingly leaky build."
@@ -698,7 +701,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--held-out-clips", type=Path, default=None,
-        help="waqf_freeze partition report (JSON); its calibration+test clips are excluded "
+        help="waqf partition report (JSON); its calibration+test clips are excluded "
              "from training so the #34 event eval is not scored on its own training data.",
     )
     parser.add_argument(

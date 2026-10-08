@@ -168,9 +168,9 @@ def sample_clips(
 ) -> list[str]:
     """The distinct clips the correction-based per-clip UI walks through.
 
-    The UI (:mod:`tadabur.waqf_audit_ui`) reviews a whole **clip** at a time —
-    the candidate manifest is the assumed-correct baseline and the human only marks
-    the boundaries the detector got wrong. The worklist is therefore a set of clips,
+    The adjudication UI (retired with the waqf head, ADR-0011) reviewed a whole
+    **clip** at a time — the candidate manifest is the assumed-correct baseline and the
+    human only marks the boundaries the detector got wrong. The worklist is therefore a set of clips,
     not boundaries. We reuse :func:`sample_worklist`'s stratified per-class draw so
     every clip that carries a sampled ``waqf`` / ``wasl`` / ``mid_word_closure``
     boundary is included, then collapse to the distinct clips in first-seen order.

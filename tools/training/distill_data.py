@@ -12,8 +12,7 @@ normalizes each utterance to zero mean and unit variance *per mel bin* over what
 given. Extracting a whole clip and slicing it would normalize over the clip; the device
 normalizes over the 5 s window (``MuaalemInference.prepareFeatures``, called with
 ``windowAudio``). Those produce different numbers, so this module slices the **waveform**
-into windows and feature-extracts each window on its own -- the same reasoning
-``training.waqf_distill`` applies to its VAD teacher.
+into windows and feature-extracts each window on its own.
 
 **Short windows are kept and zero-padded, not dropped.** The device pads too: Muraja's
 ~5 previews per audio-second run on a *partially filled* buffer, padded to the static 250

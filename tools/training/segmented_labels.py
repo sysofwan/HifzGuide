@@ -1,7 +1,7 @@
 """Waqf-segment-scoped phoneme CTC labels — the rung-(1) control for the #33 ladder.
 
-The #33 ablation ladder (:mod:`training.ablation_ladder`) reads three #7 eval reports and
-asks two questions, one per transition:
+The #33 ablation ladder (retired with the waqf head, ADR-0011) read three #7 eval reports
+and asked two questions, one per transition:
 
 * **(1) → (2)** — does moving the training **unit** from the individual waqf segment to
   the whole clip erode should-reject discrimination? ADR-0004 calls this the dangerous
@@ -222,7 +222,7 @@ def main() -> None:
     parser.add_argument("--val-fraction", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--held-out-clips", type=Path, default=None,
-                        help="waqf_freeze partition report (JSON); its calibration+test "
+                        help="waqf partition report (JSON); its calibration+test "
                              "clips are excluded from training.")
     parser.add_argument("--allow-eval-clips-in-training", action="store_true",
                         help="build without the partition, knowingly training on the "

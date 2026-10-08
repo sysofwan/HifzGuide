@@ -52,11 +52,11 @@ def test_a_vowel_free_decode_scores_zero_recall():
 def test_the_normalized_scorer_is_blind_to_what_this_gate_measures():
     """Pins the *reason* this module exists, so the redundancy claim stays falsifiable."""
     from tadabur.normalization import normalize_phonemes
-    from tadabur.waqf_integration_eval import strict_accepts
+    from tadabur.scorer import STRICT_SCORER
 
     normalized_reference = normalize_phonemes(REFERENCE).normalized
-    assert strict_accepts(REFERENCE, normalized_reference)
-    assert strict_accepts(_strip(REFERENCE), normalized_reference)  # blind
+    assert STRICT_SCORER.gate(REFERENCE, normalized_reference).passed
+    assert STRICT_SCORER.gate(_strip(REFERENCE), normalized_reference).passed  # blind
 
     assert score_vowels(REFERENCE, REFERENCE).recall == 1.0
     assert score_vowels(_strip(REFERENCE), REFERENCE).recall == 0.0  # not blind

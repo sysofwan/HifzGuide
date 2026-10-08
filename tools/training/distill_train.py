@@ -183,11 +183,10 @@ RESUME_CRITICAL_FIELDS = (
 def check_resume_compatible(saved: dict, current: TrainConfig) -> None:
     """Fail fast when a resume would splice two different experiments together.
 
-    The same guarantee ``training.waqf_distill``'s ``SoftLabelStore`` gives its generation
-    contract, for the same reason: a silently divergent resume produces an artifact that
-    looks fine and is not. A run resumed at a different ``ctc_weight`` or ``learning_rate``
-    carries an optimiser state and LR schedule fitted under the old values, and its metrics
-    log reads as one continuous curve.
+    A silently divergent resume produces an artifact that looks fine and is not. A run
+    resumed at a different ``ctc_weight`` or ``learning_rate`` carries an optimiser state and
+    LR schedule fitted under the old values, and its metrics log reads as one continuous
+    curve.
     """
     current_values = asdict(current)
     mismatches = [

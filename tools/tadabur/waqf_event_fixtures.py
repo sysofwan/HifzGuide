@@ -6,9 +6,10 @@ of event? A silence VAD only detects *silence*, so the eval must be graded again
 **human** verdicts, not the teacher — measuring false-waqf at true-wasl boundaries,
 false-wasl at genuine stops, and a mid-word-closure rejection set (qalqala on ق/ط,
 the hamza in شَيء). This module owns the on-disk schema those human verdicts are
-persisted to — the waqf analogue of :mod:`tadabur.eval_fixtures` — so the
-adjudication UI (:mod:`tadabur.waqf_audit_ui`) and F0's event-level eval read one
-shared contract instead of inventing their own.
+persisted to — the waqf analogue of :mod:`tadabur.eval_fixtures`. The adjudication
+UI and event-level eval that wrote and read it were retired with the waqf head
+(ADR-0011); the committed verdicts remain human truth, and this loader is how they are
+read.
 
 Each line is one :class:`WaqfEventEntry` as JSON. A boundary is adjudicated into
 exactly one of three **classes** — ``waqf`` (a true stop), ``wasl`` (continuation,

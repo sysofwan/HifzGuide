@@ -509,6 +509,21 @@ def test_span_class_ids_are_the_uncollapsed_rows_cut_to_each_span():
     assert [row.tolist() for row in rows] == [[3, 0, 5], [7]]
 
 
+def test_span_log_posteriors_are_normalized_rows_of_the_same_pass():
+    spans = [np.array([3, 3, 0, 0, 5, 5], dtype=np.float32), np.array([7, 7], dtype=np.float32)]
+    decoder = dc.Decoder("frames", _FrameModel(), _RawExtractor(pad=9.0), CPU, batch_size=2)
+
+    rows = decoder.span_log_posteriors(spans)
+
+    assert [row.shape for row in rows] == [(3, NUM_PHONEME_CLASSES), (1, NUM_PHONEME_CLASSES)]
+    assert all(row.dtype == np.float32 for row in rows)
+    for posteriors in rows:
+        np.testing.assert_allclose(np.exp(posteriors).sum(axis=1), 1.0, rtol=1e-6)
+    assert [row.argmax(axis=1).tolist() for row in rows] == [
+        row.tolist() for row in decoder.span_class_ids(spans)
+    ]
+
+
 # --- Loading a model reference ---------------------------------------------------------
 
 

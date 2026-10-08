@@ -13,8 +13,8 @@ import pytest
 
 from tadabur.truth_sites import CONSONANTS, load_truth_sites
 from tadabur.waqf_truth_sites import (
+    EXCLUDED_CLOSURE_AMBIGUOUS,
     EXCLUDED_CLOSURE_MERGED,
-    EXCLUDED_CLOSURE_UNPLACED,
     EXCLUDED_FINAL_LETTER_ASSIMILATED,
     EXCLUDED_INCONSISTENT_CLIP,
     EXCLUDED_MID_WORD_CLOSURE,
@@ -33,6 +33,7 @@ from tadabur.waqf_truth_sites import (
     clip_edges,
     convert,
     final_mark,
+    pausal_taa_marbuta,
     read_boundaries,
     recited_runs,
     summary_table,
@@ -107,17 +108,54 @@ def test_a_closure_called_waqf_turns_the_edge_beside_it_into_a_pause():
     assert excluded == {1: EXCLUDED_CLOSURE_MERGED}
 
 
-def test_a_closure_whose_word_is_not_beside_it_is_unplaced():
-    # The closure claims word 2, but in time it sits before the edge after word 1.
+def test_a_closure_merges_into_the_edge_after_its_word_wherever_that_sits_in_time():
+    # Regression (spk0202_S1_A154 #6): the closure on word 2 sits in time before the
+    # interpolated edge after word 1, two rows from the edge after word 2. Its waqf must
+    # still land on word 2, or the reference continues through a known pause.
     rows = [
         _boundary("c", 0, 0, WASL),
         _boundary("c", 1, 2, WAQF, predicted=MID_WORD_CLOSURE),
         _boundary("c", 2, 1, WASL),
         _boundary("c", 3, 2, WASL),
+        _boundary("c", 4, 3, WASL),
     ]
     edges, excluded = clip_edges(rows)
-    assert [e.waqf for e in edges] == [False, False, False]
-    assert excluded == {1: EXCLUDED_CLOSURE_UNPLACED}
+    assert edges == [Edge(0, 0, False), Edge(2, 1, False), Edge(3, 2, True),
+                     Edge(4, 3, False)]
+    assert excluded == {1: EXCLUDED_CLOSURE_MERGED}
+
+
+def test_a_closure_with_no_edge_at_its_word_is_an_edge_of_its_own():
+    # A stop judged after the ayah's last word, which has no regular edge.
+    rows = [_boundary("c", 0, 0, WASL), _boundary("c", 1, 1, WAQF, predicted=MID_WORD_CLOSURE)]
+    edges, excluded = clip_edges(rows)
+    assert edges == [Edge(0, 0, False), Edge(1, 1, True)]
+    assert excluded == {}
+
+
+def test_a_waqf_closure_on_a_re_read_word_excludes_the_clip():
+    rows = [
+        _boundary("c", 0, 0, WASL),
+        _boundary("c", 1, 1, WAQF),
+        _boundary("c", 2, 0, WASL),  # re-read from word 0
+        _boundary("c", 3, 0, WAQF, predicted=MID_WORD_CLOSURE),  # which pass?
+        _boundary("c", 4, 1, WASL),
+    ]
+    with pytest.raises(ClipExcluded) as excinfo:
+        clip_edges(rows)
+    assert excinfo.value.reason == EXCLUDED_CLOSURE_AMBIGUOUS
+
+
+def test_a_wasl_closure_on_a_re_read_word_changes_nothing():
+    rows = [
+        _boundary("c", 0, 0, WASL),
+        _boundary("c", 1, 1, WAQF),
+        _boundary("c", 2, 0, WASL),
+        _boundary("c", 3, 0, WASL, predicted=MID_WORD_CLOSURE),
+    ]
+    edges, excluded = clip_edges(rows)
+    assert [e.waqf for e in edges] == [False, True, False]
+    assert excluded == {3: EXCLUDED_CLOSURE_MERGED}
 
 
 # --- recited runs --------------------------------------------------------------------
@@ -245,17 +283,22 @@ def test_convert_accounts_for_every_row():
         _boundary("d.wav", 0, 0, WASL),
         _boundary("d.wav", 1, 1, WASL),
         _boundary("d.wav", 2, 0, WASL),  # back to word 0 with no pause
+        _boundary("e.wav", 0, 0, WASL),
+        _boundary("e.wav", 1, 1, WAQF),
+        _boundary("e.wav", 2, 0, WASL),
+        _boundary("e.wav", 3, 0, WAQF, predicted=MID_WORD_CLOSURE),  # re-read: which pass?
+        _boundary("e.wav", 4, 1, MID_WORD_CLOSURE, predicted=MID_WORD_CLOSURE),
     ]
     sites, summary = _convert(boundaries)
-    assert summary["fixture_rows"] == 8
+    assert summary["fixture_rows"] == 13
     assert summary["sites"] == len(sites) == 2
     assert summary["rows_by_verdict_and_outcome"] == {
-        MID_WORD_CLOSURE: {EXCLUDED_MID_WORD_CLOSURE: 1},
-        WAQF: {EXCLUDED_PHONETIZER_UNSUPPORTED: 1},
-        WASL: {EXCLUDED_INCONSISTENT_CLIP: 3, EXCLUDED_PHONETIZER_UNSUPPORTED: 1,
-               "waqf_boundary:wasl": 2},
+        MID_WORD_CLOSURE: {EXCLUDED_MID_WORD_CLOSURE: 2},
+        WAQF: {EXCLUDED_CLOSURE_AMBIGUOUS: 2, EXCLUDED_PHONETIZER_UNSUPPORTED: 1},
+        WASL: {EXCLUDED_CLOSURE_AMBIGUOUS: 2, EXCLUDED_INCONSISTENT_CLIP: 3,
+               EXCLUDED_PHONETIZER_UNSUPPORTED: 1, "waqf_boundary:wasl": 2},
     }
-    assert summary["clips"] == 3 and summary["clips_with_sites"] == 1
+    assert summary["clips"] == 4 and summary["clips_with_sites"] == 1
 
 
 def test_convert_is_deterministic_under_row_order():
@@ -372,3 +415,42 @@ def test_hafs_realizer_reports_an_unsupported_waqf():
     with pytest.raises(ClipExcluded) as excinfo:
         hafs_realizer()(words)
     assert excinfo.value.reason == EXCLUDED_PHONETIZER_UNSUPPORTED
+
+
+# --- pausal forms ----------------------------------------------------------------------
+
+
+def test_pausal_taa_marbuta_rewrites_only_a_final_tanween_fatha_on_taa_marbuta():
+    assert pausal_taa_marbuta("رَحْمَةًۭ") == "رَحْمَةَ"
+    for word in ("رَحْمَةٌۭ", "رَحْمَةٍۢ", "عَلِيمًا", "بِنَآءًۭ", "قَالَ"):
+        assert pausal_taa_marbuta(word) == word
+
+
+@pytest.mark.parametrize(
+    "surah_ayah, n_words, carrier, mark",
+    [
+        ("25:32", 9, "ه", "sukun"),  # وَٰحِدَةًۭ at waqf: ه with sukun, not تَاا
+        ("2:7", 9, "ه", "sukun"),  # غِشَـٰوَةٌۭ
+        ("2:23", 10, "ه", "sukun"),  # بِسُورَةٍۢ
+        ("2:17", 15, "ت", "sukun"),  # ظُلُمَـٰتٍۢ: tanween kasra drops
+        ("25:32", 15, "ل", "fatha"),  # تَرْتِيلًۭا: madd al-iwad, لَاا
+        ("2:22", 7, "ء", "fatha"),  # بِنَآءًۭ: madd al-iwad after a final hamza
+        ("2:48", 8, "ء", "fatha"),  # شَيْـًۭٔا: hamza written as a mark
+        ("28:5", 4, "ل", "fatha"),  # عَلَى: a madd ending keeps the fatha before it
+    ],
+)
+def test_hafs_realizer_gives_the_pausal_form_of_the_terminal_word(
+    surah_ayah, n_words, carrier, mark
+):
+    _, run = _realize_ayah_prefix(surah_ayah, n_words)
+    end = run.word_ends[-1]
+    assert (run.phonemes[end], final_mark(run.phonemes, end)) == (carrier, mark)
+
+
+def test_taa_marbuta_with_tanween_fatha_keeps_its_wasl_form_inside_a_run():
+    # جُمْلَةًۭ وَٰحِدَةًۭ: only the terminal word is pausal.
+    words, run = _realize_ayah_prefix("25:32", 9)
+    end = run.word_ends[-2]
+    assert words[-2].endswith("ةًۭ")
+    assert (run.phonemes[end], final_mark(run.phonemes, end)) == ("ت", "fatha")
+    assert run.phonemes.endswith("وَااحِدَه")

@@ -67,12 +67,12 @@ _VERDICTS = frozenset({WAQF, WASL, MID_WORD_CLOSURE})
 # Why a fixture row yields no site. Each row lands in exactly one bucket or one site.
 #: The human said the silence was a closure inside a word, not a word boundary.
 EXCLUDED_MID_WORD_CLOSURE = "mid_word_closure"
-#: A closure-candidate row folded into the regular edge at the same word next to it in
-#: time; its ``waqf`` verdict, if any, was applied to that edge.
+#: A closure-candidate row folded into the regular edge after the same word; its ``waqf``
+#: verdict, if any, was applied to that edge.
 EXCLUDED_CLOSURE_MERGED = "closure_merged"
-#: A closure-candidate row with no regular edge at its word beside it: its word placement
-#: contradicts the clip's edge order, so which word the stop followed is unknown.
-EXCLUDED_CLOSURE_UNPLACED = "closure_unplaced"
+#: A clip with a closure judged ``waqf`` on a word it recites twice (a re-read): the pause
+#: cannot be placed on either pass, so the clip has no trustworthy reference.
+EXCLUDED_CLOSURE_AMBIGUOUS = "closure_ambiguous"
 #: The clip's edges are not one recitation (a step back to an earlier word with no waqf
 #: before it, or a word past the ayah's end), so no realized reference can be built.
 EXCLUDED_INCONSISTENT_CLIP = "inconsistent_clip"
@@ -151,39 +151,44 @@ def clip_edges(rows: list[Boundary]) -> tuple[list[Edge], dict[int, str]]:
     """One clip's word edges in time order, and the exclusion reason of every other row.
 
     Regular rows (a segment boundary or an interior word edge the detector proposed) are
-    edges. Closure-candidate rows (a VAD silence the detector placed inside a word) are not
-    edges of their own: when the human called one a stop or a continuation, it is folded
-    into the regular edge at the same word beside it in time, and a ``waqf`` verdict turns
-    that edge into a pause — the human's explicit stop outranks the detector's unflipped
-    default at the same place.
+    edges. A closure-candidate row is a VAD silence the detector placed inside a word; its
+    word comes from the phoneme alignment, while the regular edges' times are interpolated,
+    so where it sits in time says nothing about which edge it is. A closure the human
+    called a stop or a continuation is therefore reconciled to the regular edge **after the
+    same word**:
+
+    * one such edge -> the row is merged into it, and a ``waqf`` verdict makes it a pause
+      (the human's explicit stop outranks the detector's unflipped default there);
+    * none -> the row is an edge of its own, at its place in time;
+    * several (a re-read passes the word twice) -> a ``waqf`` cannot be placed on either
+      pass, and a reference that continues through a known pause would assert false
+      tashkeel, so the whole clip is excluded (:class:`ClipExcluded`). A ``wasl`` there
+      changes nothing and is merged.
     """
     rows = sorted(rows, key=lambda r: r.boundary_index)
     excluded = {
         r.boundary_index: EXCLUDED_MID_WORD_CLOSURE for r in rows if r.verdict == MID_WORD_CLOSURE
     }
-    regular = [
-        r for r in rows if r.predicted != MID_WORD_CLOSURE and r.boundary_index not in excluded
-    ]
-    regular_ids = {r.boundary_index for r in regular}
-    pauses = {r.boundary_index for r in regular if r.verdict == WAQF}
+    judged = [r for r in rows if r.boundary_index not in excluded]
+    regular_at: dict[int, list[Boundary]] = {}
+    for row in judged:
+        if row.predicted != MID_WORD_CLOSURE:
+            regular_at.setdefault(row.word_index, []).append(row)
+    pauses = {r.boundary_index for r in judged if r.verdict == WAQF}
 
-    for position, row in enumerate(rows):
-        if row.boundary_index in regular_ids or row.boundary_index in excluded:
+    edge_rows: list[Boundary] = []
+    for row in judged:
+        matches = regular_at.get(row.word_index, [])
+        if row.predicted != MID_WORD_CLOSURE or not matches:
+            edge_rows.append(row)
             continue
-        beside = [
-            rows[j] for j in (position - 1, position + 1)
-            if 0 <= j < len(rows)
-            and rows[j].boundary_index in regular_ids
-            and rows[j].word_index == row.word_index
-        ]
-        if not beside:
-            excluded[row.boundary_index] = EXCLUDED_CLOSURE_UNPLACED
-            continue
+        if row.verdict == WAQF and len(matches) > 1:
+            raise ClipExcluded(EXCLUDED_CLOSURE_AMBIGUOUS)
         excluded[row.boundary_index] = EXCLUDED_CLOSURE_MERGED
         if row.verdict == WAQF:
-            pauses.add(beside[0].boundary_index)
+            pauses.add(matches[0].boundary_index)
 
-    edges = [Edge(r.boundary_index, r.word_index, r.boundary_index in pauses) for r in regular]
+    edges = [Edge(r.boundary_index, r.word_index, r.boundary_index in pauses) for r in edge_rows]
     return edges, excluded
 
 
@@ -282,15 +287,17 @@ def convert(
         rows = {r.boundary_index: r for r in by_clip[clip_id]}
         if len(rows) != len(by_clip[clip_id]):
             raise ValueError(f"{clip_id}: duplicate boundary_index")
-        edges, dropped = clip_edges(list(rows.values()))
-        outcomes.update(((clip_id, index), reason) for index, reason in dropped.items())
-
         words = uthmani_words(next(iter(rows.values())).surah_ayah)
         try:
+            edges, dropped = clip_edges(list(rows.values()))
             reference, carriers = _locate_edges(edges, words, realize)
         except ClipExcluded as excluded:
-            outcomes.update(((clip_id, e.boundary_index), excluded.reason) for e in edges)
+            outcomes.update(
+                ((clip_id, index), _clip_exclusion(row, excluded.reason))
+                for index, row in rows.items()
+            )
             continue
+        outcomes.update(((clip_id, index), reason) for index, reason in dropped.items())
         for edge, carrier in zip(edges, carriers):
             if carrier is None:
                 outcomes[(clip_id, edge.boundary_index)] = EXCLUDED_FINAL_LETTER_ASSIMILATED
@@ -343,6 +350,11 @@ def _locate_edges(
     return " ".join(real.phonemes for real in realized), carriers
 
 
+def _clip_exclusion(row: Boundary, reason: str) -> str:
+    """A row's outcome in an excluded clip: a mid-word closure stays one."""
+    return EXCLUDED_MID_WORD_CLOSURE if row.verdict == MID_WORD_CLOSURE else reason
+
+
 def _stratum(edge: Edge) -> str:
     return f"{WAQF_BOUNDARY}:{WAQF if edge.waqf else WASL}"
 
@@ -388,6 +400,9 @@ _GHUNNA = frozenset("\u06ba\u06fe")  # ں ۾
 #: The qalqala marker the phonetizer writes after a bouncing sakin letter.
 _QALQALA = "\u0687"  # ڇ
 _SHADDA = "\u0651"
+_TAA_MARBUTA = "\u0629"
+_TANWEEN_FATHA = "\u064b"
+_FATHA = "\u064e"
 #: Hamza written as a mark (on a tatweel or a seat, e.g. ``شَىْـًٔا``): a letter of its own.
 _HAMZA_MARKS = frozenset("\u0654\u0655")
 #: The consonants an Uthmani letter is realized as when it keeps its own identity; any
@@ -445,6 +460,23 @@ def final_carrier(
     raise ValueError(f"{text[start:end]!r} has no realized letter")
 
 
+def pausal_taa_marbuta(word: str) -> str:
+    """``word`` with a final ``ةً`` rewritten so quran-transcript gives its pausal form.
+
+    quran-transcript 0.5.2's ``MaddAlewad`` turns *every* final tanween fatha into fatha +
+    alif (madd al-iwad) before ``CleanEnd`` and ``NormalizeTaa`` run. On taa marbuta that
+    is wrong: ``رَحْمَةًۭ`` at waqf comes out ``رَحمَتَاا`` instead of ``رَحمَه``, because the
+    alif shields the ة from becoming ه with sukun. Replacing the tanween (and the small
+    mark after it) with a plain fatha lets ``CleanEnd`` drop the fatha and ``NormalizeTaa``
+    produce ه. Only the run's terminal word is pausal, so only it is rewritten; the ة keeps
+    its input index, so the char mappings still line up.
+    """
+    taa = word.rfind(_TAA_MARBUTA)
+    if taa >= 0 and _TANWEEN_FATHA in word[taa + 1 :]:
+        return word[: taa + 1] + _FATHA
+    return word
+
+
 def hafs_realizer() -> Realizer:
     """A :data:`Realizer` over ``quran_phonetizer`` with the Hafs moshaf.
 
@@ -462,6 +494,7 @@ def hafs_realizer() -> Realizer:
     moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
 
     def realize(words: list[str]) -> RealizedRun:
+        words = [*words[:-1], pausal_taa_marbuta(words[-1])]
         text = " ".join(words)
         try:
             out = quran_phonetizer(text, moshaf)

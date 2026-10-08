@@ -15,9 +15,11 @@ the frame geometry it rests on, so the label builders (:mod:`training.windowed_l
 
 * **The window contract.** The window *length* (5 s / 250 feature frames) is the
   already-deployed inference window (``convert_to_coreml.py``, ``ml-model-transformation.md``).
-  The window **spacing** is the frozen center-trusted 1 s overlap (4 s hop / 200 feature
-  frames), used identically in train, eval and export. :class:`WindowContract` defaults to
-  that spacing and takes it as a parameter.
+  The window **spacing** is the legacy training-label grid ADR-0004 froze: a center-trusted
+  1 s overlap (4 s hop / 200 feature frames). It is **not** the device's spacing — Muraja
+  runs a 1 s hop and commits only each window's first second (ADR-0010; see ADR-0004's
+  supersession notice). :class:`WindowContract` defaults to the training grid and takes
+  the spacing as a parameter.
 
 * **The recitation grid.** :func:`recitation_window_span` locates the recitation in the
   clip on the 40 ms lattice, :func:`enumerate_recitation_windows` tiles it with clip-relative
@@ -83,10 +85,11 @@ def feature_frames_for_samples(num_samples: int) -> int:
 # (``convert_to_coreml.py`` ``FIXED_SEQ_LEN``). Its 40 ms length is 125.
 DEPLOYED_WINDOW_FEATURE_FRAMES = 250
 
-# The frozen window spacing (#24, A2 HITL freeze): a 4 s hop = 1 s overlap over the
-# 5 s window (center-trusted overlap). 200 feature frames is even, so every window still
-# starts on an even teacher frame and its student frames line up with the clip's 40 ms
-# lattice. Train, eval, and export use this identical spacing.
+# The frozen training-label window spacing (#24, A2 HITL freeze): a 4 s hop = 1 s overlap
+# over the 5 s window (center-trusted overlap). 200 feature frames is even, so every window
+# still starts on an even teacher frame and its student frames line up with the clip's
+# 40 ms lattice. This is the legacy training grid only; Muraja's inference uses a 1 s hop
+# (ADR-0004 supersession notice, ADR-0010).
 FROZEN_HOP_FEATURE_FRAMES = 200
 
 
@@ -107,8 +110,9 @@ class WindowContract:
     ``feature_frames`` is the window length on the 20 ms encoder grid — the deployed 5 s
     inference window (250). ``hop_feature_frames`` is the step between consecutive window
     starts on that grid; the default is :data:`FROZEN_HOP_FEATURE_FRAMES` (200 = a 4 s
-    hop, 1 s overlap), the **center-trusted overlap** frozen by #24 (A2 HITL). Train,
-    eval, and export use this identical spacing.
+    hop, 1 s overlap), the **center-trusted overlap** frozen by #24 (A2 HITL) for the
+    training labels. It is not the device's spacing: Muraja runs a 1 s hop
+    (ADR-0004 supersession notice, ADR-0010).
 
     Both are required to be **even** so every window starts on an even teacher frame and
     its student frames line up exactly with the clip's 40 ms lattice (``start // 2``);
@@ -219,8 +223,8 @@ def enumerate_recitation_windows(
     (a whole student-frame pair — see :func:`recitation_window_span`), so the returned
     ``Window.start_sample`` locates the window in the **whole clip** while its length and
     count come from the recitation. A **redundant trailing window** — one whose audio ends
-    no later than the previous window's (pure overlap the previous window already covers,
-    which the inference stitch discards) — is dropped, so the grid carries only windows
+    no later than the previous window's (pure overlap the previous window already
+    covers) — is dropped, so the grid carries only windows
     with new center audio.
     """
     if recitation_start_sample % SAMPLES_PER_STUDENT_FRAME != 0:

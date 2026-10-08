@@ -167,9 +167,8 @@ def test_recitation_windows_are_clip_relative_and_match_the_zero_based_grid():
 
 def test_recitation_windows_drop_the_redundant_overlap_tail():
     # A recitation just past the 4 s hop yields a trailing window that is pure overlap the
-    # previous window already covers (its audio ends no later). The inference stitch discards
-    # it, so the shared grid must too — otherwise a segment crossing that tail's edge would
-    # wrongly exclude the clip.
+    # previous window already covers (its audio ends no later). The grid drops it — otherwise
+    # a segment crossing that tail's edge would wrongly exclude the clip.
     contract = WindowContract()
     start_sample, num_samples = recitation_window_span(0.0, 4.4)  # 0, 70400 (< 5 s, > 4 s hop)
     base = enumerate_windows(num_samples, contract)

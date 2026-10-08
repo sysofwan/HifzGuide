@@ -16,15 +16,13 @@ exactly one of three **classes** — ``waqf`` (a true stop), ``wasl`` (continuat
 no pause), or ``mid_word_closure`` (a stop-consonant/hamza silence that is *not* a
 waqf) — carried as both the detector's ``predicted`` class and the human
 ``verdict``, so the confusion between them is the metric. Verdicts are keyed by
-``(clip_id, boundary_index)`` — one candidate boundary, one fixture line — so the
-UI resumes from, and is interchangeable with, whatever the file already holds.
+``(clip_id, boundary_index)`` — one candidate boundary, one fixture line.
 """
 
 from __future__ import annotations
 
 import json
-import os
-from dataclasses import asdict, dataclass, fields
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 # The three mutually-exclusive kinds a candidate boundary can be. Used for both the
@@ -103,23 +101,3 @@ def load_waqf_events(path: Path = WAQF_EVENTS_PATH) -> list[WaqfEventEntry]:
                 continue
             entries.append(_parse_entry(json.loads(line), f"{path}:{lineno}"))
     return entries
-
-
-def write_waqf_events(entries: list[WaqfEventEntry], path: Path = WAQF_EVENTS_PATH) -> None:
-    """Atomically (over)write the waqf event fixtures, validating every entry first.
-
-    Each entry is round-tripped through :func:`_parse_entry` so an unknown class
-    fails loudly *before* anything touches disk — the file is never left partially
-    rewritten or holding an invalid line. Entries are written in the given order as
-    one JSON object per line (sorted keys, UTF-8), then ``os.replace``-swapped in.
-    """
-    for entry in entries:
-        _parse_entry(asdict(entry), "write_waqf_events")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        for entry in entries:
-            f.write(json.dumps(asdict(entry), ensure_ascii=False, sort_keys=True) + "\n")
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp_path, path)

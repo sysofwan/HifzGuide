@@ -19,6 +19,8 @@ from training.whole_clip_phoneme import (
     LoRASettings,
     attach_phoneme_lora,
     base_of,
+    lora_anchor_snapshot,
+    lora_l2sp_penalty,
     phoneme_forward,
     preflight_batch_memory,
     set_seed,
@@ -66,6 +68,28 @@ def test_lora_backbone_base_weight_is_frozen():
         if "self_attn.linear_q.base_layer.weight" in n
     ]
     assert frozen and all(not p.requires_grad for p in frozen)
+
+
+# --- L2-SP adapter anchor (--l2-sp) ------------------------------------------
+
+
+def test_l2sp_penalty_is_zero_at_the_anchor_and_grows_off_it():
+    from peft import LoraConfig, get_peft_model
+
+    torch.manual_seed(0)
+    peft = get_peft_model(
+        _tiny_model(),
+        LoraConfig(r=4, lora_alpha=8, target_modules=["linear_q", "linear_v"], bias="none"),
+    )
+    anchors = lora_anchor_snapshot(peft)
+    assert anchors  # adapters were selected
+    assert float(lora_l2sp_penalty(peft, anchors).detach()) == 0.0
+
+    with torch.no_grad():
+        for name, param in peft.named_parameters():
+            if param.requires_grad and "lora_" in name:
+                param.add_(1.0)
+    assert float(lora_l2sp_penalty(peft, anchors).detach()) > 0.0
 
 
 # --- phoneme forward ----------------------------------------------------------

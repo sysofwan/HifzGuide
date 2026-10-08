@@ -1,13 +1,14 @@
 """Unit tests for the waqf event-fixture schema (``tadabur.waqf_event_fixtures``).
 
-Covers the validating load/write round-trip, the three-class vocabulary guard on
-both ``predicted`` and ``verdict``, unknown-field rejection, and the atomic
-overwrite — all without touching the model or audio.
+Covers the validating loader, the three-class vocabulary guard on both
+``predicted`` and ``verdict``, and unknown-field rejection — all without touching the
+model or audio.
 """
 
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 
 import pytest
 
@@ -17,7 +18,6 @@ from .waqf_event_fixtures import (
     WASL,
     WaqfEventEntry,
     load_waqf_events,
-    write_waqf_events,
 )
 
 
@@ -28,14 +28,17 @@ def _entry(clip="c1", idx=0, predicted=WAQF, verdict=WAQF, note="") -> WaqfEvent
     )
 
 
-def test_write_then_load_roundtrip(tmp_path):
+def test_load_reads_valid_entries_in_file_order(tmp_path):
     path = tmp_path / "waqf_events.jsonl"
     entries = [
         _entry("a", 0, WAQF, WAQF, "clear stop"),
         _entry("a", 1, WASL, WAQF, "detector missed the stop"),
         _entry("b", 0, WAQF, MID_WORD_CLOSURE, "qalqala on ق, not a waqf"),
     ]
-    write_waqf_events(entries, path)
+    path.write_text(
+        "".join(json.dumps(asdict(e), ensure_ascii=False) + "\n" for e in entries),
+        encoding="utf-8",
+    )
     assert load_waqf_events(path) == entries
 
 
@@ -86,13 +89,3 @@ def test_load_rejects_unknown_field(tmp_path):
     }) + "\n", encoding="utf-8")
     with pytest.raises(ValueError):
         load_waqf_events(path)
-
-
-def test_write_rejects_invalid_entry_before_touching_disk(tmp_path):
-    path = tmp_path / "waqf_events.jsonl"
-    write_waqf_events([_entry("a", 0)], path)
-    bad = WaqfEventEntry("b", "b", "2:5", 0, 3, 1.0, 1.2, WAQF, "bogus", "")
-    with pytest.raises(ValueError):
-        write_waqf_events([bad], path)
-    # The pre-existing valid file is untouched by the failed write.
-    assert load_waqf_events(path) == [_entry("a", 0)]

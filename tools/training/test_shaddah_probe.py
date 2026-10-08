@@ -115,7 +115,9 @@ def _observation(segment="c.wav#0", reciter=1, weight=1.0, **site) -> sp.Observa
         interval_frames=4, run_frames=1, log_ratio=-10.0, second_peak=0.0,
         extra_location=sp.AFTER,
     )
-    return sp.Observation(segment, reciter, weight, False, None, sp.SiteMeasure(**{**defaults, **site}))
+    return sp.Observation(
+        segment, reciter, weight, False, None, False, sp.SiteMeasure(**{**defaults, **site})
+    )
 
 
 def test_observations_normalize_by_the_segment_single_rate_and_flag_the_census():
@@ -125,14 +127,16 @@ def test_observations_normalize_by_the_segment_single_rate_and_flag_the_census()
             + [_observation(reference_index=12, length=2, interval_frames=8).site]
         )
     )
-    obs = sp.segment_observations("c.wav#0", 7, 0.25, measure, frozenset({12}))
+    obs = sp.segment_observations("c.wav#0", 7, 0.25, measure, frozenset({12}), [0, 13])
     assert [o.rate_normalized for o in obs] == [0.75, 1.0, 1.25, 2.0]
     assert [o.census_collapsed for o in obs] == [False, False, False, True]
+    assert [o.crosses_word for o in obs] == [False, False, False, True]  # word 2 starts at 13
+    assert [o.kind for o in obs] == ["single"] * 3 + ["run2_cross_word"]
     assert all(o.weight == 4.0 and o.reciter_id == 7 for o in obs)
     assert [o.population for o in obs] == [sp.SINGLE] * 3 + [sp.COLLAPSED]
 
     too_few = sp.SegmentMeasure("", measure.sites[2:])
-    assert all(o.rate_normalized is None for o in sp.segment_observations("c#0", 7, 1.0, too_few, frozenset()))
+    assert all(o.rate_normalized is None for o in sp.segment_observations("c#0", 7, 1.0, too_few, frozenset(), []))
 
 
 def test_populations():
@@ -247,7 +251,7 @@ def test_model_report_runs_end_to_end_on_measured_segments():
     }
     observations = [
         o for key, m in measures.items()
-        for o in sp.segment_observations(key, hash(key) % 3, 0.5, m, frozenset({2}))
+        for o in sp.segment_observations(key, len(key) % 3, 0.5, m, frozenset({2}), [0])
     ]
     report = sp.model_report(observations, [])
     assert report["verdict"]["call"] == "insufficient_evidence"  # no stretch trials
@@ -255,4 +259,9 @@ def test_model_report_runs_end_to_end_on_measured_segments():
     assert report["sites"]["by_population"][sp.DOUBLE] == 1
     (row,) = report["collapsed_sites"]
     assert row["census_collapsed"] and row["rule_state"] == "held"
+    assert row["kind"] == "run2_within_word"
+    kinds = report["exploratory_by_kind"]
+    assert kinds["run2_within_word"]["geminate_runs"] == 2
+    assert kinds["run2_within_word"]["decoded_as"] == {"0": 0, "1": 1, "2": 1, "3+": 0}
+    assert kinds["run2_within_word"]["stretch_net"]["1.5"] == {"trials": 0, "net": None}
     assert report["mass"][sp.COLLAPSED]["log_ratio_states"]["present"]["weighted"] == 1.0

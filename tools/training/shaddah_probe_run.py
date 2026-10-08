@@ -53,6 +53,7 @@ class PoolSegmentRef:
     reference: str
     reciter_id: int
     inclusion_probability: float
+    word_starts: tuple[int, ...]
 
 
 def pool_segments() -> list[PoolSegmentRef]:
@@ -67,6 +68,7 @@ def pool_segments() -> list[PoolSegmentRef]:
             reference=seg.reference,
             reciter_id=clip.reciter_id,
             inclusion_probability=clip.inclusion_probability,
+            word_starts=seg.raw_word_offsets,
         )
         for clip in load_manifest()
         for seg in clip.segments
@@ -173,6 +175,7 @@ def measure_stage(model, segments, work_dir, workers) -> None:
                     segment.inclusion_probability,
                     measure,
                     census_dropped(measure.decode, segment.reference),
+                    segment.word_starts,
                 )
             )
     record = {

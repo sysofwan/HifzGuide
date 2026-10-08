@@ -39,6 +39,7 @@ posteriors; the runner (:mod:`training.shaddah_probe_run`) does the I/O and the 
 from __future__ import annotations
 
 import math
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -310,7 +311,9 @@ class Observation:
     (:func:`tadabur.contrast_attribution.contrast_sites`) counts this run as a dropped
     gemination. ``rate_normalized`` is the interval over the median interval of the
     segment's single, harakah-flanked consonants (``None`` with fewer than
-    :data:`MIN_SINGLES_FOR_RATE`).
+    :data:`MIN_SINGLES_FOR_RATE`). ``crosses_word`` says a word of the reference starts
+    strictly inside the run: a geminate made across a word boundary (an idgham, often of
+    a tanween), which exists only if the reciter did not pause there.
     """
 
     segment: str
@@ -318,7 +321,18 @@ class Observation:
     weight: float
     census_collapsed: bool
     rate_normalized: float | None
+    crosses_word: bool
     site: SiteMeasure
+
+    @property
+    def kind(self) -> str:
+        """``single``, or a geminate's run length (``2`` / ``3+``, the phonetizer writes a
+        ghunna's length as more letters) and whether it crosses a word boundary."""
+        site = self.site
+        if not site.is_geminate:
+            return "single"
+        length = "2" if site.length == 2 else "3+"
+        return f"run{length}_{'cross_word' if self.crosses_word else 'within_word'}"
 
     @property
     def population(self) -> str | None:
@@ -336,9 +350,11 @@ def segment_observations(
     inclusion_probability: float,
     measure: SegmentMeasure,
     census_dropped: frozenset[int],
+    word_starts: Sequence[int],
 ) -> list[Observation]:
     """The observations of one segment. ``census_dropped`` holds the raw reference indices
-    of the census's dropped gemination sites (each the first of its doubled pair)."""
+    of the census's dropped gemination sites (each the first of its doubled pair);
+    ``word_starts`` the raw reference index where each word starts."""
     single_intervals = [
         s.interval_frames
         for s in measure.sites
@@ -357,6 +373,9 @@ def segment_observations(
                 site.interval_frames / rate
                 if rate and site.vv_context and site.interval_frames is not None
                 else None
+            ),
+            crosses_word=any(
+                site.reference_index < w < site.reference_index + site.length for w in word_starts
             ),
             site=site,
         )
@@ -690,6 +709,7 @@ def collapsed_rows(observations: Sequence[Observation], trials: Sequence[Stretch
             "reference_index": site.reference_index,
             "run_length": site.length,
             "consonant": site.consonant,
+            "kind": o.kind,
             "census_collapsed": o.census_collapsed,
             "vv_context": site.vv_context,
             "interval_ms": None if site.interval_frames is None else site.interval_frames * FRAME_MS,
@@ -704,10 +724,61 @@ def collapsed_rows(observations: Sequence[Observation], trials: Sequence[Stretch
     return rows
 
 
+def _net_flip(trials: Sequence[StretchTrial]) -> dict:
+    """Trials and the weighted share decoding double after the stretch minus on the decoy."""
+    if not trials:
+        return {"trials": 0, "net": None}
+    edited = share(trials, lambda t: _flipped(t.edited))["weighted"]
+    return {"trials": len(trials), "net": edited - share(trials, lambda t: _flipped(t.decoy))["weighted"]}
+
+
+GEMINATE_KINDS = ("run2_within_word", "run2_cross_word", "run3+_within_word", "run3+_cross_word")
+
+
+def kind_report(
+    observations: Sequence[Observation], trials: Sequence[StretchTrial], durations: dict
+) -> dict:
+    """**Not pre-registered**: the collapsed geminates split by :attr:`Observation.kind`,
+    added after the results showed the population mixes geminates of two letters,
+    ghunna runs and cross-word idgham. Per kind: how often the decode collapses it, the
+    mass, the geminate-like share (at the pre-registered midpoint) and the stretch net."""
+    kind_of = {(o.segment, o.site.reference_index): o.kind for o in observations}
+    midpoint = (durations.get("geminate_like") or {}).get("midpoint")
+    report = {}
+    for kind in GEMINATE_KINDS:
+        runs = [o for o in observations if o.kind == kind]
+        collapsed = [o for o in runs if o.population == COLLAPSED]
+        normalized = [o for o in collapsed if o.rate_normalized is not None]
+        report[kind] = {
+            "geminate_runs": len(runs),
+            "collapsed_share": share(runs, lambda o: o.population == COLLAPSED),
+            "decoded_as": {
+                b: sum(_decoded_bucket(o.site.decoded) == b for o in runs) for b in ("0", "1", "2", "3+")
+            },
+            "collapsed_mass_present": share(collapsed, lambda o: _mass_state(o) == "present"),
+            "collapsed_mass_present_interval_95": clustered_interval(
+                collapsed, lambda o: _mass_state(o) == "present"
+            ),
+            "collapsed_geminate_like": None if midpoint is None else share(
+                normalized, lambda o: o.rate_normalized >= midpoint
+            ),
+            "collapsed_interval_ms": _distribution(
+                [o for o in collapsed if o.site.vv_context], lambda o: o.site.interval_frames * FRAME_MS
+            ),
+            "stretch_net": {
+                str(factor): _net_flip([
+                    t for t in trials
+                    if t.population == COLLAPSED and t.factor == factor
+                    and kind_of[(t.segment, t.reference_index)] == kind
+                ])
+                for factor in STRETCH_FACTORS
+            },
+        }
+    return report
+
+
 def model_report(observations: Sequence[Observation], trials: Sequence[StretchTrial]) -> dict:
     """Q1-Q3 and the verdict for one model's observations and stretch trials."""
-    from collections import Counter
-
     by_population = {p: [o for o in observations if o.population == p] for p in POPULATIONS}
     mass = {p: mass_report(obs) for p, obs in by_population.items()}
     durations = duration_report(by_population)
@@ -736,6 +807,7 @@ def model_report(observations: Sequence[Observation], trials: Sequence[StretchTr
         if n >= MIN_SITES_PER_CONSONANT
     }
     return {
+        "exploratory_by_kind": kind_report(observations, trials, durations),
         "sites": {
             "observed": len(observations),
             "geminate_runs": sum(o.site.is_geminate for o in observations),

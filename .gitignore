@@ -37,6 +37,9 @@ wandb/
 # Frozen, reciter-disjoint waqf eval partitions (#30) — versioned source-of-truth for F1/F2.
 !tools/tadabur/waqf_event_fixtures/waqf_events.calibration.jsonl
 !tools/tadabur/waqf_event_fixtures/waqf_events.test.jsonl
+# Truth sites (#79): one human-labelled position per row, the record ADR-0011 judges models
+# against. Source-of-truth, regenerated only from the committed labels they derive from.
+!tools/tadabur/truth_sites/waqf_boundaries.jsonl
 # Frozen P7.H conditional-reference integration cases (#35) — the product gate's source-of-truth.
 !tools/tadabur/waqf_integration_fixtures/waqf_integration_cases.jsonl
 # The tashkeel counterfactual item manifest (#10) — the recording sheet's machine-readable

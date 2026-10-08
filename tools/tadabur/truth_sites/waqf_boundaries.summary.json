@@ -1,0 +1,40 @@
+{
+  "fixture_rows": 2050,
+  "clips": 126,
+  "clips_with_sites": 123,
+  "sites": 1791,
+  "sites_assuming_competent_reciter": 1667,
+  "sites_by_stratum_and_mark": {
+    "waqf_boundary:waqf": {
+      "damma": 11,
+      "fatha": 31,
+      "sukun": 124
+    },
+    "waqf_boundary:wasl": {
+      "damma": 365,
+      "fatha": 778,
+      "kasra": 300,
+      "sukun": 182
+    }
+  },
+  "rows_by_verdict_and_outcome": {
+    "mid_word_closure": {
+      "mid_word_closure": 14
+    },
+    "waqf": {
+      "closure_merged": 13,
+      "closure_unplaced": 4,
+      "inconsistent_clip": 3,
+      "phonetizer_unsupported": 5,
+      "waqf_boundary:waqf": 154
+    },
+    "wasl": {
+      "closure_merged": 8,
+      "final_letter_assimilated": 143,
+      "inconsistent_clip": 41,
+      "phonetizer_unsupported": 28,
+      "waqf_boundary:waqf": 12,
+      "waqf_boundary:wasl": 1625
+    }
+  }
+}

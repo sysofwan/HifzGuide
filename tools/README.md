@@ -247,45 +247,18 @@ the boundaries the corpus asserts. The draw is seeded and sorted, so the same bu
 reproduce it and a re-run tops the sample up rather than redrawing it. Verdicts are appended to
 `tadabur/eval_fixtures/reject_reread_verdicts.jsonl`; its schema is in that directory's README.
 
-### `training.waqf_distill` (Linux — GPU teacher, CPU pooling) — waqf soft labels
+### `training.windowing` (torch-free library) — the fixed 5 s window grid
 
-The teacher half of the waqf-head distillation (ADR-0004). Because the deployed / student
-model sees **fixed 5 s windows** (250 feature → 125 student frames), the teacher must too:
-a transformer frame classifier's window-local posteriors differ from a whole-clip pass
-(attention context, window-edge padding), so the generator cuts each clip's waveform into
-the same fixed windows the student uses and runs the same Recitation VAD
-(`obadx/recitation-segmenter-v2` via `tadabur.vad`) over each **window waveform**. It keeps
-the raw **per-20 ms silence posteriors** (`P(silence)`, not the cleaned intervals) and
-**pools each window 2:1 to Muaalem's 40 ms CTC lattice** by a pinned rule: student frame
-`i` owns teacher frames `2i`/`2i+1` and is silent iff *both* are (min-pool silence /
-max-pool speech), left-anchored so a ±few-frame feature-extractor drift is absorbed at the
-window tail, never by shifting an interior boundary. **A window's student-frame count comes
-from its audio span, not from how many frames the VAD emitted** — `feature_frames_for_samples`
-reproduces the `SeamlessM4TFeatureExtractor` length exactly (`(num_samples - 80) // 320`, *not*
-the naive `num_samples // 320`, which over-counts by one on most spans), and
-`training.windowed_labels` derives its `logit_frames` from the same expression, so the phoneme
-CTC target and its silence teacher always land on the grid the model itself produces. Targets
-are emitted **per training window**, keyed to the passing-subset manifest by `(audio_filename, window_index)`. The
-window length is the deployed 5 s and the spacing defaults to a **provisional
-non-overlapping tiling** (`--hop-feature-frames`) pending the #24 inference-window contract
-(overlap/edge/stitch). Output goes into a deterministic, idempotent `SoftLabelStore`
-(per-window `.npy` arrays + a `soft_labels.jsonl` index, one line per clip listing its
-windows). The exact generation contract (window/hop, pooling rule, adapter + frame
-geometry, VAD id) is stored as `contract.json` and **re-checked on resume**, so a run that
-would append labels built under a different contract **fails fast** instead of silently
-corrupting the artifact. Generation **streams one clip at a time** and fsyncs each clip
-before the next, so a crash mid-run keeps every clip already written and a resumed run
-skips them — the whole manifest is never held in memory. The pooling/windowing/alignment is
-torch-free and covered by golden fixtures (`training/test_waqf_distill.py`); only the VAD
-forward pass needs the GPU. The windowed collator (#8) consumes these per-window targets
-against the phoneme lattice.
-
-```bash
-cd tools
-python -m training.waqf_distill --manifest passing_subset.jsonl --clips-dir clips/ \
-    --out-dir waqf_soft_labels/ [--window-feature-frames 250] [--hop-feature-frames 250] \
-    [--device cuda] [--dtype bfloat16] [--batch-size 8]
-```
+The window geometry every whole-clip label builder cuts (`training.windowed_labels`,
+`training.segmented_labels`, `training.window_envelope`). `WindowContract` is the deployed
+**5 s** window (250 feature → 125 frames on the 40 ms CTC lattice) on the frozen
+**center-trusted 1 s overlap** (4 s hop). `clip_recitation_windows` tiles the recitation
+span (not the whole staged clip) with clip-relative window starts on the 40 ms lattice and
+snaps each window inward to the whole words it contains. `feature_frames_for_samples`
+reproduces the `SeamlessM4TFeatureExtractor` frame count exactly (`(num_samples - 80) //
+320`, *not* the naive `num_samples // 320`), and `muaalem_lattice_length` is the adapter
+conv's 20 ms → 40 ms relation, so a window's CTC target is checked against the lattice the
+model actually emits. Covered by golden fixtures in `training/test_windowing.py`.
 
 ### `training.distill_*` (Linux — GPU) — size distillation to a single ANE chunk
 

@@ -348,6 +348,14 @@ number this work is accountable for. See ADR-0010.
   `tashkeel_acceptance` refuses to compare outcomes whose fingerprints differ or are missing.
   Worklists and outcomes written before this carry none: re-mine and re-score them.
 
+- **`haraka_gap`** — the #85 diagnosis of why the base teacher matches 0.962 of reference
+  harakat on whole waqf segments but 0.841 on ADR-0007's 5 s windows. Decodes the mining
+  pool's eligible clips four ways (whole segment, ADR-0007 window, stream at b=0 and b=1)
+  on one fixed site population, classes window sites as edge or interior words and stream
+  sites by protocol region (startup, seam, flush, undecoded tail), and splits the gap into
+  terms with reciter-clustered intervals (`haraka_gap_arms`, `haraka_gap_report`). Report:
+  `docs/haraka-gap.md`.
+
 - **`distill_eval`** — the release gate. Replays the deployed protocol (5 s window, 1 s hop,
   `scanCTC` collapse, `midpoint < 25` confirmation) and compares the **confirmed transcripts**.
   `--breakout` reports distance-from-breakout while a student is still blank-collapsed, when

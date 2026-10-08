@@ -216,13 +216,113 @@ def independent_equal_weight(clusters: Sequence[int], *dens: np.ndarray, weights
     return one_per_reciter and unit and fixed
 
 
+BOOTSTRAP = "bootstrap"
+WILSON = "wilson"
+TANGO = "tango"
+#: No admissible bound: the statistic is undefined, or the cell is sparse or degenerate and
+#: not independent and equally weighted. Any rule read from it is ``cannot_certify``.
+NO_BOUND = "none"
+
+
+@dataclass(frozen=True)
+class Interval:
+    """The §1 interval of one statistic and the method that produced it.
+
+    A bootstrap bound may be infinite (the adverse endpoint of undefined replicates). With
+    :data:`NO_BOUND` both ends are ``None`` and ``reason`` says why.
+    """
+
+    lower: float | None
+    upper: float | None
+    method: str
+    reason: str = ""
+
+    def bound(self, kind: str) -> float | None:
+        return self.lower if kind == LOWER else self.upper
+
+    def as_dict(self) -> dict:
+        def end(value: float | None):
+            if value is None or math.isfinite(value):
+                return value
+            return "-inf" if value < 0 else "inf"
+
+        return {
+            "lower": end(self.lower),
+            "upper": end(self.upper),
+            "method": self.method,
+            "reason": self.reason,
+        }
+
+
+_NOT_INDEPENDENT = "sparse or degenerate, and not independent and equally weighted"
+
+
+def _arrays(*pairs) -> list[tuple[np.ndarray, np.ndarray]]:
+    return [tuple(np.asarray(x, dtype=float) for x in pair) for pair in pairs]
+
+
+def ratio_interval(
+    clusters: Sequence[int],
+    num: np.ndarray,
+    den: np.ndarray,
+    weights: np.ndarray | None = None,
+    resample: Resample | None = None,
+) -> Interval:
+    """A single weighted ratio's interval under §1's rules.
+
+    The reciter-clustered bootstrap when the cell is neither sparse nor degenerate;
+    otherwise the Wilson score interval if the observations are independent and equally
+    weighted (``weights`` are the site weights behind ``num`` and ``den``); otherwise none.
+    A zero denominator has none. ``resample`` lets several statistics share one draw.
+    """
+    ((num, den),) = _arrays((num, den))
+    if not np.sum(den):
+        return Interval(None, None, NO_BOUND, "zero denominator")
+    replicates = (resample or Resample.by_cluster(clusters)).ratios(num, den)
+    if not (is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates)):
+        return Interval(lower_bound(replicates), upper_bound(replicates), BOOTSTRAP)
+    if not independent_equal_weight(clusters, den, weights=weights):
+        return Interval(None, None, NO_BOUND, _NOT_INDEPENDENT)
+    low, high = wilson_interval(int(round(np.sum(num))), len(clusters), Z)
+    return Interval(low, high, WILSON, "sparse or degenerate")
+
+
+def difference_interval(
+    clusters: Sequence[int],
+    arm: tuple[np.ndarray, np.ndarray],
+    comparator: tuple[np.ndarray, np.ndarray],
+    weights: np.ndarray | None = None,
+    resample: Resample | None = None,
+) -> Interval:
+    """The paired difference arm − comparator of two ratios on one observation set (§1).
+
+    Both ratios are recomputed inside every replicate of one shared draw; the observations
+    are never restricted to the ones both arms committed. A sparse or degenerate cell takes
+    the Tango score interval if independent and equally weighted with a common fixed
+    denominator, otherwise none.
+    """
+    (num_a, den_a), (num_b, den_b) = _arrays(arm, comparator)
+    if not np.sum(den_a) or not np.sum(den_b):
+        return Interval(None, None, NO_BOUND, "zero denominator")
+    resample = resample or Resample.by_cluster(clusters)
+    replicates = resample.ratios(num_a, den_a) - resample.ratios(num_b, den_b)
+    if not (is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates)):
+        return Interval(lower_bound(replicates), upper_bound(replicates), BOOTSTRAP)
+    if not independent_equal_weight(clusters, den_a, den_b, weights=weights):
+        return Interval(None, None, NO_BOUND, _NOT_INDEPENDENT)
+    gains = int(np.sum((num_a == 1) & (num_b == 0)))
+    losses = int(np.sum((num_a == 0) & (num_b == 1)))
+    low, high = paired_score_interval(gains, losses, len(clusters), Z)
+    return Interval(low, high, TANGO, "sparse or degenerate")
+
+
 @dataclass(frozen=True)
 class BoundVerdict:
     """One rule's outcome: the verdict, the bound it was read from and how it was obtained."""
 
     verdict: str
     bound: float | None
-    method: str  # "bootstrap", "wilson", "tango" or "none"
+    method: str
     reason: str
 
     def as_dict(self) -> dict:
@@ -234,13 +334,12 @@ class BoundVerdict:
         }
 
 
-def _compare(bound: float, threshold: float, kind: str) -> str:
+def _verdict(interval: Interval, threshold: float, kind: str) -> BoundVerdict:
+    bound = interval.bound(kind)
+    if interval.method == NO_BOUND:
+        return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, interval.reason)
     holds = bound >= threshold if kind == LOWER else bound <= threshold
-    return PASS if holds else FAIL
-
-
-def _bootstrap_bound(replicates: np.ndarray, kind: str) -> float:
-    return lower_bound(replicates) if kind == LOWER else upper_bound(replicates)
+    return BoundVerdict(PASS if holds else FAIL, bound, interval.method, interval.reason)
 
 
 def ratio_verdict(
@@ -251,26 +350,8 @@ def ratio_verdict(
     kind: str,
     weights: np.ndarray | None = None,
 ) -> BoundVerdict:
-    """A single weighted ratio's ``kind`` bound against ``threshold`` (§1).
-
-    ``num`` and ``den`` are the weighted per-observation terms and ``weights`` the site
-    weights behind them, which decide whether an exact Wilson bound is admissible.
-    """
-    num, den = np.asarray(num, dtype=float), np.asarray(den, dtype=float)
-    if not np.sum(den):
-        return BoundVerdict(CANNOT_CERTIFY, None, "none", "zero denominator")
-    replicates = Resample.by_cluster(clusters).ratios(num, den)
-    sparse = is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates)
-    if not sparse:
-        bound = _bootstrap_bound(replicates, kind)
-        return BoundVerdict(_compare(bound, threshold, kind), bound, "bootstrap", "")
-    if not independent_equal_weight(clusters, den, weights=weights):
-        return BoundVerdict(
-            CANNOT_CERTIFY, None, "none", "sparse or degenerate, and not independent and equally weighted"
-        )
-    low, high = wilson_interval(int(round(np.sum(num))), len(clusters), Z)
-    bound = low if kind == LOWER else high
-    return BoundVerdict(_compare(bound, threshold, kind), bound, "wilson", "sparse")
+    """A single weighted ratio's ``kind`` bound against ``threshold`` (:func:`ratio_interval`)."""
+    return _verdict(ratio_interval(clusters, num, den, weights), threshold, kind)
 
 
 def difference_verdict(
@@ -281,31 +362,8 @@ def difference_verdict(
     kind: str,
     weights: np.ndarray | None = None,
 ) -> BoundVerdict:
-    """The paired difference arm − comparator of two ratios on one observation set (§1).
-
-    Both ratios are recomputed inside every replicate of one shared draw; the observations
-    are never restricted to the ones both arms committed.
-    """
-    (num_a, den_a), (num_b, den_b) = (
-        tuple(np.asarray(x, dtype=float) for x in pair) for pair in (arm, comparator)
-    )
-    if not np.sum(den_a) or not np.sum(den_b):
-        return BoundVerdict(CANNOT_CERTIFY, None, "none", "zero denominator")
-    resample = Resample.by_cluster(clusters)
-    replicates = resample.ratios(num_a, den_a) - resample.ratios(num_b, den_b)
-    sparse = is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates)
-    if not sparse:
-        bound = _bootstrap_bound(replicates, kind)
-        return BoundVerdict(_compare(bound, threshold, kind), bound, "bootstrap", "")
-    if not independent_equal_weight(clusters, den_a, den_b, weights=weights):
-        return BoundVerdict(
-            CANNOT_CERTIFY, None, "none", "sparse or degenerate, and not independent and equally weighted"
-        )
-    gains = int(np.sum((num_a == 1) & (num_b == 0)))
-    losses = int(np.sum((num_a == 0) & (num_b == 1)))
-    low, high = paired_score_interval(gains, losses, len(clusters), Z)
-    bound = low if kind == LOWER else high
-    return BoundVerdict(_compare(bound, threshold, kind), bound, "tango", "sparse")
+    """A paired difference's ``kind`` bound against ``threshold`` (:func:`difference_interval`)."""
+    return _verdict(difference_interval(clusters, arm, comparator, weights), threshold, kind)
 
 
 def relative_change_verdict(
@@ -320,19 +378,17 @@ def relative_change_verdict(
     A comparator whose rate is zero leaves the change undefined: ``cannot_certify``. No exact
     bound exists for a relative change, so a sparse or degenerate cell is ``cannot_certify``.
     """
-    (num_a, den_a), (num_b, den_b) = (
-        tuple(np.asarray(x, dtype=float) for x in pair) for pair in (arm, comparator)
-    )
+    (num_a, den_a), (num_b, den_b) = _arrays(arm, comparator)
     if not np.sum(den_a) or not np.sum(den_b) or not np.sum(num_b):
-        return BoundVerdict(CANNOT_CERTIFY, None, "none", "zero denominator or zero comparator rate")
+        return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, "zero denominator or zero comparator rate")
     resample = Resample.by_cluster(clusters)
     base = resample.ratios(num_b, den_b)
     with np.errstate(divide="ignore", invalid="ignore"):
         replicates = np.where(base > 0, (resample.ratios(num_a, den_a) - base) / base, np.nan)
     if is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates):
-        return BoundVerdict(CANNOT_CERTIFY, None, "none", "sparse or degenerate")
-    bound = _bootstrap_bound(replicates, kind)
-    return BoundVerdict(_compare(bound, threshold, kind), bound, "bootstrap", "")
+        return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, "sparse or degenerate")
+    interval = Interval(lower_bound(replicates), upper_bound(replicates), BOOTSTRAP)
+    return _verdict(interval, threshold, kind)
 
 
 # --- teacher agreement (§2) ------------------------------------------------------------

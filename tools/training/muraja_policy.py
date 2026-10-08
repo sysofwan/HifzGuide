@@ -40,6 +40,12 @@ nothing                               sukun          CORRECT
 a haraka                              sukun          WRONG
 ====================================  =============  ==========================================
 
+**Collapsed geminate** (every mode, not a setting): a tashkeel site whose carrier belongs to
+a reference geminate the decode holds as one consonant is ``NOT_GRADED``. Muraja groups the
+geminate's two reference positions and discards the group's tashkeel when the group holds a
+gap, whatever ``shaddah_suppression`` says (ADR-0011 §2:
+:attr:`training.site_outcomes.SiteOutcome.geminate_collapsed`).
+
 **End word** (``end_word``, kept by ADR-0011 §6): a site at a pause is ``NOT_GRADED`` for
 tashkeel and for a consonant swap. A site is at a pause when its carrier is the last
 consonant of the item's realized reference (a segment or ayah end) or it sits in the
@@ -163,7 +169,7 @@ def at_pause(site: TruthSite) -> bool:
 
 
 def _grade_tashkeel(site: TruthSite, outcome: SiteOutcome, config: MurajaConfig) -> str:
-    if not config.tashkeel_errors or not outcome.carrier_aligned:
+    if not config.tashkeel_errors or not outcome.carrier_aligned or outcome.geminate_collapsed:
         return NOT_GRADED
     if config.end_word and at_pause(site):
         return NOT_GRADED

@@ -1,5 +1,9 @@
 {
  "model": "base",
+ "identity": {
+  "model_ref": "obadx/muaalem-model-v3_2",
+  "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5"
+ },
  "fingerprints": {
   "spans": {
    "model": "obadx/muaalem-model-v3_2",

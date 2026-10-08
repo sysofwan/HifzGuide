@@ -4,6 +4,7 @@ exclusions, the allowance view, required cells and the power-simulation inputs."
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -19,6 +20,7 @@ from training.truth_scorer import (
     item_key,
     population,
     power_inputs,
+    reconcile,
     score,
     site_weights,
 )
@@ -106,12 +108,56 @@ def test_sides_are_never_pooled_and_rates_are_weighted(sites):
     assert delta["point"] == -0.5
 
 
-def test_a_single_reciter_cell_has_a_degenerate_interval(sites):
+def test_reported_intervals_follow_the_section_1_method_rules(sites):
     report = score(sites, RECITERS, {"m/spans": decodes_for(sites)})
-    pause = cell(report, PAUSE, CORRECT_SIDE, "sukun")
-    assert pause["reciters"] == 1
+    pause = cell(report, PAUSE, CORRECT_SIDE, "sukun")  # one site: independent, unit weight
     spurious = pause["arms"]["m/spans"]["rates"]["spurious_haraka"]
-    assert spurious["point"] == 0.0 and spurious["degenerate"]
+    assert spurious["point"] == 0.0 and spurious["method"] == "wilson"
+    headline = cell(report, HEADLINE, CORRECT_SIDE, "fatha")  # weights 10/4: not unit
+    rate = headline["arms"]["m/spans"]["rates"]["commit_rate"]
+    assert rate["method"] == "none" and rate["lower"] is None and rate["upper"] is None
+
+
+def test_three_flawless_independent_sites_get_the_wilson_bound():
+    trio = [site(f"{c}.wav", KATABA, 2, "fatha", "fatha", "fatha", stratum="t",
+                 stratum_population=3) for c in "abc"]
+    report = score(trio, RECITERS, {"m/spans": decodes_for(trio)})
+    rate = cell(report, HEADLINE, CORRECT_SIDE, "fatha")["arms"]["m/spans"]["rates"]
+    assert rate["commit_rate"]["method"] == "wilson"
+    assert rate["commit_rate"]["lower"] == pytest.approx(0.438493919551)
+
+
+def test_one_physical_site_counts_once_and_keeps_its_frozen_weight(sites):
+    twin = replace(sites[0], site_id="twin", source="p35_fixture", heard="pending",
+                   stratum="p35_fixture:x")
+    report = score(sites + [twin], RECITERS, {"m/spans": decodes_for(sites)})
+    assert report["physical_sites_merged"] == [{"kept": sites[0].site_id, "dropped": ["twin"]}]
+    correct = cell(report, HEADLINE, CORRECT_SIDE, "fatha")
+    assert correct["sites"] == 2
+    assert correct["arms"]["m/spans"]["rates"]["commit_rate"]["num"] == pytest.approx(5.0)
+    safeguard = cell(report, SAFEGUARD, CORRECT_SIDE, ALL)
+    assert safeguard["arms"]["m/spans"]["rates"]["commit_rate"]["den"] == pytest.approx(0.5)
+
+
+def test_the_directly_adjudicated_verdict_wins_over_a_weak_label(sites):
+    weak = replace(sites[0], site_id="weak", assumes_competent_reciter=True, heard="fatha")
+    direct = replace(sites[0], site_id="direct", heard="kasra")
+    reconciled = reconcile([weak, direct])
+    assert [s.site_id for s in reconciled.sites] == ["direct"]
+
+
+def test_conflicting_labels_of_one_physical_site_fail_loudly(sites):
+    other = replace(sites[0], site_id="other", heard="kasra")
+    with pytest.raises(ValueError, match="disagree"):
+        reconcile([sites[0], other])
+    with pytest.raises(ValueError, match="prescribed"):
+        reconcile([sites[0], replace(sites[0], site_id="x", prescribed="kasra")])
+
+
+def test_power_inputs_use_the_reconciled_sites(sites):
+    twin = replace(sites[0], site_id="twin", heard="pending")
+    inputs = power_inputs(sites + [twin], RECITERS, {"h448/stream_b0": decodes_for(sites)})
+    assert inputs["excluded"] == {"new_audit:fatha": 1}  # the twin was dropped, d.wav stays
 
 
 def test_exclusions_and_their_sensitivity(sites):
@@ -146,6 +192,7 @@ def test_required_cells_are_directional_and_keep_unsupported_pairs(sites):
         assert ("§2 probe", "committed accuracy", MISTAKE_SIDE, f"{DHAL_ZAH}:{letter}") in labels
     assert ("§2 probe", "sukun commit rate", CORRECT_SIDE, "sukun") in labels
     assert ("§3 ship", "false flags (relative change)", CORRECT_SIDE, ALL) in labels
+    assert ("§5 bias", "spurious haraka", MISTAKE_SIDE, "sukun") in labels  # its own row
     assert all(r.cell.population in (HEADLINE, PAUSE) for r in REQUIRED_CELLS)
     report = score(sites, RECITERS, {"m/spans": decodes_for(sites)})
     empty = cell(report, HEADLINE, CORRECT_SIDE, f"{DHAL_ZAH}:{DHAL}")
@@ -181,3 +228,20 @@ def test_power_inputs_hold_per_reciter_sums(sites):
 def test_the_report_is_plain_json(sites):
     report = score(sites, RECITERS, {"m/spans": decodes_for(sites, {"c.wav": WRONG_FATHA})})
     json.dumps(report, allow_nan=False)
+
+
+def test_required_cells_do_not_depend_on_string_hashing():
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    code = "from training.truth_scorer import REQUIRED_CELLS; print([r.cell.label for r in REQUIRED_CELLS])"
+    outputs = {
+        subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, check=True,
+            cwd=Path(__file__).parent.parent, env={**os.environ, "PYTHONHASHSEED": seed},
+        ).stdout
+        for seed in ("1", "2", "3")
+    }
+    assert len(outputs) == 1

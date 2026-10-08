@@ -1,5 +1,9 @@
 {
  "model": "h448",
+ "identity": {
+  "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+  "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a"
+ },
  "fingerprints": {
   "spans": {
    "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",

@@ -14,9 +14,11 @@ This is the runner around :mod:`training.truth_scorer`:
    1, so the two arms share one fingerprint but the model, and batch size 1 keeps every item's
    decode independent of what it was batched with. The item's audio is read from the staged
    WAV only after its checksum and length match the registry. Decodes are cached in
-   :data:`DECODES_DIR`, one file per model with its fingerprints; on a re-run only items
-   missing from the cache are decoded, so new truth sites cost only their own audio, and a
-   run with nothing new needs no GPU.
+   :data:`DECODES_DIR`, one file per model with its fingerprints and the **identity** of its
+   weights (a checkpoint's SHA-256, or the hub commit the teacher resolved to). Every run
+   checks the requested model and protocols against the cache; on a re-run only items missing
+   from the cache are decoded, and only once the loaded weights prove to be the cache's, so
+   new truth sites cost only their own audio and a run with nothing new needs no GPU.
 3. **Report.** :func:`training.truth_scorer.score` over every site and arm, written as
    :data:`REPORT_PATH`; the §8 power simulation's inputs as :data:`POWER_INPUTS_PATH`
    (base and h448 only); and the human-readable report :data:`DOC_PATH`.
@@ -36,6 +38,7 @@ Usage (from ``tools/``)::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -105,28 +108,73 @@ def items_of(sites: Sequence[TruthSite], registry: Mapping[str, StagedClip]) -> 
 
 def read_decodes(path: Path) -> dict:
     if not path.exists():
-        return {"fingerprints": None, "items": {}}
+        return {"identity": None, "fingerprints": None, "items": {}}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def model_identity(model_ref: str, decoder=None) -> dict:
+    """The immutable identity of the weights behind ``model_ref``.
+
+    A checkpoint file is its SHA-256; a hub model is the commit its loaded config resolved to
+    (``config._commit_hash``), which needs the loaded ``decoder``.
+    """
+    path = Path(model_ref)
+    if path.is_file():
+        return {"model_ref": model_ref, "checkpoint_sha256": file_sha256(path)}
+    if decoder is None:
+        raise ValueError(f"{model_ref}: a hub model's revision is read from its loaded config")
+    revision = getattr(decoder.model.config, "_commit_hash", None)
+    if not revision:
+        raise ValueError(f"{model_ref} resolved to no hub revision; refusing an unbound cache")
+    return {"model_ref": model_ref, "hub_revision": revision}
+
+
+def check_cache(path: Path, cache: dict, model_ref: str) -> None:
+    """Every run: the cache must be this model, under these protocols, from these weights.
+
+    The model reference and every protocol's fingerprint (mode, weights dtype, batch size)
+    are checked without loading anything; a checkpoint file present on this machine is
+    re-hashed against the cache's identity too.
+    """
+    if cache["identity"] is None:
+        if cache["items"]:
+            raise ValueError(f"{path} records no model identity; regenerate it")
+        return
+    if cache["identity"]["model_ref"] != model_ref:
+        raise ValueError(
+            f"{path} holds decodes of {cache['identity']['model_ref']!r}, not {model_ref!r}"
+        )
+    for protocol, mode in PROTOCOLS.items():
+        record = cache["fingerprints"][protocol]
+        expected = (mode, WEIGHTS_DTYPE, BATCH_SIZE, model_ref)
+        found = (record["mode"], record["weights_dtype"], record["batch_size"], record["model"])
+        if found != expected:
+            raise ValueError(f"{path}: {protocol} was decoded as {found}, expected {expected}")
+    if Path(model_ref).is_file() and model_identity(model_ref) != cache["identity"]:
+        raise ValueError(f"{model_ref} no longer has the bytes {path} was decoded from")
+
+
 def decode_items(
-    model_ref: str,
+    decoder,
     items: Mapping[str, TruthSite],
     registry: Mapping[str, StagedClip],
     audio_dir: Path,
-    device: str,
-) -> tuple[dict[str, dict], dict[str, dict]]:
-    """Each item decoded whole and streamed at b = 0, with the two fingerprints."""
-    import torch
-
+) -> dict[str, dict]:
+    """Each item decoded whole and streamed at b = 0."""
     from tadabur.staged_audio import verify_staged
     from training.decode_evalset import read_clip_audio
-    from training.decoding import Decoder
 
     by_clip: dict[str, list[tuple[str, TruthSite]]] = {}
     for key, site in sorted(items.items()):
         by_clip.setdefault(site.audio_filename, []).append((key, site))
-    decoder = Decoder.load(model_ref, device, weights_dtype=WEIGHTS_DTYPE, batch_size=BATCH_SIZE)
     decoded: dict[str, dict] = {}
     for clip_name, clip_items in sorted(by_clip.items()):
         verify_staged(registry[clip_name], audio_dir)  # decode only the recorded bytes
@@ -138,11 +186,7 @@ def decode_items(
                 "spans": decoder.decode_spans([span])[0],
                 "stream_b0": decoder.decode_stream(span, block=0, flush_tail=True),
             }
-        print(f"  {model_ref}: {len(decoded)}/{len(items)} items", flush=True)
-    fingerprints = {name: decoder.fingerprint(mode).as_dict() for name, mode in PROTOCOLS.items()}
-    del decoder
-    torch.cuda.empty_cache()
-    return decoded, fingerprints
+    return decoded
 
 
 def update_decodes(
@@ -153,31 +197,47 @@ def update_decodes(
     audio_dir: Path | None,
     device: str,
 ) -> dict:
-    """The model's cached decodes, extended with any item the cache lacks."""
+    """The model's cached decodes, checked, and extended with any item the cache lacks.
+
+    New decodes are merged only when the loaded weights' identity (:func:`model_identity`)
+    and every fingerprint match the cache's, so one cache never mixes two checkpoints.
+    """
     path = DECODES_DIR / f"{name}.json"
     cache = read_decodes(path)
+    check_cache(path, cache, model_ref)
     stale = [k for k, v in cache["items"].items() if k in items and v["audio_sha256"] != items[k].audio_sha256]
     if stale:
         raise ValueError(f"{path}: {len(stale)} cached item(s) were decoded from other audio")
     missing = {k: site for k, site in items.items() if k not in cache["items"]}
-    if missing:
-        if audio_dir is None:
-            raise SystemExit(f"{name}: {len(missing)} item(s) have no decode; pass --audio-dir")
-        print(f"{name}: decoding {len(missing)} item(s) with {model_ref}", flush=True)
-        decoded, fingerprints = decode_items(model_ref, missing, registry, audio_dir, device)
-        if cache["fingerprints"] is not None:
-            for protocol, record in fingerprints.items():
-                DecodeFingerprint.from_dict(cache["fingerprints"][protocol], str(path)).check_comparable(
-                    DecodeFingerprint.from_dict(record, "this run"), f"new decodes against {path}"
-                )
-                if cache["fingerprints"][protocol]["model"] != record["model"]:
-                    raise ValueError(f"{path} was decoded from another model reference")
-        cache = {
-            "model": name,
-            "fingerprints": cache["fingerprints"] or fingerprints,
-            "items": dict(sorted({**cache["items"], **decoded}.items())),
-        }
-        write_text_atomically(path, json.dumps(cache, ensure_ascii=False, indent=1) + "\n")
+    if not missing:
+        return cache
+    if audio_dir is None:
+        raise SystemExit(f"{name}: {len(missing)} item(s) have no decode; pass --audio-dir")
+    import torch
+
+    from training.decoding import Decoder
+
+    print(f"{name}: decoding {len(missing)} item(s) with {model_ref}", flush=True)
+    decoder = Decoder.load(model_ref, device, weights_dtype=WEIGHTS_DTYPE, batch_size=BATCH_SIZE)
+    identity = model_identity(model_ref, decoder)
+    fingerprints = {p: decoder.fingerprint(mode).as_dict() for p, mode in PROTOCOLS.items()}
+    if cache["identity"] is not None:
+        if identity != cache["identity"]:
+            raise ValueError(f"{model_ref} is {identity}, but {path} was decoded from {cache['identity']}")
+        for protocol, record in fingerprints.items():
+            DecodeFingerprint.from_dict(cache["fingerprints"][protocol], str(path)).check_comparable(
+                DecodeFingerprint.from_dict(record, "this run"), f"new decodes against {path}"
+            )
+    decoded = decode_items(decoder, missing, registry, audio_dir)
+    del decoder
+    torch.cuda.empty_cache()
+    cache = {
+        "model": name,
+        "identity": identity,
+        "fingerprints": cache["fingerprints"] or fingerprints,
+        "items": dict(sorted({**cache["items"], **decoded}.items())),
+    }
+    write_text_atomically(path, json.dumps(cache, ensure_ascii=False, indent=1) + "\n")
     return cache
 
 

@@ -196,6 +196,36 @@ def test_a_held_site_is_aligned_through_either_half_of_its_run():
     assert outcome(site, MEEM + FATHA + DAL + FATHA + RAA + FATHA).carrier_aligned
 
 
+# The decode's gemination is read off the raw run, never assumed from the prescription.
+BARE_MADD = MEEM + FATHA + DAL + DAL  # مَدد: a bare geminate that normalization merges
+
+
+@pytest.mark.parametrize(
+    "reference, prescribed, decode, committed",
+    [
+        (BARE_MADD, "held", MEEM + FATHA + DAL, "not_held"),  # dropped at the edge
+        (BARE_MADD, "held", BARE_MADD, "held"),
+        (MADDA, "held", MEEM + FATHA + DAL + DAL + RAA + FATHA, "held"),  # bare in the decode
+        (MADDA, "held", MADA, "not_held"),
+        (MADA, "not_held", MEEM + FATHA + DAL + DAL + RAA + FATHA, "held"),  # bare added
+        (MADA, "not_held", MEEM + FATHA + DAL + FATHA + DAL + FATHA + RAA + FATHA, "held"),
+        (MEEM + FATHA + DAL + FATHA, "not_held", MEEM + FATHA + DAL + FATHA + DAL + FATHA, "held"),
+        (MADA, "not_held", MADA, "not_held"),
+    ],
+)
+def test_gemination_is_read_from_the_raw_run(reference, prescribed, decode, committed):
+    site = make(reference, 2, "shaddah", prescribed, prescribed)
+    assert outcome(site, decode).committed == committed
+
+
+def test_a_tashkeel_site_on_a_collapsed_geminate_says_so():
+    site = make(MADDA, 3, "fatha", "fatha", "fatha")  # the fatha on the second د of مَددَرَ
+    assert outcome(site, MADA).geminate_collapsed
+    assert not outcome(site, MADDA).geminate_collapsed
+    plain = make(KATABA, 2, "fatha", "fatha", "fatha")
+    assert not outcome(plain, KAF + FATHA + TAA + BAA + FATHA + LAM + FATHA).geminate_collapsed
+
+
 def test_shaddah_with_its_carrier_gone_is_no_commit():
     site = make(MADDA, 2, "shaddah", "held", "held")
     assert not outcome(site, MEEM + FATHA + RAA + FATHA + RAA + FATHA).commits
@@ -219,8 +249,10 @@ def test_pair_commit_empty_and_wrong_on_both_sides():
 
 
 def test_the_dhal_zah_pair_is_scored_like_any_pair():
-    site = replace(make(DHAKARA, 2, "ذ↔ز", DHAL, DHAL), mark=DHAL_ZAH)
+    site = make(DHAKARA, 2, DHAL_ZAH, DHAL, DHAL)  # validated by the production schema
     assert cad(site, DHAKARA.replace(DHAL, ZAH)) == (True, False, True)
+    mistake = make(DHAKARA.replace(DHAL, ZAH), 2, DHAL_ZAH, ZAH, DHAL)
+    assert cad(mistake, DHAKARA) == (True, True, True)
 
 
 def test_flagged_implies_commit_everywhere():

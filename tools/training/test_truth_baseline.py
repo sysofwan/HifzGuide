@@ -7,9 +7,23 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from tadabur.truth_sites import TRUTH_SITES_DIR
 from training.test_truth_scorer import RECITERS, decodes_for, sites  # noqa: F401  (a fixture)
-from training.truth_baseline import PROTOCOLS, comparisons, truth_site_files
+from training.truth_baseline import (
+    BATCH_SIZE,
+    DECODES_DIR,
+    DEFAULT_MODELS,
+    PROTOCOLS,
+    WEIGHTS_DTYPE,
+    check_cache,
+    comparisons,
+    file_sha256,
+    model_identity,
+    read_decodes,
+    truth_site_files,
+)
 from training.truth_baseline_doc import SPARSE_MARK, render
 from training.truth_scorer import score
 
@@ -54,3 +68,64 @@ def test_the_report_path_needs_no_torch():
         "assert 'torch' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True, cwd=Path(__file__).parent.parent)
+
+
+# --- the decode cache is bound to one model, one protocol and one set of weights ----------
+
+
+def _cache(model_ref: str, identity: dict) -> dict:
+    def fingerprint(mode):
+        return {"model": model_ref, "mode": mode, "weights_dtype": WEIGHTS_DTYPE,
+                "batch_size": BATCH_SIZE, "device_type": "cuda", "autocast": True,
+                "policy": "fp32-features-v1"}
+
+    return {
+        "model": "m",
+        "identity": identity,
+        "fingerprints": {p: fingerprint(mode) for p, mode in PROTOCOLS.items()},
+        "items": {"clip.wav@0:10": {"audio_sha256": "0" * 64, "spans": "", "stream_b0": ""}},
+    }
+
+
+def test_a_cache_refuses_another_model_reference_on_every_run(tmp_path: Path):
+    cache = _cache("hub/model", {"model_ref": "hub/model", "hub_revision": "abc"})
+    check_cache(tmp_path / "m.json", cache, "hub/model")
+    with pytest.raises(ValueError, match="holds decodes of"):
+        check_cache(tmp_path / "m.json", cache, "hub/other")
+
+
+def test_a_cache_refuses_another_protocol(tmp_path: Path):
+    cache = _cache("hub/model", {"model_ref": "hub/model", "hub_revision": "abc"})
+    cache["fingerprints"]["stream_b0"]["batch_size"] = 8
+    with pytest.raises(ValueError, match="was decoded as"):
+        check_cache(tmp_path / "m.json", cache, "hub/model")
+
+
+def test_a_cache_without_an_identity_is_refused(tmp_path: Path):
+    cache = _cache("hub/model", None)
+    with pytest.raises(ValueError, match="no model identity"):
+        check_cache(tmp_path / "m.json", cache, "hub/model")
+
+
+def test_a_checkpoint_whose_bytes_changed_is_refused(tmp_path: Path):
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"weights")
+    identity = model_identity(str(checkpoint))
+    assert identity == {"model_ref": str(checkpoint), "checkpoint_sha256": file_sha256(checkpoint)}
+    cache = _cache(str(checkpoint), identity)
+    check_cache(tmp_path / "m.json", cache, str(checkpoint))
+    checkpoint.write_bytes(b"other weights")
+    with pytest.raises(ValueError, match="no longer has the bytes"):
+        check_cache(tmp_path / "m.json", cache, str(checkpoint))
+
+
+def test_a_hub_identity_needs_the_loaded_revision():
+    with pytest.raises(ValueError, match="loaded config"):
+        model_identity("hub/model")
+
+
+def test_the_committed_caches_are_bound_to_their_weights():
+    for name, ref in DEFAULT_MODELS.items():
+        cache = read_decodes(DECODES_DIR / f"{name}.json")
+        assert cache["identity"]["model_ref"] == ref
+        check_cache(DECODES_DIR / f"{name}.json", cache, ref)

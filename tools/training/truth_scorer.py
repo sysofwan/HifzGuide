@@ -13,6 +13,13 @@ and returns a JSON-ready report. Per-site outcomes come from :mod:`training.site
 Muraja's site-level grades from :mod:`training.muraja_policy`, and every rate, interval and
 verdict from :mod:`training.acceptance_stats`.
 
+One record per physical site (§1)
+---------------------------------
+:func:`reconcile` runs before anything is scored or exported: records that share a
+:func:`physical_site` (audio checksum, item span, carrier and mark) count once, under the
+directly adjudicated verdict, with weights computed over every record so the frozen
+sampling weights stand. Conflicting labels raise.
+
 Populations (§1), never pooled with each other
 ----------------------------------------------
 :func:`population` assigns each site from its truth record alone:
@@ -40,8 +47,10 @@ Correct recitation and real mistakes are never in one cell.
 Each site is weighted by its stratum: population / sites sampled in the stratum, counting
 the ``unclear`` and ``pending`` sites that were sampled too (weights are never inflated to
 cover them). A cell reports its sites, reciters, whether it is **sparse** (fewer than 10
-reciters or 20 sites), and, per arm, every rate with its reciter-clustered bootstrap
-interval. Shaddah cells are ``provisional`` until #92.
+reciters or 20 sites), and, per arm, every rate with its §1 interval and the method behind
+it (:func:`training.acceptance_stats.ratio_interval`): the reciter-clustered bootstrap, a
+Wilson bound where a sparse or degenerate cell is independent and equally weighted, or
+``none`` where no bound is admissible. Shaddah cells are ``provisional`` until #92.
 
 Rates per arm, by side
 ----------------------
@@ -53,7 +62,9 @@ Correct recitation: ``commit_rate`` ΣwC/Σw, ``committed_accuracy`` ΣwA/ΣwC,
 heard value is sukun also reports ``spurious_haraka``: Σw[any haraka emitted]/Σw (§5).
 
 Comparisons between models (and between protocols) are paired: one draw per cell serves
-every arm, and each difference is recomputed inside every replicate.
+every arm, and each difference is recomputed inside every replicate; a sparse or degenerate
+difference takes the Tango bound where admissible, otherwise none
+(:func:`training.acceptance_stats.difference_interval`).
 
 Exclusions
 ----------
@@ -93,11 +104,10 @@ from training.acceptance_stats import (
     REPLICATES,
     SEED,
     Resample,
-    is_degenerate,
+    difference_interval,
     is_sparse,
-    lower_bound,
     ratio,
-    upper_bound,
+    ratio_interval,
 )
 from training.muraja_policy import ALLOWANCES, NOT_GRADED, TODAY, WRONG, MurajaConfig, grade
 from training.site_outcomes import (
@@ -200,7 +210,7 @@ def _heard_cells(side_: str) -> list[tuple[str, str]]:
     if side_ == MISTAKE_SIDE:
         marks.append((TASHKEEL, SUKUN))
     gemination = [(SHADDAH, state) for state in sorted(GEMINATION_STATES)]
-    pairs = [(pair, letter) for pair in TARGET_PAIRS for letter in sorted(pair.split("↔"))]
+    pairs = [(pair, letter) for pair in sorted(TARGET_PAIRS) for letter in sorted(pair.split("↔"))]
     return marks + gemination + pairs
 
 
@@ -229,6 +239,7 @@ def _required_cells() -> tuple[RequiredCell, ...]:
         + cells(bias, "missed mistakes", MISTAKE_SIDE, heard=pooled)
         + cells(bias, "silent corrections", MISTAKE_SIDE, heard=pooled)
         + cells(bias, "spurious haraka", CORRECT_SIDE, heard=sukun, when="when_supported")
+        + cells(bias, "spurious haraka", MISTAKE_SIDE, heard=sukun, when="when_supported")
         + cells(bias, "spurious haraka", CORRECT_SIDE, PAUSE, sukun, "when_supported")
     )
 
@@ -249,6 +260,65 @@ def site_weights(sites: Sequence[TruthSite]) -> dict[str, float]:
     return {site.site_id: site.stratum_population / sampled[site.stratum] for site in sites}
 
 
+def physical_site(site: TruthSite) -> tuple:
+    """The identity of the labelled position itself: the audio (its checksum once staged, its
+    filename before), the item's span, the carrier and the mark under test."""
+    audio = site.audio_sha256 or site.audio_filename
+    return (audio, site.start_sample, site.end_sample, site.reference_index, site.mark)
+
+
+def _directly_adjudicated(site: TruthSite) -> bool:
+    return side(site) is not None and not site.assumes_competent_reciter
+
+
+@dataclass(frozen=True)
+class Reconciled:
+    """One record per physical site, with every record's frozen sampling weight."""
+
+    sites: list[TruthSite]
+    weights: dict[str, float]
+    #: Per physical site held by several records: the kept id and the dropped ids.
+    merged: list[dict]
+
+
+def reconcile(sites: Sequence[TruthSite]) -> Reconciled:
+    """One record per physical site (§1's observation unit), before anything is scored.
+
+    Weights are computed over every record first, so a stratum's sampled count stays the
+    frozen one; a dropped duplicate does not inflate the kept record's weight. Among
+    several records of one physical site the directly adjudicated verdict wins (a verdict
+    that does not assume a competent reciter), then any verdict, then the rest; ties go to
+    the lowest ``(source, site_id)``. Records that disagree on what the mushaf prescribes,
+    or two verdicts of the same rank that disagree on what was heard, are an error.
+    """
+    if len({site.site_id for site in sites}) != len(sites):
+        raise ValueError("duplicate site ids across the truth-site files")
+    weights = site_weights(sites)
+    groups: dict[tuple, list[TruthSite]] = defaultdict(list)
+    for site in sites:
+        groups[physical_site(site)].append(site)
+    kept_ids: set[str] = set()
+    merged = []
+    for key, records in groups.items():
+        if len({r.prescribed for r in records}) > 1:
+            raise ValueError(f"records {[r.site_id for r in records]} disagree on the prescribed mark")
+        for rank in (_directly_adjudicated, lambda r: side(r) is not None, lambda r: True):
+            ranked = sorted((r for r in records if rank(r)), key=lambda r: (r.source, r.site_id))
+            if ranked:
+                break
+        verdicts = {r.heard for r in ranked if side(r) is not None}
+        if len(verdicts) > 1:
+            raise ValueError(
+                f"records {[r.site_id for r in ranked]} of one physical site disagree: {sorted(verdicts)}"
+            )
+        kept_ids.add(ranked[0].site_id)
+        if len(records) > 1:
+            dropped = sorted(r.site_id for r in records if r is not ranked[0])
+            merged.append({"kept": ranked[0].site_id, "dropped": dropped})
+    kept = [site for site in sites if site.site_id in kept_ids]
+    return Reconciled(kept, {s.site_id: weights[s.site_id] for s in kept}, merged)
+
+
 @dataclass(frozen=True)
 class SiteRow:
     """One site with everything a rate reads: weight, reciter and each arm's outcome."""
@@ -259,19 +329,18 @@ class SiteRow:
     outcomes: Mapping[str, SiteOutcome]
 
 
-def _finite(value: float) -> float | None:
-    return value if math.isfinite(value) else None
-
-
-def _estimate(replicates: np.ndarray, num: np.ndarray, den: np.ndarray) -> dict:
+def _estimate(
+    clusters: Sequence[int], terms: tuple[np.ndarray, np.ndarray], weights: np.ndarray,
+    resample: Resample,
+) -> dict:
+    """A rate's point and its §1 interval, with the method that produced the interval."""
+    num, den = terms
+    point = ratio(num, den)
     return {
-        "point": _finite(ratio(num, den)),
-        "lower": _finite(lower_bound(replicates)),
-        "upper": _finite(upper_bound(replicates)),
+        "point": point if math.isfinite(point) else None,
+        **ratio_interval(clusters, num, den, weights, resample).as_dict(),
         "num": float(num.sum()),
         "den": float(den.sum()),
-        "undefined_replicates": int(np.isnan(replicates).sum()),
-        "degenerate": is_degenerate(replicates),
     }
 
 
@@ -345,27 +414,25 @@ def _score_cell(
     if not rows:
         return summary
     resample = Resample.by_cluster(clusters)
+    w = _indicator(row.weight for row in rows)
     sukun_cell = cell.family == TASHKEEL and cell.heard == SUKUN
-    replicates: dict[str, dict[str, np.ndarray]] = {}
-    summary["arms"] = {}
-    for arm in arms:
-        terms = _rate_terms(rows, arm, cell.side, config, sukun_cell)
-        replicates[arm] = {name: resample.ratios(*t) for name, t in terms.items()}
-        summary["arms"][arm] = {
-            "rates": {name: _estimate(replicates[arm][name], *t) for name, t in terms.items()},
-            "sensitivity": _sensitivity(rows, [w for _, w in excluded], arm) if excluded else None,
+    terms = {arm: _rate_terms(rows, arm, cell.side, config, sukun_cell) for arm in arms}
+    summary["arms"] = {
+        arm: {
+            "rates": {name: _estimate(clusters, t, w, resample) for name, t in terms[arm].items()},
+            "sensitivity": _sensitivity(rows, [x for _, x in excluded], arm) if excluded else None,
         }
+        for arm in arms
+    }
     summary["differences"] = {}
     for arm, other in comparisons:
         differences = {}
-        for name, reps in replicates[arm].items():
-            delta = reps - replicates[other][name]
+        for name, arm_terms in terms[arm].items():
             points = [summary["arms"][a]["rates"][name]["point"] for a in (arm, other)]
+            interval = difference_interval(clusters, arm_terms, terms[other][name], w, resample)
             differences[name] = {
                 "point": None if None in points else points[0] - points[1],
-                "lower": _finite(lower_bound(delta)),
-                "upper": _finite(upper_bound(delta)),
-                "degenerate": is_degenerate(delta),
+                **interval.as_dict(),
             }
         summary["differences"][f"{arm} - {other}"] = differences
     return summary
@@ -399,7 +466,7 @@ def _allowance_view(
                         # A false flag is a WRONG grade; a missed mistake is anything else.
                         wrong = _indicator(grade(r.site, r.outcomes[arm], cfg) == WRONG for r in affected)
                         num = w * (wrong if side_ == CORRECT_SIDE else 1 - wrong)
-                        block[arm][state] = _estimate(resample.ratios(num, w), num, w)
+                        block[arm][state] = _estimate(clusters, (num, w), w, resample)
             entry["sides"][rate] = block
         view.append(entry)
     return view
@@ -443,11 +510,10 @@ def score(
     """The report: per-cell rates for every arm, paired differences, the allowance view,
     exclusions and required-cell support. ``decodes[arm][item_key]`` is a decode string,
     ``reciter_of[audio_filename]`` a canonical reciter id."""
-    if len({site.site_id for site in sites}) != len(sites):
-        raise ValueError("duplicate site ids across the truth-site files")
+    reconciled = reconcile(sites)
+    sites, weights = reconciled.sites, reconciled.weights
     arms = sorted(decodes)
     outcomes = outcomes_by_arm(sites, decodes)
-    weights = site_weights(sites)
     rows = [
         SiteRow(
             site,
@@ -489,6 +555,7 @@ def score(
         "muraja_config": config.as_dict(),
         "arms": arms,
         "sites": _site_counts(sites, reciter_of),
+        "physical_sites_merged": reconciled.merged,
         "exclusions": _exclusions(excluded),
         "cells": cells,
         "allowances": allowances,
@@ -539,8 +606,9 @@ def power_inputs(
     Σw[graded]). Only correct- and mistake-side sites with a verdict; ``excluded`` counts the
     rest per stratum.
     """
+    reconciled = reconcile(sites)
+    sites, weights = reconciled.sites, reconciled.weights
     outcomes = outcomes_by_arm(sites, decodes)
-    weights = site_weights(sites)
     cells: dict[tuple, dict[int, list[float]]] = defaultdict(dict)
     for arm in sorted(decodes):
         for site in sites:

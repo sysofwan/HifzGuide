@@ -36,23 +36,36 @@ _RATE_TITLES = {
 SPARSE_MARK = "too small"
 
 
-def _pct(value: float | None) -> str:
-    return "–" if value is None else f"{100 * value:.1f}"
+_METHOD_MARKS = {"bootstrap": "", "wilson": " W", "tango": " T"}
+NOT_CERTIFIABLE = "n/c"
+
+
+def _pct(value) -> str:
+    if value is None:
+        return "–"
+    if isinstance(value, str):  # an infinite adverse endpoint
+        return "−∞" if value.startswith("-") else "+∞"
+    return f"{100 * value:.1f}"
+
+
+def _bounds(entry: dict) -> str:
+    """`` [lower, upper]`` and the method mark, or the not-certifiable mark."""
+    if entry["method"] == "none":
+        return f" ({NOT_CERTIFIABLE})"
+    return f" [{_pct(entry['lower'])}, {_pct(entry['upper'])}]{_METHOD_MARKS[entry['method']]}"
 
 
 def _estimate(estimate: dict | None) -> str:
-    """``point [lower, upper]`` in percent; ``–`` for an undefined value or bound."""
+    """``point [lower, upper]`` in percent; ``–`` for an undefined value."""
     if not estimate or estimate["point"] is None:
         return "–"
-    return f"{_pct(estimate['point'])} [{_pct(estimate['lower'])}, {_pct(estimate['upper'])}]"
+    return _pct(estimate["point"]) + _bounds(estimate)
 
 
 def _delta(delta: dict | None) -> str:
     if not delta or delta["point"] is None:
         return "–"
-    return (
-        f"{100 * delta['point']:+.1f} [{_pct(delta['lower'])}, {_pct(delta['upper'])}]"
-    )
+    return f"{100 * delta['point']:+.1f}" + _bounds(delta)
 
 
 def _cell_name(cell: dict) -> str:
@@ -233,6 +246,10 @@ def render(report: dict) -> str:
         "`tools/tadabur/truth_sites/p35_fixtures.summary.json`; weights are not inflated to cover",
         "them. A site's weight is its stratum population over the sites sampled in the stratum"
         + (": every stratum here is a census, so every weight is 1." if _all_census(report) else "."),
+        f"Records sharing one physical site (audio checksum, span, carrier, mark): "
+        f"{len(report['physical_sites_merged'])} merged"
+        + (", each under its directly adjudicated verdict (`report.json`)."
+           if report["physical_sites_merged"] else "; every record is its own site."),
         "",
         "Every site is scored under four **arms**: each model, decoded two ways from the same",
         "staged audio. `spans` decodes the item (the whole clip, or the P3.5 segment) in one pass;",
@@ -251,12 +268,16 @@ def render(report: dict) -> str:
         lines.append(f"| {name} | `{records['spans']['model']}` | {modes} |")
     lines += [
         "",
-        "Intervals are the reciter-clustered bootstrap of §1 (B = "
+        "Intervals follow §1. Unmarked, the reciter-clustered bootstrap (B = "
         f"{report['bootstrap']['replicates']:,}, seed {report['bootstrap']['seed']}, type-7",
-        "percentiles, an undefined replicate at the adverse endpoint). A cell is marked",
-        f"**{SPARSE_MARK}** when it has fewer than 10 reciters or 20 sites: it cannot support a",
-        "claim, whatever its interval says. `–` is an undefined value (a zero denominator).",
-        "Rates are in percent; differences in points.",
+        "percentiles, an undefined replicate at the adverse endpoint, shown as ±∞). A cell",
+        "that is sparse (fewer than 10 reciters or 20 sites) or whose replicates are all",
+        "identical gets an exact bound only where its sites are independent and equally",
+        "weighted: **W** marks a Wilson bound, **T** a Tango bound. Otherwise the value carries",
+        f"**({NOT_CERTIFIABLE})**: no bound is admissible and any rule read from it is",
+        f"`cannot_certify`. A cell is also marked **{SPARSE_MARK}** when it has fewer than 10",
+        "reciters or 20 sites: it cannot support a claim. `–` is an undefined value (a zero",
+        "denominator). Rates are in percent; differences in points.",
         "",
         "Muraja's grades are today's configuration (`muraja_policy.TODAY`): Muraja "
         f"`{report['muraja_config']['revision'][:12]}`, mode `{report['muraja_config']['mode']}`, "
@@ -326,7 +347,8 @@ def render(report: dict) -> str:
         "",
         "The required cells of §2, §3 and §5 are frozen in `truth_scorer.REQUIRED_CELLS`",
         "(directional pair cells, `ذ↔ظ` included; shaddah provisional). Their support today, all",
-        "in the headline population except the pause row of §5's spurious haraka:",
+        "in the headline population except the pause row of §5's spurious haraka (the mistake",
+        "side of that guard, sukun said where a haraka was prescribed, is its own required row):",
         "",
     ]
     lines += _required_table(report)

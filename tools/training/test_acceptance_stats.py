@@ -10,19 +10,25 @@ import pytest
 
 from training.acceptance_stats import (
     BIAS_SPLIT_SALT,
+    BOOTSTRAP,
     CANNOT_CERTIFY,
     FAIL,
     LOWER,
+    NO_BOUND,
     PASS,
     REPLICATES,
     SCORE,
     SEED,
+    TANGO,
     TUNE,
     UPPER,
+    WILSON,
     AgreementRecord,
+    Interval,
     Resample,
-    agreement_terms,
     aggregate,
+    agreement_terms,
+    difference_interval,
     difference_verdict,
     independent_equal_weight,
     is_degenerate,
@@ -31,6 +37,7 @@ from training.acceptance_stats import (
     project_to_teacher,
     quantile_type7,
     ratio,
+    ratio_interval,
     ratio_verdict,
     reciter_half,
     relative_change_verdict,
@@ -245,3 +252,29 @@ def test_reciter_split_algorithm_is_pinned():
 def test_reciter_split_refuses_a_non_canonical_id(bad):
     with pytest.raises(ValueError):
         reciter_half(bad)
+
+
+def test_ratio_interval_picks_the_method_by_the_section_1_rules():
+    clusters, num, den = _sites(3, 0)  # three flawless independent sites
+    interval = ratio_interval(clusters, num, den)
+    assert interval.method == WILSON and interval.lower == pytest.approx(0.438493919551)
+    clusters, num, den = _sites(3, 0, per_reciter=3)
+    assert ratio_interval(clusters, num, den).method == NO_BOUND
+    assert ratio_interval([1, 2], np.zeros(2), np.zeros(2)).reason == "zero denominator"
+    rng = np.random.default_rng(3)
+    clusters = [i // 4 for i in range(400)]
+    big = ratio_interval(clusters, (rng.random(400) < 0.8).astype(float), np.ones(400))
+    assert big.method == BOOTSTRAP and big.lower < 0.8 < big.upper
+
+
+def test_difference_interval_falls_back_to_tango_or_none():
+    clusters, num, den = _sites(30, 0)
+    tango = difference_interval(clusters, (num, den), (num.copy(), den))
+    assert tango.method == TANGO
+    weighted = difference_interval(clusters, (num, den), (num, den), weights=np.full(30, 2.0))
+    assert weighted.method == NO_BOUND
+
+
+def test_an_infinite_adverse_bound_serializes_explicitly():
+    interval = Interval(-math.inf, 0.5, BOOTSTRAP)
+    assert interval.as_dict()["lower"] == "-inf"

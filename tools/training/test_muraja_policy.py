@@ -16,8 +16,9 @@ from training.muraja_policy import (
     at_pause,
     grade,
 )
-from training.site_outcomes import DHAL_ZAH, SiteOutcome
+from training.site_outcomes import DHAL_ZAH, SiteOutcome, item_outcomes
 from training.test_site_outcomes import (
+    DAL,
     DAMMA,
     DHAKARA,
     DHAL,
@@ -173,3 +174,22 @@ def test_affected_populations_are_decided_by_the_truth_record():
     assert affected == {"suppress_haraka_drop"}
     assert not any(a.affects(sukun) for a in ALLOWANCES)
     assert {a.name for a in ALLOWANCES if a.affects(damma_on_waw)} == {"dropped_haraka_exemption"}
+
+
+def test_a_collapsed_geminate_discards_its_tashkeel_in_every_mode():
+    site = make(MADDA, 3, "fatha", "fatha", "fatha")  # fatha on the second د of مَددَرَ
+    collapsed = SiteOutcome(True, "kasra", ("kasra",), geminate_collapsed=True)
+    for suppression in (True, False):
+        for empty_rule in (True, False):
+            config = replace(TODAY, shaddah_suppression=suppression, empty_slot_not_graded=empty_rule)
+            assert grade(site, collapsed, config) == NOT_GRADED
+    assert grade(site, SiteOutcome(True, "kasra", ("kasra",))) == WRONG
+
+
+def test_a_collapsed_geminate_read_from_a_real_decode():
+    site = make(MADDA, 3, "fatha", "fatha", "fatha")
+    decode = MADA.replace(DAL + FATHA, DAL + "ِ", 1)  # مَدِرَ: one د, a wrong haraka
+    outcome = item_outcomes([site], decode)[site.site_id]
+    assert outcome.geminate_collapsed
+    assert grade(site, outcome) == NOT_GRADED
+    assert grade(site, outcome, replace(TODAY, shaddah_suppression=False)) == NOT_GRADED

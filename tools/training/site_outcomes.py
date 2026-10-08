@@ -42,15 +42,22 @@ substitution by a letter outside the pair is flagged too.
 
 Shaddah sites (provisional until #92)
 -------------------------------------
-The carrier is aligned when any position of its run of the same consonant (the geminate,
-which the realized reference may write ``ووو`` before an assimilated letter) is aligned to
-that consonant. The
-committed state is read from :func:`tadabur.contrast_attribution.contrast_sites` with the
-raw-string gemination check: at a ``held`` site, a dropped gemination on the carrier commits
-``not_held`` and anything else commits ``held``; at a ``not_held`` site an added gemination
-commits ``held`` and anything else ``not_held``. Today's encoding has no "unsure" state, so
-every aligned carrier commits; #92 decides whether a single consonant should instead read as
-an empty slot, and until then every shaddah cell is descriptive (``cannot_certify``).
+The site's **run** is the reference's run of its consonant (the geminate, which the
+realized reference may write ``ووو`` before an assimilated letter, or the single consonant
+of a ``not_held`` site). The decode's state is read off the raw strings:
+:meth:`tadabur.contrast_attribution.CarrierAlignment.decoded_run` counts the consonants of
+that core the decode holds there, from the groups aligned to the run plus any unaligned
+copies next to them (an insertion, or an edge the local alignment trimmed), each group
+counted on its raw characters so a bare ``دد`` merged by normalization is two. No consonant
+is an unaligned carrier (C = 0); one commits ``not_held``; two or more commit ``held``.
+Today's encoding has no "unsure" state, so every aligned carrier commits; #92 decides
+whether a single consonant should instead read as an empty slot, and until then every
+shaddah cell is descriptive (``cannot_certify``).
+
+A tashkeel site whose carrier belongs to a reference geminate also records whether the
+decode **collapsed** that geminate to one consonant (:attr:`SiteOutcome.geminate_collapsed`):
+Muraja discards the collapsed group's tashkeel in every mode (ADR-0011 §2,
+:mod:`training.muraja_policy`). It does not change C, A or F.
 
 Sides and cells
 ---------------
@@ -64,14 +71,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from tadabur.contrast_attribution import (
-    ADDED,
-    DROPPED,
-    SHADDA_CONTRAST,
-    aligned_consonants,
-    contrast_sites,
-)
-from tadabur.normalization import _folded_core
+from tadabur.contrast_attribution import CarrierAlignment, align_on_carriers
 from tadabur.truth_sites import (
     CONSONANTS,
     HARAKA_CHARS,
@@ -81,6 +81,7 @@ from tadabur.truth_sites import (
     SHADDAH,
     SOFT_PAIRS,
     SUKUN,
+    TARGET_PAIRS,
     TASHKEEL_MARKS,
     TruthSite,
 )
@@ -88,9 +89,8 @@ from training.tashkeel_eval import SUKUN_MARK, carrier_readings
 
 #: The three families of truth sites; a pair site's family is its pair label.
 TASHKEEL = "tashkeel"
-#: ذ↔ظ is a target pair (acceptance rules §7) without being one of Muraja's soft pairs.
-DHAL_ZAH = "ذ↔ظ"
-TARGET_PAIRS: tuple[str, ...] = tuple(sorted(SOFT_PAIRS | {DHAL_ZAH}))
+#: The one target pair that is not a Muraja soft pair (acceptance rules §7).
+(DHAL_ZAH,) = TARGET_PAIRS - SOFT_PAIRS
 
 CORRECT_SIDE = "correct"
 MISTAKE_SIDE = "mistake"
@@ -127,6 +127,8 @@ class SiteOutcome:
     committed: str | None
     #: The explicit mark names on the carrier, in decode order (tashkeel sites only).
     marks: tuple[str, ...] = ()
+    #: The carrier sits in a reference geminate the decode holds as one consonant.
+    geminate_collapsed: bool = False
 
     @property
     def commits(self) -> bool:
@@ -139,38 +141,41 @@ class SiteOutcome:
         return self.committed is not None and self.committed != site.prescribed
 
 
-def _tashkeel_outcome(site: TruthSite, readings) -> SiteOutcome:
+def consonant_run(reference: str, index: int) -> list[int]:
+    """The indices of the run of ``reference[index]`` that contains ``index``."""
+    letter = reference[index]
+    start, end = index, index
+    while start > 0 and reference[start - 1] == letter:
+        start -= 1
+    while end + 1 < len(reference) and reference[end + 1] == letter:
+        end += 1
+    return list(range(start, end + 1))
+
+
+def _tashkeel_outcome(site: TruthSite, readings, alignment: CarrierAlignment) -> SiteOutcome:
     reading = readings.get(site.reference_index)
     if reading is None or reading.decoded != site.reference[site.reference_index]:
         return SiteOutcome(False, None)
     marks = tuple(MARK_NAMES[char] for char in reading.marks)
     distinct = list(dict.fromkeys(marks))
     committed = None if not distinct else distinct[0] if len(distinct) == 1 else MULTIPLE
-    return SiteOutcome(True, committed, marks)
+    run = consonant_run(site.reference, site.reference_index)
+    collapsed = len(run) > 1 and alignment.decoded_run(run) == 1
+    return SiteOutcome(True, committed, marks, collapsed)
 
 
-def _pair_outcome(site: TruthSite, consonants: dict[int, str | None]) -> SiteOutcome:
-    letter = consonants.get(site.reference_index)
+def _pair_outcome(site: TruthSite, alignment: CarrierAlignment) -> SiteOutcome:
+    letter = alignment.consonants().get(site.reference_index)
     if letter not in CONSONANTS:
         return SiteOutcome(False, None)
     return SiteOutcome(True, letter)
 
 
-def _shaddah_outcome(
-    site: TruthSite, consonants: dict[int, str | None], changes: dict[int, str]
-) -> SiteOutcome:
-    letter = site.reference[site.reference_index]
-    # A geminate is a run of the same consonant (``لل``, or ``ووو`` before an assimilated
-    # letter); a decode that kept one consonant may align it to any position of the run.
-    run = [site.reference_index]
-    while run[-1] + 1 < len(site.reference) and site.reference[run[-1] + 1] == letter:
-        run.append(run[-1] + 1)
-    if all(consonants.get(index) != _folded_core(letter) for index in run):
+def _shaddah_outcome(site: TruthSite, alignment: CarrierAlignment) -> SiteOutcome:
+    held = alignment.decoded_run(consonant_run(site.reference, site.reference_index))
+    if not held:
         return SiteOutcome(False, None)
-    change = changes.get(site.reference_index)
-    if site.prescribed == HELD:
-        return SiteOutcome(True, NOT_HELD if change == DROPPED else HELD)
-    return SiteOutcome(True, HELD if change == ADDED else NOT_HELD)
+    return SiteOutcome(True, HELD if held > 1 else NOT_HELD)
 
 
 def item_outcomes(sites: Iterable[TruthSite], decode: str) -> dict[str, SiteOutcome]:
@@ -185,24 +190,17 @@ def item_outcomes(sites: Iterable[TruthSite], decode: str) -> dict[str, SiteOutc
     if not sites:
         return {}
     (reference,) = references
-    readings = consonants = changes = None
+    alignment = align_on_carriers(decode, reference)
+    readings = None
     outcomes: dict[str, SiteOutcome] = {}
     for site in sites:
         kind = family(site.mark)
         if kind == TASHKEEL:
             if readings is None:
                 readings = carrier_readings(decode, reference)
-            outcomes[site.site_id] = _tashkeel_outcome(site, readings)
-            continue
-        if consonants is None:
-            consonants = aligned_consonants(decode, reference)
-        if kind == SHADDAH:
-            if changes is None:
-                changes = {
-                    s.reference_index: s.change
-                    for s in contrast_sites(decode, reference, SHADDA_CONTRAST)
-                }
-            outcomes[site.site_id] = _shaddah_outcome(site, consonants, changes)
+            outcomes[site.site_id] = _tashkeel_outcome(site, readings, alignment)
+        elif kind == SHADDAH:
+            outcomes[site.site_id] = _shaddah_outcome(site, alignment)
         else:
-            outcomes[site.site_id] = _pair_outcome(site, consonants)
+            outcomes[site.site_id] = _pair_outcome(site, alignment)
     return outcomes

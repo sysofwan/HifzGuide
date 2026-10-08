@@ -24,6 +24,7 @@ this is a labelling heuristic for the human audit, not an exhaustive diff.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from . import phoneme_sifat
@@ -202,10 +203,16 @@ class ContrastSite:
 
 
 @dataclass(frozen=True)
-class _CarrierAlignment:
+class CarrierAlignment:
     """The normalized alignment of a decode against a raw reference, with every column's
-    position on each side, so a column can be carried back to its raw-reference carrier."""
+    position on each side, so a column can be carried back to its raw-reference carrier.
 
+    Built by :func:`align_on_carriers`. :func:`contrast_sites` and the truth-site scorer
+    (:mod:`training.site_outcomes`) read one decode through the same object.
+    """
+
+    predicted: str
+    raw_reference: str
     reference: PhonemeNormalization
     decode: PhonemeNormalization
     alignment: AlignmentResult
@@ -219,8 +226,50 @@ class _CarrierAlignment:
         offset of its group's first grapheme cluster, which starts with the core consonant."""
         return self.cluster_starts[self.reference.offset_map[ref_position][0]]
 
+    def consonants(self) -> dict[int, str | None]:
+        """The decode character aligned to each raw-reference carrier in the local alignment
+        (:func:`aligned_consonants`)."""
+        return {
+            self.carrier(position): column.query_char
+            for column, position in zip(self.alignment.columns, self.positions)
+            if position is not None
+        }
 
-def _align_on_carriers(predicted: str, raw_reference: str) -> _CarrierAlignment:
+    def decoded_run(self, raw_indices: Iterable[int]) -> int:
+        """How many consonants the decode holds where the reference has the run ``raw_indices``.
+
+        ``raw_indices`` are the raw-reference indices of one run of a consonant (a geminate
+        ``دد``, or a single ``د``). The decode's groups aligned to the run's normalized
+        groups count, together with the decode's neighbouring groups of the same core that
+        no reference character is aligned to: an inserted copy, or one the local alignment
+        trimmed off its edge. Each group counts the raw consonants it stands for
+        (:func:`_raw_cores`), so a bare ``دد`` that normalization merged counts two. 0 means
+        the run is not aligned to that consonant at all.
+        """
+        wanted = set(raw_indices)
+        run = {p for p in range(len(self.reference.normalized)) if self.carrier(p) in wanted}
+        if not run:
+            return 0
+        core = self.reference.normalized[min(run)]
+        consumed = {q for q, p in zip(self.query_positions, self.positions) if p is not None}
+        held = {
+            q
+            for q, p in zip(self.query_positions, self.positions)
+            if p in run and q is not None and self.decode.normalized[q] == core
+        }
+        if not held:
+            return 0
+        for step, edge in ((-1, min(held)), (1, max(held))):
+            q = edge + step
+            while 0 <= q < len(self.decode.normalized) and q not in consumed and (
+                self.decode.normalized[q] == core
+            ):
+                held.add(q)
+                q += step
+        return sum(_raw_cores(self.predicted, self.decode, q) for q in held)
+
+
+def align_on_carriers(predicted: str, raw_reference: str) -> CarrierAlignment:
     """Align as :func:`attribute_contrasts` does: both sides normalized, Smith-Waterman."""
     reference = normalize_phonemes(raw_reference)
     decode = normalize_phonemes(predicted)
@@ -233,8 +282,9 @@ def _align_on_carriers(predicted: str, raw_reference: str) -> _CarrierAlignment:
         query_positions.append(None if column.query_char is None else query_cursor)
         cursor += column.ref_char is not None
         query_cursor += column.query_char is not None
-    return _CarrierAlignment(
-        reference, decode, alignment, positions, query_positions, cluster_offsets(raw_reference)
+    return CarrierAlignment(
+        predicted, raw_reference, reference, decode, alignment, positions, query_positions,
+        cluster_offsets(raw_reference),
     )
 
 
@@ -247,12 +297,7 @@ def aligned_consonants(predicted: str, raw_reference: str) -> dict[int, str | No
     character (ghunna variants folded onto their base), or ``None`` where the decode has a
     gap. A carrier outside the local alignment span is absent.
     """
-    aligned = _align_on_carriers(predicted, raw_reference)
-    return {
-        aligned.carrier(position): column.query_char
-        for column, position in zip(aligned.alignment.columns, aligned.positions)
-        if position is not None
-    }
+    return align_on_carriers(predicted, raw_reference).consonants()
 
 
 def contrast_sites(predicted: str, raw_reference: str, contrast: str) -> list[ContrastSite]:
@@ -275,7 +320,7 @@ def contrast_sites(predicted: str, raw_reference: str, contrast: str) -> list[Co
     of that core, an added site only if the reference's group holds one. The attribution
     and the scorer gate keep the normalized semantics; only these sites are filtered.
     """
-    aligned = _align_on_carriers(predicted, raw_reference)
+    aligned = align_on_carriers(predicted, raw_reference)
     columns, positions = aligned.alignment.columns, aligned.positions
 
     if contrast == SHADDA_CONTRAST:

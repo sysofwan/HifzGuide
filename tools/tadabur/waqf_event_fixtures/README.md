@@ -18,11 +18,11 @@ regenerate these files.
 
 Everything ran torch-free on the segmentation pass's artifacts (`segment_score` manifest
 plus its VAD pause map). `tadabur.waqf_candidates` derived one candidate per boundary
-(`waqf` / `wasl` / `mid_word_closure`), and `tadabur.waqf_event_sampler` drew a
-per-class clip worklist. A human then adjudicated each clip in a waqf audit UI. A freeze
+(`waqf` / `wasl` / `mid_word_closure`), and a seeded sampler drew a per-class clip
+worklist. A human then adjudicated each clip in a waqf audit UI. A freeze
 step materialized the ground truth over the reviewed clips and split it
-reciter-disjoint into the two partitions above. The audit UI, the partition/freeze
-step and the event eval were removed with the waqf head. They remain in git history
+reciter-disjoint into the two partitions above. The sampler, audit UI, partition/freeze
+step and event eval were removed with the waqf head. They remain in git history
 before the commit that removed them.
 
 ## Correction-based per-clip adjudication

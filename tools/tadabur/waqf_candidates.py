@@ -1,6 +1,7 @@
-"""Derive the waqf candidate-boundary manifest the F0 adjudication UI consumes (#30).
+"""Derive the waqf candidate-boundary manifest the F0 adjudication consumed (#30).
 
-F0a (#27) built the sampler / UI / fixture schema but deliberately left their **input**
+F0a (#27) built the sampler / UI / fixture schema (since retired with the waqf head,
+ADR-0011) but deliberately left their **input**
 — the candidate-boundary manifest — to be produced here: "the segmentation/VAD pass, the
 waqf analogue of the poison audit's filter manifest". This module is that producer, and
 it is **torch-free**: every candidate is read off artifacts the P3.5 segmentation pass
@@ -27,8 +28,7 @@ boundary, and the human calls it by ear.
 Inputs are the segment manifest (:mod:`tadabur.segment_score`, a JSONL whose per-segment
 ``audio_filename`` is ``<clip>__seg<index>.wav``) and the VAD pause map
 (``{clip_audio_filename: [[start_s, end_s], ...]}``) that :mod:`tadabur.segment_score`
-stages alongside it. Output is a JSONL of
-:class:`~tadabur.waqf_event_sampler.WaqfCandidate` rows, the sampler's input unit.
+stages alongside it. Output is a JSONL of :class:`WaqfCandidate` rows.
 
 Usage:
   python -m tadabur.waqf_candidates --segment-manifest segment_manifest.jsonl \\
@@ -45,7 +45,6 @@ from typing import Callable, NamedTuple
 
 from .waqf_detect import RE_READ
 from .waqf_event_fixtures import MID_WORD_CLOSURE, WAQF, WASL
-from .waqf_event_sampler import WaqfCandidate
 
 
 class _PauseAttrib(NamedTuple):
@@ -59,6 +58,27 @@ class _PauseAttrib(NamedTuple):
 
     kind: str
     word_index: int | None
+
+@dataclass(frozen=True)
+class WaqfCandidate:
+    """One detector-proposed candidate boundary, a row of the candidate manifest.
+
+    ``clip_id`` / ``audio_ref`` name the whole clip; ``boundary_index`` orders the
+    candidate boundaries within it (with ``clip_id``, the stable key). ``word_index``
+    is the Uthmani word the boundary falls after and ``(start_s, end_s)`` its time
+    span in the clip. ``predicted`` is the detector's class (one of
+    :data:`~tadabur.waqf_event_fixtures.WAQF_EVENT_CLASSES`).
+    """
+
+    clip_id: str
+    audio_ref: str
+    surah_ayah: str
+    boundary_index: int
+    word_index: int
+    start_s: float
+    end_s: float
+    predicted: str
+
 
 # A pause is a *boundary* pause (already a waqf segment split) when its onset sits within
 # this many seconds of a segment's end. The segmentation sets ``seg_i.end_s`` exactly to a
@@ -236,7 +256,7 @@ def _word_at_time(segment: Segment, edge_times: list[float], t: float) -> int:
     interpolated span ends at or before ``t``.
 
     Schema-wise ``word_index`` is the word a boundary falls *after* (see
-    :class:`~tadabur.waqf_event_sampler.WaqfCandidate`), matching the waqf anchor.
+    :class:`WaqfCandidate`), matching the waqf anchor.
     :func:`_edge_times` spreads a segment's words across its whole clip span
     *including* the pause silence, so a between-word pause lands inside the
     *following* word's inflated span; taking the last **completed** word keeps the

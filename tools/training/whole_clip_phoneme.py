@@ -1,25 +1,16 @@
-"""Whole-clip phoneme-only LoRA fine-tune — ADR-0004 ablation rung (2), the ADR gate.
+"""Whole-clip phoneme-only LoRA fine-tune over fixed 5 s windows (ADR-0004 rung (2)).
 
-ADR-0004 extends the Muaalem phoneme fine-tune (ADR-0001/0003) with a waqf head, but moving
-from the segmented ADR-0001 fine-tune to **fixed 5 s windows over the whole recitation**
-already changes batch shapes, padding, loss normalization and RNG order. So the ablation
-ladder inserts this rung between them: **whole-clip phoneme-only**, no waqf head. It must land
-*before* the waqf head so a later regression is attributable to the whole-clip move (this rung
-vs the ADR-0001 baseline) rather than to the waqf head (rung (3) vs this rung). This module is
-that run.
+Moving from the segmented ADR-0001 fine-tune to **fixed 5 s windows over the whole
+recitation** changes batch shapes, padding, loss normalization and RNG order. This module is
+that whole-clip phoneme-only run.
 
 What it pins:
 
 * **LoRA on the backbone, phoneme head trainable, sifat heads dropped.** ADR-0004: "LoRA on
   the phoneme head … backbone base weights frozen, drift bounded by construction." LoRA
   adapters ride the encoder attention projections (the bounded backbone drift), the phoneme
-  head trains in full, and the sifat heads take no gradient — :func:`attach_phoneme_lora`.
-  The exported model ships phoneme(+waqf) only.
-
-* **The phoneme forward is shared with the joint rung.** Training runs
-  :func:`training.waqf_head.phoneme_forward`, the exact path :class:`WaqfJointModel` uses, so
-  rung (2) and rung (3) are bit-identical on the phoneme path *by construction* — the
-  isolation ADR-0004's go/no-go (#33) verifies.
+  head trains in full, and the sifat heads take no gradient — :func:`attach_phoneme_lora`
+  and :func:`phoneme_forward`. The exported model ships the phoneme head only.
 
 * **The 16 GB budget is verified, not assumed.** :func:`preflight_batch_memory` builds one
   real worst-case windowed batch, runs a bf16 + gradient-checkpointed forward/backward, and
@@ -27,7 +18,7 @@ What it pins:
 
 * **Eval is the two-sided #7 harness.** After training the LoRA adapters are merged into a
   full checkpoint and scored by :mod:`tadabur.eval_harness` (should-accept recall /
-  should-reject discrimination) — the rung-(2) numbers the ladder (#33) compares.
+  should-reject discrimination).
 
 Runs on Linux + CUDA (RTX 5060 Ti, 16 GB, sm_120 — cu128 torch; see ``tools/README.md``).
 
@@ -54,6 +45,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from peft import LoraConfig, get_peft_model
 from tqdm.auto import tqdm
 from transformers import SeamlessM4TFeatureExtractor
@@ -65,7 +57,6 @@ from tadabur.muaalem import (
     Wav2Vec2BertForMultilevelCTCConfig,
 )
 from tadabur.phoneme_vocab import NUM_PHONEME_CLASSES
-from training.waqf_head import phoneme_forward, phoneme_ctc_loss
 from training.windowed_batch import (
     WindowedCtcBatch,
     WindowedCtcCollator,
@@ -73,7 +64,7 @@ from training.windowed_batch import (
     length_bucketed_batches,
     load_examples,
 )
-from training.waqf_distill import DEPLOYED_WINDOW_FEATURE_FRAMES
+from training.windowing import DEPLOYED_WINDOW_FEATURE_FRAMES
 
 # 16 GB card, headroom for the CUDA context / allocator fragmentation. A batch whose peak
 # stays under this is safe to commit (ADR-0004 "verify one real batch fits before committing").
@@ -113,11 +104,79 @@ class TrainConfig:
     max_frames_per_batch: int = 1000
     max_windows_per_batch: int = 8
     seed: int = 0
-    # L2-SP anchor on the LoRA adapters — the second LoRA-native lever the ablation
-    # ladder (#33) fires when the whole-clip move regresses should-reject (ADR-0004:
-    # "L2-SP on the adapters"). 0.0 is the default rung-(2) run (no anchor).
+    # L2-SP anchor on the LoRA adapters — the second LoRA-native lever ADR-0004 names for a
+    # should-reject regression ("L2-SP on the adapters"). 0.0 is the default run (no anchor).
     l2_sp: float = 0.0
     lora: LoRASettings = field(default_factory=LoRASettings)
+
+
+# --- phoneme forward + CTC objective ------------------------------------------
+
+
+@dataclass
+class PhonemeForward:
+    """One backbone→phoneme-head pass.
+
+    ``phoneme_logits`` ``(B, T, V)`` are the 40 ms lattice logits; ``student_lengths``
+    ``(B,)`` is each example's valid 40 ms frame count.
+    """
+
+    phoneme_logits: torch.Tensor
+    student_lengths: torch.Tensor
+
+
+def phoneme_forward(
+    muaalem: torch.nn.Module,
+    phoneme_level: str,
+    input_features: torch.Tensor,
+    attention_mask: torch.Tensor | None = None,
+) -> PhonemeForward:
+    """One backbone pass → phoneme head, with the sifat heads never invoked.
+
+    Reads the post-adapter encoder output the phoneme CTC head reads and skips the sifat
+    heads entirely, so they cost no compute and take no gradient.
+    """
+    if attention_mask is None:
+        attention_mask = torch.ones(
+            input_features.shape[:2], device=input_features.device, dtype=torch.long
+        )
+    hidden_states = muaalem.wav2vec2_bert(
+        input_features, attention_mask=attention_mask, return_dict=True
+    )[0]
+    phoneme_logits = muaalem.level_to_lm_head[phoneme_level](muaalem.dropout(hidden_states))
+    student_lengths = muaalem._get_feat_extract_output_lengths(
+        attention_mask.sum(-1)
+    ).to(torch.long)
+    return PhonemeForward(phoneme_logits, student_lengths)
+
+
+def phoneme_ctc_loss(
+    phoneme_logits: torch.Tensor,
+    labels: torch.Tensor,
+    input_lengths: torch.Tensor,
+    config,
+) -> torch.Tensor:
+    """CTC loss on the phoneme head — the ADR-0001/#9 objective, unchanged.
+
+    ``labels`` ``(B, L)`` uses ``-100`` for padding (ignored). Mirrors the multi-level
+    model's own CTC call (blank ``= pad_token_id``, ``config`` reduction / zero-infinity)
+    so this run's objective is bit-for-bit the model's own phoneme CTC.
+    """
+    labels_mask = labels >= 0
+    target_lengths = labels_mask.sum(-1)
+    flattened_targets = labels.masked_select(labels_mask)
+
+    log_probs = F.log_softmax(phoneme_logits, dim=-1, dtype=torch.float32).transpose(0, 1)
+    with torch.backends.cudnn.flags(enabled=False):
+        return F.ctc_loss(
+            log_probs,
+            flattened_targets,
+            input_lengths,
+            target_lengths,
+            blank=config.pad_token_id,
+            reduction=config.ctc_loss_reduction,
+            zero_infinity=config.ctc_zero_infinity,
+        )
 
 
 def set_seed(seed: int) -> None:
@@ -504,9 +563,7 @@ def emit_eval_report(
     """Score the merged rung-(2) checkpoint with the two-sided #7 harness and write it.
 
     Runs :func:`tadabur.eval_harness.run_eval` (should-accept recall / should-reject
-    discrimination + the soft-pair/shadda confusion matrix) on the merged checkpoint — the
-    rung-(2) eval outputs ADR-0004's ablation ladder (#33) compares against the ADR-0001
-    baseline and the joint rung (3).
+    discrimination + the soft-pair/shadda confusion matrix) on the merged checkpoint.
     """
     from tadabur.eval_harness import run_eval
 
@@ -601,11 +658,11 @@ def main() -> None:
     tr.add_argument("--max-windows-per-batch", type=int, default=TrainConfig.max_windows_per_batch)
     tr.add_argument("--seed", type=int, default=TrainConfig.seed)
     tr.add_argument("--lora-rank", type=int, default=LoRASettings.rank,
-                    help="LoRA rank — lowered by the ablation ladder's first LoRA-native lever.")
+                    help="LoRA rank — lowered (with alpha) as the first LoRA-native lever.")
     tr.add_argument("--lora-alpha", type=int, default=LoRASettings.alpha,
-                    help="LoRA alpha — lowered alongside rank by the first LoRA-native lever.")
+                    help="LoRA alpha — lowered alongside rank as the first LoRA-native lever.")
     tr.add_argument("--l2-sp", type=float, default=TrainConfig.l2_sp,
-                    help="L2-SP adapter-anchor weight — the ladder's second LoRA-native lever.")
+                    help="L2-SP adapter-anchor weight — the second LoRA-native lever.")
     tr.add_argument("--eval-segment-manifest", type=Path, default=None,
                     help="segment manifest for the #7 eval (with --eval-audio-dir).")
     tr.add_argument("--eval-audio-dir", type=Path, default=None)

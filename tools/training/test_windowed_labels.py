@@ -3,9 +3,8 @@
 Pure logic over the segment manifest + per-clip status sidecar — no GPU, no
 quran-transcript. The fixtures below stand in for what ``tadabur.segment_score`` emits:
 kept segments (with their word ranges + realized references) and one status per clip
-(carrying the recitation span both label artifacts window over). The waqf-side windowing
-(:func:`training.waqf_distill.slice_recitation_windows`) is numpy-only, so the shared-grid
-identity is checked here too without loading the VAD.
+(carrying the recitation span the labels window over). The window grid
+(:mod:`training.windowing`) is numpy-only, so the shared-grid identity is checked here too.
 """
 
 from __future__ import annotations
@@ -15,16 +14,15 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 from tadabur.clip_status import ClipStatus, read_clip_status, write_clip_status
-from training.waqf_distill import (
+from training.windowing import (
     TARGET_SAMPLE_RATE,
     WindowContract,
     muaalem_lattice_length,
+    clip_recitation_windows,
     recitation_window_span,
-    slice_recitation_windows,
 )
 from training.windowed_labels import (
     EXCLUDE_DROPPED_SEGMENT,
@@ -204,7 +202,7 @@ def test_long_single_segment_crosses_the_second_window():
 def test_lead_in_clip_windows_are_clip_relative():
     # A staged clip whose recitation starts at 0.6 s (neighbour-ayah lead-in before it).
     # The window start_sample is clip-relative (the recitation offset folded in) and the
-    # offset is persisted, so the phoneme window joins the waqf soft label on one grid.
+    # offset is persisted, so the window is keyed on the clip's own grid.
     segs = [_seg("a.wav", 0, 0, 3, 0.6, 4.6, "ءبت")]
     status = _status("a.wav", n_words=3, duration_s=5.0, rec_start=0.6, rec_end=4.6)
 
@@ -216,13 +214,12 @@ def test_lead_in_clip_windows_are_clip_relative():
     assert labels[0].recitation_start_sample == offset
 
 
-# --- shared window grid with the waqf soft labels ----------------------------
+# --- labels sit on the canonical clip-relative window grid -------------------
 
 
-def test_phoneme_and_waqf_windows_share_the_same_grid_for_a_lead_in_clip():
-    # ADR-0004 requires the phoneme CTC label and the waqf soft label of a window to pair
-    # on ONE grid. For a lead-in-trimmed clip (recitation 0.6-8.6 s inside a 10 s clip),
-    # the phoneme label windows and the waqf soft-label windows must share identical
+def test_phoneme_windows_sit_on_the_canonical_grid_for_a_lead_in_clip():
+    # For a lead-in-trimmed clip (recitation 0.6-8.6 s inside a 10 s clip), the phoneme
+    # label windows must be exactly the canonical recitation grid's
     # (window_index, start_sample, num_samples). The two segments break outside the
     # window overlap band (a waqf pause spans 4.6-5.6 s) so neither crosses a window edge.
     segs = [
@@ -236,17 +233,16 @@ def test_phoneme_and_waqf_windows_share_the_same_grid_for_a_lead_in_clip():
     assert len(labels) == 2  # a genuine multi-window clip, both windows kept
     phoneme_grid = [(l.window_index, l.start_sample, l.num_samples) for l in labels]
 
-    # Waqf side: window the SAME recitation span over the whole 10 s clip waveform.
-    waveform = np.zeros(int(10.0 * TARGET_SAMPLE_RATE), dtype=np.float32)
+    # The canonical grid over the SAME recitation span.
     start_sample, num_samples = recitation_window_span(
         status.recitation_start_s, status.recitation_end_s
     )
-    waqf_grid = [
+    grid = [
         (w.index, w.start_sample, w.num_samples)
-        for w, _ in slice_recitation_windows(waveform, start_sample, num_samples, CONTRACT)
+        for w in clip_recitation_windows(start_sample, num_samples, CONTRACT)
     ]
 
-    assert phoneme_grid == waqf_grid
+    assert phoneme_grid == grid
     assert all(l.recitation_start_sample == start_sample for l in labels)
 
 
@@ -611,10 +607,8 @@ def test_window_spanning_a_waqf_concatenates_both_segments_word_sliced():
         ) + second.slice_words(second.word_start, label.word_end)
 
 
-def test_phoneme_and_soft_label_grids_match_under_word_snapping():
-    """Both artifacts enumerate the identical snapped grid — the joint pairing contract."""
-    from training.waqf_distill import clip_recitation_windows, recitation_window_span
-
+def test_phoneme_labels_sit_on_the_canonical_snapped_grid():
+    """The labels enumerate exactly the grid :mod:`training.windowing` defines."""
     seg = _one_char_per_word("a.wav", n_words=12, seconds_per_word=1.0)
     word_times = tuple(float(i) for i in range(13))
     status = _status_for("a.wav", [seg], n_words=12, word_times=word_times)

@@ -21,10 +21,10 @@ Two weightings shape the remaining term, and both exist because an unweighted me
 **Non-blank frames are up-weighted.** CTC output is blank-dominated -- per Muraja's own
 ``CTCStats``, blank holds 30-60% of timesteps during speech and 85-98% during silence. A
 flat KL is therefore mostly a lesson in predicting blank, and a student can drive the loss
-down while its decoded string degrades. ``training.waqf_head`` hit the mirror image of this
-(silence frames swamped by the speech majority) and answered it with ``pause_frame_weights``
-plus a collapse diagnostic; :func:`frame_weights` and :func:`agreement_stats` are the same
-two answers pointed at blank.
+down while its decoded string degrades. The retired waqf head (ADR-0004) hit the mirror
+image of this (silence frames swamped by the speech majority) and answered it with
+pause-frame weights plus a collapse diagnostic; :func:`frame_weights` and
+:func:`agreement_stats` are the same two answers pointed at blank.
 
 **The confirmed region is up-weighted.** Only the first ``CONFIRM_TIMESTEPS`` of each
 window ever reach the user. ``MuaalemInference.predictSplit`` splits on
@@ -178,7 +178,7 @@ def feature_matching_loss(
     the first is a much better place to be mid-training.
 
     Both stacks are at 250 frames pre-adapter, so taps align frame-for-frame with no
-    pooling -- unlike ``training.waqf_distill``, whose 20 ms VAD teacher needed 2:1 pooling
+    pooling -- unlike the retired waqf head's 20 ms VAD teacher, which needed 2:1 pooling
     onto the 40 ms lattice.
     """
     if not tap_layers:

@@ -1,9 +1,9 @@
-"""Shared HTTP scaffolding for the local audit UIs (poison audit + waqf events).
+"""Shared HTTP scaffolding for the local audit UIs.
 
-Both `tadabur.audit_ui` (P3.5 poison audit) and `tadabur.waqf_audit_ui` (waqf
-event adjudication) serve the same thing: a single-page app plus a JSON API plus
-sandboxed clip-audio streaming, all with no database or framework. This module
-owns the parts that are identical between them — the ``Content-Type`` sniffing, a
+`tadabur.audit_ui` (P3.5 poison audit), `tadabur.tashkeel_audit_ui` and
+`tadabur.counterfactual_record_ui` serve the same thing: a single-page app plus a
+JSON API plus sandboxed clip-audio streaming, all with no database or framework.
+This module owns the parts that are identical between them — the ``Content-Type`` sniffing, a
 base request handler with JSON/bytes senders and a path-traversal-proof audio
 route, and the threading-server builder — so neither UI re-implements (or drifts
 on) that boilerplate. Each UI subclasses :class:`AuditHandler`, implements its own

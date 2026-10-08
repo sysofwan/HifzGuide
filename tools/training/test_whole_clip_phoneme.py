@@ -1,9 +1,8 @@
 """Tests for the whole-clip phoneme-only LoRA run (ADR-0004 rung (2), issue #29).
 
 The load-bearing claims: LoRA leaves the backbone base frozen and the sifat heads
-untrained (phoneme-only isolation), the phoneme forward is bit-identical to the joint
-model's (so rung (2)↔(3) differ only by the waqf head), and the memory preflight measures
-a real worst-case batch against the 16 GB budget. The heavy CUDA paths are guarded.
+untrained (phoneme-only isolation), the phoneme forward emits the 40 ms lattice, and the
+memory preflight measures a real worst-case batch against the 16 GB budget. The heavy CUDA paths are guarded.
 """
 
 from __future__ import annotations
@@ -16,11 +15,13 @@ from tadabur.muaalem.configuration_multi_level_ctc import (
     Wav2Vec2BertForMultilevelCTCConfig,
 )
 from tadabur.muaalem.modeling_multi_level_ctc import Wav2Vec2BertForMultilevelCTC
-from training.waqf_head import WaqfJointModel, phoneme_forward
 from training.whole_clip_phoneme import (
     LoRASettings,
     attach_phoneme_lora,
     base_of,
+    lora_anchor_snapshot,
+    lora_l2sp_penalty,
+    phoneme_forward,
     preflight_batch_memory,
     set_seed,
 )
@@ -69,21 +70,29 @@ def test_lora_backbone_base_weight_is_frozen():
     assert frozen and all(not p.requires_grad for p in frozen)
 
 
-# --- phoneme forward is identical to the joint model's -----------------------
+# --- L2-SP adapter anchor (--l2-sp) ------------------------------------------
 
 
-def test_phoneme_forward_matches_joint_model_logits():
-    # rung (2) phoneme-only and rung (3) joint must share the phoneme path exactly.
-    model = _tiny_model()
-    features = torch.randn(2, 20, 160)
-    joint = WaqfJointModel(model)
-    joint.eval()
-    model.eval()
+def test_l2sp_penalty_is_zero_at_the_anchor_and_grows_off_it():
+    from peft import LoraConfig, get_peft_model
+
+    torch.manual_seed(0)
+    peft = get_peft_model(
+        _tiny_model(),
+        LoraConfig(r=4, lora_alpha=8, target_modules=["linear_q", "linear_v"], bias="none"),
+    )
+    anchors = lora_anchor_snapshot(peft)
+    assert anchors  # adapters were selected
+    assert float(lora_l2sp_penalty(peft, anchors).detach()) == 0.0
+
     with torch.no_grad():
-        joint_out = joint(features)
-        solo = phoneme_forward(model, "phonemes", features)
-    assert torch.equal(joint_out.phoneme_logits, solo.phoneme_logits)
-    assert torch.equal(joint_out.student_lengths, solo.student_lengths)
+        for name, param in peft.named_parameters():
+            if param.requires_grad and "lora_" in name:
+                param.add_(1.0)
+    assert float(lora_l2sp_penalty(peft, anchors).detach()) > 0.0
+
+
+# --- phoneme forward ----------------------------------------------------------
 
 
 def test_phoneme_forward_shapes():

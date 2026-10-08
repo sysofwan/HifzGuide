@@ -7,7 +7,7 @@ import json
 import pytest
 
 from training import window_envelope as we
-from training.waqf_distill import muaalem_lattice_length
+from training.windowing import muaalem_lattice_length
 
 
 # ---------------------------------------------------------------------------

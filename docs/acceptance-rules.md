@@ -1,6 +1,6 @@
 # Acceptance rules for PRD #77, fixed before results
 
-**Status:** Draft for owner sign-off. Decided in #82 under [ADR-0011](adr/0011-transcription-fidelity-and-tashkeel-abstention.md) §5.
+**Status:** Owner-confirmed 2026-10-08. Decided in #82 under [ADR-0011](adr/0011-transcription-fidelity-and-tashkeel-abstention.md) §5.
 No result from #84 onward may be read against a rule that is not in this document. A rule changes only
 by an owner-signed revision recorded below, and **never after the result it governs exists**.
 
@@ -32,16 +32,22 @@ Both arms start from the same grown head (#93), see the same data and steps, and
 same protocol: **b = 0, no blank bias, same precision and batch size** (one `DecodeFingerprint`, #80).
 The arms differ only in the supervised term. Today's product and Muraja's rules play no part here.
 
+Sukun is judged by **absolute floors**, not against the control. The KL-only control receives no sukun
+targets, so its sukun output stays at its initialisation and any relative gain would pass by construction.
+The probe-vs-control comparison is kept for the harm guards (haraka, consonants, shaddah, teacher
+agreement) and for what the synthetic-edit term adds on real mistakes.
+
 | rule | numerator / denominator | population | direction and threshold |
 |---|---|---|---|
-| **Sukun gain** | correctly committed sukun / adjudicated sukun sites | directly adjudicated in-scope sukun sites (listening session; not pause sites) | probe − control ≥ **+5 pts** (point) **and** lower bound > 0 |
+| **Sukun commit rate** | committed sukun / adjudicated sukun sites | directly adjudicated in-scope sukun sites (listening session; not pause sites), probe arm | ≥ **70%** (point) |
+| **Sukun committed accuracy** | correctly committed sukun / committed sukun | same population, probe arm | ≥ **95%** (point) **and** lower bound ≥ **90%** (Wilson score or the clustered bootstrap, as the sparse-cell rule in §1 selects) |
 | **Discrimination guard, correct side** | correct committed marks / committed marks | correct-recitation sites, per mark (fatha, damma, kasra, sukun, shaddah) and per pair | lower bound of probe − control ≥ **−2 pts**, else fail; unsupported → `cannot_certify` |
 | **Discrimination guard, mistake side** | committed marks equal to the heard mark / committed marks | real-mistake sites, per mark and per pair | as above |
 | **Missed mistakes** | mistakes not flagged / real-mistake sites (abstentions count as not flagged) | real-mistake sites, pooled and per mark/pair | upper bound of probe − control ≤ **+5 pts**; no count floor |
 | **Silent corrections** | committed mushaf mark / real-mistake sites | real-mistake sites | upper bound of probe − control ≤ **+5 pts** |
 | **Teacher agreement** | pooled character accuracy vs the cached base decode | frozen `decode_evalset` dev manifest, b = 0, no bias, sukun projected out of the student string (any gemination encoding expanded to the legacy doubled consonant) | lower bound of probe − control ≥ **−0.5 pts** |
 
-**Overall:** pass only if the sukun gain passes and no guard fails. Guards that return `cannot_certify` are
+**Overall:** pass only if both sukun floors pass and no guard fails. Guards that return `cannot_certify` are
 listed by name in the verdict; the report states which claims the probe therefore cannot support. A
 reduction in empty haraka slots is **not** claimed from the probe: no training source supplies haraka
 targets where the teacher is silent.
@@ -108,18 +114,10 @@ reported as "in scope, insufficient evidence" and gets no discrimination or reti
 - The 23 nominal real-mistake fixture clips (11 soft-pair, 12 shaddah) are **re-adjudicated at site level** inside the session (letter heard; held / not held / unclear). Several carry notes such as "Not hafs", "Unclear reading" or "Segmentation issue"; a clip-level reject is never translated automatically into "the other letter was said".
 - **Session size is set after #84.** Using only the truth-labelled baseline of `h448` and the base teacher (never a candidate), a paired, weighted, reciter-clustered power simulation estimates the sites needed for ≥ **80%** probability of satisfying both headline conditions in §3 at a true **60%** reduction. The owner then chooses the budget. If the chosen budget falls short, the #97 headline is labelled a pilot.
 
-## Needs owner confirmation
-
-These were added by the revision and have not been seen by the owner:
-
-1. **Sukun gain ≥ +5 pts with lower bound > 0** (§2). Note: if only the probe arm receives sukun targets, the control's sukun output stays at its initialisation and the gain is near-certain. The informative evidence is then the guards. The alternative is to give both arms the sukun targets and let the arms differ only in the synthetic-edit term.
-2. **Spurious-haraka guard ≤ +2 pts** in bias selection (§5).
-3. **Sparse-cell threshold** of 10 reciters or 20 sites (§1).
-4. **Power target** of 80% at a true 60% reduction (§8).
-
 ## Revision history
 
 | date | change |
 |---|---|
 | 2026-10-08 06:30Z | Owner locked the #82 sheet: −50% false-flag headline, per-mark guards, sukun floors, allowance limits 5% / 50%, bias grid, ذ↔ظ in scope, consonant sites included. |
 | 2026-10-08 | GPT-6 Astra review returned REVISE (gates conflated model and product; interval and power gaps; sparse-cell and weak-label issues). Owner chose to split the probe gate (#95) from the ship criterion (#97) and to size the listening session after the #84 baseline. This document records the revised rules. |
+| 2026-10-08 | Owner confirmed: sukun judged by absolute floors on directly adjudicated in-scope sukun sites (commit rate ≥ 70%, committed accuracy ≥ 95%, its lower bound ≥ 90%) in place of a relative gain over the control; spurious-haraka guard ≤ +2 pts in bias selection; sparse-cell threshold of < 10 reciters or < 20 sites; power target of ≥ 80% at a true 60% reduction for sizing the listening session. |

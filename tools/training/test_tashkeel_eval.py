@@ -14,8 +14,11 @@ from training.tashkeel_eval import (
     DAMMA,
     FATHA,
     KASRA,
+    SUKUN_MARK,
+    CarrierReading,
     TashkeelReport,
     VowelCounts,
+    carrier_readings,
     gate,
     score_vowels,
     score_windows,
@@ -291,3 +294,48 @@ def test_per_vowel_matched_never_exceeds_the_pooled_matched_total():
 
     per_vowel_matched = sum(c.matched for c in report.per_vowel.values())
     assert per_vowel_matched == report.counts.matched
+
+
+# --- carrier_readings: every explicit mark on a carrier (#84) -------------------------
+
+KAF, TAA, BAA, LAM, QAF, HAA = "\u0643", "\u062a", "\u0628", "\u0644", "\u0642", "\u0647"
+# "كَتَبَ" and "قُلهُ" (the ل carries sukun: no mark follows it).
+KATABA = KAF + FATHA + TAA + FATHA + BAA + FATHA
+QULHU = QAF + DAMMA + LAM + HAA + DAMMA
+
+
+def test_a_reproduced_decode_reads_each_carrier_and_its_mark():
+    readings = carrier_readings(KATABA, KATABA)
+    assert readings == {
+        0: CarrierReading(KAF, (FATHA,)),
+        2: CarrierReading(TAA, (FATHA,)),
+        4: CarrierReading(BAA, (FATHA,)),
+    }
+
+
+def test_an_empty_slot_and_a_substituted_mark():
+    decode = KAF + FATHA + TAA + BAA + KASRA
+    readings = carrier_readings(decode, KATABA)
+    assert readings[2] == CarrierReading(TAA, ())
+    assert readings[4] == CarrierReading(BAA, (KASRA,))
+
+
+def test_a_mark_the_decode_inserted_after_a_sukun_carrier_is_on_that_carrier():
+    readings = carrier_readings(QAF + DAMMA + LAM + KASRA + HAA + DAMMA, QULHU)
+    assert readings[2] == CarrierReading(LAM, (KASRA,))
+    assert carrier_readings(QULHU, QULHU)[2] == CarrierReading(LAM, ())
+
+
+def test_two_marks_on_one_carrier_are_both_read():
+    readings = carrier_readings(KAF + FATHA + TAA + FATHA + DAMMA + BAA + FATHA, KATABA)
+    assert readings[2] == CarrierReading(TAA, (FATHA, DAMMA))
+
+
+def test_the_explicit_sukun_mark_is_a_mark():
+    readings = carrier_readings(QAF + DAMMA + LAM + SUKUN_MARK + HAA + DAMMA, QULHU)
+    assert readings[2] == CarrierReading(LAM, (SUKUN_MARK,))
+
+
+def test_a_wrong_carrier_reads_as_the_decode_letter():
+    readings = carrier_readings(KAF + FATHA + LAM + FATHA + BAA + FATHA, KATABA)
+    assert readings[2].decoded == LAM

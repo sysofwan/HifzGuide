@@ -12,6 +12,7 @@ from tadabur.contrast_attribution import (
     SHADDA_CONTRAST,
     ContrastSite,
     _has_shadda_contrast,
+    aligned_consonants,
     all_contrasts,
     attribute_contrasts,
     contrast_sites,
@@ -238,3 +239,25 @@ def test_a_reference_geminate_with_no_haraka_is_not_an_added_shaddah():
     reference = RAA + FATHA + BAA + BAA + SEEN + FATHA + LAM
     decode = RAA + FATHA + BAA + BAA + KASRA + SEEN + FATHA + LAM
     assert contrast_sites(decode, reference, SHADDA_CONTRAST) == []
+
+
+# MARK: - aligned_consonants (the truth scorer's consonant-commitment rule, #84)
+
+
+def test_aligned_consonants_reads_the_letter_on_each_raw_carrier():
+    reference = DHAL + FATHA + LAM + FATHA + KAF
+    decode = ZAI + FATHA + LAM + FATHA + KAF
+    assert aligned_consonants(decode, reference) == {0: ZAI, 2: LAM, 4: KAF}
+
+
+def test_aligned_consonants_marks_a_dropped_consonant_as_a_gap():
+    reference = RAA + FATHA + DHAL + FATHA + LAM + FATHA + KAF + FATHA + SEEN
+    decode = RAA + FATHA + LAM + FATHA + KAF + FATHA + SEEN
+    assert aligned_consonants(decode, reference)[2] is None
+
+
+def test_aligned_consonants_agrees_with_contrast_sites():
+    reference = RAA + FATHA + DHAL + FATHA + LAM + FATHA + KAF
+    decode = RAA + FATHA + ZAI + FATHA + LAM + FATHA + KAF
+    (site,) = contrast_sites(decode, reference, f"{DHAL}↔{ZAI}")
+    assert aligned_consonants(decode, reference)[site.reference_index] == site.change

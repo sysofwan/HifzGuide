@@ -76,6 +76,7 @@ import json
 import math
 import random
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -296,6 +297,32 @@ class EvalSet:
             "num_clips": len(self.clips),
             "clips": [clip.as_dict() for clip in self.clips],
         }
+
+
+def levenshtein(a: Sequence, b: Sequence) -> int:
+    """Edit distance between two token streams (token ids or phoneme characters).
+
+    Torch-free, so the truth-site scorer's teacher-agreement rule
+    (:mod:`training.acceptance_stats`) and the distillation tools share one recurrence.
+    """
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+
+    previous = list(range(len(b) + 1))
+    for i, token_a in enumerate(a, start=1):
+        current = [i]
+        for j, token_b in enumerate(b, start=1):
+            current.append(
+                min(
+                    previous[j] + 1,
+                    current[j - 1] + 1,
+                    previous[j - 1] + (token_a != token_b),
+                )
+            )
+        previous = current
+    return previous[-1]
 
 
 def wilson_interval(successes: int, trials: int, z: float = 1.96) -> tuple[float, float]:

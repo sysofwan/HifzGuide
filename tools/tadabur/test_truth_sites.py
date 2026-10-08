@@ -151,10 +151,31 @@ def test_an_unknown_mark_is_rejected(tmp_path):
         _load(tmp_path, [_row(mark="vowel", prescribed="vowel", heard="vowel")])
 
 
-def test_a_pair_outside_the_soft_pairs_is_rejected(tmp_path):
+def test_a_pair_outside_the_target_pairs_is_rejected(tmp_path):
     with pytest.raises(ValueError, match="unknown mark"):
-        _load(tmp_path, [_row(reference="ذَ", reference_index=0, mark="ذ↔ظ",
+        _load(tmp_path, [_row(reference="دَ", reference_index=0, mark="د↔ذ",
+                              prescribed="د", heard="د")])
+
+
+@pytest.mark.parametrize(
+    "reference, prescribed, heard",
+    [("ذَ", "ذ", "ذ"), ("ذَ", "ذ", "ظ"), ("ظَ", "ظ", "ذ"), ("ظَ", "ظ", "pending")],
+)
+def test_dhal_zah_is_a_target_pair_in_both_directions(tmp_path, reference, prescribed, heard):
+    """ذ↔ظ is in scope by owner decision (acceptance rules §7) though Muraja does not
+    forgive it, so it is a valid mark either way round, and its sites may wait."""
+    (site,) = _load(tmp_path, [_row(reference=reference, reference_index=0, mark="ذ↔ظ",
+                                    prescribed=prescribed, heard=heard)])
+    assert (site.mark, site.prescribed, site.heard) == ("ذ↔ظ", prescribed, heard)
+
+
+def test_a_dhal_zah_site_must_sit_on_its_prescribed_letter(tmp_path):
+    with pytest.raises(ValueError, match="does not carry"):
+        _load(tmp_path, [_row(reference="ظَ", reference_index=0, mark="ذ↔ظ",
                               prescribed="ذ", heard="ذ")])
+    with pytest.raises(ValueError, match="cannot be heard as"):
+        _load(tmp_path, [_row(reference="ذَ", reference_index=0, mark="ذ↔ظ",
+                              prescribed="ذ", heard="ز")])
 
 
 def test_an_unknown_source_is_rejected(tmp_path):

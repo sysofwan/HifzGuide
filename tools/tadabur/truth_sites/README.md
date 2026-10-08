@@ -39,7 +39,7 @@ is not known yet is `null`. It is never guessed.
 | `surah_ayah` | str | now | `"surah:ayah"` |
 | `reference` | str | now | the item's **realized reference**: the phonetizer's output for what was recited, with waqf/wasl as recited |
 | `reference_index` | int | now | index in `reference` of the **carrier letter**, the consonant the mark under test sits on (for shaddah, the first of the doubled pair) |
-| `mark` | str | now | what is under test: `fatha`, `damma`, `kasra`, `sukun`, `shaddah`, or a soft pair labelled as `tadabur.phoneme_sifat.soft_pair_contrasts()` spells it, in codepoint order (`ت↔ط`, `ح↔ه`, `ذ↔ز`, `س↔ص`, `ض↔ظ`, `ق↔ك`) |
+| `mark` | str | now | what is under test: `fatha`, `damma`, `kasra`, `sukun`, `shaddah`, or a target pair: a soft pair labelled as `tadabur.phoneme_sifat.soft_pair_contrasts()` spells it, in codepoint order (`ت↔ط`, `ح↔ه`, `ذ↔ز`, `س↔ص`, `ض↔ظ`, `ق↔ك`), or `ذ↔ظ` (in scope by owner decision, acceptance rules §7; no Muraja soft pair) |
 | `prescribed` | str | now | what the mushaf prescribes there (table below) |
 | `heard` | str | now | what the human heard (table below). `unclear` and `pending` leave the denominator |
 | `stratum` | str | now | the sampling stratum the site was drawn from |
@@ -59,7 +59,7 @@ listening session (#87) replaces it with a verdict. A scorer treats `pending` li
 |---|---|---|
 | `fatha` / `damma` / `kasra` / `sukun` | the mark itself | `fatha`, `damma`, `kasra`, `sukun`, `unclear` or `pending` |
 | `shaddah` | `held` (a geminate in the mushaf) or `not_held` (a single consonant: the site of an *added* shaddah) | `held`, `not_held`, `unclear` or `pending` |
-| a soft pair `a↔b` | `a` or `b` (the mushaf's letter) | `a`, `b`, `unclear` or `pending` |
+| a target pair `a↔b` | `a` or `b` (the mushaf's letter) | `a`, `b`, `unclear` or `pending` |
 
 `load_truth_sites(path, audio_dir=None)` rejects:
 

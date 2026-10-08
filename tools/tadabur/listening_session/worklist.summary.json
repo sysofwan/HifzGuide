@@ -1,0 +1,588 @@
+{
+  "base_decode": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+  },
+  "excerpts_whole_segment": 33,
+  "inputs": {
+    "mining_pool/base_decodes.json": "57f2b60727381bfa29019c5813835e1403c835784a73c1052b440f11026ed9d7",
+    "mining_pool/clips.jsonl": "885901089d5ed50f21f40405d0c8568a79fbe2319560b906ea429f46e629cf6e",
+    "truth_sites/p35_fixtures.jsonl": "654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8"
+  },
+  "listening_minutes": 65.0,
+  "listening_model": {
+    "answer_seconds": 4.0,
+    "excerpt_pad_s": 0.25,
+    "min_excerpt_s": 1.0,
+    "plays_per_site": 2
+  },
+  "modes": {
+    "consonant": {
+      "listening_minutes": 9.0,
+      "sites": 47
+    },
+    "shaddah": {
+      "listening_minutes": 14.9,
+      "sites": 73
+    },
+    "tashkeel": {
+      "listening_minutes": 41.1,
+      "sites": 219
+    }
+  },
+  "salt": "issue-87-listening-session-v1",
+  "sites": 339,
+  "sizes": {
+    "new_audit:damma:base_empty": 50,
+    "new_audit:damma:base_matched": 17,
+    "new_audit:damma:base_other": 0,
+    "new_audit:fatha:base_empty": 50,
+    "new_audit:fatha:base_matched": 17,
+    "new_audit:fatha:base_other": 0,
+    "new_audit:kasra:base_empty": 50,
+    "new_audit:kasra:base_matched": 17,
+    "new_audit:kasra:base_other": 0,
+    "new_audit:shaddah:held:base_rest": 0,
+    "new_audit:shaddah:held:base_single": 60,
+    "new_audit:shaddah:not_held:base_double": 0,
+    "new_audit:shaddah:not_held:base_rest": 0,
+    "new_audit:sukun:base_empty": 40,
+    "new_audit:sukun:base_haraka": 10,
+    "new_audit:sukun:base_other": 0,
+    "new_audit:ت→ط:base_partner": 5,
+    "new_audit:ت→ط:base_rest": 0,
+    "new_audit:ح→ه:base_partner": 5,
+    "new_audit:ح→ه:base_rest": 0,
+    "new_audit:ذ→ز:base_partner": 5,
+    "new_audit:ذ→ز:base_rest": 0,
+    "new_audit:ذ→ظ:base_partner": 5,
+    "new_audit:ذ→ظ:base_rest": 0,
+    "new_audit:ز→ذ:base_partner": 5,
+    "new_audit:ز→ذ:base_rest": 0,
+    "new_audit:س→ص:base_partner": 5,
+    "new_audit:س→ص:base_rest": 0,
+    "new_audit:ص→س:base_partner": 5,
+    "new_audit:ص→س:base_rest": 0,
+    "new_audit:ض→ظ:base_partner": 5,
+    "new_audit:ض→ظ:base_rest": 0,
+    "new_audit:ط→ت:base_partner": 5,
+    "new_audit:ط→ت:base_rest": 0,
+    "new_audit:ظ→ذ:base_partner": 5,
+    "new_audit:ظ→ذ:base_rest": 0,
+    "new_audit:ظ→ض:base_partner": 5,
+    "new_audit:ظ→ض:base_rest": 0,
+    "new_audit:ق→ك:base_partner": 5,
+    "new_audit:ق→ك:base_rest": 0,
+    "new_audit:ك→ق:base_partner": 5,
+    "new_audit:ك→ق:base_rest": 0,
+    "new_audit:ه→ح:base_partner": 5,
+    "new_audit:ه→ح:base_rest": 0
+  },
+  "strata": {
+    "new_audit:damma:base_empty": {
+      "draw_probability": 0.6172839506172839,
+      "inclusion_probability_max": 0.6172839506172839,
+      "inclusion_probability_min": 0.020156210632401108,
+      "listening_minutes": 9.6,
+      "population": 81,
+      "population_reciters": 62,
+      "sampled": 50,
+      "sampled_reciters": 45
+    },
+    "new_audit:damma:base_matched": {
+      "draw_probability": 0.0019767441860465114,
+      "inclusion_probability_max": 0.0019767441860465114,
+      "inclusion_probability_min": 9.413067552602435e-05,
+      "listening_minutes": 3.4,
+      "population": 8600,
+      "population_reciters": 378,
+      "sampled": 17,
+      "sampled_reciters": 17
+    },
+    "new_audit:damma:base_other": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 298,
+      "population_reciters": 167,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:fatha:base_empty": {
+      "draw_probability": 0.1524390243902439,
+      "inclusion_probability_max": 0.1524390243902439,
+      "inclusion_probability_min": 0.006067224851352991,
+      "listening_minutes": 8.0,
+      "population": 328,
+      "population_reciters": 178,
+      "sampled": 50,
+      "sampled_reciters": 45
+    },
+    "new_audit:fatha:base_matched": {
+      "draw_probability": 0.0005167330313991307,
+      "inclusion_probability_max": 0.0005167330313991307,
+      "inclusion_probability_min": 1.8130983557864234e-05,
+      "listening_minutes": 3.2,
+      "population": 32899,
+      "population_reciters": 393,
+      "sampled": 17,
+      "sampled_reciters": 16
+    },
+    "new_audit:fatha:base_other": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 1249,
+      "population_reciters": 303,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:kasra:base_empty": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 0.24242424242424243,
+      "listening_minutes": 3.5,
+      "population": 18,
+      "population_reciters": 18,
+      "sampled": 18,
+      "sampled_reciters": 18
+    },
+    "new_audit:kasra:base_matched": {
+      "draw_probability": 0.0014900517135594707,
+      "inclusion_probability_max": 0.0014900517135594707,
+      "inclusion_probability_min": 7.894313714222361e-05,
+      "listening_minutes": 3.7,
+      "population": 11409,
+      "population_reciters": 388,
+      "sampled": 17,
+      "sampled_reciters": 17
+    },
+    "new_audit:kasra:base_other": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 310,
+      "population_reciters": 164,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:shaddah:held:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 9218,
+      "population_reciters": 382,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:shaddah:held:base_single": {
+      "draw_probability": 0.2830188679245283,
+      "inclusion_probability_max": 0.2830188679245283,
+      "inclusion_probability_min": 0.009930486593843097,
+      "listening_minutes": 12.5,
+      "population": 212,
+      "population_reciters": 94,
+      "sampled": 60,
+      "sampled_reciters": 46
+    },
+    "new_audit:shaddah:not_held:base_double": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 35,
+      "population_reciters": 25,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:shaddah:not_held:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 86363,
+      "population_reciters": 393,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:sukun:base_empty": {
+      "draw_probability": 0.0039058685675227027,
+      "inclusion_probability_max": 0.0039058685675227027,
+      "inclusion_probability_min": 4.535115898429844e-05,
+      "listening_minutes": 7.9,
+      "population": 10241,
+      "population_reciters": 385,
+      "sampled": 40,
+      "sampled_reciters": 38
+    },
+    "new_audit:sukun:base_haraka": {
+      "draw_probability": 0.14285714285714285,
+      "inclusion_probability_max": 0.14285714285714285,
+      "inclusion_probability_min": 0.0016587186398507152,
+      "listening_minutes": 1.8,
+      "population": 70,
+      "population_reciters": 50,
+      "sampled": 10,
+      "sampled_reciters": 10
+    },
+    "new_audit:sukun:base_other": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 202,
+      "population_reciters": 131,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ت→ط:base_partner": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 0,
+      "population_reciters": 0,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ت→ط:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 4747,
+      "population_reciters": 375,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ح→ه:base_partner": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 0,
+      "population_reciters": 0,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ح→ه:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 1637,
+      "population_reciters": 318,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ذ→ز:base_partner": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 0,
+      "population_reciters": 0,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ذ→ز:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 1854,
+      "population_reciters": 338,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ذ→ظ:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.5,
+      "population": 2,
+      "population_reciters": 2,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "new_audit:ذ→ظ:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 1852,
+      "population_reciters": 338,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ز→ذ:base_partner": {
+      "draw_probability": 0.19230769230769232,
+      "inclusion_probability_max": 0.19230769230769232,
+      "inclusion_probability_min": 0.19230769230769232,
+      "listening_minutes": 0.9,
+      "population": 26,
+      "population_reciters": 14,
+      "sampled": 5,
+      "sampled_reciters": 4
+    },
+    "new_audit:ز→ذ:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 649,
+      "population_reciters": 220,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:س→ص:base_partner": {
+      "draw_probability": 0.7142857142857143,
+      "inclusion_probability_max": 0.7142857142857143,
+      "inclusion_probability_min": 0.7142857142857143,
+      "listening_minutes": 1.0,
+      "population": 7,
+      "population_reciters": 6,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:س→ص:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 2290,
+      "population_reciters": 329,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ص→س:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 0.24242424242424243,
+      "listening_minutes": 0.9,
+      "population": 4,
+      "population_reciters": 4,
+      "sampled": 4,
+      "sampled_reciters": 4
+    },
+    "new_audit:ص→س:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 860,
+      "population_reciters": 276,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ض→ظ:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.1,
+      "population": 1,
+      "population_reciters": 1,
+      "sampled": 1,
+      "sampled_reciters": 1
+    },
+    "new_audit:ض→ظ:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 600,
+      "population_reciters": 223,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ط→ت:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 0.05555555555555555,
+      "listening_minutes": 0.7,
+      "population": 3,
+      "population_reciters": 3,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:ط→ت:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 488,
+      "population_reciters": 224,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ظ→ذ:base_partner": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 0,
+      "population_reciters": 0,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ظ→ذ:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 351,
+      "population_reciters": 163,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ظ→ض:base_partner": {
+      "draw_probability": 0.18518518518518517,
+      "inclusion_probability_max": 0.18518518518518517,
+      "inclusion_probability_min": 0.18518518518518517,
+      "listening_minutes": 0.8,
+      "population": 27,
+      "population_reciters": 23,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:ظ→ض:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 324,
+      "population_reciters": 155,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ق→ك:base_partner": {
+      "draw_probability": 0.625,
+      "inclusion_probability_max": 0.625,
+      "inclusion_probability_min": 0.625,
+      "listening_minutes": 0.8,
+      "population": 8,
+      "population_reciters": 4,
+      "sampled": 5,
+      "sampled_reciters": 4
+    },
+    "new_audit:ق→ك:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 2847,
+      "population_reciters": 347,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ك→ق:base_partner": {
+      "draw_probability": 0.25,
+      "inclusion_probability_max": 0.25,
+      "inclusion_probability_min": 0.25,
+      "listening_minutes": 0.9,
+      "population": 20,
+      "population_reciters": 17,
+      "sampled": 5,
+      "sampled_reciters": 4
+    },
+    "new_audit:ك→ق:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 3878,
+      "population_reciters": 359,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ه→ح:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.4,
+      "population": 2,
+      "population_reciters": 2,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "new_audit:ه→ح:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 5768,
+      "population_reciters": 378,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "p35_fixture:shadda": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 2.3,
+      "population": 24,
+      "population_reciters": 20,
+      "sampled": 13,
+      "sampled_reciters": 9
+    },
+    "p35_fixture:ت↔ط": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.1,
+      "population": 10,
+      "population_reciters": 9,
+      "sampled": 1,
+      "sampled_reciters": 1
+    },
+    "p35_fixture:ذ↔ز": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.4,
+      "population": 30,
+      "population_reciters": 21,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "p35_fixture:س↔ص": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.3,
+      "population": 30,
+      "population_reciters": 25,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "p35_fixture:ض↔ظ": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.5,
+      "population": 27,
+      "population_reciters": 24,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "p35_fixture:ق↔ك": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.5,
+      "population": 30,
+      "population_reciters": 26,
+      "sampled": 3,
+      "sampled_reciters": 3
+    }
+  }
+}

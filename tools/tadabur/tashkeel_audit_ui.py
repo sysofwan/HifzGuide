@@ -1,43 +1,39 @@
-"""Local web UI for adjudicating mined tashkeel sites (#60).
+"""Blind web UI for the owner's listening session (#87 for #61; first built for #60).
 
-Serves the worklist from :mod:`training.tashkeel_worklist` so a human can listen to each
-position where the base and fine-tuned checkpoints disagreed about a short vowel, and record
-what the **reciter actually said** (:mod:`tadabur.tashkeel_fixtures`). That verdict is the
-ground truth neither the corpus nor the mushaf reference can supply: the reference states
-the vowel the text prescribes, not the one the reciter produced, so a model declining to
-mark it is ambiguous between the model being over-strict and the reciter being wrong.
+Serves the session worklist (:mod:`tadabur.listening_session`) so the owner can listen to
+each site and record **what the reciter said**, one shuffled queue across three questions:
 
-**The audit is blind.** The API never sends ``direction`` or either checkpoint's outcome,
-and the worklist is shuffled across buckets before it is written, so a listener cannot tell
-whether saying "I heard the reference vowel" credits the fine-tune or convicts it. The
-question on screen is only ever about the audio.
+* **tashkeel** — which mark is on the highlighted letter: fatha, damma, kasra, sukun or
+  unclear. Prescribed-haraka and prescribed-sukun sites ask the same question and look the
+  same on the page;
+* **shaddah** — was the highlighted consonant held (doubled), not held, or unclear;
+* **consonant** — which of the pair's two letters was said, or unclear. The P3.5 nominal
+  rejects come up here and in shaddah, indistinguishable from the mined sites.
 
-Audio is served as the **exact window span** both checkpoints were decoded on, sliced from
-the staged clip and re-encoded as 16-bit PCM WAV in memory — not the whole clip. A listener
-grading a vowel the model never heard would be adjudicating a different question. A padded
-"with context" take is available separately, because a bare 5 s window can cut mid-word and
-the surrounding syllable is often what makes a case ending audible.
+**The page is blind** (ADR-0007). It never receives a model's output, the mark or letter
+the mushaf prescribes, the site's stratum, source, id or sampling weight, or any running
+tally: :meth:`SessionState.view` builds the only thing it is sent. The displayed reference
+hides the answer at the carrier: the haraka (and the madd or qalqala that would give it
+away) is deleted for tashkeel, the doubled consonant is shown once for shaddah, and the
+letter itself is replaced by ``◌`` for consonant. Sites are addressed by an opaque key, so
+not even the id says where a site came from. Progress is only "n of N answered".
 
-**No result is shown while grading.** Exposing the running recovered/regressed tallies
-would undo the blinding on its own: a listener could submit any verdict, watch which tally
-moved, and — verdicts are replaceable, and Prev navigates back — revise it knowing which
-answer flatters the fine-tune. Results come from :mod:`tadabur.tashkeel_acceptance` after
-the fact.
+Each answer is written straight into the tracked verdicts file
+(``listening_session/verdicts.jsonl``) keyed by site id, so the UI resumes from it and
+committing it is the only step after the session. Audio is the site's **excerpt** (the
+carrier's word and one either side) sliced from the staged clip, or the whole segment on
+request; every clip is checked against the staged-clip registry's checksum and length
+before the server starts.
 
-There is no database and no framework: verdicts are persisted straight into the
-adjudications JSONL, so the UI resumes from — and is interchangeable with — whatever that
-file already holds.
+Usage (from ``tools/``)::
 
-Usage:
-  python -m tadabur.tashkeel_audit_ui \\
-    --worklist audit_run/seg_v21/tashkeel_worklist.jsonl \\
-    --adjudications audit_run/seg_v21/tashkeel_adjudications.jsonl \\
-    --audio-dir audit_run/clips_v2 [--port 8000]
+  python -m tadabur.tashkeel_audit_ui --audio-dir <staged clips> --host 0.0.0.0 [--port 8000]
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import threading
@@ -48,100 +44,79 @@ from urllib.parse import parse_qs, urlparse
 
 import numpy as np
 
-from training.tashkeel_eval import SHORT_VOWELS
-from training.tashkeel_worklist import TashkeelSite, read_worklist
-
-from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+from .audio import TARGET_SAMPLE_RATE
 from .audit_http import AuditHandler, serve
-from .audit_sampler import local_audio_path
-from .tashkeel_fixtures import (
-    VERDICTS,
-    Adjudication,
-    read_adjudications,
-    write_adjudications,
+from .listening_session import (
+    CONSONANT_MODE,
+    MADD,
+    QALQALA,
+    SALT,
+    SHADDAH_MODE,
+    TASHKEEL_MODE,
+    VERDICTS_PATH,
+    WORKLIST_PATH,
+    SessionSite,
+    Verdict,
+    hearable,
+    load_worklist,
+    read_verdicts,
+    write_verdicts,
 )
+from .staged_audio import StagedClip, load_staged_clips, verify_staged
+from .truth_sites import HARAKA_CHARS, HELD, NOT_HELD, SUKUN, UNCLEAR
 
 _PAGE_PATH = Path(__file__).parent / "tashkeel_audit_page.html"
 
-#: Seconds of surrounding clip audio the "with context" take adds on each side. A window
-#: boundary can fall mid-word, and a case ending is far easier to hear with the syllable
-#: that follows it.
-DEFAULT_CONTEXT_PAD_S = 1.0
+#: What the page shows in place of the letter under test in consonant mode.
+HIDDEN_LETTER = "◌"
+_HARAKAT = frozenset(HARAKA_CHARS.values())
+#: Characters after a tashkeel carrier that would give its mark away.
+_MARK_TELLS = _HARAKAT | MADD | {QALQALA}
 
-#: The largest padding a request may ask for, so a crafted query cannot make the server
-#: encode an entire clip per request.
-MAX_CONTEXT_PAD_S = 5.0
-
-
-def _carrier_index(display_reference: str, vowel_index: int) -> int | None:
-    """Index of the letter the removed harakah sat on, in the *display* reference.
-
-    Deleting the target vowel shifts nothing before it, so the carrier keeps its index —
-    it is the nearest preceding non-vowel character. Returns ``None`` when the vowel opened
-    the window and there is no preceding letter to point at.
-    """
-    for index in range(min(vowel_index, len(display_reference)) - 1, -1, -1):
-        if display_reference[index] not in SHORT_VOWELS:
-            return index
-    return None
+#: The answers offered per mode, in a fixed order that never depends on the site.
+_TASHKEEL_CHOICES = (*HARAKA_CHARS, SUKUN, UNCLEAR)  # fatha, damma, kasra
+_SHADDAH_CHOICES = (HELD, NOT_HELD, UNCLEAR)
 
 
-class ClipCache:
-    """Decode each staged clip at most once, shared across handler threads.
+def choices(row: SessionSite) -> tuple[str, ...]:
+    """The answers the page offers for ``row``: the same for every site of its mode, so
+    the order cannot hint at the prescribed one (a pair's letters in label order)."""
+    if row.mode == TASHKEEL_MODE:
+        return _TASHKEEL_CHOICES
+    if row.mode == SHADDAH_MODE:
+        return _SHADDAH_CHOICES
+    return (*row.site.mark.split("↔"), UNCLEAR)
 
-    The threading server handles requests concurrently and a listener replays the same
-    window repeatedly, so decoding per request would re-read the same file on every click.
-    Only the most recent few clips are retained: the worklist is shuffled, so there is no
-    clip locality to exploit and an unbounded cache would grow to the whole corpus.
-    """
 
-    def __init__(self, audio_dir: Path, capacity: int = 8) -> None:
-        self._audio_dir = audio_dir
-        self._capacity = capacity
-        self._lock = threading.Lock()
-        self._cache: dict[str, np.ndarray] = {}
+def blind_reference(row: SessionSite) -> tuple[str, str, str]:
+    """The segment's reference as the page shows it, split around the carrier, with the
+    answer hidden (module docstring). The carrier part keeps the harakat after it, so the
+    highlight covers the letter as it is read."""
+    reference, index = row.site.reference, row.site.reference_index
+    carrier = reference[index]
+    rest = index + 1
+    if row.mode == TASHKEEL_MODE:
+        while rest < len(reference) and reference[rest] in _MARK_TELLS:
+            rest += 1
+    else:
+        while rest < len(reference) and reference[rest] == carrier:
+            rest += 1  # a geminate shows once: its doubling is the shaddah answer
+        if row.mode == CONSONANT_MODE:
+            carrier = HIDDEN_LETTER
+    marks = rest
+    while marks < len(reference) and reference[marks] in _HARAKAT:
+        marks += 1
+    return reference[:index], carrier + reference[rest:marks], reference[marks:]
 
-    def _path(self, clip_audio_filename: str) -> Path:
-        """Resolve either staged layout: hash-prefixed sampler name, or the plain name.
 
-        ``local_audio_path`` is flat and separator-free by construction, but the plain
-        fallback appends a worklist field verbatim — and ``read_worklist`` validates field
-        *names*, not their contents. A ``clip_audio_filename`` of ``../../etc/passwd`` would
-        otherwise escape the clip store, which matters because this server is meant to be
-        bound to ``0.0.0.0`` so a listener can grade from another device. Every candidate is
-        therefore resolved and rejected unless it lands inside ``audio_dir``.
-        """
-        root = self._audio_dir.resolve()
-        for candidate in (local_audio_path(clip_audio_filename), clip_audio_filename):
-            target = (root / candidate).resolve()
-            if root in target.parents and target.is_file():
-                return target
-        raise FileNotFoundError(
-            f"clip audio for {clip_audio_filename!r} not found under {self._audio_dir} "
-            "under either the hash-prefixed (tadabur.audit_sampler) or plain name."
-        )
-
-    def waveform(self, clip_audio_filename: str) -> np.ndarray:
-        with self._lock:
-            cached = self._cache.get(clip_audio_filename)
-        if cached is None:
-            cached = decode_to_mono_16k(self._path(clip_audio_filename).read_bytes())
-            with self._lock:
-                if len(self._cache) >= self._capacity:
-                    self._cache.pop(next(iter(self._cache)))
-                self._cache[clip_audio_filename] = cached
-        return cached
+def page_key(site_id: str) -> str:
+    """The opaque key the page addresses a site by: stable, and says nothing about it."""
+    return hashlib.sha256(f"{SALT}:page:{site_id}".encode("utf-8")).hexdigest()[:16]
 
 
 def encode_wav(samples: np.ndarray) -> bytes:
-    """A mono 16 kHz 16-bit PCM RIFF file for ``samples``, built in memory.
-
-    Written by hand rather than through a codec library because the browser needs a
-    container it can play from a plain ``<audio src>``, and the staged clips are float32
-    arrays after decoding — there is no original byte range to hand back once a slice is
-    taken. Values are clipped before scaling so a clip that peaks above unity wraps to the
-    rails instead of overflowing into the opposite sign.
-    """
+    """A mono 16 kHz 16-bit PCM RIFF file for ``samples``, built in memory. Values are
+    clipped before scaling so a peak above unity rails instead of wrapping in sign."""
     clipped = np.clip(np.asarray(samples, dtype=np.float32), -1.0, 1.0)
     pcm = (clipped * 32767.0).astype("<i2")
     buffer = io.BytesIO()
@@ -153,88 +128,102 @@ def encode_wav(samples: np.ndarray) -> bytes:
     return buffer.getvalue()
 
 
+def verify_audio(
+    rows: list[SessionSite], registry: dict[str, StagedClip], audio_dir: Path
+) -> None:
+    """Fail unless every clip the worklist plays is in the registry under the checksum its
+    sites record, and ``audio_dir`` holds exactly that file (checksum and length)."""
+    recorded: dict[str, set[str | None]] = {}
+    for row in rows:
+        recorded.setdefault(row.site.audio_filename, set()).add(row.site.audio_sha256)
+    for name, checksums in sorted(recorded.items()):
+        clip = registry.get(name)
+        if clip is None:
+            raise ValueError(f"{name} is not in the staged-clip registry")
+        if checksums != {clip.audio_sha256}:
+            raise ValueError(f"{name}: the worklist and the registry disagree on its checksum")
+        verify_staged(clip, audio_dir)
+
+
 @dataclass
-class AuditState:
-    """Everything a request handler needs: the worklist, the verdicts, and the audio.
+class SessionState:
+    """The worklist, the verdicts and the audio; ``verdicts`` is rewritten on every save,
+    so the file and the in-memory view never disagree. A verdict for a site outside the
+    worklist (a re-mine dropped it) is kept on save and never shown."""
 
-    ``adjudications`` is mutated in place and rewritten on every save, so the JSONL on disk
-    and the in-memory view can never disagree — a crash mid-session loses nothing but the
-    verdict being submitted.
-    """
-
-    sites: list[TashkeelSite]
-    adjudications_path: Path
-    clips: ClipCache
-    adjudications: dict[str, Adjudication] = field(default_factory=dict)
+    rows: list[SessionSite]
+    verdicts_path: Path
+    audio_dir: Path
+    verdicts: dict[str, Verdict] = field(default_factory=dict)
+    _by_key: dict[str, SessionSite] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
+    def __post_init__(self) -> None:
+        self._by_key = {page_key(row.site.site_id): row for row in self.rows}
+        if len(self._by_key) != len(self.rows):
+            raise ValueError("two sites share a page key")
+
     @classmethod
-    def load(cls, worklist: Path, adjudications: Path, audio_dir: Path) -> "AuditState":
-        state = cls(
-            sites=read_worklist(worklist),
-            adjudications_path=adjudications,
-            clips=ClipCache(audio_dir),
-        )
-        state.adjudications = read_adjudications(adjudications)
-        return state
+    def load(
+        cls, worklist: Path, verdicts: Path, audio_dir: Path, registry: dict[str, StagedClip]
+    ) -> "SessionState":
+        rows = load_worklist(worklist)
+        verify_audio(rows, registry, audio_dir)
+        return cls(rows=rows, verdicts_path=verdicts, audio_dir=audio_dir,
+                   verdicts=read_verdicts(verdicts))
 
-    def site(self, site_id: str) -> TashkeelSite | None:
-        return next((s for s in self.sites if s.site_id == site_id), None)
+    def row(self, key: str) -> SessionSite:
+        return self._by_key[key]
 
-    def record(self, site_id: str, verdict: str, note: str) -> Adjudication:
-        """Persist one verdict, replacing any earlier verdict for the same site."""
-        site = self.site(site_id)
-        if site is None:
-            raise KeyError(site_id)
-        entry = Adjudication(
-            site_id=site_id,
-            verdict=verdict,
-            clip_audio_filename=site.clip_audio_filename,
-            reference_index=site.reference_index,
-            note=note,
-        )
-        with self._lock:
-            self.adjudications[site_id] = entry
-            write_adjudications(self.adjudications_path, dict(self.adjudications))
-        return entry
-
-    def view(self, site: TashkeelSite) -> dict:
-        """The blind view of one site — everything the listener may see, and nothing else.
-
-        ``direction``, ``base_outcome`` and ``candidate_outcome`` are deliberately absent. A
-        listener who knows the fine-tune recovered this position is no longer answering "what
-        did the reciter say"; the whole value of the audit is that they cannot tell.
-
-        **The reference vowel is withheld too**, and the reference is rendered with that one
-        harakah deleted. Showing it would prime the listener toward the very answer that
-        counts as "confirmed over-strictness" — the reading that inflates the fine-tune's
-        gain. Surrounding harakat stay, because they are context rather than the answer, and
-        ``carrier_index`` points at the letter to judge.
-        """
-        verdict = self.adjudications.get(site.site_id)
-        index = site.reference_index
-        display = site.reference[:index] + site.reference[index + 1:]
+    def view(self, row: SessionSite) -> dict:
+        """Everything the page may know about one site, and nothing else."""
+        before, carrier, after = blind_reference(row)
+        verdict = self.verdicts.get(row.site.site_id)
         return {
-            "site_id": site.site_id,
-            "surah_ayah": site.surah_ayah,
-            "reciter_id": site.reciter_id,
-            "clip_audio_filename": site.clip_audio_filename,
-            "reference": display,
-            "carrier": site.carrier,
-            "carrier_index": _carrier_index(display, index),
-            "verdict": verdict.verdict if verdict else None,
+            "key": page_key(row.site.site_id),
+            "mode": row.mode,
+            "surah_ayah": row.site.surah_ayah,
+            "before": before,
+            "carrier": carrier,
+            "after": after,
+            "choices": list(choices(row)),
+            "heard": verdict.heard if verdict else None,
             "note": verdict.note if verdict else "",
         }
 
+    def record(self, key: str, heard: object, note: str) -> Verdict:
+        """Persist one answer, replacing any earlier one for the same site."""
+        row = self.row(key)
+        if heard not in hearable(row.site.mark):
+            raise ValueError(f"{heard!r} is not an answer to this question")
+        verdict = Verdict(site_id=row.site.site_id, heard=heard, note=note)
+        with self._lock:
+            self.verdicts[verdict.site_id] = verdict
+            write_verdicts(self.verdicts, self.verdicts_path)
+        return verdict
+
     def progress(self) -> dict:
-        judged = sum(1 for s in self.sites if s.site_id in self.adjudications)
-        return {"total": len(self.sites), "judged": judged}
+        answered = sum(row.site.site_id in self.verdicts for row in self.rows)
+        return {"answered": answered, "total": len(self.rows)}
+
+    def audio(self, key: str, whole: bool) -> bytes:
+        """The site's excerpt, or its whole segment, as a WAV."""
+        import soundfile as sf
+
+        row = self.row(key)
+        start, end = (
+            (row.site.start_sample, row.site.end_sample)
+            if whole else (row.excerpt_start_sample, row.excerpt_end_sample)
+        )
+        samples, _ = sf.read(self.audio_dir / row.site.audio_filename, start=start,
+                             stop=end, dtype="float32")
+        return encode_wav(samples)
 
 
-class TashkeelAuditHandler(AuditHandler):
-    """Routes: the page, the worklist API, window audio, and verdict submission."""
+class SessionHandler(AuditHandler):
+    """Routes: the page, the blind site list, site audio, and answer submission."""
 
-    state: AuditState
+    state: SessionState
 
     def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler's interface
         parsed = urlparse(self.path)
@@ -242,37 +231,19 @@ class TashkeelAuditHandler(AuditHandler):
         if parsed.path in ("/", "/index.html"):
             self.send_bytes(_PAGE_PATH.read_bytes(), "text/html; charset=utf-8")
         elif parsed.path == "/api/sites":
-            self.send_json(
-                {
-                    "sites": [self.state.view(site) for site in self.state.sites],
-                    "progress": self.state.progress(),
-                }
-            )
+            self.send_json({
+                "sites": [self.state.view(row) for row in self.state.rows],
+                "progress": self.state.progress(),
+            })
         elif parsed.path == "/api/audio":
-            self._send_window_audio(query)
+            key = (query.get("key") or [""])[0]
+            whole = (query.get("whole") or ["0"])[0] == "1"
+            try:
+                self.send_bytes(self.state.audio(key, whole), "audio/wav")
+            except KeyError:
+                self.send_json({"error": "unknown site"}, status=404)
         else:
             self.send_json({"error": "not found"}, status=404)
-
-    def _send_window_audio(self, query: dict[str, list[str]]) -> None:
-        """Stream the site's window span, optionally padded, as a WAV."""
-        site = self.state.site((query.get("site") or [""])[0])
-        if site is None:
-            self.send_json({"error": "unknown site"}, status=404)
-            return
-        try:
-            pad_s = float((query.get("pad") or ["0"])[0])
-        except ValueError:
-            self.send_json({"error": "pad must be a number of seconds"}, status=400)
-            return
-        pad = int(min(max(pad_s, 0.0), MAX_CONTEXT_PAD_S) * TARGET_SAMPLE_RATE)
-        try:
-            waveform = self.state.clips.waveform(site.clip_audio_filename)
-        except FileNotFoundError as error:
-            self.send_json({"error": str(error)}, status=404)
-            return
-        start = max(0, site.start_sample - pad)
-        end = min(len(waveform), site.start_sample + site.num_samples + pad)
-        self.send_bytes(encode_wav(waveform[start:end]), "audio/wav")
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler's interface
         if urlparse(self.path).path != "/api/verdict":
@@ -284,47 +255,44 @@ class TashkeelAuditHandler(AuditHandler):
         except (TypeError, ValueError):
             self.send_json({"error": "body must be JSON"}, status=400)
             return
-        if not isinstance(payload, dict):
-            self.send_json({"error": "body must be a JSON object"}, status=400)
-            return
-        verdict = payload.get("verdict")
-        if verdict not in VERDICTS:
-            self.send_json(
-                {"error": f"verdict must be one of {sorted(VERDICTS)}"}, status=400
-            )
+        if not isinstance(payload, dict) or not isinstance(payload.get("note", ""), str):
+            self.send_json({"error": "body must be {key, heard, note}"}, status=400)
             return
         try:
-            self.state.record(payload.get("site_id", ""), verdict, payload.get("note", ""))
+            self.state.record(str(payload.get("key", "")), payload.get("heard"),
+                              payload.get("note", ""))
         except KeyError:
             self.send_json({"error": "unknown site"}, status=404)
+            return
+        except ValueError as error:
+            self.send_json({"error": str(error)}, status=400)
             return
         self.send_json({"progress": self.state.progress()})
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--worklist", type=Path, required=True,
-                        help="mined worklist JSONL (training.tashkeel_worklist).")
-    parser.add_argument("--adjudications", type=Path, required=True,
-                        help="verdict JSONL; created on the first save, resumed if present.")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--audio-dir", type=Path, required=True,
-                        help="staged 16 kHz clip directory the windows are sliced from.")
+                        help="directory holding the staged 16 kHz clips the worklist plays")
+    parser.add_argument("--worklist", type=Path, default=WORKLIST_PATH)
+    parser.add_argument("--verdicts", type=Path, default=VERDICTS_PATH,
+                        help="the tracked verdicts JSONL; resumed if present")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1",
-                        help="bind address; pass 0.0.0.0 to grade from another device on "
-                             "the LAN.")
+                        help="bind address; 0.0.0.0 to answer from a phone on the LAN")
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
-    state = AuditState.load(args.worklist, args.adjudications, args.audio_dir)
+    state = SessionState.load(args.worklist, args.verdicts, args.audio_dir,
+                              load_staged_clips())
     progress = state.progress()
-    print(
-        f"{progress['judged']}/{progress['total']} sites already judged. "
-        f"Serving on http://{args.host}:{args.port}/"
-    )
-    serve(TashkeelAuditHandler, state, args.port, args.host).serve_forever()
+    print(f"{progress['answered']} of {progress['total']} answered. "
+          f"Serving on http://{args.host}:{args.port}/", flush=True)
+    serve(SessionHandler, state, args.port, args.host).serve_forever()
 
 
 if __name__ == "__main__":

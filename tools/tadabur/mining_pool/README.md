@@ -147,7 +147,7 @@ stratum alone (2,000 clips):
 ~40 consonant sites, a mid-word sukun stratum) are all covered. Per pair, `ت↔ط`, `ح↔ه` and
 `ذ↔ظ` stay rare (2-3 sites each): 12,413 clips of the drawn reciters hold only 4-5 scan sites
 of each, so no pool of this frame can support a per-pair claim for them. The truth-site
-schema does not accept `ذ↔ظ` as a `mark` yet; #87 adds it when it writes those sites.
+schema accepts `ذ↔ظ` as a `mark` since #87.
 
 69 clips (2.8%) have no segments: quran-transcript cannot phonetize one of their references
 (`phonetizer_unsupported`, as in `segment_score`). 25 are kept whole as a repeated

@@ -44,6 +44,10 @@ wandb/
 # (segment span, realized reference and the base decode the rule was applied to).
 !tools/tadabur/truth_sites/p35_fixtures.jsonl
 !tools/tadabur/truth_sites/p35_fixtures.relocation.jsonl
+# The listening session (#87): the worklist of truth-site skeletons the owner adjudicates, and
+# the verdicts the blind UI writes straight into the repo as they are given.
+!tools/tadabur/listening_session/worklist.jsonl
+!tools/tadabur/listening_session/verdicts.jsonl
 # Provenance of every re-staged Tadabur clip (#83): shard, row, reciter, length, checksum, uses.
 !tools/tadabur/staged_audio/clips.jsonl
 # The h448-unseen mining pool's manifest (#83): segments, realized references, word times.

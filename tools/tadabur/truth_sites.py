@@ -60,7 +60,10 @@ SUKUN = "sukun"
 SHADDAH = "shaddah"
 TASHKEEL_MARKS = frozenset(HARAKA_CHARS) | {SUKUN}
 SOFT_PAIRS = soft_pair_contrasts()
-MARKS = TASHKEEL_MARKS | {SHADDAH} | SOFT_PAIRS
+#: The consonant pairs a site may test: the six soft pairs plus ``ذ↔ظ``, which is in scope by
+#: owner decision but is no Muraja soft pair (acceptance rules §7).
+TARGET_PAIRS = SOFT_PAIRS | {"ذ↔ظ"}
+MARKS = TASHKEEL_MARKS | {SHADDAH} | TARGET_PAIRS
 
 HELD = "held"
 NOT_HELD = "not_held"
@@ -224,7 +227,7 @@ def _check_reference(site: TruthSite, where: str) -> None:
         raise ValueError(f"{where}: reference_index {index} is outside the reference")
     carrier = reference[index]
     following = reference[index + 1] if index + 1 < len(reference) else ""
-    if site.mark in SOFT_PAIRS:
+    if site.mark in TARGET_PAIRS:
         holds = carrier == site.prescribed
     elif carrier not in CONSONANTS:
         holds = False

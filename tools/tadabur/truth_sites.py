@@ -64,6 +64,7 @@ MARKS = TASHKEEL_MARKS | {SHADDAH} | SOFT_PAIRS
 
 HELD = "held"
 NOT_HELD = "not_held"
+GEMINATION_STATES = frozenset({HELD, NOT_HELD})
 #: The listener could not tell. Kept in the file; the scorer leaves it out of denominators.
 UNCLEAR = "unclear"
 
@@ -132,13 +133,15 @@ def label_states(mark: str) -> tuple[frozenset[str], frozenset[str]]:
     """The values ``prescribed`` and ``heard`` may take for ``mark``.
 
     A tashkeel mark is the mushaf's own mark, so it prescribes exactly itself, and the
-    listener may hear any tashkeel mark. Shaddah prescribes ``held``. A soft pair
-    prescribes one of its two letters and the listener heard one of them.
+    listener may hear any tashkeel mark. Shaddah is a gemination state: the mushaf
+    prescribes ``held`` (a geminate) or ``not_held`` (a single consonant, the site of an
+    *added* shaddah), and the listener heard either. A soft pair prescribes one of its two
+    letters and the listener heard one of them.
     """
     if mark in TASHKEEL_MARKS:
         return frozenset({mark}), TASHKEEL_MARKS | {UNCLEAR}
     if mark == SHADDAH:
-        return frozenset({HELD}), frozenset({HELD, NOT_HELD, UNCLEAR})
+        return GEMINATION_STATES, GEMINATION_STATES | {UNCLEAR}
     letters = frozenset(mark.split("↔"))
     return letters, letters | {UNCLEAR}
 
@@ -218,8 +221,11 @@ def _check_reference(site: TruthSite, where: str) -> None:
         holds = carrier == site.prescribed
     elif carrier not in CONSONANTS:
         holds = False
+    elif site.mark == SHADDAH and site.prescribed == HELD:
+        holds = following == carrier  # the first of the doubled consonant
     elif site.mark == SHADDAH:
-        holds = following == carrier
+        preceding = reference[index - 1] if index else ""
+        holds = carrier not in (following, preceding)  # a single consonant
     elif site.mark == SUKUN:
         holds = following not in HARAKA_CHARS.values()
     else:

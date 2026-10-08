@@ -169,7 +169,7 @@ def test_an_unknown_source_is_rejected(tmp_path):
         ({"heard": "none"}, "cannot be heard as 'none'"),
         ({"heard": "held"}, "cannot be heard as 'held'"),
         ({"reference": "رَببِ", "reference_index": 2, "mark": "shaddah",
-          "prescribed": "not_held", "heard": "held"}, "cannot prescribe"),
+          "prescribed": "unclear", "heard": "held"}, "cannot prescribe"),
         ({"reference": "ذَ", "reference_index": 0, "mark": "ذ↔ز",
           "prescribed": "ذ", "heard": "ظ"}, "cannot be heard as"),
     ],
@@ -231,6 +231,42 @@ def test_a_negative_start_sample_is_rejected(tmp_path):
         _load(tmp_path, [_row(start_sample=-1)])
 
 
+# --- shaddah: both gemination states ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "reference, index, prescribed, heard",
+    [
+        ("رَببِ", 2, "held", "held"),  # held as written
+        ("رَببِ", 2, "held", "not_held"),  # dropped shaddah
+        ("رَبِ", 2, "not_held", "held"),  # added shaddah
+        ("رَبِ", 2, "not_held", "not_held"),  # the un-held control, unchanged
+        ("رَبِ", 2, "not_held", "unclear"),
+        ("رَببِ", 2, "held", "unclear"),
+    ],
+)
+def test_shaddah_sites_load_in_every_gemination_state(tmp_path, reference, index,
+                                                       prescribed, heard):
+    (site,) = _load(tmp_path, [_row(reference=reference, reference_index=index,
+                                    mark="shaddah", prescribed=prescribed, heard=heard)])
+    assert (site.prescribed, site.heard) == (prescribed, heard)
+
+
+@pytest.mark.parametrize(
+    "reference, index, prescribed",
+    [
+        ("رَبِ", 2, "held"),  # a held site needs a doubled carrier
+        ("رَببِ", 2, "not_held"),  # an un-held site needs a single carrier...
+        ("رَببِ", 3, "not_held"),  # ...not the second of a doubled pair either
+    ],
+)
+def test_shaddah_carrier_must_match_the_prescribed_state(tmp_path, reference, index,
+                                                          prescribed):
+    with pytest.raises(ValueError, match="does not carry 'shaddah'"):
+        _load(tmp_path, [_row(reference=reference, reference_index=index, mark="shaddah",
+                              prescribed=prescribed, heard="held")])
+
+
 # --- the reference index must carry the mark -----------------------------------------
 
 
@@ -241,8 +277,6 @@ def test_a_negative_start_sample_is_rejected(tmp_path):
         {"reference_index": 5},  # the haraka itself, not its carrier
         {"reference_index": 4, "reference": "كَتَبِ"},  # carrier bears kasra, not fatha
         {"reference": "كَتَبَ", "mark": "sukun", "prescribed": "sukun", "heard": "sukun"},
-        {"reference": "رَبِ", "reference_index": 2, "mark": "shaddah",
-         "prescribed": "held", "heard": "held"},  # not doubled
         {"reference": "زَ", "reference_index": 0, "mark": "ذ↔ز",
          "prescribed": "ذ", "heard": "ذ"},  # carrier is the other letter
         {"reference": "قَاا", "reference_index": 2, "mark": "sukun",

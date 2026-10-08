@@ -52,7 +52,7 @@ _TOOLS_DIR = Path(__file__).resolve().parent.parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
-import generate_phonemes  # noqa: E402  (tools/ sibling module)
+from hafs_phonetizer import phonetize  # noqa: E402  (tools/ sibling module)
 
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
 from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename
@@ -108,15 +108,11 @@ class SegmentRecord:
 def hafs_phonetizer() -> Phonetizer:
     """A :data:`Phonetizer` that phonetizes Uthmani text with the Hafs moshaf.
 
-    Reuses ``generate_phonemes.HAFS_MOSHAF`` — the same recitation configuration
-    the full-ayah reference cache is built with — so a segment's realized reference
+    Goes through ``phonetize`` from ``tools/hafs_phonetizer.py`` — the entry point the
+    full-ayah reference cache is built with too — so a segment's realized reference
     differs from the full-ayah reference only where waqf vs wasl actually differs.
     """
-    from quran_transcript import quran_phonetizer
-    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
-
-    moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
-    return lambda text: quran_phonetizer(text, moshaf).phonemes
+    return lambda text: phonetize(text).phonemes
 
 
 def _spaced_word_offsets(
@@ -182,13 +178,8 @@ def hafs_segment_reference() -> SegmentReference:
     inject a phantom CleanEnd). Raises the same ``KeyError`` / ``IndexError`` as
     :func:`hafs_word_reference` on the ayat quran_phonetizer cannot handle.
     """
-    from quran_transcript import quran_phonetizer
-    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
-
-    moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
-
     def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
-        out = quran_phonetizer(" ".join(uthmani_words), moshaf)
+        out = phonetize(" ".join(uthmani_words))
         return out.phonemes, _spaced_word_offsets(out.phonemes, out.mappings, uthmani_words)
 
     return compute
@@ -206,13 +197,8 @@ def hafs_word_reference() -> WordReference:
     cannot handle (leen madd on a final sukoon), which the caller tallies as
     ``phonetizer_unsupported``.
     """
-    from quran_transcript import quran_phonetizer
-    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
-
-    moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
-
     def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
-        out = quran_phonetizer(" ".join(uthmani_words), moshaf)
+        out = phonetize(" ".join(uthmani_words))
         return _spaceless_word_offsets(out.phonemes, out.mappings, uthmani_words)
 
     return compute
@@ -243,13 +229,8 @@ def hafs_normalized_word_reference() -> NormalizedWordReference:
     Raises the same ``KeyError`` / ``IndexError`` as :func:`hafs_word_reference` on the
     eight ayat quran_phonetizer cannot handle.
     """
-    from quran_transcript import quran_phonetizer
-    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
-
-    moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
-
     def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
-        out = quran_phonetizer(" ".join(uthmani_words), moshaf)
+        out = phonetize(" ".join(uthmani_words))
         normalization = normalize_phonemes(out.phonemes)
         offsets = _spaced_word_offsets(out.phonemes, out.mappings, uthmani_words)
         return normalization.normalized, map_char_offsets(

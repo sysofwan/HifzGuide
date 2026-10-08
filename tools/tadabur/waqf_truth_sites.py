@@ -32,13 +32,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import unicodedata
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from hafs_phonetizer import phonetize
+# Re-exported while #83 still imports it from here; new code imports hafs_phonetizer.
+from hafs_phonetizer import pausal_taa_marbuta  # noqa: F401
 from training.tashkeel_worklist import VOWEL_NAMES
 
 from .truth_sites import (
@@ -400,9 +402,6 @@ _GHUNNA = frozenset("\u06ba\u06fe")  # ں ۾
 #: The qalqala marker the phonetizer writes after a bouncing sakin letter.
 _QALQALA = "\u0687"  # ڇ
 _SHADDA = "\u0651"
-_TAA_MARBUTA = "\u0629"
-_TANWEEN_FATHA = "\u064b"
-_FATHA = "\u064e"
 #: Hamza written as a mark (on a tatweel or a seat, e.g. ``شَىْـًٔا``): a letter of its own.
 _HAMZA_MARKS = frozenset("\u0654\u0655")
 #: The consonants an Uthmani letter is realized as when it keeps its own identity; any
@@ -460,44 +459,18 @@ def final_carrier(
     raise ValueError(f"{text[start:end]!r} has no realized letter")
 
 
-def pausal_taa_marbuta(word: str) -> str:
-    """``word`` with a final ``ةً`` rewritten so quran-transcript gives its pausal form.
-
-    quran-transcript 0.5.2's ``MaddAlewad`` turns *every* final tanween fatha into fatha +
-    alif (madd al-iwad) before ``CleanEnd`` and ``NormalizeTaa`` run. On taa marbuta that
-    is wrong: ``رَحْمَةًۭ`` at waqf comes out ``رَحمَتَاا`` instead of ``رَحمَه``, because the
-    alif shields the ة from becoming ه with sukun. Replacing the tanween (and the small
-    mark after it) with a plain fatha lets ``CleanEnd`` drop the fatha and ``NormalizeTaa``
-    produce ه. Only the run's terminal word is pausal, so only it is rewritten; the ة keeps
-    its input index, so the char mappings still line up.
-    """
-    taa = word.rfind(_TAA_MARBUTA)
-    if taa >= 0 and _TANWEEN_FATHA in word[taa + 1 :]:
-        return word[: taa + 1] + _FATHA
-    return word
-
-
 def hafs_realizer() -> Realizer:
-    """A :data:`Realizer` over ``quran_phonetizer`` with the Hafs moshaf.
+    """A :data:`Realizer` over :func:`hafs_phonetizer.phonetize`.
 
-    Uses the same moshaf configuration as every other realized reference in the repo
-    (``generate_phonemes.HAFS_MOSHAF``), so a run's phonemes are exactly what
-    :func:`tadabur.waqf_segments.hafs_phonetizer` would give for the same words.
+    The repo's one phonetizer entry point (Hafs moshaf, pausal ``ةً`` fixed), so a run's
+    phonemes are exactly what :func:`tadabur.waqf_segments.hafs_phonetizer` would give for
+    the same words.
     """
-    tools_dir = str(Path(__file__).resolve().parent.parent)
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
-    import generate_phonemes
-    from quran_transcript import quran_phonetizer
-    from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
-
-    moshaf = MoshafAttributes(**generate_phonemes.HAFS_MOSHAF)
 
     def realize(words: list[str]) -> RealizedRun:
-        words = [*words[:-1], pausal_taa_marbuta(words[-1])]
         text = " ".join(words)
         try:
-            out = quran_phonetizer(text, moshaf)
+            out = phonetize(text)
         except (KeyError, IndexError) as exc:  # a waqf on a leen ending, e.g. شَىْءٍ
             raise ClipExcluded(EXCLUDED_PHONETIZER_UNSUPPORTED) from exc
         spans = [m.pos for m in out.mappings]

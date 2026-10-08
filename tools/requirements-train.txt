@@ -24,6 +24,9 @@ huggingface_hub>=0.23
 soundfile>=0.12
 librosa>=0.10
 jiwer>=3.0
-quran-transcript>=0.5
+# Pinned: 0.6.x fixes the pausal taa marbuta bug hafs_phonetizer works around, but also
+# changes 52 other ayahs' references. Upgrading is an owner decision; see
+# docs/pausal-taa-marbuta.md.
+quran-transcript==0.5.2
 recitations-segmenter>=1.0   # obadx/recitation-segmenter-v2 VAD for waqf pause detection
 bitsandbytes>=0.45   # optional 8-bit optimizer; >=0.45 for Blackwell (sm_120)

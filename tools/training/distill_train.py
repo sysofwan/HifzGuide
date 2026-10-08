@@ -279,19 +279,12 @@ def seed_everything(seed: int) -> None:
 def load_teacher(device: torch.device, model_id: str = TEACHER_MODEL_ID):
     """The frozen teacher in bf16, eval mode, gradients disabled.
 
-    Loaded through the vendored modeling code (not ``AutoModel``) for the same reason
-    ``tadabur.inference`` does: the multi-level CTC class is not registered with
-    transformers, and pinning the vendored copy keeps train and filter on identical weights.
+    Loaded by :func:`training.decoding.load_hf_model`, the one loader every tool decodes a
+    Hugging Face reference through, so training targets and evaluation see identical weights.
     """
-    from tadabur.muaalem import (
-        Wav2Vec2BertForMultilevelCTC,
-        Wav2Vec2BertForMultilevelCTCConfig,
-    )
+    from training.decoding import load_hf_model
 
-    config = Wav2Vec2BertForMultilevelCTCConfig.from_pretrained(model_id)
-    teacher = Wav2Vec2BertForMultilevelCTC.from_pretrained(model_id, config=config)
-    teacher = teacher.to(device=device, dtype=torch.bfloat16)
-    teacher.eval()
+    teacher = load_hf_model(model_id).to(device=device, dtype=torch.bfloat16)
     for param in teacher.parameters():
         param.requires_grad_(False)
     return teacher

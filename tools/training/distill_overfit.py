@@ -162,7 +162,8 @@ def decoded_agreement(student_logits, teacher_logits) -> float:
     has to score what the release gate scores. If the model cannot reach near-1.0 here --
     on data it is being shown repeatedly -- no amount of data or capacity is the answer.
     """
-    from training.distill_eval import confirmed_tokens, levenshtein
+    from training.decoding import confirmed_tokens
+    from training.distill_eval import levenshtein
 
     student_ids = student_logits.argmax(dim=-1).cpu().numpy()
     teacher_ids = teacher_logits.argmax(dim=-1).cpu().numpy()

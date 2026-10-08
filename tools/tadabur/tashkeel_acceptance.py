@@ -35,6 +35,17 @@ Concordant positions never reach the audit (see :mod:`training.tashkeel_worklist
 sound for the *difference* — it is a function of the discordant cells alone — but means this
 module can say nothing about the absolute quality of either checkpoint. It answers "which
 one rejects correct recitation more often, and by how much", not "how good is it".
+
+**A static comparison requires matching decode fingerprints.** The worklist summary
+records the :class:`training.decoding.DecodeFingerprint` its frozen base outcomes were
+decoded under (``base_decode``), and every outcomes file records its own in a header line.
+They must agree on everything but the model, or a change in decode numerics would read as a
+change in over-strictness. Artifacts written before the fingerprint existed (decoded through
+``tadabur.inference`` with bf16 features and no autocast) carry none and are refused.
+Migration: re-mine the worklist with ``training.tashkeel_worklist`` and re-run
+``training.tashkeel_outcomes`` for each candidate, with the same ``--weights-dtype`` and
+``--batch-size``. Verdicts are keyed by site id, which is model-free, so they still join
+wherever the re-mined sites coincide.
 """
 
 from __future__ import annotations
@@ -48,6 +59,7 @@ from statistics import NormalDist
 
 from training.counterfactual_eval import wilson_interval
 from training.tashkeel_eval import FAILED_OUTCOMES
+from training.decoding import DecodeFingerprint
 from training.tashkeel_outcomes import SiteOutcome, read_outcomes
 from training.tashkeel_worklist import (
     RECOVERED,
@@ -377,6 +389,8 @@ def compare_static(
     adjudications: dict[str, Adjudication],
     outcomes: dict[str, SiteOutcome],
     population: dict,
+    base_decode: DecodeFingerprint,
+    candidate_decode: DecodeFingerprint,
 ) -> dict:
     """Base against a candidate over the **candidate-free** static labelled set.
 
@@ -394,7 +408,14 @@ def compare_static(
     Unlike :func:`compare` this yields each checkpoint's **absolute** false-rejection rate,
     not just the discordant cells — the static strata partition every reference vowel, so
     there is a denominator here that the paired mining throws away.
+
+    The base outcomes were frozen when the worklist was mined and the candidate's were
+    decoded later, so the two fingerprints must agree on everything but the model: otherwise
+    a change in decode numerics would read as a change in over-strictness.
     """
+    base_decode.check_comparable(
+        candidate_decode, "the worklist's base outcomes and the candidate's outcomes"
+    )
     total_vowels = population["reference_vowels"]
     strata = population["strata"]
     missing = [s.site_id for s in sites if s.site_id in adjudications and s.site_id not in outcomes]
@@ -496,15 +517,25 @@ def main() -> None:
             f"{summary.get('candidate')!r}, whose outcomes are already in the sites."
         )
     if static:
+        base_decode = DecodeFingerprint.from_dict(summary.get("base_decode"), str(summary_path))
+        candidate_decode, outcomes = read_outcomes(args.outcomes)
         result = compare_static(
-            sites, adjudications, read_outcomes(args.outcomes), summary["population"]
+            sites, adjudications, outcomes, summary["population"], base_decode, candidate_decode
         )
+        decodes = {"base": base_decode.as_dict(), "candidate": candidate_decode.as_dict()}
     else:
+        # Both outcomes in a paired worklist come from one mining run, so they share their
+        # settings by construction; there is no stored baseline to drift from.
         result = compare(sites, adjudications, summary["population"])
+        decodes = {
+            "base": summary.get("base_decode"),
+            "candidate": summary.get("candidate_decode"),
+        }
     report = {
         "base": summary.get("base"),
         "candidate": str(args.outcomes) if static else summary.get("candidate"),
         "coverage": summary.get("coverage"),
+        "decode": decodes,
         **result,
     }
     text = json.dumps(report, indent=2, ensure_ascii=False)

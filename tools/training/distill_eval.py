@@ -6,48 +6,10 @@ timesteps of every window, and 100 of those never reach the user. A student coul
 excellent there and still produce a visibly different transcript.
 
 This module measures the thing that decides: the **confirmed phoneme stream** produced by
-replaying the deployed sliding-window protocol.
-
-The protocol, replicated from ``MuaalemInference.predictSplit`` and ``RealtimeTranscriber``:
-
-* A 5 s window of audio is feature-extracted on its own (per-window normalization) and run
-  to 125 CTC timesteps.
-* ``scanCTC`` collapses the greedy argmax into contiguous runs of the same **non-blank**
-  token -- each run is one segment with a midpoint.
-* A segment is **confirmed** when ``midpoint < 25``, i.e. it sits in the oldest second of
-  the buffer, having accumulated the full 4 s of right context. Everything later stays
-  provisional and is re-decoded by the next window.
-* The window advances by 1 s and the next pass confirms the next second.
-
-Concatenating the confirmed segments across a clip gives the transcript the user sees. We
-build that stream for both models and compare them.
-
-**The final window is flushed.** Confirmation commits only the oldest second of each
-window, so without a flush the last 4 s of every clip -- and for a clip under 5 s, everything
-past the first second -- is decoded and then thrown away. Muraja does not do that: it flushes
-whatever is pending when speech stops. Leaving the flush out was defensible while this module
-only reported *character* agreement, where both models lose the same tail; it is not
-defensible for :mod:`training.distill_gate`, where the tail is missing phonemes in a
-``match_ratio`` computed against the whole ayah, and a 3 s clip was being gated on one second
-of audio. ``flush_tail`` is therefore on by default and :data:`PROTOCOL_VERSION` records it,
-because it moves every number this module and the gate produce. Pass ``flush_tail=False``
-only to reproduce a pre-flush measurement.
-
-Three gaps to the deployed protocol remain, and none of them is established to be harmless.
-The VAD gate that skips inference during silence is ignored: it treats both models
-identically, but that is not the same as not moving the agreement -- it selects which regions
-are scored, and the two models need not disagree at the same rate inside and outside them.
-The preview inferences are skipped, which is safe in that they never enter the transcript.
-And a tail of under one second past the last full window is never decoded at all -- a 5.9 s
-clip is one window covering its first 5 s, and no confirmation rule can recover audio the
-model never saw. Closing these needs a deployment replay fixture (fractional endings, short
-clips, seam-spanning runs, silence), not a choice between policies by which scores better.
-
-One thing the flush does **not** fix, because it predates it: a segment straddling the
-confirmation boundary can be emitted twice. A run at steps 18-29 of one window has midpoint
-23.5 and commits; the same audio lands at steps 0-4 of the next window and commits again.
-``confirmed_stream`` concatenates without reconciliation, faithfully to ``predictSplit``.
-Whether the device dedupes is unverified here.
+replaying the deployed sliding-window protocol, for both models, and compares them. The
+protocol itself -- windowing, ``scanCTC``, the commit rule, the silence flush -- lives in
+:mod:`training.decoding`, which every tool that replays it shares; this module scores what
+it commits at the deployed block.
 
 Usage::
 
@@ -67,132 +29,23 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-import numpy as np
 import torch
 
+from training.decoding import (
+    PROTOCOL_VERSION,
+    Decoder,
+    load_student_from_checkpoint,
+)
 from training.distill_data import (
     SAMPLE_RATE,
-    WINDOW_SAMPLES,
     discover_clips,
     split_clips,
 )
-from training.distill_loss import BLANK_ID, CONFIRM_TIMESTEPS, breakout_stats
-from training.distill_student import DEPLOYED_LOGIT_FRAMES, PRESETS, build_student
-
-# The device advances its buffer by 1 s per confirmed pass; at 125 timesteps per 5 s window
-# that is 25 timesteps, which is also ``CONFIRM_TIMESTEPS``.
-HOP_SAMPLES = SAMPLE_RATE
-
-# Bumped whenever the replayed protocol changes what a clip decodes to. Cached teacher
-# decodes carry it (``training.decode_evalset``) so a manifest built under one protocol cannot
-# be silently scored under another. v1 was the unflushed stream; v2 flushes the last window.
-PROTOCOL_VERSION = "confirmed-stream-v2-flush"
+from training.distill_loss import BLANK_ID, breakout_stats
 
 # Default for the older --audio-root path. Named so the --eval-set path can tell "the user
 # passed --num-clips" from "the user did not", and refuse the former.
 DEFAULT_AUDIO_ROOT_CLIPS = 200
-
-
-@dataclass(frozen=True)
-class Segment:
-    """A contiguous run of one non-blank CTC token -- Swift's ``CTCSegment``."""
-
-    token_id: int
-    start_step: int
-    end_step: int  # inclusive
-
-    @property
-    def midpoint(self) -> float:
-        return (self.start_step + self.end_step) / 2.0
-
-
-def scan_ctc(class_ids: np.ndarray) -> list[Segment]:
-    """Collapse per-timestep argmax into non-blank runs, mirroring Swift's ``scanCTC``.
-
-    A run ends when the token changes. Blank runs are tracked (they separate repeated
-    tokens, which is the whole point of the CTC blank) but never emitted.
-    """
-    segments: list[Segment] = []
-    current_token = -1
-    current_start = 0
-
-    for step, token in enumerate(int(t) for t in class_ids):
-        if token == current_token:
-            continue
-        if current_token != BLANK_ID and current_token != -1:
-            segments.append(Segment(current_token, current_start, step - 1))
-        current_token = token
-        current_start = step
-
-    if current_token != BLANK_ID and current_token != -1:
-        segments.append(Segment(current_token, current_start, len(class_ids) - 1))
-
-    return segments
-
-
-@dataclass(frozen=True)
-class Emission:
-    """One committed token, tagged with where in the protocol it came from.
-
-    The bare token stream is what the metric scores, but it cannot say *which part of the
-    protocol* produced a given error -- and that is the question the objective arms turn on:
-    two fifths of scored timesteps come from the flushed final window, which training weights
-    at 1x. Provenance is carried here rather than recomputed by a second pass so that there
-    stays exactly one implementation of the commit rule; a divergent second copy of this
-    protocol is the defect that hid the missing silence flush.
-    """
-
-    token_id: int
-    window: int
-    start_step: int
-    end_step: int  # inclusive
-    is_final_window: bool
-
-    @property
-    def midpoint(self) -> float:
-        return (self.start_step + self.end_step) / 2.0
-
-    @property
-    def is_flush(self) -> bool:
-        """Committed only because no later window exists to re-decode these timesteps."""
-        return self.is_final_window and self.midpoint >= float(CONFIRM_TIMESTEPS)
-
-    @property
-    def straddles_seam(self) -> bool:
-        """The run crosses the confirmation boundary, so its commit is timing-sensitive.
-
-        A segment ending one frame either side of the split is committed by a different
-        window, which is how a student that is right about the token can still be charged an
-        insertion or a deletion.
-        """
-        return self.start_step < CONFIRM_TIMESTEPS <= self.end_step
-
-
-def window_emissions(
-    class_ids: np.ndarray,
-    confirm_timesteps: int = CONFIRM_TIMESTEPS,
-    window: int = 0,
-    is_final_window: bool = False,
-) -> list[Emission]:
-    """The emissions one window commits: segments with midpoint < split, with provenance."""
-    return [
-        Emission(
-            token_id=seg.token_id,
-            window=window,
-            start_step=seg.start_step,
-            end_step=seg.end_step,
-            is_final_window=is_final_window,
-        )
-        for seg in scan_ctc(class_ids)
-        if seg.midpoint < float(confirm_timesteps)
-    ]
-
-
-def confirmed_tokens(
-    class_ids: np.ndarray, confirm_timesteps: int = CONFIRM_TIMESTEPS
-) -> list[int]:
-    """The tokens one window commits to the transcript: segments with midpoint < split."""
-    return [e.token_id for e in window_emissions(class_ids, confirm_timesteps)]
 
 
 def levenshtein(a: list[int], b: list[int]) -> int:
@@ -215,106 +68,6 @@ def levenshtein(a: list[int], b: list[int]) -> int:
             )
         previous = current
     return previous[-1]
-
-
-def confirm_split_for_window(
-    position: int, last_index: int, flush_tail: bool = True
-) -> int:
-    """How many of a window's 125 timesteps commit to the transcript.
-
-    Every window commits its oldest second (``CONFIRM_TIMESTEPS``), because the next window
-    will re-decode the rest with more right context. The **last** window has no next window,
-    so its remaining timesteps are either flushed or silently discarded -- and discarding
-    them drops the last 4 s of every clip, or all but the first second of a clip shorter than
-    one window. Muraja flushes them when speech stops; so does this, unless ``flush_tail`` is
-    off for a pre-``PROTOCOL_VERSION`` comparison.
-    """
-    if flush_tail and position == last_index:
-        return DEPLOYED_LOGIT_FRAMES
-    return CONFIRM_TIMESTEPS
-
-
-def clip_windows(num_samples: int, hop_samples: int = HOP_SAMPLES) -> list[int]:
-    """Window starts for the deployed protocol: advance 1 s while audio remains.
-
-    Only full windows confirm in steady state, so a clip shorter than one window yields a
-    single (padded) pass and the tail past the last full window is not replayed -- the same
-    place the real pipeline hands over to the silence flush.
-    """
-    if num_samples < WINDOW_SAMPLES:
-        return [0]
-    return list(range(0, num_samples - WINDOW_SAMPLES + 1, hop_samples))
-
-
-@torch.no_grad()
-def confirmed_emissions(
-    model,
-    extractor,
-    samples: np.ndarray,
-    device: torch.device,
-    batch_size: int = 16,
-    flush_tail: bool = True,
-) -> list[Emission]:
-    """Replay the deployed protocol over one clip and return its committed emissions.
-
-    Every window commits the segments in its oldest second. The **last** window additionally
-    commits everything still pending, which is the silence flush: no later window exists to
-    re-decode those timesteps, so they are either flushed or lost. Without the flush a clip
-    is transcribed only up to its last 4 seconds, and a clip shorter than one window is
-    transcribed from its first second alone.
-    """
-    starts = clip_windows(len(samples))
-
-    windows = []
-    for start in starts:
-        chunk = samples[start : start + WINDOW_SAMPLES]
-        if len(chunk) < WINDOW_SAMPLES:
-            chunk = np.pad(chunk, (0, WINDOW_SAMPLES - len(chunk)))
-        windows.append(chunk)
-
-    last_index = len(windows) - 1
-    stream: list[Emission] = []
-    for offset in range(0, len(windows), batch_size):
-        batch = windows[offset : offset + batch_size]
-        extracted = extractor(
-            batch, sampling_rate=SAMPLE_RATE, return_tensors="pt", padding=True
-        )
-        features = extracted.input_features.to(device)
-        with torch.autocast("cuda", dtype=torch.bfloat16):
-            logits = model(features, return_dict=True)["logits"]["phonemes"]
-        ids = logits.float().argmax(dim=-1).cpu().numpy()
-        for position, row in enumerate(ids, start=offset):
-            stream.extend(
-                window_emissions(
-                    row[:DEPLOYED_LOGIT_FRAMES],
-                    confirm_split_for_window(position, last_index, flush_tail),
-                    window=position,
-                    is_final_window=position == last_index,
-                )
-            )
-
-    return stream
-
-
-def confirmed_stream(
-    model,
-    extractor,
-    samples: np.ndarray,
-    device: torch.device,
-    batch_size: int = 16,
-    flush_tail: bool = True,
-) -> list[int]:
-    """The committed token stream -- :func:`confirmed_emissions` without the provenance.
-
-    This is what the metric scores. Every caller that only needs tokens uses this, so the
-    provenance fields cost nothing where they are not wanted.
-    """
-    return [
-        e.token_id
-        for e in confirmed_emissions(
-            model, extractor, samples, device, batch_size, flush_tail
-        )
-    ]
 
 
 @dataclass
@@ -399,50 +152,6 @@ def check_split_matches_checkpoint(saved: dict, val_fraction: float) -> None:
             f"The hash split is monotone, so this would score clips the student trained "
             f"on and label them held-out. Pass --val-fraction {trained}."
         )
-
-
-def load_student_from_checkpoint(
-    checkpoint_path: Path, device: torch.device, use_ema: bool = False
-):
-    """Rebuild the student described by a checkpoint and load its weights.
-
-    Returns the run's persisted config alongside the model: the eval tools need it to
-    refuse a split the checkpoint was not trained under.
-
-    ``use_ema`` selects the averaged weights a run with ``--ema-decay`` stored beside the
-    live ones. It raises rather than falling back when they are absent: silently scoring the
-    live weights under an ``--ema`` flag would report the wrong model's number, and the two
-    are meant to be compared.
-    """
-    state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    config = state["config"]
-    student = build_student(PRESETS[config["preset"]])
-    if use_ema:
-        # Reconstructed from the averager's shadow rather than read from a second stored
-        # copy: the shadow holds only the floating-point tensors, so the live state supplies
-        # the remaining buffers. Older checkpoints carry a materialised ``student_ema`` and
-        # are still read directly.
-        if "student_ema" in state:
-            student.load_state_dict(state["student_ema"])
-        elif "ema_state" in state:
-            live = state["student"]
-            shadow = state["ema_state"]["shadow"]
-            student.load_state_dict(
-                {
-                    name: (shadow[name].to(value.dtype) if name in shadow else value)
-                    for name, value in live.items()
-                }
-            )
-        else:
-            raise SystemExit(
-                f"{checkpoint_path} carries no averaged weights -- it was trained without "
-                f"--ema-decay. Drop --ema, or train a run that keeps an average."
-            )
-    else:
-        student.load_state_dict(state["student"])
-    student = student.to(device)
-    student.eval()
-    return student, config, state["step"]
 
 
 @dataclass(frozen=True)
@@ -720,7 +429,6 @@ def run_evalset(args, device) -> None:
         read_clip_audio,
         scoring_batch_size,
     )
-    from training.distill_gate import tokens_to_phonemes
     from training.distill_student import TEACHER_MODEL_ID
 
     evalset = load_manifest(args.eval_set)
@@ -729,15 +437,19 @@ def run_evalset(args, device) -> None:
     student, state_config, step = load_student_from_checkpoint(
         args.checkpoint, device, use_ema=args.ema
     )
-    extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    decoder = Decoder(
+        args.checkpoint,
+        student,
+        SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID),
+        device,
+        batch_size,
+    )
     clips_dir = Path(args.eval_set) / CLIPS_DIRNAME
 
     decodes: dict[str, str] = {}
     for index, clip in enumerate(evalset.clips, start=1):
         samples = read_clip_audio(clips_dir, clip.filename)
-        decodes[clip.filename] = tokens_to_phonemes(
-            confirmed_stream(student, extractor, samples, device, batch_size)
-        )
+        decodes[clip.filename] = decoder.decode_stream(samples)
         if index % 200 == 0:
             print(f"  {index}/{len(evalset.clips)} clips", flush=True)
 
@@ -975,6 +687,7 @@ def main() -> None:
     import soundfile as sf
     from transformers import SeamlessM4TFeatureExtractor
 
+    from training.distill_student import TEACHER_MODEL_ID
     from training.distill_train import load_teacher
 
     student, state_config, step = load_student_from_checkpoint(
@@ -982,8 +695,10 @@ def main() -> None:
     )
     preset = state_config["preset"]
     check_split_matches_checkpoint(state_config, args.val_fraction)
-    teacher = load_teacher(device)
-    extractor = SeamlessM4TFeatureExtractor.from_pretrained("obadx/muaalem-model-v3_2")
+    extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    batch_size = args.batch_size or 16
+    teacher_decoder = Decoder(TEACHER_MODEL_ID, load_teacher(device), extractor, device, batch_size)
+    student_decoder = Decoder(args.checkpoint, student, extractor, device, batch_size)
 
     # Default is the *validation* side -- the same hash split training used, so no clip the
     # student was fit on can inflate the number. --split train scores seen clips instead,
@@ -1012,11 +727,9 @@ def main() -> None:
         if samples.ndim > 1:
             samples = samples.mean(axis=1)
 
-        teacher_stream = confirmed_stream(
-            teacher, extractor, samples, device, args.batch_size or 16, args.flush_tail
-        )
-        student_stream = confirmed_stream(
-            student, extractor, samples, device, args.batch_size or 16, args.flush_tail
+        teacher_stream, student_stream = (
+            [e.token_id for e in decoder.emissions(samples, flush_tail=args.flush_tail)]
+            for decoder in (teacher_decoder, student_decoder)
         )
         pairs.append((teacher_stream, student_stream))
 

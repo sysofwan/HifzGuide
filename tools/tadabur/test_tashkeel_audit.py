@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from training.decoding import INFERENCE_POLICY, DecodeFingerprint
 from training.tashkeel_eval import DAMMA, FATHA, KASRA, MATCHED, OMITTED
 from training.tashkeel_outcomes import (
     SiteOutcome,
@@ -418,6 +419,18 @@ def _outcomes(**by_site: str) -> dict[str, SiteOutcome]:
     return {sid: SiteOutcome(sid, outcome, None) for sid, outcome in by_site.items()}
 
 
+BASE_DECODE = DecodeFingerprint(
+    model="obadx/muaalem-model-v3_2", mode="whole-spans", weights_dtype="bf16", batch_size=8,
+    device_type="cuda", autocast=True,
+)
+CANDIDATE_DECODE = DecodeFingerprint(**{**BASE_DECODE.as_dict(), "model": "runs/h448.pt"})
+DECODES = (BASE_DECODE, CANDIDATE_DECODE)
+
+
+def _header() -> str:
+    return json.dumps({"decode": CANDIDATE_DECODE.as_dict()}) + "\n"
+
+
 def test_the_static_set_scores_a_candidate_that_did_not_exist_when_it_was_labelled():
     # The decoupling this exists for: no candidate is baked into the sites, so a checkpoint
     # trained after the listening is scored by a decode alone.
@@ -430,6 +443,7 @@ def test_the_static_set_scores_a_candidate_that_did_not_exist_when_it_was_labell
     report = compare_static(
         sites, adjudications, outcomes,
         _static_population({"fatha": 400, "damma": 0, "kasra": 0}, _strata(), 4000),
+        *DECODES,
     )
     # Base failed all four confirmed sites; the candidate failed one.
     assert report["base_false_rejection_rate"] == pytest.approx(400 / 4000)
@@ -447,6 +461,7 @@ def test_the_static_estimator_gives_the_base_no_credit_in_the_stratum_it_never_f
     report = compare_static(
         sites, adjudications, outcomes,
         _static_population(_strata(), {"fatha": 300, "damma": 0, "kasra": 0}, 3000),
+        *DECODES,
     )
     assert report["base_false_rejection_rate"] == 0.0
     assert report["candidate_false_rejection_rate"] == pytest.approx(100 / 3000, abs=1e-5)
@@ -462,6 +477,7 @@ def test_a_site_the_candidate_was_never_decoded_at_is_refused_not_treated_as_acc
         compare_static(
             sites, adjudications, {},
             _static_population({"fatha": 10, "damma": 0, "kasra": 0}, _strata(), 100),
+            *DECODES,
         )
 
 
@@ -475,6 +491,7 @@ def test_unclear_leaves_the_static_denominator_too():
     report = compare_static(
         sites, adjudications, outcomes,
         _static_population({"fatha": 100, "damma": 0, "kasra": 0}, _strata(), 1000),
+        *DECODES,
     )
     fatha = next(s for s in report["base"][BASE_FAILED]["strata"] if s["vowel"] == "fatha")
     assert fatha["audited"] == 2 and fatha["unclear"] == 1
@@ -485,11 +502,53 @@ def test_unclear_leaves_the_static_denominator_too():
 def test_outcomes_round_trip_and_reject_a_foreign_schema(tmp_path):
     path = tmp_path / "outcomes.jsonl"
     rows = [SiteOutcome("a" * 16, MATCHED, FATHA), SiteOutcome("b" * 16, OMITTED, None)]
-    write_outcomes(path, rows)
-    assert read_outcomes(path) == {row.site_id: row for row in rows}
-    path.write_text('{"site_id": "x", "outcome": "matched"}\n', encoding="utf-8")
+    write_outcomes(path, rows, CANDIDATE_DECODE)
+    assert read_outcomes(path) == (CANDIDATE_DECODE, {row.site_id: row for row in rows})
+    path.write_text(_header() + '{"site_id": "x", "outcome": "matched"}\n', encoding="utf-8")
     with pytest.raises(ValueError, match="outcome schema"):
         read_outcomes(path)
+
+
+def test_a_legacy_outcomes_file_with_no_decode_fingerprint_is_refused(tmp_path):
+    # Written before the fingerprint existed, under the old span numerics: nothing can say
+    # whether it is comparable to the worklist it would be joined to.
+    path = tmp_path / "outcomes.jsonl"
+    path.write_text(
+        json.dumps({"site_id": "a" * 16, "outcome": MATCHED, "decoded_vowel": FATHA}) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="no decode fingerprint"):
+        read_outcomes(path)
+
+
+@pytest.mark.parametrize(
+    "drift",
+    [
+        {"policy": "bf16-features-no-autocast"},
+        {"weights_dtype": "fp32"},
+        {"batch_size": 16},
+        {"mode": "confirmed-stream-v2-flush"},
+        {"device_type": "cpu", "autocast": False},
+    ],
+)
+def test_the_static_comparison_refuses_outcomes_decoded_under_other_settings(drift):
+    # The base outcomes are frozen at mining time; a candidate decoded under other numerics
+    # would show the numerics change as an acceptance gain or loss.
+    sites = [_static_site(1, BASE_FAILED)]
+    adjudications = {sites[0].site_id: _verdict(sites[0], "fatha")}
+    candidate = DecodeFingerprint(**{**CANDIDATE_DECODE.as_dict(), **drift})
+    with pytest.raises(ValueError, match="Regenerate the baseline"):
+        compare_static(
+            sites, adjudications, _outcomes(**{sites[0].site_id: MATCHED}),
+            _static_population({"fatha": 10, "damma": 0, "kasra": 0}, _strata(), 100),
+            BASE_DECODE, candidate,
+        )
+
+
+def test_a_worklist_summary_with_no_base_fingerprint_is_refused_as_legacy():
+    with pytest.raises(ValueError, match="no decode fingerprint"):
+        DecodeFingerprint.from_dict(None, "worklist.jsonl.summary.json")
+    assert BASE_DECODE.policy == INFERENCE_POLICY
 
 
 def test_outcomes_are_keyed_by_the_same_site_id_the_worklist_uses():
@@ -507,7 +566,8 @@ def test_an_unrecognised_outcome_is_refused_rather_than_read_as_a_success(tmp_pa
     # fail in. Caught at read time instead.
     path = tmp_path / "outcomes.jsonl"
     path.write_text(
-        json.dumps({"site_id": "a" * 16, "outcome": "omited", "decoded_vowel": None}) + "\n",
+        _header()
+        + json.dumps({"site_id": "a" * 16, "outcome": "omited", "decoded_vowel": None}) + "\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="not one of"):
@@ -519,7 +579,8 @@ def test_two_outcomes_for_one_site_are_refused_rather_than_last_wins(tmp_path):
     # checkpoint the survivor came from is unrecoverable.
     path = tmp_path / "outcomes.jsonl"
     path.write_text(
-        json.dumps({"site_id": "a" * 16, "outcome": MATCHED, "decoded_vowel": FATHA}) + "\n"
+        _header()
+        + json.dumps({"site_id": "a" * 16, "outcome": MATCHED, "decoded_vowel": FATHA}) + "\n"
         + json.dumps({"site_id": "a" * 16, "outcome": OMITTED, "decoded_vowel": None}) + "\n",
         encoding="utf-8",
     )

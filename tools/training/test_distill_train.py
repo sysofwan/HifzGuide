@@ -278,7 +278,7 @@ def test_the_averaged_weights_round_trip_through_the_loader(tmp_path):
     """
     import torch
 
-    from training.distill_eval import load_student_from_checkpoint
+    from training.decoding import load_student_from_checkpoint
     from training.distill_student import PRESETS, build_student
     from training.distill_train import TrainConfig, WeightAverage, save_checkpoint
 
@@ -313,7 +313,7 @@ def test_asking_for_averaged_weights_a_run_never_kept_is_an_error(tmp_path):
     import pytest
     import torch
 
-    from training.distill_eval import load_student_from_checkpoint
+    from training.decoding import load_student_from_checkpoint
     from training.distill_student import PRESETS, build_student
     from training.distill_train import TrainConfig, save_checkpoint
 

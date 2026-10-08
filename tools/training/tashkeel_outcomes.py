@@ -20,6 +20,15 @@ checkpoint put the reference vowel on the reference carrier, and everything in
 recorded as ``unanchored`` by the same rules the aggregate report uses, so a number from
 here and a number from ``tashkeel_eval`` cannot disagree about what "failed" means.
 
+The file opens with a ``{"decode": ...}`` header holding the
+:class:`training.decoding.DecodeFingerprint` of the decode behind it;
+:mod:`tadabur.tashkeel_acceptance` refuses outcomes whose fingerprint does not match the
+worklist's frozen base decode, and refuses a file with none.
+
+``--model`` is any reference :class:`training.decoding.Decoder` loads -- the base teacher's
+hub id, a merged model directory, or a distilled student's checkpoint -- so the base model
+and ``h448`` are scored at the same sites the same way.
+
 Runs on Linux + CUDA (see ``tools/README.md``).
 
 Usage::
@@ -28,7 +37,7 @@ Usage::
         --worklist  audit_run/seg_v21/tashkeel_static.jsonl \\
         --labels    audit_run/seg_v21/windowed_labels_v2.jsonl \\
         --audio-dir audit_run/clips_v2 \\
-        --model     audit_run/seg_v21/rung4/merged \\
+        --model     runs/h448_stream/checkpoint.pt \\
         --out       audit_run/seg_v21/tashkeel_outcomes_rung4.jsonl
 """
 
@@ -39,11 +48,13 @@ import json
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
+from training.decoding import DecodeFingerprint
 from training.tashkeel_eval import (
     VOWEL_OUTCOMES,
     _decode_windows,
     _load_windows,
     vowel_sites,
+    write_text_atomically,
 )
 from training.tashkeel_worklist import TashkeelSite, read_worklist, site_id
 
@@ -127,16 +138,25 @@ def outcomes_for_window(
     return found
 
 
-def write_outcomes(path: Path, rows: list[SiteOutcome]) -> None:
-    """One JSON object per line, ordered by site id so two runs diff cleanly."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        for row in sorted(rows, key=lambda r: r.site_id):
-            handle.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+def write_outcomes(path: Path, rows: list[SiteOutcome], decode: DecodeFingerprint) -> None:
+    """A ``{"decode": ...}`` header line, then one outcome per line ordered by site id.
+
+    The header is the decode's fingerprint: these outcomes are compared against a worklist's
+    frozen base outcomes, which is only sound under the same decode settings. The whole file
+    is built before anything is written, and swapped in atomically.
+    """
+    lines = [json.dumps({"decode": decode.as_dict()}, ensure_ascii=False)] + [
+        json.dumps(asdict(row), ensure_ascii=False)
+        for row in sorted(rows, key=lambda r: r.site_id)
+    ]
+    write_text_atomically(path, "".join(line + "\n" for line in lines))
 
 
-def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
-    """Read outcomes keyed by site id, rejecting anything that is not this schema.
+def read_outcomes(path: Path) -> tuple[DecodeFingerprint, dict[str, SiteOutcome]]:
+    """Read the decode fingerprint and the outcomes keyed by site id, rejecting anything else.
+
+    A file with no fingerprint header predates it (a legacy decode) and is refused: nothing
+    can say whether it is comparable to the worklist it would be joined to.
 
     A silently-tolerated stray field here would be a checkpoint's result being read into the
     wrong column of a comparison, so the schema is checked rather than trusted.
@@ -151,10 +171,17 @@ def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
     a listener revising a verdict is expected, two outcomes for one site means two decodes were
     concatenated and there is no way to tell which checkpoint the survivor came from.
     """
+    lines = [
+        (number, line)
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+        if line.strip()
+    ]
+    header = json.loads(lines[0][1]) if lines else {}
+    decode = DecodeFingerprint.from_dict(
+        header.get("decode") if set(header) == {"decode"} else None, str(path)
+    )
     rows: dict[str, SiteOutcome] = {}
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        if not line.strip():
-            continue
+    for number, line in lines[1:]:
         record = json.loads(line)
         missing = set(OUTCOME_FIELDS) - set(record)
         unknown = set(record) - set(OUTCOME_FIELDS)
@@ -175,10 +202,12 @@ def read_outcomes(path: Path) -> dict[str, SiteOutcome]:
                 "means two decodes were concatenated; which checkpoint won is not recoverable."
             )
         rows[record["site_id"]] = SiteOutcome(**record)
-    return rows
+    return decode, rows
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from training.decoding import MODEL_REF_HELP, add_weights_dtype_argument
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worklist", type=Path, required=True,
                         help="the audited worklist (training.tashkeel_worklist).")
@@ -187,11 +216,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--audio-dir", type=Path, required=True,
                         help="staged 16 kHz clip directory.")
     parser.add_argument("--model", required=True,
-                        help="checkpoint to score at the audited sites.")
+                        help=f"model to score at the audited sites: {MODEL_REF_HELP}.")
     parser.add_argument("--split", default="val",
                         help="label split the worklist was mined from.")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", default="cuda")
+    add_weights_dtype_argument(parser)
     parser.add_argument("--out", type=Path, required=True, help="outcomes JSONL.")
     return parser
 
@@ -227,11 +257,13 @@ def main() -> None:
         flush=True,
     )
 
-    decodes = _decode_windows(args.model, labels, args.audio_dir, args.batch_size, args.device)
+    decodes, fingerprint = _decode_windows(
+        args.model, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
+    )
 
     rows: list[SiteOutcome] = []
-    for label, decode in zip(labels, decodes):
-        rows.extend(outcomes_for_window(label.phoneme_label, decode, label, wanted))
+    for label, window_decode in zip(labels, decodes):
+        rows.extend(outcomes_for_window(label.phoneme_label, window_decode, label, wanted))
 
     missing = wanted - {row.site_id for row in rows}
     if missing:
@@ -241,7 +273,7 @@ def main() -> None:
             "labels disagree about a window's reference — not that the model skipped them."
         )
 
-    write_outcomes(args.out, rows)
+    write_outcomes(args.out, rows, fingerprint)
     print(f"Wrote {len(rows)} outcomes to {args.out}")
 
 

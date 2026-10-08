@@ -60,6 +60,7 @@ from training.tashkeel_eval import (
     _load_windows,
     coverage_of,
     vowel_sites,
+    write_text_atomically,
 )
 
 #: Human-readable names for the three colours, for the audit UI and per-bucket sampling.
@@ -339,10 +340,9 @@ def sample_worklist(
 
 def write_worklist(path: Path, rows: list[TashkeelSite]) -> None:
     """Write the worklist as one JSON object per line, UTF-8, Arabic left readable."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+    write_text_atomically(
+        path, "".join(json.dumps(asdict(row), ensure_ascii=False) + "\n" for row in rows)
+    )
 
 
 def read_worklist(path: Path) -> list[TashkeelSite]:
@@ -369,17 +369,20 @@ def read_worklist(path: Path) -> list[TashkeelSite]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from training.decoding import MODEL_REF_HELP, add_weights_dtype_argument
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--labels", type=Path, required=True,
                         help="windowed CTC labels JSONL (training.windowed_labels).")
     parser.add_argument("--audio-dir", type=Path, required=True,
                         help="staged 16 kHz clip directory.")
     parser.add_argument("--candidate", default=None,
-                        help="fine-tuned checkpoint (merged model dir or hub id). Omit to "
+                        help=f"candidate model ({MODEL_REF_HELP}). Omit to "
                              "mine the candidate-free static set, stratified on the frozen "
                              "base outcome, which can be labelled before a candidate exists.")
     parser.add_argument("--base", default="obadx/muaalem-model-v3_2",
-                        help="base checkpoint the candidate is compared against.")
+                        help=f"base model the candidate is compared against "
+                             f"({MODEL_REF_HELP}).")
     parser.add_argument("--split", default="val",
                         help="label split to mine (default: the held-out val split).")
     parser.add_argument("--limit", type=int, default=0,
@@ -390,6 +393,7 @@ def build_parser() -> argparse.ArgumentParser:
                              f"{DEFAULT_PER_BUCKET}; static default {STATIC_PER_BUCKET}).")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--device", default="cuda")
+    add_weights_dtype_argument(parser)
     parser.add_argument("--out", type=Path, required=True,
                         help="worklist JSONL; a '.summary.json' sidecar is written beside it.")
     return parser
@@ -414,42 +418,53 @@ def main() -> None:
         flush=True,
     )
 
-    base = _decode_windows(args.base, labels, args.audio_dir, args.batch_size, args.device)
+    def decode(model_ref: str):
+        return _decode_windows(
+            model_ref, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
+        )
+
+    base, base_fingerprint = decode(args.base)
+    candidate_fingerprint = None
 
     rows: list[TashkeelSite] = []
     if args.candidate:
-        candidate = _decode_windows(
-            args.candidate, labels, args.audio_dir, args.batch_size, args.device
-        )
-        for label, reference, base_decode, candidate_decode in zip(
+        candidate, candidate_fingerprint = decode(args.candidate)
+        for label, reference, base_window, candidate_window in zip(
             labels, references, base, candidate
         ):
-            rows.extend(discordant_sites(reference, base_decode, candidate_decode, label))
+            rows.extend(discordant_sites(reference, base_window, candidate_window, label))
         strata_names, per_bucket = DIRECTIONS, args.per_bucket or DEFAULT_PER_BUCKET
     else:
-        for label, reference, base_decode in zip(labels, references, base):
-            rows.extend(static_sites(reference, base_decode, label))
+        for label, reference, base_window in zip(labels, references, base):
+            rows.extend(static_sites(reference, base_window, label))
         strata_names = STATIC_STRATA
         per_bucket = args.per_bucket or STATIC_PER_BUCKET
 
     drawn = sample_worklist(rows, per_bucket)
-    write_worklist(args.out, drawn)
-
+    # Built in full before either file is written, so a failure leaves neither a worklist
+    # without its sidecar nor a sidecar describing a different worklist.
     summary = {
         "coverage": coverage,
         "base": args.base,
         "candidate": args.candidate,
+        # Which decode the sites' base (and candidate) outcomes came from. A static
+        # worklist's frozen base outcomes are compared against outcomes decoded later, which
+        # tadabur.tashkeel_acceptance allows only under a matching fingerprint.
+        "base_decode": base_fingerprint.as_dict(),
+        "candidate_decode": (
+            candidate_fingerprint.as_dict() if candidate_fingerprint else None
+        ),
         "mode": "paired" if args.candidate else "static",
         "population": population_counts(references, rows, strata_names),
         "sampled": len(drawn),
         "per_bucket": per_bucket,
     }
+    summary_text = json.dumps(summary, indent=2, ensure_ascii=False)
     summary_path = args.out.with_suffix(args.out.suffix + ".summary.json")
-    summary_path.write_text(
-        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    write_worklist(args.out, drawn)
+    write_text_atomically(summary_path, summary_text)
 
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    print(summary_text)
     print(f"Wrote {len(drawn)} sites to {args.out} (summary: {summary_path})")
 
 

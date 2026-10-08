@@ -15,7 +15,7 @@ character agreement that preserves 99% of gate decisions is a different proposit
 one that flips them.
 
 Both models are decoded through the **deployed** protocol
-(``training.distill_eval.confirmed_stream``: 5 s window, 1 s hop, ``midpoint < 25``
+(``training.decoding.Decoder.decode_stream``: 5 s window, 1 s hop, ``midpoint < 25``
 confirmation), not the whole-clip pass ``tadabur.filter`` uses, because the confirmed
 stream is what the device actually produces and therefore what the scorer actually sees.
 
@@ -42,12 +42,9 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from training.decoding import Decoder, load_student_from_checkpoint, tokens_to_phonemes
 from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
-from training.distill_eval import (
-    check_split_matches_checkpoint,
-    confirmed_stream,
-    load_student_from_checkpoint,
-)
+from training.distill_eval import check_split_matches_checkpoint
 
 # ``tadabur_spk0039_S5_A31_60e0c708_000042.wav`` -> surah index 5 (0-based), ayah 31.
 CLIP_NAME_PATTERN = re.compile(r"_S(\d+)_A(\d+)_")
@@ -65,24 +62,6 @@ def parse_surah_ayah(filename: str) -> str | None:
         return None
     surah_index, ayah = int(match.group(1)), int(match.group(2))
     return f"{surah_index + 1}:{ayah}"
-
-
-def tokens_to_phonemes(token_ids: list[int]) -> str:
-    """Map already-collapsed CTC token ids to their phoneme characters.
-
-    ``PHONEME_ID_TO_CHAR`` is a **tuple indexed by class id**, not a mapping. Testing
-    ``id in PHONEME_ID_TO_CHAR`` therefore asks whether the *integer* is one of the
-    characters, which is never true -- it silently yields an empty string, every gate
-    scores 0.0, and the result reads as "the model produces nothing" rather than "the
-    lookup is wrong". Guard the range explicitly instead.
-    """
-    from tadabur.phoneme_vocab import PHONEME_ID_TO_CHAR, PHONEME_PAD_ID
-
-    return "".join(
-        PHONEME_ID_TO_CHAR[t]
-        for t in token_ids
-        if t != PHONEME_PAD_ID and 0 <= t < len(PHONEME_ID_TO_CHAR)
-    )
 
 
 @dataclass
@@ -248,13 +227,17 @@ def main() -> None:
 
     from tadabur.reference_phonemes import load_reference_phonemes
     from tadabur.scorer import BALANCED_SCORER
+    from training.distill_student import TEACHER_MODEL_ID
     from training.distill_train import load_teacher
 
     student, state_config, step = load_student_from_checkpoint(args.checkpoint, device)
     preset = state_config["preset"]
     check_split_matches_checkpoint(state_config, args.val_fraction)
-    teacher = load_teacher(device)
-    extractor = SeamlessM4TFeatureExtractor.from_pretrained("obadx/muaalem-model-v3_2")
+    extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    teacher_decoder = Decoder(
+        TEACHER_MODEL_ID, load_teacher(device), extractor, device, args.batch_size
+    )
+    student_decoder = Decoder(args.checkpoint, student, extractor, device, args.batch_size)
     references = load_reference_phonemes()
 
     train_clips, val_clips = split_clips(discover_clips(args.audio_root), args.val_fraction)
@@ -279,12 +262,8 @@ def main() -> None:
         if samples.ndim > 1:
             samples = samples.mean(axis=1)
 
-        teacher_text = tokens_to_phonemes(
-            confirmed_stream(teacher, extractor, samples, device, args.batch_size)
-        )
-        student_text = tokens_to_phonemes(
-            confirmed_stream(student, extractor, samples, device, args.batch_size)
-        )
+        teacher_text = teacher_decoder.decode_stream(samples)
+        student_text = student_decoder.decode_stream(samples)
         teacher_gate = BALANCED_SCORER.gate(teacher_text, reference)
         student_gate = BALANCED_SCORER.gate(student_text, reference)
         pairs.append(

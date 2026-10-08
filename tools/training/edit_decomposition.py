@@ -44,7 +44,8 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from training.distill_eval import CONFIRM_TIMESTEPS, Emission
+from training.decoding import Emission
+from training.distill_loss import CONFIRM_TIMESTEPS
 
 # Which branch the backtrace tries first when several are equally optimal.
 #
@@ -309,12 +310,7 @@ def main() -> None:
         read_clip_audio,
         scoring_batch_size,
     )
-    from training.distill_eval import (
-        confirmed_emissions,
-        confirmed_stream,
-        load_student_from_checkpoint,
-    )
-    from training.distill_gate import tokens_to_phonemes
+    from training.decoding import Decoder, load_student_from_checkpoint, tokens_to_phonemes
     from training.distill_student import TEACHER_MODEL_ID
     from training.distill_train import load_teacher
 
@@ -335,11 +331,12 @@ def main() -> None:
     check_provenance(evalset, TEACHER_MODEL_ID)
     batch_size = scoring_batch_size(evalset, args.batch_size)
 
-    teacher = load_teacher(device)
     student, _, step = load_student_from_checkpoint(
         args.checkpoint, device, use_ema=args.ema
     )
     extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    teacher_decoder = Decoder(TEACHER_MODEL_ID, load_teacher(device), extractor, device, batch_size)
+    student_decoder = Decoder(args.checkpoint, student, extractor, device, batch_size)
     clips_dir = Path(args.eval_set) / CLIPS_DIRNAME
 
     clips = evalset.subset(args.split)
@@ -350,7 +347,7 @@ def main() -> None:
     per_clip: list[tuple[list[Emission], list[int]]] = []
     for index, clip in enumerate(clips, start=1):
         samples = read_clip_audio(clips_dir, clip.filename)
-        emissions = confirmed_emissions(teacher, extractor, samples, device, batch_size)
+        emissions = teacher_decoder.emissions(samples)
         # The guard: provenance is only meaningful if this decode is the decode the frozen
         # set was built from. The teacher is bit-identical at a fixed batch size, so this is
         # an equality, not a tolerance.
@@ -366,7 +363,7 @@ def main() -> None:
         per_clip.append(
             (
                 emissions,
-                confirmed_stream(student, extractor, samples, device, batch_size),
+                [e.token_id for e in student_decoder.emissions(samples)],
             )
         )
         if index % 100 == 0:

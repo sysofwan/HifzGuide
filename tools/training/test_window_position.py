@@ -11,7 +11,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from training.distill_eval import CONFIRM_TIMESTEPS, confirmed_tokens
+from training.decoding import confirmed_tokens
+from training.distill_loss import CONFIRM_TIMESTEPS
 from training import window_position as wp
 
 

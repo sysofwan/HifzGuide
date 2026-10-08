@@ -1,0 +1,45 @@
+{
+  "blind_check": {
+    "consonant_swap decoy": 5,
+    "consonant_swap edit": 5,
+    "shaddah_added decoy": 5,
+    "shaddah_added edit": 5,
+    "shaddah_removed decoy": 5,
+    "shaddah_removed edit": 5
+  },
+  "candidates": {
+    "consonant_swap ذ↔ز": 108,
+    "consonant_swap ذ↔ظ": 33,
+    "consonant_swap س↔ص": 153,
+    "consonant_swap ض↔ظ": 6,
+    "shaddah_added shaddah": 138,
+    "shaddah_removed shaddah": 332
+  },
+  "decode_fingerprint": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+  },
+  "fade_samples": 160,
+  "frame_clips_timed": 600,
+  "frame_clips_without_reference": 0,
+  "items": 494,
+  "output_seconds": 9870.1,
+  "pair_reciters": 42,
+  "pairs": {
+    "consonant_swap ذ↔ز": 41,
+    "consonant_swap ذ↔ظ": 21,
+    "consonant_swap س↔ص": 60,
+    "consonant_swap ض↔ظ": 5,
+    "shaddah_added shaddah": 60,
+    "shaddah_removed shaddah": 60
+  },
+  "per_reciter": 3,
+  "quota_per_mark": 60,
+  "salt": "issue-88-synthetic-edits-v1",
+  "stretch_samples": 2880
+}

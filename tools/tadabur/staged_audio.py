@@ -48,6 +48,7 @@ from .dataset_source import canonical_surah_ayah, resolve_audio_filename
 from .truth_sites import (
     NUM_SHARDS,
     P35_FIXTURE,
+    SYNTHETIC_EDIT,
     WAQF_BOUNDARY,
     TruthSite,
     audio_sha256,
@@ -61,8 +62,9 @@ REGISTRY_PATH = STAGED_AUDIO_DIR / "clips.jsonl"
 
 #: The clip was staged for the h448-unseen mining pool (:mod:`tadabur.mining_pool`).
 MINING_POOL = "mining_pool"
-#: Why a clip was staged: truth sites of one source, or the mining pool.
-USES = frozenset({WAQF_BOUNDARY, P35_FIXTURE, MINING_POOL})
+#: Why a clip was staged: truth sites of one source, the mining pool, or a synthetic-edit
+#: source or donor (:mod:`tadabur.synthetic_edits`, staged into a directory of its own).
+USES = frozenset({WAQF_BOUNDARY, P35_FIXTURE, MINING_POOL, SYNTHETIC_EDIT})
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -429,6 +431,10 @@ def main() -> None:
     for name, uses in _pool_requests(args.pool_selection).items():
         requests[name] = requests.get(name, frozenset()) | uses
     registry = load_staged_clips(args.registry) if args.registry.exists() else {}
+    # Synthetic-edit clips are staged into a directory of their own by
+    # ``tadabur.synthetic_edits stage``; this run passes their rows through untouched.
+    edit_rows = {n: c for n, c in registry.items() if c.uses == (SYNTHETIC_EDIT,)}
+    registry = {n: c for n, c in registry.items() if n not in edit_rows}
 
     def shard_rows(shard: int) -> Iterator[dict]:
         return iter_shard_rows(
@@ -437,14 +443,14 @@ def main() -> None:
         )
 
     def checkpoint(staged: dict[str, StagedClip]) -> None:
-        write_staged_clips(staged.values(), args.registry)
+        write_staged_clips([*edit_rows.values(), *staged.values()], args.registry)
         print(f"  {len(staged)} clips staged so far", flush=True)
 
     staged, unlocatable = stage_clips(
         requests, read_shard_index(args.index), args.audio_dir, shard_rows, registry,
         on_shard_done=checkpoint,
     )
-    write_staged_clips(staged.values(), args.registry)
+    write_staged_clips([*edit_rows.values(), *staged.values()], args.registry)
     print(f"Staged {len(staged)} clips into {args.audio_dir}; registry {args.registry}")
     if unlocatable:
         print(f"{len(unlocatable)} requested clips are in no indexed shard:")

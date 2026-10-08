@@ -52,6 +52,10 @@ wandb/
 !tools/tadabur/staged_audio/clips.jsonl
 # The h448-unseen mining pool's manifest (#83): segments, realized references, word times.
 !tools/tadabur/mining_pool/clips.jsonl
+# Synthetic edits and their decoys (#88): every item's provenance and label, and the
+# blind-check worklist (truth-site skeletons) the listening session answers.
+!tools/tadabur/synthetic_edits/edits.jsonl
+!tools/tadabur/synthetic_edits/blind_check.jsonl
 # Frozen P7.H conditional-reference integration cases (#35) — the product gate's source-of-truth.
 !tools/tadabur/waqf_integration_fixtures/waqf_integration_cases.jsonl
 # The tashkeel counterfactual item manifest (#10) — the recording sheet's machine-readable

@@ -60,6 +60,7 @@ from training.tashkeel_eval import (
     _load_windows,
     coverage_of,
     vowel_sites,
+    write_text_atomically,
 )
 
 #: Human-readable names for the three colours, for the audit UI and per-bucket sampling.
@@ -339,10 +340,9 @@ def sample_worklist(
 
 def write_worklist(path: Path, rows: list[TashkeelSite]) -> None:
     """Write the worklist as one JSON object per line, UTF-8, Arabic left readable."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+    write_text_atomically(
+        path, "".join(json.dumps(asdict(row), ensure_ascii=False) + "\n" for row in rows)
+    )
 
 
 def read_worklist(path: Path) -> list[TashkeelSite]:
@@ -423,26 +423,26 @@ def main() -> None:
             model_ref, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
         )
 
-    base, base_decode = decode(args.base)
-    candidate_decode = None
+    base, base_fingerprint = decode(args.base)
+    candidate_fingerprint = None
 
     rows: list[TashkeelSite] = []
     if args.candidate:
-        candidate, candidate_decode = decode(args.candidate)
-        for label, reference, base_decode, candidate_decode in zip(
+        candidate, candidate_fingerprint = decode(args.candidate)
+        for label, reference, base_window, candidate_window in zip(
             labels, references, base, candidate
         ):
-            rows.extend(discordant_sites(reference, base_decode, candidate_decode, label))
+            rows.extend(discordant_sites(reference, base_window, candidate_window, label))
         strata_names, per_bucket = DIRECTIONS, args.per_bucket or DEFAULT_PER_BUCKET
     else:
-        for label, reference, base_decode in zip(labels, references, base):
-            rows.extend(static_sites(reference, base_decode, label))
+        for label, reference, base_window in zip(labels, references, base):
+            rows.extend(static_sites(reference, base_window, label))
         strata_names = STATIC_STRATA
         per_bucket = args.per_bucket or STATIC_PER_BUCKET
 
     drawn = sample_worklist(rows, per_bucket)
-    write_worklist(args.out, drawn)
-
+    # Built in full before either file is written, so a failure leaves neither a worklist
+    # without its sidecar nor a sidecar describing a different worklist.
     summary = {
         "coverage": coverage,
         "base": args.base,
@@ -450,19 +450,21 @@ def main() -> None:
         # Which decode the sites' base (and candidate) outcomes came from. A static
         # worklist's frozen base outcomes are compared against outcomes decoded later, which
         # tadabur.tashkeel_acceptance allows only under a matching fingerprint.
-        "base_decode": base_decode.as_dict(),
-        "candidate_decode": candidate_decode.as_dict() if candidate_decode else None,
+        "base_decode": base_fingerprint.as_dict(),
+        "candidate_decode": (
+            candidate_fingerprint.as_dict() if candidate_fingerprint else None
+        ),
         "mode": "paired" if args.candidate else "static",
         "population": population_counts(references, rows, strata_names),
         "sampled": len(drawn),
         "per_bucket": per_bucket,
     }
+    summary_text = json.dumps(summary, indent=2, ensure_ascii=False)
     summary_path = args.out.with_suffix(args.out.suffix + ".summary.json")
-    summary_path.write_text(
-        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    write_worklist(args.out, drawn)
+    write_text_atomically(summary_path, summary_text)
 
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    print(summary_text)
     print(f"Wrote {len(drawn)} sites to {args.out} (summary: {summary_path})")
 
 

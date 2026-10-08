@@ -227,14 +227,17 @@ def main() -> None:
 
     from tadabur.reference_phonemes import load_reference_phonemes
     from tadabur.scorer import BALANCED_SCORER
+    from training.distill_student import TEACHER_MODEL_ID
     from training.distill_train import load_teacher
 
     student, state_config, step = load_student_from_checkpoint(args.checkpoint, device)
     preset = state_config["preset"]
     check_split_matches_checkpoint(state_config, args.val_fraction)
-    extractor = SeamlessM4TFeatureExtractor.from_pretrained("obadx/muaalem-model-v3_2")
-    teacher_decoder = Decoder(load_teacher(device), extractor, device, args.batch_size)
-    student_decoder = Decoder(student, extractor, device, args.batch_size)
+    extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
+    teacher_decoder = Decoder(
+        TEACHER_MODEL_ID, load_teacher(device), extractor, device, args.batch_size
+    )
+    student_decoder = Decoder(args.checkpoint, student, extractor, device, args.batch_size)
     references = load_reference_phonemes()
 
     train_clips, val_clips = split_clips(discover_clips(args.audio_root), args.val_fraction)

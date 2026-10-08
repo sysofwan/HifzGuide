@@ -419,8 +419,11 @@ def _outcomes(**by_site: str) -> dict[str, SiteOutcome]:
     return {sid: SiteOutcome(sid, outcome, None) for sid, outcome in by_site.items()}
 
 
-BASE_DECODE = DecodeFingerprint.for_spans("obadx/muaalem-model-v3_2", "bf16", 8)
-CANDIDATE_DECODE = DecodeFingerprint.for_spans("runs/h448/checkpoint.pt", "bf16", 8)
+BASE_DECODE = DecodeFingerprint(
+    model="obadx/muaalem-model-v3_2", mode="whole-spans", weights_dtype="bf16", batch_size=8,
+    device_type="cuda", autocast=True,
+)
+CANDIDATE_DECODE = DecodeFingerprint(**{**BASE_DECODE.as_dict(), "model": "runs/h448.pt"})
 DECODES = (BASE_DECODE, CANDIDATE_DECODE)
 
 
@@ -525,6 +528,7 @@ def test_a_legacy_outcomes_file_with_no_decode_fingerprint_is_refused(tmp_path):
         {"weights_dtype": "fp32"},
         {"batch_size": 16},
         {"mode": "confirmed-stream-v2-flush"},
+        {"device_type": "cpu", "autocast": False},
     ],
 )
 def test_the_static_comparison_refuses_outcomes_decoded_under_other_settings(drift):

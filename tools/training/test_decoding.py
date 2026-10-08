@@ -245,21 +245,42 @@ def test_the_deployed_stream_keeps_its_protocol_version_and_other_blocks_get_the
     assert dc.stream_protocol(0, flush_tail=False) == "confirmed-stream-v1"
 
 
+def _decoder(model_ref: str, device: str = "cpu", batch_size: int = 16, dtype=torch.float32):
+    """A decoder around a one-parameter module: enough to read its effective settings."""
+    return dc.Decoder(model_ref, torch.nn.Linear(1, 1).to(dtype), None, device, batch_size)
+
+
+def test_a_fingerprint_reads_the_decoder_as_it_actually_runs():
+    on_cpu = _decoder("h448.pt").fingerprint(dc.SPANS)
+    assert (on_cpu.device_type, on_cpu.autocast, on_cpu.weights_dtype) == ("cpu", False, "fp32")
+    on_cuda = _decoder("h448.pt", device="cuda", dtype=torch.bfloat16).fingerprint(dc.SPANS)
+    assert (on_cuda.device_type, on_cuda.autocast, on_cuda.weights_dtype) == ("cuda", True, "bf16")
+    assert on_cpu.policy == dc.INFERENCE_POLICY
+
+
+def test_fp32_on_cpu_and_fp32_on_cuda_are_not_comparable():
+    """Same --weights-dtype, different numerics: CUDA runs under bf16 autocast, CPU does not."""
+    on_cpu = _decoder("teacher").fingerprint(dc.SPANS)
+    on_cuda = _decoder("h448.pt", device="cuda").fingerprint(dc.SPANS)
+    with pytest.raises(ValueError, match="autocast"):
+        on_cpu.check_comparable(on_cuda, "two models")
+
+
 def test_fingerprints_compare_models_but_not_settings():
-    base = dc.DecodeFingerprint.for_stream("teacher", "bf16", 16)
-    base.check_comparable(dc.DecodeFingerprint.for_stream("h448.pt", "bf16", 16), "two models")
+    base = _decoder("teacher").fingerprint(dc.PROTOCOL_VERSION)
+    base.check_comparable(_decoder("h448.pt").fingerprint(dc.PROTOCOL_VERSION), "two models")
     for other in (
-        dc.DecodeFingerprint.for_stream("h448.pt", "bf16", 16, block=1),
-        dc.DecodeFingerprint.for_spans("h448.pt", "bf16", 16),
-        dc.DecodeFingerprint.for_stream("h448.pt", "fp32", 16),
-        dc.DecodeFingerprint.for_stream("h448.pt", "bf16", 8),
+        _decoder("h448.pt").fingerprint(dc.stream_protocol(block=1)),
+        _decoder("h448.pt").fingerprint(dc.SPANS),
+        _decoder("h448.pt", dtype=torch.bfloat16).fingerprint(dc.PROTOCOL_VERSION),
+        _decoder("h448.pt", batch_size=8).fingerprint(dc.PROTOCOL_VERSION),
     ):
         with pytest.raises(ValueError, match="Regenerate the baseline"):
             base.check_comparable(other, "two models")
 
 
 def test_a_fingerprint_round_trips_and_a_malformed_one_is_refused():
-    fingerprint = dc.DecodeFingerprint.for_spans("teacher", "bf16", 8)
+    fingerprint = _decoder("teacher").fingerprint(dc.SPANS)
     assert dc.DecodeFingerprint.from_dict(fingerprint.as_dict(), "x") == fingerprint
     with pytest.raises(ValueError, match="malformed"):
         dc.DecodeFingerprint.from_dict({"model": "teacher"}, "x")
@@ -422,7 +443,7 @@ def test_the_deployed_stream_is_the_pre_refactor_distill_eval_stream(
     expected = _reference_confirmed_emissions(
         model, extractor, samples, CPU, batch_size, flush_tail
     )
-    decoder = dc.Decoder(model, extractor, CPU, batch_size)
+    decoder = dc.Decoder("scripted", model, extractor, CPU, batch_size)
     emissions = decoder.emissions(samples, flush_tail=flush_tail)
 
     assert len(expected) >= num_windows
@@ -436,7 +457,7 @@ def test_the_deployed_stream_is_the_pre_refactor_distill_eval_stream(
 
 def test_a_bad_block_is_refused_before_any_forward_pass():
     extractor = _RawExtractor()
-    decoder = dc.Decoder(_ScriptedWindowModel([]), extractor, CPU)
+    decoder = dc.Decoder("scripted", _ScriptedWindowModel([]), extractor, CPU)
     with pytest.raises(ValueError, match="block"):
         decoder.emissions(np.zeros(WINDOW_SAMPLES, dtype=np.float32), block=dc.NUM_BLOCKS)
     assert extractor.calls == 0
@@ -466,7 +487,7 @@ def test_spans_are_decoded_whole_and_cut_to_their_own_length():
         np.array([2, 2, 0, 0, 2, 2, 4, 4, 4, 4], dtype=np.float32),
     ]
     extractor = _RawExtractor(pad=9.0)
-    decoder = dc.Decoder(_FrameModel(), extractor, CPU, batch_size=2)
+    decoder = dc.Decoder("frames", _FrameModel(), extractor, CPU, batch_size=2)
 
     decodes = decoder.decode_spans(iter(spans))
 

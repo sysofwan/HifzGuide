@@ -438,6 +438,7 @@ def run_evalset(args, device) -> None:
         args.checkpoint, device, use_ema=args.ema
     )
     decoder = Decoder(
+        args.checkpoint,
         student,
         SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID),
         device,
@@ -696,8 +697,8 @@ def main() -> None:
     check_split_matches_checkpoint(state_config, args.val_fraction)
     extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
     batch_size = args.batch_size or 16
-    teacher_decoder = Decoder(load_teacher(device), extractor, device, batch_size)
-    student_decoder = Decoder(student, extractor, device, batch_size)
+    teacher_decoder = Decoder(TEACHER_MODEL_ID, load_teacher(device), extractor, device, batch_size)
+    student_decoder = Decoder(args.checkpoint, student, extractor, device, batch_size)
 
     # Default is the *validation* side -- the same hash split training used, so no clip the
     # student was fit on can inflate the number. --split train scores seen clips instead,

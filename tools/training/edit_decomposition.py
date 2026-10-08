@@ -335,8 +335,8 @@ def main() -> None:
         args.checkpoint, device, use_ema=args.ema
     )
     extractor = SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID)
-    teacher_decoder = Decoder(load_teacher(device), extractor, device, batch_size)
-    student_decoder = Decoder(student, extractor, device, batch_size)
+    teacher_decoder = Decoder(TEACHER_MODEL_ID, load_teacher(device), extractor, device, batch_size)
+    student_decoder = Decoder(args.checkpoint, student, extractor, device, batch_size)
     clips_dir = Path(args.eval_set) / CLIPS_DIRNAME
 
     clips = evalset.subset(args.split)

@@ -519,6 +519,7 @@ def build(
     clips_dir.mkdir(parents=True, exist_ok=True)
 
     teacher = Decoder(
+        TEACHER_MODEL_ID,
         load_teacher(device),
         SeamlessM4TFeatureExtractor.from_pretrained(TEACHER_MODEL_ID),
         device,

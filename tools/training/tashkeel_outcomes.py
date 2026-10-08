@@ -54,6 +54,7 @@ from training.tashkeel_eval import (
     _decode_windows,
     _load_windows,
     vowel_sites,
+    write_text_atomically,
 )
 from training.tashkeel_worklist import TashkeelSite, read_worklist, site_id
 
@@ -141,13 +142,14 @@ def write_outcomes(path: Path, rows: list[SiteOutcome], decode: DecodeFingerprin
     """A ``{"decode": ...}`` header line, then one outcome per line ordered by site id.
 
     The header is the decode's fingerprint: these outcomes are compared against a worklist's
-    frozen base outcomes, which is only sound under the same decode settings.
+    frozen base outcomes, which is only sound under the same decode settings. The whole file
+    is built before anything is written, and swapped in atomically.
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        handle.write(json.dumps({"decode": decode.as_dict()}, ensure_ascii=False) + "\n")
-        for row in sorted(rows, key=lambda r: r.site_id):
-            handle.write(json.dumps(asdict(row), ensure_ascii=False) + "\n")
+    lines = [json.dumps({"decode": decode.as_dict()}, ensure_ascii=False)] + [
+        json.dumps(asdict(row), ensure_ascii=False)
+        for row in sorted(rows, key=lambda r: r.site_id)
+    ]
+    write_text_atomically(path, "".join(line + "\n" for line in lines))
 
 
 def read_outcomes(path: Path) -> tuple[DecodeFingerprint, dict[str, SiteOutcome]]:
@@ -255,13 +257,13 @@ def main() -> None:
         flush=True,
     )
 
-    decodes, decode = _decode_windows(
+    decodes, fingerprint = _decode_windows(
         args.model, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
     )
 
     rows: list[SiteOutcome] = []
-    for label, decode in zip(labels, decodes):
-        rows.extend(outcomes_for_window(label.phoneme_label, decode, label, wanted))
+    for label, window_decode in zip(labels, decodes):
+        rows.extend(outcomes_for_window(label.phoneme_label, window_decode, label, wanted))
 
     missing = wanted - {row.site_id for row in rows}
     if missing:
@@ -271,7 +273,7 @@ def main() -> None:
             "labels disagree about a window's reference — not that the model skipped them."
         )
 
-    write_outcomes(args.out, rows, decode)
+    write_outcomes(args.out, rows, fingerprint)
     print(f"Wrote {len(rows)} outcomes to {args.out}")
 
 

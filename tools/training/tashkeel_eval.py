@@ -61,6 +61,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -476,6 +477,21 @@ def coverage_of(labels) -> dict:
     }
 
 
+def write_text_atomically(path: Path, text: str) -> None:
+    """Write ``text`` to a sibling temporary file, then move it over ``path`` in one step.
+
+    A tool that fails part-way, or is killed, must leave the previous output intact rather
+    than a truncated one that a later comparison would read as complete.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)
+
+
 def _decode_windows(
     model_ref: str, labels, audio_dir: Path, batch_size: int, device: str, weights_dtype: str
 ):
@@ -488,7 +504,7 @@ def _decode_windows(
     built on them records. The model is released on return, so a candidate and its baseline
     are never resident together.
     """
-    from training.decoding import DecodeFingerprint, Decoder
+    from training.decoding import SPANS, Decoder
     from training.windowed_batch import ClipAudioCache
 
     cache = ClipAudioCache(audio_dir)
@@ -501,7 +517,7 @@ def _decode_windows(
         ]
         for label in labels
     )
-    return decodes, DecodeFingerprint.for_spans(model_ref, weights_dtype, batch_size)
+    return decodes, decoder.fingerprint(SPANS)
 
 
 def main() -> None:
@@ -551,26 +567,25 @@ def main() -> None:
             model_ref, labels, args.audio_dir, args.batch_size, args.device, args.weights_dtype
         )
 
-    candidate_decodes, candidate_decode = decode(args.model)
+    candidate_decodes, candidate_fingerprint = decode(args.model)
     candidate = score_windows(candidate_decodes, references, args.model)
-    baseline, baseline_decode = None, None
+    baseline, baseline_fingerprint = None, None
     if args.baseline.lower() != "none":
-        baseline_decodes, baseline_decode = decode(args.baseline)
+        baseline_decodes, baseline_fingerprint = decode(args.baseline)
         baseline = score_windows(baseline_decodes, references, args.baseline)
 
     verdict = gate(candidate, baseline, args.min_recall, args.tolerance)
     report = {
         "coverage": coverage,
         "decode": {
-            "candidate": candidate_decode.as_dict(),
-            "baseline": baseline_decode.as_dict() if baseline_decode else None,
+            "candidate": candidate_fingerprint.as_dict(),
+            "baseline": baseline_fingerprint.as_dict() if baseline_fingerprint else None,
         },
         "candidate": candidate.to_dict(),
         "baseline": baseline.to_dict() if baseline else None,
         "gate": verdict,
     }
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    write_text_atomically(args.out, json.dumps(report, indent=2, ensure_ascii=False))
 
     print(json.dumps(verdict, indent=2))
     print(f"Wrote {args.out}")

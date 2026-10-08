@@ -132,11 +132,12 @@ STUDENT_FEATURE_EXTRACTOR = TEACHER_MODEL_ID
 WEIGHTS_DTYPES = {"bf16": "bfloat16", "fp32": "float32"}
 
 # Bumped whenever the forward pass changes what a model decodes for the same weights and
-# audio: feature extraction, autocast, the dtype the features enter at. v1 is fp32 features
-# under CUDA bf16 autocast, which is how distill_eval always streamed. The haraka tools
-# decoded whole spans differently before this module (``tadabur.inference``: bf16 features,
-# no autocast); their outputs carry no fingerprint and are refused as legacy.
-INFERENCE_POLICY = "fp32-features-cuda-bf16-autocast-v1"
+# audio in a way the fingerprint's other fields do not name: feature extraction, the dtype
+# the features enter at. v1 feeds fp32 features, under bf16 autocast on CUDA and plainly on
+# CPU (the device and the autocast are fingerprinted separately). The haraka tools decoded
+# whole spans differently before this module (``tadabur.inference``: bf16 features, no
+# autocast); their outputs carry no fingerprint and are refused as legacy.
+INFERENCE_POLICY = "fp32-features-v1"
 
 # The decode mode of a whole-span decode; a stream's mode is its :func:`stream_protocol`.
 SPANS = "whole-spans"
@@ -359,28 +360,19 @@ class DecodeFingerprint:
     numerics or protocol rather than the models, and nothing downstream could tell how much.
     The b=0 stream's ``mode`` is :data:`PROTOCOL_VERSION`, so the streaming protocol's
     version and this fingerprint are one scheme, not two.
+
+    Only :meth:`Decoder.fingerprint` builds one, from the decoder's *effective* settings --
+    the dtype its weights actually hold, the device it actually runs on, whether that turns
+    autocast on -- so a fingerprint cannot describe a decode other than the one it labels.
     """
 
     model: str
     mode: str  # SPANS, or a stream_protocol()
     weights_dtype: str
     batch_size: int
+    device_type: str
+    autocast: bool
     policy: str = INFERENCE_POLICY
-
-    @classmethod
-    def for_spans(cls, model: str, weights_dtype: str, batch_size: int) -> "DecodeFingerprint":
-        return cls(str(model), SPANS, weights_dtype, batch_size)
-
-    @classmethod
-    def for_stream(
-        cls,
-        model: str,
-        weights_dtype: str,
-        batch_size: int,
-        block: int = DEPLOYED_BLOCK,
-        flush_tail: bool = True,
-    ) -> "DecodeFingerprint":
-        return cls(str(model), stream_protocol(block, flush_tail), weights_dtype, batch_size)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -406,7 +398,9 @@ class DecodeFingerprint:
         """Refuse to compare two decodes made under different settings."""
         mismatched = [
             f"{name}: {getattr(self, name)!r} vs {getattr(other, name)!r}"
-            for name in ("policy", "mode", "weights_dtype", "batch_size")
+            for name in (
+                "policy", "mode", "weights_dtype", "batch_size", "device_type", "autocast"
+            )
             if getattr(self, name) != getattr(other, name)
         ]
         if mismatched:
@@ -511,20 +505,45 @@ class Decoder:
     """A loaded phoneme model, its feature extractor, and the one way they are run.
 
     Build with :meth:`load` from a model reference, or directly around a module a tool has
-    already loaded (the distillation tools keep their teacher resident for other work).
-    ``batch_size`` is fixed per decoder because, under bf16, it moves ~0.2% of characters:
-    two decodes are comparable only at the same batch size.
+    already loaded (the distillation tools keep their teacher resident for other work);
+    ``model_ref`` names the weights in the decoder's :meth:`fingerprint`. ``batch_size`` is
+    fixed per decoder because, under bf16, it moves ~0.2% of characters: two decodes are
+    comparable only at the same batch size.
     """
 
-    def __init__(self, model, extractor, device, batch_size: int = 16) -> None:
+    def __init__(self, model_ref, model, extractor, device, batch_size: int = 16) -> None:
         import torch
 
         if batch_size < 1:
             raise ValueError(f"batch_size must be positive, got {batch_size}")
+        self.model_ref = str(model_ref)
         self.model = model
         self.extractor = extractor
         self.device = torch.device(device)
         self.batch_size = batch_size
+
+    @property
+    def autocast(self) -> bool:
+        """Whether forwards run under bf16 autocast -- on CUDA only; CPU has no such path."""
+        return self.device.type == "cuda"
+
+    def fingerprint(self, mode: str) -> DecodeFingerprint:
+        """The identity of a decode this decoder makes in ``mode`` (``SPANS`` or a stream).
+
+        Read off the decoder as it actually runs rather than from what a caller asked for, so
+        the same ``--weights-dtype`` on CPU and on CUDA fingerprints differently, as it decodes
+        differently.
+        """
+        short = {torch_name: key for key, torch_name in WEIGHTS_DTYPES.items()}
+        dtypes = {str(p.dtype).removeprefix("torch.") for p in self.model.parameters()}
+        return DecodeFingerprint(
+            model=self.model_ref,
+            mode=mode,
+            weights_dtype="+".join(sorted(short.get(d, d) for d in dtypes)),
+            batch_size=self.batch_size,
+            device_type=self.device.type,
+            autocast=self.autocast,
+        )
 
     @classmethod
     def load(
@@ -567,15 +586,13 @@ class Decoder:
             extractor_source = str(model_ref)
         model = model.to(device=device, dtype=getattr(torch, WEIGHTS_DTYPES[weights_dtype]))
         extractor = SeamlessM4TFeatureExtractor.from_pretrained(extractor_source)
-        return cls(model, extractor, device, batch_size)
+        return cls(model_ref, model, extractor, device, batch_size)
 
     def _class_ids(self, features, attention_mask=None) -> np.ndarray:
         """Per-timestep argmax over the phoneme head, ``(batch, timesteps)``."""
         import torch
 
-        with torch.no_grad(), torch.autocast(
-            "cuda", dtype=torch.bfloat16, enabled=self.device.type == "cuda"
-        ):
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16, enabled=self.autocast):
             logits = self.model(
                 features.to(self.device),
                 attention_mask=attention_mask,

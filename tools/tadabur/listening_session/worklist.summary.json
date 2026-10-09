@@ -8,7 +8,7 @@
     "policy": "fp32-features-v1",
     "weights_dtype": "bf16"
   },
-  "excerpts_whole_segment": 40,
+  "excerpts_whole_segment": 41,
   "h448_decode": {
     "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
     "decode_fingerprint": {
@@ -28,7 +28,7 @@
     "mining_pool/h448_stream_decodes.json": "1bf9b8cf15c1d2062cfa5fea3ace7cb44ed1a4d0526b16a3e7c7f496ca7dd3b8",
     "truth_sites/p35_fixtures.jsonl": "654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8"
   },
-  "listening_minutes": 80.2,
+  "listening_minutes": 78.8,
   "listening_model": {
     "answer_seconds": 4.0,
     "excerpt_pad_s": 0.3,
@@ -41,7 +41,7 @@
       "sites": 47
     },
     "shaddah": {
-      "listening_minutes": 15.1,
+      "listening_minutes": 13.7,
       "sites": 73
     },
     "tashkeel": {
@@ -81,6 +81,7 @@
     "new_audit:kasra:base_other:h448_other": 3,
     "new_audit:shaddah:held:base_rest": 0,
     "new_audit:shaddah:held:base_single": 60,
+    "new_audit:shaddah:held:cross_word": 0,
     "new_audit:shaddah:not_held:base_double": 0,
     "new_audit:shaddah:not_held:base_rest": 0,
     "new_audit:sukun:base_empty:h448_empty": 15,
@@ -397,20 +398,30 @@
       "inclusion_probability_max": 0.0,
       "inclusion_probability_min": 0.0,
       "listening_minutes": 0.0,
-      "population": 9218,
-      "population_reciters": 382,
+      "population": 8391,
+      "population_reciters": 380,
       "sampled": 0,
       "sampled_reciters": 0
     },
     "new_audit:shaddah:held:base_single": {
-      "draw_probability": 0.2830188679245283,
-      "inclusion_probability_max": 0.2830188679245283,
-      "inclusion_probability_min": 0.009930486593843097,
-      "listening_minutes": 12.7,
-      "population": 212,
-      "population_reciters": 94,
+      "draw_probability": 0.6741573033707865,
+      "inclusion_probability_max": 0.6741573033707865,
+      "inclusion_probability_min": 0.023654642223536367,
+      "listening_minutes": 11.3,
+      "population": 89,
+      "population_reciters": 52,
       "sampled": 60,
-      "sampled_reciters": 46
+      "sampled_reciters": 39
+    },
+    "new_audit:shaddah:held:cross_word": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 950,
+      "population_reciters": 263,
+      "sampled": 0,
+      "sampled_reciters": 0
     },
     "new_audit:shaddah:not_held:base_double": {
       "draw_probability": 0.0,

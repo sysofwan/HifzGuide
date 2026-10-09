@@ -70,7 +70,8 @@ assign each eligible site to a stratum, and no candidate is involved:
 |---|---|---|
 | tashkeel | a **mid-word haraka** on a consonant | per haraka, `base_<o>:h448_<o>` for each decode's outcome `o`: `empty` (the carrier aligned, no haraka after it), `matched` (that haraka), `other` (another haraka, or the carrier misheard or unaligned) |
 | tashkeel | a **mid-word prescribed sukun**: a single consonant followed in its word by another consonant or the qalqala mark | `base_<o>:h448_<o>`, `o` in `empty`, `haraka`, `other` |
-| shaddah | every reference geminate (first of the doubled consonant), `prescribed: held` | `held:base_single`, `held:base_rest` |
+| shaddah | every reference geminate (first of the doubled consonant) inside one word, `prescribed: held` | `held:base_single`, `held:base_rest` |
+| shaddah | every geminate whose halves fall in two words (idgham across a word boundary), `prescribed: held` | `held:cross_word` (default size 0) |
 | shaddah | every single consonant, `prescribed: not_held` (an added shaddah's site) | `not_held:base_double` (the base doubled it), `not_held:base_rest` |
 | consonant | every carrier of a target-pair letter (six soft pairs and `ذ↔ظ`), per direction `prescribed→partner` | `base_partner` (the base heard the partner: the reject-pile sites), `base_rest` |
 
@@ -79,6 +80,16 @@ A word whose Uthmani text has tanween ends at its last haraka, because the `ن` 
 assimilated letter after it realizes the tanween, so case endings are never mid-word.
 Word-final marks depend on waqf and wasl and stay out (acceptance rules §1, *Weak labels*).
 A haraka and a sukun share one question, so the page cannot tell them apart.
+
+*Cross-word geminates.* The #86 shaddah probe found that 182 of the base's 419 collapsed
+geminate runs cross a word boundary (166 are و after a tanween), and that at 18 of 20 it
+sampled the reciter had paused there: segmentation missed the pause, and the realized
+reference wrongly assumes continuation. A "not held" verdict at such a site is a correct
+pause, not a mistake, so cross-word geminates are kept out of the shaddah strata
+(`held:cross_word`, counted, drawn 0). No tashkeel site depends on such an assimilation: a
+haraka on the second half of a cross-word geminate is the next word's own initial haraka,
+said whether or not the reciter paused (948 such sites stay in the tashkeel strata), and a
+sukun site is never part of a geminate.
 
 Plus the **23 nominal P3.5 rejects** (`../truth_sites/p35_fixtures.jsonl`, `heard: pending`:
 10 soft-pair, 13 shaddah), re-adjudicated at site level (acceptance rules §8). They keep
@@ -90,9 +101,10 @@ re-mine over a changed population re-draws mostly the same sites. `n` per stratu
 `--sizes` (JSON `{stratum: n}`); the post-#84 power simulation (#105) sets it. The default
 (`DEFAULT_SIZES`) fits the ~1.5 h plan of #61 and is weighted toward the slots `h448`
 leaves empty, above all where the base heard the haraka (`HARAKA_SIZES`, `SUKUN_SIZES`),
-with a small positive draw in every other tashkeel cell; 60 geminates decoded single; 5 per
+with a small positive draw in every other tashkeel cell; 60 within-word geminates decoded
+single; 5 per
 consonant direction the base heard as its partner. Shaddah and consonant `base_rest` strata
-are 0 and only counted.
+and `held:cross_word` are 0 and only counted.
 
 **Inclusion probability** of a site = its clip's inclusion probability in the pool (given the
 394 drawn reciters, `mining_pool/clips.jsonl`) × the within-stratum draw probability
@@ -143,8 +155,8 @@ python -m tadabur.listening_session mine --p35-seg-dir stage/seg_p35 [--sizes si
 
 ## The default worklist
 
-385 sites on 344 clips from 177 reciters (~203 MB of clips); **~80 min** of listening by the
-summary's model (each excerpt played twice plus 4 s to answer); 40 rows play their whole
+385 sites on 344 clips from 171 reciters (~198 MB of clips); **~79 min** of listening by the
+summary's model (each excerpt played twice plus 4 s to answer); 41 rows play their whole
 segment. Populations are in the whole pool (2,508 clips, 3,785 kept segments).
 
 Tashkeel, population and draw per cell, the three `h448` outcomes in order (`empty` /
@@ -167,12 +179,13 @@ Tashkeel, population and draw per cell, the three `h448` outcomes in order (`emp
 
 | other strata | population | drawn | minutes |
 |---|---|---|---|
-| shaddah `held:base_single` / `held:base_rest` | 212 / 9,218 | 60 / 0 | 12.7 |
+| shaddah `held:base_single` / `held:base_rest` (within a word) | 89 / 8,391 | 60 / 0 | 11.3 |
+| shaddah `held:cross_word` | 950 | 0 | |
 | shaddah `not_held:base_double` / `not_held:base_rest` | 35 / 86,363 | 0 / 0 | |
 | consonant `base_partner`, per direction | `ز→ذ` 26, `ظ→ض` 27, `ك→ق` 20, `ق→ك` 8, `س→ص` 7, `ص→س` 4, `ط→ت` 3, `ذ→ظ` 2, `ه→ح` 2, `ض→ظ` 1; `ذ→ز`, `ت→ط`, `ح→ه`, `ظ→ذ` 0 | 37 | 7.2 |
 | P3.5 pending (6 strata) | 151 sites in those strata | 23 | 4.3 |
 
-By question: tashkeel 265 sites (55.9 min), shaddah 73 (15.1), consonant 47 (9.2).
+By question: tashkeel 265 sites (55.9 min), shaddah 73 (13.7), consonant 47 (9.2).
 
 `h448` leaves a mid-word slot empty far more often than the base teacher: 1,473 fatha, 523
 damma and 272 kasra against the base's 310, 78 and 17, and 1,361 / 490 / 263 of them where

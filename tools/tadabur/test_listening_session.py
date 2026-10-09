@@ -136,6 +136,17 @@ def test_a_geminate_is_stratified_by_whether_the_base_decoded_it_single():
     assert ("new_audit:shaddah:held:base_single", 2) in _found(reference, single)
 
 
+def test_a_geminate_across_a_word_boundary_is_its_own_stratum():
+    # تُ|وَ: a tanween assimilated into the next word's و (#86: usually a missed pause).
+    reference = f"ك{DAMMA}تُوو{FATHA}ل"
+    offsets = [0, 5, len(reference)]  # the first و ends word 0, the second starts word 1
+    across = _found(reference, reference, offsets=offsets)
+    assert ("new_audit:shaddah:held:cross_word", 4) in across
+    assert not {f for f in across if f[0].startswith("new_audit:shaddah:held:base_")}
+    within = _found(reference, reference, offsets=[0, len(reference)])
+    assert ("new_audit:shaddah:held:base_rest", 4) in within
+
+
 def test_every_single_consonant_is_a_not_held_site_stratified_by_a_base_doubling():
     reference = f"ر{FATHA}ب{KASRA}ي{FATHA}"
     doubled = _found(reference, f"ر{FATHA}بب{KASRA}ي{FATHA}")

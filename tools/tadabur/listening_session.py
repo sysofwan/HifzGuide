@@ -28,8 +28,12 @@ so the selection never has to be redone for a new checkpoint.
   ``ں`` / assimilated letter after it is the tanween's realization, not a letter of the
   word, so the case ending is never mid-word. Word-final marks depend on waqf and wasl and
   are out of scope (the weak-label rows of acceptance rules §1).
-* **shaddah**: every reference geminate (the first of the doubled consonant), where the base
-  decoded one consonant (``held:base_single``) or not (``held:base_rest``); and every single
+* **shaddah**: every reference geminate (the first of the doubled consonant) inside one word,
+  where the base decoded one consonant (``held:base_single``) or not (``held:base_rest``). A
+  geminate whose halves fall in two words (idgham across a word boundary) is its own stratum,
+  ``held:cross_word``, drawn 0 by default: it exists only if the reciter did not pause there,
+  and #86 found the segmentation missed a real pause at 18 of 20 such sites it sampled, so a
+  "not held" there is usually a correct pause. And every single
   consonant, where the base doubled it (``not_held:base_double``, the site of an added
   shaddah) or not (``not_held:base_rest``). Gemination mismatches come from
   :func:`tadabur.contrast_attribution.contrast_sites`, the rule the pool's census used.
@@ -155,6 +159,8 @@ BASE_SINGLE = "base_single"
 BASE_DOUBLE = "base_double"
 BASE_PARTNER = "base_partner"
 BASE_REST = "base_rest"
+#: A geminate whose two halves fall in different words (#86): see :func:`_crosses_words`.
+CROSS_WORD = "cross_word"
 
 HARAKA_NAMES = tuple(sorted(HARAKA_CHARS))
 _CHAR_TO_HARAKA = {char: name for name, char in HARAKA_CHARS.items()}
@@ -193,6 +199,7 @@ STRATA: tuple[str, ...] = (
     *(tashkeel_stratum(SUKUN, b, s) for b in SUKUN_OUTCOMES for s in SUKUN_OUTCOMES),
     _stratum(SHADDAH, HELD, BASE_SINGLE),
     _stratum(SHADDAH, HELD, BASE_REST),
+    _stratum(SHADDAH, HELD, CROSS_WORD),
     _stratum(SHADDAH, NOT_HELD, BASE_DOUBLE),
     _stratum(SHADDAH, NOT_HELD, BASE_REST),
     *(_stratum(_direction(a, b), o) for _, a, b in _pair_directions()
@@ -218,8 +225,8 @@ SUKUN_SIZES = {
 }
 
 #: Sites drawn per stratum by default, sized to the ~1.5 h plan of #61 with the parts #82
-#: added; #105's power simulation sets the final sizes. Tashkeel as above; 60 geminates the
-#: base decoded single; 5 per consonant direction the base heard as its partner (~40 in
+#: added; #105's power simulation sets the final sizes. Tashkeel as above; 60 within-word
+#: geminates the base decoded single (cross-word ones are 0, #86); 5 per consonant direction the base heard as its partner (~40 in
 #: all, the rare directions take what they have). Every other stratum is 0: its population
 #: is recorded, and #105 may size it.
 DEFAULT_SIZES: dict[str, int] = {
@@ -349,12 +356,26 @@ def _tashkeel_found(
     return found
 
 
-def _shaddah_found(reference: str, decode: str) -> list[Found]:
+def _crosses_words(reference: str, offsets: list[int], start: int) -> bool:
+    """Whether the run of identical characters starting at ``start`` spans a word boundary:
+    an idgham across words, which exists only if the reciter did not pause there."""
+    end = start
+    while end < len(reference) and reference[end] == reference[start]:
+        end += 1
+    return bisect.bisect_right(offsets, start) != bisect.bisect_right(offsets, end - 1)
+
+
+def _shaddah_found(reference: str, decode: str, offsets: list[int]) -> list[Found]:
     changes = contrast_sites(decode, reference, SHADDA_CONTRAST)
     dropped = {run_start(reference, s.reference_index) for s in changes if s.change == DROPPED}
+
+    def held(i: int) -> str:
+        if _crosses_words(reference, offsets, i):
+            return _stratum(SHADDAH, HELD, CROSS_WORD)
+        return _stratum(SHADDAH, HELD, BASE_SINGLE if i in dropped else BASE_REST)
+
     found = [
-        Found(_stratum(SHADDAH, HELD, BASE_SINGLE if i in dropped else BASE_REST),
-              SHADDAH, HELD, i)
+        Found(held(i), SHADDAH, HELD, i)
         for i, char in enumerate(reference[:-1])
         if char in CONSONANTS and reference[i + 1] == char and run_start(reference, i) == i
     ]
@@ -390,7 +411,7 @@ def segment_sites(
     limits = word_limits(reference, offsets, tanween)
     return (
         _tashkeel_found(reference, {BASE: base, H448: h448}, limits)
-        + _shaddah_found(reference, base)
+        + _shaddah_found(reference, base, offsets)
         + _pair_found(reference, base)
     )
 

@@ -52,7 +52,10 @@ import hashlib
 import json
 from collections import Counter
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
+
+import numpy as np
 
 from .staged_audio import IndexRow, StagedClip, read_shard_index
 from .synthetic_edit_plan import (
@@ -71,6 +74,7 @@ from .synthetic_edit_plan import (
     select_pairs,
 )
 from .truth_sites import MARKS, PENDING, SYNTHETIC_EDIT, TruthSite
+from .waveform_edits import FADE, Rendered, crop, splice, stretch
 
 SYNTHETIC_EDITS_DIR = Path(__file__).parent / "synthetic_edits"
 FRAME_PATH = SYNTHETIC_EDITS_DIR / "frame.json"
@@ -184,6 +188,40 @@ def read_frame(path: Path = FRAME_PATH) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def stage_in_parallel(
+    groups: list[dict[str, frozenset[str]]],
+    known: dict[str, StagedClip],
+    run,
+    write,
+    workers: int,
+) -> tuple[dict[str, StagedClip], list[str]]:
+    """Stage request ``groups`` on ``workers`` threads without losing provenance.
+
+    ``run(requests, checkpoint)`` stages one group (``staged_audio.stage_clips``) and calls
+    ``checkpoint`` with what it holds after each shard; ``write(entries)`` persists the
+    registry's synthetic-edit entries. Every checkpoint writes **every** entry ``known``
+    held when the run began, overlaid with whatever any worker has staged since, so an
+    interruption never drops a recorded checksum that a resume must re-verify. Entries
+    are pruned to exactly the staged clips only after every group has finished.
+    """
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    entries = dict(known)
+    lock = threading.Lock()
+
+    def checkpoint(staged: dict[str, StagedClip]) -> None:
+        with lock:
+            entries.update(staged)
+            write(dict(entries))
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(lambda group: run(group, checkpoint), groups))
+    staged = {name: clip for found, _ in results for name, clip in found.items()}
+    write(staged)
+    return staged, [name for _, missing in results for name in missing]
+
+
 def _stage(args) -> None:
     """Stage every frame clip into ``--audio-dir`` and register it (use ``synthetic_edit``).
 
@@ -192,9 +230,6 @@ def _stage(args) -> None:
     after every shard with the clips staged so far, so a resumed run re-verifies rather
     than re-downloads them.
     """
-    import threading
-    from concurrent.futures import ThreadPoolExecutor
-
     from .staged_audio import (
         REGISTRY_PATH,
         SYNTHETIC_EDIT,
@@ -215,9 +250,6 @@ def _stage(args) -> None:
     groups: dict[int, dict[str, frozenset[str]]] = {}
     for name in frame["clips"]:
         groups.setdefault(index[name].shard % args.workers, {})[name] = frozenset({SYNTHETIC_EDIT})
-
-    staged_so_far: dict[str, object] = {}
-    lock = threading.Lock()
 
     wanted: dict[int, set[int]] = {}
     for name in frame["clips"]:
@@ -249,21 +281,16 @@ def _stage(args) -> None:
         finally:
             _remove_shard_blob(path)
 
-    def checkpoint(staged) -> None:
-        with lock:
-            staged_so_far.update(staged)
-            write_staged_clips([*others.values(), *staged_so_far.values()], REGISTRY_PATH)
-            print(f"  {len(staged_so_far)} edit clips staged so far", flush=True)
+    def write(entries: dict[str, StagedClip]) -> None:
+        write_staged_clips([*others.values(), *entries.values()], REGISTRY_PATH)
+        print(f"  {len(entries)} edit clip entries registered", flush=True)
 
-    def run(requests):
+    def run(requests, checkpoint):
         return stage_clips(requests, index, args.audio_dir, shard_rows, known,
                            on_shard_done=checkpoint)
 
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        results = list(pool.map(run, [groups[k] for k in sorted(groups)]))
-    staged = {name: clip for found, _ in results for name, clip in found.items()}
-    unlocatable = [name for _, missing in results for name in missing]
-    write_staged_clips([*others.values(), *staged.values()], REGISTRY_PATH)
+    staged, unlocatable = stage_in_parallel(
+        [groups[k] for k in sorted(groups)], known, run, write, args.workers)
     print(f"Staged {len(staged)} edit clips into {args.audio_dir}")
     if unlocatable:
         raise SystemExit(f"{len(unlocatable)} frame clips are in no indexed shard")
@@ -421,49 +448,87 @@ def output_filename(item_id: str) -> str:
     return f"se_{opaque_id(item_id)}.wav"
 
 
-#: A splice's donor is scaled to the level of the span it replaces, within these bounds.
-DONOR_GAIN_RANGE = (0.5, 2.0)
+#: A splice's donor is scaled to the RMS of the span it replaces. A donor more than this
+#: factor louder or quieter than that span is incompatible: its pair is rejected rather
+#: than clamped, which would leave a level jump.
+MAX_DONOR_LEVEL_RATIO = 2.0
+#: The largest absolute sample a rendered item may hold; PCM_16 clips anything beyond.
+PEAK_LIMIT = 1.0
 
 
-def render(pair: EditPair, role: str, audio, seed: int):
-    """The item's waveform and, for a splice, the donor gain applied (else ``None``).
+class Unusable(ValueError):
+    """A pair the renderer refuses; ``reason`` names the check that failed."""
 
-    ``audio(name)`` returns a staged clip's float32 samples. A splice's donor is scaled to
-    the RMS of the span it replaces (clamped to :data:`DONOR_GAIN_RANGE`): a reciter's
-    clips are recorded at different levels, and a level jump is a cue a listener, or a
-    model, should not get.
+    def __init__(self, reason: str, detail: str) -> None:
+        super().__init__(f"{reason}: {detail}")
+        self.reason = reason
+
+
+@dataclass(frozen=True)
+class RenderedItem:
+    """One rendered item and the donor gain it applied (``None`` without a donor)."""
+
+    rendered: Rendered
+    gain: float | None
+
+
+def item_seed(item_id: str) -> int:
+    return int(rank(item_id, SALT)[:8], 16)
+
+
+def render(pair: EditPair, role: str, audio) -> RenderedItem:
+    """One item of ``pair``, through the one chain both roles share.
+
+    ``audio(name)`` returns a staged clip's float32 samples. A crop or a stretch goes
+    through :mod:`tadabur.waveform_edits`, which picks its method from the signal alone. A
+    splice's donor is scaled to the RMS of the span it replaces (a reciter's clips are
+    recorded at different levels, and a level jump is a cue no listener or model should
+    get); a donor beyond :data:`MAX_DONOR_LEVEL_RATIO` raises :class:`Unusable`.
     """
-    import numpy as np
-
-    from .waveform_edits import FADE, crop, fill, replace_span
-
     change = pair.edit if role == EDIT else pair.decoy
     x = audio(pair.audio_filename)
     if change.kind == CROP:
-        return crop(x, change.start_sample, change.end_sample - change.start_sample), None
+        return RenderedItem(crop(x, change.start_sample, change.end_sample - change.start_sample), None)
     if change.kind == STRETCH:
-        material = fill(x, change.fill_region, change.inserted_samples + FADE,
-                        change.start_sample, seed)
-        return replace_span(x, change.start_sample, change.end_sample, material), None
+        seed = item_seed(f"{pair.pair_id}:{role}")
+        return RenderedItem(stretch(x, change.start_sample, change.inserted_samples,
+                                    change.fill_region, seed), None)
     donor = change.donor
     d = audio(donor.audio_filename)
-
-    def rms(samples) -> float:
-        return float(np.sqrt(np.mean(np.square(samples, dtype=np.float64))))
-
-    gain = rms(x[change.start_sample:change.end_sample]) / max(
-        rms(d[donor.start_sample:donor.end_sample]), 1e-9)
-    gain = round(float(np.clip(gain, *DONOR_GAIN_RANGE)), 6)
+    ratio = _rms(x[change.start_sample:change.end_sample]) / max(
+        _rms(d[donor.start_sample:donor.end_sample]), 1e-9)
+    if not 1 / MAX_DONOR_LEVEL_RATIO <= ratio <= MAX_DONOR_LEVEL_RATIO:
+        raise Unusable("donor_level", f"{pair.pair_id}:{role} needs gain {ratio:.2f}")
+    gain = round(ratio, 6)
     half = FADE // 2
     material = d[donor.start_sample - half:donor.end_sample + half] * np.float32(gain)
-    return replace_span(x, change.start_sample, change.end_sample, material), gain
+    return RenderedItem(splice(x, change.start_sample, change.end_sample, material), gain)
+
+
+def _rms(samples: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(np.square(samples, dtype=np.float64))))
+
+
+def render_pair(pair: EditPair, audio) -> dict[str, RenderedItem]:
+    """Both items of ``pair``, or :class:`Unusable` when they cannot be told apart by
+    identity alone: they took different methods (one periodic, one not), or either
+    would clip."""
+    items = {role: render(pair, role, audio) for role in (EDIT, DECOY)}
+    paths = {role: item.rendered.path for role, item in items.items()}
+    if paths[EDIT] != paths[DECOY]:
+        raise Unusable("render_path", f"{pair.pair_id}: {paths}")
+    for role, item in items.items():
+        peak = float(np.max(np.abs(item.rendered.samples)))
+        if peak > PEAK_LIMIT:
+            raise Unusable("peak", f"{pair.pair_id}:{role} peaks at {peak:.3f}")
+    return items
 
 
 def item_record(
-    pair: EditPair, role: str, clips: dict[str, StagedClip], gain: float | None,
-    output: dict, seed: int,
+    pair: EditPair, role: str, clips: dict[str, StagedClip], item: RenderedItem,
+    output: dict,
 ) -> dict:
-    """One manifest row: the item's full provenance and its label."""
+    """One manifest row: the item's full provenance, how it was rendered, and its label."""
     from dataclasses import asdict
 
     change = pair.edit if role == EDIT else pair.decoy
@@ -471,7 +536,8 @@ def item_record(
     if change.donor is not None:
         donor = clips[change.donor.audio_filename]
         record["donor"].update(reciter_id=donor.reciter_id, audio_sha256=donor.audio_sha256,
-                               gain=gain)
+                               gain=item.gain)
+    rendered = item.rendered
     source = clips[pair.audio_filename]
     item_id = f"{pair.pair_id}:{role}"
     return {
@@ -490,7 +556,9 @@ def item_record(
         "labelled_reference": labelled_reference(pair, role),
         "change": record,
         "length_change": change.length_change,
-        "seed": seed,
+        "seed": item_seed(item_id),
+        "render": {"path": rendered.path, "period_samples": rendered.period,
+                   "changed_start": rendered.changed[0], "changed_end": rendered.changed[1]},
         "output": output,
     }
 
@@ -499,10 +567,10 @@ def check_manifest(items: list[dict]) -> None:
     """The pairing invariants every manifest must hold, or ``ValueError``.
 
     Each pair is one edit and one decoy on the same carrier of the same source, with the
-    same kind of change and the same length change; the decoy is labelled with the
-    prescribed state and the edit with another, and their labelled references follow; the
-    output is as long as the change says and is named opaquely; a donor is the source's
-    reciter.
+    same kind of change, rendered the same way, and the same length change; the decoy is
+    labelled with the prescribed state and the edit with another, and their labelled
+    references follow; the output is as long as the change says, is named opaquely and
+    does not clip; a donor is the source's reciter.
     """
     pairs: dict[str, dict[str, dict]] = {}
     for item in items:
@@ -518,6 +586,8 @@ def check_manifest(items: list[dict]) -> None:
             raise ValueError(f"{item['item_id']}: output length does not follow the change")
         if item["output"]["audio_filename"] != output_filename(item["item_id"]):
             raise ValueError(f"{item['item_id']}: output is not opaquely named")
+        if item["output"]["peak"] > PEAK_LIMIT:
+            raise ValueError(f"{item['item_id']}: output clips")
     shared = ("operation", "source", "reference", "reference_index", "mark", "prescribed",
               "length_change")
     for pair_id, roles in sorted(pairs.items()):
@@ -525,7 +595,8 @@ def check_manifest(items: list[dict]) -> None:
             raise ValueError(f"{pair_id}: has {sorted(roles)}, not one edit and one decoy")
         edit, decoy = roles[EDIT], roles[DECOY]
         if any(edit[k] != decoy[k] for k in shared) or \
-                edit["change"]["kind"] != decoy["change"]["kind"]:
+                edit["change"]["kind"] != decoy["change"]["kind"] or \
+                edit["render"]["path"] != decoy["render"]["path"]:
             raise ValueError(f"{pair_id}: the edit and its decoy differ beyond the change")
         if decoy["label"] != decoy["prescribed"] or edit["label"] == edit["prescribed"]:
             raise ValueError(f"{pair_id}: labels do not follow the edit")
@@ -612,20 +683,32 @@ QUOTA_PER_MARK = 60
 PER_RECITER = 3
 
 
+def write_item(samples: np.ndarray, path: Path) -> dict:
+    """Write one rendered item as 16 kHz PCM_16 and return its ``output`` record. Fails on
+    any sample beyond :data:`PEAK_LIMIT` rather than let the encoder clip it silently."""
+    import soundfile as sf
+
+    from .truth_sites import audio_sha256
+
+    peak = float(np.max(np.abs(samples)))
+    if peak > PEAK_LIMIT:
+        raise ValueError(f"{path.name} peaks at {peak:.3f}; PCM_16 would clip it")
+    sf.write(path, samples, 16000, subtype="PCM_16")
+    return {"audio_filename": path.name, "num_samples": sf.info(path).frames,
+            "audio_sha256": audio_sha256(path), "peak": round(peak, 6)}
+
+
 def _generate(args) -> None:
     """Plan, render and check every pair; write the manifest, the summary and the
     blind-check worklist. The audio goes to ``--out-dir/audio`` and stays there."""
-    import numpy as np
     import soundfile as sf
 
     from .staged_audio import verify_staged
-    from .truth_sites import audio_sha256, write_truth_sites
-    from .waveform_edits import FADE
+    from .truth_sites import write_truth_sites
 
     clips = edit_clips()
     timed = timed_clips()
-    candidates, stretch = plan_pairs(timed, SALT)
-    pairs = select_pairs(candidates, QUOTA_PER_MARK, PER_RECITER, SALT)
+    candidates, stretch_samples = plan_pairs(timed, SALT)
     cache: dict[str, np.ndarray] = {}
 
     def audio(name: str) -> np.ndarray:
@@ -634,19 +717,26 @@ def _generate(args) -> None:
             cache[name] = sf.read(args.audio_dir / name, dtype="float32")[0]
         return cache[name]
 
+    rendered: dict[str, dict[str, RenderedItem]] = {}
+    rejected: Counter = Counter()
+
+    def accept(pair: EditPair) -> bool:
+        try:
+            rendered[pair.pair_id] = render_pair(pair, audio)
+        except Unusable as refusal:
+            rejected[f"{pair.operation} {pair.mark} {refusal.reason}"] += 1
+            return False
+        return True
+
+    pairs = select_pairs(candidates, QUOTA_PER_MARK, PER_RECITER, SALT, accept)
     out_dir = args.out_dir / "audio"
     out_dir.mkdir(parents=True, exist_ok=True)
     items = []
     for pair in pairs:
-        for role in (EDIT, DECOY):
+        for role, item in rendered[pair.pair_id].items():
             item_id = f"{pair.pair_id}:{role}"
-            seed = int(rank(item_id, SALT)[:8], 16)
-            samples, gain = render(pair, role, audio, seed)
-            path = out_dir / output_filename(item_id)
-            sf.write(path, samples, 16000, subtype="PCM_16")
-            output = {"audio_filename": path.name, "num_samples": sf.info(path).frames,
-                      "audio_sha256": audio_sha256(path)}
-            items.append(item_record(pair, role, clips, gain, output, seed))
+            output = write_item(item.rendered.samples, out_dir / output_filename(item_id))
+            items.append(item_record(pair, role, clips, item, output))
     check_manifest(items)
     check_disjoint(items)
     worklist = blind_check(items)
@@ -656,25 +746,29 @@ def _generate(args) -> None:
     write_truth_sites(worklist, WORKLIST_PATH)
 
     record = json.loads(BASE_FRAMES_PATH.read_text(encoding="utf-8"))
-    operation_of = {i["output"]["audio_filename"]: i["operation"] for i in items}
-    role_of = {i["output"]["audio_filename"]: i["role"] for i in items}
+    by_output = {i["output"]["audio_filename"]: i for i in items}
     summary = {
         "salt": SALT,
         "decode_fingerprint": record["decode_fingerprint"],
         "frame_clips_timed": len(timed),
         "frame_clips_without_reference": len(record["clips"]) - len(timed),
-        "stretch_samples": stretch,
+        "stretch_samples": stretch_samples,
         "fade_samples": FADE,
         "quota_per_mark": QUOTA_PER_MARK,
         "per_reciter": PER_RECITER,
+        "max_donor_level_ratio": MAX_DONOR_LEVEL_RATIO,
         "candidates": dict(sorted(Counter(f"{p.operation} {p.mark}" for p in candidates).items())),
+        "rejected": dict(sorted(rejected.items())),
         "pairs": dict(sorted(Counter(f"{p.operation} {p.mark}" for p in pairs).items())),
+        "render_paths": dict(sorted(Counter(
+            f"{i['operation']} {i['role']} {i['render']['path']}" for i in items).items())),
         "pair_reciters": len({p.reciter_id for p in pairs}),
         "items": len(items),
+        "max_peak": max(i["output"]["peak"] for i in items),
         "output_seconds": round(sum(i["output"]["num_samples"] for i in items) / 16000, 1),
         "blind_check": dict(sorted(Counter(
-            f"{operation_of[s.audio_filename]} {role_of[s.audio_filename]}" for s in worklist
-        ).items())),
+            f"{by_output[s.audio_filename]['operation']} {by_output[s.audio_filename]['role']}"
+            for s in worklist).items())),
     }
     SUMMARY_PATH.write_text(json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True)
                             + "\n", encoding="utf-8")

@@ -21,11 +21,15 @@ anchored: nothing is cut where the teacher heard something else.
   tried first: the base teacher still heard the geminate in 16 of 25 such edits, against 7
   of 25 for the centre-to-centre crop (decoys: 25 of 25 unchanged either way);
 * a **hold** of a single consonant is its own emission;
-* a consonant's **cell** runs from the end of the previous emission to the end of the
-  following haraka's, so a splice carries the consonant-to-haraka transition, which is
-  where emphasis (``ص`` against ``س``) is heard. A splice ending at the haraka's start
-  was heard as the donor's letter by the teacher in 6 of 68 edits, this one in 23 of 53;
-  a splice aligns the donor's emission centre on the carrier's;
+* a consonant's **cell** runs from halfway between the previous emission and its own to
+  the end of the following haraka's, so a splice carries the consonant-to-haraka
+  transition, which is where emphasis (``ص`` against ``س``) is heard. A splice ending at
+  the haraka's start was heard as the donor's letter by the teacher in 6 of 68 edits, one
+  through the haraka in 23 of 53. The donor's window is aligned on emission centres and
+  must fit the donor's own boundaries (:func:`_donor_span`), crossfade context included:
+  it starts after the previous emission and no later than the carrier's, and it ends
+  past the centre of the haraka's emission and before the next one. A donor whose timing
+  cannot fit is incompatible;
 * a **madd span** runs from the first to the last emission of a long-vowel run.
 """
 
@@ -33,7 +37,7 @@ from __future__ import annotations
 
 import hashlib
 import statistics
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 
@@ -42,6 +46,7 @@ from training.distill_data import WINDOW_SAMPLES
 
 from .phoneme_vocab import PHONEME_ID_TO_CHAR
 from .truth_sites import CONSONANTS, HARAKA_CHARS, HELD, NOT_HELD, SHADDAH
+from .waveform_edits import FADE
 
 #: Audio samples per CTC step of the teacher: 125 steps per 5 s window, 40 ms.
 SAMPLES_PER_STEP = WINDOW_SAMPLES // DEPLOYED_LOGIT_FRAMES
@@ -81,8 +86,8 @@ MIN_HELD_GAP = 2 * SAMPLES_PER_STEP
 MADD_MARGIN = SAMPLES_PER_STEP
 #: A decoy's change is at least this far (0.5 s) from where the edit's would be.
 MIN_DECOY_DISTANCE = 8000
-#: Context samples a splice's donor needs on each side, for the crossfade.
-SPLICE_CONTEXT = 80
+#: Context samples every join takes on each side of a cut, for its crossfade.
+JOIN_CONTEXT = FADE // 2
 
 HARAKAT = frozenset(HARAKA_CHARS.values())
 
@@ -276,15 +281,35 @@ def stretchable_holds(clip: TimedClip) -> dict[int, tuple[int, int]]:
     return holds
 
 
+@dataclass(frozen=True)
+class _Syllable:
+    """The emissions around a carrier: the one before it (anchoring makes that the
+    previous letter's), its own, its haraka's, and where the next one starts."""
+
+    before: Token
+    carrier: Token
+    haraka: Token
+    next_start: int
+
+
+def _syllable(clip: TimedClip, i: int) -> _Syllable:
+    j = clip.anchors[i]
+    after = clip.tokens[j + 2].start if j + 2 < len(clip.tokens) else clip.num_samples
+    return _Syllable(clip.tokens[j - 1], clip.tokens[j], clip.tokens[j + 1], after)
+
+
 def splice_carriers(clip: TimedClip, letters: Iterable[str]) -> dict[int, tuple[int, int]]:
-    """Each anchored single carrier of one of ``letters`` followed by a haraka, and its cell:
-    from the end of the emission before it (anchoring makes that the previous letter's) to
-    the end of the haraka's."""
+    """Each anchored single carrier of one of ``letters`` followed by a haraka, and its
+    cell (module docstring), where both joins' crossfades fall between emissions."""
     ref, letters, cells = clip.reference, frozenset(letters), {}
     for i in range(1, len(ref) - 1):
-        if (ref[i] in letters and _single(ref, i) and ref[i + 1] in HARAKAT
+        if not (ref[i] in letters and _single(ref, i) and ref[i + 1] in HARAKAT
                 and _anchored(clip, i, i + 1)):
-            cells[i] = (clip.tokens[clip.anchors[i] - 1].end, clip.token(i + 1).end)
+            continue
+        s = _syllable(clip, i)
+        start, end = (s.before.end + s.carrier.start) // 2, s.haraka.end
+        if start - JOIN_CONTEXT >= s.before.end and end + JOIN_CONTEXT <= s.next_start:
+            cells[i] = (start, end)
     return cells
 
 
@@ -377,15 +402,17 @@ class _Occurrence:
 
 
 def _donor_span(target: _Occurrence, cell: tuple[int, int], donor: _Occurrence) -> Donor | None:
-    """The donor window aligned on emission centres, if it stays within the donor's
-    neighbouring emissions and leaves room for the crossfade context."""
+    """The donor window aligned on emission centres, or ``None`` when the donor's timing is
+    incompatible: the window, its crossfade context included, must start after the
+    donor's previous emission and no later than its carrier's, and end past the centre of
+    its haraka's emission and before its next one. Anything else would bring in another
+    phoneme or leave the haraka out."""
     centre = target.clip.token(target.index).centre
-    donor_centre = donor.clip.token(donor.index).centre
-    start = donor_centre - (centre - cell[0])
-    end = donor_centre + (cell[1] - centre)
-    low = donor.clip.tokens[donor.clip.anchors[donor.index] - 1].start
-    high = donor.clip.token(donor.index + 1).end
-    if start < max(low, SPLICE_CONTEXT) or end > min(high, donor.clip.num_samples - SPLICE_CONTEXT):
+    s = _syllable(donor.clip, donor.index)
+    start = s.carrier.centre - (centre - cell[0])
+    end = s.carrier.centre + (cell[1] - centre)
+    if (start - JOIN_CONTEXT < s.before.end or start > s.carrier.start
+            or end < s.haraka.centre or end + JOIN_CONTEXT > s.next_start):
         return None
     return Donor(donor.clip.audio_filename, donor.index, donor.letter, start, end)
 
@@ -459,10 +486,13 @@ def plan_pairs(clips: list[TimedClip], salt: str) -> tuple[list[EditPair], int]:
 
 
 def select_pairs(
-    pairs: list[EditPair], quota: int, per_reciter: int, salt: str
+    pairs: list[EditPair], quota: int, per_reciter: int, salt: str,
+    accept: Callable[[EditPair], bool] = lambda pair: True,
 ) -> list[EditPair]:
     """Per operation and mark, at most ``quota`` pairs in hash order, one per source clip
-    and at most ``per_reciter`` per reciter, so no clip or voice dominates."""
+    and at most ``per_reciter`` per reciter, so no clip or voice dominates. A pair within
+    the caps is taken only if ``accept`` passes it (the renderer's checks on the audio);
+    otherwise the next one in hash order is tried."""
     chosen: list[EditPair] = []
     groups: dict[tuple[str, str], list[EditPair]] = {}
     for pair in pairs:
@@ -475,6 +505,8 @@ def select_pairs(
             if taken == quota:
                 break
             if pair.audio_filename in clips or reciters.get(pair.reciter_id, 0) >= per_reciter:
+                continue
+            if not accept(pair):
                 continue
             clips.add(pair.audio_filename)
             reciters[pair.reciter_id] = reciters.get(pair.reciter_id, 0) + 1

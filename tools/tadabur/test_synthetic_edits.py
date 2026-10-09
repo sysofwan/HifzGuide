@@ -42,6 +42,7 @@ from tadabur.synthetic_edits import (
     EDITS_PATH,
     SALT,
     WORKLIST_PATH,
+    Unusable,
     blind_check,
     check_manifest,
     edit_frame,
@@ -53,11 +54,21 @@ from tadabur.synthetic_edits import (
     output_filename,
     read_frame,
     read_items,
-    render,
+    render_pair,
+    stage_in_parallel,
     teacher_agrees,
+    write_item,
 )
 from tadabur.truth_sites import HELD, NOT_HELD, PENDING, SHADDAH, load_truth_sites, parse_site
-from tadabur.waveform_edits import FADE, changed_region, crop, fill, join, replace_span
+from tadabur.waveform_edits import (
+    APERIODIC,
+    FADE,
+    PERIODIC,
+    crop,
+    join,
+    replace_span,
+    stretch,
+)
 
 UNIT = 3200  # samples per letter in the synthetic recitations (0.2 s)
 SHA = "a" * 64
@@ -75,15 +86,20 @@ def _pitch(char: str) -> float:
     return 100.0 + 15.0 * _CHARS.index(char)
 
 
-def _recitation(name: str, reference: str) -> tuple[TimedClip, np.ndarray]:
-    """A clip where each reference character is ``UNIT`` samples of its own tone, and the
-    teacher emitted each one over the middle half of its stretch (a perfect decode)."""
-    t = np.arange(UNIT) / 16000.0
-    waveform = np.concatenate(
-        [0.3 * np.sin(2 * np.pi * _pitch(c) * (t + i * UNIT / 16000.0)) for i, c in
-         enumerate(reference)]
-    ).astype(np.float32)
-    tokens = tuple(Token(c, i * UNIT + UNIT // 4, i * UNIT + 3 * UNIT // 4)
+def _recitation(
+    name: str, reference: str, unit: int = UNIT, level: float = 0.3, noise: str = ""
+) -> tuple[TimedClip, np.ndarray]:
+    """A clip where each reference character is ``unit`` samples of its own tone (or of
+    seeded white noise, for the characters in ``noise``), and the teacher emitted each one
+    over the middle half of its stretch (a perfect decode)."""
+    t = np.arange(unit) / 16000.0
+    rng = np.random.default_rng(0)
+    waveform = np.concatenate([
+        level * (rng.uniform(-1, 1, unit) if c in noise else
+                 np.sin(2 * np.pi * _pitch(c) * (t + i * unit / 16000.0)))
+        for i, c in enumerate(reference)
+    ]).astype(np.float32)
+    tokens = tuple(Token(c, i * unit + unit // 4, i * unit + 3 * unit // 4)
                    for i, c in enumerate(reference))
     clip = TimedClip(name, RECITER, len(waveform), reference, tokens,
                      anchored_positions(reference, reference))
@@ -121,24 +137,35 @@ SWAP_DONORS = "دَكَصَبُتَلُسَرِ"
 # --- the waveform primitives -------------------------------------------------------------
 
 
-def test_crop_changes_only_the_crossfade_around_the_cut():
+def _sine(hz: float, n: int = 24000, level: float = 0.5) -> np.ndarray:
+    return (level * np.sin(2 * np.pi * hz * np.arange(n) / 16000.0)).astype(np.float32)
+
+
+def _min_period_rms(y: np.ndarray, p: int) -> float:
+    """The quietest one-period window of ``y``: a join that cancels the signal shows here."""
+    energy = np.convolve(np.square(y.astype(np.float64)), np.ones(p), mode="valid") / p
+    return float(np.sqrt(energy.min()))
+
+
+def test_an_aperiodic_crop_changes_only_the_crossfade_around_the_cut():
     x = np.random.default_rng(0).standard_normal(20000).astype(np.float32)
-    y = crop(x, 8000, 1500)
-    lo, hi = changed_region(8000, 0)
-    assert len(y) == len(x) - 1500
-    assert np.array_equal(y[:lo], x[:lo])
-    assert np.array_equal(y[hi:], x[hi + 1500:])
+    r = crop(x, 8000, 1500)
+    half = FADE // 2
+    assert (r.path, r.changed) == (APERIODIC, (8000, 9500))
+    assert len(r.samples) == len(x) - 1500
+    assert np.array_equal(r.samples[:8000 - half], x[:8000 - half])
+    assert np.array_equal(r.samples[8000 + half:], x[9500 + half:])
 
 
 def test_replace_span_changes_only_the_span_and_its_crossfades():
     x = np.random.default_rng(1).standard_normal(20000).astype(np.float32)
     material = np.random.default_rng(2).standard_normal(3000 + FADE).astype(np.float32)
     y = replace_span(x, 6000, 8000, material)
-    lo, hi = changed_region(6000, 3000)
+    half = FADE // 2
     assert len(y) == len(x) + 1000
-    assert np.array_equal(y[:lo], x[:lo])
-    assert np.array_equal(y[hi:], x[8000 + FADE // 2:])
-    assert np.array_equal(y[lo + FADE:hi - FADE], material[FADE:-FADE])
+    assert np.array_equal(y[:6000 - half], x[:6000 - half])
+    assert np.array_equal(y[9000 + half:], x[8000 + half:])
+    assert np.array_equal(y[6000 + half:9000 - half], material[FADE:-FADE])
 
 
 def test_join_crossfades_and_refuses_an_overlap_longer_than_either_side():
@@ -150,20 +177,48 @@ def test_join_crossfades_and_refuses_an_overlap_longer_than_either_side():
         join(a[:10], b)
 
 
-def test_fill_extends_a_periodic_region_in_phase():
-    t = np.arange(16000) / 16000.0
-    x = np.sin(2 * np.pi * 125.0 * t).astype(np.float32)  # period 128 samples
-    material = fill(x, (4000, 8000), 47 * 128 + FADE, at=6000, seed=0)
-    y = replace_span(x, 6000, 6000, material)
-    # Stretched by whole periods, a sine stays a sine: no jump beyond the tone's own slope.
-    assert np.max(np.abs(np.diff(y))) <= np.max(np.abs(np.diff(x))) * 1.05
+@pytest.mark.parametrize("hz", [125.0, 133.0, 210.0])
+@pytest.mark.parametrize("length", [2880, 2000, 1111])
+def test_a_periodic_stretch_keeps_its_phase_at_both_joins(hz, length):
+    """Not a whole number of periods (2,880 samples at 125 Hz is 22.5): before the fix the
+    second join met the clip in opposite phase and cancelled two thirds of the energy."""
+    x = _sine(hz)
+    r = stretch(x, 9000, length, (6000, 12000), seed=0)
+    lo, hi = r.changed
+    assert r.path == PERIODIC and len(r.samples) == len(x) + length
+    assert np.array_equal(r.samples[:lo - FADE // 2], x[:lo - FADE // 2])
+    assert np.array_equal(r.samples[hi + length:], x[hi:])
+    full = 0.5 / np.sqrt(2)
+    assert _min_period_rms(r.samples, r.period) >= 0.9 * full
+    assert np.max(np.abs(np.diff(r.samples))) <= np.max(np.abs(np.diff(x))) * 1.1
 
 
-def test_fill_of_noise_is_seeded_and_does_not_simply_repeat():
+@pytest.mark.parametrize("hz", [125.0, 133.0, 210.0])
+@pytest.mark.parametrize("length", [2880, 2000, 1111])
+def test_a_periodic_crop_keeps_its_phase_at_the_join(hz, length):
+    x = _sine(hz)
+    r = crop(x, 9000, length)
+    lo, hi = r.changed
+    assert r.path == PERIODIC and len(r.samples) == len(x) - length
+    assert np.array_equal(r.samples[:lo - FADE // 2], x[:lo - FADE // 2])
+    assert np.array_equal(r.samples[hi - length:], x[hi:])
+    assert _min_period_rms(r.samples, r.period) >= 0.9 * 0.5 / np.sqrt(2)
+
+
+def test_an_aperiodic_stretch_is_seeded_and_does_not_simply_repeat():
     x = np.random.default_rng(3).standard_normal(8000).astype(np.float32)
-    a = fill(x, (1000, 3000), 4000, at=3000, seed=5)
-    assert np.array_equal(a, fill(x, (1000, 3000), 4000, at=3000, seed=5))
-    assert not np.array_equal(a, fill(x, (1000, 3000), 4000, at=3000, seed=6))
+    a = stretch(x, 3000, 4000, (1000, 3000), seed=5)
+    assert a.path == APERIODIC and a.changed == (3000, 3000)
+    assert np.array_equal(a.samples, stretch(x, 3000, 4000, (1000, 3000), seed=5).samples)
+    assert not np.array_equal(a.samples, stretch(x, 3000, 4000, (1000, 3000), seed=6).samples)
+
+
+def test_an_item_that_would_clip_is_never_written(tmp_path):
+    with pytest.raises(ValueError):
+        write_item(np.array([0.5, 1.2, -0.3], np.float32), tmp_path / "x.wav")
+    assert not (tmp_path / "x.wav").exists()
+    output = write_item(np.array([0.5, -0.9, 0.1] * 100, np.float32), tmp_path / "y.wav")
+    assert output["num_samples"] == 300 and output["peak"] == pytest.approx(0.9)
 
 
 # --- planning on synthetic timings -------------------------------------------------------
@@ -243,28 +298,32 @@ def test_selection_is_hash_ordered_and_caps_clips_and_reciters():
 # --- rendering: what each item's audio holds ---------------------------------------------
 
 
-def _render_pair(pair, waveforms):
-    return {role: render(pair, role, waveforms.__getitem__, seed=1) for role in (EDIT, DECOY)}
-
-
 def _shift(change, position):
     """Where a source sample at ``position`` lands after ``change`` (before or after it)."""
     return position if position < change.start_sample else position + change.length_change
 
 
+def _assert_untouched_outside(item, x, change):
+    """The item is its source outside the span it replaced (and half a crossfade)."""
+    lo, hi = item.rendered.changed
+    half = FADE // 2
+    y = item.rendered.samples
+    assert len(y) == len(x) + change.length_change
+    assert np.array_equal(y[:lo - half], x[:lo - half])
+    assert np.array_equal(y[hi + change.length_change + half:], x[hi + half:])
+
+
 def test_shaddah_removed_shortens_only_the_hold_and_the_decoy_only_the_madd():
     clip, x = _recitation("g.wav", GEMINATE_REFERENCE)
     (pair,) = shaddah_removed(clip, SALT)
-    rendered = _render_pair(pair, {"g.wav": x})
-    for role, (y, gain) in rendered.items():
-        change = pair.edit if role == EDIT else pair.decoy
-        lo, hi = changed_region(change.start_sample, change.inserted_samples)
-        assert gain is None and len(y) == len(x) + change.length_change
-        assert np.array_equal(y[:lo], x[:lo])
-        assert np.array_equal(y[hi:], x[hi - change.length_change:])
+    rendered = render_pair(pair, {"g.wav": x}.__getitem__)
+    for role, item in rendered.items():
+        _assert_untouched_outside(item, x, pair.edit if role == EDIT else pair.decoy)
+        assert item.gain is None
+    assert rendered[EDIT].rendered.path == rendered[DECOY].rendered.path
     held, neighbours = 5 * UNIT, "َك"  # the centre of the doubled س
     hold = _run_length(x, held, "س", neighbours)
-    edit, decoy = rendered[EDIT][0], rendered[DECOY][0]
+    edit, decoy = rendered[EDIT].rendered.samples, rendered[DECOY].rendered.samples
     assert _run_length(edit, pair.edit.start_sample, "س", neighbours) <= hold - 1200
     assert _run_length(decoy, held, "س", neighbours) == hold
     madd, neighbours = 19 * UNIT, "ِن"
@@ -276,8 +335,10 @@ def test_shaddah_removed_shortens_only_the_hold_and_the_decoy_only_the_madd():
 def test_shaddah_added_lengthens_only_the_fricative_and_the_decoy_only_the_madd():
     clip, x = _recitation("g.wav", GEMINATE_REFERENCE)
     (pair,) = shaddah_added(clip, 1600, SALT)
-    edit, _ = render(pair, EDIT, {"g.wav": x}.__getitem__, seed=1)
-    decoy, _ = render(pair, DECOY, {"g.wav": x}.__getitem__, seed=1)
+    rendered = render_pair(pair, {"g.wav": x}.__getitem__)
+    for role, item in rendered.items():
+        _assert_untouched_outside(item, x, pair.edit if role == EDIT else pair.decoy)
+    edit, decoy = rendered[EDIT].rendered.samples, rendered[DECOY].rendered.samples
     carrier, neighbours = 9 * UNIT + UNIT // 2, "َُ"
     before = _run_length(x, carrier, "ش", neighbours)
     assert _run_length(edit, carrier, "ش", neighbours) >= before + 1200
@@ -285,20 +346,74 @@ def test_shaddah_added_lengthens_only_the_fricative_and_the_decoy_only_the_madd(
     assert len(edit) == len(decoy) == len(x) + 1600
 
 
-def test_a_swap_edit_says_the_other_letter_and_its_decoy_the_same_letter():
-    target, x = _recitation("t.wav", SWAP_TARGET)
-    donors, d = _recitation("d.wav", SWAP_DONORS)
-    pair = next(p for p in consonant_swaps([target, donors], SALT)
-                if p.audio_filename == "t.wav" and p.reference_index == 6)
-    carrier = (6 * UNIT + UNIT // 8, 7 * UNIT - UNIT // 8)
-    for role in (EDIT, DECOY):
-        y, gain = render(pair, role, {"t.wav": x, "d.wav": d}.__getitem__, seed=1)
+def test_a_pair_whose_items_would_be_made_differently_is_refused():
+    """A noisy fricative stretched against a voiced madd: the two would take different
+    methods, a difference a model could learn instead of the edit's identity."""
+    clip, x = _recitation("g.wav", GEMINATE_REFERENCE, noise="ش")
+    (pair,) = shaddah_added(clip, 1600, SALT)
+    with pytest.raises(Unusable) as refusal:
+        render_pair(pair, {"g.wav": x}.__getitem__)
+    assert refusal.value.reason == "render_path"
+
+
+def _swap(donor_unit: int = UNIT, donor_level: float = 0.3, target_level: float = 0.3):
+    target, x = _recitation("t.wav", SWAP_TARGET, level=target_level)
+    donors, d = _recitation("d.wav", SWAP_DONORS, unit=donor_unit, level=donor_level)
+    pairs = [p for p in consonant_swaps([target, donors], SALT)
+             if p.audio_filename == "t.wav" and p.reference_index == 6]
+    return pairs, {"t.wav": x, "d.wav": d}
+
+
+@pytest.mark.parametrize("donor_unit", [2800, UNIT, 3600])
+def test_a_swap_brings_in_the_carrier_and_haraka_and_no_other_phoneme(donor_unit):
+    """Donors recited faster or slower than the target still fit: the edit says the other
+    letter, the decoy the same one, and both keep the target's preceding letter, its
+    haraka and the letter after it."""
+    (pair,), audio = _swap(donor_unit)
+    x = audio["t.wav"]
+    rendered = render_pair(pair, audio.__getitem__)
+    for role, item in rendered.items():
         change = pair.edit if role == EDIT else pair.decoy
-        lo, hi = changed_region(change.start_sample, change.inserted_samples)
-        assert len(y) == len(x) and gain == pytest.approx(1.0, abs=0.05)
-        assert np.array_equal(y[:lo], x[:lo]) and np.array_equal(y[hi:], x[hi:])
+        _assert_untouched_outside(item, x, change)
+        y = item.rendered.samples
         label = pair.edited if role == EDIT else pair.prescribed
-        assert _letter_at(y, *carrier, "سص") == label
+        letters = "سصَُِمف"
+        middle = UNIT // 4, 3 * UNIT // 4
+        assert _letter_at(y, 5 * UNIT + middle[0], 5 * UNIT + middle[1], letters) == "ُ"
+        assert _letter_at(y, 6 * UNIT + middle[0], 6 * UNIT + middle[1], letters) == label
+        assert _letter_at(y, 7 * UNIT + middle[0], 7 * UNIT + middle[1], letters) == "َ"
+        assert _letter_at(y, 8 * UNIT + middle[0], 8 * UNIT + middle[1], letters) == "م"
+        assert item.gain == pytest.approx(1.0, abs=0.1)
+        donor = change.donor
+        s = donor_unit
+        # The window, crossfade context included, stays between the donor's previous
+        # emission and the emission after its haraka, and reaches into the haraka.
+        j = donor.reference_index
+        assert donor.start_sample - FADE // 2 >= (j - 1) * s + 3 * s // 4
+        assert donor.end_sample >= (j + 1) * s + s // 2
+        assert donor.end_sample + FADE // 2 <= (j + 2) * s + s // 4
+
+
+def test_a_donor_whose_timing_cannot_fit_is_incompatible():
+    pairs, _ = _swap(donor_unit=2000)
+    assert pairs == []
+
+
+def test_a_donor_far_louder_or_quieter_than_the_span_is_refused():
+    (pair,), audio = _swap(donor_level=0.9)
+    with pytest.raises(Unusable) as refusal:
+        render_pair(pair, audio.__getitem__)
+    assert refusal.value.reason == "donor_level"
+
+
+def test_a_pair_that_would_clip_is_refused():
+    (pair,), audio = _swap(donor_level=0.5, target_level=0.95)
+    spike = audio["d.wav"].copy()
+    spike[pair.edit.donor.start_sample + 200] = 0.6  # 0.6 x the ~1.9 level match > 1
+    audio["d.wav"] = spike
+    with pytest.raises(Unusable) as refusal:
+        render_pair(pair, audio.__getitem__)
+    assert refusal.value.reason == "peak"
 
 
 # --- the manifest ------------------------------------------------------------------------
@@ -311,12 +426,12 @@ def _staged(name: str, num_samples: int, reciter: int = RECITER) -> StagedClip:
 def _items(pair, waveforms):
     clips = {name: _staged(name, len(w)) for name, w in waveforms.items()}
     items = []
-    for role in (EDIT, DECOY):
-        y, gain = render(pair, role, waveforms.__getitem__, seed=1)
+    for role, item in render_pair(pair, waveforms.__getitem__).items():
+        y = item.rendered.samples
         item_id = f"{pair.pair_id}:{role}"
         output = {"audio_filename": output_filename(item_id), "num_samples": len(y),
-                  "audio_sha256": SHA}
-        items.append(item_record(pair, role, clips, gain, output, seed=1))
+                  "audio_sha256": SHA, "peak": float(np.max(np.abs(y)))}
+        items.append(item_record(pair, role, clips, item, output))
     return items
 
 
@@ -341,6 +456,8 @@ def test_manifest_rows_carry_provenance_and_labels_that_follow_the_edit():
     lambda e, d: e["change"]["donor"].update(reciter_id=RECITER + 1),
     lambda e, d: e["output"].update(audio_filename="edit.wav"),
     lambda e, d: e["output"].update(num_samples=e["output"]["num_samples"] + 1),
+    lambda e, d: e["output"].update(peak=1.01),
+    lambda e, d: d["render"].update(path="periodic"),
 ])
 def test_check_manifest_refuses_a_broken_pair(mutate):
     target, x = _recitation("t.wav", SWAP_TARGET)
@@ -401,6 +518,43 @@ def test_the_frame_takes_only_reciters_absent_from_every_unseen_shard():
         edit_frame(train, unseen[1:])  # an unseen shard missing from the index
     with pytest.raises(ValueError):
         edit_frame([_index_row("d.wav", 3, 39)], unseen)
+
+
+def _clip_entry(name: str, sha: str) -> StagedClip:
+    return StagedClip(name, 100, 1, RECITER, "2:2", 16000, sha * 64, ("synthetic_edit",))
+
+
+def test_an_interrupted_parallel_staging_keeps_every_recorded_checksum():
+    """Worker 0 stages a new clip, checkpoints and dies; worker 1 holds a clip that was
+    already registered and never checkpoints. No write may drop that clip's checksum,
+    and a resume restores the registry exactly."""
+    a, b, c = _clip_entry("a.wav", "a"), _clip_entry("b.wav", "b"), _clip_entry("c.wav", "c")
+    stale = _clip_entry("gone.wav", "d")  # registered once, no longer requested
+    known = {"a.wav": a, "b.wav": b, "gone.wav": stale}
+    groups = [{"a.wav": frozenset(), "c.wav": frozenset()}, {"b.wav": frozenset()}]
+    writes: list[dict] = []
+
+    def interrupted(requests, checkpoint):
+        if "c.wav" in requests:
+            checkpoint({"a.wav": a, "c.wav": c})
+            raise RuntimeError("worker died")
+        return {"b.wav": b}, []
+
+    with pytest.raises(RuntimeError):
+        stage_in_parallel(groups, known, interrupted, writes.append, workers=2)
+    assert writes and all({"a.wav", "b.wav", "gone.wav"} <= set(w) for w in writes)
+    assert writes[-1]["b.wav"] == b and writes[-1]["c.wav"] == c
+
+    def resumed(requests, checkpoint):
+        found = {name: writes[-1][name] for name in requests}
+        checkpoint(found)
+        return found, []
+
+    resumed_writes: list[dict] = []
+    staged, missing = stage_in_parallel(groups, writes[-1], resumed, resumed_writes.append, 2)
+    assert staged == {"a.wav": a, "b.wav": b, "c.wav": c} and missing == []
+    assert all("gone.wav" in w for w in resumed_writes[:-1])
+    assert resumed_writes[-1] == staged  # pruned only once every worker finished
 
 
 def test_committed_edit_sources_and_donors_are_disjoint_from_every_evaluation_item():

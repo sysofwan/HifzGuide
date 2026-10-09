@@ -58,43 +58,76 @@ on each side, so the segment there is the teacher's emission of exactly that let
 | `shaddah_added` | stretch a single voiceless fricative (ث ح خ س ش ص ف) between two harakat by the frame's median held span (2,880 samples, 180 ms) | stretch a long madd by the same length | `held` / `not_held` |
 | `consonant_swap` | splice the carrier's cell from a same-reciter donor of the other letter of `س↔ص`, `ذ↔ز`, `ض↔ظ` or `ذ↔ظ`, followed by the same haraka | splice the same cell from a same-reciter donor of the **same** letter | the other letter / the carrier's |
 
-- A **cell** runs from the end of the previous emission to the end of the following
-  haraka's, so the splice carries the consonant-to-haraka transition, where emphasis
-  (`ص` against `س`) is heard. The donor's window is aligned on emission centres and must
-  stay within its own neighbouring emissions. A donor with the same preceding character is
-  preferred. The donor is scaled to the RMS of the span it replaces (within 0.5-2×).
+- A **cell** runs from halfway between the previous emission and the carrier's to the end
+  of the following haraka's, so the splice carries the consonant-to-haraka transition,
+  where emphasis (`ص` against `س`) is heard, and both crossfades fall between emissions.
+  The donor's window is aligned on emission centres and must fit the donor's own
+  boundaries, crossfade context included: it starts after the donor's previous emission and
+  no later than its carrier's, and ends past the centre of its haraka's emission and
+  before the next emission. A donor whose timing cannot fit is incompatible, so no other
+  phoneme is imported and the haraka is never left out. A donor with the same preceding
+  character is preferred.
 - Both spans were chosen on a dry run over the first 327 staged clips, by what the base
   teacher heard (decoys stayed unchanged throughout): crop centre to centre, 18 of 25 edits
   heard single, against 9 of 25 for the gap between the emissions alone; splice through the
   haraka, 23 of 53 heard as the other letter, against 6 of 68 for a cell ending at the
   haraka's start.
-- A **stretch** is pitch-synchronous where the region is periodic (whole periods, in phase
-  with the join) and built from seeded random offsets where it is not (frication).
-- Every join is a 10 ms Hann crossfade. Outside the crossfades an item is its source,
-  sample for sample, shifted by the length change after it.
+- **Periodic regions keep their phase** (`waveform_edits`). A crop or a stretch of a vowel
+  or a voiced hold is made of whole pitch periods, which join in phase, and the remainder
+  (at most half a period) is absorbed by resampling the 12 periods that follow (a local
+  pitch change of at most 4%). Cutting an arbitrary length instead joins mismatched points
+  of the cycle and cancels part of the signal. An aperiodic region (frication, a closure)
+  is cut directly or extended from seeded random offsets.
+- Every cut is joined with a 10 ms Hann crossfade. Outside the span it replaced (recorded
+  as `render.changed_start` / `changed_end`) an item is its source, sample for sample,
+  shifted by the length change after it.
 
-An edit and its decoy have the same kind of change and the same length change, on the same
-source clip; only where it falls differs. Selection takes, per operation and mark, pairs in
-salted-hash order, one per source clip and at most three per reciter, up to 60.
+**An edit and its decoy go through one processing chain.** Same source clip, same kind of
+change, same length change, same crossfades, and the same method: the periodic or aperiodic
+treatment is chosen from the signal alone, and a pair whose two items would be treated
+differently is rejected (`render_path`), so the processing never tells them apart; only
+where the change falls does. Both items of a swap are spliced, from same-reciter donors, and
+both donors are level-matched the same way. The renderer also rejects:
+
+- a splice whose donor is more than 2× louder or quieter (RMS) than the span it replaces
+  (`donor_level`); it is never clamped, which would leave a level jump;
+- a pair either of whose items would exceed full scale (`peak`). Writing fails on any
+  sample beyond ±1, so PCM_16 never clips silently.
+
+Selection takes, per operation and mark, pairs in salted-hash order, one per source clip
+and at most three per reciter, up to 60; a rejected pair is skipped for the next one.
 
 ### The 2026-10-08 run
 
-| operation, mark | candidates | pairs | teacher hears the edit | teacher hears the decoy unchanged |
-|---|---|---|---|---|
-| `shaddah_removed` | 332 | 60 | 35 / 60 | 60 / 60 |
-| `shaddah_added` | 138 | 60 | 48 / 60 | 60 / 60 |
-| `consonant_swap` `س↔ص` | 153 | 60 | 35 / 60 | 53 / 60 |
-| `consonant_swap` `ذ↔ز` | 108 | 41 | 9 / 41 | 39 / 41 |
-| `consonant_swap` `ذ↔ظ` | 33 | 21 | 8 / 21 | 21 / 21 |
-| `consonant_swap` `ض↔ظ` | 6 | 5 | 0 / 5 | 5 / 5 |
+| operation, mark | candidates | rejected | pairs | teacher hears the edit | teacher hears the decoy unchanged |
+|---|---|---|---|---|---|
+| `shaddah_removed` | 332 | 14 `render_path` | 60 | 35 / 60 | 60 / 60 |
+| `shaddah_added` | 138 | 57 `render_path` | 44 | 34 / 44 | 44 / 44 |
+| `consonant_swap` `س↔ص` | 108 | 11 `donor_level`, 5 `peak` | 45 | 14 / 45 | 45 / 45 |
+| `consonant_swap` `ذ↔ز` | 24 | 2 `donor_level` | 15 | 1 / 15 | 14 / 15 |
+| `consonant_swap` `ذ↔ظ` | 4 | | 2 | 0 / 2 | 2 / 2 |
+| `consonant_swap` `ض↔ظ` | 1 | | 1 | 0 / 1 | 1 / 1 |
 
-247 pairs (494 items, 2.7 h of audio, 303 MB) from 42 of the 90 frame reciters; the others
-have no anchored target with a neutral madd or a same-reciter donor. Re-running `generate`
-reproduces every byte. The teacher column is `teacher_check.json`: the base teacher's decode
-of the item spells the label at the carrier. It is a pre-screen, not truth. The teacher
-leans on frequent words: it still hears the geminate in 9 of the 11 crops in `ٱللَّه`
-(16 of 49 elsewhere) and `ذ` in all 16 `ذ→ز` swaps in `ٱلَّذِينَ`. The blind check is drawn
-without looking at it.
+167 pairs (334 items, 2.0 h of audio, 216 MB) from 39 of the 90 frame reciters; the others
+have no anchored target with a neutral madd or a compatible same-reciter donor. Both items of
+every pair took the same path: `shaddah_removed` 60 periodic; `shaddah_added` 31 periodic and
+13 aperiodic; every swap a splice. Donor gains run 0.50-1.96, and no item exceeds full scale
+(`summary.json` → `max_peak`). Re-running `generate` reproduces every byte.
+
+The teacher column is `teacher_check.json`: whether the base teacher's decode of the item
+spells the label at the carrier. It is a pre-screen, not truth. The teacher leans on
+frequent words: in the first run (before the fixes below) it still heard the geminate in 9
+of the 11 crops in `ٱللَّه` (16 of 49 elsewhere) and `ذ` in all 16 `ذ→ز` swaps in
+`ٱلَّذِينَ`. The blind check is drawn without looking at it.
+
+**Against the first run.** The first run (247 pairs) let a donor window start at the
+previous emission's start and end anywhere before the haraka's end: 26 edit and 16 decoy
+windows overlapped another phoneme's emission, and 2 ended at the haraka's onset. Its
+periodic stretches lost phase at the second join (about a third of the energy left there),
+and its donor gain was clamped rather than refused, leaving level jumps up to 4.3× and four
+outputs that clipped. Fixing these cut the swap candidates (`ذ↔ز` 108 → 24) and moved the
+teacher's reading of the `س↔ص` swaps from 35 of 60 to 14 of 45; their decoys went from 53 of
+60 unchanged to 45 of 45. Every committed donor window now passes the boundary checks.
 
 ## `edits.jsonl`
 
@@ -111,18 +144,20 @@ One JSON object per item, keys sorted. `item_id` is `<pair_id>:<role>`, and `pai
 | `source` | the source clip's `audio_filename`, `shard`, `row_index`, `reciter_id`, `surah_ayah`, `num_samples`, `audio_sha256` (as registered) |
 | `change` | `place` (`carrier` or `madd`), `kind` (`crop`, `stretch`, `splice`), the replaced span `[start_sample, end_sample)` in the source, `inserted_samples`, a stretch's `fill_region`, a splice's `donor` (`audio_filename`, `reciter_id`, `audio_sha256`, `reference_index`, `letter`, span, `gain`) |
 | `length_change`, `seed` | samples added (negative: removed); the stretch's random seed |
-| `output` | the rendered file's opaque `audio_filename` (`se_<hash>.wav`), `num_samples`, `audio_sha256` |
+| `render` | `path` (`periodic`, `aperiodic` or `splice`), `period_samples`, and the source span `[changed_start, changed_end)` the output differs on |
+| `output` | the rendered file's opaque `audio_filename` (`se_<hash>.wav`), `num_samples`, `audio_sha256`, `peak` |
 
 `synthetic_edits.check_manifest` enforces the pairing (one edit and one decoy per pair,
-identical but for the change; equal length change; labels and labelled references following
-the edit; output length; opaque names; same-reciter donors).
+identical but for the change; equal length change; the same render path; labels and
+labelled references following the edit; output length; no clipping; opaque names;
+same-reciter donors).
 
 Synthetic edits never enter a real-mistake rate (acceptance rules §1).
 
 ## The blind check
 
 `blind_check.jsonl` holds 30 items, edits and decoys mixed (per operation 5 edits and 5
-decoys; the swaps are 4 `ذ↔ز`, 6 `س↔ص`): per operation, pairs in
+decoys; the swaps are 9 `س↔ص` and 1 `ذ↔ز`): per operation, pairs in
 salted-hash order, alternating edit and decoy, never two items from one source clip (a
 listener who heard both versions of a recitation could tell which was changed). Rows are
 truth-site skeletons (`tadabur.truth_sites`, `source: synthetic_edit`, `heard: pending`):
@@ -169,7 +204,7 @@ python -m tadabur.synthetic_edits audit --out-dir stage/edits
 ```
 
 On the GPU box the run lives in `/root/scratch/issue-88/`: `stage/clips/` (the 600 staged
-clips, 273 MB) and `stage/edits/audio/` (the 494 items, 303 MB).
+clips, 273 MB) and `stage/edits/audio/` (the 334 items, 216 MB).
 
 `stage` reads one or two rows from each of 283 shards (2.4 GB each, deleted once read;
 each worker holds a shard in memory, ~5 GB);

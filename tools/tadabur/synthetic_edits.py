@@ -74,7 +74,7 @@ from .synthetic_edit_plan import (
     select_pairs,
 )
 from .truth_sites import MARKS, PENDING, SYNTHETIC_EDIT, TruthSite
-from .waveform_edits import FADE, Rendered, crop, splice, stretch
+from .waveform_edits import FADE, DoesNotFit, Rendered, crop, splice, stretch
 
 SYNTHETIC_EDITS_DIR = Path(__file__).parent / "synthetic_edits"
 FRAME_PATH = SYNTHETIC_EDITS_DIR / "frame.json"
@@ -500,9 +500,8 @@ def render(pair: EditPair, role: str, audio) -> RenderedItem:
     if not 1 / MAX_DONOR_LEVEL_RATIO <= ratio <= MAX_DONOR_LEVEL_RATIO:
         raise Unusable("donor_level", f"{pair.pair_id}:{role} needs gain {ratio:.2f}")
     gain = round(ratio, 6)
-    half = FADE // 2
-    material = d[donor.start_sample - half:donor.end_sample + half] * np.float32(gain)
-    return RenderedItem(splice(x, change.start_sample, change.end_sample, material), gain)
+    return RenderedItem(splice(x, change.start_sample, change.end_sample, d,
+                               donor.start_sample, gain), gain)
 
 
 def _rms(samples: np.ndarray) -> float:
@@ -512,8 +511,12 @@ def _rms(samples: np.ndarray) -> float:
 def render_pair(pair: EditPair, audio) -> dict[str, RenderedItem]:
     """Both items of ``pair``, or :class:`Unusable` when they cannot be told apart by
     identity alone: they took different methods (one periodic, one not), or either
-    would clip."""
-    items = {role: render(pair, role, audio) for role in (EDIT, DECOY)}
+    would clip; or when a change does not fit its region (too short for a whole-period
+    unit once phase-aligned, say)."""
+    try:
+        items = {role: render(pair, role, audio) for role in (EDIT, DECOY)}
+    except DoesNotFit as error:
+        raise Unusable("does_not_fit", f"{pair.pair_id}: {error}") from error
     paths = {role: item.rendered.path for role, item in items.items()}
     if paths[EDIT] != paths[DECOY]:
         raise Unusable("render_path", f"{pair.pair_id}: {paths}")

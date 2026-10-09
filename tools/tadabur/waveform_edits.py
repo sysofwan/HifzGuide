@@ -59,6 +59,20 @@ class Rendered:
     changed: tuple[int, int]
 
 
+class DoesNotFit(ValueError):
+    """A requested span does not lie inside the waveform, or a region is too short for the
+    operation asked of it. Raised instead of letting NumPy truncate a slice silently."""
+
+
+def _take(x: np.ndarray, start: int, length: int) -> np.ndarray:
+    """``x[start : start + length]``, exactly ``length`` samples or :class:`DoesNotFit`.
+    Every slice whose length matters goes through here: NumPy shortens an out-of-range
+    slice without a word, and a short unit breaks the period arithmetic."""
+    if start < 0 or length < 0 or start + length > len(x):
+        raise DoesNotFit(f"[{start}, {start + length}) is outside {len(x)} samples")
+    return x[start : start + length]
+
+
 def _ramp(fade: int) -> np.ndarray:
     """Fade-in weights of a Hann crossfade; the fade-out is ``1 - ramp``."""
     return 0.5 - 0.5 * np.cos(np.pi * (np.arange(fade) + 0.5) / fade)
@@ -68,7 +82,7 @@ def join(left: np.ndarray, right: np.ndarray, fade: int = FADE) -> np.ndarray:
     """``left`` then ``right``, overlapping by ``fade`` samples: ``len(left) + len(right) -
     fade`` samples, the overlap crossfaded."""
     if fade > min(len(left), len(right)):
-        raise ValueError(f"cannot crossfade {fade} samples over {len(left)} and {len(right)}")
+        raise DoesNotFit(f"cannot crossfade {fade} samples over {len(left)} and {len(right)}")
     ramp = _ramp(fade)
     overlap = left[len(left) - fade:] * (1.0 - ramp) + right[:fade] * ramp
     return np.concatenate([left[: len(left) - fade], overlap, right[fade:]]).astype(np.float32)
@@ -78,7 +92,7 @@ def _cut(x: np.ndarray, start: int, length: int, fade: int = FADE) -> np.ndarray
     """``x`` without ``[start, start + length)``, the cut crossfaded."""
     half = fade // 2
     if start - half < 0 or start + length + half > len(x) or length < 1:
-        raise ValueError(f"cut [{start}, {start + length}) does not fit in {len(x)} samples")
+        raise DoesNotFit(f"cut [{start}, {start + length}) does not fit in {len(x)} samples")
     return join(x[: start + half], x[start + length - half:], fade)
 
 
@@ -93,18 +107,18 @@ def replace_span(
     """
     half = fade // 2
     if start - half < 0 or end + half > len(x) or end < start:
-        raise ValueError(f"span [{start}, {end}) does not fit in {len(x)} samples")
+        raise DoesNotFit(f"span [{start}, {end}) does not fit in {len(x)} samples")
     if len(material) < 2 * fade:
-        raise ValueError(f"material of {len(material)} samples is too short to join")
+        raise DoesNotFit(f"material of {len(material)} samples is too short to join")
     return join(join(x[: start + half], material, fade), x[end - half:], fade)
 
 
 def _retime(x: np.ndarray, start: int, span: int, length: int) -> np.ndarray:
     """``x`` with ``[start, start + span)`` resampled to ``length`` samples. Both ends keep
     their samples, so the waveform stays continuous without a crossfade."""
-    if start + span + 1 > len(x) or length < 1:
-        raise ValueError(f"cannot retime [{start}, {start + span}) of {len(x)} samples")
-    segment = x[start : start + span + 1].astype(np.float64)
+    if length < 1:
+        raise DoesNotFit(f"cannot retime [{start}, {start + span}) to {length} samples")
+    segment = _take(x, start, span + 1).astype(np.float64)
     positions = np.linspace(0.0, span, length + 1)[:-1]
     resampled = np.interp(positions, np.arange(span + 1), segment)
     return np.concatenate([x[:start], resampled, x[start + span:]]).astype(np.float32)
@@ -135,7 +149,7 @@ def crop(x: np.ndarray, start: int, length: int) -> Rendered:
 
     A periodic span loses whole periods at ``start`` and the remainder from the
     :data:`RETIME_PERIODS` periods after it (module docstring)."""
-    p = period(x[start : start + length])
+    p = period(_take(x, start, length))
     if p is None:
         return Rendered(_cut(x, start, length), APERIODIC, None, (start, start + length))
     count, remainder = _whole_periods(length, p)
@@ -150,30 +164,40 @@ def _periodic_material(
 ) -> np.ndarray:
     """``length`` samples of whole periods of ``source`` (which starts at ``lo`` in the
     clip), starting in phase with the clip at ``at - fade // 2``, where the first join
-    crossfades it in."""
-    unit = max(1, min(round(UNIT_SECONDS * 16000 / p), (len(source) - fade) // p)) * p + fade
-    if unit > len(source):
-        raise ValueError(f"region of {len(source)} samples is shorter than one {unit}-sample unit")
-    centre = (len(source) - unit) // 2
-    centre -= (lo + centre - (at - fade // 2)) % p
-    centre += p if centre < 0 else 0
-    out = source[centre : centre + unit]
+    crossfades it in.
+
+    A unit is ``k`` periods plus the crossfade, so each repeat advances exactly ``k``
+    periods. Aligning its start to the clip's phase can move it up to a period later; when
+    the aligned unit no longer fits in the region, ``k`` is lowered until it does."""
+    periods = max(1, min(round(UNIT_SECONDS * 16000 / p), (len(source) - fade) // p))
+    for k in range(periods, 0, -1):
+        unit = k * p + fade
+        start = (len(source) - unit) // 2
+        start -= (lo + start - (at - fade // 2)) % p
+        start += p if start < 0 else 0
+        if start >= 0 and start + unit <= len(source):
+            break
+    else:
+        raise DoesNotFit(f"no whole-period unit of {p} fits a {len(source)}-sample region")
+    chunk = _take(source, start, unit)
+    assert (len(chunk) - fade) % p == 0, "a repeat must advance by whole periods"
+    out = chunk
     while len(out) < length:
-        out = join(out, source[centre : centre + unit], fade)
-    return out[:length]
+        out = join(out, chunk, fade)
+    return _take(out, 0, length)
 
 
 def _noise_material(source: np.ndarray, length: int, seed: int, fade: int) -> np.ndarray:
     """``length`` samples of ``source``'s texture: units at seeded random offsets."""
     unit = max(int(UNIT_SECONDS * 16000), 2 * fade)
     if unit > len(source):
-        raise ValueError(f"region of {len(source)} samples is shorter than one {unit}-sample unit")
+        raise DoesNotFit(f"region of {len(source)} samples is shorter than one {unit}-sample unit")
     rng = np.random.default_rng(seed)
-    out = source[(len(source) - unit) // 2 :][:unit]
+    out = _take(source, (len(source) - unit) // 2, unit)
     while len(out) < length:
         offset = int(rng.integers(0, len(source) - unit + 1))
-        out = join(out, source[offset : offset + unit], fade)
-    return out[:length]
+        out = join(out, _take(source, offset, unit), fade)
+    return _take(out, 0, length)
 
 
 def stretch(
@@ -185,7 +209,7 @@ def stretch(
     and the remainder is absorbed by resampling the :data:`RETIME_PERIODS` periods after
     ``at``. An aperiodic one is extended by units at seeded random offsets."""
     lo, hi = region
-    source = x[lo:hi].astype(np.float32)
+    source = _take(x, lo, hi - lo).astype(np.float32)
     p = period(source)
     if p is None:
         material = _noise_material(source, length + fade, seed, fade)
@@ -200,6 +224,12 @@ def stretch(
                     (at, at + span))
 
 
-def splice(x: np.ndarray, start: int, end: int, material: np.ndarray) -> Rendered:
-    """``x`` with ``[start, end)`` replaced by ``material`` (with its join context)."""
-    return Rendered(replace_span(x, start, end, material), SPLICED, None, (start, end))
+def splice(
+    x: np.ndarray, start: int, end: int, donor: np.ndarray, donor_start: int, gain: float,
+    fade: int = FADE,
+) -> Rendered:
+    """``x`` with ``[start, end)`` replaced by as many samples of ``donor`` from
+    ``donor_start``, scaled by ``gain``, with the donor's own join context around them."""
+    half = fade // 2
+    material = _take(donor, donor_start - half, end - start + fade) * np.float32(gain)
+    return Rendered(replace_span(x, start, end, material, fade), SPLICED, None, (start, end))

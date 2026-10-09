@@ -76,7 +76,11 @@ on each side, so the segment there is the teacher's emission of exactly that let
   or a voiced hold is made of whole pitch periods, which join in phase, and the remainder
   (at most half a period) is absorbed by resampling the 12 periods that follow (a local
   pitch change of at most 4%). Cutting an arbitrary length instead joins mismatched points
-  of the cycle and cancels part of the signal. An aperiodic region (frication, a closure)
+  of the cycle and cancels part of the signal. A stretch repeats a unit of whole periods
+  aligned to the clip's phase; where a short region cannot hold the aligned unit, the unit
+  loses whole periods until it fits (an earlier revision took the truncated slice NumPy
+  returned, and 13 `shaddah_added` edits advanced by half a period). Every slice whose
+  length matters is checked, and a change that cannot fit is rejected (`does_not_fit`). An aperiodic region (frication, a closure)
   is cut directly or extended from seeded random offsets.
 - Every cut is joined with a 10 ms Hann crossfade. Outside the span it replaced (recorded
   as `render.changed_start` / `changed_end`) an item is its source, sample for sample,
@@ -102,7 +106,7 @@ and at most three per reciter, up to 60; a rejected pair is skipped for the next
 | operation, mark | candidates | rejected | pairs | teacher hears the edit | teacher hears the decoy unchanged |
 |---|---|---|---|---|---|
 | `shaddah_removed` | 332 | 14 `render_path` | 60 | 35 / 60 | 60 / 60 |
-| `shaddah_added` | 138 | 57 `render_path` | 44 | 34 / 44 | 44 / 44 |
+| `shaddah_added` | 138 | 57 `render_path` | 44 | 35 / 44 | 44 / 44 |
 | `consonant_swap` `س↔ص` | 108 | 11 `donor_level`, 5 `peak` | 45 | 14 / 45 | 45 / 45 |
 | `consonant_swap` `ذ↔ز` | 24 | 2 `donor_level` | 15 | 1 / 15 | 14 / 15 |
 | `consonant_swap` `ذ↔ظ` | 4 | | 2 | 0 / 2 | 2 / 2 |

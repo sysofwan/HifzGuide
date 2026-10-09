@@ -63,6 +63,7 @@ from tadabur.truth_sites import HELD, NOT_HELD, PENDING, SHADDAH, load_truth_sit
 from tadabur.waveform_edits import (
     APERIODIC,
     FADE,
+    DoesNotFit,
     PERIODIC,
     crop,
     join,
@@ -203,6 +204,27 @@ def test_a_periodic_crop_keeps_its_phase_at_the_join(hz, length):
     assert np.array_equal(r.samples[:lo - FADE // 2], x[:lo - FADE // 2])
     assert np.array_equal(r.samples[hi - length:], x[hi:])
     assert _min_period_rms(r.samples, r.period) >= 0.9 * 0.5 / np.sqrt(2)
+
+
+def test_a_short_region_shrinks_its_unit_rather_than_taking_a_truncated_one():
+    """A 640-sample region at 100 Hz: aligning a four-period unit to the clip's phase
+    pushes it past the region's end. NumPy would hand back 560 samples and advance by 2.5
+    periods (min-period energy 22%); the unit must shrink to whole periods instead."""
+    x = _sine(100.0)
+    r = stretch(x, 8320, 2880, (8000, 8640), seed=0)
+    assert r.path == PERIODIC and r.period == 160
+    assert len(r.samples) == len(x) + 2880
+    assert _min_period_rms(r.samples, r.period) >= 0.9 * 0.5 / np.sqrt(2)
+
+
+def test_a_span_outside_the_waveform_is_refused_not_truncated():
+    x = _sine(125.0, n=4000)
+    with pytest.raises(DoesNotFit):
+        stretch(x, 2000, 1000, (3500, 4600), seed=0)  # region runs past the end
+    with pytest.raises(DoesNotFit):
+        crop(x, 3000, 1500)
+    with pytest.raises(DoesNotFit):
+        stretch(x, 2000, 1000, (1000, 1200), seed=0)  # shorter than one unit
 
 
 def test_an_aperiodic_stretch_is_seeded_and_does_not_simply_repeat():

@@ -179,7 +179,7 @@
   "shaddah_added:shaddah:tadabur_spk0463_S11_A56_6ed10498_000001.wav:86:decoy": true,
   "shaddah_added:shaddah:tadabur_spk0463_S11_A56_6ed10498_000001.wav:86:edit": true,
   "shaddah_added:shaddah:tadabur_spk0463_S11_A58_6ed10498_000002.wav:25:decoy": true,
-  "shaddah_added:shaddah:tadabur_spk0463_S11_A58_6ed10498_000002.wav:25:edit": false,
+  "shaddah_added:shaddah:tadabur_spk0463_S11_A58_6ed10498_000002.wav:25:edit": true,
   "shaddah_added:shaddah:tadabur_spk0463_S11_A63_6ed10498_000005.wav:149:decoy": true,
   "shaddah_added:shaddah:tadabur_spk0463_S11_A63_6ed10498_000005.wav:149:edit": true,
   "shaddah_added:shaddah:tadabur_spk0467_S5_A27_ccae502a_000000.wav:23:decoy": true,
@@ -373,7 +373,7 @@
    "items": 44
   },
   "shaddah_added shaddah edit": {
-   "agree": 34,
+   "agree": 35,
    "items": 44
   },
   "shaddah_removed shaddah decoy": {

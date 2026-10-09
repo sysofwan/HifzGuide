@@ -509,6 +509,21 @@ def test_span_class_ids_are_the_uncollapsed_rows_cut_to_each_span():
     assert [row.tolist() for row in rows] == [[3, 0, 5], [7]]
 
 
+def test_span_log_posteriors_are_normalized_rows_of_the_same_pass():
+    spans = [np.array([3, 3, 0, 0, 5, 5], dtype=np.float32), np.array([7, 7], dtype=np.float32)]
+    decoder = dc.Decoder("frames", _FrameModel(), _RawExtractor(pad=9.0), CPU, batch_size=2)
+
+    rows = decoder.span_log_posteriors(spans)
+
+    assert [row.shape for row in rows] == [(3, NUM_PHONEME_CLASSES), (1, NUM_PHONEME_CLASSES)]
+    assert all(row.dtype == np.float32 for row in rows)
+    for posteriors in rows:
+        np.testing.assert_allclose(np.exp(posteriors).sum(axis=1), 1.0, rtol=1e-6)
+    assert [row.argmax(axis=1).tolist() for row in rows] == [
+        row.tolist() for row in decoder.span_class_ids(spans)
+    ]
+
+
 # --- Loading a model reference ---------------------------------------------------------
 
 
@@ -592,3 +607,52 @@ def test_a_head_with_another_vocabulary_is_refused(tmp_path):
     Wav2Vec2BertForMultilevelCTC(config).save_pretrained(tmp_path)
     with pytest.raises(ValueError, match="classes"):
         dc.load_hf_model(str(tmp_path))
+
+
+def test_a_revision_pins_every_hub_fetch_and_is_fingerprinted(tiny_student, monkeypatch):
+    """A hub id whose default branch moved (A -> B) still loads A when A is asked for.
+
+    The hub is mocked: each ``from_pretrained`` resolves ``(hub id, revision)`` to a local
+    directory, with an absent revision meaning the default branch, now at B.
+    """
+    from transformers import SeamlessM4TFeatureExtractor
+
+    from tadabur.muaalem import Wav2Vec2BertForMultilevelCTC, Wav2Vec2BertForMultilevelCTCConfig
+
+    _, hf_dir = tiny_student
+    hub = {"A": str(hf_dir), "B": "<revision B>"}
+    fetched: list[tuple[str, str]] = []
+
+    def pinned(cls, original):
+        def from_pretrained(ref, *args, **kwargs):
+            if ref != "obadx/fake":
+                return original(ref, *args, **kwargs)
+            revision = kwargs.pop("revision", "B")  # the default branch has moved to B
+            fetched.append((cls.__name__, revision))
+            if revision != "A":
+                raise OSError(f"revision {revision} is not the one under test")
+            return original(hub[revision], *args, **kwargs)
+        return from_pretrained
+
+    for cls in (
+        Wav2Vec2BertForMultilevelCTCConfig, Wav2Vec2BertForMultilevelCTC, SeamlessM4TFeatureExtractor
+    ):
+        monkeypatch.setattr(cls, "from_pretrained", pinned(cls, cls.from_pretrained))
+
+    decoder = dc.Decoder.load("obadx/fake", CPU, weights_dtype="fp32", revision="A")
+    assert sorted(fetched) == sorted(
+        [("Wav2Vec2BertForMultilevelCTCConfig", "A"), ("Wav2Vec2BertForMultilevelCTC", "A"),
+         ("SeamlessM4TFeatureExtractor", "A")]
+    )
+    assert decoder.fingerprint(dc.SPANS).model == "obadx/fake@A"
+
+    fetched.clear()
+    with pytest.raises(OSError, match="revision B"):  # unpinned: the default branch, as before
+        dc.Decoder.load("obadx/fake", CPU, weights_dtype="fp32")
+    assert fetched == [("Wav2Vec2BertForMultilevelCTCConfig", "B")]
+
+
+def test_an_unpinned_load_keeps_the_bare_reference(tiny_student):
+    _, hf_dir = tiny_student
+    decoder = dc.Decoder.load(hf_dir, CPU, weights_dtype="fp32")
+    assert decoder.fingerprint(dc.SPANS).model == str(hf_dir)

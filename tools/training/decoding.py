@@ -429,8 +429,17 @@ def add_weights_dtype_argument(parser) -> None:
     )
 
 
-def load_hf_model(model_ref: str):
+def _revision_kwargs(revision: str | None) -> dict:
+    """``from_pretrained`` keyword arguments pinning ``revision``; none when it is not given,
+    so an unpinned load is exactly what it always was."""
+    return {} if revision is None else {"revision": revision}
+
+
+def load_hf_model(model_ref: str, revision: str | None = None):
     """A Muaalem-architecture model saved for ``from_pretrained``, on CPU in eval mode.
+
+    ``revision`` pins a hub id to one commit (``from_pretrained``'s own argument); without
+    it the hub's default branch is fetched, which can move between two loads.
 
     Loaded through the vendored modeling code (not ``AutoModel``): the multi-level CTC class
     is not registered with transformers, and pinning the vendored copy keeps every tool on
@@ -442,7 +451,9 @@ def load_hf_model(model_ref: str):
         Wav2Vec2BertForMultilevelCTCConfig,
     )
 
-    config = Wav2Vec2BertForMultilevelCTCConfig.from_pretrained(model_ref)
+    config = Wav2Vec2BertForMultilevelCTCConfig.from_pretrained(
+        model_ref, **_revision_kwargs(revision)
+    )
     classes = config.level_to_vocab_size[PHONEME_LEVEL]
     if classes != NUM_PHONEME_CLASSES:
         raise ValueError(
@@ -450,7 +461,9 @@ def load_hf_model(model_ref: str):
             f"{NUM_PHONEME_CLASSES} (tadabur.phoneme_vocab). Vocabulary drift -- the "
             "decode mapping would be corrupt."
         )
-    model = Wav2Vec2BertForMultilevelCTC.from_pretrained(model_ref, config=config)
+    model = Wav2Vec2BertForMultilevelCTC.from_pretrained(
+        model_ref, config=config, **_revision_kwargs(revision)
+    )
     return model.eval()
 
 
@@ -554,12 +567,16 @@ class Decoder:
         weights_dtype: str,
         batch_size: int = 16,
         use_ema: bool = False,
+        revision: str | None = None,
     ) -> "Decoder":
         """Load a hub id, a saved model directory, or a distillation checkpoint file.
 
         ``weights_dtype`` is a key of :data:`WEIGHTS_DTYPES`. ``use_ema`` selects a
         checkpoint's averaged weights; asking for them from anything else is an error rather
-        than a silent no-op.
+        than a silent no-op. ``revision`` pins every hub fetch the load makes -- the model and
+        its feature extractor for a hub id, the (teacher's) feature extractor for a checkpoint
+        -- and is recorded in the fingerprint's ``model`` as ``<ref>@<revision>``. Without it
+        the load is unchanged: the hub's default branch, and the bare reference.
         """
         import torch
         from transformers import SeamlessM4TFeatureExtractor
@@ -582,14 +599,17 @@ class Decoder:
                     f"{model_ref} is not a distillation checkpoint, so it has no averaged "
                     "weights to select."
                 )
-            model = load_hf_model(str(model_ref))
+            model = load_hf_model(str(model_ref), revision)
             extractor_source = str(model_ref)
         model = model.to(device=device, dtype=getattr(torch, WEIGHTS_DTYPES[weights_dtype]))
-        extractor = SeamlessM4TFeatureExtractor.from_pretrained(extractor_source)
-        return cls(model_ref, model, extractor, device, batch_size)
+        extractor = SeamlessM4TFeatureExtractor.from_pretrained(
+            extractor_source, **_revision_kwargs(revision)
+        )
+        name = model_ref if revision is None else f"{model_ref}@{revision}"
+        return cls(name, model, extractor, device, batch_size)
 
-    def _class_ids(self, features, attention_mask=None) -> np.ndarray:
-        """Per-timestep argmax over the phoneme head, ``(batch, timesteps)``."""
+    def _phoneme_logits(self, features, attention_mask=None):
+        """The phoneme head's float32 logits, ``(batch, timesteps, classes)``, on the device."""
         import torch
 
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16, enabled=self.autocast):
@@ -598,7 +618,11 @@ class Decoder:
                 attention_mask=attention_mask,
                 return_dict=True,
             )["logits"][PHONEME_LEVEL]
-        return logits.float().argmax(dim=-1).cpu().numpy()
+        return logits.float()
+
+    def _class_ids(self, features, attention_mask=None) -> np.ndarray:
+        """Per-timestep argmax over the phoneme head, ``(batch, timesteps)``."""
+        return self._phoneme_logits(features, attention_mask).argmax(dim=-1).cpu().numpy()
 
     def window_rows(self, windows: list[np.ndarray]) -> list[np.ndarray]:
         """Each full 5 s window's argmax row on the deployed 125-timestep lattice.
@@ -641,6 +665,19 @@ class Decoder:
         pauses on words (:func:`tadabur.waqf_detect.segment_clip`); :meth:`decode_spans`
         collapses the same rows.
         """
+        return self._span_rows(spans, lambda logits: logits.argmax(dim=-1).cpu().numpy())
+
+    def span_log_posteriors(self, spans: Iterable[np.ndarray]) -> list[np.ndarray]:
+        """Each span's per-timestep log-posteriors, ``(timesteps, classes)`` float32.
+
+        The log-softmax of the same pass :meth:`span_class_ids` makes, cut the same way. A
+        row's argmax is that method's row except where two logits are so close that the
+        softmax's rounding ties them, so a caller that needs both should check them.
+        """
+        return self._span_rows(spans, lambda logits: logits.log_softmax(dim=-1).cpu().numpy())
+
+    def _span_rows(self, spans: Iterable[np.ndarray], head) -> list[np.ndarray]:
+        """``head(logits)`` of every span, batched and cut as :meth:`span_class_ids` says."""
         rows: list[np.ndarray] = []
         pending = iter(spans)
         while batch := list(islice(pending, self.batch_size)):
@@ -651,9 +688,9 @@ class Decoder:
                 padding=True,
             )
             mask = extracted.attention_mask.to(self.device)
-            class_ids = self._class_ids(extracted.input_features, mask)
+            outputs = head(self._phoneme_logits(extracted.input_features, mask))
             valid = self.model._get_feat_extract_output_lengths(mask.sum(dim=1)).tolist()
-            rows.extend(row[: int(length)] for row, length in zip(class_ids, valid))
+            rows.extend(row[: int(length)] for row, length in zip(outputs, valid))
         return rows
 
     def decode_spans(self, spans: Iterable[np.ndarray]) -> list[str]:

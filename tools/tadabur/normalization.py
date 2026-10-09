@@ -164,24 +164,6 @@ def normalize_phonemes(text: str) -> PhonemeNormalization:
     return PhonemeNormalization("".join(normalized), offset_map)
 
 
-def map_to_original(normalized_idx: int, offset_map: list[tuple[int, int]]) -> int:
-    """Map a normalized character index back to the start of its original range."""
-    if normalized_idx < 0:
-        return 0
-    if normalized_idx >= len(offset_map):
-        return offset_map[-1][1] if offset_map else 0
-    return offset_map[normalized_idx][0]
-
-
-def map_to_original_end(normalized_idx: int, offset_map: list[tuple[int, int]]) -> int:
-    """Map a normalized (exclusive) end index back to the original end index."""
-    if normalized_idx <= 0:
-        return 0
-    if normalized_idx > len(offset_map):
-        return offset_map[-1][1] if offset_map else 0
-    return offset_map[normalized_idx - 1][1]
-
-
 def map_char_offsets(
     text: str, normalization: PhonemeNormalization, char_offsets: Sequence[int]
 ) -> list[int]:

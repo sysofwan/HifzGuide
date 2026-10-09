@@ -16,9 +16,9 @@ What it pins:
   real worst-case windowed batch, runs a bf16 + gradient-checkpointed forward/backward, and
   asserts peak VRAM stays under budget before any run commits — ADR-0004's OOM mitigation.
 
-* **Eval is the two-sided #7 harness.** After training the LoRA adapters are merged into a
-  full checkpoint and scored by :mod:`tadabur.eval_harness` (should-accept recall /
-  should-reject discrimination).
+* **Merged for export.** With ``--merge`` the LoRA adapters are merged into a standalone
+  checkpoint after training (:func:`merge_checkpoint`). The #7 accept/reject harness this run
+  used to feed is retired (ADR-0008): fine-tunes are judged on the decode at truth sites.
 
 Runs on Linux + CUDA (RTX 5060 Ti, 16 GB, sm_120 — cu128 torch; see ``tools/README.md``).
 
@@ -27,12 +27,10 @@ Usage:
   python -m training.whole_clip_phoneme preflight \\
       --audio-dir audit_run/segment_audio_v2 --sample-clip <clip.wav>
 
-  # run the whole-clip phoneme-only fine-tune and emit the #7 eval report
+  # run the whole-clip phoneme-only fine-tune and merge the adapters
   python -m training.whole_clip_phoneme train \\
       --labels windowed_labels.jsonl --audio-dir audit_run/segment_audio_v2 \\
-      --out-dir runs/rung2 \\
-      --eval-segment-manifest audit_run/segment_manifest_v2.jsonl \\
-      --eval-audio-dir audit_run/segment_audio_v2
+      --out-dir runs/rung2 --merge
 """
 
 from __future__ import annotations
@@ -541,7 +539,7 @@ def merge_checkpoint(out_dir: Path, dtype: torch.dtype = torch.bfloat16) -> Path
 
     Loads the base model + saved adapters, merges the low-rank updates into the backbone
     (and the trained phoneme head), and saves a standalone checkpoint plus the feature
-    extractor so :mod:`tadabur.eval_harness` / :mod:`tadabur.inference` can load it by path.
+    extractor so :mod:`tadabur.inference` can load it by path.
     """
     from peft import PeftModel
 
@@ -552,27 +550,6 @@ def merge_checkpoint(out_dir: Path, dtype: torch.dtype = torch.bfloat16) -> Path
     merged.save_pretrained(merged_dir)
     load_feature_extractor().save_pretrained(merged_dir)
     return merged_dir
-
-
-def emit_eval_report(
-    merged_dir: Path,
-    segment_manifest: Path,
-    eval_audio_dir: Path,
-    out_path: Path,
-) -> None:
-    """Score the merged rung-(2) checkpoint with the two-sided #7 harness and write it.
-
-    Runs :func:`tadabur.eval_harness.run_eval` (should-accept recall / should-reject
-    discrimination + the soft-pair/shadda confusion matrix) on the merged checkpoint.
-    """
-    from tadabur.eval_harness import run_eval
-
-    report = run_eval(segment_manifest, eval_audio_dir, model_id=str(merged_dir))
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        json.dumps(report.to_json_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    print(f"Wrote rung-(2) eval report to {out_path}")
 
 
 # --- CLI ---------------------------------------------------------------------
@@ -622,14 +599,8 @@ def _cmd_train(args: argparse.Namespace) -> None:
         lora=LoRASettings(rank=args.lora_rank, alpha=args.lora_alpha),
     )
     train(args.labels, args.audio_dir, args.out_dir, config, device)
-    if args.eval_segment_manifest and args.eval_audio_dir:
-        merged_dir = merge_checkpoint(args.out_dir)
-        emit_eval_report(
-            merged_dir,
-            args.eval_segment_manifest,
-            args.eval_audio_dir,
-            args.out_dir / "eval_rung2.json",
-        )
+    if args.merge:
+        merge_checkpoint(args.out_dir)
 
 
 def main() -> None:
@@ -663,9 +634,8 @@ def main() -> None:
                     help="LoRA alpha — lowered alongside rank as the first LoRA-native lever.")
     tr.add_argument("--l2-sp", type=float, default=TrainConfig.l2_sp,
                     help="L2-SP adapter-anchor weight — the second LoRA-native lever.")
-    tr.add_argument("--eval-segment-manifest", type=Path, default=None,
-                    help="segment manifest for the #7 eval (with --eval-audio-dir).")
-    tr.add_argument("--eval-audio-dir", type=Path, default=None)
+    tr.add_argument("--merge", action="store_true",
+                    help="merge the LoRA adapters into a standalone checkpoint after training.")
     tr.set_defaults(func=_cmd_train)
 
     args = parser.parse_args()

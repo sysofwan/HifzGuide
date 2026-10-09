@@ -55,7 +55,7 @@ def _bounds(entry: dict) -> str:
     return f" [{_pct(entry['lower'])}, {_pct(entry['upper'])}]{_METHOD_MARKS[entry['method']]}"
 
 
-def _estimate(estimate: dict | None) -> str:
+def format_estimate(estimate: dict | None) -> str:
     """``point [lower, upper]`` in percent; ``–`` for an undefined value."""
     if not estimate or estimate["point"] is None:
         return "–"
@@ -86,7 +86,7 @@ def _rate_table(cells: list[dict], arms: list[str], rate: str) -> list[str]:
         "|---|---|" + "---|" * len(arms),
     ]
     for cell in cells:
-        values = [_estimate(cell["arms"][a]["rates"].get(rate)) for a in arms]
+        values = [format_estimate(cell["arms"][a]["rates"].get(rate)) for a in arms]
         lines.append(f"| {_cell_name(cell)} | {_size(cell)} | " + " | ".join(values) + " |")
     return lines
 
@@ -166,7 +166,7 @@ def _allowance_section(report: dict, arms: list[str]) -> list[str]:
             if block["sparse"]:
                 size += f" ({SPARSE_MARK})"
             values = [
-                f"{_estimate(block[a]['on'])} → {_estimate(block[a]['off'])}" for a in arms
+                f"{format_estimate(block[a]['on'])} → {format_estimate(block[a]['off'])}" for a in arms
             ]
             lines.append(
                 f"| {entry['population']} | {entry['allowance']} | {rate.replace('_', ' ')} | "

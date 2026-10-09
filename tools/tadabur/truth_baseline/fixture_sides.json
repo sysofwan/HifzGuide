@@ -1,0 +1,8046 @@
+{
+ "schema": "tadabur.eval_report/fixture-sides-v1",
+ "fingerprints": {
+  "fixtures": "b2a0270475448374aee9c8f857fa1387cd8668ce6fec98fa7f1db2668b71a03a",
+  "schema": "eb6c9176a122449dd2f44e7466a978261eefa13ee93dbfba520265fe6d95abc9",
+  "arms": {
+   "base/spans": {
+    "model": "base",
+    "protocol": "spans",
+    "identity": {
+     "model_ref": "obadx/muaalem-model-v3_2",
+     "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5"
+    },
+    "decode": {
+     "model": "obadx/muaalem-model-v3_2",
+     "mode": "whole-spans",
+     "weights_dtype": "bf16",
+     "batch_size": 1,
+     "device_type": "cuda",
+     "autocast": true,
+     "policy": "fp32-features-v1"
+    },
+    "decodes_sha256": "3f71889d9d40f5845b22b4289f75cc2c60cd70a3c6255567f256b8bf7f2a1a0d"
+   },
+   "base/stream_b0": {
+    "model": "base",
+    "protocol": "stream_b0",
+    "identity": {
+     "model_ref": "obadx/muaalem-model-v3_2",
+     "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5"
+    },
+    "decode": {
+     "model": "obadx/muaalem-model-v3_2",
+     "mode": "confirmed-stream-v2-flush",
+     "weights_dtype": "bf16",
+     "batch_size": 1,
+     "device_type": "cuda",
+     "autocast": true,
+     "policy": "fp32-features-v1"
+    },
+    "decodes_sha256": "e43d2b2e50be147e1ccba7cdbed0f1d268a95fec6bd80e8fc172f692cb36ea88"
+   },
+   "h448/spans": {
+    "model": "h448",
+    "protocol": "spans",
+    "identity": {
+     "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a"
+    },
+    "decode": {
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "mode": "whole-spans",
+     "weights_dtype": "bf16",
+     "batch_size": 1,
+     "device_type": "cuda",
+     "autocast": true,
+     "policy": "fp32-features-v1"
+    },
+    "decodes_sha256": "05881cc511b72ef8058aaeab93db766f4ebc8918b51e931d5bd4f620c0871ecf"
+   },
+   "h448/stream_b0": {
+    "model": "h448",
+    "protocol": "stream_b0",
+    "identity": {
+     "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a"
+    },
+    "decode": {
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "mode": "confirmed-stream-v2-flush",
+     "weights_dtype": "bf16",
+     "batch_size": 1,
+     "device_type": "cuda",
+     "autocast": true,
+     "policy": "fp32-features-v1"
+    },
+    "decodes_sha256": "d819e42a49633778a33943eac687627b9bebb2d67090c96313591f9ac89911b6"
+   }
+  }
+ },
+ "bootstrap": {
+  "replicates": 10000,
+  "seed": 20261008,
+  "cluster": "canonical reciter id"
+ },
+ "arms": [
+  "base/spans",
+  "base/stream_b0",
+  "h448/spans",
+  "h448/stream_b0"
+ ],
+ "sign_conventions": {
+  "correct": {
+   "side": "heard = prescribed: the mushaf's letter or gemination was said",
+   "as_heard": "committed what was said",
+   "as_partner": "misheard as the partner (the confusable letter, or the other gemination state)",
+   "other_consonant": "misheard as a letter outside the pair",
+   "no_commit": "nothing committed at the carrier"
+  },
+  "mistake": {
+   "side": "heard ≠ prescribed: the reciter said the partner of the mushaf's letter or state",
+   "as_heard": "the mistake heard",
+   "as_partner": "collapsed onto the reference: the mushaf's value, a silent correction",
+   "other_consonant": "a third letter: flagged, but not what was said",
+   "no_commit": "nothing committed at the carrier: the mistake missed"
+  }
+ },
+ "families": [
+  {
+   "family": "ت↔ط",
+   "correct": "too_small",
+   "mistake": "none",
+   "without_verdict": 1,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
+   "family": "ح↔ه",
+   "correct": "too_small",
+   "mistake": "none",
+   "without_verdict": 0,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
+   "family": "ذ↔ز",
+   "correct": "sufficient",
+   "mistake": "none",
+   "without_verdict": 2,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
+   "family": "ذ↔ظ",
+   "correct": "none",
+   "mistake": "none",
+   "without_verdict": 0,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
+   "family": "س↔ص",
+   "correct": "sufficient",
+   "mistake": "none",
+   "without_verdict": 2,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
+   "family": "ض↔ظ",
+   "correct": "sufficient",
+   "mistake": "none",
+   "without_verdict": 2,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
+   "family": "ق↔ك",
+   "correct": "sufficient",
+   "mistake": "none",
+   "without_verdict": 3,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
+   "family": "shaddah",
+   "correct": "too_small",
+   "mistake": "none",
+   "without_verdict": 13,
+   "status": "in scope, insufficient evidence",
+   "provisional": true
+  }
+ ],
+ "rows": [
+  {
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ت",
+   "heard": "ت",
+   "sites": 2,
+   "reciters": 2,
+   "support": "too_small",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 2,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0435_S26_A22_7d409ec0_000018__seg0.wav:ت↔ط#40"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "as_partner": {
+      "sites": 2,
+      "point": 1.0,
+      "lower": 0.34237195289,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.6666666666666666,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "as_partner": {
+      "sites": 1,
+      "point": 0.5,
+      "lower": 0.094528654801,
+      "upper": 0.905471345199,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.5,
+      "lower": 0.094528654801,
+      "upper": 0.905471345199,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 1,
+      "point": 0.5,
+      "lower": 0.094528654801,
+      "upper": 0.905471345199,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
+      }
+     },
+     "as_partner": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.5,
+      "lower": 0.094528654801,
+      "upper": 0.905471345199,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "as_partner": {
+      "sites": 1,
+      "point": 0.5,
+      "lower": 0.094528654801,
+      "upper": 0.905471345199,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.5,
+      "lower": 0.094528654801,
+      "upper": 0.905471345199,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ط",
+   "sites": 7,
+   "reciters": 6,
+   "support": "too_small",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 7,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "as_partner": {
+      "sites": 7,
+      "point": 1.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 7.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 7.0,
+      "sensitivity": null
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "as_partner": {
+      "sites": 5,
+      "point": 0.7142857142857143,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 5.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "other_consonant": {
+      "sites": 1,
+      "point": 0.14285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 1.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.14285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 1.0,
+      "den": 7.0,
+      "sensitivity": null
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 3,
+      "point": 0.42857142857142855,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 3.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "as_partner": {
+      "sites": 2,
+      "point": 0.2857142857142857,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 2.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "no_commit": {
+      "sites": 2,
+      "point": 0.2857142857142857,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 2.0,
+      "den": 7.0,
+      "sensitivity": null
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 2,
+      "point": 0.2857142857142857,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 2.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "as_partner": {
+      "sites": 3,
+      "point": 0.42857142857142855,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 3.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "other_consonant": {
+      "sites": 1,
+      "point": 0.14285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 1.0,
+      "den": 7.0,
+      "sensitivity": null
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.14285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 1.0,
+      "den": 7.0,
+      "sensitivity": null
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "ح↔ه",
+   "prescribed": "ح",
+   "heard": "ح",
+   "sites": 3,
+   "reciters": 3,
+   "support": "too_small",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 3,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "as_partner": {
+      "sites": 3,
+      "point": 1.0,
+      "lower": 0.438493919551,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "as_partner": {
+      "sites": 2,
+      "point": 0.6666666666666666,
+      "lower": 0.207654955126,
+      "upper": 0.938509684724,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.3333333333333333,
+      "lower": 0.061490315276,
+      "upper": 0.792345044874,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 3.0,
+      "sensitivity": null
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 3,
+      "point": 1.0,
+      "lower": 0.438493919551,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "as_partner": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 2,
+      "point": 0.6666666666666666,
+      "lower": 0.207654955126,
+      "upper": 0.938509684724,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "as_partner": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": null
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.3333333333333333,
+      "lower": 0.061490315276,
+      "upper": 0.792345044874,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 3.0,
+      "sensitivity": null
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "ح↔ه",
+   "prescribed": "ه",
+   "heard": "ه",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ذ",
+   "heard": "ذ",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "sites": 28,
+   "reciters": 19,
+   "support": "sufficient",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 28,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0254_S25_A44_14d03e2c_000000__seg0.wav:ذ↔ز#49",
+    "p35_fixture:tadabur_spk0414_S14_A19_4a59c60d_000017__seg0.wav:ذ↔ز#103"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.06666666666666667
+      }
+     },
+     "as_partner": {
+      "sites": 28,
+      "point": 1.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 28.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.9333333333333333,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.06666666666666667
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.06666666666666667
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 4,
+      "point": 0.14285714285714285,
+      "lower": 0.0,
+      "upper": 0.29411764705882354,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.13333333333333333,
+       "best": 0.2
+      }
+     },
+     "as_partner": {
+      "sites": 18,
+      "point": 0.6428571428571429,
+      "lower": 0.40540540540540543,
+      "upper": 0.8695652173913043,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 18.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.6,
+       "best": 0.6666666666666666
+      }
+     },
+     "other_consonant": {
+      "sites": 2,
+      "point": 0.07142857142857142,
+      "lower": 0.0,
+      "upper": 0.1951219512195122,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 2.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.06666666666666667,
+       "best": 0.13333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 4,
+      "point": 0.14285714285714285,
+      "lower": 0.03333333333333333,
+      "upper": 0.2916666666666667,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.13333333333333333,
+       "best": 0.2
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 15,
+      "point": 0.5357142857142857,
+      "lower": 0.375,
+      "upper": 0.7407407407407407,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 15.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.5,
+       "best": 0.5666666666666667
+      }
+     },
+     "as_partner": {
+      "sites": 9,
+      "point": 0.32142857142857145,
+      "lower": 0.15384615384615385,
+      "upper": 0.4666666666666667,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 9.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.3,
+       "best": 0.36666666666666664
+      }
+     },
+     "other_consonant": {
+      "sites": 3,
+      "point": 0.10714285714285714,
+      "lower": 0.0,
+      "upper": 0.21875,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 3.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.1,
+       "best": 0.16666666666666666
+      }
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.03571428571428571,
+      "lower": 0.0,
+      "upper": 0.1,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 1.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.03333333333333333,
+       "best": 0.1
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 16,
+      "point": 0.5714285714285714,
+      "lower": 0.4,
+      "upper": 0.7666666666666667,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 16.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.5333333333333333,
+       "best": 0.6
+      }
+     },
+     "as_partner": {
+      "sites": 4,
+      "point": 0.14285714285714285,
+      "lower": 0.03571428571428571,
+      "upper": 0.2727272727272727,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.13333333333333333,
+       "best": 0.2
+      }
+     },
+     "other_consonant": {
+      "sites": 4,
+      "point": 0.14285714285714285,
+      "lower": 0.0,
+      "upper": 0.2692307692307692,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.13333333333333333,
+       "best": 0.2
+      }
+     },
+     "no_commit": {
+      "sites": 4,
+      "point": 0.14285714285714285,
+      "lower": 0.03333333333333333,
+      "upper": 0.2916666666666667,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 28.0,
+      "sensitivity": {
+       "worst": 0.13333333333333333,
+       "best": 0.2
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "ذ↔ظ",
+   "prescribed": "ذ",
+   "heard": "ذ",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "correct",
+   "family": "ذ↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "sites": 25,
+   "reciters": 21,
+   "support": "sufficient",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 25,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0734_S42_A5_ba7cb1f6_000008__seg0.wav:س↔ص#60"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.038461538461538464
+      }
+     },
+     "as_partner": {
+      "sites": 25,
+      "point": 1.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 25.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.9615384615384616,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.038461538461538464
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.038461538461538464
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 8,
+      "point": 0.32,
+      "lower": 0.16,
+      "upper": 0.5,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 8.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.3076923076923077,
+       "best": 0.34615384615384615
+      }
+     },
+     "as_partner": {
+      "sites": 13,
+      "point": 0.52,
+      "lower": 0.3333333333333333,
+      "upper": 0.7083333333333334,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 13.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.5,
+       "best": 0.5384615384615384
+      }
+     },
+     "other_consonant": {
+      "sites": 1,
+      "point": 0.04,
+      "lower": 0.0,
+      "upper": 0.13636363636363635,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 1.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.038461538461538464,
+       "best": 0.07692307692307693
+      }
+     },
+     "no_commit": {
+      "sites": 3,
+      "point": 0.12,
+      "lower": 0.0,
+      "upper": 0.25,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 3.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.11538461538461539,
+       "best": 0.15384615384615385
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 15,
+      "point": 0.6,
+      "lower": 0.4,
+      "upper": 0.8181818181818182,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 15.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.5769230769230769,
+       "best": 0.6153846153846154
+      }
+     },
+     "as_partner": {
+      "sites": 5,
+      "point": 0.2,
+      "lower": 0.047619047619047616,
+      "upper": 0.34615384615384615,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 5.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.19230769230769232,
+       "best": 0.23076923076923078
+      }
+     },
+     "other_consonant": {
+      "sites": 1,
+      "point": 0.04,
+      "lower": 0.0,
+      "upper": 0.13636363636363635,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 1.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.038461538461538464,
+       "best": 0.07692307692307693
+      }
+     },
+     "no_commit": {
+      "sites": 4,
+      "point": 0.16,
+      "lower": 0.0,
+      "upper": 0.3103448275862069,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.15384615384615385,
+       "best": 0.19230769230769232
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 15,
+      "point": 0.6,
+      "lower": 0.43333333333333335,
+      "upper": 0.782608695652174,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 15.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.5769230769230769,
+       "best": 0.6153846153846154
+      }
+     },
+     "as_partner": {
+      "sites": 7,
+      "point": 0.28,
+      "lower": 0.13043478260869565,
+      "upper": 0.43478260869565216,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 7.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.2692307692307692,
+       "best": 0.3076923076923077
+      }
+     },
+     "other_consonant": {
+      "sites": 1,
+      "point": 0.04,
+      "lower": 0.0,
+      "upper": 0.13636363636363635,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 1.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.038461538461538464,
+       "best": 0.07692307692307693
+      }
+     },
+     "no_commit": {
+      "sites": 2,
+      "point": 0.08,
+      "lower": 0.0,
+      "upper": 0.18518518518518517,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 2.0,
+      "den": 25.0,
+      "sensitivity": {
+       "worst": 0.07692307692307693,
+       "best": 0.11538461538461539
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "ص",
+   "heard": "ص",
+   "sites": 3,
+   "reciters": 3,
+   "support": "too_small",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 3,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0591_S39_A69_b5dee3a0_000000__seg0.wav:س↔ص#79"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "as_partner": {
+      "sites": 3,
+      "point": 1.0,
+      "lower": 0.438493919551,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.75,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 1,
+      "point": 0.3333333333333333,
+      "lower": 0.061490315276,
+      "upper": 0.792345044874,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.25,
+       "best": 0.5
+      }
+     },
+     "as_partner": {
+      "sites": 2,
+      "point": 0.6666666666666666,
+      "lower": 0.207654955126,
+      "upper": 0.938509684724,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.5,
+       "best": 0.75
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 2,
+      "point": 0.6666666666666666,
+      "lower": 0.207654955126,
+      "upper": 0.938509684724,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.5,
+       "best": 0.75
+      }
+     },
+     "as_partner": {
+      "sites": 1,
+      "point": 0.3333333333333333,
+      "lower": 0.061490315276,
+      "upper": 0.792345044874,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.25,
+       "best": 0.5
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 3,
+      "point": 1.0,
+      "lower": 0.438493919551,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.75,
+       "best": 1.0
+      }
+     },
+     "as_partner": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.561506080449,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 3.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ض",
+   "heard": "ض",
+   "sites": 2,
+   "reciters": 2,
+   "support": "too_small",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 2,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0138_S19_A123_5981774d_000167__seg0.wav:ض↔ظ#141"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "as_partner": {
+      "sites": 2,
+      "point": 1.0,
+      "lower": 0.34237195289,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.6666666666666666,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "as_partner": {
+      "sites": 2,
+      "point": 1.0,
+      "lower": 0.34237195289,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.6666666666666666,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 1,
+      "point": 0.5,
+      "lower": 0.094528654801,
+      "upper": 0.905471345199,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
+      }
+     },
+     "as_partner": {
+      "sites": 1,
+      "point": 0.5,
+      "lower": 0.094528654801,
+      "upper": 0.905471345199,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 2,
+      "point": 1.0,
+      "lower": 0.34237195289,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.6666666666666666,
+       "best": 1.0
+      }
+     },
+     "as_partner": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.65762804711,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 2.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.3333333333333333
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "sites": 23,
+   "reciters": 20,
+   "support": "sufficient",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 23,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0092_S65_A6_d5da4cc6_000000__seg1.wav:ض↔ظ#32"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.041666666666666664
+      }
+     },
+     "as_partner": {
+      "sites": 23,
+      "point": 1.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 23.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.9583333333333334,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.041666666666666664
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.041666666666666664
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 2,
+      "point": 0.08695652173913043,
+      "lower": 0.0,
+      "upper": 0.22727272727272727,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 2.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.08333333333333333,
+       "best": 0.125
+      }
+     },
+     "as_partner": {
+      "sites": 18,
+      "point": 0.782608695652174,
+      "lower": 0.5909090909090909,
+      "upper": 0.9523809523809523,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 18.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.75,
+       "best": 0.7916666666666666
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.041666666666666664
+      }
+     },
+     "no_commit": {
+      "sites": 3,
+      "point": 0.13043478260869565,
+      "lower": 0.0,
+      "upper": 0.2916666666666667,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 3.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.125,
+       "best": 0.16666666666666666
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 5,
+      "point": 0.21739130434782608,
+      "lower": 0.045454545454545456,
+      "upper": 0.4,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 5.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.20833333333333334,
+       "best": 0.25
+      }
+     },
+     "as_partner": {
+      "sites": 14,
+      "point": 0.6086956521739131,
+      "lower": 0.375,
+      "upper": 0.8571428571428571,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 14.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.5833333333333334,
+       "best": 0.625
+      }
+     },
+     "other_consonant": {
+      "sites": 1,
+      "point": 0.043478260869565216,
+      "lower": 0.0,
+      "upper": 0.14285714285714285,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 1.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.041666666666666664,
+       "best": 0.08333333333333333
+      }
+     },
+     "no_commit": {
+      "sites": 3,
+      "point": 0.13043478260869565,
+      "lower": 0.0,
+      "upper": 0.2692307692307692,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 3.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.125,
+       "best": 0.16666666666666666
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 9,
+      "point": 0.391304347826087,
+      "lower": 0.15,
+      "upper": 0.6086956521739131,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 9.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.375,
+       "best": 0.4166666666666667
+      }
+     },
+     "as_partner": {
+      "sites": 10,
+      "point": 0.43478260869565216,
+      "lower": 0.23333333333333334,
+      "upper": 0.6666666666666666,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 10.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.4166666666666667,
+       "best": 0.4583333333333333
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.041666666666666664
+      }
+     },
+     "no_commit": {
+      "sites": 4,
+      "point": 0.17391304347826086,
+      "lower": 0.038461538461538464,
+      "upper": 0.36,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 23.0,
+      "sensitivity": {
+       "worst": 0.16666666666666666,
+       "best": 0.20833333333333334
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "ق",
+   "sites": 6,
+   "reciters": 6,
+   "support": "too_small",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 6,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0039_S11_A5_c50acfd8_000107__seg0.wav:ق↔ك#26",
+    "p35_fixture:tadabur_spk66_S1_A242_74fa7fce_000055__seg0.wav:ق↔ك#64"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "as_partner": {
+      "sites": 6,
+      "point": 1.0,
+      "lower": 0.609656966347,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 6.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.75,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 3,
+      "point": 0.5,
+      "lower": 0.187612806899,
+      "upper": 0.812387193101,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.375,
+       "best": 0.625
+      }
+     },
+     "as_partner": {
+      "sites": 3,
+      "point": 0.5,
+      "lower": 0.187612806899,
+      "upper": 0.812387193101,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.375,
+       "best": 0.625
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 3,
+      "point": 0.5,
+      "lower": 0.187612806899,
+      "upper": 0.812387193101,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.375,
+       "best": 0.625
+      }
+     },
+     "as_partner": {
+      "sites": 3,
+      "point": 0.5,
+      "lower": 0.187612806899,
+      "upper": 0.812387193101,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.375,
+       "best": 0.625
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 3,
+      "point": 0.5,
+      "lower": 0.187612806899,
+      "upper": 0.812387193101,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.375,
+       "best": 0.625
+      }
+     },
+     "as_partner": {
+      "sites": 3,
+      "point": 0.5,
+      "lower": 0.187612806899,
+      "upper": 0.812387193101,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.375,
+       "best": 0.625
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.390343033653,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 6.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.25
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "sites": 21,
+   "reciters": 19,
+   "support": "sufficient",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 21,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0146_S19_A89_5bc873d6_000077__seg1.wav:ق↔ك#12"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.045454545454545456
+      }
+     },
+     "as_partner": {
+      "sites": 21,
+      "point": 1.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 21.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.9545454545454546,
+       "best": 1.0
+      }
+     },
+     "other_consonant": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.045454545454545456
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none",
+      "reason": "sparse or degenerate, and not independent and equally weighted",
+      "num": 0.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.045454545454545456
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 4,
+      "point": 0.19047619047619047,
+      "lower": 0.047619047619047616,
+      "upper": 0.3637559808612423,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.18181818181818182,
+       "best": 0.22727272727272727
+      }
+     },
+     "as_partner": {
+      "sites": 13,
+      "point": 0.6190476190476191,
+      "lower": 0.42857142857142855,
+      "upper": 0.8095238095238095,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 13.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.5909090909090909,
+       "best": 0.6363636363636364
+      }
+     },
+     "other_consonant": {
+      "sites": 2,
+      "point": 0.09523809523809523,
+      "lower": 0.0,
+      "upper": 0.22727272727272727,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 2.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.09090909090909091,
+       "best": 0.13636363636363635
+      }
+     },
+     "no_commit": {
+      "sites": 2,
+      "point": 0.09523809523809523,
+      "lower": 0.0,
+      "upper": 0.25,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 2.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.09090909090909091,
+       "best": 0.13636363636363635
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 12,
+      "point": 0.5714285714285714,
+      "lower": 0.35,
+      "upper": 0.7727272727272727,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 12.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.5454545454545454,
+       "best": 0.5909090909090909
+      }
+     },
+     "as_partner": {
+      "sites": 3,
+      "point": 0.14285714285714285,
+      "lower": 0.0,
+      "upper": 0.3157894736842105,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 3.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.13636363636363635,
+       "best": 0.18181818181818182
+      }
+     },
+     "other_consonant": {
+      "sites": 3,
+      "point": 0.14285714285714285,
+      "lower": 0.0,
+      "upper": 0.3,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 3.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.13636363636363635,
+       "best": 0.18181818181818182
+      }
+     },
+     "no_commit": {
+      "sites": 3,
+      "point": 0.14285714285714285,
+      "lower": 0.0,
+      "upper": 0.3157894736842105,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 3.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.13636363636363635,
+       "best": 0.18181818181818182
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 11,
+      "point": 0.5238095238095238,
+      "lower": 0.3,
+      "upper": 0.7368421052631579,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 11.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.5,
+       "best": 0.5454545454545454
+      }
+     },
+     "as_partner": {
+      "sites": 4,
+      "point": 0.19047619047619047,
+      "lower": 0.045454545454545456,
+      "upper": 0.38095238095238093,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.18181818181818182,
+       "best": 0.22727272727272727
+      }
+     },
+     "other_consonant": {
+      "sites": 2,
+      "point": 0.09523809523809523,
+      "lower": 0.0,
+      "upper": 0.22727272727272727,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 2.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.09090909090909091,
+       "best": 0.13636363636363635
+      }
+     },
+     "no_commit": {
+      "sites": 4,
+      "point": 0.19047619047619047,
+      "lower": 0.045454545454545456,
+      "upper": 0.38095238095238093,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 4.0,
+      "den": 21.0,
+      "sensitivity": {
+       "worst": 0.18181818181818182,
+       "best": 0.22727272727272727
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "sites": 10,
+   "reciters": 10,
+   "support": "too_small",
+   "provisional": true,
+   "fixture_sides": {
+    "should_accept": 10,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0003_S5_A95_d95f302e_000070__seg1.wav:shadda#23",
+    "p35_fixture:tadabur_spk0003_S5_A95_d95f302e_000070__seg1.wav:shadda#42",
+    "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69",
+    "p35_fixture:tadabur_spk0079_S26_A66_a9b172c8_000047__seg0.wav:shadda#5",
+    "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
+    "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32",
+    "p35_fixture:tadabur_spk0485_S35_A32_2ed41edd_000039__seg0.wav:shadda#15"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.277540168767,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.4117647058823529
+      }
+     },
+     "as_partner": {
+      "sites": 10,
+      "point": 1.0,
+      "lower": 0.722459831233,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 10.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.5882352941176471,
+       "best": 1.0
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.277540168767,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.4117647058823529
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 2,
+      "point": 0.2,
+      "lower": 0.056680947981,
+      "upper": 0.509843153279,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 2.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.11764705882352941,
+       "best": 0.5294117647058824
+      }
+     },
+     "as_partner": {
+      "sites": 8,
+      "point": 0.8,
+      "lower": 0.490156846721,
+      "upper": 0.943319052019,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 8.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.47058823529411764,
+       "best": 0.8823529411764706
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.277540168767,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.4117647058823529
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 6,
+      "point": 0.6,
+      "lower": 0.31266954745,
+      "upper": 0.831822418796,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 6.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.35294117647058826,
+       "best": 0.7647058823529411
+      }
+     },
+     "as_partner": {
+      "sites": 3,
+      "point": 0.3,
+      "lower": 0.107789287486,
+      "upper": 0.60322678002,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 3.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.17647058823529413,
+       "best": 0.5882352941176471
+      }
+     },
+     "no_commit": {
+      "sites": 1,
+      "point": 0.1,
+      "lower": 0.017875749516,
+      "upper": 0.404156385498,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.058823529411764705,
+       "best": 0.47058823529411764
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 6,
+      "point": 0.6,
+      "lower": 0.31266954745,
+      "upper": 0.831822418796,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 6.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.35294117647058826,
+       "best": 0.7647058823529411
+      }
+     },
+     "as_partner": {
+      "sites": 4,
+      "point": 0.4,
+      "lower": 0.168177581204,
+      "upper": 0.68733045255,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 4.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.23529411764705882,
+       "best": 0.6470588235294118
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.277540168767,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 10.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.4117647058823529
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "not_held",
+   "sites": 1,
+   "reciters": 1,
+   "support": "too_small",
+   "provisional": true,
+   "fixture_sides": {
+    "should_accept": 1,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0038_S4_A13_734ea5c1_000007__seg0.wav:shadda#79",
+    "p35_fixture:tadabur_spk0066_S57_A2_7766a315_000002__seg0.wav:shadda#14",
+    "p35_fixture:tadabur_spk0066_S77_A19_e5efd899_000017__seg0.wav:shadda#4",
+    "p35_fixture:tadabur_spk0101_S17_A18_46dabf2e_000015__seg3.wav:shadda#57",
+    "p35_fixture:tadabur_spk0101_S79_A6_ecb60f81_000075__seg0.wav:shadda#19",
+    "p35_fixture:tadabur_spk0202_S50_A49_a30972e9_000030__seg0.wav:shadda#53"
+   ],
+   "arms": {
+    "base/spans": {
+     "as_heard": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.793456708526,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.8571428571428571
+      }
+     },
+     "as_partner": {
+      "sites": 1,
+      "point": 1.0,
+      "lower": 0.206543291474,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.14285714285714285,
+       "best": 1.0
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.793456708526,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.8571428571428571
+      }
+     }
+    },
+    "base/stream_b0": {
+     "as_heard": {
+      "sites": 1,
+      "point": 1.0,
+      "lower": 0.206543291474,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.14285714285714285,
+       "best": 1.0
+      }
+     },
+     "as_partner": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.793456708526,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.8571428571428571
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.793456708526,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.8571428571428571
+      }
+     }
+    },
+    "h448/spans": {
+     "as_heard": {
+      "sites": 1,
+      "point": 1.0,
+      "lower": 0.206543291474,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.14285714285714285,
+       "best": 1.0
+      }
+     },
+     "as_partner": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.793456708526,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.8571428571428571
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.793456708526,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.8571428571428571
+      }
+     }
+    },
+    "h448/stream_b0": {
+     "as_heard": {
+      "sites": 1,
+      "point": 1.0,
+      "lower": 0.206543291474,
+      "upper": 1.0,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 1.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.14285714285714285,
+       "best": 1.0
+      }
+     },
+     "as_partner": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.793456708526,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.8571428571428571
+      }
+     },
+     "no_commit": {
+      "sites": 0,
+      "point": 0.0,
+      "lower": 0.0,
+      "upper": 0.793456708526,
+      "method": "wilson",
+      "reason": "sparse or degenerate",
+      "num": 0.0,
+      "den": 1.0,
+      "sensitivity": {
+       "worst": 0.0,
+       "best": 0.8571428571428571
+      }
+     }
+    }
+   }
+  },
+  {
+   "side": "mistake",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ت",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ت↔ط",
+   "prescribed": "ت",
+   "heard": "ط",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0435_S26_A22_7d409ec0_000018__seg0.wav:ت↔ط#40"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ح↔ه",
+   "prescribed": "ه",
+   "heard": "ح",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ح↔ه",
+   "prescribed": "ح",
+   "heard": "ه",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ذ",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0254_S25_A44_14d03e2c_000000__seg0.wav:ذ↔ز#49",
+    "p35_fixture:tadabur_spk0414_S14_A19_4a59c60d_000017__seg0.wav:ذ↔ز#103"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ذ↔ز",
+   "prescribed": "ذ",
+   "heard": "ز",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ذ↔ظ",
+   "prescribed": "ظ",
+   "heard": "ذ",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ذ↔ظ",
+   "prescribed": "ذ",
+   "heard": "ظ",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "س↔ص",
+   "prescribed": "ص",
+   "heard": "س",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0591_S39_A69_b5dee3a0_000000__seg0.wav:س↔ص#79"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "ص",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0734_S42_A5_ba7cb1f6_000008__seg0.wav:س↔ص#60"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ض",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0092_S65_A6_d5da4cc6_000000__seg1.wav:ض↔ظ#32"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ض↔ظ",
+   "prescribed": "ض",
+   "heard": "ظ",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0138_S19_A123_5981774d_000167__seg0.wav:ض↔ظ#141"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ق",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0146_S19_A89_5bc873d6_000077__seg1.wav:ق↔ك#12"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "ك",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0039_S11_A5_c50acfd8_000107__seg0.wav:ق↔ك#26",
+    "p35_fixture:tadabur_spk66_S1_A242_74fa7fce_000055__seg0.wav:ق↔ك#64"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "held",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": true,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0038_S4_A13_734ea5c1_000007__seg0.wav:shadda#79",
+    "p35_fixture:tadabur_spk0066_S57_A2_7766a315_000002__seg0.wav:shadda#14",
+    "p35_fixture:tadabur_spk0066_S77_A19_e5efd899_000017__seg0.wav:shadda#4",
+    "p35_fixture:tadabur_spk0101_S17_A18_46dabf2e_000015__seg3.wav:shadda#57",
+    "p35_fixture:tadabur_spk0101_S79_A6_ecb60f81_000075__seg0.wav:shadda#19",
+    "p35_fixture:tadabur_spk0202_S50_A49_a30972e9_000030__seg0.wav:shadda#53"
+   ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "not_held",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": true,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [
+    "p35_fixture:tadabur_spk0003_S5_A95_d95f302e_000070__seg1.wav:shadda#23",
+    "p35_fixture:tadabur_spk0003_S5_A95_d95f302e_000070__seg1.wav:shadda#42",
+    "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69",
+    "p35_fixture:tadabur_spk0079_S26_A66_a9b172c8_000047__seg0.wav:shadda#5",
+    "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
+    "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32",
+    "p35_fixture:tadabur_spk0485_S35_A32_2ed41edd_000039__seg0.wav:shadda#15"
+   ],
+   "arms": {}
+  }
+ ],
+ "pending": [
+  {
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 7
+  },
+  {
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 6
+  },
+  {
+   "family": "ت↔ط",
+   "prescribed": "ت",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 1
+  },
+  {
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 2
+  },
+  {
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 1
+  },
+  {
+   "family": "س↔ص",
+   "prescribed": "ص",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 1
+  },
+  {
+   "family": "ض↔ظ",
+   "prescribed": "ض",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 1
+  },
+  {
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 1
+  },
+  {
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 2
+  },
+  {
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "pending",
+   "fixture_side": "should_reject",
+   "sites": 1
+  }
+ ],
+ "sites": [
+  {
+   "site_id": "p35_fixture:tadabur_spk0000_S1_A80_7aa442e6_000045__seg1.wav:ق↔ك#80",
+   "item": "tadabur_spk0000_S1_A80_7aa442e6_000045.wav@241760:569519",
+   "item_fingerprint": "7b0715a516d5885bffce9ae924d7bd50cf3878b115fdf52a947e9cab6d7ab6e2",
+   "reciter_id": 0,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "ق",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ق",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ق",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0000_S22_A62_18bb3b65_000048__seg1.wav:ض↔ظ#54",
+   "item": "tadabur_spk0000_S22_A62_18bb3b65_000048.wav@92000:250400",
+   "item_fingerprint": "097b6f42fb17a9f17f4fc89930d740c4104323cc27c2959a60490bb07da03d53",
+   "reciter_id": 0,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ظ",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0001_S51_A1_83a172ea_000022__seg0.wav:ت↔ط#3",
+   "item": "tadabur_spk0001_S51_A1_83a172ea_000022.wav@0:16924",
+   "item_fingerprint": "77489e2fd1b2a54c753fc16c1377c0001b863d47b3651547586b57c3d736b836",
+   "reciter_id": 1,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ط",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0001_S53_A48_c646abf7_000144__seg0.wav:ق↔ك#54",
+   "item": "tadabur_spk0001_S53_A48_c646abf7_000144.wav@483:114966",
+   "item_fingerprint": "7512fbde97637568d192125985bbbd1d398716da0a0cdef2dea4ab890442b743",
+   "reciter_id": 1,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "ق",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ق",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ق",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0002_S47_A6_2e8fe117_000001__seg0.wav:ض↔ظ#77",
+   "item": "tadabur_spk0002_S47_A6_2e8fe117_000001.wav@481:396062",
+   "item_fingerprint": "3b2430956fdaa2b630585addc8c217e9f4c6a9daf1afb6bdd7079176ae914508",
+   "reciter_id": 2,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0003_S10_A20_c87f784c_000382__seg0.wav:ذ↔ز#33",
+   "item": "tadabur_spk0003_S10_A20_c87f784c_000382.wav@1760:186720",
+   "item_fingerprint": "6fe1d7663f57be8ff8e915bf5719e315d1c31169a6157c34b306f3bf823848d0",
+   "reciter_id": 3,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0003_S5_A95_d95f302e_000070__seg1.wav:shadda#23",
+   "item": "tadabur_spk0003_S5_A95_d95f302e_000070.wav@103840:206240",
+   "item_fingerprint": "ef701428f05219cd6f69336ffddc8b6f43333c2a5621c89483cf96ff249e15a4",
+   "reciter_id": 3,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0003_S5_A95_d95f302e_000070__seg1.wav:shadda#42",
+   "item": "tadabur_spk0003_S5_A95_d95f302e_000070.wav@103840:206240",
+   "item_fingerprint": "ef701428f05219cd6f69336ffddc8b6f43333c2a5621c89483cf96ff249e15a4",
+   "reciter_id": 3,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0008_S13_A52_a7ea0cf0_000004__seg0.wav:shadda#104",
+   "item": "tadabur_spk0008_S13_A52_a7ea0cf0_000004.wav@482:266235",
+   "item_fingerprint": "19e01bf164b9399ba6624210c7c515fabc9d7e2bbe209f7feaa31d5e757b53d6",
+   "reciter_id": 8,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0008_S18_A90_977dc332_000027__seg0.wav:ت↔ط#30",
+   "item": "tadabur_spk0008_S18_A90_977dc332_000027.wav@1768:140128",
+   "item_fingerprint": "662bd3b829ca5bf78392c785ddf24703c565d5dde8263b2e1efc3cb8af99ae54",
+   "reciter_id": 8,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ط",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ط",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ط",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0008_S6_A160_2ba24c5b_000150__seg1.wav:ض↔ظ#42",
+   "item": "tadabur_spk0008_S6_A160_2ba24c5b_000150.wav@236000:529343",
+   "item_fingerprint": "45f9aaf29023d7636b19c0e7e9aa5839ad78e511d8662765510330db10c73ae8",
+   "reciter_id": 8,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0009_S13_A42_5ac288bd_000042__seg0.wav:ض↔ظ#56",
+   "item": "tadabur_spk0009_S13_A42_5ac288bd_000042.wav@0:211833",
+   "item_fingerprint": "578aceb587a3114b8b50786d48e55535aa8bd073ccc24096ff88e42e556f470c",
+   "reciter_id": 9,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0009_S34_A37_866711a0_000021__seg3.wav:ض↔ظ#20",
+   "item": "tadabur_spk0009_S34_A37_866711a0_000021.wav@428560:551558",
+   "item_fingerprint": "619c968446b032457fd6d9cb7d0bf8b699fec172c5f86e7e4a867d346608fcfe",
+   "reciter_id": 9,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ظ",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0009_S40_A35_7f29f091_000059__seg1.wav:ض↔ظ#39",
+   "item": "tadabur_spk0009_S40_A35_7f29f091_000059.wav@85600:179192",
+   "item_fingerprint": "1afb1143c9c122d678e562ee158221538736a03557e3afb791cfc1b0f325318d",
+   "reciter_id": 9,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ظ",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0012_S36_A2_f00d4d7f_000001__seg0.wav:ذ↔ز#2",
+   "item": "tadabur_spk0012_S36_A2_f00d4d7f_000001.wav@0:38348",
+   "item_fingerprint": "070cd93e9c38dde1b3c9f857a2d0b83f53f68ad635c70e7c948b867228cf0eaa",
+   "reciter_id": 12,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0016_S18_A81_e8653839_000004__seg0.wav:ق↔ك#47",
+   "item": "tadabur_spk0016_S18_A81_e8653839_000004.wav@0:116451",
+   "item_fingerprint": "1817b5f6c8df27efc62c84f516e99ca6e262350bf7ff1c52aa38e9c720c49549",
+   "reciter_id": 16,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0016_S4_A14_928f797c_000005__seg0.wav:ض↔ظ#87",
+   "item": "tadabur_spk0016_S4_A14_928f797c_000005.wav@0:154720",
+   "item_fingerprint": "aff55b75eec73e8a8256e7df36d911008db502751427052319b1489846446a1f",
+   "reciter_id": 16,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0017_S16_A74_ca0775e8_000046__seg0.wav:ق↔ك#37",
+   "item": "tadabur_spk0017_S16_A74_ca0775e8_000046.wav@0:125115",
+   "item_fingerprint": "ce1f347403dbcc80219a8adcfd2d9798dda42f669d5ab73a75a07175cba18b94",
+   "reciter_id": 17,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ء",
+     "role": "other_consonant"
+    },
+    "h448/stream_b0": {
+     "committed": "ء",
+     "role": "other_consonant"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0017_S25_A4_5fba0078_000003__seg0.wav:ض↔ظ#60",
+   "item": "tadabur_spk0017_S25_A4_5fba0078_000003.wav@3043:219197",
+   "item_fingerprint": "56087cb63931d2ad676a746940af728649f97bc9dd2ef277d21a284257aca85c",
+   "reciter_id": 17,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0017_S35_A56_767ccc9e_000024__seg0.wav:ق↔ك#50",
+   "item": "tadabur_spk0017_S35_A56_767ccc9e_000024.wav@2410:151668",
+   "item_fingerprint": "e707d558347255c05856f4cef9956998247734a37c78cc12abb9a1e5c73411dc",
+   "reciter_id": 17,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ت",
+     "role": "other_consonant"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0018_S3_A46_3799b603_000018__seg1.wav:ض↔ظ#60",
+   "item": "tadabur_spk0018_S3_A46_3799b603_000018.wav@387280:707360",
+   "item_fingerprint": "ab2acf1de6de0218b32a79f76d7ba91e7ee98f1191635f8890f93b174ddff0c4",
+   "reciter_id": 18,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ب",
+     "role": "other_consonant"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0024_S16_A68_705e6860_000061__seg0.wav:س↔ص#22",
+   "item": "tadabur_spk0024_S16_A68_705e6860_000061.wav@1122:149421",
+   "item_fingerprint": "f5422b17f8be1919e37ff6583fa912620fca77a4b4d89c03f2b1612df81a1a62",
+   "reciter_id": 24,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0026_S15_A115_3f840cc8_000099__seg0.wav:ذ↔ز#61",
+   "item": "tadabur_spk0026_S15_A115_3f840cc8_000099.wav@481:185760",
+   "item_fingerprint": "373d5d385f2a9eb72a2a5280c488168d65ab9d296f31a1542430d1871bc772ee",
+   "reciter_id": 26,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0027_S93_A2_de1c19de_000320__seg0.wav:ذ↔ز#22",
+   "item": "tadabur_spk0027_S93_A2_de1c19de_000320.wav@0:50874",
+   "item_fingerprint": "ab8d5218f3017ae3b9c15eac73ed1d1e7d8b4ca54689828065383ccf7fb13f9b",
+   "reciter_id": 27,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0028_S49_A12_05251021_000078__seg0.wav:س↔ص#49",
+   "item": "tadabur_spk0028_S49_A12_05251021_000078.wav@482:116793",
+   "item_fingerprint": "15ba55883bdb89ef4001f31d3cd292518a32ef6f7525d18bcb1c54a57bf0ae92",
+   "reciter_id": 28,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0034_S75_A14_126a9546_000152__seg0.wav:ض↔ظ#23",
+   "item": "tadabur_spk0034_S75_A14_126a9546_000152.wav@0:100456",
+   "item_fingerprint": "fd679fd3732fbfc1089450e79cf0b0775941d5290f5baf47a927b0dedaa3203a",
+   "reciter_id": 34,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ظ",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0038_S4_A13_734ea5c1_000007__seg0.wav:shadda#79",
+   "item": "tadabur_spk0038_S4_A13_734ea5c1_000007.wav@0:272160",
+   "item_fingerprint": "4427ae2c8f87d3f7e0437090908e859c2143c072cc8b55cd61ea09b901fd2103",
+   "reciter_id": 38,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0039_S11_A5_c50acfd8_000107__seg0.wav:ق↔ك#26",
+   "item": "tadabur_spk0039_S11_A5_c50acfd8_000107.wav@0:60320",
+   "item_fingerprint": "88dcf3476cc4eee522c9bb1f028f8626c5b80baa82d344f61204b7149cba729f",
+   "reciter_id": 39,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ك",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0039_S16_A29_827cd44d_000022__seg1.wav:ق↔ك#4",
+   "item": "tadabur_spk0039_S16_A29_827cd44d_000022.wav@82720:119672",
+   "item_fingerprint": "7786c220c194398bd9d2f879a0aadef093407436638c40644abdd3b08216232b",
+   "reciter_id": 39,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "ق",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0039_S18_A74_f11fd0aa_000083__seg0.wav:س↔ص#47",
+   "item": "tadabur_spk0039_S18_A74_f11fd0aa_000083.wav@3065:72943",
+   "item_fingerprint": "fff0af74c831503763ced2cf2a551768ab5ba740775d97f13b1c036c8cdcfc73",
+   "reciter_id": 39,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0039_S38_A34_20a3da95_000003__seg1.wav:س↔ص#24",
+   "item": "tadabur_spk0039_S38_A34_20a3da95_000003.wav@60640:108460",
+   "item_fingerprint": "20554367afaa1d1108da94f56066c508c0eb0ae4b8db356d1b9783c60ccb89fd",
+   "reciter_id": 39,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0039_S6_A168_f633d3d9_000048__seg0.wav:ت↔ط#4",
+   "item": "tadabur_spk0039_S6_A168_f633d3d9_000048.wav@0:100960",
+   "item_fingerprint": "1fe9c7bad93bf3cc0b43af147f92c616191782f549b4ff35a3a87a9c658dcf4b",
+   "reciter_id": 39,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ط",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ت",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0039_S71_A15_2c45abee_000178__seg0.wav:ت↔ط#17",
+   "item": "tadabur_spk0039_S71_A15_2c45abee_000178.wav@0:64613",
+   "item_fingerprint": "2f6d06ef33e0a184da0c9b3d3447d97645b0834b669a08ad515e2abc990b43b1",
+   "reciter_id": 39,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ط",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ط",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ط",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0039_S8_A42_9222472d_000050__seg0.wav:س↔ص#45",
+   "item": "tadabur_spk0039_S8_A42_9222472d_000050.wav@3042:80480",
+   "item_fingerprint": "f8a441168ef1f25c2aa988836e0c2c4e51411657db830903231b8cd00493f49c",
+   "reciter_id": 39,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "ص",
+   "heard": "ص",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "س",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ص",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0045_S20_A19_54b7f035_000013__seg0.wav:س↔ص#110",
+   "item": "tadabur_spk0045_S20_A19_54b7f035_000013.wav@0:199674",
+   "item_fingerprint": "f4743c3fe2b1fedfb73aa3855c05d1e882206237647c4766ad5b5ffd0802a372",
+   "reciter_id": 45,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0045_S6_A138_f116c77e_000032__seg0.wav:ق↔ك#73",
+   "item": "tadabur_spk0045_S6_A138_f116c77e_000032.wav@0:232160",
+   "item_fingerprint": "f415eb46a101038bd9d4a0a8fecb6a4a17332e2c818109e80393e71777f2de16",
+   "reciter_id": 45,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ف",
+     "role": "other_consonant"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0052_S6_A149_f84f6067_000101__seg0.wav:ض↔ظ#61",
+   "item": "tadabur_spk0052_S6_A149_f84f6067_000101.wav@0:272319",
+   "item_fingerprint": "fdb965154094b9df5979260a392de277d2dc13c8fa33fba96636fd844707da8a",
+   "reciter_id": 52,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ض",
+   "heard": "ض",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ظ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ظ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ظ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0054_S14_A6_c2a42a74_000004__seg0.wav:ذ↔ز#35",
+   "item": "tadabur_spk0054_S14_A6_c2a42a74_000004.wav@0:110056",
+   "item_fingerprint": "61e58a8e439d75b1b1868be655b58e8e6a6de4fc560cf2aec1c63c1455578d2b",
+   "reciter_id": 54,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0054_S25_A44_ef17a9be_000039__seg0.wav:ذ↔ز#49",
+   "item": "tadabur_spk0054_S25_A44_ef17a9be_000039.wav@0:133113",
+   "item_fingerprint": "924f5dfbc58d032f938b2a09854b4be3027c7c5a2b898e66a3f5762b6e87ee84",
+   "reciter_id": 54,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "د",
+     "role": "other_consonant"
+    },
+    "h448/stream_b0": {
+     "committed": "د",
+     "role": "other_consonant"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0054_S2_A159_1e269cdd_000095__seg1.wav:ض↔ظ#17",
+   "item": "tadabur_spk0054_S2_A159_1e269cdd_000095.wav@97760:204320",
+   "item_fingerprint": "0def9197647223bcae1c63cef178e8d25578101dd09ca010989bccca94e817eb",
+   "reciter_id": 54,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0054_S30_A23_62565b16_000017__seg0.wav:ذ↔ز#24",
+   "item": "tadabur_spk0054_S30_A23_62565b16_000017.wav@0:188320",
+   "item_fingerprint": "08d1875fbcede6d6855ea0a712d9db9c3b7b3c385137bf2756cd02f09fcfed2c",
+   "reciter_id": 54,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ن",
+     "role": "other_consonant"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ن",
+     "role": "other_consonant"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0054_S32_A20_2fe09646_000017__seg1.wav:ذ↔ز#16",
+   "item": "tadabur_spk0054_S32_A20_2fe09646_000017.wav@68320:275680",
+   "item_fingerprint": "99cad19070b44deffc8fafec43e0e26c717e6f2340126d10513fb1b916782287",
+   "reciter_id": 54,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ب",
+     "role": "other_consonant"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0055_S13_A14_f2ae9d8b_000003__seg0.wav:ق↔ك#7",
+   "item": "tadabur_spk0055_S13_A14_f2ae9d8b_000003.wav@481:209598",
+   "item_fingerprint": "9004c748f95d6ff76fe8d655a17f726c6a814c74c5cc7e800a7cdf9d552c7f4f",
+   "reciter_id": 55,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0055_S42_A58_3f9c91be_000047__seg0.wav:shadda#101",
+   "item": "tadabur_spk0055_S42_A58_3f9c91be_000047.wav@0:160958",
+   "item_fingerprint": "5a34347c23a7fd444a8260654d637052239a84af05c664f26d2d1e875512994c",
+   "reciter_id": 55,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "not_held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0057_S2_A53_8dcd1857_000039__seg0.wav:shadda#2",
+   "item": "tadabur_spk0057_S2_A53_8dcd1857_000039.wav@0:138236",
+   "item_fingerprint": "8c63499a57af30bfd8d906a69065816590448d28acd6059b6f0e15ac8db851bd",
+   "reciter_id": 57,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0064_S20_A27_bc2b37a6_000016__seg0.wav:س↔ص#7",
+   "item": "tadabur_spk0064_S20_A27_bc2b37a6_000016.wav@483:72634",
+   "item_fingerprint": "55e10eb504aab94bb1fc66967d2e587dfa49fd4678615c9f15fc5c659e461cd5",
+   "reciter_id": 64,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0065_S52_A17_902c9ffa_000089__seg0.wav:ذ↔ز#5",
+   "item": "tadabur_spk0065_S52_A17_902c9ffa_000089.wav@491:51161",
+   "item_fingerprint": "26f9c68bd9765b7f88116a0ef1778f17751f3fd38fdba9597e069e0fc7741c81",
+   "reciter_id": 65,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69",
+   "item": "tadabur_spk0066_S26_A89_008098b6_000033.wav@482:302058",
+   "item_fingerprint": "2e136c2f8d430d0778824216a0355acffb18bb86f64575af39d2e4dcf7b189ce",
+   "reciter_id": 66,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0066_S57_A2_7766a315_000002__seg0.wav:shadda#14",
+   "item": "tadabur_spk0066_S57_A2_7766a315_000002.wav@481:170400",
+   "item_fingerprint": "983123034b05e5f52364fc941ddb6d05b55dee9cf9d627fb994c8b13d7801873",
+   "reciter_id": 66,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0066_S77_A19_e5efd899_000017__seg0.wav:shadda#4",
+   "item": "tadabur_spk0066_S77_A19_e5efd899_000017.wav@0:84138",
+   "item_fingerprint": "58463e8d388001916fcdb5cbd941fb6f2569cd8cf82d596e67d77eaeabba6ff8",
+   "reciter_id": 66,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0068_S44_A29_3f6782c9_000205__seg1.wav:س↔ص#28",
+   "item": "tadabur_spk0068_S44_A29_3f6782c9_000205.wav@98080:201597",
+   "item_fingerprint": "d2de8134fafe31c19fceb0ff22d2d0450c24eb1f32938fc8761346771184c10b",
+   "reciter_id": 68,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0071_S7_A42_ebb90d9f_000035__seg0.wav:ق↔ك#68",
+   "item": "tadabur_spk0071_S7_A42_ebb90d9f_000035.wav@0:155360",
+   "item_fingerprint": "6b7237436cf7ba09b4737000e7c59cd5898fb4b5b95cb24e61b61ad5de0ca696",
+   "reciter_id": 71,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ف",
+     "role": "other_consonant"
+    },
+    "h448/stream_b0": {
+     "committed": "ف",
+     "role": "other_consonant"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0073_S55_A31_29cf7ac2_000230__seg0.wav:ق↔ك#16",
+   "item": "tadabur_spk0073_S55_A31_29cf7ac2_000230.wav@0:76060",
+   "item_fingerprint": "873b1df1eaa4c514b17e273d188545588053bb49d6bd0e3a6e50643d906b3c15",
+   "reciter_id": 73,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0073_S66_A15_429b7a3a_000015__seg0.wav:ق↔ك#64",
+   "item": "tadabur_spk0073_S66_A15_429b7a3a_000015.wav@1761:182880",
+   "item_fingerprint": "64082fe6050f26bd9a7a909333db01d7e4eef8a4ffb1b10d29f9c6fe20500006",
+   "reciter_id": 73,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0075_S16_A68_3f1eba53_000053__seg0.wav:س↔ص#22",
+   "item": "tadabur_spk0075_S16_A68_3f1eba53_000053.wav@2402:261438",
+   "item_fingerprint": "c8d56893abde0faae1fe7f06f0c2d35f807ffe5bbcbb85f01fdd1e3b905218e0",
+   "reciter_id": 75,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ش",
+     "role": "other_consonant"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0078_S78_A36_1a1e3ddd_000062__seg0.wav:ذ↔ز#7",
+   "item": "tadabur_spk0078_S78_A36_1a1e3ddd_000062.wav@0:72633",
+   "item_fingerprint": "77879447ed35684ae53c9ae2586004fa863eaea49ad9f7c1c7d94b98718ab116",
+   "reciter_id": 78,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0079_S25_A44_0b5ada02_000039__seg0.wav:ذ↔ز#49",
+   "item": "tadabur_spk0079_S25_A44_0b5ada02_000039.wav@0:209395",
+   "item_fingerprint": "b67f17fac2818da1882b6efe457bad53e1ed6ee07e353dedcf229fa6393c173c",
+   "reciter_id": 79,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0079_S26_A66_a9b172c8_000047__seg0.wav:shadda#5",
+   "item": "tadabur_spk0079_S26_A66_a9b172c8_000047.wav@0:76640",
+   "item_fingerprint": "ca0ecc789b325ca78bff2deb255edc6827317e18e50f091ffa13c474bff4d604",
+   "reciter_id": 79,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0082_S35_A28_b4d118d0_000019__seg0.wav:ذ↔ز#108",
+   "item": "tadabur_spk0082_S35_A28_b4d118d0_000019.wav@0:225744",
+   "item_fingerprint": "f586bdeae39580cf07cde1c3ced14776cd93ca394cc795d02cf4d1fecd1a5047",
+   "reciter_id": 82,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0086_S1_A231_2aee1c73_000218__seg1.wav:ق↔ك#12",
+   "item": "tadabur_spk0086_S1_A231_2aee1c73_000218.wav@290400:392400",
+   "item_fingerprint": "b0b76a73fbdf6006395c1a853a368cd1c70bd1998c301fe5a910a4ae135e784e",
+   "reciter_id": 86,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0086_S20_A32_d622b50d_000024__seg0.wav:ض↔ظ#38",
+   "item": "tadabur_spk0086_S20_A32_d622b50d_000024.wav@0:201903",
+   "item_fingerprint": "47ab37517069eaa93e251f1f10ad0665a9b2763446904be36b1be75ac4c846ca",
+   "reciter_id": 86,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0088_S1_A263_fccf619d_000185__seg0.wav:shadda#53",
+   "item": "tadabur_spk0088_S1_A263_fccf619d_000185.wav@2409:161897",
+   "item_fingerprint": "475a593bcc4b2cae185296ab5a418fe2d2359ea990dc0ca21adfc7ba813bf712",
+   "reciter_id": 88,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "held",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0092_S65_A6_d5da4cc6_000000__seg1.wav:ض↔ظ#32",
+   "item": "tadabur_spk0092_S65_A6_d5da4cc6_000000.wav@268960:525039",
+   "item_fingerprint": "f193c6c1262dd2f4bf77a7f1856dfc10a71d96e614c6f5cebe20c9accc68c353",
+   "reciter_id": 92,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0095_S43_A3_52f4b2aa_000053__seg0.wav:ذ↔ز#17",
+   "item": "tadabur_spk0095_S43_A3_52f4b2aa_000053.wav@0:177897",
+   "item_fingerprint": "b5e6dd537450f3b02b7c7ebf1e7a8503a533ab3caf2aec7c9b8596850c7ba49f",
+   "reciter_id": 95,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
+   "item": "tadabur_spk0097_S20_A18_14e487d0_000013.wav@484:161257",
+   "item_fingerprint": "1bcf47ef9954247dab9b43b310334c15a3906b53b4acfa8d0ac6ff7c4503b188",
+   "reciter_id": 97,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0099_S10_A15_fb9a57d2_000006__seg0.wav:س↔ص#120",
+   "item": "tadabur_spk0099_S10_A15_fb9a57d2_000006.wav@3049:197115",
+   "item_fingerprint": "28a0524caba9f7586fd0d8017503d61c61959ab4774af3da4e179f23c5f67a82",
+   "reciter_id": 99,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0099_S33_A44_83f6db7e_000036__seg0.wav:س↔ص#44",
+   "item": "tadabur_spk0099_S33_A44_83f6db7e_000036.wav@0:191038",
+   "item_fingerprint": "abbe8e003abfdbba3bb0c8ca8f5cde9e5185992476c14f0a5e228eb352be36fe",
+   "reciter_id": 99,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0099_S38_A60_0d906bd1_000047__seg0.wav:س↔ص#72",
+   "item": "tadabur_spk0099_S38_A60_0d906bd1_000047.wav@0:139360",
+   "item_fingerprint": "4c335885e371de8149af57b9492d3021c7749aee6ad60a10d9cd15eb4394906b",
+   "reciter_id": 99,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0100_S50_A9_9b6173ae_000001__seg0.wav:ق↔ك#5",
+   "item": "tadabur_spk0100_S50_A9_9b6173ae_000001.wav@2441:36304",
+   "item_fingerprint": "69285d15bc7d919a78771e10553e461b20e3396768de25db2d727e525769d9a5",
+   "reciter_id": 100,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0100_S8_A123_fbcda922_000060__seg0.wav:ض↔ظ#106",
+   "item": "tadabur_spk0100_S8_A123_fbcda922_000060.wav@481:200160",
+   "item_fingerprint": "d656fae7ba1619427ac859571761f2da45f4f5f0f08da74c679629d4ee48b27c",
+   "reciter_id": 100,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0101_S17_A18_46dabf2e_000015__seg3.wav:shadda#57",
+   "item": "tadabur_spk0101_S17_A18_46dabf2e_000015.wav@391120:560176",
+   "item_fingerprint": "05314e48de4aad3872b2d74ce09353f1c7b40272823189338b9a153374b22f7e",
+   "reciter_id": 101,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0101_S79_A6_ecb60f81_000075__seg0.wav:shadda#19",
+   "item": "tadabur_spk0101_S79_A6_ecb60f81_000075.wav@0:67151",
+   "item_fingerprint": "2b70e16337bab09480533f34b636922a9e0b47e9a720233c24351800bc911c08",
+   "reciter_id": 101,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0108_S19_A97_755076b5_000195__seg1.wav:س↔ص#96",
+   "item": "tadabur_spk0108_S19_A97_755076b5_000195.wav@217120:516718",
+   "item_fingerprint": "19b4cd0b0d40f42d52b68eafe67515592a711334a43ef2dfffb9ae7134506d98",
+   "reciter_id": 108,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "other_consonant"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0108_S22_A97_86301e70_000082__seg0.wav:ذ↔ز#33",
+   "item": "tadabur_spk0108_S22_A97_86301e70_000082.wav@0:102984",
+   "item_fingerprint": "ec4f5de3401737cb680ce4234e455f444614383629f2ec56c21f8abe637dd765",
+   "reciter_id": 108,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0114_S14_A15_7abe74c8_000010__seg0.wav:ق↔ك#28",
+   "item": "tadabur_spk0114_S14_A15_7abe74c8_000010.wav@0:143336",
+   "item_fingerprint": "43d0f5fe2e402c0a0b6038a41578d6b4a8a89ff4fff5acc0e96217c5652d4c48",
+   "reciter_id": 114,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0116_S12_A13_2796560d_000011__seg1.wav:ح↔ه#106",
+   "item": "tadabur_spk0116_S12_A13_2796560d_000011.wav@190880:474479",
+   "item_fingerprint": "a7d77340cb031f0d9d9c4ceaa2590329d8d8f6d52c5f433194edba0c0c8986f4",
+   "reciter_id": 116,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ح↔ه",
+   "prescribed": "ح",
+   "heard": "ح",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ه",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ه",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ح",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ح",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0116_S13_A16_9ce23bdc_000007__seg0.wav:س↔ص#35",
+   "item": "tadabur_spk0116_S13_A16_9ce23bdc_000007.wav@481:279359",
+   "item_fingerprint": "263c92a79c99919f4f76fc54beea1df8a6be5e06a23459633641e95e7ea336fd",
+   "reciter_id": 116,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0116_S15_A59_c7d0e6ab_000034__seg0.wav:س↔ص#30",
+   "item": "tadabur_spk0116_S15_A59_c7d0e6ab_000034.wav@481:153440",
+   "item_fingerprint": "ca67c4c5bc7b99ca88346e04a91c5d31e07624a3dbfbc47085d588853c5b8f9b",
+   "reciter_id": 116,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0116_S22_A22_59bc810a_000023__seg0.wav:ق↔ك#23",
+   "item": "tadabur_spk0116_S22_A22_59bc810a_000023.wav@482:96955",
+   "item_fingerprint": "0b3a3b3882cea4481e31d55ba0cec6e9a43116a9d3dcbfb696a79aabdbd86c63",
+   "reciter_id": 116,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0117_S19_A97_754248eb_000049__seg3.wav:س↔ص#36",
+   "item": "tadabur_spk0117_S19_A97_754248eb_000049.wav@391760:579671",
+   "item_fingerprint": "2ecfcd283e18cecb7b06b31f78463759b9bf325869cbfcf9ebc6a190949f91b2",
+   "reciter_id": 117,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0120_S20_A32_88e88ae1_000028__seg0.wav:ض↔ظ#38",
+   "item": "tadabur_spk0120_S20_A32_88e88ae1_000028.wav@0:169262",
+   "item_fingerprint": "905aa6070e14af850c1a36924833dd320143bea777ebf45e51592175f35e5093",
+   "reciter_id": 120,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0120_S8_A123_2169cc05_000075__seg0.wav:ض↔ظ#106",
+   "item": "tadabur_spk0120_S8_A123_2169cc05_000075.wav@0:160160",
+   "item_fingerprint": "2f02158e9869be9916df9f48c9ed9c953c046c1c64ce53ddc5be97f0d9acbd82",
+   "reciter_id": 120,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0125_S11_A103_2e6e4943_000040__seg0.wav:ت↔ط#38",
+   "item": "tadabur_spk0125_S11_A103_2e6e4943_000040.wav@0:124772",
+   "item_fingerprint": "8a26b02fc339fb2bb2bee5477695f59b31ace3fdb6c4b8bbc19cf79a04ddd0b8",
+   "reciter_id": 125,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ت",
+   "heard": "ت",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ط",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ط",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": "ط",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0126_S2_A12_072da4e0_000273__seg0.wav:shadda#2",
+   "item": "tadabur_spk0126_S2_A12_072da4e0_000273.wav@0:145268",
+   "item_fingerprint": "fdb2f5e021fcfe243749eddb10b303b3f5f6611fd38447af4abc967afaceec72",
+   "reciter_id": 126,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0127_S18_A33_8a3ea8e8_000021__seg0.wav:shadda#2",
+   "item": "tadabur_spk0127_S18_A33_8a3ea8e8_000021.wav@0:107490",
+   "item_fingerprint": "deefc232f031c5205cde62c9e43e5b46bd73cda4c0608f8a8ec6b3bdf350c420",
+   "reciter_id": 127,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "held",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0133_S11_A20_ca577c5c_000024__seg0.wav:س↔ص#24",
+   "item": "tadabur_spk0133_S11_A20_ca577c5c_000024.wav@2403:191037",
+   "item_fingerprint": "2fa5505d77b3e0a08191c8a98b97dfbaa624e456cfc1e3e69756221d8192be18",
+   "reciter_id": 133,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0134_S19_A62_86050d39_000025__seg0.wav:ذ↔ز#8",
+   "item": "tadabur_spk0134_S19_A62_86050d39_000025.wav@1762:212135",
+   "item_fingerprint": "41ab538b0538e5da740554b177923443cf2f3dd1fb09088e85045a1bde0981f5",
+   "reciter_id": 134,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "د",
+     "role": "other_consonant"
+    },
+    "h448/stream_b0": {
+     "committed": "د",
+     "role": "other_consonant"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0138_S16_A95_2e422394_000060__seg0.wav:ت↔ط#52",
+   "item": "tadabur_spk0138_S16_A95_2e422394_000060.wav@1762:175037",
+   "item_fingerprint": "9e2dea22af0aaedf7bf410cc0843e4861e4e982d3bf028aa47fc018bcbb11d24",
+   "reciter_id": 138,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ط",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ط",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ت",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0138_S19_A123_5981774d_000167__seg0.wav:ض↔ظ#141",
+   "item": "tadabur_spk0138_S19_A123_5981774d_000167.wav@1761:274860",
+   "item_fingerprint": "7ed16f1b743baa958fa78d1f6a420732a960498078489facfc757dac340eea97",
+   "reciter_id": 138,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "ض↔ظ",
+   "prescribed": "ض",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ظ",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0138_S1_A152_8aedaa52_000006__seg0.wav:ق↔ك#22",
+   "item": "tadabur_spk0138_S1_A152_8aedaa52_000006.wav@481:162861",
+   "item_fingerprint": "231201573f6fd7275e041c421715644dbd77da935f38645d9cfc3989c181dcd9",
+   "reciter_id": 138,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0145_S25_A181_dd4f2c56_000227__seg0.wav:س↔ص#40",
+   "item": "tadabur_spk0145_S25_A181_dd4f2c56_000227.wav@1777:72943",
+   "item_fingerprint": "6ab2989a9e3dc74144eeb9b821b7ebaae5e7850b03f27f36c6f2e755eacf4b61",
+   "reciter_id": 145,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ش",
+     "role": "other_consonant"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0146_S19_A89_5bc873d6_000077__seg1.wav:ق↔ك#12",
+   "item": "tadabur_spk0146_S19_A89_5bc873d6_000077.wav@124640:226247",
+   "item_fingerprint": "b3c837c263fe6fd42d416d5ced65eb3f7e656a3b455a6bf9dd5d479e177bcab2",
+   "reciter_id": 146,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0146_S27_A53_84171272_000044__seg0.wav:ت↔ط#11",
+   "item": "tadabur_spk0146_S27_A53_84171272_000044.wav@0:320384",
+   "item_fingerprint": "a2eaa7b0b457d3434e0ea645c77a78fd63f4f2d7af190b56419031d2fdf2c29f",
+   "reciter_id": 146,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ت",
+   "heard": "ت",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ط",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "ت",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0146_S33_A21_fba9e38a_000016__seg1.wav:ض↔ظ#43",
+   "item": "tadabur_spk0146_S33_A21_fba9e38a_000016.wav@305120:389984",
+   "item_fingerprint": "7810e84da590170a1cb3b065c19dc6e77cab2181d4d4d2fdf4bacab671bfd2ce",
+   "reciter_id": 146,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0146_S3_A119_69dbf88c_000104__seg0.wav:ق↔ك#76",
+   "item": "tadabur_spk0146_S3_A119_69dbf88c_000104.wav@0:331600",
+   "item_fingerprint": "ff76d71fab81ffb4d4f4d2a7305108389e8997dbe96d1ba0323593e5746273e7",
+   "reciter_id": 146,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0148_S22_A97_1b50e0a0_000075__seg0.wav:ذ↔ز#33",
+   "item": "tadabur_spk0148_S22_A97_1b50e0a0_000075.wav@2412:119019",
+   "item_fingerprint": "962409ba034853e8b155506999a3820bedba6973f1c80beb8c57786d55453b29",
+   "reciter_id": 148,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0148_S25_A223_3459b44d_000198__seg0.wav:ق↔ك#3",
+   "item": "tadabur_spk0148_S25_A223_3459b44d_000198.wav@1777:68451",
+   "item_fingerprint": "cc8d110e2c906a5ae00501ea84d0834465f389a6ea1f47c663feb168b3715068",
+   "reciter_id": 148,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "ق",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0152_S66_A16_5f325f4f_000016__seg0.wav:س↔ص#41",
+   "item": "tadabur_spk0152_S66_A16_5f325f4f_000016.wav@1762:173759",
+   "item_fingerprint": "fd88d0622cb415459b071455ba35ae149f8dd22b44e75e75d247ee256a888d63",
+   "reciter_id": 152,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0157_S15_A112_191d7729_000024__seg0.wav:ت↔ط#59",
+   "item": "tadabur_spk0157_S15_A112_191d7729_000024.wav@3042:345040",
+   "item_fingerprint": "cefc9e089ee04470e11b60fc3895bdf680f5258d249e0f922f7bfa07ec80ba15",
+   "reciter_id": 157,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ط",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "other_consonant"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": "و",
+     "role": "other_consonant"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0177_S15_A81_731ba67e_000057__seg0.wav:ض↔ظ#41",
+   "item": "tadabur_spk0177_S15_A81_731ba67e_000057.wav@0:174240",
+   "item_fingerprint": "a374da047d67907890e81709ea0188e3b3adeb5284f1e83b93b40e77f1e064f5",
+   "reciter_id": 177,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0177_S18_A58_90c62479_000601__seg2.wav:ق↔ك#67",
+   "item": "tadabur_spk0177_S18_A58_90c62479_000601.wav@378960:526303",
+   "item_fingerprint": "a5d8113774b14cfb1af1a8581a55839aba83ed5677681e9b1d10ed86c62df53c",
+   "reciter_id": 177,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0179_S32_A25_9588f699_000002__seg0.wav:ض↔ظ#40",
+   "item": "tadabur_spk0179_S32_A25_9588f699_000002.wav@2402:181920",
+   "item_fingerprint": "6b2ecd21800277981e9f3e3979b6c67420149eb90800abefbd06e45db25c16c1",
+   "reciter_id": 179,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0180_S13_A36_197edafe_000022__seg0.wav:shadda#2",
+   "item": "tadabur_spk0180_S13_A36_197edafe_000022.wav@0:224958",
+   "item_fingerprint": "a52ef5dc4b6205edd66a5f9cdd5b236d25396ed53f1337d1dc979fc9f404817d",
+   "reciter_id": 180,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0180_S1_A173_65f19e4c_000116__seg0.wav:ذ↔ز#61",
+   "item": "tadabur_spk0180_S1_A173_65f19e4c_000116.wav@1764:139680",
+   "item_fingerprint": "459c2429451bc3a26203e9fcf9e2f95953dafdae7d3d4361f064414370b6edf2",
+   "reciter_id": 180,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ن",
+     "role": "other_consonant"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0180_S37_A2_5985a045_000000__seg0.wav:ذ↔ز#31",
+   "item": "tadabur_spk0180_S37_A2_5985a045_000000.wav@483:70073",
+   "item_fingerprint": "e7a62a2dba6837505f564eaa34697e79f5c5e7e623dc05e7428793e6a6bd3847",
+   "reciter_id": 180,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0192_S6_A69_1d839068_000074__seg1.wav:س↔ص#88",
+   "item": "tadabur_spk0192_S6_A69_1d839068_000074.wav@171680:438301",
+   "item_fingerprint": "738bb87304608c1d87e691fc131770a3c25fc721dae3c46dae104c3bc3dec4d8",
+   "reciter_id": 192,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0197_S56_A13_0a56fbc5_000364__seg0.wav:س↔ص#94",
+   "item": "tadabur_spk0197_S56_A13_0a56fbc5_000364.wav@481:190560",
+   "item_fingerprint": "c4c7c41a08c399384955ff9ba8859ee19d73f73c04b6e83db758211403794372",
+   "reciter_id": 197,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0198_S1_A173_f8669a41_000000__seg0.wav:ذ↔ز#61",
+   "item": "tadabur_spk0198_S1_A173_f8669a41_000000.wav@5607:117280",
+   "item_fingerprint": "eb7983971b1784dfff545ff11b9ab79b5c64cad4ce5d76616ab7717274050c94",
+   "reciter_id": 198,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0202_S50_A49_a30972e9_000030__seg0.wav:shadda#53",
+   "item": "tadabur_spk0202_S50_A49_a30972e9_000030.wav@484:150394",
+   "item_fingerprint": "b02d2d443d9b3025f3e65abaa828566c6dfe705911c28a7f54b9d26a3fb56d20",
+   "reciter_id": 202,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "not_held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0219_S16_A84_d101acf6_000073__seg0.wav:ق↔ك#30",
+   "item": "tadabur_spk0219_S16_A84_d101acf6_000073.wav@0:84000",
+   "item_fingerprint": "2babd63c28553474fd8004eab1fa8e0ae4949d06b68328d956f2e655d87ca1dc",
+   "reciter_id": 219,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0228_S1_A15_b70d5ef0_000006__seg0.wav:ت↔ط#45",
+   "item": "tadabur_spk0228_S1_A15_b70d5ef0_000006.wav@485:126057",
+   "item_fingerprint": "dd9a9f4428c20da5068c627733002b3d4f7d4c0e336379e2069d3d6a0d8724c6",
+   "reciter_id": 228,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ت↔ط",
+   "prescribed": "ط",
+   "heard": "ط",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ت",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ت",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32",
+   "item": "tadabur_spk0229_S1_A163_8b480c21_000000.wav@0:166701",
+   "item_fingerprint": "0af9fca62381175229eb5ff1555cbaf3f3eabd9b40437def0f8177b9e24cfbe7",
+   "reciter_id": 229,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0254_S25_A44_14d03e2c_000000__seg0.wav:ذ↔ز#49",
+   "item": "tadabur_spk0254_S25_A44_14d03e2c_000000.wav@0:191038",
+   "item_fingerprint": "a618b5d131335f2bf94283cd577a5fd042e4a5ef9f37d66184d7f5d47762ab69",
+   "reciter_id": 254,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0262_S76_A30_ffb7d3ce_000024__seg0.wav:ض↔ظ#23",
+   "item": "tadabur_spk0262_S76_A30_ffb7d3ce_000024.wav@2415:99812",
+   "item_fingerprint": "82e5a0a523e9baf7b0bb291503950601aab178616fabd17845f1381ddcf11a24",
+   "reciter_id": 262,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0278_S75_A11_4e2a6391_000006__seg0.wav:ض↔ظ#58",
+   "item": "tadabur_spk0278_S75_A11_4e2a6391_000006.wav@0:157733",
+   "item_fingerprint": "fe6bbd884a43166b57695035607c204b3c46eb988c5ade1862591fddb89c97b0",
+   "reciter_id": 278,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ض",
+   "heard": "ض",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ظ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ظ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0282_S17_A82_2222d23b_000000__seg3.wav:س↔ص#30",
+   "item": "tadabur_spk0282_S17_A82_2222d23b_000000.wav@438480:513679",
+   "item_fingerprint": "fd8e2f82a148a571b7c42adcd6c1b19a7956e9e70491e1601ac8fd70112d606c",
+   "reciter_id": 282,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0282_S47_A9_2179bed4_000000__seg0.wav:ق↔ك#59",
+   "item": "tadabur_spk0282_S47_A9_2179bed4_000000.wav@1122:178220",
+   "item_fingerprint": "7122f184c092f232db5761e90753569713dc97b6ce92b66e351495f5be01feae",
+   "reciter_id": 282,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "ق",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0282_S57_A11_e53c65c4_000000__seg1.wav:ذ↔ز#21",
+   "item": "tadabur_spk0282_S57_A11_e53c65c4_000000.wav@181600:252960",
+   "item_fingerprint": "cb65db16ffd60c23955cc89f4fbb29fde5c9df2dadfb3960b0349b43c5060cca",
+   "reciter_id": 282,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0282_S57_A11_e53c65c4_000000__seg1.wav:ذ↔ز#33",
+   "item": "tadabur_spk0282_S57_A11_e53c65c4_000000.wav@181600:252960",
+   "item_fingerprint": "cb65db16ffd60c23955cc89f4fbb29fde5c9df2dadfb3960b0349b43c5060cca",
+   "reciter_id": 282,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0301_S18_A8_4f536bf1_000000__seg0.wav:ق↔ك#99",
+   "item": "tadabur_spk0301_S18_A8_4f536bf1_000000.wav@481:213421",
+   "item_fingerprint": "4d9607ab96df81680b72748c323b665560d346609878a8d64a32e89821de4ded",
+   "reciter_id": 301,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0310_S49_A4_606de387_000090__seg0.wav:ح↔ه#68",
+   "item": "tadabur_spk0310_S49_A4_606de387_000090.wav@484:138790",
+   "item_fingerprint": "fe5bfcf4df9ac3f966838fcd32cc2c478eb6a462d852ee7eacc2fc250d480d3d",
+   "reciter_id": 310,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ح↔ه",
+   "prescribed": "ح",
+   "heard": "ح",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ه",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": "ح",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0319_S18_A90_db89b3d1_000000__seg0.wav:ق↔ك#51",
+   "item": "tadabur_spk0319_S18_A90_db89b3d1_000000.wav@0:146095",
+   "item_fingerprint": "477cdf87fabf8f5cca2acaedc82386101bc3ffaf62b81ac4c1ae7e0e638252ab",
+   "reciter_id": 319,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "ق",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ك",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ق",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ق",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0343_S55_A43_57268f73_000034__seg0.wav:ض↔ظ#2",
+   "item": "tadabur_spk0343_S55_A43_57268f73_000034.wav@488:52972",
+   "item_fingerprint": "5d1b9248544bf4716c75de7dfde6bb551b4da51fe165e72278f02dfaabbcba07",
+   "reciter_id": 343,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0385_S2_A176_9e2116ad_000000__seg0.wav:ق↔ك#47",
+   "item": "tadabur_spk0385_S2_A176_9e2116ad_000000.wav@0:89120",
+   "item_fingerprint": "b6bafb13595db928f4e700dfaa878736ee79e6cfdca4081a15a007e4eb20f8b0",
+   "reciter_id": 385,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0414_S14_A19_4a59c60d_000017__seg0.wav:ذ↔ز#103",
+   "item": "tadabur_spk0414_S14_A19_4a59c60d_000017.wav@482:256615",
+   "item_fingerprint": "aec3d9398e2371073a28a92eda12fca42522d1f07e63cda7de44a4a67638ba13",
+   "reciter_id": 414,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "د",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "د",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0423_S47_A28_915b5cf4_000018__seg0.wav:ض↔ظ#66",
+   "item": "tadabur_spk0423_S47_A28_915b5cf4_000018.wav@1762:231996",
+   "item_fingerprint": "e3876916d9c79fb4bca8b29116d653ec7fad7b182ce95c0cc93c0fd1c2176f2d",
+   "reciter_id": 423,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0435_S17_A87_924faf08_000068__seg0.wav:ض↔ظ#22",
+   "item": "tadabur_spk0435_S17_A87_924faf08_000068.wav@0:70240",
+   "item_fingerprint": "b1082121bd3772d63d3b6bce62d3c622b371b8d7e3dc89fb2ca601f5394fdba3",
+   "reciter_id": 435,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ظ",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ظ",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0435_S26_A22_7d409ec0_000018__seg0.wav:ت↔ط#40",
+   "item": "tadabur_spk0435_S26_A22_7d409ec0_000018.wav@1125:87520",
+   "item_fingerprint": "d3c48f1e65b1e5246ccca9f1533cd7b4fb0f5de77f213cb96c234e1a344acc27",
+   "reciter_id": 435,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "ت↔ط",
+   "prescribed": "ت",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ط",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "ت",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ت",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "ت",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0435_S35_A54_d2b7d7c3_000166__seg0.wav:ذ↔ز#48",
+   "item": "tadabur_spk0435_S35_A54_d2b7d7c3_000166.wav@0:147194",
+   "item_fingerprint": "3f4af429b4c8c3b3b0c4be728753a9820b8473018fd5a239050548315726123e",
+   "reciter_id": 435,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0435_S36_A39_47f3a643_000038__seg0.wav:ذ↔ز#11",
+   "item": "tadabur_spk0435_S36_A39_47f3a643_000038.wav@1130:88943",
+   "item_fingerprint": "8c5e400626d8efc61dc09fc1b014d9898c2c45b205bd3128501dc6848834c2c6",
+   "reciter_id": 435,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0450_S20_A32_fff9e82b_000028__seg0.wav:ض↔ظ#38",
+   "item": "tadabur_spk0450_S20_A32_fff9e82b_000028.wav@484:156136",
+   "item_fingerprint": "8a2e1cf82a4d26b551600c56061a5853c79f23da297ad5fd072e4ddc9285e203",
+   "reciter_id": 450,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ض↔ظ",
+   "prescribed": "ظ",
+   "heard": "ظ",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ض",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ض",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0468_S111_A2_f0bae4e7_000000__seg0.wav:س↔ص#11",
+   "item": "tadabur_spk0468_S111_A2_f0bae4e7_000000.wav@1150:27445",
+   "item_fingerprint": "65794d919b5bdfe4137fe3e4e13f497c7137f115c618a975f61bb111097305e4",
+   "reciter_id": 468,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "ص",
+   "heard": "ص",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "س",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ص",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0471_S77_A25_5733e69f_000000__seg0.wav:shadda#22",
+   "item": "tadabur_spk0471_S77_A25_5733e69f_000000.wav@484:47022",
+   "item_fingerprint": "64f77636f8946a6fd4cdcf064be863d34f602eafccf6aa01a4d5c302555b8761",
+   "reciter_id": 471,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0485_S35_A32_2ed41edd_000039__seg0.wav:shadda#15",
+   "item": "tadabur_spk0485_S35_A32_2ed41edd_000039.wav@0:86702",
+   "item_fingerprint": "c73d6a0a6ceebd72dee9c53a672f2eedd6cb0c2bfc94d139a484ebf497b7e8ec",
+   "reciter_id": 485,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0495_S19_A100_defae90b_000086__seg0.wav:ذ↔ز#60",
+   "item": "tadabur_spk0495_S19_A100_defae90b_000086.wav@1765:87354",
+   "item_fingerprint": "86ca5a7faf6fdddcfbcf032dae56bf35a1ca28269fc990fce59654ecf36b975a",
+   "reciter_id": 495,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0495_S2_A93_b40f5923_000089__seg0.wav:ذ↔ز#131",
+   "item": "tadabur_spk0495_S2_A93_b40f5923_000089.wav@1121:215840",
+   "item_fingerprint": "151885160741a2872d46398d925f4b1080fde53f053edfce9f60b3404cfd080a",
+   "reciter_id": 495,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0495_S32_A25_3b23eb5b_000026__seg2.wav:ذ↔ز#28",
+   "item": "tadabur_spk0495_S32_A25_3b23eb5b_000026.wav@144160:187498",
+   "item_fingerprint": "f6017c356d1d75d507191a46c71a34f43a32b3a8d44c5c706e4d5798dc4b57d4",
+   "reciter_id": 495,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "د",
+     "role": "other_consonant"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0495_S32_A25_3b23eb5b_000026__seg2.wav:ذ↔ز#32",
+   "item": "tadabur_spk0495_S32_A25_3b23eb5b_000026.wav@144160:187498",
+   "item_fingerprint": "f6017c356d1d75d507191a46c71a34f43a32b3a8d44c5c706e4d5798dc4b57d4",
+   "reciter_id": 495,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0505_S1_A256_8b13a2c0_000196__seg1.wav:shadda#2",
+   "item": "tadabur_spk0505_S1_A256_8b13a2c0_000196.wav@49440:102880",
+   "item_fingerprint": "969ff8953c815a8580a8f41b53477cb989ecc83986ee3fb18155dcd560f64492",
+   "reciter_id": 505,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "held",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "held",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0518_S19_A105_d1c7ec67_000109__seg1.wav:س↔ص#11",
+   "item": "tadabur_spk0518_S19_A105_d1c7ec67_000109.wav@66400:139483",
+   "item_fingerprint": "10df4d794de4b97b56140a5781b27f444fd6644e0ee0522188f83221f71dd164",
+   "reciter_id": 518,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0518_S25_A94_7d5891b7_000101__seg0.wav:ق↔ك#2",
+   "item": "tadabur_spk0518_S25_A94_7d5891b7_000101.wav@0:60125",
+   "item_fingerprint": "7532b58c89bbc14d5343154e42d54863bd0cf9f34c3198b50dfe13030cad7637",
+   "reciter_id": 518,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ء",
+     "role": "other_consonant"
+    },
+    "h448/spans": {
+     "committed": null,
+     "role": "no_commit"
+    },
+    "h448/stream_b0": {
+     "committed": null,
+     "role": "no_commit"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0532_S22_A22_e1c591d5_000017__seg0.wav:ح↔ه#28",
+   "item": "tadabur_spk0532_S22_A22_e1c591d5_000017.wav@0:62394",
+   "item_fingerprint": "349ef60e27c2e6820291934158c4c4bfff7150dbe025423d41005feb886ea4f3",
+   "reciter_id": 532,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ح↔ه",
+   "prescribed": "ح",
+   "heard": "ح",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ه",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ه",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ح",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ح",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0564_S11_A56_ca0d58a3_000035__seg1.wav:س↔ص#66",
+   "item": "tadabur_spk0564_S11_A56_ca0d58a3_000035.wav@155360:302383",
+   "item_fingerprint": "e0140868559a8818051e79c76922e896dff9ab57e31324b7236710c68999ddc8",
+   "reciter_id": 564,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0591_S39_A69_b5dee3a0_000000__seg0.wav:س↔ص#79",
+   "item": "tadabur_spk0591_S39_A69_b5dee3a0_000000.wav@1126:152312",
+   "item_fingerprint": "65fa7d7df597644fcf6515a01e9f0493d3a28fdca50901477caacbec37c1e401",
+   "reciter_id": 591,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "س↔ص",
+   "prescribed": "ص",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "س",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0593_S111_A4_446dbd1f_000000__seg0.wav:ق↔ك#18",
+   "item": "tadabur_spk0593_S111_A4_446dbd1f_000000.wav@3070:58845",
+   "item_fingerprint": "51c3ad25da506284990e26575ba73d40ae35272508be0f90107700fbdca8367d",
+   "reciter_id": 593,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0658_S11_A20_0cd16e45_000000__seg0.wav:س↔ص#24",
+   "item": "tadabur_spk0658_S11_A20_0cd16e45_000000.wav@26099:220477",
+   "item_fingerprint": "9ebf0938f0f7400880ec832c610712c58ad6ae5fe21aaf9e54431af4d669bf8c",
+   "reciter_id": 658,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0668_S19_A125_9d588186_000101__seg0.wav:س↔ص#57",
+   "item": "tadabur_spk0668_S19_A125_9d588186_000101.wav@3042:116052",
+   "item_fingerprint": "09fbd4fbf089c9cd406f6d455d845933b4c7e1ff1c9c0def88992141621dd27a",
+   "reciter_id": 668,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "ص",
+   "heard": "ص",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "س",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0678_S27_A14_dda0260e_000000__seg0.wav:shadda#23",
+   "item": "tadabur_spk0678_S27_A14_dda0260e_000000.wav@0:91513",
+   "item_fingerprint": "37a44870285c3640a05a0a526059a109f25c909aeca9904a15690d0d377e1dbb",
+   "reciter_id": 678,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0724_S40_A25_3e23426c_000000__seg1.wav:س↔ص#24",
+   "item": "tadabur_spk0724_S40_A25_3e23426c_000000.wav@341200:415903",
+   "item_fingerprint": "5f81bce57ae50abfd05f48d3af741d765f50e4bbf4eba3ee2c232465a178cee1",
+   "reciter_id": 724,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "س",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "س",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "س",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0724_S42_A73_982f7d34_000000__seg0.wav:ق↔ك#19",
+   "item": "tadabur_spk0724_S42_A73_982f7d34_000000.wav@2413:113912",
+   "item_fingerprint": "fb9e5e4ff6f3b9fb3073eb1a49087b095fc48bf8c5489d19b2966c449f39d0f5",
+   "reciter_id": 724,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ق↔ك",
+   "prescribed": "ك",
+   "heard": "ك",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ق",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "ك",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0725_S4_A58_98a7338e_000000__seg0.wav:ذ↔ز#51",
+   "item": "tadabur_spk0725_S4_A58_98a7338e_000000.wav@0:258126",
+   "item_fingerprint": "f0664bcca368b40d56dfe689878fd9ac7f5799f970fa0ac0035e57ad976a59bb",
+   "reciter_id": 725,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "ذ↔ز",
+   "prescribed": "ز",
+   "heard": "ز",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ذ",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/spans": {
+     "committed": "ز",
+     "role": "as_heard"
+    },
+    "h448/stream_b0": {
+     "committed": "ز",
+     "role": "as_heard"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0734_S42_A5_ba7cb1f6_000008__seg0.wav:س↔ص#60",
+   "item": "tadabur_spk0734_S42_A5_ba7cb1f6_000008.wav@0:139056",
+   "item_fingerprint": "c4c6b995773642a6b8f107f32178d07fee472666926c9a3052ba262a71c07734",
+   "reciter_id": 734,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "س↔ص",
+   "prescribed": "س",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ص",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "ص",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ص",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "ص",
+     "role": null
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk0741_S35_A21_852735d9_000015__seg0.wav:shadda#2",
+   "item": "tadabur_spk0741_S35_A21_852735d9_000015.wav@0:135341",
+   "item_fingerprint": "cd01a1e57fae4431056029ce112a37e9d3fa327bf656afd393d62a16755bdf5c",
+   "reciter_id": 741,
+   "fixture_side": "should_accept",
+   "side": "correct",
+   "family": "shaddah",
+   "prescribed": "held",
+   "heard": "held",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "base/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/spans": {
+     "committed": "not_held",
+     "role": "as_partner"
+    },
+    "h448/stream_b0": {
+     "committed": "not_held",
+     "role": "as_partner"
+    }
+   }
+  },
+  {
+   "site_id": "p35_fixture:tadabur_spk66_S1_A242_74fa7fce_000055__seg0.wav:ق↔ك#64",
+   "item": "tadabur_spk66_S1_A242_74fa7fce_000055.wav@481:159037",
+   "item_fingerprint": "881101a65d2fbbe6380e8d1b018d347a0c66f85b05843770e0a7a3c97bf61321",
+   "reciter_id": 66,
+   "fixture_side": "should_reject",
+   "side": null,
+   "family": "ق↔ك",
+   "prescribed": "ق",
+   "heard": "pending",
+   "weight": 1.0,
+   "arms": {
+    "base/spans": {
+     "committed": "ك",
+     "role": null
+    },
+    "base/stream_b0": {
+     "committed": "ك",
+     "role": null
+    },
+    "h448/spans": {
+     "committed": "ف",
+     "role": null
+    },
+    "h448/stream_b0": {
+     "committed": "ك",
+     "role": null
+    }
+   }
+  }
+ ],
+ "inputs": {
+  "p35_fixtures.jsonl": "654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8",
+  "p35_fixtures.relocation.jsonl": "8a49c872035eef2ba8f69259106f04e1ff3b345c34412b7e0632b71cf3e8d7b8",
+  "verdicts.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "clips.jsonl": "53be92d66562cbad358a3d1ecd36b465ab7ddc48eeeb0d967fb4bfa1b37bdd54"
+ },
+ "p35_base_reproduction": {
+  "items": 151,
+  "identical": 151
+ }
+}

@@ -32,15 +32,12 @@ GAP_EXTEND = -0.1
 class RefMatchInfo:
     """Per-reference-position alignment outcome.
 
-    ``kind`` is ``"match"`` (exact), ``"mismatch"`` (different consonant),
-    ``"gap"`` (ref char skipped), or ``"tashkeel"`` (consonant matches but
-    harakat differ — carried by ``expected``/``heard``). Smith-Waterman itself
-    only emits match/mismatch/gap; tashkeel is detected downstream.
+    ``kind`` is ``"match"`` (exact), ``"mismatch"`` (different consonant) or
+    ``"gap"`` (ref char skipped). The alignment runs on normalized, haraka-free strings;
+    tashkeel is read from the raw decode at truth sites (``training.site_outcomes``), not here.
     """
 
     kind: str
-    expected: str | None = None
-    heard: str | None = None
 
 
 MATCH = RefMatchInfo("match")
@@ -63,11 +60,6 @@ class AlignedColumn:
 
     query_char: str | None
     ref_char: str | None
-
-
-def tashkeel(expected: str | None, heard: str | None) -> RefMatchInfo:
-    """A ``RefMatchInfo`` for a consonant match whose harakat differ."""
-    return RefMatchInfo("tashkeel", expected, heard)
 
 
 @dataclass(frozen=True)

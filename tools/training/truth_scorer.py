@@ -343,7 +343,7 @@ class SiteRow:
     outcomes: Mapping[str, SiteOutcome]
 
 
-def _estimate(
+def estimate(
     clusters: Sequence[int], terms: tuple[np.ndarray, np.ndarray], weights: np.ndarray,
     resample: Resample,
 ) -> dict:
@@ -392,19 +392,24 @@ def _rate_terms(
     return terms
 
 
+def exclusion_range(num: float, den: float, excluded: float) -> dict:
+    """§1's sensitivity of the rate Σnum / Σden to the excluded sites that could belong to it:
+    their weight counted as failures (worst) or as successes (best); ``None`` when undefined."""
+    total = den + excluded
+    if not total:
+        return {"worst": None, "best": None}
+    return {"worst": num / total, "best": (num + excluded) / total}
+
+
 def _sensitivity(rows: Sequence[SiteRow], excluded_weights: Sequence[float], arm: str) -> dict:
     """Best / worst case of commit rate and committed accuracy with exclusions counted in."""
     w = sum(row.weight for row in rows)
     wc = sum(row.weight * row.outcomes[arm].commits for row in rows)
     wa = sum(row.weight * row.outcomes[arm].correct(row.site) for row in rows)
     wx = sum(excluded_weights)
-
-    def share(top: float, bottom: float) -> float | None:
-        return top / bottom if bottom else None
-
     return {
-        "commit_rate": {"worst": share(wc, w + wx), "best": share(wc + wx, w + wx)},
-        "committed_accuracy": {"worst": share(wa, wc + wx), "best": share(wa + wx, wc + wx)},
+        "commit_rate": exclusion_range(wc, w, wx),
+        "committed_accuracy": exclusion_range(wa, wc, wx),
     }
 
 
@@ -433,7 +438,7 @@ def _score_cell(
     terms = {arm: _rate_terms(rows, arm, cell.side, config, sukun_cell) for arm in arms}
     summary["arms"] = {
         arm: {
-            "rates": {name: _estimate(clusters, t, w, resample) for name, t in terms[arm].items()},
+            "rates": {name: estimate(clusters, t, w, resample) for name, t in terms[arm].items()},
             "sensitivity": _sensitivity(rows, [x for _, x in excluded], arm) if excluded else None,
         }
         for arm in arms
@@ -480,7 +485,7 @@ def _allowance_view(
                         # A false flag is a WRONG grade; a missed mistake is anything else.
                         wrong = _indicator(grade(r.site, r.outcomes[arm], cfg) == WRONG for r in affected)
                         num = w * (wrong if side_ == CORRECT_SIDE else 1 - wrong)
-                        block[arm][state] = _estimate(clusters, (num, w), w, resample)
+                        block[arm][state] = estimate(clusters, (num, w), w, resample)
             entry["sides"][rate] = block
         view.append(entry)
     return view

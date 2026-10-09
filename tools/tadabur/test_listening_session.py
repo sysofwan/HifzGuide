@@ -18,6 +18,7 @@ from tadabur.listening_session import (
     Candidate,
     SessionSite,
     Verdict,
+    adjudicated,
     carrier_marks,
     census,
     draw,
@@ -439,6 +440,25 @@ def test_an_interrupted_save_keeps_the_verdicts_already_recorded(tmp_path):
     with pytest.raises(RuntimeError):
         write_verdicts(Exploding({"x": None}), path)
     assert path.read_bytes() == original
+
+
+def test_a_verdict_fills_its_pending_site_by_id_and_nothing_else():
+    from training.test_site_outcomes import DHAKARA, DHAL, ZAI, make
+
+    pending = make(DHAKARA, 2, "ذ↔ز", DHAL, PENDING, site_id="p35:a")
+    accepted = make(DHAKARA, 2, "ذ↔ز", DHAL, DHAL, site_id="p35:b")
+    untouched = make(DHAKARA, 2, "ذ↔ز", DHAL, PENDING, site_id="p35:c")
+    verdicts = {
+        "p35:a": Verdict("p35:a", ZAI),
+        "p35:b": Verdict("p35:b", DHAL),  # agrees with the file
+        "new_audit:x": Verdict("new_audit:x", "fatha"),  # another file's site
+    }
+    result = adjudicated([pending, accepted, untouched], verdicts)
+    assert [s.heard for s in result] == [ZAI, DHAL, PENDING]
+    with pytest.raises(ValueError, match="in its file"):
+        adjudicated([accepted], {"p35:b": Verdict("p35:b", ZAI)})
+    with pytest.raises(ValueError, match="not an answer"):
+        adjudicated([pending], {"p35:a": Verdict("p35:a", "held")})
 
 
 def test_every_mark_is_answerable_and_pending_is_never_an_answer():

@@ -1,18 +1,19 @@
 {
-  "audio_hours": 0.74,
+  "audio_hours": 0.69,
   "clip_skip_reasons": {
-    "none": 214,
+    "none": 200,
     "phonetizer_unsupported": 2
   },
-  "clips": 216,
+  "clips": 202,
   "clips_per_reciter_histogram": {
-    "1": 43,
-    "11": 2,
+    "1": 40,
+    "10": 1,
+    "11": 1,
     "12": 1,
     "13": 1,
-    "2": 21,
+    "2": 18,
     "3": 7,
-    "4": 7,
+    "4": 6,
     "5": 1,
     "6": 1,
     "7": 1,
@@ -20,26 +21,26 @@
     "9": 1
   },
   "clips_per_shard": {
-    "0": 3,
+    "0": 2,
     "1": 9,
     "10": 6,
     "11": 9,
-    "115": 9,
+    "115": 8,
     "12": 8,
     "13": 7,
     "134": 4,
     "14": 11,
-    "15": 7,
+    "15": 6,
     "153": 3,
-    "16": 8,
+    "16": 7,
     "17": 3,
     "172": 2,
-    "18": 11,
+    "18": 8,
     "19": 4,
     "191": 2,
     "2": 7,
     "20": 7,
-    "210": 4,
+    "210": 3,
     "229": 4,
     "248": 3,
     "267": 3,
@@ -51,16 +52,16 @@
     "362": 2,
     "381": 6,
     "39": 6,
-    "4": 8,
+    "4": 6,
     "5": 5,
     "58": 4,
-    "6": 8,
-    "7": 10,
+    "6": 7,
+    "7": 9,
     "77": 6,
-    "8": 7,
+    "8": 5,
     "9": 2
   },
-  "clips_with_segments": 214,
+  "clips_with_segments": 200,
   "preparation": {
     "clips": 216,
     "decode_fingerprint": {
@@ -87,26 +88,26 @@
       "pad_ms": 30
     }
   },
-  "reciters": 87,
-  "reciters_with_segments": 86,
+  "reciters": 80,
+  "reciters_with_segments": 79,
   "reference_capacity": {
     "haraka_carriers": {
-      "damma": 1037,
-      "fatha": 3231,
-      "kasra": 1130
+      "damma": 969,
+      "fatha": 2967,
+      "kasra": 1043
     },
     "pair_carriers": {
-      "ت↔ط": 372,
-      "ح↔ه": 498,
-      "ذ↔ز": 206,
-      "ذ↔ظ": 171,
-      "س↔ص": 263,
-      "ض↔ظ": 70,
-      "ق↔ك": 517
+      "ت↔ط": 338,
+      "ح↔ه": 459,
+      "ذ↔ز": 194,
+      "ذ↔ظ": 163,
+      "س↔ص": 236,
+      "ض↔ظ": 67,
+      "ق↔ك": 479
     },
-    "reference_geminates": 954,
-    "sukun_mid_word_carriers": 615
+    "reference_geminates": 875,
+    "sukun_mid_word_carriers": 573
   },
-  "segment_hours": 0.68,
-  "segments": 298
+  "segment_hours": 0.63,
+  "segments": 278
 }

@@ -25,8 +25,10 @@ from tadabur.exposure import (
     ExposureOverlap,
     ShardExposure,
     check_disjoint,
+    copy_groups,
     load_registry,
     require_complete,
+    write_probable_copies,
     write_shard_use,
     write_use,
 )
@@ -36,6 +38,7 @@ from tadabur.sealed_panel import (
     PanelClip,
     PanelSegment,
     build_manifest,
+    copy_exposed,
     decodable_segment_keys,
     exposed_reciters,
     frame_record,
@@ -336,6 +339,53 @@ def test_panel_frame_bars_used_reciters_whole_then_applies_the_row_bounds():
     assert {row.audio_filename: reason for row, reason in excluded} == {
         "b.wav": "reciter_exposed", "c.wav": "duration", "d.wav": "phonetizer_unsupported",
     }
+
+
+def _tadabur(spk: str, tail: str = "S2_A255_abcd0123_000001") -> str:
+    return f"tadabur_spk{spk}_{tail}.wav"
+
+
+def test_panel_frame_drops_a_recording_with_a_copy_h448_trained_on_and_keeps_one_of_two(tmp_path):
+    """The owner's §6 amendment holds the panel out of h448's training by recording: a row
+    whose probable copy sits in an exact training shard leaves, and of two rows that are
+    one recording (a probable copy, or one checksum) the first by name stays."""
+    write_use(MINING_POOL, [Exposure("x.wav", 39, 9, 2, None, None, SHA)], tmp_path)
+    write_shard_use(H448_TRAINING, _shards((21,), {1: 4}, "exact"), tmp_path)
+    write_shard_use(H448_INIT_VALIDATION, _shards((0,), {1: 1}, "uncertain"), tmp_path)
+    index = [
+        _index_row(_tadabur("0001"), 1, row=0), _index_row(_tadabur("0101"), 1, shard=21),
+        _index_row(_tadabur("0001", "S2_A1_abcd0123_000002"), 1, row=1),
+        _index_row(_tadabur("0101", "S2_A1_abcd0123_000002"), 1, shard=0, row=5),
+        _index_row(_tadabur("0001", "S3_A1_ffff0000_000003"), 1, row=2),
+        _index_row(_tadabur("0001", "S3_A2_ffff0000_000004"), 1, row=3),
+        _index_row(_tadabur("0001", "S4_A1_ffff0000_000005"), 1, row=4),
+        _index_row(_tadabur("0002", "S4_A1_ffff0000_000005"), 1, row=6),
+    ]
+    write_probable_copies(copy_groups(index), load_registry(tmp_path), tmp_path)
+    registry = load_registry(tmp_path)
+    assert copy_exposed(registry) == {(39, 0)}  # a copy in shard 0 (uncertain) is allowed
+    checksums = {_tadabur("0001", "S3_A1_ffff0000_000003"): "c" * 64,
+                 _tadabur("0001", "S3_A2_ffff0000_000004"): "c" * 64}
+
+    def recording(row):
+        return registry.same_recording((row.shard, row.row_index)) | (
+            {checksums[row.audio_filename]} if row.audio_filename in checksums else set())
+
+    panel, excluded = panel_frame([r for r in index if r.shard == 39], {}, copy_exposed(registry),
+                                  recording)
+    assert [r.audio_filename for r in panel] == [
+        _tadabur("0001", "S2_A1_abcd0123_000002"), _tadabur("0001", "S3_A1_ffff0000_000003"),
+        _tadabur("0001", "S4_A1_ffff0000_000005")]
+    assert {row.audio_filename: reason for row, reason in excluded} == {
+        _tadabur("0001"): "probable_copy_exposed",
+        _tadabur("0001", "S3_A2_ffff0000_000004"): "duplicate_recording",
+        _tadabur("0002", "S4_A1_ffff0000_000005"): "duplicate_recording",
+    }
+
+
+def test_the_committed_panel_holds_no_recording_twice():
+    staged = load_panel_registry()
+    assert len({c.audio_sha256 for c in staged.values()}) == len(staged)
 
 
 def _shards(shards, rows, membership) -> ShardExposure:

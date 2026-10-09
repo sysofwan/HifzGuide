@@ -19,9 +19,13 @@ no truth site, human label, mining-pool clip, ``decode_evalset`` record (dev, te
 legacy stratified sample), Muraja corpus clip, synthetic edit, probe, bias or shaddah-probe
 use. "A new salt" over used reciters would not make them fresh (§6), so used reciters leave
 whole. Then the mining pool's row bounds: 1.5-50 s, and an ayah the phonetizer can realize.
-**No model's decode decides eligibility**, and the panel is the whole frame: no cap, no
-draw, so a site worklist mined later records its inclusion probabilities against
-``frame.json``.
+Then the recording itself (#117): a row whose **probable copy** (the registry's screen,
+:func:`tadabur.exposure.copy_groups`) is a recording of a use the panel must be
+source-disjoint from, an ``h448.training`` shard row included, leaves; and of rows that
+are one recording (a probable copy, or one checksum among staged panel clips) only the
+first by file name stays. **No model's decode decides eligibility**, and the panel is the
+whole frame: no cap, no draw, so a site worklist mined later records its inclusion
+probabilities against ``frame.json``.
 
 **Preparation, not scoring.** :func:`segment_panel` runs the recitation VAD and today's
 pause-to-word placement (:func:`tadabur.segment_score.segment_clips`, whose whole-clip
@@ -48,6 +52,7 @@ Usage (from ``tools/``; ``stage`` downloads each needed shard once, ~2.4 GB, the
       --audio-dir stage/panel_clips --shard-cache stage/hf_cache
   python -m tadabur.sealed_panel segment --audio-dir stage/panel_clips --out-dir stage/seg_panel
   python -m tadabur.sealed_panel build --selection stage/panel.jsonl --seg-dir stage/seg_panel
+  python -m tadabur.sealed_panel prune --selection stage/panel.jsonl  # drop clips, no audio
 """
 
 from __future__ import annotations
@@ -57,16 +62,18 @@ import contextlib
 import hashlib
 import json
 from collections import Counter
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .exposure import (
     EXPOSURE_DIR,
+    PROBABLE_COPIES_NAME,
     SOURCES_DIRNAME,
     Exposure,
     ExposureRegistry,
     load_registry,
+    read_probable_copies,
     require_complete,
     write_use,
 )
@@ -134,17 +141,37 @@ def exposed_reciters(registry: ExposureRegistry) -> dict[int, list[str]]:
     return barred
 
 
+def copy_exposed(registry: ExposureRegistry) -> frozenset[tuple[int, int]]:
+    """The rows (``(shard, row_index)``) with a probable copy the panel must be
+    source-disjoint from: a recording another use lists, or a row of a shard use whose
+    membership is exact (``h448.training``; an uncertain one may overlap, §6)."""
+    allowed = set(source_overlap_allowed(registry))
+    shards = {shard for use, e in registry.shard_uses.items() if use not in allowed
+              for shard in e.shards}
+    listed = {r.source for use, rows in registry.recordings.items() if use != SEALED_PANEL
+              for r in rows}
+    return frozenset(source for source, copies in registry.copies.items()
+                     if any(c in listed or c[0] in shards for c in copies))
+
+
 def panel_frame(
-    rows: Iterable[IndexRow], barred: Mapping[int, list[str]]
+    rows: Iterable[IndexRow],
+    barred: Mapping[int, list[str]],
+    exposed: frozenset[tuple[int, int]] = frozenset(),
+    recording: Callable[[IndexRow], set] = lambda row: {(row.shard, row.row_index)},
 ) -> tuple[list[IndexRow], list[tuple[IndexRow, str]]]:
-    """The panel, and every other row of the unseen shards with why it was left out
-    (``reciter_exposed`` before the row-level ``duration`` and ``phonetizer_unsupported``)."""
+    """The panel, and every other row of the unseen shards with why it was left out:
+    ``reciter_exposed``, then the row-level ``duration`` and ``phonetizer_unsupported``,
+    then the recording-level ``probable_copy_exposed`` (its source in ``exposed``) and
+    ``duplicate_recording`` (``recording(row)``, the keys that identify its recording,
+    meets a row kept before it by file name)."""
     import generate_phonemes
     from training.decode_evalset import MAX_CLIP_SECONDS, MIN_CLIP_SECONDS
 
     shards = set(unseen_shards())
     kept: list[IndexRow] = []
     excluded: list[tuple[IndexRow, str]] = []
+    seen: set = set()
     for row in sorted(rows, key=lambda r: r.audio_filename):
         if row.shard not in shards:
             continue
@@ -154,7 +181,12 @@ def panel_frame(
             excluded.append((row, "duration"))
         elif row.surah_ayah in generate_phonemes.FALLBACK_PHONEMES:
             excluded.append((row, "phonetizer_unsupported"))
+        elif (row.shard, row.row_index) in exposed:
+            excluded.append((row, "probable_copy_exposed"))
+        elif recording(row) & seen:
+            excluded.append((row, "duplicate_recording"))
         else:
+            seen |= recording(row)
             kept.append(row)
     return kept, excluded
 
@@ -196,12 +228,17 @@ def frame_record(
 
 def registry_fingerprint(directory: Path = EXPOSURE_DIR) -> str:
     """SHA-256 over the exposure registry's use files (name and bytes), the panel's own
-    excepted: what the frame's exclusions are a function of."""
+    excepted, and the probable-copy groups' rows (not the uses they are annotated with,
+    which name the panel): what the frame's exclusions are a function of."""
     digest = hashlib.sha256()
     for path in sorted(directory.iterdir()):
         if path.name.startswith(f"{SEALED_PANEL}.") or path.name in ("README.md", SOURCES_DIRNAME):
             continue
-        digest.update(path.name.encode("utf-8") + b"\0" + path.read_bytes() + b"\0")
+        data = path.read_bytes()
+        if path.name == PROBABLE_COPIES_NAME:
+            data = json.dumps([[g["screen"], g["rows"]] for g in read_probable_copies(path)],
+                              sort_keys=True).encode("utf-8")
+        digest.update(path.name.encode("utf-8") + b"\0" + data + b"\0")
     return digest.hexdigest()
 
 
@@ -509,7 +546,19 @@ def _select(index_path: Path, out: Path) -> None:
     registry = load_registry()
     require_complete(registry)
     barred = exposed_reciters(registry)
-    panel, excluded = panel_frame(read_shard_index(index_path).values(), barred)
+    # Checksums are known for clips already staged for the panel (a rebuild), so a copy the
+    # name screen misses (filed under another ayah) is still one recording.
+    checksums = ({n: c.audio_sha256 for n, c in load_panel_registry().items()}
+                 if STAGED_PATH.exists() else {})
+
+    def recording(row: IndexRow) -> set:
+        keys: set = set(registry.same_recording((row.shard, row.row_index)))
+        if row.audio_filename in checksums:
+            keys.add(checksums[row.audio_filename])
+        return keys
+
+    panel, excluded = panel_frame(read_shard_index(index_path).values(), barred,
+                                  copy_exposed(registry), recording)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         for row in panel:
@@ -572,6 +621,13 @@ def _build(selection: Path, seg_dir: Path) -> None:
     decodes = json.loads((seg_dir / "decodes.json").read_text(encoding="utf-8"))
     if set(decodes) != decodable_segment_keys(clips):
         raise SystemExit("the decode cache does not cover exactly the panel's decodable segments")
+    _write_panel(staged, clips, decodes, run)
+
+
+def _write_panel(
+    staged: Mapping[str, StagedClip], clips: list[PanelClip], decodes: dict[str, str], run: dict
+) -> None:
+    """The committed manifest, decode cache, exposure rows and summary of ``staged``."""
     write_manifest(clips)
     DECODES_PATH.write_text(
         json.dumps({"decode_fingerprint": run["decode_fingerprint"], "decodes": decodes},
@@ -586,6 +642,25 @@ def _build(selection: Path, seg_dir: Path) -> None:
         encoding="utf-8",
     )
     print(json.dumps(summary, indent=2, ensure_ascii=False))
+
+
+def _prune(selection: Path) -> None:
+    """Drop the panel clips a new ``select`` left out, and their segments and decodes,
+    from every committed panel file. Metadata only: no audio is read or staged, and the
+    preparation of the clips kept (segmentation, teacher decodes) is unchanged."""
+    keep = {row.audio_filename for row in read_selection(selection)}
+    staged = load_panel_registry()
+    if not keep <= set(staged):
+        raise SystemExit("the selection holds clips the panel never staged; run stage")
+    clips = [c for c in load_manifest(staged=staged) if c.audio_filename in keep]
+    fingerprint, decodes = load_teacher_decodes()
+    run = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))["preparation"]
+    if run["decode_fingerprint"] != fingerprint:
+        raise SystemExit("the decode cache and the preparation record disagree")
+    staged = {name: clip for name, clip in staged.items() if name in keep}
+    write_staged_clips(staged.values(), STAGED_PATH)
+    kept = decodable_segment_keys(clips)
+    _write_panel(staged, clips, {k: v for k, v in decodes.items() if k in kept}, run)
 
 
 def main() -> None:
@@ -610,6 +685,9 @@ def main() -> None:
     build = commands.add_parser("build", help="write the committed manifest and its exposure")
     build.add_argument("--selection", type=Path, required=True)
     build.add_argument("--seg-dir", type=Path, required=True)
+    prune = commands.add_parser(
+        "prune", help="drop the clips a new select left out from the committed panel")
+    prune.add_argument("--selection", type=Path, required=True)
     args = parser.parse_args()
 
     if args.command == "select":
@@ -618,6 +696,8 @@ def main() -> None:
         _stage(args.index, args.selection, args.audio_dir, args.shard_cache)
     elif args.command == "segment":
         _segment(args.audio_dir, args.out_dir, args.device, args.vad_dtype)
+    elif args.command == "prune":
+        _prune(args.selection)
     else:
         _build(args.selection, args.seg_dir)
 

@@ -16,6 +16,7 @@ missing evidence: `check_disjoint` naming it raises `ExposureIncomplete`, and
 | recording-level | `<use>.jsonl` | one recording, or one span of it, that the use touched |
 | shard-level | `<use>.shards.json` | the shards a use consumed, with rows per reciter |
 | frozen inputs | `sources/` | the `decode_evalset` manifest and Muraja's clip list the indexed uses derive from |
+| copy screen | `probable_copies.jsonl` | a group of rows that are probably one recording (see "Duplicate recordings") |
 
 ## Row schema (`<use>.jsonl`)
 
@@ -53,7 +54,7 @@ which the baseline and every candidate warm-started from it share.
 | `muraja.reread_corpus` | 447 | 153 | `sources/muraja_clips.json`: the #70 re-read corpus and scenario bundles shipped to Muraja |
 | `h448.training` | 345 shards | 667 | `h448`'s `--stream-shards`; membership `exact`, shared baseline |
 | `h448.init_validation` | 20 shards | 512 | `h448_init`'s calibration and `h448`'s validation windows, from the lost `clips_v2` corpus (shards 0-19); membership `uncertain`, shared baseline |
-| `sealed_panel` | 216 | 87 | [`../sealed_panel/staged_clips.jsonl`](../sealed_panel/README.md) (#89) |
+| `sealed_panel` | 202 | 80 | [`../sealed_panel/staged_clips.jsonl`](../sealed_panel/README.md) (#89) |
 | `synthetic_edit.source` | 150 | 44 | [`../synthetic_edits/edits.jsonl`](../synthetic_edits/README.md) (#88, deduplicated by #117): source clips, whole |
 | `synthetic_edit.donor` | 77 | 22 | the same: donor spans |
 
@@ -76,8 +77,9 @@ check_disjoint(SYNTHETIC_EDIT_SOURCE, SEALED_PANEL, by="source")
 
 `check_disjoint(use, *others)` compares `use` with each of `others` (never the others
 among themselves) and raises `ExposureOverlap` naming what they share. `by="source"`
-matches a shard row, or an `audio_sha256` both rows carry: a copy of a recording under
-another row is the same recording (see below).
+matches a shard row, an `audio_sha256` both rows carry, or a probable copy from the
+screen, against a shard use's rows too: a copy of a recording under another row is the
+same recording (see below).
 
 A run that streams whole shards for a PRD use excludes, before decoding, the reciters §6
 keeps out of it: `excluded_reciters(use)` is the sealed panel's reciters for every PRD use,
@@ -90,41 +92,56 @@ whole registry. Name uses through the constants.
 ```bash
 python -m tadabur.exposure build --index stage/full_index.jsonl
 python -m tadabur.exposure describe
-python -m tadabur.exposure duplicates --index stage/full_index.jsonl
+python -m tadabur.exposure copies --index stage/full_index.jsonl   # the screen alone
+python -m tadabur.exposure duplicates
 ```
 
 `build` rewrites every use above except `sealed_panel` from the committed sources and a
 full shard index (`python -m tadabur.staged_audio index --shards 0-384`, ~3 minutes over
 HTTP), and writes an empty file for any declared use that has none.
 
-## Duplicate recordings (#117 audit, 2026-10-08)
+## Duplicate recordings (#117, 2026-10-08)
 
 Tadabur holds byte-identical clips under more than one file name and shard row: one
 recording filed under two filename speaker ids (`spk0215_S17_A58` and `spk0234_S17_A58`),
 or under two or three ayahs of identical text (`37:81`, `37:111`, `37:132`). A row's
-`audio_filename` and `(shard, row_index)` do not show it; only a checksum does, and only
-re-staged recordings have one (3,228 of the 6,618 recordings here; none of
-`decode_evalset`'s, Muraja's or three of the human-label files'). `python -m tadabur.exposure
-duplicates` reports two things:
+`audio_filename` and `(shard, row_index)` do not show it. Two things do, and
+`check_disjoint(by="source")` uses both:
 
-- **by checksum** (`duplicate_recordings`): 9 checksums are held under two rows here: 6
-  pairs within `mining_pool`, 2 within `sealed_panel` (two of its recordings are each in it
-  twice), and 1 a `human_label.p35_fixture` clip that is also a `mining_pool` clip (reciter
-  728, `37:111` and `37:132`). The staging registry
-  ([`../staged_audio/clips.jsonl`](../staged_audio/README.md)) holds 30 such checksums over
-  61 of its 3,436 clips: these 7, plus 23 among the synthetic-edit frame's clips, which the
-  edit generator now deduplicates. Every one is within one canonical reciter.
-- **by screen** (`probable_copies`, needs a full shard index): rows whose file name is the
-  same but for its `spkNNNN` prefix and whose duration is the same to the millisecond. Of
-  the 384,450 rows, 6,392 fall in 3,196 such groups, none across two canonical reciters.
-  Wherever both rows of a screened pair had a checksum (19 pairs) they were identical, but
-  the screen finds only 19 of the 32 checksum groups (it misses copies filed under another
-  ayah), so its counts are a floor. Recordings of one use with a probable copy under a row
-  of another:
+- **the checksum** (`duplicate_recordings`), where both rows were re-staged (3,214 of the
+  6,604 recordings here; none of `decode_evalset`'s, Muraja's or three of the human-label
+  files'). 7 checksums are held under two rows: 6 pairs within `mining_pool`, and a
+  `human_label.p35_fixture` clip that is also a `mining_pool` clip (reciter 728, `37:111`
+  and `37:132`). The staging registry
+  ([`../staged_audio/clips.jsonl`](../staged_audio/README.md)) holds these and 23 more
+  among the synthetic-edit frame's clips, which the edit generator deduplicates. The sealed
+  panel held 2 more, each recording twice; it now holds each once.
+- **the copy screen** (`copy_groups`, committed as `probable_copies.jsonl`; rule
+  `copy-screen-v1`): rows whose file name is the same but for its `spkNNNN` prefix and
+  whose duration is the same to the millisecond. One JSON line per group: the rule, the
+  shared name and duration, its rows (`audio_filename`, `shard`, `row_index`,
+  `reciter_id`), and the uses they touch (a recording use that lists one, or a shard use
+  whose shards hold one). Of 384,450 rows, 6,392 fall in 3,196 groups, none across two
+  canonical reciters. Every screened pair with two checksums (19) had one checksum, but
+  the screen finds 19 of the 32 checksum groups (it misses copies filed under another
+  ayah), so it undercounts. A **probable copy counts as the same recording**, a conflict
+  on suspicion: against a shard use, a recording with a probable copy in its shards
+  overlaps it. The file is rewritten by `build` (or `copies`) and must be after any use
+  changes; `test_exposure.py` holds its uses current.
+
+Every duplicate found is within one canonical reciter, so no **reciter-level** guarantee
+(§6) is touched. The **recording-level** one was: by the screen, 12 sealed-panel recordings
+had a probable copy in an `h448.training` shard, against the owner's §6 amendment (the
+panel is held out of `h448`'s training by recording). They were removed from the panel,
+with the panel's two second copies ([its README](../sealed_panel/README.md)); the panel is
+now 202 recordings of 80 reciters, and `check_disjoint(SEALED_PANEL, …, by="source")`
+passes with the screen.
+
+**Known limitation, outside §6.** Recordings of other uses with a probable copy under a
+row of another use (`python -m tadabur.exposure duplicates`):
 
 | use | copy in | recordings |
 |---|---|---|
-| `sealed_panel` | `h448.training` | 12 |
 | `decode_evalset.dev` / `.test` / `.legacy_stratified` | `h448.training` | 14 / 25 / 10 |
 | `decode_evalset.dev` | `h448.init_validation` | 1 |
 | `mining_pool` | `h448.training` / `h448.init_validation` | 25 / 2 |
@@ -132,17 +149,9 @@ duplicates` reports two things:
 | `truth_site.waqf_boundary`, `human_label.waqf_events` | `h448.training` | 2 (the same 2) |
 | `human_label.p35_fixture` / `.reject_reread` / `.tashkeel_counterfactual` | `h448.training` | 2 / 1 / 1 |
 | `muraja.reread_corpus` | `h448.training` | 2 |
+| `synthetic_edit.source` / `.donor` | `h448.training` | 2 / 2 (expected: edits come from training shards) |
 
-**What it means for §6.** Every duplicate found, by checksum or by screen, is within one
-canonical reciter, so no **reciter-level** guarantee is touched: the panel's reciter
-disjointness from every PRD use, and the score half's from training, stand. The
-**recording-level** guarantees are where a duplicate bites, since a copy under another row
-passes a row comparison. By checksum, no use's recording is another use's that §6 keeps
-apart, and `check_disjoint(by="source")` now matches checksums, so a re-staged copy cannot
-pass. But a shard use has no checksums, and by the screen **12 of the panel's 216
-recordings probably have a copy in `h448.training`'s shards**: the panel's
-recording-level hold-out from `h448`'s training (the owner's §6 amendment) probably fails
-for them. Confirming it by checksum means decoding those rows, which are panel audio by
-content, so it is left to the owner (#89). Outside §6, the frozen `decode_evalset` and the
-mining pool, both meant to be audio `h448` never saw, probably are not for 50 of 2,902 and
-27 of 2,508 recordings (a copy in `h448.training` or `h448.init_validation`).
+So the frozen `decode_evalset` and the mining pool, both meant to be audio `h448` never
+saw, probably are not for 50 of 2,902 and 27 of 2,508 recordings. Neither is changed here:
+`decode_evalset` is frozen and its test half spent (ADR-0010), and the pool's listening
+draw is fixed; a claim on either should note it.

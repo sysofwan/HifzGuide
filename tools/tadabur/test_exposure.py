@@ -32,13 +32,20 @@ from tadabur.exposure import (
     ExposureOverlap,
     ShardExposure,
     check_disjoint,
+    COPY_SCREEN,
+    EXPOSURE_DIR,
+    PROBABLE_COPIES_NAME,
     copies_across_uses,
+    copies_of,
+    copy_groups,
     duplicate_recordings,
+    group_uses,
+    read_probable_copies,
+    write_probable_copies,
     evalset_records,
     label_file_clips,
     load_registry,
     parse_exposure,
-    probable_copies,
     require_complete,
     shard_exposure,
     staged_exposures,
@@ -183,21 +190,73 @@ def _index_row(name: str, shard: int, row: int, seconds: float = 8.0) -> IndexRo
     return IndexRow(name, shard, row, 12, "2:2", seconds)
 
 
-def test_probable_copies_match_a_name_but_its_speaker_and_a_duration(tmp_path):
+_ORIGINAL = "tadabur_spk0001_S1_A2_abcd0123_000004.wav"
+_COPY = "tadabur_spk0002_S1_A2_abcd0123_000004.wav"
+
+
+def test_the_copy_screen_matches_a_name_but_its_speaker_and_a_duration():
     index = [
-        _index_row("tadabur_spk0001_S1_A2_abcd0123_000004.wav", 3, 7),
-        _index_row("tadabur_spk0002_S1_A2_abcd0123_000004.wav", 21, 5),  # its copy
+        _index_row(_ORIGINAL, 3, 7),
+        _index_row(_COPY, 21, 5),
         _index_row("tadabur_spk0003_S1_A2_abcd0123_000004.wav", 22, 0, seconds=8.5),
         _index_row("tadabur_spk0001_S1_A3_abcd0123_000004.wav", 22, 1),
     ]
-    copies = probable_copies(index)
-    assert copies == {(3, 7): ((21, 5),), (21, 5): ((3, 7),)}
-    write_use(WAQF, [_row("tadabur_spk0001_S1_A2_abcd0123_000004.wav")], tmp_path)
-    write_shard_use(H448_TRAINING, _shards((21,), {12: 1}), tmp_path)
-    registry = load_registry(tmp_path)
-    assert copies_across_uses(registry, copies) == {(WAQF, H448_TRAINING): 1}
+    (group,) = copy_groups(index)
+    assert [r["audio_filename"] for r in group["rows"]] == [_ORIGINAL, _COPY]
+    assert (group["name"], group["duration_s"]) == ("S1_A2_abcd0123_000004", 8.0)
+    assert copies_of([group]) == {(3, 7): ((21, 5),), (21, 5): ((3, 7),)}
     with pytest.raises(ValueError, match="not a Tadabur file name"):
-        probable_copies([_index_row("other.wav", 0, 0)])
+        copy_groups([_index_row("other.wav", 0, 0)])
+
+
+def _copied_registry(tmp_path):
+    """A truth site whose recording probably has a copy in a training shard, and a pool
+    clip that probably is another use's recording under its own row."""
+    write_use(WAQF, [_row(_ORIGINAL, sha=None)], tmp_path)
+    write_use(MINING_POOL, [_row("tadabur_spk0009_S2_A2_abcd0123_000001.wav", shard=40, row=1,
+                                 sha=None)], tmp_path)
+    write_use(SYNTHETIC_EDIT_SOURCE, [_row("tadabur_spk0002_S2_A2_abcd0123_000001.wav",
+                                           shard=22, row=3, sha=None)], tmp_path)
+    write_shard_use(H448_TRAINING, _shards((21,), {12: 1}), tmp_path)
+    index = [_index_row(_ORIGINAL, 3, 7), _index_row(_COPY, 21, 5),
+             _index_row("tadabur_spk0009_S2_A2_abcd0123_000001.wav", 40, 1),
+             _index_row("tadabur_spk0002_S2_A2_abcd0123_000001.wav", 22, 3)]
+    write_probable_copies(copy_groups(index), load_registry(tmp_path), tmp_path)
+    return load_registry(tmp_path)
+
+
+def test_check_disjoint_by_source_counts_a_probable_copy_as_the_same_recording(tmp_path):
+    registry = _copied_registry(tmp_path)
+    # The site's recording is in no h448 training shard, but its probable copy is.
+    with pytest.raises(ExposureOverlap,
+                       match=r"truth_site.waqf_boundary and h448.training share 1"):
+        check_disjoint(WAQF, H448_TRAINING, by="source", registry=registry)
+    with pytest.raises(ExposureOverlap, match=r"share 1 sources, e.g. \[\(40, 1\)\]"):
+        check_disjoint(MINING_POOL, SYNTHETIC_EDIT_SOURCE, by="source", registry=registry)
+    check_disjoint(MINING_POOL, WAQF, by="source", registry=registry)
+    assert copies_across_uses(registry) == {
+        (MINING_POOL, SYNTHETIC_EDIT_SOURCE): 1, (SYNTHETIC_EDIT_SOURCE, MINING_POOL): 1,
+        (WAQF, H448_TRAINING): 1}
+    # Without the screen the copies pass: it is the screen that catches them.
+    bare = dataclasses.replace(registry, copies={})
+    check_disjoint(WAQF, H448_TRAINING, by="source", registry=bare)
+
+
+def test_the_committed_screen_is_this_screen_and_lists_current_uses(tmp_path):
+    groups = read_probable_copies(EXPOSURE_DIR / PROBABLE_COPIES_NAME)
+    registry = load_registry()
+    assert registry.copies == copies_of(groups) and groups
+    assert all(g["uses"] == group_uses(registry, g["rows"]) for g in groups)
+    # A group made by another rule, or one whose row disagrees with a use, is refused.
+    _copied_registry(tmp_path)
+    path = tmp_path / PROBABLE_COPIES_NAME
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text.replace("copy-screen-v1", "copy-screen-v0"), encoding="utf-8")
+    with pytest.raises(ValueError, match="not a group of the screen"):
+        load_registry(tmp_path)
+    path.write_text(text.replace('"reciter_id": 12', '"reciter_id": 13', 1), encoding="utf-8")
+    with pytest.raises(ValueError, match="disagrees with a use"):
+        load_registry(tmp_path)
 
 
 def test_check_disjoint_compares_only_the_first_use_with_the_others(tmp_path):

@@ -368,7 +368,7 @@ def segment_audio_path(audio_dir: Path, audio_filename: str) -> Path | None:
 def _decode_segments(model_id: str, rows: list[dict], audio_dir: Path, batch_size: int,
                      device: str) -> list[str]:
     """Decode each segment's own audio file with ``model_id``."""
-    from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+    from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k, read_audio_bytes
     from tadabur.inference import MuaalemPhonemeModel
 
     model = MuaalemPhonemeModel.load(model_id, device=device)
@@ -378,7 +378,7 @@ def _decode_segments(model_id: str, rows: list[dict], audio_dir: Path, batch_siz
         waves = [
             np.asarray(
                 decode_to_mono_16k(
-                    segment_audio_path(audio_dir, r["audio_filename"]).read_bytes()
+                    read_audio_bytes(segment_audio_path(audio_dir, r["audio_filename"]))
                 ),
                 dtype=np.float32,
             )

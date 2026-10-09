@@ -134,9 +134,9 @@ def read_clip_audio(clips_dir: Path, filename: str):
 
     from training.distill_data import SAMPLE_RATE
 
-    from tadabur.panel_seal import refuse_sealed
+    from tadabur.audio import read_audio
 
-    samples, rate = sf.read(str(refuse_sealed(clips_dir / filename)), dtype="float32")
+    samples, rate = read_audio(clips_dir / filename, dtype="float32")
     if rate != SAMPLE_RATE:
         raise SystemExit(f"{filename} is {rate} Hz, not {SAMPLE_RATE}")
     if samples.ndim > 1:

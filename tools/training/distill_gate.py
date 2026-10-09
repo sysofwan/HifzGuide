@@ -41,7 +41,7 @@ from pathlib import Path
 
 import numpy as np
 
-from tadabur.panel_seal import refuse_sealed
+from tadabur.audio import read_audio
 import torch
 
 from training.decoding import Decoder, load_student_from_checkpoint, tokens_to_phonemes
@@ -224,7 +224,6 @@ def main() -> None:
         raise SystemExit("CUDA is required")
     device = torch.device("cuda")
 
-    import soundfile as sf
     from transformers import SeamlessM4TFeatureExtractor
 
     from tadabur.reference_phonemes import load_reference_phonemes
@@ -254,7 +253,7 @@ def main() -> None:
             skipped += 1
             continue
         try:
-            samples, rate = sf.read(str(refuse_sealed(path)), dtype="float32", always_2d=False)
+            samples, rate = read_audio(path, dtype="float32", always_2d=False)
         except Exception:
             skipped += 1
             continue

@@ -682,7 +682,7 @@ def verdict(summary: dict, max_silent_correction: float = MAX_SILENT_CORRECTION_
 def _decode_takes(model_id: str, items: list[dict], audio_dir: Path, batch_size: int,
                   device: str) -> dict[str, dict[str, str]]:
     """Decode both takes of every item, keyed ``item_id`` then take."""
-    from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+    from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k, read_audio_bytes
     from tadabur.inference import MuaalemPhonemeModel
 
     jobs = [(item["item_id"], take) for item in items for take in ("control", "counterfactual")]
@@ -692,7 +692,7 @@ def _decode_takes(model_id: str, items: list[dict], audio_dir: Path, batch_size:
         chunk = jobs[start : start + batch_size]
         waves = [
             np.asarray(
-                decode_to_mono_16k((audio_dir / f"{item_id}_{take}.wav").read_bytes()),
+                decode_to_mono_16k(read_audio_bytes(audio_dir / f"{item_id}_{take}.wav")),
                 dtype=np.float32,
             )
             for item_id, take in chunk

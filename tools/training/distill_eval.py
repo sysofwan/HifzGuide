@@ -42,7 +42,7 @@ from training.distill_data import (
     discover_clips,
     split_clips,
 )
-from tadabur.panel_seal import refuse_sealed
+from tadabur.audio import read_audio
 from training.distill_loss import BLANK_ID, breakout_stats
 
 # Default for the older --audio-root path. Named so the --eval-set path can tell "the user
@@ -666,7 +666,6 @@ def main() -> None:
         print(f"  blank bias lead      {head['bias_lead']:+.4f}   ({verdict})")
         return
 
-    import soundfile as sf
     from transformers import SeamlessM4TFeatureExtractor
 
     from training.distill_student import TEACHER_MODEL_ID
@@ -701,7 +700,7 @@ def main() -> None:
     pairs: list[tuple[list[int], list[int]]] = []
     for index, path in enumerate(clips, start=1):
         try:
-            samples, rate = sf.read(str(refuse_sealed(path)), dtype="float32", always_2d=False)
+            samples, rate = read_audio(path, dtype="float32", always_2d=False)
         except Exception:
             continue
         if rate != SAMPLE_RATE:

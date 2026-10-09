@@ -2,14 +2,24 @@
 
 **Sealed.** Nothing scores this panel until the ship criterion (#97) does, once, with the
 owner's authorization (acceptance rules §3). The seal is
-[`tools/tadabur/panel_seal.py`](../panel_seal.py), enforced where audio enters the tools:
-the glob loader (`training.distill_data.discover_clips`, behind `distill_train`,
-`distill_eval --audio-root` and `teacher_init`), the clip readers (`segment_score`, `vad`,
-`decode_evalset`, `distill_eval`, `distill_gate`, `whole_clip_phoneme`, the bleed and
-scenario tools) and the shared staging-registry loader all refuse a file that is a panel
-clip by name or by checksum, unless inside an authorized block. Only
-`tadabur.sealed_panel.open_for_scoring` with #97's flag opens it for scoring. Select, tune
-and diagnose on the mining pool or `decode_evalset` dev.
+[`tools/tadabur/panel_seal.py`](../panel_seal.py), enforced at the choke points every
+reader goes through, outside an authorized block:
+
+- **files:** `tadabur.audio.read_audio` and `read_audio_bytes`, the only ways the tools
+  read an audio file (a lint test pins it), refuse a name carrying a panel clip id (the
+  clip, a `__seg<n>` segment, a hash-prefixed copy) or a file with a panel checksum. The
+  glob loader `discover_clips` checks every path it lists.
+- **bytes:** `tadabur.audio.decode_to_mono_16k` refuses a panel clip's bytes, whatever path
+  or buffer they came through.
+- **streamed rows:** `shard_reader.iter_shard_rows` and `dataset_source.stream_rows` (the
+  only row sources) keep a panel row's place and name but seal its audio, so reading its
+  samples raises. A tool that decodes every row of shards 0-20 or the reserve (the filter,
+  a `decode_evalset` rebuild) therefore stops loudly at the first panel row.
+- **registries:** the shared staging-registry loader refuses a panel clip by name or
+  checksum.
+
+Only `tadabur.sealed_panel.open_for_scoring` with #97's flag opens it for scoring. Select,
+tune and diagnose on the mining pool or `decode_evalset` dev.
 
 Code: [`tools/tadabur/sealed_panel.py`](../sealed_panel.py). Exposure rows:
 [`../exposure/sealed_panel.jsonl`](../exposure/README.md).

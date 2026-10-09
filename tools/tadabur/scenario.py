@@ -48,7 +48,6 @@ from pathlib import Path
 
 from . import normalization
 from .excision import ExcisionPlan, cut_time
-from .panel_seal import refuse_sealed
 from .seam import SeamCoverage
 
 # Schema version for ``scenario.jsonl``. Follows
@@ -378,7 +377,7 @@ def main() -> None:
     import soundfile as sf
     import torch
 
-    from .audio import TARGET_SAMPLE_RATE
+    from .audio import TARGET_SAMPLE_RATE, read_audio
     from .bleed_detect import BleedDetector
     from .bleed_recut import normalized_onsets, read_recut_records
     from .excision import ExcisionValidation, excise, plan_excision, validate_excision
@@ -433,7 +432,7 @@ def main() -> None:
         if not source.exists():
             tally.missing_audio += 1
             continue
-        waveform, rate = sf.read(refuse_sealed(source), dtype="float32")
+        waveform, rate = read_audio(source, dtype="float32")
         if rate != TARGET_SAMPLE_RATE:
             raise ValueError(f"{source} is {rate} Hz; the staged corpus is 16 kHz mono")
         recut = recuts.get(record.audio_filename)

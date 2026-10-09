@@ -165,6 +165,118 @@ def test_unsealing_needs_a_known_flag_and_lasts_only_for_its_block(tmp_path):
         refuse_sealed(path)
 
 
+def test_the_training_audio_cache_refuses_a_panel_clip_and_its_local_copies(tmp_path):
+    from tadabur.audit_sampler import local_audio_path
+    from training.windowed_batch import ClipAudioCache
+
+    name = _a_panel_clip().audio_filename
+    (tmp_path / local_audio_path(name)).write_bytes(b"RIFF")  # the hash-prefixed copy
+    with pytest.raises(SealedPanelError):
+        ClipAudioCache(tmp_path).waveform(name)
+
+
+def test_a_segment_file_cut_from_a_panel_clip_is_refused(tmp_path):
+    from tadabur.audio import read_audio, read_audio_bytes
+
+    segment = tmp_path / _a_panel_clip().audio_filename.replace(".wav", "__seg0.wav")
+    segment.write_bytes(b"RIFF")
+    with pytest.raises(SealedPanelError):
+        read_audio_bytes(segment)  # minimal_pairs and the eval harness read through here
+    with pytest.raises(SealedPanelError):
+        read_audio(segment)
+
+
+def test_panel_bytes_are_refused_whatever_buffer_they_arrive_in(monkeypatch):
+    import io
+
+    import numpy as np
+    import soundfile as sf
+
+    from tadabur.audio import decode_to_mono_16k
+
+    buffer = io.BytesIO()
+    sf.write(buffer, np.zeros(160, dtype=np.float32), 16000, format="WAV", subtype="PCM_16")
+    data = buffer.getvalue()
+    provenance = PanelProvenance(frozenset({"panel.wav"}),
+                                 frozenset({hashlib.sha256(data).hexdigest()}),
+                                 frozenset({len(data)}))
+    monkeypatch.setattr(panel_seal, "panel_provenance", lambda: provenance)
+    with pytest.raises(SealedPanelError):
+        decode_to_mono_16k(data)
+    assert len(decode_to_mono_16k(data[:-2] + b"\x01\x00")) == 160  # other bytes decode
+
+
+def _write_shard(path: Path, names: list[str]) -> None:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    pq.write_table(pa.table({
+        "audio": [{"bytes": b"RIFF" + bytes(8), "path": name} for name in names],
+        "surah_id": [0] * len(names), "ayah_id": [1] * len(names), "reciter_id": [7] * len(names),
+    }), path)
+
+
+def test_streamed_shard_rows_keep_a_panel_rows_place_but_seal_its_audio(tmp_path, monkeypatch):
+    import huggingface_hub
+
+    from tadabur.filter import parse_clip
+    from tadabur.shard_reader import iter_shard_rows
+
+    panel_name = _a_panel_clip().audio_filename
+    shard = tmp_path / "train-00000.parquet"
+    _write_shard(shard, ["tadabur_spk0001_S1_A1_ab_000001.wav", panel_name])
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", lambda *a, **k: str(shard))
+
+    ordinary, panel_row = iter_shard_rows([0])
+    assert parse_clip(ordinary).audio_bytes  # other rows are untouched
+    assert panel_row["audio"]["path"] == panel_name  # identity and position survive
+    for read in (lambda: panel_row["audio"]["bytes"], lambda: parse_clip(panel_row)):
+        with pytest.raises(SealedPanelError):  # the filter cannot score it
+            read()
+    with unsealed(getattr(panel_seal, PREP_FLAG)):  # the panel's own staging still reads it
+        _, staged_row = iter_shard_rows([0])
+        assert staged_row["audio"]["bytes"]
+
+
+def test_every_dataset_stream_goes_through_the_row_seal():
+    from tadabur.panel_seal import seal_row
+
+    row = {"audio": {"bytes": b"x", "path": _a_panel_clip().audio_filename}, "reciter_id": 1}
+    with pytest.raises(SealedPanelError):
+        seal_row(row)["audio"]["bytes"]
+    assert seal_row({"audio": {"bytes": b"x", "path": "other.wav"}})["audio"]["bytes"] == b"x"
+
+
+#: Where audio may be read without the shared guarded readers, and why.
+READ_EXEMPTIONS = {
+    "tadabur/audio.py": "the guarded readers themselves",
+    "tadabur/staged_audio.py": "as_staged reads back an in-memory buffer it just wrote",
+}
+
+
+def test_lint_every_audio_read_and_row_source_goes_through_a_choke_point():
+    """Every audio file read is read_audio / read_audio_bytes, every byte decode is
+    decode_to_mono_16k, and every Tadabur row source is sealed."""
+    import re
+
+    sources = [p for p in sorted(TOOLS_DIR.rglob("*.py")) if not p.name.startswith("test_")]
+    raw_reads = re.compile(r"\b(sf|soundfile)\.(read|SoundFile)\(|librosa\.load\(|torchaudio\.load\(")
+    bytes_decode = re.compile(r"decode_to_mono_16k\([^)]*read_bytes\(\)")
+    offenders = []
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        rel = str(path.relative_to(TOOLS_DIR))
+        if raw_reads.search(text) and rel not in READ_EXEMPTIONS:
+            offenders.append(f"{rel}: raw audio read")
+        if bytes_decode.search(text):
+            offenders.append(f"{rel}: decodes a file's bytes without read_audio_bytes")
+        if "load_dataset(" in text and rel != "tadabur/dataset_source.py":
+            offenders.append(f"{rel}: streams the dataset without stream_rows")
+        if "ParquetFile(" in text and rel != "tadabur/shard_reader.py":
+            offenders.append(f"{rel}: reads a shard without iter_shard_rows")
+    assert offenders == []
+
+
 def _mentions(path: Path, needle: str) -> bool:
     return needle in path.read_text(encoding="utf-8")
 

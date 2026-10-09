@@ -280,10 +280,11 @@ class DistillWindowDataset:
     def load_window(self, ref: WindowRef):
         """The window's waveform, zero-padded to the full window length like the device."""
         import numpy as np
-        import soundfile as sf
 
-        samples, rate = sf.read(
-            str(ref.path),
+        from tadabur.audio import read_audio
+
+        samples, rate = read_audio(
+            ref.path,
             start=ref.start_sample,
             frames=self.window_samples,
             dtype="float32",

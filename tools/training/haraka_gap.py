@@ -91,8 +91,7 @@ def decode_model(model: str, model_ref: str, plans: list[ClipPlan], audio_dir: P
     computed once and committed at every block in :data:`BLOCKS`
     (:func:`training.decoding.stream_emissions`), and kept in an ``.npz`` beside the cache.
     """
-    import soundfile as sf
-
+    from tadabur.audio import read_audio
     from tadabur.staged_audio import load_staged_clips, verify_staged
     from training.decoding import (
         SPANS,
@@ -115,7 +114,7 @@ def decode_model(model: str, model_ref: str, plans: list[ClipPlan], audio_dir: P
     for done, plan in enumerate(decoded, 1):
         name = plan.clip.audio_filename
         verify_staged(registry[name], audio_dir)
-        waveform, rate_hz = sf.read(audio_dir / name, dtype="float32")
+        waveform, rate_hz = read_audio(audio_dir / name, dtype="float32")
         if rate_hz != TARGET_SAMPLE_RATE:
             raise ValueError(f"{name} is {rate_hz} Hz, expected {TARGET_SAMPLE_RATE}")
         rows = decoder.span_class_ids(

@@ -30,6 +30,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from .dataset_source import DATASET_ID
+from .panel_seal import seal_rows
 
 # The full ``default`` config ships 385 shards named ``data/train-{i:05d}.parquet``,
 # each a single ~1000-row row group. Rows-per-shard is fixed, so a filter resuming a
@@ -117,7 +118,7 @@ def iter_shard_rows(
             for batch in parquet_file.iter_batches(
                 batch_size=batch_size, columns=columns or NEEDED_COLUMNS
             ):
-                yield from batch.to_pylist()
+                yield from seal_rows(batch.to_pylist())
         finally:
             if delete_after:
                 _remove_shard_blob(path)

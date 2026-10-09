@@ -89,10 +89,9 @@ def _sha256(path: Path) -> str:
 
 
 def main() -> None:
-    import soundfile as sf
-
     from training.decoding import Decoder, stream_protocol
 
+    from .audio import read_audio
     from .staged_audio import load_staged_clips, verify_staged
 
     parser = argparse.ArgumentParser(
@@ -114,7 +113,7 @@ def main() -> None:
     decodes: dict[str, str] = {}
     for number, clip in enumerate(clips, 1):
         verify_staged(registry[clip.audio_filename], args.audio_dir)
-        samples, rate = sf.read(args.audio_dir / clip.audio_filename, dtype="float32")
+        samples, rate = read_audio(args.audio_dir / clip.audio_filename, dtype="float32")
         if rate != SAMPLE_RATE:
             raise ValueError(f"{clip.audio_filename} is {rate} Hz, not {SAMPLE_RATE}")
         decodes.update(segment_decodes(decoder.emissions(samples, DEPLOYED_BLOCK),

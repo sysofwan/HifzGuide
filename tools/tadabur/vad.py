@@ -27,9 +27,8 @@ from pathlib import Path
 
 import numpy as np
 
-from .audio import TARGET_SAMPLE_RATE
+from .audio import TARGET_SAMPLE_RATE, read_audio
 from .manifest import ManifestRecord
-from .panel_seal import refuse_sealed
 
 # The pretrained recitation VAD (speech/silence frame classifier, 20 ms resolution).
 VAD_MODEL_ID = "obadx/recitation-segmenter-v2"
@@ -139,7 +138,6 @@ def compute_clip_intervals(
     callers placing a cut inside one (:mod:`tadabur.bleed_recut`, via
     :mod:`tadabur.bleed_stage`) need the speech spans themselves.
     """
-    import soundfile as sf
     import torch
 
     present = [name for name in audio_filenames if (clips_dir / name).exists()]
@@ -149,7 +147,7 @@ def compute_clip_intervals(
         for start in range(0, len(present), batch_size):
             batch = present[start : start + batch_size]
             waveforms = [
-                sf.read(refuse_sealed(clips_dir / name), dtype="float32")[0] for name in batch
+                read_audio(clips_dir / name, dtype="float32")[0] for name in batch
             ]
             for name, clip in zip(
                 batch,

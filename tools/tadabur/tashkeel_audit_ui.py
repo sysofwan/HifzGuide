@@ -50,7 +50,7 @@ from urllib.parse import parse_qs, urlparse
 
 import numpy as np
 
-from .audio import TARGET_SAMPLE_RATE
+from .audio import TARGET_SAMPLE_RATE, read_audio
 from .audit_http import AuditHandler, serve
 from .listening_session import (
     MADD,
@@ -290,15 +290,13 @@ class SessionState:
 
     def audio(self, key: str, whole: bool) -> bytes:
         """The site's excerpt, or its whole segment, as a WAV."""
-        import soundfile as sf
-
         row = self.row(key)
         start, end = (
             (row.site.start_sample, row.site.end_sample)
             if whole else (row.excerpt_start_sample, row.excerpt_end_sample)
         )
-        samples, _ = sf.read(self.audio_dir / row.site.audio_filename, start=start,
-                             stop=end, dtype="float32")
+        samples, _ = read_audio(self.audio_dir / row.site.audio_filename, start=start,
+                                stop=end, dtype="float32")
         return encode_wav(samples)
 
 

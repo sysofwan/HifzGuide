@@ -41,7 +41,6 @@ from pathlib import Path
 
 from .bleed_detect import BleedDetector, BleedVerdict
 from .normalization import cluster_offsets, normalize_phonemes
-from .panel_seal import refuse_sealed
 from .scorer import BALANCED_SCORER, GateResult
 from .vad import pauses_from_intervals
 from .waqf_detect import EDGE_RECUT_PAD_S, collapse_with_times
@@ -284,7 +283,7 @@ def main() -> None:
     import soundfile as sf
     import torch
 
-    from .audio import TARGET_SAMPLE_RATE
+    from .audio import TARGET_SAMPLE_RATE, read_audio
     from .inference import MuaalemPhonemeModel
     from .reference_phonemes import load_reference_phonemes
 
@@ -320,9 +319,7 @@ def main() -> None:
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
         for clip, verdict, span in cut:
-            waveform, rate = sf.read(
-                refuse_sealed(args.clips / clip["audio_filename"]), dtype="float32"
-            )
+            waveform, rate = read_audio(args.clips / clip["audio_filename"], dtype="float32")
             lo = int(span.start_s * rate)
             hi = int(span.end_s * rate)
             clipped = waveform[lo:hi]

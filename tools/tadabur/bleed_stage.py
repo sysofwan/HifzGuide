@@ -32,7 +32,6 @@ import argparse
 import json
 from pathlib import Path
 
-from .panel_seal import refuse_sealed
 from .rejects import RejectRecord, read_reject_records
 
 DEFAULT_BATCH_SIZE = 4
@@ -80,10 +79,9 @@ def main() -> None:
     # Imported here, not at module scope: selecting the population
     # (:func:`clean_re_reads_with_audio`) is pure JSON over the sink and a directory
     # listing, and must not drag in torch or the audio stack to be testable.
-    import soundfile as sf
     import torch
 
-    from .audio import TARGET_SAMPLE_RATE
+    from .audio import TARGET_SAMPLE_RATE, read_audio
     from .inference import MuaalemPhonemeModel
     from .vad import compute_clip_intervals
 
@@ -116,7 +114,7 @@ def main() -> None:
         for start in range(0, len(records), args.batch_size):
             batch = records[start : start + args.batch_size]
             waveforms = [
-                sf.read(refuse_sealed(args.clips / r.audio_filename), dtype="float32")[0]
+                read_audio(args.clips / r.audio_filename, dtype="float32")[0]
                 for r in batch
             ]
             for record, waveform, decode in zip(

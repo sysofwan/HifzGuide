@@ -171,8 +171,8 @@ truth-site skeletons (`tadabur.truth_sites`, `source: synthetic_edit`, `heard: p
 
 The listener answers **what was said** at the carrier (held / not held, or which letter of the
 pair) and **whether it sounds natural**. The truth-site schema has no field for the second
-question, so the blind UI (#87) records it beside the verdict. `ذ↔ظ` is not a truth-site mark
-yet, so `ذ↔ظ` swaps stay out of the worklist until #87 adds it. The page must never show the
+question, so the blind UI (#87) records it beside the verdict. Every mark the truth-site schema
+accepts is eligible, `ذ↔ظ` included since #84 added it (none was drawn this time). The page must never show the
 manifest's `role`, `operation` or `label`.
 
 The audio is served from `/root/scratch/issue-88/stage/edits/audio/` on the GPU box: pass

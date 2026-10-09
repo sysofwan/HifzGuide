@@ -28,7 +28,10 @@ from tadabur.tashkeel_audit_ui import (
     HIDDEN_LETTER,
     SessionState,
     StaleAnswer,
+    Target,
+    _hide_word,
     choices,
+    mapped_offset,
     masked,
     page_key,
 )
@@ -375,10 +378,12 @@ EDIT_AYAH = SHARED
 EDIT_OFFSETS = SHARED_OFFSETS
 
 
-def _edit_check(tmp_path, specs) -> Path:
+def _edit_check(tmp_path, specs, reference=EDIT_AYAH, surah_ayah="9:9",
+                offsets=EDIT_OFFSETS) -> Path:
     """Write a blind check (truth-site skeletons, ``source: synthetic_edit``) of ``specs``
-    ``(file name, index, mark, prescribed)`` on :data:`EDIT_AYAH`, its words file and each
-    item's audio (distinct samples, so distinct checksums); return the blind check's path."""
+    ``(file name, index, mark, prescribed)`` on one ayah (:data:`EDIT_AYAH` by default), its
+    words file and each item's audio (distinct samples, so distinct checksums); return the
+    blind check's path."""
     audio_dir = tmp_path / "clips"
     audio_dir.mkdir(exist_ok=True)
     sites = []
@@ -389,12 +394,12 @@ def _edit_check(tmp_path, specs) -> Path:
             site_id=f"synthetic_edit:{number:020x}", source="synthetic_edit",
             assumes_competent_reciter=False, audio_filename=name, shard=200, start_sample=0,
             end_sample=NUM_SAMPLES, audio_sha256=audio_sha256(audio_dir / name),
-            surah_ayah="9:9", reference=EDIT_AYAH, reference_index=index, mark=mark,
+            surah_ayah=surah_ayah, reference=reference, reference_index=index, mark=mark,
             prescribed=prescribed, heard=PENDING, stratum="synthetic_edit:blind_check",
             stratum_population=334))
     write_truth_sites(sites, tmp_path / "blind_check.jsonl")
-    (tmp_path / "words.json").write_text(json.dumps({"ayahs": {"9:9": {
-        "reference": EDIT_AYAH, "word_offsets": list(EDIT_OFFSETS)}}}), encoding="utf-8")
+    (tmp_path / "words.json").write_text(json.dumps({"ayahs": {surah_ayah: {
+        "reference": reference, "word_offsets": list(offsets)}}}), encoding="utf-8")
     return tmp_path / "blind_check.jsonl"
 
 
@@ -536,3 +541,44 @@ def test_the_ui_never_loads_the_edit_manifest_or_the_summary():
     assert "tadabur.edit_check'" in loaded
     source = (Path(__file__).parent / "tashkeel_audit_ui.py").read_text(encoding="utf-8")
     assert "edits.jsonl" not in source and "read_items" not in source
+
+
+#: 9:91 as the committed queue has it: a session segment that ends in waqf on its 18th word
+#: (``وَرَسُۥۥلِه``) and the whole ayah an edit-check item tests, in wasl there
+#: (``وَرَسُۥۥلِهِۦۦ``), with a shaddah question on its س (prescribed not held).
+AYAH_9_91 = ("لَيسَ عَلَ ضضُعَفَااااءِ وَلَاا عَلَ لمَرضَاا وَلَاا عَلَ للَذِۦۦنَ لَاا "
+             "يَجِدُۥۥنَ مَاا يُںںںفِقُۥۥنَ حَرَجُن ءِذَاا نَصَحُۥۥ لِللَااهِ وَرَسُۥۥلِهِۦۦ "
+             "مَاا عَلَ لمُحسِنِۦۦنَ مِںںںسَبِۦۦلِوووَللَااهُ غَفُۥۥرُررَحِۦۦم")
+AYAH_9_91_OFFSETS = (0, 6, 11, 25, 32, 37, 46, 53, 58, 68, 73, 84, 89, 103, 111, 118, 127,
+                     137, 152, 157, 162, 175, 180, 190, 200, 208, 216)
+SEGMENT_9_91 = AYAH_9_91[:137] + "وَرَسُۥۥلِه"
+SEGMENT_9_91_OFFSETS = (*AYAH_9_91_OFFSETS[:18], len(SEGMENT_9_91))
+
+
+def test_a_carrier_is_hidden_in_every_realization_of_its_word(tmp_path):
+    assert AYAH_9_91[141] == "س" and SEGMENT_9_91[141] == "س"
+    registry = _stage(tmp_path, (), [("seg.wav", dict(
+        reference=SEGMENT_9_91, index=59, mark="fatha", prescribed="fatha",
+        stratum="new_audit:fatha:base_matched:h448_empty", surah_ayah="9:91",
+        offsets=SEGMENT_9_91_OFFSETS))])
+    blind_check = _edit_check(tmp_path, [("se_aaaa.wav", 141, "shaddah", "not_held")],
+                              AYAH_9_91, "9:91", AYAH_9_91_OFFSETS)
+    state = SessionState.load(tmp_path / "worklist.jsonl", tmp_path / "verdicts.jsonl",
+                              tmp_path / "clips", registry, blind_check, tmp_path / "words.json")
+    for view in state.payload()["sites"]:
+        text = _text(view)
+        # The damma after س would show it single (a "not held" prescription); a geminate
+        # would show as سس. Both views show the letter once with its haraka hidden.
+        assert "رَسُ" not in text and "رَسۥۥلِه" in text
+
+
+def test_a_carrier_is_mapped_across_realizations_and_a_word_it_cannot_be_placed_in_hides():
+    target = Target(("2:2", 0), f"ء{FATHA}لق{FATHA}مر", 3, "tashkeel")
+    # The segment's first word lost its hamzat wasl: the carrier moves two places left.
+    assert mapped_offset(target, f"لق{FATHA}مر") == 1
+    assert mapped_offset(target, target.text) == 3
+    # The carrier's own haraka differs: its span is not matched whole, so it is not placed.
+    assert mapped_offset(target, f"ء{FATHA}لق{DAMMA}مر") is None
+    shown = list(f"ب{KASRA} ء{FATHA}لق{DAMMA}مر")
+    _hide_word(f"ء{FATHA}لق{DAMMA}مر", shown, 3)
+    assert "".join(shown) == f"ب{KASRA} {HIDDEN_LETTER * 5}"

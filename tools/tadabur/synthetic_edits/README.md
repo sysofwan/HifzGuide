@@ -165,7 +165,12 @@ Synthetic edits never enter a real-mistake rate (acceptance rules §1).
 
 - per operation, in rounds over its marks (codepoint order), so every mark is represented:
   each round takes every mark's next pair in salted-hash order;
-- a pair contributes one item; within a mark the items alternate edit, decoy, edit, ...;
+- a pair contributes one item; within a mark the roles alternate from a first role drawn
+  by a salted hash of the first pair's id (`first_role`), which never reaches the page. A
+  mark with one item is an edit or a decoy with equal chance and one with several is
+  balanced to within one, so no count or grouping the page shows (the pair a consonant
+  item offers, its ayah) fixes an item's role. (A fixed "edit first" would make every
+  one-item mark an edit, readable from the page alone.);
 - never two items of one **recitation**: the same source audio (Tadabur holds
   byte-identical clips under more than one speaker id) or the same reciter reciting the
   same ayah. A listener who heard both versions of a recitation could tell which was
@@ -176,18 +181,20 @@ Synthetic edits never enter a real-mistake rate (acceptance rules §1).
 | `shaddah_removed` | `shaddah` | 5 | 5 |
 | `shaddah_added` | `shaddah` | 5 | 5 |
 | `consonant_swap` | `ذ↔ز` | 2 | 2 |
-| `consonant_swap` | `ذ↔ظ` | 1 | |
+| `consonant_swap` | `ذ↔ظ` | | 1 |
 | `consonant_swap` | `س↔ص` | 2 | 2 |
-| `consonant_swap` | `ض↔ظ` | 1 | |
+| `consonant_swap` | `ض↔ظ` | | 1 |
 
 **Redrawn for #107.** The first draw ranked an operation's pairs in one hash order, so the
 swaps came out 9 `س↔ص` and 1 `ذ↔ز`, and the `ذ↔ظ` swap (a truth-site mark since #84) was
-never drawn. Drawing in rounds over the marks keeps all 20 shaddah items and 5 of the
-swaps; 5 `س↔ص` items (2 edits, 3 decoys) gave way to a `ذ↔ظ` edit, a `ض↔ظ` edit and three
-`ذ↔ز` items (1 edit, 2 decoys). `ذ↔ظ` and `ض↔ظ` get one item each, an edit: the alternation
-starts with an edit, `ض↔ظ` has one pair, and the two `ذ↔ظ` pairs are one recitation
-(`spk0215_S17_A58` and `spk0234_S17_A58` are the same audio, so their edits are
-byte-identical). Redraw without the audio, from `tools/`:
+never drawn. Drawing in rounds over the marks, with hashed first roles, keeps all 20
+shaddah items; the 10 swaps are now 4 `ذ↔ز` and 4 `س↔ص` (2 edits and 2 decoys each) and one
+item each of `ذ↔ظ` and `ض↔ظ`, both decoys by the hash. `ض↔ظ` has one pair and the two `ذ↔ظ`
+pairs are one recitation (`spk0215_S17_A58` and `spk0234_S17_A58` are the same audio, so
+their edits are byte-identical), so neither can have an edit and a decoy in the check, and
+a lone item's role must stay unreadable: **no `ذ↔ظ` or `ض↔ظ` edit gets a blind listen in
+this draw.** That needs at least two distinct recitations per pair (#117 dedupes the
+sources and redraws). Redraw without the audio, from `tools/`:
 
 ```bash
 python -m tadabur.synthetic_edits blind-check
@@ -195,7 +202,8 @@ python -m tadabur.synthetic_edits blind-check
 
 **Two `ذ↔ظ` decoys carry no splice.** Each `ذ↔ظ` decoy's donor is the other speaker id's copy
 of its own source clip, at the same carrier, so the splice replaces samples with themselves
-and the decoy is byte-identical to its source. Neither is in the blind check. More broadly,
+and the decoy is byte-identical to its source. One of them is the blind check's `ذ↔ظ` item:
+unedited audio, as a decoy should be, but not spliced like the other decoys. More broadly,
 31 source recordings back more than one pair under different file names; the blind check
 draws at most one item from each, but selection's per-clip cap (by file name) does not see
 them.

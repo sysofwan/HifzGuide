@@ -23,7 +23,10 @@ tally: :meth:`SessionState.payload` builds the only thing it is sent. The displa
 hides the answer of **every** session site wherever its word appears, not only the site on
 screen, because the page receives the whole queue at once: two sites in one segment (or in
 the same word of the same ayah recited by another reciter) would otherwise show each
-other's answer. Per question, the answer and the phonetic cues that would give it away are
+other's answer. A word is its ayah and Uthmani word index, whatever its realization: a
+segment ending in waqf realizes its last word differently from a whole-ayah reference in
+wasl, so the carrier is placed in each realization where the two match unchanged, and a
+word where it cannot be placed is hidden whole. Per question, the answer and the phonetic cues that would give it away are
 hidden: for tashkeel the haraka with any madd or qalqala after the carrier; for shaddah the
 doubled consonant (shown once) and the haraka after it; for consonant the letter (shown as
 ``◌``, a geminate once) and a qalqala mark after it, which only some letters take. Sites
@@ -47,6 +50,7 @@ Usage (from ``tools/``; ``python -m tadabur.listening_session fetch`` copies the
 from __future__ import annotations
 
 import argparse
+import difflib
 import hashlib
 import io
 import json
@@ -82,7 +86,7 @@ from .listening_session import (
     write_verdicts,
 )
 from .staged_audio import StagedClip, load_staged_clips, verify_staged
-from .truth_sites import HARAKA_CHARS, HELD, NOT_HELD, SUKUN, UNCLEAR
+from .truth_sites import CONSONANTS, HARAKA_CHARS, HELD, NOT_HELD, SUKUN, UNCLEAR
 
 _PAGE_PATH = Path(__file__).parent / "tashkeel_audit_page.html"
 #: The page's logic, a module with no DOM in it, so it is tested on its own.
@@ -113,30 +117,61 @@ def choices(row: Row) -> tuple[str, ...]:
     return (*row.site.mark.split("↔"), UNCLEAR)
 
 
+#: A word every row reciting it shares: the ayah and the Uthmani word index.
+Word = tuple[str, int]
+
+
 @dataclass(frozen=True)
 class Target:
-    """Where one session site's answer sits, in terms every row reciting the same word
-    shares: the ayah, the Uthmani word index and the word's realized text, the carrier's
-    offset in that word, and the question asked there."""
+    """Where one site's answer sits: its word, the word as that site's row realizes it
+    (waqf, wasl and a segment's start realize one word differently), the carrier's offset
+    in that realization, and the question asked there."""
 
-    word: tuple[str, int, str]
+    word: Word
+    text: str
     offset: int
     mode: str
 
 
-def _words(row: Row) -> list[tuple[tuple[str, int, str], int]]:
-    """Each word of the row's segment as ``(Target.word, its start in the reference)``."""
+def _words(row: Row) -> list[tuple[Word, str, int]]:
+    """Each word of the row's reference as ``(word, its realized text, its start)``."""
     reference, offsets = row.site.reference, row.word_offsets
     return [
-        ((row.site.surah_ayah, row.word_start + k, reference[start:end]), start)
+        ((row.site.surah_ayah, row.word_start + k), reference[start:end], start)
         for k, (start, end) in enumerate(zip(offsets, offsets[1:]))
     ]
 
 
 def target_of(row: Row) -> Target:
     index = row.site.reference_index
-    word, start = [w for w in _words(row) if w[1] <= index][-1]
-    return Target(word, index - start, row.mode)
+    word, text, start = [w for w in _words(row) if w[2] <= index][-1]
+    return Target(word, text, index - start, row.mode)
+
+
+def _answer_end(text: str, offset: int) -> int:
+    """The end of what can give away an answer at ``offset``: the carrier's run of equal
+    letters, then everything up to the next consonant."""
+    end = offset + 1
+    while end < len(text) and text[end] == text[offset]:
+        end += 1
+    while end < len(text) and text[end] not in CONSONANTS:
+        end += 1
+    return end
+
+
+def mapped_offset(target: Target, text: str) -> int | None:
+    """Where ``target``'s carrier sits in ``text``, another realization of its word: the
+    same offset when the realizations agree, else the offset its answer span maps to where
+    the two strings match unchanged (difflib's matching blocks). ``None`` when the span
+    does not survive whole in one block, so the carrier cannot be placed with certainty."""
+    if text == target.text:
+        return target.offset
+    end = _answer_end(target.text, target.offset)
+    matcher = difflib.SequenceMatcher(None, target.text, text, autojunk=False)
+    for a, b, size in matcher.get_matching_blocks():
+        if a <= target.offset and end <= a + size:
+            return b + target.offset - a
+    return None
 
 
 def _hide(reference: str, shown: list[str], index: int, mode: str) -> None:
@@ -158,19 +193,34 @@ def _hide(reference: str, shown: list[str], index: int, mode: str) -> None:
         blank_while(after_run, {QALQALA})
 
 
-def masked(row: Row, targets: Mapping[tuple[str, int, str], list[Target]]) -> list[str]:
+def _hide_word(text: str, shown: list[str], start: int) -> None:
+    """Hide a whole word: every letter shown as :data:`HIDDEN_LETTER`, every mark blanked."""
+    for k, char in enumerate(text):
+        if char in CONSONANTS:
+            shown[start + k] = HIDDEN_LETTER
+        elif not char.isspace():
+            shown[start + k] = ""
+
+
+def masked(row: Row, targets: Mapping[Word, list[Target]]) -> list[str]:
     """The row's reference as the page shows it, character by character, with the answer of
-    every target in any of its words hidden."""
+    every target in any of its words hidden, whichever realization of the word the target
+    was found in (:func:`mapped_offset`). A target that cannot be placed in this row's
+    realization hides the whole word."""
     reference = row.site.reference
     shown = list(reference)
-    for word, start in _words(row):
+    for word, text, start in _words(row):
         for target in targets.get(word, ()):
-            _hide(reference, shown, start + target.offset, target.mode)
+            offset = mapped_offset(target, text)
+            if offset is None:
+                _hide_word(text, shown, start)
+            else:
+                _hide(reference, shown, start + offset, target.mode)
     return shown
 
 
 def blind_reference(
-    row: Row, targets: Mapping[tuple[str, int, str], list[Target]]
+    row: Row, targets: Mapping[Word, list[Target]]
 ) -> tuple[str, str, str]:
     """:func:`masked` split around the row's carrier. The highlight runs from the first
     letter of the carrier's geminate (the carrier itself if it is single) to the carrier,
@@ -254,7 +304,7 @@ class SessionState:
     audio_dir: Path
     verdicts: dict[str, Verdict] = field(default_factory=dict)
     _by_key: dict[str, Row] = field(default_factory=dict)
-    _targets: dict[tuple[str, int, str], list[Target]] = field(default_factory=dict)
+    _targets: dict[Word, list[Target]] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self) -> None:

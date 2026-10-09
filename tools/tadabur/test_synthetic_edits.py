@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections import Counter
 
 import numpy as np
 import pytest
@@ -47,6 +48,7 @@ from tadabur.synthetic_edits import (
     check_manifest,
     edit_frame,
     edit_reciters,
+    first_role,
     evaluation_reciters,
     exposure_rows,
     h448_unseen_shards,
@@ -540,10 +542,24 @@ def test_the_blind_check_represents_every_swapped_pair_and_alternates_within_eac
     items += _swap_items("ذ↔ظ", "z2.wav", reciter=10, sha=f"{12:064x}")
     by_output = {i["output"]["audio_filename"]: i for i in items}
     chosen = [by_output[s.audio_filename] for s in blind_check(items, per_operation=4)]
-    roles = {mark: sorted(i["role"] for i in chosen if i["mark"] == mark)
+    roles = {mark: Counter(i["role"] for i in chosen if i["mark"] == mark)
              for mark in ("س↔ص", "ذ↔ظ")}
-    assert roles == {"س↔ص": [DECOY, EDIT, EDIT], "ذ↔ظ": [EDIT]}
+    assert sorted(roles["س↔ص"].values()) == [1, 2]  # balanced to within one
+    (lone,) = [i for i in chosen if i["mark"] == "ذ↔ظ"]  # one recitation: one item
+    assert lone["role"] == first_role(lone["pair_id"])
     assert len({i["source"]["audio_filename"] for i in chosen}) == 4
+
+
+def test_a_lone_item_s_role_is_not_fixed_by_anything_the_page_shows():
+    # Every manifest here has one swap per mark, the same mark, ayah and reference: all the
+    # page can see is identical, and only the unexposed pair id (the source clip) differs.
+    roles = Counter()
+    for n in range(40):
+        items = _swap_items("ذ↔ظ", f"clip{n:02d}.wav", reciter=n, sha=f"{n:064x}")
+        (site,) = blind_check(items)
+        roles[next(i["role"] for i in items
+                   if i["output"]["audio_filename"] == site.audio_filename)] += 1
+    assert roles[EDIT] >= 12 and roles[DECOY] >= 12
 
 
 def test_the_teacher_check_reads_the_label_at_the_carrier():
@@ -648,6 +664,19 @@ def test_committed_items_use_registered_audio_and_the_worklist_names_them():
     assert json.loads(json.dumps(sites[0].site_id)) == sites[0].site_id
     swapped = {i["mark"] for i in items if i["operation"] == CONSONANT_SWAP}
     assert "ذ↔ظ" in swapped and {s.mark for s in sites} == swapped | {"shaddah"}
+    # The page groups items by what it shows: the question's choices (a mark, or for
+    # shaddah the prescription a hafiz knows). Within no group is the role fixed: a group of
+    # several holds both roles, balanced to within one; a lone item's role is its hash.
+    groups: dict[tuple, list[dict]] = {}
+    for site in sites:
+        groups.setdefault((site.mark, site.prescribed if site.mark == "shaddah" else ""),
+                          []).append(outputs[site.audio_filename])
+    for group in groups.values():
+        counts = Counter(i["role"] for i in group)
+        if len(group) == 1:
+            assert group[0]["role"] == first_role(group[0]["pair_id"])
+        else:
+            assert set(counts) == {EDIT, DECOY} and abs(counts[EDIT] - counts[DECOY]) <= 1
 
 
 def test_exposure_rows_have_the_registry_shape_and_cover_every_edit_reciter():

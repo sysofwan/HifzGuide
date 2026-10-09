@@ -2,10 +2,10 @@
   "blind_check": {
     "consonant_swap ذ↔ز decoy": 2,
     "consonant_swap ذ↔ز edit": 2,
-    "consonant_swap ذ↔ظ edit": 1,
+    "consonant_swap ذ↔ظ decoy": 1,
     "consonant_swap س↔ص decoy": 2,
     "consonant_swap س↔ص edit": 2,
-    "consonant_swap ض↔ظ edit": 1,
+    "consonant_swap ض↔ظ decoy": 1,
     "shaddah_added shaddah decoy": 5,
     "shaddah_added shaddah edit": 5,
     "shaddah_removed shaddah decoy": 5,

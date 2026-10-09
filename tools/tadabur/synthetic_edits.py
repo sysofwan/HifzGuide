@@ -615,6 +615,15 @@ def recitation_keys(item: dict) -> frozenset[tuple]:
                       ("recitation", source["reciter_id"], source["surah_ayah"])})
 
 
+_OTHER_ROLE = {EDIT: DECOY, DECOY: EDIT}
+
+
+def first_role(pair_id: str) -> str:
+    """The role a mark's items start from in the blind check: an independent salted hash
+    of the pair id (which names the source clip and never reaches the page)."""
+    return EDIT if int(rank(pair_id, f"{SALT}:blind_check:role"), 16) % 2 == 0 else DECOY
+
+
 def blind_check(
     items: list[dict], per_operation: int = BLIND_CHECK_PER_OPERATION
 ) -> list[TruthSite]:
@@ -622,8 +631,11 @@ def blind_check(
 
     Per operation, up to ``per_operation`` items, drawn in rounds over the operation's
     marks in codepoint order so that every mark is represented (each swapped pair): a
-    round takes each mark's next pair in hash order. A pair contributes one item, and
-    within a mark the items alternate edit, decoy, edit, ... No two items are one
+    round takes each mark's next pair in hash order. A pair contributes one item. Within a
+    mark the roles alternate from a first role drawn by :func:`first_role` from the first
+    pair's id, which never reaches the page: a mark with one item is an edit or a decoy
+    with equal chance, one with several is balanced to within one, and no count or
+    grouping the page can see fixes any item's role. No two items are one
     recitation (:func:`recitation_keys`), so the listener never hears both versions of
     one. Only marks the truth-site schema accepts are drawn. A row names the opaque output
     file and the source's reference and carrier, so an edit and its decoy would read
@@ -644,10 +656,15 @@ def blind_check(
         for queue in queues.values():  # popped from the end: best-ranked last
             queue.sort(key=lambda p: rank(p, f"{SALT}:blind_check"), reverse=True)
         taken: Counter = Counter()
+        first: dict[str, str] = {}
         while sum(taken.values()) < per_operation and any(queues.values()):
             for mark in sorted(queues):
                 while queues[mark] and sum(taken.values()) < per_operation:
-                    item = by_pair[queues[mark].pop()][EDIT if taken[mark] % 2 == 0 else DECOY]
+                    pair_id = queues[mark].pop()
+                    if not taken[mark]:
+                        first[mark] = first_role(pair_id)
+                    role = first[mark] if taken[mark] % 2 == 0 else _OTHER_ROLE[first[mark]]
+                    item = by_pair[pair_id][role]
                     if recitation_keys(item) & used:
                         continue
                     used |= recitation_keys(item)

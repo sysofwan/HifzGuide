@@ -183,8 +183,10 @@ whole segment plays instead when the times cannot place the words: a clip with r
 word times, a word span outside the segment, or an excerpt under 1 s.
 
 **Blinding.** The page receives the whole queue, so every site's answer is hidden wherever
-its word appears (the same ayah, word index and realized word), in every site's text, not
-only on its own screen; with each answer go the cues that would give it away (madd or
+its word appears (the same ayah and Uthmani word index), in every site's text, not
+only on its own screen. Where two rows realize a word differently (waqf against wasl at its
+end, a segment's first word), the carrier is placed where the two realizations match
+unchanged, and a word where it cannot be placed is hidden whole; with each answer go the cues that would give it away (madd or
 qalqala after a tashkeel carrier, the doubling and the haraka after a shaddah carrier, the
 qalqala after a hidden letter). See `tashkeel_audit_ui.py`.
 

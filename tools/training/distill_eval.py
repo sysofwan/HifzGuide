@@ -31,6 +31,8 @@ from pathlib import Path
 
 import torch
 
+from tadabur.audio import read_audio
+from tadabur.panel_seal import SealedPanelError
 from training.decode_evalset import levenshtein  # noqa: F401  (its callers import it from here)
 from training.decoding import (
     PROTOCOL_VERSION,
@@ -42,7 +44,6 @@ from training.distill_data import (
     discover_clips,
     split_clips,
 )
-from tadabur.audio import read_audio
 from training.distill_loss import BLANK_ID, breakout_stats
 
 # Default for the older --audio-root path. Named so the --eval-set path can tell "the user
@@ -701,6 +702,8 @@ def main() -> None:
     for index, path in enumerate(clips, start=1):
         try:
             samples, rate = read_audio(path, dtype="float32", always_2d=False)
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             continue
         if rate != SAMPLE_RATE:

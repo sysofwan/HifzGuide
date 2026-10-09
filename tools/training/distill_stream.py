@@ -61,6 +61,7 @@ import time
 
 import torch
 
+from tadabur.panel_seal import SealedPanelError
 from training.distill_data import (
     FEATURE_DIM,
     FEATURE_FRAMES,
@@ -227,9 +228,11 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         for row in rows:
             try:
                 waveform = decode_row_waveform(row)
+            except SealedPanelError:  # a seal violation is never a corrupt input
+                raise
             except Exception:
                 # A corrupt row must not kill a 17-hour stream. A sealed-panel row is not
-                # corrupt: SealedPanelError is a BaseException and stops the run.
+                # corrupt: it is re-raised above and stops the run.
                 continue
             yield from iter_row_windows(waveform, self.hop_seconds)
         if exclusion is not None:
@@ -284,6 +287,8 @@ def probe(
     for row in rows:
         try:
             waveform = decode_row_waveform(row)
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             continue
         clips += 1

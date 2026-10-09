@@ -40,10 +40,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-
-from tadabur.audio import read_audio
 import torch
 
+from tadabur.audio import read_audio
+from tadabur.panel_seal import SealedPanelError
 from training.decoding import Decoder, load_student_from_checkpoint, tokens_to_phonemes
 from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
 from training.distill_eval import check_split_matches_checkpoint
@@ -254,6 +254,8 @@ def main() -> None:
             continue
         try:
             samples, rate = read_audio(path, dtype="float32", always_2d=False)
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             skipped += 1
             continue

@@ -32,6 +32,7 @@ from collections import defaultdict
 
 from generate_phonemes import FALLBACK_PHONEMES as _FALLBACK_PHONEMES
 from hafs_phonetizer import phonetize
+from tadabur.panel_seal import SealedPanelError
 
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
@@ -155,6 +156,8 @@ def _phonetize_ayah(surah: int, ayah: int):
         seg = Aya(surah, ayah).get()
         result = phonetize(seg.uthmani)
         return seg.uthmani, result
+    except SealedPanelError:  # a seal violation is never a corrupt input
+        raise
     except Exception:
         return None
 

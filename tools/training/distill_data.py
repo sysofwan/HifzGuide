@@ -46,6 +46,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from tadabur.panel_seal import SealedPanelError
+
 # The frozen deployed contract. A window is 5 s of 16 kHz audio -> 250 stride-2 feature
 # frames -> 125 CTC timesteps. Mirrors ``training.distill_student``; duplicated as
 # literals so this module does not drag in the student architecture just to window audio.
@@ -170,6 +172,8 @@ def build_window_index(
     for path in paths:
         try:
             info = sf.info(str(path))
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             continue
         if info.samplerate != SAMPLE_RATE:
@@ -223,6 +227,8 @@ def inventory(
     for path in paths:
         try:
             info = sf.info(str(path))
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             continue
         readable += 1

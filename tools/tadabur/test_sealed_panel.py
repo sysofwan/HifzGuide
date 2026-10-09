@@ -490,15 +490,96 @@ def _mixed_shard(tmp_path: Path, monkeypatch) -> StagedClip:
     return panel
 
 
-def test_a_broad_except_cannot_swallow_a_seal_violation():
+def test_the_seal_is_an_ordinary_runtime_error_that_broad_handlers_re_raise():
+    assert issubclass(SealedPanelError, RuntimeError)  # crosses worker boundaries typed
+
     def corrupt_row_tolerant():
         try:
             raise SealedPanelError("panel row")
+        except SealedPanelError:
+            raise
         except Exception:  # what the stream readers do for a corrupt row
             return "skipped"
 
     with pytest.raises(SealedPanelError):
         corrupt_row_tolerant()
+
+
+def _broad_handlers_without_the_re_raise(path: Path) -> list[str]:
+    """Every ``except Exception`` / ``except BaseException`` / bare ``except`` in ``path``
+    not preceded, in its ``try``, by ``except SealedPanelError: raise``."""
+    import ast
+
+    def names(handler) -> set[str]:
+        if handler.type is None:
+            return {"<bare>"}
+        nodes = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+        return {getattr(n, "id", getattr(n, "attr", "")) for n in nodes}
+
+    def re_raises_the_seal(handler) -> bool:
+        return names(handler) == {"SealedPanelError"} and (
+            len(handler.body) == 1 and isinstance(handler.body[0], ast.Raise)
+            and handler.body[0].exc is None
+        )
+
+    hits = []
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if not isinstance(node, ast.Try):
+            continue
+        for index, handler in enumerate(node.handlers):
+            if names(handler) & {"Exception", "BaseException", "<bare>"} and not any(
+                re_raises_the_seal(h) for h in node.handlers[:index]
+            ):
+                hits.append(f"{path.name}:{handler.lineno}")
+    return hits
+
+
+def test_lint_every_broad_handler_re_raises_the_seal_first():
+    sources = [p for p in sorted(TOOLS_DIR.rglob("*.py")) if not p.name.startswith("test_")]
+    assert len(sources) > 50
+    offenders = [hit for path in sources for hit in _broad_handlers_without_the_re_raise(path)]
+    assert offenders == []
+
+
+def test_the_lint_sees_an_unguarded_broad_handler(tmp_path):
+    source = tmp_path / "bad.py"
+    source.write_text("try:\n    pass\nexcept Exception:\n    pass\n")
+    assert _broad_handlers_without_the_re_raise(source) == ["bad.py:3"]
+
+
+class _PanelReadingDataset:
+    """A dataset whose worker reads a panel clip, as a training loader's worker would.
+    Module-level so a spawned worker can unpickle it."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def __len__(self) -> int:
+        return 1
+
+    def __getitem__(self, index: int) -> int:
+        refuse_sealed(self.path)
+        return index
+
+
+def test_a_dataloader_worker_surfaces_the_seal_typed(tmp_path):
+    import torch
+
+    loader = torch.utils.data.DataLoader(
+        _PanelReadingDataset(tmp_path / _a_panel_clip().audio_filename), batch_size=None,
+        num_workers=1, multiprocessing_context="spawn", timeout=120,
+    )
+    with pytest.raises(SealedPanelError):
+        list(loader)
+
+
+def test_a_pool_worker_raises_the_seal_instead_of_hanging(tmp_path):
+    import multiprocessing
+
+    path = tmp_path / _a_panel_clip().audio_filename
+    with multiprocessing.get_context("spawn").Pool(1) as pool:
+        with pytest.raises(SealedPanelError):
+            pool.apply_async(refuse_sealed, (path,)).get(timeout=120)
 
 
 def test_the_stream_probe_stops_at_a_panel_row_and_runs_with_an_exposure_use(

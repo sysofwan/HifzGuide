@@ -80,6 +80,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from tadabur.panel_seal import SealedPanelError
+
 # Bumped whenever the manifest layout, the strata, or anything the cached teacher decisions
 # depend on changes, so a stale set is refused rather than silently reused.
 SCHEMA_VERSION = "decode-evalset-v2"
@@ -581,6 +583,8 @@ def build(
                 continue
             try:
                 samples = decode_to_mono_16k(row["audio"]["bytes"])
+            except SealedPanelError:  # a seal violation is never a corrupt input
+                raise
             except Exception:
                 num_skipped += 1
                 continue

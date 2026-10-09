@@ -7,13 +7,15 @@ pool posterior was computed. **Code:** `tools/training/shaddah_probe.py` (measur
 `tools/tadabur/time_stretch.py` (the stretch edit), `Decoder.span_log_posteriors` in
 `tools/training/decoding.py`.
 
-Re-run (GPU box, from `tools/`, ~50 min with the GPU to itself):
+Re-run (GPU box, from `tools/`, ~50 min with the GPU to itself; the work directory is bound to the run's
+inputs, `run_identity` in the JSON, and a directory made from other inputs is refused; this JSON comes
+from a fresh identity-bound run, which reproduced every number of the first run exactly):
 
 ```bash
 flock /root/scratch/gpu.lock python -m training.shaddah_probe_run \
     --audio-dir /root/scratch/issue-83/stage/clips \
     --h448 /root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt \
-    --work-dir /root/scratch/issue-86/full --out ../docs/shaddah-probe.json
+    --work-dir /root/scratch/issue-86/run2 --out ../docs/shaddah-probe.json
 ```
 
 Every shaddah rule in `acceptance-rules.md` stays provisional until #92 freezes the held / not held /
@@ -22,8 +24,10 @@ output reads it**: no human verdict exists at these sites.
 
 ## Setup
 
-- **Population:** all 3,785 kept segments of the mining pool (2,508 clips, 394 reciters, h448-unseen
-  shards), every clip checksum-verified against the staging registry. Both models decoded each segment
+- **Population:** all 3,785 kept segments of the mining pool, which come from **2,391 clips of 393
+  reciters** (the manifest holds 2,508 clips of 394 reciters; the other 117 clips, and one reciter's
+  only clips, have no kept segment). h448-unseen shards; every clip checksum-verified against the
+  staging registry. Both models decoded each segment
   whole, bf16 weights, batch size 1, CUDA autocast (same fingerprint). The base pass reproduced the
   committed `base_decodes.json` on **all 3,785 segments** (0 mismatches).
 - **Sites:** 9,430 geminate runs and 86,398 single consonants. Weighted shares use 1 / the clip's
@@ -63,13 +67,13 @@ The full curve (share with `log_ratio ≥ θ`):
 | h448 collapsed | 98.8 | 94.4 | 82.8 | 78.2 | 72.4 | 65.5 | 61.0 | 46.0 | 22.8 | 2.9 |
 | h448 singles | 63.0 | 32.9 | 13.4 | 6.8 | 2.8 | 1.3 | 0.8 | 0.1 | 0.0 | 0.0 |
 
-Geminates decoded double sit far above all of it (median `log_ratio` +11.1 base, +7.2 h448; ≥ 0 in
-≥ 99.7%).
+Geminates decoded double sit far above all of it (median `log_ratio` +11.1 base, +7.2 h448; ≥ 0 at
+≈100% (99.996%) of base sites and ≈99.7% (99.70%) of h448's).
 
 **Where the mass sits.** The output is peaky (runs of 1 frame, p90 2 frames), so a mid-run dip is
 rare: the extra consonant's best alignment carves the run (`split`) at 3.8% (base) and 0.8% (h448) of
 collapsed sites. Almost all of it is a **separate sub-argmax spike in the blank frames around the
-emitted one**: `before` 87% / `after` 9% (base), `before` 68% / `after` 31% (h448). A geminate decoded
+emitted one**: `before` 87.1% / `after` 9.1% (base), `before` 68.4% / `after` 30.5% (h448). A geminate decoded
 double is exactly this shape with the second spike above the blank. So the second consonant is, at most
 collapsed sites, **present but out-voted by the blank**, not absent.
 
@@ -93,8 +97,10 @@ double geminates and 3.1% / 4.7% of singles (base / h448).
 ## Q2: stretching the held segment
 
 Each collapsed site's interval stretched in place (WSOLA), next to an equal-length decoy (the unedited
-segment plus as many zero samples) and a matched single of the same consonant stretched the same way
-(302 / 1,046 stretchable collapsed sites; 85 / 261 without a control in the same clip).
+segment plus as many zero samples **appended at its end**) and a matched single of the same consonant
+stretched the same way (302 / 1,046 stretchable collapsed sites; 85 / 261 without a control in the same
+clip). The decoy's placement is the registered one; that tail-only silence is neutral was not shown
+(see below).
 
 | share decoded double (weighted) | ×1.25 | ×1.5 | ×2.0 |
 |---|---|---|---|
@@ -103,10 +109,13 @@ segment plus as many zero samples) and a matched single of the same consonant st
 | h448 collapsed: stretched / decoy / **net** | 15.1 / 5.1 / **+9.9** (4.3, 15.7) | 14.0 / 7.7 / **+6.3** (2.2, 10.7) | 11.4 / 9.5 / **+1.9** (−2.4, 6.4) |
 | h448 single control: net | +0.1 | +0.4 | **+5.1** (2.4, 8.3) |
 
-A longer hold does **not** reliably make either model emit the second consonant: the net flip is at most
-~10 points (the base's intervals all include zero), it does not grow with the stretch, and doubling a
-single's interval starts to create spurious doubles (5-6%). Note the decoy: appending silence alone flips **10-17%** (base) and 5-10% (h448) of
-collapsed sites to double. These sites sit at the decision boundary, which is what Q1's mass says.
+A longer hold does **not** reliably make either **existing model's decode** emit the second consonant:
+the net flip is at most ~10 points (the base's intervals all include zero), it does not grow with the
+stretch, and doubling a single's interval starts to make the decode double it (5-6%). Note the decoy:
+appending silence alone flips **10-17%** (base) and 5-10% (h448) of collapsed sites to double. These
+sites sit at the decision boundary, which is what Q1's mass says, and it also means the net depends on
+how the decoy's length is supplied: the tail-silence decoy is not shown to be placement-neutral, so the
+net is a property of this registered decoy, not a clean causal effect of the stretch.
 
 ## Pre-registered verdict
 
@@ -129,13 +138,18 @@ results; read them as explanation, not as tests.
 
 (Collapse rate = weighted share of that kind's geminate runs decoded once.)
 
-1. **Cross-word idgham sites are mostly reference errors, not shaddah failures.** 166 of the base's 182
-   are `و` runs from a tanween before `و`. In 18 of 20 sampled (seed 0) the base decode carries the
-   **pausal** form of the previous word (`سَرَه` for `سَرَتِن`, `اايَتَاا` for `اايَتَن`): the reciter
-   stopped there, segmentation did not split, and the realized reference assumes wasl. The base
-   decode is right and has no second-consonant mass (12% present). These are 166 of the base teacher's
-   167 collapsed `و` sites (0.4% present), and, being 89% weight-1 census sites, the main reason its
-   weighted and unweighted shares differ.
+1. **Hypothesis: many cross-word idgham sites are missed pauses, not shaddah failures.** 166 of the
+   base's 182 are `و` runs from a tanween before `و`. In **17 of 20** sampled sites the base decode
+   **looks pausal**: it renders the previous word in a pausal form (`سَرَه` for `سَرَتِن`, `اايَتَاا`
+   for `اايَتَن`) and the `و` once; in the other 3 the segment's decode begins at the run and says
+   nothing about the previous word. The sample, its selection (`random.Random(0)` over the 182 in file
+   order) and each classification are committed in
+   [`shaddah-probe-pausal-sample.json`](shaddah-probe-pausal-sample.json); they are the agent's reading of
+   decode strings, with no audio listened to. If the reciters did pause there, segmentation missed the
+   pause, the realized reference wrongly assumes wasl, and a single `و` with no second-consonant mass
+   (12% present) is the faithful decode. Only adjudicated audio can confirm that; until then this is
+   an exploratory hypothesis. These are 166 of the base teacher's 167 collapsed `و` sites (0.4% present)
+   and, being 89% weight-1 census sites, the main reason its weighted and unweighted shares differ.
 2. **At real geminates the base teacher hedges.** Its collapsed two-letter geminates are rare (1.6%),
    have short holds by its own timing (median 200 ms against 320 ms when decoded double, 160 ms for a
    single), and carry the doubled reading within a factor of 10 at ~69%. That is the profile of a
@@ -150,10 +164,11 @@ results; read them as explanation, not as tests.
 
 **Representation vs data, per model.**
 
-- **base teacher: mixed.** Its collapsed population is two populations: cross-word idgham at
-  unsplit pauses (**data**: the reference, not the model, is wrong), and genuine geminates with
-  short holds and present mass (**borderline holds**, readable as *unsure* by a decode rule). No case
-  where the teacher hears a full hold and fails to emit it was found at scale.
+- **base teacher: mixed.** Its collapsed population looks like two populations: cross-word idgham
+  whose decodes look pausal (if the missed-pause hypothesis holds, **data**: the reference, not the
+  model, is wrong; it needs audio adjudication), and within-word geminates with short holds and
+  present mass (**borderline holds**, readable as *unsure* by a decode rule). No case where the teacher
+  times a full-length hold and fails to emit it was found at scale.
 - **h448: representation.** It perceives geminate-length holds and carries the second consonant's mass,
   but its greedy decode drops the second spike far more often than the teacher. A decode rule can
   recover most of it; distilling the second spike better (or a gemination class) would remove it.
@@ -178,15 +193,21 @@ shape, whichever band #92 sets:
 - a geminate decoded once with a sub-argmax second spike → **held** (most real two-letter geminates
   and ghunna runs, especially for h448);
 - a geminate decoded once with no second-consonant mass → **not held** (dominated by cross-word idgham
-  at a pause the segmentation missed, where *not held* is the correct reading of the audio, and the
-  reference is what is wrong);
+  whose decodes look pausal; under the missed-pause hypothesis *not held* would be the right reading
+  and the reference the thing that is wrong, which only adjudicated audio can settle);
 - a single consonant → **not held**, except the few singles whose second spike is strong (0.3-1.3% held
   at ln 0.1), which would be added-shaddah claims.
 
 The interval is a usable second signal (normalized ≥ 1.5: ~99% of double geminates, 3-5% of singles),
-but it is measured with the model's own token timing; no operating point is proposed here. Stretching
-the hold is **not** a usable synthetic edit for teaching gemination to these models: neither flips
-reliably to double, and a ×2 stretch adds doubles at singles.
+but it is measured with the model's own token timing; no operating point is proposed here.
+
+**On stretched holds as synthetic edits** (ADR-0011 §3): this probe shows only how the **existing
+models' decodes respond** to a stretched hold: neither flips reliably to double, and a ×2 stretch makes
+them double some singles. It does **not** show that a stretched hold is unsuitable as training
+supervision: a model trained on such edits may respond differently, and nothing here checks that a
+stretched single still sounds single. Rejecting stretching as supervision would first need an
+exploratory padding-placement sensitivity check of the decoy (silence at the end vs at the edit vs
+spread) and the blind listen of the edits that #88 / #107 own.
 
 ## Caveats
 
@@ -196,6 +217,6 @@ reliably to double, and a ×2 stretch adds doubles at singles.
 - The census stratum makes collapsed sites over-represented relative to their weight; weighted and
   unweighted shares are both in the JSON, and they differ most where the cross-word idgham sites
   (weight ~1) dominate the counts.
-- Exposure (acceptance-rules §6): the probe chose no value from these data, so the 394 pool reciters
-  were used for measurement only. If #92 picks a band from these curves, they become
-  shaddah-probe-tuning reciters.
+- Exposure (acceptance-rules §6): the probe chose no value from these data, so the 393 reciters with a
+  kept segment (2,391 clips) were used for measurement only. If #92 picks a band from these curves,
+  they become shaddah-probe-tuning reciters.

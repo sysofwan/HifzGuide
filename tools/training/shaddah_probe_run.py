@@ -15,6 +15,12 @@ Four stages, each cached in ``--work-dir`` so a re-run only does what is missing
 
 Every staged clip's checksum is verified against the registry before its audio is read.
 
+**A work directory belongs to one run.** Its ``run_identity.json`` (:func:`run_identity`)
+names the content of both models (a checkpoint's SHA-256, a hub model's resolved snapshot
+commit), the selected segments and their references, the decode protocol and every
+measurement constant. A stage output is reused only under the identity it was made with: a
+work directory made for a smoke run (``--limit``), or with another checkpoint, is refused.
+
 Usage (from ``tools/`` on the GPU box; the whole probe is one command)::
 
   flock /root/scratch/gpu.lock python -m training.shaddah_probe_run \\
@@ -26,6 +32,7 @@ Usage (from ``tools/`` on the GPU box; the whole probe is one command)::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from concurrent.futures import ProcessPoolExecutor
@@ -92,6 +99,95 @@ def read_segments(segments: list[PoolSegmentRef], audio_dir: Path):
                 raise ValueError(f"{segment.audio_filename} is not 16 kHz mono")
             current = segment.audio_filename
         yield segment, np.ascontiguousarray(waveform[segment.start_sample : segment.end_sample])
+
+
+# --- The run's identity ---------------------------------------------------------------
+
+#: Bumped whenever a change to the probe's code moves what a stage writes for the same inputs.
+PROBE_VERSION = "shaddah-probe-v1"
+IDENTITY_FILE = "run_identity.json"
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def model_content(ref: str) -> str:
+    """What a model reference's weights are: a file's or a saved directory's SHA-256, or a
+    hub id's resolved snapshot commit (content-addressed by the hub)."""
+    path = Path(ref)
+    if path.is_file():
+        return f"sha256:{_sha256_file(path)}"
+    if path.is_dir():
+        digest = hashlib.sha256()
+        for item in sorted(p for p in path.rglob("*") if p.is_file()):
+            digest.update(f"{item.relative_to(path)}:{_sha256_file(item)}\n".encode())
+        return f"sha256-dir:{digest.hexdigest()}"
+    from huggingface_hub import snapshot_download
+
+    return f"hf-commit:{Path(snapshot_download(ref, local_files_only=True)).name}"
+
+
+def run_identity(models: dict[str, str], segments: list[PoolSegmentRef]) -> dict:
+    """Everything besides the code version that decides what the stages write."""
+    from tadabur import time_stretch
+    from training.decoding import INFERENCE_POLICY, SPANS
+
+    selected = json.dumps([asdict(s) for s in segments], ensure_ascii=False, sort_keys=True)
+    return {
+        "probe": PROBE_VERSION,
+        "models": {name: {"ref": ref, "content": model_content(ref)} for name, ref in sorted(models.items())},
+        "segments": {
+            "count": len(segments),
+            "sha256": hashlib.sha256(selected.encode("utf-8")).hexdigest(),
+        },
+        "protocol": {
+            "mode": SPANS,
+            "weights_dtype": WEIGHTS_DTYPE,
+            "batch_size": BATCH_SIZE,
+            "policy": INFERENCE_POLICY,
+        },
+        "measurement": {
+            "frame_samples": sp.FRAME_SAMPLES,
+            "present_log_ratio": sp.PRESENT_LOG_RATIO,
+            "absent_log_ratio": sp.ABSENT_LOG_RATIO,
+            "present_second_peak": sp.PRESENT_SECOND_PEAK,
+            "stretch_factors": list(sp.STRETCH_FACTORS),
+            "min_singles_for_rate": sp.MIN_SINGLES_FOR_RATE,
+            "stretch_frame": time_stretch.FRAME,
+            "stretch_tolerance": time_stretch.TOLERANCE,
+        },
+    }
+
+
+def bind_work_dir(work_dir: Path, identity: dict) -> None:
+    """Claim ``work_dir`` for the run ``identity`` names, or refuse it.
+
+    A directory with no identity is claimed only if it holds no stage output; one with an
+    identity is reused only if every field agrees, so no stage can resume over outputs
+    made from other models, segments or settings.
+    """
+    path = work_dir / IDENTITY_FILE
+    if not path.exists():
+        stale = sorted(p.name for p in work_dir.iterdir() if p.suffix in {".json", ".npz"})
+        if stale:
+            raise SystemExit(
+                f"{work_dir} holds stage outputs ({', '.join(stale)}) but no {IDENTITY_FILE}, so "
+                "what they were made from is unknown. Use a fresh --work-dir."
+            )
+        path.write_text(json.dumps(identity, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        return
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    if stored != identity:
+        differing = sorted(k for k in stored.keys() | identity.keys() if stored.get(k) != identity.get(k))
+        raise SystemExit(
+            f"{work_dir} was made by another run (differs in: {', '.join(differing)}). Its stage "
+            "outputs cannot be reused for this one; use a fresh --work-dir."
+        )
 
 
 def load_decoder(model: str, h448: Path):
@@ -238,6 +334,8 @@ def stretch_stage(model, segments, audio_dir, h448, work_dir) -> None:
             end = min(frames[1] * sp.FRAME_SAMPLES, len(samples))
             for factor in sp.STRETCH_FACTORS:
                 edited = stretch_span(samples, start, end, factor)
+                # The registered decoy: equal length, the silence appended at the end. That this
+                # placement is neutral was not checked (the decoy alone flips some sites).
                 decoy = np.concatenate(
                     [samples, np.zeros(added_samples(start, end, factor), dtype=np.float32)]
                 )
@@ -289,6 +387,7 @@ def report_stage(models, work_dir, out: Path) -> None:
 
     report = {
         "issue": 86,
+        "run_identity": json.loads((work_dir / IDENTITY_FILE).read_text(encoding="utf-8")),
         "preregistration": "docs/shaddah-probe-preregistration.md",
         "pool": "tools/tadabur/mining_pool (kept segments)",
         "phonetizer_revision": hafs_phonetizer.REVISION,
@@ -338,6 +437,9 @@ def main() -> None:
     segments = pool_segments()
     if args.limit:
         segments = segments[: args.limit]
+    from training.distill_student import TEACHER_MODEL_ID
+
+    bind_work_dir(args.work_dir, run_identity({BASE: TEACHER_MODEL_ID, H448: str(args.h448)}, segments))
     models = (BASE, H448)
     stages = ["posteriors", "measure", "stretch", "report"] if args.stage == "all" else [args.stage]
     for stage in stages:

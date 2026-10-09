@@ -1,0 +1,235 @@
+{
+ "what": "The 20 sampled base-teacher collapsed sites of kind run3+_cross_word behind the missed-pause hypothesis in docs/shaddah-probe.md (exploratory, not pre-registered).",
+ "selection": "docs/shaddah-probe.json -> models.base.collapsed_sites, rows with kind == 'run3+_cross_word' (182, in file order: sorted by segment then reference_index), shuffled with Python random.Random(0).shuffle, first 20.",
+ "classification": {
+  "pausal_looking": "the base decode renders the word before the run in a pausal form (taa marbuta as ه, tanween fatha as اا, or the last consonant with no haraka, possibly with qalqala ڇ) and continues with a single و/ي",
+  "previous_word_absent": "the segment's base decode begins at the run, so it says nothing about the previous word",
+  "who": "the probe's agent, reading the decode strings below; no audio was listened to. A pausal-looking decode supports the hypothesis that the reciter paused where segmentation did not split; it does not establish it."
+ },
+ "counts": {
+  "previous_word_absent": 3,
+  "pausal_looking": 17
+ },
+ "sites": [
+  {
+   "sample_rank": 0,
+   "segment": "tadabur_spk0158_S23_A15_42b6c326_000009.wav#1",
+   "reference_index": 5,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "عِلمُوووَتَحس",
+   "base_decode_excerpt": "وَتَحسَب",
+   "classification": "previous_word_absent",
+   "note": "the segment's decode begins at the run's و"
+  },
+  {
+   "sample_rank": 1,
+   "segment": "tadabur_spk0479_S25_A158_732de661_000175.wav#0",
+   "reference_index": 55,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "ِكَ لَءَاايَتَوووَمَاا",
+   "base_decode_excerpt": "الِكَلَءَاايَتَااوَمَااك",
+   "classification": "pausal_looking",
+   "note": "tanween fatha as اا"
+  },
+  {
+   "sample_rank": 2,
+   "segment": "tadabur_spk0532_S1_A280_6a168a76_000229.wav#0",
+   "reference_index": 57,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "لَاا مَيسَرَتِوووَءَںں",
+   "base_decode_excerpt": "ءِلَاامَيسَرَهوَءَںںںت",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 3,
+   "segment": "tadabur_spk0116_S23_A60_e1a54680_000037.wav#1",
+   "reference_index": 93,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "ِ۾۾۾بِزِۦۦنَتِوووَءَيي",
+   "base_decode_excerpt": "اتِمممبِزِۦۦنَهوَءَيييَ",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 4,
+   "segment": "tadabur_spk0048_S15_A30_b0d0ff68_000008.wav#1",
+   "reference_index": 68,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "نيَاا حَسَنَتُوووَلَدَ",
+   "base_decode_excerpt": "دُنيَااحَسَنَهوَلَدَاا",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 5,
+   "segment": "tadabur_spk0055_S17_A36_9f9f5865_000025.wav#0",
+   "reference_index": 41,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "َ قَااااءِمَتَوووَلَءِ",
+   "base_decode_excerpt": "َتَقَااااءِمَهوَلَءِرر",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 6,
+   "segment": "tadabur_spk0088_S6_A146_2180fb52_000004.wav#1",
+   "reference_index": 104,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "ُۥۥهُ سَبِۦۦلَوووَءِيي",
+   "base_decode_excerpt": "ِذُۥۥهُسَبِۦۦلَااوَءِييَ",
+   "classification": "pausal_looking",
+   "note": "tanween fatha as اا"
+  },
+  {
+   "sample_rank": 7,
+   "segment": "tadabur_spk0036_S1_A261_485f6280_000193.wav#0",
+   "reference_index": 152,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "مِءَتُ حَببَتِوووَللَا",
+   "base_decode_excerpt": "مممِءَتُحَببَهوَللَااه",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 8,
+   "segment": "tadabur_spk0532_S44_A19_e1c591d5_000304.wav#1",
+   "reference_index": 49,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": " للَااهِ شَيءَوووَءِنن",
+   "base_decode_excerpt": "نَللَااهِشَيءَااوَءِنننن",
+   "classification": "pausal_looking",
+   "note": "tanween fatha as اا"
+  },
+  {
+   "sample_rank": 9,
+   "segment": "tadabur_spk0148_S1_A228_2eaf42c8_000156.wav#4",
+   "reference_index": 35,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "ننننَ دَرَجَتُوووَللَا",
+   "base_decode_excerpt": "هِننننَدَرَجَهوَللَااه",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 10,
+   "segment": "tadabur_spk0647_S38_A40_9052b84e_000050.wav#0",
+   "reference_index": 2,
+   "run_length": 3,
+   "consonant": "ي",
+   "reference_excerpt": "مَيييَءتِۦ",
+   "base_decode_excerpt": "يَءتِۦۦه",
+   "classification": "previous_word_absent",
+   "note": "the segment's decode begins at the run's ي"
+  },
+  {
+   "sample_rank": 11,
+   "segment": "tadabur_spk0066_S5_A94_0d4a2585_000053.wav#0",
+   "reference_index": 70,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "َووَلَ مَررَتِوووَتَرَ",
+   "base_decode_excerpt": "مءَووَلَمَررَهوَتَرَكت",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 12,
+   "segment": "tadabur_spk0065_S17_A99_b260172e_000019.wav#1",
+   "reference_index": 5,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "بَعضِوووَنُفِ",
+   "base_decode_excerpt": "وَنُفِخَ",
+   "classification": "previous_word_absent",
+   "note": "the segment's decode begins at the run's و"
+  },
+  {
+   "sample_rank": 13,
+   "segment": "tadabur_spk0126_S17_A54_285c0b1f_000044.wav#0",
+   "reference_index": 72,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "ںںكُللِ مَثَلِوووَكَاا",
+   "base_decode_excerpt": "ِںںںكُللِمَثَلوَكَاانَ",
+   "classification": "pausal_looking",
+   "note": "last consonant bare (sukun)"
+  },
+  {
+   "sample_rank": 14,
+   "segment": "tadabur_spk0122_S34_A45_7eb02416_000030.wav#0",
+   "reference_index": 98,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "ںدَااااااببَتِوووَلَاا",
+   "base_decode_excerpt": "ںںںدَااااااببَهوَلَااكِ",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 15,
+   "segment": "tadabur_spk0066_S6_A31_7cd957f6_000021.wav#0",
+   "reference_index": 62,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": " كُللِ مَسجِدِوووَكُلُ",
+   "base_decode_excerpt": "دَكُللِمَسجِدڇوَكُلُۥۥ",
+   "classification": "pausal_looking",
+   "note": "last consonant with qalqala ڇ, no haraka"
+  },
+  {
+   "sample_rank": 16,
+   "segment": "tadabur_spk0093_S1_A280_fc1902b2_000208.wav#0",
+   "reference_index": 57,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "لَاا مَيسَرَتِوووَءَںں",
+   "base_decode_excerpt": "ءِلَاامَيسَرَهوَءَںںںت",
+   "classification": "pausal_looking",
+   "note": "taa marbuta as ه"
+  },
+  {
+   "sample_rank": 17,
+   "segment": "tadabur_spk0103_S1_A135_3ab1721d_000077.wav#1",
+   "reference_index": 39,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "ِۦۦمَ حَنِۦۦفَوووَمَاا",
+   "base_decode_excerpt": "اهِۦۦمَحَنِۦۦفَااوَمَااك",
+   "classification": "pausal_looking",
+   "note": "tanween fatha as اا"
+  },
+  {
+   "sample_rank": 18,
+   "segment": "tadabur_spk0469_S16_A55_d3788fc8_000000.wav#1",
+   "reference_index": 53,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": "َ عَلَاا بَعضِوووَءَاا",
+   "base_decode_excerpt": "ۦنَعَلَاابَعضوَءَااتَ",
+   "classification": "pausal_looking",
+   "note": "last consonant bare (sukun)"
+  },
+  {
+   "sample_rank": 19,
+   "segment": "tadabur_spk0095_S10_A13_6ab11956_000005.wav#0",
+   "reference_index": 79,
+   "run_length": 3,
+   "consonant": "و",
+   "reference_excerpt": " مُفتَرَيَااتِوووَدڇعُ",
+   "base_decode_excerpt": "ۦۦمُفتَرَيَااااتوَدڇعُۥۥ",
+   "classification": "pausal_looking",
+   "note": "last consonant bare (sukun)"
+  }
+ ]
+}

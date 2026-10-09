@@ -59715,5 +59715,42 @@
  },
  "phonetizer_revision": "1",
  "pool": "tools/tadabur/mining_pool (kept segments)",
- "preregistration": "docs/shaddah-probe-preregistration.md"
+ "preregistration": "docs/shaddah-probe-preregistration.md",
+ "run_identity": {
+  "measurement": {
+   "absent_log_ratio": -6.907755278982137,
+   "frame_samples": 640,
+   "min_singles_for_rate": 3,
+   "present_log_ratio": -2.3025850929940455,
+   "present_second_peak": 0.1,
+   "stretch_factors": [
+    1.25,
+    1.5,
+    2.0
+   ],
+   "stretch_frame": 320,
+   "stretch_tolerance": 80
+  },
+  "models": {
+   "base": {
+    "content": "hf-commit:01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "ref": "obadx/muaalem-model-v3_2"
+   },
+   "h448": {
+    "content": "sha256:eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   }
+  },
+  "probe": "shaddah-probe-v1",
+  "protocol": {
+   "batch_size": 1,
+   "mode": "whole-spans",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "bf16"
+  },
+  "segments": {
+   "count": 3785,
+   "sha256": "bc2907111cb7d8ebaec1be742e60693ecb0c2756775ee8f308d16ef10569a113"
+  }
+ }
 }

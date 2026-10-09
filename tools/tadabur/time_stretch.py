@@ -38,6 +38,10 @@ def stretch_span(samples: np.ndarray, start: int, end: int, factor: float) -> np
         raise ValueError(f"span [{start}, {end}) is not inside {len(samples)} samples")
     if factor < 1.0:
         raise ValueError(f"factor must be at least 1, got {factor}")
+    if factor == 1.0:
+        # Exactly the input: the search below maximises an unnormalised correlation, which
+        # can prefer a louder shifted frame even when nothing is to be stretched.
+        return np.array(samples, dtype=np.float32, copy=True)
     x = np.asarray(samples, dtype=np.float64)
     added = added_samples(start, end, factor)
     out_len = len(x) + added

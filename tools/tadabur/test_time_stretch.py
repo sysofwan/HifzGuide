@@ -40,6 +40,15 @@ def test_factor_one_reproduces_the_input():
     np.testing.assert_allclose(stretch_span(x, 2000, 5000, 1.0), x, atol=1e-6)
 
 
+def test_factor_one_is_an_exact_copy_under_a_rising_envelope():
+    """A louder shifted frame must not be chosen when nothing is stretched."""
+    t = np.arange(RATE) / RATE
+    x = (np.linspace(0.05, 1.0, RATE) * np.sin(2 * np.pi * 200 * t)).astype(np.float32)
+    y = stretch_span(x, 4000, 12000, 1.0)
+    assert y.dtype == np.float32 and y is not x
+    np.testing.assert_array_equal(y, x)
+
+
 @pytest.mark.parametrize("hz", [110.0, 200.0, 330.0])
 def test_a_stretched_voiced_hold_keeps_its_pitch_and_level(hz):
     x = _tone(1.0, hz)

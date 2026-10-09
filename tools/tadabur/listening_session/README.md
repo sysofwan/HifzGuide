@@ -42,7 +42,7 @@ cd ~/repos/HifzGuide/tools
 ```
 
 `fetch` runs one `rsync -a --no-relative --files-from=-` from `root@cuda-dev:/root/scratch/`
-over `issue-83/stage/clips/` (the session's clips) and `issue-88/stage/edits/audio/` (the
+over `issue-83/stage/clips/` (the session's clips) and `issue-117/stage/edits/audio/` (the
 items); `--host` names another box. `clips` still prints the worklist's clip names alone.
 
 | setting | value |

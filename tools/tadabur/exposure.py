@@ -30,7 +30,22 @@ The check is :func:`check_disjoint`, one use against each of the others::
     check_disjoint(SYNTHETIC_EDIT_SOURCE, SEALED_PANEL, *TRUTH_SITE_USES.values())
 
 ``by="reciter"`` compares canonical reciter ids, ``by="source"`` the recordings themselves
-(shard and row); :class:`ExposureOverlap` lists what they share.
+(shard and row, or the same audio checksum); :class:`ExposureOverlap` lists what they share.
+
+**Duplicate recordings.** Tadabur holds byte-identical clips under more than one file name
+and shard row: under two filename speaker ids, or for two ayahs of identical text. Two
+committed records say which rows are one recording, and ``by="source"`` treats them as one:
+
+* **aliases** (``exposure/recording_aliases.jsonl``, :func:`write_recording_aliases`): rows
+  confirmed identical by the checksum of their staged audio. The file only grows, so a
+  recording removed from a use (a pruned panel clip) keeps its evidence;
+* **probable copies** (``exposure/probable_copies.json``, :func:`copy_groups`): rows of any
+  shard, checksummed or not, that the screen :data:`COPY_SCREEN` puts together. A probable
+  copy is a conflict on suspicion, never a pass, against shard uses too.
+
+The screen finds what it was measured to find (:func:`screen_agreement`), no more: a check
+that passes means **no detected overlap** under it, not proven recording disjointness.
+``python -m tadabur.exposure duplicates`` reports both records.
 
 The frozen inputs the indexed uses come from are committed in ``exposure/sources/``: the
 ``decode_evalset`` manifest and the list of clips shipped to Muraja.
@@ -39,6 +54,8 @@ Usage (from ``tools/``; ``--index`` is ``tadabur.staged_audio index --shards 0-3
 
   python -m tadabur.exposure build --index stage/full_index.jsonl
   python -m tadabur.exposure describe
+  python -m tadabur.exposure copies --index stage/full_index.jsonl   # the two records alone
+  python -m tadabur.exposure duplicates
 """
 
 from __future__ import annotations
@@ -51,7 +68,7 @@ import os
 import re
 from collections import Counter
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 from .staged_audio import (
@@ -69,6 +86,11 @@ EXPOSURE_DIR = Path(__file__).parent / "exposure"
 SOURCES_DIRNAME = "sources"
 EVALSET_MANIFEST_PATH = EXPOSURE_DIR / SOURCES_DIRNAME / "decode_evalset.manifest.json"
 MURAJA_CLIPS_PATH = EXPOSURE_DIR / SOURCES_DIRNAME / "muraja_clips.json"
+#: The probable-copy screen's groups (:func:`write_probable_copies`), beside the use files.
+PROBABLE_COPIES_NAME = "probable_copies.json"
+#: Rows confirmed one recording by checksum (:func:`write_recording_aliases`).
+RECORDING_ALIASES_NAME = "recording_aliases.jsonl"
+_RELATION_FILES = (PROBABLE_COPIES_NAME, RECORDING_ALIASES_NAME)
 
 # --- the vocabulary of uses ------------------------------------------------------------
 
@@ -205,10 +227,22 @@ def parse_exposure(data: dict, where: str) -> Exposure:
 
 @dataclass(frozen=True)
 class ExposureRegistry:
-    """Every use's exposures, recording-level and shard-level, as loaded and validated."""
+    """Every use's exposures, recording-level and shard-level, as loaded and validated, and
+    which rows are one recording, by ``(shard, row_index)``: each screened row's probable
+    copies and each row's checksum-confirmed aliases (:func:`relations`)."""
 
     recordings: Mapping[str, tuple[Exposure, ...]]
     shard_uses: Mapping[str, ShardExposure]
+    copies: Mapping[tuple[int, int], tuple[tuple[int, int], ...]] = field(default_factory=dict)
+    aliases: Mapping[tuple[int, int], tuple[tuple[int, int], ...]] = field(default_factory=dict)
+
+    def same_recording(self, source: tuple[int, int]) -> set[tuple[int, int]]:
+        """``source`` and every row that is, or probably is, the same recording."""
+        return {source, *self.copies.get(source, ()), *self.aliases.get(source, ())}
+
+    def related_sources(self) -> set[tuple[int, int]]:
+        """Every row known or screened to share its recording with another."""
+        return set(self.copies) | set(self.aliases)
 
     def missing(self) -> list[str]:
         """Declared uses (:data:`USES`) with no file: evidence that is absent, not empty."""
@@ -258,11 +292,13 @@ def _shard_path(use: str, directory: Path) -> Path:
 def load_registry(directory: Path = EXPOSURE_DIR) -> ExposureRegistry:
     """Every use file in ``directory``, validated one by one and then together: a file's
     rows sorted and unique, every file named for a known use, no use in both shapes, and
-    one filename always the same shard, row, reciter and (where recorded) checksum."""
+    one filename always the same shard, row, reciter and (where recorded) checksum. The
+    recording records (aliases, probable copies) are loaded with it when present; an
+    alias must name a recording the uses name the same way, with the same checksum."""
     recordings: dict[str, tuple[Exposure, ...]] = {}
     shard_uses: dict[str, ShardExposure] = {}
     for path in sorted(directory.iterdir()):
-        if path.name in ("README.md", SOURCES_DIRNAME):
+        if path.name in ("README.md", SOURCES_DIRNAME, *_RELATION_FILES):
             continue
         if path.name.endswith(".shards.json"):
             use = _known(path.name.removesuffix(".shards.json"))
@@ -274,7 +310,16 @@ def load_registry(directory: Path = EXPOSURE_DIR) -> ExposureRegistry:
     if both := set(recordings) & set(shard_uses):
         raise ValueError(f"{directory}: {sorted(both)} are recorded in both shapes")
     _check_consistent(recordings)
-    return ExposureRegistry(recordings, shard_uses)
+    copies_path, aliases_path = (directory / name for name in _RELATION_FILES)
+    copies = relations(read_probable_copies(copies_path)) if copies_path.exists() else {}
+    aliases: dict = {}
+    if aliases_path.exists():
+        groups = read_recording_aliases(aliases_path)
+        _check_consistent({**recordings, RECORDING_ALIASES_NAME: [
+            Exposure(r.audio_filename, r.shard, r.row_index, r.reciter_id, None, None,
+                     r.audio_sha256) for r in groups]})
+        aliases = relations(_alias_groups(groups))
+    return ExposureRegistry(recordings, shard_uses, copies, aliases)
 
 
 def _read_use(path: Path) -> tuple[Exposure, ...]:
@@ -394,8 +439,13 @@ def check_disjoint(
 ) -> None:
     """Raise :class:`ExposureOverlap` unless ``use`` is disjoint from each of ``others``.
 
-    ``by="reciter"`` compares canonical reciter ids; ``by="source"`` compares recordings
-    (``(shard, row_index)``; a shard use covers every row of its shards). Only ``use`` is
+    ``by="reciter"`` compares canonical reciter ids; ``by="source"`` compares recordings:
+    ``(shard, row_index)``, the audio checksum where both rows carry one, a confirmed alias
+    or a probable copy (:meth:`ExposureRegistry.same_recording`), so a copy of a recording
+    under another row is the same recording. A shard use covers every row of its shards, so
+    a recording with a copy in one of them overlaps it, and two shard uses overlap when
+    they share a shard or a recording. A pass means no overlap **detected**: the screen's
+    recall is measured, not perfect (:func:`screen_agreement`). Only ``use`` is
     compared with each other use, never the others among themselves (two truth-site
     sources may share a clip). A named use with no file raises :class:`ExposureIncomplete`
     (absent evidence is not an empty use), and an unknown use name is an error. The
@@ -420,14 +470,197 @@ def check_disjoint(
 
 def _shared_sources(registry: ExposureRegistry, a: str, b: str) -> list:
     if a in registry.shard_uses and b in registry.shard_uses:
-        return sorted(set(registry.shard_uses[a].shards) & set(registry.shard_uses[b].shards))
+        shards_a, shards_b = set(registry.shard_uses[a].shards), set(registry.shard_uses[b].shards)
+        linked = {s for s in registry.related_sources() if s[0] in shards_a and any(
+            c[0] in shards_b for c in registry.same_recording(s) - {s})}
+        return sorted(shards_a & shards_b) + sorted(linked)
     if b in registry.shard_uses:
         a, b = b, a
     if a in registry.shard_uses:
         shards = set(registry.shard_uses[a].shards)
-        return sorted({r.source for r in registry.recordings.get(b, ()) if r.shard in shards})
-    sources_a = {r.source for r in registry.recordings.get(a, ())}
-    return sorted(sources_a & {r.source for r in registry.recordings.get(b, ())})
+        return sorted({r.source for r in registry.recordings.get(b, ())
+                       if any(shard in shards for shard, _ in registry.same_recording(r.source))})
+    rows_b = registry.recordings.get(b, ())
+    sources_b = {s for r in rows_b for s in registry.same_recording(r.source)}
+    checksums_b = {r.audio_sha256 for r in rows_b} - {None}
+    return sorted({r.source for r in registry.recordings.get(a, ())
+                   if r.source in sources_b or r.audio_sha256 in checksums_b})
+
+
+# --- duplicate recordings --------------------------------------------------------------
+
+
+def duplicate_recordings(
+    registry: ExposureRegistry,
+) -> dict[str, dict[tuple[int, int], tuple[str, ...]]]:
+    """Every checksum that two or more recordings (shard rows) carry, with each row's uses."""
+    groups: dict[str, dict[tuple[int, int], set[str]]] = {}
+    for use, rows in registry.recordings.items():
+        for row in rows:
+            if row.audio_sha256 is not None:
+                groups.setdefault(row.audio_sha256, {}).setdefault(row.source, set()).add(use)
+    return {sha: {source: tuple(sorted(uses)) for source, uses in sorted(group.items())}
+            for sha, group in sorted(groups.items()) if len(group) > 1}
+
+
+#: The probable-copy screen's rule. A copy keeps its reciter and its length; the file name
+#: is no evidence either way (a copy may be filed under another speaker id or ayah).
+COPY_SCREEN = "copy-screen-v2: the same canonical reciter and the same duration to the ms"
+
+Source = tuple[int, int]
+
+
+def copy_groups(index: Iterable[IndexRow]) -> list[tuple[Source, ...]]:
+    """The probable-copy screen (:data:`COPY_SCREEN`) over a shard index: every group of two
+    or more rows ``(shard, row_index)`` with one canonical reciter and one duration to the
+    millisecond, each sorted, in order.
+
+    A screen, not proof: it is measured against the checksums by :func:`screen_agreement`.
+    """
+    groups: dict[tuple[int, int], list[Source]] = {}
+    for row in index:
+        key = (row.reciter_id, round(row.duration_s * 1000))
+        groups.setdefault(key, []).append((row.shard, row.row_index))
+    return sorted(tuple(sorted(g)) for g in groups.values() if len(g) > 1)
+
+
+def relations(groups: Iterable[Iterable[Source]]) -> dict[Source, tuple[Source, ...]]:
+    """Each grouped row's partners in its group."""
+    related = {}
+    for group in groups:
+        group = tuple(group)
+        for source in group:
+            related[source] = tuple(s for s in group if s != source)
+    return related
+
+
+def screen_agreement(
+    groups: Iterable[Iterable[Source]], checksums: Mapping[Source, str]
+) -> dict[str, int]:
+    """How the screen agrees with the checksums, over the rows that have one: of the
+    checksum-confirmed groups (two or more rows, one checksum), how many it puts wholly in
+    one group (recall); and of the pairs of checksummed rows it groups, how many have one
+    checksum and how many two (false positives)."""
+    group_of = {s: i for i, group in enumerate(groups) for s in group}
+    confirmed: dict[str, list[Source]] = {}
+    for source, sha in checksums.items():
+        confirmed.setdefault(sha, []).append(source)
+    confirmed_groups = [g for g in confirmed.values() if len(g) > 1]
+    found = sum(len({group_of.get(s, s) for s in g}) == 1 for g in confirmed_groups)
+    members: dict[int, list[Source]] = {}
+    for source in checksums:
+        if source in group_of:
+            members.setdefault(group_of[source], []).append(source)
+    pairs = [(a, b) for group in members.values() for i, a in enumerate(group)
+             for b in group[i + 1:]]
+    same = sum(checksums[a] == checksums[b] for a, b in pairs)
+    return {"checksummed_rows": len(checksums), "confirmed_groups": len(confirmed_groups),
+            "confirmed_groups_found": found, "grouped_pairs_same_checksum": same,
+            "grouped_pairs_different_checksum": len(pairs) - same}
+
+
+def write_probable_copies(
+    groups: list[tuple[Source, ...]], index_sha256: str, directory: Path = EXPOSURE_DIR
+) -> None:
+    """Commit the screen's groups: the rule, the index they were computed from, and each
+    group's rows. Only the relation is stored; the uses it touches are derived on read."""
+    record = {"screen": COPY_SCREEN, "index_sha256": index_sha256,
+              "groups": [[list(s) for s in g] for g in groups]}
+    _write_atomic(directory / PROBABLE_COPIES_NAME,
+                  json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n")
+
+
+def read_probable_copies(path: Path) -> list[tuple[Source, ...]]:
+    """The committed screen's groups, validated: this screen's rule, two or more distinct
+    rows per group in order, and no row in two groups."""
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if set(record) != {"screen", "index_sha256", "groups"} or record["screen"] != COPY_SCREEN:
+        raise ValueError(f"{path}: not the groups of the screen {COPY_SCREEN!r}")
+    groups, seen = [], set()
+    for raw in record["groups"]:
+        group = tuple((int(shard), int(row)) for shard, row in raw)
+        if len(group) < 2 or list(group) != sorted(set(group)) or seen & set(group):
+            raise ValueError(f"{path}: a group needs two or more distinct, sorted rows")
+        seen |= set(group)
+        groups.append(group)
+    return groups
+
+
+@dataclass(frozen=True, order=True)
+class Alias:
+    """One row of a checksum-confirmed recording."""
+
+    audio_sha256: str
+    audio_filename: str
+    shard: int
+    row_index: int
+    reciter_id: int
+
+    @property
+    def source(self) -> Source:
+        return (self.shard, self.row_index)
+
+
+def write_recording_aliases(rows: Iterable, directory: Path = EXPOSURE_DIR) -> None:
+    """Record every checksum two or more rows carry, merged into the committed aliases,
+    which are never dropped: evidence outlives the use that brought it (a pruned panel
+    clip's alias still decides the next selection). ``rows`` are any records with
+    ``audio_filename``, ``shard``, ``row_index``, ``reciter_id`` and ``audio_sha256``
+    (staged clips, exposure rows); those without a checksum are skipped."""
+    path = directory / RECORDING_ALIASES_NAME
+    known = set(read_recording_aliases(path)) if path.exists() else set()
+    known |= {Alias(r.audio_sha256, r.audio_filename, r.shard, r.row_index, r.reciter_id)
+              for r in rows if r.audio_sha256 is not None}
+    by_source: dict[Source, Alias] = {}
+    for alias in known:
+        if by_source.setdefault(alias.source, alias) != alias:
+            raise ValueError(f"{alias.source} is recorded as {alias} and {by_source[alias.source]}")
+    held = {sha: g for sha, g in _by_checksum(known).items() if len(g) > 1}
+    _write_atomic(path, "".join(
+        json.dumps(asdict(a), sort_keys=True) + "\n"
+        for sha in sorted(held) for a in held[sha]))
+
+
+def _by_checksum(aliases: Iterable[Alias]) -> dict[str, list[Alias]]:
+    groups: dict[str, list[Alias]] = {}
+    for alias in sorted(aliases):
+        groups.setdefault(alias.audio_sha256, []).append(alias)
+    return groups
+
+
+def _alias_groups(aliases: Iterable[Alias]) -> list[tuple[Source, ...]]:
+    return [tuple(a.source for a in g) for g in _by_checksum(aliases).values()]
+
+
+def read_recording_aliases(path: Path) -> list[Alias]:
+    """The committed aliases, validated: sorted, each checksum held by two or more rows."""
+    with open(path, encoding="utf-8") as f:
+        aliases = [Alias(**json.loads(raw)) for raw in f if raw.strip()]
+    if aliases != sorted(set(aliases)) or any(
+            len({a.source for a in g}) < 2 or not _SHA256.fullmatch(sha)
+            for sha, g in _by_checksum(aliases).items()):
+        raise ValueError(f"{path}: aliases must be sorted, unique, two or more per checksum")
+    return aliases
+
+
+def copies_across_uses(registry: ExposureRegistry) -> dict[tuple[str, str], int]:
+    """For each pair of uses ``(a, b)``, how many recordings of ``a`` have an alias or a
+    probable copy in ``b`` under another shard row: a row ``b`` lists, or any row of a
+    shard use's shards."""
+    uses_of: dict[tuple[int, int], set[str]] = {}
+    for use, rows in registry.recordings.items():
+        for row in rows:
+            uses_of.setdefault(row.source, set()).add(use)
+    shard_uses = {use: set(e.shards) for use, e in registry.shard_uses.items()}
+    found: dict[tuple[str, str], set[tuple[int, int]]] = {}
+    for source, uses in uses_of.items():
+        for copy in registry.same_recording(source) - {source}:
+            theirs = uses_of.get(copy, set()) | {
+                use for use, shards in shard_uses.items() if copy[0] in shards}
+            for a in uses:
+                for b in theirs - {a}:
+                    found.setdefault((a, b), set()).add(source)
+    return {key: len(sources) for key, sources in sorted(found.items())}
 
 
 # --- exclusion: what a PRD use must not touch -------------------------------------------
@@ -625,13 +858,37 @@ def main() -> None:
     build.add_argument("--index", type=Path, required=True,
                        help="a shard index of all 385 shards (tadabur.staged_audio index)")
     commands.add_parser("describe", help="summarize the committed registry")
+    copies = commands.add_parser(
+        "copies", help="rewrite the probable-copy screen and the checksum aliases")
+    copies.add_argument("--index", type=Path, required=True,
+                        help="a shard index of all 385 shards (tadabur.staged_audio index)")
+    commands.add_parser("duplicates", help="report recordings held under two shard rows")
     args = parser.parse_args()
 
     if args.command == "describe":
         print(describe(load_registry()))
         return
+    if args.command == "duplicates":
+        _duplicates(load_registry())
+        return
+    if args.command == "copies":
+        write_relations(args.index)
+        _duplicates(load_registry())
+        return
     build_registry(args.index)
     print(describe(load_registry()))
+
+
+def _duplicates(registry: ExposureRegistry) -> None:
+    groups = duplicate_recordings(registry)
+    print(f"{len(groups)} checksums are held under more than one shard row:")
+    for uses, count in sorted(Counter(tuple(g.values()) for g in groups.values()).items()):
+        print(f"  {count:4d}  {' | '.join(', '.join(u) for u in uses)}")
+    print(f"{len(registry.aliases)} rows have a checksum-confirmed alias; "
+          f"{len(registry.copies)} indexed rows have a probable copy ({COPY_SCREEN}); "
+          "recordings of one use with an alias or copy in another:")
+    for (a, b), count in copies_across_uses(registry).items():
+        print(f"  {count:4d}  {a} -> {b}")
 
 
 def build_registry(index_path: Path, directory: Path = EXPOSURE_DIR) -> None:
@@ -663,6 +920,25 @@ def build_registry(index_path: Path, directory: Path = EXPOSURE_DIR) -> None:
         write_use(use, rows, directory)
     for use in load_registry(directory).missing():
         write_use(use, [], directory)
+    write_relations(index_path, directory)
+
+
+def write_relations(index_path: Path, directory: Path = EXPOSURE_DIR) -> dict[str, int]:
+    """Rewrite the two recording records: the aliases from every checksum the staging
+    registry and the uses hold (merged into those already committed), then the screen over
+    a full shard index; return and print how the screen agrees with every known checksum."""
+    registry = load_registry(directory)
+    known = [*load_staged_clips().values(), *(r for rows in registry.recordings.values()
+                                              for r in rows)]
+    write_recording_aliases(known, directory)
+    groups = copy_groups(read_shard_index(index_path).values())
+    write_probable_copies(groups, hashlib.sha256(index_path.read_bytes()).hexdigest(), directory)
+    aliases = read_recording_aliases(directory / RECORDING_ALIASES_NAME)
+    checksums = {(r.shard, r.row_index): r.audio_sha256 for r in [*aliases, *known]
+                 if r.audio_sha256 is not None}
+    agreement = screen_agreement(groups, checksums)
+    print(json.dumps({"screen": COPY_SCREEN, **agreement}, indent=1))
+    return agreement
 
 
 def synthetic_edit_exposures() -> dict[str, list[Exposure]]:

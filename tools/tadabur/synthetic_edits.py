@@ -73,6 +73,7 @@ from .synthetic_edit_plan import (
     plan_pairs,
     rank,
     select_pairs,
+    unique_recordings,
 )
 from .truth_sites import MARKS, PENDING, SYNTHETIC_EDIT, TruthSite
 from .waveform_edits import FADE, DoesNotFit, Rendered, crop, splice, stretch
@@ -335,8 +336,9 @@ def timed_clips(path: Path = BASE_FRAMES_PATH) -> list[TimedClip]:
     record = json.loads(path.read_text(encoding="utf-8"))
     clips = edit_clips()
     return [
-        TimedClip.from_steps(name, clips[name].reciter_id, clips[name].num_samples,
-                             frame["reference"], [tuple(s) for s in frame["steps"]])
+        TimedClip.from_steps(name, clips[name].audio_sha256, clips[name].reciter_id,
+                             clips[name].num_samples, frame["reference"],
+                             [tuple(s) for s in frame["steps"]])
         for name, frame in sorted(record["clips"].items())
         if frame["reference"] is not None
     ]
@@ -557,17 +559,33 @@ def check_manifest(items: list[dict]) -> None:
     labelled with the prescribed state and the edit with another, and their labelled
     references follow; the output is as long as the change says, is named opaquely and
     does not clip; a donor is the source's reciter.
+
+    Recordings are compared by audio checksum, never by file name: no two pairs share
+    source audio, no item's output is byte-identical to its source, and no splice takes its
+    donor span from the very samples it replaces (the same recording, overlapping spans),
+    which would leave a decoy with no change at all.
     """
     pairs: dict[str, dict[str, dict]] = {}
+    sources: dict[str, str] = {}
     for item in items:
         if item["item_id"] != f"{item['pair_id']}:{item['role']}":
             raise ValueError(f"{item['item_id']}: id does not name its pair and role")
         if item["role"] in pairs.setdefault(item["pair_id"], {}):
             raise ValueError(f"{item['item_id']}: duplicate role in its pair")
         pairs[item["pair_id"]][item["role"]] = item
+        source = item["source"]["audio_sha256"]
+        if sources.setdefault(source, item["pair_id"]) != item["pair_id"]:
+            raise ValueError(f"{item['item_id']}: {sources[source]} has the same source audio")
+        if item["output"]["audio_sha256"] == source:
+            raise ValueError(f"{item['item_id']}: the output is its source, byte for byte")
         donor = item["change"]["donor"]
         if donor is not None and donor["reciter_id"] != item["source"]["reciter_id"]:
             raise ValueError(f"{item['item_id']}: the donor is another reciter")
+        if donor is not None and donor["audio_sha256"] == source and (
+            donor["start_sample"] < item["change"]["end_sample"]
+            and item["change"]["start_sample"] < donor["end_sample"]
+        ):
+            raise ValueError(f"{item['item_id']}: the donor span is the span it replaces")
         if item["output"]["num_samples"] != item["source"]["num_samples"] + item["length_change"]:
             raise ValueError(f"{item['item_id']}: output length does not follow the change")
         if item["output"]["audio_filename"] != output_filename(item["item_id"]):
@@ -766,6 +784,7 @@ def _generate(args) -> None:
         "salt": SALT,
         "decode_fingerprint": record["decode_fingerprint"],
         "frame_clips_timed": len(timed),
+        "frame_duplicate_recordings": len(timed) - len(unique_recordings(timed)),
         "frame_clips_without_reference": len(record["clips"]) - len(timed),
         "stretch_samples": stretch_samples,
         "fade_samples": FADE,

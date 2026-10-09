@@ -10,12 +10,14 @@ what its audio now holds.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 from collections import Counter
 
 import numpy as np
 import pytest
 
+from tadabur.exposure import check_disjoint, load_registry
 from tadabur.staged_audio import IndexRow, StagedClip, load_staged_clips
 from tadabur.synthetic_edit_plan import (
     AT_CARRIER,
@@ -41,6 +43,8 @@ from tadabur.synthetic_edit_plan import (
 )
 from tadabur.synthetic_edits import (
     EDITS_PATH,
+    EXPOSURE_DONOR,
+    EXPOSURE_SOURCE,
     SALT,
     WORKLIST_PATH,
     Unusable,
@@ -78,6 +82,11 @@ SHA = "a" * 64
 RECITER = 7
 
 
+def _sha(name: str) -> str:
+    """A stand-in audio checksum: one recording per file name unless a test says otherwise."""
+    return hashlib.sha256(name.encode("utf-8")).hexdigest()
+
+
 # --- synthetic recitations ---------------------------------------------------------------
 
 
@@ -90,11 +99,13 @@ def _pitch(char: str) -> float:
 
 
 def _recitation(
-    name: str, reference: str, unit: int = UNIT, level: float = 0.3, noise: str = ""
+    name: str, reference: str, unit: int = UNIT, level: float = 0.3, noise: str = "",
+    sha: str | None = None,
 ) -> tuple[TimedClip, np.ndarray]:
     """A clip where each reference character is ``unit`` samples of its own tone (or of
     seeded white noise, for the characters in ``noise``), and the teacher emitted each one
-    over the middle half of its stretch (a perfect decode)."""
+    over the middle half of its stretch (a perfect decode). Its recording is ``sha``, by
+    default one of its own."""
     t = np.arange(unit) / 16000.0
     rng = np.random.default_rng(0)
     waveform = np.concatenate([
@@ -104,7 +115,7 @@ def _recitation(
     ]).astype(np.float32)
     tokens = tuple(Token(c, i * unit + unit // 4, i * unit + 3 * unit // 4)
                    for i, c in enumerate(reference))
-    clip = TimedClip(name, RECITER, len(waveform), reference, tokens,
+    clip = TimedClip(name, sha or _sha(name), RECITER, len(waveform), reference, tokens,
                      anchored_positions(reference, reference))
     return clip, waveform
 
@@ -308,15 +319,41 @@ def test_a_swap_needs_a_same_letter_donor_for_its_decoy():
             if p.audio_filename == "t.wav"] == []
 
 
-def test_selection_is_hash_ordered_and_caps_clips_and_reciters():
-    clip, _ = _recitation("g.wav", GEMINATE_REFERENCE)
-    pairs, length = plan_pairs([clip], SALT)
+def test_selection_is_hash_ordered_and_caps_recordings_and_reciters():
+    clips = [_recitation(f"g{n}.wav", GEMINATE_REFERENCE)[0] for n in range(2)]
+    pairs, length = plan_pairs(clips, SALT)
     assert length == UNIT
-    assert {p.operation for p in pairs} == {SHADDAH_REMOVED, SHADDAH_ADDED}
-    assert select_pairs(pairs, quota=5, per_reciter=1, salt=SALT) == sorted(
-        pairs, key=lambda p: p.pair_id)
-    duplicated = pairs + [dataclasses.replace(pairs[0], reference_index=99)]
-    assert len(select_pairs(duplicated, quota=5, per_reciter=5, salt=SALT)) == len(pairs)
+    assert Counter(p.operation for p in pairs) == {SHADDAH_REMOVED: 2, SHADDAH_ADDED: 2}
+    # Each recording backs one pair in all, whatever the operation. The groups tie on
+    # candidates, so shaddah_added (first by name) fills first and takes both recordings.
+    chosen = select_pairs(pairs, quota=5, per_reciter=5, salt=SALT)
+    assert [p.operation for p in chosen] == [SHADDAH_ADDED] * 2
+    # One per reciter per group: the other recording is left for shaddah_removed.
+    chosen = select_pairs(pairs, quota=5, per_reciter=1, salt=SALT)
+    assert sorted(p.operation for p in chosen) == [SHADDAH_ADDED, SHADDAH_REMOVED]
+    assert len({p.audio_sha256 for p in chosen}) == 2
+    # A copy of one pair under another file name is the same recording: never a second pair.
+    copied = dataclasses.replace(pairs[0], audio_filename="copy.wav", reference_index=99)
+    assert select_pairs([pairs[0], copied], quota=5, per_reciter=5, salt=SALT) in (
+        [pairs[0]], [copied])
+
+
+def test_a_recording_under_two_file_names_is_planned_once():
+    """Tadabur files one recording under two speaker ids: it is one source, not two."""
+    first, _ = _recitation("spk1.wav", GEMINATE_REFERENCE, sha=SHA)
+    second, _ = _recitation("spk2.wav", GEMINATE_REFERENCE, sha=SHA)
+    pairs, _ = plan_pairs([second, first], SALT)
+    assert pairs and {p.audio_filename for p in pairs} == {"spk1.wav"}
+
+
+def test_a_decoy_never_splices_its_own_carrier_from_a_copy_of_its_recording():
+    """With no other same-letter donor, the only "donor" for the decoy is the target's own
+    carrier under another file name: splicing it would change nothing, so no pair."""
+    target, _ = _recitation("t.wav", SWAP_TARGET, sha=SHA)
+    copy, _ = _recitation("copy.wav", SWAP_TARGET, sha=SHA)
+    only_other, _ = _recitation("d.wav", "دَكَصَبُتَلُرَ")
+    assert [p for p in consonant_swaps([target, copy, only_other], SALT)
+            if p.reference_index == 6] == []
 
 
 # --- rendering: what each item's audio holds ---------------------------------------------
@@ -443,18 +480,19 @@ def test_a_pair_that_would_clip_is_refused():
 # --- the manifest ------------------------------------------------------------------------
 
 
-def _staged(name: str, num_samples: int, reciter: int = RECITER, sha: str = SHA) -> StagedClip:
-    return StagedClip(name, 100, 1, reciter, "2:2", num_samples, sha, ("synthetic_edit",))
+def _staged(name: str, num_samples: int, reciter: int = RECITER) -> StagedClip:
+    return StagedClip(name, 100, 1, reciter, "2:2", num_samples, _sha(name), ("synthetic_edit",))
 
 
-def _items(pair, waveforms, reciter: int = RECITER, sha: str = SHA):
-    clips = {name: _staged(name, len(w), reciter, sha) for name, w in waveforms.items()}
+def _items(pair, waveforms, reciter: int = RECITER):
+    clips = {name: _staged(name, len(w), reciter) for name, w in waveforms.items()}
     items = []
     for role, item in render_pair(pair, waveforms.__getitem__).items():
         y = item.rendered.samples
         item_id = f"{pair.pair_id}:{role}"
         output = {"audio_filename": output_filename(item_id), "num_samples": len(y),
-                  "audio_sha256": SHA, "peak": float(np.max(np.abs(y)))}
+                  "audio_sha256": hashlib.sha256(y.tobytes()).hexdigest(),
+                  "peak": float(np.max(np.abs(y)))}
         items.append(item_record(pair, role, clips, item, output))
     return items
 
@@ -482,6 +520,11 @@ def test_manifest_rows_carry_provenance_and_labels_that_follow_the_edit():
     lambda e, d: e["output"].update(num_samples=e["output"]["num_samples"] + 1),
     lambda e, d: e["output"].update(peak=1.01),
     lambda e, d: d["render"].update(path="periodic"),
+    # A decoy byte-identical to its source, and one spliced from its own span.
+    lambda e, d: d["output"].update(audio_sha256=d["source"]["audio_sha256"]),
+    lambda e, d: d["change"]["donor"].update(
+        audio_sha256=d["source"]["audio_sha256"], start_sample=d["change"]["start_sample"],
+        end_sample=d["change"]["end_sample"]),
 ])
 def test_check_manifest_refuses_a_broken_pair(mutate):
     target, x = _recitation("t.wav", SWAP_TARGET)
@@ -495,12 +538,36 @@ def test_check_manifest_refuses_a_broken_pair(mutate):
         check_manifest([edit])
 
 
+def test_check_manifest_refuses_two_pairs_on_one_recording_and_a_decoy_that_changes_nothing():
+    target, x = _recitation("t.wav", SWAP_TARGET)
+    donors, d = _recitation("d.wav", SWAP_DONORS)
+    pair = next(p for p in consonant_swaps([target, donors], SALT) if p.audio_filename == "t.wav")
+    items = _items(pair, {"t.wav": x, "d.wav": d})
+    check_manifest(items)
+    # The same pair again on a copy of the recording under another speaker's file name.
+    copy = json.loads(json.dumps(items).replace("t.wav", "spk2_t.wav"))
+    for item in copy:
+        item["output"]["audio_filename"] = output_filename(item["item_id"])
+    with pytest.raises(ValueError, match="same source audio"):
+        check_manifest(items + copy)
+    edit, decoy = json.loads(json.dumps(items))
+    decoy["output"]["audio_sha256"] = decoy["source"]["audio_sha256"]
+    with pytest.raises(ValueError, match="byte for byte"):
+        check_manifest([edit, decoy])
+    edit, decoy = json.loads(json.dumps(items))
+    decoy["change"]["donor"].update(audio_sha256=decoy["source"]["audio_sha256"],
+                                    start_sample=decoy["change"]["start_sample"] + 100,
+                                    end_sample=decoy["change"]["end_sample"] + 100)
+    with pytest.raises(ValueError, match="donor span"):
+        check_manifest([edit, decoy])
+
+
 def test_the_blind_check_mixes_edits_and_decoys_without_repeating_a_recitation():
     items = []
     for n in range(12):
         clip, x = _recitation(f"g{n:02d}.wav", GEMINATE_REFERENCE)
         for pair in shaddah_removed(clip, SALT) + shaddah_added(clip, 1600, SALT):
-            items += _items(pair, {clip.audio_filename: x}, reciter=n, sha=f"{n:064x}")
+            items += _items(pair, {clip.audio_filename: x}, reciter=n)
     sites = blind_check(items, per_operation=4)
     by_output = {i["output"]["audio_filename"]: i for i in items}
     chosen = [by_output[s.audio_filename] for s in sites]
@@ -639,6 +706,11 @@ def test_committed_edit_sources_and_donors_are_disjoint_from_every_evaluation_it
     registry = load_staged_clips()
     assert {c.reciter_id for c in registry.values() if "synthetic_edit" not in c.uses} \
         <= set(frame["evaluation_reciters"])
+    # No edit source or donor is any other use's recording, under any row or file name.
+    exposure = load_registry()
+    others = [u for u in exposure.recordings if u not in (EXPOSURE_SOURCE, EXPOSURE_DONOR)]
+    for use in (EXPOSURE_SOURCE, EXPOSURE_DONOR):
+        check_disjoint(use, *others, by="source", registry=exposure)
 
 
 def test_committed_items_use_registered_audio_and_the_worklist_names_them():

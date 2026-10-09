@@ -25,8 +25,11 @@ from tadabur.exposure import (
     ExposureOverlap,
     ShardExposure,
     check_disjoint,
+    copy_groups,
     load_registry,
     require_complete,
+    write_probable_copies,
+    write_recording_aliases,
     write_shard_use,
     write_use,
 )
@@ -36,6 +39,7 @@ from tadabur.sealed_panel import (
     PanelClip,
     PanelSegment,
     build_manifest,
+    copy_exposed,
     decodable_segment_keys,
     exposed_reciters,
     frame_record,
@@ -45,6 +49,7 @@ from tadabur.sealed_panel import (
     open_for_scoring,
     panel_frame,
     reciter_overlap_allowed,
+    select_panel,
     reference_capacity,
     source_overlap_allowed,
     unseen_shards,
@@ -336,6 +341,63 @@ def test_panel_frame_bars_used_reciters_whole_then_applies_the_row_bounds():
     assert {row.audio_filename: reason for row, reason in excluded} == {
         "b.wav": "reciter_exposed", "c.wav": "duration", "d.wav": "phonetizer_unsupported",
     }
+
+
+def _alias(name, shard, row, sha) -> Exposure:
+    return Exposure(name, shard, row, 1, None, None, sha)
+
+
+def _copied_frame(tmp_path):
+    """Unseen rows of reciter 1 in shard 39: a.wav has a probable copy (same length) in a
+    training shard, b.wav one only in the uncertain shard 0, c.wav and d.wav are one
+    recording by checksum (an alias the panel's staging recorded), e.wav is plain."""
+    write_use(MINING_POOL, [Exposure("x.wav", 39, 9, 2, None, None, SHA)], tmp_path)
+    write_use(SEALED_PANEL, [_alias(n, 39, r, s) for n, r, s in (
+        ("a.wav", 0, "1" * 64), ("b.wav", 1, "2" * 64), ("c.wav", 2, "c" * 64),
+        ("d.wav", 3, "c" * 64), ("e.wav", 4, "5" * 64))], tmp_path)
+    write_shard_use(H448_TRAINING, _shards((21,), {1: 4}, "exact"), tmp_path)
+    write_shard_use(H448_INIT_VALIDATION, _shards((0,), {1: 1}, "uncertain"), tmp_path)
+    for use in load_registry(tmp_path).missing():
+        write_use(use, [], tmp_path)
+    index = [
+        _index_row("a.wav", 1, row=0, seconds=7.0), _index_row("t.wav", 1, shard=21, seconds=7.0),
+        _index_row("b.wav", 1, row=1, seconds=6.0), _index_row("v.wav", 1, shard=0, seconds=6.0),
+        _index_row("c.wav", 1, row=2, seconds=5.0), _index_row("d.wav", 1, row=3, seconds=4.0),
+        _index_row("e.wav", 1, row=4, seconds=3.0),
+    ]
+    write_probable_copies(copy_groups(index), SHA, tmp_path)
+    write_recording_aliases(load_registry(tmp_path).recordings[SEALED_PANEL], tmp_path)
+    return index
+
+
+def test_panel_frame_drops_a_recording_h448_trained_on_and_keeps_one_of_two(tmp_path):
+    """The owner's §6 amendment holds the panel out of h448's training by recording: a row
+    whose probable copy sits in an exact training shard leaves, and of two rows that are
+    one recording (here by checksum) the first by name stays."""
+    index = _copied_frame(tmp_path)
+    registry = load_registry(tmp_path)
+    assert copy_exposed(registry) == {(39, 0)}  # a copy in shard 0 (uncertain) is allowed
+    panel, frame = select_panel(index, registry, tmp_path)
+    assert [r.audio_filename for r in panel] == ["b.wav", "c.wav", "e.wav"]
+    assert frame["per_shard"]["39"] == {
+        "panel": 3, "excluded_probable_copy_exposed": 1, "excluded_duplicate_recording": 1}
+
+
+def test_select_after_prune_selects_the_same_panel(tmp_path):
+    """Pruning removes clips from the panel's use; the aliases that removed them stay, so
+    the next selection, and its frame, are the same."""
+    index = _copied_frame(tmp_path)
+    panel, frame = select_panel(index, load_registry(tmp_path), tmp_path)
+    kept = {r.audio_filename for r in panel}
+    write_use(SEALED_PANEL, [r for r in load_registry(tmp_path).recordings[SEALED_PANEL]
+                             if r.audio_filename in kept], tmp_path)
+    write_recording_aliases(load_registry(tmp_path).recordings[SEALED_PANEL], tmp_path)
+    assert select_panel(index, load_registry(tmp_path), tmp_path) == (panel, frame)
+
+
+def test_the_committed_panel_holds_no_recording_twice():
+    staged = load_panel_registry()
+    assert len({c.audio_sha256 for c in staged.values()}) == len(staged)
 
 
 def _shards(shards, rows, membership) -> ShardExposure:

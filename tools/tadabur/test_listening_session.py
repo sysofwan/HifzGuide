@@ -13,6 +13,7 @@ import pytest
 from tadabur.listening_session import (
     DEFAULT_SIZES,
     STRATA,
+    VERDICTS_PATH,
     WORKLIST_PATH,
     SUMMARY_PATH,
     Candidate,
@@ -23,6 +24,7 @@ from tadabur.listening_session import (
     census,
     draw,
     excerpt_span,
+    fetch_list,
     hearable,
     load_worklist,
     mode_of,
@@ -417,7 +419,33 @@ def test_a_missing_or_empty_verdict_file_is_an_unstarted_session(tmp_path):
     assert read_verdicts(tmp_path / "empty.jsonl") == {}
 
 
+def test_a_naturalness_verdict_round_trips_beside_what_was_said(tmp_path):
+    path = tmp_path / "verdicts.jsonl"
+    verdicts = {"a": Verdict("a", "held"), "e": Verdict("e", "not_held", "", "unnatural")}
+    write_verdicts(verdicts, path)
+    assert read_verdicts(path) == verdicts
+    lines = [json.loads(line) for line in path.read_text().splitlines()]
+    assert lines == [{"site_id": "a", "heard": "held", "note": ""},
+                     {"site_id": "e", "heard": "not_held", "note": "", "natural": "unnatural"}]
+
+
+def test_a_verdicts_file_without_naturalness_reads_and_rewrites_byte_for_byte(tmp_path):
+    # The schema change is additive: files written before it (and the tracked one) load
+    # unchanged, and a rewrite reproduces them exactly.
+    old = ('{"heard": "fatha", "note": "late", "site_id": "a"}\n'
+           '{"heard": "held", "note": "", "site_id": "b"}\n')
+    path = tmp_path / "verdicts.jsonl"
+    path.write_text(old, encoding="utf-8")
+    verdicts = read_verdicts(path)
+    assert all(v.natural is None for v in verdicts.values())
+    write_verdicts(verdicts, path)
+    assert path.read_text(encoding="utf-8") == old
+    read_verdicts(VERDICTS_PATH)
+
+
 @pytest.mark.parametrize("text", [
+    '{"site_id": "a", "heard": "held", "note": "", "natural": "sounds fine"}\n',
+    '{"site_id": "a", "heard": "held", "note": "", "natural": null}\n',
     '{"site_id": "a", "heard": "held"}\n',
     '{"site_id": "a", "heard": "held", "note": ""}\n'
     '{"site_id": "a", "heard": "not_held", "note": ""}\n',
@@ -486,3 +514,16 @@ def test_the_committed_worklist_loads_and_agrees_with_its_summary_and_the_regist
     pending_p35 = [r for r in rows if r.site.source == "p35_fixture"]
     assert len(pending_p35) == 23 and all(r.inclusion_probability == 1.0 for r in pending_p35)
     assert all(isinstance(r, SessionSite) for r in rows)
+
+
+# --- the session's audio ---------------------------------------------------------------
+
+
+def test_one_rsync_list_covers_both_remote_directories():
+    root, files = fetch_list({"/root/scratch/issue-83/stage/clips": {"b.wav", "a.wav"},
+                              "/root/scratch/issue-88/stage/edits/audio": {"se_1.wav"}})
+    assert root == "/root/scratch"
+    assert files == ["issue-83/stage/clips/a.wav", "issue-83/stage/clips/b.wav",
+                     "issue-88/stage/edits/audio/se_1.wav"]
+    with pytest.raises(ValueError, match="one name"):
+        fetch_list({"/x/a": {"c.wav"}, "/x/b": {"c.wav"}})

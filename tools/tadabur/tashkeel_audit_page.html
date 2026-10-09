@@ -54,6 +54,7 @@
   button.choice.letter .ar { font-size: 2.2rem; }
   button.chosen { outline: 3px solid var(--accent); outline-offset: -3px; }
   button.unclear { grid-column: 1 / -1; min-height: 48px; font-weight: 400; }
+  .prompt.second { margin-top: 18px; }
   .row { display: flex; gap: 10px; margin-top: 14px; }
   .row button { flex: 1; min-height: 48px; }
   input[type=text] { font: inherit; color: inherit; background: var(--card); width: 100%;
@@ -84,12 +85,16 @@
     <button id="whole">Whole <kbd>w</kbd></button>
   </div>
   <div class="choices" id="choices"></div>
+  <div id="natural-block" hidden>
+    <div class="prompt second">Does this recitation sound natural?</div>
+    <div class="choices" id="natural-choices"></div>
+  </div>
   <input type="text" id="note" placeholder="Note (optional)" autocomplete="off">
   <div class="row">
     <button id="prev">&larr; Prev</button>
     <button id="next">Next &rarr;</button>
   </div>
-  <p class="hint">Keys: <kbd>1</kbd>–<kbd>5</kbd> answer in order shown, <kbd>space</kbd>
+  <p class="hint">Keys: <kbd>1</kbd>–<kbd>6</kbd> answer in order shown, <kbd>space</kbd>
     play, <kbd>s</kbd> slower, <kbd>w</kbd> whole segment, <kbd>&larr;</kbd>/<kbd>&rarr;</kbd>
     move, <kbd>u</kbd> next unanswered. Answering moves on and plays the next site.</p>
   <audio id="player" preload="auto"></audio>
@@ -110,11 +115,14 @@ const LABELS = {
   fatha: ["Fatha", "\u0640\u064E"], damma: ["Damma", "\u0640\u064F"],
   kasra: ["Kasra", "\u0640\u0650"], sukun: ["Sukun", "\u0640\u0652"],
   held: ["Held", ""], not_held: ["Not held", ""], unclear: ["Unclear", ""],
+  natural: ["Natural", ""], unnatural: ["Unnatural", ""],
 };
 const SLOW_RATE = 0.6;
 const $ = (id) => document.getElementById(id);
 const audio = $("player");
 let shown = null;
+// Every answer button on screen, in display order ({field, value}): what keys 1-6 press.
+let buttons = [];
 
 const player = {
   stop() {
@@ -145,6 +153,12 @@ const view = {
     renderChoices(site);
   },
   saving(on) { document.body.classList.toggle("saving", on); },
+  drafted(draft) {
+    for (const button of document.querySelectorAll("button.choice")) {
+      const { field, value } = button.dataset;
+      if (field in draft) button.classList.toggle("chosen", draft[field] === value);
+    }
+  },
   error(message) {
     $("error").textContent = message;
     $("error").style.display = message ? "block" : "none";
@@ -170,28 +184,47 @@ const api = {
 
 const session = createSession({ api, player, view });
 
+// `field` is "heard" (what was said) or "natural" (whether it sounds natural).
+function choose({ field, value }) {
+  const note = $("note").value;
+  return field === "natural" ? session.judge(value, note) : session.answer(value, note);
+}
+
 function renderChoices(site) {
-  const box = $("choices");
+  buttons = [];
+  $("choices").classList.toggle("four", site.mode === "tashkeel");
+  fillChoices($("choices"), "heard", site.choices, site.heard, site.mode === "consonant");
+  const asksNatural = "natural" in site;
+  $("natural-block").hidden = !asksNatural;
+  $("natural-choices").innerHTML = "";
+  if (asksNatural) {
+    fillChoices($("natural-choices"), "natural", site.natural_choices, site.natural, false);
+  }
+}
+
+function fillChoices(box, field, values, chosen, letters) {
   box.innerHTML = "";
-  box.classList.toggle("four", site.mode === "tashkeel");
-  site.choices.forEach((choice, i) => {
+  for (const value of values) {
     const button = document.createElement("button");
-    const [label, arabic] = LABELS[choice] || ["", choice];
-    button.className = "choice" + (choice === "unclear" ? " unclear" : "")
-      + (site.mode === "consonant" && choice !== "unclear" ? " letter" : "");
-    button.classList.toggle("chosen", site.heard === choice);
+    const [label, arabic] = LABELS[value] || ["", value];
+    button.className = "choice" + (value === "unclear" ? " unclear" : "")
+      + (letters && value !== "unclear" ? " letter" : "");
+    button.classList.toggle("chosen", chosen === value);
+    button.dataset.field = field;
+    button.dataset.value = value;
     if (arabic) {
       const ar = document.createElement("span");
       ar.className = "ar"; ar.textContent = arabic;
       button.appendChild(ar);
     }
     button.appendChild(document.createTextNode(label + " "));
+    buttons.push({ field, value });
     const kbd = document.createElement("kbd");
-    kbd.textContent = String(i + 1);
+    kbd.textContent = String(buttons.length);
     button.appendChild(kbd);
-    button.onclick = () => session.answer(choice, $("note").value);
+    button.onclick = () => choose({ field, value });
     box.appendChild(button);
-  });
+  }
 }
 
 $("play").onclick = () => session.play();
@@ -208,9 +241,9 @@ document.addEventListener("keydown", (event) => {
   if (event.target === $("note") || event.metaKey || event.ctrlKey || event.altKey) return;
   if (event.repeat) { event.preventDefault(); return; }  // a held key answers nothing
   const n = Number(event.key);
-  if (shown && n >= 1 && n <= shown.choices.length) {
+  if (shown && n >= 1 && n <= buttons.length) {
     event.preventDefault();
-    session.answer(shown.choices[n - 1], $("note").value);
+    choose(buttons[n - 1]);
     return;
   }
   const actions = {

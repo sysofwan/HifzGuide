@@ -6,37 +6,51 @@ from the staged-clip registry, the realized reference and carrier, the mark unde
 the mushaf prescribes, `heard: pending`, and the stratum with its population. The verdicts
 fill `heard`.
 
-Code: [`../listening_session.py`](../listening_session.py) (mining, worklist, verdicts) and
-[`../tashkeel_audit_ui.py`](../tashkeel_audit_ui.py) (the blind UI).
+The same sitting also takes **the synthetic-edit check** (#107): the 30 blind-check items of
+#88 ([`../synthetic_edits/README.md`](../synthetic_edits/README.md)), edits and their
+unedited decoys, asked in the same queue (below).
+
+Code: [`../listening_session.py`](../listening_session.py) (mining, worklist, verdicts, the
+audio copy), [`../tashkeel_audit_ui.py`](../tashkeel_audit_ui.py) (the blind UI),
+[`../edit_check.py`](../edit_check.py) (the edit check in the session) and
+[`../edit_check_summary.py`](../edit_check_summary.py) (its per-operation summary for #90).
 
 | file | what it is |
 |---|---|
-| `worklist.jsonl` | one site per line, in the shuffled order the UI asks them: the truth-site fields plus the sampling design and the excerpt |
+| `worklist.jsonl` | one site per line: the truth-site fields plus the sampling design and the excerpt |
 | `worklist.summary.json` | per stratum: population and its reciters, sites drawn and their reciters, draw and inclusion probabilities, estimated listening minutes; the sizes used, input checksums, the base decode's fingerprint |
-| `verdicts.jsonl` | the answers, `{site_id, heard, note}` per line, sorted by site id, written by the UI as they are given |
+| `edit_check_words.json` | the Uthmani word offsets of each edit-check item's whole-ayah reference (`python -m tadabur.edit_check words`; needs `quran-transcript`), so the page can hide answers word by word without the phonetizer |
+| `verdicts.jsonl` | the answers, `{site_id, heard, note}` per line (plus `natural` for an edit-check item), sorted by site id, written by the UI as they are given |
 
 ## Launching the session
 
 The UI runs on the Mac, from the repo checkout, so every answer is written straight into
-this directory's tracked `verdicts.jsonl`. It plays a local copy of the session's clips,
-copied once from the GPU box and checked against the staged-clip registry (checksum and
-length) every time the server starts.
+this directory's tracked `verdicts.jsonl`. It plays a local copy of the session's clips and
+the edit-check items, copied once from the GPU box by one command, which verifies every
+file it copied. The server checks them again every time it starts: the clips against the
+staged-clip registry (checksum and length), the items against the blind check's checksums.
 
 ```bash
 cd ~/repos/HifzGuide/tools
-# Once: copy the clips the worklist plays (320 WAVs, ~180 MB) from cuda-dev.
-/Users/sysofwan/repos/HifzGuide/.venv-test/bin/python -m tadabur.listening_session clips \
-  | rsync -a --files-from=- root@cuda-dev:/root/scratch/issue-83/stage/clips/ ~/hifzguide-listening/clips/
+# Once: copy the 344 clips the worklist plays and the 30 edit-check items (~210 MB in all) from
+# cuda-dev into one directory, and verify every checksum. Files already there are kept.
+/Users/sysofwan/repos/HifzGuide/.venv-test/bin/python -m tadabur.listening_session fetch \
+  --audio-dir ~/hifzguide-listening/clips
 # Launch, reachable from a phone on the LAN (the launch-audit-ui pattern: bind 0.0.0.0).
 /Users/sysofwan/repos/HifzGuide/.venv-test/bin/python -m tadabur.tashkeel_audit_ui \
   --audio-dir ~/hifzguide-listening/clips --host 0.0.0.0 --port 8000
 ```
 
+`fetch` runs one `rsync -a --no-relative --files-from=-` from `root@cuda-dev:/root/scratch/`
+over `issue-83/stage/clips/` (the session's clips) and `issue-88/stage/edits/audio/` (the
+items); `--host` names another box. `clips` still prints the worklist's clip names alone.
+
 | setting | value |
 |---|---|
 | working directory | `tools/` of the checkout whose `verdicts.jsonl` should receive the answers |
-| audio | `~/hifzguide-listening/clips/` (any directory holding the copied clips; `--audio-dir`) |
+| audio | `~/hifzguide-listening/clips/` (any directory `fetch` filled; `--audio-dir`) |
 | worklist | `tools/tadabur/listening_session/worklist.jsonl` (the default; `--worklist`) |
+| edit check | `tools/tadabur/synthetic_edits/blind_check.jsonl` and `edit_check_words.json` (the defaults; `--edit-check`, `--edit-words`) |
 | verdicts | `tools/tadabur/listening_session/verdicts.jsonl` (the default; `--verdicts`), rewritten atomically after every answer |
 | host / port | `0.0.0.0` / `8000`; open `http://<the Mac's LAN IP>:8000/` (`ipconfig getifaddr en0`) on the phone |
 
@@ -46,11 +60,55 @@ Check it answers on the LAN before handing the phone over:
 in the macOS firewall. Ctrl-C stops the server; answers are already on disk. Afterwards:
 `git add tools/tadabur/listening_session/verdicts.jsonl` and commit.
 
+It prints `0 of 415 answered`: the 385 worklist sites and the 30 edit-check items, one
+queue in a seeded order of their ids.
+
 On the page: **Play** (space), **Slower** at 0.6× (s), **Whole** segment (w), then tap the
-answer (1-5). An answer counts once it is saved; the next site then appears and plays.
-Answers are refused for 0.4 s after a site appears and while a save is in flight, so a double
-tap or a held key cannot answer a site nobody heard. A failed save shows an error and leaves
-the site unanswered.
+answer (1-6, in the order shown). An answer counts once it is saved; the next site then
+appears and plays. Answers are refused for 0.4 s after a site appears and while a save is in
+flight, so a double tap or a held key cannot answer a site nobody heard. A failed save shows
+an error and leaves the site unanswered.
+
+An edit-check item asks **two** questions: the shaddah or consonant question of its mark,
+and **"Does this recitation sound natural?"** (natural / unnatural / unclear). The first tap
+is held on screen; the item is saved, as one verdict, once both are answered. It plays
+**whole** (Play and Whole alike, 5-40 s; about 23 minutes for the 30 by the session's
+listening model). Judge naturalness on the whole item: an item may have been altered at
+the highlighted letter or elsewhere, and the page cannot say which.
+
+## The synthetic-edit check (#107)
+
+ADR-0011 §3 admits a synthetic edit type as training signal only after a blind listen
+confirms the edits sound real. The 30 blind-check items join the session's queue under the
+same blinding, and nothing reaches the page that tells an edit from its decoy or names an
+operation:
+
+- the UI loads only `blind_check.jsonl`, never the edit manifest (`edits.jsonl`, with each
+  item's operation, role, label, donor and render path). A test checks the UI process never
+  imports the module that reads it;
+- a row carries the **source's** reference, carrier, mark and prescription, which an edit and
+  its decoy share, and the page addresses it by an opaque key (the site id and file name are
+  opaque hashes too, and neither reaches the page). An edit and its decoy produce the same
+  view, key aside (tested);
+- the masked text is the source's whole-ayah reference with the carrier hidden as for any
+  shaddah or consonant site, and every other site's answer hidden wherever their words
+  meet. `edit_check_words.json` gives the word boundaries;
+- the item plays **whole**. An excerpt would have to be placed from the manifest, and its
+  length would differ between an edit and its decoy by the edit's length change; whole,
+  they are the same length;
+- the queue order is a seeded shuffle of the site ids (`listening_session.shuffled`, the
+  session's own rule), so the position says nothing; answers take the same save path and
+  the audio the same read for every item.
+
+**After the session**, the per-operation summary #90 needs (naturalness rate; heard as
+labelled, which for a decoy means heard unchanged; per operation and per swapped pair,
+edits and decoys apart) is:
+
+```bash
+python -m tadabur.edit_check_summary [--out summary.json]
+```
+
+It reads the edit manifest, so it is never shown in the UI and the UI never imports it.
 
 ## How the sites were mined
 
@@ -125,8 +183,10 @@ whole segment plays instead when the times cannot place the words: a clip with r
 word times, a word span outside the segment, or an excerpt under 1 s.
 
 **Blinding.** The page receives the whole queue, so every site's answer is hidden wherever
-its word appears (the same ayah, word index and realized word), in every site's text, not
-only on its own screen; with each answer go the cues that would give it away (madd or
+its word appears (the same ayah and Uthmani word index), in every site's text, not
+only on its own screen. Where two rows realize a word differently (waqf against wasl at its
+end, a segment's first word), the carrier is placed where the two realizations match
+unchanged, and a word where it cannot be placed is hidden whole; with each answer go the cues that would give it away (madd or
 qalqala after a tashkeel carrier, the doubling and the haraka after a shaddah carrier, the
 qalqala after a hidden letter). See `tashkeel_audit_ui.py`.
 
@@ -200,3 +260,10 @@ consonant directions have no site where the base heard the partner: `ذ→ز`, `
 tashkeel, `held` `not_held` for shaddah, either letter of the pair, or `unclear` (which
 leaves every denominator). The file is rewritten atomically on every answer, so it is
 always complete and resumable; a verdict whose site a re-mine dropped is kept.
+
+An edit-check item's verdict also has **`natural`**: `natural`, `unnatural` or `unclear`.
+It is an optional field of the verdicts file, keyed by the same site id, and absent on every
+other verdict, so files written before it load and rewrite byte for byte. The truth-site
+schema is untouched: whether an item sounds natural is a fact about the synthetic audio,
+not about what a reciter said, so it stays beside `heard` in the verdicts and never enters
+a truth-site file.

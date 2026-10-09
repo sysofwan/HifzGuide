@@ -43,6 +43,7 @@ the GPU)::
       --audio-dir stage/clips --shard-cache stage/hf_cache
   python -m tadabur.synthetic_edits decode --audio-dir stage/clips
   python -m tadabur.synthetic_edits generate --audio-dir stage/clips --out-dir stage/edits
+  python -m tadabur.synthetic_edits blind-check   # redraw the worklist from the manifest
 """
 
 from __future__ import annotations
@@ -605,38 +606,71 @@ BLIND_CHECK_STRATUM = "synthetic_edit:blind_check"
 BLIND_CHECK_PER_OPERATION = 10
 
 
+def recitation_keys(item: dict) -> frozenset[tuple]:
+    """What makes two items one recitation to a listener: the same source audio (Tadabur
+    holds byte-identical clips under more than one speaker id) or the same reciter reciting
+    the same ayah."""
+    source = item["source"]
+    return frozenset({("audio", source["audio_sha256"]),
+                      ("recitation", source["reciter_id"], source["surah_ayah"])})
+
+
+_OTHER_ROLE = {EDIT: DECOY, DECOY: EDIT}
+
+
+def first_role(pair_id: str) -> str:
+    """The role a mark's items start from in the blind check: an independent salted hash
+    of the pair id (which names the source clip and never reaches the page)."""
+    return EDIT if int(rank(pair_id, f"{SALT}:blind_check:role"), 16) % 2 == 0 else DECOY
+
+
 def blind_check(
     items: list[dict], per_operation: int = BLIND_CHECK_PER_OPERATION
 ) -> list[TruthSite]:
     """The blind-check worklist: truth-site skeletons of edits and decoys, mixed.
 
-    Per operation, pairs in hash order; each contributes one item, edits and decoys
-    alternating, and no two items share a source clip, so the listener never hears both
-    versions of one recitation. Only marks the truth-site schema accepts are drawn. A row
-    names the opaque output file and the source's reference and carrier, so an edit and
-    its decoy would read identically; ``heard`` is ``pending`` until the listener answers.
-    Rows are in hash order of their ids.
+    Per operation, up to ``per_operation`` items, drawn in rounds over the operation's
+    marks in codepoint order so that every mark is represented (each swapped pair): a
+    round takes each mark's next pair in hash order. A pair contributes one item. Within a
+    mark the roles alternate from a first role drawn by :func:`first_role` from the first
+    pair's id, which never reaches the page: a mark with one item is an edit or a decoy
+    with equal chance, one with several is balanced to within one, and no count or
+    grouping the page can see fixes any item's role. No two items are one
+    recitation (:func:`recitation_keys`), so the listener never hears both versions of
+    one. Only marks the truth-site schema accepts are drawn. A row names the opaque output
+    file and the source's reference and carrier, so an edit and its decoy would read
+    identically; ``heard`` is ``pending`` until the listener answers. Rows are in hash
+    order of their ids.
     """
     eligible = [item for item in items if item["mark"] in MARKS]
     by_pair: dict[str, dict[str, dict]] = {}
     for item in eligible:
         by_pair.setdefault(item["pair_id"], {})[item["role"]] = item
     chosen: list[dict] = []
-    sources: set[str] = set()
+    used: set[tuple] = set()
     for operation in OPERATIONS:
-        pair_ids = sorted((p for p, roles in by_pair.items()
-                           if roles[EDIT]["operation"] == operation),
-                          key=lambda p: rank(p, f"{SALT}:blind_check"))
-        taken = 0
-        for pair_id in pair_ids:
-            if taken == per_operation:
-                break
-            item = by_pair[pair_id][EDIT if taken % 2 == 0 else DECOY]
-            if item["source"]["audio_filename"] in sources:
-                continue
-            sources.add(item["source"]["audio_filename"])
-            chosen.append(item)
-            taken += 1
+        queues: dict[str, list[str]] = {}
+        for pair_id, roles in by_pair.items():
+            if roles[EDIT]["operation"] == operation:
+                queues.setdefault(roles[EDIT]["mark"], []).append(pair_id)
+        for queue in queues.values():  # popped from the end: best-ranked last
+            queue.sort(key=lambda p: rank(p, f"{SALT}:blind_check"), reverse=True)
+        taken: Counter = Counter()
+        first: dict[str, str] = {}
+        while sum(taken.values()) < per_operation and any(queues.values()):
+            for mark in sorted(queues):
+                while queues[mark] and sum(taken.values()) < per_operation:
+                    pair_id = queues[mark].pop()
+                    if not taken[mark]:
+                        first[mark] = first_role(pair_id)
+                    role = first[mark] if taken[mark] % 2 == 0 else _OTHER_ROLE[first[mark]]
+                    item = by_pair[pair_id][role]
+                    if recitation_keys(item) & used:
+                        continue
+                    used |= recitation_keys(item)
+                    chosen.append(item)
+                    taken[mark] += 1
+                    break
     sites = [
         TruthSite(
             site_id=f"synthetic_edit:{opaque_id(item['item_id'])}",
@@ -689,7 +723,6 @@ def _generate(args) -> None:
     from .audio import read_audio
 
     from .staged_audio import verify_staged
-    from .truth_sites import write_truth_sites
 
     clips = edit_clips()
     timed = timed_clips()
@@ -724,14 +757,11 @@ def _generate(args) -> None:
             items.append(item_record(pair, role, clips, item, output))
     check_manifest(items)
     check_disjoint(items)
-    worklist = blind_check(items)
     with open(EDITS_PATH, "w", encoding="utf-8") as f:
         for item in items:
             f.write(json.dumps(item, ensure_ascii=False, sort_keys=True) + "\n")
-    write_truth_sites(worklist, WORKLIST_PATH)
 
     record = json.loads(BASE_FRAMES_PATH.read_text(encoding="utf-8"))
-    by_output = {i["output"]["audio_filename"]: i for i in items}
     summary = {
         "salt": SALT,
         "decode_fingerprint": record["decode_fingerprint"],
@@ -751,13 +781,34 @@ def _generate(args) -> None:
         "items": len(items),
         "max_peak": max(i["output"]["peak"] for i in items),
         "output_seconds": round(sum(i["output"]["num_samples"] for i in items) / 16000, 1),
-        "blind_check": dict(sorted(Counter(
-            f"{by_output[s.audio_filename]['operation']} {by_output[s.audio_filename]['role']}"
-            for s in worklist).items())),
+        "blind_check": write_blind_check(items),
     }
     SUMMARY_PATH.write_text(json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True)
                             + "\n", encoding="utf-8")
     print(json.dumps(summary, indent=2, ensure_ascii=False))
+
+
+def write_blind_check(items: list[dict]) -> dict[str, int]:
+    """Draw the blind check from ``items``, write it to :data:`WORKLIST_PATH`, and return
+    its make-up for the summary: items per operation, mark and role."""
+    from .truth_sites import write_truth_sites
+
+    worklist = blind_check(items)
+    write_truth_sites(worklist, WORKLIST_PATH)
+    by_output = {i["output"]["audio_filename"]: i for i in items}
+    return dict(sorted(Counter(
+        "{operation} {mark} {role}".format(**by_output[s.audio_filename]) for s in worklist
+    ).items()))
+
+
+def _blind_check(args) -> None:
+    """Redraw the blind check from the committed manifest (no audio needed) and record
+    its make-up in the summary; ``generate`` draws it the same way."""
+    summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
+    summary["blind_check"] = write_blind_check(read_items())
+    SUMMARY_PATH.write_text(json.dumps(summary, indent=2, ensure_ascii=False, sort_keys=True)
+                            + "\n", encoding="utf-8")
+    print(json.dumps(summary["blind_check"], indent=2, ensure_ascii=False))
 
 
 # --- what the teacher hears ------------------------------------------------------------------
@@ -830,12 +881,14 @@ def main() -> None:
     generate = commands.add_parser("generate", help="render the edits, manifest and worklist")
     generate.add_argument("--audio-dir", type=Path, required=True)
     generate.add_argument("--out-dir", type=Path, required=True)
+    commands.add_parser("blind-check", help="redraw the blind-check worklist from the manifest")
     audit = commands.add_parser("audit", help="record whether the teacher hears each label")
     audit.add_argument("--out-dir", type=Path, required=True)
     audit.add_argument("--device", default="cuda")
     args = parser.parse_args()
     commands_by_name = {"frame": _frame, "stage": _stage, "decode": _decode,
-                        "generate": _generate, "audit": _audit}
+                        "generate": _generate, "blind-check": _blind_check,
+                        "audit": _audit}
     commands_by_name[args.command](args)
 
 

@@ -60,12 +60,17 @@ design weight is ``1 / inclusion_probability``.
 
 **Verdicts** are written by the blind UI (:mod:`tadabur.tashkeel_audit_ui`) to
 ``listening_session/verdicts.jsonl``, a tracked file, keyed by site id. A verdict's ``heard``
-takes the truth-site vocabulary of the site's mark.
+takes the truth-site vocabulary of the site's mark; a synthetic-edit check item's verdict
+(:mod:`tadabur.edit_check`, #107) also records whether it sounded ``natural``.
+
+**Audio.** ``fetch`` copies every clip the worklist plays and every edit-check item from
+the GPU box into one local directory with a single rsync, and verifies each checksum.
 
 Usage (from ``tools/``; torch-free, needs ``quran-transcript`` for the Uthmani words)::
 
   python -m tadabur.listening_session mine --p35-seg-dir stage/seg_p35 [--sizes sizes.json]
   python -m tadabur.listening_session clips    # the clip names the worklist plays
+  python -m tadabur.listening_session fetch --audio-dir ~/hifzguide-listening/clips
 """
 
 from __future__ import annotations
@@ -74,10 +79,13 @@ import argparse
 import bisect
 import hashlib
 import json
+import posixpath
 import random
+import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, fields, replace
 from pathlib import Path
+from typing import TYPE_CHECKING, TypeVar
 
 from training.tashkeel_eval import MATCHED as VOWEL_MATCHED
 from training.tashkeel_eval import (
@@ -100,7 +108,7 @@ from .mining_pool import (
 )
 from .pool_stream import H448_DECODES_PATH, load_stream_decodes
 from .smith_waterman import smith_waterman
-from .staged_audio import StagedClip, load_staged_clips
+from .staged_audio import StagedClip, load_staged_clips, verify_staged
 from .truth_sites import (
     CONSONANTS,
     HARAKA_CHARS,
@@ -113,12 +121,16 @@ from .truth_sites import (
     TARGET_PAIRS,
     TASHKEEL_MARKS,
     TRUTH_SITES_DIR,
+    UNCLEAR,
     TruthSite,
     _check_file,
     label_states,
     load_truth_sites,
     parse_site,
 )
+
+if TYPE_CHECKING:
+    from .edit_check import EditCheckSite
 
 SESSION_DIR = Path(__file__).parent / "listening_session"
 WORKLIST_PATH = SESSION_DIR / "worklist.jsonl"
@@ -593,6 +605,7 @@ class SessionSite:
 
 
 DESIGN_FIELDS = tuple(f.name for f in fields(SessionSite) if f.name != "site")
+_Row = TypeVar("_Row")
 
 
 def _rank(stratum: str, site_id_: str) -> str:
@@ -640,9 +653,10 @@ def census(candidates: list[Candidate]) -> list[SessionSite]:
     return [_session_site(c.site, c, 1.0) for c in candidates]
 
 
-def shuffled(rows: list[SessionSite]) -> list[SessionSite]:
+def shuffled(rows: list[_Row]) -> list[_Row]:
     """One queue across every mode and stratum, in a seeded order that depends only on the
-    site ids, so the position of a site says nothing about its stratum."""
+    site ids, so the position of a site says nothing about its stratum. Any rows carrying a
+    ``site`` are shuffled alike: the UI queues the synthetic-edit check with the worklist."""
     queue = sorted(rows, key=lambda r: r.site.site_id)
     random.Random(f"{SALT}:order").shuffle(queue)
     return queue
@@ -770,13 +784,33 @@ def summarize(
 # --- verdicts --------------------------------------------------------------------------
 
 
+#: How a synthetic-edit check item sounded (#107): a real recitation, or not.
+NATURAL = "natural"
+UNNATURAL = "unnatural"
+#: The naturalness answers, in the order the page offers them.
+NATURALNESS = (NATURAL, UNNATURAL, UNCLEAR)
+
+
 @dataclass(frozen=True)
 class Verdict:
-    """What the listener heard at one site, in the truth-site vocabulary of its mark."""
+    """What the listener heard at one site, in the truth-site vocabulary of its mark, and
+    for a synthetic-edit check item also whether it sounded ``natural`` (one of
+    :data:`NATURALNESS`). ``natural`` is ``None`` for every other site and is then left out
+    of the file, so a verdicts file without it reads and rewrites byte for byte."""
 
     site_id: str
     heard: str
     note: str = ""
+    natural: str | None = None
+
+    def as_json(self) -> dict:
+        data = asdict(self)
+        if self.natural is None:
+            del data["natural"]
+        return data
+
+
+_VERDICT_KEYS = frozenset({"site_id", "heard", "note"})
 
 
 def hearable(mark: str) -> frozenset[str]:
@@ -794,8 +828,12 @@ def read_verdicts(path: Path = VERDICTS_PATH) -> dict[str, Verdict]:
             if not raw.strip():
                 continue
             data = json.loads(raw)
-            if not isinstance(data, dict) or set(data) != {"site_id", "heard", "note"}:
-                raise ValueError(f"{path}:{lineno}: a verdict is {{site_id, heard, note}}")
+            if not isinstance(data, dict) or set(data) - {"natural"} != _VERDICT_KEYS:
+                raise ValueError(
+                    f"{path}:{lineno}: a verdict is {{site_id, heard, note}} and optionally "
+                    f"natural")
+            if "natural" in data and data["natural"] not in NATURALNESS:
+                raise ValueError(f"{path}:{lineno}: natural must be one of {NATURALNESS}")
             if data["site_id"] in verdicts:
                 raise ValueError(f"{path}:{lineno}: a second verdict for {data['site_id']}")
             verdicts[data["site_id"]] = Verdict(**data)
@@ -806,7 +844,7 @@ def write_verdicts(verdicts: Mapping[str, Verdict], path: Path = VERDICTS_PATH) 
     """Rewrite the whole file atomically, sorted by site id, so an interrupted save leaves
     the previous verdicts intact and a re-save never reorders the diff."""
     write_text_atomically(path, "".join(
-        json.dumps(asdict(verdicts[key]), ensure_ascii=False, sort_keys=True) + "\n"
+        json.dumps(verdicts[key].as_json(), ensure_ascii=False, sort_keys=True) + "\n"
         for key in sorted(verdicts)
     ))
 
@@ -832,6 +870,54 @@ def adjudicated(sites: list[TruthSite], verdicts: Mapping[str, Verdict]) -> list
             )
         result.append(replace(site, heard=verdict.heard))
     return result
+
+
+# --- the session's audio ---------------------------------------------------------------
+
+#: The GPU box, and where the session's clips (#83) and the synthetic-edit check's items
+#: (#88, ``tadabur.edit_check.EDIT_AUDIO_REMOTE``) sit on it.
+GPU_HOST = "root@cuda-dev"
+SESSION_CLIPS_REMOTE = "/root/scratch/issue-83/stage/clips"
+
+
+def fetch_list(sources: Mapping[str, set[str]]) -> tuple[str, list[str]]:
+    """For ``{remote directory: file names}``, the directory they share and each file's
+    path under it: what one ``rsync --files-from`` copies into a single local directory."""
+    names = [name for group in sources.values() for name in group]
+    if len(names) != len(set(names)):
+        raise ValueError("two remote directories hold files of one name")
+    root = posixpath.commonpath(list(sources))
+    return root, [posixpath.join(posixpath.relpath(remote, root), name)
+                  for remote, group in sorted(sources.items()) for name in sorted(group)]
+
+
+def fetch(
+    rows: list[SessionSite], items: list[EditCheckSite], audio_dir: Path,
+    registry: Mapping[str, StagedClip], host: str = GPU_HOST,
+    sources: Mapping[str, str] | None = None, run: Callable[..., object] = subprocess.run,
+) -> None:
+    """Copy every clip the worklist plays and every edit-check item from ``host`` into
+    ``audio_dir`` with one rsync (files already there are kept), then verify each against
+    its recorded checksum:
+    the clips through the staged-clip registry (and their length), the items through the
+    blind check. ``sources`` maps ``"session"`` and ``"edit_check"`` to their remote
+    directories."""
+    from .edit_check import EDIT_AUDIO_REMOTE
+    from .edit_check import verify_audio as verify_edit_check_audio
+
+    remote = {"session": SESSION_CLIPS_REMOTE, "edit_check": EDIT_AUDIO_REMOTE,
+              **(sources or {})}
+    clips = {row.site.audio_filename for row in rows}
+    root, files = fetch_list({remote["session"]: clips,
+                              remote["edit_check"]: {i.site.audio_filename for i in items}})
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    run(["rsync", "-a", "--no-relative", "--files-from=-", f"{host}:{root}/", f"{audio_dir}/"],
+        input="".join(f"{path}\n" for path in files), text=True, check=True)
+    for name in sorted(clips):
+        verify_staged(registry[name], audio_dir)
+    verify_edit_check_audio(items, audio_dir)
+    print(f"{len(clips)} session clips and {len(items)} edit-check items verified in "
+          f"{audio_dir}")
 
 
 # --- CLI -------------------------------------------------------------------------------
@@ -910,9 +996,19 @@ def main() -> None:
     mine.add_argument("--sizes", type=Path, default=None,
                       help="JSON {stratum: sites to draw}; default DEFAULT_SIZES")
     commands.add_parser("clips", help="print the clip names the worklist plays, one per line")
+    fetch_ = commands.add_parser(
+        "fetch", help="copy the worklist's clips and the edit-check items from the GPU box "
+                      "into one local directory, and verify every checksum")
+    fetch_.add_argument("--audio-dir", type=Path, required=True)
+    fetch_.add_argument("--host", default=GPU_HOST)
     args = parser.parse_args()
     if args.command == "mine":
         _mine(args)
+    elif args.command == "fetch":
+        from .edit_check import load_edit_check
+
+        fetch(load_worklist(), load_edit_check(), args.audio_dir.expanduser(),
+              load_staged_clips(), args.host)
     else:
         print("\n".join(sorted({row.site.audio_filename for row in load_worklist()})))
 

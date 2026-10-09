@@ -17,7 +17,7 @@ rendering, manifest, worklist), [`synthetic_edit_plan.py`](../synthetic_edit_pla
 | `frame.json` | the edit frame: its rule, the indexes it was computed from (by checksum), every clip in it, the reciters it excludes |
 | `base_frames.json` | the base teacher's whole-clip CTC segments of every frame clip, with its realized reference and the decode fingerprint |
 | `edits.jsonl` | one row per edit or decoy: provenance, the change, the label, the output's checksum |
-| `summary.json` | candidates and pairs per operation and mark, the parameters, the blind check's make-up |
+| `summary.json` | candidates and pairs per operation and mark, the parameters, the blind check's make-up (items per operation, mark and role) |
 | `blind_check.jsonl` | the 30-item blind-check worklist, as truth-site skeletons |
 | `teacher_check.json` | whether the base teacher hears each item's label (a pre-screen, not truth) |
 
@@ -160,11 +160,48 @@ Synthetic edits never enter a real-mistake rate (acceptance rules §1).
 
 ## The blind check
 
-`blind_check.jsonl` holds 30 items, edits and decoys mixed (per operation 5 edits and 5
-decoys; the swaps are 9 `س↔ص` and 1 `ذ↔ز`): per operation, pairs in
-salted-hash order, alternating edit and decoy, never two items from one source clip (a
-listener who heard both versions of a recitation could tell which was changed). Rows are
-truth-site skeletons (`tadabur.truth_sites`, `source: synthetic_edit`, `heard: pending`):
+`blind_check.jsonl` holds 30 items, edits and decoys mixed, 10 per operation, drawn by
+`synthetic_edits.blind_check` from the committed manifest:
+
+- per operation, in rounds over its marks (codepoint order), so every mark is represented:
+  each round takes every mark's next pair in salted-hash order;
+- a pair contributes one item; within a mark the items alternate edit, decoy, edit, ...;
+- never two items of one **recitation**: the same source audio (Tadabur holds
+  byte-identical clips under more than one speaker id) or the same reciter reciting the
+  same ayah. A listener who heard both versions of a recitation could tell which was
+  changed.
+
+| operation | mark | edits | decoys |
+|---|---|---|---|
+| `shaddah_removed` | `shaddah` | 5 | 5 |
+| `shaddah_added` | `shaddah` | 5 | 5 |
+| `consonant_swap` | `ذ↔ز` | 2 | 2 |
+| `consonant_swap` | `ذ↔ظ` | 1 | |
+| `consonant_swap` | `س↔ص` | 2 | 2 |
+| `consonant_swap` | `ض↔ظ` | 1 | |
+
+**Redrawn for #107.** The first draw ranked an operation's pairs in one hash order, so the
+swaps came out 9 `س↔ص` and 1 `ذ↔ز`, and the `ذ↔ظ` swap (a truth-site mark since #84) was
+never drawn. Drawing in rounds over the marks keeps all 20 shaddah items and 5 of the
+swaps; 5 `س↔ص` items (2 edits, 3 decoys) gave way to a `ذ↔ظ` edit, a `ض↔ظ` edit and three
+`ذ↔ز` items (1 edit, 2 decoys). `ذ↔ظ` and `ض↔ظ` get one item each, an edit: the alternation
+starts with an edit, `ض↔ظ` has one pair, and the two `ذ↔ظ` pairs are one recitation
+(`spk0215_S17_A58` and `spk0234_S17_A58` are the same audio, so their edits are
+byte-identical). Redraw without the audio, from `tools/`:
+
+```bash
+python -m tadabur.synthetic_edits blind-check
+```
+
+**Two `ذ↔ظ` decoys carry no splice.** Each `ذ↔ظ` decoy's donor is the other speaker id's copy
+of its own source clip, at the same carrier, so the splice replaces samples with themselves
+and the decoy is byte-identical to its source. Neither is in the blind check. More broadly,
+31 source recordings back more than one pair under different file names; the blind check
+draws at most one item from each, but selection's per-clip cap (by file name) does not see
+them.
+
+Rows are truth-site skeletons (`tadabur.truth_sites`, `source: synthetic_edit`,
+`heard: pending`):
 
 - `audio_filename` is the rendered file's opaque name, `start_sample` 0 and `end_sample` its
   length, `audio_sha256` its checksum; `shard` is the source clip's (the edit manifest maps
@@ -174,14 +211,16 @@ truth-site skeletons (`tadabur.truth_sites`, `source: synthetic_edit`, `heard: p
 - `site_id` is `synthetic_edit:<hash>` and `stratum` is `synthetic_edit:blind_check` for all.
 
 The listener answers **what was said** at the carrier (held / not held, or which letter of the
-pair) and **whether it sounds natural**. The truth-site schema has no field for the second
-question, so the blind UI (#87) records it beside the verdict. Every mark the truth-site schema
-accepts is eligible, `ذ↔ظ` included since #84 added it (none was drawn this time). The page must never show the
-manifest's `role`, `operation` or `label`.
+pair) and **whether it sounds natural**, in the owner's listening session
+([`../listening_session/README.md`](../listening_session/README.md), #107): the items share
+its shuffled queue and blinding, and both answers go into one verdict in its
+`verdicts.jsonl`. The page never receives the manifest's `role`, `operation` or `label`;
+the UI does not even load the manifest. `python -m tadabur.edit_check_summary` tallies the
+verdicts per operation for #90, after the session.
 
-The audio is served from `/root/scratch/issue-88/stage/edits/audio/` on the GPU box: pass
-that directory as the UI's audio directory, and every row's file is verified against its
-`audio_sha256` by `load_truth_sites(path, audio_dir=...)`.
+The audio is on the GPU box in `/root/scratch/issue-88/stage/edits/audio/`.
+`python -m tadabur.listening_session fetch` copies the drawn items next to the session's
+clips, and every row's file is verified against its `audio_sha256` before it is served.
 
 ## Exposure
 

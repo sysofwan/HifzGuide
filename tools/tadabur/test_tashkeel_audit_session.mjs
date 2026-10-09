@@ -11,19 +11,28 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function harness(heard = [null, null, null]) {
+// `natural`, when given, makes every site also ask whether it sounds natural, with that
+// stored answer.
+function harness(heard = [null, null, null], natural = null) {
   let now = 0;
   const saves = [];
   const plays = [];
   const errors = [];
-  const sites = heard.map((h, i) => ({ key: `k${i}`, heard: h, note: "", choices: ["a", "b"] }));
+  const drafts = [];
+  const sites = heard.map((h, i) => ({
+    key: `k${i}`, heard: h, note: "", choices: ["a", "b"],
+    ...(natural && { natural: natural[i], natural_choices: ["natural", "unnatural"] }),
+  }));
   const session = createSession({
     api: {
       sites: async () => sites.map((site) => ({ ...site })),
       save: (body) => { const d = deferred(); saves.push({ body, ...d }); return d.promise; },
     },
     player: { play: (key) => plays.push(key), stop: () => plays.push(null) },
-    view: { render() {}, saving() {}, error: (message) => errors.push(message) },
+    view: {
+      render() {}, saving() {}, error: (message) => errors.push(message),
+      drafted: (draft) => drafts.push({ ...draft }),
+    },
     clock: () => now,
   });
   const tick = (ms = ANSWER_GUARD_MS) => { now += ms; };
@@ -32,7 +41,7 @@ function harness(heard = [null, null, null]) {
     const { playing, key } = session.state();
     assert.ok(playing === null || playing === key, `playing ${playing} while ${key} is shown`);
   };
-  return { session, saves, plays, errors, tick, settle, consistent };
+  return { session, saves, plays, errors, drafts, tick, settle, consistent };
 }
 
 test("a double tap answers only the site on screen", async () => {
@@ -123,4 +132,66 @@ test("every change of site stops playback, and what plays is the site on screen"
   await answering;
   h.consistent();
   assert.equal(h.session.state().playing, h.session.state().key);
+});
+
+test("a site that asks whether it sounds natural is saved once, with both answers", async () => {
+  const h = harness([null, null], [null, null]);
+  await h.session.load();
+  h.tick();
+  assert.equal(await h.session.answer("a", ""), false);  // a draft: shown, not saved
+  assert.deepEqual(h.drafts, [{ heard: "a" }]);
+  assert.equal(h.saves.length, 0);
+  assert.equal(h.session.state().index, 0);
+  const saving = h.session.judge("unnatural", "a click");
+  assert.deepEqual(h.saves[0].body,
+    { key: "k0", heard: "a", natural: "unnatural", note: "a click", previous: null });
+  h.saves[0].resolve();
+  assert.equal(await saving, true);
+  assert.equal(h.session.state().answered, 1);
+  assert.equal(h.session.state().index, 1);
+});
+
+test("either answer may come first, and a draft is dropped when the site changes", async () => {
+  const h = harness([null, null], [null, null]);
+  await h.session.load();
+  h.tick();
+  await h.session.judge("natural", "");
+  h.session.move(1);
+  h.tick();
+  h.session.move(-1);
+  h.tick();
+  assert.equal(await h.session.answer("b", ""), false);  // the earlier judgement is gone
+  const saving = h.session.judge("natural", "");
+  assert.deepEqual(h.saves.map((s) => [s.body.heard, s.body.natural]), [["b", "natural"]]);
+  h.saves[0].resolve();
+  await saving;
+});
+
+test("changing one answer of a saved pair saves the pair and names the one it replaces", async () => {
+  const h = harness(["a", null], ["natural", null]);
+  await h.session.load();
+  assert.equal(h.session.state().key, "k1");
+  assert.equal(h.session.state().answered, 1);
+  h.tick();
+  h.session.move(-1);
+  h.tick();
+  const change = h.session.judge("unnatural", "");
+  assert.deepEqual(h.saves[0].body, {
+    key: "k0", heard: "a", natural: "unnatural", note: "",
+    previous: { heard: "a", natural: "natural" },
+  });
+  h.saves[0].resolve();
+  assert.equal(await change, true);
+});
+
+test("the naturalness question is guarded, and refused where it is not asked", async () => {
+  const plain = harness();
+  await plain.session.load();
+  plain.tick();
+  assert.equal(await plain.session.judge("natural", ""), false);
+  assert.equal(plain.saves.length, 0);
+  const h = harness([null], [null]);
+  await h.session.load();
+  assert.equal(await h.session.judge("natural", ""), false);  // the site just appeared
+  assert.deepEqual(h.drafts, []);
 });

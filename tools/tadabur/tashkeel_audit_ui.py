@@ -10,6 +10,13 @@ each site and record **what the reciter said**, one shuffled queue across three 
 * **consonant** — which of the pair's two letters was said, or unclear. The P3.5 nominal
   rejects come up here and in shaddah, indistinguishable from the mined sites.
 
+The synthetic-edit check (#107, :mod:`tadabur.edit_check`) shares the queue: each of its
+items asks the shaddah or consonant question of its mark and whether the recitation
+sounds natural (:data:`~tadabur.listening_session.NATURALNESS`); the page saves
+both together as one verdict. An edit and its decoy are indistinguishable on the page: the
+UI loads only the truth-site skeletons (the source's reference and carrier, an opaque id
+and file name), never the edit manifest, and plays the item whole.
+
 **The page is blind** (ADR-0007). It never receives a model's output, the mark or letter
 the mushaf prescribes, the site's stratum, source, id or sampling weight, or any running
 tally: :meth:`SessionState.payload` builds the only thing it is sent. The displayed text
@@ -25,14 +32,16 @@ is only "n of N answered".
 
 Each answer is written straight into the tracked verdicts file
 (``listening_session/verdicts.jsonl``) keyed by site id, so the UI resumes from it and
-committing it is the only step after the session. Audio is the site's **excerpt** (the
-carrier's word and one either side) sliced from the staged clip, or the whole segment on
-request; every clip is checked against the staged-clip registry's checksum and length
-before the server starts.
+committing it is the only step after the session. The queue is every site and item in one
+seeded order of their ids (:func:`~tadabur.listening_session.shuffled`). Audio is the
+site's **excerpt** (the carrier's word and one either side) sliced from the staged clip, or
+the whole segment on request; every clip is checked against the staged-clip registry's
+checksum and length, and every edit-check item against its checksum, before the server
+starts.
 
-Usage (from ``tools/``)::
+Usage (from ``tools/``; ``python -m tadabur.listening_session fetch`` copies the audio)::
 
-  python -m tadabur.tashkeel_audit_ui --audio-dir <staged clips> --host 0.0.0.0 [--port 8000]
+  python -m tadabur.tashkeel_audit_ui --audio-dir <session audio> --host 0.0.0.0 [--port 8000]
 """
 
 from __future__ import annotations
@@ -52,8 +61,11 @@ import numpy as np
 
 from .audio import TARGET_SAMPLE_RATE, read_audio
 from .audit_http import AuditHandler, serve
+from .edit_check import BLIND_CHECK_PATH, WORDS_PATH, EditCheckSite, load_edit_check
+from .edit_check import verify_audio as verify_edit_check_audio
 from .listening_session import (
     MADD,
+    NATURALNESS,
     QALQALA,
     SALT,
     SHADDAH_MODE,
@@ -66,6 +78,7 @@ from .listening_session import (
     load_worklist,
     read_verdicts,
     run_start,
+    shuffled,
     write_verdicts,
 )
 from .staged_audio import StagedClip, load_staged_clips, verify_staged
@@ -85,8 +98,12 @@ _MARK_TELLS = _HARAKAT | MADD | {QALQALA}
 _TASHKEEL_CHOICES = (*HARAKA_CHARS, SUKUN, UNCLEAR)  # fatha, damma, kasra
 _SHADDAH_CHOICES = (HELD, NOT_HELD, UNCLEAR)
 
+#: A row of the queue: a session site, or a synthetic-edit check item (which also asks
+#: whether it sounds natural).
+Row = SessionSite | EditCheckSite
 
-def choices(row: SessionSite) -> tuple[str, ...]:
+
+def choices(row: Row) -> tuple[str, ...]:
     """The answers the page offers for ``row``: the same for every site of its mode, so
     the order cannot hint at the prescribed one (a pair's letters in label order)."""
     if row.mode == TASHKEEL_MODE:
@@ -107,7 +124,7 @@ class Target:
     mode: str
 
 
-def _words(row: SessionSite) -> list[tuple[tuple[str, int, str], int]]:
+def _words(row: Row) -> list[tuple[tuple[str, int, str], int]]:
     """Each word of the row's segment as ``(Target.word, its start in the reference)``."""
     reference, offsets = row.site.reference, row.word_offsets
     return [
@@ -116,7 +133,7 @@ def _words(row: SessionSite) -> list[tuple[tuple[str, int, str], int]]:
     ]
 
 
-def target_of(row: SessionSite) -> Target:
+def target_of(row: Row) -> Target:
     index = row.site.reference_index
     word, start = [w for w in _words(row) if w[1] <= index][-1]
     return Target(word, index - start, row.mode)
@@ -141,7 +158,7 @@ def _hide(reference: str, shown: list[str], index: int, mode: str) -> None:
         blank_while(after_run, {QALQALA})
 
 
-def masked(row: SessionSite, targets: Mapping[tuple[str, int, str], list[Target]]) -> list[str]:
+def masked(row: Row, targets: Mapping[tuple[str, int, str], list[Target]]) -> list[str]:
     """The row's reference as the page shows it, character by character, with the answer of
     every target in any of its words hidden."""
     reference = row.site.reference
@@ -153,7 +170,7 @@ def masked(row: SessionSite, targets: Mapping[tuple[str, int, str], list[Target]
 
 
 def blind_reference(
-    row: SessionSite, targets: Mapping[tuple[str, int, str], list[Target]]
+    row: Row, targets: Mapping[tuple[str, int, str], list[Target]]
 ) -> tuple[str, str, str]:
     """:func:`masked` split around the row's carrier. The highlight runs from the first
     letter of the carrier's geminate (the carrier itself if it is single) to the carrier,
@@ -206,6 +223,21 @@ def verify_audio(
         verify_staged(clip, audio_dir)
 
 
+def asks_naturalness(row: Row) -> bool:
+    """Whether the page also asks if the row sounds natural: the synthetic-edit check."""
+    return isinstance(row, EditCheckSite)
+
+
+def stored_answer(row: Row, verdict: Verdict | None) -> object:
+    """The stored answer as the page names it in ``previous``: ``None`` for none, the heard
+    value, or for an edit-check item ``{"heard", "natural"}``."""
+    if verdict is None:
+        return None
+    if asks_naturalness(row):
+        return {"heard": verdict.heard, "natural": verdict.natural}
+    return verdict.heard
+
+
 class StaleAnswer(Exception):
     """The answer replaces one the client did not see: the site was answered since."""
 
@@ -217,11 +249,11 @@ class SessionState:
     is not on disk. A verdict for a site outside the worklist (a re-mine dropped it) is kept
     on save and never shown."""
 
-    rows: list[SessionSite]
+    rows: list[Row]
     verdicts_path: Path
     audio_dir: Path
     verdicts: dict[str, Verdict] = field(default_factory=dict)
-    _by_key: dict[str, SessionSite] = field(default_factory=dict)
+    _by_key: dict[str, Row] = field(default_factory=dict)
     _targets: dict[tuple[str, int, str], list[Target]] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -235,21 +267,26 @@ class SessionState:
 
     @classmethod
     def load(
-        cls, worklist: Path, verdicts: Path, audio_dir: Path, registry: dict[str, StagedClip]
+        cls, worklist: Path, verdicts: Path, audio_dir: Path, registry: dict[str, StagedClip],
+        edit_check: Path | None = None, edit_words: Path = WORDS_PATH,
     ) -> "SessionState":
+        """The session's worklist and, with ``edit_check``, the synthetic-edit check, in
+        one shuffled queue, once every clip and item they play is verified."""
         rows = load_worklist(worklist)
         verify_audio(rows, registry, audio_dir)
-        return cls(rows=rows, verdicts_path=verdicts, audio_dir=audio_dir,
-                   verdicts=read_verdicts(verdicts))
+        items = [] if edit_check is None else load_edit_check(edit_check, edit_words)
+        verify_edit_check_audio(items, audio_dir)
+        return cls(rows=shuffled([*rows, *items]), verdicts_path=verdicts,
+                   audio_dir=audio_dir, verdicts=read_verdicts(verdicts))
 
-    def row(self, key: str) -> SessionSite:
+    def row(self, key: str) -> Row:
         return self._by_key[key]
 
-    def view(self, row: SessionSite) -> dict:
+    def view(self, row: Row) -> dict:
         """Everything the page may know about one site, and nothing else."""
         before, carrier, after = blind_reference(row, self._targets)
         verdict = self.verdicts.get(row.site.site_id)
-        return {
+        view = {
             "key": page_key(row.site.site_id),
             "mode": row.mode,
             "surah_ayah": row.site.surah_ayah,
@@ -260,24 +297,32 @@ class SessionState:
             "heard": verdict.heard if verdict else None,
             "note": verdict.note if verdict else "",
         }
+        if asks_naturalness(row):
+            view["natural_choices"] = list(NATURALNESS)
+            view["natural"] = verdict.natural if verdict else None
+        return view
 
     def payload(self) -> dict:
         """The whole response ``/api/sites`` sends."""
         return {"sites": [self.view(row) for row in self.rows], "progress": self.progress()}
 
-    def record(self, key: str, heard: object, note: str, previous: object) -> Verdict:
+    def record(
+        self, key: str, heard: object, note: str, previous: object, natural: object = None
+    ) -> Verdict:
         """Persist one answer, replacing ``previous`` (the answer the client last saw for
-        the site, ``None`` for none). Raises ``KeyError`` for an unknown key, ``ValueError``
-        for an answer the question does not offer, :class:`StaleAnswer` when the stored
-        answer is no longer ``previous``, and ``OSError`` when the file cannot be written;
-        nothing changes in any of those cases."""
+        the site, as :func:`stored_answer` gives it). ``natural`` is the naturalness answer,
+        required for an edit-check item and refused for any other site. Raises ``KeyError``
+        for an unknown key, ``ValueError`` for an answer the question does not offer,
+        :class:`StaleAnswer` when the stored answer is no longer ``previous``, and
+        ``OSError`` when the file cannot be written; nothing changes in any of those cases."""
         row = self.row(key)
         if heard not in hearable(row.site.mark):
             raise ValueError(f"{heard!r} is not an answer to this question")
-        verdict = Verdict(site_id=row.site.site_id, heard=heard, note=note)
+        if natural not in (NATURALNESS if asks_naturalness(row) else (None,)):
+            raise ValueError(f"{natural!r} is not an answer to whether this sounds natural")
+        verdict = Verdict(site_id=row.site.site_id, heard=heard, note=note, natural=natural)
         with self._lock:
-            stored = self.verdicts.get(verdict.site_id)
-            if (stored.heard if stored else None) != previous:
+            if stored_answer(row, self.verdicts.get(verdict.site_id)) != previous:
                 raise StaleAnswer("this site was answered elsewhere since; reload the page")
             proposed = {**self.verdicts, verdict.site_id: verdict}
             write_verdicts(proposed, self.verdicts_path)
@@ -335,11 +380,13 @@ class SessionHandler(AuditHandler):
             self.send_json({"error": "body must be JSON"}, status=400)
             return
         if not isinstance(payload, dict) or not isinstance(payload.get("note", ""), str):
-            self.send_json({"error": "body must be {key, heard, note, previous}"}, status=400)
+            self.send_json({"error": "body must be {key, heard, note, previous[, natural]}"},
+                           status=400)
             return
         try:
             self.state.record(str(payload.get("key", "")), payload.get("heard"),
-                              payload.get("note", ""), payload.get("previous"))
+                              payload.get("note", ""), payload.get("previous"),
+                              payload.get("natural"))
         except StaleAnswer as error:
             self.send_json({"error": str(error)}, status=409)
             return
@@ -360,8 +407,13 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--audio-dir", type=Path, required=True,
-                        help="directory holding the staged 16 kHz clips the worklist plays")
+                        help="directory holding the staged 16 kHz clips the worklist plays "
+                             "and the edit-check items (listening_session fetch)")
     parser.add_argument("--worklist", type=Path, default=WORKLIST_PATH)
+    parser.add_argument("--edit-check", type=Path, default=BLIND_CHECK_PATH,
+                        help="the synthetic-edit blind check asked in the same queue")
+    parser.add_argument("--edit-words", type=Path, default=WORDS_PATH,
+                        help="the word offsets of the blind check's references")
     parser.add_argument("--verdicts", type=Path, default=VERDICTS_PATH,
                         help="the tracked verdicts JSONL; resumed if present")
     parser.add_argument("--port", type=int, default=8000)
@@ -373,7 +425,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     state = SessionState.load(args.worklist, args.verdicts, args.audio_dir,
-                              load_staged_clips())
+                              load_staged_clips(), args.edit_check, args.edit_words)
     progress = state.progress()
     print(f"{progress['answered']} of {progress['total']} answered. "
           f"Serving on http://{args.host}:{args.port}/", flush=True)

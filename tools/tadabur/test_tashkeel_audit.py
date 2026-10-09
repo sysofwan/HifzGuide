@@ -1,8 +1,8 @@
-"""Tests for the tashkeel audit's storage, comparison and UI logic (#60).
+"""Tests for the tashkeel audit's storage and comparison logic (#60).
 
-Exercises the adjudication round-trip, the blind view the listener is served, the
-window-slice WAV encoding and the population-scaled over-strictness comparison — all
-without binding a socket.
+Exercises the adjudication round-trip, the WAV encoding the audit UI serves and the
+population-scaled over-strictness comparison. The UI's blind view is tested with the
+listening session (``test_tashkeel_audit_ui.py``).
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ import io
 import json
 import wave
 from types import SimpleNamespace
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -33,7 +32,6 @@ from training.tashkeel_worklist import (
     REGRESSED,
     TashkeelSite,
     site_id,
-    write_worklist,
 )
 
 from .tashkeel_acceptance import (
@@ -42,7 +40,7 @@ from .tashkeel_acceptance import (
     component_z,
     summarize_direction,
 )
-from .tashkeel_audit_ui import AuditState, ClipCache, encode_wav
+from .tashkeel_audit_ui import encode_wav
 from .tashkeel_fixtures import (
     NONE,
     UNCLEAR,
@@ -106,6 +104,23 @@ def test_a_resubmitted_verdict_replaces_the_earlier_one(tmp_path):
         encoding="utf-8",
     )
     assert read_adjudications(path)[site.site_id].verdict == UNCLEAR
+
+
+def test_an_interrupted_write_cannot_destroy_the_verdicts_already_recorded(tmp_path):
+    # The file is rewritten whole on every save; writing in place would put the
+    # accumulated audit inside each truncation window.
+    path = tmp_path / "adjudications.jsonl"
+    first = {a.site_id: a for a in [_verdict(_site(1, RECOVERED), "fatha")]}
+    write_adjudications(path, first)
+    original = path.read_bytes()
+
+    class Exploding(dict):
+        def __getitem__(self, key):
+            raise RuntimeError("crash mid-write")
+
+    with pytest.raises(RuntimeError):
+        write_adjudications(path, Exploding({"x": None}))
+    assert path.read_bytes() == original
 
 
 def test_an_unknown_verdict_is_refused():
@@ -275,113 +290,6 @@ def test_samples_beyond_full_scale_clip_instead_of_wrapping():
     assert pcm.tolist() == [32767, -32767]
 
 
-def test_a_clip_missing_from_the_audio_dir_names_both_layouts(tmp_path):
-    with pytest.raises(FileNotFoundError, match="hash-prefixed"):
-        ClipCache(tmp_path).waveform("absent.wav")
-
-
-def test_a_clip_name_escaping_the_audio_dir_is_refused(tmp_path):
-    # read_worklist validates field *names*, not contents, and this server is meant to be
-    # bound to 0.0.0.0 -- a traversing clip name must not reach the filesystem.
-    outside = tmp_path / "secret.wav"
-    outside.write_bytes(b"RIFF....WAVEfmt ")
-    audio_dir = tmp_path / "clips"
-    audio_dir.mkdir()
-    with pytest.raises(FileNotFoundError):
-        ClipCache(audio_dir).waveform("../secret.wav")
-
-
-# --- UI state -------------------------------------------------------------------------
-
-
-def _state(tmp_path, sites) -> AuditState:
-    worklist = tmp_path / "worklist.jsonl"
-    write_worklist(worklist, sites)
-    return AuditState.load(worklist, tmp_path / "adjudications.jsonl", tmp_path)
-
-
-def test_the_listener_is_never_told_which_model_did_what(tmp_path):
-    state = _state(tmp_path, [_site(1, RECOVERED)])
-    view = state.view(state.sites[0])
-    assert not {"direction", "base_outcome", "candidate_outcome", "base_vowel",
-                "candidate_vowel"} & view.keys()
-
-
-def test_the_reference_vowel_is_withheld_and_stripped_from_the_displayed_reference(tmp_path):
-    # Showing the prescribed vowel primes the listener toward the answer that scores as
-    # confirmed over-strictness -- the reading that flatters the fine-tune.
-    state = _state(tmp_path, [_site(1, RECOVERED, KASRA)])
-    view = state.view(state.sites[0])
-    assert "reference_vowel" not in view
-    assert KASRA not in view["reference"]
-    assert view["reference"] == "مالك"
-
-
-def test_the_carrier_index_points_at_the_letter_to_judge_after_the_vowel_is_removed(tmp_path):
-    state = _state(tmp_path, [_site(1, RECOVERED, FATHA)])
-    view = state.view(state.sites[0])
-    assert view["reference"][view["carrier_index"]] == "م"
-
-
-def test_surrounding_harakat_survive_as_context(tmp_path):
-    site = _site(1, RECOVERED, FATHA)
-    site = TashkeelSite(**{**site.__dict__, "reference": f"م{FATHA}ل{KASRA}ك",
-                           "reference_index": 1})
-    state = _state(tmp_path, [site])
-    view = state.view(state.sites[0])
-    assert view["reference"] == f"مل{KASRA}ك"
-
-
-def test_a_recorded_verdict_persists_and_shows_up_in_the_view(tmp_path):
-    state = _state(tmp_path, [_site(1, RECOVERED), _site(2, REGRESSED)])
-    state.record(state.sites[0].site_id, "damma", "sounded short")
-    assert state.progress() == {"total": 2, "judged": 1}
-    assert state.view(state.sites[0])["verdict"] == "damma"
-    assert read_adjudications(state.adjudications_path)[state.sites[0].site_id].note == "sounded short"
-
-
-def test_recording_against_an_unknown_site_is_an_error(tmp_path):
-    state = _state(tmp_path, [_site(1, RECOVERED)])
-    with pytest.raises(KeyError):
-        state.record("not-a-site", "fatha", "")
-
-
-def test_an_interrupted_write_cannot_destroy_the_verdicts_already_recorded(tmp_path):
-    # The UI rewrites the whole file on every keystroke; writing in place would put the
-    # accumulated audit inside each truncation window.
-    path = tmp_path / "adjudications.jsonl"
-    first = {a.site_id: a for a in [_verdict(_site(1, RECOVERED), "fatha")]}
-    write_adjudications(path, first)
-    original = path.read_bytes()
-
-    class Exploding(dict):
-        def __getitem__(self, key):
-            raise RuntimeError("crash mid-write")
-
-    with pytest.raises(RuntimeError):
-        write_adjudications(path, Exploding({"x": None}))
-    assert path.read_bytes() == original
-
-
-def test_the_ui_exposes_no_result_route_to_probe(tmp_path):
-    # A listener who can watch the recovered/regressed tallies move can submit a verdict,
-    # see which way it pushed the gain, and revise it -- undoing the blinding entirely.
-    assert not hasattr(AuditState, "results")
-    source = (Path(__file__).parent / "tashkeel_audit_ui.py").read_text(encoding="utf-8")
-    assert "/api/results" not in source
-
-
-def test_the_state_resumes_from_whatever_the_file_already_holds(tmp_path):
-    state = _state(tmp_path, [_site(1, RECOVERED), _site(2, REGRESSED)])
-    state.record(state.sites[1].site_id, "kasra", "")
-    resumed = AuditState.load(
-        tmp_path / "worklist.jsonl", tmp_path / "adjudications.jsonl", tmp_path
-    )
-    assert resumed.progress() == {"total": 2, "judged": 1}
-    assert resumed.view(resumed.sites[1])["verdict"] == "kasra"
-
-
-# --- the candidate-free static set ------------------------------------------------------
 def _static_site(index: int, stratum: str, vowel: str = FATHA) -> TashkeelSite:
     """A site mined without any candidate: base outcome known, candidate fields empty."""
     return TashkeelSite(

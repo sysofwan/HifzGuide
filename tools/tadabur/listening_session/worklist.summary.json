@@ -1,0 +1,877 @@
+{
+  "base_decode": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+  },
+  "excerpts_whole_segment": 41,
+  "h448_decode": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "decode_fingerprint": {
+      "autocast": true,
+      "batch_size": 16,
+      "device_type": "cuda",
+      "mode": "confirmed-stream-v2-flush",
+      "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+      "policy": "fp32-features-v1",
+      "weights_dtype": "fp32"
+    },
+    "segment_margin_s": 0.5
+  },
+  "inputs": {
+    "mining_pool/base_decodes.json": "57f2b60727381bfa29019c5813835e1403c835784a73c1052b440f11026ed9d7",
+    "mining_pool/clips.jsonl": "885901089d5ed50f21f40405d0c8568a79fbe2319560b906ea429f46e629cf6e",
+    "mining_pool/h448_stream_decodes.json": "1bf9b8cf15c1d2062cfa5fea3ace7cb44ed1a4d0526b16a3e7c7f496ca7dd3b8",
+    "truth_sites/p35_fixtures.jsonl": "654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8"
+  },
+  "listening_minutes": 78.8,
+  "listening_model": {
+    "answer_seconds": 4.0,
+    "excerpt_pad_s": 0.3,
+    "min_excerpt_s": 1.0,
+    "plays_per_site": 2
+  },
+  "modes": {
+    "consonant": {
+      "listening_minutes": 9.2,
+      "sites": 47
+    },
+    "shaddah": {
+      "listening_minutes": 13.7,
+      "sites": 73
+    },
+    "tashkeel": {
+      "listening_minutes": 55.9,
+      "sites": 265
+    }
+  },
+  "salt": "issue-87-listening-session-v1",
+  "sites": 385,
+  "sizes": {
+    "new_audit:damma:base_empty:h448_empty": 15,
+    "new_audit:damma:base_empty:h448_matched": 5,
+    "new_audit:damma:base_empty:h448_other": 3,
+    "new_audit:damma:base_matched:h448_empty": 25,
+    "new_audit:damma:base_matched:h448_matched": 10,
+    "new_audit:damma:base_matched:h448_other": 4,
+    "new_audit:damma:base_other:h448_empty": 5,
+    "new_audit:damma:base_other:h448_matched": 3,
+    "new_audit:damma:base_other:h448_other": 3,
+    "new_audit:fatha:base_empty:h448_empty": 15,
+    "new_audit:fatha:base_empty:h448_matched": 5,
+    "new_audit:fatha:base_empty:h448_other": 3,
+    "new_audit:fatha:base_matched:h448_empty": 25,
+    "new_audit:fatha:base_matched:h448_matched": 10,
+    "new_audit:fatha:base_matched:h448_other": 4,
+    "new_audit:fatha:base_other:h448_empty": 5,
+    "new_audit:fatha:base_other:h448_matched": 3,
+    "new_audit:fatha:base_other:h448_other": 3,
+    "new_audit:kasra:base_empty:h448_empty": 15,
+    "new_audit:kasra:base_empty:h448_matched": 5,
+    "new_audit:kasra:base_empty:h448_other": 3,
+    "new_audit:kasra:base_matched:h448_empty": 25,
+    "new_audit:kasra:base_matched:h448_matched": 10,
+    "new_audit:kasra:base_matched:h448_other": 4,
+    "new_audit:kasra:base_other:h448_empty": 5,
+    "new_audit:kasra:base_other:h448_matched": 3,
+    "new_audit:kasra:base_other:h448_other": 3,
+    "new_audit:shaddah:held:base_rest": 0,
+    "new_audit:shaddah:held:base_single": 60,
+    "new_audit:shaddah:held:cross_word": 0,
+    "new_audit:shaddah:not_held:base_double": 0,
+    "new_audit:shaddah:not_held:base_rest": 0,
+    "new_audit:sukun:base_empty:h448_empty": 15,
+    "new_audit:sukun:base_empty:h448_haraka": 15,
+    "new_audit:sukun:base_empty:h448_other": 5,
+    "new_audit:sukun:base_haraka:h448_empty": 4,
+    "new_audit:sukun:base_haraka:h448_haraka": 8,
+    "new_audit:sukun:base_haraka:h448_other": 2,
+    "new_audit:sukun:base_other:h448_empty": 3,
+    "new_audit:sukun:base_other:h448_haraka": 2,
+    "new_audit:sukun:base_other:h448_other": 3,
+    "new_audit:ت→ط:base_partner": 5,
+    "new_audit:ت→ط:base_rest": 0,
+    "new_audit:ح→ه:base_partner": 5,
+    "new_audit:ح→ه:base_rest": 0,
+    "new_audit:ذ→ز:base_partner": 5,
+    "new_audit:ذ→ز:base_rest": 0,
+    "new_audit:ذ→ظ:base_partner": 5,
+    "new_audit:ذ→ظ:base_rest": 0,
+    "new_audit:ز→ذ:base_partner": 5,
+    "new_audit:ز→ذ:base_rest": 0,
+    "new_audit:س→ص:base_partner": 5,
+    "new_audit:س→ص:base_rest": 0,
+    "new_audit:ص→س:base_partner": 5,
+    "new_audit:ص→س:base_rest": 0,
+    "new_audit:ض→ظ:base_partner": 5,
+    "new_audit:ض→ظ:base_rest": 0,
+    "new_audit:ط→ت:base_partner": 5,
+    "new_audit:ط→ت:base_rest": 0,
+    "new_audit:ظ→ذ:base_partner": 5,
+    "new_audit:ظ→ذ:base_rest": 0,
+    "new_audit:ظ→ض:base_partner": 5,
+    "new_audit:ظ→ض:base_rest": 0,
+    "new_audit:ق→ك:base_partner": 5,
+    "new_audit:ق→ك:base_rest": 0,
+    "new_audit:ك→ق:base_partner": 5,
+    "new_audit:ك→ق:base_rest": 0,
+    "new_audit:ه→ح:base_partner": 5,
+    "new_audit:ه→ح:base_rest": 0
+  },
+  "strata": {
+    "new_audit:damma:base_empty:h448_empty": {
+      "draw_probability": 0.75,
+      "inclusion_probability_max": 0.75,
+      "inclusion_probability_min": 0.039735099337748346,
+      "listening_minutes": 2.8,
+      "population": 20,
+      "population_reciters": 15,
+      "sampled": 15,
+      "sampled_reciters": 12
+    },
+    "new_audit:damma:base_empty:h448_matched": {
+      "draw_probability": 0.09803921568627451,
+      "inclusion_probability_max": 0.09803921568627451,
+      "inclusion_probability_min": 0.013522650439486139,
+      "listening_minutes": 1.3,
+      "population": 51,
+      "population_reciters": 45,
+      "sampled": 5,
+      "sampled_reciters": 4
+    },
+    "new_audit:damma:base_empty:h448_other": {
+      "draw_probability": 0.42857142857142855,
+      "inclusion_probability_max": 0.42857142857142855,
+      "inclusion_probability_min": 0.3116883116883117,
+      "listening_minutes": 0.7,
+      "population": 7,
+      "population_reciters": 7,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:damma:base_matched:h448_empty": {
+      "draw_probability": 0.05102040816326531,
+      "inclusion_probability_max": 0.05102040816326531,
+      "inclusion_probability_min": 0.00265041081367612,
+      "listening_minutes": 5.6,
+      "population": 490,
+      "population_reciters": 189,
+      "sampled": 25,
+      "sampled_reciters": 24
+    },
+    "new_audit:damma:base_matched:h448_matched": {
+      "draw_probability": 0.001349345567399811,
+      "inclusion_probability_max": 0.001349345567399811,
+      "inclusion_probability_min": 4.516637882509827e-05,
+      "listening_minutes": 2.1,
+      "population": 7411,
+      "population_reciters": 376,
+      "sampled": 10,
+      "sampled_reciters": 9
+    },
+    "new_audit:damma:base_matched:h448_other": {
+      "draw_probability": 0.0057553956834532375,
+      "inclusion_probability_max": 0.0057553956834532375,
+      "inclusion_probability_min": 0.0015347721822541968,
+      "listening_minutes": 1.2,
+      "population": 695,
+      "population_reciters": 235,
+      "sampled": 4,
+      "sampled_reciters": 4
+    },
+    "new_audit:damma:base_other:h448_empty": {
+      "draw_probability": 0.38461538461538464,
+      "inclusion_probability_max": 0.38461538461538464,
+      "inclusion_probability_min": 0.21978021978021978,
+      "listening_minutes": 1.0,
+      "population": 13,
+      "population_reciters": 12,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:damma:base_other:h448_matched": {
+      "draw_probability": 0.029411764705882353,
+      "inclusion_probability_max": 0.029411764705882353,
+      "inclusion_probability_min": 0.0017174753112924,
+      "listening_minutes": 0.7,
+      "population": 102,
+      "population_reciters": 76,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:damma:base_other:h448_other": {
+      "draw_probability": 0.015789473684210527,
+      "inclusion_probability_max": 0.0031578947368421056,
+      "inclusion_probability_min": 0.0008477569763334511,
+      "listening_minutes": 0.5,
+      "population": 190,
+      "population_reciters": 127,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:fatha:base_empty:h448_empty": {
+      "draw_probability": 0.1875,
+      "inclusion_probability_max": 0.1875,
+      "inclusion_probability_min": 0.008823529411764706,
+      "listening_minutes": 2.6,
+      "population": 80,
+      "population_reciters": 62,
+      "sampled": 15,
+      "sampled_reciters": 15
+    },
+    "new_audit:fatha:base_empty:h448_matched": {
+      "draw_probability": 0.0273224043715847,
+      "inclusion_probability_max": 0.0273224043715847,
+      "inclusion_probability_min": 0.010408534998698931,
+      "listening_minutes": 0.9,
+      "population": 183,
+      "population_reciters": 117,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:fatha:base_empty:h448_other": {
+      "draw_probability": 0.06382978723404255,
+      "inclusion_probability_max": 0.06382978723404255,
+      "inclusion_probability_min": 0.00549073438572409,
+      "listening_minutes": 0.6,
+      "population": 47,
+      "population_reciters": 42,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:fatha:base_matched:h448_empty": {
+      "draw_probability": 0.018368846436443792,
+      "inclusion_probability_max": 0.018368846436443792,
+      "inclusion_probability_min": 0.001049648367796788,
+      "listening_minutes": 5.6,
+      "population": 1361,
+      "population_reciters": 296,
+      "sampled": 25,
+      "sampled_reciters": 24
+    },
+    "new_audit:fatha:base_matched:h448_matched": {
+      "draw_probability": 0.0003360666756284447,
+      "inclusion_probability_max": 0.0003360666756284447,
+      "inclusion_probability_min": 1.9341966942644298e-05,
+      "listening_minutes": 2.5,
+      "population": 29756,
+      "population_reciters": 393,
+      "sampled": 10,
+      "sampled_reciters": 10
+    },
+    "new_audit:fatha:base_matched:h448_other": {
+      "draw_probability": 0.0022459292532285235,
+      "inclusion_probability_max": 0.0022459292532285235,
+      "inclusion_probability_min": 0.0022459292532285235,
+      "listening_minutes": 0.8,
+      "population": 1781,
+      "population_reciters": 327,
+      "sampled": 4,
+      "sampled_reciters": 4
+    },
+    "new_audit:fatha:base_other:h448_empty": {
+      "draw_probability": 0.15625,
+      "inclusion_probability_max": 0.15625,
+      "inclusion_probability_min": 0.03787878787878788,
+      "listening_minutes": 0.8,
+      "population": 32,
+      "population_reciters": 26,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:fatha:base_other:h448_matched": {
+      "draw_probability": 0.007772020725388601,
+      "inclusion_probability_max": 0.007772020725388601,
+      "inclusion_probability_min": 0.00040374133638382346,
+      "listening_minutes": 0.5,
+      "population": 386,
+      "population_reciters": 191,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:fatha:base_other:h448_other": {
+      "draw_probability": 0.0035294117647058825,
+      "inclusion_probability_max": 0.0035294117647058825,
+      "inclusion_probability_min": 0.0005762304921968787,
+      "listening_minutes": 0.4,
+      "population": 850,
+      "population_reciters": 282,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:kasra:base_empty:h448_empty": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 0.2962962962962963,
+      "listening_minutes": 0.8,
+      "population": 4,
+      "population_reciters": 4,
+      "sampled": 4,
+      "sampled_reciters": 4
+    },
+    "new_audit:kasra:base_empty:h448_matched": {
+      "draw_probability": 0.5555555555555556,
+      "inclusion_probability_max": 0.5555555555555556,
+      "inclusion_probability_min": 0.006450572488308337,
+      "listening_minutes": 1.1,
+      "population": 9,
+      "population_reciters": 8,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:kasra:base_empty:h448_other": {
+      "draw_probability": 0.75,
+      "inclusion_probability_max": 0.75,
+      "inclusion_probability_min": 0.5454545454545454,
+      "listening_minutes": 0.5,
+      "population": 4,
+      "population_reciters": 4,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:kasra:base_matched:h448_empty": {
+      "draw_probability": 0.09505703422053231,
+      "inclusion_probability_max": 0.09505703422053231,
+      "inclusion_probability_min": 0.003587057895114427,
+      "listening_minutes": 5.5,
+      "population": 263,
+      "population_reciters": 153,
+      "sampled": 25,
+      "sampled_reciters": 23
+    },
+    "new_audit:kasra:base_matched:h448_matched": {
+      "draw_probability": 0.000972100709633518,
+      "inclusion_probability_max": 0.000972100709633518,
+      "inclusion_probability_min": 4.7132155618594815e-05,
+      "listening_minutes": 2.3,
+      "population": 10287,
+      "population_reciters": 385,
+      "sampled": 10,
+      "sampled_reciters": 10
+    },
+    "new_audit:kasra:base_matched:h448_other": {
+      "draw_probability": 0.004689331770222743,
+      "inclusion_probability_max": 0.004689331770222743,
+      "inclusion_probability_min": 0.0003379698573133508,
+      "listening_minutes": 1.1,
+      "population": 853,
+      "population_reciters": 255,
+      "sampled": 4,
+      "sampled_reciters": 4
+    },
+    "new_audit:kasra:base_other:h448_empty": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 1.0,
+      "population": 5,
+      "population_reciters": 4,
+      "sampled": 5,
+      "sampled_reciters": 4
+    },
+    "new_audit:kasra:base_other:h448_matched": {
+      "draw_probability": 0.03225806451612903,
+      "inclusion_probability_max": 0.01075268817204301,
+      "inclusion_probability_min": 0.0022056796250344637,
+      "listening_minutes": 0.8,
+      "population": 93,
+      "population_reciters": 74,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:kasra:base_other:h448_other": {
+      "draw_probability": 0.0136986301369863,
+      "inclusion_probability_max": 0.0136986301369863,
+      "inclusion_probability_min": 0.0091324200913242,
+      "listening_minutes": 1.0,
+      "population": 219,
+      "population_reciters": 135,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:shaddah:held:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 8391,
+      "population_reciters": 380,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:shaddah:held:base_single": {
+      "draw_probability": 0.6741573033707865,
+      "inclusion_probability_max": 0.6741573033707865,
+      "inclusion_probability_min": 0.023654642223536367,
+      "listening_minutes": 11.3,
+      "population": 89,
+      "population_reciters": 52,
+      "sampled": 60,
+      "sampled_reciters": 39
+    },
+    "new_audit:shaddah:held:cross_word": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 950,
+      "population_reciters": 263,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:shaddah:not_held:base_double": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 35,
+      "population_reciters": 25,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:shaddah:not_held:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 86363,
+      "population_reciters": 393,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:sukun:base_empty:h448_empty": {
+      "draw_probability": 0.001618297550976373,
+      "inclusion_probability_max": 0.001618297550976373,
+      "inclusion_probability_min": 5.41689556812175e-05,
+      "listening_minutes": 3.3,
+      "population": 9269,
+      "population_reciters": 383,
+      "sampled": 15,
+      "sampled_reciters": 13
+    },
+    "new_audit:sukun:base_empty:h448_haraka": {
+      "draw_probability": 0.047021943573667714,
+      "inclusion_probability_max": 0.047021943573667714,
+      "inclusion_probability_min": 0.0022391401701746527,
+      "listening_minutes": 3.1,
+      "population": 319,
+      "population_reciters": 178,
+      "sampled": 15,
+      "sampled_reciters": 15
+    },
+    "new_audit:sukun:base_empty:h448_other": {
+      "draw_probability": 0.007656967840735069,
+      "inclusion_probability_max": 0.007656967840735069,
+      "inclusion_probability_min": 0.005104645227156712,
+      "listening_minutes": 1.0,
+      "population": 653,
+      "population_reciters": 241,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:sukun:base_haraka:h448_empty": {
+      "draw_probability": 0.25,
+      "inclusion_probability_max": 0.25,
+      "inclusion_probability_min": 0.06896551724137931,
+      "listening_minutes": 0.7,
+      "population": 16,
+      "population_reciters": 14,
+      "sampled": 4,
+      "sampled_reciters": 4
+    },
+    "new_audit:sukun:base_haraka:h448_haraka": {
+      "draw_probability": 0.16,
+      "inclusion_probability_max": 0.16,
+      "inclusion_probability_min": 0.001857764876632801,
+      "listening_minutes": 1.6,
+      "population": 50,
+      "population_reciters": 36,
+      "sampled": 8,
+      "sampled_reciters": 8
+    },
+    "new_audit:sukun:base_haraka:h448_other": {
+      "draw_probability": 0.5,
+      "inclusion_probability_max": 0.5,
+      "inclusion_probability_min": 0.5,
+      "listening_minutes": 0.4,
+      "population": 4,
+      "population_reciters": 3,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "new_audit:sukun:base_other:h448_empty": {
+      "draw_probability": 0.03488372093023256,
+      "inclusion_probability_max": 0.03488372093023256,
+      "inclusion_probability_min": 0.0011676559307190813,
+      "listening_minutes": 0.4,
+      "population": 86,
+      "population_reciters": 74,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:sukun:base_other:h448_haraka": {
+      "draw_probability": 0.6666666666666666,
+      "inclusion_probability_max": 0.6666666666666666,
+      "inclusion_probability_min": 0.05734767025089606,
+      "listening_minutes": 0.4,
+      "population": 3,
+      "population_reciters": 3,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "new_audit:sukun:base_other:h448_other": {
+      "draw_probability": 0.02654867256637168,
+      "inclusion_probability_max": 0.02654867256637168,
+      "inclusion_probability_min": 0.000983284169124877,
+      "listening_minutes": 0.5,
+      "population": 113,
+      "population_reciters": 79,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:ت→ط:base_partner": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 0,
+      "population_reciters": 0,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ت→ط:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 4747,
+      "population_reciters": 375,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ح→ه:base_partner": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 0,
+      "population_reciters": 0,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ح→ه:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 1637,
+      "population_reciters": 318,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ذ→ز:base_partner": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 0,
+      "population_reciters": 0,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ذ→ز:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 1854,
+      "population_reciters": 338,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ذ→ظ:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.5,
+      "population": 2,
+      "population_reciters": 2,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "new_audit:ذ→ظ:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 1852,
+      "population_reciters": 338,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ز→ذ:base_partner": {
+      "draw_probability": 0.19230769230769232,
+      "inclusion_probability_max": 0.19230769230769232,
+      "inclusion_probability_min": 0.19230769230769232,
+      "listening_minutes": 0.9,
+      "population": 26,
+      "population_reciters": 14,
+      "sampled": 5,
+      "sampled_reciters": 4
+    },
+    "new_audit:ز→ذ:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 649,
+      "population_reciters": 220,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:س→ص:base_partner": {
+      "draw_probability": 0.7142857142857143,
+      "inclusion_probability_max": 0.7142857142857143,
+      "inclusion_probability_min": 0.7142857142857143,
+      "listening_minutes": 1.0,
+      "population": 7,
+      "population_reciters": 6,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:س→ص:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 2290,
+      "population_reciters": 329,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ص→س:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 0.24242424242424243,
+      "listening_minutes": 0.9,
+      "population": 4,
+      "population_reciters": 4,
+      "sampled": 4,
+      "sampled_reciters": 4
+    },
+    "new_audit:ص→س:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 860,
+      "population_reciters": 276,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ض→ظ:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.1,
+      "population": 1,
+      "population_reciters": 1,
+      "sampled": 1,
+      "sampled_reciters": 1
+    },
+    "new_audit:ض→ظ:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 600,
+      "population_reciters": 223,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ط→ت:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 0.05555555555555555,
+      "listening_minutes": 0.7,
+      "population": 3,
+      "population_reciters": 3,
+      "sampled": 3,
+      "sampled_reciters": 3
+    },
+    "new_audit:ط→ت:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 488,
+      "population_reciters": 224,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ظ→ذ:base_partner": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 0,
+      "population_reciters": 0,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ظ→ذ:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 351,
+      "population_reciters": 163,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ظ→ض:base_partner": {
+      "draw_probability": 0.18518518518518517,
+      "inclusion_probability_max": 0.18518518518518517,
+      "inclusion_probability_min": 0.18518518518518517,
+      "listening_minutes": 0.9,
+      "population": 27,
+      "population_reciters": 23,
+      "sampled": 5,
+      "sampled_reciters": 5
+    },
+    "new_audit:ظ→ض:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 324,
+      "population_reciters": 155,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ق→ك:base_partner": {
+      "draw_probability": 0.625,
+      "inclusion_probability_max": 0.625,
+      "inclusion_probability_min": 0.625,
+      "listening_minutes": 0.9,
+      "population": 8,
+      "population_reciters": 4,
+      "sampled": 5,
+      "sampled_reciters": 4
+    },
+    "new_audit:ق→ك:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 2847,
+      "population_reciters": 347,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ك→ق:base_partner": {
+      "draw_probability": 0.25,
+      "inclusion_probability_max": 0.25,
+      "inclusion_probability_min": 0.25,
+      "listening_minutes": 0.9,
+      "population": 20,
+      "population_reciters": 17,
+      "sampled": 5,
+      "sampled_reciters": 4
+    },
+    "new_audit:ك→ق:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 3878,
+      "population_reciters": 359,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "new_audit:ه→ح:base_partner": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.4,
+      "population": 2,
+      "population_reciters": 2,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "new_audit:ه→ح:base_rest": {
+      "draw_probability": 0.0,
+      "inclusion_probability_max": 0.0,
+      "inclusion_probability_min": 0.0,
+      "listening_minutes": 0.0,
+      "population": 5768,
+      "population_reciters": 378,
+      "sampled": 0,
+      "sampled_reciters": 0
+    },
+    "p35_fixture:shadda": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 2.4,
+      "population": 24,
+      "population_reciters": 20,
+      "sampled": 13,
+      "sampled_reciters": 9
+    },
+    "p35_fixture:ت↔ط": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.2,
+      "population": 10,
+      "population_reciters": 9,
+      "sampled": 1,
+      "sampled_reciters": 1
+    },
+    "p35_fixture:ذ↔ز": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.4,
+      "population": 30,
+      "population_reciters": 21,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "p35_fixture:س↔ص": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.3,
+      "population": 30,
+      "population_reciters": 25,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "p35_fixture:ض↔ظ": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.5,
+      "population": 27,
+      "population_reciters": 24,
+      "sampled": 2,
+      "sampled_reciters": 2
+    },
+    "p35_fixture:ق↔ك": {
+      "draw_probability": 1.0,
+      "inclusion_probability_max": 1.0,
+      "inclusion_probability_min": 1.0,
+      "listening_minutes": 0.5,
+      "population": 30,
+      "population_reciters": 26,
+      "sampled": 3,
+      "sampled_reciters": 3
+    }
+  }
+}

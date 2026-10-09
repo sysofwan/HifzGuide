@@ -19,6 +19,7 @@ decode).
 | `frame.json` | the frame the draw was made from: eligible and excluded rows per shard (by reason), and per reciter its eligible clips, how many the uniform stratum took, and whether it was drawn |
 | `clips.jsonl` | one row per clip: its strata and inclusion probability, word times, segmentation status, and every segment's sample span, realized reference and word offsets |
 | `base_decodes.json` | the base teacher's decode of every kept segment, with the decode fingerprint |
+| `h448_stream_decodes.json` | the shipped `h448`'s b=0 streaming decode of every clip (whole clip, fp32 weights, no bias), cut per kept segment by commit time, with the decode fingerprint and the checkpoint's SHA-256 (`tadabur.pool_stream`, #87) |
 | `summary.json` | counts per stratum, shard and reciter, segmentation outcomes, and per-stratum capacity |
 
 ## The draw
@@ -147,7 +148,7 @@ stratum alone (2,000 clips):
 ~40 consonant sites, a mid-word sukun stratum) are all covered. Per pair, `ت↔ط`, `ح↔ه` and
 `ذ↔ظ` stay rare (2-3 sites each): 12,413 clips of the drawn reciters hold only 4-5 scan sites
 of each, so no pool of this frame can support a per-pair claim for them. The truth-site
-schema does not accept `ذ↔ظ` as a `mark` yet; #87 adds it when it writes those sites.
+schema accepts `ذ↔ظ` as a `mark` since #87.
 
 69 clips (2.8%) have no segments: quran-transcript cannot phonetize one of their references
 (`phonetizer_unsupported`, as in `segment_score`). 25 are kept whole as a repeated

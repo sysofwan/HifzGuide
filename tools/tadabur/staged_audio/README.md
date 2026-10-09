@@ -23,7 +23,7 @@ The schema, loader and staging code are in [`tools/tadabur/staged_audio.py`](../
 | `surah_ayah` | `"surah:ayah"`, from Tadabur's 0-indexed `surah_id` + 1 and `ayah_id` |
 | `num_samples` | length of the staged 16 kHz mono clip |
 | `audio_sha256` | SHA-256 of the staged WAV's bytes (`truth_sites.audio_sha256`) |
-| `uses` | why it was staged, sorted: `waqf_boundary` and `p35_fixture` (its truth sites), `mining_pool` |
+| `uses` | why it was staged, sorted: `waqf_boundary` and `p35_fixture` (its truth sites), `mining_pool`, `synthetic_edit` (an edit source or donor, [`../synthetic_edits/`](../synthetic_edits/README.md)) |
 
 The staged file is the row's audio decoded with `tadabur.audio.decode_to_mono_16k` and
 written by `soundfile` as **16 kHz mono PCM_16 WAV**, the format the labels were made on.
@@ -76,6 +76,11 @@ Every clip behind a committed label was found and re-staged: all 123 waqf-bounda
 with sites (1,792 sites, now carrying `shard`, `end_sample` and `audio_sha256`) and all 206
 P3.5 fixture clips. **No clip was lost.** Every truth site was verified against the staged
 audio with `load_truth_sites(path, audio_dir=...)`.
+
+A later run (#88) added 600 `synthetic_edit` clips from 283 shards `h448` trained on, staged
+by `tadabur.synthetic_edits stage` into a directory of their own
+(`/root/scratch/issue-88/stage/clips/`, 273 MB). `staged_audio stage` passes those rows
+through untouched.
 
 Reciters: the shards `h448` never trained on (0-20 and the 19 reserve shards) hold 581
 reciters. The labels use 148, the mining pool 394, together 430; **151 reciters (2,466

@@ -271,6 +271,10 @@ def read_reject_records(path: Path) -> list[RejectRecord]:
     return records
 
 
+# libsndfile's ``SFC_SET_ADD_PEAK_CHUNK`` (``sndfile.h``); ``soundfile`` does not export it.
+_SFC_SET_ADD_PEAK_CHUNK = 0x1050
+
+
 def write_clip_wav(directory: Path, audio_filename: str, waveform: "np.ndarray") -> Path:
     """Write ``waveform`` as a 16 kHz mono WAV named ``audio_filename`` under ``directory``.
 
@@ -279,6 +283,11 @@ def write_clip_wav(directory: Path, audio_filename: str, waveform: "np.ndarray")
     not the source clip's rate — and under the clip's own stable name, which is the
     join key back to the reject manifest row. Rewriting the same clip after a crash
     replay reproduces identical bytes, so the staging directory is idempotent too.
+
+    The samples are 32-bit float so the file round-trips the scored waveform bit-exactly
+    (PCM_16 would requantize it and clip Tadabur's peaks above 1.0). libsndfile gives a
+    float WAV a PEAK chunk stamped with the wall-clock second it was written, which would
+    make two writes of one clip differ, so the chunk is turned off before any data goes in.
     """
     # Imported here, not at module scope: reading the sink (:func:`read_reject_records`,
     # and everything :mod:`tadabur.reject_yield` and :mod:`tadabur.bleed_detect` do with
@@ -291,7 +300,9 @@ def write_clip_wav(directory: Path, audio_filename: str, waveform: "np.ndarray")
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / audio_filename
-    sf.write(path, waveform, TARGET_SAMPLE_RATE, subtype="FLOAT")
+    with sf.SoundFile(path, "w", TARGET_SAMPLE_RATE, channels=1, subtype="FLOAT") as f:
+        sf._snd.sf_command(f._file, _SFC_SET_ADD_PEAK_CHUNK, sf._ffi.NULL, sf._snd.SF_FALSE)
+        f.write(waveform)
     return path
 
 

@@ -87,8 +87,7 @@ def pool_segments() -> list[PoolSegmentRef]:
 
 def read_segments(segments: list[PoolSegmentRef], audio_dir: Path):
     """Yield ``(segment, samples)`` clip by clip, each clip checksum-verified first."""
-    import soundfile as sf
-
+    from tadabur.audio import read_audio
     from tadabur.staged_audio import load_staged_clips, verify_staged
 
     registry = load_staged_clips()
@@ -96,7 +95,7 @@ def read_segments(segments: list[PoolSegmentRef], audio_dir: Path):
     for segment in segments:
         if segment.audio_filename != current:
             verify_staged(registry[segment.audio_filename], audio_dir)
-            waveform, rate = sf.read(audio_dir / segment.audio_filename, dtype="float32")
+            waveform, rate = read_audio(audio_dir / segment.audio_filename, dtype="float32")
             if rate != 16000 or waveform.ndim != 1:
                 raise ValueError(f"{segment.audio_filename} is not 16 kHz mono")
             current = segment.audio_filename

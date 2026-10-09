@@ -256,30 +256,12 @@ def _stage(args) -> None:
         wanted.setdefault(index[name].shard, set()).add(index[name].row_index)
 
     def shard_rows(shard: int):
-        """The shard's rows in order, materialized only where a frame clip sits.
+        """The shard's rows in order, materialized only where a frame clip sits (a shard
+        holds one or two among ~1,000 rows); ``stage_clips`` reads only those."""
+        from .shard_reader import iter_selected_rows
 
-        A shard holds one or two frame clips among ~1,000 rows, and turning every row's
-        audio into Python bytes costs more than downloading it. ``stage_clips`` reads a
-        row only at a wanted index, so every other position is a ``None`` placeholder.
-        """
-        import pyarrow.parquet as pq
-        from huggingface_hub import hf_hub_download
-
-        from .dataset_source import DATASET_ID
-        from .shard_reader import SHARD_TEMPLATE, _remove_shard_blob
-
-        path = hf_hub_download(DATASET_ID, SHARD_TEMPLATE.format(index=shard),
-                               repo_type="dataset", cache_dir=str(args.shard_cache))
-        try:
-            position = 0
-            for batch in pq.ParquetFile(path).iter_batches(
-                    batch_size=64, columns=["audio", "reciter_id"]):
-                for offset in range(batch.num_rows):
-                    keep = position + offset in wanted[shard]
-                    yield batch.slice(offset, 1).to_pylist()[0] if keep else None
-                position += batch.num_rows
-        finally:
-            _remove_shard_blob(path)
+        return iter_selected_rows(shard, wanted[shard], cache_dir=args.shard_cache,
+                                  columns=["audio", "reciter_id"])
 
     def write(entries: dict[str, StagedClip]) -> None:
         write_staged_clips([*others.values(), *entries.values()], REGISTRY_PATH)
@@ -303,7 +285,7 @@ def _decode(args) -> None:
     """Decode every staged frame clip whole with the base teacher and commit its CTC
     segments and realized reference (``base_frames.json``), so edits can be planned and
     re-rendered anywhere without a GPU."""
-    import soundfile as sf
+    from .audio import read_audio
 
     import hafs_phonetizer
     from training.decoding import SPANS, Decoder, scan_ctc
@@ -322,7 +304,7 @@ def _decode(args) -> None:
     frames = {}
     for name, clip in sorted(clips.items()):
         verify_staged(clip, args.audio_dir)
-        samples, _ = sf.read(args.audio_dir / name, dtype="float32")
+        samples, _ = read_audio(args.audio_dir / name, dtype="float32")
         (row,) = decoder.span_class_ids([samples])
         frames[name] = {
             "reference": references[clip.surah_ayah],
@@ -704,7 +686,7 @@ def write_item(samples: np.ndarray, path: Path) -> dict:
 def _generate(args) -> None:
     """Plan, render and check every pair; write the manifest, the summary and the
     blind-check worklist. The audio goes to ``--out-dir/audio`` and stays there."""
-    import soundfile as sf
+    from .audio import read_audio
 
     from .staged_audio import verify_staged
     from .truth_sites import write_truth_sites
@@ -717,7 +699,7 @@ def _generate(args) -> None:
     def audio(name: str) -> np.ndarray:
         if name not in cache:
             verify_staged(clips[name], args.audio_dir)
-            cache[name] = sf.read(args.audio_dir / name, dtype="float32")[0]
+            cache[name] = read_audio(args.audio_dir / name, dtype="float32")[0]
         return cache[name]
 
     rendered: dict[str, dict[str, RenderedItem]] = {}
@@ -793,7 +775,7 @@ def _audit(args) -> None:
     label (``teacher_check.json``). A pre-screen beside the blind check, never a
     substitute for it: the teacher is not truth, and the blind check is drawn
     independently of this."""
-    import soundfile as sf
+    from .audio import read_audio
 
     from training.decoding import SPANS, Decoder
 
@@ -809,7 +791,7 @@ def _audit(args) -> None:
         path = args.out_dir / "audio" / item["output"]["audio_filename"]
         if audio_sha256(path) != item["output"]["audio_sha256"]:
             raise SystemExit(f"{path} does not match the manifest's checksum")
-        (decode,) = decoder.decode_spans([sf.read(path, dtype="float32")[0]])
+        (decode,) = decoder.decode_spans([read_audio(path, dtype="float32")[0]])
         agrees[item["item_id"]] = teacher_agrees(item, decode)
     cells: dict[str, list[bool]] = {}
     for item in items:

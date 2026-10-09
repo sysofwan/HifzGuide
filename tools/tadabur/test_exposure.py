@@ -23,6 +23,7 @@ from tadabur.exposure import (
     MINING_POOL,
     MURAJA_CLIPS_PATH,
     MURAJA_REREAD_CORPUS,
+    PROBE_TRAINING,
     SYNTHETIC_EDIT_SOURCE,
     TRUTH_SITE_USES,
     USES,
@@ -239,7 +240,7 @@ def test_the_committed_registry_is_complete():
     registry = load_registry()
     require_complete(registry)  # every declared use has a file, empty if unused
     assert set(registry.uses()) == USES
-    assert registry.recordings[SYNTHETIC_EDIT_SOURCE] == ()  # #88 has not written it yet
+    assert registry.recordings[PROBE_TRAINING] == ()  # declared, unused until #94/#95
 
 
 def test_h448s_own_exposures_are_the_shared_baseline():
@@ -285,3 +286,28 @@ def test_every_label_file_clip_is_in_its_committed_use():
     for use in LABEL_FILES:
         recorded = {row.audio_filename for row in registry.recordings[use]}
         assert recorded == label_file_clips(use), use
+
+
+def test_the_synthetic_edit_uses_match_88s_committed_edits():
+    from tadabur.exposure import SYNTHETIC_EDIT_DONOR, synthetic_edit_exposures
+
+    registry = load_registry()
+    for use, rows in synthetic_edit_exposures().items():
+        assert registry.recordings[use] == tuple(sorted(set(rows))), use
+    assert registry.recordings[SYNTHETIC_EDIT_SOURCE] and registry.recordings[SYNTHETIC_EDIT_DONOR]
+
+
+def test_edit_sources_and_donors_are_reciter_disjoint_from_every_evaluation_use():
+    from tadabur.exposure import SEALED_PANEL, SYNTHETIC_EDIT_DONOR
+
+    registry = load_registry()
+    require_complete(registry)
+    evaluation = [
+        use for use in registry.uses()
+        if use.startswith(("truth_site.", "human_label.", "decode_evalset."))
+        or use in (MINING_POOL, SEALED_PANEL)
+    ]
+    assert SEALED_PANEL in evaluation and set(TRUTH_SITE_USES.values()) <= set(evaluation)
+    for edits in (SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR):
+        check_disjoint(edits, *evaluation, by="reciter", registry=registry)
+        check_disjoint(edits, *evaluation, by="source", registry=registry)

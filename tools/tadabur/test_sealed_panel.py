@@ -270,7 +270,11 @@ def test_lint_every_audio_read_and_row_source_goes_through_a_choke_point():
     import re
 
     sources = [p for p in sorted(TOOLS_DIR.rglob("*.py")) if not p.name.startswith("test_")]
-    raw_reads = re.compile(r"\b(sf|soundfile)\.(read|SoundFile)\(|librosa\.load\(|torchaudio\.load\(")
+    # A SoundFile opened for writing ("w") writes; every other open of one reads.
+    raw_reads = re.compile(
+        r"\b(sf|soundfile)\.read\(|\b(sf|soundfile)\.SoundFile\((?![^)\n]*[\"']w[\"'])"
+        r"|librosa\.load\(|torchaudio\.load\("
+    )
     bytes_decode = re.compile(r"decode_to_mono_16k\([^)]*read_bytes\(\)")
     offenders = []
     for path in sources:
@@ -678,3 +682,13 @@ def test_the_committed_registry_excludes_every_panel_reciter_from_training():
 
     panel = {c.reciter_id for c in load_panel_registry().values()}
     assert panel <= excluded_reciters(PROBE_TRAINING)
+
+
+def test_the_selective_shard_reader_seals_a_panel_row_too(tmp_path, monkeypatch):
+    from tadabur.shard_reader import iter_selected_rows
+
+    _mixed_shard(tmp_path, monkeypatch)
+    skipped, panel_row, ordinary = iter_selected_rows(21, {1, 2})
+    assert skipped is None and ordinary["audio"]["bytes"]
+    with pytest.raises(SealedPanelError):
+        panel_row["audio"]["bytes"]

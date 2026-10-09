@@ -659,8 +659,19 @@ def build_registry(index_path: Path, directory: Path = EXPOSURE_DIR) -> None:
         "clips_v2 corpus (the filter's passes over shards 0-19), lost with audit_run/: "
         "which rows is unknown, so every row of the shards counts",
     ), directory)
+    for use, rows in synthetic_edit_exposures().items():
+        write_use(use, rows, directory)
     for use in load_registry(directory).missing():
         write_use(use, [], directory)
+
+
+def synthetic_edit_exposures() -> dict[str, list[Exposure]]:
+    """The synthetic-edit sources (whole clips) and donors (spans), from #88's committed
+    ``synthetic_edits/edits.jsonl`` through its own :func:`tadabur.synthetic_edits.exposure_rows`."""
+    from .synthetic_edits import exposure_rows, read_items
+
+    return {use: [Exposure(**row) for row in rows]
+            for use, rows in exposure_rows(read_items()).items()}
 
 
 if __name__ == "__main__":

@@ -9,6 +9,8 @@ added-shadda branches are covered without having to find a decode that provokes 
 from __future__ import annotations
 
 import json
+import math
+import time
 
 import numpy as np
 import pytest
@@ -275,8 +277,13 @@ def test_clip_wav_is_written_at_16k_under_the_clips_own_name(tmp_path):
 
 
 def test_rewriting_a_clip_reproduces_identical_bytes(tmp_path):
-    # A replayed batch re-stages its audio; the directory must stay idempotent.
+    # A replayed batch re-stages its audio; the directory must stay idempotent. The
+    # rewrite is pushed into a later wall-clock second because libsndfile stamps a float
+    # WAV's PEAK chunk with C ``time()`` (out of reach of a Python clock patch): two writes
+    # inside one second hide the stamp, so the test used to fail only when they straddled one.
     waveform = np.linspace(-0.5, 0.5, 4000, dtype=np.float32)
     first = write_clip_wav(tmp_path / "staged", "c.wav", waveform).read_bytes()
+    now = time.time()
+    time.sleep(math.floor(now) + 1.05 - now)
     second = write_clip_wav(tmp_path / "staged", "c.wav", waveform).read_bytes()
     assert first == second

@@ -73,7 +73,13 @@ check_disjoint(SYNTHETIC_EDIT_SOURCE, SEALED_PANEL, by="source")
 ```
 
 `check_disjoint(use, *others)` compares `use` with each of `others` (never the others
-among themselves) and raises `ExposureOverlap` naming what they share. A new use is
+among themselves) and raises `ExposureOverlap` naming what they share.
+
+A run that streams whole shards for a PRD use excludes, before decoding, the reciters §6
+keeps out of it: `excluded_reciters(use)` is the sealed panel's reciters for every PRD use,
+plus the bias score half's for a training or tuning use, and `RowExclusion.for_use(use)`
+filters a row stream by them and counts what it dropped. `training.distill_stream` takes it
+as `exposure_use` (`--exposure-use` on the probe). A new use is
 written with `write_use(use, rows)` (or `write_shard_use`), which validates it against the
 whole registry. Name uses through the constants.
 

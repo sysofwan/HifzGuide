@@ -68,8 +68,14 @@ _UNSEALED: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 
-class SealedPanelError(RuntimeError):
-    """Something tried to read the sealed panel without an authorization."""
+class SealedPanelError(BaseException):
+    """Something tried to read the sealed panel without an authorization.
+
+    A ``BaseException``, like ``KeyboardInterrupt``, on purpose: the stream readers skip
+    corrupt rows with ``except Exception``, and a seal violation must never be skipped as
+    one. A tool that has to stream shards holding panel rows excludes the panel's reciters
+    *before* decoding (:class:`tadabur.exposure.RowExclusion`) instead.
+    """
 
 
 @dataclass(frozen=True)

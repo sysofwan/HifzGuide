@@ -430,6 +430,68 @@ def _shared_sources(registry: ExposureRegistry, a: str, b: str) -> list:
     return sorted(sources_a & {r.source for r in registry.recordings.get(b, ())})
 
 
+# --- exclusion: what a PRD use must not touch -------------------------------------------
+
+#: The uses this PRD makes (acceptance rules §6, owner amendment): everything that must be
+#: reciter-disjoint from the sealed panel.
+PRD_USES = frozenset({
+    *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
+    PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
+})
+#: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
+#: them, edit donors included.
+TRAINING_AND_TUNING_USES = frozenset({
+    SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
+    SHADDAH_PROBE_TUNING,
+})
+
+
+def excluded_reciters(for_use: str, registry: ExposureRegistry | None = None) -> frozenset[int]:
+    """The canonical reciters a PRD use must not touch (§6): the sealed panel's always, and
+    for a training or tuning use the bias score half's as well. Read from a complete
+    registry, so a use that is missing evidence cannot pass as empty."""
+    if _known(for_use) not in PRD_USES:
+        raise ValueError(f"{for_use} is not a use this PRD makes; nothing to exclude for it")
+    registry = registry or load_registry()
+    barred = registry.reciters(SEALED_PANEL)
+    if for_use in TRAINING_AND_TUNING_USES:
+        barred |= registry.reciters(BIAS_SCORE)
+    return frozenset(barred)
+
+
+@dataclass
+class RowExclusion:
+    """Drops the rows of excluded reciters from a stream of Tadabur rows **before** any
+    audio is read, and counts them, so a full-shard consumer (training, mining) never
+    reaches the sealed panel's audio and can report what it left out. Rows keep their
+    order; a consumer that numbers rows numbers them before filtering."""
+
+    use: str
+    reciters: frozenset[int]
+    rows_seen: int = 0
+    rows_excluded: int = 0
+
+    @classmethod
+    def for_use(cls, use: str, registry: ExposureRegistry | None = None) -> "RowExclusion":
+        return cls(use, excluded_reciters(use, registry))
+
+    def keeps(self, row: Mapping) -> bool:
+        """Whether one row may be used; counts it either way."""
+        self.rows_seen += 1
+        if int(row["reciter_id"]) in self.reciters:
+            self.rows_excluded += 1
+            return False
+        return True
+
+    def filter(self, rows: Iterable[Mapping]) -> Iterable[Mapping]:
+        """The rows :meth:`keeps` admits, in order."""
+        return (row for row in rows if self.keeps(row))
+
+    def report(self) -> dict:
+        return {"use": self.use, "excluded_reciters": len(self.reciters),
+                "rows_seen": self.rows_seen, "rows_excluded": self.rows_excluded}
+
+
 # --- building the uses that exist ------------------------------------------------------
 
 LABEL_FILES = {

@@ -13,8 +13,12 @@ reader goes through, outside an authorized block:
   or buffer they came through.
 - **streamed rows:** `shard_reader.iter_shard_rows` and `dataset_source.stream_rows` (the
   only row sources) keep a panel row's place and name but seal its audio, so reading its
-  samples raises. A tool that decodes every row of shards 0-20 or the reserve (the filter,
-  a `decode_evalset` rebuild) therefore stops loudly at the first panel row.
+  samples raises. `SealedPanelError` is a `BaseException`, so no `except Exception` that
+  skips corrupt rows can swallow it: a tool that decodes every row of shards 0-20 or the
+  reserve (the filter, a `decode_evalset` rebuild) stops loudly at the first panel row.
+  A legitimate full-shard consumer instead names its use and drops the excluded
+  reciters' rows before decoding (`exposure.RowExclusion`, e.g.
+  `StreamingWindowDataset(..., exposure_use="probe.training")`), with the count reported.
 - **registries:** the shared staging-registry loader refuses a panel clip by name or
   checksum.
 

@@ -453,3 +453,137 @@ def test_the_frame_and_summary_agree_with_the_manifest():
     assert sum(r["clips"] for r in frame["per_reciter"].values()) == len(staged)
     assert {int(r) for r in frame["per_reciter"]} == {c.reciter_id for c in staged.values()}
     assert summary["clips"] == len(staged) and summary["reciters"] == frame["panel_reciters"]
+
+
+# --- full-shard consumers: the seal stops them; an exposure exclusion lets them run -----
+
+
+def _wav(seconds: float = 2.0) -> bytes:
+    import io
+
+    import numpy as np
+    import soundfile as sf
+
+    buffer = io.BytesIO()
+    sf.write(buffer, np.full(int(16000 * seconds), 0.01, dtype=np.float32), 16000,
+             format="WAV", subtype="PCM_16")
+    return buffer.getvalue()
+
+
+def _mixed_shard(tmp_path: Path, monkeypatch) -> StagedClip:
+    """A shard of ordinary, panel, ordinary rows, served by a patched hub download."""
+    import huggingface_hub
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    panel = _a_panel_clip()
+    names = ["tadabur_spk0001_S1_A1_ab_000001.wav", panel.audio_filename,
+             "tadabur_spk0001_S1_A2_ab_000002.wav"]
+    shard = tmp_path / "train-00021.parquet"
+    pq.write_table(pa.table({
+        "audio": [{"bytes": _wav(), "path": name} for name in names],
+        "surah_id": [0, 0, 0], "ayah_id": [1, 2, 3],
+        "reciter_id": [100_001, panel.reciter_id, 100_001],
+    }), shard)
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", lambda *a, **k: str(shard))
+    monkeypatch.setattr("tadabur.shard_reader._remove_shard_blob", lambda path: None)
+    return panel
+
+
+def test_a_broad_except_cannot_swallow_a_seal_violation():
+    def corrupt_row_tolerant():
+        try:
+            raise SealedPanelError("panel row")
+        except Exception:  # what the stream readers do for a corrupt row
+            return "skipped"
+
+    with pytest.raises(SealedPanelError):
+        corrupt_row_tolerant()
+
+
+def test_the_stream_probe_stops_at_a_panel_row_and_runs_with_an_exposure_use(
+    tmp_path, monkeypatch
+):
+    from tadabur.exposure import PROBE_TRAINING
+    from training.distill_stream import probe
+
+    _mixed_shard(tmp_path, monkeypatch)
+    with pytest.raises(SealedPanelError):
+        probe(21)
+    report = probe(21, exposure_use=PROBE_TRAINING)  # the seal never fires on it
+    assert report["clips"] == 2
+    assert report["exposure_exclusion"]["rows_seen"] == 3
+    assert report["exposure_exclusion"]["rows_excluded"] == 1
+
+
+def test_the_training_stream_excludes_panel_reciters_before_decoding(tmp_path, monkeypatch):
+    from tadabur.exposure import PROBE_TRAINING
+    from training.distill_stream import StreamingWindowDataset
+
+    _mixed_shard(tmp_path, monkeypatch)
+    sealed = StreamingWindowDataset([21], delete_after=False)
+    with pytest.raises(SealedPanelError):
+        list(sealed._raw_windows())
+    filtered = StreamingWindowDataset([21], delete_after=False, exposure_use=PROBE_TRAINING)
+    assert len(list(filtered._raw_windows())) == 2  # one 2 s window per ordinary clip
+
+
+def test_the_evalset_build_stops_at_a_panel_row_instead_of_counting_it_skipped(
+    tmp_path, monkeypatch
+):
+    import torch
+    import transformers
+
+    import tadabur.reference_phonemes
+    import training.decoding
+    import training.distill_train
+    from training import decode_evalset
+
+    _mixed_shard(tmp_path, monkeypatch)
+
+    class FakeDecoder:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def decode_stream(self, samples):
+            return "x"
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(transformers.SeamlessM4TFeatureExtractor, "from_pretrained",
+                        classmethod(lambda cls, *a, **k: None))
+    monkeypatch.setattr(training.distill_train, "load_teacher", lambda device: None)
+    monkeypatch.setattr(training.decoding, "Decoder", FakeDecoder)
+    monkeypatch.setattr(tadabur.reference_phonemes, "load_reference_phonemes",
+                        lambda: {f"1:{a}": "x" for a in (1, 2, 3)})
+    with pytest.raises(SealedPanelError):
+        decode_evalset.build(tmp_path / "out", [21], target=10, row_sample=1.0, max_scan=0,
+                             seed=1, batch_size=1)
+
+
+def test_excluded_reciters_follow_section_6(tmp_path):
+    from tadabur.exposure import (
+        BIAS_SCORE,
+        PROBE_TRAINING,
+        excluded_reciters,
+        RowExclusion,
+    )
+
+    write_use(SEALED_PANEL, [Exposure("p.wav", 39, 0, 1, None, None, SHA)], tmp_path)
+    write_use(BIAS_SCORE, [Exposure("s.wav", 39, 1, 2, None, None, SHA)], tmp_path)
+    registry = load_registry(tmp_path)
+    assert excluded_reciters(PROBE_TRAINING, registry) == {1, 2}  # training: panel + score half
+    assert excluded_reciters(MINING_POOL, registry) == {1}  # any PRD use: the panel
+    with pytest.raises(ValueError, match="not a use this PRD makes"):
+        excluded_reciters(H448_TRAINING, registry)
+    exclusion = RowExclusion.for_use(PROBE_TRAINING, registry)
+    kept = list(exclusion.filter([{"reciter_id": r} for r in (1, 3, 2, 3)]))
+    assert kept == [{"reciter_id": 3}, {"reciter_id": 3}]
+    assert exclusion.report() == {"use": PROBE_TRAINING, "excluded_reciters": 2,
+                                  "rows_seen": 4, "rows_excluded": 2}
+
+
+def test_the_committed_registry_excludes_every_panel_reciter_from_training():
+    from tadabur.exposure import PROBE_TRAINING, excluded_reciters
+
+    panel = {c.reciter_id for c in load_panel_registry().values()}
+    assert panel <= excluded_reciters(PROBE_TRAINING)

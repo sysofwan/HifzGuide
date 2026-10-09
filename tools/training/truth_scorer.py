@@ -343,7 +343,7 @@ class SiteRow:
     outcomes: Mapping[str, SiteOutcome]
 
 
-def _estimate(
+def estimate(
     clusters: Sequence[int], terms: tuple[np.ndarray, np.ndarray], weights: np.ndarray,
     resample: Resample,
 ) -> dict:
@@ -433,7 +433,7 @@ def _score_cell(
     terms = {arm: _rate_terms(rows, arm, cell.side, config, sukun_cell) for arm in arms}
     summary["arms"] = {
         arm: {
-            "rates": {name: _estimate(clusters, t, w, resample) for name, t in terms[arm].items()},
+            "rates": {name: estimate(clusters, t, w, resample) for name, t in terms[arm].items()},
             "sensitivity": _sensitivity(rows, [x for _, x in excluded], arm) if excluded else None,
         }
         for arm in arms
@@ -480,7 +480,7 @@ def _allowance_view(
                         # A false flag is a WRONG grade; a missed mistake is anything else.
                         wrong = _indicator(grade(r.site, r.outcomes[arm], cfg) == WRONG for r in affected)
                         num = w * (wrong if side_ == CORRECT_SIDE else 1 - wrong)
-                        block[arm][state] = _estimate(clusters, (num, w), w, resample)
+                        block[arm][state] = estimate(clusters, (num, w), w, resample)
             entry["sides"][rate] = block
         view.append(entry)
     return view

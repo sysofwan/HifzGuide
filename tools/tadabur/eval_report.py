@@ -1,367 +1,386 @@
-"""Two-sided, targeted eval (ADR-0001) — the pure scoring core, torch-free.
+"""The two-sided eval at decode level, split by fixture side (ADR-0008, #55): the pure core.
 
-ADR-0001 forbids aggregate PER/CER as the fine-tune metric: it can *improve* while
-the very distinction we want to keep — the model's ability to tell a soft-pair
-consonant from its confusable partner — collapses. Instead the eval is two-sided and
-targeted, and this module owns its computation, decoupled from the GPU model pass
-(:mod:`tadabur.eval_harness`) so it is unit-testable on hand-built decodes:
+ADR-0001 wants the fine-tune judged two-sided: aggregate accuracy can improve while the model's
+ability to tell a soft-pair consonant from its partner collapses. ADR-0008 locates where that
+signal lives: in the **decode**, read separately on the two fixture sides, because one
+confusion cell means opposite things on them. Reference ``ز`` decoded ``ذ`` is a mishearing
+where the reciter said ``ز``, and the model correctly hearing the mistake where the reciter
+said ``ذ``. Summed, a model that improved in both directions and one that got worse in both
+can post the same number. This module builds the per-side matrices and nothing that pools
+them. Torch-free: sites, decodes and fingerprints in, a JSON-ready report out.
 
-* a **per-phoneme confusion matrix** over the six soft pairs (aligned-column level)
-  plus **shadda** (added/dropped gemination occurrences), so base-vs-fine-tuned can be
-  compared directly (``compare_confusion`` / the harness diff);
-* **should-accept recall** — the fraction of the curated acceptable-imperfect clips
-  the model would ADMIT under Muraja's ``.strict`` mode (a false-negative is a
-  ``.strict`` rejection of acceptable recitation, so recall *is* one-minus-the-false-
-  negative-rate); and
-* **should-reject discrimination** — the fraction of the curated genuinely-wrong clips
-  ``.strict`` still REJECTS (the distinction is *retained*, not collapsed).
+What is read
+------------
+The **re-located P3.5 fixtures** (#83, ``tadabur/truth_sites/p35_fixtures.jsonl``): one truth
+site per labelled contrast occurrence, pinned to its carrier, rather than every aligned column
+of the clip (ADR-0008: a clip label says nothing about its other positions). Each site's
+outcome under each decode is #84's (:func:`training.truth_scorer.outcomes_by_arm`, the
+consonant-commitment and gemination rules frozen in :mod:`training.site_outcomes`), so there
+is one attribution path. The decodes are #84's caches (:mod:`tadabur.eval_harness` reads them).
 
-Accept/reject models Muraja's ``.strict`` mode (see :func:`strict_accept`): a decode
-with any soft-pair substitution against its reference is a hard mismatch that fails —
-that is precisely the tolerance ``.strict`` removes and ``.balanced`` keeps — and
-otherwise the ported ``match_ratio`` must clear the ``.strict`` threshold. In this
-score-only port ``match_ratio`` itself is mode-independent, so the recall/discrimination
-shift between two checkpoints comes from the *decode* changing (the model learning to
-emit the correct consonant, or collapsing onto it) — which is exactly what fine-tuning
-moves. The Tadabur filter-side poison rejects (insertion-run, added-shadda) are **not**
-applied here: they are training-data hygiene, not Muraja ``.strict`` behaviour, and the
-success criterion is about Muraja.
+Fixture side and recitation side
+--------------------------------
+A should-accept fixture says the mushaf's letter (or gemination) was said at the site:
+``heard = prescribed``, **correct recitation**. A should-reject fixture is a clip-level
+verdict that never says what was said at a given site (acceptance rules §8), so its sites stay
+``pending`` until the listening session (#61) hears each one. A site heard ≠ prescribed is a
+**real mistake**; one heard = prescribed joins the correct side whatever its fixture said;
+``unclear`` leaves every denominator. So the matrices are split by this site-level
+recitation side (acceptance rules §1, *Sides*), each row records which fixture side its sites
+came from, and the real-mistake side fills in by itself once verdicts land. Until then it
+reports its sites as pending adjudication, with no numbers.
 
-The success criterion is recorded verbatim on every report (:data:`SUCCESS_CRITERION`)
-so the base-model baseline this slice ships states, in Muraja's own vocabulary, what a
-later fine-tuned model must beat.
+Rows, roles and the sign convention
+-----------------------------------
+A row is one :class:`training.truth_scorer.Cell` of the targeted-safeguard population: one
+side, one family (a target pair, ``ذ↔ظ`` included, or shaddah) and one heard value, so pair
+rows are **directional** (§7). Every pair and gemination state has a row on both sides, with
+or without sites. What the decode committed at a site is one **role**:
+
+* :data:`AS_HEARD`: what the reciter said;
+* :data:`AS_PARTNER`: the pair's other letter, or the other gemination state;
+* :data:`OTHER_CONSONANT`: a letter outside the pair (pair rows only);
+* :data:`NO_COMMIT`: nothing at the carrier (C = 0).
+
+:data:`SIGN_CONVENTIONS` names each role's meaning per side. On the correct side
+:data:`AS_PARTNER` is a mishearing; on the mistake side it is the mushaf's value, a collapse
+onto the reference (a silent correction).
+
+Rates, intervals and support
+----------------------------
+Each role's rate is Σw·[role] / Σw over the row's sites (the roles of a row sum to 1), with
+its §1 interval from :mod:`training.acceptance_stats`: the reciter-clustered bootstrap, a
+Wilson bound where a sparse or degenerate row is independent and equally weighted, otherwise
+none. ADR-0008 asked for clip-clustered intervals; every clip has one reciter, so reciter
+clusters nest the clips and are at least as conservative. A row with fewer than 10 reciters
+or 20 sites is **too small** to support a claim. No row carries a verdict, and a family
+without sufficient support on both sides is "in scope, insufficient evidence" (§7). Shaddah
+rows are provisional until #92.
+
+Never pooled
+------------
+:func:`confusion_row` refuses a site its cell does not hold, and :func:`fixture_report` builds
+every row through it, so no public path puts both sides (or two directions) in one row, and
+there is no cross-side total.
+
+For the paired diff (#57)
+-------------------------
+Every site is recorded with its item's fingerprint (audio checksum, span, realized reference)
+and, per arm, what was committed and its role. The report carries the fixture fingerprint
+(the scored sites, their fixture sides and reciters), the schema fingerprint and, per arm,
+the model identity, decode fingerprint and a hash of its decodes, so a diff can refuse two
+reports of different cohorts.
+
+``strict_accept`` (ADR-0001's data-hygiene gate at the ``.strict`` threshold) is not read
+here. It lives with the gate in :mod:`tadabur.scorer`.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections import Counter
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, dataclass
 
-from . import phoneme_sifat
-from .contrast_attribution import shadda_events
-from .eval_fixtures import ACCEPT, REJECT
-from .normalization import normalize_phonemes
-from .scorer import STRICT, STRICT_SCORER
-from .smith_waterman import AlignedColumn, smith_waterman
+import numpy as np
 
-# The eval scores against Muraja's ``.strict`` pass bar — the mode ADR-0001 wants the
-# fine-tuned model to let Muraja default to.
-STRICT_THRESHOLD = STRICT.correct_threshold
-
-# The go/no-go criterion, in Muraja's own vocabulary (ADR-0001), recorded on every
-# report so the baseline states what a fine-tuned model must beat.
-SUCCESS_CRITERION = (
-    "The fine-tuned model lets Muraja default to .strict (correct_threshold "
-    f"{STRICT_THRESHOLD}, soft pairs off) WITHOUT raising false-negatives on "
-    "acceptable recitation: should-accept recall rises vs the base model while "
-    "should-reject discrimination is retained (not collapsed)."
+from tadabur.truth_sites import (
+    P35_FIXTURE,
+    SCHEMA_FIELDS,
+    SHADDAH,
+    TARGET_PAIRS,
+    TruthSite,
+    label_states,
+)
+from training.acceptance_stats import REPLICATES, SEED, Resample, is_sparse
+from training.site_outcomes import CORRECT_SIDE, MISTAKE_SIDE, SiteOutcome, family, side
+from training.truth_scorer import (
+    SAFEGUARD,
+    Cell,
+    estimate,
+    item_key,
+    outcomes_by_arm,
+    site_weights,
 )
 
-# Predicted-symbol bucket for a soft-pair reference phoneme rendered as neither itself
-# nor its confusable partner (a distant substitution or a dropped/gap column).
-OTHER = "other"
+#: The version of this report's shape; part of its schema fingerprint.
+REPORT_SCHEMA = "tadabur.eval_report/fixture-sides-v1"
+
+SHOULD_ACCEPT = "should_accept"
+SHOULD_REJECT = "should_reject"
+FIXTURE_SIDES = (SHOULD_ACCEPT, SHOULD_REJECT)
+
+SIDES = (CORRECT_SIDE, MISTAKE_SIDE)
+#: Every family with a row on both sides: the seven target pairs (§7), then shaddah.
+FAMILIES = (*sorted(TARGET_PAIRS), SHADDAH)
+
+AS_HEARD = "as_heard"
+AS_PARTNER = "as_partner"
+OTHER_CONSONANT = "other_consonant"
+NO_COMMIT = "no_commit"
+
+SIGN_CONVENTIONS: dict[str, dict[str, str]] = {
+    CORRECT_SIDE: {
+        "side": "heard = prescribed: the mushaf's letter or gemination was said",
+        AS_HEARD: "committed what was said",
+        AS_PARTNER: "misheard as the partner (the confusable letter, or the other gemination state)",
+        OTHER_CONSONANT: "misheard as a letter outside the pair",
+        NO_COMMIT: "nothing committed at the carrier",
+    },
+    MISTAKE_SIDE: {
+        "side": "heard ≠ prescribed: the reciter said the partner of the mushaf's letter or state",
+        AS_HEARD: "the mistake heard",
+        AS_PARTNER: "collapsed onto the reference: the mushaf's value, a silent correction",
+        OTHER_CONSONANT: "a third letter: flagged, but not what was said",
+        NO_COMMIT: "nothing committed at the carrier: the mistake missed",
+    },
+}
+
+SUFFICIENT = "sufficient"
+TOO_SMALL = "too_small"
+NO_SITE = "none"
+SUPPORTED = "supported"
+INSUFFICIENT_EVIDENCE = "in scope, insufficient evidence"
+
+
+def members(family_: str) -> list[str]:
+    """The values a family's sites prescribe and are heard as: a pair's two letters, or the
+    two gemination states."""
+    return sorted(label_states(family_)[0])
+
+
+def roles(family_: str) -> tuple[str, ...]:
+    if family_ == SHADDAH:
+        return (AS_HEARD, AS_PARTNER, NO_COMMIT)
+    return (AS_HEARD, AS_PARTNER, OTHER_CONSONANT, NO_COMMIT)
+
+
+def role(site: TruthSite, outcome: SiteOutcome) -> str:
+    """What the decode committed at a site with a verdict, relative to what was heard."""
+    if not outcome.commits:
+        return NO_COMMIT
+    if outcome.committed == site.heard:
+        return AS_HEARD
+    if outcome.committed in members(site.mark):
+        return AS_PARTNER
+    return OTHER_CONSONANT
+
+
+def fingerprint(value) -> str:
+    """SHA-256 of a value's canonical JSON."""
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def item_fingerprint(site: TruthSite) -> str:
+    """The decoded item's identity: its audio's checksum, its span and its realized reference."""
+    return fingerprint([site.audio_sha256, site.start_sample, site.end_sample, site.reference])
+
+
+def schema_fingerprint() -> str:
+    """Changes with this report's shape, the truth-site schema, the families or the roles."""
+    return fingerprint({
+        "report": REPORT_SCHEMA,
+        "truth_site_fields": list(SCHEMA_FIELDS),
+        "families": list(FAMILIES),
+        "roles": {f: list(roles(f)) for f in FAMILIES},
+    })
 
 
 @dataclass(frozen=True)
-class ClipDecode:
-    """One fixture clip decoded by the model under evaluation.
+class FixtureSite:
+    """One P3.5 site with the fixture side it came from, its reciter and its stratum weight."""
 
-    ``verdict`` is :data:`tadabur.eval_fixtures.ACCEPT` or ``REJECT`` (the fixture set
-    it came from). ``contrast`` is its audit bucket (a soft pair, ``shadda``, or
-    ``marginal``). ``predicted`` is the model's raw decode (normalized here, as the
-    gate does); ``reference`` is the clip's realized, already-normalized reference
-    phoneme string (the segment manifest's cache form), used verbatim.
+    site: TruthSite
+    fixture_side: str
+    reciter_id: int
+    weight: float
+
+
+def _support(sites: int, reciters: int) -> str:
+    if not sites:
+        return NO_SITE
+    return TOO_SMALL if is_sparse(sites, reciters) else SUFFICIENT
+
+
+def confusion_row(
+    cell: Cell,
+    sites: Sequence[FixtureSite],
+    outcomes: Mapping[str, Mapping[str, SiteOutcome]],
+) -> dict:
+    """One directional row: each arm's rate of every role over the cell's sites.
+
+    Raises if any site does not belong to ``cell``: a site of the other side, another
+    direction, or one with no verdict. That refusal is what keeps the sides apart.
+    ``outcomes[arm][site_id]`` is each site's outcome under each arm.
     """
-
-    clip_id: str
-    contrast: str
-    verdict: str
-    predicted: str
-    reference: str
-
-
-@dataclass(frozen=True)
-class SideMetrics:
-    """Accept/reject outcomes for one fixture set (overall or one contrast).
-
-    ``accepted`` is how many of ``total`` clips clear the ``.strict`` gate. On the
-    should-accept side the headline metric is :attr:`recall` (admitting acceptable
-    recitation); on the should-reject side it is :attr:`discrimination` (still
-    rejecting genuinely-wrong recitation). Both are ``None`` when ``total`` is 0.
-    """
-
-    total: int
-    accepted: int
-
-    @property
-    def rejected(self) -> int:
-        return self.total - self.accepted
-
-    @property
-    def recall(self) -> float | None:
-        return self.accepted / self.total if self.total else None
-
-    @property
-    def discrimination(self) -> float | None:
-        return self.rejected / self.total if self.total else None
-
-
-@dataclass(frozen=True)
-class SoftPairConfusion:
-    """Aligned-column confusion for one soft pair, keyed by reference phoneme.
-
-    ``matrix[ref_char][pred_symbol]`` counts alignment columns whose reference
-    phoneme is ``ref_char`` (one of the pair's two consonants) and whose model
-    rendering is ``pred_symbol`` — the same consonant (correct), its confusable
-    partner (the soft substitution the fine-tune should reduce), or :data:`OTHER`.
-    A model that has *collapsed* the pair shows both consonants rendered as one.
-    """
-
-    contrast: str
-    matrix: dict[str, dict[str, int]]
-
-
-@dataclass(frozen=True)
-class ShaddaConfusion:
-    """Gemination-mismatch occurrences across the whole eval set.
-
-    ``added`` (decode doubled a single consonant) is the reject-worthy direction;
-    ``dropped`` (decode omitted a geminated consonant) is the benign one (ADR-0003).
-    Counted at occurrence level via :func:`tadabur.contrast_attribution.shadda_events`.
-    """
-
-    added: int
-    dropped: int
-
-
-@dataclass(frozen=True)
-class ClipOutcome:
-    """Whether one fixture clip cleared the ``.strict`` gate.
-
-    The aggregate ``SideMetrics`` counts are enough to report one checkpoint, but not to
-    *compare* two: the same clips are scored by every rung, so a rung-vs-rung difference
-    is a paired observation and needs McNemar's test over the discordant clips rather than
-    an unpaired test over the totals. Two rungs can post an identical ``accepted`` count
-    while disagreeing on several clips in both directions, so the counts alone can hide
-    real movement. Emitting the per-clip outcome keeps that test possible from the
-    artifacts, without re-decoding.
-    """
-
-    clip_id: str
-    contrast: str
-    verdict: str
-    accepted: bool
-
-
-@dataclass(frozen=True)
-class EvalReport:
-    """The full two-sided eval of one model checkpoint over the curated fixtures."""
-
-    model_id: str
-    strict_threshold: float
-    should_accept: SideMetrics
-    should_reject: SideMetrics
-    per_contrast: dict[str, dict[str, SideMetrics]]
-    soft_pair_confusion: list[SoftPairConfusion]
-    shadda_confusion: ShaddaConfusion
-    clip_outcomes: tuple[ClipOutcome, ...] = ()
-    success_criterion: str = SUCCESS_CRITERION
-
-    def to_json_dict(self) -> dict:
-        """A deterministic, human-readable JSON mapping of the whole report."""
-        return {
-            "model_id": self.model_id,
-            "strict_threshold": self.strict_threshold,
-            "success_criterion": self.success_criterion,
-            "should_accept": _side_to_json(self.should_accept, "recall"),
-            "should_reject": _side_to_json(self.should_reject, "discrimination"),
-            "per_contrast": {
-                contrast: {
-                    "should_accept": _side_to_json(sides["should_accept"], "recall"),
-                    "should_reject": _side_to_json(sides["should_reject"], "discrimination"),
-                }
-                for contrast, sides in sorted(self.per_contrast.items())
-            },
-            "clip_outcomes": [
-                {
-                    "clip_id": outcome.clip_id,
-                    "contrast": outcome.contrast,
-                    "verdict": outcome.verdict,
-                    "accepted": outcome.accepted,
-                }
-                for outcome in sorted(self.clip_outcomes, key=lambda o: o.clip_id)
-            ],
-            "confusion_matrix": {
-                "soft_pairs": {
-                    conf.contrast: {
-                        ref_char: dict(sorted(preds.items()))
-                        for ref_char, preds in sorted(conf.matrix.items())
-                    }
-                    for conf in sorted(self.soft_pair_confusion, key=lambda c: c.contrast)
-                },
-                "shadda": {
-                    "added": self.shadda_confusion.added,
-                    "dropped": self.shadda_confusion.dropped,
-                },
-            },
-        }
-
-
-def _side_to_json(side: SideMetrics, headline: str) -> dict:
-    value = side.recall if headline == "recall" else side.discrimination
-    return {
-        "total": side.total,
-        "accepted": side.accepted,
-        "rejected": side.rejected,
-        headline: value,
+    strays = sorted(s.site.site_id for s in sites if not cell.holds(s.site))
+    if strays:
+        raise ValueError(
+            f"{cell.label} on the {cell.side} side does not hold {strays[:3]}: "
+            "correct recitation and real mistakes are never pooled"
+        )
+    heard = cell.heard
+    prescribed = heard if cell.side == CORRECT_SIDE else next(m for m in members(cell.family) if m != heard)
+    clusters = [s.reciter_id for s in sites]
+    row = {
+        "side": cell.side,
+        "family": cell.family,
+        "prescribed": prescribed,
+        "heard": heard,
+        "sites": len(sites),
+        "reciters": len(set(clusters)),
+        "support": _support(len(sites), len(set(clusters))),
+        "provisional": cell.family == SHADDAH,
+        "fixture_sides": {f: sum(s.fixture_side == f for s in sites) for f in FIXTURE_SIDES},
+        "arms": {},
     }
-
-
-def _aligned_columns(predicted: str, reference: str) -> list[AlignedColumn]:
-    """The Smith-Waterman columns for a decode vs its realized reference.
-
-    Mirrors the gate exactly: ``predicted`` is normalized (the port's normalization
-    is not idempotent), ``reference`` is the already-normalized cache form, used
-    verbatim. Empty when either side normalizes to blank.
-    """
-    query = normalize_phonemes(predicted).normalized
-    if not query.strip() or not reference.strip():
-        return []
-    return smith_waterman(query=query, reference=reference).columns
-
-
-def strict_accept(clip: ClipDecode) -> bool:
-    """Whether Muraja's ``.strict`` mode would admit this clip's decode.
-
-    ``.strict``'s defining difference from ``.balanced`` is that soft pairs are OFF —
-    a confusable-consonant substitution the ``.balanced`` scorer tolerates is, under
-    ``.strict``, a **hard** mismatch that fails the clip. The score-only port's
-    ``match_ratio`` is mode-independent (it always applies the graduated soft-pair
-    penalty), so modelling ``.strict`` faithfully means layering that rule back on:
-    a decode with any soft-pair substitution against its reference is rejected,
-    otherwise it must clear the ``.strict`` ``match_ratio`` bar (:data:`STRICT_THRESHOLD`).
-    This is what encodes the success criterion — an acceptable clip the fine-tuned
-    model decodes *correctly* (no soft slip) passes ``.strict``; a genuinely-wrong clip
-    whose distinct wrong phoneme the model still emits keeps the soft-pair substitution
-    and is rejected, so a *collapsed* model (wrong sound decoded as the right phoneme)
-    is what would silently start passing. The filter-side poison rejects are not applied
-    — they are training-data hygiene, not ``.strict`` behaviour.
-
-    **This models only the alignment half of ``.strict``, so it is a lower bound.** What this
-    repo ported from Muraja is the alignment score; the app aligns in normalized space and then
-    expands the alignment back to *original* space to compare the harakat that normalization
-    stripped, emitting a ``tashkeelError`` word grade, and ``.strict`` additionally does not
-    suppress shaddah-expansion gaps in its phoneme gate. Neither is reproduced here, so a decode
-    with a wrong vowel or a missing shadda can pass this function while the app would flag it.
-    See ADR-0005.
-    """
-    columns = _aligned_columns(clip.predicted, clip.reference)
-    if _has_soft_pair_substitution(columns):
-        return False
-    return STRICT_SCORER.gate(clip.predicted, clip.reference).match_ratio >= STRICT.correct_threshold
-
-
-def _has_soft_pair_substitution(columns: list[AlignedColumn]) -> bool:
-    """Whether any aligned column substitutes one soft-pair consonant for its partner.
-
-    These are exactly the mismatches ``.balanced`` forgives and ``.strict`` does not,
-    so their presence is what turns a balanced pass into a strict rejection.
-    """
-    return any(
-        col.query_char is not None
-        and col.ref_char is not None
-        and phoneme_sifat.is_soft_mismatch(col.query_char, col.ref_char, soft_pairs_enabled=True)
-        for col in columns
-    )
-
-
-def _pred_symbol(query_char: str | None, ref_char: str, partner: str) -> str:
-    """Bucket a soft-pair reference column's rendering: itself, partner, or OTHER."""
-    if query_char == ref_char:
-        return ref_char
-    if query_char == partner:
-        return partner
-    return OTHER
-
-
-def _soft_pair_confusion(clips: list[ClipDecode]) -> list[SoftPairConfusion]:
-    """The per-phoneme confusion matrix over the six soft pairs, over all clips.
-
-    Every clip's alignment columns are scanned once; each column whose reference
-    phoneme sits on a soft pair contributes one count to that pair's matrix. Rows
-    (reference phonemes) and columns (renderings) are always fully populated so two
-    reports are directly comparable cell-for-cell.
-    """
-    counts: dict[str, Counter] = {c: Counter() for c in phoneme_sifat.soft_pair_contrasts()}
-    for clip in clips:
-        for col in _aligned_columns(clip.predicted, clip.reference):
-            ref_char = col.ref_char
-            if ref_char is None:
-                continue
-            partner = phoneme_sifat.soft_pair_partner(ref_char)
-            if partner is None:
-                continue
-            contrast = phoneme_sifat.soft_pair_contrast(ref_char, partner)
-            counts[contrast][(ref_char, _pred_symbol(col.query_char, ref_char, partner))] += 1
-
-    result: list[SoftPairConfusion] = []
-    for contrast in sorted(counts):
-        members = contrast.split("\u2194")
-        matrix = {
-            ref_char: {sym: counts[contrast][(ref_char, sym)] for sym in (*members, OTHER)}
-            for ref_char in members
+    if not sites:
+        return row
+    resample = Resample.by_cluster(clusters)
+    weights = np.array([s.weight for s in sites], dtype=float)
+    for arm in sorted(outcomes):
+        committed = [role(s.site, outcomes[arm][s.site.site_id]) for s in sites]
+        row["arms"][arm] = {
+            r: {
+                "sites": committed.count(r),
+                **estimate(
+                    clusters,
+                    (weights * np.array([c == r for c in committed], dtype=float), weights),
+                    weights,
+                    resample,
+                ),
+            }
+            for r in roles(cell.family)
         }
-        result.append(SoftPairConfusion(contrast=contrast, matrix=matrix))
-    return result
+    return row
 
 
-def _shadda_confusion(clips: list[ClipDecode]) -> ShaddaConfusion:
-    added = dropped = 0
-    for clip in clips:
-        events = shadda_events(_aligned_columns(clip.predicted, clip.reference))
-        added += events.added
-        dropped += events.dropped
-    return ShaddaConfusion(added=added, dropped=dropped)
-
-
-def _side(clips: list[ClipDecode], verdict: str) -> SideMetrics:
-    side = [c for c in clips if c.verdict == verdict]
-    accepted = sum(1 for c in side if strict_accept(c))
-    return SideMetrics(total=len(side), accepted=accepted)
-
-
-def evaluate(clips: list[ClipDecode], model_id: str) -> EvalReport:
-    """Score decoded fixture clips into a full two-sided :class:`EvalReport`.
-
-    ``clips`` are the should-accept and should-reject fixtures already decoded by the
-    model under evaluation (see :mod:`tadabur.eval_harness`). Overall and per-contrast
-    should-accept recall / should-reject discrimination are computed against the
-    ``.strict`` gate, alongside the soft-pair + shadda confusion matrix over the whole
-    set.     Pure and deterministic: identical ``clips`` yield an identical report.
-    """
-    contrasts = sorted({c.contrast for c in clips})
-    per_contrast = {
-        contrast: {
-            "should_accept": _side([c for c in clips if c.contrast == contrast], ACCEPT),
-            "should_reject": _side([c for c in clips if c.contrast == contrast], REJECT),
-        }
-        for contrast in contrasts
-    }
-    return EvalReport(
-        model_id=model_id,
-        strict_threshold=STRICT.correct_threshold,
-        should_accept=_side(clips, ACCEPT),
-        should_reject=_side(clips, REJECT),
-        per_contrast=per_contrast,
-        soft_pair_confusion=_soft_pair_confusion(clips),
-        shadda_confusion=_shadda_confusion(clips),
-        clip_outcomes=tuple(
-            ClipOutcome(
-                clip_id=clip.clip_id,
-                contrast=clip.contrast,
-                verdict=clip.verdict,
-                accepted=strict_accept(clip),
+def _family_support(rows: Sequence[dict], pending: Counter) -> list[dict]:
+    """Per family, the best direction's support on each side, the sites still without a
+    verdict, and the §7 status."""
+    rank = {NO_SITE: 0, TOO_SMALL: 1, SUFFICIENT: 2}
+    table = []
+    for family_ in FAMILIES:
+        best = {
+            side_: max(
+                (r["support"] for r in rows if (r["family"], r["side"]) == (family_, side_)),
+                key=rank.__getitem__,
             )
-            for clip in clips
-        ),
+            for side_ in SIDES
+        }
+        supported = all(best[s] == SUFFICIENT for s in SIDES)
+        table.append({
+            "family": family_,
+            **best,
+            "without_verdict": sum(n for key, n in pending.items() if key[0] == family_),
+            "status": SUPPORTED if supported else INSUFFICIENT_EVIDENCE,
+            "provisional": family_ == SHADDAH,
+        })
+    return table
+
+
+def _check(sites: Sequence[TruthSite], fixture_side_of: Mapping[str, str]) -> None:
+    if len({s.site_id for s in sites}) != len(sites):
+        raise ValueError("duplicate site ids")
+    for site in sites:
+        if site.source != P35_FIXTURE or family(site.mark) not in FAMILIES:
+            raise ValueError(f"{site.site_id}: not a P3.5 pair or shaddah site")
+        fixture = fixture_side_of.get(site.site_id)
+        if fixture not in FIXTURE_SIDES:
+            raise ValueError(f"{site.site_id}: no fixture side ({fixture!r})")
+        if fixture == SHOULD_ACCEPT and side(site) != CORRECT_SIDE:
+            raise ValueError(f"{site.site_id}: a should-accept site is heard as prescribed")
+
+
+def fixture_report(
+    sites: Sequence[TruthSite],
+    fixture_side_of: Mapping[str, str],
+    reciter_of: Mapping[str, int],
+    decodes: Mapping[str, Mapping[str, str]],
+    models: Mapping[str, Mapping],
+) -> dict:
+    """The fixture-side report (module docstring).
+
+    ``sites`` are the P3.5 truth sites with any site-level verdict applied;
+    ``fixture_side_of[site_id]`` is :data:`SHOULD_ACCEPT` or :data:`SHOULD_REJECT`;
+    ``reciter_of[audio_filename]`` a canonical reciter id; ``decodes[arm][item_key]`` a decode;
+    ``models[arm]`` the arm's model identity and decode fingerprint, recorded as given.
+    """
+    _check(sites, fixture_side_of)
+    if set(models) != set(decodes):
+        raise ValueError("every arm needs its model fingerprint, and only its arms")
+    weights = site_weights(sites)
+    fixture_sites = [
+        FixtureSite(s, fixture_side_of[s.site_id], reciter_of[s.audio_filename], weights[s.site_id])
+        for s in sorted(sites, key=lambda s: s.site_id)
+    ]
+    outcomes = outcomes_by_arm(sites, decodes)
+    arms = sorted(decodes)
+
+    rows = []
+    for side_ in SIDES:
+        for family_ in FAMILIES:
+            for heard in members(family_):
+                cell = Cell(SAFEGUARD, side_, family_, heard)
+                held = [s for s in fixture_sites if cell.holds(s.site)]
+                rows.append(confusion_row(cell, held, outcomes))
+
+    pending = Counter(
+        (family(s.site.mark), s.site.prescribed, s.site.heard, s.fixture_side)
+        for s in fixture_sites
+        if side(s.site) is None
     )
+    items = sorted({item_key(s) for s in sites})
+    return {
+        "schema": REPORT_SCHEMA,
+        "fingerprints": {
+            "fixtures": fingerprint([
+                {**asdict(s.site), "fixture_side": s.fixture_side, "reciter_id": s.reciter_id}
+                for s in fixture_sites
+            ]),
+            "schema": schema_fingerprint(),
+            "arms": {
+                arm: {**models[arm], "decodes_sha256": fingerprint({k: decodes[arm][k] for k in items})}
+                for arm in arms
+            },
+        },
+        "bootstrap": {"replicates": REPLICATES, "seed": SEED, "cluster": "canonical reciter id"},
+        "arms": arms,
+        "sign_conventions": SIGN_CONVENTIONS,
+        "families": _family_support(rows, pending),
+        "rows": rows,
+        "pending": [
+            dict(zip(("family", "prescribed", "heard", "fixture_side"), key), sites=n)
+            for key, n in sorted(pending.items())
+        ],
+        "sites": [_site_record(s, outcomes, arms) for s in fixture_sites],
+    }
+
+
+def _site_record(
+    s: FixtureSite, outcomes: Mapping[str, Mapping[str, SiteOutcome]], arms: Sequence[str]
+) -> dict:
+    """One site for the paired diff: its item's fingerprint and, per arm, the commit and role."""
+    site = s.site
+    has_verdict = side(site) is not None
+    return {
+        "site_id": site.site_id,
+        "item": item_key(site),
+        "item_fingerprint": item_fingerprint(site),
+        "reciter_id": s.reciter_id,
+        "fixture_side": s.fixture_side,
+        "side": side(site),
+        "family": family(site.mark),
+        "prescribed": site.prescribed,
+        "heard": site.heard,
+        "weight": s.weight,
+        "arms": {
+            arm: {
+                "committed": outcomes[arm][site.site_id].committed,
+                "role": role(site, outcomes[arm][site.site_id]) if has_verdict else None,
+            }
+            for arm in arms
+        },
+    }

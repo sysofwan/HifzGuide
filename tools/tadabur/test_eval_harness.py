@@ -1,45 +1,60 @@
-"""Tests for the eval harness's torch-free join/data-integrity logic (issue #7).
-
-The model pass itself needs a GPU and audio, but the fixture↔reference↔audio join —
-which must fail loudly rather than silently drop a clip and bias the metrics — is pure
-and tested here."""
+"""The fixture-side report's runner (#55): its inputs and the rendered report. Torch-free."""
 
 from __future__ import annotations
 
-import pytest
-
-from tadabur.audit_sampler import local_audio_path
-from tadabur.eval_fixtures import ACCEPT, EvalFixtureEntry
-from tadabur.eval_harness import _prepare_clips
-
-
-def _entry(clip_id: str) -> EvalFixtureEntry:
-    return EvalFixtureEntry(clip_id, clip_id, "2:255", "shadda", ACCEPT)
+from tadabur.eval_harness import build, fixture_sides, render
+from tadabur.eval_report import SHOULD_ACCEPT, SHOULD_REJECT
+from tadabur.listening_session import Verdict, adjudicated
+from tadabur.p35_truth_sites import SITES_PATH
+from tadabur.test_eval_report import PAIR, ZAI, cohort, report_for  # noqa: F401  (a fixture)
+from tadabur.truth_sites import load_truth_sites
+from training.truth_baseline import DEFAULT_MODELS
 
 
-def _make_audio(audio_dir, clip_id: str) -> None:
-    (audio_dir / local_audio_path(clip_id)).write_bytes(b"RIFFfake")
+def test_every_p35_site_has_the_fixture_side_it_was_relocated_from():
+    sites = load_truth_sites(SITES_PATH)
+    sides = fixture_sides()
+    assert set(sides) == {s.site_id for s in sites}
+    assert set(sides.values()) == {SHOULD_ACCEPT, SHOULD_REJECT}
+    for site in sites:  # an accept says the mushaf's value was said there
+        if sides[site.site_id] == SHOULD_ACCEPT:
+            assert site.heard == site.prescribed
 
 
-def test_prepare_pairs_clip_with_its_audio(tmp_path):
-    audio_dir = tmp_path / "audio"
-    audio_dir.mkdir()
-    _make_audio(audio_dir, "a")
-    prepared = _prepare_clips([_entry("a")], {"a": "\u0628\u0646\u0628"}, audio_dir)
-    assert [e.clip_id for e, _ in prepared] == ["a"]
-    assert prepared[0][1] == audio_dir / local_audio_path("a")
+def test_the_report_builds_from_the_committed_decode_caches_without_decoding():
+    report = build(DEFAULT_MODELS, audio_dir=None)
+    assert report["arms"] == ["base/spans", "base/stream_b0", "h448/spans", "h448/stream_b0"]
+    assert len(report["sites"]) == len(load_truth_sites(SITES_PATH))
+    assert report["p35_base_reproduction"]["identical"] == report["p35_base_reproduction"]["items"]
+    for arm in report["arms"]:
+        assert report["fingerprints"]["arms"][arm]["identity"]["model_ref"] in DEFAULT_MODELS.values()
 
 
-def test_missing_reference_fails_loudly(tmp_path):
-    audio_dir = tmp_path / "audio"
-    audio_dir.mkdir()
-    _make_audio(audio_dir, "a")
-    with pytest.raises(FileNotFoundError, match="reference"):
-        _prepare_clips([_entry("a")], {}, audio_dir)
+def test_a_side_with_no_verdict_renders_as_pending_adjudication(cohort):
+    sites, sides, reciters = cohort
+    pending_only = [s for s in sites if s.heard != ZAI]
+    text = render(report_for((pending_only, sides, reciters), {"m": {}}))
+    assert "**Pending adjudication.**" in text
+    assert "mushaf's value (collapsed)" not in text.split("## Sites without a verdict")[0].split(
+        "**Pending adjudication.**")[1]
+    assert "| shaddah (provisional) | held → held | 1 / 1 (too small) | 1 / 0 |" in text
 
 
-def test_missing_audio_fails_loudly(tmp_path):
-    audio_dir = tmp_path / "audio"
-    audio_dir.mkdir()
-    with pytest.raises(FileNotFoundError, match="audio"):
-        _prepare_clips([_entry("a")], {"a": "\u0628\u0646\u0628"}, audio_dir)
+def test_a_side_with_verdicts_renders_its_own_tables(cohort):
+    sites, sides, reciters = cohort
+    heard = adjudicated(sites, {sites[3].site_id: Verdict(sites[3].site_id, ZAI)})
+    text = render(report_for((heard, sides, reciters), {"m": {}}))
+    mistakes = text.split("## Real mistakes")[1].split("## Sites without a verdict")[0]
+    assert "Pending adjudication" not in mistakes
+    assert "mushaf's value (collapsed)" in mistakes
+    # Both decoded the mushaf's ذ: no mistake heard, both collapsed onto the reference.
+    line = next(x for x in mistakes.splitlines() if x.startswith(f"| {PAIR} | ذ → ز |"))
+    assert line.startswith(f"| {PAIR} | ذ → ز | 2 / 2 (too small) | 0 / 2 | 0 · 0.0 ")
+    assert line.split(" | ")[5].startswith("2 · 100.0")
+
+
+def test_no_site_without_a_verdict_renders_as_none(cohort):
+    sites, sides, reciters = cohort
+    decided = [s for s in sites if s.heard != "pending"]
+    text = render(report_for((decided, sides, reciters), {"m": {}}))
+    assert text.split("## Sites without a verdict")[1].split("## Fingerprints")[0].strip().endswith("None.")

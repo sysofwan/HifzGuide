@@ -13,7 +13,6 @@ from tadabur.smith_waterman import (
     local_alignment_score,
     longest_insertion_run,
     smith_waterman,
-    tashkeel,
 )
 
 
@@ -127,7 +126,6 @@ def test_ref_match_info_equatable():
     assert MATCH == RefMatchInfo("match")
     assert GAP == RefMatchInfo("gap")
     assert MISMATCH == RefMatchInfo("mismatch")
-    assert tashkeel("\u064E", "\u064F") == tashkeel("\u064E", "\u064F")
     assert MATCH != GAP
     assert MATCH != MISMATCH
 

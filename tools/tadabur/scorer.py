@@ -100,13 +100,10 @@ BALANCED = ScoringParameters(
 
 
 # Muraja's ``ScoringParameters.strict`` values: the tighter pass bar (0.75) with soft
-# pairs and shaddah suppression OFF (see FollowAlongTypes.swift). This is the mode the
-# fine-tune (ADR-0001) aims to let Muraja default to; the two-sided eval (#7) scores the
-# fixtures against it. In this score-only port ``match_ratio`` does not depend on
+# pairs and shaddah suppression OFF (see FollowAlongTypes.swift), read by
+# :func:`strict_accept`. In this score-only port ``match_ratio`` does not depend on
 # ``soft_pairs_enabled``/``shaddah_suppression`` (the Smith-Waterman score is mode-
-# independent), so strict differs from balanced purely in ``correct_threshold``; the
-# recall/discrimination shift between base and fine-tuned models therefore comes from the
-# *decode* changing, not the mode flags.
+# independent), so strict differs from balanced purely in ``correct_threshold``.
 STRICT = ScoringParameters(
     correct_threshold=0.75,
     soft_pairs_enabled=False,
@@ -214,3 +211,29 @@ class Scorer:
 
 BALANCED_SCORER = Scorer(BALANCED)
 STRICT_SCORER = Scorer(STRICT)
+
+
+def strict_accept(predicted: str, reference: str) -> bool:
+    """ADR-0001's **data-hygiene gate** at Muraja's ``.strict`` pass bar: a filter, not a metric.
+
+    Whether a decode clears the gate when soft pairs are off: any soft-pair substitution
+    against ``reference`` (normalized, the :meth:`Scorer.gate` contract) is a hard mismatch,
+    and otherwise ``match_ratio`` must reach :data:`STRICT`'s threshold. It answers a
+    training-data question (is this clip clean enough to keep?) and models only the alignment
+    half of ``.strict``: Muraja's tashkeel and shaddah grading are not reproduced, so a decode
+    with a wrong haraka passes here (ADR-0005).
+
+    It is **never a headline** (ADR-0008). The fine-tune is judged on the decode, per
+    recitation side, by :mod:`tadabur.eval_report`; nothing there reads this gate.
+    """
+    query = normalize_phonemes(predicted).normalized
+    if query.strip() and reference.strip():
+        columns = smith_waterman(query=query, reference=reference).columns
+        if any(
+            col.query_char is not None
+            and col.ref_char is not None
+            and phoneme_sifat.is_soft_mismatch(col.query_char, col.ref_char, soft_pairs_enabled=True)
+            for col in columns
+        ):
+            return False
+    return STRICT_SCORER.gate(predicted, reference).match_ratio >= STRICT.correct_threshold

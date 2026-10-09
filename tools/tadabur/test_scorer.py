@@ -9,6 +9,7 @@ from tadabur.scorer import (
     MIN_QUERY_PHONEMES,
     Scorer,
     ScoringParameters,
+    strict_accept,
 )
 
 
@@ -164,3 +165,23 @@ def test_is_soft_mismatch_respects_mode():
     assert BALANCED_SCORER.is_soft_mismatch(dhal, zai)
     strict = Scorer(ScoringParameters(0.75, soft_pairs_enabled=False, shaddah_suppression=False))
     assert not strict.is_soft_mismatch(dhal, zai)
+
+
+# MARK: - strict_accept, the ADR-0001 data-hygiene gate at the .strict threshold
+
+
+def test_strict_accept_identical_decode_passes():
+    assert strict_accept("\u0632\u0628\u0646", "\u0632\u0628\u0646")
+
+
+def test_strict_accept_rejects_a_soft_pair_substitution_balanced_would_forgive():
+    # ذ for ز clears match_ratio, but with soft pairs off it is a hard mismatch.
+    reference, substituted = "\u0628\u0632\u0628\u0646", "\u0628\u0630\u0628\u0646"
+    assert BALANCED_SCORER.gate(substituted, reference).passed
+    assert not strict_accept(substituted, reference)
+    assert strict_accept(reference, reference)
+
+
+def test_strict_accept_fails_a_garbage_or_empty_decode():
+    assert not strict_accept("\u0643\u0645\u0644", "\u0632\u0628\u0646")
+    assert not strict_accept("", "\u0632\u0628\u0646")

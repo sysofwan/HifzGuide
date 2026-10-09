@@ -2,11 +2,7 @@
 
 import pytest
 
-from tadabur.normalization import (
-    map_to_original,
-    map_to_original_end,
-    normalize_phonemes,
-)
+from tadabur.normalization import normalize_phonemes
 
 # Tajweed variants that fold onto their base consonant before grouping.
 _FOLD = {"\u06FE": "\u0645", "\u06BA": "\u0646"}
@@ -137,40 +133,6 @@ def test_normalize_word_boundaries():
     # both sides of the space, which is preserved.
     result = normalize_phonemes("ببَ تتِ")
     assert result.normalized == "بب تت"
-
-
-def test_map_to_original_basic():
-    offset_map = [(0, 2), (2, 4), (4, 6)]
-    assert map_to_original(0, offset_map) == 0
-    assert map_to_original(1, offset_map) == 2
-    assert map_to_original(2, offset_map) == 4
-
-
-def test_map_to_original_negative_index():
-    assert map_to_original(-1, [(0, 2), (2, 4)]) == 0
-
-
-def test_map_to_original_beyond_range():
-    assert map_to_original(5, [(0, 2), (2, 4)]) == 4
-
-
-def test_map_to_original_empty_map():
-    assert map_to_original(0, []) == 0
-
-
-def test_map_to_original_end_basic():
-    offset_map = [(0, 2), (2, 4), (4, 6)]
-    assert map_to_original_end(1, offset_map) == 2
-    assert map_to_original_end(2, offset_map) == 4
-    assert map_to_original_end(3, offset_map) == 6
-
-
-def test_map_to_original_end_zero():
-    assert map_to_original_end(0, [(0, 2), (2, 4)]) == 0
-
-
-def test_map_to_original_end_beyond_range():
-    assert map_to_original_end(5, [(0, 2), (2, 4)]) == 4
 
 
 def test_map_char_offsets_tracks_word_boundaries_through_collapsing():

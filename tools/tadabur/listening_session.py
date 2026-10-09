@@ -811,6 +811,29 @@ def write_verdicts(verdicts: Mapping[str, Verdict], path: Path = VERDICTS_PATH) 
     ))
 
 
+def adjudicated(sites: list[TruthSite], verdicts: Mapping[str, Verdict]) -> list[TruthSite]:
+    """``sites`` with each one's verdict, matched by site id, as what was heard.
+
+    This is how the 23 P3.5 rejects, which keep their own site ids in the session, get their
+    site-level verdicts. A verdict fills a ``pending`` site; one for a site that already has a
+    verdict must agree with it. Verdicts for other sites are ignored.
+    """
+    result = []
+    for site in sites:
+        verdict = verdicts.get(site.site_id)
+        if verdict is None:
+            result.append(site)
+            continue
+        if verdict.heard not in hearable(site.mark):
+            raise ValueError(f"{site.site_id}: {verdict.heard!r} is not an answer for {site.mark}")
+        if site.heard not in (PENDING, verdict.heard):
+            raise ValueError(
+                f"{site.site_id}: heard {site.heard!r} in its file, {verdict.heard!r} in the session"
+            )
+        result.append(replace(site, heard=verdict.heard))
+    return result
+
+
 # --- CLI -------------------------------------------------------------------------------
 
 

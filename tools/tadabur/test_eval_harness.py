@@ -49,8 +49,16 @@ def test_a_side_with_verdicts_renders_its_own_tables(cohort):
     assert "mushaf's value (collapsed)" in mistakes
     # Both decoded the mushaf's ذ: no mistake heard, both collapsed onto the reference.
     line = next(x for x in mistakes.splitlines() if x.startswith(f"| {PAIR} | ذ → ز |"))
-    assert line.startswith(f"| {PAIR} | ذ → ز | 2 / 2 (too small) | 0 / 2 | 0 · 0.0 ")
-    assert line.split(" | ")[5].startswith("2 · 100.0")
+    assert line.startswith(f"| {PAIR} | ذ → ز | 2 / 2 (too small) | 0 / 2 | 0 | 0 · 0.0 ")
+    assert line.split(" | ")[6].startswith("2 · 100.0")
+
+
+def test_a_rate_with_sites_awaiting_a_verdict_shows_its_range(cohort):
+    text = render(report_for(cohort, {"m": {}}))
+    correct = text.split("## Correct recitation")[1].split("## Real mistakes")[0]
+    line = next(x for x in correct.splitlines() if x.startswith(f"| {PAIR} | ذ → ذ |"))
+    # Two faithful accepts; the pending reject (mushaf ذ) could be a third correct site.
+    assert "| 2 / 0 | 1 | 2 · 100.0" in line and "⟨66.7–100.0⟩" in line
 
 
 def test_no_site_without_a_verdict_renders_as_none(cohort):

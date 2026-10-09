@@ -146,21 +146,26 @@ def _role_cell(row: dict, arm_: str, role_: str) -> str:
     entry = row["arms"][arm_].get(role_)
     if entry is None:  # a shaddah row has no third letter
         return ""
-    return f"{entry['sites']} · {format_estimate(entry)}"
+    text = f"{entry['sites']} · {format_estimate(entry)}"
+    sensitivity = entry["sensitivity"]
+    if sensitivity:  # §1: the sites without a verdict counted as failures, then as successes
+        text += f" ⟨{100 * sensitivity['worst']:.1f}–{100 * sensitivity['best']:.1f}⟩"
+    return text
 
 
 def _side_table(rows: list[dict], side: str, arm_: str) -> list[str]:
     headings = _ROLE_HEADINGS[side]
     lines = [
-        "| family | prescribed → heard | sites / reciters | fixtures (accept / reject) | "
-        + " | ".join(headings[r] for r in _ROLES) + " |",
-        "|---|---|---|---|" + "---|" * len(_ROLES),
+        "| family | prescribed → heard | sites / reciters | fixtures (accept / reject) "
+        "| without a verdict | " + " | ".join(headings[r] for r in _ROLES) + " |",
+        "|---|---|---|---|---|" + "---|" * len(_ROLES),
     ]
     for row in rows:
         origin = f"{row['fixture_sides'][SHOULD_ACCEPT]} / {row['fixture_sides'][SHOULD_REJECT]}"
         lines.append(
             f"| {_family_name(row['family'])} | {row['prescribed']} → {row['heard']} | {_size(row)} "
-            f"| {origin} | " + " | ".join(_role_cell(row, arm_, r) for r in _ROLES) + " |"
+            f"| {origin} | {len(row['excluded'])} | "
+            + " | ".join(_role_cell(row, arm_, r) for r in _ROLES) + " |"
         )
     return lines
 
@@ -240,6 +245,10 @@ def render(report: dict) -> str:
         f"- **{SPARSE_MARK}**: a row with fewer than 10 reciters or 20 sites cannot support a claim.",
         "  Nothing here is a verdict; a family without sufficient support on both sides is",
         "  \"in scope, insufficient evidence\" (§7).",
+        "- **Sites without a verdict** (`pending`, `unclear`) leave every rate, but each row",
+        "  counts those that could belong to it once heard (same family, a prescribed value that",
+        "  fits the row's side), and each rate then shows §1's sensitivity **⟨worst–best⟩**: the",
+        "  rate with their weight counted as not in that role, then as in it.",
         "- **Shaddah is provisional** until #92 freezes its state table.",
         "- **`strict_accept` is not here.** It is ADR-0001's training-data hygiene gate",
         "  (`tadabur.scorer.strict_accept`), not a measure of the fine-tune.",

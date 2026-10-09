@@ -57,11 +57,17 @@ or 20 sites is **too small** to support a claim. No row carries a verdict, and a
 without sufficient support on both sides is "in scope, insufficient evidence" (§7). Shaddah
 rows are provisional until #92.
 
+Each row also lists the ``pending`` and ``unclear`` sites that could belong to it once heard
+(:meth:`training.truth_scorer.Cell.could_hold`: same family, and a prescribed value that fits
+the row's side), and every role rate carries §1's best and worst case with their weight
+counted in (:func:`training.truth_scorer.exclusion_range`, the rule #84's cells use).
+
 Never pooled
 ------------
-:func:`confusion_row` refuses a site its cell does not hold, and :func:`fixture_report` builds
-every row through it, so no public path puts both sides (or two directions) in one row, and
-there is no cross-side total.
+:func:`confusion_row` takes only a directional cell (one side, one family, one of its heard
+values; never a pooled ``all`` cell) and refuses a site it does not hold, and
+:func:`fixture_report` builds every row through it, so no public path puts both sides (or two
+directions, or two families) in one row, and there is no cross-side total.
 
 For the paired diff (#57)
 -------------------------
@@ -99,6 +105,7 @@ from training.truth_scorer import (
     SAFEGUARD,
     Cell,
     estimate,
+    exclusion_range,
     item_key,
     outcomes_by_arm,
     site_weights,
@@ -204,18 +211,40 @@ def _support(sites: int, reciters: int) -> str:
     return TOO_SMALL if is_sparse(sites, reciters) else SUFFICIENT
 
 
+def _check_cell(cell: Cell) -> None:
+    """A row is one direction: a safeguard cell on one side, of one family, heard as one of
+    that family's values. A pooled ``all`` cell (or any other) is refused."""
+    if not (
+        cell.population == SAFEGUARD
+        and cell.side in SIDES
+        and cell.family in FAMILIES
+        and cell.heard in members(cell.family)
+    ):
+        raise ValueError(
+            f"{cell} is not one direction of one family on one side: "
+            "correct recitation and real mistakes are never pooled"
+        )
+
+
 def confusion_row(
     cell: Cell,
     sites: Sequence[FixtureSite],
+    excluded: Sequence[FixtureSite],
     outcomes: Mapping[str, Mapping[str, SiteOutcome]],
 ) -> dict:
-    """One directional row: each arm's rate of every role over the cell's sites.
+    """One directional row: each arm's rate of every role over the cell's sites, with its
+    best and worst case once the ``excluded`` sites (no verdict yet) are counted in.
 
-    Raises if any site does not belong to ``cell``: a site of the other side, another
-    direction, or one with no verdict. That refusal is what keeps the sides apart.
-    ``outcomes[arm][site_id]`` is each site's outcome under each arm.
+    Raises on a cell that is not one direction (:func:`_check_cell`), on any site the cell
+    does not hold (the other side, another direction, or one with no verdict), and on an
+    excluded site that has a verdict or could not belong here. Those refusals are what keep
+    the sides apart. ``outcomes[arm][site_id]`` is each site's outcome under each arm.
     """
+    _check_cell(cell)
     strays = sorted(s.site.site_id for s in sites if not cell.holds(s.site))
+    strays += sorted(
+        s.site.site_id for s in excluded if side(s.site) is not None or not cell.could_hold(s.site)
+    )
     if strays:
         raise ValueError(
             f"{cell.label} on the {cell.side} side does not hold {strays[:3]}: "
@@ -234,26 +263,28 @@ def confusion_row(
         "support": _support(len(sites), len(set(clusters))),
         "provisional": cell.family == SHADDAH,
         "fixture_sides": {f: sum(s.fixture_side == f for s in sites) for f in FIXTURE_SIDES},
+        "excluded": sorted(s.site.site_id for s in excluded),
         "arms": {},
     }
     if not sites:
         return row
     resample = Resample.by_cluster(clusters)
     weights = np.array([s.weight for s in sites], dtype=float)
+    excluded_weight = sum(s.weight for s in excluded)
     for arm in sorted(outcomes):
         committed = [role(s.site, outcomes[arm][s.site.site_id]) for s in sites]
-        row["arms"][arm] = {
-            r: {
+        rates = {}
+        for r in roles(cell.family):
+            num = weights * np.array([c == r for c in committed], dtype=float)
+            rates[r] = {
                 "sites": committed.count(r),
-                **estimate(
-                    clusters,
-                    (weights * np.array([c == r for c in committed], dtype=float), weights),
-                    weights,
-                    resample,
+                **estimate(clusters, (num, weights), weights, resample),
+                "sensitivity": (
+                    exclusion_range(float(num.sum()), float(weights.sum()), excluded_weight)
+                    if excluded else None
                 ),
             }
-            for r in roles(cell.family)
-        }
+        row["arms"][arm] = rates
     return row
 
 
@@ -325,7 +356,8 @@ def fixture_report(
             for heard in members(family_):
                 cell = Cell(SAFEGUARD, side_, family_, heard)
                 held = [s for s in fixture_sites if cell.holds(s.site)]
-                rows.append(confusion_row(cell, held, outcomes))
+                could = [s for s in fixture_sites if side(s.site) is None and cell.could_hold(s.site)]
+                rows.append(confusion_row(cell, held, could, outcomes))
 
     pending = Counter(
         (family(s.site.mark), s.site.prescribed, s.site.heard, s.fixture_side)

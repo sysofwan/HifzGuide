@@ -392,19 +392,24 @@ def _rate_terms(
     return terms
 
 
+def exclusion_range(num: float, den: float, excluded: float) -> dict:
+    """§1's sensitivity of the rate Σnum / Σden to the excluded sites that could belong to it:
+    their weight counted as failures (worst) or as successes (best); ``None`` when undefined."""
+    total = den + excluded
+    if not total:
+        return {"worst": None, "best": None}
+    return {"worst": num / total, "best": (num + excluded) / total}
+
+
 def _sensitivity(rows: Sequence[SiteRow], excluded_weights: Sequence[float], arm: str) -> dict:
     """Best / worst case of commit rate and committed accuracy with exclusions counted in."""
     w = sum(row.weight for row in rows)
     wc = sum(row.weight * row.outcomes[arm].commits for row in rows)
     wa = sum(row.weight * row.outcomes[arm].correct(row.site) for row in rows)
     wx = sum(excluded_weights)
-
-    def share(top: float, bottom: float) -> float | None:
-        return top / bottom if bottom else None
-
     return {
-        "commit_rate": {"worst": share(wc, w + wx), "best": share(wc + wx, w + wx)},
-        "committed_accuracy": {"worst": share(wa, wc + wx), "best": share(wa + wx, wc + wx)},
+        "commit_rate": exclusion_range(wc, w, wx),
+        "committed_accuracy": exclusion_range(wa, wc, wx),
     }
 
 

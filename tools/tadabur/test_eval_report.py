@@ -34,7 +34,7 @@ from tadabur.eval_report import (
 from tadabur.listening_session import Verdict, adjudicated
 from training.site_outcomes import CORRECT_SIDE, MISTAKE_SIDE, item_outcomes
 from training.test_site_outcomes import DAL, DHAKARA, DHAL, FATHA, KAF, MADA, MADDA, MEEM, RAA, ZAI, make
-from training.truth_scorer import SAFEGUARD, Cell, item_key
+from training.truth_scorer import ALL, HEADLINE, SAFEGUARD, Cell, item_key, score
 
 PAIR = "ذ↔ز"
 PAIR_STRATUM = f"p35_fixture:{PAIR}"
@@ -169,12 +169,57 @@ def test_a_row_refuses_any_site_it_does_not_hold(cohort):
     outcomes = {"m": {s.site_id: item_outcomes([s], s.reference)[s.site_id] for s in sites}}
     correct = Cell(SAFEGUARD, CORRECT_SIDE, PAIR, DHAL)
     accepts = [fixture[s.site_id] for s in sites[:2]]
-    assert confusion_row(correct, accepts, outcomes)["sites"] == 2
+    assert confusion_row(correct, accepts, [], outcomes)["sites"] == 2
     for stray in (sites[2], sites[3]):  # a real mistake; a pending site with no side
         with pytest.raises(ValueError, match="never pooled"):
-            confusion_row(correct, accepts + [fixture[stray.site_id]], outcomes)
+            confusion_row(correct, accepts + [fixture[stray.site_id]], [], outcomes)
     with pytest.raises(ValueError, match="never pooled"):  # nor the other direction
-        confusion_row(Cell(SAFEGUARD, MISTAKE_SIDE, PAIR, DHAL), [fixture[sites[2].site_id]], outcomes)
+        confusion_row(Cell(SAFEGUARD, MISTAKE_SIDE, PAIR, DHAL), [fixture[sites[2].site_id]], [],
+                      outcomes)
+    with pytest.raises(ValueError, match="never pooled"):  # an exclusion must lack a verdict
+        confusion_row(correct, accepts, [fixture[sites[2].site_id]], outcomes)
+
+
+@pytest.mark.parametrize("cell", [
+    Cell(SAFEGUARD, CORRECT_SIDE, ALL, ALL),  # every family and direction of a side
+    Cell(SAFEGUARD, MISTAKE_SIDE, ALL, ALL),
+    Cell(SAFEGUARD, CORRECT_SIDE, PAIR, ALL),
+    Cell(SAFEGUARD, CORRECT_SIDE, PAIR, "held"),  # not a value of the family
+    Cell(SAFEGUARD, CORRECT_SIDE, "fatha", "fatha"),  # not a pair or shaddah family
+    Cell(SAFEGUARD, "both", PAIR, DHAL),  # not a side
+    Cell(HEADLINE, CORRECT_SIDE, PAIR, DHAL),  # not the P3.5 population
+])
+def test_a_row_is_only_ever_one_direction_of_one_family_on_one_side(cohort, cell):
+    """A pooled ``all`` cell would hold both directions and every family: refused outright."""
+    sites, sides, reciters = cohort
+    accepts = [FixtureSite(s, sides[s.site_id], reciters[s.audio_filename], 1.0) for s in sites[:2]]
+    outcomes = {"m": {s.site_id: item_outcomes([s], s.reference)[s.site_id] for s in sites}}
+    with pytest.raises(ValueError, match="never pooled"):
+        confusion_row(cell, accepts if cell.family == ALL else [], [], outcomes)
+
+
+def test_sites_without_a_verdict_give_each_rate_its_section_1_range():
+    """One faithful site and one compatible ``unclear`` one: 100% as measured, 50–100% once
+    the unclear site is counted in, the same range #84's scorer gives the cell."""
+    sites = [p35("a.wav", DHAL, population=2), p35("u.wav", "unclear", population=2)]
+    sides = {s.site_id: SHOULD_ACCEPT for s in sites[:1]} | {sites[1].site_id: SHOULD_REJECT}
+    reciters = {"a.wav": 1, "u.wav": 2}
+    arms = {"m": decodes(sites, {})}
+    report = fixture_report(sites, sides, reciters, arms, models(arms))
+    correct = row(report, CORRECT_SIDE, PAIR, DHAL)
+    assert correct["excluded"] == [sites[1].site_id]
+    faithful = correct["arms"]["m"][AS_HEARD]
+    assert faithful["point"] == 1.0
+    assert faithful["sensitivity"] == {"worst": 0.5, "best": 1.0}
+    assert correct["arms"]["m"][AS_PARTNER]["sensitivity"] == {"worst": 0.0, "best": 0.5}
+    canonical = next(
+        c for c in score(sites, reciters, arms)["cells"]
+        if (c["population"], c["side"], c["label"]) == (SAFEGUARD, CORRECT_SIDE, f"{PAIR}:{DHAL}")
+    )
+    assert canonical["arms"]["m"]["sensitivity"]["commit_rate"] == faithful["sensitivity"]
+    # The unclear site could also be the mistake ز said for ذ; it is listed there too.
+    assert row(report, MISTAKE_SIDE, PAIR, ZAI)["excluded"] == [sites[1].site_id]
+    assert row(report, CORRECT_SIDE, PAIR, ZAI)["excluded"] == []
 
 
 def test_a_mistake_side_decode_never_moves_a_correct_side_number(cohort):

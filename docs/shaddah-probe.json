@@ -14206,7 +14206,7 @@
     "batch_size": 1,
     "device_type": "cuda",
     "mode": "whole-spans",
-    "model": "obadx/muaalem-model-v3_2",
+    "model": "obadx/muaalem-model-v3_2@01a1ef9fbe40d144ef845101e89ff924aed3fef5",
     "policy": "fp32-features-v1",
     "weights_dtype": "bf16"
    },
@@ -15112,7 +15112,7 @@
      "sites": 83542
     }
    },
-   "model": "obadx/muaalem-model-v3_2",
+   "model": "obadx/muaalem-model-v3_2@01a1ef9fbe40d144ef845101e89ff924aed3fef5",
    "segments": 3785,
    "sites": {
     "by_population": {
@@ -58390,7 +58390,7 @@
     "batch_size": 1,
     "device_type": "cuda",
     "mode": "whole-spans",
-    "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+    "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt@01a1ef9fbe40d144ef845101e89ff924aed3fef5",
     "policy": "fp32-features-v1",
     "weights_dtype": "bf16"
    },
@@ -59296,7 +59296,7 @@
      "sites": 80324
     }
    },
-   "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+   "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt@01a1ef9fbe40d144ef845101e89ff924aed3fef5",
    "segments": 3785,
    "sites": {
     "by_population": {
@@ -59717,6 +59717,7 @@
  "pool": "tools/tadabur/mining_pool (kept segments)",
  "preregistration": "docs/shaddah-probe-preregistration.md",
  "run_identity": {
+  "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
   "measurement": {
    "absent_log_ratio": -6.907755278982137,
    "frame_samples": 640,

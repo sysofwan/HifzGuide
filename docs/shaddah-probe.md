@@ -8,14 +8,15 @@ pool posterior was computed. **Code:** `tools/training/shaddah_probe.py` (measur
 `tools/training/decoding.py`.
 
 Re-run (GPU box, from `tools/`, ~50 min with the GPU to itself; the work directory is bound to the run's
-inputs, `run_identity` in the JSON, and a directory made from other inputs is refused; this JSON comes
-from a fresh identity-bound run, which reproduced every number of the first run exactly):
+inputs, `run_identity` in the JSON, and a directory made from other inputs is refused; every hub fetch
+is pinned to the commit the directory records, here `obadx/muaalem-model-v3_2@01a1ef9`. This JSON comes
+from a fresh pinned run, which reproduced every number of the first run exactly):
 
 ```bash
 flock /root/scratch/gpu.lock python -m training.shaddah_probe_run \
     --audio-dir /root/scratch/issue-83/stage/clips \
     --h448 /root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt \
-    --work-dir /root/scratch/issue-86/run2 --out ../docs/shaddah-probe.json
+    --work-dir /root/scratch/issue-86/run3 --out ../docs/shaddah-probe.json
 ```
 
 Every shaddah rule in `acceptance-rules.md` stays provisional until #92 freezes the held / not held /

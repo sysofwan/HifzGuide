@@ -17,8 +17,10 @@ Every staged clip's checksum is verified against the registry before its audio i
 
 **A work directory belongs to one run.** Its ``run_identity.json`` (:func:`run_identity`)
 names the content of both models (a checkpoint's SHA-256, a hub model's resolved snapshot
-commit), the selected segments and their references, the decode protocol and every
-measurement constant. A stage output is reused only under the identity it was made with: a
+commit), the hub commit every hub fetch is pinned to, the selected segments and their
+references, the decode protocol and every measurement constant. Every stage loads its
+models at the commit the directory records (:func:`load_decoder`), never at the hub's moving
+default branch, so a resume cannot mix weights from two revisions. A stage output is reused only under the identity it was made with: a
 work directory made for a smoke run (``--limit``), or with another checkpoint, is refused.
 
 Usage (from ``tools/`` on the GPU box; the whole probe is one command)::
@@ -127,19 +129,31 @@ def model_content(ref: str) -> str:
         for item in sorted(p for p in path.rglob("*") if p.is_file()):
             digest.update(f"{item.relative_to(path)}:{_sha256_file(item)}\n".encode())
         return f"sha256-dir:{digest.hexdigest()}"
+    return f"hf-commit:{hub_revision(ref)}"
+
+
+def hub_revision(repo_id: str) -> str:
+    """The commit a hub id resolves to in the local cache (what ``main`` points at there)."""
     from huggingface_hub import snapshot_download
 
-    return f"hf-commit:{Path(snapshot_download(ref, local_files_only=True)).name}"
+    return Path(snapshot_download(repo_id, local_files_only=True)).name
 
 
-def run_identity(models: dict[str, str], segments: list[PoolSegmentRef]) -> dict:
-    """Everything besides the code version that decides what the stages write."""
+def run_identity(
+    models: dict[str, str], segments: list[PoolSegmentRef], hub_commit: str
+) -> dict:
+    """Everything besides the code version that decides what the stages write.
+
+    ``hub_commit`` is the teacher repository's commit every hub fetch of the run is pinned to:
+    the base model, and the feature extractor both models decode through.
+    """
     from tadabur import time_stretch
     from training.decoding import INFERENCE_POLICY, SPANS
 
     selected = json.dumps([asdict(s) for s in segments], ensure_ascii=False, sort_keys=True)
     return {
         "probe": PROBE_VERSION,
+        "hub_revision": hub_commit,
         "models": {name: {"ref": ref, "content": model_content(ref)} for name, ref in sorted(models.items())},
         "segments": {
             "count": len(segments),
@@ -190,12 +204,17 @@ def bind_work_dir(work_dir: Path, identity: dict) -> None:
         )
 
 
-def load_decoder(model: str, h448: Path):
+def load_decoder(model: str, h448: Path, work_dir: Path):
+    """``model``'s decoder, every hub fetch pinned to the commit ``work_dir`` is bound to."""
     from training.decoding import Decoder
     from training.distill_student import TEACHER_MODEL_ID
 
+    identity = json.loads((work_dir / IDENTITY_FILE).read_text(encoding="utf-8"))
     ref = TEACHER_MODEL_ID if model == BASE else str(h448)
-    return Decoder.load(ref, "cuda", weights_dtype=WEIGHTS_DTYPE, batch_size=BATCH_SIZE)
+    return Decoder.load(
+        ref, "cuda", weights_dtype=WEIGHTS_DTYPE, batch_size=BATCH_SIZE,
+        revision=identity["hub_revision"],
+    )
 
 
 # --- Stage 1: posteriors --------------------------------------------------------------
@@ -207,7 +226,7 @@ def posteriors_stage(model, segments, audio_dir, h448, work_dir) -> None:
     out = work_dir / f"posteriors_{model}.npz"
     if out.exists():
         return
-    decoder = load_decoder(model, h448)
+    decoder = load_decoder(model, h448, work_dir)
     arrays = {}
     for i, (segment, samples) in enumerate(read_segments(segments, audio_dir)):
         (arrays[segment.key],) = decoder.span_log_posteriors([samples])
@@ -319,7 +338,7 @@ def stretch_stage(model, segments, audio_dir, h448, work_dir) -> None:
     by_key = {s.key: s for s in segments}
     todo = [by_key[key] for key in sorted(wanted, key=lambda k: (by_key[k].audio_filename, k))]
     posteriors = np.load(work_dir / f"posteriors_{model}.npz")
-    decoder = load_decoder(model, h448)
+    decoder = load_decoder(model, h448, work_dir)
     population = {id(c): sp.COLLAPSED for c, _ in pairs} | {
         id(s): sp.SINGLE for _, s in pairs if s is not None
     }
@@ -439,7 +458,12 @@ def main() -> None:
         segments = segments[: args.limit]
     from training.distill_student import TEACHER_MODEL_ID
 
-    bind_work_dir(args.work_dir, run_identity({BASE: TEACHER_MODEL_ID, H448: str(args.h448)}, segments))
+    bind_work_dir(
+        args.work_dir,
+        run_identity(
+            {BASE: TEACHER_MODEL_ID, H448: str(args.h448)}, segments, hub_revision(TEACHER_MODEL_ID)
+        ),
+    )
     models = (BASE, H448)
     stages = ["posteriors", "measure", "stretch", "report"] if args.stage == "all" else [args.stage]
     for stage in stages:

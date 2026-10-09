@@ -429,8 +429,17 @@ def add_weights_dtype_argument(parser) -> None:
     )
 
 
-def load_hf_model(model_ref: str):
+def _revision_kwargs(revision: str | None) -> dict:
+    """``from_pretrained`` keyword arguments pinning ``revision``; none when it is not given,
+    so an unpinned load is exactly what it always was."""
+    return {} if revision is None else {"revision": revision}
+
+
+def load_hf_model(model_ref: str, revision: str | None = None):
     """A Muaalem-architecture model saved for ``from_pretrained``, on CPU in eval mode.
+
+    ``revision`` pins a hub id to one commit (``from_pretrained``'s own argument); without
+    it the hub's default branch is fetched, which can move between two loads.
 
     Loaded through the vendored modeling code (not ``AutoModel``): the multi-level CTC class
     is not registered with transformers, and pinning the vendored copy keeps every tool on
@@ -442,7 +451,9 @@ def load_hf_model(model_ref: str):
         Wav2Vec2BertForMultilevelCTCConfig,
     )
 
-    config = Wav2Vec2BertForMultilevelCTCConfig.from_pretrained(model_ref)
+    config = Wav2Vec2BertForMultilevelCTCConfig.from_pretrained(
+        model_ref, **_revision_kwargs(revision)
+    )
     classes = config.level_to_vocab_size[PHONEME_LEVEL]
     if classes != NUM_PHONEME_CLASSES:
         raise ValueError(
@@ -450,7 +461,9 @@ def load_hf_model(model_ref: str):
             f"{NUM_PHONEME_CLASSES} (tadabur.phoneme_vocab). Vocabulary drift -- the "
             "decode mapping would be corrupt."
         )
-    model = Wav2Vec2BertForMultilevelCTC.from_pretrained(model_ref, config=config)
+    model = Wav2Vec2BertForMultilevelCTC.from_pretrained(
+        model_ref, config=config, **_revision_kwargs(revision)
+    )
     return model.eval()
 
 
@@ -554,12 +567,16 @@ class Decoder:
         weights_dtype: str,
         batch_size: int = 16,
         use_ema: bool = False,
+        revision: str | None = None,
     ) -> "Decoder":
         """Load a hub id, a saved model directory, or a distillation checkpoint file.
 
         ``weights_dtype`` is a key of :data:`WEIGHTS_DTYPES`. ``use_ema`` selects a
         checkpoint's averaged weights; asking for them from anything else is an error rather
-        than a silent no-op.
+        than a silent no-op. ``revision`` pins every hub fetch the load makes -- the model and
+        its feature extractor for a hub id, the (teacher's) feature extractor for a checkpoint
+        -- and is recorded in the fingerprint's ``model`` as ``<ref>@<revision>``. Without it
+        the load is unchanged: the hub's default branch, and the bare reference.
         """
         import torch
         from transformers import SeamlessM4TFeatureExtractor
@@ -582,11 +599,14 @@ class Decoder:
                     f"{model_ref} is not a distillation checkpoint, so it has no averaged "
                     "weights to select."
                 )
-            model = load_hf_model(str(model_ref))
+            model = load_hf_model(str(model_ref), revision)
             extractor_source = str(model_ref)
         model = model.to(device=device, dtype=getattr(torch, WEIGHTS_DTYPES[weights_dtype]))
-        extractor = SeamlessM4TFeatureExtractor.from_pretrained(extractor_source)
-        return cls(model_ref, model, extractor, device, batch_size)
+        extractor = SeamlessM4TFeatureExtractor.from_pretrained(
+            extractor_source, **_revision_kwargs(revision)
+        )
+        name = model_ref if revision is None else f"{model_ref}@{revision}"
+        return cls(name, model, extractor, device, batch_size)
 
     def _phoneme_logits(self, features, attention_mask=None):
         """The phoneme head's float32 logits, ``(batch, timesteps, classes)``, on the device."""

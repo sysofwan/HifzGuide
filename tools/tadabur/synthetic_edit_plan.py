@@ -31,6 +31,13 @@ anchored: nothing is cut where the teacher heard something else.
   past the centre of the haraka's emission and before the next one. A donor whose timing
   cannot fit is incompatible;
 * a **madd span** runs from the first to the last emission of a long-vowel run.
+
+**Recordings are audio, not file names.** Tadabur holds byte-identical clips under more
+than one file name: under two filename speaker ids, or for two ayahs of identical text. A
+clip's identity here is the SHA-256 of its staged audio (``TimedClip.audio_sha256``):
+:func:`plan_pairs` keeps one clip per checksum (the canonical recording, the first file
+name), a donor is never the target's own carrier in that recording, and
+:func:`select_pairs` lets each recording back one pair in all.
 """
 
 from __future__ import annotations
@@ -115,6 +122,8 @@ class TimedClip:
     """A clip's realized reference and the teacher's timed decode of it."""
 
     audio_filename: str
+    #: The staged audio's SHA-256: the recording's identity, whatever its file name.
+    audio_sha256: str
     reciter_id: int
     num_samples: int
     reference: str
@@ -124,8 +133,8 @@ class TimedClip:
 
     @classmethod
     def from_steps(
-        cls, audio_filename: str, reciter_id: int, num_samples: int, reference: str,
-        steps: Iterable[tuple[int, int, int]],
+        cls, audio_filename: str, audio_sha256: str, reciter_id: int, num_samples: int,
+        reference: str, steps: Iterable[tuple[int, int, int]],
     ) -> "TimedClip":
         """From CTC segments ``(token_id, first_step, last_step)`` of a whole-clip decode."""
         tokens = tuple(
@@ -134,7 +143,7 @@ class TimedClip:
             for token, first, last in steps
         )
         decode = "".join(t.char for t in tokens)
-        return cls(audio_filename, reciter_id, num_samples, reference, tokens,
+        return cls(audio_filename, audio_sha256, reciter_id, num_samples, reference, tokens,
                    anchored_positions(reference, decode))
 
     def token(self, index: int) -> Token:
@@ -200,6 +209,7 @@ class EditPair:
 
     operation: str
     audio_filename: str
+    audio_sha256: str
     reciter_id: int
     reference: str
     reference_index: int
@@ -364,8 +374,9 @@ def shaddah_removed(clip: TimedClip, salt: str) -> list[EditPair]:
         edit = Change(AT_CARRIER, CROP, start, end, 0, None, None)
         decoy = madd_change(clip, CROP, end - start, start, salt)
         if decoy is not None:
-            pairs.append(EditPair(SHADDAH_REMOVED, clip.audio_filename, clip.reciter_id,
-                                  clip.reference, i, SHADDAH, HELD, NOT_HELD, edit, decoy))
+            pairs.append(EditPair(SHADDAH_REMOVED, clip.audio_filename, clip.audio_sha256,
+                                  clip.reciter_id, clip.reference, i, SHADDAH, HELD, NOT_HELD,
+                                  edit, decoy))
     return pairs
 
 
@@ -378,8 +389,9 @@ def shaddah_added(clip: TimedClip, length: int, salt: str) -> list[EditPair]:
         edit = Change(AT_CARRIER, STRETCH, middle, middle, length, (start, end), None)
         decoy = madd_change(clip, STRETCH, length, middle, salt)
         if decoy is not None:
-            pairs.append(EditPair(SHADDAH_ADDED, clip.audio_filename, clip.reciter_id,
-                                  clip.reference, i, SHADDAH, NOT_HELD, HELD, edit, decoy))
+            pairs.append(EditPair(SHADDAH_ADDED, clip.audio_filename, clip.audio_sha256,
+                                  clip.reciter_id, clip.reference, i, SHADDAH, NOT_HELD, HELD,
+                                  edit, decoy))
     return pairs
 
 
@@ -399,6 +411,11 @@ class _Occurrence:
     @property
     def before(self) -> str:
         return _neighbour(self.clip.reference, self.index, -1)
+
+    @property
+    def carrier(self) -> tuple[str, int]:
+        """The carrier's identity: its recording's audio checksum and its position."""
+        return (self.clip.audio_sha256, self.index)
 
 
 def _donor_span(target: _Occurrence, cell: tuple[int, int], donor: _Occurrence) -> Donor | None:
@@ -422,12 +439,12 @@ def _best_donor(
     occurrences: list[_Occurrence], salt: str,
 ) -> Donor | None:
     """The best same-reciter donor of ``letter`` with the target's following haraka: one
-    with the same preceding character first, then by hash; never the target itself."""
+    with the same preceding character first, then by hash; never the target's own carrier,
+    under any file name of its recording (a splice of a span with itself changes nothing)."""
     options = []
     for donor in occurrences:
         if (donor.letter != letter or donor.haraka != target.haraka
-                or (donor.clip.audio_filename, donor.index)
-                == (target.clip.audio_filename, target.index)):
+                or donor.carrier == target.carrier):
             continue
         span = _donor_span(target, cell, donor)
         if span is not None:
@@ -456,8 +473,9 @@ def consonant_swaps(reciter_clips: list[TimedClip], salt: str) -> list[EditPair]
                 continue
             width = cell[1] - cell[0]
             pairs.append(EditPair(
-                CONSONANT_SWAP, target.clip.audio_filename, target.clip.reciter_id,
-                target.clip.reference, target.index, mark, target.letter, other,
+                CONSONANT_SWAP, target.clip.audio_filename, target.clip.audio_sha256,
+                target.clip.reciter_id, target.clip.reference, target.index, mark,
+                target.letter, other,
                 Change(AT_CARRIER, SPLICE, *cell, width, None, edit_donor),
                 Change(AT_CARRIER, SPLICE, *cell, width, None, decoy_donor),
             ))
@@ -472,12 +490,23 @@ def stretch_length(clips: Iterable[TimedClip]) -> int:
     return int(statistics.median(gaps))
 
 
+def unique_recordings(clips: Iterable[TimedClip]) -> list[TimedClip]:
+    """One clip per recording (audio checksum): the first by file name, so a byte-identical
+    copy under another name is neither a second source nor a second donor."""
+    canonical: dict[str, TimedClip] = {}
+    for clip in sorted(clips, key=lambda c: c.audio_filename):
+        canonical.setdefault(clip.audio_sha256, clip)
+    return sorted(canonical.values(), key=lambda c: c.audio_filename)
+
+
 def plan_pairs(clips: list[TimedClip], salt: str) -> tuple[list[EditPair], int]:
-    """Every candidate pair of every operation, and the stretch length used."""
+    """Every candidate pair of every operation on the clips' distinct recordings
+    (:func:`unique_recordings`), and the stretch length used."""
+    clips = unique_recordings(clips)
     length = stretch_length(clips)
     pairs: list[EditPair] = []
     by_reciter: dict[int, list[TimedClip]] = {}
-    for clip in sorted(clips, key=lambda c: c.audio_filename):
+    for clip in clips:
         pairs += shaddah_removed(clip, salt) + shaddah_added(clip, length, salt)
         by_reciter.setdefault(clip.reciter_id, []).append(clip)
     for reciter in sorted(by_reciter):
@@ -489,26 +518,29 @@ def select_pairs(
     pairs: list[EditPair], quota: int, per_reciter: int, salt: str,
     accept: Callable[[EditPair], bool] = lambda pair: True,
 ) -> list[EditPair]:
-    """Per operation and mark, at most ``quota`` pairs in hash order, one per source clip
-    and at most ``per_reciter`` per reciter, so no clip or voice dominates. A pair within
-    the caps is taken only if ``accept`` passes it (the renderer's checks on the audio);
-    otherwise the next one in hash order is tried."""
+    """Per operation and mark, at most ``quota`` pairs in hash order and at most
+    ``per_reciter`` per reciter, and each source recording (audio checksum) behind one pair
+    in all, so no voice dominates and no two pairs share source audio. The groups are
+    filled scarcest first (fewest candidates, then by operation and mark), so a recording
+    with several candidates goes where it is hardest to replace. A pair within the caps is
+    taken only if ``accept`` passes it (the renderer's checks on the audio); otherwise the
+    next one in hash order is tried."""
     chosen: list[EditPair] = []
     groups: dict[tuple[str, str], list[EditPair]] = {}
     for pair in pairs:
         groups.setdefault((pair.operation, pair.mark), []).append(pair)
-    for key in sorted(groups):
-        clips: set[str] = set()
+    recordings: set[str] = set()
+    for key in sorted(groups, key=lambda k: (len(groups[k]), k)):
         reciters: dict[int, int] = {}
         taken = 0
         for pair in sorted(groups[key], key=lambda p: rank(p.pair_id, salt)):
             if taken == quota:
                 break
-            if pair.audio_filename in clips or reciters.get(pair.reciter_id, 0) >= per_reciter:
+            if pair.audio_sha256 in recordings or reciters.get(pair.reciter_id, 0) >= per_reciter:
                 continue
             if not accept(pair):
                 continue
-            clips.add(pair.audio_filename)
+            recordings.add(pair.audio_sha256)
             reciters[pair.reciter_id] = reciters.get(pair.reciter_id, 0) + 1
             chosen.append(pair)
             taken += 1

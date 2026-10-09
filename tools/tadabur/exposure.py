@@ -30,7 +30,15 @@ The check is :func:`check_disjoint`, one use against each of the others::
     check_disjoint(SYNTHETIC_EDIT_SOURCE, SEALED_PANEL, *TRUTH_SITE_USES.values())
 
 ``by="reciter"`` compares canonical reciter ids, ``by="source"`` the recordings themselves
-(shard and row); :class:`ExposureOverlap` lists what they share.
+(shard and row, or the same audio checksum); :class:`ExposureOverlap` lists what they share.
+
+**Duplicate recordings.** Tadabur holds byte-identical clips under more than one file name
+and shard row: under two filename speaker ids, or for two ayahs of identical text. Only a
+checksum shows it, so ``by="source"`` also matches two rows with one ``audio_sha256``, and
+:func:`duplicate_recordings` lists every checksum two rows carry. A recording without a
+checksum (one never re-staged, or a row of a shard use) can only be screened, by file name
+and duration (:func:`probable_copies`); ``python -m tadabur.exposure duplicates`` reports
+both.
 
 The frozen inputs the indexed uses come from are committed in ``exposure/sources/``: the
 ``decode_evalset`` manifest and the list of clips shipped to Muraja.
@@ -39,6 +47,7 @@ Usage (from ``tools/``; ``--index`` is ``tadabur.staged_audio index --shards 0-3
 
   python -m tadabur.exposure build --index stage/full_index.jsonl
   python -m tadabur.exposure describe
+  python -m tadabur.exposure duplicates [--index stage/full_index.jsonl]
 """
 
 from __future__ import annotations
@@ -394,8 +403,11 @@ def check_disjoint(
 ) -> None:
     """Raise :class:`ExposureOverlap` unless ``use`` is disjoint from each of ``others``.
 
-    ``by="reciter"`` compares canonical reciter ids; ``by="source"`` compares recordings
-    (``(shard, row_index)``; a shard use covers every row of its shards). Only ``use`` is
+    ``by="reciter"`` compares canonical reciter ids; ``by="source"`` compares recordings:
+    ``(shard, row_index)``, or the audio checksum where both rows carry one, so a copy of a
+    recording under another row is the same recording. A shard use covers every row of its
+    shards, but carries no checksums: a copy of one of its rows elsewhere is not seen (see
+    :func:`probable_copies`). Only ``use`` is
     compared with each other use, never the others among themselves (two truth-site
     sources may share a clip). A named use with no file raises :class:`ExposureIncomplete`
     (absent evidence is not an empty use), and an unknown use name is an error. The
@@ -426,8 +438,72 @@ def _shared_sources(registry: ExposureRegistry, a: str, b: str) -> list:
     if a in registry.shard_uses:
         shards = set(registry.shard_uses[a].shards)
         return sorted({r.source for r in registry.recordings.get(b, ()) if r.shard in shards})
-    sources_a = {r.source for r in registry.recordings.get(a, ())}
-    return sorted(sources_a & {r.source for r in registry.recordings.get(b, ())})
+    rows_b = registry.recordings.get(b, ())
+    sources_b = {r.source for r in rows_b}
+    checksums_b = {r.audio_sha256 for r in rows_b} - {None}
+    return sorted({r.source for r in registry.recordings.get(a, ())
+                   if r.source in sources_b or r.audio_sha256 in checksums_b})
+
+
+# --- duplicate recordings --------------------------------------------------------------
+
+
+def duplicate_recordings(
+    registry: ExposureRegistry,
+) -> dict[str, dict[tuple[int, int], tuple[str, ...]]]:
+    """Every checksum that two or more recordings (shard rows) carry, with each row's uses."""
+    groups: dict[str, dict[tuple[int, int], set[str]]] = {}
+    for use, rows in registry.recordings.items():
+        for row in rows:
+            if row.audio_sha256 is not None:
+                groups.setdefault(row.audio_sha256, {}).setdefault(row.source, set()).add(use)
+    return {sha: {source: tuple(sorted(uses)) for source, uses in sorted(group.items())}
+            for sha, group in sorted(groups.items()) if len(group) > 1}
+
+
+#: A Tadabur file name without its speaker prefix: surah, ayah, source hash and segment.
+_NAME_TAIL = re.compile(r"tadabur_spk\d+_(S\d+_A\d+_[0-9a-f]+_\d+)\.wav")
+
+
+def probable_copies(
+    index: Iterable[IndexRow],
+) -> dict[tuple[int, int], tuple[tuple[int, int], ...]]:
+    """Each indexed row's probable copies: the other rows whose file name is the same but
+    for the ``spkNNNN`` prefix and whose duration is the same to the millisecond.
+
+    A screen for recordings nobody has checksummed, not proof. On the re-staged clips every
+    such pair had one checksum, but it misses copies filed under another ayah's name.
+    """
+    groups: dict[tuple[str, float], list[tuple[int, int]]] = {}
+    for row in index:
+        match = _NAME_TAIL.fullmatch(row.audio_filename)
+        if match is None:
+            raise ValueError(f"{row.audio_filename} is not a Tadabur file name")
+        key = (match.group(1), round(row.duration_s, 3))
+        groups.setdefault(key, []).append((row.shard, row.row_index))
+    return {source: tuple(sorted(set(group) - {source}))
+            for group in groups.values() if len(group) > 1 for source in group}
+
+
+def copies_across_uses(
+    registry: ExposureRegistry, copies: Mapping[tuple[int, int], Iterable[tuple[int, int]]]
+) -> dict[tuple[str, str], int]:
+    """For each pair of uses ``(a, b)``, how many recordings of ``a`` have a copy in ``b``
+    under another shard row: a row ``b`` lists, or any row of a shard use's shards."""
+    uses_of: dict[tuple[int, int], set[str]] = {}
+    for use, rows in registry.recordings.items():
+        for row in rows:
+            uses_of.setdefault(row.source, set()).add(use)
+    shard_uses = {use: set(e.shards) for use, e in registry.shard_uses.items()}
+    found: dict[tuple[str, str], set[tuple[int, int]]] = {}
+    for source, uses in uses_of.items():
+        for copy in copies.get(source, ()):
+            theirs = uses_of.get(copy, set()) | {
+                use for use, shards in shard_uses.items() if copy[0] in shards}
+            for a in uses:
+                for b in theirs - {a}:
+                    found.setdefault((a, b), set()).add(source)
+    return {key: len(sources) for key, sources in sorted(found.items())}
 
 
 # --- exclusion: what a PRD use must not touch -------------------------------------------
@@ -625,13 +701,34 @@ def main() -> None:
     build.add_argument("--index", type=Path, required=True,
                        help="a shard index of all 385 shards (tadabur.staged_audio index)")
     commands.add_parser("describe", help="summarize the committed registry")
+    duplicates = commands.add_parser(
+        "duplicates", help="list recordings held under two shard rows, across uses")
+    duplicates.add_argument("--index", type=Path, default=None,
+                            help="a full shard index: also screen unchecksummed rows by name")
     args = parser.parse_args()
 
     if args.command == "describe":
         print(describe(load_registry()))
         return
+    if args.command == "duplicates":
+        _duplicates(load_registry(), args.index)
+        return
     build_registry(args.index)
     print(describe(load_registry()))
+
+
+def _duplicates(registry: ExposureRegistry, index_path: Path | None) -> None:
+    groups = duplicate_recordings(registry)
+    print(f"{len(groups)} checksums are held under more than one shard row:")
+    for uses, count in sorted(Counter(tuple(g.values()) for g in groups.values()).items()):
+        print(f"  {count:4d}  {' | '.join(', '.join(u) for u in uses)}")
+    if index_path is None:
+        return
+    copies = probable_copies(read_shard_index(index_path).values())
+    print(f"{len(copies)} indexed rows have a probable copy (same name but the speaker, "
+          "same duration); recordings of one use with a copy in another:")
+    for (a, b), count in copies_across_uses(registry, copies).items():
+        print(f"  {count:4d}  {a} -> {b}")
 
 
 def build_registry(index_path: Path, directory: Path = EXPOSURE_DIR) -> None:

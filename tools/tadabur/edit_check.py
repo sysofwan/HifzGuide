@@ -52,8 +52,9 @@ from .truth_sites import verify_audio as verify_checksums
 #: not imported here, because it reads the edit manifest).
 BLIND_CHECK_PATH = Path(__file__).parent / "synthetic_edits" / "blind_check.jsonl"
 WORDS_PATH = SESSION_DIR / "edit_check_words.json"
-#: Where #88 rendered the items on the GPU box (``generate --out-dir stage/edits``).
-EDIT_AUDIO_REMOTE = "/root/scratch/issue-88/stage/edits/audio"
+#: Where the items were rendered on the GPU box (``generate --out-dir stage/edits``), last
+#: by #117 after it deduplicated the recordings.
+EDIT_AUDIO_REMOTE = "/root/scratch/issue-117/stage/edits/audio"
 
 
 @dataclass(frozen=True)

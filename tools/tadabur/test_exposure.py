@@ -32,17 +32,20 @@ from tadabur.exposure import (
     ExposureOverlap,
     ShardExposure,
     check_disjoint,
+    copies_across_uses,
+    duplicate_recordings,
     evalset_records,
     label_file_clips,
     load_registry,
     parse_exposure,
+    probable_copies,
     require_complete,
     shard_exposure,
     staged_exposures,
     write_shard_use,
     write_use,
 )
-from tadabur.staged_audio import load_staged_clips
+from tadabur.staged_audio import IndexRow, load_staged_clips
 
 SHA = "b" * 64
 WAQF = TRUTH_SITE_USES["waqf_boundary"]
@@ -139,9 +142,11 @@ def test_an_unknown_use_is_refused(tmp_path):
 
 
 def _registry(tmp_path):
-    write_use(WAQF, [_row("a.wav", reciter=1), _row("b.wav", row=8, reciter=2)], tmp_path)
-    write_use(MINING_POOL, [_row("c.wav", shard=39, row=0, reciter=2)], tmp_path)
-    write_use(SYNTHETIC_EDIT_SOURCE, [_row("d.wav", shard=21, row=0, reciter=3)], tmp_path)
+    write_use(WAQF, [_row("a.wav", reciter=1, sha="1" * 64),
+                     _row("b.wav", row=8, reciter=2, sha="2" * 64)], tmp_path)
+    write_use(MINING_POOL, [_row("c.wav", shard=39, row=0, reciter=2, sha="3" * 64)], tmp_path)
+    write_use(SYNTHETIC_EDIT_SOURCE, [_row("d.wav", shard=21, row=0, reciter=3, sha="4" * 64)],
+              tmp_path)
     write_shard_use(H448_TRAINING, _shards((21,), {3: 1, 7: 2}), tmp_path)
     return load_registry(tmp_path)
 
@@ -159,6 +164,40 @@ def test_check_disjoint_by_source_counts_a_shard_use_as_all_its_rows(tmp_path):
     with pytest.raises(ExposureOverlap, match="share 1 sources"):
         check_disjoint(SYNTHETIC_EDIT_SOURCE, H448_TRAINING, by="source", registry=registry)
     check_disjoint(WAQF, H448_TRAINING, by="source", registry=registry)
+
+
+def test_check_disjoint_by_source_sees_a_copy_under_another_row_by_its_checksum(tmp_path):
+    """Tadabur files one recording under two speaker ids: two names and shard rows, one
+    audio. Recordings without a checksum are compared by row alone."""
+    write_use(WAQF, [_row("spk1.wav", sha="c" * 64), _row("x.wav", row=8, sha=None)], tmp_path)
+    write_use(MINING_POOL, [_row("spk2.wav", shard=39, row=0, sha="c" * 64),
+                            _row("y.wav", shard=39, row=1, sha=None)], tmp_path)
+    registry = load_registry(tmp_path)
+    with pytest.raises(ExposureOverlap, match=r"share 1 sources, e.g. \[\(39, 0\)\]"):
+        check_disjoint(MINING_POOL, WAQF, by="source", registry=registry)
+    assert duplicate_recordings(registry) == {
+        "c" * 64: {(3, 7): (WAQF,), (39, 0): (MINING_POOL,)}}
+
+
+def _index_row(name: str, shard: int, row: int, seconds: float = 8.0) -> IndexRow:
+    return IndexRow(name, shard, row, 12, "2:2", seconds)
+
+
+def test_probable_copies_match_a_name_but_its_speaker_and_a_duration(tmp_path):
+    index = [
+        _index_row("tadabur_spk0001_S1_A2_abcd0123_000004.wav", 3, 7),
+        _index_row("tadabur_spk0002_S1_A2_abcd0123_000004.wav", 21, 5),  # its copy
+        _index_row("tadabur_spk0003_S1_A2_abcd0123_000004.wav", 22, 0, seconds=8.5),
+        _index_row("tadabur_spk0001_S1_A3_abcd0123_000004.wav", 22, 1),
+    ]
+    copies = probable_copies(index)
+    assert copies == {(3, 7): ((21, 5),), (21, 5): ((3, 7),)}
+    write_use(WAQF, [_row("tadabur_spk0001_S1_A2_abcd0123_000004.wav")], tmp_path)
+    write_shard_use(H448_TRAINING, _shards((21,), {12: 1}), tmp_path)
+    registry = load_registry(tmp_path)
+    assert copies_across_uses(registry, copies) == {(WAQF, H448_TRAINING): 1}
+    with pytest.raises(ValueError, match="not a Tadabur file name"):
+        probable_copies([_index_row("other.wav", 0, 0)])
 
 
 def test_check_disjoint_compares_only_the_first_use_with_the_others(tmp_path):

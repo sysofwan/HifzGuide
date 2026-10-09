@@ -76,7 +76,9 @@ class AuditHandler(BaseHTTPRequestHandler):
         if root not in target.parents or not target.is_file():
             self.send_json({"error": "audio not found"}, status=404)
             return
-        data = target.read_bytes()
+        from .audio import read_audio_bytes
+
+        data = read_audio_bytes(target)  # the sealed panel is never served unauthorized
         self.send_bytes(data, sniff_audio_content_type(data))
 
 

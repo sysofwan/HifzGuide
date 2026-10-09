@@ -175,6 +175,16 @@ def test_the_training_audio_cache_refuses_a_panel_clip_and_its_local_copies(tmp_
         ClipAudioCache(tmp_path).waveform(name)
 
 
+def test_the_listening_ui_server_will_not_serve_a_panel_clip(tmp_path):
+    from tadabur.audit_http import AuditHandler
+
+    name = _a_panel_clip().audio_filename
+    (tmp_path / name).write_bytes(b"RIFF")
+    handler = AuditHandler.__new__(AuditHandler)  # serve_audio needs no socket to refuse
+    with pytest.raises(SealedPanelError):
+        handler.serve_audio(tmp_path, name)
+
+
 def test_a_segment_file_cut_from_a_panel_clip_is_refused(tmp_path):
     from tadabur.audio import read_audio, read_audio_bytes
 

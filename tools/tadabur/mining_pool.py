@@ -48,7 +48,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
@@ -84,8 +83,6 @@ STRATA = (UNIFORM, CONSONANT_PAIR, GEMINATE)
 #: ذ↔ظ, as ``a↔b`` labels in codepoint order.
 TARGET_PAIRS = tuple(sorted(phoneme_sifat.soft_pair_contrasts() | {"ذ↔ظ"}))
 
-_EVALSET_FILENAME = re.compile(r"tadabur_sh(\d{3})_i(\d{5})_")
-
 
 # --- the draw --------------------------------------------------------------------------
 
@@ -98,19 +95,11 @@ def pool_shards() -> list[int]:
 
 
 def read_evalset_rows(manifest_path: Path) -> set[tuple[int, int]]:
-    """``(shard, row_index)`` of every clip in a ``decode_evalset`` manifest.
+    """``(shard, row_index)`` of every clip in a ``decode_evalset`` manifest
+    (:func:`tadabur.exposure.evalset_records`)."""
+    from .exposure import evalset_records
 
-    The manifest names each clip ``tadabur_sh<shard>_i<row>_...`` (its
-    ``_clip_filename``); the shard is also checked against its own field.
-    """
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    rows: set[tuple[int, int]] = set()
-    for clip in manifest["clips"]:
-        match = _EVALSET_FILENAME.match(clip["filename"])
-        if match is None or int(match.group(1)) != clip["shard"]:
-            raise ValueError(f"{manifest_path}: cannot read {clip['filename']!r}")
-        rows.add((int(match.group(1)), int(match.group(2))))
-    return rows
+    return {source for source, _ in evalset_records(manifest_path)}
 
 
 def _rank(text: str) -> str:
@@ -621,7 +610,7 @@ def capacity(clips: list[PoolClip], decodes: dict[str, str]) -> dict:
     from training.tashkeel_eval import MATCHED, OMITTED, vowel_sites
     from training.tashkeel_worklist import VOWEL_NAMES
 
-    from .truth_sites import CONSONANTS, HARAKA_CHARS
+    from .truth_sites import HARAKA_CHARS
 
     haraka = {name: Counter() for name in sorted(HARAKA_CHARS)}
     shaddah: Counter = Counter()
@@ -639,17 +628,11 @@ def capacity(clips: list[PoolClip], decodes: dict[str, str]) -> dict:
                     haraka[VOWEL_NAMES[site.reference_vowel]][site.outcome] += 1
             for site in contrast_sites(decode, reference, SHADDA_CONTRAST):
                 shaddah[directions[site.change]] += 1
-            for i, char in enumerate(reference[:-1]):
-                following = reference[i + 1]
-                if char not in CONSONANTS:
-                    continue
-                if following == char:
-                    shaddah["reference_geminates"] += 1
-                elif following in CONSONANTS and (i == 0 or reference[i - 1] != char):
-                    sukun_mid_word += 1
+            counts = reference_counts(reference)
+            shaddah["reference_geminates"] += counts["reference_geminates"]
+            sukun_mid_word += counts["sukun_mid_word_carriers"]
             for pair in TARGET_PAIRS:
-                letters = set(pair.split("↔"))
-                pairs[pair]["reference_carriers"] += sum(c in letters for c in reference)
+                pairs[pair]["reference_carriers"] += counts[pair]
                 pairs[pair]["base_other_letter"] += len(contrast_sites(decode, reference, pair))
     return {
         "haraka": {name: dict(sorted(c.items())) for name, c in haraka.items()},
@@ -657,6 +640,31 @@ def capacity(clips: list[PoolClip], decodes: dict[str, str]) -> dict:
         "sukun_mid_word_carriers": sukun_mid_word,
         "pairs": {pair: dict(sorted(c.items())) for pair, c in pairs.items()},
     }
+
+
+def reference_counts(reference: str) -> Counter:
+    """The candidate sites one realized reference holds, whatever any model decodes: each
+    haraka's carriers (by haraka name), ``reference_geminates``, the mid-word consonants
+    with no haraka after them (``sukun_mid_word_carriers``, the prescribed-sukun stratum's
+    population, a geminate's first half excluded) and each target pair's carriers (by pair
+    label)."""
+    from training.tashkeel_worklist import VOWEL_NAMES
+
+    from .truth_sites import CONSONANTS
+
+    counts: Counter = Counter(VOWEL_NAMES[c] for c in reference if c in VOWEL_NAMES)
+    for i, char in enumerate(reference[:-1]):
+        following = reference[i + 1]
+        if char not in CONSONANTS:
+            continue
+        if following == char:
+            counts["reference_geminates"] += 1
+        elif following in CONSONANTS and (i == 0 or reference[i - 1] != char):
+            counts["sukun_mid_word_carriers"] += 1
+    for pair in TARGET_PAIRS:
+        letters = set(pair.split("↔"))
+        counts[pair] += sum(c in letters for c in reference)
+    return counts
 
 
 def summarize(clips: list[PoolClip], staged: dict, decodes: dict[str, str], run: dict) -> dict:

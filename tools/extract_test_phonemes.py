@@ -15,6 +15,8 @@ import json
 import sys
 from pathlib import Path
 
+from tadabur.panel_seal import SealedPanelError
+
 SCRIPT_DIR = Path(__file__).parent
 OUTPUT_PATH = SCRIPT_DIR / "test_phonemes.json"
 
@@ -73,6 +75,8 @@ def main():
                         "match_ratio", "reciter_english_name"]
             try:
                 df = pd.read_parquet(url, columns=columns)
+            except SealedPanelError:  # a seal violation is never a corrupt input
+                raise
             except Exception:
                 df = pd.read_parquet(url)
                 df = df[columns]

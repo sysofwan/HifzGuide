@@ -1,0 +1,93 @@
+# The exposure registry (#89)
+
+Acceptance rules §6: **one committed registry** lists every canonical reciter id, source
+recording, span and checksum, with each use it has had, so a held-out claim is checked
+rather than asserted. Code: [`tools/tadabur/exposure.py`](../exposure.py) (schema, loader,
+writers, `check_disjoint`, and the builder for the uses that existed on 2026-10-08).
+
+One file per declared use (`exposure.USES`); the file name is the use. Each issue writes
+only its own use's file. **Every declared use has a file**: an unused one is an empty
+`<use>.jsonl`, so "unused" is recorded rather than inferred. A declared use with no file is
+missing evidence: `check_disjoint` naming it raises `ExposureIncomplete`, and
+`require_complete(registry)` (run before any certification) fails.
+
+| shape | file | one entry is |
+|---|---|---|
+| recording-level | `<use>.jsonl` | one recording, or one span of it, that the use touched |
+| shard-level | `<use>.shards.json` | the shards a use consumed, with rows per reciter |
+| frozen inputs | `sources/` | the `decode_evalset` manifest and Muraja's clip list the indexed uses derive from |
+
+## Row schema (`<use>.jsonl`)
+
+| field | meaning |
+|---|---|
+| `audio_filename` | Tadabur's `audio_filename` |
+| `shard`, `row_index` | the recording's parquet shard and row: the **source** `check_disjoint(by="source")` compares |
+| `reciter_id` | the **canonical** reciter id: Tadabur's `reciter_id` column, never the filename's `spkNNNN` |
+| `start_sample`, `end_sample` | the span the use took, or both `null` for the whole recording |
+| `audio_sha256` | the staged 16 kHz PCM_16 WAV's SHA-256 when the recording was re-staged, else `null` |
+
+The loader refuses a file not named for a known use, unsorted or duplicate rows, and any
+recording that two uses describe differently (another row, reciter or checksum).
+
+A shard use (`<use>.shards.json`) also records its `membership`: `exact` when the shards are
+the use's exact input, `uncertain` when it took an unknown subset of their rows (every row
+then counts as possibly exposed). `shared_baseline` marks an exposure of `h448` itself,
+which the baseline and every candidate warm-started from it share.
+
+## The uses
+
+| use | recordings | reciters | from |
+|---|---|---|---|
+| `truth_site.waqf_boundary` | 123 | 81 | `truth_sites/waqf_boundaries.jsonl` (item spans) |
+| `truth_site.p35_fixture` | 151 | 96 | `truth_sites/p35_fixtures.jsonl` (item spans) |
+| `human_label.p35_fixture` | 206 | 113 | `eval_fixtures/should_{accept,reject}.jsonl` |
+| `human_label.waqf_events` | 126 | 82 | `waqf_event_fixtures/waqf_events.{calibration,test}.jsonl` |
+| `human_label.reject_reread` | 31 | 24 | `eval_fixtures/reject_reread_verdicts.jsonl` |
+| `human_label.reject_bleed` | 9 | 7 | `eval_fixtures/reject_bleed_labels.jsonl` |
+| `human_label.tashkeel_counterfactual` | 47 | 21 | `tashkeel_counterfactual_fixtures/counterfactual_items.jsonl` |
+| `mining_pool` | 2,508 | 394 | `staged_audio/clips.jsonl` (#83) |
+| `decode_evalset.dev` | 970 | 146 | `sources/decode_evalset.manifest.json` (sha256 `3d5d237a…`) |
+| `decode_evalset.test` | 1,030 | 140 | the same; the half ADR-0010 spent |
+| `decode_evalset.legacy_stratified` | 902 | 235 | the same manifest's ratio-stratified records, scored by earlier gates |
+| `muraja.reread_corpus` | 447 | 153 | `sources/muraja_clips.json`: the #70 re-read corpus and scenario bundles shipped to Muraja |
+| `h448.training` | 345 shards | 667 | `h448`'s `--stream-shards`; membership `exact`, shared baseline |
+| `h448.init_validation` | 20 shards | 512 | `h448_init`'s calibration and `h448`'s validation windows, from the lost `clips_v2` corpus (shards 0-19); membership `uncertain`, shared baseline |
+| `sealed_panel` | 216 | 87 | [`../sealed_panel/staged_clips.jsonl`](../sealed_panel/README.md) (#89) |
+
+Empty until their issues write them: `synthetic_edit.source`, `synthetic_edit.donor`
+(#88), `truth_site.new_audit` (#87), `truth_site.synthetic_edit`, `probe.training`,
+`probe.kl_control`, `bias.tune`, `bias.score`, `shaddah_probe.tuning`.
+
+Tadabur has 671 reciters and `h448`'s training shards hold 667 of them, so every held-out
+set overlaps `h448.training` by reciter. Under the owner's §6 amendment (2026-10-08) the
+sealed panel is reciter-disjoint from every **PRD** use and only recording-held-out from the
+shared-baseline ones; [its README](../sealed_panel/README.md) says what that certifies.
+
+## Using it
+
+```python
+from tadabur.exposure import SEALED_PANEL, SYNTHETIC_EDIT_SOURCE, TRUTH_SITE_USES, check_disjoint
+check_disjoint(SYNTHETIC_EDIT_SOURCE, SEALED_PANEL, *TRUTH_SITE_USES.values())  # by reciter
+check_disjoint(SYNTHETIC_EDIT_SOURCE, SEALED_PANEL, by="source")
+```
+
+`check_disjoint(use, *others)` compares `use` with each of `others` (never the others
+among themselves) and raises `ExposureOverlap` naming what they share.
+
+A run that streams whole shards for a PRD use excludes, before decoding, the reciters §6
+keeps out of it: `excluded_reciters(use)` is the sealed panel's reciters for every PRD use,
+plus the bias score half's for a training or tuning use, and `RowExclusion.for_use(use)`
+filters a row stream by them and counts what it dropped. `training.distill_stream` takes it
+as `exposure_use` (`--exposure-use` on the probe). A new use is
+written with `write_use(use, rows)` (or `write_shard_use`), which validates it against the
+whole registry. Name uses through the constants.
+
+```bash
+python -m tadabur.exposure build --index stage/full_index.jsonl
+python -m tadabur.exposure describe
+```
+
+`build` rewrites every use above except `sealed_panel` from the committed sources and a
+full shard index (`python -m tadabur.staged_audio index --shards 0-384`, ~3 minutes over
+HTTP), and writes an empty file for any declared use that has none.

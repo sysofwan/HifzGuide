@@ -56,6 +56,12 @@ wandb/
 # blind-check worklist (truth-site skeletons) the listening session answers.
 !tools/tadabur/synthetic_edits/edits.jsonl
 !tools/tadabur/synthetic_edits/blind_check.jsonl
+# The exposure registry (#89, acceptance rules §6): one file per use, each written by the
+# issue that owns the use, so a new use needs no new entry here.
+!tools/tadabur/exposure/*.jsonl
+# The sealed held-out panel (#89): its clips' provenance and its segmented manifest.
+!tools/tadabur/sealed_panel/staged_clips.jsonl
+!tools/tadabur/sealed_panel/clips.jsonl
 # Frozen P7.H conditional-reference integration cases (#35) — the product gate's source-of-truth.
 !tools/tadabur/waqf_integration_fixtures/waqf_integration_cases.jsonl
 # The tashkeel counterfactual item manifest (#10) — the recording sheet's machine-readable

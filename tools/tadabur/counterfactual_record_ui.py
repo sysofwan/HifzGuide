@@ -54,6 +54,7 @@ from training.counterfactual_script import VOWEL_NAMES, CounterfactualItem
 
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
 from .audit_http import AuditHandler, serve
+from .panel_seal import SealedPanelError
 
 _PAGE_PATH = Path(__file__).parent / "counterfactual_record_ui_page.html"
 
@@ -110,6 +111,8 @@ def validate_take(data: bytes) -> float:
         raise ValueError("empty upload")
     try:
         waveform = decode_to_mono_16k(data)
+    except SealedPanelError:  # a seal violation is never a corrupt input
+        raise
     except Exception as exc:  # soundfile raises its own error types for every bad container
         raise ValueError(
             f"the pipeline cannot decode this audio ({exc}); it must be a WAV file"
@@ -149,6 +152,8 @@ class TakeStore:
             return None
         try:
             info = sf.info(str(path))
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             return None
         return info.frames / info.samplerate if info.samplerate else None

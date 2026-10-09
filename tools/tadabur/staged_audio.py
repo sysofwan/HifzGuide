@@ -20,9 +20,9 @@ This module owns that record (#83):
   **PCM_16** WAV (the format the labels were made on and ``truth_sites.audio_sha256``
   hashes), hash them, and delete the shard.
 
-The registry is the clip half of the exposure registry the acceptance rules ask for: the
-reciter id, source recording and checksum of every clip, with each use it has had. Spans
-within a clip live with the sites that use them.
+The exposure registry the acceptance rules ask for (:mod:`tadabur.exposure`) is built from
+this record and the others: the reciter id, source recording and checksum of every clip,
+with each use it has had.
 
 Usage (from ``tools/``; ``stage`` downloads ~2.4 GB per shard, one at a time)::
 
@@ -62,9 +62,13 @@ REGISTRY_PATH = STAGED_AUDIO_DIR / "clips.jsonl"
 
 #: The clip was staged for the h448-unseen mining pool (:mod:`tadabur.mining_pool`).
 MINING_POOL = "mining_pool"
-#: Why a clip was staged: truth sites of one source, the mining pool, or a synthetic-edit
-#: source or donor (:mod:`tadabur.synthetic_edits`, staged into a directory of its own).
-USES = frozenset({WAQF_BOUNDARY, P35_FIXTURE, MINING_POOL, SYNTHETIC_EDIT})
+#: The clip was staged for the sealed held-out panel (:mod:`tadabur.sealed_panel`). Panel
+#: clips are recorded in that panel's own registry, never in :data:`REGISTRY_PATH`.
+SEALED_PANEL = "sealed_panel"
+#: Why a clip was staged: truth sites of one source, the mining pool, a synthetic-edit
+#: source or donor (:mod:`tadabur.synthetic_edits`, staged into a directory of its own), or
+#: the sealed panel.
+USES = frozenset({WAQF_BOUNDARY, P35_FIXTURE, MINING_POOL, SYNTHETIC_EDIT, SEALED_PANEL})
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -125,7 +129,21 @@ def parse_staged_clip(data: dict, where: str) -> StagedClip:
 
 
 def load_staged_clips(path: Path = REGISTRY_PATH) -> dict[str, StagedClip]:
-    """The registry keyed by ``audio_filename``; every row validated, no duplicates."""
+    """The registry keyed by ``audio_filename``; every row validated, no duplicates.
+
+    Refuses a registry that lists a sealed-panel clip, by name or checksum
+    (:mod:`tadabur.panel_seal`): the panel's own registry is read only by
+    :mod:`tadabur.sealed_panel`, through :func:`read_staged_clips`.
+    """
+    from .panel_seal import refuse_sealed_names
+
+    clips = read_staged_clips(path)
+    refuse_sealed_names(clips, (c.audio_sha256 for c in clips.values()))
+    return clips
+
+
+def read_staged_clips(path: Path) -> dict[str, StagedClip]:
+    """Any staging registry keyed by ``audio_filename``, validated, without the seal check."""
     clips: dict[str, StagedClip] = {}
     with open(path, encoding="utf-8") as f:
         for lineno, raw in enumerate(f, 1):
@@ -254,7 +272,9 @@ def verify_staged(clip: StagedClip, audio_dir: Path) -> None:
     """
     import soundfile as sf
 
-    path = audio_dir / clip.audio_filename
+    from .panel_seal import refuse_sealed
+
+    path = refuse_sealed(audio_dir / clip.audio_filename)
     if not path.exists():
         raise FileNotFoundError(f"{path} is not staged")
     found = (audio_sha256(path), sf.info(path).frames)

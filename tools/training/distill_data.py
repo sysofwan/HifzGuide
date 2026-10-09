@@ -46,6 +46,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from tadabur.panel_seal import SealedPanelError
+
 # The frozen deployed contract. A window is 5 s of 16 kHz audio -> 250 stride-2 feature
 # frames -> 125 CTC timesteps. Mirrors ``training.distill_student``; duplicated as
 # literals so this module does not drag in the student architecture just to window audio.
@@ -129,8 +131,12 @@ def split_clips(
 
 
 def discover_clips(audio_root: Path, pattern: str = "*.wav") -> list[Path]:
-    """Every clip under ``audio_root``, sorted so the listing is reproducible."""
-    return sorted(audio_root.rglob(pattern))
+    """Every clip under ``audio_root``, sorted so the listing is reproducible. Refuses
+    sealed-panel audio (:mod:`tadabur.panel_seal`): every tool that globs a corpus
+    directory for training, calibration or evaluation lists it through here."""
+    from tadabur.panel_seal import refuse_sealed_paths
+
+    return refuse_sealed_paths(sorted(audio_root.rglob(pattern)))
 
 
 @dataclass(frozen=True)
@@ -166,6 +172,8 @@ def build_window_index(
     for path in paths:
         try:
             info = sf.info(str(path))
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             continue
         if info.samplerate != SAMPLE_RATE:
@@ -219,6 +227,8 @@ def inventory(
     for path in paths:
         try:
             info = sf.info(str(path))
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             continue
         readable += 1
@@ -276,10 +286,11 @@ class DistillWindowDataset:
     def load_window(self, ref: WindowRef):
         """The window's waveform, zero-padded to the full window length like the device."""
         import numpy as np
-        import soundfile as sf
 
-        samples, rate = sf.read(
-            str(ref.path),
+        from tadabur.audio import read_audio
+
+        samples, rate = read_audio(
+            ref.path,
             start=ref.start_sample,
             frames=self.window_samples,
             dtype="float32",

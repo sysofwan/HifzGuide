@@ -61,6 +61,7 @@ import time
 
 import torch
 
+from tadabur.panel_seal import SealedPanelError
 from training.distill_data import (
     FEATURE_DIM,
     FEATURE_FRAMES,
@@ -151,6 +152,12 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
     Yields only input features, exactly like
     :class:`training.distill_data.DistillWindowDataset` -- the teacher runs online in the
     training step and produces targets from this same tensor.
+
+    ``exposure_use`` opts a run into acceptance rules §6: it names the exposure-registry use
+    the run makes (e.g. ``probe.training``), and the rows of every reciter that use must
+    not touch (:func:`tadabur.exposure.excluded_reciters`: the sealed panel's, and for a
+    training use the bias score half's) are dropped before any audio is read, and counted.
+    Without it a panel row's audio raises ``SealedPanelError`` and stops the run.
     """
 
     def __init__(
@@ -161,6 +168,7 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         shuffle_buffer: int = DEFAULT_SHUFFLE_BUFFER,
         seed: int = 1234,
         delete_after: bool = True,
+        exposure_use: str | None = None,
     ) -> None:
         overlap = sorted(set(shard_indices) & held_out_shards())
         if overlap:
@@ -176,6 +184,7 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         self.shuffle_buffer = shuffle_buffer
         self.seed = seed
         self.delete_after = delete_after
+        self.exposure_use = exposure_use
         self._extractor = None
 
     @property
@@ -209,18 +218,25 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         return features[:FEATURE_FRAMES]
 
     def _raw_windows(self):
-        """Every window of every clip in this worker's shards, in stream order."""
+        """Every window of every admitted clip in this worker's shards, in stream order."""
         from tadabur.shard_reader import iter_shard_rows
 
-        for row in iter_shard_rows(
-            self._my_shards(), delete_after=self.delete_after
-        ):
+        rows, exclusion = exclude_rows(
+            iter_shard_rows(self._my_shards(), delete_after=self.delete_after),
+            self.exposure_use,
+        )
+        for row in rows:
             try:
                 waveform = decode_row_waveform(row)
+            except SealedPanelError:  # a seal violation is never a corrupt input
+                raise
             except Exception:
-                # A corrupt row must not kill a 17-hour stream.
+                # A corrupt row must not kill a 17-hour stream. A sealed-panel row is not
+                # corrupt: it is re-raised above and stops the run.
                 continue
             yield from iter_row_windows(waveform, self.hop_seconds)
+        if exclusion is not None:
+            print(f"[data] exposure exclusion {exclusion.report()}", flush=True)
 
     def __iter__(self):
         """Shuffle-buffered feature windows.
@@ -245,7 +261,20 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
             yield self.extract(waveform)
 
 
-def probe(shard_index: int, hop_seconds: float = DEFAULT_HOP_SECONDS) -> dict:
+def exclude_rows(rows, exposure_use: str | None):
+    """``rows`` with the reciters ``exposure_use`` must not touch dropped before decoding,
+    and the :class:`tadabur.exposure.RowExclusion` counting them (``None`` without a use)."""
+    if exposure_use is None:
+        return rows, None
+    from tadabur.exposure import RowExclusion
+
+    exclusion = RowExclusion.for_use(exposure_use)
+    return exclusion.filter(rows), exclusion
+
+
+def probe(
+    shard_index: int, hop_seconds: float = DEFAULT_HOP_SECONDS, exposure_use: str | None = None
+) -> dict:
     """Download one shard, measure what it yields, delete it. Bounded disk by construction."""
     from tadabur.shard_reader import iter_shard_rows
 
@@ -254,9 +283,12 @@ def probe(shard_index: int, hop_seconds: float = DEFAULT_HOP_SECONDS) -> dict:
     windows = 0
     seconds = 0.0
 
-    for row in iter_shard_rows([shard_index], delete_after=True):
+    rows, exclusion = exclude_rows(iter_shard_rows([shard_index], delete_after=True), exposure_use)
+    for row in rows:
         try:
             waveform = decode_row_waveform(row)
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             continue
         clips += 1
@@ -271,6 +303,7 @@ def probe(shard_index: int, hop_seconds: float = DEFAULT_HOP_SECONDS) -> dict:
         "windows": windows,
         "steps_at_batch_32": windows // 32,
         "elapsed_s": round(elapsed, 1),
+        **({"exposure_exclusion": exclusion.report()} if exclusion is not None else {}),
     }
 
 
@@ -283,6 +316,11 @@ def main() -> None:
         action="store_true",
         help="download one shard, report what it yields, and delete it",
     )
+    parser.add_argument(
+        "--exposure-use", default=None,
+        help="the exposure-registry use this stream serves (e.g. probe.training): drop the "
+        "rows of reciters it must not touch, before decoding (acceptance rules §6)",
+    )
     args = parser.parse_args()
 
     from tadabur.shard_reader import NUM_SHARDS, parse_shard_spec
@@ -290,7 +328,7 @@ def main() -> None:
     indices = parse_shard_spec(args.shards)
 
     if args.probe:
-        report = probe(indices[0], args.hop_seconds)
+        report = probe(indices[0], args.hop_seconds, args.exposure_use)
         for key, value in report.items():
             print(f"  {key:<20} {value}")
         trainable = default_train_shards()

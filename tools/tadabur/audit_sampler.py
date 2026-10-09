@@ -186,17 +186,12 @@ def export_audio(
     rows a human cannot listen to. Imports ``datasets`` lazily so the pure sampling
     path stays dependency-light.
     """
-    from datasets import Audio, load_dataset
-
-    from .dataset_source import AUDIO_COLUMN, resolve_audio_filename
+    from .dataset_source import AUDIO_COLUMN, resolve_audio_filename, stream_rows
 
     wanted = {item.audio_ref: item.local_audio_path for item in items}
     out_dir.mkdir(parents=True, exist_ok=True)
-    dataset = load_dataset(dataset_id, name=config_name, split=split, streaming=True)
-    dataset = dataset.cast_column(AUDIO_COLUMN, Audio(decode=False))
-
     exported: dict[str, str] = {}
-    for row in dataset:
+    for row in stream_rows(dataset_id, config_name, split):
         name = resolve_audio_filename(row)
         if name in wanted and name not in exported:
             (out_dir / wanted[name]).write_bytes(row[AUDIO_COLUMN]["bytes"])

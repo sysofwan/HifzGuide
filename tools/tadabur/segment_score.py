@@ -66,7 +66,7 @@ from typing import Protocol
 import numpy as np
 import soundfile as sf
 
-from .audio import TARGET_SAMPLE_RATE
+from .audio import TARGET_SAMPLE_RATE, read_audio
 from .audit_sampler import local_audio_path
 from .clip_status import ClipStatus, write_clip_status
 from .contrast_attribution import all_contrasts
@@ -176,7 +176,7 @@ def slice_segment(
 
 def _load_clip(clips_dir: Path, audio_filename: str) -> np.ndarray:
     """Read a whole 16 kHz mono clip WAV (written by ``waqf_segments``) as float32."""
-    waveform, sample_rate = sf.read(clips_dir / audio_filename, dtype="float32")
+    waveform, sample_rate = read_audio(clips_dir / audio_filename, dtype="float32")
     if waveform.ndim > 1:  # defensive: collapse any stray channel dim to mono
         waveform = waveform.mean(axis=1)
     if sample_rate != TARGET_SAMPLE_RATE:

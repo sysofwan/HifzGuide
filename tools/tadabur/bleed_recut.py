@@ -283,7 +283,7 @@ def main() -> None:
     import soundfile as sf
     import torch
 
-    from .audio import TARGET_SAMPLE_RATE
+    from .audio import TARGET_SAMPLE_RATE, read_audio
     from .inference import MuaalemPhonemeModel
     from .reference_phonemes import load_reference_phonemes
 
@@ -319,7 +319,7 @@ def main() -> None:
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
         for clip, verdict, span in cut:
-            waveform, rate = sf.read(args.clips / clip["audio_filename"], dtype="float32")
+            waveform, rate = read_audio(args.clips / clip["audio_filename"], dtype="float32")
             lo = int(span.start_s * rate)
             hi = int(span.end_s * rate)
             clipped = waveform[lo:hi]

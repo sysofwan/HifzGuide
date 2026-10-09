@@ -38,14 +38,13 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from datasets import Audio, load_dataset
-
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
 from .dataset_source import (
     AUDIO_COLUMN,
     DATASET_ID,
     canonical_surah_ayah,
     resolve_audio_filename,
+    stream_rows,
 )
 from .inference import MODEL_ID, MuaalemPhonemeModel
 from .manifest import FilterManifest, ManifestRecord
@@ -210,9 +209,7 @@ def stream_clips(
     skips the ``start`` clips already scored on a prior run, and stops after
     ``limit`` clips this run when given.
     """
-    dataset = load_dataset(dataset_id, name=config_name, split=split, streaming=True)
-    dataset = dataset.cast_column(AUDIO_COLUMN, Audio(decode=False))
-    rows: Iterator[dict] = iter(dataset)
+    rows: Iterator[dict] = stream_rows(dataset_id, config_name, split)
     if start:
         rows = itertools.islice(rows, start, None)
     if limit is not None:

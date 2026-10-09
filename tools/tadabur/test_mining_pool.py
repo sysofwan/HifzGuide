@@ -104,8 +104,8 @@ def test_a_frame_smaller_than_the_size_yields_every_capped_clip():
 def test_evalset_rows_are_read_from_its_filenames(tmp_path):
     path = tmp_path / "manifest.json"
     path.write_text(json.dumps({"clips": [
-        {"filename": "tadabur_sh039_i00012_S1_A2_.wav", "shard": 39},
-        {"filename": "tadabur_sh381_i00999_S0_A1_.wav", "shard": 381},
+        {"filename": "tadabur_sh039_i00012_S1_A2_.wav", "shard": 39, "split": "dev"},
+        {"filename": "tadabur_sh381_i00999_S0_A1_.wav", "shard": 381, "split": "test"},
     ]}), encoding="utf-8")
     assert read_evalset_rows(path) == {(39, 12), (381, 999)}
 
@@ -113,7 +113,8 @@ def test_evalset_rows_are_read_from_its_filenames(tmp_path):
 def test_an_evalset_filename_that_disagrees_with_its_shard_is_refused(tmp_path):
     path = tmp_path / "manifest.json"
     path.write_text(json.dumps({"clips": [
-        {"filename": "tadabur_sh039_i00012_S1_A2_.wav", "shard": 58}]}), encoding="utf-8")
+        {"filename": "tadabur_sh039_i00012_S1_A2_.wav", "shard": 58, "split": "dev"}]}),
+        encoding="utf-8")
     with pytest.raises(ValueError, match="cannot read"):
         read_evalset_rows(path)
 

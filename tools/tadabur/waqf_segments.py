@@ -46,7 +46,6 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-from datasets import Audio, load_dataset
 
 _TOOLS_DIR = Path(__file__).resolve().parent.parent
 if str(_TOOLS_DIR) not in sys.path:
@@ -55,7 +54,7 @@ if str(_TOOLS_DIR) not in sys.path:
 from hafs_phonetizer import phonetize  # noqa: E402  (tools/ sibling module)
 
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
-from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename
+from .dataset_source import AUDIO_COLUMN, DATASET_ID, resolve_audio_filename, stream_rows
 from .manifest import ManifestRecord, read_records
 from .normalization import map_char_offsets, normalize_phonemes
 
@@ -273,8 +272,7 @@ def _stream_passing_rows(
     300-row ``preview`` config is too small to cover.
     """
     if row_source is None:
-        dataset = load_dataset(dataset_id, name=config_name, split=split, streaming=True)
-        row_source = iter(dataset.cast_column(AUDIO_COLUMN, Audio(decode=False)))
+        row_source = stream_rows(dataset_id, config_name, split)
     remaining = set(passing)
     consumed = 0
     for row in row_source:

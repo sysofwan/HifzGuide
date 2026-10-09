@@ -37,6 +37,19 @@ def resolve_audio_filename(row: dict) -> str:
     raise ValueError(f"Tadabur row has no audio_filename or audio.path: {row!r}")
 
 
+def stream_rows(dataset_id: str, config_name: str, split: str):
+    """Tadabur rows from the ``datasets`` stream, audio as raw bytes (``decode=False``),
+    each through the sealed panel's row seal (:func:`tadabur.panel_seal.seal_row`). The
+    one way the tools stream the dataset; the full-config shard reader is
+    :func:`tadabur.shard_reader.iter_shard_rows`."""
+    from datasets import Audio, load_dataset
+
+    from .panel_seal import seal_rows
+
+    dataset = load_dataset(dataset_id, name=config_name, split=split, streaming=True)
+    return seal_rows(iter(dataset.cast_column(AUDIO_COLUMN, Audio(decode=False))))
+
+
 def canonical_surah_ayah(surah_id: int, ayah_id: int) -> str:
     """Map a Tadabur ``(surah_id, ayah_id)`` to a canonical ``"surah:ayah"`` key.
 

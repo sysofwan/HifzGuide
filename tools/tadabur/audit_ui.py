@@ -41,6 +41,7 @@ from .contrast_attribution import MARGINAL_CONTRAST, all_contrasts
 from .eval_fixtures import ACCEPT, REJECT, EvalFixtureEntry
 from .manifest import read_records
 from .normalization import normalize_phonemes
+from .panel_seal import SealedPanelError
 from .smith_waterman import smith_waterman
 
 _PAGE_PATH = Path(__file__).parent / "audit_ui_page.html"
@@ -149,6 +150,8 @@ def reference_phoneme_index(surah_ayahs: set[str]) -> dict[str, str]:
         from .reference_phonemes import load_reference_phonemes
 
         references = load_reference_phonemes()
+    except SealedPanelError:  # a seal violation is never a corrupt input
+        raise
     except Exception:
         return {}
     return {key: references[key] for key in surah_ayahs if key in references}

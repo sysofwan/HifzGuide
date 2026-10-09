@@ -42,6 +42,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from tadabur.audio import read_audio
+from tadabur.panel_seal import SealedPanelError
 from training.decoding import Decoder, load_student_from_checkpoint, tokens_to_phonemes
 from training.distill_data import SAMPLE_RATE, discover_clips, split_clips
 from training.distill_eval import check_split_matches_checkpoint
@@ -222,7 +224,6 @@ def main() -> None:
         raise SystemExit("CUDA is required")
     device = torch.device("cuda")
 
-    import soundfile as sf
     from transformers import SeamlessM4TFeatureExtractor
 
     from tadabur.reference_phonemes import load_reference_phonemes
@@ -252,7 +253,9 @@ def main() -> None:
             skipped += 1
             continue
         try:
-            samples, rate = sf.read(str(path), dtype="float32", always_2d=False)
+            samples, rate = read_audio(path, dtype="float32", always_2d=False)
+        except SealedPanelError:  # a seal violation is never a corrupt input
+            raise
         except Exception:
             skipped += 1
             continue

@@ -17,9 +17,9 @@ import argparse
 import itertools
 
 import torch
-from datasets import Audio, load_dataset
 
 from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+from .dataset_source import stream_rows
 from .inference import MODEL_ID, MuaalemPhonemeModel
 
 DATASET_ID = "FaisaI/tadabur"
@@ -38,11 +38,8 @@ def stream_clip(
     even one clip pulls that whole row group; the small-row-group ``preview`` config
     (``--config-name preview``) is far faster for a smoke test.
     """
-    dataset = load_dataset(
-        dataset_id, name=config_name, split=split, streaming=True
-    )
-    dataset = dataset.cast_column(AUDIO_COLUMN, Audio(decode=False))
-    clip = next(itertools.islice(iter(dataset), index, index + 1), None)
+    clip = next(itertools.islice(stream_rows(dataset_id, config_name, split), index, index + 1),
+                None)
     if clip is None:
         raise IndexError(f"{dataset_id}[{split}] has no clip at index {index}.")
     return clip

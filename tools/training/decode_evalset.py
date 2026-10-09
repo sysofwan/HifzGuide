@@ -80,6 +80,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from tadabur.panel_seal import SealedPanelError
+
 # Bumped whenever the manifest layout, the strata, or anything the cached teacher decisions
 # depend on changes, so a stale set is refused rather than silently reused.
 SCHEMA_VERSION = "decode-evalset-v2"
@@ -134,7 +136,9 @@ def read_clip_audio(clips_dir: Path, filename: str):
 
     from training.distill_data import SAMPLE_RATE
 
-    samples, rate = sf.read(str(clips_dir / filename), dtype="float32")
+    from tadabur.audio import read_audio
+
+    samples, rate = read_audio(clips_dir / filename, dtype="float32")
     if rate != SAMPLE_RATE:
         raise SystemExit(f"{filename} is {rate} Hz, not {SAMPLE_RATE}")
     if samples.ndim > 1:
@@ -579,6 +583,8 @@ def build(
                 continue
             try:
                 samples = decode_to_mono_16k(row["audio"]["bytes"])
+            except SealedPanelError:  # a seal violation is never a corrupt input
+                raise
             except Exception:
                 num_skipped += 1
                 continue

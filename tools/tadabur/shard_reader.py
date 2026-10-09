@@ -30,6 +30,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from .dataset_source import DATASET_ID
+from .panel_seal import seal_row, seal_rows
 
 # The full ``default`` config ships 385 shards named ``data/train-{i:05d}.parquet``,
 # each a single ~1000-row row group. Rows-per-shard is fixed, so a filter resuming a
@@ -117,10 +118,42 @@ def iter_shard_rows(
             for batch in parquet_file.iter_batches(
                 batch_size=batch_size, columns=columns or NEEDED_COLUMNS
             ):
-                yield from batch.to_pylist()
+                yield from seal_rows(batch.to_pylist())
         finally:
             if delete_after:
                 _remove_shard_blob(path)
+
+
+def iter_selected_rows(
+    shard: int,
+    rows: set[int],
+    *,
+    cache_dir: str | Path | None = None,
+    columns: list[str] | None = None,
+    dataset_id: str = DATASET_ID,
+) -> Iterator[dict | None]:
+    """One shard's rows in order, materialized only at ``rows``: every other position is a
+    ``None`` placeholder, since turning ~1,000 rows' audio into Python bytes costs more than
+    downloading the shard. Materialized rows pass the sealed panel's row seal, like
+    :func:`iter_shard_rows`. The shard's cached blob is deleted once consumed."""
+    import pyarrow.parquet as pq
+    from huggingface_hub import hf_hub_download
+
+    path = hf_hub_download(
+        dataset_id, SHARD_TEMPLATE.format(index=shard), repo_type="dataset",
+        cache_dir=str(cache_dir) if cache_dir is not None else None,
+    )
+    try:
+        position = 0
+        for batch in pq.ParquetFile(path).iter_batches(
+            batch_size=64, columns=columns or NEEDED_COLUMNS
+        ):
+            for offset in range(batch.num_rows):
+                keep = position + offset in rows
+                yield seal_row(batch.slice(offset, 1).to_pylist()[0]) if keep else None
+            position += batch.num_rows
+    finally:
+        _remove_shard_blob(path)
 
 
 #: The light per-row columns :func:`iter_shard_metadata` reads: the clip's filename (the

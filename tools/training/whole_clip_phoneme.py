@@ -48,7 +48,7 @@ from peft import LoraConfig, get_peft_model
 from tqdm.auto import tqdm
 from transformers import SeamlessM4TFeatureExtractor
 
-from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k, read_audio_bytes
 from tadabur.inference import MODEL_ID, PHONEME_LEVEL
 from tadabur.muaalem import (
     Wav2Vec2BertForMultilevelCTC,
@@ -564,7 +564,7 @@ def _sample_waveform(audio_dir: Path, sample_clip: str | None) -> np.ndarray:
         if not clips:
             raise FileNotFoundError(f"no .wav clips under {audio_dir} for the preflight.")
         path = clips[0]
-    return decode_to_mono_16k(path.read_bytes())
+    return decode_to_mono_16k(read_audio_bytes(path))
 
 
 def _cmd_preflight(args: argparse.Namespace) -> None:

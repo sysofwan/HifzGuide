@@ -39,7 +39,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k, read_audio_bytes
 from tadabur.audit_sampler import local_audio_path
 from tadabur.phoneme_vocab import PHONEME_CHAR_TO_ID
 from training.windowed_labels import WindowLabel, read_labels
@@ -137,7 +137,7 @@ class ClipAudioCache:
                     f"{self._audio_dir} under either the hash-prefixed "
                     f"(tadabur.audit_sampler) or plain name — stage it before training."
                 )
-            cached = decode_to_mono_16k(path.read_bytes())
+            cached = decode_to_mono_16k(read_audio_bytes(path))
             self._cache[clip_audio_filename] = cached
         return cached
 

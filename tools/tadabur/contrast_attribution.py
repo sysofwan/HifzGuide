@@ -24,6 +24,7 @@ this is a labelling heuristic for the human audit, not an exhaustive diff.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from . import phoneme_sifat
@@ -34,7 +35,7 @@ from .normalization import (
     cluster_offsets,
     normalize_phonemes,
 )
-from .smith_waterman import AlignedColumn, smith_waterman
+from .smith_waterman import AlignedColumn, AlignmentResult, smith_waterman
 
 # The shadda present↔absent bucket, alongside the six soft-pair buckets.
 SHADDA_CONTRAST = "shadda"
@@ -201,6 +202,104 @@ class ContrastSite:
     change: str
 
 
+@dataclass(frozen=True)
+class CarrierAlignment:
+    """The normalized alignment of a decode against a raw reference, with every column's
+    position on each side, so a column can be carried back to its raw-reference carrier.
+
+    Built by :func:`align_on_carriers`. :func:`contrast_sites` and the truth-site scorer
+    (:mod:`training.site_outcomes`) read one decode through the same object.
+    """
+
+    predicted: str
+    raw_reference: str
+    reference: PhonemeNormalization
+    decode: PhonemeNormalization
+    alignment: AlignmentResult
+    #: The normalized reference / decode position each column consumes (``None``: a gap).
+    positions: list[int | None]
+    query_positions: list[int | None]
+    cluster_starts: list[int]
+
+    def carrier(self, ref_position: int) -> int:
+        """The raw-reference character index of a normalized reference position: the
+        offset of its group's first grapheme cluster, which starts with the core consonant."""
+        return self.cluster_starts[self.reference.offset_map[ref_position][0]]
+
+    def consonants(self) -> dict[int, str | None]:
+        """The decode character aligned to each raw-reference carrier in the local alignment
+        (:func:`aligned_consonants`)."""
+        return {
+            self.carrier(position): column.query_char
+            for column, position in zip(self.alignment.columns, self.positions)
+            if position is not None
+        }
+
+    def decoded_run(self, raw_indices: Iterable[int]) -> int:
+        """How many consonants the decode holds where the reference has the run ``raw_indices``.
+
+        ``raw_indices`` are the raw-reference indices of one run of a consonant (a geminate
+        ``دد``, or a single ``د``). The decode's groups aligned to the run's normalized
+        groups count, together with the decode's neighbouring groups of the same core that
+        no reference character is aligned to: an inserted copy, or one the local alignment
+        trimmed off its edge. Each group counts the raw consonants it stands for
+        (:func:`_raw_cores`), so a bare ``دد`` that normalization merged counts two. 0 means
+        the run is not aligned to that consonant at all.
+        """
+        wanted = set(raw_indices)
+        run = {p for p in range(len(self.reference.normalized)) if self.carrier(p) in wanted}
+        if not run:
+            return 0
+        core = self.reference.normalized[min(run)]
+        consumed = {q for q, p in zip(self.query_positions, self.positions) if p is not None}
+        held = {
+            q
+            for q, p in zip(self.query_positions, self.positions)
+            if p in run and q is not None and self.decode.normalized[q] == core
+        }
+        if not held:
+            return 0
+        for step, edge in ((-1, min(held)), (1, max(held))):
+            q = edge + step
+            while 0 <= q < len(self.decode.normalized) and q not in consumed and (
+                self.decode.normalized[q] == core
+            ):
+                held.add(q)
+                q += step
+        return sum(_raw_cores(self.predicted, self.decode, q) for q in held)
+
+
+def align_on_carriers(predicted: str, raw_reference: str) -> CarrierAlignment:
+    """Align as :func:`attribute_contrasts` does: both sides normalized, Smith-Waterman."""
+    reference = normalize_phonemes(raw_reference)
+    decode = normalize_phonemes(predicted)
+    alignment = smith_waterman(query=decode.normalized, reference=reference.normalized)
+    positions: list[int | None] = []
+    query_positions: list[int | None] = []
+    cursor, query_cursor = alignment.ref_start, alignment.query_start
+    for column in alignment.columns:
+        positions.append(None if column.ref_char is None else cursor)
+        query_positions.append(None if column.query_char is None else query_cursor)
+        cursor += column.ref_char is not None
+        query_cursor += column.query_char is not None
+    return CarrierAlignment(
+        predicted, raw_reference, reference, decode, alignment, positions, query_positions,
+        cluster_offsets(raw_reference),
+    )
+
+
+def aligned_consonants(predicted: str, raw_reference: str) -> dict[int, str | None]:
+    """The decode character aligned to each raw-reference carrier inside the local alignment.
+
+    This is the consonant-commitment rule the truth-site scorer reads at a pair site: the
+    alignment :func:`contrast_sites` locates contrasts with, so the letter it reports at a
+    carrier is the letter a contrast there would name. A value is the decode's normalized
+    character (ghunna variants folded onto their base), or ``None`` where the decode has a
+    gap. A carrier outside the local alignment span is absent.
+    """
+    return align_on_carriers(predicted, raw_reference).consonants()
+
+
 def contrast_sites(predicted: str, raw_reference: str, contrast: str) -> list[ContrastSite]:
     """Where ``contrast`` (a pair label ``a↔b`` or :data:`SHADDA_CONTRAST`) occurs, by carrier.
 
@@ -221,47 +320,31 @@ def contrast_sites(predicted: str, raw_reference: str, contrast: str) -> list[Co
     of that core, an added site only if the reference's group holds one. The attribution
     and the scorer gate keep the normalized semantics; only these sites are filtered.
     """
-    normalization = normalize_phonemes(raw_reference)
-    decode_normalization = normalize_phonemes(predicted)
-    alignment = smith_waterman(
-        query=decode_normalization.normalized, reference=normalization.normalized
-    )
-    starts = cluster_offsets(raw_reference)
-
-    def carrier(ref_position: int) -> int:
-        return starts[normalization.offset_map[ref_position][0]]
-
-    # The reference and decode position of every column that consumes one (else None).
-    positions: list[int | None] = []
-    query_positions: list[int | None] = []
-    cursor, query_cursor = alignment.ref_start, alignment.query_start
-    for column in alignment.columns:
-        positions.append(None if column.ref_char is None else cursor)
-        query_positions.append(None if column.query_char is None else query_cursor)
-        cursor += column.ref_char is not None
-        query_cursor += column.query_char is not None
+    aligned = align_on_carriers(predicted, raw_reference)
+    columns, positions = aligned.alignment.columns, aligned.positions
 
     if contrast == SHADDA_CONTRAST:
         sites = []
-        for idx, neighbor in shadda_event_columns(alignment.columns):
+        for idx, neighbor in shadda_event_columns(columns):
             position = positions[idx]
             if position is None:  # the decode doubled the neighbour's single consonant
-                if _raw_cores(raw_reference, normalization, positions[neighbor]) == 1:
-                    sites.append(ContrastSite(carrier(positions[neighbor]), ADDED))
-            elif _raw_cores(predicted, decode_normalization, query_positions[neighbor]) == 1:
+                if _raw_cores(raw_reference, aligned.reference, positions[neighbor]) == 1:
+                    sites.append(ContrastSite(aligned.carrier(positions[neighbor]), ADDED))
+            elif _raw_cores(predicted, aligned.decode, aligned.query_positions[neighbor]) == 1:
                 # the reference's doubled pair is this column and its neighbour
-                sites.append(ContrastSite(carrier(min(position, positions[neighbor])), DROPPED))
+                carrier = aligned.carrier(min(position, positions[neighbor]))
+                sites.append(ContrastSite(carrier, DROPPED))
         return sorted(set(sites), key=lambda site: site.reference_index)
 
     pair = frozenset(contrast.split("\u2194"))
     found: dict[int, ContrastSite] = {}
-    for column, position in zip(alignment.columns, positions):
+    for column, position in zip(columns, positions):
         if (
             position is not None
             and column.query_char != column.ref_char
             and frozenset((column.query_char, column.ref_char)) == pair
         ):
-            index = carrier(position)
+            index = aligned.carrier(position)
             found[index] = ContrastSite(index, column.query_char)
     return [
         site

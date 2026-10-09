@@ -256,6 +256,66 @@ def vowel_sites(decode: str, reference: str) -> list[VowelSite]:
     return sites
 
 
+#: The explicit sukun mark (U+0652). Today's 43-class head has no sukun class, so no decode
+#: carries it and an empty slot is the only way it can "say" sukun; #93 adds the class
+#: (ADR-0011 §2). A decode that does carry it commits sukun at that carrier.
+SUKUN_MARK = "ْ"
+#: Every mark a decode can commit at a carrier: the three harakat and the explicit sukun.
+EXPLICIT_MARKS = SHORT_VOWELS | {SUKUN_MARK}
+
+
+@dataclass(frozen=True)
+class CarrierReading:
+    """What a decode put on one reference character, read off the carrier-anchored alignment.
+
+    ``decoded`` is the decode character aligned to the reference character (``None`` for a
+    gap), so the carrier is reproduced exactly when ``decoded`` equals the reference
+    character. ``marks`` are the explicit marks (:data:`EXPLICIT_MARKS`) the alignment places
+    after it, in decode order: a mark aligned to the reference's own mark, a mark the decode
+    inserted, or both, up to the next column that holds anything but a mark on either side.
+    """
+
+    decoded: str | None
+    marks: tuple[str, ...]
+
+
+def carrier_readings(decode: str, reference: str) -> dict[int, CarrierReading]:
+    """Each non-mark reference index inside the local alignment, and what the decode put there.
+
+    The same alignment :func:`vowel_sites` reads (raw strings, Smith-Waterman, full column
+    sequence), extended from "the reference's vowel" to "every explicit mark on the carrier".
+    That extension is what sukun needs: a sukun site has no reference vowel for
+    :func:`vowel_sites` to classify, so whether the decode left the slot empty or hung a
+    haraka on it is visible only as marks attached to the carrier. A reference index outside
+    the local alignment span is absent, which a caller reads as unaligned; marks the decode
+    emits right after the last aligned carrier belong to it even where the local alignment
+    trimmed them.
+    """
+    alignment = smith_waterman(decode, reference)
+    decoded: dict[int, str | None] = {}
+    marks: dict[int, list[str]] = {}
+    ref_index, carrier = alignment.ref_start, None
+    for column in alignment.columns:
+        ref_char, query_char = column.ref_char, column.query_char
+        if ref_char is not None and ref_char not in EXPLICIT_MARKS:
+            carrier = ref_index
+            decoded[carrier], marks[carrier] = query_char, []
+        elif query_char is not None and query_char not in EXPLICIT_MARKS:
+            carrier = None  # a decode-only character: the marks after it are its own
+        elif query_char is not None and carrier is not None:
+            marks[carrier].append(query_char)
+        if ref_char is not None:
+            ref_index += 1
+    # The local alignment trims a final mismatching mark (``كَتَبِ`` against ``كَتَبَ`` ends at
+    # the ب). Marks the decode emits right after the last aligned carrier are still on it.
+    if carrier is not None:
+        for char in decode[alignment.query_end :]:
+            if char not in EXPLICIT_MARKS:
+                break
+            marks[carrier].append(char)
+    return {index: CarrierReading(decoded[index], tuple(marks[index])) for index in decoded}
+
+
 def _carrier_before(reference: str, index: int) -> str | None:
     """The nearest non-vowel reference character before ``index`` — the vowel's carrier."""
     for char in reversed(reference[:index]):

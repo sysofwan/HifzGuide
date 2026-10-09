@@ -31,6 +31,7 @@ from pathlib import Path
 
 import torch
 
+from training.decode_evalset import levenshtein  # noqa: F401  (its callers import it from here)
 from training.decoding import (
     PROTOCOL_VERSION,
     Decoder,
@@ -46,28 +47,6 @@ from training.distill_loss import BLANK_ID, breakout_stats
 # Default for the older --audio-root path. Named so the --eval-set path can tell "the user
 # passed --num-clips" from "the user did not", and refuse the former.
 DEFAULT_AUDIO_ROOT_CLIPS = 200
-
-
-def levenshtein(a: list[int], b: list[int]) -> int:
-    """Edit distance between two token streams."""
-    if not a:
-        return len(b)
-    if not b:
-        return len(a)
-
-    previous = list(range(len(b) + 1))
-    for i, token_a in enumerate(a, start=1):
-        current = [i]
-        for j, token_b in enumerate(b, start=1):
-            current.append(
-                min(
-                    previous[j] + 1,
-                    current[j - 1] + 1,
-                    previous[j - 1] + (token_a != token_b),
-                )
-            )
-        previous = current
-    return previous[-1]
 
 
 @dataclass

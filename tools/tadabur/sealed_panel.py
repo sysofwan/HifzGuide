@@ -19,13 +19,16 @@ no truth site, human label, mining-pool clip, ``decode_evalset`` record (dev, te
 legacy stratified sample), Muraja corpus clip, synthetic edit, probe, bias or shaddah-probe
 use. "A new salt" over used reciters would not make them fresh (§6), so used reciters leave
 whole. Then the mining pool's row bounds: 1.5-50 s, and an ayah the phonetizer can realize.
-Then the recording itself (#117): a row whose **probable copy** (the registry's screen,
-:func:`tadabur.exposure.copy_groups`) is a recording of a use the panel must be
-source-disjoint from, an ``h448.training`` shard row included, leaves; and of rows that
-are one recording (a probable copy, or one checksum among staged panel clips) only the
-first by file name stays. **No model's decode decides eligibility**, and the panel is the
-whole frame: no cap, no draw, so a site worklist mined later records its inclusion
-probabilities against ``frame.json``.
+Then the recording itself (#117): a row that is, or probably is, the same recording as a
+recording of a use the panel must be source-disjoint from (a checksum-confirmed alias or a
+probable copy, :meth:`tadabur.exposure.ExposureRegistry.same_recording`; an
+``h448.training`` shard row included) leaves; and of rows that are one recording only the
+first by file name stays. The aliases are committed apart from the panel, so pruning a
+clip never forgets why it went: ``select`` after ``prune`` selects the same panel. The
+screen certifies only that no overlap is **detected** (its recall is measured on the
+checksum-confirmed groups, :func:`tadabur.exposure.screen_agreement`). **No model's decode
+decides eligibility**, and the panel is the whole frame: no cap, no draw, so a site
+worklist mined later records its inclusion probabilities against ``frame.json``.
 
 **Preparation, not scoring.** :func:`segment_panel` runs the recitation VAD and today's
 pause-to-word placement (:func:`tadabur.segment_score.segment_clips`, whose whole-clip
@@ -68,12 +71,10 @@ from pathlib import Path
 
 from .exposure import (
     EXPOSURE_DIR,
-    PROBABLE_COPIES_NAME,
     SOURCES_DIRNAME,
     Exposure,
     ExposureRegistry,
     load_registry,
-    read_probable_copies,
     require_complete,
     write_use,
 )
@@ -142,7 +143,7 @@ def exposed_reciters(registry: ExposureRegistry) -> dict[int, list[str]]:
 
 
 def copy_exposed(registry: ExposureRegistry) -> frozenset[tuple[int, int]]:
-    """The rows (``(shard, row_index)``) with a probable copy the panel must be
+    """The rows (``(shard, row_index)``) with an alias or a probable copy the panel must be
     source-disjoint from: a recording another use lists, or a row of a shard use whose
     membership is exact (``h448.training``; an uncertain one may overlap, §6)."""
     allowed = set(source_overlap_allowed(registry))
@@ -150,8 +151,9 @@ def copy_exposed(registry: ExposureRegistry) -> frozenset[tuple[int, int]]:
               for shard in e.shards}
     listed = {r.source for use, rows in registry.recordings.items() if use != SEALED_PANEL
               for r in rows}
-    return frozenset(source for source, copies in registry.copies.items()
-                     if any(c in listed or c[0] in shards for c in copies))
+    return frozenset(source for source in registry.related_sources()
+                     if any(c in listed or c[0] in shards
+                            for c in registry.same_recording(source) - {source}))
 
 
 def panel_frame(
@@ -162,9 +164,9 @@ def panel_frame(
 ) -> tuple[list[IndexRow], list[tuple[IndexRow, str]]]:
     """The panel, and every other row of the unseen shards with why it was left out:
     ``reciter_exposed``, then the row-level ``duration`` and ``phonetizer_unsupported``,
-    then the recording-level ``probable_copy_exposed`` (its source in ``exposed``) and
-    ``duplicate_recording`` (``recording(row)``, the keys that identify its recording,
-    meets a row kept before it by file name)."""
+    then the recording-level ``probable_copy_exposed`` (its source in ``exposed``: it has an
+    alias or a probable copy there) and ``duplicate_recording`` (``recording(row)``, the
+    keys that identify its recording, meets a row kept before it by file name)."""
     import generate_phonemes
     from training.decode_evalset import MAX_CLIP_SECONDS, MIN_CLIP_SECONDS
 
@@ -191,11 +193,24 @@ def panel_frame(
     return kept, excluded
 
 
+def select_panel(
+    rows: Iterable[IndexRow], registry: ExposureRegistry, directory: Path = EXPOSURE_DIR
+) -> tuple[list[IndexRow], dict]:
+    """The panel and its frame record, from a full shard index and the registry (loaded
+    from ``directory``) alone: two rows are one recording when the registry says so."""
+    barred = exposed_reciters(registry)
+    panel, excluded = panel_frame(
+        rows, barred, copy_exposed(registry),
+        lambda row: registry.same_recording((row.shard, row.row_index)))
+    return panel, frame_record(panel, excluded, barred, registry, directory)
+
+
 def frame_record(
     panel: list[IndexRow],
     excluded: list[tuple[IndexRow, str]],
     barred: Mapping[int, list[str]],
     registry: ExposureRegistry,
+    directory: Path = EXPOSURE_DIR,
 ) -> dict:
     """What the panel was drawn from: rows per shard by outcome, the unseen-shard reciters
     each use barred, and per panel reciter its clips and its rows in each shared-baseline
@@ -222,23 +237,19 @@ def frame_record(
             str(r): {"clips": n, **{f"{u}_rows": rows.get(r, 0) for u, rows in baselines.items()}}
             for r, n in sorted(clips.items())
         },
-        "registry_sha256": registry_fingerprint(),
+        "registry_sha256": registry_fingerprint(directory),
     }
 
 
 def registry_fingerprint(directory: Path = EXPOSURE_DIR) -> str:
-    """SHA-256 over the exposure registry's use files (name and bytes), the panel's own
-    excepted, and the probable-copy groups' rows (not the uses they are annotated with,
-    which name the panel): what the frame's exclusions are a function of."""
+    """SHA-256 over the exposure registry's files (name and bytes), the panel's own use
+    excepted: what the frame's exclusions are a function of, the recording aliases and
+    the probable-copy screen included."""
     digest = hashlib.sha256()
     for path in sorted(directory.iterdir()):
         if path.name.startswith(f"{SEALED_PANEL}.") or path.name in ("README.md", SOURCES_DIRNAME):
             continue
-        data = path.read_bytes()
-        if path.name == PROBABLE_COPIES_NAME:
-            data = json.dumps([[g["screen"], g["rows"]] for g in read_probable_copies(path)],
-                              sort_keys=True).encode("utf-8")
-        digest.update(path.name.encode("utf-8") + b"\0" + data + b"\0")
+        digest.update(path.name.encode("utf-8") + b"\0" + path.read_bytes() + b"\0")
     return digest.hexdigest()
 
 
@@ -545,25 +556,11 @@ def _rows(path: Path) -> list[dict]:
 def _select(index_path: Path, out: Path) -> None:
     registry = load_registry()
     require_complete(registry)
-    barred = exposed_reciters(registry)
-    # Checksums are known for clips already staged for the panel (a rebuild), so a copy the
-    # name screen misses (filed under another ayah) is still one recording.
-    checksums = ({n: c.audio_sha256 for n, c in load_panel_registry().items()}
-                 if STAGED_PATH.exists() else {})
-
-    def recording(row: IndexRow) -> set:
-        keys: set = set(registry.same_recording((row.shard, row.row_index)))
-        if row.audio_filename in checksums:
-            keys.add(checksums[row.audio_filename])
-        return keys
-
-    panel, excluded = panel_frame(read_shard_index(index_path).values(), barred,
-                                  copy_exposed(registry), recording)
+    panel, frame = select_panel(read_shard_index(index_path).values(), registry)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         for row in panel:
             f.write(json.dumps(asdict(row), ensure_ascii=False, sort_keys=True) + "\n")
-    frame = frame_record(panel, excluded, barred, registry)
     FRAME_PATH.parent.mkdir(parents=True, exist_ok=True)
     FRAME_PATH.write_text(json.dumps(frame, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in frame.items() if k not in ("per_reciter", "per_shard")},

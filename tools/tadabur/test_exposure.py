@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections import Counter
 
 import pytest
 
@@ -35,13 +36,16 @@ from tadabur.exposure import (
     COPY_SCREEN,
     EXPOSURE_DIR,
     PROBABLE_COPIES_NAME,
+    RECORDING_ALIASES_NAME,
     copies_across_uses,
-    copies_of,
     copy_groups,
     duplicate_recordings,
-    group_uses,
     read_probable_copies,
+    read_recording_aliases,
+    relations,
+    screen_agreement,
     write_probable_copies,
+    write_recording_aliases,
     evalset_records,
     label_file_clips,
     load_registry,
@@ -186,42 +190,47 @@ def test_check_disjoint_by_source_sees_a_copy_under_another_row_by_its_checksum(
         "c" * 64: {(3, 7): (WAQF,), (39, 0): (MINING_POOL,)}}
 
 
-def _index_row(name: str, shard: int, row: int, seconds: float = 8.0) -> IndexRow:
-    return IndexRow(name, shard, row, 12, "2:2", seconds)
+def _index_row(
+    name: str, shard: int, row: int, seconds: float = 8.0, reciter: int = 12
+) -> IndexRow:
+    return IndexRow(name, shard, row, reciter, "2:2", seconds)
 
 
-_ORIGINAL = "tadabur_spk0001_S1_A2_abcd0123_000004.wav"
-_COPY = "tadabur_spk0002_S1_A2_abcd0123_000004.wav"
-
-
-def test_the_copy_screen_matches_a_name_but_its_speaker_and_a_duration():
+def test_the_copy_screen_groups_one_reciter_and_one_duration_whatever_the_name():
     index = [
-        _index_row(_ORIGINAL, 3, 7),
-        _index_row(_COPY, 21, 5),
-        _index_row("tadabur_spk0003_S1_A2_abcd0123_000004.wav", 22, 0, seconds=8.5),
-        _index_row("tadabur_spk0001_S1_A3_abcd0123_000004.wav", 22, 1),
+        _index_row("tadabur_spk0001_S1_A2_abcd0123_000004.wav", 3, 7),
+        _index_row("tadabur_spk0002_S9_A5_ffff0000_000001.wav", 21, 5),  # another name
+        _index_row("tadabur_spk0003_S1_A2_abcd0123_000004.wav", 22, 0, seconds=8.0004),
+        _index_row("tadabur_spk0001_S1_A2_abcd0123_000005.wav", 22, 1, seconds=8.5),
+        _index_row("tadabur_spk0001_S1_A2_abcd0123_000006.wav", 22, 2, reciter=13),
     ]
-    (group,) = copy_groups(index)
-    assert [r["audio_filename"] for r in group["rows"]] == [_ORIGINAL, _COPY]
-    assert (group["name"], group["duration_s"]) == ("S1_A2_abcd0123_000004", 8.0)
-    assert copies_of([group]) == {(3, 7): ((21, 5),), (21, 5): ((3, 7),)}
-    with pytest.raises(ValueError, match="not a Tadabur file name"):
-        copy_groups([_index_row("other.wav", 0, 0)])
+    assert copy_groups(index) == [((3, 7), (21, 5), (22, 0))]  # 8.0004 s is 8.000 s
+    assert relations(copy_groups(index))[(21, 5)] == ((3, 7), (22, 0))
+
+
+def test_screen_agreement_counts_recall_on_confirmed_groups_and_false_pairs():
+    groups = [((0, 1), (0, 2), (0, 3)), ((1, 1), (1, 2))]
+    checksums = {(0, 1): "a", (0, 2): "a", (0, 3): "b", (1, 1): "c", (2, 1): "c",
+                 (1, 2): "d"}
+    assert screen_agreement(groups, checksums) == {
+        "checksummed_rows": 6, "confirmed_groups": 2, "confirmed_groups_found": 1,
+        "grouped_pairs_same_checksum": 1, "grouped_pairs_different_checksum": 3}
+
+
+_A, _B, _C = (f"tadabur_spk000{n}_S2_A2_abcd0123_00000{n}.wav" for n in (1, 2, 3))
 
 
 def _copied_registry(tmp_path):
-    """A truth site whose recording probably has a copy in a training shard, and a pool
-    clip that probably is another use's recording under its own row."""
-    write_use(WAQF, [_row(_ORIGINAL, sha=None)], tmp_path)
-    write_use(MINING_POOL, [_row("tadabur_spk0009_S2_A2_abcd0123_000001.wav", shard=40, row=1,
-                                 sha=None)], tmp_path)
-    write_use(SYNTHETIC_EDIT_SOURCE, [_row("tadabur_spk0002_S2_A2_abcd0123_000001.wav",
-                                           shard=22, row=3, sha=None)], tmp_path)
+    """A truth site whose recording probably has a copy in a training shard (8 s), and a
+    pool clip that probably is an edit source's recording under its own row (9 s)."""
+    write_use(WAQF, [_row(_A, sha=None)], tmp_path)
+    write_use(MINING_POOL, [_row(_B, shard=40, row=1, sha=None)], tmp_path)
+    write_use(SYNTHETIC_EDIT_SOURCE, [_row(_C, shard=22, row=3, sha=None)], tmp_path)
     write_shard_use(H448_TRAINING, _shards((21,), {12: 1}), tmp_path)
-    index = [_index_row(_ORIGINAL, 3, 7), _index_row(_COPY, 21, 5),
-             _index_row("tadabur_spk0009_S2_A2_abcd0123_000001.wav", 40, 1),
-             _index_row("tadabur_spk0002_S2_A2_abcd0123_000001.wav", 22, 3)]
-    write_probable_copies(copy_groups(index), load_registry(tmp_path), tmp_path)
+    write_shard_use(H448_INIT_VALIDATION, _shards((0,), {12: 1}, "uncertain"), tmp_path)
+    index = [_index_row(_A, 3, 7), _index_row("x.wav", 21, 5),
+             _index_row(_B, 40, 1, seconds=9.0), _index_row(_C, 22, 3, seconds=9.0)]
+    write_probable_copies(copy_groups(index), SHA, tmp_path)
     return load_registry(tmp_path)
 
 
@@ -242,20 +251,72 @@ def test_check_disjoint_by_source_counts_a_probable_copy_as_the_same_recording(t
     check_disjoint(WAQF, H448_TRAINING, by="source", registry=bare)
 
 
-def test_the_committed_screen_is_this_screen_and_lists_current_uses(tmp_path):
-    groups = read_probable_copies(EXPOSURE_DIR / PROBABLE_COPIES_NAME)
+def test_two_shard_uses_overlap_through_a_copy_spanning_their_shards(tmp_path):
+    """Shards 0 and 21 are disjoint, but one recording sits in both."""
+    write_shard_use(H448_TRAINING, _shards((21,), {12: 1}), tmp_path)
+    write_shard_use(H448_INIT_VALIDATION, _shards((0,), {12: 1}, "uncertain"), tmp_path)
+    check_disjoint(H448_TRAINING, H448_INIT_VALIDATION, by="source",
+                   registry=load_registry(tmp_path))
+    write_probable_copies([((0, 5), (21, 5))], SHA, tmp_path)
+    with pytest.raises(ExposureOverlap, match=r"share 1 sources, e.g. \[\(21, 5\)\]"):
+        check_disjoint(H448_TRAINING, H448_INIT_VALIDATION, by="source",
+                       registry=load_registry(tmp_path))
+    write_shard_use(H448_INIT_VALIDATION, _shards((0, 21), {12: 1}, "uncertain"), tmp_path)
+    with pytest.raises(ExposureOverlap, match=r"e.g. \[21, \(21, 5\)\]"):  # a shared shard
+        check_disjoint(H448_TRAINING, H448_INIT_VALIDATION, by="source",
+                       registry=load_registry(tmp_path))
+
+
+def test_aliases_merge_never_drop_and_make_rows_one_recording(tmp_path):
+    first, second = _row(_A, sha="c" * 64), _row(_B, shard=40, row=1, sha="c" * 64)
+    write_use(WAQF, [first], tmp_path)
+    write_recording_aliases([first, second, _row(_C, shard=22, row=3, sha="d" * 64)], tmp_path)
+    write_recording_aliases([], tmp_path)  # the use that brought the evidence may go
+    registry = load_registry(tmp_path)
+    assert registry.aliases == {(3, 7): ((40, 1),), (40, 1): ((3, 7),)}
+    assert registry.same_recording((40, 1)) == {(3, 7), (40, 1)}
+    write_use(MINING_POOL, [_row(_B, shard=40, row=1, sha=None)], tmp_path)
+    with pytest.raises(ExposureOverlap, match="share 1 sources"):
+        check_disjoint(MINING_POOL, WAQF, by="source", registry=load_registry(tmp_path))
+    # An alias that names a recording another way than a use does is refused.
+    with pytest.raises(ValueError):
+        write_recording_aliases([_row(_A, sha="e" * 64)], tmp_path)
+
+
+def test_the_uses_a_copy_touches_follow_every_write(tmp_path):
+    """Only the relation is stored: a use written later is seen at once, no rewrite."""
+    registry = _copied_registry(tmp_path)
+    assert (PROBE_TRAINING, WAQF) not in copies_across_uses(registry)
+    write_use(PROBE_TRAINING, [_row("tadabur_spk0004_S2_A2_abcd0123_000009.wav", shard=21,
+                                    row=5, sha=None)], tmp_path)
+    reloaded = load_registry(tmp_path)
+    assert copies_across_uses(reloaded)[(PROBE_TRAINING, WAQF)] == 1
+    with pytest.raises(ExposureOverlap):
+        check_disjoint(PROBE_TRAINING, WAQF, by="source", registry=reloaded)
+
+
+def test_the_committed_records_are_this_screen_current_and_complete():
     registry = load_registry()
-    assert registry.copies == copies_of(groups) and groups
-    assert all(g["uses"] == group_uses(registry, g["rows"]) for g in groups)
-    # A group made by another rule, or one whose row disagrees with a use, is refused.
-    _copied_registry(tmp_path)
+    groups = read_probable_copies(EXPOSURE_DIR / PROBABLE_COPIES_NAME)
+    assert groups and registry.copies == relations(groups)
+    aliases = read_recording_aliases(EXPOSURE_DIR / RECORDING_ALIASES_NAME)
+    # Every checksum two rows carry, in the staging registry or any use, is an alias.
+    checksums = {a.source: a.audio_sha256 for a in aliases}
+    checksums.update({(c.shard, c.row_index): c.audio_sha256 for c in load_staged_clips().values()})
+    checksums.update({r.source: r.audio_sha256 for rows in registry.recordings.values()
+                      for r in rows if r.audio_sha256 is not None})
+    held = Counter(checksums.values())
+    assert {s for s, sha in checksums.items() if held[sha] > 1} == set(registry.aliases)
+    # The screen finds every confirmed group (its recall on what is known).
+    agreement = screen_agreement(groups, checksums)
+    assert agreement["confirmed_groups_found"] == agreement["confirmed_groups"] >= 32
+
+
+def test_a_record_of_another_screen_is_refused(tmp_path):
+    write_probable_copies([((0, 5), (21, 5))], SHA, tmp_path)
     path = tmp_path / PROBABLE_COPIES_NAME
-    text = path.read_text(encoding="utf-8")
-    path.write_text(text.replace("copy-screen-v1", "copy-screen-v0"), encoding="utf-8")
-    with pytest.raises(ValueError, match="not a group of the screen"):
-        load_registry(tmp_path)
-    path.write_text(text.replace('"reciter_id": 12', '"reciter_id": 13', 1), encoding="utf-8")
-    with pytest.raises(ValueError, match="disagrees with a use"):
+    path.write_text(path.read_text().replace(COPY_SCREEN, "copy-screen-v1"), encoding="utf-8")
+    with pytest.raises(ValueError, match="not the groups of the screen"):
         load_registry(tmp_path)
 
 

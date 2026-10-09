@@ -37,15 +37,16 @@ Acceptance rules §6, owner amendment 2026-10-08 (the **paired-claim panel**):
   corpus, and the uses still empty (listening sites, bias halves, probe and control
   training, synthetic-edit sources and donors, shaddah-probe tuning). Tested against the
   registry, which must be complete.
-- **Recording-held-out only, toward `h448`'s own training and initialisation.** 77 of the 80
+- **Recording-held-out only, toward `h448`'s own training and initialisation.** 76 of the 79
   panel reciters have rows in `h448`'s training shards (Tadabur has 671 reciters; those
-  shards hold 667). The panel takes no recording from them, **under any row**: Tadabur
-  files some recordings twice, so a panel clip whose probable copy is a training-shard row
-  is left out (see "Recordings, not rows" below), and `check_disjoint(by="source")` counts
-  a probable copy as the same recording. `h448_init`'s calibration windows and `h448`'s
-  validation windows came from the lost `clips_v2` corpus (shards 0-19); which rows is
-  unknown, and 124 panel clips are in those shards, so recording disjointness from that
-  use cannot be shown either way.
+  shards hold 667). The panel takes no row from them, and **no overlap is detected under
+  `copy-screen-v2`**: no panel clip has a checksum-confirmed alias or a probable copy (one
+  canonical reciter, one duration to the millisecond) in them. That is the certificate, not
+  recording disjointness: the screen found all 32 checksum-confirmed duplicate groups but
+  has no measured recall beyond them, and those rows carry no checksum (see "Recordings, not
+  rows"). `h448_init`'s calibration windows and `h448`'s validation windows came from the
+  lost `clips_v2` corpus (shards 0-19); which rows is unknown, and 123 panel clips are in
+  those shards, so recording disjointness from that use cannot be shown either way.
 - So the panel certifies the **paired** #97 ship criterion: both `h448` and every
   candidate warm-started from it carry those shared exposures. It **does not** certify
   absolute accuracy on unseen reciters, or anything about a model not derived from `h448`.
@@ -77,35 +78,41 @@ them, with nearly all of those 2,466 clips, are `decode_evalset` reciters.
 
 Tadabur holds one recording under more than one row: under two filename speaker ids
 (`spk0416_S9_A5_…` and `spk0292_S9_A5_…`, one canonical reciter), or under two ayahs of
-identical text. A row comparison cannot see it, so `select` also applies, after the row
-bounds:
+identical text. A row comparison cannot see it, so after the row bounds `select` asks the
+exposure registry which rows are one recording
+([`../exposure/README.md`](../exposure/README.md), "Duplicate recordings"): the
+checksum-confirmed **aliases** and the **probable copies** of `copy-screen-v2`.
 
-- **`probable_copy_exposed`**: the row's probable copy (the exposure registry's screen:
-  the same file name but for its `spkNNNN` prefix, the same duration to the millisecond,
-  [`../exposure/probable_copies.jsonl`](../exposure/README.md)) is a recording another use
-  lists, or a row of a shard of an exact-membership use (`h448.training`). A copy in the
-  uncertain `h448.init_validation` shards is allowed, as any row of them is.
-- **`duplicate_recording`**: of rows that are one recording, by the screen or by the
-  checksum of a clip already staged for the panel, only the first by file name stays.
+- **`probable_copy_exposed`**: the row has an alias or a probable copy that is a recording
+  another use lists, or a row of a shard of an exact-membership use (`h448.training`). A
+  copy in the uncertain `h448.init_validation` shards is allowed, as any row of them is.
+- **`duplicate_recording`**: of rows that are one recording, only the first by file name
+  stays.
 
-The 2026-10-08 panel (216 clips, 87 reciters) failed both, and was pruned on 2026-10-08 by
+The aliases live in the registry, not in the panel, so a pruned clip's evidence survives
+its pruning: `select`, `prune`, `select` gives the same selection and the same
+`frame.json` (tested, and checked on the real index).
+
+The 2026-10-08 panel (216 clips, 87 reciters) was pruned on 2026-10-09 by
 `python -m tadabur.sealed_panel prune` (metadata only: no audio was read, and the kept
-clips' segmentation and teacher decodes are the first run's):
+clips' segmentation and teacher decodes are the first run's). It lost 19 clips:
 
-- **12 clips left as `probable_copy_exposed`**, each with a probable copy in an
-  `h448.training` shard, so `h448` probably trained on that audio: `spk015_S16_A27`,
-  `spk0196_S38_A54`, `spk023_S1_A70`, `spk0251_S24_A28`, `spk0292_S9_A25`, `spk0416_S9_A5`,
-  `spk0457_S14_A98`, `spk0673_S24_A33`, `spk0698_S38_A58`, `spk0698_S38_A61`,
-  `spk0698_S38_A67`, `spk0719_S108_A2`. Not confirmed by checksum: that would decode the
-  copies, which are panel audio by content. The screen's checkable pairs (19) all matched.
-- **2 clips left as `duplicate_recording`**: `spk0203_S44_A33` is byte for byte
-  `spk0203_S38_A48`, and `spk0592_S25_A131` is `spk0592_S25_A108` (same checksum; the
-  earlier name stays). Each recording was in the panel twice.
+- **18 `probable_copy_exposed`**, each with a probable copy in an `h448.training` shard,
+  so `h448` may have trained on that audio: 12 under another speaker id with the same
+  name otherwise (`spk015_S16_A27`, `spk0196_S38_A54`, `spk023_S1_A70`, `spk0251_S24_A28`,
+  `spk0292_S9_A25`, `spk0416_S9_A5`, `spk0457_S14_A98`, `spk0673_S24_A33`,
+  `spk0698_S38_A58`, `spk0698_S38_A61`, `spk0698_S38_A67`, `spk0719_S108_A2`) and 6 of
+  the same speaker id under another ayah's name (`spk0305_S1_A141`, `spk0305_S84_A19`,
+  `spk0312_S35_A48`, `spk0351_S27_A74`, and both `spk0592_S25_A108` and
+  `spk0592_S25_A131`, which are also one recording by checksum). None is confirmed by
+  checksum: that would decode the copies, which are panel audio by content.
+- **1 `duplicate_recording`**: `spk0203_S44_A33` is byte for byte `spk0203_S38_A48`, which
+  stays.
 
 The removed clips are no longer panel clips, so the seal no longer refuses them by name;
-the two duplicates stay refused by their checksum, which the kept copy holds. 7 reciters
-left with their clips (87 → 80), and the 80 left are still reciter-disjoint from every PRD
-use (`test_sealed_panel.py`).
+`spk0203_S44_A33` stays refused by its checksum, which the kept copy holds. 8 reciters
+left with their clips (87 → 79); the 79 left are still reciter-disjoint from every PRD use
+(`test_sealed_panel.py`).
 
 ## Preparation: segmentation and a decode cache, no scoring
 
@@ -127,13 +134,13 @@ panel.
 
 | | |
 |---|---|
-| clips / reciters | **202 / 80** (200 / 79 with segments; 2 ayat quran-transcript cannot phonetize) |
-| audio | 0.69 h, of which 0.63 h in 278 segments |
-| clips per reciter | 40 reciters have 1 clip, 18 have 2; the largest has 13 |
-| haraka carriers (fatha / damma / kasra) | 2,967 / 969 / 1,043 |
-| reference geminates | 875 |
-| mid-word sukun carriers | 573 |
-| pair carriers | `ق↔ك` 479, `ح↔ه` 459, `ت↔ط` 338, `س↔ص` 236, `ذ↔ز` 194, `ذ↔ظ` 163, `ض↔ظ` 67 |
+| clips / reciters | **197 / 79** (195 / 78 with segments; 2 ayat quran-transcript cannot phonetize) |
+| audio | 0.68 h, of which 0.62 h in 270 segments |
+| clips per reciter | 39 reciters have 1 clip, 19 have 2; the largest has 13 |
+| haraka carriers (fatha / damma / kasra) | 2,907 / 945 / 1,030 |
+| reference geminates | 862 |
+| mid-word sukun carriers | 564 |
+| pair carriers | `ق↔ك` 464, `ح↔ه` 455, `ت↔ط` 324, `س↔ص` 232, `ذ↔ز` 189, `ذ↔ظ` 159, `ض↔ظ` 67 |
 
 These count candidate sites in the realized references alone; no decode enters them.
 Real-mistake sites are a small fraction of carriers (the base teacher showed 127 pair and
@@ -153,9 +160,11 @@ python -m tadabur.sealed_panel segment --audio-dir stage/panel_clips --out-dir s
 python -m tadabur.sealed_panel build --selection stage/panel.jsonl --seg-dir stage/seg_panel
 ```
 
-When only the frame shrinks (a use or the copy screen changed), `select` and then
-`prune --selection stage/panel.jsonl` drop the clips it left out from every committed
-file without reading audio; `prune` refuses a selection that holds a clip never staged.
+After `stage`, rewrite the registry's recording records (`python -m tadabur.exposure copies
+--index …`) so the new clips' checksums become aliases, then `select` again. When only the
+frame shrinks (a use or a recording record changed), `select` and then
+`prune --selection stage/panel.jsonl` drop the clips it left out from every committed file
+without reading audio; `prune` refuses a selection that holds a clip never staged.
 
 The 2026-10-08 run staged 216 clips (83 MB of PCM_16 WAV) under
 `/root/scratch/issue-89/stage/panel_clips/` on the GPU box; `stage` read 39 shards one at a

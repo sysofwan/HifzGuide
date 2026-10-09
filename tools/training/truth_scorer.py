@@ -17,8 +17,10 @@ One record per physical site (§1)
 ---------------------------------
 :func:`reconcile` runs before anything is scored or exported: records that share a
 :func:`physical_site` (audio checksum, item span, carrier and mark) count once, under the
-directly adjudicated verdict, with weights computed over every record so the frozen
-sampling weights stand. Conflicting labels raise.
+directly adjudicated record (a direct ``unclear`` still beats a weak label, and goes to
+the exclusions; a ``pending`` record yields to an adjudication, never to a weak label), with
+weights computed over every record so the frozen sampling weights stand. Conflicting labels
+raise.
 
 Populations (§1), never pooled with each other
 ----------------------------------------------
@@ -94,9 +96,11 @@ from tadabur.truth_sites import (
     HARAKA_CHARS,
     NEW_AUDIT,
     P35_FIXTURE,
+    PENDING,
     SHADDAH,
     SUKUN,
     SYNTHETIC_EDIT,
+    UNCLEAR,
     WAQF_BOUNDARY,
     TruthSite,
 )
@@ -267,8 +271,17 @@ def physical_site(site: TruthSite) -> tuple:
     return (audio, site.start_sample, site.end_sample, site.reference_index, site.mark)
 
 
-def _directly_adjudicated(site: TruthSite) -> bool:
-    return side(site) is not None and not site.assumes_competent_reciter
+def _precedence(site: TruthSite) -> int:
+    """Which record of one physical site stands for it: the lowest value wins.
+
+    A direct record (one that does not assume a competent reciter) always outranks a weak
+    label. Among direct records a verdict outranks ``unclear`` (an adjudication that is
+    complete but undecided, so the site is excluded rather than given the weak label's
+    mark), which outranks ``pending`` (not adjudicated yet). Only among weak labels does a
+    verdict outrank the rest.
+    """
+    rank = {UNCLEAR: 1, PENDING: 2}.get(site.heard, 0)
+    return rank if not site.assumes_competent_reciter else 3 + (side(site) is None)
 
 
 @dataclass(frozen=True)
@@ -286,10 +299,11 @@ def reconcile(sites: Sequence[TruthSite]) -> Reconciled:
 
     Weights are computed over every record first, so a stratum's sampled count stays the
     frozen one; a dropped duplicate does not inflate the kept record's weight. Among
-    several records of one physical site the directly adjudicated verdict wins (a verdict
-    that does not assume a competent reciter), then any verdict, then the rest; ties go to
-    the lowest ``(source, site_id)``. Records that disagree on what the mushaf prescribes,
-    or two verdicts of the same rank that disagree on what was heard, are an error.
+    several records of one physical site the one of highest :func:`_precedence` stands for
+    it: a direct verdict, then a direct ``unclear``, then a direct ``pending``, and a weak
+    label only when no direct record exists; ties go to the lowest ``(source, site_id)``.
+    Records that disagree on what the mushaf prescribes, or two verdicts of the winning rank
+    that disagree on what was heard, are an error.
     """
     if len({site.site_id for site in sites}) != len(sites):
         raise ValueError("duplicate site ids across the truth-site files")
@@ -302,10 +316,10 @@ def reconcile(sites: Sequence[TruthSite]) -> Reconciled:
     for key, records in groups.items():
         if len({r.prescribed for r in records}) > 1:
             raise ValueError(f"records {[r.site_id for r in records]} disagree on the prescribed mark")
-        for rank in (_directly_adjudicated, lambda r: side(r) is not None, lambda r: True):
-            ranked = sorted((r for r in records if rank(r)), key=lambda r: (r.source, r.site_id))
-            if ranked:
-                break
+        best = min(_precedence(r) for r in records)
+        ranked = sorted(
+            (r for r in records if _precedence(r) == best), key=lambda r: (r.source, r.site_id)
+        )
         verdicts = {r.heard for r in ranked if side(r) is not None}
         if len(verdicts) > 1:
             raise ValueError(

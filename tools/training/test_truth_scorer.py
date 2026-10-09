@@ -146,6 +146,25 @@ def test_the_directly_adjudicated_verdict_wins_over_a_weak_label(sites):
     assert [s.site_id for s in reconciled.sites] == ["direct"]
 
 
+def test_a_direct_unclear_verdict_wins_over_a_weak_label_and_is_excluded(sites):
+    weak = replace(sites[0], site_id="weak", assumes_competent_reciter=True, heard="fatha")
+    unclear = replace(sites[0], site_id="unclear", heard="unclear")
+    assert [s.site_id for s in reconcile([weak, unclear]).sites] == ["unclear"]
+    report = score([weak, unclear], RECITERS, {"m/spans": decodes_for([weak])})
+    assert [row["heard"] for row in report["exclusions"]] == ["unclear"]
+    assert report["physical_sites_merged"] == [{"kept": "unclear", "dropped": ["weak"]}]
+
+
+def test_pending_yields_to_an_adjudication_but_never_to_a_weak_label(sites):
+    pending = replace(sites[0], site_id="pending", heard="pending")
+    weak = replace(sites[0], site_id="weak", assumes_competent_reciter=True, heard="fatha")
+    assert [s.site_id for s in reconcile([weak, pending]).sites] == ["pending"]
+    unclear = replace(sites[0], site_id="unclear", heard="unclear")
+    assert [s.site_id for s in reconcile([pending, unclear]).sites] == ["unclear"]
+    direct = replace(sites[0], site_id="direct", heard="kasra")
+    assert [s.site_id for s in reconcile([pending, unclear, direct]).sites] == ["direct"]
+
+
 def test_conflicting_labels_of_one_physical_site_fail_loudly(sites):
     other = replace(sites[0], site_id="other", heard="kasra")
     with pytest.raises(ValueError, match="disagree"):

@@ -129,7 +129,21 @@ def parse_staged_clip(data: dict, where: str) -> StagedClip:
 
 
 def load_staged_clips(path: Path = REGISTRY_PATH) -> dict[str, StagedClip]:
-    """The registry keyed by ``audio_filename``; every row validated, no duplicates."""
+    """The registry keyed by ``audio_filename``; every row validated, no duplicates.
+
+    Refuses a registry that lists a sealed-panel clip, by name or checksum
+    (:mod:`tadabur.panel_seal`): the panel's own registry is read only by
+    :mod:`tadabur.sealed_panel`, through :func:`read_staged_clips`.
+    """
+    from .panel_seal import refuse_sealed_names
+
+    clips = read_staged_clips(path)
+    refuse_sealed_names(clips, (c.audio_sha256 for c in clips.values()))
+    return clips
+
+
+def read_staged_clips(path: Path) -> dict[str, StagedClip]:
+    """Any staging registry keyed by ``audio_filename``, validated, without the seal check."""
     clips: dict[str, StagedClip] = {}
     with open(path, encoding="utf-8") as f:
         for lineno, raw in enumerate(f, 1):
@@ -258,7 +272,9 @@ def verify_staged(clip: StagedClip, audio_dir: Path) -> None:
     """
     import soundfile as sf
 
-    path = audio_dir / clip.audio_filename
+    from .panel_seal import refuse_sealed
+
+    path = refuse_sealed(audio_dir / clip.audio_filename)
     if not path.exists():
         raise FileNotFoundError(f"{path} is not staged")
     found = (audio_sha256(path), sf.info(path).frames)

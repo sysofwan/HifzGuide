@@ -42,6 +42,7 @@ from training.distill_data import (
     discover_clips,
     split_clips,
 )
+from tadabur.panel_seal import refuse_sealed
 from training.distill_loss import BLANK_ID, breakout_stats
 
 # Default for the older --audio-root path. Named so the --eval-set path can tell "the user
@@ -639,6 +640,8 @@ def main() -> None:
         args.split = "val"
     if args.split not in ("val", "train"):
         raise SystemExit("--split must be val or train when using --audio-root")
+    # Listed (and checked against the sealed panel) before any model loads.
+    listing = discover_clips(args.audio_root)
 
     if args.breakout:
         report = run_breakout_diagnostic(
@@ -682,7 +685,7 @@ def main() -> None:
     # Default is the *validation* side -- the same hash split training used, so no clip the
     # student was fit on can inflate the number. --split train scores seen clips instead,
     # which is only useful as the paired comparison described in the flag's help.
-    train_clips, val_clips = split_clips(discover_clips(args.audio_root), args.val_fraction)
+    train_clips, val_clips = split_clips(listing, args.val_fraction)
     if args.split == "train" and state_config.get("stream_shards"):
         raise SystemExit(
             "--split train is meaningless for this checkpoint: it was trained with "
@@ -698,7 +701,7 @@ def main() -> None:
     pairs: list[tuple[list[int], list[int]]] = []
     for index, path in enumerate(clips, start=1):
         try:
-            samples, rate = sf.read(str(path), dtype="float32", always_2d=False)
+            samples, rate = sf.read(str(refuse_sealed(path)), dtype="float32", always_2d=False)
         except Exception:
             continue
         if rate != SAMPLE_RATE:

@@ -5,12 +5,17 @@ recording, span and checksum, with each use it has had, so a held-out claim is c
 rather than asserted. Code: [`tools/tadabur/exposure.py`](../exposure.py) (schema, loader,
 writers, `check_disjoint`, and the builder for the uses that existed on 2026-10-08).
 
-One file per use; the file name is the use. Each issue writes only its own use's file.
+One file per declared use (`exposure.USES`); the file name is the use. Each issue writes
+only its own use's file. **Every declared use has a file**: an unused one is an empty
+`<use>.jsonl`, so "unused" is recorded rather than inferred. A declared use with no file is
+missing evidence: `check_disjoint` naming it raises `ExposureIncomplete`, and
+`require_complete(registry)` (run before any certification) fails.
 
 | shape | file | one entry is |
 |---|---|---|
 | recording-level | `<use>.jsonl` | one recording, or one span of it, that the use touched |
-| shard-level | `<use>.shards.json` | the shards a use consumed whole, with rows per reciter |
+| shard-level | `<use>.shards.json` | the shards a use consumed, with rows per reciter |
+| frozen inputs | `sources/` | the `decode_evalset` manifest and Muraja's clip list the indexed uses derive from |
 
 ## Row schema (`<use>.jsonl`)
 
@@ -25,6 +30,11 @@ One file per use; the file name is the use. Each issue writes only its own use's
 The loader refuses a file not named for a known use, unsorted or duplicate rows, and any
 recording that two uses describe differently (another row, reciter or checksum).
 
+A shard use (`<use>.shards.json`) also records its `membership`: `exact` when the shards are
+the use's exact input, `uncertain` when it took an unknown subset of their rows (every row
+then counts as possibly exposed). `shared_baseline` marks an exposure of `h448` itself,
+which the baseline and every candidate warm-started from it share.
+
 ## The uses
 
 | use | recordings | reciters | from |
@@ -37,23 +47,22 @@ recording that two uses describe differently (another row, reciter or checksum).
 | `human_label.reject_bleed` | 9 | 7 | `eval_fixtures/reject_bleed_labels.jsonl` |
 | `human_label.tashkeel_counterfactual` | 47 | 21 | `tashkeel_counterfactual_fixtures/counterfactual_items.jsonl` |
 | `mining_pool` | 2,508 | 394 | `staged_audio/clips.jsonl` (#83) |
-| `decode_evalset.dev` | 970 | 146 | the frozen manifest (sha256 `3d5d237a…`) on the GPU box |
+| `decode_evalset.dev` | 970 | 146 | `sources/decode_evalset.manifest.json` (sha256 `3d5d237a…`) |
 | `decode_evalset.test` | 1,030 | 140 | the same; the half ADR-0010 spent |
 | `decode_evalset.legacy_stratified` | 902 | 235 | the same manifest's ratio-stratified records, scored by earlier gates |
-| `muraja.reread_corpus` | 447 | 153 | the #70 re-read corpus and scenario bundles shipped to Muraja (shards 20-30) |
-| `h448.training` | 345 shards | 667 | `h448`'s `--stream-shards` (`H448_STREAM_SHARDS`), counted from a full index |
+| `muraja.reread_corpus` | 447 | 153 | `sources/muraja_clips.json`: the #70 re-read corpus and scenario bundles shipped to Muraja |
+| `h448.training` | 345 shards | 667 | `h448`'s `--stream-shards`; membership `exact`, shared baseline |
+| `h448.init_validation` | 20 shards | 512 | `h448_init`'s calibration and `h448`'s validation windows, from the lost `clips_v2` corpus (shards 0-19); membership `uncertain`, shared baseline |
 | `sealed_panel` | 216 | 87 | [`../sealed_panel/staged_clips.jsonl`](../sealed_panel/README.md) (#89) |
 
-Reserved for the issues that will make them: `synthetic_edit.source`,
-`synthetic_edit.donor` (#88), `probe.training`, `probe.kl_control`, `bias.tune`,
-`bias.score`, `shaddah_probe.tuning`. Tadabur has 671 reciters; `h448`'s training shards
-hold 667 of them, so every held-out set is reciter-overlapping with `h448.training` and
-can only be source-disjoint from it.
+Empty until their issues write them: `synthetic_edit.source`, `synthetic_edit.donor`
+(#88), `truth_site.new_audit` (#87), `truth_site.synthetic_edit`, `probe.training`,
+`probe.kl_control`, `bias.tune`, `bias.score`, `shaddah_probe.tuning`.
 
-**Known, unrecorded:** `h448_init` (teacher-init calibration) and `h448`'s validation
-windows came from the `clips_v2` corpus, the filter's passes over shards 0-19, which was
-lost with `audit_run/`. Neither took a gradient step on those clips, but which clips they
-were cannot be recovered, so they are not rows here.
+Tadabur has 671 reciters and `h448`'s training shards hold 667 of them, so every held-out
+set overlaps `h448.training` by reciter. Under the owner's §6 amendment (2026-10-08) the
+sealed panel is reciter-disjoint from every **PRD** use and only recording-held-out from the
+shared-baseline ones; [its README](../sealed_panel/README.md) says what that certifies.
 
 ## Using it
 
@@ -66,14 +75,13 @@ check_disjoint(SYNTHETIC_EDIT_SOURCE, SEALED_PANEL, by="source")
 `check_disjoint(use, *others)` compares `use` with each of `others` (never the others
 among themselves) and raises `ExposureOverlap` naming what they share. A new use is
 written with `write_use(use, rows)` (or `write_shard_use`), which validates it against the
-whole registry. Name uses through the constants: a module that spells the panel's name
-outright is refused by the panel's seal test.
+whole registry. Name uses through the constants.
 
 ```bash
-python -m tadabur.exposure build --index stage/full_index.jsonl \
-    --evalset-manifest tadabur/gate_eval/manifest.json --muraja-clips stage/muraja_clips.json
+python -m tadabur.exposure build --index stage/full_index.jsonl
 python -m tadabur.exposure describe
 ```
 
-`build` rewrites every use above except `sealed_panel`; `--index` is
-`python -m tadabur.staged_audio index --shards 0-384` (~3 minutes over HTTP).
+`build` rewrites every use above except `sealed_panel` from the committed sources and a
+full shard index (`python -m tadabur.staged_audio index --shards 0-384`, ~3 minutes over
+HTTP), and writes an empty file for any declared use that has none.

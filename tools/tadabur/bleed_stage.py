@@ -32,6 +32,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .panel_seal import refuse_sealed
 from .rejects import RejectRecord, read_reject_records
 
 DEFAULT_BATCH_SIZE = 4
@@ -115,7 +116,8 @@ def main() -> None:
         for start in range(0, len(records), args.batch_size):
             batch = records[start : start + args.batch_size]
             waveforms = [
-                sf.read(args.clips / r.audio_filename, dtype="float32")[0] for r in batch
+                sf.read(refuse_sealed(args.clips / r.audio_filename), dtype="float32")[0]
+                for r in batch
             ]
             for record, waveform, decode in zip(
                 batch, waveforms, model.decode_batch(waveforms, TARGET_SAMPLE_RATE)

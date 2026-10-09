@@ -129,8 +129,12 @@ def split_clips(
 
 
 def discover_clips(audio_root: Path, pattern: str = "*.wav") -> list[Path]:
-    """Every clip under ``audio_root``, sorted so the listing is reproducible."""
-    return sorted(audio_root.rglob(pattern))
+    """Every clip under ``audio_root``, sorted so the listing is reproducible. Refuses
+    sealed-panel audio (:mod:`tadabur.panel_seal`): every tool that globs a corpus
+    directory for training, calibration or evaluation lists it through here."""
+    from tadabur.panel_seal import refuse_sealed_paths
+
+    return refuse_sealed_paths(sorted(audio_root.rglob(pattern)))
 
 
 @dataclass(frozen=True)

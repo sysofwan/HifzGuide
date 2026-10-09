@@ -40,6 +40,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
+from tadabur.panel_seal import refuse_sealed
 import torch
 
 from training.decoding import Decoder, load_student_from_checkpoint, tokens_to_phonemes
@@ -252,7 +254,7 @@ def main() -> None:
             skipped += 1
             continue
         try:
-            samples, rate = sf.read(str(path), dtype="float32", always_2d=False)
+            samples, rate = sf.read(str(refuse_sealed(path)), dtype="float32", always_2d=False)
         except Exception:
             skipped += 1
             continue

@@ -142,6 +142,16 @@ and training. Score-half reciters are excluded from every tuning and training us
 included. The sealed panel (#89) is reciter-disjoint from every other use; "a new salt" over previously
 used reciters does not make them fresh. Halves that fail this are labelled development data.
 
+**Owner amendment (2026-10-08): the paired-claim panel.** The sealed panel (#89) is reciter-disjoint from
+everything this PRD tunes, trains on or selects with: listening sites, both bias halves, probe and control
+training data, synthetic-edit sources and donors, shaddah-probe tuning, truth sites, the mining pool and
+`decode_evalset`. Toward `h448`'s original training and initialisation it is held out by recording only.
+Those exposures are shared by the baseline (`h448`) and by every candidate warm-started from it, so the panel
+certifies the **paired** ship criterion of §3, not absolute accuracy on unseen reciters. The registry marks
+them as shared-baseline uses. Where such a use's recordings are unknown (`h448_init`'s calibration and
+`h448`'s validation windows, from the lost `clips_v2` corpus of shards 0-19), the panel may hold recordings
+in its shards; recording-level disjointness is asserted against every other use.
+
 ## 7. Target pairs
 
 The six soft pairs plus **ذ↔ظ** (owner decision). Every pair is reported with **directional** strata
@@ -198,3 +208,4 @@ ADR-0011 §5. Each is recorded in the scorer's module docs and pinned by a test:
 | 2026-10-08 | Owner confirmed: sukun judged by absolute floors on directly adjudicated in-scope sukun sites (commit rate ≥ 70%, committed accuracy ≥ 95%, its lower bound ≥ 90%) in place of a relative gain over the control; spurious-haraka guard ≤ +2 pts in bias selection; sparse-cell threshold of < 10 reciters or < 20 sites; power target of ≥ 80% at a true 60% reduction for sizing the listening session. |
 | 2026-10-08 | GPT-6 Astra round 2 returned CHANGES_REQUESTED. Revised without changing any owner number: per-site outcome definitions (C, A, F); an aggregation truth table and frozen required cells; statistic-specific sparse-cell rules and adverse endpoints; per-mark commit-rate guards restored; headline restricted to the sampled subpopulation; a human-truth final panel required before #97; bias comparator, admissibility and held-out guards; a pre-registered power simulation covering every gate, with a prescribed-sukun stratum; operational definitions frozen in #84. |
 | 2026-10-08 | GPT-6 Astra round 3: shaddah added to the correct-side commit-rate guard (provisional); the mistake-side committed-accuracy guard added to bias admissibility. Truth-site counts aligned with `tools/tadabur/truth_sites/README.md` on main. |
+| 2026-10-08 | Owner amendment to §6 (#89 review): the sealed panel is reciter-disjoint from every use this PRD makes and recording-held-out toward `h448`'s original training and initialisation, which baseline and candidates share; it certifies the paired §3 criterion. No number changed. |

@@ -1,5 +1,7 @@
 {
  "index_sha256": "a20ad072beca3b339824db321b87fda0d8b3e32a338f3aeca9cd05643aea493a",
+ "membership": "exact",
+ "note": "h448's --stream-shards (runs/h448_stream/run_config.json on the GPU box)",
  "rows_per_reciter": {
   "0": 3447,
   "1": 4952,
@@ -1015,5 +1017,6 @@
   382,
   383,
   384
- ]
+ ],
+ "shared_baseline": true
 }

@@ -54,6 +54,7 @@ from tadabur.muaalem import (
     Wav2Vec2BertForMultilevelCTC,
     Wav2Vec2BertForMultilevelCTCConfig,
 )
+from tadabur.panel_seal import refuse_sealed
 from tadabur.phoneme_vocab import NUM_PHONEME_CLASSES
 from training.windowed_batch import (
     WindowedCtcBatch,
@@ -564,7 +565,7 @@ def _sample_waveform(audio_dir: Path, sample_clip: str | None) -> np.ndarray:
         if not clips:
             raise FileNotFoundError(f"no .wav clips under {audio_dir} for the preflight.")
         path = clips[0]
-    return decode_to_mono_16k(path.read_bytes())
+    return decode_to_mono_16k(refuse_sealed(path).read_bytes())
 
 
 def _cmd_preflight(args: argparse.Namespace) -> None:

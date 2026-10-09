@@ -72,6 +72,7 @@ from .clip_status import ClipStatus, write_clip_status
 from .contrast_attribution import all_contrasts
 from .manifest import ManifestRecord, read_records
 from .normalization import map_char_offsets, normalize_phonemes
+from .panel_seal import refuse_sealed
 from .scorer import BALANCED_SCORER, MAX_INSERTION_RUN
 
 # Segmentation boundary QC (a Tadabur segmentation policy, not a Muraja parameter): the
@@ -176,7 +177,7 @@ def slice_segment(
 
 def _load_clip(clips_dir: Path, audio_filename: str) -> np.ndarray:
     """Read a whole 16 kHz mono clip WAV (written by ``waqf_segments``) as float32."""
-    waveform, sample_rate = sf.read(clips_dir / audio_filename, dtype="float32")
+    waveform, sample_rate = sf.read(refuse_sealed(clips_dir / audio_filename), dtype="float32")
     if waveform.ndim > 1:  # defensive: collapse any stray channel dim to mono
         waveform = waveform.mean(axis=1)
     if sample_rate != TARGET_SAMPLE_RATE:

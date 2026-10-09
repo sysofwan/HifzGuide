@@ -32,11 +32,12 @@ The check is :func:`check_disjoint`, one use against each of the others::
 ``by="reciter"`` compares canonical reciter ids, ``by="source"`` the recordings themselves
 (shard and row); :class:`ExposureOverlap` lists what they share.
 
+The frozen inputs the indexed uses come from are committed in ``exposure/sources/``: the
+``decode_evalset`` manifest and the list of clips shipped to Muraja.
+
 Usage (from ``tools/``; ``--index`` is ``tadabur.staged_audio index --shards 0-384``)::
 
-  python -m tadabur.exposure build --index stage/full_index.jsonl \\
-      --evalset-manifest tadabur/gate_eval/manifest.json \\
-      --muraja-clips stage/muraja_clips.json
+  python -m tadabur.exposure build --index stage/full_index.jsonl
   python -m tadabur.exposure describe
 """
 
@@ -64,6 +65,10 @@ from .staged_audio import (
 from .truth_sites import NUM_SHARDS, SOURCES, TRUTH_SITES_DIR, load_truth_sites
 
 EXPOSURE_DIR = Path(__file__).parent / "exposure"
+#: The frozen inputs the indexed uses are derived from, committed beside them.
+SOURCES_DIRNAME = "sources"
+EVALSET_MANIFEST_PATH = EXPOSURE_DIR / SOURCES_DIRNAME / "decode_evalset.manifest.json"
+MURAJA_CLIPS_PATH = EXPOSURE_DIR / SOURCES_DIRNAME / "muraja_clips.json"
 
 # --- the vocabulary of uses ------------------------------------------------------------
 
@@ -82,13 +87,19 @@ EVALSET_TEST = "decode_evalset.test"
 EVALSET_LEGACY = "decode_evalset.legacy_stratified"
 #: The shipped student's streaming training (a shard use).
 H448_TRAINING = "h448.training"
+#: ``h448_init``'s teacher-init calibration and ``h448``'s validation windows: drawn from
+#: the ``clips_v2`` corpus (the filter's passes over shards 0-19), lost with ``audit_run/``,
+#: so which rows is unknown (a shard use with uncertain membership).
+H448_INIT_VALIDATION = "h448.init_validation"
+#: Shards 0-19, the ``clips_v2`` corpus's source.
+CLIPS_V2_SHARDS = range(0, 20)
 #: The re-read corpus and scenario bundles shipped to Muraja for follow-along tuning.
 MURAJA_REREAD_CORPUS = "muraja.reread_corpus"
 #: Synthetic edits (#88): the clip an edit was made on, and the clip a swap took audio from.
 SYNTHETIC_EDIT_SOURCE = "synthetic_edit.source"
 SYNTHETIC_EDIT_DONOR = "synthetic_edit.donor"
-#: The uses acceptance rules §6 names that no issue has made yet. Reserved here so their
-#: issues record them under these names.
+#: The uses acceptance rules §6 names that no issue has made yet. Each has an empty file
+#: until its issue writes it, so "unused" is recorded rather than inferred from absence.
 PROBE_TRAINING = "probe.training"
 PROBE_KL_CONTROL = "probe.kl_control"
 BIAS_TUNE = "bias.tune"
@@ -99,7 +110,7 @@ USES = frozenset({
     *TRUTH_SITE_USES.values(),
     LABEL_P35_FIXTURE, LABEL_REJECT_REREAD, LABEL_REJECT_BLEED, LABEL_WAQF_EVENTS,
     LABEL_TASHKEEL_COUNTERFACTUAL,
-    MINING_POOL, EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, H448_TRAINING,
+    MINING_POOL, EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, H448_TRAINING, H448_INIT_VALIDATION,
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
 })
@@ -140,11 +151,23 @@ class Exposure:
 @dataclass(frozen=True)
 class ShardExposure:
     """A use that consumed whole shards: the shards, how many rows each canonical reciter
-    has in them, and the SHA-256 of the shard index the rows were counted from."""
+    has in them, and the SHA-256 of the shard index the rows were counted from.
+
+    ``membership`` says what is known of the rows inside those shards: ``"exact"`` when
+    the shards are the use's exact input (a streaming run over them), ``"uncertain"`` when
+    the use took some unknown subset of their rows, so every row counts as possibly
+    exposed. ``shared_baseline`` marks an exposure of ``h448`` itself: the baseline and
+    every candidate warm-started from it share it, so a paired claim (acceptance rules §6,
+    owner amendment) may overlap it by reciter, and by recording only where membership is
+    uncertain. ``note`` says where the use's shards come from.
+    """
 
     shards: tuple[int, ...]
     rows_per_reciter: Mapping[int, int]
     index_sha256: str
+    membership: str
+    shared_baseline: bool
+    note: str
 
 
 _EXPOSURE_TYPES = {
@@ -187,15 +210,31 @@ class ExposureRegistry:
     recordings: Mapping[str, tuple[Exposure, ...]]
     shard_uses: Mapping[str, ShardExposure]
 
+    def missing(self) -> list[str]:
+        """Declared uses (:data:`USES`) with no file: evidence that is absent, not empty."""
+        return sorted(USES - set(self.recordings) - set(self.shard_uses))
+
+    def shared_baseline_uses(self) -> list[str]:
+        """The shard uses marked as exposures shared by the baseline and its candidates."""
+        return sorted(u for u, e in self.shard_uses.items() if e.shared_baseline)
+
     def uses(self) -> list[str]:
         """Every use with a file, sorted."""
         return sorted({*self.recordings, *self.shard_uses})
 
     def reciters(self, use: str) -> frozenset[int]:
-        """The canonical reciter ids a use touched (empty for a use with no file)."""
+        """The canonical reciter ids a use touched. A use with no file is an error."""
+        self._require(use)
         if use in self.shard_uses:
             return frozenset(self.shard_uses[use].rows_per_reciter)
-        return frozenset(row.reciter_id for row in self.recordings.get(_known(use), ()))
+        return frozenset(row.reciter_id for row in self.recordings[use])
+
+    def _require(self, use: str) -> None:
+        if _known(use) not in self.recordings and use not in self.shard_uses:
+            raise ExposureIncomplete(
+                f"{use} has no file in the registry: write it (empty if the use has no "
+                "exposures) before checking against it"
+            )
 
     def uses_of(self, reciter_id: int) -> list[str]:
         """Every use that touched one reciter, sorted."""
@@ -223,12 +262,14 @@ def load_registry(directory: Path = EXPOSURE_DIR) -> ExposureRegistry:
     recordings: dict[str, tuple[Exposure, ...]] = {}
     shard_uses: dict[str, ShardExposure] = {}
     for path in sorted(directory.iterdir()):
+        if path.name in ("README.md", SOURCES_DIRNAME):
+            continue
         if path.name.endswith(".shards.json"):
             use = _known(path.name.removesuffix(".shards.json"))
             shard_uses[use] = _parse_shard_use(json.loads(path.read_text(encoding="utf-8")), path)
         elif path.suffix == ".jsonl":
             recordings[_known(path.stem)] = _read_use(path)
-        elif path.name != "README.md":
+        else:
             raise ValueError(f"{path}: not a use file")
     if both := set(recordings) & set(shard_uses):
         raise ValueError(f"{directory}: {sorted(both)} are recorded in both shapes")
@@ -247,9 +288,17 @@ def _read_use(path: Path) -> tuple[Exposure, ...]:
     return tuple(rows)
 
 
+_SHARD_USE_FIELDS = {
+    "shards", "rows_per_reciter", "index_sha256", "membership", "shared_baseline", "note",
+}
+MEMBERSHIPS = ("exact", "uncertain")
+
+
 def _parse_shard_use(data: dict, where: Path) -> ShardExposure:
-    if set(data) != {"shards", "rows_per_reciter", "index_sha256"}:
+    if set(data) != _SHARD_USE_FIELDS:
         raise ValueError(f"{where}: fields {sorted(data)} are not a shard use")
+    if data["membership"] not in MEMBERSHIPS or type(data["shared_baseline"]) is not bool:
+        raise ValueError(f"{where}: membership must be one of {MEMBERSHIPS}, shared_baseline a bool")
     shards = tuple(data["shards"])
     if list(shards) != sorted(set(shards)) or not all(0 <= s < NUM_SHARDS for s in shards):
         raise ValueError(f"{where}: shards must be sorted, unique and in range")
@@ -258,7 +307,10 @@ def _parse_shard_use(data: dict, where: Path) -> ShardExposure:
     rows = {int(reciter): count for reciter, count in data["rows_per_reciter"].items()}
     if not all(type(count) is int and count > 0 for count in rows.values()):
         raise ValueError(f"{where}: rows_per_reciter counts must be positive integers")
-    return ShardExposure(shards, rows, data["index_sha256"])
+    return ShardExposure(
+        shards, rows, data["index_sha256"], data["membership"], data["shared_baseline"],
+        data["note"],
+    )
 
 
 def _check_consistent(recordings: Mapping[str, Iterable[Exposure]]) -> None:
@@ -300,6 +352,9 @@ def write_shard_use(use: str, exposure: ShardExposure, directory: Path = EXPOSUR
         "shards": list(exposure.shards),
         "rows_per_reciter": {str(k): v for k, v in sorted(exposure.rows_per_reciter.items())},
         "index_sha256": exposure.index_sha256,
+        "membership": exposure.membership,
+        "shared_baseline": exposure.shared_baseline,
+        "note": exposure.note,
     }
     path = _shard_path(use, directory)
     _parse_shard_use(data, path)
@@ -323,6 +378,17 @@ class ExposureOverlap(ValueError):
     """Two uses that must be disjoint share reciters or recordings."""
 
 
+class ExposureIncomplete(ValueError):
+    """A declared use has no file, so its exposures are unknown rather than empty."""
+
+
+def require_complete(registry: ExposureRegistry) -> None:
+    """Raise :class:`ExposureIncomplete` unless every declared use has a file: what a
+    certification (the panel's disjointness, a held-out half) must check first."""
+    if missing := registry.missing():
+        raise ExposureIncomplete(f"the registry has no file for {missing}")
+
+
 def check_disjoint(
     use: str, *others: str, by: str = "reciter", registry: ExposureRegistry | None = None
 ) -> None:
@@ -331,15 +397,17 @@ def check_disjoint(
     ``by="reciter"`` compares canonical reciter ids; ``by="source"`` compares recordings
     (``(shard, row_index)``; a shard use covers every row of its shards). Only ``use`` is
     compared with each other use, never the others among themselves (two truth-site
-    sources may share a clip). A use with no file is empty, so disjoint from everything;
-    an unknown use name is an error. The registry is loaded from ``exposure/`` unless one
-    is passed.
+    sources may share a clip). A named use with no file raises :class:`ExposureIncomplete`
+    (absent evidence is not an empty use), and an unknown use name is an error. The
+    registry is loaded from ``exposure/`` unless one is passed.
     """
     if by not in ("reciter", "source"):
         raise ValueError(f"by must be 'reciter' or 'source', not {by!r}")
     registry = registry or load_registry()
+    for name in (use, *others):
+        registry._require(name)
     problems = []
-    for other in sorted(set(map(_known, others)) - {_known(use)}):
+    for other in sorted(set(others) - {use}):
         shared = (
             sorted(registry.reciters(use) & registry.reciters(other))
             if by == "reciter" else _shared_sources(registry, use, other)
@@ -457,7 +525,10 @@ def evalset_records(manifest_path: Path) -> list[tuple[tuple[int, int], str]]:
     return records
 
 
-def shard_exposure(index_path: Path, shards: Iterable[int]) -> ShardExposure:
+def shard_exposure(
+    index_path: Path, shards: Iterable[int], *, membership: str, shared_baseline: bool,
+    note: str,
+) -> ShardExposure:
     """Rows per canonical reciter in ``shards``, from a full shard index file."""
     wanted = set(shards)
     index = read_shard_index(index_path)
@@ -466,7 +537,8 @@ def shard_exposure(index_path: Path, shards: Iterable[int]) -> ShardExposure:
         raise ValueError(f"{index_path} does not index shards {sorted(missing)[:10]}")
     counts = Counter(row.reciter_id for row in index.values() if row.shard in wanted)
     return ShardExposure(
-        tuple(sorted(wanted)), dict(counts), hashlib.sha256(index_path.read_bytes()).hexdigest()
+        tuple(sorted(wanted)), dict(counts), hashlib.sha256(index_path.read_bytes()).hexdigest(),
+        membership, shared_baseline, note,
     )
 
 
@@ -490,30 +562,43 @@ def main() -> None:
     build = commands.add_parser("build", help="write every use that exists before the panel")
     build.add_argument("--index", type=Path, required=True,
                        help="a shard index of all 385 shards (tadabur.staged_audio index)")
-    build.add_argument("--evalset-manifest", type=Path, required=True)
-    build.add_argument("--muraja-clips", type=Path, required=True,
-                       help="JSON list of the audio_filenames shipped to Muraja (#70): "
-                       "corpus_run/recuts.jsonl plus every scenario.jsonl clip_id")
     commands.add_parser("describe", help="summarize the committed registry")
     args = parser.parse_args()
 
     if args.command == "describe":
         print(describe(load_registry()))
         return
+    build_registry(args.index)
+    print(describe(load_registry()))
 
+
+def build_registry(index_path: Path, directory: Path = EXPOSURE_DIR) -> None:
+    """Write every use this module derives, from the committed sources and a full shard
+    index, and an empty file for each declared use no issue has written yet."""
     from .shard_reader import parse_shard_spec
 
     staged = load_staged_clips()
-    index = read_shard_index(args.index)
-    muraja = json.loads(args.muraja_clips.read_text(encoding="utf-8"))
+    index = read_shard_index(index_path)
+    muraja = json.loads(MURAJA_CLIPS_PATH.read_text(encoding="utf-8"))
     uses = {
         **staged_exposures(staged),
-        **indexed_exposures(index, staged, args.evalset_manifest, muraja),
+        **indexed_exposures(index, staged, EVALSET_MANIFEST_PATH, muraja),
     }
     for use, rows in sorted(uses.items()):
-        write_use(use, rows)
-    write_shard_use(H448_TRAINING, shard_exposure(args.index, parse_shard_spec(H448_STREAM_SHARDS)))
-    print(describe(load_registry()))
+        write_use(use, rows, directory)
+    write_shard_use(H448_TRAINING, shard_exposure(
+        index_path, parse_shard_spec(H448_STREAM_SHARDS), membership="exact",
+        shared_baseline=True,
+        note="h448's --stream-shards (runs/h448_stream/run_config.json on the GPU box)",
+    ), directory)
+    write_shard_use(H448_INIT_VALIDATION, shard_exposure(
+        index_path, CLIPS_V2_SHARDS, membership="uncertain", shared_baseline=True,
+        note="h448_init's calibration windows and h448's validation windows, from the "
+        "clips_v2 corpus (the filter's passes over shards 0-19), lost with audit_run/: "
+        "which rows is unknown, so every row of the shards counts",
+    ), directory)
+    for use in load_registry(directory).missing():
+        write_use(use, [], directory)
 
 
 if __name__ == "__main__":

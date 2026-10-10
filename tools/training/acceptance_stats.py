@@ -176,9 +176,12 @@ class Resample:
         draws = np.random.default_rng(seed).integers(
             0, len(clusters), size=(replicates, len(clusters))
         )
-        counts = np.zeros((replicates, len(clusters)), dtype=np.int64)
-        np.add.at(counts, (np.arange(replicates)[:, None], draws), 1)
-        return cls(clusters, index, counts)
+        # Each replicate's tally per cluster: one bincount over the draws offset by replicate
+        # (the counts np.add.at gives, without its unbuffered per-element loop).
+        width = len(clusters)
+        offsets = (np.arange(replicates)[:, None] * width + draws).ravel()
+        counts = np.bincount(offsets, minlength=replicates * width).reshape(replicates, width)
+        return cls(clusters, index, counts.astype(np.int64, copy=False))
 
     def totals(self, values: np.ndarray) -> np.ndarray:
         """Each replicate's sum of a per-observation quantity."""
@@ -349,9 +352,10 @@ def ratio_verdict(
     threshold: float,
     kind: str,
     weights: np.ndarray | None = None,
+    resample: Resample | None = None,
 ) -> BoundVerdict:
     """A single weighted ratio's ``kind`` bound against ``threshold`` (:func:`ratio_interval`)."""
-    return _verdict(ratio_interval(clusters, num, den, weights), threshold, kind)
+    return _verdict(ratio_interval(clusters, num, den, weights, resample), threshold, kind)
 
 
 def difference_verdict(
@@ -361,9 +365,11 @@ def difference_verdict(
     threshold: float,
     kind: str,
     weights: np.ndarray | None = None,
+    resample: Resample | None = None,
 ) -> BoundVerdict:
     """A paired difference's ``kind`` bound against ``threshold`` (:func:`difference_interval`)."""
-    return _verdict(difference_interval(clusters, arm, comparator, weights), threshold, kind)
+    interval = difference_interval(clusters, arm, comparator, weights, resample)
+    return _verdict(interval, threshold, kind)
 
 
 def relative_change_verdict(
@@ -372,6 +378,7 @@ def relative_change_verdict(
     comparator: tuple[np.ndarray, np.ndarray],
     threshold: float,
     kind: str,
+    resample: Resample | None = None,
 ) -> BoundVerdict:
     """(arm − comparator) / comparator, e.g. the §3 false-flag headline.
 
@@ -381,7 +388,7 @@ def relative_change_verdict(
     (num_a, den_a), (num_b, den_b) = _arrays(arm, comparator)
     if not np.sum(den_a) or not np.sum(den_b) or not np.sum(num_b):
         return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, "zero denominator or zero comparator rate")
-    resample = Resample.by_cluster(clusters)
+    resample = resample or Resample.by_cluster(clusters)
     base = resample.ratios(num_b, den_b)
     with np.errstate(divide="ignore", invalid="ignore"):
         replicates = np.where(base > 0, (resample.ratios(num_a, den_a) - base) / base, np.nan)

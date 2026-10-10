@@ -16,12 +16,14 @@ from training.muraja_policy import (
     ALLOWANCES_ON,
     FLAGGED,
     FLAGGED_ELSEWHERE,
+    FLAGGED_UNATTRIBUTED,
     MURAJA_COMMIT,
     NOT_FLAGGED,
     NOT_GRADED,
     SAMPLE_RATE,
     SCORINGS,
     SHIPPED_DEFAULT,
+    UNPLACED,
     Harness,
     Item,
     MurajaSite,
@@ -33,6 +35,8 @@ from training.muraja_policy import (
     clusters,
     counterpart,
     displayed,
+    graphemes,
+    highlights,
     read_results,
     single_decode_checks,
     site_outcome,
@@ -97,16 +101,33 @@ def test_clusters_keep_marks_on_their_letter():
 
 
 def test_single_decode_checks_follow_the_transcriber_cadence():
-    decode = "بَ" * 80  # 80 Characters over 8 s: 10 per second, 2 per 200 ms tick
+    decode = "بَ" * 80  # 80 Characters over 8 s: 10 per second, 2 per 200 ms step
     checks = single_decode_checks(decode, 8 * SAMPLE_RATE)
     previews = [c for c in checks if not c["hop"] and not c["flush"]]
     windows = [c for c in checks if c["hop"] and not c["flush"]]
-    # a preview every 200 ms from 2 s on (31 ticks), and a full window at 5, 6, 7 and 8 s
+    # a preview every 200 ms from 2 s on (31 steps), and a full window at 5, 6, 7 and 8 s
     assert len(windows) == 4 and len(previews) == 31
     assert previews[0]["overlap"] == "بَ" * 20
     assert all(w["hop"] == "بَ" * 10 and w["overlap"] == "بَ" * 40 for w in windows)
     confirmed = "".join(c["hop"] for c in checks)
     assert confirmed == decode and checks[-1]["flush"] and not checks[-1]["overlap"]
+
+
+@pytest.mark.parametrize(
+    ("seconds", "previews", "windows"),
+    [(1.91, 0, 0), (2.3095, 2, 0), (4.91, 15, 0), (5.0, 16, 1)],
+)
+def test_checks_are_scheduled_on_exact_samples(seconds, previews, windows):
+    """Nothing is rounded to 200 ms: 1.91 s is too short for a preview, 4.91 s for a window,
+    and the remainder after the last whole step goes to the flush."""
+    n_samples = round(seconds * SAMPLE_RATE)
+    decode = "بَ" * n_samples  # one Character per sample keeps the cut points exact
+    checks = single_decode_checks(decode, n_samples)
+    assert sum(1 for c in checks if not c["hop"] and not c["flush"]) == previews
+    assert sum(1 for c in checks if c["hop"] and not c["flush"]) == windows
+    last_preview = max((len(c["overlap"]) for c in checks if not c["flush"]), default=0) // 2
+    assert last_preview <= n_samples - n_samples % 3200
+    assert "".join(c["hop"] for c in checks) == decode
 
 
 def test_a_short_item_is_one_flush():
@@ -143,17 +164,44 @@ def text(tmp_path: Path) -> MurajaText:
     return MurajaText(db)
 
 
+#: How the harness reports 2:80 w3's printed letters: تَمَسَّنَ (scalars ت َ م َ س ّ َ ن َ) and,
+#: per phoneme group, the scalars it covers (``phonemeGroupCharIndices``).
+W3_LETTERS = {"word": 3, "text": "تَمَسَّنَ", "group_chars": [[0, 1], [2, 3], [4, 5, 6], [7, 8]]}
+W3_MARKS = (frozenset({0}), frozenset({1}), frozenset({2}), frozenset({3}))
+
+
+def test_highlights_take_scalars_to_graphemes():
+    assert highlights(W3_LETTERS) == W3_MARKS
+    # 5:73 w11 إِلَٰهٍ: the char map counts eight scalars, the printed word has seven
+    tanween = {"text": "إِلَٰهٍ", "group_chars": [[0, 1], [2, 3], [5], [6, 7], [7]]}
+    assert highlights(tanween) == (frozenset({0}), frozenset({1}), frozenset({2}), frozenset({2}), frozenset())
+    assert graphemes("إِلَٰهٍ") == [0, 0, 1, 1, 1, 2, 2]
+
+
 def test_counterpart_aligns_across_spaces_and_waqf_forms():
     assert counterpart("لَں تَمَ", 4, "لَںںں تَمَسسَنَ") == 6
     assert counterpart("زَيد", 0, "بَكر") is None
+    # a pausal ه against the wasl spellings of a taa marbuta's tanween
+    assert counterpart("دَه", 2, "دَتَںںں") == 2
+    assert counterpart("ثَه وَ", 2, "ثَتِوو وَ") == 2
+    assert counterpart("دَهُم", 2, "دَتَںںں") is None  # two letters against one group
 
 
-def test_a_site_maps_to_its_word_and_the_group_the_app_marks(text):
+def test_a_site_maps_to_its_word_and_the_letter_the_app_marks(text):
     site = make("لَںںںتَمَسسَنَ", 10, "fatha", "fatha", "fatha", surah_ayah="2:80")  # the sin's fatha
     assert text.locate(site) == MurajaSite(2, 80, 3, 2)
     assert text.start_word(site) == 2
     lam = make("لَںںںتَمَسسَنَ", 0, "fatha", "fatha", "fatha", surah_ayah="2:80")
-    assert text.locate(lam) == MurajaSite(2, 80, 2, 0)
+    assert text.locate(lam).word == 2
+
+
+def test_an_unmatched_carrier_keeps_its_word(text):
+    # the realized word ends in ب where Muraja's has ن: the carrier has no counterpart, but
+    # the rest of its word does
+    site = make("لَںںںتَمَسسَبَ", 12, "fatha", "fatha", "fatha", surah_ayah="2:80")
+    where = text.locate(site)
+    assert where.word == 3 and where.group is None
+    assert text.locate(make("زِيدِ", 0, "kasra", "kasra", "kasra", surah_ayah="2:80")) is None
 
 
 # --- what a kept grade means for a site ----------------------------------------------------------
@@ -165,15 +213,30 @@ def kept(quality: str, *groups: int) -> dict:
 
 def test_site_outcomes_from_the_kept_grade():
     where = MurajaSite(2, 80, 3, 2)
-    assert site_outcome(where, None, SHIPPED_DEFAULT).outcome == NOT_GRADED
-    assert site_outcome(None, kept("minor", 2), SHIPPED_DEFAULT).outcome == NOT_GRADED
-    assert site_outcome(where, kept("pending"), SHIPPED_DEFAULT).outcome == NOT_GRADED
-    assert site_outcome(where, kept("correct", 2), SHIPPED_DEFAULT).outcome == NOT_FLAGGED
-    assert site_outcome(where, kept("minor", 2), SHIPPED_DEFAULT).outcome == FLAGGED
-    assert site_outcome(where, kept("minor", 1), SHIPPED_DEFAULT).outcome == FLAGGED_ELSEWHERE
-    assert site_outcome(where, kept("skipped"), SHIPPED_DEFAULT).outcome == FLAGGED_ELSEWHERE
-    assert site_outcome(where, kept("tashkeelError", 2), SHIPPED_DEFAULT).outcome == FLAGGED
-    assert site_outcome(where, kept("tashkeelError", 2), ALLOWANCES_ON).outcome == NOT_FLAGGED
+
+    def outcome(site, grade, scoring=SHIPPED_DEFAULT):
+        return site_outcome(site, grade, W3_MARKS, scoring).outcome
+
+    assert outcome(where, None) == NOT_GRADED
+    assert outcome(None, kept("minor", 2)) == UNPLACED
+    assert outcome(where, kept("pending")) == NOT_GRADED
+    assert outcome(where, kept("correct", 2)) == NOT_FLAGGED
+    assert outcome(where, kept("minor", 2)) == FLAGGED
+    assert outcome(where, kept("minor", 1)) == FLAGGED_ELSEWHERE
+    assert outcome(where, kept("minor", 9)) == FLAGGED_ELSEWHERE
+    assert outcome(where, kept("skipped")) == FLAGGED_ELSEWHERE
+    assert outcome(where, kept("tashkeelError", 2)) == FLAGGED
+    assert outcome(where, kept("tashkeelError", 2), ALLOWANCES_ON) == NOT_FLAGGED
+    unattributed = replace(where, group=None)
+    assert outcome(unattributed, kept("minor", 2)) == FLAGGED_UNATTRIBUTED
+    assert outcome(unattributed, kept("correct")) == NOT_FLAGGED
+
+
+def test_two_groups_printed_on_one_letter_mark_the_same_letter():
+    marks = highlights({"text": "إِلَٰهٍ", "group_chars": [[0, 1], [2, 3], [5], [6, 7], [7]]})
+    site_on_he = MurajaSite(5, 73, 11, 3)
+    assert site_outcome(site_on_he, kept("minor", 2), marks, SHIPPED_DEFAULT).outcome == FLAGGED
+    assert site_outcome(site_on_he, kept("minor", 4), marks, SHIPPED_DEFAULT).outcome == FLAGGED_ELSEWHERE
 
 
 def test_requests_out_and_results_in(text):
@@ -184,13 +247,14 @@ def test_requests_out_and_results_in(text):
     assert len(request["scorings"]) == 4 and request["checks"][-1]["flush"]
     json.dumps(request, ensure_ascii=False)
     results = [
-        {"item": "arm#item", "scoring": s["name"], "final": [{"word": 3, **kept("tashkeelError", 2)}]}
+        {"item": "arm#item", "scoring": s["name"], "final": [{"word": 3, **kept("tashkeelError", 2)}],
+         "letters": [W3_LETTERS]}
         for s in request["scorings"]
     ]
     out = read_results([item], {"arm#item": where}, results, SCORINGS, {"muraja_commit": MURAJA_COMMIT})
     grades = {name: g[("arm#item", site.site_id)].outcome for name, g in out.grades.items()}
     assert grades["allowances_on"] == NOT_FLAGGED and grades["shipped_default"] == FLAGGED
-    assert out.unmapped == ()
+    assert out.unplaced == () and out.unattributed == ()
 
 
 def test_a_harness_is_located_only_for_the_pinned_commit(tmp_path: Path):

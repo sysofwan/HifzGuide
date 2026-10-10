@@ -81,6 +81,30 @@ struct Status: Encodable {
   }
 }
 
+/// What the app needs to draw a word's errors (App/MistakeSnippetRenderer.swift:140-150): the
+/// printed word the phoneme word is drawn on, its text, and per phoneme group the scalar indices
+/// of that text the group covers, from Muraja's own QuranDatabase.phonemeGroupCharIndices
+/// (Data/QuranDatabase.swift:676-735). The renderer's last step, scalar to grapheme
+/// (MistakeSnippetRenderer.swift:350-363), is the caller's.
+struct Letters: Encodable {
+  let word: Int
+  let textWord: Int
+  let text: String
+  let groupChars: [[Int]]
+
+  init(_ position: QuranPosition, db: QuranDatabase) {
+    word = position.word
+    // The renderer takes the first text word mapped to the phoneme word from an unordered
+    // dictionary; the lowest is taken here, so a phoneme word drawn on several printed words
+    // is drawn on its first.
+    let mapped = db.wordMap(surah: position.surah, ayah: position.ayah)
+      .filter { $0.value == position.word }.keys
+    textWord = mapped.min() ?? position.word
+    text = db.wordText(surah: position.surah, ayah: position.ayah, word: textWord) ?? ""
+    groupChars = db.phonemeGroupCharIndices(surah: position.surah, ayah: position.ayah, word: textWord)
+  }
+}
+
 struct CheckResult: Encodable {
   /// The word the engine's alignment placed the reader on after this check.
   let position: String
@@ -96,6 +120,8 @@ struct Result: Encodable {
   let checks: [CheckResult]
   /// The grade GradeStore keeps for each reported word at the session's end.
   let final: [Status]
+  /// How the app draws each reported word's errors.
+  let letters: [Letters]
 }
 
 struct BuildRecord: Encodable {
@@ -130,11 +156,13 @@ func replay(_ request: Request, _ scoring: Scoring, db: QuranDatabase, index: Ph
   let scoringMode = mode(scoring.mode)
   let parameters = ScoringParameters.forMode(scoringMode)
   let page = db.pageForPosition(surah: request.surah, ayah: request.ayah) ?? 1
-  let engine = FollowAlongEngine(
-    db: db, phonemeIndex: index,
-    startPosition: QuranPosition(surah: request.surah, ayah: request.ayah, word: request.startWord),
-    scoringMode: scoringMode)
+  let start = QuranPosition(surah: request.surah, ayah: request.ayah, word: request.startWord)
+  let engine = FollowAlongEngine(db: db, phonemeIndex: index, startPosition: start, scoringMode: scoringMode)
+  // setPage moves the engine to the page's first position (FollowAlongEngine.swift:1067-1072);
+  // the reader starts at the item's first word, so move there as the app's explicit navigation
+  // does (FollowAlongManager+iOS.swift:451-452 -> FollowAlongEngine.moveTo, :951-957).
   engine.setPage(positions: db.positionsOnPage(page))
+  engine.moveTo(start)
   engine.isHifzMode = true
   let reported = Set(request.reportWords.map {
     QuranPosition(surah: request.surah, ayah: request.ayah, word: $0)
@@ -159,7 +187,7 @@ func replay(_ request: Request, _ scoring: Scoring, db: QuranDatabase, index: Ph
       "phonemeGateEnabled": parameters.phonemeGateEnabled,
       "suppressHarakaDrop": parameters.suppressHarakaDrop,
     ],
-    checks: checks, final: final)
+    checks: checks, final: final, letters: reported.sorted().map { Letters($0, db: db) })
 }
 
 // MARK: - Main

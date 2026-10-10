@@ -171,7 +171,10 @@ def _app_section(report: dict, arms: list[str]) -> list[str]:
         "",
         "**Single-decode approximation.** " + APPROXIMATIONS[muraja["approximation"]],
         "",
-        f"Sites with no counterpart on Muraja's reference, never graded: {muraja['unmapped_sites']}.",
+        f"Sites whose word has no counterpart on Muraja's reference (unplaced, never graded): "
+        f"{muraja['unplaced_sites']}; sites placed on their word but whose own letter has no "
+        f"counterpart (a flag on the word counts, its letter is unattributed): "
+        f"{muraja['unattributed_sites']}.",
         "",
         "Scorings (balanced throughout; `None` keeps balanced's own flag):",
         "",

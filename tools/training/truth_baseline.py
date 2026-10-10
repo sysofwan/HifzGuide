@@ -276,7 +276,7 @@ def app_outcomes(sites: Sequence[TruthSite], decodes: Mapping[str, Mapping[str, 
     for scoring, by_site in graded.grades.items():
         for (key, site_id), grade in by_site.items():
             outcomes[scoring][key.split("#", 1)[0]][site_id] = grade.outcome
-    return MurajaGrades(outcomes, SCORINGS, graded.build, SINGLE_DECODE, graded.unmapped)
+    return MurajaGrades(outcomes, SCORINGS, graded.build, SINGLE_DECODE, graded.unplaced, graded.unattributed)
 
 
 def p35_reproduction(sites: Sequence[TruthSite], base_spans: Mapping[str, str]) -> dict:

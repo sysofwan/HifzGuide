@@ -17,7 +17,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَن"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَنن"
     },
     {
      "flush": false,
@@ -42,7 +42,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَننننَاارُءِل"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَننننَاارُءِللَ"
     },
     {
      "flush": false,
@@ -52,7 +52,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَننننَاارُءِللَاا"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَننننَاارُءِللَااا"
     },
     {
      "flush": false,
@@ -67,7 +67,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَننننَاارُءِللَااااءَييَ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَننننَاارُءِللَااااءَييَا"
     },
     {
      "flush": false,
@@ -77,7 +77,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَننننَاارُءِللَااااءَييَاامَ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسنَننننَاارُءِللَااااءَييَاامَم"
     },
     {
      "flush": false,
@@ -97,7 +97,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسنَننننَاارُءِللَااااءَييَاامَممممَع"
+     "overlap": "ںںںتَمَسسنَننننَاارُءِللَااااءَييَاامَممممَعدُ"
     },
     {
      "flush": false,
@@ -107,7 +107,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥ"
+     "overlap": "ںںںتَمَسسنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَ"
     },
     {
      "flush": false,
@@ -117,17 +117,12 @@
     {
      "flush": false,
      "hop": "ںںںتَمَسسنَ",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَں"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںں"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَں"
-    },
-    {
-     "flush": false,
-     "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںں"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںں"
     },
     {
      "flush": true,
@@ -139,7 +134,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -253,25 +248,6 @@
        ]
       },
       {
-       "position": "2:80:4",
-       "statuses": [
-        {
-         "errors": [
-          {
-           "group_index": 2,
-           "kind": {
-            "expected": "س",
-            "type": "deletion"
-           }
-          }
-         ],
-         "quality": "correct",
-         "score": 0.8,
-         "word": 3
-        }
-       ]
-      },
-      {
        "position": "2:80:5",
        "statuses": [
         {
@@ -424,7 +400,7 @@
        ]
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": [
         {
          "errors": [
@@ -631,6 +607,32 @@
       }
      ],
      "item": "2:80 w3 bare double",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -643,7 +645,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -758,25 +760,6 @@
        ]
       },
       {
-       "position": "2:80:4",
-       "statuses": [
-        {
-         "errors": [
-          {
-           "group_index": 2,
-           "kind": {
-            "expected": "س",
-            "type": "deletion"
-           }
-          }
-         ],
-         "quality": "minor",
-         "score": 0.8,
-         "word": 3
-        }
-       ]
-      },
-      {
        "position": "2:80:5",
        "statuses": [
         {
@@ -929,7 +912,7 @@
        ]
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": [
         {
          "errors": [
@@ -1136,6 +1119,32 @@
       }
      ],
      "item": "2:80 w3 bare double",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -1148,7 +1157,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -1263,25 +1272,6 @@
        ]
       },
       {
-       "position": "2:80:4",
-       "statuses": [
-        {
-         "errors": [
-          {
-           "group_index": 2,
-           "kind": {
-            "expected": "س",
-            "type": "deletion"
-           }
-          }
-         ],
-         "quality": "minor",
-         "score": 0.8,
-         "word": 3
-        }
-       ]
-      },
-      {
        "position": "2:80:5",
        "statuses": [
         {
@@ -1434,7 +1424,7 @@
        ]
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": [
         {
          "errors": [
@@ -1641,6 +1631,32 @@
       }
      ],
      "item": "2:80 w3 bare double",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -1680,21 +1696,126 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَ"
+     "overlap": "وَقَاالُۥ"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَن"
+     "overlap": "وَقَاالُۥۥ"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننن"
+     "overlap": "وَقَاالُۥۥ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَں"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںں"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںں"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںںں"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںںں"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںںںتَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںںںتَمَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںںںتَمَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںںںتَمَس"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "وَقَاالُۥۥلَںںںتَمَس"
+    },
+    {
+     "flush": false,
+     "hop": "وَقَا",
+     "overlap": "الُۥۥلَںںںتَمَسسَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "الُۥۥلَںںںتَمَسسَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "الُۥۥلَںںںتَمَسسَنَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "الُۥۥلَںںںتَمَسسَنَ"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "الُۥۥلَںںںتَمَسسَنَن"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "الُۥۥلَںںںتَمَسسَنَن"
+    },
+    {
+     "flush": false,
+     "hop": "الُۥ",
+     "overlap": "ۥلَںںںتَمَسسَنَنن"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "ۥلَںںںتَمَسسَنَنن"
+    },
+    {
+     "flush": false,
+     "hop": "",
+     "overlap": "ۥلَںںںتَمَسسَنَننن"
     },
     {
      "flush": true,
-     "hop": "وَقَاالُۥۥلَںںںتَمَسسَنَننن",
+     "hop": "ۥلَںںںتَمَسسَنَننن",
      "overlap": ""
     }
    ],
@@ -1702,7 +1823,121 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.4,
+         "withheld": "minor",
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.4,
+         "withheld": "minor",
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.6,
+         "withheld": "minor",
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.6,
+         "withheld": "minor",
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 0.8,
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 0.8,
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
        "statuses": [
         {
          "errors": [],
@@ -1713,7 +1948,72 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 1,
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:4",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 1,
+         "word": 3
+        },
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.5,
+         "withheld": "minor",
+         "word": 4
+        }
+       ]
+      },
+      {
+       "position": "2:80:4",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 1,
+         "word": 3
+        },
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.5,
+         "withheld": "minor",
+         "word": 4
+        }
+       ]
+      },
+      {
+       "position": "2:80:4",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 1,
+         "word": 3
+        },
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.5,
+         "withheld": "minor",
+         "word": 4
+        }
+       ]
+      },
+      {
+       "position": "2:80:4",
        "statuses": [
         {
          "errors": [],
@@ -1783,6 +2083,50 @@
       }
      ],
      "item": "2:80 half of w4",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      },
+      {
+       "group_chars": [
+        [
+         0,
+         2
+        ],
+        [
+         3
+        ],
+        [
+         4,
+         5
+        ]
+       ],
+       "text": "ٱلنَّارُ",
+       "text_word": 4,
+       "word": 4
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -1795,7 +2139,121 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:1",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:2",
+       "statuses": []
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.4,
+         "withheld": "uncertain",
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.4,
+         "withheld": "uncertain",
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.6,
+         "withheld": "minor",
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.6,
+         "withheld": "minor",
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 0.8,
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 0.8,
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:3",
        "statuses": [
         {
          "errors": [],
@@ -1806,7 +2264,72 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:3",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 1,
+         "word": 3
+        }
+       ]
+      },
+      {
+       "position": "2:80:4",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 1,
+         "word": 3
+        },
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.5,
+         "withheld": "minor",
+         "word": 4
+        }
+       ]
+      },
+      {
+       "position": "2:80:4",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 1,
+         "word": 3
+        },
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.5,
+         "withheld": "minor",
+         "word": 4
+        }
+       ]
+      },
+      {
+       "position": "2:80:4",
+       "statuses": [
+        {
+         "errors": [],
+         "quality": "correct",
+         "score": 1,
+         "word": 3
+        },
+        {
+         "errors": [],
+         "quality": "pending",
+         "score": 0.5,
+         "withheld": "minor",
+         "word": 4
+        }
+       ]
+      },
+      {
+       "position": "2:80:4",
        "statuses": [
         {
          "errors": [],
@@ -1876,6 +2399,50 @@
       }
      ],
      "item": "2:80 half of w4",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      },
+      {
+       "group_chars": [
+        [
+         0,
+         2
+        ],
+        [
+         3
+        ],
+        [
+         4,
+         5
+        ]
+       ],
+       "text": "ٱلنَّارُ",
+       "text_word": 4,
+       "word": 4
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -1916,7 +2483,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يُخلِفَللَااهُعَهدَهُۥۥۥۥ"
+     "overlap": "يُخلِفَللَااهُعَهدَهُۥۥۥۥءَ"
     },
     {
      "flush": false,
@@ -1941,12 +2508,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يُخلِفَللَااهُعَهدَهُۥۥۥۥءَمتَقُۥۥلُۥ"
-    },
-    {
-     "flush": false,
-     "hop": "",
-     "overlap": "يُخلِفَللَااهُعَهدَهُۥۥۥۥءَمتَقُۥۥلُۥۥنَ"
+     "overlap": "يُخلِفَللَااهُعَهدَهُۥۥۥۥءَمتَقُۥۥلُۥۥ"
     },
     {
      "flush": true,
@@ -1958,18 +2520,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
-       "statuses": [
-        {
-         "errors": [],
-         "quality": "correct",
-         "score": 1,
-         "word": 15
-        }
-       ]
-      },
-      {
-       "position": "2:80:16",
+       "position": "2:80:14",
        "statuses": [
         {
          "errors": [],
@@ -2002,7 +2553,7 @@
        ]
       },
       {
-       "position": "2:80:18",
+       "position": "2:80:17",
        "statuses": [
         {
          "errors": [],
@@ -2066,6 +2617,65 @@
       }
      ],
      "item": "2:80 from w14",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1,
+         2
+        ],
+        [
+         2
+        ],
+        [
+         3,
+         4
+        ]
+       ],
+       "text": "ٱللَّهِ",
+       "text_word": 11,
+       "word": 11
+      },
+      {
+       "group_chars": [
+        [
+         0,
+         1,
+         2
+        ],
+        [
+         2
+        ],
+        [
+         3,
+         4
+        ]
+       ],
+       "text": "ٱللَّهُ",
+       "text_word": 15,
+       "word": 15
+      },
+      {
+       "group_chars": [
+        [
+         0,
+         1,
+         2
+        ],
+        [
+         2
+        ],
+        [
+         3,
+         4
+        ]
+       ],
+       "text": "ٱللَّهِ",
+       "text_word": 20,
+       "word": 20
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -2103,7 +2713,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَن"
+     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَنن"
     },
     {
      "flush": false,
@@ -2128,7 +2738,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِل"
+     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَ"
     },
     {
      "flush": false,
@@ -2138,7 +2748,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَاا"
+     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااا"
     },
     {
      "flush": false,
@@ -2153,7 +2763,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَ"
+     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَا"
     },
     {
      "flush": false,
@@ -2163,7 +2773,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَ"
+     "overlap": "وقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَم"
     },
     {
      "flush": false,
@@ -2183,7 +2793,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَع"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُ"
     },
     {
      "flush": false,
@@ -2193,7 +2803,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥ"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَ"
     },
     {
      "flush": false,
@@ -2203,17 +2813,12 @@
     {
      "flush": false,
      "hop": "ںںںتَمَسسَنَ",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَں"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںں"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَں"
-    },
-    {
-     "flush": false,
-     "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںں"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںں"
     },
     {
      "flush": true,
@@ -2225,7 +2830,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -2236,7 +2841,7 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -2247,18 +2852,7 @@
        ]
       },
       {
-       "position": "2:80:4",
-       "statuses": [
-        {
-         "errors": [],
-         "quality": "correct",
-         "score": 1,
-         "word": 1
-        }
-       ]
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -2390,7 +2984,7 @@
        ]
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": [
         {
          "errors": [],
@@ -2509,6 +3103,33 @@
       }
      ],
      "item": "2:80 w1 bare waw",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ]
+       ],
+       "text": "وَقَالُواْ",
+       "text_word": 1,
+       "word": 1
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -2521,7 +3142,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -2532,7 +3153,7 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -2543,18 +3164,7 @@
        ]
       },
       {
-       "position": "2:80:4",
-       "statuses": [
-        {
-         "errors": [],
-         "quality": "correct",
-         "score": 1,
-         "word": 1
-        }
-       ]
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -2686,7 +3296,7 @@
        ]
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": [
         {
          "errors": [],
@@ -2805,6 +3415,33 @@
       }
      ],
      "item": "2:80 w1 bare waw",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ]
+       ],
+       "text": "وَقَالُواْ",
+       "text_word": 1,
+       "word": 1
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -2896,7 +3533,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَا"
     },
     {
      "flush": false,
@@ -2926,7 +3563,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَع"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُ"
     },
     {
      "flush": false,
@@ -2956,12 +3593,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںں"
-    },
-    {
-     "flush": false,
-     "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُل"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُ"
     },
     {
      "flush": false,
@@ -2998,19 +3630,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -3022,7 +3650,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -3058,7 +3686,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -3427,6 +4055,38 @@
       }
      ],
      "item": "2:80 w9 heard wrong twice",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -3477,7 +4137,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاا"
     },
     {
      "flush": false,
@@ -3502,7 +4162,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَاااا"
     },
     {
      "flush": false,
@@ -3527,7 +4187,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممم"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَمم"
     },
     {
      "flush": false,
@@ -3557,7 +4217,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَں"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَ"
     },
     {
      "flush": false,
@@ -3587,7 +4247,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَ"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَ"
     },
     {
      "flush": false,
@@ -3607,7 +4267,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَزتُمعِں"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَزتُمعِ"
     },
     {
      "flush": false,
@@ -3617,7 +4277,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَزتُمعِںںںدَ"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَزتُمعِںںں"
     },
     {
      "flush": false,
@@ -3637,7 +4297,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَزتُمعِںںںدَللَااهِ"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَزتُمعِںںںدَللَاا"
     },
     {
      "flush": false,
@@ -3647,7 +4307,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَزتُمعِںںںدَللَااهِعَهدَ"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَزتُمعِںںںدَللَااهِعَه"
     },
     {
      "flush": false,
@@ -3674,19 +4334,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -3698,7 +4354,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -3715,6 +4371,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -3783,7 +4443,7 @@
         {
          "errors": [],
          "quality": "pending",
-         "score": 0.5714285714285714,
+         "score": 0.42857142857142855,
          "withheld": "minor",
          "word": 9
         }
@@ -3852,7 +4512,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -4130,6 +4790,38 @@
       }
      ],
      "item": "2:80 w9 zay",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -4142,19 +4834,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -4166,7 +4854,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -4183,6 +4871,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -4251,7 +4943,7 @@
         {
          "errors": [],
          "quality": "pending",
-         "score": 0.5714285714285714,
+         "score": 0.42857142857142855,
          "withheld": "minor",
          "word": 9
         }
@@ -4321,7 +5013,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -4334,8 +5026,9 @@
            }
           }
          ],
-         "quality": "minor",
+         "quality": "pending",
          "score": 0.8542857142857142,
+         "withheld": "minor",
          "word": 9
         }
        ]
@@ -4599,6 +5292,38 @@
       }
      ],
      "item": "2:80 w9 zay",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -4611,19 +5336,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -4635,7 +5356,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -4652,6 +5373,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -4720,8 +5445,8 @@
         {
          "errors": [],
          "quality": "pending",
-         "score": 0.5714285714285714,
-         "withheld": "minor",
+         "score": 0.42857142857142855,
+         "withheld": "uncertain",
          "word": 9
         }
        ]
@@ -4790,7 +5515,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -4803,8 +5528,9 @@
            }
           }
          ],
-         "quality": "minor",
+         "quality": "pending",
          "score": 0.8542857142857142,
+         "withheld": "minor",
          "word": 9
         }
        ]
@@ -5068,6 +5794,38 @@
       }
      ],
      "item": "2:80 w9 zay",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -5117,7 +5875,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَ"
+     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننن"
     },
     {
      "flush": false,
@@ -5127,12 +5885,12 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُ"
+     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاا"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِل"
+     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِ"
     },
     {
      "flush": false,
@@ -5142,7 +5900,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِللَاا"
+     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِللَا"
     },
     {
      "flush": false,
@@ -5152,12 +5910,12 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِللَااااءَ"
+     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِللَاااا"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِللَااااءَييَ"
+     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِللَااااءَي"
     },
     {
      "flush": false,
@@ -5167,7 +5925,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِللَااااءَييَاامَ"
+     "overlap": "وَقَاالُۥۥلَںںںتمَسسَنَننننَاارُءِللَااااءَييَاا"
     },
     {
      "flush": true,
@@ -5179,7 +5937,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -5200,7 +5958,7 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -5220,7 +5978,7 @@
        ]
       },
       {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -5478,6 +6236,32 @@
       }
      ],
      "item": "2:80 w3 missing_haraka",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -5490,7 +6274,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -5511,7 +6295,7 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -5531,7 +6315,7 @@
        ]
       },
       {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -5789,6 +6573,32 @@
       }
      ],
      "item": "2:80 w3 missing_haraka",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -5801,7 +6611,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -5812,7 +6622,7 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -5823,7 +6633,7 @@
        ]
       },
       {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [],
@@ -5964,6 +6774,32 @@
       }
      ],
      "item": "2:80 w3 missing_haraka",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": false,
@@ -6012,7 +6848,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَ"
+     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننن"
     },
     {
      "flush": false,
@@ -6022,12 +6858,12 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُ"
+     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاا"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِل"
+     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِ"
     },
     {
      "flush": false,
@@ -6037,7 +6873,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِللَاا"
+     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِللَا"
     },
     {
      "flush": false,
@@ -6047,12 +6883,12 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِللَااااءَ"
+     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِللَاااا"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِللَااااءَييَ"
+     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِللَااااءَي"
     },
     {
      "flush": false,
@@ -6062,7 +6898,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِللَااااءَييَاامَ"
+     "overlap": "وَقَاالُۥۥلَںںںتِمَسسَنَننننَاارُءِللَااااءَييَاا"
     },
     {
      "flush": true,
@@ -6074,7 +6910,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6095,7 +6931,7 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6115,7 +6951,7 @@
        ]
       },
       {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6373,6 +7209,32 @@
       }
      ],
      "item": "2:80 w3 wrong_haraka",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -6385,7 +7247,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6406,7 +7268,7 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6426,7 +7288,7 @@
        ]
       },
       {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6684,6 +7546,32 @@
       }
      ],
      "item": "2:80 w3 wrong_haraka",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -6696,7 +7584,7 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6717,7 +7605,7 @@
        ]
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6737,7 +7625,7 @@
        ]
       },
       {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": [
         {
          "errors": [
@@ -6995,6 +7883,32 @@
       }
      ],
      "item": "2:80 w3 wrong_haraka",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3
+        ],
+        [
+         4,
+         5,
+         6
+        ],
+        [
+         7,
+         8
+        ]
+       ],
+       "text": "تَمَسَّنَا",
+       "text_word": 3,
+       "word": 3
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": false,
@@ -7053,7 +7967,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاا"
     },
     {
      "flush": false,
@@ -7078,7 +7992,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَاااا"
     },
     {
      "flush": false,
@@ -7103,7 +8017,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممم"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَمم"
     },
     {
      "flush": false,
@@ -7133,7 +8047,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَں"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَ"
     },
     {
      "flush": false,
@@ -7163,7 +8077,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَ"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَ"
     },
     {
      "flush": false,
@@ -7183,7 +8097,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذَتُمعِں"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذَتُمعِ"
     },
     {
      "flush": false,
@@ -7193,7 +8107,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذَتُمعِںںںدَ"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذَتُمعِںںں"
     },
     {
      "flush": false,
@@ -7213,7 +8127,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذَتُمعِںںںدَللَااهِ"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذَتُمعِںںںدَللَاا"
     },
     {
      "flush": false,
@@ -7223,7 +8137,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذَتُمعِںںںدَللَااهِعَهدَ"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذَتُمعِںںںدَللَااهِعَه"
     },
     {
      "flush": false,
@@ -7250,19 +8164,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -7274,7 +8184,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -7291,6 +8201,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -7359,8 +8273,8 @@
         {
          "errors": [],
          "quality": "pending",
-         "score": 0.5714285714285714,
-         "withheld": "minor",
+         "score": 0.42857142857142855,
+         "withheld": "uncertain",
          "word": 9
         }
        ]
@@ -7429,7 +8343,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -7442,8 +8356,9 @@
            }
           }
          ],
-         "quality": "tashkeelError",
+         "quality": "pending",
          "score": 1,
+         "withheld": "tashkeelError",
          "word": 9
         }
        ]
@@ -7707,6 +8622,38 @@
       }
      ],
      "item": "2:80 w9 haraka_added_at_sukun",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -7719,19 +8666,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -7743,7 +8686,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -7760,6 +8703,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -7828,7 +8775,7 @@
         {
          "errors": [],
          "quality": "pending",
-         "score": 0.5714285714285714,
+         "score": 0.42857142857142855,
          "withheld": "minor",
          "word": 9
         }
@@ -7898,7 +8845,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -7911,8 +8858,9 @@
            }
           }
          ],
-         "quality": "tashkeelError",
+         "quality": "pending",
          "score": 1,
+         "withheld": "tashkeelError",
          "word": 9
         }
        ]
@@ -8176,6 +9124,38 @@
       }
      ],
      "item": "2:80 w9 haraka_added_at_sukun",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -8188,19 +9168,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -8212,7 +9188,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -8229,6 +9205,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -8296,8 +9276,9 @@
        "statuses": [
         {
          "errors": [],
-         "quality": "correct",
-         "score": 0.5714285714285714,
+         "quality": "pending",
+         "score": 0.42857142857142855,
+         "withheld": "minor",
          "word": 9
         }
        ]
@@ -8366,7 +9347,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -8379,8 +9360,9 @@
            }
           }
          ],
-         "quality": "tashkeelError",
+         "quality": "pending",
          "score": 1,
+         "withheld": "tashkeelError",
          "word": 9
         }
        ]
@@ -8628,13 +9610,54 @@
      ],
      "final": [
       {
-       "errors": [],
-       "quality": "correct",
-       "score": 0.5714285714285714,
+       "errors": [
+        {
+         "group_index": 4,
+         "kind": {
+          "expected": null,
+          "heard": "َ",
+          "type": "tashkeel"
+         }
+        }
+       ],
+       "quality": "tashkeelError",
+       "score": 1,
        "word": 9
       }
      ],
      "item": "2:80 w9 haraka_added_at_sukun",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": false,
@@ -8678,7 +9701,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَن"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَنن"
     },
     {
      "flush": false,
@@ -8703,7 +9726,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِل"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَ"
     },
     {
      "flush": false,
@@ -8728,7 +9751,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَا"
     },
     {
      "flush": false,
@@ -8758,7 +9781,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَع"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُ"
     },
     {
      "flush": false,
@@ -8768,7 +9791,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥ"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَ"
     },
     {
      "flush": false,
@@ -8788,7 +9811,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںں"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُ"
     },
     {
      "flush": false,
@@ -8798,7 +9821,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَ"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَت"
     },
     {
      "flush": false,
@@ -8818,7 +9841,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُ"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُم"
     },
     {
      "flush": false,
@@ -8828,7 +9851,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِں"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںں"
     },
     {
      "flush": false,
@@ -8848,7 +9871,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَا"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَاا"
     },
     {
      "flush": false,
@@ -8858,7 +9881,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَ"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَه"
     },
     {
      "flush": false,
@@ -8868,17 +9891,17 @@
     {
      "flush": false,
      "hop": "يَاامَممممَ",
-     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَں"
+     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںں"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَں"
+     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںں"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںں"
+     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںںفَ"
     },
     {
      "flush": false,
@@ -8888,7 +9911,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںںفَلَي"
+     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںںفَلَيي"
     },
     {
      "flush": false,
@@ -8898,17 +9921,12 @@
     {
      "flush": false,
      "hop": "عدُۥۥدَتَںں",
-     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںںفَلَيييُخ"
+     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںںفَلَيييُخلِ"
     },
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںںفَلَيييُخ"
-    },
-    {
-     "flush": false,
-     "hop": "",
-     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںںفَلَيييُخلِفَ"
+     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَلَااهِعَهدَںںںفَلَيييُخلِ"
     },
     {
      "flush": true,
@@ -8920,19 +9938,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -8980,7 +9994,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -9024,6 +10038,10 @@
        "statuses": []
       },
       {
+       "position": "2:80:8",
+       "statuses": []
+      },
+      {
        "position": "2:80:9",
        "statuses": []
       },
@@ -9082,7 +10100,7 @@
        ]
       },
       {
-       "position": "2:80:11",
+       "position": "2:80:12",
        "statuses": [
         {
          "errors": [],
@@ -9160,17 +10178,6 @@
       },
       {
        "position": "2:80:13",
-       "statuses": [
-        {
-         "errors": [],
-         "quality": "correct",
-         "score": 1,
-         "word": 11
-        }
-       ]
-      },
-      {
-       "position": "2:80:14",
        "statuses": [
         {
          "errors": [],
@@ -9223,6 +10230,27 @@
       }
      ],
      "item": "2:80 w11 word_initial_geminate_single",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1,
+         2
+        ],
+        [
+         2
+        ],
+        [
+         3,
+         4
+        ]
+       ],
+       "text": "ٱللَّهِ",
+       "text_word": 11,
+       "word": 11
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -9235,19 +10263,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -9295,7 +10319,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -9339,6 +10363,10 @@
        "statuses": []
       },
       {
+       "position": "2:80:8",
+       "statuses": []
+      },
+      {
        "position": "2:80:9",
        "statuses": []
       },
@@ -9397,7 +10425,7 @@
        ]
       },
       {
-       "position": "2:80:11",
+       "position": "2:80:12",
        "statuses": [
         {
          "errors": [],
@@ -9475,17 +10503,6 @@
       },
       {
        "position": "2:80:13",
-       "statuses": [
-        {
-         "errors": [],
-         "quality": "correct",
-         "score": 1,
-         "word": 11
-        }
-       ]
-      },
-      {
-       "position": "2:80:14",
        "statuses": [
         {
          "errors": [],
@@ -9538,6 +10555,27 @@
       }
      ],
      "item": "2:80 w11 word_initial_geminate_single",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1,
+         2
+        ],
+        [
+         2
+        ],
+        [
+         3,
+         4
+        ]
+       ],
+       "text": "ٱللَّهِ",
+       "text_word": 11,
+       "word": 11
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -9550,19 +10588,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -9610,7 +10644,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:7",
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -9654,6 +10688,10 @@
        "statuses": []
       },
       {
+       "position": "2:80:8",
+       "statuses": []
+      },
+      {
        "position": "2:80:9",
        "statuses": []
       },
@@ -9712,7 +10750,7 @@
        ]
       },
       {
-       "position": "2:80:11",
+       "position": "2:80:12",
        "statuses": [
         {
          "errors": [],
@@ -9790,17 +10828,6 @@
       },
       {
        "position": "2:80:13",
-       "statuses": [
-        {
-         "errors": [],
-         "quality": "correct",
-         "score": 1,
-         "word": 11
-        }
-       ]
-      },
-      {
-       "position": "2:80:14",
        "statuses": [
         {
          "errors": [],
@@ -9853,6 +10880,27 @@
       }
      ],
      "item": "2:80 w11 word_initial_geminate_single",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1,
+         2
+        ],
+        [
+         2
+        ],
+        [
+         3,
+         4
+        ]
+       ],
+       "text": "ٱللَّهِ",
+       "text_word": 11,
+       "word": 11
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": false,
@@ -9936,7 +10984,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَاااا"
     },
     {
      "flush": false,
@@ -9961,7 +11009,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممم"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَمم"
     },
     {
      "flush": false,
@@ -9991,7 +11039,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَں"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَ"
     },
     {
      "flush": false,
@@ -10021,7 +11069,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَ"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَ"
     },
     {
      "flush": false,
@@ -10051,7 +11099,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَ"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںں"
     },
     {
      "flush": false,
@@ -10081,7 +11129,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَ"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَللَااهِعَه"
     },
     {
      "flush": false,
@@ -10101,7 +11149,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَںںںفَلَ"
+     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَںںںفَ"
     },
     {
      "flush": false,
@@ -10111,7 +11159,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَںںںفَلَيييُ"
+     "overlap": "عدُۥۥدَتَںںںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَںںںفَلَيي"
     },
     {
      "flush": false,
@@ -10131,7 +11179,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَںںںفَلَيييُخللِفَل"
+     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَںںںفَلَيييُخللِفَ"
     },
     {
      "flush": false,
@@ -10141,7 +11189,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَںںںفَلَيييُخللِفَللَاا"
+     "overlap": "ںقُلءَتتَخَذتُمعِںںںدَللَااهِعَهدَںںںفَلَيييُخللِفَللَا"
     },
     {
      "flush": false,
@@ -10161,7 +11209,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "تُمعِںںںدَللَااهِعَهدَںںںفَلَيييُخللِفَللَااهُعَهدَهُ"
+     "overlap": "تُمعِںںںدَللَااهِعَهدَںںںفَلَيييُخللِفَللَااهُعَهدَ"
     },
     {
      "flush": false,
@@ -10171,7 +11219,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "تُمعِںںںدَللَااهِعَهدَںںںفَلَيييُخللِفَللَااهُعَهدَهُۥۥۥ"
+     "overlap": "تُمعِںںںدَللَااهِعَهدَںںںفَلَيييُخللِفَللَااهُعَهدَهُۥۥ"
     },
     {
      "flush": false,
@@ -10198,19 +11246,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -10222,7 +11266,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -10239,6 +11283,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -10366,7 +11414,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:13",
+       "position": "2:80:12",
        "statuses": []
       },
       {
@@ -10582,6 +11630,30 @@
       }
      ],
      "item": "2:80 w14 single_decoded_double",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2
+        ],
+        [
+         4,
+         5
+        ],
+        [
+         6,
+         7
+        ]
+       ],
+       "text": "يُخۡلِفَ",
+       "text_word": 14,
+       "word": 14
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -10594,19 +11666,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -10618,7 +11686,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -10635,6 +11703,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -10762,7 +11834,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:13",
+       "position": "2:80:12",
        "statuses": []
       },
       {
@@ -10978,6 +12050,30 @@
       }
      ],
      "item": "2:80 w14 single_decoded_double",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2
+        ],
+        [
+         4,
+         5
+        ],
+        [
+         6,
+         7
+        ]
+       ],
+       "text": "يُخۡلِفَ",
+       "text_word": 14,
+       "word": 14
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -10990,19 +12086,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -11014,7 +12106,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -11031,6 +12123,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -11158,7 +12254,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:13",
+       "position": "2:80:12",
        "statuses": []
       },
       {
@@ -11365,6 +12461,30 @@
       }
      ],
      "item": "2:80 w14 single_decoded_double",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2
+        ],
+        [
+         4,
+         5
+        ],
+        [
+         6,
+         7
+        ]
+       ],
+       "text": "يُخۡلِفَ",
+       "text_word": 14,
+       "word": 14
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": false,
@@ -11423,7 +12543,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاا"
     },
     {
      "flush": false,
@@ -11448,7 +12568,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَ"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَاااا"
     },
     {
      "flush": false,
@@ -11473,7 +12593,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممم"
+     "overlap": "وَقَاالُۥۥلَںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَمم"
     },
     {
      "flush": false,
@@ -11503,7 +12623,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَں"
+     "overlap": "ںںںتَمَسسَنَننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَ"
     },
     {
      "flush": false,
@@ -11533,7 +12653,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَ"
+     "overlap": "ننننَاارُءِللَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَ"
     },
     {
      "flush": false,
@@ -11553,7 +12673,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَظتُمعِں"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَظتُمعِ"
     },
     {
      "flush": false,
@@ -11563,7 +12683,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَظتُمعِںںںدَ"
+     "overlap": "للَااااءَييَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَظتُمعِںںں"
     },
     {
      "flush": false,
@@ -11583,7 +12703,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَظتُمعِںںںدَللَااهِ"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَظتُمعِںںںدَللَاا"
     },
     {
      "flush": false,
@@ -11593,7 +12713,7 @@
     {
      "flush": false,
      "hop": "",
-     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَظتُمعِںںںدَللَااهِعَهدَ"
+     "overlap": "يَاامَممممَعدُۥۥدَتَںںںقُلءَتتَخَظتُمعِںںںدَللَااهِعَه"
     },
     {
      "flush": false,
@@ -11620,19 +12740,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -11644,7 +12760,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -11661,6 +12777,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -11729,8 +12849,8 @@
         {
          "errors": [],
          "quality": "pending",
-         "score": 0.5714285714285714,
-         "withheld": "minor",
+         "score": 0.42857142857142855,
+         "withheld": "uncertain",
          "word": 9
         }
        ]
@@ -11799,7 +12919,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -11812,8 +12932,9 @@
            }
           }
          ],
-         "quality": "minor",
+         "quality": "pending",
          "score": 0.8514285714285714,
+         "withheld": "minor",
          "word": 9
         }
        ]
@@ -12077,6 +13198,38 @@
       }
      ],
      "item": "2:80 w9 dhal_heard_as_zah",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -12089,19 +13242,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -12113,7 +13262,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -12130,6 +13279,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -12198,7 +13351,7 @@
         {
          "errors": [],
          "quality": "pending",
-         "score": 0.5714285714285714,
+         "score": 0.42857142857142855,
          "withheld": "minor",
          "word": 9
         }
@@ -12268,7 +13421,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -12281,8 +13434,9 @@
            }
           }
          ],
-         "quality": "minor",
+         "quality": "pending",
          "score": 0.8514285714285714,
+         "withheld": "minor",
          "word": 9
         }
        ]
@@ -12546,6 +13700,38 @@
       }
      ],
      "item": "2:80 w9 dhal_heard_as_zah",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": true,
@@ -12558,19 +13744,15 @@
     {
      "checks": [
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:77",
+       "position": "2:80:1",
        "statuses": []
       },
       {
-       "position": "2:80:4",
-       "statuses": []
-      },
-      {
-       "position": "2:80:4",
+       "position": "2:80:1",
        "statuses": []
       },
       {
@@ -12582,7 +13764,7 @@
        "statuses": []
       },
       {
-       "position": "2:80:5",
+       "position": "2:80:4",
        "statuses": []
       },
       {
@@ -12599,6 +13781,10 @@
       },
       {
        "position": "2:80:5",
+       "statuses": []
+      },
+      {
+       "position": "2:80:6",
        "statuses": []
       },
       {
@@ -12666,8 +13852,9 @@
        "statuses": [
         {
          "errors": [],
-         "quality": "correct",
-         "score": 0.5714285714285714,
+         "quality": "pending",
+         "score": 0.42857142857142855,
+         "withheld": "minor",
          "word": 9
         }
        ]
@@ -12733,7 +13920,7 @@
        ]
       },
       {
-       "position": "2:80:10",
+       "position": "2:80:9",
        "statuses": [
         {
          "errors": [
@@ -13011,6 +14198,38 @@
       }
      ],
      "item": "2:80 w9 dhal_heard_as_zah",
+     "letters": [
+      {
+       "group_chars": [
+        [
+         0,
+         1
+        ],
+        [
+         2,
+         3,
+         4
+        ],
+        [
+         5,
+         6
+        ],
+        [
+         7
+        ],
+        [
+         9,
+         10
+        ],
+        [
+         11
+        ]
+       ],
+       "text": "أَتَّخَذۡتُمۡ",
+       "text_word": 9,
+       "word": 9
+      }
+     ],
      "page": 12,
      "parameters": {
       "phonemeGateEnabled": false,

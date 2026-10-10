@@ -10,7 +10,8 @@ import json
 import pytest
 
 from muraja_harness.make_parity_fixtures import CASES, FIXTURES_PATH, request
-from training.muraja_policy import MURAJA_COMMIT, Harness
+from tadabur.truth_sites import TRUTH_SITES_DIR, load_truth_sites
+from training.muraja_policy import MURAJA_COMMIT, Harness, MurajaText, highlights
 
 HARNESS = Harness.locate()
 pytestmark = pytest.mark.skipif(HARNESS is None, reason="the Muraja harness is not built here")
@@ -70,14 +71,61 @@ def test_what_the_parity_cases_show():
     [
         ("missing_haraka", 3, "tashkeelError", "tashkeelError", "correct"),
         ("wrong_haraka", 3, "tashkeelError", "tashkeelError", "tashkeelError"),
-        ("haraka_added_at_sukun", 9, "tashkeelError", "tashkeelError", "correct"),
+        ("haraka_added_at_sukun", 9, "tashkeelError", "tashkeelError", "tashkeelError"),
         ("word_initial_geminate_single", 11, "correct", "correct", "correct"),
         ("single_decoded_double", 14, "correct", "correct", "correct"),
         ("dhal_heard_as_zah", 9, "minor", "minor", "correct"),
     ],
 )
 def test_the_amended_adr_0011_table(case, word, strict, balanced, lenient):
-    """ADR-0011 §2's amended table, cell by cell, as the engine grades it (the kept grade; the
-    lenient sukun cell is locked correct by an earlier partial check)."""
+    """ADR-0011 §2's amended table, cell by cell, as the engine keeps it."""
     kept = {mode: _final(case, mode)[word]["quality"] for mode in ("strict", "balanced", "lenient")}
     assert kept == {"strict": strict, "balanced": balanced, "lenient": lenient}
+
+
+# --- regressions that do not depend on the recorded fixtures --------------------------------------
+
+
+def test_the_engine_starts_where_the_request_says():
+    """setPage moves the engine to the page's first ayah; the harness moves it back to the
+    declared start (start 2:80:15, four previews of its word)."""
+    request = {
+        "item": "start", "surah": 2, "ayah": 80, "start_word": 15, "report_words": [11, 15, 20],
+        "checks": [{"hop": "", "overlap": "للَااهُ", "flush": False}] * 4,
+        "scorings": [{"name": "balanced", "mode": "balanced"}],
+    }
+    _, (result,) = HARNESS.run([request])
+    assert {check["position"] for check in result["checks"]} == {"2:80:15"}
+    assert [(s["word"], s["quality"]) for s in result["final"]] == [(15, "correct")]
+
+
+def _letters(surah: int, ayah: int, word: int) -> dict:
+    request = {
+        "item": "letters", "surah": surah, "ayah": ayah, "start_word": word, "report_words": [word],
+        "checks": [], "scorings": [{"name": "balanced", "mode": "balanced"}],
+    }
+    _, (result,) = HARNESS.run([request])
+    (letters,) = result["letters"]
+    return letters
+
+
+def test_highlights_follow_the_apps_renderer():
+    # 5:73 w11 إِلَٰهٍ: phoneme_char_map counts a scalar (a tatweel) the printed word lacks, so
+    # the renderer lands the madd group (اا) and the ه group on the printed ه and the tanween
+    # group (ن) on nothing
+    assert highlights(_letters(5, 73, 11)) == (
+        frozenset({0}), frozenset({1}), frozenset({2}), frozenset({2}), frozenset()
+    )
+    # 2:80 w18 تَقُۥۥلُۥۥنَ: the word scorer skips the ۥۥ groups, so its error on ل (scorer group 2)
+    # is drawn on the printed و (sysofwan/Muraja#260); the mapping reproduces what the app shows
+    marks = highlights(_letters(2, 80, 18))
+    assert marks[2] == frozenset({2}) and marks[3] == frozenset({3})
+
+
+def test_a_pausal_taa_keeps_its_word_and_letter():
+    site = next(
+        s for s in load_truth_sites(TRUTH_SITES_DIR / "waqf_boundaries.jsonl")
+        if s.site_id.endswith("tadabur_spk0043_S1_A80_60bc490d_000002.wav#6")
+    )
+    where = MurajaText(HARNESS.quran_db).locate(site)
+    assert where.word == 7 and where.group is not None

@@ -123,9 +123,10 @@ from training.muraja_policy import (
     ALLOWANCES,
     ALLOWANCES_ON,
     FLAGGED,
-    FLAGGED_ELSEWHERE,
     NOT_GRADED,
     SHIPPED_DEFAULT,
+    UNPLACED,
+    WORD_FLAGGED,
     Scoring,
     allowance_off,
 )
@@ -357,14 +358,16 @@ class MurajaGrades:
     scorings: Sequence[Scoring]
     build: Mapping
     approximation: str
-    unmapped: Sequence[str] = ()
+    unplaced: Sequence[str] = ()
+    unattributed: Sequence[str] = ()
 
     def as_dict(self) -> dict:
         return {
             "build": dict(self.build),
             "approximation": self.approximation,
             "scorings": [s.as_dict() for s in self.scorings],
-            "unmapped_sites": len(self.unmapped),
+            "unplaced_sites": len(self.unplaced),
+            "unattributed_sites": len(self.unattributed),
         }
 
 
@@ -404,7 +407,11 @@ def _indicator(values) -> np.ndarray:
 
 
 def _word_flagged(outcome: str) -> bool:
-    return outcome in (FLAGGED, FLAGGED_ELSEWHERE)
+    return outcome in WORD_FLAGGED
+
+
+def _graded(outcome: str) -> bool:
+    return outcome not in (NOT_GRADED, UNPLACED)
 
 
 def _rate_terms(
@@ -432,7 +439,7 @@ def _rate_terms(
         terms[rate_name("word_flags", scoring)] = (w * word, w)
         terms[rate_name("letter_flags", scoring)] = (w * _indicator(a == FLAGGED for a in app), w)
         if side_ == CORRECT_SIDE:
-            terms[rate_name("coverage", scoring)] = (w * _indicator(a != NOT_GRADED for a in app), w)
+            terms[rate_name("coverage", scoring)] = (w * _indicator(_graded(a) for a in app), w)
         else:
             terms[rate_name("muraja_missed", scoring)] = (w * (1 - word), w)
     if sukun_cell:
@@ -693,7 +700,7 @@ def power_inputs(
             sums = cells[key].setdefault(reciter_of[site.audio_filename], [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             for i, value in enumerate(
                 (1, w, w * outcome.commits, w * outcome.correct(site), w * outcome.flagged(site),
-                 w * _word_flagged(app), w * (app != NOT_GRADED)),
+                 w * _word_flagged(app), w * _graded(app)),
             ):
                 sums[i] += value
     fields = ("sites", "w", "w_commit", "w_correct", "w_flagged", "w_word_flagged", "w_graded")

@@ -46,9 +46,10 @@ SHADDAH_OFF = {"name": "shaddah_off", "mode": "balanced", "shaddah_suppression":
 CHARACTERS_PER_SECOND = 8
 
 
-def recited(decode: str) -> list[dict]:
-    """The checks the app's cadence runs over ``decode`` (``single_decode_checks``)."""
-    seconds = len(clusters(decode)) / CHARACTERS_PER_SECOND
+def recited(decode: str, pace: float = CHARACTERS_PER_SECOND) -> list[dict]:
+    """The checks the app's cadence runs over ``decode`` recited at ``pace`` Characters a second
+    (``single_decode_checks``)."""
+    seconds = len(clusters(decode)) / pace
     return single_decode_checks(decode, round(seconds * SAMPLE_RATE))
 
 
@@ -80,7 +81,8 @@ CASES = [
         "item": "2:80 half of w4",
         "start_word": 1,
         "report_words": [3, 4],
-        "checks": recited(words(1, 3) + "ننن"),
+        # recited slowly, so the reader is placed before the session ends
+        "checks": recited(words(1, 3) + "ننن", pace=3),
         "scorings": [BALANCED, STRICT],
     },
     {

@@ -112,7 +112,7 @@ Per check, in each mode (`FAT:109-147`; the app defaults to `.balanced`,
 | haraka X | haraka Y | tashkeelError | tashkeelError | tashkeelError |
 | haraka X | nothing | tashkeelError, except on و ا ء ي (`WS:42-56, 544`) | as strict | correct (`suppressHarakaDrop`, `WS:541`) |
 | sukun | nothing, or class 35 (a residual, not a haraka: `PhonemeNormalization.swift:12-29`) | match | match | match |
-| sukun | a haraka | tashkeelError | tashkeelError | tashkeelError per check, but an earlier check that heard the word only in part can already have locked it correct (threshold 0.55) |
+| sukun | a haraka | tashkeelError | tashkeelError | tashkeelError |
 | shaddah inside a word | one consonant | minor or worse (the phoneme gate, `WS:734-746`) | correct while the word scores ≥ 0.65 (`shaddahSuppression`, `WS:740`) | correct while it scores ≥ 0.55 |
 | shaddah that starts a word (assimilation, e.g. للَذِينَ) | one consonant | not scored (`WS:151-191`); its haraka is | as strict | as strict |
 | single consonant | a doubled one | not scored: insertions are invisible | as strict | as strict |

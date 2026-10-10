@@ -49,25 +49,37 @@ audio, run each time 200 ms of new audio has arrived once 2 s are pending
 HifzGuide decodes each item once per protocol, so :func:`single_decode_checks` replays that
 cadence over the item's span with every check cut from the one decode, its characters spread
 evenly over the span's duration (whole Swift Characters, so a haraka never leaves its
-consonant). The engine then places, grades and ratchets as in the app; what the approximation
-cannot show is a check decoding differently from the whole-item decode. Each item is one
-session: it ends with a silence flush of the pending audio and the session's end
-(``handleFinalFlush``, ``settleReadersWord``).
+consonant), on exact sample counts. The session starts on the item's first word (the harness
+moves the engine there after ``setPage``, as the app's explicit navigation does). The engine
+then places, grades and ratchets as in the app; what the approximation cannot show is a check
+decoding differently from the whole-item decode. Each item is one session: it ends with a
+silence flush of the pending audio, including what follows the last whole 200 ms step, and the
+session's end (``handleFinalFlush``, ``settleReadersWord``).
 
 What a kept grade means for a site
 ----------------------------------
-A site is mapped onto Muraja's reference for its ayah (:class:`MurajaText`): its phoneme word,
-and the phoneme group of that word the app marks for an error there. The app maps
-``WordError.groupIndex`` to letters through ``QuranDatabase.phonemeGroupCharIndices``
-(``App/MistakeSnippetRenderer.swift:140-150``, ``Data/QuranDatabase.swift:676-716``), and so
-does this module. A site's outcome (:func:`site_outcome`) is
+A site is placed on Muraja's reference for its ayah (:class:`MurajaText`) in two steps kept
+apart: its **word** (from the carrier, or from the nearest character of the carrier's word that
+has a counterpart, so a pausal ه against a wasl تَ never loses its word), and its **letter**:
+the printed graphemes the app marks for the carrier's phoneme group. The app maps an error's
+``WordError.groupIndex`` to printed graphemes through ``QuranDatabase.phonemeGroupCharIndices``
+(``Data/QuranDatabase.swift:676-735``, which the harness runs and reports) and then scalar to
+grapheme (``App/MistakeSnippetRenderer.swift:140-150, 350-363``, :func:`highlights`), and so
+does this module: two groups that print on one letter mark the same letter, and a group whose
+scalars fall past the printed text marks none. That mapping counts the ۥ/ۦ madd groups
+the word scorer skips, so after one the app marks the letter after the erring one
+(sysofwan/Muraja#260); the outcome reproduces what the app shows. A site's outcome
+(:func:`site_outcome`) is
 
-* :data:`FLAGGED`: the word shows as not correct and the kept grade has an error on the site's
-  group (the app marks the site's letter);
-* :data:`FLAGGED_ELSEWHERE`: the word shows as not correct, with no error on the site's group;
+* :data:`FLAGGED`: the word shows as not correct and the app marks the site's letter;
+* :data:`FLAGGED_ELSEWHERE`: the word shows as not correct; the app marks other letters only;
+* :data:`FLAGGED_UNATTRIBUTED`: the word shows as not correct, and the site's carrier has no
+  counterpart on Muraja's reference, so whether its letter is marked is unknown;
 * :data:`NOT_FLAGGED`: the word shows as correct;
-* :data:`NOT_GRADED`: no grade shows for the word (never reached, or still pending at the
-  session's end), or the site has no counterpart on Muraja's reference.
+* :data:`NOT_GRADED`: the engine shows no grade for the word (never reached, or still pending
+  at the session's end);
+* :data:`UNPLACED`: no character of the site's word has a counterpart on Muraja's reference (a
+  mapping failure, not an engine outcome).
 """
 
 from __future__ import annotations
@@ -80,6 +92,7 @@ import subprocess
 import unicodedata
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field, replace
+from functools import lru_cache
 from pathlib import Path
 
 from tadabur.truth_sites import HELD, SHADDAH, SOFT_PAIRS, TruthSite
@@ -92,9 +105,13 @@ BUILD_SCRIPT = Path(__file__).parent.parent / "muraja_harness" / "build.sh"
 
 FLAGGED = "flagged"
 FLAGGED_ELSEWHERE = "flagged_elsewhere"
+FLAGGED_UNATTRIBUTED = "flagged_unattributed"
 NOT_FLAGGED = "not_flagged"
 NOT_GRADED = "not_graded"
-OUTCOMES = (FLAGGED, FLAGGED_ELSEWHERE, NOT_FLAGGED, NOT_GRADED)
+UNPLACED = "unplaced"
+OUTCOMES = (FLAGGED, FLAGGED_ELSEWHERE, FLAGGED_UNATTRIBUTED, NOT_FLAGGED, NOT_GRADED, UNPLACED)
+#: The outcomes in which the site's word shows as not correct.
+WORD_FLAGGED = frozenset({FLAGGED, FLAGGED_ELSEWHERE, FLAGGED_UNATTRIBUTED})
 
 CORRECT = "correct"
 MINOR = "minor"
@@ -205,10 +222,9 @@ def displayed(quality: str, scoring: Scoring) -> str:
 
 # --- the checks one decode stands for --------------------------------------------------------------
 SAMPLE_RATE = 16_000
-#: The cadence, in 200 ms ticks (``RealtimeTranscriber+iOS.swift:169-188, 238-240, 566-569``):
-#: a 5 s window, a 1 s hop, no inference below 2 s pending, a preview per 200 ms of new audio.
-TICK_S = 0.2
-WINDOW_TICKS, HOP_TICKS, MIN_PENDING_TICKS = 25, 5, 10
+#: The cadence in samples (``RealtimeTranscriber+iOS.swift:169-188, 238-240, 566-569``): a 5 s
+#: window, a 1 s hop, no inference below 2 s pending, a preview per 3,200 new samples (200 ms).
+WINDOW_SAMPLES, HOP_SAMPLES, MIN_PENDING_SAMPLES, PREVIEW_SAMPLES = 80_000, 16_000, 32_000, 3_200
 
 
 #: The single-decode approximation (module docstring) and the statement a report carries.
@@ -218,7 +234,9 @@ APPROXIMATIONS = {
         "Each item has one decode per arm, not one per Muraja check. The checks Muraja would run "
         "over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once "
         "2 s are) are replayed through Muraja's engine with each check's text cut from that one "
-        "decode, its characters spread evenly over the item's duration. Placement, grading, the "
+        "decode, its characters spread evenly over the item's samples; the audio after the last "
+        "whole 200 ms step goes to the closing flush. The session starts on the item's first "
+        "word. Placement, grading, the "
         "ratchet, the hold buffer and the end-word holdback are Muraja's own; a check that would "
         "decode differently from the whole-item decode is not represented. Each item is one "
         "session, ended by a silence flush."
@@ -240,18 +258,20 @@ def clusters(text: str) -> list[str]:
 def single_decode_checks(decode: str, n_samples: int) -> list[dict]:
     """The checks Muraja would run over an item of ``n_samples``, each cut from one decode.
 
-    One tick per 200 ms of audio. With a full window pending, its hop (the first second) is
-    confirmed with the rest as overlap and the window advances a second, after which a preview
-    runs at once; otherwise, with at least 2 s pending, a preview of all pending audio runs. At
-    the end a silence flush confirms what is pending. Updates with nothing in them are not sent,
-    as the transcriber sends none.
+    The audio arrives in steps of 3,200 samples (200 ms), counted in samples so nothing is
+    rounded: with a full window pending, its hop (the first second) is confirmed with the rest
+    as overlap and the window advances a second, after which a preview runs at once; otherwise,
+    with at least 2 s pending, a preview of all pending audio runs. The audio after the last
+    whole step and everything still pending go to the closing silence flush. Updates with
+    nothing in them are not sent, as the transcriber sends none. Every window start stays on the
+    200 ms grid (the window and hop are whole numbers of steps), so this is the transcriber's
+    schedule up to its 10 ms polling.
     """
     chars = clusters(decode)
-    total = round(n_samples / SAMPLE_RATE / TICK_S)
-    per_tick = len(chars) / total if total else 0.0
+    per_sample = len(chars) / n_samples if n_samples else 0.0
 
     def text(start: int, end: int) -> str:
-        return "".join(chars[round(start * per_tick) : round(end * per_tick)])
+        return "".join(chars[round(start * per_sample) : round(end * per_sample)])
 
     checks: list[dict] = []
 
@@ -260,26 +280,39 @@ def single_decode_checks(decode: str, n_samples: int) -> list[dict]:
             checks.append({"hop": hop, "overlap": overlap, "flush": flush})
 
     start = 0
-    for now in range(1, total + 1):
-        if now - start >= WINDOW_TICKS:
-            send(text(start, start + HOP_TICKS), text(start + HOP_TICKS, start + WINDOW_TICKS), False)
-            start += HOP_TICKS
-        if now - start >= MIN_PENDING_TICKS:
+    for now in range(PREVIEW_SAMPLES, n_samples + 1, PREVIEW_SAMPLES):
+        if now - start >= WINDOW_SAMPLES:
+            send(text(start, start + HOP_SAMPLES), text(start + HOP_SAMPLES, start + WINDOW_SAMPLES), False)
+            start += HOP_SAMPLES
+        if now - start >= MIN_PENDING_SAMPLES:
             send("", text(start, now), False)
-    send(text(start, total), "", True)
+    send(text(start, n_samples), "", True)
     return checks
 
 
 # --- truth sites on Muraja's reference --------------------------------------------------------------
 @dataclass(frozen=True)
 class MurajaSite:
-    """A site on Muraja's reference: its ayah, phoneme word (1-based), and the ordinal of the
-    phoneme group the app marks for an error there."""
+    """A site on Muraja's reference: the phoneme word (1-based) its carrier sits in, and the
+    ordinal of the carrier's phoneme group in that word, ``None`` when the carrier itself has no
+    counterpart on Muraja's reference (the word is still known from its neighbours)."""
 
     surah: int
     ayah: int
     word: int
-    group: int
+    group: int | None
+
+
+def highlights(letters: dict) -> tuple[frozenset[int], ...]:
+    """Per phoneme group of a word, the printed graphemes the app marks for an error there: the
+    harness's ``phonemeGroupCharIndices`` (scalar indices of the printed word) taken to grapheme
+    indices as ``toGraphemeIndices`` does (``App/MistakeSnippetRenderer.swift:350-363``), an
+    index past the printed text marking nothing."""
+    grapheme_of = graphemes(letters["text"])
+    return tuple(
+        frozenset(grapheme_of[i] for i in group if 0 <= i < len(grapheme_of))
+        for group in letters["group_chars"]
+    )
 
 
 def _ayah(site: TruthSite) -> tuple[int, int]:
@@ -287,17 +320,60 @@ def _ayah(site: TruthSite) -> tuple[int, int]:
     return int(surah), int(ayah)
 
 
-def counterpart(text: str, index: int, reference: str) -> int | None:
-    """The index in ``reference`` that ``text[index]`` aligns to, spaces ignored on both sides;
-    ``None`` when it aligns to nothing."""
+def graphemes(text: str) -> list[int]:
+    """The grapheme index of each code point of ``text``: a base and the marks that extend it
+    (Swift's ``Character``, for the Arabic script's Mn/Me marks)."""
+    index, out = -1, []
+    for char in text:
+        if index < 0 or unicodedata.category(char) not in ("Mn", "Me"):
+            index += 1
+        out.append(index)
+    return out
+
+
+#: The shortest run of identical characters a site's word may be placed by when its carrier
+#: has no counterpart: shorter runs match by coincidence.
+ANCHOR_RUN = 3
+
+
+@lru_cache(maxsize=1024)
+def _alignment(text: str, reference: str) -> tuple[dict[int, int], frozenset[int]]:
+    """Every index of ``text`` with a counterpart in ``reference`` (spaces ignored on both
+    sides), and those inside a run of at least :data:`ANCHOR_RUN` identical characters."""
     a = [i for i, c in enumerate(text) if c != " "]
     b = [i for i, c in enumerate(reference) if c != " "]
-    matcher = difflib.SequenceMatcher(None, [text[i] for i in a], [reference[i] for i in b], autojunk=False)
-    target = a.index(index)
-    for block in matcher.get_matching_blocks():
-        if block.a <= target < block.a + block.size:
-            return b[block.b + target - block.a]
-    return None
+    left, right = [text[i] for i in a], [reference[i] for i in b]
+    mapping: dict[int, int] = {}
+    anchored: set[int] = set()
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, left, right, autojunk=False).get_opcodes():
+        if tag == "equal":
+            for k in range(i2 - i1):
+                mapping[a[i1 + k]] = b[j1 + k]
+                if i2 - i1 >= ANCHOR_RUN:
+                    anchored.add(a[i1 + k])
+        elif tag == "replace" and _pausal_taa(left[i1:i2], right[j1:j2]):
+            mapping[a[i1]] = b[j1]
+    return mapping, frozenset(anchored)
+
+
+def counterpart(text: str, index: int, reference: str) -> int | None:
+    """The index in ``reference`` that ``text[index]`` aligns to, spaces ignored on both sides.
+
+    Matched characters map one to one. The one spelling difference mapped across is a taa
+    marbuta at a pause: a pausal ``ه`` against the wasl ``ت`` group Muraja's reference holds
+    (``تَںںں``, ``تِن``, ``تِوو``) maps to that ``ت``. Anything else spelled differently maps to
+    nothing (``None``)."""
+    return _alignment(text, reference)[0].get(index)
+
+
+def _pausal_taa(realized: Sequence[str], reference: Sequence[str]) -> bool:
+    """A pausal ``ه`` (with its marks) against a ``ت`` with its marks and at most a run of one
+    repeated letter, the tanween's spelling."""
+    def bare(chars: Sequence[str]) -> list[str]:
+        return [c for c in chars if not unicodedata.combining(c)]
+
+    left, right = bare(realized), bare(reference)
+    return left == ["ه"] and right[:1] == ["ت"] and len(set(right[1:])) <= 1
 
 
 class MurajaText:
@@ -312,33 +388,52 @@ class MurajaText:
         ).fetchone()
         return text
 
-    def word_groups(self, surah: int, ayah: int, word: int) -> list[tuple[int, int]]:
-        """A phoneme word's groups as code-point spans of the ayah's phonemes, read as the app
-        reads them: through the first text word the phoneme word maps to."""
+    def _text_word(self, surah: int, ayah: int, word: int) -> int:
+        """The printed word a phoneme word is drawn on (``MistakeSnippetRenderer.swift:142``)."""
         row = self._db.execute(
             "SELECT MIN(text_word) FROM word_map WHERE surah=? AND ayah=? AND phoneme_word=?",
             (surah, ayah, word),
         ).fetchone()
-        text_word = row[0] if row and row[0] is not None else word
+        return row[0] if row and row[0] is not None else word
+
+    def word_groups(self, surah: int, ayah: int, word: int) -> list[tuple[int, int]]:
+        """A phoneme word's groups as code-point spans of the ayah's phonemes, through the first
+        printed word the phoneme word is drawn on."""
         return list(
             self._db.execute(
                 "SELECT ph_start, ph_end FROM phoneme_groups WHERE surah=? AND ayah=? AND uthmani_word=? "
                 "ORDER BY ph_start",
-                (surah, ayah, text_word),
+                (surah, ayah, self._text_word(surah, ayah, word)),
             )
         )
 
     def locate(self, site: TruthSite) -> MurajaSite | None:
-        """The site's carrier on Muraja's reference; ``None`` when it has no counterpart there."""
+        """The site on Muraja's reference: its word from the carrier, or from the nearest
+        character of the carrier's word that has a counterpart; ``None`` when none has."""
         surah, ayah = _ayah(site)
         reference = self.phonemes(surah, ayah)
         position = counterpart(site.reference, site.reference_index, reference)
-        if position is None:
+        anchor = position if position is not None else self._nearest(site, reference)
+        if anchor is None:
             return None
-        word = reference[:position].count(" ") + 1
-        groups = self.word_groups(surah, ayah, word)
-        ordinal = next((g for g, (lo, hi) in enumerate(groups) if lo <= position < hi), None)
-        return None if ordinal is None else MurajaSite(surah, ayah, word, ordinal)
+        word = reference[:anchor].count(" ") + 1
+        group = None
+        if position is not None:
+            groups = self.word_groups(surah, ayah, word)
+            group = next((g for g, (lo, hi) in enumerate(groups) if lo <= position < hi), None)
+        return MurajaSite(surah, ayah, word, group)
+
+    @staticmethod
+    def _nearest(site: TruthSite, reference: str) -> int | None:
+        text, index = site.reference, site.reference_index
+        start = text.rfind(" ", 0, index) + 1
+        end = text.find(" ", index)
+        end = len(text) if end < 0 else end
+        mapping, anchored = _alignment(text, reference)
+        for other in sorted(range(start, end), key=lambda i: abs(i - index)):
+            if other in anchored:
+                return mapping[other]
+        return None
 
     def start_word(self, site: TruthSite) -> int:
         """The phoneme word the site's item starts on (word 1 when its start has no counterpart)."""
@@ -415,16 +510,22 @@ class SiteGrade:
     errors: tuple = field(default=(), compare=False)
 
 
-def site_outcome(where: MurajaSite | None, kept: dict | None, scoring: Scoring) -> SiteGrade:
+def site_outcome(
+    where: MurajaSite | None, kept: dict | None, marks: Sequence[frozenset[int]], scoring: Scoring
+) -> SiteGrade:
     """What the kept grade of the site's word means for the site (module docstring)."""
-    if where is None or kept is None or kept["quality"] == PENDING:
+    if where is None:
+        return SiteGrade(UNPLACED)
+    if kept is None or kept["quality"] == PENDING:
         return SiteGrade(NOT_GRADED, kept["quality"] if kept else None)
     shown = displayed(kept["quality"], scoring)
     errors = tuple(kept["errors"])
     if shown == CORRECT:
         return SiteGrade(NOT_FLAGGED, shown, errors)
-    on_site = any(error["group_index"] == where.group for error in errors)
-    return SiteGrade(FLAGGED if on_site else FLAGGED_ELSEWHERE, shown, errors)
+    if where.group is None or where.group >= len(marks):
+        return SiteGrade(FLAGGED_UNATTRIBUTED, shown, errors)
+    marked = set().union(*(marks[e["group_index"]] for e in errors if e["group_index"] < len(marks)))
+    return SiteGrade(FLAGGED if marked & marks[where.group] else FLAGGED_ELSEWHERE, shown, errors)
 
 
 def build_request(item: Item, text: MurajaText, scorings: Sequence[Scoring]) -> tuple[dict, dict]:
@@ -459,24 +560,31 @@ class AppOutcomes:
     #: ``[scoring name][(item key, site id)]``
     grades: dict[str, dict[tuple[str, str], SiteGrade]]
     build: dict
-    #: Site ids with no counterpart on Muraja's reference (always ``not_graded``).
-    unmapped: tuple[str, ...]
+    #: Site ids whose word has no counterpart on Muraja's reference (always ``unplaced``).
+    unplaced: tuple[str, ...]
+    #: Site ids whose word is placed but whose carrier has no counterpart.
+    unattributed: tuple[str, ...]
 
 
 def read_results(
     items: Sequence[Item], where: dict, results: Iterable[dict], scorings: Sequence[Scoring], build: dict
 ) -> AppOutcomes:
     """Parse the harness's results into every site's outcome under every scoring."""
+    results = list(results)
     kept = {(r["item"], r["scoring"]): {s["word"]: s for s in r["final"]} for r in results}
+    marks = {(r["item"], w["word"]): highlights(w) for r in results for w in r["letters"]}
     grades: dict[str, dict[tuple[str, str], SiteGrade]] = {s.name: {} for s in scorings}
     for item in items:
         for site in item.sites:
             loc = where[item.key][site.site_id]
+            word_marks = marks.get((item.key, loc.word), ()) if loc else ()
             for scoring in scorings:
                 status = kept[(item.key, scoring.engine_name)].get(loc.word) if loc else None
-                grades[scoring.name][(item.key, site.site_id)] = site_outcome(loc, status, scoring)
-    unmapped = sorted({s.site_id for i in items for s in i.sites if where[i.key][s.site_id] is None})
-    return AppOutcomes(grades, build, tuple(unmapped))
+                grades[scoring.name][(item.key, site.site_id)] = site_outcome(loc, status, word_marks, scoring)
+    placed = [(s.site_id, where[i.key][s.site_id]) for i in items for s in i.sites]
+    unplaced = sorted({site_id for site_id, loc in placed if loc is None})
+    unattributed = sorted({site_id for site_id, loc in placed if loc is not None and loc.group is None})
+    return AppOutcomes(grades, build, tuple(unplaced), tuple(unattributed))
 
 
 def grade_items(items: Sequence[Item], scorings: Sequence[Scoring], harness: Harness) -> AppOutcomes:

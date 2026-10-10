@@ -198,10 +198,13 @@ def test_a_site_maps_to_its_word_and_the_letter_the_app_marks(text):
 def test_an_unmatched_carrier_keeps_its_word(text):
     # the realized word ends in ب where Muraja's has ن: the carrier has no counterpart, but
     # the rest of its word does
-    site = make("لَںںںتَمَسسَبَ", 12, "fatha", "fatha", "fatha", surah_ayah="2:80")
+    site = make("لَںںں تَمَسسَبَ", 13, "fatha", "fatha", "fatha", surah_ayah="2:80")
     where = text.locate(site)
     assert where.word == 3 and where.group is None
     assert text.locate(make("زِيدِ", 0, "kasra", "kasra", "kasra", surah_ayah="2:80")) is None
+    # only a short stretch anchored, or anchors in two Muraja words: not placed
+    assert text.locate(make("لَںںںكَبَزَحَدَ", 7, "fatha", "fatha", "fatha", surah_ayah="2:80")) is None
+    assert text.locate(make("لُۥۥلَںںںتَبَ", 11, "fatha", "fatha", "fatha", surah_ayah="2:80")) is None
 
 
 # --- what a kept grade means for a site ----------------------------------------------------------

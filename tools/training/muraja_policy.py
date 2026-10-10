@@ -408,15 +408,18 @@ class MurajaText:
         )
 
     def locate(self, site: TruthSite) -> MurajaSite | None:
-        """The site on Muraja's reference: its word from the carrier, or from the nearest
-        character of the carrier's word that has a counterpart; ``None`` when none has."""
+        """The site on Muraja's reference: its word from the carrier, or, when the carrier has
+        no counterpart, from the rest of its word (:meth:`_word_of`); ``None`` when neither
+        places it."""
         surah, ayah = _ayah(site)
         reference = self.phonemes(surah, ayah)
         position = counterpart(site.reference, site.reference_index, reference)
-        anchor = position if position is not None else self._nearest(site, reference)
-        if anchor is None:
-            return None
-        word = reference[:anchor].count(" ") + 1
+        if position is not None:
+            word = reference[:position].count(" ") + 1
+        else:
+            word = self._word_of(site, reference)
+            if word is None:
+                return None
         group = None
         if position is not None:
             groups = self.word_groups(surah, ayah, word)
@@ -424,16 +427,22 @@ class MurajaText:
         return MurajaSite(surah, ayah, word, group)
 
     @staticmethod
-    def _nearest(site: TruthSite, reference: str) -> int | None:
+    def _word_of(site: TruthSite, reference: str) -> int | None:
+        """The Muraja word the carrier's realized word aligns to, when that is unambiguous: its
+        anchored characters (runs of at least :data:`ANCHOR_RUN`) must cover at least half of
+        the word and all fall in one Muraja word. Otherwise ``None``: a word recited twice, or
+        run together with its neighbour, is not placed on another word's grade."""
         text, index = site.reference, site.reference_index
         start = text.rfind(" ", 0, index) + 1
         end = text.find(" ", index)
         end = len(text) if end < 0 else end
         mapping, anchored = _alignment(text, reference)
-        for other in sorted(range(start, end), key=lambda i: abs(i - index)):
-            if other in anchored:
-                return mapping[other]
-        return None
+        words = {reference[: mapping[i]].count(" ") + 1 for i in range(start, end) if i in anchored}
+        covered = sum(i in anchored for i in range(start, end))
+        if len(words) != 1 or 2 * covered < end - start:
+            return None
+        (word,) = words
+        return word
 
     def start_word(self, site: TruthSite) -> int:
         """The phoneme word the site's item starts on (word 1 when its start has no counterpart)."""

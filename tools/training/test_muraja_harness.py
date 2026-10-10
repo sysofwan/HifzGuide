@@ -129,3 +129,17 @@ def test_a_pausal_taa_keeps_its_word_and_letter():
     )
     where = MurajaText(HARNESS.quran_db).locate(site)
     assert where.word == 7 and where.group is not None
+
+
+@pytest.mark.parametrize(
+    "tail",
+    [
+        "tadabur_spk0093_S39_A22_1d52b201_000017.wav#7",  # 40:22, a repeated فَكَفَرُۥۥ
+        "tadabur_spk0033_S20_A34_6b098b87_000024.wav#4",  # 21:34, a repeated قَبڇلِكَ run on
+    ],
+)
+def test_a_repeated_word_is_never_placed_on_another_words_grade(tail):
+    site = next(
+        s for s in load_truth_sites(TRUTH_SITES_DIR / "waqf_boundaries.jsonl") if s.site_id.endswith(tail)
+    )
+    assert MurajaText(HARNESS.quran_db).locate(site) is None

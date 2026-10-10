@@ -656,3 +656,71 @@ def test_an_unpinned_load_keeps_the_bare_reference(tiny_student):
     _, hf_dir = tiny_student
     decoder = dc.Decoder.load(hf_dir, CPU, weights_dtype="fp32")
     assert decoder.fingerprint(dc.SPANS).model == str(hf_dir)
+
+
+# --- Muraja's check sequence: featurised as the app featurises (#125) ------------------
+
+
+class _PairExtractor:
+    """One "pair" per 320 samples (two 10 ms frames), the pair's index in both channels, so a
+    repeated pair shows as a repeated index."""
+
+    def __init__(self):
+        self.lengths = []
+
+    def __call__(self, waveforms, sampling_rate, return_tensors, padding):
+        assert sampling_rate == SAMPLE_RATE and return_tensors == "pt" and padding
+        (waveform,) = waveforms  # each piece is normalized on its own
+        self.lengths.append(len(waveform))
+        frames = (len(waveform) - 400) // 160 + 1
+        pairs = torch.arange(-(-frames // 2), dtype=torch.float32)
+        return _Features(pairs[None, :, None].expand(1, -1, 2), None)
+
+
+class _FixedShapeModel:
+    """Checks the device's fixed input, then emits token 5 on even steps and blank on odd."""
+
+    def __init__(self):
+        self.inputs = []
+
+    def __call__(self, features, attention_mask=None, return_dict=True):
+        assert attention_mask is None and features.shape[1:] == (dc.DEVICE_FEATURE_PAIRS, 2)
+        self.inputs.append(features)
+        ids = np.tile(np.arange(DEPLOYED_LOGIT_FRAMES) % 2 * -5 + 5, (features.shape[0], 1))
+        return {"logits": {"phonemes": torch.stack([_one_hot(r) for r in ids])}}
+
+
+@pytest.mark.parametrize("batch_size", [1, 4])
+def test_each_piece_fills_the_fixed_input_by_repeating_its_last_pair(batch_size):
+    model = _FixedShapeModel()
+    decoder = dc.Decoder("fixed", model, _PairExtractor(), CPU, batch_size)
+    pieces = [np.zeros(n, dtype=np.float32) for n in (WINDOW_SAMPLES, 2 * SAMPLE_RATE, 401)]
+
+    rows = decoder.device_rows(pieces)
+
+    assert [len(r) for r in rows] == [125, 50, 1]  # 249, 99 and 1 real pairs
+    features = torch.cat(model.inputs)[:, :, 0]
+    for real, row_features in zip((249, 99, 1), features):
+        assert row_features[:real].tolist() == list(range(real))
+        assert (row_features[real:] == real - 1).all()  # the last real pair, repeated
+
+
+def test_a_piece_the_app_never_decodes_is_refused():
+    decoder = dc.Decoder("fixed", _FixedShapeModel(), _PairExtractor(), CPU)
+    for n in (399, WINDOW_SAMPLES + 1):
+        with pytest.raises(ValueError, match="not one the app decodes"):
+            decoder.device_rows([np.zeros(n, dtype=np.float32)])
+
+
+def test_app_checks_decode_each_scheduled_piece_on_its_own():
+    extractor = _PairExtractor()
+    decoder = dc.Decoder("fixed", _FixedShapeModel(), extractor, CPU, batch_size=3)
+    samples = np.zeros(6 * SAMPLE_RATE, dtype=np.float32)
+
+    checks = decoder.app_checks(samples)
+
+    spans = dc.check_schedule(len(samples))
+    assert extractor.lengths == [s.end - s.start for s in spans]
+    assert len(checks) == len(spans) and checks[-1]["flush"]
+    # token 5 on 13 of a window's first 25 steps: the hop is 13 of them, collapsed apart by blanks
+    assert next(c for c in checks if c["hop"] and not c["flush"])["hop"] == dc.tokens_to_phonemes([5] * 13)

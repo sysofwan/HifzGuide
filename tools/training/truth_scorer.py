@@ -352,19 +352,20 @@ def reconcile(sites: Sequence[TruthSite]) -> Reconciled:
 @dataclass(frozen=True)
 class MurajaGrades:
     """Every site's app outcome (``muraja_policy.OUTCOMES``) as ``[scoring][arm][site_id]``,
-    with the scorings, the harness build and the approximation that produced them."""
+    with the scorings, the harness build and, per arm, the checks it was graded on
+    (``muraja_policy.APPROXIMATIONS``)."""
 
     outcomes: Mapping[str, Mapping[str, Mapping[str, str]]]
     scorings: Sequence[Scoring]
     build: Mapping
-    approximation: str
+    approximations: Mapping[str, str]
     unplaced: Sequence[str] = ()
     unattributed: Sequence[str] = ()
 
     def as_dict(self) -> dict:
         return {
             "build": dict(self.build),
-            "approximation": self.approximation,
+            "approximations": dict(sorted(self.approximations.items())),
             "scorings": [s.as_dict() for s in self.scorings],
             "unplaced_sites": len(self.unplaced),
             "unattributed_sites": len(self.unattributed),

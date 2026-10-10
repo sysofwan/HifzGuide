@@ -16,7 +16,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from training.muraja_policy import SAMPLE_RATE, clusters, require_harness, single_decode_checks
+from training.decoding import SAMPLE_RATE, clusters
+from training.muraja_policy import require_harness, single_decode_checks
 
 FIXTURES_PATH = Path(__file__).parent / "parity_fixtures.json"
 

@@ -3,26 +3,30 @@ and the rendered report."""
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
-from dataclasses import fields
+from dataclasses import fields, replace
 from pathlib import Path
 
 import pytest
 
 from tadabur.truth_sites import TRUTH_SITES_DIR
-from training.decoding import DecodeFingerprint
-from training.test_truth_scorer import RECITERS, decodes_for, sites  # noqa: F401  (a fixture)
+from training.decoding import APP_CHECKS, SPANS, DecodeFingerprint
+from training.muraja_policy import FLAGGED, RECORDED_CHECKS, SHIPPED_DEFAULT, SINGLE_DECODE
+from training.test_truth_scorer import RECITERS, app, decodes_for, sites  # noqa: F401  (a fixture)
 from training.truth_baseline import (
-    DECODES_DIR,
+    CHECK_STORE,
+    DECODE_STORE,
     DEFAULT_MODELS,
     PROTOCOLS,
+    cache_text,
     check_cache,
     comparisons,
     expected_fingerprint,
     file_sha256,
     model_identity,
-    read_decodes,
+    read_cache,
     truth_site_files,
 )
 from training.truth_baseline_doc import SPARSE_MARK, render
@@ -48,6 +52,13 @@ def test_comparisons_pair_models_per_protocol_and_protocols_per_model():
     assert PROTOCOLS["stream_b0"] == "confirmed-stream-v2-flush"
 
 
+def test_the_recorded_check_sequence_is_paired_against_the_single_decode_stream():
+    pairs = comparisons(["base", "h448"])
+    assert ("h448/checks", "base/checks") in pairs
+    assert ("base/checks", "base/stream_b0") in pairs and ("h448/checks", "h448/stream_b0") in pairs
+    assert CHECK_STORE.protocols == {"checks": APP_CHECKS} and DECODE_STORE.protocols == PROTOCOLS
+
+
 def test_render_marks_small_cells_and_names_every_arm(sites):  # noqa: F811
     decodes = {"base/spans": decodes_for(sites), "h448/spans": decodes_for(sites)}
     report = score(sites, RECITERS, decodes, [("h448/spans", "base/spans")])
@@ -61,6 +72,25 @@ def test_render_marks_small_cells_and_names_every_arm(sites):  # noqa: F811
     assert SPARSE_MARK in text and "h448/spans - base/spans" in text
     assert "No real-mistake site" not in text  # the synthetic set has one
     assert "Sukun at a pause" in text and "Diagnostics only" in text
+
+
+def test_render_states_each_arms_checks_and_pairs_recorded_against_single(sites):  # noqa: F811
+    arms = ["h448/checks", "h448/stream_b0"]
+    grades = app(sites, arms, {(SHIPPED_DEFAULT.name, "a.wav#2fathafatha"): FLAGGED})
+    muraja = replace(grades, approximations={"h448/checks": RECORDED_CHECKS, "h448/stream_b0": SINGLE_DECODE})
+    decodes = {a: decodes_for(sites) for a in arms}
+    report = score(sites, RECITERS, decodes, [("h448/checks", "h448/stream_b0")], muraja)
+    fingerprint = {
+        "model": "m", "mode": "whole-spans", "weights_dtype": "bf16", "batch_size": 1,
+        "device_type": "cuda", "autocast": True, "policy": "fp32-features-v1",
+    }
+    report["truth_site_files"] = ["x.jsonl"]
+    report["fingerprints"] = {"h448": {"spans": fingerprint}}
+    text = render(report)
+    assert "**Recorded check sequence** (`h448/checks`)" in text
+    assert "**Single-decode approximation** (`h448/stream_b0`)" in text
+    assert "The recorded check sequence against the single-decode approximation" in text
+    assert "| h448/checks - h448/stream_b0 |" in text
 
 
 def test_the_report_path_needs_no_torch():
@@ -78,16 +108,16 @@ def _cache(model_ref: str, identity: dict) -> dict:
     return {
         "model": "m",
         "identity": identity,
-        "fingerprints": {p: expected_fingerprint(model_ref, p) for p in PROTOCOLS},
+        "fingerprints": {p: expected_fingerprint(model_ref, mode) for p, mode in PROTOCOLS.items()},
         "items": {"clip.wav@0:10": {"audio_sha256": "0" * 64, "spans": "", "stream_b0": ""}},
     }
 
 
 def test_a_cache_refuses_another_model_reference_on_every_run(tmp_path: Path):
     cache = _cache("hub/model", {"model_ref": "hub/model", "hub_revision": "abc"})
-    check_cache(tmp_path / "m.json", cache, "hub/model")
+    check_cache(tmp_path / "m.json", cache, "hub/model", PROTOCOLS)
     with pytest.raises(ValueError, match="holds decodes of"):
-        check_cache(tmp_path / "m.json", cache, "hub/other")
+        check_cache(tmp_path / "m.json", cache, "hub/other", PROTOCOLS)
 
 
 @pytest.mark.parametrize(
@@ -105,20 +135,20 @@ def test_a_cache_refuses_another_model_reference_on_every_run(tmp_path: Path):
 @pytest.mark.parametrize("protocol", sorted(PROTOCOLS))
 def test_a_cache_refuses_any_other_fingerprint_field(tmp_path: Path, protocol, field, value):
     cache = _cache("hub/model", {"model_ref": "hub/model", "hub_revision": "abc"})
-    check_cache(tmp_path / "m.json", cache, "hub/model")
+    check_cache(tmp_path / "m.json", cache, "hub/model", PROTOCOLS)
     cache["fingerprints"][protocol][field] = value
     with pytest.raises(ValueError, match="was decoded as"):
-        check_cache(tmp_path / "m.json", cache, "hub/model")
+        check_cache(tmp_path / "m.json", cache, "hub/model", PROTOCOLS)
 
 
 def test_the_frozen_fingerprint_names_every_field():
-    assert set(expected_fingerprint("m", "spans")) == {f.name for f in fields(DecodeFingerprint)}
+    assert set(expected_fingerprint("m", SPANS)) == {f.name for f in fields(DecodeFingerprint)}
 
 
 def test_a_cache_without_an_identity_is_refused(tmp_path: Path):
     cache = _cache("hub/model", None)
     with pytest.raises(ValueError, match="no model identity"):
-        check_cache(tmp_path / "m.json", cache, "hub/model")
+        check_cache(tmp_path / "m.json", cache, "hub/model", PROTOCOLS)
 
 
 def test_a_checkpoint_whose_bytes_changed_is_refused(tmp_path: Path):
@@ -127,10 +157,10 @@ def test_a_checkpoint_whose_bytes_changed_is_refused(tmp_path: Path):
     identity = model_identity(str(checkpoint))
     assert identity == {"model_ref": str(checkpoint), "checkpoint_sha256": file_sha256(checkpoint)}
     cache = _cache(str(checkpoint), identity)
-    check_cache(tmp_path / "m.json", cache, str(checkpoint))
+    check_cache(tmp_path / "m.json", cache, str(checkpoint), PROTOCOLS)
     checkpoint.write_bytes(b"other weights")
     with pytest.raises(ValueError, match="no longer has the bytes"):
-        check_cache(tmp_path / "m.json", cache, str(checkpoint))
+        check_cache(tmp_path / "m.json", cache, str(checkpoint), PROTOCOLS)
 
 
 def test_a_hub_identity_needs_the_loaded_revision():
@@ -138,8 +168,26 @@ def test_a_hub_identity_needs_the_loaded_revision():
         model_identity("hub/model")
 
 
-def test_the_committed_caches_are_bound_to_their_weights():
+@pytest.mark.parametrize("store", [DECODE_STORE, CHECK_STORE], ids=["decodes", "checks"])
+def test_the_committed_caches_are_bound_to_their_weights(store):
     for name, ref in DEFAULT_MODELS.items():
-        cache = read_decodes(DECODES_DIR / f"{name}.json")
+        cache = read_cache(store.path(name))
         assert cache["identity"]["model_ref"] == ref
-        check_cache(DECODES_DIR / f"{name}.json", cache, ref)
+        check_cache(store.path(name), cache, ref, store.protocols)
+        assert cache["identity"] == read_cache(DECODE_STORE.path(name))["identity"]
+
+
+@pytest.mark.parametrize("one_item_per_line", [False, True])
+def test_a_cache_reads_back_as_written(one_item_per_line):
+    checks = [{"hop": "بَ", "overlap": "تَ", "flush": False}, {"hop": "", "overlap": "", "flush": True}]
+    cache = _cache("hub/model", {"model_ref": "hub/model", "hub_revision": "abc"})
+    cache["items"]["other.wav@5:9"] = {"audio_sha256": "1" * 64, "checks": checks}
+    text = cache_text(cache, one_item_per_line)
+    assert json.loads(text) == cache and "بَ" in text
+    if one_item_per_line:
+        assert sum('"audio_sha256"' in line for line in text.splitlines()) == 2
+
+
+def test_an_empty_cache_reads_back_as_written():
+    cache = {"model": "m", "identity": None, "fingerprints": None, "items": {}}
+    assert json.loads(cache_text(cache, True)) == cache

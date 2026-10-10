@@ -32,18 +32,22 @@ P3.5 fixtures lost to re-location (#83) are listed in
 them. A site's weight is its stratum population over the sites sampled in the stratum: every stratum here is a census, so every weight is 1.
 Records sharing one physical site (audio checksum, span, carrier, mark): 0 merged; every record is its own site.
 
-Every site is scored under four **arms**: each model, decoded two ways from the same
-staged audio. `spans` decodes the item (the whole clip, or the P3.5 segment) in one pass;
-`stream_b0` replays the deployed streaming protocol on the item (5 s windows from its
-first sample, each normalized on its own, 1 s hop, block 0 committed, startup rule and
-tail flush; `training.decoding`). Every arm has an outcome at every site, so each
-comparison is paired on the same sites. Both models are decoded with
+Every site is scored under three **arms** per model, all from the same staged audio.
+`spans` decodes the item (the whole clip, or the P3.5 segment) in one pass; `stream_b0`
+replays the deployed streaming protocol on the item (5 s windows from its first sample,
+each normalized on its own, 1 s hop, block 0 committed, startup rule and tail flush);
+`checks` records every update Muraja's transcriber would hand its engine over the item
+(each full window's hop and overlap, each 200 ms preview and the closing flush), one
+inference per update featurised as the app does, and its decode is the transcript the
+app commits from them (every hop; `training.decoding`, `Decoder.app_checks`). Every arm
+has an outcome at every site, so each comparison is paired on the same sites. Both models
+are decoded with
 `bf16` weights at batch size 1 on cuda (inference policy `fp32-features-v1`):
 
 | model | reference | modes |
 |---|---|---|
-| base | `obadx/muaalem-model-v3_2` | `whole-spans`, `confirmed-stream-v2-flush` |
-| h448 | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` | `whole-spans`, `confirmed-stream-v2-flush` |
+| base | `obadx/muaalem-model-v3_2` | `whole-spans`, `confirmed-stream-v2-flush`, `muraja-app-checks-v1` |
+| h448 | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` | `whole-spans`, `confirmed-stream-v2-flush`, `muraja-app-checks-v1` |
 
 Intervals follow §1. Unmarked, the reciter-clustered bootstrap (B = 10,000, seed 20261008, type-7
 percentiles, an undefined replicate at the adverse endpoint, shown as ±∞). A cell
@@ -60,7 +64,9 @@ denominator). Rates are in percent; differences in points.
 Graded by Muraja's own engine at `99c326f3fb7c` (v1.0.27), compiled with
 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) into `tools/muraja_harness` (see `tools/training/muraja_policy.py`).
 
-**Single-decode approximation.** Each item has one decode per arm, not one per Muraja check. The checks Muraja would run over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once 2 s are) are replayed through Muraja's engine with each check's text cut from that one decode, its characters spread evenly over the item's samples; the audio after the last whole 200 ms step goes to the closing flush. The session starts on the item's first word. Placement, grading, the ratchet, the hold buffer and the end-word holdback are Muraja's own; a check that would decode differently from the whole-item decode is not represented. Each item is one session, ended by a silence flush.
+**Recorded check sequence** (`base/checks`, `h448/checks`). Each check Muraja would run over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once 2 s are, and the closing flush of what is pending) was decoded on its own audio, featurised, split and stripped as the app does it (`training.decoding`, `APP_CHECKS`), and replayed through Muraja's engine. The audio is taken to arrive in 200 ms steps with every inference instantaneous; the speech detector's silence flush, VAD gate and window/preview hallucination gates are bypassed (the reciter speaks throughout the item), and the decodes are PyTorch bf16, not the device's CoreML. The session starts on the item's first word and ends with a silence flush.
+
+**Single-decode approximation** (`base/spans`, `base/stream_b0`, `h448/spans`, `h448/stream_b0`). Each item has one decode per arm, not one per Muraja check. The checks Muraja would run over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once 2 s are) are replayed through Muraja's engine with each check's text cut from that one decode, its characters spread evenly over the item's samples; the audio after the last whole 200 ms step goes to the closing flush. The session starts on the item's first word. Placement, grading, the ratchet, the hold buffer and the end-word holdback are Muraja's own; a check that would decode differently from the whole-item decode is not represented. Each item is one session, ended by a silence flush.
 
 Sites whose word has no counterpart on Muraja's reference (unplaced, never graded): 7; sites placed on their word but whose own letter has no counterpart (a flag on the word counts, its letter is unattributed): 2.
 
@@ -82,12 +88,18 @@ Pooled per population and side: **flagged words** (the site's word shows as not 
 
 | arm | rate | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|---|
+| base/checks | word flags | 1.1 [0.5, 1.8] | 1.1 [0.5, 1.8] | 1.1 [0.5, 1.8] | 1.1 [0.5, 1.8] | 1.1 [0.5, 1.8] |
+| base/checks | letter flags | 0.1 [0.0, 0.2] | 0.1 [0.0, 0.2] | 0.1 [0.0, 0.2] | 0.1 [0.0, 0.2] | 0.1 [0.0, 0.2] |
+| base/checks | coverage | 99.6 [99.2, 99.8] | 99.6 [99.2, 99.8] | 99.6 [99.2, 99.8] | 99.6 [99.2, 99.8] | 99.6 [99.2, 99.8] |
 | base/spans | word flags | 1.1 [0.6, 1.8] | 1.2 [0.7, 1.8] | 1.2 [0.7, 1.8] | 1.4 [0.8, 2.2] | 1.6 [0.9, 2.3] |
 | base/spans | letter flags | 0.1 [0.0, 0.3] | 0.1 [0.0, 0.3] | 0.1 [0.0, 0.3] | 0.2 [0.0, 0.4] | 0.2 [0.0, 0.4] |
 | base/spans | coverage | 99.3 [98.8, 99.7] | 99.3 [98.8, 99.7] | 99.3 [98.8, 99.7] | 99.3 [98.8, 99.7] | 99.3 [98.8, 99.7] |
 | base/stream_b0 | word flags | 14.7 [12.8, 16.5] | 14.7 [12.9, 16.6] | 16.0 [14.1, 17.8] | 19.1 [17.2, 21.1] | 20.4 [18.5, 22.3] |
 | base/stream_b0 | letter flags | 4.7 [3.8, 5.6] | 4.7 [3.8, 5.6] | 4.9 [4.0, 5.9] | 5.4 [4.4, 6.3] | 5.6 [4.6, 6.6] |
 | base/stream_b0 | coverage | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] |
+| h448/checks | word flags | 1.2 [0.6, 1.9] | 1.3 [0.7, 1.9] | 1.2 [0.6, 1.9] | 1.4 [0.7, 2.1] | 1.4 [0.8, 2.2] |
+| h448/checks | letter flags | 0.1 [0.0, 0.3] | 0.1 [0.0, 0.3] | 0.1 [0.0, 0.3] | 0.2 [0.0, 0.4] | 0.2 [0.0, 0.4] |
+| h448/checks | coverage | 99.6 [99.2, 99.8] | 99.6 [99.2, 99.8] | 99.6 [99.2, 99.8] | 99.6 [99.2, 99.8] | 99.6 [99.2, 99.8] |
 | h448/spans | word flags | 11.7 [9.8, 13.8] | 12.2 [10.2, 14.4] | 12.1 [10.1, 14.2] | 12.6 [10.7, 14.7] | 13.4 [11.3, 15.7] |
 | h448/spans | letter flags | 2.9 [2.0, 3.9] | 3.0 [2.1, 4.0] | 3.0 [2.0, 4.0] | 3.0 [2.1, 4.0] | 3.1 [2.2, 4.2] |
 | h448/spans | coverage | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] |
@@ -99,12 +111,18 @@ Pooled per population and side: **flagged words** (the site's word shows as not 
 
 | arm | rate | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|---|
+| base/checks | word flags | 1.5 [0.0, 3.8] | 1.5 [0.0, 3.8] | 1.5 [0.0, 3.8] | 1.5 [0.0, 3.8] | 1.5 [0.0, 3.8] |
+| base/checks | letter flags | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+| base/checks | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 | base/spans | word flags | 2.2 [0.0, 5.0] | 3.0 [0.7, 6.1] | 2.2 [0.0, 5.0] | 3.0 [0.7, 6.2] | 3.7 [0.8, 7.1] |
 | base/spans | letter flags | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 | base/spans | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 | base/stream_b0 | word flags | 20.0 [12.5, 28.2] | 20.0 [12.5, 28.2] | 23.0 [14.8, 31.8] | 22.2 [14.5, 30.8] | 23.7 [15.5, 32.6] |
 | base/stream_b0 | letter flags | 6.7 [3.1, 11.0] | 6.7 [3.1, 11.0] | 7.4 [3.3, 12.2] | 6.7 [3.1, 11.0] | 7.4 [3.3, 12.2] |
 | base/stream_b0 | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
+| h448/checks | word flags | 2.2 [0.0, 5.0] | 2.2 [0.0, 5.0] | 2.2 [0.0, 5.0] | 3.0 [0.7, 6.2] | 3.0 [0.7, 6.2] |
+| h448/checks | letter flags | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+| h448/checks | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 | h448/spans | word flags | 17.0 [11.0, 23.5] | 17.8 [11.7, 24.3] | 17.8 [11.7, 24.4] | 19.3 [13.4, 25.4] | 20.7 [14.7, 27.0] |
 | h448/spans | letter flags | 3.7 [0.8, 7.4] | 3.7 [0.8, 7.4] | 3.7 [0.8, 7.4] | 3.7 [0.8, 7.4] | 3.7 [0.8, 7.4] |
 | h448/spans | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
@@ -116,18 +134,62 @@ Pooled per population and side: **flagged words** (the site's word shows as not 
 
 | arm | rate | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|---|
+| base/checks | word flags | 8.4 [3.7, 13.7] | 34.4 [26.8, 42.3] | 9.9 [4.9, 15.6] | 9.2 [4.0, 14.7] | 37.4 [29.6, 45.3] |
+| base/checks | letter flags | 4.6 [1.5, 8.3] | 27.5 [20.7, 34.5] | 6.1 [2.4, 10.3] | 5.3 [1.6, 9.8] | 31.3 [24.0, 38.5] |
+| base/checks | coverage | 92.4 [87.3, 96.9] | 91.6 [86.4, 96.2] | 92.4 [87.3, 96.9] | 92.4 [87.3, 96.9] | 91.6 [86.4, 96.2] |
 | base/spans | word flags | 11.5 [5.9, 17.9] | 59.5 [51.1, 67.7] | 15.3 [9.1, 22.4] | 15.3 [8.5, 22.6] | 63.4 [55.0, 71.1] |
 | base/spans | letter flags | 9.2 [4.3, 14.7] | 51.9 [43.4, 60.0] | 12.2 [6.6, 18.4] | 12.2 [6.1, 18.9] | 55.0 [46.5, 63.0] |
 | base/spans | coverage | 92.4 [86.8, 97.1] | 90.8 [84.1, 96.5] | 92.4 [86.8, 97.1] | 92.4 [86.8, 97.1] | 90.8 [84.1, 96.5] |
 | base/stream_b0 | word flags | 29.8 [22.3, 37.5] | 57.3 [48.6, 65.7] | 32.8 [25.0, 40.9] | 35.1 [27.4, 42.6] | 61.1 [52.4, 69.4] |
 | base/stream_b0 | letter flags | 23.7 [16.8, 30.6] | 48.9 [40.4, 57.5] | 26.0 [19.0, 33.1] | 28.2 [20.9, 35.3] | 51.9 [43.3, 60.5] |
 | base/stream_b0 | coverage | 89.3 [82.4, 95.2] | 88.5 [81.5, 94.6] | 89.3 [82.4, 95.2] | 89.3 [82.4, 95.2] | 88.5 [81.5, 94.6] |
+| h448/checks | word flags | 11.5 [6.1, 17.3] | 21.4 [14.7, 28.2] | 12.2 [6.8, 18.4] | 12.2 [6.8, 18.2] | 23.7 [16.7, 30.7] |
+| h448/checks | letter flags | 3.8 [0.8, 7.3] | 13.0 [7.6, 19.1] | 4.6 [1.5, 8.3] | 3.8 [0.8, 7.3] | 14.5 [8.7, 21.0] |
+| h448/checks | coverage | 95.4 [91.5, 98.5] | 93.9 [89.7, 97.6] | 95.4 [91.5, 98.5] | 95.4 [91.5, 98.5] | 93.9 [89.7, 97.6] |
 | h448/spans | word flags | 29.0 [22.7, 35.7] | 42.0 [34.1, 50.0] | 29.0 [22.7, 35.7] | 31.3 [24.8, 38.1] | 44.3 [36.5, 52.0] |
 | h448/spans | letter flags | 15.3 [9.9, 20.7] | 26.0 [18.5, 33.3] | 15.3 [9.9, 20.7] | 16.0 [10.7, 21.7] | 26.7 [19.3, 34.0] |
 | h448/spans | coverage | 90.1 [84.6, 94.9] | 89.3 [83.6, 94.3] | 90.1 [84.6, 94.9] | 90.1 [84.6, 94.9] | 89.3 [83.6, 94.3] |
 | h448/stream_b0 | word flags | 31.3 [22.7, 39.7] | 39.7 [31.2, 47.9] | 32.1 [23.4, 40.7] | 33.6 [25.0, 41.7] | 41.2 [32.8, 49.3] |
 | h448/stream_b0 | letter flags | 19.8 [12.7, 27.3] | 27.5 [20.0, 34.9] | 20.6 [13.4, 28.1] | 20.6 [13.4, 28.0] | 28.2 [20.7, 35.9] |
 | h448/stream_b0 | coverage | 93.1 [88.1, 97.4] | 92.4 [87.1, 96.8] | 93.1 [88.1, 97.4] | 93.1 [88.1, 97.4] | 92.4 [87.1, 96.8] |
+
+### The recorded check sequence against the single-decode approximation
+
+Flagged words (the site's word shows as not correct) with each item's recorded check
+sequence (`checks`) minus the same with the single-decode approximation on the deployed
+stream (`stream_b0`), paired on the same sites, points [95% interval]. On correct
+recitation a negative difference is fewer false flags; on real mistakes, fewer catches.
+
+What differs between the two is how a check is made, not the transcript: the decode-level
+rates of `checks` (on the transcript the app commits) sit next to `stream_b0`'s in the
+results below. Under the single-decode approximation every check of a word is cut from
+one decode, so a word that decode misreads is misread by every check, and the cuts are
+placed by spreading characters evenly over time rather than by the audio. A recorded
+check is its own inference on its own audio and context (a preview ends where the audio
+ends; an overlap has the window's own right context), so a word's checks disagree, and
+`GradeStore` keeps the best grade any of them gave. The same mechanism that removes false
+flags hides real mistakes, which these sites cannot show until real-mistake sites exist.
+
+**diagnostic, correct** (1657 / 81)
+
+| paired difference | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|
+| base/checks - base/stream_b0 | -13.6 [-15.3, -11.8] | -13.6 [-15.4, -11.9] | -14.9 [-16.7, -13.1] | -18.0 [-19.9, -16.2] | -19.3 [-21.2, -17.5] |
+| h448/checks - h448/stream_b0 | -12.6 [-14.1, -11.1] | -12.7 [-14.2, -11.1] | -14.1 [-15.8, -12.6] | -16.6 [-18.4, -14.8] | -18.1 [-20.0, -16.3] |
+
+**pause, correct** (135 / 62)
+
+| paired difference | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|
+| base/checks - base/stream_b0 | -18.5 [-25.9, -11.7] | -18.5 [-25.9, -11.7] | -21.5 [-29.5, -14.0] | -20.7 [-28.4, -13.6] | -22.2 [-30.3, -14.7] |
+| h448/checks - h448/stream_b0 | -16.3 [-22.6, -10.6] | -16.3 [-22.6, -10.6] | -19.3 [-26.3, -12.6] | -20.0 [-26.7, -13.9] | -22.2 [-29.7, -15.4] |
+
+**targeted_safeguard, correct** (131 / 84)
+
+| paired difference | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|
+| base/checks - base/stream_b0 | -21.4 [-29.3, -13.8] | -22.9 [-31.9, -13.2] | -22.9 [-30.7, -15.3] | -26.0 [-33.6, -18.4] | -23.7 [-32.5, -14.6] |
+| h448/checks - h448/stream_b0 | -19.8 [-27.9, -12.2] | -18.3 [-25.0, -11.6] | -19.8 [-27.9, -12.2] | -21.4 [-29.1, -13.9] | -17.6 [-23.8, -11.3] |
 
 ## Read this first
 
@@ -136,6 +198,10 @@ Pooled per population and side: **flagged words** (the site's word shows as not 
   directly adjudicated sites. Nothing here is a headline rate.
 - **No real-mistake site with a verdict exists yet.** Missed mistakes, silent
   corrections and every mistake-side rate are undefined.
+- **The `checks` arms are the app outcome to read.** They replay the checks Muraja's
+  transcriber would make from the audio (bypasses stated under "The app outcome");
+  the `spans` and `stream_b0` app outcomes are the single-decode approximation, kept
+  as a fallback and for comparison.
 - **Sukun commit rate is 0 by construction** while a model has no sukun class: at a
   sukun site the empty slot is all it can emit (§1, C). The informative sukun number is
   the spurious-haraka rate.
@@ -161,72 +227,72 @@ No site yet.
 
 *commit rate*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
-| sukun | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+| sukun | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 
 *committed accuracy*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 135 / 62 | – | – | – | – |
-| sukun | 135 / 62 | – | – | – | – |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | – | – | – | – | – | – |
+| sukun | 135 / 62 | – | – | – | – | – | – |
 
 *app: flagged words, allowances on*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 135 / 62 | 2.2 [0.0, 5.0] | 20.0 [12.5, 28.2] | 17.0 [11.0, 23.5] | 18.5 [11.7, 26.2] |
-| sukun | 135 / 62 | 2.2 [0.0, 5.0] | 20.0 [12.5, 28.2] | 17.0 [11.0, 23.5] | 18.5 [11.7, 26.2] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | 1.5 [0.0, 3.8] | 2.2 [0.0, 5.0] | 20.0 [12.5, 28.2] | 2.2 [0.0, 5.0] | 17.0 [11.0, 23.5] | 18.5 [11.7, 26.2] |
+| sukun | 135 / 62 | 1.5 [0.0, 3.8] | 2.2 [0.0, 5.0] | 20.0 [12.5, 28.2] | 2.2 [0.0, 5.0] | 17.0 [11.0, 23.5] | 18.5 [11.7, 26.2] |
 
 *app: flagged words, shipped default*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 135 / 62 | 3.0 [0.7, 6.2] | 22.2 [14.5, 30.8] | 19.3 [13.4, 25.4] | 23.0 [15.8, 31.3] |
-| sukun | 135 / 62 | 3.0 [0.7, 6.2] | 22.2 [14.5, 30.8] | 19.3 [13.4, 25.4] | 23.0 [15.8, 31.3] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | 1.5 [0.0, 3.8] | 3.0 [0.7, 6.2] | 22.2 [14.5, 30.8] | 3.0 [0.7, 6.2] | 19.3 [13.4, 25.4] | 23.0 [15.8, 31.3] |
+| sukun | 135 / 62 | 1.5 [0.0, 3.8] | 3.0 [0.7, 6.2] | 22.2 [14.5, 30.8] | 3.0 [0.7, 6.2] | 19.3 [13.4, 25.4] | 23.0 [15.8, 31.3] |
 
 *app: flagged words, ADR-0012 allowances off*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 135 / 62 | 3.7 [0.8, 7.1] | 23.7 [15.5, 32.6] | 20.7 [14.7, 27.0] | 25.2 [17.4, 33.8] |
-| sukun | 135 / 62 | 3.7 [0.8, 7.1] | 23.7 [15.5, 32.6] | 20.7 [14.7, 27.0] | 25.2 [17.4, 33.8] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | 1.5 [0.0, 3.8] | 3.7 [0.8, 7.1] | 23.7 [15.5, 32.6] | 3.0 [0.7, 6.2] | 20.7 [14.7, 27.0] | 25.2 [17.4, 33.8] |
+| sukun | 135 / 62 | 1.5 [0.0, 3.8] | 3.7 [0.8, 7.1] | 23.7 [15.5, 32.6] | 3.0 [0.7, 6.2] | 20.7 [14.7, 27.0] | 25.2 [17.4, 33.8] |
 
 *app: words graded, shipped default*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 135 / 62 | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
-| sukun | 135 / 62 | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
+| sukun | 135 / 62 | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 
 *spurious haraka*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| sukun | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| sukun | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 
 *commit rate, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 135 / 62 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
-| sukun | 135 / 62 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| sukun | 135 / 62 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
 
 *committed accuracy, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 135 / 62 | – | – | – | – |
-| sukun | 135 / 62 | – | – | – | – |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | – | – | – | – | – | – | – |
+| sukun | 135 / 62 | – | – | – | – | – | – | – |
 
 *app: flagged words, allowances on, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 135 / 62 | +14.8 [8.9, 21.2] | -1.5 [-5.8, 2.5] | +17.8 [11.4, 24.8] | +1.5 [-7.0, 9.8] |
-| sukun | 135 / 62 | +14.8 [8.9, 21.2] | -1.5 [-5.8, 2.5] | +17.8 [11.4, 24.8] | +1.5 [-7.0, 9.8] |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 135 / 62 | +14.8 [8.9, 21.2] | -1.5 [-5.8, 2.5] | +0.7 [0.0, 2.5] | +17.8 [11.4, 24.8] | +1.5 [-7.0, 9.8] | -18.5 [-25.9, -11.7] | -16.3 [-22.6, -10.6] |
+| sukun | 135 / 62 | +14.8 [8.9, 21.2] | -1.5 [-5.8, 2.5] | +0.7 [0.0, 2.5] | +17.8 [11.4, 24.8] | +1.5 [-7.0, 9.8] | -18.5 [-25.9, -11.7] | -16.3 [-22.6, -10.6] |
 
 **Real mistakes:** no site with a verdict yet.
 
@@ -236,165 +302,165 @@ No site yet.
 
 *commit rate*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 131 / 84 | 100.0 (n/c) | 88.5 [82.4, 93.8] | 88.5 [82.7, 93.8] | 87.0 [80.6, 92.7] |
-| shaddah:held (provisional) | 10 / 10 (too small) | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 90.0 [59.6, 98.2] W | 100.0 [72.2, 100.0] W |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
-| ت↔ط:ت | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
-| ت↔ط:ط | 7 / 6 (too small) | 100.0 (n/c) | 85.7 (n/c) | 71.4 (n/c) | 85.7 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W |
-| ذ↔ز:ز | 28 / 19 | 100.0 (n/c) | 85.7 [70.8, 96.7] | 96.4 [90.0, 100.0] | 85.7 [70.8, 96.7] |
-| س↔ص:س | 25 / 21 | 100.0 (n/c) | 88.0 [75.0, 100.0] | 84.0 [69.0, 100.0] | 92.0 [81.5, 100.0] |
-| س↔ص:ص | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W |
-| ض↔ظ:ض | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
-| ض↔ظ:ظ | 23 / 20 | 100.0 (n/c) | 87.0 [70.8, 100.0] | 87.0 [73.1, 100.0] | 82.6 [64.0, 96.2] |
-| ق↔ك:ق | 6 / 6 (too small) | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W |
-| ق↔ك:ك | 21 / 19 | 100.0 (n/c) | 90.5 [75.0, 100.0] | 85.7 [68.4, 100.0] | 81.0 [61.9, 95.5] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | 91.6 [86.7, 95.9] | 100.0 (n/c) | 88.5 [82.4, 93.8] | 88.5 [82.5, 93.8] | 88.5 [82.7, 93.8] | 87.0 [80.6, 92.7] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 90.0 [59.6, 98.2] W | 100.0 [72.2, 100.0] W |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ت↔ط:ت | 2 / 2 (too small) | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
+| ت↔ط:ط | 7 / 6 (too small) | 85.7 (n/c) | 100.0 (n/c) | 85.7 (n/c) | 85.7 (n/c) | 71.4 (n/c) | 85.7 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W |
+| ذ↔ز:ز | 28 / 19 | 89.3 [76.9, 100.0] | 100.0 (n/c) | 85.7 [70.8, 96.7] | 82.1 [65.4, 96.4] | 96.4 [90.0, 100.0] | 85.7 [70.8, 96.7] |
+| س↔ص:س | 25 / 21 | 92.0 [79.2, 100.0] | 100.0 (n/c) | 88.0 [75.0, 100.0] | 92.0 [79.2, 100.0] | 84.0 [69.0, 100.0] | 92.0 [81.5, 100.0] |
+| س↔ص:ص | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W |
+| ض↔ظ:ض | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ض↔ظ:ظ | 23 / 20 | 95.7 [85.0, 100.0] | 100.0 (n/c) | 87.0 [70.8, 100.0] | 87.0 [70.0, 100.0] | 87.0 [73.1, 100.0] | 82.6 [64.0, 96.2] |
+| ق↔ك:ق | 6 / 6 (too small) | 83.3 [43.6, 97.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W |
+| ق↔ك:ك | 21 / 19 | 90.5 [75.0, 100.0] | 100.0 (n/c) | 90.5 [75.0, 100.0] | 85.7 [68.4, 100.0] | 85.7 [68.4, 100.0] | 81.0 [61.9, 95.5] |
 
 *committed accuracy*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 131 / 84 | 0.0 (n/c) | 21.6 [14.2, 29.5] | 57.8 [48.7, 67.3] | 61.4 [52.4, 70.5] |
-| shaddah:held (provisional) | 10 / 10 (too small) | 0.0 [0.0, 27.8] W | 20.0 [5.7, 51.0] W | 66.7 (n/c) | 60.0 [31.3, 83.2] W |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
-| ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 (n/c) | 100.0 (n/c) | 0.0 (n/c) |
-| ت↔ط:ط | 7 / 6 (too small) | 0.0 (n/c) | 0.0 (n/c) | 60.0 (n/c) | 33.3 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 (n/c) | 100.0 [43.8, 100.0] W | 100.0 (n/c) |
-| ذ↔ز:ز | 28 / 19 | 0.0 (n/c) | 16.7 [0.0, 33.3] | 55.6 [39.3, 75.0] | 66.7 [47.8, 87.5] |
-| س↔ص:س | 25 / 21 | 0.0 (n/c) | 36.4 [18.2, 56.5] | 71.4 [52.4, 90.0] | 65.2 [47.8, 81.8] |
-| س↔ص:ص | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W |
-| ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W |
-| ض↔ظ:ظ | 23 / 20 | 0.0 (n/c) | 10.0 [0.0, 26.3] | 25.0 [5.0, 47.6] | 47.4 [20.0, 70.8] |
-| ق↔ك:ق | 6 / 6 (too small) | 0.0 [0.0, 39.0] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W |
-| ق↔ك:ك | 21 / 19 | 0.0 (n/c) | 21.1 [5.0, 40.0] | 66.7 [43.8, 87.5] | 64.7 [41.2, 86.4] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | 22.5 [15.1, 30.7] | 0.0 (n/c) | 21.6 [14.2, 29.5] | 62.1 [52.7, 71.3] | 57.8 [48.7, 67.3] | 61.4 [52.4, 70.5] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 10.0 [1.8, 40.4] W | 0.0 [0.0, 27.8] W | 20.0 [5.7, 51.0] W | 50.0 [23.7, 76.3] W | 66.7 (n/c) | 60.0 [31.3, 83.2] W |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ت↔ط:ت | 2 / 2 (too small) | 0.0 (n/c) | 0.0 [0.0, 65.8] W | 0.0 (n/c) | 0.0 (n/c) | 100.0 (n/c) | 0.0 (n/c) |
+| ت↔ط:ط | 7 / 6 (too small) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 33.3 (n/c) | 60.0 (n/c) | 33.3 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 33.3 [6.1, 79.2] W | 0.0 [0.0, 56.2] W | 0.0 (n/c) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 (n/c) |
+| ذ↔ز:ز | 28 / 19 | 28.0 [10.0, 47.8] | 0.0 (n/c) | 16.7 [0.0, 33.3] | 73.9 [54.2, 91.3] | 55.6 [39.3, 75.0] | 66.7 [47.8, 87.5] |
+| س↔ص:س | 25 / 21 | 21.7 [8.0, 37.5] | 0.0 (n/c) | 36.4 [18.2, 56.5] | 65.2 [45.8, 84.2] | 71.4 [52.4, 90.0] | 65.2 [47.8, 81.8] |
+| س↔ص:ص | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W |
+| ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W |
+| ض↔ظ:ظ | 23 / 20 | 9.1 [0.0, 23.8] | 0.0 (n/c) | 10.0 [0.0, 26.3] | 40.0 [13.3, 63.3] | 25.0 [5.0, 47.6] | 47.4 [20.0, 70.8] |
+| ق↔ك:ق | 6 / 6 (too small) | 40.0 (n/c) | 0.0 [0.0, 39.0] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W |
+| ق↔ك:ك | 21 / 19 | 42.1 [22.2, 62.5] | 0.0 (n/c) | 21.1 [5.0, 40.0] | 72.2 [50.0, 90.5] | 66.7 [43.8, 87.5] | 64.7 [41.2, 86.4] |
 
 *app: flagged words, allowances on*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 131 / 84 | 11.5 [5.9, 17.9] | 29.8 [22.3, 37.5] | 29.0 [22.7, 35.7] | 31.3 [22.7, 39.7] |
-| shaddah:held (provisional) | 10 / 10 (too small) | 10.0 [1.8, 40.4] W | 30.0 [10.8, 60.3] W | 40.0 [16.8, 68.7] W | 40.0 [16.8, 68.7] W |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
-| ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
-| ت↔ط:ط | 7 / 6 (too small) | 0.0 (n/c) | 14.3 (n/c) | 28.6 (n/c) | 28.6 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
-| ذ↔ز:ز | 28 / 19 | 10.7 [0.0, 26.1] | 28.6 [13.6, 43.8] | 21.4 [9.1, 33.3] | 39.3 [20.0, 56.5] |
-| س↔ص:س | 25 / 21 | 8.0 [0.0, 20.0] | 20.0 [4.8, 36.0] | 32.0 [16.7, 48.1] | 20.0 [6.9, 36.0] |
-| س↔ص:ص | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
-| ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W |
-| ض↔ظ:ظ | 23 / 20 | 17.4 [4.3, 33.3] | 43.5 [22.7, 63.6] | 30.4 [13.0, 50.0] | 26.1 [9.1, 47.6] |
-| ق↔ك:ق | 6 / 6 (too small) | 33.3 [9.7, 70.0] W | 66.7 [30.0, 90.3] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
-| ق↔ك:ك | 21 / 19 | 14.3 [0.0, 31.6] | 33.3 [14.3, 55.0] | 28.6 [10.0, 47.8] | 38.1 [15.0, 61.9] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | 8.4 [3.7, 13.7] | 11.5 [5.9, 17.9] | 29.8 [22.3, 37.5] | 11.5 [6.1, 17.3] | 29.0 [22.7, 35.7] | 31.3 [22.7, 39.7] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 10.0 [1.8, 40.4] W | 10.0 [1.8, 40.4] W | 30.0 [10.8, 60.3] W | 30.0 [10.8, 60.3] W | 40.0 [16.8, 68.7] W | 40.0 [16.8, 68.7] W |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
+| ت↔ط:ط | 7 / 6 (too small) | 14.3 (n/c) | 0.0 (n/c) | 14.3 (n/c) | 28.6 (n/c) | 28.6 (n/c) | 28.6 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
+| ذ↔ز:ز | 28 / 19 | 10.7 [0.0, 26.1] | 10.7 [0.0, 26.1] | 28.6 [13.6, 43.8] | 10.7 [0.0, 25.0] | 21.4 [9.1, 33.3] | 39.3 [20.0, 56.5] |
+| س↔ص:س | 25 / 21 | 8.0 [0.0, 20.0] | 8.0 [0.0, 20.0] | 20.0 [4.8, 36.0] | 8.0 [0.0, 20.0] | 32.0 [16.7, 48.1] | 20.0 [6.9, 36.0] |
+| س↔ص:ص | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
+| ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W |
+| ض↔ظ:ظ | 23 / 20 | 4.3 [0.0, 14.3] | 17.4 [4.3, 33.3] | 43.5 [22.7, 63.6] | 4.3 [0.0, 15.0] | 30.4 [13.0, 50.0] | 26.1 [9.1, 47.6] |
+| ق↔ك:ق | 6 / 6 (too small) | 16.7 [3.0, 56.4] W | 33.3 [9.7, 70.0] W | 66.7 [30.0, 90.3] W | 16.7 [3.0, 56.4] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
+| ق↔ك:ك | 21 / 19 | 9.5 [0.0, 25.0] | 14.3 [0.0, 31.6] | 33.3 [14.3, 55.0] | 14.3 [0.0, 30.0] | 28.6 [10.0, 47.8] | 38.1 [15.0, 61.9] |
 
 *app: flagged words, shipped default*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 131 / 84 | 15.3 [8.5, 22.6] | 35.1 [27.4, 42.6] | 31.3 [24.8, 38.1] | 33.6 [25.0, 41.7] |
-| shaddah:held (provisional) | 10 / 10 (too small) | 30.0 [10.8, 60.3] W | 50.0 [23.7, 76.3] W | 60.0 [31.3, 83.2] W | 50.0 [23.7, 76.3] W |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W |
-| ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
-| ت↔ط:ط | 7 / 6 (too small) | 14.3 (n/c) | 28.6 (n/c) | 28.6 (n/c) | 42.9 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
-| ذ↔ز:ز | 28 / 19 | 10.7 [0.0, 26.1] | 28.6 [13.6, 43.8] | 21.4 [9.1, 33.3] | 39.3 [20.0, 56.5] |
-| س↔ص:س | 25 / 21 | 12.0 [0.0, 30.0] | 32.0 [12.5, 52.0] | 32.0 [16.7, 48.1] | 24.0 [9.1, 38.5] |
-| س↔ص:ص | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
-| ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W |
-| ض↔ظ:ظ | 23 / 20 | 17.4 [4.3, 33.3] | 43.5 [22.7, 63.6] | 30.4 [13.0, 50.0] | 26.1 [9.1, 47.6] |
-| ق↔ك:ق | 6 / 6 (too small) | 33.3 [9.7, 70.0] W | 66.7 [30.0, 90.3] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
-| ق↔ك:ك | 21 / 19 | 19.0 [4.5, 38.1] | 38.1 [19.0, 60.0] | 28.6 [10.0, 47.8] | 38.1 [15.0, 61.9] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | 9.2 [4.0, 14.7] | 15.3 [8.5, 22.6] | 35.1 [27.4, 42.6] | 12.2 [6.8, 18.2] | 31.3 [24.8, 38.1] | 33.6 [25.0, 41.7] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 10.0 [1.8, 40.4] W | 30.0 [10.8, 60.3] W | 50.0 [23.7, 76.3] W | 40.0 [16.8, 68.7] W | 60.0 [31.3, 83.2] W | 50.0 [23.7, 76.3] W |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W |
+| ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
+| ت↔ط:ط | 7 / 6 (too small) | 14.3 (n/c) | 14.3 (n/c) | 28.6 (n/c) | 28.6 (n/c) | 28.6 (n/c) | 42.9 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
+| ذ↔ز:ز | 28 / 19 | 10.7 [0.0, 26.1] | 10.7 [0.0, 26.1] | 28.6 [13.6, 43.8] | 10.7 [0.0, 25.0] | 21.4 [9.1, 33.3] | 39.3 [20.0, 56.5] |
+| س↔ص:س | 25 / 21 | 12.0 [0.0, 30.0] | 12.0 [0.0, 30.0] | 32.0 [12.5, 52.0] | 8.0 [0.0, 20.0] | 32.0 [16.7, 48.1] | 24.0 [9.1, 38.5] |
+| س↔ص:ص | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
+| ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W |
+| ض↔ظ:ظ | 23 / 20 | 4.3 [0.0, 14.3] | 17.4 [4.3, 33.3] | 43.5 [22.7, 63.6] | 4.3 [0.0, 15.0] | 30.4 [13.0, 50.0] | 26.1 [9.1, 47.6] |
+| ق↔ك:ق | 6 / 6 (too small) | 16.7 [3.0, 56.4] W | 33.3 [9.7, 70.0] W | 66.7 [30.0, 90.3] W | 16.7 [3.0, 56.4] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
+| ق↔ك:ك | 21 / 19 | 9.5 [0.0, 25.0] | 19.0 [4.5, 38.1] | 38.1 [19.0, 60.0] | 14.3 [0.0, 30.0] | 28.6 [10.0, 47.8] | 38.1 [15.0, 61.9] |
 
 *app: flagged words, ADR-0012 allowances off*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 131 / 84 | 63.4 [55.0, 71.1] | 61.1 [52.4, 69.4] | 44.3 [36.5, 52.0] | 41.2 [32.8, 49.3] |
-| shaddah:held (provisional) | 10 / 10 (too small) | 60.0 [31.3, 83.2] W | 60.0 [31.3, 83.2] W | 60.0 [31.3, 83.2] W | 60.0 [31.3, 83.2] W |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W |
-| ت↔ط:ت | 2 / 2 (too small) | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
-| ت↔ط:ط | 7 / 6 (too small) | 85.7 (n/c) | 85.7 (n/c) | 42.9 (n/c) | 57.1 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
-| ذ↔ز:ز | 28 / 19 | 60.7 [38.5, 82.1] | 50.0 [33.3, 69.2] | 50.0 [28.0, 66.7] | 42.9 [25.0, 58.7] |
-| س↔ص:س | 25 / 21 | 60.0 [40.0, 80.0] | 52.0 [30.8, 72.0] | 36.0 [20.0, 52.2] | 32.0 [16.7, 48.0] |
-| س↔ص:ص | 3 / 3 (too small) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 33.3 [6.1, 79.2] W | 0.0 [0.0, 56.2] W |
-| ض↔ظ:ض | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 0.0 [0.0, 65.8] W |
-| ض↔ظ:ظ | 23 / 20 | 65.2 [47.6, 81.8] | 73.9 [54.5, 90.9] | 52.2 [33.3, 75.0] | 43.5 [22.7, 68.2] |
-| ق↔ك:ق | 6 / 6 (too small) | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
-| ق↔ك:ك | 21 / 19 | 66.7 [47.8, 85.0] | 61.9 [40.9, 81.8] | 28.6 [10.0, 47.8] | 42.9 [20.0, 66.7] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | 37.4 [29.6, 45.3] | 63.4 [55.0, 71.1] | 61.1 [52.4, 69.4] | 23.7 [16.7, 30.7] | 44.3 [36.5, 52.0] | 41.2 [32.8, 49.3] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 30.0 [10.8, 60.3] W | 60.0 [31.3, 83.2] W | 60.0 [31.3, 83.2] W | 50.0 [23.7, 76.3] W | 60.0 [31.3, 83.2] W | 60.0 [31.3, 83.2] W |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W |
+| ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
+| ت↔ط:ط | 7 / 6 (too small) | 57.1 (n/c) | 85.7 (n/c) | 85.7 (n/c) | 42.9 (n/c) | 42.9 (n/c) | 57.1 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
+| ذ↔ز:ز | 28 / 19 | 35.7 [20.0, 52.2] | 60.7 [38.5, 82.1] | 50.0 [33.3, 69.2] | 17.9 [5.6, 33.3] | 50.0 [28.0, 66.7] | 42.9 [25.0, 58.7] |
+| س↔ص:س | 25 / 21 | 32.0 [13.6, 52.0] | 60.0 [40.0, 80.0] | 52.0 [30.8, 72.0] | 20.0 [7.4, 34.6] | 36.0 [20.0, 52.2] | 32.0 [16.7, 48.0] |
+| س↔ص:ص | 3 / 3 (too small) | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W | 0.0 [0.0, 56.2] W |
+| ض↔ظ:ض | 2 / 2 (too small) | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 0.0 [0.0, 65.8] W | 100.0 [34.2, 100.0] W | 0.0 [0.0, 65.8] W |
+| ض↔ظ:ظ | 23 / 20 | 56.5 [36.4, 77.3] | 65.2 [47.6, 81.8] | 73.9 [54.5, 90.9] | 34.8 [15.4, 59.1] | 52.2 [33.3, 75.0] | 43.5 [22.7, 68.2] |
+| ق↔ك:ق | 6 / 6 (too small) | 16.7 [3.0, 56.4] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W | 16.7 [3.0, 56.4] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
+| ق↔ك:ك | 21 / 19 | 28.6 [10.0, 47.6] | 66.7 [47.8, 85.0] | 61.9 [40.9, 81.8] | 19.0 [4.8, 36.4] | 28.6 [10.0, 47.8] | 42.9 [20.0, 66.7] |
 
 *app: words graded, shipped default*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 131 / 84 | 92.4 [86.8, 97.1] | 89.3 [82.4, 95.2] | 90.1 [84.6, 94.9] | 93.1 [88.1, 97.4] |
-| shaddah:held (provisional) | 10 / 10 (too small) | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
-| ت↔ط:ت | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
-| ت↔ط:ط | 7 / 6 (too small) | 85.7 (n/c) | 85.7 (n/c) | 71.4 (n/c) | 85.7 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W |
-| ذ↔ز:ز | 28 / 19 | 89.3 [75.8, 100.0] | 85.7 [65.7, 100.0] | 92.9 [82.9, 100.0] | 96.4 [90.0, 100.0] |
-| س↔ص:س | 25 / 21 | 100.0 (n/c) | 96.0 [89.3, 100.0] | 96.0 [89.3, 100.0] | 100.0 (n/c) |
-| س↔ص:ص | 3 / 3 (too small) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W |
-| ض↔ظ:ض | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
-| ض↔ظ:ظ | 23 / 20 | 95.7 [85.0, 100.0] | 95.7 [85.0, 100.0] | 91.3 [78.3, 100.0] | 95.7 [85.0, 100.0] |
-| ق↔ك:ق | 6 / 6 (too small) | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W |
-| ق↔ك:ك | 21 / 19 | 90.5 [75.0, 100.0] | 81.0 [61.9, 95.5] | 81.0 [61.9, 95.5] | 85.7 [68.4, 100.0] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | 92.4 [87.3, 96.9] | 92.4 [86.8, 97.1] | 89.3 [82.4, 95.2] | 95.4 [91.5, 98.5] | 90.1 [84.6, 94.9] | 93.1 [88.1, 97.4] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ت↔ط:ت | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ت↔ط:ط | 7 / 6 (too small) | 85.7 (n/c) | 85.7 (n/c) | 85.7 (n/c) | 85.7 (n/c) | 71.4 (n/c) | 85.7 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W |
+| ذ↔ز:ز | 28 / 19 | 85.7 [70.6, 100.0] | 89.3 [75.8, 100.0] | 85.7 [65.7, 100.0] | 100.0 (n/c) | 92.9 [82.9, 100.0] | 96.4 [90.0, 100.0] |
+| س↔ص:س | 25 / 21 | 100.0 (n/c) | 100.0 (n/c) | 96.0 [89.3, 100.0] | 100.0 (n/c) | 96.0 [89.3, 100.0] | 100.0 (n/c) |
+| س↔ص:ص | 3 / 3 (too small) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W |
+| ض↔ظ:ض | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ض↔ظ:ظ | 23 / 20 | 100.0 (n/c) | 95.7 [85.0, 100.0] | 95.7 [85.0, 100.0] | 100.0 (n/c) | 91.3 [78.3, 100.0] | 95.7 [85.0, 100.0] |
+| ق↔ك:ق | 6 / 6 (too small) | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W |
+| ق↔ك:ك | 21 / 19 | 85.7 [68.4, 100.0] | 90.5 [75.0, 100.0] | 81.0 [61.9, 95.5] | 85.7 [68.4, 100.0] | 81.0 [61.9, 95.5] | 85.7 [68.4, 100.0] |
 
 *commit rate, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 131 / 84 | -11.5 [-17.3, -6.2] | -1.5 [-4.8, 1.4] | -11.5 [-17.6, -6.2] | -1.5 [-8.5, 5.0] |
-| shaddah:held (provisional) | 10 / 10 (too small) | -10.0 [-40.4, 20.5] T | +0.0 [-27.8, 27.8] T | +0.0 [-27.8, 27.8] T | +10.0 [-20.5, 40.4] T |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T |
-| ت↔ط:ت | 2 / 2 (too small) | -50.0 [-90.5, 48.6] T | +0.0 [-65.8, 65.8] T | -50.0 [-90.5, 48.6] T | +0.0 [-81.1, 81.1] T |
-| ت↔ط:ط | 7 / 6 (too small) | -28.6 (n/c) | +0.0 (n/c) | -14.3 (n/c) | +14.3 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | -33.3 [-79.2, 41.5] T | -33.3 [-79.2, 41.5] T |
-| ذ↔ز:ز | 28 / 19 | -3.6 [-10.0, 0.0] | +0.0 (n/c) | -14.3 [-29.2, -3.3] | -10.7 [-26.1, 0.0] |
-| س↔ص:س | 25 / 21 | -16.0 [-31.0, 0.0] | +4.0 [0.0, 13.6] | -12.0 [-25.0, 0.0] | +8.0 [-8.3, 21.7] |
-| س↔ص:ص | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T |
-| ض↔ظ:ض | 2 / 2 (too small) | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T |
-| ض↔ظ:ظ | 23 / 20 | -13.0 [-26.9, 0.0] | -4.3 [-14.3, 0.0] | -13.0 [-29.2, 0.0] | -4.3 [-20.0, 8.3] |
-| ق↔ك:ق | 6 / 6 (too small) | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T |
-| ق↔ك:ك | 21 / 19 | -14.3 [-31.6, 0.0] | -9.5 [-25.0, 0.0] | -9.5 [-25.0, 0.0] | -4.8 [-21.1, 10.0] |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | -11.5 [-17.3, -6.2] | -1.5 [-4.8, 1.4] | -3.1 [-7.9, 1.6] | -11.5 [-17.6, -6.2] | -1.5 [-8.5, 5.0] | +3.1 [-1.5, 8.0] | +1.5 [-4.1, 7.2] |
+| shaddah:held (provisional) | 10 / 10 (too small) | -10.0 [-40.4, 20.5] T | +0.0 [-27.8, 27.8] T | +0.0 [-27.8, 27.8] T | +0.0 [-27.8, 27.8] T | +10.0 [-20.5, 40.4] T | +0.0 [-27.8, 27.8] T | +0.0 [-27.8, 27.8] T |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T |
+| ت↔ط:ت | 2 / 2 (too small) | -50.0 [-90.5, 48.6] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | -50.0 [-90.5, 48.6] T | +0.0 [-81.1, 81.1] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T |
+| ت↔ط:ط | 7 / 6 (too small) | -28.6 (n/c) | +0.0 (n/c) | +0.0 (n/c) | -14.3 (n/c) | +14.3 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | -33.3 [-79.2, 41.5] T | -33.3 [-79.2, 41.5] T | +33.3 [-41.5, 79.2] T | +33.3 [-41.5, 79.2] T |
+| ذ↔ز:ز | 28 / 19 | -3.6 [-10.0, 0.0] | +0.0 (n/c) | -7.1 [-16.7, 0.0] | -14.3 [-29.2, -3.3] | -10.7 [-26.1, 0.0] | +3.6 [-7.4, 16.0] | -3.6 [-21.4, 13.6] |
+| س↔ص:س | 25 / 21 | -16.0 [-31.0, 0.0] | +4.0 [0.0, 13.6] | +0.0 [-12.0, 12.0] | -12.0 [-25.0, 0.0] | +8.0 [-8.3, 21.7] | +4.0 [0.0, 10.7] | +0.0 [-13.0, 10.0] |
+| س↔ص:ص | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T |
+| ض↔ظ:ض | 2 / 2 (too small) | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T |
+| ض↔ظ:ظ | 23 / 20 | -13.0 [-26.9, 0.0] | -4.3 [-14.3, 0.0] | -8.7 [-22.7, 0.0] | -13.0 [-29.2, 0.0] | -4.3 [-20.0, 8.3] | +8.7 [0.0, 22.7] | +4.3 [-9.5, 20.0] |
+| ق↔ك:ق | 6 / 6 (too small) | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T | +16.7 [-28.9, 56.4] T | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T | -16.7 [-56.4, 28.9] T | +0.0 [-39.0, 39.0] T |
+| ق↔ك:ك | 21 / 19 | -14.3 [-31.6, 0.0] | -9.5 [-25.0, 0.0] | -4.8 [-21.1, 10.0] | -9.5 [-25.0, 0.0] | -4.8 [-21.1, 10.0] | +0.0 [-14.3, 14.3] | +4.8 [0.0, 15.8] |
 
 *committed accuracy, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 131 / 84 | +57.8 [48.7, 67.3] | +39.9 [28.8, 50.8] | +21.6 [14.2, 29.5] | +3.6 [-3.5, 10.9] |
-| shaddah:held (provisional) | 10 / 10 (too small) | +66.7 (n/c) | +40.0 [1.1, 68.7] T | +20.0 [-13.3, 51.0] T | -6.7 (n/c) |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | +100.0 [-58.7, 100.0] T | +0.0 [-79.3, 79.3] T | +100.0 [-58.7, 100.0] T | +0.0 [-79.3, 79.3] T |
-| ت↔ط:ت | 2 / 2 (too small) | +100.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | -100.0 (n/c) |
-| ت↔ط:ط | 7 / 6 (too small) | +60.0 (n/c) | +33.3 (n/c) | +0.0 (n/c) | -26.7 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | +100.0 [-12.3, 100.0] T | +100.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
-| ذ↔ز:ز | 28 / 19 | +55.6 [39.3, 75.0] | +50.0 [20.0, 79.2] | +16.7 [0.0, 33.3] | +11.1 [0.0, 24.3] |
-| س↔ص:س | 25 / 21 | +71.4 [52.4, 90.0] | +28.9 [0.0, 56.8] | +36.4 [18.2, 56.5] | -6.2 [-23.8, 10.8] |
-| س↔ص:ص | 3 / 3 (too small) | +66.7 [-26.9, 93.9] T | +66.7 [-26.9, 93.9] T | +33.3 [-41.5, 79.2] T | +33.3 [-41.5, 79.2] T |
-| ض↔ظ:ض | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +100.0 [-31.5, 100.0] T | +0.0 [-65.8, 65.8] T | +50.0 [-48.6, 90.5] T |
-| ض↔ظ:ظ | 23 / 20 | +25.0 [5.0, 47.6] | +37.4 [5.6, 63.8] | +10.0 [0.0, 26.3] | +22.4 [6.8, 38.1] |
-| ق↔ك:ق | 6 / 6 (too small) | +50.0 [-8.6, 81.2] T | +0.0 [-39.0, 39.0] T | +50.0 [-8.6, 81.2] T | +0.0 [-39.0, 39.0] T |
-| ق↔ك:ك | 21 / 19 | +66.7 [43.8, 87.5] | +43.7 [20.5, 66.0] | +21.1 [5.0, 40.0] | -2.0 [-19.7, 16.2] |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | +57.8 [48.7, 67.3] | +39.9 [28.8, 50.8] | +39.6 [29.2, 49.7] | +21.6 [14.2, 29.5] | +3.6 [-3.5, 10.9] | +0.9 [-6.5, 8.8] | +0.7 [-3.7, 5.3] |
+| shaddah:held (provisional) | 10 / 10 (too small) | +66.7 (n/c) | +40.0 [1.1, 68.7] T | +40.0 [1.1, 68.7] T | +20.0 [-13.3, 51.0] T | -6.7 (n/c) | -10.0 [-40.4, 20.5] T | -10.0 [-40.4, 20.5] T |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | +100.0 [-58.7, 100.0] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +100.0 [-58.7, 100.0] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T |
+| ت↔ط:ت | 2 / 2 (too small) | +100.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | -100.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| ت↔ط:ط | 7 / 6 (too small) | +60.0 (n/c) | +33.3 (n/c) | +33.3 (n/c) | +0.0 (n/c) | -26.7 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | +100.0 [-12.3, 100.0] T | +100.0 (n/c) | +66.7 [-26.9, 93.9] T | +0.0 (n/c) | +0.0 (n/c) | +33.3 (n/c) | +0.0 (n/c) |
+| ذ↔ز:ز | 28 / 19 | +55.6 [39.3, 75.0] | +50.0 [20.0, 79.2] | +45.9 [22.0, 70.3] | +16.7 [0.0, 33.3] | +11.1 [0.0, 24.3] | +11.3 [-11.7, 34.5] | +7.2 [-1.0, 17.5] |
+| س↔ص:س | 25 / 21 | +71.4 [52.4, 90.0] | +28.9 [0.0, 56.8] | +43.5 [20.0, 68.9] | +36.4 [18.2, 56.5] | -6.2 [-23.8, 10.8] | -14.6 [-35.0, 3.8] | +0.0 [-12.7, 13.6] |
+| س↔ص:ص | 3 / 3 (too small) | +66.7 [-26.9, 93.9] T | +66.7 [-26.9, 93.9] T | +100.0 [-12.3, 100.0] T | +33.3 [-41.5, 79.2] T | +33.3 [-41.5, 79.2] T | -33.3 [-79.2, 41.5] T | +0.0 [-56.2, 56.2] T |
+| ض↔ظ:ض | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +100.0 [-31.5, 100.0] T | +100.0 [-31.5, 100.0] T | +0.0 [-65.8, 65.8] T | +50.0 [-48.6, 90.5] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T |
+| ض↔ظ:ظ | 23 / 20 | +25.0 [5.0, 47.6] | +37.4 [5.6, 63.8] | +30.9 [0.9, 56.9] | +10.0 [0.0, 26.3] | +22.4 [6.8, 38.1] | -0.9 [-3.9, 0.0] | -7.4 [-18.1, 0.0] |
+| ق↔ك:ق | 6 / 6 (too small) | +50.0 [-8.6, 81.2] T | +0.0 [-39.0, 39.0] T | +10.0 (n/c) | +50.0 [-8.6, 81.2] T | +0.0 [-39.0, 39.0] T | -10.0 (n/c) | +0.0 [-39.0, 39.0] T |
+| ق↔ك:ك | 21 / 19 | +66.7 [43.8, 87.5] | +43.7 [20.5, 66.0] | +30.1 [3.3, 56.3] | +21.1 [5.0, 40.0] | -2.0 [-19.7, 16.2] | +21.1 [5.3, 39.3] | +7.5 [0.0, 21.7] |
 
 *app: flagged words, allowances on, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 131 / 84 | +17.6 [10.4, 24.8] | +1.5 [-4.7, 7.4] | +18.3 [10.9, 25.6] | +2.3 [-7.8, 12.0] |
-| shaddah:held (provisional) | 10 / 10 (too small) | +30.0 [-6.1, 60.3] T | +10.0 [-20.5, 40.4] T | +20.0 [-13.3, 51.0] T | +0.0 [-39.7, 39.7] T |
-| shaddah:not_held (provisional) | 1 / 1 (too small) | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T |
-| ت↔ط:ت | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +0.0 [-65.8, 65.8] T | +50.0 [-48.6, 90.5] T | +0.0 [-81.1, 81.1] T |
-| ت↔ط:ط | 7 / 6 (too small) | +28.6 (n/c) | +14.3 (n/c) | +14.3 (n/c) | +0.0 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T |
-| ذ↔ز:ز | 28 / 19 | +10.7 [-8.7, 25.0] | +10.7 [0.0, 20.0] | +17.9 [0.0, 33.3] | +17.9 [0.0, 34.6] |
-| س↔ص:س | 25 / 21 | +24.0 [8.7, 40.0] | +0.0 [-12.5, 12.0] | +12.0 [0.0, 26.1] | -12.0 [-31.8, 8.7] |
-| س↔ص:ص | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T |
-| ض↔ظ:ض | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | -50.0 [-90.5, 48.6] T |
-| ض↔ظ:ظ | 23 / 20 | +13.0 [0.0, 30.0] | -17.4 [-34.6, 0.0] | +26.1 [9.5, 45.0] | -4.3 [-21.7, 15.0] |
-| ق↔ك:ق | 6 / 6 (too small) | +16.7 [-39.8, 63.0] T | +0.0 [-39.0, 39.0] T | +33.3 [-18.7, 70.0] T | +16.7 [-39.8, 63.0] T |
-| ق↔ك:ك | 21 / 19 | +14.3 [-5.0, 33.3] | +4.8 [-15.8, 25.0] | +19.0 [0.0, 40.0] | +9.5 [-14.3, 31.6] |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 131 / 84 | +17.6 [10.4, 24.8] | +1.5 [-4.7, 7.4] | +3.1 [-0.8, 7.4] | +18.3 [10.9, 25.6] | +2.3 [-7.8, 12.0] | -21.4 [-29.3, -13.8] | -19.8 [-27.9, -12.2] |
+| shaddah:held (provisional) | 10 / 10 (too small) | +30.0 [-6.1, 60.3] T | +10.0 [-20.5, 40.4] T | +20.0 [-13.3, 51.0] T | +20.0 [-13.3, 51.0] T | +0.0 [-39.7, 39.7] T | -20.0 [-55.1, 21.7] T | -10.0 [-40.4, 20.5] T |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T |
+| ت↔ط:ت | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +50.0 [-48.6, 90.5] T | +0.0 [-81.1, 81.1] T | -50.0 [-90.5, 48.6] T | -50.0 [-90.5, 48.6] T |
+| ت↔ط:ط | 7 / 6 (too small) | +28.6 (n/c) | +14.3 (n/c) | +14.3 (n/c) | +14.3 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T |
+| ذ↔ز:ز | 28 / 19 | +10.7 [-8.7, 25.0] | +10.7 [0.0, 20.0] | +0.0 [-10.7, 10.0] | +17.9 [0.0, 33.3] | +17.9 [0.0, 34.6] | -17.9 [-33.3, 0.0] | -28.6 [-46.7, -8.3] |
+| س↔ص:س | 25 / 21 | +24.0 [8.7, 40.0] | +0.0 [-12.5, 12.0] | +0.0 (n/c) | +12.0 [0.0, 26.1] | -12.0 [-31.8, 8.7] | -12.0 [-26.1, 0.0] | -12.0 [-26.1, 0.0] |
+| س↔ص:ص | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T |
+| ض↔ظ:ض | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | -50.0 [-90.5, 48.6] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T |
+| ض↔ظ:ظ | 23 / 20 | +13.0 [0.0, 30.0] | -17.4 [-34.6, 0.0] | +0.0 [-13.0, 13.0] | +26.1 [9.5, 45.0] | -4.3 [-21.7, 15.0] | -39.1 [-59.1, -19.0] | -21.7 [-40.9, -6.9] |
+| ق↔ك:ق | 6 / 6 (too small) | +16.7 [-39.8, 63.0] T | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T | +33.3 [-18.7, 70.0] T | +16.7 [-39.8, 63.0] T | -50.0 [-81.2, 8.6] T | -50.0 [-81.2, 8.6] T |
+| ق↔ك:ك | 21 / 19 | +14.3 [-5.0, 33.3] | +4.8 [-15.8, 25.0] | +4.8 [0.0, 13.6] | +19.0 [0.0, 40.0] | +9.5 [-14.3, 31.6] | -23.8 [-42.9, -8.7] | -23.8 [-42.9, -8.7] |
 
 **Real mistakes:** no site with a verdict yet.
 
@@ -404,99 +470,99 @@ No site yet.
 
 *commit rate*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | 88.3 [86.8, 89.8] | 74.2 [72.0, 76.3] | 84.6 [82.4, 86.8] | 76.9 [74.5, 79.3] |
-| damma | 375 / 75 | 100.0 (n/c) | 79.2 [75.1, 83.1] | 95.5 [93.2, 97.5] | 81.1 [77.2, 84.8] |
-| fatha | 801 / 80 | 99.0 [98.2, 99.7] | 85.1 [82.1, 88.0] | 95.3 [93.3, 96.9] | 88.5 [85.9, 90.9] |
-| kasra | 299 / 71 | 98.7 [97.3, 99.7] | 83.6 [78.7, 88.1] | 94.0 [90.7, 96.9] | 87.6 [82.6, 92.0] |
-| sukun | 182 / 64 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | 73.6 [71.5, 75.6] | 88.3 [86.8, 89.8] | 74.2 [72.0, 76.3] | 76.5 [74.0, 78.8] | 84.6 [82.4, 86.8] | 76.9 [74.5, 79.3] |
+| damma | 375 / 75 | 78.1 [74.0, 82.0] | 100.0 (n/c) | 79.2 [75.1, 83.1] | 79.7 [75.7, 83.5] | 95.5 [93.2, 97.5] | 81.1 [77.2, 84.8] |
+| fatha | 801 / 80 | 84.8 [81.7, 87.7] | 99.0 [98.2, 99.7] | 85.1 [82.1, 88.0] | 88.0 [85.3, 90.4] | 95.3 [93.3, 96.9] | 88.5 [85.9, 90.9] |
+| kasra | 299 / 71 | 82.6 [77.7, 87.2] | 98.7 [97.3, 99.7] | 83.6 [78.7, 88.1] | 88.0 [83.2, 92.3] | 94.0 [90.7, 96.9] | 87.6 [82.6, 92.0] |
+| sukun | 182 / 64 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 
 *committed accuracy*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
-| damma | 375 / 75 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
-| fatha | 801 / 80 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
-| kasra | 299 / 71 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
-| sukun | 182 / 64 | – | – | – | – |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| damma | 375 / 75 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| fatha | 801 / 80 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| kasra | 299 / 71 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| sukun | 182 / 64 | – | – | – | – | – | – |
 
 *app: flagged words, allowances on*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | 1.1 [0.6, 1.8] | 14.7 [12.8, 16.5] | 11.7 [9.8, 13.8] | 13.8 [12.2, 15.5] |
-| damma | 375 / 75 | 0.8 [0.0, 1.9] | 16.8 [12.9, 20.6] | 14.9 [11.3, 18.7] | 17.6 [13.8, 21.4] |
-| fatha | 801 / 80 | 1.1 [0.4, 1.9] | 14.6 [11.8, 17.5] | 11.6 [9.3, 14.0] | 12.9 [10.3, 15.5] |
-| kasra | 299 / 71 | 1.0 [0.0, 2.3] | 14.0 [10.9, 17.4] | 8.0 [5.2, 11.1] | 11.7 [8.6, 15.1] |
-| sukun | 182 / 64 | 2.2 [0.5, 4.4] | 11.5 [7.1, 15.7] | 11.5 [6.9, 16.4] | 13.7 [8.8, 18.8] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | 1.1 [0.5, 1.8] | 1.1 [0.6, 1.8] | 14.7 [12.8, 16.5] | 1.2 [0.6, 1.9] | 11.7 [9.8, 13.8] | 13.8 [12.2, 15.5] |
+| damma | 375 / 75 | 1.1 [0.3, 2.1] | 0.8 [0.0, 1.9] | 16.8 [12.9, 20.6] | 0.8 [0.0, 1.7] | 14.9 [11.3, 18.7] | 17.6 [13.8, 21.4] |
+| fatha | 801 / 80 | 1.1 [0.4, 1.9] | 1.1 [0.4, 1.9] | 14.6 [11.8, 17.5] | 1.1 [0.4, 2.0] | 11.6 [9.3, 14.0] | 12.9 [10.3, 15.5] |
+| kasra | 299 / 71 | 0.7 [0.0, 1.8] | 1.0 [0.0, 2.3] | 14.0 [10.9, 17.4] | 1.3 [0.3, 2.8] | 8.0 [5.2, 11.1] | 11.7 [8.6, 15.1] |
+| sukun | 182 / 64 | 1.6 [0.0, 3.6] | 2.2 [0.5, 4.4] | 11.5 [7.1, 15.7] | 2.2 [0.5, 4.4] | 11.5 [6.9, 16.4] | 13.7 [8.8, 18.8] |
 
 *app: flagged words, shipped default*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | 1.4 [0.8, 2.2] | 19.1 [17.2, 21.1] | 12.6 [10.7, 14.7] | 18.0 [16.2, 19.8] |
-| damma | 375 / 75 | 1.1 [0.3, 2.2] | 23.5 [19.0, 27.8] | 15.7 [12.0, 19.5] | 22.4 [18.2, 26.6] |
-| fatha | 801 / 80 | 1.6 [0.8, 2.6] | 18.0 [15.0, 21.0] | 12.9 [10.5, 15.4] | 16.1 [13.6, 18.6] |
-| kasra | 299 / 71 | 1.0 [0.0, 2.3] | 17.7 [14.0, 21.7] | 8.0 [5.2, 11.1] | 15.4 [11.8, 19.4] |
-| sukun | 182 / 64 | 2.2 [0.5, 4.4] | 17.6 [12.4, 22.5] | 12.6 [8.0, 17.6] | 21.4 [15.2, 27.7] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | 1.1 [0.5, 1.8] | 1.4 [0.8, 2.2] | 19.1 [17.2, 21.1] | 1.4 [0.7, 2.1] | 12.6 [10.7, 14.7] | 18.0 [16.2, 19.8] |
+| damma | 375 / 75 | 1.1 [0.3, 2.1] | 1.1 [0.3, 2.2] | 23.5 [19.0, 27.8] | 1.1 [0.3, 2.1] | 15.7 [12.0, 19.5] | 22.4 [18.2, 26.6] |
+| fatha | 801 / 80 | 1.1 [0.4, 1.9] | 1.6 [0.8, 2.6] | 18.0 [15.0, 21.0] | 1.4 [0.6, 2.3] | 12.9 [10.5, 15.4] | 16.1 [13.6, 18.6] |
+| kasra | 299 / 71 | 0.7 [0.0, 1.8] | 1.0 [0.0, 2.3] | 17.7 [14.0, 21.7] | 1.3 [0.3, 2.8] | 8.0 [5.2, 11.1] | 15.4 [11.8, 19.4] |
+| sukun | 182 / 64 | 1.6 [0.0, 3.6] | 2.2 [0.5, 4.4] | 17.6 [12.4, 22.5] | 2.2 [0.5, 4.4] | 12.6 [8.0, 17.6] | 21.4 [15.2, 27.7] |
 
 *app: flagged words, ADR-0012 allowances off*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | 1.6 [0.9, 2.3] | 20.4 [18.5, 22.3] | 13.4 [11.3, 15.7] | 19.6 [17.7, 21.5] |
-| damma | 375 / 75 | 1.1 [0.3, 2.2] | 24.3 [19.8, 28.7] | 16.3 [12.5, 20.2] | 23.7 [19.4, 28.0] |
-| fatha | 801 / 80 | 1.9 [1.0, 2.9] | 19.2 [16.1, 22.5] | 13.7 [11.2, 16.4] | 17.7 [15.1, 20.5] |
-| kasra | 299 / 71 | 1.0 [0.0, 2.3] | 19.7 [16.0, 23.6] | 8.4 [5.4, 11.6] | 17.4 [13.8, 21.2] |
-| sukun | 182 / 64 | 2.2 [0.5, 4.4] | 18.7 [13.6, 23.8] | 14.3 [9.5, 19.4] | 22.5 [16.3, 29.0] |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | 1.1 [0.5, 1.8] | 1.6 [0.9, 2.3] | 20.4 [18.5, 22.3] | 1.4 [0.8, 2.2] | 13.4 [11.3, 15.7] | 19.6 [17.7, 21.5] |
+| damma | 375 / 75 | 1.1 [0.3, 2.1] | 1.1 [0.3, 2.2] | 24.3 [19.8, 28.7] | 1.1 [0.3, 2.1] | 16.3 [12.5, 20.2] | 23.7 [19.4, 28.0] |
+| fatha | 801 / 80 | 1.1 [0.4, 1.9] | 1.9 [1.0, 2.9] | 19.2 [16.1, 22.5] | 1.5 [0.7, 2.4] | 13.7 [11.2, 16.4] | 17.7 [15.1, 20.5] |
+| kasra | 299 / 71 | 0.7 [0.0, 1.8] | 1.0 [0.0, 2.3] | 19.7 [16.0, 23.6] | 1.3 [0.3, 2.8] | 8.4 [5.4, 11.6] | 17.4 [13.8, 21.2] |
+| sukun | 182 / 64 | 1.6 [0.0, 3.6] | 2.2 [0.5, 4.4] | 18.7 [13.6, 23.8] | 2.2 [0.5, 4.4] | 14.3 [9.5, 19.4] | 22.5 [16.3, 29.0] |
 
 *app: words graded, shipped default*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | 99.3 [98.8, 99.7] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] |
-| damma | 375 / 75 | 99.2 [98.3, 100.0] | 99.2 [98.3, 100.0] | 99.2 [98.3, 100.0] | 99.2 [98.3, 100.0] |
-| fatha | 801 / 80 | 99.4 [98.8, 99.9] | 99.5 [98.8, 100.0] | 99.4 [98.8, 99.9] | 99.4 [98.8, 99.9] |
-| kasra | 299 / 71 | 99.0 [97.4, 100.0] | 99.7 [98.9, 100.0] | 99.7 [98.9, 100.0] | 99.7 [98.9, 100.0] |
-| sukun | 182 / 64 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | 99.6 [99.2, 99.8] | 99.3 [98.8, 99.7] | 99.5 [99.1, 99.8] | 99.6 [99.2, 99.8] | 99.5 [99.1, 99.8] | 99.5 [99.1, 99.8] |
+| damma | 375 / 75 | 99.2 [98.3, 100.0] | 99.2 [98.3, 100.0] | 99.2 [98.3, 100.0] | 99.2 [98.3, 100.0] | 99.2 [98.3, 100.0] | 99.2 [98.3, 100.0] |
+| fatha | 801 / 80 | 99.6 [99.2, 100.0] | 99.4 [98.8, 99.9] | 99.5 [98.8, 100.0] | 99.6 [99.2, 100.0] | 99.4 [98.8, 99.9] | 99.4 [98.8, 99.9] |
+| kasra | 299 / 71 | 99.7 [98.9, 100.0] | 99.0 [97.4, 100.0] | 99.7 [98.9, 100.0] | 99.7 [98.9, 100.0] | 99.7 [98.9, 100.0] | 99.7 [98.9, 100.0] |
+| sukun | 182 / 64 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
 
 *spurious haraka*, % [95% interval]
 
-| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
-|---|---|---|---|---|---|
-| sukun | 182 / 64 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+| cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|
+| sukun | 182 / 64 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 
 *commit rate, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | -3.7 [-5.1, -2.4] | +2.8 [1.7, 3.8] | -14.1 [-15.8, -12.5] | -7.7 [-9.5, -5.9] |
-| damma | 375 / 75 | -4.5 [-6.8, -2.5] | +1.9 [-0.3, 4.4] | -20.8 [-24.9, -16.9] | -14.4 [-18.6, -10.2] |
-| fatha | 801 / 80 | -3.7 [-5.7, -2.1] | +3.4 [1.5, 5.1] | -13.9 [-16.6, -11.3] | -6.7 [-9.3, -4.3] |
-| kasra | 299 / 71 | -4.7 [-7.6, -2.1] | +4.0 [1.1, 6.8] | -15.1 [-19.5, -11.0] | -6.4 [-10.9, -2.1] |
-| sukun | 182 / 64 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | -3.7 [-5.1, -2.4] | +2.8 [1.7, 3.8] | +2.9 [1.6, 4.1] | -14.1 [-15.8, -12.5] | -7.7 [-9.5, -5.9] | -0.6 [-1.3, 0.0] | -0.5 [-0.9, -0.1] |
+| damma | 375 / 75 | -4.5 [-6.8, -2.5] | +1.9 [-0.3, 4.4] | +1.6 [-0.8, 4.0] | -20.8 [-24.9, -16.9] | -14.4 [-18.6, -10.2] | -1.1 [-2.6, 0.6] | -1.3 [-3.1, 0.3] |
+| fatha | 801 / 80 | -3.7 [-5.7, -2.1] | +3.4 [1.5, 5.1] | +3.2 [1.3, 5.2] | -13.9 [-16.6, -11.3] | -6.7 [-9.3, -4.3] | -0.4 [-1.2, 0.4] | -0.5 [-1.2, 0.0] |
+| kasra | 299 / 71 | -4.7 [-7.6, -2.1] | +4.0 [1.1, 6.8] | +5.4 [1.8, 9.0] | -15.1 [-19.5, -11.0] | -6.4 [-10.9, -2.1] | -1.0 [-3.1, 1.1] | +0.3 [-0.7, 1.6] |
+| sukun | 182 / 64 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
 
 *committed accuracy, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
-| damma | 375 / 75 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
-| fatha | 801 / 80 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
-| kasra | 299 / 71 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
-| sukun | 182 / 64 | – | – | – | – |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| damma | 375 / 75 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| fatha | 801 / 80 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| kasra | 299 / 71 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
+| sukun | 182 / 64 | – | – | – | – | – | – | – |
 
 *app: flagged words, allowances on, paired difference*, points [95% interval]
 
-| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
-|---|---|---|---|---|---|
-| all | 1657 / 81 | +10.6 [8.6, 12.7] | -0.8 [-2.2, 0.5] | +13.5 [11.7, 15.3] | +2.1 [-0.3, 4.4] |
-| damma | 375 / 75 | +14.1 [10.3, 18.1] | +0.8 [-1.6, 3.4] | +16.0 [12.1, 19.8] | +2.7 [-2.9, 8.4] |
-| fatha | 801 / 80 | +10.5 [8.2, 12.9] | -1.7 [-3.6, 0.1] | +13.5 [10.6, 16.4] | +1.2 [-1.9, 4.5] |
-| kasra | 299 / 71 | +7.0 [4.0, 10.2] | -2.3 [-5.4, 0.6] | +13.0 [9.8, 16.4] | +3.7 [-0.8, 8.1] |
-| sukun | 182 / 64 | +9.3 [5.1, 13.9] | +2.2 [-1.8, 6.8] | +9.3 [4.9, 13.4] | +2.2 [-3.8, 8.2] |
+| cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| all | 1657 / 81 | +10.6 [8.6, 12.7] | -0.8 [-2.2, 0.5] | +0.1 [-0.2, 0.5] | +13.5 [11.7, 15.3] | +2.1 [-0.3, 4.4] | -13.6 [-15.3, -11.8] | -12.6 [-14.1, -11.1] |
+| damma | 375 / 75 | +14.1 [10.3, 18.1] | +0.8 [-1.6, 3.4] | -0.3 [-0.9, 0.0] | +16.0 [12.1, 19.8] | +2.7 [-2.9, 8.4] | -15.7 [-19.4, -12.0] | -16.8 [-20.5, -13.1] |
+| fatha | 801 / 80 | +10.5 [8.2, 12.9] | -1.7 [-3.6, 0.1] | +0.0 [-0.6, 0.6] | +13.5 [10.6, 16.4] | +1.2 [-1.9, 4.5] | -13.5 [-16.4, -10.7] | -11.7 [-14.2, -9.2] |
+| kasra | 299 / 71 | +7.0 [4.0, 10.2] | -2.3 [-5.4, 0.6] | +0.7 [0.0, 1.7] | +13.0 [9.8, 16.4] | +3.7 [-0.8, 8.1] | -13.4 [-16.8, -10.2] | -10.4 [-13.8, -7.0] |
+| sukun | 182 / 64 | +9.3 [5.1, 13.9] | +2.2 [-1.8, 6.8] | +0.5 [0.0, 1.9] | +9.3 [4.9, 13.4] | +2.2 [-3.8, 8.2] | -9.9 [-13.7, -5.8] | -11.5 [-16.3, -7.0] |
 
 **Real mistakes:** no site with a verdict yet.
 
@@ -506,14 +572,14 @@ For each ADR-0012 allowance, on the sites it affects: the share of sites whose w
 app flags, on correct recitation (false flags) and on real mistakes (caught), with the
 allowance on (`allowances_on`) and switched off alone. % [95% interval].
 
-| population | allowance | side | sites / reciters | base/spans on → off | base/stream_b0 on → off | h448/spans on → off | h448/stream_b0 on → off |
-|---|---|---|---|---|---|---|---|
-| pause | shaddah_suppression | false flags | 6 / 6 (too small) | 0.0 [0.0, 39.0] W → 0.0 [0.0, 39.0] W | 33.3 [9.7, 70.0] W → 50.0 [18.8, 81.2] W | 16.7 [3.0, 56.4] W → 16.7 [3.0, 56.4] W | 33.3 [9.7, 70.0] W → 50.0 [18.8, 81.2] W |
-| pause | tashkeel_toggle | false flags | 135 / 62 | 2.2 [0.0, 5.0] → 3.0 [0.7, 6.2] | 20.0 [12.5, 28.2] → 22.2 [14.5, 30.8] | 17.0 [11.0, 23.5] → 19.3 [13.4, 25.4] | 18.5 [11.7, 26.2] → 23.0 [15.8, 31.3] |
-| targeted_safeguard | soft_pair_forgiveness | false flags | 120 / 76 | 11.7 [5.7, 18.7] → 64.2 [55.6, 72.3] | 30.0 [22.1, 38.2] → 60.0 [50.8, 68.8] | 28.3 [21.7, 35.3] → 42.5 [34.4, 50.4] | 30.8 [22.1, 40.0] → 40.0 [31.2, 48.7] |
-| targeted_safeguard | shaddah_suppression | false flags | 10 / 10 (too small) | 10.0 [1.8, 40.4] W → 60.0 [31.3, 83.2] W | 30.0 [10.8, 60.3] W → 60.0 [31.3, 83.2] W | 40.0 [16.8, 68.7] W → 40.0 [16.8, 68.7] W | 40.0 [16.8, 68.7] W → 50.0 [23.7, 76.3] W |
-| diagnostic | shaddah_suppression | false flags | 171 / 65 | 1.2 [0.0, 2.7] → 1.2 [0.0, 2.7] | 9.9 [4.8, 15.7] → 14.0 [8.2, 20.5] | 14.6 [9.3, 20.2] → 15.2 [9.5, 21.0] | 11.1 [5.9, 16.7] → 16.4 [10.5, 22.5] |
-| diagnostic | tashkeel_toggle | false flags | 1657 / 81 | 1.1 [0.6, 1.8] → 1.4 [0.8, 2.2] | 14.7 [12.8, 16.5] → 19.1 [17.2, 21.1] | 11.7 [9.8, 13.8] → 12.6 [10.7, 14.7] | 13.8 [12.2, 15.5] → 18.0 [16.2, 19.8] |
+| population | allowance | side | sites / reciters | base/checks on → off | base/spans on → off | base/stream_b0 on → off | h448/checks on → off | h448/spans on → off | h448/stream_b0 on → off |
+|---|---|---|---|---|---|---|---|---|---|
+| pause | shaddah_suppression | false flags | 6 / 6 (too small) | 0.0 [0.0, 39.0] W → 0.0 [0.0, 39.0] W | 0.0 [0.0, 39.0] W → 0.0 [0.0, 39.0] W | 33.3 [9.7, 70.0] W → 50.0 [18.8, 81.2] W | 0.0 [0.0, 39.0] W → 0.0 [0.0, 39.0] W | 16.7 [3.0, 56.4] W → 16.7 [3.0, 56.4] W | 33.3 [9.7, 70.0] W → 50.0 [18.8, 81.2] W |
+| pause | tashkeel_toggle | false flags | 135 / 62 | 1.5 [0.0, 3.8] → 1.5 [0.0, 3.8] | 2.2 [0.0, 5.0] → 3.0 [0.7, 6.2] | 20.0 [12.5, 28.2] → 22.2 [14.5, 30.8] | 2.2 [0.0, 5.0] → 3.0 [0.7, 6.2] | 17.0 [11.0, 23.5] → 19.3 [13.4, 25.4] | 18.5 [11.7, 26.2] → 23.0 [15.8, 31.3] |
+| targeted_safeguard | soft_pair_forgiveness | false flags | 120 / 76 | 8.3 [3.4, 14.2] → 36.7 [28.6, 45.5] | 11.7 [5.7, 18.7] → 64.2 [55.6, 72.3] | 30.0 [22.1, 38.2] → 60.0 [50.8, 68.8] | 10.0 [5.2, 15.5] → 20.8 [14.3, 27.8] | 28.3 [21.7, 35.3] → 42.5 [34.4, 50.4] | 30.8 [22.1, 40.0] → 40.0 [31.2, 48.7] |
+| targeted_safeguard | shaddah_suppression | false flags | 10 / 10 (too small) | 10.0 [1.8, 40.4] W → 30.0 [10.8, 60.3] W | 10.0 [1.8, 40.4] W → 60.0 [31.3, 83.2] W | 30.0 [10.8, 60.3] W → 60.0 [31.3, 83.2] W | 30.0 [10.8, 60.3] W → 40.0 [16.8, 68.7] W | 40.0 [16.8, 68.7] W → 40.0 [16.8, 68.7] W | 40.0 [16.8, 68.7] W → 50.0 [23.7, 76.3] W |
+| diagnostic | shaddah_suppression | false flags | 171 / 65 | 1.8 [0.0, 3.6] → 1.8 [0.0, 3.6] | 1.2 [0.0, 2.7] → 1.2 [0.0, 2.7] | 9.9 [4.8, 15.7] → 14.0 [8.2, 20.5] | 0.6 [0.0, 1.9] → 0.6 [0.0, 1.9] | 14.6 [9.3, 20.2] → 15.2 [9.5, 21.0] | 11.1 [5.9, 16.7] → 16.4 [10.5, 22.5] |
+| diagnostic | tashkeel_toggle | false flags | 1657 / 81 | 1.1 [0.5, 1.8] → 1.1 [0.5, 1.8] | 1.1 [0.6, 1.8] → 1.4 [0.8, 2.2] | 14.7 [12.8, 16.5] → 19.1 [17.2, 21.1] | 1.2 [0.6, 1.9] → 1.4 [0.7, 2.1] | 11.7 [9.8, 13.8] → 12.6 [10.7, 14.7] | 13.8 [12.2, 15.5] → 18.0 [16.2, 19.8] |
 
 Allowances and sides with no affected site in a population are omitted. A caught rate
 needs real-mistake sites. Soft pairs are pooled, as Muraja has one switch (ADR-0012);

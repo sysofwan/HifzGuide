@@ -78,7 +78,8 @@ def app(sites, arms, outcomes=None, default=NOT_FLAGGED):
         s.name: {arm: {site.site_id: outcomes.get((s.name, site.site_id), default) for site in sites} for arm in arms}
         for s in SCORINGS
     }
-    return MurajaGrades(grades, SCORINGS, {"muraja_commit": "c", "compiler": "swift"}, SINGLE_DECODE)
+    approximations = {arm: SINGLE_DECODE for arm in arms}
+    return MurajaGrades(grades, SCORINGS, {"muraja_commit": "c", "compiler": "swift"}, approximations)
 
 
 def decodes_for(sites, overrides=None):
@@ -274,7 +275,7 @@ def test_coverage_counts_words_that_show_a_grade(sites):
     report = score(sites, RECITERS, {"m/spans": decodes_for(sites)}, (), muraja)
     rates = cell(report, HEADLINE, CORRECT_SIDE, "fatha")["arms"]["m/spans"]["rates"]
     assert rates["coverage@shipped_default"]["point"] == 0.5
-    assert report["muraja"]["approximation"] == SINGLE_DECODE
+    assert report["muraja"]["approximations"] == {"m/spans": SINGLE_DECODE}
 
 
 def test_power_inputs_hold_per_reciter_sums(sites):

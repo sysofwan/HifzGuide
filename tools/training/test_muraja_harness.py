@@ -153,3 +153,44 @@ def test_a_carrier_in_words_run_together_keeps_its_own_word():
         if s.site_id.endswith("tadabur_spk0158_S30_A16_adc88181_000011.wav#8")
     )
     assert MurajaText(HARNESS.quran_db).locate(site).word == 9
+
+
+# --- the end of a recorded clip is the app's stop (#125) ---------------------------------
+
+#: A correctly recited 112:4 whose last word only the stop's decode completes (h448's recorded
+#: checks): the app's stop hands that decode to a final alignment pass, a silence flush does not
+#: align at all (FollowAlongEngine.swift:608-624 against :899-914).
+STOP_ITEM = "tadabur_spk0593_S111_A4_446dbd1f_000000.wav@3070:58845"
+
+
+def test_the_stop_aligns_the_last_decode_and_a_silence_flush_would_not():
+    from tadabur.truth_sites import load_truth_sites as _load
+    from training.muraja_policy import SHIPPED_DEFAULT, Item, build_request
+    from training.truth_baseline import CHECK_STORE, read_cache
+    from training.truth_scorer import item_key
+
+    checks = read_cache(CHECK_STORE.path("h448"))["items"][STOP_ITEM]["checks"]
+    *updates, stop = checks
+    assert stop == {"hop": stop["hop"], "overlap": "", "flush": False, "stop": True} and stop["hop"]
+    sites = tuple(s for s in _load(TRUTH_SITES_DIR / "p35_fixtures.jsonl") if item_key(s) == STOP_ITEM)
+    text = MurajaText(HARNESS.quran_db)
+
+    def final_grade(sequence) -> str | None:
+        request, where = build_request(Item("i", sites, tuple(sequence)), text, [SHIPPED_DEFAULT])
+        (word,) = {w.word for w in where.values()}
+        _, (result,) = HARNESS.run([request])
+        return {s["word"]: s["quality"] for s in result["final"]}.get(word)
+
+    as_flush = {"hop": stop["hop"], "overlap": "", "flush": True}
+    assert final_grade(checks) not in (None, "pending")
+    assert final_grade([*updates, as_flush]) in (None, "pending")
+
+
+def test_a_stop_anywhere_but_last_is_refused():
+    import subprocess
+
+    stop = {"hop": "", "overlap": "", "flush": False, "stop": True}
+    case = FIXTURES["cases"][0]
+    bad = {**request(case), "checks": [stop, *request(case)["checks"]]}
+    with pytest.raises(subprocess.CalledProcessError):
+        HARNESS.run([bad])

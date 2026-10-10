@@ -10,9 +10,11 @@
 //
 // A request is one item: a surah and ayah, the phoneme word the reciter starts on, the checks in
 // order (each as FollowAlongEngine.handleUpdate receives it: the hop, the overlap or preview, and
-// whether it is a silence flush), the phoneme words to report, and the scorings to replay. Each
-// scoring is a fresh session: a new engine on the ayah's page, every check, then the session's
-// end (handleFinalFlush, settleReadersWord), as tools/replay_log.swift ends a log.
+// whether it is a silence flush; or, as the last check only, the app's stop and the phonemes it
+// hands handleFinalFlush), the phoneme words to report, and the scorings to replay. Each scoring
+// is a fresh session: a new engine on the ayah's page, every check, then the session's end
+// (handleFinalFlush, empty unless a stop gave it phonemes, then settleReadersWord), as
+// tools/replay_log.swift ends a log.
 //
 // What is driven and what is not: everything from handleUpdate on is Muraja's engine (query
 // assembly, confirmation, placement, word scoring, GradeStore with its hold buffer and the
@@ -46,6 +48,12 @@ struct Check: Decodable {
   let hop: String
   let overlap: String
   let flush: Bool
+  /// The app's stop: `hop` holds the phonemes RealtimeTranscriber.stop() returns, which the app
+  /// hands to the engine's final alignment pass (LifecycleCoordinator+iOS.swift:340-347 ->
+  /// FollowAlongEngine.handleFinalFlush, :899-914). Only ever a session's last check.
+  let stop: Bool?
+
+  var isStop: Bool { stop ?? false }
 }
 
 struct Scoring: Decodable {
@@ -170,13 +178,22 @@ func replay(_ request: Request, _ scoring: Scoring, db: QuranDatabase, index: Ph
 
   var checks: [CheckResult] = []
   for check in request.checks {
-    _ = engine.handleUpdate(confirmed: check.hop, unconfirmed: check.overlap, didFlush: check.flush)
+    if check.isStop {
+      engine.handleFinalFlush(phonemes: check.hop)
+    } else {
+      _ = engine.handleUpdate(confirmed: check.hop, unconfirmed: check.overlap, didFlush: check.flush)
+    }
     let statuses = checkStatuses(engine.recitationStatus)
       .filter { reported.contains($0.position) }
       .map(Status.init)
     checks.append(CheckResult(position: engine.currentPosition.description, statuses: statuses))
   }
-  engine.handleFinalFlush(phonemes: "")
+  // A session that did not end with the app's stop ends with an empty one, as a session whose
+  // last audio went to a silence flush does (the transcriber's stop() has nothing pending).
+  if !(request.checks.last?.isStop ?? false) {
+    engine.handleFinalFlush(phonemes: "")
+  }
+  // The session's end settles the reader's word (FollowAlongManager+iOS.swift:881-882).
   engine.settleReadersWord()
   let final = reported.sorted().compactMap { engine.wordStatuses[$0] }.map(Status.init)
   return Result(
@@ -224,6 +241,14 @@ while let line = readLine(strippingNewline: true) {
     request = try decoder.decode(Request.self, from: line.data(using: .utf8)!)
   } catch {
     FileHandle.standardError.write("bad request: \(error)\n".data(using: .utf8)!)
+    exit(1)
+  }
+  let stops = request.checks.indices.filter { request.checks[$0].isStop }
+  let wellFormed = stops.allSatisfy {
+    $0 == request.checks.count - 1 && !request.checks[$0].flush && request.checks[$0].overlap.isEmpty
+  }
+  guard wellFormed else {
+    FileHandle.standardError.write("bad request \(request.item): a stop is only the last check, with no overlap or flush\n".data(using: .utf8)!)
     exit(1)
   }
   for scoring in request.scorings {

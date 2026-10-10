@@ -20,7 +20,6 @@ from training.muraja_policy import (
     MURAJA_COMMIT,
     NOT_FLAGGED,
     NOT_GRADED,
-    SAMPLE_RATE,
     SCORINGS,
     SHIPPED_DEFAULT,
     UNPLACED,
@@ -41,6 +40,7 @@ from training.muraja_policy import (
     single_decode_checks,
     site_outcome,
 )
+from training.decoding import SAMPLE_RATE
 from training.test_site_outcomes import DHAKARA, DHAL, KATABA, MADDA, make
 
 # --- scorings and allowances ------------------------------------------------------------------
@@ -247,7 +247,7 @@ def test_two_groups_printed_on_one_letter_mark_the_same_letter():
 
 def test_requests_out_and_results_in(text):
     site = make("لَںںںتَمَسسَنَ", 10, "fatha", "fatha", "fatha", surah_ayah="2:80")
-    item = Item("arm#item", (site,), "لَںںںتَمَسَنَ", 2 * SAMPLE_RATE)
+    item = Item("arm#item", (site,), tuple(single_decode_checks("لَںںںتَمَسَنَ", 2 * SAMPLE_RATE)))
     request, where = build_request(item, text, SCORINGS)
     assert (request["surah"], request["ayah"], request["start_word"], request["report_words"]) == (2, 80, 2, [3])
     assert len(request["scorings"]) == 4 and request["checks"][-1]["flush"]

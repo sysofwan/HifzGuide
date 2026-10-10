@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from training.site_outcomes import CORRECT_SIDE, MISTAKE_SIDE
-from training.muraja_policy import APPROXIMATIONS
+from training.muraja_policy import APPROXIMATIONS, RECORDED_CHECKS, SINGLE_DECODE
 from training.truth_scorer import DIAGNOSTIC, HEADLINE, PAUSE, POPULATIONS, SAFEGUARD, SYNTHETIC
 
 _POPULATION_TITLES = {
@@ -161,6 +161,69 @@ def _all_census(report: dict) -> bool:
     return all(sampled[stratum] == n for stratum, n in population.items())
 
 
+_APPROXIMATION_TITLES = {
+    RECORDED_CHECKS: "Recorded check sequence",
+    SINGLE_DECODE: "Single-decode approximation",
+}
+
+
+def _approximations(muraja: dict) -> list[str]:
+    """Each way the arms' checks were made, with the arms it applies to."""
+    by_approximation: dict[str, list[str]] = defaultdict(list)
+    for arm, approximation in muraja["approximations"].items():
+        by_approximation[approximation].append(arm)
+    lines = []
+    for approximation in APPROXIMATIONS:
+        if approximation in by_approximation:
+            arms = ", ".join(f"`{a}`" for a in by_approximation[approximation])
+            lines += [
+                f"**{_APPROXIMATION_TITLES[approximation]}** ({arms}). {APPROXIMATIONS[approximation]}",
+                "",
+            ]
+    return lines
+
+
+def _recorded_vs_single(report: dict) -> list[str]:
+    """Per pooled cell, model and scoring: the recorded check sequence's flagged words minus
+    the single-decode approximation's on the same stream, paired."""
+    pooled = [c for c in report["cells"] if c["sites"] and c["family"] == "all"]
+    compared = pooled[0]["differences"] if pooled else {}
+    pairs = [c for c in compared if c.endswith("/stream_b0") and "/checks - " in c]
+    if not pairs:
+        return []
+    names = [s["name"] for s in report["muraja"]["scorings"]]
+    lines = [
+        "### The recorded check sequence against the single-decode approximation",
+        "",
+        "Flagged words (the site's word shows as not correct) with each item's recorded check",
+        "sequence (`checks`) minus the same with the single-decode approximation on the deployed",
+        "stream (`stream_b0`), paired on the same sites, points [95% interval]. On correct",
+        "recitation a negative difference is fewer false flags; on real mistakes, fewer catches.",
+        "",
+        "Three things differ between the two, and this comparison does not separate them. The",
+        "transcript differs: `checks` commits its own hops, featurised and stripped as the app",
+        "does, and ends with the app's stop rather than a silence flush (its decode-level rates sit",
+        "next to `stream_b0`'s in the results below). The placement differs: a single-decode check",
+        "is cut from the one decode by spreading its characters evenly over time, a recorded check",
+        "decodes exactly its own audio. And the checks are separate inferences: every single-decode",
+        "check of a word repeats the one decode's reading of it, while recorded checks are",
+        "inferences in their own context (a preview ends where the audio ends; an overlap has the",
+        "window's own right context), so a word's checks can disagree, and `GradeStore` keeps the",
+        "best grade any of them gave. That ratchet can hide real mistakes as well as false flags;",
+        "these sites cannot show it until real-mistake sites exist.",
+        "",
+    ]
+    for cell in pooled:
+        lines += [f"**{cell['population']}, {cell['side']}** ({_size(cell)})", ""]
+        lines += ["| paired difference | " + " | ".join(f"`{n}`" for n in names) + " |",
+                  "|---|" + "---|" * len(names)]
+        for pair in pairs:
+            values = [_delta(cell["differences"][pair].get(f"word_flags@{n}")) for n in names]
+            lines.append(f"| {pair} | " + " | ".join(values) + " |")
+        lines.append("")
+    return lines
+
+
 def _app_section(report: dict, arms: list[str]) -> list[str]:
     """Pooled app outcomes per population, side and scoring."""
     muraja = report["muraja"]
@@ -169,8 +232,7 @@ def _app_section(report: dict, arms: list[str]) -> list[str]:
         f"Graded by Muraja's own engine at `{build['muraja_commit'][:12]}` (v1.0.27), compiled with",
         f"{build['compiler']} into `tools/muraja_harness` (see `tools/training/muraja_policy.py`).",
         "",
-        "**Single-decode approximation.** " + APPROXIMATIONS[muraja["approximation"]],
-        "",
+        *_approximations(muraja),
         f"Sites whose word has no counterpart on Muraja's reference (unplaced, never graded): "
         f"{muraja['unplaced_sites']}; sites placed on their word but whose own letter has no "
         f"counterpart (a flag on the word counts, its letter is unattributed): "
@@ -205,7 +267,7 @@ def _app_section(report: dict, arms: list[str]) -> list[str]:
                 values = [format_estimate(rates.get(f"{rate}@{n}")) for n in names]
                 lines.append(f"| {arm} | {rate.replace('_', ' ')} | " + " | ".join(values) + " |")
         lines.append("")
-    return lines
+    return lines + _recorded_vs_single(report)
 
 
 def _allowance_section(report: dict, arms: list[str]) -> list[str]:
@@ -311,12 +373,17 @@ def render(report: dict) -> str:
         + (", each under its directly adjudicated verdict (`report.json`)."
            if report["physical_sites_merged"] else "; every record is its own site."),
         "",
-        "Every site is scored under four **arms**: each model, decoded two ways from the same",
-        "staged audio. `spans` decodes the item (the whole clip, or the P3.5 segment) in one pass;",
-        "`stream_b0` replays the deployed streaming protocol on the item (5 s windows from its",
-        "first sample, each normalized on its own, 1 s hop, block 0 committed, startup rule and",
-        "tail flush; `training.decoding`). Every arm has an outcome at every site, so each",
-        "comparison is paired on the same sites. Both models are decoded with",
+        "Every site is scored under three **arms** per model, all from the same staged audio.",
+        "`spans` decodes the item (the whole clip, or the P3.5 segment) in one pass; `stream_b0`",
+        "replays the deployed streaming protocol on the item (5 s windows from its first sample,",
+        "each normalized on its own, 1 s hop, block 0 committed, startup rule and tail flush);",
+        "`checks` records every update Muraja's transcriber would hand its engine over the item",
+        "(each full window's hop and overlap, each 200 ms preview, and the stop's decode for the",
+        "final alignment pass), one inference per check featurised as the app does, and its",
+        "decode is the transcript the",
+        "app commits from them (every hop; `training.decoding`, `Decoder.app_checks`). Every arm",
+        "has an outcome at every site, so each comparison is paired on the same sites. Both models",
+        "are decoded with",
         f"`{first['weights_dtype']}` weights at batch size {first['batch_size']} on "
         f"{first['device_type']} (inference policy `{first['policy']}`):",
         "",
@@ -357,6 +424,14 @@ def render(report: dict) -> str:
         lines += [
             "- **No real-mistake site with a verdict exists yet.** Missed mistakes, silent",
             "  corrections and every mistake-side rate are undefined.",
+        ]
+    if report["muraja"] and RECORDED_CHECKS in report["muraja"]["approximations"].values():
+        lines += [
+            "- **The `checks` arms are the app outcome to read.** They replay the checks Muraja's",
+            "  transcriber would make from the audio (bypasses stated under \"The app outcome\";",
+            "  they make it an estimate of the device's grades, not a bound on them); the `spans`",
+            "  and `stream_b0` app outcomes are the single-decode approximation, kept as a",
+            "  fallback and for comparison.",
         ]
     lines += [
         "- **Sukun commit rate is 0 by construction** while a model has no sukun class: at a",

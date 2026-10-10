@@ -9,8 +9,9 @@ holdback. This module holds what is ours:
 * the **scorings** to replay (:class:`Scoring`): a Muraja mode, the two allowance flags of
   ``ScoringParameters`` (``softPairsEnabled``, ``shaddahSuppression``,
   ``FollowAlong/FollowAlongTypes.swift:66-71``) and the Tashkeel toggle;
-* the **checks** each item's one decode stands for (:func:`single_decode_checks`, the
-  single-decode approximation);
+* the **checks** an item is graded on (:class:`Item`): the check sequence recorded from its
+  audio (:data:`RECORDED_CHECKS`), or, as a fallback, the checks its one decode stands for
+  (:func:`single_decode_checks`, :data:`SINGLE_DECODE`);
 * where each truth site sits in Muraja's reference (:class:`MurajaText`), and what the grade the
   engine keeps means for it (:func:`site_outcome`).
 
@@ -41,20 +42,25 @@ turn the toggle off see it. The shipped default (:data:`SHIPPED_DEFAULT`: tashke
 ``Data/AppSettings+iOS.swift:63``) is the same engine run with the Tashkeel allowance off.
 :data:`SCORINGS` adds each allowance off alone and all three off.
 
-The single-decode approximation
--------------------------------
+The checks: recorded, or cut from one decode
+--------------------------------------------
 Muraja checks every hop (the first second of a full 5 s window) and every preview of the pending
 audio, run each time 200 ms of new audio has arrived once 2 s are pending
-(``Models/RealtimeTranscriber+iOS.swift:566-660``); each check regrades the words it reaches.
-HifzGuide decodes each item once per protocol, so :func:`single_decode_checks` replays that
-cadence over the item's span with every check cut from the one decode, its characters spread
-evenly over the span's duration (whole Swift Characters, so a haraka never leaves its
-consonant), on exact sample counts. The session starts on the item's first word (the harness
-moves the engine there after ``setPage``, as the app's explicit navigation does). The engine
-then places, grades and ratchets as in the app; what the approximation cannot show is a check
-decoding differently from the whole-item decode. Each item is one session: it ends with a
-silence flush of the pending audio, including what follows the last whole 200 ms step, and the
-session's end (``handleFinalFlush``, ``settleReadersWord``).
+(``Models/RealtimeTranscriber+iOS.swift:566-660``); each check regrades the words it reaches. The
+faithful input is that sequence decoded from the item's audio, one inference per check
+(:meth:`training.decoding.Decoder.app_checks`, whose docstring cites the transcriber and states what
+it bypasses): :data:`RECORDED_CHECKS`. Where only one decode per item exists,
+:func:`single_decode_checks` replays the same schedule (:func:`training.decoding.check_schedule`)
+with every check cut from that decode, its characters spread evenly over the span's duration (whole
+Swift Characters, so a haraka never leaves its consonant), on exact sample counts. Either way, the
+session starts on the item's first word (the harness moves the engine there after ``setPage``, as
+the app's explicit navigation does). The engine then places, grades and ratchets as in the app; what
+the single-decode approximation cannot show is a check decoding differently from the whole-item
+decode. Each item is one session. A recorded sequence ends as the app's stop does: the decode of
+everything pending, handed to ``handleFinalFlush`` for a final alignment pass (no silence flush
+fires, as no speech detector is modelled). The single-decode approximation ends, as #123 defined
+it, with a silence flush of the pending audio (which does not align) and an empty
+``handleFinalFlush``. Both then settle the reader's word (``settleReadersWord``).
 
 What a kept grade means for a site
 ----------------------------------
@@ -97,6 +103,15 @@ from functools import lru_cache
 from pathlib import Path
 
 from tadabur.truth_sites import HELD, SHADDAH, SOFT_PAIRS, TruthSite
+from training.decoding import (
+    FLUSH,
+    HOP_SAMPLES,
+    PREVIEW,
+    WINDOW,
+    check_schedule,
+    clusters,
+    make_check,
+)
 from training.site_outcomes import TASHKEEL, family
 
 MURAJA_COMMIT = "99c326f3fb7c6c53ff525568976c7e2442ccde3c"
@@ -221,16 +236,24 @@ def displayed(quality: str, scoring: Scoring) -> str:
     return quality
 
 
-# --- the checks one decode stands for --------------------------------------------------------------
-SAMPLE_RATE = 16_000
-#: The cadence in samples (``RealtimeTranscriber+iOS.swift:169-188, 238-240, 566-569``): a 5 s
-#: window, a 1 s hop, no inference below 2 s pending, a preview per 3,200 new samples (200 ms).
-WINDOW_SAMPLES, HOP_SAMPLES, MIN_PENDING_SAMPLES, PREVIEW_SAMPLES = 80_000, 16_000, 32_000, 3_200
-
-
-#: The single-decode approximation (module docstring) and the statement a report carries.
+# --- the checks an item is graded on ----------------------------------------------------------------
+#: The recorded check sequence (module docstring) and the single-decode approximation, and the
+#: statement a report carries for each.
+RECORDED_CHECKS = "recorded_check_sequence"
 SINGLE_DECODE = "single_decode_on_app_cadence"
 APPROXIMATIONS = {
+    RECORDED_CHECKS: (
+        "Each check Muraja would run over the item's audio (a hop per second once 5 s are "
+        "pending, a preview per 200 ms once 2 s are, and the stop's decode of what is pending) "
+        "was decoded on its own audio, featurised, split and stripped as the app does it "
+        "(`training.decoding`, `APP_CHECKS`), and replayed through Muraja's engine, the stop "
+        "through its final alignment pass. The audio is taken to arrive in 200 ms steps with "
+        "every inference instantaneous; the speech detector is not modelled, so no silence flush "
+        "fires and the VAD gate and window/preview hallucination gates are bypassed (the reciter "
+        "speaks throughout the item); and the decodes are PyTorch bf16, not the device's CoreML. "
+        "None of these is known to move grades one way only: this estimates the device's grades, "
+        "it does not bound them. The session starts on the item's first word."
+    ),
     SINGLE_DECODE: (
         "Each item has one decode per arm, not one per Muraja check. The checks Muraja would run "
         "over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once "
@@ -245,28 +268,16 @@ APPROXIMATIONS = {
 }
 
 
-def clusters(text: str) -> list[str]:
-    """Swift Characters: a base scalar and the combining marks after it."""
-    out: list[str] = []
-    for char in text:
-        if out and unicodedata.combining(char):
-            out[-1] += char
-        else:
-            out.append(char)
-    return out
-
-
 def single_decode_checks(decode: str, n_samples: int) -> list[dict]:
     """The checks Muraja would run over an item of ``n_samples``, each cut from one decode.
 
-    The audio arrives in steps of 3,200 samples (200 ms), counted in samples so nothing is
-    rounded: with a full window pending, its hop (the first second) is confirmed with the rest
-    as overlap and the window advances a second, after which a preview runs at once; otherwise,
-    with at least 2 s pending, a preview of all pending audio runs. The audio after the last
-    whole step and everything still pending go to the closing silence flush. Updates with
-    nothing in them are not sent, as the transcriber sends none. Every window start stays on the
-    200 ms grid (the window and hop are whole numbers of steps), so this is the transcriber's
-    schedule up to its 10 ms polling.
+    The transcriber's schedule (:func:`training.decoding.check_schedule`, exact sample counts)
+    with each inference's text cut from ``decode``, its Characters spread evenly over the
+    samples: a window's hop is its first second and its overlap the rest, and a preview is all
+    of its audio. Updates with nothing in them are not sent, as the transcriber sends none
+    (:func:`training.decoding.make_check`). The schedule's last inference, the recorded
+    sequence's stop, is sent here as a silence flush of its audio, as #123 defined this
+    approximation; the fallback's grades are kept exactly as they were.
     """
     chars = clusters(decode)
     per_sample = len(chars) / n_samples if n_samples else 0.0
@@ -274,20 +285,17 @@ def single_decode_checks(decode: str, n_samples: int) -> list[dict]:
     def text(start: int, end: int) -> str:
         return "".join(chars[round(start * per_sample) : round(end * per_sample)])
 
-    checks: list[dict] = []
-
-    def send(hop: str, overlap: str, flush: bool) -> None:
-        if hop or overlap or flush:
-            checks.append({"hop": hop, "overlap": overlap, "flush": flush})
-
-    start = 0
-    for now in range(PREVIEW_SAMPLES, n_samples + 1, PREVIEW_SAMPLES):
-        if now - start >= WINDOW_SAMPLES:
-            send(text(start, start + HOP_SAMPLES), text(start + HOP_SAMPLES, start + WINDOW_SAMPLES), False)
-            start += HOP_SAMPLES
-        if now - start >= MIN_PENDING_SAMPLES:
-            send("", text(start, now), False)
-    send(text(start, n_samples), "", True)
+    checks = []
+    for span in check_schedule(n_samples):
+        if span.kind == WINDOW:
+            hop = span.start + HOP_SAMPLES
+            check = make_check(WINDOW, text(span.start, hop), text(hop, span.end))
+        elif span.kind == PREVIEW:
+            check = make_check(PREVIEW, "", text(span.start, span.end))
+        else:  # STOP
+            check = make_check(FLUSH, text(span.start, span.end), "")
+        if check is not None:
+            checks.append(check)
     return checks
 
 
@@ -510,12 +518,13 @@ def require_harness() -> Harness:
 # --- items in, site outcomes out -------------------------------------------------------------------
 @dataclass(frozen=True)
 class Item:
-    """One decoded item: its sites (one realized reference in one ayah), a decode, its length."""
+    """One item to grade: its sites (one realized reference in one ayah) and the checks the
+    engine replays, recorded (:meth:`training.decoding.Decoder.app_checks`) or cut from one
+    decode (:func:`single_decode_checks`)."""
 
     key: str
     sites: tuple[TruthSite, ...]
-    decode: str
-    n_samples: int
+    checks: tuple[dict, ...]
 
 
 @dataclass(frozen=True)
@@ -557,7 +566,7 @@ def build_request(item: Item, text: MurajaText, scorings: Sequence[Scoring]) -> 
         "ayah": ayah,
         "start_word": text.start_word(item.sites[0]),
         "report_words": sorted({w.word for w in where.values() if w is not None}),
-        "checks": single_decode_checks(item.decode, item.n_samples),
+        "checks": list(item.checks),
         "scorings": [
             {
                 "name": name,

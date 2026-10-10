@@ -79,6 +79,63 @@ The commit rule (:func:`stream_emissions`) is pure numpy over per-window argmax 
 the protocol is tested on synthetic logits with no model at all, and importing this module
 does not import torch.
 
+Muraja's check sequence
+-----------------------
+
+The stream above is the transcript Muraja commits. What Muraja *grades* is every update its
+transcriber hands the engine (``FollowAlongEngine.handleUpdate``): each full window's hop and
+overlap and each preview of the pending audio, and then, when the reciter stops, the final
+decode ``stop()`` returns. :meth:`Decoder.app_checks` records that sequence for one item, one
+inference per check, as ``{hop, overlap, flush}`` checks (the request format of
+``tools/muraja_harness``) ending in a ``stop`` check (:func:`make_check`). Paths are under
+``ios/HifzGuide/`` of ``sysofwan/Muraja`` at ``99c326f`` (``training.muraja_policy.MURAJA_COMMIT``);
+bare line numbers are in ``Models/RealtimeTranscriber+iOS.swift``.
+
+* **Schedule** (:func:`check_schedule`). Nothing runs below 2 s pending (:568-571). With a full
+  5 s window pending (:575-577; ``windowSamples`` 80,000, :253) the window is decoded, its hop
+  and overlap sent (:612), the window advanced by 1 s (:616, :458-468; ``hopSamples`` 16,000,
+  :254) and the preview throttle reset (:617-618), so a preview of what is left runs next.
+  Otherwise a preview of all pending audio runs once 3,200 new samples (200 ms) have arrived
+  since the last (:238-241, :624-662). The item ends with ``stop()``: one inference over
+  everything pending (:317-336), whose decode the app hands to the engine's final alignment
+  pass, ``handleFinalFlush`` (``FollowAlong/LifecycleCoordinator+iOS.swift:340-354``,
+  ``FollowAlong/FollowAlongEngine.swift:897-914``), before the session's end settles the
+  reader's word (``FollowAlong/FollowAlongManager+iOS.swift:881-882``). Audio is taken to
+  arrive in 200 ms steps, counted in exact samples, and every inference to be instantaneous, so
+  a window runs as soon as 5 s are pending and every window start falls on the step grid.
+* **Featurisation** (:meth:`Decoder.device_rows`). Each update's audio is featurised on its own:
+  per-mel-bin normalization over its own frames and an odd frame count padded with 1.0
+  (``Models/MelFeatureExtractor+iOS.swift:91-153``; the teacher's ``SeamlessM4TFeatureExtractor``
+  does the same with ``padding_value`` 1 and ``pad_to_multiple_of`` 2). One difference: a
+  single frame (400-559 samples) has variance 0 on the device, so it normalizes to zeros
+  (:107-115 there), where the extractor's ``ddof=1`` makes it NaN; :func:`device_pairs` takes
+  the device's. The rest of the model's
+  fixed 250 feature pairs repeat the last real pair (:156-162 there): a preview is not
+  zero-padded audio, and even a full window (249 real pairs) carries one repeated pair. Only
+  the first ``min(max((pairs + 1) // 2, 1), 125)`` output timesteps are decoded
+  (``Models/MuaalemInference+iOS.swift:107-117, 132-135``).
+* **Split** (``Models/MuaalemInference+iOS.swift:128-149``). A window's CTC segments whose
+  midpoint is before timestep 25 form the hop; the rest are the overlap.
+* **Text** (``Models/PhonemeVocabulary.swift:61-102``). Each part is decoded and stripped of
+  padding artifacts (:func:`strip_padding_artifacts`) on its own (:583-584, :638, :683). An
+  window or preview with nothing in it is not sent (:599, :649). The stop's CTC hallucination
+  gate does not depend on the speech detector and is applied (:328-332;
+  ``Models/CTCDecoder+iOS.swift:44-49, 121-139``).
+
+Bypassed, because they need the device's speech detector (Apple's SoundAnalysis) or its clock:
+the silence flush after 5 s without meaningful output (:545-556), so no silence flush ever fires
+here; the VAD power gate (:561-566); and the hallucination gates on windows and previews (:603,
+:651; both only when the detector reports silence). The reciter is therefore taken to be
+speaking throughout the item, up to the stop. Not modelled either: inference latency (late
+windows, skipped previews), the device's CoreML fp16 numerics and 6-bit palettization, and
+page-change discards (``FollowAlong/UpdateCoalescer+iOS.swift``, which otherwise hands every
+update to the engine in order, :13-16). None of these is known to move grades in one direction
+only, so the recorded sequence is an estimate of the device's grades, not a bound on them.
+
+The transcript the app commits from those checks (:func:`committed_text`) is every hop, the
+stop's included (``FollowAlong/HeardStream.swift:4-6``, ``FollowAlong/FollowAlongEngine.swift
+:608-625, 907-909``).
+
 Identifying a stored decode
 ---------------------------
 
@@ -91,6 +148,7 @@ outcomes record it, so a comparison across runs can refuse a mismatched or missi
 
 from __future__ import annotations
 
+import unicodedata
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, fields
 from itertools import islice
@@ -346,6 +404,155 @@ def tokens_to_phonemes(token_ids: Iterable[int]) -> str:
         for t in token_ids
         if t != BLANK_ID and 0 <= t < len(PHONEME_ID_TO_CHAR)
     )
+
+
+# --- Muraja's check sequence (module docstring) ----------------------------------------
+
+# The decode mode of a recorded check sequence (:meth:`Decoder.app_checks`). v1 ended the item
+# with a silence flush; v2 ends it with the stop.
+APP_CHECKS = "muraja-app-checks-v2"
+
+# Audio arrives, and previews run, in steps of 200 ms (``previewMinNewSamples``).
+PREVIEW_STEP_SAMPLES = 3_200
+# No inference runs with less than 2 s pending.
+MIN_PENDING_SAMPLES = 2 * SAMPLE_RATE
+# The model's fixed input: 250 feature pairs, 5 s (``MelFeatureExtractor.fixedSeqLen``).
+DEVICE_FEATURE_PAIRS = 250
+# The analysis window: audio shorter than one frame has no features, and Swift's frame count
+# misreads 241-399 samples as one frame, so the featuriser refuses it.
+FRAME_SAMPLES = 400
+# The frame hop: 10 ms.
+FRAME_HOP_SAMPLES = 160
+
+# The inferences of the schedule, and FLUSH, the silence flush the single-decode approximation
+# ends an item with (``training.muraja_policy.single_decode_checks``).
+WINDOW, PREVIEW, STOP, FLUSH = "window", "preview", "stop", "flush"
+
+
+@dataclass(frozen=True)
+class CheckSpan:
+    """One inference the transcriber runs: its kind and the ``[start, end)`` samples it decodes."""
+
+    kind: str
+    start: int
+    end: int
+
+
+def check_schedule(num_samples: int) -> list[CheckSpan]:
+    """Every inference the transcriber runs over an item of ``num_samples``, in order.
+
+    At each 200 ms step of arrived audio: with a full window pending, the window (its hop the
+    first second) and an advance of 1 s; then, with at least 2 s pending, a preview of all of
+    it. The audio after the last whole step and everything still pending go to the stop.
+    """
+    spans: list[CheckSpan] = []
+    start = 0
+    for now in range(PREVIEW_STEP_SAMPLES, num_samples + 1, PREVIEW_STEP_SAMPLES):
+        if now - start >= WINDOW_SAMPLES:
+            spans.append(CheckSpan(WINDOW, start, start + WINDOW_SAMPLES))
+            start += HOP_SAMPLES
+        if now - start >= MIN_PENDING_SAMPLES:
+            spans.append(CheckSpan(PREVIEW, start, now))
+    spans.append(CheckSpan(STOP, start, num_samples))
+    return spans
+
+
+def make_check(kind: str, hop: str, overlap: str) -> dict | None:
+    """What the engine receives for one inference, or ``None`` when it receives nothing.
+
+    A window or preview is a ``handleUpdate`` and is dropped when it has nothing in it; a
+    silence flush is a ``handleUpdate`` with ``flush`` set and is always sent. The stop is the
+    phonemes ``stop()`` returns, always handed to ``handleFinalFlush`` (empty or not), and is
+    marked ``stop``: it carries them as its hop, as the engine appends them as one
+    (``FollowAlongEngine.swift:907-909``), and it is the session's last check.
+    """
+    if kind in (WINDOW, PREVIEW) and not (hop or overlap):
+        return None
+    check = {"hop": hop, "overlap": overlap, "flush": kind == FLUSH}
+    return {**check, "stop": True} if kind == STOP else check
+
+
+def committed_text(checks: Iterable[dict]) -> str:
+    """The transcript the app commits from a check sequence: every hop, the stop's included."""
+    return "".join(check["hop"] for check in checks)
+
+
+def clusters(text: str) -> list[str]:
+    """Swift Characters: a base scalar and the combining marks after it."""
+    out: list[str] = []
+    for char in text:
+        if out and unicodedata.combining(char):
+            out[-1] += char
+        else:
+            out.append(char)
+    return out
+
+
+_MADD_YA = "ۦ"
+_NASALS = ("م", "ن")
+
+
+def strip_padding_artifacts(text: str) -> str:
+    """``PhonemeVocabulary.decodeAndStrip``'s strip, on whole Characters as Swift compares them.
+
+    Leading: a madd ya, or a mim or nun that is alone or followed by a madd ya. Trailing: a
+    madd ya, or a mim or nun preceded by one. A letter carrying a haraka is a different
+    Character and is never stripped.
+    """
+    chars = clusters(text)
+    while chars and (
+        chars[0] == _MADD_YA or (chars[0] in _NASALS and chars[1:2] in ([], [_MADD_YA]))
+    ):
+        chars.pop(0)
+    while chars and (
+        chars[-1] == _MADD_YA or (chars[-1] in _NASALS and chars[-2:-1] == [_MADD_YA])
+    ):
+        chars.pop()
+    return "".join(chars)
+
+
+def device_output_steps(pairs: int) -> int:
+    """The output timesteps the app decodes for ``pairs`` real feature pairs."""
+    return min(max((pairs + 1) // 2, 1), DEPLOYED_LOGIT_FRAMES)
+
+
+def likely_hallucination(class_ids: np.ndarray) -> bool:
+    """``CTCDecoder.Stats.isLikelyHallucination`` over the decoded timesteps, its ratios in
+    float32 as Swift computes them."""
+    non_blank = class_ids[class_ids != BLANK_ID]
+    if len(non_blank) == 0:
+        return True
+    if len(non_blank) < 3:
+        return False
+    blank_ratio = np.float32(len(class_ids) - len(non_blank)) / np.float32(len(class_ids))
+    if blank_ratio >= np.float32(0.90):
+        return True
+    dominant_ratio = np.float32(np.bincount(non_blank).max()) / np.float32(len(non_blank))
+    return bool(blank_ratio >= np.float32(0.75) and dominant_ratio >= np.float32(0.35))
+
+
+def app_check(span: CheckSpan, class_ids: np.ndarray) -> dict | None:
+    """The update the transcriber sends for one inference, from its decoded timesteps."""
+    segments = scan_ctc(class_ids)
+
+    def text(selected: Iterable[Segment]) -> str:
+        return strip_padding_artifacts(tokens_to_phonemes(seg.token_id for seg in selected))
+
+    if span.kind == WINDOW:
+        split = min(CONFIRM_TIMESTEPS, len(class_ids))
+        hop = text(seg for seg in segments if seg.midpoint < split)
+        return make_check(WINDOW, hop, text(seg for seg in segments if seg.midpoint >= split))
+    if span.kind == PREVIEW:
+        return make_check(PREVIEW, "", text(segments))
+    return make_check(STOP, "" if likely_hallucination(class_ids) else text(segments), "")
+
+
+def app_checks(spans: Sequence[CheckSpan], rows: Sequence[np.ndarray]) -> list[dict]:
+    """The check sequence: each scheduled inference's update, the ones not sent left out."""
+    if len(spans) != len(rows):
+        raise ValueError(f"{len(spans)} scheduled inferences but {len(rows)} decoded rows")
+    checks = (app_check(span, row) for span, row in zip(spans, rows))
+    return [check for check in checks if check is not None]
 
 
 # --- What produced a decode ------------------------------------------------------------
@@ -654,6 +861,59 @@ class Decoder:
     ) -> str:
         """The decode the streaming protocol commits for one clip at ``block``."""
         return tokens_to_phonemes(e.token_id for e in self.emissions(samples, block, flush_tail))
+
+    def device_rows(self, pieces: Sequence[np.ndarray]) -> list[np.ndarray]:
+        """Each piece of at most 5 s, featurised and decoded as the app decodes it (module
+        docstring): its argmax over the output timesteps its real feature pairs reach.
+
+        Each piece is extracted on its own, so it is normalized over its own frames, and the
+        model's 250 feature pairs are filled by repeating its last real pair. Every forward is
+        the fixed shape the device runs, so no attention mask is passed.
+        """
+        import torch
+
+        rows: list[np.ndarray] = []
+        for offset in range(0, len(pieces), self.batch_size):
+            features, steps = [], []
+            for piece in pieces[offset : offset + self.batch_size]:
+                pairs, real = self.device_pairs(piece)
+                features.append(pairs)
+                steps.append(device_output_steps(real))
+            class_ids = self._class_ids(torch.stack(features))
+            if class_ids.shape[1] != DEPLOYED_LOGIT_FRAMES:
+                raise ValueError(f"the model emits {class_ids.shape[1]} timesteps for 5 s, not 125")
+            rows.extend(row[:n] for row, n in zip(class_ids, steps))
+        return rows
+
+    def device_pairs(self, piece: np.ndarray):
+        """The model's 250 feature pairs for one piece as the app builds them, and how many of
+        them are real (``Models/MelFeatureExtractor+iOS.swift:81-166``).
+
+        The teacher's extractor computes the same features, except for a single frame
+        (400-559 samples): its ``ddof=1`` variance is NaN there, while the device takes the
+        variance as 0 (:107-115), so the frame normalizes to zeros. The padding frame after it
+        is 1.0 on both.
+        """
+        import torch
+
+        if not FRAME_SAMPLES <= len(piece) <= WINDOW_SAMPLES:
+            raise ValueError(f"a piece of {len(piece)} samples is not one the app decodes")
+        (pairs,) = self.extractor(
+            [piece], sampling_rate=SAMPLE_RATE, return_tensors="pt", padding=True
+        ).input_features
+        if (len(piece) - FRAME_SAMPLES) // FRAME_HOP_SAMPLES == 0:  # one frame
+            pairs = pairs.clone()
+            pairs[0, : pairs.shape[1] // 2] = 0.0
+        if torch.isnan(pairs).any():
+            raise ValueError(f"the features of a {len(piece)}-sample piece are not finite")
+        repeated = pairs[-1:].expand(DEVICE_FEATURE_PAIRS - len(pairs), -1)
+        return torch.cat([pairs, repeated]), len(pairs)
+
+    def app_checks(self, samples: np.ndarray) -> list[dict]:
+        """The checks Muraja's transcriber hands its engine over one 16 kHz item, in order
+        (:func:`check_schedule`, :func:`app_check`; fingerprinted as :data:`APP_CHECKS`)."""
+        spans = check_schedule(len(samples))
+        return app_checks(spans, self.device_rows([samples[s.start : s.end] for s in spans]))
 
     def span_class_ids(self, spans: Iterable[np.ndarray]) -> list[np.ndarray]:
         """Each 16 kHz span's per-timestep argmax from one whole variable-length pass.

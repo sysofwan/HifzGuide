@@ -1,0 +1,127 @@
+{
+ "duplicate_recordings_dropped": [
+  "tadabur_spk0078_S20_A56_efb2a899_000051.wav",
+  "tadabur_spk0198_S38_A52_a77161a9_000000.wav",
+  "tadabur_spk0252_S1_A141_20b98f9e_000074.wav"
+ ],
+ "fingerprints": {
+  "base": {
+   "autocast": true,
+   "batch_size": 1,
+   "device_type": "cuda",
+   "mode": "whole-spans",
+   "model": "obadx/muaalem-model-v3_2",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "bf16"
+  },
+  "h448": {
+   "autocast": true,
+   "batch_size": 16,
+   "device_type": "cuda",
+   "mode": "confirmed-stream-v2-flush",
+   "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "fp32"
+  }
+ },
+ "hit_clips": 1063,
+ "hit_clips_per_gpu_hour": 330.7,
+ "kept_hit_clips": 1006,
+ "pairs": {
+  "ت↔ط": {
+   "base": {
+    "clips": 1,
+    "partner_commits": 1
+   },
+   "h448": {
+    "clips": 10,
+    "partner_commits": 10
+   }
+  },
+  "ح↔ه": {
+   "base": {
+    "clips": 0,
+    "partner_commits": 0
+   },
+   "h448": {
+    "clips": 10,
+    "partner_commits": 10
+   }
+  },
+  "ذ↔ز": {
+   "base": {
+    "clips": 26,
+    "partner_commits": 28
+   },
+   "h448": {
+    "clips": 70,
+    "partner_commits": 72
+   }
+  },
+  "ذ↔ظ": {
+   "base": {
+    "clips": 3,
+    "partner_commits": 3
+   },
+   "h448": {
+    "clips": 7,
+    "partner_commits": 7
+   }
+  },
+  "س↔ش": {
+   "base": {
+    "clips": 184,
+    "partner_commits": 199
+   },
+   "h448": {
+    "clips": 175,
+    "partner_commits": 184
+   }
+  },
+  "س↔ص": {
+   "base": {
+    "clips": 16,
+    "partner_commits": 16
+   },
+   "h448": {
+    "clips": 64,
+    "partner_commits": 64
+   }
+  },
+  "ض↔ظ": {
+   "base": {
+    "clips": 44,
+    "partner_commits": 44
+   },
+   "h448": {
+    "clips": 110,
+    "partner_commits": 113
+   }
+  },
+  "ط↔ق": {
+   "base": {
+    "clips": 116,
+    "partner_commits": 117
+   },
+   "h448": {
+    "clips": 566,
+    "partner_commits": 591
+   }
+  },
+  "ق↔ك": {
+   "base": {
+    "clips": 38,
+    "partner_commits": 40
+   },
+   "h448": {
+    "clips": 86,
+    "partner_commits": 87
+   }
+  }
+ },
+ "scan_gpu_hours": 3.21,
+ "scan_wall_hours": 3.31,
+ "scanned_clips": 21651,
+ "scanned_reciters": 422,
+ "scanned_shards": 36
+}

@@ -527,3 +527,16 @@ def test_one_rsync_list_covers_both_remote_directories():
                      "issue-88/stage/edits/audio/se_1.wav"]
     with pytest.raises(ValueError, match="one name"):
         fetch_list({"/x/a": {"c.wav"}, "/x/b": {"c.wav"}})
+
+
+def test_fetch_takes_mined_clips_from_the_mining_directory(tmp_path, monkeypatch):
+    import tadabur.listening_session as session
+
+    monkeypatch.setattr(session, "verify_staged", lambda clip, audio_dir: None)
+    registry = {name: StagedClip(name, 77, 5, 9, "2:2", 200000, "b" * 64, (use,))
+                for name, use in (("pool.wav", "mining_pool"), ("mined.wav", "ship_a_mining"))}
+    row = _rows()[0]
+    rows = [replace(row, site=replace(row.site, audio_filename=name)) for name in registry]
+    calls = []
+    session.fetch(rows, [], tmp_path, registry, run=lambda *a, **k: calls.append(k["input"]))
+    assert calls == ["issue-126/stage/clips/mined.wav\nissue-83/stage/clips/pool.wav\n"]

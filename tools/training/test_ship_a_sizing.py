@@ -15,7 +15,7 @@ from training.ship_a_sizing_doc import DOC_PATH, load_inputs, render
 
 
 def _side(reciters, theta=0.0, rate=1.0, side=z.RECOVERY, rule=z.ONE_PER_RECITER):
-    return z.SideScenario("cell", "proposed", tuple(reciters), theta, rate, 0.15, side, rule)
+    return z.SideScenario("cell", tuple(reciters), theta, rate, 0.15, side, rule)
 
 
 def test_a_flawless_recovery_reaches_the_wilson_floor_of_its_reciters():
@@ -50,11 +50,11 @@ def test_the_word_sample_cannot_show_a_reduction_without_flags():
 def test_the_budget_counts_each_half_and_marks_sparse_cells():
     sites = mine(scored_pool(base=REFERENCE.replace("بب", "ب")))
     budget = z.budget(sites)
-    family = budget["families"]["ذ↔ز"]["proposed"]
-    assert family["sites"] == 1 and family["held_out_sparse"]
+    family = budget["families"]["ذ↔ز"]
+    assert family["sites"] == family["partner_swaps"] == 1 and family["held_out_sparse"]
     assert family["train"]["sites"] + family["held_out"]["sites"] == 1
-    assert set(budget["cells"]) == {z.SOFT_PAIRS_POOLED, z.SOFT_PAIR_SWAPS, z.GEMINATES,
-                                    "ت↔ط", "ح↔ه", "ذ↔ز", "س↔ص", "ض↔ظ", "ق↔ك", "ذ↔ظ"}
+    assert set(budget["cells"]) == {z.SOFT_PAIRS_POOLED, z.GEMINATES, "ت↔ط", "ح↔ه", "ذ↔ز",
+                                    "س↔ص", "ض↔ظ", "ق↔ك", "ذ↔ظ", "س↔ش", "ط↔ق"}
 
 
 def test_the_mistake_mix_pools_soft_pairs_and_bounds_the_reject_share():

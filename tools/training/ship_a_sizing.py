@@ -8,8 +8,8 @@ margin**: every power is reported over a grid of values for the owner to pick fr
 
 1. **Verification budget** (:func:`budget`): Ship A's sites (:mod:`tadabur.ship_a`) per pair
    direction, per family and for geminates, how many the base teacher already gets right, and
-   how they fall into the train and held-out halves under the proposed 50/50 split and the
-   alternative. A held-out cell with fewer than 10 reciters or 20 sites is sparse (§1): it is
+   how they fall into the train and held-out halves of the confirmed 50/50 split (D11). A
+   held-out cell with fewer than 10 reciters or 20 sites is sparse (§1): it is
    pooled into its family and reported as insufficient evidence (§7).
 2. **Power on the held-out half** (:func:`held_out_power`): per evaluation cell, the held-out
    sites listened to, each a real mistake with probability θ (:data:`THETAS`); the candidate
@@ -57,17 +57,15 @@ import numpy as np
 
 from tadabur.power_frame import FRAME_PATH, SHIP_A_DIR, input_checksums
 from tadabur.ship_a import (
-    ALTERNATIVE_HELD_OUT_SHARE,
     GEMINATE,
     HELD_OUT,
-    HELD_OUT_SHARE,
     SITES_PATH,
     TRAIN,
     ShipASite,
     load_sites,
     reciter_half,
 )
-from tadabur.truth_sites import SHADDAH, SOFT_PAIRS
+from tadabur.truth_sites import ADDED_TARGET_PAIRS, SHADDAH, SOFT_PAIRS
 from tadabur.word_sample import WORD_SAMPLE_PATH, load_words
 from training.acceptance_stats import (
     LOWER,
@@ -130,22 +128,19 @@ RECOVERY = "recovery"
 RETENTION = "retention"
 ONE_PER_RECITER = "one_per_reciter"
 EVERY_SITE = "every_site"
-#: A carrier in two pairs appears in two frame directions; these are the second, so a
-#: census over the frame counts each carrier once (``h448``'s commit there is pair-free).
-SECOND_DIRECTIONS = ("pair:ذ→ظ", "pair:ظ→ذ")
 GEMINATE_FRAME_STRATUM = "shaddah:held:in_word"
+#: The Muraja soft pairs pooled (ADR-0012: one switch forgives them all).
 SOFT_PAIRS_POOLED = "soft pairs (pooled)"
-SOFT_PAIR_SWAPS = "soft-pair partner swaps"
 GEMINATES = "geminates (base not held)"
-SPLITS = {"proposed": HELD_OUT_SHARE, "alternative": ALTERNATIVE_HELD_OUT_SHARE}
 
 
-def _bucket(sites: list[ShipASite], held_out_share: float) -> dict:
+def _bucket(sites: list[ShipASite]) -> dict:
     """Sites and reciters per half, and how many the base teacher already gets right."""
     out = {"sites": len(sites), "base_already_right": sum(s.base_already_right for s in sites),
-           "listened": sum(s.listened for s in sites)}
+           "listened": sum(s.listened for s in sites),
+           "partner_swaps": sum(s.partner_swap for s in sites)}
     for half in (TRAIN, HELD_OUT):
-        group = [s for s in sites if reciter_half(s.reciter_id, held_out_share) == half]
+        group = [s for s in sites if s.half == half]
         listened = [s for s in group if s.listened]
         out[half] = {"sites": len(group), "listened": len(listened),
                      "listened_reciters": len({s.reciter_id for s in listened})}
@@ -164,32 +159,28 @@ def _direction_of(site: ShipASite) -> str:
 
 
 def budget(sites: list[ShipASite]) -> dict:
-    """Question 1: per direction, per family and per evaluation cell, under each split."""
+    """Question 1: per direction, per family and per evaluation cell."""
     def grouped(key) -> dict:
         groups: dict[str, list[ShipASite]] = {}
         for site in sites:
             groups.setdefault(key(site), []).append(site)
-        return {name: {split: _bucket(group, share) for split, share in SPLITS.items()}
-                for name, group in sorted(groups.items())}
+        return {name: _bucket(group) for name, group in sorted(groups.items())}
 
     return {
         "directions": grouped(_direction_of),
         "families": grouped(lambda s: s.family),
-        "cells": {name: {split: _bucket(group, share) for split, share in SPLITS.items()}
-                  for name, group in cells(sites).items()},
+        "cells": {name: _bucket(group) for name, group in cells(sites).items()},
         "sparse_rule": {"min_reciters": SPARSE_MIN_RECITERS, "min_sites": SPARSE_MIN_SITES},
     }
 
 
 def cells(sites: list[ShipASite]) -> dict[str, list[ShipASite]]:
-    """The evaluation cells: the soft pairs pooled (ADR-0012: one Muraja switch), their
-    partner swaps alone, each family, and the geminates listened to."""
-    soft = [s for s in sites if s.family in SOFT_PAIRS]
+    """The evaluation cells: the Muraja soft pairs pooled, each target pair on its own (the
+    three no allowance covers never pooled with them), and the geminates listened to."""
     return {
-        SOFT_PAIRS_POOLED: soft,
-        SOFT_PAIR_SWAPS: [s for s in soft if s.partner_swap],
+        SOFT_PAIRS_POOLED: [s for s in sites if s.family in SOFT_PAIRS],
         **{family: [s for s in sites if s.family == family]
-           for family in (*sorted(SOFT_PAIRS), DHAL_ZAH)},
+           for family in (*sorted(SOFT_PAIRS), DHAL_ZAH, *sorted(ADDED_TARGET_PAIRS))},
         GEMINATES: [s for s in sites if s.kind == GEMINATE and s.listened],
     }
 
@@ -203,7 +194,6 @@ class SideScenario:
     ICC, which side is read and how (one site per reciter, or every site)."""
 
     cell: str
-    split: str
     reciters: tuple[int, ...]
     theta: float
     rate: float
@@ -212,8 +202,7 @@ class SideScenario:
     rule: str
 
     def key(self) -> tuple:
-        return ("side", self.cell, self.split, self.theta, self.rate, self.icc, self.side,
-                self.rule)
+        return ("side", self.cell, self.theta, self.rate, self.icc, self.side, self.rule)
 
 
 def side_bounds(scenario: SideScenario, repetitions: int) -> dict:
@@ -246,19 +235,17 @@ def side_bounds(scenario: SideScenario, repetitions: int) -> dict:
 
 
 def side_scenarios(sites: list[ShipASite]) -> list[SideScenario]:
-    """Every cell, split, θ, true rate, ICC and side; every site as well for the pooled cells."""
+    """Every cell, θ, true rate, ICC and side; every site as well for the pooled cells."""
     scenarios = []
     for cell, members in cells(sites).items():
-        for split, share in SPLITS.items():
-            reciters = tuple(s.reciter_id for s in members
-                             if s.listened and reciter_half(s.reciter_id, share) == HELD_OUT)
-            rules = (ONE_PER_RECITER, EVERY_SITE) if cell in (SOFT_PAIRS_POOLED, GEMINATES) \
-                else (ONE_PER_RECITER,)
-            scenarios += [
-                SideScenario(cell, split, reciters, theta, rate, icc, side, rule)
-                for theta in THETAS for rate in TRUE_RATES for icc in RECITER_ICCS
-                for side in (RECOVERY, RETENTION) for rule in rules
-            ]
+        reciters = tuple(s.reciter_id for s in members if s.listened and s.half == HELD_OUT)
+        rules = (ONE_PER_RECITER, EVERY_SITE) if cell in (SOFT_PAIRS_POOLED, GEMINATES) \
+            else (ONE_PER_RECITER,)
+        scenarios += [
+            SideScenario(cell, reciters, theta, rate, icc, side, rule)
+            for theta in THETAS for rate in TRUE_RATES for icc in RECITER_ICCS
+            for side in (RECOVERY, RETENTION) for rule in rules
+        ]
     return scenarios
 
 
@@ -321,12 +308,15 @@ def harm_power(scenario: HarmScenario, repetitions: int) -> dict:
 
 
 def held_out_carriers(frame_path: Path = FRAME_PATH) -> tuple[tuple[int, ...], float]:
-    """Per held-out reciter (50/50), the carriers ``h448`` gets right (pair carriers once,
-    in-word geminates), and their mean listening seconds."""
+    """Per held-out reciter, the pool carriers ``h448`` gets right (each pair carrier once,
+    under the first direction its letter has, since ``h448``'s commit there is pair-free; and
+    the in-word geminates), and their mean listening seconds."""
     strata = load_frame(frame_path)
-    chosen = [s for name, s in strata.items()
-              if (name.startswith("pair:") and name not in SECOND_DIRECTIONS)
-              or name == GEMINATE_FRAME_STRATUM]
+    first_direction = {}
+    for name in sorted(strata):
+        if name.startswith("pair:"):
+            first_direction.setdefault(name.split(":")[1][0], name)
+    chosen = [strata[name] for name in (*first_direction.values(), GEMINATE_FRAME_STRATUM)]
     per_reciter: dict[int, int] = {}
     for stratum in chosen:
         for reciter, right in zip(stratum.reciters, stratum.field("h448_mushaf")):
@@ -418,7 +408,7 @@ def run(workers: int, repetitions: int = REPETITIONS) -> dict:
     ]
     with ProcessPoolExecutor(workers) as pool:
         results = dict(pool.map(_run, jobs, chunksize=4))
-    side = [{"cell": s.cell, "split": s.split, "theta": s.theta, "rate": s.rate, "icc": s.icc,
+    side = [{"cell": s.cell, "theta": s.theta, "rate": s.rate, "icc": s.icc,
              "side": s.side, "rule": s.rule, "held_out_sites": len(s.reciters),
              **results[s.key()]} for _, s, _ in jobs if isinstance(s, SideScenario)]
     harm = [{"churn": s.churn, "new_error_share": s.new_error_share, "icc": s.icc, "n": s.n,

@@ -23,7 +23,7 @@ The schema, loader and staging code are in [`tools/tadabur/staged_audio.py`](../
 | `surah_ayah` | `"surah:ayah"`, from Tadabur's 0-indexed `surah_id` + 1 and `ayah_id` |
 | `num_samples` | length of the staged 16 kHz mono clip |
 | `audio_sha256` | SHA-256 of the staged WAV's bytes (`truth_sites.audio_sha256`) |
-| `uses` | why it was staged, sorted: `waqf_boundary` and `p35_fixture` (its truth sites), `mining_pool`, `synthetic_edit` (an edit source or donor, [`../synthetic_edits/`](../synthetic_edits/README.md)) |
+| `uses` | why it was staged, sorted: `waqf_boundary` and `p35_fixture` (its truth sites), `mining_pool`, `synthetic_edit` (an edit source or donor, [`../synthetic_edits/`](../synthetic_edits/README.md)), `ship_a_mining` (a clip Ship A's mining extension found an `h448` partner swap in, [`../ship_a/README.md`](../ship_a/README.md)) |
 
 The staged file is the row's audio decoded with `tadabur.audio.decode_to_mono_16k` and
 written by `soundfile` as **16 kHz mono PCM_16 WAV**, the format the labels were made on.

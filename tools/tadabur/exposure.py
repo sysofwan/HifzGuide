@@ -71,6 +71,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
+from .staged_audio import SHIP_A_MINING as STAGED_SHIP_A_MINING
 from .staged_audio import (
     MINING_POOL,
     SEALED_PANEL,
@@ -120,6 +121,12 @@ MURAJA_REREAD_CORPUS = "muraja.reread_corpus"
 #: Synthetic edits (#88): the clip an edit was made on, and the clip a swap took audio from.
 SYNTHETIC_EDIT_SOURCE = "synthetic_edit.source"
 SYNTHETIC_EDIT_DONOR = "synthetic_edit.donor"
+#: Ship A (#126): the clips its mining extension staged (h448-unseen, a partner swap found),
+#: and the recordings of its verified-label halves (the reciter split, D11): the train half's
+#: sites (training labels) and the held-out half's sites and sampled words (evaluation).
+SHIP_A_MINING = "ship_a.mining"
+SHIP_A_TRAIN = "ship_a.verified_train"
+SHIP_A_HELD_OUT = "ship_a.verified_held_out"
 #: The uses acceptance rules §6 names that no issue has made yet. Each has an empty file
 #: until its issue writes it, so "unused" is recorded rather than inferred from absence.
 PROBE_TRAINING = "probe.training"
@@ -135,6 +142,7 @@ USES = frozenset({
     MINING_POOL, EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, H448_TRAINING, H448_INIT_VALIDATION,
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
+    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
 })
 
 #: ``h448``'s ``--stream-shards``, verbatim from ``runs/h448_stream/run_config.json`` on the
@@ -670,12 +678,13 @@ def copies_across_uses(registry: ExposureRegistry) -> dict[tuple[str, str], int]
 PRD_USES = frozenset({
     *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
+    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
 })
 #: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
 #: them, edit donors included.
 TRAINING_AND_TUNING_USES = frozenset({
     SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
-    SHADDAH_PROBE_TUNING,
+    SHADDAH_PROBE_TUNING, SHIP_A_TRAIN,
 })
 
 
@@ -756,13 +765,14 @@ def label_file_clips(use: str) -> set[str]:
     return clips
 
 
-def _whole(row: IndexRow | StagedClip, sha: str | None) -> Exposure:
+def whole_recording(row: IndexRow | StagedClip, sha: str | None) -> Exposure:
     return Exposure(row.audio_filename, row.shard, row.row_index, row.reciter_id, None, None, sha)
 
 
 def staged_exposures(staged: Mapping[str, StagedClip]) -> dict[str, list[Exposure]]:
     """The uses the staged-clip registry alone determines: each truth-site source's item
-    spans (with the staged checksum) and the mining pool's whole clips."""
+    spans (with the staged checksum), and the whole clips of the mining pool and of Ship A's
+    mining extension."""
     uses: dict[str, list[Exposure]] = {}
     for path in sorted(TRUTH_SITES_DIR.glob("*.jsonl")):
         if path.name.endswith(".relocation.jsonl"):
@@ -773,7 +783,9 @@ def staged_exposures(staged: Mapping[str, StagedClip]) -> dict[str, list[Exposur
                 clip.audio_filename, clip.shard, clip.row_index, clip.reciter_id,
                 site.start_sample, site.end_sample, clip.audio_sha256,
             ))
-    uses[MINING_POOL] = [_whole(c, c.audio_sha256) for c in staged.values() if MINING_POOL in c.uses]
+    for use, staged_use in ((MINING_POOL, MINING_POOL), (SHIP_A_MINING, STAGED_SHIP_A_MINING)):
+        uses[use] = [whole_recording(c, c.audio_sha256) for c in staged.values()
+                     if staged_use in c.uses]
     return uses
 
 
@@ -788,7 +800,7 @@ def indexed_exposures(
     A recording that was re-staged carries its staged checksum."""
     def exposure(name: str) -> Exposure:
         row = index[name]
-        return _whole(row, staged[name].audio_sha256 if name in staged else None)
+        return whole_recording(row, staged[name].audio_sha256 if name in staged else None)
 
     uses = {use: [exposure(name) for name in label_file_clips(use)] for use in LABEL_FILES}
     uses[MURAJA_REREAD_CORPUS] = [exposure(name) for name in muraja_clips]

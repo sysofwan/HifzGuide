@@ -55,7 +55,7 @@ from pathlib import Path
 
 from . import phoneme_sifat
 from .contrast_attribution import ADDED, DROPPED, SHADDA_CONTRAST, contrast_sites
-from .staged_audio import IndexRow, read_shard_index
+from .staged_audio import MINING_POOL, IndexRow, read_shard_index
 
 MINING_POOL_DIR = Path(__file__).parent / "mining_pool"
 SELECTION_PATH = MINING_POOL_DIR / "selection.json"
@@ -107,13 +107,15 @@ def _rank(text: str) -> str:
 
 
 def eligible(
-    rows: Iterable[IndexRow], evalset_rows: set[tuple[int, int]]
+    rows: Iterable[IndexRow], evalset_rows: set[tuple[int, int]],
+    shards: Iterable[int] | None = None,
 ) -> tuple[list[IndexRow], list[tuple[IndexRow, str]]]:
-    """The pool's frame, and every other row in the pool shards with why it was left out."""
+    """The pool's frame, and every other row in the pool shards with why it was left out.
+    ``shards`` replaces the pool's shards (:func:`pool_shards`) for another frame."""
     import generate_phonemes
     from training.decode_evalset import MAX_CLIP_SECONDS, MIN_CLIP_SECONDS
 
-    shards = set(pool_shards())
+    shards = set(pool_shards() if shards is None else shards)
     kept: list[IndexRow] = []
     excluded: list[tuple[IndexRow, str]] = []
     for row in rows:
@@ -491,13 +493,13 @@ def build_manifest(
     segmentation: list[dict],
     selected: dict[str, Selected],
     staged: dict,
+    use: str = MINING_POOL,
 ) -> list[PoolClip]:
     """The pool manifest from :mod:`tadabur.resegment`'s ``clip_status`` and
     ``segmentation`` rows and the selection. Every selected clip must have been
-    segmented and staged for the pool; segment spans are converted to samples by the
-    same rule that sliced them for decoding."""
+    segmented and staged for the pool (or for ``use``); segment spans are converted to
+    samples by the same rule that sliced them for decoding."""
     from .segment_score import segment_sample_bounds
-    from .staged_audio import MINING_POOL
 
     by_name = {status["audio_filename"]: status for status in statuses}
     if set(by_name) != set(selected):
@@ -506,8 +508,8 @@ def build_manifest(
     clips = []
     for name in sorted(by_name):
         status, clip = by_name[name], staged.get(name)
-        if clip is None or MINING_POOL not in clip.uses:
-            raise ValueError(f"{name} is not staged for the mining pool")
+        if clip is None or use not in clip.uses:
+            raise ValueError(f"{name} is not staged for {use}")
         segments = []
         for seg in segments_of.get(name, []):
             start, end = segment_sample_bounds(clip.num_samples, seg["start_s"], seg["end_s"])
@@ -551,11 +553,15 @@ def write_manifest(clips: list[PoolClip], path: Path = CLIPS_PATH) -> None:
             f.write(json.dumps(asdict(clip), ensure_ascii=False, sort_keys=True) + "\n")
 
 
-def load_manifest(path: Path = CLIPS_PATH, registry: dict | None = None) -> list[PoolClip]:
+def load_manifest(
+    path: Path = CLIPS_PATH, registry: dict | None = None, use: str = MINING_POOL,
+    strata: tuple[str, ...] = STRATA,
+) -> list[PoolClip]:
     """The committed pool, checked against the staged-clip registry: every clip staged
-    for the pool with the same reciter and ayah, in known strata, and every segment span
+    for the pool (or for ``use``, a manifest of the same shape such as Ship A's mining
+    extension) with the same reciter and ayah, in known ``strata``, and every segment span
     inside it."""
-    from .staged_audio import MINING_POOL, load_staged_clips
+    from .staged_audio import load_staged_clips
 
     staged = load_staged_clips() if registry is None else registry
     clips = []
@@ -573,12 +579,12 @@ def load_manifest(path: Path = CLIPS_PATH, registry: dict | None = None) -> list
             clip = PoolClip(**data)
             entry = staged.get(clip.audio_filename)
             where = f"{path}:{lineno}"
-            if entry is None or MINING_POOL not in entry.uses:
-                raise ValueError(f"{where}: {clip.audio_filename} is not staged for the pool")
+            if entry is None or use not in entry.uses:
+                raise ValueError(f"{where}: {clip.audio_filename} is not staged for {use}")
             if (entry.reciter_id, entry.surah_ayah) != (clip.reciter_id, clip.surah_ayah):
                 raise ValueError(f"{where}: reciter or ayah disagrees with the registry")
-            if not clip.strata or not set(clip.strata) <= set(STRATA):
-                raise ValueError(f"{where}: strata {clip.strata} are not {STRATA}")
+            if not clip.strata or not set(clip.strata) <= set(strata):
+                raise ValueError(f"{where}: strata {clip.strata} are not {strata}")
             if not 0 < clip.inclusion_probability <= 1:
                 raise ValueError(f"{where}: inclusion_probability is not in (0, 1]")
             for seg in clip.segments:

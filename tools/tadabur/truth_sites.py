@@ -60,10 +60,17 @@ SUKUN = "sukun"
 SHADDAH = "shaddah"
 TASHKEEL_MARKS = frozenset(HARAKA_CHARS) | {SUKUN}
 SOFT_PAIRS = soft_pair_contrasts()
-#: The consonant pairs a site may test: the six soft pairs plus ``ذ↔ظ``, which is in scope by
-#: owner decision but is no Muraja soft pair (acceptance rules §7).
+#: The consonant pairs acceptance rules §7 names, and the #84 scorer's frozen cells cover:
+#: the six soft pairs plus ``ذ↔ظ``, which is in scope by owner decision but is no Muraja
+#: soft pair.
 TARGET_PAIRS = SOFT_PAIRS | {"ذ↔ظ"}
-MARKS = TASHKEEL_MARKS | {SHADDAH} | TARGET_PAIRS
+#: The target pairs the owner added on 2026-10-10 (D9, #126): confusions Muraja does not
+#: forgive yet. Ship A mines and verifies them; §7 and the frozen scorer cells do not name
+#: them until an owner-signed amendment does, so they are kept apart from TARGET_PAIRS.
+ADDED_TARGET_PAIRS = frozenset({"س↔ش", "ط↔ق"})
+#: Every target pair a truth site may test (CONTEXT.md, *Target pair*).
+ALL_TARGET_PAIRS = TARGET_PAIRS | ADDED_TARGET_PAIRS
+MARKS = TASHKEEL_MARKS | {SHADDAH} | ALL_TARGET_PAIRS
 
 HELD = "held"
 NOT_HELD = "not_held"
@@ -227,7 +234,7 @@ def _check_reference(site: TruthSite, where: str) -> None:
         raise ValueError(f"{where}: reference_index {index} is outside the reference")
     carrier = reference[index]
     following = reference[index + 1] if index + 1 < len(reference) else ""
-    if site.mark in TARGET_PAIRS:
+    if site.mark in ALL_TARGET_PAIRS:
         holds = carrier == site.prescribed
     elif carrier not in CONSONANTS:
         holds = False

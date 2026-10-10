@@ -17,6 +17,9 @@ from pathlib import Path
 
 from tadabur.power_frame import FRAME_PATH
 from tadabur.ship_a import SITES_SUMMARY_PATH
+from tadabur.ship_a_mining import FRAME_PATH as MINING_FRAME_PATH
+from tadabur.ship_a_mining import SUMMARY_PATH as MINING_SUMMARY_PATH
+from tadabur.ship_a_worklist import SITTING_MINUTES
 from tadabur.ship_a_worklist import SUMMARY_PATH as WORKLIST_SUMMARY_PATH
 from training.power_simulation import TARGET_POWER
 from training.ship_a_sizing import (
@@ -26,6 +29,7 @@ from training.ship_a_sizing import (
     RECOVERY,
     RETENTION,
     SIZING_PATH,
+    SOFT_PAIRS_POOLED,
 )
 from training.tashkeel_eval import write_text_atomically
 
@@ -61,12 +65,11 @@ def _certified_floor(row: Mapping) -> str:
     return f"{max(reached):.1f}" if reached else "—"
 
 
-def _power_rows(sizing: Mapping, side: str, split: str, rule: str = ONE_PER_RECITER,
+def _power_rows(sizing: Mapping, side: str, rule: str = ONE_PER_RECITER,
                 theta: float = SUMMARY_THETA, icc: float = SUMMARY_ICC) -> list[list]:
     rows: dict[str, dict] = {}
     for r in sizing["held_out_power"]:
-        if (r["side"], r["split"], r["rule"], r["theta"], r["icc"]) == (side, split, rule,
-                                                                          theta, icc):
+        if (r["side"], r["rule"], r["theta"], r["icc"]) == (side, rule, theta, icc):
             entry = rows.setdefault(r["cell"], {"n": r["mean_reciters"]})
             entry[r["rate"]] = _certified_floor(r)
     rates = sizing["grids"]["true_rates"]
@@ -74,22 +77,18 @@ def _power_rows(sizing: Mapping, side: str, split: str, rule: str = ONE_PER_RECI
 
 
 def _section_counts(sizing: Mapping, sites: Mapping, totals: Mapping) -> str:
-    directions = sizing["budget"]["directions"]
-    rows = []
-    for name, entry in directions.items():
-        if name == "shaddah":
-            continue
-        e = entry["proposed"]
-        rows.append([name, e["sites"], e["base_already_right"]])
-    partner = sites["pair_commits"]["partner"]
-    other = sites["pair_commits"]["other_letter"]
+    rows = [[name, e["sites"], e["base_already_right"], "yes" if e["listened"] else "no"]
+            for name, e in sizing["budget"]["directions"].items() if name != "shaddah"]
+    partner = sites["pool_pair_commits"]["partner"]
+    other = sites["pool_pair_commits"]["other_letter"]
     held = totals["shaddah:held:in_word"]
     cross = totals["shaddah:held:cross_word"]
     geminates = sites["families"]["shaddah"]
     pair_flagged = partner["sites"] + other["sites"]
     harakat = {field: sum(totals[f"tashkeel:{h}"][field] for h in ("fatha", "damma", "kasra"))
                for field in ("sites", "h448_empty_on_haraka")}
-    letters = sorted(sites["pair_commits"]["by_letter"].items(), key=lambda kv: (-kv[1], kv[0]))
+    letters = sorted(sites["pool_pair_commits"]["by_letter"].items(),
+                     key=lambda kv: (-kv[1], kv[0]))
     commonest = ", ".join(f"`{name}` {count}" for name, count in letters[:6])
     return f"""## The counts, re-derived from the decodes
 
@@ -97,64 +96,114 @@ Every count below is decode level: what `h448` (streamed at b = 0, no bias) and 
 teacher commit at a site, read by the #84 scorer's rules against the mushaf. No Muraja grade
 enters (`tadabur.power_frame`; `training.muraja_policy` is not imported).
 
-- **Pair carriers.** `h448` commits a letter other than the mushaf's at **{pair_flagged}
-  unique carriers** (the issue's ~550 counted the `ظ` carriers twice). Only
-  **{partner["sites"]}** of them are **partner swaps**, the confusion the soft-pair allowance
-  forgives; the other **{other["sites"]}** are other letters, which no allowance forgives (the
-  commonest commits: {commonest}). The base
-  teacher already commits the mushaf letter at {partner["base_already_right"]} of the swaps
-  and {other["base_already_right"]} of the others.
+The target pairs are nine (D9, `CONTEXT.md`): the six Muraja soft pairs, `ذ↔ظ`, and the
+owner's `س↔ش` and `ط↔ق`, which the app does not forgive yet. They are reported as their own
+families and never pooled with the soft pairs.
+
+- **Pair carriers in the mining pool.** `h448` commits a letter other than the mushaf's at
+  **{pair_flagged} unique carriers**. **{partner["sites"]}** of them are **partner swaps** (the
+  pair's other letter), the sites Ship A listens to; the other **{other["sites"]}** commit a
+  letter outside every target pair and are not asked (D9). The commonest commits:
+  {commonest}. The owner traced `ت`→`ه` to a ta marbuta the reciter paused on where the
+  realized reference has wasl `ت`: a reference problem (#130), not a model one. The base teacher
+  already commits the mushaf letter at {partner["base_already_right"]} of the swaps.
 - **In-word geminates.** Of {_n(held["sites"])}, `h448` decodes **{held["h448_single_on_held"]}**
   as one consonant (the base teacher {held["base_commit"] - held["base_mushaf"]}). The base
-  holds **{geminates["base_already_right"]}** of those {held["h448_single_on_held"]}, so
-  **{geminates["listened"]}** need listening. Cross-word geminates ({_n(cross["sites"])}, of
-  which `h448` collapses {cross["h448_single_on_held"]}) are out: the app never scores them.
+  holds **{geminates["base_already_right"]}** of those {held["h448_single_on_held"]}, whose
+  target is its decode with no listening (D10); **{geminates["listened"]}** are listened to.
+  Cross-word geminates ({_n(cross["sites"])}, of which `h448` collapses
+  {cross["h448_single_on_held"]}) are out: the app never scores them.
 - **Goal 3 (Ship B), counted only.** `h448` leaves the slot empty at
   {_n(totals["tashkeel:sukun"]["h448_empty_on_sukun"])} of {_n(totals["tashkeel:sukun"]["sites"])}
   mid-word prescribed sukun and at {_n(harakat["h448_empty_on_haraka"])} of
   {_n(harakat["sites"])} mid-word harakat.
 
-Off-letter commits per direction (a partner swap is named by the letter committed; any other
-letter is grouped per carrier):
+Off-letter commits in the pool and the mining extension per direction (a partner swap is
+named by the letter committed; any other letter is grouped per carrier):
 
-{_table(["direction", "sites", "base already right"], rows)}
+{_table(["direction", "sites", "base already right", "listened"], rows)}
+"""
+
+
+def _section_mining(mining: Mapping, mining_frame: Mapping, sites: Mapping) -> str:
+    excluded = ", ".join(f"{reason} {n:,}" for reason, n in mining_frame["excluded"].items())
+    rows = [[pair, e["h448"]["partner_commits"], e["h448"]["clips"], e["base"]["partner_commits"],
+             sites["extension_families"].get(pair, {}).get("listened", 0)]
+            for pair, e in mining["pairs"].items()]
+    return f"""## Mining more partner swaps (D9)
+
+`tadabur.ship_a_mining` decoded more audio `h448` never trained on: every shard outside
+`h448`'s training shards (the held-out block 0-20 and the strided reserve), every row the
+pool's own rule admits, less the clips already staged, the sealed
+panel's reciters and recordings the exposure registry ties to `h448`'s training shards
+({excluded}). That frame holds {mining_frame["frame_clips"]:,} clips of
+{mining_frame["frame_reciters"]} reciters. Whole shards were scanned in a salted order until
+the time budget was spent: **{mining["scanned_shards"]} of {len(mining_frame["shard_order"])}
+shards, {mining["scanned_clips"]:,} clips of {mining["scanned_reciters"]} reciters, in
+{mining["scan_gpu_hours"]} GPU-hours**, each clip decoded whole by `h448` (b = 0 stream) and
+the base teacher. **{mining["hit_clips"]} clips** ({mining["hit_clips_per_gpu_hour"]} per
+GPU-hour) hold an `h448` partner swap; they were staged, segmented as the pool was, and
+mined like it ({mining["kept_hit_clips"]} kept a segment). A scanned clip's inclusion
+probability is {mining_frame["inclusion_probability"]:.3f} (scanned shards / frame shards).
+
+Per target pair, the partner commits in the scanned clips (whole-ayah alignment) and the
+partner swaps mined from the hit clips' kept segments:
+
+{_table(["pair", "h448 partner commits", "h448 clips", "base partner commits",
+         "partner swaps mined"], rows)}
+"""
+
+
+def _section_checks(sites: Mapping) -> str:
+    checks = sites["partner_swap_checks"]
+    rows = [[name, e["sites"], e["reciters"], e["max_per_reciter"], e["ayahs"],
+             e["base_already_right"], f'`{e["top_word"]}` {e["top_word_sites"]}']
+            for name, e in sorted(checks.items(), key=lambda kv: (-kv[1]["sites"], kv[0]))]
+    agreed = [f'{name} ({e["sites"] - e["base_already_right"]} of {e["sites"]}; commonest word '
+              f'`{e["top_word"]}`, {e["top_word_sites"]} sites)'
+              for name, e in sorted(checks.items()) if 2 * e["base_already_right"] < e["sites"]]
+    return f"""## Checks on the partner swaps
+
+What could make a direction's count misleading: one reciter or one word holding most of it,
+or the base teacher hearing the same partner (then the "swap" may be what was said, or a
+shared model habit). Pool and extension together:
+
+{_table(["direction", "sites", "reciters", "most per reciter", "ayat", "base already right",
+         "commonest carrier word"], rows)}
+
+Directions where the base teacher also commits the partner at most sites: {"; ".join(agreed) or "none"}.
+Listening decides them; until then they are not evidence of an `h448`-only error.
 """
 
 
 def _section_budget(sizing: Mapping) -> str:
     rows = []
-    for name, entry in sizing["budget"]["families"].items():
-        p, a = entry["proposed"], entry["alternative"]
-        status = "insufficient evidence" if p["held_out_sparse"] else "sufficient"
-        rows.append([name, p["sites"], p["base_already_right"], p["listened"],
-                     f'{p["train"]["listened"]} ({p["train"]["listened_reciters"]})',
-                     f'{p["held_out"]["listened"]} ({p["held_out"]["listened_reciters"]})',
-                     status,
-                     f'{a["held_out"]["listened"]} ({a["held_out"]["listened_reciters"]})'])
-    swaps = sizing["budget"]["cells"]["soft-pair partner swaps"]["proposed"]
+    for name, e in sizing["budget"]["families"].items():
+        status = "insufficient evidence" if e["held_out_sparse"] else "sufficient"
+        rows.append([name, e["sites"], e["partner_swaps"], e["base_already_right"], e["listened"],
+                     f'{e["train"]["listened"]} ({e["train"]["listened_reciters"]})',
+                     f'{e["held_out"]["listened"]} ({e["held_out"]["listened_reciters"]})',
+                     status])
     rule = sizing["budget"]["sparse_rule"]
-    directions = {name: entry["proposed"]["sites"]
+    directions = {name: entry["sites"]
                   for name, entry in sizing["budget"]["directions"].items() if "partner" in name}
     largest = max(directions, key=lambda name: (directions[name], name))
-    sparse_both = [name for name, entry in sizing["budget"]["families"].items()
-                   if all(entry[split]["held_out_sparse"] for split in entry)]
+    sparse = [name for name, e in sizing["budget"]["families"].items() if e["held_out_sparse"]]
+    soft = sizing["budget"]["cells"][SOFT_PAIRS_POOLED]
     return f"""## 1. Verification budget
 
-Every pair site is listened to (D6). Geminates the base teacher holds take its decode as the
-target (ADR-0011 §3) and leave the worklist, so the **~300-geminate slot becomes
-{sizing["budget"]["cells"][GEMINATES]["proposed"]["listened"]}**: every collapsed geminate the
-base does not hold, a census. Listened sites (reciters) per half, under the proposed 50/50
-split and the alternative (two thirds held out). A held-out cell with fewer than
-{rule["min_reciters"]} reciters or {rule["min_sites"]} sites is sparse (§1): its family is
-reported as insufficient evidence and pooled (§7).
+Listened: every partner swap (pool and extension) and every in-word geminate the base does
+not hold ({sizing["budget"]["cells"][GEMINATES]["listened"]}, a census; the ~300-geminate
+slot of the first plan). Listened sites (reciters) per half of the confirmed 50/50 split
+(D11). A held-out cell with fewer than {rule["min_reciters"]} reciters or {rule["min_sites"]}
+sites is sparse (§1): its family is reported as insufficient evidence (§7).
 
-{_table(["family", "flagged", "base already right", "listened", "train (50/50)",
-         "held out (50/50)", "50/50 status", "held out (⅓ / ⅔)"], rows)}
+{_table(["family", "flagged", "partner swaps", "base already right", "listened",
+         "train", "held out", "held-out status"], rows)}
 
-Per direction, the largest partner-swap direction ({largest}) has {directions[largest]} sites
-in all, so no direction supports a claim of its own; the partner swaps pooled hold
-{swaps["held_out"]["listened"]} held-out sites from {swaps["held_out"]["listened_reciters"]}
-reciters. Sparse on the held-out half under both splits: {", ".join(sparse_both) or "none"}.
+The six soft pairs pooled hold {soft["held_out"]["listened"]} held-out sites from
+{soft["held_out"]["listened_reciters"]} reciters. The largest single direction is {largest}
+({directions[largest]} sites). Sparse on the held-out half: {", ".join(sparse) or "none"}.
 """
 
 
@@ -163,11 +212,11 @@ def _section_power(sizing: Mapping) -> str:
     head = ["cell", "held-out reciters", *(f"true {r:.0%}" for r in rates)]
     needed = [[f'{r["rate"]:.0%}', f'{r["floor"]:.0%}', r["size"], f'{r["power"]:.2f}']
               for r in sizing["sites_needed"]]
-    recovery = _power_rows(sizing, RECOVERY, "proposed")
+    recovery = _power_rows(sizing, RECOVERY)
     middle = len(rates) // 2
     reading = "; ".join(f"{row[0]} {row[2 + middle]}" for row in recovery)
-    every = _power_rows(sizing, RECOVERY, "proposed", EVERY_SITE)
-    every0 = _power_rows(sizing, RECOVERY, "proposed", EVERY_SITE, icc=0.0)
+    every = _power_rows(sizing, RECOVERY, EVERY_SITE)
+    every0 = _power_rows(sizing, RECOVERY, EVERY_SITE, icc=0.0)
     return f"""## 2. Power on the held-out half
 
 A cell's held-out sites are listened to; each is a real mistake with probability θ. The
@@ -188,21 +237,17 @@ Reciters (one site each) a true rate needs for its lower bound to reach a floor 
 
 {_table(["true rate", "floor", "reciters", "power"], needed)}
 
-**Recovery**, 50/50:
+**Recovery** on the held-out half:
 
 {_table(head, recovery)}
 
 At a true recovery of {rates[middle]:.0%}, the floor each cell reaches: {reading}.
 
-**Recovery**, two thirds held out:
+**Retention** of verified mistakes (θ = {SUMMARY_THETA}; held-out mistakes are few):
 
-{_table(head, _power_rows(sizing, RECOVERY, "alternative"))}
+{_table(head, _power_rows(sizing, RETENTION))}
 
-**Retention** of verified mistakes, 50/50 (θ = {SUMMARY_THETA}; held-out mistakes are few):
-
-{_table(head, _power_rows(sizing, RETENTION, "proposed"))}
-
-Every site with the reciter bootstrap, recovery, 50/50, at ICC 0.15 and at ICC 0:
+Every site with the reciter bootstrap, recovery, at ICC 0.15 and at ICC 0:
 
 {_table(head, every)}
 
@@ -316,59 +361,69 @@ plus 6 s).
 
 **{_n(worklist["listening_minutes_without_edit_check"])} minutes** of Ship A listening, plus
 the synthetic-edit check the UI queues with it: **{_n(worklist["listening_minutes"])} minutes**
-in all, in three sittings (runs of the queue; the words come last because a sampled word is
+in all, in {len(worklist["sittings"])} sittings (runs of the queue of at most {SITTING_MINUTES} minutes; the words come last because a sampled word is
 shown whole):
 
 {_table(["sitting", "queue positions", "rows", "minutes"], sittings)}
 """
 
 
-def _section_questions(sites: Mapping, worklist: Mapping, seconds: float) -> str:
-    other = worklist["parts"]["pair_other_letter"]
-    held = sites["strata"]["ship_a:shaddah:held:h448_single:base_held"]["held_out"]
-    minutes = round(held["reciters"] * seconds / 60, 1)
+def _section_questions(worklist: Mapping) -> str:
+    swaps, lean = worklist["parts"]["pair_partner"], worklist["lean_partner_swaps"]
     return f"""## For the owner
 
-- **Partner swaps or every off letter?** The soft-pair allowance forgives partner swaps; the
-  {other["rows"]} other-letter pair sites ({_n(other["minutes"])} minutes) are flags it never
-  forgives. They are on the worklist as #126 asks; listening to the partner swaps alone
-  would save those minutes and lose the training labels for other-letter false flags.
-- **The split.** Confirm 50/50 or the ⅓ / ⅔ alternative before the first sitting.
-- **Geminate evaluation.** The {held["sites"]} held-out geminates the base holds get the
-  teacher's target but no truth, so their recovery is unmeasured unless some are listened to:
-  one per held-out reciter is {held["reciters"]} sites, about {_n(minutes)} minutes.
+- **Listening load.** The worklist asks every partner swap ({swaps["rows"]}, {_n(swaps["minutes"])}
+  minutes), as D6 and D9 set it. A leaner option: every swap the base teacher gets wrong
+  (its label needs the ear) plus one teacher-right swap per held-out reciter and family for
+  evaluation, the train half's teacher-right swaps taking the teacher's decode (ADR-0011 §3):
+  {lean["rows"]} swaps, {_n(lean["minutes"])} minutes.
+- **§7 and the frozen cells.** `س↔ش` and `ط↔ق` are target pairs (D9), but acceptance rules
+  §7 and the #84 scorer's frozen required cells still name seven pairs. Gating on the new
+  pairs needs an owner-signed amendment; until then the code keeps them apart
+  (`truth_sites.ADDED_TARGET_PAIRS`).
+- **Training on held-out reciters' other audio.** The exposure registry now lists the split's
+  two halves (`ship_a.verified_train`, `ship_a.verified_held_out`). It does not yet keep the
+  held-out reciters out of the probe's full-shard training stream: every one of them also
+  has rows in `h448`'s training shards, so excluding them is a #94 decision.
 - **Floors and margins** (#128): every power here is over a grid; none is chosen.
 """
 
 
-def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping) -> str:
-    totals = frame_totals(frame)
-    return "\n".join([
-        f"""# Ship A sizing (#126)
+HEADER = """# Ship A sizing (#126)
 
 Generated by `python -m training.ship_a_sizing_doc` from `tools/tadabur/ship_a/sizing.json`
-(`python -m training.ship_a_sizing run`), `sites.summary.json`, `worklist.summary.json` and
-`frame.json`; do not edit by hand.
+(`python -m training.ship_a_sizing run`), `sites.summary.json`, `worklist.summary.json`,
+`frame.json` and `mining/summary.json` / `mining/frame.json`; do not edit by hand.
 
-Ship A (ADR-0012, goals 1-2) trains on sites the owner verifies by ear: where `h448` commits
-the wrong letter at a target-pair carrier, or collapses an in-word geminate. This page sizes
+Ship A (ADR-0012, goals 1-2) trains on sites the owner verifies by ear: where `h448` swaps the
+letters of a target pair, or collapses an in-word geminate. This page sizes
 that listening and says what the held-out half can certify. It reads only `h448` and the base
 teacher, never a candidate, and **recommends no threshold, floor or margin**: those are the
 owner's (#128). The app outcome itself is #123's Muraja replay; nothing here models Muraja.
-""",
+"""
+
+
+def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
+           mining: Mapping, mining_frame: Mapping) -> str:
+    totals = frame_totals(frame)
+    return "\n".join([
+        HEADER,
         _section_counts(sizing, sites, totals),
+        _section_mining(mining, mining_frame, sites),
+        _section_checks(sites),
         _section_budget(sizing),
         _section_power(sizing),
         _section_harm(sizing),
         _section_mix(sizing, worklist),
         _section_worklist(worklist),
-        _section_questions(sites, worklist, sizing["harm"]["seconds_per_site"]),
+        _section_questions(worklist),
     ])
 
 
-def load_inputs() -> tuple[dict, dict, dict, dict]:
+def load_inputs() -> tuple[dict, ...]:
     return tuple(json.loads(path.read_text(encoding="utf-8")) for path in (
-        SIZING_PATH, SITES_SUMMARY_PATH, WORKLIST_SUMMARY_PATH, FRAME_PATH))
+        SIZING_PATH, SITES_SUMMARY_PATH, WORKLIST_SUMMARY_PATH, FRAME_PATH,
+        MINING_SUMMARY_PATH, MINING_FRAME_PATH))
 
 
 def main() -> None:

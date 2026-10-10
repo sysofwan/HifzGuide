@@ -2,10 +2,11 @@
 
 The blind UI (:mod:`tadabur.tashkeel_audit_ui`) asks, in one queue:
 
-* every Ship A **pair** site (:mod:`tadabur.ship_a`): where ``h448`` commits the pair partner
-  and where it commits any other letter, both halves of the reciter split;
+* every Ship A **partner swap** (:mod:`tadabur.ship_a`): a target-pair carrier where
+  ``h448`` commits the pair's other letter, from the mining pool and the mining extension,
+  both halves of the reciter split (other letters are not asked, D9);
 * every Ship A **geminate** the base teacher does not hold (the ones it holds take the
-  teacher's decode as target and need no listening, ADR-0011 §3);
+  teacher's decode as target and need no listening, ADR-0011 §3, D10);
 * the **23 P3.5 re-listens** (acceptance rules §8: the nominal rejects, re-adjudicated at
   site level), as #87 drew them;
 * the **reject-pile** consonant sites #87 drew (acceptance rules §8 includes them, and they
@@ -22,12 +23,18 @@ are asked after every other row (:func:`tadabur.tashkeel_audit_ui.queue`).
 **Sittings.** The UI asks in a fixed order (:func:`tadabur.tashkeel_audit_ui.queue`: the
 sites and edit-check items in one seeded order, then the words) and resumes at the first
 unanswered row, so a sitting is a run of the queue:
-``worklist.summary.json`` cuts it into :data:`SITTINGS` runs of about equal minutes, by #87's
+``worklist.summary.json`` cuts it into the fewest runs of about equal minutes, none longer
+than :data:`SITTING_MINUTES`, by #87's
 listening model (each excerpt twice plus 4 s; a word twice plus
 :data:`tadabur.word_sample.ANSWER_SECONDS`).
 
 **Frozen.** The summary records the SHA-256 of ``worklist.jsonl`` and of
 ``word_sample.jsonl``; a test checks both still match.
+
+**Exposure.** The build writes the reciter split's two uses to the exposure registry
+(acceptance rules §6): ``ship_a.verified_train`` holds the recordings of every train-half
+Ship A site (listened, or the teacher's target), ``ship_a.verified_held_out`` those of every
+held-out site and sampled word.
 
 Usage (from ``tools/``; torch-free)::
 
@@ -39,6 +46,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -52,24 +60,34 @@ from .listening_session import (
     load_worklist,
     write_worklist,
 )
-from .ship_a import HALVES, SHIP_A_DIR, SITES_PATH, ShipASite, load_sites, reciter_half
-from .staged_audio import load_staged_clips
+from .exposure import SHIP_A_HELD_OUT, SHIP_A_TRAIN, Exposure, whole_recording, write_use
+from .ship_a import (
+    HALVES,
+    HELD_OUT,
+    SHIP_A_DIR,
+    SITES_PATH,
+    TRAIN,
+    ShipASite,
+    load_sites,
+    reciter_half,
+)
+from .staged_audio import StagedClip, load_staged_clips
 from .tashkeel_audit_ui import queue, target_of
 from .word_sample import WORD_SAMPLE_PATH, WordSite, load_words
 
 WORKLIST_PATH = SHIP_A_DIR / "worklist.jsonl"
 SUMMARY_PATH = SHIP_A_DIR / "worklist.summary.json"
 
-SITTINGS = 3
+#: The longest sitting the queue is cut into, in listening minutes.
+SITTING_MINUTES = 75
 
 PAIR_PARTNER = "pair_partner"
-PAIR_OTHER_LETTER = "pair_other_letter"
 GEMINATE = "geminate"
 P35 = "p35_relisten"
 REJECT_PILE = "reject_pile"
 WORDS = "word_sample"
 EDIT_CHECK = "edit_check"
-PARTS = (PAIR_PARTNER, PAIR_OTHER_LETTER, GEMINATE, P35, REJECT_PILE, WORDS, EDIT_CHECK)
+PARTS = (PAIR_PARTNER, GEMINATE, P35, REJECT_PILE, WORDS, EDIT_CHECK)
 
 #: #87's strata the session carries over: the P3.5 re-listens and the reject-pile sites.
 P35_PREFIX = "p35_fixture:"
@@ -77,9 +95,8 @@ REJECT_PILE_SUFFIX = ":base_partner"
 
 
 def ship_a_part(site: ShipASite) -> str:
-    if site.kind == GEMINATE:
-        return GEMINATE
-    return PAIR_PARTNER if site.partner_swap else PAIR_OTHER_LETTER
+    """A listened Ship A site is a geminate or a partner swap."""
+    return GEMINATE if site.kind == GEMINATE else PAIR_PARTNER
 
 
 def carried_part(row: SessionSite) -> str | None:
@@ -116,6 +133,34 @@ def shared_words(rows: Iterable, words: Iterable[WordSite]) -> int:
     return sum((w.site.surah_ayah, w.site.word_index) in asked for w in words)
 
 
+def lean_swaps(sites: Iterable[ShipASite]) -> list[ShipASite]:
+    """A smaller set of partner swaps to listen to, for the owner to weigh: every swap the
+    base teacher gets wrong (its training label needs the ear), plus, for evaluation, one
+    swap the teacher gets right per held-out reciter and family (the first by site id).
+    The train half's teacher-right swaps would take the teacher's decode (ADR-0011 §3)."""
+    chosen, seen = [], set()
+    for site in sorted((s for s in sites if s.partner_swap), key=lambda s: s.site.site_id):
+        if not site.base_already_right:
+            chosen.append(site)
+        elif site.half == HELD_OUT and (site.family, site.reciter_id) not in seen:
+            seen.add((site.family, site.reciter_id))
+            chosen.append(site)
+    return chosen
+
+
+def split_exposures(
+    sites: Iterable[ShipASite], words: Iterable[WordSite], registry: dict[str, StagedClip],
+) -> dict[str, list[Exposure]]:
+    """Each half's recordings (module docstring), whole, with their staged checksums."""
+    names = {TRAIN: set(), HELD_OUT: set()}
+    for site in sites:
+        names[site.half].add(site.site.audio_filename)
+    for word in words:
+        names[reciter_half(word.site.reciter_id)].add(word.site.audio_filename)
+    return {use: sorted(whole_recording(registry[n], registry[n].audio_sha256) for n in names[half])
+            for use, half in ((SHIP_A_TRAIN, TRAIN), (SHIP_A_HELD_OUT, HELD_OUT))}
+
+
 def sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -150,7 +195,8 @@ def summarize(
         by_part[part] = {**describe(members), "reciters": len(set(reciters)),
                          "rows_by_half": {half: halves.count(half) for half in HALVES}}
     total = sum(map(seconds, order))
-    cuts, sittings, start, spent = [k * total / SITTINGS for k in range(1, SITTINGS)], [], 0, 0.0
+    count = math.ceil(total / 60 / SITTING_MINUTES)
+    cuts, sittings, start, spent = [k * total / count for k in range(1, count)], [], 0, 0.0
     for position, row in enumerate(order):
         spent += seconds(row)
         if cuts and spent >= cuts[0]:
@@ -180,7 +226,10 @@ def main() -> None:
     words = load_words()
     write_worklist(rows, WORKLIST_PATH)
     items = load_edit_check()
-    reciter_of = {name: clip.reciter_id for name, clip in load_staged_clips().items()}
+    registry = load_staged_clips()
+    for use, recordings in split_exposures(sites, words, registry).items():
+        write_use(use, recordings)
+    reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
     summary = {
         "inputs": {
             "ship_a/sites.jsonl": sha256_of(SITES_PATH),
@@ -193,6 +242,8 @@ def main() -> None:
         },
         "carried_rows_already_ship_a_sites": duplicates,
         "sampled_words_also_asked_as_sites": shared_words([*rows, *items], words),
+        "lean_partner_swaps": {"rows": len(lean := lean_swaps(sites)),
+                               "minutes": round(sum(seconds(s.row) for s in lean) / 60, 1)},
         **summarize(rows, words, items, parts, reciter_of),
     }
     write_text_atomically(SUMMARY_PATH, json.dumps(summary, indent=1, ensure_ascii=False,

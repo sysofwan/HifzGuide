@@ -15,7 +15,7 @@ from tadabur.ship_a_worklist import (
     PAIR_PARTNER,
     PARTS,
     REJECT_PILE,
-    SITTINGS,
+    SITTING_MINUTES,
     SUMMARY_PATH,
     WORDS,
     WORKLIST_PATH,
@@ -67,9 +67,37 @@ def test_the_committed_worklist_is_frozen_and_its_summary_adds_up():
     assert sum(by_part[p]["rows"] for p in PARTS if p not in (WORDS, EDIT_CHECK)) == len(rows)
     assert summary["rows"] == sum(entry["rows"] for entry in by_part.values())
     sittings = summary["sittings"]
-    assert len(sittings) == SITTINGS
+    assert len(sittings) == -(-summary["listening_minutes"] // SITTING_MINUTES)
+    assert all(s["minutes"] <= SITTING_MINUTES + 1 for s in sittings)
     assert sittings[0]["queue_positions"][0] == 1
     assert sittings[-1]["queue_positions"][1] == summary["rows"]
     for before, after in zip(sittings, sittings[1:]):
         assert after["queue_positions"][0] == before["queue_positions"][1] + 1
     assert sum(s["rows"] for s in sittings) == summary["rows"]
+
+
+def test_each_half_s_recordings_go_to_its_own_exposure_use():
+    from tadabur.exposure import SHIP_A_HELD_OUT, SHIP_A_TRAIN
+    from tadabur.ship_a_worklist import split_exposures
+    from tadabur.staged_audio import StagedClip
+
+    sites = mine(scored_pool())
+    registry = {"c.wav": StagedClip("c.wav", 77, 5, 3, "2:2", 80000, "b" * 64, ("mining_pool",))}
+    uses = split_exposures(sites, [], registry)
+    half = SHIP_A_TRAIN if sites[0].half == "train" else SHIP_A_HELD_OUT
+    assert [e.audio_filename for e in uses[half]] == ["c.wav"]
+    assert [use for use, rows in uses.items() if not rows] == [
+        SHIP_A_HELD_OUT if half == SHIP_A_TRAIN else SHIP_A_TRAIN]
+
+
+def test_the_lean_option_keeps_teacher_wrong_swaps_and_one_teacher_right_per_held_out_reciter():
+    from tadabur.ship_a_worklist import lean_swaps
+
+    sites = mine(scored_pool()) + mine(scored_pool(base=REFERENCE.replace("ذ", "ز")))
+    swaps = [s for s in sites if s.partner_swap]
+    lean = lean_swaps(sites)
+    assert all(s.partner_swap for s in lean)
+    assert {s.site.site_id for s in swaps if not s.base_already_right} <= {
+        s.site.site_id for s in lean}
+    right = [s for s in lean if s.base_already_right]
+    assert all(s.half == "held_out" for s in right) and len(right) <= 1

@@ -10,10 +10,12 @@ field is a **decode-level** fact about one site, read by the #84 scorer's own ru
 
 * The eligible sites are #87's (:func:`tadabur.listening_session.pool_candidates`): every
   mid-word haraka and prescribed sukun, every reference geminate and single consonant, and
-  every carrier of a target-pair letter, per pair. Eligibility reads the realized reference
+  every carrier of a target-pair letter, per pair, for all nine target pairs
+  (:data:`tadabur.truth_sites.ALL_TARGET_PAIRS`). Eligibility reads the realized reference
   alone.
 * A frame **stratum** depends on the reference alone too: ``pair:<prescribed>→<partner>``
-  per direction (a ``ذ`` or ``ظ`` carrier sits in two pairs, so in two directions),
+  per direction (a ``ذ``, ``ظ``, ``س``, ``ط`` or ``ق`` carrier sits in two pairs, so in two
+  directions),
   ``shaddah:held:in_word`` / ``shaddah:held:cross_word`` / ``shaddah:not_held``, and
   ``tashkeel:<mark>``. Cross-word geminates are counted apart because the app never scores
   them (#86).
@@ -60,10 +62,19 @@ from .listening_session import (
     pool_candidates,
     uthmani_tanween,
 )
+from .mining_pool import STRATA as POOL_STRATA
 from .mining_pool import PoolClip, load_base_decodes, load_manifest, segment_key
 from .pool_stream import load_stream_decodes
-from .staged_audio import StagedClip, load_staged_clips
-from .truth_sites import HARAKA_CHARS, HELD, NOT_HELD, SHADDAH, SUKUN, TARGET_PAIRS, TruthSite
+from .staged_audio import MINING_POOL, StagedClip, load_staged_clips
+from .truth_sites import (
+    ALL_TARGET_PAIRS,
+    HARAKA_CHARS,
+    HELD,
+    NOT_HELD,
+    SHADDAH,
+    SUKUN,
+    TruthSite,
+)
 
 SHIP_A_DIR = Path(__file__).parent / "ship_a"
 FRAME_PATH = SHIP_A_DIR / "frame.json"
@@ -134,7 +145,7 @@ class ScoredSite:
 def frame_stratum(row: SessionSite) -> str:
     """The site's stratum in the frame, a function of its reference alone (module doc)."""
     site = row.site
-    if site.mark in TARGET_PAIRS:
+    if site.mark in ALL_TARGET_PAIRS:
         return f"pair:{direction(site)}"
     if site.mark == SHADDAH and site.prescribed == HELD:
         where = crosses_words(site.reference, list(row.word_offsets), site.reference_index)
@@ -161,7 +172,9 @@ def score_pool(
     }
     reciter_of = {clip.audio_filename: clip.reciter_id for clip in clips}
     rows_by_segment: dict[str, list[SessionSite]] = defaultdict(list)
-    for row in census(pool_candidates(clips, base_decodes, h448_decodes, registry, tanween_of)):
+    candidates = pool_candidates(clips, base_decodes, h448_decodes, registry, tanween_of,
+                                 ALL_TARGET_PAIRS)
+    for row in census(candidates):
         rows_by_segment[segment_of[(row.site.audio_filename, row.site.start_sample)]].append(row)
     scored = []
     for key in sorted(rows_by_segment):
@@ -185,7 +198,7 @@ def site_fields(scored: ScoredSite) -> tuple[float, ...]:
         1,
         h448.commits,
         h448.committed == site.prescribed,
-        site.mark in TARGET_PAIRS and h448.committed == partner(site),
+        site.mark in ALL_TARGET_PAIRS and h448.committed == partner(site),
         site.mark == SHADDAH and site.prescribed == HELD and h448.committed == NOT_HELD,
         site.mark == SUKUN and empty,
         site.mark in HARAKA_CHARS and empty,
@@ -222,17 +235,34 @@ def build_frame(scored: list[ScoredSite]) -> dict[str, dict]:
     return dict(sorted(strata.items()))
 
 
-def load_scored_pool() -> tuple[dict, list[ScoredSite]]:
-    """The committed pool scored by both decodes, with the inputs' provenance."""
+@dataclass(frozen=True)
+class PoolFiles:
+    """A committed manifest of the pool's shape and its two decode caches: the mining pool
+    (:data:`MINING_POOL_FILES`) or Ship A's mining extension (:mod:`tadabur.ship_a_mining`).
+    ``use`` is the staging use its clips carry, ``strata`` the strata they may be in."""
+
+    clips: Path
+    base_decodes: Path
+    h448_decodes: Path
+    use: str
+    strata: tuple[str, ...]
+
+    def inputs(self, prefix: str) -> dict[str, Path]:
+        return {f"{prefix}/{path.name}": path
+                for path in (self.clips, self.base_decodes, self.h448_decodes)}
+
+
+MINING_POOL_FILES = PoolFiles(POOL_CLIPS_PATH, POOL_DECODES_PATH, H448_DECODES_PATH,
+                              MINING_POOL, POOL_STRATA)
+
+
+def load_scored_pool(files: PoolFiles = MINING_POOL_FILES) -> tuple[dict, list[ScoredSite]]:
+    """A committed manifest scored by both decodes, with its decodes' provenance."""
     registry = load_staged_clips()
-    clips = load_manifest(POOL_CLIPS_PATH, registry)
-    base_fingerprint, base_decodes = load_base_decodes(POOL_DECODES_PATH)
-    h448_provenance, h448_decodes = load_stream_decodes(H448_DECODES_PATH)
-    provenance = {
-        "inputs": input_checksums(),
-        "base_decode": base_fingerprint,
-        "h448_decode": h448_provenance,
-    }
+    clips = load_manifest(files.clips, registry, files.use, files.strata)
+    base_fingerprint, base_decodes = load_base_decodes(files.base_decodes)
+    h448_provenance, h448_decodes = load_stream_decodes(files.h448_decodes)
+    provenance = {"base_decode": base_fingerprint, "h448_decode": h448_provenance}
     return provenance, score_pool(clips, base_decodes, h448_decodes, registry,
                                   uthmani_tanween())
 
@@ -240,6 +270,7 @@ def load_scored_pool() -> tuple[dict, list[ScoredSite]]:
 def main() -> None:
     provenance, scored = load_scored_pool()
     frame = {
+        "inputs": input_checksums(),
         **provenance,
         "scored_against": "the mushaf (prescribed) value at every site; no verdict exists",
         "fields": list(FIELDS),

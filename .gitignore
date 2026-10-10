@@ -53,6 +53,9 @@ wandb/
 !tools/tadabur/ship_a/sites.jsonl
 !tools/tadabur/ship_a/worklist.jsonl
 !tools/tadabur/ship_a/word_sample.jsonl
+# Ship A's mining extension (#126, D9): its compact scan record and its hit clips' manifest.
+!tools/tadabur/ship_a/mining/scan.jsonl
+!tools/tadabur/ship_a/mining/clips.jsonl
 # Provenance of every re-staged Tadabur clip (#83): shard, row, reciter, length, checksum, uses.
 !tools/tadabur/staged_audio/clips.jsonl
 # The h448-unseen mining pool's manifest (#83): segments, realized references, word times.

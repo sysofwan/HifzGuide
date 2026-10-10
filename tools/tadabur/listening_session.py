@@ -403,9 +403,9 @@ def _shaddah_found(reference: str, decode: str, offsets: list[int]) -> list[Foun
     return found
 
 
-def _pair_found(reference: str, decode: str) -> list[Found]:
+def _pair_found(reference: str, decode: str, pairs: frozenset[str]) -> list[Found]:
     found: list[Found] = []
-    for pair in sorted(TARGET_PAIRS):
+    for pair in sorted(pairs):
         letters = pair.split("↔")
         partnered = {s.reference_index for s in contrast_sites(decode, reference, pair)}
         for i, char in enumerate(reference):
@@ -418,15 +418,17 @@ def _pair_found(reference: str, decode: str) -> list[Found]:
 
 
 def segment_sites(
-    reference: str, base: str, h448: str, offsets: list[int], tanween: list[bool]
+    reference: str, base: str, h448: str, offsets: list[int], tanween: list[bool],
+    pairs: frozenset[str] = TARGET_PAIRS,
 ) -> list[Found]:
     """Every eligible site in one kept segment, stratified by the base decode and, for
-    tashkeel, by the ``h448`` b=0 stream's text for the segment too."""
+    tashkeel, by the ``h448`` b=0 stream's text for the segment too. Pair sites are the
+    carriers of ``pairs`` (§7's target pairs unless a caller asks for more)."""
     limits = word_limits(reference, offsets, tanween)
     return (
         _tashkeel_found(reference, {BASE: base, H448: h448}, limits)
         + _shaddah_found(reference, base, offsets)
-        + _pair_found(reference, base)
+        + _pair_found(reference, base, pairs)
     )
 
 
@@ -494,8 +496,10 @@ def pool_candidates(
     h448_decodes: Mapping[str, str],
     registry: Mapping[str, StagedClip],
     tanween_of: Callable[[str], list[bool]],
+    pairs: frozenset[str] = TARGET_PAIRS,
 ) -> list[Candidate]:
-    """Every eligible site on the kept segments of the pool, with provenance."""
+    """Every eligible site on the kept segments of the pool, with provenance; pair sites
+    for ``pairs``."""
     candidates: list[Candidate] = []
     for clip in clips:
         staged = registry[clip.audio_filename]
@@ -508,6 +512,7 @@ def pool_candidates(
                 segment.reference, base_decodes[key], h448_decodes[key],
                 list(segment.raw_word_offsets),
                 tanween[segment.word_start:segment.word_end],
+                pairs,
             ):
                 site = TruthSite(
                     site_id=site_id(clip.audio_filename, segment.segment_index,
@@ -881,6 +886,8 @@ def adjudicated(sites: list[TruthSite], verdicts: Mapping[str, Verdict]) -> list
 #: (#88, ``tadabur.edit_check.EDIT_AUDIO_REMOTE``) sit on it.
 GPU_HOST = "root@cuda-dev"
 SESSION_CLIPS_REMOTE = "/root/scratch/issue-83/stage/clips"
+#: Where Ship A's mining extension staged its clips (``tadabur.ship_a_mining``, #126).
+MINING_CLIPS_REMOTE = "/root/scratch/issue-126/stage/clips"
 
 
 def fetch_list(sources: Mapping[str, set[str]]) -> tuple[str, list[str]]:
@@ -903,16 +910,20 @@ def fetch(
     edit-check item from ``host`` into ``audio_dir`` with one rsync (files already there are
     kept), then verify each against its recorded checksum:
     the clips through the staged-clip registry (and their length), the items through the
-    blind check. ``sources`` maps ``"session"`` and ``"edit_check"`` to their remote
+    blind check. A clip staged by Ship A's mining extension comes from its own directory.
+    ``sources`` maps ``"session"``, ``"mining"`` and ``"edit_check"`` to their remote
     directories."""
+    from .staged_audio import SHIP_A_MINING
     from .edit_check import EDIT_AUDIO_REMOTE
     from .edit_check import verify_audio as verify_edit_check_audio
 
-    remote = {"session": SESSION_CLIPS_REMOTE, "edit_check": EDIT_AUDIO_REMOTE,
-              **(sources or {})}
+    remote = {"session": SESSION_CLIPS_REMOTE, "mining": MINING_CLIPS_REMOTE,
+              "edit_check": EDIT_AUDIO_REMOTE, **(sources or {})}
     clips = {row.site.audio_filename for row in rows}
-    root, files = fetch_list({remote["session"]: clips,
-                              remote["edit_check"]: {i.site.audio_filename for i in items}})
+    mined = {name for name in clips if SHIP_A_MINING in registry[name].uses}
+    groups = {remote["session"]: clips - mined, remote["mining"]: mined,
+              remote["edit_check"]: {i.site.audio_filename for i in items}}
+    root, files = fetch_list({directory: names for directory, names in groups.items() if names})
     audio_dir.mkdir(parents=True, exist_ok=True)
     run(["rsync", "-a", "--no-relative", "--files-from=-", f"{host}:{root}/", f"{audio_dir}/"],
         input="".join(f"{path}\n" for path in files), text=True, check=True)

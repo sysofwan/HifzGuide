@@ -28,8 +28,8 @@ H448 = f"ك{FATHA}ز{FATHA}ب{KASRA}ت{FATHA}م"
 FIELD = {name: i for i, name in enumerate(FIELDS)}
 
 
-def scored_pool(h448: str = H448, base: str = REFERENCE):
-    segment = PoolSegment(0, 0, 1, 16000, 64000, REFERENCE, (0, len(REFERENCE)), True)
+def scored_pool(h448: str = H448, base: str = REFERENCE, reference: str = REFERENCE):
+    segment = PoolSegment(0, 0, 1, 16000, 64000, reference, (0, len(reference)), True)
     clip = PoolClip("c.wav", ("uniform",), 0.5, "2:2", 3, 1, None, 0, 1, 0.0, 4.0,
                     (1.0, 3.0), (segment,))
     registry = {"c.wav": StagedClip("c.wav", 77, 5, 3, "2:2", 80000, "b" * 64,

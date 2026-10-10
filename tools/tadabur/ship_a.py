@@ -1,36 +1,37 @@
 """Ship A's sites and its reciter split (#126): what the owner verifies for goals 1-2.
 
 Ship A (ADR-0012) trains on sites the owner verifies by ear: where the shipped ``h448``
-(streamed at b = 0, no bias) commits a wrong letter at a target-pair carrier, or collapses
-an in-word geminate. Training labels may be mined from a model's flags (ADR-0012,
-acceptance rules §1); evaluation on them is stratified by that outcome, with inclusion
-probability 1 inside the pool (a census), and read on held-out reciters only.
+(streamed at b = 0, no bias) swaps a target pair's letters, or collapses an in-word
+geminate. Training labels may be mined from a model's flags (ADR-0012, acceptance rules
+§1); evaluation on them is stratified by that outcome, with known inclusion probabilities,
+and read on held-out reciters only.
 
-**Sites.** From the scored pool (:func:`tadabur.power_frame.score_pool`, the #84 scorer's
-outcomes of both frozen decodes):
+**Sites.** From the scored mining pool (:func:`tadabur.power_frame.score_pool`, the #84
+scorer's outcomes of both frozen decodes) and from the clips Ship A's mining extension
+found (:mod:`tadabur.ship_a_mining`):
 
-* **pair**: every target-pair carrier (the six soft pairs and ``ذ↔ظ``) where ``h448``
-  commits a consonant other than the mushaf letter (F at decode level). One site per
-  carrier: a ``ذ`` or ``ظ`` carrier sits in two pairs, and is asked as the pair whose partner
-  ``h448`` committed, else as the first of its pairs in label order. Stratum
-  ``ship_a:<prescribed>→<partner>:h448_partner`` when ``h448`` committed the pair partner (the
-  swap the soft-pair allowance forgives), ``ship_a:<prescribed>:h448_other`` for any other
-  letter (no allowance forgives it).
-* **geminate**: every reference geminate inside one word that ``h448`` decodes as one
-  consonant. Cross-word geminates are left out: the app never scores them (#86).
+* **pair**: every carrier of a target pair (:data:`tadabur.truth_sites.ALL_TARGET_PAIRS`:
+  the six soft pairs, ``ذ↔ظ``, and the owner's ``س↔ش`` and ``ط↔ق``) where ``h448`` commits a
+  consonant other than the mushaf letter, once per carrier. A carrier in two pairs (``ذ``,
+  ``ظ``, ``س``, ``ط``, ``ق``) is asked as the pair whose partner ``h448`` committed, else as the
+  first of its pairs in label order. Stratum ``ship_a:<prescribed>→<partner>:h448_partner``
+  for a **partner swap**, ``ship_a:<prescribed>:h448_other`` for any other letter. Only the
+  partner swaps are listened to (D9); the other letters are mined and kept but no target
+  pair's question asks about them (``ت``→``ه`` at a paused ta marbuta is a reference
+  problem, #130). The extension's clips were selected for a partner swap, so only those are
+  taken from it (``ship_a_mining:…`` strata).
+* **geminate**: every reference geminate inside one word that the pool's ``h448`` decodes
+  as one consonant. Cross-word geminates are left out: the app never scores them (#86).
 
 **Base already right** (ADR-0011 §3). Where the base teacher commits the mushaf value at a
-flagged site, the training target is the teacher's own decode, so the label needs no
-listening. Geminates the teacher holds therefore leave the worklist
-(``ship_a:shaddah:held:h448_single:base_held``); the rest are listened to
-(``…:base_not_held``). Pair sites stay on the worklist whatever the teacher did (D6).
+flagged site, the training target is the teacher's own decode. Geminates the teacher holds
+are not listened to (D10, ``ship_a:shaddah:held:h448_single:base_held``); the 115 it does
+not hold are (``…:base_not_held``). Partner swaps are listened to whatever the teacher did.
 
-**Reciter split** (acceptance rules §9). A canonical reciter is in the ``train`` half when
-:func:`training.acceptance_stats.reciter_hash` under :data:`SPLIT_SALT` is below
-``round((1 − held-out share) · 2**64)``, else ``held_out``; at a share of ½ the cutoff is 2**63,
-the bias split's. The 50/50 split is a **proposal**: the owner confirms it before the first
-sitting. ``split.json`` lists every pool reciter's half under it and under
-:data:`ALTERNATIVE_HELD_OUT_SHARE`.
+**Reciter split** (acceptance rules §9; owner-confirmed 2026-10-10, D11). A canonical
+reciter is in the ``train`` half when :func:`training.acceptance_stats.reciter_hash` under
+:data:`SPLIT_SALT` is below 2**63 (the bias split's cutoff), else ``held_out``. ``split.json``
+lists every reciter of the pool and the extension.
 
 Files (``tools/tadabur/ship_a/``): ``sites.jsonl`` (one site per line: the worklist row of
 :mod:`tadabur.listening_session`, with its provenance, plus the reciter, its half and what
@@ -38,7 +39,7 @@ each decode committed), ``sites.summary.json`` (the population sidecar: per stra
 family, sites and reciters by half and the base teacher's outcome; the frame's carrier
 populations; the inputs' checksums) and ``split.json``.
 
-Usage (from ``tools/``; torch-free, needs ``quran-transcript``, ~3 min)::
+Usage (from ``tools/``; torch-free, needs ``quran-transcript``, ~4 min)::
 
   python -m tadabur.ship_a mine
 """
@@ -56,17 +57,21 @@ from training.acceptance_stats import reciter_hash
 from training.site_outcomes import family
 from training.tashkeel_eval import write_text_atomically
 
-from .listening_session import POOL_CLIPS_PATH, SessionSite, parse_row, row_json
+from .listening_session import SessionSite, parse_row, row_json
 from .mining_pool import load_manifest
 from .power_frame import (
     FRAME_PATH,
+    INPUTS,
+    MINING_POOL_FILES,
     SHIP_A_DIR,
+    PoolFiles,
     ScoredSite,
     direction,
+    input_checksums,
     load_scored_pool,
     partner,
 )
-from .truth_sites import HELD, NOT_HELD, SHADDAH, TARGET_PAIRS, TruthSite, _check_file
+from .truth_sites import ALL_TARGET_PAIRS, HELD, NOT_HELD, SHADDAH, TruthSite, _check_file
 
 SITES_PATH = SHIP_A_DIR / "sites.jsonl"
 SITES_SUMMARY_PATH = SHIP_A_DIR / "sites.summary.json"
@@ -76,11 +81,11 @@ SPLIT_SALT = "ship-a-verified-split-2026-10"
 TRAIN = "train"
 HELD_OUT = "held_out"
 HALVES = (TRAIN, HELD_OUT)
-#: The proposed split, 50/50 (the owner confirms it before the first sitting).
-HELD_OUT_SHARE = 0.5
-#: The alternative the sizing reports beside it: two thirds held out, for the held-out
-#: half's power, since labels to train on are needed in far smaller numbers than claims.
-ALTERNATIVE_HELD_OUT_SHARE = 2 / 3
+#: The train half's cutoff: 50/50, confirmed by the owner (D11).
+SPLIT_CUTOFF = 2**63
+#: The strata prefixes of the pool's sites and of the mining extension's.
+POOL_PREFIX = "ship_a"
+MINING_PREFIX = "ship_a_mining"
 
 PAIR = "pair"
 GEMINATE = "geminate"
@@ -88,10 +93,9 @@ GEMINATE = "geminate"
 IN_WORD_GEMINATES = "shaddah:held:in_word"
 
 
-def reciter_half(reciter_id: int, held_out_share: float = HELD_OUT_SHARE) -> str:
+def reciter_half(reciter_id: int) -> str:
     """``train`` or ``held_out`` for one canonical reciter id (module docstring)."""
-    cutoff = round((1 - held_out_share) * 2**64)
-    return TRAIN if reciter_hash(reciter_id, SPLIT_SALT) < cutoff else HELD_OUT
+    return TRAIN if reciter_hash(reciter_id, SPLIT_SALT) < SPLIT_CUTOFF else HELD_OUT
 
 
 @dataclass(frozen=True)
@@ -126,23 +130,23 @@ class ShipASite:
 
     @property
     def listened(self) -> bool:
-        """On the worklist: every pair site, and the geminates the teacher does not hold."""
-        return self.kind == PAIR or not self.base_already_right
+        """On the worklist: every partner swap, and the geminates the teacher does not hold."""
+        return self.partner_swap or (self.kind == GEMINATE and not self.base_already_right)
 
     @property
     def partner_swap(self) -> bool:
         return self.kind == PAIR and self.h448_committed == partner(self.site)
 
 
-def ship_a_stratum(scored: ScoredSite) -> str:
+def ship_a_stratum(scored: ScoredSite, prefix: str) -> str:
     """The stratum a flagged site is mined into (module docstring)."""
     site = scored.site
     if site.mark == SHADDAH:
         teacher = "base_held" if scored.base_mushaf else "base_not_held"
-        return f"ship_a:shaddah:held:h448_single:{teacher}"
+        return f"{prefix}:shaddah:held:h448_single:{teacher}"
     if scored.h448.committed == partner(site):
-        return f"ship_a:{direction(site)}:h448_partner"
-    return f"ship_a:{site.prescribed}:h448_other"
+        return f"{prefix}:{direction(site)}:h448_partner"
+    return f"{prefix}:{site.prescribed}:h448_other"
 
 
 def flagged_sites(scored: Iterable[ScoredSite]) -> list[ScoredSite]:
@@ -150,7 +154,7 @@ def flagged_sites(scored: Iterable[ScoredSite]) -> list[ScoredSite]:
     carriers: dict[tuple, list[ScoredSite]] = defaultdict(list)
     geminates = []
     for one in scored:
-        if one.site.mark in TARGET_PAIRS and one.h448_flagged:
+        if one.site.mark in ALL_TARGET_PAIRS and one.h448_flagged:
             site = one.site
             carriers[(site.audio_filename, site.start_sample, site.reference_index)].append(one)
         elif one.stratum == IN_WORD_GEMINATES and one.h448.committed == NOT_HELD:
@@ -163,10 +167,10 @@ def flagged_sites(scored: Iterable[ScoredSite]) -> list[ScoredSite]:
     return chosen + geminates
 
 
-def mine(scored: Iterable[ScoredSite]) -> list[ShipASite]:
-    """Ship A's sites, each in its stratum with that stratum's population, sorted by id."""
+def mine(scored: Iterable[ScoredSite], prefix: str = POOL_PREFIX) -> list[ShipASite]:
+    """Every flagged site, each in its stratum with that stratum's population, sorted by id."""
     flagged = flagged_sites(scored)
-    strata = [ship_a_stratum(one) for one in flagged]
+    strata = [ship_a_stratum(one, prefix) for one in flagged]
     population: dict[str, int] = defaultdict(int)
     for stratum in strata:
         population[stratum] += 1
@@ -246,26 +250,66 @@ def _counts(sites: list[ShipASite]) -> dict:
     }
 
 
+def carrier_word(site: ShipASite) -> str:
+    """The realized word holding the site's carrier."""
+    offsets, index = site.row.word_offsets, site.site.reference_index
+    start = max(o for o in offsets if o <= index)
+    end = min(o for o in offsets if o > index)
+    return site.site.reference[start:end].strip()
+
+
+def swap_checks(sites: list[ShipASite]) -> dict:
+    """Per partner-swap direction, what could make its count misleading: how many reciters
+    and ayat hold it, the most any one reciter holds, how often the base teacher commits the
+    mushaf letter there, and the commonest carrier word with its share."""
+    checks = {}
+    for name, group in sorted(_by([s for s in sites if s.partner_swap],
+                                  lambda s: f"{s.site.prescribed}→{s.h448_committed}").items()):
+        word, count = Counter(map(carrier_word, group)).most_common(1)[0]
+        checks[name] = {
+            "sites": len(group),
+            "reciters": len({s.reciter_id for s in group}),
+            "max_per_reciter": Counter(s.reciter_id for s in group).most_common(1)[0][1],
+            "ayahs": len({s.site.surah_ayah for s in group}),
+            "base_already_right": sum(s.base_already_right for s in group),
+            "top_word": word,
+            "top_word_sites": count,
+        }
+    return checks
+
+
+def _by(sites: list[ShipASite], key) -> dict[str, list[ShipASite]]:
+    groups: dict[str, list[ShipASite]] = defaultdict(list)
+    for site in sites:
+        groups[key(site)].append(site)
+    return groups
+
+
 def summarize(sites: list[ShipASite], frame_strata: dict, provenance: dict) -> dict:
     """The population sidecar: per Ship A stratum and per family, the counts of
-    :func:`_counts`; the frame's carrier populations per stratum; the inputs."""
+    :func:`_counts`; the pool's pair commits (partner swaps, other letters, by letter) and
+    the extension's families; the frame's carrier populations per stratum; the inputs."""
     def grouped(key) -> dict:
-        groups: dict[str, list[ShipASite]] = defaultdict(list)
-        for site in sites:
-            groups[key(site)].append(site)
-        return {name: _counts(group) for name, group in sorted(groups.items())}
+        return {name: _counts(group) for name, group in sorted(_by(sites, key).items())}
 
+    pool = [s for s in sites if s.site.stratum.startswith(f"{POOL_PREFIX}:")]
     return {
         **provenance,
-        "split": {"salt": SPLIT_SALT, "held_out_share": HELD_OUT_SHARE, "status": "proposal"},
+        "split": {"salt": SPLIT_SALT, "cutoff": SPLIT_CUTOFF, "status": "confirmed (D11)"},
         "strata": grouped(lambda s: s.site.stratum),
         "families": grouped(lambda s: s.family),
-        "pair_commits": {
-            "partner": _counts([s for s in sites if s.partner_swap]),
-            "other_letter": _counts([s for s in sites if s.kind == PAIR and not s.partner_swap]),
+        "pool_pair_commits": {
+            "partner": _counts([s for s in pool if s.partner_swap]),
+            "other_letter": _counts([s for s in pool if s.kind == PAIR and not s.partner_swap]),
             "by_letter": dict(Counter(
-                f"{s.site.prescribed}→{s.h448_committed}" for s in sites if s.kind == PAIR
+                f"{s.site.prescribed}→{s.h448_committed}" for s in pool if s.kind == PAIR
             ).most_common()),
+        },
+        "partner_swap_checks": swap_checks(sites),
+        "extension_families": {
+            name: _counts(group) for name, group in sorted(_by(
+                [s for s in sites if s.site.stratum.startswith(f"{MINING_PREFIX}:")],
+                lambda s: s.family).items())
         },
         "frame_populations": {
             name: {"carriers": stratum["population"], "reciters": len(stratum["per_reciter"])}
@@ -276,47 +320,59 @@ def summarize(sites: list[ShipASite], frame_strata: dict, provenance: dict) -> d
 
 
 def split_record(reciters: Iterable[int]) -> dict:
-    """Every pool reciter's half under the proposed split and the alternative, with counts."""
-    reciters = sorted(set(reciters))
-    shares = {"proposed": HELD_OUT_SHARE, "alternative": ALTERNATIVE_HELD_OUT_SHARE}
-    record = {
-        "status": "proposal: the owner confirms the split before the first sitting",
+    """Every reciter's half under the confirmed split, with counts."""
+    halves = {str(r): reciter_half(r) for r in sorted(set(reciters))}
+    return {
+        "status": "confirmed by the owner, 2026-10-10 (D11)",
         "salt": SPLIT_SALT,
+        "cutoff": SPLIT_CUTOFF,
         "algorithm": "train when the first 8 bytes (big-endian) of SHA-256 over the UTF-8 "
-                     "'<salt>:<reciter id in decimal>' are below round((1 - held-out share) "
-                     "* 2**64), else held_out (acceptance rules §9)",
+                     "'<salt>:<reciter id in decimal>' are below the cutoff, else held_out "
+                     "(acceptance rules §9)",
+        "reciters": {half: sum(h == half for h in halves.values()) for half in HALVES},
+        "halves": halves,
     }
-    for name, share in shares.items():
-        halves = {str(r): reciter_half(r, share) for r in reciters}
-        record[name] = {
-            "held_out_share": share,
-            "cutoff": round((1 - share) * 2**64),
-            "reciters": {half: sum(h == half for h in halves.values()) for half in HALVES},
-            "halves": halves,
-        }
-    return record
+
+
+def mine_all(pool: list[ScoredSite], extension: list[ScoredSite]) -> list[ShipASite]:
+    """The pool's sites and the extension's partner swaps (module docstring), by id."""
+    mined = [*mine(pool), *(s for s in mine(extension, MINING_PREFIX) if s.partner_swap)]
+    return sorted(mined, key=lambda s: s.site.site_id)
+
+
+def inputs(extension: PoolFiles) -> dict[str, str]:
+    """The checksums of the pool's and the extension's committed files."""
+    return {**input_checksums(), **input_checksums(extension.inputs("ship_a/mining"))}
 
 
 def main() -> None:
+    from .ship_a_mining import FILES as EXTENSION_FILES
+
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("mine", help="mine Ship A's sites and write them with their sidecars")
     parser.parse_args()
-    provenance, scored = load_scored_pool()
     frame = json.loads(FRAME_PATH.read_text(encoding="utf-8"))
-    if frame["inputs"] != provenance["inputs"]:
+    if frame["inputs"] != input_checksums(INPUTS):
         raise ValueError(f"{FRAME_PATH} was built from other inputs: rebuild it first")
-    sites = mine(scored)
+    pool_provenance, pool = load_scored_pool(MINING_POOL_FILES)
+    extension_provenance, extension = load_scored_pool(EXTENSION_FILES)
+    sites = mine_all(pool, extension)
     write_sites(sites)
+    provenance = {"inputs": inputs(EXTENSION_FILES), "pool": pool_provenance,
+                  "extension": extension_provenance}
     summary = summarize(sites, frame["strata"], provenance)
     write_text_atomically(SITES_SUMMARY_PATH, json.dumps(summary, indent=1, ensure_ascii=False,
                                                          sort_keys=True) + "\n")
-    split = split_record(clip.reciter_id for clip in load_manifest(POOL_CLIPS_PATH))
+    clips = [*load_manifest(MINING_POOL_FILES.clips),
+             *load_manifest(EXTENSION_FILES.clips, None, EXTENSION_FILES.use,
+                            EXTENSION_FILES.strata)]
+    split = split_record(clip.reciter_id for clip in clips)
     write_text_atomically(SPLIT_PATH, json.dumps(split, indent=1, sort_keys=True) + "\n")
     for name, counts in summary["strata"].items():
-        print(f"{name:46s} {counts['sites']:4d} sites {counts['reciters']:4d} reciters  "
+        print(f"{name:50s} {counts['sites']:4d} sites {counts['reciters']:4d} reciters  "
               f"base right {counts['base_already_right']:4d}  held out "
               f"{counts[HELD_OUT]['sites']:4d}")
 

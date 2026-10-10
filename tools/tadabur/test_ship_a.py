@@ -11,17 +11,19 @@ from tadabur.listening_session import POOL_CLIPS_PATH
 from tadabur.mining_pool import PoolClip, PoolSegment, load_manifest
 from tadabur.power_frame import FIELDS, FRAME_PATH, score_pool
 from tadabur.ship_a import (
-    ALTERNATIVE_HELD_OUT_SHARE,
     HELD_OUT,
     SITES_SUMMARY_PATH,
     SPLIT_PATH,
     SPLIT_SALT,
     TRAIN,
+    inputs,
     load_sites,
     mine,
+    mine_all,
     reciter_half,
     split_record,
 )
+from tadabur.ship_a_mining import FILES
 from tadabur.staged_audio import StagedClip
 from tadabur.test_power_frame import FATHA, H448, KASRA, REFERENCE, scored_pool
 from training.acceptance_stats import reciter_hash
@@ -40,10 +42,13 @@ def test_the_split_is_the_section_9_hash_under_its_own_salt():
     assert 450 < halves.count(TRAIN) < 550
 
 
-def test_the_alternative_holds_out_a_superset():
-    alternative = [reciter_half(i, ALTERNATIVE_HELD_OUT_SHARE) for i in range(1000)]
-    assert 280 < alternative.count(TRAIN) < 380
-    assert all(a == HELD_OUT for i, a in enumerate(alternative) if reciter_half(i) == HELD_OUT)
+def test_the_extension_contributes_only_its_partner_swaps():
+    pool = scored_pool(base=REFERENCE.replace("بب", "ب"))
+    extension = scored_pool(h448=H448.replace("ز", "د"))
+    mined = mine_all(pool, scored_pool())
+    assert {s.site.stratum.split(":")[0] for s in mined} == {"ship_a", "ship_a_mining"}
+    assert all(s.partner_swap for s in mined if s.site.stratum.startswith("ship_a_mining"))
+    assert not any(s.site.stratum.startswith("ship_a_mining") for s in mine_all(pool, extension))
 
 
 @pytest.mark.parametrize("bad", [-1, True, "7"])
@@ -70,11 +75,21 @@ def test_a_two_pair_carrier_is_one_site_asked_as_the_pair_whose_partner_was_comm
     assert (pair.h448_committed, pair.base_committed) == ("ز", "ذ")
 
 
-def test_another_letter_is_asked_as_the_carriers_first_pair():
+def test_another_letter_is_mined_as_the_carriers_first_pair_and_not_listened():
     sites = mine(scored_pool(h448=H448.replace("ز", "د")))
     (pair,) = [s for s in sites if s.kind == "pair"]
     assert (pair.site.mark, pair.site.stratum) == ("ذ↔ز", "ship_a:ذ:h448_other")
-    assert not pair.partner_swap
+    assert not pair.partner_swap and not pair.listened
+
+
+def test_an_added_pair_partner_is_a_partner_swap():
+    """``ت`` carriers are in ت↔ط only; a ط→ق commit (D9) is a ط↔ق partner swap."""
+    reference = REFERENCE.replace("ت", "ط")
+    sites = mine(scored_pool(h448=reference.replace("ط", "ق"), base=reference,
+                             reference=reference))
+    (pair,) = [s for s in sites if s.kind == "pair"]
+    assert (pair.site.mark, pair.site.stratum) == ("ط↔ق", "ship_a:ط→ق:h448_partner")
+    assert pair.listened
 
 
 def test_a_geminate_the_teacher_holds_needs_no_listening():
@@ -111,7 +126,7 @@ def test_a_cross_word_geminate_is_never_mined():
 def test_the_committed_sites_agree_with_the_frame():
     """Every flagged pair carrier once, and every collapsed in-word geminate, as the frame
     counts them: pair directions sharing a carrier report the same flags."""
-    sites = load_sites()
+    sites = [s for s in load_sites() if s.site.stratum.startswith("ship_a:")]
     frame = json.loads(FRAME_PATH.read_text(encoding="utf-8"))["strata"]
 
     def total(stratum: str, field: str) -> int:
@@ -133,10 +148,15 @@ def test_the_committed_summary_and_split_agree_with_the_sites():
     sites = load_sites()
     summary = json.loads(SITES_SUMMARY_PATH.read_text(encoding="utf-8"))
     frame = json.loads(FRAME_PATH.read_text(encoding="utf-8"))
-    assert summary["inputs"] == frame["inputs"]
+    assert summary["inputs"] == inputs(FILES)
+    assert frame["inputs"] == {k: v for k, v in summary["inputs"].items()
+                               if k.startswith("mining_pool/")}
     assert {name: entry["sites"] for name, entry in summary["strata"].items()} == dict(
         Counter(s.site.stratum for s in sites))
     assert summary["families"]["shaddah"]["listened"] == sum(
         s.listened for s in sites if s.kind == "geminate")
+    clips = [*load_manifest(POOL_CLIPS_PATH),
+             *load_manifest(FILES.clips, None, FILES.use, FILES.strata)]
     assert json.loads(SPLIT_PATH.read_text(encoding="utf-8")) == json.loads(json.dumps(
-        split_record(clip.reciter_id for clip in load_manifest(POOL_CLIPS_PATH))))
+        split_record(clip.reciter_id for clip in clips)))
+    assert {s.reciter_id for s in sites} <= {clip.reciter_id for clip in clips}

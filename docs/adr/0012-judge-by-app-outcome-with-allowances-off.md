@@ -83,9 +83,12 @@ close to zero.
 - **Pooled soft pairs.** Muraja has one switch for all soft pairs, so pooling them replaces
   §4's "per pair, never pooled". Per-direction "insufficient evidence" rows (§7) and harm checks
   stay.
-- **Simulator fidelity.** The Python simulator is only as good as its parity with Muraja. It is
-  checked by replaying recorded window and preview sequences through Muraja's own engine (query
-  assembly and ratchet), not only its per-word grader.
+- **Simulator fidelity.** The app outcome is graded by **Muraja's own Swift engine**. A small
+  harness is compiled from a pinned Muraja checkout kept outside this repo, and it replays the
+  recorded window and preview decodes through Muraja's query assembly, placement and ratchet. A
+  Python port of the grading was tried and dropped: an external review found it disagreed with the
+  compiled Swift on alignment, query placement and the hold buffer (owner decision, 2026-10-09).
+  Grading therefore runs on a Mac, while the decodes still come from the GPU box.
 - **Evaluation populations.** Training labels may be mined from sites the model flagged.
   Evaluation populations stay model-independent, or are stratified by outcome with known
   inclusion probabilities (§1).

@@ -157,8 +157,29 @@ the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you
 
 **Soft pair**
 : One of the six confusable consonant pairs (`ذ↔ز`, `ت↔ط`, `ض↔ظ`, `ك↔ق`, `س↔ص`, `ح↔ه`) that
-  `.balanced` forgives and `.strict` does not. The discrimination the fine-tune must sharpen
-  rather than collapse (ADR-0001).
+  Muraja's `.balanced` exempts from the phoneme gate, so a swap costs only score and the word
+  passes while it still scores ≥ 0.65; `.strict` caps the word at minor at best. `ذ↔ظ` is **not**
+  a soft pair (gated in `.balanced`) but is a target pair all the same. The
+  discrimination the model must sharpen rather than collapse (ADR-0001).
+
+**Allowance**
+: A Muraja grading rule that forgives a model error rather than a reciter's: soft-pair
+  forgiveness, shaddah suppression, the dropped-haraka exemptions. Each exists because the model
+  is not faithful there. ADR-0012 names the ones the model should make unnecessary (soft-pair
+  forgiveness, shaddah suppression, the Tashkeel toggle); the dropped-haraka exemptions stay.
+: _Avoid_: override, tolerance (unqualified)
+
+**App outcome**
+: The grade a reciter would see for a word, simulated through Muraja's real grading: every full
+  window and preview regrades the word and only the best grade is kept. A candidate model is
+  judged on the app outcome **with the allowance under test switched off** (decided 2026-10-09);
+  the per-decode numbers explain why it moved.
+: _Avoid_: decode accuracy (that is per decode, not per word)
+
+**False flag / missed mistake**
+: The two sides of an **app outcome**: a correctly recited word shown as wrong, and a real
+  mistake not flagged, whether shown as correct or left ungraded. Always reported separately,
+  never pooled (ADR-0008).
 
 **should-accept set / should-reject set**
 : The curated, human-labelled fixture clips from the P3.5 poison audit (#6): acceptable-imperfect

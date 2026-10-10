@@ -32,9 +32,9 @@ showed otherwise:
 - `GradeStore` keeps only the best grade (`GradeStore.swift:182-207`).
 
 So a correctly recited word is flagged only if *every* decode is wrong, and a real mistake is
-hidden by a single decode that reads as the mushaf. Today balanced forgives almost every soft-pair
-swap (word score ≥ 0.65) and every collapsed in-word geminate, so today's catch rate for both is
-close to zero.
+hidden by a single decode that reads as the mushaf. Today balanced exempts soft-pair swaps and
+collapsed in-word geminates from the phoneme gate, so they cost only score and the word usually
+stays correct (it needs ≥ 0.65); today's catch rate for both is close to zero.
 
 ## Decision
 
@@ -78,11 +78,11 @@ close to zero.
 
 - **Superseded.** The "Ship 1" plan is superseded: commit block b=1 and "stop grading empty
   haraka". So are the acceptance rules that depend on the single-decode model
-  (`docs/acceptance-rules.md` §3's system definition and headline, §4's allowance populations, §5,
-  and §8's power target).
-- **Pooled soft pairs.** Muraja has one switch for all soft pairs, so pooling them replaces
-  §4's "per pair, never pooled". Per-direction "insufficient evidence" rows (§7) and harm checks
-  stay.
+  (`docs/acceptance-rules.md` §3's system definition and headline, §5, and §8's power target).
+- **§4 is replaced.** The bars above replace all of `docs/acceptance-rules.md` §4: its affected
+  populations, its 5% false-flag and 50% missed-mistake limits, and its "per pair, never pooled"
+  rule. The owner sets the replacement numbers in #128. Muraja has one switch for all soft pairs,
+  so they are pooled; per-direction "insufficient evidence" rows (§7) and harm checks stay.
 - **Simulator fidelity.** The app outcome is graded by **Muraja's own Swift engine**. A small
   harness is compiled from a pinned Muraja checkout kept outside this repo, and it replays the
   recorded window and preview decodes through Muraja's query assembly, placement and ratchet. A

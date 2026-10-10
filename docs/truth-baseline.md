@@ -62,7 +62,7 @@ Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) into `tools/mur
 
 **Single-decode approximation.** Each item has one decode per arm, not one per Muraja check. The checks Muraja would run over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once 2 s are) are replayed through Muraja's engine with each check's text cut from that one decode, its characters spread evenly over the item's samples; the audio after the last whole 200 ms step goes to the closing flush. The session starts on the item's first word. Placement, grading, the ratchet, the hold buffer and the end-word holdback are Muraja's own; a check that would decode differently from the whole-item decode is not represented. Each item is one session, ended by a silence flush.
 
-Sites whose word has no counterpart on Muraja's reference (unplaced, never graded): 8; sites placed on their word but whose own letter has no counterpart (a flag on the word counts, its letter is unattributed): 1.
+Sites whose word has no counterpart on Muraja's reference (unplaced, never graded): 7; sites placed on their word but whose own letter has no counterpart (a flag on the word counts, its letter is unattributed): 2.
 
 Scorings (balanced throughout; `None` keeps balanced's own flag):
 
@@ -101,16 +101,16 @@ Pooled per population and side: **flagged words** (the site's word shows as not 
 |---|---|---|---|---|---|---|
 | base/spans | word flags | 2.2 [0.0, 5.0] | 3.0 [0.7, 6.1] | 2.2 [0.0, 5.0] | 3.0 [0.7, 6.2] | 3.7 [0.8, 7.1] |
 | base/spans | letter flags | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
-| base/spans | coverage | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] |
+| base/spans | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 | base/stream_b0 | word flags | 20.0 [12.5, 28.2] | 20.0 [12.5, 28.2] | 23.0 [14.8, 31.8] | 22.2 [14.5, 30.8] | 23.7 [15.5, 32.6] |
 | base/stream_b0 | letter flags | 6.7 [3.1, 11.0] | 6.7 [3.1, 11.0] | 7.4 [3.3, 12.2] | 6.7 [3.1, 11.0] | 7.4 [3.3, 12.2] |
-| base/stream_b0 | coverage | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] |
+| base/stream_b0 | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 | h448/spans | word flags | 17.0 [11.0, 23.5] | 17.8 [11.7, 24.3] | 17.8 [11.7, 24.4] | 19.3 [13.4, 25.4] | 20.7 [14.7, 27.0] |
 | h448/spans | letter flags | 3.7 [0.8, 7.4] | 3.7 [0.8, 7.4] | 3.7 [0.8, 7.4] | 3.7 [0.8, 7.4] | 3.7 [0.8, 7.4] |
-| h448/spans | coverage | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] |
+| h448/spans | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 | h448/stream_b0 | word flags | 18.5 [11.7, 26.2] | 18.5 [11.7, 26.2] | 21.5 [13.9, 29.7] | 23.0 [15.8, 31.3] | 25.2 [17.4, 33.8] |
 | h448/stream_b0 | letter flags | 5.9 [2.2, 10.6] | 5.9 [2.2, 10.6] | 6.7 [2.3, 11.6] | 6.7 [2.7, 11.5] | 7.4 [3.0, 12.6] |
-| h448/stream_b0 | coverage | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] |
+| h448/stream_b0 | coverage | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 
 **targeted_safeguard, correct** (131 / 84)
 
@@ -198,8 +198,8 @@ No site yet.
 
 | cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|
-| all | 135 / 62 | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] |
-| sukun | 135 / 62 | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] | 98.5 [96.2, 100.0] |
+| all | 135 / 62 | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
+| sukun | 135 / 62 | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] | 99.3 [97.6, 100.0] |
 
 *spurious haraka*, % [95% interval]
 

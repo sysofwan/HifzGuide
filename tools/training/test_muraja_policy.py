@@ -202,9 +202,12 @@ def test_an_unmatched_carrier_keeps_its_word(text):
     where = text.locate(site)
     assert where.word == 3 and where.group is None
     assert text.locate(make("زِيدِ", 0, "kasra", "kasra", "kasra", surah_ayah="2:80")) is None
-    # only a short stretch anchored, or anchors in two Muraja words: not placed
+    # the word comes from the carrier's neighbours, not from whitespace: two words run together
+    run_on = make("لَںںںتَمَسسَبَ", 12, "fatha", "fatha", "fatha", surah_ayah="2:80")
+    assert text.locate(run_on).word == 3
+    # an unanchored neighbour, or anchored neighbours in two Muraja words: not placed
     assert text.locate(make("لَںںںكَبَزَحَدَ", 7, "fatha", "fatha", "fatha", surah_ayah="2:80")) is None
-    assert text.locate(make("لُۥۥلَںںںتَبَ", 11, "fatha", "fatha", "fatha", surah_ayah="2:80")) is None
+    assert text.locate(make("لَںںںبَتَمَسسَنَ", 5, "fatha", "fatha", "fatha", surah_ayah="2:80")) is None
 
 
 # --- what a kept grade means for a site ----------------------------------------------------------

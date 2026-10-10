@@ -143,3 +143,13 @@ def test_a_repeated_word_is_never_placed_on_another_words_grade(tail):
         s for s in load_truth_sites(TRUTH_SITES_DIR / "waqf_boundaries.jsonl") if s.site_id.endswith(tail)
     )
     assert MurajaText(HARNESS.quran_db).locate(site) is None
+
+
+def test_a_carrier_in_words_run_together_keeps_its_own_word():
+    """31:16: the phonetizer ran خَردَلِںںں and فَتَكُن together (#129); only the pausal ن lacks a
+    counterpart, and its neighbours place it on word 9."""
+    site = next(
+        s for s in load_truth_sites(TRUTH_SITES_DIR / "waqf_boundaries.jsonl")
+        if s.site_id.endswith("tadabur_spk0158_S30_A16_adc88181_000011.wav#8")
+    )
+    assert MurajaText(HARNESS.quran_db).locate(site).word == 9

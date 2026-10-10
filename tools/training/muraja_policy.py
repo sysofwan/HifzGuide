@@ -59,8 +59,9 @@ session's end (``handleFinalFlush``, ``settleReadersWord``).
 What a kept grade means for a site
 ----------------------------------
 A site is placed on Muraja's reference for its ayah (:class:`MurajaText`) in two steps kept
-apart: its **word** (from the carrier, or from the nearest character of the carrier's word that
-has a counterpart, so a pausal ه against a wasl تَ never loses its word), and its **letter**:
+apart: its **word** (from the carrier, or else from the carrier's immediate anchored
+neighbours, never from whitespace; a pausal ه maps to the wasl ت it stands for), and its
+**letter**:
 the printed graphemes the app marks for the carrier's phoneme group. The app maps an error's
 ``WordError.groupIndex`` to printed graphemes through ``QuranDatabase.phonemeGroupCharIndices``
 (``Data/QuranDatabase.swift:676-735``, which the harness runs and reports) and then scalar to
@@ -409,7 +410,7 @@ class MurajaText:
 
     def locate(self, site: TruthSite) -> MurajaSite | None:
         """The site on Muraja's reference: its word from the carrier, or, when the carrier has
-        no counterpart, from the rest of its word (:meth:`_word_of`); ``None`` when neither
+        no counterpart, from its anchored neighbours (:meth:`_word_of`); ``None`` when neither
         places it."""
         surah, ayah = _ayah(site)
         reference = self.phonemes(surah, ayah)
@@ -428,18 +429,25 @@ class MurajaText:
 
     @staticmethod
     def _word_of(site: TruthSite, reference: str) -> int | None:
-        """The Muraja word the carrier's realized word aligns to, when that is unambiguous: its
-        anchored characters (runs of at least :data:`ANCHOR_RUN`) must cover at least half of
-        the word and all fall in one Muraja word. Otherwise ``None``: a word recited twice, or
-        run together with its neighbour, is not placed on another word's grade."""
+        """The Muraja word an unmatched carrier belongs to, read off its immediate neighbours and
+        never off whitespace, which the phonetizer drops where it runs two words together (#129).
+
+        The character just before the carrier and the first one after its own marks (spaces
+        skipped) are its neighbours. A neighbour counts only when it is anchored (in a matched
+        run of at least :data:`ANCHOR_RUN`). The carrier takes the word of its anchored
+        neighbours when they agree; with none, or two that disagree, it is not placed (``None``):
+        a word recited twice, or one whose letters around the carrier match nothing, never
+        borrows a neighbouring word's grade."""
         text, index = site.reference, site.reference_index
-        start = text.rfind(" ", 0, index) + 1
-        end = text.find(" ", index)
-        end = len(text) if end < 0 else end
         mapping, anchored = _alignment(text, reference)
-        words = {reference[: mapping[i]].count(" ") + 1 for i in range(start, end) if i in anchored}
-        covered = sum(i in anchored for i in range(start, end))
-        if len(words) != 1 or 2 * covered < end - start:
+        before = index - 1
+        while before >= 0 and text[before] == " ":
+            before -= 1
+        after = index + 1
+        while after < len(text) and (text[after] == " " or unicodedata.combining(text[after])):
+            after += 1
+        words = {reference[: mapping[i]].count(" ") + 1 for i in (before, after) if i in anchored}
+        if len(words) != 1:
             return None
         (word,) = words
         return word

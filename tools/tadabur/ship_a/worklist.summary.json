@@ -1,0 +1,153 @@
+{
+ "carried_rows_already_ship_a_sites": 18,
+ "frozen": {
+  "ship_a/word_sample.jsonl": "e74671b9b75f77cb03650088bc0d6a433748e108d730aea74874a2ebee6dc9f4",
+  "ship_a/worklist.jsonl": "4da8438c68c9ecf84b912eea000eebd452682aefc69aa821da47fc5334cf00b9"
+ },
+ "inputs": {
+  "listening_session/worklist.jsonl": "6e21d8f0605a7653acee0255cfa2734cfcc91c9199c8b25d177bc687530c1b37",
+  "ship_a/sites.jsonl": "21ede5d5b3fb4dd12a559fac5d1e4701064d79403c3908a3d07d4b4eb0068952",
+  "synthetic_edits/blind_check.jsonl": "8cc12078b267ed51ed6f97d9d44c18719dcb8fbf4d16d3f30dd808ba97875fb3"
+ },
+ "listening_minutes": 200.4,
+ "listening_minutes_without_edit_check": 179.6,
+ "parts": {
+  "edit_check": {
+   "by_part": {
+    "edit_check": 30
+   },
+   "minutes": 20.9,
+   "reciters": 0,
+   "rows": 30,
+   "rows_by_half": {
+    "held_out": 0,
+    "train": 0
+   }
+  },
+  "geminate": {
+   "by_part": {
+    "geminate": 115
+   },
+   "minutes": 21.6,
+   "reciters": 73,
+   "rows": 115,
+   "rows_by_half": {
+    "held_out": 65,
+    "train": 50
+   }
+  },
+  "p35_relisten": {
+   "by_part": {
+    "p35_relisten": 23
+   },
+   "minutes": 4.3,
+   "reciters": 18,
+   "rows": 23,
+   "rows_by_half": {
+    "held_out": 9,
+    "train": 14
+   }
+  },
+  "pair_other_letter": {
+   "by_part": {
+    "pair_other_letter": 446
+   },
+   "minutes": 95.6,
+   "reciters": 193,
+   "rows": 446,
+   "rows_by_half": {
+    "held_out": 222,
+    "train": 224
+   }
+  },
+  "pair_partner": {
+   "by_part": {
+    "pair_partner": 73
+   },
+   "minutes": 16.4,
+   "reciters": 51,
+   "rows": 73,
+   "rows_by_half": {
+    "held_out": 35,
+    "train": 38
+   }
+  },
+  "reject_pile": {
+   "by_part": {
+    "reject_pile": 19
+   },
+   "minutes": 3.7,
+   "reciters": 16,
+   "rows": 19,
+   "rows_by_half": {
+    "held_out": 10,
+    "train": 9
+   }
+  },
+  "word_sample": {
+   "by_part": {
+    "word_sample": 160
+   },
+   "minutes": 38.0,
+   "reciters": 160,
+   "rows": 160,
+   "rows_by_half": {
+    "held_out": 160,
+    "train": 0
+   }
+  }
+ },
+ "rows": 866,
+ "sampled_words_also_asked_as_sites": 8,
+ "sittings": [
+  {
+   "by_part": {
+    "edit_check": 13,
+    "geminate": 37,
+    "p35_relisten": 7,
+    "pair_other_letter": 179,
+    "pair_partner": 39,
+    "reject_pile": 10
+   },
+   "minutes": 67.2,
+   "queue_positions": [
+    1,
+    285
+   ],
+   "rows": 285
+  },
+  {
+   "by_part": {
+    "edit_check": 12,
+    "geminate": 55,
+    "p35_relisten": 13,
+    "pair_other_letter": 189,
+    "pair_partner": 16,
+    "reject_pile": 7
+   },
+   "minutes": 66.6,
+   "queue_positions": [
+    286,
+    577
+   ],
+   "rows": 292
+  },
+  {
+   "by_part": {
+    "edit_check": 5,
+    "geminate": 23,
+    "p35_relisten": 3,
+    "pair_other_letter": 78,
+    "pair_partner": 18,
+    "reject_pile": 2,
+    "word_sample": 160
+   },
+   "minutes": 66.6,
+   "queue_positions": [
+    578,
+    866
+   ],
+   "rows": 289
+  }
+ ]
+}

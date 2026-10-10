@@ -8,7 +8,12 @@ each site and record **what the reciter said**, one shuffled queue across three 
   same on the page;
 * **shaddah** — was the highlighted consonant held (doubled), not held, or unclear;
 * **consonant** — which of the pair's two letters was said, or unclear. The P3.5 nominal
-  rejects come up here and in shaddah, indistinguishable from the mined sites.
+  rejects come up here and in shaddah, indistinguishable from the mined sites;
+* **word** — was the highlighted word recited correctly: yes, no or unclear. Ship A's random
+  word sample (:mod:`tadabur.word_sample`, #126) asks it, given with ``--words``. The word is
+  shown whole, since judging it needs its text; it may be a word another row asks about (in
+  another recitation), so the sampled words are asked **after** every other row
+  (:func:`queue`), once those answers are given.
 
 The synthetic-edit check (#107, :mod:`tadabur.edit_check`) shares the queue: each of its
 items asks the shaddah or consonant question of its mark and whether the recitation
@@ -44,7 +49,8 @@ starts.
 
 Usage (from ``tools/``; ``python -m tadabur.listening_session fetch`` copies the audio)::
 
-  python -m tadabur.tashkeel_audit_ui --audio-dir <session audio> --host 0.0.0.0 [--port 8000]
+  python -m tadabur.tashkeel_audit_ui --audio-dir <session audio> --host 0.0.0.0 [--port 8000] \
+      [--worklist tadabur/ship_a/worklist.jsonl --words tadabur/ship_a/word_sample.jsonl]
 """
 
 from __future__ import annotations
@@ -78,7 +84,6 @@ from .listening_session import (
     WORKLIST_PATH,
     SessionSite,
     Verdict,
-    hearable,
     load_worklist,
     read_verdicts,
     run_start,
@@ -87,6 +92,7 @@ from .listening_session import (
 )
 from .staged_audio import StagedClip, load_staged_clips, verify_staged
 from .truth_sites import CONSONANTS, HARAKA_CHARS, HELD, NOT_HELD, SUKUN, UNCLEAR
+from .word_sample import WORD_VERDICTS, WordSite, load_words
 
 _PAGE_PATH = Path(__file__).parent / "tashkeel_audit_page.html"
 #: The page's logic, a module with no DOM in it, so it is tested on its own.
@@ -102,14 +108,21 @@ _MARK_TELLS = _HARAKAT | MADD | {QALQALA}
 _TASHKEEL_CHOICES = (*HARAKA_CHARS, SUKUN, UNCLEAR)  # fatha, damma, kasra
 _SHADDAH_CHOICES = (HELD, NOT_HELD, UNCLEAR)
 
-#: A row of the queue: a session site, or a synthetic-edit check item (which also asks
-#: whether it sounds natural).
-Row = SessionSite | EditCheckSite
+#: A row of the queue: a session site, a synthetic-edit check item (which also asks
+#: whether it sounds natural), or a sampled word (asked whether it was recited correctly).
+Row = SessionSite | EditCheckSite | WordSite
+
+
+def judges_word(row: Row) -> bool:
+    """Whether the row asks about a whole word: Ship A's word sample."""
+    return isinstance(row, WordSite)
 
 
 def choices(row: Row) -> tuple[str, ...]:
     """The answers the page offers for ``row``: the same for every site of its mode, so
     the order cannot hint at the prescribed one (a pair's letters in label order)."""
+    if judges_word(row):
+        return WORD_VERDICTS
     if row.mode == TASHKEEL_MODE:
         return _TASHKEEL_CHOICES
     if row.mode == SHADDAH_MODE:
@@ -225,13 +238,26 @@ def blind_reference(
     """:func:`masked` split around the row's carrier. The highlight runs from the first
     letter of the carrier's geminate (the carrier itself if it is single) to the carrier,
     then over what is read with it: the blanked answer and any harakat left after it. It
-    stops at the next letter, even one equal to the carrier."""
+    stops at the next letter, even one equal to the carrier. A sampled word's highlight is
+    the whole word."""
     reference, shown = row.site.reference, masked(row, targets)
+    if judges_word(row):
+        anchor, end = row.word_span
+        return "".join(shown[:anchor]), reference[anchor:end], "".join(shown[end:])
     anchor = run_start(reference, row.site.reference_index)
     end = row.site.reference_index + 1
     while end < len(reference) and (not shown[end] or reference[end] in _HARAKAT):
         end += 1
     return "".join(shown[:anchor]), "".join(shown[anchor:end]), "".join(shown[end:])
+
+
+def queue(
+    rows: list[SessionSite], items: list[EditCheckSite], words: list[WordSite]
+) -> list[Row]:
+    """The order the page asks in: the sites and edit-check items in one seeded order of
+    their ids, then the sampled words in theirs. A sampled word is shown whole, so it comes
+    after every row whose answer its text could show."""
+    return [*shuffled([*rows, *items]), *shuffled(words)]
 
 
 def page_key(site_id: str) -> str:
@@ -254,12 +280,12 @@ def encode_wav(samples: np.ndarray) -> bytes:
 
 
 def verify_audio(
-    rows: list[SessionSite], registry: dict[str, StagedClip], audio_dir: Path
+    rows: list[SessionSite | WordSite], registry: dict[str, StagedClip], audio_dir: Path
 ) -> None:
-    """Fail unless every clip the worklist plays is in the registry under the checksum its
-    sites record, every excerpt lies inside its clip, and ``audio_dir`` holds exactly that
-    file (checksum and length)."""
-    by_clip: dict[str, list[SessionSite]] = {}
+    """Fail unless every clip the worklist and the word sample play is in the registry under
+    the checksum their rows record, every excerpt lies inside its clip, and ``audio_dir``
+    holds exactly that file (checksum and length)."""
+    by_clip: dict[str, list[SessionSite | WordSite]] = {}
     for row in rows:
         by_clip.setdefault(row.site.audio_filename, []).append(row)
     for name, clip_rows in sorted(by_clip.items()):
@@ -311,22 +337,29 @@ class SessionState:
         self._by_key = {page_key(row.site.site_id): row for row in self.rows}
         if len(self._by_key) != len(self.rows):
             raise ValueError("two sites share a page key")
+        kinds = [judges_word(row) for row in self.rows]
+        if kinds != sorted(kinds):
+            raise ValueError("a sampled word is queued before a site whose answer it could show")
         for row in self.rows:
-            target = target_of(row)
-            self._targets.setdefault(target.word, []).append(target)
+            if not judges_word(row):
+                target = target_of(row)
+                self._targets.setdefault(target.word, []).append(target)
 
     @classmethod
     def load(
         cls, worklist: Path, verdicts: Path, audio_dir: Path, registry: dict[str, StagedClip],
         edit_check: Path | None = None, edit_words: Path = WORDS_PATH,
+        words: Path | None = None,
     ) -> "SessionState":
-        """The session's worklist and, with ``edit_check``, the synthetic-edit check, in
-        one shuffled queue, once every clip and item they play is verified."""
+        """The session's worklist and, with ``edit_check``, the synthetic-edit check and,
+        with ``words``, the word sample, in one shuffled queue, once every clip and item
+        they play is verified."""
         rows = load_worklist(worklist)
-        verify_audio(rows, registry, audio_dir)
+        sampled = [] if words is None else load_words(words)
+        verify_audio([*rows, *sampled], registry, audio_dir)
         items = [] if edit_check is None else load_edit_check(edit_check, edit_words)
         verify_edit_check_audio(items, audio_dir)
-        return cls(rows=shuffled([*rows, *items]), verdicts_path=verdicts,
+        return cls(rows=queue(rows, items, sampled), verdicts_path=verdicts,
                    audio_dir=audio_dir, verdicts=read_verdicts(verdicts))
 
     def row(self, key: str) -> Row:
@@ -366,7 +399,7 @@ class SessionState:
         :class:`StaleAnswer` when the stored answer is no longer ``previous``, and
         ``OSError`` when the file cannot be written; nothing changes in any of those cases."""
         row = self.row(key)
-        if heard not in hearable(row.site.mark):
+        if heard not in choices(row):
             raise ValueError(f"{heard!r} is not an answer to this question")
         if natural not in (NATURALNESS if asks_naturalness(row) else (None,)):
             raise ValueError(f"{natural!r} is not an answer to whether this sounds natural")
@@ -464,6 +497,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="the synthetic-edit blind check asked in the same queue")
     parser.add_argument("--edit-words", type=Path, default=WORDS_PATH,
                         help="the word offsets of the blind check's references")
+    parser.add_argument("--words", type=Path, default=None,
+                        help="a word sample asked in the same queue (tadabur/ship_a/"
+                             "word_sample.jsonl for Ship A's session)")
     parser.add_argument("--verdicts", type=Path, default=VERDICTS_PATH,
                         help="the tracked verdicts JSONL; resumed if present")
     parser.add_argument("--port", type=int, default=8000)
@@ -475,7 +511,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     state = SessionState.load(args.worklist, args.verdicts, args.audio_dir,
-                              load_staged_clips(), args.edit_check, args.edit_words)
+                              load_staged_clips(), args.edit_check, args.edit_words, args.words)
     progress = state.progress()
     print(f"{progress['answered']} of {progress['total']} answered. "
           f"Serving on http://{args.host}:{args.port}/", flush=True)

@@ -55,8 +55,9 @@ Reciter split (§5, §9)
 ----------------------
 :func:`reciter_half` assigns a canonical reciter id to the bias probe's ``tune`` or
 ``score`` half: SHA-256 of the UTF-8 string ``"<salt>:<reciter id in decimal>"``, the first
-8 bytes of the digest read as a big-endian unsigned integer, ``tune`` below 2**63 and
-``score`` at or above it. The salt is :data:`BIAS_SPLIT_SALT`.
+8 bytes of the digest read as a big-endian unsigned integer (:func:`reciter_hash`), ``tune``
+below 2**63 and ``score`` at or above it. The salt is :data:`BIAS_SPLIT_SALT`. Any other
+split under §9 (Ship A's, :mod:`tadabur.ship_a`) compares the same value to its own cutoff.
 """
 
 from __future__ import annotations
@@ -447,9 +448,15 @@ def agreement_terms(records: Sequence[AgreementRecord]) -> tuple[list[int], np.n
 # --- reciter split (§5) ----------------------------------------------------------------
 
 
-def reciter_half(reciter_id: int, salt: str = BIAS_SPLIT_SALT) -> str:
-    """``tune`` or ``score`` for one canonical reciter id (module docstring for the rule)."""
+def reciter_hash(reciter_id: int, salt: str) -> int:
+    """The 64-bit value a reciter split compares to its cutoff: the first 8 bytes,
+    big-endian, of SHA-256 over the UTF-8 string ``"<salt>:<reciter id in decimal>"``."""
     if isinstance(reciter_id, bool) or not isinstance(reciter_id, int) or reciter_id < 0:
         raise ValueError(f"a canonical reciter id is a non-negative int, got {reciter_id!r}")
     digest = hashlib.sha256(f"{salt}:{reciter_id}".encode("utf-8")).digest()
-    return TUNE if int.from_bytes(digest[:8], "big") < 2**63 else SCORE
+    return int.from_bytes(digest[:8], "big")
+
+
+def reciter_half(reciter_id: int, salt: str = BIAS_SPLIT_SALT) -> str:
+    """``tune`` or ``score`` for one canonical reciter id (module docstring for the rule)."""
+    return TUNE if reciter_hash(reciter_id, salt) < 2**63 else SCORE

@@ -10,6 +10,10 @@ The same sitting also takes **the synthetic-edit check** (#107): the 30 blind-ch
 #88 ([`../synthetic_edits/README.md`](../synthetic_edits/README.md)), edits and their
 unedited decoys, asked in the same queue (below).
 
+**Ship A's session (#126)** asks its own worklist and a random word sample through the same
+UI and the same `verdicts.jsonl`: see [`../ship_a/README.md`](../ship_a/README.md) for what it
+holds and the launch commands.
+
 Code: [`../listening_session.py`](../listening_session.py) (mining, worklist, verdicts, the
 audio copy), [`../tashkeel_audit_ui.py`](../tashkeel_audit_ui.py) (the blind UI),
 [`../edit_check.py`](../edit_check.py) (the edit check in the session) and

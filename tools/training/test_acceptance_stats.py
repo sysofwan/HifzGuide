@@ -40,6 +40,7 @@ from training.acceptance_stats import (
     ratio_interval,
     ratio_verdict,
     reciter_half,
+    reciter_hash,
     relative_change_verdict,
     upper_bound,
 )
@@ -277,6 +278,15 @@ def test_reciter_split_algorithm_is_pinned():
 def test_reciter_split_refuses_a_non_canonical_id(bad):
     with pytest.raises(ValueError):
         reciter_half(bad)
+    with pytest.raises(ValueError):
+        reciter_hash(bad, "any-salt")
+
+
+def test_the_reciter_hash_is_the_value_every_split_cuts():
+    digest = hashlib.sha256(b"some-salt:42").digest()
+    assert reciter_hash(42, "some-salt") == int.from_bytes(digest[:8], "big")
+    assert all((reciter_half(i) == TUNE) == (reciter_hash(i, BIAS_SPLIT_SALT) < 2**63)
+               for i in range(200))
 
 
 def test_ratio_interval_picks_the_method_by_the_section_1_rules():

@@ -1,0 +1,870 @@
+{
+ "base_decode": {
+  "autocast": true,
+  "batch_size": 1,
+  "device_type": "cuda",
+  "mode": "whole-spans",
+  "model": "obadx/muaalem-model-v3_2",
+  "policy": "fp32-features-v1",
+  "weights_dtype": "bf16"
+ },
+ "families": {
+  "shaddah": {
+   "base_already_right": 718,
+   "held_out": {
+    "base_already_right": 374,
+    "listened": 65,
+    "reciters": 137,
+    "sites": 439
+   },
+   "listened": 115,
+   "reciters": 248,
+   "sites": 833,
+   "train": {
+    "base_already_right": 344,
+    "listened": 50,
+    "reciters": 111,
+    "sites": 394
+   }
+  },
+  "ت↔ط": {
+   "base_already_right": 127,
+   "held_out": {
+    "base_already_right": 61,
+    "listened": 101,
+    "reciters": 66,
+    "sites": 101
+   },
+   "listened": 209,
+   "reciters": 132,
+   "sites": 209,
+   "train": {
+    "base_already_right": 66,
+    "listened": 108,
+    "reciters": 66,
+    "sites": 108
+   }
+  },
+  "ح↔ه": {
+   "base_already_right": 70,
+   "held_out": {
+    "base_already_right": 40,
+    "listened": 47,
+    "reciters": 34,
+    "sites": 47
+   },
+   "listened": 87,
+   "reciters": 64,
+   "sites": 87,
+   "train": {
+    "base_already_right": 30,
+    "listened": 40,
+    "reciters": 30,
+    "sites": 40
+   }
+  },
+  "ذ↔ز": {
+   "base_already_right": 50,
+   "held_out": {
+    "base_already_right": 30,
+    "listened": 38,
+    "reciters": 33,
+    "sites": 38
+   },
+   "listened": 64,
+   "reciters": 54,
+   "sites": 64,
+   "train": {
+    "base_already_right": 20,
+    "listened": 26,
+    "reciters": 21,
+    "sites": 26
+   }
+  },
+  "ذ↔ظ": {
+   "base_already_right": 7,
+   "held_out": {
+    "base_already_right": 1,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   },
+   "listened": 10,
+   "reciters": 10,
+   "sites": 10,
+   "train": {
+    "base_already_right": 6,
+    "listened": 7,
+    "reciters": 7,
+    "sites": 7
+   }
+  },
+  "س↔ص": {
+   "base_already_right": 31,
+   "held_out": {
+    "base_already_right": 15,
+    "listened": 24,
+    "reciters": 15,
+    "sites": 24
+   },
+   "listened": 57,
+   "reciters": 40,
+   "sites": 57,
+   "train": {
+    "base_already_right": 16,
+    "listened": 33,
+    "reciters": 25,
+    "sites": 33
+   }
+  },
+  "ض↔ظ": {
+   "base_already_right": 15,
+   "held_out": {
+    "base_already_right": 5,
+    "listened": 14,
+    "reciters": 13,
+    "sites": 14
+   },
+   "listened": 30,
+   "reciters": 26,
+   "sites": 30,
+   "train": {
+    "base_already_right": 10,
+    "listened": 16,
+    "reciters": 13,
+    "sites": 16
+   }
+  },
+  "ق↔ك": {
+   "base_already_right": 45,
+   "held_out": {
+    "base_already_right": 26,
+    "listened": 30,
+    "reciters": 22,
+    "sites": 30
+   },
+   "listened": 62,
+   "reciters": 46,
+   "sites": 62,
+   "train": {
+    "base_already_right": 19,
+    "listened": 32,
+    "reciters": 24,
+    "sites": 32
+   }
+  }
+ },
+ "frame_populations": {
+  "pair:ت→ط": {
+   "carriers": 4747,
+   "reciters": 375
+  },
+  "pair:ح→ه": {
+   "carriers": 1637,
+   "reciters": 318
+  },
+  "pair:ذ→ز": {
+   "carriers": 1854,
+   "reciters": 338
+  },
+  "pair:ذ→ظ": {
+   "carriers": 1854,
+   "reciters": 338
+  },
+  "pair:ز→ذ": {
+   "carriers": 675,
+   "reciters": 224
+  },
+  "pair:س→ص": {
+   "carriers": 2297,
+   "reciters": 329
+  },
+  "pair:ص→س": {
+   "carriers": 864,
+   "reciters": 276
+  },
+  "pair:ض→ظ": {
+   "carriers": 601,
+   "reciters": 223
+  },
+  "pair:ط→ت": {
+   "carriers": 491,
+   "reciters": 224
+  },
+  "pair:ظ→ذ": {
+   "carriers": 351,
+   "reciters": 163
+  },
+  "pair:ظ→ض": {
+   "carriers": 351,
+   "reciters": 163
+  },
+  "pair:ق→ك": {
+   "carriers": 2855,
+   "reciters": 347
+  },
+  "pair:ك→ق": {
+   "carriers": 3898,
+   "reciters": 360
+  },
+  "pair:ه→ح": {
+   "carriers": 5770,
+   "reciters": 378
+  },
+  "shaddah:held:cross_word": {
+   "carriers": 950,
+   "reciters": 263
+  },
+  "shaddah:held:in_word": {
+   "carriers": 8480,
+   "reciters": 380
+  }
+ },
+ "h448_decode": {
+  "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+  "decode_fingerprint": {
+   "autocast": true,
+   "batch_size": 16,
+   "device_type": "cuda",
+   "mode": "confirmed-stream-v2-flush",
+   "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "fp32"
+  },
+  "segment_margin_s": 0.5
+ },
+ "inputs": {
+  "mining_pool/base_decodes.json": "57f2b60727381bfa29019c5813835e1403c835784a73c1052b440f11026ed9d7",
+  "mining_pool/clips.jsonl": "885901089d5ed50f21f40405d0c8568a79fbe2319560b906ea429f46e629cf6e",
+  "mining_pool/h448_stream_decodes.json": "1bf9b8cf15c1d2062cfa5fea3ace7cb44ed1a4d0526b16a3e7c7f496ca7dd3b8"
+ },
+ "pair_commits": {
+  "by_letter": {
+   "ت→ء": 5,
+   "ت→ب": 2,
+   "ت→ث": 1,
+   "ت→د": 2,
+   "ت→ذ": 1,
+   "ت→ر": 1,
+   "ت→س": 10,
+   "ت→ع": 1,
+   "ت→ف": 3,
+   "ت→ق": 6,
+   "ت→ك": 6,
+   "ت→ل": 4,
+   "ت→ن": 6,
+   "ت→ه": 70,
+   "ت→ي": 2,
+   "ح→ء": 3,
+   "ح→خ": 2,
+   "ح→د": 1,
+   "ح→ض": 1,
+   "ح→ع": 9,
+   "ح→ف": 1,
+   "ح→ق": 3,
+   "ح→ه": 1,
+   "ذ→ب": 5,
+   "ذ→ث": 1,
+   "ذ→ج": 1,
+   "ذ→د": 12,
+   "ذ→ز": 3,
+   "ذ→ق": 1,
+   "ذ→ل": 8,
+   "ذ→م": 3,
+   "ذ→ن": 3,
+   "ذ→ه": 1,
+   "ذ→ي": 2,
+   "ز→ب": 1,
+   "ز→د": 1,
+   "ز→ذ": 11,
+   "ز→س": 6,
+   "ز→ن": 5,
+   "س→ء": 2,
+   "س→ت": 5,
+   "س→ث": 2,
+   "س→ش": 20,
+   "س→ص": 6,
+   "س→ف": 5,
+   "س→ق": 2,
+   "س→ل": 1,
+   "س→م": 1,
+   "س→ن": 1,
+   "ص→س": 4,
+   "ص→ف": 1,
+   "ص→ق": 5,
+   "ص→ن": 1,
+   "ص→و": 1,
+   "ض→ب": 1,
+   "ض→د": 1,
+   "ض→ط": 4,
+   "ض→ظ": 1,
+   "ض→غ": 1,
+   "ض→ق": 1,
+   "ض→ل": 2,
+   "ط→ت": 5,
+   "ط→ص": 1,
+   "ط→ض": 1,
+   "ط→ف": 1,
+   "ط→ق": 74,
+   "ط→ك": 2,
+   "ط→ل": 1,
+   "ط→ن": 3,
+   "ط→ي": 1,
+   "ظ→ب": 1,
+   "ظ→ذ": 1,
+   "ظ→ر": 1,
+   "ظ→ض": 19,
+   "ظ→غ": 2,
+   "ظ→ف": 1,
+   "ظ→ق": 1,
+   "ظ→ل": 2,
+   "ظ→ه": 1,
+   "ق→ء": 2,
+   "ق→ب": 2,
+   "ق→ت": 1,
+   "ق→خ": 1,
+   "ق→ص": 1,
+   "ق→ط": 4,
+   "ق→ع": 1,
+   "ق→ف": 4,
+   "ق→ك": 9,
+   "ق→ن": 3,
+   "ك→ء": 1,
+   "ك→ب": 1,
+   "ك→ت": 10,
+   "ك→ح": 1,
+   "ك→خ": 1,
+   "ك→ز": 1,
+   "ك→ق": 11,
+   "ك→ل": 1,
+   "ك→ن": 4,
+   "ك→ه": 2,
+   "ك→ي": 1,
+   "ه→ء": 12,
+   "ه→ب": 1,
+   "ه→ت": 1,
+   "ه→ح": 2,
+   "ه→ذ": 2,
+   "ه→ر": 1,
+   "ه→ع": 5,
+   "ه→ق": 1,
+   "ه→ك": 3,
+   "ه→ل": 4,
+   "ه→م": 8,
+   "ه→ن": 6,
+   "ه→و": 8,
+   "ه→ي": 12
+  },
+  "other_letter": {
+   "base_already_right": 312,
+   "held_out": {
+    "base_already_right": 161,
+    "listened": 222,
+    "reciters": 102,
+    "sites": 222
+   },
+   "listened": 446,
+   "reciters": 193,
+   "sites": 446,
+   "train": {
+    "base_already_right": 151,
+    "listened": 224,
+    "reciters": 91,
+    "sites": 224
+   }
+  },
+  "partner": {
+   "base_already_right": 33,
+   "held_out": {
+    "base_already_right": 17,
+    "listened": 35,
+    "reciters": 24,
+    "sites": 35
+   },
+   "listened": 73,
+   "reciters": 51,
+   "sites": 73,
+   "train": {
+    "base_already_right": 16,
+    "listened": 38,
+    "reciters": 27,
+    "sites": 38
+   }
+  }
+ },
+ "split": {
+  "held_out_share": 0.5,
+  "salt": "ship-a-verified-split-2026-10",
+  "status": "proposal"
+ },
+ "strata": {
+  "ship_a:shaddah:held:h448_single:base_held": {
+   "base_already_right": 718,
+   "held_out": {
+    "base_already_right": 374,
+    "listened": 0,
+    "reciters": 127,
+    "sites": 374
+   },
+   "listened": 0,
+   "reciters": 236,
+   "sites": 718,
+   "train": {
+    "base_already_right": 344,
+    "listened": 0,
+    "reciters": 109,
+    "sites": 344
+   }
+  },
+  "ship_a:shaddah:held:h448_single:base_not_held": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 65,
+    "reciters": 44,
+    "sites": 65
+   },
+   "listened": 115,
+   "reciters": 73,
+   "sites": 115,
+   "train": {
+    "base_already_right": 0,
+    "listened": 50,
+    "reciters": 29,
+    "sites": 50
+   }
+  },
+  "ship_a:ت:h448_other": {
+   "base_already_right": 51,
+   "held_out": {
+    "base_already_right": 23,
+    "listened": 55,
+    "reciters": 46,
+    "sites": 55
+   },
+   "listened": 120,
+   "reciters": 91,
+   "sites": 120,
+   "train": {
+    "base_already_right": 28,
+    "listened": 65,
+    "reciters": 45,
+    "sites": 65
+   }
+  },
+  "ship_a:ح:h448_other": {
+   "base_already_right": 16,
+   "held_out": {
+    "base_already_right": 9,
+    "listened": 10,
+    "reciters": 9,
+    "sites": 10
+   },
+   "listened": 20,
+   "reciters": 19,
+   "sites": 20,
+   "train": {
+    "base_already_right": 7,
+    "listened": 10,
+    "reciters": 10,
+    "sites": 10
+   }
+  },
+  "ship_a:ح→ه:h448_partner": {
+   "base_already_right": 1,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 1,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a:ذ:h448_other": {
+   "base_already_right": 32,
+   "held_out": {
+    "base_already_right": 20,
+    "listened": 23,
+    "reciters": 22,
+    "sites": 23
+   },
+   "listened": 37,
+   "reciters": 35,
+   "sites": 37,
+   "train": {
+    "base_already_right": 12,
+    "listened": 14,
+    "reciters": 13,
+    "sites": 14
+   }
+  },
+  "ship_a:ذ→ز:h448_partner": {
+   "base_already_right": 3,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 3,
+   "reciters": 3,
+   "sites": 3,
+   "train": {
+    "base_already_right": 3,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   }
+  },
+  "ship_a:ز:h448_other": {
+   "base_already_right": 10,
+   "held_out": {
+    "base_already_right": 6,
+    "listened": 7,
+    "reciters": 7,
+    "sites": 7
+   },
+   "listened": 13,
+   "reciters": 13,
+   "sites": 13,
+   "train": {
+    "base_already_right": 4,
+    "listened": 6,
+    "reciters": 6,
+    "sites": 6
+   }
+  },
+  "ship_a:ز→ذ:h448_partner": {
+   "base_already_right": 5,
+   "held_out": {
+    "base_already_right": 4,
+    "listened": 8,
+    "reciters": 6,
+    "sites": 8
+   },
+   "listened": 11,
+   "reciters": 9,
+   "sites": 11,
+   "train": {
+    "base_already_right": 1,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   }
+  },
+  "ship_a:س:h448_other": {
+   "base_already_right": 18,
+   "held_out": {
+    "base_already_right": 9,
+    "listened": 17,
+    "reciters": 11,
+    "sites": 17
+   },
+   "listened": 39,
+   "reciters": 30,
+   "sites": 39,
+   "train": {
+    "base_already_right": 9,
+    "listened": 22,
+    "reciters": 19,
+    "sites": 22
+   }
+  },
+  "ship_a:س→ص:h448_partner": {
+   "base_already_right": 3,
+   "held_out": {
+    "base_already_right": 1,
+    "listened": 2,
+    "reciters": 2,
+    "sites": 2
+   },
+   "listened": 6,
+   "reciters": 6,
+   "sites": 6,
+   "train": {
+    "base_already_right": 2,
+    "listened": 4,
+    "reciters": 4,
+    "sites": 4
+   }
+  },
+  "ship_a:ص:h448_other": {
+   "base_already_right": 8,
+   "held_out": {
+    "base_already_right": 5,
+    "listened": 5,
+    "reciters": 5,
+    "sites": 5
+   },
+   "listened": 8,
+   "reciters": 8,
+   "sites": 8,
+   "train": {
+    "base_already_right": 3,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   }
+  },
+  "ship_a:ص→س:h448_partner": {
+   "base_already_right": 2,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 4,
+   "reciters": 3,
+   "sites": 4,
+   "train": {
+    "base_already_right": 2,
+    "listened": 4,
+    "reciters": 3,
+    "sites": 4
+   }
+  },
+  "ship_a:ض:h448_other": {
+   "base_already_right": 9,
+   "held_out": {
+    "base_already_right": 2,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   },
+   "listened": 10,
+   "reciters": 10,
+   "sites": 10,
+   "train": {
+    "base_already_right": 7,
+    "listened": 7,
+    "reciters": 7,
+    "sites": 7
+   }
+  },
+  "ship_a:ض→ظ:h448_partner": {
+   "base_already_right": 1,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 1,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a:ط:h448_other": {
+   "base_already_right": 73,
+   "held_out": {
+    "base_already_right": 36,
+    "listened": 43,
+    "reciters": 33,
+    "sites": 43
+   },
+   "listened": 84,
+   "reciters": 65,
+   "sites": 84,
+   "train": {
+    "base_already_right": 37,
+    "listened": 41,
+    "reciters": 32,
+    "sites": 41
+   }
+  },
+  "ship_a:ط→ت:h448_partner": {
+   "base_already_right": 3,
+   "held_out": {
+    "base_already_right": 2,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   },
+   "listened": 5,
+   "reciters": 5,
+   "sites": 5,
+   "train": {
+    "base_already_right": 1,
+    "listened": 2,
+    "reciters": 2,
+    "sites": 2
+   }
+  },
+  "ship_a:ظ:h448_other": {
+   "base_already_right": 6,
+   "held_out": {
+    "base_already_right": 1,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   },
+   "listened": 9,
+   "reciters": 9,
+   "sites": 9,
+   "train": {
+    "base_already_right": 5,
+    "listened": 6,
+    "reciters": 6,
+    "sites": 6
+   }
+  },
+  "ship_a:ظ→ذ:h448_partner": {
+   "base_already_right": 1,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 1,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a:ظ→ض:h448_partner": {
+   "base_already_right": 5,
+   "held_out": {
+    "base_already_right": 3,
+    "listened": 11,
+    "reciters": 10,
+    "sites": 11
+   },
+   "listened": 19,
+   "reciters": 17,
+   "sites": 19,
+   "train": {
+    "base_already_right": 2,
+    "listened": 8,
+    "reciters": 7,
+    "sites": 8
+   }
+  },
+  "ship_a:ق:h448_other": {
+   "base_already_right": 18,
+   "held_out": {
+    "base_already_right": 10,
+    "listened": 10,
+    "reciters": 9,
+    "sites": 10
+   },
+   "listened": 19,
+   "reciters": 16,
+   "sites": 19,
+   "train": {
+    "base_already_right": 8,
+    "listened": 9,
+    "reciters": 7,
+    "sites": 9
+   }
+  },
+  "ship_a:ق→ك:h448_partner": {
+   "base_already_right": 5,
+   "held_out": {
+    "base_already_right": 5,
+    "listened": 7,
+    "reciters": 5,
+    "sites": 7
+   },
+   "listened": 9,
+   "reciters": 6,
+   "sites": 9,
+   "train": {
+    "base_already_right": 0,
+    "listened": 2,
+    "reciters": 1,
+    "sites": 2
+   }
+  },
+  "ship_a:ك:h448_other": {
+   "base_already_right": 18,
+   "held_out": {
+    "base_already_right": 9,
+    "listened": 10,
+    "reciters": 10,
+    "sites": 10
+   },
+   "listened": 23,
+   "reciters": 22,
+   "sites": 23,
+   "train": {
+    "base_already_right": 9,
+    "listened": 13,
+    "reciters": 12,
+    "sites": 13
+   }
+  },
+  "ship_a:ك→ق:h448_partner": {
+   "base_already_right": 4,
+   "held_out": {
+    "base_already_right": 2,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   },
+   "listened": 11,
+   "reciters": 10,
+   "sites": 11,
+   "train": {
+    "base_already_right": 2,
+    "listened": 8,
+    "reciters": 7,
+    "sites": 8
+   }
+  },
+  "ship_a:ه:h448_other": {
+   "base_already_right": 53,
+   "held_out": {
+    "base_already_right": 31,
+    "listened": 36,
+    "reciters": 25,
+    "sites": 36
+   },
+   "listened": 64,
+   "reciters": 45,
+   "sites": 64,
+   "train": {
+    "base_already_right": 22,
+    "listened": 28,
+    "reciters": 20,
+    "sites": 28
+   }
+  },
+  "ship_a:ه→ح:h448_partner": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   },
+   "listened": 2,
+   "reciters": 2,
+   "sites": 2,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  }
+ }
+}

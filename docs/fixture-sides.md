@@ -190,7 +190,7 @@ A paired diff (#57) refuses two reports whose fixture or schema fingerprints dif
 |---|---|
 | fixtures (scored sites, fixture sides, reciters) | `b2a0270475448374aee9c8f857fa1387cd8668ce6fec98fa7f1db2668b71a03a` |
 | schema | `eb6c9176a122449dd2f44e7466a978261eefa13ee93dbfba520265fe6d95abc9` |
-| input `clips.jsonl` | `53be92d66562cbad358a3d1ecd36b465ab7ddc48eeeb0d967fb4bfa1b37bdd54` |
+| input `clips.jsonl` | `daca1e32aaf550e4134850d0c57ee7ee96890898c7d3740e8db31cfa7ec536dd` |
 | input `p35_fixtures.jsonl` | `654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8` |
 | input `p35_fixtures.relocation.jsonl` | `8a49c872035eef2ba8f69259106f04e1ff3b345c34412b7e0632b71cf3e8d7b8` |
 | input `verdicts.jsonl` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |

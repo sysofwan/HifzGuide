@@ -19,20 +19,26 @@ _POPULATION_TITLES = {
     DIAGNOSTIC: "Diagnostics only: weak labels (in no gate)",
 }
 _RATES = {
-    CORRECT_SIDE: ("commit_rate", "committed_accuracy", "false_flags", "coverage"),
+    CORRECT_SIDE: ("commit_rate", "committed_accuracy", "false_flags", "false_flags@allowances_off",
+                   "coverage", "coverage@allowances_off"),
     MISTAKE_SIDE: ("commit_rate", "committed_accuracy", "missed_mistakes", "silent_corrections",
-                   "muraja_missed"),
+                   "muraja_missed", "muraja_missed@allowances_off"),
 }
 _RATE_TITLES = {
     "commit_rate": "commit rate",
     "committed_accuracy": "committed accuracy",
-    "false_flags": "Muraja false flags",
-    "coverage": "Muraja coverage",
+    "false_flags": "Muraja false flags (shipped default, balanced)",
+    "false_flags@allowances_off": "Muraja false flags, every allowance off",
+    "coverage": "Muraja coverage (shipped default, balanced)",
+    "coverage@allowances_off": "Muraja coverage, every allowance off",
     "missed_mistakes": "missed mistakes",
     "silent_corrections": "silent corrections",
-    "muraja_missed": "Muraja missed",
+    "muraja_missed": "Muraja missed (shipped default, balanced)",
+    "muraja_missed@allowances_off": "Muraja missed, every allowance off",
     "spurious_haraka": "spurious haraka",
 }
+#: The rates the single-decode bound is shown for: today's view under each approximation.
+_BOUND_RATES = {CORRECT_SIDE: ("false_flags", "coverage"), MISTAKE_SIDE: ("muraja_missed",)}
 SPARSE_MARK = "too small"
 
 
@@ -119,7 +125,7 @@ def _population_section(population: str, cells: list[dict], arms: list[str]) -> 
             lines += [f"*{_RATE_TITLES[rate]}*, % [95% interval]", ""]
             lines += _rate_table(rows, arms, rate) + [""]
         comparisons = list(scored[0]["differences"])
-        for rate in ("commit_rate", "committed_accuracy", rates[2]):
+        for rate in ("commit_rate", "committed_accuracy", "false_flags" if side == CORRECT_SIDE else "missed_mistakes"):
             lines += [f"*{_RATE_TITLES[rate]}, paired difference*, points [95% interval]", ""]
             lines += _difference_table(scored, comparisons, rate) + [""]
     return lines
@@ -152,7 +158,8 @@ def _allowance_section(report: dict, arms: list[str]) -> list[str]:
     lines = [
         "For each allowance, on the sites it affects: Muraja's false-flag rate on correct",
         "recitation and missed-mistake rate on real mistakes, with the allowance on (today) and",
-        "switched off, everything else today's configuration. % [95% interval].",
+        "switched off alone, everything else today's configuration, under the single-decode",
+        "approximation. % [95% interval].",
         "",
         "| population | allowance | side | sites / reciters | "
         + " | ".join(f"{a} on → off" for a in arms) + " |",
@@ -179,6 +186,67 @@ def _allowance_section(report: dict, arms: list[str]) -> list[str]:
         "verdict (§4) whatever its correct-side numbers.",
     ]
     return lines
+
+
+def _muraja_section(report: dict, arms: list[str]) -> list[str]:
+    """Which Muraja the rates replay, and the single-decode approximation they rest on."""
+    config, views = report["muraja_config"], report["muraja_views"]
+    off = views["allowances_off"]["config"]
+    lines = [
+        f"Muraja's grades replay Muraja `{config['revision'][:12]}` (v1.0.27; every rule is cited",
+        "to its file and line in `tools/training/muraja_policy.py`). Two configurations are",
+        "reported side by side:",
+        "",
+        f"- **shipped default**: mode `{config['mode']}`, tashkeel error detection on, soft pairs",
+        "  and shaddah suppression on, the dropped-haraka exemption on و ا ء ي, `suppressHarakaDrop`",
+        "  off, the waqf-final exemptions, the geminate-gap tashkeel discard and the word-initial",
+        "  assimilation skip on (`muraja_policy.TODAY`). The acceptance rules read these rates;",
+        "- **every allowance off**: the same scores and thresholds with no soft pair, no",
+        "  dropped-haraka letter, and " + ", ".join(f"`{a}`" for a in _OFF_NAMES if not off[a]),
+        "  switched off (`muraja_policy.allowances_off`).",
+        "",
+        "A false flag is a correct-recitation site whose word shows as not correct because of the",
+        "site; coverage is the share of sites Muraja checked; Muraja missed is the share of real",
+        "mistakes nothing showed against.",
+        "",
+        "**These rates rest on a single-decode approximation.** Muraja grades a word in every",
+        "check that reaches it (each 1 s hop and each 200 ms preview) and keeps its best grade;",
+        "here each item has one decode per arm. "
+        + views["today"]["statement"],
+        "",
+        "The bound below grades today's configuration as if every word were an end word once"
+        f" (`{views['every_word_ends']['approximation']}`): "
+        + views["every_word_ends"]["statement"],
+        "",
+    ]
+    by_population: dict[str, list[dict]] = defaultdict(list)
+    for cell in report["cells"]:
+        if cell["sites"] and cell["family"] == "all":
+            by_population[cell["population"]].append(cell)
+    lines += [
+        "| population | side | rate | sites / reciters | "
+        + " | ".join(f"{a} run ends → every word ends" for a in arms) + " |",
+        "|---|---|---|---|" + "---|" * len(arms),
+    ]
+    for population in POPULATIONS:
+        for cell in by_population.get(population, []):
+            for rate in _BOUND_RATES[cell["side"]]:
+                values = [
+                    f"{format_estimate(cell['arms'][a]['rates'][rate])} → "
+                    f"{format_estimate(cell['arms'][a]['rates'][rate + '@every_word_ends'])}"
+                    for a in arms
+                ]
+                lines.append(
+                    f"| {population} | {cell['side']} | {rate.replace('_', ' ')} | {_size(cell)} | "
+                    + " | ".join(values) + " |"
+                )
+    return lines
+
+
+_OFF_NAMES = (
+    "shaddah_suppression", "suppress_haraka_drop", "final_at_waqf_tashkeel",
+    "final_at_waqf_consonant", "group_has_gap", "leading_assimilation",
+)
 
 
 def _exclusions_table(report: dict) -> list[str]:
@@ -279,11 +347,11 @@ def render(report: dict) -> str:
         "reciters or 20 sites: it cannot support a claim. `–` is an undefined value (a zero",
         "denominator). Rates are in percent; differences in points.",
         "",
-        "Muraja's grades are today's configuration (`muraja_policy.TODAY`): Muraja "
-        f"`{report['muraja_config']['revision'][:12]}`, mode `{report['muraja_config']['mode']}`, "
-        "tashkeel error detection on, soft pairs and shaddah suppression on, the dropped-haraka",
-        "exemption on و ا ء ي, `suppressHarakaDrop` off, the end-word exemption on. A false flag is",
-        "a correct-recitation site graded wrong; coverage is the share graded at all.",
+        "## How Muraja is replayed",
+        "",
+    ]
+    lines += _muraja_section(report, arms)
+    lines += [
         "",
         "## Read this first",
         "",
@@ -361,7 +429,7 @@ def render(report: dict) -> str:
         "| flagged at decode level (F), and an empty or unaligned slot | `site_outcomes` (module doc, `SiteOutcome.flagged`) | `test_site_outcomes.py` |",
         "| substitutions, several marks, insertions, unaligned and wrong carriers | `site_outcomes`, `tashkeel_eval.carrier_readings` | `test_site_outcomes.py`, `test_tashkeel_eval.py` |",
         "| consonant commitment | `contrast_attribution.aligned_consonants` | `test_contrast_attribution.py`, `test_site_outcomes.py` |",
-        "| Muraja configuration and state tables | `muraja_policy.TODAY`, `muraja_policy.grade` | `test_muraja_policy.py` |",
+        "| Muraja configuration, word grading, ratchet and single-decode approximation | `muraja_policy.TODAY`, `muraja_policy.grade_item`, `muraja_policy.single_decode_cycles` | `test_muraja_policy.py` |",
         "| allowance-affected populations | `muraja_policy.ALLOWANCES` | `test_muraja_policy.py` |",
         "| streaming: startup, tail flush, per-window normalization | `decoding` (`confirmed-stream-v2-flush`) | `test_decoding.py` |",
         "| streaming: window phase (the item's first sample) and pairing (every arm scores every site) | `truth_baseline`, `truth_scorer.outcomes_by_arm` | `test_truth_scorer.py` |",

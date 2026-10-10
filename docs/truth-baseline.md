@@ -55,9 +55,38 @@ weighted: **W** marks a Wilson bound, **T** a Tango bound. Otherwise the value c
 reciters or 20 sites: it cannot support a claim. `–` is an undefined value (a zero
 denominator). Rates are in percent; differences in points.
 
-Muraja's grades are today's configuration (`muraja_policy.TODAY`): Muraja `99c326f3fb7c`, mode `balanced`, tashkeel error detection on, soft pairs and shaddah suppression on, the dropped-haraka
-exemption on و ا ء ي, `suppressHarakaDrop` off, the end-word exemption on. A false flag is
-a correct-recitation site graded wrong; coverage is the share graded at all.
+## How Muraja is replayed
+
+Muraja's grades replay Muraja `99c326f3fb7c` (v1.0.27; every rule is cited
+to its file and line in `tools/training/muraja_policy.py`). Two configurations are
+reported side by side:
+
+- **shipped default**: mode `balanced`, tashkeel error detection on, soft pairs
+  and shaddah suppression on, the dropped-haraka exemption on و ا ء ي, `suppressHarakaDrop`
+  off, the waqf-final exemptions, the geminate-gap tashkeel discard and the word-initial
+  assimilation skip on (`muraja_policy.TODAY`). The acceptance rules read these rates;
+- **every allowance off**: the same scores and thresholds with no soft pair, no
+  dropped-haraka letter, and `shaddah_suppression`, `suppress_haraka_drop`, `final_at_waqf_tashkeel`, `final_at_waqf_consonant`, `group_has_gap`, `leading_assimilation`
+  switched off (`muraja_policy.allowances_off`).
+
+A false flag is a correct-recitation site whose word shows as not correct because of the
+site; coverage is the share of sites Muraja checked; Muraja missed is the share of real
+mistakes nothing showed against.
+
+**These rates rest on a single-decode approximation.** Muraja grades a word in every
+check that reaches it (each 1 s hop and each 200 ms preview) and keeps its best grade;
+here each item has one decode per arm. One decode per item stands for every Muraja cycle. Each word that ends a recited run (the item's last word, or a word followed by a heard pause) is the end word of one cycle, and a last cycle ends past the item. The ratchet never sees a different decode: false flags a cleaner cycle would clear stay, and mistakes a clean-decoding cycle would hide count as caught. Mushaf waqf signs and the last-word-of-ayah boost are not modelled.
+
+The bound below grades today's configuration as if every word were an end word once (`single_decode:every_word_ends`): As run_ends, but every word is the end word of one cycle, as when a check ends on each word while the reciter passes it, so every word-final consonant gets the waqf exemption. A bound on what run_ends leaves out, not a measurement.
+
+| population | side | rate | sites / reciters | base/spans run ends → every word ends | base/stream_b0 run ends → every word ends | h448/spans run ends → every word ends | h448/stream_b0 run ends → every word ends |
+|---|---|---|---|---|---|---|---|
+| pause | correct | false flags | 135 / 62 | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 0.0 (n/c) |
+| pause | correct | coverage | 135 / 62 | 0.0 (n/c) → 0.0 (n/c) | 0.7 [0.0, 2.4] → 0.7 [0.0, 2.4] | 0.0 (n/c) → 0.0 (n/c) | 2.2 [0.0, 5.0] → 2.2 [0.0, 5.0] |
+| targeted_safeguard | correct | false flags | 131 / 84 | 3.8 [0.7, 8.0] → 3.8 [0.7, 8.0] | 16.8 [10.1, 24.0] → 16.0 [9.4, 23.3] | 15.3 [9.6, 21.4] → 15.3 [9.6, 21.4] | 17.6 [11.0, 24.4] → 17.6 [11.0, 24.4] |
+| targeted_safeguard | correct | coverage | 131 / 84 | 3.8 [0.7, 8.0] → 3.8 [0.7, 8.0] | 35.1 [26.5, 43.9] → 32.1 [23.5, 40.9] | 65.6 [57.3, 73.9] → 61.1 [52.1, 70.0] | 68.7 [61.1, 76.3] → 64.1 [55.2, 72.7] |
+| diagnostic | correct | false flags | 1657 / 81 | 0.2 [0.1, 0.5] → 0.1 [0.0, 0.3] | 5.5 [4.5, 6.5] → 0.6 [0.3, 1.0] | 1.1 [0.5, 1.7] → 0.1 [0.0, 0.3] | 4.2 [3.2, 5.3] → 0.4 [0.1, 0.7] |
+| diagnostic | correct | coverage | 1657 / 81 | 97.6 [96.7, 98.4] → 23.7 [21.1, 26.4] | 87.7 [85.9, 89.3] → 22.4 [19.9, 25.0] | 93.9 [92.3, 95.4] → 22.6 [20.1, 25.4] | 88.9 [86.9, 90.7] → 22.7 [20.3, 25.3] |
 
 ## Read this first
 
@@ -103,19 +132,33 @@ No site yet.
 | all | 135 / 62 | – | – | – | – |
 | sukun | 135 / 62 | – | – | – | – |
 
-*Muraja false flags*, % [95% interval]
+*Muraja false flags (shipped default, balanced)*, % [95% interval]
 
 | cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|
 | all | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 | sukun | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 
-*Muraja coverage*, % [95% interval]
+*Muraja false flags, every allowance off*, % [95% interval]
 
 | cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|
 | all | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 | sukun | 135 / 62 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+
+*Muraja coverage (shipped default, balanced)*, % [95% interval]
+
+| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|
+| all | 135 / 62 | 0.0 (n/c) | 0.7 [0.0, 2.4] | 0.0 (n/c) | 2.2 [0.0, 5.0] |
+| sukun | 135 / 62 | 0.0 (n/c) | 0.7 [0.0, 2.4] | 0.0 (n/c) | 2.2 [0.0, 5.0] |
+
+*Muraja coverage, every allowance off*, % [95% interval]
+
+| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|
+| all | 135 / 62 | 86.7 [81.3, 92.1] | 64.4 [56.1, 73.1] | 82.2 [76.5, 87.9] | 69.6 [62.0, 76.7] |
+| sukun | 135 / 62 | 86.7 [81.3, 92.1] | 64.4 [56.1, 73.1] | 82.2 [76.5, 87.9] | 69.6 [62.0, 76.7] |
 
 *spurious haraka*, % [95% interval]
 
@@ -137,7 +180,7 @@ No site yet.
 | all | 135 / 62 | – | – | – | – |
 | sukun | 135 / 62 | – | – | – | – |
 
-*Muraja false flags, paired difference*, points [95% interval]
+*Muraja false flags (shipped default, balanced), paired difference*, points [95% interval]
 
 | cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
 |---|---|---|---|---|---|
@@ -186,41 +229,77 @@ No site yet.
 | ق↔ك:ق | 6 / 6 (too small) | 0.0 [0.0, 39.0] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W |
 | ق↔ك:ك | 21 / 19 | 0.0 (n/c) | 21.1 [5.0, 40.0] | 66.7 [43.8, 87.5] | 64.7 [41.2, 86.4] |
 
-*Muraja false flags*, % [95% interval]
+*Muraja false flags (shipped default, balanced)*, % [95% interval]
 
 | cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|
-| all | 131 / 84 | 0.0 (n/c) | 16.0 [10.0, 22.6] | 16.8 [10.9, 23.1] | 19.1 [12.4, 26.2] |
-| shaddah:held (provisional) | 10 / 10 (too small) | 0.0 [0.0, 27.8] W | 0.0 [0.0, 27.8] W | 0.0 [0.0, 27.8] W | 0.0 [0.0, 27.8] W |
+| all | 131 / 84 | 3.8 [0.7, 8.0] | 16.8 [10.1, 24.0] | 15.3 [9.6, 21.4] | 17.6 [11.0, 24.4] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 20.0 [5.7, 51.0] W | 10.0 [1.8, 40.4] W | 10.0 [1.8, 40.4] W | 10.0 [1.8, 40.4] W |
 | shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
 | ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
-| ت↔ط:ط | 7 / 6 (too small) | 0.0 (n/c) | 28.6 (n/c) | 28.6 (n/c) | 28.6 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W |
-| ذ↔ز:ز | 28 / 19 | 0.0 (n/c) | 21.4 [7.1, 36.4] | 14.3 [4.0, 24.2] | 28.6 [11.5, 44.0] |
-| س↔ص:س | 25 / 21 | 0.0 (n/c) | 16.0 [4.0, 30.8] | 20.0 [4.3, 36.0] | 12.0 [0.0, 24.1] |
+| ت↔ط:ط | 7 / 6 (too small) | 0.0 (n/c) | 14.3 (n/c) | 14.3 (n/c) | 14.3 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 33.3 [6.1, 79.2] W | 33.3 [6.1, 79.2] W | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W |
+| ذ↔ز:ز | 28 / 19 | 7.1 [0.0, 20.0] | 25.0 [4.3, 42.5] | 14.3 [4.0, 24.2] | 25.0 [8.3, 40.0] |
+| س↔ص:س | 25 / 21 | 0.0 (n/c) | 16.0 [4.0, 30.8] | 16.0 [0.0, 31.0] | 12.0 [0.0, 24.1] |
 | س↔ص:ص | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
 | ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W |
-| ض↔ظ:ظ | 23 / 20 | 0.0 (n/c) | 13.0 [0.0, 29.2] | 17.4 [4.3, 33.3] | 17.4 [3.8, 36.0] |
+| ض↔ظ:ظ | 23 / 20 | 0.0 (n/c) | 13.0 [0.0, 29.2] | 13.0 [0.0, 30.0] | 17.4 [3.8, 36.0] |
 | ق↔ك:ق | 6 / 6 (too small) | 0.0 [0.0, 39.0] W | 0.0 [0.0, 39.0] W | 0.0 [0.0, 39.0] W | 0.0 [0.0, 39.0] W |
-| ق↔ك:ك | 21 / 19 | 0.0 (n/c) | 19.0 [4.8, 36.4] | 28.6 [10.0, 47.6] | 28.6 [10.0, 47.6] |
+| ق↔ك:ك | 21 / 19 | 0.0 (n/c) | 19.0 [4.8, 36.4] | 28.6 [10.0, 47.6] | 23.8 [8.3, 42.9] |
 
-*Muraja coverage*, % [95% interval]
+*Muraja false flags, every allowance off*, % [95% interval]
 
 | cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|
-| all | 131 / 84 | 0.0 (n/c) | 35.1 [26.4, 44.1] | 67.9 [59.6, 76.4] | 72.5 [65.2, 79.8] |
-| shaddah:held (provisional) | 10 / 10 (too small) | 0.0 [0.0, 27.8] W | 20.0 [5.7, 51.0] W | 60.0 [31.3, 83.2] W | 60.0 [31.3, 83.2] W |
+| all | 131 / 84 | 99.2 [97.5, 100.0] | 80.9 [73.9, 87.5] | 48.1 [39.3, 56.7] | 46.6 [37.8, 55.2] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 100.0 [72.2, 100.0] W | 80.0 [49.0, 94.3] W | 30.0 [10.8, 60.3] W | 40.0 [16.8, 68.7] W |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| ت↔ط:ت | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W |
+| ت↔ط:ط | 7 / 6 (too small) | 100.0 (n/c) | 100.0 (n/c) | 57.1 (n/c) | 71.4 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W |
+| ذ↔ز:ز | 28 / 19 | 100.0 (n/c) | 85.7 [70.6, 100.0] | 46.4 [25.9, 62.5] | 42.9 [23.3, 60.0] |
+| س↔ص:س | 25 / 21 | 100.0 (n/c) | 68.0 [50.0, 84.0] | 40.0 [18.2, 60.0] | 40.0 [21.7, 56.7] |
+| س↔ص:ص | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 33.3 [6.1, 79.2] W | 0.0 [0.0, 56.2] W |
+| ض↔ظ:ض | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W |
+| ض↔ظ:ظ | 23 / 20 | 100.0 (n/c) | 91.3 [77.3, 100.0] | 78.3 [60.0, 95.5] | 60.9 [39.1, 85.0] |
+| ق↔ك:ق | 6 / 6 (too small) | 100.0 [61.0, 100.0] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W |
+| ق↔ك:ك | 21 / 19 | 100.0 (n/c) | 81.0 [63.6, 95.2] | 42.9 [22.7, 65.0] | 47.6 [26.3, 70.0] |
+
+*Muraja coverage (shipped default, balanced)*, % [95% interval]
+
+| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|
+| all | 131 / 84 | 3.8 [0.7, 8.0] | 35.1 [26.5, 43.9] | 65.6 [57.3, 73.9] | 68.7 [61.1, 76.3] |
+| shaddah:held (provisional) | 10 / 10 (too small) | 20.0 [5.7, 51.0] W | 30.0 [10.8, 60.3] W | 70.0 [39.7, 89.2] W | 70.0 [39.7, 89.2] W |
 | shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
 | ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W |
-| ت↔ط:ط | 7 / 6 (too small) | 0.0 (n/c) | 28.6 (n/c) | 71.4 (n/c) | 57.1 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W |
-| ذ↔ز:ز | 28 / 19 | 0.0 (n/c) | 35.7 [13.0, 59.5] | 67.9 [53.3, 84.6] | 85.7 [72.7, 96.4] |
-| س↔ص:س | 25 / 21 | 0.0 (n/c) | 48.0 [29.2, 66.7] | 80.0 [65.4, 95.2] | 72.0 [56.5, 87.0] |
+| ت↔ط:ط | 7 / 6 (too small) | 0.0 (n/c) | 14.3 (n/c) | 57.1 (n/c) | 42.9 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 33.3 [6.1, 79.2] W | 33.3 [6.1, 79.2] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W |
+| ذ↔ز:ز | 28 / 19 | 7.1 [0.0, 20.0] | 39.3 [13.0, 61.9] | 64.3 [50.0, 80.8] | 78.6 [63.0, 91.7] |
+| س↔ص:س | 25 / 21 | 0.0 (n/c) | 44.0 [26.1, 63.6] | 76.0 [60.9, 90.9] | 68.0 [51.9, 86.4] |
 | س↔ص:ص | 3 / 3 (too small) | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W |
 | ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W |
-| ض↔ظ:ظ | 23 / 20 | 0.0 (n/c) | 21.7 [4.8, 40.9] | 39.1 [14.3, 62.5] | 56.5 [33.3, 76.7] |
+| ض↔ظ:ظ | 23 / 20 | 0.0 (n/c) | 21.7 [4.8, 40.9] | 34.8 [14.3, 54.5] | 52.2 [33.3, 70.0] |
 | ق↔ك:ق | 6 / 6 (too small) | 0.0 [0.0, 39.0] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W | 50.0 [18.8, 81.2] W |
-| ق↔ك:ك | 21 / 19 | 0.0 (n/c) | 38.1 [19.0, 57.1] | 85.7 [68.4, 100.0] | 81.0 [61.9, 95.5] |
+| ق↔ك:ك | 21 / 19 | 0.0 (n/c) | 38.1 [19.0, 57.1] | 85.7 [68.4, 100.0] | 76.2 [55.0, 91.7] |
+
+*Muraja coverage, every allowance off*, % [95% interval]
+
+| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|
+| all | 131 / 84 | 99.2 [97.5, 100.0] | 100.0 (n/c) | 99.2 [97.5, 100.0] | 100.0 (n/c) |
+| shaddah:held (provisional) | 10 / 10 (too small) | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 90.0 [59.6, 98.2] W | 100.0 [72.2, 100.0] W |
+| shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ت↔ط:ت | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ت↔ط:ط | 7 / 6 (too small) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W |
+| ذ↔ز:ز | 28 / 19 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| س↔ص:س | 25 / 21 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| س↔ص:ص | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W |
+| ض↔ظ:ض | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ض↔ظ:ظ | 23 / 20 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| ق↔ك:ق | 6 / 6 (too small) | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W |
+| ق↔ك:ك | 21 / 19 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
 
 *commit rate, paired difference*, points [95% interval]
 
@@ -258,23 +337,23 @@ No site yet.
 | ق↔ك:ق | 6 / 6 (too small) | +50.0 [-8.6, 81.2] T | +0.0 [-39.0, 39.0] T | +50.0 [-8.6, 81.2] T | +0.0 [-39.0, 39.0] T |
 | ق↔ك:ك | 21 / 19 | +66.7 [43.8, 87.5] | +43.7 [20.5, 66.0] | +21.1 [5.0, 40.0] | -2.0 [-19.7, 16.2] |
 
-*Muraja false flags, paired difference*, points [95% interval]
+*Muraja false flags (shipped default, balanced), paired difference*, points [95% interval]
 
 | cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
 |---|---|---|---|---|---|
-| all | 131 / 84 | +16.8 [10.9, 23.1] | +3.1 [-0.8, 7.6] | +16.0 [10.0, 22.6] | +2.3 [-4.9, 9.7] |
-| shaddah:held (provisional) | 10 / 10 (too small) | +0.0 [-27.8, 27.8] T | +0.0 [-27.8, 27.8] T | +0.0 [-27.8, 27.8] T | +0.0 [-27.8, 27.8] T |
+| all | 131 / 84 | +11.5 [5.0, 18.3] | +0.8 [-3.1, 4.9] | +13.0 [7.0, 19.2] | +2.3 [-4.3, 9.0] |
+| shaddah:held (provisional) | 10 / 10 (too small) | -10.0 [-40.4, 20.5] T | +0.0 [-27.8, 27.8] T | -10.0 [-40.4, 20.5] T | +0.0 [-27.8, 27.8] T |
 | shaddah:not_held (provisional) | 1 / 1 (too small) | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T |
 | ت↔ط:ت | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +0.0 [-65.8, 65.8] T | +50.0 [-48.6, 90.5] T | +0.0 [-81.1, 81.1] T |
-| ت↔ط:ط | 7 / 6 (too small) | +28.6 (n/c) | +0.0 (n/c) | +28.6 (n/c) | +0.0 (n/c) |
-| ح↔ه:ح | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +33.3 [-41.5, 79.2] T | +33.3 [-41.5, 79.2] T |
-| ذ↔ز:ز | 28 / 19 | +14.3 [4.0, 24.2] | +7.1 [0.0, 16.7] | +21.4 [7.1, 36.4] | +14.3 [0.0, 30.0] |
-| س↔ص:س | 25 / 21 | +20.0 [4.3, 36.0] | -4.0 [-18.5, 8.7] | +16.0 [4.0, 30.8] | -8.0 [-25.0, 12.0] |
+| ت↔ط:ط | 7 / 6 (too small) | +14.3 (n/c) | +0.0 (n/c) | +14.3 (n/c) | +0.0 (n/c) |
+| ح↔ه:ح | 3 / 3 (too small) | -33.3 [-79.2, 41.5] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +33.3 [-41.5, 79.2] T |
+| ذ↔ز:ز | 28 / 19 | +7.1 [-6.1, 21.2] | +0.0 [-8.6, 12.0] | +17.9 [4.0, 31.4] | +10.7 [-4.2, 24.1] |
+| س↔ص:س | 25 / 21 | +16.0 [0.0, 31.0] | -4.0 [-18.5, 8.7] | +16.0 [4.0, 30.8] | -4.0 [-20.0, 13.6] |
 | س↔ص:ص | 3 / 3 (too small) | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T | +0.0 [-56.2, 56.2] T |
 | ض↔ظ:ض | 2 / 2 (too small) | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T |
-| ض↔ظ:ظ | 23 / 20 | +17.4 [4.3, 33.3] | +4.3 [0.0, 14.3] | +13.0 [0.0, 29.2] | +0.0 [-16.0, 19.0] |
+| ض↔ظ:ظ | 23 / 20 | +13.0 [0.0, 30.0] | +4.3 [0.0, 14.3] | +13.0 [0.0, 29.2] | +4.3 [-10.0, 20.0] |
 | ق↔ك:ق | 6 / 6 (too small) | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T |
-| ق↔ك:ك | 21 / 19 | +28.6 [10.0, 47.6] | +9.5 [0.0, 25.0] | +19.0 [4.8, 36.4] | +0.0 [-19.0, 20.0] |
+| ق↔ك:ك | 21 / 19 | +28.6 [10.0, 47.6] | +4.8 [0.0, 15.0] | +19.0 [4.8, 36.4] | -4.8 [-21.1, 10.0] |
 
 **Real mistakes:** no site with a verdict yet.
 
@@ -302,25 +381,45 @@ No site yet.
 | kasra | 299 / 71 | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
 | sukun | 182 / 64 | – | – | – | – |
 
-*Muraja false flags*, % [95% interval]
+*Muraja false flags (shipped default, balanced)*, % [95% interval]
 
 | cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|
-| all | 1657 / 81 | 0.2 [0.0, 0.4] | 5.5 [4.5, 6.5] | 1.1 [0.5, 1.7] | 4.2 [3.2, 5.3] |
+| all | 1657 / 81 | 0.2 [0.1, 0.5] | 5.5 [4.5, 6.5] | 1.1 [0.5, 1.7] | 4.2 [3.2, 5.3] |
 | damma | 375 / 75 | 0.0 (n/c) | 8.0 [5.4, 10.8] | 1.9 [0.6, 3.4] | 7.2 [4.7, 10.0] |
-| fatha | 801 / 80 | 0.2 [0.0, 0.6] | 6.2 [4.5, 8.1] | 0.7 [0.1, 1.7] | 4.5 [3.1, 6.0] |
+| fatha | 801 / 80 | 0.4 [0.0, 0.8] | 6.2 [4.5, 8.1] | 0.7 [0.1, 1.7] | 4.5 [3.1, 6.0] |
 | kasra | 299 / 71 | 0.3 [0.0, 1.0] | 3.7 [1.9, 5.6] | 1.7 [0.4, 3.2] | 2.3 [0.7, 4.3] |
 | sukun | 182 / 64 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
 
-*Muraja coverage*, % [95% interval]
+*Muraja false flags, every allowance off*, % [95% interval]
 
 | cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|
-| all | 1657 / 81 | 97.4 [96.6, 98.1] | 87.6 [85.9, 89.1] | 93.7 [92.3, 95.1] | 88.7 [87.0, 90.3] |
-| damma | 375 / 75 | 97.1 [95.2, 98.6] | 84.5 [80.7, 87.8] | 93.9 [91.3, 96.1] | 85.1 [81.6, 88.3] |
-| fatha | 801 / 80 | 96.4 [94.9, 97.8] | 88.6 [86.0, 91.1] | 92.1 [89.8, 94.2] | 89.8 [87.4, 92.0] |
-| kasra | 299 / 71 | 99.0 [97.8, 100.0] | 86.3 [81.3, 90.7] | 95.3 [92.7, 97.6] | 88.6 [83.9, 92.8] |
-| sukun | 182 / 64 | 100.0 (n/c) | 91.2 [87.4, 95.0] | 97.8 [94.8, 100.0] | 91.8 [87.9, 95.3] |
+| all | 1657 / 81 | 0.2 [0.1, 0.5] | 6.2 [5.1, 7.3] | 1.1 [0.6, 1.8] | 4.9 [3.8, 6.1] |
+| damma | 375 / 75 | 0.0 (n/c) | 9.3 [6.2, 13.0] | 1.9 [0.6, 3.4] | 8.3 [5.3, 11.4] |
+| fatha | 801 / 80 | 0.4 [0.0, 0.8] | 7.0 [5.1, 8.9] | 0.9 [0.1, 1.9] | 5.4 [3.8, 7.0] |
+| kasra | 299 / 71 | 0.3 [0.0, 1.0] | 3.7 [1.9, 5.6] | 1.7 [0.4, 3.2] | 2.7 [1.0, 4.7] |
+| sukun | 182 / 64 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+
+*Muraja coverage (shipped default, balanced)*, % [95% interval]
+
+| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|
+| all | 1657 / 81 | 97.6 [96.7, 98.4] | 87.7 [85.9, 89.3] | 93.9 [92.3, 95.4] | 88.9 [86.9, 90.7] |
+| damma | 375 / 75 | 96.8 [94.9, 98.4] | 84.5 [80.7, 87.8] | 93.6 [91.0, 95.9] | 85.1 [81.6, 88.3] |
+| fatha | 801 / 80 | 99.0 [98.2, 99.6] | 90.8 [88.4, 93.0] | 94.5 [92.6, 96.3] | 92.0 [89.7, 94.1] |
+| kasra | 299 / 71 | 98.7 [97.3, 99.7] | 86.3 [81.3, 90.7] | 95.0 [92.3, 97.5] | 88.6 [83.9, 92.8] |
+| sukun | 182 / 64 | 91.2 [85.9, 95.9] | 83.0 [76.6, 88.9] | 90.1 [84.3, 95.2] | 83.5 [77.1, 89.3] |
+
+*Muraja coverage, every allowance off*, % [95% interval]
+
+| cell | sites / reciters | base/spans | base/stream_b0 | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|
+| all | 1657 / 81 | 98.2 [97.6, 98.9] | 89.3 [87.6, 90.8] | 95.4 [94.0, 96.7] | 90.8 [89.1, 92.3] |
+| damma | 375 / 75 | 99.7 [99.1, 100.0] | 88.3 [84.7, 91.5] | 97.1 [95.4, 98.5] | 89.1 [85.9, 92.0] |
+| fatha | 801 / 80 | 99.0 [98.2, 99.6] | 91.9 [89.7, 94.0] | 95.9 [94.3, 97.2] | 93.5 [91.5, 95.3] |
+| kasra | 299 / 71 | 98.7 [97.3, 99.7] | 87.3 [82.5, 91.6] | 95.3 [92.5, 97.8] | 90.0 [85.6, 93.8] |
+| sukun | 182 / 64 | 91.2 [85.9, 95.9] | 83.0 [76.6, 88.9] | 90.1 [84.3, 95.2] | 83.5 [77.1, 89.3] |
 
 *spurious haraka*, % [95% interval]
 
@@ -348,13 +447,13 @@ No site yet.
 | kasra | 299 / 71 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
 | sukun | 182 / 64 | – | – | – | – |
 
-*Muraja false flags, paired difference*, points [95% interval]
+*Muraja false flags (shipped default, balanced), paired difference*, points [95% interval]
 
 | cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans |
 |---|---|---|---|---|---|
-| all | 1657 / 81 | +0.9 [0.4, 1.5] | -1.3 [-2.1, -0.4] | +5.3 [4.3, 6.4] | +3.1 [2.1, 4.2] |
+| all | 1657 / 81 | +0.8 [0.3, 1.4] | -1.3 [-2.1, -0.4] | +5.3 [4.3, 6.3] | +3.1 [2.1, 4.2] |
 | damma | 375 / 75 | +1.9 [0.6, 3.4] | -0.8 [-2.7, 1.2] | +8.0 [5.4, 10.8] | +5.3 [2.6, 8.2] |
-| fatha | 801 / 80 | +0.5 [-0.1, 1.2] | -1.7 [-3.0, -0.5] | +6.0 [4.2, 7.9] | +3.7 [2.2, 5.3] |
+| fatha | 801 / 80 | +0.4 [-0.3, 1.1] | -1.7 [-3.0, -0.5] | +5.9 [4.1, 7.8] | +3.7 [2.2, 5.3] |
 | kasra | 299 / 71 | +1.3 [0.3, 2.8] | -1.3 [-3.2, 0.4] | +3.3 [1.6, 5.3] | +0.7 [-1.2, 2.6] |
 | sukun | 182 / 64 | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) | +0.0 (n/c) |
 
@@ -364,19 +463,25 @@ No site yet.
 
 For each allowance, on the sites it affects: Muraja's false-flag rate on correct
 recitation and missed-mistake rate on real mistakes, with the allowance on (today) and
-switched off, everything else today's configuration. % [95% interval].
+switched off alone, everything else today's configuration, under the single-decode
+approximation. % [95% interval].
 
 | population | allowance | side | sites / reciters | base/spans on → off | base/stream_b0 on → off | h448/spans on → off | h448/stream_b0 on → off |
 |---|---|---|---|---|---|---|---|
-| targeted_safeguard | soft_pair ت↔ط | false flags | 9 / 8 (too small) | 0.0 (n/c) → 100.0 (n/c) | 33.3 (n/c) → 100.0 (n/c) | 33.3 (n/c) → 55.6 (n/c) | 33.3 (n/c) → 77.8 (n/c) |
-| targeted_safeguard | soft_pair ح↔ه | false flags | 3 / 3 (too small) | 0.0 [0.0, 56.2] W → 100.0 [43.8, 100.0] W | 33.3 [6.1, 79.2] W → 100.0 [43.8, 100.0] W | 0.0 [0.0, 56.2] W → 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W → 33.3 [6.1, 79.2] W |
-| targeted_safeguard | soft_pair ذ↔ز | false flags | 28 / 19 | 0.0 (n/c) → 92.9 [84.4, 100.0] | 21.4 [7.1, 36.4] → 78.6 [65.4, 92.3] | 14.3 [4.0, 24.2] → 46.4 [25.9, 62.5] | 28.6 [11.5, 44.0] → 42.9 [23.3, 60.0] |
-| targeted_safeguard | soft_pair س↔ص | false flags | 28 / 23 | 0.0 (n/c) → 100.0 (n/c) | 14.3 [3.4, 28.0] → 67.9 [50.0, 83.9] | 17.9 [3.7, 33.3] → 39.3 [20.0, 58.6] | 10.7 [0.0, 22.2] → 35.7 [19.2, 51.7] |
-| targeted_safeguard | soft_pair ض↔ظ | false flags | 25 / 22 | 0.0 (n/c) → 96.0 [87.0, 100.0] | 12.0 [0.0, 27.3] → 92.0 [79.2, 100.0] | 16.0 [4.0, 30.4] → 72.0 [53.8, 90.9] | 16.0 [3.6, 33.3] → 56.0 [35.5, 78.3] |
-| targeted_safeguard | soft_pair ق↔ك | false flags | 27 / 25 | 0.0 (n/c) → 100.0 (n/c) | 14.8 [3.7, 28.6] → 74.1 [57.1, 88.9] | 22.2 [7.7, 38.5] → 44.4 [26.7, 64.0] | 22.2 [7.7, 38.5] → 48.1 [29.6, 66.7] |
-| targeted_safeguard | shaddah_suppression | false flags | 10 / 10 (too small) | 0.0 [0.0, 27.8] W → 100.0 [72.2, 100.0] W | 0.0 [0.0, 27.8] W → 80.0 [49.0, 94.3] W | 0.0 [0.0, 27.8] W → 30.0 [10.8, 60.3] W | 0.0 [0.0, 27.8] W → 40.0 [16.8, 68.7] W |
-| diagnostic | dropped_haraka_exemption | false flags | 88 / 47 | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 10.2 [4.1, 17.1] | 0.0 (n/c) → 1.1 [0.0, 3.8] | 0.0 (n/c) → 11.4 [4.9, 18.8] |
-| diagnostic | suppress_haraka_drop | false flags | 1387 / 81 | 0.2 [0.0, 0.5] → 0.2 [0.0, 0.5] | 6.6 [5.4, 7.8] → 6.6 [5.4, 7.8] | 1.3 [0.7, 2.0] → 1.3 [0.7, 2.0] | 5.0 [3.8, 6.4] → 5.0 [3.8, 6.4] |
+| pause | final_at_waqf_tashkeel | false flags | 125 / 62 | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 0.0 (n/c) |
+| pause | group_has_gap | false flags | 1 / 1 (too small) | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W |
+| targeted_safeguard | soft_pair ت↔ط | false flags | 9 / 8 (too small) | 0.0 (n/c) → 100.0 (n/c) | 22.2 (n/c) → 88.9 (n/c) | 22.2 (n/c) → 44.4 (n/c) | 22.2 (n/c) → 66.7 (n/c) |
+| targeted_safeguard | soft_pair ح↔ه | false flags | 3 / 3 (too small) | 33.3 [6.1, 79.2] W → 100.0 [43.8, 100.0] W | 33.3 [6.1, 79.2] W → 100.0 [43.8, 100.0] W | 0.0 [0.0, 56.2] W → 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W → 33.3 [6.1, 79.2] W |
+| targeted_safeguard | soft_pair ذ↔ز | false flags | 28 / 19 | 7.1 [0.0, 20.0] → 96.4 [88.0, 100.0] | 25.0 [4.3, 42.5] → 78.6 [62.1, 93.3] | 14.3 [4.0, 24.2] → 46.4 [25.9, 62.5] | 25.0 [8.3, 40.0] → 39.3 [20.0, 56.5] |
+| targeted_safeguard | soft_pair س↔ص | false flags | 28 / 23 | 0.0 (n/c) → 96.4 [90.0, 100.0] | 14.3 [3.4, 28.0] → 67.9 [50.0, 83.9] | 14.3 [0.0, 28.6] → 32.1 [16.0, 48.1] | 10.7 [0.0, 22.2] → 35.7 [19.2, 51.7] |
+| targeted_safeguard | soft_pair ض↔ظ | false flags | 25 / 22 | 0.0 (n/c) → 92.0 [81.8, 100.0] | 12.0 [0.0, 27.3] → 88.0 [75.0, 100.0] | 12.0 [0.0, 27.3] → 68.0 [46.2, 90.9] | 16.0 [3.6, 33.3] → 56.0 [35.5, 78.3] |
+| targeted_safeguard | soft_pair ق↔ك | false flags | 27 / 25 | 0.0 (n/c) → 100.0 (n/c) | 14.8 [3.7, 28.6] → 74.1 [57.1, 88.9] | 22.2 [7.7, 38.5] → 44.4 [26.7, 64.0] | 18.5 [4.0, 33.3] → 44.4 [25.9, 63.0] |
+| targeted_safeguard | shaddah_suppression | false flags | 10 / 10 (too small) | 20.0 [5.7, 51.0] W → 100.0 [72.2, 100.0] W | 10.0 [1.8, 40.4] W → 80.0 [49.0, 94.3] W | 10.0 [1.8, 40.4] W → 30.0 [10.8, 60.3] W | 10.0 [1.8, 40.4] W → 40.0 [16.8, 68.7] W |
+| targeted_safeguard | final_at_waqf_consonant | false flags | 3 / 3 (too small) | 0.0 [0.0, 56.2] W → 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W → 33.3 [6.1, 79.2] W | 0.0 [0.0, 56.2] W → 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W → 33.3 [6.1, 79.2] W |
+| diagnostic | haraka_drop_letters | false flags | 88 / 47 | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 10.2 [4.1, 17.1] | 0.0 (n/c) → 1.1 [0.0, 3.8] | 0.0 (n/c) → 11.4 [4.9, 18.8] |
+| diagnostic | suppress_haraka_drop | false flags | 1387 / 81 | 0.3 [0.1, 0.6] → 0.3 [0.1, 0.6] | 6.6 [5.4, 7.8] → 6.6 [5.4, 7.8] | 1.3 [0.7, 2.0] → 1.3 [0.7, 2.0] | 5.0 [3.8, 6.4] → 5.0 [3.8, 6.4] |
+| diagnostic | final_at_waqf_tashkeel | false flags | 11 / 10 (too small) | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 18.2 (n/c) | 0.0 (n/c) → 0.0 (n/c) | 0.0 (n/c) → 18.2 (n/c) |
+| diagnostic | group_has_gap | false flags | 189 / 67 | 0.5 [0.0, 1.7] → 0.5 [0.0, 1.7] | 3.2 [1.1, 5.5] → 3.2 [1.1, 5.5] | 1.6 [0.0, 5.1] → 1.6 [0.0, 5.1] | 3.7 [1.2, 6.5] → 3.7 [1.2, 6.5] |
 
 Allowances and sides with no affected site in a population are omitted. A
 missed-mistake rate needs real-mistake sites, and `ح↔ه` cannot receive a retirement
@@ -434,7 +539,7 @@ side of that guard, sukun said where a haraka was prescribed, is its own require
 | flagged at decode level (F), and an empty or unaligned slot | `site_outcomes` (module doc, `SiteOutcome.flagged`) | `test_site_outcomes.py` |
 | substitutions, several marks, insertions, unaligned and wrong carriers | `site_outcomes`, `tashkeel_eval.carrier_readings` | `test_site_outcomes.py`, `test_tashkeel_eval.py` |
 | consonant commitment | `contrast_attribution.aligned_consonants` | `test_contrast_attribution.py`, `test_site_outcomes.py` |
-| Muraja configuration and state tables | `muraja_policy.TODAY`, `muraja_policy.grade` | `test_muraja_policy.py` |
+| Muraja configuration, word grading, ratchet and single-decode approximation | `muraja_policy.TODAY`, `muraja_policy.grade_item`, `muraja_policy.single_decode_cycles` | `test_muraja_policy.py` |
 | allowance-affected populations | `muraja_policy.ALLOWANCES` | `test_muraja_policy.py` |
 | streaming: startup, tail flush, per-window normalization | `decoding` (`confirmed-stream-v2-flush`) | `test_decoding.py` |
 | streaming: window phase (the item's first sample) and pairing (every arm scores every site) | `truth_baseline`, `truth_scorer.outcomes_by_arm` | `test_truth_scorer.py` |

@@ -8,6 +8,7 @@ from dataclasses import replace
 
 import pytest
 
+from training.muraja_policy import EVERY_WORD_ENDS, MURAJA_REVISION, RUN_ENDS
 from training.site_outcomes import CORRECT_SIDE, DHAL_ZAH, MISTAKE_SIDE
 from training.test_site_outcomes import DHAKARA, DHAL, KAF, KATABA, QULHU, TAA, ZAI, FATHA, make
 from training.truth_scorer import (
@@ -230,6 +231,21 @@ def test_allowance_view_switches_one_allowance_off(sites):
     assert block["sites"] == 1
     assert block["m/spans"]["on"]["point"] == 0.0 and block["m/spans"]["off"]["point"] == 1.0
     assert entry["sides"]["missed_mistakes"]["sites"] == 0
+
+
+def test_the_allowances_off_view_and_the_approximation_are_reported(sites):
+    swapped = DHAKARA.replace(DHAL, ZAI)
+    report = score(sites, RECITERS, {"m/spans": decodes_for(sites, {"f.wav": swapped})})
+    rates = cell(report, SAFEGUARD, CORRECT_SIDE, ALL)["arms"]["m/spans"]["rates"]
+    assert rates["false_flags"]["point"] == 0.0  # the soft pair is forgiven today
+    assert rates["false_flags@allowances_off"]["point"] == 1.0
+    assert rates["coverage@allowances_off"]["point"] == 1.0
+    assert "false_flags@every_word_ends" in rates
+    views = report["muraja_views"]
+    assert views["today"]["approximation"] == RUN_ENDS and views["today"]["statement"]
+    assert views["every_word_ends"]["approximation"] == EVERY_WORD_ENDS
+    assert views["allowances_off"]["config"]["soft_pairs"] == []
+    assert report["muraja_config"]["revision"] == MURAJA_REVISION
 
 
 def test_power_inputs_hold_per_reciter_sums(sites):

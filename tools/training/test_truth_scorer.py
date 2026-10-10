@@ -8,10 +8,21 @@ from dataclasses import replace
 
 import pytest
 
+from training.muraja_policy import (
+    ALLOWANCES_ON,
+    FLAGGED,
+    FLAGGED_ELSEWHERE,
+    NOT_FLAGGED,
+    NOT_GRADED,
+    SCORINGS,
+    SHIPPED_DEFAULT,
+    SINGLE_DECODE,
+)
 from training.site_outcomes import CORRECT_SIDE, DHAL_ZAH, MISTAKE_SIDE
 from training.test_site_outcomes import DHAKARA, DHAL, KAF, KATABA, QULHU, TAA, ZAI, FATHA, make
 from training.truth_scorer import (
     ALL,
+    MurajaGrades,
     DIAGNOSTIC,
     HEADLINE,
     PAUSE,
@@ -60,6 +71,16 @@ def sites():
 RECITERS = {"a.wav": 1, "b.wav": 2, "c.wav": 3, "d.wav": 3, "e.wav": 4, "f.wav": 5}
 
 
+def app(sites, arms, outcomes=None, default=NOT_FLAGGED):
+    """App outcomes for every scoring: ``outcomes[(scoring, site_id)]`` or ``default``."""
+    outcomes = outcomes or {}
+    grades = {
+        s.name: {arm: {site.site_id: outcomes.get((s.name, site.site_id), default) for site in sites} for arm in arms}
+        for s in SCORINGS
+    }
+    return MurajaGrades(grades, SCORINGS, {"muraja_commit": "c", "compiler": "swift"}, SINGLE_DECODE)
+
+
 def decodes_for(sites, overrides=None):
     overrides = overrides or {}
     return {item_key(s): overrides.get(s.audio_filename, s.reference) for s in sites}
@@ -89,13 +110,17 @@ def test_sides_are_never_pooled_and_rates_are_weighted(sites):
         "m/spans": decodes_for(sites, {"b.wav": KAF + FATHA + TAA + KATABA[4:]}),
         "m/stream": decodes_for(sites),
     }
-    report = score(sites, RECITERS, decodes, [("m/spans", "m/stream")])
+    flagged = {(SHIPPED_DEFAULT.name, "b.wav#2fathafatha"): FLAGGED_ELSEWHERE}
+    muraja = app(sites, decodes, flagged)
+    report = score(sites, RECITERS, decodes, [("m/spans", "m/stream")], muraja)
     correct = cell(report, HEADLINE, CORRECT_SIDE, "fatha")
     assert (correct["sites"], correct["reciters"], correct["sparse"]) == (2, 2, True)
     rates = correct["arms"]["m/spans"]["rates"]
     assert rates["commit_rate"]["point"] == 0.5  # b dropped the fatha
     assert rates["committed_accuracy"]["point"] == 1.0
-    assert rates["false_flags"]["point"] == 0.5  # a dropped haraka on ت is flagged today
+    assert rates["word_flags@shipped_default"]["point"] == 0.5  # b's word shows as flagged
+    assert rates["letter_flags@shipped_default"]["point"] == 0.0  # but not on the site's letter
+    assert rates["word_flags@allowances_on"]["point"] == 0.0
     assert rates["commit_rate"]["num"] == pytest.approx(2.5)  # weights 10/4
     mistake = cell(report, HEADLINE, MISTAKE_SIDE, "kasra")
     assert mistake["sites"] == 1
@@ -175,7 +200,9 @@ def test_conflicting_labels_of_one_physical_site_fail_loudly(sites):
 
 def test_power_inputs_use_the_reconciled_sites(sites):
     twin = replace(sites[0], site_id="twin", heard="pending")
-    inputs = power_inputs(sites + [twin], RECITERS, {"h448/stream_b0": decodes_for(sites)})
+    inputs = power_inputs(
+        sites + [twin], RECITERS, {"h448/stream_b0": decodes_for(sites)}, app(sites, ["h448/stream_b0"])
+    )
     assert inputs["excluded"] == {"new_audit:fatha": 1}  # the twin was dropped, d.wav stays
 
 
@@ -221,19 +248,37 @@ def test_required_cells_are_directional_and_keep_unsupported_pairs(sites):
 
 def test_allowance_view_switches_one_allowance_off(sites):
     swapped = DHAKARA.replace(DHAL, ZAI)
-    report = score(sites, RECITERS, {"m/spans": decodes_for(sites, {"f.wav": swapped})})
+    pair = "f.wav#2" + SOFT + DHAL
+    muraja = app(sites, ["m/spans"], {("soft_pair_forgiveness_off", pair): FLAGGED})
+    report = score(sites, RECITERS, {"m/spans": decodes_for(sites, {"f.wav": swapped})}, (), muraja)
     entry = next(
         a for a in report["allowances"]
-        if a["population"] == SAFEGUARD and a["allowance"] == f"soft_pair {SOFT}"
+        if a["population"] == SAFEGUARD and a["allowance"] == "soft_pair_forgiveness"
     )
+    assert entry["scorings"] == {"on": ALLOWANCES_ON.name, "off": "soft_pair_forgiveness_off"}
     block = entry["sides"]["false_flags"]
     assert block["sites"] == 1
     assert block["m/spans"]["on"]["point"] == 0.0 and block["m/spans"]["off"]["point"] == 1.0
-    assert entry["sides"]["missed_mistakes"]["sites"] == 0
+    assert entry["sides"]["flagged_mistakes"]["sites"] == 0
+
+
+def test_without_app_outcomes_the_report_has_no_muraja_rates(sites):
+    report = score(sites, RECITERS, {"m/spans": decodes_for(sites)})
+    rates = cell(report, HEADLINE, CORRECT_SIDE, "fatha")["arms"]["m/spans"]["rates"]
+    assert not any("@" in name for name in rates)
+    assert report["muraja"] is None and report["allowances"] == []
+
+
+def test_coverage_counts_words_that_show_a_grade(sites):
+    muraja = app(sites, ["m/spans"], {(SHIPPED_DEFAULT.name, "a.wav#2fathafatha"): NOT_GRADED})
+    report = score(sites, RECITERS, {"m/spans": decodes_for(sites)}, (), muraja)
+    rates = cell(report, HEADLINE, CORRECT_SIDE, "fatha")["arms"]["m/spans"]["rates"]
+    assert rates["coverage@shipped_default"]["point"] == 0.5
+    assert report["muraja"]["approximation"] == SINGLE_DECODE
 
 
 def test_power_inputs_hold_per_reciter_sums(sites):
-    inputs = power_inputs(sites, RECITERS, {"h448/stream_b0": decodes_for(sites)})
+    inputs = power_inputs(sites, RECITERS, {"h448/stream_b0": decodes_for(sites)}, app(sites, ["h448/stream_b0"]))
     row = next(
         c for c in inputs["cells"]
         if c["population"] == HEADLINE and c["side"] == CORRECT_SIDE and c["heard"] == "fatha"

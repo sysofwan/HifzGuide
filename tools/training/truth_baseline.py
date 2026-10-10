@@ -19,7 +19,11 @@ This is the runner around :mod:`training.truth_scorer`:
    checks the requested model and protocols against the cache; on a re-run only items missing
    from the cache are decoded, and only once the loaded weights prove to be the cache's, so
    new truth sites cost only their own audio and a run with nothing new needs no GPU.
-3. **Report.** :func:`training.truth_scorer.score` over every site and arm, written as
+3. **App outcomes.** Every item's decode, per arm, replayed through Muraja's own engine under
+   every scoring of :data:`training.muraja_policy.SCORINGS` (:func:`app_outcomes`), with the
+   single-decode approximation. This needs the harness ``tools/muraja_harness`` built on this
+   machine (a Mac: ``bash tools/muraja_harness/build.sh``); the decodes come from the GPU box.
+4. **Report.** :func:`training.truth_scorer.score` over every site and arm, written as
    :data:`REPORT_PATH`; the §8 power simulation's inputs as :data:`POWER_INPUTS_PATH`
    (base and h448 only); and the human-readable report :data:`DOC_PATH`.
 
@@ -31,7 +35,7 @@ Usage (from ``tools/``)::
 
     # On the GPU box, with the staged clips (decodes only what the cache lacks):
     python -m training.truth_baseline --audio-dir /root/scratch/issue-83/stage/clips
-    # Anywhere, torch-free, from the committed decodes:
+    # On a Mac with the Muraja harness built, torch-free, from the committed decodes:
     python -m training.truth_baseline
 """
 
@@ -46,10 +50,10 @@ from pathlib import Path
 from tadabur.staged_audio import REGISTRY_PATH, StagedClip, load_staged_clips
 from tadabur.truth_sites import TRUTH_SITES_DIR, TruthSite, load_truth_sites
 from training.decoding import INFERENCE_POLICY, SPANS, DecodeFingerprint, stream_protocol
-from training.muraja_policy import TODAY
+from training.muraja_policy import SCORINGS, SINGLE_DECODE, Item, grade_items, require_harness
 from training.tashkeel_eval import write_text_atomically
 from training.truth_baseline_doc import render
-from training.truth_scorer import item_key, power_inputs, score
+from training.truth_scorer import MurajaGrades, item_key, power_inputs, score
 
 BASELINE_DIR = Path(__file__).parent.parent / "tadabur" / "truth_baseline"
 DECODES_DIR = BASELINE_DIR / "decodes"
@@ -254,6 +258,27 @@ def update_decodes(
     return cache
 
 
+def app_outcomes(sites: Sequence[TruthSite], decodes: Mapping[str, Mapping[str, str]]) -> MurajaGrades:
+    """Every site's app outcome per scoring and arm: each item's one decode per arm replayed
+    through Muraja's engine (``training.muraja_policy``, single-decode approximation)."""
+    by_item: dict[str, list[TruthSite]] = {}
+    for site in sites:
+        by_item.setdefault(item_key(site), []).append(site)
+    items = [
+        Item(f"{arm}#{key}", tuple(item_sites), items_of_arm[key], item_sites[0].end_sample - item_sites[0].start_sample)
+        for arm, items_of_arm in sorted(decodes.items())
+        for key, item_sites in sorted(by_item.items())
+    ]
+    graded = grade_items(items, SCORINGS, require_harness())
+    outcomes = {
+        scoring: {arm: {} for arm in decodes} for scoring in graded.grades
+    }
+    for scoring, by_site in graded.grades.items():
+        for (key, site_id), grade in by_site.items():
+            outcomes[scoring][key.split("#", 1)[0]][site_id] = grade.outcome
+    return MurajaGrades(outcomes, SCORINGS, graded.build, SINGLE_DECODE, graded.unplaced, graded.unattributed)
+
+
 def p35_reproduction(sites: Sequence[TruthSite], base_spans: Mapping[str, str]) -> dict:
     """How many P3.5 items the base whole-span decode reproduces from the re-location (#83).
 
@@ -296,7 +321,8 @@ def main() -> None:
             decodes[arm(name, protocol)] = {k: v[protocol] for k, v in cache["items"].items() if k in items}
 
     reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
-    report = score(sites, reciter_of, decodes, comparisons(list(models)), TODAY)
+    muraja = app_outcomes(sites, decodes)
+    report = score(sites, reciter_of, decodes, comparisons(list(models)), muraja)
     report["truth_site_files"] = [p.name for p in files]
     report["fingerprints"] = fingerprints
     report["protocols"] = PROTOCOLS
@@ -305,7 +331,7 @@ def main() -> None:
     write_text_atomically(REPORT_PATH, json.dumps(report, ensure_ascii=False, indent=1) + "\n")
 
     baseline_arms = {a: d for a, d in decodes.items() if a.split("/")[0] in ("base", "h448")}
-    inputs = power_inputs(sites, reciter_of, baseline_arms, TODAY)
+    inputs = power_inputs(sites, reciter_of, baseline_arms, muraja)
     inputs["today_system_arm"] = arm("h448", "stream_b0")
     write_text_atomically(POWER_INPUTS_PATH, json.dumps(inputs, ensure_ascii=False, indent=1) + "\n")
 

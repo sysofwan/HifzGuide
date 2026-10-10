@@ -9,9 +9,10 @@ Plain data in and out, torch-free. :func:`score` takes
 * the decodes of every item, per **arm**: a model under a decode protocol (whole spans, or
   the stream at b = 0);
 
-and returns a JSON-ready report. Per-site outcomes come from :mod:`training.site_outcomes`,
-Muraja's site-level grades from :mod:`training.muraja_policy`, and every rate, interval and
-verdict from :mod:`training.acceptance_stats`.
+and, optionally, every site's **app outcome** per Muraja scoring and arm
+(:class:`MurajaGrades`), graded by Muraja's own engine through :mod:`training.muraja_policy`;
+and returns a JSON-ready report. Per-site outcomes come from :mod:`training.site_outcomes`, and
+every rate, interval and verdict from :mod:`training.acceptance_stats`.
 
 One record per physical site (§1)
 ---------------------------------
@@ -56,12 +57,17 @@ Wilson bound where a sparse or degenerate cell is independent and equally weight
 
 Rates per arm, by side
 ----------------------
-Correct recitation: ``commit_rate`` ΣwC/Σw, ``committed_accuracy`` ΣwA/ΣwC,
-``decode_flagged`` ΣwF/Σw, Muraja's ``false_flags`` Σw[WRONG]/Σw and ``coverage``
-Σw[graded]/Σw. Real mistakes: ``commit_rate``, ``committed_accuracy``,
-``missed_mistakes`` Σw(1−F)/Σw (an abstention is a miss), ``silent_corrections``
-Σw[committed = prescribed]/Σw and Muraja's ``muraja_missed`` Σw[not WRONG]/Σw. A cell whose
-heard value is sukun also reports ``spurious_haraka``: Σw[any haraka emitted]/Σw (§5).
+Correct recitation: ``commit_rate`` ΣwC/Σw, ``committed_accuracy`` ΣwA/ΣwC and
+``decode_flagged`` ΣwF/Σw. Real mistakes: ``commit_rate``, ``committed_accuracy``,
+``missed_mistakes`` Σw(1−F)/Σw (an abstention is a miss) and ``silent_corrections``
+Σw[committed = prescribed]/Σw. A cell whose heard value is sukun also reports
+``spurious_haraka``: Σw[any haraka emitted]/Σw (§5).
+
+With app outcomes, per Muraja scoring ``s`` (``@s`` suffixed): on both sides ``word_flags@s``,
+the share of sites whose word shows as not correct (ADR-0012's unit: a flagged word), and
+``letter_flags@s``, the share whose own letter the app marks; on correct recitation
+``coverage@s``, the share whose word shows a grade at all; on real mistakes ``muraja_missed@s``,
+one minus ``word_flags@s``.
 
 Comparisons between models (and between protocols) are paired: one draw per cell serves
 every arm, and each difference is recomputed inside every replicate; a sparse or degenerate
@@ -113,7 +119,17 @@ from training.acceptance_stats import (
     ratio,
     ratio_interval,
 )
-from training.muraja_policy import ALLOWANCES, NOT_GRADED, TODAY, WRONG, MurajaConfig, grade
+from training.muraja_policy import (
+    ALLOWANCES,
+    ALLOWANCES_ON,
+    FLAGGED,
+    NOT_GRADED,
+    SHIPPED_DEFAULT,
+    UNPLACED,
+    WORD_FLAGGED,
+    Scoring,
+    allowance_off,
+)
 from training.site_outcomes import (
     CORRECT_SIDE,
     MISTAKE_SIDE,
@@ -334,13 +350,41 @@ def reconcile(sites: Sequence[TruthSite]) -> Reconciled:
 
 
 @dataclass(frozen=True)
+class MurajaGrades:
+    """Every site's app outcome (``muraja_policy.OUTCOMES``) as ``[scoring][arm][site_id]``,
+    with the scorings, the harness build and the approximation that produced them."""
+
+    outcomes: Mapping[str, Mapping[str, Mapping[str, str]]]
+    scorings: Sequence[Scoring]
+    build: Mapping
+    approximation: str
+    unplaced: Sequence[str] = ()
+    unattributed: Sequence[str] = ()
+
+    def as_dict(self) -> dict:
+        return {
+            "build": dict(self.build),
+            "approximation": self.approximation,
+            "scorings": [s.as_dict() for s in self.scorings],
+            "unplaced_sites": len(self.unplaced),
+            "unattributed_sites": len(self.unattributed),
+        }
+
+
+def rate_name(rate: str, scoring: str) -> str:
+    return f"{rate}@{scoring}"
+
+
+@dataclass(frozen=True)
 class SiteRow:
-    """One site with everything a rate reads: weight, reciter and each arm's outcome."""
+    """One site with everything a rate reads: weight, reciter, each arm's outcome and its app
+    outcome per Muraja scoring and arm."""
 
     site: TruthSite
     weight: float
     reciter_id: int
     outcomes: Mapping[str, SiteOutcome]
+    muraja: Mapping[str, Mapping[str, str]]
 
 
 def estimate(
@@ -362,8 +406,16 @@ def _indicator(values) -> np.ndarray:
     return np.array(list(values), dtype=float)
 
 
+def _word_flagged(outcome: str) -> bool:
+    return outcome in WORD_FLAGGED
+
+
+def _graded(outcome: str) -> bool:
+    return outcome not in (NOT_GRADED, UNPLACED)
+
+
 def _rate_terms(
-    rows: Sequence[SiteRow], arm: str, side_: str, config: MurajaConfig, sukun_cell: bool
+    rows: Sequence[SiteRow], arm: str, side_: str, scorings: Sequence[str], sukun_cell: bool
 ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
     """Each rate's weighted per-site (numerator, denominator) for one arm on one side."""
     w = _indicator(row.weight for row in rows)
@@ -371,21 +423,25 @@ def _rate_terms(
     commits = _indicator(o.commits for o in outcomes)
     correct = _indicator(o.correct(row.site) for o, row in zip(outcomes, rows))
     flagged = _indicator(o.flagged(row.site) for o, row in zip(outcomes, rows))
-    grades = [grade(row.site, o, config) for o, row in zip(outcomes, rows)]
-    wrong = _indicator(g == WRONG for g in grades)
     terms = {
         "commit_rate": (w * commits, w),
         "committed_accuracy": (w * correct, w * commits),
     }
     if side_ == CORRECT_SIDE:
         terms["decode_flagged"] = (w * flagged, w)
-        terms["false_flags"] = (w * wrong, w)
-        terms["coverage"] = (w * _indicator(g != NOT_GRADED for g in grades), w)
     else:
         silent = _indicator(o.committed == row.site.prescribed for o, row in zip(outcomes, rows))
         terms["missed_mistakes"] = (w * (1 - flagged), w)
         terms["silent_corrections"] = (w * silent, w)
-        terms["muraja_missed"] = (w * (1 - wrong), w)
+    for scoring in scorings:
+        app = [row.muraja[scoring][arm] for row in rows]
+        word = _indicator(_word_flagged(a) for a in app)
+        terms[rate_name("word_flags", scoring)] = (w * word, w)
+        terms[rate_name("letter_flags", scoring)] = (w * _indicator(a == FLAGGED for a in app), w)
+        if side_ == CORRECT_SIDE:
+            terms[rate_name("coverage", scoring)] = (w * _indicator(_graded(a) for a in app), w)
+        else:
+            terms[rate_name("muraja_missed", scoring)] = (w * (1 - word), w)
     if sukun_cell:
         haraka = _indicator(any(m in HARAKA_CHARS for m in o.marks) for o in outcomes)
         terms["spurious_haraka"] = (w * haraka, w)
@@ -419,7 +475,7 @@ def _score_cell(
     excluded: Sequence[tuple[TruthSite, float]],
     arms: Sequence[str],
     comparisons: Sequence[tuple[str, str]],
-    config: MurajaConfig,
+    scorings: Sequence[str],
 ) -> dict:
     clusters = [row.reciter_id for row in rows]
     summary = {
@@ -435,7 +491,7 @@ def _score_cell(
     resample = Resample.by_cluster(clusters)
     w = _indicator(row.weight for row in rows)
     sukun_cell = cell.family == TASHKEEL and cell.heard == SUKUN
-    terms = {arm: _rate_terms(rows, arm, cell.side, config, sukun_cell) for arm in arms}
+    terms = {arm: _rate_terms(rows, arm, cell.side, scorings, sukun_cell) for arm in arms}
     summary["arms"] = {
         arm: {
             "rates": {name: estimate(clusters, t, w, resample) for name, t in terms[arm].items()},
@@ -457,18 +513,14 @@ def _score_cell(
     return summary
 
 
-def _allowance_view(
-    population_: str,
-    rows: Sequence[SiteRow],
-    arms: Sequence[str],
-    config: MurajaConfig,
-) -> list[dict]:
-    """Per allowance: false flags and missed mistakes on the sites it affects, on vs off (§4)."""
+def _allowance_view(population_: str, rows: Sequence[SiteRow], arms: Sequence[str]) -> list[dict]:
+    """Per ADR-0012 allowance, on the sites it affects: flagged words on correct recitation and
+    on real mistakes, with the allowance on (``allowances_on``) and switched off alone."""
     view = []
     for allowance in ALLOWANCES:
-        off = allowance.switch_off(config)
-        entry = {"allowance": allowance.name, "population": population_, "sides": {}}
-        for side_, rate in ((CORRECT_SIDE, "false_flags"), (MISTAKE_SIDE, "missed_mistakes")):
+        states = (("on", ALLOWANCES_ON.name), ("off", allowance_off(allowance).name))
+        entry = {"allowance": allowance.name, "population": population_, "scorings": dict(states), "sides": {}}
+        for side_, rate in ((CORRECT_SIDE, "false_flags"), (MISTAKE_SIDE, "flagged_mistakes")):
             affected = [r for r in rows if side(r.site) == side_ and allowance.affects(r.site)]
             clusters = [r.reciter_id for r in affected]
             block = {
@@ -481,11 +533,10 @@ def _allowance_view(
                 w = _indicator(r.weight for r in affected)
                 for arm in arms:
                     block[arm] = {}
-                    for state, cfg in (("on", config), ("off", off)):
-                        # A false flag is a WRONG grade; a missed mistake is anything else.
-                        wrong = _indicator(grade(r.site, r.outcomes[arm], cfg) == WRONG for r in affected)
-                        num = w * (wrong if side_ == CORRECT_SIDE else 1 - wrong)
-                        block[arm][state] = estimate(clusters, (num, w), w, resample)
+                    for state, scoring in states:
+                        # a flagged word: a false flag on correct recitation, a catch on a mistake
+                        flagged = _indicator(_word_flagged(r.muraja[scoring][arm]) for r in affected)
+                        block[arm][state] = estimate(clusters, (w * flagged, w), w, resample)
             entry["sides"][rate] = block
         view.append(entry)
     return view
@@ -524,11 +575,11 @@ def score(
     reciter_of: Mapping[str, int],
     decodes: Mapping[str, Mapping[str, str]],
     comparisons: Sequence[tuple[str, str]] = (),
-    config: MurajaConfig = TODAY,
+    muraja: MurajaGrades | None = None,
 ) -> dict:
-    """The report: per-cell rates for every arm, paired differences, the allowance view,
-    exclusions and required-cell support. ``decodes[arm][item_key]`` is a decode string,
-    ``reciter_of[audio_filename]`` a canonical reciter id."""
+    """The report: per-cell rates for every arm, paired differences, the allowance view (with
+    app outcomes), exclusions and required-cell support. ``decodes[arm][item_key]`` is a decode
+    string, ``reciter_of[audio_filename]`` a canonical reciter id."""
     reconciled = reconcile(sites)
     sites, weights = reconciled.sites, reconciled.weights
     arms = sorted(decodes)
@@ -539,23 +590,25 @@ def score(
             weights[site.site_id],
             reciter_of[site.audio_filename],
             {arm: outcomes[arm][site.site_id] for arm in arms},
+            _app_outcomes(muraja, site, arms),
         )
         for site in sites
         if side(site) is not None
     ]
+    scorings = [s.name for s in muraja.scorings] if muraja else []
     excluded = [(site, weights[site.site_id]) for site in sites if side(site) is None]
 
     cells = []
     for cell in _cells_of(rows):
         members = [row for row in rows if cell.holds(row.site)]
         could = [(site, w) for site, w in excluded if cell.could_hold(site)]
-        cells.append(_score_cell(cell, members, could, arms, comparisons, config))
+        cells.append(_score_cell(cell, members, could, arms, comparisons, scorings))
 
     allowances = []
     for population_ in POPULATIONS:
         members = [row for row in rows if population(row.site) == population_]
-        if members:
-            allowances.extend(_allowance_view(population_, members, arms, config))
+        if members and muraja:
+            allowances.extend(_allowance_view(population_, members, arms))
 
     support = {(c["population"], c["side"], c["family"], c["heard"]): c for c in cells}
     required = [
@@ -571,7 +624,7 @@ def score(
     ]
     return {
         "bootstrap": {"replicates": REPLICATES, "seed": SEED, "cluster": "canonical reciter id"},
-        "muraja_config": config.as_dict(),
+        "muraja": muraja.as_dict() if muraja else None,
         "arms": arms,
         "sites": _site_counts(sites, reciter_of),
         "physical_sites_merged": reconciled.merged,
@@ -580,6 +633,12 @@ def score(
         "allowances": allowances,
         "required_cells": required,
     }
+
+
+def _app_outcomes(muraja: MurajaGrades | None, site: TruthSite, arms: Sequence[str]) -> dict:
+    if muraja is None:
+        return {}
+    return {name: {arm: by_arm[arm][site.site_id] for arm in arms} for name, by_arm in muraja.outcomes.items()}
 
 
 def _site_counts(sites: Sequence[TruthSite], reciter_of: Mapping[str, int]) -> list[dict]:
@@ -615,15 +674,15 @@ def power_inputs(
     sites: Sequence[TruthSite],
     reciter_of: Mapping[str, int],
     decodes: Mapping[str, Mapping[str, str]],
-    config: MurajaConfig = TODAY,
+    muraja: MurajaGrades,
 ) -> dict:
     """The §8 power simulation's baseline inputs: per-reciter sufficient statistics.
 
     For every arm, population, stratum, side and per-site cell: per canonical reciter, the
     site count and the weighted sums the simulation's outcome generator and its
-    reciter-clustered baseline bootstrap need (Σw, ΣwC, ΣwA, ΣwF, Σw[Muraja WRONG],
-    Σw[graded]). Only correct- and mistake-side sites with a verdict; ``excluded`` counts the
-    rest per stratum.
+    reciter-clustered baseline bootstrap need (Σw, ΣwC, ΣwA, ΣwF, Σw[word flagged] and
+    Σw[graded], both under the shipped default). Only correct- and mistake-side sites with a
+    verdict; ``excluded`` counts the rest per stratum.
     """
     reconciled = reconcile(sites)
     sites, weights = reconciled.sites, reconciled.weights
@@ -635,18 +694,18 @@ def power_inputs(
             if side_ is None:
                 continue
             outcome = outcomes[arm][site.site_id]
-            verdict = grade(site, outcome, config)
+            app = muraja.outcomes[SHIPPED_DEFAULT.name][arm][site.site_id]
             w = weights[site.site_id]
             key = (arm, population(site), site.stratum, side_, family(site.mark), site.heard)
             sums = cells[key].setdefault(reciter_of[site.audio_filename], [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             for i, value in enumerate(
                 (1, w, w * outcome.commits, w * outcome.correct(site), w * outcome.flagged(site),
-                 w * (verdict == WRONG), w * (verdict != NOT_GRADED)),
+                 w * _word_flagged(app), w * _graded(app)),
             ):
                 sums[i] += value
-    fields = ("sites", "w", "w_commit", "w_correct", "w_flagged", "w_muraja_wrong", "w_graded")
+    fields = ("sites", "w", "w_commit", "w_correct", "w_flagged", "w_word_flagged", "w_graded")
     return {
-        "muraja_config": config.as_dict(),
+        "muraja": muraja.as_dict(),
         "per_reciter_fields": list(fields),
         "cells": [
             {

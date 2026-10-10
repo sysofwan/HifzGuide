@@ -721,6 +721,42 @@ def test_app_checks_decode_each_scheduled_piece_on_its_own():
 
     spans = dc.check_schedule(len(samples))
     assert extractor.lengths == [s.end - s.start for s in spans]
-    assert len(checks) == len(spans) and checks[-1]["flush"]
+    assert len(checks) == len(spans) and checks[-1]["stop"]
     # token 5 on 13 of a window's first 25 steps: the hop is 13 of them, collapsed apart by blanks
     assert next(c for c in checks if c["hop"] and not c["flush"])["hop"] == dc.tokens_to_phonemes([5] * 13)
+
+
+def _teacher_extractor():
+    """The teacher's feature extractor as its ``preprocessor_config.json`` configures it."""
+    from transformers import SeamlessM4TFeatureExtractor
+
+    return SeamlessM4TFeatureExtractor(
+        feature_size=80, num_mel_bins=80, padding_value=1.0, stride=2, sampling_rate=SAMPLE_RATE
+    )
+
+
+@pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
+@pytest.mark.parametrize("num_samples", [400, 401, 559])
+def test_a_single_frame_normalizes_to_zeros_as_on_the_device(num_samples):
+    """``MelFeatureExtractor+iOS.swift:107-115``: one frame has variance 0, so it normalizes to
+    zeros; the extractor's ddof=1 makes it NaN. Its padding frame is 1.0 on both."""
+    extractor = _teacher_extractor()
+    piece = np.random.default_rng(num_samples).standard_normal(num_samples).astype(np.float32) * 0.1
+    raw = extractor([piece], sampling_rate=SAMPLE_RATE, return_tensors="pt", padding=True).input_features
+    assert raw.shape[1] == 1 and torch.isnan(raw[0, 0, :80]).all()
+
+    pairs, real = dc.Decoder("x", torch.nn.Linear(1, 1), extractor, CPU).device_pairs(piece)
+
+    assert real == 1 and pairs.shape == (dc.DEVICE_FEATURE_PAIRS, 160)
+    assert (pairs[:, :80] == 0).all() and (pairs[:, 80:] == 1).all()
+
+
+def test_two_frames_or_more_are_the_extractors_own_features():
+    extractor = _teacher_extractor()
+    piece = np.random.default_rng(0).standard_normal(2 * SAMPLE_RATE).astype(np.float32) * 0.1
+    raw = extractor([piece], sampling_rate=SAMPLE_RATE, return_tensors="pt", padding=True).input_features[0]
+
+    pairs, real = dc.Decoder("x", torch.nn.Linear(1, 1), extractor, CPU).device_pairs(piece[:560])
+    assert real == 1 and torch.isfinite(pairs).all() and not (pairs[0, :80] == 0).all()
+    pairs, real = dc.Decoder("x", torch.nn.Linear(1, 1), extractor, CPU).device_pairs(piece)
+    assert real == len(raw) == 99 and torch.equal(pairs[:real], raw)

@@ -1,5 +1,5 @@
 """Muraja's check sequence (``training.decoding``, #125): the transcriber's schedule, the split,
-the text rules and the flush gate, on synthetic durations and class-id rows. Torch-free.
+the text rules and the stop's gate, on synthetic durations and class-id rows. Torch-free.
 
 The schedule's oracle below is ``RealtimeTranscriber.processCurrentBuffer``'s sliding-window
 branch (``Models/RealtimeTranscriber+iOS.swift:568-667`` at Muraja ``99c326f``), transcribed
@@ -19,6 +19,7 @@ import pytest
 from training.decoding import (
     APP_CHECKS,
     FLUSH,
+    STOP,
     HOP_SAMPLES,
     PREVIEW,
     PREVIEW_STEP_SAMPLES,
@@ -32,6 +33,7 @@ from training.decoding import (
     committed_text,
     device_output_steps,
     likely_hallucination,
+    make_check,
     strip_padding_artifacts,
     tokens_to_phonemes,
 )
@@ -42,7 +44,7 @@ FATHA = 32
 
 def transcriber_oracle(num_samples: int, arrival: int = PREVIEW_STEP_SAMPLES) -> list[tuple]:
     """The inferences ``processCurrentBuffer`` runs as audio arrives ``arrival`` samples at a
-    time (the rest last), polled until idle after each arrival, then the closing flush."""
+    time (the rest last), polled until idle after each arrival, then the stop's."""
     window_samples, hop_samples, min_new = 80_000, 16_000, 3_200
     state = {"buffer": 0, "window_start": 0, "last_preview": 0}
     runs: list[tuple] = []
@@ -66,7 +68,7 @@ def transcriber_oracle(num_samples: int, arrival: int = PREVIEW_STEP_SAMPLES) ->
         state["buffer"] = arrived
         while process():
             pass
-    runs.append((FLUSH, state["window_start"], num_samples))  # silenceFlush, :549, :676-700
+    runs.append((STOP, state["window_start"], num_samples))  # stop(): all pending, :317-336
     return runs
 
 
@@ -82,7 +84,7 @@ def test_the_schedule_is_the_transcribers(seconds):
 
 @pytest.mark.parametrize("seconds", DURATIONS)
 def test_audio_arriving_in_smaller_steps_changes_nothing_but_the_preview_grid(seconds):
-    """Windows and the flush do not depend on how finely audio arrives; previews only move
+    """Windows and the stop do not depend on how finely audio arrives; previews only move
     within their 200 ms throttle."""
     num_samples = round(seconds * SAMPLE_RATE)
     coarse = transcriber_oracle(num_samples)
@@ -98,8 +100,8 @@ def test_window_and_preview_counts(seconds, previews, windows):
     """A preview every 200 ms from 2 s on; a window at 5 s and every second after; nothing is
     rounded to 200 ms (1.91 s has no preview, 4.91 s no window)."""
     kinds = [s.kind for s in check_schedule(round(seconds * SAMPLE_RATE))]
-    assert (kinds.count(PREVIEW), kinds.count(WINDOW), kinds.count(FLUSH)) == (previews, windows, 1)
-    assert kinds[-1] == FLUSH
+    assert (kinds.count(PREVIEW), kinds.count(WINDOW), kinds.count(STOP)) == (previews, windows, 1)
+    assert kinds[-1] == STOP
 
 
 @pytest.mark.parametrize("seconds", DURATIONS)
@@ -163,12 +165,12 @@ def test_hop_and_overlap_are_stripped_each_on_its_own():
     assert check == {"hop": "ب", "overlap": "ت", "flush": False}
 
 
-def test_an_empty_window_or_preview_is_not_sent_but_the_flush_is():
+def test_an_empty_window_or_preview_is_not_sent_but_the_stop_is():
     blank = row()
     assert app_check(CheckSpan(WINDOW, 0, WINDOW_SAMPLES), blank) is None
     assert app_check(CheckSpan(PREVIEW, 0, 2 * SAMPLE_RATE), blank[:50]) is None
-    assert app_check(CheckSpan(FLUSH, 0, 2 * SAMPLE_RATE), blank[:50]) == {
-        "hop": "", "overlap": "", "flush": True,
+    assert app_check(CheckSpan(STOP, 0, 2 * SAMPLE_RATE), blank[:50]) == {
+        "hop": "", "overlap": "", "flush": False, "stop": True,
     }
 
 
@@ -179,12 +181,12 @@ def test_a_preview_is_all_of_its_audio_as_overlap():
     }
 
 
-def test_the_flush_confirms_its_audio_unless_it_looks_hallucinated():
+def test_the_stop_confirms_its_audio_unless_it_looks_hallucinated():
     speech = row((BA, 0, 3), (TA, 5, 8), (MIM, 10, 14), (NUN, 16, 19), length=25)
-    assert app_check(CheckSpan(FLUSH, 0, 1), speech) == {"hop": "بتمن", "overlap": "", "flush": True}
+    assert app_check(CheckSpan(STOP, 0, 1), speech) == {"hop": "بتمن", "overlap": "", "flush": False, "stop": True}
     # 3 non-blank steps of 40: blank ratio 0.925 >= 0.90
     sparse = row((BA, 0, 0), (TA, 10, 10), (MIM, 20, 20), length=40)
-    assert app_check(CheckSpan(FLUSH, 0, 1), sparse) == {"hop": "", "overlap": "", "flush": True}
+    assert app_check(CheckSpan(STOP, 0, 1), sparse) == {"hop": "", "overlap": "", "flush": False, "stop": True}
 
 
 @pytest.mark.parametrize(
@@ -225,11 +227,11 @@ def test_padding_artifacts_are_stripped_as_swift_compares_characters(text, strip
     assert strip_padding_artifacts(text) == stripped
 
 
-def test_the_committed_transcript_is_every_hop_the_flushs_included():
+def test_the_committed_transcript_is_every_hop_the_stops_included():
     checks = [
         {"hop": "", "overlap": "بَ", "flush": False},
         {"hop": "بَ", "overlap": "تَ", "flush": False},
-        {"hop": "تَ", "overlap": "", "flush": True},
+        {"hop": "تَ", "overlap": "", "flush": False, "stop": True},
     ]
     assert committed_text(checks) == "بَتَ"
 
@@ -240,20 +242,20 @@ def test_rows_must_match_the_schedule():
 
 
 def test_a_whole_item_from_synthetic_rows():
-    """A 6 s item: previews from 2 s, windows at 5 s and 6 s. Every row carries two tokens, so
-    the 4 s flush (100 timesteps, 96% blank) is gated as a hallucination and confirms nothing."""
+    """A 6 s item: previews from 2 s, windows at 5 s and 6 s. Every row carries two tokens, so the
+    4 s stop (100 timesteps, 96% blank) is gated as a hallucination and confirms nothing."""
     spans = check_schedule(6 * SAMPLE_RATE)
     rows = []
     for span in spans:
         steps = device_output_steps(-(-frames(span.end - span.start) // 2))
         rows.append(row((BA, 2, 3), (TA, steps - 3, steps - 2), length=steps))
     checks = app_checks(spans, rows)
-    assert len(checks) == len(spans) and checks[-1]["flush"]
+    assert len(checks) == len(spans) and checks[-1]["stop"]
     windows = [c for c in checks if c["hop"] and not c["flush"]]
     assert windows == [{"hop": "ب", "overlap": "ت", "flush": False}] * 2
-    assert checks[-1] == {"hop": "", "overlap": "", "flush": True}
+    assert checks[-1] == {"hop": "", "overlap": "", "flush": False, "stop": True}
     assert committed_text(checks) == tokens_to_phonemes([BA, BA])
-    assert APP_CHECKS == "muraja-app-checks-v1"
+    assert APP_CHECKS == "muraja-app-checks-v2"
 
 
 def test_the_check_sequence_needs_no_torch():
@@ -262,3 +264,9 @@ def test_the_check_sequence_needs_no_torch():
         "assert 'torch' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True, cwd=Path(__file__).parent.parent)
+
+
+def test_only_the_stop_is_marked_and_it_is_always_sent():
+    assert make_check(STOP, "", "") == {"hop": "", "overlap": "", "flush": False, "stop": True}
+    assert make_check(FLUSH, "", "") == {"hop": "", "overlap": "", "flush": True}
+    assert make_check(WINDOW, "بَ", "") == {"hop": "بَ", "overlap": "", "flush": False}

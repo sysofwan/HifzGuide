@@ -14415,21 +14415,21 @@
        "den": 131.0
       },
       "coverage@allowances_on": {
-       "point": 0.9236641221374046,
-       "lower": 0.8730025567273889,
-       "upper": 0.9689922480620154,
+       "point": 0.9312977099236641,
+       "lower": 0.8819444444444444,
+       "upper": 0.9743589743589743,
        "method": "bootstrap",
        "reason": "",
-       "num": 121.0,
+       "num": 122.0,
        "den": 131.0
       },
       "word_flags@soft_pair_forgiveness_off": {
-       "point": 0.3435114503816794,
-       "lower": 0.2677137628923145,
-       "upper": 0.422825245224574,
+       "point": 0.3511450381679389,
+       "lower": 0.2746478873239437,
+       "upper": 0.4307723577235772,
        "method": "bootstrap",
        "reason": "",
-       "num": 45.0,
+       "num": 46.0,
        "den": 131.0
       },
       "letter_flags@soft_pair_forgiveness_off": {
@@ -14442,12 +14442,12 @@
        "den": 131.0
       },
       "coverage@soft_pair_forgiveness_off": {
-       "point": 0.916030534351145,
-       "lower": 0.8639378478664193,
-       "upper": 0.9624060150375939,
+       "point": 0.9236641221374046,
+       "lower": 0.8723364261718125,
+       "upper": 0.9681553937923364,
        "method": "bootstrap",
        "reason": "",
-       "num": 120.0,
+       "num": 121.0,
        "den": 131.0
       },
       "word_flags@shaddah_suppression_off": {
@@ -14469,12 +14469,12 @@
        "den": 131.0
       },
       "coverage@shaddah_suppression_off": {
-       "point": 0.9236641221374046,
-       "lower": 0.8730025567273889,
-       "upper": 0.9689922480620154,
+       "point": 0.9312977099236641,
+       "lower": 0.8819444444444444,
+       "upper": 0.9743589743589743,
        "method": "bootstrap",
        "reason": "",
-       "num": 121.0,
+       "num": 122.0,
        "den": 131.0
       },
       "word_flags@shipped_default": {
@@ -14496,21 +14496,21 @@
        "den": 131.0
       },
       "coverage@shipped_default": {
-       "point": 0.9236641221374046,
-       "lower": 0.8730025567273889,
-       "upper": 0.9689922480620154,
+       "point": 0.9312977099236641,
+       "lower": 0.8819444444444444,
+       "upper": 0.9743589743589743,
        "method": "bootstrap",
        "reason": "",
-       "num": 121.0,
+       "num": 122.0,
        "den": 131.0
       },
       "word_flags@allowances_off": {
-       "point": 0.37404580152671757,
-       "lower": 0.296,
-       "upper": 0.453125,
+       "point": 0.3816793893129771,
+       "lower": 0.30303030303030304,
+       "upper": 0.4609375,
        "method": "bootstrap",
        "reason": "",
-       "num": 49.0,
+       "num": 50.0,
        "den": 131.0
       },
       "letter_flags@allowances_off": {
@@ -14523,12 +14523,12 @@
        "den": 131.0
       },
       "coverage@allowances_off": {
-       "point": 0.916030534351145,
-       "lower": 0.8639378478664193,
-       "upper": 0.9624060150375939,
+       "point": 0.9236641221374046,
+       "lower": 0.8723364261718125,
+       "upper": 0.9681553937923364,
        "method": "bootstrap",
        "reason": "",
-       "num": 120.0,
+       "num": 121.0,
        "den": 131.0
       }
      },
@@ -14925,138 +14925,138 @@
        "den": 131.0
       },
       "word_flags@allowances_on": {
-       "point": 0.11450381679389313,
-       "lower": 0.061063723863259214,
-       "upper": 0.17293233082706766,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 15.0,
-       "den": 131.0
-      },
-      "letter_flags@allowances_on": {
-       "point": 0.03816793893129771,
-       "lower": 0.007936507936507936,
-       "upper": 0.07258064516129033,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 5.0,
-       "den": 131.0
-      },
-      "coverage@allowances_on": {
-       "point": 0.9541984732824428,
-       "lower": 0.9153846153846154,
-       "upper": 0.9851851851851852,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 125.0,
-       "den": 131.0
-      },
-      "word_flags@soft_pair_forgiveness_off": {
-       "point": 0.21374045801526717,
-       "lower": 0.147281121751026,
-       "upper": 0.2824427480916031,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 28.0,
-       "den": 131.0
-      },
-      "letter_flags@soft_pair_forgiveness_off": {
-       "point": 0.1297709923664122,
-       "lower": 0.07627118644067797,
-       "upper": 0.19083969465648856,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 17.0,
-       "den": 131.0
-      },
-      "coverage@soft_pair_forgiveness_off": {
-       "point": 0.9389312977099237,
-       "lower": 0.8965453384418902,
-       "upper": 0.9761951631046119,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 123.0,
-       "den": 131.0
-      },
-      "word_flags@shaddah_suppression_off": {
        "point": 0.12213740458015267,
        "lower": 0.06766917293233082,
-       "upper": 0.18382352941176472,
+       "upper": 0.18181818181818182,
        "method": "bootstrap",
        "reason": "",
        "num": 16.0,
        "den": 131.0
       },
-      "letter_flags@shaddah_suppression_off": {
+      "letter_flags@allowances_on": {
        "point": 0.04580152671755725,
-       "lower": 0.014922609176340522,
+       "lower": 0.014814814814814815,
        "upper": 0.08270676691729323,
        "method": "bootstrap",
        "reason": "",
        "num": 6.0,
        "den": 131.0
       },
-      "coverage@shaddah_suppression_off": {
-       "point": 0.9541984732824428,
-       "lower": 0.9153846153846154,
-       "upper": 0.9851851851851852,
+      "coverage@allowances_on": {
+       "point": 0.9618320610687023,
+       "lower": 0.926829268292683,
+       "upper": 0.9920634920634921,
        "method": "bootstrap",
        "reason": "",
-       "num": 125.0,
+       "num": 126.0,
        "den": 131.0
       },
-      "word_flags@shipped_default": {
-       "point": 0.12213740458015267,
-       "lower": 0.06766917293233082,
-       "upper": 0.18243243243243243,
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": 0.22900763358778625,
+       "lower": 0.16296296296296298,
+       "upper": 0.296875,
        "method": "bootstrap",
        "reason": "",
-       "num": 16.0,
+       "num": 30.0,
        "den": 131.0
       },
-      "letter_flags@shipped_default": {
-       "point": 0.03816793893129771,
-       "lower": 0.007936507936507936,
-       "upper": 0.07258064516129033,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 5.0,
-       "den": 131.0
-      },
-      "coverage@shipped_default": {
-       "point": 0.9541984732824428,
-       "lower": 0.9153846153846154,
-       "upper": 0.9851851851851852,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 125.0,
-       "den": 131.0
-      },
-      "word_flags@allowances_off": {
-       "point": 0.2366412213740458,
-       "lower": 0.16666666666666666,
-       "upper": 0.30708661417322836,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 31.0,
-       "den": 131.0
-      },
-      "letter_flags@allowances_off": {
+      "letter_flags@soft_pair_forgiveness_off": {
        "point": 0.1450381679389313,
-       "lower": 0.08661417322834646,
-       "upper": 0.20968023911572295,
+       "lower": 0.08870967741935484,
+       "upper": 0.20588235294117646,
        "method": "bootstrap",
        "reason": "",
        "num": 19.0,
        "den": 131.0
       },
-      "coverage@allowances_off": {
-       "point": 0.9389312977099237,
-       "lower": 0.8965453384418902,
-       "upper": 0.9761951631046119,
+      "coverage@soft_pair_forgiveness_off": {
+       "point": 0.9541984732824428,
+       "lower": 0.916083916083916,
+       "upper": 0.9850746268656716,
        "method": "bootstrap",
        "reason": "",
-       "num": 123.0,
+       "num": 125.0,
+       "den": 131.0
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": 0.1297709923664122,
+       "lower": 0.07382412806689405,
+       "upper": 0.19166952054794517,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 17.0,
+       "den": 131.0
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": 0.05343511450381679,
+       "lower": 0.02054794520547945,
+       "upper": 0.09352517985611511,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 7.0,
+       "den": 131.0
+      },
+      "coverage@shaddah_suppression_off": {
+       "point": 0.9618320610687023,
+       "lower": 0.926829268292683,
+       "upper": 0.9920634920634921,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 126.0,
+       "den": 131.0
+      },
+      "word_flags@shipped_default": {
+       "point": 0.1297709923664122,
+       "lower": 0.07382412806689405,
+       "upper": 0.192,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 17.0,
+       "den": 131.0
+      },
+      "letter_flags@shipped_default": {
+       "point": 0.04580152671755725,
+       "lower": 0.014814814814814815,
+       "upper": 0.08270676691729323,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 6.0,
+       "den": 131.0
+      },
+      "coverage@shipped_default": {
+       "point": 0.9618320610687023,
+       "lower": 0.926829268292683,
+       "upper": 0.9920634920634921,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 126.0,
+       "den": 131.0
+      },
+      "word_flags@allowances_off": {
+       "point": 0.25190839694656486,
+       "lower": 0.1825382342718109,
+       "upper": 0.322840702604482,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 33.0,
+       "den": 131.0
+      },
+      "letter_flags@allowances_off": {
+       "point": 0.16030534351145037,
+       "lower": 0.09998226950354612,
+       "upper": 0.2231404958677686,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 21.0,
+       "den": 131.0
+      },
+      "coverage@allowances_off": {
+       "point": 0.9541984732824428,
+       "lower": 0.916083916083916,
+       "upper": 0.9850746268656716,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 125.0,
        "den": 131.0
       }
      },
@@ -15704,16 +15704,16 @@
       "reason": ""
      },
      "word_flags@allowances_on": {
-      "point": 0.030534351145038163,
-      "lower": -0.008131747301079576,
-      "upper": 0.07407407407407407,
+      "point": 0.038167938931297704,
+      "lower": 0.0,
+      "upper": 0.08397106934376804,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@allowances_on": {
-      "point": -0.007633587786259541,
-      "lower": -0.04081632653061224,
-      "upper": 0.024,
+      "point": 0.0,
+      "lower": -0.03623188405797101,
+      "upper": 0.03787878787878787,
       "method": "bootstrap",
       "reason": ""
      },
@@ -15725,37 +15725,37 @@
       "reason": ""
      },
      "word_flags@soft_pair_forgiveness_off": {
-      "point": -0.12977099236641224,
-      "lower": -0.21774193548387097,
-      "upper": -0.04516007761338833,
+      "point": -0.12213740458015265,
+      "lower": -0.21053659539473682,
+      "upper": -0.03816793893129772,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@soft_pair_forgiveness_off": {
-      "point": -0.14503816793893132,
-      "lower": -0.22881355932203387,
-      "upper": -0.06451036866359455,
+      "point": -0.12977099236641224,
+      "lower": -0.21374045801526714,
+      "upper": -0.050420168067226906,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@soft_pair_forgiveness_off": {
-      "point": 0.022900763358778664,
+      "point": 0.03053435114503822,
       "lower": 0.0,
-      "upper": 0.05172733077905497,
+      "upper": 0.07086614173228345,
       "method": "bootstrap",
       "reason": ""
      },
      "word_flags@shaddah_suppression_off": {
-      "point": 0.022900763358778622,
-      "lower": -0.015151515151515152,
-      "upper": 0.06349206349206349,
+      "point": 0.030534351145038163,
+      "lower": -0.007936507936507936,
+      "upper": 0.07377049180327869,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@shaddah_suppression_off": {
-      "point": -0.015267175572519082,
-      "lower": -0.05737704918032787,
-      "upper": 0.024999999999999994,
+      "point": -0.007633587786259541,
+      "lower": -0.051470588235294115,
+      "upper": 0.0373884477549012,
       "method": "bootstrap",
       "reason": ""
      },
@@ -15767,16 +15767,16 @@
       "reason": ""
      },
      "word_flags@shipped_default": {
-      "point": 0.030534351145038163,
-      "lower": -0.01492537313432836,
-      "upper": 0.07936507936507936,
+      "point": 0.038167938931297704,
+      "lower": -0.007874015748031496,
+      "upper": 0.0901639344262295,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@shipped_default": {
-      "point": -0.015267175572519082,
-      "lower": -0.058404894804637175,
-      "upper": 0.023255813953488372,
+      "point": -0.007633587786259541,
+      "lower": -0.0534351145038168,
+      "upper": 0.03496503496503497,
       "method": "bootstrap",
       "reason": ""
      },
@@ -15788,23 +15788,23 @@
       "reason": ""
      },
      "word_flags@allowances_off": {
-      "point": -0.13740458015267176,
-      "lower": -0.2248062015503876,
-      "upper": -0.05172135706340381,
+      "point": -0.12977099236641226,
+      "lower": -0.21774193548387094,
+      "upper": -0.04410959639330192,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@allowances_off": {
-      "point": -0.16793893129770995,
-      "lower": -0.2578125,
-      "upper": -0.07758453622026197,
+      "point": -0.15267175572519087,
+      "lower": -0.24286210317460316,
+      "upper": -0.0625,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@allowances_off": {
-      "point": 0.022900763358778664,
+      "point": 0.03053435114503822,
       "lower": 0.0,
-      "upper": 0.05172733077905497,
+      "upper": 0.07086614173228345,
       "method": "bootstrap",
       "reason": ""
      }
@@ -16102,16 +16102,16 @@
       "reason": ""
      },
      "coverage@allowances_on": {
-      "point": 0.030534351145038108,
-      "lower": 0.0,
-      "upper": 0.06818181818181812,
+      "point": 0.03816793893129766,
+      "lower": 0.007936507936507908,
+      "upper": 0.07352941176470584,
       "method": "bootstrap",
       "reason": ""
      },
      "word_flags@soft_pair_forgiveness_off": {
-      "point": -0.2290076335877862,
-      "lower": -0.31884828862164666,
-      "upper": -0.13223140495867775,
+      "point": -0.2213740458015267,
+      "lower": -0.3120567375886525,
+      "upper": -0.125,
       "method": "bootstrap",
       "reason": ""
      },
@@ -16123,9 +16123,9 @@
       "reason": ""
      },
      "coverage@soft_pair_forgiveness_off": {
-      "point": 0.030534351145038108,
-      "lower": 0.0,
-      "upper": 0.06818181818181812,
+      "point": 0.03816793893129766,
+      "lower": 0.007936507936507908,
+      "upper": 0.07352941176470584,
       "method": "bootstrap",
       "reason": ""
      },
@@ -16144,9 +16144,9 @@
       "reason": ""
      },
      "coverage@shaddah_suppression_off": {
-      "point": 0.030534351145038108,
-      "lower": 0.0,
-      "upper": 0.06818181818181812,
+      "point": 0.03816793893129766,
+      "lower": 0.007936507936507908,
+      "upper": 0.07352941176470584,
       "method": "bootstrap",
       "reason": ""
      },
@@ -16165,16 +16165,16 @@
       "reason": ""
      },
      "coverage@shipped_default": {
-      "point": 0.030534351145038108,
-      "lower": 0.0,
-      "upper": 0.06818181818181812,
+      "point": 0.03816793893129766,
+      "lower": 0.007936507936507908,
+      "upper": 0.07352941176470584,
       "method": "bootstrap",
       "reason": ""
      },
      "word_flags@allowances_off": {
-      "point": -0.2366412213740458,
-      "lower": -0.32499999999999996,
-      "upper": -0.14596824505583653,
+      "point": -0.22900763358778625,
+      "lower": -0.31690570250772937,
+      "upper": -0.13846153846153847,
       "method": "bootstrap",
       "reason": ""
      },
@@ -16186,9 +16186,9 @@
       "reason": ""
      },
      "coverage@allowances_off": {
-      "point": 0.030534351145038108,
-      "lower": 0.0,
-      "upper": 0.06818181818181812,
+      "point": 0.03816793893129766,
+      "lower": 0.007936507936507908,
+      "upper": 0.07352941176470584,
       "method": "bootstrap",
       "reason": ""
      }
@@ -16216,107 +16216,107 @@
       "reason": ""
      },
      "word_flags@allowances_on": {
-      "point": -0.19847328244274812,
-      "lower": -0.2792255538579068,
-      "upper": -0.12195121951219515,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "letter_flags@allowances_on": {
-      "point": -0.16030534351145037,
-      "lower": -0.23529411764705882,
-      "upper": -0.09230769230769231,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "coverage@allowances_on": {
-      "point": 0.022900763358778664,
-      "lower": 0.0,
-      "upper": 0.05063520454962383,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "word_flags@soft_pair_forgiveness_off": {
-      "point": -0.183206106870229,
-      "lower": -0.25,
-      "upper": -0.11570247933884298,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "letter_flags@soft_pair_forgiveness_off": {
-      "point": -0.14503816793893132,
-      "lower": -0.21008670984317293,
-      "upper": -0.08107611287758354,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "coverage@soft_pair_forgiveness_off": {
-      "point": 0.01526717557251911,
-      "lower": 0.0,
-      "upper": 0.03968253968253965,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "word_flags@shaddah_suppression_off": {
-      "point": -0.1984732824427481,
-      "lower": -0.2792255538579068,
-      "upper": -0.12195121951219515,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "letter_flags@shaddah_suppression_off": {
-      "point": -0.1603053435114504,
-      "lower": -0.23529411764705882,
-      "upper": -0.09230769230769231,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "coverage@shaddah_suppression_off": {
-      "point": 0.022900763358778664,
-      "lower": 0.0,
-      "upper": 0.05063520454962383,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "word_flags@shipped_default": {
-      "point": -0.2137404580152672,
-      "lower": -0.29133858267716534,
-      "upper": -0.1386861313868613,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "letter_flags@shipped_default": {
-      "point": -0.16793893129770993,
-      "lower": -0.24242424242424243,
-      "upper": -0.09999999999999999,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "coverage@shipped_default": {
-      "point": 0.022900763358778664,
-      "lower": 0.0,
-      "upper": 0.05063520454962383,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "word_flags@allowances_off": {
-      "point": -0.17557251908396948,
-      "lower": -0.23846153846153845,
+      "point": -0.1908396946564886,
+      "lower": -0.2727272727272727,
       "upper": -0.11278195488721804,
       "method": "bootstrap",
       "reason": ""
      },
+     "letter_flags@allowances_on": {
+      "point": -0.15267175572519084,
+      "lower": -0.22900763358778628,
+      "upper": -0.08088235294117647,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "coverage@allowances_on": {
+      "point": 0.03053435114503822,
+      "lower": 0.0071415906788246985,
+      "upper": 0.06206896551724139,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "word_flags@soft_pair_forgiveness_off": {
+      "point": -0.16793893129770993,
+      "lower": -0.23529411764705882,
+      "upper": -0.09999999999999998,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "letter_flags@soft_pair_forgiveness_off": {
+      "point": -0.12977099236641224,
+      "lower": -0.19834874721238355,
+      "upper": -0.06201550387596899,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "coverage@soft_pair_forgiveness_off": {
+      "point": 0.03053435114503822,
+      "lower": 0.0071415906788246985,
+      "upper": 0.06206896551724139,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "word_flags@shaddah_suppression_off": {
+      "point": -0.19083969465648853,
+      "lower": -0.2727272727272727,
+      "upper": -0.11278195488721804,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "letter_flags@shaddah_suppression_off": {
+      "point": -0.15267175572519084,
+      "lower": -0.22900763358778625,
+      "upper": -0.08088235294117647,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "coverage@shaddah_suppression_off": {
+      "point": 0.03053435114503822,
+      "lower": 0.0071415906788246985,
+      "upper": 0.06206896551724139,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "word_flags@shipped_default": {
+      "point": -0.20610687022900764,
+      "lower": -0.2857142857142857,
+      "upper": -0.12931034482758622,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "letter_flags@shipped_default": {
+      "point": -0.1603053435114504,
+      "lower": -0.2362309911642724,
+      "upper": -0.08870967741935484,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "coverage@shipped_default": {
+      "point": 0.03053435114503822,
+      "lower": 0.0071415906788246985,
+      "upper": 0.06206896551724139,
+      "method": "bootstrap",
+      "reason": ""
+     },
+     "word_flags@allowances_off": {
+      "point": -0.16030534351145043,
+      "lower": -0.2222222222222222,
+      "upper": -0.09677419354838707,
+      "method": "bootstrap",
+      "reason": ""
+     },
      "letter_flags@allowances_off": {
-      "point": -0.1374045801526718,
-      "lower": -0.19607843137254904,
-      "upper": -0.07874015748031496,
+      "point": -0.12213740458015271,
+      "lower": -0.18461538461538463,
+      "upper": -0.05925925925925926,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@allowances_off": {
-      "point": 0.01526717557251911,
-      "lower": 0.0,
-      "upper": 0.03968253968253965,
+      "point": 0.03053435114503822,
+      "lower": 0.0071415906788246985,
+      "upper": 0.06206896551724139,
       "method": "bootstrap",
       "reason": ""
      }
@@ -26115,21 +26115,21 @@
        "den": 28.0
       },
       "coverage@allowances_on": {
-       "point": 0.8571428571428571,
-       "lower": 0.7058823529411765,
+       "point": 0.8928571428571429,
+       "lower": 0.7575757575757576,
        "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 24.0,
+       "num": 25.0,
        "den": 28.0
       },
       "word_flags@soft_pair_forgiveness_off": {
-       "point": 0.35714285714285715,
-       "lower": 0.2,
-       "upper": 0.5217391304347826,
+       "point": 0.39285714285714285,
+       "lower": 0.23076923076923078,
+       "upper": 0.5666666666666667,
        "method": "bootstrap",
        "reason": "",
-       "num": 10.0,
+       "num": 11.0,
        "den": 28.0
       },
       "letter_flags@soft_pair_forgiveness_off": {
@@ -26142,12 +26142,12 @@
        "den": 28.0
       },
       "coverage@soft_pair_forgiveness_off": {
-       "point": 0.8214285714285714,
-       "lower": 0.65625,
-       "upper": 0.9629629629629629,
+       "point": 0.8571428571428571,
+       "lower": 0.7058823529411765,
+       "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 23.0,
+       "num": 24.0,
        "den": 28.0
       },
       "word_flags@shaddah_suppression_off": {
@@ -26169,12 +26169,12 @@
        "den": 28.0
       },
       "coverage@shaddah_suppression_off": {
-       "point": 0.8571428571428571,
-       "lower": 0.7058823529411765,
+       "point": 0.8928571428571429,
+       "lower": 0.7575757575757576,
        "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 24.0,
+       "num": 25.0,
        "den": 28.0
       },
       "word_flags@shipped_default": {
@@ -26196,21 +26196,21 @@
        "den": 28.0
       },
       "coverage@shipped_default": {
-       "point": 0.8571428571428571,
-       "lower": 0.7058823529411765,
+       "point": 0.8928571428571429,
+       "lower": 0.7575757575757576,
        "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 24.0,
+       "num": 25.0,
        "den": 28.0
       },
       "word_flags@allowances_off": {
-       "point": 0.35714285714285715,
-       "lower": 0.2,
-       "upper": 0.5217391304347826,
+       "point": 0.39285714285714285,
+       "lower": 0.23076923076923078,
+       "upper": 0.5666666666666667,
        "method": "bootstrap",
        "reason": "",
-       "num": 10.0,
+       "num": 11.0,
        "den": 28.0
       },
       "letter_flags@allowances_off": {
@@ -26223,12 +26223,12 @@
        "den": 28.0
       },
       "coverage@allowances_off": {
-       "point": 0.8214285714285714,
-       "lower": 0.65625,
-       "upper": 0.9629629629629629,
+       "point": 0.8571428571428571,
+       "lower": 0.7058823529411765,
+       "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 23.0,
+       "num": 24.0,
        "den": 28.0
       }
      },
@@ -26652,30 +26652,30 @@
        "den": 28.0
       },
       "word_flags@soft_pair_forgiveness_off": {
+       "point": 0.21428571428571427,
+       "lower": 0.08695652173913043,
+       "upper": 0.34782608695652173,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 6.0,
+       "den": 28.0
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
        "point": 0.17857142857142858,
-       "lower": 0.05551801801801805,
-       "upper": 0.3333333333333333,
+       "lower": 0.06896551724137931,
+       "upper": 0.2972972972972973,
        "method": "bootstrap",
        "reason": "",
        "num": 5.0,
        "den": 28.0
       },
-      "letter_flags@soft_pair_forgiveness_off": {
-       "point": 0.14285714285714285,
-       "lower": 0.03571428571428571,
-       "upper": 0.27586206896551724,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 4.0,
-       "den": 28.0
-      },
       "coverage@soft_pair_forgiveness_off": {
-       "point": 0.9285714285714286,
-       "lower": 0.8333333333333334,
+       "point": 0.9642857142857143,
+       "lower": 0.875,
        "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 26.0,
+       "num": 27.0,
        "den": 28.0
       },
       "word_flags@shaddah_suppression_off": {
@@ -26733,30 +26733,30 @@
        "den": 28.0
       },
       "word_flags@allowances_off": {
+       "point": 0.21428571428571427,
+       "lower": 0.08695652173913043,
+       "upper": 0.34782608695652173,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 6.0,
+       "den": 28.0
+      },
+      "letter_flags@allowances_off": {
        "point": 0.17857142857142858,
-       "lower": 0.05551801801801805,
-       "upper": 0.3333333333333333,
+       "lower": 0.06896551724137931,
+       "upper": 0.2972972972972973,
        "method": "bootstrap",
        "reason": "",
        "num": 5.0,
        "den": 28.0
       },
-      "letter_flags@allowances_off": {
-       "point": 0.14285714285714285,
-       "lower": 0.03571428571428571,
-       "upper": 0.27586206896551724,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 4.0,
-       "den": 28.0
-      },
       "coverage@allowances_off": {
-       "point": 0.9285714285714286,
-       "lower": 0.8333333333333334,
+       "point": 0.9642857142857143,
+       "lower": 0.875,
        "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 26.0,
+       "num": 27.0,
        "den": 28.0
       }
      },
@@ -27418,30 +27418,30 @@
       "reason": ""
      },
      "coverage@allowances_on": {
-      "point": 0.1428571428571429,
+      "point": 0.1071428571428571,
       "lower": 0.0,
-      "upper": 0.2941176470588235,
+      "upper": 0.24242424242424243,
       "method": "bootstrap",
       "reason": ""
      },
      "word_flags@soft_pair_forgiveness_off": {
       "point": -0.17857142857142858,
-      "lower": -0.36,
+      "lower": -0.3600277777777778,
       "upper": 0.0,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@soft_pair_forgiveness_off": {
-      "point": -0.10714285714285715,
-      "lower": -0.2692307692307692,
-      "upper": 0.05,
+      "point": -0.07142857142857142,
+      "lower": -0.20588235294117646,
+      "upper": 0.06896551724137931,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@soft_pair_forgiveness_off": {
       "point": 0.1071428571428572,
       "lower": 0.0,
-      "upper": 0.23076923076923073,
+      "upper": 0.24242424242424243,
       "method": "bootstrap",
       "reason": ""
      },
@@ -27460,9 +27460,9 @@
       "reason": ""
      },
      "coverage@shaddah_suppression_off": {
-      "point": 0.1428571428571429,
+      "point": 0.1071428571428571,
       "lower": 0.0,
-      "upper": 0.2941176470588235,
+      "upper": 0.24242424242424243,
       "method": "bootstrap",
       "reason": ""
      },
@@ -27481,30 +27481,30 @@
       "reason": ""
      },
      "coverage@shipped_default": {
-      "point": 0.1428571428571429,
+      "point": 0.1071428571428571,
       "lower": 0.0,
-      "upper": 0.2941176470588235,
+      "upper": 0.24242424242424243,
       "method": "bootstrap",
       "reason": ""
      },
      "word_flags@allowances_off": {
       "point": -0.17857142857142858,
-      "lower": -0.36,
+      "lower": -0.3600277777777778,
       "upper": 0.0,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@allowances_off": {
-      "point": -0.10714285714285715,
-      "lower": -0.2692307692307692,
-      "upper": 0.05,
+      "point": -0.07142857142857142,
+      "lower": -0.20588235294117646,
+      "upper": 0.06896551724137931,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@allowances_off": {
       "point": 0.1071428571428572,
       "lower": 0.0,
-      "upper": 0.23076923076923073,
+      "upper": 0.24242424242424243,
       "method": "bootstrap",
       "reason": ""
      }
@@ -27802,16 +27802,16 @@
       "reason": ""
      },
      "coverage@allowances_on": {
-      "point": 0.0,
-      "lower": -0.11538461538461542,
-      "upper": 0.08823529411764697,
+      "point": 0.03571428571428581,
+      "lower": 0.0,
+      "upper": 0.09999999999999998,
       "method": "bootstrap",
       "reason": ""
      },
      "word_flags@soft_pair_forgiveness_off": {
-      "point": -0.14285714285714285,
-      "lower": -0.33333333333333337,
-      "upper": 0.03846153846153849,
+      "point": -0.10714285714285715,
+      "lower": -0.29032258064516125,
+      "upper": 0.07142857142857145,
       "method": "bootstrap",
       "reason": ""
      },
@@ -27823,9 +27823,9 @@
       "reason": ""
      },
      "coverage@soft_pair_forgiveness_off": {
-      "point": 0.0,
-      "lower": -0.11538461538461542,
-      "upper": 0.08823529411764697,
+      "point": 0.0357142857142857,
+      "lower": 0.0,
+      "upper": 0.09999999999999998,
       "method": "bootstrap",
       "reason": ""
      },
@@ -27844,9 +27844,9 @@
       "reason": ""
      },
      "coverage@shaddah_suppression_off": {
-      "point": 0.0,
-      "lower": -0.11538461538461542,
-      "upper": 0.08823529411764697,
+      "point": 0.03571428571428581,
+      "lower": 0.0,
+      "upper": 0.09999999999999998,
       "method": "bootstrap",
       "reason": ""
      },
@@ -27865,16 +27865,16 @@
       "reason": ""
      },
      "coverage@shipped_default": {
-      "point": 0.0,
-      "lower": -0.11538461538461542,
-      "upper": 0.08823529411764697,
+      "point": 0.03571428571428581,
+      "lower": 0.0,
+      "upper": 0.09999999999999998,
       "method": "bootstrap",
       "reason": ""
      },
      "word_flags@allowances_off": {
-      "point": -0.14285714285714285,
-      "lower": -0.33333333333333337,
-      "upper": 0.03846153846153849,
+      "point": -0.10714285714285715,
+      "lower": -0.29032258064516125,
+      "upper": 0.07142857142857145,
       "method": "bootstrap",
       "reason": ""
      },
@@ -27886,9 +27886,9 @@
       "reason": ""
      },
      "coverage@allowances_off": {
-      "point": 0.0,
-      "lower": -0.11538461538461542,
-      "upper": 0.08823529411764697,
+      "point": 0.0357142857142857,
+      "lower": 0.0,
+      "upper": 0.09999999999999998,
       "method": "bootstrap",
       "reason": ""
      }
@@ -27937,25 +27937,25 @@
       "reason": ""
      },
      "word_flags@soft_pair_forgiveness_off": {
-      "point": -0.24999999999999997,
-      "lower": -0.3846153846153846,
-      "upper": -0.08333333333333334,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "letter_flags@soft_pair_forgiveness_off": {
-      "point": -0.2142857142857143,
+      "point": -0.21428571428571427,
       "lower": -0.3448275862068966,
       "upper": -0.07407407407407407,
       "method": "bootstrap",
       "reason": ""
      },
+     "letter_flags@soft_pair_forgiveness_off": {
+      "point": -0.17857142857142858,
+      "lower": -0.325,
+      "upper": -0.037037037037037035,
+      "method": "bootstrap",
+      "reason": ""
+     },
      "coverage@soft_pair_forgiveness_off": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.0357142857142857,
+      "lower": 0.0,
+      "upper": 0.09999999999999998,
+      "method": "bootstrap",
+      "reason": ""
      },
      "word_flags@shaddah_suppression_off": {
       "point": -0.2857142857142857,
@@ -28000,25 +28000,25 @@
       "reason": ""
      },
      "word_flags@allowances_off": {
-      "point": -0.24999999999999997,
-      "lower": -0.3846153846153846,
-      "upper": -0.08333333333333334,
-      "method": "bootstrap",
-      "reason": ""
-     },
-     "letter_flags@allowances_off": {
-      "point": -0.2142857142857143,
+      "point": -0.21428571428571427,
       "lower": -0.3448275862068966,
       "upper": -0.07407407407407407,
       "method": "bootstrap",
       "reason": ""
      },
+     "letter_flags@allowances_off": {
+      "point": -0.17857142857142858,
+      "lower": -0.325,
+      "upper": -0.037037037037037035,
+      "method": "bootstrap",
+      "reason": ""
+     },
      "coverage@allowances_off": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.0357142857142857,
+      "lower": 0.0,
+      "upper": 0.09999999999999998,
+      "method": "bootstrap",
+      "reason": ""
      }
     }
    }
@@ -38433,114 +38433,60 @@
        "den": 21.0
       },
       "word_flags@allowances_on": {
-       "point": 0.14285714285714285,
-       "lower": 0.0,
-       "upper": 0.3,
+       "point": 0.19047619047619047,
+       "lower": 0.047619047619047616,
+       "upper": 0.36363636363636365,
        "method": "bootstrap",
        "reason": "",
-       "num": 3.0,
+       "num": 4.0,
        "den": 21.0
       },
       "letter_flags@allowances_on": {
-       "point": 0.09523809523809523,
+       "point": 0.14285714285714285,
        "lower": 0.0,
-       "upper": 0.22727272727272727,
+       "upper": 0.3,
        "method": "bootstrap",
        "reason": "",
-       "num": 2.0,
+       "num": 3.0,
        "den": 21.0
       },
       "coverage@allowances_on": {
-       "point": 0.8571428571428571,
-       "lower": 0.6842105263157895,
+       "point": 0.9047619047619048,
+       "lower": 0.75,
        "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 18.0,
+       "num": 19.0,
        "den": 21.0
       },
       "word_flags@soft_pair_forgiveness_off": {
-       "point": 0.19047619047619047,
-       "lower": 0.047619047619047616,
-       "upper": 0.36363636363636365,
+       "point": 0.23809523809523808,
+       "lower": 0.08333333333333333,
+       "upper": 0.42857142857142855,
        "method": "bootstrap",
        "reason": "",
-       "num": 4.0,
+       "num": 5.0,
        "den": 21.0
       },
       "letter_flags@soft_pair_forgiveness_off": {
-       "point": 0.09523809523809523,
+       "point": 0.14285714285714285,
        "lower": 0.0,
-       "upper": 0.22727272727272727,
+       "upper": 0.3,
        "method": "bootstrap",
        "reason": "",
-       "num": 2.0,
+       "num": 3.0,
        "den": 21.0
       },
       "coverage@soft_pair_forgiveness_off": {
-       "point": 0.8571428571428571,
-       "lower": 0.6842105263157895,
+       "point": 0.9047619047619048,
+       "lower": 0.75,
        "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 18.0,
+       "num": 19.0,
        "den": 21.0
       },
       "word_flags@shaddah_suppression_off": {
-       "point": 0.14285714285714285,
-       "lower": 0.0,
-       "upper": 0.3,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 3.0,
-       "den": 21.0
-      },
-      "letter_flags@shaddah_suppression_off": {
-       "point": 0.09523809523809523,
-       "lower": 0.0,
-       "upper": 0.22727272727272727,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 2.0,
-       "den": 21.0
-      },
-      "coverage@shaddah_suppression_off": {
-       "point": 0.8571428571428571,
-       "lower": 0.6842105263157895,
-       "upper": 1.0,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 18.0,
-       "den": 21.0
-      },
-      "word_flags@shipped_default": {
-       "point": 0.14285714285714285,
-       "lower": 0.0,
-       "upper": 0.3,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 3.0,
-       "den": 21.0
-      },
-      "letter_flags@shipped_default": {
-       "point": 0.09523809523809523,
-       "lower": 0.0,
-       "upper": 0.22727272727272727,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 2.0,
-       "den": 21.0
-      },
-      "coverage@shipped_default": {
-       "point": 0.8571428571428571,
-       "lower": 0.6842105263157895,
-       "upper": 1.0,
-       "method": "bootstrap",
-       "reason": "",
-       "num": 18.0,
-       "den": 21.0
-      },
-      "word_flags@allowances_off": {
        "point": 0.19047619047619047,
        "lower": 0.047619047619047616,
        "upper": 0.36363636363636365,
@@ -38549,22 +38495,76 @@
        "num": 4.0,
        "den": 21.0
       },
-      "letter_flags@allowances_off": {
-       "point": 0.09523809523809523,
+      "letter_flags@shaddah_suppression_off": {
+       "point": 0.14285714285714285,
        "lower": 0.0,
-       "upper": 0.22727272727272727,
+       "upper": 0.3,
        "method": "bootstrap",
        "reason": "",
-       "num": 2.0,
+       "num": 3.0,
        "den": 21.0
       },
-      "coverage@allowances_off": {
-       "point": 0.8571428571428571,
-       "lower": 0.6842105263157895,
+      "coverage@shaddah_suppression_off": {
+       "point": 0.9047619047619048,
+       "lower": 0.75,
        "upper": 1.0,
        "method": "bootstrap",
        "reason": "",
-       "num": 18.0,
+       "num": 19.0,
+       "den": 21.0
+      },
+      "word_flags@shipped_default": {
+       "point": 0.19047619047619047,
+       "lower": 0.047619047619047616,
+       "upper": 0.36363636363636365,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 4.0,
+       "den": 21.0
+      },
+      "letter_flags@shipped_default": {
+       "point": 0.14285714285714285,
+       "lower": 0.0,
+       "upper": 0.3,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 3.0,
+       "den": 21.0
+      },
+      "coverage@shipped_default": {
+       "point": 0.9047619047619048,
+       "lower": 0.75,
+       "upper": 1.0,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 19.0,
+       "den": 21.0
+      },
+      "word_flags@allowances_off": {
+       "point": 0.23809523809523808,
+       "lower": 0.08333333333333333,
+       "upper": 0.42857142857142855,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 5.0,
+       "den": 21.0
+      },
+      "letter_flags@allowances_off": {
+       "point": 0.14285714285714285,
+       "lower": 0.0,
+       "upper": 0.3,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 3.0,
+       "den": 21.0
+      },
+      "coverage@allowances_off": {
+       "point": 0.9047619047619048,
+       "lower": 0.75,
+       "upper": 1.0,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 19.0,
        "den": 21.0
       }
      },
@@ -39212,109 +39212,109 @@
       "reason": ""
      },
      "word_flags@allowances_on": {
-      "point": 0.047619047619047616,
+      "point": 0.09523809523809523,
       "lower": 0.0,
-      "upper": 0.13636363636363635,
+      "upper": 0.22727272727272727,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@allowances_on": {
-      "point": 0.047619047619047616,
+      "point": 0.09523809523809523,
       "lower": 0.0,
-      "upper": 0.13636363636363635,
+      "upper": 0.22727272727272727,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@allowances_on": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      },
      "word_flags@soft_pair_forgiveness_off": {
-      "point": -0.09523809523809523,
-      "lower": -0.3333333333333333,
-      "upper": 0.13043478260869568,
+      "point": -0.047619047619047616,
+      "lower": -0.30000000000000004,
+      "upper": 0.19999999999999998,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@soft_pair_forgiveness_off": {
-      "point": -0.047619047619047616,
-      "lower": -0.21052631578947367,
-      "upper": 0.09523809523809523,
+      "point": 0.0,
+      "lower": -0.19047619047619047,
+      "upper": 0.19047619047619047,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@soft_pair_forgiveness_off": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      },
      "word_flags@shaddah_suppression_off": {
-      "point": 0.047619047619047616,
+      "point": 0.09523809523809523,
       "lower": 0.0,
-      "upper": 0.13636363636363635,
+      "upper": 0.22727272727272727,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@shaddah_suppression_off": {
-      "point": 0.047619047619047616,
+      "point": 0.09523809523809523,
       "lower": 0.0,
-      "upper": 0.13636363636363635,
+      "upper": 0.22727272727272727,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@shaddah_suppression_off": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      },
      "word_flags@shipped_default": {
-      "point": 0.047619047619047616,
+      "point": 0.09523809523809523,
       "lower": 0.0,
-      "upper": 0.13636363636363635,
+      "upper": 0.22727272727272727,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@shipped_default": {
-      "point": 0.047619047619047616,
+      "point": 0.09523809523809523,
       "lower": 0.0,
-      "upper": 0.13636363636363635,
+      "upper": 0.22727272727272727,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@shipped_default": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      },
      "word_flags@allowances_off": {
-      "point": -0.09523809523809523,
-      "lower": -0.3333333333333333,
-      "upper": 0.13043478260869568,
+      "point": -0.047619047619047616,
+      "lower": -0.30000000000000004,
+      "upper": 0.19999999999999998,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@allowances_off": {
-      "point": -0.09523809523809523,
-      "lower": -0.2857142857142857,
-      "upper": 0.0909090909090909,
+      "point": -0.047619047619047616,
+      "lower": -0.2608695652173913,
+      "upper": 0.15000000000000002,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@allowances_off": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      }
     },
     "base/stream_b0 - base/spans": {
@@ -39724,109 +39724,109 @@
       "reason": ""
      },
      "word_flags@allowances_on": {
-      "point": -0.23809523809523808,
-      "lower": -0.42857142857142855,
-      "upper": -0.08695652173913043,
+      "point": -0.19047619047619047,
+      "lower": -0.4,
+      "upper": 0.0,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@allowances_on": {
-      "point": -0.09523809523809523,
-      "lower": -0.25,
-      "upper": 0.0,
+      "point": -0.047619047619047616,
+      "lower": -0.21739130434782608,
+      "upper": 0.1,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@allowances_on": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      },
      "word_flags@soft_pair_forgiveness_off": {
-      "point": -0.23809523809523808,
-      "lower": -0.42857142857142855,
-      "upper": -0.05263157894736842,
+      "point": -0.19047619047619047,
+      "lower": -0.40909090909090906,
+      "upper": 0.0,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@soft_pair_forgiveness_off": {
-      "point": -0.14285714285714285,
-      "lower": -0.3157894736842105,
-      "upper": 0.0,
+      "point": -0.09523809523809523,
+      "lower": -0.3,
+      "upper": 0.09090909090909091,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@soft_pair_forgiveness_off": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      },
      "word_flags@shaddah_suppression_off": {
-      "point": -0.23809523809523808,
-      "lower": -0.42857142857142855,
-      "upper": -0.08695652173913043,
+      "point": -0.19047619047619047,
+      "lower": -0.4,
+      "upper": 0.0,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@shaddah_suppression_off": {
-      "point": -0.09523809523809523,
-      "lower": -0.25,
-      "upper": 0.0,
+      "point": -0.047619047619047616,
+      "lower": -0.21739130434782608,
+      "upper": 0.1,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@shaddah_suppression_off": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      },
      "word_flags@shipped_default": {
-      "point": -0.23809523809523808,
-      "lower": -0.42857142857142855,
-      "upper": -0.08695652173913043,
+      "point": -0.19047619047619047,
+      "lower": -0.4,
+      "upper": 0.0,
       "method": "bootstrap",
       "reason": ""
      },
      "letter_flags@shipped_default": {
-      "point": -0.09523809523809523,
-      "lower": -0.25,
-      "upper": 0.0,
+      "point": -0.047619047619047616,
+      "lower": -0.21739130434782608,
+      "upper": 0.1,
       "method": "bootstrap",
       "reason": ""
      },
      "coverage@shipped_default": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
-     },
-     "word_flags@allowances_off": {
-      "point": -0.23809523809523808,
-      "lower": -0.42857142857142855,
-      "upper": -0.05263157894736842,
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
       "method": "bootstrap",
       "reason": ""
      },
-     "letter_flags@allowances_off": {
-      "point": -0.14285714285714285,
-      "lower": -0.3157894736842105,
+     "word_flags@allowances_off": {
+      "point": -0.19047619047619047,
+      "lower": -0.40909090909090906,
       "upper": 0.0,
       "method": "bootstrap",
       "reason": ""
      },
+     "letter_flags@allowances_off": {
+      "point": -0.09523809523809523,
+      "lower": -0.3,
+      "upper": 0.09090909090909091,
+      "method": "bootstrap",
+      "reason": ""
+     },
      "coverage@allowances_off": {
-      "point": 0.0,
-      "lower": null,
-      "upper": null,
-      "method": "none",
-      "reason": "sparse or degenerate, and not independent and equally weighted"
+      "point": 0.04761904761904767,
+      "lower": 0.0,
+      "upper": 0.1578947368421052,
+      "method": "bootstrap",
+      "reason": ""
      }
     }
    }
@@ -40156,12 +40156,12 @@
        "den": 120.0
       },
       "off": {
-       "point": 0.36666666666666664,
-       "lower": 0.2857142857142857,
-       "upper": 0.4545624151967433,
+       "point": 0.375,
+       "lower": 0.29310344827586204,
+       "upper": 0.4640071428571428,
        "method": "bootstrap",
        "reason": "",
-       "num": 44.0,
+       "num": 45.0,
        "den": 120.0
       }
      },
@@ -40207,21 +40207,21 @@
      },
      "h448/checks": {
       "on": {
-       "point": 0.1,
-       "lower": 0.05172413793103448,
-       "upper": 0.15454545454545454,
+       "point": 0.10833333333333334,
+       "lower": 0.05737704918032787,
+       "upper": 0.16666666666666666,
        "method": "bootstrap",
        "reason": "",
-       "num": 12.0,
+       "num": 13.0,
        "den": 120.0
       },
       "off": {
-       "point": 0.20833333333333334,
-       "lower": 0.14285714285714285,
-       "upper": 0.2777777777777778,
+       "point": 0.225,
+       "lower": 0.15965777615393983,
+       "upper": 0.29508196721311475,
        "method": "bootstrap",
        "reason": "",
-       "num": 25.0,
+       "num": 27.0,
        "den": 120.0
       }
      },
@@ -42358,7 +42358,7 @@
    },
    "checks": {
     "model": "obadx/muaalem-model-v3_2",
-    "mode": "muraja-app-checks-v1",
+    "mode": "muraja-app-checks-v2",
     "weights_dtype": "bf16",
     "batch_size": 1,
     "device_type": "cuda",
@@ -42387,7 +42387,7 @@
    },
    "checks": {
     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
-    "mode": "muraja-app-checks-v1",
+    "mode": "muraja-app-checks-v2",
     "weights_dtype": "bf16",
     "batch_size": 1,
     "device_type": "cuda",
@@ -42399,7 +42399,7 @@
  "protocols": {
   "spans": "whole-spans",
   "stream_b0": "confirmed-stream-v2-flush",
-  "checks": "muraja-app-checks-v1"
+  "checks": "muraja-app-checks-v2"
  },
  "p35_base_reproduction": {
   "items": 151,

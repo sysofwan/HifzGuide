@@ -21,7 +21,7 @@ This is the runner around :mod:`training.truth_scorer`:
    new truth sites cost only their own audio and a run with nothing new needs no GPU.
 3. **Check sequences** (#125). Each model also records every item's **check sequence**: the
    updates Muraja's transcriber would hand its engine over the item (each full window's hop and
-   overlap, each 200 ms preview, the closing flush), one inference per update, featurised and
+   overlap, each 200 ms preview, and the stop's decode), one inference per check, featurised and
    decoded as the app does (:meth:`training.decoding.Decoder.app_checks`, whose docstring cites
    the transcriber and states what it bypasses). They are cached in :data:`CHECKS_DIR` under
    the same identity and fingerprint rules (:data:`CHECK_STORE`), and make a third arm per

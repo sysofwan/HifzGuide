@@ -37,8 +37,9 @@ Every site is scored under three **arms** per model, all from the same staged au
 replays the deployed streaming protocol on the item (5 s windows from its first sample,
 each normalized on its own, 1 s hop, block 0 committed, startup rule and tail flush);
 `checks` records every update Muraja's transcriber would hand its engine over the item
-(each full window's hop and overlap, each 200 ms preview and the closing flush), one
-inference per update featurised as the app does, and its decode is the transcript the
+(each full window's hop and overlap, each 200 ms preview, and the stop's decode for the
+final alignment pass), one inference per check featurised as the app does, and its
+decode is the transcript the
 app commits from them (every hop; `training.decoding`, `Decoder.app_checks`). Every arm
 has an outcome at every site, so each comparison is paired on the same sites. Both models
 are decoded with
@@ -46,8 +47,8 @@ are decoded with
 
 | model | reference | modes |
 |---|---|---|
-| base | `obadx/muaalem-model-v3_2` | `whole-spans`, `confirmed-stream-v2-flush`, `muraja-app-checks-v1` |
-| h448 | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` | `whole-spans`, `confirmed-stream-v2-flush`, `muraja-app-checks-v1` |
+| base | `obadx/muaalem-model-v3_2` | `whole-spans`, `confirmed-stream-v2-flush`, `muraja-app-checks-v2` |
+| h448 | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` | `whole-spans`, `confirmed-stream-v2-flush`, `muraja-app-checks-v2` |
 
 Intervals follow §1. Unmarked, the reciter-clustered bootstrap (B = 10,000, seed 20261008, type-7
 percentiles, an undefined replicate at the adverse endpoint, shown as ±∞). A cell
@@ -64,7 +65,7 @@ denominator). Rates are in percent; differences in points.
 Graded by Muraja's own engine at `99c326f3fb7c` (v1.0.27), compiled with
 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) into `tools/muraja_harness` (see `tools/training/muraja_policy.py`).
 
-**Recorded check sequence** (`base/checks`, `h448/checks`). Each check Muraja would run over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once 2 s are, and the closing flush of what is pending) was decoded on its own audio, featurised, split and stripped as the app does it (`training.decoding`, `APP_CHECKS`), and replayed through Muraja's engine. The audio is taken to arrive in 200 ms steps with every inference instantaneous; the speech detector's silence flush, VAD gate and window/preview hallucination gates are bypassed (the reciter speaks throughout the item), and the decodes are PyTorch bf16, not the device's CoreML. The session starts on the item's first word and ends with a silence flush.
+**Recorded check sequence** (`base/checks`, `h448/checks`). Each check Muraja would run over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once 2 s are, and the stop's decode of what is pending) was decoded on its own audio, featurised, split and stripped as the app does it (`training.decoding`, `APP_CHECKS`), and replayed through Muraja's engine, the stop through its final alignment pass. The audio is taken to arrive in 200 ms steps with every inference instantaneous; the speech detector is not modelled, so no silence flush fires and the VAD gate and window/preview hallucination gates are bypassed (the reciter speaks throughout the item); and the decodes are PyTorch bf16, not the device's CoreML. None of these is known to move grades one way only: this estimates the device's grades, it does not bound them. The session starts on the item's first word.
 
 **Single-decode approximation** (`base/spans`, `base/stream_b0`, `h448/spans`, `h448/stream_b0`). Each item has one decode per arm, not one per Muraja check. The checks Muraja would run over the item's audio (a hop per second once 5 s are pending, a preview per 200 ms once 2 s are) are replayed through Muraja's engine with each check's text cut from that one decode, its characters spread evenly over the item's samples; the audio after the last whole 200 ms step goes to the closing flush. The session starts on the item's first word. Placement, grading, the ratchet, the hold buffer and the end-word holdback are Muraja's own; a check that would decode differently from the whole-item decode is not represented. Each item is one session, ended by a silence flush.
 
@@ -134,18 +135,18 @@ Pooled per population and side: **flagged words** (the site's word shows as not 
 
 | arm | rate | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|---|
-| base/checks | word flags | 8.4 [3.7, 13.7] | 34.4 [26.8, 42.3] | 9.9 [4.9, 15.6] | 9.2 [4.0, 14.7] | 37.4 [29.6, 45.3] |
+| base/checks | word flags | 8.4 [3.7, 13.7] | 35.1 [27.5, 43.1] | 9.9 [4.9, 15.6] | 9.2 [4.0, 14.7] | 38.2 [30.3, 46.1] |
 | base/checks | letter flags | 4.6 [1.5, 8.3] | 27.5 [20.7, 34.5] | 6.1 [2.4, 10.3] | 5.3 [1.6, 9.8] | 31.3 [24.0, 38.5] |
-| base/checks | coverage | 92.4 [87.3, 96.9] | 91.6 [86.4, 96.2] | 92.4 [87.3, 96.9] | 92.4 [87.3, 96.9] | 91.6 [86.4, 96.2] |
+| base/checks | coverage | 93.1 [88.2, 97.4] | 92.4 [87.2, 96.8] | 93.1 [88.2, 97.4] | 93.1 [88.2, 97.4] | 92.4 [87.2, 96.8] |
 | base/spans | word flags | 11.5 [5.9, 17.9] | 59.5 [51.1, 67.7] | 15.3 [9.1, 22.4] | 15.3 [8.5, 22.6] | 63.4 [55.0, 71.1] |
 | base/spans | letter flags | 9.2 [4.3, 14.7] | 51.9 [43.4, 60.0] | 12.2 [6.6, 18.4] | 12.2 [6.1, 18.9] | 55.0 [46.5, 63.0] |
 | base/spans | coverage | 92.4 [86.8, 97.1] | 90.8 [84.1, 96.5] | 92.4 [86.8, 97.1] | 92.4 [86.8, 97.1] | 90.8 [84.1, 96.5] |
 | base/stream_b0 | word flags | 29.8 [22.3, 37.5] | 57.3 [48.6, 65.7] | 32.8 [25.0, 40.9] | 35.1 [27.4, 42.6] | 61.1 [52.4, 69.4] |
 | base/stream_b0 | letter flags | 23.7 [16.8, 30.6] | 48.9 [40.4, 57.5] | 26.0 [19.0, 33.1] | 28.2 [20.9, 35.3] | 51.9 [43.3, 60.5] |
 | base/stream_b0 | coverage | 89.3 [82.4, 95.2] | 88.5 [81.5, 94.6] | 89.3 [82.4, 95.2] | 89.3 [82.4, 95.2] | 88.5 [81.5, 94.6] |
-| h448/checks | word flags | 11.5 [6.1, 17.3] | 21.4 [14.7, 28.2] | 12.2 [6.8, 18.4] | 12.2 [6.8, 18.2] | 23.7 [16.7, 30.7] |
-| h448/checks | letter flags | 3.8 [0.8, 7.3] | 13.0 [7.6, 19.1] | 4.6 [1.5, 8.3] | 3.8 [0.8, 7.3] | 14.5 [8.7, 21.0] |
-| h448/checks | coverage | 95.4 [91.5, 98.5] | 93.9 [89.7, 97.6] | 95.4 [91.5, 98.5] | 95.4 [91.5, 98.5] | 93.9 [89.7, 97.6] |
+| h448/checks | word flags | 12.2 [6.8, 18.2] | 22.9 [16.3, 29.7] | 13.0 [7.4, 19.2] | 13.0 [7.4, 19.2] | 25.2 [18.3, 32.3] |
+| h448/checks | letter flags | 4.6 [1.5, 8.3] | 14.5 [8.9, 20.6] | 5.3 [2.1, 9.4] | 4.6 [1.5, 8.3] | 16.0 [10.0, 22.3] |
+| h448/checks | coverage | 96.2 [92.7, 99.2] | 95.4 [91.6, 98.5] | 96.2 [92.7, 99.2] | 96.2 [92.7, 99.2] | 95.4 [91.6, 98.5] |
 | h448/spans | word flags | 29.0 [22.7, 35.7] | 42.0 [34.1, 50.0] | 29.0 [22.7, 35.7] | 31.3 [24.8, 38.1] | 44.3 [36.5, 52.0] |
 | h448/spans | letter flags | 15.3 [9.9, 20.7] | 26.0 [18.5, 33.3] | 15.3 [9.9, 20.7] | 16.0 [10.7, 21.7] | 26.7 [19.3, 34.0] |
 | h448/spans | coverage | 90.1 [84.6, 94.9] | 89.3 [83.6, 94.3] | 90.1 [84.6, 94.9] | 90.1 [84.6, 94.9] | 89.3 [83.6, 94.3] |
@@ -160,15 +161,17 @@ sequence (`checks`) minus the same with the single-decode approximation on the d
 stream (`stream_b0`), paired on the same sites, points [95% interval]. On correct
 recitation a negative difference is fewer false flags; on real mistakes, fewer catches.
 
-What differs between the two is how a check is made, not the transcript: the decode-level
-rates of `checks` (on the transcript the app commits) sit next to `stream_b0`'s in the
-results below. Under the single-decode approximation every check of a word is cut from
-one decode, so a word that decode misreads is misread by every check, and the cuts are
-placed by spreading characters evenly over time rather than by the audio. A recorded
-check is its own inference on its own audio and context (a preview ends where the audio
-ends; an overlap has the window's own right context), so a word's checks disagree, and
-`GradeStore` keeps the best grade any of them gave. The same mechanism that removes false
-flags hides real mistakes, which these sites cannot show until real-mistake sites exist.
+Three things differ between the two, and this comparison does not separate them. The
+transcript differs: `checks` commits its own hops, featurised and stripped as the app
+does, and ends with the app's stop rather than a silence flush (its decode-level rates sit
+next to `stream_b0`'s in the results below). The placement differs: a single-decode check
+is cut from the one decode by spreading its characters evenly over time, a recorded check
+decodes exactly its own audio. And the checks are separate inferences: every single-decode
+check of a word repeats the one decode's reading of it, while recorded checks are
+inferences in their own context (a preview ends where the audio ends; an overlap has the
+window's own right context), so a word's checks can disagree, and `GradeStore` keeps the
+best grade any of them gave. That ratchet can hide real mistakes as well as false flags;
+these sites cannot show it until real-mistake sites exist.
 
 **diagnostic, correct** (1657 / 81)
 
@@ -188,8 +191,8 @@ flags hides real mistakes, which these sites cannot show until real-mistake site
 
 | paired difference | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|
-| base/checks - base/stream_b0 | -21.4 [-29.3, -13.8] | -22.9 [-31.9, -13.2] | -22.9 [-30.7, -15.3] | -26.0 [-33.6, -18.4] | -23.7 [-32.5, -14.6] |
-| h448/checks - h448/stream_b0 | -19.8 [-27.9, -12.2] | -18.3 [-25.0, -11.6] | -19.8 [-27.9, -12.2] | -21.4 [-29.1, -13.9] | -17.6 [-23.8, -11.3] |
+| base/checks - base/stream_b0 | -21.4 [-29.3, -13.8] | -22.1 [-31.2, -12.5] | -22.9 [-30.7, -15.3] | -26.0 [-33.6, -18.4] | -22.9 [-31.7, -13.8] |
+| h448/checks - h448/stream_b0 | -19.1 [-27.3, -11.3] | -16.8 [-23.5, -10.0] | -19.1 [-27.3, -11.3] | -20.6 [-28.6, -12.9] | -16.0 [-22.2, -9.7] |
 
 ## Read this first
 
@@ -199,9 +202,10 @@ flags hides real mistakes, which these sites cannot show until real-mistake site
 - **No real-mistake site with a verdict exists yet.** Missed mistakes, silent
   corrections and every mistake-side rate are undefined.
 - **The `checks` arms are the app outcome to read.** They replay the checks Muraja's
-  transcriber would make from the audio (bypasses stated under "The app outcome");
-  the `spans` and `stream_b0` app outcomes are the single-decode approximation, kept
-  as a fallback and for comparison.
+  transcriber would make from the audio (bypasses stated under "The app outcome";
+  they make it an estimate of the device's grades, not a bound on them); the `spans`
+  and `stream_b0` app outcomes are the single-decode approximation, kept as a
+  fallback and for comparison.
 - **Sukun commit rate is 0 by construction** while a model has no sukun class: at a
   sukun site the empty slot is all it can emit (§1, C). The informative sukun number is
   the spurious-haraka rate.
@@ -340,7 +344,7 @@ No site yet.
 
 | cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|---|---|
-| all | 131 / 84 | 8.4 [3.7, 13.7] | 11.5 [5.9, 17.9] | 29.8 [22.3, 37.5] | 11.5 [6.1, 17.3] | 29.0 [22.7, 35.7] | 31.3 [22.7, 39.7] |
+| all | 131 / 84 | 8.4 [3.7, 13.7] | 11.5 [5.9, 17.9] | 29.8 [22.3, 37.5] | 12.2 [6.8, 18.2] | 29.0 [22.7, 35.7] | 31.3 [22.7, 39.7] |
 | shaddah:held (provisional) | 10 / 10 (too small) | 10.0 [1.8, 40.4] W | 10.0 [1.8, 40.4] W | 30.0 [10.8, 60.3] W | 30.0 [10.8, 60.3] W | 40.0 [16.8, 68.7] W | 40.0 [16.8, 68.7] W |
 | shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
 | ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
@@ -352,13 +356,13 @@ No site yet.
 | ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W |
 | ض↔ظ:ظ | 23 / 20 | 4.3 [0.0, 14.3] | 17.4 [4.3, 33.3] | 43.5 [22.7, 63.6] | 4.3 [0.0, 15.0] | 30.4 [13.0, 50.0] | 26.1 [9.1, 47.6] |
 | ق↔ك:ق | 6 / 6 (too small) | 16.7 [3.0, 56.4] W | 33.3 [9.7, 70.0] W | 66.7 [30.0, 90.3] W | 16.7 [3.0, 56.4] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
-| ق↔ك:ك | 21 / 19 | 9.5 [0.0, 25.0] | 14.3 [0.0, 31.6] | 33.3 [14.3, 55.0] | 14.3 [0.0, 30.0] | 28.6 [10.0, 47.8] | 38.1 [15.0, 61.9] |
+| ق↔ك:ك | 21 / 19 | 9.5 [0.0, 25.0] | 14.3 [0.0, 31.6] | 33.3 [14.3, 55.0] | 19.0 [4.8, 36.4] | 28.6 [10.0, 47.8] | 38.1 [15.0, 61.9] |
 
 *app: flagged words, shipped default*, % [95% interval]
 
 | cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|---|---|
-| all | 131 / 84 | 9.2 [4.0, 14.7] | 15.3 [8.5, 22.6] | 35.1 [27.4, 42.6] | 12.2 [6.8, 18.2] | 31.3 [24.8, 38.1] | 33.6 [25.0, 41.7] |
+| all | 131 / 84 | 9.2 [4.0, 14.7] | 15.3 [8.5, 22.6] | 35.1 [27.4, 42.6] | 13.0 [7.4, 19.2] | 31.3 [24.8, 38.1] | 33.6 [25.0, 41.7] |
 | shaddah:held (provisional) | 10 / 10 (too small) | 10.0 [1.8, 40.4] W | 30.0 [10.8, 60.3] W | 50.0 [23.7, 76.3] W | 40.0 [16.8, 68.7] W | 60.0 [31.3, 83.2] W | 50.0 [23.7, 76.3] W |
 | shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W |
 | ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
@@ -370,43 +374,43 @@ No site yet.
 | ض↔ظ:ض | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W |
 | ض↔ظ:ظ | 23 / 20 | 4.3 [0.0, 14.3] | 17.4 [4.3, 33.3] | 43.5 [22.7, 63.6] | 4.3 [0.0, 15.0] | 30.4 [13.0, 50.0] | 26.1 [9.1, 47.6] |
 | ق↔ك:ق | 6 / 6 (too small) | 16.7 [3.0, 56.4] W | 33.3 [9.7, 70.0] W | 66.7 [30.0, 90.3] W | 16.7 [3.0, 56.4] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
-| ق↔ك:ك | 21 / 19 | 9.5 [0.0, 25.0] | 19.0 [4.5, 38.1] | 38.1 [19.0, 60.0] | 14.3 [0.0, 30.0] | 28.6 [10.0, 47.8] | 38.1 [15.0, 61.9] |
+| ق↔ك:ك | 21 / 19 | 9.5 [0.0, 25.0] | 19.0 [4.5, 38.1] | 38.1 [19.0, 60.0] | 19.0 [4.8, 36.4] | 28.6 [10.0, 47.8] | 38.1 [15.0, 61.9] |
 
 *app: flagged words, ADR-0012 allowances off*, % [95% interval]
 
 | cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|---|---|
-| all | 131 / 84 | 37.4 [29.6, 45.3] | 63.4 [55.0, 71.1] | 61.1 [52.4, 69.4] | 23.7 [16.7, 30.7] | 44.3 [36.5, 52.0] | 41.2 [32.8, 49.3] |
+| all | 131 / 84 | 38.2 [30.3, 46.1] | 63.4 [55.0, 71.1] | 61.1 [52.4, 69.4] | 25.2 [18.3, 32.3] | 44.3 [36.5, 52.0] | 41.2 [32.8, 49.3] |
 | shaddah:held (provisional) | 10 / 10 (too small) | 30.0 [10.8, 60.3] W | 60.0 [31.3, 83.2] W | 60.0 [31.3, 83.2] W | 50.0 [23.7, 76.3] W | 60.0 [31.3, 83.2] W | 60.0 [31.3, 83.2] W |
 | shaddah:not_held (provisional) | 1 / 1 (too small) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W |
 | ت↔ط:ت | 2 / 2 (too small) | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
 | ت↔ط:ط | 7 / 6 (too small) | 57.1 (n/c) | 85.7 (n/c) | 85.7 (n/c) | 42.9 (n/c) | 42.9 (n/c) | 57.1 (n/c) |
 | ح↔ه:ح | 3 / 3 (too small) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W | 0.0 [0.0, 56.2] W |
-| ذ↔ز:ز | 28 / 19 | 35.7 [20.0, 52.2] | 60.7 [38.5, 82.1] | 50.0 [33.3, 69.2] | 17.9 [5.6, 33.3] | 50.0 [28.0, 66.7] | 42.9 [25.0, 58.7] |
+| ذ↔ز:ز | 28 / 19 | 39.3 [23.1, 56.7] | 60.7 [38.5, 82.1] | 50.0 [33.3, 69.2] | 21.4 [8.7, 34.8] | 50.0 [28.0, 66.7] | 42.9 [25.0, 58.7] |
 | س↔ص:س | 25 / 21 | 32.0 [13.6, 52.0] | 60.0 [40.0, 80.0] | 52.0 [30.8, 72.0] | 20.0 [7.4, 34.6] | 36.0 [20.0, 52.2] | 32.0 [16.7, 48.0] |
 | س↔ص:ص | 3 / 3 (too small) | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 0.0 [0.0, 56.2] W | 33.3 [6.1, 79.2] W | 0.0 [0.0, 56.2] W |
 | ض↔ظ:ض | 2 / 2 (too small) | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 0.0 [0.0, 65.8] W | 100.0 [34.2, 100.0] W | 0.0 [0.0, 65.8] W |
 | ض↔ظ:ظ | 23 / 20 | 56.5 [36.4, 77.3] | 65.2 [47.6, 81.8] | 73.9 [54.5, 90.9] | 34.8 [15.4, 59.1] | 52.2 [33.3, 75.0] | 43.5 [22.7, 68.2] |
 | ق↔ك:ق | 6 / 6 (too small) | 16.7 [3.0, 56.4] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W | 16.7 [3.0, 56.4] W | 50.0 [18.8, 81.2] W | 66.7 [30.0, 90.3] W |
-| ق↔ك:ك | 21 / 19 | 28.6 [10.0, 47.6] | 66.7 [47.8, 85.0] | 61.9 [40.9, 81.8] | 19.0 [4.8, 36.4] | 28.6 [10.0, 47.8] | 42.9 [20.0, 66.7] |
+| ق↔ك:ك | 21 / 19 | 28.6 [10.0, 47.6] | 66.7 [47.8, 85.0] | 61.9 [40.9, 81.8] | 23.8 [8.3, 42.9] | 28.6 [10.0, 47.8] | 42.9 [20.0, 66.7] |
 
 *app: words graded, shipped default*, % [95% interval]
 
 | cell | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|---|---|
-| all | 131 / 84 | 92.4 [87.3, 96.9] | 92.4 [86.8, 97.1] | 89.3 [82.4, 95.2] | 95.4 [91.5, 98.5] | 90.1 [84.6, 94.9] | 93.1 [88.1, 97.4] |
+| all | 131 / 84 | 93.1 [88.2, 97.4] | 92.4 [86.8, 97.1] | 89.3 [82.4, 95.2] | 96.2 [92.7, 99.2] | 90.1 [84.6, 94.9] | 93.1 [88.1, 97.4] |
 | shaddah:held (provisional) | 10 / 10 (too small) | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W | 100.0 [72.2, 100.0] W |
 | shaddah:not_held (provisional) | 1 / 1 (too small) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
 | ت↔ط:ت | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
 | ت↔ط:ط | 7 / 6 (too small) | 85.7 (n/c) | 85.7 (n/c) | 85.7 (n/c) | 85.7 (n/c) | 71.4 (n/c) | 85.7 (n/c) |
 | ح↔ه:ح | 3 / 3 (too small) | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W |
-| ذ↔ز:ز | 28 / 19 | 85.7 [70.6, 100.0] | 89.3 [75.8, 100.0] | 85.7 [65.7, 100.0] | 100.0 (n/c) | 92.9 [82.9, 100.0] | 96.4 [90.0, 100.0] |
+| ذ↔ز:ز | 28 / 19 | 89.3 [75.8, 100.0] | 89.3 [75.8, 100.0] | 85.7 [65.7, 100.0] | 100.0 (n/c) | 92.9 [82.9, 100.0] | 96.4 [90.0, 100.0] |
 | س↔ص:س | 25 / 21 | 100.0 (n/c) | 100.0 (n/c) | 96.0 [89.3, 100.0] | 100.0 (n/c) | 96.0 [89.3, 100.0] | 100.0 (n/c) |
 | س↔ص:ص | 3 / 3 (too small) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W |
 | ض↔ظ:ض | 2 / 2 (too small) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
 | ض↔ظ:ظ | 23 / 20 | 100.0 (n/c) | 95.7 [85.0, 100.0] | 95.7 [85.0, 100.0] | 100.0 (n/c) | 91.3 [78.3, 100.0] | 95.7 [85.0, 100.0] |
 | ق↔ك:ق | 6 / 6 (too small) | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W |
-| ق↔ك:ك | 21 / 19 | 85.7 [68.4, 100.0] | 90.5 [75.0, 100.0] | 81.0 [61.9, 95.5] | 85.7 [68.4, 100.0] | 81.0 [61.9, 95.5] | 85.7 [68.4, 100.0] |
+| ق↔ك:ك | 21 / 19 | 85.7 [68.4, 100.0] | 90.5 [75.0, 100.0] | 81.0 [61.9, 95.5] | 90.5 [75.0, 100.0] | 81.0 [61.9, 95.5] | 85.7 [68.4, 100.0] |
 
 *commit rate, paired difference*, points [95% interval]
 
@@ -448,7 +452,7 @@ No site yet.
 
 | cell | sites / reciters | h448/spans - base/spans | h448/stream_b0 - base/stream_b0 | h448/checks - base/checks | base/stream_b0 - base/spans | h448/stream_b0 - h448/spans | base/checks - base/stream_b0 | h448/checks - h448/stream_b0 |
 |---|---|---|---|---|---|---|---|---|
-| all | 131 / 84 | +17.6 [10.4, 24.8] | +1.5 [-4.7, 7.4] | +3.1 [-0.8, 7.4] | +18.3 [10.9, 25.6] | +2.3 [-7.8, 12.0] | -21.4 [-29.3, -13.8] | -19.8 [-27.9, -12.2] |
+| all | 131 / 84 | +17.6 [10.4, 24.8] | +1.5 [-4.7, 7.4] | +3.8 [0.0, 8.4] | +18.3 [10.9, 25.6] | +2.3 [-7.8, 12.0] | -21.4 [-29.3, -13.8] | -19.1 [-27.3, -11.3] |
 | shaddah:held (provisional) | 10 / 10 (too small) | +30.0 [-6.1, 60.3] T | +10.0 [-20.5, 40.4] T | +20.0 [-13.3, 51.0] T | +20.0 [-13.3, 51.0] T | +0.0 [-39.7, 39.7] T | -20.0 [-55.1, 21.7] T | -10.0 [-40.4, 20.5] T |
 | shaddah:not_held (provisional) | 1 / 1 (too small) | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T |
 | ت↔ط:ت | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +50.0 [-48.6, 90.5] T | +0.0 [-81.1, 81.1] T | -50.0 [-90.5, 48.6] T | -50.0 [-90.5, 48.6] T |
@@ -460,7 +464,7 @@ No site yet.
 | ض↔ظ:ض | 2 / 2 (too small) | +50.0 [-48.6, 90.5] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T | -50.0 [-90.5, 48.6] T | +0.0 [-65.8, 65.8] T | +0.0 [-65.8, 65.8] T |
 | ض↔ظ:ظ | 23 / 20 | +13.0 [0.0, 30.0] | -17.4 [-34.6, 0.0] | +0.0 [-13.0, 13.0] | +26.1 [9.5, 45.0] | -4.3 [-21.7, 15.0] | -39.1 [-59.1, -19.0] | -21.7 [-40.9, -6.9] |
 | ق↔ك:ق | 6 / 6 (too small) | +16.7 [-39.8, 63.0] T | +0.0 [-39.0, 39.0] T | +0.0 [-39.0, 39.0] T | +33.3 [-18.7, 70.0] T | +16.7 [-39.8, 63.0] T | -50.0 [-81.2, 8.6] T | -50.0 [-81.2, 8.6] T |
-| ق↔ك:ك | 21 / 19 | +14.3 [-5.0, 33.3] | +4.8 [-15.8, 25.0] | +4.8 [0.0, 13.6] | +19.0 [0.0, 40.0] | +9.5 [-14.3, 31.6] | -23.8 [-42.9, -8.7] | -23.8 [-42.9, -8.7] |
+| ق↔ك:ك | 21 / 19 | +14.3 [-5.0, 33.3] | +4.8 [-15.8, 25.0] | +9.5 [0.0, 22.7] | +19.0 [0.0, 40.0] | +9.5 [-14.3, 31.6] | -23.8 [-42.9, -8.7] | -19.0 [-40.0, 0.0] |
 
 **Real mistakes:** no site with a verdict yet.
 
@@ -576,7 +580,7 @@ allowance on (`allowances_on`) and switched off alone. % [95% interval].
 |---|---|---|---|---|---|---|---|---|---|
 | pause | shaddah_suppression | false flags | 6 / 6 (too small) | 0.0 [0.0, 39.0] W → 0.0 [0.0, 39.0] W | 0.0 [0.0, 39.0] W → 0.0 [0.0, 39.0] W | 33.3 [9.7, 70.0] W → 50.0 [18.8, 81.2] W | 0.0 [0.0, 39.0] W → 0.0 [0.0, 39.0] W | 16.7 [3.0, 56.4] W → 16.7 [3.0, 56.4] W | 33.3 [9.7, 70.0] W → 50.0 [18.8, 81.2] W |
 | pause | tashkeel_toggle | false flags | 135 / 62 | 1.5 [0.0, 3.8] → 1.5 [0.0, 3.8] | 2.2 [0.0, 5.0] → 3.0 [0.7, 6.2] | 20.0 [12.5, 28.2] → 22.2 [14.5, 30.8] | 2.2 [0.0, 5.0] → 3.0 [0.7, 6.2] | 17.0 [11.0, 23.5] → 19.3 [13.4, 25.4] | 18.5 [11.7, 26.2] → 23.0 [15.8, 31.3] |
-| targeted_safeguard | soft_pair_forgiveness | false flags | 120 / 76 | 8.3 [3.4, 14.2] → 36.7 [28.6, 45.5] | 11.7 [5.7, 18.7] → 64.2 [55.6, 72.3] | 30.0 [22.1, 38.2] → 60.0 [50.8, 68.8] | 10.0 [5.2, 15.5] → 20.8 [14.3, 27.8] | 28.3 [21.7, 35.3] → 42.5 [34.4, 50.4] | 30.8 [22.1, 40.0] → 40.0 [31.2, 48.7] |
+| targeted_safeguard | soft_pair_forgiveness | false flags | 120 / 76 | 8.3 [3.4, 14.2] → 37.5 [29.3, 46.4] | 11.7 [5.7, 18.7] → 64.2 [55.6, 72.3] | 30.0 [22.1, 38.2] → 60.0 [50.8, 68.8] | 10.8 [5.7, 16.7] → 22.5 [16.0, 29.5] | 28.3 [21.7, 35.3] → 42.5 [34.4, 50.4] | 30.8 [22.1, 40.0] → 40.0 [31.2, 48.7] |
 | targeted_safeguard | shaddah_suppression | false flags | 10 / 10 (too small) | 10.0 [1.8, 40.4] W → 30.0 [10.8, 60.3] W | 10.0 [1.8, 40.4] W → 60.0 [31.3, 83.2] W | 30.0 [10.8, 60.3] W → 60.0 [31.3, 83.2] W | 30.0 [10.8, 60.3] W → 40.0 [16.8, 68.7] W | 40.0 [16.8, 68.7] W → 40.0 [16.8, 68.7] W | 40.0 [16.8, 68.7] W → 50.0 [23.7, 76.3] W |
 | diagnostic | shaddah_suppression | false flags | 171 / 65 | 1.8 [0.0, 3.6] → 1.8 [0.0, 3.6] | 1.2 [0.0, 2.7] → 1.2 [0.0, 2.7] | 9.9 [4.8, 15.7] → 14.0 [8.2, 20.5] | 0.6 [0.0, 1.9] → 0.6 [0.0, 1.9] | 14.6 [9.3, 20.2] → 15.2 [9.5, 21.0] | 11.1 [5.9, 16.7] → 16.4 [10.5, 22.5] |
 | diagnostic | tashkeel_toggle | false flags | 1657 / 81 | 1.1 [0.5, 1.8] → 1.1 [0.5, 1.8] | 1.1 [0.6, 1.8] → 1.4 [0.8, 2.2] | 14.7 [12.8, 16.5] → 19.1 [17.2, 21.1] | 1.2 [0.6, 1.9] → 1.4 [0.7, 2.1] | 11.7 [9.8, 13.8] → 12.6 [10.7, 14.7] | 13.8 [12.2, 15.5] → 18.0 [16.2, 19.8] |

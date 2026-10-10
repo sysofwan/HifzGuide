@@ -56,9 +56,11 @@ Swift Characters, so a haraka never leaves its consonant), on exact sample count
 session starts on the item's first word (the harness moves the engine there after ``setPage``, as
 the app's explicit navigation does). The engine then places, grades and ratchets as in the app; what
 the single-decode approximation cannot show is a check decoding differently from the whole-item
-decode. Each item is one session: it ends with a silence flush of the pending audio, including what
-follows the last whole 200 ms step, and the session's end (``handleFinalFlush``,
-``settleReadersWord``).
+decode. Each item is one session. A recorded sequence ends as the app's stop does: the decode of
+everything pending, handed to ``handleFinalFlush`` for a final alignment pass (no silence flush
+fires, as no speech detector is modelled). The single-decode approximation ends, as #123 defined
+it, with a silence flush of the pending audio (which does not align) and an empty
+``handleFinalFlush``. Both then settle the reader's word (``settleReadersWord``).
 
 What a kept grade means for a site
 ----------------------------------
@@ -242,14 +244,15 @@ SINGLE_DECODE = "single_decode_on_app_cadence"
 APPROXIMATIONS = {
     RECORDED_CHECKS: (
         "Each check Muraja would run over the item's audio (a hop per second once 5 s are "
-        "pending, a preview per 200 ms once 2 s are, and the closing flush of what is pending) "
+        "pending, a preview per 200 ms once 2 s are, and the stop's decode of what is pending) "
         "was decoded on its own audio, featurised, split and stripped as the app does it "
-        "(`training.decoding`, `APP_CHECKS`), and replayed through Muraja's engine. The audio is "
-        "taken to arrive in 200 ms steps with every inference instantaneous; the speech "
-        "detector's silence flush, VAD gate and window/preview hallucination gates are bypassed "
-        "(the reciter speaks throughout the item), and the decodes are PyTorch bf16, not the "
-        "device's CoreML. The session starts on the item's first word and ends with a silence "
-        "flush."
+        "(`training.decoding`, `APP_CHECKS`), and replayed through Muraja's engine, the stop "
+        "through its final alignment pass. The audio is taken to arrive in 200 ms steps with "
+        "every inference instantaneous; the speech detector is not modelled, so no silence flush "
+        "fires and the VAD gate and window/preview hallucination gates are bypassed (the reciter "
+        "speaks throughout the item); and the decodes are PyTorch bf16, not the device's CoreML. "
+        "None of these is known to move grades one way only: this estimates the device's grades, "
+        "it does not bound them. The session starts on the item's first word."
     ),
     SINGLE_DECODE: (
         "Each item has one decode per arm, not one per Muraja check. The checks Muraja would run "
@@ -270,9 +273,11 @@ def single_decode_checks(decode: str, n_samples: int) -> list[dict]:
 
     The transcriber's schedule (:func:`training.decoding.check_schedule`, exact sample counts)
     with each inference's text cut from ``decode``, its Characters spread evenly over the
-    samples: a window's hop is its first second and its overlap the rest, a preview is all of
-    its audio, and the flush confirms all of its audio. Updates with nothing in them are not
-    sent, as the transcriber sends none (:func:`training.decoding.make_check`).
+    samples: a window's hop is its first second and its overlap the rest, and a preview is all
+    of its audio. Updates with nothing in them are not sent, as the transcriber sends none
+    (:func:`training.decoding.make_check`). The schedule's last inference, the recorded
+    sequence's stop, is sent here as a silence flush of its audio, as #123 defined this
+    approximation; the fallback's grades are kept exactly as they were.
     """
     chars = clusters(decode)
     per_sample = len(chars) / n_samples if n_samples else 0.0
@@ -287,7 +292,7 @@ def single_decode_checks(decode: str, n_samples: int) -> list[dict]:
             check = make_check(WINDOW, text(span.start, hop), text(hop, span.end))
         elif span.kind == PREVIEW:
             check = make_check(PREVIEW, "", text(span.start, span.end))
-        else:
+        else:  # STOP
             check = make_check(FLUSH, text(span.start, span.end), "")
         if check is not None:
             checks.append(check)

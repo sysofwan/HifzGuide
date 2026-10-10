@@ -91,7 +91,9 @@ The table above was built from a reading of Muraja that graded each word once, f
 with an empty haraka always flagged. A reading of `sysofwan/Muraja` at `99c326f` (v1.0.27)
 corrects it. Paths are under `ios/HifzGuide/`; `WS` is
 `FollowAlong/QuranFollowAlong+WordScoring.swift`, `FAT` is `FollowAlong/FollowAlongTypes.swift`.
-`tools/training/muraja_policy.py` replays these rules and cites each one.
+Every cell below was also checked by replaying decodes through Muraja's own engine, compiled
+from that commit (`tools/muraja_harness`; the cases are in
+`tools/muraja_harness/parity_fixtures.json`).
 
 **Muraja grades every word many times and keeps the best grade.** Every 1 s hop and every
 200 ms preview runs a check (`FollowAlongEngine.swift:625-639`,
@@ -110,7 +112,7 @@ Per check, in each mode (`FAT:109-147`; the app defaults to `.balanced`,
 | haraka X | haraka Y | tashkeelError | tashkeelError | tashkeelError |
 | haraka X | nothing | tashkeelError, except on و ا ء ي (`WS:42-56, 544`) | as strict | correct (`suppressHarakaDrop`, `WS:541`) |
 | sukun | nothing, or class 35 (a residual, not a haraka: `PhonemeNormalization.swift:12-29`) | match | match | match |
-| sukun | a haraka | tashkeelError | tashkeelError | tashkeelError |
+| sukun | a haraka | tashkeelError | tashkeelError | tashkeelError per check, but an earlier check that heard the word only in part can already have locked it correct (threshold 0.55) |
 | shaddah inside a word | one consonant | minor or worse (the phoneme gate, `WS:734-746`) | correct while the word scores ≥ 0.65 (`shaddahSuppression`, `WS:740`) | correct while it scores ≥ 0.55 |
 | shaddah that starts a word (assimilation, e.g. للَذِينَ) | one consonant | not scored (`WS:151-191`); its haraka is | as strict | as strict |
 | single consonant | a doubled one | not scored: insertions are invisible | as strict | as strict |
@@ -125,11 +127,15 @@ its tashkeel (`WS:492-508, 640-646`). A trailing bare و or ں is trimmed from e
 scored (`WS:219-252`). In `.lenient` a minor grade shows as correct (`GradeFilter+iOS.swift:80-85`);
 with tashkeel detection off a tashkeelError does (`:68-73`).
 
-What this changes in the decision above: nothing. Sukun said and nothing emitted still arrive
-as the same `heard: nil`, so the case for an explicit sukun class and "empty = not graded"
-stands. What it changes is how often an empty slot reaches the reciter: the ratchet hides many
-of the flags the old table predicted, so offline rates read from one decode per site overstate
-flags and understate misses (`docs/truth-baseline.md`, *How Muraja is replayed*).
+Two more behaviours of the engine matter when reading the app outcome: a word graded correct can
+still carry errors in its record (a forgiven soft pair or a suppressed geminate gap), and a word
+heard badly enough to be graded wrong or uncertain waits in the hold buffer
+(`GradeStore.swift:130, 543-600`) and is usually replaced by the engine's skip marking.
+
+This amendment corrects the description of Muraja only; sukun said and nothing emitted still
+arrive as the same `heard: nil`. Because of the ratchet, the app outcome is not a function of
+one decode: it is graded by Muraja's own engine over the checks (`docs/truth-baseline.md`,
+*The app outcome*).
 
 ### 3. Where training signal may come from
 

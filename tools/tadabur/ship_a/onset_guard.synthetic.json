@@ -1,0 +1,42 @@
+{
+ "barred_reciters": 79,
+ "counts": {
+  "clip_holds_an_exposed_item": 128,
+  "clip_not_placed": 241,
+  "reciters_without_a_clean_segment": 197,
+  "segment_without_a_clear_onset": 1436,
+  "segments_read": 1618
+ },
+ "depths_ms": [
+  -100,
+  0,
+  20,
+  40,
+  80,
+  120
+ ],
+ "per_split": {
+  "calibration": 90,
+  "test": 92
+ },
+ "pool_reciters": 379,
+ "rules": {
+  "contrast_s": 0.5,
+  "floor_s": 0.4,
+  "min_contrast_db": 20.0,
+  "min_lead_s": 0.2,
+  "onset_window_s": [
+   0.1,
+   0.05
+  ],
+  "search_frames": [
+   10,
+   5
+  ],
+  "silence_above_floor_db": 6.0,
+  "speech_above_floor_db": 12.0
+ },
+ "segments": 182,
+ "selection_salt": "issue-138-onset-clips-2026-10",
+ "split_salt": "issue-138-onset-trim-2026-10"
+}

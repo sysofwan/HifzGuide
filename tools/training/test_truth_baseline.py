@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from tadabur.exclusions import Exclusions
 from tadabur.truth_sites import TRUTH_SITES_DIR
 from training.decoding import APP_CHECKS, SPANS, DecodeFingerprint
 from training.muraja_policy import FLAGGED, RECORDED_CHECKS, SHIPPED_DEFAULT, SINGLE_DECODE
@@ -200,10 +201,11 @@ def test_the_report_and_the_power_inputs_both_leave_out_waqf_realized_sites(site
     keeps ``today_system_arm``."""
     arms = {f"{model}/{protocol}": decodes_for(sites)
             for model in ("base", "h448") for protocol in ARM_PROTOCOLS}
-    realized = frozenset({sites[0].site_id})
+    realized = Exclusions.of(waqf_realized={sites[0].site_id})
     report, inputs = scored(sites, RECITERS, arms, ["base", "h448"], app(sites, list(arms)),
                             realized)
     assert report["waqf_realized"] == inputs["waqf_realized"] == [sites[0].site_id]
+    assert report["onset_trimmed"] == inputs["onset_trimmed"] == []
     assert inputs["today_system_arm"] == "h448/stream_b0"
     held = [c for c in inputs["cells"] for r in c["per_reciter"] if r == "1"]
     assert held == []  # reciter 1's only site was the realized one

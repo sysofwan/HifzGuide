@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from tadabur.exclusions import REASONS
 from training.site_outcomes import CORRECT_SIDE, MISTAKE_SIDE
 from training.muraja_policy import APPROXIMATIONS, RECORDED_CHECKS, SINGLE_DECODE
 from training.truth_scorer import DIAGNOSTIC, HEADLINE, PAUSE, POPULATIONS, SAFEGUARD, SYNTHETIC
@@ -156,7 +157,7 @@ def _all_census(report: dict) -> bool:
     sampled: dict[str, int] = defaultdict(int)
     population: dict[str, int] = {}
     for row in report["sites"]:
-        sampled[row["stratum"]] += row["sites"] + row.get("waqf_realized", 0)
+        sampled[row["stratum"]] += row["sites"] + sum(row.get(r, 0) for r in REASONS)
         population[row["stratum"]] = row["stratum_population"]
     return all(sampled[stratum] == n for stratum, n in population.items())
 
@@ -373,6 +374,10 @@ def render(report: dict) -> str:
            "denominator, at their frozen weights: "
            + ", ".join(f"`{i}`" for i in report["waqf_realized"]) + "."]
           if report.get("waqf_realized") else []),
+        *([f"{len(report['onset_trimmed'])} site(s) Ship A's onset guard judges trimmed (#138: "
+           "the clip's opening sound is cut) are left out the same way: "
+           + ", ".join(f"`{i}`" for i in report["onset_trimmed"]) + "."]
+          if report.get("onset_trimmed") else []),
         f"Records sharing one physical site (audio checksum, span, carrier, mark): "
         f"{len(report['physical_sites_merged'])} merged"
         + (", each under its directly adjudicated verdict (`report.json`)."

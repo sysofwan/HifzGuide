@@ -15,7 +15,7 @@ from tadabur.test_power_frame import H448, REFERENCE, scored_pool
 from tadabur.truth_sites import UNCLEAR
 from tadabur.eval_harness import build as fixture_side_report
 from tadabur.listening_session import Verdict, write_verdicts
-from tadabur.waqf_guard import GUARD_PATH, realized_ids
+from tadabur.exclusions import GUARD_PATHS, REASONS, Exclusions, current
 from tadabur.word_sample import WORD_SAMPLE_PATH, load_words
 from training import ship_a_sizing as z
 from training.acceptance_stats import (
@@ -106,13 +106,16 @@ def test_the_committed_sizing_reads_the_committed_inputs():
     assert sizing["inputs"] == {**input_checksums(), **{
         name: z._sha256(path) for name, path in (
             ("ship_a/sites.jsonl", SITES_PATH), ("ship_a/word_sample.jsonl", WORD_SAMPLE_PATH))}}
-    realized = frozenset(sizing["waqf_guard"]["realized"])
-    sites, words = z.guarded(load_sites(), load_words(), realized)
-    assert sizing["waqf_guard"]["guard"] == z._sha256(GUARD_PATH)
+    excluded = Exclusions.of(**{reason: sizing[block][key]
+                                for reason, (block, key) in z.GUARD_BLOCKS.items()})
+    sites, words = z.guarded(load_sites(), load_words(), excluded)
+    for reason, (block, _) in z.GUARD_BLOCKS.items():
+        assert sizing[block]["guard"] == z._sha256(GUARD_PATHS[reason])
     assert sizing["budget"] == json.loads(json.dumps(z.budget(sites)))
     assert sizing["word_sample_effective"]["words"] == len(words)
-    fixtures = fixture_side_report(DEFAULT_MODELS, None, realized)
-    assert sizing["fixture_report"]["waqf_realized"] == fixtures["waqf_realized"]
+    fixtures = fixture_side_report(DEFAULT_MODELS, None, excluded)
+    for reason in REASONS:
+        assert sizing["fixture_report"][reason] == fixtures[reason]
     assert sizing["mistake_mix"] == json.loads(json.dumps(z.mistake_mix(fixtures, sites)))
     assert sizing["repetitions"] == z.REPETITIONS
 
@@ -128,7 +131,7 @@ def test_an_owner_note_moves_question_4_both_ways(tmp_path, note, change):
 
     def shaddah_mix(notes: dict[str, str]) -> dict:
         write_verdicts({i: Verdict(i, "held", n) for i, n in notes.items()}, verdicts)
-        guard = realized_ids(verdicts_path=verdicts)
+        guard = current(verdicts_path=verdicts)
         return z.mistake_mix(fixture_side_report(DEFAULT_MODELS, None, guard), [])[
             "p35_h448_off"]["shaddah"]
 
@@ -138,14 +141,38 @@ def test_an_owner_note_moves_question_4_both_ways(tmp_path, note, change):
     assert after["should_reject"] == before["should_reject"] + change
 
 
-def test_the_sizing_leaves_out_what_the_guard_realizes():
+def test_the_sizing_leaves_out_what_each_guard_takes_out():
     every_site, words = load_sites(), load_words()
-    realized = frozenset({every_site[0].site.site_id, words[0].site.site_id})
-    sites, kept_words = z.guarded(every_site, words, realized)
-    assert len(sites) == len(every_site) - 1 and len(kept_words) == len(words) - 1
-    block = z.waqf_guard_block(every_site, words, realized)
+    realized = {every_site[0].site.site_id, words[0].site.site_id}
+    excluded = Exclusions.of(waqf_realized=realized,
+                             onset_trimmed={every_site[0].site.site_id, every_site[1].site.site_id})
+    sites, kept_words = z.guarded(every_site, words, excluded)
+    assert len(sites) == len(every_site) - 2 and len(kept_words) == len(words) - 1
+    block = z.guard_block("waqf_realized", every_site, words, excluded)
     assert block["sites"] == block["words"] == 1 and block["realized"] == sorted(realized)
     assert sum(block["families"].values()) == 1
+    trimmed = z.guard_block("onset_trimmed", every_site, words, excluded)
+    assert trimmed["sites"] == 1 and trimmed["words"] == 0  # the shared site counts as waqf
+    assert len(trimmed["trimmed"]) == 2
+
+
+@pytest.mark.parametrize("note, change", [("Trimming issues", -1), ("no trim", 0)])
+def test_a_trim_note_takes_a_p35_site_out_of_question_4(tmp_path, note, change):
+    """#138: question 4's P3.5 mix reads the onset guard at the current verdicts: a trim note
+    takes a kept P3.5 site out of the mix; a negated one leaves it in."""
+    kept = "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69"
+    verdicts = tmp_path / "verdicts.jsonl"
+
+    def shaddah_mix(notes: dict[str, str]) -> dict:
+        write_verdicts({i: Verdict(i, "held", n) for i, n in notes.items()}, verdicts)
+        report = fixture_side_report(DEFAULT_MODELS, None, current(verdicts_path=verdicts))
+        return report, z.mistake_mix(report, [])["p35_h448_off"]["shaddah"]
+
+    _, before = shaddah_mix({})
+    report, after = shaddah_mix({kept: note})
+    assert (kept in report["onset_trimmed"]) == (change != 0)
+    assert after["should_reject"] + after["should_accept"] == (
+        before["should_reject"] + before["should_accept"] + change)
 
 
 def test_the_committed_page_is_rendered_from_the_committed_results():

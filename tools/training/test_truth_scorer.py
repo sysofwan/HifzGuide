@@ -8,6 +8,7 @@ from dataclasses import replace
 
 import pytest
 
+from tadabur.exclusions import Exclusions
 from training.muraja_policy import (
     ALLOWANCES_ON,
     FLAGGED,
@@ -172,11 +173,26 @@ def test_a_waqf_realized_site_leaves_every_denominator_with_its_twin(sites):
                    stratum="p35_fixture:x")
     pending = sites[3].site_id
     report = score(sites + [twin], RECITERS, {"m/spans": decodes_for(sites)},
-                   waqf_realized={"twin", pending})
+                   excluded_items=Exclusions.of(waqf_realized={"twin", pending}))
     assert report["waqf_realized"] == sorted([sites[0].site_id, pending])
     assert cell(report, HEADLINE, CORRECT_SIDE, "fatha")["sites"] == 1
     assert report["exclusions"] == []
     assert score(sites, RECITERS, {"m/spans": decodes_for(sites)})["waqf_realized"] == []
+
+
+def test_an_onset_trimmed_site_leaves_through_the_same_exclusion(sites):
+    """#138: a trimmed site and its twin leave every denominator under their own reason; a
+    physical site both guards take out counts once, under the first reason."""
+    twin = replace(sites[0], site_id="twin", source="p35_fixture", heard="pending",
+                   stratum="p35_fixture:x")
+    report = score(sites + [twin], RECITERS, {"m/spans": decodes_for(sites)},
+                   excluded_items=Exclusions.of(onset_trimmed={"twin", sites[3].site_id},
+                                                waqf_realized={sites[3].site_id}))
+    assert report["onset_trimmed"] == [sites[0].site_id]
+    assert report["waqf_realized"] == [sites[3].site_id]
+    assert cell(report, HEADLINE, CORRECT_SIDE, "fatha")["sites"] == 1
+    counts = {(r["population"], r["stratum"]): r for r in report["sites"]}
+    assert sum(r["onset_trimmed"] + r["waqf_realized"] for r in counts.values()) == 2
 
 
 def test_the_directly_adjudicated_verdict_wins_over_a_weak_label(sites):
@@ -297,7 +313,7 @@ def test_power_inputs_leave_out_a_waqf_realized_site_at_its_frozen_weight(sites)
     computed over every sampled site (10/4 in the fatha stratum)."""
     arms = {"h448/stream_b0": decodes_for(sites)}
     inputs = power_inputs(sites, RECITERS, arms, app(sites, list(arms)),
-                          waqf_realized={sites[0].site_id, sites[3].site_id})
+                          Exclusions.of(waqf_realized={sites[0].site_id, sites[3].site_id}))
     assert inputs["waqf_realized"] == sorted([sites[0].site_id, sites[3].site_id])
     assert "new_audit:fatha" not in inputs["excluded"]
     row = next(c for c in inputs["cells"]

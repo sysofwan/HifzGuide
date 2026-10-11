@@ -22,7 +22,10 @@ answers are in [`docs/ship-a-sizing.md`](../../../../docs/ship-a-sizing.md).
 | `waqf_guard.segmentations.jsonl`, `waqf_guard.segmentations.json` | the segmentations the guard's windows are read on (#134): per clip of the waqf fixtures' re-segmentation and of the P3.5 re-location that a guarded P3.5 row sits on, its canonical reciter, skip reason, re-reads, word times and the segmenter's cuts; each run's record and files' checksums | `python -m tadabur.waqf_guard record` (on the GPU box, after `tadabur.resegment`) |
 | `waqf_guard.boundaries.jsonl`, `waqf_guard.vad.json` | the waqf guard's measurements (#134): every boundary the local pause check read, Ship A's and the reciter-disjoint waqf fixtures', with its window and VAD scores (the fixtures' with the canonical reciter, the owner's verdict and the segmenter's decisions), and the VAD pass's provenance | `python -m tadabur.waqf_guard windows`, then `python -m tadabur.local_pause score` (GPU) |
 | `waqf_guard.jsonl`, `waqf_guard.summary.json` | the waqf guard: per site, worklist row and sampled word, whether its mark depends on wasl and, where it does, the local check's decision; counts per part and stratum at the verdicts, and the calibration | `python -m tadabur.waqf_guard build` |
-| `sizing.json` | the four sizing questions' results, after the waqf guard | `python -m training.ship_a_sizing run` |
+| `onset_guard.synthetic.jsonl`, `onset_guard.synthetic.json` | the onset guard's synthetic trims (#138): one clean segment start per canonical reciter of the mining pool, with its provenance (clip, checksum, shard, row, reciter, split), segment and the first letter's onset sample; the selection's counts and rules | `python -m tadabur.onset_guard synthetic` (reads the staged audio) |
+| `onset_guard.scores.jsonl`, `onset_guard.run.json` | every span the onset detector scored (each exposed segment and each synthetic cut) with the five candidates' scores and the head of the base teacher's free decode; the decode and VAD pass's provenance | `python -m tadabur.onset_guard spans`, then `score` (GPU) |
+| `onset_guard.jsonl`, `onset_guard.summary.json`, `onset_guard.curves.json` | the onset guard: per site, worklist row and sampled word, whether its mark is read in its segment's first word (exposed), the cut it starts at, its scores and the detector's decision; counts per part and stratum at the verdicts, the operating points, the owner check and the re-listen list; every candidate's calibration curve | `python -m tadabur.onset_guard build` |
+| `sizing.json` | the four sizing questions' results, after the shared exclusion (both guards) | `python -m training.ship_a_sizing run` |
 
 Rebuild in that order, from `tools/` (torch-free but the guard's VAD pass; `quran-transcript`
 for the Uthmani words). Each step checks the inputs it reads against the checksums the previous
@@ -36,12 +39,26 @@ through the phonetizer, which sites, worklist rows and sampled words change thei
 mark under a waqf at a boundary of their word; where one does, `tadabur.local_pause` reads the
 VAD there, at the operating point its calibration on the waqf fixtures picks. A site judged
 paused is `waqf_realized`: out of every evaluation denominator (the sizing, and
-`truth_scorer.score(waqf_realized=tadabur.waqf_guard.realized_ids())`), its verdict kept as a
+`truth_scorer.score(excluded_items=tadabur.exclusions.current())`), its verdict kept as a
 training target. **Owner notes decide first**: type `waqf` in the note box when the reciter
 stopped (or `wasl` when the check is wrong about a pause); notes are read from
 `listening_session/verdicts.jsonl` at every use. After a sitting, refresh the counts with
 `python -m tadabur.waqf_guard build`, then re-run the sizing and its page. The frozen worklist
 and word sample are untouched.
+
+## The onset guard (#138)
+
+Some Tadabur files start inside their first letter (the `ء` of `ءَلَّذِينَ`, the `ث` of `ثُمَّ`):
+a mark read there tests the clip, not the model, and the app never hears audio cut that way.
+`tadabur.onset_guard` marks every item whose mark is read in the first word of its segment as
+exposed and scores the start of that segment with five candidate detectors, calibrated on
+synthetic trims of clean segment starts. A detector decides only where it is reliable against
+the owner's flags too; at the committed verdicts none is (`detector_decides` in the summary),
+so **owner notes decide**: type `trim`, `cut` or `split`
+in the note box when the opening sound is cut off (`no trim` when it is not). The item becomes
+`onset_trimmed`: out of every evaluation denominator through the shared exclusion
+(`tadabur.exclusions`, the one the waqf guard uses) and no training target. After a sitting,
+refresh with `python -m tadabur.onset_guard build`, then re-run the sizing and its page.
 
 ## The sites
 

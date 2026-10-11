@@ -8,6 +8,7 @@ from tadabur.listening_session import Verdict, adjudicated
 from tadabur.p35_truth_sites import SITES_PATH
 from tadabur.test_eval_report import PAIR, ZAI, cohort, report_for  # noqa: F401  (a fixture)
 from tadabur.truth_sites import load_truth_sites
+from tadabur.exclusions import REASONS, current
 from tadabur.waqf_guard import realized_ids
 from training.truth_baseline import DEFAULT_MODELS
 
@@ -25,9 +26,11 @@ def test_every_p35_site_has_the_fixture_side_it_was_relocated_from():
 def test_the_report_builds_from_the_committed_decode_caches_without_decoding():
     report = build(DEFAULT_MODELS, audio_dir=None)
     assert report["arms"] == ["base/spans", "base/stream_b0", "h448/spans", "h448/stream_b0"]
-    realized = set(report["waqf_realized"])
-    assert len(report["sites"]) + len(realized) == len(load_truth_sites(SITES_PATH))
-    assert realized <= realized_ids() and not realized & {s["site_id"] for s in report["sites"]}
+    taken = {reason: set(report[reason]) for reason in REASONS}
+    out = set().union(*taken.values())
+    assert len(report["sites"]) + len(out) == len(load_truth_sites(SITES_PATH))
+    assert all(taken[r] <= current().by_reason[r] for r in REASONS)
+    assert not out & {s["site_id"] for s in report["sites"]}
     assert report["p35_base_reproduction"]["identical"] == report["p35_base_reproduction"]["items"]
     for arm in report["arms"]:
         assert report["fingerprints"]["arms"][arm]["identity"]["model_ref"] in DEFAULT_MODELS.values()

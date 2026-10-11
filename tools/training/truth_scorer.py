@@ -81,12 +81,13 @@ sites that could belong to it (same population and family, a prescribed value co
 with the cell's side and heard value) and the best and worst case of its commit rate and
 committed accuracy with all of them counted as successes or as failures.
 
-Waqf-realized sites (#134)
---------------------------
-A site ``waqf_realized`` by Ship A's waqf guard (:func:`tadabur.waqf_guard.realized_ids`: its
-prescribed mark only exists in wasl and the reciter paused there) is no site of its cell: it
-leaves every denominator and the exclusions, with every record of its physical site, and is
-listed in the report.
+Excluded items (#134, #138)
+---------------------------
+A site the shared exclusion takes out (:mod:`tadabur.exclusions`: ``waqf_realized``, its
+prescribed mark only exists in wasl and the reciter paused there; ``onset_trimmed``, its
+clip's opening sound is cut) is no site of its cell: it leaves every denominator and the
+exclusions, with every record of its physical site, and is listed in the report under its
+reason.
 
 Required cells (§1, §9)
 -----------------------
@@ -99,11 +100,12 @@ from __future__ import annotations
 
 import math
 from collections import Counter, defaultdict
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 
 import numpy as np
 
+from tadabur.exclusions import NONE, REASONS, Exclusions
 from tadabur.truth_sites import (
     GEMINATION_STATES,
     HARAKA_CHARS,
@@ -367,15 +369,21 @@ def reconcile(
     return Reconciled(kept, {s.site_id: weights[s.site_id] for s in kept}, merged)
 
 
-def without_waqf_realized(
-    kept: Sequence[TruthSite], every_record: Sequence[TruthSite], waqf_realized: Collection[str]
-) -> tuple[list[TruthSite], list[str]]:
-    """The reconciled sites less every physical site a record of which the waqf guard
-    realizes, and the ids taken out. Run after :func:`reconcile`, so the weights stay the
-    frozen ones computed over every record."""
-    realized = {physical_site(s) for s in every_record if s.site_id in waqf_realized}
-    return ([s for s in kept if physical_site(s) not in realized],
-            sorted(s.site_id for s in kept if physical_site(s) in realized))
+def without_excluded(
+    kept: Sequence[TruthSite], every_record: Sequence[TruthSite], excluded_items: Exclusions
+) -> tuple[list[TruthSite], dict[str, list[str]]]:
+    """The reconciled sites less every physical site a record of which ``excluded_items`` takes
+    out, and per reason the ids taken out (a physical site under the first reason any of its
+    records has). Run after :func:`reconcile`, so the weights stay the frozen ones computed
+    over every record."""
+    reason_of: dict[tuple, str] = {}
+    for reason in REASONS:
+        for record in every_record:
+            if excluded_items.reason(record.site_id) == reason:
+                reason_of.setdefault(physical_site(record), reason)
+    return ([s for s in kept if physical_site(s) not in reason_of],
+            {reason: sorted(s.site_id for s in kept if reason_of.get(physical_site(s)) == reason)
+             for reason in REASONS})
 
 
 @dataclass(frozen=True)
@@ -637,16 +645,15 @@ def score(
     comparisons: Sequence[tuple[str, str]] = (),
     muraja: MurajaGrades | None = None,
     design_weights: Mapping[str, float] | None = None,
-    waqf_realized: Collection[str] = (),
+    excluded_items: Exclusions = NONE,
 ) -> dict:
     """The report: per-cell rates for every arm, paired differences, the allowance view (with
     app outcomes), exclusions and required-cell support. ``decodes[arm][item_key]`` is a decode
     string, ``reciter_of[audio_filename]`` a canonical reciter id; ``design_weights`` gives
-    sites a per-site weight (:func:`site_weights`); ``waqf_realized`` names the sites the waqf
-    guard takes out (module docstring)."""
+    sites a per-site weight (:func:`site_weights`); ``excluded_items`` names the items the
+    shared exclusion takes out (module docstring)."""
     reconciled = reconcile(sites, design_weights)
-    sites, realized_ids = without_waqf_realized(reconciled.sites, sites, waqf_realized)
-    realized_sites = [s for s in reconciled.sites if s.site_id in realized_ids]
+    sites, taken = without_excluded(reconciled.sites, sites, excluded_items)
     weights = reconciled.weights
     arms = sorted(decodes)
     outcomes = outcomes_by_arm(sites, decodes)
@@ -697,9 +704,9 @@ def score(
         "bootstrap": {"replicates": REPLICATES, "seed": SEED, "cluster": "canonical reciter id"},
         "muraja": muraja.as_dict() if muraja else None,
         "arms": arms,
-        "sites": _site_counts(sites, reciter_of, realized_sites),
+        "sites": _site_counts(sites, reciter_of, reconciled.sites, taken),
         "physical_sites_merged": reconciled.merged,
-        "waqf_realized": realized_ids,
+        **taken,
         "exclusions": _exclusions(excluded),
         "cells": cells,
         "allowances": allowances,
@@ -714,16 +721,16 @@ def _app_outcomes(muraja: MurajaGrades | None, site: TruthSite, arms: Sequence[s
 
 
 def _site_counts(sites: Sequence[TruthSite], reciter_of: Mapping[str, int],
-                 realized: Sequence[TruthSite] = ()) -> list[dict]:
-    """Sites, verdicts and reciters per population and stratum, and how many sites the waqf
-    guard took out of it (``waqf_realized``, not among the others)."""
-    taken = {s.site_id for s in realized}
+                 reconciled: Sequence[TruthSite], taken: Mapping[str, list[str]]) -> list[dict]:
+    """Sites, verdicts and reciters per population and stratum, and per reason how many
+    sites the shared exclusion took out of it (not among the others)."""
+    gone = set().union(*taken.values())
     groups: dict[tuple[str, str], list[TruthSite]] = defaultdict(list)
-    for site in [*sites, *realized]:
+    for site in [*sites, *(s for s in reconciled if s.site_id in gone)]:
         groups[(population(site), site.stratum)].append(site)
     rows = []
     for (population_, stratum), members in sorted(groups.items()):
-        kept = [s for s in members if s.site_id not in taken]
+        kept = [s for s in members if s.site_id not in gone]
         rows.append({
             "population": population_,
             "stratum": stratum,
@@ -732,7 +739,7 @@ def _site_counts(sites: Sequence[TruthSite], reciter_of: Mapping[str, int],
             "with_verdict": sum(side(s) is not None for s in kept),
             "items": len({item_key(s) for s in kept}),
             "reciters": len({reciter_of[s.audio_filename] for s in kept}),
-            "waqf_realized": len(members) - len(kept),
+            **{reason: sum(s.site_id in taken[reason] for s in members) for reason in REASONS},
         })
     return rows
 
@@ -752,7 +759,7 @@ def power_inputs(
     reciter_of: Mapping[str, int],
     decodes: Mapping[str, Mapping[str, str]],
     muraja: MurajaGrades,
-    waqf_realized: Collection[str] = (),
+    excluded_items: Exclusions = NONE,
 ) -> dict:
     """The §8 power simulation's baseline inputs: per-reciter sufficient statistics.
 
@@ -760,11 +767,11 @@ def power_inputs(
     site count and the weighted sums the simulation's outcome generator and its
     reciter-clustered baseline bootstrap need (Σw, ΣwC, ΣwA, ΣwF, Σw[word flagged] and
     Σw[graded], both under the shipped default). Only correct- and mistake-side sites with a
-    verdict; ``excluded`` counts the rest per stratum. The sites ``waqf_realized`` names are
-    left out as :func:`score` leaves them out.
+    verdict; ``excluded`` counts the rest per stratum. The items the shared exclusion takes
+    out are left out as :func:`score` leaves them out, and listed under their reasons.
     """
     reconciled = reconcile(sites)
-    sites, realized_ids = without_waqf_realized(reconciled.sites, sites, waqf_realized)
+    sites, taken = without_excluded(reconciled.sites, sites, excluded_items)
     weights = reconciled.weights
     outcomes = outcomes_by_arm(sites, decodes)
     cells: dict[tuple, dict[int, list[float]]] = defaultdict(dict)
@@ -800,6 +807,6 @@ def power_inputs(
             for (arm, population_, stratum, side_, family_, heard), per_reciter in sorted(cells.items())
         ],
         "excluded": dict(sorted(Counter(s.stratum for s in sites if side(s) is None).items())),
-        "waqf_realized": realized_ids,
+        **taken,
     }
 

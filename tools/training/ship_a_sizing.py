@@ -75,10 +75,12 @@ from training.acceptance_stats import (
     SPARSE_MIN_RECITERS,
     SPARSE_MIN_SITES,
     UPPER,
+    Interval,
     difference_verdict,
     is_sparse,
     ratio_interval,
     ratio_verdict,
+    unit_if_equal,
 )
 from training.power_simulation import (
     RECITER_ICCS,
@@ -208,6 +210,15 @@ class SideScenario:
         return ("side", self.cell, self.theta, self.rate, self.icc, self.side, self.rule)
 
 
+def cell_interval(reciters: np.ndarray, weights: np.ndarray, outcome: np.ndarray) -> Interval:
+    """§1's interval of a cell's weighted rate Σw·outcome / Σw, read as the #84 scorer reads it
+    under design weights: a cell of one common weight is equally weighted
+    (:func:`training.acceptance_stats.unit_if_equal`), and the bootstrap is the scorer's draw."""
+    weights = unit_if_equal(weights)
+    labels, resample = shared_resample(reciters)
+    return ratio_interval(labels, weights * outcome, weights, weights, resample)
+
+
 def side_bounds(scenario: SideScenario, repetitions: int) -> dict:
     """The §1 lower bound of the side's rate per repetition, and the power at each floor."""
     rng = rng_for(*scenario.key(), repetitions)
@@ -230,10 +241,7 @@ def side_bounds(scenario: SideScenario, repetitions: int) -> dict:
             den = weights[chosen]
         if not len(chosen):
             continue
-        if np.allclose(den, den[0]):
-            den = np.ones(len(chosen))  # equally weighted: §1 lets Wilson stand in when sparse
-        labels, resample = shared_resample(reciters[chosen])
-        interval = ratio_interval(labels, den * outcome[chosen], den, den, resample)
+        interval = cell_interval(reciters[chosen], den, outcome[chosen])
         sites[k], held[k] = len(chosen), len(set(reciters[chosen].tolist()))
         if interval.method != NO_BOUND:
             bounds[k] = interval.lower
@@ -387,7 +395,7 @@ def word_sample_power(scenario: WordScenario, repetitions: int) -> dict:
     weights = np.asarray(scenario.weights, dtype=float)
     passes = {m: 0 for m in WORD_MARGINS}
     for _ in range(repetitions):
-        w = weights[rng.random(len(weights)) < WORD_CORRECT_SHARE]
+        w = unit_if_equal(weights[rng.random(len(weights)) < WORD_CORRECT_SHARE])
         today = rng.random(len(w)) < scenario.rate
         candidate = today & (rng.random(len(w)) >= scenario.reduction)
         labels, resample = shared_resample(np.arange(len(w)))

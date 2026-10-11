@@ -3,17 +3,34 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import numpy as np
 
 import pytest
 
 from tadabur.power_frame import input_checksums
-from tadabur.ship_a import SITES_PATH, load_sites, mine_all
-from tadabur.test_power_frame import REFERENCE, scored_pool
+from tadabur.ship_a import SITES_PATH, listening_weights, load_sites, mine_all
+from tadabur.test_power_frame import H448, REFERENCE, scored_pool
 from tadabur.word_sample import WORD_SAMPLE_PATH
 from training import ship_a_sizing as z
+from training.acceptance_stats import (
+    BOOTSTRAP,
+    CANNOT_CERTIFY,
+    FAIL,
+    LOWER,
+    NO_BOUND,
+    PASS,
+    TANGO,
+    WILSON,
+    Interval,
+    bound_verdict,
+    ratio,
+    unit_if_equal,
+)
 from training.ship_a_sizing_doc import DOC_PATH, load_inputs, render
+from training.site_outcomes import CORRECT_SIDE
+from training.truth_scorer import HEADLINE, item_key, reconcile, score
 
 
 def _side(reciters, theta=0.0, rate=1.0, side=z.RECOVERY, rule=z.ONE_PER_RECITER,
@@ -109,34 +126,88 @@ def test_the_word_sample_weighs_its_own_selection_not_the_pool():
     assert all(p == 0.0 for p in flat["power"].values())  # no flag, nothing to reduce
 
 
-def test_the_scorer_and_the_sizing_weigh_verified_sites_alike():
-    """Estimator parity: the #84 scorer, given Ship A's listening weights, reads the same
-    weighted rate the sizing simulates (Σw·A / Σw·C with w = 1 / listen_probability)."""
-    from dataclasses import replace
-
-    from tadabur.ship_a import listening_weights
-    from tadabur.test_power_frame import H448
-    from training.acceptance_stats import ratio
-    from training.site_outcomes import CORRECT_SIDE
-    from training.truth_scorer import HEADLINE, item_key, reconcile, score
-
+def _verified_cell(chances):
+    """A held-out cell of one swap site per reciter (reciter ``k``), each recited as the
+    mushaf prescribes and listened with chance ``chances[k]``."""
     (swap,) = [s for s in mine_all(scored_pool(base=H448)) if s.kind == "pair"]
-    chances, recovered = (1.0, 0.5, 0.25), (True, False, True)
-    sites = [replace(swap, listen_probability=p, row=replace(swap.row, site=replace(
+    return [replace(swap, listen_probability=p, row=replace(swap.row, site=replace(
         swap.site, site_id=f"{swap.site.site_id}#{k}", audio_filename=f"c{k}.wav",
-        audio_sha256=f"{k}" * 64,
-        heard=swap.site.prescribed, stratum_population=3))) for k, p in enumerate(chances)]
+        audio_sha256=f"{k:064x}", heard=swap.site.prescribed,
+        stratum_population=len(chances)))) for k, p in enumerate(chances)]
+
+
+def _scored_cell(sites, recovered):
+    """The #84 scorer's cell for ``sites`` under Ship A's listening weights: arm ``m`` reads
+    each site right where ``recovered``, arm ``base`` never does."""
     truth = [s.site for s in sites]
     weights = listening_weights(sites)
     assert reconcile(truth, weights).weights == weights
-    decodes = {"m": {item_key(t): t.reference if ok else t.reference.replace("ذ", "ز")
-                     for t, ok in zip(truth, recovered)}}
+    wrong = {item_key(t): t.reference.replace("ذ", "ز") for t in truth}
+    decodes = {"m": {item_key(t): t.reference if ok else wrong[item_key(t)]
+                     for t, ok in zip(truth, recovered)}, "base": wrong}
     report = score(truth, {t.audio_filename: k for k, t in enumerate(truth)}, decodes,
-                   design_weights=weights)
-    cell = next(c for c in report["cells"] if (c["population"], c["side"], c["label"])
+                   comparisons=[("m", "base")], design_weights=weights)
+    return next(c for c in report["cells"] if (c["population"], c["side"], c["label"])
                 == (HEADLINE, CORRECT_SIDE, "ذ↔ز:ذ"))
-    w = np.array([weights[t.site_id] for t in truth])
-    accurate = np.array(recovered, dtype=float)
-    expected = ratio(w * accurate, w)
-    assert expected == pytest.approx(5 / 7)
-    assert cell["arms"]["m"]["rates"]["committed_accuracy"]["point"] == pytest.approx(expected)
+
+
+def _as_interval(entry) -> Interval:
+    return Interval(*(entry[key] for key in ("lower", "upper", "method", "reason")))
+
+
+def test_the_scorer_and_the_sizing_weigh_verified_sites_alike():
+    """Estimator parity: the #84 scorer, given Ship A's listening weights, reads the same
+    weighted rate the sizing simulates (Σw·A / Σw·C with w = 1 / listen_probability)."""
+    sites, recovered = _verified_cell((1.0, 0.5, 0.25)), (True, False, True)
+    rate = _scored_cell(sites, recovered)["arms"]["m"]["rates"]["committed_accuracy"]
+    w = np.array(list(listening_weights(sites).values()))
+    assert ratio(w * np.array(recovered, dtype=float), w) == pytest.approx(5 / 7)
+    assert rate["point"] == pytest.approx(5 / 7)
+
+
+FLOOR = 0.7
+EQUAL_NOT_UNIT = (0.25,) * 13  # Astra's repro: 13 frozen س↔ش sites, one per reciter, weight 4
+UNEQUAL = (1.0, 0.25) * 6 + (1.0,)
+
+
+@pytest.mark.parametrize(("chances", "recovered", "method", "verdict"), [
+    (EQUAL_NOT_UNIT, (True,) * 13, WILSON, PASS),
+    (UNEQUAL, (True,) * 13, NO_BOUND, CANNOT_CERTIFY),
+    ((1.0, 0.5) * 15, tuple(k % 5 > 0 for k in range(30)), BOOTSTRAP, FAIL),
+])
+def test_the_scorer_and_the_sizing_certify_a_cell_alike(chances, recovered, method, verdict):
+    """One §1 rule on every Ship A path: the same cell gets the same method, bound and verdict
+    from the sizing and from the scorer, a cell of one common weight (4, not 1) included."""
+    sites = _verified_cell(chances)
+    scored = _as_interval(_scored_cell(sites, recovered)["arms"]["m"]["rates"]
+                          ["committed_accuracy"])
+    weights = np.array(list(listening_weights(sites).values()))
+    sized = z.cell_interval(np.arange(len(sites)), weights, np.array(recovered, dtype=float))
+    assert sized.method == scored.method == method
+    assert sized.lower == pytest.approx(scored.lower)
+    assert (bound_verdict(sized, FLOOR, LOWER).verdict
+            == bound_verdict(scored, FLOOR, LOWER).verdict == verdict)
+    if all(recovered):  # flawless: the simulation draws this very cell every repetition
+        simulated = z.side_bounds(_side(range(len(sites)), weights=weights.tolist()), 5)
+        assert simulated["median_bound"] == pytest.approx(scored.lower)
+        assert simulated["power"][str(FLOOR)] == float(verdict == PASS)
+
+
+def test_the_scorer_and_the_word_sizing_read_a_common_weight_as_equal():
+    """A sparse paired difference takes Tango under one common weight, whatever its value,
+    and no bound under unequal weights: in the scorer and in the word-sample sizing alike."""
+    differences = {name: _scored_cell(_verified_cell(chances), (True,) * 13)["differences"]
+                   ["m - base"]["committed_accuracy"]["method"]
+                   for name, chances in (("equal", EQUAL_NOT_UNIT), ("unequal", UNEQUAL))}
+    assert differences == {"equal": TANGO, "unequal": NO_BOUND}
+    power = {weight: z.word_sample_power(z.WordScenario((weight,) * 13, 1.0, 1.0), 20)["power"]
+             for weight in (1.0, 4.0)}
+    assert power[4.0] == power[1.0] and power[1.0]["0.0"] == 1.0
+    unequal = z.word_sample_power(z.WordScenario(tuple(1 / c for c in UNEQUAL), 1.0, 1.0), 20)
+    assert all(p == 0.0 for p in unequal["power"].values())
+
+
+def test_one_common_weight_goes_on_the_unit_scale_and_unequal_weights_stay():
+    assert unit_if_equal([4.0] * 3).tolist() == [1.0] * 3
+    assert unit_if_equal([1.0, 4.0]).tolist() == [1.0, 4.0]
+    assert unit_if_equal([]).size == 0

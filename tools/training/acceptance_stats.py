@@ -208,6 +208,18 @@ def is_degenerate(replicates: np.ndarray) -> bool:
     return bool(replicates.size) and bool(np.all(replicates == replicates[0]))
 
 
+def unit_if_equal(weights: Sequence[float]) -> np.ndarray:
+    """Ship A's reading of §1's "equally weighted" (clarified 2026-10-10, #126): a cell whose
+    weights all share one value is equally weighted whatever that value, so its weights go on
+    the unit scale, exactly 1. A rate and its bootstrap bounds do not depend on the scale; on
+    the unit scale the Wilson and Tango bounds may stand in where §1 lets them. Unequal
+    weights come back unchanged. Legacy cells (stratum ``N / n``) do not use it."""
+    weights = np.asarray(weights, dtype=float)
+    if weights.size and weights[0] > 0 and np.allclose(weights, weights[0], rtol=1e-12, atol=0):
+        return np.ones_like(weights)
+    return weights
+
+
 def independent_equal_weight(clusters: Sequence[int], *dens: np.ndarray, weights=None) -> bool:
     """One observation per reciter, unit weights and a fixed denominator in every arm.
 
@@ -338,7 +350,9 @@ class BoundVerdict:
         }
 
 
-def _verdict(interval: Interval, threshold: float, kind: str) -> BoundVerdict:
+def bound_verdict(interval: Interval, threshold: float, kind: str) -> BoundVerdict:
+    """The rule ``kind`` bound of ``interval`` against ``threshold``: ``cannot_certify``
+    when the interval has no admissible bound."""
     bound = interval.bound(kind)
     if interval.method == NO_BOUND:
         return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, interval.reason)
@@ -356,7 +370,7 @@ def ratio_verdict(
     resample: Resample | None = None,
 ) -> BoundVerdict:
     """A single weighted ratio's ``kind`` bound against ``threshold`` (:func:`ratio_interval`)."""
-    return _verdict(ratio_interval(clusters, num, den, weights, resample), threshold, kind)
+    return bound_verdict(ratio_interval(clusters, num, den, weights, resample), threshold, kind)
 
 
 def difference_verdict(
@@ -370,7 +384,7 @@ def difference_verdict(
 ) -> BoundVerdict:
     """A paired difference's ``kind`` bound against ``threshold`` (:func:`difference_interval`)."""
     interval = difference_interval(clusters, arm, comparator, weights, resample)
-    return _verdict(interval, threshold, kind)
+    return bound_verdict(interval, threshold, kind)
 
 
 def relative_change_verdict(
@@ -396,7 +410,7 @@ def relative_change_verdict(
     if is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates):
         return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, "sparse or degenerate")
     interval = Interval(lower_bound(replicates), upper_bound(replicates), BOOTSTRAP)
-    return _verdict(interval, threshold, kind)
+    return bound_verdict(interval, threshold, kind)
 
 
 # --- teacher agreement (§2) ------------------------------------------------------------

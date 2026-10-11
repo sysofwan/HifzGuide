@@ -92,8 +92,8 @@ from __future__ import annotations
 
 import math
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, replace
 
 import numpy as np
 
@@ -119,6 +119,7 @@ from training.acceptance_stats import (
     is_sparse,
     ratio,
     ratio_interval,
+    unit_if_equal,
 )
 from training.muraja_policy import (
     ALLOWANCES,
@@ -524,7 +525,16 @@ def _score_cell(
     return summary
 
 
-def _allowance_view(population_: str, rows: Sequence[SiteRow], arms: Sequence[str]) -> list[dict]:
+def _on_unit_scale(rows: Sequence[SiteRow]) -> list[SiteRow]:
+    """``rows`` with weights of one common value set to exactly 1 (:func:`unit_if_equal`)."""
+    weights = unit_if_equal([row.weight for row in rows])
+    return [replace(row, weight=float(w)) for row, w in zip(rows, weights)]
+
+
+def _allowance_view(
+    population_: str, rows: Sequence[SiteRow], arms: Sequence[str],
+    on_unit_scale: Callable[[list[SiteRow]], list[SiteRow]] = list,
+) -> list[dict]:
     """Per ADR-0012 allowance, on the sites it affects: flagged words on correct recitation and
     on real mistakes, with the allowance on (``allowances_on``) and switched off alone."""
     view = []
@@ -532,7 +542,8 @@ def _allowance_view(population_: str, rows: Sequence[SiteRow], arms: Sequence[st
         states = (("on", ALLOWANCES_ON.name), ("off", allowance_off(allowance).name))
         entry = {"allowance": allowance.name, "population": population_, "scorings": dict(states), "sides": {}}
         for side_, rate in ((CORRECT_SIDE, "false_flags"), (MISTAKE_SIDE, "flagged_mistakes")):
-            affected = [r for r in rows if side(r.site) == side_ and allowance.affects(r.site)]
+            affected = on_unit_scale(
+                [r for r in rows if side(r.site) == side_ and allowance.affects(r.site)])
             clusters = [r.reciter_id for r in affected]
             block = {
                 "sites": len(affected),
@@ -611,9 +622,12 @@ def score(
     scorings = [s.name for s in muraja.scorings] if muraja else []
     excluded = [(site, weights[site.site_id]) for site in sites if side(site) is None]
 
+    # Per-site design weights (Ship A) read a cell of one common weight as equally weighted
+    # (acceptance_stats.unit_if_equal); the legacy stratum weights keep their scale.
+    on_unit_scale = _on_unit_scale if design_weights is not None else list
     cells = []
     for cell in _cells_of(rows):
-        members = [row for row in rows if cell.holds(row.site)]
+        members = on_unit_scale([row for row in rows if cell.holds(row.site)])
         could = [(site, w) for site, w in excluded if cell.could_hold(site)]
         cells.append(_score_cell(cell, members, could, arms, comparisons, scorings))
 
@@ -621,7 +635,7 @@ def score(
     for population_ in POPULATIONS:
         members = [row for row in rows if population(row.site) == population_]
         if members and muraja:
-            allowances.extend(_allowance_view(population_, members, arms))
+            allowances.extend(_allowance_view(population_, members, arms, on_unit_scale))
 
     support = {(c["population"], c["side"], c["family"], c["heard"]): c for c in cells}
     required = [

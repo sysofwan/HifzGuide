@@ -233,8 +233,9 @@ swaps one per held-out reciter and family, the كسب swaps a sample. θ is the 
 stratum (a planning assumption). Each of 2,500 repetitions takes the §1
 lower bound of the weighted rate on one site per reciter (chosen in proportion to its weight,
 counted with its reciter's total weight), with the reciter bootstrap, or the Wilson bound
-where the cell is sparse and its observations are equally weighted; a sparse cell with
-unequal weights has no bound (§1). Reciter effects at latent ICC 0, 0.05 and 0.15 act on both
+where the cell is sparse and its observations are equally weighted (one common weight,
+whatever its value, as the #84 scorer reads it); a sparse cell with unequal weights has no
+bound (§1). Reciter effects at latent ICC 0, 0.05 and 0.15 act on both
 whether a site is a mistake and whether it is recovered. The pooled cells are also read on
 every site with the reciter-clustered bootstrap, which the ICC does move.
 

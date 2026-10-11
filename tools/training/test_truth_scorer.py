@@ -310,3 +310,14 @@ def test_required_cells_do_not_depend_on_string_hashing():
         for seed in ("1", "2", "3")
     }
     assert len(outputs) == 1
+
+
+def test_the_owners_added_pairs_have_frozen_cells_on_both_sides():
+    """Acceptance rules §7 as amended 2026-10-10 (D9): س↔ش and ط↔ق are target pairs, so
+    every per-direction cell exists for them as for the other seven, both sides."""
+    labels = {(r.gate, r.rule, r.cell.side, r.cell.label) for r in REQUIRED_CELLS}
+    for pair in ("س↔ش", "ط↔ق"):
+        for letter in pair.split("↔"):
+            assert ("§2 probe", "commit rate", CORRECT_SIDE, f"{pair}:{letter}") in labels
+            assert ("§2 probe", "committed accuracy", MISTAKE_SIDE, f"{pair}:{letter}") in labels
+            assert ("§3 ship", "missed mistakes", MISTAKE_SIDE, f"{pair}:{letter}") in labels

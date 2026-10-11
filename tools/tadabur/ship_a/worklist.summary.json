@@ -1,20 +1,17 @@
 {
- "carried_rows_already_ship_a_sites": 18,
+ "carried_rows_already_ship_a_sites": 14,
  "frozen": {
-  "ship_a/word_sample.jsonl": "e74671b9b75f77cb03650088bc0d6a433748e108d730aea74874a2ebee6dc9f4",
-  "ship_a/worklist.jsonl": "63882460072270d94bed76ffea0685fd11af2487978256962f3086c99eeb9563"
+  "ship_a/word_sample.jsonl": "073deb66db996b9c638292468378f9923f33893b00d9e7c04fafb9414ed15e03",
+  "ship_a/worklist.jsonl": "abacbc0f0a7f951f6cb0ef3326c37e1353d8f024632e0e57e6e061becc5c1d35"
  },
  "inputs": {
   "listening_session/worklist.jsonl": "6e21d8f0605a7653acee0255cfa2734cfcc91c9199c8b25d177bc687530c1b37",
-  "ship_a/sites.jsonl": "0e3988ee357073021bef04e5a8f2268343931f7d2fa1d1abd54c8c48ce6eced7",
+  "ship_a/sites.jsonl": "d18279040c278d4ed68a471ca3bbed396b42b4aaf59ce43144ff3b4f6e86f87a",
   "synthetic_edits/blind_check.jsonl": "8cc12078b267ed51ed6f97d9d44c18719dcb8fbf4d16d3f30dd808ba97875fb3"
  },
- "lean_partner_swaps": {
-  "minutes": 111.6,
-  "rows": 535
- },
- "listening_minutes": 340.9,
- "listening_minutes_without_edit_check": 320.1,
+ "listening_minutes": 175.2,
+ "listening_minutes_without_edit_check": 154.4,
+ "p35_rows_on_linked_clips": 3,
  "parts": {
   "edit_check": {
    "by_part": {
@@ -30,14 +27,14 @@
   },
   "geminate": {
    "by_part": {
-    "geminate": 115
+    "geminate": 93
    },
-   "minutes": 21.6,
-   "reciters": 73,
-   "rows": 115,
+   "minutes": 17.9,
+   "reciters": 64,
+   "rows": 93,
    "rows_by_half": {
-    "held_out": 65,
-    "train": 50
+    "held_out": 52,
+    "train": 41
    }
   },
   "p35_relisten": {
@@ -54,33 +51,33 @@
   },
   "pair_partner": {
    "by_part": {
-    "pair_partner": 1172
+    "pair_partner": 422
    },
-   "minutes": 252.6,
-   "reciters": 241,
-   "rows": 1172,
+   "minutes": 91.9,
+   "reciters": 175,
+   "rows": 422,
    "rows_by_half": {
-    "held_out": 588,
-    "train": 584
+    "held_out": 323,
+    "train": 99
    }
   },
   "reject_pile": {
    "by_part": {
-    "reject_pile": 19
+    "reject_pile": 15
    },
-   "minutes": 3.7,
-   "reciters": 16,
-   "rows": 19,
+   "minutes": 2.8,
+   "reciters": 12,
+   "rows": 15,
    "rows_by_half": {
-    "held_out": 10,
-    "train": 9
+    "held_out": 8,
+    "train": 7
    }
   },
   "word_sample": {
    "by_part": {
     "word_sample": 160
    },
-   "minutes": 38.0,
+   "minutes": 37.5,
    "reciters": 160,
    "rows": 160,
    "rows_by_half": {
@@ -89,84 +86,54 @@
    }
   }
  },
- "rows": 1519,
- "sampled_words_also_asked_as_sites": 7,
+ "rows": 743,
+ "sampled_words_also_asked_as_sites": 5,
  "sittings": [
   {
    "by_part": {
-    "edit_check": 5,
-    "geminate": 20,
-    "p35_relisten": 5,
-    "pair_partner": 278,
-    "reject_pile": 5
+    "edit_check": 18,
+    "geminate": 36,
+    "p35_relisten": 4,
+    "pair_partner": 159,
+    "reject_pile": 7
    },
-   "minutes": 68.2,
+   "minutes": 59.3,
    "queue_positions": [
     1,
-    313
+    224
    ],
-   "rows": 313
-  },
-  {
-   "by_part": {
-    "edit_check": 6,
-    "geminate": 23,
-    "p35_relisten": 3,
-    "pair_partner": 275,
-    "reject_pile": 6
-   },
-   "minutes": 68.3,
-   "queue_positions": [
-    314,
-    626
-   ],
-   "rows": 313
-  },
-  {
-   "by_part": {
-    "edit_check": 6,
-    "geminate": 35,
-    "p35_relisten": 8,
-    "pair_partner": 248,
-    "reject_pile": 2
-   },
-   "minutes": 68.1,
-   "queue_positions": [
-    627,
-    925
-   ],
-   "rows": 299
+   "rows": 224
   },
   {
    "by_part": {
     "edit_check": 10,
-    "geminate": 25,
-    "p35_relisten": 5,
-    "pair_partner": 259,
-    "reject_pile": 4
+    "geminate": 38,
+    "p35_relisten": 14,
+    "pair_partner": 194,
+    "reject_pile": 6
    },
-   "minutes": 68.3,
+   "minutes": 57.5,
    "queue_positions": [
-    926,
-    1228
+    225,
+    486
    ],
-   "rows": 303
+   "rows": 262
   },
   {
    "by_part": {
-    "edit_check": 3,
-    "geminate": 12,
-    "p35_relisten": 2,
-    "pair_partner": 112,
+    "edit_check": 2,
+    "geminate": 19,
+    "p35_relisten": 5,
+    "pair_partner": 69,
     "reject_pile": 2,
     "word_sample": 160
    },
-   "minutes": 68.0,
+   "minutes": 58.4,
    "queue_positions": [
-    1229,
-    1519
+    487,
+    743
    ],
-   "rows": 291
+   "rows": 257
   }
  ]
 }

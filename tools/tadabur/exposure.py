@@ -71,7 +71,6 @@ from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
-from .staged_audio import SHIP_A_MINING as STAGED_SHIP_A_MINING
 from .staged_audio import (
     MINING_POOL,
     SEALED_PANEL,
@@ -121,7 +120,7 @@ MURAJA_REREAD_CORPUS = "muraja.reread_corpus"
 #: Synthetic edits (#88): the clip an edit was made on, and the clip a swap took audio from.
 SYNTHETIC_EDIT_SOURCE = "synthetic_edit.source"
 SYNTHETIC_EDIT_DONOR = "synthetic_edit.donor"
-#: Ship A (#126): the clips its mining extension staged (h448-unseen, a partner swap found),
+#: Ship A (#126): every recording its mining extension decoded (h448-unseen; hit or not),
 #: and the recordings of its verified-label halves (the reciter split, D11): the train half's
 #: sites (training labels) and the held-out half's sites and sampled words (evaluation).
 SHIP_A_MINING = "ship_a.mining"
@@ -688,6 +687,42 @@ TRAINING_AND_TUNING_USES = frozenset({
 })
 
 
+#: The uses an ``h448``-unseen population (Ship A's pool sites, mined clips and sampled
+#: words, #126) may hold no recording of, not even as an alias or a probable copy: what
+#: ``h448`` trained on, the frozen ``decode_evalset`` and the sealed panel.
+UNSEEN_BARRED_USES = (H448_TRAINING, EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, SEALED_PANEL)
+
+
+def linked_sources(uses: Iterable[str], registry: ExposureRegistry) -> frozenset[Source]:
+    """Every ``(shard, row)`` that is a recording of one of ``uses``, or that the registry
+    ties to one (a checksum alias or a probable copy). A shard use's recordings are every row
+    of its shards, so only its relatives are listed."""
+    rows, shards = set(), set()
+    for use in uses:
+        registry._require(use)
+        if use in registry.shard_uses:
+            shards |= set(registry.shard_uses[use].shards)
+        else:
+            rows |= {row.source for row in registry.recordings[use]}
+    linked = set(rows)
+    for source in rows:
+        linked |= registry.same_recording(source)
+    linked |= {source for source in registry.related_sources()
+               if any(shard in shards for shard, _ in registry.same_recording(source))}
+    return frozenset(linked)
+
+
+def unseen_violations(
+    staged: Mapping[str, StagedClip], registry: ExposureRegistry | None = None
+) -> frozenset[str]:
+    """The staged clips an ``h448``-unseen population must leave out: each one whose
+    recording is, or is tied to, a recording of :data:`UNSEEN_BARRED_USES`."""
+    registry = registry or load_registry()
+    linked = linked_sources(UNSEEN_BARRED_USES, registry)
+    return frozenset(name for name, clip in staged.items()
+                     if (clip.shard, clip.row_index) in linked)
+
+
 def excluded_reciters(for_use: str, registry: ExposureRegistry | None = None) -> frozenset[int]:
     """The canonical reciters a PRD use must not touch (§6): the sealed panel's always, and
     for a training or tuning use the bias score half's as well. Read from a complete
@@ -771,8 +806,9 @@ def whole_recording(row: IndexRow | StagedClip, sha: str | None) -> Exposure:
 
 def staged_exposures(staged: Mapping[str, StagedClip]) -> dict[str, list[Exposure]]:
     """The uses the staged-clip registry alone determines: each truth-site source's item
-    spans (with the staged checksum), and the whole clips of the mining pool and of Ship A's
-    mining extension."""
+    spans (with the staged checksum) and the mining pool's whole clips. Ship A's mining use
+    lists every recording its scan decoded, staged or not, so ``tadabur.ship_a_mining
+    register`` writes it from the scan."""
     uses: dict[str, list[Exposure]] = {}
     for path in sorted(TRUTH_SITES_DIR.glob("*.jsonl")):
         if path.name.endswith(".relocation.jsonl"):
@@ -783,9 +819,8 @@ def staged_exposures(staged: Mapping[str, StagedClip]) -> dict[str, list[Exposur
                 clip.audio_filename, clip.shard, clip.row_index, clip.reciter_id,
                 site.start_sample, site.end_sample, clip.audio_sha256,
             ))
-    for use, staged_use in ((MINING_POOL, MINING_POOL), (SHIP_A_MINING, STAGED_SHIP_A_MINING)):
-        uses[use] = [whole_recording(c, c.audio_sha256) for c in staged.values()
-                     if staged_use in c.uses]
+    uses[MINING_POOL] = [whole_recording(c, c.audio_sha256) for c in staged.values()
+                         if MINING_POOL in c.uses]
     return uses
 
 

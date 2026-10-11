@@ -26,25 +26,40 @@ Each step checks the inputs it reads against the checksums the previous one reco
 
 ## The sites
 
+Every population here is `h448`-unseen: the pool's clips, the mined clips and the sampled
+words hold no recording tied, even as an alias or a probable copy, to what `h448` trained on,
+`decode_evalset` or the sealed panel (`exposure.unseen_violations`; a test asserts it for
+sites, worklist, word sample and mined clips). The P3.5 re-listens are §8's targeted
+safeguards and exempt.
+
 - **pair**: every target-pair carrier where `h448` commits a consonant other than the mushaf
   letter, once per carrier. A carrier in two pairs (`ذ`, `ظ`, `س`, `ط`, `ق`) is asked as the
-  pair whose partner `h448` committed, else as the first pair in label order. Stratum
-  `ship_a:<prescribed>→<partner>:h448_partner` for a **partner swap** or
-  `ship_a:<prescribed>:h448_other` for a letter outside every target pair. **Only partner
-  swaps are listened to** (D9). The other letters stay mined in `sites.jsonl` but off the
-  worklist; `ت`→`ه` at a paused ta marbuta (70 sites) is a reference problem, filed as #130.
-- **mining extension**: the partner swaps found on the clips `tadabur.ship_a_mining` scanned
-  (`ship_a_mining:<prescribed>→<partner>:h448_partner`, inclusion probability the scanned
-  share of the frame's shards).
+  pair whose partner `h448` committed, else as the first pair in label order. Strata
+  `ship_a:<prescribed>→<partner>:h448_partner:base_right|base_wrong` for a **partner swap**
+  (by the base teacher's outcome), `ship_a:kasb:س→ش:h448_partner` for a `س`→`ش` swap on the
+  `س` of `كسب`, and `ship_a:<prescribed>:h448_other` for a letter outside every target pair
+  (never asked, D9; `ت`→`ه` at a paused ta marbuta is a reference problem, #130).
+- **mining extension**: the partner swaps on the clips `tadabur.ship_a_mining` scanned
+  (`ship_a_mining:…` strata). The scan stopped on GPU time, so inference from it is
+  restricted to the scanned population (its hits are a census, inclusion probability 1).
 - **geminate**: every in-word reference geminate the pool's `h448` decodes as one consonant
   (`ship_a:shaddah:held:h448_single:base_held` / `…:base_not_held`). Cross-word geminates are
   out: the app never scores them.
-- **Base already right** (ADR-0011 §3): where the base teacher commits the mushaf value, the
-  target is its decode. The 718 geminates it holds are not listened to (D10); the 115 it does
-  not hold are. Partner swaps are listened to whatever the teacher did.
 
-Each stratum is a census of its manifest (inclusion probability = the clip's), so training
-labels may come from it; evaluation reads it on held-out reciters only.
+## What is listened to (owner decisions D10 and 2026-10-10)
+
+`tadabur.ship_a.select_listening` sets each site's `listen_probability` (0 when it is never
+asked); a worklist row carries it as its draw probability.
+
+- a partner swap the base teacher gets **wrong**: always;
+- a partner swap the teacher gets **right**: one per **held-out** reciter and family (first by
+  salted rank, chance `1 / k`), for evaluation. The others are not listened to: their target
+  is the teacher's decode, as D10 does for the geminates the teacher holds, and they are no
+  verified site in any evaluation;
+- the `كسب` swaps: a sample of 20 spread over reciters (round robin in salted order; chance
+  `m / n` for a reciter given `m` of its `n`). The rest take the sample's verdict: the letter a
+  majority of the sampled sites with a verdict are heard as, or no label without a majority;
+- a geminate the teacher does not hold: always; one it holds: never (D10).
 
 ## The reciter split (confirmed, D11)
 
@@ -53,7 +68,7 @@ are below 2**63, else `held_out` (acceptance rules §9; `training.acceptance_sta
 The pool's 394 reciters fall 190 / 204. The exposure registry records both halves:
 `ship_a.verified_train` (the recordings of every train-half Ship A site, listened or the
 teacher's target) and `ship_a.verified_held_out` (every held-out site's and sampled word's
-recording), plus `ship_a.mining` (the extension's staged clips). Keeping the held-out reciters
+recording), plus `ship_a.mining` (every recording the extension's scan decoded, hit or not). Keeping the held-out reciters
 out of the probe's full-shard training stream is #94's decision.
 
 ## The session for #61
@@ -71,7 +86,7 @@ From the Mac checkout whose `listening_session/verdicts.jsonl` should receive th
 
 ```bash
 cd ~/repos/HifzGuide/tools
-# Once: copy the clips the worklist and the word sample play (1,376 clips, ~850 MB) and the
+# Once: copy the clips the worklist and the word sample play (669 clips, ~390 MB) and the
 # 30 edit-check items from cuda-dev, verifying every checksum. Files already there are kept.
 /Users/sysofwan/repos/HifzGuide/.venv-test/bin/python -m tadabur.listening_session fetch \
   --audio-dir ~/hifzguide-listening/clips \

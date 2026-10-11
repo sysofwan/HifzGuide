@@ -37,7 +37,7 @@ so the selection never has to be redone for a new checkpoint.
   consonant, where the base doubled it (``not_held:base_double``, the site of an added
   shaddah) or not (``not_held:base_rest``). Gemination mismatches come from
   :func:`tadabur.contrast_attribution.contrast_sites`, the rule the pool's census used.
-* **consonant**: per target pair (the six soft pairs and ``ذ↔ظ``, acceptance rules §7) and
+* **consonant**: per target pair (acceptance rules §7: the six soft pairs, ``ذ↔ظ``, ``س↔ش`` and ``ط↔ق``) and
   **per direction**, every carrier of the prescribed letter where the base decoded the
   partner (``base_partner``, the reject-pile sites) or did not (``base_rest``).
 
@@ -403,9 +403,9 @@ def _shaddah_found(reference: str, decode: str, offsets: list[int]) -> list[Foun
     return found
 
 
-def _pair_found(reference: str, decode: str, pairs: frozenset[str]) -> list[Found]:
+def _pair_found(reference: str, decode: str) -> list[Found]:
     found: list[Found] = []
-    for pair in sorted(pairs):
+    for pair in sorted(TARGET_PAIRS):
         letters = pair.split("↔")
         partnered = {s.reference_index for s in contrast_sites(decode, reference, pair)}
         for i, char in enumerate(reference):
@@ -418,17 +418,15 @@ def _pair_found(reference: str, decode: str, pairs: frozenset[str]) -> list[Foun
 
 
 def segment_sites(
-    reference: str, base: str, h448: str, offsets: list[int], tanween: list[bool],
-    pairs: frozenset[str] = TARGET_PAIRS,
+    reference: str, base: str, h448: str, offsets: list[int], tanween: list[bool]
 ) -> list[Found]:
     """Every eligible site in one kept segment, stratified by the base decode and, for
-    tashkeel, by the ``h448`` b=0 stream's text for the segment too. Pair sites are the
-    carriers of ``pairs`` (§7's target pairs unless a caller asks for more)."""
+    tashkeel, by the ``h448`` b=0 stream's text for the segment too."""
     limits = word_limits(reference, offsets, tanween)
     return (
         _tashkeel_found(reference, {BASE: base, H448: h448}, limits)
         + _shaddah_found(reference, base, offsets)
-        + _pair_found(reference, base, pairs)
+        + _pair_found(reference, base)
     )
 
 
@@ -496,10 +494,8 @@ def pool_candidates(
     h448_decodes: Mapping[str, str],
     registry: Mapping[str, StagedClip],
     tanween_of: Callable[[str], list[bool]],
-    pairs: frozenset[str] = TARGET_PAIRS,
 ) -> list[Candidate]:
-    """Every eligible site on the kept segments of the pool, with provenance; pair sites
-    for ``pairs``."""
+    """Every eligible site on the kept segments of the pool, with provenance."""
     candidates: list[Candidate] = []
     for clip in clips:
         staged = registry[clip.audio_filename]
@@ -512,7 +508,6 @@ def pool_candidates(
                 segment.reference, base_decodes[key], h448_decodes[key],
                 list(segment.raw_word_offsets),
                 tanween[segment.word_start:segment.word_end],
-                pairs,
             ):
                 site = TruthSite(
                     site_id=site_id(clip.audio_filename, segment.segment_index,

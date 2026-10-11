@@ -7,7 +7,7 @@ from dataclasses import replace
 
 from tadabur.listening_session import WORKLIST_PATH as SESSION_WORKLIST_PATH
 from tadabur.listening_session import load_worklist
-from tadabur.ship_a import load_sites, mine
+from tadabur.ship_a import load_sites, mine_all
 from tadabur.ship_a_worklist import (
     EDIT_CHECK,
     GEMINATE,
@@ -22,7 +22,7 @@ from tadabur.ship_a_worklist import (
     assemble,
     sha256_of,
 )
-from tadabur.test_power_frame import REFERENCE, scored_pool
+from tadabur.test_power_frame import H448, REFERENCE, scored_pool
 from tadabur.word_sample import WORD_SAMPLE_PATH, load_words
 
 
@@ -32,7 +32,7 @@ def _carried(row, site_id: str, stratum: str):
 
 
 def test_the_worklist_takes_the_listened_sites_and_carries_p35_and_the_reject_pile():
-    sites = mine(scored_pool(base=REFERENCE.replace("بب", "ب")))
+    sites = mine_all(scored_pool(base=H448))  # the teacher gets both wrong: both listened
     pair = next(s for s in sites if s.kind == "pair")
     session = [
         _carried(pair.row, "p35_fixture:x", "p35_fixture:ذ↔ز"),
@@ -49,7 +49,7 @@ def test_the_worklist_takes_the_listened_sites_and_carries_p35_and_the_reject_pi
 
 
 def test_a_held_geminate_stays_off_the_worklist():
-    sites = mine(scored_pool())
+    sites = mine_all(scored_pool(base=REFERENCE.replace("ذ", "ز")))
     rows, parts, _ = assemble(sites, [])
     assert set(parts.values()) == {PAIR_PARTNER} and len(rows) == 1
 
@@ -59,7 +59,14 @@ def test_the_committed_worklist_is_frozen_and_its_summary_adds_up():
     assert summary["frozen"] == {"ship_a/worklist.jsonl": sha256_of(WORKLIST_PATH),
                                  "ship_a/word_sample.jsonl": sha256_of(WORD_SAMPLE_PATH)}
     rows, words = load_worklist(WORKLIST_PATH), load_words()
-    expected, parts, _ = assemble(load_sites(), load_worklist(SESSION_WORKLIST_PATH))
+    from tadabur.exposure import unseen_violations
+    from tadabur.staged_audio import load_staged_clips
+
+    session = load_worklist(SESSION_WORKLIST_PATH)
+    registry = load_staged_clips()
+    linked = unseen_violations({r.site.audio_filename: registry[r.site.audio_filename]
+                                for r in session})
+    expected, parts, _ = assemble(load_sites(), session, linked)
     assert [row.site.site_id for row in rows] == [row.site.site_id for row in expected]
     by_part = summary["parts"]
     assert set(by_part) == set(PARTS)
@@ -81,23 +88,10 @@ def test_each_half_s_recordings_go_to_its_own_exposure_use():
     from tadabur.ship_a_worklist import split_exposures
     from tadabur.staged_audio import StagedClip
 
-    sites = mine(scored_pool())
+    sites = mine_all(scored_pool())
     registry = {"c.wav": StagedClip("c.wav", 77, 5, 3, "2:2", 80000, "b" * 64, ("mining_pool",))}
     uses = split_exposures(sites, [], registry)
     half = SHIP_A_TRAIN if sites[0].half == "train" else SHIP_A_HELD_OUT
     assert [e.audio_filename for e in uses[half]] == ["c.wav"]
     assert [use for use, rows in uses.items() if not rows] == [
         SHIP_A_HELD_OUT if half == SHIP_A_TRAIN else SHIP_A_TRAIN]
-
-
-def test_the_lean_option_keeps_teacher_wrong_swaps_and_one_teacher_right_per_held_out_reciter():
-    from tadabur.ship_a_worklist import lean_swaps
-
-    sites = mine(scored_pool()) + mine(scored_pool(base=REFERENCE.replace("ذ", "ز")))
-    swaps = [s for s in sites if s.partner_swap]
-    lean = lean_swaps(sites)
-    assert all(s.partner_swap for s in lean)
-    assert {s.site.site_id for s in swaps if not s.base_already_right} <= {
-        s.site.site_id for s in lean}
-    right = [s for s in lean if s.base_already_right]
-    assert all(s.half == "held_out" for s in right) and len(right) <= 1

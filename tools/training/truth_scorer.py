@@ -106,6 +106,7 @@ from tadabur.truth_sites import (
     SHADDAH,
     SUKUN,
     SYNTHETIC_EDIT,
+    TARGET_PAIRS,
     UNCLEAR,
     WAQF_BOUNDARY,
     TruthSite,
@@ -133,7 +134,6 @@ from training.muraja_policy import (
 from training.site_outcomes import (
     CORRECT_SIDE,
     MISTAKE_SIDE,
-    TARGET_PAIRS,
     TASHKEEL,
     SiteOutcome,
     family,

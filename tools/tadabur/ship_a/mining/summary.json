@@ -26,7 +26,11 @@
  },
  "hit_clips": 1063,
  "hit_clips_per_gpu_hour": 330.7,
- "kept_hit_clips": 1006,
+ "kept_hit_clips": 1004,
+ "linked_recordings_dropped": [
+  "tadabur_spk0019_S7_A57_60e66f7e_000009.wav",
+  "tadabur_spk0116_S26_A38_dd5e3826_000021.wav"
+ ],
  "pairs": {
   "ت↔ط": {
    "base": {

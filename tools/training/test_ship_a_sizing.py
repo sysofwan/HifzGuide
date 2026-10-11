@@ -7,7 +7,7 @@ import json
 import pytest
 
 from tadabur.power_frame import input_checksums
-from tadabur.ship_a import SITES_PATH, load_sites, mine
+from tadabur.ship_a import SITES_PATH, load_sites, mine_all
 from tadabur.test_power_frame import REFERENCE, scored_pool
 from tadabur.word_sample import WORD_SAMPLE_PATH
 from training import ship_a_sizing as z
@@ -48,7 +48,7 @@ def test_the_word_sample_cannot_show_a_reduction_without_flags():
 
 
 def test_the_budget_counts_each_half_and_marks_sparse_cells():
-    sites = mine(scored_pool(base=REFERENCE.replace("بب", "ب")))
+    sites = mine_all(scored_pool(base=REFERENCE.replace("بب", "ب")))
     budget = z.budget(sites)
     family = budget["families"]["ذ↔ز"]
     assert family["sites"] == family["partner_swaps"] == 1 and family["held_out_sparse"]

@@ -21,7 +21,8 @@
     "weights_dtype": "fp32"
    },
    "segment_margin_s": 0.5
-  }
+  },
+  "linked_clips_left_out": 0
  },
  "extension_families": {
   "ت↔ط": {
@@ -32,12 +33,12 @@
     "reciters": 2,
     "sites": 3
    },
-   "listened": 8,
+   "listened": 3,
    "reciters": 7,
    "sites": 8,
    "train": {
     "base_already_right": 5,
-    "listened": 5,
+    "listened": 0,
     "reciters": 5,
     "sites": 5
    }
@@ -50,12 +51,12 @@
     "reciters": 3,
     "sites": 3
    },
-   "listened": 10,
+   "listened": 3,
    "reciters": 9,
    "sites": 10,
    "train": {
     "base_already_right": 7,
-    "listened": 7,
+    "listened": 0,
     "reciters": 6,
     "sites": 7
    }
@@ -64,16 +65,16 @@
    "base_already_right": 44,
    "held_out": {
     "base_already_right": 24,
-    "listened": 29,
+    "listened": 24,
     "reciters": 22,
     "sites": 29
    },
-   "listened": 52,
+   "listened": 27,
    "reciters": 39,
    "sites": 52,
    "train": {
     "base_already_right": 20,
-    "listened": 23,
+    "listened": 3,
     "reciters": 17,
     "sites": 23
    }
@@ -86,12 +87,12 @@
     "reciters": 1,
     "sites": 1
    },
-   "listened": 6,
+   "listened": 2,
    "reciters": 6,
    "sites": 6,
    "train": {
     "base_already_right": 4,
-    "listened": 5,
+    "listened": 1,
     "reciters": 5,
     "sites": 5
    }
@@ -100,52 +101,52 @@
    "base_already_right": 56,
    "held_out": {
     "base_already_right": 33,
-    "listened": 96,
+    "listened": 40,
     "reciters": 47,
     "sites": 96
    },
-   "listened": 175,
+   "listened": 53,
    "reciters": 93,
    "sites": 175,
    "train": {
     "base_already_right": 23,
-    "listened": 79,
+    "listened": 13,
     "reciters": 46,
     "sites": 79
    }
   },
   "س↔ص": {
-   "base_already_right": 50,
+   "base_already_right": 49,
    "held_out": {
     "base_already_right": 27,
-    "listened": 33,
+    "listened": 25,
     "reciters": 23,
     "sites": 33
    },
-   "listened": 61,
+   "listened": 30,
    "reciters": 44,
-   "sites": 61,
+   "sites": 60,
    "train": {
-    "base_already_right": 23,
-    "listened": 28,
+    "base_already_right": 22,
+    "listened": 5,
     "reciters": 21,
-    "sites": 28
+    "sites": 27
    }
   },
   "ض↔ظ": {
    "base_already_right": 78,
    "held_out": {
     "base_already_right": 46,
-    "listened": 53,
+    "listened": 41,
     "reciters": 35,
     "sites": 53
    },
-   "listened": 102,
+   "listened": 58,
    "reciters": 66,
    "sites": 102,
    "train": {
     "base_already_right": 32,
-    "listened": 49,
+    "listened": 17,
     "reciters": 31,
     "sites": 49
    }
@@ -154,16 +155,16 @@
    "base_already_right": 452,
    "held_out": {
     "base_already_right": 219,
-    "listened": 245,
+    "listened": 99,
     "reciters": 84,
     "sites": 245
    },
-   "listened": 508,
+   "listened": 129,
    "reciters": 168,
    "sites": 508,
    "train": {
     "base_already_right": 233,
-    "listened": 263,
+    "listened": 30,
     "reciters": 84,
     "sites": 263
    }
@@ -172,16 +173,16 @@
    "base_already_right": 60,
    "held_out": {
     "base_already_right": 31,
-    "listened": 42,
-    "reciters": 29,
-    "sites": 42
+    "listened": 32,
+    "reciters": 28,
+    "sites": 41
    },
-   "listened": 76,
-   "reciters": 51,
-   "sites": 76,
+   "listened": 37,
+   "reciters": 50,
+   "sites": 75,
    "train": {
     "base_already_right": 29,
-    "listened": 34,
+    "listened": 5,
     "reciters": 22,
     "sites": 34
    }
@@ -189,266 +190,266 @@
  },
  "families": {
   "shaddah": {
-   "base_already_right": 718,
+   "base_already_right": 659,
    "held_out": {
-    "base_already_right": 374,
-    "listened": 65,
-    "reciters": 137,
-    "sites": 439
-   },
-   "listened": 115,
-   "reciters": 248,
-   "sites": 833,
-   "train": {
     "base_already_right": 344,
-    "listened": 50,
-    "reciters": 111,
-    "sites": 394
+    "listened": 52,
+    "reciters": 133,
+    "sites": 396
+   },
+   "listened": 93,
+   "reciters": 239,
+   "sites": 752,
+   "train": {
+    "base_already_right": 315,
+    "listened": 41,
+    "reciters": 106,
+    "sites": 356
    }
   },
   "ت↔ط": {
-   "base_already_right": 70,
+   "base_already_right": 64,
    "held_out": {
-    "base_already_right": 32,
+    "base_already_right": 31,
     "listened": 6,
-    "reciters": 51,
-    "sites": 67
+    "reciters": 48,
+    "sites": 62
    },
-   "listened": 13,
-   "reciters": 103,
-   "sites": 143,
+   "listened": 7,
+   "reciters": 96,
+   "sites": 129,
    "train": {
-    "base_already_right": 38,
-    "listened": 7,
-    "reciters": 52,
-    "sites": 76
+    "base_already_right": 33,
+    "listened": 1,
+    "reciters": 48,
+    "sites": 67
    }
   },
   "ح↔ه": {
-   "base_already_right": 79,
+   "base_already_right": 76,
    "held_out": {
-    "base_already_right": 42,
+    "base_already_right": 40,
     "listened": 4,
-    "reciters": 36,
-    "sites": 50
+    "reciters": 35,
+    "sites": 46
    },
-   "listened": 13,
-   "reciters": 72,
-   "sites": 97,
+   "listened": 5,
+   "reciters": 70,
+   "sites": 89,
    "train": {
-    "base_already_right": 37,
-    "listened": 9,
-    "reciters": 36,
-    "sites": 47
+    "base_already_right": 36,
+    "listened": 1,
+    "reciters": 35,
+    "sites": 43
    }
   },
   "ذ↔ز": {
-   "base_already_right": 94,
+   "base_already_right": 91,
    "held_out": {
-    "base_already_right": 54,
-    "listened": 37,
-    "reciters": 52,
-    "sites": 67
+    "base_already_right": 53,
+    "listened": 31,
+    "reciters": 51,
+    "sites": 65
    },
-   "listened": 66,
-   "reciters": 84,
-   "sites": 116,
+   "listened": 35,
+   "reciters": 82,
+   "sites": 110,
    "train": {
-    "base_already_right": 40,
-    "listened": 29,
-    "reciters": 32,
-    "sites": 49
+    "base_already_right": 38,
+    "listened": 4,
+    "reciters": 31,
+    "sites": 45
    }
   },
   "ذ↔ظ": {
-   "base_already_right": 12,
+   "base_already_right": 10,
    "held_out": {
     "base_already_right": 2,
     "listened": 1,
     "reciters": 4,
     "sites": 4
    },
-   "listened": 7,
-   "reciters": 16,
-   "sites": 16,
+   "listened": 2,
+   "reciters": 14,
+   "sites": 14,
    "train": {
-    "base_already_right": 10,
-    "listened": 6,
-    "reciters": 12,
-    "sites": 12
+    "base_already_right": 8,
+    "listened": 1,
+    "reciters": 10,
+    "sites": 10
    }
   },
   "س↔ش": {
-   "base_already_right": 85,
+   "base_already_right": 83,
    "held_out": {
-    "base_already_right": 49,
-    "listened": 106,
-    "reciters": 57,
-    "sites": 121
+    "base_already_right": 47,
+    "listened": 44,
+    "reciters": 55,
+    "sites": 118
    },
-   "listened": 198,
-   "reciters": 117,
-   "sites": 226,
+   "listened": 59,
+   "reciters": 113,
+   "sites": 217,
    "train": {
     "base_already_right": 36,
-    "listened": 92,
-    "reciters": 60,
-    "sites": 105
+    "listened": 15,
+    "reciters": 58,
+    "sites": 99
    }
   },
   "س↔ص": {
-   "base_already_right": 63,
+   "base_already_right": 62,
    "held_out": {
     "base_already_right": 33,
-    "listened": 35,
-    "reciters": 28,
-    "sites": 40
-   },
-   "listened": 71,
-   "reciters": 56,
-   "sites": 79,
-   "train": {
-    "base_already_right": 30,
-    "listened": 36,
+    "listened": 26,
     "reciters": 28,
     "sites": 39
+   },
+   "listened": 34,
+   "reciters": 55,
+   "sites": 76,
+   "train": {
+    "base_already_right": 29,
+    "listened": 8,
+    "reciters": 27,
+    "sites": 37
    }
   },
   "ض↔ظ": {
-   "base_already_right": 93,
+   "base_already_right": 92,
    "held_out": {
-    "base_already_right": 51,
-    "listened": 64,
-    "reciters": 43,
-    "sites": 67
+    "base_already_right": 50,
+    "listened": 50,
+    "reciters": 42,
+    "sites": 65
    },
-   "listened": 122,
-   "reciters": 82,
-   "sites": 132,
+   "listened": 72,
+   "reciters": 81,
+   "sites": 129,
    "train": {
     "base_already_right": 42,
-    "listened": 58,
+    "listened": 22,
     "reciters": 39,
-    "sites": 65
+    "sites": 64
    }
   },
   "ط↔ق": {
-   "base_already_right": 534,
+   "base_already_right": 527,
    "held_out": {
-    "base_already_right": 260,
-    "listened": 283,
-    "reciters": 98,
-    "sites": 292
+    "base_already_right": 257,
+    "listened": 122,
+    "reciters": 97,
+    "sites": 289
    },
-   "listened": 586,
-   "reciters": 201,
-   "sites": 601,
+   "listened": 156,
+   "reciters": 198,
+   "sites": 594,
    "train": {
-    "base_already_right": 274,
-    "listened": 303,
-    "reciters": 103,
-    "sites": 309
+    "base_already_right": 270,
+    "listened": 34,
+    "reciters": 101,
+    "sites": 305
    }
   },
   "ق↔ك": {
-   "base_already_right": 87,
+   "base_already_right": 85,
    "held_out": {
     "base_already_right": 47,
-    "listened": 52,
-    "reciters": 36,
-    "sites": 62
+    "listened": 39,
+    "reciters": 35,
+    "sites": 60
    },
-   "listened": 96,
-   "reciters": 69,
-   "sites": 119,
+   "listened": 52,
+   "reciters": 68,
+   "sites": 115,
    "train": {
-    "base_already_right": 40,
-    "listened": 44,
+    "base_already_right": 38,
+    "listened": 13,
     "reciters": 33,
-    "sites": 57
+    "sites": 55
    }
   }
  },
  "frame_populations": {
   "pair:ت→ط": {
-   "carriers": 4747,
-   "reciters": 375
+   "carriers": 4264,
+   "reciters": 367
   },
   "pair:ح→ه": {
-   "carriers": 1637,
-   "reciters": 318
+   "carriers": 1493,
+   "reciters": 311
   },
   "pair:ذ→ز": {
-   "carriers": 1854,
-   "reciters": 338
+   "carriers": 1645,
+   "reciters": 326
   },
   "pair:ذ→ظ": {
-   "carriers": 1854,
-   "reciters": 338
+   "carriers": 1645,
+   "reciters": 326
   },
   "pair:ز→ذ": {
-   "carriers": 675,
-   "reciters": 224
+   "carriers": 603,
+   "reciters": 215
   },
   "pair:س→ش": {
-   "carriers": 2297,
-   "reciters": 329
+   "carriers": 2086,
+   "reciters": 323
   },
   "pair:س→ص": {
-   "carriers": 2297,
-   "reciters": 329
+   "carriers": 2086,
+   "reciters": 323
   },
   "pair:ش→س": {
-   "carriers": 853,
-   "reciters": 271
-  },
-  "pair:ص→س": {
-   "carriers": 864,
-   "reciters": 276
-  },
-  "pair:ض→ظ": {
-   "carriers": 601,
-   "reciters": 223
-  },
-  "pair:ط→ت": {
-   "carriers": 491,
-   "reciters": 224
-  },
-  "pair:ط→ق": {
-   "carriers": 491,
-   "reciters": 224
-  },
-  "pair:ظ→ذ": {
-   "carriers": 351,
-   "reciters": 163
-  },
-  "pair:ظ→ض": {
-   "carriers": 351,
-   "reciters": 163
-  },
-  "pair:ق→ط": {
-   "carriers": 2855,
-   "reciters": 347
-  },
-  "pair:ق→ك": {
-   "carriers": 2855,
-   "reciters": 347
-  },
-  "pair:ك→ق": {
-   "carriers": 3898,
-   "reciters": 360
-  },
-  "pair:ه→ح": {
-   "carriers": 5770,
-   "reciters": 378
-  },
-  "shaddah:held:cross_word": {
-   "carriers": 950,
+   "carriers": 781,
    "reciters": 263
   },
+  "pair:ص→س": {
+   "carriers": 777,
+   "reciters": 266
+  },
+  "pair:ض→ظ": {
+   "carriers": 563,
+   "reciters": 216
+  },
+  "pair:ط→ت": {
+   "carriers": 453,
+   "reciters": 219
+  },
+  "pair:ط→ق": {
+   "carriers": 453,
+   "reciters": 219
+  },
+  "pair:ظ→ذ": {
+   "carriers": 315,
+   "reciters": 155
+  },
+  "pair:ظ→ض": {
+   "carriers": 315,
+   "reciters": 155
+  },
+  "pair:ق→ط": {
+   "carriers": 2609,
+   "reciters": 340
+  },
+  "pair:ق→ك": {
+   "carriers": 2609,
+   "reciters": 340
+  },
+  "pair:ك→ق": {
+   "carriers": 3456,
+   "reciters": 351
+  },
+  "pair:ه→ح": {
+   "carriers": 5249,
+   "reciters": 369
+  },
+  "shaddah:held:cross_word": {
+   "carriers": 878,
+   "reciters": 257
+  },
   "shaddah:held:in_word": {
-   "carriers": 8480,
-   "reciters": 380
+   "carriers": 7663,
+   "reciters": 372
   }
  },
  "inputs": {
@@ -456,8 +457,38 @@
   "mining_pool/clips.jsonl": "885901089d5ed50f21f40405d0c8568a79fbe2319560b906ea429f46e629cf6e",
   "mining_pool/h448_stream_decodes.json": "1bf9b8cf15c1d2062cfa5fea3ace7cb44ed1a4d0526b16a3e7c7f496ca7dd3b8",
   "ship_a/mining/base_decodes.json": "4ff4bcb24bf73559c2699de7f7bc55cf543f605596aaaf9b84e3435944bc5b04",
-  "ship_a/mining/clips.jsonl": "b515dadab3a916540d523adc83963abf86531256f9e457e8c5d2da293f9724ea",
+  "ship_a/mining/clips.jsonl": "32f9f4e9dc50344c35ba846c5d9104ebd3c164a0dd435dc9cd26e3d2c9008cf1",
   "ship_a/mining/h448_stream_decodes.json": "9b5c936d1efb3f9108adb607f75b2fe492616b957cffbb322c4b0430c58f422b"
+ },
+ "listening": {
+  "geminate": {
+   "listened": 93,
+   "sites": 93
+  },
+  "geminate, teacher holds": {
+   "listened": 0,
+   "sites": 659
+  },
+  "other letter": {
+   "listened": 0,
+   "sites": 323
+  },
+  "swap, teacher right, held_out": {
+   "listened": 222,
+   "sites": 429
+  },
+  "swap, teacher right, train": {
+   "listened": 0,
+   "sites": 423
+  },
+  "swap, teacher wrong": {
+   "listened": 180,
+   "sites": 180
+  },
+  "كسب swap": {
+   "listened": 20,
+   "sites": 118
+  }
  },
  "partner_swap_checks": {
   "ت→ط": {
@@ -497,11 +528,11 @@
    "top_word_sites": 1
   },
   "ز→ذ": {
-   "ayahs": 42,
+   "ayahs": 41,
    "base_already_right": 41,
-   "max_per_reciter": 5,
+   "max_per_reciter": 4,
    "reciters": 39,
-   "sites": 55,
+   "sites": 53,
    "top_word": "لعِززَتُ",
    "top_word_sites": 5
   },
@@ -509,26 +540,26 @@
    "ayahs": 62,
    "base_already_right": 31,
    "max_per_reciter": 9,
-   "reciters": 94,
-   "sites": 167,
+   "reciters": 91,
+   "sites": 160,
    "top_word": "كَسَبَت",
-   "top_word_sites": 72
+   "top_word_sites": 69
   },
   "س→ص": {
-   "ayahs": 39,
-   "base_already_right": 32,
-   "max_per_reciter": 4,
-   "reciters": 35,
-   "sites": 43,
+   "ayahs": 37,
+   "base_already_right": 31,
+   "max_per_reciter": 3,
+   "reciters": 34,
+   "sites": 40,
    "top_word": "بَااسِطُںںں",
    "top_word_sites": 2
   },
   "ش→س": {
-   "ayahs": 27,
-   "base_already_right": 29,
+   "ayahs": 26,
+   "base_already_right": 28,
    "max_per_reciter": 5,
-   "reciters": 18,
-   "sites": 31,
+   "reciters": 17,
+   "sites": 30,
    "top_word": "شَقِييَاا",
    "top_word_sites": 2
   },
@@ -560,11 +591,11 @@
    "top_word_sites": 1
   },
   "ط→ق": {
-   "ayahs": 313,
-   "base_already_right": 505,
+   "ayahs": 311,
+   "base_already_right": 502,
    "max_per_reciter": 19,
-   "reciters": 193,
-   "sites": 570,
+   "reciters": 192,
+   "sites": 567,
    "top_word": "ششَيطَاانُ",
    "top_word_sites": 14
   },
@@ -578,20 +609,20 @@
    "top_word_sites": 1
   },
   "ظ→ض": {
-   "ayahs": 79,
-   "base_already_right": 82,
+   "ayahs": 76,
+   "base_already_right": 81,
    "max_per_reciter": 5,
-   "reciters": 76,
-   "sites": 120,
+   "reciters": 75,
+   "sites": 117,
    "top_word": "وَظَللَلنَاا",
    "top_word_sites": 9
   },
   "ق→ط": {
-   "ayahs": 16,
-   "base_already_right": 15,
+   "ayahs": 15,
+   "base_already_right": 14,
    "max_per_reciter": 2,
-   "reciters": 15,
-   "sites": 16,
+   "reciters": 14,
+   "sites": 15,
    "top_word": "قَبڇلِكُم",
    "top_word_sites": 1
   },
@@ -605,11 +636,11 @@
    "top_word_sites": 3
   },
   "ك→ق": {
-   "ayahs": 56,
+   "ayahs": 54,
    "base_already_right": 44,
    "max_per_reciter": 5,
-   "reciters": 41,
-   "sites": 61,
+   "reciters": 40,
+   "sites": 59,
    "top_word": "فَكُببَت",
    "top_word_sites": 2
   },
@@ -645,37 +676,36 @@
     "weights_dtype": "fp32"
    },
    "segment_margin_s": 0.5
-  }
+  },
+  "linked_clips_left_out": 365
  },
  "pool_pair_commits": {
   "by_letter": {
-   "ت→ء": 5,
+   "ت→ء": 4,
    "ت→ب": 2,
    "ت→ث": 1,
    "ت→د": 2,
    "ت→ذ": 1,
    "ت→ر": 1,
    "ت→س": 10,
-   "ت→ع": 1,
    "ت→ف": 3,
    "ت→ق": 6,
-   "ت→ك": 6,
-   "ت→ل": 4,
-   "ت→ن": 6,
-   "ت→ه": 70,
+   "ت→ك": 5,
+   "ت→ل": 2,
+   "ت→ن": 5,
+   "ت→ه": 62,
    "ت→ي": 2,
    "ح→ء": 3,
    "ح→خ": 2,
-   "ح→د": 1,
    "ح→ض": 1,
    "ح→ع": 9,
    "ح→ف": 1,
    "ح→ق": 3,
    "ح→ه": 1,
-   "ذ→ب": 5,
+   "ذ→ب": 3,
    "ذ→ث": 1,
    "ذ→ج": 1,
-   "ذ→د": 12,
+   "ذ→د": 11,
    "ذ→ز": 3,
    "ذ→ق": 1,
    "ذ→ل": 8,
@@ -685,23 +715,23 @@
    "ذ→ي": 2,
    "ز→ب": 1,
    "ز→د": 1,
-   "ز→ذ": 11,
+   "ز→ذ": 9,
    "ز→س": 6,
-   "ز→ن": 5,
+   "ز→ن": 4,
    "س→ء": 2,
    "س→ت": 5,
    "س→ث": 2,
-   "س→ش": 20,
-   "س→ص": 6,
+   "س→ش": 13,
+   "س→ص": 4,
    "س→ف": 5,
    "س→ق": 2,
    "س→ل": 1,
    "س→م": 1,
    "س→ن": 1,
    "ش→ت": 3,
-   "ش→س": 3,
+   "ش→س": 2,
    "ش→ص": 1,
-   "ش→ن": 5,
+   "ش→ن": 4,
    "ص→س": 4,
    "ص→ف": 1,
    "ص→ق": 5,
@@ -718,7 +748,7 @@
    "ط→ص": 1,
    "ط→ض": 1,
    "ط→ف": 1,
-   "ط→ق": 74,
+   "ط→ق": 71,
    "ط→ك": 2,
    "ط→ل": 1,
    "ط→ن": 3,
@@ -726,82 +756,78 @@
    "ظ→ب": 1,
    "ظ→ذ": 1,
    "ظ→ر": 1,
-   "ظ→ض": 19,
-   "ظ→غ": 2,
-   "ظ→ف": 1,
+   "ظ→ض": 16,
+   "ظ→غ": 1,
    "ظ→ق": 1,
    "ظ→ل": 2,
    "ظ→ه": 1,
-   "ق→ء": 2,
+   "ق→ء": 1,
    "ق→ب": 2,
    "ق→ت": 1,
    "ق→خ": 1,
-   "ق→ص": 1,
-   "ق→ط": 4,
+   "ق→ط": 3,
    "ق→ع": 1,
-   "ق→ف": 4,
+   "ق→ف": 3,
    "ق→ك": 9,
    "ق→ن": 3,
-   "ك→ء": 1,
    "ك→ب": 1,
    "ك→ت": 10,
    "ك→ح": 1,
    "ك→خ": 1,
-   "ك→ز": 1,
-   "ك→ق": 11,
+   "ك→ق": 10,
    "ك→ل": 1,
    "ك→ن": 4,
    "ك→ه": 2,
    "ك→ي": 1,
-   "ه→ء": 12,
+   "ه→ء": 11,
    "ه→ب": 1,
    "ه→ت": 1,
    "ه→ح": 2,
-   "ه→ذ": 2,
+   "ه→ذ": 1,
    "ه→ر": 1,
    "ه→ع": 5,
    "ه→ق": 1,
-   "ه→ك": 3,
+   "ه→ك": 2,
    "ه→ل": 4,
    "ه→م": 8,
    "ه→ن": 6,
-   "ه→و": 8,
-   "ه→ي": 12
+   "ه→و": 6,
+   "ه→ي": 10
   },
   "other_letter": {
-   "base_already_right": 251,
+   "base_already_right": 231,
    "held_out": {
-    "base_already_right": 133,
+    "base_already_right": 127,
     "listened": 0,
-    "reciters": 90,
-    "sites": 182
+    "reciters": 86,
+    "sites": 170
    },
    "listened": 0,
-   "reciters": 171,
-   "sites": 357,
+   "reciters": 163,
+   "sites": 323,
    "train": {
-    "base_already_right": 118,
+    "base_already_right": 104,
     "listened": 0,
-    "reciters": 81,
-    "sites": 175
+    "reciters": 77,
+    "sites": 153
    }
   },
   "partner": {
-   "base_already_right": 105,
+   "base_already_right": 99,
    "held_out": {
-    "base_already_right": 52,
-    "listened": 83,
-    "reciters": 48,
-    "sites": 83
+    "base_already_right": 48,
+    "listened": 55,
+    "reciters": 44,
+    "sites": 74
    },
-   "listened": 174,
-   "reciters": 105,
-   "sites": 174,
+   "listened": 80,
+   "reciters": 96,
+   "sites": 154,
    "train": {
-    "base_already_right": 53,
-    "listened": 91,
-    "reciters": 57,
-    "sites": 91
+    "base_already_right": 51,
+    "listened": 25,
+    "reciters": 52,
+    "sites": 80
    }
   }
  },
@@ -811,58 +837,76 @@
   "status": "confirmed (D11)"
  },
  "strata": {
-  "ship_a:shaddah:held:h448_single:base_held": {
-   "base_already_right": 718,
+  "ship_a:kasb:س→ش:h448_partner": {
+   "base_already_right": 1,
    "held_out": {
-    "base_already_right": 374,
-    "listened": 0,
-    "reciters": 127,
-    "sites": 374
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 4,
+    "sites": 4
    },
-   "listened": 0,
-   "reciters": 236,
-   "sites": 718,
+   "listened": 2,
+   "reciters": 10,
+   "sites": 10,
    "train": {
+    "base_already_right": 1,
+    "listened": 1,
+    "reciters": 6,
+    "sites": 6
+   }
+  },
+  "ship_a:shaddah:held:h448_single:base_held": {
+   "base_already_right": 659,
+   "held_out": {
     "base_already_right": 344,
     "listened": 0,
-    "reciters": 109,
+    "reciters": 125,
     "sites": 344
+   },
+   "listened": 0,
+   "reciters": 229,
+   "sites": 659,
+   "train": {
+    "base_already_right": 315,
+    "listened": 0,
+    "reciters": 104,
+    "sites": 315
    }
   },
   "ship_a:shaddah:held:h448_single:base_not_held": {
    "base_already_right": 0,
    "held_out": {
     "base_already_right": 0,
-    "listened": 65,
-    "reciters": 44,
-    "sites": 65
+    "listened": 52,
+    "reciters": 37,
+    "sites": 52
    },
-   "listened": 115,
-   "reciters": 73,
-   "sites": 115,
+   "listened": 93,
+   "reciters": 64,
+   "sites": 93,
    "train": {
     "base_already_right": 0,
-    "listened": 50,
-    "reciters": 29,
-    "sites": 50
+    "listened": 41,
+    "reciters": 27,
+    "sites": 41
    }
   },
   "ship_a:ت:h448_other": {
-   "base_already_right": 51,
+   "base_already_right": 45,
    "held_out": {
-    "base_already_right": 23,
+    "base_already_right": 22,
     "listened": 0,
-    "reciters": 46,
-    "sites": 55
+    "reciters": 43,
+    "sites": 50
    },
    "listened": 0,
-   "reciters": 91,
-   "sites": 120,
+   "reciters": 84,
+   "sites": 106,
    "train": {
-    "base_already_right": 28,
+    "base_already_right": 23,
     "listened": 0,
-    "reciters": 45,
-    "sites": 65
+    "reciters": 41,
+    "sites": 56
    }
   },
   "ship_a:ح:h448_other": {
@@ -874,16 +918,16 @@
     "sites": 10
    },
    "listened": 0,
-   "reciters": 19,
-   "sites": 20,
+   "reciters": 18,
+   "sites": 19,
    "train": {
     "base_already_right": 7,
     "listened": 0,
-    "reciters": 10,
-    "sites": 10
+    "reciters": 9,
+    "sites": 9
    }
   },
-  "ship_a:ح→ه:h448_partner": {
+  "ship_a:ح→ه:h448_partner:base_right": {
    "base_already_right": 1,
    "held_out": {
     "base_already_right": 0,
@@ -891,35 +935,35 @@
     "reciters": 0,
     "sites": 0
    },
-   "listened": 1,
+   "listened": 0,
    "reciters": 1,
    "sites": 1,
    "train": {
     "base_already_right": 1,
-    "listened": 1,
+    "listened": 0,
     "reciters": 1,
     "sites": 1
    }
   },
   "ship_a:ذ:h448_other": {
-   "base_already_right": 32,
+   "base_already_right": 30,
    "held_out": {
-    "base_already_right": 20,
+    "base_already_right": 19,
     "listened": 0,
-    "reciters": 22,
-    "sites": 23
+    "reciters": 21,
+    "sites": 22
    },
    "listened": 0,
-   "reciters": 35,
-   "sites": 37,
+   "reciters": 32,
+   "sites": 34,
    "train": {
-    "base_already_right": 12,
+    "base_already_right": 11,
     "listened": 0,
-    "reciters": 13,
-    "sites": 14
+    "reciters": 11,
+    "sites": 12
    }
   },
-  "ship_a:ذ→ز:h448_partner": {
+  "ship_a:ذ→ز:h448_partner:base_right": {
    "base_already_right": 3,
    "held_out": {
     "base_already_right": 0,
@@ -927,18 +971,18 @@
     "reciters": 0,
     "sites": 0
    },
-   "listened": 3,
+   "listened": 0,
    "reciters": 3,
    "sites": 3,
    "train": {
     "base_already_right": 3,
-    "listened": 3,
+    "listened": 0,
     "reciters": 3,
     "sites": 3
    }
   },
   "ship_a:ز:h448_other": {
-   "base_already_right": 10,
+   "base_already_right": 9,
    "held_out": {
     "base_already_right": 6,
     "listened": 0,
@@ -946,31 +990,49 @@
     "sites": 7
    },
    "listened": 0,
-   "reciters": 13,
-   "sites": 13,
+   "reciters": 12,
+   "sites": 12,
    "train": {
-    "base_already_right": 4,
+    "base_already_right": 3,
     "listened": 0,
-    "reciters": 6,
-    "sites": 6
+    "reciters": 5,
+    "sites": 5
    }
   },
-  "ship_a:ز→ذ:h448_partner": {
+  "ship_a:ز→ذ:h448_partner:base_right": {
    "base_already_right": 5,
    "held_out": {
     "base_already_right": 4,
-    "listened": 8,
-    "reciters": 6,
-    "sites": 8
+    "listened": 4,
+    "reciters": 4,
+    "sites": 4
    },
-   "listened": 11,
-   "reciters": 9,
-   "sites": 11,
+   "listened": 4,
+   "reciters": 5,
+   "sites": 5,
    "train": {
     "base_already_right": 1,
+    "listened": 0,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a:ز→ذ:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
     "listened": 3,
     "reciters": 3,
     "sites": 3
+   },
+   "listened": 4,
+   "reciters": 4,
+   "sites": 4,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
    }
   },
   "ship_a:س:h448_other": {
@@ -991,53 +1053,89 @@
     "sites": 9
    }
   },
-  "ship_a:س→ش:h448_partner": {
-   "base_already_right": 2,
+  "ship_a:س→ش:h448_partner:base_right": {
+   "base_already_right": 1,
    "held_out": {
     "base_already_right": 1,
-    "listened": 7,
-    "reciters": 6,
-    "sites": 7
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
    },
-   "listened": 20,
-   "reciters": 17,
-   "sites": 20,
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
    "train": {
-    "base_already_right": 1,
-    "listened": 13,
-    "reciters": 11,
-    "sites": 13
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
    }
   },
-  "ship_a:س→ص:h448_partner": {
+  "ship_a:س→ش:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   },
+   "listened": 2,
+   "reciters": 2,
+   "sites": 2,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a:س→ص:h448_partner:base_right": {
    "base_already_right": 3,
    "held_out": {
     "base_already_right": 1,
-    "listened": 2,
-    "reciters": 2,
-    "sites": 2
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
    },
-   "listened": 6,
-   "reciters": 6,
-   "sites": 6,
+   "listened": 1,
+   "reciters": 3,
+   "sites": 3,
    "train": {
     "base_already_right": 2,
-    "listened": 4,
-    "reciters": 4,
-    "sites": 4
+    "listened": 0,
+    "reciters": 2,
+    "sites": 2
+   }
+  },
+  "ship_a:س→ص:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
    }
   },
   "ship_a:ش:h448_other": {
-   "base_already_right": 9,
+   "base_already_right": 8,
    "held_out": {
-    "base_already_right": 5,
+    "base_already_right": 4,
     "listened": 0,
-    "reciters": 5,
-    "sites": 5
+    "reciters": 4,
+    "sites": 4
    },
    "listened": 0,
-   "reciters": 9,
-   "sites": 9,
+   "reciters": 8,
+   "sites": 8,
    "train": {
     "base_already_right": 4,
     "listened": 0,
@@ -1045,17 +1143,35 @@
     "sites": 4
    }
   },
-  "ship_a:ش→س:h448_partner": {
-   "base_already_right": 2,
+  "ship_a:ش→س:h448_partner:base_right": {
+   "base_already_right": 1,
    "held_out": {
-    "base_already_right": 2,
-    "listened": 3,
-    "reciters": 3,
-    "sites": 3
+    "base_already_right": 1,
+    "listened": 0,
+    "reciters": 1,
+    "sites": 1
    },
-   "listened": 3,
-   "reciters": 3,
-   "sites": 3,
+   "listened": 0,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   }
+  },
+  "ship_a:ش→س:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
    "train": {
     "base_already_right": 0,
     "listened": 0,
@@ -1081,7 +1197,7 @@
     "sites": 3
    }
   },
-  "ship_a:ص→س:h448_partner": {
+  "ship_a:ص→س:h448_partner:base_right": {
    "base_already_right": 2,
    "held_out": {
     "base_already_right": 0,
@@ -1089,14 +1205,32 @@
     "reciters": 0,
     "sites": 0
    },
-   "listened": 4,
-   "reciters": 3,
-   "sites": 4,
+   "listened": 0,
+   "reciters": 2,
+   "sites": 2,
    "train": {
     "base_already_right": 2,
-    "listened": 4,
-    "reciters": 3,
-    "sites": 4
+    "listened": 0,
+    "reciters": 2,
+    "sites": 2
+   }
+  },
+  "ship_a:ص→س:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 2,
+   "reciters": 2,
+   "sites": 2,
+   "train": {
+    "base_already_right": 0,
+    "listened": 2,
+    "reciters": 2,
+    "sites": 2
    }
   },
   "ship_a:ض:h448_other": {
@@ -1117,7 +1251,7 @@
     "sites": 7
    }
   },
-  "ship_a:ض→ظ:h448_partner": {
+  "ship_a:ض→ظ:h448_partner:base_right": {
    "base_already_right": 1,
    "held_out": {
     "base_already_right": 0,
@@ -1125,12 +1259,12 @@
     "reciters": 0,
     "sites": 0
    },
-   "listened": 1,
+   "listened": 0,
    "reciters": 1,
    "sites": 1,
    "train": {
     "base_already_right": 1,
-    "listened": 1,
+    "listened": 0,
     "reciters": 1,
     "sites": 1
    }
@@ -1153,205 +1287,25 @@
     "sites": 4
    }
   },
-  "ship_a:ط→ت:h448_partner": {
+  "ship_a:ط→ت:h448_partner:base_right": {
    "base_already_right": 3,
    "held_out": {
     "base_already_right": 2,
-    "listened": 3,
-    "reciters": 3,
-    "sites": 3
-   },
-   "listened": 5,
-   "reciters": 5,
-   "sites": 5,
-   "train": {
-    "base_already_right": 1,
     "listened": 2,
     "reciters": 2,
     "sites": 2
-   }
-  },
-  "ship_a:ط→ق:h448_partner": {
-   "base_already_right": 64,
-   "held_out": {
-    "base_already_right": 31,
-    "listened": 37,
-    "reciters": 28,
-    "sites": 37
    },
-   "listened": 74,
-   "reciters": 59,
-   "sites": 74,
-   "train": {
-    "base_already_right": 33,
-    "listened": 37,
-    "reciters": 31,
-    "sites": 37
-   }
-  },
-  "ship_a:ظ:h448_other": {
-   "base_already_right": 6,
-   "held_out": {
-    "base_already_right": 1,
-    "listened": 0,
-    "reciters": 3,
-    "sites": 3
-   },
-   "listened": 0,
-   "reciters": 9,
-   "sites": 9,
-   "train": {
-    "base_already_right": 5,
-    "listened": 0,
-    "reciters": 6,
-    "sites": 6
-   }
-  },
-  "ship_a:ظ→ذ:h448_partner": {
-   "base_already_right": 1,
-   "held_out": {
-    "base_already_right": 0,
-    "listened": 0,
-    "reciters": 0,
-    "sites": 0
-   },
-   "listened": 1,
-   "reciters": 1,
-   "sites": 1,
+   "listened": 2,
+   "reciters": 3,
+   "sites": 3,
    "train": {
     "base_already_right": 1,
-    "listened": 1,
+    "listened": 0,
     "reciters": 1,
     "sites": 1
    }
   },
-  "ship_a:ظ→ض:h448_partner": {
-   "base_already_right": 5,
-   "held_out": {
-    "base_already_right": 3,
-    "listened": 11,
-    "reciters": 10,
-    "sites": 11
-   },
-   "listened": 19,
-   "reciters": 17,
-   "sites": 19,
-   "train": {
-    "base_already_right": 2,
-    "listened": 8,
-    "reciters": 7,
-    "sites": 8
-   }
-  },
-  "ship_a:ق:h448_other": {
-   "base_already_right": 14,
-   "held_out": {
-    "base_already_right": 9,
-    "listened": 0,
-    "reciters": 8,
-    "sites": 9
-   },
-   "listened": 0,
-   "reciters": 13,
-   "sites": 15,
-   "train": {
-    "base_already_right": 5,
-    "listened": 0,
-    "reciters": 5,
-    "sites": 6
-   }
-  },
-  "ship_a:ق→ط:h448_partner": {
-   "base_already_right": 4,
-   "held_out": {
-    "base_already_right": 1,
-    "listened": 1,
-    "reciters": 1,
-    "sites": 1
-   },
-   "listened": 4,
-   "reciters": 4,
-   "sites": 4,
-   "train": {
-    "base_already_right": 3,
-    "listened": 3,
-    "reciters": 3,
-    "sites": 3
-   }
-  },
-  "ship_a:ق→ك:h448_partner": {
-   "base_already_right": 5,
-   "held_out": {
-    "base_already_right": 5,
-    "listened": 7,
-    "reciters": 5,
-    "sites": 7
-   },
-   "listened": 9,
-   "reciters": 6,
-   "sites": 9,
-   "train": {
-    "base_already_right": 0,
-    "listened": 2,
-    "reciters": 1,
-    "sites": 2
-   }
-  },
-  "ship_a:ك:h448_other": {
-   "base_already_right": 18,
-   "held_out": {
-    "base_already_right": 9,
-    "listened": 0,
-    "reciters": 10,
-    "sites": 10
-   },
-   "listened": 0,
-   "reciters": 22,
-   "sites": 23,
-   "train": {
-    "base_already_right": 9,
-    "listened": 0,
-    "reciters": 12,
-    "sites": 13
-   }
-  },
-  "ship_a:ك→ق:h448_partner": {
-   "base_already_right": 4,
-   "held_out": {
-    "base_already_right": 2,
-    "listened": 3,
-    "reciters": 3,
-    "sites": 3
-   },
-   "listened": 11,
-   "reciters": 10,
-   "sites": 11,
-   "train": {
-    "base_already_right": 2,
-    "listened": 8,
-    "reciters": 7,
-    "sites": 8
-   }
-  },
-  "ship_a:ه:h448_other": {
-   "base_already_right": 53,
-   "held_out": {
-    "base_already_right": 31,
-    "listened": 0,
-    "reciters": 25,
-    "sites": 36
-   },
-   "listened": 0,
-   "reciters": 45,
-   "sites": 64,
-   "train": {
-    "base_already_right": 22,
-    "listened": 0,
-    "reciters": 20,
-    "sites": 28
-   }
-  },
-  "ship_a:ه→ح:h448_partner": {
+  "ship_a:ط→ت:h448_partner:base_wrong": {
    "base_already_right": 0,
    "held_out": {
     "base_already_right": 0,
@@ -1369,262 +1323,100 @@
     "sites": 1
    }
   },
-  "ship_a_mining:ت→ط:h448_partner": {
-   "base_already_right": 1,
+  "ship_a:ط→ق:h448_partner:base_right": {
+   "base_already_right": 61,
    "held_out": {
-    "base_already_right": 0,
-    "listened": 0,
-    "reciters": 0,
-    "sites": 0
-   },
-   "listened": 1,
-   "reciters": 1,
-   "sites": 1,
-   "train": {
-    "base_already_right": 1,
-    "listened": 1,
-    "reciters": 1,
-    "sites": 1
-   }
-  },
-  "ship_a_mining:ح→ه:h448_partner": {
-   "base_already_right": 6,
-   "held_out": {
-    "base_already_right": 1,
-    "listened": 2,
-    "reciters": 2,
-    "sites": 2
-   },
-   "listened": 7,
-   "reciters": 7,
-   "sites": 7,
-   "train": {
-    "base_already_right": 5,
-    "listened": 5,
-    "reciters": 5,
-    "sites": 5
-   }
-  },
-  "ship_a_mining:ذ→ز:h448_partner": {
-   "base_already_right": 8,
-   "held_out": {
-    "base_already_right": 5,
-    "listened": 5,
-    "reciters": 5,
-    "sites": 5
-   },
-   "listened": 8,
-   "reciters": 8,
-   "sites": 8,
-   "train": {
-    "base_already_right": 3,
-    "listened": 3,
-    "reciters": 3,
-    "sites": 3
-   }
-  },
-  "ship_a_mining:ذ→ظ:h448_partner": {
-   "base_already_right": 1,
-   "held_out": {
-    "base_already_right": 0,
-    "listened": 0,
-    "reciters": 0,
-    "sites": 0
-   },
-   "listened": 2,
-   "reciters": 2,
-   "sites": 2,
-   "train": {
-    "base_already_right": 1,
-    "listened": 2,
-    "reciters": 2,
-    "sites": 2
-   }
-  },
-  "ship_a_mining:ز→ذ:h448_partner": {
-   "base_already_right": 36,
-   "held_out": {
-    "base_already_right": 19,
-    "listened": 24,
-    "reciters": 19,
-    "sites": 24
-   },
-   "listened": 44,
-   "reciters": 33,
-   "sites": 44,
-   "train": {
-    "base_already_right": 17,
-    "listened": 20,
-    "reciters": 14,
-    "sites": 20
-   }
-  },
-  "ship_a_mining:س→ش:h448_partner": {
-   "base_already_right": 29,
-   "held_out": {
-    "base_already_right": 18,
-    "listened": 81,
-    "reciters": 42,
-    "sites": 81
-   },
-   "listened": 147,
-   "reciters": 83,
-   "sites": 147,
-   "train": {
-    "base_already_right": 11,
-    "listened": 66,
-    "reciters": 41,
-    "sites": 66
-   }
-  },
-  "ship_a_mining:س→ص:h448_partner": {
-   "base_already_right": 29,
-   "held_out": {
-    "base_already_right": 17,
-    "listened": 20,
-    "reciters": 17,
-    "sites": 20
-   },
-   "listened": 37,
-   "reciters": 30,
-   "sites": 37,
-   "train": {
-    "base_already_right": 12,
+    "base_already_right": 30,
     "listened": 17,
-    "reciters": 13,
-    "sites": 17
-   }
-  },
-  "ship_a_mining:ش→س:h448_partner": {
-   "base_already_right": 27,
-   "held_out": {
-    "base_already_right": 15,
-    "listened": 15,
-    "reciters": 10,
-    "sites": 15
+    "reciters": 25,
+    "sites": 30
    },
-   "listened": 28,
-   "reciters": 17,
-   "sites": 28,
+   "listened": 17,
+   "reciters": 51,
+   "sites": 61,
    "train": {
-    "base_already_right": 12,
-    "listened": 13,
-    "reciters": 7,
-    "sites": 13
+    "base_already_right": 31,
+    "listened": 0,
+    "reciters": 26,
+    "sites": 31
    }
   },
-  "ship_a_mining:ص→س:h448_partner": {
-   "base_already_right": 21,
-   "held_out": {
-    "base_already_right": 10,
-    "listened": 13,
-    "reciters": 10,
-    "sites": 13
-   },
-   "listened": 24,
-   "reciters": 20,
-   "sites": 24,
-   "train": {
-    "base_already_right": 11,
-    "listened": 11,
-    "reciters": 10,
-    "sites": 11
-   }
-  },
-  "ship_a_mining:ض→ظ:h448_partner": {
-   "base_already_right": 1,
+  "ship_a:ط→ق:h448_partner:base_wrong": {
+   "base_already_right": 0,
    "held_out": {
     "base_already_right": 0,
-    "listened": 0,
-    "reciters": 0,
-    "sites": 0
+    "listened": 6,
+    "reciters": 5,
+    "sites": 6
    },
-   "listened": 1,
-   "reciters": 1,
-   "sites": 1,
+   "listened": 10,
+   "reciters": 9,
+   "sites": 10,
    "train": {
-    "base_already_right": 1,
-    "listened": 1,
-    "reciters": 1,
-    "sites": 1
-   }
-  },
-  "ship_a_mining:ط→ت:h448_partner": {
-   "base_already_right": 6,
-   "held_out": {
-    "base_already_right": 2,
-    "listened": 3,
-    "reciters": 2,
-    "sites": 3
-   },
-   "listened": 7,
-   "reciters": 6,
-   "sites": 7,
-   "train": {
-    "base_already_right": 4,
+    "base_already_right": 0,
     "listened": 4,
     "reciters": 4,
     "sites": 4
    }
   },
-  "ship_a_mining:ط→ق:h448_partner": {
-   "base_already_right": 441,
-   "held_out": {
-    "base_already_right": 212,
-    "listened": 238,
-    "reciters": 83,
-    "sites": 238
-   },
-   "listened": 496,
-   "reciters": 166,
-   "sites": 496,
-   "train": {
-    "base_already_right": 229,
-    "listened": 258,
-    "reciters": 83,
-    "sites": 258
-   }
-  },
-  "ship_a_mining:ظ→ذ:h448_partner": {
+  "ship_a:ظ:h448_other": {
    "base_already_right": 4,
    "held_out": {
     "base_already_right": 1,
-    "listened": 1,
+    "listened": 0,
+    "reciters": 3,
+    "sites": 3
+   },
+   "listened": 0,
+   "reciters": 7,
+   "sites": 7,
+   "train": {
+    "base_already_right": 3,
+    "listened": 0,
+    "reciters": 4,
+    "sites": 4
+   }
+  },
+  "ship_a:ظ→ذ:h448_partner:base_right": {
+   "base_already_right": 1,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 0,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 1,
+    "listened": 0,
     "reciters": 1,
     "sites": 1
+   }
+  },
+  "ship_a:ظ→ض:h448_partner:base_right": {
+   "base_already_right": 4,
+   "held_out": {
+    "base_already_right": 2,
+    "listened": 2,
+    "reciters": 2,
+    "sites": 2
    },
-   "listened": 4,
+   "listened": 2,
    "reciters": 4,
    "sites": 4,
    "train": {
-    "base_already_right": 3,
-    "listened": 3,
-    "reciters": 3,
-    "sites": 3
+    "base_already_right": 2,
+    "listened": 0,
+    "reciters": 2,
+    "sites": 2
    }
   },
-  "ship_a_mining:ظ→ض:h448_partner": {
-   "base_already_right": 77,
+  "ship_a:ظ→ض:h448_partner:base_wrong": {
+   "base_already_right": 0,
    "held_out": {
-    "base_already_right": 46,
-    "listened": 53,
-    "reciters": 35,
-    "sites": 53
-   },
-   "listened": 101,
-   "reciters": 66,
-   "sites": 101,
-   "train": {
-    "base_already_right": 31,
-    "listened": 48,
-    "reciters": 31,
-    "sites": 48
-   }
-  },
-  "ship_a_mining:ق→ط:h448_partner": {
-   "base_already_right": 11,
-   "held_out": {
-    "base_already_right": 7,
+    "base_already_right": 0,
     "listened": 7,
     "reciters": 7,
     "sites": 7
@@ -1633,49 +1425,733 @@
    "reciters": 11,
    "sites": 12,
    "train": {
-    "base_already_right": 4,
+    "base_already_right": 0,
     "listened": 5,
     "reciters": 4,
     "sites": 5
    }
   },
-  "ship_a_mining:ق→ك:h448_partner": {
-   "base_already_right": 20,
+  "ship_a:ق:h448_other": {
+   "base_already_right": 11,
    "held_out": {
-    "base_already_right": 10,
-    "listened": 15,
-    "reciters": 9,
-    "sites": 15
+    "base_already_right": 8,
+    "listened": 0,
+    "reciters": 7,
+    "sites": 8
    },
-   "listened": 26,
-   "reciters": 17,
-   "sites": 26,
+   "listened": 0,
+   "reciters": 11,
+   "sites": 12,
    "train": {
-    "base_already_right": 10,
-    "listened": 11,
-    "reciters": 8,
+    "base_already_right": 3,
+    "listened": 0,
+    "reciters": 4,
+    "sites": 4
+   }
+  },
+  "ship_a:ق→ط:h448_partner:base_right": {
+   "base_already_right": 3,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 0,
+   "reciters": 3,
+   "sites": 3,
+   "train": {
+    "base_already_right": 3,
+    "listened": 0,
+    "reciters": 3,
+    "sites": 3
+   }
+  },
+  "ship_a:ق→ك:h448_partner:base_right": {
+   "base_already_right": 5,
+   "held_out": {
+    "base_already_right": 5,
+    "listened": 5,
+    "reciters": 5,
+    "sites": 5
+   },
+   "listened": 5,
+   "reciters": 5,
+   "sites": 5,
+   "train": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   }
+  },
+  "ship_a:ق→ك:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 2,
+    "reciters": 2,
+    "sites": 2
+   },
+   "listened": 4,
+   "reciters": 3,
+   "sites": 4,
+   "train": {
+    "base_already_right": 0,
+    "listened": 2,
+    "reciters": 1,
+    "sites": 2
+   }
+  },
+  "ship_a:ك:h448_other": {
+   "base_already_right": 16,
+   "held_out": {
+    "base_already_right": 9,
+    "listened": 0,
+    "reciters": 10,
+    "sites": 10
+   },
+   "listened": 0,
+   "reciters": 21,
+   "sites": 21,
+   "train": {
+    "base_already_right": 7,
+    "listened": 0,
+    "reciters": 11,
     "sites": 11
    }
   },
-  "ship_a_mining:ك→ق:h448_partner": {
+  "ship_a:ك→ق:h448_partner:base_right": {
+   "base_already_right": 4,
+   "held_out": {
+    "base_already_right": 2,
+    "listened": 0,
+    "reciters": 2,
+    "sites": 2
+   },
+   "listened": 0,
+   "reciters": 4,
+   "sites": 4,
+   "train": {
+    "base_already_right": 2,
+    "listened": 0,
+    "reciters": 2,
+    "sites": 2
+   }
+  },
+  "ship_a:ك→ق:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 6,
+   "reciters": 5,
+   "sites": 6,
+   "train": {
+    "base_already_right": 0,
+    "listened": 6,
+    "reciters": 5,
+    "sites": 6
+   }
+  },
+  "ship_a:ه:h448_other": {
+   "base_already_right": 50,
+   "held_out": {
+    "base_already_right": 29,
+    "listened": 0,
+    "reciters": 23,
+    "sites": 32
+   },
+   "listened": 0,
+   "reciters": 42,
+   "sites": 57,
+   "train": {
+    "base_already_right": 21,
+    "listened": 0,
+    "reciters": 19,
+    "sites": 25
+   }
+  },
+  "ship_a:ه→ح:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   },
+   "listened": 2,
+   "reciters": 2,
+   "sites": 2,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a_mining:kasb:س→ش:h448_partner": {
+   "base_already_right": 6,
+   "held_out": {
+    "base_already_right": 4,
+    "listened": 12,
+    "reciters": 39,
+    "sites": 57
+   },
+   "listened": 18,
+   "reciters": 73,
+   "sites": 108,
+   "train": {
+    "base_already_right": 2,
+    "listened": 6,
+    "reciters": 34,
+    "sites": 51
+   }
+  },
+  "ship_a_mining:ت→ط:h448_partner:base_right": {
+   "base_already_right": 1,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 0,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 1,
+    "listened": 0,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a_mining:ح→ه:h448_partner:base_right": {
+   "base_already_right": 6,
+   "held_out": {
+    "base_already_right": 1,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   },
+   "listened": 1,
+   "reciters": 6,
+   "sites": 6,
+   "train": {
+    "base_already_right": 5,
+    "listened": 0,
+    "reciters": 5,
+    "sites": 5
+   }
+  },
+  "ship_a_mining:ح→ه:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   }
+  },
+  "ship_a_mining:ذ→ز:h448_partner:base_right": {
+   "base_already_right": 8,
+   "held_out": {
+    "base_already_right": 5,
+    "listened": 5,
+    "reciters": 5,
+    "sites": 5
+   },
+   "listened": 5,
+   "reciters": 8,
+   "sites": 8,
+   "train": {
+    "base_already_right": 3,
+    "listened": 0,
+    "reciters": 3,
+    "sites": 3
+   }
+  },
+  "ship_a_mining:ذ→ظ:h448_partner:base_right": {
+   "base_already_right": 1,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 0,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 1,
+    "listened": 0,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a_mining:ذ→ظ:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a_mining:ز→ذ:h448_partner:base_right": {
+   "base_already_right": 36,
+   "held_out": {
+    "base_already_right": 19,
+    "listened": 14,
+    "reciters": 17,
+    "sites": 19
+   },
+   "listened": 14,
+   "reciters": 29,
+   "sites": 36,
+   "train": {
+    "base_already_right": 17,
+    "listened": 0,
+    "reciters": 12,
+    "sites": 17
+   }
+  },
+  "ship_a_mining:ز→ذ:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 5,
+    "reciters": 5,
+    "sites": 5
+   },
+   "listened": 8,
+   "reciters": 8,
+   "sites": 8,
+   "train": {
+    "base_already_right": 0,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   }
+  },
+  "ship_a_mining:س→ش:h448_partner:base_right": {
+   "base_already_right": 23,
+   "held_out": {
+    "base_already_right": 14,
+    "listened": 9,
+    "reciters": 10,
+    "sites": 14
+   },
+   "listened": 9,
+   "reciters": 18,
+   "sites": 23,
+   "train": {
+    "base_already_right": 9,
+    "listened": 0,
+    "reciters": 8,
+    "sites": 9
+   }
+  },
+  "ship_a_mining:س→ش:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 10,
+    "reciters": 7,
+    "sites": 10
+   },
+   "listened": 16,
+   "reciters": 13,
+   "sites": 16,
+   "train": {
+    "base_already_right": 0,
+    "listened": 6,
+    "reciters": 6,
+    "sites": 6
+   }
+  },
+  "ship_a_mining:س→ص:h448_partner:base_right": {
+   "base_already_right": 28,
+   "held_out": {
+    "base_already_right": 17,
+    "listened": 15,
+    "reciters": 15,
+    "sites": 17
+   },
+   "listened": 15,
+   "reciters": 24,
+   "sites": 28,
+   "train": {
+    "base_already_right": 11,
+    "listened": 0,
+    "reciters": 9,
+    "sites": 11
+   }
+  },
+  "ship_a_mining:س→ص:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   },
+   "listened": 8,
+   "reciters": 8,
+   "sites": 8,
+   "train": {
+    "base_already_right": 0,
+    "listened": 5,
+    "reciters": 5,
+    "sites": 5
+   }
+  },
+  "ship_a_mining:ش→س:h448_partner:base_right": {
+   "base_already_right": 27,
+   "held_out": {
+    "base_already_right": 15,
+    "listened": 9,
+    "reciters": 10,
+    "sites": 15
+   },
+   "listened": 9,
+   "reciters": 17,
+   "sites": 27,
+   "train": {
+    "base_already_right": 12,
+    "listened": 0,
+    "reciters": 7,
+    "sites": 12
+   }
+  },
+  "ship_a_mining:ش→س:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a_mining:ص→س:h448_partner:base_right": {
+   "base_already_right": 21,
+   "held_out": {
+    "base_already_right": 10,
+    "listened": 4,
+    "reciters": 8,
+    "sites": 10
+   },
+   "listened": 4,
+   "reciters": 18,
+   "sites": 21,
+   "train": {
+    "base_already_right": 11,
+    "listened": 0,
+    "reciters": 10,
+    "sites": 11
+   }
+  },
+  "ship_a_mining:ص→س:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 3,
+    "reciters": 3,
+    "sites": 3
+   },
+   "listened": 3,
+   "reciters": 3,
+   "sites": 3,
+   "train": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   }
+  },
+  "ship_a_mining:ض→ظ:h448_partner:base_right": {
+   "base_already_right": 1,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 0,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 1,
+    "listened": 0,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a_mining:ط→ت:h448_partner:base_right": {
+   "base_already_right": 6,
+   "held_out": {
+    "base_already_right": 2,
+    "listened": 2,
+    "reciters": 2,
+    "sites": 2
+   },
+   "listened": 2,
+   "reciters": 6,
+   "sites": 6,
+   "train": {
+    "base_already_right": 4,
+    "listened": 0,
+    "reciters": 4,
+    "sites": 4
+   }
+  },
+  "ship_a_mining:ط→ت:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   }
+  },
+  "ship_a_mining:ط→ق:h448_partner:base_right": {
+   "base_already_right": 441,
+   "held_out": {
+    "base_already_right": 212,
+    "listened": 70,
+    "reciters": 79,
+    "sites": 212
+   },
+   "listened": 70,
+   "reciters": 158,
+   "sites": 441,
+   "train": {
+    "base_already_right": 229,
+    "listened": 0,
+    "reciters": 79,
+    "sites": 229
+   }
+  },
+  "ship_a_mining:ط→ق:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 26,
+    "reciters": 21,
+    "sites": 26
+   },
+   "listened": 55,
+   "reciters": 45,
+   "sites": 55,
+   "train": {
+    "base_already_right": 0,
+    "listened": 29,
+    "reciters": 24,
+    "sites": 29
+   }
+  },
+  "ship_a_mining:ظ→ذ:h448_partner:base_right": {
+   "base_already_right": 4,
+   "held_out": {
+    "base_already_right": 1,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   },
+   "listened": 1,
+   "reciters": 4,
+   "sites": 4,
+   "train": {
+    "base_already_right": 3,
+    "listened": 0,
+    "reciters": 3,
+    "sites": 3
+   }
+  },
+  "ship_a_mining:ظ→ض:h448_partner:base_right": {
+   "base_already_right": 77,
+   "held_out": {
+    "base_already_right": 46,
+    "listened": 34,
+    "reciters": 34,
+    "sites": 46
+   },
+   "listened": 34,
+   "reciters": 59,
+   "sites": 77,
+   "train": {
+    "base_already_right": 31,
+    "listened": 0,
+    "reciters": 25,
+    "sites": 31
+   }
+  },
+  "ship_a_mining:ظ→ض:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 7,
+    "reciters": 6,
+    "sites": 7
+   },
+   "listened": 24,
+   "reciters": 19,
+   "sites": 24,
+   "train": {
+    "base_already_right": 0,
+    "listened": 17,
+    "reciters": 13,
+    "sites": 17
+   }
+  },
+  "ship_a_mining:ق→ط:h448_partner:base_right": {
+   "base_already_right": 11,
+   "held_out": {
+    "base_already_right": 7,
+    "listened": 3,
+    "reciters": 7,
+    "sites": 7
+   },
+   "listened": 3,
+   "reciters": 10,
+   "sites": 11,
+   "train": {
+    "base_already_right": 4,
+    "listened": 0,
+    "reciters": 3,
+    "sites": 4
+   }
+  },
+  "ship_a_mining:ق→ط:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 0,
+    "reciters": 0,
+    "sites": 0
+   },
+   "listened": 1,
+   "reciters": 1,
+   "sites": 1,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a_mining:ق→ك:h448_partner:base_right": {
+   "base_already_right": 20,
+   "held_out": {
+    "base_already_right": 10,
+    "listened": 6,
+    "reciters": 7,
+    "sites": 10
+   },
+   "listened": 6,
+   "reciters": 14,
+   "sites": 20,
+   "train": {
+    "base_already_right": 10,
+    "listened": 0,
+    "reciters": 7,
+    "sites": 10
+   }
+  },
+  "ship_a_mining:ق→ك:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 5,
+    "reciters": 4,
+    "sites": 5
+   },
+   "listened": 6,
+   "reciters": 5,
+   "sites": 6,
+   "train": {
+    "base_already_right": 0,
+    "listened": 1,
+    "reciters": 1,
+    "sites": 1
+   }
+  },
+  "ship_a_mining:ك→ق:h448_partner:base_right": {
    "base_already_right": 40,
    "held_out": {
     "base_already_right": 21,
-    "listened": 27,
-    "reciters": 22,
-    "sites": 27
+    "listened": 16,
+    "reciters": 19,
+    "sites": 21
    },
-   "listened": 50,
-   "reciters": 38,
-   "sites": 50,
+   "listened": 16,
+   "reciters": 32,
+   "sites": 40,
    "train": {
     "base_already_right": 19,
-    "listened": 23,
-    "reciters": 16,
-    "sites": 23
+    "listened": 0,
+    "reciters": 13,
+    "sites": 19
    }
   },
-  "ship_a_mining:ه→ح:h448_partner": {
+  "ship_a_mining:ك→ق:h448_partner:base_wrong": {
+   "base_already_right": 0,
+   "held_out": {
+    "base_already_right": 0,
+    "listened": 5,
+    "reciters": 3,
+    "sites": 5
+   },
+   "listened": 9,
+   "reciters": 7,
+   "sites": 9,
+   "train": {
+    "base_already_right": 0,
+    "listened": 4,
+    "reciters": 4,
+    "sites": 4
+   }
+  },
+  "ship_a_mining:ه→ح:h448_partner:base_right": {
    "base_already_right": 3,
    "held_out": {
     "base_already_right": 1,
@@ -1683,12 +2159,12 @@
     "reciters": 1,
     "sites": 1
    },
-   "listened": 3,
+   "listened": 1,
    "reciters": 3,
    "sites": 3,
    "train": {
     "base_already_right": 2,
-    "listened": 2,
+    "listened": 0,
     "reciters": 2,
     "sites": 2
    }

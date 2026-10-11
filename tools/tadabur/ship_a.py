@@ -10,7 +10,7 @@ and read on held-out reciters only.
 scorer's outcomes of both frozen decodes) and from the clips Ship A's mining extension
 found (:mod:`tadabur.ship_a_mining`):
 
-* **pair**: every carrier of a target pair (:data:`tadabur.truth_sites.ALL_TARGET_PAIRS`:
+* **pair**: every carrier of a target pair (:data:`tadabur.truth_sites.TARGET_PAIRS`:
   the six soft pairs, ``ذ↔ظ``, and the owner's ``س↔ش`` and ``ط↔ق``) where ``h448`` commits a
   consonant other than the mushaf letter, once per carrier. A carrier in two pairs (``ذ``,
   ``ظ``, ``س``, ``ط``, ``ق``) is asked as the pair whose partner ``h448`` committed, else as the
@@ -47,6 +47,7 @@ Usage (from ``tools/``; torch-free, needs ``quran-transcript``, ~4 min)::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -71,7 +72,15 @@ from .power_frame import (
     load_scored_pool,
     partner,
 )
-from .truth_sites import ALL_TARGET_PAIRS, HELD, NOT_HELD, SHADDAH, TruthSite, _check_file
+from .truth_sites import (
+    CONSONANTS,
+    HELD,
+    NOT_HELD,
+    SHADDAH,
+    TARGET_PAIRS,
+    TruthSite,
+    _check_file,
+)
 
 SITES_PATH = SHIP_A_DIR / "sites.jsonl"
 SITES_SUMMARY_PATH = SHIP_A_DIR / "sites.summary.json"
@@ -83,6 +92,14 @@ HELD_OUT = "held_out"
 HALVES = (TRAIN, HELD_OUT)
 #: The train half's cutoff: 50/50, confirmed by the owner (D11).
 SPLIT_CUTOFF = 2**63
+#: How the listened sites are chosen (:func:`select_listening`).
+SELECTION_SALT = "ship-a-listening-2026-10"
+#: The ``كسب`` swaps asked (owner decision 2026-10-10 B: about 20); the rest take the
+#: sample's verdict (``docs/ship-a-sizing.md``).
+KASB_SAMPLE = 20
+KASB_DIRECTION = "س→ش"
+#: The ``كسب`` swaps' stratum (after the source's prefix): one sample is drawn across both.
+KASB_STRATUM = "kasb:س→ش:h448_partner"
 #: The strata prefixes of the pool's sites and of the mining extension's.
 POOL_PREFIX = "ship_a"
 MINING_PREFIX = "ship_a_mining"
@@ -109,6 +126,8 @@ class ShipASite:
     half: str
     h448_committed: str | None
     base_committed: str | None
+    #: The chance the site is on the worklist (:func:`select_listening`); 0 if it never is.
+    listen_probability: float = 0.0
 
     @property
     def site(self) -> TruthSite:
@@ -130,23 +149,43 @@ class ShipASite:
 
     @property
     def listened(self) -> bool:
-        """On the worklist: every partner swap, and the geminates the teacher does not hold."""
-        return self.partner_swap or (self.kind == GEMINATE and not self.base_already_right)
+        """On the worklist (:func:`select_listening`)."""
+        return self.listen_probability > 0
+
+    @property
+    def kasb(self) -> bool:
+        """A ``س``→``ش`` swap on a ``كسب``-form carrier (D9 B: a sample of them is asked)."""
+        return self.site.stratum.endswith(f":{KASB_STRATUM}")
 
     @property
     def partner_swap(self) -> bool:
         return self.kind == PAIR and self.h448_committed == partner(self.site)
 
 
+def kasb_form(row: SessionSite) -> bool:
+    """Whether a ``س`` carrier is the ``س`` of the consonants ``كسب`` in its word (كَسَبَت,
+    يَكسِبُون, …): the root ``h448`` and the base teacher both hear as ``كشب`` (D9 B)."""
+    site, offsets = row.site, row.word_offsets
+    start = max(o for o in offsets if o <= site.reference_index)
+    end = min(o for o in offsets if o > site.reference_index)
+    letters = [i for i in range(start, end) if site.reference[i] in CONSONANTS]
+    k = letters.index(site.reference_index)
+    return "".join(site.reference[i] for i in letters[max(0, k - 1):k + 2]) == "كسب"
+
+
 def ship_a_stratum(scored: ScoredSite, prefix: str) -> str:
-    """The stratum a flagged site is mined into (module docstring)."""
+    """The stratum a flagged site is mined into (module docstring): a partner swap's by the
+    base teacher's outcome, the ``كسب`` swaps in their own."""
     site = scored.site
     if site.mark == SHADDAH:
         teacher = "base_held" if scored.base_mushaf else "base_not_held"
         return f"{prefix}:shaddah:held:h448_single:{teacher}"
-    if scored.h448.committed == partner(site):
-        return f"{prefix}:{direction(site)}:h448_partner"
-    return f"{prefix}:{site.prescribed}:h448_other"
+    if scored.h448.committed != partner(site):
+        return f"{prefix}:{site.prescribed}:h448_other"
+    if direction(site) == KASB_DIRECTION and kasb_form(scored.row):
+        return f"{prefix}:{KASB_STRATUM}"
+    teacher = "base_right" if scored.base_mushaf else "base_wrong"
+    return f"{prefix}:{direction(site)}:h448_partner:{teacher}"
 
 
 def flagged_sites(scored: Iterable[ScoredSite]) -> list[ScoredSite]:
@@ -154,7 +193,7 @@ def flagged_sites(scored: Iterable[ScoredSite]) -> list[ScoredSite]:
     carriers: dict[tuple, list[ScoredSite]] = defaultdict(list)
     geminates = []
     for one in scored:
-        if one.site.mark in ALL_TARGET_PAIRS and one.h448_flagged:
+        if one.site.mark in TARGET_PAIRS and one.h448_flagged:
             site = one.site
             carriers[(site.audio_filename, site.start_sample, site.reference_index)].append(one)
         elif one.stratum == IN_WORD_GEMINATES and one.h448.committed == NOT_HELD:
@@ -167,13 +206,58 @@ def flagged_sites(scored: Iterable[ScoredSite]) -> list[ScoredSite]:
     return chosen + geminates
 
 
-def mine(scored: Iterable[ScoredSite], prefix: str = POOL_PREFIX) -> list[ShipASite]:
-    """Every flagged site, each in its stratum with that stratum's population, sorted by id."""
-    flagged = flagged_sites(scored)
-    strata = [ship_a_stratum(one, prefix) for one in flagged]
-    population: dict[str, int] = defaultdict(int)
-    for stratum in strata:
-        population[stratum] += 1
+def _rank(*parts) -> str:
+    return hashlib.sha256(":".join((SELECTION_SALT, *map(str, parts))).encode()).hexdigest()
+
+
+def select_listening(sites: list[ShipASite]) -> dict[str, float]:
+    """Each listened site's chance of being on the worklist (owner decisions D10 and
+    2026-10-10 A and B); a site absent from the result is not listened to.
+
+    * a geminate the base teacher does not hold: always (D10);
+    * a partner swap the base teacher gets wrong: always (its label needs the ear);
+    * a partner swap the teacher gets right, on a **held-out** reciter: one per reciter and
+      family, the first by salted rank, chance ``1 / k`` among that reciter's ``k`` (for
+      evaluation). On the train half none: their target is the teacher's decode;
+    * a ``كسب`` swap: :data:`KASB_SAMPLE` of them, reciters in salted order taking one site
+      each per round (their sites by salted rank), so the sample spreads over reciters. A
+      reciter given ``m`` of its ``n`` sites gives each chance ``m / n``.
+    """
+    chosen: dict[str, float] = {}
+    teacher_right: dict[tuple, list[ShipASite]] = defaultdict(list)
+    kasb: dict[int, list[ShipASite]] = defaultdict(list)
+    for site in sites:
+        if site.kasb:
+            kasb[site.reciter_id].append(site)
+        elif site.kind == GEMINATE or site.partner_swap:
+            if not site.base_already_right:
+                chosen[site.site.site_id] = 1.0
+            elif site.partner_swap and site.half == HELD_OUT:
+                teacher_right[(site.reciter_id, site.family)].append(site)
+    for group in teacher_right.values():
+        first = min(group, key=lambda s: _rank(s.site.site_id))
+        chosen[first.site.site_id] = 1 / len(group)
+    queues = {r: sorted(group, key=lambda s: _rank(s.site.site_id)) for r, group in kasb.items()}
+    order = sorted(queues, key=lambda r: _rank("reciter", r))
+    taken: dict[int, int] = defaultdict(int)
+    for round_ in range(max(map(len, queues.values()), default=0)):
+        for reciter in order:
+            if sum(taken.values()) < KASB_SAMPLE and round_ < len(queues[reciter]):
+                taken[reciter] += 1
+    for reciter, m in taken.items():
+        for site in queues[reciter][:m]:
+            chosen[site.site.site_id] = m / len(queues[reciter])
+    return chosen
+
+
+def mine_all(pool: Iterable[ScoredSite], extension: Iterable[ScoredSite] = ()) -> list[ShipASite]:
+    """The pool's flagged sites and the extension's partner swaps (module docstring), each in
+    its stratum with that stratum's population and its chance of being listened to, by id."""
+    flagged = [*((one, POOL_PREFIX) for one in flagged_sites(pool)),
+               *((one, MINING_PREFIX) for one in flagged_sites(extension)
+                 if one.site.mark in TARGET_PAIRS and one.h448.committed == partner(one.site))]
+    strata = [ship_a_stratum(one, prefix) for one, prefix in flagged]
+    population = Counter(strata)
     sites = [
         ShipASite(
             row=replace(one.row, site=replace(one.site, stratum=stratum,
@@ -183,14 +267,17 @@ def mine(scored: Iterable[ScoredSite], prefix: str = POOL_PREFIX) -> list[ShipAS
             h448_committed=one.h448.committed,
             base_committed=one.base.committed,
         )
-        for one, stratum in zip(flagged, strata)
+        for (one, _), stratum in zip(flagged, strata)
     ]
-    return sorted(sites, key=lambda s: s.site.site_id)
+    chances = select_listening(sites)
+    return sorted((replace(s, listen_probability=chances.get(s.site.site_id, 0.0)) for s in sites),
+                  key=lambda s: s.site.site_id)
+
 
 
 # --- the files -------------------------------------------------------------------------------
 
-_SITE_FIELDS = ("reciter_id", "half", "h448_committed", "base_committed")
+_SITE_FIELDS = ("reciter_id", "half", "h448_committed", "base_committed", "listen_probability")
 
 
 def site_json(site: ShipASite) -> dict:
@@ -198,7 +285,7 @@ def site_json(site: ShipASite) -> dict:
 
 
 def parse_ship_a_site(data: dict, where: str) -> ShipASite:
-    """One validated row: a worklist row plus the four Ship A fields, its half recomputed."""
+    """One validated row: a worklist row plus the Ship A fields, its half recomputed."""
     extra = {name: data.get(name) for name in _SITE_FIELDS}
     row = parse_row({k: v for k, v in data.items() if k not in _SITE_FIELDS}, where)
     site = ShipASite(row=row, **extra)
@@ -208,6 +295,8 @@ def parse_ship_a_site(data: dict, where: str) -> ShipASite:
         raise ValueError(f"{where}: a Ship A geminate is a held one h448 decoded single")
     if site.kind == PAIR and site.h448_committed in (None, site.site.prescribed):
         raise ValueError(f"{where}: a Ship A pair site is one h448 committed another letter at")
+    if type(site.listen_probability) is not float or not 0 <= site.listen_probability <= 1:
+        raise ValueError(f"{where}: listen_probability is not a float in [0, 1]")
     return site
 
 
@@ -278,6 +367,24 @@ def swap_checks(sites: list[ShipASite]) -> dict:
     return checks
 
 
+def listening_counts(sites: list[ShipASite]) -> dict[str, dict[str, int]]:
+    """How :func:`select_listening` treats each kind of site: how many there are and how
+    many are listened to."""
+    def kind(site: ShipASite) -> str:
+        if site.kind == GEMINATE:
+            return "geminate, teacher holds" if site.base_already_right else "geminate"
+        if not site.partner_swap:
+            return "other letter"
+        if site.kasb:
+            return "كسب swap"
+        if not site.base_already_right:
+            return "swap, teacher wrong"
+        return f"swap, teacher right, {site.half}"
+
+    return {name: {"sites": len(group), "listened": sum(s.listened for s in group)}
+            for name, group in sorted(_by(sites, kind).items())}
+
+
 def _by(sites: list[ShipASite], key) -> dict[str, list[ShipASite]]:
     groups: dict[str, list[ShipASite]] = defaultdict(list)
     for site in sites:
@@ -306,6 +413,7 @@ def summarize(sites: list[ShipASite], frame_strata: dict, provenance: dict) -> d
             ).most_common()),
         },
         "partner_swap_checks": swap_checks(sites),
+        "listening": listening_counts(sites),
         "extension_families": {
             name: _counts(group) for name, group in sorted(_by(
                 [s for s in sites if s.site.stratum.startswith(f"{MINING_PREFIX}:")],
@@ -332,12 +440,6 @@ def split_record(reciters: Iterable[int]) -> dict:
         "reciters": {half: sum(h == half for h in halves.values()) for half in HALVES},
         "halves": halves,
     }
-
-
-def mine_all(pool: list[ScoredSite], extension: list[ScoredSite]) -> list[ShipASite]:
-    """The pool's sites and the extension's partner swaps (module docstring), by id."""
-    mined = [*mine(pool), *(s for s in mine(extension, MINING_PREFIX) if s.partner_swap)]
-    return sorted(mined, key=lambda s: s.site.site_id)
 
 
 def inputs(extension: PoolFiles) -> dict[str, str]:

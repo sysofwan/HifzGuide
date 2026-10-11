@@ -76,7 +76,7 @@ def _power_rows(sizing: Mapping, side: str, rule: str = ONE_PER_RECITER,
     return [[cell, _n(round(e["n"], 1)), *(e[rate] for rate in rates)] for cell, e in rows.items()]
 
 
-def _section_counts(sizing: Mapping, sites: Mapping, totals: Mapping) -> str:
+def _section_counts(sizing: Mapping, sites: Mapping, frame: Mapping, totals: Mapping) -> str:
     rows = [[name, e["sites"], e["base_already_right"], "yes" if e["listened"] else "no"]
             for name, e in sizing["budget"]["directions"].items() if name != "shaddah"]
     partner = sites["pool_pair_commits"]["partner"]
@@ -100,10 +100,15 @@ The target pairs are nine (D9, `CONTEXT.md`): the six Muraja soft pairs, `ذ↔�
 owner's `س↔ش` and `ط↔ق`, which the app does not forgive yet. They are reported as their own
 families and never pooled with the soft pairs.
 
+Every population here is `h448`-unseen: no clip whose recording is tied, even as an alias or
+a probable copy, to what `h448` trained on, `decode_evalset` or the sealed panel
+(`exposure.unseen_violations`). That leaves out {frame["linked_clips_left_out"]} of the pool's
+clips.
+
 - **Pair carriers in the mining pool.** `h448` commits a letter other than the mushaf's at
   **{pair_flagged} unique carriers**. **{partner["sites"]}** of them are **partner swaps** (the
-  pair's other letter), the sites Ship A listens to; the other **{other["sites"]}** commit a
-  letter outside every target pair and are not asked (D9). The commonest commits:
+  pair's other letter), the sites Ship A's listening is drawn from (below); the other
+  **{other["sites"]}** commit a letter outside every target pair and are not asked (D9). The commonest commits:
   {commonest}. The owner traced `ت`→`ه` to a ta marbuta the reciter paused on where the
   realized reference has wasl `ت`: a reference problem (#130), not a model one. The base teacher
   already commits the mushaf letter at {partner["base_already_right"]} of the swaps.
@@ -128,7 +133,7 @@ named by the letter committed; any other letter is grouped per carrier):
 def _section_mining(mining: Mapping, mining_frame: Mapping, sites: Mapping) -> str:
     excluded = ", ".join(f"{reason} {n:,}" for reason, n in mining_frame["excluded"].items())
     rows = [[pair, e["h448"]["partner_commits"], e["h448"]["clips"], e["base"]["partner_commits"],
-             sites["extension_families"].get(pair, {}).get("listened", 0)]
+             sites["extension_families"].get(pair, {}).get("sites", 0)]
             for pair, e in mining["pairs"].items()]
     return f"""## Mining more partner swaps (D9)
 
@@ -143,8 +148,17 @@ shards, {mining["scanned_clips"]:,} clips of {mining["scanned_reciters"]} recite
 {mining["scan_gpu_hours"]} GPU-hours**, each clip decoded whole by `h448` (b = 0 stream) and
 the base teacher. **{mining["hit_clips"]} clips** ({mining["hit_clips_per_gpu_hour"]} per
 GPU-hour) hold an `h448` partner swap; they were staged, segmented as the pool was, and
-mined like it ({mining["kept_hit_clips"]} kept a segment). A scanned clip's inclusion
-probability is {mining_frame["inclusion_probability"]:.3f} (scanned shards / frame shards).
+mined like it. The build leaves out {len(mining["duplicate_recordings_dropped"])} hits that
+repeat a staged recording byte for byte and {len(mining["linked_recordings_dropped"])} tied to a
+`decode_evalset` recording (the scan's frame followed links to `h448`'s training shards
+only); {mining["kept_hit_clips"]} of the rest kept a segment. Every scanned recording, hit or
+not, is in the exposure registry as `ship_a.mining`.
+
+The scan stopped when its GPU-time budget was spent, and that stopping rule depends on how
+long each shard takes, so the scanned shards are **not** a random sample of the frame's.
+**Inference from the extension is restricted to the scanned population**, of which the hits
+are a census: its clips carry inclusion probability 1, and nothing here extends it to the
+unscanned shards.
 
 Per target pair, the partner commits in the scanned clips (whole-ayah alignment) and the
 partner swaps mined from the hit clips' kept segments:
@@ -176,6 +190,37 @@ Listening decides them; until then they are not evidence of an `h448`-only error
 """
 
 
+def _section_listening(sites: Mapping) -> str:
+    rows = [[kind, e["sites"], e["listened"]] for kind, e in sites["listening"].items()]
+    return f"""## What is listened to (owner decision, 2026-10-10)
+
+The owner chose the lean set over every partner swap (decision A) and a sample of the
+`كسب` swaps (decision B). `tadabur.ship_a.select_listening` applies it:
+
+- **A partner swap the base teacher gets wrong** is always listened to: its training label
+  needs the ear.
+- **A partner swap the base teacher gets right** is listened to on held-out reciters only,
+  one per reciter and family (the first by salted rank, so with chance `1 / k` among that
+  reciter's `k`), for evaluation. **The rest are not listened to.** As D10 does for the
+  geminates the teacher holds, their training target is the teacher's own decode (the
+  mushaf letter; ADR-0011 §3), and they are no verified site in any evaluation. On held-out
+  reciters, recovery of teacher-right swaps is read on the one-per-reciter sample, weighted
+  by its recorded chance.
+- **A `كسب` swap** (`س`→`ش` on the `س` of the consonants `كسب`, which both models hear as
+  `ش`) is listened to only in a sample of 20: reciters in salted order take one site each per
+  round, so the sample spreads over reciters; a reciter given `m` of its `n` such sites gives
+  each the chance `m / n`. **The rest take the sample's verdict**, by this rule, fixed before
+  any is heard: if a majority of the sampled sites with a verdict (`unclear` aside) are
+  heard as one letter, every unsampled `كسب` site takes that letter as its label; with no
+  majority they get no label and stay out of training and evaluation. Which letter that is,
+  is left to the listening.
+- **A geminate** is listened to when the teacher does not hold it (D10); **another letter**
+  never (D9).
+
+{_table(["site", "mined", "listened"], rows)}
+"""
+
+
 def _section_budget(sizing: Mapping) -> str:
     rows = []
     for name, e in sizing["budget"]["families"].items():
@@ -192,9 +237,9 @@ def _section_budget(sizing: Mapping) -> str:
     soft = sizing["budget"]["cells"][SOFT_PAIRS_POOLED]
     return f"""## 1. Verification budget
 
-Listened: every partner swap (pool and extension) and every in-word geminate the base does
-not hold ({sizing["budget"]["cells"][GEMINATES]["listened"]}, a census; the ~300-geminate
-slot of the first plan). Listened sites (reciters) per half of the confirmed 50/50 split
+Listened: the sites the section above selects ({sizing["budget"]["cells"][GEMINATES]["listened"]}
+geminates, a census of those the base does not hold; the ~300-geminate slot of the first
+plan). Listened sites (reciters) per half of the confirmed 50/50 split
 (D11). A held-out cell with fewer than {rule["min_reciters"]} reciters or {rule["min_sites"]}
 sites is sparse (§1): its family is reported as insufficient evidence (§7).
 
@@ -369,22 +414,18 @@ shown whole):
 
 
 def _section_questions(worklist: Mapping) -> str:
-    swaps, lean = worklist["parts"]["pair_partner"], worklist["lean_partner_swaps"]
-    return f"""## For the owner
+    return f"""## Notes for the owner
 
-- **Listening load.** The worklist asks every partner swap ({swaps["rows"]}, {_n(swaps["minutes"])}
-  minutes), as D6 and D9 set it. A leaner option: every swap the base teacher gets wrong
-  (its label needs the ear) plus one teacher-right swap per held-out reciter and family for
-  evaluation, the train half's teacher-right swaps taking the teacher's decode (ADR-0011 §3):
-  {lean["rows"]} swaps, {_n(lean["minutes"])} minutes.
-- **§7 and the frozen cells.** `س↔ش` and `ط↔ق` are target pairs (D9), but acceptance rules
-  §7 and the #84 scorer's frozen required cells still name seven pairs. Gating on the new
-  pairs needs an owner-signed amendment; until then the code keeps them apart
-  (`truth_sites.ADDED_TARGET_PAIRS`).
-- **Training on held-out reciters' other audio.** The exposure registry now lists the split's
-  two halves (`ship_a.verified_train`, `ship_a.verified_held_out`). It does not yet keep the
-  held-out reciters out of the probe's full-shard training stream: every one of them also
-  has rows in `h448`'s training shards, so excluding them is a #94 decision.
+- **§7 amended.** Acceptance rules §7 now names nine target pairs (D9, 2026-10-10); the #84
+  scorer's frozen required cells follow `truth_sites.TARGET_PAIRS`. No threshold, margin or
+  ceiling moved. The committed truth-baseline report predates the amendment and lists seven.
+- **P3.5 safeguards on linked clips.** {worklist["p35_rows_on_linked_clips"]} of the 23 P3.5
+  re-listens sit on clips tied to a recording `h448` trained on or `decode_evalset`. They
+  stay on the worklist as §8's targeted safeguards; they were never `h448`-unseen evaluation.
+- **Training on held-out reciters' other audio.** The exposure registry lists the split's two
+  halves (`ship_a.verified_train`, `ship_a.verified_held_out`). Keeping the held-out reciters
+  out of the probe's full-shard training stream is #94's decision: every one of them also
+  has rows in `h448`'s training shards.
 - **Floors and margins** (#128): every power here is over a grid; none is chosen.
 """
 
@@ -408,9 +449,10 @@ def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
     totals = frame_totals(frame)
     return "\n".join([
         HEADER,
-        _section_counts(sizing, sites, totals),
+        _section_counts(sizing, sites, frame, totals),
         _section_mining(mining, mining_frame, sites),
         _section_checks(sites),
+        _section_listening(sites),
         _section_budget(sizing),
         _section_power(sizing),
         _section_harm(sizing),

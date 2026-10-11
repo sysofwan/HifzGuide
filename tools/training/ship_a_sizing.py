@@ -65,7 +65,7 @@ from tadabur.ship_a import (
     load_sites,
     reciter_half,
 )
-from tadabur.truth_sites import ADDED_TARGET_PAIRS, SHADDAH, SOFT_PAIRS
+from tadabur.truth_sites import SHADDAH, SOFT_PAIRS, UNFORGIVEN_PAIRS
 from tadabur.word_sample import WORD_SAMPLE_PATH, load_words
 from training.acceptance_stats import (
     LOWER,
@@ -93,7 +93,6 @@ from training.power_simulation import (
     sigma_for,
     size_component,
 )
-from training.site_outcomes import DHAL_ZAH
 from training.tashkeel_eval import write_text_atomically
 
 SIZING_PATH = SHIP_A_DIR / "sizing.json"
@@ -180,7 +179,7 @@ def cells(sites: list[ShipASite]) -> dict[str, list[ShipASite]]:
     return {
         SOFT_PAIRS_POOLED: [s for s in sites if s.family in SOFT_PAIRS],
         **{family: [s for s in sites if s.family == family]
-           for family in (*sorted(SOFT_PAIRS), DHAL_ZAH, *sorted(ADDED_TARGET_PAIRS))},
+           for family in (*sorted(SOFT_PAIRS), *sorted(UNFORGIVEN_PAIRS))},
         GEMINATES: [s for s in sites if s.kind == GEMINATE and s.listened],
     }
 

@@ -154,7 +154,12 @@ in its shards; recording-level disjointness is asserted against every other use.
 
 ## 7. Target pairs
 
-The six soft pairs plus **ذ↔ظ** (owner decision). Every pair is reported with **directional** strata
+~~The six soft pairs plus **ذ↔ظ** (owner decision).~~ *Superseded 2026-10-10 by owner decision D9
+(#126): the pair list below replaces it. Nothing else in this section changed.*
+
+The six soft pairs plus **ذ↔ظ** (owner decision, 2026-10-08), **س↔ش** and **ط↔ق** (owner decision D9,
+2026-10-10). Only the six soft pairs are Muraja soft pairs; the other three get no app allowance and
+are never pooled with them. Every pair is reported with **directional** strata
 (e.g. ذ→ظ and ظ→ذ separately) on both recitation sides. A pair without support on both sides is
 reported as "in scope, insufficient evidence" and gets no discrimination or retirement verdict.
 
@@ -209,3 +214,4 @@ ADR-0011 §5. Each is recorded in the scorer's module docs and pinned by a test:
 | 2026-10-08 | GPT-6 Astra round 2 returned CHANGES_REQUESTED. Revised without changing any owner number: per-site outcome definitions (C, A, F); an aggregation truth table and frozen required cells; statistic-specific sparse-cell rules and adverse endpoints; per-mark commit-rate guards restored; headline restricted to the sampled subpopulation; a human-truth final panel required before #97; bias comparator, admissibility and held-out guards; a pre-registered power simulation covering every gate, with a prescribed-sukun stratum; operational definitions frozen in #84. |
 | 2026-10-08 | GPT-6 Astra round 3: shaddah added to the correct-side commit-rate guard (provisional); the mistake-side committed-accuracy guard added to bias admissibility. Truth-site counts aligned with `tools/tadabur/truth_sites/README.md` on main. |
 | 2026-10-08 | Owner amendment to §6 (#89 review): the sealed panel is reciter-disjoint from every use this PRD makes and recording-held-out toward `h448`'s original training and initialisation, which baseline and candidates share; it certifies the paired §3 criterion. No number changed. |
+| 2026-10-10 | Owner decision D9 (#126): §7's target pairs gain **س↔ش** and **ط↔ق**, and the #84 scorer's frozen required cells (`truth_scorer.REQUIRED_CELLS`, built from `truth_sites.TARGET_PAIRS`) gain their per-direction cells. The pair list only: no threshold, margin or ceiling changed, and the original §7 text is kept, marked superseded. |

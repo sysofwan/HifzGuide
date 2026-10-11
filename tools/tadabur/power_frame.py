@@ -8,10 +8,13 @@ reads both off the committed pool decodes, torch-free and without any app model:
 field is a **decode-level** fact about one site, read by the #84 scorer's own rules
 (:func:`training.site_outcomes.item_outcomes`), never a Muraja grade.
 
+* The pool's clips are first restricted to the ``h448``-unseen ones (:func:`unseen_clips`):
+  none whose recording is tied, even as an alias or a probable copy, to ``h448``'s training
+  shards, ``decode_evalset`` or the sealed panel.
 * The eligible sites are #87's (:func:`tadabur.listening_session.pool_candidates`): every
   mid-word haraka and prescribed sukun, every reference geminate and single consonant, and
   every carrier of a target-pair letter, per pair, for all nine target pairs
-  (:data:`tadabur.truth_sites.ALL_TARGET_PAIRS`). Eligibility reads the realized reference
+  (:data:`tadabur.truth_sites.TARGET_PAIRS`). Eligibility reads the realized reference
   alone.
 * A frame **stratum** depends on the reference alone too: ``pair:<prescribed>→<partner>``
   per direction (a ``ذ``, ``ظ``, ``س``, ``ط`` or ``ق`` carrier sits in two pairs, so in two
@@ -67,7 +70,7 @@ from .mining_pool import PoolClip, load_base_decodes, load_manifest, segment_key
 from .pool_stream import load_stream_decodes
 from .staged_audio import MINING_POOL, StagedClip, load_staged_clips
 from .truth_sites import (
-    ALL_TARGET_PAIRS,
+    TARGET_PAIRS,
     HARAKA_CHARS,
     HELD,
     NOT_HELD,
@@ -145,7 +148,7 @@ class ScoredSite:
 def frame_stratum(row: SessionSite) -> str:
     """The site's stratum in the frame, a function of its reference alone (module doc)."""
     site = row.site
-    if site.mark in ALL_TARGET_PAIRS:
+    if site.mark in TARGET_PAIRS:
         return f"pair:{direction(site)}"
     if site.mark == SHADDAH and site.prescribed == HELD:
         where = crosses_words(site.reference, list(row.word_offsets), site.reference_index)
@@ -172,9 +175,7 @@ def score_pool(
     }
     reciter_of = {clip.audio_filename: clip.reciter_id for clip in clips}
     rows_by_segment: dict[str, list[SessionSite]] = defaultdict(list)
-    candidates = pool_candidates(clips, base_decodes, h448_decodes, registry, tanween_of,
-                                 ALL_TARGET_PAIRS)
-    for row in census(candidates):
+    for row in census(pool_candidates(clips, base_decodes, h448_decodes, registry, tanween_of)):
         rows_by_segment[segment_of[(row.site.audio_filename, row.site.start_sample)]].append(row)
     scored = []
     for key in sorted(rows_by_segment):
@@ -198,7 +199,7 @@ def site_fields(scored: ScoredSite) -> tuple[float, ...]:
         1,
         h448.commits,
         h448.committed == site.prescribed,
-        site.mark in ALL_TARGET_PAIRS and h448.committed == partner(site),
+        site.mark in TARGET_PAIRS and h448.committed == partner(site),
         site.mark == SHADDAH and site.prescribed == HELD and h448.committed == NOT_HELD,
         site.mark == SUKUN and empty,
         site.mark in HARAKA_CHARS and empty,
@@ -256,13 +257,29 @@ MINING_POOL_FILES = PoolFiles(POOL_CLIPS_PATH, POOL_DECODES_PATH, H448_DECODES_P
                               MINING_POOL, POOL_STRATA)
 
 
+def unseen_clips(
+    clips: list[PoolClip], registry: Mapping[str, StagedClip]
+) -> tuple[list[PoolClip], list[str]]:
+    """The clips an ``h448``-unseen population may hold, and the names left out: a clip whose
+    recording is, or is tied by alias or probable copy to, one ``h448`` trained on, one of
+    ``decode_evalset`` or one of the sealed panel (:func:`tadabur.exposure.unseen_violations`)."""
+    from .exposure import unseen_violations
+
+    barred = unseen_violations({c.audio_filename: registry[c.audio_filename] for c in clips})
+    return ([c for c in clips if c.audio_filename not in barred],
+            sorted(c.audio_filename for c in clips if c.audio_filename in barred))
+
+
 def load_scored_pool(files: PoolFiles = MINING_POOL_FILES) -> tuple[dict, list[ScoredSite]]:
-    """A committed manifest scored by both decodes, with its decodes' provenance."""
+    """A committed manifest's ``h448``-unseen clips (:func:`unseen_clips`) scored by both
+    decodes, with the decodes' provenance and how many clips were left out."""
     registry = load_staged_clips()
-    clips = load_manifest(files.clips, registry, files.use, files.strata)
+    clips, linked = unseen_clips(load_manifest(files.clips, registry, files.use, files.strata),
+                                 registry)
     base_fingerprint, base_decodes = load_base_decodes(files.base_decodes)
     h448_provenance, h448_decodes = load_stream_decodes(files.h448_decodes)
-    provenance = {"base_decode": base_fingerprint, "h448_decode": h448_provenance}
+    provenance = {"base_decode": base_fingerprint, "h448_decode": h448_provenance,
+                  "linked_clips_left_out": len(linked)}
     return provenance, score_pool(clips, base_decodes, h448_decodes, registry,
                                   uthmani_tanween())
 

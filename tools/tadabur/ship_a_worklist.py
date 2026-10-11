@@ -2,9 +2,10 @@
 
 The blind UI (:mod:`tadabur.tashkeel_audit_ui`) asks, in one queue:
 
-* every Ship A **partner swap** (:mod:`tadabur.ship_a`): a target-pair carrier where
-  ``h448`` commits the pair's other letter, from the mining pool and the mining extension,
-  both halves of the reciter split (other letters are not asked, D9);
+* the Ship A **partner swaps** :func:`tadabur.ship_a.select_listening` picks (owner decision
+  2026-10-10): every one the base teacher gets wrong, one teacher-right swap per held-out
+  reciter and family, and a sample of the ``كسب`` swaps; from the mining pool and the mining
+  extension (other letters are not asked, D9). Each row carries its chance of being drawn;
 * every Ship A **geminate** the base teacher does not hold (the ones it holds take the
   teacher's decode as target and need no listening, ADR-0011 §3, D10);
 * the **23 P3.5 re-listens** (acceptance rules §8: the nominal rejects, re-adjudicated at
@@ -48,6 +49,7 @@ import hashlib
 import json
 import math
 from collections.abc import Iterable
+from dataclasses import replace
 from pathlib import Path
 
 from training.tashkeel_eval import write_text_atomically
@@ -60,7 +62,14 @@ from .listening_session import (
     load_worklist,
     write_worklist,
 )
-from .exposure import SHIP_A_HELD_OUT, SHIP_A_TRAIN, Exposure, whole_recording, write_use
+from .exposure import (
+    SHIP_A_HELD_OUT,
+    SHIP_A_TRAIN,
+    Exposure,
+    unseen_violations,
+    whole_recording,
+    write_use,
+)
 from .ship_a import (
     HALVES,
     HELD_OUT,
@@ -106,17 +115,28 @@ def carried_part(row: SessionSite) -> str | None:
     return REJECT_PILE if row.site.stratum.endswith(REJECT_PILE_SUFFIX) else None
 
 
+def listened_row(site: ShipASite) -> SessionSite:
+    """A listened Ship A site's worklist row: its chance of being drawn is the selection's."""
+    row = site.row
+    return replace(row, draw_probability=site.listen_probability,
+                   inclusion_probability=row.clip_inclusion_probability * site.listen_probability)
+
+
 def assemble(
-    sites: Iterable[ShipASite], session_rows: Iterable[SessionSite]
+    sites: Iterable[ShipASite], session_rows: Iterable[SessionSite],
+    linked: frozenset[str] = frozenset(),
 ) -> tuple[list[SessionSite], dict[str, str], int]:
     """The worklist's site rows (Ship A's first, then #87's carried over, each id once), the
-    part of each row by id, and how many carried rows were Ship A sites already."""
-    parts = {s.site.site_id: ship_a_part(s) for s in sites if s.listened}
-    rows = [s.row for s in sites if s.listened]
+    part of each row by id, and how many carried rows were Ship A sites already. A carried
+    reject-pile row on a ``linked`` clip (:func:`tadabur.exposure.unseen_violations`) is left
+    out like any pool site; the P3.5 re-listens are §8's targeted safeguards and stay."""
+    listened = [s for s in sites if s.listened]
+    parts = {s.site.site_id: ship_a_part(s) for s in listened}
+    rows = [listened_row(s) for s in listened]
     duplicates = 0
     for row in session_rows:
         part = carried_part(row)
-        if part is None:
+        if part is None or (part == REJECT_PILE and row.site.audio_filename in linked):
             continue
         if row.site.site_id in parts:
             duplicates += 1
@@ -131,21 +151,6 @@ def shared_words(rows: Iterable, words: Iterable[WordSite]) -> int:
     recitation): the page shows a sampled word whole, so the words are asked last."""
     asked = {target_of(row).word for row in rows}
     return sum((w.site.surah_ayah, w.site.word_index) in asked for w in words)
-
-
-def lean_swaps(sites: Iterable[ShipASite]) -> list[ShipASite]:
-    """A smaller set of partner swaps to listen to, for the owner to weigh: every swap the
-    base teacher gets wrong (its training label needs the ear), plus, for evaluation, one
-    swap the teacher gets right per held-out reciter and family (the first by site id).
-    The train half's teacher-right swaps would take the teacher's decode (ADR-0011 §3)."""
-    chosen, seen = [], set()
-    for site in sorted((s for s in sites if s.partner_swap), key=lambda s: s.site.site_id):
-        if not site.base_already_right:
-            chosen.append(site)
-        elif site.half == HELD_OUT and (site.family, site.reciter_id) not in seen:
-            seen.add((site.family, site.reciter_id))
-            chosen.append(site)
-    return chosen
 
 
 def split_exposures(
@@ -222,11 +227,14 @@ def main() -> None:
     commands.add_parser("build", help="assemble the worklist and write it with its summary")
     parser.parse_args()
     sites = load_sites()
-    rows, parts, duplicates = assemble(sites, load_worklist(SESSION_WORKLIST_PATH))
+    registry = load_staged_clips()
+    session_rows = load_worklist(SESSION_WORKLIST_PATH)
+    linked = unseen_violations({r.site.audio_filename: registry[r.site.audio_filename]
+                                for r in session_rows})
+    rows, parts, duplicates = assemble(sites, session_rows, linked)
     words = load_words()
     write_worklist(rows, WORKLIST_PATH)
     items = load_edit_check()
-    registry = load_staged_clips()
     for use, recordings in split_exposures(sites, words, registry).items():
         write_use(use, recordings)
     reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
@@ -241,9 +249,9 @@ def main() -> None:
             "ship_a/word_sample.jsonl": sha256_of(WORD_SAMPLE_PATH),
         },
         "carried_rows_already_ship_a_sites": duplicates,
+        "p35_rows_on_linked_clips": sum(r.site.audio_filename in linked for r in session_rows
+                                        if carried_part(r) == P35),
         "sampled_words_also_asked_as_sites": shared_words([*rows, *items], words),
-        "lean_partner_swaps": {"rows": len(lean := lean_swaps(sites)),
-                               "minutes": round(sum(seconds(s.row) for s in lean) / 60, 1)},
         **summarize(rows, words, items, parts, reciter_of),
     }
     write_text_atomically(SUMMARY_PATH, json.dumps(summary, indent=1, ensure_ascii=False,

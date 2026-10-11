@@ -10,19 +10,22 @@ that the pool's own rule admits
 (:func:`tadabur.mining_pool.eligible`: not in ``decode_evalset``, 1.5-50 s, a phonetizable
 ayah), less: clips already staged for any use (the pool among them); the sealed panel's
 reciters (:func:`tadabur.exposure.excluded_reciters`); and recordings the exposure registry
-ties to a row of ``h448``'s training shards (a checksum alias or a ``copy-screen-v2``
-probable copy), which ``h448`` may have trained on. No decode decides the frame.
+ties (a checksum alias or a ``copy-screen-v2`` probable copy) to one of
+:data:`tadabur.exposure.UNSEEN_BARRED_USES`: what ``h448`` trained on, ``decode_evalset`` and
+the sealed panel. No decode decides the frame. (The committed scan followed the links to
+``h448``'s training shards only; the build drops the hits linked to the rest.)
 
 **Scan.** Shards are taken in ``sha256("<salt>:shard:<n>")`` order and each is scanned
 whole: every frame row decoded from exactly the samples its staged file would hold, by
 ``h448`` streamed at b = 0 (fp32 weights, as :mod:`tadabur.pool_stream`) and by the base
 teacher (whole span, bf16, as #83's scan). A clip is a **hit** when ``h448`` commits the
-partner letter of a target pair (the nine, :data:`tadabur.truth_sites.ALL_TARGET_PAIRS`)
+partner letter of a target pair (the nine, :data:`tadabur.truth_sites.TARGET_PAIRS`)
 at a carrier of the clip's whole-ayah reference
 (:func:`tadabur.contrast_attribution.contrast_sites`). Hits are staged (WAV and registry
-row, use ``ship_a_mining``). The scan stops between shards once a time budget is spent, so
-the scanned shards are a simple random sample of the frame's: a scanned clip's inclusion
-probability is ``S / N`` (``S`` of the ``N`` frame shards), conditional on the frame.
+row, use ``ship_a_mining``). The scan stops between shards once a GPU-time budget is spent.
+That stopping rule depends on how long shards take, so the scanned shards are **not** a
+simple random sample of the frame's: inference is restricted to the scanned population, of
+which the hits are a census (inclusion probability 1).
 
 **Build.** The hits are segmented as the pool was (``tadabur.resegment``), then
 :func:`build` writes a manifest of the pool's shape (:class:`tadabur.mining_pool.PoolClip`,
@@ -36,7 +39,10 @@ clips), ``scan.jsonl`` (one row per scanned clip: provenance and the partner let
 decode committed per pair), ``clips.jsonl``, ``base_decodes.json``,
 ``h448_stream_decodes.json`` and ``summary.json`` (yield per pair, GPU time). A hit that
 is byte for byte a recording already staged (a pool clip, or an earlier hit) is left out of
-the manifest, so each recording is mined once.
+the manifest, so each recording is mined once. ``register`` merges the hits into the
+staged-clip registry by file name (a rerun changes nothing) and records **every scanned
+recording**, hit or not, as the ``ship_a.mining`` exposure use: ``h448`` and the base teacher
+decoded them all.
 
 Usage (on the GPU box, from ``tools/``, under the shared GPU lock; stage dir of this run)::
 
@@ -85,7 +91,7 @@ from .staged_audio import (
     read_staged_clips,
     write_staged_clips,
 )
-from .truth_sites import ALL_TARGET_PAIRS
+from .truth_sites import TARGET_PAIRS
 
 MINING_DIR = SHIP_A_DIR / "mining"
 FRAME_PATH = MINING_DIR / "frame.json"
@@ -103,22 +109,15 @@ FILES = PoolFiles(CLIPS_PATH, BASE_DECODES_PATH, H448_DECODES_PATH, SHIP_A_MININ
 #: A frame exclusion beyond the pool's own rule.
 ALREADY_STAGED = "already_staged"
 PANEL_RECITER = "panel_reciter"
-COPY_IN_H448_TRAINING = "copy_in_h448_training"
+#: Tied (alias or probable copy) to a recording of :data:`tadabur.exposure.UNSEEN_BARRED_USES`.
+#: The committed scan ran before decode_evalset links were followed: its ``frame.json``
+#: names this ``copy_in_h448_training``, and the build drops the hits linked otherwise.
+LINKED_RECORDING = "linked_recording"
 
 
 def shard_order(shards: Iterable[int]) -> list[int]:
     """The order shards are scanned in: a salted hash, so any prefix is a random sample."""
     return sorted(shards, key=lambda s: hashlib.sha256(f"{SALT}:shard:{s}".encode()).hexdigest())
-
-
-def h448_training_copies(registry) -> set[tuple[int, int]]:
-    """Every ``(shard, row)`` the exposure registry ties to a row of ``h448``'s training
-    shards: a checksum alias or a probable copy (the use is shard level, membership exact)."""
-    from .exposure import H448_TRAINING
-
-    training = set(registry.shard_uses[H448_TRAINING].shards)
-    return {source for source in registry.related_sources()
-            if any(shard in training for shard, _ in registry.same_recording(source) - {source})}
 
 
 def unseen_shards(registry) -> list[int]:
@@ -131,7 +130,7 @@ def unseen_shards(registry) -> list[int]:
 
 def mining_frame(
     rows: Iterable[IndexRow], evalset_rows: set[tuple[int, int]], staged: Iterable[str],
-    barred: frozenset[int], copies: set[tuple[int, int]], shards: Iterable[int],
+    barred: frozenset[int], linked: frozenset[tuple[int, int]], shards: Iterable[int],
 ) -> tuple[list[IndexRow], list[tuple[IndexRow, str]]]:
     """The frame (module docstring) and every row of ``shards`` left out, with why."""
     kept, excluded = eligible(rows, evalset_rows, shards)
@@ -142,8 +141,8 @@ def mining_frame(
             excluded.append((row, ALREADY_STAGED))
         elif row.reciter_id in barred:
             excluded.append((row, PANEL_RECITER))
-        elif (row.shard, row.row_index) in copies:
-            excluded.append((row, COPY_IN_H448_TRAINING))
+        elif (row.shard, row.row_index) in linked:
+            excluded.append((row, LINKED_RECORDING))
         else:
             frame.append(row)
     return frame, excluded
@@ -151,7 +150,7 @@ def mining_frame(
 
 def partner_commits(decode: str, reference: str) -> dict[str, int]:
     """Per target pair, the carriers where ``decode`` has the pair's other letter."""
-    found = {pair: len(contrast_sites(decode, reference, pair)) for pair in sorted(ALL_TARGET_PAIRS)}
+    found = {pair: len(contrast_sites(decode, reference, pair)) for pair in sorted(TARGET_PAIRS)}
     return {pair: n for pair, n in found.items() if n}
 
 
@@ -175,7 +174,6 @@ def frame_record(
         "salt": SALT,
         "shard_order": order,
         "scanned_shards": scanned,
-        "inclusion_probability": len(scanned) / len(order),
         "per_shard": {str(s): dict(sorted(c.items())) for s, c in per_shard.items()},
         "per_reciter": {str(r): dict(c) for r, c in sorted(per_reciter.items())},
         "frame_clips": len(frame),
@@ -197,7 +195,7 @@ def _scan(args) -> None:
     from .audio import decode_to_mono_16k
     from .dataset_source import resolve_audio_filename
     from .exposure import SHIP_A_MINING as EXPOSURE_USE
-    from .exposure import excluded_reciters, load_registry
+    from .exposure import UNSEEN_BARRED_USES, excluded_reciters, linked_sources, load_registry
     from .resegment import BASE_TEACHER, DECODE_BATCH_SIZE, WEIGHTS_DTYPE
     from .shard_reader import iter_shard_rows
     from .staged_audio import as_staged, stage_row
@@ -208,7 +206,7 @@ def _scan(args) -> None:
     frame, excluded = mining_frame(
         read_shard_index(args.index).values(), read_evalset_rows(args.evalset_manifest),
         load_staged_clips(), excluded_reciters(EXPOSURE_USE, registry),
-        h448_training_copies(registry), shards,
+        linked_sources(UNSEEN_BARRED_USES, registry), shards,
     )
     order = shard_order(shards)
     references = whole_ayah_references(row.surah_ayah for row in frame)
@@ -287,14 +285,32 @@ def _register(args) -> None:
     from .exposure import SHIP_A_MINING as EXPOSURE_USE
     from .exposure import whole_recording, write_use
 
-    registry = load_staged_clips()
     hits = read_staged_clips(args.stage_dir / "staged.jsonl")
+    merged = merge_hits(load_staged_clips(), hits)
+    write_staged_clips(merged.values(), REGISTRY_PATH)
+    write_use(EXPOSURE_USE, scanned_exposures(_jsonl(args.stage_dir / "scan.jsonl"), merged))
+    print(f"{len(hits)} hits in {REGISTRY_PATH}; every scanned recording in the exposure registry")
+
+
+def merge_hits(
+    registry: Mapping[str, StagedClip], hits: Mapping[str, StagedClip]
+) -> dict[str, StagedClip]:
+    """The registry with the hits merged in by file name: a hit already there must be the
+    same row, so a rerun (or a retry after a partial write) changes nothing."""
     clashes = sorted(n for n, c in hits.items() if n in registry and registry[n] != c)
     if clashes:
         raise SystemExit(f"{len(clashes)} hits disagree with the registry, e.g. {clashes[0]}")
-    write_staged_clips([*registry.values(), *hits.values()], REGISTRY_PATH)
-    write_use(EXPOSURE_USE, [whole_recording(c, c.audio_sha256) for c in hits.values()])
-    print(f"{len(hits)} hits in {REGISTRY_PATH} and the exposure registry")
+    return {**registry, **hits}
+
+
+def scanned_exposures(scan: Iterable[dict], registry: Mapping[str, StagedClip]) -> list:
+    """Every scanned recording as a ``ship_a.mining`` exposure (``h448`` and the base teacher
+    decoded it, hit or not), whole, with its checksum where it was staged."""
+    from .exposure import Exposure
+
+    return [Exposure(row["audio_filename"], row["shard"], row["row_index"], row["reciter_id"],
+                     None, None, getattr(registry.get(row["audio_filename"]), "audio_sha256", None))
+            for row in scan]
 
 
 def duplicate_recordings(registry: Mapping[str, StagedClip]) -> set[str]:
@@ -310,11 +326,11 @@ def duplicate_recordings(registry: Mapping[str, StagedClip]) -> set[str]:
 
 
 def summarize(scan: list[dict], frame: Mapping, clips: list[PoolClip], run: Mapping,
-              duplicates: set[str]) -> dict:
+              duplicates: set[str], linked: Iterable[str]) -> dict:
     """Per target pair: the partner commits each decode made in the scanned clips and the
     clips holding one; the scanned and hit clips; the GPU time."""
     pairs = {}
-    for pair in sorted(ALL_TARGET_PAIRS):
+    for pair in sorted(TARGET_PAIRS):
         pairs[pair] = {
             model: {"partner_commits": sum(row[model].get(pair, 0) for row in scan),
                     "clips": sum(pair in row[model] for row in scan)}
@@ -328,6 +344,7 @@ def summarize(scan: list[dict], frame: Mapping, clips: list[PoolClip], run: Mapp
         "scanned_reciters": len({row["reciter_id"] for row in scan}),
         "hit_clips": hits,
         "duplicate_recordings_dropped": sorted(duplicates),
+        "linked_recordings_dropped": sorted(linked),
         "kept_hit_clips": sum(any(s.kept for s in clip.segments) for clip in clips),
         "scan_gpu_hours": round(gpu_hours, 2),
         "scan_wall_hours": round(run["wall_seconds"] / 3600, 2),
@@ -338,15 +355,22 @@ def summarize(scan: list[dict], frame: Mapping, clips: list[PoolClip], run: Mapp
 
 
 def _build(args) -> None:
-    """The committed manifest, base decodes, compact scan, frame and summary."""
+    """The committed manifest, base decodes, compact scan, frame and summary. The manifest
+    takes each hit once (:func:`duplicate_recordings`) and only the ``h448``-unseen ones
+    (:func:`tadabur.exposure.unseen_violations`). Its clips carry inclusion probability 1:
+    the scan stopped on elapsed time, so the scanned shards are no random sample of the
+    frame's and inference is restricted to the scanned population (a census of its hits)."""
+    from .exposure import unseen_violations
+
     stage, seg = args.stage_dir, args.stage_dir / "seg"
     frame = json.loads((stage / "frame.json").read_text(encoding="utf-8"))
     run = json.loads((stage / "run.json").read_text(encoding="utf-8"))
     scan = sorted(_jsonl(stage / "scan.jsonl"), key=lambda row: row["audio_filename"])
     registry = load_staged_clips()
+    hits = {row["audio_filename"] for row in scan if row["h448"]}
     duplicates = duplicate_recordings(registry)
-    selected = {row["audio_filename"]: Selected((HIT,), frame["inclusion_probability"])
-                for row in scan if row["h448"] and row["audio_filename"] not in duplicates}
+    linked = unseen_violations({n: registry[n] for n in hits}) - duplicates
+    selected = {name: Selected((HIT,), 1.0) for name in hits - duplicates - linked}
     statuses = [r for r in _jsonl(seg / "clip_status.jsonl") if r["audio_filename"] in selected]
     clips = build_manifest(statuses, _jsonl(seg / "segmentation.jsonl"), selected, registry,
                            SHIP_A_MINING)
@@ -364,7 +388,7 @@ def _build(args) -> None:
     write_text_atomically(SCAN_PATH, "".join(
         json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in scan))
     write_text_atomically(FRAME_PATH, json.dumps(frame, indent=1, sort_keys=True) + "\n")
-    summary = summarize(scan, frame, clips, run, duplicates)
+    summary = summarize(scan, frame, clips, run, duplicates, linked)
     write_text_atomically(SUMMARY_PATH, json.dumps(summary, indent=1, ensure_ascii=False,
                                                    sort_keys=True) + "\n")
     print(json.dumps({k: v for k, v in summary.items() if k != "fingerprints"},

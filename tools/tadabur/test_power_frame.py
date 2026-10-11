@@ -82,7 +82,7 @@ def test_the_committed_frame_was_built_from_the_committed_inputs():
     assert tuple(frame["fields"]) == FIELDS
     geminates = frame["strata"]["shaddah:held:in_word"]
     totals = [sum(v[i] for v in geminates["per_reciter"].values()) for i in range(len(FIELDS))]
-    assert geminates["population"] == totals[FIELD["sites"]] == 8480
+    assert geminates["population"] == totals[FIELD["sites"]] == 7663  # unseen clips only
 
 
 def test_the_frame_needs_no_torch():

@@ -9,7 +9,6 @@
  },
  "frame_clips": 24065,
  "frame_reciters": 431,
- "inclusion_probability": 0.9,
  "per_reciter": {
   "0": {
    "frame": 282,

@@ -20,59 +20,64 @@ The target pairs are nine (D9, `CONTEXT.md`): the six Muraja soft pairs, `ذ↔�
 owner's `س↔ش` and `ط↔ق`, which the app does not forgive yet. They are reported as their own
 families and never pooled with the soft pairs.
 
+Every population here is `h448`-unseen: no clip whose recording is tied, even as an alias or
+a probable copy, to what `h448` trained on, `decode_evalset` or the sealed panel
+(`exposure.unseen_violations`). That leaves out 365 of the pool's
+clips.
+
 - **Pair carriers in the mining pool.** `h448` commits a letter other than the mushaf's at
-  **531 unique carriers**. **174** of them are **partner swaps** (the
-  pair's other letter), the sites Ship A listens to; the other **357** commit a
-  letter outside every target pair and are not asked (D9). The commonest commits:
-  `ط→ق` 74, `ت→ه` 70, `س→ش` 20, `ظ→ض` 19, `ذ→د` 12, `ه→ء` 12. The owner traced `ت`→`ه` to a ta marbuta the reciter paused on where the
+  **477 unique carriers**. **154** of them are **partner swaps** (the
+  pair's other letter), the sites Ship A's listening is drawn from (below); the other
+  **323** commit a letter outside every target pair and are not asked (D9). The commonest commits:
+  `ط→ق` 71, `ت→ه` 62, `ظ→ض` 16, `س→ش` 13, `ذ→د` 11, `ه→ء` 11. The owner traced `ت`→`ه` to a ta marbuta the reciter paused on where the
   realized reference has wasl `ت`: a reference problem (#130), not a model one. The base teacher
-  already commits the mushaf letter at 105 of the swaps.
-- **In-word geminates.** Of 8,480, `h448` decodes **833**
-  as one consonant (the base teacher 235). The base
-  holds **718** of those 833, whose
-  target is its decode with no listening (D10); **115** are listened to.
-  Cross-word geminates (950, of which `h448` collapses
-  235) are out: the app never scores them.
+  already commits the mushaf letter at 99 of the swaps.
+- **In-word geminates.** Of 7,663, `h448` decodes **752**
+  as one consonant (the base teacher 192). The base
+  holds **659** of those 752, whose
+  target is its decode with no listening (D10); **93** are listened to.
+  Cross-word geminates (878, of which `h448` collapses
+  219) are out: the app never scores them.
 - **Goal 3 (Ship B), counted only.** `h448` leaves the slot empty at
-  9,711 of 10,513
-  mid-word prescribed sukun and at 2,395 of
-  55,192 mid-word harakat.
+  8,801 of 9,518
+  mid-word prescribed sukun and at 2,228 of
+  49,866 mid-word harakat.
 
 Off-letter commits in the pool and the mining extension per direction (a partner swap is
 named by the letter committed; any other letter is grouped per carrier):
 
 | direction | sites | base already right | listened |
 |---|---|---|---|
-| ت→other letter | 120 | 51 | no |
-| ت→ط (partner) | 1 | 1 | yes |
-| ح→other letter | 20 | 16 | no |
+| ت→other letter | 106 | 45 | no |
+| ت→ط (partner) | 1 | 1 | no |
+| ح→other letter | 19 | 16 | no |
 | ح→ه (partner) | 8 | 7 | yes |
-| ذ→other letter | 37 | 32 | no |
+| ذ→other letter | 34 | 30 | no |
 | ذ→ز (partner) | 11 | 11 | yes |
 | ذ→ظ (partner) | 2 | 1 | yes |
-| ز→other letter | 13 | 10 | no |
-| ز→ذ (partner) | 55 | 41 | yes |
+| ز→other letter | 12 | 9 | no |
+| ز→ذ (partner) | 53 | 41 | yes |
 | س→other letter | 19 | 16 | no |
-| س→ش (partner) | 167 | 31 | yes |
-| س→ص (partner) | 43 | 32 | yes |
-| ش→other letter | 9 | 9 | no |
-| ش→س (partner) | 31 | 29 | yes |
+| س→ش (partner) | 160 | 31 | yes |
+| س→ص (partner) | 40 | 31 | yes |
+| ش→other letter | 8 | 8 | no |
+| ش→س (partner) | 30 | 28 | yes |
 | ص→other letter | 8 | 8 | no |
 | ص→س (partner) | 28 | 23 | yes |
 | ض→other letter | 10 | 9 | no |
-| ض→ظ (partner) | 2 | 2 | yes |
+| ض→ظ (partner) | 2 | 2 | no |
 | ط→other letter | 10 | 9 | no |
 | ط→ت (partner) | 12 | 9 | yes |
-| ط→ق (partner) | 570 | 505 | yes |
-| ظ→other letter | 9 | 6 | no |
+| ط→ق (partner) | 567 | 502 | yes |
+| ظ→other letter | 7 | 4 | no |
 | ظ→ذ (partner) | 5 | 5 | yes |
-| ظ→ض (partner) | 120 | 82 | yes |
-| ق→other letter | 15 | 14 | no |
-| ق→ط (partner) | 16 | 15 | yes |
+| ظ→ض (partner) | 117 | 81 | yes |
+| ق→other letter | 12 | 11 | no |
+| ق→ط (partner) | 15 | 14 | yes |
 | ق→ك (partner) | 35 | 25 | yes |
-| ك→other letter | 23 | 18 | no |
-| ك→ق (partner) | 61 | 44 | yes |
-| ه→other letter | 64 | 53 | no |
+| ك→other letter | 21 | 16 | no |
+| ك→ق (partner) | 59 | 44 | yes |
+| ه→other letter | 57 | 50 | no |
 | ه→ح (partner) | 5 | 3 | yes |
 
 ## Mining more partner swaps (D9)
@@ -88,8 +93,17 @@ shards, 21,651 clips of 422 reciters, in
 3.21 GPU-hours**, each clip decoded whole by `h448` (b = 0 stream) and
 the base teacher. **1063 clips** (330.7 per
 GPU-hour) hold an `h448` partner swap; they were staged, segmented as the pool was, and
-mined like it (1006 kept a segment). A scanned clip's inclusion
-probability is 0.900 (scanned shards / frame shards).
+mined like it. The build leaves out 3 hits that
+repeat a staged recording byte for byte and 2 tied to a
+`decode_evalset` recording (the scan's frame followed links to `h448`'s training shards
+only); 1004 of the rest kept a segment. Every scanned recording, hit or
+not, is in the exposure registry as `ship_a.mining`.
+
+The scan stopped when its GPU-time budget was spent, and that stopping rule depends on how
+long each shard takes, so the scanned shards are **not** a random sample of the frame's.
+**Inference from the extension is restricted to the scanned population**, of which the hits
+are a census: its clips carry inclusion probability 1, and nothing here extends it to the
+unscanned shards.
 
 Per target pair, the partner commits in the scanned clips (whole-ayah alignment) and the
 partner swaps mined from the hit clips' kept segments:
@@ -101,10 +115,10 @@ partner swaps mined from the hit clips' kept segments:
 | ذ↔ز | 72 | 70 | 28 | 52 |
 | ذ↔ظ | 7 | 7 | 3 | 6 |
 | س↔ش | 184 | 175 | 199 | 175 |
-| س↔ص | 64 | 64 | 16 | 61 |
+| س↔ص | 64 | 64 | 16 | 60 |
 | ض↔ظ | 113 | 110 | 44 | 102 |
 | ط↔ق | 591 | 566 | 117 | 508 |
-| ق↔ك | 87 | 86 | 40 | 76 |
+| ق↔ك | 87 | 86 | 40 | 75 |
 
 ## Checks on the partner swaps
 
@@ -114,16 +128,16 @@ shared model habit). Pool and extension together:
 
 | direction | sites | reciters | most per reciter | ayat | base already right | commonest carrier word |
 |---|---|---|---|---|---|---|
-| ط→ق | 570 | 193 | 19 | 313 | 505 | `ششَيطَاانُ` 14 |
-| س→ش | 167 | 94 | 9 | 62 | 31 | `كَسَبَت` 72 |
-| ظ→ض | 120 | 76 | 5 | 79 | 82 | `وَظَللَلنَاا` 9 |
-| ك→ق | 61 | 41 | 5 | 56 | 44 | `فَكُببَت` 2 |
-| ز→ذ | 55 | 39 | 5 | 42 | 41 | `لعِززَتُ` 5 |
-| س→ص | 43 | 35 | 4 | 39 | 32 | `بَااسِطُںںں` 2 |
+| ط→ق | 567 | 192 | 19 | 311 | 502 | `ششَيطَاانُ` 14 |
+| س→ش | 160 | 91 | 9 | 62 | 31 | `كَسَبَت` 69 |
+| ظ→ض | 117 | 75 | 5 | 76 | 81 | `وَظَللَلنَاا` 9 |
+| ك→ق | 59 | 40 | 5 | 54 | 44 | `فَكُببَت` 2 |
+| ز→ذ | 53 | 39 | 4 | 41 | 41 | `لعِززَتُ` 5 |
+| س→ص | 40 | 34 | 3 | 37 | 31 | `بَااسِطُںںں` 2 |
 | ق→ك | 35 | 20 | 7 | 33 | 25 | `تَقُۥۥلُۥۥ` 3 |
-| ش→س | 31 | 18 | 5 | 27 | 29 | `شَقِييَاا` 2 |
+| ش→س | 30 | 17 | 5 | 26 | 28 | `شَقِييَاا` 2 |
 | ص→س | 28 | 23 | 3 | 28 | 23 | `حُصُۥۥنُهُ` 1 |
-| ق→ط | 16 | 15 | 2 | 16 | 15 | `قَبڇلِكُم` 1 |
+| ق→ط | 15 | 14 | 2 | 15 | 14 | `قَبڇلِكُم` 1 |
 | ط→ت | 12 | 10 | 3 | 12 | 9 | `للِلمُطَففِفِۦۦن` 1 |
 | ذ→ز | 11 | 11 | 1 | 10 | 11 | `للَذِۦۦنَ` 2 |
 | ح→ه | 8 | 8 | 1 | 8 | 7 | `يَحِللُ` 1 |
@@ -133,33 +147,68 @@ shared model habit). Pool and extension together:
 | ض→ظ | 2 | 2 | 1 | 2 | 2 | `ضَرِۦۦع` 1 |
 | ت→ط | 1 | 1 | 1 | 1 | 1 | `ممممَقڇصُۥۥرَااتُںںں` 1 |
 
-Directions where the base teacher also commits the partner at most sites: س→ش (136 of 167; commonest word `كَسَبَت`, 72 sites).
+Directions where the base teacher also commits the partner at most sites: س→ش (129 of 160; commonest word `كَسَبَت`, 69 sites).
 Listening decides them; until then they are not evidence of an `h448`-only error.
+
+## What is listened to (owner decision, 2026-10-10)
+
+The owner chose the lean set over every partner swap (decision A) and a sample of the
+`كسب` swaps (decision B). `tadabur.ship_a.select_listening` applies it:
+
+- **A partner swap the base teacher gets wrong** is always listened to: its training label
+  needs the ear.
+- **A partner swap the base teacher gets right** is listened to on held-out reciters only,
+  one per reciter and family (the first by salted rank, so with chance `1 / k` among that
+  reciter's `k`), for evaluation. **The rest are not listened to.** As D10 does for the
+  geminates the teacher holds, their training target is the teacher's own decode (the
+  mushaf letter; ADR-0011 §3), and they are no verified site in any evaluation. On held-out
+  reciters, recovery of teacher-right swaps is read on the one-per-reciter sample, weighted
+  by its recorded chance.
+- **A `كسب` swap** (`س`→`ش` on the `س` of the consonants `كسب`, which both models hear as
+  `ش`) is listened to only in a sample of 20: reciters in salted order take one site each per
+  round, so the sample spreads over reciters; a reciter given `m` of its `n` such sites gives
+  each the chance `m / n`. **The rest take the sample's verdict**, by this rule, fixed before
+  any is heard: if a majority of the sampled sites with a verdict (`unclear` aside) are
+  heard as one letter, every unsampled `كسب` site takes that letter as its label; with no
+  majority they get no label and stay out of training and evaluation. Which letter that is,
+  is left to the listening.
+- **A geminate** is listened to when the teacher does not hold it (D10); **another letter**
+  never (D9).
+
+| site | mined | listened |
+|---|---|---|
+| geminate | 93 | 93 |
+| geminate, teacher holds | 659 | 0 |
+| other letter | 323 | 0 |
+| swap, teacher right, held_out | 429 | 222 |
+| swap, teacher right, train | 423 | 0 |
+| swap, teacher wrong | 180 | 180 |
+| كسب swap | 118 | 20 |
 
 ## 1. Verification budget
 
-Listened: every partner swap (pool and extension) and every in-word geminate the base does
-not hold (115, a census; the ~300-geminate
-slot of the first plan). Listened sites (reciters) per half of the confirmed 50/50 split
+Listened: the sites the section above selects (93
+geminates, a census of those the base does not hold; the ~300-geminate slot of the first
+plan). Listened sites (reciters) per half of the confirmed 50/50 split
 (D11). A held-out cell with fewer than 10 reciters or 20
 sites is sparse (§1): its family is reported as insufficient evidence (§7).
 
 | family | flagged | partner swaps | base already right | listened | train | held out | held-out status |
 |---|---|---|---|---|---|---|---|
-| shaddah | 833 | 0 | 718 | 115 | 50 (29) | 65 (44) | sufficient |
-| ت↔ط | 143 | 13 | 70 | 13 | 7 (7) | 6 (4) | insufficient evidence |
-| ح↔ه | 97 | 13 | 79 | 13 | 9 (8) | 4 (3) | insufficient evidence |
-| ذ↔ز | 116 | 66 | 94 | 66 | 29 (19) | 37 (26) | sufficient |
-| ذ↔ظ | 16 | 7 | 12 | 7 | 6 (6) | 1 (1) | insufficient evidence |
-| س↔ش | 226 | 198 | 85 | 198 | 92 (54) | 106 (51) | sufficient |
-| س↔ص | 79 | 71 | 63 | 71 | 36 (27) | 35 (24) | sufficient |
-| ض↔ظ | 132 | 122 | 93 | 122 | 58 (35) | 64 (42) | sufficient |
-| ط↔ق | 601 | 586 | 534 | 586 | 303 (101) | 283 (96) | sufficient |
-| ق↔ك | 119 | 96 | 87 | 96 | 44 (24) | 52 (30) | sufficient |
+| shaddah | 752 | 0 | 659 | 93 | 41 (27) | 52 (37) | sufficient |
+| ت↔ط | 129 | 13 | 64 | 7 | 1 (1) | 6 (4) | insufficient evidence |
+| ح↔ه | 89 | 13 | 76 | 5 | 1 (1) | 4 (3) | insufficient evidence |
+| ذ↔ز | 110 | 64 | 91 | 35 | 4 (4) | 31 (26) | sufficient |
+| ذ↔ظ | 14 | 7 | 10 | 2 | 1 (1) | 1 (1) | insufficient evidence |
+| س↔ش | 217 | 190 | 83 | 59 | 15 (13) | 44 (32) | sufficient |
+| س↔ص | 76 | 68 | 62 | 34 | 8 (8) | 26 (24) | sufficient |
+| ض↔ظ | 129 | 119 | 92 | 72 | 22 (15) | 50 (41) | sufficient |
+| ط↔ق | 594 | 582 | 527 | 156 | 34 (29) | 122 (95) | sufficient |
+| ق↔ك | 115 | 94 | 85 | 52 | 13 (9) | 39 (29) | sufficient |
 
-The six soft pairs pooled hold 198 held-out sites from
-76 reciters. The largest single direction is ط→ق (partner)
-(570 sites). Sparse on the held-out half: ت↔ط, ح↔ه, ذ↔ظ.
+The six soft pairs pooled hold 156 held-out sites from
+75 reciters. The largest single direction is ط→ق (partner)
+(567 sites). Sparse on the held-out half: ت↔ط, ح↔ه, ذ↔ظ.
 
 ## 2. Power on the held-out half
 
@@ -201,106 +250,106 @@ Reciters (one site each) a true rate needs for its lower bound to reach a floor 
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 70.4 | 0.3 | 0.5 | 0.7 |
+| soft pairs (pooled) | 69.1 | 0.3 | 0.5 | 0.7 |
 | ت↔ط | 3.5 | — | — | 0.3 |
 | ح↔ه | 2.7 | — | — | 0.2 |
-| ذ↔ز | 23.0 | 0.2 | 0.4 | 0.6 |
-| س↔ص | 21.3 | 0.2 | 0.4 | 0.6 |
-| ض↔ظ | 37.5 | 0.2 | 0.4 | 0.7 |
-| ق↔ك | 26.8 | 0.2 | 0.4 | 0.7 |
+| ذ↔ز | 22.6 | 0.2 | 0.4 | 0.6 |
+| س↔ص | 20.7 | 0.2 | 0.4 | 0.6 |
+| ض↔ظ | 35.7 | 0.2 | 0.4 | 0.7 |
+| ق↔ك | 25.5 | 0.2 | 0.4 | 0.6 |
 | ذ↔ظ | 0.9 | — | — | — |
-| س↔ش | 46.2 | 0.2 | 0.5 | 0.7 |
-| ط↔ق | 88.9 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 39.3 | 0.2 | 0.4 | 0.7 |
+| س↔ش | 28.3 | 0.2 | 0.4 | 0.7 |
+| ط↔ق | 83.3 | 0.3 | 0.5 | 0.8 |
+| geminates (base not held) | 32.7 | 0.2 | 0.4 | 0.7 |
 
-At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.5; ت↔ط —; ح↔ه —; ذ↔ز 0.4; س↔ص 0.4; ض↔ظ 0.4; ق↔ك 0.4; ذ↔ظ —; س↔ش 0.5; ط↔ق 0.5; geminates (base not held) 0.4.
+At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.5; ت↔ط —; ح↔ه —; ذ↔ز 0.4; س↔ص 0.4; ض↔ظ 0.4; ق↔ك 0.4; ذ↔ظ —; س↔ش 0.4; ط↔ق 0.5; geminates (base not held) 0.4.
 
 **Retention** of verified mistakes (θ = 0.15; held-out mistakes are few):
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 22.1 | 0.2 | 0.4 | 0.6 |
+| soft pairs (pooled) | 19.3 | 0.2 | 0.3 | 0.6 |
 | ت↔ط | 0.8 | — | — | — |
 | ح↔ه | 0.6 | — | — | — |
-| ذ↔ز | 5.1 | — | — | 0.3 |
-| س↔ص | 4.8 | — | — | 0.3 |
-| ض↔ظ | 8.8 | — | 0.2 | 0.4 |
-| ق↔ك | 6.6 | — | 0.2 | 0.4 |
+| ذ↔ز | 4.5 | — | — | 0.3 |
+| س↔ص | 3.8 | — | — | 0.2 |
+| ض↔ظ | 7.1 | — | 0.2 | 0.4 |
+| ق↔ك | 5.5 | — | — | 0.3 |
 | ذ↔ظ | 0.2 | — | — | — |
-| س↔ش | 12.8 | — | 0.3 | 0.5 |
-| ط↔ق | 30.2 | 0.2 | 0.4 | 0.7 |
-| geminates (base not held) | 8.9 | — | 0.2 | 0.4 |
+| س↔ش | 6.1 | — | — | 0.3 |
+| ط↔ق | 17.3 | — | 0.3 | 0.6 |
+| geminates (base not held) | 7.3 | — | 0.2 | 0.4 |
 
 Every site with the reciter bootstrap, recovery, at ICC 0.15 and at ICC 0:
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 70.5 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 39.3 | 0.3 | 0.5 | 0.7 |
+| soft pairs (pooled) | 69.1 | 0.3 | 0.5 | 0.8 |
+| geminates (base not held) | 32.8 | 0.2 | 0.4 | 0.7 |
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 70.7 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 39.3 | 0.3 | 0.5 | 0.7 |
+| soft pairs (pooled) | 69.4 | 0.3 | 0.5 | 0.8 |
+| geminates (base not held) | 32.8 | 0.2 | 0.5 | 0.7 |
 
 ## 3. New-error harm on sites `h448` gets right
 
 Once a candidate exists, the **changed sites** (its decode ≠ `h448`'s at a pair carrier or an
 in-word geminate where `h448` commits the mushaf value) are a census, computed without
-listening. On the held-out half that is 16,509 carriers of
-203 reciters. A blind, candidate-locked **PPS cluster sample** draws reciters in
+listening. On the held-out half that is 14,905 carriers of
+200 reciters. A blind, candidate-locked **PPS cluster sample** draws reciters in
 proportion to their changed sites and adjudicates every changed site of each reciter drawn;
 `cluster_mistake_bound` gives a design-valid 97.5% bound on the new errors among all of them.
 Simulated at ICC 0.15 (the grid is in `sizing.json`): churn is the share of those
 carriers the candidate changes, and a share of the changed sites are new errors (the rest are
-corrections of real mistakes, or abstentions). Minutes at 12.7 s per
+corrections of real mistakes, or abstentions). Minutes at 12.8 s per
 site. **Report only: not on #61's worklist.**
 
 | churn | new errors | reciters drawn | sites heard | minutes | true /1,000 | median bound /1,000 | P(bound ≤ 1) | P(bound ≤ 2) | P(bound ≤ 5) | P(bound ≤ 10) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 0.25% | 10% | 10 | 15.9 | 3.4 | 0.25 | 1.72 | 0.21 | 0.68 | 1.00 | 1.00 |
-| 0.25% | 10% | 20 | 28.7 | 6.1 | 0.25 | 0.92 | 0.57 | 0.98 | 1.00 | 1.00 |
-| 0.25% | 10% | 40 | 41.3 | 8.7 | 0.25 | 0.24 | 0.99 | 1.00 | 1.00 | 1.00 |
-| 0.25% | 10% | 80 | 41.2 | 8.7 | 0.25 | 0.24 | 1.00 | 1.00 | 1.00 | 1.00 |
-| 0.25% | 50% | 10 | 15.8 | 3.3 | 1.25 | 2.42 | 0.00 | 0.19 | 1.00 | 1.00 |
-| 0.25% | 50% | 20 | 29.0 | 6.1 | 1.25 | 2.00 | 0.01 | 0.52 | 1.00 | 1.00 |
-| 0.25% | 50% | 40 | 41.2 | 8.7 | 1.25 | 1.21 | 0.20 | 0.96 | 1.00 | 1.00 |
-| 0.25% | 50% | 80 | 41.2 | 8.7 | 1.25 | 1.21 | 0.20 | 0.99 | 1.00 | 1.00 |
-| 0.25% | 100% | 10 | 15.8 | 3.3 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
-| 0.25% | 100% | 20 | 28.9 | 6.1 | 2.50 | 2.48 | 0.00 | 0.14 | 1.00 | 1.00 |
-| 0.25% | 100% | 40 | 41.3 | 8.7 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
-| 0.25% | 100% | 80 | 41.3 | 8.7 | 2.50 | 2.48 | 0.00 | 0.14 | 1.00 | 1.00 |
-| 1.00% | 10% | 10 | 34.5 | 7.3 | 1.00 | 8.97 | 0.00 | 0.00 | 0.06 | 0.74 |
-| 1.00% | 10% | 20 | 65.3 | 13.8 | 1.00 | 6.44 | 0.00 | 0.01 | 0.21 | 0.96 |
-| 1.00% | 10% | 40 | 111.4 | 23.5 | 1.00 | 3.41 | 0.00 | 0.05 | 0.93 | 1.00 |
-| 1.00% | 10% | 80 | 161.4 | 34.1 | 1.00 | 1.33 | 0.26 | 0.93 | 1.00 | 1.00 |
-| 1.00% | 50% | 10 | 34.2 | 7.2 | 5.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.54 |
-| 1.00% | 50% | 20 | 64.8 | 13.7 | 5.00 | 9.63 | 0.00 | 0.00 | 0.00 | 0.65 |
-| 1.00% | 50% | 40 | 111.1 | 23.5 | 5.00 | 8.18 | 0.00 | 0.00 | 0.00 | 0.94 |
-| 1.00% | 50% | 80 | 161.7 | 34.2 | 5.00 | 5.69 | 0.00 | 0.00 | 0.29 | 1.00 |
-| 1.00% | 100% | 10 | 34.4 | 7.3 | 10.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.52 |
-| 1.00% | 100% | 20 | 64.9 | 13.7 | 10.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.53 |
-| 1.00% | 100% | 40 | 111.3 | 23.5 | 10.00 | 9.96 | 0.00 | 0.00 | 0.00 | 0.53 |
-| 1.00% | 100% | 80 | 160.6 | 33.9 | 10.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.53 |
-| 2.50% | 10% | 10 | 69.2 | 14.6 | 2.50 | 24.35 | 0.00 | 0.00 | 0.00 | 0.01 |
-| 2.50% | 10% | 20 | 133.6 | 28.2 | 2.50 | 21.90 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 10% | 40 | 233.0 | 49.2 | 2.50 | 13.65 | 0.00 | 0.00 | 0.00 | 0.10 |
-| 2.50% | 10% | 80 | 352.1 | 74.4 | 2.50 | 5.36 | 0.00 | 0.00 | 0.37 | 1.00 |
-| 2.50% | 50% | 10 | 69.7 | 14.7 | 12.50 | 24.90 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 50% | 20 | 132.6 | 28.0 | 12.50 | 24.41 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 50% | 40 | 232.2 | 49.1 | 12.50 | 22.11 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 50% | 80 | 352.3 | 74.4 | 12.50 | 16.78 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 100% | 10 | 69.1 | 14.6 | 25.00 | 24.83 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 100% | 20 | 134.6 | 28.4 | 25.00 | 25.02 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 100% | 40 | 233.0 | 49.2 | 25.00 | 24.83 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 100% | 80 | 351.4 | 74.3 | 25.00 | 24.77 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 0.25% | 10% | 10 | 15.2 | 3.2 | 0.25 | 1.72 | 0.23 | 0.67 | 1.00 | 1.00 |
+| 0.25% | 10% | 20 | 27.7 | 5.9 | 0.25 | 0.91 | 0.61 | 0.99 | 1.00 | 1.00 |
+| 0.25% | 10% | 40 | 37.3 | 8.0 | 0.25 | 0.27 | 1.00 | 1.00 | 1.00 | 1.00 |
+| 0.25% | 10% | 80 | 37.3 | 8.0 | 0.25 | 0.27 | 1.00 | 1.00 | 1.00 | 1.00 |
+| 0.25% | 50% | 10 | 15.2 | 3.2 | 1.25 | 2.42 | 0.00 | 0.19 | 1.00 | 1.00 |
+| 0.25% | 50% | 20 | 27.4 | 5.9 | 1.25 | 2.01 | 0.02 | 0.47 | 1.00 | 1.00 |
+| 0.25% | 50% | 40 | 37.1 | 7.9 | 1.25 | 1.21 | 0.18 | 0.98 | 1.00 | 1.00 |
+| 0.25% | 50% | 80 | 37.1 | 7.9 | 1.25 | 1.21 | 0.19 | 0.99 | 1.00 | 1.00 |
+| 0.25% | 100% | 10 | 15.1 | 3.2 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
+| 0.25% | 100% | 20 | 27.5 | 5.9 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
+| 0.25% | 100% | 40 | 37.1 | 7.9 | 2.50 | 2.48 | 0.00 | 0.12 | 1.00 | 1.00 |
+| 0.25% | 100% | 80 | 37.3 | 8.0 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
+| 1.00% | 10% | 10 | 31.7 | 6.8 | 1.00 | 8.84 | 0.00 | 0.00 | 0.08 | 0.75 |
+| 1.00% | 10% | 20 | 60.1 | 12.8 | 1.00 | 6.08 | 0.00 | 0.01 | 0.26 | 0.97 |
+| 1.00% | 10% | 40 | 103.3 | 22.0 | 1.00 | 3.28 | 0.00 | 0.07 | 0.95 | 1.00 |
+| 1.00% | 10% | 80 | 147.5 | 31.5 | 1.00 | 1.14 | 0.36 | 0.94 | 1.00 | 1.00 |
+| 1.00% | 50% | 10 | 31.5 | 6.7 | 5.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.54 |
+| 1.00% | 50% | 20 | 60.3 | 12.9 | 5.00 | 9.66 | 0.00 | 0.00 | 0.00 | 0.65 |
+| 1.00% | 50% | 40 | 102.6 | 21.9 | 5.00 | 8.39 | 0.00 | 0.00 | 0.00 | 0.95 |
+| 1.00% | 50% | 80 | 147.8 | 31.5 | 5.00 | 5.23 | 0.00 | 0.00 | 0.42 | 1.00 |
+| 1.00% | 100% | 10 | 31.6 | 6.7 | 10.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.54 |
+| 1.00% | 100% | 20 | 59.9 | 12.8 | 10.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.53 |
+| 1.00% | 100% | 40 | 102.9 | 22.0 | 10.00 | 10.00 | 0.00 | 0.00 | 0.00 | 0.51 |
+| 1.00% | 100% | 80 | 147.6 | 31.5 | 10.00 | 10.00 | 0.00 | 0.00 | 0.00 | 0.52 |
+| 2.50% | 10% | 10 | 63.2 | 13.5 | 2.50 | 24.35 | 0.00 | 0.00 | 0.00 | 0.01 |
+| 2.50% | 10% | 20 | 122.8 | 26.2 | 2.50 | 21.51 | 0.00 | 0.00 | 0.00 | 0.01 |
+| 2.50% | 10% | 40 | 212.9 | 45.4 | 2.50 | 12.99 | 0.00 | 0.00 | 0.00 | 0.13 |
+| 2.50% | 10% | 80 | 322.8 | 68.9 | 2.50 | 5.20 | 0.00 | 0.00 | 0.44 | 1.00 |
+| 2.50% | 50% | 10 | 62.2 | 13.3 | 12.50 | 24.82 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 50% | 20 | 120.4 | 25.7 | 12.50 | 24.35 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 50% | 40 | 212.8 | 45.4 | 12.50 | 22.14 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 50% | 80 | 322.0 | 68.7 | 12.50 | 16.91 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 100% | 10 | 62.9 | 13.4 | 25.00 | 24.82 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 100% | 20 | 120.6 | 25.7 | 25.00 | 24.96 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 100% | 40 | 212.6 | 45.4 | 25.00 | 24.82 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 100% | 80 | 322.0 | 68.7 | 25.00 | 24.96 | 0.00 | 0.00 | 0.00 | 0.00 |
 
 - The census of changed sites bounds the new errors **without listening**: they cannot exceed
   the changes (churn × 1,000 per 1,000). Listening tightens that only where many changes are
   *not* errors, and only by reaching most changed reciters: at the highest churn
   (2.5%) with 10% of changes new errors, 80
-  reciters (74.4 minutes) bring the median bound from
-  25.0 to 5.4 per 1,000 (truth
+  reciters (68.9 minutes) bring the median bound from
+  25.0 to 5.2 per 1,000 (truth
   2.5).
 - **No separate draw on unflagged strata is needed** for decode-level harm at pair and
   geminate carriers: the census of changes covers every carrier, flagged or not, and costs
@@ -330,7 +379,7 @@ site. **Report only: not on #61's worklist.**
 ## 4. Mix of real mistakes
 
 No site has been listened to yet: the 23 P3.5 re-listens and the reject-pile sites are on
-#61's worklist (#87's 37 reject-pile sites, less the 18 that are Ship A
+#61's worklist (#87's 29 reject-pile sites, less the 14 that are Ship A
 sites already), so
 the mix is **measured in the first sitting**. The only prior is the P3.5 fixtures where `h448`
 commits an off value: a should-reject fixture is a clip-level verdict, so its share bounds the
@@ -347,17 +396,17 @@ term would get on the train half (50/50) at each θ:
 
 | cell | train sites listened | θ = 0.05 | θ = 0.15 | θ = 0.5 |
 |---|---|---|---|---|
-| geminates (base not held) | 50 | 2.5 | 7.5 | 25.0 |
-| soft pairs (pooled) | 183 | 9.2 | 27.4 | 91.5 |
-| ت↔ط | 7 | 0.4 | 1.1 | 3.5 |
-| ح↔ه | 9 | 0.5 | 1.3 | 4.5 |
-| ذ↔ز | 29 | 1.5 | 4.3 | 14.5 |
-| ذ↔ظ | 6 | 0.3 | 0.9 | 3.0 |
-| س↔ش | 92 | 4.6 | 13.8 | 46.0 |
-| س↔ص | 36 | 1.8 | 5.4 | 18.0 |
-| ض↔ظ | 58 | 2.9 | 8.7 | 29.0 |
-| ط↔ق | 303 | 15.2 | 45.4 | 151.5 |
-| ق↔ك | 44 | 2.2 | 6.6 | 22.0 |
+| geminates (base not held) | 41 | 2.1 | 6.1 | 20.5 |
+| soft pairs (pooled) | 49 | 2.5 | 7.3 | 24.5 |
+| ت↔ط | 1 | 0.1 | 0.1 | 0.5 |
+| ح↔ه | 1 | 0.1 | 0.1 | 0.5 |
+| ذ↔ز | 4 | 0.2 | 0.6 | 2.0 |
+| ذ↔ظ | 1 | 0.1 | 0.1 | 0.5 |
+| س↔ش | 15 | 0.8 | 2.2 | 7.5 |
+| س↔ص | 8 | 0.4 | 1.2 | 4.0 |
+| ض↔ظ | 22 | 1.1 | 3.3 | 11.0 |
+| ط↔ق | 34 | 1.7 | 5.1 | 17.0 |
+| ق↔ك | 13 | 0.7 | 1.9 | 6.5 |
 
 ## The worklist for #61
 
@@ -370,38 +419,33 @@ plus 6 s).
 | part | rows | reciters | train | held out | minutes |
 |---|---|---|---|---|---|
 | edit_check | 30 | 0 | 0 | 0 | 20.9 |
-| geminate | 115 | 73 | 50 | 65 | 21.6 |
+| geminate | 93 | 64 | 41 | 52 | 17.9 |
 | p35_relisten | 23 | 18 | 14 | 9 | 4.3 |
-| pair_partner | 1172 | 241 | 584 | 588 | 252.6 |
-| reject_pile | 19 | 16 | 9 | 10 | 3.7 |
-| word_sample | 160 | 160 | 0 | 160 | 38.0 |
+| pair_partner | 422 | 175 | 99 | 323 | 91.9 |
+| reject_pile | 15 | 12 | 7 | 8 | 2.8 |
+| word_sample | 160 | 160 | 0 | 160 | 37.5 |
 
-**320.1 minutes** of Ship A listening, plus
-the synthetic-edit check the UI queues with it: **340.9 minutes**
-in all, in 5 sittings (runs of the queue of at most 75 minutes; the words come last because a sampled word is
+**154.4 minutes** of Ship A listening, plus
+the synthetic-edit check the UI queues with it: **175.2 minutes**
+in all, in 3 sittings (runs of the queue of at most 75 minutes; the words come last because a sampled word is
 shown whole):
 
 | sitting | queue positions | rows | minutes |
 |---|---|---|---|
-| 1 | 1-313 | 313 | 68.2 |
-| 2 | 314-626 | 313 | 68.3 |
-| 3 | 627-925 | 299 | 68.1 |
-| 4 | 926-1228 | 303 | 68.3 |
-| 5 | 1229-1519 | 291 | 68.0 |
+| 1 | 1-224 | 224 | 59.3 |
+| 2 | 225-486 | 262 | 57.5 |
+| 3 | 487-743 | 257 | 58.4 |
 
-## For the owner
+## Notes for the owner
 
-- **Listening load.** The worklist asks every partner swap (1172, 252.6
-  minutes), as D6 and D9 set it. A leaner option: every swap the base teacher gets wrong
-  (its label needs the ear) plus one teacher-right swap per held-out reciter and family for
-  evaluation, the train half's teacher-right swaps taking the teacher's decode (ADR-0011 §3):
-  535 swaps, 111.6 minutes.
-- **§7 and the frozen cells.** `س↔ش` and `ط↔ق` are target pairs (D9), but acceptance rules
-  §7 and the #84 scorer's frozen required cells still name seven pairs. Gating on the new
-  pairs needs an owner-signed amendment; until then the code keeps them apart
-  (`truth_sites.ADDED_TARGET_PAIRS`).
-- **Training on held-out reciters' other audio.** The exposure registry now lists the split's
-  two halves (`ship_a.verified_train`, `ship_a.verified_held_out`). It does not yet keep the
-  held-out reciters out of the probe's full-shard training stream: every one of them also
-  has rows in `h448`'s training shards, so excluding them is a #94 decision.
+- **§7 amended.** Acceptance rules §7 now names nine target pairs (D9, 2026-10-10); the #84
+  scorer's frozen required cells follow `truth_sites.TARGET_PAIRS`. No threshold, margin or
+  ceiling moved. The committed truth-baseline report predates the amendment and lists seven.
+- **P3.5 safeguards on linked clips.** 3 of the 23 P3.5
+  re-listens sit on clips tied to a recording `h448` trained on or `decode_evalset`. They
+  stay on the worklist as §8's targeted safeguards; they were never `h448`-unseen evaluation.
+- **Training on held-out reciters' other audio.** The exposure registry lists the split's two
+  halves (`ship_a.verified_train`, `ship_a.verified_held_out`). Keeping the held-out reciters
+  out of the probe's full-shard training stream is #94's decision: every one of them also
+  has rows in `h448`'s training shards.
 - **Floors and margins** (#128): every power here is over a grid; none is chosen.

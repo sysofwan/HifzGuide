@@ -8,8 +8,9 @@ acceptance rules' sides; ``unclear`` leaves every denominator).
 
 **Frame.** Every Uthmani word of every kept segment of the mining pool's ``uniform`` clips
 (#83: ``k`` of a drawn reciter's ``n`` eligible clips by salted hash) whose canonical reciter
-is in Ship A's held-out half (:func:`tadabur.ship_a.reciter_half`). Sealed-panel reciters are
-refused (the exposure registry's :func:`tadabur.exposure.excluded_reciters`; the pool is
+is in Ship A's held-out half (:func:`tadabur.ship_a.reciter_half`), less the clips tied to a
+recording ``h448`` trained on, ``decode_evalset`` or the sealed panel, even by copy
+(:func:`tadabur.power_frame.unseen_clips`). Sealed-panel reciters are refused (the exposure registry's :func:`tadabur.exposure.excluded_reciters`; the pool is
 reciter-disjoint from the panel already). The census strata of the pool (clips where the
 base teacher heard a pair swap or a gemination mismatch) are left out, since a decode
 selected them. No decode enters the draw; the segments are #83's, whose pause placement and
@@ -54,6 +55,7 @@ from .exposure import MINING_POOL, excluded_reciters
 from .listening_session import POOL_CLIPS_PATH, PLAYS_PER_SITE, excerpt_span
 from .mining_pool import FRAME_PATH as POOL_FRAME_PATH
 from .mining_pool import UNIFORM, PoolClip, PoolSegment, load_manifest
+from .power_frame import unseen_clips
 from .ship_a import HELD_OUT, SHIP_A_DIR, reciter_half
 from .staged_audio import StagedClip, load_staged_clips
 from .truth_sites import UNCLEAR
@@ -310,7 +312,8 @@ def main() -> None:
     commands.add_parser("draw", help="draw the word sample and write it with its summary")
     parser.parse_args()
     registry = load_staged_clips()
-    words = frame_words(load_manifest(POOL_CLIPS_PATH, registry), excluded_reciters(MINING_POOL))
+    clips, _ = unseen_clips(load_manifest(POOL_CLIPS_PATH, registry), registry)
+    words = frame_words(clips, excluded_reciters(MINING_POOL))
     uniform = uniform_probabilities(json.loads(POOL_FRAME_PATH.read_text(encoding="utf-8")))
     rows = draw(words, uniform, registry)
     write_words(rows)

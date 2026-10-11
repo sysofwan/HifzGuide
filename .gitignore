@@ -48,6 +48,7 @@ wandb/
 # the verdicts the blind UI writes straight into the repo as they are given.
 !tools/tadabur/listening_session/worklist.jsonl
 !tools/tadabur/listening_session/verdicts.jsonl
+!tools/tadabur/listening_session/review.jsonl
 # Ship A (#126): its mined sites (definitions with provenance), the #61 worklist and the random
 # word sample it asks, each frozen by checksum in ship_a/worklist.summary.json.
 !tools/tadabur/ship_a/sites.jsonl

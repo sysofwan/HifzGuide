@@ -40,7 +40,9 @@ is only "n of N answered".
 
 Each answer is written straight into the tracked verdicts file
 (``listening_session/verdicts.jsonl``) keyed by site id, so the UI resumes from it and
-committing it is the only step after the session. The queue is every site and item in one
+committing it is the only step after the session. Sites can be queued for another listen,
+each with a note the page shows (``listening_session/review.jsonl``, ``--review``): the
+listener steps through them, and saving a queued site's answer takes it off the list. The queue is every site and item in one
 seeded order of their ids (:func:`~tadabur.listening_session.shuffled`). Audio is the
 site's **excerpt** (the carrier's word and one either side) sliced from the staged clip, or
 the whole segment on request; every clip is checked against the staged-clip registry's
@@ -80,14 +82,17 @@ from .listening_session import (
     SALT,
     SHADDAH_MODE,
     TASHKEEL_MODE,
+    REVIEW_PATH,
     VERDICTS_PATH,
     WORKLIST_PATH,
     SessionSite,
     Verdict,
     load_worklist,
+    read_review,
     read_verdicts,
     run_start,
     shuffled,
+    write_review,
     write_verdicts,
 )
 from .staged_audio import StagedClip, load_staged_clips, verify_staged
@@ -100,6 +105,8 @@ _SCRIPT_PATH = Path(__file__).parent / "tashkeel_audit_session.mjs"
 
 #: What the page shows in place of the letter under test in consonant mode.
 HIDDEN_LETTER = "◌"
+#: The note a site the listener queues for another listen is shown with.
+LISTENER_REVIEW_NOTE = "You marked this site to review."
 _HARAKAT = frozenset(HARAKA_CHARS.values())
 #: Characters after a tashkeel carrier that would give its mark away.
 _MARK_TELLS = _HARAKAT | MADD | {QALQALA}
@@ -323,12 +330,18 @@ class SessionState:
     """The worklist, the verdicts and the audio. ``verdicts`` is replaced only after the
     file holding it has been rewritten, so the page is never told an answer is saved that
     is not on disk. A verdict for a site outside the worklist (a re-mine dropped it) is kept
-    on save and never shown."""
+    on save and never shown.
+
+    ``review`` is the list of sites queued for another listen (:func:`read_review`): each
+    one's note is shown with it, and saving its answer again, changed or not, takes it off
+    the list. The listener may also queue or unqueue a site (:meth:`mark_for_review`)."""
 
     rows: list[Row]
     verdicts_path: Path
     audio_dir: Path
     verdicts: dict[str, Verdict] = field(default_factory=dict)
+    review_path: Path | None = None
+    review: dict[str, str] = field(default_factory=dict)
     _by_key: dict[str, Row] = field(default_factory=dict)
     _targets: dict[Word, list[Target]] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
@@ -349,18 +362,19 @@ class SessionState:
     def load(
         cls, worklist: Path, verdicts: Path, audio_dir: Path, registry: dict[str, StagedClip],
         edit_check: Path | None = None, edit_words: Path = WORDS_PATH,
-        words: Path | None = None,
+        words: Path | None = None, review: Path | None = None,
     ) -> "SessionState":
         """The session's worklist and, with ``edit_check``, the synthetic-edit check and,
         with ``words``, the word sample, in one shuffled queue, once every clip and item
-        they play is verified."""
+        they play is verified; with ``review``, the sites queued for another listen."""
         rows = load_worklist(worklist)
         sampled = [] if words is None else load_words(words)
         verify_audio([*rows, *sampled], registry, audio_dir)
         items = [] if edit_check is None else load_edit_check(edit_check, edit_words)
         verify_edit_check_audio(items, audio_dir)
         return cls(rows=queue(rows, items, sampled), verdicts_path=verdicts,
-                   audio_dir=audio_dir, verdicts=read_verdicts(verdicts))
+                   audio_dir=audio_dir, verdicts=read_verdicts(verdicts),
+                   review_path=review, review={} if review is None else read_review(review))
 
     def row(self, key: str) -> Row:
         return self._by_key[key]
@@ -379,6 +393,7 @@ class SessionState:
             "choices": list(choices(row)),
             "heard": verdict.heard if verdict else None,
             "note": verdict.note if verdict else "",
+            "review": self.review.get(row.site.site_id),
         }
         if asks_naturalness(row):
             view["natural_choices"] = list(NATURALNESS)
@@ -410,7 +425,32 @@ class SessionState:
             proposed = {**self.verdicts, verdict.site_id: verdict}
             write_verdicts(proposed, self.verdicts_path)
             self.verdicts = proposed
+            if verdict.site_id in self.review:
+                reviewed = {k: v for k, v in self.review.items() if k != verdict.site_id}
+                try:
+                    self._write_review(reviewed)
+                except OSError as error:  # the answer is saved; the site may be queued again
+                    print(f"review list not rewritten: {error}", flush=True)
+                self.review = reviewed
         return verdict
+
+    def mark_for_review(self, key: str, queued: bool) -> str | None:
+        """Queue the site for another listen with :data:`LISTENER_REVIEW_NOTE`, or take it
+        off the list; the site's note on the list afterwards. Raises ``KeyError`` for an
+        unknown key and ``OSError`` when the list cannot be written (nothing changes)."""
+        site_id = self.row(key).site.site_id
+        with self._lock:
+            proposed = {k: v for k, v in self.review.items() if k != site_id}
+            if queued:
+                proposed[site_id] = self.review.get(site_id, LISTENER_REVIEW_NOTE)
+            self._write_review(proposed)
+            self.review = proposed
+        return self.review.get(site_id)
+
+    def _write_review(self, review: Mapping[str, str]) -> None:
+        if self.review_path is None:
+            raise OSError("this session has no review list (start it with --review)")
+        write_review(review, self.review_path)
 
     def progress(self) -> dict:
         answered = sum(row.site.site_id in self.verdicts for row in self.rows)
@@ -429,7 +469,8 @@ class SessionState:
 
 
 class SessionHandler(AuditHandler):
-    """Routes: the page, the blind site list, site audio, and answer submission."""
+    """Routes: the page, the blind site list, site audio, answer submission, and queueing a
+    site for another listen."""
 
     state: SessionState
 
@@ -453,7 +494,8 @@ class SessionHandler(AuditHandler):
             self.send_json({"error": "not found"}, status=404)
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler's interface
-        if urlparse(self.path).path != "/api/verdict":
+        route = urlparse(self.path).path
+        if route not in ("/api/verdict", "/api/review"):
             self.send_json({"error": "not found"}, status=404)
             return
         try:
@@ -461,6 +503,9 @@ class SessionHandler(AuditHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except (TypeError, ValueError):
             self.send_json({"error": "body must be JSON"}, status=400)
+            return
+        if route == "/api/review":
+            self.post_review(payload)
             return
         if not isinstance(payload, dict) or not isinstance(payload.get("note", ""), str):
             self.send_json({"error": "body must be {key, heard, note, previous[, natural]}"},
@@ -484,6 +529,20 @@ class SessionHandler(AuditHandler):
             return
         self.send_json({"progress": self.state.progress()})
 
+    def post_review(self, payload: object) -> None:
+        if not isinstance(payload, dict) or not isinstance(payload.get("review"), bool):
+            self.send_json({"error": "body must be {key, review: true|false}"}, status=400)
+            return
+        try:
+            note = self.state.mark_for_review(str(payload.get("key", "")), payload["review"])
+        except KeyError:
+            self.send_json({"error": "unknown site"}, status=404)
+            return
+        except OSError as error:
+            self.send_json({"error": f"not saved: {error}"}, status=500)
+            return
+        self.send_json({"review": note})
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -502,6 +561,9 @@ def build_parser() -> argparse.ArgumentParser:
                              "word_sample.jsonl for Ship A's session)")
     parser.add_argument("--verdicts", type=Path, default=VERDICTS_PATH,
                         help="the tracked verdicts JSONL; resumed if present")
+    parser.add_argument("--review", type=Path, default=REVIEW_PATH,
+                        help="the sites queued for another listen, with a note each; "
+                             "created when the listener first queues one")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1",
                         help="bind address; 0.0.0.0 to answer from a phone on the LAN")
@@ -511,7 +573,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     state = SessionState.load(args.worklist, args.verdicts, args.audio_dir,
-                              load_staged_clips(), args.edit_check, args.edit_words, args.words)
+                              load_staged_clips(), args.edit_check, args.edit_words, args.words,
+                              args.review)
     progress = state.progress()
     print(f"{progress['answered']} of {progress['total']} answered. "
           f"Serving on http://{args.host}:{args.port}/", flush=True)

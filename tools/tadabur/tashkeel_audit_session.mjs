@@ -15,8 +15,21 @@
 //   once both of its answers are chosen, as one verdict: the first choice is only a draft
 //   (shown, not saved), and it is dropped when the site changes. Once saved, changing
 //   either answer saves the pair again.
+// * A site queued for another listen (its `review` is the note saying why) keeps its answer
+//   until a new one is saved; saving it, changed or not, takes it off the list and moves to
+//   the next queued site, or else the next unanswered one.
+// * "Trimmed" answers unclear with a note starting "trim": the clip's opening is cut, so
+//   the site cannot be judged (the onset guard reads the note).
 
 export const ANSWER_GUARD_MS = 400;
+export const TRIM_NOTE = "trim";
+
+// The note a "Trimmed" answer saves: the listener's own note, after "trim".
+export function trimNote(note) {
+  const rest = note.trim();
+  if (rest === "") return TRIM_NOTE;
+  return /^trim/i.test(rest) ? rest : `${TRIM_NOTE}; ${rest}`;
+}
 
 const ZWJ = "\u200D";
 // Unicode joining types (ArabicShaping.txt) of the letters the references use: a dual-
@@ -66,6 +79,10 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
   const asksNatural = (site) => "natural" in site;
   const complete = (site) => site.heard !== null && (!asksNatural(site) || site.natural !== null);
   const answered = () => sites.filter(complete).length;
+  const queued = () => sites.filter((site) => site.review).length;
+  const counts = () => ({
+    position: index + 1, total: sites.length, answered: answered(), queued: queued(),
+  });
 
   // The answer the server holds for the site, as `previous` names it.
   function stored(site) {
@@ -73,13 +90,15 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
     return asksNatural(site) ? { heard: site.heard, natural: site.natural } : site.heard;
   }
 
-  function firstUnanswered(from) {
+  function first(from, wanted) {
     for (let k = 0; k < sites.length; k++) {
       const i = (from + k) % sites.length;
-      if (!complete(sites[i])) return i;
+      if (wanted(sites[i])) return i;
     }
     return -1;
   }
+  const firstUnanswered = (from) => first(from, (site) => !complete(site));
+  const firstQueued = (from) => first(from, (site) => site.review);
 
   function stop() {
     player.stop();
@@ -98,7 +117,7 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
     draft = {};
     index = i;
     shownAt = clock();
-    view.render(current(), { position: index + 1, total: sites.length, answered: answered() });
+    view.render(current(), counts());
     if (autoplay) play();
   }
 
@@ -128,9 +147,11 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
       saving = false;
       view.saving(false);
     }
-    Object.assign(site, answer, { note });
+    const wasQueued = Boolean(site.review);
+    Object.assign(site, answer, { note, review: null });
     view.error("");
-    const next = firstUnanswered(index + 1);
+    const queuedNext = wasQueued ? firstQueued(index + 1) : -1;
+    const next = queuedNext >= 0 ? queuedNext : firstUnanswered(index + 1);
     show(next >= 0 ? next : index, { autoplay: next >= 0 });
     return true;
   }
@@ -152,15 +173,38 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
       show(next, { autoplay: true });
       return true;
     },
+    // The next site queued for another listen after the one on screen.
+    nextQueued() {
+      const next = firstQueued(index + 1);
+      if (saving || next < 0) return false;
+      show(next, { autoplay: true });
+      return true;
+    },
+    // Queue the site on screen for another listen (`on`), or take it off the list.
+    async markForReview(on) {
+      const site = current();
+      if (!site || saving) return false;
+      try {
+        site.review = (await api.review({ key: site.key, review: on })).review;
+      } catch (error) {
+        view.error(`Not saved (${error.message}).`);
+        return false;
+      }
+      view.error("");
+      view.queued(site.review, counts());
+      return true;
+    },
     // What was said at the carrier.
     answer: (heard, note) => submit({ heard }, note),
+    // The clip's opening is cut: unclear, noted "trim".
+    trimmed: (note) => submit({ heard: "unclear" }, trimNote(note)),
     // Whether the site sounds natural (only a site with a `natural` field asks it).
     judge(natural, note) {
       return asksNatural(current() ?? {}) ? submit({ natural }, note) : Promise.resolve(false);
     },
     state: () => ({
       index, key: current()?.key ?? null, playing, saving,
-      answered: answered(), total: sites.length,
+      answered: answered(), total: sites.length, queued: queued(),
     }),
   };
 }

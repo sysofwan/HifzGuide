@@ -202,9 +202,16 @@ test("a highlight inside a word is joined to both neighbours, so no ligature hid
     ["ذَاالِكَ لَ\u200D", "\u200Dم\u200D", "\u200Dاا مَتَااعُ"]);
 });
 
-test("a highlight at a word edge, or before its own mark, gets no joiner on that side", () => {
+test("no joiner is added where the letters do not join", () => {
+  // A word edge, or the carrier's own mark after it.
   assert.deepEqual(highlightParts("قَالَ ", "ك", "ُم هُوَ"), ["قَالَ ", "ك", "ُم هُوَ"]);
-  assert.deepEqual(highlightParts("قَالَ ", "كَ", "ذَاا"), ["قَالَ ", "كَ\u200D", "\u200Dذَاا"]);
   assert.deepEqual(highlightParts("", "ب", " ءِذَاا"), ["", "ب", " ءِذَاا"]);
-  assert.deepEqual(highlightParts("فِي", "ه", ""), ["فِي\u200D", "\u200Dه", ""]);
+  // 2:129's رَببَنَاا: ر cannot join forward, so the highlighted ب keeps its initial form.
+  assert.deepEqual(highlightParts("رَ", "ب", "بَنَاا"), ["رَ", "ب\u200D", "\u200Dبَنَاا"]);
+  // 6:64's يُنَججِۦۦك: the small yeh after the carrier joins nothing.
+  assert.deepEqual(highlightParts("يُنَ", "جِ", "ۦۦك"), ["يُنَ\u200D", "\u200Dجِ", "ۦۦك"]);
+  // A right-joining carrier joins back but never forward.
+  assert.deepEqual(highlightParts("قَ", "ا", "لَ"), ["قَ\u200D", "\u200Dا", "لَ"]);
+  // The hidden letter joins nothing.
+  assert.deepEqual(highlightParts("لَ", "\u25CC", "اا"), ["لَ", "\u25CC", "اا"]);
 });

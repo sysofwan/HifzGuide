@@ -19,16 +19,31 @@
 export const ANSWER_GUARD_MS = 400;
 
 const ZWJ = "\u200D";
-// Two parts join across their seam when neither side of it is a space or an end. A seam
-// before a combining mark is left alone: the mark belongs to the letter before it.
-const joins = (left, right) => left !== "" && right !== "" && !/\s/u.test(left.at(-1))
-  && !/[\s\p{M}]/u.test(right[0]);
+// Unicode joining types (ArabicShaping.txt) of the letters the references use: a dual-
+// joining letter connects to both neighbours, a right-joining one only to the letter
+// before it, and the tatweel joins both ways. Everything else (ء, the small waw and yeh,
+// the hidden letter, a space) joins neither; combining marks are transparent.
+const DUAL_JOINING = new Set("بتثجحخسشصضطظعغفقكلمنهيڇںـ");
+const RIGHT_JOINING = new Set("اٲدذرزو");
+const MARK = /\p{M}/u;
+const lastLetter = (text) => [...text].reverse().find((char) => !MARK.test(char));
+
+// Whether the letters on either side of a seam are drawn joined: the one before it can
+// join forward and the one after it can join back. A seam before a combining mark is
+// never split, since the mark belongs to the letter before it.
+const joins = (left, right) => {
+  const before = lastLetter(left);
+  const after = right[0];
+  return before !== undefined && after !== undefined && !MARK.test(after)
+    && DUAL_JOINING.has(before) && (DUAL_JOINING.has(after) || RIGHT_JOINING.has(after));
+};
 
 // The reference split around the highlight, with a zero-width joiner on each side of the
-// highlight that falls inside a word. Without it the font may draw the highlighted letter
-// inside a ligature with its neighbour (the لم of لما), and a highlight inside a ligature
-// has no width; the joiner breaks the ligature and keeps the letters' joined forms. A
-// highlight at a word edge gets no joiner on that side, so its letter keeps its own form.
+// highlight where the letters there are drawn joined. Without it the font may draw the
+// highlighted letter inside a ligature with its neighbour (the لم of لما), and a highlight
+// inside a ligature has no width; the joiner breaks the ligature and keeps the joined
+// forms. Where the letters do not join (a space, ر before the carrier, a small waw after
+// it) no joiner is added, so no letter is forced into a joined form.
 export function highlightParts(before, carrier, after) {
   const opens = joins(before, carrier);
   const closes = joins(carrier, after);

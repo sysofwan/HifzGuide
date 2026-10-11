@@ -266,6 +266,8 @@ def _section_guard(sizing: Mapping, guard: Mapping) -> str:
     cells = [[cell, e["sites"], e["held_out_listened"]] for cell, e in taken["cells"].items()]
     unplaced = ", ".join(f"{n} {split}" for split, n in
                          guard["fixture_boundaries_unplaced"].items())
+    dropped = guard["fixture_test_boundaries_dropped_for_a_reciter_in_calibration"]
+    overlap = "; ".join(f"reciter {r} lost {n} test boundaries" for r, n in dropped.items())
     guarded_test = calibration["splits"]["test"]["local_check_where_segmenter_did_not_cut"]
     test_precision, test_recall = _rates(guarded_test)
     return f"""## The waqf guard (#134)
@@ -286,7 +288,10 @@ shaddah or a real mistake.
 
 **Calibration** on the owner's waqf fixtures, one unit per adjudicated boundary (a pause when
 any of its rows says `waqf`), on the clips whose word times place their words ({unplaced}
-boundaries are on re-read or skipped clips). The operating point is selected on the
+boundaries are on re-read or skipped clips). The fixtures' split predates the canonical
+reciter ids; a reciter with boundaries in both splits keeps only its calibration ones, so the
+splits are reciter-disjoint ({overlap or "no reciter was in both"}). The operating point is
+selected on the
 population the guard applies the check to, the {calibration["selected_on"]}: the pre-stated
 rule ({calibration["rule"]}) picks silence probability ≥ {chosen["threshold"]} for
 ≥ {chosen["duration"]} s. Both curves (that population, and every calibration boundary for

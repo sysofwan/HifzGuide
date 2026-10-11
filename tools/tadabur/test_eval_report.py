@@ -222,6 +222,22 @@ def test_sites_without_a_verdict_give_each_rate_its_section_1_range():
     assert row(report, CORRECT_SIDE, PAIR, ZAI)["excluded"] == []
 
 
+def test_a_waqf_realized_site_leaves_every_row_but_not_the_weights(cohort):
+    """#134: the guard's site is in no row, no pending count and no site record; the rest keep
+    the stratum weights computed over every site."""
+    sites, sides, reciters = cohort
+    arms = {"m": decodes(sites, {})}
+    whole = fixture_report(sites, sides, reciters, arms, models(arms))
+    guarded = fixture_report(sites, sides, reciters, arms, models(arms),
+                             waqf_realized={sites[3].site_id})
+    assert guarded["waqf_realized"] == [sites[3].site_id] and whole["waqf_realized"] == []
+    assert sites[3].site_id not in {r["site_id"] for r in guarded["sites"]}
+    assert guarded["pending"] == []
+    assert all(sites[3].site_id not in r["excluded"] for r in guarded["rows"])
+    weights = {r["site_id"]: r["weight"] for r in whole["sites"]}
+    assert all(r["weight"] == weights[r["site_id"]] for r in guarded["sites"])
+
+
 def test_a_mistake_side_decode_never_moves_a_correct_side_number(cohort):
     before = report_for(cohort, {"m": {"c.wav": SAID_ZAI}})
     after = report_for(cohort, {"m": {"c.wav": SAID_DHAL}})

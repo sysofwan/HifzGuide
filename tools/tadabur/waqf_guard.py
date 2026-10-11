@@ -28,8 +28,9 @@ its calibration on the owner's waqf fixtures picks. A boundary the clip's word t
 place (a re-read clip, or one the segmenter skipped) is ``unplaced`` and counts as no pause.
 
 **The owner decides first.** A verdict whose note says ``waqf`` (or that the reciter paused
-or stopped) marks a pause, one that says ``wasl`` (or "no waqf", "no pause") marks none,
-overriding the detector for that item in both directions (:func:`owner_says`). Notes are
+or stopped) marks a pause, one that says ``wasl`` (or negates a pause: "no waqf", "not
+paused") marks none, overriding the detector for that item in both directions
+(:func:`owner_says`); an ambiguous note leaves the detector's decision. Notes are
 read from the verdicts file at every use (:func:`realized_ids`), so the guard stays right
 while verdicts accumulate; ``build`` refreshes the counts.
 
@@ -43,9 +44,16 @@ Files (``tools/tadabur/ship_a/``):
 
 * ``waqf_guard.boundaries.jsonl``: every boundary the local check was asked about, Ship A's
   and the fixtures', with its window and scores (``local_pause score``); the fixtures' rows
-  also carry the owner's verdict and the segmenter's decisions (today's, from re-segmenting
-  the fixture clips, and the one the fixture recorded);
+  also carry the clip's canonical reciter, the owner's verdict and the segmenter's decisions
+  (today's, from re-segmenting the fixture clips, and the one the fixture recorded). The
+  fixtures' split predates canonical reciter ids, so a reciter with boundaries in both splits
+  keeps only its calibration ones (:func:`disjoint_fixtures`): the splits are
+  reciter-disjoint;
 * ``waqf_guard.vad.json``: the VAD pass's provenance;
+* ``waqf_guard.segmentations.jsonl``, ``waqf_guard.segmentations.json``: the segmentations
+  the windows are read on (``record``): per clip of the fixtures' re-segmentation and of the
+  P3.5 re-location that a guarded P3.5 row sits on, its canonical reciter, skip reason,
+  re-reads, word times and the segmenter's cuts; and each run's record and files' checksums;
 * ``waqf_guard.jsonl``: one row per item, its dependence, each dependent boundary's window,
   score and detector decision;
 * ``waqf_guard.summary.json``: counts per part and per stratum at the current verdicts, the
@@ -56,8 +64,9 @@ Usage (from ``tools/``; ``windows`` and ``build`` are torch-free and need quran-
 
   python -m tadabur.resegment --registry tadabur/staged_audio/clips.jsonl \\
       --use waqf_boundary --audio-dir stage/clips --out-dir seg_fixtures   # GPU, word times
-  python -m tadabur.waqf_guard windows --p35-status stage/seg_p35/clip_status.jsonl \\
-      --fixture-segmentation seg_fixtures --out windows.jsonl
+  python -m tadabur.waqf_guard record --fixture-segmentation seg_fixtures \\
+      --p35-segmentation stage/seg_p35
+  python -m tadabur.waqf_guard windows --out windows.jsonl
   python -m tadabur.local_pause score --windows windows.jsonl --audio-dir … \\
       --out tadabur/ship_a/waqf_guard.boundaries.jsonl \\
       --provenance tadabur/ship_a/waqf_guard.vad.json      # GPU, a minute
@@ -88,10 +97,11 @@ from .listening_session import (
     load_worklist,
     read_verdicts,
 )
-from .local_pause import SPLITS, boundary_window, calibrate, fires, point
+from .local_pause import SPLITS, TEST, boundary_window, calibrate, fires, point
 from .mining_pool import CLIPS_PATH as POOL_CLIPS_PATH
 from .ship_a import SHIP_A_DIR, SITES_PATH, load_sites
 from .ship_a_worklist import GEMINATE, PAIR_PARTNER, WORKLIST_PATH, carried_part
+from .staged_audio import load_staged_clips
 from .truth_sites import NOT_HELD, P35_FIXTURE, SHADDAH, TARGET_PAIRS
 from .waqf_event_fixtures import WAQF, load_waqf_events
 from .word_sample import WORD_SAMPLE_PATH, load_words
@@ -100,6 +110,8 @@ GUARD_PATH = SHIP_A_DIR / "waqf_guard.jsonl"
 SUMMARY_PATH = SHIP_A_DIR / "waqf_guard.summary.json"
 BOUNDARIES_PATH = SHIP_A_DIR / "waqf_guard.boundaries.jsonl"
 VAD_RUN_PATH = SHIP_A_DIR / "waqf_guard.vad.json"
+SEGMENTATIONS_PATH = SHIP_A_DIR / "waqf_guard.segmentations.jsonl"
+SEGMENTATIONS_RUN_PATH = SHIP_A_DIR / "waqf_guard.segmentations.json"
 EXTENSION_CLIPS_PATH = SHIP_A_DIR / "mining" / "clips.jsonl"
 FIXTURE_DIR = Path(__file__).parent / "waqf_event_fixtures"
 
@@ -128,8 +140,14 @@ OWNER_NOTE = "owner_note"
 LOCAL_CHECK = "local_check"
 UNPLACED = "unplaced"
 
-_WASL_NOTE = re.compile(r"\b(wasl|no (waqf|pause))\b", re.IGNORECASE)
-_WAQF_NOTE = re.compile(r"\b(waqf|paused?|stopped)\b", re.IGNORECASE)
+#: Words of a note that name a pause, or continuation.
+_PAUSE_WORDS = frozenset({"waqf", "pause", "paused", "pauses", "pausing", "stop", "stopped",
+                          "stops", "stopping"})
+_WASL_WORDS = frozenset({"wasl"})
+#: Words that negate a pause or wasl word among the :data:`_NEGATION_REACH` words before it.
+_NEGATORS = frozenset({"no", "not", "never", "without", "nor", "cannot", "didnt", "doesnt",
+                       "dont", "hasnt", "havent", "hadnt", "isnt", "wasnt", "wont"})
+_NEGATION_REACH = 3
 
 
 # --- which items depend on wasl --------------------------------------------------------------
@@ -313,16 +331,55 @@ def _manifest_times(path: Path) -> dict[str, tuple[float, ...] | None]:
     return {c["audio_filename"]: placeable(c["word_times"], c["re_reads"]) for c in clips}
 
 
-def _status_times(path: Path) -> dict[str, tuple[float, ...] | None]:
-    return {s.audio_filename: placeable(s.word_times, s.re_reads) for s in read_clip_status(path)}
+# --- the segmentations the windows are read on -------------------------------------------------
+
+#: The re-segmentation of the waqf fixtures' clips (:mod:`tadabur.resegment`, #134), and the
+#: P3.5 re-location's (#83), each recorded in :data:`SEGMENTATIONS_PATH` for the clips it places.
+FIXTURE_RESEGMENT = "waqf_fixture_resegment"
+P35_RELOCATION = "p35_relocation"
 
 
-def site_windows(items: Iterable[Item], p35_status: Path) -> list[dict]:
+def segmentation_records(source: str, segmentation_dir: Path, names: Iterable[str]) -> list[dict]:
+    """What the windows and the fixture exclusions read off one ``tadabur.resegment`` output,
+    for the clips ``names``: each clip's canonical reciter, skip reason, re-reads, word times
+    and the words its segments start at after the first (the segmenter's cuts)."""
+    wanted = set(names)
+    with open(segmentation_dir / "segmentation.jsonl", encoding="utf-8") as f:
+        cuts = {row["audio_filename"]: sorted(s["word_start"] for s in row["segments"][1:])
+                for row in map(json.loads, f)}
+    return [{"source": source, "audio_filename": c.audio_filename, "reciter_id": c.reciter_id,
+             "skip_reason": c.skip_reason, "re_reads": c.re_reads,
+             "word_times": list(c.word_times), "cuts": cuts.get(c.audio_filename, [])}
+            for c in read_clip_status(segmentation_dir / "clip_status.jsonl")
+            if c.audio_filename in wanted]
+
+
+def segmentation_provenance(segmentation_dir: Path) -> dict:
+    """One ``tadabur.resegment`` output's run record and its files' checksums."""
+    return {"run": json.loads((segmentation_dir / "run.json").read_text(encoding="utf-8")),
+            **{f"{name}_sha256": sha256_of(segmentation_dir / name)
+               for name in ("clip_status.jsonl", "segmentation.jsonl")}}
+
+
+def read_segmentations(path: Path = SEGMENTATIONS_PATH) -> dict[str, dict[str, dict]]:
+    """The committed segmentation records, per source and clip."""
+    records: dict[str, dict[str, dict]] = defaultdict(dict)
+    with open(path, encoding="utf-8") as f:
+        for row in map(json.loads, f):
+            records[row["source"]][row["audio_filename"]] = row
+    return records
+
+
+def _times(records: Mapping[str, dict]) -> dict[str, tuple[float, ...] | None]:
+    return {name: placeable(r["word_times"], r["re_reads"]) for name, r in records.items()}
+
+
+def site_windows(items: Iterable[Item]) -> list[dict]:
     """One row per boundary any item depends on: its key, clip, word and window (``null``
     where the clip's word times cannot place it). A P3.5 row is read on the P3.5
     re-location's segmentation, every other item on the pool's or the extension's."""
     pool = {**_manifest_times(POOL_CLIPS_PATH), **_manifest_times(EXTENSION_CLIPS_PATH)}
-    p35 = _status_times(p35_status)
+    p35 = _times(read_segmentations()[P35_RELOCATION])
     windows: dict[tuple[str, int], list[float] | None] = {}
     for item in items:
         times = (p35 if item.source == P35_FIXTURE else pool)[item.audio_filename]
@@ -336,29 +393,57 @@ def site_windows(items: Iterable[Item], p35_status: Path) -> list[dict]:
             for (name, word), window in sorted(windows.items())]
 
 
-def fixture_windows(segmentation_dir: Path) -> list[dict]:
-    """One row per adjudicated fixture boundary (the ayah word it precedes): the owner's
-    verdict (a pause when any of its rows says ``waqf``), the segmenter's decisions (the one
-    the fixture recorded, and today's from re-segmenting the clips with
-    :mod:`tadabur.resegment`), and its window on today's word times."""
-    times = _status_times(segmentation_dir / "clip_status.jsonl")
-    with open(segmentation_dir / "segmentation.jsonl", encoding="utf-8") as f:
-        cuts = {row["audio_filename"]: {s["word_start"] for s in row["segments"][1:]}
-                for row in map(json.loads, f)}
-    verdicts: dict[tuple, dict] = {}
+def fixture_boundaries() -> list[dict]:
+    """One row per adjudicated fixture boundary (the ayah word it precedes), with its split
+    and the clip's canonical reciter: the owner's verdict (a pause when any of its rows says
+    ``waqf``) and the segmenter's decision as the fixture recorded it."""
+    reciter_of = {name: clip.reciter_id for name, clip in load_staged_clips().items()}
+    seen: dict[tuple, dict] = {}
     for split in SPLITS:
         for entry in load_waqf_events(FIXTURE_DIR / f"waqf_events.{split}.jsonl"):
             key = (split, entry.audio_ref, entry.word_index + 1)
-            seen = verdicts.setdefault(key, {"waqf": False, "segmenter_fixture": False})
-            seen["waqf"] |= entry.verdict == WAQF
-            seen["segmenter_fixture"] |= entry.predicted == WAQF
+            row = seen.setdefault(key, {"split": split, "audio_filename": entry.audio_ref,
+                                        "word": entry.word_index + 1,
+                                        "reciter_id": reciter_of.get(entry.audio_ref),
+                                        "waqf": False, "segmenter_fixture": False})
+            row["waqf"] |= entry.verdict == WAQF
+            row["segmenter_fixture"] |= entry.predicted == WAQF
+    return [seen[k] for k in sorted(seen)]
+
+
+def reciter_overlap(rows: Iterable[Mapping]) -> set[int]:
+    """The canonical reciters with fixture boundaries in both splits."""
+    rows = list(rows)
+    return set.intersection(*({r["reciter_id"] for r in rows if r["split"] == split
+                               and r["reciter_id"] is not None} for split in SPLITS))
+
+
+def disjoint_fixtures(rows: list[dict]) -> tuple[list[dict], dict[int, int]]:
+    """The fixture boundaries with every test boundary of a reciter who also has calibration
+    boundaries left out (the calibration side chose the operating point, so it keeps them),
+    and how many each such reciter lost. The fixtures' split predates the canonical reciter
+    ids; a clip whose reciter the registry does not know is never placed."""
+    shared = reciter_overlap(rows)
+    dropped = [r for r in rows if r["split"] == TEST and r["reciter_id"] in shared]
+    kept = [r for r in rows if not (r["split"] == TEST and r["reciter_id"] in shared)]
+    if reciter_overlap(kept):
+        raise ValueError("calibration and test fixtures share a canonical reciter")
+    return kept, dict(sorted(Counter(r["reciter_id"] for r in dropped).items()))
+
+
+def fixture_windows() -> list[dict]:
+    """Every reciter-disjoint fixture boundary (:func:`disjoint_fixtures`) with today's
+    segmenter decision (a cut there when re-segmenting the clips with
+    :mod:`tadabur.resegment`) and its window on today's word times."""
+    records = read_segmentations()[FIXTURE_RESEGMENT]
+    times = _times(records)
     rows = []
-    for (split, name, word), seen in sorted(verdicts.items()):
+    for row in disjoint_fixtures(fixture_boundaries())[0]:
+        name, word = row["audio_filename"], row["word"]
         clip_times = times.get(name)
         placed = clip_times is not None and word < len(clip_times) - 1
-        rows.append({"key": fixture_key(name, word), "kind": FIXTURE, "split": split,
-                     "audio_filename": name, "word": word, **seen,
-                     "segmenter": word in cuts.get(name, ()),
+        rows.append({"key": fixture_key(name, word), "kind": FIXTURE, **row,
+                     "segmenter": name in records and word in records[name]["cuts"],
                      "window": boundary_window(clip_times, word) if placed else None})
     return rows
 
@@ -368,10 +453,22 @@ def fixture_windows(segmentation_dir: Path) -> list[dict]:
 
 def owner_says(note: str) -> bool | None:
     """What a verdict's note says about a pause: ``True`` for a waqf, ``False`` for wasl,
-    ``None`` when it says neither."""
-    if _WASL_NOTE.search(note):
-        return False
-    return True if _WAQF_NOTE.search(note) else None
+    ``None`` when it says neither or is ambiguous, which leaves the detector's decision.
+
+    The note is lower-cased with its whitespace and apostrophes normalized, then read word by
+    word: a pause word (``waqf``, ``pause(d)``, ``stop(ped)``) or ``wasl`` is negated when
+    ``no``, ``not``, ``never``, ``without`` or a word ending in ``n't`` is among the three
+    words before it ("no pause", "not paused", "has not stopped", "didn't stop"). A negated
+    pause says wasl; a negated wasl says a pause. Two claims that disagree are ambiguous."""
+    words = re.findall(r"[a-z']+", " ".join(note.lower().replace("\u2019", "'").split()))
+    claims = set()
+    for k, word in enumerate(words):
+        if word not in _PAUSE_WORDS | _WASL_WORDS:
+            continue
+        negated = any(w in _NEGATORS or w.endswith("n't")
+                      for w in words[max(0, k - _NEGATION_REACH):k])
+        claims.add((word in _PAUSE_WORDS) != negated)
+    return claims.pop() if len(claims) == 1 else None
 
 
 def read_boundaries(path: Path = BOUNDARIES_PATH) -> dict[str, dict]:
@@ -496,7 +593,11 @@ def build() -> dict:
     """Classify every item, apply the local check at its operating point, and write the
     sidecar and its summary."""
     boundaries = read_boundaries()
-    fixtures = [b for b in boundaries.values() if b["kind"] == FIXTURE and b["window"]]
+    measured = [b for b in boundaries.values() if b["kind"] == FIXTURE]
+    if [{k: v for k, v in b.items() if k != "scores"} for b in measured] != fixture_windows():
+        raise ValueError("the measured fixture boundaries are not the recorded segmentations' "
+                         "reciter-disjoint ones: re-run windows and local_pause score")
+    fixtures = [b for b in measured if b["window"]]
     calibration = calibrate(fixtures)
     operating_point = calibration["operating_point"]
     if operating_point is None:
@@ -512,9 +613,13 @@ def build() -> dict:
             ("ship_a/sites.jsonl", SITES_PATH), ("ship_a/worklist.jsonl", WORKLIST_PATH),
             ("ship_a/word_sample.jsonl", WORD_SAMPLE_PATH),
             ("ship_a/waqf_guard.boundaries.jsonl", BOUNDARIES_PATH),
+            ("ship_a/waqf_guard.segmentations.jsonl", SEGMENTATIONS_PATH),
             ("listening_session/verdicts.jsonl", VERDICTS_PATH))},
         "detector": {**json.loads(VAD_RUN_PATH.read_text(encoding="utf-8")),
                      "operating_point": operating_point},
+        "segmentations": json.loads(SEGMENTATIONS_RUN_PATH.read_text(encoding="utf-8")),
+        "fixture_test_boundaries_dropped_for_a_reciter_in_calibration": {
+            str(r): n for r, n in disjoint_fixtures(fixture_boundaries())[1].items()},
         "fixture_boundaries_unplaced": dict(sorted(unplaced.items())),
         "segmenter_on_fixture_rows": segmenter_on_fixture_rows(),
     }
@@ -529,17 +634,32 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     commands = parser.add_subparsers(dest="command", required=True)
+    record = commands.add_parser(
+        "record", help="record the segmentations the windows are read on (where they live)")
+    record.add_argument("--fixture-segmentation", type=Path, required=True,
+                        help="tadabur.resegment's output for the waqf_boundary clips")
+    record.add_argument("--p35-segmentation", type=Path, required=True,
+                        help="the P3.5 re-location's tadabur.resegment output")
     windows = commands.add_parser("windows", help="list every boundary the check must read")
-    windows.add_argument("--p35-status", type=Path, required=True,
-                         help="the P3.5 re-location's clip_status.jsonl (word times)")
-    windows.add_argument("--fixture-segmentation", type=Path, required=True,
-                         help="tadabur.resegment's output for the waqf_boundary clips")
     windows.add_argument("--out", type=Path, required=True)
     commands.add_parser("build", help="write the sidecar and its summary")
     args = parser.parse_args()
+    if args.command == "record":
+        p35_clips = {i.audio_filename for i in all_items() if i.source == P35_FIXTURE}
+        fixture_clips = {r["audio_filename"] for r in fixture_boundaries()}
+        records = [*segmentation_records(FIXTURE_RESEGMENT, args.fixture_segmentation,
+                                         fixture_clips),
+                   *segmentation_records(P35_RELOCATION, args.p35_segmentation, p35_clips)]
+        write_text_atomically(SEGMENTATIONS_PATH, "".join(
+            json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in records))
+        provenance = {FIXTURE_RESEGMENT: segmentation_provenance(args.fixture_segmentation),
+                      P35_RELOCATION: segmentation_provenance(args.p35_segmentation)}
+        write_text_atomically(SEGMENTATIONS_RUN_PATH,
+                              json.dumps(provenance, indent=1, sort_keys=True) + "\n")
+        print(f"{len(records)} clips recorded")
+        return
     if args.command == "windows":
-        rows = [*site_windows(all_items(), args.p35_status),
-                *fixture_windows(args.fixture_segmentation)]
+        rows = [*site_windows(all_items()), *fixture_windows()]
         write_text_atomically(args.out, "".join(
             json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows))
         print(f"{len(rows)} windows ({sum(r['window'] is None for r in rows)} unplaced)")

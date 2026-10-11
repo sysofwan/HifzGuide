@@ -5,7 +5,8 @@ The pure core is :mod:`tadabur.eval_report`; this is its runner. It decodes noth
 1. **Sites.** The re-located P3.5 fixtures (``truth_sites/p35_fixtures.jsonl``), with any
    site-level verdict from the listening session applied by site id
    (:func:`tadabur.listening_session.adjudicated`), and each site's fixture side from the
-   re-location record (``p35_fixtures.relocation.jsonl``).
+   re-location record (``p35_fixtures.relocation.jsonl``); a site Ship A's waqf guard
+   realizes (:func:`tadabur.waqf_guard.realized_ids`, #134) is left out.
 2. **Decodes.** The base teacher and ``h448``, each whole-span and streamed at b = 0, read from
    #84's caches through :func:`training.truth_baseline.update_decodes`, which checks the
    model, its weights' identity and every decode fingerprint. An item the cache lacks is
@@ -63,6 +64,7 @@ from .listening_session import VERDICTS_PATH, adjudicated, read_verdicts
 from .p35_truth_sites import RELOCATION_PATH, SITES_PATH
 from .staged_audio import REGISTRY_PATH, load_staged_clips
 from .truth_sites import SHADDAH, load_truth_sites
+from .waqf_guard import GUARD_PATH, realized_ids
 
 REPORT_PATH = BASELINE_DIR / "fixture_sides.json"
 DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "fixture-sides.md"
@@ -98,9 +100,11 @@ def build(models: dict[str, str], audio_dir: Path | None) -> dict:
                 "decode": cache["fingerprints"][protocol],
             }
     reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
-    report = fixture_report(sites, fixture_sides(), reciter_of, decodes, arm_models)
+    report = fixture_report(sites, fixture_sides(), reciter_of, decodes, arm_models,
+                            realized_ids())
     report["inputs"] = {
-        path.name: file_sha256(path) for path in (SITES_PATH, RELOCATION_PATH, VERDICTS_PATH, REGISTRY_PATH)
+        path.name: file_sha256(path)
+        for path in (SITES_PATH, RELOCATION_PATH, VERDICTS_PATH, REGISTRY_PATH, GUARD_PATH)
     }
     if "base" in models:
         report["p35_base_reproduction"] = p35_reproduction(sites, decodes[arm("base", "spans")])

@@ -4554,13 +4554,13 @@
     }
    },
    "test": {
-    "boundaries": 716,
+    "boundaries": 698,
     "local_check": {
      "fp": 6,
-     "positives": 68,
-     "precision": 0.9155,
-     "recall": 0.9559,
-     "tp": 65
+     "positives": 66,
+     "precision": 0.913,
+     "recall": 0.9545,
+     "tp": 63
     },
     "local_check_where_segmenter_did_not_cut": {
      "fp": 6,
@@ -4571,24 +4571,24 @@
     },
     "segmenter": {
      "fp": 0,
-     "positives": 68,
+     "positives": 66,
      "precision": 1.0,
-     "recall": 0.8382,
-     "tp": 57
+     "recall": 0.8333,
+     "tp": 55
     },
     "segmenter_or_local_check": {
      "fp": 6,
-     "positives": 68,
-     "precision": 0.9167,
-     "recall": 0.9706,
-     "tp": 66
+     "positives": 66,
+     "precision": 0.9143,
+     "recall": 0.9697,
+     "tp": 64
     }
    }
   }
  },
  "detector": {
   "chunk_samples": 319920,
-  "clips": 320,
+  "clips": 319,
   "frame_samples": 320,
   "operating_point": {
    "duration": 0.32,
@@ -4606,16 +4606,20 @@
   "vad_model": "obadx/recitation-segmenter-v2",
   "vad_revision": "5ee90364e7090ea6eb9dffe80353bed06996a196",
   "window_pad_s": 0.04,
-  "windows": 1903
+  "windows": 1885
  },
  "fixture_boundaries_unplaced": {
   "calibration": 223,
   "test": 106
  },
+ "fixture_test_boundaries_dropped_for_a_reciter_in_calibration": {
+  "78": 18
+ },
  "inputs": {
   "listening_session/verdicts.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "ship_a/sites.jsonl": "8eaf6d0dbeb9fcf328bcc8d24c9b08b49580045d0f677f30dd5bb6813eb730dc",
-  "ship_a/waqf_guard.boundaries.jsonl": "d7544d9f3fc0b2675ff5192c37d868026465193cbbc7863ffb6a94f03097c707",
+  "ship_a/waqf_guard.boundaries.jsonl": "51547c41475cb06e0308581a5215bcf1c65d86442a225a72b0de430043588621",
+  "ship_a/waqf_guard.segmentations.jsonl": "2fae7bb81dfa4b3548b7136b54b61d43cafbf6cd9f07ea429a63fc84a38fadfa",
   "ship_a/word_sample.jsonl": "073deb66db996b9c638292468378f9923f33893b00d9e7c04fafb9414ed15e03",
   "ship_a/worklist.jsonl": "097181fd5d56316c057c5f615812e262ab73bcf4a788d6f5e75ef67cd3576bb0"
  },
@@ -4686,6 +4690,66 @@
    "unplaced": 9,
    "waqf_realized": 0,
    "wasl_dependent": 101
+  }
+ },
+ "segmentations": {
+  "p35_relocation": {
+   "clip_status.jsonl_sha256": "6d2c84a5c5108c045c2387a3d8d2f5ade27736c0231b7ac293ce3e969c82fe1e",
+   "run": {
+    "clips": 206,
+    "decode_fingerprint": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "phonetizer_revision": "1",
+    "segmentation_skips": {
+     "re_read": 3,
+     "repeated_recitation": 1
+    },
+    "use": "p35_fixture",
+    "vad": {
+     "dtype": "bfloat16",
+     "min_silence_ms": 300,
+     "min_speech_ms": 700,
+     "model": "obadx/recitation-segmenter-v2",
+     "pad_ms": 30
+    }
+   },
+   "segmentation.jsonl_sha256": "a8a862d2d8c38a85155f68ca680334b7c0164fdf9f0ad2dc2f6eedab51ceb660"
+  },
+  "waqf_fixture_resegment": {
+   "clip_status.jsonl_sha256": "c6dd2b409722b66da8a141fe40f783d5a4a9e8aefea0fab58dea9257c7a2030a",
+   "run": {
+    "clips": 123,
+    "decode_fingerprint": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "phonetizer_revision": "1",
+    "segmentation_skips": {
+     "re_read": 11,
+     "repeated_recitation": 2
+    },
+    "use": "waqf_boundary",
+    "vad": {
+     "dtype": "bfloat16",
+     "min_silence_ms": 300,
+     "min_speech_ms": 700,
+     "model": "obadx/recitation-segmenter-v2",
+     "pad_ms": 30
+    }
+   },
+   "segmentation.jsonl_sha256": "dfb21be3b00c100b7d95bddfdafa17d5103c1304ba7977f63fa5d07f8817ac5c"
   }
  },
  "segmenter_on_fixture_rows": {

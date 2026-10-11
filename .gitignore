@@ -54,9 +54,10 @@ wandb/
 !tools/tadabur/ship_a/worklist.jsonl
 !tools/tadabur/ship_a/word_sample.jsonl
 # Ship A's waqf guard (#134): every boundary the local pause check measured (fixtures and
-# sites) and the guard's per-item sidecar.
+# sites), the guard's per-item sidecar, and the segmentation records the windows are read on.
 !tools/tadabur/ship_a/waqf_guard.boundaries.jsonl
 !tools/tadabur/ship_a/waqf_guard.jsonl
+!tools/tadabur/ship_a/waqf_guard.segmentations.jsonl
 # Ship A's mining extension (#126, D9): its compact scan record and its hit clips' manifest.
 !tools/tadabur/ship_a/mining/scan.jsonl
 !tools/tadabur/ship_a/mining/clips.jsonl

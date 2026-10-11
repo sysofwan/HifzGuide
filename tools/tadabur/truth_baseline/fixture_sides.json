@@ -1,8 +1,8 @@
 {
  "schema": "tadabur.eval_report/fixture-sides-v1",
  "fingerprints": {
-  "fixtures": "b2a0270475448374aee9c8f857fa1387cd8668ce6fec98fa7f1db2668b71a03a",
-  "schema": "eb6c9176a122449dd2f44e7466a978261eefa13ee93dbfba520265fe6d95abc9",
+  "fixtures": "913959e13f9fa760e8491c38c7b1489292efefd679f77b51188fd8bbb79ff3b1",
+  "schema": "b791406de145dc7305df22b7fd9bc102807d42df78ade189f6e5e2fec9e08b70",
   "arms": {
    "base/spans": {
     "model": "base",
@@ -20,7 +20,7 @@
      "autocast": true,
      "policy": "fp32-features-v1"
     },
-    "decodes_sha256": "3f71889d9d40f5845b22b4289f75cc2c60cd70a3c6255567f256b8bf7f2a1a0d"
+    "decodes_sha256": "c015f6a18eda8553a384402af544ffbf0ede52dd65c6050632fa17ad8b59cd20"
    },
    "base/stream_b0": {
     "model": "base",
@@ -38,7 +38,7 @@
      "autocast": true,
      "policy": "fp32-features-v1"
     },
-    "decodes_sha256": "e43d2b2e50be147e1ccba7cdbed0f1d268a95fec6bd80e8fc172f692cb36ea88"
+    "decodes_sha256": "29b436fdfc54a93fab2f1b5d3294d6ce31d399729b2349c85c467cd8f9ff39a0"
    },
    "h448/spans": {
     "model": "h448",
@@ -56,7 +56,7 @@
      "autocast": true,
      "policy": "fp32-features-v1"
     },
-    "decodes_sha256": "05881cc511b72ef8058aaeab93db766f4ebc8918b51e931d5bd4f620c0871ecf"
+    "decodes_sha256": "461344c4b67ac14d4053afd2903d3e868720f53610d5b2f3476006c9c9eb3712"
    },
    "h448/stream_b0": {
     "model": "h448",
@@ -74,7 +74,7 @@
      "autocast": true,
      "policy": "fp32-features-v1"
     },
-    "decodes_sha256": "d819e42a49633778a33943eac687627b9bebb2d67090c96313591f9ac89911b6"
+    "decodes_sha256": "82b455ec8bce2db3a42585cc4674c93b4d0049b795d2a5b57dce8b1333da5070"
    }
   }
  },
@@ -139,6 +139,14 @@
    "provisional": false
   },
   {
+   "family": "س↔ش",
+   "correct": "none",
+   "mistake": "none",
+   "without_verdict": 0,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
    "family": "س↔ص",
    "correct": "sufficient",
    "mistake": "none",
@@ -155,6 +163,14 @@
    "provisional": false
   },
   {
+   "family": "ط↔ق",
+   "correct": "none",
+   "mistake": "none",
+   "without_verdict": 0,
+   "status": "in scope, insufficient evidence",
+   "provisional": false
+  },
+  {
    "family": "ق↔ك",
    "correct": "sufficient",
    "mistake": "none",
@@ -166,7 +182,7 @@
    "family": "shaddah",
    "correct": "too_small",
    "mistake": "none",
-   "without_verdict": 13,
+   "without_verdict": 12,
    "status": "in scope, insufficient evidence",
    "provisional": true
   }
@@ -1130,6 +1146,38 @@
    "family": "ذ↔ظ",
    "prescribed": "ظ",
    "heard": "ظ",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "correct",
+   "family": "س↔ش",
+   "prescribed": "س",
+   "heard": "س",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "correct",
+   "family": "س↔ش",
+   "prescribed": "ش",
+   "heard": "ش",
    "sites": 0,
    "reciters": 0,
    "support": "none",
@@ -2147,6 +2195,38 @@
   },
   {
    "side": "correct",
+   "family": "ط↔ق",
+   "prescribed": "ط",
+   "heard": "ط",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "correct",
+   "family": "ط↔ق",
+   "prescribed": "ق",
+   "heard": "ق",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "correct",
    "family": "ق↔ك",
    "prescribed": "ق",
    "heard": "ق",
@@ -2666,7 +2746,6 @@
     "p35_fixture:tadabur_spk0003_S5_A95_d95f302e_000070__seg1.wav:shadda#42",
     "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69",
     "p35_fixture:tadabur_spk0079_S26_A66_a9b172c8_000047__seg0.wav:shadda#5",
-    "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
     "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32",
     "p35_fixture:tadabur_spk0485_S35_A32_2ed41edd_000039__seg0.wav:shadda#15"
    ],
@@ -2683,7 +2762,7 @@
       "den": 10.0,
       "sensitivity": {
        "worst": 0.0,
-       "best": 0.4117647058823529
+       "best": 0.375
       }
      },
      "as_partner": {
@@ -2696,7 +2775,7 @@
       "num": 10.0,
       "den": 10.0,
       "sensitivity": {
-       "worst": 0.5882352941176471,
+       "worst": 0.625,
        "best": 1.0
       }
      },
@@ -2711,7 +2790,7 @@
       "den": 10.0,
       "sensitivity": {
        "worst": 0.0,
-       "best": 0.4117647058823529
+       "best": 0.375
       }
      }
     },
@@ -2726,8 +2805,8 @@
       "num": 2.0,
       "den": 10.0,
       "sensitivity": {
-       "worst": 0.11764705882352941,
-       "best": 0.5294117647058824
+       "worst": 0.125,
+       "best": 0.5
       }
      },
      "as_partner": {
@@ -2740,8 +2819,8 @@
       "num": 8.0,
       "den": 10.0,
       "sensitivity": {
-       "worst": 0.47058823529411764,
-       "best": 0.8823529411764706
+       "worst": 0.5,
+       "best": 0.875
       }
      },
      "no_commit": {
@@ -2755,7 +2834,7 @@
       "den": 10.0,
       "sensitivity": {
        "worst": 0.0,
-       "best": 0.4117647058823529
+       "best": 0.375
       }
      }
     },
@@ -2770,8 +2849,8 @@
       "num": 6.0,
       "den": 10.0,
       "sensitivity": {
-       "worst": 0.35294117647058826,
-       "best": 0.7647058823529411
+       "worst": 0.375,
+       "best": 0.75
       }
      },
      "as_partner": {
@@ -2784,8 +2863,8 @@
       "num": 3.0,
       "den": 10.0,
       "sensitivity": {
-       "worst": 0.17647058823529413,
-       "best": 0.5882352941176471
+       "worst": 0.1875,
+       "best": 0.5625
       }
      },
      "no_commit": {
@@ -2798,8 +2877,8 @@
       "num": 1.0,
       "den": 10.0,
       "sensitivity": {
-       "worst": 0.058823529411764705,
-       "best": 0.47058823529411764
+       "worst": 0.0625,
+       "best": 0.4375
       }
      }
     },
@@ -2814,8 +2893,8 @@
       "num": 6.0,
       "den": 10.0,
       "sensitivity": {
-       "worst": 0.35294117647058826,
-       "best": 0.7647058823529411
+       "worst": 0.375,
+       "best": 0.75
       }
      },
      "as_partner": {
@@ -2828,8 +2907,8 @@
       "num": 4.0,
       "den": 10.0,
       "sensitivity": {
-       "worst": 0.23529411764705882,
-       "best": 0.6470588235294118
+       "worst": 0.25,
+       "best": 0.625
       }
      },
      "no_commit": {
@@ -2843,7 +2922,7 @@
       "den": 10.0,
       "sensitivity": {
        "worst": 0.0,
-       "best": 0.4117647058823529
+       "best": 0.375
       }
      }
     }
@@ -3184,6 +3263,38 @@
   },
   {
    "side": "mistake",
+   "family": "س↔ش",
+   "prescribed": "ش",
+   "heard": "س",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "س↔ش",
+   "prescribed": "س",
+   "heard": "ش",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
    "family": "س↔ص",
    "prescribed": "ص",
    "heard": "س",
@@ -3252,6 +3363,38 @@
    "excluded": [
     "p35_fixture:tadabur_spk0138_S19_A123_5981774d_000167__seg0.wav:ض↔ظ#141"
    ],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ط↔ق",
+   "prescribed": "ق",
+   "heard": "ط",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
+   "arms": {}
+  },
+  {
+   "side": "mistake",
+   "family": "ط↔ق",
+   "prescribed": "ط",
+   "heard": "ق",
+   "sites": 0,
+   "reciters": 0,
+   "support": "none",
+   "provisional": false,
+   "fixture_sides": {
+    "should_accept": 0,
+    "should_reject": 0
+   },
+   "excluded": [],
    "arms": {}
   },
   {
@@ -3332,7 +3475,6 @@
     "p35_fixture:tadabur_spk0003_S5_A95_d95f302e_000070__seg1.wav:shadda#42",
     "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69",
     "p35_fixture:tadabur_spk0079_S26_A66_a9b172c8_000047__seg0.wav:shadda#5",
-    "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
     "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32",
     "p35_fixture:tadabur_spk0485_S35_A32_2ed41edd_000039__seg0.wav:shadda#15"
    ],
@@ -3345,7 +3487,7 @@
    "prescribed": "held",
    "heard": "pending",
    "fixture_side": "should_reject",
-   "sites": 7
+   "sites": 6
   },
   {
    "family": "shaddah",
@@ -5329,36 +5471,6 @@
     "h448/stream_b0": {
      "committed": "ز",
      "role": "as_heard"
-    }
-   }
-  },
-  {
-   "site_id": "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
-   "item": "tadabur_spk0097_S20_A18_14e487d0_000013.wav@484:161257",
-   "item_fingerprint": "1bcf47ef9954247dab9b43b310334c15a3906b53b4acfa8d0ac6ff7c4503b188",
-   "reciter_id": 97,
-   "fixture_side": "should_reject",
-   "side": null,
-   "family": "shaddah",
-   "prescribed": "held",
-   "heard": "pending",
-   "weight": 1.0,
-   "arms": {
-    "base/spans": {
-     "committed": "not_held",
-     "role": null
-    },
-    "base/stream_b0": {
-     "committed": "not_held",
-     "role": null
-    },
-    "h448/spans": {
-     "committed": "not_held",
-     "role": null
-    },
-    "h448/stream_b0": {
-     "committed": "not_held",
-     "role": null
     }
    }
   },
@@ -8033,11 +8145,15 @@
    }
   }
  ],
+ "waqf_realized": [
+  "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74"
+ ],
  "inputs": {
   "p35_fixtures.jsonl": "654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8",
   "p35_fixtures.relocation.jsonl": "8a49c872035eef2ba8f69259106f04e1ff3b345c34412b7e0632b71cf3e8d7b8",
   "verdicts.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "clips.jsonl": "daca1e32aaf550e4134850d0c57ee7ee96890898c7d3740e8db31cfa7ec536dd"
+  "clips.jsonl": "2c3597aca616391168815a38d49cfbae429d41397d4a655e2497df0237ceb192",
+  "waqf_guard.jsonl": "ba34de335d9a4143bd6390099001d924be069e728df8da6d36b39e6498991f76"
  },
  "p35_base_reproduction": {
   "items": 151,

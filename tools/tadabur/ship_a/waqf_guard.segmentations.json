@@ -1,0 +1,60 @@
+{
+ "p35_relocation": {
+  "clip_status.jsonl_sha256": "6d2c84a5c5108c045c2387a3d8d2f5ade27736c0231b7ac293ce3e969c82fe1e",
+  "run": {
+   "clips": 206,
+   "decode_fingerprint": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "phonetizer_revision": "1",
+   "segmentation_skips": {
+    "re_read": 3,
+    "repeated_recitation": 1
+   },
+   "use": "p35_fixture",
+   "vad": {
+    "dtype": "bfloat16",
+    "min_silence_ms": 300,
+    "min_speech_ms": 700,
+    "model": "obadx/recitation-segmenter-v2",
+    "pad_ms": 30
+   }
+  },
+  "segmentation.jsonl_sha256": "a8a862d2d8c38a85155f68ca680334b7c0164fdf9f0ad2dc2f6eedab51ceb660"
+ },
+ "waqf_fixture_resegment": {
+  "clip_status.jsonl_sha256": "c6dd2b409722b66da8a141fe40f783d5a4a9e8aefea0fab58dea9257c7a2030a",
+  "run": {
+   "clips": 123,
+   "decode_fingerprint": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "phonetizer_revision": "1",
+   "segmentation_skips": {
+    "re_read": 11,
+    "repeated_recitation": 2
+   },
+   "use": "waqf_boundary",
+   "vad": {
+    "dtype": "bfloat16",
+    "min_silence_ms": 300,
+    "min_speech_ms": 700,
+    "model": "obadx/recitation-segmenter-v2",
+    "pad_ms": 30
+   }
+  },
+  "segmentation.jsonl_sha256": "dfb21be3b00c100b7d95bddfdafa17d5103c1304ba7977f63fa5d07f8817ac5c"
+ }
+}

@@ -99,8 +99,13 @@ def test_survives_keeps_arrangement():
 
 @pytest.mark.parametrize("note, says", [
     ("waqf", True), ("Waqf", True), ("This is between  a pause", True), ("he stopped", True),
-    ("wasl", False), ("no waqf here", False), ("No pause", False),
+    ("WAQF here", True), ("not wasl", True),
+    ("wasl", False), ("no waqf here", False), ("No pause", False), ("No  pause", False),
+    ("not paused", False), ("has not stopped", False), ("didn't stop", False),
+    ("didn\u2019t stop", False), ("without a pause", False), ("never paused here", False),
     ("", None), ("Not hafs", None), ("Incorrect trim", None),
+    ("Incurrect split (tha missing)", None), ("wrong recitation", None),
+    ("waqf? or wasl", None), ("paused, then no pause", None),
 ])
 def test_owner_notes(note, says):
     assert g.owner_says(note) is says
@@ -135,6 +140,21 @@ def test_realized_ids_read_the_verdicts_at_every_use(tmp_path: Path):
     assert g.realized_ids(guard, verdicts) == {"a", "b"}
 
 
+def _fixture(split, reciter, word=1):
+    return {"split": split, "audio_filename": f"{reciter}-{split}.wav", "word": word,
+            "reciter_id": reciter}
+
+
+def test_a_reciter_in_both_splits_keeps_only_its_calibration_boundaries():
+    rows = [_fixture("calibration", 7), _fixture("calibration", 8), _fixture("test", 8),
+            _fixture("test", 8, 2), _fixture("test", 9), _fixture("test", None)]
+    kept, dropped = g.disjoint_fixtures(rows)
+    assert dropped == {8: 2}
+    assert [(r["split"], r["reciter_id"]) for r in kept] == [
+        ("calibration", 7), ("calibration", 8), ("test", 9), ("test", None)]
+    assert g.reciter_overlap(kept) == set()
+
+
 # --- the committed sidecar -------------------------------------------------------------------
 
 
@@ -145,7 +165,18 @@ def test_the_committed_guard_reads_the_committed_inputs():
                        ("ship_a/word_sample.jsonl", g.WORD_SAMPLE_PATH),
                        ("ship_a/waqf_guard.boundaries.jsonl", g.BOUNDARIES_PATH)):
         assert summary["inputs"][name] == g.sha256_of(path), name
+    assert summary["inputs"]["ship_a/waqf_guard.segmentations.jsonl"] == g.sha256_of(
+        g.SEGMENTATIONS_PATH)
     assert {r["item_id"] for r in g.read_guard()} == {i.item_id for i in g.all_items()}
+
+
+def test_the_measured_fixtures_are_the_recorded_reciter_disjoint_boundaries():
+    """Calibration and test share no canonical reciter, and every measured fixture boundary
+    (window, cut, verdict) is what the committed segmentation records give."""
+    measured = [b for b in g.read_boundaries().values() if b["kind"] == g.FIXTURE]
+    assert g.reciter_overlap(measured) == set()
+    assert [{k: v for k, v in b.items() if k != "scores"} for b in measured] == \
+        g.fixture_windows()
 
 
 def test_the_committed_decisions_are_the_operating_points():

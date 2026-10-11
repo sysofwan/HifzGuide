@@ -216,7 +216,10 @@ shaddah or a real mistake.
 
 **Calibration** on the owner's waqf fixtures, one unit per adjudicated boundary (a pause when
 any of its rows says `waqf`), on the clips whose word times place their words (223 calibration, 106 test
-boundaries are on re-read or skipped clips). The operating point is selected on the
+boundaries are on re-read or skipped clips). The fixtures' split predates the canonical
+reciter ids; a reciter with boundaries in both splits keeps only its calibration ones, so the
+splits are reciter-disjoint (reciter 78 lost 18 test boundaries). The operating point is
+selected on the
 population the guard applies the check to, the calibration boundaries the segmenter did not cut: the pre-stated
 rule (highest calibration recall with precision >= 0.9 on the boundaries the segmenter did not cut; ties: higher precision, longer duration, higher threshold) picks silence probability ≥ 0.05 for
 ≥ 0.32 s. Both curves (that population, and every calibration boundary for
@@ -229,9 +232,9 @@ recorded it: calibration precision 0.987 (77/78), recall 0.786 (77/98); test pre
 | calibration | the local check | 0.986 (71/72) | 1.000 (71/71) |
 | calibration | either (the reference the guard leaves) | 0.986 (71/72) | 1.000 (71/71) |
 | calibration | the local check where the segmenter did not cut | 0.941 (16/17) | 1.000 (16/16) |
-| test | the segmenter (today's, re-run on the fixture clips) | 1.000 (57/57) | 0.838 (57/68) |
-| test | the local check | 0.915 (65/71) | 0.956 (65/68) |
-| test | either (the reference the guard leaves) | 0.917 (66/72) | 0.971 (66/68) |
+| test | the segmenter (today's, re-run on the fixture clips) | 1.000 (55/55) | 0.833 (55/66) |
+| test | the local check | 0.913 (63/69) | 0.955 (63/66) |
+| test | either (the reference the guard leaves) | 0.914 (64/70) | 0.970 (64/66) |
 | test | the local check where the segmenter did not cut | 0.600 (9/15) | 0.818 (9/11) |
 
 **On test, where the guard applies the check** (the boundaries the segmenter did not cut):
@@ -506,7 +509,7 @@ over-represent mistakes against the pool's `h448` flags.
 
 | family | should-accept | should-reject (pending) | reject share (upper) |
 |---|---|---|---|
-| shaddah | 4 | 11 | 73% |
+| shaddah | 4 | 10 | 71% |
 | soft pairs (pooled) | 40 | 6 | 13% |
 
 Planning θ = 0.05, 0.15, 0.5. Verified mistakes the "keep both outcomes"

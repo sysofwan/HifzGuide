@@ -292,6 +292,19 @@ def test_coverage_counts_words_that_show_a_grade(sites):
     assert report["muraja"]["approximations"] == {"m/spans": SINGLE_DECODE}
 
 
+def test_power_inputs_leave_out_a_waqf_realized_site_at_its_frozen_weight(sites):
+    """#134: the realized site is in no cell and no exclusion; the others keep the weight
+    computed over every sampled site (10/4 in the fatha stratum)."""
+    arms = {"h448/stream_b0": decodes_for(sites)}
+    inputs = power_inputs(sites, RECITERS, arms, app(sites, list(arms)),
+                          waqf_realized={sites[0].site_id, sites[3].site_id})
+    assert inputs["waqf_realized"] == sorted([sites[0].site_id, sites[3].site_id])
+    assert "new_audit:fatha" not in inputs["excluded"]
+    row = next(c for c in inputs["cells"]
+               if c["population"] == HEADLINE and c["side"] == CORRECT_SIDE and c["heard"] == "fatha")
+    assert row["per_reciter"] == {"2": [1, 2.5, 2.5, 2.5, 0.0, 0.0, 2.5]}
+
+
 def test_power_inputs_hold_per_reciter_sums(sites):
     inputs = power_inputs(sites, RECITERS, {"h448/stream_b0": decodes_for(sites)}, app(sites, ["h448/stream_b0"]))
     row = next(

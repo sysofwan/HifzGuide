@@ -367,6 +367,17 @@ def reconcile(
     return Reconciled(kept, {s.site_id: weights[s.site_id] for s in kept}, merged)
 
 
+def without_waqf_realized(
+    kept: Sequence[TruthSite], every_record: Sequence[TruthSite], waqf_realized: Collection[str]
+) -> tuple[list[TruthSite], list[str]]:
+    """The reconciled sites less every physical site a record of which the waqf guard
+    realizes, and the ids taken out. Run after :func:`reconcile`, so the weights stay the
+    frozen ones computed over every record."""
+    realized = {physical_site(s) for s in every_record if s.site_id in waqf_realized}
+    return ([s for s in kept if physical_site(s) not in realized],
+            sorted(s.site_id for s in kept if physical_site(s) in realized))
+
+
 @dataclass(frozen=True)
 class MurajaGrades:
     """Every site's app outcome (``muraja_policy.OUTCOMES``) as ``[scoring][arm][site_id]``,
@@ -633,10 +644,9 @@ def score(
     string, ``reciter_of[audio_filename]`` a canonical reciter id; ``design_weights`` gives
     sites a per-site weight (:func:`site_weights`); ``waqf_realized`` names the sites the waqf
     guard takes out (module docstring)."""
-    realized = {physical_site(s) for s in sites if s.site_id in waqf_realized}
     reconciled = reconcile(sites, design_weights)
-    realized_ids = sorted(s.site_id for s in reconciled.sites if physical_site(s) in realized)
-    sites = [s for s in reconciled.sites if physical_site(s) not in realized]
+    sites, realized_ids = without_waqf_realized(reconciled.sites, sites, waqf_realized)
+    realized_sites = [s for s in reconciled.sites if s.site_id in realized_ids]
     weights = reconciled.weights
     arms = sorted(decodes)
     outcomes = outcomes_by_arm(sites, decodes)
@@ -687,7 +697,7 @@ def score(
         "bootstrap": {"replicates": REPLICATES, "seed": SEED, "cluster": "canonical reciter id"},
         "muraja": muraja.as_dict() if muraja else None,
         "arms": arms,
-        "sites": _site_counts(sites, reciter_of),
+        "sites": _site_counts(sites, reciter_of, realized_sites),
         "physical_sites_merged": reconciled.merged,
         "waqf_realized": realized_ids,
         "exclusions": _exclusions(excluded),
@@ -703,23 +713,28 @@ def _app_outcomes(muraja: MurajaGrades | None, site: TruthSite, arms: Sequence[s
     return {name: {arm: by_arm[arm][site.site_id] for arm in arms} for name, by_arm in muraja.outcomes.items()}
 
 
-def _site_counts(sites: Sequence[TruthSite], reciter_of: Mapping[str, int]) -> list[dict]:
-    """Sites, verdicts and reciters per population and stratum."""
+def _site_counts(sites: Sequence[TruthSite], reciter_of: Mapping[str, int],
+                 realized: Sequence[TruthSite] = ()) -> list[dict]:
+    """Sites, verdicts and reciters per population and stratum, and how many sites the waqf
+    guard took out of it (``waqf_realized``, not among the others)."""
+    taken = {s.site_id for s in realized}
     groups: dict[tuple[str, str], list[TruthSite]] = defaultdict(list)
-    for site in sites:
+    for site in [*sites, *realized]:
         groups[(population(site), site.stratum)].append(site)
-    return [
-        {
+    rows = []
+    for (population_, stratum), members in sorted(groups.items()):
+        kept = [s for s in members if s.site_id not in taken]
+        rows.append({
             "population": population_,
             "stratum": stratum,
             "stratum_population": members[0].stratum_population,
-            "sites": len(members),
-            "with_verdict": sum(side(s) is not None for s in members),
-            "items": len({item_key(s) for s in members}),
-            "reciters": len({reciter_of[s.audio_filename] for s in members}),
-        }
-        for (population_, stratum), members in sorted(groups.items())
-    ]
+            "sites": len(kept),
+            "with_verdict": sum(side(s) is not None for s in kept),
+            "items": len({item_key(s) for s in kept}),
+            "reciters": len({reciter_of[s.audio_filename] for s in kept}),
+            "waqf_realized": len(members) - len(kept),
+        })
+    return rows
 
 
 def _exclusions(excluded: Sequence[tuple[TruthSite, float]]) -> list[dict]:
@@ -737,6 +752,7 @@ def power_inputs(
     reciter_of: Mapping[str, int],
     decodes: Mapping[str, Mapping[str, str]],
     muraja: MurajaGrades,
+    waqf_realized: Collection[str] = (),
 ) -> dict:
     """The §8 power simulation's baseline inputs: per-reciter sufficient statistics.
 
@@ -744,10 +760,12 @@ def power_inputs(
     site count and the weighted sums the simulation's outcome generator and its
     reciter-clustered baseline bootstrap need (Σw, ΣwC, ΣwA, ΣwF, Σw[word flagged] and
     Σw[graded], both under the shipped default). Only correct- and mistake-side sites with a
-    verdict; ``excluded`` counts the rest per stratum.
+    verdict; ``excluded`` counts the rest per stratum. The sites ``waqf_realized`` names are
+    left out as :func:`score` leaves them out.
     """
     reconciled = reconcile(sites)
-    sites, weights = reconciled.sites, reconciled.weights
+    sites, realized_ids = without_waqf_realized(reconciled.sites, sites, waqf_realized)
+    weights = reconciled.weights
     outcomes = outcomes_by_arm(sites, decodes)
     cells: dict[tuple, dict[int, list[float]]] = defaultdict(dict)
     for arm in sorted(decodes):
@@ -782,5 +800,6 @@ def power_inputs(
             for (arm, population_, stratum, side_, family_, heard), per_reciter in sorted(cells.items())
         ],
         "excluded": dict(sorted(Counter(s.stratum for s in sites if side(s) is None).items())),
+        "waqf_realized": realized_ids,
     }
 

@@ -50,7 +50,7 @@ import argparse
 import hashlib
 import json
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -221,7 +221,8 @@ def select_listening(sites: list[ShipASite]) -> dict[str, float]:
       evaluation). On the train half none: their target is the teacher's decode;
     * a ``كسب`` swap: :data:`KASB_SAMPLE` of them, reciters in salted order taking one site
       each per round (their sites by salted rank), so the sample spreads over reciters. A
-      reciter given ``m`` of its ``n`` sites gives each chance ``m / n``.
+      site's chance is its reciter's expected share over the salted orders
+      (:func:`round_robin_shares`), divided by the reciter's sites.
     """
     chosen: dict[str, float] = {}
     teacher_right: dict[tuple, list[ShipASite]] = defaultdict(list)
@@ -244,10 +245,27 @@ def select_listening(sites: list[ShipASite]) -> dict[str, float]:
         for reciter in order:
             if sum(taken.values()) < KASB_SAMPLE and round_ < len(queues[reciter]):
                 taken[reciter] += 1
+    shares = round_robin_shares({r: len(q) for r, q in queues.items()}, KASB_SAMPLE)
     for reciter, m in taken.items():
         for site in queues[reciter][:m]:
-            chosen[site.site.site_id] = m / len(queues[reciter])
+            chosen[site.site.site_id] = shares[reciter] / len(queues[reciter])
     return chosen
+
+
+def round_robin_shares(sizes: Mapping[int, int], k: int) -> dict[int, float]:
+    """Each group's expected number of picks when ``k`` are taken one per group per round,
+    groups in a uniformly random order (a salted hash): every full round gives each group
+    with a site left one more; the ``R`` picks of the last, partial round go to ``R`` of its
+    ``E`` eligible groups, each with chance ``R / E``. Exact; ``k`` at or above the total
+    takes everything."""
+    full = 0
+    while full < max(sizes.values(), default=0) and \
+            sum(min(full + 1, n) for n in sizes.values()) <= k:
+        full += 1
+    left = k - sum(min(full, n) for n in sizes.values())
+    eligible = [g for g, n in sizes.items() if n > full]
+    extra = min(1.0, left / len(eligible)) if eligible else 0.0
+    return {g: min(full, n) + (extra if n > full else 0.0) for g, n in sizes.items()}
 
 
 def mine_all(pool: Iterable[ScoredSite], extension: Iterable[ScoredSite] = ()) -> list[ShipASite]:

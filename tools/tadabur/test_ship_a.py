@@ -254,3 +254,39 @@ def test_every_scanned_recording_is_a_mining_exposure():
     with open(SCAN_PATH, encoding="utf-8") as f:
         scanned = {json.loads(raw)["audio_filename"] for raw in f if raw.strip()}
     assert {r.audio_filename for r in load_registry().recordings[EXPOSURE_USE]} == scanned
+
+
+@pytest.mark.parametrize("sizes, k", [({1: 3, 2: 1, 3: 1, 4: 1, 5: 1}, 4),
+                                      ({1: 3, 2: 2, 3: 1}, 4), ({1: 2, 2: 2}, 9)])
+def test_round_robin_shares_are_exact_over_every_reciter_order(sizes, k):
+    """A partial last round: brute force over every order of the reciters agrees."""
+    from itertools import permutations
+
+    from tadabur.ship_a import round_robin_shares
+
+    totals = Counter()
+    orders = list(permutations(sizes))
+    for order in orders:
+        taken = Counter()
+        for round_ in range(max(sizes.values())):
+            for r in order:
+                if sum(taken.values()) < k and round_ < sizes[r]:
+                    taken[r] += 1
+        totals.update(taken)
+    shares = round_robin_shares(sizes, k)
+    assert shares == pytest.approx({r: totals[r] / len(orders) for r in sizes})
+
+
+def test_a_kasb_site_s_chance_includes_the_reciter_draw():
+    """80 reciters, 20 picks: one round, partial, so each reciter is drawn with chance 1/4."""
+    from tadabur.ship_a import KASB_STRATUM, select_listening
+
+    (swap,) = [s for s in mine_all(scored_pool()) if s.kind == "pair"]
+    sites = [_clone(swap, k, reciter, "ش", f"ship_a:{KASB_STRATUM}")
+             for k, reciter in enumerate([*range(80), *range(40)])]  # 40 reciters hold two
+    chances = select_listening(sites)
+    assert len(chances) == 20
+    for site in sites:
+        if site.site.site_id in chances:
+            n = 2 if site.reciter_id < 40 else 1
+            assert chances[site.site.site_id] == pytest.approx(20 / 80 / n)

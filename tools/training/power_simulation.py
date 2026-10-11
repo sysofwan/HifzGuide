@@ -340,10 +340,19 @@ def shared_resample(reciters: np.ndarray) -> tuple[np.ndarray, Resample]:
 
 
 def one_per_reciter(
-    mask: np.ndarray, reciters: np.ndarray, rng: np.random.Generator
+    mask: np.ndarray, reciters: np.ndarray, rng: np.random.Generator,
+    weights: np.ndarray | None = None,
 ) -> np.ndarray:
-    """One uniformly chosen site per reciter among ``mask``'s sites, as sorted indices."""
-    candidates = rng.permutation(np.flatnonzero(mask))
+    """One site per reciter among ``mask``'s sites, as sorted indices: uniformly chosen, or
+    with chance proportional to ``weights`` (exponential keys, the least per reciter), so a
+    reciter's total weight times the chosen site's outcome is unbiased for its weighted sum."""
+    candidates = np.flatnonzero(mask)
+    if weights is None:
+        candidates = rng.permutation(candidates)
+    else:
+        with np.errstate(divide="ignore"):  # a zero weight is never chosen (key +inf)
+            keys = rng.exponential(size=len(candidates)) / np.asarray(weights)[candidates]
+        candidates = candidates[np.argsort(keys, kind="stable")]
     _, first = np.unique(reciters[candidates], return_index=True)
     return np.sort(candidates[first])
 

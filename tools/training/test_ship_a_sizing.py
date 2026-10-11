@@ -14,8 +14,9 @@ from training import ship_a_sizing as z
 from training.ship_a_sizing_doc import DOC_PATH, load_inputs, render
 
 
-def _side(reciters, theta=0.0, rate=1.0, side=z.RECOVERY, rule=z.ONE_PER_RECITER):
-    return z.SideScenario("cell", tuple(reciters), theta, rate, 0.15, side, rule)
+def _side(reciters, theta=0.0, rate=1.0, side=z.RECOVERY, rule=z.ONE_PER_RECITER, weights=None):
+    weights = tuple(weights or [1.0] * len(reciters))
+    return z.SideScenario("cell", tuple(reciters), weights, theta, rate, 0.15, side, rule)
 
 
 def test_a_flawless_recovery_reaches_the_wilson_floor_of_its_reciters():
@@ -23,6 +24,15 @@ def test_a_flawless_recovery_reaches_the_wilson_floor_of_its_reciters():
     result = z.side_bounds(_side(range(40)), 20)
     assert result["median_bound"] == pytest.approx(40 / (40 + 1.96**2), abs=1e-3)
     assert result["power"]["0.8"] == 1.0 and result["mean_reciters"] == 40
+
+
+def test_a_sparse_cell_with_unequal_weights_cannot_certify():
+    """§1: Wilson stands in only for independent, equally weighted observations."""
+    weights = [1.0] * 10 + [4.0] * 10
+    unequal = z.side_bounds(_side(range(20), weights=weights), 20)
+    assert unequal["median_bound"] is None and unequal["power"]["0.2"] == 0.0
+    equal = z.side_bounds(_side(range(15), weights=[3.0] * 15), 20)
+    assert equal["median_bound"] == pytest.approx(15 / (15 + 1.96**2), abs=1e-3)
 
 
 def test_every_site_without_one_per_reciter_cannot_certify_a_sparse_cell():
@@ -83,3 +93,11 @@ def test_the_committed_sizing_reads_the_committed_inputs():
 
 def test_the_committed_page_is_rendered_from_the_committed_results():
     assert DOC_PATH.read_text(encoding="utf-8") == render(*load_inputs())
+
+
+def test_effective_sizes_split_the_design_into_its_layers():
+    sites = load_sites()
+    sizes = z.effective_sizes(sites)
+    for cell, entry in sizes.items():
+        assert entry["full_design"] <= entry["sites"] + 1e-9, cell
+        assert entry["listening_only"] <= entry["sites"] + 1e-9, cell

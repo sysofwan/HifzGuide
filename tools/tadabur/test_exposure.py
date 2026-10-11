@@ -470,3 +470,29 @@ def test_edit_sources_and_donors_are_reciter_disjoint_from_every_evaluation_use(
     for edits in (SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR):
         check_disjoint(edits, *evaluation, by="reciter", registry=registry)
         check_disjoint(edits, *evaluation, by="source", registry=registry)
+
+
+def test_an_unseen_population_bars_a_training_shard_row_with_no_link(tmp_path):
+    """A clip in one of h448's training shards with no alias or copy is barred by its shard;
+    one tied to a training row by a probable copy is barred by the link; a reserve clip with
+    neither passes."""
+    from tadabur.exposure import (
+        EVALSET_DEV,
+        EVALSET_LEGACY,
+        EVALSET_TEST,
+        SEALED_PANEL,
+        unseen_violations,
+    )
+    from tadabur.staged_audio import StagedClip
+
+    registry = _copied_registry(tmp_path)
+    for use in (EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, SEALED_PANEL):
+        write_use(use, [], tmp_path)
+    registry = load_registry(tmp_path)
+
+    def clip(name, shard, row):
+        return StagedClip(name, shard, row, 12, "2:2", 100, SHA, ("mining_pool",))
+
+    staged = {"in_training.wav": clip("in_training.wav", 21, 9),
+              _A: clip(_A, 3, 7), "fresh.wav": clip("fresh.wav", 39, 2)}
+    assert unseen_violations(staged, registry) == {"in_training.wav", _A}

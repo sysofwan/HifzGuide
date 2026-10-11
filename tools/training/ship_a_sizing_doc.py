@@ -267,11 +267,25 @@ def _section_power(sizing: Mapping) -> str:
 A cell's held-out sites are listened to; each is a real mistake with probability θ. The
 candidate **recovers** a verified-correct site (commits the mushaf letter, or holds the
 geminate) with a true rate, or **retains** a verified mistake (keeps committing what was
-said). Each of {sizing["repetitions"]:,} repetitions takes the §1 lower bound of that rate on
-one site per reciter (Wilson where sparse, else the reciter bootstrap); reciter effects at
-latent ICC 0, 0.05 and 0.15 on both whether a site is a mistake and whether it is recovered.
-One site per reciter makes the bound blind to the ICC; the pooled cells are also read on every
-site with the reciter-clustered bootstrap, which the ICC does move.
+said). Each listened site carries the listening design's weight, the inverse of its worklist
+row's inclusion probability: teacher-wrong swaps and geminates are a census, teacher-right
+swaps one per held-out reciter and family, the كسب swaps a sample. θ is the same in every
+stratum (a planning assumption). Each of {sizing["repetitions"]:,} repetitions takes the §1
+lower bound of the weighted rate on one site per reciter (chosen in proportion to its weight,
+counted with its reciter's total weight), with the reciter bootstrap, or the Wilson bound
+where the cell is sparse and its observations are equally weighted; a sparse cell with
+unequal weights has no bound (§1). Reciter effects at latent ICC 0, 0.05 and 0.15 act on both
+whether a site is a mistake and whether it is recovered. The pooled cells are also read on
+every site with the reciter-clustered bootstrap, which the ICC does move.
+
+The weights are uneven, and that costs precision. Kish's effective size per cell, under the
+full design weight and under the listening chance alone, shows which layer costs it: mostly
+the mining pool's own clip probabilities (a uniform clip was drawn as `k` of its reciter's
+`n`, down to 0.012), not the lean subsample:
+
+{_table(["cell", "held-out sites", "effective, full design", "effective, listening only"],
+        [[cell, e["sites"], e["full_design"], e["listening_only"]]
+         for cell, e in sizing["effective_sizes"].items()])}
 
 **No floor is chosen here** (#128). Each cell shows the **highest floor the lower bound
 reaches with {TARGET_POWER:.0%} power**, at θ = {SUMMARY_THETA} and ICC = {SUMMARY_ICC}

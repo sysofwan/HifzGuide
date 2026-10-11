@@ -189,11 +189,13 @@ def cells(sites: list[ShipASite]) -> dict[str, list[ShipASite]]:
 
 @dataclass(frozen=True)
 class SideScenario:
-    """One power scenario on one cell: its held-out sites' reciters, θ, the true rate, the
-    ICC, which side is read and how (one site per reciter, or every site)."""
+    """One power scenario on one cell: its held-out listened sites' reciters and design weights
+    (the inverse of each worklist row's inclusion probability), θ, the true rate, the ICC,
+    which side is read and how (one site per reciter, or every site)."""
 
     cell: str
     reciters: tuple[int, ...]
+    weights: tuple[float, ...]
     theta: float
     rate: float
     icc: float
@@ -208,6 +210,8 @@ def side_bounds(scenario: SideScenario, repetitions: int) -> dict:
     """The §1 lower bound of the side's rate per repetition, and the power at each floor."""
     rng = rng_for(*scenario.key(), repetitions)
     reciters = np.asarray(scenario.reciters, dtype=np.int64)
+    weights = np.asarray(scenario.weights, dtype=float)
+    _, reciters_index = np.unique(reciters, return_inverse=True)
     sigma = sigma_for(scenario.icc)
     bounds = np.full(repetitions, -math.inf)
     sites, held = np.zeros(repetitions), np.zeros(repetitions)
@@ -215,13 +219,19 @@ def side_bounds(scenario: SideScenario, repetitions: int) -> dict:
         correct = clustered_bernoulli(1 - scenario.theta, reciters, sigma, rng)
         on_side = correct if scenario.side == RECOVERY else ~correct
         outcome = clustered_bernoulli(scenario.rate, reciters, sigma, rng).astype(float)
-        chosen = one_per_reciter(on_side, reciters, rng) if scenario.rule == ONE_PER_RECITER \
-            else np.flatnonzero(on_side)
+        if scenario.rule == ONE_PER_RECITER:
+            chosen = one_per_reciter(on_side, reciters, rng, weights)
+            per_reciter = np.bincount(reciters_index, weights=weights * on_side)
+            den = per_reciter[reciters_index[chosen]]
+        else:
+            chosen = np.flatnonzero(on_side)
+            den = weights[chosen]
         if not len(chosen):
             continue
+        if np.allclose(den, den[0]):
+            den = np.ones(len(chosen))  # equally weighted: §1 lets Wilson stand in when sparse
         labels, resample = shared_resample(reciters[chosen])
-        ones = np.ones(len(chosen))
-        interval = ratio_interval(labels, outcome[chosen], ones, ones, resample)
+        interval = ratio_interval(labels, den * outcome[chosen], den, den, resample)
         sites[k], held[k] = len(chosen), len(set(reciters[chosen].tolist()))
         if interval.method != NO_BOUND:
             bounds[k] = interval.lower
@@ -233,15 +243,37 @@ def side_bounds(scenario: SideScenario, repetitions: int) -> dict:
     }
 
 
+def effective_sizes(sites: list[ShipASite]) -> dict[str, dict[str, float]]:
+    """Per cell, its held-out listened sites and their Kish effective size, ``(Σw)² / Σw²``,
+    under the full design weight (the pool's clip probability times the listening chance)
+    and under the listening chance alone: which layer of the design costs the precision."""
+    def kish(weights: list[float]) -> float:
+        return round(sum(weights) ** 2 / sum(w * w for w in weights), 1) if weights else 0.0
+
+    sizes = {}
+    for cell, members in cells(sites).items():
+        held_out = [s for s in members if s.listened and s.half == HELD_OUT]
+        sizes[cell] = {
+            "sites": len(held_out),
+            "full_design": kish([1 / (s.row.clip_inclusion_probability * s.listen_probability)
+                                 for s in held_out]),
+            "listening_only": kish([1 / s.listen_probability for s in held_out]),
+        }
+    return sizes
+
+
 def side_scenarios(sites: list[ShipASite]) -> list[SideScenario]:
     """Every cell, θ, true rate, ICC and side; every site as well for the pooled cells."""
     scenarios = []
     for cell, members in cells(sites).items():
-        reciters = tuple(s.reciter_id for s in members if s.listened and s.half == HELD_OUT)
+        held_out = [s for s in members if s.listened and s.half == HELD_OUT]
+        reciters = tuple(s.reciter_id for s in held_out)
+        weights = tuple(1 / (s.row.clip_inclusion_probability * s.listen_probability)
+                        for s in held_out)
         rules = (ONE_PER_RECITER, EVERY_SITE) if cell in (SOFT_PAIRS_POOLED, GEMINATES) \
             else (ONE_PER_RECITER,)
         scenarios += [
-            SideScenario(cell, reciters, theta, rate, icc, side, rule)
+            SideScenario(cell, reciters, weights, theta, rate, icc, side, rule)
             for theta in THETAS for rate in TRUE_RATES for icc in RECITER_ICCS
             for side in (RECOVERY, RETENTION) for rule in rules
         ]
@@ -426,6 +458,7 @@ def run(workers: int, repetitions: int = REPETITIONS) -> dict:
                   "false_flag_rates": FALSE_FLAG_RATES, "reductions": REDUCTIONS,
                   "word_margins": WORD_MARGINS, "word_correct_share": WORD_CORRECT_SHARE},
         "budget": budget(sites),
+        "effective_sizes": effective_sizes(sites),
         "held_out_power": side,
         "sites_needed": [{"rate": rate, "floor": floor, **sites_needed(rate, floor, repetitions)}
                          for rate in TRUE_RATES for floor in FLOORS if floor < rate],

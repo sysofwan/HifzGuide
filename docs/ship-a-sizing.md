@@ -215,11 +215,35 @@ The six soft pairs pooled hold 156 held-out sites from
 A cell's held-out sites are listened to; each is a real mistake with probability θ. The
 candidate **recovers** a verified-correct site (commits the mushaf letter, or holds the
 geminate) with a true rate, or **retains** a verified mistake (keeps committing what was
-said). Each of 2,500 repetitions takes the §1 lower bound of that rate on
-one site per reciter (Wilson where sparse, else the reciter bootstrap); reciter effects at
-latent ICC 0, 0.05 and 0.15 on both whether a site is a mistake and whether it is recovered.
-One site per reciter makes the bound blind to the ICC; the pooled cells are also read on every
-site with the reciter-clustered bootstrap, which the ICC does move.
+said). Each listened site carries the listening design's weight, the inverse of its worklist
+row's inclusion probability: teacher-wrong swaps and geminates are a census, teacher-right
+swaps one per held-out reciter and family, the كسب swaps a sample. θ is the same in every
+stratum (a planning assumption). Each of 2,500 repetitions takes the §1
+lower bound of the weighted rate on one site per reciter (chosen in proportion to its weight,
+counted with its reciter's total weight), with the reciter bootstrap, or the Wilson bound
+where the cell is sparse and its observations are equally weighted; a sparse cell with
+unequal weights has no bound (§1). Reciter effects at latent ICC 0, 0.05 and 0.15 act on both
+whether a site is a mistake and whether it is recovered. The pooled cells are also read on
+every site with the reciter-clustered bootstrap, which the ICC does move.
+
+The weights are uneven, and that costs precision. Kish's effective size per cell, under the
+full design weight and under the listening chance alone, shows which layer costs it: mostly
+the mining pool's own clip probabilities (a uniform clip was drawn as `k` of its reciter's
+`n`, down to 0.012), not the lean subsample:
+
+| cell | held-out sites | effective, full design | effective, listening only |
+|---|---|---|---|
+| geminates (base not held) | 52 | 14.0 | 52.0 |
+| soft pairs (pooled) | 156 | 25.6 | 125.4 |
+| ت↔ط | 6 | 6.0 | 6.0 |
+| ح↔ه | 4 | 4.0 | 4.0 |
+| ذ↔ز | 31 | 4.8 | 28.2 |
+| ذ↔ظ | 1 | 1.0 | 1.0 |
+| س↔ش | 44 | 21.2 | 21.2 |
+| س↔ص | 26 | 21.4 | 21.4 |
+| ض↔ظ | 50 | 38.6 | 39.2 |
+| ط↔ق | 122 | 11.5 | 65.0 |
+| ق↔ك | 39 | 5.3 | 29.1 |
 
 **No floor is chosen here** (#128). Each cell shows the **highest floor the lower bound
 reaches with 80% power**, at θ = 0.15 and ICC = 0.15
@@ -250,47 +274,47 @@ Reciters (one site each) a true rate needs for its lower bound to reach a floor 
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.1 | 0.3 | 0.5 | 0.7 |
-| ت↔ط | 3.5 | — | — | 0.3 |
-| ح↔ه | 2.7 | — | — | 0.2 |
-| ذ↔ز | 22.6 | 0.2 | 0.4 | 0.6 |
-| س↔ص | 20.7 | 0.2 | 0.4 | 0.6 |
-| ض↔ظ | 35.7 | 0.2 | 0.4 | 0.7 |
-| ق↔ك | 25.5 | 0.2 | 0.4 | 0.6 |
+| soft pairs (pooled) | 69.1 | — | 0.3 | 0.6 |
+| ت↔ط | 3.5 | — | — | — |
+| ح↔ه | 2.7 | — | — | — |
+| ذ↔ز | 22.6 | — | — | 0.2 |
+| س↔ص | 20.7 | — | — | — |
+| ض↔ظ | 35.7 | 0.2 | 0.4 | 0.6 |
+| ق↔ك | 25.5 | — | — | 0.5 |
 | ذ↔ظ | 0.9 | — | — | — |
-| س↔ش | 28.3 | 0.2 | 0.4 | 0.7 |
-| ط↔ق | 83.3 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 32.7 | 0.2 | 0.4 | 0.7 |
+| س↔ش | 28.2 | — | 0.3 | 0.6 |
+| ط↔ق | 83.3 | — | 0.2 | 0.7 |
+| geminates (base not held) | 32.7 | — | 0.2 | 0.5 |
 
-At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.5; ت↔ط —; ح↔ه —; ذ↔ز 0.4; س↔ص 0.4; ض↔ظ 0.4; ق↔ك 0.4; ذ↔ظ —; س↔ش 0.4; ط↔ق 0.5; geminates (base not held) 0.4.
+At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.3; ت↔ط —; ح↔ه —; ذ↔ز —; س↔ص —; ض↔ظ 0.4; ق↔ك —; ذ↔ظ —; س↔ش 0.3; ط↔ق 0.2; geminates (base not held) 0.2.
 
 **Retention** of verified mistakes (θ = 0.15; held-out mistakes are few):
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 19.3 | 0.2 | 0.3 | 0.6 |
+| soft pairs (pooled) | 19.2 | — | — | — |
 | ت↔ط | 0.8 | — | — | — |
 | ح↔ه | 0.6 | — | — | — |
-| ذ↔ز | 4.5 | — | — | 0.3 |
-| س↔ص | 3.8 | — | — | 0.2 |
-| ض↔ظ | 7.1 | — | 0.2 | 0.4 |
-| ق↔ك | 5.5 | — | — | 0.3 |
-| ذ↔ظ | 0.2 | — | — | — |
-| س↔ش | 6.1 | — | — | 0.3 |
-| ط↔ق | 17.3 | — | 0.3 | 0.6 |
-| geminates (base not held) | 7.3 | — | 0.2 | 0.4 |
+| ذ↔ز | 4.5 | — | — | — |
+| س↔ص | 3.8 | — | — | — |
+| ض↔ظ | 7.1 | — | — | — |
+| ق↔ك | 5.4 | — | — | — |
+| ذ↔ظ | 0.1 | — | — | — |
+| س↔ش | 6.2 | — | — | — |
+| ط↔ق | 17.2 | — | — | — |
+| geminates (base not held) | 7.2 | — | — | — |
 
 Every site with the reciter bootstrap, recovery, at ICC 0.15 and at ICC 0:
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.1 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 32.8 | 0.2 | 0.4 | 0.7 |
+| soft pairs (pooled) | 69.1 | 0.2 | 0.4 | 0.6 |
+| geminates (base not held) | 32.8 | — | 0.3 | 0.5 |
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.4 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 32.8 | 0.2 | 0.5 | 0.7 |
+| soft pairs (pooled) | 69.4 | 0.2 | 0.4 | 0.6 |
+| geminates (base not held) | 32.8 | — | 0.3 | 0.5 |
 
 ## 3. New-error harm on sites `h448` gets right
 

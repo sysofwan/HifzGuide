@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
 import subprocess
 import sys
 from pathlib import Path
@@ -148,6 +149,15 @@ def test_one_per_reciter_takes_one_site_from_each():
     mask = np.array([True, True, False, True, True, True])
     chosen = ps.one_per_reciter(mask, reciters, np.random.default_rng(8))
     assert sorted(reciters[chosen].tolist()) == [1, 3] and mask[chosen].all()
+
+
+def test_a_weighted_choice_per_reciter_follows_the_weights():
+    reciters = np.zeros(3, dtype=np.int64)
+    weights = np.array([1.0, 3.0, 0.0])
+    rng = np.random.default_rng(11)
+    picks = Counter(int(ps.one_per_reciter(np.ones(3, bool), reciters, rng, weights)[0])
+                    for _ in range(4_000))
+    assert picks[2] == 0 and picks[1] / 4_000 == pytest.approx(0.75, abs=0.03)
 
 
 def test_shared_resample_is_by_clusters_draw():

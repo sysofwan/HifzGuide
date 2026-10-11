@@ -716,11 +716,14 @@ def unseen_violations(
     staged: Mapping[str, StagedClip], registry: ExposureRegistry | None = None
 ) -> frozenset[str]:
     """The staged clips an ``h448``-unseen population must leave out: each one whose
-    recording is, or is tied to, a recording of :data:`UNSEEN_BARRED_USES`."""
+    recording is, or is tied to, a recording of :data:`UNSEEN_BARRED_USES`: a row a recording
+    use lists, any row of a shard use's shards (``h448.training``), or a relative of either."""
     registry = registry or load_registry()
     linked = linked_sources(UNSEEN_BARRED_USES, registry)
+    shards = {shard for use in UNSEEN_BARRED_USES if use in registry.shard_uses
+              for shard in registry.shard_uses[use].shards}
     return frozenset(name for name, clip in staged.items()
-                     if (clip.shard, clip.row_index) in linked)
+                     if clip.shard in shards or (clip.shard, clip.row_index) in linked)
 
 
 def excluded_reciters(for_use: str, registry: ExposureRegistry | None = None) -> frozenset[int]:

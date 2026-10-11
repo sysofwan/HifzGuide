@@ -210,11 +210,18 @@ silence probability between the two words' aligned times, more sensitive than th
 An owner note `waqf` (or `wasl`) on a verdict decides instead. A site judged paused is
 `waqf_realized`: it leaves every cell below (its verdict stays a training target).
 
+**The two errors cost differently.** A false pause takes one site out of scoring. A missed
+pause leaves a reference that only exists in wasl, so a correct waqf is scored as a missed
+shaddah or a real mistake.
+
 **Calibration** on the owner's waqf fixtures, one unit per adjudicated boundary (a pause when
 any of its rows says `waqf`), on the clips whose word times place their words (223 calibration, 106 test
-boundaries are on re-read or skipped clips). The pre-stated rule (highest calibration recall with precision >= 0.9; ties: higher precision, longer duration, higher threshold) picks
-silence probability ≥ 0.05 for ≥ 0.32 s; the whole curve is in
-`waqf_guard.summary.json`. The segmenter row by row, as the fixtures recorded it: calibration precision 0.987 (77/78), recall 0.786 (77/98); test precision 1.000 (65/65), recall 0.802 (65/81).
+boundaries are on re-read or skipped clips). The operating point is selected on the
+population the guard applies the check to, the calibration boundaries the segmenter did not cut: the pre-stated
+rule (highest calibration recall with precision >= 0.9 on the boundaries the segmenter did not cut; ties: higher precision, longer duration, higher threshold) picks silence probability ≥ 0.05 for
+≥ 0.32 s. Both curves (that population, and every calibration boundary for
+reference) are in `waqf_guard.summary.json`. The segmenter row by row, as the fixtures
+recorded it: calibration precision 0.987 (77/78), recall 0.786 (77/98); test precision 1.000 (65/65), recall 0.802 (65/81).
 
 | split | detector | precision | recall |
 |---|---|---|---|
@@ -226,6 +233,21 @@ silence probability ≥ 0.05 for ≥ 0.32 s; the whole curve is in
 | test | the local check | 0.915 (65/71) | 0.956 (65/68) |
 | test | either (the reference the guard leaves) | 0.917 (66/72) | 0.971 (66/68) |
 | test | the local check where the segmenter did not cut | 0.600 (9/15) | 0.818 (9/11) |
+
+**On test, where the guard applies the check** (the boundaries the segmenter did not cut):
+precision 0.600 (9/15), recall 0.818 (9/11). The test n is small:
+11 missed pauses, so these two numbers are rough.
+
+Two failure patterns show in the errors:
+
+- **A missed pause spills into the next boundary's window.** When the alignment places the
+  next word's onset before the silence, the pause lands in the following boundary's window:
+  a miss at the pause's own boundary and a false pause at the next (on test, clip
+  `spk0018_S32_A65` at boundaries 3 and 4, and `spk0031_S6_A168` at 4 and 5).
+- **Long silences at boundaries marked wasl.** Some false pauses are silences of 1.4 to
+  2.4 s at boundaries the fixtures call wasl. They may be real pauses the correction-based
+  review missed (the reviewer marked only the detector's errors), or more misplaced word
+  times.
 
 Per stratum (items wasl-dependent, the phonetizer unable to realize the waqf, judged paused
 by the check, unplaced, decided by an owner note, and realized), at the verdicts committed when

@@ -28,20 +28,34 @@ def _boundary(split, waqf, segmenter, silence):
 
 
 def test_the_rule_takes_the_highest_recall_at_the_precision_floor():
-    """Ten pauses (silences 0.30 to 1.20 s) and ten wasl edges with a short silence each: a
-    duration at or below 0.08 s flags a wasl edge too (precision 10/20 < 0.9); 0.10 s keeps
-    every pause and no wasl edge, and among those ties the longest such duration (0.30 s),
-    then the highest threshold (0.5), wins."""
-    pauses = [_boundary(lp.CALIBRATION, True, k < 7, 0.3 + 0.1 * k) for k in range(10)]
+    """Ten pauses the segmenter missed (silences 0.30 to 1.20 s) and ten wasl edges with a
+    short silence each: a duration at or below 0.08 s flags a wasl edge too (precision 10/20
+    < 0.9); 0.10 s keeps every pause and no wasl edge, and among those ties the longest such
+    duration (0.30 s), then the highest threshold (0.5), wins."""
+    pauses = [_boundary(lp.CALIBRATION, True, False, 0.3 + 0.1 * k) for k in range(10)]
     edges = [_boundary(lp.CALIBRATION, False, False, 0.08) for _ in range(10)]
     report = lp.calibrate(pauses + edges)
     assert report["operating_point"] == {"threshold": 0.5, "duration": 0.3}
     calibration = report["splits"][lp.CALIBRATION]
-    assert calibration["segmenter"]["recall"] == 0.7
+    assert calibration["segmenter"]["recall"] == 0.0
     assert calibration["local_check"] == {"tp": 10, "fp": 0, "positives": 10,
                                           "precision": 1.0, "recall": 1.0}
-    assert calibration["local_check_where_segmenter_did_not_cut"]["tp"] == 3
     assert len(report["calibration_curve"]) == len(lp.THRESHOLDS) * len(lp.DURATIONS)
+
+
+def test_the_point_is_chosen_where_the_segmenter_did_not_cut():
+    """A long silence the segmenter cut at a wasl edge would hold every candidate point under
+    the precision floor; the guard never reads such a boundary, so the rule does not either.
+    The curve over every boundary is kept for reference."""
+    missed = [_boundary(lp.CALIBRATION, True, False, 0.3 + 0.1 * k) for k in range(3)]
+    edges = [_boundary(lp.CALIBRATION, False, False, 0.08) for _ in range(10)]
+    cut = [_boundary(lp.CALIBRATION, False, True, 2.0), _boundary(lp.CALIBRATION, True, True, 2.0)]
+    report = lp.calibrate(missed + edges + cut)
+    assert report["operating_point"] == {"threshold": 0.5, "duration": 0.3}
+    residual = report["splits"][lp.CALIBRATION]["local_check_where_segmenter_did_not_cut"]
+    assert (residual["tp"], residual["fp"], residual["positives"]) == (3, 0, 3)
+    every = {(p["threshold"], p["duration"]): p for p in report["calibration_curve_every_boundary"]}
+    assert every[(0.5, 0.3)]["precision"] == 0.8  # 4 of 5 flagged, the cut wasl edge among them
 
 
 def test_the_test_split_never_moves_the_operating_point():

@@ -266,6 +266,8 @@ def _section_guard(sizing: Mapping, guard: Mapping) -> str:
     cells = [[cell, e["sites"], e["held_out_listened"]] for cell, e in taken["cells"].items()]
     unplaced = ", ".join(f"{n} {split}" for split, n in
                          guard["fixture_boundaries_unplaced"].items())
+    guarded_test = calibration["splits"]["test"]["local_check_where_segmenter_did_not_cut"]
+    test_precision, test_recall = _rates(guarded_test)
     return f"""## The waqf guard (#134)
 
 A geminate made by joining two words (tanween or noon/meem idgham, a letter assimilated into
@@ -278,13 +280,35 @@ silence probability between the two words' aligned times, more sensitive than th
 An owner note `waqf` (or `wasl`) on a verdict decides instead. A site judged paused is
 `waqf_realized`: it leaves every cell below (its verdict stays a training target).
 
+**The two errors cost differently.** A false pause takes one site out of scoring. A missed
+pause leaves a reference that only exists in wasl, so a correct waqf is scored as a missed
+shaddah or a real mistake.
+
 **Calibration** on the owner's waqf fixtures, one unit per adjudicated boundary (a pause when
 any of its rows says `waqf`), on the clips whose word times place their words ({unplaced}
-boundaries are on re-read or skipped clips). The pre-stated rule ({calibration["rule"]}) picks
-silence probability ≥ {chosen["threshold"]} for ≥ {chosen["duration"]} s; the whole curve is in
-`waqf_guard.summary.json`. The segmenter row by row, as the fixtures recorded it: {recorded}.
+boundaries are on re-read or skipped clips). The operating point is selected on the
+population the guard applies the check to, the {calibration["selected_on"]}: the pre-stated
+rule ({calibration["rule"]}) picks silence probability ≥ {chosen["threshold"]} for
+≥ {chosen["duration"]} s. Both curves (that population, and every calibration boundary for
+reference) are in `waqf_guard.summary.json`. The segmenter row by row, as the fixtures
+recorded it: {recorded}.
 
 {_table(["split", "detector", "precision", "recall"], rates)}
+
+**On test, where the guard applies the check** (the boundaries the segmenter did not cut):
+precision {test_precision}, recall {test_recall}. The test n is small:
+{guarded_test["positives"]} missed pauses, so these two numbers are rough.
+
+Two failure patterns show in the errors:
+
+- **A missed pause spills into the next boundary's window.** When the alignment places the
+  next word's onset before the silence, the pause lands in the following boundary's window:
+  a miss at the pause's own boundary and a false pause at the next (on test, clip
+  `spk0018_S32_A65` at boundaries 3 and 4, and `spk0031_S6_A168` at 4 and 5).
+- **Long silences at boundaries marked wasl.** Some false pauses are silences of 1.4 to
+  2.4 s at boundaries the fixtures call wasl. They may be real pauses the correction-based
+  review missed (the reviewer marked only the detector's errors), or more misplaced word
+  times.
 
 Per stratum (items wasl-dependent, the phonetizer unable to realize the waqf, judged paused
 by the check, unplaced, decided by an owner note, and realized), at the verdicts committed when

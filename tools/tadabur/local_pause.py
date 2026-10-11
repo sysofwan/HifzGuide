@@ -20,10 +20,15 @@ reference, while a false alarm costs one excluded site. So this check reads the 
 
 The check fires when the score at a threshold ``τ`` reaches a duration ``d``.
 :func:`calibrate` sweeps every ``(τ, d)`` of :data:`THRESHOLDS` x :data:`DURATIONS` over the
-**calibration** fixtures and picks the pre-stated operating point: the highest recall with
-precision at least :data:`MIN_PRECISION` (ties: higher precision, then the longer ``d``, then
-the higher ``τ``). The **test** fixtures are only reported. Each fixture boundary is one
-unit: a pause when the owner's verdict on any of its rows is ``waqf``.
+**calibration** fixture boundaries the segmenter did not cut (the only ones the guard applies
+the check to) and picks the pre-stated operating point: the highest recall with precision at
+least :data:`MIN_PRECISION` (ties: higher precision, then the longer ``d``, then the higher
+``τ``). The curve over every calibration boundary is kept for reference. The **test** fixtures
+are only reported. Each fixture boundary is one unit: a pause when the owner's verdict on any
+of its rows is ``waqf``.
+
+The two errors cost differently. A false pause takes one site out of scoring; a missed pause
+leaves a reference that only exists in wasl, so a correct waqf is scored as a mistake.
 
 Usage (Linux + CUDA, from ``tools/``; reads the windows :mod:`tadabur.waqf_guard` lists)::
 
@@ -155,22 +160,25 @@ def operating_point(curve: Sequence[dict]) -> dict | None:
                                         p["threshold"]))
 
 
+def curve_over(rows: Sequence[dict]) -> list[dict]:
+    """The local check's precision and recall on ``rows`` at every threshold and duration."""
+    truth = [b["waqf"] for b in rows]
+    return [{"threshold": t, "duration": d,
+             **point((fires(b["scores"], t, d) for b in rows), truth).as_dict()}
+            for t in THRESHOLDS for d in DURATIONS]
+
+
 def calibrate(boundaries: Sequence[dict]) -> dict:
-    """The full calibration curve of the local check (every threshold and duration), the
-    operating point the rule picks on it, and, at that point, every split's precision and
-    recall for the check alone, for the segmenter, for both (a pause when either fires: the
-    reference the guard leaves) and for the check on the boundaries the segmenter did not cut
-    (where the guard applies it). ``boundaries`` are fixture rows of
-    :mod:`tadabur.waqf_guard` with ``split``, ``waqf`` (the owner's verdict), ``segmenter``
-    and ``scores``."""
+    """The local check's calibration curve on the calibration boundaries the segmenter did
+    not cut (where the guard applies it), the operating point the rule picks on it, the curve
+    over every calibration boundary for reference, and, at that point, every split's
+    precision and recall for the check alone, for the segmenter, for both (a pause when
+    either fires: the reference the guard leaves) and for the check where the segmenter did
+    not cut. ``boundaries`` are fixture rows of :mod:`tadabur.waqf_guard` with ``split``,
+    ``waqf`` (the owner's verdict), ``segmenter`` and ``scores``."""
     by_split = {s: [b for b in boundaries if b["split"] == s] for s in SPLITS}
     calibration = by_split[CALIBRATION]
-    truth = [b["waqf"] for b in calibration]
-    curve = [
-        {"threshold": t, "duration": d,
-         **point((fires(b["scores"], t, d) for b in calibration), truth).as_dict()}
-        for t in THRESHOLDS for d in DURATIONS
-    ]
+    curve = curve_over([b for b in calibration if not b["segmenter"]])
     chosen = operating_point(curve)
 
     def report(rows: list[dict]) -> dict:
@@ -188,12 +196,15 @@ def calibrate(boundaries: Sequence[dict]) -> dict:
                 "local_check_where_segmenter_did_not_cut": point(
                     (c for c, _ in residual), (t for _, t in residual)).as_dict()}
 
-    return {"rule": f"highest calibration recall with precision >= {MIN_PRECISION}; ties: "
-                    "higher precision, longer duration, higher threshold",
+    return {"rule": f"highest calibration recall with precision >= {MIN_PRECISION} on the "
+                    "boundaries the segmenter did not cut; ties: higher precision, longer "
+                    "duration, higher threshold",
+            "selected_on": "calibration boundaries the segmenter did not cut",
             "operating_point": None if chosen is None else
             {"threshold": chosen["threshold"], "duration": chosen["duration"]},
             "splits": {s: report(rows) for s, rows in by_split.items()},
-            "calibration_curve": curve}
+            "calibration_curve": curve,
+            "calibration_curve_every_boundary": curve_over(calibration)}
 
 
 # --- the VAD pass (GPU) ----------------------------------------------------------------------

@@ -13,7 +13,9 @@ from tadabur.power_frame import input_checksums
 from tadabur.ship_a import SITES_PATH, listening_weights, load_sites, mine_all
 from tadabur.test_power_frame import H448, REFERENCE, scored_pool
 from tadabur.truth_sites import UNCLEAR
-from tadabur.waqf_guard import GUARD_PATH
+from tadabur.eval_harness import build as fixture_side_report
+from tadabur.listening_session import Verdict, write_verdicts
+from tadabur.waqf_guard import GUARD_PATH, realized_ids
 from tadabur.word_sample import WORD_SAMPLE_PATH, load_words
 from training import ship_a_sizing as z
 from training.acceptance_stats import (
@@ -32,6 +34,7 @@ from training.acceptance_stats import (
 )
 from training.ship_a_sizing_doc import DOC_PATH, load_inputs, render
 from training.site_outcomes import CORRECT_SIDE
+from training.truth_baseline import DEFAULT_MODELS
 from training.truth_scorer import HEADLINE, item_key, reconcile, score
 
 
@@ -102,14 +105,37 @@ def test_the_committed_sizing_reads_the_committed_inputs():
     sizing = json.loads(z.SIZING_PATH.read_text(encoding="utf-8"))
     assert sizing["inputs"] == {**input_checksums(), **{
         name: z._sha256(path) for name, path in (
-            ("ship_a/sites.jsonl", SITES_PATH), ("ship_a/word_sample.jsonl", WORD_SAMPLE_PATH),
-            ("truth_baseline/fixture_sides.json", z.FIXTURE_SIDES_PATH))}}
+            ("ship_a/sites.jsonl", SITES_PATH), ("ship_a/word_sample.jsonl", WORD_SAMPLE_PATH))}}
     realized = frozenset(sizing["waqf_guard"]["realized"])
     sites, words = z.guarded(load_sites(), load_words(), realized)
     assert sizing["waqf_guard"]["guard"] == z._sha256(GUARD_PATH)
     assert sizing["budget"] == json.loads(json.dumps(z.budget(sites)))
     assert sizing["word_sample_effective"]["words"] == len(words)
+    fixtures = fixture_side_report(DEFAULT_MODELS, None, realized)
+    assert sizing["fixture_report"]["waqf_realized"] == fixtures["waqf_realized"]
+    assert sizing["mistake_mix"] == json.loads(json.dumps(z.mistake_mix(fixtures, sites)))
     assert sizing["repetitions"] == z.REPETITIONS
+
+
+@pytest.mark.parametrize("note, change", [("waqf", -1), ("no waqf", +1)])
+def test_an_owner_note_moves_question_4_both_ways(tmp_path, note, change):
+    """Question 4 reads the fixture-side report rebuilt under the current guard and verdicts: a
+    ``waqf`` note takes a wasl-dependent P3.5 shaddah the detector kept out of the mix, and a
+    ``no waqf`` note brings back the one the detector realized."""
+    kept = "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69"
+    realized = "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74"
+    verdicts = tmp_path / "verdicts.jsonl"
+
+    def shaddah_mix(notes: dict[str, str]) -> dict:
+        write_verdicts({i: Verdict(i, "held", n) for i, n in notes.items()}, verdicts)
+        guard = realized_ids(verdicts_path=verdicts)
+        return z.mistake_mix(fixture_side_report(DEFAULT_MODELS, None, guard), [])[
+            "p35_h448_off"]["shaddah"]
+
+    before = shaddah_mix({})
+    after = shaddah_mix({kept if note == "waqf" else realized: note})
+    assert after["should_accept"] == before["should_accept"]
+    assert after["should_reject"] == before["should_reject"] + change
 
 
 def test_the_sizing_leaves_out_what_the_guard_realizes():
@@ -118,7 +144,7 @@ def test_the_sizing_leaves_out_what_the_guard_realizes():
     sites, kept_words = z.guarded(every_site, words, realized)
     assert len(sites) == len(every_site) - 1 and len(kept_words) == len(words) - 1
     block = z.waqf_guard_block(every_site, words, realized)
-    assert block["words"] == 1 and block["realized"] == sorted(realized)
+    assert block["sites"] == block["words"] == 1 and block["realized"] == sorted(realized)
     assert sum(block["families"].values()) == 1
 
 

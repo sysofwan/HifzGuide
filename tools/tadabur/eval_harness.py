@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Collection
 from pathlib import Path
 
 from training.tashkeel_eval import write_text_atomically
@@ -82,8 +83,10 @@ def fixture_sides(relocation_path: Path = RELOCATION_PATH) -> dict[str, str]:
     return sides
 
 
-def build(models: dict[str, str], audio_dir: Path | None) -> dict:
-    """Load the sites, verdicts and decode caches and score them (module docstring)."""
+def build(models: dict[str, str], audio_dir: Path | None,
+          waqf_realized: Collection[str] | None = None) -> dict:
+    """Load the sites, verdicts and decode caches and score them (module docstring), less the
+    sites ``waqf_realized`` names (by default the waqf guard's at the current verdicts)."""
     sites = adjudicated(load_truth_sites(SITES_PATH), read_verdicts(VERDICTS_PATH))
     registry = load_staged_clips(REGISTRY_PATH)
     items = items_of(sites, registry)
@@ -100,8 +103,8 @@ def build(models: dict[str, str], audio_dir: Path | None) -> dict:
                 "decode": cache["fingerprints"][protocol],
             }
     reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
-    report = fixture_report(sites, fixture_sides(), reciter_of, decodes, arm_models,
-                            realized_ids())
+    realized = realized_ids() if waqf_realized is None else waqf_realized
+    report = fixture_report(sites, fixture_sides(), reciter_of, decodes, arm_models, realized)
     report["inputs"] = {
         path.name: file_sha256(path)
         for path in (SITES_PATH, RELOCATION_PATH, VERDICTS_PATH, REGISTRY_PATH, GUARD_PATH)

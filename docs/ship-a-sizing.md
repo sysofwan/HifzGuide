@@ -274,8 +274,9 @@ the guard was built:
 | ship_a_mining:ك→ق:h448_partner:base_wrong | 9 | 0 | 1 | 0 | 0 | 0 | 0 |
 | word_sample | 160 | 101 | 8 | 0 | 9 | 0 | 0 |
 
-The sizing below leaves out 61 realized sites and words (per cell, sites
-and held-out listened sites; 0 sampled words):
+The sizing below leaves out 61 realized sites and 0 sampled words
+(per cell, sites and held-out listened sites); question 4 reads the P3.5 fixtures without the
+1 realized there:
 
 | cell | sites | held-out listened |
 |---|---|---|

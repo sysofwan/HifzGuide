@@ -263,6 +263,7 @@ def _section_guard(sizing: Mapping, guard: Mapping) -> str:
               for name, e in guard["strata"].items()
               if e["wasl_dependent"] or e["phonetizer_unsupported"]]
     taken = sizing["waqf_guard"]
+    fixture_realized = sizing["fixture_report"]["waqf_realized"]
     cells = [[cell, e["sites"], e["held_out_listened"]] for cell, e in taken["cells"].items()]
     unplaced = ", ".join(f"{n} {split}" for split, n in
                          guard["fixture_boundaries_unplaced"].items())
@@ -322,8 +323,9 @@ the guard was built:
 {_table(["stratum", "items", "wasl-dependent", "unsupported", "check: paused", "unplaced",
          "owner note", "waqf_realized"], strata)}
 
-The sizing below leaves out {len(taken["realized"])} realized sites and words (per cell, sites
-and held-out listened sites; {taken["words"]} sampled words):
+The sizing below leaves out {taken["sites"]} realized sites and {taken["words"]} sampled words
+(per cell, sites and held-out listened sites); question 4 reads the P3.5 fixtures without the
+{len(fixture_realized)} realized there:
 
 {_table(["cell", "sites", "held-out listened"], cells)}
 """

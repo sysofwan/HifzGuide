@@ -156,7 +156,7 @@ def _all_census(report: dict) -> bool:
     sampled: dict[str, int] = defaultdict(int)
     population: dict[str, int] = {}
     for row in report["sites"]:
-        sampled[row["stratum"]] += row["sites"]
+        sampled[row["stratum"]] += row["sites"] + row.get("waqf_realized", 0)
         population[row["stratum"]] = row["stratum_population"]
     return all(sampled[stratum] == n for stratum, n in population.items())
 
@@ -368,6 +368,11 @@ def render(report: dict) -> str:
         "`tools/tadabur/truth_sites/p35_fixtures.summary.json`; weights are not inflated to cover",
         "them. A site's weight is its stratum population over the sites sampled in the stratum"
         + (": every stratum here is a census, so every weight is 1." if _all_census(report) else "."),
+        *([f"{len(report['waqf_realized'])} site(s) Ship A's waqf guard realizes (#134: the "
+           "mark only exists in wasl and the reciter paused there) are left out of every "
+           "denominator, at their frozen weights: "
+           + ", ".join(f"`{i}`" for i in report["waqf_realized"]) + "."]
+          if report.get("waqf_realized") else []),
         f"Records sharing one physical site (audio checksum, span, carrier, mark): "
         f"{len(report['physical_sites_merged'])} merged"
         + (", each under its directly adjudicated verdict (`report.json`)."

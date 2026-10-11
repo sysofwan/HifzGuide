@@ -165,6 +165,20 @@ def test_one_physical_site_counts_once_and_keeps_its_frozen_weight(sites):
     assert safeguard["arms"]["m/spans"]["rates"]["commit_rate"]["den"] == pytest.approx(0.5)
 
 
+def test_a_waqf_realized_site_leaves_every_denominator_with_its_twin(sites):
+    """#134: a site the waqf guard realizes is no site of its cell, and neither is any record
+    of its physical site; a realized pending site is not an exclusion either."""
+    twin = replace(sites[0], site_id="twin", source="p35_fixture", heard="pending",
+                   stratum="p35_fixture:x")
+    pending = sites[3].site_id
+    report = score(sites + [twin], RECITERS, {"m/spans": decodes_for(sites)},
+                   waqf_realized={"twin", pending})
+    assert report["waqf_realized"] == sorted([sites[0].site_id, pending])
+    assert cell(report, HEADLINE, CORRECT_SIDE, "fatha")["sites"] == 1
+    assert report["exclusions"] == []
+    assert score(sites, RECITERS, {"m/spans": decodes_for(sites)})["waqf_realized"] == []
+
+
 def test_the_directly_adjudicated_verdict_wins_over_a_weak_label(sites):
     weak = replace(sites[0], site_id="weak", assumes_competent_reciter=True, heard="fatha")
     direct = replace(sites[0], site_id="direct", heard="kasra")
@@ -276,6 +290,19 @@ def test_coverage_counts_words_that_show_a_grade(sites):
     rates = cell(report, HEADLINE, CORRECT_SIDE, "fatha")["arms"]["m/spans"]["rates"]
     assert rates["coverage@shipped_default"]["point"] == 0.5
     assert report["muraja"]["approximations"] == {"m/spans": SINGLE_DECODE}
+
+
+def test_power_inputs_leave_out_a_waqf_realized_site_at_its_frozen_weight(sites):
+    """#134: the realized site is in no cell and no exclusion; the others keep the weight
+    computed over every sampled site (10/4 in the fatha stratum)."""
+    arms = {"h448/stream_b0": decodes_for(sites)}
+    inputs = power_inputs(sites, RECITERS, arms, app(sites, list(arms)),
+                          waqf_realized={sites[0].site_id, sites[3].site_id})
+    assert inputs["waqf_realized"] == sorted([sites[0].site_id, sites[3].site_id])
+    assert "new_audit:fatha" not in inputs["excluded"]
+    row = next(c for c in inputs["cells"]
+               if c["population"] == HEADLINE and c["side"] == CORRECT_SIDE and c["heard"] == "fatha")
+    assert row["per_reciter"] == {"2": [1, 2.5, 2.5, 2.5, 0.0, 0.0, 2.5]}
 
 
 def test_power_inputs_hold_per_reciter_sums(sites):

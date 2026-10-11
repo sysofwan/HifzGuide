@@ -86,7 +86,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -331,18 +331,23 @@ def fixture_report(
     reciter_of: Mapping[str, int],
     decodes: Mapping[str, Mapping[str, str]],
     models: Mapping[str, Mapping],
+    waqf_realized: Collection[str] = (),
 ) -> dict:
     """The fixture-side report (module docstring).
 
     ``sites`` are the P3.5 truth sites with any site-level verdict applied;
     ``fixture_side_of[site_id]`` is :data:`SHOULD_ACCEPT` or :data:`SHOULD_REJECT`;
     ``reciter_of[audio_filename]`` a canonical reciter id; ``decodes[arm][item_key]`` a decode;
-    ``models[arm]`` the arm's model identity and decode fingerprint, recorded as given.
+    ``models[arm]`` the arm's model identity and decode fingerprint, recorded as given;
+    ``waqf_realized`` the sites Ship A's waqf guard takes out (#134), which leave every row,
+    the pending list and the site list, after the stratum weights are computed over all.
     """
     _check(sites, fixture_side_of)
     if set(models) != set(decodes):
         raise ValueError("every arm needs its model fingerprint, and only its arms")
     weights = site_weights(sites)
+    realized = sorted(s.site_id for s in sites if s.site_id in waqf_realized)
+    sites = [s for s in sites if s.site_id not in waqf_realized]
     fixture_sites = [
         FixtureSite(s, fixture_side_of[s.site_id], reciter_of[s.audio_filename], weights[s.site_id])
         for s in sorted(sites, key=lambda s: s.site_id)
@@ -388,6 +393,7 @@ def fixture_report(
             for key, n in sorted(pending.items())
         ],
         "sites": [_site_record(s, outcomes, arms) for s in fixture_sites],
+        "waqf_realized": realized,
     }
 
 

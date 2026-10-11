@@ -31,11 +31,19 @@ margin**: every power is reported over a grid of values for the owner to pick fr
    the minutes, the median bound per 1,000 carriers and the chance it reaches each of
    :data:`HARM_RATES`. The word sample's power for a lower false-flag rate is
    :func:`word_sample_power`.
-4. **Mix of real mistakes** (:func:`mistake_mix`): on the P3.5 fixtures, where ``h448``
-   commits an off value, how many are should-accept (correct recitation) and how many
+4. **Mix of real mistakes** (:func:`mistake_mix`): on the P3.5 fixtures (the fixture-side
+   report, rebuilt from the committed decode caches at every run,
+   :func:`tadabur.eval_harness.build`, so the waqf guard and the verdicts are the current
+   ones), where ``h448`` commits an off value, how many are should-accept (correct recitation) and how many
    should-reject (pending, an upper bound on the share of mistakes: a clip-level reject does
    not say the site was the mistake), and the verified mistakes the "keep both outcomes" term
    gets on the train half at each θ.
+
+Every population is read **after Ship A's waqf guard** (:mod:`tadabur.waqf_guard`, #134): a
+site or sampled word ``waqf_realized`` at the current verdicts (its prescribed mark only exists
+in wasl, and the reciter paused there) leaves every cell; ``sizing.json`` lists them with the
+guard's checksum. The planning frame (question 3's carriers ``h448`` gets right) is not
+guarded: the guard classifies the verified populations, not the frame.
 
 Usage (from ``tools/``; torch-free, CPU; ``--workers`` processes)::
 
@@ -48,13 +56,16 @@ import argparse
 import hashlib
 import json
 import math
-from collections.abc import Mapping
+from collections import Counter
+from collections.abc import Iterable, Mapping
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
+from tadabur.eval_harness import build as fixture_side_report
+from tadabur.listening_session import VERDICTS_PATH
 from tadabur.power_frame import FRAME_PATH, SHIP_A_DIR, input_checksums
 from tadabur.ship_a import (
     GEMINATE,
@@ -67,6 +78,7 @@ from tadabur.ship_a import (
     reciter_half,
 )
 from tadabur.truth_sites import SHADDAH, SOFT_PAIRS, UNFORGIVEN_PAIRS
+from tadabur.waqf_guard import GUARD_PATH, realized_ids
 from tadabur.word_sample import WORD_SAMPLE_PATH, WordSite, load_words
 from training.acceptance_stats import (
     LOWER,
@@ -98,10 +110,9 @@ from training.power_simulation import (
     size_component,
 )
 from training.tashkeel_eval import write_text_atomically
+from training.truth_baseline import DEFAULT_MODELS
 
 SIZING_PATH = SHIP_A_DIR / "sizing.json"
-FIXTURE_SIDES_PATH = (Path(__file__).parent.parent / "tadabur" / "truth_baseline"
-                      / "fixture_sides.json")
 
 # --- planning ranges: this sizing's grids, never thresholds -----------------------------------
 #: θ, the share of real mistakes among the sites ``h448`` flags (question 4 bounds it).
@@ -449,10 +460,38 @@ def _run(job: tuple[str, object, int]) -> tuple[tuple, dict]:
     return scenario.key(), run(scenario, repetitions)
 
 
+def waqf_guard_block(every_site: list[ShipASite], words: list[WordSite],
+                     realized: frozenset[str]) -> dict:
+    """What the waqf guard takes out: the realized sites per evaluation cell and family, the
+    realized words, and every realized id (``sizing.json`` is a function of them)."""
+    taken = [s for s in every_site if s.site.site_id in realized]
+    return {
+        "guard": _sha256(GUARD_PATH),
+        "verdicts": _sha256(VERDICTS_PATH),
+        "cells": {cell: {"sites": len(members),
+                         "held_out_listened": sum(s.listened and s.half == HELD_OUT
+                                                  for s in members)}
+                  for cell, members in cells(taken).items() if members},
+        "families": dict(sorted(Counter(s.family for s in taken).items())),
+        "sites": len(taken),
+        "words": sum(w.site.site_id in realized for w in words),
+        "realized": sorted(realized),
+    }
+
+
+def guarded(every_site: list[ShipASite], words: list[WordSite], realized: frozenset[str]
+            ) -> tuple[list[ShipASite], list[WordSite]]:
+    """The sites and sampled words the waqf guard keeps."""
+    return ([s for s in every_site if s.site.site_id not in realized],
+            [w for w in words if w.site.site_id not in realized])
+
+
 def run(workers: int, repetitions: int = REPETITIONS) -> dict:
-    sites = load_sites()
+    every_site, every_word, realized = load_sites(), load_words(), realized_ids()
+    sites, words = guarded(every_site, every_word, realized)
+    fixtures = fixture_side_report(DEFAULT_MODELS, None, realized)
     carriers, seconds = held_out_carriers()
-    sampled_word_weights = word_weights(load_words())
+    sampled_word_weights = word_weights(words)
     jobs: list[tuple[str, object, int]] = [
         *(("side", s, repetitions) for s in side_scenarios(sites)),
         *(("harm", s, repetitions) for s in harm_scenarios(carriers, seconds)),
@@ -471,14 +510,17 @@ def run(workers: int, repetitions: int = REPETITIONS) -> dict:
     return {
         "inputs": {**input_checksums(), **{
             name: _sha256(path) for name, path in (
-                ("ship_a/sites.jsonl", SITES_PATH), ("ship_a/word_sample.jsonl", WORD_SAMPLE_PATH),
-                ("truth_baseline/fixture_sides.json", FIXTURE_SIDES_PATH))}},
+                ("ship_a/sites.jsonl", SITES_PATH),
+                ("ship_a/word_sample.jsonl", WORD_SAMPLE_PATH))}},
+        "fixture_report": {"inputs": fixtures["inputs"],
+                           "waqf_realized": fixtures["waqf_realized"]},
         "repetitions": repetitions,
         "grids": {"thetas": THETAS, "true_rates": TRUE_RATES, "floors": FLOORS,
                   "iccs": RECITER_ICCS, "churns": CHURNS, "new_error_shares": NEW_ERROR_SHARES,
                   "cluster_reciters": CLUSTER_RECITERS, "harm_rates": HARM_RATES,
                   "false_flag_rates": FALSE_FLAG_RATES, "reductions": REDUCTIONS,
                   "word_margins": WORD_MARGINS, "word_correct_share": WORD_CORRECT_SHARE},
+        "waqf_guard": waqf_guard_block(every_site, every_word, realized),
         "budget": budget(sites),
         "effective_sizes": effective_sizes(sites),
         "word_sample_effective": {"words": len(sampled_word_weights),
@@ -489,8 +531,7 @@ def run(workers: int, repetitions: int = REPETITIONS) -> dict:
         "harm": {"held_out_carriers": int(sum(carriers)), "reciters": len(carriers),
                  "seconds_per_site": seconds, "scenarios": harm},
         "word_sample": words,
-        "mistake_mix": mistake_mix(json.loads(FIXTURE_SIDES_PATH.read_text(encoding="utf-8")),
-                                   sites),
+        "mistake_mix": mistake_mix(fixtures, sites),
     }
 
 

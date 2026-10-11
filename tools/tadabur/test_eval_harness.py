@@ -8,6 +8,7 @@ from tadabur.listening_session import Verdict, adjudicated
 from tadabur.p35_truth_sites import SITES_PATH
 from tadabur.test_eval_report import PAIR, ZAI, cohort, report_for  # noqa: F401  (a fixture)
 from tadabur.truth_sites import load_truth_sites
+from tadabur.waqf_guard import realized_ids
 from training.truth_baseline import DEFAULT_MODELS
 
 
@@ -24,10 +25,19 @@ def test_every_p35_site_has_the_fixture_side_it_was_relocated_from():
 def test_the_report_builds_from_the_committed_decode_caches_without_decoding():
     report = build(DEFAULT_MODELS, audio_dir=None)
     assert report["arms"] == ["base/spans", "base/stream_b0", "h448/spans", "h448/stream_b0"]
-    assert len(report["sites"]) == len(load_truth_sites(SITES_PATH))
+    realized = set(report["waqf_realized"])
+    assert len(report["sites"]) + len(realized) == len(load_truth_sites(SITES_PATH))
+    assert realized <= realized_ids() and not realized & {s["site_id"] for s in report["sites"]}
     assert report["p35_base_reproduction"]["identical"] == report["p35_base_reproduction"]["items"]
     for arm in report["arms"]:
         assert report["fingerprints"]["arms"][arm]["identity"]["model_ref"] in DEFAULT_MODELS.values()
+
+
+def test_the_report_leaves_out_the_p35_site_the_waqf_guard_realizes():
+    """#134: the P3.5 shaddah the reciter paused on (its geminate exists only in wasl)."""
+    realized = "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74"
+    assert realized in realized_ids()
+    assert build(DEFAULT_MODELS, audio_dir=None)["waqf_realized"] == [realized]
 
 
 def test_a_side_with_no_verdict_renders_as_pending_adjudication(cohort):

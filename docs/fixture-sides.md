@@ -48,10 +48,12 @@ The best direction's support on each side, counting sites with a verdict only.
 | ح↔ه | too small | no site | 0 | in scope, insufficient evidence |
 | ذ↔ز | sufficient | no site | 2 | in scope, insufficient evidence |
 | ذ↔ظ | no site | no site | 0 | in scope, insufficient evidence |
+| س↔ش | no site | no site | 0 | in scope, insufficient evidence |
 | س↔ص | sufficient | no site | 2 | in scope, insufficient evidence |
 | ض↔ظ | sufficient | no site | 2 | in scope, insufficient evidence |
+| ط↔ق | no site | no site | 0 | in scope, insufficient evidence |
 | ق↔ك | sufficient | no site | 3 | in scope, insufficient evidence |
-| shaddah (provisional) | too small | no site | 13 | in scope, insufficient evidence |
+| shaddah (provisional) | too small | no site | 12 | in scope, insufficient evidence |
 
 ## Correct recitation (heard = prescribed)
 
@@ -76,13 +78,17 @@ Sites committed in each role · % of the row [95% interval]
 | ذ↔ز | ز → ز | 28 / 19 | 28 / 0 | 2 | 0 · 0.0 (n/c) ⟨0.0–6.7⟩ | 28 · 100.0 (n/c) ⟨93.3–100.0⟩ | 0 · 0.0 (n/c) ⟨0.0–6.7⟩ | 0 · 0.0 (n/c) ⟨0.0–6.7⟩ |
 | ذ↔ظ | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ظ | ظ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | س → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | ش → ش | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | س↔ص | س → س | 25 / 21 | 25 / 0 | 1 | 0 · 0.0 (n/c) ⟨0.0–3.8⟩ | 25 · 100.0 (n/c) ⟨96.2–100.0⟩ | 0 · 0.0 (n/c) ⟨0.0–3.8⟩ | 0 · 0.0 (n/c) ⟨0.0–3.8⟩ |
 | س↔ص | ص → ص | 3 / 3 (too small) | 3 / 0 | 1 | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ | 3 · 100.0 [43.8, 100.0] W ⟨75.0–100.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ |
 | ض↔ظ | ض → ض | 2 / 2 (too small) | 2 / 0 | 1 | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ | 2 · 100.0 [34.2, 100.0] W ⟨66.7–100.0⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ |
 | ض↔ظ | ظ → ظ | 23 / 20 | 23 / 0 | 1 | 0 · 0.0 (n/c) ⟨0.0–4.2⟩ | 23 · 100.0 (n/c) ⟨95.8–100.0⟩ | 0 · 0.0 (n/c) ⟨0.0–4.2⟩ | 0 · 0.0 (n/c) ⟨0.0–4.2⟩ |
+| ط↔ق | ط → ط | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ط↔ق | ق → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ق↔ك | ق → ق | 6 / 6 (too small) | 6 / 0 | 2 | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 6 · 100.0 [61.0, 100.0] W ⟨75.0–100.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ |
 | ق↔ك | ك → ك | 21 / 19 | 21 / 0 | 1 | 0 · 0.0 (n/c) ⟨0.0–4.5⟩ | 21 · 100.0 (n/c) ⟨95.5–100.0⟩ | 0 · 0.0 (n/c) ⟨0.0–4.5⟩ | 0 · 0.0 (n/c) ⟨0.0–4.5⟩ |
-| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 7 | 0 · 0.0 [0.0, 27.8] W ⟨0.0–41.2⟩ | 10 · 100.0 [72.2, 100.0] W ⟨58.8–100.0⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–41.2⟩ |
+| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 6 | 0 · 0.0 [0.0, 27.8] W ⟨0.0–37.5⟩ | 10 · 100.0 [72.2, 100.0] W ⟨62.5–100.0⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–37.5⟩ |
 | shaddah (provisional) | not_held → not_held | 1 / 1 (too small) | 1 / 0 | 6 | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ | 1 · 100.0 [20.7, 100.0] W ⟨14.3–100.0⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |
 
 ### base/stream_b0
@@ -99,13 +105,17 @@ Sites committed in each role · % of the row [95% interval]
 | ذ↔ز | ز → ز | 28 / 19 | 28 / 0 | 2 | 4 · 14.3 [0.0, 29.4] ⟨13.3–20.0⟩ | 18 · 64.3 [40.5, 87.0] ⟨60.0–66.7⟩ | 2 · 7.1 [0.0, 19.5] ⟨6.7–13.3⟩ | 4 · 14.3 [3.3, 29.2] ⟨13.3–20.0⟩ |
 | ذ↔ظ | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ظ | ظ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | س → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | ش → ش | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | س↔ص | س → س | 25 / 21 | 25 / 0 | 1 | 8 · 32.0 [16.0, 50.0] ⟨30.8–34.6⟩ | 13 · 52.0 [33.3, 70.8] ⟨50.0–53.8⟩ | 1 · 4.0 [0.0, 13.6] ⟨3.8–7.7⟩ | 3 · 12.0 [0.0, 25.0] ⟨11.5–15.4⟩ |
 | س↔ص | ص → ص | 3 / 3 (too small) | 3 / 0 | 1 | 1 · 33.3 [6.1, 79.2] W ⟨25.0–50.0⟩ | 2 · 66.7 [20.8, 93.9] W ⟨50.0–75.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ |
 | ض↔ظ | ض → ض | 2 / 2 (too small) | 2 / 0 | 1 | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ | 2 · 100.0 [34.2, 100.0] W ⟨66.7–100.0⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ |
 | ض↔ظ | ظ → ظ | 23 / 20 | 23 / 0 | 1 | 2 · 8.7 [0.0, 22.7] ⟨8.3–12.5⟩ | 18 · 78.3 [59.1, 95.2] ⟨75.0–79.2⟩ | 0 · 0.0 (n/c) ⟨0.0–4.2⟩ | 3 · 13.0 [0.0, 29.2] ⟨12.5–16.7⟩ |
+| ط↔ق | ط → ط | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ط↔ق | ق → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ق↔ك | ق → ق | 6 / 6 (too small) | 6 / 0 | 2 | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ |
 | ق↔ك | ك → ك | 21 / 19 | 21 / 0 | 1 | 4 · 19.0 [4.8, 36.4] ⟨18.2–22.7⟩ | 13 · 61.9 [42.9, 81.0] ⟨59.1–63.6⟩ | 2 · 9.5 [0.0, 22.7] ⟨9.1–13.6⟩ | 2 · 9.5 [0.0, 25.0] ⟨9.1–13.6⟩ |
-| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 7 | 2 · 20.0 [5.7, 51.0] W ⟨11.8–52.9⟩ | 8 · 80.0 [49.0, 94.3] W ⟨47.1–88.2⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–41.2⟩ |
+| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 6 | 2 · 20.0 [5.7, 51.0] W ⟨12.5–50.0⟩ | 8 · 80.0 [49.0, 94.3] W ⟨50.0–87.5⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–37.5⟩ |
 | shaddah (provisional) | not_held → not_held | 1 / 1 (too small) | 1 / 0 | 6 | 1 · 100.0 [20.7, 100.0] W ⟨14.3–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |
 
 ### h448/spans
@@ -122,13 +132,17 @@ Sites committed in each role · % of the row [95% interval]
 | ذ↔ز | ز → ز | 28 / 19 | 28 / 0 | 2 | 15 · 53.6 [37.5, 74.1] ⟨50.0–56.7⟩ | 9 · 32.1 [15.4, 46.7] ⟨30.0–36.7⟩ | 3 · 10.7 [0.0, 21.9] ⟨10.0–16.7⟩ | 1 · 3.6 [0.0, 10.0] ⟨3.3–10.0⟩ |
 | ذ↔ظ | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ظ | ظ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | س → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | ش → ش | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | س↔ص | س → س | 25 / 21 | 25 / 0 | 1 | 15 · 60.0 [40.0, 81.8] ⟨57.7–61.5⟩ | 5 · 20.0 [4.8, 34.6] ⟨19.2–23.1⟩ | 1 · 4.0 [0.0, 13.6] ⟨3.8–7.7⟩ | 4 · 16.0 [0.0, 31.0] ⟨15.4–19.2⟩ |
 | س↔ص | ص → ص | 3 / 3 (too small) | 3 / 0 | 1 | 2 · 66.7 [20.8, 93.9] W ⟨50.0–75.0⟩ | 1 · 33.3 [6.1, 79.2] W ⟨25.0–50.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ |
 | ض↔ظ | ض → ض | 2 / 2 (too small) | 2 / 0 | 1 | 1 · 50.0 [9.5, 90.5] W ⟨33.3–66.7⟩ | 1 · 50.0 [9.5, 90.5] W ⟨33.3–66.7⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ |
 | ض↔ظ | ظ → ظ | 23 / 20 | 23 / 0 | 1 | 5 · 21.7 [4.5, 40.0] ⟨20.8–25.0⟩ | 14 · 60.9 [37.5, 85.7] ⟨58.3–62.5⟩ | 1 · 4.3 [0.0, 14.3] ⟨4.2–8.3⟩ | 3 · 13.0 [0.0, 26.9] ⟨12.5–16.7⟩ |
+| ط↔ق | ط → ط | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ط↔ق | ق → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ق↔ك | ق → ق | 6 / 6 (too small) | 6 / 0 | 2 | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ |
 | ق↔ك | ك → ك | 21 / 19 | 21 / 0 | 1 | 12 · 57.1 [35.0, 77.3] ⟨54.5–59.1⟩ | 3 · 14.3 [0.0, 31.6] ⟨13.6–18.2⟩ | 3 · 14.3 [0.0, 30.0] ⟨13.6–18.2⟩ | 3 · 14.3 [0.0, 31.6] ⟨13.6–18.2⟩ |
-| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 7 | 6 · 60.0 [31.3, 83.2] W ⟨35.3–76.5⟩ | 3 · 30.0 [10.8, 60.3] W ⟨17.6–58.8⟩ |  | 1 · 10.0 [1.8, 40.4] W ⟨5.9–47.1⟩ |
+| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 6 | 6 · 60.0 [31.3, 83.2] W ⟨37.5–75.0⟩ | 3 · 30.0 [10.8, 60.3] W ⟨18.8–56.2⟩ |  | 1 · 10.0 [1.8, 40.4] W ⟨6.2–43.8⟩ |
 | shaddah (provisional) | not_held → not_held | 1 / 1 (too small) | 1 / 0 | 6 | 1 · 100.0 [20.7, 100.0] W ⟨14.3–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |
 
 ### h448/stream_b0
@@ -145,13 +159,17 @@ Sites committed in each role · % of the row [95% interval]
 | ذ↔ز | ز → ز | 28 / 19 | 28 / 0 | 2 | 16 · 57.1 [40.0, 76.7] ⟨53.3–60.0⟩ | 4 · 14.3 [3.6, 27.3] ⟨13.3–20.0⟩ | 4 · 14.3 [0.0, 26.9] ⟨13.3–20.0⟩ | 4 · 14.3 [3.3, 29.2] ⟨13.3–20.0⟩ |
 | ذ↔ظ | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ظ | ظ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | س → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | ش → ش | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | س↔ص | س → س | 25 / 21 | 25 / 0 | 1 | 15 · 60.0 [43.3, 78.3] ⟨57.7–61.5⟩ | 7 · 28.0 [13.0, 43.5] ⟨26.9–30.8⟩ | 1 · 4.0 [0.0, 13.6] ⟨3.8–7.7⟩ | 2 · 8.0 [0.0, 18.5] ⟨7.7–11.5⟩ |
 | س↔ص | ص → ص | 3 / 3 (too small) | 3 / 0 | 1 | 3 · 100.0 [43.8, 100.0] W ⟨75.0–100.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 56.2] W ⟨0.0–25.0⟩ |
 | ض↔ظ | ض → ض | 2 / 2 (too small) | 2 / 0 | 1 | 2 · 100.0 [34.2, 100.0] W ⟨66.7–100.0⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ | 0 · 0.0 [0.0, 65.8] W ⟨0.0–33.3⟩ |
 | ض↔ظ | ظ → ظ | 23 / 20 | 23 / 0 | 1 | 9 · 39.1 [15.0, 60.9] ⟨37.5–41.7⟩ | 10 · 43.5 [23.3, 66.7] ⟨41.7–45.8⟩ | 0 · 0.0 (n/c) ⟨0.0–4.2⟩ | 4 · 17.4 [3.8, 36.0] ⟨16.7–20.8⟩ |
+| ط↔ق | ط → ط | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ط↔ق | ق → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ق↔ك | ق → ق | 6 / 6 (too small) | 6 / 0 | 2 | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ |
 | ق↔ك | ك → ك | 21 / 19 | 21 / 0 | 1 | 11 · 52.4 [30.0, 73.7] ⟨50.0–54.5⟩ | 4 · 19.0 [4.5, 38.1] ⟨18.2–22.7⟩ | 2 · 9.5 [0.0, 22.7] ⟨9.1–13.6⟩ | 4 · 19.0 [4.5, 38.1] ⟨18.2–22.7⟩ |
-| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 7 | 6 · 60.0 [31.3, 83.2] W ⟨35.3–76.5⟩ | 4 · 40.0 [16.8, 68.7] W ⟨23.5–64.7⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–41.2⟩ |
+| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 6 | 6 · 60.0 [31.3, 83.2] W ⟨37.5–75.0⟩ | 4 · 40.0 [16.8, 68.7] W ⟨25.0–62.5⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–37.5⟩ |
 | shaddah (provisional) | not_held → not_held | 1 / 1 (too small) | 1 / 0 | 6 | 1 · 100.0 [20.7, 100.0] W ⟨14.3–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |
 
 ## Real mistakes (heard ≠ prescribed)
@@ -163,7 +181,7 @@ Heard ≠ prescribed: the reciter said the partner of the mushaf's letter or sta
 - **other letter**: a third letter: flagged, but not what was said.
 - **no commit (missed)**: nothing committed at the carrier: the mistake missed.
 
-**Pending adjudication.** No site has a real-mistake verdict yet, so this side has no numbers. The 23 sites of the should-reject fixtures wait for their site-level re-listen (#61); `python -m tadabur.eval_harness` fills this side in once their verdicts are in `tadabur/listening_session/verdicts.jsonl`.
+**Pending adjudication.** No site has a real-mistake verdict yet, so this side has no numbers. The 22 sites of the should-reject fixtures wait for their site-level re-listen (#61); `python -m tadabur.eval_harness` fills this side in once their verdicts are in `tadabur/listening_session/verdicts.jsonl`.
 
 ## Sites without a verdict
 
@@ -171,7 +189,7 @@ Heard ≠ prescribed: the reciter said the partner of the mushaf's letter or sta
 
 | family | prescribed | heard | fixture side | sites |
 |---|---|---|---|---|
-| shaddah (provisional) | held | `pending` | should_reject | 7 |
+| shaddah (provisional) | held | `pending` | should_reject | 6 |
 | shaddah (provisional) | not_held | `pending` | should_reject | 6 |
 | ت↔ط | ت | `pending` | should_reject | 1 |
 | ذ↔ز | ز | `pending` | should_reject | 2 |
@@ -188,19 +206,20 @@ A paired diff (#57) refuses two reports whose fixture or schema fingerprints dif
 
 | what | value |
 |---|---|
-| fixtures (scored sites, fixture sides, reciters) | `b2a0270475448374aee9c8f857fa1387cd8668ce6fec98fa7f1db2668b71a03a` |
-| schema | `eb6c9176a122449dd2f44e7466a978261eefa13ee93dbfba520265fe6d95abc9` |
-| input `clips.jsonl` | `daca1e32aaf550e4134850d0c57ee7ee96890898c7d3740e8db31cfa7ec536dd` |
+| fixtures (scored sites, fixture sides, reciters) | `913959e13f9fa760e8491c38c7b1489292efefd679f77b51188fd8bbb79ff3b1` |
+| schema | `b791406de145dc7305df22b7fd9bc102807d42df78ade189f6e5e2fec9e08b70` |
+| input `clips.jsonl` | `2c3597aca616391168815a38d49cfbae429d41397d4a655e2497df0237ceb192` |
 | input `p35_fixtures.jsonl` | `654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8` |
 | input `p35_fixtures.relocation.jsonl` | `8a49c872035eef2ba8f69259106f04e1ff3b345c34412b7e0632b71cf3e8d7b8` |
 | input `verdicts.jsonl` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| input `waqf_guard.jsonl` | `ba34de335d9a4143bd6390099001d924be069e728df8da6d36b39e6498991f76` |
 
 | arm | weights | decode mode | decodes sha256 |
 |---|---|---|---|
-| base/spans | `obadx/muaalem-model-v3_2` @ `01a1ef9fbe40d144ef845101e89ff924aed3fef5` | `whole-spans`, bf16, batch 1 | `3f71889d9d40f5845b22b4289f75cc2c60cd70a3c6255567f256b8bf7f2a1a0d` |
-| base/stream_b0 | `obadx/muaalem-model-v3_2` @ `01a1ef9fbe40d144ef845101e89ff924aed3fef5` | `confirmed-stream-v2-flush`, bf16, batch 1 | `e43d2b2e50be147e1ccba7cdbed0f1d268a95fec6bd80e8fc172f692cb36ea88` |
-| h448/spans | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` @ `eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a` | `whole-spans`, bf16, batch 1 | `05881cc511b72ef8058aaeab93db766f4ebc8918b51e931d5bd4f620c0871ecf` |
-| h448/stream_b0 | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` @ `eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a` | `confirmed-stream-v2-flush`, bf16, batch 1 | `d819e42a49633778a33943eac687627b9bebb2d67090c96313591f9ac89911b6` |
+| base/spans | `obadx/muaalem-model-v3_2` @ `01a1ef9fbe40d144ef845101e89ff924aed3fef5` | `whole-spans`, bf16, batch 1 | `c015f6a18eda8553a384402af544ffbf0ede52dd65c6050632fa17ad8b59cd20` |
+| base/stream_b0 | `obadx/muaalem-model-v3_2` @ `01a1ef9fbe40d144ef845101e89ff924aed3fef5` | `confirmed-stream-v2-flush`, bf16, batch 1 | `29b436fdfc54a93fab2f1b5d3294d6ce31d399729b2349c85c467cd8f9ff39a0` |
+| h448/spans | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` @ `eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a` | `whole-spans`, bf16, batch 1 | `461344c4b67ac14d4053afd2903d3e868720f53610d5b2f3476006c9c9eb3712` |
+| h448/stream_b0 | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` @ `eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a` | `confirmed-stream-v2-flush`, bf16, batch 1 | `82b455ec8bce2db3a42585cc4674c93b4d0049b795d2a5b57dce8b1333da5070` |
 
 ## Re-running
 

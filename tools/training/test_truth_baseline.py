@@ -16,6 +16,7 @@ from training.decoding import APP_CHECKS, SPANS, DecodeFingerprint
 from training.muraja_policy import FLAGGED, RECORDED_CHECKS, SHIPPED_DEFAULT, SINGLE_DECODE
 from training.test_truth_scorer import RECITERS, app, decodes_for, sites  # noqa: F401  (a fixture)
 from training.truth_baseline import (
+    ARM_PROTOCOLS,
     CHECK_STORE,
     DECODE_STORE,
     DEFAULT_MODELS,
@@ -27,6 +28,7 @@ from training.truth_baseline import (
     file_sha256,
     model_identity,
     read_cache,
+    scored,
     truth_site_files,
 )
 from training.truth_baseline_doc import SPARSE_MARK, render
@@ -191,3 +193,17 @@ def test_a_cache_reads_back_as_written(one_item_per_line):
 def test_an_empty_cache_reads_back_as_written():
     cache = {"model": "m", "identity": None, "fingerprints": None, "items": {}}
     assert json.loads(cache_text(cache, True)) == cache
+
+
+def test_the_report_and_the_power_inputs_both_leave_out_waqf_realized_sites(sites):  # noqa: F811
+    """#134: the runner's one scoring step applies Ship A's waqf guard to both outputs and
+    keeps ``today_system_arm``."""
+    arms = {f"{model}/{protocol}": decodes_for(sites)
+            for model in ("base", "h448") for protocol in ARM_PROTOCOLS}
+    realized = frozenset({sites[0].site_id})
+    report, inputs = scored(sites, RECITERS, arms, ["base", "h448"], app(sites, list(arms)),
+                            realized)
+    assert report["waqf_realized"] == inputs["waqf_realized"] == [sites[0].site_id]
+    assert inputs["today_system_arm"] == "h448/stream_b0"
+    held = [c for c in inputs["cells"] for r in c["per_reciter"] if r == "1"]
+    assert held == []  # reciter 1's only site was the realized one

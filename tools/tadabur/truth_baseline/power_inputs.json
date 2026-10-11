@@ -27832,12 +27832,15 @@
   }
  ],
  "excluded": {
-  "p35_fixture:shadda": 13,
+  "p35_fixture:shadda": 12,
   "p35_fixture:ت↔ط": 1,
   "p35_fixture:ذ↔ز": 2,
   "p35_fixture:س↔ص": 2,
   "p35_fixture:ض↔ظ": 2,
   "p35_fixture:ق↔ك": 3
  },
+ "waqf_realized": [
+  "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74"
+ ],
  "today_system_arm": "h448/stream_b0"
 }

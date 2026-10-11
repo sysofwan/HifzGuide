@@ -1,0 +1,18 @@
+{
+ "chunk_samples": 319920,
+ "clips": 319,
+ "frame_samples": 320,
+ "thresholds": [
+  0.5,
+  0.3,
+  0.2,
+  0.1,
+  0.05
+ ],
+ "unplaced": 350,
+ "vad_dtype": "bfloat16",
+ "vad_model": "obadx/recitation-segmenter-v2",
+ "vad_revision": "5ee90364e7090ea6eb9dffe80353bed06996a196",
+ "window_pad_s": 0.04,
+ "windows": 1885
+}

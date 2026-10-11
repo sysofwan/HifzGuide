@@ -32,7 +32,8 @@ This is the runner around :mod:`training.truth_scorer`:
    stands for (the single-decode approximation, kept as the fallback). This needs the harness
    ``tools/muraja_harness`` built on this machine (a Mac: ``bash tools/muraja_harness/build.sh``);
    the decodes come from the GPU box.
-5. **Report.** :func:`training.truth_scorer.score` over every site and arm, written as
+5. **Report.** :func:`training.truth_scorer.score` over every site and arm, less the sites
+   Ship A's waqf guard realizes (:func:`tadabur.waqf_guard.realized_ids`, #134), written as
    :data:`REPORT_PATH`; the §8 power simulation's inputs as :data:`POWER_INPUTS_PATH`
    (base and h448 only); and the human-readable report :data:`DOC_PATH`.
 
@@ -61,6 +62,7 @@ import numpy as np
 
 from tadabur.staged_audio import REGISTRY_PATH, StagedClip, load_staged_clips
 from tadabur.truth_sites import TRUTH_SITES_DIR, TruthSite, load_truth_sites
+from tadabur.waqf_guard import realized_ids
 from training.decoding import (
     APP_CHECKS,
     INFERENCE_POLICY,
@@ -398,6 +400,24 @@ def p35_reproduction(sites: Sequence[TruthSite], base_spans: Mapping[str, str]) 
     return {"items": len(keys), "identical": same}
 
 
+def scored(
+    sites: Sequence[TruthSite],
+    reciter_of: Mapping[str, int],
+    decodes: Mapping[str, Mapping[str, str]],
+    models: Sequence[str],
+    muraja: MurajaGrades,
+    waqf_realized: frozenset[str],
+) -> tuple[dict, dict]:
+    """The report over every arm and the §8 power inputs (base and ``h448`` only), both less
+    the sites Ship A's waqf guard realizes, with weights computed over every site."""
+    report = score(sites, reciter_of, decodes, comparisons(models), muraja,
+                   waqf_realized=waqf_realized)
+    baseline_arms = {a: d for a, d in decodes.items() if a.split("/")[0] in ("base", "h448")}
+    inputs = power_inputs(sites, reciter_of, baseline_arms, muraja, waqf_realized)
+    inputs["today_system_arm"] = arm("h448", "stream_b0")
+    return report, inputs
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--audio-dir", type=Path, help="staged 16 kHz clips; needed only to decode")
@@ -437,17 +457,13 @@ def main() -> None:
 
     reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
     muraja = app_outcomes(sites, decodes, sequences)
-    report = score(sites, reciter_of, decodes, comparisons(list(models)), muraja)
+    report, inputs = scored(sites, reciter_of, decodes, list(models), muraja, realized_ids())
     report["truth_site_files"] = [p.name for p in files]
     report["fingerprints"] = fingerprints
     report["protocols"] = ARM_PROTOCOLS
     if "base" in models:
         report["p35_base_reproduction"] = p35_reproduction(sites, decodes[arm("base", "spans")])
     write_text_atomically(REPORT_PATH, json.dumps(report, ensure_ascii=False, indent=1) + "\n")
-
-    baseline_arms = {a: d for a, d in decodes.items() if a.split("/")[0] in ("base", "h448")}
-    inputs = power_inputs(sites, reciter_of, baseline_arms, muraja)
-    inputs["today_system_arm"] = arm("h448", "stream_b0")
     write_text_atomically(POWER_INPUTS_PATH, json.dumps(inputs, ensure_ascii=False, indent=1) + "\n")
 
     write_text_atomically(DOC_PATH, render(report))

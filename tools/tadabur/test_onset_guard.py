@@ -63,6 +63,11 @@ def test_owner_notes(note, says):
     ("(trimmed)", None, True), ("clip (trimmed)", None, True), ("(waqf)", True, None),
     ("(no trim)", None, False), ("no waqf (trimmed)", False, True),
     ("no (not audible) pause", False, None),
+    # brackets and quotes are transparent (round 3b)
+    ("no pause (waqf)", False, None), ("not (trimmed)", None, False),
+    ('no "pause"', False, None), ("no \u201cwaqf\u201d", False, None),
+    ('not "trimmed"', None, False), ("no 'waqf'", False, None),
+    ("not \u00abtrimmed\u00bb", None, False), ("hafs' recitation, not paused", False, None),
     # an opposite-polarity word ends a negator's scope (round 3)
     ("no pause and wasl", False, None), ("not paused but wasl", False, None),
     ("no pause, wasl", False, None),
@@ -97,6 +102,12 @@ def test_not_hafs_departs_from_the_134_reader_on_purpose():
 def test_every_committed_note_reads_as_the_waqf_guard_read_it():
     notes = {v.note for v in read_verdicts().values() if v.note}
     assert notes and all(waqf_guard.owner_says(n) is _legacy_waqf(n) for n in notes)
+
+
+def test_the_summary_audits_every_note_the_readers_claim_from():
+    summary = json.loads(o.SUMMARY_PATH.read_text(encoding="utf-8"))
+    assert summary["note_readings"] == o.note_readings(read_verdicts())
+    assert set(FLAGGED) <= {r["item_id"] for r in summary["note_readings"] if r["trim"]}
 
 
 def test_the_four_flagged_sites_are_trimmed_at_the_committed_verdicts():

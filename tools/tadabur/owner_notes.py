@@ -6,11 +6,14 @@ decides before any detector: the waqf guard (:mod:`tadabur.waqf_guard`) reads :d
 whether the reciter paused, and the onset guard (:mod:`tadabur.onset_guard`) reads
 :data:`TRIM`, whether the clip's opening sound is cut. :func:`says` is the one reader.
 
-The note is cut into clauses at line breaks and at every Unicode punctuation mark (so the
-Arabic ``،``, ``؛`` and ``؟`` too) but the apostrophe and a dash joining two letters
-("not-trimmed", "no-waqf", read as two words); a spaced dash ("no waqf - trimmed") cuts. A
-bracketed span is skipped by the words around it ("no (audible) pause" reads as "no pause")
-and read as its own clause ("clip (trimmed)" says trimmed; "(no trim)" says not). Inside a clause the note
+Brackets and quotation marks are transparent: ``( ) [ ] { }``, every opening or closing
+quote (``" “ ” « » „``, a backquote, and an apostrophe not between two letters) is read as a
+space, so it neither cuts a clause nor hides a word from its negator ("no (audible) pause",
+'no "pause"' and "not (trimmed)" deny; "clip (trimmed)" affirms). An apostrophe between two
+letters stays ("didn't"). The note is then cut into clauses at line breaks and at every other
+Unicode punctuation mark (so the Arabic ``،``, ``؛`` and ``؟`` too) but a dash joining two
+letters ("not-trimmed", "no-waqf", read as two words); a spaced dash ("no waqf - trimmed")
+cuts. Inside a clause the note
 is read word by word, lower-cased. A word of a claim (:data:`CLAIMS`) affirms or denies it. A
 negator (``no``, ``not``, ``never``, ``without``, ``nor``, ``cannot`` or a word ending in
 ``n't``, or its apostrophe-less spelling, ``didnt``) negates the first claim word it reaches
@@ -37,8 +40,10 @@ NEGATORS = frozenset({"no", "not", "never", "without", "nor", "cannot", "didnt",
 NEGATION_REACH = 3
 #: Line breaks (Unicode's), which end a clause like punctuation.
 _LINE_BREAKS = frozenset("\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029")
-#: A bracketed qualifier, skipped.
-_BRACKETED = re.compile(r"\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*\}")
+#: Punctuation categories read as a space: brackets and opening or closing quotes.
+_TRANSPARENT_CATEGORIES = frozenset({"Ps", "Pe", "Pi", "Pf"})
+#: Quote marks of other categories ("'" between two letters is an apostrophe and stays).
+_QUOTES = frozenset("\"'`\u2019\u2018")
 
 
 def _never(word: str) -> bool:
@@ -68,8 +73,19 @@ def _negator(word: str) -> bool:
     return word in NEGATORS or word.endswith("n't")
 
 
-def _split(text: str) -> list[str]:
-    """``text`` cut at line breaks and punctuation (module docstring)."""
+def _transparent(text: str, k: int) -> bool:
+    char = text[k]
+    if char in "'\u2019" and 0 < k < len(text) - 1 and text[k - 1].isalpha() \
+            and text[k + 1].isalpha():
+        return False  # an apostrophe inside a word
+    return char in _QUOTES or unicodedata.category(char) in _TRANSPARENT_CATEGORIES
+
+
+def clauses(note: str) -> list[str]:
+    """The note's clauses, lower-cased, brackets and quotes read as spaces (module docstring)."""
+    text = note.lower()
+    text = "".join(" " if _transparent(text, k) else text[k] for k in range(len(text)))
+    text = text.replace("\u2019", "'")
     out, current = [], []
     for k, char in enumerate(text):
         category = unicodedata.category(char)
@@ -83,17 +99,6 @@ def _split(text: str) -> list[str]:
     return [*out, "".join(current)]
 
 
-def clauses(note: str) -> list[str]:
-    """The note's clauses, lower-cased: the text around its bracketed spans (a span leaves
-    the words around it adjacent), then each span's own clauses (module docstring)."""
-    text = note.lower().replace("\u2019", "'")
-    spans = []
-    while _BRACKETED.search(text):
-        spans += [m.group()[1:-1] for m in _BRACKETED.finditer(text)]
-        text = _BRACKETED.sub(" ", text)
-    return [clause for part in (text, *spans) for clause in _split(part)]
-
-
 def says(note: str, claim: Claim) -> bool | None:
     """``True`` when the note affirms ``claim``, ``False`` when it denies it, ``None`` when it
     says neither or is ambiguous (module docstring)."""
@@ -105,7 +110,7 @@ def says(note: str, claim: Claim) -> bool | None:
             if _negator(word):
                 negator, governed = k, None
                 continue
-            if word == "hafs" or word.startswith("hafs'"):
+            if word == "hafs":
                 negator = governed = None  # "not hafs": the negator is spent here
                 continue
             owner = next((c for c in CLAIMS if c.names(word)), None)

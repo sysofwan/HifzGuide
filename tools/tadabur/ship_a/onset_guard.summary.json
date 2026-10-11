@@ -204,6 +204,74 @@
   "ship_a/word_sample.jsonl": "073deb66db996b9c638292468378f9923f33893b00d9e7c04fafb9414ed15e03",
   "ship_a/worklist.jsonl": "097181fd5d56316c057c5f615812e262ab73bcf4a788d6f5e75ef67cd3576bb0"
  },
+ "note_readings": [
+  {
+   "item_id": "new_audit:tadabur_spk0017_S3_A37_a74cb622_000020.wav#0@2:shaddah",
+   "note": "Trimming issues",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0034_S3_A37_ab548534_000017.wav#0@2:shaddah",
+   "note": "Incorrect trim",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0044_S14_A44_30fb3422_000021.wav#0@26:shaddah",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0048_S11_A46_180ddb9f_000014.wav#2@52:shaddah",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0103_S1_A103_3ab1721d_000058.wav#0@77:shaddah",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0148_S15_A103_65513671_000094.wav#0@73:shaddah",
+   "note": "This is between  a pause",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0307_S1_A121_81a47bca_000082.wav#0@2:shaddah",
+   "note": "trim issues",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0307_S1_A194_81a47bca_000131.wav#0@2:shaddah",
+   "note": "May have trimming issues",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0360_S11_A49_4672c14f_000050.wav#0@2:shaddah",
+   "note": "Incurrect split (tha missing)",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0412_S1_A255_fc26f048_000000.wav#0@94:shaddah",
+   "note": "Waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0586_S3_A141_c1209edf_000098.wav#0@2:shaddah",
+   "note": "trim issues",
+   "trim": true,
+   "waqf": null
+  }
+ ],
  "owner_check": {
   "answered_exposed": 30,
   "candidates": {

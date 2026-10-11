@@ -59,7 +59,8 @@ on the synthetic clean cuts it calls trimmed), not on a rule fixed before any re
 **The owner decides first** (:func:`owner_says`). A note with ``trim``, ``cut`` or ``split``
 (any word starting so: "Trimming issues", "Incurrect split") marks the item ``onset_trimmed``;
 a negated one ("no trim", "not cut") marks it clean, overriding the detector both ways
-(:func:`tadabur.owner_notes.says`, negation scoped to its clause). A note decides on any item, exposed or not. Notes are read
+(:func:`tadabur.owner_notes.says`, negation scoped to its clause). A note decides on any
+item, exposed or not. Notes are read
 from the verdicts file at every use (:func:`trimmed_ids`).
 
 **Treatment.** An item judged ``onset_trimmed`` is an excerpt fault: it leaves every evaluation
@@ -79,7 +80,9 @@ Files (``tools/tadabur/ship_a/``):
   decision;
 * ``onset_guard.curves.json``: every candidate's calibration curve;
 * ``onset_guard.summary.json``: counts per part and per stratum at the current verdicts, the
-  operating points with calibration, test and owner-flag numbers, and the inputs' checksums.
+  operating points with calibration, test and owner-flag numbers, every verdict note read as
+  a waqf or a trim claim with both readings (``note_readings``, an audit of the note reader),
+  and the inputs' checksums.
 
 Usage (from ``tools/``)::
 
@@ -110,7 +113,7 @@ from training.tashkeel_eval import write_text_atomically
 from .audio import TARGET_SAMPLE_RATE
 from .listening_session import VERDICTS_PATH, Verdict, read_verdicts
 from .local_pause import MIN_PRECISION, point
-from .owner_notes import TRIM, says
+from .owner_notes import PAUSE, TRIM, says
 from .phoneme_vocab import PHONEME_CHAR_TO_ID
 from .ship_a import SHIP_A_DIR, SITES_PATH
 from .ship_a_worklist import WORKLIST_PATH
@@ -647,6 +650,14 @@ def owner_check(rows: Sequence[Mapping], verdicts: Mapping[str, Verdict],
                          if k and not flagged]}
 
 
+def note_readings(verdicts: Mapping[str, Verdict]) -> list[dict]:
+    """Every verdict note either guard reads a claim from, with both readings, for the owner
+    to check by eye (``None``: the note says nothing about that claim)."""
+    rows = [{"item_id": i, "note": v.note, "waqf": says(v.note, PAUSE),
+             "trim": says(v.note, TRIM)} for i, v in sorted(verdicts.items())]
+    return [r for r in rows if r["waqf"] is not None or r["trim"] is not None]
+
+
 def decider(calibration: Mapping, check: Mapping) -> tuple[Candidate, float] | None:
     """The candidate and threshold that decide, or ``None`` (module docstring)."""
     if check["contradicted"]:
@@ -730,6 +741,7 @@ def build(verdicts_path: Path = VERDICTS_PATH) -> dict:
         "calibration": calibration,
         "owner_check": {**check, "min_flag_recall": MIN_OWNER_FLAG_RECALL,
                         "min_precision": MIN_PRECISION, "history": OWNER_CHECK_HISTORY},
+        "note_readings": note_readings(verdicts),
         "detector_decides": None if deciding is None
         else {"candidate": deciding[0].name, "threshold": deciding[1]},
         **summarize(rows, verdicts, calibration),

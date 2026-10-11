@@ -13,7 +13,8 @@ from tadabur.power_frame import input_checksums
 from tadabur.ship_a import SITES_PATH, listening_weights, load_sites, mine_all
 from tadabur.test_power_frame import H448, REFERENCE, scored_pool
 from tadabur.truth_sites import UNCLEAR
-from tadabur.word_sample import WORD_SAMPLE_PATH
+from tadabur.waqf_guard import GUARD_PATH
+from tadabur.word_sample import WORD_SAMPLE_PATH, load_words
 from training import ship_a_sizing as z
 from training.acceptance_stats import (
     BOOTSTRAP,
@@ -103,8 +104,22 @@ def test_the_committed_sizing_reads_the_committed_inputs():
         name: z._sha256(path) for name, path in (
             ("ship_a/sites.jsonl", SITES_PATH), ("ship_a/word_sample.jsonl", WORD_SAMPLE_PATH),
             ("truth_baseline/fixture_sides.json", z.FIXTURE_SIDES_PATH))}}
-    assert sizing["budget"] == json.loads(json.dumps(z.budget(load_sites())))
+    realized = frozenset(sizing["waqf_guard"]["realized"])
+    sites, words = z.guarded(load_sites(), load_words(), realized)
+    assert sizing["waqf_guard"]["guard"] == z._sha256(GUARD_PATH)
+    assert sizing["budget"] == json.loads(json.dumps(z.budget(sites)))
+    assert sizing["word_sample_effective"]["words"] == len(words)
     assert sizing["repetitions"] == z.REPETITIONS
+
+
+def test_the_sizing_leaves_out_what_the_guard_realizes():
+    every_site, words = load_sites(), load_words()
+    realized = frozenset({every_site[0].site.site_id, words[0].site.site_id})
+    sites, kept_words = z.guarded(every_site, words, realized)
+    assert len(sites) == len(every_site) - 1 and len(kept_words) == len(words) - 1
+    block = z.waqf_guard_block(every_site, words, realized)
+    assert block["words"] == 1 and block["realized"] == sorted(realized)
+    assert sum(block["families"].values()) == 1
 
 
 def test_the_committed_page_is_rendered_from_the_committed_results():
@@ -119,8 +134,6 @@ def test_effective_sizes_read_the_listening_weights_only():
 
 
 def test_the_word_sample_weighs_its_own_selection_not_the_pool():
-    from tadabur.word_sample import load_words
-
     words = load_words()
     assert z.word_weights(words) == tuple(1 / w.draw_probability for w in words)
     flat = z.word_sample_power(z.WordScenario((1.0,) * 150, 0.0, 0.5), 5)

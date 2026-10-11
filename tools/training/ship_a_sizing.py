@@ -37,6 +37,12 @@ margin**: every power is reported over a grid of values for the owner to pick fr
    not say the site was the mistake), and the verified mistakes the "keep both outcomes" term
    gets on the train half at each θ.
 
+Every population is read **after Ship A's waqf guard** (:mod:`tadabur.waqf_guard`, #134): a
+site or sampled word ``waqf_realized`` at the current verdicts (its prescribed mark only exists
+in wasl, and the reciter paused there) leaves every cell; ``sizing.json`` lists them with the
+guard's checksum. The planning frame (question 3's carriers ``h448`` gets right) is not
+guarded: the guard classifies the verified populations, not the frame.
+
 Usage (from ``tools/``; torch-free, CPU; ``--workers`` processes)::
 
   python -m training.ship_a_sizing run [--workers 6]
@@ -48,13 +54,15 @@ import argparse
 import hashlib
 import json
 import math
-from collections.abc import Mapping
+from collections import Counter
+from collections.abc import Iterable, Mapping
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
+from tadabur.listening_session import VERDICTS_PATH
 from tadabur.power_frame import FRAME_PATH, SHIP_A_DIR, input_checksums
 from tadabur.ship_a import (
     GEMINATE,
@@ -67,6 +75,7 @@ from tadabur.ship_a import (
     reciter_half,
 )
 from tadabur.truth_sites import SHADDAH, SOFT_PAIRS, UNFORGIVEN_PAIRS
+from tadabur.waqf_guard import GUARD_PATH, realized_ids
 from tadabur.word_sample import WORD_SAMPLE_PATH, WordSite, load_words
 from training.acceptance_stats import (
     LOWER,
@@ -449,10 +458,37 @@ def _run(job: tuple[str, object, int]) -> tuple[tuple, dict]:
     return scenario.key(), run(scenario, repetitions)
 
 
+def waqf_guard_block(every_site: list[ShipASite], words: list[WordSite],
+                     realized: frozenset[str]) -> dict:
+    """What the waqf guard takes out: the realized sites per evaluation cell and family, the
+    realized words, and the ids (``sizing.json`` is a function of them)."""
+    taken = [s for s in every_site if s.site.site_id in realized]
+    return {
+        "guard": _sha256(GUARD_PATH),
+        "verdicts": _sha256(VERDICTS_PATH),
+        "cells": {cell: {"sites": len(members),
+                         "held_out_listened": sum(s.listened and s.half == HELD_OUT
+                                                  for s in members)}
+                  for cell, members in cells(taken).items() if members},
+        "families": dict(sorted(Counter(s.family for s in taken).items())),
+        "words": sum(w.site.site_id in realized for w in words),
+        "realized": sorted(realized & ({s.site.site_id for s in every_site}
+                                       | {w.site.site_id for w in words})),
+    }
+
+
+def guarded(every_site: list[ShipASite], words: list[WordSite], realized: frozenset[str]
+            ) -> tuple[list[ShipASite], list[WordSite]]:
+    """The sites and sampled words the waqf guard keeps."""
+    return ([s for s in every_site if s.site.site_id not in realized],
+            [w for w in words if w.site.site_id not in realized])
+
+
 def run(workers: int, repetitions: int = REPETITIONS) -> dict:
-    sites = load_sites()
+    every_site, every_word, realized = load_sites(), load_words(), realized_ids()
+    sites, words = guarded(every_site, every_word, realized)
     carriers, seconds = held_out_carriers()
-    sampled_word_weights = word_weights(load_words())
+    sampled_word_weights = word_weights(words)
     jobs: list[tuple[str, object, int]] = [
         *(("side", s, repetitions) for s in side_scenarios(sites)),
         *(("harm", s, repetitions) for s in harm_scenarios(carriers, seconds)),
@@ -479,6 +515,7 @@ def run(workers: int, repetitions: int = REPETITIONS) -> dict:
                   "cluster_reciters": CLUSTER_RECITERS, "harm_rates": HARM_RATES,
                   "false_flag_rates": FALSE_FLAG_RATES, "reductions": REDUCTIONS,
                   "word_margins": WORD_MARGINS, "word_correct_share": WORD_CORRECT_SHARE},
+        "waqf_guard": waqf_guard_block(every_site, every_word, realized),
         "budget": budget(sites),
         "effective_sizes": effective_sizes(sites),
         "word_sample_effective": {"words": len(sampled_word_weights),

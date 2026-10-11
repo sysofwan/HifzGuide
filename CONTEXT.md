@@ -120,6 +120,21 @@ commit, ADR, or script, use the term as defined here and avoid the listed synony
   whole clip. Distinct from **Chunk** (a CoreML encoder-layer segment).
 : _Avoid_: Segment (unqualified — collides with Chunk), split, clip
 
+**Wasl-dependent site**
+: A site whose prescribed mark changes when a waqf is placed at a boundary of its word: a
+  geminate made by joining two words (idgham, cross-word assimilation), a ta marbuta read `ت`, a
+  word-final haraka. Decided through the phonetizer, never hand-listed; a sun-letter `لام` is
+  not one (`tadabur.waqf_guard`, #134).
+
+**Local pause check**
+: The recitation VAD's frame-level silence probability read between two words' aligned times,
+  more sensitive than the segmenter, at a wasl-dependent boundary (`tadabur.local_pause`).
+
+**Waqf-realized**
+: A wasl-dependent site at a boundary judged a pause (by the local pause check, or an owner
+  `waqf` note): no site of its stratum, out of every evaluation denominator; its verdict stays a
+  training target.
+
 ## Scoring & Evaluation
 
 The distinction between the first two entries is load-bearing: conflating them is what produced

@@ -81,6 +81,13 @@ sites that could belong to it (same population and family, a prescribed value co
 with the cell's side and heard value) and the best and worst case of its commit rate and
 committed accuracy with all of them counted as successes or as failures.
 
+Waqf-realized sites (#134)
+--------------------------
+A site ``waqf_realized`` by Ship A's waqf guard (:func:`tadabur.waqf_guard.realized_ids`: its
+prescribed mark only exists in wasl and the reciter paused there) is no site of its cell: it
+leaves every denominator and the exclusions, with every record of its physical site, and is
+listed in the report.
+
 Required cells (§1, §9)
 -----------------------
 :data:`REQUIRED_CELLS` freezes, before any candidate result, every cell the §2 probe gate,
@@ -92,7 +99,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter, defaultdict
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 
 import numpy as np
@@ -619,13 +626,18 @@ def score(
     comparisons: Sequence[tuple[str, str]] = (),
     muraja: MurajaGrades | None = None,
     design_weights: Mapping[str, float] | None = None,
+    waqf_realized: Collection[str] = (),
 ) -> dict:
     """The report: per-cell rates for every arm, paired differences, the allowance view (with
     app outcomes), exclusions and required-cell support. ``decodes[arm][item_key]`` is a decode
     string, ``reciter_of[audio_filename]`` a canonical reciter id; ``design_weights`` gives
-    sites a per-site weight (:func:`site_weights`)."""
+    sites a per-site weight (:func:`site_weights`); ``waqf_realized`` names the sites the waqf
+    guard takes out (module docstring)."""
+    realized = {physical_site(s) for s in sites if s.site_id in waqf_realized}
     reconciled = reconcile(sites, design_weights)
-    sites, weights = reconciled.sites, reconciled.weights
+    realized_ids = sorted(s.site_id for s in reconciled.sites if physical_site(s) in realized)
+    sites = [s for s in reconciled.sites if physical_site(s) not in realized]
+    weights = reconciled.weights
     arms = sorted(decodes)
     outcomes = outcomes_by_arm(sites, decodes)
     rows = [
@@ -677,6 +689,7 @@ def score(
         "arms": arms,
         "sites": _site_counts(sites, reciter_of),
         "physical_sites_merged": reconciled.merged,
+        "waqf_realized": realized_ids,
         "exclusions": _exclusions(excluded),
         "cells": cells,
         "allowances": allowances,

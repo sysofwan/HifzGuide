@@ -19,10 +19,28 @@ answers are in [`docs/ship-a-sizing.md`](../../../../docs/ship-a-sizing.md).
 | `mining/` | the mining extension (D9): its frame, compact scan record, hit clips' manifest and both decode caches, and a summary with the yield per pair and the GPU time | `python -m tadabur.ship_a_mining scan / register / build / stream` |
 | `word_sample.jsonl`, `word_sample.summary.json` | the random word sample: 160 words, one per held-out reciter drawn, with their inclusion probabilities; the frame per reciter | `python -m tadabur.word_sample draw` |
 | `worklist.jsonl`, `worklist.summary.json` | #61's worklist (site rows) and its summary: parts, minutes, rows per half, the queue cut into three sittings, and the SHA-256 that freezes `worklist.jsonl` and `word_sample.jsonl`; the build also writes the split's two exposure uses | `python -m tadabur.ship_a_worklist build` |
-| `sizing.json` | the four sizing questions' results | `python -m training.ship_a_sizing run` |
+| `waqf_guard.boundaries.jsonl`, `waqf_guard.vad.json` | the waqf guard's measurements (#134): every boundary the local pause check read, Ship A's and the waqf fixtures', with its window and VAD scores (the fixtures' with the owner's verdict and the segmenter's decisions), and the VAD pass's provenance | `python -m tadabur.waqf_guard windows`, then `python -m tadabur.local_pause score` (GPU) |
+| `waqf_guard.jsonl`, `waqf_guard.summary.json` | the waqf guard: per site, worklist row and sampled word, whether its mark depends on wasl and, where it does, the local check's decision; counts per part and stratum at the verdicts, and the calibration | `python -m tadabur.waqf_guard build` |
+| `sizing.json` | the four sizing questions' results, after the waqf guard | `python -m training.ship_a_sizing run` |
 
-Rebuild in that order, from `tools/` (torch-free; `quran-transcript` for the Uthmani words).
-Each step checks the inputs it reads against the checksums the previous one recorded.
+Rebuild in that order, from `tools/` (torch-free but the guard's VAD pass; `quran-transcript`
+for the Uthmani words). Each step checks the inputs it reads against the checksums the previous
+one recorded.
+
+## The waqf guard (#134)
+
+A geminate made by joining two words, a ta marbuta read `ت` or a word-final haraka exists only
+in wasl, and the segmenter misses about one real pause in five. `tadabur.waqf_guard` decides,
+through the phonetizer, which sites, worklist rows and sampled words change their prescribed
+mark under a waqf at a boundary of their word; where one does, `tadabur.local_pause` reads the
+VAD there, at the operating point its calibration on the waqf fixtures picks. A site judged
+paused is `waqf_realized`: out of every evaluation denominator (the sizing, and
+`truth_scorer.score(waqf_realized=tadabur.waqf_guard.realized_ids())`), its verdict kept as a
+training target. **Owner notes decide first**: type `waqf` in the note box when the reciter
+stopped (or `wasl` when the check is wrong about a pause); notes are read from
+`listening_session/verdicts.jsonl` at every use. After a sitting, refresh the counts with
+`python -m tadabur.waqf_guard build`, then re-run the sizing and its page. The frozen worklist
+and word sample are untouched.
 
 ## The sites
 

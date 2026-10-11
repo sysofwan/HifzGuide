@@ -1,7 +1,8 @@
 """Render ``docs/ship-a-sizing.md`` from Ship A's committed results (#126).
 
 The page is a function of ``tadabur/ship_a/sizing.json`` (:mod:`training.ship_a_sizing`),
-``sites.summary.json``, ``worklist.summary.json`` and ``frame.json``; a test checks the
+``sites.summary.json``, ``worklist.summary.json``, ``frame.json``, the mining extension's
+summary and frame, and ``waqf_guard.summary.json``; a test checks the
 committed page equals :func:`render` of them, so no number in it can drift from its source.
 
 Usage (from ``tools/``)::
@@ -21,6 +22,7 @@ from tadabur.ship_a_mining import FRAME_PATH as MINING_FRAME_PATH
 from tadabur.ship_a_mining import SUMMARY_PATH as MINING_SUMMARY_PATH
 from tadabur.ship_a_worklist import SITTING_MINUTES
 from tadabur.ship_a_worklist import SUMMARY_PATH as WORKLIST_SUMMARY_PATH
+from tadabur.waqf_guard import SUMMARY_PATH as GUARD_SUMMARY_PATH
 from training.power_simulation import TARGET_POWER
 from training.ship_a_sizing import (
     EVERY_SITE,
@@ -230,6 +232,71 @@ amended to say so, and the #84 scorer takes these per-site weights
 (`truth_scorer.score(design_weights=…)`).
 
 {_table(["site", "mined", "listened"], rows)}
+"""
+
+
+def _rates(point: Mapping) -> tuple[str, str]:
+    """One detector's precision (tp/flagged) and recall (tp/positives) on one split."""
+    def value(x: float | None) -> str:
+        return "—" if x is None else f"{x:.3f}"
+
+    flagged = point["tp"] + point["fp"]
+    return (f'{value(point["precision"])} ({point["tp"]}/{flagged})',
+            f'{value(point["recall"])} ({point["tp"]}/{point["positives"]})')
+
+
+def _section_guard(sizing: Mapping, guard: Mapping) -> str:
+    calibration = guard["calibration"]
+    chosen = calibration["operating_point"]
+    detectors = (("segmenter", "the segmenter (today's, re-run on the fixture clips)"),
+                 ("local_check", "the local check"),
+                 ("segmenter_or_local_check", "either (the reference the guard leaves)"),
+                 ("local_check_where_segmenter_did_not_cut",
+                  "the local check where the segmenter did not cut"))
+    rates = [[split, label, *_rates(report[name])]
+             for split, report in calibration["splits"].items() for name, label in detectors]
+    recorded = "; ".join("{} precision {}, recall {}".format(split, *_rates(p))
+                         for split, p in guard["segmenter_on_fixture_rows"].items())
+    strata = [[name, e["items"], e["wasl_dependent"], e["phonetizer_unsupported"],
+               e["detector_paused"], e["unplaced"], e["decided_by_owner_note"],
+               e["waqf_realized"]]
+              for name, e in guard["strata"].items()
+              if e["wasl_dependent"] or e["phonetizer_unsupported"]]
+    taken = sizing["waqf_guard"]
+    cells = [[cell, e["sites"], e["held_out_listened"]] for cell, e in taken["cells"].items()]
+    unplaced = ", ".join(f"{n} {split}" for split, n in
+                         guard["fixture_boundaries_unplaced"].items())
+    return f"""## The waqf guard (#134)
+
+A geminate made by joining two words (tanween or noon/meem idgham, a letter assimilated into
+the next word), a ta marbuta read `ت`, or a word-final haraka exists only in wasl; a sun-letter
+`لام` keeps its shaddah after a pause. The segmenter misses about one real pause in five, so
+`tadabur.waqf_guard` re-realizes every site, worklist row and sampled word with a waqf at each
+boundary of its word (through the phonetizer, both sides) and, where its prescribed mark
+changes there, asks `tadabur.local_pause` whether the reciter paused: the VAD's frame-level
+silence probability between the two words' aligned times, more sensitive than the segmenter.
+An owner note `waqf` (or `wasl`) on a verdict decides instead. A site judged paused is
+`waqf_realized`: it leaves every cell below (its verdict stays a training target).
+
+**Calibration** on the owner's waqf fixtures, one unit per adjudicated boundary (a pause when
+any of its rows says `waqf`), on the clips whose word times place their words ({unplaced}
+boundaries are on re-read or skipped clips). The pre-stated rule ({calibration["rule"]}) picks
+silence probability ≥ {chosen["threshold"]} for ≥ {chosen["duration"]} s; the whole curve is in
+`waqf_guard.summary.json`. The segmenter row by row, as the fixtures recorded it: {recorded}.
+
+{_table(["split", "detector", "precision", "recall"], rates)}
+
+Per stratum (items wasl-dependent, the phonetizer unable to realize the waqf, judged paused
+by the check, unplaced, decided by an owner note, and realized), at the verdicts committed when
+the guard was built:
+
+{_table(["stratum", "items", "wasl-dependent", "unsupported", "check: paused", "unplaced",
+         "owner note", "waqf_realized"], strata)}
+
+The sizing below leaves out {len(taken["realized"])} realized sites and words (per cell, sites
+and held-out listened sites; {taken["words"]} sampled words):
+
+{_table(["cell", "sites", "held-out listened"], cells)}
 """
 
 
@@ -459,7 +526,8 @@ HEADER = """# Ship A sizing (#126)
 
 Generated by `python -m training.ship_a_sizing_doc` from `tools/tadabur/ship_a/sizing.json`
 (`python -m training.ship_a_sizing run`), `sites.summary.json`, `worklist.summary.json`,
-`frame.json` and `mining/summary.json` / `mining/frame.json`; do not edit by hand.
+`frame.json`, `mining/summary.json` / `mining/frame.json` and `waqf_guard.summary.json`
+(`python -m tadabur.waqf_guard build`); do not edit by hand.
 
 Ship A (ADR-0012, goals 1-2) trains on sites the owner verifies by ear: where `h448` swaps the
 letters of a target pair, or collapses an in-word geminate. This page sizes
@@ -470,7 +538,7 @@ owner's (#128). The app outcome itself is #123's Muraja replay; nothing here mod
 
 
 def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
-           mining: Mapping, mining_frame: Mapping) -> str:
+           mining: Mapping, mining_frame: Mapping, guard: Mapping) -> str:
     totals = frame_totals(frame)
     return "\n".join([
         HEADER,
@@ -478,6 +546,7 @@ def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
         _section_mining(mining, mining_frame, sites),
         _section_checks(sites),
         _section_listening(sites),
+        _section_guard(sizing, guard),
         _section_budget(sizing),
         _section_power(sizing),
         _section_harm(sizing),
@@ -490,7 +559,7 @@ def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
 def load_inputs() -> tuple[dict, ...]:
     return tuple(json.loads(path.read_text(encoding="utf-8")) for path in (
         SIZING_PATH, SITES_SUMMARY_PATH, WORKLIST_SUMMARY_PATH, FRAME_PATH,
-        MINING_SUMMARY_PATH, MINING_FRAME_PATH))
+        MINING_SUMMARY_PATH, MINING_FRAME_PATH, GUARD_SUMMARY_PATH))
 
 
 def main() -> None:

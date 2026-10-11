@@ -51,12 +51,15 @@ candidate is not contradicted there: it must call at least :data:`MIN_OWNER_FLAG
 the owner-flagged exposed items trimmed, at a precision of at least
 :data:`tadabur.local_pause.MIN_PRECISION` (the floor its operating point was held to).
 Otherwise its scores are kept, the answered items any candidate calls trimmed are listed for
-re-listening, and only the owner's notes decide.
+re-listening, and only the owner's notes decide. The precision condition was added after the
+first build (:data:`OWNER_CHECK_HISTORY`): the recall-only rule written down first would have
+let the chosen candidate decide, so the detector being off rests on that added condition (and
+on the synthetic clean cuts it calls trimmed), not on a rule fixed before any result.
 
 **The owner decides first** (:func:`owner_says`). A note with ``trim``, ``cut`` or ``split``
 (any word starting so: "Trimming issues", "Incurrect split") marks the item ``onset_trimmed``;
 a negated one ("no trim", "not cut") marks it clean, overriding the detector both ways
-(:func:`tadabur.owner_notes.claim`). A note decides on any item, exposed or not. Notes are read
+(:func:`tadabur.owner_notes.says`, negation scoped to its clause). A note decides on any item, exposed or not. Notes are read
 from the verdicts file at every use (:func:`trimmed_ids`).
 
 **Treatment.** An item judged ``onset_trimmed`` is an excerpt fault: it leaves every evaluation
@@ -107,7 +110,7 @@ from training.tashkeel_eval import write_text_atomically
 from .audio import TARGET_SAMPLE_RATE
 from .listening_session import VERDICTS_PATH, Verdict, read_verdicts
 from .local_pause import MIN_PRECISION, point
-from .owner_notes import claim
+from .owner_notes import TRIM, says
 from .phoneme_vocab import PHONEME_CHAR_TO_ID
 from .ship_a import SHIP_A_DIR, SITES_PATH
 from .ship_a_worklist import WORKLIST_PATH
@@ -136,12 +139,16 @@ DETECTOR = "detector"
 CUT = "cut"
 SYNTHETIC = "synthetic"
 
-#: Words (by their start) of a note that name a cut-off onset.
-_TRIM_STEMS = ("trim", "cut", "split")
-
 #: The owner check (#138): the detector decides only if it calls at least this share of the
 #: owner-flagged exposed items trimmed (and at the operating point's precision floor).
 MIN_OWNER_FLAG_RECALL = 0.75
+#: How the owner check came to be, recorded with every summary.
+OWNER_CHECK_HISTORY = (
+    "written down before any result: contradicted only when the chosen candidate finds fewer "
+    "than MIN_OWNER_FLAG_RECALL of the owner's flags; that rule passed the chosen candidate "
+    "(onset_level_db, calling 99 of 187 exposed items trimmed at owner-check precision 0.18). "
+    "The precision floor (MIN_PRECISION, the operating point's) was added after that first "
+    "build; detector-off rests on it.")
 
 # --- synthetic trims ---------------------------------------------------------------------------
 
@@ -560,8 +567,9 @@ def calibrate(synthetic: Sequence[Mapping]) -> tuple[dict, dict]:
 
 def owner_says(note: str) -> bool | None:
     """What a verdict's note says about the onset: ``True`` cut, ``False`` clean (a negated
-    trim word), ``None`` neither or ambiguous (:func:`tadabur.owner_notes.claim`)."""
-    return claim(note, lambda word: word.startswith(_TRIM_STEMS))
+    trim word), ``None`` neither or ambiguous (:func:`tadabur.owner_notes.says`,
+    :data:`tadabur.owner_notes.TRIM`)."""
+    return says(note, TRIM)
 
 
 def guard_row(item: Item, scores: Mapping[str, dict], decider: tuple[Candidate, float] | None
@@ -721,7 +729,7 @@ def build(verdicts_path: Path = VERDICTS_PATH) -> dict:
         "synthetic_selection": json.loads(SYNTHETIC_RUN_PATH.read_text(encoding="utf-8")),
         "calibration": calibration,
         "owner_check": {**check, "min_flag_recall": MIN_OWNER_FLAG_RECALL,
-                        "min_precision": MIN_PRECISION},
+                        "min_precision": MIN_PRECISION, "history": OWNER_CHECK_HISTORY},
         "detector_decides": None if deciding is None
         else {"candidate": deciding[0].name, "threshold": deciding[1]},
         **summarize(rows, verdicts, calibration),

@@ -1,7 +1,7 @@
 {
  "schema": "tadabur.eval_report/fixture-sides-v1",
  "fingerprints": {
-  "fixtures": "7222c102ed4d50f1430acedd55b9f5cd4dd1c0d1fd96e68e3fc879b2dc21364a",
+  "fixtures": "0c6febb78827b972bacef24aa8caeccb60a79b770873132bfd9c483eecdc7e7c",
   "schema": "b791406de145dc7305df22b7fd9bc102807d42df78ade189f6e5e2fec9e08b70",
   "arms": {
    "base/spans": {
@@ -126,7 +126,7 @@
    "family": "ذ↔ز",
    "correct": "sufficient",
    "mistake": "none",
-   "without_verdict": 1,
+   "without_verdict": 0,
    "status": "in scope, insufficient evidence",
    "provisional": false
   },
@@ -878,17 +878,15 @@
    "family": "ذ↔ز",
    "prescribed": "ز",
    "heard": "ز",
-   "sites": 29,
-   "reciters": 20,
+   "sites": 30,
+   "reciters": 21,
    "support": "sufficient",
    "provisional": false,
    "fixture_sides": {
     "should_accept": 28,
-    "should_reject": 1
+    "should_reject": 2
    },
-   "excluded": [
-    "p35_fixture:tadabur_spk0254_S25_A44_14d03e2c_000000__seg0.wav:ذ↔ز#49"
-   ],
+   "excluded": [],
    "arms": {
     "base/spans": {
      "as_heard": {
@@ -899,25 +897,19 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.0,
-       "best": 0.03333333333333333
-      }
+      "den": 30.0,
+      "sensitivity": null
      },
      "as_partner": {
-      "sites": 29,
+      "sites": 30,
       "point": 1.0,
       "lower": null,
       "upper": null,
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
-      "num": 29.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.9666666666666667,
-       "best": 1.0
-      }
+      "num": 30.0,
+      "den": 30.0,
+      "sensitivity": null
      },
      "other_consonant": {
       "sites": 0,
@@ -927,11 +919,8 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.0,
-       "best": 0.03333333333333333
-      }
+      "den": 30.0,
+      "sensitivity": null
      },
      "no_commit": {
       "sites": 0,
@@ -941,185 +930,146 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.0,
-       "best": 0.03333333333333333
-      }
+      "den": 30.0,
+      "sensitivity": null
      }
     },
     "base/stream_b0": {
      "as_heard": {
       "sites": 4,
-      "point": 0.13793103448275862,
+      "point": 0.13333333333333333,
       "lower": 0.0,
-      "upper": 0.28125,
+      "upper": 0.27586206896551724,
       "method": "bootstrap",
       "reason": "",
       "num": 4.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.13333333333333333,
-       "best": 0.16666666666666666
-      }
+      "den": 30.0,
+      "sensitivity": null
      },
      "as_partner": {
-      "sites": 18,
-      "point": 0.6206896551724138,
-      "lower": 0.39285714285714285,
-      "upper": 0.84,
+      "sites": 19,
+      "point": 0.6333333333333333,
+      "lower": 0.4074074074074074,
+      "upper": 0.8461538461538461,
       "method": "bootstrap",
       "reason": "",
-      "num": 18.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.6,
-       "best": 0.6333333333333333
-      }
+      "num": 19.0,
+      "den": 30.0,
+      "sensitivity": null
      },
      "other_consonant": {
       "sites": 3,
-      "point": 0.10344827586206896,
+      "point": 0.1,
       "lower": 0.0,
-      "upper": 0.23529411764705882,
+      "upper": 0.22730519480519432,
       "method": "bootstrap",
       "reason": "",
       "num": 3.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.1,
-       "best": 0.13333333333333333
-      }
+      "den": 30.0,
+      "sensitivity": null
      },
      "no_commit": {
       "sites": 4,
-      "point": 0.13793103448275862,
-      "lower": 0.03225806451612903,
-      "upper": 0.28,
+      "point": 0.13333333333333333,
+      "lower": 0.03125,
+      "upper": 0.26666666666666666,
       "method": "bootstrap",
       "reason": "",
       "num": 4.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.13333333333333333,
-       "best": 0.16666666666666666
-      }
+      "den": 30.0,
+      "sensitivity": null
      }
     },
     "h448/spans": {
      "as_heard": {
-      "sites": 15,
-      "point": 0.5172413793103449,
-      "lower": 0.35714285714285715,
-      "upper": 0.72,
+      "sites": 16,
+      "point": 0.5333333333333333,
+      "lower": 0.375,
+      "upper": 0.7307692307692307,
       "method": "bootstrap",
       "reason": "",
-      "num": 15.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.5,
-       "best": 0.5333333333333333
-      }
+      "num": 16.0,
+      "den": 30.0,
+      "sensitivity": null
      },
      "as_partner": {
       "sites": 10,
-      "point": 0.3448275862068966,
-      "lower": 0.17391304347826086,
-      "upper": 0.5,
+      "point": 0.3333333333333333,
+      "lower": 0.1724137931034483,
+      "upper": 0.4838709677419355,
       "method": "bootstrap",
       "reason": "",
       "num": 10.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.3333333333333333,
-       "best": 0.36666666666666664
-      }
+      "den": 30.0,
+      "sensitivity": null
      },
      "other_consonant": {
       "sites": 3,
-      "point": 0.10344827586206896,
+      "point": 0.1,
       "lower": 0.0,
-      "upper": 0.21052631578947367,
+      "upper": 0.2,
       "method": "bootstrap",
       "reason": "",
       "num": 3.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.1,
-       "best": 0.13333333333333333
-      }
+      "den": 30.0,
+      "sensitivity": null
      },
      "no_commit": {
       "sites": 1,
-      "point": 0.034482758620689655,
+      "point": 0.03333333333333333,
       "lower": 0.0,
-      "upper": 0.09523809523809523,
+      "upper": 0.09375,
       "method": "bootstrap",
       "reason": "",
       "num": 1.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.03333333333333333,
-       "best": 0.06666666666666667
-      }
+      "den": 30.0,
+      "sensitivity": null
      }
     },
     "h448/stream_b0": {
      "as_heard": {
-      "sites": 16,
-      "point": 0.5517241379310345,
-      "lower": 0.38461538461538464,
-      "upper": 0.7407407407407407,
+      "sites": 17,
+      "point": 0.5666666666666667,
+      "lower": 0.4,
+      "upper": 0.75,
       "method": "bootstrap",
       "reason": "",
-      "num": 16.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.5333333333333333,
-       "best": 0.5666666666666667
-      }
+      "num": 17.0,
+      "den": 30.0,
+      "sensitivity": null
      },
      "as_partner": {
       "sites": 4,
-      "point": 0.13793103448275862,
-      "lower": 0.03333333333333333,
-      "upper": 0.25925925925925924,
+      "point": 0.13333333333333333,
+      "lower": 0.03225806451612903,
+      "upper": 0.25806451612903225,
       "method": "bootstrap",
       "reason": "",
       "num": 4.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.13333333333333333,
-       "best": 0.16666666666666666
-      }
+      "den": 30.0,
+      "sensitivity": null
      },
      "other_consonant": {
       "sites": 5,
-      "point": 0.1724137931034483,
-      "lower": 0.038461538461538464,
-      "upper": 0.3030632411067189,
+      "point": 0.16666666666666666,
+      "lower": 0.037037037037037035,
+      "upper": 0.2954755892255889,
       "method": "bootstrap",
       "reason": "",
       "num": 5.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.16666666666666666,
-       "best": 0.2
-      }
+      "den": 30.0,
+      "sensitivity": null
      },
      "no_commit": {
       "sites": 4,
-      "point": 0.13793103448275862,
-      "lower": 0.03225806451612903,
-      "upper": 0.28,
+      "point": 0.13333333333333333,
+      "lower": 0.03125,
+      "upper": 0.26666666666666666,
       "method": "bootstrap",
       "reason": "",
       "num": 4.0,
-      "den": 29.0,
-      "sensitivity": {
-       "worst": 0.13333333333333333,
-       "best": 0.16666666666666666
-      }
+      "den": 30.0,
+      "sensitivity": null
      }
     }
    }
@@ -3205,9 +3155,7 @@
     "should_accept": 0,
     "should_reject": 0
    },
-   "excluded": [
-    "p35_fixture:tadabur_spk0254_S25_A44_14d03e2c_000000__seg0.wav:ذ↔ز#49"
-   ],
+   "excluded": [],
    "arms": {}
   },
   {
@@ -3672,13 +3620,6 @@
   {
    "family": "ت↔ط",
    "prescribed": "ت",
-   "heard": "pending",
-   "fixture_side": "should_reject",
-   "sites": 1
-  },
-  {
-   "family": "ذ↔ز",
-   "prescribed": "ز",
    "heard": "pending",
    "fixture_side": "should_reject",
    "sites": 1
@@ -7063,27 +7004,27 @@
    "item_fingerprint": "a618b5d131335f2bf94283cd577a5fd042e4a5ef9f37d66184d7f5d47762ab69",
    "reciter_id": 254,
    "fixture_side": "should_reject",
-   "side": null,
+   "side": "correct",
    "family": "ذ↔ز",
    "prescribed": "ز",
-   "heard": "pending",
+   "heard": "ز",
    "weight": 1.0,
    "arms": {
     "base/spans": {
      "committed": "ذ",
-     "role": null
+     "role": "as_partner"
     },
     "base/stream_b0": {
      "committed": "ذ",
-     "role": null
+     "role": "as_partner"
     },
     "h448/spans": {
      "committed": "ز",
-     "role": null
+     "role": "as_heard"
     },
     "h448/stream_b0": {
      "committed": "ز",
-     "role": null
+     "role": "as_heard"
     }
    }
   },
@@ -8325,7 +8266,7 @@
  "inputs": {
   "p35_fixtures.jsonl": "654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8",
   "p35_fixtures.relocation.jsonl": "8a49c872035eef2ba8f69259106f04e1ff3b345c34412b7e0632b71cf3e8d7b8",
-  "verdicts.jsonl": "0dda8b02406590aef07b5b908dd32d85e81fde9c97b9b466f8badc23ebb88480",
+  "verdicts.jsonl": "d57f8073f3a0d58f28fd70380c43d4a5a42b34fe30d0934c4b2a43a0ded2b334",
   "clips.jsonl": "2c3597aca616391168815a38d49cfbae429d41397d4a655e2497df0237ceb192",
   "waqf_guard.jsonl": "ba34de335d9a4143bd6390099001d924be069e728df8da6d36b39e6498991f76",
   "onset_guard.jsonl": "8ee9dc9ffdd52d495e3bdcb771977f8f5524ff9cc72d0976367f6e7433396799"

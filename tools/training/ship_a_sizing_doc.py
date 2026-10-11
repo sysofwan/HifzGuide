@@ -399,7 +399,10 @@ positives ({check["owner_flags"]}), the other answered exposed items weak negati
 {decision} The synthetic cut at the letter's onset (clean, but with no silence before it) is
 what a real Tadabur file start looks like, and every candidate calls about a third of those
 trimmed; on the owner's clips their precision is far below the floor. The owner check is small
-({check["owner_flags"]} flags): it can rule a detector out, not in.
+({check["owner_flags"]} flags): it can rule a detector out, not in. **The precision condition
+was added after the first build**: the recall-only check written down first would have let
+`{calibration["chosen"]}` decide, so the detector being off rests on that added condition (and
+the clean cuts above), not on a rule fixed before any result.
 
 Per stratum (items, exposed, at a file start, at a segmenter cut, called trimmed by the chosen
 candidate `{calibration["chosen"]}`, decided by an owner note, and onset_trimmed), at the

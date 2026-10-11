@@ -98,7 +98,7 @@ from .listening_session import (
 )
 from .local_pause import SPLITS, TEST, boundary_window, calibrate, fires, point
 from .mining_pool import CLIPS_PATH as POOL_CLIPS_PATH
-from .owner_notes import claim
+from .owner_notes import PAUSE, says
 from .ship_a import SHIP_A_DIR, SITES_PATH, load_sites
 from .ship_a_worklist import GEMINATE, PAIR_PARTNER, WORKLIST_PATH, carried_part
 from .staged_audio import load_staged_clips
@@ -139,11 +139,6 @@ WAQF_REALIZED = "waqf_realized"
 OWNER_NOTE = "owner_note"
 LOCAL_CHECK = "local_check"
 UNPLACED = "unplaced"
-
-#: Words of a note that name a pause, or continuation.
-_PAUSE_WORDS = frozenset({"waqf", "pause", "paused", "pauses", "pausing", "stop", "stopped",
-                          "stops", "stopping"})
-_WASL_WORDS = frozenset({"wasl"})
 
 
 # --- which items depend on wasl --------------------------------------------------------------
@@ -457,11 +452,12 @@ def owner_says(note: str) -> bool | None:
     """What a verdict's note says about a pause: ``True`` for a waqf, ``False`` for wasl,
     ``None`` when it says neither or is ambiguous, which leaves the detector's decision.
 
-    Read by :func:`tadabur.owner_notes.claim`: a pause word (``waqf``, ``pause(d)``,
-    ``stop(ped)``) affirms a pause, ``wasl`` denies it, and either is negated by ``no``,
-    ``not``, ``never``, ``without`` or a word ending in ``n't`` among the three words before
-    it ("no pause", "not paused", "has not stopped", "didn't stop")."""
-    return claim(note, _PAUSE_WORDS.__contains__, _WASL_WORDS.__contains__)
+    Read by :func:`tadabur.owner_notes.says` (:data:`tadabur.owner_notes.PAUSE`): a pause word
+    (``waqf``, ``pause(d)``, ``stop(ped)``) affirms a pause, ``wasl`` denies it, and either is
+    negated by ``no``, ``not``, ``never``, ``without`` or a word ending in ``n't`` among the
+    three words before it, in its own clause ("no pause", "not paused", "has not stopped",
+    "didn't stop")."""
+    return says(note, PAUSE)
 
 
 def read_boundaries(path: Path = BOUNDARIES_PATH) -> dict[str, dict]:

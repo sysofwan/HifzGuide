@@ -1,6 +1,6 @@
 {
  "all": {
-  "decided_by_owner_note": 3,
+  "decided_by_owner_note": 5,
   "detector_paused": 62,
   "items": 2423,
   "not_dependent": 2152,
@@ -4616,7 +4616,7 @@
   "78": 18
  },
  "inputs": {
-  "listening_session/verdicts.jsonl": "0dda8b02406590aef07b5b908dd32d85e81fde9c97b9b466f8badc23ebb88480",
+  "listening_session/verdicts.jsonl": "d57f8073f3a0d58f28fd70380c43d4a5a42b34fe30d0934c4b2a43a0ded2b334",
   "ship_a/sites.jsonl": "8eaf6d0dbeb9fcf328bcc8d24c9b08b49580045d0f677f30dd5bb6813eb730dc",
   "ship_a/waqf_guard.boundaries.jsonl": "51547c41475cb06e0308581a5215bcf1c65d86442a225a72b0de430043588621",
   "ship_a/waqf_guard.segmentations.jsonl": "2fae7bb81dfa4b3548b7136b54b61d43cafbf6cd9f07ea429a63fc84a38fadfa",
@@ -4624,11 +4624,11 @@
   "ship_a/worklist.jsonl": "097181fd5d56316c057c5f615812e262ab73bcf4a788d6f5e75ef67cd3576bb0"
  },
  "owner_notes": {
-  "waqf note, wasl_dependent": 3
+  "waqf note, wasl_dependent": 5
  },
  "parts": {
   "geminate": {
-   "decided_by_owner_note": 3,
+   "decided_by_owner_note": 5,
    "detector_paused": 5,
    "items": 93,
    "not_dependent": 78,
@@ -4672,7 +4672,7 @@
    "wasl_dependent": 0
   },
   "ship_a_sites": {
-   "decided_by_owner_note": 3,
+   "decided_by_owner_note": 5,
    "detector_paused": 61,
    "items": 2225,
    "not_dependent": 2066,
@@ -4948,7 +4948,7 @@
    "wasl_dependent": 64
   },
   "ship_a:shaddah:held:h448_single:base_not_held": {
-   "decided_by_owner_note": 3,
+   "decided_by_owner_note": 5,
    "detector_paused": 5,
    "items": 93,
    "not_dependent": 78,

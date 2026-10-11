@@ -10,8 +10,9 @@ import numpy as np
 import pytest
 
 from tadabur import onset_guard as o
+from tadabur import owner_notes, waqf_guard
 from tadabur.exclusions import Exclusions, current
-from tadabur.listening_session import Verdict, write_verdicts
+from tadabur.listening_session import Verdict, read_verdicts, write_verdicts
 from tadabur.phoneme_vocab import PHONEME_CHAR_TO_ID, PHONEME_ID_TO_CHAR, PHONEME_PAD_ID
 from tadabur.waqf_guard import Item, all_items
 
@@ -34,6 +35,46 @@ FLAGGED = {
 ])
 def test_owner_notes(note, says):
     assert o.owner_says(note) is says
+
+
+@pytest.mark.parametrize("note, waqf, trim", [
+    ("no waqf, trimmed", False, True), ("trimmed, no waqf", False, True),
+    ("no trim, waqf", True, False), ("no waqf trimmed", False, True),
+    ("waqf but no trim", True, False), ("paused and trimmed", True, True),
+    ("not trimmed; wasl", False, False), ("no waqf; no trim", False, False),
+])
+def test_a_negation_governs_only_its_own_claim(note, waqf, trim):
+    """#138: the waqf and the trim claim of one note are read apart."""
+    assert (waqf_guard.owner_says(note), o.owner_says(note)) == (waqf, trim)
+
+
+def _legacy_waqf(note: str) -> bool | None:
+    """#134's waqf reader as it was (any of the three words before a pause word negates it),
+    the oracle the scoped reader must agree with on the owner's committed notes."""
+    import re
+    pause = {"waqf", "pause", "paused", "pauses", "pausing", "stop", "stopped", "stops",
+             "stopping"}
+    words = re.findall(r"[a-z']+", " ".join(note.lower().replace("\u2019", "'").split()))
+    claims = set()
+    for k, word in enumerate(words):
+        if word in pause or word == "wasl":
+            negated = any(w in owner_notes.NEGATORS or w.endswith("n't")
+                          for w in words[max(0, k - 3):k])
+            claims.add((word in pause) != negated)
+    return claims.pop() if len(claims) == 1 else None
+
+
+def test_every_committed_note_reads_as_the_waqf_guard_read_it():
+    notes = {v.note for v in read_verdicts().values() if v.note}
+    assert notes and all(waqf_guard.owner_says(n) is _legacy_waqf(n) for n in notes)
+
+
+def test_the_four_flagged_sites_are_trimmed_at_the_committed_verdicts():
+    """The owner's committed notes, not manufactured ones, take every issue site out."""
+    verdicts = read_verdicts()
+    assert all(o.owner_says(verdicts[i].note) for i in FLAGGED)
+    assert set(FLAGGED) <= o.trimmed_ids()
+    assert set(FLAGGED) <= current().by_reason[o.ONSET_TRIMMED]
 
 
 def item(reference_index: int, start: int = 0, excerpt: int = 0) -> Item:

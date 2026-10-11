@@ -163,17 +163,29 @@ The owner chose the lean set over every partner swap (decision A) and a sample o
   geminates the teacher holds, their training target is the teacher's own decode (the
   mushaf letter; ADR-0011 §3), and they are no verified site in any evaluation. On held-out
   reciters, recovery of teacher-right swaps is read on the one-per-reciter sample, weighted
-  by its recorded chance.
+  by the inverse of its chance.
 - **A `كسب` swap** (`س`→`ش` on the `س` of the consonants `كسب`, which both models hear as
   `ش`) is listened to only in a sample of 20: reciters in salted order take one site each per
-  round, so the sample spreads over reciters; a reciter given `m` of its `n` such sites gives
-  each the chance `m / n`. **The rest take the sample's verdict**, by this rule, fixed before
+  round, so the sample spreads over reciters. A site's chance is its reciter's expected picks
+  over every salted order of the reciters, divided by the reciter's sites
+  (`ship_a.round_robin_shares`: full rounds, then `R` of the `E` eligible reciters in the
+  partial round); here one partial round, so `(20 / 80) / n`. **The rest take the sample's verdict**, by this rule, fixed before
   any is heard: if a majority of the sampled sites with a verdict (`unclear` aside) are
   heard as one letter, every unsampled `كسب` site takes that letter as its label; with no
   majority they get no label and stay out of training and evaluation. Which letter that is,
   is left to the listening.
 - **A geminate** is listened to when the teacher does not hold it (D10); **another letter**
   never (D9).
+
+**What a score describes (owner decision, 2026-10-10).** The estimand is the **frozen
+verified site set**: the pool's and the extension's Ship A sites as mined here, and the
+frozen word sample. Scores describe that set, not all of Tadabur, so no weight expands a site
+to the pool's frame or the extension's. The only weights are the inverse listening
+probabilities (`ship_a.listening_weights`): 1 where a stratum is listened to whole, `k` for a
+teacher-right swap, `1 / chance` for a `كسب` swap; and for a sampled word the inverse of its
+selection probability within the sample's frame. Acceptance rules §1's weighting row is
+amended to say so, and the #84 scorer takes these per-site weights
+(`truth_scorer.score(design_weights=…)`).
 
 | site | mined | listened |
 |---|---|---|
@@ -215,8 +227,8 @@ The six soft pairs pooled hold 156 held-out sites from
 A cell's held-out sites are listened to; each is a real mistake with probability θ. The
 candidate **recovers** a verified-correct site (commits the mushaf letter, or holds the
 geminate) with a true rate, or **retains** a verified mistake (keeps committing what was
-said). Each listened site carries the listening design's weight, the inverse of its worklist
-row's inclusion probability: teacher-wrong swaps and geminates are a census, teacher-right
+said). Each listened site weighs the inverse of its listening probability (the estimand is
+the frozen site set): teacher-wrong swaps and geminates are a census (weight 1), teacher-right
 swaps one per held-out reciter and family, the كسب swaps a sample. θ is the same in every
 stratum (a planning assumption). Each of 2,500 repetitions takes the §1
 lower bound of the weighted rate on one site per reciter (chosen in proportion to its weight,
@@ -226,24 +238,21 @@ unequal weights has no bound (§1). Reciter effects at latent ICC 0, 0.05 and 0.
 whether a site is a mistake and whether it is recovered. The pooled cells are also read on
 every site with the reciter-clustered bootstrap, which the ICC does move.
 
-The weights are uneven, and that costs precision. Kish's effective size per cell, under the
-full design weight and under the listening chance alone, shows which layer costs it: mostly
-the mining pool's own clip probabilities (a uniform clip was drawn as `k` of its reciter's
-`n`, down to 0.012), not the lean subsample:
+Kish's effective size per cell under those weights (the word sample's is in §3):
 
-| cell | held-out sites | effective, full design | effective, listening only |
-|---|---|---|---|
-| geminates (base not held) | 52 | 14.0 | 52.0 |
-| soft pairs (pooled) | 156 | 25.6 | 125.4 |
-| ت↔ط | 6 | 6.0 | 6.0 |
-| ح↔ه | 4 | 4.0 | 4.0 |
-| ذ↔ز | 31 | 4.8 | 28.2 |
-| ذ↔ظ | 1 | 1.0 | 1.0 |
-| س↔ش | 44 | 21.2 | 21.2 |
-| س↔ص | 26 | 21.4 | 21.4 |
-| ض↔ظ | 50 | 38.6 | 39.2 |
-| ط↔ق | 122 | 11.5 | 65.0 |
-| ق↔ك | 39 | 5.3 | 29.1 |
+| cell | held-out sites | effective size |
+|---|---|---|
+| geminates (base not held) | 52 | 52.0 |
+| soft pairs (pooled) | 156 | 125.4 |
+| ت↔ط | 6 | 6.0 |
+| ح↔ه | 4 | 4.0 |
+| ذ↔ز | 31 | 28.2 |
+| ذ↔ظ | 1 | 1.0 |
+| س↔ش | 44 | 21.2 |
+| س↔ص | 26 | 21.4 |
+| ض↔ظ | 50 | 39.2 |
+| ط↔ق | 122 | 65.0 |
+| ق↔ك | 39 | 29.1 |
 
 **No floor is chosen here** (#128). Each cell shows the **highest floor the lower bound
 reaches with 80% power**, at θ = 0.15 and ICC = 0.15
@@ -274,19 +283,19 @@ Reciters (one site each) a true rate needs for its lower bound to reach a floor 
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.1 | — | 0.3 | 0.6 |
+| soft pairs (pooled) | 69.1 | 0.2 | 0.4 | 0.7 |
 | ت↔ط | 3.5 | — | — | — |
 | ح↔ه | 2.7 | — | — | — |
-| ذ↔ز | 22.6 | — | — | 0.2 |
+| ذ↔ز | 22.6 | — | 0.3 | 0.5 |
 | س↔ص | 20.7 | — | — | — |
 | ض↔ظ | 35.7 | 0.2 | 0.4 | 0.6 |
-| ق↔ك | 25.5 | — | — | 0.5 |
+| ق↔ك | 25.5 | — | 0.3 | 0.5 |
 | ذ↔ظ | 0.9 | — | — | — |
 | س↔ش | 28.2 | — | 0.3 | 0.6 |
-| ط↔ق | 83.3 | — | 0.2 | 0.7 |
-| geminates (base not held) | 32.7 | — | 0.2 | 0.5 |
+| ط↔ق | 83.3 | 0.3 | 0.5 | 0.7 |
+| geminates (base not held) | 32.7 | 0.2 | 0.4 | 0.6 |
 
-At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.3; ت↔ط —; ح↔ه —; ذ↔ز —; س↔ص —; ض↔ظ 0.4; ق↔ك —; ذ↔ظ —; س↔ش 0.3; ط↔ق 0.2; geminates (base not held) 0.2.
+At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.4; ت↔ط —; ح↔ه —; ذ↔ز 0.3; س↔ص —; ض↔ظ 0.4; ق↔ك 0.3; ذ↔ظ —; س↔ش 0.3; ط↔ق 0.5; geminates (base not held) 0.4.
 
 **Retention** of verified mistakes (θ = 0.15; held-out mistakes are few):
 
@@ -308,13 +317,13 @@ Every site with the reciter bootstrap, recovery, at ICC 0.15 and at ICC 0:
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.1 | 0.2 | 0.4 | 0.6 |
-| geminates (base not held) | 32.8 | — | 0.3 | 0.5 |
+| soft pairs (pooled) | 69.1 | 0.3 | 0.5 | 0.8 |
+| geminates (base not held) | 32.8 | 0.2 | 0.4 | 0.7 |
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.4 | 0.2 | 0.4 | 0.6 |
-| geminates (base not held) | 32.8 | — | 0.3 | 0.5 |
+| soft pairs (pooled) | 69.4 | 0.3 | 0.5 | 0.8 |
+| geminates (base not held) | 32.8 | 0.2 | 0.5 | 0.7 |
 
 ## 3. New-error harm on sites `h448` gets right
 
@@ -379,26 +388,27 @@ site. **Report only: not on #61's worklist.**
   geminate carriers: the census of changes covers every carrier, flagged or not, and costs
   nothing to enumerate. What it cannot see is harm the candidate does *elsewhere* (other
   letters, tashkeel) and harm in the app outcome, where the ratchet decides.
-- **The random word sample** is the model-independent denominator for that: 144
-  correctly recited words (planning: 90% of the 160
-  heard as correct), one per held-out reciter. It covers false flags from any cause, as the app
+- **The random word sample** is the model-independent denominator for that: 160
+  words, one per held-out reciter (planning: 90% heard as
+  correct), each weighing the inverse of its selection probability within the sample's frame
+  (Kish effective size 109.8). It covers false flags from any cause, as the app
   grades them in #123's replay, and new errors anywhere in a word. It leaves out the rare
   events: per-family harm at a few per 1,000 carriers, real mistakes (a few words), cross-word
-  geminates. Its power to show the candidate's false-flag rate below `h448`'s, with the
-  candidate adding no flag (paired, one word per reciter; `h448`'s app false-flag rate is
+  geminates. Its power to show the candidate's weighted false-flag rate below `h448`'s, with
+  the candidate adding no flag (paired, one word per reciter; `h448`'s app false-flag rate is
   unknown until #123):
 
 | `h448` false flags | reduction | P(upper bound ≤ +0%) | P(upper bound ≤ -1%) | P(upper bound ≤ -2%) |
 |---|---|---|---|---|
-| 2% | 25% | 0.51 | 0.00 | 0.00 |
+| 2% | 25% | 0.53 | 0.00 | 0.00 |
 | 2% | 50% | 0.76 | 0.00 | 0.00 |
-| 2% | 75% | 0.90 | 0.02 | 0.00 |
-| 5% | 25% | 0.84 | 0.01 | 0.00 |
-| 5% | 50% | 0.97 | 0.15 | 0.03 |
-| 5% | 75% | 1.00 | 0.44 | 0.17 |
-| 10% | 25% | 0.97 | 0.15 | 0.04 |
-| 10% | 50% | 1.00 | 0.73 | 0.44 |
-| 10% | 75% | 1.00 | 0.96 | 0.86 |
+| 2% | 75% | 0.90 | 0.01 | 0.00 |
+| 5% | 25% | 0.84 | 0.00 | 0.00 |
+| 5% | 50% | 0.97 | 0.09 | 0.01 |
+| 5% | 75% | 1.00 | 0.31 | 0.09 |
+| 10% | 25% | 0.97 | 0.09 | 0.01 |
+| 10% | 50% | 1.00 | 0.58 | 0.27 |
+| 10% | 75% | 1.00 | 0.90 | 0.69 |
 
 ## 4. Mix of real mistakes
 

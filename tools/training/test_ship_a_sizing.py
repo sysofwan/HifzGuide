@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import numpy as np
+
 import pytest
 
 from tadabur.power_frame import input_checksums
@@ -14,7 +16,8 @@ from training import ship_a_sizing as z
 from training.ship_a_sizing_doc import DOC_PATH, load_inputs, render
 
 
-def _side(reciters, theta=0.0, rate=1.0, side=z.RECOVERY, rule=z.ONE_PER_RECITER, weights=None):
+def _side(reciters, theta=0.0, rate=1.0, side=z.RECOVERY, rule=z.ONE_PER_RECITER,
+          weights=None):
     weights = tuple(weights or [1.0] * len(reciters))
     return z.SideScenario("cell", tuple(reciters), weights, theta, rate, 0.15, side, rule)
 
@@ -50,11 +53,6 @@ def test_no_change_bounds_no_new_error():
     scenario = z.HarmScenario((50, 80, 20), 12.0, 0.0, 1.0, 0.0, 2)
     result = z.harm_power(scenario, 10)
     assert result["median_bound_per_1000"] == 0.0 and result["mean_minutes"] == 0.0
-
-
-def test_the_word_sample_cannot_show_a_reduction_without_flags():
-    result = z.word_sample_power(z.WordScenario(100, 0.0, 0.5), 5)
-    assert all(p == 0.0 for p in result["power"].values())
 
 
 def test_the_budget_counts_each_half_and_marks_sparse_cells():
@@ -95,9 +93,50 @@ def test_the_committed_page_is_rendered_from_the_committed_results():
     assert DOC_PATH.read_text(encoding="utf-8") == render(*load_inputs())
 
 
-def test_effective_sizes_split_the_design_into_its_layers():
-    sites = load_sites()
-    sizes = z.effective_sizes(sites)
+def test_effective_sizes_read_the_listening_weights_only():
+    sizes = z.effective_sizes(load_sites())
     for cell, entry in sizes.items():
-        assert entry["full_design"] <= entry["sites"] + 1e-9, cell
-        assert entry["listening_only"] <= entry["sites"] + 1e-9, cell
+        assert 0 <= entry["effective"] <= entry["sites"] + 1e-9, cell
+    assert sizes[z.GEMINATES]["effective"] == sizes[z.GEMINATES]["sites"]  # a census
+
+
+def test_the_word_sample_weighs_its_own_selection_not_the_pool():
+    from tadabur.word_sample import load_words
+
+    words = load_words()
+    assert z.word_weights(words) == tuple(1 / w.draw_probability for w in words)
+    flat = z.word_sample_power(z.WordScenario((1.0,) * 150, 0.0, 0.5), 5)
+    assert all(p == 0.0 for p in flat["power"].values())  # no flag, nothing to reduce
+
+
+def test_the_scorer_and_the_sizing_weigh_verified_sites_alike():
+    """Estimator parity: the #84 scorer, given Ship A's listening weights, reads the same
+    weighted rate the sizing simulates (Σw·A / Σw·C with w = 1 / listen_probability)."""
+    from dataclasses import replace
+
+    from tadabur.ship_a import listening_weights
+    from tadabur.test_power_frame import H448
+    from training.acceptance_stats import ratio
+    from training.site_outcomes import CORRECT_SIDE
+    from training.truth_scorer import HEADLINE, item_key, reconcile, score
+
+    (swap,) = [s for s in mine_all(scored_pool(base=H448)) if s.kind == "pair"]
+    chances, recovered = (1.0, 0.5, 0.25), (True, False, True)
+    sites = [replace(swap, listen_probability=p, row=replace(swap.row, site=replace(
+        swap.site, site_id=f"{swap.site.site_id}#{k}", audio_filename=f"c{k}.wav",
+        audio_sha256=f"{k}" * 64,
+        heard=swap.site.prescribed, stratum_population=3))) for k, p in enumerate(chances)]
+    truth = [s.site for s in sites]
+    weights = listening_weights(sites)
+    assert reconcile(truth, weights).weights == weights
+    decodes = {"m": {item_key(t): t.reference if ok else t.reference.replace("ذ", "ز")
+                     for t, ok in zip(truth, recovered)}}
+    report = score(truth, {t.audio_filename: k for k, t in enumerate(truth)}, decodes,
+                   design_weights=weights)
+    cell = next(c for c in report["cells"] if (c["population"], c["side"], c["label"])
+                == (HEADLINE, CORRECT_SIDE, "ذ↔ز:ذ"))
+    w = np.array([weights[t.site_id] for t in truth])
+    accurate = np.array(recovered, dtype=float)
+    expected = ratio(w * accurate, w)
+    assert expected == pytest.approx(5 / 7)
+    assert cell["arms"]["m"]["rates"]["committed_accuracy"]["point"] == pytest.approx(expected)

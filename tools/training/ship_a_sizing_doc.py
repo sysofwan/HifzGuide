@@ -205,17 +205,29 @@ The owner chose the lean set over every partner swap (decision A) and a sample o
   geminates the teacher holds, their training target is the teacher's own decode (the
   mushaf letter; ADR-0011 §3), and they are no verified site in any evaluation. On held-out
   reciters, recovery of teacher-right swaps is read on the one-per-reciter sample, weighted
-  by its recorded chance.
+  by the inverse of its chance.
 - **A `كسب` swap** (`س`→`ش` on the `س` of the consonants `كسب`, which both models hear as
   `ش`) is listened to only in a sample of 20: reciters in salted order take one site each per
-  round, so the sample spreads over reciters; a reciter given `m` of its `n` such sites gives
-  each the chance `m / n`. **The rest take the sample's verdict**, by this rule, fixed before
+  round, so the sample spreads over reciters. A site's chance is its reciter's expected picks
+  over every salted order of the reciters, divided by the reciter's sites
+  (`ship_a.round_robin_shares`: full rounds, then `R` of the `E` eligible reciters in the
+  partial round); here one partial round, so `(20 / 80) / n`. **The rest take the sample's verdict**, by this rule, fixed before
   any is heard: if a majority of the sampled sites with a verdict (`unclear` aside) are
   heard as one letter, every unsampled `كسب` site takes that letter as its label; with no
   majority they get no label and stay out of training and evaluation. Which letter that is,
   is left to the listening.
 - **A geminate** is listened to when the teacher does not hold it (D10); **another letter**
   never (D9).
+
+**What a score describes (owner decision, 2026-10-10).** The estimand is the **frozen
+verified site set**: the pool's and the extension's Ship A sites as mined here, and the
+frozen word sample. Scores describe that set, not all of Tadabur, so no weight expands a site
+to the pool's frame or the extension's. The only weights are the inverse listening
+probabilities (`ship_a.listening_weights`): 1 where a stratum is listened to whole, `k` for a
+teacher-right swap, `1 / chance` for a `كسب` swap; and for a sampled word the inverse of its
+selection probability within the sample's frame. Acceptance rules §1's weighting row is
+amended to say so, and the #84 scorer takes these per-site weights
+(`truth_scorer.score(design_weights=…)`).
 
 {_table(["site", "mined", "listened"], rows)}
 """
@@ -267,8 +279,8 @@ def _section_power(sizing: Mapping) -> str:
 A cell's held-out sites are listened to; each is a real mistake with probability θ. The
 candidate **recovers** a verified-correct site (commits the mushaf letter, or holds the
 geminate) with a true rate, or **retains** a verified mistake (keeps committing what was
-said). Each listened site carries the listening design's weight, the inverse of its worklist
-row's inclusion probability: teacher-wrong swaps and geminates are a census, teacher-right
+said). Each listened site weighs the inverse of its listening probability (the estimand is
+the frozen site set): teacher-wrong swaps and geminates are a census (weight 1), teacher-right
 swaps one per held-out reciter and family, the كسب swaps a sample. θ is the same in every
 stratum (a planning assumption). Each of {sizing["repetitions"]:,} repetitions takes the §1
 lower bound of the weighted rate on one site per reciter (chosen in proportion to its weight,
@@ -278,14 +290,10 @@ unequal weights has no bound (§1). Reciter effects at latent ICC 0, 0.05 and 0.
 whether a site is a mistake and whether it is recovered. The pooled cells are also read on
 every site with the reciter-clustered bootstrap, which the ICC does move.
 
-The weights are uneven, and that costs precision. Kish's effective size per cell, under the
-full design weight and under the listening chance alone, shows which layer costs it: mostly
-the mining pool's own clip probabilities (a uniform clip was drawn as `k` of its reciter's
-`n`, down to 0.012), not the lean subsample:
+Kish's effective size per cell under those weights (the word sample's is in §3):
 
-{_table(["cell", "held-out sites", "effective, full design", "effective, listening only"],
-        [[cell, e["sites"], e["full_design"], e["listening_only"]]
-         for cell, e in sizing["effective_sizes"].items()])}
+{_table(["cell", "held-out sites", "effective size"],
+        [[cell, e["sites"], e["effective"]] for cell, e in sizing["effective_sizes"].items()])}
 
 **No floor is chosen here** (#128). Each cell shows the **highest floor the lower bound
 reaches with {TARGET_POWER:.0%} power**, at θ = {SUMMARY_THETA} and ICC = {SUMMARY_ICC}
@@ -325,7 +333,7 @@ def _section_harm(sizing: Mapping) -> str:
     words = [[f'{w["rate"]:.0%}', f'{w["reduction"]:.0%}',
               *(f'{w["power"][str(m)]:.2f}' for m in sizing["grids"]["word_margins"])]
              for w in sizing["word_sample"]]
-    n_words = sizing["word_sample"][0]["correct_words"]
+    word_sizes = sizing["word_sample_effective"]
     grid = sizing["grids"]
     top = next(h for h in harm["scenarios"] if h["icc"] == SUMMARY_ICC
                and h["churn"] == max(grid["churns"])
@@ -358,13 +366,14 @@ site. **Report only: not on #61's worklist.**
   geminate carriers: the census of changes covers every carrier, flagged or not, and costs
   nothing to enumerate. What it cannot see is harm the candidate does *elsewhere* (other
   letters, tashkeel) and harm in the app outcome, where the ratchet decides.
-- **The random word sample** is the model-independent denominator for that: {n_words}
-  correctly recited words (planning: {sizing["grids"]["word_correct_share"]:.0%} of the 160
-  heard as correct), one per held-out reciter. It covers false flags from any cause, as the app
+- **The random word sample** is the model-independent denominator for that: {word_sizes["words"]}
+  words, one per held-out reciter (planning: {sizing["grids"]["word_correct_share"]:.0%} heard as
+  correct), each weighing the inverse of its selection probability within the sample's frame
+  (Kish effective size {word_sizes["effective"]}). It covers false flags from any cause, as the app
   grades them in #123's replay, and new errors anywhere in a word. It leaves out the rare
   events: per-family harm at a few per 1,000 carriers, real mistakes (a few words), cross-word
-  geminates. Its power to show the candidate's false-flag rate below `h448`'s, with the
-  candidate adding no flag (paired, one word per reciter; `h448`'s app false-flag rate is
+  geminates. Its power to show the candidate's weighted false-flag rate below `h448`'s, with
+  the candidate adding no flag (paired, one word per reciter; `h448`'s app false-flag rate is
   unknown until #123):
 
 {_table(["`h448` false flags", "reduction", *(f"P(upper bound ≤ {m:+.0%})" for m in

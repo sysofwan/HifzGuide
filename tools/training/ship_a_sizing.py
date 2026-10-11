@@ -62,17 +62,20 @@ from tadabur.ship_a import (
     SITES_PATH,
     TRAIN,
     ShipASite,
+    listening_weights,
     load_sites,
     reciter_half,
 )
 from tadabur.truth_sites import SHADDAH, SOFT_PAIRS, UNFORGIVEN_PAIRS
-from tadabur.word_sample import WORD_SAMPLE_PATH, load_words
+from tadabur.word_sample import WORD_SAMPLE_PATH, WordSite, load_words
 from training.acceptance_stats import (
     LOWER,
     NO_BOUND,
+    PASS,
     SPARSE_MIN_RECITERS,
     SPARSE_MIN_SITES,
     UPPER,
+    difference_verdict,
     is_sparse,
     ratio_interval,
     ratio_verdict,
@@ -86,7 +89,6 @@ from training.power_simulation import (
     cluster_mistake_bound,
     load_frame,
     one_per_reciter,
-    paired_unit_verdict,
     pps_inclusion,
     rng_for,
     shared_resample,
@@ -243,22 +245,20 @@ def side_bounds(scenario: SideScenario, repetitions: int) -> dict:
     }
 
 
-def effective_sizes(sites: list[ShipASite]) -> dict[str, dict[str, float]]:
-    """Per cell, its held-out listened sites and their Kish effective size, ``(Σw)² / Σw²``,
-    under the full design weight (the pool's clip probability times the listening chance)
-    and under the listening chance alone: which layer of the design costs the precision."""
-    def kish(weights: list[float]) -> float:
-        return round(sum(weights) ** 2 / sum(w * w for w in weights), 1) if weights else 0.0
+def kish(weights: Iterable[float]) -> float:
+    """Kish's effective sample size, (Σw)² / Σw²."""
+    weights = list(weights)
+    return round(sum(weights) ** 2 / sum(w * w for w in weights), 1) if weights else 0.0
 
+
+def effective_sizes(sites: list[ShipASite]) -> dict[str, dict[str, float]]:
+    """Per cell, its held-out listened sites and their Kish effective size under the
+    listening weights (:func:`tadabur.ship_a.listening_weights`)."""
     sizes = {}
     for cell, members in cells(sites).items():
         held_out = [s for s in members if s.listened and s.half == HELD_OUT]
-        sizes[cell] = {
-            "sites": len(held_out),
-            "full_design": kish([1 / (s.row.clip_inclusion_probability * s.listen_probability)
-                                 for s in held_out]),
-            "listening_only": kish([1 / s.listen_probability for s in held_out]),
-        }
+        sizes[cell] = {"sites": len(held_out),
+                       "effective": kish(listening_weights(held_out).values())}
     return sizes
 
 
@@ -268,8 +268,7 @@ def side_scenarios(sites: list[ShipASite]) -> list[SideScenario]:
     for cell, members in cells(sites).items():
         held_out = [s for s in members if s.listened and s.half == HELD_OUT]
         reciters = tuple(s.reciter_id for s in held_out)
-        weights = tuple(1 / (s.row.clip_inclusion_probability * s.listen_probability)
-                        for s in held_out)
+        weights = tuple(listening_weights(held_out)[s.site.site_id] for s in held_out)
         rules = (ONE_PER_RECITER, EVERY_SITE) if cell in (SOFT_PAIRS_POOLED, GEMINATES) \
             else (ONE_PER_RECITER,)
         scenarios += [
@@ -366,29 +365,44 @@ def harm_scenarios(carriers: tuple[int, ...], seconds: float) -> list[HarmScenar
 
 @dataclass(frozen=True)
 class WordScenario:
-    """The word sample's correctly recited words (one per reciter): ``h448`` flags each with
-    probability ``rate``; the candidate keeps each flag with probability 1 − ``reduction``
-    and flags no word ``h448`` does not."""
+    """The frozen word sample (one word per reciter), each word weighing the inverse of its
+    selection probability within the sample's frame (:func:`word_weights`). A word is heard
+    as recited correctly with probability :data:`WORD_CORRECT_SHARE`; on those, ``h448``
+    flags each with probability ``rate``, and the candidate keeps each flag with probability
+    1 - ``reduction`` and flags no word ``h448`` does not."""
 
-    words: int
+    weights: tuple[float, ...]
     rate: float
     reduction: float
 
     def key(self) -> tuple:
-        return ("words", self.words, self.rate, self.reduction)
+        return ("words", len(self.weights), self.rate, self.reduction)
 
 
 def word_sample_power(scenario: WordScenario, repetitions: int) -> dict:
-    """The chance the paired difference's upper bound (candidate − ``h448``, one word per
-    reciter: bootstrap, or Tango where sparse) reaches each of :data:`WORD_MARGINS`."""
+    """The chance the upper bound of the weighted paired difference in false-flag rate
+    (candidate - ``h448``, over the correctly recited words, one per reciter: the bootstrap,
+    or Tango where sparse and equally weighted, §1) reaches each of :data:`WORD_MARGINS`."""
     rng = rng_for(*scenario.key(), repetitions)
+    weights = np.asarray(scenario.weights, dtype=float)
     passes = {m: 0 for m in WORD_MARGINS}
     for _ in range(repetitions):
-        today = rng.random(scenario.words) < scenario.rate
-        candidate = today & (rng.random(scenario.words) >= scenario.reduction)
+        w = weights[rng.random(len(weights)) < WORD_CORRECT_SHARE]
+        today = rng.random(len(w)) < scenario.rate
+        candidate = today & (rng.random(len(w)) >= scenario.reduction)
+        labels, resample = shared_resample(np.arange(len(w)))
         for margin in WORD_MARGINS:
-            passes[margin] += paired_unit_verdict(candidate, today, margin, UPPER) == "pass"
+            verdict = difference_verdict(labels, (w * candidate, w), (w * today, w), margin,
+                                         UPPER, w, resample).verdict
+            passes[margin] += verdict == PASS
     return {"power": {str(m): passes[m] / repetitions for m in WORD_MARGINS}}
+
+
+def word_weights(words: Iterable[WordSite]) -> tuple[float, ...]:
+    """Each sampled word's weight: the inverse of its selection probability within the
+    sample's frame (the reciter draw times one of the reciter's words), never the pool's clip
+    probability (owner decision 2026-10-10: the estimand is the frozen sample)."""
+    return tuple(1 / w.draw_probability for w in words)
 
 
 # --- question 4: the mix of real mistakes -----------------------------------------------------
@@ -430,11 +444,11 @@ def _run(job: tuple[str, object, int]) -> tuple[tuple, dict]:
 def run(workers: int, repetitions: int = REPETITIONS) -> dict:
     sites = load_sites()
     carriers, seconds = held_out_carriers()
-    correct_words = round(WORD_CORRECT_SHARE * len(load_words()))
+    sampled_word_weights = word_weights(load_words())
     jobs: list[tuple[str, object, int]] = [
         *(("side", s, repetitions) for s in side_scenarios(sites)),
         *(("harm", s, repetitions) for s in harm_scenarios(carriers, seconds)),
-        *(("words", WordScenario(correct_words, rate, reduction), repetitions)
+        *(("words", WordScenario(sampled_word_weights, rate, reduction), repetitions)
           for rate in FALSE_FLAG_RATES for reduction in REDUCTIONS),
     ]
     with ProcessPoolExecutor(workers) as pool:
@@ -444,7 +458,7 @@ def run(workers: int, repetitions: int = REPETITIONS) -> dict:
              **results[s.key()]} for _, s, _ in jobs if isinstance(s, SideScenario)]
     harm = [{"churn": s.churn, "new_error_share": s.new_error_share, "icc": s.icc, "n": s.n,
              **results[s.key()]} for _, s, _ in jobs if isinstance(s, HarmScenario)]
-    words = [{"correct_words": s.words, "rate": s.rate, "reduction": s.reduction,
+    words = [{"words": len(s.weights), "rate": s.rate, "reduction": s.reduction,
               **results[s.key()]} for _, s, _ in jobs if isinstance(s, WordScenario)]
     return {
         "inputs": {**input_checksums(), **{
@@ -459,6 +473,8 @@ def run(workers: int, repetitions: int = REPETITIONS) -> dict:
                   "word_margins": WORD_MARGINS, "word_correct_share": WORD_CORRECT_SHARE},
         "budget": budget(sites),
         "effective_sizes": effective_sizes(sites),
+        "word_sample_effective": {"words": len(sampled_word_weights),
+                                  "effective": kish(sampled_word_weights)},
         "held_out_power": side,
         "sites_needed": [{"rate": rate, "floor": floor, **sites_needed(rate, floor, repetitions)}
                          for rate in TRUE_RATES for floor in FLOORS if floor < rate],

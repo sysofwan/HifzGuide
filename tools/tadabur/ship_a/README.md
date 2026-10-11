@@ -56,10 +56,19 @@ asked); a worklist row carries it as its draw probability.
   salted rank, chance `1 / k`), for evaluation. The others are not listened to: their target
   is the teacher's decode, as D10 does for the geminates the teacher holds, and they are no
   verified site in any evaluation;
-- the `كسب` swaps: a sample of 20 spread over reciters (round robin in salted order; chance
-  `m / n` for a reciter given `m` of its `n`). The rest take the sample's verdict: the letter a
-  majority of the sampled sites with a verdict are heard as, or no label without a majority;
+- the `كسب` swaps: a sample of 20 spread over reciters (round robin in salted order). A
+  site's chance is its reciter's expected picks over every salted order, divided by the
+  reciter's sites (`round_robin_shares`; here `(20 / 80) / n`). The rest take the sample's
+  verdict: the letter a majority of the sampled sites with a verdict are heard as, or no
+  label without a majority;
 - a geminate the teacher does not hold: always; one it holds: never (D10).
+
+**What a score describes (owner decision, 2026-10-10).** The estimand is the frozen verified
+site set (the pool's and extension's sites as mined here, and the frozen word sample), not
+all of Tadabur: no weight expands a site to a wider frame. A listened site weighs
+`1 / listen_probability` (`ship_a.listening_weights`; 1 where a stratum is listened to whole),
+a sampled word `1 / draw_probability` (its selection within the sample's frame). The #84
+scorer takes them as `truth_scorer.score(design_weights=…)`; acceptance rules §1 is amended.
 
 ## The reciter split (confirmed, D11)
 

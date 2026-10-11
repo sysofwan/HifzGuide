@@ -274,10 +274,18 @@ def item_key(site: TruthSite) -> str:
     return f"{site.audio_filename}@{site.start_sample}:{site.end_sample}"
 
 
-def site_weights(sites: Sequence[TruthSite]) -> dict[str, float]:
-    """Stratum population / sites sampled in the stratum, unclear and pending included."""
+def site_weights(
+    sites: Sequence[TruthSite], design: Mapping[str, float] | None = None
+) -> dict[str, float]:
+    """Stratum population / sites sampled in the stratum, unclear and pending included; a
+    site ``design`` names takes that weight instead. Ship A's verified sites weigh the inverse
+    of their listening probability (acceptance rules §1 as amended 2026-10-10: the estimand
+    is the frozen verified site set, so no frame-expansion weight),
+    :func:`tadabur.ship_a.listening_weights`."""
+    design = design or {}
     sampled = Counter(site.stratum for site in sites)
-    return {site.site_id: site.stratum_population / sampled[site.stratum] for site in sites}
+    return {site.site_id: design.get(site.site_id, site.stratum_population / sampled[site.stratum])
+            for site in sites}
 
 
 def physical_site(site: TruthSite) -> tuple:
@@ -310,7 +318,9 @@ class Reconciled:
     merged: list[dict]
 
 
-def reconcile(sites: Sequence[TruthSite]) -> Reconciled:
+def reconcile(
+    sites: Sequence[TruthSite], design: Mapping[str, float] | None = None
+) -> Reconciled:
     """One record per physical site (§1's observation unit), before anything is scored.
 
     Weights are computed over every record first, so a stratum's sampled count stays the
@@ -323,7 +333,7 @@ def reconcile(sites: Sequence[TruthSite]) -> Reconciled:
     """
     if len({site.site_id for site in sites}) != len(sites):
         raise ValueError("duplicate site ids across the truth-site files")
-    weights = site_weights(sites)
+    weights = site_weights(sites, design)
     groups: dict[tuple, list[TruthSite]] = defaultdict(list)
     for site in sites:
         groups[physical_site(site)].append(site)
@@ -577,11 +587,13 @@ def score(
     decodes: Mapping[str, Mapping[str, str]],
     comparisons: Sequence[tuple[str, str]] = (),
     muraja: MurajaGrades | None = None,
+    design_weights: Mapping[str, float] | None = None,
 ) -> dict:
     """The report: per-cell rates for every arm, paired differences, the allowance view (with
     app outcomes), exclusions and required-cell support. ``decodes[arm][item_key]`` is a decode
-    string, ``reciter_of[audio_filename]`` a canonical reciter id."""
-    reconciled = reconcile(sites)
+    string, ``reciter_of[audio_filename]`` a canonical reciter id; ``design_weights`` gives
+    sites a per-site weight (:func:`site_weights`)."""
+    reconciled = reconcile(sites, design_weights)
     sites, weights = reconciled.sites, reconciled.weights
     arms = sorted(decodes)
     outcomes = outcomes_by_arm(sites, decodes)

@@ -252,6 +252,14 @@ def select_listening(sites: list[ShipASite]) -> dict[str, float]:
     return chosen
 
 
+def listening_weights(sites: Iterable[ShipASite]) -> dict[str, float]:
+    """Each listened site's weight in any Ship A estimate: the inverse of its listening
+    probability (1 where its stratum is listened to whole). The estimand is the frozen
+    verified site set (owner decision, 2026-10-10), so no weight expands the pool or the
+    extension to a wider frame."""
+    return {s.site.site_id: 1 / s.listen_probability for s in sites if s.listened}
+
+
 def round_robin_shares(sizes: Mapping[int, int], k: int) -> dict[int, float]:
     """Each group's expected number of picks when ``k`` are taken one per group per round,
     groups in a uniformly random order (a salted hash): every full round gives each group

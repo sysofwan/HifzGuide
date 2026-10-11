@@ -37,7 +37,7 @@ so the selection never has to be redone for a new checkpoint.
   consonant, where the base doubled it (``not_held:base_double``, the site of an added
   shaddah) or not (``not_held:base_rest``). Gemination mismatches come from
   :func:`tadabur.contrast_attribution.contrast_sites`, the rule the pool's census used.
-* **consonant**: per target pair (the six soft pairs and ``ذ↔ظ``, acceptance rules §7) and
+* **consonant**: per target pair (acceptance rules §7: the six soft pairs, ``ذ↔ظ``, ``س↔ش`` and ``ط↔ق``) and
   **per direction**, every carrier of the prescribed letter where the base decoded the
   partner (``base_partner``, the reject-pile sites) or did not (``base_rest``).
 
@@ -70,7 +70,8 @@ Usage (from ``tools/``; torch-free, needs ``quran-transcript`` for the Uthmani w
 
   python -m tadabur.listening_session mine --p35-seg-dir stage/seg_p35 [--sizes sizes.json]
   python -m tadabur.listening_session clips    # the clip names the worklist plays
-  python -m tadabur.listening_session fetch --audio-dir ~/hifzguide-listening/clips
+  python -m tadabur.listening_session fetch --audio-dir ~/hifzguide-listening/clips \
+      [--worklist tadabur/ship_a/worklist.jsonl --words tadabur/ship_a/word_sample.jsonl]
 """
 
 from __future__ import annotations
@@ -131,6 +132,7 @@ from .truth_sites import (
 
 if TYPE_CHECKING:
     from .edit_check import EditCheckSite
+    from .word_sample import WordSite
 
 SESSION_DIR = Path(__file__).parent / "listening_session"
 WORKLIST_PATH = SESSION_DIR / "worklist.jsonl"
@@ -171,7 +173,7 @@ BASE_SINGLE = "base_single"
 BASE_DOUBLE = "base_double"
 BASE_PARTNER = "base_partner"
 BASE_REST = "base_rest"
-#: A geminate whose two halves fall in different words (#86): see :func:`_crosses_words`.
+#: A geminate whose two halves fall in different words (#86): see :func:`crosses_words`.
 CROSS_WORD = "cross_word"
 
 HARAKA_NAMES = tuple(sorted(HARAKA_CHARS))
@@ -368,7 +370,7 @@ def _tashkeel_found(
     return found
 
 
-def _crosses_words(reference: str, offsets: list[int], start: int) -> bool:
+def crosses_words(reference: str, offsets: list[int], start: int) -> bool:
     """Whether the run of identical characters starting at ``start`` spans a word boundary:
     an idgham across words, which exists only if the reciter did not pause there."""
     end = start
@@ -382,7 +384,7 @@ def _shaddah_found(reference: str, decode: str, offsets: list[int]) -> list[Foun
     dropped = {run_start(reference, s.reference_index) for s in changes if s.change == DROPPED}
 
     def held(i: int) -> str:
-        if _crosses_words(reference, offsets, i):
+        if crosses_words(reference, offsets, i):
             return _stratum(SHADDAH, HELD, CROSS_WORD)
         return _stratum(SHADDAH, HELD, BASE_SINGLE if i in dropped else BASE_REST)
 
@@ -662,7 +664,8 @@ def shuffled(rows: list[_Row]) -> list[_Row]:
     return queue
 
 
-def _row_json(row: SessionSite) -> dict:
+def row_json(row: SessionSite) -> dict:
+    """A worklist row as its JSON object: the truth-site fields and the design fields."""
     design = {name: getattr(row, name) for name in DESIGN_FIELDS}
     return {**asdict(row.site), **design, "word_offsets": list(row.word_offsets)}
 
@@ -698,10 +701,10 @@ def parse_row(data: dict, where: str) -> SessionSite:
 def write_worklist(rows: list[SessionSite], path: Path = WORKLIST_PATH) -> None:
     """Validate every row and the file, then write atomically, one JSON object per line."""
     for number, row in enumerate(rows, 1):
-        parse_row(_row_json(row), f"write_worklist[{number}]")
+        parse_row(row_json(row), f"write_worklist[{number}]")
     _check_file([row.site for row in rows], "write_worklist")
     write_text_atomically(path, "".join(
-        json.dumps(_row_json(row), ensure_ascii=False, sort_keys=True) + "\n" for row in rows
+        json.dumps(row_json(row), ensure_ascii=False, sort_keys=True) + "\n" for row in rows
     ))
 
 
@@ -878,6 +881,8 @@ def adjudicated(sites: list[TruthSite], verdicts: Mapping[str, Verdict]) -> list
 #: (#88, ``tadabur.edit_check.EDIT_AUDIO_REMOTE``) sit on it.
 GPU_HOST = "root@cuda-dev"
 SESSION_CLIPS_REMOTE = "/root/scratch/issue-83/stage/clips"
+#: Where Ship A's mining extension staged its clips (``tadabur.ship_a_mining``, #126).
+MINING_CLIPS_REMOTE = "/root/scratch/issue-126/stage/clips"
 
 
 def fetch_list(sources: Mapping[str, set[str]]) -> tuple[str, list[str]]:
@@ -892,24 +897,28 @@ def fetch_list(sources: Mapping[str, set[str]]) -> tuple[str, list[str]]:
 
 
 def fetch(
-    rows: list[SessionSite], items: list[EditCheckSite], audio_dir: Path,
+    rows: list[SessionSite | WordSite], items: list[EditCheckSite], audio_dir: Path,
     registry: Mapping[str, StagedClip], host: str = GPU_HOST,
     sources: Mapping[str, str] | None = None, run: Callable[..., object] = subprocess.run,
 ) -> None:
-    """Copy every clip the worklist plays and every edit-check item from ``host`` into
-    ``audio_dir`` with one rsync (files already there are kept), then verify each against
-    its recorded checksum:
+    """Copy every clip the worklist's rows (and any sampled words) play and every
+    edit-check item from ``host`` into ``audio_dir`` with one rsync (files already there are
+    kept), then verify each against its recorded checksum:
     the clips through the staged-clip registry (and their length), the items through the
-    blind check. ``sources`` maps ``"session"`` and ``"edit_check"`` to their remote
+    blind check. A clip staged by Ship A's mining extension comes from its own directory.
+    ``sources`` maps ``"session"``, ``"mining"`` and ``"edit_check"`` to their remote
     directories."""
+    from .staged_audio import SHIP_A_MINING
     from .edit_check import EDIT_AUDIO_REMOTE
     from .edit_check import verify_audio as verify_edit_check_audio
 
-    remote = {"session": SESSION_CLIPS_REMOTE, "edit_check": EDIT_AUDIO_REMOTE,
-              **(sources or {})}
+    remote = {"session": SESSION_CLIPS_REMOTE, "mining": MINING_CLIPS_REMOTE,
+              "edit_check": EDIT_AUDIO_REMOTE, **(sources or {})}
     clips = {row.site.audio_filename for row in rows}
-    root, files = fetch_list({remote["session"]: clips,
-                              remote["edit_check"]: {i.site.audio_filename for i in items}})
+    mined = {name for name in clips if SHIP_A_MINING in registry[name].uses}
+    groups = {remote["session"]: clips - mined, remote["mining"]: mined,
+              remote["edit_check"]: {i.site.audio_filename for i in items}}
+    root, files = fetch_list({directory: names for directory, names in groups.items() if names})
     audio_dir.mkdir(parents=True, exist_ok=True)
     run(["rsync", "-a", "--no-relative", "--files-from=-", f"{host}:{root}/", f"{audio_dir}/"],
         input="".join(f"{path}\n" for path in files), text=True, check=True)
@@ -928,7 +937,9 @@ def _jsonl(path: Path) -> list[dict]:
         return [json.loads(raw) for raw in f if raw.strip()]
 
 
-def _uthmani_tanween() -> Callable[[str], list[bool]]:
+def uthmani_tanween() -> Callable[[str], list[bool]]:
+    """Per ``surah:ayah``, whether each Uthmani word carries tanween (needs
+    ``quran-transcript``; cached per ayah): the ``tanween_of`` :func:`pool_candidates` takes."""
     from .waqf_segments import _uthmani_words
 
     cache: dict[str, list[bool]] = {}
@@ -949,7 +960,7 @@ def _mine(args) -> None:
     fingerprint, decodes = load_base_decodes(POOL_DECODES_PATH)
     h448_provenance, h448_decodes = load_stream_decodes(H448_DECODES_PATH)
     sizes = DEFAULT_SIZES if args.sizes is None else json.loads(args.sizes.read_text())
-    candidates = pool_candidates(clips, decodes, h448_decodes, registry, _uthmani_tanween())
+    candidates = pool_candidates(clips, decodes, h448_decodes, registry, uthmani_tanween())
     p35 = load_truth_sites(P35_SITES_PATH)
     safeguards = p35_candidates(
         p35,
@@ -1001,14 +1012,20 @@ def main() -> None:
                       "into one local directory, and verify every checksum")
     fetch_.add_argument("--audio-dir", type=Path, required=True)
     fetch_.add_argument("--host", default=GPU_HOST)
+    fetch_.add_argument("--worklist", type=Path, default=WORKLIST_PATH)
+    fetch_.add_argument("--words", type=Path, default=None,
+                        help="a word sample whose clips to copy too (tadabur/ship_a/"
+                             "word_sample.jsonl for Ship A's session)")
     args = parser.parse_args()
     if args.command == "mine":
         _mine(args)
     elif args.command == "fetch":
         from .edit_check import load_edit_check
+        from .word_sample import load_words
 
-        fetch(load_worklist(), load_edit_check(), args.audio_dir.expanduser(),
-              load_staged_clips(), args.host)
+        words = [] if args.words is None else load_words(args.words)
+        fetch([*load_worklist(args.worklist), *words], load_edit_check(),
+              args.audio_dir.expanduser(), load_staged_clips(), args.host)
     else:
         print("\n".join(sorted({row.site.audio_filename for row in load_worklist()})))
 

@@ -120,6 +120,12 @@ MURAJA_REREAD_CORPUS = "muraja.reread_corpus"
 #: Synthetic edits (#88): the clip an edit was made on, and the clip a swap took audio from.
 SYNTHETIC_EDIT_SOURCE = "synthetic_edit.source"
 SYNTHETIC_EDIT_DONOR = "synthetic_edit.donor"
+#: Ship A (#126): every recording its mining extension decoded (h448-unseen; hit or not),
+#: and the recordings of its verified-label halves (the reciter split, D11): the train half's
+#: sites (training labels) and the held-out half's sites and sampled words (evaluation).
+SHIP_A_MINING = "ship_a.mining"
+SHIP_A_TRAIN = "ship_a.verified_train"
+SHIP_A_HELD_OUT = "ship_a.verified_held_out"
 #: The uses acceptance rules §6 names that no issue has made yet. Each has an empty file
 #: until its issue writes it, so "unused" is recorded rather than inferred from absence.
 PROBE_TRAINING = "probe.training"
@@ -135,6 +141,7 @@ USES = frozenset({
     MINING_POOL, EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, H448_TRAINING, H448_INIT_VALIDATION,
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
+    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
 })
 
 #: ``h448``'s ``--stream-shards``, verbatim from ``runs/h448_stream/run_config.json`` on the
@@ -670,13 +677,53 @@ def copies_across_uses(registry: ExposureRegistry) -> dict[tuple[str, str], int]
 PRD_USES = frozenset({
     *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
+    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
 })
 #: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
 #: them, edit donors included.
 TRAINING_AND_TUNING_USES = frozenset({
     SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
-    SHADDAH_PROBE_TUNING,
+    SHADDAH_PROBE_TUNING, SHIP_A_TRAIN,
 })
+
+
+#: The uses an ``h448``-unseen population (Ship A's pool sites, mined clips and sampled
+#: words, #126) may hold no recording of, not even as an alias or a probable copy: what
+#: ``h448`` trained on, the frozen ``decode_evalset`` and the sealed panel.
+UNSEEN_BARRED_USES = (H448_TRAINING, EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, SEALED_PANEL)
+
+
+def linked_sources(uses: Iterable[str], registry: ExposureRegistry) -> frozenset[Source]:
+    """Every ``(shard, row)`` that is a recording of one of ``uses``, or that the registry
+    ties to one (a checksum alias or a probable copy). A shard use's recordings are every row
+    of its shards, so only its relatives are listed."""
+    rows, shards = set(), set()
+    for use in uses:
+        registry._require(use)
+        if use in registry.shard_uses:
+            shards |= set(registry.shard_uses[use].shards)
+        else:
+            rows |= {row.source for row in registry.recordings[use]}
+    linked = set(rows)
+    for source in rows:
+        linked |= registry.same_recording(source)
+    linked |= {source for source in registry.related_sources()
+               if any(shard in shards for shard, _ in registry.same_recording(source))}
+    return frozenset(linked)
+
+
+def unseen_violations(
+    staged: Mapping[str, StagedClip], registry: ExposureRegistry | None = None
+) -> frozenset[str]:
+    """The staged clips an ``h448``-unseen population must leave out: each one whose
+    recording is, or is tied to, a recording of :data:`UNSEEN_BARRED_USES`: a row a recording
+    use lists, any row of a shard use's shards (``h448.training``), or a relative of either."""
+    registry = registry or load_registry()
+    linked = linked_sources(UNSEEN_BARRED_USES, registry)
+    shards = {shard for use in UNSEEN_BARRED_USES if use in registry.shard_uses
+              for shard in registry.shard_uses[use].shards}
+    return frozenset(name for name, clip in staged.items()
+                     if clip.shard in shards or (clip.shard, clip.row_index) in linked)
 
 
 def excluded_reciters(for_use: str, registry: ExposureRegistry | None = None) -> frozenset[int]:
@@ -756,13 +803,15 @@ def label_file_clips(use: str) -> set[str]:
     return clips
 
 
-def _whole(row: IndexRow | StagedClip, sha: str | None) -> Exposure:
+def whole_recording(row: IndexRow | StagedClip, sha: str | None) -> Exposure:
     return Exposure(row.audio_filename, row.shard, row.row_index, row.reciter_id, None, None, sha)
 
 
 def staged_exposures(staged: Mapping[str, StagedClip]) -> dict[str, list[Exposure]]:
     """The uses the staged-clip registry alone determines: each truth-site source's item
-    spans (with the staged checksum) and the mining pool's whole clips."""
+    spans (with the staged checksum) and the mining pool's whole clips. Ship A's mining use
+    lists every recording its scan decoded, staged or not, so ``tadabur.ship_a_mining
+    register`` writes it from the scan."""
     uses: dict[str, list[Exposure]] = {}
     for path in sorted(TRUTH_SITES_DIR.glob("*.jsonl")):
         if path.name.endswith(".relocation.jsonl"):
@@ -773,7 +822,8 @@ def staged_exposures(staged: Mapping[str, StagedClip]) -> dict[str, list[Exposur
                 clip.audio_filename, clip.shard, clip.row_index, clip.reciter_id,
                 site.start_sample, site.end_sample, clip.audio_sha256,
             ))
-    uses[MINING_POOL] = [_whole(c, c.audio_sha256) for c in staged.values() if MINING_POOL in c.uses]
+    uses[MINING_POOL] = [whole_recording(c, c.audio_sha256) for c in staged.values()
+                         if MINING_POOL in c.uses]
     return uses
 
 
@@ -788,7 +838,7 @@ def indexed_exposures(
     A recording that was re-staged carries its staged checksum."""
     def exposure(name: str) -> Exposure:
         row = index[name]
-        return _whole(row, staged[name].audio_sha256 if name in staged else None)
+        return whole_recording(row, staged[name].audio_sha256 if name in staged else None)
 
     uses = {use: [exposure(name) for name in label_file_clips(use)] for use in LABEL_FILES}
     uses[MURAJA_REREAD_CORPUS] = [exposure(name) for name in muraja_clips]

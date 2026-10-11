@@ -102,20 +102,23 @@
 
 <script type="module">
 // Answer what you hear, not what is written. Nothing on this page says what the mushaf
-// prescribes, what any model heard, or how any answer would score. The logic is in
-// /session.mjs; this script only wires it to the document.
+// prescribes at a site (a sampled word shows its own text, which judging it needs), what
+// any model heard, or how any answer would score. The logic is in /session.mjs; this
+// script only wires it to the document.
 import { createSession } from "/session.mjs";
 
 const PROMPTS = {
   tashkeel: "Which mark do you hear on the highlighted letter?",
   shaddah: "Is the highlighted consonant held (doubled)?",
   consonant: "Which letter do you hear at the highlighted place?",
+  word: "Was the highlighted word recited correctly?",
 };
 const LABELS = {
   fatha: ["Fatha", "\u0640\u064E"], damma: ["Damma", "\u0640\u064F"],
   kasra: ["Kasra", "\u0640\u0650"], sukun: ["Sukun", "\u0640\u0652"],
   held: ["Held", ""], not_held: ["Not held", ""], unclear: ["Unclear", ""],
   natural: ["Natural", ""], unnatural: ["Unnatural", ""],
+  correct: ["Yes", ""], mistake: ["No", ""],
 };
 const SLOW_RATE = 0.6;
 const $ = (id) => document.getElementById(id);

@@ -65,10 +65,16 @@ MINING_POOL = "mining_pool"
 #: The clip was staged for the sealed held-out panel (:mod:`tadabur.sealed_panel`). Panel
 #: clips are recorded in that panel's own registry, never in :data:`REGISTRY_PATH`.
 SEALED_PANEL = "sealed_panel"
+#: The clip was staged by Ship A's mining extension (:mod:`tadabur.ship_a_mining`, #126):
+#: an h448-unseen clip where ``h448`` committed a target pair's partner letter.
+SHIP_A_MINING = "ship_a_mining"
 #: Why a clip was staged: truth sites of one source, the mining pool, a synthetic-edit
-#: source or donor (:mod:`tadabur.synthetic_edits`, staged into a directory of its own), or
-#: the sealed panel.
-USES = frozenset({WAQF_BOUNDARY, P35_FIXTURE, MINING_POOL, SYNTHETIC_EDIT, SEALED_PANEL})
+#: source or donor (:mod:`tadabur.synthetic_edits`, staged into a directory of its own),
+#: Ship A's mining extension, or the sealed panel.
+USES = frozenset({WAQF_BOUNDARY, P35_FIXTURE, MINING_POOL, SYNTHETIC_EDIT, SHIP_A_MINING,
+                  SEALED_PANEL})
+#: Uses whose clips their own tool stages; ``stage`` passes their rows through untouched.
+OWN_TOOL_USES = frozenset({SYNTHETIC_EDIT, SHIP_A_MINING})
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -337,7 +343,7 @@ def stage_clips(
                     f"{row['reciter_id']}), but the index says {entry.audio_filename} "
                     f"(reciter {entry.reciter_id})"
                 )
-            clip = _stage_row(row, entry, audio_dir, requests[name])
+            clip = stage_row(row, entry, audio_dir, requests[name])
             previous = known.get(name)
             if previous is not None and (previous.audio_sha256, previous.num_samples) != (
                 clip.audio_sha256, clip.num_samples
@@ -372,7 +378,7 @@ def as_staged(waveform: "np.ndarray") -> "np.ndarray":
     return sf.read(buffer, dtype="float32")[0]
 
 
-def _stage_row(row: dict, entry: IndexRow, audio_dir: Path, uses: frozenset[str]) -> StagedClip:
+def stage_row(row: dict, entry: IndexRow, audio_dir: Path, uses: frozenset[str]) -> StagedClip:
     """Decode one row to 16 kHz mono, write it as PCM_16 WAV and record its provenance."""
     import soundfile as sf
 
@@ -451,9 +457,10 @@ def main() -> None:
     for name, uses in _pool_requests(args.pool_selection).items():
         requests[name] = requests.get(name, frozenset()) | uses
     registry = load_staged_clips(args.registry) if args.registry.exists() else {}
-    # Synthetic-edit clips are staged into a directory of their own by
-    # ``tadabur.synthetic_edits stage``; this run passes their rows through untouched.
-    edit_rows = {n: c for n, c in registry.items() if c.uses == (SYNTHETIC_EDIT,)}
+    # Synthetic-edit and Ship A mining clips are staged by their own tools
+    # (``tadabur.synthetic_edits stage``, ``tadabur.ship_a_mining scan``); this run passes
+    # their rows through untouched.
+    edit_rows = {n: c for n, c in registry.items() if set(c.uses) <= OWN_TOOL_USES}
     registry = {n: c for n, c in registry.items() if n not in edit_rows}
 
     def shard_rows(shard: int) -> Iterator[dict]:

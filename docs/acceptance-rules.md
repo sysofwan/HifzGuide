@@ -32,7 +32,7 @@ tested on the intersection of sites both arms committed.
 | Eligibility | Model-independent: decided by the truth record and the realized reference only, never by a model's decode. |
 | Truth population | Sites whose human verdict is not `unclear`. The estimand is *audible, adjudicable* sites. Exclusions are reported per stratum with best/worst-case sensitivity (all excluded counted as success / as failure). |
 | Sides | Heard = prescribed is **correct recitation**; heard ≠ prescribed is a **real mistake**. The sides are never pooled (ADR-0008). Cells are indexed by the **human-heard** mark or letter. |
-| Weighting | Stratum weight = population count / sampled count, from the frozen mining frame. Sites lost to re-location (#83) are reported as exclusions; weights are not inflated to cover them. |
+| Weighting | Stratum weight = population count / sampled count, from the frozen mining frame. Sites lost to re-location (#83) are reported as exclusions; weights are not inflated to cover them. *Amended 2026-10-10 by owner decision (#126) for Ship A: ~~from the frozen mining frame~~ for Ship A's verified sites and word sample the estimand is the frozen verified site set (the mined pool and extension sites, and the frozen word sample), so no weight expands to the mining frame; a site weighs the inverse of its listening probability (1 where its stratum is listened to whole), a sampled word the inverse of its selection probability within the sample's frame. Every other site keeps the stratum weight.* |
 | Source manifests | Every gate names a frozen source/partition manifest. The **headline population is the sampled subpopulation**: the strata #87 mines, with their inclusion probabilities. It extends to all correct recitation only if every outcome stratum is sampled with positive probability. |
 | Targeted safeguards | The re-located P3.5 fixtures are reported as separate targeted safeguards and are not pooled into headline rates. Synthetic edits never enter a real-mistake rate. |
 | Weak labels | The 1,622 `waqf_boundary:wasl` sites and the 35 long-vowel haraka sites in `waqf_boundary:waqf` assume a competent reciter: **diagnostic only**, in no gate. The 135 sukun-at-pause sites (`waqf_boundary:waqf`, 170 sites = 135 sukun + 35 long-vowel haraka) form their own row and are not the in-scope sukun population. |
@@ -44,7 +44,7 @@ tested on the intersection of sites both arms committed.
 |---|---|
 | Interval | Reciter-clustered paired bootstrap, B = 10,000, seed 20261008. Percentiles use linear interpolation (NumPy's default, type 7); the lower bound is the 2.5th percentile and the upper bound the 97.5th of the B replicate statistics. A "bound" is that one-sided 97.5% end of the two-sided 95% interval. |
 | Undefined replicates | A replicate whose statistic is undefined (e.g. a zero denominator) takes the **adverse endpoint**: −∞ for a lower-bound test, +∞ for an upper-bound test. Replicates are never dropped. |
-| Sparse cells | A cell with fewer than **10 reciters or 20 sites**, or whose replicates are all-identical or all-zero, is sparse. A Wilson score bound (single proportion) or a Tango score bound (paired difference on a common denominator) is used **only** where the cell's observations are independent and equally weighted (one site per reciter, unit weights, fixed denominator). Every other sparse or degenerate case returns `cannot_certify`. |
+| Sparse cells | A cell with fewer than **10 reciters or 20 sites**, or whose replicates are all-identical or all-zero, is sparse. A Wilson score bound (single proportion) or a Tango score bound (paired difference on a common denominator) is used **only** where the cell's observations are independent and equally weighted (one site per reciter, unit weights, fixed denominator). Every other sparse or degenerate case returns `cannot_certify`. *Clarified 2026-10-10 (#126) for Ship A's design weights: a cell whose weights all share one value is equally weighted whatever that value, and its interval is read on the unit scale (its point, sums and exclusion sensitivity keep the sites' own weights); the sizing and the #84 scorer apply this one rule (`acceptance_stats.unit_if_equal`). Unequal weights still return `cannot_certify` where the cell is sparse or degenerate.* |
 | Zero denominators | Never pass. |
 | Verdicts | Every rule returns **pass**, **fail** or **cannot_certify**. |
 | Aggregation | Any required condition fails → **fail**. Otherwise any required condition is `cannot_certify` → **cannot_certify**. Otherwise → **pass**. |
@@ -154,7 +154,12 @@ in its shards; recording-level disjointness is asserted against every other use.
 
 ## 7. Target pairs
 
-The six soft pairs plus **ذ↔ظ** (owner decision). Every pair is reported with **directional** strata
+~~The six soft pairs plus **ذ↔ظ** (owner decision).~~ *Superseded 2026-10-10 by owner decision D9
+(#126): the pair list below replaces it. Nothing else in this section changed.*
+
+The six soft pairs plus **ذ↔ظ** (owner decision, 2026-10-08), **س↔ش** and **ط↔ق** (owner decision D9,
+2026-10-10). Only the six soft pairs are Muraja soft pairs; the other three get no app allowance and
+are never pooled with them. Every pair is reported with **directional** strata
 (e.g. ذ→ظ and ظ→ذ separately) on both recitation sides. A pair without support on both sides is
 reported as "in scope, insufficient evidence" and gets no discrimination or retirement verdict.
 
@@ -209,3 +214,6 @@ ADR-0011 §5. Each is recorded in the scorer's module docs and pinned by a test:
 | 2026-10-08 | GPT-6 Astra round 2 returned CHANGES_REQUESTED. Revised without changing any owner number: per-site outcome definitions (C, A, F); an aggregation truth table and frozen required cells; statistic-specific sparse-cell rules and adverse endpoints; per-mark commit-rate guards restored; headline restricted to the sampled subpopulation; a human-truth final panel required before #97; bias comparator, admissibility and held-out guards; a pre-registered power simulation covering every gate, with a prescribed-sukun stratum; operational definitions frozen in #84. |
 | 2026-10-08 | GPT-6 Astra round 3: shaddah added to the correct-side commit-rate guard (provisional); the mistake-side committed-accuracy guard added to bias admissibility. Truth-site counts aligned with `tools/tadabur/truth_sites/README.md` on main. |
 | 2026-10-08 | Owner amendment to §6 (#89 review): the sealed panel is reciter-disjoint from every use this PRD makes and recording-held-out toward `h448`'s original training and initialisation, which baseline and candidates share; it certifies the paired §3 criterion. No number changed. |
+| 2026-10-10 | Owner decision D9 (#126): §7's target pairs gain **س↔ش** and **ط↔ق**, and the #84 scorer's frozen required cells (`truth_scorer.REQUIRED_CELLS`, built from `truth_sites.TARGET_PAIRS`) gain their per-direction cells. The pair list only: no threshold, margin or ceiling changed, and the original §7 text is kept, marked superseded. |
+| 2026-10-10 | Owner decision (#126): for Ship A's verified sites and word sample the estimand is the frozen verified site set; §1's weighting row is amended (the original text kept, struck through where superseded) so those sites weigh the inverse of their listening probability and the words the inverse of their selection probability, with no expansion to the mining frame. No threshold, margin or ceiling changed. |
+| 2026-10-10 | GPT-6 Astra round 4 (#126): §1's sparse-cells row clarified for Ship A's design weights: a cell of one common weight is equally weighted whatever the value, and the sizing (sites and words) and the #84 scorer read it with that one rule. Legacy stratum-weighted cells are unchanged. No threshold, margin or ceiling changed. |

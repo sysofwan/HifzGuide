@@ -55,8 +55,9 @@ Reciter split (§5, §9)
 ----------------------
 :func:`reciter_half` assigns a canonical reciter id to the bias probe's ``tune`` or
 ``score`` half: SHA-256 of the UTF-8 string ``"<salt>:<reciter id in decimal>"``, the first
-8 bytes of the digest read as a big-endian unsigned integer, ``tune`` below 2**63 and
-``score`` at or above it. The salt is :data:`BIAS_SPLIT_SALT`.
+8 bytes of the digest read as a big-endian unsigned integer (:func:`reciter_hash`), ``tune``
+below 2**63 and ``score`` at or above it. The salt is :data:`BIAS_SPLIT_SALT`. Any other
+split under §9 (Ship A's, :mod:`tadabur.ship_a`) compares the same value to its own cutoff.
 """
 
 from __future__ import annotations
@@ -176,9 +177,12 @@ class Resample:
         draws = np.random.default_rng(seed).integers(
             0, len(clusters), size=(replicates, len(clusters))
         )
-        counts = np.zeros((replicates, len(clusters)), dtype=np.int64)
-        np.add.at(counts, (np.arange(replicates)[:, None], draws), 1)
-        return cls(clusters, index, counts)
+        # Each replicate's tally per cluster: one bincount over the draws offset by replicate
+        # (the counts np.add.at gives, without its unbuffered per-element loop).
+        width = len(clusters)
+        offsets = (np.arange(replicates)[:, None] * width + draws).ravel()
+        counts = np.bincount(offsets, minlength=replicates * width).reshape(replicates, width)
+        return cls(clusters, index, counts.astype(np.int64, copy=False))
 
     def totals(self, values: np.ndarray) -> np.ndarray:
         """Each replicate's sum of a per-observation quantity."""
@@ -202,6 +206,18 @@ def is_sparse(num_sites: int, num_reciters: int) -> bool:
 def is_degenerate(replicates: np.ndarray) -> bool:
     """Replicates that are all identical (all zero included) carry no interval."""
     return bool(replicates.size) and bool(np.all(replicates == replicates[0]))
+
+
+def unit_if_equal(weights: Sequence[float]) -> np.ndarray:
+    """Ship A's reading of §1's "equally weighted" (clarified 2026-10-10, #126): a cell whose
+    weights all share one value is equally weighted whatever that value, so its weights go on
+    the unit scale, exactly 1. A rate and its bootstrap bounds do not depend on the scale; on
+    the unit scale the Wilson and Tango bounds may stand in where §1 lets them. Unequal
+    weights come back unchanged. Legacy cells (stratum ``N / n``) do not use it."""
+    weights = np.asarray(weights, dtype=float)
+    if weights.size and weights[0] > 0 and np.allclose(weights, weights[0], rtol=1e-12, atol=0):
+        return np.ones_like(weights)
+    return weights
 
 
 def independent_equal_weight(clusters: Sequence[int], *dens: np.ndarray, weights=None) -> bool:
@@ -334,7 +350,9 @@ class BoundVerdict:
         }
 
 
-def _verdict(interval: Interval, threshold: float, kind: str) -> BoundVerdict:
+def bound_verdict(interval: Interval, threshold: float, kind: str) -> BoundVerdict:
+    """The rule ``kind`` bound of ``interval`` against ``threshold``: ``cannot_certify``
+    when the interval has no admissible bound."""
     bound = interval.bound(kind)
     if interval.method == NO_BOUND:
         return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, interval.reason)
@@ -349,9 +367,10 @@ def ratio_verdict(
     threshold: float,
     kind: str,
     weights: np.ndarray | None = None,
+    resample: Resample | None = None,
 ) -> BoundVerdict:
     """A single weighted ratio's ``kind`` bound against ``threshold`` (:func:`ratio_interval`)."""
-    return _verdict(ratio_interval(clusters, num, den, weights), threshold, kind)
+    return bound_verdict(ratio_interval(clusters, num, den, weights, resample), threshold, kind)
 
 
 def difference_verdict(
@@ -361,9 +380,11 @@ def difference_verdict(
     threshold: float,
     kind: str,
     weights: np.ndarray | None = None,
+    resample: Resample | None = None,
 ) -> BoundVerdict:
     """A paired difference's ``kind`` bound against ``threshold`` (:func:`difference_interval`)."""
-    return _verdict(difference_interval(clusters, arm, comparator, weights), threshold, kind)
+    interval = difference_interval(clusters, arm, comparator, weights, resample)
+    return bound_verdict(interval, threshold, kind)
 
 
 def relative_change_verdict(
@@ -372,6 +393,7 @@ def relative_change_verdict(
     comparator: tuple[np.ndarray, np.ndarray],
     threshold: float,
     kind: str,
+    resample: Resample | None = None,
 ) -> BoundVerdict:
     """(arm − comparator) / comparator, e.g. the §3 false-flag headline.
 
@@ -381,14 +403,14 @@ def relative_change_verdict(
     (num_a, den_a), (num_b, den_b) = _arrays(arm, comparator)
     if not np.sum(den_a) or not np.sum(den_b) or not np.sum(num_b):
         return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, "zero denominator or zero comparator rate")
-    resample = Resample.by_cluster(clusters)
+    resample = resample or Resample.by_cluster(clusters)
     base = resample.ratios(num_b, den_b)
     with np.errstate(divide="ignore", invalid="ignore"):
         replicates = np.where(base > 0, (resample.ratios(num_a, den_a) - base) / base, np.nan)
     if is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates):
         return BoundVerdict(CANNOT_CERTIFY, None, NO_BOUND, "sparse or degenerate")
     interval = Interval(lower_bound(replicates), upper_bound(replicates), BOOTSTRAP)
-    return _verdict(interval, threshold, kind)
+    return bound_verdict(interval, threshold, kind)
 
 
 # --- teacher agreement (§2) ------------------------------------------------------------
@@ -440,9 +462,15 @@ def agreement_terms(records: Sequence[AgreementRecord]) -> tuple[list[int], np.n
 # --- reciter split (§5) ----------------------------------------------------------------
 
 
-def reciter_half(reciter_id: int, salt: str = BIAS_SPLIT_SALT) -> str:
-    """``tune`` or ``score`` for one canonical reciter id (module docstring for the rule)."""
+def reciter_hash(reciter_id: int, salt: str) -> int:
+    """The 64-bit value a reciter split compares to its cutoff: the first 8 bytes,
+    big-endian, of SHA-256 over the UTF-8 string ``"<salt>:<reciter id in decimal>"``."""
     if isinstance(reciter_id, bool) or not isinstance(reciter_id, int) or reciter_id < 0:
         raise ValueError(f"a canonical reciter id is a non-negative int, got {reciter_id!r}")
     digest = hashlib.sha256(f"{salt}:{reciter_id}".encode("utf-8")).digest()
-    return TUNE if int.from_bytes(digest[:8], "big") < 2**63 else SCORE
+    return int.from_bytes(digest[:8], "big")
+
+
+def reciter_half(reciter_id: int, salt: str = BIAS_SPLIT_SALT) -> str:
+    """``tune`` or ``score`` for one canonical reciter id (module docstring for the rule)."""
+    return TUNE if reciter_hash(reciter_id, salt) < 2**63 else SCORE

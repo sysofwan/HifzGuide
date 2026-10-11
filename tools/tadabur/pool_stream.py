@@ -88,11 +88,46 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def main() -> None:
+def stream_record(
+    clips: list[PoolClip], registry: Mapping, checkpoint: Path, audio_dir: Path,
+    device: str = "cuda", batch_size: int = 16,
+) -> dict:
+    """``h448``'s committed stream for every kept segment of ``clips`` (each clip decoded
+    whole from its verified staged file), with the decode fingerprint and checkpoint
+    checksum: the cache :func:`load_stream_decodes` reads."""
     from training.decoding import Decoder, stream_protocol
 
     from .audio import read_audio
-    from .staged_audio import load_staged_clips, verify_staged
+    from .staged_audio import verify_staged
+
+    clips = [c for c in clips if kept_spans(c)]
+    # The student's historical numerics: fp32 weights under the CUDA bf16 autocast.
+    decoder = Decoder.load(checkpoint, device, weights_dtype="fp32", batch_size=batch_size)
+    decodes: dict[str, str] = {}
+    for number, clip in enumerate(clips, 1):
+        verify_staged(registry[clip.audio_filename], audio_dir)
+        samples, rate = read_audio(audio_dir / clip.audio_filename, dtype="float32")
+        if rate != SAMPLE_RATE:
+            raise ValueError(f"{clip.audio_filename} is {rate} Hz, not {SAMPLE_RATE}")
+        decodes.update(segment_decodes(decoder.emissions(samples, DEPLOYED_BLOCK),
+                                       kept_spans(clip)))
+        if number % 250 == 0:
+            print(f"  {number}/{len(clips)} clips", flush=True)
+    return {
+        "decode_fingerprint": decoder.fingerprint(stream_protocol(DEPLOYED_BLOCK)).as_dict(),
+        "checkpoint_sha256": _sha256(checkpoint),
+        "segment_margin_s": SEGMENT_MARGIN_S,
+        "decodes": dict(sorted(decodes.items())),
+    }
+
+
+def write_stream_record(record: dict, path: Path) -> None:
+    path.write_text(json.dumps(record, ensure_ascii=False, indent=0, sort_keys=True) + "\n",
+                    encoding="utf-8")
+
+
+def main() -> None:
+    from .staged_audio import load_staged_clips
 
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -106,31 +141,10 @@ def main() -> None:
     args = parser.parse_args()
 
     registry = load_staged_clips()
-    clips = [c for c in load_manifest(registry=registry) if kept_spans(c)]
-    # The student's historical numerics: fp32 weights under the CUDA bf16 autocast.
-    decoder = Decoder.load(args.checkpoint, args.device, weights_dtype="fp32",
-                           batch_size=args.batch_size)
-    decodes: dict[str, str] = {}
-    for number, clip in enumerate(clips, 1):
-        verify_staged(registry[clip.audio_filename], args.audio_dir)
-        samples, rate = read_audio(args.audio_dir / clip.audio_filename, dtype="float32")
-        if rate != SAMPLE_RATE:
-            raise ValueError(f"{clip.audio_filename} is {rate} Hz, not {SAMPLE_RATE}")
-        decodes.update(segment_decodes(decoder.emissions(samples, DEPLOYED_BLOCK),
-                                       kept_spans(clip)))
-        if number % 250 == 0:
-            print(f"  {number}/{len(clips)} clips", flush=True)
-    record = {
-        "decode_fingerprint": decoder.fingerprint(stream_protocol(DEPLOYED_BLOCK)).as_dict(),
-        "checkpoint_sha256": _sha256(args.checkpoint),
-        "segment_margin_s": SEGMENT_MARGIN_S,
-        "decodes": dict(sorted(decodes.items())),
-    }
-    args.out.write_text(
-        json.dumps(record, ensure_ascii=False, indent=0, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    print(f"{len(decodes)} segments of {len(clips)} clips -> {args.out}")
+    record = stream_record(load_manifest(registry=registry), registry, args.checkpoint,
+                           args.audio_dir, args.device, args.batch_size)
+    write_stream_record(record, args.out)
+    print(f"{len(record['decodes'])} segments -> {args.out}")
 
 
 if __name__ == "__main__":

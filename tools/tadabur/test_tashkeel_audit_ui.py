@@ -36,6 +36,7 @@ from tadabur.tashkeel_audit_ui import (
     page_key,
 )
 from tadabur.truth_sites import PENDING, TruthSite, audio_sha256, write_truth_sites
+from tadabur.word_sample import SampledWord, WordSite, word_id, write_words
 
 FATHA, DAMMA, KASRA = "\u064e", "\u064f", "\u0650"
 NUM_SAMPLES = 48000
@@ -582,3 +583,55 @@ def test_a_carrier_is_mapped_across_realizations_and_a_word_it_cannot_be_placed_
     shown = list(f"ب{KASRA} ء{FATHA}لق{DAMMA}مر")
     _hide_word(f"ء{FATHA}لق{DAMMA}مر", shown, 3)
     assert "".join(shown) == f"ب{KASRA} {HIDDEN_LETTER * 5}"
+
+
+# --- Ship A's word sample (#126) ----------------------------------------------------------
+
+#: A segment of ayah 3:5 (the "dhal" site's ayah): the dhal site's word, then a second word.
+WORD_REFERENCE = SITES["dhal"][0] + f" ق{FATHA}ل"
+
+
+def _word(clip: StagedClip, word_index: int, surah_ayah: str = "3:5") -> WordSite:
+    offsets = (0, len(SITES["dhal"][0]) + 1, len(WORD_REFERENCE))
+    site = SampledWord(
+        site_id=word_id(clip.audio_filename, 0, word_index), audio_filename=clip.audio_filename,
+        shard=40, audio_sha256=clip.audio_sha256, reciter_id=7, surah_ayah=surah_ayah,
+        segment_index=0, start_sample=8000, end_sample=40000, reference=WORD_REFERENCE,
+        word_index=word_index, reference_index=offsets[word_index], stratum="word_sample:reciter:7",
+        stratum_population=2)
+    return WordSite(site, 0.5, 0.25, 0.125, 0, offsets, 16000, 32000)
+
+
+def _word_state(tmp_path, word_index: int) -> SessionState:
+    registry = _stage(tmp_path)
+    clip = registry.setdefault("w.wav", _clip(tmp_path / "clips", "w.wav"))
+    write_words([_word(clip, word_index)], tmp_path / "words.jsonl")
+    return SessionState.load(tmp_path / "worklist.jsonl", tmp_path / "verdicts.jsonl",
+                             tmp_path / "clips", registry, words=tmp_path / "words.jsonl")
+
+
+def test_a_sampled_word_is_shown_whole_and_asked_yes_no_or_unclear(tmp_path):
+    state = _word_state(tmp_path, 1)
+    view = _view(state, "w")
+    assert (view["mode"], view["choices"]) == ("word", ["correct", "mistake", "unclear"])
+    assert view["carrier"] == f"ق{FATHA}ل"
+    assert "ذ" not in _text(view) and HIDDEN_LETTER in view["before"]  # the dhal site's answer
+
+
+def test_a_sampled_word_comes_after_every_site_whose_answer_it_shows(tmp_path):
+    state = _word_state(tmp_path, 0)
+    assert _view(state, "w")["carrier"] == SITES["dhal"][0] + " "
+    assert [type(row).__name__ for row in state.rows][-1] == "WordSite"
+    with pytest.raises(ValueError, match="before a site"):
+        SessionState(rows=[state.rows[-1], *state.rows[:-1]],
+                     verdicts_path=tmp_path / "v.jsonl", audio_dir=tmp_path / "clips")
+
+
+def test_a_word_answer_is_stored_like_any_other_and_a_letter_is_refused(tmp_path):
+    state = _word_state(tmp_path, 1)
+    key = _view(state, "w")["key"]
+    with pytest.raises(ValueError):
+        state.record(key, "ذ", "", None)
+    state.record(key, "mistake", "dropped the lam", None)
+    (verdict,) = read_verdicts(tmp_path / "verdicts.jsonl").values()
+    assert (verdict.site_id, verdict.heard) == ("word_sample:w.wav#0@1", "mistake")

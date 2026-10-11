@@ -10,13 +10,12 @@ from dataclasses import asdict, replace
 
 import pytest
 
-from tadabur.truth_sites import TruthSite, parse_site
+from tadabur.truth_sites import TARGET_PAIRS, TruthSite, parse_site
 from training.site_outcomes import (
     CORRECT_SIDE,
     DHAL_ZAH,
     MISTAKE_SIDE,
     MULTIPLE,
-    TARGET_PAIRS,
     SiteOutcome,
     item_outcomes,
     side,
@@ -80,7 +79,8 @@ def test_sides_and_no_verdict():
 
 
 def test_target_pairs_are_the_six_soft_pairs_and_dhal_zah():
-    assert len(TARGET_PAIRS) == 7 and DHAL_ZAH in TARGET_PAIRS
+    assert len(TARGET_PAIRS) == 9 and DHAL_ZAH in TARGET_PAIRS
+    assert {"س↔ش", "ط↔ق"} <= TARGET_PAIRS  # acceptance rules §7 as amended 2026-10-10
 
 
 # --- harakat: commit, empty, wrong, both sides -----------------------------------------

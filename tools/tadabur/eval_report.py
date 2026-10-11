@@ -119,7 +119,7 @@ SHOULD_REJECT = "should_reject"
 FIXTURE_SIDES = (SHOULD_ACCEPT, SHOULD_REJECT)
 
 SIDES = (CORRECT_SIDE, MISTAKE_SIDE)
-#: Every family with a row on both sides: the seven target pairs (§7), then shaddah.
+#: Every family with a row on both sides: the target pairs (§7), then shaddah.
 FAMILIES = (*sorted(TARGET_PAIRS), SHADDAH)
 
 AS_HEARD = "as_heard"

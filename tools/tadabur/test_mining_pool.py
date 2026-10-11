@@ -156,7 +156,7 @@ def test_the_manifest_carries_sample_spans_clamped_to_the_staged_clip(tmp_path):
 
 
 def test_a_clip_not_staged_for_the_pool_is_refused():
-    with pytest.raises(ValueError, match="not staged for the mining pool"):
+    with pytest.raises(ValueError, match="not staged for mining_pool"):
         build_manifest([_status()], [_segmentation()], {CLIP: Selected((UNIFORM,), 0.5)},
                        _staged(uses=("p35_fixture",)))
 

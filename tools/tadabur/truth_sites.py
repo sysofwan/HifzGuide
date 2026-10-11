@@ -60,9 +60,13 @@ SUKUN = "sukun"
 SHADDAH = "shaddah"
 TASHKEEL_MARKS = frozenset(HARAKA_CHARS) | {SUKUN}
 SOFT_PAIRS = soft_pair_contrasts()
-#: The consonant pairs a site may test: the six soft pairs plus ``ذ↔ظ``, which is in scope by
-#: owner decision but is no Muraja soft pair (acceptance rules §7).
-TARGET_PAIRS = SOFT_PAIRS | {"ذ↔ظ"}
+#: The consonant pairs a site may test (CONTEXT.md, *Target pair*; acceptance rules §7 as
+#: amended 2026-10-10): the six soft pairs, ``ذ↔ظ`` (owner decision, 2026-10-08) and ``س↔ش``,
+#: ``ط↔ق`` (owner decision D9, 2026-10-10).
+TARGET_PAIRS = SOFT_PAIRS | {"ذ↔ظ", "س↔ش", "ط↔ق"}
+#: The target pairs that are no Muraja soft pair: no app allowance forgives them, so they are
+#: never pooled with the soft pairs.
+UNFORGIVEN_PAIRS = TARGET_PAIRS - SOFT_PAIRS
 MARKS = TASHKEEL_MARKS | {SHADDAH} | TARGET_PAIRS
 
 HELD = "held"

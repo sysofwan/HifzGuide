@@ -79,9 +79,7 @@ from tadabur.truth_sites import (
     NO_VERDICT,
     NOT_HELD,
     SHADDAH,
-    SOFT_PAIRS,
     SUKUN,
-    TARGET_PAIRS,
     TASHKEEL_MARKS,
     TruthSite,
 )
@@ -89,8 +87,8 @@ from training.tashkeel_eval import SUKUN_MARK, carrier_readings
 
 #: The three families of truth sites; a pair site's family is its pair label.
 TASHKEEL = "tashkeel"
-#: The one target pair that is not a Muraja soft pair (acceptance rules §7).
-(DHAL_ZAH,) = TARGET_PAIRS - SOFT_PAIRS
+#: ``ذ↔ظ``: a target pair (acceptance rules §7) that is no Muraja soft pair.
+DHAL_ZAH = "ذ↔ظ"
 
 CORRECT_SIDE = "correct"
 MISTAKE_SIDE = "mistake"

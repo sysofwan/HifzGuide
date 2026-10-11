@@ -57,6 +57,8 @@ which the baseline and every candidate warm-started from it share.
 | `sealed_panel` | 197 | 79 | [`../sealed_panel/staged_clips.jsonl`](../sealed_panel/README.md) (#89) |
 | `synthetic_edit.source` | 150 | 44 | [`../synthetic_edits/edits.jsonl`](../synthetic_edits/README.md) (#88, deduplicated by #117): source clips, whole |
 | `synthetic_edit.donor` | 77 | 22 | the same: donor spans |
+| `ship_a.mining` | 21,651 | 422 | every recording Ship A's mining extension decoded (#126), from its `scan.jsonl`; the hits among them are staged with use `ship_a_mining` |
+| `ship_a.verified_train` / `ship_a.verified_held_out` | see the files | | the recordings of Ship A's sites and sampled words per half of its reciter split (#126, D11), written by `tadabur.ship_a_worklist build` |
 
 Empty until their issues write them: `truth_site.new_audit` (#87),
 `truth_site.synthetic_edit`, `probe.training`, `probe.kl_control`, `bias.tune`,

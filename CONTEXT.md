@@ -160,7 +160,12 @@ the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you
   Muraja's `.balanced` exempts from the phoneme gate, so a swap costs only score and the word
   passes while it still scores ≥ 0.65; `.strict` caps the word at minor at best. `ذ↔ظ` is **not**
   a soft pair (gated in `.balanced`) but is a target pair all the same. The
-  discrimination the model must sharpen rather than collapse (ADR-0001).
+  discrimination the model must sharpen rather than collapse (ADR-0001). Every soft pair is a
+  **target pair**; not every target pair is a soft pair.
+
+**Target pair**
+: A consonant pair the model must tell apart: the six soft pairs plus `ذ↔ظ`, `س↔ش` and
+  `ط↔ق`. Only the six are Muraja soft pairs; the app forgives none of the other three.
 
 **Allowance**
 : A Muraja grading rule that forgives a model error rather than a reciter's: soft-pair

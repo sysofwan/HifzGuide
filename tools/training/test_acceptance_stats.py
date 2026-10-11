@@ -40,6 +40,7 @@ from training.acceptance_stats import (
     ratio_interval,
     ratio_verdict,
     reciter_half,
+    reciter_hash,
     relative_change_verdict,
     upper_bound,
 )
@@ -216,6 +217,31 @@ def test_relative_change_needs_a_nonzero_comparator():
     assert result.verdict == PASS and result.bound < -0.25
 
 
+def test_the_cluster_draw_counts_every_draw_once():
+    """by_cluster's counts are each replicate's tally of its seeded draws."""
+    clusters = [5, 1, 9, 1, 7]
+    resample = Resample.by_cluster(clusters, replicates=50, seed=3)
+    draws = np.random.default_rng(3).integers(0, 4, size=(50, 4))
+    expected = np.zeros((50, 4), dtype=np.int64)
+    np.add.at(expected, (np.arange(50)[:, None], draws), 1)
+    assert np.array_equal(resample.counts, expected)
+
+
+def test_a_shared_resample_changes_no_verdict():
+    """Passing the draw ``by_cluster`` would make (so several rules share it) is the same rule."""
+    rng = np.random.default_rng(3)
+    clusters = [i // 4 for i in range(200)]
+    w = rng.integers(1, 4, 200).astype(float)
+    arm, comparator = (rng.random(200) < 0.2) * w, (rng.random(200) < 0.4) * w
+    shared = Resample.by_cluster(clusters)
+    assert relative_change_verdict(clusters, (arm, w), (comparator, w), -0.25, UPPER, shared) == \
+        relative_change_verdict(clusters, (arm, w), (comparator, w), -0.25, UPPER)
+    assert difference_verdict(clusters, (arm, w), (comparator, w), -0.1, LOWER, w, shared) == \
+        difference_verdict(clusters, (arm, w), (comparator, w), -0.1, LOWER, w)
+    assert ratio_verdict(clusters, arm, w, 0.1, LOWER, w, shared) == \
+        ratio_verdict(clusters, arm, w, 0.1, LOWER, w)
+
+
 # --- teacher agreement -------------------------------------------------------------------
 
 
@@ -252,6 +278,15 @@ def test_reciter_split_algorithm_is_pinned():
 def test_reciter_split_refuses_a_non_canonical_id(bad):
     with pytest.raises(ValueError):
         reciter_half(bad)
+    with pytest.raises(ValueError):
+        reciter_hash(bad, "any-salt")
+
+
+def test_the_reciter_hash_is_the_value_every_split_cuts():
+    digest = hashlib.sha256(b"some-salt:42").digest()
+    assert reciter_hash(42, "some-salt") == int.from_bytes(digest[:8], "big")
+    assert all((reciter_half(i) == TUNE) == (reciter_hash(i, BIAS_SPLIT_SALT) < 2**63)
+               for i in range(200))
 
 
 def test_ratio_interval_picks_the_method_by_the_section_1_rules():

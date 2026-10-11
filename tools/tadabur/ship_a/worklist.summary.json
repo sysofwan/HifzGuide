@@ -1,0 +1,139 @@
+{
+ "carried_rows_already_ship_a_sites": 14,
+ "frozen": {
+  "ship_a/word_sample.jsonl": "073deb66db996b9c638292468378f9923f33893b00d9e7c04fafb9414ed15e03",
+  "ship_a/worklist.jsonl": "097181fd5d56316c057c5f615812e262ab73bcf4a788d6f5e75ef67cd3576bb0"
+ },
+ "inputs": {
+  "listening_session/worklist.jsonl": "6e21d8f0605a7653acee0255cfa2734cfcc91c9199c8b25d177bc687530c1b37",
+  "ship_a/sites.jsonl": "8eaf6d0dbeb9fcf328bcc8d24c9b08b49580045d0f677f30dd5bb6813eb730dc",
+  "synthetic_edits/blind_check.jsonl": "8cc12078b267ed51ed6f97d9d44c18719dcb8fbf4d16d3f30dd808ba97875fb3"
+ },
+ "listening_minutes": 175.2,
+ "listening_minutes_without_edit_check": 154.4,
+ "p35_rows_on_linked_clips": 3,
+ "parts": {
+  "edit_check": {
+   "by_part": {
+    "edit_check": 30
+   },
+   "minutes": 20.9,
+   "reciters": 0,
+   "rows": 30,
+   "rows_by_half": {
+    "held_out": 0,
+    "train": 0
+   }
+  },
+  "geminate": {
+   "by_part": {
+    "geminate": 93
+   },
+   "minutes": 17.9,
+   "reciters": 64,
+   "rows": 93,
+   "rows_by_half": {
+    "held_out": 52,
+    "train": 41
+   }
+  },
+  "p35_relisten": {
+   "by_part": {
+    "p35_relisten": 23
+   },
+   "minutes": 4.3,
+   "reciters": 18,
+   "rows": 23,
+   "rows_by_half": {
+    "held_out": 9,
+    "train": 14
+   }
+  },
+  "pair_partner": {
+   "by_part": {
+    "pair_partner": 422
+   },
+   "minutes": 91.9,
+   "reciters": 175,
+   "rows": 422,
+   "rows_by_half": {
+    "held_out": 323,
+    "train": 99
+   }
+  },
+  "reject_pile": {
+   "by_part": {
+    "reject_pile": 15
+   },
+   "minutes": 2.8,
+   "reciters": 12,
+   "rows": 15,
+   "rows_by_half": {
+    "held_out": 8,
+    "train": 7
+   }
+  },
+  "word_sample": {
+   "by_part": {
+    "word_sample": 160
+   },
+   "minutes": 37.5,
+   "reciters": 160,
+   "rows": 160,
+   "rows_by_half": {
+    "held_out": 160,
+    "train": 0
+   }
+  }
+ },
+ "rows": 743,
+ "sampled_words_also_asked_as_sites": 5,
+ "sittings": [
+  {
+   "by_part": {
+    "edit_check": 18,
+    "geminate": 36,
+    "p35_relisten": 4,
+    "pair_partner": 159,
+    "reject_pile": 7
+   },
+   "minutes": 59.3,
+   "queue_positions": [
+    1,
+    224
+   ],
+   "rows": 224
+  },
+  {
+   "by_part": {
+    "edit_check": 10,
+    "geminate": 38,
+    "p35_relisten": 14,
+    "pair_partner": 194,
+    "reject_pile": 6
+   },
+   "minutes": 57.5,
+   "queue_positions": [
+    225,
+    486
+   ],
+   "rows": 262
+  },
+  {
+   "by_part": {
+    "edit_check": 2,
+    "geminate": 19,
+    "p35_relisten": 5,
+    "pair_partner": 69,
+    "reject_pile": 2,
+    "word_sample": 160
+   },
+   "minutes": 58.4,
+   "queue_positions": [
+    487,
+    743
+   ],
+   "rows": 257
+  }
+ ]
+}

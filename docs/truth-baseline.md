@@ -619,16 +619,16 @@ side of that guard, sukun said where a haraka was prescribed, is its own require
 |---|---|---|---|---|---|
 | §2 probe | sukun commit rate | correct | 1 | 0 | 0 |
 | §2 probe | sukun committed accuracy | correct | 1 | 0 | 0 |
-| §2 probe | commit rate | correct | 19 | 0 | 0 |
-| §2 probe | committed accuracy | correct | 19 | 0 | 0 |
-| §2 probe | committed accuracy | mistake | 20 | 0 | 0 |
-| §2 probe | missed mistakes | mistake | 21 | 0 | 0 |
+| §2 probe | commit rate | correct | 23 | 0 | 0 |
+| §2 probe | committed accuracy | correct | 23 | 0 | 0 |
+| §2 probe | committed accuracy | mistake | 24 | 0 | 0 |
+| §2 probe | missed mistakes | mistake | 25 | 0 | 0 |
 | §2 probe | silent corrections | mistake | 1 | 0 | 0 |
 | §3 ship | false flags (relative change) | correct | 1 | 0 | 0 |
 | §3 ship | coverage | correct | 1 | 0 | 0 |
-| §3 ship | missed mistakes | mistake | 21 | 0 | 0 |
+| §3 ship | missed mistakes | mistake | 25 | 0 | 0 |
 | §5 bias | committed accuracy | correct | 3 | 0 | 0 |
-| §5 bias | committed accuracy | mistake | 20 | 0 | 0 |
+| §5 bias | committed accuracy | mistake | 24 | 0 | 0 |
 | §5 bias | missed mistakes | mistake | 1 | 0 | 0 |
 | §5 bias | silent corrections | mistake | 1 | 0 | 0 |
 | §5 bias | spurious haraka | correct | 2 | 1 | 1 |

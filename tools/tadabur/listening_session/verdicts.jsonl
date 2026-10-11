@@ -1,17 +1,26 @@
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0000_S10_A30_98c8eb3c_000001.wav#0@48:ط↔ق"}
+{"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0000_S32_A25_6f28b89a_000009.wav#0@40:ض↔ظ"}
 {"heard": "unclear", "note": "", "site_id": "new_audit:tadabur_spk0000_S58_A19_4b564563_000000.wav#0@23:ذ↔ز"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0000_S74_A8_069327bf_000266.wav#0@4:س↔ش"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0001_S1_A81_81b323eb_000051.wav#0@14:س↔ش"}
+{"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0001_S36_A2_8d1e5246_000001.wav#0@2:ذ↔ز"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0003_S99_A5_5922f356_000403.wav#0@6:ط↔ق"}
 {"heard": "not_held", "note": "", "site_id": "new_audit:tadabur_spk0004_S5_A64_27999856_000043.wav#0@17:shaddah"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0005_S1_A129_dc70eb9b_000065.wav#0@2:shaddah"}
+{"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0011_S76_A41_66210803_000000.wav#0@26:ض↔ظ"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0016_S2_A161_50214d05_000002.wav#2@39:س↔ش"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0016_S5_A61_0b77cd8c_000000.wav#1@23:ض↔ظ"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0017_S113_A5_151522cf_000122.wav#0@14:س↔ش"}
+{"heard": "held", "note": "Trimming issues", "site_id": "new_audit:tadabur_spk0017_S3_A37_a74cb622_000020.wav#0@2:shaddah"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0018_S41_A34_f1af7d0f_000007.wav#0@29:س↔ش"}
+{"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0019_S67_A48_d900d7ce_000168.wav#1@56:ض↔ظ"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0020_S21_A72_bb59cfd7_000061.wav#1@16:ط↔ق"}
 {"heard": "ذ", "note": "", "site_id": "new_audit:tadabur_spk0020_S9_A11_868827ab_000006.wav#1@12:ذ↔ز"}
+{"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0026_S2_A194_22a2785a_000017.wav#0@2:shaddah"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0026_S88_A27_da287332_000003.wav#0@22:س↔ص"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0027_S29_A42_4dafe236_000006.wav#0@4:س↔ص"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0029_S32_A27_ecb709c1_000020.wav#0@65:ط↔ق"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0031_S27_A19_1f74d18c_000015.wav#0@35:ط↔ق"}
 {"heard": "unclear", "note": "", "site_id": "new_audit:tadabur_spk0031_S5_A20_053f6557_000013.wav#0@102:س↔ش"}
 {"heard": "ط", "note": "Not hafs", "site_id": "new_audit:tadabur_spk0032_S18_A25_3faaacce_000000.wav#0@47:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0033_S11_A9_d683e6ec_000002.wav#0@25:ط↔ق"}
@@ -20,61 +29,105 @@
 {"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0038_S2_A155_278f962b_000124.wav#0@72:ذ↔ز"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0038_S59_A8_b2887d03_000044.wav#0@132:س↔ص"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0039_S12_A15_1c67e577_000045.wav#0@69:ض↔ظ"}
+{"heard": "unclear", "note": "", "site_id": "new_audit:tadabur_spk0039_S20_A44_29c0590f_000040.wav#1@80:س↔ص"}
 {"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0039_S38_A67_20a3da95_000028.wav#0@7:ق↔ك"}
+{"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0039_S38_A69_20a3da95_000030.wav#0@7:ق↔ك"}
+{"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0039_S40_A46_20a3da95_000144.wav#2@17:ض↔ظ"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0039_S74_A8_2c45abee_000255.wav#0@4:س↔ش"}
 {"heard": "ك", "note": "", "site_id": "new_audit:tadabur_spk0039_S88_A8_756752c5_000244.wav#0@19:ق↔ك"}
 {"heard": "ش", "note": "", "site_id": "new_audit:tadabur_spk0043_S18_A32_b4895f7a_000003.wav#0@55:س↔ش"}
 {"heard": "not_held", "note": "waqf", "site_id": "new_audit:tadabur_spk0044_S14_A44_30fb3422_000021.wav#0@26:shaddah"}
+{"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0045_S11_A110_3e5673b3_000039.wav#0@2:shaddah"}
+{"heard": "not_held", "note": "May not be hafs", "site_id": "new_audit:tadabur_spk0045_S42_A35_d5d748ae_000006.wav#1@35:shaddah"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0045_S6_A95_f0ffa549_000048.wav#1@52:س↔ص"}
+{"heard": "not_held", "note": "waqf", "site_id": "new_audit:tadabur_spk0048_S11_A46_180ddb9f_000014.wav#2@52:shaddah"}
+{"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0048_S20_A41_ddc2113e_000015.wav#0@13:ذ↔ز"}
+{"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0048_S32_A14_4093ed4f_000011.wav#0@32:ط↔ق"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0048_S32_A35_4093ed4f_000028.wav#0@2:shaddah"}
+{"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0048_S5_A108_66a859ef_000066.wav#0@11:shaddah"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0051_S1_A225_34f705c5_000013.wav#0@91:س↔ش"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0054_S1_A264_420a70f5_000242.wav#1@142:س↔ش"}
 {"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0054_S28_A17_bbf882f6_000012.wav#1@111:ذ↔ز"}
 {"heard": "ش", "note": "", "site_id": "new_audit:tadabur_spk0054_S28_A17_bbf882f6_000012.wav#1@129:س↔ش"}
+{"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0054_S28_A17_bbf882f6_000012.wav#1@75:ذ↔ز"}
 {"heard": "ك", "note": "", "site_id": "new_audit:tadabur_spk0054_S54_A11_c53a548a_000182.wav#0@13:ق↔ك"}
+{"heard": "ش", "note": "", "site_id": "new_audit:tadabur_spk0054_S57_A11_9b725708_000009.wav#1@31:س↔ش"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0054_S5_A59_760a84ab_000036.wav#2@98:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0054_S7_A10_70ce4381_000006.wav#0@46:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0055_S36_A30_0a9b21c8_000017.wav#0@69:ط↔ق"}
+{"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0057_S20_A13_b14709ef_000010.wav#0@8:ق↔ك"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0065_S17_A91_b260172e_000013.wav#1@11:ط↔ق"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0069_S17_A29_10c82ccc_000017.wav#1@54:ط↔ق"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0071_S1_A141_e41f7ef3_000121.wav#1@14:س↔ش"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0071_S32_A25_4763ec89_000018.wav#0@40:ض↔ظ"}
+{"heard": "ك", "note": "", "site_id": "new_audit:tadabur_spk0071_S6_A33_90c2fdd7_000023.wav#1@12:ق↔ك"}
 {"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0073_S12_A35_0e83f19f_000085.wav#2@2:ق↔ك"}
+{"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0073_S23_A3_8c6c9464_000101.wav#0@2:shaddah"}
 {"heard": "unclear", "note": "", "site_id": "new_audit:tadabur_spk0075_S38_A4_91ecf294_000002.wav#0@67:ق↔ك"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0088_S17_A18_85817627_000013.wav#0@109:ط↔ق"}
 {"heard": "ض", "note": "", "site_id": "new_audit:tadabur_spk0088_S6_A145_2180fb52_000003.wav#0@58:ض↔ظ"}
+{"heard": "ص", "note": "", "site_id": "new_audit:tadabur_spk0090_S82_A3_7bbbc79e_000002.wav#0@38:س↔ص"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0093_S1_A275_5b1a3bf8_000000.wav#0@91:ط↔ق"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0093_S74_A8_04f0e1ab_000285.wav#0@4:س↔ش"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0095_S12_A12_570e6434_000012.wav#0@40:ط↔ق"}
+{"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0095_S1_A104_d99a61dd_000000.wav#0@42:ق↔ك"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0100_S10_A112_0cb61e25_000085.wav#0@56:ط↔ق"}
+{"heard": "not_held", "note": "May not be hafs", "site_id": "new_audit:tadabur_spk0101_S5_A33_fd93811d_000022.wav#1@22:shaddah"}
+{"heard": "not_held", "note": "waqf", "site_id": "new_audit:tadabur_spk0103_S1_A103_3ab1721d_000058.wav#0@77:shaddah"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0103_S1_A149_3ab1721d_000083.wav#0@40:ط↔ق"}
 {"heard": "unclear", "note": "", "site_id": "new_audit:tadabur_spk0105_S5_A122_4084f217_000058.wav#1@52:س↔ش"}
 {"heard": "ش", "note": "wrong recitation", "site_id": "new_audit:tadabur_spk0105_S75_A26_7a795771_000108.wav#0@31:س↔ش"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0105_S88_A13_e03a1a90_000010.wav#0@25:س↔ش"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0106_S55_A65_9d3ec976_000215.wav#0@42:ض↔ظ"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0107_S35_A18_7cc7082f_000010.wav#0@23:ط↔ق"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0108_S14_A14_e92987d2_000013.wav#0@54:ض↔ظ"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0108_S18_A49_755076b5_000074.wav#0@82:س↔ص"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0108_S26_A47_c7571f5a_000243.wav#1@7:ط↔ق"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0114_S17_A18_0356123b_000011.wav#1@16:س↔ص"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0115_S51_A24_9df05a08_000000.wav#0@4:ط↔ق"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0118_S37_A33_09b6ab87_000002.wav#0@22:ط↔ق"}
 {"heard": "unclear", "note": "", "site_id": "new_audit:tadabur_spk0118_S49_A18_4af70a7e_000003.wav#0@10:ض↔ظ"}
 {"heard": "ش", "note": "", "site_id": "new_audit:tadabur_spk0119_S75_A6_92ef43c2_000000.wav#0@9:س↔ش"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0120_S20_A44_88e88ae1_000038.wav#0@58:ط↔ق"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0126_S12_A35_18e01ff5_000030.wav#0@104:ض↔ظ"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0127_S15_A58_317a8291_000048.wav#0@60:س↔ص"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0128_S33_A16_280bf8a8_000000.wav#0@115:ط↔ق"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0131_S11_A65_4686d742_000031.wav#1@111:ض↔ظ"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0131_S34_A10_53137f97_000004.wav#0@24:shaddah"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0131_S3_A29_c4b9f0d6_000015.wav#0@83:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0133_S16_A37_3f2fed40_000030.wav#1@87:ط↔ق"}
+{"heard": "ك", "note": "", "site_id": "new_audit:tadabur_spk0146_S27_A23_84171272_000021.wav#0@82:ق↔ك"}
 {"heard": "not_held", "note": "", "site_id": "new_audit:tadabur_spk0146_S5_A64_874e5c6c_000055.wav#0@17:shaddah"}
 {"heard": "not_held", "note": "This is between  a pause", "site_id": "new_audit:tadabur_spk0148_S15_A103_65513671_000094.wav#0@73:shaddah"}
 {"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0148_S1_A223_2eaf42c8_000152.wav#1@46:ق↔ك"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0148_S23_A21_0daf1dfe_000017.wav#1@17:ت↔ط"}
 {"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0148_S8_A58_e10ce1a5_000035.wav#0@19:ذ↔ز"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0148_S8_A58_e10ce1a5_000035.wav#0@80:ط↔ق"}
+{"heard": "ك", "note": "", "site_id": "new_audit:tadabur_spk0148_S9_A80_3ac72d0a_000048.wav#0@84:ق↔ك"}
+{"heard": "ذ", "note": "", "site_id": "new_audit:tadabur_spk0157_S25_A208_17efbf41_000176.wav#0@54:ذ↔ظ"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0157_S64_A5_47c2eefb_000104.wav#0@106:ض↔ظ"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0158_S41_A11_7a8fb12f_000008.wav#0@4:ط↔ق"}
+{"heard": "unclear", "note": "", "site_id": "new_audit:tadabur_spk0158_S7_A11_cd8b558f_000010.wav#2@9:ت↔ط"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0180_S32_A7_25b3a72c_000005.wav#1@38:ض↔ظ"}
+{"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0184_S35_A56_cd8da0d1_000034.wav#0@24:ض↔ظ"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0192_S1_A57_e3e76d62_000066.wav#0@2:ض↔ظ"}
 {"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0197_S9_A80_20fb549d_000052.wav#0@84:ق↔ك"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0198_S1_A174_38d21845_000000.wav#0@147:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0202_S1_A130_e7af41a5_000099.wav#1@10:ط↔ق"}
+{"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@14:shaddah"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0225_S1_A20_377056e3_000015.wav#0@19:ط↔ق"}
+{"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0229_S1_A57_768d5454_000000.wav#0@2:ض↔ظ"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0235_S38_A67_7c458fc4_000009.wav#0@108:ط↔ق"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0251_S4_A22_8ea48a2f_000002.wav#0@51:shaddah"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0268_S1_A188_18892be0_000157.wav#0@50:ط↔ق"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0282_S11_A9_8836eb78_000000.wav#0@25:ط↔ق"}
+{"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0285_S18_A4_6ecf4414_000002.wav#0@33:ض↔ظ"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0291_S1_A59_5deeb6df_000036.wav#0@4:shaddah"}
+{"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0294_S1_A158_de25f55f_000129.wav#0@8:shaddah"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0306_S8_A69_35dc4be2_000020.wav#3@17:ط↔ق"}
+{"heard": "unclear", "note": "trim issues", "site_id": "new_audit:tadabur_spk0307_S1_A121_81a47bca_000082.wav#0@2:shaddah"}
+{"heard": "held", "note": "May have trimming issues", "site_id": "new_audit:tadabur_spk0307_S1_A194_81a47bca_000131.wav#0@2:shaddah"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0336_S49_A44_f381cd7b_000000.wav#0@30:س↔ص"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0336_S49_A6_f381cd7b_000000.wav#0@13:ض↔ظ"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0345_S24_A72_f1b3d0ea_000000.wav#0@29:shaddah"}
 {"heard": "ص", "note": "", "site_id": "new_audit:tadabur_spk0356_S11_A18_79cab6da_000000.wav#1@58:س↔ص"}
@@ -88,36 +141,58 @@
 {"heard": "ص", "note": "", "site_id": "new_audit:tadabur_spk0423_S1_A179_7ccd7d46_000134.wav#0@18:س↔ص"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0450_S12_A14_f99b92e3_000012.wav#2@16:ط↔ق"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0452_S17_A96_4cfe0a7d_000000.wav#2@2:shaddah"}
+{"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0452_S39_A18_64ac83e9_000000.wav#0@25:ذ↔ز"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0469_S29_A30_6161e9ec_000000.wav#1@2:ط↔ق"}
 {"heard": "ك", "note": "", "site_id": "new_audit:tadabur_spk0471_S8_A54_7fbde93d_000000.wav#1@41:ق↔ك"}
+{"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0481_S1_A76_2e5e5f38_000076.wav#0@11:ق↔ك"}
 {"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0481_S24_A60_27045095_000009.wav#0@23:س↔ص"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0481_S35_A76_8d09f655_000081.wav#1@25:س↔ش"}
+{"heard": "س", "note": "", "site_id": "new_audit:tadabur_spk0486_S19_A113_b6662591_000019.wav#0@52:س↔ص"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0489_S16_A27_426d9406_000000.wav#0@51:ط↔ق"}
 {"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0489_S5_A77_a065b4e3_000000.wav#0@29:ذ↔ز"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0495_S1_A275_a5cd5045_000250.wav#0@2:shaddah"}
 {"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0503_S15_A71_48bef7bd_000004.wav#0@48:ذ↔ز"}
 {"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0508_S5_A52_fecadf73_000011.wav#1@91:ط↔ق"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0518_S1_A69_86040779_000065.wav#2@34:ض↔ظ"}
+{"heard": "ق", "note": "", "site_id": "new_audit:tadabur_spk0518_S2_A77_a37d19c7_000069.wav#1@24:ط↔ق"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0556_S5_A125_e54e662a_000015.wav#1@85:shaddah"}
+{"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0567_S3_A138_a9706b7f_000000.wav#0@2:shaddah"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0573_S16_A37_95e301db_000030.wav#1@56:ط↔ق"}
+{"heard": "unclear", "note": "trim issues", "site_id": "new_audit:tadabur_spk0586_S3_A141_c1209edf_000098.wav#0@2:shaddah"}
 {"heard": "held", "note": "", "site_id": "new_audit:tadabur_spk0593_S1_A13_64bcb6c3_000000.wav#0@100:shaddah"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0593_S3_A50_ae02878a_000000.wav#0@5:ض↔ظ"}
+{"heard": "ض", "note": "", "site_id": "new_audit:tadabur_spk0593_S41_A33_422cfc08_000000.wav#0@30:ض↔ظ"}
 {"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0596_S24_A77_e8258f83_000000.wav#0@90:ذ↔ز"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0647_S1_A247_acfd8d11_000223.wav#0@60:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0647_S53_A34_f90990a6_000031.wav#0@63:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0647_S6_A22_9052b84e_000029.wav#1@2:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0649_S5_A91_9548eaba_000046.wav#1@23:ط↔ق"}
+{"heard": "ك", "note": "", "site_id": "new_audit:tadabur_spk0661_S1_A172_05de5746_000000.wav#0@35:ق↔ك"}
 {"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0662_S16_A15_0c9d3b2a_000018.wav#2@18:ذ↔ز"}
+{"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0664_S1_A206_ce9216a7_000161.wav#0@48:ذ↔ز"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0674_S1_A149_e5b366b7_000081.wav#0@40:ط↔ق"}
 {"heard": "ز", "note": "", "site_id": "new_audit:tadabur_spk0677_S41_A23_2897af4c_000014.wav#2@29:ذ↔ز"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0693_S1_A144_b511de48_000116.wav#2@46:ط↔ق"}
 {"heard": "ظ", "note": "", "site_id": "new_audit:tadabur_spk0697_S16_A40_d5ccffbe_000000.wav#1@35:ض↔ظ"}
 {"heard": "ك", "note": "", "site_id": "new_audit:tadabur_spk0702_S17_A71_60e32039_000060.wav#1@19:ق↔ك"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0704_S1_A38_b2680eee_000000.wav#0@9:ط↔ق"}
 {"heard": "ش", "note": "Not hafs", "site_id": "new_audit:tadabur_spk0720_S17_A80_7ebfb782_000065.wav#1@55:س↔ش"}
+{"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0736_S17_A18_6fa60cf3_000000.wav#0@109:ط↔ق"}
 {"heard": "ط", "note": "", "site_id": "new_audit:tadabur_spk0736_S1_A143_5f10e3d7_000000.wav#0@41:ط↔ق"}
 {"heard": "not_held", "note": "Not hafs", "site_id": "p35_fixture:tadabur_spk0079_S26_A66_a9b172c8_000047__seg0.wav:shadda#5"}
+{"heard": "ز", "note": "", "site_id": "p35_fixture:tadabur_spk0254_S25_A44_14d03e2c_000000__seg0.wav:ذ↔ز#49"}
 {"heard": "ز", "note": "", "site_id": "p35_fixture:tadabur_spk0414_S14_A19_4a59c60d_000017__seg0.wav:ذ↔ز#103"}
 {"heard": "unclear", "natural": "natural", "note": "", "site_id": "synthetic_edit:0a3d1cd736cb8e075733"}
 {"heard": "not_held", "natural": "natural", "note": "", "site_id": "synthetic_edit:0e8e2ed93e5b321fe160"}
 {"heard": "not_held", "natural": "natural", "note": "", "site_id": "synthetic_edit:1ea26bd9a26332de29c1"}
 {"heard": "not_held", "natural": "natural", "note": "", "site_id": "synthetic_edit:262b49861ff255013e0d"}
 {"heard": "س", "natural": "natural", "note": "", "site_id": "synthetic_edit:3069176dee9466f34464"}
+{"heard": "unclear", "natural": "unclear", "note": "", "site_id": "synthetic_edit:6a1504a582309cbf937a"}
+{"heard": "not_held", "natural": "natural", "note": "May not be hafs", "site_id": "synthetic_edit:6e872005df0ff52f3dff"}
+{"heard": "س", "natural": "natural", "note": "", "site_id": "synthetic_edit:73e20596c833028a542b"}
 {"heard": "held", "natural": "natural", "note": "", "site_id": "synthetic_edit:ab2b50a05e2bad0fc8e2"}
+{"heard": "unclear", "natural": "natural", "note": "", "site_id": "synthetic_edit:c9de832bfe2500271bee"}
 {"heard": "س", "natural": "natural", "note": "", "site_id": "synthetic_edit:e45cff484d2e80173a97"}
 {"heard": "unclear", "natural": "unclear", "note": "", "site_id": "synthetic_edit:e5a6db758277786bcf9c"}
 {"heard": "unclear", "natural": "natural", "note": "", "site_id": "synthetic_edit:e7a608c177f9502125dd"}
+{"heard": "held", "natural": "natural", "note": "", "site_id": "synthetic_edit:f5c86cefbceed5f1f38e"}

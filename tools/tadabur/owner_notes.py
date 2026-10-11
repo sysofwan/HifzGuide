@@ -9,12 +9,14 @@ whether the reciter paused, and the onset guard (:mod:`tadabur.onset_guard`) rea
 The note is cut into clauses at line breaks and at every Unicode punctuation mark (so the
 Arabic ``،``, ``؛`` and ``؟`` too) but the apostrophe and a dash joining two letters
 ("not-trimmed", "no-waqf", read as two words); a spaced dash ("no waqf - trimmed") cuts. A
-bracketed span, "no (audible) pause", is a qualifier and is skipped. Inside a clause the note
+bracketed span is skipped by the words around it ("no (audible) pause" reads as "no pause")
+and read as its own clause ("clip (trimmed)" says trimmed; "(no trim)" says not). Inside a clause the note
 is read word by word, lower-cased. A word of a claim (:data:`CLAIMS`) affirms or denies it. A
 negator (``no``, ``not``, ``never``, ``without``, ``nor``, ``cannot`` or a word ending in
 ``n't``, or its apostrophe-less spelling, ``didnt``) negates the first claim word it reaches
-within three words (#134's window), and every later word of that same claim in the clause
-("no pausing and stopping"); a word of another claim ends its scope, so "no waqf and trimmed"
+within three words (#134's window), and every later word of that same claim and polarity in
+the clause ("no pausing and stopping"); a word of the opposite polarity ("no pause and wasl")
+or of another claim ends its scope and is read on its own, so "no waqf and trimmed"
 and "no waqf trimmed" deny a pause and affirm a trim. ``hafs`` (the owner's "Not hafs",
 "May not be hafs") is what a negator reaching it negates: the negator is spent there and
 negates nothing after it. **This departs from #134's reader on purpose**: it read "Not hafs
@@ -66,9 +68,8 @@ def _negator(word: str) -> bool:
     return word in NEGATORS or word.endswith("n't")
 
 
-def clauses(note: str) -> list[str]:
-    """The note's clauses, lower-cased, bracketed qualifiers dropped (module docstring)."""
-    text = _BRACKETED.sub(" ", note.lower().replace("\u2019", "'"))
+def _split(text: str) -> list[str]:
+    """``text`` cut at line breaks and punctuation (module docstring)."""
     out, current = [], []
     for k, char in enumerate(text):
         category = unicodedata.category(char)
@@ -82,13 +83,24 @@ def clauses(note: str) -> list[str]:
     return [*out, "".join(current)]
 
 
+def clauses(note: str) -> list[str]:
+    """The note's clauses, lower-cased: the text around its bracketed spans (a span leaves
+    the words around it adjacent), then each span's own clauses (module docstring)."""
+    text = note.lower().replace("\u2019", "'")
+    spans = []
+    while _BRACKETED.search(text):
+        spans += [m.group()[1:-1] for m in _BRACKETED.finditer(text)]
+        text = _BRACKETED.sub(" ", text)
+    return [clause for part in (text, *spans) for clause in _split(part)]
+
+
 def says(note: str, claim: Claim) -> bool | None:
     """``True`` when the note affirms ``claim``, ``False`` when it denies it, ``None`` when it
     says neither or is ambiguous (module docstring)."""
     readings = set()
     for clause in clauses(note):
         negator: int | None = None  # a negator still looking for its first claim word
-        governed: Claim | None = None  # the claim a negator's scope covers
+        governed: tuple[Claim, bool] | None = None  # a negator's scope: claim and polarity
         for k, word in enumerate(re.findall(r"[a-z']+", clause)):
             if _negator(word):
                 negator, governed = k, None
@@ -99,11 +111,12 @@ def says(note: str, claim: Claim) -> bool | None:
             owner = next((c for c in CLAIMS if c.names(word)), None)
             if owner is None:
                 continue
+            scope = (owner, owner.affirms(word))
             if negator is not None:
-                governed = owner if k - negator <= NEGATION_REACH else None
+                governed = scope if k - negator <= NEGATION_REACH else None
                 negator = None
-            elif governed is not owner:
+            elif governed != scope:
                 governed = None
             if owner is claim:
-                readings.add(claim.affirms(word) != (governed is claim))
+                readings.add(claim.affirms(word) != (governed == scope))
     return readings.pop() if len(readings) == 1 else None

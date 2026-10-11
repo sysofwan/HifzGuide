@@ -59,6 +59,13 @@ def test_owner_notes(note, says):
     # which read "Not hafs paused" as no pause (a bug)
     ("Not hafs trimming issues", None, True), ("Not hafs paused", True, None),
     ("May not be hafs, waqf", True, None), ("NOT HAFS' reading, trimmed", None, True),
+    # a bracketed span is read as its own clause too (round 3)
+    ("(trimmed)", None, True), ("clip (trimmed)", None, True), ("(waqf)", True, None),
+    ("(no trim)", None, False), ("no waqf (trimmed)", False, True),
+    ("no (not audible) pause", False, None),
+    # an opposite-polarity word ends a negator's scope (round 3)
+    ("no pause and wasl", False, None), ("not paused but wasl", False, None),
+    ("no pause, wasl", False, None),
 ])
 def test_a_negation_governs_only_its_own_claim(note, waqf, trim):
     """#138: the waqf and the trim claim of one note are read apart; a negator covers its

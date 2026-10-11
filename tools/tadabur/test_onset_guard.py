@@ -42,9 +42,23 @@ def test_owner_notes(note, says):
     ("no trim, waqf", True, False), ("no waqf trimmed", False, True),
     ("waqf but no trim", True, False), ("paused and trimmed", True, True),
     ("not trimmed; wasl", False, False), ("no waqf; no trim", False, False),
+    ("no waqf and trimmed", False, True), ("no trim and paused", True, False),
+    # a bracketed qualifier, and a claim's own synonyms, stay under the negation (round 2)
+    ("no (audible) pause", False, None), ("no pausing and stopping", False, None),
+    ("not (incorrectly) trimmed", None, False), ("no trimming or cut", None, False),
+    ("no (audible) pause, trimmed", False, True),
+    # Arabic punctuation and line breaks end a clause (round 2)
+    ("Not hafs, trimming issues", None, True), ("Not hafs\u060c trimming issues", None, True),
+    ("Not hafs\u061b trimming issues", None, True), ("Not hafs\ntrimming issues", None, True),
+    ("Not hafs\u061f waqf", True, None), ("no waqf, Not hafs\ntrimming issues", False, True),
+    ("no waqf\r\nwaqf", None, None),
+    # #134's window: a negator reaches a claim word up to three words on, even past another
+    # word, as the waqf reader on main does ("not hafs paused" reads as no pause)
+    ("Not hafs paused", False, None), ("Not hafs trimming issues", None, False),
 ])
 def test_a_negation_governs_only_its_own_claim(note, waqf, trim):
-    """#138: the waqf and the trim claim of one note are read apart."""
+    """#138: the waqf and the trim claim of one note are read apart; a negator covers its
+    claim through qualifiers and synonyms, within its clause."""
     assert (waqf_guard.owner_says(note), o.owner_says(note)) == (waqf, trim)
 
 

@@ -6,28 +6,33 @@ decides before any detector: the waqf guard (:mod:`tadabur.waqf_guard`) reads :d
 whether the reciter paused, and the onset guard (:mod:`tadabur.onset_guard`) reads
 :data:`TRIM`, whether the clip's opening sound is cut. :func:`says` is the one reader.
 
-The note is lower-cased with its whitespace and apostrophes normalized, and cut into clauses
-at punctuation (``, ; . : ! ? ( )``) and at ``but`` and ``and``. Inside a clause it is read
-word by word. A word of any claim (:data:`CLAIMS`) affirms or denies its claim, and is negated
-when a negator (``no``, ``not``, ``never``, ``without``, ``nor``, ``cannot`` or a word ending
-in ``n't``, or its apostrophe-less spelling, ``didnt``) is among the three words before it. A
-negator governs only the next claim word, of whichever claim, so "no waqf, trimmed" and "no
-waqf trimmed" deny a pause and affirm a trim. Two readings of one claim that disagree are
-ambiguous: no claim.
+The note is cut into clauses at line breaks and at every Unicode punctuation mark (so the
+Arabic ``،``, ``؛`` and ``؟`` too) but the apostrophe, before its whitespace is normalized. A
+bracketed span, "no (audible) pause", is a qualifier and is skipped. Inside a clause the note
+is read word by word, lower-cased. A word of a claim (:data:`CLAIMS`) affirms or denies it. A
+negator (``no``, ``not``, ``never``, ``without``, ``nor``, ``cannot`` or a word ending in
+``n't``, or its apostrophe-less spelling, ``didnt``) negates the first claim word it reaches
+within three words (#134's window), and every later word of that same claim in the clause
+("no pausing and stopping"); a word of another claim ends its scope, so "no waqf and trimmed"
+and "no waqf trimmed" deny a pause and affirm a trim. Two readings of one claim that disagree
+are ambiguous: no claim.
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 
-#: Words that negate the next claim word among the :data:`NEGATION_REACH` words after them.
+#: Words that negate the first claim word among the :data:`NEGATION_REACH` words after them.
 NEGATORS = frozenset({"no", "not", "never", "without", "nor", "cannot", "didnt", "doesnt",
                       "dont", "hasnt", "havent", "hadnt", "isnt", "wasnt", "wont"})
 NEGATION_REACH = 3
-#: What ends a clause: punctuation, or a conjunction.
-_CLAUSE_BREAK = re.compile(r"[,;.:!?()\n]|\bbut\b|\band\b")
+#: Line breaks (Unicode's), which end a clause like punctuation.
+_LINE_BREAKS = frozenset("\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029")
+#: A bracketed qualifier, skipped.
+_BRACKETED = re.compile(r"\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*\}")
 
 
 def _never(word: str) -> bool:
@@ -57,22 +62,38 @@ def _negator(word: str) -> bool:
     return word in NEGATORS or word.endswith("n't")
 
 
+def clauses(note: str) -> list[str]:
+    """The note's clauses, lower-cased, bracketed qualifiers dropped (module docstring)."""
+    text = _BRACKETED.sub(" ", note.lower().replace("\u2019", "'"))
+    out, current = [], []
+    for char in text:
+        if char in _LINE_BREAKS or (char != "'" and unicodedata.category(char).startswith("P")):
+            out.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    return [*out, "".join(current)]
+
+
 def says(note: str, claim: Claim) -> bool | None:
     """``True`` when the note affirms ``claim``, ``False`` when it denies it, ``None`` when it
     says neither or is ambiguous (module docstring)."""
-    text = " ".join(note.lower().replace("’", "'").split())
     readings = set()
-    for clause in _CLAUSE_BREAK.split(text):
-        words = re.findall(r"[a-z']+", clause)
-        negator = None  # the position of the negator waiting for its claim word
-        for k, word in enumerate(words):
+    for clause in clauses(note):
+        negator: int | None = None  # a negator still looking for its first claim word
+        governed: Claim | None = None  # the claim a negator's scope covers
+        for k, word in enumerate(re.findall(r"[a-z']+", clause)):
             if _negator(word):
-                negator = k
+                negator, governed = k, None
                 continue
-            if not any(c.names(word) for c in CLAIMS):
+            owner = next((c for c in CLAIMS if c.names(word)), None)
+            if owner is None:
                 continue
-            negated = negator is not None and k - negator <= NEGATION_REACH
-            negator = None
-            if claim.names(word):
-                readings.add(claim.affirms(word) != negated)
+            if negator is not None:
+                governed = owner if k - negator <= NEGATION_REACH else None
+                negator = None
+            elif governed is not owner:
+                governed = None
+            if owner is claim:
+                readings.add(claim.affirms(word) != (governed is claim))
     return readings.pop() if len(readings) == 1 else None

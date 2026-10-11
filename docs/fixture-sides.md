@@ -46,14 +46,14 @@ The best direction's support on each side, counting sites with a verdict only.
 |---|---|---|---|---|
 | ت↔ط | too small | no site | 1 | in scope, insufficient evidence |
 | ح↔ه | too small | no site | 0 | in scope, insufficient evidence |
-| ذ↔ز | sufficient | no site | 2 | in scope, insufficient evidence |
+| ذ↔ز | sufficient | no site | 0 | in scope, insufficient evidence |
 | ذ↔ظ | no site | no site | 0 | in scope, insufficient evidence |
 | س↔ش | no site | no site | 0 | in scope, insufficient evidence |
 | س↔ص | sufficient | no site | 2 | in scope, insufficient evidence |
 | ض↔ظ | sufficient | no site | 2 | in scope, insufficient evidence |
 | ط↔ق | no site | no site | 0 | in scope, insufficient evidence |
 | ق↔ك | sufficient | no site | 3 | in scope, insufficient evidence |
-| shaddah (provisional) | too small | no site | 12 | in scope, insufficient evidence |
+| shaddah (provisional) | too small | too small | 11 | in scope, insufficient evidence |
 
 ## Correct recitation (heard = prescribed)
 
@@ -75,7 +75,7 @@ Sites committed in each role · % of the row [95% interval]
 | ح↔ه | ح → ح | 3 / 3 (too small) | 3 / 0 | 0 | 0 · 0.0 [0.0, 56.2] W | 3 · 100.0 [43.8, 100.0] W | 0 · 0.0 [0.0, 56.2] W | 0 · 0.0 [0.0, 56.2] W |
 | ح↔ه | ه → ه | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ز | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
-| ذ↔ز | ز → ز | 28 / 19 | 28 / 0 | 2 | 0 · 0.0 (n/c) ⟨0.0–6.7⟩ | 28 · 100.0 (n/c) ⟨93.3–100.0⟩ | 0 · 0.0 (n/c) ⟨0.0–6.7⟩ | 0 · 0.0 (n/c) ⟨0.0–6.7⟩ |
+| ذ↔ز | ز → ز | 30 / 21 | 28 / 2 | 0 | 0 · 0.0 (n/c) | 30 · 100.0 (n/c) | 0 · 0.0 (n/c) | 0 · 0.0 (n/c) |
 | ذ↔ظ | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ظ | ظ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | س↔ش | س → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
@@ -88,7 +88,7 @@ Sites committed in each role · % of the row [95% interval]
 | ط↔ق | ق → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ق↔ك | ق → ق | 6 / 6 (too small) | 6 / 0 | 2 | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 6 · 100.0 [61.0, 100.0] W ⟨75.0–100.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ |
 | ق↔ك | ك → ك | 21 / 19 | 21 / 0 | 1 | 0 · 0.0 (n/c) ⟨0.0–4.5⟩ | 21 · 100.0 (n/c) ⟨95.5–100.0⟩ | 0 · 0.0 (n/c) ⟨0.0–4.5⟩ | 0 · 0.0 (n/c) ⟨0.0–4.5⟩ |
-| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 6 | 0 · 0.0 [0.0, 27.8] W ⟨0.0–37.5⟩ | 10 · 100.0 [72.2, 100.0] W ⟨62.5–100.0⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–37.5⟩ |
+| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 5 | 0 · 0.0 [0.0, 27.8] W ⟨0.0–33.3⟩ | 10 · 100.0 [72.2, 100.0] W ⟨66.7–100.0⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–33.3⟩ |
 | shaddah (provisional) | not_held → not_held | 1 / 1 (too small) | 1 / 0 | 6 | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ | 1 · 100.0 [20.7, 100.0] W ⟨14.3–100.0⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |
 
 ### base/stream_b0
@@ -102,7 +102,7 @@ Sites committed in each role · % of the row [95% interval]
 | ح↔ه | ح → ح | 3 / 3 (too small) | 3 / 0 | 0 | 0 · 0.0 [0.0, 56.2] W | 2 · 66.7 [20.8, 93.9] W | 0 · 0.0 [0.0, 56.2] W | 1 · 33.3 [6.1, 79.2] W |
 | ح↔ه | ه → ه | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ز | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
-| ذ↔ز | ز → ز | 28 / 19 | 28 / 0 | 2 | 4 · 14.3 [0.0, 29.4] ⟨13.3–20.0⟩ | 18 · 64.3 [40.5, 87.0] ⟨60.0–66.7⟩ | 2 · 7.1 [0.0, 19.5] ⟨6.7–13.3⟩ | 4 · 14.3 [3.3, 29.2] ⟨13.3–20.0⟩ |
+| ذ↔ز | ز → ز | 30 / 21 | 28 / 2 | 0 | 4 · 13.3 [0.0, 27.6] | 19 · 63.3 [40.7, 84.6] | 3 · 10.0 [0.0, 22.7] | 4 · 13.3 [3.1, 26.7] |
 | ذ↔ظ | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ظ | ظ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | س↔ش | س → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
@@ -115,7 +115,7 @@ Sites committed in each role · % of the row [95% interval]
 | ط↔ق | ق → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ق↔ك | ق → ق | 6 / 6 (too small) | 6 / 0 | 2 | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ |
 | ق↔ك | ك → ك | 21 / 19 | 21 / 0 | 1 | 4 · 19.0 [4.8, 36.4] ⟨18.2–22.7⟩ | 13 · 61.9 [42.9, 81.0] ⟨59.1–63.6⟩ | 2 · 9.5 [0.0, 22.7] ⟨9.1–13.6⟩ | 2 · 9.5 [0.0, 25.0] ⟨9.1–13.6⟩ |
-| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 6 | 2 · 20.0 [5.7, 51.0] W ⟨12.5–50.0⟩ | 8 · 80.0 [49.0, 94.3] W ⟨50.0–87.5⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–37.5⟩ |
+| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 5 | 2 · 20.0 [5.7, 51.0] W ⟨13.3–46.7⟩ | 8 · 80.0 [49.0, 94.3] W ⟨53.3–86.7⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–33.3⟩ |
 | shaddah (provisional) | not_held → not_held | 1 / 1 (too small) | 1 / 0 | 6 | 1 · 100.0 [20.7, 100.0] W ⟨14.3–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |
 
 ### h448/spans
@@ -129,7 +129,7 @@ Sites committed in each role · % of the row [95% interval]
 | ح↔ه | ح → ح | 3 / 3 (too small) | 3 / 0 | 0 | 3 · 100.0 [43.8, 100.0] W | 0 · 0.0 [0.0, 56.2] W | 0 · 0.0 [0.0, 56.2] W | 0 · 0.0 [0.0, 56.2] W |
 | ح↔ه | ه → ه | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ز | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
-| ذ↔ز | ز → ز | 28 / 19 | 28 / 0 | 2 | 15 · 53.6 [37.5, 74.1] ⟨50.0–56.7⟩ | 9 · 32.1 [15.4, 46.7] ⟨30.0–36.7⟩ | 3 · 10.7 [0.0, 21.9] ⟨10.0–16.7⟩ | 1 · 3.6 [0.0, 10.0] ⟨3.3–10.0⟩ |
+| ذ↔ز | ز → ز | 30 / 21 | 28 / 2 | 0 | 16 · 53.3 [37.5, 73.1] | 10 · 33.3 [17.2, 48.4] | 3 · 10.0 [0.0, 20.0] | 1 · 3.3 [0.0, 9.4] |
 | ذ↔ظ | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ظ | ظ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | س↔ش | س → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
@@ -142,7 +142,7 @@ Sites committed in each role · % of the row [95% interval]
 | ط↔ق | ق → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ق↔ك | ق → ق | 6 / 6 (too small) | 6 / 0 | 2 | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ |
 | ق↔ك | ك → ك | 21 / 19 | 21 / 0 | 1 | 12 · 57.1 [35.0, 77.3] ⟨54.5–59.1⟩ | 3 · 14.3 [0.0, 31.6] ⟨13.6–18.2⟩ | 3 · 14.3 [0.0, 30.0] ⟨13.6–18.2⟩ | 3 · 14.3 [0.0, 31.6] ⟨13.6–18.2⟩ |
-| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 6 | 6 · 60.0 [31.3, 83.2] W ⟨37.5–75.0⟩ | 3 · 30.0 [10.8, 60.3] W ⟨18.8–56.2⟩ |  | 1 · 10.0 [1.8, 40.4] W ⟨6.2–43.8⟩ |
+| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 5 | 6 · 60.0 [31.3, 83.2] W ⟨40.0–73.3⟩ | 3 · 30.0 [10.8, 60.3] W ⟨20.0–53.3⟩ |  | 1 · 10.0 [1.8, 40.4] W ⟨6.7–40.0⟩ |
 | shaddah (provisional) | not_held → not_held | 1 / 1 (too small) | 1 / 0 | 6 | 1 · 100.0 [20.7, 100.0] W ⟨14.3–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |
 
 ### h448/stream_b0
@@ -156,7 +156,7 @@ Sites committed in each role · % of the row [95% interval]
 | ح↔ه | ح → ح | 3 / 3 (too small) | 3 / 0 | 0 | 2 · 66.7 [20.8, 93.9] W | 0 · 0.0 [0.0, 56.2] W | 0 · 0.0 [0.0, 56.2] W | 1 · 33.3 [6.1, 79.2] W |
 | ح↔ه | ه → ه | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ز | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
-| ذ↔ز | ز → ز | 28 / 19 | 28 / 0 | 2 | 16 · 57.1 [40.0, 76.7] ⟨53.3–60.0⟩ | 4 · 14.3 [3.6, 27.3] ⟨13.3–20.0⟩ | 4 · 14.3 [0.0, 26.9] ⟨13.3–20.0⟩ | 4 · 14.3 [3.3, 29.2] ⟨13.3–20.0⟩ |
+| ذ↔ز | ز → ز | 30 / 21 | 28 / 2 | 0 | 17 · 56.7 [40.0, 75.0] | 4 · 13.3 [3.2, 25.8] | 5 · 16.7 [3.7, 29.5] | 4 · 13.3 [3.1, 26.7] |
 | ذ↔ظ | ذ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ذ↔ظ | ظ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | س↔ش | س → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
@@ -169,7 +169,7 @@ Sites committed in each role · % of the row [95% interval]
 | ط↔ق | ق → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
 | ق↔ك | ق → ق | 6 / 6 (too small) | 6 / 0 | 2 | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 3 · 50.0 [18.8, 81.2] W ⟨37.5–62.5⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ | 0 · 0.0 [0.0, 39.0] W ⟨0.0–25.0⟩ |
 | ق↔ك | ك → ك | 21 / 19 | 21 / 0 | 1 | 11 · 52.4 [30.0, 73.7] ⟨50.0–54.5⟩ | 4 · 19.0 [4.5, 38.1] ⟨18.2–22.7⟩ | 2 · 9.5 [0.0, 22.7] ⟨9.1–13.6⟩ | 4 · 19.0 [4.5, 38.1] ⟨18.2–22.7⟩ |
-| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 6 | 6 · 60.0 [31.3, 83.2] W ⟨37.5–75.0⟩ | 4 · 40.0 [16.8, 68.7] W ⟨25.0–62.5⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–37.5⟩ |
+| shaddah (provisional) | held → held | 10 / 10 (too small) | 10 / 0 | 5 | 6 · 60.0 [31.3, 83.2] W ⟨40.0–73.3⟩ | 4 · 40.0 [16.8, 68.7] W ⟨26.7–60.0⟩ |  | 0 · 0.0 [0.0, 27.8] W ⟨0.0–33.3⟩ |
 | shaddah (provisional) | not_held → not_held | 1 / 1 (too small) | 1 / 0 | 6 | 1 · 100.0 [20.7, 100.0] W ⟨14.3–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–85.7⟩ |
 
 ## Real mistakes (heard ≠ prescribed)
@@ -181,7 +181,113 @@ Heard ≠ prescribed: the reciter said the partner of the mushaf's letter or sta
 - **other letter**: a third letter: flagged, but not what was said.
 - **no commit (missed)**: nothing committed at the carrier: the mistake missed.
 
-**Pending adjudication.** No site has a real-mistake verdict yet, so this side has no numbers. The 22 sites of the should-reject fixtures wait for their site-level re-listen (#61); `python -m tadabur.eval_harness` fills this side in once their verdicts are in `tadabur/listening_session/verdicts.jsonl`.
+### base/spans
+
+Sites committed in each role · % of the row [95% interval]
+
+| family | prescribed → heard | sites / reciters | fixtures (accept / reject) | without a verdict | as heard (mistake heard) | mushaf's value (collapsed) | other letter | no commit (missed) |
+|---|---|---|---|---|---|---|---|---|
+| ت↔ط | ط → ت | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ت↔ط | ت → ط | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ح↔ه | ه → ح | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ح↔ه | ح → ه | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ز | ز → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ز | ذ → ز | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ظ | ظ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ظ | ذ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | ش → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | س → ش | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ص | ص → س | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| س↔ص | س → ص | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ض↔ظ | ظ → ض | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ض↔ظ | ض → ظ | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ط↔ق | ق → ط | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ط↔ق | ط → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ق↔ك | ك → ق | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ق↔ك | ق → ك | 0 / 0 | 0 / 0 | 2 | – | – | – | – |
+| shaddah (provisional) | not_held → held | 0 / 0 | 0 / 0 | 6 | – | – | – | – |
+| shaddah (provisional) | held → not_held | 1 / 1 (too small) | 0 / 1 | 5 | 1 · 100.0 [20.7, 100.0] W ⟨16.7–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–83.3⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–83.3⟩ |
+
+### base/stream_b0
+
+Sites committed in each role · % of the row [95% interval]
+
+| family | prescribed → heard | sites / reciters | fixtures (accept / reject) | without a verdict | as heard (mistake heard) | mushaf's value (collapsed) | other letter | no commit (missed) |
+|---|---|---|---|---|---|---|---|---|
+| ت↔ط | ط → ت | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ت↔ط | ت → ط | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ح↔ه | ه → ح | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ح↔ه | ح → ه | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ز | ز → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ز | ذ → ز | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ظ | ظ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ظ | ذ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | ش → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | س → ش | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ص | ص → س | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| س↔ص | س → ص | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ض↔ظ | ظ → ض | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ض↔ظ | ض → ظ | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ط↔ق | ق → ط | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ط↔ق | ط → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ق↔ك | ك → ق | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ق↔ك | ق → ك | 0 / 0 | 0 / 0 | 2 | – | – | – | – |
+| shaddah (provisional) | not_held → held | 0 / 0 | 0 / 0 | 6 | – | – | – | – |
+| shaddah (provisional) | held → not_held | 1 / 1 (too small) | 0 / 1 | 5 | 1 · 100.0 [20.7, 100.0] W ⟨16.7–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–83.3⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–83.3⟩ |
+
+### h448/spans
+
+Sites committed in each role · % of the row [95% interval]
+
+| family | prescribed → heard | sites / reciters | fixtures (accept / reject) | without a verdict | as heard (mistake heard) | mushaf's value (collapsed) | other letter | no commit (missed) |
+|---|---|---|---|---|---|---|---|---|
+| ت↔ط | ط → ت | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ت↔ط | ت → ط | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ح↔ه | ه → ح | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ح↔ه | ح → ه | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ز | ز → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ز | ذ → ز | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ظ | ظ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ظ | ذ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | ش → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | س → ش | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ص | ص → س | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| س↔ص | س → ص | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ض↔ظ | ظ → ض | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ض↔ظ | ض → ظ | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ط↔ق | ق → ط | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ط↔ق | ط → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ق↔ك | ك → ق | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ق↔ك | ق → ك | 0 / 0 | 0 / 0 | 2 | – | – | – | – |
+| shaddah (provisional) | not_held → held | 0 / 0 | 0 / 0 | 6 | – | – | – | – |
+| shaddah (provisional) | held → not_held | 1 / 1 (too small) | 0 / 1 | 5 | 1 · 100.0 [20.7, 100.0] W ⟨16.7–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–83.3⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–83.3⟩ |
+
+### h448/stream_b0
+
+Sites committed in each role · % of the row [95% interval]
+
+| family | prescribed → heard | sites / reciters | fixtures (accept / reject) | without a verdict | as heard (mistake heard) | mushaf's value (collapsed) | other letter | no commit (missed) |
+|---|---|---|---|---|---|---|---|---|
+| ت↔ط | ط → ت | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ت↔ط | ت → ط | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ح↔ه | ه → ح | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ح↔ه | ح → ه | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ز | ز → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ز | ذ → ز | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ظ | ظ → ذ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ذ↔ظ | ذ → ظ | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | ش → س | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ش | س → ش | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| س↔ص | ص → س | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| س↔ص | س → ص | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ض↔ظ | ظ → ض | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ض↔ظ | ض → ظ | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ط↔ق | ق → ط | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ط↔ق | ط → ق | 0 / 0 | 0 / 0 | 0 | – | – | – | – |
+| ق↔ك | ك → ق | 0 / 0 | 0 / 0 | 1 | – | – | – | – |
+| ق↔ك | ق → ك | 0 / 0 | 0 / 0 | 2 | – | – | – | – |
+| shaddah (provisional) | not_held → held | 0 / 0 | 0 / 0 | 6 | – | – | – | – |
+| shaddah (provisional) | held → not_held | 1 / 1 (too small) | 0 / 1 | 5 | 1 · 100.0 [20.7, 100.0] W ⟨16.7–100.0⟩ | 0 · 0.0 [0.0, 79.3] W ⟨0.0–83.3⟩ |  | 0 · 0.0 [0.0, 79.3] W ⟨0.0–83.3⟩ |
 
 ## Sites without a verdict
 
@@ -189,10 +295,9 @@ Heard ≠ prescribed: the reciter said the partner of the mushaf's letter or sta
 
 | family | prescribed | heard | fixture side | sites |
 |---|---|---|---|---|
-| shaddah (provisional) | held | `pending` | should_reject | 6 |
+| shaddah (provisional) | held | `pending` | should_reject | 5 |
 | shaddah (provisional) | not_held | `pending` | should_reject | 6 |
 | ت↔ط | ت | `pending` | should_reject | 1 |
-| ذ↔ز | ز | `pending` | should_reject | 2 |
 | س↔ص | س | `pending` | should_reject | 1 |
 | س↔ص | ص | `pending` | should_reject | 1 |
 | ض↔ظ | ض | `pending` | should_reject | 1 |
@@ -206,12 +311,13 @@ A paired diff (#57) refuses two reports whose fixture or schema fingerprints dif
 
 | what | value |
 |---|---|
-| fixtures (scored sites, fixture sides, reciters) | `913959e13f9fa760e8491c38c7b1489292efefd679f77b51188fd8bbb79ff3b1` |
+| fixtures (scored sites, fixture sides, reciters) | `0c6febb78827b972bacef24aa8caeccb60a79b770873132bfd9c483eecdc7e7c` |
 | schema | `b791406de145dc7305df22b7fd9bc102807d42df78ade189f6e5e2fec9e08b70` |
 | input `clips.jsonl` | `2c3597aca616391168815a38d49cfbae429d41397d4a655e2497df0237ceb192` |
+| input `onset_guard.jsonl` | `8ee9dc9ffdd52d495e3bdcb771977f8f5524ff9cc72d0976367f6e7433396799` |
 | input `p35_fixtures.jsonl` | `654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8` |
 | input `p35_fixtures.relocation.jsonl` | `8a49c872035eef2ba8f69259106f04e1ff3b345c34412b7e0632b71cf3e8d7b8` |
-| input `verdicts.jsonl` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| input `verdicts.jsonl` | `d57f8073f3a0d58f28fd70380c43d4a5a42b34fe30d0934c4b2a43a0ded2b334` |
 | input `waqf_guard.jsonl` | `ba34de335d9a4143bd6390099001d924be069e728df8da6d36b39e6498991f76` |
 
 | arm | weights | decode mode | decodes sha256 |

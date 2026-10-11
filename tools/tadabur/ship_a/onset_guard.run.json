@@ -1,0 +1,22 @@
+{
+ "clips": 359,
+ "decoder": {
+  "autocast": true,
+  "batch_size": 1,
+  "device_type": "cuda",
+  "mode": "whole-spans",
+  "model": "obadx/muaalem-model-v3_2",
+  "policy": "fp32-features-v1",
+  "weights_dtype": "bf16"
+ },
+ "decoder_hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+ "level_frame_samples": 160,
+ "per_kind": {
+  "cut": 185,
+  "synthetic": 1092
+ },
+ "spans": 1277,
+ "vad_dtype": "bfloat16",
+ "vad_model": "obadx/recitation-segmenter-v2",
+ "vad_revision": "5ee90364e7090ea6eb9dffe80353bed06996a196"
+}

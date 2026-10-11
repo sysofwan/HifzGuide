@@ -5,8 +5,9 @@ The pure core is :mod:`tadabur.eval_report`; this is its runner. It decodes noth
 1. **Sites.** The re-located P3.5 fixtures (``truth_sites/p35_fixtures.jsonl``), with any
    site-level verdict from the listening session applied by site id
    (:func:`tadabur.listening_session.adjudicated`), and each site's fixture side from the
-   re-location record (``p35_fixtures.relocation.jsonl``); a site Ship A's waqf guard
-   realizes (:func:`tadabur.waqf_guard.realized_ids`, #134) is left out.
+   re-location record (``p35_fixtures.relocation.jsonl``); a site the shared exclusion takes
+   out (:func:`tadabur.exclusions.current`: waqf realized, #134; onset trimmed, #138) is left
+   out.
 2. **Decodes.** The base teacher and ``h448``, each whole-span and streamed at b = 0, read from
    #84's caches through :func:`training.truth_baseline.update_decodes`, which checks the
    model, its weights' identity and every decode fingerprint. An item the cache lacks is
@@ -31,7 +32,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Collection
 from pathlib import Path
 
 from training.tashkeel_eval import write_text_atomically
@@ -61,11 +61,11 @@ from .eval_report import (
     TOO_SMALL,
     fixture_report,
 )
+from .exclusions import GUARD_PATHS, Exclusions, current
 from .listening_session import VERDICTS_PATH, adjudicated, read_verdicts
 from .p35_truth_sites import RELOCATION_PATH, SITES_PATH
 from .staged_audio import REGISTRY_PATH, load_staged_clips
 from .truth_sites import SHADDAH, load_truth_sites
-from .waqf_guard import GUARD_PATH, realized_ids
 
 REPORT_PATH = BASELINE_DIR / "fixture_sides.json"
 DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "fixture-sides.md"
@@ -84,9 +84,9 @@ def fixture_sides(relocation_path: Path = RELOCATION_PATH) -> dict[str, str]:
 
 
 def build(models: dict[str, str], audio_dir: Path | None,
-          waqf_realized: Collection[str] | None = None) -> dict:
+          excluded_items: Exclusions | None = None) -> dict:
     """Load the sites, verdicts and decode caches and score them (module docstring), less the
-    sites ``waqf_realized`` names (by default the waqf guard's at the current verdicts)."""
+    items ``excluded_items`` takes out (by default the shared exclusion at the current verdicts)."""
     sites = adjudicated(load_truth_sites(SITES_PATH), read_verdicts(VERDICTS_PATH))
     registry = load_staged_clips(REGISTRY_PATH)
     items = items_of(sites, registry)
@@ -103,11 +103,12 @@ def build(models: dict[str, str], audio_dir: Path | None,
                 "decode": cache["fingerprints"][protocol],
             }
     reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
-    realized = realized_ids() if waqf_realized is None else waqf_realized
-    report = fixture_report(sites, fixture_sides(), reciter_of, decodes, arm_models, realized)
+    report = fixture_report(sites, fixture_sides(), reciter_of, decodes, arm_models,
+                            current() if excluded_items is None else excluded_items)
     report["inputs"] = {
         path.name: file_sha256(path)
-        for path in (SITES_PATH, RELOCATION_PATH, VERDICTS_PATH, REGISTRY_PATH, GUARD_PATH)
+        for path in (SITES_PATH, RELOCATION_PATH, VERDICTS_PATH, REGISTRY_PATH,
+                     *GUARD_PATHS.values())
     }
     if "base" in models:
         report["p35_base_reproduction"] = p35_reproduction(sites, decodes[arm("base", "spans")])

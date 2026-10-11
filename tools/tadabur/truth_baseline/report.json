@@ -80,7 +80,8 @@
    "with_verdict": 35,
    "items": 30,
    "reciters": 29,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   },
   {
    "population": "diagnostic",
@@ -90,7 +91,8 @@
    "with_verdict": 1622,
    "items": 123,
    "reciters": 81,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   },
   {
    "population": "pause",
@@ -100,7 +102,8 @@
    "with_verdict": 135,
    "items": 86,
    "reciters": 62,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   },
   {
    "population": "targeted_safeguard",
@@ -110,7 +113,8 @@
    "with_verdict": 11,
    "items": 22,
    "reciters": 19,
-   "waqf_realized": 1
+   "waqf_realized": 1,
+   "onset_trimmed": 0
   },
   {
    "population": "targeted_safeguard",
@@ -120,7 +124,8 @@
    "with_verdict": 9,
    "items": 10,
    "reciters": 9,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   },
   {
    "population": "targeted_safeguard",
@@ -130,7 +135,8 @@
    "with_verdict": 3,
    "items": 3,
    "reciters": 3,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   },
   {
    "population": "targeted_safeguard",
@@ -140,7 +146,8 @@
    "with_verdict": 28,
    "items": 28,
    "reciters": 21,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   },
   {
    "population": "targeted_safeguard",
@@ -150,7 +157,8 @@
    "with_verdict": 28,
    "items": 30,
    "reciters": 25,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   },
   {
    "population": "targeted_safeguard",
@@ -160,7 +168,8 @@
    "with_verdict": 25,
    "items": 27,
    "reciters": 24,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   },
   {
    "population": "targeted_safeguard",
@@ -170,13 +179,15 @@
    "with_verdict": 27,
    "items": 30,
    "reciters": 26,
-   "waqf_realized": 0
+   "waqf_realized": 0,
+   "onset_trimmed": 0
   }
  ],
  "physical_sites_merged": [],
  "waqf_realized": [
   "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74"
  ],
+ "onset_trimmed": [],
  "exclusions": [
   {
    "population": "targeted_safeguard",

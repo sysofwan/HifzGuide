@@ -2,7 +2,7 @@
 
 The page is a function of ``tadabur/ship_a/sizing.json`` (:mod:`training.ship_a_sizing`),
 ``sites.summary.json``, ``worklist.summary.json``, ``frame.json``, the mining extension's
-summary and frame, and ``waqf_guard.summary.json``; a test checks the
+summary and frame, ``waqf_guard.summary.json`` and ``onset_guard.summary.json``; a test checks the
 committed page equals :func:`render` of them, so no number in it can drift from its source.
 
 Usage (from ``tools/``)::
@@ -16,6 +16,7 @@ import json
 from collections.abc import Mapping
 from pathlib import Path
 
+from tadabur.onset_guard import SUMMARY_PATH as ONSET_SUMMARY_PATH
 from tadabur.power_frame import FRAME_PATH
 from tadabur.ship_a import SITES_SUMMARY_PATH
 from tadabur.ship_a_mining import FRAME_PATH as MINING_FRAME_PATH
@@ -331,6 +332,96 @@ The sizing below leaves out {taken["sites"]} realized sites and {taken["words"]}
 """
 
 
+def _point(point: Mapping | None) -> str:
+    """Precision and recall with their counts, or a dash."""
+    return "—" if point is None else "{} / {}".format(*_rates(point))
+
+
+def _section_onset(sizing: Mapping, onset: Mapping) -> str:
+    calibration, check = onset["calibration"], onset["owner_check"]
+    rows = []
+    for name, entry in calibration["candidates"].items():
+        if entry["operating_point"] is None:
+            rows.append([f"`{name}`", "none", "—", "—", "—", "—"])
+            continue
+        clean = entry["calibration"]["called_trimmed_per_depth_ms"]["0"]
+        rows.append([f"`{name}` ({entry['trimmed_when']})", entry["operating_point"],
+                     _point(entry["calibration"]), _point(entry["test"]), clean,
+                     _point(check["candidates"].get(name))])
+    strata = [[name, e["items"], e["exposed"], e["file_start"], e["segmenter_cut"],
+               e["chosen_candidate_calls_trimmed"], e["decided_by_owner_note"],
+               e["onset_trimmed"]]
+              for name, e in onset["strata"].items() if e["exposed"] or e["onset_trimmed"]]
+    taken = sizing["onset_guard"]
+    cells = [[cell, e["sites"], e["held_out_listened"]] for cell, e in taken["cells"].items()]
+    cell_table = "\n\n" + _table(["cell", "sites", "held-out listened"], cells) if cells else ""
+    deciding = onset["detector_decides"]
+    decision = (f"The detector decides: `{deciding['candidate']}` at {deciding['threshold']}."
+                if deciding else
+                "**The detector does not decide.** No candidate is reliable on the clips the\n"
+                "owner judged, so only the owner's notes take items out; the scores and every\n"
+                "candidate's operating point stay in `onset_guard.summary.json` and\n"
+                "`onset_guard.jsonl`.")
+    relisten = "\n".join(f"- `{r['item_id']}` ({len(r['candidates'])} of "
+                          f"{len(calibration['candidates'])}: "
+                          + ", ".join(r["candidates"]) + ")" for r in check["relisten"])
+    selection = onset["synthetic_selection"]
+    return f"""## The onset guard (#138)
+
+Some clips start after their first sound: Tadabur's source file is cut inside the first
+letter (the `ء` of `ءَلَّذِينَ`, the `ث` of `ثُمَّ`), so a mark read from it tests the clip, not the
+model. `tadabur.onset_guard` marks an item **exposed** when its mark is read in the first word
+of its segment, which starts at the file's sample 0 or at a cut the segmenter placed
+({onset["all"]["exposed"]} of {onset["all"]["items"]} items: {onset["all"]["file_start"]} at a
+file start, {onset["all"]["segmenter_cut"]} at a segmenter cut). An owner note with `trim`,
+`cut` or `split` makes an item `onset_trimmed` (a negated one, "no trim", keeps it), and it
+leaves every cell below; such an item is no training target either.
+
+**Five candidate detectors** read the start of the span the model decodes: the base teacher's
+CTC evidence for the reference's first letter (`ctc_onset_llr`, the log-likelihood with that
+letter less without it; `ctc_first_posterior`, its best-path posterior; `decode_leading_missing`,
+the reference characters before the free decode first matches), the level of the first 10 ms
+over the file's noise floor (`onset_level_db`), and the recitation VAD's speech probability for
+the first frame (`vad_speech_frame0`). **Calibration** on synthetic trims: Tadabur's files start
+mid-sound, so the clean onsets are segment starts after a pause, one per canonical reciter of
+the mining pool ({selection["segments"]} segments, {selection["per_split"].get("calibration", 0)}
+calibration and {selection["per_split"].get("test", 0)} test reciters, split by reciter), each cut
+100 ms before, at, and 20, 40, 80 and 120 ms into its first letter (a cut into the letter is a
+trim). Rule: {calibration["rule"]}. Against the owner: exposed items with a trim note are
+positives ({check["owner_flags"]}), the other answered exposed items weak negatives
+({check["weak_negatives"]}); a detector decides only when it finds at least
+{check["min_flag_recall"]:.0%} of the flags at precision ≥ {check["min_precision"]} there.
+
+{_table(["candidate", "operating point", "calibration precision / recall",
+         "test precision / recall", "clean cuts at the onset called trimmed (calibration)",
+         "owner check precision / recall"], rows)}
+
+{decision} The synthetic cut at the letter's onset (clean, but with no silence before it) is
+what a real Tadabur file start looks like, and every candidate calls about a third of those
+trimmed; on the owner's clips their precision is far below the floor. The owner check is small
+({check["owner_flags"]} flags): it can rule a detector out, not in. **The precision condition
+was added after the first build**: the recall-only check written down first would have let
+`{calibration["chosen"]}` decide, so the detector being off rests on that added condition (and
+the clean cuts above), not on a rule fixed before any result.
+
+Per stratum (items, exposed, at a file start, at a segmenter cut, called trimmed by the chosen
+candidate `{calibration["chosen"]}`, decided by an owner note, and onset_trimmed), at the
+verdicts committed when the guard was built:
+
+{_table(["stratum", "items", "exposed", "file start", "segmenter cut", "chosen calls trimmed",
+         "owner note", "onset_trimmed"], strata)}
+
+The sizing below leaves out {taken["sites"]} trimmed sites and {taken["words"]} sampled words
+(an item the waqf guard also takes out counts there); question 4 reads the P3.5 fixtures
+without the {len(sizing["fixture_report"]["onset_trimmed"])} trimmed there.{cell_table}
+
+Answered exposed items the owner did not flag that a candidate calls trimmed, for
+re-listening (the candidates that do):
+
+{relisten or "none"}
+"""
+
+
 def _section_budget(sizing: Mapping) -> str:
     rows = []
     for name, e in sizing["budget"]["families"].items():
@@ -557,8 +648,9 @@ HEADER = """# Ship A sizing (#126)
 
 Generated by `python -m training.ship_a_sizing_doc` from `tools/tadabur/ship_a/sizing.json`
 (`python -m training.ship_a_sizing run`), `sites.summary.json`, `worklist.summary.json`,
-`frame.json`, `mining/summary.json` / `mining/frame.json` and `waqf_guard.summary.json`
-(`python -m tadabur.waqf_guard build`); do not edit by hand.
+`frame.json`, `mining/summary.json` / `mining/frame.json`, `waqf_guard.summary.json`
+(`python -m tadabur.waqf_guard build`) and `onset_guard.summary.json`
+(`python -m tadabur.onset_guard build`); do not edit by hand.
 
 Ship A (ADR-0012, goals 1-2) trains on sites the owner verifies by ear: where `h448` swaps the
 letters of a target pair, or collapses an in-word geminate. This page sizes
@@ -569,7 +661,7 @@ owner's (#128). The app outcome itself is #123's Muraja replay; nothing here mod
 
 
 def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
-           mining: Mapping, mining_frame: Mapping, guard: Mapping) -> str:
+           mining: Mapping, mining_frame: Mapping, guard: Mapping, onset: Mapping) -> str:
     totals = frame_totals(frame)
     return "\n".join([
         HEADER,
@@ -578,6 +670,7 @@ def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
         _section_checks(sites),
         _section_listening(sites),
         _section_guard(sizing, guard),
+        _section_onset(sizing, onset),
         _section_budget(sizing),
         _section_power(sizing),
         _section_harm(sizing),
@@ -590,7 +683,7 @@ def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
 def load_inputs() -> tuple[dict, ...]:
     return tuple(json.loads(path.read_text(encoding="utf-8")) for path in (
         SIZING_PATH, SITES_SUMMARY_PATH, WORKLIST_SUMMARY_PATH, FRAME_PATH,
-        MINING_SUMMARY_PATH, MINING_FRAME_PATH, GUARD_SUMMARY_PATH))
+        MINING_SUMMARY_PATH, MINING_FRAME_PATH, GUARD_SUMMARY_PATH, ONSET_SUMMARY_PATH))
 
 
 def main() -> None:

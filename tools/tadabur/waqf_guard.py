@@ -79,7 +79,6 @@ import argparse
 import bisect
 import hashlib
 import json
-import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, replace
@@ -99,6 +98,7 @@ from .listening_session import (
 )
 from .local_pause import SPLITS, TEST, boundary_window, calibrate, fires, point
 from .mining_pool import CLIPS_PATH as POOL_CLIPS_PATH
+from .owner_notes import PAUSE, says
 from .ship_a import SHIP_A_DIR, SITES_PATH, load_sites
 from .ship_a_worklist import GEMINATE, PAIR_PARTNER, WORKLIST_PATH, carried_part
 from .staged_audio import load_staged_clips
@@ -140,23 +140,15 @@ OWNER_NOTE = "owner_note"
 LOCAL_CHECK = "local_check"
 UNPLACED = "unplaced"
 
-#: Words of a note that name a pause, or continuation.
-_PAUSE_WORDS = frozenset({"waqf", "pause", "paused", "pauses", "pausing", "stop", "stopped",
-                          "stops", "stopping"})
-_WASL_WORDS = frozenset({"wasl"})
-#: Words that negate a pause or wasl word among the :data:`_NEGATION_REACH` words before it.
-_NEGATORS = frozenset({"no", "not", "never", "without", "nor", "cannot", "didnt", "doesnt",
-                       "dont", "hasnt", "havent", "hadnt", "isnt", "wasnt", "wont"})
-_NEGATION_REACH = 3
-
 
 # --- which items depend on wasl --------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class Item:
-    """Anything the guard classifies: a site of Ship A or the worklist, or a sampled word,
-    with the segment it is read in (its realized reference and words) and where it appears."""
+    """Anything a guard classifies: a site of Ship A or the worklist, or a sampled word,
+    with the segment it is read in (its realized reference and words, its sample span), the
+    excerpt the owner hears it in (its first sample), and where it appears."""
 
     item_id: str
     parts: tuple[str, ...]
@@ -170,13 +162,17 @@ class Item:
     word_offsets: tuple[int, ...]
     reference: str
     reference_index: int
+    start_sample: int
+    end_sample: int
+    excerpt_start_sample: int
 
 
 def site_item(row: SessionSite, part: str) -> Item:
     site = row.site
     return Item(site.site_id, (part,), site.source, site.stratum, site.mark, site.prescribed,
                 site.audio_filename, site.surah_ayah, row.word_start, row.word_offsets,
-                site.reference, site.reference_index)
+                site.reference, site.reference_index, site.start_sample, site.end_sample,
+                row.excerpt_start_sample)
 
 
 def worklist_part(row: SessionSite) -> str:
@@ -203,7 +199,8 @@ def all_items() -> list[Item]:
     rows = (site_item(r, worklist_part(r)) for r in load_worklist(WORKLIST_PATH))
     words = (Item(w.site.site_id, (WORD_SAMPLE,), WORD_SAMPLE, w.site.stratum, WORD, WORD,
                   w.site.audio_filename, w.site.surah_ayah, w.word_start, w.word_offsets,
-                  w.site.reference, w.site.reference_index) for w in load_words())
+                  w.site.reference, w.site.reference_index, w.site.start_sample,
+                  w.site.end_sample, w.excerpt_start_sample) for w in load_words())
     return merge([*sites, *rows, *words])
 
 
@@ -455,20 +452,12 @@ def owner_says(note: str) -> bool | None:
     """What a verdict's note says about a pause: ``True`` for a waqf, ``False`` for wasl,
     ``None`` when it says neither or is ambiguous, which leaves the detector's decision.
 
-    The note is lower-cased with its whitespace and apostrophes normalized, then read word by
-    word: a pause word (``waqf``, ``pause(d)``, ``stop(ped)``) or ``wasl`` is negated when
-    ``no``, ``not``, ``never``, ``without`` or a word ending in ``n't`` is among the three
-    words before it ("no pause", "not paused", "has not stopped", "didn't stop"). A negated
-    pause says wasl; a negated wasl says a pause. Two claims that disagree are ambiguous."""
-    words = re.findall(r"[a-z']+", " ".join(note.lower().replace("\u2019", "'").split()))
-    claims = set()
-    for k, word in enumerate(words):
-        if word not in _PAUSE_WORDS | _WASL_WORDS:
-            continue
-        negated = any(w in _NEGATORS or w.endswith("n't")
-                      for w in words[max(0, k - _NEGATION_REACH):k])
-        claims.add((word in _PAUSE_WORDS) != negated)
-    return claims.pop() if len(claims) == 1 else None
+    Read by :func:`tadabur.owner_notes.says` (:data:`tadabur.owner_notes.PAUSE`): a pause word
+    (``waqf``, ``pause(d)``, ``stop(ped)``) affirms a pause, ``wasl`` denies it, and either is
+    negated by ``no``, ``not``, ``never``, ``without`` or a word ending in ``n't`` among the
+    three words before it, in its own clause ("no pause", "not paused", "has not stopped",
+    "didn't stop")."""
+    return says(note, PAUSE)
 
 
 def read_boundaries(path: Path = BOUNDARIES_PATH) -> dict[str, dict]:

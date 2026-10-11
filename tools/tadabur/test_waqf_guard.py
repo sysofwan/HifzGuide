@@ -24,7 +24,7 @@ def item(surah_ayah: str, start: int, end: int, word: int, needle: str, mark: st
     index = reference.index(needle, offsets[word - start])
     assert index < offsets[word - start + 1]
     return g.Item(f"{surah_ayah}@{word}", ("test",), "new_audit", "test", mark, prescribed,
-                  "clip.wav", surah_ayah, start, offsets, reference, index)
+                  "clip.wav", surah_ayah, start, offsets, reference, index, 0, 16000, 0)
 
 
 def dependences(one: g.Item) -> list[tuple[int, str, str, str]]:

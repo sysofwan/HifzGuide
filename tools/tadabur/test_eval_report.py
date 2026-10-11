@@ -11,6 +11,7 @@ from dataclasses import replace
 
 import pytest
 
+from tadabur.exclusions import Exclusions
 from tadabur.eval_report import (
     AS_HEARD,
     AS_PARTNER,
@@ -229,13 +230,26 @@ def test_a_waqf_realized_site_leaves_every_row_but_not_the_weights(cohort):
     arms = {"m": decodes(sites, {})}
     whole = fixture_report(sites, sides, reciters, arms, models(arms))
     guarded = fixture_report(sites, sides, reciters, arms, models(arms),
-                             waqf_realized={sites[3].site_id})
+                             Exclusions.of(waqf_realized={sites[3].site_id}))
     assert guarded["waqf_realized"] == [sites[3].site_id] and whole["waqf_realized"] == []
+    assert guarded["onset_trimmed"] == whole["onset_trimmed"] == []
     assert sites[3].site_id not in {r["site_id"] for r in guarded["sites"]}
     assert guarded["pending"] == []
     assert all(sites[3].site_id not in r["excluded"] for r in guarded["rows"])
     weights = {r["site_id"]: r["weight"] for r in whole["sites"]}
     assert all(r["weight"] == weights[r["site_id"]] for r in guarded["sites"])
+
+
+def test_each_reason_lists_its_own_sites_and_a_site_once(cohort):
+    """#138: an onset-trimmed site leaves through the same exclusion; a site both guards take
+    out is listed once, under the waqf guard's reason (the first)."""
+    sites, sides, reciters = cohort
+    arms = {"m": decodes(sites, {})}
+    both = sites[3].site_id
+    report = fixture_report(sites, sides, reciters, arms, models(arms), Exclusions.of(
+        waqf_realized={both}, onset_trimmed={both, sites[0].site_id}))
+    assert report["waqf_realized"] == [both] and report["onset_trimmed"] == [sites[0].site_id]
+    assert {both, sites[0].site_id}.isdisjoint(r["site_id"] for r in report["sites"])
 
 
 def test_a_mistake_side_decode_never_moves_a_correct_side_number(cohort):

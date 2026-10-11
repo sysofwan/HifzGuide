@@ -58,6 +58,11 @@ wandb/
 !tools/tadabur/ship_a/waqf_guard.boundaries.jsonl
 !tools/tadabur/ship_a/waqf_guard.jsonl
 !tools/tadabur/ship_a/waqf_guard.segmentations.jsonl
+# Ship A's onset guard (#138): the per-item sidecar, every span the detector scored, and the
+# synthetic trims' provenance.
+!tools/tadabur/ship_a/onset_guard.jsonl
+!tools/tadabur/ship_a/onset_guard.scores.jsonl
+!tools/tadabur/ship_a/onset_guard.synthetic.jsonl
 # Ship A's mining extension (#126, D9): its compact scan record and its hit clips' manifest.
 !tools/tadabur/ship_a/mining/scan.jsonl
 !tools/tadabur/ship_a/mining/clips.jsonl

@@ -12,6 +12,7 @@ import pytest
 from tadabur.power_frame import input_checksums
 from tadabur.ship_a import SITES_PATH, listening_weights, load_sites, mine_all
 from tadabur.test_power_frame import H448, REFERENCE, scored_pool
+from tadabur.truth_sites import UNCLEAR
 from tadabur.word_sample import WORD_SAMPLE_PATH
 from training import ship_a_sizing as z
 from training.acceptance_stats import (
@@ -126,13 +127,15 @@ def test_the_word_sample_weighs_its_own_selection_not_the_pool():
     assert all(p == 0.0 for p in flat["power"].values())  # no flag, nothing to reduce
 
 
-def _verified_cell(chances):
-    """A held-out cell of one swap site per reciter (reciter ``k``), each recited as the
-    mushaf prescribes and listened with chance ``chances[k]``."""
+def _verified_cell(chances, unclear=0):
+    """A held-out cell of one swap site per reciter (reciter ``k``), each listened with chance
+    ``chances[k]`` and recited as the mushaf prescribes, but the last ``unclear`` heard
+    ``unclear`` (excluded, though they could belong to the cell)."""
     (swap,) = [s for s in mine_all(scored_pool(base=H448)) if s.kind == "pair"]
+    heard = [swap.site.prescribed] * (len(chances) - unclear) + [UNCLEAR] * unclear
     return [replace(swap, listen_probability=p, row=replace(swap.row, site=replace(
         swap.site, site_id=f"{swap.site.site_id}#{k}", audio_filename=f"c{k}.wav",
-        audio_sha256=f"{k:064x}", heard=swap.site.prescribed,
+        audio_sha256=f"{k:064x}", heard=heard[k],
         stratum_population=len(chances)))) for k, p in enumerate(chances)]
 
 
@@ -205,6 +208,26 @@ def test_the_scorer_and_the_word_sizing_read_a_common_weight_as_equal():
     assert power[4.0] == power[1.0] and power[1.0]["0.0"] == 1.0
     unequal = z.word_sample_power(z.WordScenario(tuple(1 / c for c in UNEQUAL), 1.0, 1.0), 20)
     assert all(p == 0.0 for p in unequal["power"].values())
+
+
+def test_a_common_weight_leaves_the_scorer_scale_free_with_an_excluded_site():
+    """The unit scale reaches the intervals only: 13 verified sites and one ``unclear``, all
+    at weight 1 or all at weight 4, give one point, interval, difference and exclusion
+    sensitivity (Astra round 5: weight 4 once read the worst case as 13/17, not 13/14)."""
+    at = {chance: _scored_cell(_verified_cell((chance,) * 14, unclear=1), (True,) * 14)
+          for chance in (1.0, 0.25)}
+    for cell in at.values():
+        assert cell["excluded"] == 1
+        assert cell["arms"]["m"]["sensitivity"]["committed_accuracy"] == pytest.approx(
+            {"worst": 13 / 14, "best": 1.0})
+    one, four = at[1.0], at[0.25]
+    assert one["arms"]["m"]["sensitivity"] == four["arms"]["m"]["sensitivity"]
+    assert one["differences"] == four["differences"]
+    for name, rate in one["arms"]["m"]["rates"].items():
+        scaled = four["arms"]["m"]["rates"][name]
+        assert {k: scaled[k] for k in ("point", "lower", "upper", "method")} == {
+            k: rate[k] for k in ("point", "lower", "upper", "method")}, name
+        assert (scaled["num"], scaled["den"]) == (4 * rate["num"], 4 * rate["den"]), name
 
 
 def test_one_common_weight_goes_on_the_unit_scale_and_unequal_weights_stay():

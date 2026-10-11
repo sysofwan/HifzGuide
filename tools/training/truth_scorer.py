@@ -401,14 +401,18 @@ class SiteRow:
 
 def estimate(
     clusters: Sequence[int], terms: tuple[np.ndarray, np.ndarray], weights: np.ndarray,
-    resample: Resample,
+    resample: Resample, unit_terms: tuple[np.ndarray, np.ndarray] | None = None,
 ) -> dict:
-    """A rate's point and its §1 interval, with the method that produced the interval."""
+    """A rate's point and its §1 interval, with the method that produced the interval.
+
+    ``terms`` carry the sites' own weights: the point, ``num`` and ``den`` read them.
+    ``unit_terms`` are the same terms on §1's unit scale where that differs
+    (:func:`_on_unit_scale`); the interval reads them, with ``weights`` their site weights."""
     num, den = terms
     point = ratio(num, den)
     return {
         "point": point if math.isfinite(point) else None,
-        **ratio_interval(clusters, num, den, weights, resample).as_dict(),
+        **ratio_interval(clusters, *(unit_terms or terms), weights, resample).as_dict(),
         "num": float(num.sum()),
         "den": float(den.sum()),
     }
@@ -488,7 +492,11 @@ def _score_cell(
     arms: Sequence[str],
     comparisons: Sequence[tuple[str, str]],
     scorings: Sequence[str],
+    on_unit_scale: Callable[[Sequence[SiteRow]], Sequence[SiteRow]],
 ) -> dict:
+    """One cell's rates, differences and exclusion sensitivity. Points, sums and the
+    sensitivity read the sites' own weights, so they stay on one scale with the excluded
+    sites' weights; the intervals read the rows ``on_unit_scale`` (§1)."""
     clusters = [row.reciter_id for row in rows]
     summary = {
         **cell.as_dict(),
@@ -501,12 +509,16 @@ def _score_cell(
     if not rows:
         return summary
     resample = Resample.by_cluster(clusters)
-    w = _indicator(row.weight for row in rows)
+    unit_rows = on_unit_scale(rows)
+    w = _indicator(row.weight for row in unit_rows)
     sukun_cell = cell.family == TASHKEEL and cell.heard == SUKUN
     terms = {arm: _rate_terms(rows, arm, cell.side, scorings, sukun_cell) for arm in arms}
+    unit_terms = terms if unit_rows is rows else {
+        arm: _rate_terms(unit_rows, arm, cell.side, scorings, sukun_cell) for arm in arms}
     summary["arms"] = {
         arm: {
-            "rates": {name: estimate(clusters, t, w, resample) for name, t in terms[arm].items()},
+            "rates": {name: estimate(clusters, t, w, resample, unit_terms[arm][name])
+                      for name, t in terms[arm].items()},
             "sensitivity": _sensitivity(rows, [x for _, x in excluded], arm) if excluded else None,
         }
         for arm in arms
@@ -514,9 +526,10 @@ def _score_cell(
     summary["differences"] = {}
     for arm, other in comparisons:
         differences = {}
-        for name, arm_terms in terms[arm].items():
+        for name, arm_terms in unit_terms[arm].items():
             points = [summary["arms"][a]["rates"][name]["point"] for a in (arm, other)]
-            interval = difference_interval(clusters, arm_terms, terms[other][name], w, resample)
+            interval = difference_interval(clusters, arm_terms, unit_terms[other][name], w,
+                                           resample)
             differences[name] = {
                 "point": None if None in points else points[0] - points[1],
                 **interval.as_dict(),
@@ -525,15 +538,21 @@ def _score_cell(
     return summary
 
 
+def _as_given(rows: Sequence[SiteRow]) -> Sequence[SiteRow]:
+    """The legacy scale: stratum weights are read as they are."""
+    return rows
+
+
 def _on_unit_scale(rows: Sequence[SiteRow]) -> list[SiteRow]:
-    """``rows`` with weights of one common value set to exactly 1 (:func:`unit_if_equal`)."""
+    """``rows`` with weights of one common value set to exactly 1 (:func:`unit_if_equal`),
+    for the §1 interval only: Wilson and Tango read counts. A point is scale-free."""
     weights = unit_if_equal([row.weight for row in rows])
     return [replace(row, weight=float(w)) for row, w in zip(rows, weights)]
 
 
 def _allowance_view(
     population_: str, rows: Sequence[SiteRow], arms: Sequence[str],
-    on_unit_scale: Callable[[list[SiteRow]], list[SiteRow]] = list,
+    on_unit_scale: Callable[[Sequence[SiteRow]], Sequence[SiteRow]] = _as_given,
 ) -> list[dict]:
     """Per ADR-0012 allowance, on the sites it affects: flagged words on correct recitation and
     on real mistakes, with the allowance on (``allowances_on``) and switched off alone."""
@@ -542,8 +561,7 @@ def _allowance_view(
         states = (("on", ALLOWANCES_ON.name), ("off", allowance_off(allowance).name))
         entry = {"allowance": allowance.name, "population": population_, "scorings": dict(states), "sides": {}}
         for side_, rate in ((CORRECT_SIDE, "false_flags"), (MISTAKE_SIDE, "flagged_mistakes")):
-            affected = on_unit_scale(
-                [r for r in rows if side(r.site) == side_ and allowance.affects(r.site)])
+            affected = [r for r in rows if side(r.site) == side_ and allowance.affects(r.site)]
             clusters = [r.reciter_id for r in affected]
             block = {
                 "sites": len(affected),
@@ -553,12 +571,14 @@ def _allowance_view(
             if affected:
                 resample = Resample.by_cluster(clusters)
                 w = _indicator(r.weight for r in affected)
+                unit_w = _indicator(r.weight for r in on_unit_scale(affected))
                 for arm in arms:
                     block[arm] = {}
                     for state, scoring in states:
                         # a flagged word: a false flag on correct recitation, a catch on a mistake
                         flagged = _indicator(_word_flagged(r.muraja[scoring][arm]) for r in affected)
-                        block[arm][state] = estimate(clusters, (w * flagged, w), w, resample)
+                        block[arm][state] = estimate(clusters, (w * flagged, w), unit_w, resample,
+                                                     (unit_w * flagged, unit_w))
             entry["sides"][rate] = block
         view.append(entry)
     return view
@@ -623,13 +643,15 @@ def score(
     excluded = [(site, weights[site.site_id]) for site in sites if side(site) is None]
 
     # Per-site design weights (Ship A) read a cell of one common weight as equally weighted
-    # (acceptance_stats.unit_if_equal); the legacy stratum weights keep their scale.
-    on_unit_scale = _on_unit_scale if design_weights is not None else list
+    # (acceptance_stats.unit_if_equal) for its intervals; the legacy stratum weights keep
+    # their scale. Points, sums and the exclusion sensitivity always read the own weights.
+    on_unit_scale = _on_unit_scale if design_weights is not None else _as_given
     cells = []
     for cell in _cells_of(rows):
-        members = on_unit_scale([row for row in rows if cell.holds(row.site)])
+        members = [row for row in rows if cell.holds(row.site)]
         could = [(site, w) for site, w in excluded if cell.could_hold(site)]
-        cells.append(_score_cell(cell, members, could, arms, comparisons, scorings))
+        cells.append(_score_cell(cell, members, could, arms, comparisons, scorings,
+                                 on_unit_scale))
 
     allowances = []
     for population_ in POPULATIONS:

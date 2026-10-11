@@ -7,15 +7,19 @@ whether the reciter paused, and the onset guard (:mod:`tadabur.onset_guard`) rea
 :data:`TRIM`, whether the clip's opening sound is cut. :func:`says` is the one reader.
 
 The note is cut into clauses at line breaks and at every Unicode punctuation mark (so the
-Arabic ``،``, ``؛`` and ``؟`` too) but the apostrophe, before its whitespace is normalized. A
+Arabic ``،``, ``؛`` and ``؟`` too) but the apostrophe and a dash joining two letters
+("not-trimmed", "no-waqf", read as two words); a spaced dash ("no waqf - trimmed") cuts. A
 bracketed span, "no (audible) pause", is a qualifier and is skipped. Inside a clause the note
 is read word by word, lower-cased. A word of a claim (:data:`CLAIMS`) affirms or denies it. A
 negator (``no``, ``not``, ``never``, ``without``, ``nor``, ``cannot`` or a word ending in
 ``n't``, or its apostrophe-less spelling, ``didnt``) negates the first claim word it reaches
 within three words (#134's window), and every later word of that same claim in the clause
 ("no pausing and stopping"); a word of another claim ends its scope, so "no waqf and trimmed"
-and "no waqf trimmed" deny a pause and affirm a trim. Two readings of one claim that disagree
-are ambiguous: no claim.
+and "no waqf trimmed" deny a pause and affirm a trim. ``hafs`` (the owner's "Not hafs",
+"May not be hafs") is what a negator reaching it negates: the negator is spent there and
+negates nothing after it. **This departs from #134's reader on purpose**: it read "Not hafs
+paused" as no pause, which was a bug; no committed note reads differently. Two readings of
+one claim that disagree are ambiguous: no claim.
 """
 
 from __future__ import annotations
@@ -66,8 +70,11 @@ def clauses(note: str) -> list[str]:
     """The note's clauses, lower-cased, bracketed qualifiers dropped (module docstring)."""
     text = _BRACKETED.sub(" ", note.lower().replace("\u2019", "'"))
     out, current = [], []
-    for char in text:
-        if char in _LINE_BREAKS or (char != "'" and unicodedata.category(char).startswith("P")):
+    for k, char in enumerate(text):
+        category = unicodedata.category(char)
+        joins = (category == "Pd" and 0 < k < len(text) - 1
+                 and text[k - 1].isalpha() and text[k + 1].isalpha())
+        if char in _LINE_BREAKS or (char != "'" and category.startswith("P") and not joins):
             out.append("".join(current))
             current = []
         else:
@@ -85,6 +92,9 @@ def says(note: str, claim: Claim) -> bool | None:
         for k, word in enumerate(re.findall(r"[a-z']+", clause)):
             if _negator(word):
                 negator, governed = k, None
+                continue
+            if word == "hafs" or word.startswith("hafs'"):
+                negator = governed = None  # "not hafs": the negator is spent here
                 continue
             owner = next((c for c in CLAIMS if c.names(word)), None)
             if owner is None:

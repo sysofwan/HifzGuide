@@ -52,9 +52,13 @@ def test_owner_notes(note, says):
     ("Not hafs\u061b trimming issues", None, True), ("Not hafs\ntrimming issues", None, True),
     ("Not hafs\u061f waqf", True, None), ("no waqf, Not hafs\ntrimming issues", False, True),
     ("no waqf\r\nwaqf", None, None),
-    # #134's window: a negator reaches a claim word up to three words on, even past another
-    # word, as the waqf reader on main does ("not hafs paused" reads as no pause)
-    ("Not hafs paused", False, None), ("Not hafs trimming issues", None, False),
+    # a dash joining two letters joins; a spaced dash cuts
+    ("not-trimmed", None, False), ("no-waqf", False, None), ("no waqf - trimmed", False, True),
+    ("no waqf \u2013 trimmed", False, True), ("no waqf \u2014 trimmed", False, True),
+    # "hafs" spends the negator that reaches it: a deliberate departure from #134's reader,
+    # which read "Not hafs paused" as no pause (a bug)
+    ("Not hafs trimming issues", None, True), ("Not hafs paused", True, None),
+    ("May not be hafs, waqf", True, None), ("NOT HAFS' reading, trimmed", None, True),
 ])
 def test_a_negation_governs_only_its_own_claim(note, waqf, trim):
     """#138: the waqf and the trim claim of one note are read apart; a negator covers its
@@ -76,6 +80,11 @@ def _legacy_waqf(note: str) -> bool | None:
                           for w in words[max(0, k - 3):k])
             claims.add((word in pause) != negated)
     return claims.pop() if len(claims) == 1 else None
+
+
+def test_not_hafs_departs_from_the_134_reader_on_purpose():
+    assert _legacy_waqf("Not hafs paused") is False
+    assert waqf_guard.owner_says("Not hafs paused") is True
 
 
 def test_every_committed_note_reads_as_the_waqf_guard_read_it():

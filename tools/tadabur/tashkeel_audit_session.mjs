@@ -18,6 +18,27 @@
 
 export const ANSWER_GUARD_MS = 400;
 
+const ZWJ = "\u200D";
+// Two parts join across their seam when neither side of it is a space or an end. A seam
+// before a combining mark is left alone: the mark belongs to the letter before it.
+const joins = (left, right) => left !== "" && right !== "" && !/\s/u.test(left.at(-1))
+  && !/[\s\p{M}]/u.test(right[0]);
+
+// The reference split around the highlight, with a zero-width joiner on each side of the
+// highlight that falls inside a word. Without it the font may draw the highlighted letter
+// inside a ligature with its neighbour (the لم of لما), and a highlight inside a ligature
+// has no width; the joiner breaks the ligature and keeps the letters' joined forms. A
+// highlight at a word edge gets no joiner on that side, so its letter keeps its own form.
+export function highlightParts(before, carrier, after) {
+  const opens = joins(before, carrier);
+  const closes = joins(carrier, after);
+  return [
+    opens ? before + ZWJ : before,
+    (opens ? ZWJ : "") + carrier + (closes ? ZWJ : ""),
+    closes ? ZWJ + after : after,
+  ];
+}
+
 export function createSession({ api, player, view, clock = () => Date.now() }) {
   let sites = [];
   let index = 0;

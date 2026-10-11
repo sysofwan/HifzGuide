@@ -24,5 +24,5 @@ def test_the_page_logic_passes_its_client_tests():
 
 def test_the_page_loads_its_logic_from_the_tested_module():
     page = (Path(__file__).parent / "tashkeel_audit_page.html").read_text(encoding="utf-8")
-    assert 'import { createSession } from "/session.mjs";' in page
+    assert 'import { createSession, highlightParts } from "/session.mjs";' in page
     assert "event.repeat" in page

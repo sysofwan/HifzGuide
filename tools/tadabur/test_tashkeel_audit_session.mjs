@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ANSWER_GUARD_MS, createSession } from "./tashkeel_audit_session.mjs";
+import { ANSWER_GUARD_MS, createSession, highlightParts } from "./tashkeel_audit_session.mjs";
 
 function deferred() {
   let resolve, reject;
@@ -194,4 +194,17 @@ test("the naturalness question is guarded, and refused where it is not asked", a
   await h.session.load();
   assert.equal(await h.session.judge("natural", ""), false);  // the site just appeared
   assert.deepEqual(h.drafts, []);
+});
+
+test("a highlight inside a word is joined to both neighbours, so no ligature hides it", () => {
+  // 43:35's لَمَّا: the م sits between لَ and اا, where the font would draw لم as one glyph.
+  assert.deepEqual(highlightParts("ذَاالِكَ لَ", "م", "اا مَتَااعُ"),
+    ["ذَاالِكَ لَ\u200D", "\u200Dم\u200D", "\u200Dاا مَتَااعُ"]);
+});
+
+test("a highlight at a word edge, or before its own mark, gets no joiner on that side", () => {
+  assert.deepEqual(highlightParts("قَالَ ", "ك", "ُم هُوَ"), ["قَالَ ", "ك", "ُم هُوَ"]);
+  assert.deepEqual(highlightParts("قَالَ ", "كَ", "ذَاا"), ["قَالَ ", "كَ\u200D", "\u200Dذَاا"]);
+  assert.deepEqual(highlightParts("", "ب", " ءِذَاا"), ["", "ب", " ءِذَاا"]);
+  assert.deepEqual(highlightParts("فِي", "ه", ""), ["فِي\u200D", "\u200Dه", ""]);
 });

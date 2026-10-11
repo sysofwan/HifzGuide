@@ -105,7 +105,7 @@
 // prescribes at a site (a sampled word shows its own text, which judging it needs), what
 // any model heard, or how any answer would score. The logic is in /session.mjs; this
 // script only wires it to the document.
-import { createSession } from "/session.mjs";
+import { createSession, highlightParts } from "/session.mjs";
 
 const PROMPTS = {
   tashkeel: "Which mark do you hear on the highlighted letter?",
@@ -149,9 +149,10 @@ const view = {
     $("meta").textContent = `Site ${position} · ayah ${site.surah_ayah}`;
     const ref = $("reference");
     ref.textContent = "";
+    const [before, carrier, after] = highlightParts(site.before, site.carrier, site.after);
     const mark = document.createElement("mark");
-    mark.textContent = site.carrier;
-    ref.append(site.before, mark, site.after);
+    mark.textContent = carrier;
+    ref.append(before, mark, after);
     $("note").value = site.note || "";
     renderChoices(site);
   },

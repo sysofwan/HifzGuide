@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ANSWER_GUARD_MS, createSession } from "./tashkeel_audit_session.mjs";
+import { ANSWER_GUARD_MS, createSession, highlightParts } from "./tashkeel_audit_session.mjs";
 
 function deferred() {
   let resolve, reject;
@@ -194,4 +194,24 @@ test("the naturalness question is guarded, and refused where it is not asked", a
   await h.session.load();
   assert.equal(await h.session.judge("natural", ""), false);  // the site just appeared
   assert.deepEqual(h.drafts, []);
+});
+
+test("a highlight inside a word is joined to both neighbours, so no ligature hides it", () => {
+  // 43:35's لَمَّا: the م sits between لَ and اا, where the font would draw لم as one glyph.
+  assert.deepEqual(highlightParts("ذَاالِكَ لَ", "م", "اا مَتَااعُ"),
+    ["ذَاالِكَ لَ\u200D", "\u200Dم\u200D", "\u200Dاا مَتَااعُ"]);
+});
+
+test("no joiner is added where the letters do not join", () => {
+  // A word edge, or the carrier's own mark after it.
+  assert.deepEqual(highlightParts("قَالَ ", "ك", "ُم هُوَ"), ["قَالَ ", "ك", "ُم هُوَ"]);
+  assert.deepEqual(highlightParts("", "ب", " ءِذَاا"), ["", "ب", " ءِذَاا"]);
+  // 2:129's رَببَنَاا: ر cannot join forward, so the highlighted ب keeps its initial form.
+  assert.deepEqual(highlightParts("رَ", "ب", "بَنَاا"), ["رَ", "ب\u200D", "\u200Dبَنَاا"]);
+  // 6:64's يُنَججِۦۦك: the small yeh after the carrier joins nothing.
+  assert.deepEqual(highlightParts("يُنَ", "جِ", "ۦۦك"), ["يُنَ\u200D", "\u200Dجِ", "ۦۦك"]);
+  // A right-joining carrier joins back but never forward.
+  assert.deepEqual(highlightParts("قَ", "ا", "لَ"), ["قَ\u200D", "\u200Dا", "لَ"]);
+  // The hidden letter joins nothing.
+  assert.deepEqual(highlightParts("لَ", "\u25CC", "اا"), ["لَ", "\u25CC", "اا"]);
 });

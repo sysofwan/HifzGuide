@@ -418,7 +418,8 @@ def _section_questions(worklist: Mapping) -> str:
 
 - **§7 amended.** Acceptance rules §7 now names nine target pairs (D9, 2026-10-10); the #84
   scorer's frozen required cells follow `truth_sites.TARGET_PAIRS`. No threshold, margin or
-  ceiling moved. The committed truth-baseline report predates the amendment and lists seven.
+  ceiling moved. The committed truth-baseline report (`docs/truth-baseline.md`) carries the
+  two pairs' cells, all without support yet.
 - **P3.5 safeguards on linked clips.** {worklist["p35_rows_on_linked_clips"]} of the 23 P3.5
   re-listens sit on clips tied to a recording `h448` trained on or `decode_evalset`. They
   stay on the worklist as §8's targeted safeguards; they were never `h448`-unseen evaluation.

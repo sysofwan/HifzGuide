@@ -25,8 +25,8 @@
   header { position: sticky; top: 0; z-index: 1; background: var(--bg);
            border-bottom: 1px solid var(--line);
            padding: calc(.5rem + env(safe-area-inset-top)) 16px .5rem;
-           display: flex; align-items: center; gap: .75rem; }
-  #count { font-weight: 600; flex: 1; min-width: 0; line-height: 1.25; }
+           display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+  #count { font-weight: 600; flex: 1 0 auto; }
   main { max-width: 40rem; margin: 0 auto; padding: 12px 16px 32px; }
   .prompt { font-size: 1.05rem; font-weight: 600; margin: .25rem 0 .5rem; }
   .meta { color: var(--muted); font-size: .85rem; }
@@ -65,6 +65,7 @@
   .hint { color: var(--muted); font-size: .8rem; margin-top: 16px; }
   kbd { font: .75em ui-monospace, monospace; opacity: .7; }
   @media (hover: none) { kbd, .hint { display: none; } }
+  .jumps { display: flex; gap: .5rem; margin-left: auto; }
   #jump, #queued { min-height: 40px; padding: .3rem .8rem; flex: none; }
   .review-note { background: var(--card); border: 1px solid var(--accent);
                  border-left-width: 4px; border-radius: 10px; padding: .5rem .7rem;
@@ -77,8 +78,10 @@
 <body>
 <header>
   <span id="count">Loading…</span>
-  <button id="queued" hidden>Review <span id="queued-count"></span> <kbd>r</kbd></button>
-  <button id="jump">Next unanswered <kbd>u</kbd></button>
+  <nav class="jumps">
+    <button id="queued" hidden>Review <span id="queued-count"></span> <kbd>r</kbd></button>
+    <button id="jump">Next unanswered <kbd>u</kbd></button>
+  </nav>
 </header>
 <main>
   <div id="error"></div>

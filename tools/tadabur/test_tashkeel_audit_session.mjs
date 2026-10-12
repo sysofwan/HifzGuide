@@ -252,6 +252,33 @@ test("a queued site keeps its answer until it is saved again, then the next queu
   h.consistent();
 });
 
+test("Trimmed keeps its note through a naturalness answer given second, in either order", async () => {
+  for (const second of ["judge", "trimmed"]) {
+    const h = harness([null, null], [null, null]);
+    await h.session.load();
+    h.tick();
+    if (second === "judge") assert.equal(await h.session.trimmed("no waqf"), false);  // a draft
+    else assert.equal(await h.session.judge("unnatural", "no waqf"), false);
+    if (second === "judge") h.session.judge("unnatural", "no waqf");
+    else h.session.trimmed("no waqf");
+    assert.deepEqual(h.saves[0].body, {
+      key: "k0", heard: "unclear", natural: "unnatural", note: "trim; no waqf", previous: null,
+    });
+  }
+});
+
+test("choosing another heard answer after Trimmed drops the trim", async () => {
+  const h = harness([null], [null]);
+  await h.session.load();
+  h.tick();
+  assert.equal(await h.session.trimmed(""), false);
+  assert.equal(await h.session.answer("a", ""), false);
+  h.session.judge("natural", "");
+  assert.deepEqual(h.saves[0].body, {
+    key: "k0", heard: "a", natural: "natural", note: "", previous: null,
+  });
+});
+
 test("Trimmed answers unclear and puts trim before the listener's note", async () => {
   const h = harness();
   await h.session.load();
@@ -261,17 +288,49 @@ test("Trimmed answers unclear and puts trim before the listener's note", async (
                                       previous: null });
   h.saves[0].resolve();
   assert.equal(await trimmed, true);
-  assert.equal(trimNote(""), "trim");
-  assert.equal(trimNote("Trimmed at the start"), "Trimmed at the start");
-  assert.equal(trimNote("not hafs"), "trim; not hafs");
+  assert.equal(trimNote(""), "trim;");
+  assert.equal(trimNote("Trimmed at the start"), "trim; Trimmed at the start");
+  assert.equal(trimNote("not trimmed"), "trim; not trimmed");
+  assert.equal(trimNote("Trim; again"), "Trim; again");
 });
 
 test("queueing a site for review shows its note without redrawing the page", async () => {
   const h = harness([null, null]);
   await h.session.load();
+  assert.equal(await h.session.markForReview(true), false);  // the site just appeared
+  h.tick();
   assert.equal(await h.session.markForReview(true), true);
   assert.deepEqual(h.reviews, [{ key: "k0", review: true }]);
   assert.deepEqual(h.queuedViews.at(-1), { note: "You marked this site to review.", queued: 1 });
   assert.equal(await h.session.markForReview(false), true);
   assert.deepEqual(h.queuedViews.at(-1), { note: null, queued: 0 });
+});
+
+test("a review write blocks answers and moving until it is done", async () => {
+  const pending = deferred();
+  const shown = [];
+  let now = 0;
+  const session = createSession({
+    api: {
+      sites: async () => [{ key: "k0", heard: null, note: "", choices: ["a"], review: null },
+                          { key: "k1", heard: null, note: "", choices: ["a"], review: null }],
+      save: async () => {},
+      review: () => pending.promise,
+    },
+    player: { play() {}, stop() {} },
+    view: { render() {}, saving() {}, error() {}, drafted() {},
+            queued: (note, counts) => shown.push({ note, queued: counts.queued }) },
+    clock: () => now,
+  });
+  await session.load();
+  now += ANSWER_GUARD_MS;
+  const marking = session.markForReview(true);
+  assert.equal(session.move(1), false);
+  assert.equal(session.nextQueued(), false);
+  assert.equal(await session.answer("a", ""), false);
+  assert.equal(await session.markForReview(false), false);
+  pending.resolve({ review: "You marked this site to review." });
+  assert.equal(await marking, true);
+  assert.equal(session.state().key, "k0");
+  assert.deepEqual(shown, [{ note: "You marked this site to review.", queued: 1 }]);
 });

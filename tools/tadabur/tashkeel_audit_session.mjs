@@ -18,17 +18,22 @@
 // * A site queued for another listen (its `review` is the note saying why) keeps its answer
 //   until a new one is saved; saving it, changed or not, takes it off the list and moves to
 //   the next queued site, or else the next unanswered one.
-// * "Trimmed" answers unclear with a note starting "trim": the clip's opening is cut, so
-//   the site cannot be judged (the onset guard reads the note).
+// * "Trimmed" answers unclear with a note starting TRIMMED_ANSWER: the clip's opening is
+//   cut, so the site cannot be judged. The onset guard (owner_notes.py) reads that start as
+//   trimmed whatever the rest says. On a site that also asks whether it sounds natural, the
+//   intent is kept until the second answer saves the pair, and choosing another heard
+//   answer drops it.
+// * Queueing a site for review is one write like an answer: guarded the same way, and its
+//   result is shown only if that site is still on screen.
 
 export const ANSWER_GUARD_MS = 400;
-export const TRIM_NOTE = "trim";
+export const TRIMMED_ANSWER = "trim;";
 
-// The note a "Trimmed" answer saves: the listener's own note, after "trim".
+// The note a "Trimmed" answer saves: TRIMMED_ANSWER, then the listener's own note.
 export function trimNote(note) {
   const rest = note.trim();
-  if (rest === "") return TRIM_NOTE;
-  return /^trim/i.test(rest) ? rest : `${TRIM_NOTE}; ${rest}`;
+  if (rest.toLowerCase().startsWith(TRIMMED_ANSWER)) return rest;
+  return rest === "" ? TRIMMED_ANSWER : `${TRIMMED_ANSWER} ${rest}`;
 }
 
 const ZWJ = "\u200D";
@@ -74,6 +79,7 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
   let shownAt = -Infinity;
   let playing = null;
   let draft = {};
+  let trimDrafted = false;  // "Trimmed" was chosen and its pair is not saved yet
 
   const current = () => sites[index];
   const asksNatural = (site) => "natural" in site;
@@ -115,6 +121,7 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
   function show(i, { autoplay = false } = {}) {
     stop();
     draft = {};
+    trimDrafted = false;
     index = i;
     shownAt = clock();
     view.render(current(), counts());
@@ -136,6 +143,7 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
       view.drafted(draft);
       return false;
     }
+    if (trimDrafted) note = trimNote(note);
     saving = true;
     view.saving(true);
     try {
@@ -183,21 +191,33 @@ export function createSession({ api, player, view, clock = () => Date.now() }) {
     // Queue the site on screen for another listen (`on`), or take it off the list.
     async markForReview(on) {
       const site = current();
-      if (!site || saving) return false;
+      if (!site || busy()) return false;
+      saving = true;
+      view.saving(true);
       try {
         site.review = (await api.review({ key: site.key, review: on })).review;
       } catch (error) {
         view.error(`Not saved (${error.message}).`);
         return false;
+      } finally {
+        saving = false;
+        view.saving(false);
       }
       view.error("");
-      view.queued(site.review, counts());
+      if (current() === site) view.queued(site.review, counts());
       return true;
     },
     // What was said at the carrier.
-    answer: (heard, note) => submit({ heard }, note),
-    // The clip's opening is cut: unclear, noted "trim".
-    trimmed: (note) => submit({ heard: "unclear" }, trimNote(note)),
+    answer(heard, note) {
+      if (!busy()) trimDrafted = false;
+      return submit({ heard }, note);
+    },
+    // The clip's opening is cut: unclear, with a note starting TRIMMED_ANSWER.
+    trimmed(note) {
+      if (busy()) return Promise.resolve(false);
+      trimDrafted = true;
+      return submit({ heard: "unclear" }, note);
+    },
     // Whether the site sounds natural (only a site with a `natural` field asks it).
     judge(natural, note) {
       return asksNatural(current() ?? {}) ? submit({ natural }, note) : Promise.resolve(false);

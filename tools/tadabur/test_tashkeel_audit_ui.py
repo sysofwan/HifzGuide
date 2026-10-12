@@ -19,13 +19,16 @@ from tadabur.listening_session import (
     Verdict,
     census,
     hearable,
+    read_review,
     read_verdicts,
+    write_review,
     write_verdicts,
     write_worklist,
 )
 from tadabur.staged_audio import StagedClip
 from tadabur.tashkeel_audit_ui import (
     HIDDEN_LETTER,
+    LISTENER_REVIEW_NOTE,
     SessionState,
     StaleAnswer,
     Target,
@@ -118,7 +121,7 @@ def test_the_page_is_sent_only_the_blind_fields(tmp_path):
     assert set(state.payload()) == {"sites", "progress"}
     for view in state.payload()["sites"]:
         assert set(view) == {"key", "mode", "surah_ayah", "before", "carrier", "after",
-                             "choices", "heard", "note"}
+                             "choices", "heard", "note", "review"}
 
 
 def test_no_withheld_field_reaches_the_page(tmp_path):
@@ -334,6 +337,63 @@ def test_the_session_resumes_and_keeps_verdicts_for_sites_it_no_longer_lists(tmp
                                   if r.site.audio_filename == "zah.wav")}
 
 
+# --- the review list -------------------------------------------------------------------
+
+
+def _site_id(state: SessionState, name: str) -> str:
+    (row,) = [r for r in state.rows if r.site.audio_filename == f"{name}.wav"]
+    return row.site.site_id
+
+
+def _review_state(tmp_path, queued: dict[str, str]) -> SessionState:
+    registry = _stage(tmp_path)
+    ids = {name: _site_id(_load(tmp_path, registry), name) for name in queued}
+    write_review({ids[name]: note for name, note in queued.items()} | {"gone": "kept"},
+                 tmp_path / "review.jsonl")
+    return SessionState.load(tmp_path / "worklist.jsonl", tmp_path / "verdicts.jsonl",
+                             tmp_path / "clips", registry, review=tmp_path / "review.jsonl")
+
+
+def test_a_queued_site_is_shown_with_its_note_and_no_other_is(tmp_path):
+    state = _review_state(tmp_path, {"held": "Is the opening cut?"})
+    assert _view(state, "held")["review"] == "Is the opening cut?"
+    assert _view(state, "fatha")["review"] is None
+
+
+def test_saving_a_queued_site_takes_it_off_the_list_and_keeps_the_rest(tmp_path):
+    state = _review_state(tmp_path, {"held": "Is the opening cut?", "fatha": "Again"})
+    state.record(_view(state, "held")["key"], "held", "", None)
+    assert read_review(tmp_path / "review.jsonl") == {_site_id(state, "fatha"): "Again",
+                                                      "gone": "kept"}
+    assert _view(state, "held")["review"] is None and _view(state, "fatha")["review"]
+
+
+def test_the_listener_queues_and_unqueues_a_site(tmp_path):
+    state = _review_state(tmp_path, {"fatha": "Again"})
+    key = _view(state, "held")["key"]
+    assert state.mark_for_review(key, True) == LISTENER_REVIEW_NOTE
+    assert read_review(tmp_path / "review.jsonl")[_site_id(state, "held")] == LISTENER_REVIEW_NOTE
+    assert state.mark_for_review(_view(state, "fatha")["key"], True) == "Again"  # note kept
+    assert state.mark_for_review(key, False) is None
+    assert _site_id(state, "held") not in read_review(tmp_path / "review.jsonl")
+
+
+def test_queueing_without_a_review_file_is_refused_and_changes_nothing(tmp_path):
+    state = _state(tmp_path)
+    with pytest.raises(OSError):
+        state.mark_for_review(_view(state, "held")["key"], True)
+    assert state.review == {}
+    state.record(_view(state, "held")["key"], "held", "", None)  # answers still save
+
+
+@pytest.mark.parametrize("line", ['{"site_id": "x"}', '{"site_id": "x", "note": 3}', "[]",
+                                  '{"site_id": "x", "note": "", "heard": "held"}'])
+def test_a_malformed_review_entry_is_refused(tmp_path, line):
+    (tmp_path / "review.jsonl").write_text(line + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="review entry"):
+        read_review(tmp_path / "review.jsonl")
+
+
 # --- audio -----------------------------------------------------------------------------
 
 
@@ -427,7 +487,7 @@ def test_the_edit_check_shares_the_queue_and_asks_whether_it_sounds_natural(tmp_
     assert state.progress() == {"answered": 0, "total": 1 + len(EDIT_SPECS)}
     for view in state.payload()["sites"]:
         blind = {"key", "mode", "surah_ayah", "before", "carrier", "after", "choices",
-                 "heard", "note"}
+                 "heard", "note", "review"}
         asks = "natural" in view
         assert set(view) == (blind | {"natural_choices", "natural"} if asks else blind)
         if asks:

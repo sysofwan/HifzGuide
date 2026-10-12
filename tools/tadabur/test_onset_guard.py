@@ -305,3 +305,16 @@ def test_the_committed_calibration_is_re_derived_from_the_scores():
     for row in o.read_jsonl(o.GUARD_PATH):
         if row["exposure"] == o.EXPOSED and deciding is None:
             assert row["detector_trimmed"] is None
+
+
+@pytest.mark.parametrize("rest", ["", "waqf", "no waqf", "Not hafs", "not trimmed", "no cut",
+                                  "Trimmed at the start"])
+def test_the_page_s_trimmed_answer_is_trimmed_whatever_else_the_note_says(rest):
+    note = f"{owner_notes.TRIMMED_ANSWER} {rest}".strip()  # the page's trimNote
+    assert owner_notes.says(note, owner_notes.TRIM) is True
+    assert owner_notes.says(note, owner_notes.PAUSE) == owner_notes.says(rest, owner_notes.PAUSE)
+
+
+def test_the_page_starts_a_trimmed_answer_with_the_reader_s_marker():
+    script = (Path(__file__).parent / "tashkeel_audit_session.mjs").read_text(encoding="utf-8")
+    assert f'export const TRIMMED_ANSWER = "{owner_notes.TRIMMED_ANSWER}";' in script

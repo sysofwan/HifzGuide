@@ -25,6 +25,7 @@ audio copy), [`../tashkeel_audit_ui.py`](../tashkeel_audit_ui.py) (the blind UI)
 | `worklist.summary.json` | per stratum: population and its reciters, sites drawn and their reciters, draw and inclusion probabilities, estimated listening minutes; the sizes used, input checksums, the base decode's fingerprint |
 | `edit_check_words.json` | the Uthmani word offsets of each edit-check item's whole-ayah reference (`python -m tadabur.edit_check words`; needs `quran-transcript`), so the page can hide answers word by word without the phonetizer |
 | `verdicts.jsonl` | the answers, `{site_id, heard, note}` per line (plus `natural` for an edit-check item), sorted by site id, written by the UI as they are given |
+| `review.jsonl` | sites queued for another listen, `{site_id, note}` per line, sorted by site id. The page shows the note, steps through them (`r`) and takes a site off the list when its answer is saved again; the listener can queue one with "Review later" |
 
 ## Launching the session
 
@@ -56,6 +57,7 @@ items); `--host` names another box. `clips` still prints the worklist's clip nam
 | worklist | `tools/tadabur/listening_session/worklist.jsonl` (the default; `--worklist`) |
 | edit check | `tools/tadabur/synthetic_edits/blind_check.jsonl` and `edit_check_words.json` (the defaults; `--edit-check`, `--edit-words`) |
 | verdicts | `tools/tadabur/listening_session/verdicts.jsonl` (the default; `--verdicts`), rewritten atomically after every answer |
+| review list | `tools/tadabur/listening_session/review.jsonl` (the default; `--review`), rewritten atomically when it changes |
 | host / port | `0.0.0.0` / `8000`; open `http://<the Mac's LAN IP>:8000/` (`ipconfig getifaddr en0`) on the phone |
 
 Check it answers on the LAN before handing the phone over:

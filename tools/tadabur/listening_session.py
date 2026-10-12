@@ -138,6 +138,8 @@ SESSION_DIR = Path(__file__).parent / "listening_session"
 WORKLIST_PATH = SESSION_DIR / "worklist.jsonl"
 SUMMARY_PATH = SESSION_DIR / "worklist.summary.json"
 VERDICTS_PATH = SESSION_DIR / "verdicts.jsonl"
+#: Sites queued for another listen, each with the note the page shows (:func:`read_review`).
+REVIEW_PATH = SESSION_DIR / "review.jsonl"
 P35_SITES_PATH = TRUTH_SITES_DIR / "p35_fixtures.jsonl"
 
 SALT = "issue-87-listening-session-v1"
@@ -814,6 +816,7 @@ class Verdict:
 
 
 _VERDICT_KEYS = frozenset({"site_id", "heard", "note"})
+_REVIEW_KEYS = frozenset({"site_id", "note"})
 
 
 def hearable(mark: str) -> frozenset[str]:
@@ -849,6 +852,33 @@ def write_verdicts(verdicts: Mapping[str, Verdict], path: Path = VERDICTS_PATH) 
     write_text_atomically(path, "".join(
         json.dumps(verdicts[key].as_json(), ensure_ascii=False, sort_keys=True) + "\n"
         for key in sorted(verdicts)
+    ))
+
+
+def read_review(path: Path = REVIEW_PATH) -> dict[str, str]:
+    """The sites queued for another listen, keyed by site id, each with the note the page
+    shows for it; empty when the file is absent or empty."""
+    if not path.exists():
+        return {}
+    review: dict[str, str] = {}
+    with open(path, encoding="utf-8") as f:
+        for lineno, raw in enumerate(f, 1):
+            if not raw.strip():
+                continue
+            data = json.loads(raw)
+            if (not isinstance(data, dict) or set(data) != _REVIEW_KEYS
+                    or not all(isinstance(value, str) for value in data.values())):
+                raise ValueError(f"{path}:{lineno}: a review entry is {{site_id, note}}")
+            review[data["site_id"]] = data["note"]
+    return review
+
+
+def write_review(review: Mapping[str, str], path: Path = REVIEW_PATH) -> None:
+    """Rewrite the whole review list atomically, sorted by site id, as :func:`write_verdicts`
+    does."""
+    write_text_atomically(path, "".join(
+        json.dumps({"site_id": key, "note": review[key]}, ensure_ascii=False, sort_keys=True)
+        + "\n" for key in sorted(review)
     ))
 
 

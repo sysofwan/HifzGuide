@@ -25,6 +25,10 @@ and "no waqf trimmed" deny a pause and affirm a trim. ``hafs`` (the owner's "Not
 negates nothing after it. **This departs from #134's reader on purpose**: it read "Not hafs
 paused" as no pause, which was a bug; no committed note reads differently. Two readings of
 one claim that disagree are ambiguous: no claim.
+
+The listening page's **Trimmed** answer starts its note with :data:`TRIMMED_ANSWER`. That is
+the listener's explicit action, so it affirms :data:`TRIM` whatever the rest of the note says
+("trim; not trimmed" is trimmed); the rest is read as usual for every other claim.
 """
 
 from __future__ import annotations
@@ -67,6 +71,9 @@ PAUSE = Claim(frozenset({"waqf", "pause", "paused", "pauses", "pausing", "stop",
 #: The clip's opening sound is cut: a word starting ``trim``, ``cut`` or ``split``.
 TRIM = Claim(lambda word: word.startswith(("trim", "cut", "split")))
 CLAIMS = (PAUSE, TRIM)
+#: How the listening page's Trimmed answer starts its note (``trimNote`` in
+#: ``tashkeel_audit_session.mjs``).
+TRIMMED_ANSWER = "trim;"
 
 
 def _negator(word: str) -> bool:
@@ -102,6 +109,8 @@ def clauses(note: str) -> list[str]:
 def says(note: str, claim: Claim) -> bool | None:
     """``True`` when the note affirms ``claim``, ``False`` when it denies it, ``None`` when it
     says neither or is ambiguous (module docstring)."""
+    if claim is TRIM and note.lstrip().lower().startswith(TRIMMED_ANSWER):
+        return True
     readings = set()
     for clause in clauses(note):
         negator: int | None = None  # a negator still looking for its first claim word

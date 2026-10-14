@@ -778,17 +778,21 @@ extension; the last field is the base teacher's outcome at mining), per side. % 
 | ship_a_mining:ك→ق:h448_partner:base_wrong | correct | 3 / 2 (insufficient evidence) | 33.3 (n/c) | 66.7 (n/c) | 33.3 (n/c) | 33.3 (n/c) | 0.0 (n/c) | 33.3 (n/c) |
 | ship_a_mining:ه→ح:h448_partner:base_right | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
 
-### Windowing or weights at ط→ق (correct recitation), by the base teacher's outcome
+### The arms at ط→ق (correct recitation), by the base teacher's outcome
 
 The sizing's "base already right" compares the base teacher decoding the whole
-span with `h448` streamed at b = 0, and both are selected: the sites were mined where
-`h448`'s stream swapped, and `base_right` / `base_wrong` by the base's whole-segment
-decode. Within `base_wrong` the base's whole decode was wrong at mining by
-construction, so a low `base/spans` there cannot come from selection. Swap rates per
-arm, then the paired differences that split the gap: `h448/spans - base/spans` the
-weights (both whole), `h448/stream_b0 - h448/spans` `h448`'s windowing,
-`base/stream_b0 - base/spans` the base's own, `h448/checks - base/checks` the two
-models on the app's checks. % and points [95% interval].
+span with `h448` streamed at b = 0. Both of those arms are selected here. Every site
+was mined where `h448`'s stream swapped. Each stratum is also defined by the base's
+whole-segment decode: in `base_right` it was right, so `base/spans` is selected low
+and a stream − spans difference is biased up; in `base_wrong` it was wrong, so
+`base/spans` is selected high and the difference is biased down. **These
+within-stratum differences are conditional on selections that bias them in opposite
+directions, and they cannot attribute the gap to windowing or to weights.** Whether
+windowing or weights drive `ط→ق` swaps in the population is a question for an
+unselected measurement, outside this report. Swap rates per arm, then the paired
+differences (`h448/spans - base/spans`: both whole; `h448/stream_b0 - h448/spans` and
+`base/stream_b0 - base/spans`: each model streamed against whole; `h448/checks -
+base/checks`: the app's checks). % and points [95% interval].
 
 | teacher | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|---|---|

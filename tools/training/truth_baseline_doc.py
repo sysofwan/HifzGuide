@@ -564,17 +564,21 @@ def _directions_section(report: dict) -> list[str]:
                if e["direction"] == "ط→ق" and e["side"] == "correct" and e.get("gaps")]
     if teacher:
         lines += [
-            "### Windowing or weights at ط→ق (correct recitation), by the base teacher's outcome",
+            "### The arms at ط→ق (correct recitation), by the base teacher's outcome",
             "",
             "The sizing's \"base already right\" compares the base teacher decoding the whole",
-            "span with `h448` streamed at b = 0, and both are selected: the sites were mined where",
-            "`h448`'s stream swapped, and `base_right` / `base_wrong` by the base's whole-segment",
-            "decode. Within `base_wrong` the base's whole decode was wrong at mining by",
-            "construction, so a low `base/spans` there cannot come from selection. Swap rates per",
-            "arm, then the paired differences that split the gap: `h448/spans - base/spans` the",
-            "weights (both whole), `h448/stream_b0 - h448/spans` `h448`'s windowing,",
-            "`base/stream_b0 - base/spans` the base's own, `h448/checks - base/checks` the two",
-            "models on the app's checks. % and points [95% interval].",
+            "span with `h448` streamed at b = 0. Both of those arms are selected here. Every site",
+            "was mined where `h448`'s stream swapped. Each stratum is also defined by the base's",
+            "whole-segment decode: in `base_right` it was right, so `base/spans` is selected low",
+            "and a stream − spans difference is biased up; in `base_wrong` it was wrong, so",
+            "`base/spans` is selected high and the difference is biased down. **These",
+            "within-stratum differences are conditional on selections that bias them in opposite",
+            "directions, and they cannot attribute the gap to windowing or to weights.** Whether",
+            "windowing or weights drive `ط→ق` swaps in the population is a question for an",
+            "unselected measurement, outside this report. Swap rates per arm, then the paired",
+            "differences (`h448/spans - base/spans`: both whole; `h448/stream_b0 - h448/spans` and",
+            "`base/stream_b0 - base/spans`: each model streamed against whole; `h448/checks -",
+            "base/checks`: the app's checks). % and points [95% interval].",
             "",
         ]
         lines += _swap_rows([e for _, e in teacher], arms, ["teacher"]) + [""]

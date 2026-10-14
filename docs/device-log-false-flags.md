@@ -16,10 +16,11 @@ with `training/word_flags.py`.
 
 ## Read this first
 
-- **66 logs, 50 included** (1 `h448`, 49 the six-chunk teacher). Excluded: 6 a slip into another passage, documented; 1 a duplicate session; 3 no device session (mined Tadabur clips transcribed offline); 6 synthetic (reference phonemes, no model).
-- **1 included session ran `h448`**; with one log a
-  rate has no interval. The other `h448` sessions are excluded by their docs for a slip into
-  another passage; their flags are listed at the end.
+- **66 logs, 47 included** (47 the six-chunk teacher). Excluded: 9 a slip into another passage, documented; 1 a duplicate session; 3 no device session (mined Tadabur clips transcribed offline); 6 synthetic (reference phonemes, no model).
+- **0 included sessions ran `h448`.** The other 4
+  `h448` sessions are excluded because their docs record a slip into another passage. The
+  labelled sensitivity *all sessions, slip regions excluded* is the `h448` evidence that remains;
+  their flags are also listed at the end. With so few sessions no `h448` rate has an interval.
 - **Parity holds.** Every log's shipped-default replay reproduces its committed `baseline.json` (every word's quality and the final position) at the pin and at `main`.
 - **Muraja `main` (3a49a1c) grades every log as the pin (99c326f) does** under every scoring: the two differ only outside the follow-along engine (voice search).
 - **A graded word stands for a recited word.** Explained words (skipped, re-read, never
@@ -62,77 +63,131 @@ of one session are not independent); with too few logs none is admissible (n/c).
 second column leaves out the explained words (skipped, re-read or never recited, from the
 log's docs or its own decode; see *Explained words*) from both counts.
 
-**`h448`** (1 log)
+**`h448`** (0 logs)
 
 | scoring | every graded word | explained words left out |
 |---|---|---|
-| `allowances_on` | 9 / 101 · 89.1 (n/c) | 2 / 94 · 21.3 (n/c) |
-| `soft_pair_forgiveness_off` | 9 / 101 · 89.1 (n/c) | 2 / 94 · 21.3 (n/c) |
-| `shaddah_suppression_off` | 9 / 101 · 89.1 (n/c) | 2 / 94 · 21.3 (n/c) |
-| `shipped_default` | 9 / 101 · 89.1 (n/c) | 2 / 94 · 21.3 (n/c) |
-| `allowances_off` | 9 / 101 · 89.1 (n/c) | 2 / 94 · 21.3 (n/c) |
+| `allowances_on` | – | – |
+| `soft_pair_forgiveness_off` | – | – |
+| `shaddah_suppression_off` | – | – |
+| `shipped_default` | – | – |
+| `allowances_off` | – | – |
 
-**the six-chunk teacher** (49 logs)
-
-| scoring | every graded word | explained words left out |
-|---|---|---|
-| `allowances_on` | 244 / 2486 · 98.1 [45.1, 164.9] | 24 / 2243 · 10.7 [5.4, 18.2] |
-| `soft_pair_forgiveness_off` | 250 / 2486 · 100.6 [47.6, 167.5] | 30 / 2243 · 13.4 [8.0, 21.4] |
-| `shaddah_suppression_off` | 247 / 2486 · 99.4 [46.1, 166.3] | 27 / 2243 · 12.0 [6.8, 19.6] |
-| `shipped_default` | 252 / 2486 · 101.4 [48.5, 168.7] | 31 / 2243 · 13.8 [7.9, 22.6] |
-| `allowances_off` | 262 / 2486 · 105.4 [52.2, 172.7] | 41 / 2243 · 18.3 [11.5, 28.0] |
-
-**the six-chunk teacher, 1 s-hop sessions only** (25 logs)
+**the six-chunk teacher** (47 logs)
 
 | scoring | every graded word | explained words left out |
 |---|---|---|
-| `allowances_on` | 71 / 1763 · 40.3 [7.8, 83.8] | 9 / 1692 · 5.3 [2.4, 8.9] |
-| `soft_pair_forgiveness_off` | 76 / 1763 · 43.1 [10.6, 87.7] | 14 / 1692 · 8.3 [4.9, 12.8] |
-| `shaddah_suppression_off` | 74 / 1763 · 42.0 [9.3, 86.4] | 12 / 1692 · 7.1 [3.9, 11.0] |
-| `shipped_default` | 75 / 1763 · 42.5 [10.6, 86.4] | 13 / 1692 · 7.7 [3.7, 13.8] |
-| `allowances_off` | 84 / 1763 · 47.6 [15.6, 94.0] | 22 / 1692 · 13.0 [7.2, 21.6] |
+| `allowances_on` | 243 / 2269 · 107.1 [50.0, 181.6] | 28 / 2042 · 13.7 [7.4, 23.7] |
+| `soft_pair_forgiveness_off` | 249 / 2269 · 109.7 [52.3, 184.8] | 34 / 2042 · 16.7 [10.2, 26.9] |
+| `shaddah_suppression_off` | 246 / 2269 · 108.4 [51.1, 183.3] | 31 / 2042 · 15.2 [8.8, 25.0] |
+| `shipped_default` | 251 / 2269 · 110.6 [53.5, 185.3] | 35 / 2042 · 17.1 [10.0, 28.1] |
+| `allowances_off` | 261 / 2269 · 115.0 [58.0, 190.2] | 45 / 2042 · 22.0 [14.2, 34.0] |
 
-**Sensitivity, not the headline: `h448`, all 4 sessions, slip regions excluded**
+**the six-chunk teacher, 1 s-hop sessions only** (23 logs)
 
-The headline keeps only the one `h448` session no doc records a slip in. This row takes every
-`h448` session and leaves out, as it does explained words, the words in and around each slip
-into another passage (including the undocumented one in
-`surah3_page58_far_reread_pause_residue`, basis *decode*). The region's boundary is one
-mechanical rule in two widths. **Narrow:** from the first word the reader replaced with the
-other passage's wording to the end of that ayah, plus the twin ayah on the page in full.
-**Wide:** the slip ayah in full and the ayah after it (where the correction and the catch-up
-land), plus the twin ayah in full. Every other word is kept.
+| scoring | every graded word | explained words left out |
+|---|---|---|
+| `allowances_on` | 70 / 1546 · 45.3 [8.5, 92.7] | 11 / 1485 · 7.4 [4.0, 10.9] |
+| `soft_pair_forgiveness_off` | 75 / 1546 · 48.5 [11.7, 97.2] | 16 / 1485 · 10.8 [7.4, 15.0] |
+| `shaddah_suppression_off` | 73 / 1546 · 47.2 [10.0, 95.5] | 14 / 1485 · 9.4 [6.2, 13.1] |
+| `shipped_default` | 74 / 1546 · 47.9 [11.7, 95.9] | 15 / 1485 · 10.1 [5.8, 16.4] |
+| `allowances_off` | 83 / 1546 · 53.7 [17.1, 104.2] | 24 / 1485 · 16.2 [10.3, 25.2] |
 
-| scoring | headline (1 session) | all sessions, narrow | all sessions, wide |
+### Sensitivity, not the headline: all sessions, slip regions excluded
+
+The headline leaves out every session whose docs record a slip into another passage's
+wording. This sensitivity takes every device session of a model and leaves out, as it does
+explained words, the words in and around each documented slip (each slip's span is in the
+inventory with its source; a span is Muraja's pinned shadow-speech flag where one exists).
+The region's boundary is one mechanical rule (`device_logs.regions`) in two widths.
+**Narrow:** from the slip's first word to the end of its last word's ayah. **Wide:** from the
+first word of the slip's ayah to the end of the ayah after its last, where the correction
+and the catch-up land. Both add the twin ayah (the passage slipped into) in full. Every
+other word is kept.
+
+**`h448`: all 4 sessions, slip regions excluded**
+
+| scoring | headline (0 sessions) | all sessions, narrow | all sessions, wide |
 |---|---|---|---|
-| `allowances_on` | 2 / 94 · 21.3 (n/c) | 7 / 420 · 16.7 (n/c) | 6 / 360 · 16.7 (n/c) |
-| `soft_pair_forgiveness_off` | 2 / 94 · 21.3 (n/c) | 10 / 420 · 23.8 (n/c) | 9 / 360 · 25.0 (n/c) |
-| `shaddah_suppression_off` | 2 / 94 · 21.3 (n/c) | 7 / 420 · 16.7 (n/c) | 6 / 360 · 16.7 (n/c) |
-| `shipped_default` | 2 / 94 · 21.3 (n/c) | 7 / 420 · 16.7 (n/c) | 6 / 360 · 16.7 (n/c) |
-| `allowances_off` | 2 / 94 · 21.3 (n/c) | 10 / 420 · 23.8 (n/c) | 9 / 360 · 25.0 (n/c) |
+| `allowances_on` | – | 5 / 372 · 13.4 (n/c) | 5 / 285 · 17.5 (n/c) |
+| `soft_pair_forgiveness_off` | – | 8 / 372 · 21.5 (n/c) | 8 / 285 · 28.1 (n/c) |
+| `shaddah_suppression_off` | – | 5 / 372 · 13.4 (n/c) | 5 / 285 · 17.5 (n/c) |
+| `shipped_default` | – | 5 / 372 · 13.4 (n/c) | 5 / 285 · 17.5 (n/c) |
+| `allowances_off` | – | 8 / 372 · 21.5 (n/c) | 8 / 285 · 28.1 (n/c) |
 
 Its flags by cause (narrow · wide):
 
 |  | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|
 | soft-pair consonant | 0 · 0 | 3 · 3 | 0 · 0 | 0 · 0 | 3 · 3 |
-| another consonant | 6 · 5 | 6 · 5 | 6 · 5 | 6 · 5 | 6 · 5 |
+| another consonant | 4 · 4 | 4 · 4 | 4 · 4 | 4 · 4 | 4 · 4 |
 | shaddah (collapsed geminate) | 0 · 0 | 0 · 0 | 1 · 1 | 0 · 0 | 1 · 1 |
 | no error recorded | 1 · 1 | 1 · 1 | 0 · 0 | 1 · 1 | 0 · 0 |
 | — ح↔ه | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
 | — ذ↔ز | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
 | — س↔ص | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
 
-| session | width | slip region | basis | source |
+**the six-chunk teacher: all 52 sessions, slip regions excluded**
+
+| scoring | headline (47 sessions) | all sessions, narrow | all sessions, wide |
+|---|---|---|---|
+| `allowances_on` | 28 / 2042 · 13.7 [7.4, 23.7] | 32 / 2357 · 13.6 [7.7, 21.8] | 32 / 2293 · 14.0 [7.9, 22.5] |
+| `soft_pair_forgiveness_off` | 34 / 2042 · 16.7 [10.2, 26.9] | 38 / 2357 · 16.1 [10.2, 24.6] | 38 / 2293 · 16.6 [10.5, 25.2] |
+| `shaddah_suppression_off` | 31 / 2042 · 15.2 [8.8, 25.0] | 35 / 2357 · 14.8 [9.0, 23.1] | 35 / 2293 · 15.3 [9.3, 23.8] |
+| `shipped_default` | 35 / 2042 · 17.1 [10.0, 28.1] | 39 / 2357 · 16.5 [10.1, 25.7] | 39 / 2293 · 17.0 [10.4, 26.4] |
+| `allowances_off` | 45 / 2042 · 22.0 [14.2, 34.0] | 49 / 2357 · 20.8 [13.7, 30.5] | 49 / 2293 · 21.4 [14.2, 31.5] |
+
+Its flags by cause (narrow · wide):
+
+|  | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|
+| tashkeel | 0 · 0 | 0 · 0 | 0 · 0 | 7 · 7 | 7 · 7 |
+| soft-pair consonant | 1 · 1 | 7 · 7 | 1 · 1 | 1 · 1 | 8 · 8 |
+| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
+| another consonant | 18 · 18 | 18 · 18 | 18 · 18 | 18 · 18 | 18 · 18 |
+| shaddah (collapsed geminate) | 1 · 1 | 1 · 1 | 3 · 3 | 1 · 1 | 3 · 3 |
+| skipped by the engine | 12 · 12 | 12 · 12 | 13 · 13 | 12 · 12 | 13 · 13 |
+| no error recorded | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
+| — damma dropped | 0 · 0 | 0 · 0 | 0 · 0 | 1 · 1 | 1 · 1 |
+| — fatha dropped | 0 · 0 | 0 · 0 | 0 · 0 | 6 · 6 | 6 · 6 |
+| — ح↔ه | 1 · 1 | 6 · 6 | 1 · 1 | 1 · 1 | 6 · 6 |
+| — س↔ش | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
+| — س↔ص | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
+| — ق↔ك | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 1 · 1 |
+
+The documented slips:
+
+| session | slip | twin | basis | source |
 |---|---|---|---|---|
-| `surah30_page405_shared_opening_correction` | narrow | 30:12:4–30:12:5, 30:14:1–30:14:5 | docs | Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4 |
-| `surah30_page405_shared_opening_correction` | wide | 30:12:1–30:13:9, 30:14:1–30:14:5 | docs | Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4 |
-| `surah3_page51_ayah15_mutashabihat_wrong_words` | narrow | 3:15:17–3:15:24 | docs | Muraja 4ec326a: 3:15 continued with 9:72's wording from 3:15:17 |
-| `surah3_page51_ayah15_mutashabihat_wrong_words` | wide | 3:15:1–3:16:11 | docs | Muraja 4ec326a: 3:15 continued with 9:72's wording from 3:15:17 |
-| `surah3_page55_ayah42_mutashabihat_creep_jump` | narrow | 3:42:7–3:42:12, 3:45:1–3:45:20 | docs | Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7 |
-| `surah3_page55_ayah42_mutashabihat_creep_jump` | wide | 3:42:1–3:43:7, 3:45:1–3:45:20 | docs | Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7 |
-| `surah3_page58_far_reread_pause_residue` | narrow | 3:64:18–3:64:31 | decode | the decode carries another passage's phrase in place of 3:64:18, then restarts from 3:64:12 |
-| `surah3_page58_far_reread_pause_residue` | wide | 3:64:1–3:65:15 | decode | the decode carries another passage's phrase in place of 3:64:18, then restarts from 3:64:12 |
+| `surah30_page405_shared_opening_correction` | 30:12:4–30:12:4 | 30:14 | docs | Muraja PR #235: the reader slips from 30:12:3 into 30:14's wording |
+| `surah3_page51_ayah15_mutashabihat_wrong_words` | 3:15:14–3:15:15 | 9:72 | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips); Muraja 4ec326a: 9:72's wording for 3:15's |
+| `surah3_page55_ayah42_mutashabihat_creep_jump` | 3:41:20–3:42:1 | – | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): words added before 3:42 |
+| `surah3_page55_ayah42_mutashabihat_creep_jump` | 3:42:2–3:42:3 | 3:35 | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 3:35's wording at 3:42 |
+| `surah3_page55_ayah42_mutashabihat_creep_jump` | 3:42:7–3:42:7 | 3:45 | docs | Muraja 4ec326a: 3:42 continued with 3:45's wording, where the two part |
+| `surah3_page58_far_reread_pause_residue` | 3:64:11–3:64:13 | 4:36 | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 4:36's wording in 3:64 |
+| `surah3_page58_far_reread_pause_residue` | 3:65:4–3:65:4 | 3:99 | docs | Muraja PR #226: 3:99's wording for 3:65's (not pinned: it settles after the decision window) |
+| `surah3_page58_far_reread_pause_residue` | 3:67:14–3:68:2 | 3:96 | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 3:96's wording for 3:68's |
+| `surah3_page58_far_reread_pause_residue` | 3:68:10–3:68:11 | 2:212 | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 2:212's wording added in 3:68 |
+| `surah3_page58_far_reread_pause_residue` | 3:69:7–3:69:7 | 2:109 | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 2:109's wording for 3:69's |
+| `surah2_page7_ayah48_mutashabihat_freeze` | 2:48:12–2:48:12 | 2:123 | docs | Muraja ADR-0009: the reader recites 2:123's wording at 2:48, which parts from 2:48 at its 12th word |
+| `surah36_page442_cross_ayah_skip` | 36:45:4–36:45:4 | 36:47 | docs | Muraja ADR-0020 and PR #226: 36:47's wording for 36:45's, then corrected |
+| `surah3_page52_jump_reread` | 3:19:11–3:19:12 | 3:20 | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 3:20's wording said early in 3:19, then back |
+| `surah3_page52_reread_reveals_next_ayah` | 3:18:18–3:19:6 | 3:7 | docs | Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips); baseline intent (#211): 3:7's wording for 3:19's start |
+| `surah55_page532_false_backward_refrain` | 55:39:1–55:39:1 | 55:41 | docs | baseline intent (#198): after 55:38 the reader slips into 55:41 |
+
+The regions they give (each session's union over its slips):
+
+| session | narrow | wide |
+|---|---|---|
+| `surah30_page405_shared_opening_correction` | 30:12:4–30:12:5, 30:14:1–30:14:5 | 30:12:1–30:13:9, 30:14:1–30:14:5 |
+| `surah3_page51_ayah15_mutashabihat_wrong_words` | 3:15:14–3:15:24, 9:72:1–9:72:24 | 3:15:1–3:16:11, 9:72:1–9:72:24 |
+| `surah3_page55_ayah42_mutashabihat_creep_jump` | 3:41:20–3:42:12, 3:42:2–3:42:12, 3:35:1–3:35:18, 3:42:7–3:42:12, 3:45:1–3:45:20 | 3:41:1–3:43:7, 3:42:1–3:43:7, 3:35:1–3:35:18, 3:42:1–3:43:7, 3:45:1–3:45:20 |
+| `surah3_page58_far_reread_pause_residue` | 3:64:11–3:64:31, 4:36:1–4:36:32, 3:65:4–3:65:15, 3:99:1–3:99:19, 3:67:14–3:68:13, 3:96:1–3:96:10, 3:68:10–3:68:13, 2:212:1–2:212:20, 3:69:7–3:69:13, 2:109:1–2:109:33 | 3:64:1–3:65:15, 4:36:1–4:36:32, 3:65:1–3:66:17, 3:99:1–3:99:19, 3:67:1–3:69:13, 3:96:1–3:96:10, 3:68:1–3:69:13, 2:212:1–2:212:20, 3:69:1–3:70:8, 2:109:1–2:109:33 |
+| `surah2_page7_ayah48_mutashabihat_freeze` | 2:48:12–2:48:19, 2:123:1–2:123:18 | 2:48:1–2:49:18, 2:123:1–2:123:18 |
+| `surah36_page442_cross_ayah_skip` | 36:45:4–36:45:11, 36:47:1–36:47:24 | 36:45:1–36:46:11, 36:47:1–36:47:24 |
+| `surah3_page52_jump_reread` | 3:19:11–3:19:26, 3:20:1–3:20:26 | 3:19:1–3:20:26, 3:20:1–3:20:26 |
+| `surah3_page52_reread_reveals_next_ayah` | 3:18:18–3:19:26, 3:7:1–3:7:46 | 3:18:1–3:20:26, 3:7:1–3:7:46 |
+| `surah55_page532_false_backward_refrain` | 55:39:1–55:39:8, 55:41:1–55:41:6 | 55:39:1–55:40:4, 55:41:1–55:41:6 |
 
 ### What the unexplained false flags are
 
@@ -145,24 +200,24 @@ consonant flags.
 
 |  | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|
-| tashkeel | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
-| soft-pair consonant | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
-| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
-| another consonant | 2 · 21.3 | 2 · 21.3 | 2 · 21.3 | 2 · 21.3 | 2 · 21.3 |
-| shaddah (collapsed geminate) | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
-| skipped by the engine | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
-| no error recorded | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
+| tashkeel | 0 · – | 0 · – | 0 · – | 0 · – | 0 · – |
+| soft-pair consonant | 0 · – | 0 · – | 0 · – | 0 · – | 0 · – |
+| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 0 · – | 0 · – | 0 · – | 0 · – | 0 · – |
+| another consonant | 0 · – | 0 · – | 0 · – | 0 · – | 0 · – |
+| shaddah (collapsed geminate) | 0 · – | 0 · – | 0 · – | 0 · – | 0 · – |
+| skipped by the engine | 0 · – | 0 · – | 0 · – | 0 · – | 0 · – |
+| no error recorded | 0 · – | 0 · – | 0 · – | 0 · – | 0 · – |
 
 **the six-chunk teacher**
 
 |  | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|
-| tashkeel | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 7 · 3.1 | 7 · 3.1 |
-| soft-pair consonant | 1 · 0.4 | 7 · 3.1 | 1 · 0.4 | 1 · 0.4 | 8 · 3.6 |
-| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 1 · 0.4 | 1 · 0.4 | 1 · 0.4 | 1 · 0.4 | 1 · 0.4 |
-| another consonant | 15 · 6.7 | 15 · 6.7 | 15 · 6.7 | 15 · 6.7 | 15 · 6.7 |
-| shaddah (collapsed geminate) | 0 · 0.0 | 0 · 0.0 | 2 · 0.9 | 0 · 0.0 | 2 · 0.9 |
-| skipped by the engine | 9 · 4.0 | 9 · 4.0 | 10 · 4.5 | 9 · 4.0 | 10 · 4.5 |
+| tashkeel | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 7 · 3.4 | 7 · 3.4 |
+| soft-pair consonant | 1 · 0.5 | 7 · 3.4 | 1 · 0.5 | 1 · 0.5 | 8 · 3.9 |
+| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 1 · 0.5 | 1 · 0.5 | 1 · 0.5 | 1 · 0.5 | 1 · 0.5 |
+| another consonant | 17 · 8.3 | 17 · 8.3 | 17 · 8.3 | 17 · 8.3 | 17 · 8.3 |
+| shaddah (collapsed geminate) | 0 · 0.0 | 0 · 0.0 | 2 · 1.0 | 0 · 0.0 | 2 · 1.0 |
+| skipped by the engine | 11 · 5.4 | 11 · 5.4 | 12 · 5.9 | 11 · 5.4 | 12 · 5.9 |
 | no error recorded | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
 | — damma dropped | 0 | 0 | 0 | 1 | 1 |
 | — fatha dropped | 0 | 0 | 0 | 6 | 6 |
@@ -175,12 +230,12 @@ consonant flags.
 
 |  | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|
-| tashkeel | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 4 · 2.4 | 4 · 2.4 |
-| soft-pair consonant | 1 · 0.6 | 6 · 3.5 | 1 · 0.6 | 1 · 0.6 | 7 · 4.1 |
+| tashkeel | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 4 · 2.7 | 4 · 2.7 |
+| soft-pair consonant | 1 · 0.7 | 6 · 4.0 | 1 · 0.7 | 1 · 0.7 | 7 · 4.7 |
 | non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
-| another consonant | 9 · 5.3 | 9 · 5.3 | 9 · 5.3 | 9 · 5.3 | 9 · 5.3 |
-| shaddah (collapsed geminate) | 0 · 0.0 | 0 · 0.0 | 2 · 1.2 | 0 · 0.0 | 2 · 1.2 |
-| skipped by the engine | 0 · 0.0 | 0 · 0.0 | 1 · 0.6 | 0 · 0.0 | 1 · 0.6 |
+| another consonant | 11 · 7.4 | 11 · 7.4 | 11 · 7.4 | 11 · 7.4 | 11 · 7.4 |
+| shaddah (collapsed geminate) | 0 · 0.0 | 0 · 0.0 | 2 · 1.3 | 0 · 0.0 | 2 · 1.3 |
+| skipped by the engine | 0 · 0.0 | 0 · 0.0 | 1 · 0.7 | 0 · 0.0 | 1 · 0.7 |
 | no error recorded | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 | 0 · 0.0 |
 | — damma dropped | 0 | 0 | 0 | 1 | 1 |
 | — fatha dropped | 0 | 0 | 0 | 3 | 3 |
@@ -204,7 +259,11 @@ brackets).
 | `surah12_page236_ayah5_v2` | 12:5:13 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
 | `surah12_page236_ayah5_v2` | 12:5:14 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
 | `surah12_page236_ayah5_v2` | 12:5:15 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
+| `surah12_page236_ayah5_v2` | 12:7:4 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
+| `surah12_page236_ayah5_v2` | 12:7:6 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
 | `surah2_page3_post_flush_noise` | 2:10:12 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
+| `surah2_page3_reread_catchup_stall` | 2:20:14 | teacher | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant |
+| `surah2_page3_reread_catchup_stall` | 2:20:15 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah2_page3_short_word_false_skip` | 2:14:1 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah2_page42_ayah255` | 2:255:20 | teacher | correct | correct | correct | tashkeelError: tashkeel (fatha dropped) | tashkeelError: tashkeel (fatha dropped) |
 | `surah2_page4_ayah19_waqf` | 2:19:15 | teacher | correct | minor: soft_pair (ح↔ه) | correct | correct | minor: soft_pair (ح↔ه) |
@@ -232,8 +291,6 @@ brackets).
 | `surah3_page51_reread_reveals_next_ayah` | 3:15:2 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah3_page53_ayah75` | 3:75:35 | teacher | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant |
 | `surah3_page53_ayah75` | 3:75:36 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
-| `surah3_page58_far_reread_pause_residue` | 3:65:10 | h448 | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
-| `surah3_page58_far_reread_pause_residue` | 3:69:11 | h448 | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah55_page531_false_reread_refrain` | 55:19:3 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah55_page532_far_jump_refrain` | 55:19:3 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah55_page532_grade_contamination` | 55:19:3 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
@@ -252,20 +309,20 @@ sensitivity columns, slip-region words) left out. *Removed* counts words `allowa
 flags that the scoring does not. The target pairs no Muraja allowance forgives are graded
 the same in every scoring.
 
-| allowance | teacher, 1 s hop | teacher, all eras | `h448`, headline (1 session) | `h448`, all sessions, slip regions excluded (narrow) | `h448`, all sessions, slip regions excluded (wide) |
-|---|---|---|---|---|---|
-| soft pair ت↔ط | 0 / 1692 · 0.0 (n/c) | 0 / 2243 · 0.0 (n/c) | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
-| soft pair ح↔ه | 5 / 1692 · 3.0 [0.7, 6.2] | 5 / 2243 · 2.2 [0.5, 4.4] | 0 / 94 · 0.0 (n/c) | 1 / 420 · 2.4 (n/c) | 1 / 360 · 2.8 (n/c) |
-| soft pair ذ↔ز | 0 / 1692 · 0.0 (n/c) | 0 / 2243 · 0.0 (n/c) | 0 / 94 · 0.0 (n/c) | 1 / 420 · 2.4 (n/c) | 1 / 360 · 2.8 (n/c) |
-| soft pair س↔ص | 0 / 1692 · 0.0 (n/c) | 1 / 2243 · 0.4 [0.0, 1.6] | 0 / 94 · 0.0 (n/c) | 1 / 420 · 2.4 (n/c) | 1 / 360 · 2.8 (n/c) |
-| soft pair ض↔ظ | 0 / 1692 · 0.0 (n/c) | 0 / 2243 · 0.0 (n/c) | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
-| soft pair ق↔ك | 0 / 1692 · 0.0 (n/c) | 0 / 2243 · 0.0 (n/c) | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
-| all six soft pairs (Muraja's one switch) | 5 / 1692 · 3.0 [0.7, 6.2] | 6 / 2243 · 2.7 [0.8, 5.1] | 0 / 94 · 0.0 (n/c) | 3 / 420 · 7.1 (n/c) | 3 / 360 · 8.3 (n/c) |
-| shaddah suppression | 3 / 1692 · 1.8 [0.0, 4.1] | 3 / 2243 · 1.3 [0.0, 3.0] | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
-| the Tashkeel toggle | 4 / 1692 · 2.4 [0.0, 6.3] | 7 / 2243 · 3.1 [0.7, 6.8] | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
-| target pair ذ↔ظ | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
-| target pair س↔ش | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (1 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
-| target pair ط↔ق | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
+| allowance | teacher, 1 s hop | teacher, all eras | teacher, all sessions, slips excluded (narrow) | teacher, all sessions, slips excluded (wide) | `h448`, headline | `h448`, all sessions, slips excluded (narrow) | `h448`, all sessions, slips excluded (wide) |
+|---|---|---|---|---|---|---|---|
+| soft pair ت↔ط | 0 / 1485 · 0.0 (n/c) | 0 / 2042 · 0.0 (n/c) | 0 / 2357 · 0.0 (n/c) | 0 / 2293 · 0.0 (n/c) | – | 0 / 372 · 0.0 (n/c) | 0 / 285 · 0.0 (n/c) |
+| soft pair ح↔ه | 5 / 1485 · 3.4 [0.8, 7.1] | 5 / 2042 · 2.4 [0.5, 5.0] | 5 / 2357 · 2.1 [0.5, 4.2] | 5 / 2293 · 2.2 [0.5, 4.4] | – | 1 / 372 · 2.7 (n/c) | 1 / 285 · 3.5 (n/c) |
+| soft pair ذ↔ز | 0 / 1485 · 0.0 (n/c) | 0 / 2042 · 0.0 (n/c) | 0 / 2357 · 0.0 (n/c) | 0 / 2293 · 0.0 (n/c) | – | 1 / 372 · 2.7 (n/c) | 1 / 285 · 3.5 (n/c) |
+| soft pair س↔ص | 0 / 1485 · 0.0 (n/c) | 1 / 2042 · 0.5 [0.0, 1.8] | 1 / 2357 · 0.4 [0.0, 1.5] | 1 / 2293 · 0.4 [0.0, 1.6] | – | 1 / 372 · 2.7 (n/c) | 1 / 285 · 3.5 (n/c) |
+| soft pair ض↔ظ | 0 / 1485 · 0.0 (n/c) | 0 / 2042 · 0.0 (n/c) | 0 / 2357 · 0.0 (n/c) | 0 / 2293 · 0.0 (n/c) | – | 0 / 372 · 0.0 (n/c) | 0 / 285 · 0.0 (n/c) |
+| soft pair ق↔ك | 0 / 1485 · 0.0 (n/c) | 0 / 2042 · 0.0 (n/c) | 0 / 2357 · 0.0 (n/c) | 0 / 2293 · 0.0 (n/c) | – | 0 / 372 · 0.0 (n/c) | 0 / 285 · 0.0 (n/c) |
+| all six soft pairs (Muraja's one switch) | 5 / 1485 · 3.4 [0.8, 7.1] | 6 / 2042 · 2.9 [0.9, 5.8] | 6 / 2357 · 2.5 [0.8, 4.9] | 6 / 2293 · 2.6 [0.8, 5.1] | – | 3 / 372 · 8.1 (n/c) | 3 / 285 · 10.5 (n/c) |
+| shaddah suppression | 3 / 1485 · 2.0 [0.0, 4.7] | 3 / 2042 · 1.5 [0.0, 3.4] | 3 / 2357 · 1.3 [0.0, 2.9] | 3 / 2293 · 1.3 [0.0, 2.9] | – | 0 / 372 · 0.0 (n/c) | 0 / 285 · 0.0 (n/c) |
+| the Tashkeel toggle | 4 / 1485 · 2.7 [0.0, 7.1] | 7 / 2042 · 3.4 [0.8, 7.6] | 7 / 2357 · 3.0 [0.7, 6.4] | 7 / 2293 · 3.1 [0.7, 6.6] | – | 0 / 372 · 0.0 (n/c) | 0 / 285 · 0.0 (n/c) |
+| target pair ذ↔ظ | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
+| target pair س↔ش | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (1 flagged under `allowances_on`) | no allowance; always graded (1 flagged under `allowances_on`) | no allowance; always graded (1 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
+| target pair ط↔ق | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
 
 The words that carry them:
 
@@ -273,29 +330,41 @@ The words that carry them:
 |---|---|---|
 | soft pair ح↔ه | teacher, 1 s hop | 2:19:15 (5 sessions) |
 | soft pair ح↔ه | teacher, all eras | 2:19:15 (5 sessions) |
-| soft pair ح↔ه | `h448`, all sessions, slip regions excluded (narrow) | 3:8:7 |
-| soft pair ح↔ه | `h448`, all sessions, slip regions excluded (wide) | 3:8:7 |
-| soft pair ذ↔ز | `h448`, all sessions, slip regions excluded (narrow) | 3:38:11 |
-| soft pair ذ↔ز | `h448`, all sessions, slip regions excluded (wide) | 3:38:11 |
+| soft pair ح↔ه | teacher, all sessions, slips excluded (narrow) | 2:19:15 (5 sessions) |
+| soft pair ح↔ه | teacher, all sessions, slips excluded (wide) | 2:19:15 (5 sessions) |
+| soft pair ح↔ه | `h448`, all sessions, slips excluded (narrow) | 3:8:7 |
+| soft pair ح↔ه | `h448`, all sessions, slips excluded (wide) | 3:8:7 |
+| soft pair ذ↔ز | `h448`, all sessions, slips excluded (narrow) | 3:38:11 |
+| soft pair ذ↔ز | `h448`, all sessions, slips excluded (wide) | 3:38:11 |
 | soft pair س↔ص | teacher, all eras | 12:5:4 |
-| soft pair س↔ص | `h448`, all sessions, slip regions excluded (narrow) | 3:39:17 |
-| soft pair س↔ص | `h448`, all sessions, slip regions excluded (wide) | 3:39:17 |
+| soft pair س↔ص | teacher, all sessions, slips excluded (narrow) | 12:5:4 |
+| soft pair س↔ص | teacher, all sessions, slips excluded (wide) | 12:5:4 |
+| soft pair س↔ص | `h448`, all sessions, slips excluded (narrow) | 3:39:17 |
+| soft pair س↔ص | `h448`, all sessions, slips excluded (wide) | 3:39:17 |
 | all six soft pairs (Muraja's one switch) | teacher, 1 s hop | 2:19:15 (5 sessions) |
 | all six soft pairs (Muraja's one switch) | teacher, all eras | 2:19:15 (5 sessions), 12:5:4 |
-| all six soft pairs (Muraja's one switch) | `h448`, all sessions, slip regions excluded (narrow) | 3:8:7, 3:38:11, 3:39:17 |
-| all six soft pairs (Muraja's one switch) | `h448`, all sessions, slip regions excluded (wide) | 3:8:7, 3:38:11, 3:39:17 |
+| all six soft pairs (Muraja's one switch) | teacher, all sessions, slips excluded (narrow) | 2:19:15 (5 sessions), 12:5:4 |
+| all six soft pairs (Muraja's one switch) | teacher, all sessions, slips excluded (wide) | 2:19:15 (5 sessions), 12:5:4 |
+| all six soft pairs (Muraja's one switch) | `h448`, all sessions, slips excluded (narrow) | 3:8:7, 3:38:11, 3:39:17 |
+| all six soft pairs (Muraja's one switch) | `h448`, all sessions, slips excluded (wide) | 3:8:7, 3:38:11, 3:39:17 |
 | shaddah suppression | teacher, 1 s hop | 2:19:2 (3 sessions) |
 | shaddah suppression | teacher, all eras | 2:19:2 (3 sessions) |
+| shaddah suppression | teacher, all sessions, slips excluded (narrow) | 2:19:2 (3 sessions) |
+| shaddah suppression | teacher, all sessions, slips excluded (wide) | 2:19:2 (3 sessions) |
 | the Tashkeel toggle | teacher, 1 s hop | 2:22:2 (2 sessions), 2:22:3, 2:23:14 |
 | the Tashkeel toggle | teacher, all eras | 2:22:2 (2 sessions), 2:22:3, 2:23:14, 2:60:7, 2:60:8, 2:255:20 |
+| the Tashkeel toggle | teacher, all sessions, slips excluded (narrow) | 2:22:2 (2 sessions), 2:22:3, 2:23:14, 2:60:7, 2:60:8, 2:255:20 |
+| the Tashkeel toggle | teacher, all sessions, slips excluded (wide) | 2:22:2 (2 sessions), 2:22:3, 2:23:14, 2:60:7, 2:60:8, 2:255:20 |
 | target pair س↔ش | teacher, all eras | 2:60:28 |
+| target pair س↔ش | teacher, all sessions, slips excluded (narrow) | 2:60:28 |
+| target pair س↔ش | teacher, all sessions, slips excluded (wide) | 2:60:28 |
 
 ## Placement
 
-Of the 261 raw false flags of the included sessions under `shipped_default`,
-228 (87%) fall on explained words: words the reader
+Of the 251 raw false flags of the included sessions under `shipped_default`,
+216 (86%) fall on explained words: words the reader
 skipped, re-read or never recited, which the engine graded because of where it placed the
-reader. Another 9 are the engine's skip marking on words the docs do not explain. Where
+reader. Another 11 are the engine's skip marking on words the docs do not explain. Where
 the reader is placed, and what is marked skipped, is decided by Muraja's follow-along engine
 (alignment, placement, skip marking), not by the model's decode of the word.
 
@@ -309,64 +378,68 @@ would flag: 155 × the device's rate.
 
 **`h448`** against the simulation's `h448/checks`
 
-| scoring | device | simulation | device rate × 155 |
-|---|---|---|---|
-| `allowances_on` | 2 / 94 · 21.3 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | 3.3 |
-| `soft_pair_forgiveness_off` | 2 / 94 · 21.3 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | 3.3 |
-| `shaddah_suppression_off` | 2 / 94 · 21.3 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | 3.3 |
-| `shipped_default` | 2 / 94 · 21.3 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | 3.3 |
-| `allowances_off` | 2 / 94 · 21.3 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | 3.3 |
+| scoring | device | device, all sessions, slips excluded (narrow) | simulation | device rate × 155 |
+|---|---|---|---|---|
+| `allowances_on` | – | 5 / 372 · 13.4 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | – |
+| `soft_pair_forgiveness_off` | – | 8 / 372 · 21.5 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | – |
+| `shaddah_suppression_off` | – | 5 / 372 · 13.4 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | – |
+| `shipped_default` | – | 5 / 372 · 13.4 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | – |
+| `allowances_off` | – | 8 / 372 · 21.5 (n/c) | 3 / 155 · 19.4 (weighted 21.0 [0.0, 53.3]) | – |
 
 | cause | device, on | simulation, on | × 155, on | device, off | simulation, off | × 155, off |
 |---|---|---|---|---|---|---|
-| tashkeel | 0 / 94 | 0 / 155 | 0.0 | 0 / 94 | 0 / 155 | 0.0 |
-| soft-pair consonant | 0 / 94 | 0 / 155 | 0.0 | 0 / 94 | 0 / 155 | 0.0 |
-| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 0 / 94 | 0 / 155 | 0.0 | 0 / 94 | 0 / 155 | 0.0 |
-| another consonant | 2 / 94 | 2 / 155 | 3.3 | 2 / 94 | 2 / 155 | 3.3 |
-| shaddah (collapsed geminate) | 0 / 94 | 0 / 155 | 0.0 | 0 / 94 | 0 / 155 | 0.0 |
-| skipped by the engine | 0 / 94 | 1 / 155 | 0.0 | 0 / 94 | 1 / 155 | 0.0 |
-| no error recorded | 0 / 94 | 0 / 155 | 0.0 | 0 / 94 | 0 / 155 | 0.0 |
+| tashkeel | 0 / 0 | 0 / 155 | – | 0 / 0 | 0 / 155 | – |
+| soft-pair consonant | 0 / 0 | 0 / 155 | – | 0 / 0 | 0 / 155 | – |
+| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 0 / 0 | 0 / 155 | – | 0 / 0 | 0 / 155 | – |
+| another consonant | 0 / 0 | 2 / 155 | – | 0 / 0 | 2 / 155 | – |
+| shaddah (collapsed geminate) | 0 / 0 | 0 / 155 | – | 0 / 0 | 0 / 155 | – |
+| skipped by the engine | 0 / 0 | 1 / 155 | – | 0 / 0 | 1 / 155 | – |
+| no error recorded | 0 / 0 | 0 / 155 | – | 0 / 0 | 0 / 155 | – |
 
 **the six-chunk teacher, 1 s-hop sessions only** against the simulation's `base/checks`
 
-| scoring | device | simulation | device rate × 155 |
-|---|---|---|---|
-| `allowances_on` | 9 / 1692 · 5.3 [2.4, 8.9] | 3 / 155 · 19.4 (weighted 18.7 [0.0, 46.8]) | 0.8 |
-| `soft_pair_forgiveness_off` | 14 / 1692 · 8.3 [4.9, 12.8] | 3 / 155 · 19.4 (weighted 18.7 [0.0, 46.8]) | 1.3 |
-| `shaddah_suppression_off` | 12 / 1692 · 7.1 [3.9, 11.0] | 3 / 155 · 19.4 (weighted 18.7 [0.0, 46.8]) | 1.1 |
-| `shipped_default` | 13 / 1692 · 7.7 [3.7, 13.8] | 4 / 155 · 25.8 (weighted 26.5 [1.0, 59.3]) | 1.2 |
-| `allowances_off` | 22 / 1692 · 13.0 [7.2, 21.6] | 4 / 155 · 25.8 (weighted 26.5 [1.0, 59.3]) | 2.0 |
+| scoring | device | device, all sessions, slips excluded (narrow) | simulation | device rate × 155 |
+|---|---|---|---|---|
+| `allowances_on` | 11 / 1485 · 7.4 [4.0, 10.9] | 32 / 2357 · 13.6 [7.7, 21.8] | 3 / 155 · 19.4 (weighted 18.7 [0.0, 46.8]) | 1.1 |
+| `soft_pair_forgiveness_off` | 16 / 1485 · 10.8 [7.4, 15.0] | 38 / 2357 · 16.1 [10.2, 24.6] | 3 / 155 · 19.4 (weighted 18.7 [0.0, 46.8]) | 1.7 |
+| `shaddah_suppression_off` | 14 / 1485 · 9.4 [6.2, 13.1] | 35 / 2357 · 14.8 [9.0, 23.1] | 3 / 155 · 19.4 (weighted 18.7 [0.0, 46.8]) | 1.5 |
+| `shipped_default` | 15 / 1485 · 10.1 [5.8, 16.4] | 39 / 2357 · 16.5 [10.1, 25.7] | 4 / 155 · 25.8 (weighted 26.5 [1.0, 59.3]) | 1.6 |
+| `allowances_off` | 24 / 1485 · 16.2 [10.3, 25.2] | 49 / 2357 · 20.8 [13.7, 30.5] | 4 / 155 · 25.8 (weighted 26.5 [1.0, 59.3]) | 2.5 |
 
 | cause | device, on | simulation, on | × 155, on | device, off | simulation, off | × 155, off |
 |---|---|---|---|---|---|---|
-| tashkeel | 0 / 1692 | 0 / 155 | 0.0 | 4 / 1692 | 1 / 155 | 0.4 |
-| soft-pair consonant | 1 / 1692 | 0 / 155 | 0.1 | 7 / 1692 | 0 / 155 | 0.6 |
-| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 0 / 1692 | 0 / 155 | 0.0 | 0 / 1692 | 0 / 155 | 0.0 |
-| another consonant | 9 / 1692 | 2 / 155 | 0.8 | 9 / 1692 | 2 / 155 | 0.8 |
-| shaddah (collapsed geminate) | 0 / 1692 | 0 / 155 | 0.0 | 2 / 1692 | 0 / 155 | 0.2 |
-| skipped by the engine | 0 / 1692 | 1 / 155 | 0.0 | 1 / 1692 | 1 / 155 | 0.1 |
-| no error recorded | 0 / 1692 | 0 / 155 | 0.0 | 0 / 1692 | 0 / 155 | 0.0 |
+| tashkeel | 0 / 1485 | 0 / 155 | 0.0 | 4 / 1485 | 1 / 155 | 0.4 |
+| soft-pair consonant | 1 / 1485 | 0 / 155 | 0.1 | 7 / 1485 | 0 / 155 | 0.7 |
+| non-soft target pair (ذ↔ظ, س↔ش, ط↔ق) | 0 / 1485 | 0 / 155 | 0.0 | 0 / 1485 | 0 / 155 | 0.0 |
+| another consonant | 11 / 1485 | 2 / 155 | 1.1 | 11 / 1485 | 2 / 155 | 1.1 |
+| shaddah (collapsed geminate) | 0 / 1485 | 0 / 155 | 0.0 | 2 / 1485 | 0 / 155 | 0.2 |
+| skipped by the engine | 0 / 1485 | 1 / 155 | 0.0 | 1 / 1485 | 1 / 155 | 0.1 |
+| no error recorded | 0 / 1485 | 0 / 155 | 0.0 | 0 / 1485 | 0 / 155 | 0.0 |
 
 ### Where they disagree, and the likely reasons
 
 - **Most device flags are placement, not pronunciation.** Of the teacher's flags under
-  `allowances_off`, 84% fall on explained words: ayat the reader skipped
-  (8 of the 50 included sessions hold such a skip), words placed on a
+  `allowances_off`, 83% fall on explained words: ayat the reader skipped
+  (8 of the 47 included sessions hold such a skip), words placed on a
   twin, before the session's start or after its end. A simulated item starts on its first
   word and holds one segment, so the engine has nothing to skip; the simulation cannot show
   these.
 - **The overall rates.** With the explained words left out, under `allowances_on` the device
-  flags 5.3 against 19.4 words per 1,000 for the teacher (1 s hop) and
-  21.3 against 19.4 for `h448` (one session). The device is one reader on one phone; the
-  simulation is one word from each of 155 Tadabur reciters and their recordings.
+  flags 7.4 against 19.4 words per 1,000 for the teacher (1 s hop); for
+  `h448` the headline gives – against 19.4 and all sessions with slips excluded (narrow)
+  13.4. The device is one
+  reader on one phone; the simulation is one word from each of 155 Tadabur reciters and their
+  recordings.
 - **On the device the allowances change flags, on a few recurring words.** Switching the
   three allowances off adds, over the teacher's sessions, unexplained flags for: soft-pair consonant 7 (on 2:19:15 (6 sessions), 2:19:2, 12:5:4); shaddah (collapsed geminate) 2 (on 2:19:2 (2 sessions)); tashkeel 7 (on 2:22:2 (2 sessions), 2:22:3, 2:23:14, 2:60:7, 2:60:8, 2:255:20).
   The logs are one reader reciting a few pages again and again (page 4 in 11
   sessions), so a word the model mishears for this reader recurs in every session that
   reaches it. The simulation has one word per reciter and never repeats a word.
-- **The simulation is small for causes this rare.** The column *device rate × 155* is how
-  many of the simulation's words the device's rate would flag. For the allowance-sensitive
-  causes under `allowances_off` it is 0.00 (`h448`, soft-pair consonant), 0.00 (`h448`, shaddah (collapsed geminate)), 0.00 (`h448`, tashkeel), 0.64 (the six-chunk teacher, soft-pair consonant), 0.18 (the six-chunk teacher, shaddah (collapsed geminate)), 0.37 (the six-chunk teacher, tashkeel): below one word each, so the simulation finding none is what the device's rates predict.
+- **The simulation is small for causes this rare.** Under `allowances_off`, observed flags of each
+  allowance-sensitive cause, and how many of the simulation's 155 words the device's rate
+  would flag:
+  - the teacher, 1 s hop: soft-pair consonant: device 7 / 1485, simulation 0 / 155 (the device's rate predicts 0.73); shaddah (collapsed geminate): device 2 / 1485, simulation 0 / 155 (the device's rate predicts 0.21); tashkeel: device 4 / 1485, simulation 1 / 155 (the device's rate predicts 0.42).
+  - `h448`, all sessions, slips excluded (narrow): soft-pair consonant: device 3 / 372, simulation 0 / 155 (the device's rate predicts 1.25); shaddah (collapsed geminate): device 1 / 372, simulation 0 / 155 (the device's rate predicts 0.42); tashkeel: device 0 / 372, simulation 0 / 155 (the device's rate predicts 0.00).
 - **Other differences, not separated here.** The device decodes with 6-bit CoreML from the
   phone's microphone; the simulation with PyTorch bf16 on Tadabur audio. Sessions before
   2026-04-29 ran a 3 s hop (the simulation models the 1 s hop, hence the 1 s-hop rows in the
@@ -376,10 +449,10 @@ would flag: 155 × the device's rate.
 
 The app logs each update's overlap cut to 30 Characters
 (`unconfirmed.prefix(30)`, `FollowAlongManager+iOS.swift:744`), so a replay hands the engine
-a shorter preview than the device saw: 301 of the included 1 s-hop sessions' 11085
+a shorter preview than the device saw: 203 of the included 1 s-hop sessions' 8587
 updates sit exactly at the cap. Two tests of its effect:
 
-- **The device logs, previews lengthened.** 136 previews in 13 sessions
+- **The device logs, previews lengthened.** 106 previews in 11 sessions
   also appear in the transcriber's own line, which keeps 40 Characters
   (`RealtimeTranscriber+iOS.swift:642`); those sessions were replayed with the longer text.
 - **The simulation, overlaps cut.** #90's word sample regraded with every check's overlap cut
@@ -387,94 +460,139 @@ updates sit exactly at the cap. Two tests of its effect:
 
 | scoring | device flags, logged | device flags, lengthened | device words changed | simulation `h448`: flags full → cut | simulation teacher: flags full → cut |
 |---|---|---|---|---|---|
-| `allowances_on` | 29 | 29 | 0 | 3 → 3 (0 changed) | 3 → 3 (0 changed) |
-| `soft_pair_forgiveness_off` | 32 | 32 | 0 | 3 → 3 (0 changed) | 3 → 3 (0 changed) |
-| `shaddah_suppression_off` | 31 | 31 | 0 | 3 → 3 (0 changed) | 3 → 3 (0 changed) |
-| `shipped_default` | 30 | 30 | 0 | 3 → 3 (0 changed) | 4 → 4 (0 changed) |
-| `allowances_off` | 35 | 35 | 0 | 3 → 3 (0 changed) | 4 → 4 (0 changed) |
+| `allowances_on` | 20 | 20 | 0 | 3 → 3 (0 changed) | 3 → 3 (0 changed) |
+| `soft_pair_forgiveness_off` | 23 | 23 | 0 | 3 → 3 (0 changed) | 3 → 3 (0 changed) |
+| `shaddah_suppression_off` | 22 | 22 | 0 | 3 → 3 (0 changed) | 3 → 3 (0 changed) |
+| `shipped_default` | 21 | 21 | 0 | 3 → 3 (0 changed) | 4 → 4 (0 changed) |
+| `allowances_off` | 26 | 26 | 0 | 3 → 3 (0 changed) | 4 → 4 (0 changed) |
 
 ## Per log
 
-Included logs: graded words under the first scoring, and per scoring the false flags over
-every graded word · with the explained words left out.
+Included logs, per scoring: false flags / graded words · per 1,000. Every graded word:
 
-| log | model | protocol | words | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
-|---|---|---|---|---|---|---|---|---|
-| `page3_tawwudh_reseek` | teacher | 3 s hop | 18 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
-| `surah103_page601_basmallah` | teacher | 3 s hop | 18 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah103_page601_basmallah_v2` | teacher | 3 s hop | 14 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah103_page601_basmallah_v3` | teacher | 3 s hop | 18 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah109_page603_basmallah` | teacher | 3 s hop | 50 | 2 · 2 | 2 · 2 | 2 · 2 | 2 · 2 | 2 · 2 |
-| `surah12_page236_ayah5` | teacher | 3 s hop | 10 | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
-| `surah12_page236_ayah5_v2` | teacher | 3 s hop | 62 | 30 · 5 | 30 · 5 | 30 · 5 | 30 · 5 | 30 · 5 |
-| `surah12_page236_ayah5_v3` | teacher | 3 s hop | 10 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah2_page3_post_flush_noise` | teacher | 1 s hop | 109 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
-| `surah2_page3_reread_catchup_stall` | teacher | 1 s hop | 192 | 2 · 0 | 2 · 0 | 2 · 0 | 2 · 0 | 2 · 0 |
-| `surah2_page3_reread_grade_fix` | teacher | 1 s hop | 127 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah2_page3_short_word_false_skip` | teacher | 1 s hop | 32 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
-| `surah2_page42_ayah255` | teacher | 3 s hop | 25 | 0 · 0 | 0 · 0 | 0 · 0 | 1 · 1 | 1 · 1 |
-| `surah2_page4_ayah19_waqf` | teacher | 1 s hop | 39 | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
-| `surah2_page4_desync_score_recovery` | teacher | 1 s hop | 134 | 0 · 0 | 1 · 1 | 1 · 1 | 1 · 1 | 3 · 3 |
-| `surah2_page4_false_jumps` | teacher | 1 s hop | 134 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
-| `surah2_page4_repeated_samaa` | teacher | 1 s hop | 14 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah2_page4_reread_desync` | teacher | 1 s hop | 43 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah2_page4_reread_slow` | teacher | 1 s hop | 43 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah2_page4_session_start_taawwudh` | teacher | 1 s hop | 20 | 1 · 0 | 2 · 1 | 1 · 0 | 1 · 0 | 3 · 2 |
-| `surah2_page4_session_start_virtual` | teacher | 1 s hop | 8 | 0 · 0 | 0 · 0 | 0 · 0 | 1 · 1 | 1 · 1 |
-| `surah2_page4_session_start_virtual_skips` | teacher | 1 s hop | 7 | 1 · 1 | 1 · 1 | 1 · 1 | 3 · 3 | 3 · 3 |
-| `surah2_page4_skip_behind_entry` | teacher | 1 s hop | 55 | 21 · 0 | 21 · 0 | 21 · 0 | 21 · 0 | 21 · 0 |
-| `surah2_page4_skip_upgrade` | teacher | 1 s hop | 54 | 23 · 0 | 24 · 1 | 24 · 1 | 23 · 0 | 25 · 2 |
-| `surah2_page4_strict_shaddah` | teacher | 1 s hop | 42 | 0 · 0 | 1 · 1 | 1 · 1 | 0 · 0 | 2 · 2 |
-| `surah2_page7_ayah60` | teacher | 3 s hop | 28 | 0 · 0 | 0 · 0 | 0 · 0 | 2 · 2 | 2 · 2 |
-| `surah2_page7_ayah60_v2` | teacher | 3 s hop | 28 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah2_page7_ayah60_v3` | teacher | 3 s hop | 29 | 2 · 1 | 2 · 1 | 2 · 1 | 2 · 1 | 2 · 1 |
-| `surah2_page7_ayah60_v4` | teacher | 3 s hop | 85 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah36_page442_cross_ayah_skip` | teacher | 1 s hop | 101 | 1 · 0 | 1 · 0 | 1 · 0 | 1 · 0 | 1 · 0 |
-| `surah3_page3_ayah4_reread` | teacher | 1 s hop | 33 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah3_page50_ayah24` | teacher | 3 s hop | 84 | 48 · 3 | 48 · 3 | 48 · 3 | 48 · 3 | 48 · 3 |
-| `surah3_page50_ayah31` | teacher | 3 s hop | 57 | 35 · 0 | 35 · 0 | 35 · 0 | 35 · 0 | 35 · 0 |
-| `surah3_page51_reread_reveals_next_ayah` | teacher | 1 s hop | 183 | 16 · 2 | 16 · 2 | 16 · 2 | 16 · 2 | 16 · 2 |
-| `surah3_page52_jump_reread` | teacher | 1 s hop | 116 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah3_page53_ayah75` | teacher | 3 s hop | 36 | 2 · 2 | 2 · 2 | 2 · 2 | 2 · 2 | 2 · 2 |
-| `surah3_page58_far_reread_pause_residue` | h448 | 1 s hop | 101 | 9 · 2 | 9 · 2 | 9 · 2 | 9 · 2 | 9 · 2 |
-| `surah55_page531_false_reread_refrain` | teacher | 1 s hop | 95 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
-| `surah55_page531_random_grades_reread` | teacher | 1 s hop | 57 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah55_page532_far_jump_refrain` | teacher | 1 s hop | 27 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
-| `surah55_page532_grade_contamination` | teacher | 1 s hop | 57 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 | 1 · 1 |
-| `surah68_page565_false_lost` | teacher | 1 s hop | 41 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah70_page569_ayah24` | teacher | 3 s hop | 18 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah70_page569_ayah26` | teacher | 3 s hop | 10 | 6 · 0 | 6 · 0 | 6 · 0 | 6 · 0 | 6 · 0 |
-| `surah70_page569_ayah27` | teacher | 3 s hop | 8 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah70_page569_ayah27_v2` | teacher | 3 s hop | 21 | 2 · 0 | 2 · 0 | 2 · 0 | 3 · 0 | 3 · 0 |
-| `surah70_page569_ayah27_v3` | teacher | 3 s hop | 10 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 | 0 · 0 |
-| `surah70_page569_ayah27_v4` | teacher | 3 s hop | 16 | 6 · 0 | 6 · 0 | 6 · 0 | 6 · 0 | 6 · 0 |
-| `surah70_page569_ayah27_v5` | teacher | 3 s hop | 16 | 6 · 0 | 6 · 0 | 6 · 0 | 6 · 0 | 6 · 0 |
-| `surah8_page176_ayah1` | teacher | 3 s hop | 52 | 33 · 1 | 33 · 1 | 33 · 1 | 33 · 1 | 33 · 1 |
+| log | model | protocol | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|---|---|
+| `page3_tawwudh_reseek` | teacher | 3 s hop | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 |
+| `surah103_page601_basmallah` | teacher | 3 s hop | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 |
+| `surah103_page601_basmallah_v2` | teacher | 3 s hop | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 |
+| `surah103_page601_basmallah_v3` | teacher | 3 s hop | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 |
+| `surah109_page603_basmallah` | teacher | 3 s hop | 2 / 50 · 40.0 | 2 / 50 · 40.0 | 2 / 50 · 40.0 | 2 / 50 · 40.0 | 2 / 50 · 40.0 |
+| `surah12_page236_ayah5` | teacher | 3 s hop | 0 / 10 · 0.0 | 1 / 10 · 100.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 1 / 10 · 100.0 |
+| `surah12_page236_ayah5_v2` | teacher | 3 s hop | 30 / 62 · 483.9 | 30 / 62 · 483.9 | 30 / 62 · 483.9 | 30 / 62 · 483.9 | 30 / 62 · 483.9 |
+| `surah12_page236_ayah5_v3` | teacher | 3 s hop | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 |
+| `surah2_page3_post_flush_noise` | teacher | 1 s hop | 1 / 109 · 9.2 | 1 / 109 · 9.2 | 1 / 109 · 9.2 | 1 / 109 · 9.2 | 1 / 109 · 9.2 |
+| `surah2_page3_reread_catchup_stall` | teacher | 1 s hop | 2 / 192 · 10.4 | 2 / 192 · 10.4 | 2 / 192 · 10.4 | 2 / 192 · 10.4 | 2 / 192 · 10.4 |
+| `surah2_page3_reread_grade_fix` | teacher | 1 s hop | 0 / 127 · 0.0 | 0 / 127 · 0.0 | 0 / 127 · 0.0 | 0 / 127 · 0.0 | 0 / 127 · 0.0 |
+| `surah2_page3_short_word_false_skip` | teacher | 1 s hop | 1 / 32 · 31.2 | 1 / 32 · 31.2 | 1 / 32 · 31.2 | 1 / 32 · 31.2 | 1 / 32 · 31.2 |
+| `surah2_page42_ayah255` | teacher | 3 s hop | 0 / 25 · 0.0 | 0 / 25 · 0.0 | 0 / 25 · 0.0 | 1 / 25 · 40.0 | 1 / 25 · 40.0 |
+| `surah2_page4_ayah19_waqf` | teacher | 1 s hop | 0 / 39 · 0.0 | 1 / 39 · 25.6 | 0 / 39 · 0.0 | 0 / 39 · 0.0 | 1 / 39 · 25.6 |
+| `surah2_page4_desync_score_recovery` | teacher | 1 s hop | 0 / 134 · 0.0 | 1 / 134 · 7.5 | 1 / 134 · 7.5 | 1 / 134 · 7.5 | 3 / 134 · 22.4 |
+| `surah2_page4_false_jumps` | teacher | 1 s hop | 1 / 134 · 7.5 | 1 / 134 · 7.5 | 1 / 134 · 7.5 | 1 / 134 · 7.5 | 1 / 134 · 7.5 |
+| `surah2_page4_repeated_samaa` | teacher | 1 s hop | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 |
+| `surah2_page4_reread_desync` | teacher | 1 s hop | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 |
+| `surah2_page4_reread_slow` | teacher | 1 s hop | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 |
+| `surah2_page4_session_start_taawwudh` | teacher | 1 s hop | 1 / 20 · 50.0 | 2 / 20 · 100.0 | 1 / 20 · 50.0 | 1 / 20 · 50.0 | 3 / 20 · 150.0 |
+| `surah2_page4_session_start_virtual` | teacher | 1 s hop | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 1 / 8 · 125.0 | 1 / 8 · 125.0 |
+| `surah2_page4_session_start_virtual_skips` | teacher | 1 s hop | 1 / 7 · 142.9 | 1 / 7 · 142.9 | 1 / 7 · 142.9 | 3 / 7 · 428.6 | 3 / 7 · 428.6 |
+| `surah2_page4_skip_behind_entry` | teacher | 1 s hop | 21 / 55 · 381.8 | 21 / 55 · 381.8 | 21 / 55 · 381.8 | 21 / 55 · 381.8 | 21 / 55 · 381.8 |
+| `surah2_page4_skip_upgrade` | teacher | 1 s hop | 23 / 54 · 425.9 | 24 / 54 · 444.4 | 24 / 54 · 444.4 | 23 / 54 · 425.9 | 25 / 54 · 463.0 |
+| `surah2_page4_strict_shaddah` | teacher | 1 s hop | 0 / 42 · 0.0 | 1 / 42 · 23.8 | 1 / 42 · 23.8 | 0 / 42 · 0.0 | 2 / 42 · 47.6 |
+| `surah2_page7_ayah60` | teacher | 3 s hop | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 2 / 28 · 71.4 | 2 / 28 · 71.4 |
+| `surah2_page7_ayah60_v2` | teacher | 3 s hop | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 0 / 28 · 0.0 |
+| `surah2_page7_ayah60_v3` | teacher | 3 s hop | 2 / 29 · 69.0 | 2 / 29 · 69.0 | 2 / 29 · 69.0 | 2 / 29 · 69.0 | 2 / 29 · 69.0 |
+| `surah2_page7_ayah60_v4` | teacher | 3 s hop | 0 / 85 · 0.0 | 0 / 85 · 0.0 | 0 / 85 · 0.0 | 0 / 85 · 0.0 | 0 / 85 · 0.0 |
+| `surah3_page3_ayah4_reread` | teacher | 1 s hop | 0 / 33 · 0.0 | 0 / 33 · 0.0 | 0 / 33 · 0.0 | 0 / 33 · 0.0 | 0 / 33 · 0.0 |
+| `surah3_page50_ayah24` | teacher | 3 s hop | 48 / 84 · 571.4 | 48 / 84 · 571.4 | 48 / 84 · 571.4 | 48 / 84 · 571.4 | 48 / 84 · 571.4 |
+| `surah3_page50_ayah31` | teacher | 3 s hop | 35 / 57 · 614.0 | 35 / 57 · 614.0 | 35 / 57 · 614.0 | 35 / 57 · 614.0 | 35 / 57 · 614.0 |
+| `surah3_page51_reread_reveals_next_ayah` | teacher | 1 s hop | 16 / 183 · 87.4 | 16 / 183 · 87.4 | 16 / 183 · 87.4 | 16 / 183 · 87.4 | 16 / 183 · 87.4 |
+| `surah3_page53_ayah75` | teacher | 3 s hop | 2 / 36 · 55.6 | 2 / 36 · 55.6 | 2 / 36 · 55.6 | 2 / 36 · 55.6 | 2 / 36 · 55.6 |
+| `surah55_page531_false_reread_refrain` | teacher | 1 s hop | 1 / 95 · 10.5 | 1 / 95 · 10.5 | 1 / 95 · 10.5 | 1 / 95 · 10.5 | 1 / 95 · 10.5 |
+| `surah55_page531_random_grades_reread` | teacher | 1 s hop | 0 / 57 · 0.0 | 0 / 57 · 0.0 | 0 / 57 · 0.0 | 0 / 57 · 0.0 | 0 / 57 · 0.0 |
+| `surah55_page532_far_jump_refrain` | teacher | 1 s hop | 1 / 27 · 37.0 | 1 / 27 · 37.0 | 1 / 27 · 37.0 | 1 / 27 · 37.0 | 1 / 27 · 37.0 |
+| `surah55_page532_grade_contamination` | teacher | 1 s hop | 1 / 57 · 17.5 | 1 / 57 · 17.5 | 1 / 57 · 17.5 | 1 / 57 · 17.5 | 1 / 57 · 17.5 |
+| `surah68_page565_false_lost` | teacher | 1 s hop | 0 / 41 · 0.0 | 0 / 41 · 0.0 | 0 / 41 · 0.0 | 0 / 41 · 0.0 | 0 / 41 · 0.0 |
+| `surah70_page569_ayah24` | teacher | 3 s hop | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 |
+| `surah70_page569_ayah26` | teacher | 3 s hop | 6 / 10 · 600.0 | 6 / 10 · 600.0 | 6 / 10 · 600.0 | 6 / 10 · 600.0 | 6 / 10 · 600.0 |
+| `surah70_page569_ayah27` | teacher | 3 s hop | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 0 / 8 · 0.0 |
+| `surah70_page569_ayah27_v2` | teacher | 3 s hop | 2 / 21 · 95.2 | 2 / 21 · 95.2 | 2 / 21 · 95.2 | 3 / 21 · 142.9 | 3 / 21 · 142.9 |
+| `surah70_page569_ayah27_v3` | teacher | 3 s hop | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 |
+| `surah70_page569_ayah27_v4` | teacher | 3 s hop | 6 / 16 · 375.0 | 6 / 16 · 375.0 | 6 / 16 · 375.0 | 6 / 16 · 375.0 | 6 / 16 · 375.0 |
+| `surah70_page569_ayah27_v5` | teacher | 3 s hop | 6 / 16 · 375.0 | 6 / 16 · 375.0 | 6 / 16 · 375.0 | 6 / 16 · 375.0 | 6 / 16 · 375.0 |
+| `surah8_page176_ayah1` | teacher | 3 s hop | 33 / 52 · 634.6 | 33 / 52 · 634.6 | 33 / 52 · 634.6 | 33 / 52 · 634.6 | 33 / 52 · 634.6 |
+
+Explained words left out of both counts:
+
+| log | model | protocol | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|---|---|
+| `page3_tawwudh_reseek` | teacher | 3 s hop | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 |
+| `surah103_page601_basmallah` | teacher | 3 s hop | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 |
+| `surah103_page601_basmallah_v2` | teacher | 3 s hop | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 |
+| `surah103_page601_basmallah_v3` | teacher | 3 s hop | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 |
+| `surah109_page603_basmallah` | teacher | 3 s hop | 2 / 50 · 40.0 | 2 / 50 · 40.0 | 2 / 50 · 40.0 | 2 / 50 · 40.0 | 2 / 50 · 40.0 |
+| `surah12_page236_ayah5` | teacher | 3 s hop | 0 / 10 · 0.0 | 1 / 10 · 100.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 1 / 10 · 100.0 |
+| `surah12_page236_ayah5_v2` | teacher | 3 s hop | 7 / 37 · 189.2 | 7 / 37 · 189.2 | 7 / 37 · 189.2 | 7 / 37 · 189.2 | 7 / 37 · 189.2 |
+| `surah12_page236_ayah5_v3` | teacher | 3 s hop | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 |
+| `surah2_page3_post_flush_noise` | teacher | 1 s hop | 1 / 109 · 9.2 | 1 / 109 · 9.2 | 1 / 109 · 9.2 | 1 / 109 · 9.2 | 1 / 109 · 9.2 |
+| `surah2_page3_reread_catchup_stall` | teacher | 1 s hop | 2 / 192 · 10.4 | 2 / 192 · 10.4 | 2 / 192 · 10.4 | 2 / 192 · 10.4 | 2 / 192 · 10.4 |
+| `surah2_page3_reread_grade_fix` | teacher | 1 s hop | 0 / 127 · 0.0 | 0 / 127 · 0.0 | 0 / 127 · 0.0 | 0 / 127 · 0.0 | 0 / 127 · 0.0 |
+| `surah2_page3_short_word_false_skip` | teacher | 1 s hop | 1 / 32 · 31.2 | 1 / 32 · 31.2 | 1 / 32 · 31.2 | 1 / 32 · 31.2 | 1 / 32 · 31.2 |
+| `surah2_page42_ayah255` | teacher | 3 s hop | 0 / 25 · 0.0 | 0 / 25 · 0.0 | 0 / 25 · 0.0 | 1 / 25 · 40.0 | 1 / 25 · 40.0 |
+| `surah2_page4_ayah19_waqf` | teacher | 1 s hop | 0 / 39 · 0.0 | 1 / 39 · 25.6 | 0 / 39 · 0.0 | 0 / 39 · 0.0 | 1 / 39 · 25.6 |
+| `surah2_page4_desync_score_recovery` | teacher | 1 s hop | 0 / 133 · 0.0 | 1 / 133 · 7.5 | 1 / 133 · 7.5 | 1 / 133 · 7.5 | 3 / 133 · 22.6 |
+| `surah2_page4_false_jumps` | teacher | 1 s hop | 1 / 134 · 7.5 | 1 / 134 · 7.5 | 1 / 134 · 7.5 | 1 / 134 · 7.5 | 1 / 134 · 7.5 |
+| `surah2_page4_repeated_samaa` | teacher | 1 s hop | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 | 0 / 14 · 0.0 |
+| `surah2_page4_reread_desync` | teacher | 1 s hop | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 |
+| `surah2_page4_reread_slow` | teacher | 1 s hop | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 | 0 / 43 · 0.0 |
+| `surah2_page4_session_start_taawwudh` | teacher | 1 s hop | 0 / 19 · 0.0 | 1 / 19 · 52.6 | 0 / 19 · 0.0 | 0 / 19 · 0.0 | 2 / 19 · 105.3 |
+| `surah2_page4_session_start_virtual` | teacher | 1 s hop | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 1 / 8 · 125.0 | 1 / 8 · 125.0 |
+| `surah2_page4_session_start_virtual_skips` | teacher | 1 s hop | 1 / 7 · 142.9 | 1 / 7 · 142.9 | 1 / 7 · 142.9 | 3 / 7 · 428.6 | 3 / 7 · 428.6 |
+| `surah2_page4_skip_behind_entry` | teacher | 1 s hop | 0 / 34 · 0.0 | 0 / 34 · 0.0 | 0 / 34 · 0.0 | 0 / 34 · 0.0 | 0 / 34 · 0.0 |
+| `surah2_page4_skip_upgrade` | teacher | 1 s hop | 0 / 30 · 0.0 | 1 / 30 · 33.3 | 1 / 30 · 33.3 | 0 / 30 · 0.0 | 2 / 30 · 66.7 |
+| `surah2_page4_strict_shaddah` | teacher | 1 s hop | 0 / 42 · 0.0 | 1 / 42 · 23.8 | 1 / 42 · 23.8 | 0 / 42 · 0.0 | 2 / 42 · 47.6 |
+| `surah2_page7_ayah60` | teacher | 3 s hop | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 2 / 28 · 71.4 | 2 / 28 · 71.4 |
+| `surah2_page7_ayah60_v2` | teacher | 3 s hop | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 0 / 28 · 0.0 | 0 / 28 · 0.0 |
+| `surah2_page7_ayah60_v3` | teacher | 3 s hop | 1 / 28 · 35.7 | 1 / 28 · 35.7 | 1 / 28 · 35.7 | 1 / 28 · 35.7 | 1 / 28 · 35.7 |
+| `surah2_page7_ayah60_v4` | teacher | 3 s hop | 0 / 85 · 0.0 | 0 / 85 · 0.0 | 0 / 85 · 0.0 | 0 / 85 · 0.0 | 0 / 85 · 0.0 |
+| `surah3_page3_ayah4_reread` | teacher | 1 s hop | 0 / 33 · 0.0 | 0 / 33 · 0.0 | 0 / 33 · 0.0 | 0 / 33 · 0.0 | 0 / 33 · 0.0 |
+| `surah3_page50_ayah24` | teacher | 3 s hop | 3 / 35 · 85.7 | 3 / 35 · 85.7 | 3 / 35 · 85.7 | 3 / 35 · 85.7 | 3 / 35 · 85.7 |
+| `surah3_page50_ayah31` | teacher | 3 s hop | 0 / 22 · 0.0 | 0 / 22 · 0.0 | 0 / 22 · 0.0 | 0 / 22 · 0.0 | 0 / 22 · 0.0 |
+| `surah3_page51_reread_reveals_next_ayah` | teacher | 1 s hop | 2 / 169 · 11.8 | 2 / 169 · 11.8 | 2 / 169 · 11.8 | 2 / 169 · 11.8 | 2 / 169 · 11.8 |
+| `surah3_page53_ayah75` | teacher | 3 s hop | 2 / 36 · 55.6 | 2 / 36 · 55.6 | 2 / 36 · 55.6 | 2 / 36 · 55.6 | 2 / 36 · 55.6 |
+| `surah55_page531_false_reread_refrain` | teacher | 1 s hop | 1 / 95 · 10.5 | 1 / 95 · 10.5 | 1 / 95 · 10.5 | 1 / 95 · 10.5 | 1 / 95 · 10.5 |
+| `surah55_page531_random_grades_reread` | teacher | 1 s hop | 0 / 57 · 0.0 | 0 / 57 · 0.0 | 0 / 57 · 0.0 | 0 / 57 · 0.0 | 0 / 57 · 0.0 |
+| `surah55_page532_far_jump_refrain` | teacher | 1 s hop | 1 / 27 · 37.0 | 1 / 27 · 37.0 | 1 / 27 · 37.0 | 1 / 27 · 37.0 | 1 / 27 · 37.0 |
+| `surah55_page532_grade_contamination` | teacher | 1 s hop | 1 / 57 · 17.5 | 1 / 57 · 17.5 | 1 / 57 · 17.5 | 1 / 57 · 17.5 | 1 / 57 · 17.5 |
+| `surah68_page565_false_lost` | teacher | 1 s hop | 0 / 41 · 0.0 | 0 / 41 · 0.0 | 0 / 41 · 0.0 | 0 / 41 · 0.0 | 0 / 41 · 0.0 |
+| `surah70_page569_ayah24` | teacher | 3 s hop | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 | 0 / 18 · 0.0 |
+| `surah70_page569_ayah26` | teacher | 3 s hop | 0 / 4 · 0.0 | 0 / 4 · 0.0 | 0 / 4 · 0.0 | 0 / 4 · 0.0 | 0 / 4 · 0.0 |
+| `surah70_page569_ayah27` | teacher | 3 s hop | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 0 / 8 · 0.0 | 0 / 8 · 0.0 |
+| `surah70_page569_ayah27_v2` | teacher | 3 s hop | 0 / 17 · 0.0 | 0 / 17 · 0.0 | 0 / 17 · 0.0 | 0 / 17 · 0.0 | 0 / 17 · 0.0 |
+| `surah70_page569_ayah27_v3` | teacher | 3 s hop | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 |
+| `surah70_page569_ayah27_v4` | teacher | 3 s hop | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 |
+| `surah70_page569_ayah27_v5` | teacher | 3 s hop | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 | 0 / 10 · 0.0 |
+| `surah8_page176_ayah1` | teacher | 3 s hop | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 | 1 / 18 · 55.6 |
 
 ## Explained words
 
 Words a log's docs say were skipped, re-read or never recited (basis *docs*), or, where the
 docs name the session's purpose but not the words, its own decode and Start line show were
 never recited (basis *decode*: read from the log for this report; no log text is copied
-here). Under the shipped default they explain 119 flags by decode, 109 flags by docs.
+here). Under the shipped default they explain 126 flags by decode, 109 flags by docs.
 
 | log | words | kind | basis | source |
 |---|---|---|---|---|
-| `surah12_page236_ayah5_v2` | 12:6:1–12:7:6 | skip | docs | Muraja ADR-0020: genuine skip 12:6:1 to 12:7:7 |
-| `surah2_page3_reread_catchup_stall` | 2:20:13–2:20:19 | re-read | docs | Muraja 59ef302: re-read from 2:20:19 to 2:20:13 |
+| `surah12_page236_ayah5_v2` | 12:6:1–12:6:25 | skip | docs | Muraja ADR-0009: the reader recites 12:5, then 12:7; 12:6 is skipped (ADR-0020's 12:6:1 to 12:7:7 is the cursor's jump, and 12:7:1-6 are in the decode) |
 | `surah2_page4_desync_score_recovery` | 2:23:11–2:23:11 | skip | docs | Muraja 496c7f0: 2:23:11 genuinely missed |
 | `surah2_page4_session_start_taawwudh` | 2:18:6–2:18:6 | not_recited | docs | Muraja 450484d: ta'awwudh residue matched 2:18:6; ADR-0020: skip 2:18:6 to 2:19:3 |
 | `surah2_page4_skip_behind_entry` | 2:7:1–2:7:12 | skip | docs | Muraja c66f9da: 2:7 skipped, its grades alignment noise |
 | `surah2_page4_skip_behind_entry` | 2:9:1–2:9:10 | skip | decode | Muraja c66f9da names skipped ayahs; the decode has no 2:9 |
 | `surah2_page4_skip_upgrade` | 2:20:1–2:20:25 | skip | docs | Muraja a41b9aa: the reader skips 2:20 |
 | `surah2_page7_ayah60_v3` | 2:61:1–2:61:59 | not_recited | decode | the decode ends in 2:60; 2:61 is never recited |
-| `surah36_page442_cross_ayah_skip` | 36:35:1–36:35:8 | not_recited | decode | the log's Start line places the reader at 36:36:1 |
 | `surah3_page50_ayah24` | 3:24:10–3:24:15 | skip | decode | the decode goes from 3:24:9 to 3:26:1 |
 | `surah3_page50_ayah24` | 3:25:1–3:25:15 | skip | docs | Muraja c66f9da: the reader clearly skipped 3:25 |
 | `surah3_page50_ayah24` | 3:26:19–3:27:21 | skip | decode | the decode goes from 3:26:18 to 3:28:1 |
 | `surah3_page50_ayah31` | 3:31:9–3:34:7 | skip | decode | the decode goes from 3:31:8 to 3:35:1 |
 | `surah3_page51_reread_reveals_next_ayah` | 3:8:2–3:8:15 | skip | docs | baseline intent (#211): the genuine 3:8 skip |
-| `surah3_page58_far_reread_pause_residue` | 3:64:1–3:64:7 | not_recited | decode | the log's Start line places the reader at 3:64:9; the decode begins at 3:64:8 |
 | `surah70_page569_ayah26` | 70:24:1–70:25:2 | not_recited | docs | Muraja a3789d9: 70:26:2 falsely remapped onto 70:24:2 |
 | `surah70_page569_ayah27_v2` | 70:28:1–70:29:4 | not_recited | decode | Muraja ef7766d: a re-read of 70:27 matched onto its twin; the decode ends in 70:27 |
 | `surah70_page569_ayah27_v4` | 70:24:1–70:25:2 | not_recited | docs | baseline intent (#194): the decode is 70:26, 70:27, 70:27 again |
@@ -526,19 +644,19 @@ replay reproduces the log's committed `baseline.json` at the pin and at `main`.
 | `surah2_page7_ayah60_v4` | teacher | not recorded | 2026-04-11 | 3 s hop | 227 | 2:58:0 | – | 2:60-2:61 | ✓ / ✓ | included |
 | `surah30_page405_shared_opening_correction` | h448 | not recorded | 2026-10-05 | 1 s hop | 45 | 30:6:1 | 405 | 30:6-30:13 | ✓ / ✓ | excluded: documented_mistake |
 | `surah36_page440_added_phrase` | – | not recorded | 2026-10-04 | 1 s hop | – | 36:1:1 | 440 | 36:1-36:5 | ✓ / ✓ | excluded: synthetic |
-| `surah36_page442_cross_ayah_skip` | teacher | not recorded | 2026-07-27 | 1 s hop | – | 36:36:1 | 442, 443 | 36:35-36:45, 36:47 | ✓ / ✓ | included |
+| `surah36_page442_cross_ayah_skip` | teacher | not recorded | 2026-07-27 | 1 s hop | – | 36:36:1 | 442, 443 | 36:35-36:45, 36:47 | ✓ / ✓ | excluded: documented_mistake |
 | `surah3_page3_ayah4_reread` | teacher | not recorded | 2026-04-29 | 1 s hop | 249 | 3:1:0 | – | 3:1-3:5 | ✓ / ✓ | included |
 | `surah3_page50_ayah24` | teacher | not recorded | 2026-04-07 | 3 s hop | 229 | 3:23:0 | – | 3:24-3:28 | ✓ / ✓ | included |
 | `surah3_page50_ayah31` | teacher | not recorded | 2026-04-07 | 3 s hop | 218 | 3:30:0 | – | 3:31-3:35 | ✓ / ✓ | included |
 | `surah3_page51_ayah15_mutashabihat_wrong_words` | h448 | 1.0.25 | 2026-09-29 | 1 s hop | 39 | 3:7:0 | 51, 52 | 3:7-3:15 | ✓ / ✓ | excluded: documented_mistake |
 | `surah3_page51_reread_reveals_next_ayah` | teacher | not recorded | 2026-08-24 | 1 s hop | 95 | 3:7:0 | 51, 52 | 3:7-3:15 | ✓ / ✓ | included |
-| `surah3_page52_jump_reread` | teacher | not recorded | 2026-05-17 | 1 s hop | 131 | 3:16:0 | 52, 53 | 3:16-3:22 | ✓ / ✓ | included |
+| `surah3_page52_jump_reread` | teacher | not recorded | 2026-05-17 | 1 s hop | 131 | 3:16:0 | 52, 53 | 3:16-3:22 | ✓ / ✓ | excluded: documented_mistake |
 | `surah3_page52_reread_reveals_next_ayah` | teacher | not recorded | 2026-09-18 | 1 s hop | 94 | 3:16:0 | – | 3:16-3:20 | ✓ / ✓ | excluded: documented_mistake |
 | `surah3_page53_ayah27_self_similar_reread` | – | not recorded | 2026-09-15 | 1 s hop | – | 3:27:1 | 53 | 3:27 | ✓ / ✓ | excluded: synthetic |
 | `surah3_page53_ayah27_self_similar_skip` | – | not recorded | 2026-05-29 | 1 s hop | – | 3:27:1 | 53 | 3:27 | ✓ / ✓ | excluded: synthetic |
 | `surah3_page53_ayah75` | teacher | not recorded | 2026-04-11 | 3 s hop | 223 | 3:71:0 | – | 3:75 | ✓ / ✓ | included |
 | `surah3_page55_ayah42_mutashabihat_creep_jump` | h448 | 1.0.25 | 2026-09-29 | 1 s hop | 39 | 3:37:0 | 55 | 3:38-3:44 | ✓ / ✓ | excluded: documented_mistake |
-| `surah3_page58_far_reread_pause_residue` | h448 | not recorded | 2026-09-26 | 1 s hop | 41 | 3:64:9 | 58 | 3:64-3:69 | ✓ / ✓ | included |
+| `surah3_page58_far_reread_pause_residue` | h448 | not recorded | 2026-09-26 | 1 s hop | 41 | 3:64:9 | 58 | 3:64-3:69 | ✓ / ✓ | excluded: documented_mistake |
 | `surah4_page100_ayah137_adjacent_repeat_skip` | – | not recorded | 2026-09-16 | 1 s hop | – | 4:137:1 | 100 | 4:137 | ✓ / ✓ | excluded: synthetic |
 | `surah55_page531_false_reread_refrain` | teacher | not recorded | 2026-05-29 | 1 s hop | 91 | 54:50:0 | 531, 532 | 55:1-55:25 | ✓ / ✓ | included |
 | `surah55_page531_random_grades_reread` | teacher | not recorded | 2026-06-06 | 1 s hop | 90 | 54:50:0 | 531, 532 | 55:1-55:16 | ✓ / ✓ | included |
@@ -597,19 +715,19 @@ What each log tests, from its docs, and why its model is assigned:
 | `surah2_page7_ayah60_v4` | Cascading false advances after pauses ("the latest device log"). | Muraja 6d1116a | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah30_page405_shared_opening_correction` | Device log 19 (hifz), "Wrong jump can't correct" (PR #235). **Excluded:** Muraja PR #235: the reader slips from 30:12:3 into 30:14's wording, then corrects. | Muraja 69ccb3e; Muraja PR #235 | captured after h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah36_page440_added_phrase` | 36:1 with 112:1 added; one of #220's synthetic logs. **Excluded:** a synthetic log built for Muraja #220, with an added phrase; no model decoded it. | Muraja 5625ad4; Muraja #220 | – |
-| `surah36_page442_cross_ayah_skip` | A genuine cross-ayah skip swallowed by a low-confidence hold. | Muraja b805d8a; Muraja ADR-0020 | committed before h448 reached Muraja (fc23225, 2026-09-21) |
+| `surah36_page442_cross_ayah_skip` | A genuine cross-ayah skip swallowed by a low-confidence hold. **Excluded:** Muraja ADR-0020: a mutashabihat slip from 36:45 into 36:47, then corrected. | Muraja b805d8a; Muraja ADR-0020 | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah3_page3_ayah4_reread` | A re-read inside 3:4's repeated phrases. | Muraja f2db710 | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah3_page50_ayah24` | A skip test: Muraja c66f9da says the reader clearly skipped 3:25; the decode shows the other skips. | Muraja 693f2fa (moved from HifzGuide's early history; no description of its own); Muraja c66f9da; Muraja b805d8a | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah3_page50_ayah31` | A skip test: the cursor used to stick at 3:35:3 (Muraja 4adddeb); the decode goes from 3:31:8 to 3:35. | Muraja 693f2fa (moved from HifzGuide's early history; no description of its own); Muraja 4adddeb | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah3_page51_ayah15_mutashabihat_wrong_words` | Hifz session, "Weird skip": a mutashabihat slip (#194, #203). **Excluded:** Muraja 4ec326a: the reader continues 3:15 with 9:72's wording. | Muraja 4ec326a; Muraja #203 | app 1.0.25 (Muraja 4ec326a); h448 shipped from 1.0.22 |
 | `surah3_page51_reread_reveals_next_ayah` | Bug report 63: a re-read revealed the next ayah (#93, #211); the reader genuinely skips 3:8. | Muraja 346b050; Muraja #211; baseline intent | committed before h448 reached Muraja (fc23225, 2026-09-21) |
-| `surah3_page52_jump_reread` | Bug 44: a jump, then re-reads onto a repeated phrase (#211). | Muraja 03f7f66; Muraja #211 | committed before h448 reached Muraja (fc23225, 2026-09-21) |
+| `surah3_page52_jump_reread` | Bug 44: a jump, then re-reads onto a repeated phrase (#211). **Excluded:** Muraja PR #226 and wiki/testing.md: a confirmed slip in 3:19 (3:20's wording said early, then back). | Muraja 03f7f66; Muraja #211 | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah3_page52_reread_reveals_next_ayah` | "Reread leads to reveal 2" (#122, #211). **Excluded:** baseline intent (#211): an off-page slip into 3:7's wording after 3:18. | Muraja 6dd8c9d; Muraja #211; baseline intent | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah3_page53_ayah27_self_similar_reread` | Built with the log-replay generator from 3:27's reference phonemes (ADR-0017). **Excluded:** generated from a log spec with reference phonemes; no model decoded it. | Muraja 72593c5 | – |
 | `surah3_page53_ayah27_self_similar_skip` | Generated from a log spec (tools/log_specs). **Excluded:** generated from a log spec with reference phonemes; no model decoded it. | Muraja 9ca1b9e; Muraja 1a13775 | – |
 | `surah3_page53_ayah75` | A pause, then repeated words read as forward progress. | Muraja f433238 | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah3_page55_ayah42_mutashabihat_creep_jump` | Hifz session, "Weird skip 2": a mutashabihat slip (#194, #202). **Excluded:** Muraja 4ec326a: the reader continues 3:42 with 3:45's wording. | Muraja 4ec326a; Muraja #202 | app 1.0.25 (Muraja 4ec326a); h448 shipped from 1.0.22 |
-| `surah3_page58_far_reread_pause_residue` | Bug report "Whole page became skipped" (hifz): after a hesitation at the end of 3:69:11, a 7-phoneme query fired a false far re-read (PR #173). Not in its docs: after 3:64:17 its decode carries a phrase of another passage, then a restart from 3:64:12; the log stays included, since only docs exclude. | Muraja 11632ad; Muraja PR #173 | captured after h448 reached Muraja (fc23225, 2026-09-21) |
+| `surah3_page58_far_reread_pause_residue` | Bug report "Whole page became skipped" (hifz): after a hesitation at the end of 3:69:11, a 7-phoneme query fired a false far re-read (PR #173). **Excluded:** Muraja PR #226 and wiki/testing.md: confirmed slips into other passages' wording in 3:64, 3:65 and 3:67-3:69. | Muraja 11632ad; Muraja PR #173 | captured after h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah4_page100_ayah137_adjacent_repeat_skip` | Generated from a log spec: the adjacent repeat in 4:137 (#140). **Excluded:** generated from a log spec with reference phonemes; no model decoded it. | Muraja 1a13775 | – |
 | `surah55_page531_false_reread_refrain` | Refrain re-reads on page 531 (the intent: 55:24, the refrain, 55:24 again, the refrain again). | Muraja 618852c; baseline intent | committed before h448 reached Muraja (fc23225, 2026-09-21) |
 | `surah55_page531_random_grades_reread` | muraja-logs-7: the reader cuts the 55:16 refrain short and restarts it (ADR-0009). | Muraja 1e8383a; baseline intent | committed before h448 reached Muraja (fc23225, 2026-09-21) |
@@ -633,7 +751,7 @@ What each log tests, from its docs, and why its model is assigned:
 ## For reference: the sessions excluded for a documented mistake
 
 These device sessions are out of every rate above: their docs record the reader slipping
-into another passage's wording (3 `h448`, 3 the six-chunk teacher).
+into another passage's wording (4 `h448`, 5 the six-chunk teacher).
 Their flags are listed so that evidence is not lost, but they are no false-flag rate: the
 slip's own words and the engine's reaction to it are in them.
 
@@ -641,40 +759,33 @@ slip's own words and the engine's reaction to it are in them.
 
 | scoring | flags / words | causes | detail |
 |---|---|---|---|
-| `allowances_on` | 5 / 356 · 14.0 (n/c) | another consonant 4, no error recorded 1 | – |
-| `soft_pair_forgiveness_off` | 8 / 356 · 22.5 (n/c) | soft-pair consonant 3, another consonant 4, no error recorded 1 | ح↔ه 1, ذ↔ز 1, س↔ص 1 |
-| `shaddah_suppression_off` | 5 / 356 · 14.0 (n/c) | another consonant 4, shaddah (collapsed geminate) 1 | – |
-| `shipped_default` | 5 / 356 · 14.0 (n/c) | another consonant 4, no error recorded 1 | – |
-| `allowances_off` | 8 / 356 · 22.5 (n/c) | soft-pair consonant 3, another consonant 4, shaddah (collapsed geminate) 1 | ح↔ه 1, ذ↔ز 1, س↔ص 1 |
+| `allowances_on` | 14 / 457 · 30.6 (n/c) | another consonant 13, no error recorded 1 | – |
+| `soft_pair_forgiveness_off` | 17 / 457 · 37.2 (n/c) | soft-pair consonant 3, another consonant 13, no error recorded 1 | ح↔ه 1, ذ↔ز 1, س↔ص 1 |
+| `shaddah_suppression_off` | 14 / 457 · 30.6 (n/c) | another consonant 13, shaddah (collapsed geminate) 1 | – |
+| `shipped_default` | 14 / 457 · 30.6 (n/c) | another consonant 13, no error recorded 1 | – |
+| `allowances_off` | 17 / 457 · 37.2 (n/c) | soft-pair consonant 3, another consonant 13, shaddah (collapsed geminate) 1 | ح↔ه 1, ذ↔ز 1, س↔ص 1 |
 
 **the six-chunk teacher**
 
 | scoring | flags / words | causes | detail |
 |---|---|---|---|
-| `allowances_on` | 19 / 201 · 94.5 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12 | – |
-| `soft_pair_forgiveness_off` | 19 / 201 · 94.5 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12 | – |
-| `shaddah_suppression_off` | 19 / 201 · 94.5 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12 | – |
-| `shipped_default` | 19 / 201 · 94.5 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12 | – |
-| `allowances_off` | 19 / 201 · 94.5 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12 | – |
+| `allowances_on` | 20 / 418 · 47.8 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12, no error recorded 1 | – |
+| `soft_pair_forgiveness_off` | 20 / 418 · 47.8 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12, no error recorded 1 | – |
+| `shaddah_suppression_off` | 20 / 418 · 47.8 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12, no error recorded 1 | – |
+| `shipped_default` | 20 / 418 · 47.8 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12, no error recorded 1 | – |
+| `allowances_off` | 20 / 418 · 47.8 (n/c) | another consonant 6, shaddah (collapsed geminate) 2, skipped by the engine 12, no error recorded 1 | – |
 
 Their flagged words:
 
 | log | word | model | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
 |---|---|---|---|---|---|---|---|
-| `surah2_page7_ayah48_mutashabihat_freeze` | 2:45:1 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah2_page7_ayah48_mutashabihat_freeze` | 2:45:2 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah2_page7_ayah48_mutashabihat_freeze` | 2:45:3 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah2_page7_ayah48_mutashabihat_freeze` | 2:45:4 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah2_page7_ayah48_mutashabihat_freeze` | 2:45:5 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah2_page7_ayah48_mutashabihat_freeze` | 2:45:6 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah2_page7_ayah48_mutashabihat_freeze` | 2:45:7 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah2_page7_ayah48_mutashabihat_freeze` | 2:45:8 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
 | `surah2_page7_ayah48_mutashabihat_freeze` | 2:46:5 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah2_page7_ayah48_mutashabihat_freeze` | 2:48:12 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah2_page7_ayah48_mutashabihat_freeze` | 2:48:14 | teacher | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant |
 | `surah2_page7_ayah48_mutashabihat_freeze` | 2:48:15 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah2_page7_ayah48_mutashabihat_freeze` | 2:48:16 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah30_page405_shared_opening_correction` | 30:8:17 | h448 | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant | wrong: other_consonant |
+| `surah36_page442_cross_ayah_skip` | 36:35:6 | teacher | minor: unrecorded | minor: unrecorded | minor: unrecorded | minor: unrecorded | minor: unrecorded |
 | `surah3_page51_ayah15_mutashabihat_wrong_words` | 3:8:7 | h448 | correct | minor: soft_pair (ح↔ه) | correct | correct | minor: soft_pair (ح↔ه) |
 | `surah3_page51_ayah15_mutashabihat_wrong_words` | 3:10:5 | h448 | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah3_page51_ayah15_mutashabihat_wrong_words` | 3:13:7 | h448 | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
@@ -682,12 +793,10 @@ Their flagged words:
 | `surah3_page55_ayah42_mutashabihat_creep_jump` | 3:38:11 | h448 | correct | minor: soft_pair (ذ↔ز) | correct | correct | minor: soft_pair (ذ↔ز) |
 | `surah3_page55_ayah42_mutashabihat_creep_jump` | 3:39:17 | h448 | correct | minor: soft_pair (س↔ص) | correct | correct | minor: soft_pair (س↔ص) |
 | `surah3_page55_ayah42_mutashabihat_creep_jump` | 3:40:8 | h448 | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
+| `surah3_page58_far_reread_pause_residue` | 3:65:10 | h448 | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
+| `surah3_page58_far_reread_pause_residue` | 3:69:11 | h448 | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah55_page532_false_backward_refrain` | 55:29:3 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
 | `surah55_page532_false_backward_refrain` | 55:29:4 | teacher | minor: shaddah | minor: shaddah | minor: shaddah | minor: shaddah | minor: shaddah |
-| `surah55_page532_false_backward_refrain` | 55:29:8 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah55_page532_false_backward_refrain` | 55:29:9 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah55_page532_false_backward_refrain` | 55:29:10 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
-| `surah55_page532_false_backward_refrain` | 55:30:4 | teacher | wrong: other_consonant, shaddah | wrong: other_consonant, shaddah | wrong: other_consonant, shaddah | wrong: other_consonant, shaddah | wrong: other_consonant, shaddah |
 
 ## Re-running
 

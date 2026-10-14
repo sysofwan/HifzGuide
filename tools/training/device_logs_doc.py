@@ -15,7 +15,6 @@ from training.device_logs import (
     DOCUMENTED_MISTAKE,
     GROUPS,
     H448,
-    H448_SLIPS_EXCLUDED,
     MODELS,
     OVERLAP_CAP,
     SLIP_WIDTHS,
@@ -24,6 +23,7 @@ from training.device_logs import (
     TEACHER_ONE_SECOND,
     UNEXPLAINED,
     position,
+    sensitivity,
 )
 from training.word_flags import CAUSES
 
@@ -155,52 +155,66 @@ def _rates_section(report: dict) -> list[str]:
     return lines
 
 
+def _sessions(report: dict, model: str) -> list[dict]:
+    """A model's device sessions, those excluded for a documented slip included."""
+    return [e for e in report["logs"] if e["model"] == model
+            and (e["exclusion"] is None or e["exclusion"] == DOCUMENTED_MISTAKE)]
+
+
 def _sensitivity_block(report: dict) -> list[str]:
-    """The labelled sensitivity beside the headline `h448` row (not a replacement for it)."""
+    """The labelled sensitivity beside each headline model row (not a replacement for it)."""
     names = _scoring_names(report)
-    by_width = report["h448_slips_excluded"]
-    sessions = [e for e in report["logs"] if e["model"] == H448
-                and (e["exclusion"] is None or e["exclusion"] == DOCUMENTED_MISTAKE)]
-    rates = [[f"`{n}`", fmt_rate(report["groups"][H448][n][UNEXPLAINED]["false_flags"]),
-              *(fmt_rate(by_width[w][n]["false_flags"]) for w in SLIP_WIDTHS)] for n in names]
-    causes = []
-    for c in CAUSES:
-        cells = [" · ".join(str(by_width[w][n]["causes"][c]["flags"]) for w in SLIP_WIDTHS) for n in names]
-        if any(cell != " · ".join("0" for _ in SLIP_WIDTHS) for cell in cells):
-            causes.append([CAUSE_TITLES[c], *cells])
-    details = sorted({key for w in SLIP_WIDTHS for n in names for kind in ("marks", "pairs")
-                      for key in by_width[w][n][kind]})
-    causes += [[f"— {key}", *(" · ".join(str({**by_width[w][n]["marks"], **by_width[w][n]["pairs"]}.get(key, 0))
-                                          for w in SLIP_WIDTHS) for n in names)] for key in details]
-    regions = [[f"`{e['log']}`", w, ", ".join(f"{r['first']}–{r['last']}" for r in e["slip_regions"][w]),
-                e["slip_regions"][w][0]["basis"], e["slip_regions"][w][0]["source"]]
-               for e in sessions for w in SLIP_WIDTHS]
-    return [
-        f"**Sensitivity, not the headline: `h448`, all {len(sessions)} sessions, slip regions excluded**",
+    lines = [
+        "### Sensitivity, not the headline: all sessions, slip regions excluded",
         "",
-        "The headline keeps only the one `h448` session no doc records a slip in. This row takes every",
-        "`h448` session and leaves out, as it does explained words, the words in and around each slip",
-        "into another passage (including the undocumented one in",
-        "`surah3_page58_far_reread_pause_residue`, basis *decode*). The region's boundary is one",
-        "mechanical rule in two widths. **Narrow:** from the first word the reader replaced with the",
-        "other passage's wording to the end of that ayah, plus the twin ayah on the page in full.",
-        "**Wide:** the slip ayah in full and the ayah after it (where the correction and the catch-up",
-        "land), plus the twin ayah in full. Every other word is kept.",
+        "The headline leaves out every session whose docs record a slip into another passage's",
+        "wording. This sensitivity takes every device session of a model and leaves out, as it does",
+        "explained words, the words in and around each documented slip (each slip's span is in the",
+        "inventory with its source; a span is Muraja's pinned shadow-speech flag where one exists).",
+        "The region's boundary is one mechanical rule (`device_logs.regions`) in two widths.",
+        "**Narrow:** from the slip's first word to the end of its last word's ayah. **Wide:** from the",
+        "first word of the slip's ayah to the end of the ayah after its last, where the correction",
+        "and the catch-up land. Both add the twin ayah (the passage slipped into) in full. Every",
+        "other word is kept.",
         "",
-        *_table(["scoring", "headline (1 session)", *(f"all sessions, {w}" for w in SLIP_WIDTHS)], rates),
-        "Its flags by cause (narrow · wide):",
-        "",
-        *_table(["", *(f"`{n}`" for n in names)], causes),
-        *_table(["session", "width", "slip region", "basis", "source"], regions),
     ]
+    for model in MODELS:
+        by_width = report["slips_excluded"][model]
+        sessions = _sessions(report, model)
+        headline = report["groups"][model][names[0]][UNEXPLAINED]["false_flags"]["logs"]
+        rates = [[f"`{n}`", fmt_rate(report["groups"][model][n][UNEXPLAINED]["false_flags"]),
+                  *(fmt_rate(by_width[w][n]["false_flags"]) for w in SLIP_WIDTHS)] for n in names]
+        causes = []
+        for c in CAUSES:
+            cells = [" · ".join(str(by_width[w][n]["causes"][c]["flags"]) for w in SLIP_WIDTHS) for n in names]
+            if any(cell != " · ".join("0" for _ in SLIP_WIDTHS) for cell in cells):
+                causes.append([CAUSE_TITLES[c], *cells])
+        details = sorted({key for w in SLIP_WIDTHS for n in names for kind in ("marks", "pairs")
+                          for key in by_width[w][n][kind]})
+        causes += [[f"— {key}", *(" · ".join(str({**by_width[w][n]["marks"], **by_width[w][n]["pairs"]}.get(key, 0))
+                                              for w in SLIP_WIDTHS) for n in names)] for key in details]
+        lines += [f"**{GROUP_TITLES[model]}: all {len(sessions)} sessions, slip regions excluded**", "",
+                  *_table(["scoring", f"headline ({headline} session{'' if headline == 1 else 's'})",
+                           *(f"all sessions, {w}" for w in SLIP_WIDTHS)], rates),
+                  "Its flags by cause (narrow · wide):", "",
+                  *_table(["", *(f"`{n}`" for n in names)], causes)]
+    sessions = [e for model in MODELS for e in _sessions(report, model) if e["slips"]]
+    slips = [[f"`{e['log']}`", f"{x['start']}–{x['end']}", x["twin"] or "–", x["basis"], x["source"]]
+             for e in sessions for x in e["slips"]]
+    regions = [[f"`{e['log']}`", *(", ".join(f"{r['first']}–{r['last']}" for r in e["slip_regions"][w])
+                                   for w in SLIP_WIDTHS)] for e in sessions]
+    return lines + ["The documented slips:", "",
+                    *_table(["session", "slip", "twin", "basis", "source"], slips),
+                    "The regions they give (each session's union over its slips):", "",
+                    *_table(["session", *SLIP_WIDTHS], regions)]
 
 
 ALLOWANCE_GROUP_TITLES = {
     TEACHER_ONE_SECOND: "teacher, 1 s hop",
     TEACHER: "teacher, all eras",
-    H448: "`h448`, headline (1 session)",
-    **{f"{H448_SLIPS_EXCLUDED}, {w}": f"`h448`, all sessions, slip regions excluded ({w})"
-       for w in SLIP_WIDTHS},
+    H448: "`h448`, headline",
+    **{sensitivity(m, w): f"{'teacher' if m == TEACHER else '`h448`'}, all sessions, slips excluded ({w})"
+       for m in MODELS for w in SLIP_WIDTHS},
 }
 
 
@@ -295,15 +309,17 @@ def _comparison_section(report: dict) -> list[str]:
         lines += [f"**{GROUP_TITLES[device_group]}** against the simulation's "
                   f"`{'base' if model == TEACHER else 'h448'}/checks`", ""]
         rows = []
+        narrow = report["slips_excluded"][model]["narrow"]
         for n in names:
             d = device[n][UNEXPLAINED]["false_flags"]
             s = sim[n]
             expected = s["words"] * d["per_1000"] / 1000 if d["per_1000"] is not None else None
-            rows.append([f"`{n}`", fmt_rate(d),
+            rows.append([f"`{n}`", fmt_rate(d), fmt_rate(narrow[n]["false_flags"]),
                          f"{s['flags']} / {s['words']} · {_num(1000 * s['flags'] / s['words'])} "
                          f"(weighted {_num(s['per_1000'])} [{_num(s['lower'])}, {_num(s['upper'])}])",
                          _num(expected)])
-        lines += _table(["scoring", "device", "simulation", "device rate × 155"], rows)
+        lines += _table(["scoring", "device", "device, all sessions, slips excluded (narrow)", "simulation",
+                         "device rate × 155"], rows)
         cause_rows = []
         for c in CAUSES:
             cells = []
@@ -352,13 +368,20 @@ def _disagreements(report: dict) -> list[str]:
     page, sessions = max(sorted(Counter(p for e in included for p in e["pages"]).items()), key=lambda kv: kv[1])
     added = [f"{CAUSE_TITLES[c]} {teacher[off][UNEXPLAINED]['causes'][c]['flags'] - teacher[on][UNEXPLAINED]['causes'][c]['flags']}"
              f" (on {_word_list(_recurring(report, c, off, names))})" for c, _ in ALLOWANCE_CAUSES]
-    expected = {}
-    for model in MODELS:
-        group = report["groups"][TEACHER_ONE_SECOND if model == TEACHER else H448]
+    #: per model, the device population compared: the teacher's 1 s-hop headline, and `h448`'s
+    #: narrow sensitivity (its headline holds no session when every `h448` session records a slip)
+    compared = {TEACHER: (report["groups"][TEACHER_ONE_SECOND][off][UNEXPLAINED], "the teacher, 1 s hop"),
+                H448: (report["slips_excluded"][H448]["narrow"][off], "`h448`, all sessions, slips excluded (narrow)")}
+    observed = []
+    for model, (view, title) in compared.items():
+        sim = report["simulation"][model][off]
+        cells = []
         for c, _ in ALLOWANCE_CAUSES:
-            rate = group[off][UNEXPLAINED]["causes"][c]["per_1000"]
-            expected[(model, c)] = report["simulation"][model][off]["words"] * (rate or 0) / 1000
-    below_one = all(v < 1 for v in expected.values())
+            d = view["causes"][c]
+            expected = sim["words"] * (d["per_1000"] or 0) / 1000
+            cells.append(f"{CAUSE_TITLES[c]}: device {d['flags']} / {d['words']}, simulation "
+                         f"{sim['causes'][c]['flags']} / {sim['words']} (the device's rate predicts {_num(expected, 2)})")
+        observed.append(f"  - {title}: " + "; ".join(cells) + ".")
     return [
         "### Where they disagree, and the likely reasons",
         "",
@@ -369,21 +392,21 @@ def _disagreements(report: dict) -> list[str]:
         "  word and holds one segment, so the engine has nothing to skip; the simulation cannot show",
         "  these.",
         "- **The overall rates.** With the explained words left out, under `allowances_on` the device",
-        f"  flags {against(TEACHER_ONE_SECOND, TEACHER)} words per 1,000 for the teacher (1 s hop) and",
-        f"  {against(H448, H448)} for `h448` (one session). The device is one reader on one phone; the",
-        "  simulation is one word from each of 155 Tadabur reciters and their recordings.",
+        f"  flags {against(TEACHER_ONE_SECOND, TEACHER)} words per 1,000 for the teacher (1 s hop); for",
+        f"  `h448` the headline gives {against(H448, H448)} and all sessions with slips excluded (narrow)",
+        f"  {_num(report['slips_excluded'][H448]['narrow'][on]['false_flags']['per_1000'])}. The device is one",
+        "  reader on one phone; the simulation is one word from each of 155 Tadabur reciters and their",
+        "  recordings.",
         "- **On the device the allowances change flags, on a few recurring words.** Switching the",
         "  three allowances off adds, over the teacher's sessions, unexplained flags for: "
         + "; ".join(added) + ".",
         f"  The logs are one reader reciting a few pages again and again (page {page} in {sessions}",
         "  sessions), so a word the model mishears for this reader recurs in every session that",
         "  reaches it. The simulation has one word per reciter and never repeats a word.",
-        "- **The simulation is small for causes this rare.** The column *device rate × 155* is how",
-        "  many of the simulation's words the device's rate would flag. For the allowance-sensitive",
-        "  causes under `allowances_off` it is "
-        + ", ".join(f"{_num(v, 2)} ({GROUP_TITLES[m]}, {CAUSE_TITLES[c]})" for (m, c), v in expected.items())
-        + (": below one word each, so the simulation finding none is what the device's rates predict."
-           if below_one else "."),
+        "- **The simulation is small for causes this rare.** Under `allowances_off`, observed flags of each",
+        "  allowance-sensitive cause, and how many of the simulation's 155 words the device's rate",
+        "  would flag:",
+        *observed,
         "- **Other differences, not separated here.** The device decodes with 6-bit CoreML from the",
         "  phone's microphone; the simulation with PyTorch bf16 on Tadabur audio. Sessions before",
         "  2026-04-29 ran a 3 s hop (the simulation models the 1 s hop, hence the 1 s-hop rows in the",
@@ -451,22 +474,31 @@ def _inventory_section(report: dict) -> list[str]:
     ]
 
 
+def _count_rate(flags: int, words: int) -> str:
+    return f"{flags} / {words} · {_num(1000 * flags / words)}" if words else "–"
+
+
 def _per_log_section(report: dict) -> list[str]:
     names = _scoring_names(report)
-    rows = []
+    every, unexplained = [], []
     for e in report["logs"]:
         if e["exclusion"] is not None:
             continue
         counts = e["counts"]
-        rows.append([f"`{e['log']}`", e["model"], e["protocol"], str(counts[names[0]]["words"]),
-                     *(f"{counts[n]['flags']} · {counts[n]['unexplained_flags']}" for n in names)])
+        head = [f"`{e['log']}`", e["model"], e["protocol"]]
+        every.append(head + [_count_rate(counts[n]["flags"], counts[n]["words"]) for n in names])
+        unexplained.append(head + [_count_rate(counts[n]["unexplained_flags"], counts[n]["unexplained_words"])
+                                   for n in names])
+    header = ["log", "model", "protocol", *(f"`{n}`" for n in names)]
     return [
         "## Per log",
         "",
-        "Included logs: graded words under the first scoring, and per scoring the false flags over",
-        "every graded word · with the explained words left out.",
+        "Included logs, per scoring: false flags / graded words · per 1,000. Every graded word:",
         "",
-        *_table(["log", "model", "protocol", "words", *(f"`{n}`" for n in names)], rows),
+        *_table(header, every),
+        "Explained words left out of both counts:",
+        "",
+        *_table(header, unexplained),
     ]
 
 
@@ -550,9 +582,11 @@ def render(report: dict) -> str:
         f"- **{len(report['logs'])} logs, {len(included)} included** "
         f"({', '.join(f'{n} {GROUP_TITLES[m]}' for m, n in sorted(models.items()))}). Excluded: "
         + "; ".join(f"{len(logs)} {EXCLUSION_TITLES[reason]}" for reason, logs in sorted(excluded.items())) + ".",
-        f"- **{models[H448]} included session{'s' if models[H448] != 1 else ''} ran `h448`**; with one log a",
-        "  rate has no interval. The other `h448` sessions are excluded by their docs for a slip into",
-        "  another passage; their flags are listed at the end.",
+        f"- **{models[H448]} included session{'s' if models[H448] != 1 else ''} ran `h448`.** The other "
+        f"{len(_sessions(report, H448)) - models[H448]}",
+        "  `h448` sessions are excluded because their docs record a slip into another passage. The",
+        "  labelled sensitivity *all sessions, slip regions excluded* is the `h448` evidence that remains;",
+        "  their flags are also listed at the end. With so few sessions no `h448` rate has an interval.",
         f"- **Parity holds{'' if parity_ok else ' only in part'}.** "
         + ("Every log's shipped-default replay reproduces its committed `baseline.json` (every word's "
            "quality and the final position) at the pin and at `main`." if parity_ok else

@@ -51,13 +51,12 @@ def test_an_explained_run_covers_its_ends_and_what_lies_between():
 def test_a_malformed_inventory_is_refused(tmp_path):
     record = {"log": "a", "commit": "c", "committed": "2026-01-01", "model": "h448", "model_basis": None,
               "app_version": None, "purpose": "p", "sources": [], "excluded": None, "explained": [],
-              "slip_regions": {}}
+              "slips": []}
     path = tmp_path / "inventory.json"
     for bad in ({"model": "other"}, {"model": None}, {"excluded": {"reason": "why not", "detail": "x"}},
                 {"explained": [{"first": "2:1:2", "last": "2:1:1", "kind": "skip", "basis": "docs", "source": ""}]},
-                {"slip_regions": {"narrow": []}},
-                {"slip_regions": {w: [{"first": "2:1:1", "last": "2:1:2", "kind": "skip", "basis": "docs",
-                                       "source": ""}] for w in d.SLIP_WIDTHS}}):
+                {"excluded": {"reason": "documented_mistake", "detail": "x"}},
+                {"slips": [{"from": "2:1:2", "to": "2:1:1", "twin": None, "basis": "docs", "source": ""}]}):
         path.write_text(json.dumps([record | bad]))
         with pytest.raises(ValueError):
             d.load_inventory(path)
@@ -172,9 +171,21 @@ def test_the_slip_sensitivity_keeps_every_h448_session_but_its_slip_region():
     entries = [entry("kept", None), entry("slipped", d.DOCUMENTED_MISTAKE),
                entry("synthetic", "synthetic"), entry("teacher", None, d.TEACHER)]
     grades = {e.log: [grade(e.log, w) for w in ("2:1:1", "2:1:2", "2:1:3")] for e in entries}
-    view = d.slip_sensitivity(entries, grades, (SHIPPED_DEFAULT,))
+    view = d.slip_sensitivity(entries, grades, (SHIPPED_DEFAULT,))[d.H448]
     assert view["narrow"]["shipped_default"]["false_flags"]["words"] == 4
     assert view["wide"]["shipped_default"]["false_flags"]["words"] == 2
+
+
+def test_a_slip_region_runs_by_one_rule_in_two_widths():
+    lengths = {(3, 64): 31, (3, 65): 15, (3, 7): 9}
+    slip = d.Slip("3:64:11", "3:64:13", "3:7", "docs", "s")
+    regions = d.regions(slip, lambda surah, ayah: lengths[(surah, ayah)])
+    assert [(r.first, r.last) for r in regions["narrow"]] == [("3:64:11", "3:64:31"), ("3:7:1", "3:7:9")]
+    assert [(r.first, r.last) for r in regions["wide"]] == [("3:64:1", "3:65:15"), ("3:7:1", "3:7:9")]
+    entry = d.with_regions(d.LogEntry("s", "c", "d", d.H448, None, None, "p", (), d.DOCUMENTED_MISTAKE, "x", (),
+                                      slips=(slip,)), lambda surah, ayah: lengths[(surah, ayah)])
+    assert entry.in_slip("3:64:20", "narrow") and not entry.in_slip("3:64:10", "narrow")
+    assert entry.in_slip("3:64:10", "wide") and entry.in_slip("3:7:3", "narrow")
 
 
 def test_an_allowance_adds_the_words_it_alone_flags_and_names_them():
@@ -214,6 +225,25 @@ def test_the_simulation_is_read_from_the_word_sample_report():
 
 
 # --- the committed report and doc ------------------------------------------------------------------------
+def test_an_explained_skip_is_the_skipped_ayah_not_the_cursors_jump():
+    """ADR-0020's 12:6:1 to 12:7:7 is the cursor's jump; the reader skipped 12:6 only, and 12:7:4
+    and 12:7:6, which the engine marks skipped, were recited: they stay false flags."""
+    entry = next(e for e in d.load_inventory() if e.log == "surah12_page236_ayah5_v2")
+    assert all(entry.explanation(f"12:6:{w}") for w in range(1, 26))
+    assert not any(entry.explanation(f"12:7:{w}") for w in range(1, 8))
+    flagged = {(r["word"], r["explained"]) for r in REPORT["words"]
+               if r["log"] == entry.log and r["scoring"] == "shipped_default"}
+    assert {("12:7:4", None), ("12:7:6", None)} <= flagged
+
+
+def test_every_session_whose_docs_record_a_slip_is_out_of_the_headline():
+    for e in d.load_inventory():
+        assert (e.exclusion == d.DOCUMENTED_MISTAKE) == bool(e.slips)
+    for log in ("surah3_page58_far_reread_pause_residue", "surah3_page52_jump_reread",
+                "surah36_page442_cross_ayah_skip"):
+        assert next(e for e in d.load_inventory() if e.log == log).exclusion == d.DOCUMENTED_MISTAKE
+
+
 def test_the_report_covers_the_inventory_and_every_log_reproduces_its_baseline():
     assert [e["log"] for e in REPORT["logs"]] == [e.log for e in d.load_inventory()]
     assert all(e["parity"] == {"pin": True, "main": True} for e in REPORT["logs"])

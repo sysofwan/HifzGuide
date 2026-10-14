@@ -56,8 +56,8 @@ import re
 import statistics
 import tempfile
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -111,16 +111,13 @@ DOCUMENTED_MISTAKE = "documented_mistake"
 KINDS = ("skip", "re-read", "not_recited")
 #: Where the explanation comes from: Muraja's docs, or the log's own decode (and Start line).
 BASES = ("docs", "decode")
-#: A slip region (kind ``slip``) is a sensitivity's only: the words in and around a slip into
-#: another passage, by one mechanical rule in two widths. From the slip ayah's first replaced word
-#: (the first word the reader said another passage's wording for) to its end, plus the twin ayah
-#: on the page in full (``narrow``); or the slip ayah in full and the ayah after it, where the
-#: correction and the catch-up land, plus the twin ayah in full (``wide``).
+#: A slip region (kind ``slip``) is a sensitivity's only: the words in and around a documented
+#: slip into another passage (:class:`Slip`), by one mechanical rule in two widths (:func:`regions`).
 SLIP = "slip"
 SLIP_WIDTHS = ("narrow", "wide")
-#: The sensitivity beside the headline ``h448`` row: every ``h448`` session, a slip excluded or
-#: not, with its slip region left out as explained words are.
-H448_SLIPS_EXCLUDED = "h448, all sessions, slip regions excluded"
+#: The sensitivity beside each headline model row: every session of the model, a slip excluded
+#: or not, with its slip regions left out as explained words are.
+SLIPS_EXCLUDED = "all sessions, slip regions excluded"
 
 #: The two streaming protocols the logs were recorded under: 1 s hops from Muraja 9f81f0a
 #: (2026-04-29, the shipped one, the simulation's), 3 s hops before it.
@@ -151,8 +148,16 @@ ALLOWANCE_ROWS = (
     ("the Tashkeel toggle", "shipped_default"),
     *((f"target pair {pair}", None) for pair in sorted(UNFORGIVEN_PAIRS)),
 )
-#: The populations the allowance table reads: the headline groups and the slip sensitivity.
-ALLOWANCE_GROUPS = (TEACHER_ONE_SECOND, TEACHER, H448, *(f"{H448_SLIPS_EXCLUDED}, {w}" for w in SLIP_WIDTHS))
+
+
+def sensitivity(model: str, width: str) -> str:
+    """The name of a model's slip sensitivity at one width."""
+    return f"{model}, {SLIPS_EXCLUDED}, {width}"
+
+
+#: The populations the allowance table reads: the headline groups and each model's sensitivity.
+ALLOWANCE_GROUPS = (TEACHER_ONE_SECOND, TEACHER, *(sensitivity(TEACHER, w) for w in SLIP_WIDTHS),
+                    H448, *(sensitivity(H448, w) for w in SLIP_WIDTHS))
 #: The simulation's arm for each model (#90's word sample, the recorded check sequence).
 SIMULATION_ARMS = {H448: "h448/checks", TEACHER: "base/checks"}
 
@@ -178,6 +183,33 @@ class Explained:
 
 
 @dataclass(frozen=True)
+class Slip:
+    """A documented slip: the reader said another passage's (``twin``'s) wording from word
+    ``start`` to word ``end`` (the first and last word it replaced, or, for added words, the
+    words the detector placed them between), as its docs record it."""
+
+    start: str
+    end: str
+    twin: str | None
+    basis: str
+    source: str
+
+
+def regions(slip: Slip, ayah_length: Callable[[int, int], int]) -> dict[str, tuple[Explained, ...]]:
+    """A slip's region at each width. **Narrow:** from ``start`` to the end of ``end``'s ayah.
+    **Wide:** from the first word of ``start``'s ayah to the end of the ayah after ``end``'s,
+    where the correction and the catch-up land. Both add the twin ayah in full."""
+    (s, a, _), (_, b, _) = position(slip.start), position(slip.end)
+    twin = ()
+    if slip.twin is not None:
+        ts, ta = (int(x) for x in slip.twin.split(":"))
+        twin = (Explained(f"{ts}:{ta}:1", f"{ts}:{ta}:{ayah_length(ts, ta)}", SLIP, slip.basis, slip.source),)
+    narrow = Explained(slip.start, f"{s}:{b}:{ayah_length(s, b)}", SLIP, slip.basis, slip.source)
+    wide = Explained(f"{s}:{a}:1", f"{s}:{b + 1}:{ayah_length(s, b + 1)}", SLIP, slip.basis, slip.source)
+    return {"narrow": (narrow, *twin), "wide": (wide, *twin)}
+
+
+@dataclass(frozen=True)
 class LogEntry:
     """One log of Muraja's ``tools/test_logs``, as the inventory records it."""
 
@@ -192,8 +224,9 @@ class LogEntry:
     exclusion: str | None
     exclusion_detail: str | None
     explained: tuple[Explained, ...]
-    #: Per width of :data:`SLIP_WIDTHS`, the slip regions of a session with a slip (else empty).
-    slip_regions: Mapping[str, tuple[Explained, ...]]
+    #: Per width of :data:`SLIP_WIDTHS`, the regions of :attr:`slips` (:func:`with_regions`).
+    slip_regions: Mapping[str, tuple[Explained, ...]] = field(default_factory=dict)
+    slips: tuple[Slip, ...] = ()
 
     @property
     def included(self) -> bool:
@@ -217,19 +250,18 @@ def load_inventory(path: Path = INVENTORY_PATH) -> tuple[LogEntry, ...]:
             sources=tuple(record["sources"]), exclusion=excluded.get("reason"),
             exclusion_detail=excluded.get("detail"),
             explained=tuple(Explained(**e) for e in record["explained"]),
-            slip_regions={width: tuple(Explained(**e) for e in regions)
-                          for width, regions in record["slip_regions"].items()},
+            slips=tuple(Slip(slip["from"], slip["to"], slip["twin"], slip["basis"], slip["source"])
+                        for slip in record["slips"]),
         )
-        regions = [r for width in entry.slip_regions.values() for r in width]
         problems = [
             entry.model not in (*MODELS, None) and f"model {entry.model}",
             entry.exclusion not in (*EXCLUSIONS, None) and f"exclusion {entry.exclusion}",
             entry.included and entry.model is None and "an included log has no model",
             *(f"explained {e.kind}/{e.basis}" for e in entry.explained
               if e.kind not in KINDS or e.basis not in BASES or position(e.first) > position(e.last)),
-            entry.slip_regions and sorted(entry.slip_regions) != sorted(SLIP_WIDTHS) and "slip widths",
-            *(f"slip region {r.kind}/{r.basis}" for r in regions
-              if r.kind != SLIP or r.basis not in BASES or position(r.first) > position(r.last)),
+            (entry.exclusion == DOCUMENTED_MISTAKE) != bool(entry.slips) and "a documented mistake needs its slips",
+            *(f"slip {x.start}-{x.end}/{x.basis}" for x in entry.slips
+              if x.basis not in BASES or position(x.start) > position(x.end)),
         ]
         if any(problems):
             raise ValueError(f"{entry.log}: {[p for p in problems if p]}")
@@ -237,6 +269,12 @@ def load_inventory(path: Path = INVENTORY_PATH) -> tuple[LogEntry, ...]:
     if [e.log for e in entries] != sorted({e.log for e in entries}):
         raise ValueError("the inventory must list each log once, in name order")
     return tuple(entries)
+
+
+def with_regions(entry: LogEntry, ayah_length: Callable[[int, int], int]) -> LogEntry:
+    """The entry with its slips' regions, each width the union over its slips."""
+    by_slip = [regions(slip, ayah_length) for slip in entry.slips]
+    return replace(entry, slip_regions={w: tuple(r for slip in by_slip for r in slip[w]) for w in SLIP_WIDTHS})
 
 
 # --- what a log says, as positions and counts ------------------------------------------------------
@@ -425,16 +463,22 @@ def views(grades: Sequence[WordGrade], scorings: Sequence[Scoring]) -> dict:
             for s in scorings}
 
 
+def device_sessions(entries: Sequence[LogEntry], model: str) -> list[LogEntry]:
+    """A model's device sessions, those excluded for a documented slip included."""
+    return [e for e in entries if e.model == model and (e.included or e.exclusion == DOCUMENTED_MISTAKE)]
+
+
 def slip_sensitivity(
     entries: Sequence[LogEntry], grades: Mapping[str, Sequence[WordGrade]], scorings: Sequence[Scoring]
 ) -> dict:
-    """``[width][scoring]`` :func:`view_of` every ``h448`` session's words, an explained word or a
-    word in the session's slip region (of that width) left out."""
-    sessions = [e for e in entries if e.model == H448 and (e.included or e.exclusion == DOCUMENTED_MISTAKE)]
-    return {width: {s.name: view_of([g for e in sessions for g in grades[e.log]
-                                     if g.scoring == s.name and not g.explained and not e.in_slip(g.word, width)])
-                    for s in scorings}
-            for width in SLIP_WIDTHS}
+    """``[model][width][scoring]`` :func:`view_of` every device session of the model, an
+    explained word or a word in the session's slip region (of that width) left out."""
+    return {model: {width: {s.name: view_of([g for e in device_sessions(entries, model) for g in grades[e.log]
+                                             if g.scoring == s.name and not g.explained
+                                             and not e.in_slip(g.word, width)])
+                            for s in scorings}
+                    for width in SLIP_WIDTHS}
+            for model in MODELS}
 
 
 def allowance_effect(
@@ -473,10 +517,9 @@ def allowance_table(
     """``[allowance][group]`` :func:`allowance_effect`, for :data:`ALLOWANCE_ROWS` and
     :data:`ALLOWANCE_GROUPS`."""
     included = [e for e in entries if e.included]
-    h448 = [e for e in entries if e.model == H448 and (e.included or e.exclusion == DOCUMENTED_MISTAKE)]
     populations = {group: ([e for e in included if group in group_of(e, facts[e.log])], None)
                    for group in (TEACHER_ONE_SECOND, TEACHER, H448)}
-    populations |= {f"{H448_SLIPS_EXCLUDED}, {w}": (h448, w) for w in SLIP_WIDTHS}
+    populations |= {sensitivity(m, w): (device_sessions(entries, m), w) for m in MODELS for w in SLIP_WIDTHS}
     out: dict = {}
     for row in ALLOWANCE_ROWS:
         out[row[0]] = {}
@@ -611,8 +654,10 @@ def require(commit: str) -> Harness:
 
 def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
     replayed = (*scorings, *PAIR_SCORINGS)
-    entries = load_inventory()
     pin, main = require(MURAJA_COMMIT), require(MURAJA_MAIN)
+    text = MurajaText(pin.quran_db)
+    entries = [with_regions(e, lambda surah, ayah: len(text.phonemes(surah, ayah).split(" ")))
+               for e in load_inventory()]
     pin_dir, main_dir = log_dir(MURAJA_COMMIT), log_dir(MURAJA_MAIN)
     on_disk = sorted(p.stem for p in pin_dir.glob("*.log") if not p.stem.startswith("generated_"))
     if on_disk != [e.log for e in entries]:
@@ -637,7 +682,6 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
         raise SystemExit(f"replay does not reproduce the committed baselines: {broken}")
     main_differs = sorted(log for log in replays["pin"] if replays["pin"][log] != replays["main"][log])
 
-    text = MurajaText(pin.quran_db)
     reported = [e for e in entries if e.included or e.exclusion == DOCUMENTED_MISTAKE]
     grades = {e.log: word_grades(e, replays["pin"][e.log], replayed, text) for e in reported}
     included = [e for e in entries if e.included]
@@ -654,6 +698,7 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
             "model_basis": e.model_basis, "app_version": e.app_version, "purpose": e.purpose,
             "sources": list(e.sources), "exclusion": e.exclusion, "exclusion_detail": e.exclusion_detail,
             "explained": [vars(x) for x in e.explained],
+            "slips": [vars(x) for x in e.slips],
             "slip_regions": {w: [vars(x) for x in r] for w, r in e.slip_regions.items()},
             "start": facts[e.log].start, "pages": list(facts[e.log].pages),
             "protocol": facts[e.log].protocol, "updates": facts[e.log].updates,
@@ -665,7 +710,7 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
         } for e in entries],
         "groups": groups,
         "documented_mistakes": mistakes,
-        "h448_slips_excluded": slip_sensitivity(entries, grades, scorings),
+        "slips_excluded": slip_sensitivity(entries, grades, scorings),
         "allowances": allowance_table(entries, facts, grades),
         "words": [word_row(g) for e in reported for g in grades[e.log]
                   if g.flagged and g.scoring in {s.name for s in scorings}],

@@ -12,7 +12,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah103_page601_basmallah",
@@ -27,7 +27,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah103_page601_basmallah_v2",
@@ -42,7 +42,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah103_page601_basmallah_v3",
@@ -57,7 +57,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah109_page603_basmallah",
@@ -72,7 +72,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah12_page236_ayah5",
@@ -87,7 +87,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah12_page236_ayah5_v2",
@@ -106,13 +106,13 @@
   "explained": [
    {
     "first": "12:6:1",
-    "last": "12:7:6",
+    "last": "12:6:25",
     "kind": "skip",
     "basis": "docs",
-    "source": "Muraja ADR-0020: genuine skip 12:6:1 to 12:7:7"
+    "source": "Muraja ADR-0009: the reader recites 12:5, then 12:7; 12:6 is skipped (ADR-0020's 12:6:1 to 12:7:7 is the cursor's jump, and 12:7:1-6 are in the decode)"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah12_page236_ayah5_v3",
@@ -127,7 +127,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page17_ayah109_ratio_floor_stall",
@@ -146,7 +146,7 @@
    "detail": "a mined Tadabur re-read clip transcribed offline, not a device session; not the owner's recitation"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page3_post_flush_noise",
@@ -163,7 +163,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page3_reread_catchup_stall",
@@ -177,16 +177,8 @@
    "Muraja 59ef302"
   ],
   "excluded": null,
-  "explained": [
-   {
-    "first": "2:20:13",
-    "last": "2:20:19",
-    "kind": "re-read",
-    "basis": "docs",
-    "source": "Muraja 59ef302: re-read from 2:20:19 to 2:20:13"
-   }
-  ],
-  "slip_regions": {}
+  "explained": [],
+  "slips": []
  },
  {
   "log": "surah2_page3_reread_grade_fix",
@@ -201,7 +193,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page3_short_word_false_skip",
@@ -216,7 +208,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page42_ayah255",
@@ -231,7 +223,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_added_phrase",
@@ -250,7 +242,7 @@
    "detail": "a synthetic log built for Muraja #220, with an added phrase; no model decoded it"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_ayah19_waqf",
@@ -265,7 +257,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_desync_score_recovery",
@@ -288,7 +280,7 @@
     "source": "Muraja 496c7f0: 2:23:11 genuinely missed"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_false_jumps",
@@ -303,7 +295,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_repeated_samaa",
@@ -318,7 +310,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_reread_desync",
@@ -333,7 +325,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_reread_slow",
@@ -348,7 +340,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_session_start_taawwudh",
@@ -372,7 +364,7 @@
     "source": "Muraja 450484d: ta'awwudh residue matched 2:18:6; ADR-0020: skip 2:18:6 to 2:19:3"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_session_start_virtual",
@@ -387,7 +379,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_session_start_virtual_skips",
@@ -402,7 +394,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_skip_behind_entry",
@@ -433,7 +425,7 @@
     "source": "Muraja c66f9da names skipped ayahs; the decode has no 2:9"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_skip_upgrade",
@@ -456,7 +448,7 @@
     "source": "Muraja a41b9aa: the reader skips 2:20"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page4_strict_shaddah",
@@ -471,7 +463,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page7_ayah48_mutashabihat_freeze",
@@ -490,8 +482,24 @@
    "reason": "documented_mistake",
    "detail": "Muraja ADR-0009: the reader recites 2:123's wording at 2:48 (\"the reader is in the sister ayah\")"
   },
-  "explained": [],
-  "slip_regions": {}
+  "explained": [
+   {
+    "first": "2:45:1",
+    "last": "2:45:8",
+    "kind": "skip",
+    "basis": "decode",
+    "source": "Muraja ADR-0020 lists a genuine skip here (2:44:10 to 2:46:1, the cursor's jump); the decode has no 2:45"
+   }
+  ],
+  "slips": [
+   {
+    "from": "2:48:12",
+    "to": "2:48:12",
+    "twin": "2:123",
+    "basis": "docs",
+    "source": "Muraja ADR-0009: the reader recites 2:123's wording at 2:48, which parts from 2:48 at its 12th word"
+   }
+  ]
  },
  {
   "log": "surah2_page7_ayah60",
@@ -506,7 +514,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page7_ayah60_v2",
@@ -521,7 +529,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page7_ayah60_v3",
@@ -544,7 +552,7 @@
     "source": "the decode ends in 2:60; 2:61 is never recited"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah2_page7_ayah60_v4",
@@ -559,7 +567,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah30_page405_shared_opening_correction",
@@ -578,40 +586,15 @@
    "detail": "Muraja PR #235: the reader slips from 30:12:3 into 30:14's wording, then corrects"
   },
   "explained": [],
-  "slip_regions": {
-   "narrow": [
-    {
-     "first": "30:12:4",
-     "last": "30:12:5",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4"
-    },
-    {
-     "first": "30:14:1",
-     "last": "30:14:5",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4"
-    }
-   ],
-   "wide": [
-    {
-     "first": "30:12:1",
-     "last": "30:13:9",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4"
-    },
-    {
-     "first": "30:14:1",
-     "last": "30:14:5",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4"
-    }
-   ]
-  }
+  "slips": [
+   {
+    "from": "30:12:4",
+    "to": "30:12:4",
+    "twin": "30:14",
+    "basis": "docs",
+    "source": "Muraja PR #235: the reader slips from 30:12:3 into 30:14's wording"
+   }
+  ]
  },
  {
   "log": "surah36_page440_added_phrase",
@@ -630,7 +613,7 @@
    "detail": "a synthetic log built for Muraja #220, with an added phrase; no model decoded it"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah36_page442_cross_ayah_skip",
@@ -644,17 +627,20 @@
    "Muraja b805d8a",
    "Muraja ADR-0020"
   ],
-  "excluded": null,
-  "explained": [
+  "excluded": {
+   "reason": "documented_mistake",
+   "detail": "Muraja ADR-0020: a mutashabihat slip from 36:45 into 36:47, then corrected"
+  },
+  "explained": [],
+  "slips": [
    {
-    "first": "36:35:1",
-    "last": "36:35:8",
-    "kind": "not_recited",
-    "basis": "decode",
-    "source": "the log's Start line places the reader at 36:36:1"
+    "from": "36:45:4",
+    "to": "36:45:4",
+    "twin": "36:47",
+    "basis": "docs",
+    "source": "Muraja ADR-0020 and PR #226: 36:47's wording for 36:45's, then corrected"
    }
-  ],
-  "slip_regions": {}
+  ]
  },
  {
   "log": "surah3_page3_ayah4_reread",
@@ -669,7 +655,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah3_page50_ayah24",
@@ -708,7 +694,7 @@
     "source": "the decode goes from 3:26:18 to 3:28:1"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah3_page50_ayah31",
@@ -732,7 +718,7 @@
     "source": "the decode goes from 3:31:8 to 3:35:1"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah3_page51_ayah15_mutashabihat_wrong_words",
@@ -751,26 +737,15 @@
    "detail": "Muraja 4ec326a: the reader continues 3:15 with 9:72's wording"
   },
   "explained": [],
-  "slip_regions": {
-   "narrow": [
-    {
-     "first": "3:15:17",
-     "last": "3:15:24",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja 4ec326a: 3:15 continued with 9:72's wording from 3:15:17"
-    }
-   ],
-   "wide": [
-    {
-     "first": "3:15:1",
-     "last": "3:16:11",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja 4ec326a: 3:15 continued with 9:72's wording from 3:15:17"
-    }
-   ]
-  }
+  "slips": [
+   {
+    "from": "3:15:14",
+    "to": "3:15:15",
+    "twin": "9:72",
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips); Muraja 4ec326a: 9:72's wording for 3:15's"
+   }
+  ]
  },
  {
   "log": "surah3_page51_reread_reveals_next_ayah",
@@ -795,7 +770,7 @@
     "source": "baseline intent (#211): the genuine 3:8 skip"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah3_page52_jump_reread",
@@ -809,9 +784,20 @@
    "Muraja 03f7f66",
    "Muraja #211"
   ],
-  "excluded": null,
+  "excluded": {
+   "reason": "documented_mistake",
+   "detail": "Muraja PR #226 and wiki/testing.md: a confirmed slip in 3:19 (3:20's wording said early, then back)"
+  },
   "explained": [],
-  "slip_regions": {}
+  "slips": [
+   {
+    "from": "3:19:11",
+    "to": "3:19:12",
+    "twin": "3:20",
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 3:20's wording said early in 3:19, then back"
+   }
+  ]
  },
  {
   "log": "surah3_page52_reread_reveals_next_ayah",
@@ -831,7 +817,15 @@
    "detail": "baseline intent (#211): an off-page slip into 3:7's wording after 3:18"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": [
+   {
+    "from": "3:18:18",
+    "to": "3:19:6",
+    "twin": "3:7",
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips); baseline intent (#211): 3:7's wording for 3:19's start"
+   }
+  ]
  },
  {
   "log": "surah3_page53_ayah27_self_similar_reread",
@@ -849,7 +843,7 @@
    "detail": "generated from a log spec with reference phonemes; no model decoded it"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah3_page53_ayah27_self_similar_skip",
@@ -868,7 +862,7 @@
    "detail": "generated from a log spec with reference phonemes; no model decoded it"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah3_page53_ayah75",
@@ -883,7 +877,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah3_page55_ayah42_mutashabihat_creep_jump",
@@ -902,40 +896,29 @@
    "detail": "Muraja 4ec326a: the reader continues 3:42 with 3:45's wording"
   },
   "explained": [],
-  "slip_regions": {
-   "narrow": [
-    {
-     "first": "3:42:7",
-     "last": "3:42:12",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7"
-    },
-    {
-     "first": "3:45:1",
-     "last": "3:45:20",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7"
-    }
-   ],
-   "wide": [
-    {
-     "first": "3:42:1",
-     "last": "3:43:7",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7"
-    },
-    {
-     "first": "3:45:1",
-     "last": "3:45:20",
-     "kind": "slip",
-     "basis": "docs",
-     "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7"
-    }
-   ]
-  }
+  "slips": [
+   {
+    "from": "3:41:20",
+    "to": "3:42:1",
+    "twin": null,
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): words added before 3:42"
+   },
+   {
+    "from": "3:42:2",
+    "to": "3:42:3",
+    "twin": "3:35",
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 3:35's wording at 3:42"
+   },
+   {
+    "from": "3:42:7",
+    "to": "3:42:7",
+    "twin": "3:45",
+    "basis": "docs",
+    "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording, where the two part"
+   }
+  ]
  },
  {
   "log": "surah3_page58_far_reread_pause_residue",
@@ -944,12 +927,15 @@
   "model": "h448",
   "model_basis": "captured after h448 reached Muraja (fc23225, 2026-09-21)",
   "app_version": null,
-  "purpose": "Bug report \"Whole page became skipped\" (hifz): after a hesitation at the end of 3:69:11, a 7-phoneme query fired a false far re-read (PR #173). Not in its docs: after 3:64:17 its decode carries a phrase of another passage, then a restart from 3:64:12; the log stays included, since only docs exclude.",
+  "purpose": "Bug report \"Whole page became skipped\" (hifz): after a hesitation at the end of 3:69:11, a 7-phoneme query fired a false far re-read (PR #173).",
   "sources": [
    "Muraja 11632ad",
    "Muraja PR #173"
   ],
-  "excluded": null,
+  "excluded": {
+   "reason": "documented_mistake",
+   "detail": "Muraja PR #226 and wiki/testing.md: confirmed slips into other passages' wording in 3:64, 3:65 and 3:67-3:69"
+  },
   "explained": [
    {
     "first": "3:64:1",
@@ -959,26 +945,43 @@
     "source": "the log's Start line places the reader at 3:64:9; the decode begins at 3:64:8"
    }
   ],
-  "slip_regions": {
-   "narrow": [
-    {
-     "first": "3:64:18",
-     "last": "3:64:31",
-     "kind": "slip",
-     "basis": "decode",
-     "source": "the decode carries another passage's phrase in place of 3:64:18, then restarts from 3:64:12"
-    }
-   ],
-   "wide": [
-    {
-     "first": "3:64:1",
-     "last": "3:65:15",
-     "kind": "slip",
-     "basis": "decode",
-     "source": "the decode carries another passage's phrase in place of 3:64:18, then restarts from 3:64:12"
-    }
-   ]
-  }
+  "slips": [
+   {
+    "from": "3:64:11",
+    "to": "3:64:13",
+    "twin": "4:36",
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 4:36's wording in 3:64"
+   },
+   {
+    "from": "3:65:4",
+    "to": "3:65:4",
+    "twin": "3:99",
+    "basis": "docs",
+    "source": "Muraja PR #226: 3:99's wording for 3:65's (not pinned: it settles after the decision window)"
+   },
+   {
+    "from": "3:67:14",
+    "to": "3:68:2",
+    "twin": "3:96",
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 3:96's wording for 3:68's"
+   },
+   {
+    "from": "3:68:10",
+    "to": "3:68:11",
+    "twin": "2:212",
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 2:212's wording added in 3:68"
+   },
+   {
+    "from": "3:69:7",
+    "to": "3:69:7",
+    "twin": "2:109",
+    "basis": "docs",
+    "source": "Muraja PR #226's adjudicated device flags, pinned in the baseline's shadow_speech_flags (wiki/testing.md: confirmed slips): 2:109's wording for 3:69's"
+   }
+  ]
  },
  {
   "log": "surah4_page100_ayah137_adjacent_repeat_skip",
@@ -996,7 +999,7 @@
    "detail": "generated from a log spec with reference phonemes; no model decoded it"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah55_page531_false_reread_refrain",
@@ -1012,7 +1015,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah55_page531_random_grades_reread",
@@ -1028,7 +1031,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah55_page531_reread_prefers_skip",
@@ -1046,7 +1049,7 @@
    "detail": "the same session as surah55_page531_random_grades_reread: every update is identical"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah55_page532_false_backward_refrain",
@@ -1065,8 +1068,31 @@
    "reason": "documented_mistake",
    "detail": "baseline intent (#198): after 55:38 the reader slips into 55:41"
   },
-  "explained": [],
-  "slip_regions": {}
+  "explained": [
+   {
+    "first": "55:29:8",
+    "last": "55:29:10",
+    "kind": "not_recited",
+    "basis": "docs",
+    "source": "baseline intent (#198): the reader recites 55:29:1-7, then the 55:30 refrain"
+   },
+   {
+    "first": "55:30:4",
+    "last": "55:30:4",
+    "kind": "not_recited",
+    "basis": "docs",
+    "source": "baseline intent (#198): the 55:30 refrain cut short"
+   }
+  ],
+  "slips": [
+   {
+    "from": "55:39:1",
+    "to": "55:39:1",
+    "twin": "55:41",
+    "basis": "docs",
+    "source": "baseline intent (#198): after 55:38 the reader slips into 55:41"
+   }
+  ]
  },
  {
   "log": "surah55_page532_far_jump_refrain",
@@ -1081,7 +1107,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah55_page532_grade_contamination",
@@ -1097,7 +1123,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah65_page559_ayah11_reread_false_skip",
@@ -1116,7 +1142,7 @@
    "detail": "a mined Tadabur re-read clip transcribed offline, not a device session; not the owner's recitation"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah67_page562_added_phrase",
@@ -1135,7 +1161,7 @@
    "detail": "a synthetic log built for Muraja #220, with an added phrase; no model decoded it"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah68_page565_false_lost",
@@ -1150,7 +1176,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah70_page569_ayah24",
@@ -1165,7 +1191,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah70_page569_ayah26",
@@ -1188,7 +1214,7 @@
     "source": "Muraja a3789d9: 70:26:2 falsely remapped onto 70:24:2"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah70_page569_ayah27",
@@ -1203,7 +1229,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah70_page569_ayah27_v2",
@@ -1226,7 +1252,7 @@
     "source": "Muraja ef7766d: a re-read of 70:27 matched onto its twin; the decode ends in 70:27"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah70_page569_ayah27_v3",
@@ -1243,7 +1269,7 @@
   ],
   "excluded": null,
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah70_page569_ayah27_v4",
@@ -1268,7 +1294,7 @@
     "source": "baseline intent (#194): the decode is 70:26, 70:27, 70:27 again"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah70_page569_ayah27_v5",
@@ -1293,7 +1319,7 @@
     "source": "baseline intent (#194): the decode is 70:26, 70:27, 70:27 again"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah71_page571_ayah23_final_word_ungraded",
@@ -1312,7 +1338,7 @@
    "detail": "a mined Tadabur re-read clip transcribed offline, not a device session; not the owner's recitation"
   },
   "explained": [],
-  "slip_regions": {}
+  "slips": []
  },
  {
   "log": "surah8_page176_ayah1",
@@ -1336,6 +1362,6 @@
     "source": "Muraja ADR-0020: a genuine skip; the decode goes from 8:1:7 to 8:4:1"
    }
   ],
-  "slip_regions": {}
+  "slips": []
  }
 ]

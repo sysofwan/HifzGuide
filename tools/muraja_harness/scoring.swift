@@ -35,8 +35,17 @@ func isSoftMismatch(_ a: Unicode.Scalar, _ b: Unicode.Scalar, softPairsEnabled: 
     && !disabledSoftPairs.contains("\(a)↔\(b)") && !disabledSoftPairs.contains("\(b)↔\(a)")
 }
 
+/// The request protocol both binaries speak. The client (training/muraja_policy.py) refuses a
+/// binary that reports another, or none, and any scoring key the binary does not declare.
+let harnessProtocol = 2
+
 /// One Muraja configuration to replay: a mode and the two allowance flags (nil keeps the mode's).
 struct Scoring: Decodable {
+  /// Every key a scoring may carry; the build record declares them.
+  enum CodingKeys: String, CodingKey, CaseIterable {
+    case name, mode, softPairsEnabled, shaddahSuppression, softPairsDisabled
+  }
+
   let name: String
   let mode: String
   let softPairsEnabled: Bool?
@@ -109,4 +118,6 @@ struct BuildRecord: Encodable {
   let murajaCommit: String
   let compiler: String
   let harness: String
+  let protocolVersion = harnessProtocol
+  let scoringKeys = Scoring.CodingKeys.allCases.map(\.stringValue)
 }

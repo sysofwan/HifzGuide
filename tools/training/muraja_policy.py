@@ -129,6 +129,15 @@ HARNESS_WORKERS = os.cpu_count() or 1
 #: (``muraja_harness/main.swift``) and the device-log replay (``muraja_harness/log_replay.swift``).
 ITEM_BINARY = "binary"
 LOG_REPLAY_BINARY = "log_replay_binary"
+#: The request protocol this client speaks (``muraja_harness/scoring.swift``'s
+#: ``harnessProtocol``). A binary reporting another, or none, is not used: an older binary
+#: silently ignores keys it does not know, such as a scoring's ``soft_pairs_disabled``.
+HARNESS_PROTOCOL = 2
+
+
+def _camel(key: str) -> str:
+    head, *rest = key.split("_")
+    return head + "".join(part.title() for part in rest)
 
 FLAGGED = "flagged"
 FLAGGED_ELSEWHERE = "flagged_elsewhere"
@@ -499,6 +508,8 @@ class Harness:
     layout_db: Path
     muraja_commit: str
     compiler: str
+    #: The build record the binary prints first, holding its protocol and its scoring keys.
+    build: dict = field(default_factory=dict, compare=False)
 
     @classmethod
     def locate(
@@ -506,7 +517,8 @@ class Harness:
     ) -> Harness | None:
         """One binary (``harness.json``'s ``binary`` key: :data:`ITEM_BINARY` or
         :data:`LOG_REPLAY_BINARY`) of the harness built for ``commit``, or ``None`` when there
-        is none."""
+        is none or when the binary does not report :data:`HARNESS_PROTOCOL` (a stale build:
+        rebuild it with ``build.sh``)."""
         manifest = root / commit / "harness.json"
         if not manifest.exists():
             return None
@@ -518,18 +530,30 @@ class Harness:
             record["muraja_commit"], record["compiler"],
         )
         present = all(p.exists() for p in (harness.binary, harness.quran_db, harness.layout_db))
-        return harness if present and harness.muraja_commit == commit else None
+        if not present or harness.muraja_commit != commit:
+            return None
+        build, _ = harness._run_one([])
+        speaks = build.get("protocol_version") == HARNESS_PROTOCOL and build["muraja_commit"] == commit
+        return replace(harness, build=build) if speaks else None
+
+    def check(self, requests: Sequence[dict]) -> None:
+        """Refuse a request with a scoring key the binary does not declare."""
+        declared = set(self.build["scoring_keys"])
+        unknown = sorted({key for r in requests for s in r["scorings"] for key in s if _camel(key) not in declared})
+        if unknown:
+            raise ValueError(f"the harness binary does not support the scoring keys {unknown}; rebuild it")
 
     def run(self, requests: Iterable[dict], workers: int = HARNESS_WORKERS) -> tuple[dict, list[dict]]:
         """The build record the binary prints, and one result per request and scoring, in
         request order. Each request is its own session, so the requests are split into
         ``workers`` contiguous runs graded by as many binaries at once."""
         requests = list(requests)
+        self.check(requests)
         size = max(1, -(-len(requests) // workers))
         chunks = [requests[i:i + size] for i in range(0, len(requests), size)] or [[]]
         with ThreadPoolExecutor(len(chunks)) as pool:
             runs = list(pool.map(self._run_one, chunks))
-        builds = {json.dumps(build, sort_keys=True) for build, _ in runs}
+        builds = {json.dumps(build, sort_keys=True) for build, _ in runs} | {json.dumps(self.build, sort_keys=True)}
         if len(builds) != 1:
             raise ValueError(f"the harness binaries printed different build records: {builds}")
         return runs[0][0], [result for _, results in runs for result in results]
@@ -542,8 +566,6 @@ class Harness:
             env={**os.environ, "QURAN_LAYOUT_DB_PATH": str(self.layout_db)},
         )
         build, *results = (json.loads(line) for line in completed.stdout.splitlines() if line)
-        if build["muraja_commit"] != self.muraja_commit:
-            raise ValueError(f"the harness was built from {build['muraja_commit']}, not {self.muraja_commit}")
         return build, results
 
 

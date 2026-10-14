@@ -17,6 +17,7 @@ from training.muraja_policy import (
     FLAGGED,
     FLAGGED_ELSEWHERE,
     FLAGGED_UNATTRIBUTED,
+    HARNESS_PROTOCOL,
     LOG_REPLAY_BINARY,
     MURAJA_COMMIT,
     NOT_FLAGGED,
@@ -264,21 +265,43 @@ def test_requests_out_and_results_in(text):
     assert out.unplaced == () and out.unattributed == ()
 
 
-def test_a_harness_is_located_only_for_the_pinned_commit(tmp_path: Path):
+def fake_binary(path: Path, build: dict) -> Path:
+    """A stand-in harness binary that prints ``build`` as its build record."""
+    path.write_text(f"#!/bin/sh\ncat > /dev/null\necho '{json.dumps(build)}'\n")
+    path.chmod(0o755)
+    return path
+
+
+def test_a_harness_is_located_only_for_the_pinned_commit_and_protocol(tmp_path: Path):
     assert Harness.locate(tmp_path) is None
     root = tmp_path / MURAJA_COMMIT
     root.mkdir()
-    files = {name: tmp_path / name for name in ("bin", "quran.db", "layout.db")}
+    build = {"muraja_commit": MURAJA_COMMIT, "compiler": "swift", "harness": "h",
+             "protocol_version": HARNESS_PROTOCOL, "scoring_keys": ["name", "mode", "softPairsEnabled"]}
+    files = {name: tmp_path / name for name in ("quran.db", "layout.db")}
     for path in files.values():
         path.write_text("")
-    record = {"binary": str(files["bin"]), "quran_db": str(files["quran.db"]),
+    current = fake_binary(tmp_path / "bin", build)
+    stale = fake_binary(tmp_path / "stale", {k: v for k, v in build.items()
+                                               if k not in ("protocol_version", "scoring_keys")})
+    record = {"binary": str(current), "quran_db": str(files["quran.db"]),
               "layout_db": str(files["layout.db"]), "muraja_commit": MURAJA_COMMIT, "compiler": "swift"}
     (root / "harness.json").write_text(json.dumps(record))
-    assert Harness.locate(tmp_path).muraja_commit == MURAJA_COMMIT
+    harness = Harness.locate(tmp_path)
+    assert harness.muraja_commit == MURAJA_COMMIT and harness.build == build
     # a build from before the log replay has no log replay binary
     assert Harness.locate(tmp_path, binary=LOG_REPLAY_BINARY) is None
-    (root / "harness.json").write_text(json.dumps(record | {LOG_REPLAY_BINARY: str(files["bin"])}))
-    assert Harness.locate(tmp_path, binary=LOG_REPLAY_BINARY).binary == files["bin"]
+    (root / "harness.json").write_text(json.dumps(record | {LOG_REPLAY_BINARY: str(stale)}))
+    # a binary that does not report the protocol is stale: never trusted
+    assert Harness.locate(tmp_path, binary=LOG_REPLAY_BINARY) is None
     assert Harness.locate(tmp_path, commit="other") is None
     (root / "harness.json").write_text(json.dumps(record | {"muraja_commit": "other"}))
     assert Harness.locate(tmp_path) is None
+
+
+def test_a_request_with_a_scoring_key_the_binary_does_not_declare_is_refused(tmp_path: Path):
+    harness = Harness(tmp_path / "bin", tmp_path, tmp_path, MURAJA_COMMIT, "swift",
+                      build={"scoring_keys": ["name", "mode", "softPairsEnabled"]})
+    harness.check([{"scorings": [{"name": "a", "mode": "balanced", "soft_pairs_enabled": False}]}])
+    with pytest.raises(ValueError, match="soft_pairs_disabled"):
+        harness.check([{"scorings": [{"name": "a", "mode": "balanced", "soft_pairs_disabled": ["ح↔ه"]}]}])

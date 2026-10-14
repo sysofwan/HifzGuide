@@ -3,7 +3,7 @@
 #
 # Picks up `ready-for-agent` issues and runs a code→review loop:
 #   1. Coding Agent (Claude Code, Opus 5) implements the fix/feature
-#   2. Review Agent (Copilot CLI GPT-5.6 Sol + Claude Code Opus 5) reviews the diff
+#   2. Review Agent (Copilot CLI GPT-6.1 Sol + Claude Code Opus 5) reviews the diff
 #   3. Loop until both approve (max 3 cycles) or file HITL issue
 #   4. On approval, commit directly to target branch (default: main)
 #
@@ -18,7 +18,7 @@
 # Requirements: gh, jq, claude (Claude Code CLI), copilot (GitHub Copilot CLI)
 #
 # Claude Code drives every agent role. The GitHub Copilot CLI is kept for one
-# job only: the GPT-5.6 Sol reviewer, so the review pair stays cross-vendor.
+# job only: the GPT-6.1 Sol reviewer, so the review pair stays cross-vendor.
 
 set -euo pipefail
 
@@ -45,7 +45,7 @@ DEFAULT_TARGET_BRANCH="main"
 # Agent model configuration
 # Every role runs on Claude Code except REVIEW_MODEL_1, which runs on Copilot CLI.
 CODING_MODEL="claude-opus-5"
-REVIEW_MODEL_1="gpt-5.6-sol"   # Copilot CLI
+REVIEW_MODEL_1="gpt-6.1-sol"   # Copilot CLI
 REVIEW_MODEL_2="claude-opus-5"
 PR_MODEL="claude-sonnet-5"
 
@@ -67,7 +67,7 @@ run_claude() {
   return "$exit_code"
 }
 
-# Run one headless agent turn on the Copilot CLI — GPT-5.6 Sol review only.
+# Run one headless agent turn on the Copilot CLI — GPT-6.1 Sol review only.
 run_copilot() {
   local model="$1" prompt_file="$2" log_file="$3"
   local exit_code=0

@@ -167,5 +167,5 @@ Canonical triage roles map to concrete repo labels in
 ### AFK dual-agent loop
 
 `scripts/ralph-loop.sh` picks up `ready-for-agent` issues and runs a code→review loop. Claude Code
-runs every role; the Copilot CLI runs only the GPT-5.6 Sol reviewer, so the review pair stays
+runs every role; the Copilot CLI runs only the GPT-6.1 Sol reviewer, so the review pair stays
 cross-vendor.

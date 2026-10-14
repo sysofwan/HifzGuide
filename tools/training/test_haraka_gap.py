@@ -23,6 +23,7 @@ from training.decoding import (
     stream_emissions,
     stream_protocol,
 )
+from training import haraka_gap
 from training.haraka_gap import (
     cache_files,
     validated_settings,
@@ -466,3 +467,37 @@ def test_provenance_refuses_an_edited_cache(tmp_path):
     (tmp_path / "h448.json").write_bytes(b"edited")
     with pytest.raises(ValueError):
         verified_provenance(tmp_path, ["h448"])
+
+
+def _sources(tmp_path, registry: bytes) -> dict:
+    paths = {"mining_pool/clips.jsonl": tmp_path / "pool.jsonl",
+             haraka_gap.REGISTRY_SOURCE: tmp_path / "registry.jsonl"}
+    paths["mining_pool/clips.jsonl"].write_bytes(b"pool")
+    paths[haraka_gap.REGISTRY_SOURCE].write_bytes(registry)
+    return paths
+
+
+def test_the_cache_outlives_registry_growth_but_not_a_change_to_the_pools_audio(
+        tmp_path, monkeypatch):
+    checkpoint = tmp_path / "student.pt"
+    checkpoint.write_bytes(b"weights")
+    for name in haraka_gap.cache_files(["h448"]):
+        (tmp_path / name).write_bytes(name.encode())
+    sources = _sources(tmp_path, b"rows")
+    monkeypatch.setattr(haraka_gap, "source_manifests", lambda: sources)
+    monkeypatch.setattr(haraka_gap, "pool_audio_digest", lambda: "pool-audio")
+    haraka_gap.write_provenance(tmp_path, {"h448": str(checkpoint)})
+    record = haraka_gap.verified_provenance(tmp_path, ["h448"])
+    assert record[haraka_gap.POOL_AUDIO] == "pool-audio"
+    assert record["models"]["h448"]["checkpoint_sha256"] == hashlib.sha256(b"weights").hexdigest()
+
+    sources[haraka_gap.REGISTRY_SOURCE].write_bytes(b"rows and more rows")
+    haraka_gap.verified_provenance(tmp_path, ["h448"])  # grown, the pool's audio unchanged
+
+    monkeypatch.setattr(haraka_gap, "pool_audio_digest", lambda: "re-staged")
+    with pytest.raises(ValueError):
+        haraka_gap.verified_provenance(tmp_path, ["h448"])
+    monkeypatch.setattr(haraka_gap, "pool_audio_digest", lambda: "pool-audio")
+    sources["mining_pool/clips.jsonl"].write_bytes(b"another pool")
+    with pytest.raises(ValueError):
+        haraka_gap.verified_provenance(tmp_path, ["h448"])

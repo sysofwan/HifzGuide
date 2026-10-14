@@ -161,19 +161,100 @@ class ViewerRow:
     revision: str
 
 
+#: Waits (s) before each retry when the viewer is rate-limiting or briefly failing
+#: (:data:`RETRIED`); a 501 means it cannot serve that mushaf at all and is not retried.
+VIEWER_RETRY_WAITS = (5, 15, 45, 120, 300)
+RETRIED = frozenset({429, 500, 502, 503, 504})
+
+
+def _viewer_get(url: str) -> bytes:
+    """``url``'s body, authenticated with the local Hub token when there is one, retried
+    after :data:`VIEWER_RETRY_WAITS` while the viewer is rate-limiting or failing."""
+    import time
+    import urllib.error
+    import urllib.request
+
+    from huggingface_hub import get_token
+
+    token = get_token()
+    headers = {"Authorization": f"Bearer {token}"} if token and "datasets-server" in url \
+        and "cached-assets" not in url else {}
+    for wait in (*VIEWER_RETRY_WAITS, None):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers),
+                                        timeout=120) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            if wait is None or error.code not in RETRIED:
+                raise
+            time.sleep(wait)
+    raise AssertionError("unreachable")
+
+
+def cached_row(cache_dir: Path, slug: str, row_index: int) -> ViewerRow | None:
+    """A row kept by :func:`keep_row`, or ``None``."""
+    import json
+
+    meta = cache_dir / f"{slug}.{row_index}.json"
+    if not meta.exists():
+        return None
+    record = json.loads(meta.read_text(encoding="utf-8"))
+    mp3 = (cache_dir / f"{slug}.{row_index}.mp3").read_bytes()
+    return ViewerRow(row_of(slug, {**record["row"], "audio": {"bytes": mp3}}), record["revision"])
+
+
+def keep_row(cache_dir: Path, row_index: int, got: ViewerRow) -> ViewerRow:
+    """Keep a fetched row (one JSON and one MP3) so a rerun asks again for nothing."""
+    import json
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    row = got.row
+    (cache_dir / f"{row.slug}.{row_index}.mp3").write_bytes(row.mp3)
+    record = {"surah": row.surah, "ayah": row.ayah, "duration_ms": row.duration_ms,
+              "text_uthmani": row.text_uthmani, "segments": [list(x) for x in row.segments],
+              "word_timestamps": [list(x) for x in row.word_timestamps],
+              "source_url": row.source_url, "source_offset_ms": row.source_offset_ms}
+    (cache_dir / f"{row.slug}.{row_index}.json").write_text(
+        json.dumps({"row": record, "revision": got.revision}, ensure_ascii=False),
+        encoding="utf-8")
+    return got
+
+
 def viewer_row(slug: str, row_index: int) -> ViewerRow:
     """Row ``row_index`` of a mushaf config with its MP3, from the dataset viewer."""
     import json
     import urllib.parse
-    import urllib.request
 
     query = urllib.parse.urlencode({"dataset": QUD_DATASET, "config": slug, "split": "train",
                                     "offset": row_index, "length": 1})
-    with urllib.request.urlopen(f"{ROWS_API}?{query}", timeout=120) as response:
-        (entry,) = json.loads(response.read())["rows"]
+    (entry,) = json.loads(_viewer_get(f"{ROWS_API}?{query}"))["rows"]
     record = entry["row"]
     (audio,) = record.pop("audio")
-    with urllib.request.urlopen(audio["src"], timeout=120) as response:
-        mp3 = response.read()
-    return ViewerRow(row_of(slug, {**record, "audio": {"bytes": mp3}}),
-                     _ROWS_API_REVISION.search(audio["src"]).group(1))
+    mp3 = _viewer_get(audio["src"])
+    revision = _ROWS_API_REVISION.search(audio["src"]).group(1)
+    return ViewerRow(row_of(slug, {**record, "audio": {"bytes": mp3}}), revision)
+
+
+def pinned_row(slug: str, shards: Sequence[str], row_index: int,
+               revision: str = QUD_REVISION) -> ViewerRow:
+    """Row ``row_index`` of a mushaf at the pinned revision, its MP3 included: only the row
+    group that holds it is read (~150 MB). For the rows the dataset viewer cannot serve."""
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfFileSystem
+
+    fs = HfFileSystem()
+    for shard in shards:
+        # Large blocks: a row group's audio is one contiguous range of ~150 MB.
+        with fs.open(f"datasets/{QUD_DATASET}@{revision}/{shard}", block_size=32 << 20) as f:
+            parquet = pq.ParquetFile(f)
+            if row_index >= parquet.metadata.num_rows:
+                row_index -= parquet.metadata.num_rows
+                continue
+            for group in range(parquet.metadata.num_row_groups):
+                size = parquet.metadata.row_group(group).num_rows
+                if row_index < size:
+                    records = parquet.read_row_group(
+                        group, columns=["audio", *METADATA_COLUMNS]).slice(row_index, 1)
+                    return ViewerRow(row_of(slug, records.to_pylist()[0]), revision)
+                row_index -= size
+    raise IndexError(f"{slug} has no row {row_index}")

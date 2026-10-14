@@ -45,6 +45,17 @@ with them to ``qud_eval/overlap_rules.json`` before ``screen`` runs):
   positive, so every control positive passes; the share of same-reciter negatives that pass
   too is reported as the screen's false-candidate rate.
 
+**Amendment, read off the controls before any pilot ayah was screened.** One pair's timing
+cannot decide: on the controls a tenth of the negatives pass the line too, which over a whole
+mushaf would make tens of thousands of candidates spread over every Tadabur shard. One
+recording passes the line ayah after ayah, so stage 1 decides per **Tadabur reciter id**: an id
+is a candidate for a pilot mushaf when the number of its pairs within the line is improbable
+(one-sided binomial tail below :data:`ALPHA`) at the negatives' pass rate, taken at its Wilson
+upper bound. Stage 2 then fingerprints that id's :data:`CONFIRM_PAIRS` closest pairs, and
+those of every id the name screen gives the pilot reciter, whatever the test says. The
+fingerprint also leaves a zone between its line and the hard negatives (a re-processed copy
+of one recording can land there); a pilot pair in it is reported, never silently passed.
+
 Usage (from ``tools/``)::
 
   python -m tadabur.qud_overlap controls                     # write and commit first
@@ -60,6 +71,7 @@ import gzip
 import hashlib
 import io
 import json
+import math
 import statistics
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
@@ -69,10 +81,12 @@ import numpy as np
 
 from .audio import decode_to_mono_16k, read_audio_bytes
 from .dataset_source import canonical_surah_ayah
+from training.counterfactual_eval import wilson_interval
+
 from .qud_fingerprint import BANDS, FRAME_S, HIGH_HZ, HOP_S, LOW_HZ, MIN_OVERLAP
 from .qud_fingerprint import best_match, fingerprint
 from .qud_selection import QUD_DIR, SELECTION_PATH, SOURCES_PATH
-from .qud_source import QUD_DATASET, QudRow, mp3_sha256, parquet_table
+from .qud_source import QUD_DATASET, QudRow, mp3_sha256, mushaf_metadata, parquet_table
 from .qud_text import Unmapped, map_words
 
 CONTROLS_PATH = QUD_DIR / "overlap_controls.json"
@@ -102,6 +116,9 @@ CROSS_MIN_STAGED = 20
 CROSS_CLIPS = 12
 MIN_WORDS = 4
 TIMING_MARGIN = 1.5
+#: Stage 1's per-reciter test: its one-sided level, and the pairs stage 2 fingerprints per id.
+ALPHA = 1e-3
+CONFIRM_PAIRS = 8
 
 
 def salted_rank(*parts: object) -> str:
@@ -295,8 +312,13 @@ def score_controls(controls: Mapping, registry: Mapping, clips_dir: Path,
     Tadabur timing cache by ``audio_filename``."""
     from .qud_source import decode_ayah
 
+    fetched = [0]
+
     def qud(slug: str, row: int, expected: str) -> tuple:
         got = fetch(slug, row)
+        fetched[0] += 1
+        if fetched[0] % 25 == 0:
+            print(f"{fetched[0]} QUD rows read", flush=True)
         if got.row.surah_ayah != expected:
             raise ValueError(f"{slug} row {row} is {got.row.surah_ayah}, not {expected}")
         return got, decode_ayah(got.row)
@@ -364,7 +386,41 @@ def decide_lines(scores: Mapping) -> dict:
         "different_reciter_fingerprint_min": min((c["ber"] for c in cross
                                                   if not c["same_reciter"]), default=None),
     }
+    if line is None:
+        return out
+    negatives = [*same_reciter_neg, *other_neg]
+    passing = sum(c["timing_distance"] <= line for c in negatives)
+    q = wilson_interval(passing, len(negatives))[1]
+    groups: dict[tuple, list[dict]] = defaultdict(list)
+    for c in cross:
+        if c["same_reciter"] and c["timing_distance"] is not None:
+            groups[(c["tadabur_reciter"], c["slug"])].append(c)
+    overlaps = {k: g for k, g in groups.items()
+                if sum(c["ber"] <= fingerprint_line for c in g) * 2 > len(g)}
+    flagged = {k for k, g in groups.items()
+               if binomial_tail(sum(c["timing_distance"] <= line for c in g), len(g), q) < ALPHA}
+    out["aggregate"] = {
+        "negative_pass_rate": [passing, len(negatives)], "q_upper": round(q, 4),
+        "alpha": ALPHA, "confirm_pairs": CONFIRM_PAIRS,
+        "control_overlaps": len(overlaps),
+        "control_overlaps_flagged": len(set(overlaps) & flagged),
+        "control_non_overlaps": len(groups) - len(overlaps),
+        "control_non_overlaps_flagged": len(flagged - set(overlaps)),
+        "control_overlaps_missed": sorted(f"{t}:{s}" for t, s in set(overlaps) - flagged),
+    }
+    out["fingerprint"]["ambiguous_zone_pairs"] = sorted(
+        c["ber"] for c in cross if fingerprint_line < c["ber"] < min(neg))
     return out
+
+
+def binomial_tail(k: int, n: int, q: float) -> float:
+    """P(X >= k) for X ~ Binomial(n, q)."""
+    if k <= 0:
+        return 1.0
+    log_terms = [math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1)
+                 + i * math.log(q) + (n - i) * math.log1p(-q) for i in range(k, n + 1)]
+    top = max(log_terms)
+    return min(1.0, math.exp(top) * sum(math.exp(t - top) for t in log_terms))
 
 
 def _count(values: Iterable) -> dict:
@@ -378,33 +434,41 @@ def _count(values: Iterable) -> dict:
 
 
 def screen_mushaf(rows: Sequence[QudRow], by_ayah: Mapping[str, list[dict]],
-                  line: float) -> dict:
-    """Every comparable ayah of a pilot mushaf against every Tadabur row of that ayah: how
-    many were compared, each Tadabur reciter's closest distances, and the candidates."""
-    compared_ayat = pairs = 0
-    candidates = []
-    closest: dict[int, list[float]] = defaultdict(list)
+                  line: float, q: float, named: Sequence[int]) -> dict:
+    """Every comparable ayah of a pilot mushaf against every Tadabur row of that ayah, and per
+    Tadabur reciter id its pairs, how many fall within ``line`` and the binomial tail of that
+    at the negatives' pass rate ``q``. The candidates are the :data:`CONFIRM_PAIRS` closest
+    pairs of every id the test flags and of every ``named`` id."""
+    compared_ayat = 0
+    pairs: dict[int, list[dict]] = defaultdict(list)
     for row in rows:
         starts = qud_word_starts(row, _canonical_words(row.surah_ayah))
         if starts is None:
             continue
         compared_ayat += 1
         for other in by_ayah.get(row.surah_ayah, []):
-            if len(other["starts"]) != len(starts):
-                continue
-            pairs += 1
-            distance = timing_distance(starts, other["starts"])
-            closest[other["reciter_id"]].append(distance)
-            if distance <= line:
-                candidates.append({"surah_ayah": row.surah_ayah, "distance": distance,
-                                   **{k: other[k] for k in ("audio_filename", "shard",
-                                                            "row_index", "reciter_id")}})
-    per_reciter = {
-        str(reciter): {"pairs": len(d), "min": min(d), "median": statistics.median(d),
-                       "within_line": sum(x <= line for x in d)}
-        for reciter, d in sorted(closest.items())
-    }
-    return {"ayat": len(rows), "ayat_compared": compared_ayat, "pairs": pairs,
+            if len(other["starts"]) == len(starts):
+                pairs[other["reciter_id"]].append({
+                    "surah_ayah": row.surah_ayah,
+                    "distance": timing_distance(starts, other["starts"]),
+                    **{k: other[k] for k in ("audio_filename", "shard", "row_index",
+                                             "reciter_id")}})
+    per_reciter, candidates = {}, []
+    for reciter, group in sorted(pairs.items()):
+        within = sum(p["distance"] <= line for p in group)
+        tail = binomial_tail(within, len(group), q)
+        flagged = tail < ALPHA
+        per_reciter[str(reciter)] = {"pairs": len(group), "within_line": within,
+                                     "tail": tail, "flagged": flagged}
+        if flagged or reciter in named:
+            closest = sorted(group, key=lambda p: (p["distance"], p["shard"], p["row_index"]))
+            candidates += [{**p, "why": "flagged" if flagged else "named"}
+                           for p in closest[:CONFIRM_PAIRS]]
+    return {"ayat": len(rows), "ayat_compared": compared_ayat,
+            "pairs": sum(len(g) for g in pairs.values()),
+            "pairs_within_line": sum(v["within_line"] for v in per_reciter.values()),
+            "flagged_reciters": sorted(int(r) for r, v in per_reciter.items() if v["flagged"]),
+            "named_reciters": list(named),
             "candidates": sorted(candidates, key=lambda c: (c["shard"], c["row_index"])),
             "per_tadabur_reciter": per_reciter}
 
@@ -515,6 +579,30 @@ def _ayah_rows(selection: Mapping):
     return read
 
 
+def qud_fetcher(selection: Mapping, cache_dir: Path):
+    """``(slug, row) -> ViewerRow``: the dataset viewer's row; where the viewer cannot serve a
+    mushaf (it answers 501), the pinned parquet's row group. Every row is kept in
+    ``cache_dir``, so a rerun reads it from there."""
+    import urllib.error
+
+    from .qud_source import cached_row, keep_row, pinned_row, viewer_row
+
+    shards = {m["slug"]: m["shards"] for m in selection["mushafs"]}
+
+    def fetch(slug: str, row: int):
+        if (kept := cached_row(cache_dir, slug, row)) is not None:
+            return kept
+        try:
+            got = viewer_row(slug, row)
+        except urllib.error.HTTPError as error:
+            if error.code != 501:
+                raise
+            got = pinned_row(slug, shards[slug], row, selection["qud_revision"])
+        return keep_row(cache_dir, row, got)
+
+    return fetch
+
+
 def timings_by_filename(path: Path) -> dict[str, dict]:
     return {row["audio_filename"]: row for rows in read_tadabur_timings(path).values()
             for row in rows}
@@ -529,8 +617,17 @@ def main() -> None:
     calibrate.add_argument("--clips-dir", type=Path, required=True)
     calibrate.add_argument("--timings", type=Path, required=True,
                            help="the Tadabur timing cache (write-timings)")
+    calibrate.add_argument("--viewer-cache", type=Path, required=True,
+                           help="where the QUD rows fetched from the dataset viewer are kept")
+    commands.add_parser("lines", help="re-derive the lines from the committed control scores")
     timings = commands.add_parser("write-timings", help="cache Tadabur's word start times")
     timings.add_argument("--out", type=Path, required=True)
+    screen = commands.add_parser("screen", help="stage 1 over every pilot ayah")
+    screen.add_argument("--timings", type=Path, required=True)
+    confirm = commands.add_parser("confirm", help="stage 2 on the candidates, and Muaalem")
+    confirm.add_argument("--viewer-cache", type=Path, required=True)
+    confirm.add_argument("--cache-dir", type=Path, required=True,
+                         help="where a candidate's Tadabur shard is downloaded (and deleted)")
     args = parser.parse_args()
 
     from .staged_audio import load_staged_clips
@@ -544,12 +641,45 @@ def main() -> None:
 
         write_tadabur_timings(args.out, range(NUM_SHARDS))
     elif args.command == "calibrate":
-        from .qud_source import viewer_row
-
         scores = score_controls(_load(CONTROLS_PATH), load_staged_clips(), args.clips_dir,
-                                timings_by_filename(args.timings), viewer_row)
+                                timings_by_filename(args.timings),
+                                qud_fetcher(selection, args.viewer_cache))
         _dump(RULES_PATH, {"lines": decide_lines(scores), "scores": scores})
         print(json.dumps(_load(RULES_PATH)["lines"], indent=1))
+    elif args.command == "lines":
+        scores = _load(RULES_PATH)["scores"]
+        _dump(RULES_PATH, {"lines": decide_lines(scores), "scores": scores})
+        print(json.dumps(_load(RULES_PATH)["lines"], indent=1))
+    elif args.command == "screen":
+        lines = _load(RULES_PATH)["lines"]
+        line, q = lines["timing"]["line"], lines["aggregate"]["q_upper"]
+        named = {m["slug"]: [m["tadabur_name_screen"]["tadabur_id"]]
+                 if m["tadabur_name_screen"] else [] for m in selection["mushafs"]}
+        by_ayah = read_tadabur_timings(args.timings)
+        shards = {m["slug"]: m["shards"] for m in selection["mushafs"]}
+        _dump(SCREEN_PATH, {"timing_line": line, "tadabur_timings_rows":
+                            sum(len(v) for v in by_ayah.values()),
+                            "tadabur_timings_sha256": hashlib.sha256(
+                                args.timings.read_bytes()).hexdigest(),
+                            "tadabur_revision": _load(SOURCES_PATH)["tadabur"]["revision"],
+                            "mushafs": {slug: screen_mushaf(
+                                mushaf_metadata(slug, shards[slug], selection["qud_revision"]),
+                                by_ayah, line, q, named[slug]) for slug in PILOT}})
+    else:
+        line = _load(RULES_PATH)["lines"]["fingerprint"]["line"]
+        screened = _load(SCREEN_PATH)["mushafs"]
+        fetch = qud_fetcher(selection, args.viewer_cache)
+        rows = _ayah_rows(selection)
+        results = {}
+        for slug in PILOT:
+            index = rows(slug)
+            stage2 = confirm_candidates(screened[slug]["candidates"], line, args.cache_dir,
+                                        fetch, index, slug)
+            muaalem = muaalem_check(slug, fetch, index, line)
+            results[slug] = {"tadabur": stage2, "muaalem": muaalem,
+                             "matches": sum(bool(c["match"]) for c in stage2)
+                             + sum(m["match"] for m in muaalem)}
+        _dump(RESULTS_PATH, {"fingerprint_line": line, "mushafs": results})
 
 
 if __name__ == "__main__":

@@ -11,7 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from tadabur.exclusions import Exclusions
+from tadabur.edit_check_summary import CALLS
+from tadabur.exclusions import REASONS, Exclusions
+from tadabur.ship_a import HALVES
+from tadabur.ship_a_verified import FRAMES
 from tadabur.truth_sites import TRUTH_SITES_DIR
 from training.decoding import APP_CHECKS, SPANS, DecodeFingerprint
 from training.muraja_policy import FLAGGED, RECORDED_CHECKS, SHIPPED_DEFAULT, SINGLE_DECODE
@@ -21,7 +24,9 @@ from training.truth_baseline import (
     CHECK_STORE,
     DECODE_STORE,
     DEFAULT_MODELS,
+    DOC_PATH,
     PROTOCOLS,
+    REPORT_PATH,
     cache_text,
     check_cache,
     comparisons,
@@ -209,3 +214,20 @@ def test_the_report_and_the_power_inputs_both_leave_out_waqf_realized_sites(site
     assert inputs["today_system_arm"] == "h448/stream_b0"
     held = [c for c in inputs["cells"] for r in c["per_reciter"] if r == "1"]
     assert held == []  # reciter 1's only site was the realized one
+
+
+def test_the_committed_doc_is_the_render_of_the_committed_report():
+    report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
+    assert DOC_PATH.read_text(encoding="utf-8") == render(report)
+
+
+def test_the_committed_report_carries_the_verified_views():
+    """#90: the word sample's causes, the direction table per frame and half, the edit calls,
+    and every exclusion reason, all read from the committed inputs."""
+    report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
+    assert set(REASONS) <= set(report) and set(REASONS) <= set(report["word_sample"])
+    assert set(report["directions"]) == set(FRAMES)
+    assert all(set(halves) == set(HALVES) for halves in report["directions"].values())
+    assert report["edit_check"]["type_verdicts"] == CALLS
+    assert report["word_sample"]["words"] == 160
+    assert "ship_a_verified.jsonl" in report["truth_site_files"]

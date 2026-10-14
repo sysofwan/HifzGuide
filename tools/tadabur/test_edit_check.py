@@ -19,16 +19,17 @@ from tadabur.edit_check import (
     read_words,
     verify_audio,
 )
-from tadabur.edit_check_summary import summarize
+from tadabur.edit_check_summary import CALLS, NOT_CHECKED, summarize, type_verdicts
 from tadabur.listening_session import (
     Candidate,
     Verdict,
     census,
     fetch,
+    read_verdicts,
 )
 from tadabur.staged_audio import StagedClip
-from tadabur.synthetic_edit_plan import CONSONANT_SWAP, DECOY, EDIT, SHADDAH_REMOVED
-from tadabur.synthetic_edits import WORKLIST_PATH, read_items
+from tadabur.synthetic_edit_plan import CONSONANT_SWAP, DECOY, EDIT, OPERATIONS, SHADDAH_REMOVED
+from tadabur.synthetic_edits import EDITS_PATH, WORKLIST_PATH, read_items
 from tadabur.truth_sites import PENDING, TruthSite, audio_sha256, load_truth_sites
 
 FATHA = "َ"
@@ -204,3 +205,25 @@ def test_the_committed_blind_check_joins_the_committed_manifest():
     assert summary["answered"] == 0
     assert sum(cell["items"] for roles in summary["operations"].values()
                for cell in roles.values()) == summary["items"]
+
+
+def test_an_operation_with_no_answered_edit_is_not_checked():
+    edit, decoy = _site(0, 2, "shaddah", "held"), _site(1, 2, "shaddah", "held")
+    items = _manifest([(edit, SHADDAH_REMOVED, EDIT, "not_held"),
+                       (decoy, CONSONANT_SWAP, DECOY, "held")])
+    answered = {edit.site_id: Verdict(edit.site_id, "not_held", "", "natural"),
+                decoy.site_id: Verdict(decoy.site_id, "held", "", "natural")}
+    calls = type_verdicts(summarize([edit, decoy], items, answered))
+    # only a decoy of the swap was answered: no edit of it was checked
+    assert calls == {op: CALLS[op] if op == SHADDAH_REMOVED else NOT_CHECKED for op in OPERATIONS}
+    assert set(type_verdicts(summarize([edit, decoy], items, {})).values()) == {NOT_CHECKED}
+
+
+def test_the_committed_calls_fail_the_consonant_swap_that_was_never_heard_as_labelled():
+    """#90: ``consonant_swap`` fails at 0% heard as labelled and may not feed #94; both shaddah
+    operations pass with every edit heard as labelled."""
+    summary = summarize(load_truth_sites(WORKLIST_PATH), read_items(EDITS_PATH), read_verdicts())
+    assert type_verdicts(summary) == CALLS
+    assert summary["operations"][CONSONANT_SWAP][EDIT]["heard_as_labelled_rate"] == 0.0
+    assert all(summary["operations"][op][EDIT]["heard_as_labelled_rate"] == 1.0
+               for op, call in CALLS.items() if call == "pass")

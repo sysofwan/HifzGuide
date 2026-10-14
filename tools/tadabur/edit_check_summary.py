@@ -14,9 +14,11 @@ Per operation, and per operation and mark, for the edits and the decoys apart:
   changed state; for a decoy, the unchanged one, so its rate is "decoys unchanged"), the
   other state was heard, or ``unclear``; the rate is over the items heard as either state.
 
-A rate is ``null`` while its denominator is empty. Items with no verdict yet are counted
-as ``pending``. No threshold is applied here: which types pass is #90's call, under the
-acceptance rules.
+An item the shared exclusion takes out (:mod:`tadabur.exclusions`; here a note denying the
+source recitation is Hafs) leaves every cell and is listed under its reason. A rate is
+``null`` while its denominator is empty. Items with no verdict yet are counted
+as ``pending``. No threshold is applied here: which types pass is #90's call
+(:data:`CALLS`, :func:`type_verdicts`), recorded once the session was answered.
 
 **Never shown in the UI.** This module reads the edit manifest, which names every item's
 operation and role. The listening UI (:mod:`tadabur.tashkeel_audit_ui`) never imports it
@@ -34,8 +36,10 @@ import json
 from collections.abc import Mapping
 from pathlib import Path
 
+from training.acceptance_stats import FAIL, PASS
 from training.tashkeel_eval import write_text_atomically
 
+from .exclusions import NONE, Exclusions, current
 from .listening_session import (
     NATURAL,
     NATURALNESS,
@@ -45,11 +49,28 @@ from .listening_session import (
     hearable,
     read_verdicts,
 )
+from .synthetic_edit_plan import (
+    CONSONANT_SWAP,
+    DECOY,
+    EDIT,
+    OPERATIONS,
+    SHADDAH_ADDED,
+    SHADDAH_REMOVED,
+)
 from .synthetic_edits import EDITS_PATH, WORKLIST_PATH, read_items
-from .synthetic_edit_plan import DECOY, EDIT, OPERATIONS
 from .truth_sites import UNCLEAR, TruthSite, load_truth_sites
 
 ROLES = (EDIT, DECOY)
+
+#: #90's call on each operation the owner blind-checked (#90's brief amendment of 2026-10-13,
+#: read off this summary at the full #61 verdicts): ``shaddah_removed`` and ``shaddah_added``
+#: pass (5 edits each; every edit heard as either state was heard as labelled, the rest were
+#: unclear); ``consonant_swap`` fails (none of its edits was heard as labelled), so it may
+#: not feed the training probe (#94). The ``not_hafs`` exclusion later took one
+#: ``shaddah_removed`` edit out of the summary; the call stands.
+CALLS = {SHADDAH_REMOVED: PASS, SHADDAH_ADDED: PASS, CONSONANT_SWAP: FAIL}
+#: An operation no answered edit checked: it may not be used as training signal.
+NOT_CHECKED = "not checked"
 
 
 def _rate(hits: int, total: int) -> float | None:
@@ -96,11 +117,15 @@ def matched_items(sites: list[TruthSite], items: list[dict]) -> list[tuple[Truth
 
 
 def summarize(
-    sites: list[TruthSite], items: list[dict], verdicts: Mapping[str, Verdict]
+    sites: list[TruthSite], items: list[dict], verdicts: Mapping[str, Verdict],
+    excluded_items: Exclusions = NONE,
 ) -> dict:
-    """Per operation, and per operation and mark, :func:`tally` for edits and decoys."""
+    """Per operation, and per operation and mark, :func:`tally` for edits and decoys, less the
+    items the shared exclusion takes out (listed per reason)."""
     answers: list[tuple[dict, Verdict | None]] = []
     for site, item in matched_items(sites, items):
+        if site.site_id in excluded_items:
+            continue
         verdict = verdicts.get(site.site_id)
         if verdict is not None and (verdict.heard not in hearable(site.mark)
                                     or verdict.natural not in NATURALNESS):
@@ -121,9 +146,20 @@ def summarize(
     return {
         "items": len(answers),
         "answered": sum(v is not None for _, v in answers),
+        **excluded_items.listed(s.site_id for s in sites),
         "operations": {op: by_operation[op] for op in OPERATIONS if op in by_operation},
         "operation_marks": cells(lambda item: f"{item['operation']} {item['mark']}"),
     }
+
+
+def type_verdicts(summary: dict) -> dict[str, str]:
+    """Per operation, #90's call (:data:`CALLS`), or :data:`NOT_CHECKED` where no edit of it
+    has a verdict."""
+    def answered(operation: str) -> bool:
+        cell = summary["operations"].get(operation, {}).get(EDIT)
+        return bool(cell) and cell["items"] > cell["pending"]
+
+    return {op: CALLS[op] if answered(op) else NOT_CHECKED for op in OPERATIONS}
 
 
 def _table(summary: dict) -> str:
@@ -153,7 +189,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=None, help="also write the JSON here")
     args = parser.parse_args()
     summary = summarize(load_truth_sites(args.blind_check), read_items(args.edits),
-                        read_verdicts(args.verdicts))
+                        read_verdicts(args.verdicts), current(args.verdicts))
     if args.out is not None:
         write_text_atomically(args.out, json.dumps(summary, indent=2, ensure_ascii=False,
                                                    sort_keys=True) + "\n")

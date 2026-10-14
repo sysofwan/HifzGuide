@@ -25,6 +25,7 @@ answers are in [`docs/ship-a-sizing.md`](../../../../docs/ship-a-sizing.md).
 | `onset_guard.synthetic.jsonl`, `onset_guard.synthetic.json` | the onset guard's synthetic trims (#138): one clean segment start per canonical reciter of the mining pool, with its provenance (clip, checksum, shard, row, reciter, split), segment and the first letter's onset sample; the selection's counts and rules | `python -m tadabur.onset_guard synthetic` (reads the staged audio) |
 | `onset_guard.scores.jsonl`, `onset_guard.run.json` | every span the onset detector scored (each exposed segment and each synthetic cut) with the five candidates' scores and the head of the base teacher's free decode; the decode and VAD pass's provenance | `python -m tadabur.onset_guard spans`, then `score` (GPU) |
 | `onset_guard.jsonl`, `onset_guard.summary.json`, `onset_guard.curves.json` | the onset guard: per site, worklist row and sampled word, whether its mark is read in its segment's first word (exposed), the cut it starts at, its scores and the detector's decision; counts per part and stratum at the verdicts, the operating points, the owner check and the re-listen list; every candidate's calibration curve | `python -m tadabur.onset_guard build` |
+| `verified_design.jsonl` | per verified site of `../truth_sites/ship_a_verified.jsonl` (#90): its frame (`ship_a`, a site `h448` flagged; `reject_pile`, #87's base-partner draw), its half of the reciter split, and its chance of being listened to, whose inverse is its design weight | `python -m tadabur.ship_a_verified build` |
 | `sizing.json` | the four sizing questions' results, after the shared exclusion (both guards) | `python -m training.ship_a_sizing run` |
 
 Rebuild in that order, from `tools/` (torch-free but the guard's VAD pass; `quran-transcript`
@@ -59,6 +60,24 @@ in the note box when the opening sound is cut off (`no trim` when it is not). Th
 `onset_trimmed`: out of every evaluation denominator through the shared exclusion
 (`tadabur.exclusions`, the one the waqf guard uses) and no training target. After a sitting,
 refresh with `python -m tadabur.onset_guard build`, then re-run the sizing and its page.
+
+## Notes that deny Hafs (#90)
+
+The owner decided (2026-10-13) that an item whose note denies the recitation is Hafs ("Not
+hafs", "May not be hafs", "Possibly not hafs") is `not_hafs`: out of every evaluation
+denominator through the shared exclusion and no training target, because a reading outside
+Hafs confuses above all its tashkeel. `tadabur.owner_notes` reads the note
+(`owner_notes.HAFS`; a bare "hafs", or a note that says the reading is Hafs, keeps the item).
+No guard file is built: the reason is read from `listening_session/verdicts.jsonl` at every use.
+
+## Refreshing after a sitting
+
+In this order, from `tools/`: `python -m tadabur.waqf_guard build`, `python -m
+tadabur.onset_guard build`, `python -m tadabur.ship_a_verified build` (the verified truth sites,
+#90) and `python -m tadabur.exposure staged` (their recordings' exposure use), `python -m
+training.ship_a_sizing run` and `python -m training.ship_a_sizing_doc`, then
+`python -m tadabur.eval_harness` and `python -m training.truth_baseline` from the committed
+decodes (a Mac with the Muraja harness built).
 
 ## The sites
 

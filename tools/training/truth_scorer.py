@@ -81,11 +81,12 @@ sites that could belong to it (same population and family, a prescribed value co
 with the cell's side and heard value) and the best and worst case of its commit rate and
 committed accuracy with all of them counted as successes or as failures.
 
-Excluded items (#134, #138)
----------------------------
+Excluded items (#134, #138, #90)
+--------------------------------
 A site the shared exclusion takes out (:mod:`tadabur.exclusions`: ``waqf_realized``, its
 prescribed mark only exists in wasl and the reciter paused there; ``onset_trimmed``, its
-clip's opening sound is cut) is no site of its cell: it leaves every denominator and the
+clip's opening sound is cut; ``not_hafs``, the owner's note denies the recitation is Hafs) is
+no site of its cell: it leaves every denominator and the
 exclusions, with every record of its physical site, and is listed in the report under its
 reason.
 
@@ -433,7 +434,7 @@ def estimate(
 
     ``terms`` carry the sites' own weights: the point, ``num`` and ``den`` read them.
     ``unit_terms`` are the same terms on §1's unit scale where that differs
-    (:func:`_on_unit_scale`); the interval reads them, with ``weights`` their site weights."""
+    (:func:`unit_scale`); the interval reads them, with ``weights`` their site weights."""
     num, den = terms
     point = ratio(num, den)
     return {
@@ -569,7 +570,7 @@ def _as_given(rows: Sequence[SiteRow]) -> Sequence[SiteRow]:
     return rows
 
 
-def _on_unit_scale(rows: Sequence[SiteRow]) -> list[SiteRow]:
+def unit_scale(rows: Sequence[SiteRow]) -> list[SiteRow]:
     """``rows`` with weights of one common value set to exactly 1 (:func:`unit_if_equal`),
     for the §1 interval only: Wilson and Tango read counts. A point is scale-free."""
     weights = unit_if_equal([row.weight for row in rows])
@@ -638,6 +639,52 @@ def _cells_of(rows: Sequence[SiteRow]) -> list[Cell]:
     return sorted(observed | pooled | required)
 
 
+@dataclass(frozen=True)
+class ScoredSites:
+    """The sites a report is over, before any cell: one record per physical site
+    (:func:`reconcile`), less the shared exclusion's items, each site with a verdict as a
+    :class:`SiteRow` and each without one (``unclear``, ``pending``) with its weight."""
+
+    #: Every reconciled site the shared exclusion keeps, verdict or not.
+    sites: list[TruthSite]
+    rows: list[SiteRow]
+    excluded: list[tuple[TruthSite, float]]
+    reconciled: Reconciled
+    #: Per exclusion reason, the ids it took out.
+    taken: dict[str, list[str]]
+
+
+def scored_sites(
+    sites: Sequence[TruthSite],
+    reciter_of: Mapping[str, int],
+    decodes: Mapping[str, Mapping[str, str]],
+    muraja: MurajaGrades | None = None,
+    design_weights: Mapping[str, float] | None = None,
+    excluded_items: Exclusions = NONE,
+) -> ScoredSites:
+    """Every site :func:`score` reads, with its weight, reciter, outcome under every arm and
+    app outcomes (arguments as :func:`score`'s). Any per-site table reads these rows, so its
+    weights, exclusions and outcomes are the report's own."""
+    reconciled = reconcile(sites, design_weights)
+    kept, taken = without_excluded(reconciled.sites, sites, excluded_items)
+    weights = reconciled.weights
+    arms = sorted(decodes)
+    outcomes = outcomes_by_arm(kept, decodes)
+    rows = [
+        SiteRow(
+            site,
+            weights[site.site_id],
+            reciter_of[site.audio_filename],
+            {arm: outcomes[arm][site.site_id] for arm in arms},
+            _app_outcomes(muraja, site, arms),
+        )
+        for site in kept
+        if side(site) is not None
+    ]
+    excluded = [(site, weights[site.site_id]) for site in kept if side(site) is None]
+    return ScoredSites(kept, rows, excluded, reconciled, taken)
+
+
 def score(
     sites: Sequence[TruthSite],
     reciter_of: Mapping[str, int],
@@ -652,29 +699,15 @@ def score(
     string, ``reciter_of[audio_filename]`` a canonical reciter id; ``design_weights`` gives
     sites a per-site weight (:func:`site_weights`); ``excluded_items`` names the items the
     shared exclusion takes out (module docstring)."""
-    reconciled = reconcile(sites, design_weights)
-    sites, taken = without_excluded(reconciled.sites, sites, excluded_items)
-    weights = reconciled.weights
+    scored = scored_sites(sites, reciter_of, decodes, muraja, design_weights, excluded_items)
+    rows, excluded, reconciled, taken = scored.rows, scored.excluded, scored.reconciled, scored.taken
     arms = sorted(decodes)
-    outcomes = outcomes_by_arm(sites, decodes)
-    rows = [
-        SiteRow(
-            site,
-            weights[site.site_id],
-            reciter_of[site.audio_filename],
-            {arm: outcomes[arm][site.site_id] for arm in arms},
-            _app_outcomes(muraja, site, arms),
-        )
-        for site in sites
-        if side(site) is not None
-    ]
     scorings = [s.name for s in muraja.scorings] if muraja else []
-    excluded = [(site, weights[site.site_id]) for site in sites if side(site) is None]
 
     # Per-site design weights (Ship A) read a cell of one common weight as equally weighted
     # (acceptance_stats.unit_if_equal) for its intervals; the legacy stratum weights keep
     # their scale. Points, sums and the exclusion sensitivity always read the own weights.
-    on_unit_scale = _on_unit_scale if design_weights is not None else _as_given
+    on_unit_scale = unit_scale if design_weights is not None else _as_given
     cells = []
     for cell in _cells_of(rows):
         members = [row for row in rows if cell.holds(row.site)]
@@ -704,7 +737,7 @@ def score(
         "bootstrap": {"replicates": REPLICATES, "seed": SEED, "cluster": "canonical reciter id"},
         "muraja": muraja.as_dict() if muraja else None,
         "arms": arms,
-        "sites": _site_counts(sites, reciter_of, reconciled.sites, taken),
+        "sites": _site_counts(scored.sites, reciter_of, reconciled.sites, taken),
         "physical_sites_merged": reconciled.merged,
         **taken,
         "exclusions": _exclusions(excluded),
@@ -760,6 +793,7 @@ def power_inputs(
     decodes: Mapping[str, Mapping[str, str]],
     muraja: MurajaGrades,
     excluded_items: Exclusions = NONE,
+    design_weights: Mapping[str, float] | None = None,
 ) -> dict:
     """The §8 power simulation's baseline inputs: per-reciter sufficient statistics.
 
@@ -768,9 +802,10 @@ def power_inputs(
     reciter-clustered baseline bootstrap need (Σw, ΣwC, ΣwA, ΣwF, Σw[word flagged] and
     Σw[graded], both under the shipped default). Only correct- and mistake-side sites with a
     verdict; ``excluded`` counts the rest per stratum. The items the shared exclusion takes
-    out are left out as :func:`score` leaves them out, and listed under their reasons.
+    out are left out as :func:`score` leaves them out, and listed under their reasons;
+    ``design_weights`` are :func:`score`'s.
     """
-    reconciled = reconcile(sites)
+    reconciled = reconcile(sites, design_weights)
     sites, taken = without_excluded(reconciled.sites, sites, excluded_items)
     weights = reconciled.weights
     outcomes = outcomes_by_arm(sites, decodes)

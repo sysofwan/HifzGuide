@@ -1,12 +1,17 @@
-"""Score the base teacher and ``h448`` on every committed truth site, in one command (#84).
+"""Score the base teacher and ``h448`` on every committed truth site, in one command (#84, #90).
 
 This is the runner around :mod:`training.truth_scorer`:
 
 1. **Sites.** Every truth-site file ``tadabur/truth_sites/<name>.jsonl`` (a name without a
    dot, so ``p35_fixtures.relocation.jsonl`` is not one), loaded and validated by
-   :func:`tadabur.truth_sites.load_truth_sites`, and each site's canonical reciter id from
-   the staged-clip registry.
-2. **Decodes.** Each model decodes every item (a site's clip and sample span) two ways,
+   :func:`tadabur.truth_sites.load_truth_sites`, with the listening session's verdicts applied
+   by site id (:func:`tadabur.listening_session.adjudicated`, which resolves the P3.5
+   re-listens), each site's canonical reciter id from the staged-clip registry, and the
+   verified sites' design weights (:mod:`tadabur.ship_a_verified`). Ship A's word sample with
+   its whole-word verdicts (:func:`tadabur.word_sample.verified_words`) is decoded and graded
+   alongside.
+2. **Decodes.** Each model decodes every item (a site's or sampled word's clip and sample
+   span) two ways,
    through :class:`training.decoding.Decoder`: the span **whole**, and the deployed
    **stream at b = 0** (``confirmed-stream-v2-flush``: 5 s windows from the item's first
    sample, each normalized on its own, 1 s hop, block 0 committed, the first window's startup
@@ -34,9 +39,13 @@ This is the runner around :mod:`training.truth_scorer`:
    the decodes come from the GPU box.
 5. **Report.** :func:`training.truth_scorer.score` over every site and arm, less the items
    the shared exclusion takes out (:func:`tadabur.exclusions.current`: waqf realized, #134;
-   onset trimmed, #138), written as
+   onset trimmed, #138; not Hafs, #90), written as
    :data:`REPORT_PATH`; the §8 power simulation's inputs as :data:`POWER_INPUTS_PATH`
-   (base and h448 only); and the human-readable report :data:`DOC_PATH`.
+   (base and h448 only); and the human-readable report :data:`DOC_PATH`. With it (#90): the
+   word sample's false flags and their causes (:mod:`training.word_flags`), the decode-level
+   direction table over the verified sites per frame and half with :data:`ARM_GAPS`
+   (:mod:`training.direction_table`), and the synthetic-edit blind check per operation with
+   #90's call (:mod:`tadabur.edit_check_summary`).
 
 Every site appears under every arm, so a comparison between protocols or models is always
 paired on the same sites (§9 streaming pairing): an item one arm could not decode is an
@@ -44,8 +53,9 @@ error, never a dropped site.
 
 Usage (from ``tools/``)::
 
-    # On the GPU box, with the staged clips (decodes only what the caches lack):
-    python -m training.truth_baseline --audio-dir /root/scratch/issue-83/stage/clips --decode-only
+    # On the GPU box, with the staged clips (decodes only what the caches lack); Ship A's
+    # mining extension stages its clips apart, so give one directory holding both:
+    python -m training.truth_baseline --audio-dir <clips> --decode-only
     # On a Mac with the Muraja harness built, torch-free, from the committed decodes:
     python -m training.truth_baseline
 """
@@ -61,9 +71,18 @@ from pathlib import Path
 
 import numpy as np
 
+from tadabur.edit_check_summary import summarize as summarize_edit_check
+from tadabur.edit_check_summary import type_verdicts
 from tadabur.exclusions import Exclusions, current
+from tadabur.listening_session import adjudicated, read_verdicts
+from tadabur.ship_a import HALVES
+from tadabur.ship_a_verified import FRAMES, Design, load_designs
 from tadabur.staged_audio import REGISTRY_PATH, StagedClip, load_staged_clips
+from tadabur.synthetic_edits import EDITS_PATH, read_items
+from tadabur.synthetic_edits import WORKLIST_PATH as BLIND_CHECK_PATH
 from tadabur.truth_sites import TRUTH_SITES_DIR, TruthSite, load_truth_sites
+from tadabur.word_sample import SampledWord, VerifiedWord, load_words, verified_words
+from training import direction_table
 from training.decoding import (
     APP_CHECKS,
     INFERENCE_POLICY,
@@ -77,14 +96,18 @@ from training.muraja_policy import (
     RECORDED_CHECKS,
     SCORINGS,
     SINGLE_DECODE,
+    Harness,
     Item,
+    MurajaText,
+    SiteGrade,
     grade_items,
     require_harness,
     single_decode_checks,
 )
 from training.tashkeel_eval import write_text_atomically
 from training.truth_baseline_doc import render
-from training.truth_scorer import MurajaGrades, item_key, power_inputs, score
+from training.truth_scorer import MurajaGrades, item_key, power_inputs, score, scored_sites
+from training.word_flags import word_report
 
 BASELINE_DIR = Path(__file__).parent.parent / "tadabur" / "truth_baseline"
 DECODES_DIR = BASELINE_DIR / "decodes"
@@ -111,6 +134,11 @@ CHECKS = "checks"
 CHECK_PROTOCOLS = {CHECKS: APP_CHECKS}
 #: Every protocol an arm can be under.
 ARM_PROTOCOLS = {**PROTOCOLS, **CHECK_PROTOCOLS}
+
+
+#: What an item is decoded for: a truth site, or a sampled word (:mod:`tadabur.word_sample`).
+#: Either names its clip, its span and the clip's checksum.
+Located = TruthSite | SampledWord
 
 
 def arm(model: str, protocol: str) -> str:
@@ -141,9 +169,12 @@ def load_sites(paths: Sequence[Path]) -> list[TruthSite]:
     return sites
 
 
-def items_of(sites: Sequence[TruthSite], registry: Mapping[str, StagedClip]) -> dict[str, TruthSite]:
-    """One representative site per item; every item's clip must be staged as recorded."""
-    items: dict[str, TruthSite] = {}
+def items_of(
+    sites: Sequence[Located], registry: Mapping[str, StagedClip]
+) -> dict[str, Located]:
+    """One representative site (or sampled word) per item; every item's clip must be staged
+    as recorded."""
+    items: dict[str, Located] = {}
     for site in sites:
         clip = registry.get(site.audio_filename)
         if clip is None or clip.audio_sha256 != site.audio_sha256:
@@ -267,7 +298,7 @@ def check_cache(path: Path, cache: dict, model_ref: str, protocols: Mapping[str,
 
 def decode_items(
     decoder: Decoder,
-    items: Mapping[str, TruthSite],
+    items: Mapping[str, Located],
     registry: Mapping[str, StagedClip],
     audio_dir: Path,
     decode: Callable[[Decoder, np.ndarray], dict],
@@ -276,7 +307,7 @@ def decode_items(
     from tadabur.staged_audio import verify_staged
     from training.decode_evalset import read_clip_audio
 
-    by_clip: dict[str, list[tuple[str, TruthSite]]] = {}
+    by_clip: dict[str, list[tuple[str, Located]]] = {}
     for key, site in sorted(items.items()):
         by_clip.setdefault(site.audio_filename, []).append((key, site))
     decoded: dict[str, dict] = {}
@@ -293,7 +324,7 @@ def update_cache(
     store: Store,
     name: str,
     model_ref: str,
-    items: Mapping[str, TruthSite],
+    items: Mapping[str, Located],
     registry: Mapping[str, StagedClip],
     audio_dir: Path | None,
 ) -> dict:
@@ -342,7 +373,7 @@ def update_cache(
 def update_decodes(
     name: str,
     model_ref: str,
-    items: Mapping[str, TruthSite],
+    items: Mapping[str, Located],
     registry: Mapping[str, StagedClip],
     audio_dir: Path | None,
 ) -> dict:
@@ -350,19 +381,32 @@ def update_decodes(
     return update_cache(DECODE_STORE, name, model_ref, items, registry, audio_dir)
 
 
+@dataclass(frozen=True)
+class WordGrades:
+    """Every sampled word's kept grade as ``[scoring][arm][word id]``, and each placed word's
+    phonemes on Muraja's reference (what :mod:`training.word_flags` attributes a flag with)."""
+
+    grades: Mapping[str, Mapping[str, Mapping[str, SiteGrade]]]
+    texts: Mapping[str, str]
+
+
 def app_outcomes(
     sites: Sequence[TruthSite],
+    words: Sequence[VerifiedWord],
     decodes: Mapping[str, Mapping[str, str]],
     sequences: Mapping[str, Mapping[str, Sequence[dict]]],
-) -> MurajaGrades:
-    """Every site's app outcome per scoring and arm, replayed through Muraja's engine
-    (``training.muraja_policy``): an arm in ``sequences`` on each item's recorded check
-    sequence, any other on the checks its one decode stands for (single-decode approximation)."""
-    by_item: dict[str, list[TruthSite]] = {}
-    for site in sites:
+    harness: Harness,
+) -> tuple[MurajaGrades, WordGrades]:
+    """Every site's app outcome and every sampled word's kept grade per scoring and arm,
+    replayed through Muraja's engine (``training.muraja_policy``): an arm in ``sequences`` on
+    each item's recorded check sequence, any other on the checks its one decode stands for
+    (single-decode approximation). A word is graded in the same session as the sites of its
+    item."""
+    by_item: dict[str, list[Located]] = {}
+    for site in [*sites, *(word.site for word in words)]:
         by_item.setdefault(item_key(site), []).append(site)
 
-    def checks(arm: str, key: str, item_sites: list[TruthSite]) -> tuple[dict, ...]:
+    def checks(arm: str, key: str, item_sites: list[Located]) -> tuple[dict, ...]:
         if arm in sequences:
             return tuple(sequences[arm][key])
         n_samples = item_sites[0].end_sample - item_sites[0].start_sample
@@ -373,15 +417,29 @@ def app_outcomes(
         for arm in sorted(decodes)
         for key, item_sites in sorted(by_item.items())
     ]
-    graded = grade_items(items, SCORINGS, require_harness())
-    outcomes = {
-        scoring: {arm: {} for arm in decodes} for scoring in graded.grades
-    }
+    graded = grade_items(items, SCORINGS, harness)
+    word_ids = {word.site.site_id for word in words}
+    outcomes: dict[str, dict[str, dict[str, str]]] = {
+        scoring: {arm: {} for arm in decodes} for scoring in graded.grades}
+    word_grades: dict[str, dict[str, dict[str, SiteGrade]]] = {
+        scoring: {arm: {} for arm in decodes} for scoring in graded.grades}
     for scoring, by_site in graded.grades.items():
         for (key, site_id), grade in by_site.items():
-            outcomes[scoring][key.split("#", 1)[0]][site_id] = grade.outcome
+            arm_ = key.split("#", 1)[0]
+            if site_id in word_ids:
+                word_grades[scoring][arm_][site_id] = grade
+            else:
+                outcomes[scoring][arm_][site_id] = grade.outcome
     approximations = {arm: RECORDED_CHECKS if arm in sequences else SINGLE_DECODE for arm in decodes}
-    return MurajaGrades(outcomes, SCORINGS, graded.build, approximations, graded.unplaced, graded.unattributed)
+    muraja = MurajaGrades(
+        outcomes, SCORINGS, graded.build, approximations,
+        tuple(i for i in graded.unplaced if i not in word_ids),
+        tuple(i for i in graded.unattributed if i not in word_ids),
+    )
+    text = MurajaText(harness.quran_db)
+    placed = {word.site.site_id: text.locate(word.site) for word in words}
+    texts = {word_id: text.word_phonemes(where) for word_id, where in placed.items() if where}
+    return muraja, WordGrades(word_grades, texts)
 
 
 def p35_reproduction(sites: Sequence[TruthSite], base_spans: Mapping[str, str]) -> dict:
@@ -408,15 +466,68 @@ def scored(
     models: Sequence[str],
     muraja: MurajaGrades,
     excluded_items: Exclusions,
+    design_weights: Mapping[str, float] | None = None,
 ) -> tuple[dict, dict]:
     """The report over every arm and the §8 power inputs (base and ``h448`` only), both less
-    the items the shared exclusion takes out, with weights computed over every site."""
+    the items the shared exclusion takes out, with weights computed over every site (the
+    verified sites' design weights, :mod:`tadabur.ship_a_verified`)."""
     report = score(sites, reciter_of, decodes, comparisons(models), muraja,
-                   excluded_items=excluded_items)
+                   design_weights=design_weights, excluded_items=excluded_items)
     baseline_arms = {a: d for a, d in decodes.items() if a.split("/")[0] in ("base", "h448")}
-    inputs = power_inputs(sites, reciter_of, baseline_arms, muraja, excluded_items)
+    inputs = power_inputs(sites, reciter_of, baseline_arms, muraja, excluded_items, design_weights)
     inputs["today_system_arm"] = arm("h448", "stream_b0")
     return report, inputs
+
+
+#: The paired differences each verified-site row reports (#90): ``h448`` streamed against the
+#: base whole (the sizing's "base already right"), split into the weights (both whole) and
+#: ``h448``'s windowing (its stream against its whole decode); the base's own windowing; and the
+#: two models on the app's checks.
+ARM_GAPS = (
+    (arm("h448", "stream_b0"), arm("base", "spans")),
+    (arm("h448", "spans"), arm("base", "spans")),
+    (arm("h448", "stream_b0"), arm("h448", "spans")),
+    (arm("base", "stream_b0"), arm("base", "spans")),
+    (arm("h448", CHECKS), arm("base", CHECKS)),
+)
+
+
+def direction_views(
+    sites: Sequence[TruthSite],
+    reciter_of: Mapping[str, int],
+    decodes: Mapping[str, Mapping[str, str]],
+    designs: Mapping[str, Design],
+    excluded_items: Exclusions,
+) -> dict:
+    """The decode-level direction table (:mod:`training.direction_table`) over the verified
+    sites, per frame and half, each row with :data:`ARM_GAPS` (when both models are scored)."""
+    weights = {site_id: d.weight for site_id, d in designs.items()}
+    rows = scored_sites(sites, reciter_of, decodes, design_weights=weights,
+                        excluded_items=excluded_items).rows
+    gaps = [g for g in ARM_GAPS if set(g) <= set(decodes)]
+    views: dict[str, dict[str, list[dict]]] = {}
+    for frame in FRAMES:
+        views[frame] = {}
+        for half in HALVES:
+            held = [r for r in rows if r.site.site_id in designs
+                    and (designs[r.site.site_id].frame, designs[r.site.site_id].half) == (frame, half)]
+            entries = direction_table.table(held, sorted(decodes))
+            for entry, key in zip(entries, direction_table.KEYS):
+                members = direction_table.members(held, key)
+                if members:
+                    entry["gaps"] = {f"{a} - {b}": direction_table.difference(members, a, b)
+                                     for a, b in gaps}
+            views[frame][half] = entries
+    return views
+
+
+def edit_check() -> dict:
+    """The synthetic-edit blind check per operation (``tadabur.edit_check_summary``), with
+    #90's call on each type."""
+    summary = summarize_edit_check(load_truth_sites(BLIND_CHECK_PATH), read_items(EDITS_PATH),
+                                   read_verdicts(), current())
+    summary["type_verdicts"] = type_verdicts(summary)
+    return summary
 
 
 def main() -> None:
@@ -434,10 +545,13 @@ def main() -> None:
     models = dict(m.split("=", 1) for m in args.model) or DEFAULT_MODELS
 
     files = truth_site_files()
-    sites = load_sites(files)
+    verdicts = read_verdicts()
+    sites = adjudicated(load_sites(files), verdicts)
+    words = verified_words(load_words(), verdicts)
     registry = load_staged_clips(REGISTRY_PATH)
-    items = items_of(sites, registry)
-    print(f"{len(sites)} sites on {len(items)} items from {[p.name for p in files]}", flush=True)
+    items = items_of([*sites, *(word.site for word in words)], registry)
+    print(f"{len(sites)} sites and {len(words)} sampled words on {len(items)} items from "
+          f"{[p.name for p in files]}", flush=True)
 
     decodes: dict[str, dict[str, str]] = {}
     sequences: dict[str, dict[str, list[dict]]] = {}
@@ -457,8 +571,13 @@ def main() -> None:
         return
 
     reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
-    muraja = app_outcomes(sites, decodes, sequences)
-    report, inputs = scored(sites, reciter_of, decodes, list(models), muraja, current())
+    muraja, word_grades = app_outcomes(sites, words, decodes, sequences, require_harness())
+    excluded, designs = current(), load_designs()
+    weights = {site_id: d.weight for site_id, d in designs.items()}
+    report, inputs = scored(sites, reciter_of, decodes, list(models), muraja, excluded, weights)
+    report["word_sample"] = word_report(words, word_grades.grades, word_grades.texts, excluded)
+    report["directions"] = direction_views(sites, reciter_of, decodes, designs, excluded)
+    report["edit_check"] = edit_check()
     report["truth_site_files"] = [p.name for p in files]
     report["fingerprints"] = fingerprints
     report["protocols"] = ARM_PROTOCOLS

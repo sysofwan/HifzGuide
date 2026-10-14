@@ -34,6 +34,12 @@ twice plus 4 s).
 Files (``tools/tadabur/ship_a/``): ``word_sample.jsonl`` (one word per line, its provenance,
 place and design) and ``word_sample.summary.json`` (the frame per reciter, the draw, minutes).
 
+**Verdicts** (#61). The whole-word answers live in ``listening_session/verdicts.jsonl`` with
+every other verdict; :func:`verified_words` joins them to the sample, each word weighing the
+inverse of its selection probability within the sample's frame (acceptance rules §1 as amended
+2026-10-10). The truth-site schema has no whole-word verdict, so this is the word sample's
+scoring representation (#90).
+
 Usage (from ``tools/``; torch-free, a few seconds)::
 
   python -m tadabur.word_sample draw
@@ -44,6 +50,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
@@ -52,7 +59,7 @@ from training.tashkeel_eval import write_text_atomically
 
 from .audio import TARGET_SAMPLE_RATE
 from .exposure import MINING_POOL, excluded_reciters
-from .listening_session import POOL_CLIPS_PATH, PLAYS_PER_SITE, excerpt_span
+from .listening_session import POOL_CLIPS_PATH, PLAYS_PER_SITE, Verdict, excerpt_span
 from .mining_pool import FRAME_PATH as POOL_FRAME_PATH
 from .mining_pool import UNIFORM, PoolClip, PoolSegment, load_manifest
 from .power_frame import unseen_clips
@@ -281,6 +288,41 @@ def load_words(path: Path = WORD_SAMPLE_PATH) -> list[WordSite]:
     if len({row.site.site_id for row in rows}) != len(rows):
         raise ValueError(f"{path}: two rows share a site id")
     return rows
+
+
+@dataclass(frozen=True)
+class VerifiedWord:
+    """A sampled word with the owner's whole-word verdict: ``correct``, ``mistake`` or
+    ``unclear`` (:data:`WORD_VERDICTS`)."""
+
+    row: WordSite
+    heard: str
+
+    @property
+    def site(self) -> SampledWord:
+        return self.row.site
+
+    @property
+    def weight(self) -> float:
+        """The inverse of the word's selection probability within the sample's frame."""
+        return 1 / self.row.draw_probability
+
+    @property
+    def side(self) -> str | None:
+        """Correct recitation, a real mistake, or ``None`` (unclear: out of every denominator)."""
+        return None if self.heard == UNCLEAR else self.heard
+
+
+def verified_words(rows: list[WordSite], verdicts: Mapping[str, Verdict]) -> list[VerifiedWord]:
+    """Every sampled word with its verdict; a word with no verdict, or one outside
+    :data:`WORD_VERDICTS`, is an error (the sample is answered in full, #61)."""
+    words = []
+    for row in rows:
+        verdict = verdicts.get(row.site.site_id)
+        if verdict is None or verdict.heard not in WORD_VERDICTS:
+            raise ValueError(f"{row.site.site_id}: no whole-word verdict ({verdict})")
+        words.append(VerifiedWord(row, verdict.heard))
+    return words
 
 
 def summarize(words: dict[int, list[FrameWord]], rows: list[WordSite]) -> dict:

@@ -44,6 +44,10 @@ wandb/
 # (segment span, realized reference and the base decode the rule was applied to).
 !tools/tadabur/truth_sites/p35_fixtures.jsonl
 !tools/tadabur/truth_sites/p35_fixtures.relocation.jsonl
+# Ship A's answered sites folded into truth sites, and each one's frame, half and listening
+# probability (#90).
+!tools/tadabur/truth_sites/ship_a_verified.jsonl
+!tools/tadabur/ship_a/verified_design.jsonl
 # The listening session (#87): the worklist of truth-site skeletons the owner adjudicates, and
 # the verdicts the blind UI writes straight into the repo as they are given.
 !tools/tadabur/listening_session/worklist.jsonl

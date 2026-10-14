@@ -23,8 +23,8 @@ rule that produced the quality:
   :data:`TARGET_PAIR` when they are ``ذ↔ظ``, ``س↔ش`` or ``ط↔ق`` (target pairs the app does not
   forgive), else :data:`OTHER_CONSONANT`. A deletion is :data:`SHADDAH_CAUSE` only when the
   deleted occurrence is a consonant geminate (:func:`deleted_run`): a consonant
-  (``truth_sites.CONSONANTS``, so never a long vowel such as ``اا``) in a run of at least two
-  in the word's Muraja reference. Anything else, or an occurrence that cannot be identified, is
+  (``truth_sites.CONSONANTS``, so never a long vowel such as ``اا``) doubled with no haraka
+  between the two in the word's Muraja reference (so never ``عَدَدَ``'s two ``د``). Anything else, or an occurrence that cannot be identified, is
   another consonant;
 * a word whose kept grade is **skipped** (Muraja's skip marking, ``SkipMarking.swift``) is
   :data:`SKIPPED`;
@@ -110,38 +110,52 @@ def tashkeel_mark(error: dict) -> str:
 SKIPPED_SCALARS = frozenset("\u06e6\u06e5\u06fe\u0687")
 
 
-def letters(word: str) -> list[str]:
-    """The base letter of each unit Muraja's scorer numbers in a word: one per Character
-    (a letter with its marks), less :data:`SKIPPED_SCALARS`."""
-    bases = []
+def units(word: str) -> list[str]:
+    """Each unit Muraja's scorer numbers in a word: one per Character (a letter with the marks
+    that follow it), less :data:`SKIPPED_SCALARS`."""
+    out: list[str] = []
     for char in word:
         if char in SKIPPED_SCALARS:
             continue
-        if unicodedata.category(char) != "Mn":
-            bases.append(char)
-    return bases
+        if unicodedata.category(char) == "Mn" and out:
+            out[-1] += char
+        else:
+            out.append(char)
+    return out
+
+
+def letters(word: str) -> list[str]:
+    """The base letter of each of :func:`units`."""
+    return [unit[0] for unit in units(word)]
 
 
 def deleted_run(word: str, letter: str, group: int) -> int | None:
-    """The length of the run of ``letter`` the deletion at ``group`` took a letter from.
+    """The length of the geminate run of ``letter`` the deletion at ``group`` took a letter
+    from: a run of that consonant joined with **no haraka between them** (a bare letter
+    followed by the same letter, as the phonetizer writes a geminate), so ``عَدَدَ`` holds
+    two runs of one, not a geminate.
 
     The deleted occurrence is the unit ``group`` names when that unit is ``letter`` (a
     collapsed geminate whose gap comes first is reported on its first half, at the group the
     scorer would give it, ``WordScoring.swift:478-489, 626-636``); otherwise, when every run of
     ``letter`` in the word has one length, that length; otherwise ``None`` (unidentified)."""
-    bases = letters(word)
+    held = units(word)
+
+    def joined(i: int) -> bool:
+        """Unit ``i`` and the next are one geminate: the same letter, no mark on the first."""
+        return held[i] == letter and held[i + 1][0] == letter
 
     def run_at(i: int) -> int:
         start, end = i, i
-        while start > 0 and bases[start - 1] == letter:
+        while start > 0 and joined(start - 1):
             start -= 1
-        while end + 1 < len(bases) and bases[end + 1] == letter:
+        while end + 1 < len(held) and joined(end):
             end += 1
         return end - start + 1
 
-    if 0 <= group < len(bases) and bases[group] == letter:
+    if 0 <= group < len(held) and held[group][0] == letter:
         return run_at(group)
-    runs = {run_at(i) for i, base in enumerate(bases) if base == letter}
+    runs = {run_at(i) for i, unit in enumerate(held) if unit[0] == letter}
     return runs.pop() if len(runs) == 1 else None
 
 

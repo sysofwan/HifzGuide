@@ -59,6 +59,15 @@ def test_the_deleted_occurrence_decides_when_a_letter_is_both_single_and_doubled
     assert w.consonant_cause(deletion("د", 0), word) == w.OTHER_CONSONANT
 
 
+def test_two_letters_with_a_haraka_between_them_are_no_geminate():
+    """Sol's round 2 on #145 (10:5, word 11): عَدَدَ decoded عَ keeps ``g1:del:د``; its two د
+    are separated by a fatha, so the deletion is another consonant, not a collapsed shaddah."""
+    assert w.units("عَدَدَ") == ["عَ", "دَ", "دَ"]
+    assert w.deleted_run("عَدَدَ", "د", 1) == 1
+    assert w.consonant_cause(deletion("د", 1), "عَدَدَ") == w.OTHER_CONSONANT
+    assert w.consonant_cause(deletion("د", 1), "مَددَ") == w.SHADDAH_CAUSE  # bare د then دَ
+
+
 def test_the_scorer_skips_long_vowel_marks_when_it_numbers_groups():
     assert w.letters("رَسُۥۥلَ") == ["ر", "س", "ل"]
 

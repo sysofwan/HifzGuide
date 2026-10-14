@@ -14,10 +14,12 @@ import pytest
 from tadabur.edit_check_summary import CALLS
 from tadabur.exclusions import REASONS, Exclusions
 from tadabur.ship_a import HALVES
-from tadabur.ship_a_verified import FRAMES
+from tadabur.ship_a_verified import FRAMES, SHIP_A, Design
 from tadabur.truth_sites import TRUTH_SITES_DIR
 from training.decoding import APP_CHECKS, SPANS, DecodeFingerprint
 from training.muraja_policy import FLAGGED, RECORDED_CHECKS, SHIPPED_DEFAULT, SINGLE_DECODE
+from training.test_direction_table import ZAKARA, _site
+from training.test_site_outcomes import DHAKARA, DHAL
 from training.test_truth_scorer import RECITERS, app, decodes_for, sites  # noqa: F401  (a fixture)
 from training.truth_baseline import (
     ARM_PROTOCOLS,
@@ -36,9 +38,10 @@ from training.truth_baseline import (
     read_cache,
     scored,
     truth_site_files,
+    verified_views,
 )
 from training.truth_baseline_doc import SPARSE_MARK, render
-from training.truth_scorer import score
+from training.truth_scorer import item_key, score
 
 
 def test_every_committed_truth_site_file_and_nothing_else():
@@ -236,3 +239,25 @@ def test_the_committed_report_carries_the_verified_views():
     assert report["edit_check"]["type_verdicts"] == CALLS
     assert report["word_sample"]["words"] == 160
     assert "ship_a_verified.jsonl" in report["truth_site_files"]
+
+
+def test_a_train_half_site_cannot_move_a_held_out_number():
+    """Sol's round 2 on #145: each frame and half is scored alone, so changing what the models
+    decoded at a train-half site leaves every held-out view (app outcome, directions, strata,
+    teacher outcomes) exactly as it was."""
+    sites = [replace(_site(f"{n}.wav", DHAKARA, "ذ↔ز", DHAL, DHAL),
+                     stratum="ship_a:ذ→ز:h448_partner:base_wrong") for n in "abc"]
+    designs = {s.site_id: Design(s.site_id, SHIP_A, half, 1.0)
+               for s, half in zip(sites, ("train", "held_out", "held_out"))}
+    reciters = {s.audio_filename: n for n, s in enumerate(sites)}
+
+    def views(train_decode: str) -> dict:
+        decodes = {f"{m}/{p}": {item_key(s): train_decode if s is sites[0] else s.reference
+                                for s in sites}
+                   for m in ("base", "h448") for p in ARM_PROTOCOLS}
+        return verified_views(sites, reciters, decodes, app(sites, list(decodes)), designs,
+                              Exclusions.of())
+
+    before, after = views(DHAKARA), views(ZAKARA)
+    assert before["ship_a"]["held_out"] == after["ship_a"]["held_out"]
+    assert before["ship_a"]["train"] != after["ship_a"]["train"]

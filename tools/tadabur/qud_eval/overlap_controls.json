@@ -1,0 +1,4565 @@
+{
+ "cross_aligner": [
+  {
+   "audio_filename": "tadabur_spk0000_S58_A19_4b564563_000000.wav",
+   "other": {
+    "row": 5143,
+    "slug": "saud_al_shuraim_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 5144,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 5144,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "59:19",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S38_A40_cc830a72_000025.wav",
+   "other": {
+    "row": 4097,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 4097,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 4097,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "39:40",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S15_A14_9ee04842_000008.wav",
+   "other": {
+    "row": 1913,
+    "slug": "bandar_baleela_qdc"
+   },
+   "qud": [
+    {
+     "row": 1914,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 1914,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "16:14",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S79_A26_2280d749_000001.wav",
+   "other": {
+    "row": 5783,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 5783,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 5783,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "80:26",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S31_A17_88309ae2_000013.wav",
+   "other": {
+    "row": 3519,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 3519,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 3519,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "32:17",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S5_A81_a4b08c5e_000050.wav",
+   "other": {
+    "row": 869,
+    "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 869,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 869,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "6:81",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S4_A73_6cd1fa7d_000038.wav",
+   "other": {
+    "row": 741,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 741,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 741,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "5:73",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S10_A91_f01929fa_000006.wav",
+   "other": {
+    "row": 1563,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 1563,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 1563,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "11:91",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S85_A2_f13f2fe7_000223.wav",
+   "other": {
+    "row": 5932,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 5932,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 5932,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "86:2",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S26_A90_6b2b4740_000052.wav",
+   "other": {
+    "row": 3248,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 3248,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 3248,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "27:90",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S19_A52_30650bf8_000033.wav",
+   "other": {
+    "row": 2399,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 2399,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 2399,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "20:52",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S36_A8_186fa9ac_000007.wav",
+   "other": {
+    "row": 3795,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 3795,
+     "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+    },
+    {
+     "row": 3795,
+     "slug": "abdulbasit_abdulsamad_tarteel"
+    }
+   ],
+   "surah_ayah": "37:8",
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S27_A25_fa7b70e9_000056.wav",
+   "other": {
+    "row": 3276,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 3276,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 3276,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 3276,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "28:25",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S8_A123_a3b70d7a_000026.wav",
+   "other": {
+    "row": 1357,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 1357,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 1357,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 1357,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "9:123",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S40_A8_dfcaf153_000124.wav",
+   "other": {
+    "row": 4224,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 4225,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 4225,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 4225,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "41:8",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S25_A94_2f30c1fb_000084.wav",
+   "other": {
+    "row": 3025,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 3025,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 3025,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 3025,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "26:94",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S50_A50_c646abf7_000018.wav",
+   "other": {
+    "row": 4724,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 4724,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 4724,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 4724,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "51:50",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S53_A48_c646abf7_000144.wav",
+   "other": {
+    "row": 4893,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 4893,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 4893,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 4893,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "54:48",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S21_A29_3d491e39_000019.wav",
+   "other": {
+    "row": 2622,
+    "slug": "saad_al_ghamdi_tarteel"
+   },
+   "qud": [
+    {
+     "row": 2623,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 2623,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 2623,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "22:29",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk1_S3_A22_1f16510b_000085.wav",
+   "other": {
+    "row": 514,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 514,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 514,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 514,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "4:22",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S1_A81_81b323eb_000051.wav",
+   "other": {
+    "row": 87,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 87,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 87,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 87,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "2:81",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S57_A20_b5a3dc00_000014.wav",
+   "other": {
+    "row": 5123,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 5123,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 5123,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 5123,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "58:20",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S11_A22_6c26f98a_000004.wav",
+   "other": {
+    "row": 1617,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 1617,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 1617,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 1617,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "12:22",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S51_A21_83a172ea_000041.wav",
+   "other": {
+    "row": 4755,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 4755,
+     "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+    },
+    {
+     "row": 4755,
+     "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+    },
+    {
+     "row": 4755,
+     "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+    }
+   ],
+   "surah_ayah": "52:21",
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S2_A33_dfe06a29_000025.wav",
+   "other": {
+    "row": 325,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 324,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 325,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "3:33",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S75_A7_c1ca6c83_000276.wav",
+   "other": {
+    "row": 5597,
+    "slug": "abdulbasit_abdulsamad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 5596,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 5597,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "76:7",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S1_A273_e27a9655_000159.wav",
+   "other": {
+    "row": 278,
+    "slug": "bandar_baleela_qdc"
+   },
+   "qud": [
+    {
+     "row": 278,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 279,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "2:273",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S47_A6_2e8fe117_000001.wav",
+   "other": {
+    "row": 4588,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 4587,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 4588,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "48:6",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S6_A20_e49d3813_000014.wav",
+   "other": {
+    "row": 973,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 972,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 973,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "7:20",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S6_A84_679ff4c9_000004.wav",
+   "other": {
+    "row": 1037,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 1036,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 1037,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "7:84",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S38_A61_3d0d6b9b_000048.wav",
+   "other": {
+    "row": 4118,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 4117,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 4118,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "39:61",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S20_A82_5251aab0_000056.wav",
+   "other": {
+    "row": 2564,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2563,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 2564,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "21:82",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S41_A30_33ad58a8_000020.wav",
+   "other": {
+    "row": 4301,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 4300,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 4301,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "42:30",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S8_A25_55b4c535_000011.wav",
+   "other": {
+    "row": 1259,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 1258,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 1259,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "9:25",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S1_A197_41c7029b_000118.wav",
+   "other": {
+    "row": 203,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 202,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 203,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "2:197",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0002_S11_A36_6b4310a7_000027.wav",
+   "other": {
+    "row": 1630,
+    "slug": "bandar_baleela_qdc"
+   },
+   "qud": [
+    {
+     "row": 1630,
+     "slug": "yasser_al_dosari_archive"
+    },
+    {
+     "row": 1631,
+     "slug": "yasser_al_dosari_yt"
+    }
+   ],
+   "surah_ayah": "12:36",
+   "tadabur_reciter": 2
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S34_A12_3931b57f_000009.wav",
+   "other": {
+    "row": 3671,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 3670,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "35:12",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S32_A43_2ee31329_000029.wav",
+   "other": {
+    "row": 3575,
+    "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 3574,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "33:43",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S27_A81_bc023467_000002.wav",
+   "other": {
+    "row": 3332,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 3331,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "28:81",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S18_A90_977dc332_000027.wav",
+   "other": {
+    "row": 2338,
+    "slug": "bandar_baleela_qdc"
+   },
+   "qud": [
+    {
+     "row": 2338,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "19:90",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S13_A52_a7ea0cf0_000004.wav",
+   "other": {
+    "row": 1800,
+    "slug": "maher_al_muaiqly_tarteel"
+   },
+   "qud": [
+    {
+     "row": 1800,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "14:52",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S17_A97_2de6a086_000064.wav",
+   "other": {
+    "row": 2235,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2235,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "18:97",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S6_A160_2ba24c5b_000150.wav",
+   "other": {
+    "row": 1113,
+    "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 1112,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "7:160",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S5_A10_17e9dbf0_000031.wav",
+   "other": {
+    "row": 798,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 797,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "6:10",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S6_A124_2ba24c5b_000117.wav",
+   "other": {
+    "row": 1077,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 1076,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "7:124",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S5_A116_c67c02cd_000002.wav",
+   "other": {
+    "row": 904,
+    "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 903,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "6:116",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S7_A16_b6a70dcf_000012.wav",
+   "other": {
+    "row": 1175,
+    "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 1174,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "8:16",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0008_S66_A3_82062297_000002.wav",
+   "other": {
+    "row": 5243,
+    "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 5242,
+     "slug": "saud_al_shuraim_mp3quran"
+    }
+   ],
+   "surah_ayah": "67:3",
+   "tadabur_reciter": 8
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S44_A10_773bfbdb_000005.wav",
+   "other": {
+    "row": 4482,
+    "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 4482,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 4481,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "45:10",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S23_A30_14ca22e7_000005.wav",
+   "other": {
+    "row": 2819,
+    "slug": "saad_al_ghamdi_tarteel"
+   },
+   "qud": [
+    {
+     "row": 2820,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 2819,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "24:30",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S51_A47_cc66f036_000065.wav",
+   "other": {
+    "row": 4781,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 4781,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 4780,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "52:47",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S75_A8_82fe2453_000101.wav",
+   "other": {
+    "row": 5598,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 5598,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 5597,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "76:8",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S40_A35_7f29f091_000059.wav",
+   "other": {
+    "row": 4252,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 4252,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 4251,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "41:35",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S5_A112_0e89ce70_000000.wav",
+   "other": {
+    "row": 900,
+    "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 900,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 899,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "6:112",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S6_A24_0a10f462_000012.wav",
+   "other": {
+    "row": 977,
+    "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 977,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 976,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "7:24",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S24_A32_7f2eabde_000029.wav",
+   "other": {
+    "row": 2886,
+    "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2886,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 2885,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "25:32",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S16_A33_a1e02848_000026.wav",
+   "other": {
+    "row": 2061,
+    "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2061,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 2060,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "17:33",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S15_A80_3bf00a8a_000050.wav",
+   "other": {
+    "row": 1980,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 1980,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 1979,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "16:80",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk9_S1_A57_d6505fc9_000043.wav",
+   "other": {
+    "row": 63,
+    "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 63,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 62,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "2:57",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0009_S58_A16_28ffe405_000032.wav",
+   "other": {
+    "row": 5141,
+    "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 5141,
+     "slug": "maher_al_muaiqly_qdc"
+    },
+    {
+     "row": 5140,
+     "slug": "maher_al_muaiqly_tarteel"
+    }
+   ],
+   "surah_ayah": "59:16",
+   "tadabur_reciter": 9
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S39_A64_2ba34025_000052.wav",
+   "other": {
+    "row": 4196,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 4195,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "40:64",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S6_A41_eb266893_000001.wav",
+   "other": {
+    "row": 994,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 993,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "7:41",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S41_A12_7cf16072_000001.wav",
+   "other": {
+    "row": 4283,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 4282,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "42:12",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S23_A54_2d2b3110_000035.wav",
+   "other": {
+    "row": 2844,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2843,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "24:54",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S41_A20_0596b53d_000001.wav",
+   "other": {
+    "row": 4291,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 4290,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "42:20",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S1_A84_7ab6e3db_000001.wav",
+   "other": {
+    "row": 90,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 89,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "2:84",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S1_A247_8cfb099e_000153.wav",
+   "other": {
+    "row": 253,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 252,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "2:247",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S18_A81_e8653839_000004.wav",
+   "other": {
+    "row": 2330,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 2329,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "19:81",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S48_A11_0ca9b44a_000000.wav",
+   "other": {
+    "row": 4622,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 4621,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "49:11",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S1_A128_7ab6e3db_000035.wav",
+   "other": {
+    "row": 134,
+    "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 133,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "2:128",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S4_A14_928f797c_000005.wav",
+   "other": {
+    "row": 682,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 681,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "5:14",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0016_S38_A6_d5b3ddb8_000003.wav",
+   "other": {
+    "row": 4063,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 4062,
+     "slug": "bandar_baleela_qdc"
+    }
+   ],
+   "surah_ayah": "39:6",
+   "tadabur_reciter": 16
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S1_A184_a83a70ce_000005.wav",
+   "other": {
+    "row": 190,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 190,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "2:184",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S32_A25_5258dbae_000023.wav",
+   "other": {
+    "row": 3557,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 3557,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "33:25",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S37_A11_e39ea7d4_000005.wav",
+   "other": {
+    "row": 3980,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 3980,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "38:11",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S70_A25_443dfe6f_000175.wav",
+   "other": {
+    "row": 5443,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 5443,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "71:25",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S27_A64_2e0b18c3_000044.wav",
+   "other": {
+    "row": 3315,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 3315,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "28:64",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S113_A5_151522cf_000122.wav",
+   "other": {
+    "row": 6233,
+    "slug": "maher_al_muaiqly_tarteel"
+   },
+   "qud": [
+    {
+     "row": 6234,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "114:5",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S40_A5_e2009fe1_000003.wav",
+   "other": {
+    "row": 4222,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 4222,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "41:5",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S88_A5_a97119dc_000279.wav",
+   "other": {
+    "row": 5997,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 5997,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "89:5",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S24_A70_5168e35e_000063.wav",
+   "other": {
+    "row": 2924,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 2924,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "25:70",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S12_A9_80569ad3_000005.wav",
+   "other": {
+    "row": 1715,
+    "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 1715,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "13:9",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S18_A32_b5984cd0_000024.wav",
+   "other": {
+    "row": 2281,
+    "slug": "abdulbasit_abdulsamad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 2281,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "19:32",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S51_A24_9b3c4101_000075.wav",
+   "other": {
+    "row": 4758,
+    "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 4758,
+     "slug": "mohammed_ayyub_drive"
+    }
+   ],
+   "surah_ayah": "52:24",
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S6_A154_ec060371_000009.wav",
+   "other": {
+    "row": 1107,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 1107,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "7:154",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S32_A44_90f7807a_000010.wav",
+   "other": {
+    "row": 3576,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 3576,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "33:44",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S79_A19_71c23e1b_000082.wav",
+   "other": {
+    "row": 5776,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 5776,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "80:19",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S9_A68_d4f2b2bd_000036.wav",
+   "other": {
+    "row": 1431,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 1431,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "10:68",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S3_A47_3799b603_000019.wav",
+   "other": {
+    "row": 539,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 539,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "4:47",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S57_A12_2f2e5e11_000012.wav",
+   "other": {
+    "row": 5113,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 5115,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "58:12",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S8_A31_5e3b7841_000024.wav",
+   "other": {
+    "row": 1265,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 1265,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "9:31",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S5_A31_4db6fab5_000040.wav",
+   "other": {
+    "row": 819,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 819,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "6:31",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S4_A25_85f1e965_000015.wav",
+   "other": {
+    "row": 693,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 693,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "5:25",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S1_A281_ea256ed9_000009.wav",
+   "other": {
+    "row": 287,
+    "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 287,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "2:281",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S55_A19_346e4aee_000058.wav",
+   "other": {
+    "row": 4997,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 4997,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "56:19",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S5_A18_4db6fab5_000028.wav",
+   "other": {
+    "row": 805,
+    "slug": "saad_al_ghamdi_tarteel"
+   },
+   "qud": [
+    {
+     "row": 806,
+     "slug": "ahmed_nuayna_qdc"
+    }
+   ],
+   "surah_ayah": "6:18",
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S6_A127_7995f669_000033.wav",
+   "other": {
+    "row": 1079,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 1080,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 1080,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 1080,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "7:127",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S1_A225_82b5e6bd_000051.wav",
+   "other": {
+    "row": 231,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 231,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 231,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 231,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "2:225",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S20_A77_0ee43e51_000052.wav",
+   "other": {
+    "row": 2558,
+    "slug": "maher_al_muaiqly_tarteel"
+   },
+   "qud": [
+    {
+     "row": 2559,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 2559,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 2559,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "21:77",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S36_A37_52eef312_000077.wav",
+   "other": {
+    "row": 3824,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 3824,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 3824,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 3824,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "37:37",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S2_A161_ba716915_000098.wav",
+   "other": {
+    "row": 453,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 453,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 453,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 453,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "3:161",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S67_A51_6e9352f9_000067.wav",
+   "other": {
+    "row": 5321,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 5321,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 5320,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 5321,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "68:51",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S83_A23_56d3431c_000177.wav",
+   "other": {
+    "row": 5906,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 5906,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 5905,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 5906,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "84:23",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S2_A80_4891c840_000065.wav",
+   "other": {
+    "row": 372,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 372,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 372,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 372,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "3:80",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S29_A4_938e08cf_000001.wav",
+   "other": {
+    "row": 3411,
+    "slug": "saad_al_ghamdi_tarteel"
+   },
+   "qud": [
+    {
+     "row": 3412,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 3412,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 3412,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "30:4",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S18_A80_0660944f_000099.wav",
+   "other": {
+    "row": 2329,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 2329,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 2329,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 2329,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "19:80",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S37_A12_52eef312_000196.wav",
+   "other": {
+    "row": 3980,
+    "slug": "bandar_baleela_qdc"
+   },
+   "qud": [
+    {
+     "row": 3981,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 3981,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 3981,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "38:12",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0033_S2_A35_4891c840_000034.wav",
+   "other": {
+    "row": 327,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 327,
+     "slug": "mahmoud_khalil_al_husary_mp3quran"
+    },
+    {
+     "row": 327,
+     "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+    },
+    {
+     "row": 327,
+     "slug": "mahmoud_khalil_al_husary_qdc_128k"
+    }
+   ],
+   "surah_ayah": "3:35",
+   "tadabur_reciter": 33
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S33_A21_ff11944a_000029.wav",
+   "other": {
+    "row": 3626,
+    "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 3626,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "34:21",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S39_A59_fd1a891b_000091.wav",
+   "other": {
+    "row": 4191,
+    "slug": "abdullah_basfar_qdc"
+   },
+   "qud": [
+    {
+     "row": 4191,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "40:59",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S1_A275_18b9298b_000011.wav",
+   "other": {
+    "row": 281,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 281,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "2:275",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S35_A57_34e61544_000029.wav",
+   "other": {
+    "row": 3761,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 3761,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "36:57",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S1_A261_25ecf899_000157.wav",
+   "other": {
+    "row": 267,
+    "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 267,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "2:261",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S1_A286_25ecf899_000170.wav",
+   "other": {
+    "row": 291,
+    "slug": "maher_al_muaiqly_tarteel"
+   },
+   "qud": [
+    {
+     "row": 292,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "2:286",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S4_A13_734ea5c1_000007.wav",
+   "other": {
+    "row": 680,
+    "slug": "saud_al_shuraim_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 681,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "5:13",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S23_A39_176e611e_000121.wav",
+   "other": {
+    "row": 2828,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2829,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "24:39",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S35_A18_4f3a0736_000127.wav",
+   "other": {
+    "row": 3722,
+    "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 3722,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "36:18",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S16_A60_8d3c1995_000009.wav",
+   "other": {
+    "row": 2088,
+    "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2088,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "17:60",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S18_A12_d40466e0_000045.wav",
+   "other": {
+    "row": 2260,
+    "slug": "saud_al_shuraim_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2261,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "19:12",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0038_S11_A51_37e6d957_000038.wav",
+   "other": {
+    "row": 1646,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 1646,
+     "slug": "abdur_rashid_sufi_qdc"
+    }
+   ],
+   "surah_ayah": "12:51",
+   "tadabur_reciter": 38
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S40_A21_339a2b1b_000110.wav",
+   "other": {
+    "row": 4238,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 4238,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "41:21",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S3_A37_3a79ce72_000011.wav",
+   "other": {
+    "row": 529,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 529,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "4:37",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S89_A19_030a47f3_000287.wav",
+   "other": {
+    "row": 6041,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 6041,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "90:19",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S14_A14_ad7d4278_000013.wav",
+   "other": {
+    "row": 1815,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 1815,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "15:14",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S16_A97_b78865cf_000087.wav",
+   "other": {
+    "row": 2125,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 2125,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "17:97",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S34_A35_ef6d32ac_000098.wav",
+   "other": {
+    "row": 3693,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 3694,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "35:35",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S2_A75_0d29e88b_000082.wav",
+   "other": {
+    "row": 367,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 367,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "3:75",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S20_A82_deb9374c_000071.wav",
+   "other": {
+    "row": 2564,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 2564,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "21:82",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S12_A33_72bc9ab7_000075.wav",
+   "other": {
+    "row": 1739,
+    "slug": "mohammed_siddiq_al_minshawi_mujawwad_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 1739,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "13:33",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S44_A29_3f6782c9_000205.wav",
+   "other": {
+    "row": 4501,
+    "slug": "khalid_al_mohana_drive"
+   },
+   "qud": [
+    {
+     "row": 4501,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "45:29",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S44_A32_3f6782c9_000207.wav",
+   "other": {
+    "row": 4504,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 4504,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "45:32",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S3_A80_3a79ce72_000032.wav",
+   "other": {
+    "row": 572,
+    "slug": "maher_al_muaiqly_qdc"
+   },
+   "qud": [
+    {
+     "row": 572,
+     "slug": "abdullah_basfar_qdc"
+    }
+   ],
+   "surah_ayah": "4:80",
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S9_A27_16ff6b76_000022.wav",
+   "other": {
+    "row": 1390,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 1389,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "10:27",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S32_A25_4763ec89_000018.wav",
+   "other": {
+    "row": 3556,
+    "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 3556,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "33:25",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S2_A66_cba1f1ee_000055.wav",
+   "other": {
+    "row": 358,
+    "slug": "mahmoud_khalil_al_husary_qdc_128k"
+   },
+   "qud": [
+    {
+     "row": 357,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "3:66",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S1_A19_e41f7ef3_000015.wav",
+   "other": {
+    "row": 25,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 24,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "2:19",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S18_A89_c9c122ac_000019.wav",
+   "other": {
+    "row": 2338,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 2337,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "19:89",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S16_A81_79147b64_000060.wav",
+   "other": {
+    "row": 2109,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 2108,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "17:81",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S17_A73_98e331f8_000061.wav",
+   "other": {
+    "row": 2212,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 2211,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "18:73",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S1_A69_34cc0548_000049.wav",
+   "other": {
+    "row": 75,
+    "slug": "mahmoud_khalil_al_husary_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 74,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "2:69",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S7_A7_ebb90d9f_000005.wav",
+   "other": {
+    "row": 1165,
+    "slug": "bandar_baleela_qdc"
+   },
+   "qud": [
+    {
+     "row": 1165,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "8:7",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S1_A58_e41f7ef3_000048.wav",
+   "other": {
+    "row": 64,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 63,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "2:58",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S1_A141_e41f7ef3_000121.wav",
+   "other": {
+    "row": 147,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 146,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "2:141",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S28_A5_a790463a_000067.wav",
+   "other": {
+    "row": 3343,
+    "slug": "yasser_al_dosari_archive"
+   },
+   "qud": [
+    {
+     "row": 3343,
+     "slug": "saad_al_ghamdi_tarteel"
+    }
+   ],
+   "surah_ayah": "29:5",
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S11_A66_a5517291_000034.wav",
+   "other": {
+    "row": 1661,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 1661,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "12:66",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S21_A9_fe23aed6_000003.wav",
+   "other": {
+    "row": 2603,
+    "slug": "yasser_al_dosari_yt"
+   },
+   "qud": [
+    {
+     "row": 2603,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "22:9",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S33_A12_822f6a26_000008.wav",
+   "other": {
+    "row": 3617,
+    "slug": "abdulbasit_abdulsamad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 3617,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "34:12",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S5_A61_4f8b4a18_000050.wav",
+   "other": {
+    "row": 848,
+    "slug": "maher_al_muaiqly_tarteel"
+   },
+   "qud": [
+    {
+     "row": 849,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "6:61",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S22_A85_536ea8c5_000067.wav",
+   "other": {
+    "row": 2757,
+    "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 2757,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "23:85",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S1_A286_ae084fd8_000168.wav",
+   "other": {
+    "row": 292,
+    "slug": "abdulbasit_abdulsamad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 292,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "2:286",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S2_A126_4c004a5d_000075.wav",
+   "other": {
+    "row": 418,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 418,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "3:126",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S1_A178_ae084fd8_000097.wav",
+   "other": {
+    "row": 184,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 184,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "2:178",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S13_A22_2873895c_000010.wav",
+   "other": {
+    "row": 1771,
+    "slug": "mahmoud_khalil_al_husary_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 1771,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "14:22",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S33_A48_822f6a26_000038.wav",
+   "other": {
+    "row": 3652,
+    "slug": "bandar_baleela_qdc"
+   },
+   "qud": [
+    {
+     "row": 3653,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "34:48",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S14_A63_2acf1d6b_000054.wav",
+   "other": {
+    "row": 1863,
+    "slug": "bandar_baleela_qdc"
+   },
+   "qud": [
+    {
+     "row": 1864,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "15:63",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S39_A17_8091d2a9_000002.wav",
+   "other": {
+    "row": 4149,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 4149,
+     "slug": "khalid_al_mohana_drive"
+    }
+   ],
+   "surah_ayah": "40:17",
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S6_A162_4212b3d1_000115.wav",
+   "other": {
+    "row": 1115,
+    "slug": "abdulbasit_abdulsamad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 1114,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "7:162",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S28_A34_7b28b398_000030.wav",
+   "other": {
+    "row": 3372,
+    "slug": "yasser_al_dosari_archive"
+   },
+   "qud": [
+    {
+     "row": 3372,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "29:34",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S2_A32_af28dbc0_000022.wav",
+   "other": {
+    "row": 324,
+    "slug": "mohammed_siddiq_al_minshawi_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 324,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "3:32",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S6_A57_4212b3d1_000038.wav",
+   "other": {
+    "row": 1009,
+    "slug": "saad_al_ghamdi_tarteel"
+   },
+   "qud": [
+    {
+     "row": 1010,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "7:57",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S35_A82_5e4992f3_000074.wav",
+   "other": {
+    "row": 3786,
+    "slug": "ahmed_nuayna_qdc"
+   },
+   "qud": [
+    {
+     "row": 3785,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "36:82",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S37_A34_7fd35efd_000030.wav",
+   "other": {
+    "row": 4003,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 4002,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "38:34",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S27_A53_84171272_000044.wav",
+   "other": {
+    "row": 3303,
+    "slug": "saad_al_ghamdi_tarteel"
+   },
+   "qud": [
+    {
+     "row": 3303,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "28:53",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S1_A230_7aabff3b_000198.wav",
+   "other": {
+    "row": 236,
+    "slug": "abdulbasit_abdulsamad_mujawwad_tarteel"
+   },
+   "qud": [
+    {
+     "row": 236,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "2:230",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S5_A64_874e5c6c_000055.wav",
+   "other": {
+    "row": 852,
+    "slug": "mohammed_siddiq_al_minshawi_1967_drive"
+   },
+   "qud": [
+    {
+     "row": 852,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "6:64",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S3_A29_69dbf88c_000023.wav",
+   "other": {
+    "row": 521,
+    "slug": "abdur_rashid_sufi_qdc"
+   },
+   "qud": [
+    {
+     "row": 521,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "4:29",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S3_A19_69dbf88c_000015.wav",
+   "other": {
+    "row": 510,
+    "slug": "saud_al_shuraim_mp3quran"
+   },
+   "qud": [
+    {
+     "row": 511,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "4:19",
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S37_A57_7fd35efd_000053.wav",
+   "other": {
+    "row": 4026,
+    "slug": "mohammed_ayyub_drive"
+   },
+   "qud": [
+    {
+     "row": 4025,
+     "slug": "ahmed_issa_al_maasaraawi_mp3quran"
+    }
+   ],
+   "surah_ayah": "38:57",
+   "tadabur_reciter": 146
+  }
+ ],
+ "decision_lines": {
+  "fingerprint": "halfway between the highest BER of a synthetic positive and the lowest BER of a hard negative; the check fails unless the first is below the second",
+  "timing": "timing_margin x the largest timing distance of a cross-aligner pair the fingerprint matches"
+ },
+ "fingerprint": {
+  "bands": 32,
+  "frame_s": 0.37,
+  "high_hz": 2000.0,
+  "hop_s": 0.0116,
+  "low_hz": 300.0,
+  "min_overlap_frames": 172
+ },
+ "hard_negatives": [
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 767,
+    "mahmoud_khalil_al_husary_qdc_128k": 767
+   },
+   "surah_ayah": "5:99"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 1000,
+    "mahmoud_khalil_al_husary_qdc_128k": 1000
+   },
+   "surah_ayah": "7:47"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 3214,
+    "mahmoud_khalil_al_husary_qdc_128k": 3214
+   },
+   "surah_ayah": "27:56"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 4918,
+    "mahmoud_khalil_al_husary_qdc_128k": 4918
+   },
+   "surah_ayah": "55:18"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 5452,
+    "mahmoud_khalil_al_husary_qdc_128k": 5453
+   },
+   "surah_ayah": "72:7"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 506,
+    "mahmoud_khalil_al_husary_qdc_128k": 506
+   },
+   "surah_ayah": "4:14"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 2888,
+    "mahmoud_khalil_al_husary_qdc_128k": 2888
+   },
+   "surah_ayah": "25:34"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 1042,
+    "mahmoud_khalil_al_husary_qdc_128k": 1042
+   },
+   "surah_ayah": "7:89"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 421,
+    "mahmoud_khalil_al_husary_qdc_128k": 421
+   },
+   "surah_ayah": "3:129"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 5253,
+    "mahmoud_khalil_al_husary_qdc_128k": 5254
+   },
+   "surah_ayah": "67:14"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 1818,
+    "mahmoud_khalil_al_husary_qdc_128k": 1818
+   },
+   "surah_ayah": "15:17"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 5822,
+    "mahmoud_khalil_al_husary_qdc_128k": 5823
+   },
+   "surah_ayah": "81:24"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 873,
+    "mahmoud_khalil_al_husary_qdc_128k": 873
+   },
+   "surah_ayah": "6:85"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 5098,
+    "mahmoud_khalil_al_husary_qdc_128k": 5098
+   },
+   "surah_ayah": "57:24"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 4136,
+    "mahmoud_khalil_al_husary_qdc_128k": 4136
+   },
+   "surah_ayah": "40:4"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 1265,
+    "mahmoud_khalil_al_husary_qdc_128k": 1265
+   },
+   "surah_ayah": "9:31"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 3374,
+    "mahmoud_khalil_al_husary_qdc_128k": 3374
+   },
+   "surah_ayah": "29:35"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 195,
+    "mahmoud_khalil_al_husary_qdc_128k": 195
+   },
+   "surah_ayah": "2:189"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 5818,
+    "mahmoud_khalil_al_husary_qdc_128k": 5819
+   },
+   "surah_ayah": "81:20"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 5691,
+    "mahmoud_khalil_al_husary_qdc_128k": 5692
+   },
+   "surah_ayah": "78:21"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 1479,
+    "mahmoud_khalil_al_husary_qdc_128k": 1479
+   },
+   "surah_ayah": "11:7"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 295,
+    "mahmoud_khalil_al_husary_qdc_128k": 295
+   },
+   "surah_ayah": "3:3"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 605,
+    "mahmoud_khalil_al_husary_qdc_128k": 605
+   },
+   "surah_ayah": "4:113"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 5358,
+    "mahmoud_khalil_al_husary_qdc_128k": 5359
+   },
+   "surah_ayah": "69:37"
+  },
+  {
+   "pair": [
+    "mahmoud_khalil_al_husary_mujawwad_tarteel",
+    "mahmoud_khalil_al_husary_qdc_128k"
+   ],
+   "rows": {
+    "mahmoud_khalil_al_husary_mujawwad_tarteel": 3924,
+    "mahmoud_khalil_al_husary_qdc_128k": 3924
+   },
+   "surah_ayah": "37:137"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 663,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 663
+   },
+   "surah_ayah": "4:171"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 1574,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 1574
+   },
+   "surah_ayah": "11:102"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 5425,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 5425
+   },
+   "surah_ayah": "71:7"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 4387,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 4387
+   },
+   "surah_ayah": "43:63"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 482,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 482
+   },
+   "surah_ayah": "3:190"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 5075,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 5075
+   },
+   "surah_ayah": "57:1"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 5618,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 5618
+   },
+   "surah_ayah": "76:28"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 5896,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 5896
+   },
+   "surah_ayah": "84:13"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 1844,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 1844
+   },
+   "surah_ayah": "15:43"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 3932,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 3932
+   },
+   "surah_ayah": "37:145"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 4559,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 4559
+   },
+   "surah_ayah": "47:15"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 6087,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 6087
+   },
+   "surah_ayah": "93:9"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 3511,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 3511
+   },
+   "surah_ayah": "32:9"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 2856,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 2856
+   },
+   "surah_ayah": "25:2"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 3695,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 3695
+   },
+   "surah_ayah": "35:36"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 1777,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 1777
+   },
+   "surah_ayah": "14:28"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 3681,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 3681
+   },
+   "surah_ayah": "35:22"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 4558,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 4558
+   },
+   "surah_ayah": "47:14"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 733,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 733
+   },
+   "surah_ayah": "5:65"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 3481,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 3481
+   },
+   "surah_ayah": "31:13"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 4782,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 4782
+   },
+   "surah_ayah": "52:48"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 1098,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 1098
+   },
+   "surah_ayah": "7:145"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 2656,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 2656
+   },
+   "surah_ayah": "22:62"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 5300,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 5300
+   },
+   "surah_ayah": "68:30"
+  },
+  {
+   "pair": [
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran",
+    "mohammed_siddiq_al_minshawi_mp3quran"
+   ],
+   "rows": {
+    "mohammed_siddiq_al_minshawi_mp3quran": 1052,
+    "mohammed_siddiq_al_minshawi_mujawwad_mp3quran": 1052
+   },
+   "surah_ayah": "7:99"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 3337,
+    "abdulbasit_abdulsamad_tarteel": 3337
+   },
+   "surah_ayah": "28:86"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 730,
+    "abdulbasit_abdulsamad_tarteel": 730
+   },
+   "surah_ayah": "5:62"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 2642,
+    "abdulbasit_abdulsamad_tarteel": 2642
+   },
+   "surah_ayah": "22:48"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 2232,
+    "abdulbasit_abdulsamad_tarteel": 2232
+   },
+   "surah_ayah": "18:93"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 3232,
+    "abdulbasit_abdulsamad_tarteel": 3232
+   },
+   "surah_ayah": "27:74"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 389,
+    "abdulbasit_abdulsamad_tarteel": 389
+   },
+   "surah_ayah": "3:97"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 4527,
+    "abdulbasit_abdulsamad_tarteel": 4527
+   },
+   "surah_ayah": "46:18"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 671,
+    "abdulbasit_abdulsamad_tarteel": 671
+   },
+   "surah_ayah": "5:3"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 2066,
+    "abdulbasit_abdulsamad_tarteel": 2066
+   },
+   "surah_ayah": "17:38"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 1140,
+    "abdulbasit_abdulsamad_tarteel": 1140
+   },
+   "surah_ayah": "7:187"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 4027,
+    "abdulbasit_abdulsamad_tarteel": 4027
+   },
+   "surah_ayah": "38:58"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 1645,
+    "abdulbasit_abdulsamad_tarteel": 1645
+   },
+   "surah_ayah": "12:50"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 4865,
+    "abdulbasit_abdulsamad_tarteel": 4865
+   },
+   "surah_ayah": "54:20"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 3092,
+    "abdulbasit_abdulsamad_tarteel": 3092
+   },
+   "surah_ayah": "26:161"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 3282,
+    "abdulbasit_abdulsamad_tarteel": 3282
+   },
+   "surah_ayah": "28:31"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 1137,
+    "abdulbasit_abdulsamad_tarteel": 1137
+   },
+   "surah_ayah": "7:184"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 4860,
+    "abdulbasit_abdulsamad_tarteel": 4860
+   },
+   "surah_ayah": "54:15"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 5453,
+    "abdulbasit_abdulsamad_tarteel": 5453
+   },
+   "surah_ayah": "72:7"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 2572,
+    "abdulbasit_abdulsamad_tarteel": 2572
+   },
+   "surah_ayah": "21:90"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 2074,
+    "abdulbasit_abdulsamad_tarteel": 2074
+   },
+   "surah_ayah": "17:46"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 253,
+    "abdulbasit_abdulsamad_tarteel": 253
+   },
+   "surah_ayah": "2:247"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 4223,
+    "abdulbasit_abdulsamad_tarteel": 4223
+   },
+   "surah_ayah": "41:6"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 3931,
+    "abdulbasit_abdulsamad_tarteel": 3931
+   },
+   "surah_ayah": "37:144"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 1328,
+    "abdulbasit_abdulsamad_tarteel": 1328
+   },
+   "surah_ayah": "9:94"
+  },
+  {
+   "pair": [
+    "abdulbasit_abdulsamad_mujawwad_tarteel",
+    "abdulbasit_abdulsamad_tarteel"
+   ],
+   "rows": {
+    "abdulbasit_abdulsamad_mujawwad_tarteel": 1693,
+    "abdulbasit_abdulsamad_tarteel": 1693
+   },
+   "surah_ayah": "12:98"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 626,
+    "maher_al_muaiqly_tarteel": 625
+   },
+   "surah_ayah": "4:134"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 2274,
+    "maher_al_muaiqly_tarteel": 2273
+   },
+   "surah_ayah": "19:25"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 3786,
+    "maher_al_muaiqly_tarteel": 3785
+   },
+   "surah_ayah": "36:82"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 5480,
+    "maher_al_muaiqly_tarteel": 5479
+   },
+   "surah_ayah": "73:6"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 1243,
+    "maher_al_muaiqly_tarteel": 1242
+   },
+   "surah_ayah": "9:9"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 4105,
+    "maher_al_muaiqly_tarteel": 4104
+   },
+   "surah_ayah": "39:48"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 4862,
+    "maher_al_muaiqly_tarteel": 4861
+   },
+   "surah_ayah": "54:17"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 371,
+    "maher_al_muaiqly_tarteel": 370
+   },
+   "surah_ayah": "3:79"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 234,
+    "maher_al_muaiqly_tarteel": 233
+   },
+   "surah_ayah": "2:228"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 641,
+    "maher_al_muaiqly_tarteel": 640
+   },
+   "surah_ayah": "4:149"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 1585,
+    "maher_al_muaiqly_tarteel": 1584
+   },
+   "surah_ayah": "11:113"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 1952,
+    "maher_al_muaiqly_tarteel": 1951
+   },
+   "surah_ayah": "16:52"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 5076,
+    "maher_al_muaiqly_tarteel": 5075
+   },
+   "surah_ayah": "57:2"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 2492,
+    "maher_al_muaiqly_tarteel": 2491
+   },
+   "surah_ayah": "21:10"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 2264,
+    "maher_al_muaiqly_tarteel": 2263
+   },
+   "surah_ayah": "19:15"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 3839,
+    "maher_al_muaiqly_tarteel": 3838
+   },
+   "surah_ayah": "37:52"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 1747,
+    "maher_al_muaiqly_tarteel": 1746
+   },
+   "surah_ayah": "13:41"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 134,
+    "maher_al_muaiqly_tarteel": 133
+   },
+   "surah_ayah": "2:128"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 637,
+    "maher_al_muaiqly_tarteel": 636
+   },
+   "surah_ayah": "4:145"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 1776,
+    "maher_al_muaiqly_tarteel": 1775
+   },
+   "surah_ayah": "14:27"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 5864,
+    "maher_al_muaiqly_tarteel": 5863
+   },
+   "surah_ayah": "83:17"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 4054,
+    "maher_al_muaiqly_tarteel": 4053
+   },
+   "surah_ayah": "38:85"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 1435,
+    "maher_al_muaiqly_tarteel": 1434
+   },
+   "surah_ayah": "10:72"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 5438,
+    "maher_al_muaiqly_tarteel": 5437
+   },
+   "surah_ayah": "71:20"
+  },
+  {
+   "pair": [
+    "maher_al_muaiqly_qdc",
+    "maher_al_muaiqly_tarteel"
+   ],
+   "rows": {
+    "maher_al_muaiqly_qdc": 3429,
+    "maher_al_muaiqly_tarteel": 3428
+   },
+   "surah_ayah": "30:21"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 5313,
+    "abdul_hamid_ghraio_2026_yt": 5313
+   },
+   "surah_ayah": "68:44"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 4348,
+    "abdul_hamid_ghraio_2026_yt": 4348
+   },
+   "surah_ayah": "43:25"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 62,
+    "abdul_hamid_ghraio_2026_yt": 62
+   },
+   "surah_ayah": "2:57"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 5986,
+    "abdul_hamid_ghraio_2026_yt": 5986
+   },
+   "surah_ayah": "88:21"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 3761,
+    "abdul_hamid_ghraio_2026_yt": 3761
+   },
+   "surah_ayah": "36:58"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 990,
+    "abdul_hamid_ghraio_2026_yt": 990
+   },
+   "surah_ayah": "7:38"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 3179,
+    "abdul_hamid_ghraio_2026_yt": 3179
+   },
+   "surah_ayah": "27:22"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 19,
+    "abdul_hamid_ghraio_2026_yt": 19
+   },
+   "surah_ayah": "2:14"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 4378,
+    "abdul_hamid_ghraio_2026_yt": 4378
+   },
+   "surah_ayah": "43:55"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 719,
+    "abdul_hamid_ghraio_2026_yt": 719
+   },
+   "surah_ayah": "5:52"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 2338,
+    "abdul_hamid_ghraio_2026_yt": 2338
+   },
+   "surah_ayah": "19:90"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 4809,
+    "abdul_hamid_ghraio_2026_yt": 4809
+   },
+   "surah_ayah": "53:27"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 1749,
+    "abdul_hamid_ghraio_2026_yt": 1749
+   },
+   "surah_ayah": "14:1"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 3541,
+    "abdul_hamid_ghraio_2026_yt": 3541
+   },
+   "surah_ayah": "33:10"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 1394,
+    "abdul_hamid_ghraio_2026_yt": 1394
+   },
+   "surah_ayah": "10:32"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 5641,
+    "abdul_hamid_ghraio_2026_yt": 5641
+   },
+   "surah_ayah": "77:21"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 5999,
+    "abdul_hamid_ghraio_2026_yt": 5999
+   },
+   "surah_ayah": "89:8"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 5414,
+    "abdul_hamid_ghraio_2026_yt": 5414
+   },
+   "surah_ayah": "70:41"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 3932,
+    "abdul_hamid_ghraio_2026_yt": 3932
+   },
+   "surah_ayah": "37:146"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 1165,
+    "abdul_hamid_ghraio_2026_yt": 1165
+   },
+   "surah_ayah": "8:7"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 3043,
+    "abdul_hamid_ghraio_2026_yt": 3043
+   },
+   "surah_ayah": "26:113"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 4440,
+    "abdul_hamid_ghraio_2026_yt": 4440
+   },
+   "surah_ayah": "44:28"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 1205,
+    "abdul_hamid_ghraio_2026_yt": 1205
+   },
+   "surah_ayah": "8:47"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 852,
+    "abdul_hamid_ghraio_2026_yt": 852
+   },
+   "surah_ayah": "6:65"
+  },
+  {
+   "pair": [
+    "abdul_hamid_ghraio_2025_yt",
+    "abdul_hamid_ghraio_2026_yt"
+   ],
+   "rows": {
+    "abdul_hamid_ghraio_2025_yt": 2573,
+    "abdul_hamid_ghraio_2026_yt": 2573
+   },
+   "surah_ayah": "21:92"
+  }
+ ],
+ "issue": 144,
+ "min_words": 4,
+ "pilot": [
+  "abdul_hamid_ghraio_2026_yt",
+  "anas_almiman_yt"
+ ],
+ "pilot_tadabur_ids_left_out": [
+  93
+ ],
+ "qud_audio": "the dataset viewer's rows API (tadabur.qud_source.viewer_row); the revision it served is recorded with each score",
+ "qud_metadata_revision": "6f45ced88a179dfbb97d5b0f76ae69b4d4d1f175",
+ "salt": "qud-overlap-controls-2026-10",
+ "synthetic_encoding": "resampled to 44.1 kHz, duplicated to stereo, scaled by 0.7, written as MP3 by libsndfile's defaults, the first cut_ms cut",
+ "synthetic_positives": [
+  {
+   "audio_filename": "tadabur_spk0148_S9_A80_3ac72d0a_000048.wav",
+   "cut_ms": 403,
+   "tadabur_reciter": 148
+  },
+  {
+   "audio_filename": "tadabur_spk0018_S55_A19_346e4aee_000058.wav",
+   "cut_ms": 491,
+   "tadabur_reciter": 18
+  },
+  {
+   "audio_filename": "tadabur_spk0068_S34_A37_ef6d32ac_000099.wav",
+   "cut_ms": 378,
+   "tadabur_reciter": 68
+  },
+  {
+   "audio_filename": "tadabur_spk0177_S16_A69_02c0613b_000060.wav",
+   "cut_ms": 221,
+   "tadabur_reciter": 177
+  },
+  {
+   "audio_filename": "tadabur_spk0593_S111_A4_446dbd1f_000000.wav",
+   "cut_ms": 478,
+   "tadabur_reciter": 593
+  },
+  {
+   "audio_filename": "tadabur_spk0114_S14_A15_7abe74c8_000010.wav",
+   "cut_ms": 104,
+   "tadabur_reciter": 114
+  },
+  {
+   "audio_filename": "tadabur_spk0001_S22_A4_23c80109_000001.wav",
+   "cut_ms": 456,
+   "tadabur_reciter": 1
+  },
+  {
+   "audio_filename": "tadabur_spk0039_S2_A53_b11164f8_000070.wav",
+   "cut_ms": 434,
+   "tadabur_reciter": 39
+  },
+  {
+   "audio_filename": "tadabur_spk0161_S5_A61_ce46c1e1_000027.wav",
+   "cut_ms": 262,
+   "tadabur_reciter": 161
+  },
+  {
+   "audio_filename": "tadabur_spk0177_S16_A58_02c0613b_000051.wav",
+   "cut_ms": 491,
+   "tadabur_reciter": 177
+  },
+  {
+   "audio_filename": "tadabur_spk0051_S3_A47_379e7a4f_000012.wav",
+   "cut_ms": 425,
+   "tadabur_reciter": 51
+  },
+  {
+   "audio_filename": "tadabur_spk0088_S1_A158_fccf619d_000119.wav",
+   "cut_ms": 161,
+   "tadabur_reciter": 88
+  },
+  {
+   "audio_filename": "tadabur_spk0079_S22_A12_6e9020e3_000017.wav",
+   "cut_ms": 393,
+   "tadabur_reciter": 79
+  },
+  {
+   "audio_filename": "tadabur_spk0020_S9_A11_868827ab_000006.wav",
+   "cut_ms": 412,
+   "tadabur_reciter": 20
+  },
+  {
+   "audio_filename": "tadabur_spk0031_S6_A95_ad7784a0_000068.wav",
+   "cut_ms": 137,
+   "tadabur_reciter": 31
+  },
+  {
+   "audio_filename": "tadabur_spk0687_S2_A68_0f1c4fd0_000012.wav",
+   "cut_ms": 210,
+   "tadabur_reciter": 687
+  },
+  {
+   "audio_filename": "tadabur_spk0294_S1_A65_de25f55f_000055.wav",
+   "cut_ms": 359,
+   "tadabur_reciter": 294
+  },
+  {
+   "audio_filename": "tadabur_spk0234_S25_A93_55630f5f_000024.wav",
+   "cut_ms": 337,
+   "tadabur_reciter": 215
+  },
+  {
+   "audio_filename": "tadabur_spk0502_S1_A130_2a7cb291_000000.wav",
+   "cut_ms": 464,
+   "tadabur_reciter": 502
+  },
+  {
+   "audio_filename": "tadabur_spk0026_S76_A34_b5d4a27c_000012.wav",
+   "cut_ms": 450,
+   "tadabur_reciter": 26
+  },
+  {
+   "audio_filename": "tadabur_spk0043_S18_A32_b4895f7a_000003.wav",
+   "cut_ms": 232,
+   "tadabur_reciter": 43
+  },
+  {
+   "audio_filename": "tadabur_spk0086_S82_A36_966cc258_000174.wav",
+   "cut_ms": 188,
+   "tadabur_reciter": 86
+  },
+  {
+   "audio_filename": "tadabur_spk0658_S35_A50_3f1c2905_000000.wav",
+   "cut_ms": 455,
+   "tadabur_reciter": 658
+  },
+  {
+   "audio_filename": "tadabur_spk0146_S3_A29_69dbf88c_000023.wav",
+   "cut_ms": 233,
+   "tadabur_reciter": 146
+  },
+  {
+   "audio_filename": "tadabur_spk0017_S23_A3_e47c197e_000001.wav",
+   "cut_ms": 155,
+   "tadabur_reciter": 17
+  },
+  {
+   "audio_filename": "tadabur_spk0136_S88_A6_7559ba95_000000.wav",
+   "cut_ms": 387,
+   "tadabur_reciter": 136
+  },
+  {
+   "audio_filename": "tadabur_spk0086_S42_A81_4d4dd693_000078.wav",
+   "cut_ms": 331,
+   "tadabur_reciter": 86
+  },
+  {
+   "audio_filename": "tadabur_spk0026_S57_A5_a038a99a_000004.wav",
+   "cut_ms": 259,
+   "tadabur_reciter": 26
+  },
+  {
+   "audio_filename": "tadabur_spk0041_S3_A24_44b6daa2_000007.wav",
+   "cut_ms": 270,
+   "tadabur_reciter": 41
+  },
+  {
+   "audio_filename": "tadabur_spk0071_S113_A4_1d7fb2dc_000485.wav",
+   "cut_ms": 304,
+   "tadabur_reciter": 71
+  },
+  {
+   "audio_filename": "tadabur_spk0581_S5_A32_3518e450_000019.wav",
+   "cut_ms": 319,
+   "tadabur_reciter": 581
+  },
+  {
+   "audio_filename": "tadabur_spk0027_S15_A100_54941a16_000019.wav",
+   "cut_ms": 433,
+   "tadabur_reciter": 27
+  },
+  {
+   "audio_filename": "tadabur_spk0536_S26_A14_1cb12912_000009.wav",
+   "cut_ms": 457,
+   "tadabur_reciter": 536
+  },
+  {
+   "audio_filename": "tadabur_spk0067_S26_A27_baeecc8e_000013.wav",
+   "cut_ms": 378,
+   "tadabur_reciter": 67
+  },
+  {
+   "audio_filename": "tadabur_spk0649_S20_A91_b515a3b3_000050.wav",
+   "cut_ms": 223,
+   "tadabur_reciter": 649
+  },
+  {
+   "audio_filename": "tadabur_spk0296_S16_A90_13ecd052_000011.wav",
+   "cut_ms": 429,
+   "tadabur_reciter": 296
+  },
+  {
+   "audio_filename": "tadabur_spk0000_S31_A17_88309ae2_000013.wav",
+   "cut_ms": 344,
+   "tadabur_reciter": 0
+  },
+  {
+   "audio_filename": "tadabur_spk0066_S6_A189_e7f0246c_000135.wav",
+   "cut_ms": 461,
+   "tadabur_reciter": 66
+  },
+  {
+   "audio_filename": "tadabur_spk0508_S27_A23_59e1ba63_000010.wav",
+   "cut_ms": 226,
+   "tadabur_reciter": 508
+  },
+  {
+   "audio_filename": "tadabur_spk0148_S8_A67_e10ce1a5_000042.wav",
+   "cut_ms": 125,
+   "tadabur_reciter": 148
+  },
+  {
+   "audio_filename": "tadabur_spk0237_S1_A38_2030027b_000027.wav",
+   "cut_ms": 254,
+   "tadabur_reciter": 237
+  },
+  {
+   "audio_filename": "tadabur_spk0233_S20_A11_940f204d_000009.wav",
+   "cut_ms": 263,
+   "tadabur_reciter": 233
+  },
+  {
+   "audio_filename": "tadabur_spk0401_S1_A6_1b49bb37_000006.wav",
+   "cut_ms": 133,
+   "tadabur_reciter": 401
+  },
+  {
+   "audio_filename": "tadabur_spk0583_S17_A18_9c8d1ba9_000000.wav",
+   "cut_ms": 488,
+   "tadabur_reciter": 583
+  },
+  {
+   "audio_filename": "tadabur_spk0073_S5_A67_e0ee4a0a_000099.wav",
+   "cut_ms": 363,
+   "tadabur_reciter": 73
+  },
+  {
+   "audio_filename": "tadabur_spk0075_S35_A67_b055c21f_000045.wav",
+   "cut_ms": 117,
+   "tadabur_reciter": 75
+  },
+  {
+   "audio_filename": "tadabur_spk0063_S49_A27_28014b10_000022.wav",
+   "cut_ms": 484,
+   "tadabur_reciter": 63
+  },
+  {
+   "audio_filename": "tadabur_spk0346_S25_A147_d28b77e1_000141.wav",
+   "cut_ms": 442,
+   "tadabur_reciter": 346
+  },
+  {
+   "audio_filename": "tadabur_spk0463_S11_A83_e1946f7b_000000.wav",
+   "cut_ms": 433,
+   "tadabur_reciter": 463
+  },
+  {
+   "audio_filename": "tadabur_spk0180_S2_A24_9ac848ef_000017.wav",
+   "cut_ms": 322,
+   "tadabur_reciter": 180
+  },
+  {
+   "audio_filename": "tadabur_spk0055_S1_A280_dc4fae94_000164.wav",
+   "cut_ms": 453,
+   "tadabur_reciter": 55
+  },
+  {
+   "audio_filename": "tadabur_spk0097_S20_A78_14e487d0_000060.wav",
+   "cut_ms": 125,
+   "tadabur_reciter": 97
+  },
+  {
+   "audio_filename": "tadabur_spk0057_S41_A27_a59b7b7a_000023.wav",
+   "cut_ms": 405,
+   "tadabur_reciter": 57
+  },
+  {
+   "audio_filename": "tadabur_spk0716_S17_A24_3b7127dd_000026.wav",
+   "cut_ms": 490,
+   "tadabur_reciter": 716
+  },
+  {
+   "audio_filename": "tadabur_spk0313_S24_A1_2f8242f5_000000.wav",
+   "cut_ms": 242,
+   "tadabur_reciter": 313
+  },
+  {
+   "audio_filename": "tadabur_spk0684_S1_A119_021e6803_000101.wav",
+   "cut_ms": 142,
+   "tadabur_reciter": 684
+  },
+  {
+   "audio_filename": "tadabur_spk0678_S25_A184_4db3070a_000000.wav",
+   "cut_ms": 331,
+   "tadabur_reciter": 678
+  },
+  {
+   "audio_filename": "tadabur_spk0091_S24_A5_41ddc04b_000000.wav",
+   "cut_ms": 279,
+   "tadabur_reciter": 91
+  },
+  {
+   "audio_filename": "tadabur_spk0077_S2_A126_4c004a5d_000075.wav",
+   "cut_ms": 413,
+   "tadabur_reciter": 77
+  },
+  {
+   "audio_filename": "tadabur_spk0078_S14_A2_8672a18c_000001.wav",
+   "cut_ms": 411,
+   "tadabur_reciter": 78
+  }
+ ],
+ "timing_margin": 1.5
+}

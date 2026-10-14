@@ -25,6 +25,7 @@ module imports cheaply (and tests can stub the download).
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Iterable, Iterator
 from pathlib import Path
@@ -121,7 +122,7 @@ def iter_shard_rows(
                 yield from seal_rows(batch.to_pylist())
         finally:
             if delete_after:
-                _remove_shard_blob(path)
+                remove_shard_blob(path)
 
 
 def iter_selected_rows(
@@ -153,7 +154,7 @@ def iter_selected_rows(
                 yield seal_row(batch.slice(offset, 1).to_pylist()[0]) if keep else None
             position += batch.num_rows
     finally:
-        _remove_shard_blob(path)
+        remove_shard_blob(path)
 
 
 #: The light per-row columns :func:`iter_shard_metadata` reads: the clip's filename (the
@@ -174,27 +175,46 @@ def iter_shard_metadata(
     "ayah_duration_s"}``, where ``row_index`` is the row's position in its shard, the
     same position :func:`iter_shard_rows` yields it at.
     """
+    for shard in shard_indices:
+        for row_index, row in enumerate(_shard_columns(shard, METADATA_COLUMNS, dataset_id)):
+            yield _identity(shard, row_index, row)
+
+
+def iter_shard_word_alignments(
+    shard_indices: Iterable[int], *, dataset_id: str = DATASET_ID
+) -> Iterator[dict]:
+    """:func:`iter_shard_metadata`'s rows, each with its ``word_alignments`` (Tadabur's
+    ``metadata`` JSON: per word, ``word``, ``start`` and ``end`` in seconds of the clip), read
+    from the ``metadata`` column alone (~0.5 MB per shard more), never the audio."""
+    for shard in shard_indices:
+        rows = _shard_columns(shard, [*METADATA_COLUMNS, "metadata"], dataset_id)
+        for row_index, row in enumerate(rows):
+            alignments = json.loads(row["metadata"])["word_alignments"]
+            yield {**_identity(shard, row_index, row), "word_alignments": alignments}
+
+
+def _shard_columns(shard: int, columns: list[str], dataset_id: str) -> list[dict]:
     import pyarrow.parquet as pq
     from huggingface_hub import HfFileSystem
 
-    fs = HfFileSystem()
-    for shard in shard_indices:
-        path = f"datasets/{dataset_id}/{SHARD_TEMPLATE.format(index=shard)}"
-        with fs.open(path, "rb") as f:
-            table = pq.ParquetFile(f).read(columns=METADATA_COLUMNS)
-        for row_index, row in enumerate(table.to_pylist()):
-            yield {
-                "audio_filename": row["audio"]["path"],
-                "shard": shard,
-                "row_index": row_index,
-                "reciter_id": row["reciter_id"],
-                "surah_id": row["surah_id"],
-                "ayah_id": row["ayah_id"],
-                "ayah_duration_s": row["ayah_duration_s"],
-            }
+    path = f"datasets/{dataset_id}/{SHARD_TEMPLATE.format(index=shard)}"
+    with HfFileSystem().open(path, "rb") as f:
+        return pq.ParquetFile(f).read(columns=columns).to_pylist()
 
 
-def _remove_shard_blob(path: str) -> None:
+def _identity(shard: int, row_index: int, row: dict) -> dict:
+    return {
+        "audio_filename": row["audio"]["path"],
+        "shard": shard,
+        "row_index": row_index,
+        "reciter_id": row["reciter_id"],
+        "surah_id": row["surah_id"],
+        "ayah_id": row["ayah_id"],
+        "ayah_duration_s": row["ayah_duration_s"],
+    }
+
+
+def remove_shard_blob(path: str) -> None:
     """Best-effort delete of a downloaded shard, following the HF cache symlink to its blob.
 
     ``hf_hub_download`` returns a ``snapshots/`` symlink into a content-addressed

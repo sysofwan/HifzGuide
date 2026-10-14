@@ -65,9 +65,9 @@ from pathlib import Path
 from training.tashkeel_eval import write_text_atomically
 
 from .dataset_source import DATASET_ID as TADABUR_DATASET
+from .muaalem_audio import MUAALEM_DATASET
+from .qud_source import QUD_DATASET, SHARD_NAME, parquet_table
 
-QUD_DATASET = "QUD-Technologies/quranic-universal-ayahs"
-MUAALEM_DATASET = "obadx/muaalem-annotated-v3"
 MUAALEM_MODEL = "obadx/muaalem-model-v3_2"
 MUAALEM_PAPER = "https://arxiv.org/abs/2509.00094"
 
@@ -276,18 +276,6 @@ def summarize_coverage(rows: Iterable[Mapping]) -> dict:
 # --- the Hub (network) -----------------------------------------------------------------
 
 COVERAGE_COLUMNS = ["surah", "ayah", "duration_ms", "source_url"]
-#: A mushaf config's shard: ``<riwayah dir>/<slug>-00000-of-00004.parquet``.
-_SHARD_NAME = re.compile(r"(.+)-\d{5}-of-\d{5}\.parquet")
-
-
-def _parquet_table(repo: str, revision: str, path: str, columns: list[str] | None = None):
-    """A parquet file of a Hub dataset at a pinned revision, reading only ``columns``
-    (the footer and those column chunks, by HTTP range requests)."""
-    import pyarrow.parquet as pq
-    from huggingface_hub import HfFileSystem
-
-    with HfFileSystem().open(f"datasets/{repo}@{revision}/{path}", block_size=1 << 16) as f:
-        return pq.ParquetFile(f).read(columns=columns)
 
 
 def snapshot() -> dict:
@@ -301,12 +289,12 @@ def snapshot() -> dict:
              if f.path.endswith(".parquet") and not f.path.startswith("mushafs/")]
     shards: dict[str, dict[str, int]] = defaultdict(dict)
     for f in files:
-        shards[_SHARD_NAME.fullmatch(f.path.split("/")[-1]).group(1)][f.path] = f.size
-    catalog = _parquet_table(QUD_DATASET, qud.sha, "mushafs/all-00000-of-00001.parquet")
+        shards[SHARD_NAME.fullmatch(f.path.split("/")[-1]).group(1)][f.path] = f.size
+    catalog = parquet_table(QUD_DATASET, qud.sha, "mushafs/all-00000-of-00001.parquet")
     muaalem = api.dataset_info(MUAALEM_DATASET)
-    reciters = _parquet_table(MUAALEM_DATASET, muaalem.sha,
+    reciters = parquet_table(MUAALEM_DATASET, muaalem.sha,
                               "reciters_metadata/train-00000-of-00001.parquet")
-    moshafs = _parquet_table(MUAALEM_DATASET, muaalem.sha,
+    moshafs = parquet_table(MUAALEM_DATASET, muaalem.sha,
                              "moshaf_metadata/train-00000-of-00001.parquet",
                              ["id", "reciter_id", "name", "publisher", "sources",
                               "recitation_speed"])
@@ -344,7 +332,7 @@ def coverage(selection: Mapping) -> dict:
             continue
         rows: list[dict] = []
         for shard in mushaf["shards"]:
-            rows += _parquet_table(QUD_DATASET, selection["qud_revision"], shard,
+            rows += parquet_table(QUD_DATASET, selection["qud_revision"], shard,
                                    COVERAGE_COLUMNS).to_pylist()
         out[mushaf["slug"]] = summarize_coverage(rows)
         print(f"{mushaf['slug']}: {out[mushaf['slug']]['rows']} rows", flush=True)

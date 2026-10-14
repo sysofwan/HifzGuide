@@ -270,8 +270,9 @@ READ_EXEMPTIONS = {
 #: Where a parquet file may be opened without iter_shard_rows, and why.
 PARQUET_EXEMPTIONS = {
     "tadabur/shard_reader.py": "the Tadabur shard reader itself",
-    "tadabur/qud_selection.py": "metadata columns of QUD's and Muaalem's parquet files, "
-                                "never a Tadabur shard and never an audio column",
+    "tadabur/qud_source.py": "QUD's parquet files (metadata columns, and the pilot "
+                             "mushafs' MP3s), never a Tadabur shard",
+    "tadabur/muaalem_audio.py": "Muaalem's training parquet files, never a Tadabur shard",
 }
 
 
@@ -568,7 +569,7 @@ def _mixed_shard(tmp_path: Path, monkeypatch) -> StagedClip:
         "reciter_id": [100_001, panel.reciter_id, 100_001],
     }), shard)
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", lambda *a, **k: str(shard))
-    monkeypatch.setattr("tadabur.shard_reader._remove_shard_blob", lambda path: None)
+    monkeypatch.setattr("tadabur.shard_reader.remove_shard_blob", lambda path: None)
     return panel
 
 

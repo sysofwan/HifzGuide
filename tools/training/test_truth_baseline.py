@@ -222,12 +222,17 @@ def test_the_committed_doc_is_the_render_of_the_committed_report():
 
 
 def test_the_committed_report_carries_the_verified_views():
-    """#90: the word sample's causes, the direction table per frame and half, the edit calls,
-    and every exclusion reason, all read from the committed inputs."""
+    """#90: the word sample's causes; per frame and half (never pooled) the app outcome, the
+    direction table, the per-stratum and per-teacher-outcome rates; the edit calls; and every
+    exclusion reason, all read from the committed inputs."""
     report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
     assert set(REASONS) <= set(report) and set(REASONS) <= set(report["word_sample"])
-    assert set(report["directions"]) == set(FRAMES)
-    assert all(set(halves) == set(HALVES) for halves in report["directions"].values())
+    assert set(report["verified"]) == set(FRAMES)
+    assert all(set(halves) == set(HALVES) for halves in report["verified"].values())
+    held_out = report["verified"]["ship_a"]["held_out"]
+    assert {"app", "directions", "strata", "teacher"} <= set(held_out)
+    assert {e["teacher"] for e in held_out["teacher"] if e["direction"] == "ط→ق"} == {
+        "base_right", "base_wrong"}
     assert report["edit_check"]["type_verdicts"] == CALLS
     assert report["word_sample"]["words"] == 160
     assert "ship_a_verified.jsonl" in report["truth_site_files"]

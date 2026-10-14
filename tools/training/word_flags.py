@@ -21,9 +21,11 @@ rule that produced the quality:
   error costs a word neither score nor the phoneme gate, so it is never why such a word fell). A
   mismatch is a :data:`SOFT_PAIR` when its two letters are one of Muraja's six soft pairs, a
   :data:`TARGET_PAIR` when they are ``ذ↔ظ``, ``س↔ش`` or ``ط↔ق`` (target pairs the app does not
-  forgive), else :data:`OTHER_CONSONANT`. A deletion is :data:`SHADDAH_CAUSE` when the deleted
-  letter is doubled in the word's Muraja reference (a collapsed geminate), else another
-  consonant;
+  forgive), else :data:`OTHER_CONSONANT`. A deletion is :data:`SHADDAH_CAUSE` only when the
+  deleted occurrence is a consonant geminate (:func:`deleted_run`): a consonant
+  (``truth_sites.CONSONANTS``, so never a long vowel such as ``اا``) in a run of at least two
+  in the word's Muraja reference. Anything else, or an occurrence that cannot be identified, is
+  another consonant;
 * a word whose kept grade is **skipped** (Muraja's skip marking, ``SkipMarking.swift``) is
   :data:`SKIPPED`;
 * any other flagged word whose kept grade carries no error of its kind is :data:`UNRECORDED`: the
@@ -44,6 +46,7 @@ one word per held-out reciter the sample is small, and the intervals are wide.
 
 from __future__ import annotations
 
+import unicodedata
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -51,7 +54,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from tadabur.exclusions import Exclusions
-from tadabur.truth_sites import SOFT_PAIRS, SUKUN, UNFORGIVEN_PAIRS
+from tadabur.truth_sites import CONSONANTS, SOFT_PAIRS, SUKUN, UNFORGIVEN_PAIRS
 from tadabur.word_sample import VerifiedWord
 from training.acceptance_stats import Resample, unit_if_equal
 from training.muraja_policy import (
@@ -101,6 +104,47 @@ def tashkeel_mark(error: dict) -> str:
     return f"{expected} {DROPPED if kind['heard'] is None else OTHER_MARK}"
 
 
+#: What Muraja's word scorer skips before it numbers a word's groups (``maddScalars``,
+#: ``QuranFollowAlong+WordScoring.swift:61-66``): the small waw and yeh of a long vowel, the
+#: ghunna meem and the idgham marker.
+SKIPPED_SCALARS = frozenset("\u06e6\u06e5\u06fe\u0687")
+
+
+def letters(word: str) -> list[str]:
+    """The base letter of each unit Muraja's scorer numbers in a word: one per Character
+    (a letter with its marks), less :data:`SKIPPED_SCALARS`."""
+    bases = []
+    for char in word:
+        if char in SKIPPED_SCALARS:
+            continue
+        if unicodedata.category(char) != "Mn":
+            bases.append(char)
+    return bases
+
+
+def deleted_run(word: str, letter: str, group: int) -> int | None:
+    """The length of the run of ``letter`` the deletion at ``group`` took a letter from.
+
+    The deleted occurrence is the unit ``group`` names when that unit is ``letter`` (a
+    collapsed geminate whose gap comes first is reported on its first half, at the group the
+    scorer would give it, ``WordScoring.swift:478-489, 626-636``); otherwise, when every run of
+    ``letter`` in the word has one length, that length; otherwise ``None`` (unidentified)."""
+    bases = letters(word)
+
+    def run_at(i: int) -> int:
+        start, end = i, i
+        while start > 0 and bases[start - 1] == letter:
+            start -= 1
+        while end + 1 < len(bases) and bases[end + 1] == letter:
+            end += 1
+        return end - start + 1
+
+    if 0 <= group < len(bases) and bases[group] == letter:
+        return run_at(group)
+    runs = {run_at(i) for i, base in enumerate(bases) if base == letter}
+    return runs.pop() if len(runs) == 1 else None
+
+
 def consonant_cause(error: dict, word: str) -> str | None:
     """The cause of one consonant error (a mismatch or a deletion) in a word whose Muraja
     reference phonemes are ``word``; ``None`` for a tashkeel error."""
@@ -110,7 +154,9 @@ def consonant_cause(error: dict, word: str) -> str | None:
         return SOFT_PAIR if pair in SOFT_PAIRS else TARGET_PAIR if pair in UNFORGIVEN_PAIRS \
             else OTHER_CONSONANT
     if kind["type"] == "deletion":
-        return SHADDAH_CAUSE if 2 * kind["expected"] in word else OTHER_CONSONANT
+        letter = kind["expected"]
+        run = deleted_run(word, letter, error["group_index"]) if letter in CONSONANTS else None
+        return SHADDAH_CAUSE if run is not None and run >= 2 else OTHER_CONSONANT
     return None
 
 

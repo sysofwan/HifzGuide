@@ -30,6 +30,10 @@ reciter and outcome per arm, exactly as the report scores them):
   correction;
 * ``other``: neither: another letter, or nothing aligned at the carrier.
 
+The same rates are read per recorded stratum and per direction and base-teacher outcome
+(:func:`groups`, :func:`teacher_outcome`): the strata were drawn by different rules, so a pooled
+row mixes selections the per-stratum rows keep apart.
+
 Each rate carries its §1 interval (``truth_scorer.estimate``: the reciter-clustered bootstrap,
 or a Wilson bound where a sparse or degenerate row is independent and equally weighted, else
 none), its point and sums on the sites' own weights and its interval on §1's unit scale
@@ -39,7 +43,7 @@ none), its point and sums on the sites' own weights and its interval on §1's un
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -157,17 +161,38 @@ def members(rows: Sequence[SiteRow], key: Key) -> list[SiteRow]:
     return [row for row in rows if key.holds(row)]
 
 
+def summary(rows: Sequence[SiteRow], arms: Sequence[str]) -> dict:
+    """One group of sites: how many, on how many reciters, whether that is insufficient
+    evidence, and each arm's rates (absent when the group is empty)."""
+    reciters = len({r.reciter_id for r in rows})
+    entry = {"sites": len(rows), "reciters": reciters,
+             "insufficient_evidence": is_sparse(len(rows), reciters)}
+    if rows:
+        entry["arms"] = {arm: rates(rows, arm) for arm in arms}
+    return entry
+
+
 def table(rows: Sequence[SiteRow], arms: Sequence[str]) -> list[dict]:
-    """Every row of :data:`KEYS` over ``rows``: its sites, reciters, whether it is
-    insufficient evidence, and each arm's rates (absent when the row has no site)."""
-    out = []
-    for key in KEYS:
-        held = members(rows, key)
-        reciters = len({r.reciter_id for r in held})
-        entry = {"family": key.family, "direction": key.direction, "side": key.side,
-                 "sites": len(held), "reciters": reciters,
-                 "insufficient_evidence": is_sparse(len(held), reciters)}
-        if held:
-            entry["arms"] = {arm: rates(held, arm) for arm in arms}
-        out.append(entry)
-    return out
+    """Every row of :data:`KEYS` over ``rows``, each with its :func:`summary`."""
+    return [{"family": key.family, "direction": key.direction, "side": key.side,
+             **summary(members(rows, key), arms)} for key in KEYS]
+
+
+def teacher_outcome(site) -> str:
+    """The base teacher's outcome a mined stratum records, its last field: ``base_right`` /
+    ``base_wrong`` (a pair site, by the base's whole-segment decode at mining),
+    ``base_not_held`` (a geminate), ``base_partner`` (a reject-pile site), or ``h448_partner``
+    for the ``كسب`` sample, whose stratum records none."""
+    return site.stratum.rsplit(":", 1)[-1]
+
+
+def groups(rows: Sequence[SiteRow], label: Callable[[SiteRow], str]
+           ) -> dict[tuple[str, str], list[SiteRow]]:
+    """The rows a direction holds, by ``label`` and verdict side, sorted: per stratum
+    (``lambda r: r.site.stratum``), or per direction and :func:`teacher_outcome`. These read the
+    same rates as :func:`table`; no other resampling."""
+    held: dict[tuple[str, str], list[SiteRow]] = {}
+    for row in rows:
+        if direction(row.site) is not None:
+            held.setdefault((label(row), side(row.site)), []).append(row)
+    return dict(sorted(held.items()))

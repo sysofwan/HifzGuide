@@ -42,10 +42,11 @@ This is the runner around :mod:`training.truth_scorer`:
    onset trimmed, #138; not Hafs, #90), written as
    :data:`REPORT_PATH`; the §8 power simulation's inputs as :data:`POWER_INPUTS_PATH`
    (base and h448 only); and the human-readable report :data:`DOC_PATH`. With it (#90): the
-   word sample's false flags and their causes (:mod:`training.word_flags`), the decode-level
-   direction table over the verified sites per frame and half with :data:`ARM_GAPS`
-   (:mod:`training.direction_table`), and the synthetic-edit blind check per operation with
-   #90's call (:mod:`tadabur.edit_check_summary`).
+   word sample's false flags and their causes (:mod:`training.word_flags`); per frame and half
+   of the verified sites, their app outcome and per-allowance view, and the decode-level
+   direction table per direction, stratum and base-teacher outcome with :data:`ARM_GAPS`
+   (:func:`verified_views`, :mod:`training.direction_table`); and the synthetic-edit blind check
+   per operation with #90's call (:mod:`tadabur.edit_check_summary`).
 
 Every site appears under every arm, so a comparison between protocols or models is always
 paired on the same sites (§9 streaming pairing): an item one arm could not decode is an
@@ -106,7 +107,14 @@ from training.muraja_policy import (
 )
 from training.tashkeel_eval import write_text_atomically
 from training.truth_baseline_doc import render
-from training.truth_scorer import MurajaGrades, item_key, power_inputs, score, scored_sites
+from training.truth_scorer import (
+    MurajaGrades,
+    SiteRow,
+    item_key,
+    power_inputs,
+    score,
+    scored_sites,
+)
 from training.word_flags import word_report
 
 BASELINE_DIR = Path(__file__).parent.parent / "tadabur" / "truth_baseline"
@@ -492,32 +500,62 @@ ARM_GAPS = (
 )
 
 
-def direction_views(
+def _with_gaps(entry: dict, rows: Sequence[SiteRow], gaps: Sequence[tuple[str, str]]) -> dict:
+    """An entry of the direction table with each :data:`ARM_GAPS` difference over its rows."""
+    if rows:
+        entry["gaps"] = {f"{a} - {b}": direction_table.difference(rows, a, b) for a, b in gaps}
+    return entry
+
+
+def verified_views(
     sites: Sequence[TruthSite],
     reciter_of: Mapping[str, int],
     decodes: Mapping[str, Mapping[str, str]],
+    muraja: MurajaGrades,
     designs: Mapping[str, Design],
     excluded_items: Exclusions,
 ) -> dict:
-    """The decode-level direction table (:mod:`training.direction_table`) over the verified
-    sites, per frame and half, each row with :data:`ARM_GAPS` (when both models are scored)."""
+    """The verified sites per frame and half (:mod:`tadabur.ship_a_verified`), which were
+    selected by different rules and are never pooled here:
+
+    * ``app``: :func:`training.truth_scorer.score` over that subset alone, its pooled cells
+      (the app outcome per side, arm and scoring) and its per-allowance view;
+    * ``directions``: the direction table (:mod:`training.direction_table`);
+    * ``strata``: the same rates per recorded stratum and side;
+    * ``teacher``: per direction, base-teacher outcome of the stratum and side.
+
+    Every direction entry carries :data:`ARM_GAPS` (when both models are scored)."""
     weights = {site_id: d.weight for site_id, d in designs.items()}
-    rows = scored_sites(sites, reciter_of, decodes, design_weights=weights,
-                        excluded_items=excluded_items).rows
     gaps = [g for g in ARM_GAPS if set(g) <= set(decodes)]
-    views: dict[str, dict[str, list[dict]]] = {}
+    arms = sorted(decodes)
+    views: dict[str, dict[str, dict]] = {}
     for frame in FRAMES:
         views[frame] = {}
         for half in HALVES:
-            held = [r for r in rows if r.site.site_id in designs
-                    and (designs[r.site.site_id].frame, designs[r.site.site_id].half) == (frame, half)]
-            entries = direction_table.table(held, sorted(decodes))
-            for entry, key in zip(entries, direction_table.KEYS):
-                members = direction_table.members(held, key)
-                if members:
-                    entry["gaps"] = {f"{a} - {b}": direction_table.difference(members, a, b)
-                                     for a, b in gaps}
-            views[frame][half] = entries
+            subset = [s for s in sites if s.site_id in designs
+                      and (designs[s.site_id].frame, designs[s.site_id].half) == (frame, half)]
+            report = score(subset, reciter_of, decodes, (), muraja, design_weights=weights,
+                           excluded_items=excluded_items)
+            rows = scored_sites(subset, reciter_of, decodes, design_weights=weights,
+                                excluded_items=excluded_items).rows
+            views[frame][half] = {
+                "app": {"cells": [c for c in report["cells"] if c["family"] == "all" and c["sites"]],
+                        "allowances": report["allowances"]},
+                "directions": [
+                    _with_gaps(entry, direction_table.members(rows, key), gaps)
+                    for entry, key in zip(direction_table.table(rows, arms), direction_table.KEYS)],
+                "strata": [
+                    _with_gaps({"stratum": label, "side": side_,
+                                **direction_table.summary(held, arms)}, held, gaps)
+                    for (label, side_), held in direction_table.groups(
+                        rows, lambda r: r.site.stratum).items()],
+                "teacher": [
+                    _with_gaps({"direction": label.split(" ")[0], "teacher": label.split(" ")[1],
+                                "side": side_, **direction_table.summary(held, arms)}, held, gaps)
+                    for (label, side_), held in direction_table.groups(
+                        rows, lambda r: f"{direction_table.direction(r.site)} "
+                                        f"{direction_table.teacher_outcome(r.site)}").items()],
+            }
     return views
 
 
@@ -576,7 +614,7 @@ def main() -> None:
     weights = {site_id: d.weight for site_id, d in designs.items()}
     report, inputs = scored(sites, reciter_of, decodes, list(models), muraja, excluded, weights)
     report["word_sample"] = word_report(words, word_grades.grades, word_grades.texts, excluded)
-    report["directions"] = direction_views(sites, reciter_of, decodes, designs, excluded)
+    report["verified"] = verified_views(sites, reciter_of, decodes, muraja, designs, excluded)
     report["edit_check"] = edit_check()
     report["truth_site_files"] = [p.name for p in files]
     report["fingerprints"] = fingerprints

@@ -36,11 +36,31 @@ def tashkeel(expected: str | None, heard: str | None, group: int = 0) -> dict:
     (mismatch("ذ", "ز"), w.SOFT_PAIR), (mismatch("ك", "ق"), w.SOFT_PAIR),
     (mismatch("ط", "ق"), w.TARGET_PAIR), (mismatch("ش", "س"), w.TARGET_PAIR),
     (mismatch("ظ", "ذ"), w.TARGET_PAIR), (mismatch("ب", "م"), w.OTHER_CONSONANT),
-    (deletion("ل"), w.SHADDAH_CAUSE), (deletion("ب"), w.OTHER_CONSONANT),
+    (deletion("ل", 1), w.SHADDAH_CAUSE), (deletion("ب"), w.OTHER_CONSONANT),
     (tashkeel(FATHA, None), None),
 ])
 def test_each_consonant_error_has_one_cause(error, cause):
     assert w.consonant_cause(error, "ءَللَذِۦۦنَ") == cause  # ل doubled, ب absent
+
+
+def test_a_deleted_madd_alif_is_never_a_collapsed_geminate():
+    """Sol's review of #145: ``g4:del:ا`` in وَلِللَااهِ (3:180) is a long vowel, not a geminate."""
+    assert w.consonant_cause(deletion("ا", 4), "وَلِللَااهِ") == w.OTHER_CONSONANT
+    assert w.consonant_cause(deletion("ل", 2), "وَلِللَااهِ") == w.SHADDAH_CAUSE
+
+
+def test_the_deleted_occurrence_decides_when_a_letter_is_both_single_and_doubled():
+    word = "مَددَمَدَ"  # د doubled at units 1-2, single at 4
+    assert w.letters(word) == ["م", "د", "د", "م", "د"]
+    assert w.consonant_cause(deletion("د", 1), word) == w.SHADDAH_CAUSE
+    assert w.consonant_cause(deletion("د", 4), word) == w.OTHER_CONSONANT
+    # the group names another letter: the runs disagree, so the occurrence is unidentified
+    assert w.deleted_run(word, "د", 0) is None
+    assert w.consonant_cause(deletion("د", 0), word) == w.OTHER_CONSONANT
+
+
+def test_the_scorer_skips_long_vowel_marks_when_it_numbers_groups():
+    assert w.letters("رَسُۥۥلَ") == ["ر", "س", "ل"]
 
 
 def test_a_tashkeel_error_word_is_flagged_for_its_marks():

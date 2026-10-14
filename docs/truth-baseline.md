@@ -438,31 +438,146 @@ these sites cannot show it until real-mistake sites exist.
   not a sample of all recitation: a correct-side rate there is a rate at sites a
   model already got wrong. The word sample above is the model-free denominator.
 
-## Decode level at the verified sites, per direction (#90)
+## The verified sites per half (#90)
+
+Ship A's verified sites (where `h448` swapped a target pair or collapsed an in-word
+geminate) and #87's reject-pile sites (where the base teacher heard the partner) are two
+frames, and each is split by the confirmed reciter split (D11). Every number here is
+read within one frame and half, weighted by the design weights
+(`ship_a/verified_design.jsonl`: a listened site weighs the inverse of its chance of
+being listened to).
+
+### The verified sites per half: the app outcome
+
+The halves and frames were selected by different rules, so each is scored alone
+(`truth_scorer.score` over that subset, with the design weights). Flagged words per
+side, arm and scoring: on correct recitation a false flag, on a real mistake a catch.
+**Held-out is the half to read**; the train half was listened to only where the base
+teacher was wrong. % [95% interval].
+
+**Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate), train half**
+
+| side | sites / reciters | arm | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|---|---|
+| correct | 98 / 58 | base/checks | 50.3 [30.7, 63.9] | 59.6 [40.7, 72.5] | 51.0 [31.5, 64.5] | 50.3 [30.7, 63.9] | 60.3 [41.6, 73.0] |
+| correct | 98 / 58 | base/spans | 59.6 [41.1, 72.1] | 70.2 [52.7, 81.9] | 60.9 [42.9, 73.1] | 59.6 [41.1, 72.1] | 71.5 [54.5, 82.6] |
+| correct | 98 / 58 | base/stream_b0 | 55.6 [34.7, 70.2] | 63.6 [44.2, 77.0] | 57.6 [37.4, 71.6] | 57.6 [37.4, 71.7] | 66.2 [47.9, 79.0] |
+| correct | 98 / 58 | h448/checks | 39.7 [21.8, 57.1] | 49.0 [30.1, 66.7] | 40.4 [22.4, 57.7] | 39.7 [21.8, 57.1] | 49.7 [30.8, 67.5] |
+| correct | 98 / 58 | h448/spans | 42.4 [25.3, 59.6] | 49.7 [31.3, 67.3] | 43.7 [26.7, 60.9] | 43.0 [25.7, 60.1] | 51.0 [32.8, 68.6] |
+| correct | 98 / 58 | h448/stream_b0 | 62.9 [44.8, 74.9] | 72.2 [56.5, 82.7] | 64.2 [46.8, 75.6] | 64.9 [47.7, 76.4] | 72.8 [57.5, 83.0] |
+| mistake | 19 / 15 | base/checks | 21.1 (n/c) | 42.1 (n/c) | 36.8 (n/c) | 36.8 (n/c) | 57.9 (n/c) |
+| mistake | 19 / 15 | base/spans | 21.1 (n/c) | 57.9 (n/c) | 42.1 (n/c) | 42.1 (n/c) | 78.9 (n/c) |
+| mistake | 19 / 15 | base/stream_b0 | 26.3 (n/c) | 57.9 (n/c) | 42.1 (n/c) | 42.1 (n/c) | 73.7 (n/c) |
+| mistake | 19 / 15 | h448/checks | 26.3 (n/c) | 47.4 (n/c) | 42.1 (n/c) | 42.1 (n/c) | 63.2 (n/c) |
+| mistake | 19 / 15 | h448/spans | 36.8 (n/c) | 52.6 (n/c) | 57.9 (n/c) | 57.9 (n/c) | 73.7 (n/c) |
+| mistake | 19 / 15 | h448/stream_b0 | 31.6 (n/c) | 63.2 (n/c) | 42.1 (n/c) | 42.1 (n/c) | 73.7 (n/c) |
+
+Per allowance, on the sites it affects:
+
+| population | allowance | side | sites / reciters | base/checks on → off | base/spans on → off | base/stream_b0 on → off | h448/checks on → off | h448/spans on → off | h448/stream_b0 on → off |
+|---|---|---|---|---|---|---|---|---|---|
+| headline | soft_pair_forgiveness | false flags | 31 / 24 | 16.1 [3.2, 32.4] → 58.1 [40.7, 75.0] | 16.1 [4.0, 27.6] → 64.5 [46.2, 80.6] | 22.6 [10.0, 35.7] → 58.1 [39.3, 74.3] | 16.1 [3.2, 32.3] → 58.1 [37.0, 77.4] | 35.5 [20.0, 51.4] → 64.5 [46.9, 80.8] | 29.0 [13.3, 45.5] → 67.7 [51.9, 82.1] |
+| headline | soft_pair_forgiveness | flagged mistakes | 10 / 8 (too small) | 0.0 (n/c) → 40.0 (n/c) | 0.0 (n/c) → 70.0 (n/c) | 0.0 (n/c) → 60.0 (n/c) | 0.0 (n/c) → 40.0 (n/c) | 30.0 (n/c) → 60.0 (n/c) | 0.0 (n/c) → 60.0 (n/c) |
+| headline | shaddah_suppression | false flags | 21 / 17 | 14.3 [0.0, 33.3] → 19.0 [4.3, 40.0] | 38.1 [16.7, 61.1] → 47.6 [23.8, 70.0] | 23.8 [4.5, 47.6] → 33.3 [12.0, 56.0] | 28.6 [9.5, 50.0] → 33.3 [13.0, 55.6] | 19.0 [4.3, 40.0] → 28.6 [10.5, 50.0] | 42.9 [20.0, 68.4] → 47.6 [26.1, 70.8] |
+| headline | shaddah_suppression | flagged mistakes | 7 / 7 (too small) | 42.9 [15.8, 75.0] W → 85.7 [48.7, 97.4] W | 42.9 [15.8, 75.0] W → 100.0 [64.6, 100.0] W | 57.1 [25.0, 84.2] W → 100.0 [64.6, 100.0] W | 57.1 [25.0, 84.2] W → 100.0 [64.6, 100.0] W | 42.9 [15.8, 75.0] W → 100.0 [64.6, 100.0] W | 71.4 [35.9, 91.8] W → 100.0 [64.6, 100.0] W |
+
+**Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate), held-out half**
+
+| side | sites / reciters | arm | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|---|---|
+| correct | 292 / 115 | base/checks | 21.6 [14.3, 28.5] | 23.1 [15.8, 30.0] | 21.7 [14.5, 28.7] | 21.6 [14.3, 28.5] | 23.3 [16.0, 30.1] |
+| correct | 292 / 115 | base/spans | 20.4 [13.7, 27.5] | 22.9 [16.1, 29.8] | 21.7 [15.2, 28.7] | 21.0 [14.3, 28.0] | 24.4 [17.8, 31.1] |
+| correct | 292 / 115 | base/stream_b0 | 52.0 [43.1, 60.2] | 54.8 [46.1, 62.7] | 53.1 [44.2, 61.1] | 55.4 [46.8, 63.1] | 58.8 [50.6, 66.2] |
+| correct | 292 / 115 | h448/checks | 20.6 [14.8, 27.0] | 24.8 [18.6, 31.5] | 21.2 [15.4, 27.6] | 20.8 [15.0, 27.2] | 25.3 [19.2, 32.0] |
+| correct | 292 / 115 | h448/spans | 34.2 [25.8, 42.3] | 41.4 [33.4, 49.3] | 34.6 [26.1, 42.7] | 35.2 [26.8, 43.3] | 42.5 [34.4, 50.6] |
+| correct | 292 / 115 | h448/stream_b0 | 55.0 [46.0, 63.5] | 65.6 [57.1, 73.1] | 56.3 [47.3, 64.8] | 57.3 [48.4, 65.7] | 68.2 [60.0, 75.6] |
+| mistake | 34 / 25 | base/checks | 47.9 [17.9, 70.4] | 54.2 [25.0, 75.4] | 50.0 [21.1, 72.0] | 47.9 [17.9, 70.4] | 56.2 [27.7, 76.9] |
+| mistake | 34 / 25 | base/spans | 25.0 [12.5, 41.7] | 33.3 [18.8, 53.1] | 27.1 [14.5, 44.4] | 27.1 [13.6, 44.4] | 37.5 [21.2, 60.0] |
+| mistake | 34 / 25 | base/stream_b0 | 22.9 [10.8, 39.4] | 37.5 [21.3, 59.6] | 27.1 [14.3, 45.0] | 25.0 [11.5, 42.4] | 41.7 [23.5, 65.8] |
+| mistake | 34 / 25 | h448/checks | 22.9 [10.8, 39.4] | 39.6 [22.1, 63.6] | 25.0 [12.5, 42.1] | 22.9 [10.8, 39.4] | 41.7 [23.8, 66.7] |
+| mistake | 34 / 25 | h448/spans | 29.2 [16.0, 47.4] | 47.9 [28.8, 73.5] | 31.2 [17.6, 50.0] | 31.2 [17.8, 50.0] | 50.0 [30.3, 76.3] |
+| mistake | 34 / 25 | h448/stream_b0 | 35.4 [17.3, 59.1] | 54.2 [30.9, 81.2] | 37.5 [19.1, 61.4] | 35.4 [17.3, 59.1] | 56.2 [32.8, 83.3] |
+
+Per allowance, on the sites it affects:
+
+| population | allowance | side | sites / reciters | base/checks on → off | base/spans on → off | base/stream_b0 on → off | h448/checks on → off | h448/spans on → off | h448/stream_b0 on → off |
+|---|---|---|---|---|---|---|---|---|---|
+| headline | soft_pair_forgiveness | false flags | 118 / 63 | 4.9 [1.4, 9.0] → 10.5 [5.2, 16.6] | 9.1 [2.3, 18.2] → 17.5 [9.4, 26.7] | 26.6 [16.4, 36.7] → 36.4 [24.8, 47.7] | 5.6 [2.3, 9.7] → 21.0 [13.7, 28.9] | 19.6 [9.6, 31.1] → 46.2 [36.2, 55.1] | 21.7 [14.4, 29.5] → 60.1 [49.3, 69.5] |
+| headline | soft_pair_forgiveness | flagged mistakes | 18 / 17 (too small) | 4.5 (n/c) → 18.2 (n/c) | 4.5 (n/c) → 22.7 (n/c) | 4.5 (n/c) → 36.4 (n/c) | 0.0 (n/c) → 36.4 (n/c) | 9.1 (n/c) → 50.0 (n/c) | 22.7 (n/c) → 63.6 (n/c) |
+| headline | shaddah_suppression | false flags | 21 / 18 | 33.3 [15.0, 52.6] → 38.1 [20.0, 56.5] | 52.4 [30.0, 75.0] → 71.4 [47.6, 90.5] | 52.4 [27.8, 76.0] → 66.7 [42.1, 86.4] | 28.6 [10.0, 50.0] → 38.1 [15.8, 60.9] | 38.1 [19.0, 57.9] → 47.6 [28.6, 66.7] | 42.9 [23.8, 63.2] → 61.9 [40.0, 81.8] |
+| headline | shaddah_suppression | flagged mistakes | 8 / 5 (too small) | 75.0 (n/c) → 87.5 (n/c) | 75.0 (n/c) → 87.5 (n/c) | 75.0 (n/c) → 87.5 (n/c) | 75.0 (n/c) → 87.5 (n/c) | 75.0 (n/c) → 87.5 (n/c) | 75.0 (n/c) → 87.5 (n/c) |
+
+**Reject-pile sites (#87: where the base teacher heard the partner), train half**
+
+| side | sites / reciters | arm | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|---|---|
+| correct | 5 / 5 | base/checks | 0.0 (n/c) | 28.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 28.0 (n/c) |
+| correct | 5 / 5 | base/spans | 0.0 (n/c) | 35.5 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 35.5 (n/c) |
+| correct | 5 / 5 | base/stream_b0 | 7.5 (n/c) | 7.5 (n/c) | 7.5 (n/c) | 7.5 (n/c) | 7.5 (n/c) |
+| correct | 5 / 5 | h448/checks | 0.0 (n/c) | 28.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 28.0 (n/c) |
+| correct | 5 / 5 | h448/spans | 0.0 (n/c) | 55.9 (n/c) | 0.0 (n/c) | 28.0 (n/c) | 55.9 (n/c) |
+| correct | 5 / 5 | h448/stream_b0 | 35.5 (n/c) | 35.5 (n/c) | 35.5 (n/c) | 35.5 (n/c) | 35.5 (n/c) |
+| mistake | 2 / 2 | base/checks | 0.0 (n/c) | 15.6 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 15.6 (n/c) |
+| mistake | 2 / 2 | base/spans | 0.0 (n/c) | 100.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 100.0 (n/c) |
+| mistake | 2 / 2 | base/stream_b0 | 0.0 (n/c) | 84.4 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 84.4 (n/c) |
+| mistake | 2 / 2 | h448/checks | 0.0 (n/c) | 15.6 (n/c) | 0.0 (n/c) | 84.4 (n/c) | 100.0 (n/c) |
+| mistake | 2 / 2 | h448/spans | 0.0 (n/c) | 84.4 (n/c) | 0.0 (n/c) | 84.4 (n/c) | 84.4 (n/c) |
+| mistake | 2 / 2 | h448/stream_b0 | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 84.4 (n/c) | 84.4 (n/c) |
+
+Per allowance, on the sites it affects:
+
+| population | allowance | side | sites / reciters | base/checks on → off | base/spans on → off | base/stream_b0 on → off | h448/checks on → off | h448/spans on → off | h448/stream_b0 on → off |
+|---|---|---|---|---|---|---|---|---|---|
+| headline | soft_pair_forgiveness | false flags | 5 / 5 (too small) | 0.0 (n/c) → 28.0 (n/c) | 0.0 (n/c) → 35.5 (n/c) | 7.5 (n/c) → 7.5 (n/c) | 0.0 (n/c) → 28.0 (n/c) | 0.0 (n/c) → 55.9 (n/c) | 35.5 (n/c) → 35.5 (n/c) |
+| headline | soft_pair_forgiveness | flagged mistakes | 2 / 2 (too small) | 0.0 (n/c) → 15.6 (n/c) | 0.0 (n/c) → 100.0 (n/c) | 0.0 (n/c) → 84.4 (n/c) | 0.0 (n/c) → 15.6 (n/c) | 0.0 (n/c) → 84.4 (n/c) | 0.0 (n/c) → 0.0 (n/c) |
+
+**Reject-pile sites (#87: where the base teacher heard the partner), held-out half**
+
+| side | sites / reciters | arm | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|---|---|
+| correct | 7 / 5 | base/checks | 6.0 (n/c) | 38.6 (n/c) | 6.0 (n/c) | 6.0 (n/c) | 38.6 (n/c) |
+| correct | 7 / 5 | base/spans | 6.0 (n/c) | 78.3 (n/c) | 6.0 (n/c) | 6.0 (n/c) | 78.3 (n/c) |
+| correct | 7 / 5 | base/stream_b0 | 6.0 (n/c) | 78.3 (n/c) | 6.0 (n/c) | 37.3 (n/c) | 78.3 (n/c) |
+| correct | 7 / 5 | h448/checks | 6.0 (n/c) | 6.0 (n/c) | 6.0 (n/c) | 6.0 (n/c) | 6.0 (n/c) |
+| correct | 7 / 5 | h448/spans | 38.6 (n/c) | 69.9 (n/c) | 38.6 (n/c) | 38.6 (n/c) | 69.9 (n/c) |
+| correct | 7 / 5 | h448/stream_b0 | 31.3 (n/c) | 31.3 (n/c) | 31.3 (n/c) | 31.3 (n/c) | 31.3 (n/c) |
+| mistake | 1 / 1 | base/checks | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| mistake | 1 / 1 | base/spans | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
+| mistake | 1 / 1 | base/stream_b0 | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| mistake | 1 / 1 | h448/checks | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| mistake | 1 / 1 | h448/spans | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| mistake | 1 / 1 | h448/stream_b0 | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+
+Per allowance, on the sites it affects:
+
+| population | allowance | side | sites / reciters | base/checks on → off | base/spans on → off | base/stream_b0 on → off | h448/checks on → off | h448/spans on → off | h448/stream_b0 on → off |
+|---|---|---|---|---|---|---|---|---|---|
+| headline | soft_pair_forgiveness | false flags | 6 / 4 (too small) | 0.0 (n/c) → 34.6 (n/c) | 6.4 (n/c) → 83.3 (n/c) | 0.0 (n/c) → 76.9 (n/c) | 6.4 (n/c) → 6.4 (n/c) | 34.6 (n/c) → 67.9 (n/c) | 33.3 (n/c) → 33.3 (n/c) |
+| headline | soft_pair_forgiveness | flagged mistakes | 1 / 1 (too small) | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W → 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W → 0.0 [0.0, 79.3] W |
+
+### Decode level, per direction
 
 Per target-pair direction (the mushaf's letter → its partner) and for in-word geminates,
 by verdict side, the share of sites where the decode **swapped**: committed the partner
 (a geminate: a single consonant). On the correct side that is a mishearing; on the
 mistake side it is the model hearing the mistake. `training/direction_table.py` is the
 single-model core (#57's diff compares two of its arms); `report.json` also has each
-row's `mushaf` and `other` rates. Rows are weighted by the design weights
-(`ship_a/verified_design.jsonl`: a listened site weighs the inverse of its
-chance of being listened to), the halves are the confirmed reciter split (D11), and a
-direction with fewer than 10 reciters or 20 sites is insufficient evidence: read its
-family row. Directions with no verified site are left out of the tables.
+row's `mushaf` and `other` rates. A direction with fewer than 10 reciters or 20 sites is
+insufficient evidence: read its family row. Directions with no verified site are left
+out.
 
 **These rates are conditional on selection.** Ship A's sites were mined where `h448`,
 streamed at b = 0 over the whole pool clip, committed the partner (or a single
-consonant), so on the correct side `h448`'s swap rate is high by construction; its
+consonant), so on the correct side `h448`'s stream arms are high by construction; its
 `stream_b0` here streams the segment from its own first sample, so it need not reproduce
-the mining decode. The base teacher's whole-span outcome is fixed by the design too: on
-the held-out half it defined the strata (`base_right` / `base_wrong`, re-weighted to
-their mined proportions), and on the train half only the sites it got wrong were
-listened to (owner decisions D10 and 2026-10-10 A), so `base/spans` there is high by
-selection (not 100%: the mining's base decode and this one differ on some items). The
-other arms against these two, paired on the same sites, are the information.
+the mining decode. The base teacher's whole-segment decode at mining defined each pair
+stratum (`base_right` / `base_wrong`): on the held-out half both are listened to and
+re-weighted to their mined proportions, so `base/spans` is low there by design; on the
+train half only `base_wrong` was listened to (owner decisions D10 and 2026-10-10 A), so
+`base/spans` is high (not 100%: the mining's base decode and this one differ on some
+items). The per-stratum rows below keep the strata apart.
 
-### Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate): train half
+#### Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate): train half
 
 *swap rate*, % [95% interval]
 
@@ -494,7 +609,7 @@ other arms against these two, paired on the same sites, are the information.
 | geminate | geminate | correct | 21 / 17 | 71.4 [50.0, 89.5] | 66.7 [45.0, 85.0] | 61.9 [38.9, 81.0] | 66.7 [47.4, 84.2] | 47.6 [28.6, 70.0] | 57.1 [36.8, 77.8] |
 | geminate | geminate | mistake | 7 / 7 (insufficient evidence) | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W |
 
-### Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate): held-out half
+#### Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate): held-out half
 
 *swap rate*, % [95% interval]
 
@@ -534,7 +649,7 @@ other arms against these two, paired on the same sites, are the information.
 | geminate | geminate | correct | 21 / 18 | 33.3 [11.1, 57.1] | 61.9 [40.0, 83.3] | 38.1 [15.0, 61.9] | 61.9 [42.1, 81.0] | 57.1 [34.8, 78.9] | 76.2 [57.1, 92.0] |
 | geminate | geminate | mistake | 8 / 5 (insufficient evidence) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
 
-### Reject-pile sites (#87: where the base teacher heard the partner): train half
+#### Reject-pile sites (#87: where the base teacher heard the partner): train half
 
 *swap rate*, % [95% interval]
 
@@ -548,7 +663,7 @@ other arms against these two, paired on the same sites, are the information.
 | soft pairs | **all** | correct | 5 / 5 (insufficient evidence) | 57.0 (n/c) | 100.0 (n/c) | 28.0 (n/c) | 55.9 (n/c) | 63.4 (n/c) | 55.9 (n/c) |
 | soft pairs | **all** | mistake | 2 / 2 (insufficient evidence) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 15.6 (n/c) | 84.4 (n/c) | 15.6 (n/c) |
 
-### Reject-pile sites (#87: where the base teacher heard the partner): held-out half
+#### Reject-pile sites (#87: where the base teacher heard the partner): held-out half
 
 *swap rate*, % [95% interval]
 
@@ -565,22 +680,127 @@ other arms against these two, paired on the same sites, are the information.
 | ذ↔ظ | ذ→ظ | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
 | ذ↔ظ | **all** | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
 
-### Windowing or weights at ط↔ق (correct recitation)
+### Decode level, per recorded stratum
+
+The same swap rates per stratum as mined (`ship_a:` the pool, `ship_a_mining:` the
+extension; the last field is the base teacher's outcome at mining), per side. % [95% interval].
+
+#### Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate): train half
+
+| stratum | side | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| ship_a:kasb:س→ش:h448_partner | correct | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
+| ship_a:shaddah:held:h448_single:base_not_held | correct | 21 / 17 | 71.4 [50.0, 89.5] | 66.7 [45.0, 85.0] | 61.9 [38.9, 81.0] | 66.7 [47.4, 84.2] | 47.6 [28.6, 70.0] | 57.1 [36.8, 77.8] |
+| ship_a:shaddah:held:h448_single:base_not_held | mistake | 7 / 7 (insufficient evidence) | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W | 100.0 [64.6, 100.0] W |
+| ship_a:ز→ذ:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:س→ش:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:س→ص:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W |
+| ship_a:ص→س:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| ship_a:ص→س:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:ط→ت:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| ship_a:ط→ق:h448_partner:base_wrong | correct | 3 / 3 (insufficient evidence) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W |
+| ship_a:ط→ق:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
+| ship_a:ظ→ض:h448_partner:base_wrong | correct | 4 / 3 (insufficient evidence) | 50.0 (n/c) | 100.0 (n/c) | 75.0 (n/c) | 100.0 (n/c) | 75.0 (n/c) | 100.0 (n/c) |
+| ship_a:ق→ك:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:ق→ك:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
+| ship_a:ك→ق:h448_partner:base_wrong | correct | 2 / 2 (insufficient evidence) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ship_a:ك→ق:h448_partner:base_wrong | mistake | 4 / 4 (insufficient evidence) | 75.0 [30.1, 95.4] W | 100.0 [51.0, 100.0] W | 75.0 [30.1, 95.4] W | 75.0 [30.1, 95.4] W | 50.0 [15.0, 85.0] W | 75.0 [30.1, 95.4] W |
+| ship_a_mining:kasb:س→ش:h448_partner | correct | 6 / 6 (insufficient evidence) | 90.0 (n/c) | 100.0 (n/c) | 80.0 (n/c) | 100.0 (n/c) | 80.0 (n/c) | 90.0 (n/c) |
+| ship_a_mining:ذ→ظ:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| ship_a_mining:ز→ذ:h448_partner:base_wrong | correct | 3 / 3 (insufficient evidence) | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 100.0 [43.8, 100.0] W |
+| ship_a_mining:س→ش:h448_partner:base_wrong | correct | 6 / 6 (insufficient evidence) | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 100.0 [61.0, 100.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 100.0 [61.0, 100.0] W |
+| ship_a_mining:س→ص:h448_partner:base_wrong | correct | 3 / 3 (insufficient evidence) | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W | 33.3 [6.1, 79.2] W | 100.0 [43.8, 100.0] W | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W |
+| ship_a_mining:س→ص:h448_partner:base_wrong | mistake | 2 / 2 (insufficient evidence) | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ship_a_mining:ط→ق:h448_partner:base_wrong | correct | 27 / 23 | 66.7 [50.0, 84.0] | 77.8 [61.1, 92.3] | 59.3 [40.0, 77.8] | 63.0 [44.0, 80.8] | 51.9 [33.3, 70.4] | 51.9 [30.8, 69.7] |
+| ship_a_mining:ط→ق:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:ظ→ض:h448_partner:base_wrong | correct | 11 / 10 (insufficient evidence) | 54.5 (n/c) | 63.6 (n/c) | 54.5 (n/c) | 72.7 (n/c) | 54.5 (n/c) | 63.6 (n/c) |
+| ship_a_mining:ظ→ض:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:ق→ط:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:ك→ق:h448_partner:base_wrong | correct | 3 / 3 (insufficient evidence) | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W | 33.3 [6.1, 79.2] W | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W |
+| ship_a_mining:ك→ق:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+
+#### Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate): held-out half
+
+| stratum | side | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
+|---|---|---|---|---|---|---|---|---|
+| ship_a:kasb:س→ش:h448_partner | correct | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:shaddah:held:h448_single:base_not_held | correct | 21 / 18 | 33.3 [11.1, 57.1] | 61.9 [40.0, 83.3] | 38.1 [15.0, 61.9] | 61.9 [42.1, 81.0] | 57.1 [34.8, 78.9] | 76.2 [57.1, 92.0] |
+| ship_a:shaddah:held:h448_single:base_not_held | mistake | 8 / 5 (insufficient evidence) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| ship_a:ز→ذ:h448_partner:base_right | correct | 4 / 4 (insufficient evidence) | 20.0 (n/c) | 0.0 (n/c) | 20.0 (n/c) | 80.0 (n/c) | 0.0 (n/c) | 80.0 (n/c) |
+| ship_a:ز→ذ:h448_partner:base_wrong | correct | 3 / 3 (insufficient evidence) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 66.7 [20.8, 93.9] W | 33.3 [6.1, 79.2] W |
+| ship_a:س→ش:h448_partner:base_right | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:س→ش:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:س→ص:h448_partner:base_right | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:ش→س:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W |
+| ship_a:ط→ت:h448_partner:base_right | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:ط→ت:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:ط→ق:h448_partner:base_right | correct | 15 / 15 (insufficient evidence) | 10.7 (n/c) | 0.0 (n/c) | 17.9 (n/c) | 53.6 (n/c) | 7.1 (n/c) | 53.6 (n/c) |
+| ship_a:ط→ق:h448_partner:base_right | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
+| ship_a:ط→ق:h448_partner:base_wrong | correct | 4 / 4 (insufficient evidence) | 100.0 [51.0, 100.0] W | 100.0 [51.0, 100.0] W | 50.0 [15.0, 85.0] W | 75.0 [30.1, 95.4] W | 75.0 [30.1, 95.4] W | 75.0 [30.1, 95.4] W |
+| ship_a:ط→ق:h448_partner:base_wrong | mistake | 2 / 1 (insufficient evidence) | 100.0 (n/c) | 50.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) | 100.0 (n/c) |
+| ship_a:ظ→ض:h448_partner:base_right | correct | 2 / 2 (insufficient evidence) | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W |
+| ship_a:ظ→ض:h448_partner:base_wrong | correct | 5 / 5 (insufficient evidence) | 80.0 [37.6, 96.4] W | 100.0 [56.6, 100.0] W | 60.0 [23.1, 88.2] W | 80.0 [37.6, 96.4] W | 80.0 [37.6, 96.4] W | 100.0 [56.6, 100.0] W |
+| ship_a:ظ→ض:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a:ق→ك:h448_partner:base_right | correct | 4 / 4 (insufficient evidence) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 100.0 (n/c) | 33.3 (n/c) | 100.0 (n/c) |
+| ship_a:ق→ك:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:kasb:س→ش:h448_partner | correct | 12 / 12 (insufficient evidence) | 93.8 (n/c) | 81.2 (n/c) | 93.8 (n/c) | 68.8 (n/c) | 50.0 (n/c) | 87.5 (n/c) |
+| ship_a_mining:ح→ه:h448_partner:base_right | mistake | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:ح→ه:h448_partner:base_wrong | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:ذ→ز:h448_partner:base_right | correct | 2 / 2 (insufficient evidence) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 66.7 (n/c) | 0.0 (n/c) | 66.7 (n/c) |
+| ship_a_mining:ز→ذ:h448_partner:base_right | correct | 14 / 14 (insufficient evidence) | 6.2 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 56.2 (n/c) | 50.0 (n/c) | 56.2 (n/c) |
+| ship_a_mining:ز→ذ:h448_partner:base_wrong | correct | 5 / 5 (insufficient evidence) | 40.0 [11.8, 76.9] W | 40.0 [11.8, 76.9] W | 40.0 [11.8, 76.9] W | 80.0 [37.6, 96.4] W | 40.0 [11.8, 76.9] W | 80.0 [37.6, 96.4] W |
+| ship_a_mining:س→ش:h448_partner:base_right | correct | 7 / 7 (insufficient evidence) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 72.7 (n/c) | 63.6 (n/c) | 72.7 (n/c) |
+| ship_a_mining:س→ش:h448_partner:base_wrong | correct | 6 / 6 (insufficient evidence) | 50.0 [18.8, 81.2] W | 100.0 [61.0, 100.0] W | 66.7 [30.0, 90.3] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W | 83.3 [43.6, 97.0] W |
+| ship_a_mining:س→ش:h448_partner:base_wrong | mistake | 3 / 2 (insufficient evidence) | 33.3 (n/c) | 66.7 (n/c) | 33.3 (n/c) | 66.7 (n/c) | 66.7 (n/c) | 100.0 (n/c) |
+| ship_a_mining:س→ص:h448_partner:base_right | correct | 13 / 13 (insufficient evidence) | 5.6 (n/c) | 0.0 (n/c) | 5.6 (n/c) | 38.9 (n/c) | 16.7 (n/c) | 44.4 (n/c) |
+| ship_a_mining:س→ص:h448_partner:base_right | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:س→ص:h448_partner:base_wrong | correct | 2 / 2 (insufficient evidence) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
+| ship_a_mining:ش→س:h448_partner:base_right | correct | 8 / 8 (insufficient evidence) | 7.7 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 38.5 (n/c) | 23.1 (n/c) | 23.1 (n/c) |
+| ship_a_mining:ص→س:h448_partner:base_right | correct | 2 / 2 (insufficient evidence) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) |
+| ship_a_mining:ص→س:h448_partner:base_right | mistake | 2 / 2 (insufficient evidence) | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W |
+| ship_a_mining:ص→س:h448_partner:base_wrong | correct | 2 / 2 (insufficient evidence) | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W |
+| ship_a_mining:ط→ت:h448_partner:base_right | correct | 2 / 2 (insufficient evidence) | 50.0 [9.5, 90.5] W | 0.0 [0.0, 65.8] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W | 50.0 [9.5, 90.5] W | 100.0 [34.2, 100.0] W |
+| ship_a_mining:ط→ت:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:ط→ق:h448_partner:base_right | correct | 69 / 69 | 53.8 [38.5, 67.9] | 0.0 (n/c) | 50.3 [34.7, 64.8] | 60.9 [45.8, 74.2] | 21.3 [10.4, 33.9] | 60.9 [45.7, 74.3] |
+| ship_a_mining:ط→ق:h448_partner:base_wrong | correct | 24 / 20 | 83.3 [69.6, 95.7] | 95.8 [85.7, 100.0] | 83.3 [71.4, 95.2] | 83.3 [66.7, 96.2] | 75.0 [55.0, 91.3] | 75.0 [56.5, 90.9] |
+| ship_a_mining:ط→ق:h448_partner:base_wrong | mistake | 2 / 2 (insufficient evidence) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ship_a_mining:ظ→ذ:h448_partner:base_right | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W |
+| ship_a_mining:ظ→ض:h448_partner:base_right | correct | 26 / 26 | 29.7 [11.1, 51.4] | 0.0 (n/c) | 29.7 [10.0, 51.4] | 48.6 [26.7, 70.3] | 56.8 [33.3, 75.6] | 62.2 [40.0, 82.5] |
+| ship_a_mining:ظ→ض:h448_partner:base_right | mistake | 3 / 3 (insufficient evidence) | 50.0 (n/c) | 0.0 (n/c) | 75.0 (n/c) | 75.0 (n/c) | 100.0 (n/c) | 75.0 (n/c) |
+| ship_a_mining:ظ→ض:h448_partner:base_wrong | correct | 3 / 3 (insufficient evidence) | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 100.0 [43.8, 100.0] W | 33.3 [6.1, 79.2] W | 66.7 [20.8, 93.9] W | 0.0 [0.0, 56.2] W |
+| ship_a_mining:ظ→ض:h448_partner:base_wrong | mistake | 2 / 2 (insufficient evidence) | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W | 100.0 [34.2, 100.0] W |
+| ship_a_mining:ق→ط:h448_partner:base_right | correct | 3 / 3 (insufficient evidence) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 90.0 (n/c) | 60.0 (n/c) | 90.0 (n/c) |
+| ship_a_mining:ق→ك:h448_partner:base_right | correct | 6 / 6 (insufficient evidence) | 0.0 (n/c) | 0.0 (n/c) | 0.0 (n/c) | 75.0 (n/c) | 50.0 (n/c) | 87.5 (n/c) |
+| ship_a_mining:ق→ك:h448_partner:base_wrong | correct | 4 / 4 (insufficient evidence) | 50.0 [15.0, 85.0] W | 75.0 [30.1, 95.4] W | 50.0 [15.0, 85.0] W | 100.0 [51.0, 100.0] W | 75.0 [30.1, 95.4] W | 75.0 [30.1, 95.4] W |
+| ship_a_mining:ق→ك:h448_partner:base_wrong | mistake | 1 / 1 (insufficient evidence) | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W | 100.0 [20.7, 100.0] W |
+| ship_a_mining:ك→ق:h448_partner:base_right | correct | 11 / 11 (insufficient evidence) | 9.1 [1.6, 37.7] W | 0.0 [0.0, 25.9] W | 9.1 [1.6, 37.7] W | 9.1 [1.6, 37.7] W | 0.0 [0.0, 25.9] W | 18.2 [5.1, 47.7] W |
+| ship_a_mining:ك→ق:h448_partner:base_right | mistake | 5 / 5 (insufficient evidence) | 12.5 (n/c) | 0.0 (n/c) | 25.0 (n/c) | 87.5 (n/c) | 25.0 (n/c) | 87.5 (n/c) |
+| ship_a_mining:ك→ق:h448_partner:base_wrong | correct | 3 / 2 (insufficient evidence) | 33.3 (n/c) | 66.7 (n/c) | 33.3 (n/c) | 33.3 (n/c) | 0.0 (n/c) | 33.3 (n/c) |
+| ship_a_mining:ه→ح:h448_partner:base_right | correct | 1 / 1 (insufficient evidence) | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W | 0.0 [0.0, 79.3] W | 100.0 [20.7, 100.0] W |
+
+### Windowing or weights at ط→ق (correct recitation), by the base teacher's outcome
 
 The sizing's "base already right" compares the base teacher decoding the whole
-span with `h448` streamed at b = 0. The paired differences in swap rate below split
-that gap: `h448/spans - base/spans` is the weights (both whole), `h448/stream_b0 -
-h448/spans` is `h448`'s windowing, `base/stream_b0 - base/spans` the base's own, and
-`h448/checks - base/checks` the two models on the app's checks. Points [95% interval].
+span with `h448` streamed at b = 0, and both are selected: the sites were mined where
+`h448`'s stream swapped, and `base_right` / `base_wrong` by the base's whole-segment
+decode. Within `base_wrong` the base's whole decode was wrong at mining by
+construction, so a low `base/spans` there cannot come from selection. Swap rates per
+arm, then the paired differences that split the gap: `h448/spans - base/spans` the
+weights (both whole), `h448/stream_b0 - h448/spans` `h448`'s windowing,
+`base/stream_b0 - base/spans` the base's own, `h448/checks - base/checks` the two
+models on the app's checks. % and points [95% interval].
 
-| half | direction | sites / reciters | `h448/stream_b0 - base/spans` | `h448/spans - base/spans` | `h448/stream_b0 - h448/spans` | `base/stream_b0 - base/spans` | `h448/checks - base/checks` |
+| teacher | sites / reciters | base/checks | base/spans | base/stream_b0 | h448/checks | h448/spans | h448/stream_b0 |
 |---|---|---|---|---|---|---|---|
-| train half | ط→ق | 30 / 26 | -20.0 [-39.3, -3.2] | -20.0 [-40.6, 0.0] | +0.0 [-19.2, 17.2] | -13.3 [-32.1, 3.6] | -3.3 [-21.4, 13.8] |
-| train half | ق→ط | 1 / 1 | +100.0 [-58.7, 100.0] T | +100.0 [-58.7, 100.0] T | +0.0 [-79.3, 79.3] T | +0.0 [-79.3, 79.3] T | +100.0 [-58.7, 100.0] T |
-| train half | **all** | 31 / 27 | -16.1 [-35.7, 0.0] | -16.1 [-37.2, 6.7] | +0.0 [-18.5, 17.1] | -12.9 [-31.0, 3.4] | +0.0 [-18.5, 17.6] |
-| held-out half | ط→ق | 112 / 90 | +51.0 [38.1, 62.7] | +15.0 [6.2, 25.5] | +36.0 [18.8, 51.5] | +39.1 [26.2, 52.0] | +9.9 [-0.4, 20.5] |
-| held-out half | ق→ط | 3 / 3 | +90.0 (n/c) | +60.0 (n/c) | +30.0 (n/c) | +0.0 (n/c) | +90.0 (n/c) |
-| held-out half | **all** | 115 / 92 | +52.5 [40.2, 63.9] | +16.7 [7.8, 27.2] | +35.7 [19.0, 51.1] | +37.6 [24.5, 50.2] | +12.9 [2.3, 24.0] |
+| base_wrong | 30 / 26 | 66.7 [50.0, 82.8] | 76.7 [60.7, 90.0] | 63.3 [46.2, 79.4] | 63.3 [45.2, 80.6] | 56.7 [38.7, 74.1] | 56.7 [37.9, 73.3] |
+| base_right | 84 / 84 | 48.4 [34.2, 61.7] | 0.0 (n/c) | 46.2 [31.9, 59.8] | 60.0 [46.2, 72.4] | 19.6 [9.8, 30.7] | 60.0 [46.4, 72.5] |
+| base_wrong | 28 / 23 | 85.7 [73.5, 96.3] | 96.4 [88.0, 100.0] | 78.6 [65.4, 92.0] | 82.1 [66.7, 96.0] | 75.0 [58.3, 90.0] | 75.0 [58.3, 89.7] |
+
+| half | teacher | sites / reciters | `h448/stream_b0 - base/spans` | `h448/spans - base/spans` | `h448/stream_b0 - h448/spans` | `base/stream_b0 - base/spans` | `h448/checks - base/checks` |
+|---|---|---|---|---|---|---|---|
+| train half | base_wrong | 30 / 26 | -20.0 [-39.3, -3.2] | -20.0 [-40.6, 0.0] | +0.0 [-19.2, 17.2] | -13.3 [-32.1, 3.6] | -3.3 [-21.4, 13.8] |
+| held-out half | base_right | 84 / 84 | +60.0 [46.4, 72.5] | +19.6 [9.8, 30.7] | +40.4 [21.2, 57.5] | +46.2 [31.9, 59.8] | +11.6 [0.0, 23.9] |
+| held-out half | base_wrong | 28 / 23 | -21.4 [-37.0, -7.4] | -21.4 [-37.0, -7.1] | +0.0 [-14.3, 14.3] | -17.9 [-30.0, -6.4] | -3.6 [-23.1, 13.8] |
 
 ## Edit types (#107's blind check, for #94)
 
@@ -1452,7 +1672,9 @@ allowance on (`allowances_on`) and switched off alone. % [95% interval].
 
 Allowances and sides with no affected site in a population are omitted. A caught rate
 needs real-mistake sites. Soft pairs are pooled, as Muraja has one switch (ADR-0012);
-the directional pair cells above keep the per-direction harm checks.
+the directional pair cells above keep the per-direction harm checks. The headline rows
+here pool both halves and frames of the verified sites; the per-half view is under
+"The verified sites per half".
 
 ## Excluded sites
 

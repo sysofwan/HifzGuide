@@ -271,17 +271,14 @@ def _app_section(report: dict, arms: list[str]) -> list[str]:
     return lines + _recorded_vs_single(report)
 
 
-def _allowance_section(report: dict, arms: list[str]) -> list[str]:
+def _allowance_rows(entries: list[dict], arms: list[str]) -> list[str]:
+    """The per-allowance view's table rows: on → off per arm, per allowance and side."""
     lines = [
-        "For each ADR-0012 allowance, on the sites it affects: the share of sites whose word the",
-        "app flags, on correct recitation (false flags) and on real mistakes (caught), with the",
-        "allowance on (`allowances_on`) and switched off alone. % [95% interval].",
-        "",
         "| population | allowance | side | sites / reciters | "
         + " | ".join(f"{a} on → off" for a in arms) + " |",
         "|---|---|---|---|" + "---|" * len(arms),
     ]
-    for entry in report["allowances"]:
+    for entry in entries:
         for rate, block in entry["sides"].items():
             if not block["sites"]:
                 continue
@@ -295,11 +292,22 @@ def _allowance_section(report: dict, arms: list[str]) -> list[str]:
                 f"| {entry['population']} | {entry['allowance']} | {rate.replace('_', ' ')} | "
                 f"{size} | " + " | ".join(values) + " |"
             )
-    lines += [
+    return lines
+
+
+def _allowance_section(report: dict, arms: list[str]) -> list[str]:
+    lines = [
+        "For each ADR-0012 allowance, on the sites it affects: the share of sites whose word the",
+        "app flags, on correct recitation (false flags) and on real mistakes (caught), with the",
+        "allowance on (`allowances_on`) and switched off alone. % [95% interval].",
+        "",
+        *_allowance_rows(report["allowances"], arms),
         "",
         "Allowances and sides with no affected site in a population are omitted. A caught rate",
         "needs real-mistake sites. Soft pairs are pooled, as Muraja has one switch (ADR-0012);",
-        "the directional pair cells above keep the per-direction harm checks.",
+        "the directional pair cells above keep the per-direction harm checks. The headline rows",
+        "here pool both halves and frames of the verified sites; the per-half view is under",
+        "\"The verified sites per half\".",
     ]
     return lines
 
@@ -440,78 +448,137 @@ _FRAME_TITLES = {
 _HALF_TITLES = {"held_out": "held-out half", "train": "train half"}
 
 
-def _direction_rows(entries: list[dict], arms: list[str]) -> list[str]:
-    lines = ["| family | direction | side | sites / reciters | " + " | ".join(arms) + " |",
-             "|---|---|---|---|" + "---|" * len(arms)]
+def _entry_size(entry: dict) -> str:
+    size = f"{entry['sites']} / {entry['reciters']}"
+    return size + " (insufficient evidence)" if entry["insufficient_evidence"] else size
+
+
+def _swap_rows(entries: list[dict], arms: list[str], label: list[str]) -> list[str]:
+    """One row per non-empty entry: its ``label`` fields, size and swap rate per arm."""
+    lines = ["| " + " | ".join(label) + " | sites / reciters | " + " | ".join(arms) + " |",
+             "|" + "---|" * (len(label) + 1 + len(arms))]
     for e in entries:
         if not e["sites"]:
             continue
-        size = f"{e['sites']} / {e['reciters']}"
-        if e["insufficient_evidence"]:
-            size += " (insufficient evidence)"
+        names = ["**all**" if e[k] == "all" else str(e[k]) for k in label]
         values = [format_estimate(e["arms"][a]["swap"]) for a in arms]
-        name = "**all**" if e["direction"] == "all" else e["direction"]
-        lines.append(f"| {e['family']} | {name} | {e['side']} | {size} | " + " | ".join(values) + " |")
+        lines.append("| " + " | ".join(names) + f" | {_entry_size(e)} | " + " | ".join(values) + " |")
+    return lines
+
+
+def _gap_rows(entries: list[tuple[str, dict]], label: str) -> list[str]:
+    names = list(entries[0][1]["gaps"])
+    lines = ["| half | " + label + " | sites / reciters | " + " | ".join(f"`{n}`" for n in names)
+             + " |", "|---|---|---|" + "---|" * len(names)]
+    for half, e in entries:
+        lines.append(f"| {_HALF_TITLES[half]} | {e[label]} | {e['sites']} / {e['reciters']} | "
+                     + " | ".join(_delta(e["gaps"][n]) for n in names) + " |")
+    return lines
+
+
+def _verified_app(views: dict, names: list[str], arms: list[str]) -> list[str]:
+    lines = [
+        "### The verified sites per half: the app outcome",
+        "",
+        "The halves and frames were selected by different rules, so each is scored alone",
+        "(`truth_scorer.score` over that subset, with the design weights). Flagged words per",
+        "side, arm and scoring: on correct recitation a false flag, on a real mistake a catch.",
+        "**Held-out is the half to read**; the train half was listened to only where the base",
+        "teacher was wrong. % [95% interval].",
+        "",
+    ]
+    for frame, by_half in views.items():
+        for half, view in by_half.items():
+            cells = view["app"]["cells"]
+            if not cells:
+                continue
+            lines += [f"**{_FRAME_TITLES[frame]}, {_HALF_TITLES[half]}**", "",
+                      "| side | sites / reciters | arm | " + " | ".join(f"`{n}`" for n in names)
+                      + " |", "|---|---|---|" + "---|" * len(names)]
+            for cell in cells:
+                for arm in arms:
+                    rates = cell["arms"][arm]["rates"]
+                    lines.append(f"| {cell['side']} | {cell['sites']} / {cell['reciters']} | {arm} | "
+                                 + " | ".join(format_estimate(rates.get(f"word_flags@{n}"))
+                                              for n in names) + " |")
+            lines += ["", "Per allowance, on the sites it affects:", ""]
+            lines += _allowance_rows(view["app"]["allowances"], arms) + [""]
     return lines
 
 
 def _directions_section(report: dict) -> list[str]:
-    """The decode-level direction table per frame and half, and the arm gaps at ط→ق."""
-    views = report["directions"]
+    """The verified sites per frame and half: the app outcome, the direction table, the
+    per-stratum and per-teacher-outcome rates, and the arm gaps at ط→ق."""
+    views = report["verified"]
     arms = report["arms"]
+    names = [s["name"] for s in report["muraja"]["scorings"]]
     lines = [
-        "## Decode level at the verified sites, per direction (#90)",
+        "## The verified sites per half (#90)",
+        "",
+        "Ship A's verified sites (where `h448` swapped a target pair or collapsed an in-word",
+        "geminate) and #87's reject-pile sites (where the base teacher heard the partner) are two",
+        "frames, and each is split by the confirmed reciter split (D11). Every number here is",
+        "read within one frame and half, weighted by the design weights",
+        "(`ship_a/verified_design.jsonl`: a listened site weighs the inverse of its chance of",
+        "being listened to).",
+        "",
+    ]
+    lines += _verified_app(views, names, arms)
+    lines += [
+        "### Decode level, per direction",
         "",
         "Per target-pair direction (the mushaf's letter → its partner) and for in-word geminates,",
         "by verdict side, the share of sites where the decode **swapped**: committed the partner",
         "(a geminate: a single consonant). On the correct side that is a mishearing; on the",
         "mistake side it is the model hearing the mistake. `training/direction_table.py` is the",
         "single-model core (#57's diff compares two of its arms); `report.json` also has each",
-        "row's `mushaf` and `other` rates. Rows are weighted by the design weights",
-        "(`ship_a/verified_design.jsonl`: a listened site weighs the inverse of its",
-        "chance of being listened to), the halves are the confirmed reciter split (D11), and a",
-        "direction with fewer than 10 reciters or 20 sites is insufficient evidence: read its",
-        "family row. Directions with no verified site are left out of the tables.",
+        "row's `mushaf` and `other` rates. A direction with fewer than 10 reciters or 20 sites is",
+        "insufficient evidence: read its family row. Directions with no verified site are left",
+        "out.",
         "",
         "**These rates are conditional on selection.** Ship A's sites were mined where `h448`,",
         "streamed at b = 0 over the whole pool clip, committed the partner (or a single",
-        "consonant), so on the correct side `h448`'s swap rate is high by construction; its",
+        "consonant), so on the correct side `h448`'s stream arms are high by construction; its",
         "`stream_b0` here streams the segment from its own first sample, so it need not reproduce",
-        "the mining decode. The base teacher's whole-span outcome is fixed by the design too: on",
-        "the held-out half it defined the strata (`base_right` / `base_wrong`, re-weighted to",
-        "their mined proportions), and on the train half only the sites it got wrong were",
-        "listened to (owner decisions D10 and 2026-10-10 A), so `base/spans` there is high by",
-        "selection (not 100%: the mining's base decode and this one differ on some items). The",
-        "other arms against these two, paired on the same sites, are the information.",
+        "the mining decode. The base teacher's whole-segment decode at mining defined each pair",
+        "stratum (`base_right` / `base_wrong`): on the held-out half both are listened to and",
+        "re-weighted to their mined proportions, so `base/spans` is low there by design; on the",
+        "train half only `base_wrong` was listened to (owner decisions D10 and 2026-10-10 A), so",
+        "`base/spans` is high (not 100%: the mining's base decode and this one differ on some",
+        "items). The per-stratum rows below keep the strata apart.",
         "",
     ]
     for frame, by_half in views.items():
-        for half, entries in by_half.items():
-            lines += [f"### {_FRAME_TITLES[frame]}: {_HALF_TITLES[half]}", "",
+        for half, view in by_half.items():
+            lines += [f"#### {_FRAME_TITLES[frame]}: {_HALF_TITLES[half]}", "",
                       "*swap rate*, % [95% interval]", ""]
-            lines += _direction_rows(entries, arms) + [""]
-    gap_rows = [(half, e) for half, entries in views["ship_a"].items() for e in entries
-                if e["family"] == "ط↔ق" and e["side"] == "correct" and e["sites"]
-                and e.get("gaps")]
-    if gap_rows:
-        names = list(gap_rows[0][1]["gaps"])
+            lines += _swap_rows(view["directions"], arms, ["family", "direction", "side"]) + [""]
+    lines += ["### Decode level, per recorded stratum", "",
+              "The same swap rates per stratum as mined (`ship_a:` the pool, `ship_a_mining:` the",
+              "extension; the last field is the base teacher's outcome at mining), per side. "
+              "% [95% interval].", ""]
+    for half, view in views["ship_a"].items():
+        lines += [f"#### {_FRAME_TITLES['ship_a']}: {_HALF_TITLES[half]}", ""]
+        lines += _swap_rows(view["strata"], arms, ["stratum", "side"]) + [""]
+    teacher = [(half, e) for half, view in views["ship_a"].items() for e in view["teacher"]
+               if e["direction"] == "ط→ق" and e["side"] == "correct" and e.get("gaps")]
+    if teacher:
         lines += [
-            "### Windowing or weights at ط↔ق (correct recitation)",
+            "### Windowing or weights at ط→ق (correct recitation), by the base teacher's outcome",
             "",
             "The sizing's \"base already right\" compares the base teacher decoding the whole",
-            "span with `h448` streamed at b = 0. The paired differences in swap rate below split",
-            "that gap: `h448/spans - base/spans` is the weights (both whole), `h448/stream_b0 -",
-            "h448/spans` is `h448`'s windowing, `base/stream_b0 - base/spans` the base's own, and",
-            "`h448/checks - base/checks` the two models on the app's checks. Points [95% interval].",
+            "span with `h448` streamed at b = 0, and both are selected: the sites were mined where",
+            "`h448`'s stream swapped, and `base_right` / `base_wrong` by the base's whole-segment",
+            "decode. Within `base_wrong` the base's whole decode was wrong at mining by",
+            "construction, so a low `base/spans` there cannot come from selection. Swap rates per",
+            "arm, then the paired differences that split the gap: `h448/spans - base/spans` the",
+            "weights (both whole), `h448/stream_b0 - h448/spans` `h448`'s windowing,",
+            "`base/stream_b0 - base/spans` the base's own, `h448/checks - base/checks` the two",
+            "models on the app's checks. % and points [95% interval].",
             "",
-            "| half | direction | sites / reciters | " + " | ".join(f"`{n}`" for n in names) + " |",
-            "|---|---|---|" + "---|" * len(names),
         ]
-        for half, e in gap_rows:
-            name = "**all**" if e["direction"] == "all" else e["direction"]
-            lines.append(f"| {_HALF_TITLES[half]} | {name} | {e['sites']} / {e['reciters']} | "
-                         + " | ".join(_delta(e["gaps"][n]) for n in names) + " |")
-        lines.append("")
+        lines += _swap_rows([e for _, e in teacher], arms, ["teacher"]) + [""]
+        lines += _gap_rows(teacher, "teacher") + [""]
     return lines
 
 
@@ -683,7 +750,7 @@ def render(report: dict) -> str:
         "- **Shaddah is provisional** until #92 freezes its held / not held / unsure state",
         "  table: today a single consonant counts as committing `not_held`.",
     ]
-    if report.get("directions"):
+    if report.get("verified"):
         lines += [
             "- **The headline population is Ship A's verified site set** (acceptance rules §1 as",
             "  amended 2026-10-10): sites mined where `h448` swapped a target pair or collapsed an",
@@ -693,7 +760,7 @@ def render(report: dict) -> str:
             "  model already got wrong. The word sample above is the model-free denominator.",
         ]
     lines += [""]
-    if report.get("directions"):
+    if report.get("verified"):
         lines += _directions_section(report)
     if report.get("edit_check"):
         lines += _edit_check_section(report)

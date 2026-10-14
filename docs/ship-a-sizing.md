@@ -55,22 +55,22 @@ named by the letter committed; any other letter is grouped per carrier):
 | ح→other letter | 19 | 16 | no |
 | ح→ه (partner) | 8 | 7 | yes |
 | ذ→other letter | 34 | 30 | no |
-| ذ→ز (partner) | 11 | 11 | yes |
+| ذ→ز (partner) | 10 | 10 | yes |
 | ذ→ظ (partner) | 2 | 1 | yes |
 | ز→other letter | 12 | 9 | no |
 | ز→ذ (partner) | 53 | 41 | yes |
 | س→other letter | 19 | 16 | no |
 | س→ش (partner) | 160 | 31 | yes |
-| س→ص (partner) | 40 | 31 | yes |
+| س→ص (partner) | 39 | 30 | yes |
 | ش→other letter | 8 | 8 | no |
-| ش→س (partner) | 30 | 28 | yes |
+| ش→س (partner) | 28 | 27 | yes |
 | ص→other letter | 8 | 8 | no |
 | ص→س (partner) | 28 | 23 | yes |
 | ض→other letter | 10 | 9 | no |
 | ض→ظ (partner) | 2 | 2 | no |
 | ط→other letter | 10 | 9 | no |
 | ط→ت (partner) | 12 | 9 | yes |
-| ط→ق (partner) | 567 | 502 | yes |
+| ط→ق (partner) | 565 | 500 | yes |
 | ظ→other letter | 7 | 4 | no |
 | ظ→ذ (partner) | 5 | 5 | yes |
 | ظ→ض (partner) | 117 | 81 | yes |
@@ -78,7 +78,7 @@ named by the letter committed; any other letter is grouped per carrier):
 | ق→ط (partner) | 15 | 14 | yes |
 | ق→ك (partner) | 35 | 25 | yes |
 | ك→other letter | 21 | 16 | no |
-| ك→ق (partner) | 59 | 44 | yes |
+| ك→ق (partner) | 57 | 44 | yes |
 | ه→other letter | 57 | 50 | no |
 | ه→ح (partner) | 5 | 3 | yes |
 
@@ -461,9 +461,29 @@ re-listening (the candidates that do):
 - `word_sample:tadabur_spk0070_S30_A9_3ef9e5b1_000001.wav#1@2` (1 of 5: onset_level_db)
 - `word_sample:tadabur_spk0458_S2_A180_46520e52_000000.wav#3@22` (1 of 5: ctc_onset_llr)
 
+## Notes that deny Hafs (#90)
+
+The owner decided (2026-10-13) that an item whose verdict note denies the recitation is Hafs
+("Not hafs", "May not be hafs", "Possibly not hafs") is `not_hafs`: it leaves every cell below
+and is no training target, because a reading outside Hafs confuses above all its tashkeel.
+`tadabur.owner_notes` reads the note (a bare "hafs", or a note that says it is Hafs, keeps the
+item). The sizing below leaves out 13 such sites and 0 sampled
+words (an item an earlier reason takes out counts there); question 4 reads the P3.5 fixtures
+without the 2 there.
+
+| cell | sites | held-out listened |
+|---|---|---|
+| geminates (base not held) | 5 | 3 |
+| soft pairs (pooled) | 4 | 4 |
+| ذ↔ز | 1 | 1 |
+| س↔ش | 2 | 1 |
+| س↔ص | 1 | 1 |
+| ط↔ق | 2 | 2 |
+| ق↔ك | 2 | 2 |
+
 ## 1. Verification budget
 
-Listened: the sites the section above selects (63
+Listened: the sites the section above selects (58
 geminates, a census of those the base does not hold; the ~300-geminate slot of the first
 plan). Listened sites (reciters) per half of the confirmed 50/50 split
 (D11). A held-out cell with fewer than 10 reciters or 20
@@ -471,20 +491,20 @@ sites is sparse (§1): its family is reported as insufficient evidence (§7).
 
 | family | flagged | partner swaps | base already right | listened | train | held out | held-out status |
 |---|---|---|---|---|---|---|---|
-| shaddah | 722 | 0 | 659 | 63 | 30 (22) | 33 (23) | sufficient |
+| shaddah | 717 | 0 | 659 | 58 | 28 (22) | 30 (22) | sufficient |
 | ت↔ط | 73 | 13 | 59 | 7 | 1 (1) | 6 (4) | insufficient evidence |
 | ح↔ه | 89 | 13 | 76 | 5 | 1 (1) | 4 (3) | insufficient evidence |
-| ذ↔ز | 110 | 64 | 91 | 35 | 4 (4) | 31 (26) | sufficient |
+| ذ↔ز | 109 | 63 | 90 | 34 | 4 (4) | 30 (25) | sufficient |
 | ذ↔ظ | 14 | 7 | 10 | 2 | 1 (1) | 1 (1) | insufficient evidence |
-| س↔ش | 217 | 190 | 83 | 59 | 15 (13) | 44 (32) | sufficient |
-| س↔ص | 76 | 68 | 62 | 34 | 8 (8) | 26 (24) | sufficient |
+| س↔ش | 215 | 188 | 82 | 57 | 14 (12) | 43 (31) | sufficient |
+| س↔ص | 75 | 67 | 61 | 33 | 8 (8) | 25 (23) | sufficient |
 | ض↔ظ | 129 | 119 | 92 | 72 | 22 (15) | 50 (41) | sufficient |
-| ط↔ق | 594 | 582 | 527 | 156 | 34 (29) | 122 (95) | sufficient |
-| ق↔ك | 115 | 94 | 85 | 52 | 13 (9) | 39 (29) | sufficient |
+| ط↔ق | 592 | 580 | 525 | 154 | 34 (29) | 120 (93) | sufficient |
+| ق↔ك | 113 | 92 | 85 | 50 | 13 (9) | 37 (28) | sufficient |
 
-The six soft pairs pooled hold 156 held-out sites from
+The six soft pairs pooled hold 152 held-out sites from
 75 reciters. The largest single direction is ط→ق (partner)
-(567 sites). Sparse on the held-out half: ت↔ط, ح↔ه, ذ↔ظ.
+(565 sites). Sparse on the held-out half: ت↔ط, ح↔ه, ذ↔ظ.
 
 ## 2. Power on the held-out half
 
@@ -507,17 +527,17 @@ Kish's effective size per cell under those weights (the word sample's is in §3)
 
 | cell | held-out sites | effective size |
 |---|---|---|
-| geminates (base not held) | 33 | 33.0 |
-| soft pairs (pooled) | 156 | 125.4 |
+| geminates (base not held) | 30 | 30.0 |
+| soft pairs (pooled) | 152 | 122.7 |
 | ت↔ط | 6 | 6.0 |
 | ح↔ه | 4 | 4.0 |
-| ذ↔ز | 31 | 28.2 |
+| ذ↔ز | 30 | 27.2 |
 | ذ↔ظ | 1 | 1.0 |
-| س↔ش | 44 | 21.2 |
-| س↔ص | 26 | 21.4 |
+| س↔ش | 43 | 20.9 |
+| س↔ص | 25 | 21.4 |
 | ض↔ظ | 50 | 39.2 |
-| ط↔ق | 122 | 65.0 |
-| ق↔ك | 39 | 29.1 |
+| ط↔ق | 120 | 63.9 |
+| ق↔ك | 37 | 27.4 |
 
 **No floor is chosen here** (#128). Each cell shows the **highest floor the lower bound
 reaches with 80% power**, at θ = 0.15 and ICC = 0.15
@@ -548,17 +568,17 @@ Reciters (one site each) a true rate needs for its lower bound to reach a floor 
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.1 | 0.2 | 0.4 | 0.7 |
+| soft pairs (pooled) | 68.7 | 0.2 | 0.4 | 0.7 |
 | ت↔ط | 3.5 | — | — | — |
 | ح↔ه | 2.7 | — | — | — |
-| ذ↔ز | 22.6 | — | 0.3 | 0.5 |
-| س↔ص | 20.7 | — | — | — |
+| ذ↔ز | 21.7 | — | 0.3 | 0.4 |
+| س↔ص | 19.8 | — | — | — |
 | ض↔ظ | 35.7 | 0.2 | 0.4 | 0.6 |
-| ق↔ك | 25.5 | — | 0.3 | 0.5 |
+| ق↔ك | 24.5 | — | 0.3 | 0.5 |
 | ذ↔ظ | 0.9 | — | — | — |
-| س↔ش | 28.2 | — | 0.3 | 0.6 |
-| ط↔ق | 83.3 | 0.3 | 0.5 | 0.7 |
-| geminates (base not held) | 20.5 | — | — | — |
+| س↔ش | 27.3 | — | 0.3 | 0.6 |
+| ط↔ق | 81.5 | 0.3 | 0.5 | 0.7 |
+| geminates (base not held) | 19.5 | — | — | — |
 
 At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.4; ت↔ط —; ح↔ه —; ذ↔ز 0.3; س↔ص —; ض↔ظ 0.4; ق↔ك 0.3; ذ↔ظ —; س↔ش 0.3; ط↔ق 0.5; geminates (base not held) —.
 
@@ -566,29 +586,29 @@ At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.4;
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 19.2 | — | — | — |
+| soft pairs (pooled) | 18.9 | — | — | — |
 | ت↔ط | 0.8 | — | — | — |
 | ح↔ه | 0.6 | — | — | — |
-| ذ↔ز | 4.5 | — | — | — |
-| س↔ص | 3.8 | — | — | — |
+| ذ↔ز | 4.3 | — | — | — |
+| س↔ص | 3.7 | — | — | — |
 | ض↔ظ | 7.1 | — | — | — |
-| ق↔ك | 5.4 | — | — | — |
+| ق↔ك | 5.1 | — | — | — |
 | ذ↔ظ | 0.1 | — | — | — |
-| س↔ش | 6.2 | — | — | — |
-| ط↔ق | 17.2 | — | — | — |
-| geminates (base not held) | 4.6 | — | — | — |
+| س↔ش | 5.9 | — | — | — |
+| ط↔ق | 17.0 | — | — | — |
+| geminates (base not held) | 4.2 | — | — | — |
 
 Every site with the reciter bootstrap, recovery, at ICC 0.15 and at ICC 0:
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.1 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 20.5 | 0.2 | 0.4 | 0.6 |
+| soft pairs (pooled) | 68.7 | 0.3 | 0.5 | 0.8 |
+| geminates (base not held) | 19.5 | 0.2 | 0.4 | 0.6 |
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
-| soft pairs (pooled) | 69.4 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 20.6 | 0.2 | 0.4 | 0.6 |
+| soft pairs (pooled) | 69.0 | 0.3 | 0.5 | 0.8 |
+| geminates (base not held) | 19.6 | 0.2 | 0.4 | 0.6 |
 
 ## 3. New-error harm on sites `h448` gets right
 
@@ -687,7 +707,7 @@ over-represent mistakes against the pool's `h448` flags.
 
 | family | should-accept | should-reject (pending) | reject share (upper) |
 |---|---|---|---|
-| shaddah | 4 | 9 | 69% |
+| shaddah | 4 | 7 | 64% |
 | soft pairs (pooled) | 40 | 6 | 13% |
 
 Planning θ = 0.05, 0.15, 0.5. Verified mistakes the "keep both outcomes"
@@ -695,13 +715,13 @@ term would get on the train half (50/50) at each θ:
 
 | cell | train sites listened | θ = 0.05 | θ = 0.15 | θ = 0.5 |
 |---|---|---|---|---|
-| geminates (base not held) | 30 | 1.5 | 4.5 | 15.0 |
+| geminates (base not held) | 28 | 1.4 | 4.2 | 14.0 |
 | soft pairs (pooled) | 49 | 2.5 | 7.3 | 24.5 |
 | ت↔ط | 1 | 0.1 | 0.1 | 0.5 |
 | ح↔ه | 1 | 0.1 | 0.1 | 0.5 |
 | ذ↔ز | 4 | 0.2 | 0.6 | 2.0 |
 | ذ↔ظ | 1 | 0.1 | 0.1 | 0.5 |
-| س↔ش | 15 | 0.8 | 2.2 | 7.5 |
+| س↔ش | 14 | 0.7 | 2.1 | 7.0 |
 | س↔ص | 8 | 0.4 | 1.2 | 4.0 |
 | ض↔ظ | 22 | 1.1 | 3.3 | 11.0 |
 | ط↔ق | 34 | 1.7 | 5.1 | 17.0 |

@@ -7,7 +7,11 @@ the current verdicts:
   and the reciter paused there. Its verdict stays a training target (what was heard);
 * ``onset_trimmed`` (:mod:`tadabur.onset_guard`, #138): its clip's opening sound is cut, so
   the excerpt, not the model, decides it. It is no training target either: an export of
-  verified targets (none exists yet) must leave this reason's items out.
+  verified targets (none exists yet) must leave this reason's items out;
+* ``not_hafs`` (owner decision 2026-10-13, #90): the owner's note on its verdict denies the
+  recitation is Hafs ("Not hafs", "May not be hafs", read by
+  :func:`tadabur.owner_notes.says` with :data:`tadabur.owner_notes.HAFS`), which would confuse
+  above all its tashkeel. It is no training target either, as ``onset_trimmed``.
 
 The population builders (:func:`tadabur.eval_harness.build`,
 :func:`training.ship_a_sizing.run`) and the scorers (``truth_scorer.score(excluded_items=…)``,
@@ -23,16 +27,19 @@ from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from .listening_session import VERDICTS_PATH
+from .listening_session import VERDICTS_PATH, read_verdicts
 from .onset_guard import GUARD_PATH as ONSET_GUARD_PATH
 from .onset_guard import ONSET_TRIMMED, trimmed_ids
+from .owner_notes import HAFS, says
 from .waqf_guard import GUARD_PATH as WAQF_GUARD_PATH
 from .waqf_guard import WAQF_REALIZED, realized_ids
 
+NOT_HAFS = "not_hafs"
 #: The reasons, in the order every report lists them.
-REASONS = (WAQF_REALIZED, ONSET_TRIMMED)
-#: The sidecar each reason's guard decides from.
-GUARD_PATHS = {WAQF_REALIZED: WAQF_GUARD_PATH, ONSET_TRIMMED: ONSET_GUARD_PATH}
+REASONS = (WAQF_REALIZED, ONSET_TRIMMED, NOT_HAFS)
+#: The file each reason is decided from: a guard's sidecar, or the verdicts themselves.
+GUARD_PATHS = {WAQF_REALIZED: WAQF_GUARD_PATH, ONSET_TRIMMED: ONSET_GUARD_PATH,
+               NOT_HAFS: VERDICTS_PATH}
 
 
 @dataclass(frozen=True)
@@ -74,7 +81,14 @@ class Exclusions:
 NONE = Exclusions.of()
 
 
+def not_hafs_ids(verdicts_path: Path = VERDICTS_PATH) -> frozenset[str]:
+    """The items whose verdict note denies the recitation is Hafs (module docstring)."""
+    return frozenset(item_id for item_id, verdict in read_verdicts(verdicts_path).items()
+                     if says(verdict.note, HAFS) is False)
+
+
 def current(verdicts_path: Path = VERDICTS_PATH) -> Exclusions:
-    """What each guard takes out at the verdicts in ``verdicts_path`` (read at every use)."""
+    """What each reason takes out at the verdicts in ``verdicts_path`` (read at every use)."""
     return Exclusions({WAQF_REALIZED: realized_ids(verdicts_path=verdicts_path),
-                       ONSET_TRIMMED: trimmed_ids(verdicts_path=verdicts_path)})
+                       ONSET_TRIMMED: trimmed_ids(verdicts_path=verdicts_path),
+                       NOT_HAFS: not_hafs_ids(verdicts_path)})

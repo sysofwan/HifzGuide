@@ -341,7 +341,7 @@ def fixture_report(
     ``reciter_of[audio_filename]`` a canonical reciter id; ``decodes[arm][item_key]`` a decode;
     ``models[arm]`` the arm's model identity and decode fingerprint, recorded as given;
     ``excluded_items`` the items the shared exclusion takes out (:mod:`tadabur.exclusions`: waqf
-    realized, #134; onset trimmed, #138), which leave every row, the pending list and the
+    realized, #134; onset trimmed, #138; not Hafs, #90), which leave every row, the pending list and the
     site list, after the stratum weights are computed over all; each reason lists its own.
     """
     _check(sites, fixture_side_of)

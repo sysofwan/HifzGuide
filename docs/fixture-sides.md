@@ -206,7 +206,7 @@ Sites committed in each role · % of the row [95% interval]
 | ق↔ك | ك → ق | 1 / 1 (too small) | 0 / 1 | 0 | 1 · 100.0 [20.7, 100.0] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W |
 | ق↔ك | ق → ك | 1 / 1 (too small) | 0 / 1 | 0 | 1 · 100.0 [20.7, 100.0] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W |
 | shaddah (provisional) | not_held → held | 6 / 4 (too small) | 0 / 6 | 0 | 6 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
-| shaddah (provisional) | held → not_held | 5 / 4 (too small) | 0 / 5 | 0 | 5 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
+| shaddah (provisional) | held → not_held | 3 / 2 (too small) | 0 / 3 | 0 | 3 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
 
 ### base/stream_b0
 
@@ -233,7 +233,7 @@ Sites committed in each role · % of the row [95% interval]
 | ق↔ك | ك → ق | 1 / 1 (too small) | 0 / 1 | 0 | 0 · 0.0 [0.0, 79.3] W | 1 · 100.0 [20.7, 100.0] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W |
 | ق↔ك | ق → ك | 1 / 1 (too small) | 0 / 1 | 0 | 1 · 100.0 [20.7, 100.0] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W |
 | shaddah (provisional) | not_held → held | 6 / 4 (too small) | 0 / 6 | 0 | 4 · 66.7 (n/c) | 2 · 33.3 (n/c) |  | 0 · 0.0 (n/c) |
-| shaddah (provisional) | held → not_held | 5 / 4 (too small) | 0 / 5 | 0 | 5 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
+| shaddah (provisional) | held → not_held | 3 / 2 (too small) | 0 / 3 | 0 | 3 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
 
 ### h448/spans
 
@@ -260,7 +260,7 @@ Sites committed in each role · % of the row [95% interval]
 | ق↔ك | ك → ق | 1 / 1 (too small) | 0 / 1 | 0 | 0 · 0.0 [0.0, 79.3] W | 1 · 100.0 [20.7, 100.0] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W |
 | ق↔ك | ق → ك | 1 / 1 (too small) | 0 / 1 | 0 | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W | 1 · 100.0 [20.7, 100.0] W | 0 · 0.0 [0.0, 79.3] W |
 | shaddah (provisional) | not_held → held | 6 / 4 (too small) | 0 / 6 | 0 | 5 · 83.3 (n/c) | 1 · 16.7 (n/c) |  | 0 · 0.0 (n/c) |
-| shaddah (provisional) | held → not_held | 5 / 4 (too small) | 0 / 5 | 0 | 5 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
+| shaddah (provisional) | held → not_held | 3 / 2 (too small) | 0 / 3 | 0 | 3 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
 
 ### h448/stream_b0
 
@@ -287,7 +287,7 @@ Sites committed in each role · % of the row [95% interval]
 | ق↔ك | ك → ق | 1 / 1 (too small) | 0 / 1 | 0 | 0 · 0.0 [0.0, 79.3] W | 1 · 100.0 [20.7, 100.0] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W |
 | ق↔ك | ق → ك | 1 / 1 (too small) | 0 / 1 | 0 | 1 · 100.0 [20.7, 100.0] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W | 0 · 0.0 [0.0, 79.3] W |
 | shaddah (provisional) | not_held → held | 6 / 4 (too small) | 0 / 6 | 0 | 4 · 66.7 (n/c) | 2 · 33.3 (n/c) |  | 0 · 0.0 (n/c) |
-| shaddah (provisional) | held → not_held | 5 / 4 (too small) | 0 / 5 | 0 | 5 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
+| shaddah (provisional) | held → not_held | 3 / 2 (too small) | 0 / 3 | 0 | 3 · 100.0 (n/c) | 0 · 0.0 (n/c) |  | 0 · 0.0 (n/c) |
 
 ## Sites without a verdict
 
@@ -303,7 +303,7 @@ A paired diff (#57) refuses two reports whose fixture or schema fingerprints dif
 
 | what | value |
 |---|---|
-| fixtures (scored sites, fixture sides, reciters) | `5a3218df4f00d212b447cbaaf5a42e51be06e3160f74b013d4c71803ba3ccbed` |
+| fixtures (scored sites, fixture sides, reciters) | `262eaa7337fe7b93827a34fd958a4cca59512c55eb432a369df9685132aa0344` |
 | schema | `b791406de145dc7305df22b7fd9bc102807d42df78ade189f6e5e2fec9e08b70` |
 | input `clips.jsonl` | `2c3597aca616391168815a38d49cfbae429d41397d4a655e2497df0237ceb192` |
 | input `onset_guard.jsonl` | `8ee9dc9ffdd52d495e3bdcb771977f8f5524ff9cc72d0976367f6e7433396799` |
@@ -314,10 +314,10 @@ A paired diff (#57) refuses two reports whose fixture or schema fingerprints dif
 
 | arm | weights | decode mode | decodes sha256 |
 |---|---|---|---|
-| base/spans | `obadx/muaalem-model-v3_2` @ `01a1ef9fbe40d144ef845101e89ff924aed3fef5` | `whole-spans`, bf16, batch 1 | `13318adad402591f5a74f5cced358ca314397d225d500b04b48d9970ade020cd` |
-| base/stream_b0 | `obadx/muaalem-model-v3_2` @ `01a1ef9fbe40d144ef845101e89ff924aed3fef5` | `confirmed-stream-v2-flush`, bf16, batch 1 | `2613cee904ea0ffdb2c9292e5673cd20f68145642c78c04a07cb336381b8f856` |
-| h448/spans | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` @ `eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a` | `whole-spans`, bf16, batch 1 | `c953f34a206e4f805c939aba2fe067d9b43712b7a12aacfc03048bbea6dd0ac1` |
-| h448/stream_b0 | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` @ `eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a` | `confirmed-stream-v2-flush`, bf16, batch 1 | `7dfd64e530541ca90177f735d5d49ddf943e2772f50a08839c0b20837743831d` |
+| base/spans | `obadx/muaalem-model-v3_2` @ `01a1ef9fbe40d144ef845101e89ff924aed3fef5` | `whole-spans`, bf16, batch 1 | `b7d1898cea915b6f3ab9aeddab6bf70bc2bfb692315c71b522c1840e367d6011` |
+| base/stream_b0 | `obadx/muaalem-model-v3_2` @ `01a1ef9fbe40d144ef845101e89ff924aed3fef5` | `confirmed-stream-v2-flush`, bf16, batch 1 | `9b8317981878d25d7df74710467e417cfbffb8f966b059c52bbc41897a973773` |
+| h448/spans | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` @ `eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a` | `whole-spans`, bf16, batch 1 | `8f78aac68808b320cb9fd85360f8a24a38b94e90505e0d6949d136d96b3c259e` |
+| h448/stream_b0 | `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` @ `eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a` | `confirmed-stream-v2-flush`, bf16, batch 1 | `423e72a4de49414be8d9248a055569d32a432771ccb590750c7a66e31bcecf28` |
 
 ## Re-running
 

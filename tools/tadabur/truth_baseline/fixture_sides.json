@@ -1,7 +1,7 @@
 {
  "schema": "tadabur.eval_report/fixture-sides-v1",
  "fingerprints": {
-  "fixtures": "5a3218df4f00d212b447cbaaf5a42e51be06e3160f74b013d4c71803ba3ccbed",
+  "fixtures": "262eaa7337fe7b93827a34fd958a4cca59512c55eb432a369df9685132aa0344",
   "schema": "b791406de145dc7305df22b7fd9bc102807d42df78ade189f6e5e2fec9e08b70",
   "arms": {
    "base/spans": {
@@ -20,7 +20,7 @@
      "autocast": true,
      "policy": "fp32-features-v1"
     },
-    "decodes_sha256": "13318adad402591f5a74f5cced358ca314397d225d500b04b48d9970ade020cd"
+    "decodes_sha256": "b7d1898cea915b6f3ab9aeddab6bf70bc2bfb692315c71b522c1840e367d6011"
    },
    "base/stream_b0": {
     "model": "base",
@@ -38,7 +38,7 @@
      "autocast": true,
      "policy": "fp32-features-v1"
     },
-    "decodes_sha256": "2613cee904ea0ffdb2c9292e5673cd20f68145642c78c04a07cb336381b8f856"
+    "decodes_sha256": "9b8317981878d25d7df74710467e417cfbffb8f966b059c52bbc41897a973773"
    },
    "h448/spans": {
     "model": "h448",
@@ -56,7 +56,7 @@
      "autocast": true,
      "policy": "fp32-features-v1"
     },
-    "decodes_sha256": "c953f34a206e4f805c939aba2fe067d9b43712b7a12aacfc03048bbea6dd0ac1"
+    "decodes_sha256": "8f78aac68808b320cb9fd85360f8a24a38b94e90505e0d6949d136d96b3c259e"
    },
    "h448/stream_b0": {
     "model": "h448",
@@ -74,7 +74,7 @@
      "autocast": true,
      "policy": "fp32-features-v1"
     },
-    "decodes_sha256": "7dfd64e530541ca90177f735d5d49ddf943e2772f50a08839c0b20837743831d"
+    "decodes_sha256": "423e72a4de49414be8d9248a055569d32a432771ccb590750c7a66e31bcecf28"
    }
   }
  },
@@ -4067,26 +4067,26 @@
    "family": "shaddah",
    "prescribed": "held",
    "heard": "not_held",
-   "sites": 5,
-   "reciters": 4,
+   "sites": 3,
+   "reciters": 2,
    "support": "too_small",
    "provisional": true,
    "fixture_sides": {
     "should_accept": 0,
-    "should_reject": 5
+    "should_reject": 3
    },
    "excluded": [],
    "arms": {
     "base/spans": {
      "as_heard": {
-      "sites": 5,
+      "sites": 3,
       "point": 1.0,
       "lower": null,
       "upper": null,
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
-      "num": 5.0,
-      "den": 5.0,
+      "num": 3.0,
+      "den": 3.0,
       "sensitivity": null
      },
      "as_partner": {
@@ -4097,7 +4097,7 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 5.0,
+      "den": 3.0,
       "sensitivity": null
      },
      "no_commit": {
@@ -4108,20 +4108,20 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 5.0,
+      "den": 3.0,
       "sensitivity": null
      }
     },
     "base/stream_b0": {
      "as_heard": {
-      "sites": 5,
+      "sites": 3,
       "point": 1.0,
       "lower": null,
       "upper": null,
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
-      "num": 5.0,
-      "den": 5.0,
+      "num": 3.0,
+      "den": 3.0,
       "sensitivity": null
      },
      "as_partner": {
@@ -4132,7 +4132,7 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 5.0,
+      "den": 3.0,
       "sensitivity": null
      },
      "no_commit": {
@@ -4143,20 +4143,20 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 5.0,
+      "den": 3.0,
       "sensitivity": null
      }
     },
     "h448/spans": {
      "as_heard": {
-      "sites": 5,
+      "sites": 3,
       "point": 1.0,
       "lower": null,
       "upper": null,
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
-      "num": 5.0,
-      "den": 5.0,
+      "num": 3.0,
+      "den": 3.0,
       "sensitivity": null
      },
      "as_partner": {
@@ -4167,7 +4167,7 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 5.0,
+      "den": 3.0,
       "sensitivity": null
      },
      "no_commit": {
@@ -4178,20 +4178,20 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 5.0,
+      "den": 3.0,
       "sensitivity": null
      }
     },
     "h448/stream_b0": {
      "as_heard": {
-      "sites": 5,
+      "sites": 3,
       "point": 1.0,
       "lower": null,
       "upper": null,
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
-      "num": 5.0,
-      "den": 5.0,
+      "num": 3.0,
+      "den": 3.0,
       "sensitivity": null
      },
      "as_partner": {
@@ -4202,7 +4202,7 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 5.0,
+      "den": 3.0,
       "sensitivity": null
      },
      "no_commit": {
@@ -4213,7 +4213,7 @@
       "method": "none",
       "reason": "sparse or degenerate, and not independent and equally weighted",
       "num": 0.0,
-      "den": 5.0,
+      "den": 3.0,
       "sensitivity": null
      }
     }
@@ -5641,36 +5641,6 @@
    }
   },
   {
-   "site_id": "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69",
-   "item": "tadabur_spk0066_S26_A89_008098b6_000033.wav@482:302058",
-   "item_fingerprint": "2e136c2f8d430d0778824216a0355acffb18bb86f64575af39d2e4dcf7b189ce",
-   "reciter_id": 66,
-   "fixture_side": "should_reject",
-   "side": "mistake",
-   "family": "shaddah",
-   "prescribed": "held",
-   "heard": "not_held",
-   "weight": 1.0,
-   "arms": {
-    "base/spans": {
-     "committed": "not_held",
-     "role": "as_heard"
-    },
-    "base/stream_b0": {
-     "committed": "not_held",
-     "role": "as_heard"
-    },
-    "h448/spans": {
-     "committed": "not_held",
-     "role": "as_heard"
-    },
-    "h448/stream_b0": {
-     "committed": "not_held",
-     "role": "as_heard"
-    }
-   }
-  },
-  {
    "site_id": "p35_fixture:tadabur_spk0066_S57_A2_7766a315_000002__seg0.wav:shadda#14",
    "item": "tadabur_spk0066_S57_A2_7766a315_000002.wav@481:170400",
    "item_fingerprint": "983123034b05e5f52364fc941ddb6d05b55dee9cf9d627fb994c8b13d7801873",
@@ -5937,36 +5907,6 @@
     "h448/stream_b0": {
      "committed": null,
      "role": "no_commit"
-    }
-   }
-  },
-  {
-   "site_id": "p35_fixture:tadabur_spk0079_S26_A66_a9b172c8_000047__seg0.wav:shadda#5",
-   "item": "tadabur_spk0079_S26_A66_a9b172c8_000047.wav@0:76640",
-   "item_fingerprint": "ca0ecc789b325ca78bff2deb255edc6827317e18e50f091ffa13c474bff4d604",
-   "reciter_id": 79,
-   "fixture_side": "should_reject",
-   "side": "mistake",
-   "family": "shaddah",
-   "prescribed": "held",
-   "heard": "not_held",
-   "weight": 1.0,
-   "arms": {
-    "base/spans": {
-     "committed": "not_held",
-     "role": "as_heard"
-    },
-    "base/stream_b0": {
-     "committed": "not_held",
-     "role": "as_heard"
-    },
-    "h448/spans": {
-     "committed": "not_held",
-     "role": "as_heard"
-    },
-    "h448/stream_b0": {
-     "committed": "not_held",
-     "role": "as_heard"
     }
    }
   },
@@ -8796,6 +8736,10 @@
   "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32"
  ],
  "onset_trimmed": [],
+ "not_hafs": [
+  "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69",
+  "p35_fixture:tadabur_spk0079_S26_A66_a9b172c8_000047__seg0.wav:shadda#5"
+ ],
  "inputs": {
   "p35_fixtures.jsonl": "654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8",
   "p35_fixtures.relocation.jsonl": "8a49c872035eef2ba8f69259106f04e1ff3b345c34412b7e0632b71cf3e8d7b8",

@@ -11,7 +11,7 @@ import pytest
 
 from tadabur import onset_guard as o
 from tadabur import owner_notes, waqf_guard
-from tadabur.exclusions import Exclusions, current
+from tadabur.exclusions import NOT_HAFS, Exclusions, current
 from tadabur.listening_session import Verdict, read_verdicts, write_verdicts
 from tadabur.phoneme_vocab import PHONEME_CHAR_TO_ID, PHONEME_ID_TO_CHAR, PHONEME_PAD_ID
 from tadabur.waqf_guard import Item, all_items
@@ -55,8 +55,8 @@ def test_owner_notes(note, says):
     # a dash joining two letters joins; a spaced dash cuts
     ("not-trimmed", None, False), ("no-waqf", False, None), ("no waqf - trimmed", False, True),
     ("no waqf \u2013 trimmed", False, True), ("no waqf \u2014 trimmed", False, True),
-    # "hafs" spends the negator that reaches it: a deliberate departure from #134's reader,
-    # which read "Not hafs paused" as no pause (a bug)
+    # "hafs" is a claim word: it spends the negator that reaches it, a deliberate departure
+    # from #134's reader, which read "Not hafs paused" as no pause (a bug)
     ("Not hafs trimming issues", None, True), ("Not hafs paused", True, None),
     ("May not be hafs, waqf", True, None), ("NOT HAFS' reading, trimmed", None, True),
     # a bracketed span is read as its own clause too (round 3)
@@ -92,6 +92,28 @@ def _legacy_waqf(note: str) -> bool | None:
                           for w in words[max(0, k - 3):k])
             claims.add((word in pause) != negated)
     return claims.pop() if len(claims) == 1 else None
+
+
+@pytest.mark.parametrize("note, hafs", [
+    # the owner's spellings (#90: all sixteen deny Hafs, the typo and the "may" ones included)
+    ("Not hafs", False), ("not hafs", False), ("May not be hafs", False),
+    ("May not be Hafs", False), ("Possilbly not hafs", False), ("NOT HAFS' reading", False),
+    ("Not hafs paused", False), ("trim; not hafs", False),
+    # Hafs affirmed, or not mentioned: the item stays
+    ("hafs", True), ("It is hafs", True), ("hafs' recitation, not paused", True),
+    ("", None), ("waqf", None), ("Trimming issues", None), ("hafsah", None),
+])
+def test_a_note_denying_hafs_reads_as_not_hafs(note, hafs):
+    """#90 (owner decision 2026-10-13): a note that denies Hafs takes the item out; a bare
+    "hafs", or one that says it is Hafs, keeps it."""
+    assert owner_notes.says(note, owner_notes.HAFS) is hafs
+
+
+def test_the_sixteen_committed_hafs_notes_are_all_not_hafs_and_nothing_else_is():
+    verdicts = read_verdicts()
+    hafs_notes = {k for k, v in verdicts.items() if "hafs" in v.note.lower()}
+    assert len(hafs_notes) == 16
+    assert current().by_reason[NOT_HAFS] == hafs_notes
 
 
 def test_not_hafs_departs_from_the_134_reader_on_purpose():
@@ -170,9 +192,10 @@ def test_the_four_flagged_sites_are_trimmed_by_the_owners_notes(tmp_path: Path):
 
 
 def test_an_exclusion_lists_each_item_once_under_its_first_reason():
-    excluded = Exclusions.of(waqf_realized={"a"}, onset_trimmed={"a", "b"})
-    assert excluded.listed(["c", "b", "a"]) == {"waqf_realized": ["a"], "onset_trimmed": ["b"]}
-    assert "b" in excluded and "c" not in excluded
+    excluded = Exclusions.of(waqf_realized={"a"}, onset_trimmed={"a", "b"}, not_hafs={"b", "d"})
+    assert excluded.listed(["d", "c", "b", "a"]) == {
+        "waqf_realized": ["a"], "onset_trimmed": ["b"], "not_hafs": ["d"]}
+    assert "b" in excluded and "d" in excluded and "c" not in excluded
     with pytest.raises(ValueError):
         Exclusions.of(other={"a"})
 

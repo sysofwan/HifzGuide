@@ -73,6 +73,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:6:0",
    "pages": [
     3
@@ -133,6 +134,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "103:1:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -191,6 +193,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "103:1:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -249,6 +252,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "103:1:0",
    "pages": [
     601
@@ -309,6 +313,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "109:1:0",
    "pages": [
     603
@@ -369,6 +374,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "12:5:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -437,6 +443,7 @@
      "source": "Muraja ADR-0020: genuine skip 12:6:1 to 12:7:7"
     }
    ],
+   "slip_regions": {},
    "start": "12:5:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -495,6 +502,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "12:5:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -554,6 +562,7 @@
    "exclusion": "not_a_device_session",
    "exclusion_detail": "a mined Tadabur re-read clip transcribed offline, not a device session; not the owner's recitation",
    "explained": [],
+   "slip_regions": {},
    "start": "2:108:1",
    "pages": [
     17
@@ -585,6 +594,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:6:1",
    "pages": [
     3,
@@ -654,6 +664,7 @@
      "source": "Muraja 59ef302: re-read from 2:20:19 to 2:20:13"
     }
    ],
+   "slip_regions": {},
    "start": "2:6:10",
    "pages": [
     3,
@@ -715,6 +726,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:6:0",
    "pages": [
     3,
@@ -776,6 +788,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:12:0",
    "pages": [
     3
@@ -836,6 +849,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:253:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -895,6 +909,7 @@
    "exclusion": "synthetic",
    "exclusion_detail": "a synthetic log built for Muraja #220, with an added phrase; no model decoded it",
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:1",
    "pages": [
     4
@@ -924,6 +939,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4
@@ -992,6 +1008,7 @@
      "source": "Muraja 496c7f0: 2:23:11 genuinely missed"
     }
    ],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4,
@@ -1053,6 +1070,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4,
@@ -1114,6 +1132,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [],
    "protocol": "1 s hop",
@@ -1172,6 +1191,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4
@@ -1232,6 +1252,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4
@@ -1301,6 +1322,7 @@
      "source": "Muraja 450484d: ta'awwudh residue matched 2:18:6; ADR-0020: skip 2:18:6 to 2:19:3"
     }
    ],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4
@@ -1361,6 +1383,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [],
    "protocol": "1 s hop",
@@ -1419,6 +1442,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4
@@ -1495,6 +1519,7 @@
      "source": "Muraja c66f9da names skipped ayahs; the decode has no 2:9"
     }
    ],
+   "slip_regions": {},
    "start": "2:6:0",
    "pages": [
     3
@@ -1563,6 +1588,7 @@
      "source": "Muraja a41b9aa: the reader skips 2:20"
     }
    ],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4
@@ -1623,6 +1649,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:17:0",
    "pages": [
     4
@@ -1685,6 +1712,7 @@
    "exclusion": "documented_mistake",
    "exclusion_detail": "Muraja ADR-0009: the reader recites 2:123's wording at 2:48 (\"the reader is in the sister ayah\")",
    "explained": [],
+   "slip_regions": {},
    "start": "2:44:0",
    "pages": [],
    "protocol": "1 s hop",
@@ -1743,6 +1771,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:58:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -1801,6 +1830,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:58:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -1867,6 +1897,7 @@
      "source": "the decode ends in 2:60; 2:61 is never recited"
     }
    ],
+   "slip_regions": {},
    "start": "2:58:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -1925,6 +1956,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "2:58:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -1984,6 +2016,40 @@
    "exclusion": "documented_mistake",
    "exclusion_detail": "Muraja PR #235: the reader slips from 30:12:3 into 30:14's wording, then corrects",
    "explained": [],
+   "slip_regions": {
+    "narrow": [
+     {
+      "first": "30:12:4",
+      "last": "30:12:5",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4"
+     },
+     {
+      "first": "30:14:1",
+      "last": "30:14:5",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4"
+     }
+    ],
+    "wide": [
+     {
+      "first": "30:12:1",
+      "last": "30:13:9",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4"
+     },
+     {
+      "first": "30:14:1",
+      "last": "30:14:5",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4"
+     }
+    ]
+   },
    "start": "30:6:1",
    "pages": [
     405
@@ -2045,6 +2111,7 @@
    "exclusion": "synthetic",
    "exclusion_detail": "a synthetic log built for Muraja #220, with an added phrase; no model decoded it",
    "explained": [],
+   "slip_regions": {},
    "start": "36:1:1",
    "pages": [
     440
@@ -2083,6 +2150,7 @@
      "source": "the log's Start line places the reader at 36:36:1"
     }
    ],
+   "slip_regions": {},
    "start": "36:36:1",
    "pages": [
     442,
@@ -2144,6 +2212,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "3:1:0",
    "pages": [],
    "protocol": "1 s hop",
@@ -2226,6 +2295,7 @@
      "source": "the decode goes from 3:26:18 to 3:28:1"
     }
    ],
+   "slip_regions": {},
    "start": "3:23:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -2293,6 +2363,7 @@
      "source": "the decode goes from 3:31:8 to 3:35:1"
     }
    ],
+   "slip_regions": {},
    "start": "3:30:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -2352,6 +2423,26 @@
    "exclusion": "documented_mistake",
    "exclusion_detail": "Muraja 4ec326a: the reader continues 3:15 with 9:72's wording",
    "explained": [],
+   "slip_regions": {
+    "narrow": [
+     {
+      "first": "3:15:17",
+      "last": "3:15:24",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja 4ec326a: 3:15 continued with 9:72's wording from 3:15:17"
+     }
+    ],
+    "wide": [
+     {
+      "first": "3:15:1",
+      "last": "3:16:11",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja 4ec326a: 3:15 continued with 9:72's wording from 3:15:17"
+     }
+    ]
+   },
    "start": "3:7:0",
    "pages": [
     51,
@@ -2423,6 +2514,7 @@
      "source": "baseline intent (#211): the genuine 3:8 skip"
     }
    ],
+   "slip_regions": {},
    "start": "3:7:0",
    "pages": [
     51,
@@ -2485,6 +2577,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "3:16:0",
    "pages": [
     52,
@@ -2548,6 +2641,7 @@
    "exclusion": "documented_mistake",
    "exclusion_detail": "baseline intent (#211): an off-page slip into 3:7's wording after 3:18",
    "explained": [],
+   "slip_regions": {},
    "start": "3:16:0",
    "pages": [],
    "protocol": "1 s hop",
@@ -2606,6 +2700,7 @@
    "exclusion": "synthetic",
    "exclusion_detail": "generated from a log spec with reference phonemes; no model decoded it",
    "explained": [],
+   "slip_regions": {},
    "start": "3:27:1",
    "pages": [
     53
@@ -2636,6 +2731,7 @@
    "exclusion": "synthetic",
    "exclusion_detail": "generated from a log spec with reference phonemes; no model decoded it",
    "explained": [],
+   "slip_regions": {},
    "start": "3:27:1",
    "pages": [
     53
@@ -2665,6 +2761,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "3:71:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -2724,6 +2821,40 @@
    "exclusion": "documented_mistake",
    "exclusion_detail": "Muraja 4ec326a: the reader continues 3:42 with 3:45's wording",
    "explained": [],
+   "slip_regions": {
+    "narrow": [
+     {
+      "first": "3:42:7",
+      "last": "3:42:12",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7"
+     },
+     {
+      "first": "3:45:1",
+      "last": "3:45:20",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7"
+     }
+    ],
+    "wide": [
+     {
+      "first": "3:42:1",
+      "last": "3:43:7",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7"
+     },
+     {
+      "first": "3:45:1",
+      "last": "3:45:20",
+      "kind": "slip",
+      "basis": "docs",
+      "source": "Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7"
+     }
+    ]
+   },
    "start": "3:37:0",
    "pages": [
     55
@@ -2793,6 +2924,26 @@
      "source": "the log's Start line places the reader at 3:64:9; the decode begins at 3:64:8"
     }
    ],
+   "slip_regions": {
+    "narrow": [
+     {
+      "first": "3:64:18",
+      "last": "3:64:31",
+      "kind": "slip",
+      "basis": "decode",
+      "source": "the decode carries another passage's phrase in place of 3:64:18, then restarts from 3:64:12"
+     }
+    ],
+    "wide": [
+     {
+      "first": "3:64:1",
+      "last": "3:65:15",
+      "kind": "slip",
+      "basis": "decode",
+      "source": "the decode carries another passage's phrase in place of 3:64:18, then restarts from 3:64:12"
+     }
+    ]
+   },
    "start": "3:64:9",
    "pages": [
     58
@@ -2853,6 +3004,7 @@
    "exclusion": "synthetic",
    "exclusion_detail": "generated from a log spec with reference phonemes; no model decoded it",
    "explained": [],
+   "slip_regions": {},
    "start": "4:137:1",
    "pages": [
     100
@@ -2883,6 +3035,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "54:50:0",
    "pages": [
     531,
@@ -2945,6 +3098,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "54:50:0",
    "pages": [
     531,
@@ -3006,6 +3160,7 @@
    "exclusion": "duplicate_session",
    "exclusion_detail": "the same session as surah55_page531_random_grades_reread: every update is identical",
    "explained": [],
+   "slip_regions": {},
    "start": "54:50:0",
    "pages": [
     531,
@@ -3038,6 +3193,7 @@
    "exclusion": "documented_mistake",
    "exclusion_detail": "baseline intent (#198): after 55:38 the reader slips into 55:41",
    "explained": [],
+   "slip_regions": {},
    "start": "55:19:0",
    "pages": [
     532
@@ -3098,6 +3254,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "55:19:0",
    "pages": [
     532
@@ -3159,6 +3316,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "55:19:0",
    "pages": [
     532
@@ -3220,6 +3378,7 @@
    "exclusion": "not_a_device_session",
    "exclusion_detail": "a mined Tadabur re-read clip transcribed offline, not a device session; not the owner's recitation",
    "explained": [],
+   "slip_regions": {},
    "start": "65:10:1",
    "pages": [
     559
@@ -3250,6 +3409,7 @@
    "exclusion": "synthetic",
    "exclusion_detail": "a synthetic log built for Muraja #220, with an added phrase; no model decoded it",
    "explained": [],
+   "slip_regions": {},
    "start": "67:1:1",
    "pages": [
     562
@@ -3279,6 +3439,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "68:17:0",
    "pages": [
     565
@@ -3339,6 +3500,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "70:24:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -3405,6 +3567,7 @@
      "source": "Muraja a3789d9: 70:26:2 falsely remapped onto 70:24:2"
     }
    ],
+   "slip_regions": {},
    "start": "70:11:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -3463,6 +3626,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "70:11:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -3529,6 +3693,7 @@
      "source": "Muraja ef7766d: a re-read of 70:27 matched onto its twin; the decode ends in 70:27"
     }
    ],
+   "slip_regions": {},
    "start": "70:11:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -3589,6 +3754,7 @@
    "exclusion": null,
    "exclusion_detail": null,
    "explained": [],
+   "slip_regions": {},
    "start": "70:11:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -3657,6 +3823,7 @@
      "source": "baseline intent (#194): the decode is 70:26, 70:27, 70:27 again"
     }
    ],
+   "slip_regions": {},
    "start": "70:11:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -3725,6 +3892,7 @@
      "source": "baseline intent (#194): the decode is 70:26, 70:27, 70:27 again"
     }
    ],
+   "slip_regions": {},
    "start": "70:11:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -3784,6 +3952,7 @@
    "exclusion": "not_a_device_session",
    "exclusion_detail": "a mined Tadabur re-read clip transcribed offline, not a device session; not the owner's recitation",
    "explained": [],
+   "slip_regions": {},
    "start": "71:22:1",
    "pages": [
     571
@@ -3822,6 +3991,7 @@
      "source": "Muraja ADR-0020: a genuine skip; the decode goes from 8:1:7 to 8:4:1"
     }
    ],
+   "slip_regions": {},
    "start": "8:1:0",
    "pages": [],
    "protocol": "3 s hop",
@@ -7928,6 +8098,1692 @@
      "marks": {},
      "pairs": {}
     }
+   }
+  }
+ },
+ "h448_slips_excluded": {
+  "narrow": {
+   "allowances_on": {
+    "false_flags": {
+     "flags": 7,
+     "words": 420,
+     "logs": 4,
+     "per_1000": 16.666666666666668,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 6,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 14.285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 1,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 2.3809523809523814,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {}
+   },
+   "soft_pair_forgiveness_off": {
+    "false_flags": {
+     "flags": 10,
+     "words": 420,
+     "logs": 4,
+     "per_1000": 23.809523809523807,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 3,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 7.142857142857142,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 6,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 14.285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 1,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 2.3809523809523814,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {
+     "ح↔ه": 1,
+     "ذ↔ز": 1,
+     "س↔ص": 1
+    }
+   },
+   "shaddah_suppression_off": {
+    "false_flags": {
+     "flags": 7,
+     "words": 420,
+     "logs": 4,
+     "per_1000": 16.666666666666668,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 6,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 14.285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 1,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 2.3809523809523814,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {}
+   },
+   "shipped_default": {
+    "false_flags": {
+     "flags": 7,
+     "words": 420,
+     "logs": 4,
+     "per_1000": 16.666666666666668,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 6,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 14.285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 1,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 2.3809523809523814,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {}
+   },
+   "allowances_off": {
+    "false_flags": {
+     "flags": 10,
+     "words": 420,
+     "logs": 4,
+     "per_1000": 23.809523809523807,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 3,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 7.142857142857142,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 6,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 14.285714285714285,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 1,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 2.3809523809523814,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 0,
+      "words": 420,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {
+     "ح↔ه": 1,
+     "ذ↔ز": 1,
+     "س↔ص": 1
+    }
+   }
+  },
+  "wide": {
+   "allowances_on": {
+    "false_flags": {
+     "flags": 6,
+     "words": 360,
+     "logs": 4,
+     "per_1000": 16.666666666666668,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 5,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 13.888888888888888,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 1,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 2.7777777777777777,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {}
+   },
+   "soft_pair_forgiveness_off": {
+    "false_flags": {
+     "flags": 9,
+     "words": 360,
+     "logs": 4,
+     "per_1000": 25.0,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 3,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 8.333333333333334,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 5,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 13.888888888888888,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 1,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 2.7777777777777777,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {
+     "ح↔ه": 1,
+     "ذ↔ز": 1,
+     "س↔ص": 1
+    }
+   },
+   "shaddah_suppression_off": {
+    "false_flags": {
+     "flags": 6,
+     "words": 360,
+     "logs": 4,
+     "per_1000": 16.666666666666668,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 5,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 13.888888888888888,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 1,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 2.7777777777777777,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {}
+   },
+   "shipped_default": {
+    "false_flags": {
+     "flags": 6,
+     "words": 360,
+     "logs": 4,
+     "per_1000": 16.666666666666668,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 5,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 13.888888888888888,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 1,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 2.7777777777777777,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {}
+   },
+   "allowances_off": {
+    "false_flags": {
+     "flags": 9,
+     "words": 360,
+     "logs": 4,
+     "per_1000": 25.0,
+     "lower": null,
+     "upper": null,
+     "method": "none"
+    },
+    "causes": {
+     "tashkeel": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "soft_pair": {
+      "flags": 3,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 8.333333333333334,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "target_pair": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "other_consonant": {
+      "flags": 5,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 13.888888888888888,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "shaddah": {
+      "flags": 1,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 2.7777777777777777,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "skipped": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     },
+     "unrecorded": {
+      "flags": 0,
+      "words": 360,
+      "logs": 4,
+      "per_1000": 0.0,
+      "lower": null,
+      "upper": null,
+      "method": "none"
+     }
+    },
+    "marks": {},
+    "pairs": {
+     "ح↔ه": 1,
+     "ذ↔ز": 1,
+     "س↔ص": 1
+    }
+   }
+  }
+ },
+ "allowances": {
+  "soft pair ت↔ط": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 0,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 0,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 0,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 0,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   }
+  },
+  "soft pair ح↔ه": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 5,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 2.955082742316785,
+    "lower": 0.6821166155651714,
+    "upper": 6.225732860683772,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:19:15",
+      5
+     ]
+    ]
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 5,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 2.229157378510923,
+    "lower": 0.47754922006961587,
+    "upper": 4.424827729397062,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:19:15",
+      5
+     ]
+    ]
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 1,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 2.3809523809523814,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": [
+     [
+      "3:8:7",
+      1
+     ]
+    ]
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 1,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 2.7777777777777777,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": [
+     [
+      "3:8:7",
+      1
+     ]
+    ]
+   }
+  },
+  "soft pair ذ↔ز": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 0,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 0,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 1,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 2.3809523809523814,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": [
+     [
+      "3:38:11",
+      1
+     ]
+    ]
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 1,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 2.7777777777777777,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": [
+     [
+      "3:38:11",
+      1
+     ]
+    ]
+   }
+  },
+  "soft pair س↔ص": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 0,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 1,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 0.44583147570218457,
+    "lower": 0.0,
+    "upper": 1.64028545752118,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "12:5:4",
+      1
+     ]
+    ]
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 1,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 2.3809523809523814,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": [
+     [
+      "3:39:17",
+      1
+     ]
+    ]
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 1,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 2.7777777777777777,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": [
+     [
+      "3:39:17",
+      1
+     ]
+    ]
+   }
+  },
+  "soft pair ض↔ظ": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 0,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 0,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 0,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 0,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   }
+  },
+  "soft pair ق↔ك": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 0,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 0,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 0,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 0,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   }
+  },
+  "all six soft pairs (Muraja's one switch)": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 5,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 2.955082742316785,
+    "lower": 0.6821166155651714,
+    "upper": 6.225732860683772,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:19:15",
+      5
+     ]
+    ]
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 6,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 2.6749888542131073,
+    "lower": 0.8480690565916192,
+    "upper": 5.134293875365793,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:19:15",
+      5
+     ],
+     [
+      "12:5:4",
+      1
+     ]
+    ]
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 3,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 7.142857142857142,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": [
+     [
+      "3:8:7",
+      1
+     ],
+     [
+      "3:38:11",
+      1
+     ],
+     [
+      "3:39:17",
+      1
+     ]
+    ]
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 3,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 8.333333333333334,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": [
+     [
+      "3:8:7",
+      1
+     ],
+     [
+      "3:38:11",
+      1
+     ],
+     [
+      "3:39:17",
+      1
+     ]
+    ]
+   }
+  },
+  "shaddah suppression": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 3,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 1.7730496453900708,
+    "lower": 0.0,
+    "upper": 4.14373591217503,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:19:2",
+      3
+     ]
+    ]
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 3,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 1.3374944271065536,
+    "lower": 0.0,
+    "upper": 3.028104713419748,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:19:2",
+      3
+     ]
+    ]
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 0,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 0,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   }
+  },
+  "the Tashkeel toggle": {
+   "teacher, 1 s hop": {
+    "allowance": true,
+    "flags": 4,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 2.3640661938534278,
+    "lower": 0.0,
+    "upper": 6.29592267601903,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:22:2",
+      2
+     ],
+     [
+      "2:22:3",
+      1
+     ],
+     [
+      "2:23:14",
+      1
+     ]
+    ]
+   },
+   "teacher": {
+    "allowance": true,
+    "flags": 7,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 3.120820329915292,
+    "lower": 0.689869301742901,
+    "upper": 6.795016987542469,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:22:2",
+      2
+     ],
+     [
+      "2:22:3",
+      1
+     ],
+     [
+      "2:23:14",
+      1
+     ],
+     [
+      "2:60:7",
+      1
+     ],
+     [
+      "2:60:8",
+      1
+     ],
+     [
+      "2:255:20",
+      1
+     ]
+    ]
+   },
+   "h448": {
+    "allowance": true,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": true,
+    "flags": 0,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": true,
+    "flags": 0,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   }
+  },
+  "target pair ذ↔ظ": {
+   "teacher, 1 s hop": {
+    "allowance": false,
+    "flags": 0,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "teacher": {
+    "allowance": false,
+    "flags": 0,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448": {
+    "allowance": false,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": false,
+    "flags": 0,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": false,
+    "flags": 0,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   }
+  },
+  "target pair س↔ش": {
+   "teacher, 1 s hop": {
+    "allowance": false,
+    "flags": 0,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "teacher": {
+    "allowance": false,
+    "flags": 1,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 0.44583147570218457,
+    "lower": 0.0,
+    "upper": 1.5690581832990678,
+    "method": "bootstrap",
+    "removed": 0,
+    "carriers": [
+     [
+      "2:60:28",
+      1
+     ]
+    ]
+   },
+   "h448": {
+    "allowance": false,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": false,
+    "flags": 0,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": false,
+    "flags": 0,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   }
+  },
+  "target pair ط↔ق": {
+   "teacher, 1 s hop": {
+    "allowance": false,
+    "flags": 0,
+    "words": 1692,
+    "logs": 25,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "teacher": {
+    "allowance": false,
+    "flags": 0,
+    "words": 2243,
+    "logs": 49,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448": {
+    "allowance": false,
+    "flags": 0,
+    "words": 94,
+    "logs": 1,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, narrow": {
+    "allowance": false,
+    "flags": 0,
+    "words": 420,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
+   },
+   "h448, all sessions, slip regions excluded, wide": {
+    "allowance": false,
+    "flags": 0,
+    "words": 360,
+    "logs": 4,
+    "per_1000": 0.0,
+    "lower": null,
+    "upper": null,
+    "method": "none",
+    "removed": 0,
+    "carriers": []
    }
   }
  },

@@ -156,11 +156,15 @@ class Scoring:
     soft_pairs_enabled: bool | None = None
     shaddah_suppression: bool | None = None
     tashkeel_shown: bool = True
+    #: Soft pairs (``"ح↔ه"``) not forgiven while the others are: the harness's one-pair switch
+    #: over Muraja's own pair set (``muraja_harness/scoring.swift``).
+    soft_pairs_disabled: tuple[str, ...] = ()
 
     @property
     def engine_name(self) -> str:
         """The engine run this scoring reads; the Tashkeel toggle is display only."""
-        return f"{self.mode}|soft_pairs={self.soft_pairs_enabled}|shaddah={self.shaddah_suppression}"
+        name = f"{self.mode}|soft_pairs={self.soft_pairs_enabled}|shaddah={self.shaddah_suppression}"
+        return name + (f"|not_forgiven={','.join(self.soft_pairs_disabled)}" if self.soft_pairs_disabled else "")
 
     def as_dict(self) -> dict:
         return {
@@ -170,6 +174,7 @@ class Scoring:
             "soft_pairs_enabled": self.soft_pairs_enabled,
             "shaddah_suppression": self.shaddah_suppression,
             "tashkeel_shown": self.tashkeel_shown,
+            **({"soft_pairs_disabled": list(self.soft_pairs_disabled)} if self.soft_pairs_disabled else {}),
         }
 
 
@@ -600,6 +605,7 @@ def engine_runs(scorings: Sequence[Scoring]) -> list[dict]:
             "mode": s.mode,
             "soft_pairs_enabled": s.soft_pairs_enabled,
             "shaddah_suppression": s.shaddah_suppression,
+            **({"soft_pairs_disabled": list(s.soft_pairs_disabled)} if s.soft_pairs_disabled else {}),
         }
         for name, s in sorted(engines.items())
     ]

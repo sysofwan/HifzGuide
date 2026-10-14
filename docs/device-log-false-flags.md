@@ -92,6 +92,48 @@ log's docs or its own decode; see *Explained words*) from both counts.
 | `shipped_default` | 75 / 1763 · 42.5 [10.6, 86.4] | 13 / 1692 · 7.7 [3.7, 13.8] |
 | `allowances_off` | 84 / 1763 · 47.6 [15.6, 94.0] | 22 / 1692 · 13.0 [7.2, 21.6] |
 
+**Sensitivity, not the headline: `h448`, all 4 sessions, slip regions excluded**
+
+The headline keeps only the one `h448` session no doc records a slip in. This row takes every
+`h448` session and leaves out, as it does explained words, the words in and around each slip
+into another passage (including the undocumented one in
+`surah3_page58_far_reread_pause_residue`, basis *decode*). The region's boundary is one
+mechanical rule in two widths. **Narrow:** from the first word the reader replaced with the
+other passage's wording to the end of that ayah, plus the twin ayah on the page in full.
+**Wide:** the slip ayah in full and the ayah after it (where the correction and the catch-up
+land), plus the twin ayah in full. Every other word is kept.
+
+| scoring | headline (1 session) | all sessions, narrow | all sessions, wide |
+|---|---|---|---|
+| `allowances_on` | 2 / 94 · 21.3 (n/c) | 7 / 420 · 16.7 (n/c) | 6 / 360 · 16.7 (n/c) |
+| `soft_pair_forgiveness_off` | 2 / 94 · 21.3 (n/c) | 10 / 420 · 23.8 (n/c) | 9 / 360 · 25.0 (n/c) |
+| `shaddah_suppression_off` | 2 / 94 · 21.3 (n/c) | 7 / 420 · 16.7 (n/c) | 6 / 360 · 16.7 (n/c) |
+| `shipped_default` | 2 / 94 · 21.3 (n/c) | 7 / 420 · 16.7 (n/c) | 6 / 360 · 16.7 (n/c) |
+| `allowances_off` | 2 / 94 · 21.3 (n/c) | 10 / 420 · 23.8 (n/c) | 9 / 360 · 25.0 (n/c) |
+
+Its flags by cause (narrow · wide):
+
+|  | `allowances_on` | `soft_pair_forgiveness_off` | `shaddah_suppression_off` | `shipped_default` | `allowances_off` |
+|---|---|---|---|---|---|
+| soft-pair consonant | 0 · 0 | 3 · 3 | 0 · 0 | 0 · 0 | 3 · 3 |
+| another consonant | 6 · 5 | 6 · 5 | 6 · 5 | 6 · 5 | 6 · 5 |
+| shaddah (collapsed geminate) | 0 · 0 | 0 · 0 | 1 · 1 | 0 · 0 | 1 · 1 |
+| no error recorded | 1 · 1 | 1 · 1 | 0 · 0 | 1 · 1 | 0 · 0 |
+| — ح↔ه | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
+| — ذ↔ز | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
+| — س↔ص | 0 · 0 | 1 · 1 | 0 · 0 | 0 · 0 | 1 · 1 |
+
+| session | width | slip region | basis | source |
+|---|---|---|---|---|
+| `surah30_page405_shared_opening_correction` | narrow | 30:12:4–30:12:5, 30:14:1–30:14:5 | docs | Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4 |
+| `surah30_page405_shared_opening_correction` | wide | 30:12:1–30:13:9, 30:14:1–30:14:5 | docs | Muraja PR #235: 30:12 continued with 30:14's wording from 30:12:4 |
+| `surah3_page51_ayah15_mutashabihat_wrong_words` | narrow | 3:15:17–3:15:24 | docs | Muraja 4ec326a: 3:15 continued with 9:72's wording from 3:15:17 |
+| `surah3_page51_ayah15_mutashabihat_wrong_words` | wide | 3:15:1–3:16:11 | docs | Muraja 4ec326a: 3:15 continued with 9:72's wording from 3:15:17 |
+| `surah3_page55_ayah42_mutashabihat_creep_jump` | narrow | 3:42:7–3:42:12, 3:45:1–3:45:20 | docs | Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7 |
+| `surah3_page55_ayah42_mutashabihat_creep_jump` | wide | 3:42:1–3:43:7, 3:45:1–3:45:20 | docs | Muraja 4ec326a: 3:42 continued with 3:45's wording from 3:42:7 |
+| `surah3_page58_far_reread_pause_residue` | narrow | 3:64:18–3:64:31 | decode | the decode carries another passage's phrase in place of 3:64:18, then restarts from 3:64:12 |
+| `surah3_page58_far_reread_pause_residue` | wide | 3:64:1–3:65:15 | decode | the decode carries another passage's phrase in place of 3:64:18, then restarts from 3:64:12 |
+
 ### What the unexplained false flags are
 
 Flags per cause over the graded words, explained words left out (count · per 1,000). A
@@ -196,6 +238,66 @@ brackets).
 | `surah55_page532_far_jump_refrain` | 55:19:3 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah55_page532_grade_contamination` | 55:19:3 | teacher | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | `surah8_page176_ayah1` | 8:4:2 | teacher | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped | skipped: skipped |
+
+## Flags added when one allowance is off
+
+Information for the owner's per-allowance decisions (#128); no verdict. Each soft pair is
+switched off alone with every other allowance on, through the harness's one-pair switch
+over Muraja's own pair set (`isSoftMismatch`, `PhonemeSifat.swift:219-225`, the scorer's only
+soft-pair test; `muraja_harness/scoring.swift`). Shaddah suppression is
+`shaddah_suppression_off`, and the Tashkeel toggle is `shipped_default` (tashkeel shown).
+Each cell: the words flagged with the allowance off that `allowances_on` does not flag /
+the words graded with it off · per 1,000 [interval], explained words (and, in the
+sensitivity columns, slip-region words) left out. *Removed* counts words `allowances_on`
+flags that the scoring does not. The target pairs no Muraja allowance forgives are graded
+the same in every scoring.
+
+| allowance | teacher, 1 s hop | teacher, all eras | `h448`, headline (1 session) | `h448`, all sessions, slip regions excluded (narrow) | `h448`, all sessions, slip regions excluded (wide) |
+|---|---|---|---|---|---|
+| soft pair ت↔ط | 0 / 1692 · 0.0 (n/c) | 0 / 2243 · 0.0 (n/c) | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
+| soft pair ح↔ه | 5 / 1692 · 3.0 [0.7, 6.2] | 5 / 2243 · 2.2 [0.5, 4.4] | 0 / 94 · 0.0 (n/c) | 1 / 420 · 2.4 (n/c) | 1 / 360 · 2.8 (n/c) |
+| soft pair ذ↔ز | 0 / 1692 · 0.0 (n/c) | 0 / 2243 · 0.0 (n/c) | 0 / 94 · 0.0 (n/c) | 1 / 420 · 2.4 (n/c) | 1 / 360 · 2.8 (n/c) |
+| soft pair س↔ص | 0 / 1692 · 0.0 (n/c) | 1 / 2243 · 0.4 [0.0, 1.6] | 0 / 94 · 0.0 (n/c) | 1 / 420 · 2.4 (n/c) | 1 / 360 · 2.8 (n/c) |
+| soft pair ض↔ظ | 0 / 1692 · 0.0 (n/c) | 0 / 2243 · 0.0 (n/c) | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
+| soft pair ق↔ك | 0 / 1692 · 0.0 (n/c) | 0 / 2243 · 0.0 (n/c) | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
+| all six soft pairs (Muraja's one switch) | 5 / 1692 · 3.0 [0.7, 6.2] | 6 / 2243 · 2.7 [0.8, 5.1] | 0 / 94 · 0.0 (n/c) | 3 / 420 · 7.1 (n/c) | 3 / 360 · 8.3 (n/c) |
+| shaddah suppression | 3 / 1692 · 1.8 [0.0, 4.1] | 3 / 2243 · 1.3 [0.0, 3.0] | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
+| the Tashkeel toggle | 4 / 1692 · 2.4 [0.0, 6.3] | 7 / 2243 · 3.1 [0.7, 6.8] | 0 / 94 · 0.0 (n/c) | 0 / 420 · 0.0 (n/c) | 0 / 360 · 0.0 (n/c) |
+| target pair ذ↔ظ | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
+| target pair س↔ش | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (1 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
+| target pair ط↔ق | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) | no allowance; always graded (0 flagged under `allowances_on`) |
+
+The words that carry them:
+
+| allowance | population | words (sessions they recur in) |
+|---|---|---|
+| soft pair ح↔ه | teacher, 1 s hop | 2:19:15 (5 sessions) |
+| soft pair ح↔ه | teacher, all eras | 2:19:15 (5 sessions) |
+| soft pair ح↔ه | `h448`, all sessions, slip regions excluded (narrow) | 3:8:7 |
+| soft pair ح↔ه | `h448`, all sessions, slip regions excluded (wide) | 3:8:7 |
+| soft pair ذ↔ز | `h448`, all sessions, slip regions excluded (narrow) | 3:38:11 |
+| soft pair ذ↔ز | `h448`, all sessions, slip regions excluded (wide) | 3:38:11 |
+| soft pair س↔ص | teacher, all eras | 12:5:4 |
+| soft pair س↔ص | `h448`, all sessions, slip regions excluded (narrow) | 3:39:17 |
+| soft pair س↔ص | `h448`, all sessions, slip regions excluded (wide) | 3:39:17 |
+| all six soft pairs (Muraja's one switch) | teacher, 1 s hop | 2:19:15 (5 sessions) |
+| all six soft pairs (Muraja's one switch) | teacher, all eras | 2:19:15 (5 sessions), 12:5:4 |
+| all six soft pairs (Muraja's one switch) | `h448`, all sessions, slip regions excluded (narrow) | 3:8:7, 3:38:11, 3:39:17 |
+| all six soft pairs (Muraja's one switch) | `h448`, all sessions, slip regions excluded (wide) | 3:8:7, 3:38:11, 3:39:17 |
+| shaddah suppression | teacher, 1 s hop | 2:19:2 (3 sessions) |
+| shaddah suppression | teacher, all eras | 2:19:2 (3 sessions) |
+| the Tashkeel toggle | teacher, 1 s hop | 2:22:2 (2 sessions), 2:22:3, 2:23:14 |
+| the Tashkeel toggle | teacher, all eras | 2:22:2 (2 sessions), 2:22:3, 2:23:14, 2:60:7, 2:60:8, 2:255:20 |
+| target pair س↔ش | teacher, all eras | 2:60:28 |
+
+## Placement
+
+Of the 261 raw false flags of the included sessions under `shipped_default`,
+228 (87%) fall on explained words: words the reader
+skipped, re-read or never recited, which the engine graded because of where it placed the
+reader. Another 9 are the engine's skip marking on words the docs do not explain. Where
+the reader is placed, and what is marked skipped, is decided by Muraja's follow-along engine
+(alignment, placement, skip marking), not by the model's decode of the word.
 
 ## The device against the simulation (#90)
 

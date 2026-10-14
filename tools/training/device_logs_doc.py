@@ -11,11 +11,14 @@ from collections import Counter, defaultdict
 
 from training.device_logs import (
     ALL_WORDS,
+    ALLOWANCE_GROUPS,
     DOCUMENTED_MISTAKE,
     GROUPS,
     H448,
+    H448_SLIPS_EXCLUDED,
     MODELS,
     OVERLAP_CAP,
+    SLIP_WIDTHS,
     STUDENT_INFERENCE_MS,
     TEACHER,
     TEACHER_ONE_SECOND,
@@ -129,6 +132,7 @@ def _rates_section(report: dict) -> list[str]:
         lines += _table(["scoring", VIEW_TITLES[ALL_WORDS], VIEW_TITLES[UNEXPLAINED]],
                         [[f"`{n}`", fmt_rate(by_scoring[n][ALL_WORDS]["false_flags"]),
                           fmt_rate(by_scoring[n][UNEXPLAINED]["false_flags"])] for n in names])
+    lines += _sensitivity_block(report)
     lines += [
         "### What the unexplained false flags are",
         "",
@@ -149,6 +153,108 @@ def _rates_section(report: dict) -> list[str]:
                  for kind, key in details]
         lines += [f"**{GROUP_TITLES[group]}**", ""] + _table(["", *(f"`{n}`" for n in names)], rows)
     return lines
+
+
+def _sensitivity_block(report: dict) -> list[str]:
+    """The labelled sensitivity beside the headline `h448` row (not a replacement for it)."""
+    names = _scoring_names(report)
+    by_width = report["h448_slips_excluded"]
+    sessions = [e for e in report["logs"] if e["model"] == H448
+                and (e["exclusion"] is None or e["exclusion"] == DOCUMENTED_MISTAKE)]
+    rates = [[f"`{n}`", fmt_rate(report["groups"][H448][n][UNEXPLAINED]["false_flags"]),
+              *(fmt_rate(by_width[w][n]["false_flags"]) for w in SLIP_WIDTHS)] for n in names]
+    causes = []
+    for c in CAUSES:
+        cells = [" · ".join(str(by_width[w][n]["causes"][c]["flags"]) for w in SLIP_WIDTHS) for n in names]
+        if any(cell != " · ".join("0" for _ in SLIP_WIDTHS) for cell in cells):
+            causes.append([CAUSE_TITLES[c], *cells])
+    details = sorted({key for w in SLIP_WIDTHS for n in names for kind in ("marks", "pairs")
+                      for key in by_width[w][n][kind]})
+    causes += [[f"— {key}", *(" · ".join(str({**by_width[w][n]["marks"], **by_width[w][n]["pairs"]}.get(key, 0))
+                                          for w in SLIP_WIDTHS) for n in names)] for key in details]
+    regions = [[f"`{e['log']}`", w, ", ".join(f"{r['first']}–{r['last']}" for r in e["slip_regions"][w]),
+                e["slip_regions"][w][0]["basis"], e["slip_regions"][w][0]["source"]]
+               for e in sessions for w in SLIP_WIDTHS]
+    return [
+        f"**Sensitivity, not the headline: `h448`, all {len(sessions)} sessions, slip regions excluded**",
+        "",
+        "The headline keeps only the one `h448` session no doc records a slip in. This row takes every",
+        "`h448` session and leaves out, as it does explained words, the words in and around each slip",
+        "into another passage (including the undocumented one in",
+        "`surah3_page58_far_reread_pause_residue`, basis *decode*). The region's boundary is one",
+        "mechanical rule in two widths. **Narrow:** from the first word the reader replaced with the",
+        "other passage's wording to the end of that ayah, plus the twin ayah on the page in full.",
+        "**Wide:** the slip ayah in full and the ayah after it (where the correction and the catch-up",
+        "land), plus the twin ayah in full. Every other word is kept.",
+        "",
+        *_table(["scoring", "headline (1 session)", *(f"all sessions, {w}" for w in SLIP_WIDTHS)], rates),
+        "Its flags by cause (narrow · wide):",
+        "",
+        *_table(["", *(f"`{n}`" for n in names)], causes),
+        *_table(["session", "width", "slip region", "basis", "source"], regions),
+    ]
+
+
+ALLOWANCE_GROUP_TITLES = {
+    TEACHER_ONE_SECOND: "teacher, 1 s hop",
+    TEACHER: "teacher, all eras",
+    H448: "`h448`, headline (1 session)",
+    **{f"{H448_SLIPS_EXCLUDED}, {w}": f"`h448`, all sessions, slip regions excluded ({w})"
+       for w in SLIP_WIDTHS},
+}
+
+
+def _allowance_cell(cell: dict) -> str:
+    if not cell["allowance"]:
+        return f"no allowance; always graded ({cell['flags']} flagged under `allowances_on`)"
+    removed = f", {cell['removed']} removed" if cell["removed"] else ""
+    return fmt_rate(cell) + removed
+
+
+def _allowances_section(report: dict) -> list[str]:
+    table = report["allowances"]
+    rows = [[label, *(_allowance_cell(by[g]) for g in ALLOWANCE_GROUPS)] for label, by in table.items()]
+    carriers = [[label, ALLOWANCE_GROUP_TITLES[g],
+                 ", ".join(f"{w} ({n} sessions)" if n > 1 else w for w, n in by[g]["carriers"])]
+                for label, by in table.items() for g in ALLOWANCE_GROUPS if by[g]["carriers"]]
+    return [
+        "## Flags added when one allowance is off",
+        "",
+        "Information for the owner's per-allowance decisions (#128); no verdict. Each soft pair is",
+        "switched off alone with every other allowance on, through the harness's one-pair switch",
+        "over Muraja's own pair set (`isSoftMismatch`, `PhonemeSifat.swift:219-225`, the scorer's only",
+        "soft-pair test; `muraja_harness/scoring.swift`). Shaddah suppression is",
+        "`shaddah_suppression_off`, and the Tashkeel toggle is `shipped_default` (tashkeel shown).",
+        "Each cell: the words flagged with the allowance off that `allowances_on` does not flag /",
+        "the words graded with it off · per 1,000 [interval], explained words (and, in the",
+        "sensitivity columns, slip-region words) left out. *Removed* counts words `allowances_on`",
+        "flags that the scoring does not. The target pairs no Muraja allowance forgives are graded",
+        "the same in every scoring.",
+        "",
+        *_table(["allowance", *(ALLOWANCE_GROUP_TITLES[g] for g in ALLOWANCE_GROUPS)], rows),
+        "The words that carry them:",
+        "",
+        *(_table(["allowance", "population", "words (sessions they recur in)"], carriers) if carriers
+          else ["None.", ""]),
+    ]
+
+
+def _placement_paragraph(report: dict) -> list[str]:
+    included = {e["log"] for e in report["logs"] if e["exclusion"] is None}
+    rows = [r for r in report["words"] if r["log"] in included and r["scoring"] == "shipped_default"]
+    explained = sum(r["explained"] is not None for r in rows)
+    skipped = sum(r["explained"] is None and "skipped" in r["causes"] for r in rows)
+    return [
+        "## Placement",
+        "",
+        f"Of the {len(rows)} raw false flags of the included sessions under `shipped_default`,",
+        f"{explained} ({100 * explained / len(rows):.0f}%) fall on explained words: words the reader",
+        "skipped, re-read or never recited, which the engine graded because of where it placed the",
+        f"reader. Another {skipped} are the engine's skip marking on words the docs do not explain. Where",
+        "the reader is placed, and what is marked skipped, is decided by Muraja's follow-along engine",
+        "(alignment, placement, skip marking), not by the model's decode of the word.",
+        "",
+    ]
 
 
 def _flag_cell(row: dict | None) -> str:
@@ -470,6 +576,8 @@ def render(report: dict) -> str:
         "brackets).",
         "",
         *_word_table(report, {e["log"] for e in included}, explained=False),
+        *_allowances_section(report),
+        *_placement_paragraph(report),
         *_comparison_section(report),
         *_truncation_section(report),
         *_per_log_section(report),

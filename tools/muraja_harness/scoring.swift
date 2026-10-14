@@ -10,11 +10,18 @@
 // renames that one function to shippedForMode in the scratch copy; this replacement returns the
 // shipped parameters with the two allowance flags overridden through Muraja's own `with`
 // (FollowAlongTypes.swift:83-107). Scoring logic is untouched. nil keeps the mode's value.
+//
+// One soft pair at a time: Muraja forgives its six soft pairs in one place, isSoftMismatch
+// (PhonemeSifat.swift:219-225), called only from the word scorer (QuranFollowAlong+WordScoring.swift:
+// 613). build.sh renames it to shippedIsSoftMismatch; this replacement returns Muraja's own answer
+// except for the pairs a scoring disables, each of which must be one of Muraja's pairs.
 
 import Foundation
 
 nonisolated(unsafe) var softPairsOverride: Bool?
 nonisolated(unsafe) var shaddahSuppressionOverride: Bool?
+/// The soft pairs not forgiven, each as "x↔y" in either order.
+nonisolated(unsafe) var disabledSoftPairs: Set<String> = []
 
 extension ScoringParameters {
   static func forMode(_ mode: ScoringMode) -> ScoringParameters {
@@ -23,17 +30,33 @@ extension ScoringParameters {
   }
 }
 
+func isSoftMismatch(_ a: Unicode.Scalar, _ b: Unicode.Scalar, softPairsEnabled: Bool) -> Bool {
+  shippedIsSoftMismatch(a, b, softPairsEnabled: softPairsEnabled)
+    && !disabledSoftPairs.contains("\(a)↔\(b)") && !disabledSoftPairs.contains("\(b)↔\(a)")
+}
+
 /// One Muraja configuration to replay: a mode and the two allowance flags (nil keeps the mode's).
 struct Scoring: Decodable {
   let name: String
   let mode: String
   let softPairsEnabled: Bool?
   let shaddahSuppression: Bool?
+  /// Soft pairs ("x↔y") this scoring does not forgive; the others keep Muraja's rule.
+  let softPairsDisabled: [String]?
 
   /// The mode, with this scoring's flags installed for every engine built from now on.
   func install() -> ScoringMode {
     softPairsOverride = softPairsEnabled
     shaddahSuppressionOverride = shaddahSuppression
+    disabledSoftPairs = Set(softPairsDisabled ?? [])
+    for pair in disabledSoftPairs {
+      let scalars = Array(pair.unicodeScalars)
+      guard scalars.count == 3, scalars[1] == "↔",
+            shippedIsSoftMismatch(scalars[0], scalars[2], softPairsEnabled: true) else {
+        FileHandle.standardError.write("\(pair) is not one of Muraja's soft pairs\n".data(using: .utf8)!)
+        exit(2)
+      }
+    }
     switch mode {
     case "strict": return .strict
     case "balanced": return .balanced

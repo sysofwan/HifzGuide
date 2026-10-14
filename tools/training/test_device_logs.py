@@ -50,10 +50,14 @@ def test_an_explained_run_covers_its_ends_and_what_lies_between():
 
 def test_a_malformed_inventory_is_refused(tmp_path):
     record = {"log": "a", "commit": "c", "committed": "2026-01-01", "model": "h448", "model_basis": None,
-              "app_version": None, "purpose": "p", "sources": [], "excluded": None, "explained": []}
+              "app_version": None, "purpose": "p", "sources": [], "excluded": None, "explained": [],
+              "slip_regions": {}}
     path = tmp_path / "inventory.json"
     for bad in ({"model": "other"}, {"model": None}, {"excluded": {"reason": "why not", "detail": "x"}},
-                {"explained": [{"first": "2:1:2", "last": "2:1:1", "kind": "skip", "basis": "docs", "source": ""}]}):
+                {"explained": [{"first": "2:1:2", "last": "2:1:1", "kind": "skip", "basis": "docs", "source": ""}]},
+                {"slip_regions": {"narrow": []}},
+                {"slip_regions": {w: [{"first": "2:1:1", "last": "2:1:2", "kind": "skip", "basis": "docs",
+                                       "source": ""}] for w in d.SLIP_WIDTHS}}):
         path.write_text(json.dumps([record | bad]))
         with pytest.raises(ValueError):
             d.load_inventory(path)
@@ -134,7 +138,7 @@ def status(quality: str, *errors: dict) -> dict:
 
 def test_each_scoring_shows_and_attributes_the_grade_the_engine_kept():
     entry = d.LogEntry("log", "c", "2026-01-01", d.TEACHER, None, None, "p", (), None, None,
-                       (d.Explained("2:1:3", "2:1:3", "skip", "docs", "s"),))
+                       (d.Explained("2:1:3", "2:1:3", "skip", "docs", "s"),), {})
     tashkeel = {"kind": {"type": "tashkeel", "expected": FATHA, "heard": None}, "group_index": 0}
     swap = {"kind": {"type": "mismatch", "expected": "ذ", "heard": "ز"}, "group_index": 0}
     words = {"2:1:1": status("tashkeelError", tashkeel), "2:1:2": status("minor", swap),
@@ -154,6 +158,42 @@ def test_each_scoring_shows_and_attributes_the_grade_the_engine_kept():
     assert (unexplained["flags"], unexplained["words"], unexplained["per_1000"]) == (2, 2, 1000.0)
     assert view["allowances_on"][d.UNEXPLAINED]["causes"][SOFT_PAIR]["flags"] == 1
     assert view["allowances_on"][d.UNEXPLAINED]["pairs"] == {"ذ↔ز": 1}
+
+
+def test_the_slip_sensitivity_keeps_every_h448_session_but_its_slip_region():
+    def entry(log, exclusion, model=d.H448):
+        region = {w: (d.Explained("2:1:2", "2:1:2" if w == "narrow" else "2:1:3", d.SLIP, "docs", "s"),)
+                  for w in d.SLIP_WIDTHS}
+        return d.LogEntry(log, "c", "2026-01-01", model, None, None, "p", (), exclusion, None, (), region)
+
+    def grade(log, word):
+        return d.WordGrade(log, word, "shipped_default", "minor", (OTHER_CONSONANT,), (), (), None)
+
+    entries = [entry("kept", None), entry("slipped", d.DOCUMENTED_MISTAKE),
+               entry("synthetic", "synthetic"), entry("teacher", None, d.TEACHER)]
+    grades = {e.log: [grade(e.log, w) for w in ("2:1:1", "2:1:2", "2:1:3")] for e in entries}
+    view = d.slip_sensitivity(entries, grades, (SHIPPED_DEFAULT,))
+    assert view["narrow"]["shipped_default"]["false_flags"]["words"] == 4
+    assert view["wide"]["shipped_default"]["false_flags"]["words"] == 2
+
+
+def test_an_allowance_adds_the_words_it_alone_flags_and_names_them():
+    entry = d.LogEntry("s", "c", "2026-01-01", d.TEACHER, None, None, "p", (), None, None,
+                       (d.Explained("2:1:3", "2:1:3", "skip", "docs", "x"),), {})
+
+    def grade(word, scoring, flagged, pairs=()):
+        return d.WordGrade("s", word, scoring, "minor" if flagged else "correct",
+                           (SOFT_PAIR,) if flagged else (), (), pairs, entry.explanation(word))
+
+    off = "not_forgiven:ح↔ه"
+    grades = {"s": [grade("2:1:1", "allowances_on", False), grade("2:1:2", "allowances_on", True, ("س↔ش",)),
+                    grade("2:1:3", "allowances_on", False),
+                    grade("2:1:1", off, True, ("ح↔ه",)), grade("2:1:2", off, True), grade("2:1:3", off, True)]}
+    added = d.allowance_effect([entry], grades, ("soft pair ح↔ه", off), None)
+    assert (added["flags"], added["words"], added["removed"]) == (1, 2, 0)  # 2:1:3 is explained
+    assert added["carriers"] == [["2:1:1", 1]]
+    present = d.allowance_effect([entry], grades, ("target pair س↔ش", None), None)
+    assert (present["allowance"], present["flags"]) == (False, 1)
 
 
 def test_a_rate_is_per_thousand_words_and_has_no_interval_from_one_log():
@@ -182,8 +222,8 @@ def test_the_report_covers_the_inventory_and_every_log_reproduces_its_baseline()
 
 def test_the_report_carries_no_log_text():
     """Positions, counts, causes, commits and docs only: no Arabic but a target pair's label."""
-    arabic = re.compile(r"[؀-ۿ]")
-    pair = re.compile(r"^[؀-ۿ]↔[؀-ۿ]$")
+    arabic = re.compile("[\u0600-\u06ff]")
+    pair = re.compile("[\u0600-\u06ff]↔[\u0600-\u06ff]")
 
     def strings(value):
         if isinstance(value, dict):
@@ -196,7 +236,7 @@ def test_the_report_carries_no_log_text():
         elif isinstance(value, str):
             yield value
 
-    assert all(pair.match(s) for s in strings(REPORT) if arabic.search(s))
+    assert not [s for s in strings(REPORT) if arabic.search(pair.sub("", s))]
 
 
 def test_the_doc_is_rendered_from_the_report():

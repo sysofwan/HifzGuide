@@ -57,7 +57,7 @@ import statistics
 import tempfile
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -65,11 +65,13 @@ import numpy as np
 from tadabur.exclusions import current
 from tadabur.listening_session import read_verdicts
 from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
+from tadabur.truth_sites import SOFT_PAIRS, UNFORGIVEN_PAIRS
 from tadabur.word_sample import load_words, verified_words
 from training import truth_baseline
 from training.acceptance_stats import ratio_interval
 from training.decoding import clusters
 from training.muraja_policy import (
+    ALLOWANCES_ON,
     CORRECT,
     HARNESS_ROOT,
     LOG_REPLAY_BINARY,
@@ -109,6 +111,16 @@ DOCUMENTED_MISTAKE = "documented_mistake"
 KINDS = ("skip", "re-read", "not_recited")
 #: Where the explanation comes from: Muraja's docs, or the log's own decode (and Start line).
 BASES = ("docs", "decode")
+#: A slip region (kind ``slip``) is a sensitivity's only: the words in and around a slip into
+#: another passage, by one mechanical rule in two widths. From the slip ayah's first replaced word
+#: (the first word the reader said another passage's wording for) to its end, plus the twin ayah
+#: on the page in full (``narrow``); or the slip ayah in full and the ayah after it, where the
+#: correction and the catch-up land, plus the twin ayah in full (``wide``).
+SLIP = "slip"
+SLIP_WIDTHS = ("narrow", "wide")
+#: The sensitivity beside the headline ``h448`` row: every ``h448`` session, a slip excluded or
+#: not, with its slip region left out as explained words are.
+H448_SLIPS_EXCLUDED = "h448, all sessions, slip regions excluded"
 
 #: The two streaming protocols the logs were recorded under: 1 s hops from Muraja 9f81f0a
 #: (2026-04-29, the shipped one, the simulation's), 3 s hops before it.
@@ -126,6 +138,21 @@ TEACHER_ONE_SECOND = "teacher, 1 s hop"
 GROUPS = (H448, TEACHER, TEACHER_ONE_SECOND)
 ALL_WORDS = "all"
 UNEXPLAINED = "unexplained"
+#: One soft pair not forgiven at a time, every other allowance on: the harness's one-pair switch
+#: (``muraja_harness/scoring.swift``) over Muraja's own pair set.
+PAIR_SCORINGS = tuple(replace(ALLOWANCES_ON, name=f"not_forgiven:{pair}", soft_pairs_disabled=(pair,))
+                      for pair in sorted(SOFT_PAIRS))
+#: Each allowance and the scoring with it alone off, against ``allowances_on``; then the target
+#: pairs no Muraja allowance forgives (``None``).
+ALLOWANCE_ROWS = (
+    *((f"soft pair {s.soft_pairs_disabled[0]}", s.name) for s in PAIR_SCORINGS),
+    ("all six soft pairs (Muraja's one switch)", "soft_pair_forgiveness_off"),
+    ("shaddah suppression", "shaddah_suppression_off"),
+    ("the Tashkeel toggle", "shipped_default"),
+    *((f"target pair {pair}", None) for pair in sorted(UNFORGIVEN_PAIRS)),
+)
+#: The populations the allowance table reads: the headline groups and the slip sensitivity.
+ALLOWANCE_GROUPS = (TEACHER_ONE_SECOND, TEACHER, H448, *(f"{H448_SLIPS_EXCLUDED}, {w}" for w in SLIP_WIDTHS))
 #: The simulation's arm for each model (#90's word sample, the recorded check sequence).
 SIMULATION_ARMS = {H448: "h448/checks", TEACHER: "base/checks"}
 
@@ -165,6 +192,8 @@ class LogEntry:
     exclusion: str | None
     exclusion_detail: str | None
     explained: tuple[Explained, ...]
+    #: Per width of :data:`SLIP_WIDTHS`, the slip regions of a session with a slip (else empty).
+    slip_regions: Mapping[str, tuple[Explained, ...]]
 
     @property
     def included(self) -> bool:
@@ -172,6 +201,9 @@ class LogEntry:
 
     def explanation(self, word: str) -> Explained | None:
         return next((e for e in self.explained if e.covers(word)), None)
+
+    def in_slip(self, word: str, width: str) -> bool:
+        return any(region.covers(word) for region in self.slip_regions.get(width, ()))
 
 
 def load_inventory(path: Path = INVENTORY_PATH) -> tuple[LogEntry, ...]:
@@ -185,13 +217,19 @@ def load_inventory(path: Path = INVENTORY_PATH) -> tuple[LogEntry, ...]:
             sources=tuple(record["sources"]), exclusion=excluded.get("reason"),
             exclusion_detail=excluded.get("detail"),
             explained=tuple(Explained(**e) for e in record["explained"]),
+            slip_regions={width: tuple(Explained(**e) for e in regions)
+                          for width, regions in record["slip_regions"].items()},
         )
+        regions = [r for width in entry.slip_regions.values() for r in width]
         problems = [
             entry.model not in (*MODELS, None) and f"model {entry.model}",
             entry.exclusion not in (*EXCLUSIONS, None) and f"exclusion {entry.exclusion}",
             entry.included and entry.model is None and "an included log has no model",
             *(f"explained {e.kind}/{e.basis}" for e in entry.explained
               if e.kind not in KINDS or e.basis not in BASES or position(e.first) > position(e.last)),
+            entry.slip_regions and sorted(entry.slip_regions) != sorted(SLIP_WIDTHS) and "slip widths",
+            *(f"slip region {r.kind}/{r.basis}" for r in regions
+              if r.kind != SLIP or r.basis not in BASES or position(r.first) > position(r.last)),
         ]
         if any(problems):
             raise ValueError(f"{entry.log}: {[p for p in problems if p]}")
@@ -387,6 +425,67 @@ def views(grades: Sequence[WordGrade], scorings: Sequence[Scoring]) -> dict:
             for s in scorings}
 
 
+def slip_sensitivity(
+    entries: Sequence[LogEntry], grades: Mapping[str, Sequence[WordGrade]], scorings: Sequence[Scoring]
+) -> dict:
+    """``[width][scoring]`` :func:`view_of` every ``h448`` session's words, an explained word or a
+    word in the session's slip region (of that width) left out."""
+    sessions = [e for e in entries if e.model == H448 and (e.included or e.exclusion == DOCUMENTED_MISTAKE)]
+    return {width: {s.name: view_of([g for e in sessions for g in grades[e.log]
+                                     if g.scoring == s.name and not g.explained and not e.in_slip(g.word, width)])
+                    for s in scorings}
+            for width in SLIP_WIDTHS}
+
+
+def allowance_effect(
+    sessions: Sequence[LogEntry], grades: Mapping[str, Sequence[WordGrade]], row: tuple[str, str | None],
+    width: str | None,
+) -> dict:
+    """One allowance over some sessions (explained words, and slip-region words of ``width``,
+    left out): the words flagged with it alone off that ``allowances_on`` does not flag, as a
+    rate over the words graded with it off, the words ``allowances_on`` flags that it does not
+    (``removed``), and each added word with the sessions it recurs in. A target pair no allowance
+    forgives gets the words ``allowances_on`` flags for it instead (``present``)."""
+    label, off = row
+    hits, logs, removed = [], [], 0
+    carriers: dict[str, set[str]] = {}
+    for e in sessions:
+        kept = [g for g in grades[e.log] if not g.explained and (width is None or not e.in_slip(g.word, width))]
+        on = {g.word for g in kept if g.scoring == ALLOWANCES_ON.name and g.flagged}
+        if off is None:
+            pair = label.rsplit(" ", 1)[1]
+            graded = [(g, g.flagged and pair in g.pairs) for g in kept if g.scoring == ALLOWANCES_ON.name]
+        else:
+            graded = [(g, g.flagged and g.word not in on) for g in kept if g.scoring == off]
+            removed += len(on - {g.word for g, _ in graded if g.flagged})
+        for g, hit in graded:
+            hits.append(hit)
+            logs.append(e.log)
+            if hit:
+                carriers.setdefault(g.word, set()).add(e.log)
+    return {"allowance": off is not None, **rate(hits, logs), "removed": removed,
+            "carriers": sorted(([w, len(s)] for w, s in carriers.items()), key=lambda ws: position(ws[0]))}
+
+
+def allowance_table(
+    entries: Sequence[LogEntry], facts: Mapping[str, LogFacts], grades: Mapping[str, Sequence[WordGrade]]
+) -> dict:
+    """``[allowance][group]`` :func:`allowance_effect`, for :data:`ALLOWANCE_ROWS` and
+    :data:`ALLOWANCE_GROUPS`."""
+    included = [e for e in entries if e.included]
+    h448 = [e for e in entries if e.model == H448 and (e.included or e.exclusion == DOCUMENTED_MISTAKE)]
+    populations = {group: ([e for e in included if group in group_of(e, facts[e.log])], None)
+                   for group in (TEACHER_ONE_SECOND, TEACHER, H448)}
+    populations |= {f"{H448_SLIPS_EXCLUDED}, {w}": (h448, w) for w in SLIP_WIDTHS}
+    out: dict = {}
+    for row in ALLOWANCE_ROWS:
+        out[row[0]] = {}
+        for group in ALLOWANCE_GROUPS:
+            sessions, width = populations[group]
+            out[row[0]][group] = allowance_effect(sessions, grades, row, width)
+    return out
+
+
 def log_counts(grades: Sequence[WordGrade], scorings: Sequence[Scoring]) -> dict:
     """Per scoring: one log's graded words and flags, every one and the unexplained ones."""
     out = {}
@@ -511,6 +610,7 @@ def require(commit: str) -> Harness:
 
 
 def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
+    replayed = (*scorings, *PAIR_SCORINGS)
     entries = load_inventory()
     pin, main = require(MURAJA_COMMIT), require(MURAJA_MAIN)
     pin_dir, main_dir = log_dir(MURAJA_COMMIT), log_dir(MURAJA_MAIN)
@@ -527,7 +627,7 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
     builds, replays, parity = {}, {}, {}
     for name, harness, directory in (("pin", pin, pin_dir), ("main", main, main_dir)):
         paths = {e.log: directory / f"{e.log}.log" for e in entries}
-        builds[name], replays[name] = replay_logs(harness, paths, scorings)
+        builds[name], replays[name] = replay_logs(harness, paths, replayed)
         parity[name] = {e.log: baseline_differences(
             replays[name][e.log][SHIPPED_DEFAULT.engine_name],
             json.loads((directory / f"{e.log}.baseline.json").read_text(encoding="utf-8")))
@@ -539,7 +639,7 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
 
     text = MurajaText(pin.quran_db)
     reported = [e for e in entries if e.included or e.exclusion == DOCUMENTED_MISTAKE]
-    grades = {e.log: word_grades(e, replays["pin"][e.log], scorings, text) for e in reported}
+    grades = {e.log: word_grades(e, replays["pin"][e.log], replayed, text) for e in reported}
     included = [e for e in entries if e.included]
     groups = {group: views([g for e in included if group in group_of(e, facts[e.log]) for g in grades[e.log]],
                            scorings) for group in GROUPS}
@@ -554,6 +654,7 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
             "model_basis": e.model_basis, "app_version": e.app_version, "purpose": e.purpose,
             "sources": list(e.sources), "exclusion": e.exclusion, "exclusion_detail": e.exclusion_detail,
             "explained": [vars(x) for x in e.explained],
+            "slip_regions": {w: [vars(x) for x in r] for w, r in e.slip_regions.items()},
             "start": facts[e.log].start, "pages": list(facts[e.log].pages),
             "protocol": facts[e.log].protocol, "updates": facts[e.log].updates,
             "capped_overlaps": facts[e.log].capped_overlaps,
@@ -564,7 +665,10 @@ def build_report(scorings: Sequence[Scoring] = SCORINGS) -> dict:
         } for e in entries],
         "groups": groups,
         "documented_mistakes": mistakes,
-        "words": [word_row(g) for e in reported for g in grades[e.log] if g.flagged],
+        "h448_slips_excluded": slip_sensitivity(entries, grades, scorings),
+        "allowances": allowance_table(entries, facts, grades),
+        "words": [word_row(g) for e in reported for g in grades[e.log]
+                  if g.flagged and g.scoring in {s.name for s in scorings}],
         "simulation": simulation_rates(
             json.loads(truth_baseline.REPORT_PATH.read_text(encoding="utf-8"))),
         "truncation": {

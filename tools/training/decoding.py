@@ -136,6 +136,19 @@ The transcript the app commits from those checks (:func:`committed_text`) is eve
 stop's included (``FollowAlong/HeardStream.swift:4-6``, ``FollowAlong/FollowAlongEngine.swift
 :608-625, 907-909``).
 
+**Another commit block** (#148). Muraja has no such transcriber; ``block`` names a hypothetical
+one that keeps the schedule above, and therefore every inference and its audio, and changes
+only what each inference sends, as the stream's commit rule does (:func:`commit_bounds`). A
+window starting at second ``w`` sends block ``b`` (``[w+b, w+b+1)``) as its hop and the rest of
+its timesteps as its overlap. The first window has no earlier window, so it also sends the
+blocks before ``b`` as hop (the startup rule). Once the buffer has advanced past the first
+window, the buffer still starts ``b`` seconds before the committed frontier, so every
+inference's first ``b`` seconds are already in the transcript and are not sent again: a window
+drops its blocks before ``b``, and a preview or the stop drops its segments whose midpoint is
+before timestep ``25 b``. The stop's hallucination gate still reads all its timesteps, as
+``CTCDecoder.scan`` reports them. Each second of audio then enters the engine's query once,
+as at ``b=0``; ``b=0`` is the deployed sequence unchanged (:func:`app_checks_mode`).
+
 Identifying a stored decode
 ---------------------------
 
@@ -531,27 +544,44 @@ def likely_hallucination(class_ids: np.ndarray) -> bool:
     return bool(blank_ratio >= np.float32(0.75) and dominant_ratio >= np.float32(0.35))
 
 
-def app_check(span: CheckSpan, class_ids: np.ndarray) -> dict | None:
-    """The update the transcriber sends for one inference, from its decoded timesteps."""
-    segments = scan_ctc(class_ids)
+def app_checks_mode(block: int = DEPLOYED_BLOCK) -> str:
+    """The decode mode of a check sequence whose transcriber commits ``block``: :data:`APP_CHECKS`
+    for the deployed block, a name of its own for any other (as :func:`stream_protocol`)."""
+    block_bounds(block)
+    return APP_CHECKS if block == DEPLOYED_BLOCK else f"{APP_CHECKS}-b{block}"
 
-    def text(selected: Iterable[Segment]) -> str:
-        return strip_padding_artifacts(tokens_to_phonemes(seg.token_id for seg in selected))
+
+def app_check(span: CheckSpan, class_ids: np.ndarray, block: int = DEPLOYED_BLOCK) -> dict | None:
+    """The update the transcriber sends for one inference, from its decoded timesteps, when it
+    commits ``block`` (module docstring, "Another commit block").
+
+    Once the first window has advanced the buffer (``span.start > 0``), the first ``block``
+    seconds of every inference are already in the transcript and are not sent again. A window's
+    hop is its block ``block`` (the first window's, everything before it too) and its overlap
+    the rest.
+    """
+    segments = scan_ctc(class_ids)
+    committed = block_bounds(block)[0] if span.start > 0 else 0
+
+    def text(low: float, high: float = np.inf) -> str:
+        selected = (seg.token_id for seg in segments if low <= seg.midpoint < high)
+        return strip_padding_artifacts(tokens_to_phonemes(selected))
 
     if span.kind == WINDOW:
-        split = min(CONFIRM_TIMESTEPS, len(class_ids))
-        hop = text(seg for seg in segments if seg.midpoint < split)
-        return make_check(WINDOW, hop, text(seg for seg in segments if seg.midpoint >= split))
+        split = min(block_bounds(block)[1], len(class_ids))
+        return make_check(WINDOW, text(committed, split), text(split))
     if span.kind == PREVIEW:
-        return make_check(PREVIEW, "", text(segments))
-    return make_check(STOP, "" if likely_hallucination(class_ids) else text(segments), "")
+        return make_check(PREVIEW, "", text(committed))
+    return make_check(STOP, "" if likely_hallucination(class_ids) else text(committed), "")
 
 
-def app_checks(spans: Sequence[CheckSpan], rows: Sequence[np.ndarray]) -> list[dict]:
+def app_checks(
+    spans: Sequence[CheckSpan], rows: Sequence[np.ndarray], block: int = DEPLOYED_BLOCK
+) -> list[dict]:
     """The check sequence: each scheduled inference's update, the ones not sent left out."""
     if len(spans) != len(rows):
         raise ValueError(f"{len(spans)} scheduled inferences but {len(rows)} decoded rows")
-    checks = (app_check(span, row) for span, row in zip(spans, rows))
+    checks = (app_check(span, row, block) for span, row in zip(spans, rows))
     return [check for check in checks if check is not None]
 
 
@@ -912,8 +942,15 @@ class Decoder:
     def app_checks(self, samples: np.ndarray) -> list[dict]:
         """The checks Muraja's transcriber hands its engine over one 16 kHz item, in order
         (:func:`check_schedule`, :func:`app_check`; fingerprinted as :data:`APP_CHECKS`)."""
+        return self.app_checks_at(samples, (DEPLOYED_BLOCK,))[DEPLOYED_BLOCK]
+
+    def app_checks_at(self, samples: np.ndarray, blocks: Sequence[int]) -> dict[int, list[dict]]:
+        """The item's check sequence for a transcriber committing each of ``blocks``
+        (:func:`app_checks_mode`), all cut from one inference per scheduled check: the blocks
+        differ only in what each inference sends."""
         spans = check_schedule(len(samples))
-        return app_checks(spans, self.device_rows([samples[s.start : s.end] for s in spans]))
+        rows = self.device_rows([samples[s.start : s.end] for s in spans])
+        return {block: app_checks(spans, rows, block) for block in blocks}
 
     def span_class_ids(self, spans: Iterable[np.ndarray]) -> list[np.ndarray]:
         """Each 16 kHz span's per-timestep argmax from one whole variable-length pass.

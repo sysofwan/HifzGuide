@@ -125,3 +125,17 @@ def test_the_report_leaves_out_excluded_words():
     report = w.word_report(words, grades, {}, Exclusions.of(not_hafs={words[0].site.site_id}))
     assert report["not_hafs"] == [words[0].site.site_id]
     assert report["arms"]["a/checks"]["s"]["correct_words"] == 1
+
+
+def test_the_paired_difference_counts_words_flagged_by_one_arm_only():
+    words = [_word(n, "correct") for n in range(1, 13)] + [_word(13, "mistake"), _word(14, "correct")]
+    flagged = SiteGrade(FLAGGED_ELSEWHERE, MINOR, (mismatch("ب", "م"),))
+    clean = SiteGrade(NOT_FLAGGED, "correct")
+    first = {x.site.site_id: flagged if i < 3 else clean for i, x in enumerate(words)}
+    second = {x.site.site_id: flagged if i in (2, 3, 12) else clean for i, x in enumerate(words)}
+    excluded = Exclusions.of(not_hafs={words[13].site.site_id})
+    diff = w.false_flag_difference(words, first, second, excluded)
+    # 12 kept correct words of equal weight: 3 flagged against 2 (the mistake word is no false flag)
+    assert (diff["only_first"], diff["only_second"]) == (2, 1)
+    assert diff["point"] == pytest.approx(3 / 12 - 2 / 12)
+    assert diff["method"] in ("bootstrap", "tango")

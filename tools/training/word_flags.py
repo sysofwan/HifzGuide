@@ -56,7 +56,7 @@ import numpy as np
 from tadabur.exclusions import Exclusions
 from tadabur.truth_sites import CONSONANTS, SOFT_PAIRS, SUKUN, UNFORGIVEN_PAIRS
 from tadabur.word_sample import VerifiedWord
-from training.acceptance_stats import Resample, unit_if_equal
+from training.acceptance_stats import Resample, difference_interval, ratio, unit_if_equal
 from training.muraja_policy import (
     NOT_GRADED,
     TASHKEEL_ERROR,
@@ -257,3 +257,27 @@ def word_report(
         "arms": {arm: {scoring: scoring_view(kept, by_arm[arm], texts)
                        for scoring, by_arm in grades.items()} for arm in arms},
     }
+
+
+def false_flag_difference(
+    words: Sequence[VerifiedWord],
+    grades: Mapping[str, SiteGrade],
+    other: Mapping[str, SiteGrade],
+    excluded_items: Exclusions,
+) -> dict:
+    """The paired difference in false flags, ``grades`` − ``other`` (two arms or two scorings
+    of the same words), over the correctly recited words the shared exclusion keeps: the
+    weighted point, its §1 interval from one shared draw (``acceptance_stats.difference_interval``)
+    and the words flagged under one only."""
+    correct = [w for w in words if w.site.site_id not in excluded_items and w.side == CORRECT_SIDE]
+    clusters = [w.site.reciter_id for w in correct]
+    w = np.array([x.weight for x in correct], dtype=float)
+    unit = unit_if_equal(w)
+    a, b = (np.array([g[x.site.site_id].outcome in WORD_FLAGGED for x in correct], dtype=float)
+            for g in (grades, other))
+    interval = difference_interval(clusters, (unit * a, unit), (unit * b, unit), unit,
+                                   Resample.by_cluster(clusters))
+    point = ratio(w * a, w) - ratio(w * b, w)
+    return {"point": point if np.isfinite(point) else None, **interval.as_dict(),
+            "only_first": int(np.sum((a == 1) & (b == 0))),
+            "only_second": int(np.sum((a == 0) & (b == 1)))}

@@ -407,9 +407,10 @@ def model_caches(
 
 
 @dataclass(frozen=True)
-class WordGrades:
-    """Every sampled word's kept grade as ``[scoring][arm][word id]``, and each placed word's
-    phonemes on Muraja's reference (what :mod:`training.word_flags` attributes a flag with)."""
+class KeptGrades:
+    """Every site's and sampled word's kept grade as ``[scoring][arm][site or word id]``, and
+    the phonemes of each placed one's word on Muraja's reference (what
+    :mod:`training.word_flags` attributes a flag with)."""
 
     grades: Mapping[str, Mapping[str, Mapping[str, SiteGrade]]]
     texts: Mapping[str, str]
@@ -421,10 +422,10 @@ def app_outcomes(
     decodes: Mapping[str, Mapping[str, str]],
     sequences: Mapping[str, Mapping[str, Sequence[dict]]],
     harness: Harness,
-) -> tuple[MurajaGrades, WordGrades]:
-    """Every site's app outcome and every sampled word's kept grade per scoring and arm,
-    replayed through Muraja's engine (``training.muraja_policy``): an arm in ``sequences`` on
-    each item's recorded check sequence, any other on the checks its one decode stands for
+) -> tuple[MurajaGrades, KeptGrades]:
+    """Every site's app outcome, and every site's and sampled word's kept grade, per scoring and
+    arm, replayed through Muraja's engine (``training.muraja_policy``): an arm in ``sequences``
+    on each item's recorded check sequence, any other on the checks its one decode stands for
     (single-decode approximation). A word is graded in the same session as the sites of its
     item."""
     by_item: dict[str, list[Located]] = {}
@@ -446,14 +447,13 @@ def app_outcomes(
     word_ids = {word.site.site_id for word in words}
     outcomes: dict[str, dict[str, dict[str, str]]] = {
         scoring: {arm: {} for arm in decodes} for scoring in graded.grades}
-    word_grades: dict[str, dict[str, dict[str, SiteGrade]]] = {
+    kept: dict[str, dict[str, dict[str, SiteGrade]]] = {
         scoring: {arm: {} for arm in decodes} for scoring in graded.grades}
     for scoring, by_site in graded.grades.items():
         for (key, site_id), grade in by_site.items():
             arm_ = key.split("#", 1)[0]
-            if site_id in word_ids:
-                word_grades[scoring][arm_][site_id] = grade
-            else:
+            kept[scoring][arm_][site_id] = grade
+            if site_id not in word_ids:
                 outcomes[scoring][arm_][site_id] = grade.outcome
     approximations = {arm: RECORDED_CHECKS if arm in sequences else SINGLE_DECODE for arm in decodes}
     muraja = MurajaGrades(
@@ -462,9 +462,9 @@ def app_outcomes(
         tuple(i for i in graded.unattributed if i not in word_ids),
     )
     text = MurajaText(harness.quran_db)
-    placed = {word.site.site_id: text.locate(word.site) for word in words}
-    texts = {word_id: text.word_phonemes(where) for word_id, where in placed.items() if where}
-    return muraja, WordGrades(word_grades, texts)
+    placed = {site.site_id: text.locate(site) for site in [*sites, *(word.site for word in words)]}
+    texts = {site_id: text.word_phonemes(where) for site_id, where in placed.items() if where}
+    return muraja, KeptGrades(kept, texts)
 
 
 def p35_reproduction(sites: Sequence[TruthSite], base_spans: Mapping[str, str]) -> dict:
@@ -623,11 +623,11 @@ def main() -> None:
         return
 
     reciter_of = {name: clip.reciter_id for name, clip in registry.items()}
-    muraja, word_grades = app_outcomes(sites, words, decodes, sequences, require_harness())
+    muraja, kept = app_outcomes(sites, words, decodes, sequences, require_harness())
     excluded, designs = current(), load_designs()
     weights = {site_id: d.weight for site_id, d in designs.items()}
     report, inputs = scored(sites, reciter_of, decodes, list(models), muraja, excluded, weights)
-    report["word_sample"] = word_report(words, word_grades.grades, word_grades.texts, excluded)
+    report["word_sample"] = word_report(words, kept.grades, kept.texts, excluded)
     report["verified"] = verified_views(sites, reciter_of, decodes, muraja, designs, excluded)
     report["edit_check"] = edit_check()
     report["truth_site_files"] = [p.name for p in files]

@@ -1,0 +1,7416 @@
+{
+ "models": {
+  "base": "obadx/muaalem-model-v3_2",
+  "h448": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+ },
+ "fingerprints": {
+  "base": {
+   "checks": {
+    "model": "obadx/muaalem-model-v3_2",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks_b1": {
+    "model": "obadx/muaalem-model-v3_2",
+    "mode": "muraja-app-checks-v2-b1",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  },
+  "h448": {
+   "checks": {
+    "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+    "mode": "muraja-app-checks-v2",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   },
+   "checks_b1": {
+    "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+    "mode": "muraja-app-checks-v2-b1",
+    "weights_dtype": "bf16",
+    "batch_size": 1,
+    "device_type": "cuda",
+    "autocast": true,
+    "policy": "fp32-features-v1"
+   }
+  }
+ },
+ "block": 1,
+ "muraja": {
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c"
+  },
+  "approximations": {
+   "base/checks": "recorded_check_sequence",
+   "base/checks_b1": "recorded_check_sequence",
+   "h448/checks": "recorded_check_sequence",
+   "h448/checks_b1": "recorded_check_sequence"
+  },
+  "scorings": [
+   {
+    "name": "allowances_on",
+    "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+    "mode": "balanced",
+    "soft_pairs_enabled": null,
+    "shaddah_suppression": null,
+    "tashkeel_shown": false
+   },
+   {
+    "name": "soft_pair_forgiveness_off",
+    "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+    "mode": "balanced",
+    "soft_pairs_enabled": false,
+    "shaddah_suppression": null,
+    "tashkeel_shown": false
+   },
+   {
+    "name": "shaddah_suppression_off",
+    "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+    "mode": "balanced",
+    "soft_pairs_enabled": null,
+    "shaddah_suppression": false,
+    "tashkeel_shown": false
+   },
+   {
+    "name": "shipped_default",
+    "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+    "mode": "balanced",
+    "soft_pairs_enabled": null,
+    "shaddah_suppression": null,
+    "tashkeel_shown": true
+   },
+   {
+    "name": "allowances_off",
+    "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+    "mode": "balanced",
+    "soft_pairs_enabled": false,
+    "shaddah_suppression": false,
+    "tashkeel_shown": true
+   }
+  ],
+  "unplaced_sites": 0,
+  "unattributed_sites": 0
+ },
+ "transcripts": {
+  "base": {
+   "items": 511,
+   "checks": {
+    "checks": 24783,
+    "checks_b1": 24774
+   },
+   "different_transcripts": 442
+  },
+  "h448": {
+   "items": 511,
+   "checks": {
+    "checks": 24779,
+    "checks_b1": 24773
+   },
+   "different_transcripts": 438
+  }
+ },
+ "comparisons": [
+  "base/checks_b1 - base/checks",
+  "h448/checks_b1 - h448/checks",
+  "h448/checks - base/checks",
+  "h448/checks_b1 - base/checks_b1"
+ ],
+ "word_sample": {
+  "words": 160,
+  "verdicts": {
+   "correct": 155,
+   "mistake": 1,
+   "unclear": 4
+  },
+  "weight_range": [
+   3.75,
+   193.75
+  ],
+  "waqf_realized": [],
+  "onset_trimmed": [
+   "word_sample:tadabur_spk0360_S11_A49_4672c14f_000050.wav#0@0"
+  ],
+  "not_hafs": [],
+  "arms": {
+   "base/checks": {
+    "allowances_on": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.01870975580123922,
+      "lower": 0.0,
+      "upper": 0.04681615536716765,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 192.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.017737820434941078,
+       "lower": 0.0,
+       "upper": 0.04570112639740605,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 182.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      }
+     }
+    },
+    "soft_pair_forgiveness_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.01870975580123922,
+      "lower": 0.0,
+      "upper": 0.04681615536716765,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 192.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.017737820434941078,
+       "lower": 0.0,
+       "upper": 0.04570112639740605,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 182.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      }
+     }
+    },
+    "shaddah_suppression_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.01870975580123922,
+      "lower": 0.0,
+      "upper": 0.04681615536716765,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 192.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.017737820434941078,
+       "lower": 0.0,
+       "upper": 0.04570112639740605,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 182.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      }
+     }
+    },
+    "shipped_default": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 4,
+      "point": 0.026485238731624346,
+      "lower": 0.0009688602354282732,
+      "upper": 0.059348731752016555,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 272.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 1,
+       "point": 0.007775482930385129,
+       "lower": 0.0,
+       "upper": 0.025413717461937844,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 80.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.017737820434941078,
+       "lower": 0.0,
+       "upper": 0.04570112639740605,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 182.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {
+      "damma other": 1
+     },
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0039_S17_A29_827cd44d_000116.wav#1@9": {
+       "causes": [
+        "tashkeel"
+       ],
+       "marks": [
+        "damma other"
+       ],
+       "quality": "tashkeelError",
+       "errors": [
+        "g4:tash"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      }
+     }
+    },
+    "allowances_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 4,
+      "point": 0.026485238731624346,
+      "lower": 0.0009688602354282732,
+      "upper": 0.059348731752016555,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 272.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 1,
+       "point": 0.007775482930385129,
+       "lower": 0.0,
+       "upper": 0.025413717461937844,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 80.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.017737820434941078,
+       "lower": 0.0,
+       "upper": 0.04570112639740605,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 182.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {
+      "damma other": 1
+     },
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0039_S17_A29_827cd44d_000116.wav#1@9": {
+       "causes": [
+        "tashkeel"
+       ],
+       "marks": [
+        "damma other"
+       ],
+       "quality": "tashkeelError",
+       "errors": [
+        "g4:tash"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      }
+     }
+    }
+   },
+   "base/checks_b1": {
+    "allowances_on": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.01870975580123922,
+      "lower": 0.0,
+      "upper": 0.04681615536716765,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 192.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.01870975580123922,
+       "lower": 0.0,
+       "upper": 0.04681615536716765,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 192.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "soft_pair",
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g2:س→ص",
+        "g5:ن→ل"
+       ]
+      }
+     }
+    },
+    "soft_pair_forgiveness_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.01870975580123922,
+      "lower": 0.0,
+      "upper": 0.04681615536716765,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 192.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.01870975580123922,
+       "lower": 0.0,
+       "upper": 0.04681615536716765,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 192.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "soft_pair",
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g2:س→ص",
+        "g5:ن→ل"
+       ]
+      }
+     }
+    },
+    "shaddah_suppression_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.01870975580123922,
+      "lower": 0.0,
+      "upper": 0.04681615536716765,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 192.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.01870975580123922,
+       "lower": 0.0,
+       "upper": 0.04681615536716765,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 192.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "soft_pair",
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g2:س→ص",
+        "g5:ن→ل"
+       ]
+      }
+     }
+    },
+    "shipped_default": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.01870975580123922,
+      "lower": 0.0,
+      "upper": 0.04681615536716765,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 192.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.01870975580123922,
+       "lower": 0.0,
+       "upper": 0.04681615536716765,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 192.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "soft_pair",
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g2:س→ص",
+        "g5:ن→ل"
+       ]
+      }
+     }
+    },
+    "allowances_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.01870975580123922,
+      "lower": 0.0,
+      "upper": 0.04681615536716765,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 192.5,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.01870975580123922,
+       "lower": 0.0,
+       "upper": 0.04681615536716765,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 192.5,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:del:ر"
+       ]
+      },
+      "word_sample:tadabur_spk0133_S10_A43_11b4493b_000001.wav#1@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:س→ت"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "soft_pair",
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g2:س→ص",
+        "g5:ن→ل"
+       ]
+      }
+     }
+    }
+   },
+   "h448/checks": {
+    "allowances_on": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.020046166929899162,
+       "lower": 0.0,
+       "upper": 0.05246753557893951,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 206.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:del:ث"
+       ]
+      }
+     }
+    },
+    "soft_pair_forgiveness_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.020046166929899162,
+       "lower": 0.0,
+       "upper": 0.05246753557893951,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 206.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:del:ث"
+       ]
+      }
+     }
+    },
+    "shaddah_suppression_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.020046166929899162,
+       "lower": 0.0,
+       "upper": 0.05246753557893951,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 206.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:del:ث"
+       ]
+      }
+     }
+    },
+    "shipped_default": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.020046166929899162,
+       "lower": 0.0,
+       "upper": 0.05246753557893951,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 206.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:del:ث"
+       ]
+      }
+     }
+    },
+    "allowances_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 2,
+       "point": 0.020046166929899162,
+       "lower": 0.0,
+       "upper": 0.05246753557893951,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 206.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 1,
+       "point": 0.0009719353662981412,
+       "lower": 0.0,
+       "upper": 0.003212023687917195,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 10.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "skipped"
+       ],
+       "marks": [],
+       "quality": "skipped",
+       "errors": []
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:del:ث"
+       ]
+      }
+     }
+    }
+   },
+   "h448/checks_b1": {
+    "allowances_on": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.021018102296197303,
+       "lower": 0.0,
+       "upper": 0.05332569732573388,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 216.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g1:ح→ع",
+        "g2:س→ت",
+        "g3:ب→م"
+       ]
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:ث→ف"
+       ]
+      }
+     }
+    },
+    "soft_pair_forgiveness_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.021018102296197303,
+       "lower": 0.0,
+       "upper": 0.05332569732573388,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 216.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g1:ح→ع",
+        "g2:س→ت",
+        "g3:ب→م"
+       ]
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:ث→ف"
+       ]
+      }
+     }
+    },
+    "shaddah_suppression_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.021018102296197303,
+       "lower": 0.0,
+       "upper": 0.05332569732573388,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 216.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g1:ح→ع",
+        "g2:س→ت",
+        "g3:ب→م"
+       ]
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:ث→ف"
+       ]
+      }
+     }
+    },
+    "shipped_default": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.021018102296197303,
+       "lower": 0.0,
+       "upper": 0.05332569732573388,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 216.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g1:ح→ع",
+        "g2:س→ت",
+        "g3:ب→م"
+       ]
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:ث→ف"
+       ]
+      }
+     }
+    },
+    "allowances_off": {
+     "correct_words": 155,
+     "false_flags": {
+      "words": 3,
+      "point": 0.021018102296197303,
+      "lower": 0.0,
+      "upper": 0.05332569732573388,
+      "method": "bootstrap",
+      "reason": "",
+      "num": 216.25,
+      "den": 10288.75
+     },
+     "causes": {
+      "tashkeel": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "soft_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "target_pair": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "other_consonant": {
+       "words": 3,
+       "point": 0.021018102296197303,
+       "lower": 0.0,
+       "upper": 0.05332569732573388,
+       "method": "bootstrap",
+       "reason": "",
+       "num": 216.25,
+       "den": 10288.75
+      },
+      "shaddah": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "skipped": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      },
+      "unrecorded": {
+       "words": 0,
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted",
+       "num": 0.0,
+       "den": 10288.75
+      }
+     },
+     "tashkeel_marks": {},
+     "not_graded": 2,
+     "unplaced": 0,
+     "mistakes": {
+      "word_sample:tadabur_spk0233_S20_A11_940f204d_000009.wav#0@8": "not_flagged"
+     },
+     "flags": {
+      "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:tash",
+        "g1:ر→ب"
+       ]
+      },
+      "word_sample:tadabur_spk0209_S7_A59_a40c7e9b_000000.wav#0@1": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g1:ح→ع",
+        "g2:س→ت",
+        "g3:ب→م"
+       ]
+      },
+      "word_sample:tadabur_spk0720_S27_A45_e1e81f1d_000073.wav#1@8": {
+       "causes": [
+        "other_consonant"
+       ],
+       "marks": [],
+       "quality": "minor",
+       "errors": [
+        "g0:ث→ف"
+       ]
+      }
+     }
+    }
+   }
+  },
+  "differences": {
+   "base/checks_b1 - base/checks": {
+    "allowances_on": {
+     "point": 0.0,
+     "lower": null,
+     "upper": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "only_first": 0,
+     "only_second": 0
+    },
+    "soft_pair_forgiveness_off": {
+     "point": 0.0,
+     "lower": null,
+     "upper": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "only_first": 0,
+     "only_second": 0
+    },
+    "shaddah_suppression_off": {
+     "point": 0.0,
+     "lower": null,
+     "upper": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "only_first": 0,
+     "only_second": 0
+    },
+    "shipped_default": {
+     "point": -0.007775482930385127,
+     "lower": -0.02541371746193784,
+     "upper": 0.0,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 0,
+     "only_second": 1
+    },
+    "allowances_off": {
+     "point": -0.007775482930385127,
+     "lower": -0.02541371746193784,
+     "upper": 0.0,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 0,
+     "only_second": 1
+    }
+   },
+   "h448/checks_b1 - h448/checks": {
+    "allowances_on": {
+     "point": 0.0,
+     "lower": null,
+     "upper": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "only_first": 0,
+     "only_second": 0
+    },
+    "soft_pair_forgiveness_off": {
+     "point": 0.0,
+     "lower": null,
+     "upper": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "only_first": 0,
+     "only_second": 0
+    },
+    "shaddah_suppression_off": {
+     "point": 0.0,
+     "lower": null,
+     "upper": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "only_first": 0,
+     "only_second": 0
+    },
+    "shipped_default": {
+     "point": 0.0,
+     "lower": null,
+     "upper": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "only_first": 0,
+     "only_second": 0
+    },
+    "allowances_off": {
+     "point": 0.0,
+     "lower": null,
+     "upper": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "only_first": 0,
+     "only_second": 0
+    }
+   },
+   "h448/checks - base/checks": {
+    "allowances_on": {
+     "point": 0.0023083464949580842,
+     "lower": -0.025230771036224914,
+     "upper": 0.033047847926962755,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 1
+    },
+    "soft_pair_forgiveness_off": {
+     "point": 0.0023083464949580842,
+     "lower": -0.025230771036224914,
+     "upper": 0.033047847926962755,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 1
+    },
+    "shaddah_suppression_off": {
+     "point": 0.0023083464949580842,
+     "lower": -0.025230771036224914,
+     "upper": 0.033047847926962755,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 1
+    },
+    "shipped_default": {
+     "point": -0.0054671364354270426,
+     "lower": -0.03658268907655308,
+     "upper": 0.02617607357279817,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 2
+    },
+    "allowances_off": {
+     "point": -0.0054671364354270426,
+     "lower": -0.03658268907655308,
+     "upper": 0.02617607357279817,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 2
+    }
+   },
+   "h448/checks_b1 - base/checks_b1": {
+    "allowances_on": {
+     "point": 0.0023083464949580842,
+     "lower": -0.025230771036224914,
+     "upper": 0.033047847926962755,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 1
+    },
+    "soft_pair_forgiveness_off": {
+     "point": 0.0023083464949580842,
+     "lower": -0.025230771036224914,
+     "upper": 0.033047847926962755,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 1
+    },
+    "shaddah_suppression_off": {
+     "point": 0.0023083464949580842,
+     "lower": -0.025230771036224914,
+     "upper": 0.033047847926962755,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 1
+    },
+    "shipped_default": {
+     "point": 0.0023083464949580842,
+     "lower": -0.025230771036224914,
+     "upper": 0.033047847926962755,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 1
+    },
+    "allowances_off": {
+     "point": 0.0023083464949580842,
+     "lower": -0.025230771036224914,
+     "upper": 0.033047847926962755,
+     "method": "bootstrap",
+     "reason": "",
+     "only_first": 1,
+     "only_second": 1
+    }
+   }
+  },
+  "flips": {
+   "base": {
+    "allowances_on": [],
+    "soft_pair_forgiveness_off": [],
+    "shaddah_suppression_off": [],
+    "shipped_default": [
+     {
+      "id": "word_sample:tadabur_spk0039_S17_A29_827cd44d_000116.wav#1@9",
+      "b0": {
+       "outcome": "flagged_elsewhere",
+       "quality": "tashkeelError",
+       "causes": [
+        "tashkeel"
+       ],
+       "errors": [
+        "g4:tash"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     }
+    ],
+    "allowances_off": [
+     {
+      "id": "word_sample:tadabur_spk0039_S17_A29_827cd44d_000116.wav#1@9",
+      "b0": {
+       "outcome": "flagged_elsewhere",
+       "quality": "tashkeelError",
+       "causes": [
+        "tashkeel"
+       ],
+       "errors": [
+        "g4:tash"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     }
+    ]
+   },
+   "h448": {
+    "allowances_on": [],
+    "soft_pair_forgiveness_off": [],
+    "shaddah_suppression_off": [],
+    "shipped_default": [],
+    "allowances_off": []
+   }
+  }
+ },
+ "verified": {
+  "sites": [
+   {
+    "population": "headline",
+    "stratum": "ship_a:kasb:س→ش:h448_partner",
+    "stratum_population": 10,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:shaddah:held:h448_single:base_not_held",
+    "stratum_population": 93,
+    "sites": 30,
+    "with_verdict": 29,
+    "items": 28,
+    "reciters": 22,
+    "waqf_realized": 7,
+    "onset_trimmed": 12,
+    "not_hafs": 3
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ز→ذ:h448_partner:base_right",
+    "stratum_population": 5,
+    "sites": 4,
+    "with_verdict": 4,
+    "items": 4,
+    "reciters": 4,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ز→ذ:h448_partner:base_wrong",
+    "stratum_population": 4,
+    "sites": 3,
+    "with_verdict": 3,
+    "items": 3,
+    "reciters": 3,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:س→ش:h448_partner:base_right",
+    "stratum_population": 1,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:س→ش:h448_partner:base_wrong",
+    "stratum_population": 2,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:س→ص:h448_partner:base_right",
+    "stratum_population": 3,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ش→س:h448_partner:base_wrong",
+    "stratum_population": 1,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ط→ت:h448_partner:base_right",
+    "stratum_population": 3,
+    "sites": 2,
+    "with_verdict": 1,
+    "items": 2,
+    "reciters": 2,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ط→ت:h448_partner:base_wrong",
+    "stratum_population": 2,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ط→ق:h448_partner:base_right",
+    "stratum_population": 61,
+    "sites": 16,
+    "with_verdict": 16,
+    "items": 16,
+    "reciters": 16,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 1
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ط→ق:h448_partner:base_wrong",
+    "stratum_population": 10,
+    "sites": 6,
+    "with_verdict": 6,
+    "items": 6,
+    "reciters": 5,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ظ→ض:h448_partner:base_right",
+    "stratum_population": 4,
+    "sites": 2,
+    "with_verdict": 2,
+    "items": 2,
+    "reciters": 2,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ظ→ض:h448_partner:base_wrong",
+    "stratum_population": 12,
+    "sites": 7,
+    "with_verdict": 6,
+    "items": 7,
+    "reciters": 7,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ق→ك:h448_partner:base_right",
+    "stratum_population": 5,
+    "sites": 5,
+    "with_verdict": 4,
+    "items": 5,
+    "reciters": 5,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ق→ك:h448_partner:base_wrong",
+    "stratum_population": 4,
+    "sites": 2,
+    "with_verdict": 1,
+    "items": 2,
+    "reciters": 2,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a:ه→ح:h448_partner:base_wrong",
+    "stratum_population": 2,
+    "sites": 1,
+    "with_verdict": 0,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:kasb:س→ش:h448_partner",
+    "stratum_population": 108,
+    "sites": 12,
+    "with_verdict": 12,
+    "items": 12,
+    "reciters": 12,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ح→ه:h448_partner:base_right",
+    "stratum_population": 6,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ح→ه:h448_partner:base_wrong",
+    "stratum_population": 1,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ذ→ز:h448_partner:base_right",
+    "stratum_population": 8,
+    "sites": 4,
+    "with_verdict": 2,
+    "items": 4,
+    "reciters": 4,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 1
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ز→ذ:h448_partner:base_right",
+    "stratum_population": 36,
+    "sites": 14,
+    "with_verdict": 14,
+    "items": 14,
+    "reciters": 14,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ز→ذ:h448_partner:base_wrong",
+    "stratum_population": 8,
+    "sites": 5,
+    "with_verdict": 5,
+    "items": 5,
+    "reciters": 5,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:س→ش:h448_partner:base_right",
+    "stratum_population": 23,
+    "sites": 9,
+    "with_verdict": 7,
+    "items": 9,
+    "reciters": 9,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:س→ش:h448_partner:base_wrong",
+    "stratum_population": 16,
+    "sites": 10,
+    "with_verdict": 9,
+    "items": 10,
+    "reciters": 7,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:س→ص:h448_partner:base_right",
+    "stratum_population": 28,
+    "sites": 14,
+    "with_verdict": 14,
+    "items": 14,
+    "reciters": 14,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 1
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:س→ص:h448_partner:base_wrong",
+    "stratum_population": 8,
+    "sites": 3,
+    "with_verdict": 2,
+    "items": 3,
+    "reciters": 3,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ش→س:h448_partner:base_right",
+    "stratum_population": 27,
+    "sites": 8,
+    "with_verdict": 8,
+    "items": 8,
+    "reciters": 8,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 1
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ص→س:h448_partner:base_right",
+    "stratum_population": 21,
+    "sites": 4,
+    "with_verdict": 4,
+    "items": 4,
+    "reciters": 4,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ص→س:h448_partner:base_wrong",
+    "stratum_population": 3,
+    "sites": 3,
+    "with_verdict": 2,
+    "items": 3,
+    "reciters": 3,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ط→ت:h448_partner:base_right",
+    "stratum_population": 6,
+    "sites": 2,
+    "with_verdict": 2,
+    "items": 2,
+    "reciters": 2,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ط→ت:h448_partner:base_wrong",
+    "stratum_population": 1,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+    "stratum_population": 441,
+    "sites": 69,
+    "with_verdict": 69,
+    "items": 69,
+    "reciters": 69,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 1
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ط→ق:h448_partner:base_wrong",
+    "stratum_population": 55,
+    "sites": 26,
+    "with_verdict": 26,
+    "items": 26,
+    "reciters": 21,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ظ→ذ:h448_partner:base_right",
+    "stratum_population": 4,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ظ→ض:h448_partner:base_right",
+    "stratum_population": 77,
+    "sites": 34,
+    "with_verdict": 29,
+    "items": 34,
+    "reciters": 34,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ظ→ض:h448_partner:base_wrong",
+    "stratum_population": 24,
+    "sites": 7,
+    "with_verdict": 5,
+    "items": 7,
+    "reciters": 6,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ق→ط:h448_partner:base_right",
+    "stratum_population": 11,
+    "sites": 3,
+    "with_verdict": 3,
+    "items": 3,
+    "reciters": 3,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ق→ك:h448_partner:base_right",
+    "stratum_population": 20,
+    "sites": 6,
+    "with_verdict": 6,
+    "items": 6,
+    "reciters": 6,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ق→ك:h448_partner:base_wrong",
+    "stratum_population": 6,
+    "sites": 5,
+    "with_verdict": 5,
+    "items": 5,
+    "reciters": 4,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ك→ق:h448_partner:base_right",
+    "stratum_population": 40,
+    "sites": 16,
+    "with_verdict": 16,
+    "items": 16,
+    "reciters": 16,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ك→ق:h448_partner:base_wrong",
+    "stratum_population": 9,
+    "sites": 3,
+    "with_verdict": 3,
+    "items": 3,
+    "reciters": 2,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 2
+   },
+   {
+    "population": "headline",
+    "stratum": "ship_a_mining:ه→ح:h448_partner:base_right",
+    "stratum_population": 3,
+    "sites": 1,
+    "with_verdict": 1,
+    "items": 1,
+    "reciters": 1,
+    "waqf_realized": 0,
+    "onset_trimmed": 0,
+    "not_hafs": 0
+   }
+  ],
+  "cells": [
+   {
+    "population": "headline",
+    "side": "correct",
+    "family": "all",
+    "heard": "all",
+    "label": "all",
+    "sites": 292,
+    "reciters": 115,
+    "sparse": false,
+    "provisional": false,
+    "excluded": 20,
+    "arms": {
+     "base/checks": {
+      "rates": {
+       "commit_rate": {
+        "point": 0.9092627599243857,
+        "lower": 0.8676201280285228,
+        "upper": 0.9435032941043977,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 481.0,
+        "den": 529.0
+       },
+       "committed_accuracy": {
+        "point": 0.46361746361746364,
+        "lower": 0.37911998132586366,
+        "upper": 0.5565819861431871,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 223.0,
+        "den": 481.0
+       },
+       "decode_flagged": {
+        "point": 0.4877126654064272,
+        "lower": 0.39871962559762547,
+        "upper": 0.5684400161030595,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 258.0,
+        "den": 529.0
+       },
+       "word_flags@allowances_on": {
+        "point": 0.21550094517958412,
+        "lower": 0.14311603823685606,
+        "upper": 0.2854644593180859,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 114.0,
+        "den": 529.0
+       },
+       "letter_flags@allowances_on": {
+        "point": 0.19092627599243855,
+        "lower": 0.12007864782615119,
+        "upper": 0.26092954670217355,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 101.0,
+        "den": 529.0
+       },
+       "coverage@allowances_on": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       },
+       "word_flags@soft_pair_forgiveness_off": {
+        "point": 0.23062381852551986,
+        "lower": 0.15798382675438596,
+        "upper": 0.3001660545440338,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 122.0,
+        "den": 529.0
+       },
+       "letter_flags@soft_pair_forgiveness_off": {
+        "point": 0.2060491493383743,
+        "lower": 0.13513513513513514,
+        "upper": 0.2750435463309462,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 109.0,
+        "den": 529.0
+       },
+       "coverage@soft_pair_forgiveness_off": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       },
+       "word_flags@shaddah_suppression_off": {
+        "point": 0.21739130434782608,
+        "lower": 0.1454183266932271,
+        "upper": 0.2874187369330857,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 115.0,
+        "den": 529.0
+       },
+       "letter_flags@shaddah_suppression_off": {
+        "point": 0.19281663516068054,
+        "lower": 0.12248893533316942,
+        "upper": 0.2622434951821977,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 102.0,
+        "den": 529.0
+       },
+       "coverage@shaddah_suppression_off": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       },
+       "word_flags@shipped_default": {
+        "point": 0.21550094517958412,
+        "lower": 0.14311603823685606,
+        "upper": 0.2854644593180859,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 114.0,
+        "den": 529.0
+       },
+       "letter_flags@shipped_default": {
+        "point": 0.19092627599243855,
+        "lower": 0.12007864782615119,
+        "upper": 0.26092954670217355,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 101.0,
+        "den": 529.0
+       },
+       "coverage@shipped_default": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       },
+       "word_flags@allowances_off": {
+        "point": 0.23251417769376181,
+        "lower": 0.16021979861758867,
+        "upper": 0.30130712301207124,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 123.0,
+        "den": 529.0
+       },
+       "letter_flags@allowances_off": {
+        "point": 0.20793950850661624,
+        "lower": 0.13749941148775896,
+        "upper": 0.2764830397011725,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 110.0,
+        "den": 529.0
+       },
+       "coverage@allowances_off": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       }
+      },
+      "sensitivity": {
+       "commit_rate": {
+        "worst": 0.8635547576301615,
+        "best": 0.9138240574506283
+       },
+       "committed_accuracy": {
+        "worst": 0.4381139489194499,
+        "best": 0.4931237721021611
+       }
+      }
+     },
+     "base/checks_b1": {
+      "rates": {
+       "commit_rate": {
+        "point": 0.9792060491493384,
+        "lower": 0.9644752318926387,
+        "upper": 0.9909747292418772,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 518.0,
+        "den": 529.0
+       },
+       "committed_accuracy": {
+        "point": 0.696911196911197,
+        "lower": 0.6259686224036926,
+        "upper": 0.7705562245365116,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 361.0,
+        "den": 518.0
+       },
+       "decode_flagged": {
+        "point": 0.29678638941398866,
+        "lower": 0.22489082969432314,
+        "upper": 0.3663388676412767,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 157.0,
+        "den": 529.0
+       },
+       "word_flags@allowances_on": {
+        "point": 0.19659735349716445,
+        "lower": 0.12765634421569472,
+        "upper": 0.26644960833503994,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 104.0,
+        "den": 529.0
+       },
+       "letter_flags@allowances_on": {
+        "point": 0.17580340264650285,
+        "lower": 0.10861404033892061,
+        "upper": 0.24451538435327788,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 93.0,
+        "den": 529.0
+       },
+       "coverage@allowances_on": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       },
+       "word_flags@soft_pair_forgiveness_off": {
+        "point": 0.21550094517958412,
+        "lower": 0.14548418972332014,
+        "upper": 0.28593789193143815,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 114.0,
+        "den": 529.0
+       },
+       "letter_flags@soft_pair_forgiveness_off": {
+        "point": 0.1947069943289225,
+        "lower": 0.1270483540454786,
+        "upper": 0.2623513839332463,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 103.0,
+        "den": 529.0
+       },
+       "coverage@soft_pair_forgiveness_off": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       },
+       "word_flags@shaddah_suppression_off": {
+        "point": 0.19848771266540643,
+        "lower": 0.130038402824158,
+        "upper": 0.26816165939376674,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 105.0,
+        "den": 529.0
+       },
+       "letter_flags@shaddah_suppression_off": {
+        "point": 0.1776937618147448,
+        "lower": 0.11087396404105541,
+        "upper": 0.2459612227459941,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 94.0,
+        "den": 529.0
+       },
+       "coverage@shaddah_suppression_off": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       },
+       "word_flags@shipped_default": {
+        "point": 0.19659735349716445,
+        "lower": 0.12765634421569472,
+        "upper": 0.26644960833503994,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 104.0,
+        "den": 529.0
+       },
+       "letter_flags@shipped_default": {
+        "point": 0.17580340264650285,
+        "lower": 0.10861404033892061,
+        "upper": 0.24451538435327788,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 93.0,
+        "den": 529.0
+       },
+       "coverage@shipped_default": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       },
+       "word_flags@allowances_off": {
+        "point": 0.21739130434782608,
+        "lower": 0.14753932770326214,
+        "upper": 0.2872345200351427,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 115.0,
+        "den": 529.0
+       },
+       "letter_flags@allowances_off": {
+        "point": 0.19659735349716445,
+        "lower": 0.12909826194762944,
+        "upper": 0.2640170192722589,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 104.0,
+        "den": 529.0
+       },
+       "coverage@allowances_off": {
+        "point": 0.9905482041587902,
+        "lower": 0.9801192842942346,
+        "upper": 0.9982905982905983,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 524.0,
+        "den": 529.0
+       }
+      },
+      "sensitivity": {
+       "commit_rate": {
+        "worst": 0.9299820466786356,
+        "best": 0.9802513464991023
+       },
+       "committed_accuracy": {
+        "worst": 0.6611721611721612,
+        "best": 0.7124542124542125
+       }
+      }
+     },
+     "h448/checks": {
+      "rates": {
+       "commit_rate": {
+        "point": 0.9376181474480151,
+        "lower": 0.899193133545732,
+        "upper": 0.9676871435165343,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 496.0,
+        "den": 529.0
+       },
+       "committed_accuracy": {
+        "point": 0.32056451612903225,
+        "lower": 0.23883495145631067,
+        "upper": 0.4081207482993197,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 159.0,
+        "den": 496.0
+       },
+       "decode_flagged": {
+        "point": 0.6370510396975425,
+        "lower": 0.5533747720613846,
+        "upper": 0.716798100078405,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 337.0,
+        "den": 529.0
+       },
+       "word_flags@allowances_on": {
+        "point": 0.2060491493383743,
+        "lower": 0.14789733284618195,
+        "upper": 0.2702218302861685,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 109.0,
+        "den": 529.0
+       },
+       "letter_flags@allowances_on": {
+        "point": 0.1720226843100189,
+        "lower": 0.11379258723931449,
+        "upper": 0.23707109513425104,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 91.0,
+        "den": 529.0
+       },
+       "coverage@allowances_on": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "word_flags@soft_pair_forgiveness_off": {
+        "point": 0.24763705103969755,
+        "lower": 0.18647088897840303,
+        "upper": 0.3150366168633733,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 131.0,
+        "den": 529.0
+       },
+       "letter_flags@soft_pair_forgiveness_off": {
+        "point": 0.21361058601134217,
+        "lower": 0.1526714283843767,
+        "upper": 0.28149647654337323,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 113.0,
+        "den": 529.0
+       },
+       "coverage@soft_pair_forgiveness_off": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "word_flags@shaddah_suppression_off": {
+        "point": 0.21172022684310018,
+        "lower": 0.15357072553430823,
+        "upper": 0.2759448113207547,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 112.0,
+        "den": 529.0
+       },
+       "letter_flags@shaddah_suppression_off": {
+        "point": 0.17580340264650285,
+        "lower": 0.11708189165420244,
+        "upper": 0.24171647066383906,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 93.0,
+        "den": 529.0
+       },
+       "coverage@shaddah_suppression_off": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "word_flags@shipped_default": {
+        "point": 0.20793950850661624,
+        "lower": 0.14978784940848386,
+        "upper": 0.27183052818828674,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 110.0,
+        "den": 529.0
+       },
+       "letter_flags@shipped_default": {
+        "point": 0.1720226843100189,
+        "lower": 0.11379258723931449,
+        "upper": 0.23707109513425104,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 91.0,
+        "den": 529.0
+       },
+       "coverage@shipped_default": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "word_flags@allowances_off": {
+        "point": 0.2533081285444234,
+        "lower": 0.19207722772277228,
+        "upper": 0.320410129569069,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 134.0,
+        "den": 529.0
+       },
+       "letter_flags@allowances_off": {
+        "point": 0.21739130434782608,
+        "lower": 0.15647384072939668,
+        "upper": 0.28518613974799545,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 115.0,
+        "den": 529.0
+       },
+       "coverage@allowances_off": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       }
+      },
+      "sensitivity": {
+       "commit_rate": {
+        "worst": 0.8904847396768402,
+        "best": 0.940754039497307
+       },
+       "committed_accuracy": {
+        "worst": 0.30343511450381677,
+        "best": 0.3568702290076336
+       }
+      }
+     },
+     "h448/checks_b1": {
+      "rates": {
+       "commit_rate": {
+        "point": 0.9924385633270322,
+        "lower": 0.982824427480916,
+        "upper": 1.0,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "committed_accuracy": {
+        "point": 0.5961904761904762,
+        "lower": 0.5089759316318819,
+        "upper": 0.680734623814419,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 313.0,
+        "den": 525.0
+       },
+       "decode_flagged": {
+        "point": 0.4007561436672968,
+        "lower": 0.3171998295562149,
+        "upper": 0.487644949184398,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 212.0,
+        "den": 529.0
+       },
+       "word_flags@allowances_on": {
+        "point": 0.24007561436672967,
+        "lower": 0.1705410240293961,
+        "upper": 0.31288393033841283,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 127.0,
+        "den": 529.0
+       },
+       "letter_flags@allowances_on": {
+        "point": 0.20793950850661624,
+        "lower": 0.1388364418938307,
+        "upper": 0.27906976744186046,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 110.0,
+        "den": 529.0
+       },
+       "coverage@allowances_on": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "word_flags@soft_pair_forgiveness_off": {
+        "point": 0.28544423440453687,
+        "lower": 0.2151157305835893,
+        "upper": 0.3559035134180791,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 151.0,
+        "den": 529.0
+       },
+       "letter_flags@soft_pair_forgiveness_off": {
+        "point": 0.2533081285444234,
+        "lower": 0.18355512408586466,
+        "upper": 0.32407407407407407,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 134.0,
+        "den": 529.0
+       },
+       "coverage@soft_pair_forgiveness_off": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "word_flags@shaddah_suppression_off": {
+        "point": 0.24574669187145556,
+        "lower": 0.177318868854479,
+        "upper": 0.31858492008221084,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 130.0,
+        "den": 529.0
+       },
+       "letter_flags@shaddah_suppression_off": {
+        "point": 0.21172022684310018,
+        "lower": 0.1425890290271724,
+        "upper": 0.28294590673151593,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 112.0,
+        "den": 529.0
+       },
+       "coverage@shaddah_suppression_off": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "word_flags@shipped_default": {
+        "point": 0.24574669187145556,
+        "lower": 0.17605531642466013,
+        "upper": 0.3185069294985662,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 130.0,
+        "den": 529.0
+       },
+       "letter_flags@shipped_default": {
+        "point": 0.21172022684310018,
+        "lower": 0.14160800482703137,
+        "upper": 0.28330206378986866,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 112.0,
+        "den": 529.0
+       },
+       "coverage@shipped_default": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       },
+       "word_flags@allowances_off": {
+        "point": 0.2948960302457467,
+        "lower": 0.22494369004115583,
+        "upper": 0.36597961964289116,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 156.0,
+        "den": 529.0
+       },
+       "letter_flags@allowances_off": {
+        "point": 0.2608695652173913,
+        "lower": 0.19157874571486186,
+        "upper": 0.3311045054079221,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 138.0,
+        "den": 529.0
+       },
+       "coverage@allowances_off": {
+        "point": 0.9924385633270322,
+        "lower": 0.9846409818850091,
+        "upper": 0.9983193982290903,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 525.0,
+        "den": 529.0
+       }
+      },
+      "sensitivity": {
+       "commit_rate": {
+        "worst": 0.9425493716337523,
+        "best": 0.992818671454219
+       },
+       "committed_accuracy": {
+        "worst": 0.566003616636528,
+        "best": 0.6166365280289331
+       }
+      }
+     }
+    },
+    "differences": {
+     "base/checks_b1 - base/checks": {
+      "commit_rate": {
+       "point": 0.06994328922495274,
+       "lower": 0.037128330101051266,
+       "upper": 0.1100390679375499,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "committed_accuracy": {
+       "point": 0.23329373329373332,
+       "lower": 0.15795205189088887,
+       "upper": 0.31239270978700523,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "decode_flagged": {
+       "point": -0.19092627599243855,
+       "lower": -0.26512522915992665,
+       "upper": -0.11918978870591782,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_on": {
+       "point": -0.018903591682419674,
+       "lower": -0.05339898465871193,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_on": {
+       "point": -0.015122873345935706,
+       "lower": -0.04979273776264237,
+       "upper": 0.0039447731755424265,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@allowances_on": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": -0.015122873345935733,
+       "lower": -0.05020364476775023,
+       "upper": 0.005639363238604969,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
+       "point": -0.011342155009451793,
+       "lower": -0.04667898483398415,
+       "upper": 0.00957854406130268,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@soft_pair_forgiveness_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": -0.018903591682419646,
+       "lower": -0.0533989846587119,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": -0.015122873345935733,
+       "lower": -0.04979273776264237,
+       "upper": 0.0039447731755424265,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@shaddah_suppression_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@shipped_default": {
+       "point": -0.018903591682419674,
+       "lower": -0.05339898465871193,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shipped_default": {
+       "point": -0.015122873345935706,
+       "lower": -0.04979273776264237,
+       "upper": 0.0039447731755424265,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@shipped_default": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@allowances_off": {
+       "point": -0.015122873345935733,
+       "lower": -0.05020364476775023,
+       "upper": 0.00563936323860497,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_off": {
+       "point": -0.011342155009451793,
+       "lower": -0.04667898483398415,
+       "upper": 0.00957854406130268,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@allowances_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      }
+     },
+     "h448/checks_b1 - h448/checks": {
+      "commit_rate": {
+       "point": 0.05482041587901709,
+       "lower": 0.02520932833565083,
+       "upper": 0.09333402489626559,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "committed_accuracy": {
+       "point": 0.2756259600614439,
+       "lower": 0.15415528010864785,
+       "upper": 0.382257956394126,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "decode_flagged": {
+       "point": -0.23629489603024573,
+       "lower": -0.33798157402011236,
+       "upper": -0.12038445148368584,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_on": {
+       "point": 0.03402646502835538,
+       "lower": -0.0063965884861407205,
+       "upper": 0.0978269179630368,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_on": {
+       "point": 0.035916824196597336,
+       "lower": -0.004504758709047657,
+       "upper": 0.0996659000101796,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@allowances_on": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": 0.03780718336483932,
+       "lower": -0.0038610038610038533,
+       "upper": 0.1025145067698259,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
+       "point": 0.03969754253308125,
+       "lower": -0.0020043110414377156,
+       "upper": 0.10427374301675979,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@soft_pair_forgiveness_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": 0.03402646502835538,
+       "lower": -0.00639658848614072,
+       "upper": 0.09782691796303683,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": 0.035916824196597336,
+       "lower": -0.004504758709047657,
+       "upper": 0.0996659000101796,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@shaddah_suppression_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@shipped_default": {
+       "point": 0.03780718336483932,
+       "lower": 0.0,
+       "upper": 0.10116789420048171,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shipped_default": {
+       "point": 0.039697542533081276,
+       "lower": 0.0018726591760299671,
+       "upper": 0.10313143355626636,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@shipped_default": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@allowances_off": {
+       "point": 0.04158790170132326,
+       "lower": 0.0019569471624266144,
+       "upper": 0.1055777643573519,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_off": {
+       "point": 0.043478260869565216,
+       "lower": 0.0038461538461538594,
+       "upper": 0.1072103424589717,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@allowances_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      }
+     },
+     "h448/checks - base/checks": {
+      "commit_rate": {
+       "point": 0.028355387523629427,
+       "lower": 0.0,
+       "upper": 0.05870841487279843,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "committed_accuracy": {
+       "point": -0.1430529474884314,
+       "lower": -0.2387522750303404,
+       "upper": -0.03815562256268825,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "decode_flagged": {
+       "point": 0.1493383742911153,
+       "lower": 0.049842944119129796,
+       "upper": 0.24057956110229903,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_on": {
+       "point": -0.009451795841209837,
+       "lower": -0.08020820571161867,
+       "upper": 0.053217323266467734,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_on": {
+       "point": -0.018903591682419646,
+       "lower": -0.08950151474624365,
+       "upper": 0.04624364685221153,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@allowances_on": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": 0.01701323251417769,
+       "lower": -0.05736367765994085,
+       "upper": 0.08450776825903879,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
+       "point": 0.007561436672967881,
+       "lower": -0.06678383128295254,
+       "upper": 0.07615571348883328,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@soft_pair_forgiveness_off": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": -0.0056710775047258966,
+       "lower": -0.07662449643785597,
+       "upper": 0.05907196077888264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": -0.01701323251417769,
+       "lower": -0.08828522920203732,
+       "upper": 0.0488897586431833,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@shaddah_suppression_off": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shipped_default": {
+       "point": -0.007561436672967881,
+       "lower": -0.078741634781581,
+       "upper": 0.05633876326854656,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shipped_default": {
+       "point": -0.018903591682419646,
+       "lower": -0.08950151474624365,
+       "upper": 0.04624364685221153,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@shipped_default": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_off": {
+       "point": 0.020793950850661602,
+       "lower": -0.05427764219015279,
+       "upper": 0.08908973514434786,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_off": {
+       "point": 0.009451795841209837,
+       "lower": -0.06539373088685016,
+       "upper": 0.07882224247083718,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@allowances_off": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      }
+     },
+     "h448/checks_b1 - base/checks_b1": {
+      "commit_rate": {
+       "point": 0.013232514177693777,
+       "lower": 0.0,
+       "upper": 0.029069767441860406,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "committed_accuracy": {
+       "point": -0.1007207207207208,
+       "lower": -0.15030662267224304,
+       "upper": -0.049974536678800134,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "decode_flagged": {
+       "point": 0.10396975425330812,
+       "lower": 0.05439006195063414,
+       "upper": 0.15341049729972994,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_on": {
+       "point": 0.043478260869565216,
+       "lower": 0.0,
+       "upper": 0.09615471869328494,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_on": {
+       "point": 0.032136105860113395,
+       "lower": -0.013961866842231772,
+       "upper": 0.0860469881814716,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@allowances_on": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": 0.06994328922495274,
+       "lower": 0.018003191489361685,
+       "upper": 0.13200296127562638,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
+       "point": 0.05860113421550092,
+       "lower": 0.005376344086021501,
+       "upper": 0.12175744664517121,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@soft_pair_forgiveness_off": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": 0.04725897920604913,
+       "lower": 0.0019336812245969613,
+       "upper": 0.10076082471188136,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": 0.03402646502835538,
+       "lower": -0.01275152341337807,
+       "upper": 0.08841036244714479,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@shaddah_suppression_off": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shipped_default": {
+       "point": 0.04914933837429111,
+       "lower": 0.0044540955209106696,
+       "upper": 0.10275689223057644,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shipped_default": {
+       "point": 0.035916824196597336,
+       "lower": -0.010734900451731623,
+       "upper": 0.09090909090909088,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@shipped_default": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_off": {
+       "point": 0.0775047258979206,
+       "lower": 0.024666763699614735,
+       "upper": 0.1404730052556139,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_off": {
+       "point": 0.06427221172022685,
+       "lower": 0.009763732437015506,
+       "upper": 0.12783746950080227,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "coverage@allowances_off": {
+       "point": 0.001890359168241984,
+       "lower": 0.0,
+       "upper": 0.006160164271047264,
+       "method": "bootstrap",
+       "reason": ""
+      }
+     }
+    }
+   },
+   {
+    "population": "headline",
+    "side": "mistake",
+    "family": "all",
+    "heard": "all",
+    "label": "all",
+    "sites": 34,
+    "reciters": 25,
+    "sparse": false,
+    "provisional": false,
+    "excluded": 20,
+    "arms": {
+     "base/checks": {
+      "rates": {
+       "commit_rate": {
+        "point": 0.9791666666666666,
+        "lower": 0.926829268292683,
+        "upper": 1.0,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 47.0,
+        "den": 48.0
+       },
+       "committed_accuracy": {
+        "point": 0.7021276595744681,
+        "lower": 0.4722222222222222,
+        "upper": 0.8648648648648649,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 33.0,
+        "den": 47.0
+       },
+       "missed_mistakes": {
+        "point": 0.2916666666666667,
+        "lower": 0.13333333333333333,
+        "upper": 0.5128378378378375,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 14.0,
+        "den": 48.0
+       },
+       "silent_corrections": {
+        "point": 0.2708333333333333,
+        "lower": 0.11538461538461539,
+        "upper": 0.5,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 13.0,
+        "den": 48.0
+       },
+       "word_flags@allowances_on": {
+        "point": 0.4791666666666667,
+        "lower": 0.17946428571428574,
+        "upper": 0.704225352112676,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 23.0,
+        "den": 48.0
+       },
+       "letter_flags@allowances_on": {
+        "point": 0.3958333333333333,
+        "lower": 0.1,
+        "upper": 0.6538461538461539,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 19.0,
+        "den": 48.0
+       },
+       "muraja_missed@allowances_on": {
+        "point": 0.5208333333333334,
+        "lower": 0.29577464788732394,
+        "upper": 0.8205357142857139,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 25.0,
+        "den": 48.0
+       },
+       "word_flags@soft_pair_forgiveness_off": {
+        "point": 0.5416666666666666,
+        "lower": 0.25,
+        "upper": 0.7538461538461538,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 26.0,
+        "den": 48.0
+       },
+       "letter_flags@soft_pair_forgiveness_off": {
+        "point": 0.4583333333333333,
+        "lower": 0.16666666666666666,
+        "upper": 0.697376070991432,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 22.0,
+        "den": 48.0
+       },
+       "muraja_missed@soft_pair_forgiveness_off": {
+        "point": 0.4583333333333333,
+        "lower": 0.24615384615384617,
+        "upper": 0.75,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 22.0,
+        "den": 48.0
+       },
+       "word_flags@shaddah_suppression_off": {
+        "point": 0.5,
+        "lower": 0.21052631578947367,
+        "upper": 0.72,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 24.0,
+        "den": 48.0
+       },
+       "letter_flags@shaddah_suppression_off": {
+        "point": 0.4166666666666667,
+        "lower": 0.125,
+        "upper": 0.6708860759493671,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 20.0,
+        "den": 48.0
+       },
+       "muraja_missed@shaddah_suppression_off": {
+        "point": 0.5,
+        "lower": 0.28,
+        "upper": 0.7894736842105263,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 24.0,
+        "den": 48.0
+       },
+       "word_flags@shipped_default": {
+        "point": 0.4791666666666667,
+        "lower": 0.17946428571428574,
+        "upper": 0.704225352112676,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 23.0,
+        "den": 48.0
+       },
+       "letter_flags@shipped_default": {
+        "point": 0.3958333333333333,
+        "lower": 0.1,
+        "upper": 0.6538461538461539,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 19.0,
+        "den": 48.0
+       },
+       "muraja_missed@shipped_default": {
+        "point": 0.5208333333333334,
+        "lower": 0.29577464788732394,
+        "upper": 0.8205357142857139,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 25.0,
+        "den": 48.0
+       },
+       "word_flags@allowances_off": {
+        "point": 0.5625,
+        "lower": 0.2765957446808511,
+        "upper": 0.7692307692307693,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 27.0,
+        "den": 48.0
+       },
+       "letter_flags@allowances_off": {
+        "point": 0.4791666666666667,
+        "lower": 0.19044401544401546,
+        "upper": 0.7125,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 23.0,
+        "den": 48.0
+       },
+       "muraja_missed@allowances_off": {
+        "point": 0.4375,
+        "lower": 0.23076923076923078,
+        "upper": 0.723404255319149,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 21.0,
+        "den": 48.0
+       }
+      },
+      "sensitivity": {
+       "commit_rate": {
+        "worst": 0.618421052631579,
+        "best": 0.9868421052631579
+       },
+       "committed_accuracy": {
+        "worst": 0.44,
+        "best": 0.8133333333333334
+       }
+      }
+     },
+     "base/checks_b1": {
+      "rates": {
+       "commit_rate": {
+        "point": 0.9791666666666666,
+        "lower": 0.926829268292683,
+        "upper": 1.0,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 47.0,
+        "den": 48.0
+       },
+       "committed_accuracy": {
+        "point": 0.6808510638297872,
+        "lower": 0.4444444444444444,
+        "upper": 0.8493150684931506,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 32.0,
+        "den": 47.0
+       },
+       "missed_mistakes": {
+        "point": 0.3125,
+        "lower": 0.14814814814814814,
+        "upper": 0.5405405405405406,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 15.0,
+        "den": 48.0
+       },
+       "silent_corrections": {
+        "point": 0.2916666666666667,
+        "lower": 0.13093944099378885,
+        "upper": 0.525,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 14.0,
+        "den": 48.0
+       },
+       "word_flags@allowances_on": {
+        "point": 0.4791666666666667,
+        "lower": 0.17946428571428574,
+        "upper": 0.704225352112676,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 23.0,
+        "den": 48.0
+       },
+       "letter_flags@allowances_on": {
+        "point": 0.3958333333333333,
+        "lower": 0.1,
+        "upper": 0.6538461538461539,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 19.0,
+        "den": 48.0
+       },
+       "muraja_missed@allowances_on": {
+        "point": 0.5208333333333334,
+        "lower": 0.29577464788732394,
+        "upper": 0.8205357142857139,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 25.0,
+        "den": 48.0
+       },
+       "word_flags@soft_pair_forgiveness_off": {
+        "point": 0.5625,
+        "lower": 0.275,
+        "upper": 0.7692567567567564,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 27.0,
+        "den": 48.0
+       },
+       "letter_flags@soft_pair_forgiveness_off": {
+        "point": 0.4791666666666667,
+        "lower": 0.1875,
+        "upper": 0.7164241293532337,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 23.0,
+        "den": 48.0
+       },
+       "muraja_missed@soft_pair_forgiveness_off": {
+        "point": 0.4375,
+        "lower": 0.23074324324324327,
+        "upper": 0.725,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 21.0,
+        "den": 48.0
+       },
+       "word_flags@shaddah_suppression_off": {
+        "point": 0.5,
+        "lower": 0.21052631578947367,
+        "upper": 0.72,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 24.0,
+        "den": 48.0
+       },
+       "letter_flags@shaddah_suppression_off": {
+        "point": 0.4166666666666667,
+        "lower": 0.125,
+        "upper": 0.6708860759493671,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 20.0,
+        "den": 48.0
+       },
+       "muraja_missed@shaddah_suppression_off": {
+        "point": 0.5,
+        "lower": 0.28,
+        "upper": 0.7894736842105263,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 24.0,
+        "den": 48.0
+       },
+       "word_flags@shipped_default": {
+        "point": 0.4791666666666667,
+        "lower": 0.17946428571428574,
+        "upper": 0.704225352112676,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 23.0,
+        "den": 48.0
+       },
+       "letter_flags@shipped_default": {
+        "point": 0.3958333333333333,
+        "lower": 0.1,
+        "upper": 0.6538461538461539,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 19.0,
+        "den": 48.0
+       },
+       "muraja_missed@shipped_default": {
+        "point": 0.5208333333333334,
+        "lower": 0.29577464788732394,
+        "upper": 0.8205357142857139,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 25.0,
+        "den": 48.0
+       },
+       "word_flags@allowances_off": {
+        "point": 0.5833333333333334,
+        "lower": 0.3055555555555556,
+        "upper": 0.7857142857142857,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 28.0,
+        "den": 48.0
+       },
+       "letter_flags@allowances_off": {
+        "point": 0.5,
+        "lower": 0.21212121212121213,
+        "upper": 0.7307692307692307,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 24.0,
+        "den": 48.0
+       },
+       "muraja_missed@allowances_off": {
+        "point": 0.4166666666666667,
+        "lower": 0.21428571428571427,
+        "upper": 0.6944444444444444,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 20.0,
+        "den": 48.0
+       }
+      },
+      "sensitivity": {
+       "commit_rate": {
+        "worst": 0.618421052631579,
+        "best": 0.9868421052631579
+       },
+       "committed_accuracy": {
+        "worst": 0.4266666666666667,
+        "best": 0.8
+       }
+      }
+     },
+     "h448/checks": {
+      "rates": {
+       "commit_rate": {
+        "point": 1.0,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 48.0,
+        "den": 48.0
+       },
+       "committed_accuracy": {
+        "point": 0.9166666666666666,
+        "lower": 0.8,
+        "upper": 0.9833333333333333,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 44.0,
+        "den": 48.0
+       },
+       "missed_mistakes": {
+        "point": 0.08333333333333333,
+        "lower": 0.016666666666666666,
+        "upper": 0.2,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 4.0,
+        "den": 48.0
+       },
+       "silent_corrections": {
+        "point": 0.08333333333333333,
+        "lower": 0.016666666666666666,
+        "upper": 0.2,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 4.0,
+        "den": 48.0
+       },
+       "word_flags@allowances_on": {
+        "point": 0.22916666666666666,
+        "lower": 0.10810810810810811,
+        "upper": 0.3939393939393939,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 11.0,
+        "den": 48.0
+       },
+       "letter_flags@allowances_on": {
+        "point": 0.16666666666666666,
+        "lower": 0.07317073170731707,
+        "upper": 0.2972972972972973,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 48.0
+       },
+       "muraja_missed@allowances_on": {
+        "point": 0.7708333333333334,
+        "lower": 0.6060606060606061,
+        "upper": 0.8918918918918919,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 37.0,
+        "den": 48.0
+       },
+       "word_flags@soft_pair_forgiveness_off": {
+        "point": 0.3958333333333333,
+        "lower": 0.22077922077922077,
+        "upper": 0.6363636363636364,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 19.0,
+        "den": 48.0
+       },
+       "letter_flags@soft_pair_forgiveness_off": {
+        "point": 0.3333333333333333,
+        "lower": 0.1774142507145774,
+        "upper": 0.5675675675675675,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 16.0,
+        "den": 48.0
+       },
+       "muraja_missed@soft_pair_forgiveness_off": {
+        "point": 0.6041666666666666,
+        "lower": 0.36363636363636365,
+        "upper": 0.7792207792207793,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 29.0,
+        "den": 48.0
+       },
+       "word_flags@shaddah_suppression_off": {
+        "point": 0.25,
+        "lower": 0.125,
+        "upper": 0.42105263157894735,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 12.0,
+        "den": 48.0
+       },
+       "letter_flags@shaddah_suppression_off": {
+        "point": 0.1875,
+        "lower": 0.09090909090909091,
+        "upper": 0.32653061224489793,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 9.0,
+        "den": 48.0
+       },
+       "muraja_missed@shaddah_suppression_off": {
+        "point": 0.75,
+        "lower": 0.5789473684210527,
+        "upper": 0.875,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 36.0,
+        "den": 48.0
+       },
+       "word_flags@shipped_default": {
+        "point": 0.22916666666666666,
+        "lower": 0.10810810810810811,
+        "upper": 0.3939393939393939,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 11.0,
+        "den": 48.0
+       },
+       "letter_flags@shipped_default": {
+        "point": 0.16666666666666666,
+        "lower": 0.07317073170731707,
+        "upper": 0.2972972972972973,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 48.0
+       },
+       "muraja_missed@shipped_default": {
+        "point": 0.7708333333333334,
+        "lower": 0.6060606060606061,
+        "upper": 0.8918918918918919,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 37.0,
+        "den": 48.0
+       },
+       "word_flags@allowances_off": {
+        "point": 0.4166666666666667,
+        "lower": 0.23809523809523808,
+        "upper": 0.6666666666666666,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 20.0,
+        "den": 48.0
+       },
+       "letter_flags@allowances_off": {
+        "point": 0.3541666666666667,
+        "lower": 0.1940178141550313,
+        "upper": 0.5918845663265299,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 17.0,
+        "den": 48.0
+       },
+       "muraja_missed@allowances_off": {
+        "point": 0.5833333333333334,
+        "lower": 0.3333333333333333,
+        "upper": 0.7619047619047619,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 28.0,
+        "den": 48.0
+       }
+      },
+      "sensitivity": {
+       "commit_rate": {
+        "worst": 0.631578947368421,
+        "best": 1.0
+       },
+       "committed_accuracy": {
+        "worst": 0.5789473684210527,
+        "best": 0.9473684210526315
+       }
+      }
+     },
+     "h448/checks_b1": {
+      "rates": {
+       "commit_rate": {
+        "point": 1.0,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 48.0,
+        "den": 48.0
+       },
+       "committed_accuracy": {
+        "point": 0.7916666666666666,
+        "lower": 0.6,
+        "upper": 0.9255417651694245,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 38.0,
+        "den": 48.0
+       },
+       "missed_mistakes": {
+        "point": 0.20833333333333334,
+        "lower": 0.07445823483057526,
+        "upper": 0.4,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 10.0,
+        "den": 48.0
+       },
+       "silent_corrections": {
+        "point": 0.20833333333333334,
+        "lower": 0.07445823483057526,
+        "upper": 0.4,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 10.0,
+        "den": 48.0
+       },
+       "word_flags@allowances_on": {
+        "point": 0.22916666666666666,
+        "lower": 0.10810810810810811,
+        "upper": 0.3939393939393939,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 11.0,
+        "den": 48.0
+       },
+       "letter_flags@allowances_on": {
+        "point": 0.16666666666666666,
+        "lower": 0.07317073170731707,
+        "upper": 0.2972972972972973,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 48.0
+       },
+       "muraja_missed@allowances_on": {
+        "point": 0.7708333333333334,
+        "lower": 0.6060606060606061,
+        "upper": 0.8918918918918919,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 37.0,
+        "den": 48.0
+       },
+       "word_flags@soft_pair_forgiveness_off": {
+        "point": 0.4166666666666667,
+        "lower": 0.23957966549295776,
+        "upper": 0.6666666666666666,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 20.0,
+        "den": 48.0
+       },
+       "letter_flags@soft_pair_forgiveness_off": {
+        "point": 0.3541666666666667,
+        "lower": 0.19402985074626866,
+        "upper": 0.5945945945945946,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 17.0,
+        "den": 48.0
+       },
+       "muraja_missed@soft_pair_forgiveness_off": {
+        "point": 0.5833333333333334,
+        "lower": 0.3333333333333333,
+        "upper": 0.7604203345070422,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 28.0,
+        "den": 48.0
+       },
+       "word_flags@shaddah_suppression_off": {
+        "point": 0.25,
+        "lower": 0.125,
+        "upper": 0.42105263157894735,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 12.0,
+        "den": 48.0
+       },
+       "letter_flags@shaddah_suppression_off": {
+        "point": 0.1875,
+        "lower": 0.09090909090909091,
+        "upper": 0.32653061224489793,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 9.0,
+        "den": 48.0
+       },
+       "muraja_missed@shaddah_suppression_off": {
+        "point": 0.75,
+        "lower": 0.5789473684210527,
+        "upper": 0.875,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 36.0,
+        "den": 48.0
+       },
+       "word_flags@shipped_default": {
+        "point": 0.22916666666666666,
+        "lower": 0.10810810810810811,
+        "upper": 0.3939393939393939,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 11.0,
+        "den": 48.0
+       },
+       "letter_flags@shipped_default": {
+        "point": 0.16666666666666666,
+        "lower": 0.07317073170731707,
+        "upper": 0.2972972972972973,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 48.0
+       },
+       "muraja_missed@shipped_default": {
+        "point": 0.7708333333333334,
+        "lower": 0.6060606060606061,
+        "upper": 0.8918918918918919,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 37.0,
+        "den": 48.0
+       },
+       "word_flags@allowances_off": {
+        "point": 0.4375,
+        "lower": 0.2571428571428571,
+        "upper": 0.6923076923076923,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 21.0,
+        "den": 48.0
+       },
+       "letter_flags@allowances_off": {
+        "point": 0.375,
+        "lower": 0.2112490733876946,
+        "upper": 0.6216216216216216,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 18.0,
+        "den": 48.0
+       },
+       "muraja_missed@allowances_off": {
+        "point": 0.5625,
+        "lower": 0.3076923076923077,
+        "upper": 0.7428571428571429,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 27.0,
+        "den": 48.0
+       }
+      },
+      "sensitivity": {
+       "commit_rate": {
+        "worst": 0.631578947368421,
+        "best": 1.0
+       },
+       "committed_accuracy": {
+        "worst": 0.5,
+        "best": 0.868421052631579
+       }
+      }
+     }
+    },
+    "differences": {
+     "base/checks_b1 - base/checks": {
+      "commit_rate": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "committed_accuracy": {
+       "point": -0.021276595744680882,
+       "lower": -0.08333333333333337,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "missed_mistakes": {
+       "point": 0.020833333333333315,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "silent_corrections": {
+       "point": 0.02083333333333337,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_on": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "letter_flags@allowances_on": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "muraja_missed@allowances_on": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": 0.02083333333333337,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
+       "point": 0.02083333333333337,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@soft_pair_forgiveness_off": {
+       "point": -0.020833333333333315,
+       "lower": -0.08108108108108103,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "muraja_missed@shaddah_suppression_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@shipped_default": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "letter_flags@shipped_default": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "muraja_missed@shipped_default": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@allowances_off": {
+       "point": 0.02083333333333337,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_off": {
+       "point": 0.020833333333333315,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@allowances_off": {
+       "point": -0.020833333333333315,
+       "lower": -0.08108108108108109,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      }
+     },
+     "h448/checks_b1 - h448/checks": {
+      "commit_rate": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "committed_accuracy": {
+       "point": -0.125,
+       "lower": -0.2790697674418604,
+       "upper": -0.01851851851851849,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "missed_mistakes": {
+       "point": 0.125,
+       "lower": 0.018518518518518517,
+       "upper": 0.27906976744186046,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "silent_corrections": {
+       "point": 0.125,
+       "lower": 0.018518518518518517,
+       "upper": 0.27906976744186046,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_on": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "letter_flags@allowances_on": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "muraja_missed@allowances_on": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": 0.02083333333333337,
+       "lower": 0.0,
+       "upper": 0.08108108108108103,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
+       "point": 0.02083333333333337,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@soft_pair_forgiveness_off": {
+       "point": -0.02083333333333326,
+       "lower": -0.08108108108108103,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "muraja_missed@shaddah_suppression_off": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@shipped_default": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "letter_flags@shipped_default": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "muraja_missed@shipped_default": {
+       "point": 0.0,
+       "lower": null,
+       "upper": null,
+       "method": "none",
+       "reason": "sparse or degenerate, and not independent and equally weighted"
+      },
+      "word_flags@allowances_off": {
+       "point": 0.020833333333333315,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_off": {
+       "point": 0.020833333333333315,
+       "lower": 0.0,
+       "upper": 0.08108108108108109,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@allowances_off": {
+       "point": -0.02083333333333337,
+       "lower": -0.08108108108108109,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      }
+     },
+     "h448/checks - base/checks": {
+      "commit_rate": {
+       "point": 0.02083333333333337,
+       "lower": 0.0,
+       "upper": 0.07317073170731703,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "committed_accuracy": {
+       "point": 0.21453900709219853,
+       "lower": 0.07272727272727275,
+       "upper": 0.41025641025641024,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "missed_mistakes": {
+       "point": -0.20833333333333337,
+       "lower": -0.39623454782042944,
+       "upper": -0.07041635779589828,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "silent_corrections": {
+       "point": -0.1875,
+       "lower": -0.37777777777777777,
+       "upper": -0.05333333333333333,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_on": {
+       "point": -0.25,
+       "lower": -0.5238095238095237,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_on": {
+       "point": -0.22916666666666666,
+       "lower": -0.515625,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@allowances_on": {
+       "point": 0.25,
+       "lower": 0.0,
+       "upper": 0.5238095238095237,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": -0.14583333333333331,
+       "lower": -0.47058823529411764,
+       "upper": 0.21875,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
+       "point": -0.125,
+       "lower": -0.46268656716417905,
+       "upper": 0.24324324324324326,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@soft_pair_forgiveness_off": {
+       "point": 0.14583333333333331,
+       "lower": -0.21875,
+       "upper": 0.47058823529411764,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": -0.25,
+       "lower": -0.5238095238095237,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": -0.22916666666666669,
+       "lower": -0.515625,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@shaddah_suppression_off": {
+       "point": 0.25,
+       "lower": 0.0,
+       "upper": 0.5238095238095237,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shipped_default": {
+       "point": -0.25,
+       "lower": -0.5238095238095237,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shipped_default": {
+       "point": -0.22916666666666666,
+       "lower": -0.515625,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@shipped_default": {
+       "point": 0.25,
+       "lower": 0.0,
+       "upper": 0.5238095238095237,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_off": {
+       "point": -0.14583333333333331,
+       "lower": -0.47058823529411764,
+       "upper": 0.21875,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_off": {
+       "point": -0.125,
+       "lower": -0.46268656716417905,
+       "upper": 0.24324324324324326,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@allowances_off": {
+       "point": 0.14583333333333337,
+       "lower": -0.21875,
+       "upper": 0.47058823529411764,
+       "method": "bootstrap",
+       "reason": ""
+      }
+     },
+     "h448/checks_b1 - base/checks_b1": {
+      "commit_rate": {
+       "point": 0.02083333333333337,
+       "lower": 0.0,
+       "upper": 0.07317073170731703,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "committed_accuracy": {
+       "point": 0.11081560283687941,
+       "lower": 0.019230769230769273,
+       "upper": 0.2666666666666666,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "missed_mistakes": {
+       "point": -0.10416666666666666,
+       "lower": -0.25,
+       "upper": -0.018518518518518517,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "silent_corrections": {
+       "point": -0.08333333333333334,
+       "lower": -0.22222222222222224,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_on": {
+       "point": -0.25,
+       "lower": -0.5238095238095237,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_on": {
+       "point": -0.22916666666666666,
+       "lower": -0.515625,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@allowances_on": {
+       "point": 0.25,
+       "lower": 0.0,
+       "upper": 0.5238095238095237,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@soft_pair_forgiveness_off": {
+       "point": -0.14583333333333331,
+       "lower": -0.47058823529411764,
+       "upper": 0.21875,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@soft_pair_forgiveness_off": {
+       "point": -0.125,
+       "lower": -0.46268656716417905,
+       "upper": 0.24324324324324326,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@soft_pair_forgiveness_off": {
+       "point": 0.14583333333333337,
+       "lower": -0.21875,
+       "upper": 0.47058823529411764,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shaddah_suppression_off": {
+       "point": -0.25,
+       "lower": -0.5238095238095237,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shaddah_suppression_off": {
+       "point": -0.22916666666666669,
+       "lower": -0.515625,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@shaddah_suppression_off": {
+       "point": 0.25,
+       "lower": 0.0,
+       "upper": 0.5238095238095237,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@shipped_default": {
+       "point": -0.25,
+       "lower": -0.5238095238095237,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@shipped_default": {
+       "point": -0.22916666666666666,
+       "lower": -0.515625,
+       "upper": 0.0,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@shipped_default": {
+       "point": 0.25,
+       "lower": 0.0,
+       "upper": 0.5238095238095237,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "word_flags@allowances_off": {
+       "point": -0.14583333333333337,
+       "lower": -0.4705882352941176,
+       "upper": 0.21875,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "letter_flags@allowances_off": {
+       "point": -0.125,
+       "lower": -0.4626865671641791,
+       "upper": 0.24324324324324326,
+       "method": "bootstrap",
+       "reason": ""
+      },
+      "muraja_missed@allowances_off": {
+       "point": 0.14583333333333331,
+       "lower": -0.21875,
+       "upper": 0.47058823529411764,
+       "method": "bootstrap",
+       "reason": ""
+      }
+     }
+    }
+   }
+  ],
+  "allowances": [
+   {
+    "allowance": "soft_pair_forgiveness",
+    "population": "headline",
+    "scorings": {
+     "on": "allowances_on",
+     "off": "soft_pair_forgiveness_off"
+    },
+    "sides": {
+     "false_flags": {
+      "sites": 118,
+      "reciters": 63,
+      "sparse": false,
+      "base/checks": {
+       "on": {
+        "point": 0.04895104895104895,
+        "lower": 0.014388489208633094,
+        "upper": 0.09022556390977443,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 7.0,
+        "den": 143.0
+       },
+       "off": {
+        "point": 0.1048951048951049,
+        "lower": 0.05185185185185185,
+        "upper": 0.16556291390728478,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 15.0,
+        "den": 143.0
+       }
+      },
+      "base/checks_b1": {
+       "on": {
+        "point": 0.04895104895104895,
+        "lower": 0.014388489208633094,
+        "upper": 0.09022556390977443,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 7.0,
+        "den": 143.0
+       },
+       "off": {
+        "point": 0.11888111888111888,
+        "lower": 0.06015037593984962,
+        "upper": 0.1858974358974359,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 17.0,
+        "den": 143.0
+       }
+      },
+      "h448/checks": {
+       "on": {
+        "point": 0.055944055944055944,
+        "lower": 0.022900763358778626,
+        "upper": 0.09701492537313433,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 143.0
+       },
+       "off": {
+        "point": 0.2097902097902098,
+        "lower": 0.136986301369863,
+        "upper": 0.2893123138033763,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 30.0,
+        "den": 143.0
+       }
+      },
+      "h448/checks_b1": {
+       "on": {
+        "point": 0.06293706293706294,
+        "lower": 0.028985507246376812,
+        "upper": 0.10323136818687423,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 9.0,
+        "den": 143.0
+       },
+       "off": {
+        "point": 0.23076923076923078,
+        "lower": 0.15131440734188412,
+        "upper": 0.3151573426573425,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 33.0,
+        "den": 143.0
+       }
+      }
+     },
+     "flagged_mistakes": {
+      "sites": 18,
+      "reciters": 17,
+      "sparse": true,
+      "base/checks": {
+       "on": {
+        "point": 0.045454545454545456,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 1.0,
+        "den": 22.0
+       },
+       "off": {
+        "point": 0.18181818181818182,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 4.0,
+        "den": 22.0
+       }
+      },
+      "base/checks_b1": {
+       "on": {
+        "point": 0.045454545454545456,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 1.0,
+        "den": 22.0
+       },
+       "off": {
+        "point": 0.22727272727272727,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 5.0,
+        "den": 22.0
+       }
+      },
+      "h448/checks": {
+       "on": {
+        "point": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 0.0,
+        "den": 22.0
+       },
+       "off": {
+        "point": 0.36363636363636365,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 8.0,
+        "den": 22.0
+       }
+      },
+      "h448/checks_b1": {
+       "on": {
+        "point": 0.0,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 0.0,
+        "den": 22.0
+       },
+       "off": {
+        "point": 0.4090909090909091,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 9.0,
+        "den": 22.0
+       }
+      }
+     }
+    }
+   },
+   {
+    "allowance": "shaddah_suppression",
+    "population": "headline",
+    "scorings": {
+     "on": "allowances_on",
+     "off": "shaddah_suppression_off"
+    },
+    "sides": {
+     "false_flags": {
+      "sites": 21,
+      "reciters": 18,
+      "sparse": false,
+      "base/checks": {
+       "on": {
+        "point": 0.3333333333333333,
+        "lower": 0.15,
+        "upper": 0.5263157894736842,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 7.0,
+        "den": 21.0
+       },
+       "off": {
+        "point": 0.38095238095238093,
+        "lower": 0.2,
+        "upper": 0.5652173913043478,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 21.0
+       }
+      },
+      "base/checks_b1": {
+       "on": {
+        "point": 0.3333333333333333,
+        "lower": 0.15,
+        "upper": 0.5263157894736842,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 7.0,
+        "den": 21.0
+       },
+       "off": {
+        "point": 0.38095238095238093,
+        "lower": 0.2,
+        "upper": 0.5652173913043478,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 21.0
+       }
+      },
+      "h448/checks": {
+       "on": {
+        "point": 0.2857142857142857,
+        "lower": 0.1,
+        "upper": 0.5,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 6.0,
+        "den": 21.0
+       },
+       "off": {
+        "point": 0.38095238095238093,
+        "lower": 0.15789473684210525,
+        "upper": 0.6086956521739131,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 21.0
+       }
+      },
+      "h448/checks_b1": {
+       "on": {
+        "point": 0.2857142857142857,
+        "lower": 0.1,
+        "upper": 0.5,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 6.0,
+        "den": 21.0
+       },
+       "off": {
+        "point": 0.38095238095238093,
+        "lower": 0.15789473684210525,
+        "upper": 0.6086956521739131,
+        "method": "bootstrap",
+        "reason": "",
+        "num": 8.0,
+        "den": 21.0
+       }
+      }
+     },
+     "flagged_mistakes": {
+      "sites": 8,
+      "reciters": 5,
+      "sparse": true,
+      "base/checks": {
+       "on": {
+        "point": 0.75,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 6.0,
+        "den": 8.0
+       },
+       "off": {
+        "point": 0.875,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 7.0,
+        "den": 8.0
+       }
+      },
+      "base/checks_b1": {
+       "on": {
+        "point": 0.75,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 6.0,
+        "den": 8.0
+       },
+       "off": {
+        "point": 0.875,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 7.0,
+        "den": 8.0
+       }
+      },
+      "h448/checks": {
+       "on": {
+        "point": 0.75,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 6.0,
+        "den": 8.0
+       },
+       "off": {
+        "point": 0.875,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 7.0,
+        "den": 8.0
+       }
+      },
+      "h448/checks_b1": {
+       "on": {
+        "point": 0.75,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 6.0,
+        "den": 8.0
+       },
+       "off": {
+        "point": 0.875,
+        "lower": null,
+        "upper": null,
+        "method": "none",
+        "reason": "sparse or degenerate, and not independent and equally weighted",
+        "num": 7.0,
+        "den": 8.0
+       }
+      }
+     }
+    }
+   },
+   {
+    "allowance": "tashkeel_toggle",
+    "population": "headline",
+    "scorings": {
+     "on": "allowances_on",
+     "off": "shipped_default"
+    },
+    "sides": {
+     "false_flags": {
+      "sites": 0,
+      "reciters": 0,
+      "sparse": true
+     },
+     "flagged_mistakes": {
+      "sites": 0,
+      "reciters": 0,
+      "sparse": true
+     }
+    }
+   }
+  ],
+  "flips": {
+   "base": {
+    "allowances_on": [
+     {
+      "id": "new_audit:tadabur_spk0017_S1_A249_6f8bb386_000159.wav#0@19:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0126_S1_A247_072da4e0_000233.wav#1@60:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0697_S40_A21_f882e450_000000.wav#1@16:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged_elsewhere",
+       "quality": "minor",
+       "causes": [
+        "other_consonant"
+       ],
+       "errors": [
+        "g4:ن→ل"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     }
+    ],
+    "soft_pair_forgiveness_off": [
+     {
+      "id": "new_audit:tadabur_spk0017_S1_A249_6f8bb386_000159.wav#0@19:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0108_S1_A108_68bf5efe_000090.wav#0@98:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ك",
+      "prescribed": "ك",
+      "stratum": "ship_a_mining:ك→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g1:ك→ق"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0126_S1_A247_072da4e0_000233.wav#1@60:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0593_S16_A71_94ccea4d_000000.wav#0@15:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ك",
+      "prescribed": "ك",
+      "stratum": "ship_a_mining:ك→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g0:ك→ق"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0617_S1_A57_3593a0eb_000000.wav#0@2:ض↔ظ",
+      "side": "mistake",
+      "mark": "ض↔ظ",
+      "heard": "ض",
+      "prescribed": "ظ",
+      "stratum": "ship_a_mining:ظ→ض:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g1:ظ→ض"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0697_S40_A21_f882e450_000000.wav#1@16:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged_elsewhere",
+       "quality": "minor",
+       "causes": [
+        "other_consonant"
+       ],
+       "errors": [
+        "g4:ن→ل"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     }
+    ],
+    "shaddah_suppression_off": [
+     {
+      "id": "new_audit:tadabur_spk0017_S1_A249_6f8bb386_000159.wav#0@19:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0126_S1_A247_072da4e0_000233.wav#1@60:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0697_S40_A21_f882e450_000000.wav#1@16:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged_elsewhere",
+       "quality": "minor",
+       "causes": [
+        "other_consonant"
+       ],
+       "errors": [
+        "g4:ن→ل"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     }
+    ],
+    "shipped_default": [
+     {
+      "id": "new_audit:tadabur_spk0017_S1_A249_6f8bb386_000159.wav#0@19:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0126_S1_A247_072da4e0_000233.wav#1@60:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0697_S40_A21_f882e450_000000.wav#1@16:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged_elsewhere",
+       "quality": "minor",
+       "causes": [
+        "other_consonant"
+       ],
+       "errors": [
+        "g4:ن→ل"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     }
+    ],
+    "allowances_off": [
+     {
+      "id": "new_audit:tadabur_spk0017_S1_A249_6f8bb386_000159.wav#0@19:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0108_S1_A108_68bf5efe_000090.wav#0@98:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ك",
+      "prescribed": "ك",
+      "stratum": "ship_a_mining:ك→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g1:ك→ق"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0126_S1_A247_072da4e0_000233.wav#1@60:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0593_S16_A71_94ccea4d_000000.wav#0@15:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ك",
+      "prescribed": "ك",
+      "stratum": "ship_a_mining:ك→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g0:ك→ق"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0617_S1_A57_3593a0eb_000000.wav#0@2:ض↔ظ",
+      "side": "mistake",
+      "mark": "ض↔ظ",
+      "heard": "ض",
+      "prescribed": "ظ",
+      "stratum": "ship_a_mining:ظ→ض:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g1:ظ→ض"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0697_S40_A21_f882e450_000000.wav#1@16:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged_elsewhere",
+       "quality": "minor",
+       "causes": [
+        "other_consonant"
+       ],
+       "errors": [
+        "g4:ن→ل"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      }
+     }
+    ]
+   },
+   "h448": {
+    "allowances_on": [
+     {
+      "id": "new_audit:tadabur_spk0018_S41_A34_f1af7d0f_000007.wav#0@29:س↔ش",
+      "side": "correct",
+      "mark": "س↔ش",
+      "heard": "س",
+      "prescribed": "س",
+      "stratum": "ship_a_mining:kasb:س→ش:h448_partner",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g1:س→ش"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0054_S54_A11_c53a548a_000182.wav#0@13:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ك",
+      "prescribed": "ك",
+      "stratum": "ship_a_mining:ك→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": [
+        "g2:ك→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "other_consonant"
+       ],
+       "errors": [
+        "g2:ك→ت"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0174_S17_A77_5dbf1211_000066.wav#0@50:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ق",
+      "prescribed": "ق",
+      "stratum": "ship_a_mining:ق→ط:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ق→ط"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0724_S67_A28_954f6b0c_000000.wav#0@12:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g2:tash",
+        "g3:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": [
+        "g3:tash"
+       ]
+      }
+     }
+    ],
+    "soft_pair_forgiveness_off": [
+     {
+      "id": "new_audit:tadabur_spk0018_S41_A34_f1af7d0f_000007.wav#0@29:س↔ش",
+      "side": "correct",
+      "mark": "س↔ش",
+      "heard": "س",
+      "prescribed": "س",
+      "stratum": "ship_a_mining:kasb:س→ش:h448_partner",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g1:س→ش"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0148_S11_A96_6401ddd9_000067.wav#1@15:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ق",
+      "prescribed": "ق",
+      "stratum": "ship_a:ق→ك:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g1:ق→ك"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0174_S17_A77_5dbf1211_000066.wav#0@50:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ق",
+      "prescribed": "ق",
+      "stratum": "ship_a_mining:ق→ط:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ق→ط"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0423_S1_A179_7ccd7d46_000134.wav#0@18:س↔ص",
+      "side": "correct",
+      "mark": "س↔ص",
+      "heard": "ص",
+      "prescribed": "ص",
+      "stratum": "ship_a_mining:ص→س:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g4:ص→س"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0617_S1_A57_3593a0eb_000000.wav#0@2:ض↔ظ",
+      "side": "mistake",
+      "mark": "ض↔ظ",
+      "heard": "ض",
+      "prescribed": "ظ",
+      "stratum": "ship_a_mining:ظ→ض:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g1:ظ→ض"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0724_S67_A28_954f6b0c_000000.wav#0@12:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g2:tash",
+        "g3:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": [
+        "g3:tash"
+       ]
+      }
+     }
+    ],
+    "shaddah_suppression_off": [
+     {
+      "id": "new_audit:tadabur_spk0018_S41_A34_f1af7d0f_000007.wav#0@29:س↔ش",
+      "side": "correct",
+      "mark": "س↔ش",
+      "heard": "س",
+      "prescribed": "س",
+      "stratum": "ship_a_mining:kasb:س→ش:h448_partner",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g1:س→ش"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0054_S54_A11_c53a548a_000182.wav#0@13:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ك",
+      "prescribed": "ك",
+      "stratum": "ship_a_mining:ك→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": [
+        "g2:ك→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "other_consonant"
+       ],
+       "errors": [
+        "g2:ك→ت"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0174_S17_A77_5dbf1211_000066.wav#0@50:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ق",
+      "prescribed": "ق",
+      "stratum": "ship_a_mining:ق→ط:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ق→ط"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0724_S67_A28_954f6b0c_000000.wav#0@12:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ط",
+      "prescribed": "ط",
+      "stratum": "ship_a_mining:ط→ق:h448_partner:base_right",
+      "b0": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g2:tash",
+        "g3:ط→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": [
+        "g3:tash"
+       ]
+      }
+     }
+    ],
+    "shipped_default": [
+     {
+      "id": "new_audit:tadabur_spk0018_S41_A34_f1af7d0f_000007.wav#0@29:س↔ش",
+      "side": "correct",
+      "mark": "س↔ش",
+      "heard": "س",
+      "prescribed": "س",
+      "stratum": "ship_a_mining:kasb:س→ش:h448_partner",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g1:س→ش"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0054_S54_A11_c53a548a_000182.wav#0@13:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ك",
+      "prescribed": "ك",
+      "stratum": "ship_a_mining:ك→ق:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": [
+        "g2:ك→ق"
+       ]
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "other_consonant"
+       ],
+       "errors": [
+        "g2:ك→ت"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0174_S17_A77_5dbf1211_000066.wav#0@50:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ق",
+      "prescribed": "ق",
+      "stratum": "ship_a_mining:ق→ط:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ق→ط"
+       ]
+      }
+     }
+    ],
+    "allowances_off": [
+     {
+      "id": "new_audit:tadabur_spk0018_S41_A34_f1af7d0f_000007.wav#0@29:س↔ش",
+      "side": "correct",
+      "mark": "س↔ش",
+      "heard": "س",
+      "prescribed": "س",
+      "stratum": "ship_a_mining:kasb:س→ش:h448_partner",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g1:س→ش"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0148_S11_A96_6401ddd9_000067.wav#1@15:ق↔ك",
+      "side": "correct",
+      "mark": "ق↔ك",
+      "heard": "ق",
+      "prescribed": "ق",
+      "stratum": "ship_a:ق→ك:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g1:ق→ك"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0174_S17_A77_5dbf1211_000066.wav#0@50:ط↔ق",
+      "side": "correct",
+      "mark": "ط↔ق",
+      "heard": "ق",
+      "prescribed": "ق",
+      "stratum": "ship_a_mining:ق→ط:h448_partner:base_right",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "target_pair"
+       ],
+       "errors": [
+        "g0:ق→ط"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0423_S1_A179_7ccd7d46_000134.wav#0@18:س↔ص",
+      "side": "correct",
+      "mark": "س↔ص",
+      "heard": "ص",
+      "prescribed": "ص",
+      "stratum": "ship_a_mining:ص→س:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g4:ص→س"
+       ]
+      }
+     },
+     {
+      "id": "new_audit:tadabur_spk0617_S1_A57_3593a0eb_000000.wav#0@2:ض↔ظ",
+      "side": "mistake",
+      "mark": "ض↔ظ",
+      "heard": "ض",
+      "prescribed": "ظ",
+      "stratum": "ship_a_mining:ظ→ض:h448_partner:base_wrong",
+      "b0": {
+       "outcome": "not_flagged",
+       "quality": "correct",
+       "causes": [],
+       "errors": []
+      },
+      "b1": {
+       "outcome": "flagged",
+       "quality": "minor",
+       "causes": [
+        "soft_pair"
+       ],
+       "errors": [
+        "g1:ظ→ض"
+       ]
+      }
+     }
+    ]
+   }
+  }
+ }
+}

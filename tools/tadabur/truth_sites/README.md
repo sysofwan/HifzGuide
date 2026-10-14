@@ -16,6 +16,7 @@ loader are in [`tools/tadabur/truth_sites.py`](../truth_sites.py).
 | `p35_fixtures.jsonl` | the P3.5 should-accept / should-reject fixtures, re-located on today's segments (#83) |
 | `p35_fixtures.relocation.jsonl` | every fixture's re-location: outcome, segment span, realized reference, base decode, site ids |
 | `p35_fixtures.summary.json` | kept / dropped per bucket and verdict, sites per stratum, the decode fingerprint |
+| `ship_a_verified.jsonl` | Ship A's answered worklist sites (#61): every `new_audit` row of `../ship_a/worklist.jsonl` with the owner's verdict as `heard` (`python -m tadabur.ship_a_verified build`, #90); each site's frame, half and design weight are in `../ship_a/verified_design.jsonl` |
 
 The staging fields of every file come from the staged-clip registry,
 [`../staged_audio/clips.jsonl`](../staged_audio/README.md), which also carries each clip's

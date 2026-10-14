@@ -40,6 +40,13 @@ def test_the_engine_reproduces_its_recorded_grades(case):
     assert _rounded(results) == _rounded(case["expected"])
 
 
+def test_parallel_binaries_return_the_serial_results_in_request_order():
+    requests = [request(case) for case in FIXTURES["cases"]]
+    serial = HARNESS.run(requests, workers=1)
+    assert HARNESS.run(requests, workers=3) == serial
+    assert _rounded(serial[1]) == _rounded([r for c in FIXTURES["cases"] for r in c["expected"]])
+
+
 def _final(case: str, scoring: str) -> dict:
     fixture = next(c for c in FIXTURES["cases"] if c["case"] == case)
     result = next(r for r in fixture["expected"] if r["scoring"] == scoring)

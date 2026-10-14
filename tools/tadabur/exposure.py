@@ -53,6 +53,7 @@ The frozen inputs the indexed uses come from are committed in ``exposure/sources
 Usage (from ``tools/``; ``--index`` is ``tadabur.staged_audio index --shards 0-384``)::
 
   python -m tadabur.exposure build --index stage/full_index.jsonl
+  python -m tadabur.exposure staged     # after a truth-site file changes (no index needed)
   python -m tadabur.exposure describe
   python -m tadabur.exposure copies --index stage/full_index.jsonl   # the two records alone
   python -m tadabur.exposure duplicates
@@ -907,6 +908,9 @@ def main() -> None:
     build = commands.add_parser("build", help="write every use that exists before the panel")
     build.add_argument("--index", type=Path, required=True,
                        help="a shard index of all 385 shards (tadabur.staged_audio index)")
+    commands.add_parser(
+        "staged", help="rewrite the uses the staged-clip registry alone determines (each "
+                       "truth-site source's items, the mining pool): after a new truth-site file")
     commands.add_parser("describe", help="summarize the committed registry")
     copies = commands.add_parser(
         "copies", help="rewrite the probable-copy screen and the checksum aliases")
@@ -916,6 +920,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "describe":
+        print(describe(load_registry()))
+        return
+    if args.command == "staged":
+        for use, rows in sorted(staged_exposures(load_staged_clips()).items()):
+            write_use(use, rows)
         print(describe(load_registry()))
         return
     if args.command == "duplicates":

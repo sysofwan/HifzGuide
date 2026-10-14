@@ -6,8 +6,8 @@ The pure core is :mod:`tadabur.eval_report`; this is its runner. It decodes noth
    site-level verdict from the listening session applied by site id
    (:func:`tadabur.listening_session.adjudicated`), and each site's fixture side from the
    re-location record (``p35_fixtures.relocation.jsonl``); a site the shared exclusion takes
-   out (:func:`tadabur.exclusions.current`: waqf realized, #134; onset trimmed, #138) is left
-   out.
+   out (:func:`tadabur.exclusions.current`: waqf realized, #134; onset trimmed, #138; not
+   Hafs, #90) is left out.
 2. **Decodes.** The base teacher and ``h448``, each whole-span and streamed at b = 0, read from
    #84's caches through :func:`training.truth_baseline.update_decodes`, which checks the
    model, its weights' identity and every decode fingerprint. An item the cache lacks is

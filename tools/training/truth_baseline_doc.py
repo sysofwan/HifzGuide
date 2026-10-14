@@ -271,17 +271,14 @@ def _app_section(report: dict, arms: list[str]) -> list[str]:
     return lines + _recorded_vs_single(report)
 
 
-def _allowance_section(report: dict, arms: list[str]) -> list[str]:
+def _allowance_rows(entries: list[dict], arms: list[str]) -> list[str]:
+    """The per-allowance view's table rows: on → off per arm, per allowance and side."""
     lines = [
-        "For each ADR-0012 allowance, on the sites it affects: the share of sites whose word the",
-        "app flags, on correct recitation (false flags) and on real mistakes (caught), with the",
-        "allowance on (`allowances_on`) and switched off alone. % [95% interval].",
-        "",
         "| population | allowance | side | sites / reciters | "
         + " | ".join(f"{a} on → off" for a in arms) + " |",
         "|---|---|---|---|" + "---|" * len(arms),
     ]
-    for entry in report["allowances"]:
+    for entry in entries:
         for rate, block in entry["sides"].items():
             if not block["sites"]:
                 continue
@@ -295,11 +292,22 @@ def _allowance_section(report: dict, arms: list[str]) -> list[str]:
                 f"| {entry['population']} | {entry['allowance']} | {rate.replace('_', ' ')} | "
                 f"{size} | " + " | ".join(values) + " |"
             )
-    lines += [
+    return lines
+
+
+def _allowance_section(report: dict, arms: list[str]) -> list[str]:
+    lines = [
+        "For each ADR-0012 allowance, on the sites it affects: the share of sites whose word the",
+        "app flags, on correct recitation (false flags) and on real mistakes (caught), with the",
+        "allowance on (`allowances_on`) and switched off alone. % [95% interval].",
+        "",
+        *_allowance_rows(report["allowances"], arms),
         "",
         "Allowances and sides with no affected site in a population are omitted. A caught rate",
         "needs real-mistake sites. Soft pairs are pooled, as Muraja has one switch (ADR-0012);",
-        "the directional pair cells above keep the per-direction harm checks.",
+        "the directional pair cells above keep the per-direction harm checks. The headline rows",
+        "here pool both halves and frames of the verified sites; the per-half view is under",
+        "\"The verified sites per half\".",
     ]
     return lines
 
@@ -334,6 +342,284 @@ def _required_table(report: dict) -> list[str]:
     return lines
 
 
+_CAUSE_TITLES = {
+    "tashkeel": "tashkeel",
+    "soft_pair": "soft-pair consonant",
+    "target_pair": "non-soft target pair (ذ↔ظ, س↔ش, ط↔ق)",
+    "other_consonant": "another consonant",
+    "shaddah": "shaddah (collapsed geminate)",
+    "skipped": "skipped by the engine",
+    "unrecorded": "no error recorded",
+}
+
+
+def _count_rate(entry: dict, total: int) -> str:
+    """``k / n · weighted % [interval]``."""
+    return f"{entry['words']} / {total} · {format_estimate(entry)}"
+
+
+def _word_cause_table(view: dict, names: list[str]) -> list[str]:
+    """One arm: per scoring, the false flags and their causes."""
+    lines = ["| | " + " | ".join(f"`{n}`" for n in names) + " |",
+             "|---|" + "---|" * len(names)]
+    total = {n: view[n]["correct_words"] for n in names}
+    lines.append("| **false flags** | " + " | ".join(
+        _count_rate(view[n]["false_flags"], total[n]) for n in names) + " |")
+    for cause, title in _CAUSE_TITLES.items():
+        lines.append(f"| {title} | " + " | ".join(
+            _count_rate(view[n]["causes"][cause], total[n]) for n in names) + " |")
+    marks = sorted({m for n in names for m in view[n]["tashkeel_marks"]})
+    for mark in marks:
+        lines.append(f"| — tashkeel: {mark} | " + " | ".join(
+            str(view[n]["tashkeel_marks"].get(mark, 0)) for n in names) + " |")
+    return lines
+
+
+def _word_sample_section(report: dict) -> list[str]:
+    """The word sample's app outcome: what correctly recited words are flagged for."""
+    sample = report["word_sample"]
+    names = [s["name"] for s in report["muraja"]["scorings"]]
+    arms = sample["arms"]
+    first = arms[next(iter(arms))][names[0]]
+    verdicts = ", ".join(f"{n} {v}" for v, n in sample["verdicts"].items())
+    taken = "; ".join(f"{len(sample[r])} {r}" for r in REASONS if sample.get(r))
+    lines = [
+        "## What correctly recited words are flagged for: the word sample (#126, #61)",
+        "",
+        f"The {sample['words']} sampled words (one per held-out reciter, drawn with no model) were",
+        f"judged whole by the owner: {verdicts}. The shared exclusion takes out "
+        f"{taken or 'none'}, leaving {first['correct_words']} correctly recited words. Each word",
+        "was replayed through Muraja's engine with the rest of its segment, and each false flag",
+        "(a correctly recited word the app shows as not correct) is attributed to the errors of",
+        "the grade the engine kept for it (`training/word_flags.py`): a word shown as a tashkeel",
+        "error to its tashkeel errors (the mark the mushaf prescribes, and whether the decode",
+        "dropped it or put another mark); a word shown as minor or worse to its consonant errors",
+        "(a soft pair, a non-soft target pair, another consonant, or a collapsed geminate); a",
+        "word the engine's skip marking passed over is `skipped`. A word can carry several",
+        "causes, so the causes can sum to more than the false flags.",
+        "",
+        "Each cell is the count over the correctly recited words, then the weighted rate (each",
+        "word weighs the inverse of its selection probability, from "
+        f"{sample['weight_range'][0]:g} to {sample['weight_range'][1]:g} here) with",
+        "its §1 interval. **The sample is small: one false flag moves a count by one in "
+        f"{first['correct_words']}, and the",
+        "intervals are wide.** A cause no word carries has no admissible interval (n/c).",
+        "",
+    ]
+    for model in ("h448", "base"):
+        arm = f"{model}/checks"
+        if arm not in arms:
+            continue
+        lines += [f"**`{arm}`** (the recorded check sequence: the app outcome to read)", ""]
+        lines += _word_cause_table(arms[arm], names) + [""]
+    lines += [
+        "False flags per arm (the `spans` and `stream_b0` arms are the single-decode",
+        "approximation, for comparison; count, weighted % [interval]):",
+        "",
+        "| arm | " + " | ".join(f"`{n}`" for n in names) + " |",
+        "|---|" + "---|" * len(names),
+    ]
+    for arm, view in arms.items():
+        lines.append(f"| {arm} | " + " | ".join(
+            _count_rate(view[n]["false_flags"], view[n]["correct_words"]) for n in names) + " |")
+    mistakes = sorted({w for view in arms.values() for n in names for w in view[n]["mistakes"]})
+    for word in mistakes:
+        lines += ["", f"The word heard as a mistake (`{word}`), its app outcome per arm:", "",
+                  "| arm | " + " | ".join(f"`{n}`" for n in names) + " |",
+                  "|---|" + "---|" * len(names)]
+        for arm, view in arms.items():
+            lines.append(f"| {arm} | " + " | ".join(view[n]["mistakes"][word] for n in names) + " |")
+    lines += ["", "Every false flag of the `checks` arms under the shipped default, with the "
+              "kept grade's errors as Muraja logs them:", "",
+              "| arm | word | causes | quality | errors |", "|---|---|---|---|---|"]
+    for model in ("h448", "base"):
+        view = arms.get(f"{model}/checks", {}).get("shipped_default")
+        for word, f in (view or {}).get("flags", {}).items():
+            causes = ", ".join(f["causes"] + [f"({m})" for m in f["marks"]])
+            lines.append(f"| {model}/checks | `{word}` | {causes} | {f['quality']} | "
+                         f"{' '.join(f['errors']) or '–'} |")
+    return lines + [""]
+
+
+_FRAME_TITLES = {
+    "ship_a": "Ship A's verified sites (where `h448` swapped the pair or collapsed the geminate)",
+    "reject_pile": "Reject-pile sites (#87: where the base teacher heard the partner)",
+}
+_HALF_TITLES = {"held_out": "held-out half", "train": "train half"}
+
+
+def _entry_size(entry: dict) -> str:
+    size = f"{entry['sites']} / {entry['reciters']}"
+    return size + " (insufficient evidence)" if entry["insufficient_evidence"] else size
+
+
+def _swap_rows(entries: list[dict], arms: list[str], label: list[str]) -> list[str]:
+    """One row per non-empty entry: its ``label`` fields, size and swap rate per arm."""
+    lines = ["| " + " | ".join(label) + " | sites / reciters | " + " | ".join(arms) + " |",
+             "|" + "---|" * (len(label) + 1 + len(arms))]
+    for e in entries:
+        if not e["sites"]:
+            continue
+        names = ["**all**" if e[k] == "all" else str(e[k]) for k in label]
+        values = [format_estimate(e["arms"][a]["swap"]) for a in arms]
+        lines.append("| " + " | ".join(names) + f" | {_entry_size(e)} | " + " | ".join(values) + " |")
+    return lines
+
+
+def _gap_rows(entries: list[tuple[str, dict]], label: str) -> list[str]:
+    names = list(entries[0][1]["gaps"])
+    lines = ["| half | " + label + " | sites / reciters | " + " | ".join(f"`{n}`" for n in names)
+             + " |", "|---|---|---|" + "---|" * len(names)]
+    for half, e in entries:
+        lines.append(f"| {_HALF_TITLES[half]} | {e[label]} | {e['sites']} / {e['reciters']} | "
+                     + " | ".join(_delta(e["gaps"][n]) for n in names) + " |")
+    return lines
+
+
+def _verified_app(views: dict, names: list[str], arms: list[str]) -> list[str]:
+    lines = [
+        "### The verified sites per half: the app outcome",
+        "",
+        "The halves and frames were selected by different rules, so each is scored alone",
+        "(`truth_scorer.score` over that subset, with the design weights). Flagged words per",
+        "side, arm and scoring: on correct recitation a false flag, on a real mistake a catch.",
+        "**Held-out is the half to read**; the train half was listened to only where the base",
+        "teacher was wrong. % [95% interval].",
+        "",
+    ]
+    for frame, by_half in views.items():
+        for half, view in by_half.items():
+            cells = view["app"]["cells"]
+            if not cells:
+                continue
+            lines += [f"**{_FRAME_TITLES[frame]}, {_HALF_TITLES[half]}**", "",
+                      "| side | sites / reciters | arm | " + " | ".join(f"`{n}`" for n in names)
+                      + " |", "|---|---|---|" + "---|" * len(names)]
+            for cell in cells:
+                for arm in arms:
+                    rates = cell["arms"][arm]["rates"]
+                    lines.append(f"| {cell['side']} | {cell['sites']} / {cell['reciters']} | {arm} | "
+                                 + " | ".join(format_estimate(rates.get(f"word_flags@{n}"))
+                                              for n in names) + " |")
+            lines += ["", "Per allowance, on the sites it affects:", ""]
+            lines += _allowance_rows(view["app"]["allowances"], arms) + [""]
+    return lines
+
+
+def _directions_section(report: dict) -> list[str]:
+    """The verified sites per frame and half: the app outcome, the direction table, the
+    per-stratum and per-teacher-outcome rates, and the arm gaps at ط→ق."""
+    views = report["verified"]
+    arms = report["arms"]
+    names = [s["name"] for s in report["muraja"]["scorings"]]
+    lines = [
+        "## The verified sites per half (#90)",
+        "",
+        "Ship A's verified sites (where `h448` swapped a target pair or collapsed an in-word",
+        "geminate) and #87's reject-pile sites (where the base teacher heard the partner) are two",
+        "frames, and each is split by the confirmed reciter split (D11). Every number here is",
+        "read within one frame and half, weighted by the design weights",
+        "(`ship_a/verified_design.jsonl`: a listened site weighs the inverse of its chance of",
+        "being listened to).",
+        "",
+    ]
+    lines += _verified_app(views, names, arms)
+    lines += [
+        "### Decode level, per direction",
+        "",
+        "Per target-pair direction (the mushaf's letter → its partner) and for in-word geminates,",
+        "by verdict side, the share of sites where the decode **swapped**: committed the partner",
+        "(a geminate: a single consonant). On the correct side that is a mishearing; on the",
+        "mistake side it is the model hearing the mistake. `training/direction_table.py` is the",
+        "single-model core (#57's diff compares two of its arms); `report.json` also has each",
+        "row's `mushaf` and `other` rates. A direction with fewer than 10 reciters or 20 sites is",
+        "insufficient evidence: read its family row. Directions with no verified site are left",
+        "out.",
+        "",
+        "**These rates are conditional on selection.** Ship A's sites were mined where `h448`,",
+        "streamed at b = 0 over the whole pool clip, committed the partner (or a single",
+        "consonant), so on the correct side `h448`'s stream arms are high by construction; its",
+        "`stream_b0` here streams the segment from its own first sample, so it need not reproduce",
+        "the mining decode. The base teacher's whole-segment decode at mining defined each pair",
+        "stratum (`base_right` / `base_wrong`): on the held-out half both are listened to and",
+        "re-weighted to their mined proportions, so `base/spans` is low there by design; on the",
+        "train half only `base_wrong` was listened to (owner decisions D10 and 2026-10-10 A), so",
+        "`base/spans` is high (not 100%: the mining's base decode and this one differ on some",
+        "items). The per-stratum rows below keep the strata apart.",
+        "",
+    ]
+    for frame, by_half in views.items():
+        for half, view in by_half.items():
+            lines += [f"#### {_FRAME_TITLES[frame]}: {_HALF_TITLES[half]}", "",
+                      "*swap rate*, % [95% interval]", ""]
+            lines += _swap_rows(view["directions"], arms, ["family", "direction", "side"]) + [""]
+    lines += ["### Decode level, per recorded stratum", "",
+              "The same swap rates per stratum as mined (`ship_a:` the pool, `ship_a_mining:` the",
+              "extension; the last field is the base teacher's outcome at mining), per side. "
+              "% [95% interval].", ""]
+    for half, view in views["ship_a"].items():
+        lines += [f"#### {_FRAME_TITLES['ship_a']}: {_HALF_TITLES[half]}", ""]
+        lines += _swap_rows(view["strata"], arms, ["stratum", "side"]) + [""]
+    teacher = [(half, e) for half, view in views["ship_a"].items() for e in view["teacher"]
+               if e["direction"] == "ط→ق" and e["side"] == "correct" and e.get("gaps")]
+    if teacher:
+        lines += [
+            "### The arms at ط→ق (correct recitation), by the base teacher's outcome",
+            "",
+            "The sizing's \"base already right\" compares the base teacher decoding the whole",
+            "span with `h448` streamed at b = 0. Both of those arms are selected here. Every site",
+            "was mined where `h448`'s stream swapped. Each stratum is also defined by the base's",
+            "whole-segment decode: in `base_right` it was right, so `base/spans` is selected low",
+            "and a stream − spans difference is biased up; in `base_wrong` it was wrong, so",
+            "`base/spans` is selected high and the difference is biased down. **These",
+            "within-stratum differences are conditional on selections that bias them in opposite",
+            "directions, and they cannot attribute the gap to windowing or to weights.** Whether",
+            "windowing or weights drive `ط→ق` swaps in the population is a question for an",
+            "unselected measurement, outside this report. Swap rates per arm, then the paired",
+            "differences (`h448/spans - base/spans`: both whole; `h448/stream_b0 - h448/spans` and",
+            "`base/stream_b0 - base/spans`: each model streamed against whole; `h448/checks -",
+            "base/checks`: the app's checks). % and points [95% interval].",
+            "",
+        ]
+        lines += _swap_rows([e for _, e in teacher], arms, ["teacher"]) + [""]
+        lines += _gap_rows(teacher, "teacher") + [""]
+    return lines
+
+
+def _edit_check_section(report: dict) -> list[str]:
+    """The synthetic-edit blind check per operation, with #90's call."""
+    check = report["edit_check"]
+    lines = [
+        "## Edit types (#107's blind check, for #94)",
+        "",
+        f"{check['answered']} of {check['items']} blind-check items answered "
+        "(`python -m tadabur.edit_check_summary`). Per operation, edits and their unedited",
+        "decoys apart: the share judged natural (of natural or unnatural) and the share heard",
+        "as labelled (an edit's changed state; a decoy's unchanged one). The call is #90's",
+        "(`tadabur.edit_check_summary.CALLS`): only an operation that passes may feed the",
+        "training probe (#94); a type nobody checked is `not checked` and may not either.",
+        "",
+        "| operation | call | role | items | natural | heard as labelled |",
+        "|---|---|---|---|---|---|",
+    ]
+
+    def share(value) -> str:
+        return "–" if value is None else f"{100 * value:.0f}%"
+
+    for operation, call in check["type_verdicts"].items():
+        roles = check["operations"].get(operation, {})
+        if not roles:
+            lines.append(f"| `{operation}` | {call} | – | 0 | – | – |")
+        for role, cell in roles.items():
+            answered = cell["items"] - cell["pending"]
+            lines.append(
+                f"| `{operation}` | {call} | {role} | {answered} | "
+                f"{share(cell['natural_rate'])} ({cell['natural']} / "
+                f"{cell['natural'] + cell['unnatural']}) | {share(cell['heard_as_labelled_rate'])} "
+                f"({cell['heard_as_labelled']} / {cell['heard_as_labelled'] + cell['heard_otherwise']}) |")
+    return lines + [""]
+
+
 def render(report: dict) -> str:
     """The whole markdown document."""
     arms = report["arms"]
@@ -345,7 +631,7 @@ def render(report: dict) -> str:
     first = next(iter(fingerprints.values()))["spans"]
 
     lines = [
-        "# Truth-site baseline: the base teacher and `h448` (#84)",
+        "# Truth-site baseline: the base teacher and `h448` (#84, #90)",
         "",
         "Generated by `python -m training.truth_baseline` (from `tools/`); do not edit by hand.",
         "The scorer and every definition it applies are frozen in `tools/training/truth_scorer.py`,",
@@ -357,6 +643,7 @@ def render(report: dict) -> str:
         "This is the first time `h448` is measured against what reciters said. The numbers are",
         "reported as measured, with no recommendation.",
         "",
+        *(_word_sample_section(report) if report.get("word_sample") else []),
         "## What was scored",
         "",
         f"Truth-site files: {', '.join(f'`{name}`' for name in report['truth_site_files'])}.",
@@ -378,6 +665,10 @@ def render(report: dict) -> str:
            "the clip's opening sound is cut) are left out the same way: "
            + ", ".join(f"`{i}`" for i in report["onset_trimmed"]) + "."]
           if report.get("onset_trimmed") else []),
+        *([f"{len(report['not_hafs'])} site(s) whose owner note denies the recitation is Hafs "
+           "(#90, owner decision 2026-10-13) are left out the same way: "
+           + ", ".join(f"`{i}`" for i in report["not_hafs"]) + "."]
+          if report.get("not_hafs") else []),
         f"Records sharing one physical site (audio checksum, span, carrier, mark): "
         f"{len(report['physical_sites_merged'])} merged"
         + (", each under its directly adjudicated verdict (`report.json`)."
@@ -462,7 +753,22 @@ def render(report: dict) -> str:
     lines += [
         "- **Shaddah is provisional** until #92 freezes its held / not held / unsure state",
         "  table: today a single consonant counts as committing `not_held`.",
-        "",
+    ]
+    if report.get("verified"):
+        lines += [
+            "- **The headline population is Ship A's verified site set** (acceptance rules §1 as",
+            "  amended 2026-10-10): sites mined where `h448` swapped a target pair or collapsed an",
+            "  in-word geminate, plus #87's reject-pile sites where the base teacher heard the",
+            "  partner, each weighted by the inverse of its chance of being listened to. It is",
+            "  not a sample of all recitation: a correct-side rate there is a rate at sites a",
+            "  model already got wrong. The word sample above is the model-free denominator.",
+        ]
+    lines += [""]
+    if report.get("verified"):
+        lines += _directions_section(report)
+    if report.get("edit_check"):
+        lines += _edit_check_section(report)
+    lines += [
         "## Results",
         "",
     ]
@@ -517,8 +823,9 @@ def render(report: dict) -> str:
         "## Re-running",
         "",
         "```bash",
-        "# from tools/, on the GPU box with the staged clips; decodes only what the cache lacks",
-        "python -m training.truth_baseline --audio-dir /root/scratch/issue-83/stage/clips",
+        "# from tools/, on the GPU box with the staged clips (the pool's and Ship A's mining",
+        "# extension's in one directory); decodes only what the cache lacks",
+        "python -m training.truth_baseline --audio-dir <clips> --decode-only",
         "# anywhere, torch-free, from the committed decodes",
         "python -m training.truth_baseline",
         "```",

@@ -422,6 +422,22 @@ re-listening (the candidates that do):
 """
 
 
+def _section_hafs(sizing: Mapping) -> str:
+    taken = sizing["hafs_notes"]
+    cells = [[cell, e["sites"], e["held_out_listened"]] for cell, e in taken["cells"].items()]
+    cell_table = "\n\n" + _table(["cell", "sites", "held-out listened"], cells) if cells else ""
+    return f"""## Notes that deny Hafs (#90)
+
+The owner decided (2026-10-13) that an item whose verdict note denies the recitation is Hafs
+("Not hafs", "May not be hafs", "Possibly not hafs") is `not_hafs`: it leaves every cell below
+and is no training target, because a reading outside Hafs confuses above all its tashkeel.
+`tadabur.owner_notes` reads the note (a bare "hafs", or a note that says it is Hafs, keeps the
+item). The sizing below leaves out {taken["sites"]} such sites and {taken["words"]} sampled
+words (an item an earlier reason takes out counts there); question 4 reads the P3.5 fixtures
+without the {len(sizing["fixture_report"]["not_hafs"])} there.{cell_table}
+"""
+
+
 def _section_budget(sizing: Mapping) -> str:
     rows = []
     for name, e in sizing["budget"]["families"].items():
@@ -671,6 +687,7 @@ def render(sizing: Mapping, sites: Mapping, worklist: Mapping, frame: Mapping,
         _section_listening(sites),
         _section_guard(sizing, guard),
         _section_onset(sizing, onset),
+        _section_hafs(sizing),
         _section_budget(sizing),
         _section_power(sizing),
         _section_harm(sizing),

@@ -1,10 +1,13 @@
-"""What the owner's free-text verdict notes claim (#134, #138).
+"""What the owner's free-text verdict notes claim (#134, #138, #90).
 
 A listening verdict (:mod:`tadabur.listening_session`) carries a note the owner types by hand.
 The guards that take items out of evaluation read a claim from it, and the owner's claim
 decides before any detector: the waqf guard (:mod:`tadabur.waqf_guard`) reads :data:`PAUSE`,
-whether the reciter paused, and the onset guard (:mod:`tadabur.onset_guard`) reads
-:data:`TRIM`, whether the clip's opening sound is cut. :func:`says` is the one reader.
+whether the reciter paused, the onset guard (:mod:`tadabur.onset_guard`) reads :data:`TRIM`,
+whether the clip's opening sound is cut, and the shared exclusion (:mod:`tadabur.exclusions`)
+reads :data:`HAFS`, whether the recitation is Hafs: a note that **denies** it ("Not hafs",
+"May not be hafs", "Possibly not hafs") takes the item out (owner decision, 2026-10-13).
+:func:`says` is the one reader.
 
 Brackets and quotation marks are transparent: ``( ) [ ] { }``, every opening or closing
 quote (``" “ ” « » „``, a backquote, and an apostrophe not between two letters) is read as a
@@ -20,11 +23,12 @@ negator (``no``, ``not``, ``never``, ``without``, ``nor``, ``cannot`` or a word 
 within three words (#134's window), and every later word of that same claim and polarity in
 the clause ("no pausing and stopping"); a word of the opposite polarity ("no pause and wasl")
 or of another claim ends its scope and is read on its own, so "no waqf and trimmed"
-and "no waqf trimmed" deny a pause and affirm a trim. ``hafs`` (the owner's "Not hafs",
-"May not be hafs") is what a negator reaching it negates: the negator is spent there and
-negates nothing after it. **This departs from #134's reader on purpose**: it read "Not hafs
-paused" as no pause, which was a bug; no committed note reads differently. Two readings of
-one claim that disagree are ambiguous: no claim.
+and "no waqf trimmed" deny a pause and affirm a trim. ``hafs`` is a claim word like any other
+(a trailing apostrophe aside, "hafs' reading"), so a negator reaching it is spent there and
+negates nothing after it: "Not hafs paused" denies Hafs and affirms a pause. **This departs
+from #134's reader on purpose**: it read "Not hafs paused" as no pause, which was a bug; no
+committed note reads differently. Two readings of one claim that disagree are ambiguous: no
+claim.
 
 The listening page's **Trimmed** answer starts its note with :data:`TRIMMED_ANSWER`. That is
 the listener's explicit action, so it affirms :data:`TRIM` whatever the rest of the note says
@@ -70,7 +74,9 @@ PAUSE = Claim(frozenset({"waqf", "pause", "paused", "pauses", "pausing", "stop",
                          "stops", "stopping"}).__contains__, frozenset({"wasl"}).__contains__)
 #: The clip's opening sound is cut: a word starting ``trim``, ``cut`` or ``split``.
 TRIM = Claim(lambda word: word.startswith(("trim", "cut", "split")))
-CLAIMS = (PAUSE, TRIM)
+#: The recitation is Hafs: the word ``hafs`` (a note denies it with a negator, "not hafs").
+HAFS = Claim(lambda word: word.rstrip("'") == "hafs")
+CLAIMS = (PAUSE, TRIM, HAFS)
 #: How the listening page's Trimmed answer starts its note (``trimNote`` in
 #: ``tashkeel_audit_session.mjs``).
 TRIMMED_ANSWER = "trim;"
@@ -118,9 +124,6 @@ def says(note: str, claim: Claim) -> bool | None:
         for k, word in enumerate(re.findall(r"[a-z']+", clause)):
             if _negator(word):
                 negator, governed = k, None
-                continue
-            if word == "hafs":
-                negator = governed = None  # "not hafs": the negator is spent here
                 continue
             owner = next((c for c in CLAIMS if c.names(word)), None)
             if owner is None:

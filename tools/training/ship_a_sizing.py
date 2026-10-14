@@ -41,9 +41,10 @@ margin**: every power is reported over a grid of values for the owner to pick fr
 
 Every population is read **after the shared exclusion** (:mod:`tadabur.exclusions`): a site
 or sampled word ``waqf_realized`` at the current verdicts (:mod:`tadabur.waqf_guard`, #134:
-its prescribed mark only exists in wasl, and the reciter paused there) or ``onset_trimmed``
-(:mod:`tadabur.onset_guard`, #138: its clip's opening sound is cut) leaves every cell;
-``sizing.json`` lists them per guard with the guard's checksum. The planning frame (question
+its prescribed mark only exists in wasl, and the reciter paused there), ``onset_trimmed``
+(:mod:`tadabur.onset_guard`, #138: its clip's opening sound is cut) or ``not_hafs`` (#90: the
+owner's note denies the recitation is Hafs) leaves every cell; ``sizing.json`` lists them per
+reason with the checksum of the file it is decided from. The planning frame (question
 3's carriers ``h448`` gets right) is not guarded: the guards classify the verified
 populations, not the frame.
 
@@ -67,7 +68,7 @@ from pathlib import Path
 import numpy as np
 
 from tadabur.eval_harness import build as fixture_side_report
-from tadabur.exclusions import GUARD_PATHS, REASONS, Exclusions, current
+from tadabur.exclusions import GUARD_PATHS, NOT_HAFS, REASONS, Exclusions, current
 from tadabur.listening_session import VERDICTS_PATH
 from tadabur.onset_guard import ONSET_TRIMMED
 from tadabur.power_frame import FRAME_PATH, SHIP_A_DIR, input_checksums
@@ -466,7 +467,8 @@ def _run(job: tuple[str, object, int]) -> tuple[tuple, dict]:
 
 #: Each reason's block in ``sizing.json``, and the key its ids are listed under.
 GUARD_BLOCKS = {WAQF_REALIZED: ("waqf_guard", "realized"),
-                ONSET_TRIMMED: ("onset_guard", "trimmed")}
+                ONSET_TRIMMED: ("onset_guard", "trimmed"),
+                NOT_HAFS: ("hafs_notes", "not_hafs")}
 
 
 def guard_block(reason: str, every_site: list[ShipASite], words: list[WordSite],

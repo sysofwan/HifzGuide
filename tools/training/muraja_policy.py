@@ -98,9 +98,11 @@ import sqlite3
 import subprocess
 import unicodedata
 from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tadabur.truth_sites import HELD, SHADDAH, SOFT_PAIRS, TruthSite
 from training.decoding import (
@@ -114,10 +116,15 @@ from training.decoding import (
 )
 from training.site_outcomes import TASHKEEL, family
 
+if TYPE_CHECKING:
+    from tadabur.word_sample import SampledWord
+
 MURAJA_COMMIT = "99c326f3fb7c6c53ff525568976c7e2442ccde3c"
 #: Where ``tools/muraja_harness/build.sh`` puts the checkout, the binary and ``harness.json``.
 HARNESS_ROOT = Path(os.environ.get("MURAJA_HARNESS_DIR", Path.home() / ".cache/hifzguide/muraja-harness"))
 BUILD_SCRIPT = Path(__file__).parent.parent / "muraja_harness" / "build.sh"
+#: How many harness binaries grade at once (each request is an independent session).
+HARNESS_WORKERS = os.cpu_count() or 1
 
 FLAGGED = "flagged"
 FLAGGED_ELSEWHERE = "flagged_elsewhere"
@@ -460,6 +467,10 @@ class MurajaText:
         (word,) = words
         return word
 
+    def word_phonemes(self, where: MurajaSite) -> str:
+        """The phonemes of a placed site's word on Muraja's reference."""
+        return self.phonemes(where.surah, where.ayah).split(" ")[where.word - 1]
+
     def start_word(self, site: TruthSite) -> int:
         """The phoneme word the site's item starts on (word 1 when its start has no counterpart)."""
         surah, ayah = _ayah(site)
@@ -494,8 +505,21 @@ class Harness:
         present = all(p.exists() for p in (harness.binary, harness.quran_db, harness.layout_db))
         return harness if present and harness.muraja_commit == MURAJA_COMMIT else None
 
-    def run(self, requests: Iterable[dict]) -> tuple[dict, list[dict]]:
-        """The build record the binary prints, and one result per request and scoring."""
+    def run(self, requests: Iterable[dict], workers: int = HARNESS_WORKERS) -> tuple[dict, list[dict]]:
+        """The build record the binary prints, and one result per request and scoring, in
+        request order. Each request is its own session, so the requests are split into
+        ``workers`` contiguous runs graded by as many binaries at once."""
+        requests = list(requests)
+        size = max(1, -(-len(requests) // workers))
+        chunks = [requests[i:i + size] for i in range(0, len(requests), size)] or [[]]
+        with ThreadPoolExecutor(len(chunks)) as pool:
+            runs = list(pool.map(self._run_one, chunks))
+        builds = {json.dumps(build, sort_keys=True) for build, _ in runs}
+        if len(builds) != 1:
+            raise ValueError(f"the harness binaries printed different build records: {builds}")
+        return runs[0][0], [result for _, results in runs for result in results]
+
+    def _run_one(self, requests: list[dict]) -> tuple[dict, list[dict]]:
         payload = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in requests)
         completed = subprocess.run(
             [str(self.binary), str(self.quran_db)],
@@ -520,10 +544,12 @@ def require_harness() -> Harness:
 class Item:
     """One item to grade: its sites (one realized reference in one ayah) and the checks the
     engine replays, recorded (:meth:`training.decoding.Decoder.app_checks`) or cut from one
-    decode (:func:`single_decode_checks`)."""
+    decode (:func:`single_decode_checks`). A sampled word (:mod:`tadabur.word_sample`) is
+    graded as a site whose carrier is the word's first letter: placement reads only its id,
+    ayah, realized reference and that index, and only its word's grade is read."""
 
     key: str
-    sites: tuple[TruthSite, ...]
+    sites: tuple[TruthSite | SampledWord, ...]
     checks: tuple[dict, ...]
 
 

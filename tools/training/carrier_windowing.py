@@ -131,16 +131,16 @@ from training.haraka_gap_arms import STREAM, ClipPlan, plan_pool, stream_unit_ke
 from training.site_outcomes import SiteOutcome, pair_outcome, shaddah_outcome
 from training.tashkeel_eval import write_text_atomically
 from training.truth_baseline import (
-    CHECK_PROTOCOLS,
     CHECK_STORE,
     CHECKS,
     DECODE_STORE,
     DEFAULT_MODELS,
     PROTOCOLS,
-    check_cache,
-    read_cache,
+    Located,
+    items_of,
+    model_caches,
 )
-from training.truth_scorer import SiteRow, item_key
+from training.truth_scorer import SiteRow
 
 DOCS_DIR = Path(__file__).parent.parent.parent / "docs"
 DOC_PATH = DOCS_DIR / "carrier-windowing.md"
@@ -451,30 +451,39 @@ def owner_verdicts(sites: Iterable[ShipASite], verdicts: Mapping[str, Verdict]) 
         outcome = (MUSHAF if heard == site.site.prescribed else SWAP if heard == partner(site.site)
                    else "unclear" if heard in NO_VERDICT else OTHER)
         tally[site.family][outcome] += 1
-    soft = sum((tally[pair] for pair in SOFT_PAIRS), Counter())
+    soft = sum((tally[pair] for pair in sorted(SOFT_PAIRS)), Counter())
     return {**{pair: dict(c) for pair, c in tally.items()}, SOFT_PAIRS_FAMILY: dict(soft)}
 
 
-def app_decodes() -> dict[str, dict[str, str]]:
-    """Every truth-baseline item's decode per arm (both models, :data:`APP_PROTOCOLS`), the
-    caches checked against the models and protocols they must hold."""
+def weights_of(identity: Mapping[str, str]) -> dict[str, str]:
+    """A model identity's immutable part (a checkpoint's sha256 or the hub commit), without
+    the reference it was loaded from, which two records may spell differently."""
+    return {k: v for k, v in identity.items() if k not in ("ref", "model_ref")}
+
+
+def app_decodes(items: Mapping[str, Located], registry: Mapping[str, StagedClip],
+                pool_models: Mapping[str, Mapping[str, str]]) -> dict[str, dict[str, str]]:
+    """Each item's decode per arm (both models, :data:`APP_PROTOCOLS`), read through the
+    truth baseline's own checks (:func:`training.truth_baseline.model_caches`: the models'
+    protocols, one set of weights for decodes and checks, every item decoded from its own
+    audio) and refused unless the weights are the pool cache's (``pool_models``)."""
     decodes: dict[str, dict[str, str]] = {}
     for model in MODELS:
-        cache, checks = read_cache(DECODE_STORE.path(model)), read_cache(CHECK_STORE.path(model))
-        check_cache(DECODE_STORE.path(model), cache, DEFAULT_MODELS[model], PROTOCOLS)
-        check_cache(CHECK_STORE.path(model), checks, DEFAULT_MODELS[model], CHECK_PROTOCOLS)
+        cache, recorded = model_caches(model, DEFAULT_MODELS[model], items, registry, None)
+        if weights_of(cache["identity"]) != weights_of(pool_models[model]):
+            raise ValueError(f"{model}: the truth baseline decoded {cache['identity']}, the "
+                             f"pool cache {pool_models[model]}")
         for protocol in PROTOCOLS:
-            decodes[arm(model, protocol)] = {k: v[protocol] for k, v in cache["items"].items()}
-        decodes[arm(model, CHECKS)] = {k: committed_text(v[CHECKS])
-                                       for k, v in checks["items"].items()}
+            decodes[arm(model, protocol)] = {k: cache["items"][k][protocol] for k in items}
+        decodes[arm(model, CHECKS)] = {k: committed_text(recorded["items"][k][CHECKS])
+                                       for k in items}
     return decodes
 
 
-def app_check(located: Iterable, decodes: Mapping[str, Mapping[str, str]],
+def app_check(items: Mapping[str, Located], decodes: Mapping[str, Mapping[str, str]],
               registry: Mapping[str, StagedClip], workers: int) -> dict:
-    """The pair carriers of truth-baseline items (truth sites or sampled words, each naming
-    its clip, span and reference), each item weighing 1, those tied to ``h448`` left out."""
-    items = {item_key(one): one for one in located}
+    """The pair carriers of truth-baseline items (``training.truth_baseline.items_of``: truth
+    sites or sampled words by item), each item weighing 1, those tied to ``h448`` left out."""
     barred = unseen_violations({one.audio_filename: registry[one.audio_filename]
                                 for one in items.values()})
     clips = [
@@ -502,7 +511,9 @@ def run(workers: int) -> dict:
     cached = cached_plans(plans, caches)
     unseen = {clip.audio_filename for clip in unseen_clips([p.clip for p in cached], registry)[0]}
     pool = site_rows([pool_clip(plan, caches) for plan in cached], workers)
-    decodes = app_decodes()
+    diagnostic = items_of(load_truth_sites(DIAGNOSTIC_SITES), registry)
+    words = items_of([word.site for word in load_words()], registry)
+    decodes = app_decodes({**diagnostic, **words}, registry, provenance["models"])
     other_inputs = {
         **{f"truth_baseline/decodes/{m}.json": DECODE_STORE.path(m) for m in MODELS},
         **{f"truth_baseline/checks/{m}.json": CHECK_STORE.path(m) for m in MODELS},
@@ -527,8 +538,8 @@ def run(workers: int) -> dict:
         "pool": pool_report(pool, unseen),
         "owner_verdicts": owner_verdicts(load_sites(), read_verdicts()),
         "app_checks": {
-            DIAGNOSTIC: app_check(load_truth_sites(DIAGNOSTIC_SITES), decodes, registry, workers),
-            WORD_SAMPLE: app_check([w.site for w in load_words()], decodes, registry, workers),
+            DIAGNOSTIC: app_check(diagnostic, decodes, registry, workers),
+            WORD_SAMPLE: app_check(words, decodes, registry, workers),
         },
     }
 

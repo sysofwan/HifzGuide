@@ -5,7 +5,13 @@ Torch-free and model-free: the references, decodes, carriers and verdicts are sy
 
 from __future__ import annotations
 
+import json
 import math
+import os
+import subprocess
+import sys
+from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -13,6 +19,7 @@ import pytest
 
 from tadabur.mining_pool import PoolSegment
 from tadabur.truth_sites import HELD, NOT_HELD
+from training import truth_baseline
 from training.carrier_windowing import (
     APP_PROTOCOLS,
     CACHE,
@@ -27,6 +34,7 @@ from training.carrier_windowing import (
     Clip,
     Position,
     RowKey,
+    app_decodes,
     cached_plans,
     carrier_sites,
     clip_commits,
@@ -112,7 +120,8 @@ def test_a_geminate_commits_held_single_or_nothing():
     segment = _segment("رَببِ", (0, 5))
     positions = tuple(geminate_positions(0, segment))
     clip = Clip("c", "1:1", 1, 1.0, (segment.reference,), (0,), positions,
-                by_segment={"m/whole": ("رَببِ",)}, by_span={"m/stream_b0": "رَبِ", "m/stream_b1": "سَقَ"})
+                by_segment={"m/whole": ("رَببِ",)},
+                by_span={"m/stream_b0": "رَبِ", "m/stream_b1": "سَقَ"})
     commits = clip_commits(clip)
     assert {a: [o.committed for o in v] for a, v in commits.items()} == {
         "m/whole": [HELD], "m/stream_b0": [NOT_HELD], "m/stream_b1": [None]}
@@ -288,3 +297,81 @@ def test_cells_mark_the_interval_method_and_carry_the_count():
     assert rate_cell({**entry, "method": "none"}, 3) == "12.5 (n/c) (3)"
     assert gap_cell({"point": -0.0001, "lower": "-inf", "upper": 0.0, "method": "bootstrap"}) \
         == "+0.0 [−∞, 0.0]"
+
+
+# --- the cross-checks' caches -----------------------------------------------------------------
+
+
+def _write_caches(tmp_path, monkeypatch, checks_weights: str = "same") -> dict:
+    """Both models' truth-baseline caches for one item, in temporary stores."""
+    decode_store = replace(truth_baseline.DECODE_STORE, directory=tmp_path / "decodes")
+    check_store = replace(truth_baseline.CHECK_STORE, directory=tmp_path / "checks")
+    monkeypatch.setattr(truth_baseline, "DECODE_STORE", decode_store)
+    monkeypatch.setattr(truth_baseline, "CHECK_STORE", check_store)
+    pool_models = {}
+    for model, ref in truth_baseline.DEFAULT_MODELS.items():
+        identity = {"model_ref": ref, "checkpoint_sha256": f"{model}-weights"}
+        pool_models[model] = {"ref": ref, "checkpoint_sha256": f"{model}-weights"}
+        for store, item, weights in (
+            (decode_store, {"spans": "طَ", "stream_b0": "قَ"}, identity),
+            (check_store, {"checks": [{"hop": "طَ", "overlap": "", "flush": True}]},
+             identity if checks_weights == "same" else {**identity, "checkpoint_sha256": "x"}),
+        ):
+            store.directory.mkdir(exist_ok=True)
+            store.path(model).write_text(json.dumps({
+                "model": model, "identity": weights,
+                "fingerprints": {p: truth_baseline.expected_fingerprint(ref, mode)
+                                 for p, mode in store.protocols.items()},
+                "items": {"clip.wav@0:16000": {"audio_sha256": "audio", **item}},
+            }), encoding="utf-8")
+    return pool_models
+
+
+ITEMS = {"clip.wav@0:16000": SimpleNamespace(audio_sha256="audio")}
+
+
+def test_cross_check_decodes_are_read_through_the_truth_baselines_checks(tmp_path, monkeypatch):
+    pool_models = _write_caches(tmp_path, monkeypatch)
+    decodes = app_decodes(ITEMS, {}, pool_models)
+    assert decodes["h448/stream_b0"] == {"clip.wav@0:16000": "قَ"}
+    assert decodes["base/checks"] == {"clip.wav@0:16000": "طَ"}
+
+
+def test_cross_checks_refuse_checks_from_other_weights(tmp_path, monkeypatch):
+    pool_models = _write_caches(tmp_path, monkeypatch, checks_weights="other")
+    with pytest.raises(ValueError, match="different weights"):
+        app_decodes(ITEMS, {}, pool_models)
+
+
+def test_cross_checks_refuse_weights_other_than_the_pool_caches(tmp_path, monkeypatch):
+    pool_models = _write_caches(tmp_path, monkeypatch)
+    pool_models["h448"] = {**pool_models["h448"], "checkpoint_sha256": "retrained"}
+    with pytest.raises(ValueError, match="pool cache"):
+        app_decodes(ITEMS, {}, pool_models)
+
+
+def test_cross_checks_refuse_items_decoded_from_other_audio(tmp_path, monkeypatch):
+    pool_models = _write_caches(tmp_path, monkeypatch)
+    with pytest.raises(ValueError, match="other audio"):
+        app_decodes({"clip.wav@0:16000": SimpleNamespace(audio_sha256="re-staged")}, {},
+                    pool_models)
+
+
+def test_owner_verdicts_serialise_identically_under_any_hash_seed():
+    script = (
+        "import json; from types import SimpleNamespace as N\n"
+        "from training.carrier_windowing import owner_verdicts\n"
+        "pairs = [('ذ↔ز', 'ذ', 'ز'), ('ض↔ظ', 'ظ', 'unclear'), ('ق↔ك', 'ك', 'ب'),\n"
+        "         ('س↔ص', 'س', 'س')]\n"
+        "sites = [N(site=N(site_id=str(i), mark=m, prescribed=p), partner_swap=True,\n"
+        "           base_already_right=True, family=m) for i, (m, p, _) in enumerate(pairs)]\n"
+        "verdicts = {str(i): N(heard=h) for i, (_, _, h) in enumerate(pairs)}\n"
+        "print(json.dumps(owner_verdicts(sites, verdicts), ensure_ascii=False))\n"
+    )
+    outputs = {
+        subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True,
+                       cwd=Path(__file__).parent.parent,
+                       env={**os.environ, "PYTHONHASHSEED": seed}).stdout
+        for seed in map(str, range(8))
+    }
+    assert len(outputs) == 1

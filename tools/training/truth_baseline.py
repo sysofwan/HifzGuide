@@ -389,6 +389,23 @@ def update_decodes(
     return update_cache(DECODE_STORE, name, model_ref, items, registry, audio_dir)
 
 
+def model_caches(
+    name: str,
+    model_ref: str,
+    items: Mapping[str, Located],
+    registry: Mapping[str, StagedClip],
+    audio_dir: Path | None,
+) -> tuple[dict, dict]:
+    """The model's decodes and check sequences, each checked and extended as
+    :func:`update_cache` says, and refused when the two come from different weights. With no
+    ``audio_dir`` it only reads: every item must already be decoded, from its own audio."""
+    cache = update_decodes(name, model_ref, items, registry, audio_dir)
+    recorded = update_cache(CHECK_STORE, name, model_ref, items, registry, audio_dir)
+    if recorded["identity"] != cache["identity"]:
+        raise ValueError(f"{name}: its decodes and check sequences come from different weights")
+    return cache, recorded
+
+
 @dataclass(frozen=True)
 class WordGrades:
     """Every sampled word's kept grade as ``[scoring][arm][word id]``, and each placed word's
@@ -595,10 +612,7 @@ def main() -> None:
     sequences: dict[str, dict[str, list[dict]]] = {}
     fingerprints: dict[str, dict] = {}
     for name, ref in models.items():
-        cache = update_decodes(name, ref, items, registry, args.audio_dir)
-        recorded = update_cache(CHECK_STORE, name, ref, items, registry, args.audio_dir)
-        if recorded["identity"] != cache["identity"]:
-            raise ValueError(f"{name}: its decodes and check sequences come from different weights")
+        cache, recorded = model_caches(name, ref, items, registry, args.audio_dir)
         fingerprints[name] = {**cache["fingerprints"], **recorded["fingerprints"]}
         for protocol in PROTOCOLS:
             decodes[arm(name, protocol)] = {k: v[protocol] for k, v in cache["items"].items() if k in items}

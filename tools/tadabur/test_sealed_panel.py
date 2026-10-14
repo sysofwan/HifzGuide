@@ -267,6 +267,12 @@ READ_EXEMPTIONS = {
     "tadabur/audio.py": "the guarded readers themselves",
     "tadabur/staged_audio.py": "as_staged reads back an in-memory buffer it just wrote",
 }
+#: Where a parquet file may be opened without iter_shard_rows, and why.
+PARQUET_EXEMPTIONS = {
+    "tadabur/shard_reader.py": "the Tadabur shard reader itself",
+    "tadabur/qud_selection.py": "metadata columns of QUD's and Muaalem's parquet files, "
+                                "never a Tadabur shard and never an audio column",
+}
 
 
 def test_lint_every_audio_read_and_row_source_goes_through_a_choke_point():
@@ -291,7 +297,7 @@ def test_lint_every_audio_read_and_row_source_goes_through_a_choke_point():
             offenders.append(f"{rel}: decodes a file's bytes without read_audio_bytes")
         if "load_dataset(" in text and rel != "tadabur/dataset_source.py":
             offenders.append(f"{rel}: streams the dataset without stream_rows")
-        if "ParquetFile(" in text and rel != "tadabur/shard_reader.py":
+        if "ParquetFile(" in text and rel not in PARQUET_EXEMPTIONS:
             offenders.append(f"{rel}: reads a shard without iter_shard_rows")
     assert offenders == []
 

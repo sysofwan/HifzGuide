@@ -381,6 +381,39 @@ def crosses_words(reference: str, offsets: list[int], start: int) -> bool:
     return bisect.bisect_right(offsets, start) != bisect.bisect_right(offsets, end - 1)
 
 
+def held_geminates(reference: str) -> list[int]:
+    """The first index of every reference geminate (a doubled consonant), in or across words:
+    the carriers of every ``shaddah`` / ``held`` site the reference alone makes eligible."""
+    return [
+        i for i, char in enumerate(reference[:-1])
+        if char in CONSONANTS and reference[i + 1] == char and run_start(reference, i) == i
+    ]
+
+
+@dataclass(frozen=True)
+class PairCarrier:
+    """One carrier of a target pair's letter: a site the reference alone makes eligible."""
+
+    pair: str
+    prescribed: str
+    partner: str
+    index: int
+
+
+def pair_carriers(reference: str) -> list[PairCarrier]:
+    """Every target-pair carrier of ``reference``, pair by pair in label order. A geminate
+    is one carrier, on its first half; a letter in two pairs (``ذ``, ``ظ``, ``س``, ``ط``,
+    ``ق``) is a carrier of each, in two directions."""
+    carriers = []
+    for pair in sorted(TARGET_PAIRS):
+        letters = pair.split("↔")
+        for i, char in enumerate(reference):
+            if char in letters and run_start(reference, i) == i:
+                (partner,) = set(letters) - {char}
+                carriers.append(PairCarrier(pair, char, partner, i))
+    return carriers
+
+
 def _shaddah_found(reference: str, decode: str, offsets: list[int]) -> list[Found]:
     changes = contrast_sites(decode, reference, SHADDA_CONTRAST)
     dropped = {run_start(reference, s.reference_index) for s in changes if s.change == DROPPED}
@@ -390,11 +423,7 @@ def _shaddah_found(reference: str, decode: str, offsets: list[int]) -> list[Foun
             return _stratum(SHADDAH, HELD, CROSS_WORD)
         return _stratum(SHADDAH, HELD, BASE_SINGLE if i in dropped else BASE_REST)
 
-    found = [
-        Found(held(i), SHADDAH, HELD, i)
-        for i, char in enumerate(reference[:-1])
-        if char in CONSONANTS and reference[i + 1] == char and run_start(reference, i) == i
-    ]
+    found = [Found(held(i), SHADDAH, HELD, i) for i in held_geminates(reference)]
     doubled = {s.reference_index for s in changes if s.change == ADDED}
     found += [
         Found(_stratum(SHADDAH, NOT_HELD, BASE_DOUBLE if i in doubled else BASE_REST),
@@ -406,17 +435,14 @@ def _shaddah_found(reference: str, decode: str, offsets: list[int]) -> list[Foun
 
 
 def _pair_found(reference: str, decode: str) -> list[Found]:
-    found: list[Found] = []
-    for pair in sorted(TARGET_PAIRS):
-        letters = pair.split("↔")
-        partnered = {s.reference_index for s in contrast_sites(decode, reference, pair)}
-        for i, char in enumerate(reference):
-            if char not in letters or run_start(reference, i) != i:
-                continue  # a geminate is one site, on its first half
-            (partner,) = set(letters) - {char}
-            outcome = BASE_PARTNER if i in partnered else BASE_REST
-            found.append(Found(_stratum(_direction(char, partner), outcome), pair, char, i))
-    return found
+    partnered = {pair: {s.reference_index for s in contrast_sites(decode, reference, pair)}
+                 for pair in TARGET_PAIRS}
+    return [
+        Found(_stratum(_direction(carrier.prescribed, carrier.partner),
+                       BASE_PARTNER if carrier.index in partnered[carrier.pair] else BASE_REST),
+              carrier.pair, carrier.prescribed, carrier.index)
+        for carrier in pair_carriers(reference)
+    ]
 
 
 def segment_sites(

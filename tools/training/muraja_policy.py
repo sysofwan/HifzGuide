@@ -125,6 +125,19 @@ HARNESS_ROOT = Path(os.environ.get("MURAJA_HARNESS_DIR", Path.home() / ".cache/h
 BUILD_SCRIPT = Path(__file__).parent.parent / "muraja_harness" / "build.sh"
 #: How many harness binaries grade at once (each request is an independent session).
 HARNESS_WORKERS = os.cpu_count() or 1
+#: ``harness.json``'s keys for the two binaries ``build.sh`` builds: the item harness
+#: (``muraja_harness/main.swift``) and the device-log replay (``muraja_harness/log_replay.swift``).
+ITEM_BINARY = "binary"
+LOG_REPLAY_BINARY = "log_replay_binary"
+#: The request protocol this client speaks (``muraja_harness/scoring.swift``'s
+#: ``harnessProtocol``). A binary reporting another, or none, is not used: an older binary
+#: silently ignores keys it does not know, such as a scoring's ``soft_pairs_disabled``.
+HARNESS_PROTOCOL = 2
+
+
+def _camel(key: str) -> str:
+    head, *rest = key.split("_")
+    return head + "".join(part.title() for part in rest)
 
 FLAGGED = "flagged"
 FLAGGED_ELSEWHERE = "flagged_elsewhere"
@@ -152,11 +165,15 @@ class Scoring:
     soft_pairs_enabled: bool | None = None
     shaddah_suppression: bool | None = None
     tashkeel_shown: bool = True
+    #: Soft pairs (``"ح↔ه"``) not forgiven while the others are: the harness's one-pair switch
+    #: over Muraja's own pair set (``muraja_harness/scoring.swift``).
+    soft_pairs_disabled: tuple[str, ...] = ()
 
     @property
     def engine_name(self) -> str:
         """The engine run this scoring reads; the Tashkeel toggle is display only."""
-        return f"{self.mode}|soft_pairs={self.soft_pairs_enabled}|shaddah={self.shaddah_suppression}"
+        name = f"{self.mode}|soft_pairs={self.soft_pairs_enabled}|shaddah={self.shaddah_suppression}"
+        return name + (f"|not_forgiven={','.join(self.soft_pairs_disabled)}" if self.soft_pairs_disabled else "")
 
     def as_dict(self) -> dict:
         return {
@@ -166,6 +183,7 @@ class Scoring:
             "soft_pairs_enabled": self.soft_pairs_enabled,
             "shaddah_suppression": self.shaddah_suppression,
             "tashkeel_shown": self.tashkeel_shown,
+            **({"soft_pairs_disabled": list(self.soft_pairs_disabled)} if self.soft_pairs_disabled else {}),
         }
 
 
@@ -490,31 +508,52 @@ class Harness:
     layout_db: Path
     muraja_commit: str
     compiler: str
+    #: The build record the binary prints first, holding its protocol and its scoring keys.
+    build: dict = field(default_factory=dict, compare=False)
 
     @classmethod
-    def locate(cls, root: Path = HARNESS_ROOT) -> Harness | None:
-        """The harness built for :data:`MURAJA_COMMIT`, or ``None`` when there is none."""
-        manifest = root / MURAJA_COMMIT / "harness.json"
+    def locate(
+        cls, root: Path = HARNESS_ROOT, commit: str = MURAJA_COMMIT, binary: str = ITEM_BINARY
+    ) -> Harness | None:
+        """One binary (``harness.json``'s ``binary`` key: :data:`ITEM_BINARY` or
+        :data:`LOG_REPLAY_BINARY`) of the harness built for ``commit``, or ``None`` when there
+        is none or when the binary does not report :data:`HARNESS_PROTOCOL` (a stale build:
+        rebuild it with ``build.sh``)."""
+        manifest = root / commit / "harness.json"
         if not manifest.exists():
             return None
         record = json.loads(manifest.read_text(encoding="utf-8"))
+        if binary not in record:
+            return None
         harness = cls(
-            Path(record["binary"]), Path(record["quran_db"]), Path(record["layout_db"]),
+            Path(record[binary]), Path(record["quran_db"]), Path(record["layout_db"]),
             record["muraja_commit"], record["compiler"],
         )
         present = all(p.exists() for p in (harness.binary, harness.quran_db, harness.layout_db))
-        return harness if present and harness.muraja_commit == MURAJA_COMMIT else None
+        if not present or harness.muraja_commit != commit:
+            return None
+        build, _ = harness._run_one([])
+        speaks = build.get("protocol_version") == HARNESS_PROTOCOL and build["muraja_commit"] == commit
+        return replace(harness, build=build) if speaks else None
+
+    def check(self, requests: Sequence[dict]) -> None:
+        """Refuse a request with a scoring key the binary does not declare."""
+        declared = set(self.build["scoring_keys"])
+        unknown = sorted({key for r in requests for s in r["scorings"] for key in s if _camel(key) not in declared})
+        if unknown:
+            raise ValueError(f"the harness binary does not support the scoring keys {unknown}; rebuild it")
 
     def run(self, requests: Iterable[dict], workers: int = HARNESS_WORKERS) -> tuple[dict, list[dict]]:
         """The build record the binary prints, and one result per request and scoring, in
         request order. Each request is its own session, so the requests are split into
         ``workers`` contiguous runs graded by as many binaries at once."""
         requests = list(requests)
+        self.check(requests)
         size = max(1, -(-len(requests) // workers))
         chunks = [requests[i:i + size] for i in range(0, len(requests), size)] or [[]]
         with ThreadPoolExecutor(len(chunks)) as pool:
             runs = list(pool.map(self._run_one, chunks))
-        builds = {json.dumps(build, sort_keys=True) for build, _ in runs}
+        builds = {json.dumps(build, sort_keys=True) for build, _ in runs} | {json.dumps(self.build, sort_keys=True)}
         if len(builds) != 1:
             raise ValueError(f"the harness binaries printed different build records: {builds}")
         return runs[0][0], [result for _, results in runs for result in results]
@@ -527,8 +566,6 @@ class Harness:
             env={**os.environ, "QURAN_LAYOUT_DB_PATH": str(self.layout_db)},
         )
         build, *results = (json.loads(line) for line in completed.stdout.splitlines() if line)
-        if build["muraja_commit"] != MURAJA_COMMIT:
-            raise ValueError(f"the harness was built from {build['muraja_commit']}, not {MURAJA_COMMIT}")
         return build, results
 
 
@@ -580,12 +617,27 @@ def site_outcome(
     return SiteGrade(FLAGGED if marked & marks[where.group] else FLAGGED_ELSEWHERE, shown, errors)
 
 
+def engine_runs(scorings: Sequence[Scoring]) -> list[dict]:
+    """The engine runs a harness request asks for: one per distinct engine configuration among
+    ``scorings``, each named by its :attr:`Scoring.engine_name`."""
+    engines = {s.engine_name: s for s in scorings}
+    return [
+        {
+            "name": name,
+            "mode": s.mode,
+            "soft_pairs_enabled": s.soft_pairs_enabled,
+            "shaddah_suppression": s.shaddah_suppression,
+            **({"soft_pairs_disabled": list(s.soft_pairs_disabled)} if s.soft_pairs_disabled else {}),
+        }
+        for name, s in sorted(engines.items())
+    ]
+
+
 def build_request(item: Item, text: MurajaText, scorings: Sequence[Scoring]) -> tuple[dict, dict]:
     """The harness request for an item (one engine run per distinct engine configuration), and
     where each of its sites sits on Muraja's reference."""
     where = {site.site_id: text.locate(site) for site in item.sites}
     surah, ayah = _ayah(item.sites[0])
-    engines = {s.engine_name: s for s in scorings}
     return {
         "item": item.key,
         "surah": surah,
@@ -593,15 +645,7 @@ def build_request(item: Item, text: MurajaText, scorings: Sequence[Scoring]) -> 
         "start_word": text.start_word(item.sites[0]),
         "report_words": sorted({w.word for w in where.values() if w is not None}),
         "checks": list(item.checks),
-        "scorings": [
-            {
-                "name": name,
-                "mode": s.mode,
-                "soft_pairs_enabled": s.soft_pairs_enabled,
-                "shaddah_suppression": s.shaddah_suppression,
-            }
-            for name, s in sorted(engines.items())
-        ],
+        "scorings": engine_runs(scorings),
     }, where
 
 

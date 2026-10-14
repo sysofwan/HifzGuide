@@ -11,7 +11,7 @@ import pytest
 
 from muraja_harness.make_parity_fixtures import CASES, FIXTURES_PATH, request
 from tadabur.truth_sites import TRUTH_SITES_DIR, load_truth_sites
-from training.muraja_policy import MURAJA_COMMIT, Harness, MurajaText, highlights
+from training.muraja_policy import LOG_REPLAY_BINARY, MURAJA_COMMIT, Harness, MurajaText, highlights
 
 HARNESS = Harness.locate()
 pytestmark = pytest.mark.skipif(HARNESS is None, reason="the Muraja harness is not built here")
@@ -201,3 +201,22 @@ def test_a_stop_anywhere_but_last_is_refused():
     bad = {**request(case), "checks": [stop, *request(case)["checks"]]}
     with pytest.raises(subprocess.CalledProcessError):
         HARNESS.run([bad])
+
+
+@pytest.mark.skipif(Harness.locate(binary=LOG_REPLAY_BINARY) is None,
+                    reason="a harness built before the one-pair switch ignores it; rebuild with build.sh")
+def test_one_soft_pair_can_go_unforgiven_while_the_others_are_forgiven():
+    """ذ heard as ز in 2:80 w9: not forgiving ذ↔ز alone grades it as all soft pairs off does;
+    not forgiving ح↔ه instead leaves it forgiven. A pair Muraja does not forgive is refused."""
+    import subprocess
+
+    case = next(c for c in FIXTURES["cases"] if c["case"] == "soft_pair_flag")
+    scorings = [{"name": name, "mode": "balanced", "soft_pairs_disabled": [pair]}
+                for name, pair in (("zay", "ذ↔ز"), ("ha", "ح↔ه"))]
+    _, results = HARNESS.run([{**request(case), "scorings": scorings}])
+    assert {r["scoring"]: r["final"][0]["quality"] for r in results} == {
+        "zay": _final("soft_pair_flag", "soft_pairs_off")[9]["quality"],
+        "ha": _final("soft_pair_flag", "balanced")[9]["quality"]}
+    unforgiven = [{"name": "dhal_zah", "mode": "balanced", "soft_pairs_disabled": ["ذ↔ظ"]}]
+    with pytest.raises(subprocess.CalledProcessError):
+        HARNESS.run([{**request(case), "scorings": unforgiven}])

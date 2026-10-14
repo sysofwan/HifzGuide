@@ -21,26 +21,11 @@
 // end-word holdback). Nothing upstream of handleUpdate is: the transcriber's windowing, VAD and
 // hallucination gates are the caller's, who supplies the checks. The display filters
 // (GradeFilter+iOS.swift) are iOS-only and are applied by the caller to the kept qualities.
+//
+// The scorings (with the allowance overrides) and the kept grade's output are scoring.swift's,
+// shared with log_replay.swift.
 
 import Foundation
-
-// MARK: - Scoring overrides
-//
-// Muraja picks a mode's parameters in one place, ScoringParameters.forMode (FollowAlongTypes.swift:
-// 141-147), called from computeWordStatuses (QuranFollowAlong+WordScoring.swift:461). build.sh
-// renames that one function to shippedForMode in the scratch copy; this replacement returns the
-// shipped parameters with the two allowance flags overridden through Muraja's own `with`
-// (FollowAlongTypes.swift:83-107). Scoring logic is untouched. nil keeps the mode's value.
-
-nonisolated(unsafe) var softPairsOverride: Bool?
-nonisolated(unsafe) var shaddahSuppressionOverride: Bool?
-
-extension ScoringParameters {
-  static func forMode(_ mode: ScoringMode) -> ScoringParameters {
-    shippedForMode(mode).with(
-      softPairsEnabled: softPairsOverride, shaddahSuppression: shaddahSuppressionOverride)
-  }
-}
 
 // MARK: - Requests and results
 
@@ -56,13 +41,6 @@ struct Check: Decodable {
   var isStop: Bool { stop ?? false }
 }
 
-struct Scoring: Decodable {
-  let name: String
-  let mode: String
-  let softPairsEnabled: Bool?
-  let shaddahSuppression: Bool?
-}
-
 struct Request: Decodable {
   let item: String
   let surah: Int
@@ -71,22 +49,6 @@ struct Request: Decodable {
   let reportWords: [Int]
   let checks: [Check]
   let scorings: [Scoring]
-}
-
-struct Status: Encodable {
-  let word: Int
-  let quality: String
-  let score: Double
-  let withheld: String?
-  let errors: [WordError]
-
-  init(_ status: WordStatus) {
-    word = status.position.word
-    quality = "\(status.quality)"
-    score = status.score
-    withheld = status.withheldQuality.map { "\($0)" }
-    errors = status.errors
-  }
 }
 
 /// What the app needs to draw a word's errors (App/MistakeSnippetRenderer.swift:140-150): the
@@ -132,12 +94,6 @@ struct Result: Encodable {
   let letters: [Letters]
 }
 
-struct BuildRecord: Encodable {
-  let murajaCommit: String
-  let compiler: String
-  let harness = "tools/muraja_harness/main.swift"
-}
-
 func checkStatuses(_ result: RecitationResult?) -> [WordStatus] {
   switch result {
   case .correctAdvance(_, let statuses), .minorMistake(_, let statuses), .jumped(_, let statuses):
@@ -147,21 +103,8 @@ func checkStatuses(_ result: RecitationResult?) -> [WordStatus] {
   }
 }
 
-func mode(_ name: String) -> ScoringMode {
-  switch name {
-  case "strict": return .strict
-  case "balanced": return .balanced
-  case "lenient": return .lenient
-  default:
-    FileHandle.standardError.write("unknown mode \(name)\n".data(using: .utf8)!)
-    exit(2)
-  }
-}
-
 func replay(_ request: Request, _ scoring: Scoring, db: QuranDatabase, index: PhonemeIndex) -> Result {
-  softPairsOverride = scoring.softPairsEnabled
-  shaddahSuppressionOverride = scoring.shaddahSuppression
-  let scoringMode = mode(scoring.mode)
+  let scoringMode = scoring.install()
   let parameters = ScoringParameters.forMode(scoringMode)
   let page = db.pageForPosition(surah: request.surah, ayah: request.ayah) ?? 1
   let start = QuranPosition(surah: request.surah, ayah: request.ayah, word: request.startWord)
@@ -221,24 +164,12 @@ do {
   exit(1)
 }
 let index = PhonemeIndex(db: db)
-let decoder = JSONDecoder()
-decoder.keyDecodingStrategy = .convertFromSnakeCase
-let encoder = JSONEncoder()
-encoder.keyEncodingStrategy = .convertToSnakeCase
-encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-
-func emit<T: Encodable>(_ value: T) {
-  let data = try! encoder.encode(value)
-  FileHandle.standardOutput.write(data)
-  FileHandle.standardOutput.write("\n".data(using: .utf8)!)
-}
-
-emit(BuildRecord(murajaCommit: murajaCommit, compiler: compilerVersion))
+emit(BuildRecord(murajaCommit: murajaCommit, compiler: compilerVersion, harness: "tools/muraja_harness/main.swift"))
 while let line = readLine(strippingNewline: true) {
   guard !line.isEmpty else { continue }
   let request: Request
   do {
-    request = try decoder.decode(Request.self, from: line.data(using: .utf8)!)
+    request = try harnessDecoder.decode(Request.self, from: line.data(using: .utf8)!)
   } catch {
     FileHandle.standardError.write("bad request: \(error)\n".data(using: .utf8)!)
     exit(1)

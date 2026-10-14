@@ -72,7 +72,7 @@ def format_estimate(estimate: dict | None) -> str:
     return _pct(estimate["point"]) + _bounds(estimate)
 
 
-def _delta(delta: dict | None) -> str:
+def format_delta(delta: dict | None) -> str:
     if not delta or delta["point"] is None:
         return "–"
     return f"{100 * delta['point']:+.1f}" + _bounds(delta)
@@ -107,7 +107,7 @@ def _difference_table(cells: list[dict], comparisons: list[str], rate: str) -> l
         "|---|---|" + "---|" * len(comparisons),
     ]
     for cell in cells:
-        values = [_delta(cell["differences"][c].get(rate)) for c in comparisons]
+        values = [format_delta(cell["differences"][c].get(rate)) for c in comparisons]
         lines.append(f"| {_cell_name(cell)} | {_size(cell)} | " + " | ".join(values) + " |")
     return lines
 
@@ -219,7 +219,7 @@ def _recorded_vs_single(report: dict) -> list[str]:
         lines += ["| paired difference | " + " | ".join(f"`{n}`" for n in names) + " |",
                   "|---|" + "---|" * len(names)]
         for pair in pairs:
-            values = [_delta(cell["differences"][pair].get(f"word_flags@{n}")) for n in names]
+            values = [format_delta(cell["differences"][pair].get(f"word_flags@{n}")) for n in names]
             lines.append(f"| {pair} | " + " | ".join(values) + " |")
         lines.append("")
     return lines
@@ -271,7 +271,7 @@ def _app_section(report: dict, arms: list[str]) -> list[str]:
     return lines + _recorded_vs_single(report)
 
 
-def _allowance_rows(entries: list[dict], arms: list[str]) -> list[str]:
+def allowance_rows(entries: list[dict], arms: list[str]) -> list[str]:
     """The per-allowance view's table rows: on → off per arm, per allowance and side."""
     lines = [
         "| population | allowance | side | sites / reciters | "
@@ -301,7 +301,7 @@ def _allowance_section(report: dict, arms: list[str]) -> list[str]:
         "app flags, on correct recitation (false flags) and on real mistakes (caught), with the",
         "allowance on (`allowances_on`) and switched off alone. % [95% interval].",
         "",
-        *_allowance_rows(report["allowances"], arms),
+        *allowance_rows(report["allowances"], arms),
         "",
         "Allowances and sides with no affected site in a population are omitted. A caught rate",
         "needs real-mistake sites. Soft pairs are pooled, as Muraja has one switch (ADR-0012);",
@@ -353,21 +353,21 @@ _CAUSE_TITLES = {
 }
 
 
-def _count_rate(entry: dict, total: int) -> str:
+def count_rate(entry: dict, total: int) -> str:
     """``k / n · weighted % [interval]``."""
     return f"{entry['words']} / {total} · {format_estimate(entry)}"
 
 
-def _word_cause_table(view: dict, names: list[str]) -> list[str]:
+def word_cause_table(view: dict, names: list[str]) -> list[str]:
     """One arm: per scoring, the false flags and their causes."""
     lines = ["| | " + " | ".join(f"`{n}`" for n in names) + " |",
              "|---|" + "---|" * len(names)]
     total = {n: view[n]["correct_words"] for n in names}
     lines.append("| **false flags** | " + " | ".join(
-        _count_rate(view[n]["false_flags"], total[n]) for n in names) + " |")
+        count_rate(view[n]["false_flags"], total[n]) for n in names) + " |")
     for cause, title in _CAUSE_TITLES.items():
         lines.append(f"| {title} | " + " | ".join(
-            _count_rate(view[n]["causes"][cause], total[n]) for n in names) + " |")
+            count_rate(view[n]["causes"][cause], total[n]) for n in names) + " |")
     marks = sorted({m for n in names for m in view[n]["tashkeel_marks"]})
     for mark in marks:
         lines.append(f"| — tashkeel: {mark} | " + " | ".join(
@@ -411,7 +411,7 @@ def _word_sample_section(report: dict) -> list[str]:
         if arm not in arms:
             continue
         lines += [f"**`{arm}`** (the recorded check sequence: the app outcome to read)", ""]
-        lines += _word_cause_table(arms[arm], names) + [""]
+        lines += word_cause_table(arms[arm], names) + [""]
     lines += [
         "False flags per arm (the `spans` and `stream_b0` arms are the single-decode",
         "approximation, for comparison; count, weighted % [interval]):",
@@ -421,7 +421,7 @@ def _word_sample_section(report: dict) -> list[str]:
     ]
     for arm, view in arms.items():
         lines.append(f"| {arm} | " + " | ".join(
-            _count_rate(view[n]["false_flags"], view[n]["correct_words"]) for n in names) + " |")
+            count_rate(view[n]["false_flags"], view[n]["correct_words"]) for n in names) + " |")
     mistakes = sorted({w for view in arms.values() for n in names for w in view[n]["mistakes"]})
     for word in mistakes:
         lines += ["", f"The word heard as a mistake (`{word}`), its app outcome per arm:", "",
@@ -472,7 +472,7 @@ def _gap_rows(entries: list[tuple[str, dict]], label: str) -> list[str]:
              + " |", "|---|---|---|" + "---|" * len(names)]
     for half, e in entries:
         lines.append(f"| {_HALF_TITLES[half]} | {e[label]} | {e['sites']} / {e['reciters']} | "
-                     + " | ".join(_delta(e["gaps"][n]) for n in names) + " |")
+                     + " | ".join(format_delta(e["gaps"][n]) for n in names) + " |")
     return lines
 
 
@@ -502,7 +502,7 @@ def _verified_app(views: dict, names: list[str], arms: list[str]) -> list[str]:
                                  + " | ".join(format_estimate(rates.get(f"word_flags@{n}"))
                                               for n in names) + " |")
             lines += ["", "Per allowance, on the sites it affects:", ""]
-            lines += _allowance_rows(view["app"]["allowances"], arms) + [""]
+            lines += allowance_rows(view["app"]["allowances"], arms) + [""]
     return lines
 
 

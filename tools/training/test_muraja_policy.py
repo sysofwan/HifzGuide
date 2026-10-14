@@ -17,6 +17,7 @@ from training.muraja_policy import (
     FLAGGED,
     FLAGGED_ELSEWHERE,
     FLAGGED_UNATTRIBUTED,
+    LOG_REPLAY_BINARY,
     MURAJA_COMMIT,
     NOT_FLAGGED,
     NOT_GRADED,
@@ -274,5 +275,10 @@ def test_a_harness_is_located_only_for_the_pinned_commit(tmp_path: Path):
               "layout_db": str(files["layout.db"]), "muraja_commit": MURAJA_COMMIT, "compiler": "swift"}
     (root / "harness.json").write_text(json.dumps(record))
     assert Harness.locate(tmp_path).muraja_commit == MURAJA_COMMIT
+    # a build from before the log replay has no log replay binary
+    assert Harness.locate(tmp_path, binary=LOG_REPLAY_BINARY) is None
+    (root / "harness.json").write_text(json.dumps(record | {LOG_REPLAY_BINARY: str(files["bin"])}))
+    assert Harness.locate(tmp_path, binary=LOG_REPLAY_BINARY).binary == files["bin"]
+    assert Harness.locate(tmp_path, commit="other") is None
     (root / "harness.json").write_text(json.dumps(record | {"muraja_commit": "other"}))
     assert Harness.locate(tmp_path) is None

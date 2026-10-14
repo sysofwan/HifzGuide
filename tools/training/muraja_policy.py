@@ -125,6 +125,10 @@ HARNESS_ROOT = Path(os.environ.get("MURAJA_HARNESS_DIR", Path.home() / ".cache/h
 BUILD_SCRIPT = Path(__file__).parent.parent / "muraja_harness" / "build.sh"
 #: How many harness binaries grade at once (each request is an independent session).
 HARNESS_WORKERS = os.cpu_count() or 1
+#: ``harness.json``'s keys for the two binaries ``build.sh`` builds: the item harness
+#: (``muraja_harness/main.swift``) and the device-log replay (``muraja_harness/log_replay.swift``).
+ITEM_BINARY = "binary"
+LOG_REPLAY_BINARY = "log_replay_binary"
 
 FLAGGED = "flagged"
 FLAGGED_ELSEWHERE = "flagged_elsewhere"
@@ -492,18 +496,24 @@ class Harness:
     compiler: str
 
     @classmethod
-    def locate(cls, root: Path = HARNESS_ROOT) -> Harness | None:
-        """The harness built for :data:`MURAJA_COMMIT`, or ``None`` when there is none."""
-        manifest = root / MURAJA_COMMIT / "harness.json"
+    def locate(
+        cls, root: Path = HARNESS_ROOT, commit: str = MURAJA_COMMIT, binary: str = ITEM_BINARY
+    ) -> Harness | None:
+        """One binary (``harness.json``'s ``binary`` key: :data:`ITEM_BINARY` or
+        :data:`LOG_REPLAY_BINARY`) of the harness built for ``commit``, or ``None`` when there
+        is none."""
+        manifest = root / commit / "harness.json"
         if not manifest.exists():
             return None
         record = json.loads(manifest.read_text(encoding="utf-8"))
+        if binary not in record:
+            return None
         harness = cls(
-            Path(record["binary"]), Path(record["quran_db"]), Path(record["layout_db"]),
+            Path(record[binary]), Path(record["quran_db"]), Path(record["layout_db"]),
             record["muraja_commit"], record["compiler"],
         )
         present = all(p.exists() for p in (harness.binary, harness.quran_db, harness.layout_db))
-        return harness if present and harness.muraja_commit == MURAJA_COMMIT else None
+        return harness if present and harness.muraja_commit == commit else None
 
     def run(self, requests: Iterable[dict], workers: int = HARNESS_WORKERS) -> tuple[dict, list[dict]]:
         """The build record the binary prints, and one result per request and scoring, in
@@ -527,8 +537,8 @@ class Harness:
             env={**os.environ, "QURAN_LAYOUT_DB_PATH": str(self.layout_db)},
         )
         build, *results = (json.loads(line) for line in completed.stdout.splitlines() if line)
-        if build["muraja_commit"] != MURAJA_COMMIT:
-            raise ValueError(f"the harness was built from {build['muraja_commit']}, not {MURAJA_COMMIT}")
+        if build["muraja_commit"] != self.muraja_commit:
+            raise ValueError(f"the harness was built from {build['muraja_commit']}, not {self.muraja_commit}")
         return build, results
 
 
@@ -580,12 +590,26 @@ def site_outcome(
     return SiteGrade(FLAGGED if marked & marks[where.group] else FLAGGED_ELSEWHERE, shown, errors)
 
 
+def engine_runs(scorings: Sequence[Scoring]) -> list[dict]:
+    """The engine runs a harness request asks for: one per distinct engine configuration among
+    ``scorings``, each named by its :attr:`Scoring.engine_name`."""
+    engines = {s.engine_name: s for s in scorings}
+    return [
+        {
+            "name": name,
+            "mode": s.mode,
+            "soft_pairs_enabled": s.soft_pairs_enabled,
+            "shaddah_suppression": s.shaddah_suppression,
+        }
+        for name, s in sorted(engines.items())
+    ]
+
+
 def build_request(item: Item, text: MurajaText, scorings: Sequence[Scoring]) -> tuple[dict, dict]:
     """The harness request for an item (one engine run per distinct engine configuration), and
     where each of its sites sits on Muraja's reference."""
     where = {site.site_id: text.locate(site) for site in item.sites}
     surah, ayah = _ayah(item.sites[0])
-    engines = {s.engine_name: s for s in scorings}
     return {
         "item": item.key,
         "surah": surah,
@@ -593,15 +617,7 @@ def build_request(item: Item, text: MurajaText, scorings: Sequence[Scoring]) -> 
         "start_word": text.start_word(item.sites[0]),
         "report_words": sorted({w.word for w in where.values() if w is not None}),
         "checks": list(item.checks),
-        "scorings": [
-            {
-                "name": name,
-                "mode": s.mode,
-                "soft_pairs_enabled": s.soft_pairs_enabled,
-                "shaddah_suppression": s.shaddah_suppression,
-            }
-            for name, s in sorted(engines.items())
-        ],
+        "scorings": engine_runs(scorings),
     }, where
 
 

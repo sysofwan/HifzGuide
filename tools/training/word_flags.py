@@ -54,7 +54,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from tadabur.exclusions import Exclusions
-from tadabur.truth_sites import CONSONANTS, SOFT_PAIRS, SUKUN, UNFORGIVEN_PAIRS
+from tadabur.truth_sites import CONSONANTS, SOFT_PAIRS, SUKUN, TARGET_PAIRS, UNFORGIVEN_PAIRS
 from tadabur.word_sample import VerifiedWord
 from training.acceptance_stats import Resample, difference_interval, ratio, unit_if_equal
 from training.muraja_policy import (
@@ -85,12 +85,14 @@ OTHER_MARK = "other"
 @dataclass(frozen=True)
 class Flag:
     """Why one flagged word is flagged: its causes, its tashkeel errors (``<mark> <dropped|
-    other>``) and the kept grade (quality shown, every error as Muraja logs it)."""
+    other>``), the target pairs among its consonant mismatches (``ح↔ه``) and the kept grade
+    (quality shown, every error as Muraja logs it)."""
 
     causes: tuple[str, ...]
     marks: tuple[str, ...]
     quality: str
     errors: tuple[str, ...]
+    pairs: tuple[str, ...] = ()
 
 
 def _pair(a: str, b: str) -> str:
@@ -187,17 +189,21 @@ def log_description(error: dict) -> str:
 def flag(grade: SiteGrade, word: str) -> Flag:
     """Why a flagged word is flagged (module docstring)."""
     tashkeel = [e for e in grade.errors if e["kind"]["type"] == "tashkeel"]
+    pairs: set[str] = set()
     if grade.quality == SKIPPED_QUALITY:
         causes = {SKIPPED}
     elif grade.quality == TASHKEEL_ERROR:
         causes = {TASHKEEL} if tashkeel else set()
     else:
         causes = {c for e in grade.errors if (c := consonant_cause(e, word)) is not None}
+        pairs = {pair for e in grade.errors if e["kind"]["type"] == "mismatch"
+                 and (pair := _pair(e["kind"]["expected"], e["kind"]["heard"])) in TARGET_PAIRS}
     return Flag(
         causes=tuple(c for c in CAUSES if c in causes) or (UNRECORDED,),
         marks=tuple(sorted(tashkeel_mark(e) for e in tashkeel)) if TASHKEEL in causes else (),
         quality=grade.quality,
         errors=tuple(log_description(e) for e in grade.errors),
+        pairs=tuple(sorted(pairs)),
     )
 
 

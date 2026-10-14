@@ -760,3 +760,16 @@ def test_two_frames_or_more_are_the_extractors_own_features():
     assert real == 1 and torch.isfinite(pairs).all() and not (pairs[0, :80] == 0).all()
     pairs, real = dc.Decoder("x", torch.nn.Linear(1, 1), extractor, CPU).device_pairs(piece)
     assert real == len(raw) == 99 and torch.equal(pairs[:real], raw)
+
+
+def test_every_block_is_cut_from_one_inference_per_check():
+    extractor = _PairExtractor()
+    decoder = dc.Decoder("fixed", _FixedShapeModel(), extractor, CPU, batch_size=3)
+    samples = np.zeros(7 * SAMPLE_RATE, dtype=np.float32)
+
+    by_block = decoder.app_checks_at(samples, (0, 1))
+
+    spans = dc.check_schedule(len(samples))
+    assert extractor.lengths == [s.end - s.start for s in spans]  # each check decoded once
+    assert by_block[0] == decoder.app_checks(samples)
+    assert by_block[1] != by_block[0]

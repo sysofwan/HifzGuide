@@ -29,6 +29,7 @@ from training.decoding import (
     CheckSpan,
     app_check,
     app_checks,
+    app_checks_mode,
     check_schedule,
     committed_text,
     device_output_steps,
@@ -270,3 +271,66 @@ def test_only_the_stop_is_marked_and_it_is_always_sent():
     assert make_check(STOP, "", "") == {"hop": "", "overlap": "", "flush": False, "stop": True}
     assert make_check(FLUSH, "", "") == {"hop": "", "overlap": "", "flush": True}
     assert make_check(WINDOW, "بَ", "") == {"hop": "بَ", "overlap": "", "flush": False}
+
+
+# --- a transcriber committing another block (#148) --------------------------------------------
+
+
+def test_only_the_deployed_block_is_the_deployed_mode():
+    assert app_checks_mode(0) == APP_CHECKS
+    assert app_checks_mode(1) == "muraja-app-checks-v2-b1"
+    with pytest.raises(ValueError, match="block"):
+        app_checks_mode(5)
+
+
+def test_the_first_window_at_b1_sends_its_first_two_seconds_as_hop():
+    ids = row((BA, 10, 11), (TA, 48, 49), (MIM, 50, 50), (NUN, 100, 101))  # 10.5, 48.5, 50, 100.5
+    assert app_check(CheckSpan(WINDOW, 0, WINDOW_SAMPLES), ids, block=1) == {
+        "hop": "بت", "overlap": "من", "flush": False,
+    }
+
+
+def test_a_later_window_at_b1_sends_its_second_second_and_drops_its_first():
+    ids = row((BA, 10, 11), (TA, 30, 31), (MIM, 60, 61), (BA, 100, 101))
+    window = CheckSpan(WINDOW, HOP_SAMPLES, HOP_SAMPLES + WINDOW_SAMPLES)
+    assert app_check(window, ids, block=1) == {"hop": "ت", "overlap": "مب", "flush": False}
+    assert app_check(window, ids) == {"hop": "ب", "overlap": "تمب", "flush": False}
+
+
+def test_a_preview_at_b1_drops_its_committed_second_once_the_buffer_has_advanced():
+    ids = row((BA, 10, 11), (TA, 40, 41), length=50)
+    first = CheckSpan(PREVIEW, 0, 2 * SAMPLE_RATE)
+    later = CheckSpan(PREVIEW, HOP_SAMPLES, HOP_SAMPLES + 2 * SAMPLE_RATE)
+    assert app_check(first, ids, block=1)["overlap"] == "بت"
+    assert app_check(later, ids, block=1)["overlap"] == "ت"
+    only_committed = row((BA, 10, 11), length=50)
+    assert app_check(later, only_committed, block=1) is None
+
+
+def test_the_stop_at_b1_drops_its_committed_second_but_gates_on_every_timestep():
+    """After 25 steps only 3 single-step runs (97% blank: a hallucination on its own); over all
+    125 steps, 84% blank with no dominant token, so the stop is not gated."""
+    ids = row((BA, 0, 3), (TA, 5, 8), (MIM, 10, 14), (NUN, 16, 19), (TA, 100, 100),
+              (BA, 110, 110), (MIM, 120, 120))
+    stop = CheckSpan(STOP, HOP_SAMPLES, HOP_SAMPLES + WINDOW_SAMPLES)
+    assert not likely_hallucination(ids) and likely_hallucination(ids[25:])
+    assert app_check(stop, ids, block=1)["hop"] == "تبم"
+
+
+@pytest.mark.parametrize("block", [0, 1])
+def test_every_second_enters_the_transcript_once_at_either_block(block):
+    """A 9 s item reciting one letter per second, at its middle: every inference decodes the
+    letters of the seconds its audio covers, so the transcript the app commits from the
+    sequence is the nine letters in order, whichever block is committed."""
+    seconds = 9
+    letters = list(range(2, 2 + seconds))  # ب ت ث ج ح خ د ذ ر
+    spans = check_schedule(seconds * SAMPLE_RATE)
+    rows = []
+    for span in spans:
+        steps = device_output_steps(-(-frames(span.end - span.start) // 2))
+        first = span.start // SAMPLE_RATE
+        runs = [(letters[s], (s - first) * 25 + 8, (s - first) * 25 + 17)
+                for s in range(first, seconds) if (s - first) * 25 + 17 < steps]
+        rows.append(row(*runs, length=steps))
+    checks = app_checks(spans, rows, block)
+    assert committed_text(checks) == tokens_to_phonemes(letters)

@@ -356,6 +356,13 @@ number this work is accountable for. See ADR-0010.
   terms with reciter-clustered intervals (`haraka_gap_arms`, `haraka_gap_report`). Report:
   `docs/haraka-gap.md`.
 
+- **`carrier_windowing`** — the #146 measurement of whether `h448`'s target-pair swaps move
+  with the window protocol or with its weights, on carriers no model outcome selected: every
+  target-pair carrier and in-word geminate of the #85 cache's `h448`-unseen clips, read by the
+  #84 scorer's rule under whole segments and the stream at b=0 and b=1, for both models, with
+  paired windowing and weights gaps (weighted, reciter-clustered intervals). Torch-free, from
+  the committed caches. Report: `docs/carrier-windowing.md` (`carrier_windowing_doc`).
+
 - **`distill_eval`** — the release gate. Replays the deployed protocol (5 s window, 1 s hop,
   `scanCTC` collapse, `midpoint < 25` confirmation) and compares the **confirmed transcripts**.
   `--breakout` reports distance-from-breakout while a student is still blank-collapsed, when

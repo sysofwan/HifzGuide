@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
@@ -143,6 +143,12 @@ def rates(rows: Sequence[SiteRow], arm: str) -> dict[str, dict]:
     terms, unit_terms = _terms(rows, arm), _terms(unit_rows, arm)
     resample = Resample.by_cluster(clusters)
     return {name: estimate(clusters, terms[name], w, resample, unit_terms[name]) for name in RATES}
+
+
+def counts(rows: Sequence[SiteRow], arm: str) -> dict[str, int]:
+    """Each rate's unweighted numerator for one arm: how many of the row's sites it holds."""
+    unit = [replace(r, weight=1.0) for r in rows]
+    return {name: int(num.sum()) for name, (num, _) in _terms(unit, arm).items()}
 
 
 def difference(rows: Sequence[SiteRow], arm: str, other: str, rate: str = SWAP) -> dict:

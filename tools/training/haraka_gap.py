@@ -230,6 +230,26 @@ def source_manifests() -> dict[str, Path]:
             "staged_audio/clips.jsonl": REGISTRY_PATH}
 
 
+#: The one source a cache outlives a change of: later stagings add rows to the registry, so a
+#: cache is checked against the pool clips' rows in it alone (:func:`pool_audio_digest`).
+REGISTRY_SOURCE = "staged_audio/clips.jsonl"
+POOL_AUDIO = "pool_audio"
+
+
+def pool_audio_digest(registry_path: Path | None = None) -> str:
+    """SHA-256 over every mining-pool clip's audio identity in the staged-clip registry (name,
+    shard, row, length, checksum), in name order: the audio the decodes were verified against."""
+    from tadabur.mining_pool import CLIPS_PATH
+    from tadabur.staged_audio import REGISTRY_PATH, read_staged_clips
+
+    registry = read_staged_clips(registry_path or REGISTRY_PATH)
+    names = sorted(json.loads(line)["audio_filename"]
+                   for line in CLIPS_PATH.read_text(encoding="utf-8").splitlines() if line.strip())
+    identity = [[name, registry[name].shard, registry[name].row_index,
+                 registry[name].num_samples, registry[name].audio_sha256] for name in names]
+    return hashlib.sha256(json.dumps(identity).encode("utf-8")).hexdigest()
+
+
 def model_identity(model_ref: str) -> dict:
     """An immutable name for the weights: a checkpoint file's sha256, or the hub commit of
     the locally cached snapshot ``from_pretrained`` loaded."""
@@ -252,20 +272,25 @@ def write_provenance(cache_dir: Path, models: Mapping[str, str]) -> None:
         "files": {name: _sha256(cache_dir / name) for name in cache_files(sorted(models))},
         "models": {model: {"ref": ref, **model_identity(ref)} for model, ref in sorted(models.items())},
         "sources": {name: _sha256(path) for name, path in source_manifests().items()},
+        POOL_AUDIO: pool_audio_digest(),
     }
     write_text_atomically(cache_dir / PROVENANCE, json.dumps(record, indent=1, sort_keys=True) + "\n")
 
 
 def verified_provenance(cache_dir: Path, models: list[str]) -> dict:
     """The cache directory's provenance, after checking every cache file and source
-    manifest against it: a cache decoded from another pool or edited since is refused."""
+    manifest against it: a cache decoded from another pool or edited since is refused. The
+    registry may have grown since, as long as the pool clips' audio in it has not changed."""
     record = json.loads((cache_dir / PROVENANCE).read_text(encoding="utf-8"))
     for name in cache_files(models):
         if _sha256(cache_dir / name) != record["files"].get(name):
             raise ValueError(f"{cache_dir / name} does not match its recorded checksum")
     for name, path in source_manifests().items():
-        if _sha256(path) != record["sources"][name]:
-            raise ValueError(f"{path} changed since the caches were decoded against it")
+        if _sha256(path) == record["sources"][name]:
+            continue
+        if name == REGISTRY_SOURCE and record.get(POOL_AUDIO) == pool_audio_digest():
+            continue
+        raise ValueError(f"{path} changed since the caches were decoded against it")
     return record
 
 

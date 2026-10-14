@@ -162,15 +162,19 @@ def _tashkeel_outcome(site: TruthSite, readings, alignment: CarrierAlignment) ->
     return SiteOutcome(True, committed, marks, collapsed)
 
 
-def _pair_outcome(site: TruthSite, alignment: CarrierAlignment) -> SiteOutcome:
-    letter = alignment.consonants().get(site.reference_index)
+def pair_outcome(alignment: CarrierAlignment, reference_index: int) -> SiteOutcome:
+    """The consonant-commitment rule at a pair carrier (module docstring), by position: a
+    caller holding no :class:`TruthSite` (an unlabelled carrier census) reads the same rule."""
+    letter = alignment.consonants().get(reference_index)
     if letter not in CONSONANTS:
         return SiteOutcome(False, None)
     return SiteOutcome(True, letter)
 
 
-def _shaddah_outcome(site: TruthSite, alignment: CarrierAlignment) -> SiteOutcome:
-    held = alignment.decoded_run(consonant_run(site.reference, site.reference_index))
+def shaddah_outcome(alignment: CarrierAlignment, reference_index: int) -> SiteOutcome:
+    """The gemination state the decode commits on the run at ``reference_index`` of the
+    alignment's raw reference (module docstring), by position like :func:`pair_outcome`."""
+    held = alignment.decoded_run(consonant_run(alignment.raw_reference, reference_index))
     if not held:
         return SiteOutcome(False, None)
     return SiteOutcome(True, HELD if held > 1 else NOT_HELD)
@@ -198,7 +202,7 @@ def item_outcomes(sites: Iterable[TruthSite], decode: str) -> dict[str, SiteOutc
                 readings = carrier_readings(decode, reference)
             outcomes[site.site_id] = _tashkeel_outcome(site, readings, alignment)
         elif kind == SHADDAH:
-            outcomes[site.site_id] = _shaddah_outcome(site, alignment)
+            outcomes[site.site_id] = shaddah_outcome(alignment, site.reference_index)
         else:
-            outcomes[site.site_id] = _pair_outcome(site, alignment)
+            outcomes[site.site_id] = pair_outcome(alignment, site.reference_index)
     return outcomes

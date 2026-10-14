@@ -7,18 +7,21 @@ protocol or a threshold.
 
 from __future__ import annotations
 
-from training.acceptance_stats import is_sparse
 from training.carrier_windowing import (
-    ALL_DIRECTIONS,
     CACHE,
+    DIAGNOSTIC,
+    UNSEEN,
+    WEIGHTS,
+    WINDOWING,
+    WORD_SAMPLE,
+)
+from training.direction_table import (
+    ALL_DIRECTIONS,
     GEMINATE,
     MUSHAF,
     OTHER,
     SOFT_PAIRS_FAMILY,
     SWAP,
-    UNSEEN,
-    WEIGHTS,
-    WINDOWING,
 )
 
 #: The rows the cross-checks and the sensitivity show: the two pairs the owner hears
@@ -48,11 +51,11 @@ def _bounds(entry: dict) -> str:
     return f" [{_pct(entry['lower'])}, {_pct(entry['upper'])}]{_METHOD_MARKS[entry['method']]}"
 
 
-def rate_cell(entry: dict | None) -> str:
+def rate_cell(entry: dict | None, count: int | None) -> str:
     """``point [lower, upper] (count)`` in percent, the count unweighted."""
     if not entry or entry["point"] is None:
         return "–"
-    return f"{_pct(entry['point'])}{_bounds(entry)} ({entry['count']})"
+    return f"{_pct(entry['point'])}{_bounds(entry)} ({count})"
 
 
 def gap_cell(entry: dict | None) -> str:
@@ -72,8 +75,8 @@ def row_label(row: dict) -> str:
 
 
 def _size(row: dict) -> str:
-    size = f"{row['carriers']} / {row['reciters']}"
-    return f"{size} {SPARSE_MARK}" if is_sparse(row["carriers"], row["reciters"]) else size
+    size = f"{row['sites']} / {row['reciters']}"
+    return f"{size} {SPARSE_MARK}" if row["insufficient_evidence"] else size
 
 
 def _arm_name(arm_name: str) -> str:
@@ -90,7 +93,8 @@ def rate_table(rows: list[dict], arms: list[str], rate: str) -> list[str]:
     lines = ["| row | carriers / reciters | " + " | ".join(map(_arm_name, arms)) + " |",
              "|---|---|" + "---|" * len(arms)]
     for row in rows:
-        cells = [rate_cell(row.get("rates", {}).get(a, {}).get(rate)) for a in arms]
+        cells = [rate_cell(row.get("arms", {}).get(a, {}).get(rate),
+                           row.get("counts", {}).get(a, {}).get(rate)) for a in arms]
         lines.append(f"| {row_label(row)} | {_size(row)} | " + " | ".join(cells) + " |")
     return lines
 
@@ -168,7 +172,7 @@ def _population(report: dict) -> list[str]:
         "and audio past the last full window (never decoded), commit nothing and count as "
         "`other`. How often that happens, per arm (unweighted, `h448`-unseen carriers):",
         "",
-        *uncommitted_table(report["pool"]["populations"][UNSEEN]["uncommitted"]),
+        *uncommitted_table(report["pool"][UNSEEN]["uncommitted"]),
         "",
     ]
 
@@ -191,21 +195,26 @@ def _verdicts(report: dict) -> list[str]:
     ]
 
 
-def _app_checks(report: dict) -> list[str]:
-    checks = report["app_checks"]
+#: What each cross-check group's items are, for the page.
+_APP_GROUPS = {
+    DIAGNOSTIC: ("the diagnostic items", "`truth_sites/waqf_boundaries.jsonl`: whole clips chosen "
+                 "for their waqf boundaries, not on any model outcome; `spans` is the whole "
+                 "clip, not its waqf segments, so it is not the pool's `whole`"),
+    WORD_SAMPLE: ("the word sample's segments", "`ship_a/word_sample.jsonl`: the pool segment of "
+                  "each sampled word, one word per held-out reciter drawn; every pair carrier "
+                  "of the segment, not only the sampled word's; `spans` is the segment whole"),
+}
+
+
+def _app_check(name: str, checks: dict) -> list[str]:
+    title, what = _APP_GROUPS[name]
     rows = headline_rows(checks["rows"], HEADLINE_PAIRS)
     return [
-        "## Cross-check: Muraja's own checks on the diagnostic items",
+        f"### {title[0].upper()}{title[1:]}",
         "",
-        f"The truth baseline's diagnostic items (`truth_sites/waqf_boundaries.jsonl`: "
-        f"{checks['items']} whole clips chosen for their waqf boundaries, not on any model "
-        f"outcome) have committed decodes in three arms per model: `spans` (the clip whole), "
-        f"`stream_b0` and `checks`, the transcript Muraja commits from its own check sequence "
-        f"(`training.truth_baseline`). {checks['h448_linked_items']} are tied to `h448`'s "
-        f"training or selection and left out, leaving {checks['kept_items']} clips of "
-        f"{checks['reciters']} reciters; each weighs 1. `spans` is the whole clip, not its "
-        "waqf segments, so it is not the pool's `whole`. Pair carriers only (these items "
-        "carry no word offsets to tell in-word geminates). Swap rate:",
+        f"{checks['items']} items ({what}). {checks['h448_linked_items']} are tied to "
+        f"`h448`'s training or selection and left out, leaving {checks['kept_items']} items of "
+        f"{checks['reciters']} reciters. Swap rate:",
         "",
         *rate_table(rows, checks["arms"], SWAP),
         "",
@@ -216,9 +225,24 @@ def _app_checks(report: dict) -> list[str]:
     ]
 
 
+def _app_checks(report: dict) -> list[str]:
+    return [
+        "## Cross-check: Muraja's own checks on the truth baseline's unselected items",
+        "",
+        "The truth baseline's items have committed decodes in three arms per model: `spans` "
+        "(the item whole), `stream_b0` and `checks`, the transcript Muraja commits from its own "
+        "check sequence (`training.truth_baseline`). Pair carriers only (the diagnostic items "
+        "carry no word offsets to tell in-word geminates); each item weighs 1, so these are "
+        "unweighted, labelled cross-checks, not population estimates.",
+        "",
+        *[line for name, checks in report["app_checks"].items()
+          for line in _app_check(name, checks)],
+    ]
+
+
 def render(report: dict) -> str:
-    pool = report["pool"]
-    main_rows = pool["populations"][UNSEEN]["rows"]
+    pool = report["pool"][UNSEEN]
+    main_rows = pool["rows"]
     settings = report["decode_settings"]
     bootstrap = report["bootstrap"]
     lines = [
@@ -251,7 +275,8 @@ def render(report: dict) -> str:
         "a `ذ`, `ظ`, `س`, `ط` or `ق` carrier counts in both its pairs. In-word geminates: the "
         "first of a doubled consonant whose run stays inside one word |",
         "| outcome | what the #84 scorer reads at the carrier (`training.site_outcomes`, the "
-        "`contrast_attribution.aligned_consonants` alignment): **swap** = the partner letter "
+        "`contrast_attribution.aligned_consonants` alignment), rated by `training.direction_table` "
+        "as #90's verified sites are: **swap** = the partner letter "
         "(a geminate: one consonant), **mushaf** = the mushaf's letter (geminate held), "
         "**other** = anything else, another letter or nothing aligned |",
         "| weights | 1 / the clip's inclusion probability (`mining_pool/clips.jsonl`) |",
@@ -295,11 +320,11 @@ def render(report: dict) -> str:
         f"The same rows on all {report['population'][CACHE]['clips']:,} cached clips, the "
         f"{report['population']['h448_linked_clips']} `h448`-linked ones included. Swap rate:",
         "",
-        *rate_table(headline_rows(pool["populations"][CACHE]["rows"]), pool["arms"], SWAP),
+        *rate_table(headline_rows(report["pool"][CACHE]["rows"]), pool["arms"], SWAP),
         "",
         "Paired gaps (points):",
         "",
-        *gap_table(headline_rows(pool["populations"][CACHE]["rows"]),
+        *gap_table(headline_rows(report["pool"][CACHE]["rows"]),
                    [*pool["gaps"][WINDOWING], *pool["gaps"][WEIGHTS]]),
         "",
         *_verdicts(report),

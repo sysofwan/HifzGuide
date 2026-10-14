@@ -14,36 +14,44 @@ import pytest
 from tadabur.mining_pool import PoolSegment
 from tadabur.truth_sites import HELD, NOT_HELD
 from training.carrier_windowing import (
-    ALL_DIRECTIONS,
+    APP_PROTOCOLS,
     CACHE,
-    FAMILIES,
-    GEMINATE,
-    LETTER_DIRECTIONS,
-    MUSHAF,
-    OTHER,
+    DIAGNOSTIC,
+    LETTER_PAIRS,
     ROWS,
-    SOFT_PAIRS_FAMILY,
-    SWAP,
+    SPANS,
     UNSEEN,
     WEIGHTS,
     WINDOWING,
-    Carrier,
+    WORD_SAMPLE,
     Clip,
     Position,
     RowKey,
-    app_check_report,
     cached_plans,
+    carrier_sites,
     clip_commits,
+    gap_report,
     geminate_positions,
     joined_reference,
-    outcome_indicators,
     owner_verdicts,
     pair_positions,
     pool_report,
     row_members,
     row_report,
+    uncommitted,
 )
 from training.carrier_windowing_doc import gap_cell, rate_cell, render
+from training.direction_table import (
+    ALL_DIRECTIONS,
+    GEMINATE,
+    MUSHAF,
+    OTHER,
+    SOFT_PAIRS_FAMILY,
+    SWAP,
+    direction,
+)
+from training.site_outcomes import SiteOutcome
+from training.truth_scorer import SiteRow
 
 # Two waqf segments of one clip: ``ك`` ``ت`` ``ه`` are pair letters in the first, ``ط``
 # (in two pairs) and ``ه`` in the second.
@@ -72,15 +80,6 @@ def test_an_in_word_geminate_is_a_carrier_and_one_across_a_word_boundary_is_not(
     assert geminate_positions(0, across) == []
 
 
-def test_every_letter_of_a_target_pair_has_its_directions():
-    assert LETTER_DIRECTIONS["ط"] == ("ط→ت", "ط→ق")
-    assert LETTER_DIRECTIONS["ت"] == ("ت→ط",)
-    assert set(LETTER_DIRECTIONS["س"]) == {"س→ش", "س→ص"}
-    directions = [d for family, ds in FAMILIES.items() if family != GEMINATE for d in ds]
-    assert sorted(directions) == sorted(d for ds in LETTER_DIRECTIONS.values() for d in ds)
-    assert len(directions) == 18
-
-
 def test_rows_pool_each_family_after_its_directions():
     assert ROWS[-1] == RowKey(GEMINATE, GEMINATE)
     assert RowKey(SOFT_PAIRS_FAMILY, ALL_DIRECTIONS) in ROWS
@@ -96,95 +95,118 @@ def test_the_stream_reference_joins_segments_with_a_word_space():
 
 def test_whole_reads_each_segment_and_the_stream_reads_the_joined_reference():
     positions = tuple(p for n, ref in enumerate(SEGMENTS) for p in pair_positions(n, ref))
-    clip = Clip("c", 1, 1.0, SEGMENTS, positions,
+    clip = Clip("c", "1:1", 1, 1.0, SEGMENTS, (0, 16_000), positions,
                 by_segment={"m/whole": ("كَتَبَلَهُم", "طَابَءَمرُهُم")},
                 by_span={
                     "m/stream_b0": "كَتَبَلَهُمقَابَءَمرُهُم",  # the second segment's ط heard as ق
                     "m/stream_b1": "كَتَبَلَهُم",  # the stream never reached the second segment
                 })
     commits = clip_commits(clip)
-    assert commits["m/whole"] == ["ك", "ت", "ه", "ط", "ه"]
-    assert commits["m/stream_b0"] == ["ك", "ت", "ه", "ق", "ه"]
-    assert commits["m/stream_b1"][:3] == ["ك", "ت", "ه"]
-    assert commits["m/stream_b1"][3:] == [None, None]
+    letters = {a: [o.committed for o in outcomes] for a, outcomes in commits.items()}
+    assert letters["m/whole"] == ["ك", "ت", "ه", "ط", "ه"]
+    assert letters["m/stream_b0"] == ["ك", "ت", "ه", "ق", "ه"]
+    assert letters["m/stream_b1"] == ["ك", "ت", "ه", None, None]
 
 
 def test_a_geminate_commits_held_single_or_nothing():
     segment = _segment("رَببِ", (0, 5))
     positions = tuple(geminate_positions(0, segment))
-    clip = Clip("c", 1, 1.0, (segment.reference,), positions, by_segment={"m/whole": ("رَببِ",)},
-                by_span={"m/stream_b0": "رَبِ", "m/stream_b1": "سَقَ"})
+    clip = Clip("c", "1:1", 1, 1.0, (segment.reference,), (0,), positions,
+                by_segment={"m/whole": ("رَببِ",)}, by_span={"m/stream_b0": "رَبِ", "m/stream_b1": "سَقَ"})
     commits = clip_commits(clip)
-    assert commits == {"m/whole": [HELD], "m/stream_b0": [NOT_HELD], "m/stream_b1": [None]}
+    assert {a: [o.committed for o in v] for a, v in commits.items()} == {
+        "m/whole": [HELD], "m/stream_b0": [NOT_HELD], "m/stream_b1": [None]}
 
 
 # --- rows and statistics ------------------------------------------------------------------
 
 
-def _carrier(letter: str, values: dict, reciter: int = 1, weight: float = 1.0,
-             geminate: bool = False, clip: str = "c") -> Carrier:
-    return Carrier(clip, reciter, weight, letter, geminate, values)
+def _clip(reference: str, geminate: bool = False, name: str = "c", reciter: int = 1,
+          weight: float = 1.0) -> tuple[Clip, Position]:
+    clip = Clip(name, "1:1", reciter, weight, (reference,), (0,),
+                (Position(0, 0, geminate),), {}, {})
+    return clip, clip.positions[0]
+
+
+def _rows(letter: str, committed: dict, geminate: bool = False, **kwargs) -> list[SiteRow]:
+    """One carrier of ``letter`` as its site rows, each arm committing ``committed[arm]``."""
+    clip, position = _clip(f"{letter}{letter if geminate else ''}َ", geminate, **kwargs)
+    outcomes = {a: SiteOutcome(v is not None, v) for a, v in committed.items()}
+    return [SiteRow(site, clip.weight, clip.reciter_id, outcomes, {})
+            for site in carrier_sites(clip, position)]
+
+
+def test_a_carrier_is_one_site_per_direction_it_sits_in():
+    clip, position = _clip("طَ")
+    assert [direction(s) for s in carrier_sites(clip, position)] == ["ط→ت", "ط→ق"]
+    clip, position = _clip("ببَ", geminate=True)
+    assert [direction(s) for s in carrier_sites(clip, position)] == [GEMINATE]
+    assert LETTER_PAIRS["ط"] == ("ت↔ط", "ط↔ق") and LETTER_PAIRS["ت"] == ("ت↔ط",)
 
 
 def test_a_carrier_in_two_pairs_counts_in_both_and_once_per_family_row():
-    taa = _carrier("ط", {"a": "ق"})
-    assert [d for d, _ in row_members([taa], RowKey("ط↔ق", "ط→ق"))] == ["ط→ق"]
-    assert [d for d, _ in row_members([taa], RowKey(SOFT_PAIRS_FAMILY, ALL_DIRECTIONS))] == ["ط→ت"]
-    assert [d for d, _ in row_members([taa], RowKey("ط↔ق", ALL_DIRECTIONS))] == ["ط→ق"]
-    assert row_members([taa], RowKey("س↔ش", ALL_DIRECTIONS)) == []
+    taa = _rows("ط", {"a": "ق"})
+    assert [direction(r.site) for r in row_members(taa, RowKey("ط↔ق", "ط→ق"))] == ["ط→ق"]
+    assert [direction(r.site) for r in row_members(taa, RowKey(SOFT_PAIRS_FAMILY, ALL_DIRECTIONS))
+            ] == ["ط→ت"]
+    assert len(row_members(taa, RowKey("ط↔ق", ALL_DIRECTIONS))) == 1
+    assert row_members(taa, RowKey("س↔ش", ALL_DIRECTIONS)) == []
+    # Counted once as a carrier, whatever its directions.
+    assert uncommitted(taa, ["a"])["a"]["pair"] == {"carriers": 1, "uncommitted": 0}
 
 
-def test_outcomes_are_read_against_each_carriers_own_direction():
-    members = [("ط→ق", _carrier("ط", {"a": "ق"})), ("ط→ق", _carrier("ط", {"a": "ط"})),
-               ("ق→ط", _carrier("ق", {"a": "ك"})), ("ق→ط", _carrier("ق", {"a": None})),
-               (GEMINATE, _carrier("ب", {"a": NOT_HELD}, geminate=True))]
-    indicators = outcome_indicators(members, "a")
-    assert indicators[SWAP].tolist() == [1, 0, 0, 0, 1]
-    assert indicators[MUSHAF].tolist() == [0, 1, 0, 0, 0]
-    assert indicators[OTHER].tolist() == [0, 0, 1, 1, 0]
+def test_outcomes_are_read_against_each_sites_own_direction():
+    rows = [*_rows("ط", {"a": "ق"}, reciter=1), *_rows("ط", {"a": "ط"}, reciter=2),
+            *_rows("ق", {"a": "ك"}, reciter=3), *_rows("ق", {"a": None}, reciter=4),
+            *_rows("ب", {"a": NOT_HELD}, geminate=True, reciter=5)]
+    tq = row_report(row_members(rows, RowKey("ط↔ق", ALL_DIRECTIONS)), ["a"], [])
+    assert tq["counts"]["a"] == {SWAP: 1, MUSHAF: 1, OTHER: 2}
+    gem = row_report(row_members(rows, RowKey(GEMINATE, GEMINATE)), ["a"], [])
+    assert gem["counts"]["a"] == {SWAP: 1, MUSHAF: 0, OTHER: 0}
 
 
-def _population(n_reciters: int = 30) -> list[Carrier]:
+def _population(n_reciters: int = 30) -> list[SiteRow]:
     """Three ``ط`` carriers per reciter, decoded by every pool arm: the b=0 stream swaps
     more than the whole decode, b=1 as the whole decode does, and both models alike."""
     rng = np.random.default_rng(0)
-    carriers = []
+    rows = []
     for reciter in range(n_reciters):
         for k in range(3):
             whole = "ق" if rng.random() < 0.1 else "ط"
             stream = "ق" if rng.random() < 0.4 else ("ط" if k else None)
             by_protocol = {"whole": whole, "stream_b0": stream, "stream_b1": whole}
-            carriers.append(_carrier(
-                "ط", {f"{m}/{p}": v for m in ("base", "h448") for p, v in by_protocol.items()},
-                reciter=reciter, weight=1 + reciter % 3))
-    return carriers
+            rows += _rows("ط", {f"{m}/{p}": v for m in ("base", "h448")
+                                for p, v in by_protocol.items()},
+                          name=f"c{reciter}-{k}", reciter=reciter, weight=1 + reciter % 3)
+    return rows
 
 
 def test_a_paired_gap_is_the_difference_of_the_two_rates_on_one_draw():
     members = row_members(_population(), RowKey("ط↔ق", "ط→ق"))
     report = row_report(members, ["base/whole", "base/stream_b0"],
                         [("base/stream_b0", "base/whole")])
-    whole, stream = report["rates"]["base/whole"], report["rates"]["base/stream_b0"]
+    whole, stream = report["arms"]["base/whole"], report["arms"]["base/stream_b0"]
     gap = report["gaps"]["base/stream_b0 − base/whole"]
     assert math.isclose(gap["point"], stream[SWAP]["point"] - whole[SWAP]["point"])
     assert gap["method"] == "bootstrap" and gap["lower"] < gap["point"] < gap["upper"]
     for rates in (whole, stream):
         assert math.isclose(sum(rates[r]["point"] for r in (SWAP, MUSHAF, OTHER)), 1.0)
-    assert report["carriers"] == 90 and report["reciters"] == 30
-    assert stream[SWAP]["count"] == sum(c.committed["base/stream_b0"] == "ق"
-                                        for _, c in members)
+    assert report["sites"] == 90 and report["reciters"] == 30
+    assert report["counts"]["base/stream_b0"][SWAP] == sum(
+        r.outcomes["base/stream_b0"].committed == "ق" for r in members)
 
 
 def test_rates_are_weighted_by_inverse_inclusion_probability():
-    members = [("ط→ق", _carrier("ط", {"a": "ق"}, reciter=1, weight=3.0)),
-               ("ط→ق", _carrier("ط", {"a": "ط"}, reciter=2, weight=1.0))]
-    report = row_report(members, ["a"], [])
-    assert report["rates"]["a"][SWAP]["point"] == pytest.approx(0.75)
-    assert report["rates"]["a"][SWAP]["method"] == "none"  # sparse and unequally weighted
+    rows = [*_rows("ط", {"a": "ق"}, reciter=1, weight=3.0),
+            *_rows("ط", {"a": "ط"}, reciter=2, weight=1.0)]
+    report = row_report(row_members(rows, RowKey("ط↔ق", "ط→ق")), ["a"], [])
+    assert report["arms"]["a"][SWAP]["point"] == pytest.approx(0.75)
+    assert report["arms"]["a"][SWAP]["method"] == "none"  # sparse and unequally weighted
 
 
 def test_an_empty_row_reports_its_size_only():
-    assert row_report([], ["a"], []) == {"carriers": 0, "reciters": 0}
+    assert row_report([], ["a"], []) == {"sites": 0, "reciters": 0,
+                                         "insufficient_evidence": True}
 
 
 def test_cached_plans_must_be_exactly_the_streamed_clips():
@@ -221,9 +243,11 @@ def test_owner_verdicts_count_only_answered_partner_swaps_the_base_got_right():
 
 
 def _report() -> dict:
-    app = [_carrier("س", {f"{m}/{p}": "ش" if r % 4 == 0 else "س"
-                          for m in ("base", "h448") for p in ("spans", "stream_b0", "checks")},
-                    reciter=r) for r in range(24)]
+    app = [row for r in range(24) for row in _rows(
+        "س", {f"{m}/{p}": "ش" if r % 4 == 0 else "س" for m in ("base", "h448")
+             for p in APP_PROTOCOLS}, name=f"i{r}", reciter=r)]
+    checks = {"items": 5, "h448_linked_items": 1, "kept_items": 4, "reciters": 4,
+              **gap_report(app, APP_PROTOCOLS, SPANS)}
     population = {"pool": {"clips": 9, "reciters": 3}, "not_in_cache": {"re_read": 1},
                   CACHE: {"clips": 8, "reciters": 3, "segments": 10}, "h448_linked_clips": 1,
                   UNSEEN: {"clips": 7, "reciters": 3, "segments": 9,
@@ -238,29 +262,29 @@ def _report() -> dict:
         "bootstrap": {"replicates": 10_000, "seed": 1},
         "segment_separator": " ",
         "population": population,
-        "pool": pool_report(_population(), {"c"}),
+        "pool": pool_report(_population(), {f"c{r}-{k}" for r in range(20) for k in range(3)}),
         "owner_verdicts": {"ط↔ق": {MUSHAF: 2}, SOFT_PAIRS_FAMILY: {}},
-        "app_checks": app_check_report(app, {"items": 5, "h448_linked_items": 1,
-                                             "kept_items": 4, "reciters": 4}),
+        "app_checks": {DIAGNOSTIC: checks, WORD_SAMPLE: checks},
     }
 
 
 def test_the_page_is_rendered_from_the_report():
     report = _report()
-    assert set(report["pool"]["gaps"]) == {WINDOWING, WEIGHTS}
+    assert set(report["pool"][UNSEEN]["gaps"]) == {WINDOWING, WEIGHTS}
+    assert report["pool"][UNSEEN]["rows"][ROWS.index(RowKey("ط↔ق", "ط→ق"))]["sites"] == 60
     page = render(report)
     assert page.startswith("# Windowing vs weights at target-pair carriers")
     assert "Generated by `python -m training.carrier_windowing`" in page
-    assert "| ط→ق | 90 / 30 |" in page
+    assert "| ط→ق | 60 / 20 |" in page and "| ط→ق | 90 / 30 |" in page
     assert "h448 b0 − h448 whole" in page and "h448 b1 − base b1" in page
-    assert "base checks − base spans" in page
+    assert "base checks − base spans" in page and "### The word sample's segments" in page
     assert "-0.0" not in page
 
 
 def test_cells_mark_the_interval_method_and_carry_the_count():
-    entry = {"point": 0.125, "lower": 0.05, "upper": 0.2, "method": "bootstrap", "count": 3}
-    assert rate_cell(entry) == "12.5 [5.0, 20.0] (3)"
-    assert rate_cell({**entry, "method": "wilson"}) == "12.5 [5.0, 20.0] W (3)"
-    assert rate_cell({**entry, "method": "none"}) == "12.5 (n/c) (3)"
+    entry = {"point": 0.125, "lower": 0.05, "upper": 0.2, "method": "bootstrap"}
+    assert rate_cell(entry, 3) == "12.5 [5.0, 20.0] (3)"
+    assert rate_cell({**entry, "method": "wilson"}, 3) == "12.5 [5.0, 20.0] W (3)"
+    assert rate_cell({**entry, "method": "none"}, 3) == "12.5 (n/c) (3)"
     assert gap_cell({"point": -0.0001, "lower": "-inf", "upper": 0.0, "method": "bootstrap"}) \
         == "+0.0 [−∞, 0.0]"

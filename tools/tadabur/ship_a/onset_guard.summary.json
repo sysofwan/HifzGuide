@@ -1,14 +1,14 @@
 {
  "all": {
   "chosen_candidate_calls_trimmed": 99,
-  "decided_by_owner_note": 6,
+  "decided_by_owner_note": 19,
   "detector_trimmed": 0,
   "exposed": 187,
   "file_start": 108,
   "items": 2423,
-  "onset_trimmed": 6,
+  "onset_trimmed": 19,
   "segmenter_cut": 79,
-  "site": 2417
+  "site": 2404
  },
  "calibration": {
   "candidates": {
@@ -197,7 +197,7 @@
  },
  "detector_decides": null,
  "inputs": {
-  "listening_session/verdicts.jsonl": "d57f8073f3a0d58f28fd70380c43d4a5a42b34fe30d0934c4b2a43a0ded2b334",
+  "listening_session/verdicts.jsonl": "447ffc05633231f7f9d1ffcd404144445254344146fec5c856f92124d80c060d",
   "ship_a/onset_guard.scores.jsonl": "d7344c28e9da20d9c6b518c3a780c3e5cabe3550a1e2c064645e7b4037ba7c28",
   "ship_a/onset_guard.synthetic.jsonl": "30bd566d9423d01d2ce04b365ba66debca8c6207340d2bd9c72823be3729aed8",
   "ship_a/sites.jsonl": "8eaf6d0dbeb9fcf328bcc8d24c9b08b49580045d0f677f30dd5bb6813eb730dc",
@@ -205,6 +205,12 @@
   "ship_a/worklist.jsonl": "097181fd5d56316c057c5f615812e262ab73bcf4a788d6f5e75ef67cd3576bb0"
  },
  "note_readings": [
+  {
+   "item_id": "new_audit:tadabur_spk0012_S5_A151_d8eccf7c_000127.wav#2@47:shaddah",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
   {
    "item_id": "new_audit:tadabur_spk0017_S3_A37_a74cb622_000020.wav#0@2:shaddah",
    "note": "Trimming issues",
@@ -230,16 +236,94 @@
    "waqf": true
   },
   {
+   "item_id": "new_audit:tadabur_spk0056_S1_A121_99c51e3a_000095.wav#0@2:shaddah",
+   "note": "trim;",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0062_S8_A31_f8d7a6d1_000007.wav#0@2:shaddah",
+   "note": "trim;",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0066_S23_A3_33c43374_000002.wav#0@2:shaddah",
+   "note": "trim;",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0066_S5_A151_16571e50_000066.wav#0@158:shaddah",
+   "note": "Waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0093_S1_A103_fc1902b2_000074.wav#0@77:shaddah",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0095_S17_A21_ea9661c4_000012.wav#0@192:shaddah",
+   "note": "Waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0095_S6_A168_52df3cfc_000013.wav#0@32:shaddah",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0101_S29_A2_863c0539_000000.wav#0@9:shaddah",
+   "note": "trim issues",
+   "trim": true,
+   "waqf": null
+  },
+  {
    "item_id": "new_audit:tadabur_spk0103_S1_A103_3ab1721d_000058.wav#0@77:shaddah",
    "note": "waqf",
    "trim": null,
    "waqf": true
   },
   {
+   "item_id": "new_audit:tadabur_spk0122_S39_A64_ca24ba2f_000085.wav#0@2:shaddah",
+   "note": "Early trimmed",
+   "trim": true,
+   "waqf": null
+  },
+  {
    "item_id": "new_audit:tadabur_spk0148_S15_A103_65513671_000094.wav#0@73:shaddah",
    "note": "This is between  a pause",
    "trim": null,
    "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0167_S17_A15_6d312abb_000008.wav#0@63:shaddah",
+   "note": "Waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0205_S10_A44_5bb52227_000036.wav#1@56:shaddah",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0229_S1_A268_2de8e1c7_000000.wav#0@2:shaddah",
+   "note": "trim;",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0269_S3_A56_c957a491_000027.wav#0@2:shaddah",
+   "note": "trim issues",
+   "trim": true,
+   "waqf": null
   },
   {
    "item_id": "new_audit:tadabur_spk0307_S1_A121_81a47bca_000082.wav#0@2:shaddah",
@@ -250,6 +334,12 @@
   {
    "item_id": "new_audit:tadabur_spk0307_S1_A194_81a47bca_000131.wav#0@2:shaddah",
    "note": "May have trimming issues",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0307_S1_A268_81a47bca_000186.wav#0@2:shaddah",
+   "note": "trim issues",
    "trim": true,
    "waqf": null
   },
@@ -266,49 +356,91 @@
    "waqf": true
   },
   {
+   "item_id": "new_audit:tadabur_spk0448_S62_A2_f8a126fb_000000.wav#0@2:shaddah",
+   "note": "Trim issues",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0495_S1_A275_a5cd5045_000250.wav#0@2:shaddah",
+   "note": "trim;",
+   "trim": true,
+   "waqf": null
+  },
+  {
    "item_id": "new_audit:tadabur_spk0586_S3_A141_c1209edf_000098.wav#0@2:shaddah",
    "note": "trim issues",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0678_S22_A2_f79932b1_000000.wav#0@2:shaddah",
+   "note": "trim;",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "new_audit:tadabur_spk0720_S11_A101_7fa2334d_000071.wav#0@2:shaddah",
+   "note": "trim issues",
+   "trim": true,
+   "waqf": null
+  },
+  {
+   "item_id": "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32",
+   "note": "waqf",
+   "trim": null,
+   "waqf": true
+  },
+  {
+   "item_id": "word_sample:tadabur_spk0360_S11_A49_4672c14f_000050.wav#0@0",
+   "note": "trim;",
    "trim": true,
    "waqf": null
   }
  ],
  "owner_check": {
-  "answered_exposed": 30,
+  "answered_exposed": 104,
   "candidates": {
    "ctc_first_posterior": {
-    "fp": 18,
-    "positives": 6,
+    "fp": 54,
+    "positives": 18,
     "precision": 0.25,
     "recall": 1.0,
-    "tp": 6
+    "tp": 18
    },
    "ctc_onset_llr": {
-    "fp": 20,
-    "positives": 6,
-    "precision": 0.2308,
+    "fp": 62,
+    "positives": 18,
+    "precision": 0.225,
     "recall": 1.0,
-    "tp": 6
+    "tp": 18
    },
    "decode_leading_missing": {
-    "fp": 13,
-    "positives": 6,
-    "precision": 0.3158,
+    "fp": 31,
+    "positives": 18,
+    "precision": 0.3673,
     "recall": 1.0,
-    "tp": 6
+    "tp": 18
    },
    "onset_level_db": {
-    "fp": 17,
-    "positives": 6,
-    "precision": 0.2609,
-    "recall": 1.0,
-    "tp": 6
+    "fp": 56,
+    "positives": 18,
+    "precision": 0.2113,
+    "recall": 0.8333,
+    "tp": 15
    },
    "vad_speech_frame0": {
-    "fp": 18,
-    "positives": 6,
-    "precision": 0.2174,
-    "recall": 0.8333,
-    "tp": 5
+    "fp": 60,
+    "positives": 18,
+    "precision": 0.2105,
+    "recall": 0.8889,
+    "tp": 16
    }
   },
   "contradicted": true,
@@ -316,8 +448,18 @@
   "min_flag_recall": 0.75,
   "min_precision": 0.9,
   "owner_clean_notes": 0,
-  "owner_flags": 6,
+  "owner_flags": 18,
   "relisten": [
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0001_S36_A2_8d1e5246_000001.wav#0@2:shaddah"
+   },
    {
     "candidates": [
      "ctc_onset_llr",
@@ -346,7 +488,27 @@
      "onset_level_db",
      "vad_speech_frame0"
     ],
+    "item_id": "new_audit:tadabur_spk0018_S8_A31_5e3b7841_000024.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
     "item_id": "new_audit:tadabur_spk0026_S2_A194_22a2785a_000017.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0044_S8_A31_939db108_000001.wav#0@2:shaddah"
    },
    {
     "candidates": [
@@ -366,7 +528,27 @@
      "onset_level_db",
      "vad_speech_frame0"
     ],
+    "item_id": "new_audit:tadabur_spk0055_S99_A5_80b1dfeb_000377.wav#0@6:ط↔ق"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
     "item_id": "new_audit:tadabur_spk0073_S23_A3_8c6c9464_000101.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0087_S1_A129_827a7af7_000092.wav#0@2:shaddah"
    },
    {
     "candidates": [
@@ -386,7 +568,37 @@
      "onset_level_db",
      "vad_speech_frame0"
     ],
+    "item_id": "new_audit:tadabur_spk0205_S41_A49_77171eb0_000035.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
     "item_id": "new_audit:tadabur_spk0229_S1_A57_768d5454_000000.wav#0@2:ض↔ظ"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0254_S1_A238_cfbe158f_000000.wav#0@6:ض↔ظ"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0420_S1_A128_22eee982_000081.wav#0@2:shaddah"
    },
    {
     "candidates": [
@@ -406,7 +618,7 @@
      "onset_level_db",
      "vad_speech_frame0"
     ],
-    "item_id": "new_audit:tadabur_spk0495_S1_A275_a5cd5045_000250.wav#0@2:shaddah"
+    "item_id": "new_audit:tadabur_spk0505_S17_A2_79207276_000001.wav#0@2:shaddah"
    },
    {
     "candidates": [
@@ -433,9 +645,85 @@
      "ctc_onset_llr",
      "ctc_first_posterior",
      "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0143_S55_A3_7fca69ec_000001.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0196_S58_A24_73169dcc_000004.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0345_S24_A15_f1b3d0ea_000000.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0017_S51_A24_9b3c4101_000075.wav#0@4:ط↔ق"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0021_S74_A8_5b1f05d5_000004.wav#0@4:س↔ش"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
      "vad_speech_frame0"
     ],
     "item_id": "new_audit:tadabur_spk0045_S11_A110_3e5673b3_000039.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0095_S1_A57_83f419a9_000006.wav#0@2:ض↔ظ"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0100_S74_A8_49e7c8f5_000257.wav#0@4:س↔ش"
    },
    {
     "candidates": [
@@ -453,7 +741,147 @@
      "decode_leading_missing",
      "vad_speech_frame0"
     ],
+    "item_id": "new_audit:tadabur_spk0229_S1_A229_768d5454_000000.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0345_S13_A40_852439e6_000000.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0346_S17_A86_d6b36405_000008.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0495_S1_A57_a5cd5045_000061.wav#0@2:ض↔ظ"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0598_S1_A109_4cd0dbcc_000066.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing",
+     "vad_speech_frame0"
+    ],
     "item_id": "new_audit:tadabur_spk0647_S6_A22_9052b84e_000029.wav#1@2:ط↔ق"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0176_S1_A39_801c51d0_000018.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0262_S69_A14_70afcad4_000013.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0406_S34_A19_dc0d6e7a_000009.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0483_S33_A45_30415cf4_000039.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0512_S20_A83_444ea6da_000000.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0518_S67_A33_13cc9747_000075.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk374_S55_A67_378a2b18_000054.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0004_S57_A16_7519ed89_000008.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0026_S8_A31_d3f747bd_000021.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "onset_level_db"
+    ],
+    "item_id": "new_audit:tadabur_spk0027_S27_A81_84974d75_000169.wav#0@4:س↔ش"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "decode_leading_missing"
+    ],
+    "item_id": "new_audit:tadabur_spk0039_S11_A19_c50acfd8_000120.wav#2@4:س↔ش"
    },
    {
     "candidates": [
@@ -462,6 +890,54 @@
      "vad_speech_frame0"
     ],
     "item_id": "new_audit:tadabur_spk0039_S38_A69_20a3da95_000030.wav#0@7:ق↔ك"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0146_S37_A6_7fd35efd_000004.wav#0@5:ط↔ق"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk9_S1_A57_d6505fc9_000043.wav#0@2:ض↔ظ"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0005_S23_A52_5e69a002_000116.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0254_S25_A226_14d03e2c_000000.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0355_S57_A3_777e06ad_000001.wav#0@0"
+   },
+   {
+    "candidates": [
+     "ctc_first_posterior",
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0706_S20_A88_bbac6995_000024.wav#0@0"
    },
    {
     "candidates": [
@@ -479,10 +955,24 @@
    },
    {
     "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior"
+    ],
+    "item_id": "new_audit:tadabur_spk0039_S21_A31_29c0590f_000125.wav#2@5:ت↔ط"
+   },
+   {
+    "candidates": [
      "onset_level_db",
      "vad_speech_frame0"
     ],
     "item_id": "new_audit:tadabur_spk0039_S74_A8_2c45abee_000255.wav#0@4:س↔ش"
+   },
+   {
+    "candidates": [
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0054_S13_A21_c066bb52_000014.wav#0@6:ذ↔ز"
    },
    {
     "candidates": [
@@ -514,28 +1004,113 @@
    },
    {
     "candidates": [
+     "ctc_first_posterior",
+     "decode_leading_missing"
+    ],
+    "item_id": "new_audit:tadabur_spk0435_S17_A74_924faf08_000062.wav#2@4:shaddah"
+   },
+   {
+    "candidates": [
      "ctc_onset_llr",
      "ctc_first_posterior"
     ],
     "item_id": "new_audit:tadabur_spk0452_S17_A96_4cfe0a7d_000000.wav#2@2:shaddah"
+   },
+   {
+    "candidates": [
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "p35_fixture:tadabur_spk0066_S77_A19_e5efd899_000017__seg0.wav:shadda#4"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr",
+     "ctc_first_posterior"
+    ],
+    "item_id": "word_sample:tadabur_spk0118_S83_A23_761c7e8d_000015.wav#0@0"
+   },
+   {
+    "candidates": [
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0190_S72_A10_7f9961cd_000008.wav#0@0"
+   },
+   {
+    "candidates": [
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0476_S11_A58_dafa7e44_000000.wav#0@0"
+   },
+   {
+    "candidates": [
+     "onset_level_db",
+     "vad_speech_frame0"
+    ],
+    "item_id": "word_sample:tadabur_spk0675_S82_A30_3148e2fc_000028.wav#0@0"
+   },
+   {
+    "candidates": [
+     "vad_speech_frame0"
+    ],
+    "item_id": "new_audit:tadabur_spk0008_S27_A81_bc023467_000002.wav#0@4:س↔ش"
+   },
+   {
+    "candidates": [
+     "onset_level_db"
+    ],
+    "item_id": "new_audit:tadabur_spk0197_S1_A57_f8cf8064_000035.wav#0@2:ض↔ظ"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr"
+    ],
+    "item_id": "new_audit:tadabur_spk0319_S18_A78_db89b3d1_000000.wav#0@2:shaddah"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr"
+    ],
+    "item_id": "new_audit:tadabur_spk0556_S5_A52_9b1ba0f5_000005.wav#2@4:ط↔ق"
+   },
+   {
+    "candidates": [
+     "ctc_first_posterior"
+    ],
+    "item_id": "new_audit:tadabur_spk0720_S11_A101_7fa2334d_000071.wav#1@4:ط↔ق"
+   },
+   {
+    "candidates": [
+     "onset_level_db"
+    ],
+    "item_id": "word_sample:tadabur_spk0070_S30_A9_3ef9e5b1_000001.wav#1@2"
+   },
+   {
+    "candidates": [
+     "ctc_onset_llr"
+    ],
+    "item_id": "word_sample:tadabur_spk0458_S2_A180_46520e52_000000.wav#3@22"
    }
   ],
-  "weak_negatives": 24
+  "weak_negatives": 86
  },
  "owner_notes": {
-  "trim note, exposed": 6
+  "trim note, exposed": 18,
+  "trim note, not_exposed": 1
  },
  "parts": {
   "geminate": {
    "chosen_candidate_calls_trimmed": 28,
-   "decided_by_owner_note": 6,
+   "decided_by_owner_note": 18,
    "detector_trimmed": 0,
    "exposed": 40,
    "file_start": 33,
    "items": 93,
-   "onset_trimmed": 6,
+   "onset_trimmed": 18,
    "segmenter_cut": 7,
-   "site": 87
+   "site": 75
   },
   "p35_relisten": {
    "chosen_candidate_calls_trimmed": 1,
@@ -572,25 +1147,25 @@
   },
   "ship_a_sites": {
    "chosen_candidate_calls_trimmed": 78,
-   "decided_by_owner_note": 6,
+   "decided_by_owner_note": 18,
    "detector_trimmed": 0,
    "exposed": 156,
    "file_start": 86,
    "items": 2225,
-   "onset_trimmed": 6,
+   "onset_trimmed": 18,
    "segmenter_cut": 70,
-   "site": 2219
+   "site": 2207
   },
   "word_sample": {
    "chosen_candidate_calls_trimmed": 19,
-   "decided_by_owner_note": 0,
+   "decided_by_owner_note": 1,
    "detector_trimmed": 0,
    "exposed": 29,
    "file_start": 20,
    "items": 160,
-   "onset_trimmed": 0,
+   "onset_trimmed": 1,
    "segmenter_cut": 9,
-   "site": 160
+   "site": 159
   }
  },
  "scoring": {
@@ -794,14 +1369,14 @@
   },
   "ship_a:shaddah:held:h448_single:base_not_held": {
    "chosen_candidate_calls_trimmed": 28,
-   "decided_by_owner_note": 6,
+   "decided_by_owner_note": 18,
    "detector_trimmed": 0,
    "exposed": 40,
    "file_start": 33,
    "items": 93,
-   "onset_trimmed": 6,
+   "onset_trimmed": 18,
    "segmenter_cut": 7,
-   "site": 87
+   "site": 75
   },
   "ship_a:ت:h448_other": {
    "chosen_candidate_calls_trimmed": 5,
@@ -1586,14 +2161,14 @@
   },
   "word_sample": {
    "chosen_candidate_calls_trimmed": 19,
-   "decided_by_owner_note": 0,
+   "decided_by_owner_note": 1,
    "detector_trimmed": 0,
    "exposed": 29,
    "file_start": 20,
    "items": 160,
-   "onset_trimmed": 0,
+   "onset_trimmed": 1,
    "segmenter_cut": 9,
-   "site": 160
+   "site": 159
   }
  },
  "synthetic_selection": {

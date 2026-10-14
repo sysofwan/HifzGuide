@@ -37,10 +37,12 @@ def test_the_report_builds_from_the_committed_decode_caches_without_decoding():
 
 
 def test_the_report_leaves_out_the_p35_site_the_waqf_guard_realizes():
-    """#134: the P3.5 shaddah the reciter paused on (its geminate exists only in wasl)."""
+    """#134: the P3.5 shaddahs the reciter paused on (their geminates exist only in wasl): the
+    one the local check finds, and any the owner's notes add."""
     realized = "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74"
-    assert realized in realized_ids()
-    assert build(DEFAULT_MODELS, audio_dir=None)["waqf_realized"] == [realized]
+    p35 = sorted(i for i in realized_ids() if i.startswith("p35_fixture:"))
+    assert realized in p35
+    assert build(DEFAULT_MODELS, audio_dir=None)["waqf_realized"] == p35
 
 
 def test_a_side_with_no_verdict_renders_as_pending_adjudication(cohort):

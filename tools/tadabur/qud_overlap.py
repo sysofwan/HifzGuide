@@ -46,15 +46,18 @@ with them to ``qud_eval/overlap_rules.json`` before ``screen`` runs):
   too is reported as the screen's false-candidate rate.
 
 **Amendment, read off the controls before any pilot ayah was screened.** One pair's timing
-cannot decide: on the controls a tenth of the negatives pass the line too, which over a whole
-mushaf would make tens of thousands of candidates spread over every Tadabur shard. One
-recording passes the line ayah after ayah, so stage 1 decides per **Tadabur reciter id**: an id
-is a candidate for a pilot mushaf when the number of its pairs within the line is improbable
-(one-sided binomial tail below :data:`ALPHA`) at the negatives' pass rate, taken at its Wilson
-upper bound. Stage 2 then fingerprints that id's :data:`CONFIRM_PAIRS` closest pairs, and
-those of every id the name screen gives the pilot reciter, whatever the test says. The
-fingerprint also leaves a zone between its line and the hard negatives (a re-processed copy
-of one recording can land there); a pilot pair in it is reported, never silently passed.
+cannot decide: on the controls a tenth of the negatives pass the line too. Stage 1 therefore
+also tests each **Tadabur reciter id** (one recording passes the line ayah after ayah): the
+binomial tail of its pairs within the line at the negatives' pass rate, taken at its Wilson
+upper bound, below :data:`ALPHA`. **Second amendment, after stage 1 had run and before any
+pilot audio was fingerprinted:** over whole mushafs that test flags most reciter ids (pilot
+recitation shares its tempo with many reciters, so their pass rates sit far above the
+controls'), and no id shows the near-total pass rate of a control overlap; it is reported, not
+used. Stage 2 instead fingerprints **every** pair within the timing line (every control
+positive passed it), and every pair of the Tadabur id the name screen gives the pilot reciter
+whatever its timing: one read of every Tadabur shard holding such a pair. The fingerprint also
+leaves a zone between its line and the hard negatives (a re-processed copy of one recording
+can land there); a pilot pair in it is listed, never silently passed.
 
 Usage (from ``tools/``)::
 
@@ -116,9 +119,8 @@ CROSS_MIN_STAGED = 20
 CROSS_CLIPS = 12
 MIN_WORDS = 4
 TIMING_MARGIN = 1.5
-#: Stage 1's per-reciter test: its one-sided level, and the pairs stage 2 fingerprints per id.
+#: Stage 1's per-reciter test: its one-sided level.
 ALPHA = 1e-3
-CONFIRM_PAIRS = 8
 
 
 def salted_rank(*parts: object) -> str:
@@ -401,7 +403,7 @@ def decide_lines(scores: Mapping) -> dict:
                if binomial_tail(sum(c["timing_distance"] <= line for c in g), len(g), q) < ALPHA}
     out["aggregate"] = {
         "negative_pass_rate": [passing, len(negatives)], "q_upper": round(q, 4),
-        "alpha": ALPHA, "confirm_pairs": CONFIRM_PAIRS,
+        "alpha": ALPHA,
         "control_overlaps": len(overlaps),
         "control_overlaps_flagged": len(set(overlaps) & flagged),
         "control_non_overlaps": len(groups) - len(overlaps),
@@ -433,122 +435,185 @@ def _count(values: Iterable) -> dict:
 # --- stage 1: the timing screen --------------------------------------------------------------
 
 
-def screen_mushaf(rows: Sequence[QudRow], by_ayah: Mapping[str, list[dict]],
-                  line: float, q: float, named: Sequence[int]) -> dict:
-    """Every comparable ayah of a pilot mushaf against every Tadabur row of that ayah, and per
-    Tadabur reciter id its pairs, how many fall within ``line`` and the binomial tail of that
-    at the negatives' pass rate ``q``. The candidates are the :data:`CONFIRM_PAIRS` closest
-    pairs of every id the test flags and of every ``named`` id."""
-    compared_ayat = 0
-    pairs: dict[int, list[dict]] = defaultdict(list)
+def timed_pairs(rows: Sequence[QudRow], by_ayah: Mapping[str, list[dict]]) -> Iterable[dict]:
+    """Every comparable pilot ayah against every Tadabur row of that ayah with as many word
+    timings: the pair and its timing distance."""
     for row in rows:
         starts = qud_word_starts(row, _canonical_words(row.surah_ayah))
         if starts is None:
             continue
-        compared_ayat += 1
         for other in by_ayah.get(row.surah_ayah, []):
             if len(other["starts"]) == len(starts):
-                pairs[other["reciter_id"]].append({
-                    "surah_ayah": row.surah_ayah,
-                    "distance": timing_distance(starts, other["starts"]),
-                    **{k: other[k] for k in ("audio_filename", "shard", "row_index",
-                                             "reciter_id")}})
-    per_reciter, candidates = {}, []
-    for reciter, group in sorted(pairs.items()):
-        within = sum(p["distance"] <= line for p in group)
-        tail = binomial_tail(within, len(group), q)
-        flagged = tail < ALPHA
-        per_reciter[str(reciter)] = {"pairs": len(group), "within_line": within,
-                                     "tail": tail, "flagged": flagged}
-        if flagged or reciter in named:
-            closest = sorted(group, key=lambda p: (p["distance"], p["shard"], p["row_index"]))
-            candidates += [{**p, "why": "flagged" if flagged else "named"}
-                           for p in closest[:CONFIRM_PAIRS]]
-    return {"ayat": len(rows), "ayat_compared": compared_ayat,
-            "pairs": sum(len(g) for g in pairs.values()),
+                yield {"surah_ayah": row.surah_ayah,
+                       "distance": timing_distance(starts, other["starts"]),
+                       **{k: other[k] for k in ("audio_filename", "shard", "row_index",
+                                                "reciter_id")}}
+
+
+def screen_mushaf(rows: Sequence[QudRow], by_ayah: Mapping[str, list[dict]],
+                  line: float, q: float, named: Sequence[int]) -> dict:
+    """Stage 1 over a pilot mushaf: how many ayat and pairs were compared and fell within
+    ``line``, and per Tadabur reciter id its pairs, those within the line, and the binomial
+    tail of that at the negatives' pass rate ``q`` (flagged below :data:`ALPHA`)."""
+    pairs: dict[int, list[float]] = defaultdict(list)
+    compared = set()
+    for pair in timed_pairs(rows, by_ayah):
+        compared.add(pair["surah_ayah"])
+        pairs[pair["reciter_id"]].append(pair["distance"])
+    per_reciter = {}
+    for reciter, distances in sorted(pairs.items()):
+        within = sum(d <= line for d in distances)
+        tail = binomial_tail(within, len(distances), q)
+        per_reciter[str(reciter)] = {"pairs": len(distances), "within_line": within,
+                                     "tail": tail, "flagged": tail < ALPHA}
+    return {"ayat": len(rows),
+            "ayat_compared": len(compared),
+            "pairs": sum(v["pairs"] for v in per_reciter.values()),
             "pairs_within_line": sum(v["within_line"] for v in per_reciter.values()),
             "flagged_reciters": sorted(int(r) for r, v in per_reciter.items() if v["flagged"]),
             "named_reciters": list(named),
-            "candidates": sorted(candidates, key=lambda c: (c["shard"], c["row_index"])),
             "per_tadabur_reciter": per_reciter}
+
+
+def stage_two_pairs(rows: Sequence[QudRow], by_ayah: Mapping[str, list[dict]], line: float,
+                    named: Sequence[int]) -> list[dict]:
+    """The pairs stage 2 fingerprints: every pair within the timing line (the line every
+    control positive passes), and every pair of a ``named`` Tadabur id whatever its timing."""
+    return [p for p in timed_pairs(rows, by_ayah)
+            if p["distance"] <= line or p["reciter_id"] in named]
 
 
 # --- stage 2 and Muaalem: fingerprints ---------------------------------------------------------
 
 
-def confirm_candidates(candidates: Sequence[Mapping], line: float, cache_dir: Path,
-                       fetch, row_of_ayah: Mapping[str, int], slug: str) -> list[dict]:
-    """Each candidate's Tadabur audio (its shard read once, :func:`tadabur.shard_reader.
-    iter_selected_rows`) fingerprinted against the QUD ayah. A sealed-panel row cannot be
-    read and is recorded as not compared."""
+def pilot_fingerprints(slug: str, shards: Sequence[str], cache_dir: Path) -> dict:
+    """Every ayah of a pilot mushaf: its MP3's checksum and the fingerprint of its 16 kHz
+    decode (the shards are downloaded into ``cache_dir`` and deleted once read)."""
+    from .qud_source import decode_ayah, iter_mushaf_rows
+
+    return {row.surah_ayah: (mp3_sha256(row.mp3), fingerprint(decode_ayah(row)))
+            for row in iter_mushaf_rows(slug, shards, cache_dir)}
+
+
+def save_fingerprints(path: Path, prints: Mapping[str, tuple[str, np.ndarray]]) -> None:
+    np.savez_compressed(path, **{f"{key}|{sha}": fp for key, (sha, fp) in prints.items()})
+
+
+def load_fingerprints(path: Path) -> dict[str, np.ndarray]:
+    with np.load(path) as data:
+        return {name.split("|")[0]: data[name] for name in data.files}
+
+
+#: Each stage-2 worker's pilot fingerprints, by mushaf and ayah (set by :func:`_init_worker`).
+_PILOT: dict[str, dict[str, np.ndarray]] = {}
+
+
+def _init_worker(prints: dict[str, dict[str, np.ndarray]]) -> None:
+    _PILOT.update(prints)
+
+
+def fingerprint_shard(shard: int, wanted: Mapping[int, list[tuple[str, str]]],
+                      cache_dir: Path) -> list[dict]:
+    """One Tadabur shard's wanted rows (``row_index -> [(slug, surah_ayah)]``), each
+    fingerprinted against the pilot ayat it was paired with; the shard is downloaded into
+    ``cache_dir`` and deleted once read. A sealed-panel row cannot be read: recorded, not
+    compared."""
     from .panel_seal import SealedPanelError
-    from .qud_source import decode_ayah
     from .shard_reader import iter_selected_rows
 
-    by_shard: dict[int, list[Mapping]] = defaultdict(list)
-    for c in candidates:
-        by_shard[c["shard"]].append(c)
-    waves: dict[str, np.ndarray] = {}
     out = []
-    for shard, group in sorted(by_shard.items()):
-        wanted = {c["row_index"]: c for c in group}
-        rows = iter_selected_rows(shard, set(wanted), cache_dir=cache_dir,
-                                  columns=["audio", "surah_id", "ayah_id", "reciter_id"])
-        for position, record in enumerate(rows):
-            if record is None:
-                continue
-            c = wanted[position]
-            try:
-                tadabur = decode_to_mono_16k(record["audio"]["bytes"])
-            except SealedPanelError:
-                out.append({**c, "ber": None, "match": None, "why": "sealed panel"})
-                continue
-            if c["surah_ayah"] not in waves:
-                got = fetch(slug, row_of_ayah[c["surah_ayah"]])
-                waves[c["surah_ayah"]] = decode_ayah(got.row)
-            found = _match(waves[c["surah_ayah"]], tadabur)
-            out.append({**c, **found, "match": found["ber"] is not None
-                        and found["ber"] <= line})
+    rows = iter_selected_rows(shard, set(wanted), cache_dir=cache_dir,
+                              columns=["audio", "surah_id", "ayah_id", "reciter_id"])
+    for position, record in enumerate(rows):
+        if record is None:
+            continue
+        try:
+            prints = fingerprint(decode_to_mono_16k(record["audio"]["bytes"]))
+        except SealedPanelError:
+            out += [{"shard": shard, "row_index": position, "slug": slug, "surah_ayah": key,
+                     "ber": None} for slug, key in wanted[position]]
+            continue
+        for slug, key in wanted[position]:
+            found = best_match(_PILOT[slug][key], prints)
+            out.append({"shard": shard, "row_index": position, "slug": slug,
+                        "surah_ayah": key, "reciter_id": record["reciter_id"],
+                        "ber": None if found is None else found.ber})
     return out
+
+
+def run_stage_two(pairs: Mapping[str, Sequence[Mapping]], prints: dict, cache_dir: Path,
+                  workers: int) -> list[dict]:
+    """Every shard holding a stage-2 pair, read once, ``workers`` at a time."""
+    from concurrent.futures import ProcessPoolExecutor
+
+    by_shard: dict[int, dict[int, list[tuple[str, str]]]] = defaultdict(lambda: defaultdict(list))
+    for slug, group in pairs.items():
+        for p in group:
+            by_shard[p["shard"]][p["row_index"]].append((slug, p["surah_ayah"]))
+    results: list[dict] = []
+    with ProcessPoolExecutor(workers, initializer=_init_worker, initargs=(prints,)) as pool:
+        futures = [pool.submit(fingerprint_shard, shard, dict(rows), cache_dir)
+                   for shard, rows in sorted(by_shard.items())]
+        for done, future in enumerate(futures, 1):
+            results += future.result()
+            print(f"stage 2: {done} of {len(futures)} shards", flush=True)
+    return sorted(results, key=lambda r: (r["shard"], r["row_index"], r["slug"]))
+
+
+def summarize_stage_two(results: Sequence[Mapping], pairs: Sequence[Mapping], slug: str,
+                        line: float, hard_negative_min: float) -> dict:
+    """One mushaf's stage 2: pairs fingerprinted, sealed rows skipped, every match (BER at or
+    below ``line``) and every pair in the zone below the hard negatives, and the lowest BER."""
+    mine = [r for r in results if r["slug"] == slug]
+    scored = [r for r in mine if r["ber"] is not None]
+    timing = {(p["shard"], p["row_index"], p["surah_ayah"]): p for p in pairs}
+    detail = [{**r, "distance": timing[(r["shard"], r["row_index"], r["surah_ayah"])]["distance"],
+               "audio_filename": timing[(r["shard"], r["row_index"], r["surah_ayah"])]
+               ["audio_filename"]}
+              for r in scored if r["ber"] < hard_negative_min]
+    return {"pairs": len(pairs), "fingerprinted": len(scored),
+            "sealed_not_compared": len(mine) - len(scored),
+            "matches": [d for d in detail if d["ber"] <= line],
+            "between_line_and_hard_negatives": [d for d in detail if d["ber"] > line],
+            "lowest_ber": min((r["ber"] for r in scored), default=None),
+            "per_tadabur_reciter_lowest": {
+                str(k): min(r["ber"] for r in scored if r["reciter_id"] == k)
+                for k in sorted({r["reciter_id"] for r in scored})}}
 
 
 #: Muaalem segments compared per moshaf: the first row group of its first file.
 MUAALEM_ROW_GROUP = 0
 
 
-def muaalem_check(slug: str, fetch, row_of_ayah: Mapping[str, int], line: float) -> list[dict]:
-    """Per Muaalem moshaf, the lowest BER of any of the pilot mushaf's ayat against the
-    Muaalem segments that cover it (first row group of the first file)."""
+def muaalem_check(prints: Mapping[str, Mapping[str, np.ndarray]], line: float) -> list[dict]:
+    """Per Muaalem moshaf (first row group of its first file), each pilot mushaf's lowest
+    BER of any ayah against the Muaalem segments that cover it."""
     from .muaalem_audio import first_shard, row_group_segments
-    from .qud_source import decode_ayah
 
     sources = _load(SOURCES_PATH)
-    waves: dict[str, np.ndarray] = {}
     out = []
     for moshaf in sorted(m["id"] for m in sources["muaalem"]["moshafs"]):
         path = first_shard(moshaf)
-        best = None
-        compared = 0
+        closest: dict[str, dict] = {}
+        compared: dict[str, int] = defaultdict(int)
         for segment in row_group_segments(moshaf, path, MUAALEM_ROW_GROUP):
             if segment.first is None or segment.last is None or segment.first[0] != segment.last[0]:
                 continue
-            surah = segment.first[0]
-            ayat = [f"{surah}:{a}" for a in range(segment.first[1], segment.last[1] + 1)]
-            ayat = [k for k in ayat if k in row_of_ayah]
-            if not ayat:
-                continue
             reference = fingerprint(decode_to_mono_16k(segment.audio))
-            for key in ayat:
-                if key not in waves:
-                    waves[key] = decode_ayah(fetch(slug, row_of_ayah[key]).row)
-                found = best_match(reference, fingerprint(waves[key]))
-                compared += 1
-                if found is not None and (best is None or found.ber < best["ber"]):
-                    best = {"ber": found.ber, "surah_ayah": key,
-                            "segment_index": segment.segment_index}
+            surah = segment.first[0]
+            for slug, by_ayah in prints.items():
+                for ayah in range(segment.first[1], segment.last[1] + 1):
+                    key = f"{surah}:{ayah}"
+                    if key not in by_ayah:
+                        continue
+                    found = best_match(reference, by_ayah[key])
+                    compared[slug] += 1
+                    if found is not None and (slug not in closest or found.ber < closest[slug]["ber"]):
+                        closest[slug] = {"ber": found.ber, "surah_ayah": key,
+                                         "segment_index": segment.segment_index}
         out.append({"moshaf": moshaf, "file": path, "row_group": MUAALEM_ROW_GROUP,
-                    "comparisons": compared, "closest": best,
-                    "match": best is not None and best["ber"] <= line})
+                    "comparisons": dict(compared), "closest": closest,
+                    "matches": sorted(s for s, c in closest.items() if c["ber"] <= line)})
     return out
 
 
@@ -624,10 +689,15 @@ def main() -> None:
     timings.add_argument("--out", type=Path, required=True)
     screen = commands.add_parser("screen", help="stage 1 over every pilot ayah")
     screen.add_argument("--timings", type=Path, required=True)
-    confirm = commands.add_parser("confirm", help="stage 2 on the candidates, and Muaalem")
-    confirm.add_argument("--viewer-cache", type=Path, required=True)
+    prints = commands.add_parser("fingerprint-pilot", help="fingerprint every pilot ayah")
+    prints.add_argument("--cache-dir", type=Path, required=True)
+    prints.add_argument("--out-dir", type=Path, required=True)
+    confirm = commands.add_parser("confirm", help="stage 2 over the pilot's pairs, and Muaalem")
+    confirm.add_argument("--timings", type=Path, required=True)
+    confirm.add_argument("--prints-dir", type=Path, required=True)
     confirm.add_argument("--cache-dir", type=Path, required=True,
-                         help="where a candidate's Tadabur shard is downloaded (and deleted)")
+                         help="where each Tadabur shard is downloaded (and deleted)")
+    confirm.add_argument("--workers", type=int, default=3)
     args = parser.parse_args()
 
     from .staged_audio import load_staged_clips
@@ -665,22 +735,32 @@ def main() -> None:
                             "mushafs": {slug: screen_mushaf(
                                 mushaf_metadata(slug, shards[slug], selection["qud_revision"]),
                                 by_ayah, line, q, named[slug]) for slug in PILOT}})
-    else:
-        line = _load(RULES_PATH)["lines"]["fingerprint"]["line"]
-        screened = _load(SCREEN_PATH)["mushafs"]
-        fetch = qud_fetcher(selection, args.viewer_cache)
-        rows = _ayah_rows(selection)
-        results = {}
+    elif args.command == "fingerprint-pilot":
+        shards = {m["slug"]: m["shards"] for m in selection["mushafs"]}
+        args.out_dir.mkdir(parents=True, exist_ok=True)
         for slug in PILOT:
-            index = rows(slug)
-            stage2 = confirm_candidates(screened[slug]["candidates"], line, args.cache_dir,
-                                        fetch, index, slug)
-            muaalem = muaalem_check(slug, fetch, index, line)
-            results[slug] = {"tadabur": stage2, "muaalem": muaalem,
-                             "matches": sum(bool(c["match"]) for c in stage2)
-                             + sum(m["match"] for m in muaalem)}
-        _dump(RESULTS_PATH, {"fingerprint_line": line, "mushafs": results})
-
+            save_fingerprints(args.out_dir / f"{slug}.npz",
+                              pilot_fingerprints(slug, shards[slug], args.cache_dir))
+    else:
+        lines = _load(RULES_PATH)["lines"]
+        line, timing_line = lines["fingerprint"]["line"], lines["timing"]["line"]
+        named = {m["slug"]: [m["tadabur_name_screen"]["tadabur_id"]]
+                 if m["tadabur_name_screen"] else [] for m in selection["mushafs"]}
+        shards = {m["slug"]: m["shards"] for m in selection["mushafs"]}
+        by_ayah = read_tadabur_timings(args.timings)
+        pairs = {slug: stage_two_pairs(mushaf_metadata(slug, shards[slug],
+                                                       selection["qud_revision"]),
+                                       by_ayah, timing_line, named[slug]) for slug in PILOT}
+        prints = {slug: load_fingerprints(args.prints_dir / f"{slug}.npz") for slug in PILOT}
+        results = run_stage_two(pairs, prints, args.cache_dir, args.workers)
+        floor = lines["fingerprint"]["hard_negative_min"]
+        _dump(RESULTS_PATH, {
+            "fingerprint_line": line, "timing_line": timing_line,
+            "stage_two": "every pair within the timing line, and every pair of the pilot "
+                         "reciter's named Tadabur id",
+            "tadabur": {slug: summarize_stage_two(results, pairs[slug], slug, line, floor)
+                        for slug in PILOT},
+            "muaalem": muaalem_check(prints, line)})
 
 if __name__ == "__main__":
     main()

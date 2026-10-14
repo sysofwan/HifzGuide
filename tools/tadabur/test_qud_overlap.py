@@ -90,6 +90,7 @@ def test_stage_one_flags_a_reciter_whose_pairs_keep_their_rhythm(monkeypatch):
     monkeypatch.setattr(qo, "_canonical_words", lambda key: words)
     screened = qo.screen_mushaf(rows, by_ayah, 0.05, 0.12, named=[9])
     assert screened["flagged_reciters"] == [7]
-    whys = {c["reciter_id"]: c["why"] for c in screened["candidates"]}
-    assert whys == {7: "flagged", 9: "named"}
-    assert len(screened["candidates"]) == 2 * qo.CONFIRM_PAIRS
+    assert screened["pairs"] == 40 and screened["pairs_within_line"] == 20
+    stage_two = qo.stage_two_pairs(rows, by_ayah, 0.05, named=[9])
+    assert {p["reciter_id"] for p in stage_two} == {7, 9}  # 9 is named, never within the line
+    assert len(stage_two) == 40

@@ -2,7 +2,6 @@
  "lines": {
   "aggregate": {
    "alpha": 0.001,
-   "confirm_pairs": 8,
    "control_non_overlaps": 16,
    "control_non_overlaps_flagged": 1,
    "control_overlaps": 5,

@@ -363,6 +363,13 @@ number this work is accountable for. See ADR-0010.
   paired windowing and weights gaps (weighted, reciter-clustered intervals). Torch-free, from
   the committed caches. Report: `docs/carrier-windowing.md` (`carrier_windowing_doc`).
 
+- **`commit_block`** — the #148 question of whether a transcriber committing block 1 would
+  change the app outcome. It holds the cited code reading of Muraja `99c326f`, records each
+  item's b=1 check sequence from the same inferences as its committed b=0 sequence (paired by
+  digest), and replays both through Muraja's engine on the word sample and Ship A's held-out
+  verified sites. `--decode-only` runs on the GPU box; the replay runs on a Mac with the
+  harness. Report: `docs/commit-block.md` (`commit_block_doc`).
+
 - **`distill_eval`** — the release gate. Replays the deployed protocol (5 s window, 1 s hop,
   `scanCTC` collapse, `midpoint < 25` confirmation) and compares the **confirmed transcripts**.
   `--breakout` reports distance-from-breakout while a student is still blank-collapsed, when

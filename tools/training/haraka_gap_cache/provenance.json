@@ -15,6 +15,7 @@
    "ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
   }
  },
+ "pool_audio": "d1d5a24323b81b597e494230f5f2988e6cec7e3e4d2e8e50625ae1f29e5692a8",
  "sources": {
   "mining_pool/base_decodes.json": "57f2b60727381bfa29019c5813835e1403c835784a73c1052b440f11026ed9d7",
   "mining_pool/clips.jsonl": "885901089d5ed50f21f40405d0c8568a79fbe2319560b906ea429f46e629cf6e",

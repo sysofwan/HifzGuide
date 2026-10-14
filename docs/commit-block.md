@@ -39,7 +39,7 @@ continues the file last named in the same cell or bullet.
 | **Confirmation** | Pending hops move into the phoneme log when an alignment advances, or holds the same position for three checks, with a match ratio over a threshold that falls as the queue grows (`FollowAlong/FollowAlongEngine.swift:654-661, :696-704, :739-784`). The newest hop always stays pending (`trailingHopHoldback = 1`, :263). Past six pending hops, the oldest are dropped (:265, :868-877). | Unchanged; it now acts on block-1 text. |
 | **Every check's query** | `prev5s` is the last 20 confirmed characters (`FollowAlong/FollowAlongEngine.swift:1566, :3656-3659`; `FollowAlong/PhonemeLog.swift:95-108`). `next5s` is every pending hop, then the current overlap or preview (`FollowAlong/FollowAlongEngine.swift:1567, :236-239`). | Assembled the same way; the next table shows what fills it. |
 | **What is graded** | Every update with content runs one alignment (`FollowAlong/FollowAlongEngine.swift:636-639, :1628`) of `prev5s + next5s` against the reference (`FollowAlong/QuranFollowAlong.swift:289-326`). It grades every word that overlaps the aligned region, up to the matched word (`FollowAlong/QuranFollowAlong+WordScoring.swift:362-382`). The grades enter `GradeStore` (`FollowAlong/FollowAlongEngine.swift:3319-3342`), which keeps a new grade only if it ranks higher, or ranks the same and scores higher (`FollowAlong/GradeStore.swift:182-207, :335`). | Unchanged. |
-| **The stop's check** | The stop's phonemes become one more pending hop. One last alignment then runs over the pending hops and the last overlap (`FollowAlong/FollowAlongEngine.swift:899-915`), and held grades are promoted (:937-939). | Unchanged. The stop's phonemes start 1 s later. |
+| **The stop's check** | The stop's phonemes become one more pending hop. One last alignment then runs over the pending hops and the last overlap (`FollowAlong/FollowAlongEngine.swift:899-915`), and held grades are promoted (:937-939). | Unchanged. The stop's phonemes start 1 s further into its audio. |
 
 ### What each check grades from
 
@@ -59,8 +59,11 @@ So a word is graded many times, and the ratchet keeps the best grade.
   hop boundaries. This lasts while those hops are pending or within the last 20 confirmed
   characters.
 
-At b = 1, a word moves from the first kind of check to the second 1 s later. The committed
-hops are each window's second second, not its first.
+At b = 1, a word moves from the first kind of check to the second 1 s **earlier**. Second `s`
+is committed by the window starting at `s - 1` (which runs once `s + 4` s of audio have
+arrived), not by the window starting at `s` (at `s + 5` s). Later previews leave it out 1 s
+sooner. The exception is the session's first second: at both blocks it is committed by the
+first window, at 5 s. The committed hops are each window's second second, not its first.
 
 ### What else b = 1 would change
 
@@ -86,10 +89,13 @@ hops are each window's second second, not its first.
 ## The replay
 
 Models: base `obadx/muaalem-model-v3_2`, h448 `/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt`. Each model has two arms: `checks` is the committed b = 0 sequence of
-the truth baseline, and `checks_b1` is the b = 1 sequence. Both are cut from the same
-inferences. Every item's b = 1 record carries the digest of the b = 0 sequence that its
-inferences cut, and the run stops unless that digest matches the committed sequence. So
-b = 0 and b = 1 differ only in what each inference sends. Graded by Muraja's own engine
+the truth baseline, and `checks_b1` is the b = 1 sequence. `Decoder.app_checks_at` cut the
+b = 1 sequence and a fresh b = 0 sequence from one set of decoded rows per item. Each b = 1
+record carries the digest of that fresh b = 0 sequence, and the run stops unless it matches
+the committed b = 0 sequence. The digest checks that the b = 0
+check payloads (the hop and overlap texts) are identical, not the timing of the historical
+argmax or its logits. Within this run, b = 0 and b = 1 differ only in what each inference
+sends. Graded by Muraja's own engine
 at `99c326f3fb7c`, compiled with Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)
 (`tools/muraja_harness`, `training/muraja_policy.py`).
 

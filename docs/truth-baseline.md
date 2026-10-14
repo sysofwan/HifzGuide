@@ -19,7 +19,7 @@ Truth-site files: `p35_fixtures.jsonl`, `waqf_boundaries.jsonl`.
 | diagnostic | `waqf_boundary:waqf` | 170 | 35 | 35 | 30 | 29 |
 | diagnostic | `waqf_boundary:wasl` | 1622 | 1622 | 1622 | 123 | 81 |
 | pause | `waqf_boundary:waqf` | 170 | 135 | 135 | 86 | 62 |
-| targeted_safeguard | `p35_fixture:shadda` | 24 | 23 | 11 | 22 | 19 |
+| targeted_safeguard | `p35_fixture:shadda` | 24 | 22 | 11 | 21 | 18 |
 | targeted_safeguard | `p35_fixture:ت↔ط` | 10 | 10 | 9 | 10 | 9 |
 | targeted_safeguard | `p35_fixture:ح↔ه` | 3 | 3 | 3 | 3 | 3 |
 | targeted_safeguard | `p35_fixture:ذ↔ز` | 30 | 30 | 28 | 28 | 21 |
@@ -30,7 +30,7 @@ Truth-site files: `p35_fixtures.jsonl`, `waqf_boundaries.jsonl`.
 P3.5 fixtures lost to re-location (#83) are listed in
 `tools/tadabur/truth_sites/p35_fixtures.summary.json`; weights are not inflated to cover
 them. A site's weight is its stratum population over the sites sampled in the stratum: every stratum here is a census, so every weight is 1.
-1 site(s) Ship A's waqf guard realizes (#134: the mark only exists in wasl and the reciter paused there) are left out of every denominator, at their frozen weights: `p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74`.
+2 site(s) Ship A's waqf guard realizes (#134: the mark only exists in wasl and the reciter paused there) are left out of every denominator, at their frozen weights: `p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74`, `p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32`.
 Records sharing one physical site (audio checksum, span, carrier, mark): 0 merged; every record is its own site.
 
 Every site is scored under three **arms** per model, all from the same staged audio.
@@ -598,7 +598,7 @@ that could belong to it counted as successes or as failures.
 
 | population | stratum | mark | prescribed | heard | sites |
 |---|---|---|---|---|---|
-| targeted_safeguard | `p35_fixture:shadda` | shaddah | held | pending | 6 |
+| targeted_safeguard | `p35_fixture:shadda` | shaddah | held | pending | 5 |
 | targeted_safeguard | `p35_fixture:shadda` | shaddah | not_held | pending | 6 |
 | targeted_safeguard | `p35_fixture:ت↔ط` | ت↔ط | ت | pending | 1 |
 | targeted_safeguard | `p35_fixture:ذ↔ز` | ذ↔ز | ز | pending | 2 |

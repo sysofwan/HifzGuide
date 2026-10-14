@@ -109,11 +109,11 @@
    "population": "targeted_safeguard",
    "stratum": "p35_fixture:shadda",
    "stratum_population": 24,
-   "sites": 23,
+   "sites": 22,
    "with_verdict": 11,
-   "items": 22,
-   "reciters": 19,
-   "waqf_realized": 1,
+   "items": 21,
+   "reciters": 18,
+   "waqf_realized": 2,
    "onset_trimmed": 0
   },
   {
@@ -185,7 +185,8 @@
  ],
  "physical_sites_merged": [],
  "waqf_realized": [
-  "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74"
+  "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
+  "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32"
  ],
  "onset_trimmed": [],
  "exclusions": [
@@ -195,7 +196,7 @@
    "mark": "shaddah",
    "prescribed": "held",
    "heard": "pending",
-   "sites": 6
+   "sites": 5
   },
   {
    "population": "targeted_safeguard",
@@ -14485,7 +14486,7 @@
    "reciters": 84,
    "sparse": false,
    "provisional": false,
-   "excluded": 22,
+   "excluded": 21,
    "arms": {
     "base/checks": {
      "rates": {
@@ -14654,12 +14655,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.7843137254901961,
-       "best": 0.9281045751633987
+       "worst": 0.7894736842105263,
+       "best": 0.9276315789473685
       },
       "committed_accuracy": {
-       "worst": 0.19014084507042253,
-       "best": 0.34507042253521125
+       "worst": 0.19148936170212766,
+       "best": 0.3404255319148936
       }
      }
     },
@@ -14830,12 +14831,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.8562091503267973,
+       "worst": 0.8618421052631579,
        "best": 1.0
       },
       "committed_accuracy": {
        "worst": 0.0,
-       "best": 0.1437908496732026
+       "best": 0.13815789473684212
       }
      }
     },
@@ -15006,12 +15007,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.7581699346405228,
-       "best": 0.9019607843137255
+       "worst": 0.7631578947368421,
+       "best": 0.9013157894736842
       },
       "committed_accuracy": {
-       "worst": 0.18115942028985507,
-       "best": 0.34057971014492755
+       "worst": 0.18248175182481752,
+       "best": 0.3357664233576642
       }
      }
     },
@@ -15182,12 +15183,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.7581699346405228,
-       "best": 0.9019607843137255
+       "worst": 0.7631578947368421,
+       "best": 0.9013157894736842
       },
       "committed_accuracy": {
-       "worst": 0.5217391304347826,
-       "best": 0.6811594202898551
+       "worst": 0.5255474452554745,
+       "best": 0.6788321167883211
       }
      }
     },
@@ -15358,12 +15359,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.7581699346405228,
-       "best": 0.9019607843137255
+       "worst": 0.7631578947368421,
+       "best": 0.9013157894736842
       },
       "committed_accuracy": {
-       "worst": 0.4855072463768116,
-       "best": 0.644927536231884
+       "worst": 0.48905109489051096,
+       "best": 0.6423357664233577
       }
      }
     },
@@ -15534,12 +15535,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.7450980392156863,
-       "best": 0.8888888888888888
+       "worst": 0.75,
+       "best": 0.8881578947368421
       },
       "committed_accuracy": {
-       "worst": 0.5147058823529411,
-       "best": 0.6764705882352942
+       "worst": 0.5185185185185185,
+       "best": 0.674074074074074
       }
      }
     }
@@ -16453,7 +16454,7 @@
    "reciters": 10,
    "sparse": true,
    "provisional": true,
-   "excluded": 6,
+   "excluded": 5,
    "arms": {
     "base/checks": {
      "rates": {
@@ -16622,12 +16623,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.625,
+       "worst": 0.6666666666666666,
        "best": 1.0
       },
       "committed_accuracy": {
-       "worst": 0.0625,
-       "best": 0.4375
+       "worst": 0.06666666666666667,
+       "best": 0.4
       }
      }
     },
@@ -16798,12 +16799,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.625,
+       "worst": 0.6666666666666666,
        "best": 1.0
       },
       "committed_accuracy": {
        "worst": 0.0,
-       "best": 0.375
+       "best": 0.3333333333333333
       }
      }
     },
@@ -16974,12 +16975,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.625,
+       "worst": 0.6666666666666666,
        "best": 1.0
       },
       "committed_accuracy": {
-       "worst": 0.125,
-       "best": 0.5
+       "worst": 0.13333333333333333,
+       "best": 0.4666666666666667
       }
      }
     },
@@ -17150,12 +17151,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.625,
+       "worst": 0.6666666666666666,
        "best": 1.0
       },
       "committed_accuracy": {
-       "worst": 0.3125,
-       "best": 0.6875
+       "worst": 0.3333333333333333,
+       "best": 0.6666666666666666
       }
      }
     },
@@ -17326,12 +17327,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.5625,
-       "best": 0.9375
+       "worst": 0.6,
+       "best": 0.9333333333333333
       },
       "committed_accuracy": {
-       "worst": 0.4,
-       "best": 0.8
+       "worst": 0.42857142857142855,
+       "best": 0.7857142857142857
       }
      }
     },
@@ -17502,12 +17503,12 @@
      },
      "sensitivity": {
       "commit_rate": {
-       "worst": 0.625,
+       "worst": 0.6666666666666666,
        "best": 1.0
       },
       "committed_accuracy": {
-       "worst": 0.375,
-       "best": 0.75
+       "worst": 0.4,
+       "best": 0.7333333333333333
       }
      }
     }

@@ -27832,7 +27832,7 @@
   }
  ],
  "excluded": {
-  "p35_fixture:shadda": 12,
+  "p35_fixture:shadda": 11,
   "p35_fixture:ت↔ط": 1,
   "p35_fixture:ذ↔ز": 2,
   "p35_fixture:س↔ص": 2,
@@ -27840,7 +27840,8 @@
   "p35_fixture:ق↔ك": 3
  },
  "waqf_realized": [
-  "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74"
+  "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
+  "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32"
  ],
  "onset_trimmed": [],
  "today_system_arm": "h448/stream_b0"

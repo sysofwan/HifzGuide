@@ -259,9 +259,9 @@ the guard was built:
 
 | stratum | items | wasl-dependent | unsupported | check: paused | unplaced | owner note | waqf_realized |
 |---|---|---|---|---|---|---|---|
-| p35_fixture:shadda | 13 | 3 | 0 | 1 | 0 | 0 | 1 |
+| p35_fixture:shadda | 13 | 3 | 0 | 1 | 0 | 2 | 2 |
 | ship_a:shaddah:held:h448_single:base_held | 659 | 64 | 0 | 0 | 9 | 0 | 0 |
-| ship_a:shaddah:held:h448_single:base_not_held | 93 | 15 | 0 | 5 | 0 | 5 | 6 |
+| ship_a:shaddah:held:h448_single:base_not_held | 93 | 15 | 0 | 5 | 0 | 11 | 12 |
 | ship_a:ت:h448_other | 106 | 63 | 1 | 56 | 2 | 0 | 56 |
 | ship_a:ش:h448_other | 8 | 0 | 3 | 0 | 0 | 0 | 0 |
 | ship_a:ط→ت:h448_partner:base_wrong | 2 | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -275,13 +275,13 @@ the guard was built:
 | ship_a_mining:ك→ق:h448_partner:base_wrong | 9 | 0 | 1 | 0 | 0 | 0 | 0 |
 | word_sample | 160 | 101 | 8 | 0 | 9 | 0 | 0 |
 
-The sizing below leaves out 62 realized sites and 0 sampled words
+The sizing below leaves out 68 realized sites and 0 sampled words
 (per cell, sites and held-out listened sites); question 4 reads the P3.5 fixtures without the
-1 realized there:
+2 realized there:
 
 | cell | sites | held-out listened |
 |---|---|---|
-| geminates (base not held) | 6 | 4 |
+| geminates (base not held) | 12 | 7 |
 | soft pairs (pooled) | 56 | 0 |
 | ت↔ط | 56 | 0 |
 
@@ -307,17 +307,17 @@ the mining pool (182 segments, 90
 calibration and 92 test reciters, split by reciter), each cut
 100 ms before, at, and 20, 40, 80 and 120 ms into its first letter (a cut into the letter is a
 trim). Rule: per candidate, the highest calibration recall with precision >= 0.9 (ties: higher precision, stricter threshold); the candidate with the highest calibration recall at its point (ties: higher precision, candidate order). Against the owner: exposed items with a trim note are
-positives (6), the other answered exposed items weak negatives
-(24); a detector decides only when it finds at least
+positives (18), the other answered exposed items weak negatives
+(86); a detector decides only when it finds at least
 75% of the flags at precision ≥ 0.9 there.
 
 | candidate | operating point | calibration precision / recall | test precision / recall | clean cuts at the onset called trimmed (calibration) | owner check precision / recall |
 |---|---|---|---|---|---|
-| `ctc_first_posterior` (low) | 0.400956 | 0.903 (279/309) / 0.775 (279/360) | 0.893 (267/299) / 0.726 (267/368) | 29/90 | 0.250 (6/24) / 1.000 (6/6) |
-| `ctc_onset_llr` (low) | 3.0713 | 0.902 (284/315) / 0.789 (284/360) | 0.876 (275/314) / 0.747 (275/368) | 30/90 | 0.231 (6/26) / 1.000 (6/6) |
-| `decode_leading_missing` (high) | 2 | 0.908 (139/153) / 0.386 (139/360) | 0.914 (148/162) / 0.402 (148/368) | 14/90 | 0.316 (6/19) / 1.000 (6/6) |
-| `onset_level_db` (high) | 1.329 | 0.906 (339/374) / 0.942 (339/360) | 0.937 (344/367) / 0.935 (344/368) | 34/90 | 0.261 (6/23) / 1.000 (6/6) |
-| `vad_speech_frame0` (high) | 0.609059 | 0.903 (309/342) / 0.858 (309/360) | 0.918 (314/342) / 0.853 (314/368) | 32/90 | 0.217 (5/23) / 0.833 (5/6) |
+| `ctc_first_posterior` (low) | 0.400956 | 0.903 (279/309) / 0.775 (279/360) | 0.893 (267/299) / 0.726 (267/368) | 29/90 | 0.250 (18/72) / 1.000 (18/18) |
+| `ctc_onset_llr` (low) | 3.0713 | 0.902 (284/315) / 0.789 (284/360) | 0.876 (275/314) / 0.747 (275/368) | 30/90 | 0.225 (18/80) / 1.000 (18/18) |
+| `decode_leading_missing` (high) | 2 | 0.908 (139/153) / 0.386 (139/360) | 0.914 (148/162) / 0.402 (148/368) | 14/90 | 0.367 (18/49) / 1.000 (18/18) |
+| `onset_level_db` (high) | 1.329 | 0.906 (339/374) / 0.942 (339/360) | 0.937 (344/367) / 0.935 (344/368) | 34/90 | 0.211 (15/71) / 0.833 (15/18) |
+| `vad_speech_frame0` (high) | 0.609059 | 0.903 (309/342) / 0.858 (309/360) | 0.918 (314/342) / 0.853 (314/368) | 32/90 | 0.210 (16/76) / 0.889 (16/18) |
 
 **The detector does not decide.** No candidate is reliable on the clips the
 owner judged, so only the owner's notes take items out; the scores and every
@@ -325,7 +325,7 @@ candidate's operating point stay in `onset_guard.summary.json` and
 `onset_guard.jsonl`. The synthetic cut at the letter's onset (clean, but with no silence before it) is
 what a real Tadabur file start looks like, and every candidate calls about a third of those
 trimmed; on the owner's clips their precision is far below the floor. The owner check is small
-(6 flags): it can rule a detector out, not in. **The precision condition
+(18 flags): it can rule a detector out, not in. **The precision condition
 was added after the first build**: the recall-only check written down first would have let
 `onset_level_db` decide, so the detector being off rests on that added condition (and
 the clean cuts above), not on a rule fixed before any result.
@@ -339,7 +339,7 @@ verdicts committed when the guard was built:
 | new_audit:ز→ذ:base_partner | 3 | 1 | 1 | 0 | 1 | 0 | 0 |
 | p35_fixture:shadda | 13 | 1 | 1 | 0 | 1 | 0 | 0 |
 | ship_a:shaddah:held:h448_single:base_held | 659 | 43 | 3 | 40 | 2 | 0 | 0 |
-| ship_a:shaddah:held:h448_single:base_not_held | 93 | 40 | 33 | 7 | 28 | 6 | 6 |
+| ship_a:shaddah:held:h448_single:base_not_held | 93 | 40 | 33 | 7 | 28 | 18 | 18 |
 | ship_a:ت:h448_other | 106 | 6 | 4 | 2 | 5 | 0 | 0 |
 | ship_a:ذ:h448_other | 34 | 2 | 1 | 1 | 2 | 0 | 0 |
 | ship_a:س→ش:h448_partner:base_wrong | 2 | 1 | 1 | 0 | 1 | 0 | 0 |
@@ -371,46 +371,99 @@ verdicts committed when the guard was built:
 | ship_a_mining:ق→ك:h448_partner:base_right | 20 | 1 | 1 | 0 | 1 | 0 | 0 |
 | ship_a_mining:ق→ك:h448_partner:base_wrong | 6 | 1 | 1 | 0 | 1 | 0 | 0 |
 | ship_a_mining:ك→ق:h448_partner:base_right | 40 | 2 | 1 | 1 | 0 | 0 | 0 |
-| word_sample | 160 | 29 | 20 | 9 | 19 | 0 | 0 |
+| word_sample | 160 | 29 | 20 | 9 | 19 | 1 | 1 |
 
-The sizing below leaves out 6 trimmed sites and 0 sampled words
+The sizing below leaves out 18 trimmed sites and 1 sampled words
 (an item the waqf guard also takes out counts there); question 4 reads the P3.5 fixtures
 without the 0 trimmed there.
 
 | cell | sites | held-out listened |
 |---|---|---|
-| geminates (base not held) | 6 | 6 |
+| geminates (base not held) | 18 | 12 |
 
 Answered exposed items the owner did not flag that a candidate calls trimmed, for
 re-listening (the candidates that do):
 
+- `new_audit:tadabur_spk0001_S36_A2_8d1e5246_000001.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0001_S36_A2_8d1e5246_000001.wav#0@2:ذ↔ز` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0005_S1_A129_dc70eb9b_000065.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0018_S8_A31_5e3b7841_000024.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0026_S2_A194_22a2785a_000017.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0044_S8_A31_939db108_000001.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0048_S32_A35_4093ed4f_000028.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0055_S99_A5_80b1dfeb_000377.wav#0@6:ط↔ق` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0073_S23_A3_8c6c9464_000101.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0087_S1_A129_827a7af7_000092.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0192_S1_A57_e3e76d62_000066.wav#0@2:ض↔ظ` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0205_S41_A49_77171eb0_000035.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0229_S1_A57_768d5454_000000.wav#0@2:ض↔ظ` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0254_S1_A238_cfbe158f_000000.wav#0@6:ض↔ظ` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0420_S1_A128_22eee982_000081.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0469_S29_A30_6161e9ec_000000.wav#1@2:ط↔ق` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
-- `new_audit:tadabur_spk0495_S1_A275_a5cd5045_000250.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0505_S17_A2_79207276_000001.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0567_S3_A138_a9706b7f_000000.wav#0@2:shaddah` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0593_S3_A50_ae02878a_000000.wav#0@5:ض↔ظ` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0018_S81_A11_8c8cc846_000010.wav#0@0` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0143_S55_A3_7fca69ec_000001.wav#0@0` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0196_S58_A24_73169dcc_000004.wav#0@0` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0345_S24_A15_f1b3d0ea_000000.wav#0@0` (5 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0017_S51_A24_9b3c4101_000075.wav#0@4:ط↔ق` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0021_S74_A8_5b1f05d5_000004.wav#0@4:س↔ش` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0045_S11_A110_3e5673b3_000039.wav#0@2:shaddah` (4 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, vad_speech_frame0)
+- `new_audit:tadabur_spk0095_S1_A57_83f419a9_000006.wav#0@2:ض↔ظ` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0100_S74_A8_49e7c8f5_000257.wav#0@4:س↔ش` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0158_S41_A11_7a8fb12f_000008.wav#0@4:ط↔ق` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0229_S1_A229_768d5454_000000.wav#0@2:shaddah` (4 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, vad_speech_frame0)
+- `new_audit:tadabur_spk0345_S13_A40_852439e6_000000.wav#0@2:shaddah` (4 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, vad_speech_frame0)
+- `new_audit:tadabur_spk0346_S17_A86_d6b36405_000008.wav#0@2:shaddah` (4 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, vad_speech_frame0)
+- `new_audit:tadabur_spk0495_S1_A57_a5cd5045_000061.wav#0@2:ض↔ظ` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0598_S1_A109_4cd0dbcc_000066.wav#0@2:shaddah` (4 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, vad_speech_frame0)
 - `new_audit:tadabur_spk0647_S6_A22_9052b84e_000029.wav#1@2:ط↔ق` (4 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing, vad_speech_frame0)
+- `word_sample:tadabur_spk0176_S1_A39_801c51d0_000018.wav#0@0` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0262_S69_A14_70afcad4_000013.wav#0@0` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0406_S34_A19_dc0d6e7a_000009.wav#0@0` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0483_S33_A45_30415cf4_000039.wav#0@0` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0512_S20_A83_444ea6da_000000.wav#0@0` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0518_S67_A33_13cc9747_000075.wav#0@0` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk374_S55_A67_378a2b18_000054.wav#0@0` (4 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0004_S57_A16_7519ed89_000008.wav#0@2:shaddah` (3 of 5: ctc_onset_llr, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0026_S8_A31_d3f747bd_000021.wav#0@2:shaddah` (3 of 5: ctc_onset_llr, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0027_S27_A81_84974d75_000169.wav#0@4:س↔ش` (3 of 5: ctc_onset_llr, ctc_first_posterior, onset_level_db)
+- `new_audit:tadabur_spk0039_S11_A19_c50acfd8_000120.wav#2@4:س↔ش` (3 of 5: ctc_onset_llr, ctc_first_posterior, decode_leading_missing)
 - `new_audit:tadabur_spk0039_S38_A69_20a3da95_000030.wav#0@7:ق↔ك` (3 of 5: ctc_onset_llr, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0146_S37_A6_7fd35efd_000004.wav#0@5:ط↔ق` (3 of 5: ctc_onset_llr, onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk9_S1_A57_d6505fc9_000043.wav#0@2:ض↔ظ` (3 of 5: ctc_onset_llr, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0005_S23_A52_5e69a002_000116.wav#0@0` (3 of 5: ctc_onset_llr, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0254_S25_A226_14d03e2c_000000.wav#0@0` (3 of 5: ctc_onset_llr, onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0355_S57_A3_777e06ad_000001.wav#0@0` (3 of 5: ctc_onset_llr, ctc_first_posterior, vad_speech_frame0)
+- `word_sample:tadabur_spk0706_S20_A88_bbac6995_000024.wav#0@0` (3 of 5: ctc_first_posterior, onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0000_S74_A8_069327bf_000266.wav#0@4:س↔ش` (2 of 5: onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0003_S99_A5_5922f356_000403.wav#0@6:ط↔ق` (2 of 5: ctc_onset_llr, ctc_first_posterior)
+- `new_audit:tadabur_spk0039_S21_A31_29c0590f_000125.wav#2@5:ت↔ط` (2 of 5: ctc_onset_llr, ctc_first_posterior)
 - `new_audit:tadabur_spk0039_S74_A8_2c45abee_000255.wav#0@4:س↔ش` (2 of 5: onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0054_S13_A21_c066bb52_000014.wav#0@6:ذ↔ز` (2 of 5: onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0073_S12_A35_0e83f19f_000085.wav#2@2:ق↔ك` (2 of 5: ctc_onset_llr, onset_level_db)
 - `new_audit:tadabur_spk0093_S74_A8_04f0e1ab_000285.wav#0@4:س↔ش` (2 of 5: onset_level_db, vad_speech_frame0)
 - `new_audit:tadabur_spk0158_S7_A11_cd8b558f_000010.wav#2@9:ت↔ط` (2 of 5: ctc_onset_llr, ctc_first_posterior)
 - `new_audit:tadabur_spk0291_S1_A59_5deeb6df_000036.wav#0@4:shaddah` (2 of 5: ctc_onset_llr, ctc_first_posterior)
+- `new_audit:tadabur_spk0435_S17_A74_924faf08_000062.wav#2@4:shaddah` (2 of 5: ctc_first_posterior, decode_leading_missing)
 - `new_audit:tadabur_spk0452_S17_A96_4cfe0a7d_000000.wav#2@2:shaddah` (2 of 5: ctc_onset_llr, ctc_first_posterior)
+- `p35_fixture:tadabur_spk0066_S77_A19_e5efd899_000017__seg0.wav:shadda#4` (2 of 5: onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0118_S83_A23_761c7e8d_000015.wav#0@0` (2 of 5: ctc_onset_llr, ctc_first_posterior)
+- `word_sample:tadabur_spk0190_S72_A10_7f9961cd_000008.wav#0@0` (2 of 5: onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0476_S11_A58_dafa7e44_000000.wav#0@0` (2 of 5: onset_level_db, vad_speech_frame0)
+- `word_sample:tadabur_spk0675_S82_A30_3148e2fc_000028.wav#0@0` (2 of 5: onset_level_db, vad_speech_frame0)
+- `new_audit:tadabur_spk0008_S27_A81_bc023467_000002.wav#0@4:س↔ش` (1 of 5: vad_speech_frame0)
+- `new_audit:tadabur_spk0197_S1_A57_f8cf8064_000035.wav#0@2:ض↔ظ` (1 of 5: onset_level_db)
+- `new_audit:tadabur_spk0319_S18_A78_db89b3d1_000000.wav#0@2:shaddah` (1 of 5: ctc_onset_llr)
+- `new_audit:tadabur_spk0556_S5_A52_9b1ba0f5_000005.wav#2@4:ط↔ق` (1 of 5: ctc_onset_llr)
+- `new_audit:tadabur_spk0720_S11_A101_7fa2334d_000071.wav#1@4:ط↔ق` (1 of 5: ctc_first_posterior)
+- `word_sample:tadabur_spk0070_S30_A9_3ef9e5b1_000001.wav#1@2` (1 of 5: onset_level_db)
+- `word_sample:tadabur_spk0458_S2_A180_46520e52_000000.wav#3@22` (1 of 5: ctc_onset_llr)
 
 ## 1. Verification budget
 
-Listened: the sites the section above selects (81
+Listened: the sites the section above selects (63
 geminates, a census of those the base does not hold; the ~300-geminate slot of the first
 plan). Listened sites (reciters) per half of the confirmed 50/50 split
 (D11). A held-out cell with fewer than 10 reciters or 20
@@ -418,7 +471,7 @@ sites is sparse (§1): its family is reported as insufficient evidence (§7).
 
 | family | flagged | partner swaps | base already right | listened | train | held out | held-out status |
 |---|---|---|---|---|---|---|---|
-| shaddah | 740 | 0 | 659 | 81 | 39 (27) | 42 (30) | sufficient |
+| shaddah | 722 | 0 | 659 | 63 | 30 (22) | 33 (23) | sufficient |
 | ت↔ط | 73 | 13 | 59 | 7 | 1 (1) | 6 (4) | insufficient evidence |
 | ح↔ه | 89 | 13 | 76 | 5 | 1 (1) | 4 (3) | insufficient evidence |
 | ذ↔ز | 110 | 64 | 91 | 35 | 4 (4) | 31 (26) | sufficient |
@@ -454,7 +507,7 @@ Kish's effective size per cell under those weights (the word sample's is in §3)
 
 | cell | held-out sites | effective size |
 |---|---|---|
-| geminates (base not held) | 42 | 42.0 |
+| geminates (base not held) | 33 | 33.0 |
 | soft pairs (pooled) | 156 | 125.4 |
 | ت↔ط | 6 | 6.0 |
 | ح↔ه | 4 | 4.0 |
@@ -505,9 +558,9 @@ Reciters (one site each) a true rate needs for its lower bound to reach a floor 
 | ذ↔ظ | 0.9 | — | — | — |
 | س↔ش | 28.2 | — | 0.3 | 0.6 |
 | ط↔ق | 83.3 | 0.3 | 0.5 | 0.7 |
-| geminates (base not held) | 26.6 | 0.2 | 0.4 | 0.6 |
+| geminates (base not held) | 20.5 | — | — | — |
 
-At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.4; ت↔ط —; ح↔ه —; ذ↔ز 0.3; س↔ص —; ض↔ظ 0.4; ق↔ك 0.3; ذ↔ظ —; س↔ش 0.3; ط↔ق 0.5; geminates (base not held) 0.4.
+At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.4; ت↔ط —; ح↔ه —; ذ↔ز 0.3; س↔ص —; ض↔ظ 0.4; ق↔ك 0.3; ذ↔ظ —; س↔ش 0.3; ط↔ق 0.5; geminates (base not held) —.
 
 **Retention** of verified mistakes (θ = 0.15; held-out mistakes are few):
 
@@ -523,19 +576,19 @@ At a true recovery of 70%, the floor each cell reaches: soft pairs (pooled) 0.4;
 | ذ↔ظ | 0.1 | — | — | — |
 | س↔ش | 6.2 | — | — | — |
 | ط↔ق | 17.2 | — | — | — |
-| geminates (base not held) | 5.8 | — | — | — |
+| geminates (base not held) | 4.6 | — | — | — |
 
 Every site with the reciter bootstrap, recovery, at ICC 0.15 and at ICC 0:
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
 | soft pairs (pooled) | 69.1 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 26.7 | 0.2 | 0.4 | 0.7 |
+| geminates (base not held) | 20.5 | 0.2 | 0.4 | 0.6 |
 
 | cell | held-out reciters | true 50% | true 70% | true 90% |
 |---|---|---|---|---|
 | soft pairs (pooled) | 69.4 | 0.3 | 0.5 | 0.8 |
-| geminates (base not held) | 26.7 | 0.2 | 0.4 | 0.7 |
+| geminates (base not held) | 20.6 | 0.2 | 0.4 | 0.6 |
 
 ## 3. New-error harm on sites `h448` gets right
 
@@ -600,10 +653,10 @@ site. **Report only: not on #61's worklist.**
   geminate carriers: the census of changes covers every carrier, flagged or not, and costs
   nothing to enumerate. What it cannot see is harm the candidate does *elsewhere* (other
   letters, tashkeel) and harm in the app outcome, where the ratchet decides.
-- **The random word sample** is the model-independent denominator for that: 160
+- **The random word sample** is the model-independent denominator for that: 159
   words, one per held-out reciter (planning: 90% heard as
   correct), each weighing the inverse of its selection probability within the sample's frame
-  (Kish effective size 109.8). It covers false flags from any cause, as the app
+  (Kish effective size 108.9). It covers false flags from any cause, as the app
   grades them in #123's replay, and new errors anywhere in a word. It leaves out the rare
   events: per-family harm at a few per 1,000 carriers, real mistakes (a few words), cross-word
   geminates. Its power to show the candidate's weighted false-flag rate below `h448`'s, with
@@ -612,15 +665,15 @@ site. **Report only: not on #61's worklist.**
 
 | `h448` false flags | reduction | P(upper bound ≤ +0%) | P(upper bound ≤ -1%) | P(upper bound ≤ -2%) |
 |---|---|---|---|---|
-| 2% | 25% | 0.53 | 0.00 | 0.00 |
-| 2% | 50% | 0.76 | 0.00 | 0.00 |
-| 2% | 75% | 0.90 | 0.01 | 0.00 |
-| 5% | 25% | 0.84 | 0.00 | 0.00 |
-| 5% | 50% | 0.97 | 0.09 | 0.01 |
-| 5% | 75% | 1.00 | 0.31 | 0.09 |
-| 10% | 25% | 0.97 | 0.09 | 0.01 |
-| 10% | 50% | 1.00 | 0.58 | 0.27 |
-| 10% | 75% | 1.00 | 0.90 | 0.69 |
+| 2% | 25% | 0.50 | 0.00 | 0.00 |
+| 2% | 50% | 0.75 | 0.00 | 0.00 |
+| 2% | 75% | 0.89 | 0.01 | 0.00 |
+| 5% | 25% | 0.85 | 0.00 | 0.00 |
+| 5% | 50% | 0.97 | 0.10 | 0.02 |
+| 5% | 75% | 0.99 | 0.30 | 0.08 |
+| 10% | 25% | 0.97 | 0.10 | 0.02 |
+| 10% | 50% | 1.00 | 0.57 | 0.27 |
+| 10% | 75% | 1.00 | 0.90 | 0.68 |
 
 ## 4. Mix of real mistakes
 
@@ -634,7 +687,7 @@ over-represent mistakes against the pool's `h448` flags.
 
 | family | should-accept | should-reject (pending) | reject share (upper) |
 |---|---|---|---|
-| shaddah | 4 | 10 | 71% |
+| shaddah | 4 | 9 | 69% |
 | soft pairs (pooled) | 40 | 6 | 13% |
 
 Planning θ = 0.05, 0.15, 0.5. Verified mistakes the "keep both outcomes"
@@ -642,7 +695,7 @@ term would get on the train half (50/50) at each θ:
 
 | cell | train sites listened | θ = 0.05 | θ = 0.15 | θ = 0.5 |
 |---|---|---|---|---|
-| geminates (base not held) | 39 | 2.0 | 5.8 | 19.5 |
+| geminates (base not held) | 30 | 1.5 | 4.5 | 15.0 |
 | soft pairs (pooled) | 49 | 2.5 | 7.3 | 24.5 |
 | ت↔ط | 1 | 0.1 | 0.1 | 0.5 |
 | ح↔ه | 1 | 0.1 | 0.1 | 0.5 |

@@ -216,6 +216,21 @@ def _app(report: dict) -> list[str]:
             causes = app[model][scoring]["causes"]
             out.append(f"| {model} | {scoring} | " + " | ".join(str(v) for v in causes.values())
                        + " |")
+    out += ["", "**Consonant false flags by substitution** (expected → heard; a deletion is "
+            "`del:<letter>`; a word counts once per substitution; `word_flags.substitution_tally`). "
+            "Per model and scoring, the substitutions carried by at least three flagged words:", ""]
+    for model in ("base", "h448"):
+        for scoring in ("shipped_default", "allowances_off"):
+            rows = [r for r in app[model][scoring]["substitutions"] if r["words"] >= 3]
+            out.append(f"- {model}, {scoring}: " + (", ".join(
+                f"{r['substitution']} {r['words']} ({r['cause']})" for r in rows) or "none") + ".")
+    out += ["", "By expected letter and cause (every consonant false flag; a word once per "
+            "letter and cause):", ""]
+    for model in ("base", "h448"):
+        for scoring in ("shipped_default", "allowances_off"):
+            out.append(f"- {model}, {scoring}: " + ", ".join(
+                f"{r['expected']} {r['words']} ({r['cause']})"
+                for r in app[model][scoring]["substitutions_by_expected"]) + ".")
     out += ["", "Where in its item a word flagged as skipped sits (the engine's skip marking; each "
             "item is one session, starting on its first word): " + "; ".join(
                 f"{model} {scoring} " + ", ".join(f"{k} {v}" for k, v in

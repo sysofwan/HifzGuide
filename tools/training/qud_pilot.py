@@ -410,8 +410,9 @@ def placement(item: PilotItem, placed: Sequence[tuple]):
 
 def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, dict]],
                 harness) -> dict:
-    """Per model (its recorded checks) and scoring, every word's grade: words graded, flagged
-    and the flags' causes (:mod:`training.word_flags`)."""
+    """Per model (its recorded checks) and scoring, every word's grade: words graded, flagged,
+    the flags' causes, and the consonant flags' substitutions, expected → heard and by expected
+    letter (:func:`training.word_flags.substitution_tally`: a word counts once per key)."""
     from training.device_logs import per_1000
     from training.muraja_policy import (
         NOT_GRADED,
@@ -423,7 +424,7 @@ def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, d
         MurajaText,
         grade_placed,
     )
-    from training.word_flags import CAUSES, SKIPPED, flag
+    from training.word_flags import CAUSES, SKIPPED, flag, substitution_tally
 
     scorings = [SHIPPED_DEFAULT, next(s for s in SCORINGS if s.name == "allowances_off")]
     text = MurajaText(harness.quran_db)
@@ -443,6 +444,7 @@ def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, d
             marks: Counter = Counter()
             by_mushaf: dict[str, Counter] = defaultdict(Counter)
             skipped_at: Counter = Counter()
+            consonant_flags: list = []
             for item in items:
                 last = len(placed[item.key]) - 1
                 for position, (word, site) in enumerate(placed[item.key]):
@@ -459,6 +461,7 @@ def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, d
                     reason = flag(grade, text.word_phonemes(site))
                     causes.update(reason.causes)
                     marks.update(set(reason.marks))
+                    consonant_flags.append(reason.consonants)
                     if SKIPPED in reason.causes:
                         skipped_at["first word" if position == 0 else
                                    "last word" if position == last else "inside"] += 1
@@ -470,6 +473,9 @@ def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, d
                 "causes": {c: causes[c] for c in CAUSES},
                 "tashkeel_marks": dict(sorted(marks.items())),
                 "skipped_where": dict(sorted(skipped_at.items())),
+                "substitutions": substitution_tally(consonant_flags),
+                "substitutions_by_expected": substitution_tally(consonant_flags,
+                                                                by_expected=True),
                 "per_mushaf": {s: {**dict(c), "per_1000": round(per_1000(c["flagged"] / c["graded"]), 2)}
                                for s, c in sorted(by_mushaf.items())},
             }

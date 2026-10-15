@@ -237,7 +237,8 @@ _CLIP_EXPOSURE_FIELDS = {f.name for f in fields(ClipExposure)}
 
 
 def parse_clip_exposure(data: dict, where: str) -> ClipExposure:
-    if set(data) != _CLIP_EXPOSURE_FIELDS or not all(type(v) is str and v for v in data.values()):
+    if set(data) != _CLIP_EXPOSURE_FIELDS or not all(type(v) is str and v
+                                                     for v in data.values()):
         raise ValueError(f"{where}: a clip exposure has the non-empty string fields "
                          f"{sorted(_CLIP_EXPOSURE_FIELDS)}")
     row = ClipExposure(**data)

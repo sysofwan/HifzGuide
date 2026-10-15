@@ -31,6 +31,11 @@ def _pct(x) -> str:
     return "–" if x is None else f"{100 * x:.1f}%"
 
 
+def _classes(counts: dict) -> str:
+    return (f"{counts.get('agreed', 0)} / {counts.get('disagreed', 0)} / "
+            f"{counts.get('abstained', 0)}")
+
+
 def _sources(report: dict) -> list[str]:
     out = ["## The corpora", "",
            "| source | dataset (revision) | licence | per-clip outputs committed | rows | "
@@ -39,9 +44,11 @@ def _sources(report: dict) -> list[str]:
         s = report.get("selection", {}).get(name)
         left = ("; ".join(f"{reason} {n}" for reason, n in s["left_out"].items()) or "none") \
             if s else "(its clips are qdat's)"
+        committed = ("yes" if d["per_clip_outputs_committed"]
+                     else "no: aggregates and clip ids only")
         out.append(f"| {NAMES[name]} | `{d['repo']}` (`{d['revision'][:8]}`) | {d['licence']} | "
-                   f"{'yes' if d['per_clip_outputs_committed'] else 'no: aggregates and clip ids only'}"
-                   f" | {s['rows'] if s else 159} | {s['selected'] if s else 159} | {left} |")
+                   f"{committed} | {s['rows'] if s else 159} | {s['selected'] if s else 159} | "
+                   f"{left} |")
     out += ["", "| source | clips decoded | phonetizer cannot handle | presumed correct | hours "
             "| ayat | surahs | reciters | words |", "|---|---|---|---|---|---|---|---|---|"]
     for name in SOURCES:
@@ -128,8 +135,9 @@ def _directions(report: dict) -> list[str]:
     out += ["", "Carriers per class (each carrier once): " + "; ".join(
         f"{NAMES[n]} " + ", ".join(f"{k} {v}" for k, v in
                                    sorted(report["sources"][n]["classes"].items()))
-        for n in SOURCES) + ". Truth sites: `tools/tadabur/nonpro_eval/<source>/truth_sites.jsonl.gz`"
-        " (Tarteel v1, qdat; RetaSy's are not committed).", ""]
+        for n in SOURCES) + ". Truth sites: "
+        "`tools/tadabur/nonpro_eval/<source>/truth_sites.jsonl.gz` (Tarteel v1, qdat; RetaSy's "
+        "are not committed).", ""]
     return out
 
 
@@ -147,14 +155,10 @@ def _consonants(report: dict) -> list[str]:
         cells = []
         for name in SOURCES:
             c = report["sources"][name]["consonants"]["letters"].get(letter)
-            cells.append("–" if c is None else
-                         f"{c.get('agreed', 0)} / {c.get('disagreed', 0)} / {c.get('abstained', 0)}")
+            cells.append("–" if c is None else _classes(c))
         out.append(f"| {letter} | " + " | ".join(cells) + " |")
-    out += ["| all | " + " | ".join(
-        "{agreed} / {disagreed} / {abstained}".format(**{"agreed": 0, "disagreed": 0,
-                                                        "abstained": 0,
-                                                        **report["sources"][n]["consonants"]["total"]})
-        for n in SOURCES) + " |", "",
+    out += ["| all | " + " | ".join(_classes(report["sources"][n]["consonants"]["total"])
+                                   for n in SOURCES) + " |", "",
         "What each rule arm committed instead at the disagreements (expected → committed, the ten "
         "most frequent):", ""]
     for name in SOURCES:

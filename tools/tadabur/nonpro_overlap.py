@@ -35,7 +35,15 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .audio import decode_to_mono_16k
-from .nonpro_sources import DECODED, Dataset, audio_sha256
+from .nonpro_sources import (
+    DECODED,
+    Dataset,
+    LeftOut,
+    audio_sha256,
+    row_group,
+    row_groups,
+    select,
+)
 from .qud_fingerprint import best_match, fingerprint
 
 EVERYAYAH = "https://everyayah.com/data"
@@ -80,22 +88,10 @@ def fetch(url: str) -> bytes | None:
 
 def sampled_rows(dataset: Dataset, decoded: set[str]) -> list[dict]:
     """The sample's rows of one dataset, audio included (module docstring)."""
-    import pyarrow.parquet as pq
-    from huggingface_hub import HfFileSystem
-
-    from .nonpro_sources import LeftOut, select
-
-    groups = []
-    fs = HfFileSystem()
-    for shard in dataset.shards:
-        with fs.open(f"datasets/{dataset.repo}@{dataset.revision}/{shard}") as f:
-            groups += [(shard, g) for g in range(pq.ParquetFile(f).metadata.num_row_groups)]
-    chosen = sorted(groups, key=lambda sg: salted(dataset.name, *sg))[:ROW_GROUPS[dataset.name]]
+    chosen = sorted(row_groups(dataset), key=lambda sg: salted(dataset.name, *sg))
     rows = []
-    for shard, group in sorted(chosen):
-        with fs.open(f"datasets/{dataset.repo}@{dataset.revision}/{shard}",
-                     block_size=32 << 20) as f:
-            records = pq.ParquetFile(f).read_row_group(group).to_pylist()
+    for shard, group in sorted(chosen[:ROW_GROUPS[dataset.name]]):
+        records = row_group(dataset, shard, group)
         clips = [(select(dataset, r), r) for r in records]
         clips = [(c, r) for c, r in clips if not isinstance(c, LeftOut)
                  and c.audio_filename in decoded]

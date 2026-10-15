@@ -274,6 +274,8 @@ PARQUET_EXEMPTIONS = {
     "tadabur/qud_source.py": "QUD's parquet files (metadata columns, and the pilot "
                              "mushafs' MP3s), never a Tadabur shard",
     "tadabur/muaalem_audio.py": "Muaalem's training parquet files, never a Tadabur shard",
+    "tadabur/nonpro_sources.py": "the non-professional corpora's Hub datasets (#156), never a "
+                                 "Tadabur shard",
 }
 
 

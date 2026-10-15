@@ -81,7 +81,8 @@ RETASY_SURAHS = {
 CORRECT, IN_CORRECT = "correct", "in_correct"
 RETASY_LABELS = (CORRECT, IN_CORRECT)
 #: qdat's passage: 5:109's canonical words 8-15, ``قَالُوا۟ لَا عِلْمَ لَنَآ إِنَّكَ أَنتَ عَلَّٰمُ
-#: ٱلْغُيُوبِ`` (``training.nonpro_eval`` checks the audio against this and :data:`QDAT_ALTERNATIVE`).
+#: ٱلْغُيُوبِ`` (``training.nonpro_eval`` checks the audio against this and
+#: :data:`QDAT_ALTERNATIVE`).
 QDAT_PASSAGE = (5, 109, 8, 15)
 #: The card's wording, 2:32 whole.
 QDAT_ALTERNATIVE = (2, 32, 1, 10)
@@ -250,3 +251,26 @@ def metadata(dataset: Dataset) -> list[dict]:
             rows += parquet.read(columns=["audio.path", *(
                 c for c in parquet.schema_arrow.names if c != "audio")]).to_pylist()
     return rows
+
+
+def row_groups(dataset: Dataset) -> list[tuple[str, int]]:
+    """Every ``(shard, row group)`` of a dataset (parquet footers only)."""
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfFileSystem
+
+    out = []
+    for shard in dataset.shards:
+        with HfFileSystem().open(f"datasets/{dataset.repo}@{dataset.revision}/{shard}") as f:
+            out += [(shard, g) for g in range(pq.ParquetFile(f).metadata.num_row_groups)]
+    return out
+
+
+def row_group(dataset: Dataset, shard: str, group: int) -> list[dict]:
+    """One row group of a shard, audio included, by HTTP range requests (never the whole
+    shard)."""
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfFileSystem
+
+    with HfFileSystem().open(f"datasets/{dataset.repo}@{dataset.revision}/{shard}",
+                             block_size=32 << 20) as f:
+        return pq.ParquetFile(f).read_row_group(group).to_pylist()

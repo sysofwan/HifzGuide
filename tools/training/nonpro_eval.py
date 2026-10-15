@@ -219,7 +219,8 @@ def load_corpus() -> Corpus:
             dataset, list(by_model["base"].values()), reference_of)
         for m in MODELS:
             if clash := set(decodes[m]) & set(by_model[m]):
-                raise ValueError(f"{dataset.name} reuses another dataset's keys: {sorted(clash)[:3]}")
+                raise ValueError(f"{dataset.name} reuses another dataset's keys: "
+                                 f"{sorted(clash)[:3]}")
             decodes[m].update(by_model[m])
     return Corpus(lines, items, unsupported, decodes)
 
@@ -353,7 +354,8 @@ def letter_outcomes(decode: str, reference: str) -> dict[str, list[tuple[int, st
     * **consonant**: the first letter of every run of a consonant, by the pair-site rule
       (:func:`training.site_outcomes.pair_outcome`);
     * **haraka**: every consonant a fatha, damma or kasra follows, by the tashkeel-site rule
-      (the carrier reproduced, one distinct haraka on it; :func:`training.tashkeel_eval.carrier_readings`);
+      (the carrier reproduced, one distinct haraka on it;
+      :func:`training.tashkeel_eval.carrier_readings`);
     * **shaddah**: every geminate, held or not (:func:`training.site_outcomes.shaddah_outcome`).
     """
     from tadabur.truth_sites import HELD
@@ -452,8 +454,11 @@ def qdat_views(grades: Sequence[WordGrade]) -> dict:
         words: dict[int, list[WordGrade]] = defaultdict(list)
         for g in group:
             words[g.word].append(g)
-        return [{"word": w, "canonical_word": g[0].word_index + 1,
-                 "text": g[0].item.reference.words[g[0].word_index - g[0].item.reference.word_indices[0]],
+        def text(g: WordGrade) -> str:
+            reference = g.item.reference
+            return reference.words[reference.word_indices.index(g.word_index)]
+
+        return [{"word": w, "canonical_word": g[0].word_index + 1, "text": text(g[0]),
                  **_short_view(g)} for w, g in sorted(words.items())]
 
     def per_reciter(group: Sequence[WordGrade]) -> dict:
@@ -546,16 +551,16 @@ def comparison(app: Mapping[str, dict]) -> dict:
     for model in MODELS:
         out[model] = {}
         for scoring in (s.name for s in app_scorings()):
+            teacher = device["teacher"][scoring]["unexplained"]
+            owned = owner[scoring]["unexplained"]["false_flags"]
             out[model][scoring] = {
                 **{name: rate(v[model][scoring].get("flagged", 0), v[model][scoring]["graded"])
                    for name, v in app.items()},
                 "qud_144": rate(qud[model][scoring]["flagged"], qud[model][scoring]["graded"]),
-                "device_151_teacher": rate(**{"flags": device["teacher"][scoring]["unexplained"]
-                                              ["flags"], "words": device["teacher"][scoring]
-                                              ["unexplained"]["words"]}) if model == "base" else None,
-                "owner_153_h448": rate(owner[scoring]["unexplained"]["false_flags"]["flags"],
-                                       owner[scoring]["unexplained"]["false_flags"]["words"])
-                if model == "h448" else None,
+                # #151's sessions ran the teacher, #153's h448: each beside its own model only.
+                "device_151_teacher": rate(teacher["flags"], teacher["words"])
+                if model == "base" else None,
+                "owner_153_h448": rate(owned["flags"], owned["words"]) if model == "h448" else None,
                 "word_sample_90": {**rate(sample[model][scoring]["false_flags"],
                                           sample[model][scoring]["correct_words"]),
                                    "weighted_per_1000": round(1000 * sample[model][scoring]["rate"], 1)},

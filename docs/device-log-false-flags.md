@@ -14,6 +14,9 @@ is. Each log is replayed through Muraja's own replay (`tools/replay_log.swift`, 
 `tools/muraja_harness/log_replay.swift`) under every scoring, and every flag is attributed
 with `training/word_flags.py`.
 
+The owner's `h448` sessions on app 1.0.27 (pages 4, 9 and 42), exported as bug reports and
+scored the same way, are in `docs/owner-device-sessions.md` (#153).
+
 ## Read this first
 
 - **66 logs, 47 included** (47 the six-chunk teacher). Excluded: 9 a slip into another passage, documented; 1 a duplicate session; 3 no device session (mined Tadabur clips transcribed offline); 6 synthetic (reference phonemes, no model).

@@ -76,7 +76,7 @@ def _inference_evidence(report: dict) -> str:
             f"  inference time (the line is drawn at {STUDENT_INFERENCE_MS} ms).\n")
 
 
-def _num(value, digits: int = 1) -> str:
+def num(value, digits: int = 1) -> str:
     return "–" if value is None else f"{value:.{digits}f}"
 
 
@@ -84,16 +84,16 @@ def fmt_rate(rate: dict) -> str:
     """``flags / words · per 1,000 [interval]``; ``n/c`` where no interval is admissible."""
     if not rate["words"]:
         return "–"
-    bounds = (f"[{_num(rate['lower'])}, {_num(rate['upper'])}]" if rate["method"] != "none"
+    bounds = (f"[{num(rate['lower'])}, {num(rate['upper'])}]" if rate["method"] != "none"
               else "(n/c)")
-    return f"{rate['flags']} / {rate['words']} · {_num(rate['per_1000'])} {bounds}"
+    return f"{rate['flags']} / {rate['words']} · {num(rate['per_1000'])} {bounds}"
 
 
 def _scoring_names(report: dict) -> list[str]:
     return [s["name"] for s in report["scorings"]]
 
 
-def _table(header: list[str], rows: list[list[str]]) -> list[str]:
+def md_table(header: list[str], rows: list[list[str]]) -> list[str]:
     return ["| " + " | ".join(header) + " |", "|" + "---|" * len(header),
             *("| " + " | ".join(row) + " |" for row in rows), ""]
 
@@ -110,7 +110,7 @@ def _scorings_section(report: dict) -> list[str]:
         "filter applied to the kept grade (`muraja_policy.displayed`). `shipped_default` is the app",
         "as installed; `allowances_on` is what a reader who turned tashkeel detection off sees.",
         "",
-        *_table(["scoring", "mode", "soft-pair forgiveness", "shaddah suppression", "tashkeel"], rows),
+        *md_table(["scoring", "mode", "soft-pair forgiveness", "shaddah suppression", "tashkeel"], rows),
     ]
 
 
@@ -129,7 +129,7 @@ def _rates_section(report: dict) -> list[str]:
         by_scoring = report["groups"][group]
         logs = by_scoring[names[0]][ALL_WORDS]["false_flags"]["logs"]
         lines += [f"**{GROUP_TITLES[group]}** ({logs} log{'' if logs == 1 else 's'})", ""]
-        lines += _table(["scoring", VIEW_TITLES[ALL_WORDS], VIEW_TITLES[UNEXPLAINED]],
+        lines += md_table(["scoring", VIEW_TITLES[ALL_WORDS], VIEW_TITLES[UNEXPLAINED]],
                         [[f"`{n}`", fmt_rate(by_scoring[n][ALL_WORDS]["false_flags"]),
                           fmt_rate(by_scoring[n][UNEXPLAINED]["false_flags"])] for n in names])
     lines += _sensitivity_block(report)
@@ -145,13 +145,13 @@ def _rates_section(report: dict) -> list[str]:
     for group in GROUPS:
         by_scoring = {n: report["groups"][group][n][UNEXPLAINED] for n in names}
         rows = [[CAUSE_TITLES[c], *(f"{by_scoring[n]['causes'][c]['flags']} · "
-                                     f"{_num(by_scoring[n]['causes'][c]['per_1000'])}" for n in names)]
+                                     f"{num(by_scoring[n]['causes'][c]['per_1000'])}" for n in names)]
                 for c in CAUSES]
         details = sorted({(kind, key) for n in names for kind in ("marks", "pairs")
                           for key in by_scoring[n][kind]})
         rows += [[f"— {key}", *(str(by_scoring[n][kind].get(key, 0)) for n in names)]
                  for kind, key in details]
-        lines += [f"**{GROUP_TITLES[group]}**", ""] + _table(["", *(f"`{n}`" for n in names)], rows)
+        lines += [f"**{GROUP_TITLES[group]}**", ""] + md_table(["", *(f"`{n}`" for n in names)], rows)
     return lines
 
 
@@ -194,19 +194,19 @@ def _sensitivity_block(report: dict) -> list[str]:
         causes += [[f"— {key}", *(" · ".join(str({**by_width[w][n]["marks"], **by_width[w][n]["pairs"]}.get(key, 0))
                                               for w in SLIP_WIDTHS) for n in names)] for key in details]
         lines += [f"**{GROUP_TITLES[model]}: all {len(sessions)} sessions, slip regions excluded**", "",
-                  *_table(["scoring", f"headline ({headline} session{'' if headline == 1 else 's'})",
+                  *md_table(["scoring", f"headline ({headline} session{'' if headline == 1 else 's'})",
                            *(f"all sessions, {w}" for w in SLIP_WIDTHS)], rates),
                   "Its flags by cause (narrow · wide):", "",
-                  *_table(["", *(f"`{n}`" for n in names)], causes)]
+                  *md_table(["", *(f"`{n}`" for n in names)], causes)]
     sessions = [e for model in MODELS for e in _sessions(report, model) if e["slips"]]
     slips = [[f"`{e['log']}`", f"{x['start']}–{x['end']}", x["twin"] or "–", x["basis"], x["source"]]
              for e in sessions for x in e["slips"]]
     regions = [[f"`{e['log']}`", *(", ".join(f"{r['first']}–{r['last']}" for r in e["slip_regions"][w])
                                    for w in SLIP_WIDTHS)] for e in sessions]
     return lines + ["The documented slips:", "",
-                    *_table(["session", "slip", "twin", "basis", "source"], slips),
+                    *md_table(["session", "slip", "twin", "basis", "source"], slips),
                     "The regions they give (each session's union over its slips):", "",
-                    *_table(["session", *SLIP_WIDTHS], regions)]
+                    *md_table(["session", *SLIP_WIDTHS], regions)]
 
 
 ALLOWANCE_GROUP_TITLES = {
@@ -245,10 +245,10 @@ def _allowances_section(report: dict) -> list[str]:
         "flags that the scoring does not. The target pairs no Muraja allowance forgives are graded",
         "the same in every scoring.",
         "",
-        *_table(["allowance", *(ALLOWANCE_GROUP_TITLES[g] for g in ALLOWANCE_GROUPS)], rows),
+        *md_table(["allowance", *(ALLOWANCE_GROUP_TITLES[g] for g in ALLOWANCE_GROUPS)], rows),
         "The words that carry them:",
         "",
-        *(_table(["allowance", "population", "words (sessions they recur in)"], carriers) if carriers
+        *(md_table(["allowance", "population", "words (sessions they recur in)"], carriers) if carriers
           else ["None.", ""]),
     ]
 
@@ -271,7 +271,7 @@ def _placement_paragraph(report: dict) -> list[str]:
     ]
 
 
-def _flag_cell(row: dict | None) -> str:
+def flag_cell(row: dict | None) -> str:
     if row is None:
         return "correct"
     detail = ", ".join(row["marks"] + row["pairs"])
@@ -285,9 +285,9 @@ def _word_table(report: dict, logs: set[str], explained: bool) -> list[str]:
     for row in report["words"]:
         if row["log"] in logs and (row["explained"] is not None) == explained:
             cells[(row["log"], row["word"])][row["scoring"]] = row
-    rows = [[f"`{log}`", word, model[log], *(_flag_cell(by.get(n)) for n in names)]
+    rows = [[f"`{log}`", word, model[log], *(flag_cell(by.get(n)) for n in names)]
             for (log, word), by in sorted(cells.items(), key=lambda kv: (kv[0][0], position(kv[0][1])))]
-    return _table(["log", "word", "model", *(f"`{n}`" for n in names)], rows) if rows else ["None.", ""]
+    return md_table(["log", "word", "model", *(f"`{n}`" for n in names)], rows) if rows else ["None.", ""]
 
 
 def _comparison_section(report: dict) -> list[str]:
@@ -315,10 +315,10 @@ def _comparison_section(report: dict) -> list[str]:
             s = sim[n]
             expected = s["words"] * d["per_1000"] / 1000 if d["per_1000"] is not None else None
             rows.append([f"`{n}`", fmt_rate(d), fmt_rate(narrow[n]["false_flags"]),
-                         f"{s['flags']} / {s['words']} · {_num(1000 * s['flags'] / s['words'])} "
-                         f"(weighted {_num(s['per_1000'])} [{_num(s['lower'])}, {_num(s['upper'])}])",
-                         _num(expected)])
-        lines += _table(["scoring", "device", "device, all sessions, slips excluded (narrow)", "simulation",
+                         f"{s['flags']} / {s['words']} · {num(1000 * s['flags'] / s['words'])} "
+                         f"(weighted {num(s['per_1000'])} [{num(s['lower'])}, {num(s['upper'])}])",
+                         num(expected)])
+        lines += md_table(["scoring", "device", "device, all sessions, slips excluded (narrow)", "simulation",
                          "device rate × 155"], rows)
         cause_rows = []
         for c in CAUSES:
@@ -327,9 +327,9 @@ def _comparison_section(report: dict) -> list[str]:
                 d = device[n][UNEXPLAINED]["causes"][c]
                 s = sim[n]["causes"][c]
                 expected = sim[n]["words"] * d["per_1000"] / 1000 if d["per_1000"] is not None else None
-                cells += [f"{d['flags']} / {d['words']}", f"{s['flags']} / {sim[n]['words']}", _num(expected)]
+                cells += [f"{d['flags']} / {d['words']}", f"{s['flags']} / {sim[n]['words']}", num(expected)]
             cause_rows.append([CAUSE_TITLES[c], *cells])
-        lines += _table(["cause", "device, on", "simulation, on", "× 155, on",
+        lines += md_table(["cause", "device, on", "simulation, on", "× 155, on",
                          "device, off", "simulation, off", "× 155, off"], cause_rows)
     return lines + _disagreements(report)
 
@@ -363,7 +363,7 @@ def _disagreements(report: dict) -> list[str]:
     def against(group: str, model: str) -> str:
         device_rate = report["groups"][group][on][UNEXPLAINED]["false_flags"]["per_1000"]
         sim = report["simulation"][model][on]
-        return f"{_num(device_rate)} against {_num(1000 * sim['flags'] / sim['words'])}"
+        return f"{num(device_rate)} against {num(1000 * sim['flags'] / sim['words'])}"
 
     page, sessions = max(sorted(Counter(p for e in included for p in e["pages"]).items()), key=lambda kv: kv[1])
     added = [f"{CAUSE_TITLES[c]} {teacher[off][UNEXPLAINED]['causes'][c]['flags'] - teacher[on][UNEXPLAINED]['causes'][c]['flags']}"
@@ -380,7 +380,7 @@ def _disagreements(report: dict) -> list[str]:
             d = view["causes"][c]
             expected = sim["words"] * (d["per_1000"] or 0) / 1000
             cells.append(f"{CAUSE_TITLES[c]}: device {d['flags']} / {d['words']}, simulation "
-                         f"{sim['causes'][c]['flags']} / {sim['words']} (the device's rate predicts {_num(expected, 2)})")
+                         f"{sim['causes'][c]['flags']} / {sim['words']} (the device's rate predicts {num(expected, 2)})")
         observed.append(f"  - {title}: " + "; ".join(cells) + ".")
     return [
         "### Where they disagree, and the likely reasons",
@@ -394,7 +394,7 @@ def _disagreements(report: dict) -> list[str]:
         "- **The overall rates.** With the explained words left out, under `allowances_on` the device",
         f"  flags {against(TEACHER_ONE_SECOND, TEACHER)} words per 1,000 for the teacher (1 s hop); for",
         f"  `h448` the headline gives {against(H448, H448)} and all sessions with slips excluded (narrow)",
-        f"  {_num(report['slips_excluded'][H448]['narrow'][on]['false_flags']['per_1000'])}. The device is one",
+        f"  {num(report['slips_excluded'][H448]['narrow'][on]['false_flags']['per_1000'])}. The device is one",
         "  reader on one phone; the simulation is one word from each of 155 Tadabur reciters and their",
         "  recordings.",
         "- **On the device the allowances change flags, on a few recurring words.** Switching the",
@@ -439,7 +439,7 @@ def _truncation_section(report: dict) -> list[str]:
         "- **The simulation, overlaps cut.** #90's word sample regraded with every check's overlap cut",
         f"  to {OVERLAP_CAP} Characters (the simulation's own decodes are whole).",
         "",
-        *_table(["scoring", "device flags, logged", "device flags, lengthened", "device words changed",
+        *md_table(["scoring", "device flags, logged", "device flags, lengthened", "device words changed",
                  "simulation `h448`: flags full → cut", "simulation teacher: flags full → cut"], rows),
     ]
 
@@ -450,7 +450,7 @@ def _status(entry: dict) -> str:
 
 def _inventory_section(report: dict) -> list[str]:
     rows = [[f"`{e['log']}`", e["model"] or "–", e["app_version"] or "not recorded", e["committed"],
-             e["protocol"], _num(e["median_inference_ms"], 0), e["start"],
+             e["protocol"], num(e["median_inference_ms"], 0), e["start"],
              ", ".join(map(str, e["pages"])) or "–", e["ayat"],
              "✓ / ✓" if all(e["parity"].values()) else " / ".join("✓" if v else "✗" for v in e["parity"].values()),
              _status(e)] for e in report["logs"]]
@@ -466,16 +466,16 @@ def _inventory_section(report: dict) -> list[str]:
         "first word). *Ayat* are those the shipped-default replay graded. *Parity* is whether the",
         "replay reproduces the log's committed `baseline.json` at the pin and at `main`.",
         "",
-        *_table(["log", "model", "app version", "committed", "protocol", "inference", "start", "pages",
+        *md_table(["log", "model", "app version", "committed", "protocol", "inference", "start", "pages",
                  "ayat", "parity", "status"], rows),
         "What each log tests, from its docs, and why its model is assigned:",
         "",
-        *_table(["log", "purpose", "sources", "model basis"], purposes),
+        *md_table(["log", "purpose", "sources", "model basis"], purposes),
     ]
 
 
 def _count_rate(flags: int, words: int) -> str:
-    return f"{flags} / {words} · {_num(1000 * flags / words)}" if words else "–"
+    return f"{flags} / {words} · {num(1000 * flags / words)}" if words else "–"
 
 
 def _per_log_section(report: dict) -> list[str]:
@@ -495,10 +495,10 @@ def _per_log_section(report: dict) -> list[str]:
         "",
         "Included logs, per scoring: false flags / graded words · per 1,000. Every graded word:",
         "",
-        *_table(header, every),
+        *md_table(header, every),
         "Explained words left out of both counts:",
         "",
-        *_table(header, unexplained),
+        *md_table(header, unexplained),
     ]
 
 
@@ -521,7 +521,7 @@ def _explained_section(report: dict) -> list[str]:
         "here). Under the shipped default they explain "
         + ", ".join(f"{n} flags by {basis}" for basis, n in sorted(by_basis.items())) + ".",
         "",
-        *_table(["log", "words", "kind", "basis", "source"], rows),
+        *md_table(["log", "words", "kind", "basis", "source"], rows),
     ]
 
 
@@ -545,7 +545,7 @@ def _mistakes_section(report: dict) -> list[str]:
                            if by[n][ALL_WORDS]["causes"][c]["flags"]) or "–",
                  ", ".join(f"{k} {v}" for k, v in {**by[n][ALL_WORDS]["marks"], **by[n][ALL_WORDS]["pairs"]}.items())
                  or "–"] for n in names]
-        lines += [f"**{GROUP_TITLES[model]}**", ""] + _table(["scoring", "flags / words", "causes", "detail"], rows)
+        lines += [f"**{GROUP_TITLES[model]}**", ""] + md_table(["scoring", "flags / words", "causes", "detail"], rows)
     return lines + ["Their flagged words:", "", *_word_table(report, logs, explained=False)]
 
 
@@ -576,6 +576,9 @@ def render(report: dict) -> str:
         "is. Each log is replayed through Muraja's own replay (`tools/replay_log.swift`, by",
         "`tools/muraja_harness/log_replay.swift`) under every scoring, and every flag is attributed",
         "with `training/word_flags.py`.",
+        "",
+        "The owner's `h448` sessions on app 1.0.27 (pages 4, 9 and 42), exported as bug reports and",
+        "scored the same way, are in `docs/owner-device-sessions.md` (#153).",
         "",
         "## Read this first",
         "",

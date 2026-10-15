@@ -27,7 +27,10 @@ A **QUD** site (``source`` :data:`QUD`, #144) sits on one ayah of a QUD mushaf i
 ``audio_filename`` names the ayah clip (``tadabur.qud_source.audio_filename``),
 ``audio_sha256`` is the SHA-256 of its MP3 as QUD publishes it, ``[start_sample,
 end_sample)`` the item's span in the 16 kHz decode of that MP3, and ``shard`` is always
-``null``: QUD has no Tadabur shard. Its audio is never staged as a file.
+``null``: QUD has no Tadabur shard. Its audio is never staged as a file. A site of a
+non-professional corpus (:data:`NONPRO_SOURCES`, #156, ``tadabur.nonpro_sources``) has the same
+provenance on its own dataset's clip: the clip's id, the SHA-256 of its audio as published, the
+item's span in its 16 kHz decode. These are the :data:`EXTERNAL_SOURCES`.
 
 The on-disk form is JSONL, one :class:`TruthSite` per line, written by
 :func:`write_truth_sites` and read back by :func:`load_truth_sites`, which validates every
@@ -63,7 +66,12 @@ SYNTHETIC_EDIT = "synthetic_edit"
 TADABUR_SOURCES = frozenset({P35_FIXTURE, WAQF_BOUNDARY, NEW_AUDIT, SYNTHETIC_EDIT})
 #: A QUD ayah (#144): see the module docstring for its provenance.
 QUD = "qud"
-SOURCES = TADABUR_SOURCES | {QUD}
+#: A clip of a non-professional corpus (#156): Tarteel v1 app users, RetaSy's volunteers, qdat's
+#: amateur reciters (``tadabur.nonpro_sources``, whose dataset names these are).
+NONPRO_SOURCES = frozenset({"tarteel_v1", "retasy", "qdat"})
+#: The sources whose sites sit on an external corpus's published audio, never a Tadabur shard.
+EXTERNAL_SOURCES = NONPRO_SOURCES | {QUD}
+SOURCES = TADABUR_SOURCES | EXTERNAL_SOURCES
 
 # --- what is under test, and the states a label may name -------------------------------
 #: Haraka name -> its character in the realized reference.
@@ -194,10 +202,10 @@ def _check_provenance(site: TruthSite, where: str) -> None:
     if not site.audio_filename:
         raise ValueError(f"{where}: audio_filename is empty")
     staged = [getattr(site, name) is not None for name in STAGING_FIELDS]
-    if site.source == QUD:
+    if site.source in EXTERNAL_SOURCES:
         if staged != [False, True, True]:
-            raise ValueError(f"{where}: a QUD site has no shard, and always its end_sample "
-                             f"and its MP3's audio_sha256")
+            raise ValueError(f"{where}: an external-corpus site (a QUD site, or #156's) has no "
+                             f"shard, and always its end_sample and its audio's audio_sha256")
     elif any(staged) and not all(staged):
         raise ValueError(
             f"{where}: {', '.join(STAGING_FIELDS)} are filled together when the audio is "

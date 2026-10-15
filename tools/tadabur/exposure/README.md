@@ -61,6 +61,7 @@ which the baseline and every candidate warm-started from it share.
 | `ship_a.verified_train` / `ship_a.verified_held_out` | see the files | | the recordings of Ship A's sites and sampled words per half of its reciter split (#126, D11), written by `tadabur.ship_a_worklist build` |
 
 | `qud.correct_recitation` | see the file | | the QUD ayat of #144's pilot (`exposure/qud.correct_recitation.qud.jsonl`): a **QUD use**, one row per ayah clip (QUD revision, mushaf slug, `surah:ayah`, the MP3's SHA-256, QUD's reciter id), written by `python -m training.qud_pilot build`. It holds no Tadabur recording, so `check_disjoint` refuses it; its overlap with Tadabur and Muaalem is the audio check's finding (`../qud_eval/overlap_results.json`) |
+| `nonpro.evaluation_only` | see the file | | the non-professional corpora's clips #156 decoded (Tarteel v1, RetaSy, qdat) and qdat_bench's clips (`exposure/nonpro.evaluation_only.clips.jsonl`): a **clip use**, one row per Hub dataset clip (dataset, revision, clip id, `surah:ayah`, the SHA-256 of its audio as published, the dataset's reciter id or `unknown`), written by `python -m training.nonpro_eval build`. Evaluation only and no Tadabur recording, so `check_disjoint` refuses it; its overlap check is `../nonpro_eval/overlap.json` |
 
 Empty until their issues write them: `truth_site.new_audit` (#87),
 `truth_site.synthetic_edit`, `probe.training`, `probe.kl_control`, `bias.tune`,

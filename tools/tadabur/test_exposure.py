@@ -10,6 +10,10 @@ from collections import Counter
 import pytest
 
 from tadabur.exposure import (
+    EXTERNAL_USES,
+    NONPRO_EVALUATION,
+    ClipExposure,
+    write_clip_use,
     QUD_CORRECT_RECITATION,
     QUD_USES,
     QudExposure,
@@ -405,6 +409,7 @@ def test_the_committed_registry_is_complete():
     require_complete(registry)  # every declared use has a file, empty if unused
     assert set(registry.uses()) == USES
     assert set(registry.qud) == QUD_USES
+    assert set(registry.clips) == {NONPRO_EVALUATION}
     assert registry.recordings[PROBE_TRAINING] == ()  # declared, unused until #94/#95
 
 
@@ -529,3 +534,30 @@ def test_a_qud_use_is_validated_and_never_checked_for_tadabur_overlap(tmp_path):
     write_use(WAQF, [_row()], tmp_path)
     with pytest.raises(ValueError, match="no Tadabur recording"):
         check_disjoint(QUD_CORRECT_RECITATION, WAQF, registry=load_registry(tmp_path))
+
+
+# --- clip uses (#156) ------------------------------------------------------------------
+
+
+def _clip(clip="a.wav", sha="c" * 64) -> ClipExposure:
+    return ClipExposure("obadx/qdat", "d" * 40, clip, "5:109", sha, "s1")
+
+
+def test_a_clip_use_round_trips_and_is_refused_as_evidence_of_disjointness(tmp_path):
+    write_clip_use(NONPRO_EVALUATION, [_clip("b.wav"), _clip(), _clip()], tmp_path)
+    write_use(WAQF, [_row()], tmp_path)
+    registry = load_registry(tmp_path)
+    assert [r.audio_filename for r in registry.clips[NONPRO_EVALUATION]] == ["a.wav", "b.wav"]
+    assert registry.uses() == [WAQF] and "1 datasets" in describe(registry)
+    with pytest.raises(ValueError, match="evaluation only"):
+        check_disjoint(WAQF, NONPRO_EVALUATION, registry=registry)
+    with pytest.raises(ValueError):
+        write_clip_use(NONPRO_EVALUATION, [_clip(sha="short")], tmp_path)
+    with pytest.raises(ValueError, match="unknown clip use"):
+        write_clip_use("nonpro.training", [_clip()], tmp_path)
+
+
+def test_every_external_use_is_declared_and_missing_until_written(tmp_path):
+    assert EXTERNAL_USES == QUD_USES | {NONPRO_EVALUATION}
+    write_use(WAQF, [_row()], tmp_path)
+    assert NONPRO_EVALUATION in load_registry(tmp_path).missing()

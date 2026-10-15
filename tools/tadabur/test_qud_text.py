@@ -33,16 +33,15 @@ def test_a_skipped_or_foreign_word_is_unmapped_never_guessed():
         map_words([CANONICAL[0], "كَتَبَ", *CANONICAL[1:]], CANONICAL)
 
 
-def test_an_item_reference_phonetizes_its_recited_canonical_words_in_order():
-    mapped = map_words([CANONICAL[0], CANONICAL[1], CANONICAL[1], *CANONICAL[2:]], CANONICAL)
+def test_an_item_is_a_run_of_canonical_words_whatever_was_repeated():
+    """QUD's segments index the canonical words: a re-read is a new segment that restarts."""
     seen = []
 
     def reference_of(words):
         seen.append(words)
         return " ".join(words), [0, 1]
 
-    item = item_reference([2, 4, 0, 1000], mapped, CANONICAL, reference_of)
-    assert seen == [[CANONICAL[1], CANONICAL[1], CANONICAL[2]]]
-    assert item.word_indices == (1, 1, 2)
+    item = item_reference([2, 3, 0, 1000], CANONICAL, reference_of)
+    assert seen == [CANONICAL[1:3]] and item.word_indices == (1, 2)
     with pytest.raises(Unmapped):
-        item_reference([4, 6, 0, 1], mapped, CANONICAL, reference_of)
+        item_reference([4, 5, 0, 1], CANONICAL, reference_of)

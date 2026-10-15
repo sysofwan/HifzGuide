@@ -60,6 +60,8 @@ which the baseline and every candidate warm-started from it share.
 | `ship_a.mining` | 21,651 | 422 | every recording Ship A's mining extension decoded (#126), from its `scan.jsonl`; the hits among them are staged with use `ship_a_mining` |
 | `ship_a.verified_train` / `ship_a.verified_held_out` | see the files | | the recordings of Ship A's sites and sampled words per half of its reciter split (#126, D11), written by `tadabur.ship_a_worklist build` |
 
+| `qud.correct_recitation` | see the file | | the QUD ayat of #144's pilot (`exposure/qud.correct_recitation.qud.jsonl`): a **QUD use**, one row per ayah clip (QUD revision, mushaf slug, `surah:ayah`, the MP3's SHA-256, QUD's reciter id), written by `python -m training.qud_pilot build`. It holds no Tadabur recording, so `check_disjoint` refuses it; its overlap with Tadabur and Muaalem is the audio check's finding (`../qud_eval/overlap_results.json`) |
+
 Empty until their issues write them: `truth_site.new_audit` (#87),
 `truth_site.synthetic_edit`, `probe.training`, `probe.kl_control`, `bias.tune`,
 `bias.score`, `shaddah_probe.tuning`.

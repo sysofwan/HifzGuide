@@ -31,6 +31,7 @@ from tadabur.exposure import (
     write_probable_copies,
     write_recording_aliases,
     write_shard_use,
+    write_empty,
     write_use,
 )
 from tadabur.panel_seal import PanelProvenance, SealedPanelError, refuse_sealed, unsealed
@@ -365,7 +366,7 @@ def _copied_frame(tmp_path):
     write_shard_use(H448_TRAINING, _shards((21,), {1: 4}, "exact"), tmp_path)
     write_shard_use(H448_INIT_VALIDATION, _shards((0,), {1: 1}, "uncertain"), tmp_path)
     for use in load_registry(tmp_path).missing():
-        write_use(use, [], tmp_path)
+        write_empty(use, tmp_path)
     index = [
         _index_row("a.wav", 1, row=0, seconds=7.0), _index_row("t.wav", 1, shard=21, seconds=7.0),
         _index_row("b.wav", 1, row=1, seconds=6.0), _index_row("v.wav", 1, shard=0, seconds=6.0),

@@ -152,3 +152,6 @@ tools/tadabur/gate_eval/
 # source, and `git add -A` already swept an eval-set directory into a commit once (see the
 # gate_eval entry above) -- same failure mode, bigger blast radius.
 tools/export/
+# The QUD pilot's worklist of disagreements (#144): every carrier where the base teacher or
+# h448 commits something other than the mushaf, with its excerpt; not queued for listening.
+!tools/tadabur/qud_eval/pilot/worklist.jsonl

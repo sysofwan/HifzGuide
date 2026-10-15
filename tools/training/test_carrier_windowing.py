@@ -82,10 +82,10 @@ def test_a_pair_carrier_is_the_first_of_its_run_and_only_target_pair_letters_cou
 
 def test_an_in_word_geminate_is_a_carrier_and_one_across_a_word_boundary_is_not():
     in_word = _segment("رَببِ", (0, 5))
-    assert geminate_positions(1, in_word) == [Position(1, 2, True)]
+    assert geminate_positions(1, in_word.reference, in_word.raw_word_offsets) == [Position(1, 2, True)]
     # ``مِن مَا`` read as ``مِممَا``: the run joins two words (idgham), so it is no carrier.
     across = _segment("مِممَا", (0, 3, 6))
-    assert geminate_positions(0, across) == []
+    assert geminate_positions(0, across.reference, across.raw_word_offsets) == []
 
 
 def test_rows_pool_each_family_after_its_directions():
@@ -118,7 +118,7 @@ def test_whole_reads_each_segment_and_the_stream_reads_the_joined_reference():
 
 def test_a_geminate_commits_held_single_or_nothing():
     segment = _segment("رَببِ", (0, 5))
-    positions = tuple(geminate_positions(0, segment))
+    positions = tuple(geminate_positions(0, segment.reference, segment.raw_word_offsets))
     clip = Clip("c", "1:1", 1, 1.0, (segment.reference,), (0,), positions,
                 by_segment={"m/whole": ("رَببِ",)},
                 by_span={"m/stream_b0": "رَبِ", "m/stream_b1": "سَقَ"})

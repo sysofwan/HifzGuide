@@ -14,10 +14,14 @@ the canonical word it spells, keeping the recited order:
   word is a **repeat** (the reciter went back) and restarts there. Anything else, or an ayah
   whose canonical words are not all reached, is **unmapped** and reported, never guessed.
 
-An item is one of QUD's segments (:mod:`tadabur.qud_source`); its **realized reference** is
-the phonetizer's output over the canonical words it recited, in recited order, its last word
-in waqf (:func:`tadabur.waqf_segments.hafs_segment_reference`, as every realized reference in
-the repo is built), with the per-word offsets into it.
+QUD's ``segments`` and ``word_timestamps`` index the **canonical** words, not the recited text:
+in Almiman's 2:164 the text holds 55 recited words (three re-reads), the segments run to word 43,
+the ayah's length, and a re-read is a new segment restarting at an earlier word
+(``[9, 28, ...]`` after ``[1, 13, ...]``). So an item, one segment, is the contiguous run of
+canonical words ``word_from..word_to``; its **realized reference** is the phonetizer's output
+over them, last word in waqf (:func:`tadabur.waqf_segments.hafs_segment_reference`, as every
+realized reference in the repo is built), with the per-word offsets into it. The mapping above
+validates the recited text (an ayah that cannot be mapped is left out) and counts its re-reads.
 """
 
 from __future__ import annotations
@@ -90,17 +94,16 @@ class ItemReference:
 
 
 def item_reference(
-    segment: Sequence[int], mapping: Mapping, canonical: Sequence[str],
+    segment: Sequence[int], canonical: Sequence[str],
     reference_of: Callable[[list[str]], tuple[str, list[int]]],
 ) -> ItemReference:
-    """A QUD segment's (``[word_from, word_to, ...]``, 1-based recited words) canonical words
-    and realized reference. ``reference_of`` raises ``KeyError`` / ``IndexError`` where the
+    """A QUD segment's (``[word_from, word_to, ...]``, 1-based canonical words) words and
+    realized reference. ``reference_of`` raises ``KeyError`` / ``IndexError`` where the
     phonetizer cannot handle the words."""
     word_from, word_to = segment[0], segment[1]
-    if not 1 <= word_from <= word_to <= len(mapping.indices):
-        raise Unmapped(f"segment {list(segment)} is outside the {len(mapping.indices)} "
-                       "recited words")
-    indices = mapping.indices[word_from - 1:word_to]
+    if not 1 <= word_from <= word_to <= len(canonical):
+        raise Unmapped(f"segment {list(segment)} is outside the {len(canonical)} words")
+    indices = tuple(range(word_from - 1, word_to))
     words = [canonical[i] for i in indices]
     reference, offsets = reference_of(words)
-    return ItemReference(tuple(words), tuple(indices), reference, tuple(offsets))
+    return ItemReference(tuple(words), indices, reference, tuple(offsets))

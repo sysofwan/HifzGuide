@@ -80,7 +80,7 @@ from .staged_audio import (
     load_staged_clips,
     read_shard_index,
 )
-from .truth_sites import NUM_SHARDS, SOURCES, TRUTH_SITES_DIR, load_truth_sites
+from .truth_sites import NUM_SHARDS, TADABUR_SOURCES, TRUTH_SITES_DIR, load_truth_sites
 
 EXPOSURE_DIR = Path(__file__).parent / "exposure"
 #: The frozen inputs the indexed uses are derived from, committed beside them.
@@ -95,8 +95,9 @@ _RELATION_FILES = (PROBABLE_COPIES_NAME, RECORDING_ALIASES_NAME)
 
 # --- the vocabulary of uses ------------------------------------------------------------
 
-#: A truth site of each source (``tadabur.truth_sites.SOURCES``) sits on its recording.
-TRUTH_SITE_USES = {source: f"truth_site.{source}" for source in sorted(SOURCES)}
+#: A truth site of each Tadabur source (``tadabur.truth_sites.TADABUR_SOURCES``) sits on its
+#: recording. QUD's sites sit on QUD ayat, a use of their own (:data:`QUD_CORRECT_RECITATION`).
+TRUTH_SITE_USES = {source: f"truth_site.{source}" for source in sorted(TADABUR_SOURCES)}
 #: Clip-level human verdicts in committed label files that are not truth sites.
 LABEL_P35_FIXTURE = "human_label.p35_fixture"
 LABEL_REJECT_REREAD = "human_label.reject_reread"
@@ -127,6 +128,10 @@ SYNTHETIC_EDIT_DONOR = "synthetic_edit.donor"
 SHIP_A_MINING = "ship_a.mining"
 SHIP_A_TRAIN = "ship_a.verified_train"
 SHIP_A_HELD_OUT = "ship_a.verified_held_out"
+#: The QUD ayat #144's correct-recitation set is built on: QUD audio, not Tadabur rows, so a
+#: use of its own shape (:class:`QudExposure`, ``exposure/<use>.qud.jsonl``).
+QUD_CORRECT_RECITATION = "qud.correct_recitation"
+QUD_USES = frozenset({QUD_CORRECT_RECITATION})
 #: The uses acceptance rules §6 names that no issue has made yet. Each has an empty file
 #: until its issue writes it, so "unused" is recorded rather than inferred from absence.
 PROBE_TRAINING = "probe.training"
@@ -176,6 +181,33 @@ class Exposure:
     def source(self) -> tuple[int, int]:
         """The Tadabur recording: ``(shard, row_index)``."""
         return (self.shard, self.row_index)
+
+
+@dataclass(frozen=True, order=True)
+class QudExposure:
+    """One QUD ayah clip a use touched (#144): the QUD revision it was read at, the mushaf
+    (config slug), the ayah, the SHA-256 of its MP3 and QUD's reciter id. It is no Tadabur
+    recording; that it overlaps none is the audio check's finding
+    (``qud_eval/overlap_results.json``), not this record's."""
+
+    qud_revision: str
+    slug: str
+    surah_ayah: str
+    mp3_sha256: str
+    qud_reciter: str
+
+
+_QUD_FIELDS = {f.name for f in fields(QudExposure)}
+
+
+def parse_qud_exposure(data: dict, where: str) -> QudExposure:
+    if set(data) != _QUD_FIELDS or not all(type(v) is str and v for v in data.values()):
+        raise ValueError(f"{where}: a QUD exposure has the non-empty string fields "
+                         f"{sorted(_QUD_FIELDS)}")
+    row = QudExposure(**data)
+    if not _SHA256.fullmatch(row.mp3_sha256) or not re.fullmatch(r"[0-9a-f]{40}", row.qud_revision):
+        raise ValueError(f"{where}: mp3_sha256 or qud_revision is malformed")
+    return row
 
 
 @dataclass(frozen=True)
@@ -243,6 +275,7 @@ class ExposureRegistry:
     shard_uses: Mapping[str, ShardExposure]
     copies: Mapping[tuple[int, int], tuple[tuple[int, int], ...]] = field(default_factory=dict)
     aliases: Mapping[tuple[int, int], tuple[tuple[int, int], ...]] = field(default_factory=dict)
+    qud: Mapping[str, tuple[QudExposure, ...]] = field(default_factory=dict)
 
     def same_recording(self, source: tuple[int, int]) -> set[tuple[int, int]]:
         """``source`` and every row that is, or probably is, the same recording."""
@@ -253,15 +286,17 @@ class ExposureRegistry:
         return set(self.copies) | set(self.aliases)
 
     def missing(self) -> list[str]:
-        """Declared uses (:data:`USES`) with no file: evidence that is absent, not empty."""
-        return sorted(USES - set(self.recordings) - set(self.shard_uses))
+        """Declared uses (:data:`USES`, :data:`QUD_USES`) with no file: evidence that is
+        absent, not empty."""
+        return sorted((USES | QUD_USES) - set(self.recordings) - set(self.shard_uses)
+                      - set(self.qud))
 
     def shared_baseline_uses(self) -> list[str]:
         """The shard uses marked as exposures shared by the baseline and its candidates."""
         return sorted(u for u, e in self.shard_uses.items() if e.shared_baseline)
 
     def uses(self) -> list[str]:
-        """Every use with a file, sorted."""
+        """Every Tadabur use with a file, sorted (QUD uses are in :attr:`qud`)."""
         return sorted({*self.recordings, *self.shard_uses})
 
     def reciters(self, use: str) -> frozenset[int]:
@@ -305,10 +340,16 @@ def load_registry(directory: Path = EXPOSURE_DIR) -> ExposureRegistry:
     alias must name a recording the uses name the same way, with the same checksum."""
     recordings: dict[str, tuple[Exposure, ...]] = {}
     shard_uses: dict[str, ShardExposure] = {}
+    qud: dict[str, tuple[QudExposure, ...]] = {}
     for path in sorted(directory.iterdir()):
         if path.name in ("README.md", SOURCES_DIRNAME, *_RELATION_FILES):
             continue
-        if path.name.endswith(".shards.json"):
+        if path.name.endswith(".qud.jsonl"):
+            use = path.name.removesuffix(".qud.jsonl")
+            if use not in QUD_USES:
+                raise ValueError(f"unknown QUD use {use!r}; the vocabulary is QUD_USES")
+            qud[use] = _read_qud_use(path)
+        elif path.name.endswith(".shards.json"):
             use = _known(path.name.removesuffix(".shards.json"))
             shard_uses[use] = _parse_shard_use(json.loads(path.read_text(encoding="utf-8")), path)
         elif path.suffix == ".jsonl":
@@ -327,7 +368,7 @@ def load_registry(directory: Path = EXPOSURE_DIR) -> ExposureRegistry:
             Exposure(r.audio_filename, r.shard, r.row_index, r.reciter_id, None, None,
                      r.audio_sha256) for r in groups]})
         aliases = relations(_alias_groups(groups))
-    return ExposureRegistry(recordings, shard_uses, copies, aliases)
+    return ExposureRegistry(recordings, shard_uses, copies, aliases, qud)
 
 
 def _read_use(path: Path) -> tuple[Exposure, ...]:
@@ -339,6 +380,34 @@ def _read_use(path: Path) -> tuple[Exposure, ...]:
     if rows != sorted(set(rows)):
         raise ValueError(f"{path}: rows must be sorted and unique")
     return tuple(rows)
+
+
+def _read_qud_use(path: Path) -> tuple[QudExposure, ...]:
+    with open(path, encoding="utf-8") as f:
+        rows = [parse_qud_exposure(json.loads(raw), f"{path}:{lineno}")
+                for lineno, raw in enumerate(f, 1) if raw.strip()]
+    if rows != sorted(set(rows)):
+        raise ValueError(f"{path}: rows must be sorted and unique")
+    return tuple(rows)
+
+
+def write_qud_use(use: str, rows: Iterable[QudExposure], directory: Path = EXPOSURE_DIR) -> None:
+    """Atomically write one QUD use, sorted and de-duplicated, every row validated."""
+    if use not in QUD_USES:
+        raise ValueError(f"unknown QUD use {use!r}; the vocabulary is QUD_USES")
+    ordered = sorted(set(rows))
+    for row in ordered:
+        parse_qud_exposure(asdict(row), f"write_qud_use({use})[{row.slug} {row.surah_ayah}]")
+    _write_atomic(directory / f"{use}.qud.jsonl", "".join(
+        json.dumps(asdict(row), ensure_ascii=False, sort_keys=True) + "\n" for row in ordered))
+
+
+def write_empty(use: str, directory: Path = EXPOSURE_DIR) -> None:
+    """Record a declared use as unused: an empty file of its shape."""
+    if use in QUD_USES:
+        write_qud_use(use, [], directory)
+    else:
+        write_use(use, [], directory)
 
 
 _SHARD_USE_FIELDS = {
@@ -462,6 +531,9 @@ def check_disjoint(
     if by not in ("reciter", "source"):
         raise ValueError(f"by must be 'reciter' or 'source', not {by!r}")
     registry = registry or load_registry()
+    if qud := {use, *others} & QUD_USES:
+        raise ValueError(f"{sorted(qud)}: a QUD use holds no Tadabur recording; its overlap "
+                         "with Tadabur is the audio check's (qud_eval/overlap_results.json)")
     for name in (use, *others):
         registry._require(name)
     problems = []
@@ -890,7 +962,8 @@ def shard_exposure(
 
 def describe(registry: ExposureRegistry) -> str:
     """One line per use: recordings (or shards), reciters."""
-    lines = []
+    lines = [f"{use:40s} {len(rows):>11d} QUD ayat {len({r.qud_reciter for r in rows}):>5d} "
+             f"QUD reciters" for use, rows in sorted(registry.qud.items())]
     for use in registry.uses():
         if use in registry.shard_uses:
             size = f"{len(registry.shard_uses[use].shards)} shards"
@@ -978,7 +1051,7 @@ def build_registry(index_path: Path, directory: Path = EXPOSURE_DIR) -> None:
     for use, rows in synthetic_edit_exposures().items():
         write_use(use, rows, directory)
     for use in load_registry(directory).missing():
-        write_use(use, [], directory)
+        write_empty(use, directory)
     write_relations(index_path, directory)
 
 

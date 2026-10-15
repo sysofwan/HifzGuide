@@ -425,3 +425,26 @@ def test_write_rejects_an_invalid_site_before_touching_disk(tmp_path):
     with pytest.raises(ValueError, match="unknown mark"):
         write_truth_sites([bad], path)
     assert path.read_text(encoding="utf-8") == "previous contents\n"
+
+
+def _qud(**overrides) -> dict:
+    """A QUD site (#144): no shard, its MP3's checksum and the item's span always set."""
+    return _row(**{"source": "qud", "audio_filename": "qud_x_002_255.mp3", "end_sample": 16000,
+                   "audio_sha256": "a" * 64, **overrides})
+
+
+def test_a_qud_site_has_no_shard_and_always_its_span_and_mp3_checksum(tmp_path):
+    (site,) = _load(tmp_path, [_qud()])
+    assert site.source == "qud" and site.shard is None
+    for broken in (_qud(shard=3), _qud(end_sample=None), _qud(audio_sha256=None)):
+        with pytest.raises(ValueError, match="QUD site"):
+            _load(tmp_path, [broken])
+
+
+def test_a_gzipped_file_round_trips_to_the_same_bytes(tmp_path):
+    sites = _load(tmp_path, [_qud(), _qud(site_id="s2")])
+    first, second = tmp_path / "a.jsonl.gz", tmp_path / "b.jsonl.gz"
+    write_truth_sites(sites, first)
+    write_truth_sites(sites, second)
+    assert first.read_bytes() == second.read_bytes()  # no timestamp in the gzip header
+    assert load_truth_sites(first) == sites

@@ -124,13 +124,15 @@ def test_a_check_may_have_aligned_any_count_of_its_pending_hops():
     """Past the 20 confirmed Characters, which hops were pending changes the query."""
     ba, ta, tha = "\u0628\u064e", "\u062a\u064e", "\u062b\u064e"
     checks = [check(ba * 25), check("", tha), check(ta, tha)]
-    assert cf.possible_queries(checks, 2) == [ba * 19 + ta + tha, ba * 20 + ta + tha, ba * 25 + ta + tha]
+    # its own hop is always pending: never folded into the confirmed tail
+    assert cf.possible_queries(checks, 2) == [ba * 20 + ta + tha, ba * 25 + ta + tha]
     # a preview adds no hop: none or the one before it pending
     assert cf.possible_queries(checks, 1) == [ba * 20 + tha, ba * 25 + tha]
     # a stop has no overlap, and no more than MAX_PENDING_HOPS hops are ever pending
     many = [check(ba * 25) for _ in range(cf.MAX_PENDING_HOPS + 3)] + [{**check(ta), "stop": True}]
     queries = cf.possible_queries(many, len(many) - 1)
-    assert len(queries) == cf.MAX_PENDING_HOPS + 1 and not queries[-1].endswith(tha)
+    assert len(queries) == cf.MAX_PENDING_HOPS and not queries[-1].endswith(tha)
+    assert all(q.endswith(ba * 20 + ta) for q in queries)  # the stop's phonemes always pending
 
 
 def test_a_pronounced_letter_every_possible_query_holds_is_grading_none_holds_the_models():
@@ -418,3 +420,30 @@ def test_the_pinned_engine_aligns_the_stop_with_the_kept_overlap():
 
     assert positions([preview(words(1, 3)), stop]) == ["2:80:1", "2:80:3"]
     assert positions([preview(words(1, 3)), empty, stop]) == ["2:80:1", "2:80:1", "2:80:1"]
+
+
+@pytest.mark.skipif(not QURAN_DB.exists(), reason="data/quran.db is not built here")
+@pytest.mark.parametrize("slug, model, item, word, error, check, klass", [
+    # Sol, #157 round 3: the setting check's own hop is pending; with it folded into the confirmed
+    # tail, 4:49:14 read as unclear (it is grading) and 38:22:19 as model (it is unclear)
+    ("anas_almiman_yt", "h448", "qud_anas_almiman_yt_004_049.mp3#1", 14, mismatch("ل", "ن", 2), 42, cf.GRADING),
+    ("abdul_hamid_ghraio_2026_yt", "base", "qud_abdul_hamid_ghraio_2026_yt_038_022.mp3#0", 19,
+     mismatch("ط", "ق", 3), 62, cf.UNCLEAR),
+])
+def test_the_committed_qud_checks_read_as_the_engine_aligned_them(slug, model, item, word, error, check, klass):
+    """The two QUD records, from the committed check sequence, read at the check that set the
+    kept grade."""
+    pytest.importorskip("quran_transcript")
+    from tadabur.qud_text import item_reference
+    from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
+    from training.muraja_policy import MurajaText
+    from training.qud_pilot import read_decodes
+    from training.word_flags import TARGET_PAIR
+
+    line = read_decodes(slug, model)[item]
+    surah, ayah = map(int, line["surah_ayah"].split(":"))
+    realized = item_reference(line["segment"], _uthmani_words(line["surah_ayah"]), hafs_segment_reference())
+    muraja = cf.Ayah(MurajaText(QURAN_DB).phonemes(surah, ayah))
+    recital = cf.Recital(realized.reference, checks=tuple(line["checks"]), setting=lambda position: (check,))
+    cause = TARGET_PAIR if error["kind"]["expected"] == "ط" else OTHER_CONSONANT
+    assert cf.classify(muraja, word, error, recital, cause)[0].klass == klass

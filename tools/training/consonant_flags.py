@@ -395,8 +395,10 @@ def possible_queries(checks: Sequence[dict], index: int) -> list[str]:
     """Every query check ``index`` may have aligned (``runFollowAlongCheck``,
     ``FollowAlongEngine.swift:1565-1628``): :data:`CONFIRMED_TAIL` confirmed Characters, the
     pending hops and :func:`kept_overlap`. Which hops were still pending is not recorded, so
-    each count from none up to the last :data:`MAX_PENDING_HOPS` non-empty hops is a possible
-    query; a silence flush confirms every pending hop (``FollowAlongEngine.swift:613-624``), so
+    each count up to the last :data:`MAX_PENDING_HOPS` non-empty hops is a possible query, from
+    none for a check that brings no hop and from one for a check that brings one (a window's
+    hop or the stop's phonemes join the pending hops before it aligns,
+    ``FollowAlongEngine.swift:625-628, 907-913``); a silence flush confirms every pending hop (``FollowAlongEngine.swift:613-624``), so
     no hop before the latest flush is pending, and a flush check aligns none. Distinct queries
     only, shortest pending run first."""
     flushes = [i for i, c in enumerate(checks[: index + 1]) if c["flush"]]
@@ -404,8 +406,11 @@ def possible_queries(checks: Sequence[dict], index: int) -> list[str]:
     hops = [clusters(c["hop"]) for c in checks[: index + 1] if c["hop"]]
     pendable = sum(1 for c in checks[after_flush: index + 1] if c["hop"])
     overlap = kept_overlap(checks, index)
+    # a check that brings a hop appends it before it aligns (handleUpdate, handleFinalFlush): it
+    # is pending, so at least one hop is
+    fewest = 1 if checks[index]["hop"] and not checks[index]["flush"] else 0
     out: dict[str, None] = {}
-    for k in range(min(MAX_PENDING_HOPS, pendable) + 1):
+    for k in range(fewest, min(MAX_PENDING_HOPS, pendable) + 1):
         confirmed = [c for hop in hops[: len(hops) - k] for c in hop][-CONFIRMED_TAIL:]
         pending = [c for hop in hops[len(hops) - k:] for c in hop]
         out["".join(confirmed + pending) + overlap] = None

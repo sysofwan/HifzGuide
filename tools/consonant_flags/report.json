@@ -34,13 +34,13 @@
    "interval": true,
    "classes": {
     "model": {
-     "flags": 209,
-     "words": 206,
-     "per_1000": 1.35
+     "flags": 211,
+     "words": 207,
+     "per_1000": 1.36
     },
     "grading": {
-     "flags": 34,
-     "words": 13,
+     "flags": 45,
+     "words": 14,
      "per_1000": 0.09
     },
     "reference": {
@@ -49,9 +49,9 @@
      "per_1000": 0.01
     },
     "unclear": {
-     "flags": 28,
-     "words": 24,
-     "per_1000": 0.16
+     "flags": 15,
+     "words": 14,
+     "per_1000": 0.09
     }
    },
    "model_by_substitution": [
@@ -66,18 +66,18 @@
     {
      "cause": "other_consonant",
      "substitution": "ا→∅",
-     "words": 22,
-     "per_1000": 0.14,
-     "lower": 0.09,
-     "upper": 0.2
+     "words": 23,
+     "per_1000": 0.15,
+     "lower": 0.1,
+     "upper": 0.21
     },
     {
      "cause": "target_pair",
      "substitution": "ط→ق",
-     "words": 19,
+     "words": 18,
      "per_1000": 0.12,
-     "lower": 0.07,
-     "upper": 0.19
+     "lower": 0.06,
+     "upper": 0.18
     },
     {
      "cause": "other_consonant",
@@ -129,6 +129,22 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ب→∅",
+     "words": 3,
+     "per_1000": 0.02,
+     "lower": 0.0,
+     "upper": 0.05
+    },
+    {
+     "cause": "other_consonant",
+     "substitution": "ر→∅",
+     "words": 3,
+     "per_1000": 0.02,
+     "lower": 0.0,
+     "upper": 0.04
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "غ→و",
      "words": 3,
      "per_1000": 0.02,
@@ -169,14 +185,6 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ب→∅",
-     "words": 2,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.03
-    },
-    {
-     "cause": "other_consonant",
      "substitution": "ث→ت",
      "words": 2,
      "per_1000": 0.01,
@@ -202,14 +210,6 @@
     {
      "cause": "other_consonant",
      "substitution": "د→ر",
-     "words": 2,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.03
-    },
-    {
-     "cause": "other_consonant",
-     "substitution": "ر→∅",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -524,10 +524,10 @@
     {
      "cause": "other_consonant",
      "expected": "ا",
-     "words": 24,
+     "words": 25,
      "per_1000": 0.16,
      "lower": 0.1,
-     "upper": 0.22
+     "upper": 0.23
     },
     {
      "cause": "other_consonant",
@@ -548,10 +548,10 @@
     {
      "cause": "target_pair",
      "expected": "ط",
-     "words": 19,
+     "words": 18,
      "per_1000": 0.12,
-     "lower": 0.07,
-     "upper": 0.19
+     "lower": 0.06,
+     "upper": 0.18
     },
     {
      "cause": "other_consonant",
@@ -572,10 +572,10 @@
     {
      "cause": "other_consonant",
      "expected": "ب",
-     "words": 5,
-     "per_1000": 0.03,
+     "words": 6,
+     "per_1000": 0.04,
      "lower": 0.01,
-     "upper": 0.06
+     "upper": 0.08
     },
     {
      "cause": "other_consonant",
@@ -635,6 +635,14 @@
     },
     {
      "cause": "other_consonant",
+     "expected": "ر",
+     "words": 3,
+     "per_1000": 0.02,
+     "lower": 0.0,
+     "upper": 0.04
+    },
+    {
+     "cause": "other_consonant",
      "expected": "س",
      "words": 3,
      "per_1000": 0.02,
@@ -648,14 +656,6 @@
      "per_1000": 0.02,
      "lower": 0.0,
      "upper": 0.04
-    },
-    {
-     "cause": "other_consonant",
-     "expected": "ر",
-     "words": 2,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.03
     },
     {
      "cause": "other_consonant",
@@ -774,10 +774,18 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
+     "substitution": "ء→∅",
+     "rule": "pronounced; the query that set the kept grade holds it",
+     "words": 8,
+     "per_1000": 0.05
+    },
+    {
+     "class": "grading",
+     "responsible": "Muraja word scorer",
      "substitution": "ف→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 6,
-     "per_1000": 0.04
+     "words": 8,
+     "per_1000": 0.05
     },
     {
      "class": "grading",
@@ -790,15 +798,23 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ء→ع",
+     "substitution": "ل→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 1,
+     "words": 2,
      "per_1000": 0.01
     },
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ء→∅",
+     "substitution": "و→∅",
+     "rule": "pronounced; the query that set the kept grade holds it",
+     "words": 2,
+     "per_1000": 0.01
+    },
+    {
+     "class": "grading",
+     "responsible": "Muraja word scorer",
+     "substitution": "ء→ع",
      "rule": "pronounced; the query that set the kept grade holds it",
      "words": 1,
      "per_1000": 0.01
@@ -830,23 +846,7 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ل→∅",
-     "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 1,
-     "per_1000": 0.01
-    },
-    {
-     "class": "grading",
-     "responsible": "Muraja word scorer",
      "substitution": "ن→∅",
-     "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 1,
-     "per_1000": 0.01
-    },
-    {
-     "class": "grading",
-     "responsible": "Muraja word scorer",
-     "substitution": "و→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
      "words": 1,
      "per_1000": 0.01
@@ -862,28 +862,13 @@
    ],
    "unclear": [
     [
-     "109:5:1",
-     "ل→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "109:5:1",
-     "و→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "10:87:12",
-     "ب→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "16:98:2",
-     "ر→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "2:259:22",
      "ه→∅",
+     "pronounced; a check that can have set the kept grade has no query that reaches the letter"
+    ],
+    [
+     "38:22:19",
+     "ط→ق",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
@@ -917,44 +902,9 @@
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "55:18:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:18:1",
-     "ف→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:32:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:65:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:65:1",
-     "ف→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:73:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "5:111:4",
      "ي→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "5:17:29",
-     "ا→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "66:5:6",
@@ -992,13 +942,13 @@
    "interval": true,
    "classes": {
     "model": {
-     "flags": 224,
-     "words": 220,
-     "per_1000": 1.44
+     "flags": 226,
+     "words": 221,
+     "per_1000": 1.45
     },
     "grading": {
-     "flags": 36,
-     "words": 15,
+     "flags": 47,
+     "words": 16,
      "per_1000": 0.1
     },
     "reference": {
@@ -1007,9 +957,9 @@
      "per_1000": 0.01
     },
     "unclear": {
-     "flags": 30,
-     "words": 26,
-     "per_1000": 0.17
+     "flags": 17,
+     "words": 16,
+     "per_1000": 0.1
     }
    },
    "model_by_substitution": [
@@ -1024,18 +974,18 @@
     {
      "cause": "other_consonant",
      "substitution": "ا→∅",
-     "words": 22,
-     "per_1000": 0.14,
-     "lower": 0.09,
-     "upper": 0.2
+     "words": 23,
+     "per_1000": 0.15,
+     "lower": 0.1,
+     "upper": 0.21
     },
     {
      "cause": "target_pair",
      "substitution": "ط→ق",
-     "words": 19,
+     "words": 18,
      "per_1000": 0.12,
-     "lower": 0.07,
-     "upper": 0.19
+     "lower": 0.06,
+     "upper": 0.18
     },
     {
      "cause": "other_consonant",
@@ -1084,6 +1034,22 @@
      "per_1000": 0.03,
      "lower": 0.01,
      "upper": 0.06
+    },
+    {
+     "cause": "other_consonant",
+     "substitution": "ب→∅",
+     "words": 3,
+     "per_1000": 0.02,
+     "lower": 0.0,
+     "upper": 0.05
+    },
+    {
+     "cause": "other_consonant",
+     "substitution": "ر→∅",
+     "words": 3,
+     "per_1000": 0.02,
+     "lower": 0.0,
+     "upper": 0.04
     },
     {
      "cause": "other_consonant",
@@ -1143,14 +1109,6 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ب→∅",
-     "words": 2,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.03
-    },
-    {
-     "cause": "other_consonant",
      "substitution": "ث→ت",
      "words": 2,
      "per_1000": 0.01,
@@ -1176,14 +1134,6 @@
     {
      "cause": "other_consonant",
      "substitution": "د→ر",
-     "words": 2,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.03
-    },
-    {
-     "cause": "other_consonant",
-     "substitution": "ر→∅",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -1546,10 +1496,10 @@
     {
      "cause": "other_consonant",
      "expected": "ا",
-     "words": 24,
+     "words": 25,
      "per_1000": 0.16,
      "lower": 0.1,
-     "upper": 0.22
+     "upper": 0.23
     },
     {
      "cause": "other_consonant",
@@ -1570,10 +1520,10 @@
     {
      "cause": "target_pair",
      "expected": "ط",
-     "words": 19,
+     "words": 18,
      "per_1000": 0.12,
-     "lower": 0.07,
-     "upper": 0.19
+     "lower": 0.06,
+     "upper": 0.18
     },
     {
      "cause": "other_consonant",
@@ -1594,10 +1544,10 @@
     {
      "cause": "other_consonant",
      "expected": "ب",
-     "words": 5,
-     "per_1000": 0.03,
+     "words": 6,
+     "per_1000": 0.04,
      "lower": 0.01,
-     "upper": 0.06
+     "upper": 0.08
     },
     {
      "cause": "other_consonant",
@@ -1657,6 +1607,14 @@
     },
     {
      "cause": "other_consonant",
+     "expected": "ر",
+     "words": 3,
+     "per_1000": 0.02,
+     "lower": 0.0,
+     "upper": 0.04
+    },
+    {
+     "cause": "other_consonant",
      "expected": "س",
      "words": 3,
      "per_1000": 0.02,
@@ -1686,14 +1644,6 @@
      "per_1000": 0.02,
      "lower": 0.0,
      "upper": 0.04
-    },
-    {
-     "cause": "other_consonant",
-     "expected": "ر",
-     "words": 2,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.03
     },
     {
      "cause": "other_consonant",
@@ -1860,18 +1810,26 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
+     "substitution": "ء→∅",
+     "rule": "pronounced; the query that set the kept grade holds it",
+     "words": 8,
+     "per_1000": 0.05
+    },
+    {
+     "class": "grading",
+     "responsible": "Muraja word scorer",
      "substitution": "ف→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 6,
-     "per_1000": 0.04
+     "words": 8,
+     "per_1000": 0.05
     },
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
      "substitution": "ل→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 3,
-     "per_1000": 0.02
+     "words": 4,
+     "per_1000": 0.03
     },
     {
      "class": "grading",
@@ -1884,15 +1842,15 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ء→ع",
+     "substitution": "و→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 1,
+     "words": 2,
      "per_1000": 0.01
     },
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ء→∅",
+     "substitution": "ء→ع",
      "rule": "pronounced; the query that set the kept grade holds it",
      "words": 1,
      "per_1000": 0.01
@@ -1930,14 +1888,6 @@
      "per_1000": 0.01
     },
     {
-     "class": "grading",
-     "responsible": "Muraja word scorer",
-     "substitution": "و→∅",
-     "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 1,
-     "per_1000": 0.01
-    },
-    {
      "class": "reference",
      "responsible": "Muraja word scorer",
      "substitution": "ن→∅",
@@ -1947,26 +1897,6 @@
     }
    ],
    "unclear": [
-    [
-     "109:5:1",
-     "ل→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "109:5:1",
-     "و→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "10:87:12",
-     "ب→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "16:98:2",
-     "ر→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
     [
      "19:21:7",
      "ي→∅",
@@ -1980,6 +1910,11 @@
     [
      "2:259:22",
      "ه→∅",
+     "pronounced; a check that can have set the kept grade has no query that reaches the letter"
+    ],
+    [
+     "38:22:19",
+     "ط→ق",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
@@ -2013,44 +1948,9 @@
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "55:18:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:18:1",
-     "ف→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:32:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:65:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:65:1",
-     "ف→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:73:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "5:111:4",
      "ي→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "5:17:29",
-     "ا→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "66:5:6",
@@ -2088,13 +1988,13 @@
    "interval": true,
    "classes": {
     "model": {
-     "flags": 431,
-     "words": 421,
-     "per_1000": 2.76
+     "flags": 445,
+     "words": 433,
+     "per_1000": 2.84
     },
     "grading": {
-     "flags": 32,
-     "words": 13,
+     "flags": 42,
+     "words": 14,
      "per_1000": 0.09
     },
     "reference": {
@@ -2103,9 +2003,9 @@
      "per_1000": 0.01
     },
     "unclear": {
-     "flags": 47,
-     "words": 43,
-     "per_1000": 0.28
+     "flags": 23,
+     "words": 22,
+     "per_1000": 0.14
     }
    },
    "model_by_substitution": [
@@ -2120,18 +2020,18 @@
     {
      "cause": "other_consonant",
      "substitution": "ن→ل",
-     "words": 30,
+     "words": 31,
      "per_1000": 0.2,
      "lower": 0.13,
-     "upper": 0.27
+     "upper": 0.28
     },
     {
      "cause": "other_consonant",
      "substitution": "ا→∅",
-     "words": 28,
-     "per_1000": 0.18,
-     "lower": 0.11,
-     "upper": 0.26
+     "words": 30,
+     "per_1000": 0.2,
+     "lower": 0.12,
+     "upper": 0.28
     },
     {
      "cause": "other_consonant",
@@ -2144,18 +2044,18 @@
     {
      "cause": "target_pair",
      "substitution": "ط→ق",
-     "words": 18,
+     "words": 19,
      "per_1000": 0.12,
      "lower": 0.07,
-     "upper": 0.17
+     "upper": 0.18
     },
     {
      "cause": "other_consonant",
      "substitution": "ل→ر",
-     "words": 15,
-     "per_1000": 0.1,
-     "lower": 0.05,
-     "upper": 0.15
+     "words": 17,
+     "per_1000": 0.11,
+     "lower": 0.06,
+     "upper": 0.17
     },
     {
      "cause": "other_consonant",
@@ -2319,6 +2219,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ل→∅",
+     "words": 4,
+     "per_1000": 0.03,
+     "lower": 0.01,
+     "upper": 0.05
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "م→∅",
      "words": 4,
      "per_1000": 0.03,
@@ -2359,7 +2267,7 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "س→ف",
+     "substitution": "د→ل",
      "words": 3,
      "per_1000": 0.02,
      "lower": 0.0,
@@ -2367,7 +2275,7 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ل→∅",
+     "substitution": "س→ف",
      "words": 3,
      "per_1000": 0.02,
      "lower": 0.0,
@@ -2415,6 +2323,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ت→س",
+     "words": 2,
+     "per_1000": 0.01,
+     "lower": 0.0,
+     "upper": 0.03
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "ج→∅",
      "words": 2,
      "per_1000": 0.01,
@@ -2431,7 +2347,7 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "د→ل",
+     "substitution": "ذ→د",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -2439,7 +2355,7 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ذ→د",
+     "substitution": "ذ→∅",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -2504,6 +2420,14 @@
     {
      "cause": "other_consonant",
      "substitution": "ل→ج",
+     "words": 2,
+     "per_1000": 0.01,
+     "lower": 0.0,
+     "upper": 0.03
+    },
+    {
+     "cause": "other_consonant",
+     "substitution": "ه→∅",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -2615,14 +2539,6 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ت→س",
-     "words": 1,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.02
-    },
-    {
-     "cause": "other_consonant",
      "substitution": "ت→ف",
      "words": 1,
      "per_1000": 0.01,
@@ -2704,14 +2620,6 @@
     {
      "cause": "other_consonant",
      "substitution": "ذ→ل",
-     "words": 1,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.02
-    },
-    {
-     "cause": "other_consonant",
-     "substitution": "ذ→∅",
      "words": 1,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -2879,6 +2787,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ف→ق",
+     "words": 1,
+     "per_1000": 0.01,
+     "lower": 0.0,
+     "upper": 0.02
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "ف→ك",
      "words": 1,
      "per_1000": 0.01,
@@ -2935,6 +2851,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ل→ت",
+     "words": 1,
+     "per_1000": 0.01,
+     "lower": 0.0,
+     "upper": 0.02
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "ل→ي",
      "words": 1,
      "per_1000": 0.01,
@@ -2975,7 +2899,7 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ه→∅",
+     "substitution": "ه→ۥ",
      "words": 1,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -3058,17 +2982,17 @@
     {
      "cause": "other_consonant",
      "expected": "ل",
-     "words": 45,
-     "per_1000": 0.29,
-     "lower": 0.22,
-     "upper": 0.38
+     "words": 49,
+     "per_1000": 0.32,
+     "lower": 0.24,
+     "upper": 0.41
     },
     {
      "cause": "other_consonant",
      "expected": "ن",
-     "words": 42,
+     "words": 43,
      "per_1000": 0.28,
-     "lower": 0.19,
+     "lower": 0.2,
      "upper": 0.37
     },
     {
@@ -3082,10 +3006,10 @@
     {
      "cause": "other_consonant",
      "expected": "ا",
-     "words": 31,
-     "per_1000": 0.2,
-     "lower": 0.13,
-     "upper": 0.29
+     "words": 33,
+     "per_1000": 0.22,
+     "lower": 0.14,
+     "upper": 0.3
     },
     {
      "cause": "other_consonant",
@@ -3106,10 +3030,26 @@
     {
      "cause": "target_pair",
      "expected": "ط",
+     "words": 19,
+     "per_1000": 0.12,
+     "lower": 0.07,
+     "upper": 0.18
+    },
+    {
+     "cause": "other_consonant",
+     "expected": "د",
      "words": 18,
      "per_1000": 0.12,
      "lower": 0.07,
      "upper": 0.17
+    },
+    {
+     "cause": "other_consonant",
+     "expected": "ه",
+     "words": 18,
+     "per_1000": 0.12,
+     "lower": 0.06,
+     "upper": 0.18
     },
     {
      "cause": "other_consonant",
@@ -3121,19 +3061,11 @@
     },
     {
      "cause": "other_consonant",
-     "expected": "د",
-     "words": 17,
-     "per_1000": 0.11,
-     "lower": 0.06,
-     "upper": 0.17
-    },
-    {
-     "cause": "other_consonant",
-     "expected": "ه",
-     "words": 16,
-     "per_1000": 0.1,
-     "lower": 0.05,
-     "upper": 0.17
+     "expected": "ت",
+     "words": 12,
+     "per_1000": 0.08,
+     "lower": 0.04,
+     "upper": 0.13
     },
     {
      "cause": "other_consonant",
@@ -3145,18 +3077,10 @@
     },
     {
      "cause": "other_consonant",
-     "expected": "ت",
-     "words": 11,
-     "per_1000": 0.07,
-     "lower": 0.03,
-     "upper": 0.12
-    },
-    {
-     "cause": "other_consonant",
      "expected": "ف",
-     "words": 11,
-     "per_1000": 0.07,
-     "lower": 0.03,
+     "words": 12,
+     "per_1000": 0.08,
+     "lower": 0.04,
      "upper": 0.12
     },
     {
@@ -3185,6 +3109,14 @@
     },
     {
      "cause": "other_consonant",
+     "expected": "ذ",
+     "words": 5,
+     "per_1000": 0.03,
+     "lower": 0.01,
+     "upper": 0.07
+    },
+    {
+     "cause": "other_consonant",
      "expected": "س",
      "words": 5,
      "per_1000": 0.03,
@@ -3205,14 +3137,6 @@
      "words": 5,
      "per_1000": 0.03,
      "lower": 0.01,
-     "upper": 0.06
-    },
-    {
-     "cause": "other_consonant",
-     "expected": "ذ",
-     "words": 4,
-     "per_1000": 0.03,
-     "lower": 0.0,
      "upper": 0.06
     },
     {
@@ -3332,6 +3256,14 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
+     "substitution": "ء→∅",
+     "rule": "pronounced; the query that set the kept grade holds it",
+     "words": 8,
+     "per_1000": 0.05
+    },
+    {
+     "class": "grading",
+     "responsible": "Muraja word scorer",
      "substitution": "ب→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
      "words": 8,
@@ -3342,8 +3274,8 @@
      "responsible": "Muraja word scorer",
      "substitution": "ف→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 6,
-     "per_1000": 0.04
+     "words": 8,
+     "per_1000": 0.05
     },
     {
      "class": "grading",
@@ -3372,7 +3304,7 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ء→∅",
+     "substitution": "ق→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
      "words": 1,
      "per_1000": 0.01
@@ -3380,7 +3312,7 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ق→∅",
+     "substitution": "ل→ن",
      "rule": "pronounced; the query that set the kept grade holds it",
      "words": 1,
      "per_1000": 0.01
@@ -3414,38 +3346,13 @@
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "17:64:8",
-     "ل→ر",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "18:54:9",
      "ل→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "21:17:1",
-     "ل→ت",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "27:34:8",
-     "ل→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "28:32:15",
-     "ن→ل",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "28:63:12",
      "غ→و",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "29:8:15",
-     "ه→ۥ",
      "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
@@ -3457,16 +3364,6 @@
      "2:61:19",
      "ث→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "30:30:5",
-     "ط→ق",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "35:13:5",
-     "ل→ر",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "36:78:5",
@@ -3494,19 +3391,9 @@
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "48:4:12",
-     "ا→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "4:26:12",
      "و→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "4:49:14",
-     "ل→ن",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "51:34:1",
@@ -3514,54 +3401,9 @@
      "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
-     "55:18:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:18:1",
-     "ف→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:32:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "55:3:1",
      "خ→ق",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "55:65:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:65:1",
-     "ف→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:73:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "58:19:1",
-     "ذ→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "5:17:29",
-     "ا→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "65:6:8",
-     "ت→س",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "66:5:6",
@@ -3574,24 +3416,9 @@
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "6:157:28",
-     "د→ل",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "6:157:28",
-     "ف→ق",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "6:67:1",
      "ل→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "6:91:26",
-     "ه→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "70:30:10",
@@ -3629,13 +3456,13 @@
    "interval": true,
    "classes": {
     "model": {
-     "flags": 456,
-     "words": 446,
-     "per_1000": 2.92
+     "flags": 470,
+     "words": 458,
+     "per_1000": 3.0
     },
     "grading": {
-     "flags": 34,
-     "words": 15,
+     "flags": 44,
+     "words": 16,
      "per_1000": 0.1
     },
     "reference": {
@@ -3644,9 +3471,9 @@
      "per_1000": 0.01
     },
     "unclear": {
-     "flags": 47,
-     "words": 43,
-     "per_1000": 0.28
+     "flags": 23,
+     "words": 22,
+     "per_1000": 0.14
     }
    },
    "model_by_substitution": [
@@ -3661,18 +3488,18 @@
     {
      "cause": "other_consonant",
      "substitution": "ن→ل",
-     "words": 30,
+     "words": 31,
      "per_1000": 0.2,
      "lower": 0.13,
-     "upper": 0.27
+     "upper": 0.28
     },
     {
      "cause": "other_consonant",
      "substitution": "ا→∅",
-     "words": 28,
-     "per_1000": 0.18,
-     "lower": 0.11,
-     "upper": 0.26
+     "words": 30,
+     "per_1000": 0.2,
+     "lower": 0.12,
+     "upper": 0.28
     },
     {
      "cause": "other_consonant",
@@ -3685,18 +3512,18 @@
     {
      "cause": "target_pair",
      "substitution": "ط→ق",
-     "words": 18,
+     "words": 19,
      "per_1000": 0.12,
      "lower": 0.07,
-     "upper": 0.17
+     "upper": 0.18
     },
     {
      "cause": "other_consonant",
      "substitution": "ل→ر",
-     "words": 15,
-     "per_1000": 0.1,
-     "lower": 0.05,
-     "upper": 0.15
+     "words": 17,
+     "per_1000": 0.11,
+     "lower": 0.06,
+     "upper": 0.17
     },
     {
      "cause": "other_consonant",
@@ -3804,6 +3631,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ل→∅",
+     "words": 5,
+     "per_1000": 0.03,
+     "lower": 0.01,
+     "upper": 0.06
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "ن→م",
      "words": 5,
      "per_1000": 0.03,
@@ -3876,14 +3711,6 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ل→∅",
-     "words": 4,
-     "per_1000": 0.03,
-     "lower": 0.01,
-     "upper": 0.05
-    },
-    {
-     "cause": "other_consonant",
      "substitution": "م→∅",
      "words": 4,
      "per_1000": 0.03,
@@ -3932,6 +3759,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "د→ل",
+     "words": 3,
+     "per_1000": 0.02,
+     "lower": 0.0,
+     "upper": 0.04
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "س→ف",
      "words": 3,
      "per_1000": 0.02,
@@ -3956,6 +3791,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ه→∅",
+     "words": 3,
+     "per_1000": 0.02,
+     "lower": 0.0,
+     "upper": 0.04
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "و→∅",
      "words": 3,
      "per_1000": 0.02,
@@ -3965,6 +3808,14 @@
     {
      "cause": "other_consonant",
      "substitution": "ب→م",
+     "words": 2,
+     "per_1000": 0.01,
+     "lower": 0.0,
+     "upper": 0.03
+    },
+    {
+     "cause": "other_consonant",
+     "substitution": "ت→س",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -3988,7 +3839,7 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "د→ل",
+     "substitution": "ذ→د",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -3996,7 +3847,7 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ذ→د",
+     "substitution": "ذ→∅",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -4069,14 +3920,6 @@
     {
      "cause": "other_consonant",
      "substitution": "ل→ج",
-     "words": 2,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.03
-    },
-    {
-     "cause": "other_consonant",
-     "substitution": "ه→∅",
      "words": 2,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -4204,14 +4047,6 @@
     },
     {
      "cause": "other_consonant",
-     "substitution": "ت→س",
-     "words": 1,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.02
-    },
-    {
-     "cause": "other_consonant",
      "substitution": "ت→ف",
      "words": 1,
      "per_1000": 0.01,
@@ -4293,14 +4128,6 @@
     {
      "cause": "other_consonant",
      "substitution": "ذ→ل",
-     "words": 1,
-     "per_1000": 0.01,
-     "lower": 0.0,
-     "upper": 0.02
-    },
-    {
-     "cause": "other_consonant",
-     "substitution": "ذ→∅",
      "words": 1,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -4460,6 +4287,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ف→ق",
+     "words": 1,
+     "per_1000": 0.01,
+     "lower": 0.0,
+     "upper": 0.02
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "ف→ك",
      "words": 1,
      "per_1000": 0.01,
@@ -4524,6 +4359,14 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "ل→ت",
+     "words": 1,
+     "per_1000": 0.01,
+     "lower": 0.0,
+     "upper": 0.02
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "ل→ي",
      "words": 1,
      "per_1000": 0.01,
@@ -4557,6 +4400,14 @@
     {
      "cause": "other_consonant",
      "substitution": "ه→غ",
+     "words": 1,
+     "per_1000": 0.01,
+     "lower": 0.0,
+     "upper": 0.02
+    },
+    {
+     "cause": "other_consonant",
+     "substitution": "ه→ۥ",
      "words": 1,
      "per_1000": 0.01,
      "lower": 0.0,
@@ -4671,17 +4522,17 @@
     {
      "cause": "other_consonant",
      "expected": "ل",
-     "words": 46,
-     "per_1000": 0.3,
-     "lower": 0.22,
-     "upper": 0.39
+     "words": 50,
+     "per_1000": 0.33,
+     "lower": 0.24,
+     "upper": 0.42
     },
     {
      "cause": "other_consonant",
      "expected": "ن",
-     "words": 42,
+     "words": 43,
      "per_1000": 0.28,
-     "lower": 0.19,
+     "lower": 0.2,
      "upper": 0.37
     },
     {
@@ -4695,10 +4546,10 @@
     {
      "cause": "other_consonant",
      "expected": "ا",
-     "words": 31,
-     "per_1000": 0.2,
-     "lower": 0.13,
-     "upper": 0.29
+     "words": 33,
+     "per_1000": 0.22,
+     "lower": 0.14,
+     "upper": 0.3
     },
     {
      "cause": "other_consonant",
@@ -4717,8 +4568,24 @@
      "upper": 0.2
     },
     {
+     "cause": "other_consonant",
+     "expected": "ه",
+     "words": 19,
+     "per_1000": 0.12,
+     "lower": 0.07,
+     "upper": 0.19
+    },
+    {
      "cause": "target_pair",
      "expected": "ط",
+     "words": 19,
+     "per_1000": 0.12,
+     "lower": 0.07,
+     "upper": 0.18
+    },
+    {
+     "cause": "other_consonant",
+     "expected": "د",
      "words": 18,
      "per_1000": 0.12,
      "lower": 0.07,
@@ -4734,19 +4601,11 @@
     },
     {
      "cause": "other_consonant",
-     "expected": "د",
-     "words": 17,
-     "per_1000": 0.11,
-     "lower": 0.06,
-     "upper": 0.17
-    },
-    {
-     "cause": "other_consonant",
-     "expected": "ه",
-     "words": 17,
-     "per_1000": 0.11,
-     "lower": 0.06,
-     "upper": 0.17
+     "expected": "ت",
+     "words": 12,
+     "per_1000": 0.08,
+     "lower": 0.04,
+     "upper": 0.13
     },
     {
      "cause": "other_consonant",
@@ -4758,18 +4617,10 @@
     },
     {
      "cause": "other_consonant",
-     "expected": "ت",
-     "words": 11,
-     "per_1000": 0.07,
-     "lower": 0.03,
-     "upper": 0.12
-    },
-    {
-     "cause": "other_consonant",
      "expected": "ف",
-     "words": 11,
-     "per_1000": 0.07,
-     "lower": 0.03,
+     "words": 12,
+     "per_1000": 0.08,
+     "lower": 0.04,
      "upper": 0.12
     },
     {
@@ -4806,6 +4657,14 @@
     },
     {
      "cause": "other_consonant",
+     "expected": "ذ",
+     "words": 5,
+     "per_1000": 0.03,
+     "lower": 0.01,
+     "upper": 0.07
+    },
+    {
+     "cause": "other_consonant",
      "expected": "س",
      "words": 5,
      "per_1000": 0.03,
@@ -4835,14 +4694,6 @@
      "per_1000": 0.03,
      "lower": 0.0,
      "upper": 0.08
-    },
-    {
-     "cause": "other_consonant",
-     "expected": "ذ",
-     "words": 4,
-     "per_1000": 0.03,
-     "lower": 0.0,
-     "upper": 0.06
     },
     {
      "cause": "other_consonant",
@@ -5017,10 +4868,18 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
+     "substitution": "ء→∅",
+     "rule": "pronounced; the query that set the kept grade holds it",
+     "words": 8,
+     "per_1000": 0.05
+    },
+    {
+     "class": "grading",
+     "responsible": "Muraja word scorer",
      "substitution": "ف→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
-     "words": 6,
-     "per_1000": 0.04
+     "words": 8,
+     "per_1000": 0.05
     },
     {
      "class": "grading",
@@ -5049,7 +4908,7 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ء→∅",
+     "substitution": "ق→∅",
      "rule": "pronounced; the query that set the kept grade holds it",
      "words": 1,
      "per_1000": 0.01
@@ -5057,7 +4916,7 @@
     {
      "class": "grading",
      "responsible": "Muraja word scorer",
-     "substitution": "ق→∅",
+     "substitution": "ل→ن",
      "rule": "pronounced; the query that set the kept grade holds it",
      "words": 1,
      "per_1000": 0.01
@@ -5091,38 +4950,13 @@
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "17:64:8",
-     "ل→ر",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "18:54:9",
      "ل→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "21:17:1",
-     "ل→ت",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "27:34:8",
-     "ل→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "28:32:15",
-     "ن→ل",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "28:63:12",
      "غ→و",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "29:8:15",
-     "ه→ۥ",
      "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
@@ -5134,16 +4968,6 @@
      "2:61:19",
      "ث→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "30:30:5",
-     "ط→ق",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "35:13:5",
-     "ل→ر",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "36:78:5",
@@ -5171,19 +4995,9 @@
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "48:4:12",
-     "ا→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "4:26:12",
      "و→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "4:49:14",
-     "ل→ن",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "51:34:1",
@@ -5191,54 +5005,9 @@
      "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
-     "55:18:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:18:1",
-     "ف→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:32:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "55:3:1",
      "خ→ق",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "55:65:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:65:1",
-     "ف→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "55:73:1",
-     "ء→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "58:19:1",
-     "ذ→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "5:17:29",
-     "ا→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "65:6:8",
-     "ت→س",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "66:5:6",
@@ -5251,24 +5020,9 @@
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
     ],
     [
-     "6:157:28",
-     "د→ل",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "6:157:28",
-     "ف→ق",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "6:67:1",
      "ل→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
-    ],
-    [
-     "6:91:26",
-     "ه→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
     ],
     [
      "70:30:10",
@@ -6030,9 +5784,9 @@
    "interval": false,
    "classes": {
     "model": {
-     "flags": 61,
-     "words": 53,
-     "per_1000": 184.67
+     "flags": 63,
+     "words": 54,
+     "per_1000": 188.15
     },
     "grading": {
      "flags": 1,
@@ -6045,9 +5799,9 @@
      "per_1000": 0.0
     },
     "unclear": {
-     "flags": 4,
-     "words": 3,
-     "per_1000": 10.45
+     "flags": 2,
+     "words": 1,
+     "per_1000": 3.48
     }
    },
    "model_by_substitution": [
@@ -6119,6 +5873,12 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "س→∅",
+     "words": 1,
+     "per_1000": 3.48
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "ط→ث",
      "words": 1,
      "per_1000": 3.48
@@ -6138,6 +5898,12 @@
     {
      "cause": "other_consonant",
      "substitution": "ط→∅",
+     "words": 1,
+     "per_1000": 3.48
+    },
+    {
+     "cause": "other_consonant",
+     "substitution": "ف→ت",
      "words": 1,
      "per_1000": 3.48
     },
@@ -6271,6 +6037,18 @@
     },
     {
      "cause": "other_consonant",
+     "expected": "س",
+     "words": 1,
+     "per_1000": 3.48
+    },
+    {
+     "cause": "other_consonant",
+     "expected": "ف",
+     "words": 1,
+     "per_1000": 3.48
+    },
+    {
+     "cause": "other_consonant",
      "expected": "م",
      "words": 1,
      "per_1000": 3.48
@@ -6306,16 +6084,6 @@
    ],
    "unclear": [
     [
-     "12:46:16",
-     "س→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "2:254:18",
-     "ف→ت",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
      "37:30:10",
      "غ→∅",
      "pronounced; a check that can have set the kept grade has no query that reaches the letter"
@@ -6336,9 +6104,9 @@
    "interval": false,
    "classes": {
     "model": {
-     "flags": 81,
-     "words": 73,
-     "per_1000": 254.36
+     "flags": 83,
+     "words": 74,
+     "per_1000": 257.84
     },
     "grading": {
      "flags": 1,
@@ -6351,9 +6119,9 @@
      "per_1000": 0.0
     },
     "unclear": {
-     "flags": 4,
-     "words": 3,
-     "per_1000": 10.45
+     "flags": 2,
+     "words": 1,
+     "per_1000": 3.48
     }
    },
    "model_by_substitution": [
@@ -6443,6 +6211,12 @@
     },
     {
      "cause": "other_consonant",
+     "substitution": "س→∅",
+     "words": 1,
+     "per_1000": 3.48
+    },
+    {
+     "cause": "other_consonant",
      "substitution": "ط→ث",
      "words": 1,
      "per_1000": 3.48
@@ -6462,6 +6236,12 @@
     {
      "cause": "other_consonant",
      "substitution": "ط→∅",
+     "words": 1,
+     "per_1000": 3.48
+    },
+    {
+     "cause": "other_consonant",
+     "substitution": "ف→ت",
      "words": 1,
      "per_1000": 3.48
     },
@@ -6631,6 +6411,18 @@
     },
     {
      "cause": "other_consonant",
+     "expected": "س",
+     "words": 1,
+     "per_1000": 3.48
+    },
+    {
+     "cause": "other_consonant",
+     "expected": "ف",
+     "words": 1,
+     "per_1000": 3.48
+    },
+    {
+     "cause": "other_consonant",
      "expected": "ك",
      "words": 1,
      "per_1000": 3.48
@@ -6683,16 +6475,6 @@
     }
    ],
    "unclear": [
-    [
-     "12:46:16",
-     "س→∅",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
-    [
-     "2:254:18",
-     "ف→ت",
-     "pronounced; the queries that can have set the kept grade disagree"
-    ],
     [
      "37:30:10",
      "غ→∅",
@@ -6811,6 +6593,12 @@
         "context": "#|وَلِللَ[اا]هِ|مَ"
        },
        {
+        "word": "5:17:29",
+        "rule": "pronounced; the query that set the kept grade has another letter or none there",
+        "printed": "وَلِلَّهِ",
+        "context": "و|وَلِللَ[اا]هِ|مُ"
+       },
+       {
         "word": "5:120:1",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
         "printed": "لِلَّهِ",
@@ -6833,12 +6621,6 @@
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
         "printed": "وَلِلَّهِ",
         "context": "#|وَلِللَ[اا]هِ|مُ"
-       },
-       {
-        "word": "30:4:4",
-        "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "لِلَّهِ",
-        "context": "نَ|لِللَ[اا]هِ|ل"
        }
       ]
      },
@@ -7040,6 +6822,35 @@
     ],
     "grading": [
      {
+      "substitution": "ء→∅",
+      "words": [
+       {
+        "word": "55:18:1",
+        "rule": "pronounced; the query that set the kept grade holds it",
+        "printed": "فَبِأَيِّ",
+        "context": "#|فَبِ[ءَ]ييِ|ءَ"
+       },
+       {
+        "word": "55:32:1",
+        "rule": "pronounced; the query that set the kept grade holds it",
+        "printed": "فَبِأَيِّ",
+        "context": "#|فَبِ[ءَ]ييِ|ءَ"
+       },
+       {
+        "word": "55:65:1",
+        "rule": "pronounced; the query that set the kept grade holds it",
+        "printed": "فَبِأَيِّ",
+        "context": "#|فَبِ[ءَ]ييِ|ءَ"
+       },
+       {
+        "word": "55:73:1",
+        "rule": "pronounced; the query that set the kept grade holds it",
+        "printed": "فَبِأَيِّ",
+        "context": "#|فَبِ[ءَ]ييِ|ءَ"
+       }
+      ]
+     },
+     {
       "substitution": "ب→∅",
       "words": [
        {
@@ -7154,29 +6965,6 @@
         "context": "ں|قَدڇرَ[ا]ا|#"
        }
       ]
-     },
-     {
-      "substitution": "ل→∅",
-      "words": [
-       {
-        "word": "4:95:23",
-        "rule": "pronounced; the query that set the kept grade holds it",
-        "printed": "وَكُلّٗا",
-        "context": "و|وَكُ[ل]لَوو|وَ"
-       },
-       {
-        "word": "57:10:30",
-        "rule": "pronounced; the query that set the kept grade holds it",
-        "printed": "وَكُلّٗا",
-        "context": "ۥ|وَكُ[ل]لَوو|وَ"
-       },
-       {
-        "word": "77:19:1",
-        "rule": "pronounced; the query that set the kept grade holds it",
-        "printed": "وَيۡلٞ",
-        "context": "#|وَي[لُ]يي|يَ"
-       }
-      ]
      }
     ],
     "reference": [
@@ -7193,41 +6981,6 @@
      }
     ],
     "unclear": [
-     {
-      "substitution": "ء→∅",
-      "words": [
-       {
-        "word": "41:44:9",
-        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
-        "printed": "ءَا۬عۡجَمِيّٞ",
-        "context": "ۥ|[ءَ]ٲعجَمِييُوو|وَ"
-       },
-       {
-        "word": "55:18:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|فَبِ[ءَ]ييِ|ءَ"
-       },
-       {
-        "word": "55:32:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|فَبِ[ءَ]ييِ|ءَ"
-       },
-       {
-        "word": "55:65:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|فَبِ[ءَ]ييِ|ءَ"
-       },
-       {
-        "word": "55:73:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|فَبِ[ءَ]ييِ|ءَ"
-       }
-      ]
-     },
      {
       "substitution": "ه→∅",
       "words": [
@@ -7281,36 +7034,35 @@
       ]
      },
      {
-      "substitution": "ف→∅",
+      "substitution": "ء→∅",
       "words": [
        {
-        "word": "55:18:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|[فَ]بِءَييِ|ءَ"
-       },
-       {
-        "word": "55:65:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|[فَ]بِءَييِ|ءَ"
+        "word": "41:44:9",
+        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
+        "printed": "ءَا۬عۡجَمِيّٞ",
+        "context": "ۥ|[ءَ]ٲعجَمِييُوو|وَ"
        }
       ]
      },
      {
-      "substitution": "و→∅",
+      "substitution": "خ→∅",
       "words": [
        {
-        "word": "4:26:12",
+        "word": "96:2:1",
         "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
-        "printed": "وَٱللَّهُ",
-        "context": "م|[وَ]للَااهُ|عَ"
-       },
+        "printed": "خَلَقَ",
+        "context": "#|[خَ]لَقَ|ل"
+       }
+      ]
+     },
+     {
+      "substitution": "ع→∅",
+      "words": [
        {
-        "word": "109:5:1",
+        "word": "69:12:4",
         "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "وَلَآ",
-        "context": "#|[وَ]لَاااا|ءَ"
+        "printed": "وَتَعِيَهَآ",
+        "context": "و|وَتَ[عِ]يَهَاااا|ءُ"
        }
       ]
      }
@@ -7480,6 +7232,12 @@
         "context": "#|وَلِللَ[اا]هِ|مَ"
        },
        {
+        "word": "5:17:29",
+        "rule": "pronounced; the query that set the kept grade has another letter or none there",
+        "printed": "وَلِلَّهِ",
+        "context": "و|وَلِللَ[اا]هِ|مُ"
+       },
+       {
         "word": "5:18:23",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
         "printed": "وَلِلَّهِ",
@@ -7508,12 +7266,6 @@
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
         "printed": "إِلَّا",
         "context": "#|ءِللَ[ا]ا|عِ"
-       },
-       {
-        "word": "15:59:1",
-        "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "إِلَّآ",
-        "context": "#|ءِللَ[ا]ااا|ءَ"
        }
       ]
      },
@@ -7583,72 +7335,101 @@
       ]
      },
      {
-      "substitution": "ط→ق",
+      "substitution": "ل→ر",
       "words": [
        {
-        "word": "2:58:15",
+        "word": "2:249:8",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "حِطَّةٞ",
-        "context": "ۥ|حِط[طَ]تُ|ن"
+        "printed": "مُبۡتَلِيكُم",
+        "context": "هَ|مُبڇتَ[لِ]ۦۦكُ۾۾۾|بِ"
        },
        {
-        "word": "2:247:9",
+        "word": "2:272:13",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "طَالُوتَ",
-        "context": "م|[طَ]االُۥۥتَ|مَ"
+        "printed": "فَلِأَنفُسِكُمۡۚ",
+        "context": "ں|فَ[لِ]ءَںںںفُسِكُم|وَ"
        },
        {
-        "word": "4:25:5",
+        "word": "4:36:7",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "طَوۡلًا",
-        "context": "م|[طَ]ولَن|ءَ"
+        "printed": "وَبِٱلۡوَٰلِدَيۡنِ",
+        "context": "و|وَبِلوَاا[لِ]دَينِ|ءِ"
        },
        {
-        "word": "5:28:2",
+        "word": "12:109:4",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "بَسَطتَ",
-        "context": "۾|بَسَ[ط]تَ|ءِ"
+        "printed": "قَبۡلِكَ",
+        "context": "ں|قَبڇ[لِ]كَ|ءِ"
        },
        {
-        "word": "5:64:13",
+        "word": "14:9:6",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "مَبۡسُوطَتَانِ",
-        "context": "هُ|مَبڇسُۥۥ[طَ]تَاانِ|يُ"
+        "printed": "قَبۡلِكُمۡ",
+        "context": "ں|قَبڇ[لِ]كُم|قَ"
        },
        {
-        "word": "6:52:2",
+        "word": "16:29:4",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "تَطۡرُدِ",
-        "context": "ا|تَ[ط]ڇرُدِ|ل"
+        "printed": "خَٰلِدِينَ",
+        "context": "مَ|خَاا[لِ]دِۦۦنَ|فِ"
        },
        {
-        "word": "13:29:5",
+        "word": "17:64:6",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "طُوبَىٰ",
-        "context": "تِ|[طُ]ۥۥبَاا|لَ"
+        "printed": "وَأَجۡلِبۡ",
+        "context": "كَ|وَءَجڇ[لِ]بڇ|عَ"
        },
        {
-        "word": "18:14:19",
+        "word": "17:64:8",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "شَطَطًا",
-        "context": "ں|شَ[طَ]طَاا|#"
+        "printed": "بِخَيۡلِكَ",
+        "context": "۾|بِخَي[لِ]كَ|وَ"
        },
        {
-        "word": "21:44:6",
+        "word": "21:34:5",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "طَالَ",
-        "context": "ا|[طَ]االَ|عَ"
+        "printed": "قَبۡلِكَ",
+        "context": "ں|قَبڇ[لِ]كَ|ل"
        },
        {
-        "word": "22:72:13",
+        "word": "24:2:3",
         "rule": "pronounced; the query that set the kept grade has another letter or none there",
-        "printed": "يَسۡطُونَ",
-        "context": "نَ|يَس[طُ]ۥۥنَ|بِ"
+        "printed": "فَٱجۡلِدُواْ",
+        "context": "ۦ|فَجڇ[لِ]دُۥۥ|كُ"
        }
       ]
      }
     ],
     "grading": [
+     {
+      "substitution": "ء→∅",
+      "words": [
+       {
+        "word": "55:18:1",
+        "rule": "pronounced; the query that set the kept grade holds it",
+        "printed": "فَبِأَيِّ",
+        "context": "#|فَبِ[ءَ]ييِ|ءَ"
+       },
+       {
+        "word": "55:32:1",
+        "rule": "pronounced; the query that set the kept grade holds it",
+        "printed": "فَبِأَيِّ",
+        "context": "#|فَبِ[ءَ]ييِ|ءَ"
+       },
+       {
+        "word": "55:65:1",
+        "rule": "pronounced; the query that set the kept grade holds it",
+        "printed": "فَبِأَيِّ",
+        "context": "#|فَبِ[ءَ]ييِ|ءَ"
+       },
+       {
+        "word": "55:73:1",
+        "rule": "pronounced; the query that set the kept grade holds it",
+        "printed": "فَبِأَيِّ",
+        "context": "#|فَبِ[ءَ]ييِ|ءَ"
+       }
+      ]
+     },
      {
       "substitution": "ب→∅",
       "words": [
@@ -7764,29 +7545,6 @@
         "context": "#|وَلَ[ا]ااا|ءَ"
        }
       ]
-     },
-     {
-      "substitution": "ل→∅",
-      "words": [
-       {
-        "word": "4:95:23",
-        "rule": "pronounced; the query that set the kept grade holds it",
-        "printed": "وَكُلّٗا",
-        "context": "و|وَكُ[ل]لَوو|وَ"
-       },
-       {
-        "word": "77:19:1",
-        "rule": "pronounced; the query that set the kept grade holds it",
-        "printed": "وَيۡلٞ",
-        "context": "#|وَي[لُ]يي|يَ"
-       },
-       {
-        "word": "109:5:1",
-        "rule": "pronounced; the query that set the kept grade holds it",
-        "printed": "وَلَآ",
-        "context": "#|وَ[لَ]اااا|ءَ"
-       }
-      ]
      }
     ],
     "reference": [
@@ -7819,12 +7577,6 @@
         "context": "هُ|نَفسَ[هُ]ۥۥ|وَ"
        },
        {
-        "word": "6:91:26",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "تَجۡعَلُونَهُۥ",
-        "context": "سِ|تَجڇعَلُۥۥنَ[هُ]ۥۥ|قَ"
-       },
-       {
         "word": "17:64:14",
         "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
         "printed": "وَعِدۡهُمۡۚ",
@@ -7851,81 +7603,6 @@
       ]
      },
      {
-      "substitution": "ء→∅",
-      "words": [
-       {
-        "word": "55:18:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|فَبِ[ءَ]ييِ|ءَ"
-       },
-       {
-        "word": "55:32:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|فَبِ[ءَ]ييِ|ءَ"
-       },
-       {
-        "word": "55:65:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|فَبِ[ءَ]ييِ|ءَ"
-       },
-       {
-        "word": "55:73:1",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "فَبِأَيِّ",
-        "context": "#|فَبِ[ءَ]ييِ|ءَ"
-       }
-      ]
-     },
-     {
-      "substitution": "ا→∅",
-      "words": [
-       {
-        "word": "5:17:29",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "وَلِلَّهِ",
-        "context": "و|وَلِللَ[اا]هِ|مُ"
-       },
-       {
-        "word": "43:23:10",
-        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
-        "printed": "إِلَّا",
-        "context": "ن|ءِللَ[ا]ا|قَ"
-       },
-       {
-        "word": "48:4:12",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "وَلِلَّهِ",
-        "context": "م|وَلِللَ[اا]هِ|جُ"
-       }
-      ]
-     },
-     {
-      "substitution": "ل→∅",
-      "words": [
-       {
-        "word": "6:67:1",
-        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
-        "printed": "لِّكُلِّ",
-        "context": "#|[لِ]كُللِ|نَ"
-       },
-       {
-        "word": "18:54:9",
-        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
-        "printed": "مَثَلٖۚ",
-        "context": "لِ|مَثَ[لِ]وو|وَ"
-       },
-       {
-        "word": "27:34:8",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "وَجَعَلُوٓاْ",
-        "context": "ا|وَجَعَ[لُ]ۥۥۥۥ|ءَ"
-       }
-      ]
-     },
-     {
       "substitution": "م→∅",
       "words": [
        {
@@ -7945,6 +7622,57 @@
         "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
         "printed": "عَلِيمٞ",
         "context": "ن|عَلِۦۦ[م]|#"
+       }
+      ]
+     },
+     {
+      "substitution": "ن→∅",
+      "words": [
+       {
+        "word": "70:30:10",
+        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
+        "printed": "مَلُومِينَ",
+        "context": "رُ|مَلُۥۥمِۦۦ[ن]|#"
+       },
+       {
+        "word": "77:47:3",
+        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
+        "printed": "لِّلۡمُكَذِّبِينَ",
+        "context": "ذِ|للِلمُكَذذِبِۦۦ[ن]|#"
+       },
+       {
+        "word": "89:18:5",
+        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
+        "printed": "ٱلۡمِسۡكِينِ",
+        "context": "مِ|لمِسكِۦۦ[ن]|#"
+       }
+      ]
+     },
+     {
+      "substitution": "ل→∅",
+      "words": [
+       {
+        "word": "6:67:1",
+        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
+        "printed": "لِّكُلِّ",
+        "context": "#|[لِ]كُللِ|نَ"
+       },
+       {
+        "word": "18:54:9",
+        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
+        "printed": "مَثَلٖۚ",
+        "context": "لِ|مَثَ[لِ]وو|وَ"
+       }
+      ]
+     },
+     {
+      "substitution": "ا→∅",
+      "words": [
+       {
+        "word": "43:23:10",
+        "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
+        "printed": "إِلَّا",
+        "context": "ن|ءِللَ[ا]ا|قَ"
        }
       ]
      }
@@ -8427,17 +8155,6 @@
     "reference": [],
     "unclear": [
      {
-      "substitution": "س→∅",
-      "words": [
-       {
-        "word": "12:46:16",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "يَابِسَٰتٖ",
-        "context": "رَ|يَاابِ[سَ]ااتِ|ل"
-       }
-      ]
-     },
-     {
       "substitution": "غ→∅",
       "words": [
        {
@@ -8445,17 +8162,6 @@
         "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
         "printed": "طَٰغِينَ",
         "context": "ں|طَاا[غِ]ۦۦن|#"
-       }
-      ]
-     },
-     {
-      "substitution": "ف→ت",
-      "words": [
-       {
-        "word": "2:254:18",
-        "rule": "pronounced; the queries that can have set the kept grade disagree",
-        "printed": "شَفَٰعَةٞۗ",
-        "context": "ا|شَ[فَ]ااعَتُوو|وَ"
        }
       ]
      },
@@ -9096,10 +8802,10 @@
    "group": 3,
    "unit": 4,
    "spelled": "from a mark",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:5",
    "printed": "وَلِلَّهِ",
    "context": "و|وَلِللَ[اا]هِ|مُ",
@@ -9474,10 +9180,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:16",
    "printed": "قَرَأۡتَ",
    "context": "ا|قَ[رَ]ءتَ|ل",
@@ -9957,10 +9663,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "model",
-   "rule": "pronounced; the query that set the kept grade has another letter or none there",
+   "klass": "unclear",
+   "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
    "responsible": null,
-   "evidence": "query",
+   "evidence": null,
    "cluster": "abdul_hamid_ghraio_2026_yt:38",
    "printed": "تُشۡطِطۡ",
    "context": "ا|تُشطِ[ط]ڇ|وَ",
@@ -10251,10 +9957,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -10335,10 +10041,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -10419,10 +10125,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -10503,10 +10209,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -10881,10 +10587,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:109",
    "printed": "وَلَآ",
    "context": "#|[وَ]لَاااا|ءَ",
@@ -10902,10 +10608,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:109",
    "printed": "وَلَآ",
    "context": "#|وَ[لَ]اااا|ءَ",
@@ -11742,10 +11448,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:10",
    "printed": "قِبۡلَةٗ",
    "context": "م|قِ[ب]ڇلَتَوو|وَ",
@@ -13380,10 +13086,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|[فَ]بِءَييِ|ءَ",
@@ -13422,10 +13128,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -13506,10 +13212,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -13590,10 +13296,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|[فَ]بِءَييِ|ءَ",
@@ -13632,10 +13338,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -14850,10 +14556,10 @@
    "group": 3,
    "unit": 4,
    "spelled": "from a mark",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:5",
    "printed": "وَلِلَّهِ",
    "context": "و|وَلِللَ[اا]هِ|مُ",
@@ -15312,10 +15018,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:16",
    "printed": "قَرَأۡتَ",
    "context": "ا|قَ[رَ]ءتَ|ل",
@@ -15816,10 +15522,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "model",
-   "rule": "pronounced; the query that set the kept grade has another letter or none there",
+   "klass": "unclear",
+   "rule": "pronounced; a check that can have set the kept grade has no query that reaches the letter",
    "responsible": null,
-   "evidence": "query",
+   "evidence": null,
    "cluster": "abdul_hamid_ghraio_2026_yt:38",
    "printed": "تُشۡطِطۡ",
    "context": "ا|تُشطِ[ط]ڇ|وَ",
@@ -16173,10 +15879,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -16257,10 +15963,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -16341,10 +16047,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -16425,10 +16131,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -16824,10 +16530,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:109",
    "printed": "وَلَآ",
    "context": "#|[وَ]لَاااا|ءَ",
@@ -16845,10 +16551,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:109",
    "printed": "وَلَآ",
    "context": "#|وَ[لَ]اااا|ءَ",
@@ -17706,10 +17412,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:10",
    "printed": "قِبۡلَةٗ",
    "context": "م|قِ[ب]ڇلَتَوو|وَ",
@@ -19428,10 +19134,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|[فَ]بِءَييِ|ءَ",
@@ -19470,10 +19176,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -19554,10 +19260,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -19638,10 +19344,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|[فَ]بِءَييِ|ءَ",
@@ -19680,10 +19386,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -21381,10 +21087,10 @@
    "group": 3,
    "unit": 4,
    "spelled": "from a mark",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:5",
    "printed": "وَلِلَّهِ",
    "context": "و|وَلِللَ[اا]هِ|مُ",
@@ -21612,10 +21318,10 @@
    "group": 4,
    "unit": 5,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:6",
    "printed": "تَجۡعَلُونَهُۥ",
    "context": "سِ|تَجڇعَلُۥۥنَ[هُ]ۥۥ|قَ",
@@ -22893,10 +22599,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:21",
    "printed": "لَوۡ",
    "context": "#|[لَ]و|ءَ",
@@ -23502,10 +23208,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:28",
    "printed": "فَذَٰنِكَ",
    "context": "بِ|فَذَاا[نِ]كَ|بُ",
@@ -23586,10 +23292,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:29",
    "printed": "تُطِعۡهُمَآۚ",
    "context": "ا|تُطِع[هُ]مَاااا|ءِ",
@@ -24468,10 +24174,10 @@
    "group": 3,
    "unit": 4,
    "spelled": "from a mark",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:48",
    "printed": "وَلِلَّهِ",
    "context": "م|وَلِللَ[اا]هِ|جُ",
@@ -24783,10 +24489,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -24867,10 +24573,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -24951,10 +24657,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -25035,10 +24741,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -25203,10 +24909,10 @@
    "group": 5,
    "unit": 5,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:58",
    "printed": "ٱسۡتَحۡوَذَ",
    "context": "#|ءِستَحوَ[ذَ]|عَ",
@@ -26715,10 +26421,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:4",
    "printed": "فَتِيلًا",
    "context": "نَ|فَتِۦۦ[لَ]اا|#",
@@ -26988,10 +26694,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:6",
    "printed": "يَصۡدِفُونَ",
    "context": "نَ|يَص[دِ]فُۥۥنَ|عَ",
@@ -27009,10 +26715,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:6",
    "printed": "يَصۡدِفُونَ",
    "context": "نَ|يَصدِ[فُ]ۥۥنَ|عَ",
@@ -27765,10 +27471,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:17",
    "printed": "بِخَيۡلِكَ",
    "context": "۾|بِخَي[لِ]كَ|وَ",
@@ -28584,10 +28290,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:27",
    "printed": "وَجَعَلُوٓاْ",
    "context": "ا|وَجَعَ[لُ]ۥۥۥۥ|ءَ",
@@ -28752,10 +28458,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:30",
    "printed": "فِطۡرَتَ",
    "context": "ں|فِ[ط]ڇرَتَ|ل",
@@ -29046,10 +28752,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:35",
    "printed": "وَيُولِجُ",
    "context": "رِ|وَيُۥۥ[لِ]جُ|ن",
@@ -29886,10 +29592,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|[فَ]بِءَييِ|ءَ",
@@ -29928,10 +29634,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -30012,10 +29718,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -30054,10 +29760,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|[فَ]بِءَييِ|ءَ",
@@ -30096,10 +29802,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -30411,10 +30117,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:65",
    "printed": "تُضَآرُّوهُنَّ",
    "context": "ا|[تُ]ضَااااااررُۥۥهُننننَ|لِ",
@@ -32154,10 +31860,10 @@
    "group": 3,
    "unit": 4,
    "spelled": "from a mark",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:5",
    "printed": "وَلِلَّهِ",
    "context": "و|وَلِللَ[اا]هِ|مُ",
@@ -32385,10 +32091,10 @@
    "group": 4,
    "unit": 5,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:6",
    "printed": "تَجۡعَلُونَهُۥ",
    "context": "سِ|تَجڇعَلُۥۥنَ[هُ]ۥۥ|قَ",
@@ -33729,10 +33435,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:21",
    "printed": "لَوۡ",
    "context": "#|[لَ]و|ءَ",
@@ -34380,10 +34086,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:28",
    "printed": "فَذَٰنِكَ",
    "context": "بِ|فَذَاا[نِ]كَ|بُ",
@@ -34464,10 +34170,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:29",
    "printed": "تُطِعۡهُمَآۚ",
    "context": "ا|تُطِع[هُ]مَاااا|ءِ",
@@ -35367,10 +35073,10 @@
    "group": 3,
    "unit": 4,
    "spelled": "from a mark",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:48",
    "printed": "وَلِلَّهِ",
    "context": "م|وَلِللَ[اا]هِ|جُ",
@@ -35745,10 +35451,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -35829,10 +35535,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -35913,10 +35619,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -35997,10 +35703,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -36186,10 +35892,10 @@
    "group": 5,
    "unit": 5,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "abdul_hamid_ghraio_2026_yt:58",
    "printed": "ٱسۡتَحۡوَذَ",
    "context": "#|ءِستَحوَ[ذَ]|عَ",
@@ -37761,10 +37467,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:4",
    "printed": "فَتِيلًا",
    "context": "نَ|فَتِۦۦ[لَ]اا|#",
@@ -38055,10 +37761,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:6",
    "printed": "يَصۡدِفُونَ",
    "context": "نَ|يَص[دِ]فُۥۥنَ|عَ",
@@ -38076,10 +37782,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:6",
    "printed": "يَصۡدِفُونَ",
    "context": "نَ|يَصدِ[فُ]ۥۥنَ|عَ",
@@ -38958,10 +38664,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:17",
    "printed": "بِخَيۡلِكَ",
    "context": "۾|بِخَي[لِ]كَ|وَ",
@@ -39777,10 +39483,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:27",
    "printed": "وَجَعَلُوٓاْ",
    "context": "ا|وَجَعَ[لُ]ۥۥۥۥ|ءَ",
@@ -39945,10 +39651,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:30",
    "printed": "فِطۡرَتَ",
    "context": "ں|فِ[ط]ڇرَتَ|ل",
@@ -40260,10 +39966,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:35",
    "printed": "وَيُولِجُ",
    "context": "رِ|وَيُۥۥ[لِ]جُ|ن",
@@ -41142,10 +40848,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|[فَ]بِءَييِ|ءَ",
@@ -41184,10 +40890,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -41268,10 +40974,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -41331,10 +41037,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|[فَ]بِءَييِ|ءَ",
@@ -41373,10 +41079,10 @@
    "group": 2,
    "unit": 2,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
-   "responsible": null,
-   "evidence": null,
+   "klass": "grading",
+   "rule": "pronounced; the query that set the kept grade holds it",
+   "responsible": "Muraja word scorer",
+   "evidence": "query",
    "cluster": "anas_almiman_yt:55",
    "printed": "فَبِأَيِّ",
    "context": "#|فَبِ[ءَ]ييِ|ءَ",
@@ -41688,10 +41394,10 @@
    "group": 0,
    "unit": 0,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "anas_almiman_yt:65",
    "printed": "تُضَآرُّوهُنَّ",
    "context": "ا|[تُ]ضَااااااررُۥۥهُننننَ|لِ",
@@ -44718,10 +44424,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "tadabur_spk0383_S1_A254_f431c383_000000.wav@169760:399457",
    "printed": "شَفَٰعَةٞۗ",
    "context": "ا|شَ[فَ]ااعَتُوو|وَ",
@@ -44949,10 +44655,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "tadabur_spk0481_S11_A46_2ae379f1_000045.wav@218720:334959",
    "printed": "يَابِسَٰتٖ",
    "context": "رَ|يَاابِ[سَ]ااتِ|ل",
@@ -46398,10 +46104,10 @@
    "group": 1,
    "unit": 1,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "tadabur_spk0383_S1_A254_f431c383_000000.wav@169760:399457",
    "printed": "شَفَٰعَةٞۗ",
    "context": "ا|شَ[فَ]ااعَتُوو|وَ",
@@ -46650,10 +46356,10 @@
    "group": 3,
    "unit": 3,
    "spelled": "as itself, marked",
-   "klass": "unclear",
-   "rule": "pronounced; the queries that can have set the kept grade disagree",
+   "klass": "model",
+   "rule": "pronounced; the query that set the kept grade has another letter or none there",
    "responsible": null,
-   "evidence": null,
+   "evidence": "query",
    "cluster": "tadabur_spk0481_S11_A46_2ae379f1_000045.wav@218720:334959",
    "printed": "يَابِسَٰتٖ",
    "context": "رَ|يَاابِ[سَ]ااتِ|ل",

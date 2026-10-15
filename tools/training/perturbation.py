@@ -26,7 +26,17 @@ clipped: Tadabur already peaks above 1.0 and the feature extractor normalizes ea
 * **band limit**: resampled to :data:`NARROWBAND_RATE` and back (a 4 kHz band, a telephone's
   sample rate; polyphase filters, :func:`band_limit`).
 * **codec**: an Opus round trip at :data:`OPUS_BITRATE` bit/s, ``voip``, narrowband
-  (:func:`opus_round_trip`, ``ffmpeg``'s ``libopus``), a low-bitrate phone call.
+  (:func:`opus_round_trip`, ``ffmpeg``'s ``libopus``), a low-bitrate phone call. The codec
+  delays its output by a sample or two even with its pre-skip dropped, so the decoded audio is
+  moved back by its measured lag against the input (:func:`lag_samples`, :func:`advance`).
+
+**Every condition keeps the clip's timing** (zero lag), so a perturbed clip's frames line up
+with the clean clip's: a training arm pairs clean teacher frames with perturbed student
+frames through this module.
+
+**Amended once** (``acoustic-grid-v2``, after review, before any training): v1 left the
+codec's lag in place; v2 removes it. Nothing else changed, and only the codec condition was
+decoded again.
 
 Torch-free; the codec needs ``ffmpeg`` with ``libopus`` on the path.
 """
@@ -43,7 +53,7 @@ import numpy as np
 from tadabur.audio import TARGET_SAMPLE_RATE
 from tadabur.nonpro_sources import Dataset
 
-GRID_VERSION = "acoustic-grid-v1"
+GRID_VERSION = "acoustic-grid-v2"
 #: Every draw (the sample, the noise segment, the impulse response) is salted with this.
 SEED = 20261015
 
@@ -77,6 +87,8 @@ OPUS_BITRATE = 12_000
 OPUS_APPLICATION = "voip"
 #: ``libopus``'s narrowband cutoff: the codec keeps 4 kHz, as a phone call does.
 OPUS_CUTOFF_HZ = 4000
+#: The codec's lag is measured within this many samples (1 ms); one at the bound is refused.
+MAX_CODEC_LAG = 16
 
 CLEAN, NOISE_KIND, REVERB, BAND_LIMIT, CODEC = "clean", "noise", "reverb", "band_limit", "codec"
 
@@ -118,7 +130,11 @@ def grid_record() -> dict:
                    "level": "scaled back to the clean clip's RMS"},
         "band_limit": {"sample_rate": NARROWBAND_RATE, "resampler": "scipy.signal.resample_poly"},
         "codec": {"codec": "opus (ffmpeg libopus)", "bitrate": OPUS_BITRATE,
-                  "application": OPUS_APPLICATION, "cutoff_hz": OPUS_CUTOFF_HZ},
+                  "application": OPUS_APPLICATION, "cutoff_hz": OPUS_CUTOFF_HZ,
+                  "alignment": "output moved back by its cross-correlation lag against the "
+                               f"input (sub-sample, within {MAX_CODEC_LAG} samples)"},
+        "amended": "v2: the codec's output is aligned to its input (v1 left a 1-2 sample "
+                   "lag); nothing else changed",
         "clipping": "none; float32 throughout",
     }
 
@@ -244,16 +260,50 @@ def _ffmpeg(args: list[str], data: bytes) -> bytes:
     return result.stdout
 
 
-def opus_round_trip(clean: np.ndarray) -> np.ndarray:
-    """Encoded to Opus (:data:`OPUS_BITRATE`, :data:`OPUS_APPLICATION`, narrowband) and
-    decoded back to 16 kHz; the decoder drops the codec's pre-skip, so it stays aligned."""
+def lag_samples(output: np.ndarray, reference: np.ndarray, bound: int) -> float:
+    """How many samples ``output`` lags ``reference`` (the same length): the cross-correlation
+    peak, refined to a sub-sample by a parabola through it. The peak is searched for within
+    four times ``bound`` and refused unless it lies inside ``bound``. Zero for silent
+    ``reference``."""
+    from scipy.signal import correlate
+
+    if not np.any(reference):
+        return 0.0
+    correlation = correlate(output.astype(np.float64), reference.astype(np.float64),
+                            mode="full", method="fft")
+    search = 4 * bound
+    centre = len(reference) - 1
+    window = correlation[centre - search:centre + search + 1]
+    peak = int(np.argmax(window))
+    if abs(peak - search) >= bound:
+        raise ValueError(f"the lag {peak - search} is not within {bound} samples")
+    before, at, after = window[peak - 1:peak + 2]
+    curvature = before - 2 * at + after
+    return peak - search + (0.5 * (before - after) / curvature if curvature else 0.0)
+
+
+def advance(samples: np.ndarray, lag: float) -> np.ndarray:
+    """``samples`` moved ``lag`` samples earlier (a fractional shift, by the spectrum's phase),
+    zero-padded so nothing wraps round; the same length."""
+    pad = int(np.ceil(abs(lag))) + 64
+    padded = np.pad(samples.astype(np.float64), pad)
+    spectrum = np.fft.rfft(padded) * np.exp(2j * np.pi * np.fft.rfftfreq(len(padded)) * lag)
+    return np.fft.irfft(spectrum, len(padded))[pad:pad + len(samples)].astype(np.float32)
+
+
+def opus_round_trip(clean: np.ndarray) -> tuple[np.ndarray, float]:
+    """Encoded to Opus (:data:`OPUS_BITRATE`, :data:`OPUS_APPLICATION`, narrowband), decoded
+    back to 16 kHz (the decoder drops the codec's pre-skip) and moved back by the lag it still
+    has (:func:`lag_samples`); the aligned audio and that lag."""
     raw = ["-f", "f32le", "-ar", str(TARGET_SAMPLE_RATE), "-ac", "1"]
     encoded = _ffmpeg([*raw, "-i", "pipe:0", "-c:a", "libopus", "-b:a", str(OPUS_BITRATE),
                        "-application", OPUS_APPLICATION, "-cutoff", str(OPUS_CUTOFF_HZ),
                        "-fflags", "+bitexact", "-flags:a", "+bitexact", "-f", "ogg", "pipe:1"],
                       clean.astype("<f4").tobytes())
-    decoded = _ffmpeg(["-i", "pipe:0", *raw, "pipe:1"], encoded)
-    return _fit(np.frombuffer(decoded, dtype="<f4"), len(clean))
+    decoded = _fit(np.frombuffer(_ffmpeg(["-i", "pipe:0", *raw, "pipe:1"], encoded),
+                                 dtype="<f4"), len(clean))
+    lag = lag_samples(decoded, clean, MAX_CODEC_LAG)
+    return advance(decoded, lag), lag
 
 
 def ffmpeg_version() -> str:
@@ -265,8 +315,9 @@ def ffmpeg_version() -> str:
 
 def perturb(clean: np.ndarray, condition: Condition, clip_id: str,
             pool: tuple[NoiseRecording, ...] = ()) -> tuple[np.ndarray, dict]:
-    """``clean`` under ``condition``, and what was drawn for it (the noise recording and
-    offset; nothing for the other kinds, whose draws are fixed by :data:`SEED`)."""
+    """``clean`` under ``condition``, and what was drawn or measured for it (the noise
+    recording and offset, the codec's lag; nothing for the other kinds, whose draws are fixed
+    by :data:`SEED`)."""
     if condition.kind == CLEAN:
         return clean, {}
     if condition.kind == NOISE_KIND:
@@ -281,7 +332,8 @@ def perturb(clean: np.ndarray, condition: Condition, clip_id: str,
     if condition.kind == BAND_LIMIT:
         return band_limit(clean, int(condition.level)), {}
     if condition.kind == CODEC:
-        return opus_round_trip(clean), {}
+        coded, lag = opus_round_trip(clean)
+        return coded, {"codec_lag": round(lag, 3)}
     raise ValueError(f"unknown condition kind {condition.kind!r}")
 
 

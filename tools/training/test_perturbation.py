@@ -95,21 +95,68 @@ def test_band_limit_keeps_the_low_band_and_removes_the_high():
     assert _band_power(narrow, 6000) < 1e-3 * _band_power(clean, 6000)
 
 
-@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
-def test_the_opus_round_trip_keeps_length_and_alignment():
+HAS_FFMPEG = shutil.which("ffmpeg") is not None
+
+
+def _impulse() -> np.ndarray:
+    """48,001 samples, a unit impulse at sample 16,000."""
+    out = np.zeros(48_001, dtype=np.float32)
+    out[16_000] = 1.0
+    return out
+
+
+def _chirp() -> np.ndarray:
+    """3 s sweeping the speech band, 300 Hz to 3.4 kHz."""
+    from scipy.signal import chirp
+
+    t = np.arange(3 * SR) / SR
+    return (0.3 * chirp(t, 300, 3, 3400)).astype(np.float32)
+
+
+def _pool() -> tuple:
+    return tuple(pt.NoiseRecording(i, "CC0-1.0", "u", np.random.default_rng(i)
+                                   .standard_normal(2 * SR).astype(np.float32)) for i in (3, 9))
+
+
+@pytest.mark.parametrize("name", [c.name for c in pt.GRID])
+def test_every_condition_keeps_the_clips_timing(name):
+    if pt.CONDITIONS[name].kind == pt.CODEC and not HAS_FFMPEG:
+        pytest.skip("ffmpeg is not installed")
+    condition = pt.CONDITIONS[name]
+    impulse, _ = pt.perturb(_impulse(), condition, "c", _pool())
+    assert len(impulse) == 48_001 and int(np.argmax(np.abs(impulse))) == 16_000
+    chirp = _chirp()
+    swept, _ = pt.perturb(chirp, condition, "c", _pool())
+    assert abs(pt.lag_samples(swept, chirp, 32)) < 0.25
+
+
+def test_the_lag_is_measured_to_a_sub_sample_and_undone():
+    chirp = _chirp()
+    late = pt.advance(chirp, -1.5)  # 1.5 samples late
+    assert pt.lag_samples(late, chirp, 16) == pytest.approx(1.5, abs=0.05)
+    assert abs(pt.lag_samples(pt.advance(late, 1.5), chirp, 16)) < 0.01
+    assert pt.lag_samples(chirp, np.zeros_like(chirp), 16) == 0.0
+    with pytest.raises(ValueError):  # 40 samples late: no peak inside a 16-sample window
+        pt.lag_samples(np.roll(_impulse(), 40), _impulse(), 16)
+
+
+@pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
+def test_the_opus_round_trip_keeps_length_and_reports_the_lag_it_removed():
     clean = _tone(500, 2.0)
-    coded = pt.opus_round_trip(clean)
+    coded, lag = pt.opus_round_trip(clean)
     assert len(coded) == len(clean) and coded.dtype == np.float32
+    assert 0 < abs(lag) < pt.MAX_CODEC_LAG  # the codec does delay; the lag is undone
     middle = slice(SR // 2, 3 * SR // 2)
-    correlation = np.corrcoef(clean[middle], coded[middle])[0, 1]
-    assert correlation > 0.9
-    assert np.array_equal(coded, pt.opus_round_trip(clean))
+    assert np.corrcoef(clean[middle], coded[middle])[0, 1] > 0.9
+    again, lag_again = pt.opus_round_trip(clean)
+    assert np.array_equal(coded, again) and lag == lag_again
+    _, draw = pt.perturb(clean, pt.CONDITIONS["opus_12k_nb"], "c")
+    assert draw == {"codec_lag": round(lag, 3)}
 
 
 def test_perturb_applies_each_kind_and_reports_the_noise_drawn():
     clean = _tone(440)
-    pool = tuple(pt.NoiseRecording(i, "CC0-1.0", "u", np.random.default_rng(i)
-                                   .standard_normal(SR).astype(np.float32)) for i in (3, 9))
+    pool = _pool()
     assert pt.perturb(clean, pt.CONDITIONS["clean"], "c") == (clean, {})
     noisy, draw = pt.perturb(clean, pt.CONDITIONS["noise_snr10"], "c", pool)
     index, offset = pt.noise_draw(2, "c")

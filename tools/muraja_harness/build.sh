@@ -20,9 +20,10 @@
 #      the analysis sources and tools/replay_log.swift with the reports it calls, the set
 #      tools/run_log_tests.sh compiles;
 #   4. rename ScoringParameters.forMode to shippedForMode and isSoftMismatch to
-#      shippedIsSoftMismatch in each scratch copy (scoring.swift replaces both), and drop
-#      replay_log.swift's @main from the log replay's (log_replay.swift is
-#      the entry point); each edit must happen exactly once;
+#      shippedIsSoftMismatch in each scratch copy (scoring.swift replaces both); in the log
+#      replay's, drop replay_log.swift's @main (log_replay.swift is the entry point) and point the
+#      word scorer's logger at log_replay.swift's GradeLineLogger, which keeps the grade lines a
+#      device log holds; each edit must happen exactly once;
 #   5. compile with -DTEST_HARNESS -swift-version 6, as Muraja's tools/run_replay_log.sh does;
 #   6. write harness.json (binaries, databases, commit, compiler) next to the binaries.
 #
@@ -88,6 +89,8 @@ build_binary() {
   test "$(cat "$src"/*.swift | grep -c 'func isSoftMismatch(')" = 0
   if [ -f "$src/replay_log.swift" ]; then
     edit_once "$src/replay_log.swift" '@main' 's/^@main$//'
+    edit_once "$src/QuranFollowAlong+WordScoring.swift" 'private let scoringLogger = Logger(' \
+      's/^private let scoringLogger = Logger(/private let scoringLogger = GradeLineLogger(/'
   fi
   printf 'let murajaCommit = "%s"\nlet compilerVersion = "%s"\n' "$MURAJA_COMMIT" "$COMPILER" \
     > "$src/HarnessBuildInfo.swift"

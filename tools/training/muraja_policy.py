@@ -97,7 +97,7 @@ import os
 import sqlite3
 import subprocess
 import unicodedata
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
@@ -132,7 +132,7 @@ LOG_REPLAY_BINARY = "log_replay_binary"
 #: The request protocol this client speaks (``muraja_harness/scoring.swift``'s
 #: ``harnessProtocol``). A binary reporting another, or none, is not used: an older binary
 #: silently ignores keys it does not know, such as a scoring's ``soft_pairs_disabled``.
-HARNESS_PROTOCOL = 2
+HARNESS_PROTOCOL = 3
 
 
 def _camel(key: str) -> str:
@@ -543,27 +543,30 @@ class Harness:
         if unknown:
             raise ValueError(f"the harness binary does not support the scoring keys {unknown}; rebuild it")
 
-    def run(self, requests: Iterable[dict], workers: int = HARNESS_WORKERS) -> tuple[dict, list[dict]]:
+    def run(
+        self, requests: Iterable[dict], workers: int = HARNESS_WORKERS, env: Mapping[str, str] | None = None
+    ) -> tuple[dict, list[dict]]:
         """The build record the binary prints, and one result per request and scoring, in
         request order. Each request is its own session, so the requests are split into
-        ``workers`` contiguous runs graded by as many binaries at once."""
+        ``workers`` contiguous runs graded by as many binaries at once. ``env`` is added to each
+        binary's environment (the log replay reads its scoring mode from ``REPLAY_MODE``)."""
         requests = list(requests)
         self.check(requests)
         size = max(1, -(-len(requests) // workers))
         chunks = [requests[i:i + size] for i in range(0, len(requests), size)] or [[]]
         with ThreadPoolExecutor(len(chunks)) as pool:
-            runs = list(pool.map(self._run_one, chunks))
+            runs = list(pool.map(lambda chunk: self._run_one(chunk, env), chunks))
         builds = {json.dumps(build, sort_keys=True) for build, _ in runs} | {json.dumps(self.build, sort_keys=True)}
         if len(builds) != 1:
             raise ValueError(f"the harness binaries printed different build records: {builds}")
         return runs[0][0], [result for _, results in runs for result in results]
 
-    def _run_one(self, requests: list[dict]) -> tuple[dict, list[dict]]:
+    def _run_one(self, requests: list[dict], env: Mapping[str, str] | None = None) -> tuple[dict, list[dict]]:
         payload = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in requests)
         completed = subprocess.run(
             [str(self.binary), str(self.quran_db)],
             input=payload, capture_output=True, text=True, check=True,
-            env={**os.environ, "QURAN_LAYOUT_DB_PATH": str(self.layout_db)},
+            env={**os.environ, **(env or {}), "QURAN_LAYOUT_DB_PATH": str(self.layout_db)},
         )
         build, *results = (json.loads(line) for line in completed.stdout.splitlines() if line)
         return build, results

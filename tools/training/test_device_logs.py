@@ -251,9 +251,10 @@ def test_the_report_covers_the_inventory_and_every_log_reproduces_its_baseline()
 
 
 def test_the_report_carries_no_log_text():
-    """Positions, counts, causes, commits and docs only: no Arabic but a target pair's label."""
+    """Positions, counts, causes, commits and docs only: no Arabic but a pair's or a
+    substitution's label."""
     arabic = re.compile("[\u0600-\u06ff]")
-    pair = re.compile("[\u0600-\u06ff]↔[\u0600-\u06ff]")
+    pair = re.compile("[\u0600-\u06ff][↔→][\u0600-\u06ff∅]")
 
     def strings(value):
         if isinstance(value, dict):

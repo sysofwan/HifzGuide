@@ -343,10 +343,13 @@ def lengthened_previews(text: str) -> tuple[str, int]:
 # --- replay ------------------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Replay:
-    """One log replayed under one engine configuration: the final position and every kept grade."""
+    """One log replayed under one engine configuration: the final position, every kept grade,
+    and every grade decision the word scorer logged (``Grade end word …``), as a device log
+    keeps them."""
 
     final_position: str
     words: Mapping[str, dict]
+    grade_lines: tuple[str, ...] = field(default=(), compare=False)
 
 
 def log_dir(commit: str, root: Path = HARNESS_ROOT) -> Path:
@@ -357,14 +360,17 @@ def log_dir(commit: str, root: Path = HARNESS_ROOT) -> Path:
 def replay_logs(
     harness: Harness, paths: Mapping[str, Path], scorings: Sequence[Scoring]
 ) -> tuple[dict, dict[str, dict[str, Replay]]]:
-    """The build record, and ``[log][engine name]`` the replay of each log in ``paths``."""
-    requests = [{"item": log, "log": str(path), "scorings": engine_runs(scorings)}
-                for log, path in sorted(paths.items())]
-    build, results = harness.run(requests)
-    replays: dict[str, dict[str, Replay]] = {}
-    for result in results:
-        replays.setdefault(result["item"], {})[result["scoring"]] = Replay(
-            result["final_position"], {w["position"]: w["status"] for w in result["words"]})
+    """The build record, and ``[log][engine name]`` the replay of each log in ``paths``: one
+    harness run per scoring mode, since the replay reads its mode from ``REPLAY_MODE``."""
+    build, replays = {}, {}
+    for mode in sorted({s.mode for s in scorings}):
+        requests = [{"item": log, "log": str(path), "scorings": engine_runs([s for s in scorings if s.mode == mode])}
+                    for log, path in sorted(paths.items())]
+        build, results = harness.run(requests, env={"REPLAY_MODE": mode})
+        for result in results:
+            replays.setdefault(result["item"], {})[result["scoring"]] = Replay(
+                result["final_position"], {w["position"]: w["status"] for w in result["words"]},
+                tuple(result["grade_lines"]))
     return build, replays
 
 
@@ -392,6 +398,8 @@ class WordGrade:
     marks: tuple[str, ...]
     pairs: tuple[str, ...]
     explained: Explained | None
+    #: The consonant errors behind its consonant causes, ``(cause, substitution)``.
+    consonants: tuple[tuple[str, str], ...] = ()
 
     @property
     def flagged(self) -> bool:
@@ -413,7 +421,7 @@ def word_grades(
             out.append(WordGrade(
                 entry.log, word, scoring.name, shown,
                 why.causes if why else (), why.marks if why else (), why.pairs if why else (),
-                entry.explanation(word)))
+                entry.explanation(word), why.consonants if why else ()))
     return out
 
 
@@ -555,6 +563,7 @@ def covered_ayat(words: Iterable[str]) -> str:
 def word_row(g: WordGrade) -> dict:
     return {"log": g.log, "word": g.word, "scoring": g.scoring, "quality": g.quality,
             "causes": list(g.causes), "marks": list(g.marks), "pairs": list(g.pairs),
+            "substitutions": [label for _, label in g.consonants],
             "explained": g.explained.kind if g.explained else None,
             "basis": g.explained.basis if g.explained else None}
 

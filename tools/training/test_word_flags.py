@@ -88,6 +88,33 @@ def test_a_minor_word_is_flagged_for_its_consonants_never_its_tashkeel():
     assert flag.causes == (w.TARGET_PAIR, w.SHADDAH_CAUSE) and flag.marks == ()
 
 
+def test_a_flag_keeps_each_consonant_error_as_its_cause_and_substitution():
+    grade = SiteGrade(FLAGGED_ELSEWHERE, MINOR,
+                      (tashkeel(FATHA, None), mismatch("ل", "ء"), deletion("ل", 2), deletion("ه", 5)))
+    assert w.flag(grade, "ءَللَذِۦۦنَ").consonants == (
+        (w.OTHER_CONSONANT, "ل→ء"), (w.SHADDAH_CAUSE, "ل→∅"), (w.OTHER_CONSONANT, "ه→∅"))
+    assert w.flag(SiteGrade(FLAGGED_ELSEWHERE, TASHKEEL_ERROR, (tashkeel(FATHA, None),)), "x").consonants == ()
+
+
+def test_an_error_comes_back_from_the_form_reports_keep():
+    for error in (mismatch("ج", "د", 1), deletion("ه", 5)):
+        assert w.error_of(w.log_description(error)) == error
+    assert w.error_of("g2:tash") is None
+
+
+def test_the_tally_counts_words_once_per_substitution_or_letter():
+    flags = [((w.OTHER_CONSONANT, "ث→س"), (w.OTHER_CONSONANT, "ث→س")),
+             ((w.OTHER_CONSONANT, "ث→س"), (w.OTHER_CONSONANT, "ل→ء")),
+             ((w.OTHER_CONSONANT, "ل→∅"),), ()]
+    assert w.substitution_tally(flags) == [
+        {"cause": w.OTHER_CONSONANT, "substitution": "ث→س", "words": 2},
+        {"cause": w.OTHER_CONSONANT, "substitution": "ل→ء", "words": 1},
+        {"cause": w.OTHER_CONSONANT, "substitution": "ل→∅", "words": 1}]
+    assert w.substitution_tally(flags, by_expected=True) == [
+        {"cause": w.OTHER_CONSONANT, "expected": "ث", "words": 2},
+        {"cause": w.OTHER_CONSONANT, "expected": "ل", "words": 2}]
+
+
 def test_a_flag_with_no_error_of_its_kind_is_unrecorded_and_a_skip_is_its_own_cause():
     assert w.flag(SiteGrade(FLAGGED_ELSEWHERE, MINOR, (tashkeel(FATHA, None),)), "x").causes == (
         w.UNRECORDED,)

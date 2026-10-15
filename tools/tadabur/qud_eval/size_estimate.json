@@ -1,0 +1,2220 @@
+{
+ "ayat_unsupported_by_phonetizer": [
+  "55:17",
+  "90:8",
+  "90:9",
+  "90:10",
+  "106:1",
+  "106:2",
+  "106:3",
+  "106:4"
+ ],
+ "inputs": {
+  "coverage_qud_revision": "6f45ced88a179dfbb97d5b0f76ae69b4d4d1f175",
+  "pool": {
+   "base_decode": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "h448_decode": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "decode_fingerprint": {
+     "autocast": true,
+     "batch_size": 16,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "fp32"
+    },
+    "segment_margin_s": 0.5
+   },
+   "linked_clips_left_out": 365
+  },
+  "selection_qud_revision": "6f45ced88a179dfbb97d5b0f76ae69b4d4d1f175"
+ },
+ "mushafs": {
+  "abdul_hamid_ghraio_2025_yt": {
+   "ayat": 6235,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "ح→ه": {
+     "abstained": 418.3,
+     "agreed": 3643.9,
+     "carriers": 4137,
+     "disagreed": 74.9
+    },
+    "ذ→ز": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ذ→ظ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ز→ذ": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "س→ش": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "س→ص": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "ش→س": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "ص→س": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "ض→ظ": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "ط→ت": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ط→ق": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ظ→ذ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ظ→ض": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ق→ط": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ق→ك": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ك→ق": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "ه→ح": {
+     "abstained": 1789.5,
+     "agreed": 12961.6,
+     "carriers": 14962,
+     "disagreed": 211.0
+    }
+   },
+   "download_bytes": 1625196338,
+   "geminates_in_word": {
+    "abstained": 483.7,
+    "agreed": 19459.4,
+    "carriers": 22499,
+    "disagreed": 2553.6
+   },
+   "hours": 18.77,
+   "letters": {
+    "letter:ت": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "letter:ح": {
+     "abstained": 418.3,
+     "agreed": 3643.9,
+     "carriers": 4137,
+     "disagreed": 74.9
+    },
+    "letter:ذ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "letter:ز": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "letter:س": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "letter:ش": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "letter:ص": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "letter:ض": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "letter:ط": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "letter:ظ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "letter:ق": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "letter:ك": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "letter:ه": {
+     "abstained": 1789.5,
+     "agreed": 12961.6,
+     "carriers": 14962,
+     "disagreed": 211.0
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1514.7,
+    "disagreed": 889.8
+   },
+   "pcm16_bytes": 2162156544,
+   "reciter_id": "abdul_hamid_ghraio",
+   "recording_year": 2025
+  },
+  "abdul_hamid_ghraio_2026_yt": {
+   "ayat": 6235,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "ح→ه": {
+     "abstained": 418.3,
+     "agreed": 3643.9,
+     "carriers": 4137,
+     "disagreed": 74.9
+    },
+    "ذ→ز": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ذ→ظ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ز→ذ": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "س→ش": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "س→ص": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "ش→س": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "ص→س": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "ض→ظ": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "ط→ت": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ط→ق": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ظ→ذ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ظ→ض": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ق→ط": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ق→ك": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ك→ق": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "ه→ح": {
+     "abstained": 1789.5,
+     "agreed": 12961.6,
+     "carriers": 14962,
+     "disagreed": 211.0
+    }
+   },
+   "download_bytes": 1752451932,
+   "geminates_in_word": {
+    "abstained": 483.7,
+    "agreed": 19459.4,
+    "carriers": 22499,
+    "disagreed": 2553.6
+   },
+   "hours": 20.24,
+   "letters": {
+    "letter:ت": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "letter:ح": {
+     "abstained": 418.3,
+     "agreed": 3643.9,
+     "carriers": 4137,
+     "disagreed": 74.9
+    },
+    "letter:ذ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "letter:ز": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "letter:س": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "letter:ش": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "letter:ص": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "letter:ض": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "letter:ط": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "letter:ظ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "letter:ق": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "letter:ك": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "letter:ه": {
+     "abstained": 1789.5,
+     "agreed": 12961.6,
+     "carriers": 14962,
+     "disagreed": 211.0
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1514.7,
+    "disagreed": 889.8
+   },
+   "pcm16_bytes": 2331674016,
+   "reciter_id": "abdul_hamid_ghraio",
+   "recording_year": 2026
+  },
+  "abdulaziz_al_turki_yt": {
+   "ayat": 6115,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 956.0,
+     "agreed": 11119.8,
+     "carriers": 12497,
+     "disagreed": 422.4
+    },
+    "ح→ه": {
+     "abstained": 411.1,
+     "agreed": 3581.3,
+     "carriers": 4066,
+     "disagreed": 73.6
+    },
+    "ذ→ز": {
+     "abstained": 278.9,
+     "agreed": 4405.7,
+     "carriers": 4825,
+     "disagreed": 140.9
+    },
+    "ذ→ظ": {
+     "abstained": 278.9,
+     "agreed": 4405.7,
+     "carriers": 4825,
+     "disagreed": 140.9
+    },
+    "ز→ذ": {
+     "abstained": 145.0,
+     "agreed": 1320.3,
+     "carriers": 1561,
+     "disagreed": 95.8
+    },
+    "س→ش": {
+     "abstained": 562.7,
+     "agreed": 5165.5,
+     "carriers": 5898,
+     "disagreed": 169.9
+    },
+    "س→ص": {
+     "abstained": 562.7,
+     "agreed": 5165.5,
+     "carriers": 5898,
+     "disagreed": 169.9
+    },
+    "ش→س": {
+     "abstained": 141.0,
+     "agreed": 1906.0,
+     "carriers": 2076,
+     "disagreed": 29.3
+    },
+    "ص→س": {
+     "abstained": 200.2,
+     "agreed": 1812.6,
+     "carriers": 2047,
+     "disagreed": 34.2
+    },
+    "ض→ظ": {
+     "abstained": 252.3,
+     "agreed": 1351.8,
+     "carriers": 1651,
+     "disagreed": 46.9
+    },
+    "ط→ت": {
+     "abstained": 127.3,
+     "agreed": 858.1,
+     "carriers": 1254,
+     "disagreed": 268.5
+    },
+    "ط→ق": {
+     "abstained": 127.3,
+     "agreed": 858.1,
+     "carriers": 1254,
+     "disagreed": 268.5
+    },
+    "ظ→ذ": {
+     "abstained": 82.9,
+     "agreed": 665.6,
+     "carriers": 842,
+     "disagreed": 93.5
+    },
+    "ظ→ض": {
+     "abstained": 82.9,
+     "agreed": 665.6,
+     "carriers": 842,
+     "disagreed": 93.5
+    },
+    "ق→ط": {
+     "abstained": 775.4,
+     "agreed": 6052.9,
+     "carriers": 6905,
+     "disagreed": 76.6
+    },
+    "ق→ك": {
+     "abstained": 775.4,
+     "agreed": 6052.9,
+     "carriers": 6905,
+     "disagreed": 76.6
+    },
+    "ك→ق": {
+     "abstained": 720.0,
+     "agreed": 9472.6,
+     "carriers": 10330,
+     "disagreed": 137.4
+    },
+    "ه→ح": {
+     "abstained": 1753.5,
+     "agreed": 12700.8,
+     "carriers": 14661,
+     "disagreed": 206.7
+    }
+   },
+   "download_bytes": 2339098283,
+   "geminates_in_word": {
+    "abstained": 474.9,
+    "agreed": 19104.8,
+    "carriers": 22089,
+    "disagreed": 2507.1
+   },
+   "hours": 27.03,
+   "letters": {
+    "letter:ت": {
+     "abstained": 956.0,
+     "agreed": 11119.8,
+     "carriers": 12497,
+     "disagreed": 422.4
+    },
+    "letter:ح": {
+     "abstained": 411.1,
+     "agreed": 3581.3,
+     "carriers": 4066,
+     "disagreed": 73.6
+    },
+    "letter:ذ": {
+     "abstained": 278.9,
+     "agreed": 4405.7,
+     "carriers": 4825,
+     "disagreed": 140.9
+    },
+    "letter:ز": {
+     "abstained": 145.0,
+     "agreed": 1320.3,
+     "carriers": 1561,
+     "disagreed": 95.8
+    },
+    "letter:س": {
+     "abstained": 562.7,
+     "agreed": 5165.5,
+     "carriers": 5898,
+     "disagreed": 169.9
+    },
+    "letter:ش": {
+     "abstained": 141.0,
+     "agreed": 1906.0,
+     "carriers": 2076,
+     "disagreed": 29.3
+    },
+    "letter:ص": {
+     "abstained": 200.2,
+     "agreed": 1812.6,
+     "carriers": 2047,
+     "disagreed": 34.2
+    },
+    "letter:ض": {
+     "abstained": 252.3,
+     "agreed": 1351.8,
+     "carriers": 1651,
+     "disagreed": 46.9
+    },
+    "letter:ط": {
+     "abstained": 127.3,
+     "agreed": 858.1,
+     "carriers": 1254,
+     "disagreed": 268.5
+    },
+    "letter:ظ": {
+     "abstained": 82.9,
+     "agreed": 665.6,
+     "carriers": 842,
+     "disagreed": 93.5
+    },
+    "letter:ق": {
+     "abstained": 775.4,
+     "agreed": 6052.9,
+     "carriers": 6905,
+     "disagreed": 76.6
+    },
+    "letter:ك": {
+     "abstained": 720.0,
+     "agreed": 9472.6,
+     "carriers": 10330,
+     "disagreed": 137.4
+    },
+    "letter:ه": {
+     "abstained": 1753.5,
+     "agreed": 12700.8,
+     "carriers": 14661,
+     "disagreed": 206.7
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1486.9,
+    "disagreed": 873.8
+   },
+   "pcm16_bytes": 3113864192,
+   "reciter_id": "abdulaziz_al_turki",
+   "recording_year": 2025
+  },
+  "abdullah_al_buaijan_2025_yt": {
+   "ayat": 6235,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 973.0,
+     "agreed": 11317.4,
+     "carriers": 12719,
+     "disagreed": 429.9
+    },
+    "ح→ه": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "ذ→ز": {
+     "abstained": 284.7,
+     "agreed": 4497.9,
+     "carriers": 4926,
+     "disagreed": 143.8
+    },
+    "ذ→ظ": {
+     "abstained": 284.7,
+     "agreed": 4497.9,
+     "carriers": 4926,
+     "disagreed": 143.8
+    },
+    "ز→ذ": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "س→ش": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "س→ص": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "ش→س": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "ص→س": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "ض→ظ": {
+     "abstained": 257.5,
+     "agreed": 1379.7,
+     "carriers": 1685,
+     "disagreed": 47.9
+    },
+    "ط→ت": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ط→ق": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ظ→ذ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ظ→ض": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ق→ط": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ق→ك": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ك→ق": {
+     "abstained": 731.4,
+     "agreed": 9623.0,
+     "carriers": 10494,
+     "disagreed": 139.6
+    },
+    "ه→ح": {
+     "abstained": 1789.3,
+     "agreed": 12960.7,
+     "carriers": 14961,
+     "disagreed": 211.0
+    }
+   },
+   "download_bytes": 2707265542,
+   "geminates_in_word": {
+    "abstained": 483.6,
+    "agreed": 19455.9,
+    "carriers": 22495,
+    "disagreed": 2553.2
+   },
+   "hours": 31.29,
+   "letters": {
+    "letter:ت": {
+     "abstained": 973.0,
+     "agreed": 11317.4,
+     "carriers": 12719,
+     "disagreed": 429.9
+    },
+    "letter:ح": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "letter:ذ": {
+     "abstained": 284.7,
+     "agreed": 4497.9,
+     "carriers": 4926,
+     "disagreed": 143.8
+    },
+    "letter:ز": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "letter:س": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "letter:ش": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "letter:ص": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "letter:ض": {
+     "abstained": 257.5,
+     "agreed": 1379.7,
+     "carriers": 1685,
+     "disagreed": 47.9
+    },
+    "letter:ط": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "letter:ظ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "letter:ق": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "letter:ك": {
+     "abstained": 731.4,
+     "agreed": 9623.0,
+     "carriers": 10494,
+     "disagreed": 139.6
+    },
+    "letter:ه": {
+     "abstained": 1789.3,
+     "agreed": 12960.7,
+     "carriers": 14961,
+     "disagreed": 211.0
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1514.5,
+    "disagreed": 889.7
+   },
+   "pcm16_bytes": 3604645152,
+   "reciter_id": "abdullah_al_buaijan",
+   "recording_year": 2025
+  },
+  "abdulrahman_al_sudais_yt": {
+   "ayat": 6234,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 973.0,
+     "agreed": 11317.4,
+     "carriers": 12719,
+     "disagreed": 429.9
+    },
+    "ح→ه": {
+     "abstained": 418.4,
+     "agreed": 3644.8,
+     "carriers": 4138,
+     "disagreed": 74.9
+    },
+    "ذ→ز": {
+     "abstained": 284.5,
+     "agreed": 4495.2,
+     "carriers": 4923,
+     "disagreed": 143.8
+    },
+    "ذ→ظ": {
+     "abstained": 284.5,
+     "agreed": 4495.2,
+     "carriers": 4923,
+     "disagreed": 143.8
+    },
+    "ز→ذ": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "س→ش": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "س→ص": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "ش→س": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "ص→س": {
+     "abstained": 202.4,
+     "agreed": 1833.0,
+     "carriers": 2070,
+     "disagreed": 34.6
+    },
+    "ض→ظ": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "ط→ت": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ط→ق": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ظ→ذ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ظ→ض": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ق→ط": {
+     "abstained": 789.2,
+     "agreed": 6160.7,
+     "carriers": 7028,
+     "disagreed": 78.0
+    },
+    "ق→ك": {
+     "abstained": 789.2,
+     "agreed": 6160.7,
+     "carriers": 7028,
+     "disagreed": 78.0
+    },
+    "ك→ق": {
+     "abstained": 731.5,
+     "agreed": 9623.9,
+     "carriers": 10495,
+     "disagreed": 139.6
+    },
+    "ه→ح": {
+     "abstained": 1789.5,
+     "agreed": 12961.6,
+     "carriers": 14962,
+     "disagreed": 211.0
+    }
+   },
+   "download_bytes": 2654586737,
+   "geminates_in_word": {
+    "abstained": 483.7,
+    "agreed": 19459.4,
+    "carriers": 22499,
+    "disagreed": 2553.6
+   },
+   "hours": 30.68,
+   "letters": {
+    "letter:ت": {
+     "abstained": 973.0,
+     "agreed": 11317.4,
+     "carriers": 12719,
+     "disagreed": 429.9
+    },
+    "letter:ح": {
+     "abstained": 418.4,
+     "agreed": 3644.8,
+     "carriers": 4138,
+     "disagreed": 74.9
+    },
+    "letter:ذ": {
+     "abstained": 284.5,
+     "agreed": 4495.2,
+     "carriers": 4923,
+     "disagreed": 143.8
+    },
+    "letter:ز": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "letter:س": {
+     "abstained": 573.4,
+     "agreed": 5263.6,
+     "carriers": 6010,
+     "disagreed": 173.1
+    },
+    "letter:ش": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "letter:ص": {
+     "abstained": 202.4,
+     "agreed": 1833.0,
+     "carriers": 2070,
+     "disagreed": 34.6
+    },
+    "letter:ض": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "letter:ط": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "letter:ظ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "letter:ق": {
+     "abstained": 789.2,
+     "agreed": 6160.7,
+     "carriers": 7028,
+     "disagreed": 78.0
+    },
+    "letter:ك": {
+     "abstained": 731.5,
+     "agreed": 9623.9,
+     "carriers": 10495,
+     "disagreed": 139.6
+    },
+    "letter:ه": {
+     "abstained": 1789.5,
+     "agreed": 12961.6,
+     "carriers": 14962,
+     "disagreed": 211.0
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1514.5,
+    "disagreed": 889.8
+   },
+   "pcm16_bytes": 3534334560,
+   "reciter_id": "abdulrahman_al_sudais",
+   "recording_year": 2026
+  },
+  "anas_almiman_yt": {
+   "ayat": 6236,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "ح→ه": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "ذ→ز": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ذ→ظ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ز→ذ": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "س→ش": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "س→ص": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "ش→س": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "ص→س": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "ض→ظ": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "ط→ت": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ط→ق": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ظ→ذ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ظ→ض": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ق→ط": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ق→ك": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ك→ق": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "ه→ح": {
+     "abstained": 1789.6,
+     "agreed": 12962.4,
+     "carriers": 14963,
+     "disagreed": 211.0
+    }
+   },
+   "download_bytes": 2532540289,
+   "geminates_in_word": {
+    "abstained": 483.8,
+    "agreed": 19462.0,
+    "carriers": 22502,
+    "disagreed": 2554.0
+   },
+   "hours": 29.27,
+   "letters": {
+    "letter:ت": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "letter:ح": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "letter:ذ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "letter:ز": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "letter:س": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "letter:ش": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "letter:ص": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "letter:ض": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "letter:ط": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "letter:ظ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "letter:ق": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "letter:ك": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "letter:ه": {
+     "abstained": 1789.6,
+     "agreed": 12962.4,
+     "carriers": 14963,
+     "disagreed": 211.0
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1514.8,
+    "disagreed": 889.9
+   },
+   "pcm16_bytes": 3371639328,
+   "reciter_id": "anas_almiman",
+   "recording_year": 2026
+  },
+  "majed_al_zamil_yt": {
+   "ayat": 6236,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "ح→ه": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "ذ→ز": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ذ→ظ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ز→ذ": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "س→ش": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "س→ص": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "ش→س": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "ص→س": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "ض→ظ": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "ط→ت": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ط→ق": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ظ→ذ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ظ→ض": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ق→ط": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ق→ك": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ك→ق": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "ه→ح": {
+     "abstained": 1789.6,
+     "agreed": 12962.4,
+     "carriers": 14963,
+     "disagreed": 211.0
+    }
+   },
+   "download_bytes": 2272688860,
+   "geminates_in_word": {
+    "abstained": 483.8,
+    "agreed": 19462.0,
+    "carriers": 22502,
+    "disagreed": 2554.0
+   },
+   "hours": 26.26,
+   "letters": {
+    "letter:ت": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "letter:ح": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "letter:ذ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "letter:ز": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "letter:س": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "letter:ش": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "letter:ص": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "letter:ض": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "letter:ط": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "letter:ظ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "letter:ق": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "letter:ك": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "letter:ه": {
+     "abstained": 1789.6,
+     "agreed": 12962.4,
+     "carriers": 14963,
+     "disagreed": 211.0
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1514.8,
+    "disagreed": 889.9
+   },
+   "pcm16_bytes": 3025210304,
+   "reciter_id": "majed_al_zamil",
+   "recording_year": 2025
+  },
+  "mohammed_burhaji_yt": {
+   "ayat": 6236,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "ح→ه": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "ذ→ز": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ذ→ظ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ز→ذ": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "س→ش": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "س→ص": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "ش→س": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "ص→س": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "ض→ظ": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "ط→ت": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ط→ق": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ظ→ذ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ظ→ض": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ق→ط": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ق→ك": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ك→ق": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "ه→ح": {
+     "abstained": 1789.6,
+     "agreed": 12962.4,
+     "carriers": 14963,
+     "disagreed": 211.0
+    }
+   },
+   "download_bytes": 2625393643,
+   "geminates_in_word": {
+    "abstained": 483.8,
+    "agreed": 19462.0,
+    "carriers": 22502,
+    "disagreed": 2554.0
+   },
+   "hours": 30.34,
+   "letters": {
+    "letter:ت": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "letter:ح": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "letter:ذ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "letter:ز": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "letter:س": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "letter:ش": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "letter:ص": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "letter:ض": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "letter:ط": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "letter:ظ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "letter:ق": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "letter:ك": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "letter:ه": {
+     "abstained": 1789.6,
+     "agreed": 12962.4,
+     "carriers": 14963,
+     "disagreed": 211.0
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1514.8,
+    "disagreed": 889.9
+   },
+   "pcm16_bytes": 3495641888,
+   "reciter_id": "mohammed_burhaji",
+   "recording_year": 2026
+  },
+  "yasser_al_dosari_yt": {
+   "ayat": 6236,
+   "ayat_unsupported": 8,
+   "directions": {
+    "ت→ط": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "ح→ه": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "ذ→ز": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ذ→ظ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "ز→ذ": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "س→ش": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "س→ص": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "ش→س": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "ص→س": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "ض→ظ": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "ط→ت": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ط→ق": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "ظ→ذ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ظ→ض": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "ق→ط": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ق→ك": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "ك→ق": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "ه→ح": {
+     "abstained": 1789.6,
+     "agreed": 12962.4,
+     "carriers": 14963,
+     "disagreed": 211.0
+    }
+   },
+   "download_bytes": 2199761477,
+   "geminates_in_word": {
+    "abstained": 483.8,
+    "agreed": 19462.0,
+    "carriers": 22502,
+    "disagreed": 2554.0
+   },
+   "hours": 25.42,
+   "letters": {
+    "letter:ت": {
+     "abstained": 973.2,
+     "agreed": 11319.1,
+     "carriers": 12721,
+     "disagreed": 430.0
+    },
+    "letter:ح": {
+     "abstained": 418.5,
+     "agreed": 3645.6,
+     "carriers": 4139,
+     "disagreed": 74.9
+    },
+    "letter:ذ": {
+     "abstained": 284.8,
+     "agreed": 4498.8,
+     "carriers": 4927,
+     "disagreed": 143.9
+    },
+    "letter:ز": {
+     "abstained": 148.5,
+     "agreed": 1352.4,
+     "carriers": 1599,
+     "disagreed": 98.2
+    },
+    "letter:س": {
+     "abstained": 573.4,
+     "agreed": 5264.4,
+     "carriers": 6011,
+     "disagreed": 173.1
+    },
+    "letter:ش": {
+     "abstained": 143.9,
+     "agreed": 1946.4,
+     "carriers": 2120,
+     "disagreed": 29.9
+    },
+    "letter:ص": {
+     "abstained": 202.5,
+     "agreed": 1833.9,
+     "carriers": 2071,
+     "disagreed": 34.6
+    },
+    "letter:ض": {
+     "abstained": 257.6,
+     "agreed": 1380.5,
+     "carriers": 1686,
+     "disagreed": 47.9
+    },
+    "letter:ط": {
+     "abstained": 129.1,
+     "agreed": 870.4,
+     "carriers": 1272,
+     "disagreed": 272.3
+    },
+    "letter:ظ": {
+     "abstained": 83.9,
+     "agreed": 674.3,
+     "carriers": 853,
+     "disagreed": 94.8
+    },
+    "letter:ق": {
+     "abstained": 789.6,
+     "agreed": 6163.4,
+     "carriers": 7031,
+     "disagreed": 78.0
+    },
+    "letter:ك": {
+     "abstained": 731.6,
+     "agreed": 9624.8,
+     "carriers": 10496,
+     "disagreed": 139.6
+    },
+    "letter:ه": {
+     "abstained": 1789.6,
+     "agreed": 12962.4,
+     "carriers": 14963,
+     "disagreed": 211.0
+    }
+   },
+   "listening_minutes": {
+    "abstained": 1514.8,
+    "disagreed": 889.9
+   },
+   "pcm16_bytes": 2927993664,
+   "reciter_id": "yasser_al_dosari",
+   "recording_year": 2026
+  }
+ },
+ "rates": {
+  "letter:ت": {
+   "abstained": 0.0765,
+   "agreed": 0.8898,
+   "disagreed": 0.0338,
+   "sites": 4264
+  },
+  "letter:ح": {
+   "abstained": 0.1011,
+   "agreed": 0.8808,
+   "disagreed": 0.0181,
+   "sites": 1493
+  },
+  "letter:ذ": {
+   "abstained": 0.0578,
+   "agreed": 0.9131,
+   "disagreed": 0.0292,
+   "sites": 1645
+  },
+  "letter:ز": {
+   "abstained": 0.0929,
+   "agreed": 0.8458,
+   "disagreed": 0.0614,
+   "sites": 603
+  },
+  "letter:س": {
+   "abstained": 0.0954,
+   "agreed": 0.8758,
+   "disagreed": 0.0288,
+   "sites": 2086
+  },
+  "letter:ش": {
+   "abstained": 0.0679,
+   "agreed": 0.9181,
+   "disagreed": 0.0141,
+   "sites": 781
+  },
+  "letter:ص": {
+   "abstained": 0.0978,
+   "agreed": 0.8855,
+   "disagreed": 0.0167,
+   "sites": 777
+  },
+  "letter:ض": {
+   "abstained": 0.1528,
+   "agreed": 0.8188,
+   "disagreed": 0.0284,
+   "sites": 563
+  },
+  "letter:ط": {
+   "abstained": 0.1015,
+   "agreed": 0.6843,
+   "disagreed": 0.2141,
+   "sites": 453
+  },
+  "letter:ظ": {
+   "abstained": 0.0984,
+   "agreed": 0.7905,
+   "disagreed": 0.1111,
+   "sites": 315
+  },
+  "letter:ق": {
+   "abstained": 0.1123,
+   "agreed": 0.8766,
+   "disagreed": 0.0111,
+   "sites": 2609
+  },
+  "letter:ك": {
+   "abstained": 0.0697,
+   "agreed": 0.917,
+   "disagreed": 0.0133,
+   "sites": 3456
+  },
+  "letter:ه": {
+   "abstained": 0.1196,
+   "agreed": 0.8663,
+   "disagreed": 0.0141,
+   "sites": 5249
+  },
+  "shaddah:held:in_word": {
+   "abstained": 0.0215,
+   "agreed": 0.8649,
+   "disagreed": 0.1135,
+   "sites": 7663
+  }
+ },
+ "seconds_per_site": {
+  "pair": 13.07,
+  "shaddah:held:in_word": 11.55
+ },
+ "total": {
+  "directions": {
+   "ت→ط": {
+    "abstained": 8741.0,
+    "agreed": 101669.4,
+    "carriers": 114261,
+    "disagreed": 3862.0
+   },
+   "ح→ه": {
+    "abstained": 3758.2,
+    "agreed": 32742.0,
+    "carriers": 37173,
+    "disagreed": 672.8
+   },
+   "ذ→ز": {
+    "abstained": 2556.8,
+    "agreed": 40391.9,
+    "carriers": 44236,
+    "disagreed": 1291.7
+   },
+   "ذ→ظ": {
+    "abstained": 2556.8,
+    "agreed": 40391.9,
+    "carriers": 44236,
+    "disagreed": 1291.7
+   },
+   "ز→ذ": {
+    "abstained": 1333.4,
+    "agreed": 12139.8,
+    "carriers": 14353,
+    "disagreed": 881.3
+   },
+   "س→ش": {
+    "abstained": 5149.9,
+    "agreed": 47277.4,
+    "carriers": 53982,
+    "disagreed": 1554.7
+   },
+   "س→ص": {
+    "abstained": 5149.9,
+    "agreed": 47277.4,
+    "carriers": 53982,
+    "disagreed": 1554.7
+   },
+   "ش→س": {
+    "abstained": 1292.5,
+    "agreed": 17477.0,
+    "carriers": 19036,
+    "disagreed": 268.4
+   },
+   "ص→س": {
+    "abstained": 1820.4,
+    "agreed": 16482.7,
+    "carriers": 18614,
+    "disagreed": 310.9
+   },
+   "ض→ظ": {
+    "abstained": 2313.1,
+    "agreed": 12395.0,
+    "carriers": 15138,
+    "disagreed": 429.9
+   },
+   "ط→ت": {
+    "abstained": 1160.1,
+    "agreed": 7821.5,
+    "carriers": 11430,
+    "disagreed": 2447.2
+   },
+   "ط→ق": {
+    "abstained": 1160.1,
+    "agreed": 7821.5,
+    "carriers": 11430,
+    "disagreed": 2447.2
+   },
+   "ظ→ذ": {
+    "abstained": 754.3,
+    "agreed": 6060.0,
+    "carriers": 7666,
+    "disagreed": 851.7
+   },
+   "ظ→ض": {
+    "abstained": 754.3,
+    "agreed": 6060.0,
+    "carriers": 7666,
+    "disagreed": 851.7
+   },
+   "ق→ط": {
+    "abstained": 7091.7,
+    "agreed": 55357.3,
+    "carriers": 63150,
+    "disagreed": 701.0
+   },
+   "ق→ك": {
+    "abstained": 7091.7,
+    "agreed": 55357.3,
+    "carriers": 63150,
+    "disagreed": 701.0
+   },
+   "ك→ق": {
+    "abstained": 6572.4,
+    "agreed": 86468.5,
+    "carriers": 94295,
+    "disagreed": 1254.1
+   },
+   "ه→ح": {
+    "abstained": 16069.5,
+    "agreed": 116396.1,
+    "carriers": 134360,
+    "disagreed": 1894.5
+   }
+  },
+  "download_bytes": 20708983101,
+  "geminates_in_word": {
+   "abstained": 4344.9,
+   "agreed": 174786.8,
+   "carriers": 202089,
+   "disagreed": 22937.1
+  },
+  "hours": 239.3,
+  "letters": {
+   "letter:ت": {
+    "abstained": 8741.0,
+    "agreed": 101669.4,
+    "carriers": 114261,
+    "disagreed": 3862.0
+   },
+   "letter:ح": {
+    "abstained": 3758.2,
+    "agreed": 32742.0,
+    "carriers": 37173,
+    "disagreed": 672.8
+   },
+   "letter:ذ": {
+    "abstained": 2556.8,
+    "agreed": 40391.9,
+    "carriers": 44236,
+    "disagreed": 1291.7
+   },
+   "letter:ز": {
+    "abstained": 1333.4,
+    "agreed": 12139.8,
+    "carriers": 14353,
+    "disagreed": 881.3
+   },
+   "letter:س": {
+    "abstained": 5149.9,
+    "agreed": 47277.4,
+    "carriers": 53982,
+    "disagreed": 1554.7
+   },
+   "letter:ش": {
+    "abstained": 1292.5,
+    "agreed": 17477.0,
+    "carriers": 19036,
+    "disagreed": 268.4
+   },
+   "letter:ص": {
+    "abstained": 1820.4,
+    "agreed": 16482.7,
+    "carriers": 18614,
+    "disagreed": 310.9
+   },
+   "letter:ض": {
+    "abstained": 2313.1,
+    "agreed": 12395.0,
+    "carriers": 15138,
+    "disagreed": 429.9
+   },
+   "letter:ط": {
+    "abstained": 1160.1,
+    "agreed": 7821.5,
+    "carriers": 11430,
+    "disagreed": 2447.2
+   },
+   "letter:ظ": {
+    "abstained": 754.3,
+    "agreed": 6060.0,
+    "carriers": 7666,
+    "disagreed": 851.7
+   },
+   "letter:ق": {
+    "abstained": 7091.7,
+    "agreed": 55357.3,
+    "carriers": 63150,
+    "disagreed": 701.0
+   },
+   "letter:ك": {
+    "abstained": 6572.4,
+    "agreed": 86468.5,
+    "carriers": 94295,
+    "disagreed": 1254.1
+   },
+   "letter:ه": {
+    "abstained": 16069.5,
+    "agreed": 116396.1,
+    "carriers": 134360,
+    "disagreed": 1894.5
+   }
+  },
+  "listening_minutes": {
+   "abstained": 13604.3,
+   "disagreed": 7992.3
+  },
+  "mushafs": 9,
+  "pcm16_bytes": 27567159648
+ }
+}

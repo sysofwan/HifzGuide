@@ -23,14 +23,22 @@ soon as a site is defined; ``shard``, ``end_sample`` and ``audio_sha256`` only o
 audio has been re-staged (#83). Those three are :data:`STAGING_FIELDS`: ``null`` together
 (not yet staged) or set together (staged), never a mix, and never invented.
 
+A **QUD** site (``source`` :data:`QUD`, #144) sits on one ayah of a QUD mushaf instead:
+``audio_filename`` names the ayah clip (``tadabur.qud_source.audio_filename``),
+``audio_sha256`` is the SHA-256 of its MP3 as QUD publishes it, ``[start_sample,
+end_sample)`` the item's span in the 16 kHz decode of that MP3, and ``shard`` is always
+``null``: QUD has no Tadabur shard. Its audio is never staged as a file.
+
 The on-disk form is JSONL, one :class:`TruthSite` per line, written by
 :func:`write_truth_sites` and read back by :func:`load_truth_sites`, which validates every
-row and the file as a whole. The labelled files live in ``truth_sites/`` next to this
-module; that directory's ``README.md`` is the human-readable schema.
+row and the file as a whole (a ``.jsonl.gz`` file is read and written through gzip). The
+Tadabur files live in ``truth_sites/`` next to this module; that directory's ``README.md``
+is the human-readable schema. QUD's live in ``qud_eval/truth_sites/``.
 """
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import os
@@ -51,7 +59,11 @@ P35_FIXTURE = "p35_fixture"
 WAQF_BOUNDARY = "waqf_boundary"
 NEW_AUDIT = "new_audit"
 SYNTHETIC_EDIT = "synthetic_edit"
-SOURCES = frozenset({P35_FIXTURE, WAQF_BOUNDARY, NEW_AUDIT, SYNTHETIC_EDIT})
+#: The sources whose sites sit on Tadabur audio.
+TADABUR_SOURCES = frozenset({P35_FIXTURE, WAQF_BOUNDARY, NEW_AUDIT, SYNTHETIC_EDIT})
+#: A QUD ayah (#144): see the module docstring for its provenance.
+QUD = "qud"
+SOURCES = TADABUR_SOURCES | {QUD}
 
 # --- what is under test, and the states a label may name -------------------------------
 #: Haraka name -> its character in the realized reference.
@@ -182,7 +194,11 @@ def _check_provenance(site: TruthSite, where: str) -> None:
     if not site.audio_filename:
         raise ValueError(f"{where}: audio_filename is empty")
     staged = [getattr(site, name) is not None for name in STAGING_FIELDS]
-    if any(staged) and not all(staged):
+    if site.source == QUD:
+        if staged != [False, True, True]:
+            raise ValueError(f"{where}: a QUD site has no shard, and always its end_sample "
+                             f"and its MP3's audio_sha256")
+    elif any(staged) and not all(staged):
         raise ValueError(
             f"{where}: {', '.join(STAGING_FIELDS)} are filled together when the audio is "
             f"staged, but only some are set"
@@ -298,6 +314,13 @@ def _check_file(sites: list[TruthSite], where: str) -> None:
             )
 
 
+def _open(path: Path, mode: str):
+    """A text handle on ``path``, through gzip for a ``.gz`` file."""
+    if path.suffix == ".gz":
+        return gzip.open(path, mode, encoding="utf-8")
+    return open(path, mode, encoding="utf-8")
+
+
 def audio_sha256(path: Path) -> str:
     """SHA-256 of a staged WAV file's bytes — the value ``audio_sha256`` records."""
     digest = hashlib.sha256()
@@ -343,7 +366,7 @@ def load_truth_sites(path: Path, audio_dir: Path | None = None) -> list[TruthSit
     raises, because a committed label file that vanished is an error, not an empty set.
     """
     sites: list[TruthSite] = []
-    with open(path, encoding="utf-8") as f:
+    with _open(path, "rt") as f:
         for lineno, raw in enumerate(f, 1):
             line = raw.strip()
             if not line or line.startswith("#"):
@@ -374,10 +397,13 @@ def write_truth_sites(sites: list[TruthSite], path: Path) -> None:
         parse_site(asdict(site), f"write_truth_sites[{number}]")
     _check_file(sites, "write_truth_sites")
     path.parent.mkdir(parents=True, exist_ok=True)
+    text = "".join(json.dumps(asdict(site), ensure_ascii=False, sort_keys=True) + "\n"
+                   for site in sites).encode("utf-8")
+    if path.suffix == ".gz":
+        text = gzip.compress(text, mtime=0)  # no timestamp: the same sites, the same bytes
     tmp_path = path.with_suffix(path.suffix + ".tmp")
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        for site in sites:
-            f.write(json.dumps(asdict(site), ensure_ascii=False, sort_keys=True) + "\n")
+    with open(tmp_path, "wb") as f:
+        f.write(text)
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp_path, path)

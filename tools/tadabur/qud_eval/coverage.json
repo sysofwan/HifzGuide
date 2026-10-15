@@ -1,0 +1,8266 @@
+{
+ "columns": [
+  "surah",
+  "ayah",
+  "duration_ms",
+  "source_url"
+ ],
+ "mushafs": {
+  "abdul_hamid_ghraio_2025_yt": {
+   "ayat": 6235,
+   "duration_ms": 67567392,
+   "rows": 6235,
+   "surahs": {
+    "1": {
+     "ayat": "2-7",
+     "duration_ms": 27682,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=OEk9JS8Y58c"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 1523815,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=G2Edq5OHkSw"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 38887,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=PC295q-d92s"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 35600,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=KkR_grSacCg"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 32486,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=BZZN3uGJ5zI"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 14245,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=NF761hbnttE"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 31742,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=TiBuXwd_4L0"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 23219,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=cLS1S0MyIqQ"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 20359,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=LsWrTN8o8rE"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 28451,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=qNBSNdM66Do"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 11334,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=un2iRBskHfQ"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 22792,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=xcA3J5RZQkI"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 1594756,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=3JZo6m2oAAs"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 18776,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=W2BvT4C28uE"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 22247,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=y4fJ7X3EavM"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 11315,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=sFnfH3MwryA"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 19644,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=7oNJqLz_3IY"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 27814,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=jiUc7hhqKLA"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 1483118,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=Tx9YlRX5GnY"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 710602,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=C7P_JXhtQSs"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 658640,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=lLE8DGYOubk"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 543836,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=zMKGTez_3O0"
+     ]
+    },
+    "16": {
+     "ayat": "1-128",
+     "duration_ms": 1516035,
+     "rows": 128,
+     "sources": [
+      "www.youtube.com/watch?v=kHBtZOIPtL4"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 1276772,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=3ulzQBEwKYU"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 1247435,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=ANoczDh2lhE"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 845647,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=aT1flveXZ7Y"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 5734621,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=Oi2inyJONOs"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1121338,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=ql3zNd-pygM"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1002269,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=9h9p0DpgWJs"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 989653,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=n_hQktV_29A"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 899952,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=OIeLPDSIMhw"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1101902,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=8wsu5Ne4ewI"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 779691,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=Soq7RK6N_4c"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 1167608,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=-gG3_-huU9U"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1006381,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=7v0wTf4dzTg"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 1200153,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=xA1VltQdEC8"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 872067,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=JwjZ5KXSbMo"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 3352786,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=DTAhdKZbbtE"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 681461,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=k-uQaoU8zhY"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 379570,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=xFBrKnqLMTg"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 274039,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=_1MwdL6il78"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 1047034,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=5tWueYcVcBc"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 666489,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=-UAjbRgrRWY"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 564809,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=JXhG9qKwhX4"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 614096,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=l168I_vSDYs"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 765685,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=QhaCJaOhcWE"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 592801,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=RuCxwZoTZE4"
+     ]
+    },
+    "39": {
+     "ayat": "1-75",
+     "duration_ms": 960937,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=u3wWb5YRbKA"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 3377592,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=qFG2DZQKkwU"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1037478,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=WUo1AZk9KuA"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 750852,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=gG8C4LsM_dc"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 745384,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=zmlNCWYhw0Y"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 742141,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=au_3L5mVvxg"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 325613,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=PGkOFnHBxQc"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 412941,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=myIBIKvJAko"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 523926,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=WDcDeLIaHFQ"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 483384,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=FwaacLKe1AA"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 488870,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=MQfW3WfFBrE"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 296746,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=vwSL32hC2TY"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 2518215,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=Wa1NeQqBvY0"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 346099,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=USC4dMt5eJc"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 319397,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=T7X3_m_DbLE"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 283659,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=R1omF2_-2n8"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 325574,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=M_o0H9T7vTU"
+     ]
+    },
+    "54": {
+     "ayat": "1-55",
+     "duration_ms": 301030,
+     "rows": 55,
+     "sources": [
+      "www.youtube.com/watch?v=hkJtC4-picU"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 383066,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=ZCHoMRb6cK4"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 371188,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=26SLWIARDRk"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 524160,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=Lo7R3pJZYik"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 417211,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=1IrmhhxKrz8"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 396759,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=tm-UNYsHR4s"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 2518786,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=nbvjlsFqT1c"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 326206,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=Ujhx6HEWVJA"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 188459,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=VcbRHkHmcLs"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 145419,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=ahrVcVppovk"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 187973,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=VWEHO_dFfE0"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 228657,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=vKLUmy2a-h8"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 256942,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=HOs4MyqowBI"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 228323,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=G5hxk6KNIEU"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 287691,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=eUcaDtPXoac"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 275291,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=-YRuyYkYKbA"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 274946,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=VxPpE41_1_g"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 2890731,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=-wsr5VxuxPA&cb=r1"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 212566,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=Z3QDdAU6K_U"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 199008,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=XT8t-5f09jY"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 268275,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=HsbHHeCN44M"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 196408,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=jJXMUu88Sw0"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 251049,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=dTMLbTsNkYs"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 171957,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=7jIkj7q2eoI"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 261160,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=vEIf5yJiJKg"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 209111,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=uyc3UVHEUvQ"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 189438,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=OwSIRqZ8nR0"
+     ]
+    },
+    "79": {
+     "ayat": "1-46",
+     "duration_ms": 184841,
+     "rows": 46,
+     "sources": [
+      "www.youtube.com/watch?v=cKpwGMbRFwA"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1010552,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=8iiip3okXN8"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 150926,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=_MfzXHKR-x8"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 103814,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=Ls0cQzYKZzU"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 82832,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=5vusUoLY4vQ"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 180172,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=cyqyHgnkwaU"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 103566,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=Kv4jT2kDOfo"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 106774,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=JouaXWYoH-Q"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 62833,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=-KxDt0eYtLI"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 75375,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=oVybWSqzCgU"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 97221,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=AIaOssF8k5E"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 138702,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=BvCADyDx4yM"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 2034533,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=EN88IdFG_nc"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 77916,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=6MHOURq_AqQ"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 60810,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=eXPJh2lkeLg"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 78640,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=yJ-1iY6van8"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 42865,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=gSB3e-0ldcE"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 28752,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=iWkI0EPd6-Y"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 34008,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=jDuX7O-T4to"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 69109,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=8u9VgNRHrSI"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 24998,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=ofEjL321n8Y"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 79357,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=vn5oT3Jc3_o"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 36524,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=Ckv5kaoWcw0"
+     ]
+    }
+   }
+  },
+  "abdul_hamid_ghraio_2026_yt": {
+   "ayat": 6235,
+   "duration_ms": 72864813,
+   "rows": 6235,
+   "surahs": {
+    "1": {
+     "ayat": "2-7",
+     "duration_ms": 28236,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=BM-hCR3ketY"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 1711108,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=oJJOHd5gZKM"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 45568,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 38814,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 33232,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 14701,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 36577,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 25260,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 21310,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 29561,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 11402,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 27391,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 1845027,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=D2IDJswHKPE"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 18957,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 22187,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 12429,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 20044,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 26005,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 1742488,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=wT0tDrLufWs"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 805151,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=K9zQ_-Z81UI"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 793349,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=P1Lji8Q962Y"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 637557,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=reZ8fDB6ep4"
+     ]
+    },
+    "16": {
+     "ayat": "1-128",
+     "duration_ms": 1700336,
+     "rows": 128,
+     "sources": [
+      "www.youtube.com/watch?v=n-162ePBNJ8"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 1440751,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=-uI9FrC6VWE"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 1376366,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=xrzwoW2LfFQ"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 874430,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=py2ubESOtkQ"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 5765126,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=GuIz846cSDw"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1217192,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=e8kN4T1auGM"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1143028,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=jz6tfXFwOJw"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 1139257,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=ceq95qaYK1Q"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 988174,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=MVY4llFrMOQ"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1219391,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=dWLZ3CgXSsU"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 832743,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=btEocBs79lE"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 1265009,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=--JBKxKQmvg"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1070692,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=BGAumuRVFKU"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 1345987,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=fuiR5-1E-Fc"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 953839,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=txa9KZ3UcCQ"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 3110091,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=RpXJ_n23Qf8"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 784082,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=tL2qFaSvau8"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 487827,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=JAULoZrKj54"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 357924,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=gCrMQSeUEG0"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 1240587,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=uMpr5WUseRA"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 778643,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=22Q3oP1SB2I"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 695735,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=Ui0cC8n8j9g"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 698170,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=YeIIU2RH6HU"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 863778,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=bu3P4OmS0CE"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 683934,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=s_ojK9qYAME"
+     ]
+    },
+    "39": {
+     "ayat": "1-75",
+     "duration_ms": 1046123,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=nNAB0YNvCmY"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 3347201,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=jdTTwlvu7Vk"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1054669,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=DlYtEIuNi9M"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 743742,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=wWssfRlwDaU"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 761410,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=lVxw9jcdLYE"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 797107,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=FJUIqHoE82w"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 332694,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=ea9Ms5EE9pQ"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 432050,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=wwQFazBwTdU"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 612887,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=cbaN_4vH7GE"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 529127,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=t-uAGR0qvPE"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 493854,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=6eF3CdyIzvo"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 323368,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=xuodkmtVAzU"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 2449680,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=KvdmCMA1YBw"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 343873,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=EWJS1Uar3rk"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 341308,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=PIOxnazC5VQ"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 320389,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=jVtj15paQT0"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 347216,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=aPFq6sij6LY"
+     ]
+    },
+    "54": {
+     "ayat": "1-55",
+     "duration_ms": 335320,
+     "rows": 55,
+     "sources": [
+      "www.youtube.com/watch?v=UgS5zqeeR6o"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 418899,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=sK5uRqqFRJE"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 420139,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=ywmfc_Wzzsg"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 546713,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=wWLvdnogLUg"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 440864,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=Sy8Xcf_YFp0"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 448362,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=ZRvTrHex6L0"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 2719022,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=zZHULT-_9VI"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 367408,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=4PYx8yMizWQ"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 217564,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=Bu0YEfBIVsM"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 174050,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=22ypI2TWosM"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 174878,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=mDB2fPeR0FQ"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 228326,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=ln-in0YAPY4"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 272491,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=aS_XX1Na5Z8"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 242841,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=q7zBjgYta1I"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 300204,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 298716,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 271952,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 3093512,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=QlkoYuBZFMo"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 229169,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 230824,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 278710,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 209701,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 276636,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 183980,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 275892,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 212447,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=cXZTXVhFGxY"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 210987,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "79": {
+     "ayat": "1-46",
+     "duration_ms": 202238,
+     "rows": 46,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1179663,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=OmZokPMsNTU"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 164906,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 113251,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 90022,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 200175,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 118805,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 112647,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 68155,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 80101,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 101365,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 160110,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 2375395,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=k-wlM1kfzPc"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 81600,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 61842,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 79299,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 44880,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 27656,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 37088,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 74482,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 28031,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 86729,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 40622,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=zchS1jHBDNA"
+     ]
+    }
+   }
+  },
+  "abdulaziz_al_turki_yt": {
+   "ayat": 6115,
+   "duration_ms": 97308256,
+   "rows": 6115,
+   "surahs": {
+    "1": {
+     "ayat": "1-7",
+     "duration_ms": 44147,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=CAXuiGDr_YI"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 2350391,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=RMv5lJbc-ec"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 52880,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=ASYwGVMwP2w"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 46744,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=xBZTLQjsyGg"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 42787,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=YFapQZv5Oz0"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 17607,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=ycZrc90w3so"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 41747,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=HaWjI5PYF4c"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 31494,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=lKeOS-b3KIE"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 25895,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=g1eq8x6ZK6I"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 37398,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=OodzaBgvOKY"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 13419,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=WkPgy78oIlc"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 29999,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=lJDohUVZYFE"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 2464287,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=U-aW0dG556Q"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 24080,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=TPntFz6hVkQ"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 27098,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=lolsJzMYRws"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 13581,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=bR197I-Wi2M"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 24906,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=IIPgYIStLYY"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 33477,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=-TyEJSlf73g"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 2162789,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=lOSFwlNP5xY"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 1050028,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=G7LJVlN24kA"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 1044456,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=C9twCxSrcL4"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 893284,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=3w1uObV8n8U"
+     ]
+    },
+    "16": {
+     "ayat": "1-128",
+     "duration_ms": 2346762,
+     "rows": 128,
+     "sources": [
+      "www.youtube.com/watch?v=gQGXq6CrmcU"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 1930727,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=L06zH2zfWoY"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 1948379,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=Z1ptQH9Y5iE"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 1144969,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=Ks44Ih9PHR4"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 7719338,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=G1I3uRbZJQU"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1565577,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=hfV5NaqV3KE"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1476577,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=WsseL8P7hvE"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 1616325,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=furYqF2_inY"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 1342024,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=sU0UwkPIDWs"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1775285,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=omqKcot4M_Y"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 1117843,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=k27josdCeDA"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 1666412,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=Jp2ySpWwBMw"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1529968,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=m3BG5xFqhAM"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 1787897,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=GiIq94bUvMM"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 1290441,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=xykFojAErhQ"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 4579673,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=MbeAPfI9Ui8"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 1097520,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=A27wQuMlD7g"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 683997,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=SMpO3RT6TVI"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 514748,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=F8QZV4qWKro"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 1632685,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=1R0M1HmUupY"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 1022053,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=fSO1dBy0ULc"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 960288,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=wG7QYgzGI3s"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 945083,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=gXeG1xqGL7I"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 1292919,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=l2bWsBykRxw"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 917981,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=6ZCG5b64wDQ"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 4586578,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=6fgr0176rx8"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1594100,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=9R2AiwtTwHE"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 1041929,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=mXeMs3whdHw"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 1015596,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=Ec78xBXO2XA"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 1099047,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=ndQI3xIhpgo"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 492902,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=9Ryx9iwtV7I"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 613165,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=gcc7dEVjtUI"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 797537,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=XF3B5MOy2qQ"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 689562,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=QiA23IreQrI"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 708228,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=kK6y4DjkZV4"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 453657,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=xOJq94WapRQ"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 3407188,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=_u-0aECYAoc"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 463437,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=g_yZRtSnrHg"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 492187,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=ES4T-Ty6c_Y"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 436072,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=wjvoLoDFNU0"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 455018,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=xV_Cna1QCfw"
+     ]
+    },
+    "54": {
+     "ayat": "1-55",
+     "duration_ms": 457405,
+     "rows": 55,
+     "sources": [
+      "www.youtube.com/watch?v=C86-jIpWK3Y"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 574131,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=StS3ayab06o"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 558810,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=d33d20sksVE"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 727067,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=lFcIr9iMtHg"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 601447,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=tfry6WCNRWk"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 570972,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=2OOXCJn4OWM"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 3859347,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=YB2y2N68YUE"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 471479,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=jlM0Vk5UWjk"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 260746,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=La59CWdWl7Q"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 214056,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=BV_H-SdwUmE"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 232347,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=Bja0eVBQRs4"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 302579,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=3_6_51oXhA0"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 354283,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=PkuyMTxJR8c"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 334533,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=jgO9NU4T5dE"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 415005,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=hbuiWBDiEEY"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 416713,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=1fcT65iiQ38"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 349056,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=2xSs38J1fPk"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 4419130,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=Lhmbw0v0bik"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 276260,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=SpoaCpKArnE"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 271525,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=VWqgpDGsNrc"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 317793,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=hJvI5M3OzBg"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 244406,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=Lxt4UCd78os"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 318452,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=8DtW8RJyUiw"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 205988,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=_VfKbaIt2hQ"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 332522,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=s2MIyxUpCrI"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 272620,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=vwjaDra1Frs"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 248473,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=zcdX-cK28Lo"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1603705,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=LRkE97PXMbc"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 192900,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=_eJwRhXgp9Q"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 132564,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=C73L4fBLYGw"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 105486,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=uj6dsdlqZC8"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 233311,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=n-1vUicLslw"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 135064,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=L5dOK5bZyLA"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 142973,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=QxOzA3BoAy4"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 86661,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=_u9l-r3vtRo"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 93008,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=eNhwey3ac_s"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 114338,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=gUhvhs_QEmU"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 176894,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=qWtMQ8742G0"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 3267265,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=XjfEbZblzps"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 100428,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=BHw8mAZxRd4"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 76347,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=9aQDDWutyjQ"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 102711,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=85Iq3lYHEDI"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 56792,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=rrsAchGG3DA"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 33099,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=ScDpG5u0yiA"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 46135,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=RewadCBzLUk"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 85749,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=XlXVUtcsPlA"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 33551,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=HVI55b37B88"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 108673,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=lUYHeaUpcHc"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 49289,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=6RntJx5flXI"
+     ]
+    }
+   }
+  },
+  "abdullah_al_buaijan_2025_yt": {
+   "ayat": 6235,
+   "duration_ms": 112645161,
+   "rows": 6235,
+   "surahs": {
+    "1": {
+     "ayat": "1-7",
+     "duration_ms": 49980,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=7qcvvbEJTPk"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 2534797,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=gubGPOsK9LI"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 66675,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=8FDxBsa1kSI"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 60144,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=MjeMFguKics"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 50955,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=ApfYSxt2MKo"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 19035,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=hk93fImhxrk"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 50378,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=Pz91cCizulI"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 37768,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=KxIrHl3wkOs"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 32991,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=EkMIuLIyu8Y"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 46850,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=OCTkKHIsEoE"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 16737,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=dV-2L8uZmaI"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 48446,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=lO4YZP4DWCY"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 2727000,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=1mTh3ESmo-I"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 25523,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=lyCWoW-cm3g"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 32704,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=f33TB0yVABk"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 14946,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=mZgyhV9X_E4"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 27802,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=j8oncDKN1X0"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 41623,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=k8C_Scxr37w"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 2518016,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=BHH_VRZgIec"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 1222978,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=abLinVg0r_c"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 1200966,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=HSeWLqIaYP4"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 1030060,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=UksXFo2exJM"
+     ]
+    },
+    "16": {
+     "ayat": "1-52,54-128",
+     "duration_ms": 2603931,
+     "rows": 127,
+     "sources": [
+      "www.youtube.com/watch?v=qpXwYUoZEgI"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 2133928,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=k-sAi2jzhzg"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 2164277,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=polD5mAjPX8"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 1238656,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=Xv3JlMM1-84"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 8803415,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=7qcvvbEJTPk"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1898430,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=z5UNckoxZA0"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1788189,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=AFhjYRsdBKo"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 1664177,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=KejiqBiOAK8"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 1575769,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=wUmdoocKz_c"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1895687,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=Ic_TOYq0Trw"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 1181177,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=H8d7zYRmYQs"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 2197135,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=s2tjbbJwFc0"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1766453,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=Icz8e0uwoew"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 2176537,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=59an0LOoKTU"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 1487209,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=0B_dCUsQuqk"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 5308041,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=jMn3oWDmXPE"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 1261805,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=jLNu2SF2MTU"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 807476,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=-KUDroyqjpA"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 533236,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=ZPgmhx4EOXU"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 1711130,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=dcxaTAeqg6o"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 1158134,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=auuf5ThB6oE"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 1022952,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=Ylhe3_b6YLY"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 1089025,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=ImdeTHdFq1Q"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 1447922,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=zDYCkywEZxo"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 1048280,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=8P556ig7nrY"
+     ]
+    },
+    "39": {
+     "ayat": "1-75",
+     "duration_ms": 1596048,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=rTdBtxEtWJQ"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 5441567,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=IzsC3NrWmGo"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1769385,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=VQBrm_Zg6uQ"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 1100510,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=k_wWpHWWqdo"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 1207796,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=xkOvtuQgyMQ"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 1262189,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=Pm7wCx3q5O8"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 600878,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=crOW4XCDKuQ"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 683237,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=yVMqARRWBpY"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 895778,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=iCCuIY07TK0"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 742966,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=2x55IwyGas4"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 717161,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=E0XsWg9VB-o"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 509043,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=6pjWAQ2AY3Y"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 4017885,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=VNwWYA9EKjU"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 508085,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=vWVD1uvN4eo"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 543905,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=7xD2iuxUHPo"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 472093,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=hprEKMOni14"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 485683,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=gsD2gfHdwjg"
+     ]
+    },
+    "54": {
+     "ayat": "1-55",
+     "duration_ms": 482872,
+     "rows": 55,
+     "sources": [
+      "www.youtube.com/watch?v=pTA8s2bfYL4"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 738184,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=Ojk67YUqu68"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 742358,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=ztXAQBT3sNc"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 743113,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=nwU0YgzlSqQ"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 642918,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=Q4YD9n9aBjg"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 618717,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=vNMm0NyZ8X8"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 4499443,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=p2926GeUVEo"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 498185,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=iSuMvbERN6E"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 287687,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=gA8ERz1XEmw"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 221080,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=3C5n6OIpm24"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 247425,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=wq7dPUk8yeU"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 332530,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=r_2YUKIPwmI"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 385967,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=2rp3VlpJ_yk"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 335976,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=KjK4UpJ51eY"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 457968,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=mBpcmsbKkg4"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 478919,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=yLx9fjYOi6E"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 420063,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=kDAM5NDX2Wo"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 5188305,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=F9YJ1MFPv2o"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 354622,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=QpUzQGGzJm0"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 324249,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=TedCBLbqYxs"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 395904,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=1wfoiFmx_II"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 282998,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=B-ZVnaZcJDw"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 381065,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=f1N_GCIMiVM"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 248436,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=GPO0yDBUk4E"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 362840,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=Uqn2tv3L1Ec"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 326288,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=vWDKj4Eprcg"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 274220,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=sos4s-DeHJA"
+     ]
+    },
+    "79": {
+     "ayat": "1-46",
+     "duration_ms": 272538,
+     "rows": 46,
+     "sources": [
+      "www.youtube.com/watch?v=iqDK5opsvKc"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1858003,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=sz-nAq8Uvz4"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 240995,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=92I4wC6ST0Q"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 164014,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=OBd78Zz383w"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 129792,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=Yd5jvBGJLs8"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 297196,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=5B-PO_O1yMA"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 156066,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=oi22cQIxM4w"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 162576,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=7LLv6MIoN40"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 97944,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=HAsrirQpCW0"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 101981,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=fL9tSTdQ2nY"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 136408,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=Bjitbi7L39E"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 212901,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=U2rlcjk3dOg"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 3368146,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=IyTgWiUDW_U"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 117196,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=LR2XyqsmaEE"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 87467,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=axAKR1amZ2I"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 121579,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=zHFMTUhF5So"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 66495,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=fyrzHYFyz6c"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 37990,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=bKnWrOjuCqs"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 53902,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=MRffFd8847I"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 97035,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=C1M35bidaCU"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 41136,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=uAMfpFfo1Jg"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 123047,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=shLMxgFQ314"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 54868,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=unILZLt44mE"
+     ]
+    }
+   }
+  },
+  "abdulrahman_al_sudais_yt": {
+   "ayat": 6234,
+   "duration_ms": 110447955,
+   "rows": 6234,
+   "surahs": {
+    "1": {
+     "ayat": "1-7",
+     "duration_ms": 53805,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=sFZ1yPN1oSc"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 2468083,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=Obpn3YAnS4E"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 63800,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=EDnvOwnP_ss"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 54588,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=Py1Bul4M8CM"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 48793,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=Pnah1wCDMNk"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 24806,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=Do2XBmIC4Ms"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 50542,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=bnZDIxGxc50"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 37488,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=_HWUGvTHdKg"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 31138,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=4FQFaeIZ37w"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 43323,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=cbmSQVey3hU"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 14886,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=A786qqv005k"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 36158,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=HWMOMoSgvFk"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 2582997,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=gq_YEmFrKeU"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 27751,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=zNr7rb4d8uE"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 32825,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=qpZyLDDzKGA"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 17574,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=pOMJGiIdOLc"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 28586,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=jdiySE95Gnk"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 36241,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=GIfUUF408zs"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 2314277,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=8IfI38PROEs"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 1161781,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=rn6XhT2jN4I"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 1123990,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=J0LBVn8Fxcs"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 992105,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=qTgHR_AOpgY"
+     ]
+    },
+    "16": {
+     "ayat": "1-128",
+     "duration_ms": 2505259,
+     "rows": 128,
+     "sources": [
+      "www.youtube.com/watch?v=9CTNEOKqbTA"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 2059414,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=fqpae1jX0k4"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 2037876,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=lUqgWeuxWqU"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 1277711,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=BQnrCldtsck"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 8605283,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=8TjfsTN7WkQ"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1700350,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=b-5meo8buAU"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1658347,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=wQ031kqXqa8"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 1800749,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=_zDv3bNyndU"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 1577588,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=2lSnBKVm0Ro"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1892465,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=2c52a0-pyGc"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 1217075,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=I7nlwRn7bkA"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 2040945,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=b7QqCHWi8y8"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1708377,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=fTfNLjehgaA"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 1974168,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=0Fyg0vuNPSo"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 1464862,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=sdELxRxHDx0"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 4913169,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=ppkBUZAZdhE"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 1215068,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=w7tUoD40CQE"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 753940,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=xRQIPa-OaB4"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 543241,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=HgdV7BfcuRA"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 1930466,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=-yBd6zNwPns"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 1291742,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=bvNaD8NwoT8"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 1143975,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=58h_i3tkatk"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 1093614,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=dmWxLaOnmE0"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 1456336,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=b43VoPAftlA"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 1169841,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=XXCaKgx6n8Y"
+     ]
+    },
+    "39": {
+     "ayat": "1-75",
+     "duration_ms": 1734367,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=QanyMu5y4DA"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 4784275,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=lQ3iLJKlMZI"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1778145,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=DPt1cDXySac"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 1196435,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=QBndyAWjXUs"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 1243737,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=1wf_bTvZDEo"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 1319244,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=1oL1Ftc1PwI"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 582569,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=idb0W1vQTvI"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 730172,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=2xK8JsmgRgs"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 963778,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=0amUU18nk8o"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 804989,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=C2JFI_eRp1Q"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 831727,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=hNs_WDoE1a8"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 532135,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=H8NpR-nlzsQ"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 3569173,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=1bFARfZfpbE"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 572220,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=tyM0_Sgee94"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 567711,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=2J-5gVn_YYk"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 501343,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=wEM3u9rkVjM"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 508810,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=lO01HGSsD28"
+     ]
+    },
+    "54": {
+     "ayat": "1-37,40-55",
+     "duration_ms": 535386,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=2pLAxUigeKg"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 694276,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=mpg44TGwnJo"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 703914,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=Bl6akQufvVI"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 885324,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=ZaRUITtaXeQ"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 751150,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=KGZxB8B_nd8"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 704163,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=pfeAT-WwxuA"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 4034327,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=_oLrT4nINJE"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 559878,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=ezqRbdpPaKM"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 338575,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=5boMHlCg8b0"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 255171,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=9jEVYt-df-8"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 277945,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=NYHfDfnEElk"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 368694,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=XO589qhJPp0"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 422064,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=9jBqTTiOU9k"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 405184,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=1SpK9BrF5W0"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 496342,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=7j6P-mTJewE"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 505770,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=qUFmC4h0-Zc"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 423830,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=TRtC_eTCZx0"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 4494415,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=OpSg78dN-ac"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 364329,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=_MTnQTjBb3c"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 343292,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=SYODV1pJcWg"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 397404,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=bK24puogDkA"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 283030,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=eIo2bIyFaWc"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 392512,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=rbvZu_Swd4c"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 244242,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=waydVA-bIos"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 395241,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=mmfTaZsEmt8"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 324183,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=IC_tir2QEsA"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 295335,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=9ergX4tzZoE"
+     ]
+    },
+    "79": {
+     "ayat": "1-46",
+     "duration_ms": 278285,
+     "rows": 46,
+     "sources": [
+      "www.youtube.com/watch?v=5KXSDCQbFf4"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1803995,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=uZTDdORZs14"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 229934,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=YBa5mrrnPVo"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 158436,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=db2OJvXZKHY"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 125029,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=aTRZLzfzQAA"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 291046,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=_tqa4TETPOs"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 158719,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=brKE2ZuxJ10"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 175372,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=vAW51CjPfJo"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 99441,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=J4NLKSHoGZM"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 104620,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=H25MC79-hG0"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 136507,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=A368GmsVqWg"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 212610,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=OHMh4Ys85-Q"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 3464232,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=F8GSyM8UoIU"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 118396,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=WRTKds1Sa1w"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 88123,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=sshHADy9pFE"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 116257,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=ibZbzG6P50k"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 64360,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=S7kvahr6kLQ"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 37887,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=-GSSBfiVDGs"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 57699,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=6wxayLvVJhI"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 105758,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=px-daUKMjdQ"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 40235,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=Bhy3B_ZhdK0"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 131277,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=vTvWygvgeAk"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 55533,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=5ssICdKCJs0"
+     ]
+    }
+   }
+  },
+  "anas_almiman_yt": {
+   "ayat": 6236,
+   "duration_ms": 105363729,
+   "rows": 6236,
+   "surahs": {
+    "1": {
+     "ayat": "1-7",
+     "duration_ms": 48729,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=XS6mp8puy5s"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 2470216,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=Upz_5khC-jc"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 56339,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=zlh82sDzSOo"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 53170,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=qLx5wtcLkvw"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 44514,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=BmSF-Rzxb7g"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 17598,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=oix_4YylZzQ"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 46134,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=zHlK74dgJKo"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 32897,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=0DuRNgurUDQ"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 27088,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=5KdlZnw3rYo"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 38867,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=UWuhr3U59hA"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 14979,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=CNHq3qOWuyg"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 39932,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=aoOrEy2zKjE"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 2635060,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=gbc1AzG-RO0"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 25471,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=BKlN-pMB1X4"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 29631,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=p-PZ1Ae6epI"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 13089,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=6cPJunNtBmk"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 24710,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=uzMHENcTjwk"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 35480,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=lAU6NRDCgSw"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 2377726,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=dvKzV6TO280"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 1171780,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=PakQoMlK79E"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 1231534,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=M8H1wOmlSs8"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 922984,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=tohgwKJeEyg"
+     ]
+    },
+    "16": {
+     "ayat": "1-128",
+     "duration_ms": 2465344,
+     "rows": 128,
+     "sources": [
+      "www.youtube.com/watch?v=P7gg-ubbjz4"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 1910076,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=-8OdwpsfbjM"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 2003515,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=lHBGSyqSu4E"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 1202128,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=7KKRMQvnuNs"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 8295199,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=wo-2x-Q48DE"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1667522,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=6vGwm4zn7Gs"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1658957,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=rezjkjeb8Ko"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 1652310,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=WGSi5oS5x1E"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 1465576,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=YlzrDInu5eE"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1806108,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=0bXCUSvWEAQ"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 1124209,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=ieHLulx43tg"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 1897082,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=iTCuK--hqPU"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1578709,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=swuQPhUYXeM"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 1898170,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=aDVAvIxpUW8"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 1361263,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=kBHhD7ZSbqY"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 4531840,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=aQuTbuENGdo"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 1165392,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=yxrmHW8zWRg"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 711590,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=1SQPWrLbvAo"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 516713,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=TdYUBjLZiQg"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 1765183,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=q7SmTECmOxA"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 1166348,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=VCq_WMcOQI4"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 1078030,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=uMHJPnrGvHw"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 1064411,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=6dEZZvzuxFg"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 1400323,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=RYnsJ-cU2K4"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 1019500,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=Pl2aCQd6F3I"
+     ]
+    },
+    "39": {
+     "ayat": "1-75",
+     "duration_ms": 1593367,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=I74x3yBuG7s"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 4875502,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=DfiTN9R51n8"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1648351,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=DpOoE2q1Izo"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 1105038,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=ucFGNQXngWU"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 1152810,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=grLezpJeiOE"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 1214974,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=YG4ErCVu2YU"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 553567,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=ORbPWaoDy2s"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 642846,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=yA8Dn5CXEuw"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 879494,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=N6DfHtA8EWs"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 736940,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=PhaRZnlGsKk"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 707665,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=UFkKoJXVeE4"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 487260,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=VzEN_RKVj1Y"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 3798124,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=PG4wvXew8LQ"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 504031,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=iTPqrNudvs0"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 525059,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=sogRsh5ovm4"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 444018,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=p36iwjM1zRw"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 473021,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=lpcEHdZugGQ"
+     ]
+    },
+    "54": {
+     "ayat": "1-55",
+     "duration_ms": 490376,
+     "rows": 55,
+     "sources": [
+      "www.youtube.com/watch?v=Tl-00mJ0wB8"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 641963,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=ZCa2oCp2V2M"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 671311,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=M0IlhjmFINo"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 763839,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=IyDt0zAOQgA"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 644927,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=64ljt-S0_p4"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 668727,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=gMlY75s66Z0"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 4107690,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=1sxGUABMu1g"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 538795,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=tWURIPTqORo"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 307895,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=KjCt_Y696NA"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 239594,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=GMcC_O8rudI"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 265852,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=paI8QWkJB08"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 345441,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=tB_B0H1nspo"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 411482,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=27-0o3_y0-Q"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 381588,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=R8TaPEPNTow"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 421905,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=yhlq-70Pg3o"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 413588,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=t2x2HXWEwOg"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 364214,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=swsGJCVbsjw"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 4389064,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=N9BoYYLB8e0"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 303524,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=57XQKI2SbFI"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 298982,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=QFhsBF5gavY"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 360417,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=IjMARDq9H40"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 278057,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=uqs9zGdCOTM"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 358269,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=JOF6tUNcwKo"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 224401,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=MrE9c67ygY0"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 350760,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=ZreLQGI9Mj8"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 298146,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=X4iqB769Y7M"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 253329,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=XPrc_nKX7Jo"
+     ]
+    },
+    "79": {
+     "ayat": "1-46",
+     "duration_ms": 251408,
+     "rows": 46,
+     "sources": [
+      "www.youtube.com/watch?v=I6izPo927Kc"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1690808,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=BB7ihxEeimc"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 207870,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=lfcyjD5y27s"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 144537,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=lu9QSfYAJ50"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 111362,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=xKtvWtiHeb0"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 248216,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=goDxSLQIj5o"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 140204,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=Jib6qMmgGKY"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 148981,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=zEL8TkYSdao"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 85754,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=7CueAhQFlGw"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 92415,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=sVW7njZPqgY"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 119355,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=xoHGA9y5MEc"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 184362,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=tJPkIEIj9d8"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 3331463,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=-RBIAFIPoVs"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 102838,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=rbfOmTlO_hU"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 74803,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=JVAha_UPMiM"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 103429,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=PaYEuP-lbxc"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 55789,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=70zC2LqeUW8"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 35384,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=LOb3CBs5iig"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 51214,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=KMA2kt4jABM"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 90379,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=Lk5m0T8sqeU"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 34470,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=0I6rJ5eVzXI"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 108357,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=IitXgOC12ok"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 50702,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=8lmT7dXYk5c"
+     ]
+    }
+   }
+  },
+  "majed_al_zamil_yt": {
+   "ayat": 6236,
+   "duration_ms": 94537822,
+   "rows": 6236,
+   "surahs": {
+    "1": {
+     "ayat": "1-7",
+     "duration_ms": 43493,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=sWGH83iIih0"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 2146205,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=8UiIDK-W2WQ"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 51514,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=86Monc85zsE"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 45199,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=K3y5EPjuJOQ"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 40477,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=a1Mvj4RGunI"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 16057,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=WhhPn0OxPXk"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 41494,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=uQfpWaD5M-8"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 28284,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=Hnk2TOPOh_Q"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 24370,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=6dISJPSx9p8"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 33299,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=zVkUjdG4tw8"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 13115,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=gkmdk5EttQY"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 35604,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=-ikoiTjQ2QY"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 2248616,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=5nGPJ_L_biY"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 23494,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=r3VS-8TsyeU"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 27787,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=-7UAWmoU0kE"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 13146,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=Wn8xul69P24"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 22647,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=A3a76nrWQPw"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 32327,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=eaCtUnLZxgU"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 2020986,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=_lo0vcK5jQk"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 963698,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=4J3TAaKnha8"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 984979,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=qkscfRKcYkQ"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 842452,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=wsAAKNzQMFo"
+     ]
+    },
+    "16": {
+     "ayat": "1-128",
+     "duration_ms": 2110839,
+     "rows": 128,
+     "sources": [
+      "www.youtube.com/watch?v=X_UE4UhxxDI"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 1701395,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=4DmyulCaSGM"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 1680039,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=G2VRwWtjL_s"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 1059323,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=NTIcSJaVxp8"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 7729225,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=k4bs_UaN5-U"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1438806,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=poLshj-WFnA"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1366882,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=EWBadgbt224"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 1493810,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=ANqJEvJd8aY"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 1200654,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=eIE6g8g90Os"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1508089,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=NNiJWtq2WZU"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 970562,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=fNUnfWGPTII"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 1560518,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=wK70zmdkkwA"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1340574,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=QtsgwSQ5UAA"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 1699137,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=OwwWjUdmKLg"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 1166853,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=wwX-uSsWzP0"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 4238793,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=7snvzyoLz7U"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 991576,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=vB5a8EF-CMc"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 598445,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=F_uHtDO4kDM"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 445724,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=N0t-B1A710k"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 1681336,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=jwEoNLyHu3s"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 1081684,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=v0TZdZvbmx0"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 991644,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=cPCdl-pg6gY"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 943807,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=uEWj6LIKsI4"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 1236155,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=KkqyvlIRbFw"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 931741,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=0YRh3nF1U2Y"
+     ]
+    },
+    "39": {
+     "ayat": "1-75",
+     "duration_ms": 1446916,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=MjIFQbtTegA"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 4428691,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=ga5IWZOGlYk"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1555740,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=VbsmgTyS48I"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 1070057,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=7OkYELWo0oY"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 1088122,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=emGcJKPziBc"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 1108241,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=PXVcmbHhoTc"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 502266,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=UyIm4Mld_uE"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 615165,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=fxHAJZNrytE"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 830730,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=CIGj_tAIHcA"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 687917,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=E0lVx1oGLIw"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 666368,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=apJ5uR6-xQ4"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 472021,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=ka2wLZfcwl4"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 3389922,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=IS5bmHvAY68"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 477485,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=HROHumXI7Eg"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 470422,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=WYp-RnPF6Zo"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 423467,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=FyPJO4WPO90"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 433607,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=MqhpvbgUWsA"
+     ]
+    },
+    "54": {
+     "ayat": "1-55",
+     "duration_ms": 441698,
+     "rows": 55,
+     "sources": [
+      "www.youtube.com/watch?v=5jkGAxG9Dtg"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 601876,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=bZ2giy4k_oU"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 602933,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=CRquzEG3K_c"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 795243,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=3F24R3GUyx4"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 618325,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=BYwGRFPgx9A"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 613814,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=Fts8mn3TWvY"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 3675134,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=n0pSAQMMF_I"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 490975,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=Ac-aaX6pecM"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 289745,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=IYY2IZfnMW0"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 229603,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=Pca7BNmSWGU"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 248711,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=EVKsgu2bHYo"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 319330,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=4MXGztlqFpw"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 388916,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=EjI_ClUcb74"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 353596,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=Pht5e_w7Axk"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 436915,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=V0--0Rgc9LM"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 416752,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=y_FfAQHVZc4"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 361847,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=JSuehkJrTeQ"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 3920600,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=5OH_jXKpbzw"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 281092,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=-GKNmjNcwNU"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 269004,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=vMm5xYUY3_s"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 342502,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=xoSwe9ZS9BA"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 239757,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=aY0PpAw0JV8"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 322368,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=TA_Ektdjysw"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 200910,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=O-N57cadpW0"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 323204,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=ueRjpfJD0BU"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 270302,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=bIfJVHimUr0"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 239832,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=eq5HarOGyiQ"
+     ]
+    },
+    "79": {
+     "ayat": "1-46",
+     "duration_ms": 232711,
+     "rows": 46,
+     "sources": [
+      "www.youtube.com/watch?v=5jnU-K_3GzQ"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1476658,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=XTNouLWDgSM"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 194476,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=2RFaklZybXs"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 133583,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=8aknxqHr3ng"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 105038,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=iyIUV_q18VE"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 235448,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=0VeHjqkI8YI"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 133226,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=J7zttqnHTdE"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 140223,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=cf9R_OH2QBU"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 78084,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=Uq_B1UGKU4A"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 85147,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=Aa0iU7BkBPs"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 106438,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=cA0ppA8oQqY"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 165828,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=34tYh2Pt0U0"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 2975898,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=eCKaSQAApnM"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 92854,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=tmNf0DaiFzM"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 70419,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=QqhNuJfx7MI"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 93888,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=LvHNxJh35kg"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 50290,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=UQKPTb01yqo"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 30735,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=H6_uFE_bSUU"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 42698,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=92ji9cRvgVg"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 77997,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=Ntkk89HBSi0"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 31740,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=f22ERgGZ8RA"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 108825,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=0ffAj3S_pIY"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 46643,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=k64tUNHFPiQ"
+     ]
+    }
+   }
+  },
+  "mohammed_burhaji_yt": {
+   "ayat": 6236,
+   "duration_ms": 109238809,
+   "rows": 6236,
+   "surahs": {
+    "1": {
+     "ayat": "1-7",
+     "duration_ms": 42953,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=RXZqoXkm7UY"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 2718062,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=HAE3W_XKvwY"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 51169,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=aFXCVVCo8Hc"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 46938,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=SeFzDDHhtlE"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 42734,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=pT9gDLbcKys"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 21950,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=WYsLxrQX8Fo"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 58550,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=8_EGMH03Y-0"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 34666,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=Pa0CDYe12Xs"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 32199,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=blR6jAvD9_I"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 45603,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=BPs1KEVRfTA"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 13708,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=ptM5nEDcDDw"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 29782,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=Jh8iGxKekIs"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 2587233,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=00vhQl-jRxc"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 34240,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=UjVQDUbZf1Y"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 28566,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=g_Bg624GeaY"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 14050,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=I9KWtH4km9s"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 31970,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=-Fh3I9UEAW4"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 36081,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=CFH7u7L_3Vw"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 2421735,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=baqzR46MCLI"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 1203433,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=1gx8aaDiuqQ"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 1304742,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=fgTCI_ZXv9w"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 1007544,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=BtGTntYPusk"
+     ]
+    },
+    "16": {
+     "ayat": "1-128",
+     "duration_ms": 2578139,
+     "rows": 128,
+     "sources": [
+      "www.youtube.com/watch?v=FC1k70n4Pa4"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 2189473,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=CFWYmQy4fIc"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 1678396,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=gzYUqx8JYCM"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 1084155,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=rRlLlozHKeM"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 7729307,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=E5sWmvpn0EI"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1919421,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=BiP1ixAn8PY"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1763544,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=xmOzyFiCXoI"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 1992489,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=yAir7z5wlwo"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 1536381,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=QeZeXr_s-2c"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1565978,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=EXVy6NYTxKs"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 1336871,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=UThfBzar3sI"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 1635041,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=y8wQD4Kgw3c"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1566861,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=PTUnLQ3JKHg"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 2226773,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=VO8WKjtNbcc"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 1452461,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=iVrHhZwzd1M"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 4922612,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=2WerXPNBJKw"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 1271920,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=dnG9erPGZC4"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 869197,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=wekvDI8hgI8"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 398233,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=WycSBrIN-9E"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 2009986,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=bkUvG2TPj6U"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 1229019,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=9gRrW_pbvOI"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 862476,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=zm89NccMNbU"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 953879,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=BRQ8MRdcq9Q"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 1024389,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=R2VyXF-YjiY"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 1007007,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=v6JNNZMvIjA"
+     ]
+    },
+    "39": {
+     "ayat": "1-75",
+     "duration_ms": 1792650,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=b1GQT58Y_lw"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 5346337,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=apVBE-2GncI"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1817862,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=rYCjHhC2NGg"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 1271735,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=tQrNaiXCews"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 1098032,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=9NaLb_1_xDw"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 990467,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=dY7Ozm9rVWY"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 528771,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=WyCLqm0RmBk"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 753096,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=4Ov5utw_BQ4"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 934643,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=gwfOt5FTS_c"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 850006,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=iV29jnIK4H8"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 881528,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=63sL2WUOwjg"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 507588,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=TrNekId3Pb0"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 3960291,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=pu_G_1MOYuY"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 450226,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=rvLLm8CoCCo"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 394801,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=qFSDO8jHjSI"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 369279,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=XjdRwYhCO8k"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 418847,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=5Un37nupTqo"
+     ]
+    },
+    "54": {
+     "ayat": "1-55",
+     "duration_ms": 508655,
+     "rows": 55,
+     "sources": [
+      "www.youtube.com/watch?v=IS9v-kMeRLY"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 670217,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=i6_DK48WbV4"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 691911,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=pKRyYV8Ev5E"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 885014,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=JVxrwQUaIYk"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 729531,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=2k9W2TIzskw"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 752309,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=AEZFwSRtN6E"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 4368090,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=Z5ICqREI238"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 564639,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=VP1QCwTdZaE"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 339406,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=nZC5hs_ZalU"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 255501,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=m2VckldBEQM"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 291274,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=IBmUHOUcdgE"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 351391,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=sbIg03QUc1o"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 480999,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=uS3S40Rhlb8"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 434837,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=J7nlOUANYfQ"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 509820,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=8WztkAWw394"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 460063,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=JtHhxK9SIwM"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 434369,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=QkYW9ADwDAE"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 4741374,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=euzS6AbzGvM"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 340949,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=gawL1zn71Yc"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 330361,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=EmVazUyIHTw"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 399944,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=O4zmusHodA4"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 328250,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=5YE0XnzknE4"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 368272,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=qGP1GEQaPdg"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 252246,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=wyx1gwxC6bM"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 311456,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=qioPTW1W1T4"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 273090,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=BtueAahqUDg"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 320043,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=cE2s9Q-Upxw"
+     ]
+    },
+    "79": {
+     "ayat": "1-46",
+     "duration_ms": 318427,
+     "rows": 46,
+     "sources": [
+      "www.youtube.com/watch?v=ILGlhifOLyE"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1632688,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=OkOAXDVn_qk"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 271239,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=a621Mx_B9bY"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 167684,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=bXE1ARHXKzI"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 133036,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=OWb2xMJUL90"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 283547,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=8GaNlPMZNOU"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 133442,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=i1hnGEfJqtc"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 137716,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=HoVWMjX9dxM"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 82977,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=MVNonGQ80vM"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 82727,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=a05Od6m7Biw"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 115588,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=zHBqsNkj-ok"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 179529,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=LRHWf3yWMmU"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 3673227,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=T6Pg9D5dhOU"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 95153,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=ERn2qN1aZdA"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 69711,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=kOWEQhilfs8"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 94233,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=PCg4Tq0Av44"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 54190,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=HRmfhLb2a58"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 30296,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=ZQxNSVI4J8w"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 44069,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=i6T4XZEysn0"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 82737,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=Cz9Xvj27Gg8"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 32429,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=lGXtWgAIdiE"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 104960,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=TfhpqXoo5iQ"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 47118,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=BeOd6aqGYc4"
+     ]
+    }
+   }
+  },
+  "yasser_al_dosari_yt": {
+   "ayat": 6236,
+   "duration_ms": 91499802,
+   "rows": 6236,
+   "surahs": {
+    "1": {
+     "ayat": "1-7",
+     "duration_ms": 51894,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=zynJ1fOvfns"
+     ]
+    },
+    "10": {
+     "ayat": "1-109",
+     "duration_ms": 2147629,
+     "rows": 109,
+     "sources": [
+      "www.youtube.com/watch?v=O0bFOEZMgxc"
+     ]
+    },
+    "100": {
+     "ayat": "1-11",
+     "duration_ms": 50874,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=u3_Qa7ae4hk"
+     ]
+    },
+    "101": {
+     "ayat": "1-11",
+     "duration_ms": 43573,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=URP2d5-OBGo"
+     ]
+    },
+    "102": {
+     "ayat": "1-8",
+     "duration_ms": 38446,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=zmOuLk3tOKU"
+     ]
+    },
+    "103": {
+     "ayat": "1-3",
+     "duration_ms": 16902,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=Qp96CUtOrD8"
+     ]
+    },
+    "104": {
+     "ayat": "1-9",
+     "duration_ms": 39645,
+     "rows": 9,
+     "sources": [
+      "www.youtube.com/watch?v=j7GxiKpxAoM"
+     ]
+    },
+    "105": {
+     "ayat": "1-5",
+     "duration_ms": 29689,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=2yAR6pyES0c"
+     ]
+    },
+    "106": {
+     "ayat": "1-4",
+     "duration_ms": 26220,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=gQlt8Njy-a4"
+     ]
+    },
+    "107": {
+     "ayat": "1-7",
+     "duration_ms": 36395,
+     "rows": 7,
+     "sources": [
+      "www.youtube.com/watch?v=ZQoU54O4NDQ"
+     ]
+    },
+    "108": {
+     "ayat": "1-3",
+     "duration_ms": 12748,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=1fGPT4NqKN0"
+     ]
+    },
+    "109": {
+     "ayat": "1-6",
+     "duration_ms": 30574,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=tfVvw588aj8"
+     ]
+    },
+    "11": {
+     "ayat": "1-123",
+     "duration_ms": 2320159,
+     "rows": 123,
+     "sources": [
+      "www.youtube.com/watch?v=0lriHkEiusA"
+     ]
+    },
+    "110": {
+     "ayat": "1-3",
+     "duration_ms": 24011,
+     "rows": 3,
+     "sources": [
+      "www.youtube.com/watch?v=H5lSjmbAV4o"
+     ]
+    },
+    "111": {
+     "ayat": "1-5",
+     "duration_ms": 26495,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=wRV-r2Sq3fM"
+     ]
+    },
+    "112": {
+     "ayat": "1-4",
+     "duration_ms": 12730,
+     "rows": 4,
+     "sources": [
+      "www.youtube.com/watch?v=suOGFctUUxY"
+     ]
+    },
+    "113": {
+     "ayat": "1-5",
+     "duration_ms": 23431,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=p46Qm-jLJtg"
+     ]
+    },
+    "114": {
+     "ayat": "1-6",
+     "duration_ms": 32966,
+     "rows": 6,
+     "sources": [
+      "www.youtube.com/watch?v=3M4Qd66tpaQ"
+     ]
+    },
+    "12": {
+     "ayat": "1-111",
+     "duration_ms": 2215345,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=AjOY2SujBAI"
+     ]
+    },
+    "13": {
+     "ayat": "1-43",
+     "duration_ms": 976024,
+     "rows": 43,
+     "sources": [
+      "www.youtube.com/watch?v=14nx430NXxI"
+     ]
+    },
+    "14": {
+     "ayat": "1-52",
+     "duration_ms": 1002037,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=5BmNFoZvat0"
+     ]
+    },
+    "15": {
+     "ayat": "1-99",
+     "duration_ms": 757672,
+     "rows": 99,
+     "sources": [
+      "www.youtube.com/watch?v=0q47DghtSoc"
+     ]
+    },
+    "16": {
+     "ayat": "1-128",
+     "duration_ms": 2045143,
+     "rows": 128,
+     "sources": [
+      "www.youtube.com/watch?v=xxUVf97JiHY"
+     ]
+    },
+    "17": {
+     "ayat": "1-111",
+     "duration_ms": 1719860,
+     "rows": 111,
+     "sources": [
+      "www.youtube.com/watch?v=yfL1NhRss-k"
+     ]
+    },
+    "18": {
+     "ayat": "1-110",
+     "duration_ms": 1745811,
+     "rows": 110,
+     "sources": [
+      "www.youtube.com/watch?v=a_HGVkc_6Cg"
+     ]
+    },
+    "19": {
+     "ayat": "1-98",
+     "duration_ms": 1110440,
+     "rows": 98,
+     "sources": [
+      "www.youtube.com/watch?v=VuiUerUU6z0"
+     ]
+    },
+    "2": {
+     "ayat": "1-286",
+     "duration_ms": 7115457,
+     "rows": 286,
+     "sources": [
+      "www.youtube.com/watch?v=MeakUGHbyPI"
+     ]
+    },
+    "20": {
+     "ayat": "1-135",
+     "duration_ms": 1414736,
+     "rows": 135,
+     "sources": [
+      "www.youtube.com/watch?v=mps0BWNBqd4"
+     ]
+    },
+    "21": {
+     "ayat": "1-112",
+     "duration_ms": 1305836,
+     "rows": 112,
+     "sources": [
+      "www.youtube.com/watch?v=86ItdQsuH4E"
+     ]
+    },
+    "22": {
+     "ayat": "1-78",
+     "duration_ms": 1448747,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=XlPbh20mA54"
+     ]
+    },
+    "23": {
+     "ayat": "1-118",
+     "duration_ms": 1255098,
+     "rows": 118,
+     "sources": [
+      "www.youtube.com/watch?v=w9efbeuYryk"
+     ]
+    },
+    "24": {
+     "ayat": "1-64",
+     "duration_ms": 1569659,
+     "rows": 64,
+     "sources": [
+      "www.youtube.com/watch?v=nuUYq0FHv3E"
+     ]
+    },
+    "25": {
+     "ayat": "1-77",
+     "duration_ms": 1069650,
+     "rows": 77,
+     "sources": [
+      "www.youtube.com/watch?v=KMA5GAhAobo"
+     ]
+    },
+    "26": {
+     "ayat": "1-227",
+     "duration_ms": 1541778,
+     "rows": 227,
+     "sources": [
+      "www.youtube.com/watch?v=zvOmoDFwmZk"
+     ]
+    },
+    "27": {
+     "ayat": "1-93",
+     "duration_ms": 1331105,
+     "rows": 93,
+     "sources": [
+      "www.youtube.com/watch?v=83qT1Mvh2j0"
+     ]
+    },
+    "28": {
+     "ayat": "1-88",
+     "duration_ms": 1617963,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=Vcb1WLnrYgY"
+     ]
+    },
+    "29": {
+     "ayat": "1-69",
+     "duration_ms": 1101182,
+     "rows": 69,
+     "sources": [
+      "www.youtube.com/watch?v=TDjCVtfc67g"
+     ]
+    },
+    "3": {
+     "ayat": "1-200",
+     "duration_ms": 4114793,
+     "rows": 200,
+     "sources": [
+      "www.youtube.com/watch?v=rEn_J789C9c"
+     ]
+    },
+    "30": {
+     "ayat": "1-60",
+     "duration_ms": 936200,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=NWfHy9G_e_s"
+     ]
+    },
+    "31": {
+     "ayat": "1-34",
+     "duration_ms": 586294,
+     "rows": 34,
+     "sources": [
+      "www.youtube.com/watch?v=60cS_Xk5etk"
+     ]
+    },
+    "32": {
+     "ayat": "1-30",
+     "duration_ms": 434207,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=SQFDjzF80EE"
+     ]
+    },
+    "33": {
+     "ayat": "1-73",
+     "duration_ms": 1496345,
+     "rows": 73,
+     "sources": [
+      "www.youtube.com/watch?v=McoU0A3q-Es"
+     ]
+    },
+    "34": {
+     "ayat": "1-54",
+     "duration_ms": 946360,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=oHQ9iLU92xw"
+     ]
+    },
+    "35": {
+     "ayat": "1-45",
+     "duration_ms": 921507,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=Z0bfSm7-ihQ"
+     ]
+    },
+    "36": {
+     "ayat": "1-83",
+     "duration_ms": 847689,
+     "rows": 83,
+     "sources": [
+      "www.youtube.com/watch?v=RimnsjQhA9E"
+     ]
+    },
+    "37": {
+     "ayat": "1-182",
+     "duration_ms": 1095821,
+     "rows": 182,
+     "sources": [
+      "www.youtube.com/watch?v=juumo65rmPE"
+     ]
+    },
+    "38": {
+     "ayat": "1-88",
+     "duration_ms": 857835,
+     "rows": 88,
+     "sources": [
+      "www.youtube.com/watch?v=CCwBqopTAmE"
+     ]
+    },
+    "39": {
+     "ayat": "1-75",
+     "duration_ms": 1344725,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=9iYxs7yDqHA"
+     ]
+    },
+    "4": {
+     "ayat": "1-176",
+     "duration_ms": 4267857,
+     "rows": 176,
+     "sources": [
+      "www.youtube.com/watch?v=bFXsLogrSCU"
+     ]
+    },
+    "40": {
+     "ayat": "1-85",
+     "duration_ms": 1358191,
+     "rows": 85,
+     "sources": [
+      "www.youtube.com/watch?v=c8Svf6JCTA4"
+     ]
+    },
+    "41": {
+     "ayat": "1-54",
+     "duration_ms": 930630,
+     "rows": 54,
+     "sources": [
+      "www.youtube.com/watch?v=e18hkG6Iezc"
+     ]
+    },
+    "42": {
+     "ayat": "1-53",
+     "duration_ms": 982762,
+     "rows": 53,
+     "sources": [
+      "www.youtube.com/watch?v=70HGdbLkBe4"
+     ]
+    },
+    "43": {
+     "ayat": "1-89",
+     "duration_ms": 1015127,
+     "rows": 89,
+     "sources": [
+      "www.youtube.com/watch?v=3hFKBlvRuz4"
+     ]
+    },
+    "44": {
+     "ayat": "1-59",
+     "duration_ms": 451917,
+     "rows": 59,
+     "sources": [
+      "www.youtube.com/watch?v=bHX1vnJNuiQ"
+     ]
+    },
+    "45": {
+     "ayat": "1-37",
+     "duration_ms": 579915,
+     "rows": 37,
+     "sources": [
+      "www.youtube.com/watch?v=CpNW2AsyraA"
+     ]
+    },
+    "46": {
+     "ayat": "1-35",
+     "duration_ms": 737982,
+     "rows": 35,
+     "sources": [
+      "www.youtube.com/watch?v=NgcDLpSWQeQ"
+     ]
+    },
+    "47": {
+     "ayat": "1-38",
+     "duration_ms": 623283,
+     "rows": 38,
+     "sources": [
+      "www.youtube.com/watch?v=9BIjigD_tHY"
+     ]
+    },
+    "48": {
+     "ayat": "1-29",
+     "duration_ms": 680638,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=X4TwoPVugNQ"
+     ]
+    },
+    "49": {
+     "ayat": "1-18",
+     "duration_ms": 435636,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=JtMKNvd-GE8"
+     ]
+    },
+    "5": {
+     "ayat": "1-120",
+     "duration_ms": 3361256,
+     "rows": 120,
+     "sources": [
+      "www.youtube.com/watch?v=51MZag9nvMc"
+     ]
+    },
+    "50": {
+     "ayat": "1-45",
+     "duration_ms": 478980,
+     "rows": 45,
+     "sources": [
+      "www.youtube.com/watch?v=OzkoigEkvB8"
+     ]
+    },
+    "51": {
+     "ayat": "1-60",
+     "duration_ms": 405350,
+     "rows": 60,
+     "sources": [
+      "www.youtube.com/watch?v=_Di7L3bkjPU"
+     ]
+    },
+    "52": {
+     "ayat": "1-49",
+     "duration_ms": 366632,
+     "rows": 49,
+     "sources": [
+      "www.youtube.com/watch?v=ILan_5wg53o"
+     ]
+    },
+    "53": {
+     "ayat": "1-62",
+     "duration_ms": 399843,
+     "rows": 62,
+     "sources": [
+      "www.youtube.com/watch?v=KUR6_zx95SE"
+     ]
+    },
+    "54": {
+     "ayat": "1-55",
+     "duration_ms": 407320,
+     "rows": 55,
+     "sources": [
+      "www.youtube.com/watch?v=fXVzdWICyl0"
+     ]
+    },
+    "55": {
+     "ayat": "1-78",
+     "duration_ms": 633008,
+     "rows": 78,
+     "sources": [
+      "www.youtube.com/watch?v=I534m0R0-tU"
+     ]
+    },
+    "56": {
+     "ayat": "1-96",
+     "duration_ms": 574929,
+     "rows": 96,
+     "sources": [
+      "www.youtube.com/watch?v=BpvAo396Akk"
+     ]
+    },
+    "57": {
+     "ayat": "1-29",
+     "duration_ms": 728229,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=Lg1LLcST2xM"
+     ]
+    },
+    "58": {
+     "ayat": "1-22",
+     "duration_ms": 568717,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=mfU9HJnEGdU"
+     ]
+    },
+    "59": {
+     "ayat": "1-24",
+     "duration_ms": 573499,
+     "rows": 24,
+     "sources": [
+      "www.youtube.com/watch?v=s3JO4LJhLoE"
+     ]
+    },
+    "6": {
+     "ayat": "1-165",
+     "duration_ms": 3789954,
+     "rows": 165,
+     "sources": [
+      "www.youtube.com/watch?v=DtOgfXPuraU"
+     ]
+    },
+    "60": {
+     "ayat": "1-13",
+     "duration_ms": 437211,
+     "rows": 13,
+     "sources": [
+      "www.youtube.com/watch?v=XGZZTkmrKWg"
+     ]
+    },
+    "61": {
+     "ayat": "1-14",
+     "duration_ms": 237902,
+     "rows": 14,
+     "sources": [
+      "www.youtube.com/watch?v=0nfzrxaJGDs"
+     ]
+    },
+    "62": {
+     "ayat": "1-11",
+     "duration_ms": 186584,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=179PF535wKA"
+     ]
+    },
+    "63": {
+     "ayat": "1-11",
+     "duration_ms": 220364,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=ptTeKJwVHSk"
+     ]
+    },
+    "64": {
+     "ayat": "1-18",
+     "duration_ms": 273660,
+     "rows": 18,
+     "sources": [
+      "www.youtube.com/watch?v=dxSbMp347d0"
+     ]
+    },
+    "65": {
+     "ayat": "1-12",
+     "duration_ms": 338528,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=w0KKTwMpW6s"
+     ]
+    },
+    "66": {
+     "ayat": "1-12",
+     "duration_ms": 303391,
+     "rows": 12,
+     "sources": [
+      "www.youtube.com/watch?v=Lhj547KTNcw"
+     ]
+    },
+    "67": {
+     "ayat": "1-30",
+     "duration_ms": 369115,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=y2PTlId5wlw"
+     ]
+    },
+    "68": {
+     "ayat": "1-52",
+     "duration_ms": 367597,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=YIbBVH-M6Q4"
+     ]
+    },
+    "69": {
+     "ayat": "1-52",
+     "duration_ms": 342782,
+     "rows": 52,
+     "sources": [
+      "www.youtube.com/watch?v=xSGGaZKp6lc"
+     ]
+    },
+    "7": {
+     "ayat": "1-206",
+     "duration_ms": 3952935,
+     "rows": 206,
+     "sources": [
+      "www.youtube.com/watch?v=YbmhjViRX1Q"
+     ]
+    },
+    "70": {
+     "ayat": "1-44",
+     "duration_ms": 292191,
+     "rows": 44,
+     "sources": [
+      "www.youtube.com/watch?v=WQ1z_Nwtnig"
+     ]
+    },
+    "71": {
+     "ayat": "1-28",
+     "duration_ms": 266064,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=81TjahbLDCk"
+     ]
+    },
+    "72": {
+     "ayat": "1-28",
+     "duration_ms": 300637,
+     "rows": 28,
+     "sources": [
+      "www.youtube.com/watch?v=ppQuDJNM4ZE"
+     ]
+    },
+    "73": {
+     "ayat": "1-20",
+     "duration_ms": 234799,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=OMvLrnHXi9o"
+     ]
+    },
+    "74": {
+     "ayat": "1-56",
+     "duration_ms": 306222,
+     "rows": 56,
+     "sources": [
+      "www.youtube.com/watch?v=lQQSjN4oM9M"
+     ]
+    },
+    "75": {
+     "ayat": "1-40",
+     "duration_ms": 190297,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=8i2qtSJUUEs"
+     ]
+    },
+    "76": {
+     "ayat": "1-31",
+     "duration_ms": 316533,
+     "rows": 31,
+     "sources": [
+      "www.youtube.com/watch?v=89-hxR4P08s"
+     ]
+    },
+    "77": {
+     "ayat": "1-50",
+     "duration_ms": 253236,
+     "rows": 50,
+     "sources": [
+      "www.youtube.com/watch?v=mdmqaidk2SA"
+     ]
+    },
+    "78": {
+     "ayat": "1-40",
+     "duration_ms": 242567,
+     "rows": 40,
+     "sources": [
+      "www.youtube.com/watch?v=U2wcXYJBxw0"
+     ]
+    },
+    "79": {
+     "ayat": "1-46",
+     "duration_ms": 225120,
+     "rows": 46,
+     "sources": [
+      "www.youtube.com/watch?v=NtBz5PEHjFY"
+     ]
+    },
+    "8": {
+     "ayat": "1-75",
+     "duration_ms": 1523465,
+     "rows": 75,
+     "sources": [
+      "www.youtube.com/watch?v=9QfQ7Zb5cAk"
+     ]
+    },
+    "80": {
+     "ayat": "1-42",
+     "duration_ms": 186442,
+     "rows": 42,
+     "sources": [
+      "www.youtube.com/watch?v=sz-80QA03GY"
+     ]
+    },
+    "81": {
+     "ayat": "1-29",
+     "duration_ms": 125911,
+     "rows": 29,
+     "sources": [
+      "www.youtube.com/watch?v=nwywemVbL6w"
+     ]
+    },
+    "82": {
+     "ayat": "1-19",
+     "duration_ms": 99130,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=gnmYs52_-v0"
+     ]
+    },
+    "83": {
+     "ayat": "1-36",
+     "duration_ms": 221381,
+     "rows": 36,
+     "sources": [
+      "www.youtube.com/watch?v=ES3fuil11ik"
+     ]
+    },
+    "84": {
+     "ayat": "1-25",
+     "duration_ms": 128850,
+     "rows": 25,
+     "sources": [
+      "www.youtube.com/watch?v=dK2uoRJ341c"
+     ]
+    },
+    "85": {
+     "ayat": "1-22",
+     "duration_ms": 135875,
+     "rows": 22,
+     "sources": [
+      "www.youtube.com/watch?v=omDt8S1UUlI"
+     ]
+    },
+    "86": {
+     "ayat": "1-17",
+     "duration_ms": 80474,
+     "rows": 17,
+     "sources": [
+      "www.youtube.com/watch?v=avWIRMbxG7I"
+     ]
+    },
+    "87": {
+     "ayat": "1-19",
+     "duration_ms": 86103,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=2AXdj8rkr5o"
+     ]
+    },
+    "88": {
+     "ayat": "1-26",
+     "duration_ms": 109978,
+     "rows": 26,
+     "sources": [
+      "www.youtube.com/watch?v=vFyPPSet3tY"
+     ]
+    },
+    "89": {
+     "ayat": "1-30",
+     "duration_ms": 166575,
+     "rows": 30,
+     "sources": [
+      "www.youtube.com/watch?v=l8kiGvu0iV4"
+     ]
+    },
+    "9": {
+     "ayat": "1-129",
+     "duration_ms": 3082321,
+     "rows": 129,
+     "sources": [
+      "www.youtube.com/watch?v=-lfn7Epz07Y"
+     ]
+    },
+    "90": {
+     "ayat": "1-20",
+     "duration_ms": 92730,
+     "rows": 20,
+     "sources": [
+      "www.youtube.com/watch?v=dKLGzQVlBvU"
+     ]
+    },
+    "91": {
+     "ayat": "1-15",
+     "duration_ms": 73723,
+     "rows": 15,
+     "sources": [
+      "www.youtube.com/watch?v=s6qTCqFemTA"
+     ]
+    },
+    "92": {
+     "ayat": "1-21",
+     "duration_ms": 96315,
+     "rows": 21,
+     "sources": [
+      "www.youtube.com/watch?v=bAy--Opncac"
+     ]
+    },
+    "93": {
+     "ayat": "1-11",
+     "duration_ms": 51638,
+     "rows": 11,
+     "sources": [
+      "www.youtube.com/watch?v=6hT1Q_gneWg"
+     ]
+    },
+    "94": {
+     "ayat": "1-8",
+     "duration_ms": 30322,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=o0lZ55IhDQ0"
+     ]
+    },
+    "95": {
+     "ayat": "1-8",
+     "duration_ms": 41860,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=mRqLuraJKiQ"
+     ]
+    },
+    "96": {
+     "ayat": "1-19",
+     "duration_ms": 80191,
+     "rows": 19,
+     "sources": [
+      "www.youtube.com/watch?v=1SXHnTGTRsw"
+     ]
+    },
+    "97": {
+     "ayat": "1-5",
+     "duration_ms": 32056,
+     "rows": 5,
+     "sources": [
+      "www.youtube.com/watch?v=jIfQPKzSOlw"
+     ]
+    },
+    "98": {
+     "ayat": "1-8",
+     "duration_ms": 108933,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=VC3T3h3sifE"
+     ]
+    },
+    "99": {
+     "ayat": "1-8",
+     "duration_ms": 46439,
+     "rows": 8,
+     "sources": [
+      "www.youtube.com/watch?v=MWesjZfZF7I"
+     ]
+    }
+   }
+  }
+ },
+ "qud_revision": "6f45ced88a179dfbb97d5b0f76ae69b4d4d1f175"
+}

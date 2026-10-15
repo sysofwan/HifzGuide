@@ -31,6 +31,7 @@ from tadabur.exposure import (
     write_probable_copies,
     write_recording_aliases,
     write_shard_use,
+    write_empty,
     write_use,
 )
 from tadabur.panel_seal import PanelProvenance, SealedPanelError, refuse_sealed, unsealed
@@ -267,6 +268,13 @@ READ_EXEMPTIONS = {
     "tadabur/audio.py": "the guarded readers themselves",
     "tadabur/staged_audio.py": "as_staged reads back an in-memory buffer it just wrote",
 }
+#: Where a parquet file may be opened without iter_shard_rows, and why.
+PARQUET_EXEMPTIONS = {
+    "tadabur/shard_reader.py": "the Tadabur shard reader itself",
+    "tadabur/qud_source.py": "QUD's parquet files (metadata columns, and the pilot "
+                             "mushafs' MP3s), never a Tadabur shard",
+    "tadabur/muaalem_audio.py": "Muaalem's training parquet files, never a Tadabur shard",
+}
 
 
 def test_lint_every_audio_read_and_row_source_goes_through_a_choke_point():
@@ -291,7 +299,7 @@ def test_lint_every_audio_read_and_row_source_goes_through_a_choke_point():
             offenders.append(f"{rel}: decodes a file's bytes without read_audio_bytes")
         if "load_dataset(" in text and rel != "tadabur/dataset_source.py":
             offenders.append(f"{rel}: streams the dataset without stream_rows")
-        if "ParquetFile(" in text and rel != "tadabur/shard_reader.py":
+        if "ParquetFile(" in text and rel not in PARQUET_EXEMPTIONS:
             offenders.append(f"{rel}: reads a shard without iter_shard_rows")
     assert offenders == []
 
@@ -358,7 +366,7 @@ def _copied_frame(tmp_path):
     write_shard_use(H448_TRAINING, _shards((21,), {1: 4}, "exact"), tmp_path)
     write_shard_use(H448_INIT_VALIDATION, _shards((0,), {1: 1}, "uncertain"), tmp_path)
     for use in load_registry(tmp_path).missing():
-        write_use(use, [], tmp_path)
+        write_empty(use, tmp_path)
     index = [
         _index_row("a.wav", 1, row=0, seconds=7.0), _index_row("t.wav", 1, shard=21, seconds=7.0),
         _index_row("b.wav", 1, row=1, seconds=6.0), _index_row("v.wav", 1, shard=0, seconds=6.0),
@@ -562,7 +570,7 @@ def _mixed_shard(tmp_path: Path, monkeypatch) -> StagedClip:
         "reciter_id": [100_001, panel.reciter_id, 100_001],
     }), shard)
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", lambda *a, **k: str(shard))
-    monkeypatch.setattr("tadabur.shard_reader._remove_shard_blob", lambda path: None)
+    monkeypatch.setattr("tadabur.shard_reader.remove_shard_blob", lambda path: None)
     return panel
 
 

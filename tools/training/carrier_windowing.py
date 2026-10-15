@@ -83,15 +83,15 @@ from tadabur.listening_session import (
     VERDICTS_PATH,
     Verdict,
     crosses_words,
+    held_geminates,
     read_verdicts,
     run_start,
 )
-from tadabur.mining_pool import PoolSegment, segment_key
+from tadabur.mining_pool import segment_key
 from tadabur.power_frame import input_checksums, unseen_clips
 from tadabur.ship_a import SITES_PATH, ShipASite, load_sites
 from tadabur.staged_audio import StagedClip, load_staged_clips
 from tadabur.truth_sites import (
-    CONSONANTS,
     HELD,
     NEW_AUDIT,
     NO_VERDICT,
@@ -214,15 +214,11 @@ def pair_positions(segment: int, reference: str) -> list[Position]:
             if char in LETTER_PAIRS and run_start(reference, i) == i]
 
 
-def geminate_positions(segment: int, pool_segment: PoolSegment) -> list[Position]:
-    """The first of each doubled consonant whose run stays inside one word."""
-    reference, offsets = pool_segment.reference, list(pool_segment.raw_word_offsets)
-    return [
-        Position(segment, i, True)
-        for i, char in enumerate(reference)
-        if char in CONSONANTS and reference[i + 1:i + 2] == char and run_start(reference, i) == i
-        and not crosses_words(reference, offsets, i)
-    ]
+def geminate_positions(segment: int, reference: str, offsets: Sequence[int]) -> list[Position]:
+    """The first of each doubled consonant whose run stays inside one word (``offsets``: the
+    reference's word offsets)."""
+    return [Position(segment, i, True) for i in held_geminates(reference)
+            if not crosses_words(reference, list(offsets), i)]
 
 
 def committed(alignment: CarrierAlignment, index: int, geminate: bool) -> SiteOutcome:
@@ -385,7 +381,8 @@ def pool_clip(plan: ClipPlan, caches: Mapping[str, dict]) -> Clip:
     name = plan.clip.audio_filename
     positions = tuple(
         p for n, s in enumerate(plan.segments)
-        for p in sorted(pair_positions(n, s.reference) + geminate_positions(n, s)))
+        for p in sorted(pair_positions(n, s.reference)
+                        + geminate_positions(n, s.reference, s.raw_word_offsets)))
     return Clip(
         audio_filename=name,
         surah_ayah=plan.clip.surah_ayah,

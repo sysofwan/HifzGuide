@@ -10,6 +10,10 @@ from collections import Counter
 import pytest
 
 from tadabur.exposure import (
+    QUD_CORRECT_RECITATION,
+    QUD_USES,
+    QudExposure,
+    write_qud_use,
     CLIPS_V2_SHARDS,
     EVALSET_DEV,
     EVALSET_LEGACY,
@@ -33,6 +37,7 @@ from tadabur.exposure import (
     ExposureOverlap,
     ShardExposure,
     check_disjoint,
+    describe,
     COPY_SCREEN,
     EXPOSURE_DIR,
     PROBABLE_COPIES_NAME,
@@ -399,6 +404,7 @@ def test_the_committed_registry_is_complete():
     registry = load_registry()
     require_complete(registry)  # every declared use has a file, empty if unused
     assert set(registry.uses()) == USES
+    assert set(registry.qud) == QUD_USES
     assert registry.recordings[PROBE_TRAINING] == ()  # declared, unused until #94/#95
 
 
@@ -496,3 +502,30 @@ def test_an_unseen_population_bars_a_training_shard_row_with_no_link(tmp_path):
     staged = {"in_training.wav": clip("in_training.wav", 21, 9),
               _A: clip(_A, 3, 7), "fresh.wav": clip("fresh.wav", 39, 2)}
     assert unseen_violations(staged, registry) == {"in_training.wav", _A}
+
+
+# --- QUD uses (#144) -------------------------------------------------------------------
+
+
+def _qud(surah_ayah="1:1", sha="c" * 64) -> QudExposure:
+    return QudExposure("d" * 40, "anas_almiman_yt", surah_ayah, sha, "anas_almiman")
+
+
+def test_a_qud_use_round_trips_beside_the_tadabur_uses(tmp_path):
+    write_qud_use(QUD_CORRECT_RECITATION, [_qud("2:1"), _qud(), _qud()], tmp_path)
+    write_use(WAQF, [_row()], tmp_path)
+    registry = load_registry(tmp_path)
+    assert [r.surah_ayah for r in registry.qud[QUD_CORRECT_RECITATION]] == ["1:1", "2:1"]
+    assert registry.uses() == [WAQF]  # a QUD use is no Tadabur use
+    assert "QUD ayat" in describe(registry)
+
+
+def test_a_qud_use_is_validated_and_never_checked_for_tadabur_overlap(tmp_path):
+    with pytest.raises(ValueError):
+        write_qud_use(QUD_CORRECT_RECITATION, [_qud(sha="not-a-sha")], tmp_path)
+    with pytest.raises(ValueError):
+        write_qud_use("qud.something_else", [_qud()], tmp_path)
+    write_qud_use(QUD_CORRECT_RECITATION, [_qud()], tmp_path)
+    write_use(WAQF, [_row()], tmp_path)
+    with pytest.raises(ValueError, match="no Tadabur recording"):
+        check_disjoint(QUD_CORRECT_RECITATION, WAQF, registry=load_registry(tmp_path))

@@ -18,6 +18,12 @@ loader are in [`tools/tadabur/truth_sites.py`](../truth_sites.py).
 | `p35_fixtures.summary.json` | kept / dropped per bucket and verdict, sites per stratum, the decode fingerprint |
 | `ship_a_verified.jsonl` | Ship A's answered worklist sites (#61): every `new_audit` row of `../ship_a/worklist.jsonl` with the owner's verdict as `heard` (`python -m tadabur.ship_a_verified build`, #90); each site's frame, half and design weight are in `../ship_a/verified_design.jsonl` |
 
+QUD's sites (`source: qud`, #144) live apart, in
+[`../qud_eval/pilot/truth_sites/`](../qud_eval/README.md), gzipped: they sit on QUD ayat, not
+Tadabur clips, so `shard` is always `null`, `audio_sha256` is the SHA-256 of the ayah's MP3 as
+QUD publishes it, and the sample span indexes that MP3's 16 kHz decode. They are not in the
+truth baseline's run.
+
 The staging fields of every file come from the staged-clip registry,
 [`../staged_audio/clips.jsonl`](../staged_audio/README.md), which also carries each clip's
 canonical reciter id.
@@ -30,7 +36,7 @@ is not known yet is `null`. It is never guessed.
 | field | type | when | meaning |
 |---|---|---|---|
 | `site_id` | str | now | stable, unique id. Waqf sites use `waqf_boundary:<clip>#<boundary_index>` |
-| `source` | str | now | `p35_fixture`, `waqf_boundary`, `new_audit` or `synthetic_edit` |
+| `source` | str | now | `p35_fixture`, `waqf_boundary`, `new_audit`, `synthetic_edit`, or `qud` (a QUD ayah, #144) |
 | `assumes_competent_reciter` | bool | now | `true` when the human judged something else and the mark holds only if the recitation was correct (the weaker label) |
 | `audio_filename` | str | now | Tadabur `audio_filename` of the whole clip |
 | `shard` | int \| null | **#83** | full-config parquet shard (0–384) the clip is re-downloaded from |

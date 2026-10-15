@@ -251,9 +251,10 @@ def test_the_report_covers_the_inventory_and_every_log_reproduces_its_baseline()
 
 
 def test_the_report_carries_no_log_text():
-    """Positions, counts, causes, commits and docs only: no Arabic but a target pair's label."""
+    """Positions, counts, causes, commits and docs only: no Arabic but a pair's or a
+    substitution's label."""
     arabic = re.compile("[\u0600-\u06ff]")
-    pair = re.compile("[\u0600-\u06ff]↔[\u0600-\u06ff]")
+    pair = re.compile("[\u0600-\u06ff][↔→][\u0600-\u06ff∅]")
 
     def strings(value):
         if isinstance(value, dict):
@@ -288,3 +289,20 @@ def test_the_log_replay_reproduces_committed_baselines():
     # soft-pair forgiveness off shows 2:19:15's ح→ه (the committed report's per-word table)
     soft_off = next(s for s in SCORINGS if s.name == "soft_pair_forgiveness_off")
     assert replays["surah2_page4_strict_shaddah"][soft_off.engine_name].words["2:19:15"]["quality"] == "minor"
+
+
+@pytest.mark.skipif(LOG_REPLAY is None, reason="the Muraja log replay is not built here")
+def test_the_committed_report_word_rows_regenerate_byte_identically():
+    """The shared serialisation (``word_grades``, ``word_row``) still writes #151's committed rows
+    byte for byte, so later readers of the shared code leave its frozen output alone."""
+    from training.muraja_policy import MurajaText
+
+    logs = ["surah2_page4_strict_shaddah", "surah12_page236_ayah5_v2"]
+    entries = {e.log: e for e in d.load_inventory()}
+    directory = d.log_dir(MURAJA_COMMIT)
+    _, replays = d.replay_logs(LOG_REPLAY, {log: directory / f"{log}.log" for log in logs}, SCORINGS)
+    text = MurajaText(LOG_REPLAY.quran_db)
+    for log in logs:
+        rows = [d.word_row(g) for g in d.word_grades(entries[log], replays[log], SCORINGS, text) if g.flagged]
+        committed = [r for r in REPORT["words"] if r["log"] == log]
+        assert committed and json.dumps(rows, ensure_ascii=False) == json.dumps(committed, ensure_ascii=False)

@@ -37,7 +37,7 @@ func isSoftMismatch(_ a: Unicode.Scalar, _ b: Unicode.Scalar, softPairsEnabled: 
 
 /// The request protocol both binaries speak. The client (training/muraja_policy.py) refuses a
 /// binary that reports another, or none, and any scoring key the binary does not declare.
-let harnessProtocol = 2
+let harnessProtocol = 3
 
 /// One Muraja configuration to replay: a mode and the two allowance flags (nil keeps the mode's).
 struct Scoring: Decodable {

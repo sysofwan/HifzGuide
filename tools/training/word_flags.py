@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import unicodedata
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -93,6 +93,9 @@ class Flag:
     quality: str
     errors: tuple[str, ...]
     pairs: tuple[str, ...] = ()
+    #: Each consonant error behind a consonant cause, as ``(cause, substitution)``
+    #: (:func:`consonant_errors`).
+    consonants: tuple[tuple[str, str], ...] = ()
 
 
 def _pair(a: str, b: str) -> str:
@@ -176,6 +179,46 @@ def consonant_cause(error: dict, word: str) -> str | None:
     return None
 
 
+#: What a deletion's substitution shows as heard.
+DELETED = "∅"
+
+
+def substitution(error: dict) -> str:
+    """A consonant error as ``expected→heard`` (``ل→ء``), a deletion as ``expected→∅``."""
+    kind = error["kind"]
+    return f"{kind['expected']}→{kind.get('heard') or DELETED}"
+
+
+def consonant_errors(errors: Sequence[dict], word: str) -> tuple[tuple[str, str], ...]:
+    """Each consonant error of a kept grade (a mismatch or a deletion, in a word whose Muraja
+    reference phonemes are ``word``) as ``(cause, substitution)``."""
+    return tuple((cause, substitution(e)) for e in errors if (cause := consonant_cause(e, word)) is not None)
+
+
+def error_of(description: str) -> dict | None:
+    """A consonant error back from the form reports keep it in (:func:`log_description`);
+    ``None`` for a tashkeel error."""
+    group, _, rest = description.partition(":")
+    index = int(group.removeprefix("g"))
+    if rest.startswith("del:"):
+        return {"kind": {"type": "deletion", "expected": rest.removeprefix("del:")}, "group_index": index}
+    if "→" in rest:
+        expected, heard = rest.split("→")
+        return {"kind": {"type": "mismatch", "expected": expected, "heard": heard}, "group_index": index}
+    return None
+
+
+def substitution_tally(flags: Iterable[Sequence[tuple[str, str]]], by_expected: bool = False) -> list[dict]:
+    """How many flagged words carry each ``(cause, substitution)``, or with ``by_expected`` each
+    ``(cause, expected letter)``, from each word's :attr:`Flag.consonants`. A word counts once
+    per key, however often its grade records it; most words first."""
+    keys = (({(cause, label.split("→")[0] if by_expected else label) for cause, label in consonants})
+            for consonants in flags)
+    counts = Counter(key for word in keys for key in word)
+    return [{"cause": cause, "expected" if by_expected else "substitution": key, "words": n}
+            for (cause, key), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
 def log_description(error: dict) -> str:
     """An error as Muraja's ``WordError.logDescription`` writes it (``FollowAlongTypes.swift:286``)."""
     kind, group = error["kind"], error["group_index"]
@@ -190,12 +233,14 @@ def flag(grade: SiteGrade, word: str) -> Flag:
     """Why a flagged word is flagged (module docstring)."""
     tashkeel = [e for e in grade.errors if e["kind"]["type"] == "tashkeel"]
     pairs: set[str] = set()
+    consonants: tuple[tuple[str, str], ...] = ()
     if grade.quality == SKIPPED_QUALITY:
         causes = {SKIPPED}
     elif grade.quality == TASHKEEL_ERROR:
         causes = {TASHKEEL} if tashkeel else set()
     else:
-        causes = {c for e in grade.errors if (c := consonant_cause(e, word)) is not None}
+        consonants = consonant_errors(grade.errors, word)
+        causes = {cause for cause, _ in consonants}
         pairs = {pair for e in grade.errors if e["kind"]["type"] == "mismatch"
                  and (pair := _pair(e["kind"]["expected"], e["kind"]["heard"])) in TARGET_PAIRS}
     return Flag(
@@ -204,6 +249,7 @@ def flag(grade: SiteGrade, word: str) -> Flag:
         quality=grade.quality,
         errors=tuple(log_description(e) for e in grade.errors),
         pairs=tuple(sorted(pairs)),
+        consonants=consonants,
     )
 
 

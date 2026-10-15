@@ -1,0 +1,45 @@
+{
+ "exports": [
+  {"name": "muraja-bug-report 69.txt", "sha256": "7f7c65bce2da9618a53fb49e50cb4174b03e788ec9da10bc5d26813a03b81140"},
+  {"name": "muraja-bug-report 70.txt", "sha256": "a2d364d44a59aeed39c1eb9092db91cb09eba1a11bda7732cb8facb4aa5ea9f2"},
+  {"name": "muraja-bug-report 71.txt", "sha256": "f7114d24a284eb33808f8c775a7ae70b29a17176758d51919dfe9d610b1d9cd7"}
+ ],
+ "statements": [
+  {"id": "added-and-2:256", "date": "2026-10-14",
+   "text": "The added words were my mistake, 2:256 were also my mistake.",
+   "source": "the owner, relayed by the coordinator on #153"},
+  {"id": "committed-words", "date": "2026-10-15",
+   "text": "Verdicts on the non-correct words the phone's ScoreCollector committed: 2:61:30, 2:253:1 and 2:253:11 are model errors (tashkeel); 2:255:13 is a model error (\"the la heard a is common\"); \"2:60:11 was my mistake.\"",
+   "source": "the owner, relayed by the coordinator on #153 (paraphrased; the quotes are verbatim)"},
+  {"id": "last-three", "date": "2026-10-15",
+   "text": "2:19:9, 2:61:19, 2:255:42 are all model/algorithm error.",
+   "source": "the owner, relayed by the coordinator on #153"}
+ ],
+ "mistakes": [
+  {"session": "71#2", "ayah": "2:256", "statement": "added-and-2:256"},
+  {"session": "70#2", "word": "2:60:11", "statement": "committed-words"}
+ ],
+ "model_errors": [
+  {"session": "69#1", "word": "2:19:9", "statement": "last-three", "explained_by": "decode",
+   "evidence": "the decode heard zay, and later dal, for its jeem"},
+  {"session": "70#2", "word": "2:61:19", "statement": "last-three", "explained_by": "decode",
+   "evidence": "the decode heard seen for both halves of its doubled thaa"},
+  {"session": "70#2", "word": "2:61:30", "statement": "committed-words", "explained_by": "boundary",
+   "evidence": "committed as a tashkeel error from the decode (no tanween on its raa); a window then ended inside the word, the next preview decoded it without its yaa, and the ratchet took that minor grade as an upgrade (minor outranks tashkeelError, FollowAlongTypes.swift:377-383)"},
+  {"session": "71#2", "word": "2:253:1", "statement": "committed-words", "explained_by": "decode",
+   "evidence": "committed as a tashkeel error from the decode (a kasra on its lam, where the mushaf has sukun); a later preview decoded it correctly and its grade rose to correct"},
+  {"session": "71#2", "word": "2:253:11", "statement": "committed-words", "explained_by": "decode",
+   "evidence": "the decode put a damma on its raa, where the mushaf has fatha"},
+  {"session": "71#2", "word": "2:255:13", "statement": "committed-words", "explained_by": "decode",
+   "evidence": "the decode heard a hamza for its lam, the lam the preceding tanween merges into"},
+  {"session": "71#2", "word": "2:255:42", "statement": "last-three", "explained_by": "decode",
+   "evidence": "the decode wrote its doubled yaa as the long-vowel small yaa and, in the preview that set the grade, raa for its final haa; the three errors match that decode letter for letter, so it is not an alignment effect; a later window decoded the haa, and the kept grade is still the one that preview set"}
+ ],
+ "added": [
+  {"session": "69#1", "from": "2:20:4", "to": "2:20:4", "twin": "2:17", "statement": "added-and-2:256",
+   "source": "the decode holds 2:17's wording after 2:20:4, then 2:20:5 recited again"},
+  {"session": "71#2", "from": "2:253:21", "to": "2:253:22", "twin": "2:87", "statement": "added-and-2:256",
+   "source": "the decode holds 2:87's wording after 2:253:21, where the two ayat share their preceding words"}
+ ],
+ "explained": []
+}

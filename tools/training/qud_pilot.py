@@ -48,8 +48,8 @@ import bisect
 import gzip
 import json
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from tadabur.audio import TARGET_SAMPLE_RATE
@@ -58,7 +58,7 @@ from tadabur.qud_overlap import PILOT
 from tadabur.qud_selection import QUD_DIR, SELECTION_PATH
 from tadabur.qud_source import QUD_REVISION, QudRow, mushaf_metadata
 from tadabur.qud_text import ItemReference, Unmapped, item_reference, map_words
-from tadabur.truth_sites import HELD, PENDING, QUD, SHADDAH, TruthSite, write_truth_sites
+from tadabur.truth_sites import PENDING, QUD, SHADDAH, TruthSite, write_truth_sites
 from training.carrier_windowing import (
     APP_PROTOCOLS,
     MODELS,
@@ -312,15 +312,15 @@ def listening_estimate(rows: Sequence[dict]) -> dict:
 
 def merge_decodes(source: Path, slug: str, model: str, expected: int) -> dict:
     """One mushaf's per-shard decode files (``training.qud_decode``) as one gzipped file,
-    sorted by item, each item once; its identity record must be the one every shard ran
-    with."""
+    sorted by item, each item once (a resumed shard holds no torn record: the decoder cut it
+    off before resuming); its identity record must be the one every shard ran with."""
     lines: dict[str, str] = {}
     for path in sorted(source.glob(f"{slug}.*.{model}.jsonl")):
-        for raw in path.read_text(encoding="utf-8").splitlines():
+        for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             try:
                 lines.setdefault(json.loads(raw)["key"], raw)
-            except json.JSONDecodeError:
-                continue  # a line torn by a killed run, redone by its resume
+            except (json.JSONDecodeError, KeyError) as error:
+                raise ValueError(f"{path}:{number} is not a decode record") from error
     if len(lines) != expected:
         raise ValueError(f"{slug} {model}: {len(lines)} items decoded, {expected} expected")
     identity = json.loads((source / f"{slug}.{model}.identity.json").read_text(encoding="utf-8"))
@@ -345,10 +345,13 @@ def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str) -> dict:
     end = max(path.stat().st_mtime for path in decodes_dir.glob("*.jsonl"))
     samples = [line.split() for line in (logs_dir / "df.log").read_text(encoding="utf-8")
                .splitlines() if len(line.split()) == 3]
-    overlap_start = datetime.fromisoformat((logs_dir / "overlap_start").read_text(
-        encoding="utf-8").split()[0].replace("Z", "+00:00"))
-    overlap_end = datetime.fromisoformat((logs_dir / "overlap_end").read_text(
-        encoding="utf-8").strip().replace("Z", "+00:00"))
+    def stamps(name: str) -> list[datetime]:
+        return [datetime.fromisoformat(line.replace("Z", "+00:00"))
+                for line in (logs_dir / name).read_text(encoding="utf-8").split()]
+
+    # One start and one end per overlap-check run (a stopped run's end is its successor's
+    # start); the check's wall time is their sum.
+    overlap_runs = list(zip(stamps("overlap_start"), stamps("overlap_end"), strict=True))
     return {
         "gpu": gpu,
         "gpu_hours": round((end - start.timestamp()) / 3600, 2),
@@ -359,7 +362,9 @@ def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str) -> dict:
         "parallel_runs": "up to 6",
         "peak_disk_gb": round(max(int(s[2]) for s in samples) / 1e9, 2),
         "disk_sampled_from": samples[0][0],
-        "overlap_check_wall_hours": round((overlap_end - overlap_start).total_seconds() / 3600, 2),
+        "overlap_check_wall_hours": round(sum((end - start).total_seconds()
+                                              for start, end in overlap_runs) / 3600, 2),
+        "overlap_check_runs": len(overlap_runs),
         "committed_decodes_mb": round(sum(p.stat().st_size for p in DECODES_DIR.glob("*.gz"))
                                       / 1e6, 1),
     }
@@ -368,31 +373,46 @@ def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str) -> dict:
 # --- the app outcome ---------------------------------------------------------------------------
 
 
-def word_sites(item: PilotItem):
-    """Every ayah word the item recites, once (its first recital), as a sampled word whose
-    carrier is the word's first letter in the realized reference."""
+def placed_words(item: PilotItem, phoneme_word) -> list[tuple]:
+    """Every Muraja phoneme word the item recites, once, as ``(sampled word, site)``: the
+    canonical run's words carried to Muraja's numbering (``phoneme_word(surah, ayah, printed
+    word)``, ``word_map``), never re-inferred from the reference, so an item that starts
+    mid-ayah is graded on its own words. A sampled word's carrier is the first letter of the
+    first canonical word in that phoneme word."""
     from tadabur.word_sample import SampledWord
+    from training.muraja_policy import MurajaSite
 
-    seen, out = set(), []
+    surah, ayah = item.row.surah, item.row.ayah
+    out, seen = [], set()
     for position, word_index in enumerate(item.reference.word_indices):
-        if word_index in seen:
+        word = phoneme_word(surah, ayah, word_index + 1)
+        if word in seen:
             continue
-        seen.add(word_index)
-        out.append(SampledWord(
-            site_id=f"{item.key}:w{word_index}", audio_filename=item.audio_filename, shard=-1,
+        seen.add(word)
+        out.append((SampledWord(
+            site_id=f"{item.key}:w{word}", audio_filename=item.audio_filename, shard=-1,
             audio_sha256=item.mp3_sha256, reciter_id=cluster_of(item),
             surah_ayah=item.row.surah_ayah, segment_index=item.segment_index,
             start_sample=item.start_sample, end_sample=item.end_sample,
             reference=item.reference.reference, word_index=word_index,
             reference_index=item.reference.offsets[position], stratum=f"qud:{item.slug}",
-            stratum_population=1))
+            stratum_population=1), MurajaSite(surah, ayah, word, None)))
     return out
+
+
+def placement(item: PilotItem, placed: Sequence[tuple]):
+    """The item's session on Muraja's reference: its ayah, starting on its first word."""
+    from training.muraja_policy import Placement
+
+    return Placement(item.row.surah, item.row.ayah, placed[0][1].word,
+                     {word.site_id: site for word, site in placed})
 
 
 def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, dict]],
                 harness) -> dict:
     """Per model (its recorded checks) and scoring, every word's grade: words graded, flagged
     and the flags' causes (:mod:`training.word_flags`)."""
+    from training.device_logs import per_1000
     from training.muraja_policy import (
         NOT_GRADED,
         SCORINGS,
@@ -401,18 +421,19 @@ def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, d
         WORD_FLAGGED,
         Item,
         MurajaText,
-        grade_items,
+        grade_placed,
     )
-    from training.device_logs import per_1000
     from training.word_flags import CAUSES, SKIPPED, flag
 
     scorings = [SHIPPED_DEFAULT, next(s for s in SCORINGS if s.name == "allowances_off")]
-    words = {item.key: word_sites(item) for item in items}
-    requests = [Item(f"{model}#{item.key}", tuple(words[item.key]),
+    text = MurajaText(harness.quran_db)
+    placed = {item.key: placed_words(item, text.phoneme_word) for item in items}
+    requests = [Item(f"{model}#{item.key}", tuple(w for w, _ in placed[item.key]),
                      tuple(decodes[model][item.key][CHECKS]))
                 for model in MODELS for item in items]
-    graded = grade_items(requests, scorings, harness)
-    text = MurajaText(harness.quran_db)
+    placements = {f"{model}#{item.key}": placement(item, placed[item.key])
+                  for model in MODELS for item in items}
+    graded = grade_placed(requests, placements, scorings, harness)
     out: dict = {"muraja_build": graded.build, "scorings": [s.as_dict() for s in scorings]}
     for model in MODELS:
         out[model] = {}
@@ -423,20 +444,19 @@ def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, d
             by_mushaf: dict[str, Counter] = defaultdict(Counter)
             skipped_at: Counter = Counter()
             for item in items:
-                last = len(words[item.key]) - 1
-                for position, word in enumerate(words[item.key]):
+                last = len(placed[item.key]) - 1
+                for position, (word, site) in enumerate(placed[item.key]):
                     grade = graded.grades[scoring.name][(f"{model}#{item.key}", word.site_id)]
                     tally["words"] += 1
-                    by_mushaf[item.slug]["words"] += 1
                     if grade.outcome in (NOT_GRADED, UNPLACED):
                         tally[grade.outcome] += 1
                         continue
+                    by_mushaf[item.slug]["graded"] += 1
                     if grade.outcome not in WORD_FLAGGED:
                         continue
                     tally["flagged"] += 1
                     by_mushaf[item.slug]["flagged"] += 1
-                    where = text.locate(word)
-                    reason = flag(grade, text.word_phonemes(where))
+                    reason = flag(grade, text.word_phonemes(site))
                     causes.update(reason.causes)
                     marks.update(set(reason.marks))
                     if SKIPPED in reason.causes:
@@ -450,21 +470,30 @@ def app_outcome(items: Sequence[PilotItem], decodes: Mapping[str, Mapping[str, d
                 "causes": {c: causes[c] for c in CAUSES},
                 "tashkeel_marks": dict(sorted(marks.items())),
                 "skipped_where": dict(sorted(skipped_at.items())),
-                "per_mushaf": {s: {**dict(c), "per_1000": round(per_1000(c["flagged"] / c["words"]), 2)}
+                "per_mushaf": {s: {**dict(c), "per_1000": round(per_1000(c["flagged"] / c["graded"]), 2)}
                                for s, c in sorted(by_mushaf.items())},
             }
     return out
 
 
 def device_log_rates() -> dict:
-    """Muraja's own device sessions' false flags per 1,000 graded words (``training.device_logs``,
-    every graded word), per model group and scoring."""
-    from training.device_logs import REPORT_PATH as DEVICE_REPORT
+    """Muraja's own device sessions' false flags per 1,000 words (``training.device_logs``, #151),
+    the teacher's sessions over all protocol eras and its 1 s-hop sessions alone, per scoring:
+    with the explained words (skipped, re-read, never recited) left out of flags and words, the
+    comparison #151 makes, and every graded word as a separate diagnostic."""
+    from training.device_logs import (
+        ALL_WORDS,
+        REPORT_PATH as DEVICE_REPORT,
+        TEACHER,
+        TEACHER_ONE_SECOND,
+        UNEXPLAINED,
+    )
 
     groups = json.loads(DEVICE_REPORT.read_text(encoding="utf-8"))["groups"]
-    return {group: {scoring: views[scoring]["all"]["false_flags"]
+    return {group: {scoring: {view: groups[group][scoring][view]["false_flags"]
+                              for view in (UNEXPLAINED, ALL_WORDS)}
                     for scoring in ("shipped_default", "allowances_off")}
-            for group, views in groups.items()}
+            for group in (TEACHER, TEACHER_ONE_SECOND)}
 
 
 def tadabur_word_sample() -> dict:
@@ -519,14 +548,17 @@ def load_pilot() -> Pilot:
     return Pilot(items, decodes, left_out)
 
 
-def qud_exposures(items: Iterable[PilotItem]) -> list:
-    """The pilot's ayah clips as the exposure use :data:`tadabur.exposure.QUD_CORRECT_RECITATION`."""
+def qud_exposures(decodes: Mapping[str, Mapping[str, dict]]) -> list:
+    """Every decoded QUD recording (one ayah clip, whether or not it yielded an item) as the
+    exposure use :data:`tadabur.exposure.QUD_CORRECT_RECITATION`, with the revision it was read
+    at and its MP3's checksum."""
     from tadabur.exposure import QudExposure
 
     selection = json.loads(SELECTION_PATH.read_text(encoding="utf-8"))
     reciter = {m["slug"]: m["reciter_id"] for m in selection["mushafs"]}
-    return sorted({QudExposure(QUD_REVISION, i.slug, i.row.surah_ayah, i.mp3_sha256,
-                               reciter[i.slug]) for i in items})
+    return sorted({QudExposure(QUD_REVISION, slug, line["surah_ayah"], line["mp3_sha256"],
+                               reciter[slug])
+                   for slug in PILOT for line in decodes[slug].values()})
 
 
 def build(workers: int) -> dict:
@@ -546,7 +578,8 @@ def build(workers: int) -> dict:
     work = worklist(rows, by_place)
     write_text_atomically(WORKLIST_PATH, "".join(
         json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in work))
-    write_qud_use(QUD_CORRECT_RECITATION, qud_exposures(pilot.items))
+    write_qud_use(QUD_CORRECT_RECITATION, qud_exposures(
+        {slug: read_decodes(slug, "base") for slug in PILOT}))
     carriers = {carrier_key(r): r for r in rows}
     return {
         "issue": 144,

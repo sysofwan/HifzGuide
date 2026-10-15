@@ -5,6 +5,8 @@ Torch-free and model-free: the item, its reference and every decode are syntheti
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from tadabur.qud_source import QudRow
@@ -95,17 +97,50 @@ def test_the_listening_estimate_caps_each_stratum_at_the_budget():
     assert estimate["k20_minutes"] == pytest.approx((20 * 12 + 4 * 6) / 60, abs=0.05)
 
 
-def test_every_recited_ayah_word_is_graded_once():
+def test_every_recited_ayah_word_is_graded_once_on_its_own_muraja_word():
     item = _item()
-    words = qp.word_sites(item)
-    assert [(w.word_index, w.reference_index) for w in words] == [(0, 0), (1, 6)]
+    placed = qp.placed_words(item, lambda surah, ayah, word: word)
+    assert [(w.word_index, w.reference_index, site.word) for w, site in placed] == \
+        [(0, 0, 1), (1, 6, 2)]
+    # Two printed words recited as one phoneme word are graded once.
+    merged = qp.placed_words(item, lambda surah, ayah, word: 1)
+    assert [site.word for _, site in merged] == [1]
+
+
+QURAN_DB = Path(__file__).parent.parent.parent / "data" / "quran.db"
+
+
+@pytest.mark.skipif(not QURAN_DB.exists(), reason="data/quran.db is not built here")
+@pytest.mark.parametrize("key", [
+    "qud_abdul_hamid_ghraio_2026_yt_002_061.mp3#2",  # words 31-36, which the reference alone
+    "qud_anas_almiman_yt_004_171.mp3#1",              # placed from word 1 (Sol, #149)
+    "qud_anas_almiman_yt_005_003.mp3#2",
+])
+def test_a_mid_ayah_item_starts_on_its_own_first_word(key):
+    from training.muraja_policy import MurajaText
+
+    slug = key.removeprefix("qud_").rsplit("_", 2)[0]
+    line = qp.read_decodes(slug, "base")[key]
+    word_from, word_to = line["segment"][:2]
+    surah, ayah = map(int, line["surah_ayah"].split(":"))
+    row = QudRow(slug, surah, ayah, 0, "", (tuple(line["segment"]),), (), "u", 0)
+    words = tuple(range(word_from - 1, word_to))
+    item = qp.PilotItem(key, slug, row, 0, line["start_sample"], line["end_sample"], "e" * 64,
+                        ItemReference(tuple("w" for _ in words), words, "x" * len(words),
+                                      tuple(range(len(words) + 1))))
+    text = MurajaText(QURAN_DB)
+    placed = qp.placed_words(item, text.phoneme_word)
+    placement = qp.placement(item, placed)
+    expected = sorted({text.phoneme_word(surah, ayah, w + 1) for w in words})
+    assert placement.start_word == text.phoneme_word(surah, ayah, word_from) > 1
+    assert sorted(site.word for site in placement.where.values()) == expected
 
 
 def test_merge_takes_each_item_once_and_refuses_a_missing_item(tmp_path, monkeypatch):
     monkeypatch.setattr(qp, "DECODES_DIR", tmp_path / "out")
     for shard, keys in ((0, ["b", "a"]), (1, ["c", "a"])):
         lines = [f'{{"key": "{k}", "spans": "{shard}"}}' for k in keys]
-        (tmp_path / f"{SLUG}.{shard}.base.jsonl").write_text("\n".join(lines) + "\n{torn")
+        (tmp_path / f"{SLUG}.{shard}.base.jsonl").write_text("\n".join(lines) + "\n")
     (tmp_path / f"{SLUG}.base.identity.json").write_text('{"model": "base"}')
     assert qp.merge_decodes(tmp_path, SLUG, "base", 3) == {"model": "base"}
     merged = qp.read_decodes(SLUG, "base")
@@ -121,3 +156,10 @@ def test_a_re_read_word_is_timed_by_its_recital_inside_the_item():
                         ItemReference(("a", "b"), (0, 1), REFERENCE, OFFSETS))
     pad = round(0.3 * 16000)
     assert qp.excerpt(item, 6) == (2100 * 16 - pad, 3900 * 16 + pad)
+
+
+def test_every_decoded_recording_is_registered_once():
+    line = {"surah_ayah": "1:1", "mp3_sha256": "e" * 64}
+    rows = qp.qud_exposures({SLUG: {"a#0": line, "a#1": line}, qp.PILOT[1]: {}})
+    assert [(r.slug, r.surah_ayah, r.mp3_sha256) for r in rows] == [(SLUG, "1:1", "e" * 64)]
+    assert rows[0].qud_revision == qp.QUD_REVISION

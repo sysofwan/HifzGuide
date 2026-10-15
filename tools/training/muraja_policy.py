@@ -430,6 +430,16 @@ class MurajaText:
         ).fetchone()
         return row[0] if row and row[0] is not None else word
 
+    def phoneme_word(self, surah: int, ayah: int, text_word: int) -> int:
+        """The phoneme word a printed word (1-based) is recited in (``word_map``)."""
+        row = self._db.execute(
+            "SELECT phoneme_word FROM word_map WHERE surah=? AND ayah=? AND text_word=?",
+            (surah, ayah, text_word),
+        ).fetchone()
+        if row is None:
+            raise KeyError(f"{surah}:{ayah} has no printed word {text_word}")
+        return row[0]
+
     def word_groups(self, surah: int, ayah: int, word: int) -> list[tuple[int, int]]:
         """A phoneme word's groups as code-point spans of the ayah's phonemes, through the first
         printed word the phoneme word is drawn on."""
@@ -636,20 +646,44 @@ def engine_runs(scorings: Sequence[Scoring]) -> list[dict]:
     ]
 
 
-def build_request(item: Item, text: MurajaText, scorings: Sequence[Scoring]) -> tuple[dict, dict]:
-    """The harness request for an item (one engine run per distinct engine configuration), and
-    where each of its sites sits on Muraja's reference."""
-    where = {site.site_id: text.locate(site) for site in item.sites}
+@dataclass(frozen=True)
+class Placement:
+    """Where an item's session runs on Muraja's reference: its ayah, the phoneme word the
+    session starts on, and where each of its sites sits (``None`` when unplaced)."""
+
+    surah: int
+    ayah: int
+    start_word: int
+    where: dict[str, MurajaSite | None]
+
+
+def place(item: Item, text: MurajaText) -> Placement:
+    """The item placed from its sites' realized references (:meth:`MurajaText.locate`,
+    :meth:`MurajaText.start_word`)."""
     surah, ayah = _ayah(item.sites[0])
+    return Placement(surah, ayah, text.start_word(item.sites[0]),
+                     {site.site_id: text.locate(site) for site in item.sites})
+
+
+def request(item: Item, placement: Placement, scorings: Sequence[Scoring]) -> dict:
+    """The harness request for a placed item (one engine run per distinct engine
+    configuration)."""
     return {
         "item": item.key,
-        "surah": surah,
-        "ayah": ayah,
-        "start_word": text.start_word(item.sites[0]),
-        "report_words": sorted({w.word for w in where.values() if w is not None}),
+        "surah": placement.surah,
+        "ayah": placement.ayah,
+        "start_word": placement.start_word,
+        "report_words": sorted({w.word for w in placement.where.values() if w is not None}),
         "checks": list(item.checks),
         "scorings": engine_runs(scorings),
-    }, where
+    }
+
+
+def build_request(item: Item, text: MurajaText, scorings: Sequence[Scoring]) -> tuple[dict, dict]:
+    """The harness request for an item placed by :func:`place`, and where each of its sites
+    sits on Muraja's reference."""
+    placement = place(item, text)
+    return request(item, placement, scorings), placement.where
 
 
 @dataclass(frozen=True)
@@ -687,11 +721,17 @@ def read_results(
 
 
 def grade_items(items: Sequence[Item], scorings: Sequence[Scoring], harness: Harness) -> AppOutcomes:
-    """Replay every item under every scoring through the harness."""
+    """Replay every item under every scoring through the harness, placed by :func:`place`."""
     text = MurajaText(harness.quran_db)
-    requests, where = [], {}
-    for item in items:
-        req, where[item.key] = build_request(item, text, scorings)
-        requests.append(req)
-    build, results = harness.run(requests)
+    return grade_placed(items, {item.key: place(item, text) for item in items}, scorings, harness)
+
+
+def grade_placed(
+    items: Sequence[Item], placements: Mapping[str, Placement], scorings: Sequence[Scoring],
+    harness: Harness,
+) -> AppOutcomes:
+    """Replay every item under every scoring through the harness, at the placement the caller
+    knows (``placements`` by item key)."""
+    build, results = harness.run([request(item, placements[item.key], scorings) for item in items])
+    where = {key: placement.where for key, placement in placements.items()}
     return read_results(items, where, results, scorings, build)

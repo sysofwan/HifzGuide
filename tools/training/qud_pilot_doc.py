@@ -56,7 +56,7 @@ def _overlap() -> list[str]:
         f"and {agg['control_non_overlaps_flagged']} of {agg['control_non_overlaps']} others.",
         "",
         "| mushaf | ayat compared (stage 1) | pairs timed | ids flagged by the per-reciter "
-        "test | stage 2 pairs | fingerprinted | sealed, not read | matches | lowest BER |",
+        "test | stage 2 pairs | fingerprinted | sealed, not read | matches detected | lowest BER |",
         "|---|---|---|---|---|---|---|---|---|",
     ]
     for slug in PILOT:
@@ -64,16 +64,33 @@ def _overlap() -> list[str]:
         out.append(f"| `{slug}` | {s['ayat_compared']} of {s['ayat']} | {s['pairs']} | "
                    f"{len(s['flagged_reciters'])} | {r['pairs']} | {r['fingerprinted']} | "
                    f"{r['sealed_not_compared']} | {len(r['matches'])} | {r['lowest_ber']} |")
+    neanea = [c for c in json.loads(RULES_PATH.read_text(encoding="utf-8"))["scores"]
+              ["cross_aligner"] if c["tadabur_reciter"] == 18 and c["slug"] == "ahmed_nuayna_qdc"]
+    timed = [c for c in neanea if c["timing_distance"] is not None]
     zone = {slug: results["tadabur"][slug]["between_line_and_hard_negatives"] for slug in PILOT}
     out += [
         "",
-        "Stage 2 fingerprinted every pair within the timing line and every pair of the pilot "
-        "reciter's named Tadabur id (Almiman: 93), one read of all 385 Tadabur shards. Pairs "
+        "Stage 2 fingerprinted every pair within the timing line and every row of the pilot "
+        "reciter's named Tadabur id (Almiman: 93) with a pilot ayah, timed or not (" + "; ".join(
+            f"`{slug}` {results['tadabur'][slug]['named_pairs']} named-id pairs, "
+            f"{results['tadabur'][slug]['named_pairs_untimed']} of them untimed"
+            for slug in PILOT if results["tadabur"][slug]["named_ids"]) + "). Pairs "
         "between the fingerprint line and the lowest hard negative: " + "; ".join(
             f"`{slug}` {len(z)} (BER {min(x['ber'] for x in z):.3f} to "
             f"{max(x['ber'] for x in z):.3f})" if z else f"`{slug}` none"
             for slug, z in zone.items()) + ", every one far above the line and above every "
         "control positive.",
+        "",
+        "**What zero matches means: no overlap detected under this screen, not proven "
+        "absence.** The controls show the fingerprint can miss a copy of one recording. Tadabur "
+        f"reciter 18's {len(neanea)} clips against QUD's `ahmed_nuayna_qdc` (the same reciter) "
+        f"match the fingerprint line {sum(c['ber'] <= fp['line'] for c in neanea)} time "
+        f"(BER {min(c['ber'] for c in neanea):.3f} to {max(c['ber'] for c in neanea):.4f}), "
+        f"although their word timing passes the timing line at "
+        f"{sum(c['timing_distance'] <= timing['line'] for c in timed)} of the {len(timed)} timed "
+        "ayat: the signature of one recording re-processed past what the fingerprint survives. "
+        "A pilot recording held in Tadabur only in such a copy would be missed. The line was "
+        "fixed before screening and is not retuned.",
         "",
         "**Muaalem**: the first row group of each of the 27 moshafs (the opening of al-Fatiha "
         "and al-Baqarah), each pilot ayah slid along the segments that cover it. Closest BER "
@@ -158,23 +175,39 @@ def _app(report: dict) -> list[str]:
     app, sample, device = report["app"], report["tadabur_word_sample"], report["device_logs"]
     out = ["## The app outcome on presumably correct professional recitation", "",
            "Every word of every item, graded by Muraja's engine on the item's recorded check "
-           "sequence (`checks`), per model. The recitation is presumed correct, so a flagged "
-           "word is a presumed false flag. Beside it, per 1,000 words: the Tadabur word "
-           "sample's false flags (155 correctly recited words, one per held-out reciter, "
-           "weighted; `truth_baseline/report.json`) and Muraja's own device sessions "
-           "(`device_logs/report.json`, every graded word; no included session ran `h448`).", "",
+           "sequence (`checks`), per model; each session starts on the item's first canonical "
+           "word and every word is looked up by its own place in the ayah. The recitation is "
+           "presumed correct, so a flagged word is a presumed false flag. Beside it, per 1,000 "
+           "words: the Tadabur word sample's false flags (155 correctly recited words, one per "
+           "held-out reciter, weighted; `truth_baseline/report.json`) and the teacher's own "
+           "device sessions (#151, `device_logs/report.json`), with the words their docs explain "
+           "(skipped, re-read, never recited) left out, over all protocol eras and on the 1 s "
+           "hop alone. No included device session ran `h448`.", "",
            "| model | scoring | QUD words graded | QUD flagged | QUD per 1,000 | Tadabur sample "
-           "per 1,000 [interval] (flags) | device sessions per 1,000 (flags of words) |",
-           "|---|---|---|---|---|---|---|"]
-    for model, group in (("base", "teacher"), ("h448", "h448")):
+           "per 1,000 [interval] (flags) | device, all eras, per 1,000 (flags of words) | "
+           "device, 1 s hop, per 1,000 (flags of words) |",
+           "|---|---|---|---|---|---|---|---|"]
+
+    def device_cell(model: str, group: str, scoring: str) -> str:
+        if model != "base":
+            return "–"
+        d = device[group][scoring]["unexplained"]
+        return f"{_per_1000(d['per_1000'])} ({d['flags']} of {d['words']})"
+
+    for model in ("base", "h448"):
         for scoring in ("shipped_default", "allowances_off"):
-            q, t, d = app[model][scoring], sample[model][scoring], device[group][scoring]
+            q, t = app[model][scoring], sample[model][scoring]
             out.append(
                 f"| {model} | {scoring} | {q['graded']} | {q.get('flagged', 0)} | "
                 f"{_per_1000(q['per_1000'])} | {_per_1000(1000 * t['rate'])} "
                 f"[{_per_1000(1000 * t['interval'][0])}, {_per_1000(1000 * t['interval'][1])}] "
-                f"({t['false_flags']} of {t['correct_words']}) | {_per_1000(d['per_1000'])} "
-                f"({d['flags']} of {d['words']}) |")
+                f"({t['false_flags']} of {t['correct_words']}) | "
+                f"{device_cell(model, 'teacher', scoring)} | "
+                f"{device_cell(model, 'teacher, 1 s hop', scoring)} |")
+    out += ["", "Diagnostic: the device sessions with every graded word, explained ones "
+            "included, per 1,000: " + "; ".join(
+                f"{group} {scoring} {_per_1000(device[group][scoring]['all']['per_1000'])}"
+                for group in device for scoring in ("shipped_default", "allowances_off")) + "."]
     out += ["", "Causes of the QUD flags (a word may carry several; `training.word_flags`):", "",
             "| model | scoring | " + " | ".join(app["base"]["shipped_default"]["causes"]) + " |",
             "|---|---|" + "---|" * len(app["base"]["shipped_default"]["causes"])]
@@ -226,8 +259,9 @@ def _compute(report: dict) -> list[str]:
             f"from {c['disk_sampled_from']} (the shards being read, each deleted once read, the "
             "decodes, and the overlap check's Tadabur shards); no audio was kept.",
             f"- The overlap check's stage 2 read every Tadabur shard once (each deleted once "
-            f"read), CPU only, in {c['overlap_check_wall_hours']} h of wall time beside the "
-            "decoding.",
+            f"read), CPU only, in {c['overlap_check_wall_hours']} h of wall time over "
+            f"{c['overlap_check_runs']} runs (each resumed where the last stopped), the first "
+            "beside the decoding.",
             f"- Committed decodes: {c['committed_decodes_mb']} MB gzipped.", ""]
 
 

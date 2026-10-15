@@ -3,33 +3,33 @@
   "base": {
    "allowances_off": {
     "causes": {
-     "other_consonant": 168,
+     "other_consonant": 167,
      "shaddah": 16,
-     "skipped": 25,
+     "skipped": 18,
      "soft_pair": 12,
      "target_pair": 69,
      "tashkeel": 130,
-     "unrecorded": 8
+     "unrecorded": 7
     },
-    "flagged": 418,
-    "graded": 152480,
-    "not_graded": 1503,
-    "per_1000": 2.74,
+    "flagged": 409,
+    "graded": 152728,
+    "not_graded": 1243,
+    "per_1000": 2.68,
     "per_mushaf": {
      "abdul_hamid_ghraio_2026_yt": {
-      "flagged": 188,
-      "per_1000": 2.45,
-      "words": 76624
+      "flagged": 187,
+      "graded": 75867,
+      "per_1000": 2.46
      },
      "anas_almiman_yt": {
-      "flagged": 230,
-      "per_1000": 2.97,
-      "words": 77359
+      "flagged": 222,
+      "graded": 76861,
+      "per_1000": 2.89
      }
     },
     "skipped_where": {
-     "first word": 5,
-     "inside": 20
+     "first word": 4,
+     "inside": 14
     },
     "tashkeel_marks": {
      "damma dropped": 34,
@@ -38,37 +38,37 @@
      "kasra dropped": 21,
      "sukun other": 34
     },
-    "words": 153983
+    "words": 153971
    },
    "shipped_default": {
     "causes": {
-     "other_consonant": 167,
+     "other_consonant": 166,
      "shaddah": 11,
-     "skipped": 24,
+     "skipped": 17,
      "soft_pair": 0,
      "target_pair": 69,
      "tashkeel": 130,
-     "unrecorded": 3
+     "unrecorded": 2
     },
-    "flagged": 394,
-    "graded": 152481,
-    "not_graded": 1502,
-    "per_1000": 2.58,
+    "flagged": 385,
+    "graded": 152729,
+    "not_graded": 1242,
+    "per_1000": 2.52,
     "per_mushaf": {
      "abdul_hamid_ghraio_2026_yt": {
-      "flagged": 173,
-      "per_1000": 2.26,
-      "words": 76624
+      "flagged": 172,
+      "graded": 75867,
+      "per_1000": 2.27
      },
      "anas_almiman_yt": {
-      "flagged": 221,
-      "per_1000": 2.86,
-      "words": 77359
+      "flagged": 213,
+      "graded": 76862,
+      "per_1000": 2.77
      }
     },
     "skipped_where": {
-     "first word": 5,
-     "inside": 19
+     "first word": 4,
+     "inside": 13
     },
     "tashkeel_marks": {
      "damma dropped": 34,
@@ -77,7 +77,7 @@
      "kasra dropped": 21,
      "sukun other": 34
     },
-    "words": 153983
+    "words": 153971
    }
   },
   "h448": {
@@ -85,31 +85,31 @@
     "causes": {
      "other_consonant": 394,
      "shaddah": 12,
-     "skipped": 31,
+     "skipped": 24,
      "soft_pair": 19,
      "target_pair": 77,
      "tashkeel": 163,
      "unrecorded": 9
     },
-    "flagged": 697,
-    "graded": 152450,
-    "not_graded": 1533,
-    "per_1000": 4.57,
+    "flagged": 690,
+    "graded": 152713,
+    "not_graded": 1258,
+    "per_1000": 4.52,
     "per_mushaf": {
      "abdul_hamid_ghraio_2026_yt": {
       "flagged": 352,
-      "per_1000": 4.59,
-      "words": 76624
+      "graded": 75852,
+      "per_1000": 4.64
      },
      "anas_almiman_yt": {
-      "flagged": 345,
-      "per_1000": 4.46,
-      "words": 77359
+      "flagged": 338,
+      "graded": 76861,
+      "per_1000": 4.4
      }
     },
     "skipped_where": {
-     "first word": 4,
-     "inside": 27
+     "first word": 3,
+     "inside": 21
     },
     "tashkeel_marks": {
      "damma dropped": 24,
@@ -119,37 +119,37 @@
      "kasra other": 2,
      "sukun other": 77
     },
-    "words": 153983
+    "words": 153971
    },
    "shipped_default": {
     "causes": {
      "other_consonant": 389,
      "shaddah": 9,
-     "skipped": 30,
+     "skipped": 23,
      "soft_pair": 0,
      "target_pair": 77,
      "tashkeel": 165,
      "unrecorded": 5
     },
-    "flagged": 667,
-    "graded": 152452,
-    "not_graded": 1531,
-    "per_1000": 4.38,
+    "flagged": 660,
+    "graded": 152715,
+    "not_graded": 1256,
+    "per_1000": 4.32,
     "per_mushaf": {
      "abdul_hamid_ghraio_2026_yt": {
       "flagged": 336,
-      "per_1000": 4.39,
-      "words": 76624
+      "graded": 75853,
+      "per_1000": 4.43
      },
      "anas_almiman_yt": {
-      "flagged": 331,
-      "per_1000": 4.28,
-      "words": 77359
+      "flagged": 324,
+      "graded": 76862,
+      "per_1000": 4.22
      }
     },
     "skipped_where": {
-     "first word": 4,
-     "inside": 26
+     "first word": 3,
+     "inside": 20
     },
     "tashkeel_marks": {
      "damma dropped": 24,
@@ -159,7 +159,7 @@
      "kasra other": 2,
      "sukun other": 77
     },
-    "words": 153983
+    "words": 153971
    }
   },
   "muraja_build": {
@@ -218,64 +218,88 @@
   "shard_runs_completed": 11
  },
  "device_logs": {
-  "h448": {
-   "allowances_off": {
-    "flags": 0,
-    "logs": 0,
-    "lower": null,
-    "method": "none",
-    "per_1000": null,
-    "upper": null,
-    "words": 0
-   },
-   "shipped_default": {
-    "flags": 0,
-    "logs": 0,
-    "lower": null,
-    "method": "none",
-    "per_1000": null,
-    "upper": null,
-    "words": 0
-   }
-  },
   "teacher": {
    "allowances_off": {
-    "flags": 261,
-    "logs": 47,
-    "lower": 57.979000862711544,
-    "method": "bootstrap",
-    "per_1000": 115.02864698104892,
-    "upper": 190.22172302375972,
-    "words": 2269
+    "all": {
+     "flags": 261,
+     "logs": 47,
+     "lower": 57.979000862711544,
+     "method": "bootstrap",
+     "per_1000": 115.02864698104892,
+     "upper": 190.22172302375972,
+     "words": 2269
+    },
+    "unexplained": {
+     "flags": 45,
+     "logs": 47,
+     "lower": 14.23649439822487,
+     "method": "bootstrap",
+     "per_1000": 22.037218413320275,
+     "upper": 33.98412978547062,
+     "words": 2042
+    }
    },
    "shipped_default": {
-    "flags": 251,
-    "logs": 47,
-    "lower": 53.51894943227113,
-    "method": "bootstrap",
-    "per_1000": 110.6214191273689,
-    "upper": 185.34345746987418,
-    "words": 2269
+    "all": {
+     "flags": 251,
+     "logs": 47,
+     "lower": 53.51894943227113,
+     "method": "bootstrap",
+     "per_1000": 110.6214191273689,
+     "upper": 185.34345746987418,
+     "words": 2269
+    },
+    "unexplained": {
+     "flags": 35,
+     "logs": 47,
+     "lower": 10.028464388911056,
+     "method": "bootstrap",
+     "per_1000": 17.140058765915768,
+     "upper": 28.12510988045007,
+     "words": 2042
+    }
    }
   },
   "teacher, 1 s hop": {
    "allowances_off": {
-    "flags": 83,
-    "logs": 23,
-    "lower": 17.148986311255438,
-    "method": "bootstrap",
-    "per_1000": 53.6869340232859,
-    "upper": 104.16785307517084,
-    "words": 1546
+    "all": {
+     "flags": 83,
+     "logs": 23,
+     "lower": 17.148986311255438,
+     "method": "bootstrap",
+     "per_1000": 53.6869340232859,
+     "upper": 104.16785307517084,
+     "words": 1546
+    },
+    "unexplained": {
+     "flags": 24,
+     "logs": 23,
+     "lower": 10.291595197255575,
+     "method": "bootstrap",
+     "per_1000": 16.161616161616163,
+     "upper": 25.24367295734699,
+     "words": 1485
+    }
    },
    "shipped_default": {
-    "flags": 74,
-    "logs": 23,
-    "lower": 11.656435383344599,
-    "method": "bootstrap",
-    "per_1000": 47.86545924967658,
-    "upper": 95.92792585153838,
-    "words": 1546
+    "all": {
+     "flags": 74,
+     "logs": 23,
+     "lower": 11.656435383344599,
+     "method": "bootstrap",
+     "per_1000": 47.86545924967658,
+     "upper": 95.92792585153838,
+     "words": 1546
+    },
+    "unexplained": {
+     "flags": 15,
+     "logs": 23,
+     "lower": 5.794343107606324,
+     "method": "bootstrap",
+     "per_1000": 10.101010101010102,
+     "upper": 16.411571027009266,
+     "words": 1485
+    }
    }
   }
  },

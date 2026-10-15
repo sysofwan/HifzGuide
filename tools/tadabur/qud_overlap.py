@@ -59,6 +59,14 @@ whatever its timing: one read of every Tadabur shard holding such a pair. The fi
 leaves a zone between its line and the hard negatives (a re-processed copy of one recording
 can land there); a pilot pair in it is listed, never silently passed.
 
+**What a pass means.** Zero matches is "no overlap **detected** under this screen", not
+proven absence. The controls show the fingerprint can miss a copy of one recording: Tadabur
+reciter 18's 12 clips against QUD's ``ahmed_nuayna_qdc`` (the same reciter) match the line once
+(BER 0.212) and range up to 0.4365, although their word timing passes the line at 7 of the 9
+timed ayat, the signature of one recording re-processed (re-mastered, denoised or re-encoded)
+past what the fingerprint survives. A copy processed like that would score as two recordings
+here. The line is not retuned for it: it was fixed from the controls before screening.
+
 Usage (from ``tools/``)::
 
   python -m tadabur.qud_overlap controls                     # write and commit first
@@ -477,10 +485,23 @@ def screen_mushaf(rows: Sequence[QudRow], by_ayah: Mapping[str, list[dict]],
 
 def stage_two_pairs(rows: Sequence[QudRow], by_ayah: Mapping[str, list[dict]], line: float,
                     named: Sequence[int]) -> list[dict]:
-    """The pairs stage 2 fingerprints: every pair within the timing line (the line every
-    control positive passes), and every pair of a ``named`` Tadabur id whatever its timing."""
-    return [p for p in timed_pairs(rows, by_ayah)
-            if p["distance"] <= line or p["reciter_id"] in named]
+    """The pairs stage 2 fingerprints: every timed pair within the timing line (the line every
+    control positive passed), and every Tadabur row of a ``named`` id with the same ayah as a
+    pilot ayah, whether or not the ayah could be timed (too short, re-read, or a word count
+    the two alignments disagree on): its ``distance`` is then ``None``."""
+    within = [p for p in timed_pairs(rows, by_ayah) if p["distance"] <= line]
+    taken = {(p["shard"], p["row_index"], p["surah_ayah"]) for p in within}
+    timed = {(p["shard"], p["row_index"], p["surah_ayah"]): p["distance"]
+             for p in timed_pairs(rows, by_ayah) if p["reciter_id"] in named}
+    named_pairs = [
+        {"surah_ayah": row.surah_ayah,
+         "distance": timed.get((other["shard"], other["row_index"], row.surah_ayah)),
+         **{k: other[k] for k in ("audio_filename", "shard", "row_index", "reciter_id")}}
+        for row in rows for other in by_ayah.get(row.surah_ayah, [])
+        if other["reciter_id"] in named
+        and (other["shard"], other["row_index"], row.surah_ayah) not in taken
+    ]
+    return within + named_pairs
 
 
 # --- stage 2 and Muaalem: fingerprints ---------------------------------------------------------
@@ -541,10 +562,20 @@ def fingerprint_shard(shard: int, wanted: Mapping[int, list[tuple[str, str]]],
     return out
 
 
+def lacking_pairs(wanted: Mapping[int, Sequence[tuple[str, str]]], kept: Sequence[Mapping]
+                  ) -> dict[int, list[tuple[str, str]]]:
+    """One shard's wanted ``row_index -> [(slug, surah_ayah)]`` less what its kept results
+    already hold."""
+    covered = {(r["row_index"], r["slug"], r["surah_ayah"]) for r in kept}
+    lacking = {row: [w for w in pairs if (row, *w) not in covered] for row, pairs in wanted.items()}
+    return {row: pairs for row, pairs in lacking.items() if pairs}
+
+
 def run_stage_two(pairs: Mapping[str, Sequence[Mapping]], prints: dict, cache_dir: Path,
                   workers: int, done_dir: Path) -> list[dict]:
-    """Every shard holding a stage-2 pair, read once, ``workers`` at a time. Each shard's
-    results are kept in ``done_dir``, so a stopped run resumes at the shards it lacks."""
+    """Every shard holding a stage-2 pair, ``workers`` at a time. Each shard's results are
+    kept in ``done_dir``; a shard is read again only for the pairs its kept results lack, so a
+    stopped run resumes and a widened pair set reads only what is new."""
     from concurrent.futures import ProcessPoolExecutor
 
     by_shard: dict[int, dict[int, list[tuple[str, str]]]] = defaultdict(lambda: defaultdict(list))
@@ -553,25 +584,35 @@ def run_stage_two(pairs: Mapping[str, Sequence[Mapping]], prints: dict, cache_di
             by_shard[p["shard"]][p["row_index"]].append((slug, p["surah_ayah"]))
     done_dir.mkdir(parents=True, exist_ok=True)
 
-    def kept(shard: int) -> Path:
+    def kept_path(shard: int) -> Path:
         return done_dir / f"{shard:03d}.json"
 
-    todo = [shard for shard in sorted(by_shard) if not kept(shard).exists()]
+    def kept(shard: int) -> list[dict]:
+        path = kept_path(shard)
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+
+    missing = {shard: lacking for shard, rows in sorted(by_shard.items())
+               if (lacking := lacking_pairs(rows, kept(shard)))}
     with ProcessPoolExecutor(workers, initializer=_init_worker, initargs=(prints,)) as pool:
-        futures = {pool.submit(fingerprint_shard, shard, dict(by_shard[shard]), cache_dir): shard
-                   for shard in todo}
+        futures = {pool.submit(fingerprint_shard, shard, rows, cache_dir): shard
+                   for shard, rows in missing.items()}
         for done, future in enumerate(futures, 1):
-            kept(futures[future]).write_text(json.dumps(future.result()), encoding="utf-8")
-            print(f"stage 2: {done} of {len(todo)} shards to read", flush=True)
-    results = [r for shard in sorted(by_shard)
-               for r in json.loads(kept(shard).read_text(encoding="utf-8"))]
-    return sorted(results, key=lambda r: (r["shard"], r["row_index"], r["slug"]))
+            shard = futures[future]
+            kept_path(shard).write_text(json.dumps(kept(shard) + future.result()),
+                                        encoding="utf-8")
+            print(f"stage 2: {done} of {len(missing)} shards to read", flush=True)
+    wanted = {(shard, row, slug, key) for shard, rows in by_shard.items()
+              for row, pairs_ in rows.items() for slug, key in pairs_}
+    results = [r for shard in sorted(by_shard) for r in kept(shard)
+               if (r["shard"], r["row_index"], r["slug"], r["surah_ayah"]) in wanted]
+    return sorted(results, key=lambda r: (r["shard"], r["row_index"], r["slug"], r["surah_ayah"]))
 
 
 def summarize_stage_two(results: Sequence[Mapping], pairs: Sequence[Mapping], slug: str,
-                        line: float, hard_negative_min: float) -> dict:
-    """One mushaf's stage 2: pairs fingerprinted, sealed rows skipped, every match (BER at or
-    below ``line``) and every pair in the zone below the hard negatives, and the lowest BER."""
+                        line: float, hard_negative_min: float, named: Sequence[int]) -> dict:
+    """One mushaf's stage 2: pairs fingerprinted (and how many are the named ids', timed or
+    not), sealed rows skipped, every match (BER at or below ``line``) and every pair in the
+    zone below the hard negatives, and the lowest BER."""
     mine = [r for r in results if r["slug"] == slug]
     scored = [r for r in mine if r["ber"] is not None]
     timing = {(p["shard"], p["row_index"], p["surah_ayah"]): p for p in pairs}
@@ -579,7 +620,10 @@ def summarize_stage_two(results: Sequence[Mapping], pairs: Sequence[Mapping], sl
                "audio_filename": timing[(r["shard"], r["row_index"], r["surah_ayah"])]
                ["audio_filename"]}
               for r in scored if r["ber"] < hard_negative_min]
+    of_named = [p for p in pairs if p["reciter_id"] in named]
     return {"pairs": len(pairs), "fingerprinted": len(scored),
+            "named_ids": list(named), "named_pairs": len(of_named),
+            "named_pairs_untimed": sum(p["distance"] is None for p in of_named),
             "sealed_not_compared": len(mine) - len(scored),
             "matches": [d for d in detail if d["ber"] <= line],
             "between_line_and_hard_negatives": [d for d in detail if d["ber"] > line],
@@ -766,10 +810,10 @@ def main() -> None:
         floor = lines["fingerprint"]["hard_negative_min"]
         _dump(RESULTS_PATH, {
             "fingerprint_line": line, "timing_line": timing_line,
-            "stage_two": "every pair within the timing line, and every pair of the pilot "
-                         "reciter's named Tadabur id",
-            "tadabur": {slug: summarize_stage_two(results, pairs[slug], slug, line, floor)
-                        for slug in PILOT},
+            "stage_two": "every pair within the timing line, and every row of the pilot "
+                         "reciter's named Tadabur id with a pilot ayah, timed or not",
+            "tadabur": {slug: summarize_stage_two(results, pairs[slug], slug, line, floor,
+                                                  named[slug]) for slug in PILOT},
             "muaalem": muaalem_check(prints, line)})
 
 if __name__ == "__main__":

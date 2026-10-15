@@ -91,6 +91,16 @@ def test_stage_one_flags_a_reciter_whose_pairs_keep_their_rhythm(monkeypatch):
     screened = qo.screen_mushaf(rows, by_ayah, 0.05, 0.12, named=[9])
     assert screened["flagged_reciters"] == [7]
     assert screened["pairs"] == 40 and screened["pairs_within_line"] == 20
+    by_ayah["2:1"].append({"reciter_id": 9, "starts": [0.0, 1.0], "audio_filename": "short",
+                           "shard": 99, "row_index": 5})  # word counts disagree: never timed
     stage_two = qo.stage_two_pairs(rows, by_ayah, 0.05, named=[9])
     assert {p["reciter_id"] for p in stage_two} == {7, 9}  # 9 is named, never within the line
-    assert len(stage_two) == 40
+    assert len(stage_two) == 41
+    assert [p["distance"] for p in stage_two if p["audio_filename"] == "short"] == [None]
+
+
+def test_a_widened_pair_set_reads_only_what_the_kept_results_lack():
+    wanted = {3: [("g", "1:1"), ("a", "1:1")], 7: [("a", "2:5")]}
+    kept = [{"row_index": 3, "slug": "g", "surah_ayah": "1:1", "ber": 0.45}]
+    assert qo.lacking_pairs(wanted, kept) == {3: [("a", "1:1")], 7: [("a", "2:5")]}
+    assert qo.lacking_pairs({3: [("g", "1:1")]}, kept) == {}

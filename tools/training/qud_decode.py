@@ -13,7 +13,8 @@ end. Each item is decoded by both models exactly as the truth baseline decodes i
 Each model's identity and fingerprints are checked against the truth baseline's frozen ones
 (:func:`training.truth_baseline.expected_fingerprint`, :func:`~training.truth_baseline.model_identity`)
 and written beside its decodes. Decodes are appended one item per line to
-``<out>/<slug>.<shard>.<model>.jsonl`` as they are made, so a run resumes where it stopped;
+``<out>/<slug>.<shard>.<model>.jsonl`` as they are made, so a run resumes where it stopped (an
+incomplete final record is cut off first);
 each line carries the ayah's MP3 checksum and the item's sample span. One shard of the mushaf
 is read per run (downloaded into ``--cache-dir`` and deleted when read), so shards can be
 decoded side by side; the shard's wall time per model and arm is appended to
@@ -75,16 +76,23 @@ def identity_path(out_dir: Path, slug: str, model: str) -> Path:
     return out_dir / f"{slug}.{model}.identity.json"
 
 
-def done_keys(path: Path) -> set[str]:
-    """The items a decodes file already holds (a torn last line is dropped and redone)."""
+def resume_keys(path: Path) -> set[str]:
+    """The items a decodes file already holds, after cutting off an incomplete final record
+    (a run killed mid-write), so the next record appended starts on a line of its own. A
+    malformed record anywhere else is corruption, not an interruption, and is refused."""
     if not path.exists():
         return set()
+    data = path.read_bytes()
+    if data and not data.endswith(b"\n"):
+        data = data[: data.rfind(b"\n") + 1]
+        with open(path, "r+b") as f:
+            f.truncate(len(data))
     keys = set()
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for number, line in enumerate(data.decode("utf-8").splitlines(), 1):
         try:
             keys.add(json.loads(line)["key"])
-        except json.JSONDecodeError:
-            continue
+        except (json.JSONDecodeError, KeyError) as error:
+            raise ValueError(f"{path}:{number} is not a decode record") from error
     return keys
 
 
@@ -130,7 +138,7 @@ def run_shard(slug: str, shard_index: int, out_dir: Path, cache_dir: Path) -> No
     shard = mushaf_shards(slug)[shard_index]
     decoders = load_decoders(out_dir, slug)
     paths = {name: decodes_path(out_dir, slug, shard_index, name) for name in decoders}
-    done = {name: done_keys(path) for name, path in paths.items()}
+    done = {name: resume_keys(path) for name, path in paths.items()}
     seconds: dict[str, dict[str, float]] = {name: defaultdict(float) for name in decoders}
     audio_seconds = 0.0
     items = 0

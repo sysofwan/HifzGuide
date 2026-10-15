@@ -87,7 +87,8 @@ QDAT_PASSAGE = (5, 109, 8, 15)
 #: The card's wording, 2:32 whole.
 QDAT_ALTERNATIVE = (2, 32, 1, 10)
 #: qdat's labels kept with each clip (its card: separate madd, the tight noon, concealment of
-#: the sakin noon, ``target``, which the card's author did not understand either).
+#: the sakin noon, ``target``, which the card's author did not understand either); a label the
+#: dataset leaves empty is ``None``.
 QDAT_TAJWEED = ("separate_tide", "the_tight_noon", "concealment", "target")
 
 
@@ -215,7 +216,8 @@ def select(dataset: Dataset, record: dict) -> Clip | LeftOut:
         surah, ayah, word_from, word_to = QDAT_PASSAGE
         return Clip(dataset.name, record["id"], surah, ayah, word_from, word_to,
                     record["original_id"].split("_")[0],
-                    {k: int(record[k]) for k in QDAT_TAJWEED}, audio.get("bytes") or b"")
+                    {k: None if record[k] is None else int(record[k]) for k in QDAT_TAJWEED},
+                    audio.get("bytes") or b"")
     raise ValueError(f"{dataset.name} is not decoded")
 
 

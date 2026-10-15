@@ -82,3 +82,9 @@ def test_qdat_is_5_109_s_words_8_to_15_with_its_reciter_and_tajweed_labels():
     words, _ = canonical_words(5, 109)
     assert words[QDAT_PASSAGE[2] - 1] == "قَالُوا۟" and words[QDAT_PASSAGE[3] - 1] == "ٱلْغُيُوبِ"
     assert clip.labels == {"separate_tide": 1, "the_tight_noon": 1, "concealment": 0, "target": 0}
+
+
+def test_a_qdat_label_the_dataset_leaves_empty_stays_empty():
+    row = {"audio": {"path": "s7_3.wav"}, "id": "abcd1234", "original_id": "s7_3",
+           "separate_tide": 1, "the_tight_noon": None, "concealment": 0, "target": 0}
+    assert select(QDAT, row).labels["the_tight_noon"] is None

@@ -486,7 +486,7 @@ def qdat_views(grades: Sequence[WordGrade]) -> dict:
 
     def per_label(group: Sequence[WordGrade]) -> dict:
         return {label: {str(value): _short_view([g for g in group if g.item.labels[label] == value])
-                        for value in sorted({g.item.labels[label] for g in group})}
+                        for value in sorted({g.item.labels[label] for g in group}, key=str)}
                 for label in QDAT_TAJWEED}
 
     return {"per_word": by_model_scoring(grades, per_word),

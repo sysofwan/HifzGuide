@@ -119,16 +119,16 @@ def _pool() -> tuple:
                                    .standard_normal(2 * SR).astype(np.float32)) for i in (3, 9))
 
 
+@pytest.mark.parametrize("probe", sorted(pt.verification_probes()))
 @pytest.mark.parametrize("name", [c.name for c in pt.GRID])
-def test_every_condition_keeps_the_clips_timing(name):
-    if pt.CONDITIONS[name].kind == pt.CODEC and not HAS_FFMPEG:
-        pytest.skip("ffmpeg is not installed")
+def test_every_condition_keeps_the_clips_timing_on_every_probe(name, probe):
     condition = pt.CONDITIONS[name]
-    impulse, _ = pt.perturb(_impulse(), condition, "c", _pool())
-    assert len(impulse) == 48_001 and int(np.argmax(np.abs(impulse))) == 16_000
-    chirp = _chirp()
-    swept, _ = pt.perturb(chirp, condition, "c", _pool())
-    assert abs(pt.lag_samples(swept, chirp, 32)) < 0.25
+    if condition.kind == pt.CODEC and not HAS_FFMPEG:
+        pytest.skip("ffmpeg is not installed")
+    clean = pt.verification_probes()[probe]
+    perturbed, _ = pt.perturb(clean, condition, "c", _pool())
+    assert len(perturbed) == len(clean)
+    assert abs(pt.residual_lag(perturbed, probe, clean)) <= pt.MAX_RESIDUAL_LAG
 
 
 def test_the_lag_is_measured_to_a_sub_sample_and_undone():
@@ -156,17 +156,37 @@ def test_a_lag_without_a_clear_peak_is_refused_never_guessed():
 def test_the_codec_lag_is_one_calibrated_constant_whatever_the_clip():
     from scipy.signal import butter, sosfilt
 
-    lag = pt.codec_lag()
+    lag = pt.codec_lag(pt.GRID_OPUS)
     assert 0 < abs(lag) < pt.MAX_CODEC_LAG  # the codec does delay
-    for probe in pt.codec_probes():  # after the shift, both probes measure no lag
-        assert abs(pt.lag_samples(pt.opus_round_trip(probe)[0], probe, 16)) < 0.25
     # Above the narrowband cutoff, the codec leaves nothing to measure a lag on: refused, and
     # the clip is still shifted by the calibrated constant, never by its own content.
     sos = butter(8, 4500, "highpass", fs=SR, output="sos")
     high = sosfilt(sos, np.random.default_rng(0).standard_normal(48_000)).astype(np.float32)
     with pytest.raises(ValueError):
-        pt.lag_samples(pt._opus(high), high, 16)
+        pt.lag_samples(pt._opus(high, pt.GRID_OPUS), high, 16)
     assert pt.opus_round_trip(high)[1] == lag == pt.opus_round_trip(_tone(500))[1]
+
+
+@pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
+def test_each_codec_configuration_gets_its_own_calibration():
+    audio = pt.OpusConfig(16_000, "audio")
+    voip = pt.OpusConfig(16_000)
+    assert pt.codec_lag(audio) != pt.codec_lag(voip)
+    assert {audio, voip} <= set(pt._CODEC_LAGS)
+    assert pt.opus_round_trip(_tone(500), audio)[1] == pt.codec_lag(audio)
+
+
+@pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
+def test_every_training_configuration_keeps_timing_and_matches_the_committed_table():
+    import json
+
+    from training.nonpro_gap import CODEC_RESIDUALS_PATH
+
+    table = pt.codec_residuals()
+    assert set(table) == {c.label for c in pt.OPUS_CONFIGS}
+    for config in table.values():
+        assert all(abs(v) <= pt.MAX_RESIDUAL_LAG for v in config["residual"].values())
+    assert table == json.loads(CODEC_RESIDUALS_PATH.read_text(encoding="utf-8"))["configs"]
 
 
 @pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
@@ -177,7 +197,7 @@ def test_the_opus_round_trip_keeps_length_and_reports_the_lag_it_removed():
     middle = slice(SR // 2, 3 * SR // 2)
     assert np.corrcoef(clean[middle], coded[middle])[0, 1] > 0.9
     again, lag_again = pt.opus_round_trip(clean)
-    assert np.array_equal(coded, again) and lag == lag_again == pt.codec_lag()
+    assert np.array_equal(coded, again) and lag == lag_again == pt.codec_lag(pt.GRID_OPUS)
     _, draw = pt.perturb(clean, pt.CONDITIONS["opus_12k_nb"], "c")
     assert draw == {"codec_lag": round(lag, 3)}
 

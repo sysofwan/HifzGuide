@@ -110,6 +110,10 @@ def _report() -> dict:
                    "reciters": 107, "hours": 1.676},
         "noise": {"recordings": 445, "hours": 4.08, "left_out": {"ineligible": 84},
                   "recordings_drawn": 300, "licences_drawn": {"CC0-1.0": 200}},
+        "codec_residuals": {"ffmpeg": "ffmpeg version x", "max_residual_lag": 2.0, "configs": {
+            "voip_12k_cutoff4000_20ms": {"calibrated_lag": 1.59,
+                                         "raw": {"low_300_900": 0.78, "impulse": 2.0},
+                                         "residual": {"low_300_900": -0.81, "impulse": 0.0}}}},
         "numerics": {f"{m}_vs_cached_teacher": rates for m in ng.MODELS},
         "d1": {"tadabur_dev": {"stream_b0": block}, "tadabur_dev_unseen": {"stream_b0": block},
                **{k: {"stream_b0": block, "checks": block}
@@ -134,3 +138,4 @@ def test_the_doc_renders_every_corpus_condition_and_class():
         assert name in doc
     assert "90.0% [89.0, 91.0]" in doc and "+2.0 [+1.0, +3.0]" in doc
     assert "`h448` further (interval above zero)" in doc
+    assert "| voip_12k_cutoff4000_20ms | 1.590 | -0.81 (+0.78) | +0.00 (+2.00) |" in doc

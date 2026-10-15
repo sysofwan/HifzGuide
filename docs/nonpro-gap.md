@@ -46,6 +46,16 @@ Committed in `tools/tadabur/nonpro_gap/grid.json` (`acoustic-grid-v3`, seed 2026
 - **Reverb:** a unit direct path and a Gaussian tail from 2.5 ms decaying 60 dB over the RT60, its energy 3 dB below the direct path's (DRR), one RT60 long, drawn per clip; the result scaled back to the clean clip's RMS.
 - **Band limit:** resampled to 8000 Hz and back (a 4 kHz band).
 - **Codec:** Opus through ffmpeg's libopus at 12 kbit/s, `voip`, cutoff 4000 Hz (narrowband): a low-bitrate phone call; output moved back by the codec's constant lag, calibrated on an up and a down chirp (300-3400 Hz, 10 s) that must agree within 0.25 samples.
+- **Timing:** every condition within 2 samples of the clean clip on every verification probe (under 1% of the 20 ms frame hop). Zero is not reachable for the codec: its phase response depends on frequency, so no single shift zeroes every band. Residual lag (samples) after the shift, per Opus configuration a training arm may use (raw lag in brackets; the impulse is its largest sample's offset):
+
+| configuration | calibrated lag | full_down | full_up | high_2000_3400 | impulse | low_300_900 | mid_900_2000 |
+|---|---|---|---|---|---|---|---|
+| voip_12k_cutoff4000_20ms | 1.591 | -0.02 (+1.59) | -0.04 (+1.56) | +0.02 (+1.63) | +0.00 (+2.00) | -0.81 (+0.78) | -0.16 (+1.42) |
+| voip_16k_cutoff4000_20ms | 1.586 | -0.07 (+1.53) | -0.04 (+1.56) | +0.03 (+1.64) | +0.00 (+2.00) | -0.81 (+0.77) | -0.14 (+1.44) |
+| voip_8k_cutoff4000_20ms | 1.586 | +0.00 (+1.61) | -0.06 (+1.53) | +0.03 (+1.64) | +0.00 (+2.00) | -0.80 (+0.79) | -0.16 (+1.41) |
+
+Measured with ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers.
+
 - **Sample:** 400 of the dev half's 671 clips `h448` holds no recording or copy of (299 of 970 are copies of rows in its training or validation shards), by salted rank: 107 reciters, 1.676 h. Each clip is decoded whole at `stream_b0` (its 5 s windows), clean and under each condition.
 
 ## D2: drift per condition

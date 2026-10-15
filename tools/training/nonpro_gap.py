@@ -40,6 +40,7 @@ Usage (from ``tools/``; torch-free but the decode)::
 
   python -m training.nonpro_gap grid
   python -m training.nonpro_gap noise-pool --cache-dir <scratch> --out <scratch>/noise_pool.npz
+  python -m training.nonpro_gap codec-residuals                      # needs ffmpeg
   python -m training.nonpro_gap_decode --condition <name> ...        # the GPU box
   python -m training.nonpro_gap merge --decodes-dir <its decodes> --logs-dir <its logs>
   python -m training.nonpro_gap report
@@ -82,6 +83,8 @@ from training.truth_baseline import CHECKS
 GAP_DIR = Path(__file__).parent.parent / "tadabur" / "nonpro_gap"
 GRID_PATH = GAP_DIR / "grid.json"
 POOL_PATH = GAP_DIR / "noise_pool.json"
+#: The codec's timing residual per training configuration (``codec-residuals``, needs ffmpeg).
+CODEC_RESIDUALS_PATH = GAP_DIR / "codec_residuals.json"
 DECODES_DIR = GAP_DIR / "decodes"
 #: Decodes a grid amendment replaced, kept to show what moved: the codec condition under grid
 #: v1, whose output lagged its input by 1-2 samples.
@@ -474,6 +477,8 @@ def main() -> None:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("grid", help="write grid.json: the grid and the D2 sample")
+    commands.add_parser("codec-residuals",
+                        help="write codec_residuals.json: each Opus configuration's timing")
     pooled = commands.add_parser("noise-pool", help="download, decode and filter the noise")
     pooled.add_argument("--cache-dir", type=Path, required=True)
     pooled.add_argument("--out", type=Path, required=True, help="the pool's .npz (scratch)")
@@ -488,6 +493,13 @@ def main() -> None:
 
     if args.command == "grid":
         _write_json(GRID_PATH, grid_file())
+        return
+    if args.command == "codec-residuals":
+        from training.perturbation import MAX_RESIDUAL_LAG, codec_residuals, ffmpeg_version
+
+        _write_json(CODEC_RESIDUALS_PATH, {"ffmpeg": ffmpeg_version(),
+                                           "max_residual_lag": MAX_RESIDUAL_LAG,
+                                           "configs": codec_residuals()})
         return
     if args.command == "noise-pool":
         _write_json(POOL_PATH, noise_pool(args.cache_dir, args.out))
@@ -517,7 +529,10 @@ def main() -> None:
         grid = committed_grid()
         report.update({"grid": grid["grid"],
                        "sample": {k: v for k, v in grid["sample"].items() if k != "clips"},
-                       "noise": noise_summary(), "numerics": numerics(args.workers),
+                       "noise": noise_summary(),
+                       "codec_residuals": json.loads(CODEC_RESIDUALS_PATH.read_text(
+                           encoding="utf-8")),
+                       "numerics": numerics(args.workers),
                        "d1": d1(args.workers), "d2": d2(args.workers)})
     _write_json(REPORT_PATH, report)
 

@@ -11,7 +11,8 @@
    "application": "voip",
    "bitrate": 12000,
    "codec": "opus (ffmpeg libopus)",
-   "cutoff_hz": 4000
+   "cutoff_hz": 4000,
+   "frame_ms": 20
   },
   "conditions": [
    {
@@ -87,6 +88,7 @@
   },
   "sample_rate": 16000,
   "seed": 20261015,
+  "timing": "every condition within 2 samples of the clean clip on every verification probe (under 1% of the 20 ms frame hop)",
   "version": "acoustic-grid-v3"
  },
  "sample": {

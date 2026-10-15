@@ -116,6 +116,11 @@ def _grid(report: dict) -> list[str]:
             f"- **Codec:** Opus through ffmpeg's libopus at {codec['bitrate'] // 1000} kbit/s, "
             f"`{codec['application']}`, cutoff {codec['cutoff_hz']} Hz (narrowband): a "
             f"low-bitrate phone call; {codec['alignment']}.",
+            f"- **Timing:** {grid['timing']}. Zero is not reachable for the codec: its phase "
+            "response depends on frequency, so no single shift zeroes every band. Residual lag "
+            "(samples) after the shift, per Opus configuration a training arm may use (raw lag "
+            "in brackets; the impulse is its largest sample's offset):", "",
+            *_residual_table(report["codec_residuals"]), "",
             f"- **Sample:** {D2_SAMPLE_SIZE} of the dev half's {sample['eligible']} clips "
             f"`h448` holds no recording or copy of ({len(sample['h448_seen'])} of "
             f"{sample['dev_clips']} are copies of rows in its training or validation shards), "
@@ -123,6 +128,17 @@ def _grid(report: dict) -> list[str]:
             "decoded whole at `stream_b0` (its 5 s windows), clean and under each condition.",
             ""]
     return out
+
+
+def _residual_table(residuals: dict) -> list[str]:
+    configs = residuals["configs"]
+    probes = list(next(iter(configs.values()))["residual"])
+    out = ["| configuration | calibrated lag | " + " | ".join(probes) + " |",
+           "|---|---|" + "---|" * len(probes)]
+    for label, entry in configs.items():
+        out.append(f"| {label} | {entry['calibrated_lag']:.3f} | " + " | ".join(
+            f"{entry['residual'][p]:+.2f} ({entry['raw'][p]:+.2f})" for p in probes) + " |")
+    return out + ["", f"Measured with {residuals['ffmpeg']}."]
 
 
 def _d2(report: dict) -> list[str]:

@@ -1,4 +1,67 @@
 {
+ "codec_residuals": {
+  "configs": {
+   "voip_12k_cutoff4000_20ms": {
+    "calibrated_lag": 1.591,
+    "raw": {
+     "full_down": 1.587,
+     "full_up": 1.562,
+     "high_2000_3400": 1.632,
+     "impulse": 2.0,
+     "low_300_900": 0.781,
+     "mid_900_2000": 1.422
+    },
+    "residual": {
+     "full_down": -0.019,
+     "full_up": -0.038,
+     "high_2000_3400": 0.02,
+     "impulse": 0.0,
+     "low_300_900": -0.812,
+     "mid_900_2000": -0.161
+    }
+   },
+   "voip_16k_cutoff4000_20ms": {
+    "calibrated_lag": 1.586,
+    "raw": {
+     "full_down": 1.528,
+     "full_up": 1.56,
+     "high_2000_3400": 1.636,
+     "impulse": 2.0,
+     "low_300_900": 0.773,
+     "mid_900_2000": 1.435
+    },
+    "residual": {
+     "full_down": -0.066,
+     "full_up": -0.035,
+     "high_2000_3400": 0.028,
+     "impulse": 0.0,
+     "low_300_900": -0.815,
+     "mid_900_2000": -0.143
+    }
+   },
+   "voip_8k_cutoff4000_20ms": {
+    "calibrated_lag": 1.586,
+    "raw": {
+     "full_down": 1.607,
+     "full_up": 1.53,
+     "high_2000_3400": 1.636,
+     "impulse": 2.0,
+     "low_300_900": 0.792,
+     "mid_900_2000": 1.414
+    },
+    "residual": {
+     "full_down": 0.003,
+     "full_up": -0.061,
+     "high_2000_3400": 0.027,
+     "impulse": 0.0,
+     "low_300_900": -0.796,
+     "mid_900_2000": -0.163
+    }
+   }
+  },
+  "ffmpeg": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers",
+  "max_residual_lag": 2.0
+ },
  "compute": {
   "audio_hours": 16.89,
   "disk_sampled_from": "2026-10-15T14:11:58Z",
@@ -2980,7 +3043,8 @@
    "application": "voip",
    "bitrate": 12000,
    "codec": "opus (ffmpeg libopus)",
-   "cutoff_hz": 4000
+   "cutoff_hz": 4000,
+   "frame_ms": 20
   },
   "conditions": [
    {
@@ -3056,6 +3120,7 @@
   },
   "sample_rate": 16000,
   "seed": 20261015,
+  "timing": "every condition within 2 samples of the clean clip on every verification probe (under 1% of the 20 ms frame hop)",
   "version": "acoustic-grid-v3"
  },
  "models": {

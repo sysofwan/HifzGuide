@@ -1,0 +1,67 @@
+"""Tests for tadabur.tarteel_excess_report on synthetic verdicts (#160)."""
+
+from __future__ import annotations
+
+import pytest
+
+from tadabur import tarteel_excess as te
+from tadabur.listening_session import Verdict
+from tadabur.tarteel_excess_report import POOLED, report, table
+
+
+def _row(k: int, stratum: str, population: int, drawn: int, clip_words: int = 1,
+         surah: int | None = None) -> te.ListeningWord:
+    draw = drawn / population
+    return te.ListeningWord(
+        site_id=f"tarteel_v1:{k}_1_{k}.wav#0:w1", audio_filename=f"{k}_1_{k}.wav",
+        audio_sha256="e" * 64, surah_ayah="1:1", cluster=k if surah is None else surah,
+        start_sample=0, end_sample=1600, reference="قَالَ", word_offsets=(0, 5), word=1,
+        position_from=0, position_to=1, h448_flag={}, stratum=stratum,
+        stratum_words=population, stratum_population=population, clip_words=clip_words,
+        representative_probability=1 / clip_words, draw_probability=draw,
+        inclusion_probability=draw / clip_words)
+
+
+def _verdicts(rows, heard) -> dict[str, Verdict]:
+    return {r.site_id: Verdict(r.site_id, h) for r, h in zip(rows, heard) if h is not None}
+
+
+def test_shares_are_weighted_by_the_design_per_stratum_and_pooled():
+    # ل→ن: 4 of 100 representatives drawn (weight 25); ج→ش: 4 of 8 (weight 2).
+    rows = ([_row(k, "ل→ن", 100, 4) for k in range(4)]
+            + [_row(k, "ج→ش", 8, 4) for k in range(4, 8)])
+    heard = ["correct", "correct", "correct", "mistake",  # ل→ن: 3 of 4 model errors
+             "mistake", "mistake", "unclear", None]       # ج→ش: one unanswered
+    result = report(rows, _verdicts(rows, heard))
+    nun = result["strata"]["ل→ن"]
+    assert (nun["drawn"], nun["answered"], nun["estimated_frame_words"]) == (4, 4, 100.0)
+    assert nun["correct"]["share"] == 0.75 and nun["correct"]["interval"]["method"] == "wilson"
+    jim = result["strata"]["ج→ش"]
+    assert jim["answered"] == 3 and jim["mistake"]["share"] == pytest.approx(0.6667, abs=1e-4)
+    assert jim["unclear"]["share"] == pytest.approx(0.3333, abs=1e-4)
+    assert jim["model_error_of_clear"] == {**jim["model_error_of_clear"], "words": 0, "of": 2,
+                                           "share": 0.0}
+    # Pooled: (3 * 25) / (4 * 25 + 3 * 2) correct, not the unweighted 3 / 7.
+    pooled = result[POOLED]
+    assert pooled["correct"]["share"] == pytest.approx(75 / 106, abs=1e-4)
+    assert pooled["model_error_of_clear"]["share"] == pytest.approx(75 / 104, abs=1e-4)
+    assert pooled["estimated_frame_words"] == 108.0
+    assert result["strata"]["ز→س"]["correct"]["share"] is None  # nothing drawn there
+    assert result["verdicts"] == {"correct": 3, "mistake": 3, "unclear": 1}
+    assert "| ل→ن | 4 | 4 | 75%" in table(result)
+
+
+def test_a_clip_s_other_excess_words_raise_its_weight():
+    rows = [_row(0, "other", 10, 2, clip_words=3), _row(1, "other", 10, 2)]
+    result = report(rows, _verdicts(rows, ["correct", "mistake"]))
+    assert result["strata"]["other"]["correct"]["share"] == 0.75  # weights 15 and 5
+    # Unequal weights in a sparse cell: no admissible bound.
+    assert result["strata"]["other"]["correct"]["interval"]["method"] == "none"
+
+
+def test_a_verdict_no_drawn_word_can_take_is_refused():
+    rows = [_row(0, "other", 10, 2)]
+    with pytest.raises(ValueError):
+        report(rows, {"elsewhere": Verdict("elsewhere", "correct")})
+    with pytest.raises(ValueError):
+        report(rows, _verdicts(rows, ["fatha"]))

@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -264,6 +264,31 @@ def row_groups(dataset: Dataset) -> list[tuple[str, int]]:
     for shard in dataset.shards:
         with HfFileSystem().open(f"datasets/{dataset.repo}@{dataset.revision}/{shard}") as f:
             out += [(shard, g) for g in range(pq.ParquetFile(f).metadata.num_row_groups)]
+    return out
+
+
+#: The datasets whose clip id is the audio's ``path`` (:func:`select`); qdat's is its ``id``.
+NAMED_BY_AUDIO_PATH = (TARTEEL_V1, RETASY)
+
+
+def locate_clips(dataset: Dataset, names: Collection[str]) -> dict[str, tuple[str, int]]:
+    """The ``(shard, row group)`` holding each named clip of a dataset that names its clips by
+    their audio ``path`` (:data:`NAMED_BY_AUDIO_PATH`), read from the path column alone by HTTP
+    range requests (no audio). A name no row group holds is left out."""
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfFileSystem
+
+    if dataset not in NAMED_BY_AUDIO_PATH:
+        raise ValueError(f"{dataset.name} does not name its clips by their audio path")
+    wanted, out = set(names), {}
+    for shard in dataset.shards:
+        with HfFileSystem().open(f"datasets/{dataset.repo}@{dataset.revision}/{shard}",
+                                 block_size=1 << 16) as f:
+            parquet = pq.ParquetFile(f)
+            for group in range(parquet.metadata.num_row_groups):
+                rows = parquet.read_row_group(group, columns=["audio.path"]).to_pylist()
+                out.update({r["audio"]["path"]: (shard, group) for r in rows
+                            if r["audio"]["path"] in wanted})
     return out
 
 

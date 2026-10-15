@@ -153,35 +153,33 @@ def _consonant_flagged(grade: SiteGrade) -> bool:
 
 
 def qud_populations(harness, ayat: Ayat) -> list[Population]:
-    """The QUD pilot, both models and both scorings; each flag read against the queries of the
-    checks that set its kept grade (:attr:`~training.muraja_policy.SiteGrade.setting_checks`)."""
-    from training.qud_pilot import MODELS, grade_words, load_pilot
+    """The QUD pilot, both models and both scorings (:func:`training.external_corpus.word_grades`);
+    each flag read against the queries of the checks that set its kept grade
+    (:attr:`~training.muraja_policy.SiteGrade.setting_checks`)."""
+    from training.external_corpus import MODELS, word_grades
+    from training.qud_pilot import load_pilot
     from training.truth_baseline import CHECKS
 
     pilot = load_pilot()
-    words = grade_words(pilot.items, pilot.decodes, harness)
+    _, grades = word_grades(pilot.items, pilot.decodes, harness)
     out = []
     for model in MODELS:
         for scoring in SCORING_NAMES:
             graded, flagged = [], []
-            for item in pilot.items:
-                checks = tuple(pilot.decodes[model][item.key][CHECKS])
+            for g in (g for g in grades if (g.model, g.scoring) == (model, scoring) and g.graded):
+                item, grade = g.item, g.kept
+                cluster = f"{item.slug}:{item.surah}"
+                graded.append(cluster)
+                if not _consonant_flagged(grade):
+                    continue
                 offsets = item.reference.offsets
-                last = words.placed[item.key][-1][0].site_id
-                for word, site in words.placed[item.key]:
-                    grade = words.grade(scoring, model, item, word)
-                    if grade.outcome not in (*WORD_FLAGGED, NOT_FLAGGED):
-                        continue
-                    cluster = f"{item.slug}:{item.row.surah}"
-                    graded.append(cluster)
-                    if not _consonant_flagged(grade):
-                        continue
-                    k = item.reference.word_indices.index(word.word_index)
-                    flagged.append(FlaggedWord(
-                        QUD, model, scoring, site.surah, site.ayah, site.word, grade.errors,
-                        Recital(item.reference.reference, word.site_id == last, checks,
-                                lambda position, grade=grade: grade.setting_checks),
-                        cluster, word.site_id, (offsets[k], offsets[k + 1])))
+                k = item.reference.word_indices.index(g.word_index)
+                flagged.append(FlaggedWord(
+                    QUD, model, scoring, item.surah, item.ayah, g.word, grade.errors,
+                    Recital(item.reference.reference, g.position == g.words - 1,
+                            tuple(pilot.decodes[model][item.key][CHECKS]),
+                            lambda position, grade=grade: grade.setting_checks),
+                    cluster, f"{item.key}:w{g.word}", (offsets[k], offsets[k + 1])))
             out.append(build_population(QUD, model, scoring, graded, flagged, ayat, clustered=True))
     return out
 

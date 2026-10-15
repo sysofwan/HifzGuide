@@ -293,13 +293,16 @@ def build_pool(cache_dir: Path) -> tuple[tuple[NoiseRecording, ...], dict]:
     deleted once read), ordered by Freesound id, and what was left out and why."""
     from tadabur.audio import decode_to_mono_16k
     from tadabur.nonpro_sources import iter_rows
+    from tadabur.panel_seal import SealedPanelError
 
     pool, left_out = [], {"undecodable": 0, "ineligible": 0}
     for shard in NOISE_SHARDS:
         for row in iter_rows(NOISE, shard, cache_dir):
             try:
                 samples = decode_to_mono_16k(row["audio"]["bytes"])
-            except Exception:  # noqa: BLE001 -- any format libsndfile cannot read is counted
+            except SealedPanelError:  # a seal violation is never a corrupt input
+                raise
+            except Exception:  # any format libsndfile cannot read is counted
                 left_out["undecodable"] += 1
                 continue
             if not pool_eligible(samples):

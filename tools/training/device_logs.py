@@ -563,7 +563,6 @@ def covered_ayat(words: Iterable[str]) -> str:
 def word_row(g: WordGrade) -> dict:
     return {"log": g.log, "word": g.word, "scoring": g.scoring, "quality": g.quality,
             "causes": list(g.causes), "marks": list(g.marks), "pairs": list(g.pairs),
-            "substitutions": [label for _, label in g.consonants],
             "explained": g.explained.kind if g.explained else None,
             "basis": g.explained.basis if g.explained else None}
 

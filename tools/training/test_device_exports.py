@@ -114,7 +114,9 @@ class Text:
 def test_the_annotations_resolve_every_statement_and_explanation():
     notes = x.load_annotations(Text())
     assert set(notes.exports) == {e["name"] for e in REPORT["exports"]}
-    assert [(m.first, m.last, m.basis) for m in notes.mistakes["71#2"]] == [("2:256:1", "2:256:24", x.OWNER)]
+    assert [(m.first, m.last, m.kind, m.basis) for m in notes.mistakes["71#2"]] == [
+        ("2:256:1", "2:256:24", x.MISTAKE_AYAH, x.OWNER)]
+    assert [(m.first, m.kind) for m in notes.mistakes["70#2"]] == [("2:60:11", x.MISTAKE)]
     assert all(v["explained_by"] in x.EXPLAINED_BY and v["basis"] == x.OWNER
                for by_word in notes.model_errors.values() for v in by_word.values())
     assert {s for s in (*notes.mistakes, *notes.model_errors, *notes.added)} <= {s["session"] for s in TARGETS}
@@ -146,7 +148,7 @@ def test_each_session_reproduces_the_device_in_exactly_one_mode_at_both_commits(
 
 def test_every_word_the_phone_showed_as_not_correct_has_the_owners_verdict():
     shown = [c for s in TARGETS for c in s["committed_flags"]]
-    assert shown and all(c["verdict"]["status"] in (x.MISTAKE, x.MODEL_ERROR) for c in shown)
+    assert shown and all(c["verdict"]["status"] in (x.MISTAKE, x.IN_MISTAKE_AYAH, x.MODEL_ERROR) for c in shown)
     kept = [r for r in REPORT["words"] if r["scoring"] == x.AS_RECORDED]
     assert all(r["verdict"]["status"] != x.ASSUMED for r in kept)
 
@@ -154,10 +156,21 @@ def test_every_word_the_phone_showed_as_not_correct_has_the_owners_verdict():
 def test_the_owners_mistakes_are_out_of_the_false_flag_rates_and_reported_apart():
     catch = REPORT["catch"][x.AS_RECORDED]
     every, rate = (REPORT["rates"][x.AS_RECORDED][v]["false_flags"] for v in (dl.ALL_WORDS, dl.UNEXPLAINED))
-    assert every["words"] - rate["words"] == catch["words"]
-    assert every["flags"] - rate["flags"] == catch["flagged"]
-    assert {w["word"] for w in catch["flagged_words"]} == {
-        r["word"] for r in REPORT["words"] if r["scoring"] == x.AS_RECORDED and r["verdict"]["status"] == x.MISTAKE}
+    ayah_words = sum(int(m["last"].rsplit(":", 1)[1]) for s in TARGETS for m in s["mistakes"] if m["kind"] == x.MISTAKE_AYAH)
+    assert every["words"] - rate["words"] == catch["words"]["graded"] + ayah_words
+    assert every["flags"] - rate["flags"] == catch["words"]["flagged"] + catch["ayat"]["flagged"]
+    rows = [r for r in REPORT["words"] if r["scoring"] == x.AS_RECORDED]
+    assert {w["word"] for w in catch["words"]["flagged_words"]} == {
+        r["word"] for r in rows if r["verdict"]["status"] == x.MISTAKE}
+    assert {w["word"] for w in catch["ayat"]["flagged_words"]} == {
+        r["word"] for r in rows if r["verdict"]["status"] == x.IN_MISTAKE_AYAH}
+
+
+def test_an_ayah_the_owner_says_holds_mistakes_names_no_word_as_one():
+    """2:256's words are left out of the rates but none is the owner's mistake, and the ayah has
+    no catch-rate denominator (#154 review)."""
+    assert all(r["verdict"]["status"] != x.MISTAKE for r in REPORT["words"] if r["word"].startswith("2:256:"))
+    assert set(REPORT["catch"][x.AS_RECORDED]["ayat"]) == {"flagged", "causes", "flagged_words"}
 
 
 def test_the_exports_are_pinned_by_name_and_sha256():

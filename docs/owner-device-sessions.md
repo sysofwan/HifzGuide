@@ -23,12 +23,14 @@ mistake. The owner gave a verdict on every word the phone showed as not correct.
   device regraded a word after committing it.
 - **False flags per 1,000 graded words, owner's mistakes left out:** `as_recorded` 15.7 (6 / 381), `shipped_default` 15.7 (6 / 381), `allowances_on` 13.1 (5 / 381), `allowances_off` 21.0 (8 / 381).
   Three sessions give no interval.
-- **Every word the phone showed as not correct has the owner's verdict:** of 9 words, 7 are model errors (1 boundary, 6 decode) and 2 the owner's mistakes. Words
+- **Every word the phone showed as not correct has the owner's verdict:** of 9 words, 7 are model errors (1 boundary, 6 decode), 1 the owner's mistake and 1 in the ayah the owner says holds mistakes. Words
   flagged only under other scorings were never shown on the phone; they stay false flags, on
   the rule that the recitation is correct.
-- **The owner's mistakes (catch side):** as recorded, the app flagged 2 of their 25
-  words (2:60:11, 2:256:18). It classified both added phrases as added.
-  One was saved as added words; the other session's end is not in the export.
+- **The owner's mistakes (catch side):** as recorded, the app flagged 1 of 1 word the owner names
+  (2:60:11). In 2:256, which the owner says holds mistakes without naming the words, it showed 1 flag
+  (2:256:18); with the wrong words unknown, that is no catch rate.
+  The detector classified both added phrases as added. One was saved as added words; the
+  other session's end is not in the export.
 - No recommendation on allowances or thresholds.
 
 ## The exports and their sessions
@@ -149,8 +151,10 @@ allowance is off*).
 ## False flags per 1,000 graded words
 
 Count / graded words · per 1,000. With three sessions, no interval is admissible (n/c);
-#151's interval resamples sessions. *Owner's mistakes left out* drops the words of 2:256
-from both counts (*The owner's mistakes*). This is the false-flag rate. No other word is
+#151's interval resamples sessions. *Owner's mistakes left out* drops from both counts the
+word the owner names as a mistake (2:60:11) and every word of 2:256, the ayah the owner
+says holds mistakes without naming its words (*The owner's mistakes*). This is the
+false-flag rate. No other word is
 explained. #151's rule admits only decode evidence of a word skipped or never recited, and
 each session grades every word of its ayat, none as skipped. A few words the reader repeats
 inside a session stay in, as #151 keeps the re-reads no doc records. The added-phrase
@@ -212,7 +216,7 @@ the decode at that word.
 | 71#2 | 2:253:11 | tashkeelError (tashkeel) | tashkeelError: tashkeel (fatha other) | false flag: model error (owner 2026-10-15; decode) | the decode put a damma on its raa, where the mushaf has fatha |
 | 71#2 | 2:255:13 | minor (ل→ء) | minor: other_consonant | false flag: model error (owner 2026-10-15; decode) | the decode heard a hamza for its lam, the lam the preceding tanween merges into |
 | 71#2 | 2:255:42 | minor (ي→ۦ, ي→ر, ه→∅) | minor: other_consonant | false flag: model error (owner 2026-10-15; decode) | the decode wrote its doubled yaa as the long-vowel small yaa and, in the preview that set the grade, raa for its final haa; the three errors match that decode letter for letter, so it is not an alignment effect; a later window decoded the haa, and the kept grade is still the one that preview set |
-| 71#2 | 2:256:18 | minor (و→غ, ث→ص) | minor: other_consonant | the owner's mistake | – |
+| 71#2 | 2:256:18 | minor (و→غ, ث→ص) | minor: other_consonant | flagged in an ayah the owner says holds mistakes (words not identified) | – |
 
 The owner's statements:
 
@@ -243,7 +247,7 @@ flagged under `soft_pair_forgiveness_off` here.
 | 71#2 | 2:253:11 | false flag: model error (owner 2026-10-15; decode) | correct | correct | correct | tashkeelError: tashkeel (fatha other) | tashkeelError: tashkeel (fatha other) | tashkeelError: tashkeel (fatha other) |
 | 71#2 | 2:255:13 | false flag: model error (owner 2026-10-15; decode) | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 | 71#2 | 2:255:42 | false flag: model error (owner 2026-10-15; decode) | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
-| 71#2 | 2:256:18 | the owner's mistake | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
+| 71#2 | 2:256:18 | flagged in an ayah the owner says holds mistakes (words not identified) | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant | minor: other_consonant |
 
 ## Flags added when one allowance is off
 
@@ -279,19 +283,34 @@ The words carrying them (these sessions):
 
 ## The owner's mistakes: first device evidence on the catch side
 
-The words the owner says they got wrong (70#2: 2:60:11; 71#2: 2:256:1–2:256:24) are real mistakes, not false flags.
-They are out of every false-flag rate above and are reported here, apart from the rates.
-For 2:256 the owner did not say which words, so the whole ayah is treated as holding the
-mistakes. Each scoring's count of these words the app flagged:
+What the owner says they got wrong is not a false flag. It is out of every false-flag rate
+above and is reported here, apart from the rates, in three kinds.
+
+**Words the owner names as mistakes** (70#2: 2:60:11). Each scoring's count of them
+flagged by the app, out of those graded:
 
 | scoring | flagged / graded | causes | words |
 |---|---|---|---|
-| `allowances_on` | 2 / 25 | another consonant 2 | 2:60:11 (minor), 2:256:18 (minor) |
-| `soft_pair_forgiveness_off` | 2 / 25 | another consonant 2 | 2:60:11 (minor), 2:256:18 (minor) |
-| `shaddah_suppression_off` | 2 / 25 | another consonant 2 | 2:60:11 (minor), 2:256:18 (minor) |
-| `shipped_default` | 2 / 25 | another consonant 2 | 2:60:11 (minor), 2:256:18 (minor) |
-| `allowances_off` | 2 / 25 | another consonant 2 | 2:60:11 (minor), 2:256:18 (minor) |
-| `as_recorded` | 2 / 25 | another consonant 2 | 2:60:11 (minor), 2:256:18 (minor) |
+| `allowances_on` | 1 / 1 | another consonant 1 | 2:60:11 (minor) |
+| `soft_pair_forgiveness_off` | 1 / 1 | another consonant 1 | 2:60:11 (minor) |
+| `shaddah_suppression_off` | 1 / 1 | another consonant 1 | 2:60:11 (minor) |
+| `shipped_default` | 1 / 1 | another consonant 1 | 2:60:11 (minor) |
+| `allowances_off` | 1 / 1 | another consonant 1 | 2:60:11 (minor) |
+| `as_recorded` | 1 / 1 | another consonant 1 | 2:60:11 (minor) |
+
+**An ayah the owner says holds mistakes** (71#2: 2:256:1–2:256:24). The owner did not say
+which words were wrong, so no word of it is a known mistake and there is no catch rate.
+These are the flags the app showed in it, with their causes. Each is a flag *in an ayah
+that holds mistakes*, not a confirmed catch:
+
+| scoring | flags in the ayah | causes | words |
+|---|---|---|---|
+| `allowances_on` | 1 | another consonant 1 | 2:256:18 (minor) |
+| `soft_pair_forgiveness_off` | 1 | another consonant 1 | 2:256:18 (minor) |
+| `shaddah_suppression_off` | 1 | another consonant 1 | 2:256:18 (minor) |
+| `shipped_default` | 1 | another consonant 1 | 2:256:18 (minor) |
+| `allowances_off` | 1 | another consonant 1 | 2:256:18 (minor) |
+| `as_recorded` | 1 | another consonant 1 | 2:256:18 (minor) |
 
 **Added words.** Muraja's shadow-speech detector classified two stretches of speech as
 added. The owner says the added words were a mistake. The passage whose wording each one
@@ -312,74 +331,75 @@ mistakes left out. A word counts once per substitution, and a word with several 
 counts under each. *Flags* counts every false flag of the population, tashkeel ones
 included. #151's device logs are replayed here at the pin, and each population's flag
 count is checked against #151's report. #90's errors are read from its committed report.
-The last column is the catch side, kept apart.
+The last two columns are the catch side, kept apart: the word the owner names as a
+mistake, and the flags in the ayah the owner says holds mistakes.
 
-|  | these sessions | #151 teacher, 1 s hop | #151 teacher, all eras | #151 `h448`, narrow | #90 `h448/checks` | #90 `base/checks` | owner's mistakes (catch side) |
-|---|---|---|---|---|---|---|---|
-| flags | 6 | 15 | 35 | 5 | 3 | 4 | 2 |
-| ل→ذ (another consonant) | · | 2 | 2 | · | · | · | · |
-| ل→∅ (another consonant) | · | 1 | 1 | 2 | · | · | · |
-| ر→∅ (another consonant) | · | 1 | 1 | · | · | 1 | · |
-| ش→∅ (another consonant) | · | 1 | 2 | · | · | · | · |
-| و→∅ (another consonant) | · | 1 | 2 | · | · | · | · |
-| ء→و (another consonant) | · | 1 | 1 | · | · | · | · |
-| ذ→س (another consonant) | · | 1 | 1 | · | · | · | · |
-| ض→∅ (another consonant) | · | 1 | 1 | · | · | · | · |
-| ل→د (another consonant) | · | 1 | 1 | · | · | · | · |
-| ل→ر (another consonant) | · | 1 | 1 | · | · | · | · |
-| ن→∅ (another consonant) | · | · | 2 | · | · | · | · |
-| ه→∅ (another consonant) | 1 | · | 1 | · | · | · | · |
-| و→ف (another consonant) | · | 1 | 1 | · | · | · | · |
-| ح→ه (soft-pair consonant) | · | 1 | 1 | · | · | · | · |
-| ت→د (another consonant) | · | · | · | 1 | · | · | · |
-| ث→ر (another consonant) | · | · | · | 1 | · | · | · |
-| ث→س (another consonant) | 1 | · | · | · | · | · | 1 |
-| ث→∅ (another consonant) | · | · | · | · | 1 | · | · |
-| ج→د (another consonant) | 1 | · | · | · | · | · | · |
-| د→ر (another consonant) | · | · | 1 | · | · | · | · |
-| ر→ب (another consonant) | · | · | · | · | 1 | · | · |
-| ر→ق (another consonant) | · | · | · | 1 | · | · | · |
-| ر→ل (another consonant) | · | · | 1 | · | · | · | · |
-| س→ت (another consonant) | · | · | · | · | · | 1 | · |
-| غ→∅ (another consonant) | · | · | · | 1 | · | · | · |
-| ف→و (another consonant) | · | · | 1 | · | · | · | · |
-| ك→ف (another consonant) | · | · | · | 1 | · | · | · |
-| ل→ء (another consonant) | 1 | · | · | · | · | · | · |
-| م→ل (another consonant) | · | · | 1 | · | · | · | · |
-| م→∅ (another consonant) | · | · | 1 | · | · | · | · |
-| ي→ر (another consonant) | 1 | · | · | · | · | · | · |
-| ي→ۦ (another consonant) | 1 | · | · | · | · | · | · |
-| ي→∅ (another consonant) | 1 | · | · | · | · | · | · |
-| س→ش (non-soft target pair (ذ↔ظ, س↔ش, ط↔ق)) | · | · | 1 | · | · | · | · |
-| ث→ص (another consonant) | · | · | · | · | · | · | 1 |
-| و→غ (another consonant) | · | · | · | · | · | · | 1 |
+|  | these sessions | #151 teacher, 1 s hop | #151 teacher, all eras | #151 `h448`, narrow | #90 `h448/checks` | #90 `base/checks` | owner's mistakes (catch side) | in 2:256 (mistakes, words not identified) |
+|---|---|---|---|---|---|---|---|---|
+| flags | 6 | 15 | 35 | 5 | 3 | 4 | 1 | 1 |
+| ل→ذ (another consonant) | · | 2 | 2 | · | · | · | · | · |
+| ل→∅ (another consonant) | · | 1 | 1 | 2 | · | · | · | · |
+| ر→∅ (another consonant) | · | 1 | 1 | · | · | 1 | · | · |
+| ش→∅ (another consonant) | · | 1 | 2 | · | · | · | · | · |
+| و→∅ (another consonant) | · | 1 | 2 | · | · | · | · | · |
+| ء→و (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| ذ→س (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| ض→∅ (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| ل→د (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| ل→ر (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| ن→∅ (another consonant) | · | · | 2 | · | · | · | · | · |
+| ه→∅ (another consonant) | 1 | · | 1 | · | · | · | · | · |
+| و→ف (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| ح→ه (soft-pair consonant) | · | 1 | 1 | · | · | · | · | · |
+| ت→د (another consonant) | · | · | · | 1 | · | · | · | · |
+| ث→ر (another consonant) | · | · | · | 1 | · | · | · | · |
+| ث→س (another consonant) | 1 | · | · | · | · | · | 1 | · |
+| ث→∅ (another consonant) | · | · | · | · | 1 | · | · | · |
+| ج→د (another consonant) | 1 | · | · | · | · | · | · | · |
+| د→ر (another consonant) | · | · | 1 | · | · | · | · | · |
+| ر→ب (another consonant) | · | · | · | · | 1 | · | · | · |
+| ر→ق (another consonant) | · | · | · | 1 | · | · | · | · |
+| ر→ل (another consonant) | · | · | 1 | · | · | · | · | · |
+| س→ت (another consonant) | · | · | · | · | · | 1 | · | · |
+| غ→∅ (another consonant) | · | · | · | 1 | · | · | · | · |
+| ف→و (another consonant) | · | · | 1 | · | · | · | · | · |
+| ك→ف (another consonant) | · | · | · | 1 | · | · | · | · |
+| ل→ء (another consonant) | 1 | · | · | · | · | · | · | · |
+| م→ل (another consonant) | · | · | 1 | · | · | · | · | · |
+| م→∅ (another consonant) | · | · | 1 | · | · | · | · | · |
+| ي→ر (another consonant) | 1 | · | · | · | · | · | · | · |
+| ي→ۦ (another consonant) | 1 | · | · | · | · | · | · | · |
+| ي→∅ (another consonant) | 1 | · | · | · | · | · | · | · |
+| س→ش (non-soft target pair (ذ↔ظ, س↔ش, ط↔ق)) | · | · | 1 | · | · | · | · | · |
+| ث→ص (another consonant) | · | · | · | · | · | · | · | 1 |
+| و→غ (another consonant) | · | · | · | · | · | · | · | 1 |
 
 By the expected letter (a word counts once per letter):
 
-|  | these sessions | #151 teacher, 1 s hop | #151 teacher, all eras | #151 `h448`, narrow | #90 `h448/checks` | #90 `base/checks` | owner's mistakes (catch side) |
-|---|---|---|---|---|---|---|---|
-| flags | 6 | 15 | 35 | 5 | 3 | 4 | 2 |
-| ل (another consonant) | 1 | 5 | 5 | 2 | · | · | · |
-| ر (another consonant) | · | 1 | 2 | 1 | 1 | 1 | · |
-| و (another consonant) | · | 2 | 3 | · | · | · | 1 |
-| ث (another consonant) | 1 | · | · | 1 | 1 | · | 2 |
-| ش (another consonant) | · | 1 | 2 | · | · | · | · |
-| ء (another consonant) | · | 1 | 1 | · | · | · | · |
-| ذ (another consonant) | · | 1 | 1 | · | · | · | · |
-| ض (another consonant) | · | 1 | 1 | · | · | · | · |
-| م (another consonant) | · | · | 2 | · | · | · | · |
-| ن (another consonant) | · | · | 2 | · | · | · | · |
-| ه (another consonant) | 1 | · | 1 | · | · | · | · |
-| ي (another consonant) | 2 | · | · | · | · | · | · |
-| ح (soft-pair consonant) | · | 1 | 1 | · | · | · | · |
-| ت (another consonant) | · | · | · | 1 | · | · | · |
-| ج (another consonant) | 1 | · | · | · | · | · | · |
-| د (another consonant) | · | · | 1 | · | · | · | · |
-| س (another consonant) | · | · | · | · | · | 1 | · |
-| غ (another consonant) | · | · | · | 1 | · | · | · |
-| ف (another consonant) | · | · | 1 | · | · | · | · |
-| ك (another consonant) | · | · | · | 1 | · | · | · |
-| س (non-soft target pair (ذ↔ظ, س↔ش, ط↔ق)) | · | · | 1 | · | · | · | · |
+|  | these sessions | #151 teacher, 1 s hop | #151 teacher, all eras | #151 `h448`, narrow | #90 `h448/checks` | #90 `base/checks` | owner's mistakes (catch side) | in 2:256 (mistakes, words not identified) |
+|---|---|---|---|---|---|---|---|---|
+| flags | 6 | 15 | 35 | 5 | 3 | 4 | 1 | 1 |
+| ل (another consonant) | 1 | 5 | 5 | 2 | · | · | · | · |
+| ر (another consonant) | · | 1 | 2 | 1 | 1 | 1 | · | · |
+| و (another consonant) | · | 2 | 3 | · | · | · | · | 1 |
+| ث (another consonant) | 1 | · | · | 1 | 1 | · | 1 | 1 |
+| ش (another consonant) | · | 1 | 2 | · | · | · | · | · |
+| ء (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| ذ (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| ض (another consonant) | · | 1 | 1 | · | · | · | · | · |
+| م (another consonant) | · | · | 2 | · | · | · | · | · |
+| ن (another consonant) | · | · | 2 | · | · | · | · | · |
+| ه (another consonant) | 1 | · | 1 | · | · | · | · | · |
+| ي (another consonant) | 2 | · | · | · | · | · | · | · |
+| ح (soft-pair consonant) | · | 1 | 1 | · | · | · | · | · |
+| ت (another consonant) | · | · | · | 1 | · | · | · | · |
+| ج (another consonant) | 1 | · | · | · | · | · | · | · |
+| د (another consonant) | · | · | 1 | · | · | · | · | · |
+| س (another consonant) | · | · | · | · | · | 1 | · | · |
+| غ (another consonant) | · | · | · | 1 | · | · | · | · |
+| ف (another consonant) | · | · | 1 | · | · | · | · | · |
+| ك (another consonant) | · | · | · | 1 | · | · | · | · |
+| س (non-soft target pair (ذ↔ظ, س↔ش, ط↔ق)) | · | · | 1 | · | · | · | · | · |
 
 The most frequent substitution and expected letter in each population (ties listed):
 

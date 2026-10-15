@@ -3,8 +3,10 @@
 #151 (:mod:`training.device_logs`) found no included device session on ``h448``. The owner then
 recited pages 4, 9 and 42 on the app as shipped (1.0.27, ``MuaalemStudent_h448_6BIT``) and
 exported each as a bug report, to measure false flags. The recitation is taken as correct except
-where the owner says otherwise (``owner_sessions.json``): the owner's mistakes (2:256, 2:60:11
-and two added phrases) are the catch side, kept out of every false-flag rate, and every word the
+where the owner says otherwise (``owner_sessions.json``): the owner's mistakes are the catch side,
+kept out of every false-flag rate. A word the owner names (2:60:11) and the added phrases are
+confirmed mistakes; an ayah the owner says holds mistakes without naming its words (2:256) is
+left out unlocalised, its flags reported with no catch-rate denominator. Every word the
 phone showed as not correct carries the owner's verdict (a mistake, or a model error with what
 explains it, read from the decode). A word flagged only under another scoring was never shown on
 the phone and stays a false flag on the rule that the recitation is correct.
@@ -98,13 +100,18 @@ MODES = ("strict", "balanced", "lenient")
 AS_RECORDED = "as_recorded"
 #: The basis of what the owner said about these sessions (2026-10-14 and 2026-10-15).
 OWNER = "owner"
+#: The owner's mistakes, two kinds of explained words: a word the owner names as a mistake, and
+#: an ayah the owner says holds mistakes without naming its words. Both are out of every
+#: false-flag rate; only the first is catch-side evidence word by word.
 MISTAKE = "mistake"
-#: A non-correct word's status: a mistake the owner made, a model error the owner confirmed,
-#: or (never shown on the phone, so given no verdict) a false flag by the rule that the
-#: recitation is correct.
+MISTAKE_AYAH = "mistake_ayah"
+#: A non-correct word's status: a mistake the owner made, a word of an ayah the owner says holds
+#: mistakes (words not identified), a model error the owner confirmed, or (never shown on the
+#: phone, so given no verdict) a false flag by the rule that the recitation is correct.
+IN_MISTAKE_AYAH = "in_mistake_ayah"
 MODEL_ERROR = "model_error"
 ASSUMED = "assumed"
-STATUSES = (MISTAKE, MODEL_ERROR, ASSUMED)
+STATUSES = (MISTAKE, IN_MISTAKE_AYAH, MODEL_ERROR, ASSUMED)
 #: The model-load line of an app run, and the opening of a reader's session.
 _LOADED = re.compile(r"\[MuaalemInference\] \[([^\]]+)\] ✅ Loaded")
 _PENDING = re.compile(r"\[ScoreCollector\] (Tilawah|Hifz) session pending on page (\d+)")
@@ -355,9 +362,11 @@ def load_annotations(text: MurajaText, path: Path = SESSIONS_PATH) -> Annotation
         if "ayah" in m:
             surah, ayah = (int(x) for x in m["ayah"].split(":"))
             first, last = f"{surah}:{ayah}:1", f"{surah}:{ayah}:{len(text.phonemes(surah, ayah).split(' '))}"
+            kind, source = MISTAKE_AYAH, f"{said(m)} (the ayah holds mistakes; its words are not identified)"
         else:
             first = last = m["word"]
-        mistakes.setdefault(m["session"], []).append(Explained(first, last, MISTAKE, OWNER, said(m)))
+            kind, source = MISTAKE, said(m)
+        mistakes.setdefault(m["session"], []).append(Explained(first, last, kind, OWNER, source))
     model_errors: dict[str, dict[str, dict]] = {}
     for e in record["model_errors"]:
         if e["explained_by"] not in EXPLAINED_BY:
@@ -435,18 +444,32 @@ def _cause_counts(grades: Sequence[WordGrade]) -> dict[str, int]:
     return {c: sum(c in g.causes for g in grades) for c in CAUSES if any(c in g.causes for g in grades)}
 
 
+def _owned(g: WordGrade, kind: str) -> bool:
+    return g.explained is not None and g.explained.basis == OWNER and g.explained.kind == kind
+
+
+def _flag_row(g: WordGrade) -> dict:
+    return {"session": g.log, "word": g.word, "quality": g.quality, "causes": list(g.causes),
+            "marks": list(g.marks), "pairs": list(g.pairs)}
+
+
 def catch_side(entries: Sequence[LogEntry], grades: Mapping[str, Sequence[WordGrade]]) -> dict:
-    """``[scoring]`` the words the owner says they got wrong: graded, shown as not correct, the
-    causes, and each flagged word."""
+    """``[scoring]`` the owner's mistakes, apart from the false flags. **Words** the owner names
+    as mistakes: graded, shown as not correct, the causes and each flagged word. **Ayat** the
+    owner says hold mistakes without naming the words: the flags observed in them and their
+    causes only, with no denominator, since which of their words were wrong is not known."""
     out = {}
     for s in REPORTED_SCORINGS:
-        mine = [g for e in entries for g in grades[e.log]
-                if g.scoring == s.name and g.explained is not None and g.explained.basis == OWNER]
-        flagged = [g for g in mine if g.flagged]
-        out[s.name] = {"words": len(mine), "flagged": len(flagged), "causes": _cause_counts(flagged),
-                       "flagged_words": [{"session": g.log, "word": g.word, "quality": g.quality,
-                                          "causes": list(g.causes), "marks": list(g.marks), "pairs": list(g.pairs)}
-                                         for g in flagged]}
+        mine = [g for e in entries for g in grades[e.log] if g.scoring == s.name]
+        words = [g for g in mine if _owned(g, MISTAKE)]
+        in_ayat = [g for g in mine if _owned(g, MISTAKE_AYAH) and g.flagged]
+        flagged = [g for g in words if g.flagged]
+        out[s.name] = {
+            "words": {"graded": len(words), "flagged": len(flagged), "causes": _cause_counts(flagged),
+                      "flagged_words": [_flag_row(g) for g in flagged]},
+            "ayat": {"flagged": len(in_ayat), "causes": _cause_counts(in_ayat),
+                     "flagged_words": [_flag_row(g) for g in in_ayat]},
+        }
     return out
 
 
@@ -526,7 +549,8 @@ def verdict(entry: LogEntry, word: str, notes: Annotations) -> dict:
     """What a non-correct word of a target session is (:data:`STATUSES`), and on what basis."""
     explanation = entry.explanation(word)
     if explanation is not None and explanation.basis == OWNER:
-        return {"status": MISTAKE, "basis": OWNER, "source": explanation.source}
+        status = MISTAKE if explanation.kind == MISTAKE else IN_MISTAKE_AYAH
+        return {"status": status, "basis": OWNER, "source": explanation.source}
     if word in notes.model_errors.get(entry.log, {}):
         return {"status": MODEL_ERROR, **notes.model_errors[entry.log][word]}
     return {"status": ASSUMED, "basis": "the recitation is taken as correct; the phone never showed the word as not correct"}
@@ -685,14 +709,15 @@ def build_report(paths: Sequence[Path]) -> dict:
         "allowances": {row[0]: {str(width): dl.allowance_effect(entries, grades, row, width)
                                 for width in (None, *SLIP_WIDTHS)} for row in ALLOWANCE_ROWS},
         "catch": catch,
-        "words": [dl.word_row(g) | {"verdict": verdict(e, g.word, notes)}
+        "words": [dl.word_row(g) | {"substitutions": [label for _, label in g.consonants],
+                                    "verdict": verdict(e, g.word, notes)}
                   for e in entries for g in grades[e.log] if g.flagged and g.scoring in reported],
         "substitutions": {
             "sessions": {s.name: _false_flag_tally(entries, grades, s.name) for s in REPORTED_SCORINGS},
-            "owner_mistakes": {s.name: _tallies([g.consonants for e in entries for g in grades[e.log]
-                                                 if g.scoring == s.name and g.flagged and g.explained is not None
-                                                 and g.explained.basis == OWNER])
-                               for s in REPORTED_SCORINGS},
+            **{key: {s.name: _tallies([g.consonants for e in entries for g in grades[e.log]
+                                       if g.scoring == s.name and g.flagged and _owned(g, kind)])
+                     for s in REPORTED_SCORINGS}
+               for key, kind in (("owner_mistakes", MISTAKE), ("mistake_ayat", MISTAKE_AYAH))},
             "device_logs": device_log_tallies(pin, text, report151),
             "simulation": simulation_tallies(text),
         },

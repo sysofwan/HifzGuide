@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from training.device_exports import AS_RECORDED, MISTAKE, MODEL_ERROR, MODES
+from training.device_exports import AS_RECORDED, IN_MISTAKE_AYAH, MISTAKE, MODEL_ERROR, MODES
 from training.device_logs import (
     ALL_WORDS,
     H448,
@@ -189,8 +189,10 @@ def _rates_section(report: dict) -> list[str]:
         "## False flags per 1,000 graded words",
         "",
         "Count / graded words · per 1,000. With three sessions, no interval is admissible (n/c);",
-        "#151's interval resamples sessions. *Owner's mistakes left out* drops the words of 2:256",
-        "from both counts (*The owner's mistakes*). This is the false-flag rate. No other word is",
+        "#151's interval resamples sessions. *Owner's mistakes left out* drops from both counts the",
+        "word the owner names as a mistake (2:60:11) and every word of 2:256, the ayah the owner",
+        "says holds mistakes without naming its words (*The owner's mistakes*). This is the",
+        "false-flag rate. No other word is",
         "explained. #151's rule admits only decode evidence of a word skipped or never recited, and",
         "each session grades every word of its ayat, none as skipped. A few words the reader repeats",
         "inside a session stay in, as #151 keeps the re-reads no doc records. The added-phrase",
@@ -241,6 +243,8 @@ def _status(verdict: dict) -> str:
     """A non-correct word's status as the tables show it."""
     if verdict["status"] == MISTAKE:
         return "the owner's mistake"
+    if verdict["status"] == IN_MISTAKE_AYAH:
+        return "flagged in an ayah the owner says holds mistakes (words not identified)"
     if verdict["status"] == MODEL_ERROR:
         return f"false flag: model error (owner {verdict['date']}; {verdict['explained_by']})"
     return "false flag: assumed (never shown on the phone)"
@@ -301,25 +305,43 @@ def _words_section(report: dict) -> list[str]:
 def _catch_section(report: dict) -> list[str]:
     names = _names(report)
     catch = report["catch"]
-    rows = [[f"`{n}`", f"{catch[n]['flagged']} / {catch[n]['words']}",
-             ", ".join(f"{CAUSE_TITLES[c]} {k}" for c, k in catch[n]["causes"].items()) or "–",
-             ", ".join(f"{w['word']} ({w['quality']})" for w in catch[n]["flagged_words"]) or "–"] for n in names]
+
+    def causes(cell: dict) -> str:
+        return ", ".join(f"{CAUSE_TITLES[c]} {k}" for c, k in cell["causes"].items()) or "–"
+
+    def flagged(cell: dict) -> str:
+        return ", ".join(f"{w['word']} ({w['quality']})" for w in cell["flagged_words"]) or "–"
+
+    words = [[f"`{n}`", f"{catch[n]['words']['flagged']} / {catch[n]['words']['graded']}",
+              causes(catch[n]["words"]), flagged(catch[n]["words"])] for n in names]
+    ayat = [[f"`{n}`", str(catch[n]["ayat"]["flagged"]), causes(catch[n]["ayat"]), flagged(catch[n]["ayat"])]
+            for n in names]
     added = [[s["session"], f"after {a['start']}" if a["start"] == a["end"] else f"between {a['start']} and {a['end']}",
               a["twin"], f"#{a['detection']}: {' → '.join(a['kinds'])}",
               "yes" if a["saved"] else "no (the export holds no end of this session)",
               ", ".join(f"{w} {q}" for w, q in a["kept"].items())]
              for s in _targets(report) for a in s["added"]]
-    ranges = "; ".join(f"{s['session']}: {', '.join(m['first'] if m['first'] == m['last'] else m['first'] + '–' + m['last'] for m in s['mistakes'])}"
-                       for s in _targets(report) if s["mistakes"])
+    def spans(kind: str) -> str:
+        return "; ".join(f"{s['session']}: " + ", ".join(m["first"] if m["first"] == m["last"] else f"{m['first']}–{m['last']}"
+                                                        for m in s["mistakes"] if m["kind"] == kind)
+                         for s in _targets(report) if any(m["kind"] == kind for m in s["mistakes"]))
+
     return [
         "## The owner's mistakes: first device evidence on the catch side",
         "",
-        f"The words the owner says they got wrong ({ranges}) are real mistakes, not false flags.",
-        "They are out of every false-flag rate above and are reported here, apart from the rates.",
-        "For 2:256 the owner did not say which words, so the whole ayah is treated as holding the",
-        "mistakes. Each scoring's count of these words the app flagged:",
+        "What the owner says they got wrong is not a false flag. It is out of every false-flag rate",
+        "above and is reported here, apart from the rates, in three kinds.",
         "",
-        *md_table(["scoring", "flagged / graded", "causes", "words"], rows),
+        f"**Words the owner names as mistakes** ({spans('mistake')}). Each scoring's count of them",
+        "flagged by the app, out of those graded:",
+        "",
+        *md_table(["scoring", "flagged / graded", "causes", "words"], words),
+        f"**An ayah the owner says holds mistakes** ({spans('mistake_ayah')}). The owner did not say",
+        "which words were wrong, so no word of it is a known mistake and there is no catch rate.",
+        "These are the flags the app showed in it, with their causes. Each is a flag *in an ayah",
+        "that holds mistakes*, not a confirmed catch:",
+        "",
+        *md_table(["scoring", "flags in the ayah", "causes", "words"], ayat),
         "**Added words.** Muraja's shadow-speech detector classified two stretches of speech as",
         "added. The owner says the added words were a mistake. The passage whose wording each one",
         "is was read from the decode. It is not quoted here: the log text stays private. An added",
@@ -341,12 +363,13 @@ def _substitutions_section(report: dict) -> list[str]:
         "#90 `h448/checks`": sub["simulation"][H448][scoring],
         "#90 `base/checks`": sub["simulation"][TEACHER][scoring],
         "owner's mistakes (catch side)": sub["owner_mistakes"][scoring],
+        "in 2:256 (mistakes, words not identified)": sub["mistake_ayat"][scoring],
     }
 
     def table(field: str, key: str) -> list[str]:
         keys = sorted({(t["cause"], t[key]) for tally in columns.values() for t in tally[field]},
                       key=lambda ck: (-sum(next((t["words"] for t in tally[field] if (t["cause"], t[key]) == ck), 0)
-                                           for tally in list(columns.values())[:-1]), ck))
+                                           for tally in list(columns.values())[:-2]), ck))
         rows = [[f"{label} ({CAUSE_TITLES[cause]})",
                  *(str(next((t["words"] for t in tally[field] if (t["cause"], t[key]) == (cause, label)), 0) or "·")
                    for tally in columns.values())] for cause, label in keys]
@@ -357,7 +380,7 @@ def _substitutions_section(report: dict) -> list[str]:
         return ", ".join(t[key] for t in tally[field] if t["words"] == top) + f" ({top} of {tally['flags']} flags)" if top else "none"
 
     lead = [f"- {title}: substitution {leaders(t, 'substitutions', 'substitution')}; letter "
-            f"{leaders(t, 'expected', 'expected')}" for title, t in list(columns.items())[:-1]]
+            f"{leaders(t, 'expected', 'expected')}" for title, t in list(columns.items())[:-2]]
     return [
         "## The consonant flags, by substitution",
         "",
@@ -368,7 +391,8 @@ def _substitutions_section(report: dict) -> list[str]:
         "counts under each. *Flags* counts every false flag of the population, tashkeel ones",
         "included. #151's device logs are replayed here at the pin, and each population's flag",
         "count is checked against #151's report. #90's errors are read from its committed report.",
-        "The last column is the catch side, kept apart.",
+        "The last two columns are the catch side, kept apart: the word the owner names as a",
+        "mistake, and the flags in the ayah the owner says holds mistakes.",
         "",
         *table("substitutions", "substitution"),
         "By the expected letter (a word counts once per letter):",
@@ -473,8 +497,10 @@ def _summary(report: dict) -> list[str]:
     for v in errors:
         by[v["explained_by"]] += 1
     mistakes = sum(c["verdict"]["status"] == MISTAKE for c in shown)
+    in_ayat = sum(c["verdict"]["status"] == IN_MISTAKE_AYAH for c in shown)
     verdicts = (f"of {len(shown)} words, {len(errors)} are model errors "
-                f"({', '.join(f'{n} {how}' for how, n in sorted(by.items()))}) and {mistakes} the owner's mistakes")
+                f"({', '.join(f'{n} {how}' for how, n in sorted(by.items()))}), {mistakes} the owner's mistake "
+                f"and {in_ayat} in the ayah the owner says holds mistakes")
     return [
         "## Read this first",
         "",
@@ -491,9 +517,14 @@ def _summary(report: dict) -> list[str]:
         f"- **Every word the phone showed as not correct has the owner's verdict:** {verdicts}. Words",
         "  flagged only under other scorings were never shown on the phone; they stay false flags, on",
         "  the rule that the recitation is correct.",
-        f"- **The owner's mistakes (catch side):** as recorded, the app flagged {catch['flagged']} of their {catch['words']}",
-        f"  words ({', '.join(w['word'] for w in catch['flagged_words'])}). It classified both added phrases as added.",
-        "  One was saved as added words; the other session's end is not in the export.",
+        f"- **The owner's mistakes (catch side):** as recorded, the app flagged {catch['words']['flagged']} of"
+        f" {_plural(catch['words']['graded'], 'word')} the owner names",
+        f"  ({', '.join(w['word'] for w in catch['words']['flagged_words']) or 'none'}). In 2:256, which the owner says"
+        f" holds mistakes without naming the words, it showed {_plural(catch['ayat']['flagged'], 'flag')}",
+        f"  ({', '.join(w['word'] for w in catch['ayat']['flagged_words']) or 'none'}); with the wrong words unknown,"
+        " that is no catch rate.",
+        "  The detector classified both added phrases as added. One was saved as added words; the",
+        "  other session's end is not in the export.",
         "- No recommendation on allowances or thresholds.",
         "",
     ]

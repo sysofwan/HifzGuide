@@ -2154,9 +2154,9 @@
     {
      "first": "2:256:1",
      "last": "2:256:24",
-     "kind": "mistake",
+     "kind": "mistake_ayah",
      "basis": "owner",
-     "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake."
+     "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake. (the ayah holds mistakes; its words are not identified)"
     }
    ],
    "slip_regions": {
@@ -2302,9 +2302,9 @@
       "ث→ص"
      ],
      "verdict": {
-      "status": "mistake",
+      "status": "in_mistake_ayah",
       "basis": "owner",
-      "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake."
+      "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake. (the ayah holds mistakes; its words are not identified)"
      }
     }
    ]
@@ -4820,178 +4820,238 @@
  },
  "catch": {
   "allowances_on": {
-   "words": 25,
-   "flagged": 2,
-   "causes": {
-    "other_consonant": 2
-   },
-   "flagged_words": [
-    {
-     "session": "70#2",
-     "word": "2:60:11",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
+   "words": {
+    "graded": 1,
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
     },
-    {
-     "session": "71#2",
-     "word": "2:256:18",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
-    }
-   ]
+    "flagged_words": [
+     {
+      "session": "70#2",
+      "word": "2:60:11",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   },
+   "ayat": {
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
+    },
+    "flagged_words": [
+     {
+      "session": "71#2",
+      "word": "2:256:18",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   }
   },
   "soft_pair_forgiveness_off": {
-   "words": 25,
-   "flagged": 2,
-   "causes": {
-    "other_consonant": 2
-   },
-   "flagged_words": [
-    {
-     "session": "70#2",
-     "word": "2:60:11",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
+   "words": {
+    "graded": 1,
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
     },
-    {
-     "session": "71#2",
-     "word": "2:256:18",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
-    }
-   ]
+    "flagged_words": [
+     {
+      "session": "70#2",
+      "word": "2:60:11",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   },
+   "ayat": {
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
+    },
+    "flagged_words": [
+     {
+      "session": "71#2",
+      "word": "2:256:18",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   }
   },
   "shaddah_suppression_off": {
-   "words": 25,
-   "flagged": 2,
-   "causes": {
-    "other_consonant": 2
-   },
-   "flagged_words": [
-    {
-     "session": "70#2",
-     "word": "2:60:11",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
+   "words": {
+    "graded": 1,
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
     },
-    {
-     "session": "71#2",
-     "word": "2:256:18",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
-    }
-   ]
+    "flagged_words": [
+     {
+      "session": "70#2",
+      "word": "2:60:11",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   },
+   "ayat": {
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
+    },
+    "flagged_words": [
+     {
+      "session": "71#2",
+      "word": "2:256:18",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   }
   },
   "shipped_default": {
-   "words": 25,
-   "flagged": 2,
-   "causes": {
-    "other_consonant": 2
-   },
-   "flagged_words": [
-    {
-     "session": "70#2",
-     "word": "2:60:11",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
+   "words": {
+    "graded": 1,
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
     },
-    {
-     "session": "71#2",
-     "word": "2:256:18",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
-    }
-   ]
+    "flagged_words": [
+     {
+      "session": "70#2",
+      "word": "2:60:11",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   },
+   "ayat": {
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
+    },
+    "flagged_words": [
+     {
+      "session": "71#2",
+      "word": "2:256:18",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   }
   },
   "allowances_off": {
-   "words": 25,
-   "flagged": 2,
-   "causes": {
-    "other_consonant": 2
-   },
-   "flagged_words": [
-    {
-     "session": "70#2",
-     "word": "2:60:11",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
+   "words": {
+    "graded": 1,
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
     },
-    {
-     "session": "71#2",
-     "word": "2:256:18",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
-    }
-   ]
+    "flagged_words": [
+     {
+      "session": "70#2",
+      "word": "2:60:11",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   },
+   "ayat": {
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
+    },
+    "flagged_words": [
+     {
+      "session": "71#2",
+      "word": "2:256:18",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   }
   },
   "as_recorded": {
-   "words": 25,
-   "flagged": 2,
-   "causes": {
-    "other_consonant": 2
-   },
-   "flagged_words": [
-    {
-     "session": "70#2",
-     "word": "2:60:11",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
+   "words": {
+    "graded": 1,
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
     },
-    {
-     "session": "71#2",
-     "word": "2:256:18",
-     "quality": "minor",
-     "causes": [
-      "other_consonant"
-     ],
-     "marks": [],
-     "pairs": []
-    }
-   ]
+    "flagged_words": [
+     {
+      "session": "70#2",
+      "word": "2:60:11",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   },
+   "ayat": {
+    "flagged": 1,
+    "causes": {
+     "other_consonant": 1
+    },
+    "flagged_words": [
+     {
+      "session": "71#2",
+      "word": "2:256:18",
+      "quality": "minor",
+      "causes": [
+       "other_consonant"
+      ],
+      "marks": [],
+      "pairs": []
+     }
+    ]
+   }
   }
  },
  "words": [
@@ -5005,11 +5065,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ج→د"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5031,11 +5091,11 @@
    "pairs": [
     "ق↔ك"
    ],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ك→ق"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "assumed",
     "basis": "the recitation is taken as correct; the phone never showed the word as not correct"
@@ -5051,11 +5111,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ج→د"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5077,11 +5137,11 @@
    "pairs": [
     "ح↔ه"
    ],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ح→ه"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "assumed",
     "basis": "the recitation is taken as correct; the phone never showed the word as not correct"
@@ -5097,11 +5157,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ج→د"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5121,11 +5181,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ج→د"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5147,11 +5207,11 @@
    "pairs": [
     "ق↔ك"
    ],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ك→ق"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "assumed",
     "basis": "the recitation is taken as correct; the phone never showed the word as not correct"
@@ -5167,11 +5227,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ج→د"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5193,11 +5253,11 @@
    "pairs": [
     "ح↔ه"
    ],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ح→ه"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "assumed",
     "basis": "the recitation is taken as correct; the phone never showed the word as not correct"
@@ -5213,11 +5273,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ج→د"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5237,11 +5297,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake",
+   "basis": "owner",
    "substitutions": [
     "ث→س"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
     "status": "mistake",
     "basis": "owner",
@@ -5258,12 +5318,12 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ث→س",
     "ث→س"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5283,11 +5343,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5307,11 +5367,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake",
+   "basis": "owner",
    "substitutions": [
     "ث→س"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
     "status": "mistake",
     "basis": "owner",
@@ -5328,12 +5388,12 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ث→س",
     "ث→س"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5353,11 +5413,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5377,11 +5437,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake",
+   "basis": "owner",
    "substitutions": [
     "ث→س"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
     "status": "mistake",
     "basis": "owner",
@@ -5398,12 +5458,12 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ث→س",
     "ث→س"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5423,11 +5483,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5447,11 +5507,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake",
+   "basis": "owner",
    "substitutions": [
     "ث→س"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
     "status": "mistake",
     "basis": "owner",
@@ -5468,12 +5528,12 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ث→س",
     "ث→س"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5493,11 +5553,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5517,11 +5577,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake",
+   "basis": "owner",
    "substitutions": [
     "ث→س"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
     "status": "mistake",
     "basis": "owner",
@@ -5538,12 +5598,12 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ث→س",
     "ث→س"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5563,11 +5623,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5587,11 +5647,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake",
+   "basis": "owner",
    "substitutions": [
     "ث→س"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
     "status": "mistake",
     "basis": "owner",
@@ -5608,12 +5668,12 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ث→س",
     "ث→س"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5633,11 +5693,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5657,11 +5717,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ل→ء"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5681,13 +5741,13 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→ۦ",
     "ي→ر",
     "ه→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5707,16 +5767,16 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake_ayah",
+   "basis": "owner",
    "substitutions": [
     "و→غ",
     "ث→ص"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
-    "status": "mistake",
+    "status": "in_mistake_ayah",
     "basis": "owner",
-    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake."
+    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake. (the ayah holds mistakes; its words are not identified)"
    }
   },
   {
@@ -5729,11 +5789,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ل→ء"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5753,13 +5813,13 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→ۦ",
     "ي→ر",
     "ه→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5779,16 +5839,16 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake_ayah",
+   "basis": "owner",
    "substitutions": [
     "و→غ",
     "ث→ص"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
-    "status": "mistake",
+    "status": "in_mistake_ayah",
     "basis": "owner",
-    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake."
+    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake. (the ayah holds mistakes; its words are not identified)"
    }
   },
   {
@@ -5801,11 +5861,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ل→ء"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5825,13 +5885,13 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→ۦ",
     "ي→ر",
     "ه→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5851,16 +5911,16 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake_ayah",
+   "basis": "owner",
    "substitutions": [
     "و→غ",
     "ث→ص"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
-    "status": "mistake",
+    "status": "in_mistake_ayah",
     "basis": "owner",
-    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake."
+    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake. (the ayah holds mistakes; its words are not identified)"
    }
   },
   {
@@ -5875,9 +5935,9 @@
     "fatha other"
    ],
    "pairs": [],
-   "substitutions": [],
    "explained": null,
    "basis": null,
+   "substitutions": [],
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5897,11 +5957,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ل→ء"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5921,13 +5981,13 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→ۦ",
     "ي→ر",
     "ه→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5947,16 +6007,16 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake_ayah",
+   "basis": "owner",
    "substitutions": [
     "و→غ",
     "ث→ص"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
-    "status": "mistake",
+    "status": "in_mistake_ayah",
     "basis": "owner",
-    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake."
+    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake. (the ayah holds mistakes; its words are not identified)"
    }
   },
   {
@@ -5971,9 +6031,9 @@
     "fatha other"
    ],
    "pairs": [],
-   "substitutions": [],
    "explained": null,
    "basis": null,
+   "substitutions": [],
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -5993,11 +6053,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ل→ء"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -6017,13 +6077,13 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→ۦ",
     "ي→ر",
     "ه→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -6043,16 +6103,16 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake_ayah",
+   "basis": "owner",
    "substitutions": [
     "و→غ",
     "ث→ص"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
-    "status": "mistake",
+    "status": "in_mistake_ayah",
     "basis": "owner",
-    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake."
+    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake. (the ayah holds mistakes; its words are not identified)"
    }
   },
   {
@@ -6067,9 +6127,9 @@
     "fatha other"
    ],
    "pairs": [],
-   "substitutions": [],
    "explained": null,
    "basis": null,
+   "substitutions": [],
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -6089,11 +6149,11 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ل→ء"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -6113,13 +6173,13 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": null,
+   "basis": null,
    "substitutions": [
     "ي→ۦ",
     "ي→ر",
     "ه→∅"
    ],
-   "explained": null,
-   "basis": null,
    "verdict": {
     "status": "model_error",
     "basis": "owner",
@@ -6139,16 +6199,16 @@
    ],
    "marks": [],
    "pairs": [],
+   "explained": "mistake_ayah",
+   "basis": "owner",
    "substitutions": [
     "و→غ",
     "ث→ص"
    ],
-   "explained": "mistake",
-   "basis": "owner",
    "verdict": {
-    "status": "mistake",
+    "status": "in_mistake_ayah",
     "basis": "owner",
-    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake."
+    "source": "owner 2026-10-14: The added words were my mistake, 2:256 were also my mistake. (the ayah holds mistakes; its words are not identified)"
    }
   }
  ],
@@ -6599,13 +6659,112 @@
   },
   "owner_mistakes": {
    "allowances_on": {
-    "flags": 2,
+    "flags": 1,
     "substitutions": [
      {
       "cause": "other_consonant",
       "substitution": "ث→س",
       "words": 1
-     },
+     }
+    ],
+    "expected": [
+     {
+      "cause": "other_consonant",
+      "expected": "ث",
+      "words": 1
+     }
+    ]
+   },
+   "soft_pair_forgiveness_off": {
+    "flags": 1,
+    "substitutions": [
+     {
+      "cause": "other_consonant",
+      "substitution": "ث→س",
+      "words": 1
+     }
+    ],
+    "expected": [
+     {
+      "cause": "other_consonant",
+      "expected": "ث",
+      "words": 1
+     }
+    ]
+   },
+   "shaddah_suppression_off": {
+    "flags": 1,
+    "substitutions": [
+     {
+      "cause": "other_consonant",
+      "substitution": "ث→س",
+      "words": 1
+     }
+    ],
+    "expected": [
+     {
+      "cause": "other_consonant",
+      "expected": "ث",
+      "words": 1
+     }
+    ]
+   },
+   "shipped_default": {
+    "flags": 1,
+    "substitutions": [
+     {
+      "cause": "other_consonant",
+      "substitution": "ث→س",
+      "words": 1
+     }
+    ],
+    "expected": [
+     {
+      "cause": "other_consonant",
+      "expected": "ث",
+      "words": 1
+     }
+    ]
+   },
+   "allowances_off": {
+    "flags": 1,
+    "substitutions": [
+     {
+      "cause": "other_consonant",
+      "substitution": "ث→س",
+      "words": 1
+     }
+    ],
+    "expected": [
+     {
+      "cause": "other_consonant",
+      "expected": "ث",
+      "words": 1
+     }
+    ]
+   },
+   "as_recorded": {
+    "flags": 1,
+    "substitutions": [
+     {
+      "cause": "other_consonant",
+      "substitution": "ث→س",
+      "words": 1
+     }
+    ],
+    "expected": [
+     {
+      "cause": "other_consonant",
+      "expected": "ث",
+      "words": 1
+     }
+    ]
+   }
+  },
+  "mistake_ayat": {
+   "allowances_on": {
+    "flags": 1,
+    "substitutions": [
      {
       "cause": "other_consonant",
       "substitution": "ث→ص",
@@ -6621,7 +6780,7 @@
      {
       "cause": "other_consonant",
       "expected": "ث",
-      "words": 2
+      "words": 1
      },
      {
       "cause": "other_consonant",
@@ -6631,13 +6790,8 @@
     ]
    },
    "soft_pair_forgiveness_off": {
-    "flags": 2,
+    "flags": 1,
     "substitutions": [
-     {
-      "cause": "other_consonant",
-      "substitution": "ث→س",
-      "words": 1
-     },
      {
       "cause": "other_consonant",
       "substitution": "ث→ص",
@@ -6653,7 +6807,7 @@
      {
       "cause": "other_consonant",
       "expected": "ث",
-      "words": 2
+      "words": 1
      },
      {
       "cause": "other_consonant",
@@ -6663,13 +6817,8 @@
     ]
    },
    "shaddah_suppression_off": {
-    "flags": 2,
+    "flags": 1,
     "substitutions": [
-     {
-      "cause": "other_consonant",
-      "substitution": "ث→س",
-      "words": 1
-     },
      {
       "cause": "other_consonant",
       "substitution": "ث→ص",
@@ -6685,7 +6834,7 @@
      {
       "cause": "other_consonant",
       "expected": "ث",
-      "words": 2
+      "words": 1
      },
      {
       "cause": "other_consonant",
@@ -6695,13 +6844,8 @@
     ]
    },
    "shipped_default": {
-    "flags": 2,
+    "flags": 1,
     "substitutions": [
-     {
-      "cause": "other_consonant",
-      "substitution": "ث→س",
-      "words": 1
-     },
      {
       "cause": "other_consonant",
       "substitution": "ث→ص",
@@ -6717,7 +6861,7 @@
      {
       "cause": "other_consonant",
       "expected": "ث",
-      "words": 2
+      "words": 1
      },
      {
       "cause": "other_consonant",
@@ -6727,13 +6871,8 @@
     ]
    },
    "allowances_off": {
-    "flags": 2,
+    "flags": 1,
     "substitutions": [
-     {
-      "cause": "other_consonant",
-      "substitution": "ث→س",
-      "words": 1
-     },
      {
       "cause": "other_consonant",
       "substitution": "ث→ص",
@@ -6749,7 +6888,7 @@
      {
       "cause": "other_consonant",
       "expected": "ث",
-      "words": 2
+      "words": 1
      },
      {
       "cause": "other_consonant",
@@ -6759,13 +6898,8 @@
     ]
    },
    "as_recorded": {
-    "flags": 2,
+    "flags": 1,
     "substitutions": [
-     {
-      "cause": "other_consonant",
-      "substitution": "ث→س",
-      "words": 1
-     },
      {
       "cause": "other_consonant",
       "substitution": "ث→ص",
@@ -6781,7 +6915,7 @@
      {
       "cause": "other_consonant",
       "expected": "ث",
-      "words": 2
+      "words": 1
      },
      {
       "cause": "other_consonant",

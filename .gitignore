@@ -155,3 +155,9 @@ tools/export/
 # The QUD pilot's worklist of disagreements (#144): every carrier where the base teacher or
 # h448 commits something other than the mushaf, with its excerpt; not queued for listening.
 !tools/tadabur/qud_eval/pilot/worklist.jsonl
+# The non-professional eval pilot (#156): RetaSy's (licence unknown) and qdat_bench's (licence
+# unstated) per-clip outputs stay local; only aggregates and clip ids are committed. The open
+# corpora's worklists of disagreements are committed, not queued for listening.
+tools/tadabur/nonpro_eval/restricted/
+!tools/tadabur/nonpro_eval/*/worklist.jsonl
+!tools/tadabur/nonpro_eval/*/consonant_worklist.jsonl

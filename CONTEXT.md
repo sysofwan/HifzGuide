@@ -228,6 +228,13 @@ the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you
   correctly is flagged `assumes_competent_reciter`.
 : _Avoid_: fixture (the older per-clip label sets), ground truth (unqualified)
 
+**External corpus**
+: Recitation from outside Tadabur that neither the base teacher nor `h448` has heard, read for
+  evaluation only (`training.external_corpus`): QUD's professional mushafs (#144) and the
+  non-professional corpora (#156: Tarteel v1 app users, RetaSy, qdat). Its agreed sites
+  `assume_competent_reciter`; its exposure uses are refused by `check_disjoint`.
+: _Avoid_: held-out set (it was never part of any split), test set
+
 ## Re-read Corpus
 
 The vocabulary of Muraja ADR-0016, which mines the Tadabur clips the ADR-0001 gate **rejects**

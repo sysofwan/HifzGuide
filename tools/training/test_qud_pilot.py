@@ -5,6 +5,7 @@ Torch-free and model-free: the item, its reference and every decode are syntheti
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ import pytest
 from tadabur.qud_source import QudRow
 from tadabur.qud_text import ItemReference
 from tadabur.truth_sites import PENDING, parse_site
+from training import external_corpus as ec
 from training import qud_pilot as qp
 from training.carrier_windowing import (
     Clip,
@@ -56,15 +58,15 @@ def _by_carrier(rows, letter):
 
 def test_both_rule_arms_on_the_mushaf_is_agreed_either_off_is_a_disagreement():
     rows = _rows({"h448/stream_b0": "قَالَ شَططَ"})  # h448 hears the س as ش
-    assert {qp.classify(r) for r in _by_carrier(rows, "س")} == {qp.DISAGREED}
-    assert {qp.classify(r) for r in _by_carrier(rows, "ق")} == {qp.AGREED}
+    assert {qp.classify(r) for r in _by_carrier(rows, "س")} == {ec.DISAGREED}
+    assert {qp.classify(r) for r in _by_carrier(rows, "ق")} == {ec.AGREED}
     # Another arm off the mushaf does not matter: the rule reads two arms only.
-    assert {qp.classify(r) for r in _rows({"base/checks": "قَالَ شَططَ"})} == {qp.AGREED}
+    assert {qp.classify(r) for r in _rows({"base/checks": "قَالَ شَططَ"})} == {ec.AGREED}
 
 
 def test_nothing_committed_with_no_disagreement_is_abstained():
     rows = _rows({"base/spans": "قَالَ"})  # the decode never reaches سَططَ
-    assert {qp.classify(r) for r in _by_carrier(rows, "س")} == {qp.ABSTAINED}
+    assert {qp.classify(r) for r in _by_carrier(rows, "س")} == {ec.ABSTAINED}
 
 
 def test_sites_are_valid_qud_truth_sites_and_leave_abstained_carriers_out():
@@ -99,11 +101,11 @@ def test_the_listening_estimate_caps_each_stratum_at_the_budget():
 
 def test_every_recited_ayah_word_is_graded_once_on_its_own_muraja_word():
     item = _item()
-    placed = qp.placed_words(item, lambda surah, ayah, word: word)
+    placed = ec.placed_words(item, lambda surah, ayah, word: word)
     assert [(w.word_index, w.reference_index, site.word) for w, site in placed] == \
         [(0, 0, 1), (1, 6, 2)]
     # Two printed words recited as one phoneme word are graded once.
-    merged = qp.placed_words(item, lambda surah, ayah, word: 1)
+    merged = ec.placed_words(item, lambda surah, ayah, word: 1)
     assert [site.word for _, site in merged] == [1]
 
 
@@ -129,8 +131,8 @@ def test_a_mid_ayah_item_starts_on_its_own_first_word(key):
                         ItemReference(tuple("w" for _ in words), words, "x" * len(words),
                                       tuple(range(len(words) + 1))))
     text = MurajaText(QURAN_DB)
-    placed = qp.placed_words(item, text.phoneme_word)
-    placement = qp.placement(item, placed)
+    placed = ec.placed_words(item, text.phoneme_word)
+    placement = ec.placement(item, placed)
     expected = sorted({text.phoneme_word(surah, ayah, w + 1) for w in words})
     assert placement.start_word == text.phoneme_word(surah, ayah, word_from) > 1
     assert sorted(site.word for site in placement.where.values()) == expected
@@ -291,3 +293,112 @@ def test_the_committed_doc_is_what_the_renderer_writes():
 
     report = json.loads(qp.REPORT_PATH.read_text(encoding="utf-8"))
     assert qp.DOC_PATH.read_text(encoding="utf-8") == render(report)
+
+
+# --- QUD's outputs regenerate byte-identically through the shared path (#156) -------------
+
+SLICE_ROWS = Path(__file__).parent.parent / "tadabur" / "fixtures" / "qud_pilot_slice_rows.json"
+
+
+def test_qud_s_exposure_use_regenerates_byte_identically(tmp_path):
+    from tadabur.exposure import EXPOSURE_DIR, QUD_CORRECT_RECITATION, write_qud_use
+
+    write_qud_use(QUD_CORRECT_RECITATION, qp.qud_exposures(
+        {slug: qp.read_decodes(slug, "base") for slug in qp.PILOT}), tmp_path)
+    name = f"{QUD_CORRECT_RECITATION}.qud.jsonl"
+    assert (tmp_path / name).read_bytes() == (EXPOSURE_DIR / name).read_bytes()
+
+
+def test_qud_s_sites_and_worklist_regenerate_byte_identically_on_a_slice():
+    """Six pilot ayat (their QUD metadata in a fixture; the full build reads it from the Hub)
+    rebuilt through training.external_corpus: each worklist row is the committed line, byte for
+    byte, and each truth site the committed site, its census over the whole mushaf aside."""
+    import json
+    from dataclasses import asdict
+
+    from tadabur.truth_sites import load_truth_sites
+    from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
+    from training.carrier_windowing import site_rows
+
+    records = json.loads(SLICE_ROWS.read_text(encoding="utf-8"))
+    reference_of = hafs_segment_reference()
+    items, decodes = [], {m: {} for m in qp.MODELS}
+    for slug in qp.PILOT:
+        rows = [QudRow(**{**r, "segments": tuple(map(tuple, r["segments"])),
+                          "word_timestamps": tuple(map(tuple, r["word_timestamps"]))})
+                for r in records if r["slug"] == slug]
+        mushaf = {m: qp.read_decodes(slug, m) for m in qp.MODELS}
+        built, left_out = qp.build_items(slug, rows, mushaf["base"], _uthmani_words, reference_of)
+        assert not left_out["unmapped_ayat"]
+        items += built
+        for m in qp.MODELS:
+            decodes[m].update({i.key: mushaf[m][i.key] for i in built})
+    assert len({i.row.surah_ayah for i in items}) == 5  # 1:7 in both mushafs
+    by_place = {(i.audio_filename, i.start_sample): i for i in items}
+    rows = site_rows([ec.clip_of(i, decodes) for i in items], workers=1)
+
+    keys = {i.key for i in items}
+    committed = [line for line in qp.WORKLIST_PATH.read_text(encoding="utf-8").splitlines()
+                 if json.loads(line)["item"] in keys]
+    work = [json.dumps(r, ensure_ascii=False, sort_keys=True) for r in qp.worklist(rows, by_place)]
+    assert work and work == committed
+
+    def without_census(site):
+        return {k: v for k, v in asdict(site).items() if k != "stratum_population"}
+
+    for slug in qp.PILOT:
+        mine = [r for r in rows if by_place[(r.site.audio_filename, r.site.start_sample)].slug == slug]
+        regenerated = [without_census(s) for s in qp.truth_sites(mine, by_place)]
+        places = {(s["audio_filename"], s["start_sample"]) for s in regenerated}
+        expected = [without_census(s) for s in load_truth_sites(qp.SITES_DIR / f"{slug}.jsonl.gz")
+                    if (s.audio_filename, s.start_sample) in places]
+        assert regenerated == expected
+
+
+#: The full regeneration reads QUD's metadata from the Hub and grades every item through the
+#: Muraja harness (about 50 minutes), so it runs only when asked:
+#: ``HIFZGUIDE_FULL_REGENERATION=1 MURAJA_HARNESS_DIR=<a protocol-3 harness> pytest -k every_qud``.
+FULL_REGENERATION = os.environ.get("HIFZGUIDE_FULL_REGENERATION") == "1"
+
+
+@pytest.mark.skipif(not FULL_REGENERATION, reason="set HIFZGUIDE_FULL_REGENERATION=1 (slow, "
+                    "needs the Hub and the Muraja harness)")
+def test_every_qud_artifact_regenerates_byte_identically(tmp_path, monkeypatch):
+    """QUD's build, app and doc through the shared path, every artifact compared byte for byte
+    with the committed one: both mushafs' truth sites (census included), the worklist, the
+    exposure use, report.json (classes, directions, rates, listening, the app aggregates and
+    what they are set beside) and the doc. The report's ``models`` and ``compute`` come from the
+    GPU box's merge and are carried over."""
+    import json
+
+    from tadabur import exposure
+    from training.muraja_policy import require_harness
+    from training.qud_pilot_doc import render
+
+    use = f"{exposure.QUD_CORRECT_RECITATION}.qud.jsonl"
+    committed = {
+        **{f"{slug}.jsonl.gz": (qp.SITES_DIR / f"{slug}.jsonl.gz").read_bytes()
+           for slug in qp.PILOT},
+        "worklist.jsonl": qp.WORKLIST_PATH.read_bytes(),
+        use: (exposure.EXPOSURE_DIR / use).read_bytes(),
+    }
+    report = json.loads(qp.REPORT_PATH.read_text(encoding="utf-8"))
+    write = exposure.write_qud_use
+    monkeypatch.setattr(qp, "SITES_DIR", tmp_path)
+    monkeypatch.setattr(qp, "WORKLIST_PATH", tmp_path / "worklist.jsonl")
+    monkeypatch.setattr(exposure, "write_qud_use",
+                        lambda name, rows: write(name, rows, tmp_path))
+
+    rebuilt = {k: report[k] for k in ("models", "compute")}
+    rebuilt.update(qp.build(workers=os.cpu_count() or 1))
+    pilot = qp.load_pilot()
+    rebuilt["app"] = ec.app_outcome(pilot.items, pilot.decodes, require_harness())
+    rebuilt["tadabur_word_sample"] = ec.tadabur_word_sample()
+    rebuilt["device_logs"] = ec.device_log_rates()
+
+    for name, data in committed.items():
+        assert (tmp_path / name).read_bytes() == data, name
+    text = json.dumps(rebuilt, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+    assert text == qp.REPORT_PATH.read_text(encoding="utf-8")
+    # The doc is rendered from report.json as `doc` reads it (keys sorted), not the dict.
+    assert render(json.loads(text)) == qp.DOC_PATH.read_text(encoding="utf-8")

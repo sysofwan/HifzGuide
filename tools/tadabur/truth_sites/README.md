@@ -24,6 +24,12 @@ Tadabur clips, so `shard` is always `null`, `audio_sha256` is the SHA-256 of the
 QUD publishes it, and the sample span indexes that MP3's 16 kHz decode. They are not in the
 truth baseline's run.
 
+The non-professional corpora's sites (`source: tarteel_v1`, `qdat`, #156) live in
+[`../nonpro_eval/<source>/truth_sites.jsonl.gz`](../nonpro_eval/README.md) with QUD's provenance
+rule on their own dataset's clip (`audio_filename` the clip's id, `audio_sha256` its audio as
+published, `shard` always `null`); RetaSy's (`source: retasy`) are written only locally, as its
+licence is unknown.
+
 The staging fields of every file come from the staged-clip registry,
 [`../staged_audio/clips.jsonl`](../staged_audio/README.md), which also carries each clip's
 canonical reciter id.
@@ -36,7 +42,7 @@ is not known yet is `null`. It is never guessed.
 | field | type | when | meaning |
 |---|---|---|---|
 | `site_id` | str | now | stable, unique id. Waqf sites use `waqf_boundary:<clip>#<boundary_index>` |
-| `source` | str | now | `p35_fixture`, `waqf_boundary`, `new_audit`, `synthetic_edit`, or `qud` (a QUD ayah, #144) |
+| `source` | str | now | `p35_fixture`, `waqf_boundary`, `new_audit`, `synthetic_edit`, `qud` (a QUD ayah, #144), or `tarteel_v1`, `retasy`, `qdat` (a non-professional clip, #156) |
 | `assumes_competent_reciter` | bool | now | `true` when the human judged something else and the mark holds only if the recitation was correct (the weaker label) |
 | `audio_filename` | str | now | Tadabur `audio_filename` of the whole clip |
 | `shard` | int \| null | **#83** | full-config parquet shard (0–384) the clip is re-downloaded from |

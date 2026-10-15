@@ -448,3 +448,11 @@ def test_a_gzipped_file_round_trips_to_the_same_bytes(tmp_path):
     write_truth_sites(sites, second)
     assert first.read_bytes() == second.read_bytes()  # no timestamp in the gzip header
     assert load_truth_sites(first) == sites
+
+
+def test_a_non_professional_site_has_qud_s_provenance_on_its_own_clip(tmp_path):
+    """A #156 site: its dataset as source, its clip's id and audio checksum, never a shard."""
+    (site,) = _load(tmp_path, [_qud(source="tarteel_v1", audio_filename="1_2_3.wav")])
+    assert site.source == "tarteel_v1" and site.shard is None
+    with pytest.raises(ValueError, match="external-corpus site"):
+        _load(tmp_path, [_qud(source="qdat", shard=3)])

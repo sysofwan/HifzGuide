@@ -542,21 +542,29 @@ def fingerprint_shard(shard: int, wanted: Mapping[int, list[tuple[str, str]]],
 
 
 def run_stage_two(pairs: Mapping[str, Sequence[Mapping]], prints: dict, cache_dir: Path,
-                  workers: int) -> list[dict]:
-    """Every shard holding a stage-2 pair, read once, ``workers`` at a time."""
+                  workers: int, done_dir: Path) -> list[dict]:
+    """Every shard holding a stage-2 pair, read once, ``workers`` at a time. Each shard's
+    results are kept in ``done_dir``, so a stopped run resumes at the shards it lacks."""
     from concurrent.futures import ProcessPoolExecutor
 
     by_shard: dict[int, dict[int, list[tuple[str, str]]]] = defaultdict(lambda: defaultdict(list))
     for slug, group in pairs.items():
         for p in group:
             by_shard[p["shard"]][p["row_index"]].append((slug, p["surah_ayah"]))
-    results: list[dict] = []
+    done_dir.mkdir(parents=True, exist_ok=True)
+
+    def kept(shard: int) -> Path:
+        return done_dir / f"{shard:03d}.json"
+
+    todo = [shard for shard in sorted(by_shard) if not kept(shard).exists()]
     with ProcessPoolExecutor(workers, initializer=_init_worker, initargs=(prints,)) as pool:
-        futures = [pool.submit(fingerprint_shard, shard, dict(rows), cache_dir)
-                   for shard, rows in sorted(by_shard.items())]
+        futures = {pool.submit(fingerprint_shard, shard, dict(by_shard[shard]), cache_dir): shard
+                   for shard in todo}
         for done, future in enumerate(futures, 1):
-            results += future.result()
-            print(f"stage 2: {done} of {len(futures)} shards", flush=True)
+            kept(futures[future]).write_text(json.dumps(future.result()), encoding="utf-8")
+            print(f"stage 2: {done} of {len(todo)} shards to read", flush=True)
+    results = [r for shard in sorted(by_shard)
+               for r in json.loads(kept(shard).read_text(encoding="utf-8"))]
     return sorted(results, key=lambda r: (r["shard"], r["row_index"], r["slug"]))
 
 
@@ -698,6 +706,8 @@ def main() -> None:
     confirm.add_argument("--cache-dir", type=Path, required=True,
                          help="where each Tadabur shard is downloaded (and deleted)")
     confirm.add_argument("--workers", type=int, default=3)
+    confirm.add_argument("--done-dir", type=Path, required=True,
+                         help="where each shard's stage-2 results are kept, for resuming")
     args = parser.parse_args()
 
     from .staged_audio import load_staged_clips
@@ -752,7 +762,7 @@ def main() -> None:
                                                        selection["qud_revision"]),
                                        by_ayah, timing_line, named[slug]) for slug in PILOT}
         prints = {slug: load_fingerprints(args.prints_dir / f"{slug}.npz") for slug in PILOT}
-        results = run_stage_two(pairs, prints, args.cache_dir, args.workers)
+        results = run_stage_two(pairs, prints, args.cache_dir, args.workers, args.done_dir)
         floor = lines["fingerprint"]["hard_negative_min"]
         _dump(RESULTS_PATH, {
             "fingerprint_line": line, "timing_line": timing_line,

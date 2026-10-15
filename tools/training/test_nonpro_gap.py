@@ -71,3 +71,43 @@ def test_each_condition_decodes_the_dev_half_or_the_sample():
     noisy = ng.decode_plan(CONDITIONS["noise_snr10"])
     assert clean == dev
     assert [c.filename for c in noisy] == ng.committed_grid()["sample"]["clips"]
+
+
+def _entry(point: float) -> dict:
+    return {"point": point, "low": point - 0.01, "high": point + 0.01, "clusters": 3,
+            "slots": 100}
+
+
+def _report() -> dict:
+    from training.perturbation import GRID, grid_record
+
+    rates = {c: _entry(0.9) for c in ng.CLASSES}
+    block = {"items": 10, "rates": rates}
+    gap = {c: _entry(0.02) for c in ng.CLASSES}
+    return {
+        "grid": grid_record(),
+        "sample": {"eligible": 671, "h448_seen": ["a"] * 299, "dev_clips": 970,
+                   "reciters": 107, "hours": 1.676},
+        "noise": {"recordings": 445, "hours": 4.08, "left_out": {"ineligible": 84},
+                  "recordings_drawn": 300, "licences_drawn": {"CC0-1.0": 200}},
+        "numerics": {f"{m}_vs_cached_teacher": rates for m in ng.MODELS},
+        "d1": {"tadabur_dev": {"stream_b0": block}, "tadabur_dev_unseen": {"stream_b0": block},
+               **{k: {"stream_b0": block, "checks": block}
+                  for k in ("qud", "tarteel_v1", "qdat")}},
+        "d2": {"clean": {"teacher": {"h448": rates}},
+               **{c.name: {"own": {m: rates for m in ng.MODELS},
+                           "teacher": {m: rates for m in ng.MODELS},
+                           "excess_drift": gap, "excess_clone_drop": gap} for c in GRID[1:]}},
+        "compute": {"gpu_hours": 0.5, "parallel_runs": 3, "gpu": "GPU", "audio_hours": 17.0,
+                    "peak_scratch_gb": 2.1, "disk_sampled_from": "t", "aborted_attempt": None},
+    }
+
+
+def test_the_doc_renders_every_corpus_condition_and_class():
+    from training.nonpro_gap_doc import CLASS_NAMES, CORPORA, render
+
+    doc = render(_report())
+    for name in [*CORPORA.values(), *CLASS_NAMES.values(), "opus_12k_nb", "reverb_rt1"]:
+        assert name in doc
+    assert "90.0% [89.0, 91.0]" in doc and "+2.0 [+1.0, +3.0]" in doc
+    assert "`h448` further (interval above zero)" in doc

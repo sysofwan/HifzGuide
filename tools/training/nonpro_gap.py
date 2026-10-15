@@ -438,7 +438,11 @@ def main() -> None:
         from training.nonpro_eval import compute_record
 
         report["models"] = merge(args.decodes_dir)
-        report["compute"] = compute_record(args.decodes_dir, args.logs_dir, args.gpu)
+        report["compute"] = compute_record(args.decodes_dir, args.logs_dir, args.gpu,
+                                           parallel_runs=3)
+        aborted = args.logs_dir / "aborted_attempt"
+        report["compute"]["aborted_attempt"] = (aborted.read_text(encoding="utf-8").strip()
+                                                if aborted.exists() else None)
     else:
         grid = committed_grid()
         report.update({"grid": grid["grid"],

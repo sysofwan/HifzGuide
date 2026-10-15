@@ -320,12 +320,12 @@ def save_pool(pool: tuple[NoiseRecording, ...], path: Path) -> None:
 
 def load_pool(path: Path, records: list[dict]) -> tuple[NoiseRecording, ...]:
     """The pool saved by :func:`save_pool`, checked against its committed ``records``."""
-    data = np.load(path)
-    bounds = np.concatenate([[0], np.cumsum(data["lengths"])])
+    with np.load(path) as data:  # each key read decompresses its whole array: read once
+        ids, lengths, samples = data["ids"], data["lengths"], data["samples"]
+    bounds = np.concatenate([[0], np.cumsum(lengths)])
     pool = tuple(NoiseRecording(r["freesound_id"], r["licence"], r["username"],
-                                data["samples"][bounds[i]:bounds[i + 1]])
+                                samples[bounds[i]:bounds[i + 1]])
                  for i, r in enumerate(records))
-    if [r.as_dict() for r in pool] != records or list(data["ids"]) != [r.freesound_id
-                                                                         for r in pool]:
+    if [r.as_dict() for r in pool] != records or list(ids) != [r.freesound_id for r in pool]:
         raise ValueError(f"{path} is not the committed noise pool")
     return pool

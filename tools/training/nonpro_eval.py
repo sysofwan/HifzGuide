@@ -670,7 +670,7 @@ def merge(decodes_dir: Path) -> dict:
     return out
 
 
-def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str) -> dict:
+def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str, parallel_runs: int = 5) -> dict:
     """What the decode cost: the GPU lock's wall time (the launcher's start to the last decode
     written; a shard stopped by a data error was rerun under the lock at the end), the audio
     decoded, the shard runs completed, and the peak disk of this issue's scratch directory
@@ -693,7 +693,7 @@ def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str) -> dict:
                                  for line in path.read_text(encoding="utf-8").splitlines())
                              / TARGET_SAMPLE_RATE / 3600, 2),
         "shard_runs_completed": len(timings),
-        "parallel_runs": 5,
+        "parallel_runs": parallel_runs,
         "peak_scratch_gb": round(max(int(s[2]) for s in samples) / 1e9, 2),
         "disk_sampled_from": samples[0][0],
     }

@@ -127,26 +127,30 @@ def _d2(report: dict) -> list[str]:
     d2 = report["d2"]
     conditions = [c["name"] for c in report["grid"]["conditions"][1:]]
     out = ["## D2: drift per condition", "",
-           "Per class: each model's agreement with **its own** clean decode (drift), and with "
-           "the **teacher's** clean decode (for the teacher the two are one); then two paired "
-           "differences, `h448`'s minus the teacher's, in points, with a reciter-clustered "
-           "interval: **excess drift** (how much further `h448` moves from its own clean "
-           "decode) and **excess clone drop** (how much further its agreement with the "
-           "teacher's clean decode falls than the teacher's own does). Positive means `h448` "
-           "moves further.", ""]
+           "Per class: each model's agreement with **its own** clean decode (drift), and "
+           "`h448`'s with the **teacher's** clean decode (for the teacher the two are one); "
+           "`h448`'s agreement with the teacher on **the same perturbed audio** (D1's metric "
+           "under the condition) and its change from clean; then two paired differences, "
+           "`h448`'s minus the teacher's, in points: **excess drift** (how much further `h448` "
+           "moves from its own clean decode) and **excess clone drop** (how much further its "
+           "agreement with the teacher's clean decode falls than the teacher's own does). "
+           "Positive means `h448` moves further. Every interval is clustered by reciter, and a "
+           "difference is paired (both readings of a clip resample together).", ""]
     for c in CLASSES:
         clean = d2["clean"]["teacher"]["h448"][c]
         out += [f"### {CLASS_NAMES[c]}", "",
                 f"Clean, `h448` against the teacher: {rate_cell(clean)}.", "",
                 "| condition | base vs own clean | h448 vs own clean | excess drift | "
-                "h448 vs teacher clean | excess clone drop |", "|---|---|---|---|---|---|"]
+                "h448 vs teacher clean | excess clone drop | h448 vs teacher, same audio | "
+                "its change from clean |", "|---|---|---|---|---|---|---|---|"]
         for name in conditions:
             cell = d2[name]
             out.append(f"| {name} | {rate_cell(cell['own']['base'][c])} | "
                        f"{rate_cell(cell['own']['h448'][c])} | "
                        f"{gap_cell(cell['excess_drift'][c])} | "
                        f"{rate_cell(cell['teacher']['h448'][c])} | "
-                       f"{gap_cell(cell['excess_clone_drop'][c])} |")
+                       f"{gap_cell(cell['excess_clone_drop'][c])} | "
+                       f"{rate_cell(cell['clone'][c])} | {gap_cell(cell['clone_change'][c])} |")
         out.append("")
     return out
 
@@ -155,32 +159,29 @@ def _readout(report: dict) -> list[str]:
     d1, d2 = report["d1"], report["d2"]
     conditions = [c["name"] for c in report["grid"]["conditions"][1:]]
     home = d1[HOME]["stream_b0"]["rates"]
-    out = ["## What the evidence says", ""]
-    for c in ("phoneme", "consonant"):
-        drops = ", ".join(
-            f"{CORPORA[k]} {100 * (home[c]['point'] - d1[k]['stream_b0']['rates'][c]['point']):.1f}"
-            for k in EXTERNAL)
-        worst = max(conditions, key=lambda n: d2[n]["excess_clone_drop"][c]["point"])
-        clean = d2["clean"]["teacher"]["h448"][c]["point"]
+    out = ["## What the evidence says", "",
+           "Computed from the tables above; the grid's conditions are synthetic stand-ins, not "
+           "measured properties of Tarteel v1 or qdat, so a match in level is not a match in "
+           "cause.", ""]
+    for c in ("phoneme", "consonant", "focus", "haraka", "shaddah"):
+        external = {k: d1[k]["stream_b0"]["rates"][c]["point"] for k in EXTERNAL}
+        clone = {n: d2[n]["clone"][c]["point"] for n in conditions}
+        reached = {k: [n for n in conditions if clone[n] <= v] for k, v in external.items()
+                   if k != "qud"}
         out.append(
-            f"- **{CLASS_NAMES[c]}.** D1: `h448`'s clone agreement at `stream_b0` is "
-            f"{_pct(home[c]['point'])}% on {CORPORA[HOME]} and lower by (points) {drops}. "
-            f"D2: on the clean sample it is {_pct(clean)}%; under the grid it falls to "
-            + ", ".join(f"{n} {_pct(d2[n]['teacher']['h448'][c]['point'])}%" for n in conditions)
-            + f". The largest excess clone drop is {worst} "
-            f"({gap_cell(d2[worst]['excess_clone_drop'][c])} points). Excess drift per "
-            "condition: " + "; ".join(f"{n}: {side(d2[n]['excess_drift'][c])}"
-                                      for n in conditions) + ".")
-    out += ["",
-            "- **Domain shift vs acoustic fragility.** D1 measures how far clone agreement falls "
-            "on audio from outside Tadabur under each corpus's own conditions; D2 how far it "
-            "falls when only the acoustics of Tadabur audio change. Where D2's drops under "
-            "conditions like the corpora's reach D1's, acoustics account for the gap; where they "
-            "stay below it, the remainder is what differs beyond those acoustics (speakers, "
-            "recitation style, devices, the corpora's own processing). The tables give both "
-            "in the same metric; the grid's conditions are synthetic stand-ins, not measured "
-            "properties of Tarteel v1 or qdat.", ""]
-    return out
+            f"- **{CLASS_NAMES[c]}.** D1, `h448` against the teacher at `stream_b0`: "
+            f"{_pct(home[c]['point'])}% on {CORPORA[HOME]}; "
+            + ", ".join(f"{CORPORA[k]} {_pct(v)}% ({100 * (v - home[c]['point']):+.1f})"
+                        for k, v in external.items())
+            + f". D2, the same agreement on the same perturbed audio: clean "
+            f"{_pct(d2['clean']['teacher']['h448'][c]['point'])}%, "
+            + ", ".join(f"{n} {_pct(v)}%" for n, v in clone.items())
+            + ". At or below " + "; at or below ".join(
+                f"{CORPORA[k]}'s level: " + (", ".join(v) or "no condition")
+                for k, v in reached.items())
+            + ". Excess drift: " + "; ".join(f"{n} {side(d2[n]['excess_drift'][c])}"
+                                             for n in conditions) + ".")
+    return out + [""]
 
 
 def _compute(report: dict) -> list[str]:
@@ -189,11 +190,10 @@ def _compute(report: dict) -> list[str]:
             f"- GPU: {c['gpu_hours']} h of wall time holding the GPU lock ({c['parallel_runs']} "
             f"condition runs side by side on one {c['gpu']}), for {c['audio_hours']} h of audio "
             "decoded by each model at `stream_b0`."
-            + (f" Not counted: {c['aborted_attempt']}; its decodes were kept, as the run "
-               "resumes." if c.get("aborted_attempt") else ""),
-            f"- Peak scratch disk on cuda-dev: {c['peak_scratch_gb']} GB (the noise shards, "
-            "deleted once read, the noise pool and the decodes), sampled each minute from "
-            f"{c['disk_sampled_from']}.", ""]
+            + (f" {c['run_notes']}" if c.get("run_notes") else ""),
+            f"- Peak scratch disk on cuda-dev: {c['peak_scratch_gb']} GB sampled each minute "
+            f"from {c['disk_sampled_from']} (the noise pool and the decodes; the two noise "
+            "shards, about 1 GB, were each deleted once read, between samples).", ""]
 
 
 def render(report: dict) -> str:

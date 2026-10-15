@@ -324,10 +324,12 @@ def numerics(workers: int) -> dict:
 
 
 def d2(workers: int) -> dict:
-    """Per perturbed condition: each model's agreement with its own clean decode and with the
-    teacher's, and two paired differences, ``h448``'s minus the teacher's (positive: ``h448``
-    moves further): **excess drift**, away from its own clean decode, and **excess clone
-    drop**, the fall of its agreement with the teacher's clean decode."""
+    """Per perturbed condition: each model's agreement with its own clean decode (drift) and
+    with the teacher's; ``h448``'s agreement with the teacher on the same perturbed audio
+    (**clone**, D1's metric under the condition) and its change from clean; and two paired
+    differences, ``h448``'s minus the teacher's (positive: ``h448`` moves further): **excess
+    drift**, away from its own clean decode, and **excess clone drop**, the fall of its
+    agreement with the teacher's clean decode."""
     sample = committed_grid()["sample"]["clips"]
     reciter = {c.filename: c.reciter_id for c in dev_clips()}
     clean = gap_decodes("clean")
@@ -336,25 +338,35 @@ def d2(workers: int) -> dict:
                     workers)
     out = {"clean": {"teacher": {"h448": rates([(reciter[k], t)
                                                 for k, t in zip(sample, clone)])}}}
+    #: Each perturbed decode against each reference, in a row's order (then h448 clean against
+    #: the teacher's clean, the same in every condition).
+    readings = (("h448", "h448"), ("h448", "base"), ("base", "base"), ("h448", "base_perturbed"))
+    own_h, teacher_h, own_b, clone_c, clone_clean = range(5)
 
     def part(rows: list, index: int) -> list:
         return [(c, v[index * width:(index + 1) * width]) for c, v in rows]
 
     for condition in GRID[1:]:
         perturbed = gap_decodes(condition.name)
-        counted = tallies([(perturbed[m][k][STREAM], clean[ref][k][STREAM]) for k in sample
-                           for m, ref in (("h448", "h448"), ("h448", "base"), ("base", "base"))],
-                          workers)
-        # Per clip: h448 against its own clean, h448 against the teacher's clean, the teacher
-        # against its own clean, and (the same in every condition) h448 clean against it.
-        rows = [(reciter[k], counted[3 * i] + counted[3 * i + 1] + counted[3 * i + 2] + clone[i])
+
+        def reference(name: str, key: str) -> str:
+            source = perturbed["base"] if name == "base_perturbed" else clean[name]
+            return source[key][STREAM]
+
+        counted = tallies([(perturbed[m][k][STREAM], reference(ref, k))
+                           for k in sample for m, ref in readings], workers)
+        n = len(readings)
+        rows = [(reciter[k], sum(counted[n * i:n * (i + 1)], ()) + clone[i])
                 for i, k in enumerate(sample)]
         out[condition.name] = {
-            "own": {"h448": rates(part(rows, 0)), "base": rates(part(rows, 2))},
-            "teacher": {"h448": rates(part(rows, 1)), "base": rates(part(rows, 2))},
-            "excess_drift": paired(rows, lambda r: r(2 * width) - r(0)),
-            "excess_clone_drop": paired(
-                rows, lambda r: (r(3 * width) - r(width)) - (1.0 - r(2 * width))),
+            "own": {"h448": rates(part(rows, own_h)), "base": rates(part(rows, own_b))},
+            "teacher": {"h448": rates(part(rows, teacher_h)), "base": rates(part(rows, own_b))},
+            "clone": rates(part(rows, clone_c)),
+            "clone_change": paired(rows, lambda r: r(clone_c * width) - r(clone_clean * width)),
+            "excess_drift": paired(rows, lambda r: r(own_b * width) - r(own_h * width)),
+            "excess_clone_drop": paired(rows, lambda r: (r(clone_clean * width)
+                                                         - r(teacher_h * width))
+                                        - (1.0 - r(own_b * width))),
         }
         print(f"D2 {condition.name} done", flush=True)
     return out
@@ -440,9 +452,11 @@ def main() -> None:
         report["models"] = merge(args.decodes_dir)
         report["compute"] = compute_record(args.decodes_dir, args.logs_dir, args.gpu,
                                            parallel_runs=3)
-        aborted = args.logs_dir / "aborted_attempt"
-        report["compute"]["aborted_attempt"] = (aborted.read_text(encoding="utf-8").strip()
-                                                if aborted.exists() else None)
+        # It counts timing lines, one per finished condition run; the first pass wrote none.
+        del report["compute"]["shard_runs_completed"]
+        notes = args.logs_dir / "run_notes"
+        report["compute"]["run_notes"] = (notes.read_text(encoding="utf-8").strip()
+                                          if notes.exists() else None)
     else:
         grid = committed_grid()
         report.update({"grid": grid["grid"],

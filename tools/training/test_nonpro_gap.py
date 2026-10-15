@@ -97,9 +97,10 @@ def _report() -> dict:
         "d2": {"clean": {"teacher": {"h448": rates}},
                **{c.name: {"own": {m: rates for m in ng.MODELS},
                            "teacher": {m: rates for m in ng.MODELS},
-                           "excess_drift": gap, "excess_clone_drop": gap} for c in GRID[1:]}},
+                           "excess_drift": gap, "excess_clone_drop": gap, "clone": rates,
+                           "clone_change": gap} for c in GRID[1:]}},
         "compute": {"gpu_hours": 0.5, "parallel_runs": 3, "gpu": "GPU", "audio_hours": 17.0,
-                    "peak_scratch_gb": 2.1, "disk_sampled_from": "t", "aborted_attempt": None},
+                    "peak_scratch_gb": 2.1, "disk_sampled_from": "t", "run_notes": None},
     }
 
 

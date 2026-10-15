@@ -1,0 +1,3820 @@
+{
+ "compute": {
+  "audio_hours": 16.89,
+  "disk_sampled_from": "2026-10-15T14:11:58Z",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "gpu_hours": 0.6,
+  "parallel_runs": 3,
+  "peak_scratch_gb": 1.06,
+  "run_notes": "The counted run is two passes, 2026-10-15 14:26-14:52Z and 14:54-15:02Z: the first ran without ffmpeg on PATH, so the codec condition was decoded in the second. Not counted: two earlier attempts (14:13-14:20Z, five runs side by side, and 14:21-14:25Z, which read the noise pool once per recording) ran the box out of RAM and were stopped, about 0.2 h; their decodes were kept, as the run resumes."
+ },
+ "d1": {
+  "qdat": {
+   "checks": {
+    "items": 1505,
+    "rates": {
+     "consonant": {
+      "clusters": 161,
+      "high": 0.937,
+      "low": 0.91877,
+      "point": 0.92812,
+      "slots": 29145
+     },
+     "focus": {
+      "clusters": 161,
+      "high": 0.93873,
+      "low": 0.91864,
+      "point": 0.92877,
+      "slots": 15556
+     },
+     "haraka": {
+      "clusters": 161,
+      "high": 0.93801,
+      "low": 0.92144,
+      "point": 0.92986,
+      "slots": 23767
+     },
+     "phoneme": {
+      "clusters": 161,
+      "high": 0.92522,
+      "low": 0.91085,
+      "point": 0.91844,
+      "slots": 79581
+     },
+     "shaddah": {
+      "clusters": 161,
+      "high": 0.93934,
+      "low": 0.90193,
+      "point": 0.92152,
+      "slots": 2969
+     }
+    }
+   },
+   "stream_b0": {
+    "items": 1505,
+    "rates": {
+     "consonant": {
+      "clusters": 161,
+      "high": 0.94347,
+      "low": 0.92529,
+      "point": 0.93479,
+      "slots": 28247
+     },
+     "focus": {
+      "clusters": 161,
+      "high": 0.94735,
+      "low": 0.92728,
+      "point": 0.93776,
+      "slots": 14959
+     },
+     "haraka": {
+      "clusters": 161,
+      "high": 0.9456,
+      "low": 0.92906,
+      "point": 0.93755,
+      "slots": 23794
+     },
+     "phoneme": {
+      "clusters": 161,
+      "high": 0.931,
+      "low": 0.91682,
+      "point": 0.92421,
+      "slots": 77752
+     },
+     "shaddah": {
+      "clusters": 161,
+      "high": 0.94643,
+      "low": 0.91164,
+      "point": 0.9296,
+      "slots": 2997
+     }
+    }
+   }
+  },
+  "qud": {
+   "checks": {
+    "items": 20684,
+    "rates": {
+     "consonant": {
+      "clusters": 228,
+      "high": 0.98542,
+      "low": 0.98409,
+      "point": 0.98475,
+      "slots": 491499
+     },
+     "focus": {
+      "clusters": 228,
+      "high": 0.98422,
+      "low": 0.98231,
+      "point": 0.98326,
+      "slots": 177264
+     },
+     "haraka": {
+      "clusters": 228,
+      "high": 0.97753,
+      "low": 0.97577,
+      "point": 0.97664,
+      "slots": 390926
+     },
+     "phoneme": {
+      "clusters": 228,
+      "high": 0.96865,
+      "low": 0.96585,
+      "point": 0.96724,
+      "slots": 1195482
+     },
+     "shaddah": {
+      "clusters": 228,
+      "high": 0.98069,
+      "low": 0.9775,
+      "point": 0.9791,
+      "slots": 46791
+     }
+    }
+   },
+   "stream_b0": {
+    "items": 20684,
+    "rates": {
+     "consonant": {
+      "clusters": 228,
+      "high": 0.98788,
+      "low": 0.98676,
+      "point": 0.9873,
+      "slots": 482863
+     },
+     "focus": {
+      "clusters": 228,
+      "high": 0.98708,
+      "low": 0.98556,
+      "point": 0.98632,
+      "slots": 174555
+     },
+     "haraka": {
+      "clusters": 228,
+      "high": 0.98143,
+      "low": 0.97993,
+      "point": 0.98062,
+      "slots": 387489
+     },
+     "phoneme": {
+      "clusters": 228,
+      "high": 0.97007,
+      "low": 0.96807,
+      "point": 0.96902,
+      "slots": 1193920
+     },
+     "shaddah": {
+      "clusters": 228,
+      "high": 0.98339,
+      "low": 0.98074,
+      "point": 0.98206,
+      "slots": 46706
+     }
+    }
+   }
+  },
+  "tadabur_dev": {
+   "stream_b0": {
+    "items": 970,
+    "rates": {
+     "consonant": {
+      "clusters": 146,
+      "high": 0.97415,
+      "low": 0.96774,
+      "point": 0.97128,
+      "slots": 32944
+     },
+     "focus": {
+      "clusters": 146,
+      "high": 0.9756,
+      "low": 0.96643,
+      "point": 0.97147,
+      "slots": 11635
+     },
+     "haraka": {
+      "clusters": 146,
+      "high": 0.96574,
+      "low": 0.95807,
+      "point": 0.96224,
+      "slots": 25821
+     },
+     "phoneme": {
+      "clusters": 146,
+      "high": 0.95193,
+      "low": 0.94476,
+      "point": 0.94865,
+      "slots": 80611
+     },
+     "shaddah": {
+      "clusters": 146,
+      "high": 0.97054,
+      "low": 0.95951,
+      "point": 0.96504,
+      "slots": 3061
+     }
+    }
+   }
+  },
+  "tadabur_dev_unseen": {
+   "stream_b0": {
+    "items": 671,
+    "rates": {
+     "consonant": {
+      "clusters": 137,
+      "high": 0.97273,
+      "low": 0.96555,
+      "point": 0.9695,
+      "slots": 26557
+     },
+     "focus": {
+      "clusters": 137,
+      "high": 0.97468,
+      "low": 0.9644,
+      "point": 0.96981,
+      "slots": 9374
+     },
+     "haraka": {
+      "clusters": 137,
+      "high": 0.96382,
+      "low": 0.9555,
+      "point": 0.95986,
+      "slots": 20752
+     },
+     "phoneme": {
+      "clusters": 137,
+      "high": 0.94983,
+      "low": 0.94231,
+      "point": 0.94641,
+      "slots": 64862
+     },
+     "shaddah": {
+      "clusters": 137,
+      "high": 0.96835,
+      "low": 0.95516,
+      "point": 0.96177,
+      "slots": 2511
+     }
+    }
+   }
+  },
+  "tarteel_v1": {
+   "checks": {
+    "items": 8950,
+    "rates": {
+     "consonant": {
+      "clusters": 114,
+      "high": 0.94817,
+      "low": 0.94385,
+      "point": 0.94592,
+      "slots": 268522
+     },
+     "focus": {
+      "clusters": 114,
+      "high": 0.94699,
+      "low": 0.94216,
+      "point": 0.94449,
+      "slots": 97125
+     },
+     "haraka": {
+      "clusters": 114,
+      "high": 0.93839,
+      "low": 0.93363,
+      "point": 0.93586,
+      "slots": 207378
+     },
+     "phoneme": {
+      "clusters": 114,
+      "high": 0.93215,
+      "low": 0.9273,
+      "point": 0.92956,
+      "slots": 628639
+     },
+     "shaddah": {
+      "clusters": 114,
+      "high": 0.93161,
+      "low": 0.92178,
+      "point": 0.92671,
+      "slots": 24915
+     }
+    }
+   },
+   "stream_b0": {
+    "items": 8950,
+    "rates": {
+     "consonant": {
+      "clusters": 114,
+      "high": 0.95298,
+      "low": 0.94812,
+      "point": 0.95039,
+      "slots": 265494
+     },
+     "focus": {
+      "clusters": 114,
+      "high": 0.95263,
+      "low": 0.94739,
+      "point": 0.94992,
+      "slots": 96163
+     },
+     "haraka": {
+      "clusters": 114,
+      "high": 0.94523,
+      "low": 0.93969,
+      "point": 0.94223,
+      "slots": 205674
+     },
+     "phoneme": {
+      "clusters": 114,
+      "high": 0.93556,
+      "low": 0.92935,
+      "point": 0.93223,
+      "slots": 629624
+     },
+     "shaddah": {
+      "clusters": 114,
+      "high": 0.93703,
+      "low": 0.9283,
+      "point": 0.9326,
+      "slots": 24971
+     }
+    }
+   }
+  }
+ },
+ "d2": {
+  "band_8k": {
+   "clone": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.95875,
+     "low": 0.94547,
+     "point": 0.95268,
+     "slots": 15745
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.96931,
+     "low": 0.95619,
+     "point": 0.96327,
+     "slots": 5581
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.94778,
+     "low": 0.93395,
+     "point": 0.94137,
+     "slots": 12348
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.94326,
+     "low": 0.93186,
+     "point": 0.93805,
+     "slots": 38531
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.95705,
+     "low": 0.92913,
+     "point": 0.94384,
+     "slots": 1478
+    }
+   },
+   "clone_change": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.014,
+     "low": -0.02282,
+     "point": -0.0182
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.00419,
+     "low": -0.01374,
+     "point": -0.00888
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.01434,
+     "low": -0.02406,
+     "point": -0.01917
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.00647,
+     "low": -0.01122,
+     "point": -0.00876
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.0008,
+     "low": -0.03,
+     "point": -0.01527
+    }
+   },
+   "excess_clone_drop": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.00308,
+     "low": -0.01051,
+     "point": -0.00688
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.01104,
+     "low": -0.02015,
+     "point": -0.01553
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.01164,
+     "low": -0.02265,
+     "point": -0.01714
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.01917,
+     "low": -0.02489,
+     "point": -0.02199
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.00068,
+     "low": -0.02375,
+     "point": -0.01139
+    }
+   },
+   "excess_drift": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.00835,
+     "low": 0.00092,
+     "point": 0.00438
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.00186,
+     "low": -0.01039,
+     "point": -0.0061
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.01094,
+     "low": 0.00242,
+     "point": 0.00633
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.00378,
+     "low": -0.0086,
+     "point": -0.00626
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.02446,
+     "low": -0.00489,
+     "point": 0.00916
+    }
+   },
+   "own": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.97619,
+      "low": 0.96668,
+      "point": 0.9719,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.98214,
+      "low": 0.97057,
+      "point": 0.97679,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.96862,
+      "low": 0.95682,
+      "point": 0.96329,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.97228,
+      "low": 0.96487,
+      "point": 0.96904,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97694,
+      "low": 0.95709,
+      "point": 0.96716,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.97323,
+      "low": 0.96108,
+      "point": 0.96752,
+      "slots": 15886
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.98788,
+      "low": 0.97736,
+      "point": 0.98289,
+      "slots": 5612
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.96319,
+      "low": 0.94979,
+      "point": 0.95695,
+      "slots": 12591
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.97892,
+      "low": 0.9711,
+      "point": 0.9753,
+      "slots": 39021
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97048,
+      "low": 0.94073,
+      "point": 0.958,
+      "slots": 1500
+     }
+    }
+   },
+   "teacher": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.97619,
+      "low": 0.96668,
+      "point": 0.9719,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.98214,
+      "low": 0.97057,
+      "point": 0.97679,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.96862,
+      "low": 0.95682,
+      "point": 0.96329,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.97228,
+      "low": 0.96487,
+      "point": 0.96904,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97694,
+      "low": 0.95709,
+      "point": 0.96716,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.9564,
+      "low": 0.94137,
+      "point": 0.94967,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.97121,
+      "low": 0.95584,
+      "point": 0.96448,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.94782,
+      "low": 0.93252,
+      "point": 0.94097,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.94293,
+      "low": 0.93144,
+      "point": 0.93784,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95095,
+      "low": 0.92273,
+      "point": 0.93767,
+      "slots": 1492
+     }
+    }
+   }
+  },
+  "clean": {
+   "teacher": {
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.97483,
+      "low": 0.96594,
+      "point": 0.97089,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.978,
+      "low": 0.96558,
+      "point": 0.97215,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.96529,
+      "low": 0.95479,
+      "point": 0.96054,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95079,
+      "low": 0.94185,
+      "point": 0.94681,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.96817,
+      "low": 0.95003,
+      "point": 0.95912,
+      "slots": 1492
+     }
+    }
+   }
+  },
+  "noise_snr10": {
+   "clone": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.93151,
+     "low": 0.90534,
+     "point": 0.91943,
+     "slots": 15725
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.93103,
+     "low": 0.90538,
+     "point": 0.9191,
+     "slots": 5550
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.92167,
+     "low": 0.89467,
+     "point": 0.90894,
+     "slots": 12278
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.91875,
+     "low": 0.89747,
+     "point": 0.90875,
+     "slots": 38193
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.90832,
+     "low": 0.85382,
+     "point": 0.88361,
+     "slots": 1452
+    }
+   },
+   "clone_change": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.04101,
+     "low": -0.06359,
+     "point": -0.05146
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.043,
+     "low": -0.06402,
+     "point": -0.05305
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.04087,
+     "low": -0.06347,
+     "point": -0.05159
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.03027,
+     "low": -0.0474,
+     "point": -0.03806
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.05324,
+     "low": -0.10191,
+     "point": -0.07551
+    }
+   },
+   "excess_clone_drop": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.02136,
+     "low": 0.00584,
+     "point": 0.01332
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.02454,
+     "low": 0.00848,
+     "point": 0.0166
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.00782,
+     "low": -0.0071,
+     "point": 0.00016
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.00302,
+     "low": -0.01403,
+     "point": -0.00882
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.04491,
+     "low": 0.00715,
+     "point": 0.02614
+    }
+   },
+   "excess_drift": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.03837,
+     "low": 0.01992,
+     "point": 0.0287
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.03871,
+     "low": 0.02175,
+     "point": 0.03022
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.03578,
+     "low": 0.01818,
+     "point": 0.02701
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.02263,
+     "low": 0.0098,
+     "point": 0.01588
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.06584,
+     "low": 0.02398,
+     "point": 0.04431
+    }
+   },
+   "own": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.96572,
+      "low": 0.95096,
+      "point": 0.95908,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96727,
+      "low": 0.94742,
+      "point": 0.95841,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.95451,
+      "low": 0.9381,
+      "point": 0.94711,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95529,
+      "low": 0.94255,
+      "point": 0.94956,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.94882,
+      "low": 0.91406,
+      "point": 0.93231,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.9439,
+      "low": 0.9149,
+      "point": 0.93038,
+      "slots": 15886
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.94132,
+      "low": 0.91362,
+      "point": 0.92819,
+      "slots": 5612
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.93418,
+      "low": 0.90441,
+      "point": 0.9201,
+      "slots": 12591
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.94444,
+      "low": 0.92114,
+      "point": 0.93368,
+      "slots": 39021
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.91745,
+      "low": 0.85339,
+      "point": 0.888,
+      "slots": 1500
+     }
+    }
+   },
+   "teacher": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.96572,
+      "low": 0.95096,
+      "point": 0.95908,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96727,
+      "low": 0.94742,
+      "point": 0.95841,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.95451,
+      "low": 0.9381,
+      "point": 0.94711,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95529,
+      "low": 0.94255,
+      "point": 0.94956,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.94882,
+      "low": 0.91406,
+      "point": 0.93231,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.93046,
+      "low": 0.90083,
+      "point": 0.91664,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.92839,
+      "low": 0.8977,
+      "point": 0.91396,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.92182,
+      "low": 0.8909,
+      "point": 0.90749,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.91618,
+      "low": 0.89281,
+      "point": 0.90519,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.89463,
+      "low": 0.83014,
+      "point": 0.86528,
+      "slots": 1492
+     }
+    }
+   }
+  },
+  "noise_snr20": {
+   "clone": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.9647,
+     "low": 0.95045,
+     "point": 0.95803,
+     "slots": 15820
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.96358,
+     "low": 0.94717,
+     "point": 0.95592,
+     "slots": 5604
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.95341,
+     "low": 0.93937,
+     "point": 0.94703,
+     "slots": 12365
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.94309,
+     "low": 0.93023,
+     "point": 0.93716,
+     "slots": 38588
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.95913,
+     "low": 0.92887,
+     "point": 0.94474,
+     "slots": 1484
+    }
+   },
+   "clone_change": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.00835,
+     "low": -0.01735,
+     "point": -0.01286
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.01081,
+     "low": -0.02197,
+     "point": -0.01623
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.00994,
+     "low": -0.01726,
+     "point": -0.01351
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.00644,
+     "low": -0.01281,
+     "point": -0.00966
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.00375,
+     "low": -0.02568,
+     "point": -0.01437
+    }
+   },
+   "excess_clone_drop": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.0054,
+     "low": -0.01198,
+     "point": -0.00878
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.00145,
+     "low": -0.01318,
+     "point": -0.00732
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.01448,
+     "low": -0.02244,
+     "point": -0.01844
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.01864,
+     "low": -0.02371,
+     "point": -0.02106
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.00465,
+     "low": -0.02148,
+     "point": -0.01273
+    }
+   },
+   "excess_drift": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.00431,
+     "low": -0.00295,
+     "point": 0.00063
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.00729,
+     "low": -0.00388,
+     "point": 0.00157
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.00453,
+     "low": -0.00322,
+     "point": 0.00061
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.00463,
+     "low": -0.00949,
+     "point": -0.00703
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.01342,
+     "low": -0.00627,
+     "point": 0.00384
+    }
+   },
+   "own": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.98388,
+      "low": 0.97726,
+      "point": 0.9808,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.98549,
+      "low": 0.97587,
+      "point": 0.98108,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.97613,
+      "low": 0.96777,
+      "point": 0.9721,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.97466,
+      "low": 0.96793,
+      "point": 0.97154,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97861,
+      "low": 0.95964,
+      "point": 0.96917,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.98471,
+      "low": 0.97515,
+      "point": 0.98017,
+      "slots": 15886
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.98488,
+      "low": 0.97387,
+      "point": 0.97951,
+      "slots": 5612
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.97644,
+      "low": 0.96633,
+      "point": 0.97149,
+      "slots": 12591
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.9823,
+      "low": 0.97463,
+      "point": 0.97858,
+      "slots": 39021
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97644,
+      "low": 0.95334,
+      "point": 0.96533,
+      "slots": 1500
+     }
+    }
+   },
+   "teacher": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.98388,
+      "low": 0.97726,
+      "point": 0.9808,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.98549,
+      "low": 0.97587,
+      "point": 0.98108,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.97613,
+      "low": 0.96777,
+      "point": 0.9721,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.97466,
+      "low": 0.96793,
+      "point": 0.97154,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97861,
+      "low": 0.95964,
+      "point": 0.96917,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.9664,
+      "low": 0.95356,
+      "point": 0.96047,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96768,
+      "low": 0.95222,
+      "point": 0.96055,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.95758,
+      "low": 0.94318,
+      "point": 0.95108,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.94463,
+      "low": 0.93329,
+      "point": 0.93942,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95485,
+      "low": 0.92641,
+      "point": 0.94102,
+      "slots": 1492
+     }
+    }
+   }
+  },
+  "noise_snr5": {
+   "clone": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.88553,
+     "low": 0.84652,
+     "point": 0.86738,
+     "slots": 15578
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.89218,
+     "low": 0.85121,
+     "point": 0.87324,
+     "slots": 5459
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.87712,
+     "low": 0.83786,
+     "point": 0.85887,
+     "slots": 12088
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.88372,
+     "low": 0.85078,
+     "point": 0.86854,
+     "slots": 37624
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.85679,
+     "low": 0.78995,
+     "point": 0.82444,
+     "slots": 1424
+    }
+   },
+   "clone_change": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.08704,
+     "low": -0.12205,
+     "point": -0.10351
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.0821,
+     "low": -0.11841,
+     "point": -0.09892
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.08535,
+     "low": -0.12043,
+     "point": -0.10167
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.06488,
+     "low": -0.0946,
+     "point": -0.07827
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.10313,
+     "low": -0.16854,
+     "point": -0.13468
+    }
+   },
+   "excess_clone_drop": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.05277,
+     "low": 0.03175,
+     "point": 0.04162
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.0535,
+     "low": 0.02918,
+     "point": 0.04088
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.04021,
+     "low": 0.01839,
+     "point": 0.02871
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.02335,
+     "low": 0.00543,
+     "point": 0.01389
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.0879,
+     "low": 0.04243,
+     "point": 0.06501
+    }
+   },
+   "excess_drift": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.07269,
+     "low": 0.05021,
+     "point": 0.06058
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.07108,
+     "low": 0.04583,
+     "point": 0.05796
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.07323,
+     "low": 0.04917,
+     "point": 0.06057
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.05582,
+     "low": 0.0361,
+     "point": 0.04527
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.1177,
+     "low": 0.06786,
+     "point": 0.09213
+    }
+   },
+   "own": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.9415,
+      "low": 0.91301,
+      "point": 0.92858,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.94028,
+      "low": 0.9107,
+      "point": 0.92663,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.92796,
+      "low": 0.89676,
+      "point": 0.91372,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.93262,
+      "low": 0.90847,
+      "point": 0.92175,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.92195,
+      "low": 0.87188,
+      "point": 0.89879,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.88892,
+      "low": 0.84364,
+      "point": 0.868,
+      "slots": 15886
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.8894,
+      "low": 0.84385,
+      "point": 0.86867,
+      "slots": 5612
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.87514,
+      "low": 0.82733,
+      "point": 0.85315,
+      "slots": 12591
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.89447,
+      "low": 0.85457,
+      "point": 0.87648,
+      "slots": 39021
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.84469,
+      "low": 0.76491,
+      "point": 0.80667,
+      "slots": 1500
+     }
+    }
+   },
+   "teacher": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.9415,
+      "low": 0.91301,
+      "point": 0.92858,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.94028,
+      "low": 0.9107,
+      "point": 0.92663,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.92796,
+      "low": 0.89676,
+      "point": 0.91372,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.93262,
+      "low": 0.90847,
+      "point": 0.92175,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.92195,
+      "low": 0.87188,
+      "point": 0.89879,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.8792,
+      "low": 0.83275,
+      "point": 0.85785,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.87994,
+      "low": 0.83196,
+      "point": 0.85791,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.86751,
+      "low": 0.81939,
+      "point": 0.84554,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.87251,
+      "low": 0.83319,
+      "point": 0.85467,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.83042,
+      "low": 0.75094,
+      "point": 0.7929,
+      "slots": 1492
+     }
+    }
+   }
+  },
+  "opus_12k_nb": {
+   "clone": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.95036,
+     "low": 0.93386,
+     "point": 0.94301,
+     "slots": 15723
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.95996,
+     "low": 0.9414,
+     "point": 0.95158,
+     "slots": 5555
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.93861,
+     "low": 0.92101,
+     "point": 0.93072,
+     "slots": 12298
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.93473,
+     "low": 0.92062,
+     "point": 0.92829,
+     "slots": 38263
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.94093,
+     "low": 0.91334,
+     "point": 0.92808,
+     "slots": 1446
+    }
+   },
+   "clone_change": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.02216,
+     "low": -0.03414,
+     "point": -0.02787
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.01295,
+     "low": -0.0288,
+     "point": -0.02058
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.02376,
+     "low": -0.03644,
+     "point": -0.02982
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.01509,
+     "low": -0.02236,
+     "point": -0.01853
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.01721,
+     "low": -0.04617,
+     "point": -0.03104
+    }
+   },
+   "excess_clone_drop": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.00938,
+     "low": -0.01828,
+     "point": -0.01396
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.01278,
+     "low": -0.02729,
+     "point": -0.01999
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.02054,
+     "low": -0.03134,
+     "point": -0.02588
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.02794,
+     "low": -0.03522,
+     "point": -0.0314
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.00781,
+     "low": -0.03546,
+     "point": -0.02145
+    }
+   },
+   "excess_drift": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.00665,
+     "low": -0.00187,
+     "point": 0.00219
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.00154,
+     "low": -0.01064,
+     "point": -0.0047
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.00626,
+     "low": -0.00252,
+     "point": 0.00172
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.00735,
+     "low": -0.01251,
+     "point": -0.00995
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.01727,
+     "low": -0.01661,
+     "point": -0.00033
+    }
+   },
+   "own": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.96189,
+      "low": 0.94938,
+      "point": 0.95636,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96813,
+      "low": 0.95229,
+      "point": 0.96109,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.95205,
+      "low": 0.93747,
+      "point": 0.94541,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95713,
+      "low": 0.94589,
+      "point": 0.95207,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95012,
+      "low": 0.92459,
+      "point": 0.93767,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.9608,
+      "low": 0.94665,
+      "point": 0.95417,
+      "slots": 15886
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.97222,
+      "low": 0.9586,
+      "point": 0.96579,
+      "slots": 5612
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.95066,
+      "low": 0.93554,
+      "point": 0.94369,
+      "slots": 12591
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.96705,
+      "low": 0.95575,
+      "point": 0.96202,
+      "slots": 39021
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95334,
+      "low": 0.9186,
+      "point": 0.938,
+      "slots": 1500
+     }
+    }
+   },
+   "teacher": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.96189,
+      "low": 0.94938,
+      "point": 0.95636,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96813,
+      "low": 0.95229,
+      "point": 0.96109,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.95205,
+      "low": 0.93747,
+      "point": 0.94541,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95713,
+      "low": 0.94589,
+      "point": 0.95207,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95012,
+      "low": 0.92459,
+      "point": 0.93767,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.94883,
+      "low": 0.93182,
+      "point": 0.94121,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96163,
+      "low": 0.94332,
+      "point": 0.95323,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.94002,
+      "low": 0.92192,
+      "point": 0.93183,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.9367,
+      "low": 0.92239,
+      "point": 0.93028,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.93216,
+      "low": 0.90303,
+      "point": 0.91823,
+      "slots": 1492
+     }
+    }
+   }
+  },
+  "reverb_rt0.3": {
+   "clone": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.95722,
+     "low": 0.94491,
+     "point": 0.9516,
+     "slots": 15764
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.95876,
+     "low": 0.94391,
+     "point": 0.95176,
+     "slots": 5556
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.94716,
+     "low": 0.93305,
+     "point": 0.94065,
+     "slots": 12317
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.93847,
+     "low": 0.92493,
+     "point": 0.93221,
+     "slots": 38367
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.96151,
+     "low": 0.93848,
+     "point": 0.95013,
+     "slots": 1484
+    }
+   },
+   "clone_change": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.01548,
+     "low": -0.02321,
+     "point": -0.01929
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.01395,
+     "low": -0.02712,
+     "point": -0.02039
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.01578,
+     "low": -0.02401,
+     "point": -0.01989
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.01112,
+     "low": -0.01842,
+     "point": -0.01461
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -9e-05,
+     "low": -0.0186,
+     "point": -0.00898
+    }
+   },
+   "excess_clone_drop": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.0071,
+     "low": -0.01655,
+     "point": -0.01162
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.00058,
+     "low": -0.01737,
+     "point": -0.00857
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.01846,
+     "low": -0.03025,
+     "point": -0.0241
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.0258,
+     "low": -0.03345,
+     "point": -0.02936
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.01351,
+     "low": -0.03165,
+     "point": -0.02279
+    }
+   },
+   "excess_drift": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.00919,
+     "low": 0.00185,
+     "point": 0.00544
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.01561,
+     "low": 0.00243,
+     "point": 0.00921
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.00632,
+     "low": -0.00367,
+     "point": 0.0013
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.00322,
+     "low": -0.00871,
+     "point": -0.00587
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.00893,
+     "low": -0.00932,
+     "point": -0.00018
+    }
+   },
+   "own": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.97347,
+      "low": 0.96258,
+      "point": 0.96874,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.97499,
+      "low": 0.95913,
+      "point": 0.96805,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.96294,
+      "low": 0.95026,
+      "point": 0.9573,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.96282,
+      "low": 0.95321,
+      "point": 0.95856,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97552,
+      "low": 0.95582,
+      "point": 0.96582,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.96801,
+      "low": 0.9579,
+      "point": 0.9633,
+      "slots": 15886
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96512,
+      "low": 0.95189,
+      "point": 0.95884,
+      "slots": 5612
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.96136,
+      "low": 0.95024,
+      "point": 0.956,
+      "slots": 12591
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.96801,
+      "low": 0.9601,
+      "point": 0.96443,
+      "slots": 39021
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97432,
+      "low": 0.95723,
+      "point": 0.966,
+      "slots": 1500
+     }
+    }
+   },
+   "teacher": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.97347,
+      "low": 0.96258,
+      "point": 0.96874,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.97499,
+      "low": 0.95913,
+      "point": 0.96805,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.96294,
+      "low": 0.95026,
+      "point": 0.9573,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.96282,
+      "low": 0.95321,
+      "point": 0.95856,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.97552,
+      "low": 0.95582,
+      "point": 0.96582,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.95757,
+      "low": 0.94377,
+      "point": 0.95125,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.95629,
+      "low": 0.9399,
+      "point": 0.94877,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.94888,
+      "low": 0.93388,
+      "point": 0.94194,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.94038,
+      "low": 0.92787,
+      "point": 0.93473,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95911,
+      "low": 0.93592,
+      "point": 0.94772,
+      "slots": 1492
+     }
+    }
+   }
+  },
+  "reverb_rt0.6": {
+   "clone": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.94998,
+     "low": 0.93629,
+     "point": 0.94364,
+     "slots": 15668
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.95039,
+     "low": 0.93463,
+     "point": 0.94307,
+     "slots": 5533
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.94102,
+     "low": 0.92486,
+     "point": 0.93364,
+     "slots": 12207
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.9332,
+     "low": 0.91904,
+     "point": 0.92662,
+     "slots": 38090
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.95277,
+     "low": 0.92942,
+     "point": 0.94134,
+     "slots": 1466
+    }
+   },
+   "clone_change": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.02256,
+     "low": -0.03226,
+     "point": -0.02724
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.02166,
+     "low": -0.03679,
+     "point": -0.02908
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.02168,
+     "low": -0.03237,
+     "point": -0.02689
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.0164,
+     "low": -0.02431,
+     "point": -0.02019
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.00549,
+     "low": -0.03079,
+     "point": -0.01778
+    }
+   },
+   "excess_clone_drop": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.00505,
+     "low": -0.01448,
+     "point": -0.00966
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.00151,
+     "low": -0.01549,
+     "point": -0.00857
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.01655,
+     "low": -0.02849,
+     "point": -0.02216
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.02717,
+     "low": -0.03568,
+     "point": -0.0312
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.00706,
+     "low": -0.03459,
+     "point": -0.02145
+    }
+   },
+   "excess_drift": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.01374,
+     "low": 0.00471,
+     "point": 0.00881
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.01607,
+     "low": 0.0029,
+     "point": 0.00902
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.01075,
+     "low": 0.00047,
+     "point": 0.0055
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.00075,
+     "low": -0.00768,
+     "point": -0.00425
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.02225,
+     "low": -0.00796,
+     "point": 0.00643
+    }
+   },
+   "own": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.96549,
+      "low": 0.953,
+      "point": 0.95977,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96663,
+      "low": 0.95126,
+      "point": 0.95948,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.95488,
+      "low": 0.93972,
+      "point": 0.948,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95576,
+      "low": 0.94433,
+      "point": 0.95046,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.96743,
+      "low": 0.94444,
+      "point": 0.95576,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.95678,
+      "low": 0.94441,
+      "point": 0.95096,
+      "slots": 15886
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.95751,
+      "low": 0.94269,
+      "point": 0.95046,
+      "slots": 5612
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.94941,
+      "low": 0.93454,
+      "point": 0.9425,
+      "slots": 12591
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95915,
+      "low": 0.94961,
+      "point": 0.95472,
+      "slots": 39021
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.96205,
+      "low": 0.93496,
+      "point": 0.94933,
+      "slots": 1500
+     }
+    }
+   },
+   "teacher": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.96549,
+      "low": 0.953,
+      "point": 0.95977,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96663,
+      "low": 0.95126,
+      "point": 0.95948,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.95488,
+      "low": 0.93972,
+      "point": 0.948,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95576,
+      "low": 0.94433,
+      "point": 0.95046,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.96743,
+      "low": 0.94444,
+      "point": 0.95576,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.9472,
+      "low": 0.93234,
+      "point": 0.94032,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.94732,
+      "low": 0.93135,
+      "point": 0.9402,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.93862,
+      "low": 0.92137,
+      "point": 0.9307,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.93462,
+      "low": 0.92118,
+      "point": 0.92847,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95,
+      "low": 0.92223,
+      "point": 0.93633,
+      "slots": 1492
+     }
+    }
+   }
+  },
+  "reverb_rt1": {
+   "clone": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.94057,
+     "low": 0.92463,
+     "point": 0.93311,
+     "slots": 15638
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.93871,
+     "low": 0.92175,
+     "point": 0.93054,
+     "slots": 5485
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.93307,
+     "low": 0.91712,
+     "point": 0.92557,
+     "slots": 12199
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.92785,
+     "low": 0.91421,
+     "point": 0.92141,
+     "slots": 38044
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.94045,
+     "low": 0.91304,
+     "point": 0.92741,
+     "slots": 1474
+    }
+   },
+   "clone_change": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.0322,
+     "low": -0.04364,
+     "point": -0.03778
+    },
+    "focus": {
+     "clusters": 107,
+     "high": -0.03305,
+     "low": -0.05051,
+     "point": -0.04161
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.02928,
+     "low": -0.04052,
+     "point": -0.03497
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.02154,
+     "low": -0.02947,
+     "point": -0.02541
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": -0.01812,
+     "low": -0.04666,
+     "point": -0.03171
+    }
+   },
+   "excess_clone_drop": {
+    "consonant": {
+     "clusters": 107,
+     "high": -0.00513,
+     "low": -0.01637,
+     "point": -0.0108
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.00296,
+     "low": -0.01789,
+     "point": -0.0075
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": -0.02118,
+     "low": -0.03336,
+     "point": -0.02693
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": -0.02954,
+     "low": -0.03776,
+     "point": -0.03332
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.00279,
+     "low": -0.02561,
+     "point": -0.01206
+    }
+   },
+   "excess_drift": {
+    "consonant": {
+     "clusters": 107,
+     "high": 0.01397,
+     "low": 0.00358,
+     "point": 0.00859
+    },
+    "focus": {
+     "clusters": 107,
+     "high": 0.01978,
+     "low": 0.00256,
+     "point": 0.01095
+    },
+    "haraka": {
+     "clusters": 107,
+     "high": 0.0107,
+     "low": -0.0,
+     "point": 0.00539
+    },
+    "phoneme": {
+     "clusters": 107,
+     "high": 0.00034,
+     "low": -0.00546,
+     "point": -0.00251
+    },
+    "shaddah": {
+     "clusters": 107,
+     "high": 0.02268,
+     "low": -0.00421,
+     "point": 0.00907
+    }
+   },
+   "own": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.95547,
+      "low": 0.94357,
+      "point": 0.95017,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.95385,
+      "low": 0.93529,
+      "point": 0.94538,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.9436,
+      "low": 0.92959,
+      "point": 0.93717,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.94811,
+      "low": 0.93684,
+      "point": 0.94286,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95948,
+      "low": 0.94038,
+      "point": 0.94973,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.94857,
+      "low": 0.93393,
+      "point": 0.94158,
+      "slots": 15886
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.94344,
+      "low": 0.92426,
+      "point": 0.93443,
+      "slots": 5612
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.93915,
+      "low": 0.92374,
+      "point": 0.93178,
+      "slots": 12591
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.95083,
+      "low": 0.93923,
+      "point": 0.94536,
+      "slots": 39021
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95335,
+      "low": 0.92704,
+      "point": 0.94067,
+      "slots": 1500
+     }
+    }
+   },
+   "teacher": {
+    "base": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.95547,
+      "low": 0.94357,
+      "point": 0.95017,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.95385,
+      "low": 0.93529,
+      "point": 0.94538,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.9436,
+      "low": 0.92959,
+      "point": 0.93717,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.94811,
+      "low": 0.93684,
+      "point": 0.94286,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.95948,
+      "low": 0.94038,
+      "point": 0.94973,
+      "slots": 1492
+     }
+    },
+    "h448": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.94019,
+      "low": 0.92251,
+      "point": 0.93186,
+      "slots": 15835
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.93446,
+      "low": 0.91404,
+      "point": 0.92503,
+      "slots": 5602
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.93257,
+      "low": 0.91552,
+      "point": 0.92463,
+      "slots": 12366
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.93004,
+      "low": 0.91509,
+      "point": 0.92299,
+      "slots": 38657
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.93563,
+      "low": 0.90547,
+      "point": 0.92091,
+      "slots": 1492
+     }
+    }
+   }
+  }
+ },
+ "grid": {
+  "band_limit": {
+   "resampler": "scipy.signal.resample_poly",
+   "sample_rate": 8000
+  },
+  "clipping": "none; float32 throughout",
+  "codec": {
+   "application": "voip",
+   "bitrate": 12000,
+   "codec": "opus (ffmpeg libopus)",
+   "cutoff_hz": 4000
+  },
+  "conditions": [
+   {
+    "kind": "clean",
+    "level": null,
+    "name": "clean"
+   },
+   {
+    "kind": "noise",
+    "level": 20.0,
+    "name": "noise_snr20"
+   },
+   {
+    "kind": "noise",
+    "level": 10.0,
+    "name": "noise_snr10"
+   },
+   {
+    "kind": "noise",
+    "level": 5.0,
+    "name": "noise_snr5"
+   },
+   {
+    "kind": "reverb",
+    "level": 0.3,
+    "name": "reverb_rt0.3"
+   },
+   {
+    "kind": "reverb",
+    "level": 0.6,
+    "name": "reverb_rt0.6"
+   },
+   {
+    "kind": "reverb",
+    "level": 1.0,
+    "name": "reverb_rt1"
+   },
+   {
+    "kind": "band_limit",
+    "level": 8000.0,
+    "name": "band_8k"
+   },
+   {
+    "kind": "codec",
+    "level": 12000.0,
+    "name": "opus_12k_nb"
+   }
+  ],
+  "noise": {
+   "licence": "per recording (Freesound: CC0-1.0, CC-BY-3.0/4.0, CC-BY-NC-3.0/4.0, CC-Sampling+)",
+   "min_rms": 0.0001,
+   "min_seconds": 1.0,
+   "repo": "obadx/freesound-commercial-50k-noise-only",
+   "revision": "a5f48ab83b64ba1d35ee4ec363dae75d4e2c69d3",
+   "segment": "one recording and offset per clip (noise_draw), looped",
+   "shards": [
+    "data/train-00000-of-00104.parquet",
+    "data/train-00052-of-00104.parquet"
+   ],
+   "snr": "clip mean power over the noise segment's"
+  },
+  "reverb": {
+   "drr_db": 3.0,
+   "level": "scaled back to the clean clip's RMS",
+   "rir_length": "one RT60",
+   "rt60_s": [
+    0.3,
+    0.6,
+    1.0
+   ],
+   "tail": "Gaussian, drawn per clip, decaying 60 dB over the RT60",
+   "tail_onset_s": 0.0025
+  },
+  "sample_rate": 16000,
+  "seed": 20261015,
+  "version": "acoustic-grid-v1"
+ },
+ "models": {
+  "band_8k/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "band_8k/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  },
+  "clean/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "clean/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  },
+  "noise_snr10/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "noise_snr10/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  },
+  "noise_snr20/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "noise_snr20/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  },
+  "noise_snr5/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "noise_snr5/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  },
+  "opus_12k_nb/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "opus_12k_nb/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  },
+  "reverb_rt0.3/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "reverb_rt0.3/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  },
+  "reverb_rt0.6/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "reverb_rt0.6/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  },
+  "reverb_rt1/base": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "obadx/muaalem-model-v3_2",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "model": "base"
+  },
+  "reverb_rt1/h448": {
+   "fingerprints": {
+    "checks": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "muraja-app-checks-v2",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "spans": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "whole-spans",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    },
+    "stream_b0": {
+     "autocast": true,
+     "batch_size": 1,
+     "device_type": "cuda",
+     "mode": "confirmed-stream-v2-flush",
+     "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+     "policy": "fp32-features-v1",
+     "weights_dtype": "bf16"
+    }
+   },
+   "identity": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   },
+   "model": "h448"
+  }
+ },
+ "noise": {
+  "hours": 4.08,
+  "left_out": {
+   "ineligible": 84,
+   "undecodable": 0
+  },
+  "licences_drawn": {
+   "CC-BY-3.0": 57,
+   "CC-BY-4.0": 58,
+   "CC-Sampling+": 2,
+   "CC0-1.0": 148
+  },
+  "recordings": 445,
+  "recordings_drawn": 265
+ },
+ "numerics": {
+  "base_vs_cached_teacher": {
+   "consonant": {
+    "clusters": 146,
+    "high": 0.99927,
+    "low": 0.99867,
+    "point": 0.99897,
+    "slots": 32947
+   },
+   "focus": {
+    "clusters": 146,
+    "high": 0.99983,
+    "low": 0.99908,
+    "point": 0.99948,
+    "slots": 11634
+   },
+   "haraka": {
+    "clusters": 146,
+    "high": 0.99328,
+    "low": 0.99122,
+    "point": 0.99229,
+    "slots": 25823
+   },
+   "phoneme": {
+    "clusters": 146,
+    "high": 0.99826,
+    "low": 0.99762,
+    "point": 0.99793,
+    "slots": 80611
+   },
+   "shaddah": {
+    "clusters": 146,
+    "high": 1.0,
+    "low": 0.99775,
+    "point": 0.99902,
+    "slots": 3061
+   }
+  },
+  "h448_vs_cached_teacher": {
+   "consonant": {
+    "clusters": 146,
+    "high": 0.97413,
+    "low": 0.96774,
+    "point": 0.97126,
+    "slots": 32947
+   },
+   "focus": {
+    "clusters": 146,
+    "high": 0.97554,
+    "low": 0.96674,
+    "point": 0.97155,
+    "slots": 11634
+   },
+   "haraka": {
+    "clusters": 146,
+    "high": 0.96568,
+    "low": 0.95801,
+    "point": 0.96213,
+    "slots": 25823
+   },
+   "phoneme": {
+    "clusters": 146,
+    "high": 0.95195,
+    "low": 0.94483,
+    "point": 0.94869,
+    "slots": 80611
+   },
+   "shaddah": {
+    "clusters": 146,
+    "high": 0.97042,
+    "low": 0.95886,
+    "point": 0.96472,
+    "slots": 3061
+   }
+  }
+ },
+ "sample": {
+  "dev_clips": 970,
+  "eligible": 671,
+  "h448_seen": [
+   "tadabur_sh020_i00118_S11_A91_.wav",
+   "tadabur_sh020_i00191_S20_A68_.wav",
+   "tadabur_sh020_i00207_S25_A141_.wav",
+   "tadabur_sh020_i00360_S19_A108_.wav",
+   "tadabur_sh020_i00518_S17_A27_.wav",
+   "tadabur_sh020_i00543_S51_A49_.wav",
+   "tadabur_sh020_i00546_S36_A144_.wav",
+   "tadabur_sh020_i00748_S85_A5_.wav",
+   "tadabur_sh020_i00947_S106_A3_.wav",
+   "tadabur_sh020_i00981_S108_A5_.wav",
+   "tadabur_sh039_i00020_S14_A11_.wav",
+   "tadabur_sh039_i00022_S36_A182_.wav",
+   "tadabur_sh039_i00056_S12_A12_.wav",
+   "tadabur_sh039_i00151_S27_A2_.wav",
+   "tadabur_sh039_i00208_S77_A39_.wav",
+   "tadabur_sh039_i00367_S55_A53_.wav",
+   "tadabur_sh039_i00386_S81_A8_.wav",
+   "tadabur_sh039_i00407_S95_A5_.wav",
+   "tadabur_sh039_i00459_S25_A226_.wav",
+   "tadabur_sh039_i00483_S14_A34_.wav",
+   "tadabur_sh039_i00572_S82_A6_.wav",
+   "tadabur_sh039_i00643_S68_A34_.wav",
+   "tadabur_sh039_i00675_S29_A7_.wav",
+   "tadabur_sh039_i00740_S68_A22_.wav",
+   "tadabur_sh039_i00954_S14_A19_.wav",
+   "tadabur_sh058_i00013_S1_A46_.wav",
+   "tadabur_sh058_i00140_S21_A61_.wav",
+   "tadabur_sh058_i00166_S38_A27_.wav",
+   "tadabur_sh058_i00185_S17_A62_.wav",
+   "tadabur_sh058_i00229_S54_A40_.wav",
+   "tadabur_sh058_i00480_S34_A2_.wav",
+   "tadabur_sh058_i00482_S19_A11_.wav",
+   "tadabur_sh058_i00622_S37_A32_.wav",
+   "tadabur_sh058_i00797_S78_A33_.wav",
+   "tadabur_sh058_i00959_S77_A16_.wav",
+   "tadabur_sh077_i00210_S14_A63_.wav",
+   "tadabur_sh077_i00375_S84_A7_.wav",
+   "tadabur_sh077_i00423_S51_A8_.wav",
+   "tadabur_sh077_i00507_S79_A19_.wav",
+   "tadabur_sh077_i00543_S33_A29_.wav",
+   "tadabur_sh077_i00641_S76_A49_.wav",
+   "tadabur_sh077_i00649_S33_A29_.wav",
+   "tadabur_sh077_i00742_S89_A16_.wav",
+   "tadabur_sh077_i00773_S16_A18_.wav",
+   "tadabur_sh077_i00868_S26_A2_.wav",
+   "tadabur_sh077_i00892_S17_A67_.wav",
+   "tadabur_sh077_i00993_S25_A163_.wav",
+   "tadabur_sh096_i00001_S36_A150_.wav",
+   "tadabur_sh096_i00079_S5_A11_.wav",
+   "tadabur_sh096_i00119_S36_A170_.wav",
+   "tadabur_sh096_i00278_S66_A25_.wav",
+   "tadabur_sh096_i00438_S3_A166_.wav",
+   "tadabur_sh096_i00511_S67_A48_.wav",
+   "tadabur_sh096_i00573_S88_A26_.wav",
+   "tadabur_sh096_i00583_S26_A79_.wav",
+   "tadabur_sh096_i00591_S100_A1_.wav",
+   "tadabur_sh096_i00593_S84_A19_.wav",
+   "tadabur_sh096_i00604_S74_A20_.wav",
+   "tadabur_sh096_i00646_S1_A276_.wav",
+   "tadabur_sh096_i00668_S52_A8_.wav",
+   "tadabur_sh096_i00692_S50_A24_.wav",
+   "tadabur_sh096_i00811_S25_A43_.wav",
+   "tadabur_sh096_i00820_S80_A20_.wav",
+   "tadabur_sh096_i00875_S75_A17_.wav",
+   "tadabur_sh096_i00944_S32_A61_.wav",
+   "tadabur_sh096_i00971_S35_A56_.wav",
+   "tadabur_sh096_i00988_S5_A15_.wav",
+   "tadabur_sh115_i00000_S25_A126_.wav",
+   "tadabur_sh115_i00060_S108_A5_.wav",
+   "tadabur_sh115_i00067_S25_A110_.wav",
+   "tadabur_sh115_i00126_S37_A33_.wav",
+   "tadabur_sh115_i00154_S2_A43_.wav",
+   "tadabur_sh115_i00194_S8_A10_.wav",
+   "tadabur_sh115_i00219_S36_A169_.wav",
+   "tadabur_sh115_i00277_S37_A11_.wav",
+   "tadabur_sh115_i00298_S73_A35_.wav",
+   "tadabur_sh115_i00310_S68_A47_.wav",
+   "tadabur_sh115_i00326_S2_A53_.wav",
+   "tadabur_sh115_i00364_S22_A15_.wav",
+   "tadabur_sh115_i00419_S29_A3_.wav",
+   "tadabur_sh115_i00442_S50_A3_.wav",
+   "tadabur_sh115_i00465_S55_A96_.wav",
+   "tadabur_sh115_i00471_S90_A2_.wav",
+   "tadabur_sh115_i00611_S29_A14_.wav",
+   "tadabur_sh115_i00649_S17_A92_.wav",
+   "tadabur_sh115_i00737_S35_A76_.wav",
+   "tadabur_sh115_i00808_S1_A181_.wav",
+   "tadabur_sh115_i00847_S78_A7_.wav",
+   "tadabur_sh134_i00025_S25_A22_.wav",
+   "tadabur_sh134_i00105_S82_A33_.wav",
+   "tadabur_sh134_i00256_S45_A31_.wav",
+   "tadabur_sh134_i00406_S25_A80_.wav",
+   "tadabur_sh134_i00446_S2_A163_.wav",
+   "tadabur_sh134_i00452_S16_A49_.wav",
+   "tadabur_sh134_i00490_S41_A20_.wav",
+   "tadabur_sh134_i00658_S76_A39_.wav",
+   "tadabur_sh134_i00841_S36_A27_.wav",
+   "tadabur_sh134_i00851_S68_A21_.wav",
+   "tadabur_sh134_i00931_S67_A2_.wav",
+   "tadabur_sh134_i00948_S109_A1_.wav",
+   "tadabur_sh153_i00210_S101_A6_.wav",
+   "tadabur_sh153_i00431_S74_A15_.wav",
+   "tadabur_sh153_i00469_S80_A16_.wav",
+   "tadabur_sh153_i00484_S26_A71_.wav",
+   "tadabur_sh153_i00515_S74_A27_.wav",
+   "tadabur_sh153_i00548_S11_A92_.wav",
+   "tadabur_sh153_i00705_S69_A29_.wav",
+   "tadabur_sh153_i00793_S95_A18_.wav",
+   "tadabur_sh153_i00797_S10_A79_.wav",
+   "tadabur_sh153_i00799_S5_A24_.wav",
+   "tadabur_sh153_i00813_S95_A19_.wav",
+   "tadabur_sh153_i00877_S17_A109_.wav",
+   "tadabur_sh153_i00929_S19_A42_.wav",
+   "tadabur_sh153_i00989_S76_A14_.wav",
+   "tadabur_sh172_i00003_S17_A4_.wav",
+   "tadabur_sh172_i00015_S2_A141_.wav",
+   "tadabur_sh172_i00066_S42_A12_.wav",
+   "tadabur_sh172_i00139_S89_A12_.wav",
+   "tadabur_sh172_i00158_S41_A20_.wav",
+   "tadabur_sh172_i00223_S6_A205_.wav",
+   "tadabur_sh172_i00539_S22_A20_.wav",
+   "tadabur_sh172_i00609_S70_A6_.wav",
+   "tadabur_sh172_i00635_S87_A25_.wav",
+   "tadabur_sh172_i00660_S14_A57_.wav",
+   "tadabur_sh172_i00856_S14_A77_.wav",
+   "tadabur_sh172_i00945_S20_A31_.wav",
+   "tadabur_sh172_i00994_S55_A5_.wav",
+   "tadabur_sh191_i00021_S13_A11_.wav",
+   "tadabur_sh191_i00136_S19_A119_.wav",
+   "tadabur_sh191_i00177_S68_A28_.wav",
+   "tadabur_sh191_i00252_S22_A9_.wav",
+   "tadabur_sh191_i00292_S25_A162_.wav",
+   "tadabur_sh191_i00308_S5_A4_.wav",
+   "tadabur_sh191_i00343_S60_A1_.wav",
+   "tadabur_sh191_i00475_S54_A63_.wav",
+   "tadabur_sh191_i00502_S35_A5_.wav",
+   "tadabur_sh191_i00531_S37_A79_.wav",
+   "tadabur_sh191_i00560_S84_A3_.wav",
+   "tadabur_sh191_i00594_S24_A73_.wav",
+   "tadabur_sh191_i00613_S19_A44_.wav",
+   "tadabur_sh191_i00623_S36_A159_.wav",
+   "tadabur_sh191_i00727_S66_A2_.wav",
+   "tadabur_sh191_i00939_S75_A31_.wav",
+   "tadabur_sh210_i00014_S20_A72_.wav",
+   "tadabur_sh210_i00031_S25_A198_.wav",
+   "tadabur_sh210_i00044_S83_A11_.wav",
+   "tadabur_sh210_i00045_S34_A21_.wav",
+   "tadabur_sh210_i00111_S45_A19_.wav",
+   "tadabur_sh210_i00219_S76_A18_.wav",
+   "tadabur_sh210_i00226_S22_A75_.wav",
+   "tadabur_sh210_i00410_S36_A36_.wav",
+   "tadabur_sh210_i00447_S6_A104_.wav",
+   "tadabur_sh210_i00463_S31_A25_.wav",
+   "tadabur_sh210_i00465_S17_A77_.wav",
+   "tadabur_sh210_i00522_S37_A39_.wav",
+   "tadabur_sh210_i00523_S106_A7_.wav",
+   "tadabur_sh210_i00581_S74_A2_.wav",
+   "tadabur_sh210_i00740_S75_A13_.wav",
+   "tadabur_sh210_i00767_S27_A62_.wav",
+   "tadabur_sh210_i00888_S107_A3_.wav",
+   "tadabur_sh210_i00906_S19_A16_.wav",
+   "tadabur_sh210_i00941_S38_A4_.wav",
+   "tadabur_sh229_i00026_S77_A15_.wav",
+   "tadabur_sh229_i00064_S17_A69_.wav",
+   "tadabur_sh229_i00225_S39_A2_.wav",
+   "tadabur_sh229_i00271_S88_A25_.wav",
+   "tadabur_sh229_i00314_S42_A60_.wav",
+   "tadabur_sh229_i00359_S16_A26_.wav",
+   "tadabur_sh229_i00366_S93_A6_.wav",
+   "tadabur_sh229_i00407_S42_A85_.wav",
+   "tadabur_sh229_i00411_S25_A110_.wav",
+   "tadabur_sh229_i00423_S80_A25_.wav",
+   "tadabur_sh229_i00442_S75_A11_.wav",
+   "tadabur_sh229_i00531_S20_A26_.wav",
+   "tadabur_sh229_i00555_S25_A150_.wav",
+   "tadabur_sh229_i00649_S36_A159_.wav",
+   "tadabur_sh229_i00666_S72_A17_.wav",
+   "tadabur_sh229_i00686_S25_A116_.wav",
+   "tadabur_sh229_i00748_S74_A16_.wav",
+   "tadabur_sh229_i00836_S83_A17_.wav",
+   "tadabur_sh229_i00844_S3_A53_.wav",
+   "tadabur_sh229_i00848_S25_A79_.wav",
+   "tadabur_sh248_i00176_S41_A17_.wav",
+   "tadabur_sh248_i00191_S20_A81_.wav",
+   "tadabur_sh248_i00331_S54_A6_.wav",
+   "tadabur_sh248_i00360_S36_A90_.wav",
+   "tadabur_sh248_i00420_S44_A22_.wav",
+   "tadabur_sh248_i00465_S2_A166_.wav",
+   "tadabur_sh248_i00559_S36_A90_.wav",
+   "tadabur_sh248_i00628_S10_A68_.wav",
+   "tadabur_sh248_i00686_S36_A78_.wav",
+   "tadabur_sh248_i00722_S2_A149_.wav",
+   "tadabur_sh248_i00733_S104_A5_.wav",
+   "tadabur_sh248_i00738_S25_A78_.wav",
+   "tadabur_sh248_i00763_S53_A47_.wav",
+   "tadabur_sh248_i00793_S13_A20_.wav",
+   "tadabur_sh248_i00820_S25_A129_.wav",
+   "tadabur_sh248_i00828_S10_A79_.wav",
+   "tadabur_sh248_i00957_S26_A71_.wav",
+   "tadabur_sh267_i00001_S39_A23_.wav",
+   "tadabur_sh267_i00034_S72_A18_.wav",
+   "tadabur_sh267_i00164_S25_A149_.wav",
+   "tadabur_sh267_i00190_S72_A8_.wav",
+   "tadabur_sh267_i00261_S67_A19_.wav",
+   "tadabur_sh267_i00374_S25_A176_.wav",
+   "tadabur_sh267_i00402_S100_A3_.wav",
+   "tadabur_sh267_i00448_S14_A3_.wav",
+   "tadabur_sh267_i00777_S73_A30_.wav",
+   "tadabur_sh267_i00840_S11_A49_.wav",
+   "tadabur_sh267_i00862_S111_A4_.wav",
+   "tadabur_sh286_i00026_S1_A169_.wav",
+   "tadabur_sh286_i00125_S76_A34_.wav",
+   "tadabur_sh286_i00158_S18_A14_.wav",
+   "tadabur_sh286_i00360_S19_A4_.wav",
+   "tadabur_sh286_i00404_S12_A29_.wav",
+   "tadabur_sh286_i00420_S79_A33_.wav",
+   "tadabur_sh286_i00490_S1_A192_.wav",
+   "tadabur_sh286_i00492_S2_A58_.wav",
+   "tadabur_sh286_i00551_S12_A30_.wav",
+   "tadabur_sh286_i00673_S25_A176_.wav",
+   "tadabur_sh286_i00690_S25_A137_.wav",
+   "tadabur_sh286_i00767_S85_A8_.wav",
+   "tadabur_sh286_i00781_S75_A29_.wav",
+   "tadabur_sh286_i00794_S2_A53_.wav",
+   "tadabur_sh286_i00933_S48_A3_.wav",
+   "tadabur_sh305_i00091_S22_A59_.wav",
+   "tadabur_sh305_i00203_S55_A12_.wav",
+   "tadabur_sh305_i00309_S39_A53_.wav",
+   "tadabur_sh305_i00346_S55_A86_.wav",
+   "tadabur_sh305_i00369_S24_A26_.wav",
+   "tadabur_sh305_i00517_S42_A73_.wav",
+   "tadabur_sh305_i00573_S81_A12_.wav",
+   "tadabur_sh305_i00585_S37_A25_.wav",
+   "tadabur_sh305_i00677_S24_A40_.wav",
+   "tadabur_sh305_i00757_S54_A28_.wav",
+   "tadabur_sh305_i00828_S55_A74_.wav",
+   "tadabur_sh305_i00956_S43_A54_.wav",
+   "tadabur_sh305_i00964_S17_A67_.wav",
+   "tadabur_sh324_i00032_S1_A43_.wav",
+   "tadabur_sh324_i00034_S69_A10_.wav",
+   "tadabur_sh324_i00091_S91_A20_.wav",
+   "tadabur_sh324_i00150_S29_A27_.wav",
+   "tadabur_sh324_i00290_S41_A40_.wav",
+   "tadabur_sh324_i00293_S14_A54_.wav",
+   "tadabur_sh324_i00316_S35_A15_.wav",
+   "tadabur_sh324_i00353_S70_A11_.wav",
+   "tadabur_sh324_i00469_S69_A29_.wav",
+   "tadabur_sh324_i00515_S35_A39_.wav",
+   "tadabur_sh324_i00580_S6_A15_.wav",
+   "tadabur_sh324_i00632_S35_A17_.wav",
+   "tadabur_sh324_i00635_S19_A66_.wav",
+   "tadabur_sh324_i00647_S20_A69_.wav",
+   "tadabur_sh324_i00707_S22_A5_.wav",
+   "tadabur_sh324_i00708_S73_A6_.wav",
+   "tadabur_sh324_i00748_S52_A49_.wav",
+   "tadabur_sh324_i00892_S108_A6_.wav",
+   "tadabur_sh324_i00949_S6_A138_.wav",
+   "tadabur_sh343_i00046_S17_A101_.wav",
+   "tadabur_sh343_i00115_S14_A84_.wav",
+   "tadabur_sh343_i00137_S86_A4_.wav",
+   "tadabur_sh343_i00244_S35_A29_.wav",
+   "tadabur_sh343_i00282_S69_A25_.wav",
+   "tadabur_sh343_i00322_S105_A3_.wav",
+   "tadabur_sh343_i00438_S85_A2_.wav",
+   "tadabur_sh343_i00562_S75_A7_.wav",
+   "tadabur_sh343_i00621_S106_A4_.wav",
+   "tadabur_sh343_i00623_S5_A117_.wav",
+   "tadabur_sh343_i00640_S86_A15_.wav",
+   "tadabur_sh343_i00678_S36_A15_.wav",
+   "tadabur_sh343_i00783_S36_A108_.wav",
+   "tadabur_sh343_i00807_S1_A147_.wav",
+   "tadabur_sh343_i00814_S37_A2_.wav",
+   "tadabur_sh343_i00896_S36_A159_.wav",
+   "tadabur_sh343_i00955_S17_A7_.wav",
+   "tadabur_sh362_i00030_S19_A107_.wav",
+   "tadabur_sh362_i00100_S43_A54_.wav",
+   "tadabur_sh362_i00223_S17_A13_.wav",
+   "tadabur_sh362_i00339_S18_A84_.wav",
+   "tadabur_sh362_i00486_S89_A15_.wav",
+   "tadabur_sh362_i00581_S69_A7_.wav",
+   "tadabur_sh362_i00732_S54_A16_.wav",
+   "tadabur_sh362_i00736_S17_A92_.wav",
+   "tadabur_sh362_i00786_S22_A80_.wav",
+   "tadabur_sh362_i00797_S32_A21_.wav",
+   "tadabur_sh362_i00798_S22_A108_.wav",
+   "tadabur_sh362_i00884_S25_A125_.wav",
+   "tadabur_sh362_i00894_S25_A163_.wav",
+   "tadabur_sh381_i00016_S3_A110_.wav",
+   "tadabur_sh381_i00314_S39_A70_.wav",
+   "tadabur_sh381_i00413_S77_A3_.wav",
+   "tadabur_sh381_i00591_S73_A23_.wav",
+   "tadabur_sh381_i00610_S42_A73_.wav",
+   "tadabur_sh381_i00681_S25_A66_.wav",
+   "tadabur_sh381_i00767_S80_A15_.wav",
+   "tadabur_sh381_i00810_S16_A21_.wav",
+   "tadabur_sh381_i00825_S43_A55_.wav",
+   "tadabur_sh381_i00913_S84_A18_.wav",
+   "tadabur_sh381_i00941_S77_A14_.wav",
+   "tadabur_sh381_i00976_S68_A32_.wav"
+  ],
+  "hours": 1.676,
+  "reciters": 107,
+  "rule": "eligible dev clips ranked by sha256(seed:d2-sample:filename), first size",
+  "size": 400
+ }
+}

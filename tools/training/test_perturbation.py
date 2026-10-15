@@ -106,11 +106,12 @@ def _impulse() -> np.ndarray:
 
 
 def _chirp() -> np.ndarray:
-    """3 s sweeping the speech band, 300 Hz to 3.4 kHz."""
+    """8 s sweeping most of the speech band, 250 Hz to 3.2 kHz: slow enough for the codec to
+    code it faithfully, and not one of its calibration probes."""
     from scipy.signal import chirp
 
-    t = np.arange(3 * SR) / SR
-    return (0.3 * chirp(t, 300, 3, 3400)).astype(np.float32)
+    t = np.arange(8 * SR) / SR
+    return (0.3 * chirp(t, 250, 8, 3200)).astype(np.float32)
 
 
 def _pool() -> tuple:
@@ -135,9 +136,37 @@ def test_the_lag_is_measured_to_a_sub_sample_and_undone():
     late = pt.advance(chirp, -1.5)  # 1.5 samples late
     assert pt.lag_samples(late, chirp, 16) == pytest.approx(1.5, abs=0.05)
     assert abs(pt.lag_samples(pt.advance(late, 1.5), chirp, 16)) < 0.01
-    assert pt.lag_samples(chirp, np.zeros_like(chirp), 16) == 0.0
     with pytest.raises(ValueError):  # 40 samples late: no peak inside a 16-sample window
         pt.lag_samples(np.roll(_impulse(), 40), _impulse(), 16)
+
+
+def test_a_lag_without_a_clear_peak_is_refused_never_guessed():
+    noise = np.random.default_rng(7).standard_normal(48_000).astype(np.float32)
+    with pytest.raises(ValueError):  # white noise 100 samples late: no peak in the window
+        pt.lag_samples(np.roll(noise, 100), noise, 16)
+    quiet = (1e-6 * noise).astype(np.float32)
+    unrelated = np.random.default_rng(8).standard_normal(48_000).astype(np.float32)
+    with pytest.raises(ValueError):  # near-silence against unrelated audio
+        pt.lag_samples(unrelated, quiet, 16)
+    with pytest.raises(ValueError):  # digital silence
+        pt.lag_samples(noise, np.zeros_like(noise), 16)
+
+
+@pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
+def test_the_codec_lag_is_one_calibrated_constant_whatever_the_clip():
+    from scipy.signal import butter, sosfilt
+
+    lag = pt.codec_lag()
+    assert 0 < abs(lag) < pt.MAX_CODEC_LAG  # the codec does delay
+    for probe in pt.codec_probes():  # after the shift, both probes measure no lag
+        assert abs(pt.lag_samples(pt.opus_round_trip(probe)[0], probe, 16)) < 0.25
+    # Above the narrowband cutoff, the codec leaves nothing to measure a lag on: refused, and
+    # the clip is still shifted by the calibrated constant, never by its own content.
+    sos = butter(8, 4500, "highpass", fs=SR, output="sos")
+    high = sosfilt(sos, np.random.default_rng(0).standard_normal(48_000)).astype(np.float32)
+    with pytest.raises(ValueError):
+        pt.lag_samples(pt._opus(high), high, 16)
+    assert pt.opus_round_trip(high)[1] == lag == pt.opus_round_trip(_tone(500))[1]
 
 
 @pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
@@ -145,11 +174,10 @@ def test_the_opus_round_trip_keeps_length_and_reports_the_lag_it_removed():
     clean = _tone(500, 2.0)
     coded, lag = pt.opus_round_trip(clean)
     assert len(coded) == len(clean) and coded.dtype == np.float32
-    assert 0 < abs(lag) < pt.MAX_CODEC_LAG  # the codec does delay; the lag is undone
     middle = slice(SR // 2, 3 * SR // 2)
     assert np.corrcoef(clean[middle], coded[middle])[0, 1] > 0.9
     again, lag_again = pt.opus_round_trip(clean)
-    assert np.array_equal(coded, again) and lag == lag_again
+    assert np.array_equal(coded, again) and lag == lag_again == pt.codec_lag()
     _, draw = pt.perturb(clean, pt.CONDITIONS["opus_12k_nb"], "c")
     assert draw == {"codec_lag": round(lag, 3)}
 

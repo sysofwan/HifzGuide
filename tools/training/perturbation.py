@@ -27,22 +27,26 @@ clipped: Tadabur already peaks above 1.0 and the feature extractor normalizes ea
   sample rate; polyphase filters, :func:`band_limit`).
 * **codec**: an Opus round trip at :data:`OPUS_BITRATE` bit/s, ``voip``, narrowband
   (:func:`opus_round_trip`, ``ffmpeg``'s ``libopus``), a low-bitrate phone call. The codec
-  delays its output by a sample or two even with its pre-skip dropped, so the decoded audio is
-  moved back by its measured lag against the input (:func:`lag_samples`, :func:`advance`).
+  delays its output by a sample or two even with its pre-skip dropped, a constant of its
+  settings, so every clip's decoded audio is moved back by that constant (:func:`advance`),
+  calibrated once per process on two fixed chirps and refused when they disagree
+  (:func:`codec_lag`). The clip's own content never sets the shift.
 
 **Every condition keeps the clip's timing** (zero lag), so a perturbed clip's frames line up
 with the clean clip's: a training arm pairs clean teacher frames with perturbed student
 frames through this module.
 
-**Amended once** (``acoustic-grid-v2``, after review, before any training): v1 left the
-codec's lag in place; v2 removes it. Nothing else changed, and only the codec condition was
-decoded again.
+**Amended twice** (after review, before any training), the codec's alignment only; only the
+codec condition was decoded again: v1 left the codec's lag in place; v2 removed a lag measured
+on each clip, which some content measures wrongly; v3 (``acoustic-grid-v3``) removes the
+codec's calibrated constant lag.
 
 Torch-free; the codec needs ``ffmpeg`` with ``libopus`` on the path.
 """
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import subprocess
 from dataclasses import asdict, dataclass, field
@@ -53,7 +57,7 @@ import numpy as np
 from tadabur.audio import TARGET_SAMPLE_RATE
 from tadabur.nonpro_sources import Dataset
 
-GRID_VERSION = "acoustic-grid-v2"
+GRID_VERSION = "acoustic-grid-v3"
 #: Every draw (the sample, the noise segment, the impulse response) is salted with this.
 SEED = 20261015
 
@@ -87,8 +91,17 @@ OPUS_BITRATE = 12_000
 OPUS_APPLICATION = "voip"
 #: ``libopus``'s narrowband cutoff: the codec keeps 4 kHz, as a phone call does.
 OPUS_CUTOFF_HZ = 4000
-#: The codec's lag is measured within this many samples (1 ms); one at the bound is refused.
+#: The codec's lag is measured within this many samples (1 ms); one outside is refused.
 MAX_CODEC_LAG = 16
+#: The calibration probes: slow chirps (a fast sweep codes poorly at this bitrate) up and
+#: down the narrowband speech band.
+CODEC_PROBE_SECONDS = 10.0
+CODEC_PROBE_BAND_HZ = (300.0, 3400.0)
+#: The two probes' lags may differ by this much (samples) before the calibration is refused.
+CODEC_CALIBRATION_TOLERANCE = 0.25
+#: A lag is measured only where the output's correlation with the reference, normalised by
+#: both energies, peaks at least this high; anything weaker is refused, never guessed.
+MIN_LAG_CORRELATION = 0.5
 
 CLEAN, NOISE_KIND, REVERB, BAND_LIMIT, CODEC = "clean", "noise", "reverb", "band_limit", "codec"
 
@@ -131,10 +144,14 @@ def grid_record() -> dict:
         "band_limit": {"sample_rate": NARROWBAND_RATE, "resampler": "scipy.signal.resample_poly"},
         "codec": {"codec": "opus (ffmpeg libopus)", "bitrate": OPUS_BITRATE,
                   "application": OPUS_APPLICATION, "cutoff_hz": OPUS_CUTOFF_HZ,
-                  "alignment": "output moved back by its cross-correlation lag against the "
-                               f"input (sub-sample, within {MAX_CODEC_LAG} samples)"},
-        "amended": "v2: the codec's output is aligned to its input (v1 left a 1-2 sample "
-                   "lag); nothing else changed",
+                  "alignment": "output moved back by the codec's constant lag, calibrated on "
+                               f"an up and a down chirp ({CODEC_PROBE_BAND_HZ[0]:g}-"
+                               f"{CODEC_PROBE_BAND_HZ[1]:g} Hz, {CODEC_PROBE_SECONDS:g} s) "
+                               f"that must agree within {CODEC_CALIBRATION_TOLERANCE:g} samples"},
+        "amended": "v2: the codec's output aligned to its input by a lag measured per clip "
+                   "(v1 left a 1-2 sample lag); v3: by the codec's calibrated constant lag "
+                   "instead (a per-clip measure can be wrong on some content); nothing else "
+                   "changed",
         "clipping": "none; float32 throughout",
     }
 
@@ -262,19 +279,24 @@ def _ffmpeg(args: list[str], data: bytes) -> bytes:
 
 def lag_samples(output: np.ndarray, reference: np.ndarray, bound: int) -> float:
     """How many samples ``output`` lags ``reference`` (the same length): the cross-correlation
-    peak, refined to a sub-sample by a parabola through it. The peak is searched for within
-    four times ``bound`` and refused unless it lies inside ``bound``. Zero for silent
-    ``reference``."""
+    peak, refined to a sub-sample by a parabola through it. Refused (``ValueError``) unless the
+    reference has energy, the peak's correlation normalised by both energies reaches
+    :data:`MIN_LAG_CORRELATION`, and the peak, searched for within four times ``bound``, lies
+    inside ``bound``: a lag is measured on a known probe, never guessed."""
     from scipy.signal import correlate
 
-    if not np.any(reference):
-        return 0.0
+    energy = float(np.sqrt(np.sum(np.square(output, dtype=np.float64))
+                           * np.sum(np.square(reference, dtype=np.float64))))
+    if not np.sqrt(np.mean(np.square(reference, dtype=np.float64))) > NOISE_MIN_RMS:
+        raise ValueError("the reference is too quiet to measure a lag on")
     correlation = correlate(output.astype(np.float64), reference.astype(np.float64),
                             mode="full", method="fft")
     search = 4 * bound
     centre = len(reference) - 1
     window = correlation[centre - search:centre + search + 1]
     peak = int(np.argmax(window))
+    if not window[peak] >= MIN_LAG_CORRELATION * energy:
+        raise ValueError(f"no clear correlation peak ({window[peak] / energy:.3f} normalised)")
     if abs(peak - search) >= bound:
         raise ValueError(f"the lag {peak - search} is not within {bound} samples")
     before, at, after = window[peak - 1:peak + 2]
@@ -291,19 +313,45 @@ def advance(samples: np.ndarray, lag: float) -> np.ndarray:
     return np.fft.irfft(spectrum, len(padded))[pad:pad + len(samples)].astype(np.float32)
 
 
-def opus_round_trip(clean: np.ndarray) -> tuple[np.ndarray, float]:
-    """Encoded to Opus (:data:`OPUS_BITRATE`, :data:`OPUS_APPLICATION`, narrowband), decoded
-    back to 16 kHz (the decoder drops the codec's pre-skip) and moved back by the lag it still
-    has (:func:`lag_samples`); the aligned audio and that lag."""
+def _opus(clean: np.ndarray) -> np.ndarray:
+    """The Opus round trip as the codec leaves it: decoded back to 16 kHz (the decoder drops
+    the pre-skip), not yet aligned."""
     raw = ["-f", "f32le", "-ar", str(TARGET_SAMPLE_RATE), "-ac", "1"]
     encoded = _ffmpeg([*raw, "-i", "pipe:0", "-c:a", "libopus", "-b:a", str(OPUS_BITRATE),
                        "-application", OPUS_APPLICATION, "-cutoff", str(OPUS_CUTOFF_HZ),
                        "-fflags", "+bitexact", "-flags:a", "+bitexact", "-f", "ogg", "pipe:1"],
                       clean.astype("<f4").tobytes())
-    decoded = _fit(np.frombuffer(_ffmpeg(["-i", "pipe:0", *raw, "pipe:1"], encoded),
-                                 dtype="<f4"), len(clean))
-    lag = lag_samples(decoded, clean, MAX_CODEC_LAG)
-    return advance(decoded, lag), lag
+    return _fit(np.frombuffer(_ffmpeg(["-i", "pipe:0", *raw, "pipe:1"], encoded),
+                              dtype="<f4"), len(clean))
+
+
+def codec_probes() -> tuple[np.ndarray, np.ndarray]:
+    """The calibration probes: a chirp up and a chirp down the narrowband speech band."""
+    from scipy.signal import chirp
+
+    t = np.arange(int(CODEC_PROBE_SECONDS * TARGET_SAMPLE_RATE)) / TARGET_SAMPLE_RATE
+    low, high = CODEC_PROBE_BAND_HZ
+    return tuple((0.3 * chirp(t, a, CODEC_PROBE_SECONDS, b)).astype(np.float32)
+                 for a, b in ((low, high), (high, low)))
+
+
+@functools.lru_cache(maxsize=None)
+def codec_lag() -> float:
+    """The codec's constant lag (samples) at this module's settings: the mean of the two
+    probes' measured lags, refused when they differ by more than
+    :data:`CODEC_CALIBRATION_TOLERANCE`. Measured once per process."""
+    lags = [lag_samples(_opus(probe), probe, MAX_CODEC_LAG) for probe in codec_probes()]
+    if max(lags) - min(lags) > CODEC_CALIBRATION_TOLERANCE:
+        raise ValueError(f"the codec's lag is unstable across the probes: {lags}")
+    return float(np.mean(lags))
+
+
+def opus_round_trip(clean: np.ndarray) -> tuple[np.ndarray, float]:
+    """Encoded to Opus (:data:`OPUS_BITRATE`, :data:`OPUS_APPLICATION`, narrowband), decoded
+    back to 16 kHz and moved back by the codec's calibrated lag (:func:`codec_lag`, the same
+    for every clip); the aligned audio and that lag."""
+    lag = codec_lag()
+    return advance(_opus(clean), lag), lag
 
 
 def ffmpeg_version() -> str:

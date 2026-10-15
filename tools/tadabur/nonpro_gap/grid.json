@@ -1,13 +1,13 @@
 {
  "grid": {
-  "amended": "v2: the codec's output is aligned to its input (v1 left a 1-2 sample lag); nothing else changed",
+  "amended": "v2: the codec's output aligned to its input by a lag measured per clip (v1 left a 1-2 sample lag); v3: by the codec's calibrated constant lag instead (a per-clip measure can be wrong on some content); nothing else changed",
   "band_limit": {
    "resampler": "scipy.signal.resample_poly",
    "sample_rate": 8000
   },
   "clipping": "none; float32 throughout",
   "codec": {
-   "alignment": "output moved back by its cross-correlation lag against the input (sub-sample, within 16 samples)",
+   "alignment": "output moved back by the codec's constant lag, calibrated on an up and a down chirp (300-3400 Hz, 10 s) that must agree within 0.25 samples",
    "application": "voip",
    "bitrate": 12000,
    "codec": "opus (ffmpeg libopus)",
@@ -87,7 +87,7 @@
   },
   "sample_rate": 16000,
   "seed": 20261015,
-  "version": "acoustic-grid-v2"
+  "version": "acoustic-grid-v3"
  },
  "sample": {
   "clips": [

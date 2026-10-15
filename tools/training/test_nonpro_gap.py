@@ -25,15 +25,29 @@ def test_a_decode_identical_to_its_reference_agrees_everywhere():
     assert counts == (len(REFERENCE), len(REFERENCE), 4, 4, 3, 3, 4, 4, 1, 1)
 
 
+@pytest.mark.parametrize("decode", ["بَُ", "۾مب", "ـٲمَم", "نننَ ِ", "", REFERENCE])
+def test_every_class_is_reflexive_on_decodes_of_any_shape(decode):
+    counts = ng.tally(decode, decode)
+    assert all(counts[k] == counts[k + 1] for k in range(0, len(counts), 2))
+
+
 def test_a_focus_consonant_misheard_counts_in_its_group_and_in_every_consonant():
     rates = _rates(ng.tally("قَالَ نَننَ", REFERENCE))
     assert rates["consonant"] == 3 / 4 and rates["focus"] == 2 / 3
     assert rates["phoneme"] == 1 - 1 / len(REFERENCE)
+    assert rates["haraka"] == 1.0 and rates["shaddah"] == 1.0
 
 
-def test_an_empty_slot_is_a_disagreement():
+def test_a_slot_the_decode_leaves_out_is_a_disagreement():
     rates = _rates(ng.tally("قَالَ", REFERENCE))
     assert rates["consonant"] == 2 / 4 and rates["shaddah"] == 0.0
+    single = _rates(ng.tally("قَالَ لَنَ", REFERENCE))  # the geminate نن said once
+    assert single["shaddah"] == 0.0 and single["consonant"] == 1.0
+
+
+def test_a_haraka_swapped_or_dropped_disagrees():
+    rates = _rates(ng.tally("قَالِ لَنن", REFERENCE))
+    assert rates["haraka"] == 2 / 4 and rates["consonant"] == 1.0
 
 
 def test_rates_pool_over_clusters_and_leave_a_class_with_no_slot_out():
@@ -98,7 +112,9 @@ def _report() -> dict:
                **{c.name: {"own": {m: rates for m in ng.MODELS},
                            "teacher": {m: rates for m in ng.MODELS},
                            "excess_drift": gap, "excess_clone_drop": gap, "clone": rates,
-                           "clone_change": gap} for c in GRID[1:]}},
+                           "clone_change": gap} for c in GRID[1:]},
+               "superseded": {"opus_12k_nb_v1": {
+                   "own": {m: rates for m in ng.MODELS}, "excess_drift": gap, "clone": rates}}},
         "compute": {"gpu_hours": 0.5, "parallel_runs": 3, "gpu": "GPU", "audio_hours": 17.0,
                     "peak_scratch_gb": 2.1, "disk_sampled_from": "t", "run_notes": None},
     }

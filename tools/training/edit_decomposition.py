@@ -44,20 +44,10 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
+from training.decode_evalset import TIE_BREAKS, align  # noqa: F401  (callers import them here)
 from training.decoding import Emission
 from training.distill_loss import CONFIRM_TIMESTEPS
 
-# Which branch the backtrace tries first when several are equally optimal.
-#
-# ``diagonal_first`` is the canonical alignment and the headline: preferring the diagonal
-# keeps a matching character a match rather than an equal-cost insertion-plus-deletion. But
-# it is also so dominant that it pins the walk almost everywhere, which makes it useless as
-# its own robustness check -- two variants that both prefer the diagonal produce the same
-# alignment and would report a reassuring zero spread for no reason. The other two orders
-# deliberately take an indel where the diagonal was also optimal, which is what actually
-# reaches a *different* member of the optimal-alignment set. A conclusion that survives all
-# three is a property of the streams; one that does not is a property of the backtrace.
-TIE_BREAKS = ("diagonal_first", "deletion_first", "insertion_first")
 
 
 @dataclass(frozen=True)
@@ -89,66 +79,6 @@ class Edit:
         if self.kind == "deletion":
             return self.teacher_token == self.emission.token_id
         return False
-
-
-def align(teacher: list[int], student: list[int], tie_break: str = "diagonal_first"):
-    """Levenshtein backtrace as a list of ``(op, teacher_index, student_index)``.
-
-    ``op`` is one of ``match``/``substitution``/``deletion``/``insertion``. Indices are into
-    the respective streams, and are ``None`` on the side the op does not consume.
-
-    The DP is the same recurrence :func:`training.distill_eval.levenshtein` scores with, and
-    a branch is only ever taken when it is cost-optimal, so the edit *count* equals the
-    metric's under every ``tie_break``. Only the attribution of those edits differs.
-    """
-    if tie_break not in TIE_BREAKS:
-        raise ValueError(f"unknown tie_break {tie_break!r}, expected one of {TIE_BREAKS}")
-
-    rows, cols = len(teacher) + 1, len(student) + 1
-    cost = [[0] * cols for _ in range(rows)]
-    for i in range(rows):
-        cost[i][0] = i
-    for j in range(cols):
-        cost[0][j] = j
-    for i in range(1, rows):
-        for j in range(1, cols):
-            cost[i][j] = min(
-                cost[i - 1][j] + 1,
-                cost[i][j - 1] + 1,
-                cost[i - 1][j - 1] + (teacher[i - 1] != student[j - 1]),
-            )
-
-    # Walk back from the corner, trying branches in the order this tie-break asks for and
-    # taking the first that is cost-optimal.
-    order = {
-        "diagonal_first": ("diagonal", "deletion", "insertion"),
-        "deletion_first": ("deletion", "insertion", "diagonal"),
-        "insertion_first": ("insertion", "deletion", "diagonal"),
-    }[tie_break]
-
-    ops: list[tuple[str, int | None, int | None]] = []
-    i, j = len(teacher), len(student)
-    while i > 0 or j > 0:
-        for branch in order:
-            if branch == "diagonal" and i > 0 and j > 0:
-                same = teacher[i - 1] == student[j - 1]
-                if cost[i][j] == cost[i - 1][j - 1] + (not same):
-                    ops.append(("match" if same else "substitution", i - 1, j - 1))
-                    i, j = i - 1, j - 1
-                    break
-            elif branch == "deletion" and i > 0 and cost[i][j] == cost[i - 1][j] + 1:
-                ops.append(("deletion", i - 1, None))
-                i -= 1
-                break
-            elif branch == "insertion" and j > 0 and cost[i][j] == cost[i][j - 1] + 1:
-                ops.append(("insertion", None, j - 1))
-                j -= 1
-                break
-        else:  # pragma: no cover - the DP guarantees one branch is always available
-            raise AssertionError(f"no backtrace step from ({i}, {j})")
-
-    ops.reverse()
-    return ops
 
 
 def decompose(

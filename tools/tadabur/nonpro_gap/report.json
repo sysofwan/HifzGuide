@@ -3,10 +3,10 @@
   "audio_hours": 16.89,
   "disk_sampled_from": "2026-10-15T14:11:58Z",
   "gpu": "NVIDIA GeForce RTX 5060 Ti",
-  "gpu_hours": 0.6,
+  "gpu_hours": 0.72,
   "parallel_runs": 3,
   "peak_scratch_gb": 1.06,
-  "run_notes": "The counted run is two passes, 2026-10-15 14:26-14:52Z and 14:54-15:02Z: the first ran without ffmpeg on PATH, so the codec condition was decoded in the second. Not counted: two earlier attempts (14:13-14:20Z, five runs side by side, and 14:21-14:25Z, which read the noise pool once per recording) ran the box out of RAM and were stopped, about 0.2 h; their decodes were kept, as the run resumes."
+  "run_notes": "Counted: three passes, 2026-10-15 14:26-14:52Z, 14:54-15:02Z (the first ran without ffmpeg on PATH, so the codec condition was decoded in the second) and 15:58-16:07Z (the codec condition again under grid v2, its output aligned to its input; v1's decodes are kept as superseded). Not counted: two earlier attempts (14:13-14:20Z, five runs side by side, and 14:21-14:25Z, which read the noise pool once per recording) ran the box out of RAM and were stopped, about 0.2 h; their decodes were kept, as the run resumes."
  },
  "d1": {
   "qdat": {
@@ -15,24 +15,24 @@
     "rates": {
      "consonant": {
       "clusters": 161,
-      "high": 0.937,
-      "low": 0.91877,
-      "point": 0.92812,
+      "high": 0.94043,
+      "low": 0.92215,
+      "point": 0.93158,
       "slots": 29145
      },
      "focus": {
       "clusters": 161,
-      "high": 0.93873,
-      "low": 0.91864,
-      "point": 0.92877,
+      "high": 0.94534,
+      "low": 0.92702,
+      "point": 0.93629,
       "slots": 15556
      },
      "haraka": {
       "clusters": 161,
-      "high": 0.93801,
-      "low": 0.92144,
-      "point": 0.92986,
-      "slots": 23767
+      "high": 0.97087,
+      "low": 0.96204,
+      "point": 0.96658,
+      "slots": 24954
      },
      "phoneme": {
       "clusters": 161,
@@ -43,9 +43,9 @@
      },
      "shaddah": {
       "clusters": 161,
-      "high": 0.93934,
-      "low": 0.90193,
-      "point": 0.92152,
+      "high": 0.90735,
+      "low": 0.86923,
+      "point": 0.88885,
       "slots": 2969
      }
     }
@@ -55,24 +55,24 @@
     "rates": {
      "consonant": {
       "clusters": 161,
-      "high": 0.94347,
-      "low": 0.92529,
-      "point": 0.93479,
+      "high": 0.94662,
+      "low": 0.92841,
+      "point": 0.9379,
       "slots": 28247
      },
      "focus": {
       "clusters": 161,
-      "high": 0.94735,
-      "low": 0.92728,
-      "point": 0.93776,
+      "high": 0.95352,
+      "low": 0.93495,
+      "point": 0.94472,
       "slots": 14959
      },
      "haraka": {
       "clusters": 161,
-      "high": 0.9456,
-      "low": 0.92906,
-      "point": 0.93755,
-      "slots": 23794
+      "high": 0.9746,
+      "low": 0.96602,
+      "point": 0.97045,
+      "slots": 24808
      },
      "phoneme": {
       "clusters": 161,
@@ -83,9 +83,9 @@
      },
      "shaddah": {
       "clusters": 161,
-      "high": 0.94643,
-      "low": 0.91164,
-      "point": 0.9296,
+      "high": 0.92584,
+      "low": 0.89079,
+      "point": 0.90891,
       "slots": 2997
      }
     }
@@ -97,24 +97,24 @@
     "rates": {
      "consonant": {
       "clusters": 228,
-      "high": 0.98542,
-      "low": 0.98409,
-      "point": 0.98475,
+      "high": 0.98607,
+      "low": 0.98485,
+      "point": 0.98546,
       "slots": 491499
      },
      "focus": {
       "clusters": 228,
-      "high": 0.98422,
-      "low": 0.98231,
-      "point": 0.98326,
+      "high": 0.98527,
+      "low": 0.98351,
+      "point": 0.98439,
       "slots": 177264
      },
      "haraka": {
       "clusters": 228,
-      "high": 0.97753,
-      "low": 0.97577,
-      "point": 0.97664,
-      "slots": 390926
+      "high": 0.98915,
+      "low": 0.98827,
+      "point": 0.98872,
+      "slots": 401531
      },
      "phoneme": {
       "clusters": 228,
@@ -125,9 +125,9 @@
      },
      "shaddah": {
       "clusters": 228,
-      "high": 0.98069,
-      "low": 0.9775,
-      "point": 0.9791,
+      "high": 0.96599,
+      "low": 0.96225,
+      "point": 0.96412,
       "slots": 46791
      }
     }
@@ -137,24 +137,24 @@
     "rates": {
      "consonant": {
       "clusters": 228,
-      "high": 0.98788,
-      "low": 0.98676,
-      "point": 0.9873,
+      "high": 0.98839,
+      "low": 0.9874,
+      "point": 0.98787,
       "slots": 482863
      },
      "focus": {
       "clusters": 228,
-      "high": 0.98708,
-      "low": 0.98556,
-      "point": 0.98632,
+      "high": 0.9879,
+      "low": 0.98656,
+      "point": 0.98722,
       "slots": 174555
      },
      "haraka": {
       "clusters": 228,
-      "high": 0.98143,
-      "low": 0.97993,
-      "point": 0.98062,
-      "slots": 387489
+      "high": 0.99096,
+      "low": 0.99021,
+      "point": 0.99058,
+      "slots": 396310
      },
      "phoneme": {
       "clusters": 228,
@@ -165,9 +165,9 @@
      },
      "shaddah": {
       "clusters": 228,
-      "high": 0.98339,
-      "low": 0.98074,
-      "point": 0.98206,
+      "high": 0.96957,
+      "low": 0.96598,
+      "point": 0.96776,
       "slots": 46706
      }
     }
@@ -179,24 +179,24 @@
     "rates": {
      "consonant": {
       "clusters": 146,
-      "high": 0.97415,
-      "low": 0.96774,
-      "point": 0.97128,
+      "high": 0.97535,
+      "low": 0.96851,
+      "point": 0.97229,
       "slots": 32944
      },
      "focus": {
       "clusters": 146,
-      "high": 0.9756,
-      "low": 0.96643,
-      "point": 0.97147,
+      "high": 0.97651,
+      "low": 0.96721,
+      "point": 0.97224,
       "slots": 11635
      },
      "haraka": {
       "clusters": 146,
-      "high": 0.96574,
-      "low": 0.95807,
-      "point": 0.96224,
-      "slots": 25821
+      "high": 0.98514,
+      "low": 0.98119,
+      "point": 0.98318,
+      "slots": 27110
      },
      "phoneme": {
       "clusters": 146,
@@ -207,9 +207,9 @@
      },
      "shaddah": {
       "clusters": 146,
-      "high": 0.97054,
-      "low": 0.95951,
-      "point": 0.96504,
+      "high": 0.95796,
+      "low": 0.9415,
+      "point": 0.95002,
       "slots": 3061
      }
     }
@@ -221,24 +221,24 @@
     "rates": {
      "consonant": {
       "clusters": 137,
-      "high": 0.97273,
-      "low": 0.96555,
-      "point": 0.9695,
+      "high": 0.97412,
+      "low": 0.96642,
+      "point": 0.97067,
       "slots": 26557
      },
      "focus": {
       "clusters": 137,
-      "high": 0.97468,
-      "low": 0.9644,
-      "point": 0.96981,
+      "high": 0.97531,
+      "low": 0.96546,
+      "point": 0.97077,
       "slots": 9374
      },
      "haraka": {
       "clusters": 137,
-      "high": 0.96382,
-      "low": 0.9555,
-      "point": 0.95986,
-      "slots": 20752
+      "high": 0.98444,
+      "low": 0.98014,
+      "point": 0.98232,
+      "slots": 21834
      },
      "phoneme": {
       "clusters": 137,
@@ -249,9 +249,9 @@
      },
      "shaddah": {
       "clusters": 137,
-      "high": 0.96835,
-      "low": 0.95516,
-      "point": 0.96177,
+      "high": 0.95467,
+      "low": 0.93748,
+      "point": 0.94624,
       "slots": 2511
      }
     }
@@ -263,24 +263,24 @@
     "rates": {
      "consonant": {
       "clusters": 114,
-      "high": 0.94817,
-      "low": 0.94385,
-      "point": 0.94592,
+      "high": 0.94985,
+      "low": 0.94552,
+      "point": 0.9476,
       "slots": 268522
      },
      "focus": {
       "clusters": 114,
-      "high": 0.94699,
-      "low": 0.94216,
-      "point": 0.94449,
+      "high": 0.94901,
+      "low": 0.94431,
+      "point": 0.94662,
       "slots": 97125
      },
      "haraka": {
       "clusters": 114,
-      "high": 0.93839,
-      "low": 0.93363,
-      "point": 0.93586,
-      "slots": 207378
+      "high": 0.9735,
+      "low": 0.97096,
+      "point": 0.97219,
+      "slots": 212440
      },
      "phoneme": {
       "clusters": 114,
@@ -291,9 +291,9 @@
      },
      "shaddah": {
       "clusters": 114,
-      "high": 0.93161,
-      "low": 0.92178,
-      "point": 0.92671,
+      "high": 0.90761,
+      "low": 0.89652,
+      "point": 0.90191,
       "slots": 24915
      }
     }
@@ -303,24 +303,24 @@
     "rates": {
      "consonant": {
       "clusters": 114,
-      "high": 0.95298,
-      "low": 0.94812,
-      "point": 0.95039,
+      "high": 0.95453,
+      "low": 0.94974,
+      "point": 0.95198,
       "slots": 265494
      },
      "focus": {
       "clusters": 114,
-      "high": 0.95263,
-      "low": 0.94739,
-      "point": 0.94992,
+      "high": 0.95439,
+      "low": 0.94942,
+      "point": 0.95182,
       "slots": 96163
      },
      "haraka": {
       "clusters": 114,
-      "high": 0.94523,
-      "low": 0.93969,
-      "point": 0.94223,
-      "slots": 205674
+      "high": 0.97693,
+      "low": 0.9741,
+      "point": 0.97544,
+      "slots": 210009
      },
      "phoneme": {
       "clusters": 114,
@@ -331,9 +331,9 @@
      },
      "shaddah": {
       "clusters": 114,
-      "high": 0.93703,
-      "low": 0.9283,
-      "point": 0.9326,
+      "high": 0.91614,
+      "low": 0.90527,
+      "point": 0.91054,
       "slots": 24971
      }
     }
@@ -345,24 +345,24 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.95875,
-     "low": 0.94547,
-     "point": 0.95268,
+     "high": 0.96087,
+     "low": 0.94786,
+     "point": 0.95484,
      "slots": 15745
     },
     "focus": {
      "clusters": 107,
-     "high": 0.96931,
-     "low": 0.95619,
-     "point": 0.96327,
+     "high": 0.97104,
+     "low": 0.95796,
+     "point": 0.96506,
      "slots": 5581
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.94778,
-     "low": 0.93395,
-     "point": 0.94137,
-     "slots": 12348
+     "high": 0.98464,
+     "low": 0.97832,
+     "point": 0.98176,
+     "slots": 12993
     },
     "phoneme": {
      "clusters": 107,
@@ -373,30 +373,30 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.95705,
-     "low": 0.92913,
-     "point": 0.94384,
+     "high": 0.94211,
+     "low": 0.90944,
+     "point": 0.92625,
      "slots": 1478
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.014,
-     "low": -0.02282,
-     "point": -0.0182
+     "high": -0.01286,
+     "low": -0.02175,
+     "point": -0.01712
     },
     "focus": {
      "clusters": 107,
-     "high": -0.00419,
-     "low": -0.01374,
-     "point": -0.00888
+     "high": -0.00318,
+     "low": -0.01283,
+     "point": -0.00799
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.01434,
-     "low": -0.02406,
-     "point": -0.01917
+     "high": 0.00117,
+     "low": -0.00268,
+     "point": -0.00069
     },
     "phoneme": {
      "clusters": 107,
@@ -406,29 +406,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.0008,
-     "low": -0.03,
-     "point": -0.01527
+     "high": -0.00587,
+     "low": -0.03208,
+     "point": -0.01879
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": -0.00308,
-     "low": -0.01051,
-     "point": -0.00688
+     "high": -0.00227,
+     "low": -0.01022,
+     "point": -0.00638
     },
     "focus": {
      "clusters": 107,
-     "high": -0.01104,
-     "low": -0.02015,
-     "point": -0.01553
+     "high": -0.01019,
+     "low": -0.01962,
+     "point": -0.01482
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.01164,
-     "low": -0.02265,
-     "point": -0.01714
+     "high": -0.00826,
+     "low": -0.01244,
+     "point": -0.01039
     },
     "phoneme": {
      "clusters": 107,
@@ -438,29 +438,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.00068,
-     "low": -0.02375,
-     "point": -0.01139
+     "high": -0.00748,
+     "low": -0.03524,
+     "point": -0.02078
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.00835,
-     "low": 0.00092,
-     "point": 0.00438
+     "high": 0.00805,
+     "low": 0.00042,
+     "point": 0.00401
     },
     "focus": {
      "clusters": 107,
-     "high": -0.00186,
-     "low": -0.01039,
-     "point": -0.0061
+     "high": -0.00208,
+     "low": -0.01072,
+     "point": -0.00645
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.01094,
-     "low": 0.00242,
-     "point": 0.00633
+     "high": -0.00178,
+     "low": -0.00608,
+     "point": -0.004
     },
     "phoneme": {
      "clusters": 107,
@@ -470,33 +470,33 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.02446,
-     "low": -0.00489,
-     "point": 0.00916
+     "high": 0.0227,
+     "low": -0.0092,
+     "point": 0.00709
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.97619,
-      "low": 0.96668,
-      "point": 0.9719,
+      "high": 0.97746,
+      "low": 0.96828,
+      "point": 0.97335,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.98214,
-      "low": 0.97057,
-      "point": 0.97679,
+      "high": 0.9834,
+      "low": 0.97219,
+      "point": 0.97822,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.96862,
-      "low": 0.95682,
-      "point": 0.96329,
-      "slots": 12366
+      "high": 0.99061,
+      "low": 0.98645,
+      "point": 0.98861,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -507,33 +507,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97694,
-      "low": 0.95709,
-      "point": 0.96716,
+      "high": 0.96783,
+      "low": 0.94102,
+      "point": 0.95509,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.97323,
-      "low": 0.96108,
-      "point": 0.96752,
+      "high": 0.97465,
+      "low": 0.96361,
+      "point": 0.96934,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.98788,
-      "low": 0.97736,
-      "point": 0.98289,
+      "high": 0.98909,
+      "low": 0.98001,
+      "point": 0.98468,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.96319,
-      "low": 0.94979,
-      "point": 0.95695,
-      "slots": 12591
+      "high": 0.99435,
+      "low": 0.99054,
+      "point": 0.99261,
+      "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
@@ -544,9 +544,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97048,
-      "low": 0.94073,
-      "point": 0.958,
+      "high": 0.96194,
+      "low": 0.93017,
+      "point": 0.948,
       "slots": 1500
      }
     }
@@ -555,24 +555,24 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.97619,
-      "low": 0.96668,
-      "point": 0.9719,
+      "high": 0.97746,
+      "low": 0.96828,
+      "point": 0.97335,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.98214,
-      "low": 0.97057,
-      "point": 0.97679,
+      "high": 0.9834,
+      "low": 0.97219,
+      "point": 0.97822,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.96862,
-      "low": 0.95682,
-      "point": 0.96329,
-      "slots": 12366
+      "high": 0.99061,
+      "low": 0.98645,
+      "point": 0.98861,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -583,33 +583,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97694,
-      "low": 0.95709,
-      "point": 0.96716,
+      "high": 0.96783,
+      "low": 0.94102,
+      "point": 0.95509,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.9564,
-      "low": 0.94137,
-      "point": 0.94967,
+      "high": 0.95834,
+      "low": 0.94355,
+      "point": 0.95169,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.97121,
-      "low": 0.95584,
-      "point": 0.96448,
+      "high": 0.9727,
+      "low": 0.95789,
+      "point": 0.96608,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.94782,
-      "low": 0.93252,
-      "point": 0.94097,
-      "slots": 12366
+      "high": 0.9843,
+      "low": 0.97831,
+      "point": 0.98145,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -620,9 +620,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95095,
-      "low": 0.92273,
-      "point": 0.93767,
+      "high": 0.93762,
+      "low": 0.90246,
+      "point": 0.92091,
       "slots": 1492
      }
     }
@@ -633,24 +633,24 @@
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.97483,
-      "low": 0.96594,
-      "point": 0.97089,
+      "high": 0.97633,
+      "low": 0.96641,
+      "point": 0.97196,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.978,
-      "low": 0.96558,
-      "point": 0.97215,
+      "high": 0.97893,
+      "low": 0.96641,
+      "point": 0.97305,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.96529,
-      "low": 0.95479,
-      "point": 0.96054,
-      "slots": 12366
+      "high": 0.98504,
+      "low": 0.97981,
+      "point": 0.98245,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -661,9 +661,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96817,
-      "low": 0.95003,
-      "point": 0.95912,
+      "high": 0.95738,
+      "low": 0.93297,
+      "point": 0.94504,
       "slots": 1492
      }
     }
@@ -673,24 +673,24 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.93151,
-     "low": 0.90534,
-     "point": 0.91943,
+     "high": 0.93397,
+     "low": 0.90832,
+     "point": 0.92191,
      "slots": 15725
     },
     "focus": {
      "clusters": 107,
-     "high": 0.93103,
-     "low": 0.90538,
-     "point": 0.9191,
+     "high": 0.93401,
+     "low": 0.90614,
+     "point": 0.92108,
      "slots": 5550
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.92167,
-     "low": 0.89467,
-     "point": 0.90894,
-     "slots": 12278
+     "high": 0.96953,
+     "low": 0.95691,
+     "point": 0.96359,
+     "slots": 12881
     },
     "phoneme": {
      "clusters": 107,
@@ -701,30 +701,30 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.90832,
-     "low": 0.85382,
-     "point": 0.88361,
+     "high": 0.87772,
+     "low": 0.81646,
+     "point": 0.84986,
      "slots": 1452
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.04101,
-     "low": -0.06359,
-     "point": -0.05146
+     "high": -0.03956,
+     "low": -0.06213,
+     "point": -0.05005
     },
     "focus": {
      "clusters": 107,
-     "high": -0.043,
-     "low": -0.06402,
-     "point": -0.05305
+     "high": -0.04091,
+     "low": -0.06436,
+     "point": -0.05196
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.04087,
-     "low": -0.06347,
-     "point": -0.05159
+     "high": -0.01343,
+     "low": -0.02538,
+     "point": -0.01886
     },
     "phoneme": {
      "clusters": 107,
@@ -734,29 +734,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.05324,
-     "low": -0.10191,
-     "point": -0.07551
+     "high": -0.07089,
+     "low": -0.12353,
+     "point": -0.09518
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": 0.02136,
-     "low": 0.00584,
-     "point": 0.01332
+     "high": 0.02141,
+     "low": 0.00548,
+     "point": 0.01314
     },
     "focus": {
      "clusters": 107,
-     "high": 0.02454,
-     "low": 0.00848,
-     "point": 0.0166
+     "high": 0.02438,
+     "low": 0.00812,
+     "point": 0.01624
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.00782,
-     "low": -0.0071,
-     "point": 0.00016
+     "high": 0.00087,
+     "low": -0.00795,
+     "point": -0.00354
     },
     "phoneme": {
      "clusters": 107,
@@ -766,29 +766,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.04491,
-     "low": 0.00715,
-     "point": 0.02614
+     "high": 0.03957,
+     "low": 0.00716,
+     "point": 0.02346
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.03837,
-     "low": 0.01992,
-     "point": 0.0287
+     "high": 0.03606,
+     "low": 0.01882,
+     "point": 0.02701
     },
     "focus": {
      "clusters": 107,
-     "high": 0.03871,
-     "low": 0.02175,
-     "point": 0.03022
+     "high": 0.03685,
+     "low": 0.02016,
+     "point": 0.02844
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.03578,
-     "low": 0.01818,
-     "point": 0.02701
+     "high": 0.01188,
+     "low": 0.00266,
+     "point": 0.00716
     },
     "phoneme": {
      "clusters": 107,
@@ -798,33 +798,33 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.06584,
-     "low": 0.02398,
-     "point": 0.04431
+     "high": 0.0738,
+     "low": 0.03267,
+     "point": 0.05284
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96572,
-      "low": 0.95096,
-      "point": 0.95908,
+      "high": 0.9676,
+      "low": 0.95399,
+      "point": 0.96141,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96727,
-      "low": 0.94742,
-      "point": 0.95841,
+      "high": 0.96858,
+      "low": 0.95053,
+      "point": 0.96037,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.95451,
-      "low": 0.9381,
-      "point": 0.94711,
-      "slots": 12366
+      "high": 0.97826,
+      "low": 0.96851,
+      "point": 0.97375,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -835,33 +835,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.94882,
-      "low": 0.91406,
-      "point": 0.93231,
+      "high": 0.93106,
+      "low": 0.88048,
+      "point": 0.90684,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.9439,
-      "low": 0.9149,
-      "point": 0.93038,
+      "high": 0.9469,
+      "low": 0.92001,
+      "point": 0.93441,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.94132,
-      "low": 0.91362,
-      "point": 0.92819,
+      "high": 0.94444,
+      "low": 0.91824,
+      "point": 0.93193,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.93418,
-      "low": 0.90441,
-      "point": 0.9201,
-      "slots": 12591
+      "high": 0.97303,
+      "low": 0.9588,
+      "point": 0.96659,
+      "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
@@ -872,9 +872,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.91745,
-      "low": 0.85339,
-      "point": 0.888,
+      "high": 0.8871,
+      "low": 0.81466,
+      "point": 0.854,
       "slots": 1500
      }
     }
@@ -883,24 +883,24 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96572,
-      "low": 0.95096,
-      "point": 0.95908,
+      "high": 0.9676,
+      "low": 0.95399,
+      "point": 0.96141,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96727,
-      "low": 0.94742,
-      "point": 0.95841,
+      "high": 0.96858,
+      "low": 0.95053,
+      "point": 0.96037,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.95451,
-      "low": 0.9381,
-      "point": 0.94711,
-      "slots": 12366
+      "high": 0.97826,
+      "low": 0.96851,
+      "point": 0.97375,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -911,33 +911,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.94882,
-      "low": 0.91406,
-      "point": 0.93231,
+      "high": 0.93106,
+      "low": 0.88048,
+      "point": 0.90684,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.93046,
-      "low": 0.90083,
-      "point": 0.91664,
+      "high": 0.93383,
+      "low": 0.9049,
+      "point": 0.92024,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.92839,
-      "low": 0.8977,
-      "point": 0.91396,
+      "high": 0.93206,
+      "low": 0.90114,
+      "point": 0.91717,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.92182,
-      "low": 0.8909,
-      "point": 0.90749,
-      "slots": 12366
+      "high": 0.96593,
+      "low": 0.95276,
+      "point": 0.95974,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -948,9 +948,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.89463,
-      "low": 0.83014,
-      "point": 0.86528,
+      "high": 0.8609,
+      "low": 0.79001,
+      "point": 0.82842,
       "slots": 1492
      }
     }
@@ -960,24 +960,24 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.9647,
-     "low": 0.95045,
-     "point": 0.95803,
+     "high": 0.9668,
+     "low": 0.95277,
+     "point": 0.96037,
      "slots": 15820
     },
     "focus": {
      "clusters": 107,
-     "high": 0.96358,
-     "low": 0.94717,
-     "point": 0.95592,
+     "high": 0.96681,
+     "low": 0.94979,
+     "point": 0.95896,
      "slots": 5604
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.95341,
-     "low": 0.93937,
-     "point": 0.94703,
-     "slots": 12365
+     "high": 0.98098,
+     "low": 0.97484,
+     "point": 0.97796,
+     "slots": 12978
     },
     "phoneme": {
      "clusters": 107,
@@ -988,30 +988,30 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.95913,
-     "low": 0.92887,
-     "point": 0.94474,
+     "high": 0.93625,
+     "low": 0.89969,
+     "point": 0.91846,
      "slots": 1484
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.00835,
-     "low": -0.01735,
-     "point": -0.01286
+     "high": -0.00741,
+     "low": -0.01581,
+     "point": -0.01159
     },
     "focus": {
      "clusters": 107,
-     "high": -0.01081,
-     "low": -0.02197,
-     "point": -0.01623
+     "high": -0.00862,
+     "low": -0.01974,
+     "point": -0.01409
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.00994,
-     "low": -0.01726,
-     "point": -0.01351
+     "high": -0.00266,
+     "low": -0.00634,
+     "point": -0.00449
     },
     "phoneme": {
      "clusters": 107,
@@ -1021,29 +1021,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00375,
-     "low": -0.02568,
-     "point": -0.01437
+     "high": -0.01283,
+     "low": -0.03994,
+     "point": -0.02658
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": -0.0054,
-     "low": -0.01198,
-     "point": -0.00878
+     "high": -0.00497,
+     "low": -0.0111,
+     "point": -0.00808
     },
     "focus": {
      "clusters": 107,
-     "high": -0.00145,
-     "low": -0.01318,
+     "high": -0.00236,
+     "low": -0.01237,
      "point": -0.00732
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.01448,
-     "low": -0.02244,
-     "point": -0.01844
+     "high": -0.00614,
+     "low": -0.01052,
+     "point": -0.00824
     },
     "phoneme": {
      "clusters": 107,
@@ -1053,29 +1053,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00465,
-     "low": -0.02148,
-     "point": -0.01273
+     "high": -0.01028,
+     "low": -0.03006,
+     "point": -0.01944
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.00431,
-     "low": -0.00295,
-     "point": 0.00063
+     "high": 0.00376,
+     "low": -0.00282,
+     "point": 0.00038
     },
     "focus": {
      "clusters": 107,
-     "high": 0.00729,
-     "low": -0.00388,
-     "point": 0.00157
+     "high": 0.00612,
+     "low": -0.00382,
+     "point": 0.00104
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.00453,
-     "low": -0.00322,
-     "point": 0.00061
+     "high": -0.00083,
+     "low": -0.0054,
+     "point": -0.00304
     },
     "phoneme": {
      "clusters": 107,
@@ -1085,33 +1085,33 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.01342,
-     "low": -0.00627,
-     "point": 0.00384
+     "high": 0.01636,
+     "low": -0.00876,
+     "point": 0.00443
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.98388,
-      "low": 0.97726,
-      "point": 0.9808,
+      "high": 0.98546,
+      "low": 0.97876,
+      "point": 0.98238,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.98549,
-      "low": 0.97587,
-      "point": 0.98108,
+      "high": 0.98722,
+      "low": 0.97827,
+      "point": 0.98304,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.97613,
-      "low": 0.96777,
-      "point": 0.9721,
-      "slots": 12366
+      "high": 0.98981,
+      "low": 0.98518,
+      "point": 0.98761,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -1122,33 +1122,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97861,
-      "low": 0.95964,
-      "point": 0.96917,
+      "high": 0.96614,
+      "low": 0.94406,
+      "point": 0.95509,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.98471,
-      "low": 0.97515,
-      "point": 0.98017,
+      "high": 0.98584,
+      "low": 0.97776,
+      "point": 0.982,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.98488,
-      "low": 0.97387,
-      "point": 0.97951,
+      "high": 0.98663,
+      "low": 0.9772,
+      "point": 0.982,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.97644,
-      "low": 0.96633,
-      "point": 0.97149,
-      "slots": 12591
+      "high": 0.99256,
+      "low": 0.9885,
+      "point": 0.99065,
+      "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
@@ -1159,9 +1159,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97644,
-      "low": 0.95334,
-      "point": 0.96533,
+      "high": 0.96592,
+      "low": 0.9355,
+      "point": 0.95067,
       "slots": 1500
      }
     }
@@ -1170,24 +1170,24 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.98388,
-      "low": 0.97726,
-      "point": 0.9808,
+      "high": 0.98546,
+      "low": 0.97876,
+      "point": 0.98238,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.98549,
-      "low": 0.97587,
-      "point": 0.98108,
+      "high": 0.98722,
+      "low": 0.97827,
+      "point": 0.98304,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.97613,
-      "low": 0.96777,
-      "point": 0.9721,
-      "slots": 12366
+      "high": 0.98981,
+      "low": 0.98518,
+      "point": 0.98761,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -1198,33 +1198,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97861,
-      "low": 0.95964,
-      "point": 0.96917,
+      "high": 0.96614,
+      "low": 0.94406,
+      "point": 0.95509,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.9664,
-      "low": 0.95356,
-      "point": 0.96047,
+      "high": 0.96843,
+      "low": 0.95515,
+      "point": 0.96243,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96768,
-      "low": 0.95222,
-      "point": 0.96055,
+      "high": 0.97083,
+      "low": 0.95488,
+      "point": 0.96341,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.95758,
-      "low": 0.94318,
-      "point": 0.95108,
-      "slots": 12366
+      "high": 0.98107,
+      "low": 0.9753,
+      "point": 0.97829,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -1235,9 +1235,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95485,
-      "low": 0.92641,
-      "point": 0.94102,
+      "high": 0.93555,
+      "low": 0.90327,
+      "point": 0.91957,
       "slots": 1492
      }
     }
@@ -1247,24 +1247,24 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.88553,
-     "low": 0.84652,
-     "point": 0.86738,
+     "high": 0.88778,
+     "low": 0.84749,
+     "point": 0.86917,
      "slots": 15578
     },
     "focus": {
      "clusters": 107,
-     "high": 0.89218,
-     "low": 0.85121,
-     "point": 0.87324,
+     "high": 0.89723,
+     "low": 0.85537,
+     "point": 0.878,
      "slots": 5459
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.87712,
-     "low": 0.83786,
-     "point": 0.85887,
-     "slots": 12088
+     "high": 0.94982,
+     "low": 0.92797,
+     "point": 0.9397,
+     "slots": 12704
     },
     "phoneme": {
      "clusters": 107,
@@ -1275,30 +1275,30 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.85679,
-     "low": 0.78995,
-     "point": 0.82444,
+     "high": 0.82172,
+     "low": 0.75063,
+     "point": 0.78722,
      "slots": 1424
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.08704,
-     "low": -0.12205,
-     "point": -0.10351
+     "high": -0.08559,
+     "low": -0.12251,
+     "point": -0.10279
     },
     "focus": {
      "clusters": 107,
-     "high": -0.0821,
-     "low": -0.11841,
-     "point": -0.09892
+     "high": -0.07776,
+     "low": -0.11538,
+     "point": -0.09505
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.08535,
-     "low": -0.12043,
-     "point": -0.10167
+     "high": -0.03266,
+     "low": -0.05448,
+     "point": -0.04275
     },
     "phoneme": {
      "clusters": 107,
@@ -1308,29 +1308,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.10313,
-     "low": -0.16854,
-     "point": -0.13468
+     "high": -0.12486,
+     "low": -0.19298,
+     "point": -0.15782
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": 0.05277,
-     "low": 0.03175,
-     "point": 0.04162
+     "high": 0.05404,
+     "low": 0.0331,
+     "point": 0.04307
     },
     "focus": {
      "clusters": 107,
-     "high": 0.0535,
-     "low": 0.02918,
-     "point": 0.04088
+     "high": 0.05348,
+     "low": 0.03065,
+     "point": 0.04159
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.04021,
-     "low": 0.01839,
-     "point": 0.02871
+     "high": 0.02013,
+     "low": 0.00553,
+     "point": 0.01247
     },
     "phoneme": {
      "clusters": 107,
@@ -1340,29 +1340,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.0879,
-     "low": 0.04243,
-     "point": 0.06501
+     "high": 0.08894,
+     "low": 0.04438,
+     "point": 0.06635
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.07269,
-     "low": 0.05021,
-     "point": 0.06058
+     "high": 0.0713,
+     "low": 0.04944,
+     "point": 0.05971
     },
     "focus": {
      "clusters": 107,
-     "high": 0.07108,
-     "low": 0.04583,
-     "point": 0.05796
+     "high": 0.06853,
+     "low": 0.04594,
+     "point": 0.05672
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.07323,
-     "low": 0.04917,
-     "point": 0.06057
+     "high": 0.03452,
+     "low": 0.01903,
+     "point": 0.02632
     },
     "phoneme": {
      "clusters": 107,
@@ -1372,33 +1372,33 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.1177,
-     "low": 0.06786,
-     "point": 0.09213
+     "high": 0.13348,
+     "low": 0.08002,
+     "point": 0.1066
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.9415,
-      "low": 0.91301,
-      "point": 0.92858,
+      "high": 0.9451,
+      "low": 0.91705,
+      "point": 0.93237,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.94028,
-      "low": 0.9107,
-      "point": 0.92663,
+      "high": 0.94358,
+      "low": 0.9134,
+      "point": 0.92967,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.92796,
-      "low": 0.89676,
-      "point": 0.91372,
-      "slots": 12366
+      "high": 0.96316,
+      "low": 0.94439,
+      "point": 0.95481,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -1409,33 +1409,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.92195,
-      "low": 0.87188,
-      "point": 0.89879,
+      "high": 0.8887,
+      "low": 0.83162,
+      "point": 0.86193,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.88892,
-      "low": 0.84364,
-      "point": 0.868,
+      "high": 0.893,
+      "low": 0.8489,
+      "point": 0.87266,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.8894,
-      "low": 0.84385,
-      "point": 0.86867,
+      "high": 0.89398,
+      "low": 0.84817,
+      "point": 0.87295,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.87514,
-      "low": 0.82733,
-      "point": 0.85315,
-      "slots": 12591
+      "high": 0.9414,
+      "low": 0.91342,
+      "point": 0.9285,
+      "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
@@ -1446,9 +1446,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.84469,
-      "low": 0.76491,
-      "point": 0.80667,
+      "high": 0.79675,
+      "low": 0.71049,
+      "point": 0.75533,
       "slots": 1500
      }
     }
@@ -1457,24 +1457,24 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.9415,
-      "low": 0.91301,
-      "point": 0.92858,
+      "high": 0.9451,
+      "low": 0.91705,
+      "point": 0.93237,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.94028,
-      "low": 0.9107,
-      "point": 0.92663,
+      "high": 0.94358,
+      "low": 0.9134,
+      "point": 0.92967,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.92796,
-      "low": 0.89676,
-      "point": 0.91372,
-      "slots": 12366
+      "high": 0.96316,
+      "low": 0.94439,
+      "point": 0.95481,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -1485,33 +1485,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.92195,
-      "low": 0.87188,
-      "point": 0.89879,
+      "high": 0.8887,
+      "low": 0.83162,
+      "point": 0.86193,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.8792,
-      "low": 0.83275,
-      "point": 0.85785,
+      "high": 0.88246,
+      "low": 0.83643,
+      "point": 0.86126,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.87994,
-      "low": 0.83196,
-      "point": 0.85791,
+      "high": 0.88386,
+      "low": 0.83499,
+      "point": 0.86112,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.86751,
-      "low": 0.81939,
-      "point": 0.84554,
-      "slots": 12366
+      "high": 0.93708,
+      "low": 0.91046,
+      "point": 0.92479,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -1522,9 +1522,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.83042,
-      "low": 0.75094,
-      "point": 0.7929,
+      "high": 0.78132,
+      "low": 0.69494,
+      "point": 0.74062,
       "slots": 1492
      }
     }
@@ -1534,208 +1534,208 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.95036,
-     "low": 0.93386,
-     "point": 0.94301,
-     "slots": 15723
+     "high": 0.95165,
+     "low": 0.9344,
+     "point": 0.94401,
+     "slots": 15734
     },
     "focus": {
      "clusters": 107,
-     "high": 0.95996,
-     "low": 0.9414,
-     "point": 0.95158,
-     "slots": 5555
+     "high": 0.96021,
+     "low": 0.94189,
+     "point": 0.95199,
+     "slots": 5561
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.93861,
-     "low": 0.92101,
-     "point": 0.93072,
-     "slots": 12298
+     "high": 0.98317,
+     "low": 0.97685,
+     "point": 0.98021,
+     "slots": 12933
     },
     "phoneme": {
      "clusters": 107,
-     "high": 0.93473,
-     "low": 0.92062,
-     "point": 0.92829,
-     "slots": 38263
+     "high": 0.93495,
+     "low": 0.92094,
+     "point": 0.92854,
+     "slots": 38314
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.94093,
-     "low": 0.91334,
-     "point": 0.92808,
-     "slots": 1446
+     "high": 0.92971,
+     "low": 0.90071,
+     "point": 0.915,
+     "slots": 1447
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.02216,
-     "low": -0.03414,
-     "point": -0.02787
+     "high": -0.02244,
+     "low": -0.03401,
+     "point": -0.02795
     },
     "focus": {
      "clusters": 107,
-     "high": -0.01295,
-     "low": -0.0288,
-     "point": -0.02058
+     "high": -0.01373,
+     "low": -0.02881,
+     "point": -0.02106
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.02376,
-     "low": -0.03644,
-     "point": -0.02982
+     "high": 0.00029,
+     "low": -0.00494,
+     "point": -0.00224
     },
     "phoneme": {
      "clusters": 107,
-     "high": -0.01509,
-     "low": -0.02236,
-     "point": -0.01853
+     "high": -0.01478,
+     "low": -0.02215,
+     "point": -0.01828
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.01721,
-     "low": -0.04617,
-     "point": -0.03104
+     "high": -0.016,
+     "low": -0.04433,
+     "point": -0.03004
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": -0.00938,
-     "low": -0.01828,
-     "point": -0.01396
+     "high": -0.00797,
+     "low": -0.01675,
+     "point": -0.01231
     },
     "focus": {
      "clusters": 107,
-     "high": -0.01278,
-     "low": -0.02729,
-     "point": -0.01999
+     "high": -0.01142,
+     "low": -0.02611,
+     "point": -0.01856
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.02054,
-     "low": -0.03134,
-     "point": -0.02588
+     "high": -0.01547,
+     "low": -0.02156,
+     "point": -0.01847
     },
     "phoneme": {
      "clusters": 107,
-     "high": -0.02794,
-     "low": -0.03522,
-     "point": -0.0314
+     "high": -0.02833,
+     "low": -0.03602,
+     "point": -0.032
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00781,
-     "low": -0.03546,
-     "point": -0.02145
+     "high": -0.01931,
+     "low": -0.05517,
+     "point": -0.03686
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.00665,
-     "low": -0.00187,
-     "point": 0.00219
+     "high": 0.00724,
+     "low": -0.00045,
+     "point": 0.00321
     },
     "focus": {
      "clusters": 107,
-     "high": 0.00154,
-     "low": -0.01064,
-     "point": -0.0047
+     "high": 0.00243,
+     "low": -0.00911,
+     "point": -0.00345
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.00626,
-     "low": -0.00252,
-     "point": 0.00172
+     "high": -0.00632,
+     "low": -0.01223,
+     "point": -0.00919
     },
     "phoneme": {
      "clusters": 107,
-     "high": -0.00735,
-     "low": -0.01251,
-     "point": -0.00995
+     "high": -0.00717,
+     "low": -0.01234,
+     "point": -0.00978
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.01727,
-     "low": -0.01661,
-     "point": -0.00033
+     "high": 0.01477,
+     "low": -0.02735,
+     "point": -0.00649
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96189,
-      "low": 0.94938,
-      "point": 0.95636,
+      "high": 0.96501,
+      "low": 0.95229,
+      "point": 0.95946,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96813,
-      "low": 0.95229,
-      "point": 0.96109,
+      "high": 0.9715,
+      "low": 0.95557,
+      "point": 0.96448,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.95205,
-      "low": 0.93747,
-      "point": 0.94541,
-      "slots": 12366
+      "high": 0.98152,
+      "low": 0.97422,
+      "point": 0.97806,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
-      "high": 0.95713,
-      "low": 0.94589,
-      "point": 0.95207,
+      "high": 0.95702,
+      "low": 0.94569,
+      "point": 0.95188,
       "slots": 38657
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95012,
-      "low": 0.92459,
-      "point": 0.93767,
+      "high": 0.92562,
+      "low": 0.88964,
+      "point": 0.90751,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.9608,
-      "low": 0.94665,
-      "point": 0.95417,
+      "high": 0.96284,
+      "low": 0.94884,
+      "point": 0.95625,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.97222,
-      "low": 0.9586,
-      "point": 0.96579,
+      "high": 0.97423,
+      "low": 0.96101,
+      "point": 0.96793,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.95066,
-      "low": 0.93554,
-      "point": 0.94369,
-      "slots": 12591
+      "high": 0.98992,
+      "low": 0.98408,
+      "point": 0.98725,
+      "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
-      "high": 0.96705,
-      "low": 0.95575,
-      "point": 0.96202,
+      "high": 0.96661,
+      "low": 0.95564,
+      "point": 0.96166,
       "slots": 39021
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95334,
-      "low": 0.9186,
-      "point": 0.938,
+      "high": 0.93101,
+      "low": 0.89418,
+      "point": 0.914,
       "slots": 1500
      }
     }
@@ -1744,74 +1744,74 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96189,
-      "low": 0.94938,
-      "point": 0.95636,
+      "high": 0.96501,
+      "low": 0.95229,
+      "point": 0.95946,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96813,
-      "low": 0.95229,
-      "point": 0.96109,
+      "high": 0.9715,
+      "low": 0.95557,
+      "point": 0.96448,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.95205,
-      "low": 0.93747,
-      "point": 0.94541,
-      "slots": 12366
+      "high": 0.98152,
+      "low": 0.97422,
+      "point": 0.97806,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
-      "high": 0.95713,
-      "low": 0.94589,
-      "point": 0.95207,
+      "high": 0.95702,
+      "low": 0.94569,
+      "point": 0.95188,
       "slots": 38657
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95012,
-      "low": 0.92459,
-      "point": 0.93767,
+      "high": 0.92562,
+      "low": 0.88964,
+      "point": 0.90751,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.94883,
-      "low": 0.93182,
-      "point": 0.94121,
+      "high": 0.9517,
+      "low": 0.93406,
+      "point": 0.94373,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96163,
-      "low": 0.94332,
-      "point": 0.95323,
+      "high": 0.96462,
+      "low": 0.94606,
+      "point": 0.95609,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.94002,
-      "low": 0.92192,
-      "point": 0.93183,
-      "slots": 12366
+      "high": 0.98221,
+      "low": 0.97521,
+      "point": 0.97899,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
-      "high": 0.9367,
-      "low": 0.92239,
-      "point": 0.93028,
+      "high": 0.93699,
+      "low": 0.92302,
+      "point": 0.9307,
       "slots": 38657
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93216,
-      "low": 0.90303,
-      "point": 0.91823,
+      "high": 0.90695,
+      "low": 0.87059,
+      "point": 0.88941,
       "slots": 1492
      }
     }
@@ -1821,24 +1821,24 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.95722,
-     "low": 0.94491,
-     "point": 0.9516,
+     "high": 0.95932,
+     "low": 0.94635,
+     "point": 0.95344,
      "slots": 15764
     },
     "focus": {
      "clusters": 107,
-     "high": 0.95876,
-     "low": 0.94391,
-     "point": 0.95176,
+     "high": 0.96184,
+     "low": 0.94682,
+     "point": 0.95482,
      "slots": 5556
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.94716,
-     "low": 0.93305,
-     "point": 0.94065,
-     "slots": 12317
+     "high": 0.97865,
+     "low": 0.97268,
+     "point": 0.97564,
+     "slots": 12930
     },
     "phoneme": {
      "clusters": 107,
@@ -1849,30 +1849,30 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.96151,
-     "low": 0.93848,
-     "point": 0.95013,
+     "high": 0.94215,
+     "low": 0.91332,
+     "point": 0.9279,
      "slots": 1484
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.01548,
-     "low": -0.02321,
-     "point": -0.01929
+     "high": -0.01468,
+     "low": -0.0225,
+     "point": -0.01852
     },
     "focus": {
      "clusters": 107,
-     "high": -0.01395,
-     "low": -0.02712,
-     "point": -0.02039
+     "high": -0.01171,
+     "low": -0.02471,
+     "point": -0.01822
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.01578,
-     "low": -0.02401,
-     "point": -0.01989
+     "high": -0.00418,
+     "low": -0.00954,
+     "point": -0.00681
     },
     "phoneme": {
      "clusters": 107,
@@ -1882,29 +1882,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -9e-05,
-     "low": -0.0186,
-     "point": -0.00898
+     "high": -0.00648,
+     "low": -0.02801,
+     "point": -0.01714
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": -0.0071,
-     "low": -0.01655,
-     "point": -0.01162
+     "high": -0.00584,
+     "low": -0.01483,
+     "point": -0.01017
     },
     "focus": {
      "clusters": 107,
-     "high": -0.00058,
-     "low": -0.01737,
-     "point": -0.00857
+     "high": -0.00107,
+     "low": -0.01659,
+     "point": -0.00839
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.01846,
-     "low": -0.03025,
-     "point": -0.0241
+     "high": -0.01006,
+     "low": -0.01715,
+     "point": -0.01339
     },
     "phoneme": {
      "clusters": 107,
@@ -1914,29 +1914,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.01351,
-     "low": -0.03165,
-     "point": -0.02279
+     "high": -0.02418,
+     "low": -0.04878,
+     "point": -0.03619
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.00919,
-     "low": 0.00185,
-     "point": 0.00544
+     "high": 0.00826,
+     "low": 0.00096,
+     "point": 0.00456
     },
     "focus": {
      "clusters": 107,
-     "high": 0.01561,
-     "low": 0.00243,
-     "point": 0.00921
+     "high": 0.01308,
+     "low": 0.00022,
+     "point": 0.0069
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.00632,
-     "low": -0.00367,
-     "point": 0.0013
+     "high": -0.00077,
+     "low": -0.00722,
+     "point": -0.00389
     },
     "phoneme": {
      "clusters": 107,
@@ -1946,33 +1946,33 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.00893,
-     "low": -0.00932,
-     "point": -0.00018
+     "high": 0.00577,
+     "low": -0.01955,
+     "point": -0.00633
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.97347,
-      "low": 0.96258,
-      "point": 0.96874,
+      "high": 0.97523,
+      "low": 0.96489,
+      "point": 0.9707,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.97499,
-      "low": 0.95913,
-      "point": 0.96805,
+      "high": 0.97629,
+      "low": 0.96167,
+      "point": 0.96983,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.96294,
-      "low": 0.95026,
-      "point": 0.9573,
-      "slots": 12366
+      "high": 0.98301,
+      "low": 0.97502,
+      "point": 0.97937,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -1983,33 +1983,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97552,
-      "low": 0.95582,
-      "point": 0.96582,
+      "high": 0.95051,
+      "low": 0.92529,
+      "point": 0.93834,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96801,
-      "low": 0.9579,
-      "point": 0.9633,
+      "high": 0.97052,
+      "low": 0.96113,
+      "point": 0.96613,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96512,
-      "low": 0.95189,
-      "point": 0.95884,
+      "high": 0.9691,
+      "low": 0.95624,
+      "point": 0.96294,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.96136,
-      "low": 0.95024,
-      "point": 0.956,
-      "slots": 12591
+      "high": 0.98562,
+      "low": 0.98062,
+      "point": 0.98326,
+      "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
@@ -2020,9 +2020,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97432,
-      "low": 0.95723,
-      "point": 0.966,
+      "high": 0.9549,
+      "low": 0.93436,
+      "point": 0.94467,
       "slots": 1500
      }
     }
@@ -2031,24 +2031,24 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.97347,
-      "low": 0.96258,
-      "point": 0.96874,
+      "high": 0.97523,
+      "low": 0.96489,
+      "point": 0.9707,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.97499,
-      "low": 0.95913,
-      "point": 0.96805,
+      "high": 0.97629,
+      "low": 0.96167,
+      "point": 0.96983,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.96294,
-      "low": 0.95026,
-      "point": 0.9573,
-      "slots": 12366
+      "high": 0.98301,
+      "low": 0.97502,
+      "point": 0.97937,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -2059,33 +2059,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.97552,
-      "low": 0.95582,
-      "point": 0.96582,
+      "high": 0.95051,
+      "low": 0.92529,
+      "point": 0.93834,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.95757,
-      "low": 0.94377,
-      "point": 0.95125,
+      "high": 0.95936,
+      "low": 0.94496,
+      "point": 0.95283,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.95629,
-      "low": 0.9399,
-      "point": 0.94877,
+      "high": 0.95866,
+      "low": 0.9425,
+      "point": 0.95127,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.94888,
-      "low": 0.93388,
-      "point": 0.94194,
-      "slots": 12366
+      "high": 0.97824,
+      "low": 0.97184,
+      "point": 0.97521,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -2096,9 +2096,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95911,
-      "low": 0.93592,
-      "point": 0.94772,
+      "high": 0.93429,
+      "low": 0.90446,
+      "point": 0.91957,
       "slots": 1492
      }
     }
@@ -2108,24 +2108,24 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.94998,
-     "low": 0.93629,
-     "point": 0.94364,
+     "high": 0.95235,
+     "low": 0.93749,
+     "point": 0.94556,
      "slots": 15668
     },
     "focus": {
      "clusters": 107,
-     "high": 0.95039,
-     "low": 0.93463,
-     "point": 0.94307,
+     "high": 0.953,
+     "low": 0.93526,
+     "point": 0.9447,
      "slots": 5533
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.94102,
-     "low": 0.92486,
-     "point": 0.93364,
-     "slots": 12207
+     "high": 0.97764,
+     "low": 0.97107,
+     "point": 0.97442,
+     "slots": 12824
     },
     "phoneme": {
      "clusters": 107,
@@ -2136,30 +2136,30 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.95277,
-     "low": 0.92942,
-     "point": 0.94134,
+     "high": 0.92712,
+     "low": 0.89372,
+     "point": 0.91132,
      "slots": 1466
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.02256,
-     "low": -0.03226,
-     "point": -0.02724
+     "high": -0.02162,
+     "low": -0.03172,
+     "point": -0.0264
     },
     "focus": {
      "clusters": 107,
-     "high": -0.02166,
-     "low": -0.03679,
-     "point": -0.02908
+     "high": -0.02065,
+     "low": -0.03639,
+     "point": -0.02835
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.02168,
-     "low": -0.03237,
-     "point": -0.02689
+     "high": -0.00493,
+     "low": -0.01123,
+     "point": -0.00803
     },
     "phoneme": {
      "clusters": 107,
@@ -2169,29 +2169,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00549,
-     "low": -0.03079,
-     "point": -0.01778
+     "high": -0.01967,
+     "low": -0.04905,
+     "point": -0.03372
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": -0.00505,
-     "low": -0.01448,
-     "point": -0.00966
+     "high": -0.0032,
+     "low": -0.01214,
+     "point": -0.00751
     },
     "focus": {
      "clusters": 107,
-     "high": -0.00151,
-     "low": -0.01549,
-     "point": -0.00857
+     "high": -0.00018,
+     "low": -0.01368,
+     "point": -0.00696
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.01655,
-     "low": -0.02849,
-     "point": -0.02216
+     "high": -0.01086,
+     "low": -0.01942,
+     "point": -0.01516
     },
     "phoneme": {
      "clusters": 107,
@@ -2201,29 +2201,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00706,
-     "low": -0.03459,
-     "point": -0.02145
+     "high": -0.01282,
+     "low": -0.04919,
+     "point": -0.03083
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.01374,
-     "low": 0.00471,
-     "point": 0.00881
+     "high": 0.01355,
+     "low": 0.00492,
+     "point": 0.00888
     },
     "focus": {
      "clusters": 107,
-     "high": 0.01607,
-     "low": 0.0029,
-     "point": 0.00902
+     "high": 0.01588,
+     "low": 0.00354,
+     "point": 0.0092
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.01075,
-     "low": 0.00047,
-     "point": 0.0055
+     "high": 0.00096,
+     "low": -0.00709,
+     "point": -0.00314
     },
     "phoneme": {
      "clusters": 107,
@@ -2233,33 +2233,33 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.02225,
-     "low": -0.00796,
-     "point": 0.00643
+     "high": 0.02435,
+     "low": -0.01478,
+     "point": 0.00492
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96549,
-      "low": 0.953,
-      "point": 0.95977,
+      "high": 0.96825,
+      "low": 0.95608,
+      "point": 0.96274,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96663,
-      "low": 0.95126,
-      "point": 0.95948,
+      "high": 0.96872,
+      "low": 0.95511,
+      "point": 0.96251,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.95488,
-      "low": 0.93972,
-      "point": 0.948,
-      "slots": 12366
+      "high": 0.97602,
+      "low": 0.96679,
+      "point": 0.9716,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -2270,33 +2270,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96743,
-      "low": 0.94444,
-      "point": 0.95576,
+      "high": 0.9381,
+      "low": 0.90682,
+      "point": 0.92292,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.95678,
-      "low": 0.94441,
-      "point": 0.95096,
+      "high": 0.95922,
+      "low": 0.94768,
+      "point": 0.95386,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.95751,
-      "low": 0.94269,
-      "point": 0.95046,
+      "high": 0.95964,
+      "low": 0.94601,
+      "point": 0.95331,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.94941,
-      "low": 0.93454,
-      "point": 0.9425,
-      "slots": 12591
+      "high": 0.97791,
+      "low": 0.97106,
+      "point": 0.97473,
+      "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
@@ -2307,9 +2307,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96205,
-      "low": 0.93496,
-      "point": 0.94933,
+      "high": 0.93387,
+      "low": 0.90076,
+      "point": 0.918,
       "slots": 1500
      }
     }
@@ -2318,24 +2318,24 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96549,
-      "low": 0.953,
-      "point": 0.95977,
+      "high": 0.96825,
+      "low": 0.95608,
+      "point": 0.96274,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96663,
-      "low": 0.95126,
-      "point": 0.95948,
+      "high": 0.96872,
+      "low": 0.95511,
+      "point": 0.96251,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.95488,
-      "low": 0.93972,
-      "point": 0.948,
-      "slots": 12366
+      "high": 0.97602,
+      "low": 0.96679,
+      "point": 0.9716,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -2346,33 +2346,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96743,
-      "low": 0.94444,
-      "point": 0.95576,
+      "high": 0.9381,
+      "low": 0.90682,
+      "point": 0.92292,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.9472,
-      "low": 0.93234,
-      "point": 0.94032,
+      "high": 0.94927,
+      "low": 0.93382,
+      "point": 0.94222,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.94732,
-      "low": 0.93135,
-      "point": 0.9402,
+      "high": 0.94989,
+      "low": 0.9335,
+      "point": 0.94252,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.93862,
-      "low": 0.92137,
-      "point": 0.9307,
-      "slots": 12366
+      "high": 0.97287,
+      "low": 0.96514,
+      "point": 0.96921,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -2383,9 +2383,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95,
-      "low": 0.92223,
-      "point": 0.93633,
+      "high": 0.91749,
+      "low": 0.87926,
+      "point": 0.89879,
       "slots": 1492
      }
     }
@@ -2395,24 +2395,24 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.94057,
-     "low": 0.92463,
-     "point": 0.93311,
+     "high": 0.94369,
+     "low": 0.92719,
+     "point": 0.93593,
      "slots": 15638
     },
     "focus": {
      "clusters": 107,
-     "high": 0.93871,
-     "low": 0.92175,
-     "point": 0.93054,
+     "high": 0.94368,
+     "low": 0.92515,
+     "point": 0.93491,
      "slots": 5485
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.93307,
-     "low": 0.91712,
-     "point": 0.92557,
-     "slots": 12199
+     "high": 0.97582,
+     "low": 0.96905,
+     "point": 0.97254,
+     "slots": 12818
     },
     "phoneme": {
      "clusters": 107,
@@ -2423,30 +2423,30 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.94045,
-     "low": 0.91304,
-     "point": 0.92741,
+     "high": 0.91576,
+     "low": 0.88489,
+     "point": 0.90095,
      "slots": 1474
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.0322,
-     "low": -0.04364,
-     "point": -0.03778
+     "high": -0.03047,
+     "low": -0.04185,
+     "point": -0.03604
     },
     "focus": {
      "clusters": 107,
-     "high": -0.03305,
-     "low": -0.05051,
-     "point": -0.04161
+     "high": -0.02943,
+     "low": -0.0471,
+     "point": -0.03813
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.02928,
-     "low": -0.04052,
-     "point": -0.03497
+     "high": -0.00693,
+     "low": -0.01309,
+     "point": -0.00991
     },
     "phoneme": {
      "clusters": 107,
@@ -2456,29 +2456,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.01812,
-     "low": -0.04666,
-     "point": -0.03171
+     "high": -0.02894,
+     "low": -0.0608,
+     "point": -0.04409
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": -0.00513,
-     "low": -0.01637,
-     "point": -0.0108
+     "high": -0.00456,
+     "low": -0.01548,
+     "point": -0.00985
     },
     "focus": {
      "clusters": 107,
-     "high": 0.00296,
-     "low": -0.01789,
-     "point": -0.0075
+     "high": 0.00295,
+     "low": -0.01697,
+     "point": -0.00696
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.02118,
-     "low": -0.03336,
-     "point": -0.02693
+     "high": -0.01115,
+     "low": -0.01886,
+     "point": -0.01478
     },
     "phoneme": {
      "clusters": 107,
@@ -2488,29 +2488,29 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.00279,
-     "low": -0.02561,
-     "point": -0.01206
+     "high": -0.00563,
+     "low": -0.03666,
+     "point": -0.02145
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.01397,
-     "low": 0.00358,
-     "point": 0.00859
+     "high": 0.01323,
+     "low": 0.00305,
+     "point": 0.00803
     },
     "focus": {
      "clusters": 107,
-     "high": 0.01978,
-     "low": 0.00256,
-     "point": 0.01095
+     "high": 0.0188,
+     "low": 0.00167,
+     "point": 0.01006
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.0107,
-     "low": -0.0,
-     "point": 0.00539
+     "high": 0.00216,
+     "low": -0.00465,
+     "point": -0.00109
     },
     "phoneme": {
      "clusters": 107,
@@ -2520,33 +2520,33 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.02268,
-     "low": -0.00421,
-     "point": 0.00907
+     "high": 0.03044,
+     "low": -0.00474,
+     "point": 0.01291
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.95547,
-      "low": 0.94357,
-      "point": 0.95017,
+      "high": 0.95805,
+      "low": 0.94575,
+      "point": 0.95257,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.95385,
-      "low": 0.93529,
-      "point": 0.94538,
+      "high": 0.95623,
+      "low": 0.93834,
+      "point": 0.94805,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.9436,
-      "low": 0.92959,
-      "point": 0.93717,
-      "slots": 12366
+      "high": 0.97246,
+      "low": 0.96416,
+      "point": 0.96859,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -2557,33 +2557,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95948,
-      "low": 0.94038,
-      "point": 0.94973,
+      "high": 0.93462,
+      "low": 0.90618,
+      "point": 0.92024,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.94857,
-      "low": 0.93393,
-      "point": 0.94158,
+      "high": 0.95162,
+      "low": 0.93699,
+      "point": 0.94454,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.94344,
-      "low": 0.92426,
-      "point": 0.93443,
+      "high": 0.94743,
+      "low": 0.92766,
+      "point": 0.93799,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.93915,
-      "low": 0.92374,
-      "point": 0.93178,
-      "slots": 12591
+      "high": 0.97317,
+      "low": 0.96584,
+      "point": 0.96968,
+      "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
@@ -2594,9 +2594,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95335,
-      "low": 0.92704,
-      "point": 0.94067,
+      "high": 0.92597,
+      "low": 0.88873,
+      "point": 0.90733,
       "slots": 1500
      }
     }
@@ -2605,24 +2605,24 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.95547,
-      "low": 0.94357,
-      "point": 0.95017,
+      "high": 0.95805,
+      "low": 0.94575,
+      "point": 0.95257,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.95385,
-      "low": 0.93529,
-      "point": 0.94538,
+      "high": 0.95623,
+      "low": 0.93834,
+      "point": 0.94805,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.9436,
-      "low": 0.92959,
-      "point": 0.93717,
-      "slots": 12366
+      "high": 0.97246,
+      "low": 0.96416,
+      "point": 0.96859,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -2633,33 +2633,33 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95948,
-      "low": 0.94038,
-      "point": 0.94973,
+      "high": 0.93462,
+      "low": 0.90618,
+      "point": 0.92024,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.94019,
-      "low": 0.92251,
-      "point": 0.93186,
+      "high": 0.94278,
+      "low": 0.92481,
+      "point": 0.93439,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.93446,
-      "low": 0.91404,
-      "point": 0.92503,
+      "high": 0.93812,
+      "low": 0.9168,
+      "point": 0.92806,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.93257,
-      "low": 0.91552,
-      "point": 0.92463,
-      "slots": 12366
+      "high": 0.96943,
+      "low": 0.96221,
+      "point": 0.96582,
+      "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
@@ -2670,22 +2670,313 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93563,
-      "low": 0.90547,
-      "point": 0.92091,
+      "high": 0.90556,
+      "low": 0.8668,
+      "point": 0.88673,
       "slots": 1492
+     }
+    }
+   }
+  },
+  "superseded": {
+   "opus_12k_nb_v1": {
+    "clone": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.95181,
+      "low": 0.93494,
+      "point": 0.94435,
+      "slots": 15723
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.96155,
+      "low": 0.94137,
+      "point": 0.95266,
+      "slots": 5555
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.98376,
+      "low": 0.97747,
+      "point": 0.98073,
+      "slots": 12922
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": 0.93473,
+      "low": 0.92062,
+      "point": 0.92829,
+      "slots": 38263
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.92725,
+      "low": 0.89807,
+      "point": 0.91286,
+      "slots": 1446
+     }
+    },
+    "clone_change": {
+     "consonant": {
+      "clusters": 107,
+      "high": -0.02238,
+      "low": -0.03349,
+      "point": -0.02761
+     },
+     "focus": {
+      "clusters": 107,
+      "high": -0.01289,
+      "low": -0.02862,
+      "point": -0.02039
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": 0.00096,
+      "low": -0.00454,
+      "point": -0.00172
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": -0.01509,
+      "low": -0.02236,
+      "point": -0.01853
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": -0.01738,
+      "low": -0.04735,
+      "point": -0.03218
+     }
+    },
+    "excess_clone_drop": {
+     "consonant": {
+      "clusters": 107,
+      "high": -0.00863,
+      "low": -0.01739,
+      "point": -0.01307
+     },
+     "focus": {
+      "clusters": 107,
+      "high": -0.01273,
+      "low": -0.02681,
+      "point": -0.01981
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": -0.01519,
+      "low": -0.02133,
+      "point": -0.01817
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": -0.02794,
+      "low": -0.03522,
+      "point": -0.0314
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": -0.02344,
+      "low": -0.06031,
+      "point": -0.04088
+     }
+    },
+    "excess_drift": {
+     "consonant": {
+      "clusters": 107,
+      "high": 0.00601,
+      "low": -0.00188,
+      "point": 0.00188
+     },
+     "focus": {
+      "clusters": 107,
+      "high": 0.0003,
+      "low": -0.01201,
+      "point": -0.00595
+     },
+     "haraka": {
+      "clusters": 107,
+      "high": -0.00613,
+      "low": -0.01203,
+      "point": -0.00896
+     },
+     "phoneme": {
+      "clusters": 107,
+      "high": -0.00735,
+      "low": -0.01251,
+      "point": -0.00995
+     },
+     "shaddah": {
+      "clusters": 107,
+      "high": 0.0104,
+      "low": -0.03147,
+      "point": -0.01051
+     }
+    },
+    "own": {
+     "base": {
+      "consonant": {
+       "clusters": 107,
+       "high": 0.96414,
+       "low": 0.95152,
+       "point": 0.95857,
+       "slots": 15835
+      },
+      "focus": {
+       "clusters": 107,
+       "high": 0.97,
+       "low": 0.95385,
+       "point": 0.96287,
+       "slots": 5602
+      },
+      "haraka": {
+       "clusters": 107,
+       "high": 0.98175,
+       "low": 0.97457,
+       "point": 0.97829,
+       "slots": 12991
+      },
+      "phoneme": {
+       "clusters": 107,
+       "high": 0.95713,
+       "low": 0.94589,
+       "point": 0.95207,
+       "slots": 38657
+      },
+      "shaddah": {
+       "clusters": 107,
+       "high": 0.92308,
+       "low": 0.88601,
+       "point": 0.90483,
+       "slots": 1492
+      }
+     },
+     "h448": {
+      "consonant": {
+       "clusters": 107,
+       "high": 0.96312,
+       "low": 0.94948,
+       "point": 0.95669,
+       "slots": 15886
+      },
+      "focus": {
+       "clusters": 107,
+       "high": 0.97507,
+       "low": 0.9618,
+       "point": 0.96882,
+       "slots": 5612
+      },
+      "haraka": {
+       "clusters": 107,
+       "high": 0.98991,
+       "low": 0.98406,
+       "point": 0.98725,
+       "slots": 13258
+      },
+      "phoneme": {
+       "clusters": 107,
+       "high": 0.96705,
+       "low": 0.95575,
+       "point": 0.96202,
+       "slots": 39021
+      },
+      "shaddah": {
+       "clusters": 107,
+       "high": 0.93303,
+       "low": 0.89415,
+       "point": 0.91533,
+       "slots": 1500
+      }
+     }
+    },
+    "teacher": {
+     "base": {
+      "consonant": {
+       "clusters": 107,
+       "high": 0.96414,
+       "low": 0.95152,
+       "point": 0.95857,
+       "slots": 15835
+      },
+      "focus": {
+       "clusters": 107,
+       "high": 0.97,
+       "low": 0.95385,
+       "point": 0.96287,
+       "slots": 5602
+      },
+      "haraka": {
+       "clusters": 107,
+       "high": 0.98175,
+       "low": 0.97457,
+       "point": 0.97829,
+       "slots": 12991
+      },
+      "phoneme": {
+       "clusters": 107,
+       "high": 0.95713,
+       "low": 0.94589,
+       "point": 0.95207,
+       "slots": 38657
+      },
+      "shaddah": {
+       "clusters": 107,
+       "high": 0.92308,
+       "low": 0.88601,
+       "point": 0.90483,
+       "slots": 1492
+      }
+     },
+     "h448": {
+      "consonant": {
+       "clusters": 107,
+       "high": 0.95145,
+       "low": 0.93404,
+       "point": 0.94361,
+       "slots": 15835
+      },
+      "focus": {
+       "clusters": 107,
+       "high": 0.9645,
+       "low": 0.94517,
+       "point": 0.95573,
+       "slots": 5602
+      },
+      "haraka": {
+       "clusters": 107,
+       "high": 0.9824,
+       "low": 0.97495,
+       "point": 0.97891,
+       "slots": 12991
+      },
+      "phoneme": {
+       "clusters": 107,
+       "high": 0.9367,
+       "low": 0.92239,
+       "point": 0.93028,
+       "slots": 38657
+      },
+      "shaddah": {
+       "clusters": 107,
+       "high": 0.90927,
+       "low": 0.87002,
+       "point": 0.89075,
+       "slots": 1492
+      }
      }
     }
    }
   }
  },
  "grid": {
+  "amended": "v2: the codec's output is aligned to its input (v1 left a 1-2 sample lag); nothing else changed",
   "band_limit": {
    "resampler": "scipy.signal.resample_poly",
    "sample_rate": 8000
   },
   "clipping": "none; float32 throughout",
   "codec": {
+   "alignment": "output moved back by its cross-correlation lag against the input (sub-sample, within 16 samples)",
    "application": "voip",
    "bitrate": 12000,
    "codec": "opus (ffmpeg libopus)",
@@ -2765,7 +3056,7 @@
   },
   "sample_rate": 16000,
   "seed": 20261015,
-  "version": "acoustic-grid-v1"
+  "version": "acoustic-grid-v2"
  },
  "models": {
   "band_8k/base": {
@@ -3436,9 +3727,9 @@
   "base_vs_cached_teacher": {
    "consonant": {
     "clusters": 146,
-    "high": 0.99927,
-    "low": 0.99867,
-    "point": 0.99897,
+    "high": 0.99939,
+    "low": 0.99884,
+    "point": 0.99912,
     "slots": 32947
    },
    "focus": {
@@ -3450,10 +3741,10 @@
    },
    "haraka": {
     "clusters": 146,
-    "high": 0.99328,
-    "low": 0.99122,
-    "point": 0.99229,
-    "slots": 25823
+    "high": 0.99947,
+    "low": 0.99879,
+    "point": 0.99915,
+    "slots": 27100
    },
    "phoneme": {
     "clusters": 146,
@@ -3464,33 +3755,33 @@
    },
    "shaddah": {
     "clusters": 146,
-    "high": 1.0,
-    "low": 0.99775,
-    "point": 0.99902,
+    "high": 0.99817,
+    "low": 0.99395,
+    "point": 0.99608,
     "slots": 3061
    }
   },
   "h448_vs_cached_teacher": {
    "consonant": {
     "clusters": 146,
-    "high": 0.97413,
-    "low": 0.96774,
-    "point": 0.97126,
+    "high": 0.97531,
+    "low": 0.96852,
+    "point": 0.97226,
     "slots": 32947
    },
    "focus": {
     "clusters": 146,
-    "high": 0.97554,
-    "low": 0.96674,
-    "point": 0.97155,
+    "high": 0.97639,
+    "low": 0.96769,
+    "point": 0.97241,
     "slots": 11634
    },
    "haraka": {
     "clusters": 146,
-    "high": 0.96568,
-    "low": 0.95801,
-    "point": 0.96213,
-    "slots": 25823
+    "high": 0.98542,
+    "low": 0.98155,
+    "point": 0.98354,
+    "slots": 27100
    },
    "phoneme": {
     "clusters": 146,
@@ -3501,9 +3792,9 @@
    },
    "shaddah": {
     "clusters": 146,
-    "high": 0.97042,
-    "low": 0.95886,
-    "point": 0.96472,
+    "high": 0.95697,
+    "low": 0.93983,
+    "point": 0.94871,
     "slots": 3061
    }
   }

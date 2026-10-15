@@ -15,11 +15,10 @@ left before any training is spent:
   the teacher's clean decode.
 
 **The metric** is #73's, the decode compared phoneme to phoneme with the reference decode, never
-through a scorer: pooled ``1 - edits / reference phonemes`` (``phoneme``), and letter by letter
-(:func:`training.nonpro_eval.letter_outcomes`, the reading qdat_bench's transcripts get, the
-reference decode standing as the transcript) at every consonant, the consonants #159 names
-(:data:`FOCUS`), every haraka and every geminate's shaddah, a slot left empty counting as a
-disagreement (:func:`tally`). Every interval is a 95% percentile bootstrap over clusters
+through a scorer: pooled ``1 - edits / reference phonemes`` (``phoneme``), and, through the same
+alignment, the share of the reference decode's slots the other decode matches: every consonant,
+the consonants #159 names (:data:`FOCUS`), every haraka and every geminate's shaddah
+(:func:`tally`; reflexive, so a decode agrees with itself in every class). Every interval is a 95% percentile bootstrap over clusters
 (:func:`training.decode_evalset.cluster_bootstrap`): Tadabur's and qdat's reciters, QUD's mushaf
 and surah, Tarteel v1's surah (its users are unnamed, as in #156).
 
@@ -71,18 +70,23 @@ from tadabur.exposure import (
     linked_sources,
     load_registry,
 )
-from training.decode_evalset import cluster_bootstrap, levenshtein
+from tadabur.listening_session import held_geminates, run_start
+from tadabur.truth_sites import CONSONANTS
+from training.decode_evalset import align, cluster_bootstrap
 from training.decoding import committed_text
 from training.external_corpus import merge_decode_files, read_decode_file
-from training.nonpro_eval import AGREE, letter_outcomes
 from training.perturbation import GRID, SEED, Condition, grid_record
-from training.tashkeel_eval import write_text_atomically
+from training.tashkeel_eval import SHORT_VOWELS, write_text_atomically
 from training.truth_baseline import CHECKS
 
 GAP_DIR = Path(__file__).parent.parent / "tadabur" / "nonpro_gap"
 GRID_PATH = GAP_DIR / "grid.json"
 POOL_PATH = GAP_DIR / "noise_pool.json"
 DECODES_DIR = GAP_DIR / "decodes"
+#: Decodes a grid amendment replaced, kept to show what moved: the codec condition under grid
+#: v1, whose output lagged its input by 1-2 samples.
+SUPERSEDED_DIR = DECODES_DIR / "superseded"
+SUPERSEDED = ("opus_12k_nb_v1",)
 REPORT_PATH = GAP_DIR / "report.json"
 DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "nonpro-gap.md"
 
@@ -180,19 +184,47 @@ def decode_plan(condition: Condition) -> list[DevClip]:
 
 
 def tally(decode: str, reference: str) -> tuple[int, ...]:
-    """``decode`` against ``reference``: (agreeing, all) for each of :data:`CLASSES`, flat.
-    ``phoneme`` agrees in ``len(reference) - edits``, so pooled it is #73's agreement."""
-    outcomes = letter_outcomes(decode, reference)
+    """``decode`` against ``reference``, another decode: (agreeing, all) for each of
+    :data:`CLASSES`, flat. Both are read through one alignment, the Levenshtein backtrace
+    (:func:`training.decode_evalset.align`, diagonal first); a reference slot agrees when its
+    characters are matches:
 
-    def count(rows: Iterable[tuple[int, str]]) -> tuple[int, int]:
-        rows = list(rows)
-        return sum(o == AGREE for _, o in rows), len(rows)
+    * ``phoneme``: ``len(reference) - edits``, so pooled it is #73's agreement;
+    * ``consonant``: every run of a consonant, agreeing when any letter of it is matched (the
+      letter was heard, held or not); ``focus`` those of :data:`FOCUS`;
+    * ``haraka``: every fatha, damma and kasra;
+    * ``shaddah``: every geminate (a doubled consonant), agreeing when its whole run is.
 
-    consonants = outcomes["consonant"]
-    return (len(reference) - levenshtein(reference, decode), len(reference),
-            *count(consonants),
-            *count((i, o) for i, o in consonants if reference[i] in FOCUS),
-            *count(outcomes["haraka"]), *count(outcomes["shaddah"]))
+    Reflexive by construction: a decode read against itself agrees in every slot. (The
+    transcript reading, :func:`training.nonpro_eval.letter_outcomes`, is not: it assumes a
+    reference's shape, one haraka per consonant, that a decode need not have.)"""
+    ops = align(reference, decode)
+    matched = {i for op, i, _ in ops if op == "match"}
+
+    def run(i: int) -> set[int]:
+        end = i
+        while end + 1 < len(reference) and reference[end + 1] == reference[i]:
+            end += 1
+        return set(range(i, end + 1))
+
+    def count(slots: Iterable[set[int]], agrees: Callable[[set[int]], bool]) -> tuple[int, int]:
+        slots = list(slots)
+        return sum(map(agrees, slots)), len(slots)
+
+    def heard(slot: set[int]) -> bool:
+        return bool(slot & matched)
+
+    def held(slot: set[int]) -> bool:
+        return slot <= matched
+
+    consonants = [i for i, c in enumerate(reference)
+                  if c in CONSONANTS and run_start(reference, i) == i]
+    edits = len(ops) - len(matched)
+    return (len(reference) - edits, len(reference),
+            *count((run(i) for i in consonants), heard),
+            *count((run(i) for i in consonants if reference[i] in FOCUS), heard),
+            *count(({i} for i, c in enumerate(reference) if c in SHORT_VOWELS), held),
+            *count((run(i) for i in held_geminates(reference)), held))
 
 
 def _tally_pair(pair: tuple[str, str]) -> tuple[int, ...]:
@@ -275,9 +307,9 @@ def external_pairs() -> dict[str, dict[str, list[tuple[object, str, str]]]]:
     return out
 
 
-def gap_decodes(condition: str) -> dict[str, dict[str, dict]]:
+def gap_decodes(condition: str, directory: Path = DECODES_DIR) -> dict[str, dict[str, dict]]:
     """A condition's committed decodes, per model, by clip."""
-    return {m: read_decode_file(DECODES_DIR / f"{condition}.{m}.jsonl.gz") for m in MODELS}
+    return {m: read_decode_file(directory / f"{condition}.{m}.jsonl.gz") for m in MODELS}
 
 
 def d1(workers: int) -> dict:
@@ -346,9 +378,7 @@ def d2(workers: int) -> dict:
     def part(rows: list, index: int) -> list:
         return [(c, v[index * width:(index + 1) * width]) for c, v in rows]
 
-    for condition in GRID[1:]:
-        perturbed = gap_decodes(condition.name)
-
+    def block(perturbed: dict[str, dict[str, dict]]) -> dict:
         def reference(name: str, key: str) -> str:
             source = perturbed["base"] if name == "base_perturbed" else clean[name]
             return source[key][STREAM]
@@ -358,7 +388,7 @@ def d2(workers: int) -> dict:
         n = len(readings)
         rows = [(reciter[k], sum(counted[n * i:n * (i + 1)], ()) + clone[i])
                 for i, k in enumerate(sample)]
-        out[condition.name] = {
+        return {
             "own": {"h448": rates(part(rows, own_h)), "base": rates(part(rows, own_b))},
             "teacher": {"h448": rates(part(rows, teacher_h)), "base": rates(part(rows, own_b))},
             "clone": rates(part(rows, clone_c)),
@@ -368,7 +398,11 @@ def d2(workers: int) -> dict:
                                                          - r(teacher_h * width))
                                         - (1.0 - r(own_b * width))),
         }
+
+    for condition in GRID[1:]:
+        out[condition.name] = block(gap_decodes(condition.name))
         print(f"D2 {condition.name} done", flush=True)
+    out["superseded"] = {name: block(gap_decodes(name, SUPERSEDED_DIR)) for name in SUPERSEDED}
     return out
 
 
@@ -407,6 +441,19 @@ def noise_pool(cache_dir: Path, out: Path) -> dict:
     pool, left_out = build_pool(cache_dir)
     save_pool(pool, out)
     return {"left_out": left_out, "recordings": [r.as_dict() for r in pool]}
+
+
+def pass_hours(logs_dir: Path) -> float:
+    """The GPU lock's wall time over every decode pass (``decode[N]_start`` to its ``_end``):
+    passes held the lock one at a time, with gaps between them that held nothing."""
+    from datetime import datetime
+
+    def stamp(path: Path) -> float:
+        return datetime.fromisoformat(path.read_text(encoding="utf-8").strip()
+                                      .replace("Z", "+00:00")).timestamp()
+
+    return round(sum(stamp(start.with_name(start.name.replace("_start", "_end"))) - stamp(start)
+                     for start in sorted(logs_dir.glob("decode*_start"))) / 3600, 2)
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -454,6 +501,8 @@ def main() -> None:
                                            parallel_runs=3)
         # It counts timing lines, one per finished condition run; the first pass wrote none.
         del report["compute"]["shard_runs_completed"]
+        # It reads one start to the last decode; the passes left the lock between them.
+        report["compute"]["gpu_hours"] = pass_hours(args.logs_dir)
         notes = args.logs_dir / "run_notes"
         report["compute"]["run_notes"] = (notes.read_text(encoding="utf-8").strip()
                                           if notes.exists() else None)

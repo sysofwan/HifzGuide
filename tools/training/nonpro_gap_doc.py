@@ -89,7 +89,9 @@ def _grid(report: dict) -> list[str]:
     out = ["## D2: the grid, fixed before any decode", "",
            f"Committed in `tools/tadabur/nonpro_gap/grid.json` (`{grid['version']}`, seed "
            f"{grid['seed']}) before anything was decoded; the recipe is "
-           "`training.perturbation.perturb`.", "",
+           "`training.perturbation.perturb`, and every condition keeps the clip's timing "
+           f"(zero lag, tested on an impulse and a chirp). **Amended once:** {grid['amended']}; "
+           "only the codec condition was decoded again (see the end of D2).", "",
            "| condition | kind | level |", "|---|---|---|"]
     units = {"noise": "dB SNR", "reverb": "s RT60", "band_limit": "Hz sample rate",
              "codec": "bit/s"}
@@ -113,7 +115,7 @@ def _grid(report: dict) -> list[str]:
             "(a 4 kHz band).",
             f"- **Codec:** Opus through ffmpeg's libopus at {codec['bitrate'] // 1000} kbit/s, "
             f"`{codec['application']}`, cutoff {codec['cutoff_hz']} Hz (narrowband): a "
-            "low-bitrate phone call.",
+            f"low-bitrate phone call; {codec['alignment']}.",
             f"- **Sample:** {D2_SAMPLE_SIZE} of the dev half's {sample['eligible']} clips "
             f"`h448` holds no recording or copy of ({len(sample['h448_seen'])} of "
             f"{sample['dev_clips']} are copies of rows in its training or validation shards), "
@@ -152,7 +154,24 @@ def _d2(report: dict) -> list[str]:
                        f"{gap_cell(cell['excess_clone_drop'][c])} | "
                        f"{rate_cell(cell['clone'][c])} | {gap_cell(cell['clone_change'][c])} |")
         out.append("")
-    return out
+    return out + _amendment(d2)
+
+
+def _amendment(d2: dict) -> list[str]:
+    """What the codec row was before grid v2 aligned the codec's output with its input."""
+    before, after = d2["superseded"]["opus_12k_nb_v1"], d2["opus_12k_nb"]
+
+    def cells(cell: dict, c: str) -> str:
+        return (f"base {_pct(cell['own']['base'][c]['point'])}%, h448 "
+                f"{_pct(cell['own']['h448'][c]['point'])}%, excess drift "
+                f"{gap_cell(cell['excess_drift'][c])}, same-audio clone "
+                f"{_pct(cell['clone'][c]['point'])}%")
+
+    return ["### The codec row under grid v1", "",
+            "Grid v1's codec output lagged its input by 1-2 samples. Its decodes are kept "
+            "(`decodes/superseded/`), read the same way; v1 → v2:", "",
+            *(f"- {CLASS_NAMES[c]}: {cells(before, c)} → {cells(after, c)}." for c in CLASSES),
+            ""]
 
 
 def _readout(report: dict) -> list[str]:
@@ -189,7 +208,7 @@ def _compute(report: dict) -> list[str]:
     return ["## Compute and disk", "",
             f"- GPU: {c['gpu_hours']} h of wall time holding the GPU lock ({c['parallel_runs']} "
             f"condition runs side by side on one {c['gpu']}), for {c['audio_hours']} h of audio "
-            "decoded by each model at `stream_b0`."
+            "of committed decodes per model at `stream_b0` (the superseded codec decodes besides)."
             + (f" {c['run_notes']}" if c.get("run_notes") else ""),
             f"- Peak scratch disk on cuda-dev: {c['peak_scratch_gb']} GB sampled each minute "
             f"from {c['disk_sampled_from']} (the noise pool and the decodes; the two noise "
@@ -209,11 +228,13 @@ def render(report: dict) -> str:
             "metric, never through a scorer), separate **domain shift** (D1: does `h448` stop "
             "cloning the teacher on audio from outside Tadabur?) from **acoustic fragility** "
             "(D2: does `h448` drift further than the teacher when the same Tadabur audio is "
-            "noisy, reverberant or phone-band?). Per class: every phoneme (pooled "
-            "1 − edits / reference phonemes), every consonant (the first letter of each run), "
-            "the group ل ن ء ب د, every haraka on a consonant, every geminate's shaddah, read "
-            "letter by letter with the reference decode as the transcript "
-            "(`training.nonpro_eval.letter_outcomes`); an empty slot is a disagreement. All "
-            "decodes are bf16 weights at batch 1 (the truth baseline's protocol).", ""]
+            "noisy, reverberant or phone-band?). Per class, through one Levenshtein alignment "
+            "of the decode to the reference decode (`training.nonpro_gap.tally`): every phoneme "
+            "(pooled 1 − edits / reference phonemes), every consonant run (agreeing when a "
+            "letter of it is matched), the group ل ن ء ب د, every fatha, damma and kasra, every "
+            "geminate's shaddah (agreeing when its whole run is matched). A slot the other "
+            "decode leaves out is a disagreement, and a decode agrees with itself in every "
+            "class. All decodes are bf16 weights at batch 1 (the truth baseline's protocol).",
+            ""]
     return "\n".join(head + _d1(report) + _grid(report) + _d2(report) + _readout(report)
                      + _compute(report)).rstrip() + "\n"

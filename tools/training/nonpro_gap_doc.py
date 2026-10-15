@@ -90,7 +90,7 @@ def _grid(report: dict) -> list[str]:
            f"Committed in `tools/tadabur/nonpro_gap/grid.json` (`{grid['version']}`, seed "
            f"{grid['seed']}) before anything was decoded; the recipe is "
            "`training.perturbation.perturb`, and every condition keeps the clip's timing "
-           f"(zero lag, tested on an impulse and a chirp). **Amended once:** {grid['amended']}; "
+           f"(zero lag, tested on an impulse and a chirp). **Amended:** {grid['amended']}; "
            "only the codec condition was decoded again (see the end of D2).", "",
            "| condition | kind | level |", "|---|---|---|"]
     units = {"noise": "dB SNR", "reverb": "s RT60", "band_limit": "Hz sample rate",
@@ -169,7 +169,7 @@ def _amendment(d2: dict) -> list[str]:
 
     return ["### The codec row under grid v1", "",
             "Grid v1's codec output lagged its input by 1-2 samples. Its decodes are kept "
-            "(`decodes/superseded/`), read the same way; v1 → v2:", "",
+            "(`decodes/superseded/`), read the same way; v1 → the current grid:", "",
             *(f"- {CLASS_NAMES[c]}: {cells(before, c)} → {cells(after, c)}." for c in CLASSES),
             ""]
 

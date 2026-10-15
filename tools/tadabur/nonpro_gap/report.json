@@ -3,10 +3,10 @@
   "audio_hours": 16.89,
   "disk_sampled_from": "2026-10-15T14:11:58Z",
   "gpu": "NVIDIA GeForce RTX 5060 Ti",
-  "gpu_hours": 0.72,
+  "gpu_hours": 0.87,
   "parallel_runs": 3,
   "peak_scratch_gb": 1.06,
-  "run_notes": "Counted: three passes, 2026-10-15 14:26-14:52Z, 14:54-15:02Z (the first ran without ffmpeg on PATH, so the codec condition was decoded in the second) and 15:58-16:07Z (the codec condition again under grid v2, its output aligned to its input; v1's decodes are kept as superseded). Not counted: two earlier attempts (14:13-14:20Z, five runs side by side, and 14:21-14:25Z, which read the noise pool once per recording) ran the box out of RAM and were stopped, about 0.2 h; their decodes were kept, as the run resumes."
+  "run_notes": "Counted: four passes, 2026-10-15 14:26-14:52Z, 14:54-15:02Z (the first ran without ffmpeg on PATH, so the codec condition was decoded in the second), 15:58-16:07Z (the codec condition under grid v2, aligned by a lag measured per clip) and 16:27-16:36Z (the codec condition under grid v3, aligned by the codec's calibrated constant lag; v2's decodes were replaced, v1's are kept as superseded). Not counted: two earlier attempts (14:13-14:20Z, five runs side by side, and 14:21-14:25Z, which read the noise pool once per recording) ran the box out of RAM and were stopped, about 0.2 h; their decodes were kept, as the run resumes."
  },
  "d1": {
   "qdat": {
@@ -43,9 +43,9 @@
      },
      "shaddah": {
       "clusters": 161,
-      "high": 0.90735,
-      "low": 0.86923,
-      "point": 0.88885,
+      "high": 0.89761,
+      "low": 0.85835,
+      "point": 0.87875,
       "slots": 2969
      }
     }
@@ -83,9 +83,9 @@
      },
      "shaddah": {
       "clusters": 161,
-      "high": 0.92584,
-      "low": 0.89079,
-      "point": 0.90891,
+      "high": 0.91638,
+      "low": 0.88022,
+      "point": 0.8989,
       "slots": 2997
      }
     }
@@ -125,9 +125,9 @@
      },
      "shaddah": {
       "clusters": 228,
-      "high": 0.96599,
-      "low": 0.96225,
-      "point": 0.96412,
+      "high": 0.96275,
+      "low": 0.95877,
+      "point": 0.96076,
       "slots": 46791
      }
     }
@@ -165,9 +165,9 @@
      },
      "shaddah": {
       "clusters": 228,
-      "high": 0.96957,
-      "low": 0.96598,
-      "point": 0.96776,
+      "high": 0.9666,
+      "low": 0.96288,
+      "point": 0.96467,
       "slots": 46706
      }
     }
@@ -207,9 +207,9 @@
      },
      "shaddah": {
       "clusters": 146,
-      "high": 0.95796,
-      "low": 0.9415,
-      "point": 0.95002,
+      "high": 0.95377,
+      "low": 0.9374,
+      "point": 0.94577,
       "slots": 3061
      }
     }
@@ -249,9 +249,9 @@
      },
      "shaddah": {
       "clusters": 137,
-      "high": 0.95467,
-      "low": 0.93748,
-      "point": 0.94624,
+      "high": 0.95113,
+      "low": 0.93375,
+      "point": 0.94265,
       "slots": 2511
      }
     }
@@ -291,9 +291,9 @@
      },
      "shaddah": {
       "clusters": 114,
-      "high": 0.90761,
-      "low": 0.89652,
-      "point": 0.90191,
+      "high": 0.90092,
+      "low": 0.88892,
+      "point": 0.89476,
       "slots": 24915
      }
     }
@@ -331,9 +331,9 @@
      },
      "shaddah": {
       "clusters": 114,
-      "high": 0.91614,
-      "low": 0.90527,
-      "point": 0.91054,
+      "high": 0.91044,
+      "low": 0.89859,
+      "point": 0.90433,
       "slots": 24971
      }
     }
@@ -373,9 +373,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.94211,
-     "low": 0.90944,
-     "point": 0.92625,
+     "high": 0.93759,
+     "low": 0.90242,
+     "point": 0.92084,
      "slots": 1478
     }
    },
@@ -406,9 +406,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00587,
-     "low": -0.03208,
-     "point": -0.01879
+     "high": -0.00473,
+     "low": -0.03344,
+     "point": -0.01884
     }
    },
    "excess_clone_drop": {
@@ -438,9 +438,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00748,
-     "low": -0.03524,
-     "point": -0.02078
+     "high": -0.0087,
+     "low": -0.03653,
+     "point": -0.02212
     }
    },
    "excess_drift": {
@@ -470,9 +470,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.0227,
-     "low": -0.0092,
-     "point": 0.00709
+     "high": 0.02299,
+     "low": -0.01027,
+     "point": 0.00642
     }
    },
    "own": {
@@ -507,9 +507,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96783,
-      "low": 0.94102,
-      "point": 0.95509,
+      "high": 0.96632,
+      "low": 0.93969,
+      "point": 0.95375,
       "slots": 1492
      }
     },
@@ -544,9 +544,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96194,
-      "low": 0.93017,
-      "point": 0.948,
+      "high": 0.96182,
+      "low": 0.92819,
+      "point": 0.94733,
       "slots": 1500
      }
     }
@@ -583,9 +583,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96783,
-      "low": 0.94102,
-      "point": 0.95509,
+      "high": 0.96632,
+      "low": 0.93969,
+      "point": 0.95375,
       "slots": 1492
      }
     },
@@ -620,9 +620,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93762,
-      "low": 0.90246,
-      "point": 0.92091,
+      "high": 0.93222,
+      "low": 0.89727,
+      "point": 0.91555,
       "slots": 1492
      }
     }
@@ -661,9 +661,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95738,
-      "low": 0.93297,
-      "point": 0.94504,
+      "high": 0.95241,
+      "low": 0.9269,
+      "point": 0.93968,
       "slots": 1492
      }
     }
@@ -701,9 +701,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.87772,
-     "low": 0.81646,
-     "point": 0.84986,
+     "high": 0.8716,
+     "low": 0.80973,
+     "point": 0.84366,
      "slots": 1452
     }
    },
@@ -734,9 +734,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.07089,
-     "low": -0.12353,
-     "point": -0.09518
+     "high": -0.07136,
+     "low": -0.12401,
+     "point": -0.09601
     }
    },
    "excess_clone_drop": {
@@ -766,9 +766,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.03957,
-     "low": 0.00716,
-     "point": 0.02346
+     "high": 0.03591,
+     "low": 0.00397,
+     "point": 0.02011
     }
    },
    "excess_drift": {
@@ -798,9 +798,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.0738,
-     "low": 0.03267,
-     "point": 0.05284
+     "high": 0.07473,
+     "low": 0.03092,
+     "point": 0.05215
     }
    },
    "own": {
@@ -835,9 +835,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93106,
-      "low": 0.88048,
-      "point": 0.90684,
+      "high": 0.92843,
+      "low": 0.87642,
+      "point": 0.90349,
       "slots": 1492
      }
     },
@@ -872,9 +872,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.8871,
-      "low": 0.81466,
-      "point": 0.854,
+      "high": 0.88556,
+      "low": 0.81117,
+      "point": 0.85133,
       "slots": 1500
      }
     }
@@ -911,9 +911,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93106,
-      "low": 0.88048,
-      "point": 0.90684,
+      "high": 0.92843,
+      "low": 0.87642,
+      "point": 0.90349,
       "slots": 1492
      }
     },
@@ -948,9 +948,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.8609,
-      "low": 0.79001,
-      "point": 0.82842,
+      "high": 0.85622,
+      "low": 0.78399,
+      "point": 0.82306,
       "slots": 1492
      }
     }
@@ -988,9 +988,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.93625,
-     "low": 0.89969,
-     "point": 0.91846,
+     "high": 0.93162,
+     "low": 0.89488,
+     "point": 0.91375,
      "slots": 1484
     }
    },
@@ -1021,9 +1021,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.01283,
-     "low": -0.03994,
-     "point": -0.02658
+     "high": -0.0121,
+     "low": -0.03906,
+     "point": -0.02593
     }
    },
    "excess_clone_drop": {
@@ -1053,9 +1053,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.01028,
-     "low": -0.03006,
-     "point": -0.01944
+     "high": -0.01232,
+     "low": -0.03302,
+     "point": -0.02212
     }
    },
    "excess_drift": {
@@ -1085,9 +1085,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.01636,
-     "low": -0.00876,
-     "point": 0.00443
+     "high": 0.01563,
+     "low": -0.00903,
+     "point": 0.00375
     }
    },
    "own": {
@@ -1122,9 +1122,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96614,
-      "low": 0.94406,
-      "point": 0.95509,
+      "high": 0.96455,
+      "low": 0.94155,
+      "point": 0.95308,
       "slots": 1492
      }
     },
@@ -1159,9 +1159,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96592,
-      "low": 0.9355,
-      "point": 0.95067,
+      "high": 0.9641,
+      "low": 0.93449,
+      "point": 0.94933,
       "slots": 1500
      }
     }
@@ -1198,9 +1198,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.96614,
-      "low": 0.94406,
-      "point": 0.95509,
+      "high": 0.96455,
+      "low": 0.94155,
+      "point": 0.95308,
       "slots": 1492
      }
     },
@@ -1235,9 +1235,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93555,
-      "low": 0.90327,
-      "point": 0.91957,
+      "high": 0.93143,
+      "low": 0.89782,
+      "point": 0.91488,
       "slots": 1492
      }
     }
@@ -1275,9 +1275,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.82172,
-     "low": 0.75063,
-     "point": 0.78722,
+     "high": 0.81276,
+     "low": 0.74115,
+     "point": 0.77809,
      "slots": 1424
     }
    },
@@ -1308,9 +1308,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.12486,
-     "low": -0.19298,
-     "point": -0.15782
+     "high": -0.12946,
+     "low": -0.19531,
+     "point": -0.16159
     }
    },
    "excess_clone_drop": {
@@ -1340,9 +1340,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.08894,
-     "low": 0.04438,
-     "point": 0.06635
+     "high": 0.08666,
+     "low": 0.04265,
+     "point": 0.06434
     }
    },
    "excess_drift": {
@@ -1372,9 +1372,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.13348,
-     "low": 0.08002,
-     "point": 0.1066
+     "high": 0.13542,
+     "low": 0.07926,
+     "point": 0.10724
     }
    },
    "own": {
@@ -1409,9 +1409,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.8887,
-      "low": 0.83162,
-      "point": 0.86193,
+      "high": 0.88464,
+      "low": 0.82646,
+      "point": 0.85791,
       "slots": 1492
      }
     },
@@ -1446,9 +1446,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.79675,
-      "low": 0.71049,
-      "point": 0.75533,
+      "high": 0.79308,
+      "low": 0.70427,
+      "point": 0.75067,
       "slots": 1500
      }
     }
@@ -1485,9 +1485,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.8887,
-      "low": 0.83162,
-      "point": 0.86193,
+      "high": 0.88464,
+      "low": 0.82646,
+      "point": 0.85791,
       "slots": 1492
      }
     },
@@ -1522,9 +1522,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.78132,
-      "low": 0.69494,
-      "point": 0.74062,
+      "high": 0.77465,
+      "low": 0.68602,
+      "point": 0.73324,
       "slots": 1492
      }
     }
@@ -1534,208 +1534,208 @@
    "clone": {
     "consonant": {
      "clusters": 107,
-     "high": 0.95165,
-     "low": 0.9344,
-     "point": 0.94401,
-     "slots": 15734
+     "high": 0.95189,
+     "low": 0.93586,
+     "point": 0.94471,
+     "slots": 15717
     },
     "focus": {
      "clusters": 107,
-     "high": 0.96021,
-     "low": 0.94189,
-     "point": 0.95199,
-     "slots": 5561
+     "high": 0.96121,
+     "low": 0.9435,
+     "point": 0.95302,
+     "slots": 5556
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.98317,
-     "low": 0.97685,
-     "point": 0.98021,
-     "slots": 12933
+     "high": 0.98326,
+     "low": 0.97703,
+     "point": 0.98022,
+     "slots": 12944
     },
     "phoneme": {
      "clusters": 107,
-     "high": 0.93495,
-     "low": 0.92094,
-     "point": 0.92854,
-     "slots": 38314
+     "high": 0.93523,
+     "low": 0.9214,
+     "point": 0.92881,
+     "slots": 38293
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.92971,
-     "low": 0.90071,
-     "point": 0.915,
-     "slots": 1447
+     "high": 0.92288,
+     "low": 0.89212,
+     "point": 0.90746,
+     "slots": 1448
     }
    },
    "clone_change": {
     "consonant": {
      "clusters": 107,
-     "high": -0.02244,
-     "low": -0.03401,
-     "point": -0.02795
+     "high": -0.02235,
+     "low": -0.0326,
+     "point": -0.02725
     },
     "focus": {
      "clusters": 107,
-     "high": -0.01373,
-     "low": -0.02881,
-     "point": -0.02106
+     "high": -0.0127,
+     "low": -0.02756,
+     "point": -0.02002
     },
     "haraka": {
      "clusters": 107,
-     "high": 0.00029,
-     "low": -0.00494,
-     "point": -0.00224
+     "high": 0.00034,
+     "low": -0.00482,
+     "point": -0.00223
     },
     "phoneme": {
      "clusters": 107,
-     "high": -0.01478,
-     "low": -0.02215,
-     "point": -0.01828
+     "high": -0.01465,
+     "low": -0.02169,
+     "point": -0.018
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.016,
-     "low": -0.04433,
-     "point": -0.03004
+     "high": -0.01561,
+     "low": -0.04774,
+     "point": -0.03222
     }
    },
    "excess_clone_drop": {
     "consonant": {
      "clusters": 107,
-     "high": -0.00797,
-     "low": -0.01675,
-     "point": -0.01231
+     "high": -0.00811,
+     "low": -0.01714,
+     "point": -0.01263
     },
     "focus": {
      "clusters": 107,
-     "high": -0.01142,
-     "low": -0.02611,
-     "point": -0.01856
+     "high": -0.01124,
+     "low": -0.02634,
+     "point": -0.01874
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.01547,
-     "low": -0.02156,
-     "point": -0.01847
+     "high": -0.01405,
+     "low": -0.01975,
+     "point": -0.01686
     },
     "phoneme": {
      "clusters": 107,
-     "high": -0.02833,
-     "low": -0.03602,
-     "point": -0.032
+     "high": -0.02777,
+     "low": -0.03509,
+     "point": -0.03122
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.01931,
-     "low": -0.05517,
-     "point": -0.03686
+     "high": -0.02393,
+     "low": -0.06213,
+     "point": -0.04223
     }
    },
    "excess_drift": {
     "consonant": {
      "clusters": 107,
-     "high": 0.00724,
-     "low": -0.00045,
-     "point": 0.00321
+     "high": 0.00714,
+     "low": -0.00073,
+     "point": 0.00308
     },
     "focus": {
      "clusters": 107,
-     "high": 0.00243,
-     "low": -0.00911,
-     "point": -0.00345
+     "high": 0.00245,
+     "low": -0.00891,
+     "point": -0.00327
     },
     "haraka": {
      "clusters": 107,
-     "high": -0.00632,
-     "low": -0.01223,
-     "point": -0.00919
+     "high": -0.00519,
+     "low": -0.01077,
+     "point": -0.00788
     },
     "phoneme": {
      "clusters": 107,
-     "high": -0.00717,
-     "low": -0.01234,
-     "point": -0.00978
+     "high": -0.00648,
+     "low": -0.01136,
+     "point": -0.00893
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.01477,
-     "low": -0.02735,
-     "point": -0.00649
+     "high": 0.01461,
+     "low": -0.02952,
+     "point": -0.00718
     }
    },
    "own": {
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96501,
-      "low": 0.95229,
-      "point": 0.95946,
+      "high": 0.96475,
+      "low": 0.95209,
+      "point": 0.9592,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.9715,
-      "low": 0.95557,
-      "point": 0.96448,
+      "high": 0.97154,
+      "low": 0.95494,
+      "point": 0.96412,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.98152,
-      "low": 0.97422,
-      "point": 0.97806,
+      "high": 0.9827,
+      "low": 0.97567,
+      "point": 0.97929,
       "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
-      "high": 0.95702,
-      "low": 0.94569,
-      "point": 0.95188,
+      "high": 0.95758,
+      "low": 0.94642,
+      "point": 0.95256,
       "slots": 38657
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.92562,
-      "low": 0.88964,
-      "point": 0.90751,
+      "high": 0.92055,
+      "low": 0.88453,
+      "point": 0.90282,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96284,
-      "low": 0.94884,
-      "point": 0.95625,
+      "high": 0.96261,
+      "low": 0.94877,
+      "point": 0.95612,
       "slots": 15886
      },
      "focus": {
       "clusters": 107,
-      "high": 0.97423,
-      "low": 0.96101,
-      "point": 0.96793,
+      "high": 0.97378,
+      "low": 0.96033,
+      "point": 0.96739,
       "slots": 5612
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.98992,
-      "low": 0.98408,
-      "point": 0.98725,
+      "high": 0.98978,
+      "low": 0.98416,
+      "point": 0.98718,
       "slots": 13258
      },
      "phoneme": {
       "clusters": 107,
-      "high": 0.96661,
-      "low": 0.95564,
-      "point": 0.96166,
+      "high": 0.96639,
+      "low": 0.95557,
+      "point": 0.96148,
       "slots": 39021
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93101,
-      "low": 0.89418,
-      "point": 0.914,
+      "high": 0.92822,
+      "low": 0.88896,
+      "point": 0.91,
       "slots": 1500
      }
     }
@@ -1744,74 +1744,74 @@
     "base": {
      "consonant": {
       "clusters": 107,
-      "high": 0.96501,
-      "low": 0.95229,
-      "point": 0.95946,
+      "high": 0.96475,
+      "low": 0.95209,
+      "point": 0.9592,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.9715,
-      "low": 0.95557,
-      "point": 0.96448,
+      "high": 0.97154,
+      "low": 0.95494,
+      "point": 0.96412,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.98152,
-      "low": 0.97422,
-      "point": 0.97806,
+      "high": 0.9827,
+      "low": 0.97567,
+      "point": 0.97929,
       "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
-      "high": 0.95702,
-      "low": 0.94569,
-      "point": 0.95188,
+      "high": 0.95758,
+      "low": 0.94642,
+      "point": 0.95256,
       "slots": 38657
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.92562,
-      "low": 0.88964,
-      "point": 0.90751,
+      "high": 0.92055,
+      "low": 0.88453,
+      "point": 0.90282,
       "slots": 1492
      }
     },
     "h448": {
      "consonant": {
       "clusters": 107,
-      "high": 0.9517,
-      "low": 0.93406,
-      "point": 0.94373,
+      "high": 0.95181,
+      "low": 0.93399,
+      "point": 0.9438,
       "slots": 15835
      },
      "focus": {
       "clusters": 107,
-      "high": 0.96462,
-      "low": 0.94606,
-      "point": 0.95609,
+      "high": 0.96429,
+      "low": 0.94577,
+      "point": 0.95591,
       "slots": 5602
      },
      "haraka": {
       "clusters": 107,
-      "high": 0.98221,
-      "low": 0.97521,
-      "point": 0.97899,
+      "high": 0.98183,
+      "low": 0.97491,
+      "point": 0.9786,
       "slots": 12991
      },
      "phoneme": {
       "clusters": 107,
       "high": 0.93699,
-      "low": 0.92302,
-      "point": 0.9307,
+      "low": 0.92291,
+      "point": 0.93059,
       "slots": 38657
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.90695,
-      "low": 0.87059,
-      "point": 0.88941,
+      "high": 0.90335,
+      "low": 0.86511,
+      "point": 0.88472,
       "slots": 1492
      }
     }
@@ -1849,9 +1849,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.94215,
-     "low": 0.91332,
-     "point": 0.9279,
+     "high": 0.93617,
+     "low": 0.90242,
+     "point": 0.91981,
      "slots": 1484
     }
    },
@@ -1882,9 +1882,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00648,
-     "low": -0.02801,
-     "point": -0.01714
+     "high": -0.00774,
+     "low": -0.03227,
+     "point": -0.01987
     }
    },
    "excess_clone_drop": {
@@ -1914,9 +1914,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.02418,
-     "low": -0.04878,
-     "point": -0.03619
+     "high": -0.02605,
+     "low": -0.05113,
+     "point": -0.0382
     }
    },
    "excess_drift": {
@@ -1946,9 +1946,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.00577,
-     "low": -0.01955,
-     "point": -0.00633
+     "high": 0.00688,
+     "low": -0.01933,
+     "point": -0.00567
     }
    },
    "own": {
@@ -1983,9 +1983,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95051,
-      "low": 0.92529,
-      "point": 0.93834,
+      "high": 0.94867,
+      "low": 0.92308,
+      "point": 0.93633,
       "slots": 1492
      }
     },
@@ -2020,9 +2020,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.9549,
-      "low": 0.93436,
-      "point": 0.94467,
+      "high": 0.95341,
+      "low": 0.93038,
+      "point": 0.942,
       "slots": 1500
      }
     }
@@ -2059,9 +2059,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.95051,
-      "low": 0.92529,
-      "point": 0.93834,
+      "high": 0.94867,
+      "low": 0.92308,
+      "point": 0.93633,
       "slots": 1492
      }
     },
@@ -2096,9 +2096,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93429,
-      "low": 0.90446,
-      "point": 0.91957,
+      "high": 0.92939,
+      "low": 0.89851,
+      "point": 0.91421,
       "slots": 1492
      }
     }
@@ -2136,9 +2136,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.92712,
-     "low": 0.89372,
-     "point": 0.91132,
+     "high": 0.92056,
+     "low": 0.88387,
+     "point": 0.90314,
      "slots": 1466
     }
    },
@@ -2169,9 +2169,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.01967,
-     "low": -0.04905,
-     "point": -0.03372
+     "high": -0.02069,
+     "low": -0.05301,
+     "point": -0.03654
     }
    },
    "excess_clone_drop": {
@@ -2201,9 +2201,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.01282,
-     "low": -0.04919,
-     "point": -0.03083
+     "high": -0.01504,
+     "low": -0.05224,
+     "point": -0.03351
     }
    },
    "excess_drift": {
@@ -2233,9 +2233,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.02435,
-     "low": -0.01478,
-     "point": 0.00492
+     "high": 0.0266,
+     "low": -0.0156,
+     "point": 0.00557
     }
    },
    "own": {
@@ -2270,9 +2270,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.9381,
-      "low": 0.90682,
-      "point": 0.92292,
+      "high": 0.93555,
+      "low": 0.90419,
+      "point": 0.92024,
       "slots": 1492
      }
     },
@@ -2307,9 +2307,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93387,
-      "low": 0.90076,
-      "point": 0.918,
+      "high": 0.93198,
+      "low": 0.89576,
+      "point": 0.91467,
       "slots": 1500
      }
     }
@@ -2346,9 +2346,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.9381,
-      "low": 0.90682,
-      "point": 0.92292,
+      "high": 0.93555,
+      "low": 0.90419,
+      "point": 0.92024,
       "slots": 1492
      }
     },
@@ -2383,9 +2383,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.91749,
-      "low": 0.87926,
-      "point": 0.89879,
+      "high": 0.91363,
+      "low": 0.87275,
+      "point": 0.89343,
       "slots": 1492
      }
     }
@@ -2423,9 +2423,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.91576,
-     "low": 0.88489,
-     "point": 0.90095,
+     "high": 0.9092,
+     "low": 0.87748,
+     "point": 0.89417,
      "slots": 1474
     }
    },
@@ -2456,9 +2456,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.02894,
-     "low": -0.0608,
-     "point": -0.04409
+     "high": -0.03024,
+     "low": -0.06304,
+     "point": -0.04551
     }
    },
    "excess_clone_drop": {
@@ -2488,9 +2488,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": -0.00563,
-     "low": -0.03666,
-     "point": -0.02145
+     "high": -0.00861,
+     "low": -0.03962,
+     "point": -0.0248
     }
    },
    "excess_drift": {
@@ -2520,9 +2520,9 @@
     },
     "shaddah": {
      "clusters": 107,
-     "high": 0.03044,
-     "low": -0.00474,
-     "point": 0.01291
+     "high": 0.03185,
+     "low": -0.0027,
+     "point": 0.01423
     }
    },
    "own": {
@@ -2557,9 +2557,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93462,
-      "low": 0.90618,
-      "point": 0.92024,
+      "high": 0.93324,
+      "low": 0.90483,
+      "point": 0.9189,
       "slots": 1492
      }
     },
@@ -2594,9 +2594,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.92597,
-      "low": 0.88873,
-      "point": 0.90733,
+      "high": 0.92274,
+      "low": 0.88654,
+      "point": 0.90467,
       "slots": 1500
      }
     }
@@ -2633,9 +2633,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.93462,
-      "low": 0.90618,
-      "point": 0.92024,
+      "high": 0.93324,
+      "low": 0.90483,
+      "point": 0.9189,
       "slots": 1492
      }
     },
@@ -2670,9 +2670,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.90556,
-      "low": 0.8668,
-      "point": 0.88673,
+      "high": 0.90256,
+      "low": 0.86312,
+      "point": 0.88338,
       "slots": 1492
      }
     }
@@ -2711,9 +2711,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.92725,
-      "low": 0.89807,
-      "point": 0.91286,
+      "high": 0.92053,
+      "low": 0.88965,
+      "point": 0.90595,
       "slots": 1446
      }
     },
@@ -2744,9 +2744,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": -0.01738,
-      "low": -0.04735,
-      "point": -0.03218
+      "high": -0.01716,
+      "low": -0.05066,
+      "point": -0.03373
      }
     },
     "excess_clone_drop": {
@@ -2776,9 +2776,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": -0.02344,
-      "low": -0.06031,
-      "point": -0.04088
+      "high": -0.02487,
+      "low": -0.0628,
+      "point": -0.0429
      }
     },
     "excess_drift": {
@@ -2808,9 +2808,9 @@
      },
      "shaddah": {
       "clusters": 107,
-      "high": 0.0104,
-      "low": -0.03147,
-      "point": -0.01051
+      "high": 0.01105,
+      "low": -0.03255,
+      "point": -0.01052
      }
     },
     "own": {
@@ -2845,9 +2845,9 @@
       },
       "shaddah": {
        "clusters": 107,
-       "high": 0.92308,
-       "low": 0.88601,
-       "point": 0.90483,
+       "high": 0.92071,
+       "low": 0.88336,
+       "point": 0.90214,
        "slots": 1492
       }
      },
@@ -2882,9 +2882,9 @@
       },
       "shaddah": {
        "clusters": 107,
-       "high": 0.93303,
-       "low": 0.89415,
-       "point": 0.91533,
+       "high": 0.93145,
+       "low": 0.88971,
+       "point": 0.91267,
        "slots": 1500
       }
      }
@@ -2921,9 +2921,9 @@
       },
       "shaddah": {
        "clusters": 107,
-       "high": 0.92308,
-       "low": 0.88601,
-       "point": 0.90483,
+       "high": 0.92071,
+       "low": 0.88336,
+       "point": 0.90214,
        "slots": 1492
       }
      },
@@ -2958,9 +2958,9 @@
       },
       "shaddah": {
        "clusters": 107,
-       "high": 0.90927,
-       "low": 0.87002,
-       "point": 0.89075,
+       "high": 0.90375,
+       "low": 0.86386,
+       "point": 0.88472,
        "slots": 1492
       }
      }
@@ -2969,14 +2969,14 @@
   }
  },
  "grid": {
-  "amended": "v2: the codec's output is aligned to its input (v1 left a 1-2 sample lag); nothing else changed",
+  "amended": "v2: the codec's output aligned to its input by a lag measured per clip (v1 left a 1-2 sample lag); v3: by the codec's calibrated constant lag instead (a per-clip measure can be wrong on some content); nothing else changed",
   "band_limit": {
    "resampler": "scipy.signal.resample_poly",
    "sample_rate": 8000
   },
   "clipping": "none; float32 throughout",
   "codec": {
-   "alignment": "output moved back by its cross-correlation lag against the input (sub-sample, within 16 samples)",
+   "alignment": "output moved back by the codec's constant lag, calibrated on an up and a down chirp (300-3400 Hz, 10 s) that must agree within 0.25 samples",
    "application": "voip",
    "bitrate": 12000,
    "codec": "opus (ffmpeg libopus)",
@@ -3056,7 +3056,7 @@
   },
   "sample_rate": 16000,
   "seed": 20261015,
-  "version": "acoustic-grid-v2"
+  "version": "acoustic-grid-v3"
  },
  "models": {
   "band_8k/base": {
@@ -3792,9 +3792,9 @@
    },
    "shaddah": {
     "clusters": 146,
-    "high": 0.95697,
-    "low": 0.93983,
-    "point": 0.94871,
+    "high": 0.95269,
+    "low": 0.93574,
+    "point": 0.94446,
     "slots": 3061
    }
   }

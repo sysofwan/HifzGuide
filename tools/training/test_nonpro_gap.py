@@ -45,6 +45,12 @@ def test_a_slot_the_decode_leaves_out_is_a_disagreement():
     assert single["shaddah"] == 0.0 and single["consonant"] == 1.0
 
 
+def test_a_geminate_split_by_an_inserted_phoneme_is_not_held():
+    assert ng.tally("نَن", "نن")[8:] == (0, 1)
+    assert ng.tally("نن", "نن")[8:] == (1, 1)
+    assert _rates(ng.tally("قَالَ لَنَنَ", REFERENCE))["shaddah"] == 0.0
+
+
 def test_a_haraka_swapped_or_dropped_disagrees():
     rates = _rates(ng.tally("قَالِ لَنن", REFERENCE))
     assert rates["haraka"] == 2 / 4 and rates["consonant"] == 1.0

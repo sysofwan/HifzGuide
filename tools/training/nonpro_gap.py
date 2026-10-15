@@ -193,13 +193,15 @@ def tally(decode: str, reference: str) -> tuple[int, ...]:
     * ``consonant``: every run of a consonant, agreeing when any letter of it is matched (the
       letter was heard, held or not); ``focus`` those of :data:`FOCUS`;
     * ``haraka``: every fatha, damma and kasra;
-    * ``shaddah``: every geminate (a doubled consonant), agreeing when its whole run is.
+    * ``shaddah``: every geminate (a doubled consonant), agreeing when its whole run is,
+      to consecutive decoded characters.
 
     Reflexive by construction: a decode read against itself agrees in every slot. (The
     transcript reading, :func:`training.nonpro_eval.letter_outcomes`, is not: it assumes a
     reference's shape, one haraka per consonant, that a decode need not have.)"""
     ops = align(reference, decode)
-    matched = {i for op, i, _ in ops if op == "match"}
+    #: Each matched reference character's decoded index.
+    matched = {i: j for op, i, j in ops if op == "match"}
 
     def run(i: int) -> set[int]:
         end = i
@@ -212,10 +214,15 @@ def tally(decode: str, reference: str) -> tuple[int, ...]:
         return sum(map(agrees, slots)), len(slots)
 
     def heard(slot: set[int]) -> bool:
-        return bool(slot & matched)
+        return any(i in matched for i in slot)
 
     def held(slot: set[int]) -> bool:
-        return slot <= matched
+        """Every character matched, to consecutive decoded characters (nothing inserted
+        between the two halves of a geminate)."""
+        if not all(i in matched for i in slot):
+            return False
+        decoded = [matched[i] for i in sorted(slot)]
+        return decoded == list(range(decoded[0], decoded[0] + len(decoded)))
 
     consonants = [i for i, c in enumerate(reference)
                   if c in CONSONANTS and run_start(reference, i) == i]

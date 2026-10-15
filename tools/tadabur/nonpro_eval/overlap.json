@@ -250,60 +250,15 @@
   },
   "retasy": {
    "clips": [
-    {
-     "audio_filename": "079c7ebc-ba7f-4fd4-8559-ad63d12c143f.wav",
-     "lowest_ber": 0.4325,
-     "matches": [],
-     "recordings_compared": 53
-    },
-    {
-     "audio_filename": "428619e1-3e3c-4a55-9d0c-306c64c32a2f.wav",
-     "lowest_ber": 0.4393,
-     "matches": [],
-     "recordings_compared": 55
-    },
-    {
-     "audio_filename": "41d54526-d18a-4646-aa7b-366527cf0284.wav",
-     "lowest_ber": 0.4126,
-     "matches": [],
-     "recordings_compared": 54
-    },
-    {
-     "audio_filename": "42a0f246-6e5f-4643-91a0-7443ee8c46d9.wav",
-     "lowest_ber": 0.415,
-     "matches": [],
-     "recordings_compared": 54
-    },
-    {
-     "audio_filename": "4249385c-4325-4df4-96d2-72f1a70f8e1d.wav",
-     "lowest_ber": 0.4459,
-     "matches": [],
-     "recordings_compared": 54
-    },
-    {
-     "audio_filename": "9a140df2-442c-49d1-84eb-a1d075344886.wav",
-     "lowest_ber": 0.4245,
-     "matches": [],
-     "recordings_compared": 54
-    },
-    {
-     "audio_filename": "97f7f550-7170-42e0-bae6-457dfe91652c.wav",
-     "lowest_ber": 0.3818,
-     "matches": [],
-     "recordings_compared": 54
-    },
-    {
-     "audio_filename": "98b3f390-3a60-4a6b-a373-02978503a2fa.wav",
-     "lowest_ber": 0.4345,
-     "matches": [],
-     "recordings_compared": 54
-    },
-    {
-     "audio_filename": "9aaadd2e-e151-4935-a63b-cfcaae7d3f9b.wav",
-     "lowest_ber": 0.4371,
-     "matches": [],
-     "recordings_compared": 54
-    }
+    "079c7ebc-ba7f-4fd4-8559-ad63d12c143f.wav",
+    "41d54526-d18a-4646-aa7b-366527cf0284.wav",
+    "4249385c-4325-4df4-96d2-72f1a70f8e1d.wav",
+    "428619e1-3e3c-4a55-9d0c-306c64c32a2f.wav",
+    "42a0f246-6e5f-4643-91a0-7443ee8c46d9.wav",
+    "97f7f550-7170-42e0-bae6-457dfe91652c.wav",
+    "98b3f390-3a60-4a6b-a373-02978503a2fa.wav",
+    "9a140df2-442c-49d1-84eb-a1d075344886.wav",
+    "9aaadd2e-e151-4935-a63b-cfcaae7d3f9b.wav"
    ],
    "comparisons": 486,
    "lowest_ber": 0.3818,

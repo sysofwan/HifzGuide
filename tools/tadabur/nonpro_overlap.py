@@ -23,7 +23,8 @@ recording EveryAyah lacks: **no overlap detected in the sample**, not proven abs
 
 Usage (from ``tools/``, on a machine with network; CPU only)::
 
-  python -m tadabur.nonpro_overlap --out tadabur/nonpro_eval/overlap.json
+  python -m tadabur.nonpro_overlap --out tadabur/nonpro_eval/overlap.json \\
+      --restricted-out tadabur/nonpro_eval/restricted/overlap.json
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ from pathlib import Path
 
 from .audio import decode_to_mono_16k
 from .nonpro_sources import (
+    DATASETS,
     DECODED,
     Dataset,
     LeftOut,
@@ -138,9 +140,7 @@ def run(decoded: dict[str, set[str]]) -> dict:
         rows = sampled_rows(dataset, decoded[dataset.name])
         clips = [compare(row, folders, line) for row in rows]
         out["datasets"][dataset.name] = {
-            "clips": clips if dataset.open else [{k: c[k] for k in (
-                "audio_filename", "recordings_compared", "lowest_ber", "matches")}
-                for c in clips],
+            "clips": clips,
             "sampled": len(clips),
             "comparisons": sum(c["recordings_compared"] for c in clips),
             "lowest_ber": min((c["lowest_ber"] for c in clips if c["lowest_ber"] is not None),
@@ -152,6 +152,28 @@ def run(decoded: dict[str, set[str]]) -> dict:
     return out
 
 
+def publishable(result: dict) -> tuple[dict, dict]:
+    """The result split by licence: what may be committed (every dataset's summary; per clip,
+    an open dataset's comparisons and a restricted one's clip ids only) and the restricted
+    datasets' per-clip comparisons, kept under ``nonpro_eval/restricted/``."""
+    public = {**result, "datasets": {}}
+    restricted = {}
+    for name, entry in result["datasets"].items():
+        if DATASETS[name].open:
+            public["datasets"][name] = entry
+        else:
+            public["datasets"][name] = {**entry, "clips": sorted(c["audio_filename"]
+                                                                 for c in entry["clips"])}
+            restricted[name] = entry["clips"]
+    return public, restricted
+
+
+def write_json(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
+                    encoding="utf-8")
+
+
 def main() -> None:
     from training.external_corpus import read_decode_file
     from training.nonpro_eval import decodes_file
@@ -159,6 +181,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--restricted-out", type=Path, required=True,
+                        help="the restricted datasets' per-clip comparisons (never committed)")
     parser.add_argument("--decodes-dir", type=Path,
                         help="the GPU box's per-shard decodes, before they are merged")
     args = parser.parse_args()
@@ -171,8 +195,9 @@ def main() -> None:
         decoded = {d.name: {line["audio_filename"]
                             for line in read_decode_file(decodes_file(d, "base")).values()}
                    for d in DECODED}
-    args.out.write_text(json.dumps(run(decoded), ensure_ascii=False, indent=1, sort_keys=True)
-                        + "\n", encoding="utf-8")
+    public, restricted = publishable(run(decoded))
+    write_json(args.out, public)
+    write_json(args.restricted_out, restricted)
 
 
 if __name__ == "__main__":

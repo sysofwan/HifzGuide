@@ -401,8 +401,10 @@ def bench_items(corpus: Corpus, bench: Mapping[str, str]) -> list[ClipItem]:
 
 
 def bench_letters(corpus: Corpus, bench: Mapping[str, str]) -> dict:
-    """Each arm of :data:`BENCH_ARMS` against the experts' transcript, letter by letter; and the
-    transcript itself against the mushaf (where the experts heard the reciter leave it)."""
+    """Each arm of :data:`BENCH_ARMS` against the experts' transcript, letter by letter; the
+    transcript against the mushaf at the mushaf's own slots (descriptive: it cannot see an
+    insertion); and where the transcript leaves the mushaf, aligned whole
+    (:func:`bench_departures`)."""
     items = bench_items(corpus, bench)
     out = {"clips": len(items), "arms": {}}
     for a in BENCH_ARMS:
@@ -417,18 +419,66 @@ def bench_letters(corpus: Corpus, bench: Mapping[str, str]) -> dict:
                                                for clip in against_mushaf)
                                      for kind in LETTER_KINDS},
     }
+    departures = [bench_departures(i, bench[i.audio_filename]) for i in items]
+    out["departures"] = {
+        "clips": sum(bool(d) for d in departures),
+        "words": sum(len(d) for d in departures),
+        "per_canonical_word": dict(sorted(Counter(w + 1 for d in departures for w in d).items())),
+    }
     return out
+
+
+#: What a phonetic transcript writes beyond the mushaf's letters, harakat and gemination: a
+#: madd's length (a run of a madd letter), a ghunnah's length and the hidden noon (``ں``), and
+#: the qalqalah mark. qdat_bench annotates each as a tajweed field of its own.
+MADD_LETTERS = frozenset("اۥۦ")
+GHUNNAH_LETTERS = frozenset("نم")
+HIDDEN_NOON, QALQALAH = "ں", "ڇ"
+
+
+def mushaf_form(word: str) -> str:
+    """A transcript word with only what the mushaf fixes: each madd's run as one madd letter
+    (its presence kept, its length dropped), the qalqalah mark dropped, the hidden noon as a noon,
+    and a run of a ghunnah letter as two before a haraka (a held geminate, however long its
+    ghunnah) and as one otherwise (a sakin noon or meem, however long its hiding). Every other
+    letter, haraka and geminate is kept as written, so an inserted letter, an added haraka and
+    added or dropped gemination all survive."""
+    word = word.replace(QALQALAH, "").replace(HIDDEN_NOON, "ن")
+    out, i = [], 0
+    while i < len(word):
+        j = i
+        while j + 1 < len(word) and word[j + 1] == word[i]:
+            j += 1
+        run = j - i + 1
+        if word[i] in MADD_LETTERS:
+            run = 1
+        elif word[i] in GHUNNAH_LETTERS and run > 1:
+            run = 2 if j + 1 < len(word) and word[j + 1] in SHORT_VOWELS else 1
+        out.append(word[i] * run)
+        i = j + 1
+    return "".join(out)
 
 
 def bench_departures(item: ClipItem, transcript: str) -> set[int]:
     """The canonical words (0-based) of a bench clip where the experts' transcript leaves the
-    mushaf at a consonant, a haraka or a geminate."""
-    import bisect
+    mushaf: its words in :func:`mushaf_form` aligned whole against the item's realized
+    reference's, so a substituted, dropped or inserted letter, a changed, dropped or added haraka
+    and dropped or added gemination all count. An inserted word departs at the word before it
+    (the first word, at the start)."""
+    import difflib
 
-    outcomes = letter_outcomes(transcript, item.reference.reference)
-    offsets = item.reference.offsets
-    return {item.reference.word_indices[bisect.bisect_right(offsets, i) - 1]
-            for kind in LETTER_KINDS for i, o in outcomes[kind] if o != AGREE}
+    reference = [mushaf_form(w) for w in item.reference.reference.split(" ")]
+    if len(reference) != len(item.reference.word_indices):
+        raise ValueError(f"{item.key}: the reference's words are not its canonical words")
+    heard = [mushaf_form(w) for w in transcript.split(" ")]
+    departed: set[int] = set()
+    for op, i1, i2, _, _ in difflib.SequenceMatcher(None, reference, heard,
+                                                   autojunk=False).get_opcodes():
+        if op in ("replace", "delete"):
+            departed.update(range(i1, i2))
+        elif op == "insert":
+            departed.add(max(i1 - 1, 0))
+    return {item.reference.word_indices[k] for k in departed}
 
 
 # --- the app outcome ---------------------------------------------------------------------------

@@ -21,7 +21,7 @@ Revisions are pinned in `tadabur.nonpro_sources`. No audio is committed.
 | `<source>/worklist.jsonl` | one row per disagreed target-pair carrier or in-word geminate; **not queued** | the same |
 | `<source>/consonant_worklist.jsonl` | one row per disagreed carrier of any consonant (option B); **not queued** | the same |
 | `report.json` | selection, items, classes, per-direction and per-consonant counts, rates, the app outcome and its comparison, qdat's views, the bench's letter agreement, RetaSy's label contrast, the listening estimate, compute | `merge`, `build`, `app` (Mac with the Muraja harness) |
-| `overlap.json` | the cheap overlap sample against EveryAyah | `python -m tadabur.nonpro_overlap` |
+| `overlap.json` | the cheap overlap sample against EveryAyah: per-clip comparisons for the open corpora, clip ids and a summary for RetaSy (its per-clip comparisons go to `restricted/overlap.json`) | `python -m tadabur.nonpro_overlap` |
 | `restricted/` | RetaSy's per-clip outputs, written locally by the same commands; ignored by git | the same |
 
 Run from `tools/`, in that order, then `python -m training.nonpro_eval doc`. Every decoded clip

@@ -25,6 +25,8 @@ Each clip is one item: the whole clip, read against the phonetizer's realized re
 
 These are app-user and amateur recordings, presumed independent of Tadabur, Muaalem and EveryAyah. The check is a sample (`tadabur.nonpro_overlap`): a few parquet row groups per source drawn by a salted hash, up to ten decoded clips in each, each fingerprinted against the same ayah in every EveryAyah reciter folder (59), at #144's line (BER ≤ 0.238, fixed from #144's controls, not retuned).
 
+RetaSy's per-clip comparisons stay in the ignored `restricted/` directory (its licence is unknown); its sampled clip ids and summary are public.
+
 | source | clips sampled | recordings compared | lowest BER | matches |
 |---|---|---|---|---|
 | Tarteel v1 | 30 | 1594 | 0.4145 | 0 |
@@ -209,16 +211,16 @@ Each of the bench's 159 clips has an expert-annotated `phonetic_transcript` (qur
 
 Cells: agreement (committed agreement; agree / other / empty).
 
-**The transcript against the mushaf** (where the experts heard the reciter leave it): consonant 99.8% (committed 100.0%; 3172 / 0 / 8); haraka 99.9% (committed 100.0%; 2700 / 1 / 2); shaddah 100.0% (committed 100.0%; 318 / 0 / 0). Clips that leave the mushaf at least once: consonant 8, haraka 3, shaddah 0.
+**The transcript against the mushaf.** At the mushaf's own slots (descriptive: a slot cannot see an insertion): consonant 99.8% (committed 100.0%; 3172 / 0 / 8); haraka 99.9% (committed 100.0%; 2700 / 1 / 2); shaddah 100.0% (committed 100.0%; 318 / 0 / 0). Aligned whole, word by word (`nonpro_eval.bench_departures`: madd and ghunnah lengths, the hidden noon and qalqalah, which the bench annotates as tajweed fields of their own, are folded; every inserted, dropped or changed letter, haraka or geminate counts): 23 clips leave the mushaf, in 28 words (per canonical word: 10 7, 12 1, 13 1, 14 2, 15 9, 8 8).
 
-**The app outcome on the bench's clips**, each graded word placed by whether the experts' transcript leaves the mushaf in it:
+**The app outcome on the bench's clips**, each graded word placed by whether the experts' transcript, aligned whole, leaves the mushaf in it:
 
 | model | scoring | words graded | flagged (per 1,000) | words where the experts heard a departure | flagged there | flagged where they heard the mushaf (of graded) |
 |---|---|---|---|---|---|---|
-| base | shipped_default | 1230 | 35 (28.5) | 9 | 2 | 33 (of 1221) |
-| base | allowances_off | 1230 | 35 (28.5) | 9 | 2 | 33 (of 1221) |
-| h448 | shipped_default | 1219 | 95 (77.9) | 8 | 1 | 94 (of 1211) |
-| h448 | allowances_off | 1219 | 95 (77.9) | 8 | 1 | 94 (of 1211) |
+| base | shipped_default | 1230 | 35 (28.5) | 26 | 5 | 30 (of 1204) |
+| base | allowances_off | 1230 | 35 (28.5) | 26 | 5 | 30 (of 1204) |
+| h448 | shipped_default | 1219 | 95 (77.9) | 25 | 8 | 87 (of 1194) |
+| h448 | allowances_off | 1219 | 95 (77.9) | 25 | 8 | 87 (of 1194) |
 
 ## RetaSy: the app beside its human label
 

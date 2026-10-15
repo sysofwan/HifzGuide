@@ -55,6 +55,24 @@ def test_a_departure_is_placed_on_the_canonical_word_it_sits_in():
     assert ne.bench_departures(_item(), "قِالَ سَططَ") == {7}  # a haraka in word 8
 
 
+def test_an_insertion_an_added_haraka_and_added_gemination_are_departures():
+    """What the mushaf's own slots cannot see (Sol, #158): each departs at its word."""
+    assert ne.bench_departures(_item(), "قَالَ سَبَططَ") == {8}  # an inserted ب
+    assert ne.bench_departures(_item(), "قَالَ سَططَ بَ") == {8}  # an inserted word
+    assert ne.bench_departures(_item(), "قَالَا سَططَ") == {7}  # an added madd
+    assert ne.bench_departures(_item(), "قَالَ سَطَطَ") == {8}  # a haraka on the bare first ط
+    assert ne.bench_departures(_item(), "قَاللَ سَططَ") == {7}  # added gemination
+    assert ne.bench_departures(_item(), "قَالَ سَطَ") == {8}  # dropped gemination
+
+
+def test_tajweed_lengths_and_the_hidden_noon_are_not_departures():
+    assert ne.mushaf_form("لَنَاااا") == ne.mushaf_form("لَنَاا") == "لَنَا"
+    assert ne.mushaf_form("ءِننننَكَ") == ne.mushaf_form("ءِننَكَ") != ne.mushaf_form("ءِنَكَ")
+    assert ne.mushaf_form("ءَںںںتَ") == ne.mushaf_form("ءَنننتَ") == ne.mushaf_form("ءَنتَ")
+    assert ne.mushaf_form("لغُيُۥۥبڇ") == ne.mushaf_form("لغُيُۥۥۥۥب")
+    assert ne.mushaf_form("قَالُ") != ne.mushaf_form("قَاالُۥۥ")  # a madd dropped whole
+
+
 def test_qdat_counts_reciters_per_substitution_and_splits_by_tajweed_label():
     a, b = _item("a#0", "s1", {"separate_tide": 1, "the_tight_noon": 1, "concealment": 0,
                                "target": 0}), \
@@ -116,3 +134,34 @@ def test_the_committed_doc_is_what_the_renderer_writes():
     report = json.loads(ne.REPORT_PATH.read_text(encoding="utf-8"))
     overlap = json.loads(ne.OVERLAP_PATH.read_text(encoding="utf-8"))
     assert ne.DOC_PATH.read_text(encoding="utf-8") == render(report, overlap)
+
+
+def test_a_restricted_dataset_is_committed_as_aggregates_and_clip_ids_only():
+    """RetaSy's licence is unknown and qdat_bench's unstated (#156): no committed file under
+    ``nonpro_eval/`` (nor the doc) carries a restricted clip's checksum, its id outside the
+    overlap sample's id list, or a per-clip result; their per-clip outputs are never tracked."""
+    import subprocess
+
+    from tadabur.exposure import load_registry
+    from tadabur.nonpro_sources import DATASETS
+
+    restricted = {d.repo for d in DATASETS.values() if not d.open}
+    rows = [r for rows in load_registry().clips.values() for r in rows
+            if r.dataset in restricted and r.dataset != DATASETS["qdat_bench"].repo]
+    assert rows  # RetaSy's clips are registered: ids and checksums are provenance
+    root = ne.DOC_PATH.parent.parent
+    tracked = subprocess.run(["git", "ls-files", str(ne.NONPRO_DIR)], capture_output=True,
+                             text=True, check=True, cwd=root).stdout.split()
+    assert tracked and not any("/restricted/" in path for path in tracked)
+    texts = {p: (root / p).read_text(encoding="utf-8")
+             for p in tracked if p.endswith((".json", ".jsonl", ".md"))}
+    texts["doc"] = ne.DOC_PATH.read_text(encoding="utf-8")
+    overlap = json.loads(ne.OVERLAP_PATH.read_text(encoding="utf-8"))
+    for name, dataset in DATASETS.items():
+        if not dataset.open and name in overlap["datasets"]:
+            assert all(isinstance(c, str) for c in overlap["datasets"][name]["clips"])
+    for row in rows:
+        for path, text in texts.items():
+            assert row.audio_sha256 not in text, path
+            if not path.endswith("overlap.json"):
+                assert row.audio_filename not in text, path

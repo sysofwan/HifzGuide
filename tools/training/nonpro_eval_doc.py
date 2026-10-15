@@ -90,6 +90,8 @@ def _overlap(overlap: dict) -> list[str]:
            f"fingerprinted against the same ayah in every EveryAyah reciter folder "
            f"({overlap['everyayah_folders']}), at #144's line (BER ≤ "
            f"{overlap['fingerprint_line']}, fixed from #144's controls, not retuned).", "",
+           "RetaSy's per-clip comparisons stay in the ignored `restricted/` directory (its "
+           "licence is unknown); its sampled clip ids and summary are public.", "",
            "| source | clips sampled | recordings compared | lowest BER | matches |",
            "|---|---|---|---|---|"]
     for name in SOURCES:
@@ -312,14 +314,19 @@ def _bench(report: dict) -> list[str]:
     for a, kinds in letters["arms"].items():
         out.append(f"| {a} | " + " | ".join(cell(kinds[k]) for k in ("consonant", "haraka",
                                                                       "shaddah")) + " |")
-    t = letters["transcript_vs_mushaf"]
+    t, d = letters["transcript_vs_mushaf"], letters["departures"]
     out += ["", "Cells: agreement (committed agreement; agree / other / empty).", "",
-            "**The transcript against the mushaf** (where the experts heard the reciter leave "
-            "it): " + "; ".join(f"{k} {cell(t[k])}" for k in ("consonant", "haraka", "shaddah"))
-            + ". Clips that leave the mushaf at least once: " + ", ".join(
-                f"{k} {v}" for k, v in t["clips_leaving_the_mushaf"].items()) + ".", "",
+            "**The transcript against the mushaf.** At the mushaf's own slots (descriptive: a slot "
+            "cannot see an insertion): " + "; ".join(f"{k} {cell(t[k])}" for k in
+                                                     ("consonant", "haraka", "shaddah"))
+            + ". Aligned whole, word by word (`nonpro_eval.bench_departures`: madd and ghunnah "
+            "lengths, the hidden noon and qalqalah, which the bench annotates as tajweed fields "
+            "of their own, are folded; every inserted, dropped or changed letter, haraka or "
+            f"geminate counts): {d['clips']} clips leave the mushaf, in {d['words']} words "
+            "(per canonical word: " + ", ".join(f"{w} {n}" for w, n in
+                                                d["per_canonical_word"].items()) + ").", "",
             "**The app outcome on the bench's clips**, each graded word placed by whether the "
-            "experts' transcript leaves the mushaf in it:", "",
+            "experts' transcript, aligned whole, leaves the mushaf in it:", "",
             "| model | scoring | words graded | flagged (per 1,000) | words where the experts "
             "heard a departure | flagged there | flagged where they heard the mushaf (of "
             "graded) |", "|---|---|---|---|---|---|---|"]

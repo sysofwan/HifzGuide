@@ -13,10 +13,10 @@
       "unrecorded": 4
      },
      "flagged": 35,
-     "flagged_where_experts_heard_a_departure": 2,
-     "flagged_where_experts_heard_the_mushaf": 33,
+     "flagged_where_experts_heard_a_departure": 5,
+     "flagged_where_experts_heard_the_mushaf": 30,
      "graded": 1230,
-     "graded_where_experts_heard_the_mushaf": 1221,
+     "graded_where_experts_heard_the_mushaf": 1204,
      "per_1000": 28.46,
      "substitutions": [
       {
@@ -105,7 +105,7 @@
        "words": 1
       }
      ],
-     "words_where_experts_heard_a_departure": 9
+     "words_where_experts_heard_a_departure": 26
     },
     "shipped_default": {
      "causes": {
@@ -118,10 +118,10 @@
       "unrecorded": 4
      },
      "flagged": 35,
-     "flagged_where_experts_heard_a_departure": 2,
-     "flagged_where_experts_heard_the_mushaf": 33,
+     "flagged_where_experts_heard_a_departure": 5,
+     "flagged_where_experts_heard_the_mushaf": 30,
      "graded": 1230,
-     "graded_where_experts_heard_the_mushaf": 1221,
+     "graded_where_experts_heard_the_mushaf": 1204,
      "per_1000": 28.46,
      "substitutions": [
       {
@@ -210,7 +210,7 @@
        "words": 1
       }
      ],
-     "words_where_experts_heard_a_departure": 9
+     "words_where_experts_heard_a_departure": 26
     }
    },
    "h448": {
@@ -225,10 +225,10 @@
       "unrecorded": 2
      },
      "flagged": 95,
-     "flagged_where_experts_heard_a_departure": 1,
-     "flagged_where_experts_heard_the_mushaf": 94,
+     "flagged_where_experts_heard_a_departure": 8,
+     "flagged_where_experts_heard_the_mushaf": 87,
      "graded": 1219,
-     "graded_where_experts_heard_the_mushaf": 1211,
+     "graded_where_experts_heard_the_mushaf": 1194,
      "per_1000": 77.93,
      "substitutions": [
       {
@@ -417,7 +417,7 @@
        "words": 1
       }
      ],
-     "words_where_experts_heard_a_departure": 8
+     "words_where_experts_heard_a_departure": 25
     },
     "shipped_default": {
      "causes": {
@@ -430,10 +430,10 @@
       "unrecorded": 2
      },
      "flagged": 95,
-     "flagged_where_experts_heard_a_departure": 1,
-     "flagged_where_experts_heard_the_mushaf": 94,
+     "flagged_where_experts_heard_a_departure": 8,
+     "flagged_where_experts_heard_the_mushaf": 87,
      "graded": 1219,
-     "graded_where_experts_heard_the_mushaf": 1211,
+     "graded_where_experts_heard_the_mushaf": 1194,
      "per_1000": 77.93,
      "substitutions": [
       {
@@ -617,7 +617,7 @@
        "words": 1
       }
      ],
-     "words_where_experts_heard_a_departure": 8
+     "words_where_experts_heard_a_departure": 25
     }
    }
   },
@@ -28345,6 +28345,18 @@
     }
    },
    "clips": 159,
+   "departures": {
+    "clips": 23,
+    "per_canonical_word": {
+     "10": 7,
+     "12": 1,
+     "13": 1,
+     "14": 2,
+     "15": 9,
+     "8": 8
+    },
+    "words": 28
+   },
    "transcript_vs_mushaf": {
     "clips_leaving_the_mushaf": {
      "consonant": 8,

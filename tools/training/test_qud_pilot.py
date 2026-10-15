@@ -5,6 +5,7 @@ Torch-free and model-free: the item, its reference and every decode are syntheti
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -352,3 +353,52 @@ def test_qud_s_sites_and_worklist_regenerate_byte_identically_on_a_slice():
         expected = [without_census(s) for s in load_truth_sites(qp.SITES_DIR / f"{slug}.jsonl.gz")
                     if (s.audio_filename, s.start_sample) in places]
         assert regenerated == expected
+
+
+#: The full regeneration reads QUD's metadata from the Hub and grades every item through the
+#: Muraja harness (about 50 minutes), so it runs only when asked:
+#: ``HIFZGUIDE_FULL_REGENERATION=1 MURAJA_HARNESS_DIR=<a protocol-3 harness> pytest -k every_qud``.
+FULL_REGENERATION = os.environ.get("HIFZGUIDE_FULL_REGENERATION") == "1"
+
+
+@pytest.mark.skipif(not FULL_REGENERATION, reason="set HIFZGUIDE_FULL_REGENERATION=1 (slow, "
+                    "needs the Hub and the Muraja harness)")
+def test_every_qud_artifact_regenerates_byte_identically(tmp_path, monkeypatch):
+    """QUD's build, app and doc through the shared path, every artifact compared byte for byte
+    with the committed one: both mushafs' truth sites (census included), the worklist, the
+    exposure use, report.json (classes, directions, rates, listening, the app aggregates and
+    what they are set beside) and the doc. The report's ``models`` and ``compute`` come from the
+    GPU box's merge and are carried over."""
+    import json
+
+    from tadabur import exposure
+    from training.muraja_policy import require_harness
+    from training.qud_pilot_doc import render
+
+    use = f"{exposure.QUD_CORRECT_RECITATION}.qud.jsonl"
+    committed = {
+        **{f"{slug}.jsonl.gz": (qp.SITES_DIR / f"{slug}.jsonl.gz").read_bytes()
+           for slug in qp.PILOT},
+        "worklist.jsonl": qp.WORKLIST_PATH.read_bytes(),
+        use: (exposure.EXPOSURE_DIR / use).read_bytes(),
+    }
+    report = json.loads(qp.REPORT_PATH.read_text(encoding="utf-8"))
+    write = exposure.write_qud_use
+    monkeypatch.setattr(qp, "SITES_DIR", tmp_path)
+    monkeypatch.setattr(qp, "WORKLIST_PATH", tmp_path / "worklist.jsonl")
+    monkeypatch.setattr(exposure, "write_qud_use",
+                        lambda name, rows: write(name, rows, tmp_path))
+
+    rebuilt = {k: report[k] for k in ("models", "compute")}
+    rebuilt.update(qp.build(workers=os.cpu_count() or 1))
+    pilot = qp.load_pilot()
+    rebuilt["app"] = ec.app_outcome(pilot.items, pilot.decodes, require_harness())
+    rebuilt["tadabur_word_sample"] = ec.tadabur_word_sample()
+    rebuilt["device_logs"] = ec.device_log_rates()
+
+    for name, data in committed.items():
+        assert (tmp_path / name).read_bytes() == data, name
+    text = json.dumps(rebuilt, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+    assert text == qp.REPORT_PATH.read_text(encoding="utf-8")
+    # The doc is rendered from report.json as `doc` reads it (keys sorted), not the dict.
+    assert render(json.loads(text)) == qp.DOC_PATH.read_text(encoding="utf-8")

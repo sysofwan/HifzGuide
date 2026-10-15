@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from training.carrier_windowing_doc import rate_cell
 from training.direction_table import FAMILIES, GEMINATE, SWAP
+from training.word_flags import CAUSES
 
 #: The guard's floor #144 sets the per-pair counts against (acceptance rules, n >= 189).
 FLOOR = 189
@@ -40,8 +41,8 @@ def _sources(report: dict) -> list[str]:
     out = ["## The corpora", "",
            "| source | dataset (revision) | licence | per-clip outputs committed | rows | "
            "selected | left out |", "|---|---|---|---|---|---|---|"]
-    for name, d in report["datasets"].items():
-        s = report.get("selection", {}).get(name)
+    for name in (*SOURCES, "qdat_bench"):
+        d, s = report["datasets"][name], report["selection"].get(name)
         left = ("; ".join(f"{reason} {n}" for reason, n in s["left_out"].items()) or "none") \
             if s else "(its clips are qdat's)"
         committed = ("yes" if d["per_clip_outputs_committed"]
@@ -196,16 +197,18 @@ def _app(report: dict) -> list[str]:
            "starts on the clip's first canonical word. **This is not truth:** nobody has heard "
            "these clips, so a flagged word is a flag on presumed-correct recitation, and some "
            "flags are the reciter's real slips.", "",
-           "| source | model | scoring | words graded | flagged | per 1,000 | " +
-           " | ".join(["tashkeel", "soft_pair", "target_pair", "other_consonant", "shaddah",
-                       "skipped", "unrecorded"]) + " |", "|---|---|---|---|---|---|" + "---|" * 7]
+           "Causes per `training.word_flags` (a word may carry several). A word the session "
+           "never grades (the engine leaves it pending, or it has no place on Muraja's "
+           "reference) is left out of the rate.", "",
+           "| source | model | scoring | words | graded | flagged | per 1,000 | " +
+           " | ".join(CAUSES) + " |", "|---|---|---|---|---|---|---|" + "---|" * len(CAUSES)]
     for name in SOURCES:
         for model in MODELS:
             for scoring in SCORINGS:
                 v = app["outcome"][name][model][scoring]
-                out.append(f"| {NAMES[name]} | {model} | {scoring} | {v['graded']} | "
-                           f"{v.get('flagged', 0)} | {_n(v['per_1000'])} | " +
-                           " | ".join(str(c) for c in v["causes"].values()) + " |")
+                out.append(f"| {NAMES[name]} | {model} | {scoring} | {v['words']} | "
+                           f"{v['graded']} | {v.get('flagged', 0)} | {_n(v['per_1000'])} | " +
+                           " | ".join(str(v["causes"][c]) for c in CAUSES) + " |")
     out += ["", "### Beside the other populations", "",
             "Flags per 1,000 graded words (flags / words). QUD: two professional mushafs (#144). "
             "Device: Muraja's own sessions with the teacher (#151), explained words left out. "

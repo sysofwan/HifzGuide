@@ -622,8 +622,9 @@ def merge(decodes_dir: Path) -> dict:
 
 def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str) -> dict:
     """What the decode cost: the GPU lock's wall time (the launcher's start to the last decode
-    written), the audio decoded, the shard runs, and the peak disk of this issue's scratch
-    directory (sampled each minute)."""
+    written; a shard stopped by a data error was rerun under the lock at the end), the audio
+    decoded, the shard runs completed, and the peak disk of this issue's scratch directory
+    (sampled each minute)."""
     from datetime import datetime
 
     timings = [json.loads(line) for path in sorted(decodes_dir.glob("*.timing.jsonl"))
@@ -636,7 +637,11 @@ def compute_record(decodes_dir: Path, logs_dir: Path, gpu: str) -> dict:
     return {
         "gpu": gpu,
         "gpu_hours": round((end - start.timestamp()) / 3600, 2),
-        "audio_hours": round(sum(t["audio_seconds"] for t in timings) / 3600, 2),
+        # From the decodes, not the timings: a run that stopped wrote no timing.
+        "audio_hours": round(sum(json.loads(line)["end_sample"]
+                                 for path in decodes_dir.glob("*.base.jsonl")
+                                 for line in path.read_text(encoding="utf-8").splitlines())
+                             / TARGET_SAMPLE_RATE / 3600, 2),
         "shard_runs_completed": len(timings),
         "parallel_runs": 5,
         "peak_scratch_gb": round(max(int(s[2]) for s in samples) / 1e9, 2),

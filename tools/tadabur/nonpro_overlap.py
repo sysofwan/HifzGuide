@@ -107,17 +107,24 @@ def compare(row: dict, folders: list[str], line: float) -> dict:
     urls = [f"{EVERYAYAH}/{folder}/{clip.surah:03d}{clip.ayah:03d}.mp3" for folder in folders]
     with ThreadPoolExecutor(FETCHERS) as pool:
         audio = list(pool.map(fetch, urls))
-    scores = []
+    import soundfile as sf
+
+    scores, undecodable = [], 0
     for folder, data in zip(folders, audio):
         if data is None:
             continue
-        match = best_match(mine, fingerprint(decode_to_mono_16k(data)))
+        try:  # a folder can serve a page that is no audio for an ayah it lacks
+            theirs = decode_to_mono_16k(data)
+        except sf.LibsndfileError:
+            undecodable += 1
+            continue
+        match = best_match(mine, fingerprint(theirs))
         if match is not None:
             scores.append((match.ber, folder))
     scores.sort()
     return {"audio_filename": clip.audio_filename, "audio_sha256": audio_sha256(row["audio"]),
             "surah_ayah": clip.surah_ayah, "shard": row["shard"], "row_group": row["row_group"],
-            "recordings_compared": len(scores),
+            "recordings_compared": len(scores), "not_audio": undecodable,
             "lowest_ber": scores[0][0] if scores else None,
             "nearest": scores[0][1] if scores else None,
             "matches": [folder for ber, folder in scores if ber <= line]}

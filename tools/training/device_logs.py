@@ -322,6 +322,12 @@ def read_facts(text: str) -> LogFacts:
     )
 
 
+def committed_transcript(text: str) -> str:
+    """The transcript the session committed: every update's hop (3 s era: its confirmed text),
+    in order, as :func:`training.decoding.committed_text` reads a check sequence."""
+    return "".join(m[3] for line in text.splitlines() if (m := _UPDATE.search(line)))
+
+
 def lengthened_previews(text: str) -> tuple[str, int]:
     """The log with each preview update's overlap replaced by the longer text the transcriber's
     own line logged just before it (40 Characters, ``RealtimeTranscriber+iOS.swift:642``, where
@@ -400,6 +406,8 @@ class WordGrade:
     explained: Explained | None
     #: The consonant errors behind its consonant causes, ``(cause, substitution)``.
     consonants: tuple[tuple[str, str], ...] = ()
+    #: The kept grade's errors as the engine reports them (with their group indices).
+    errors: tuple[dict, ...] = ()
 
     @property
     def flagged(self) -> bool:
@@ -421,7 +429,7 @@ def word_grades(
             out.append(WordGrade(
                 entry.log, word, scoring.name, shown,
                 why.causes if why else (), why.marks if why else (), why.pairs if why else (),
-                entry.explanation(word), why.consonants if why else ()))
+                entry.explanation(word), why.consonants if why else (), tuple(status["errors"])))
     return out
 
 

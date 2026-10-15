@@ -400,6 +400,12 @@ def counterpart(text: str, index: int, reference: str) -> int | None:
     return _alignment(text, reference)[0].get(index)
 
 
+def counterparts_in(text: str, reference: str) -> dict[int, int]:
+    """Each index of ``reference`` some character of ``text`` aligns to (:func:`counterpart`'s
+    alignment), with that character's index: the reference characters ``text`` also holds."""
+    return {position: index for index, position in _alignment(text, reference)[0].items()}
+
+
 def _pausal_taa(realized: Sequence[str], reference: Sequence[str]) -> bool:
     """A pausal ``ه`` (with its marks) against a ``ت`` with its marks and at most a run of one
     repeated letter, the tanween's spelling."""
@@ -439,6 +445,18 @@ class MurajaText:
         if row is None:
             raise KeyError(f"{surah}:{ayah} has no printed word {text_word}")
         return row[0]
+
+    def text_words(self, surah: int, ayah: int, word: int) -> list[int]:
+        """The printed words (1-based) a phoneme word is recited from (``word_map``)."""
+        return [row[0] for row in self._db.execute(
+            "SELECT text_word FROM word_map WHERE surah=? AND ayah=? AND phoneme_word=? ORDER BY text_word",
+            (surah, ayah, word))]
+
+    def printed(self, surah: int, ayah: int, word: int) -> str:
+        """The printed text of a phoneme word: its printed words, space-joined."""
+        return " ".join(self._db.execute(
+            "SELECT text FROM words WHERE surah=? AND ayah=? AND word=?", (surah, ayah, w)).fetchone()[0]
+            for w in self.text_words(surah, ayah, word))
 
     def word_groups(self, surah: int, ayah: int, word: int) -> list[tuple[int, int]]:
         """A phoneme word's groups as code-point spans of the ayah's phonemes, through the first

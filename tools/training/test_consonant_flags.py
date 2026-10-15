@@ -153,6 +153,31 @@ def test_the_setting_check_decides_not_the_committed_transcript():
     assert none[0].klass == cf.UNCLEAR
 
 
+def test_a_setting_check_that_cannot_be_read_is_never_masked_by_a_later_one():
+    """Sol, #157 round 2 (40:9:8): check 0's query stops before the word's last letter, so it
+    cannot be read there; check 1 holds it. Together they are unclear, not grading."""
+    checks = [check("", "قَالَرَببُلعَاالَمِ"), check("قَالَرَببُلعَاالَمِۦۦنَ")]
+    error = deletion("ن", 4)
+    alone = cf.classify(cf.Ayah(AYAH), 3, error, recital(AYAH, checks, (1,)), OTHER_CONSONANT)[0]
+    assert alone.klass == cf.GRADING
+    both = cf.classify(cf.Ayah(AYAH), 3, error, recital(AYAH, checks, (0, 1)), OTHER_CONSONANT)[0]
+    assert (both.klass, both.rule) == (
+        cf.UNCLEAR, "pronounced; a check that can have set the kept grade has no query that reaches the letter")
+
+
+def test_the_stop_aligns_its_phonemes_with_the_overlap_the_engine_kept():
+    """``handleFinalFlush`` appends the stop's phonemes and aligns them with ``currentOverlap``
+    from the update before it (``FollowAlongEngine.swift:899-913``); a silence flush leaves none
+    of the hops before it pending."""
+    ta, tha = "\u062a\u064e", "\u062b\u064e"
+    checks = [check(ta, tha), {**check(ta), "stop": True}]
+    assert cf.kept_overlap(checks, 1) == tha
+    assert cf.possible_queries(checks, 1) == [ta + ta + tha]
+    flushed = [check(ta, tha), {"hop": ta, "overlap": tha, "flush": True}, check(ta, tha)]
+    assert cf.possible_queries(flushed, 1) == [ta + ta + tha]          # a flush aligns no pending hop
+    assert cf.possible_queries(flushed, 2) == [ta * 3 + tha]           # the flushed hops stay confirmed
+
+
 def test_a_collapsed_geminate_is_grading_only_when_the_query_holds_both_halves():
     error = deletion("ب", 1)
     held = cf.classify(cf.Ayah(AYAH), 2, error, recital(AYAH, [check("قَالَرَببُلعَاالَمِۦۦنَ")]), SHADDAH_CAUSE)[0]
@@ -369,3 +394,27 @@ def test_the_forms_of_a_real_ayah_say_which_letters_a_pause_or_a_start_drops():
     reading, _ = cf.classify(ayah, 3, mismatch("ي", "ۦ", 2), cf.Recital(), OTHER_CONSONANT)
     assert (ayah.phonemes[yaa], reading.rule) == ("ي", f"wasl-dependent: dropped on {cf.WAQF_HERE}")
     assert cf.classify(ayah, 4, deletion("ن", 1), cf.Recital(verdict=cf.MODEL), OTHER_CONSONANT)[0].klass == cf.MODEL
+
+
+def test_the_pinned_engine_aligns_the_stop_with_the_kept_overlap():
+    """The engine itself, through the harness: a stop with no phonemes after a preview of 2:80's
+    first three words runs one more alignment over the preview it kept, which moves the reader
+    onto word 3; after an empty update, which clears the overlap, the same stop aligns nothing
+    and the reader stays on word 1."""
+    from muraja_harness.make_parity_fixtures import BALANCED, preview, words
+    from training.muraja_policy import Harness
+
+    harness = Harness.locate()
+    if harness is None:
+        pytest.skip("the Muraja harness is not built here")
+    stop = {"hop": "", "overlap": "", "flush": False, "stop": True}
+    empty = {"hop": "", "overlap": "", "flush": False}
+
+    def positions(checks: list[dict]) -> list[str]:
+        request = {"item": "kept overlap", "surah": 2, "ayah": 80, "start_word": 1, "report_words": [1, 2, 3],
+                   "checks": checks, "scorings": [BALANCED]}
+        _, (result,) = harness.run([request])
+        return [c["position"] for c in result["checks"]]
+
+    assert positions([preview(words(1, 3)), stop]) == ["2:80:1", "2:80:3"]
+    assert positions([preview(words(1, 3)), empty, stop]) == ["2:80:1", "2:80:1", "2:80:1"]

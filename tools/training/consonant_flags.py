@@ -53,11 +53,13 @@ phonetizer's, ``generate_phonemes.py``):
    check's overlap or preview; which hops were pending is not recorded, so each count up to
    :data:`MAX_PENDING_HOPS` gives a possible query (:func:`possible_queries`), each aligned on the
    realized reference (or Muraja's ayah) by the truth-site scorer's rule
-   (:func:`training.site_outcomes.pair_outcome`, :func:`~training.site_outcomes.shaddah_outcome`); one
-   whose alignment does not reach the letter is set aside. It is **grading** (responsible:
-   **Muraja's word scorer**) where every possible query holds the expected letter there (a
-   geminate held, for a collapsed-geminate flag), **model** where none does, and **unclear**
-   where they disagree, none reaches it, or no setting check is found. The owner's sessions have
+   (:func:`training.site_outcomes.pair_outcome`, :func:`~training.site_outcomes.shaddah_outcome`); a
+   possible query whose alignment does not reach the letter is set aside, but a setting check
+   none of whose queries reaches it leaves the flag ``unclear`` (a later check that reads well
+   never masks it). It is **grading** (responsible: **Muraja's word scorer**) where every
+   reading query holds the expected letter there (a geminate held, for a collapsed-geminate
+   flag), **model** where none does, and **unclear** where they disagree or no setting check is
+   found. The owner's sessions have
    no decode in the repo; the owner's verdict on a word the phone showed stands in (a model error
    read from the decode is ``model``, one explained by a word boundary is ``grading``); a flag with
    neither is ``unclear``.
@@ -379,16 +381,31 @@ CONFIRMED_TAIL = 20
 MAX_PENDING_HOPS = 7
 
 
+def kept_overlap(checks: Sequence[dict], index: int) -> str:
+    """The overlap or preview check ``index`` aligns: its own, or for the app's stop the one
+    the engine keeps from the update before it (``handleFinalFlush`` appends the stop's
+    phonemes as a pending hop and aligns them with ``currentOverlap``,
+    ``FollowAlongEngine.swift:899-913``)."""
+    if not checks[index].get("stop"):
+        return checks[index]["overlap"]
+    return checks[index - 1]["overlap"] if index else ""
+
+
 def possible_queries(checks: Sequence[dict], index: int) -> list[str]:
     """Every query check ``index`` may have aligned (``runFollowAlongCheck``,
     ``FollowAlongEngine.swift:1565-1628``): :data:`CONFIRMED_TAIL` confirmed Characters, the
-    pending hops — which hops were still pending is not recorded, so none up to the last
-    :data:`MAX_PENDING_HOPS` non-empty hops — and the check's overlap or preview (a stop has
-    none). Distinct queries only, shortest pending run first."""
+    pending hops and :func:`kept_overlap`. Which hops were still pending is not recorded, so
+    each count from none up to the last :data:`MAX_PENDING_HOPS` non-empty hops is a possible
+    query; a silence flush confirms every pending hop (``FollowAlongEngine.swift:613-624``), so
+    no hop before the latest flush is pending, and a flush check aligns none. Distinct queries
+    only, shortest pending run first."""
+    flushes = [i for i, c in enumerate(checks[: index + 1]) if c["flush"]]
+    after_flush = index + 1 if checks[index]["flush"] else (flushes[-1] + 1 if flushes else 0)
     hops = [clusters(c["hop"]) for c in checks[: index + 1] if c["hop"]]
-    overlap = "" if checks[index].get("stop") else checks[index]["overlap"]
+    pendable = sum(1 for c in checks[after_flush: index + 1] if c["hop"])
+    overlap = kept_overlap(checks, index)
     out: dict[str, None] = {}
-    for k in range(min(MAX_PENDING_HOPS, len(hops)) + 1):
+    for k in range(min(MAX_PENDING_HOPS, pendable) + 1):
         confirmed = [c for hop in hops[: len(hops) - k] for c in hop][-CONFIRMED_TAIL:]
         pending = [c for hop in hops[len(hops) - k:] for c in hop]
         out["".join(confirmed + pending) + overlap] = None
@@ -455,7 +472,7 @@ def covering_checks(checks: Sequence[dict], reference: str, index: int) -> tuple
     out = []
     for i, (check, end) in enumerate(zip(checks, ends)):
         pending = [n for n in lengths[: i + 1] if n][-MAX_PENDING_HOPS:]
-        overlap = 0 if check.get("stop") else len(clusters(check["overlap"]))
+        overlap = len(clusters(kept_overlap(checks, i)))
         if end - sum(pending) - CONFIRMED_TAIL <= at < end + overlap:
             out.append(i)
     return tuple(out)
@@ -497,15 +514,18 @@ def heard(recital: Recital, reference: str, index: int, position: int, expected:
     setting = recital.setting(position)
     if not setting:
         return Reading(UNCLEAR, "pronounced; no check that can have set the kept grade is identified")
-    said = frozenset().union(*(check_evidence(possible_queries(recital.checks, i), reference, index, expected,
-                                              geminate) for i in setting))
+    readings = [check_evidence(possible_queries(recital.checks, i), reference, index, expected, geminate)
+                for i in setting]
+    if not all(readings):
+        return Reading(UNCLEAR, "pronounced; a check that can have set the kept grade has no query that "
+                                "reaches the letter")
+    said = frozenset().union(*readings)
     if said == {True}:
         return Reading(GRADING, "pronounced; the query that set the kept grade holds it", MURAJA_SCORER, "query")
     if said == {False}:
         return Reading(MODEL, "pronounced; the query that set the kept grade has another letter or none there",
                        None, "query")
-    return Reading(UNCLEAR, "pronounced; the queries that can have set the kept grade disagree" if said
-                   else "pronounced; no query that can have set the kept grade reaches the letter")
+    return Reading(UNCLEAR, "pronounced; the queries that can have set the kept grade disagree")
 
 
 def read_position(ayah: Ayah, position: int, word: int, expected: str, geminate: bool,

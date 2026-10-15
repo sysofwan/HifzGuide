@@ -215,12 +215,14 @@ def render(report: Mapping) -> str:
         "4. otherwise Hafs pronounces the letter. What the engine heard decides: the query of the check "
         "that set the kept grade (QUD, Tadabur: the checks whose own grade of the word is the kept "
         "one; a device session keeps no per-check grade, so every check whose query can hold the "
-        "letter). A query is the last 20 confirmed Characters, the pending hops and the check's "
-        "overlap; which hops were pending is not recorded, so every count up to Muraja's 7 is a "
-        "possible query, and one whose alignment does not reach the letter is set aside. **Grading** "
-        "(Muraja's word scorer) where every possible query holds the letter there; **model** where "
-        "none does; **unclear** where they disagree or none reaches it. The owner's sessions have no "
-        "decode in the repo: the owner's verdict stands in where the phone showed the word.",
+        "letter). A query is the last 20 confirmed Characters, the pending hops and the overlap the "
+        "engine holds (for the app's stop, the one kept from the update before it); which hops were "
+        "pending is not recorded, so every count up to Muraja's 7 since the last silence flush is a "
+        "possible query, and one whose alignment does not reach the letter is set aside. A setting "
+        "check none of whose queries reaches the letter makes the flag **unclear**, whatever a later "
+        "check reads. **Grading** (Muraja's word scorer) where every reading query holds the letter "
+        "there; **model** where none does; **unclear** where they disagree. The owner's sessions have "
+        "no decode in the repo: the owner's verdict stands in where the phone showed the word.",
         "",
         "A flag whose letter is not in the word, or whose candidate letters (no group kept) are "
         "classified differently, is **unclear**. Idgham, iqlab, lam shamsiyyah and the madd and "

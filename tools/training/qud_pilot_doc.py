@@ -308,6 +308,9 @@ def render(report: dict) -> str:
         "both baselines committing the mushaf, so a candidate can only lose on them. Two "
         "reciters are no population: no rate here generalises to reciters, and no interval "
         "is clustered by reciter.",
+        "- **Overlap:** neither mushaf matched Tadabur or Muaalem under the screen; a copy of "
+        "one of them re-processed past what the fingerprint survives would not have been "
+        "detected (see the overlap section).",
         "- Nothing here sets a threshold, a margin or a floor.",
         "",
     ]

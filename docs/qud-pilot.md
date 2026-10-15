@@ -10,12 +10,14 @@ Checked by audio (`tadabur.qud_overlap`). The controls were committed before any
 - **Timing line**: 0.0848 s, 1.5 times the largest timing distance of the 51 timed cross-aligner pairs the fingerprint confirms as one recording (62 in all, over 11 Tadabur reciters). On the controls it passes 16 of 162 same-reciter negatives and 9 of 135 other-reciter negatives.
 - **Per-reciter test** (stage 1, reported only): an id is flagged when its pairs within the line are improbable at the negatives' pass rate (Wilson upper 0.1213, level 0.001); on the controls it flags 5 of 5 reciter-mushaf overlaps and 1 of 16 others.
 
-| mushaf | ayat compared (stage 1) | pairs timed | ids flagged by the per-reciter test | stage 2 pairs | fingerprinted | sealed, not read | matches | lowest BER |
+| mushaf | ayat compared (stage 1) | pairs timed | ids flagged by the per-reciter test | stage 2 pairs | fingerprinted | sealed, not read | matches detected | lowest BER |
 |---|---|---|---|---|---|---|---|---|
 | `abdul_hamid_ghraio_2026_yt` | 5072 of 6235 | 323400 | 81 | 35885 | 35869 | 16 | 0 | 0.4033 |
-| `anas_almiman_yt` | 4991 of 6236 | 320117 | 96 | 43096 | 43060 | 36 | 0 | 0.3693 |
+| `anas_almiman_yt` | 4991 of 6236 | 320117 | 96 | 43729 | 43693 | 36 | 0 | 0.3693 |
 
-Stage 2 fingerprinted every pair within the timing line and every pair of the pilot reciter's named Tadabur id (Almiman: 93), one read of all 385 Tadabur shards. Pairs between the fingerprint line and the lowest hard negative: `abdul_hamid_ghraio_2026_yt` 13 (BER 0.403 to 0.413); `anas_almiman_yt` 21 (BER 0.369 to 0.413), every one far above the line and above every control positive.
+Stage 2 fingerprinted every pair within the timing line and every row of the pilot reciter's named Tadabur id (Almiman: 93) with a pilot ayah, timed or not (`anas_almiman_yt` 3523 named-id pairs, 633 of them untimed). Pairs between the fingerprint line and the lowest hard negative: `abdul_hamid_ghraio_2026_yt` 13 (BER 0.403 to 0.413); `anas_almiman_yt` 23 (BER 0.369 to 0.413), every one far above the line and above every control positive.
+
+**What zero matches means: no overlap detected under this screen, not proven absence.** The controls show the fingerprint can miss a copy of one recording. Tadabur reciter 18's 12 clips against QUD's `ahmed_nuayna_qdc` (the same reciter) match the fingerprint line 1 time (BER 0.212 to 0.4365), although their word timing passes the timing line at 7 of the 9 timed ayat: the signature of one recording re-processed past what the fingerprint survives. A pilot recording held in Tadabur only in such a copy would be missed. The line was fixed before screening and is not retuned.
 
 **Muaalem**: the first row group of each of the 27 moshafs (the opening of al-Fatiha and al-Baqarah), each pilot ayah slid along the segments that cover it. Closest BER per mushaf over all 27: `abdul_hamid_ghraio_2026_yt` 0.407; `anas_almiman_yt` 0.408; matches: 0.
 
@@ -122,27 +124,43 @@ Per direction, the share of carriers where each arm committed the mushaf's lette
 
 ## The app outcome on presumably correct professional recitation
 
-Every word of every item, graded by Muraja's engine on the item's recorded check sequence (`checks`), per model. The recitation is presumed correct, so a flagged word is a presumed false flag. Beside it, per 1,000 words: the Tadabur word sample's false flags (155 correctly recited words, one per held-out reciter, weighted; `truth_baseline/report.json`) and Muraja's own device sessions (`device_logs/report.json`, every graded word; no included session ran `h448`).
+Every word of every item, graded by Muraja's engine on the item's recorded check sequence (`checks`), per model; each session starts on the item's first canonical word and every word is looked up by its own place in the ayah. The recitation is presumed correct, so a flagged word is a presumed false flag. Beside it, per 1,000 words: the Tadabur word sample's false flags (155 correctly recited words, one per held-out reciter, weighted; `truth_baseline/report.json`) and the teacher's own device sessions (#151, `device_logs/report.json`), with the words their docs explain (skipped, re-read, never recited) left out, over all protocol eras and on the 1 s hop alone. No included device session ran `h448`.
 
-| model | scoring | QUD words graded | QUD flagged | QUD per 1,000 | Tadabur sample per 1,000 [interval] (flags) | device sessions per 1,000 (flags of words) |
-|---|---|---|---|---|---|---|
-| base | shipped_default | 152481 | 394 | 2.6 | 26.5 [1.0, 59.3] (4 of 155) | 110.6 (251 of 2269) |
-| base | allowances_off | 152480 | 418 | 2.7 | 26.5 [1.0, 59.3] (4 of 155) | 115.0 (261 of 2269) |
-| h448 | shipped_default | 152452 | 667 | 4.4 | 21.0 [0.0, 53.3] (3 of 155) | – (0 of 0) |
-| h448 | allowances_off | 152450 | 697 | 4.6 | 21.0 [0.0, 53.3] (3 of 155) | – (0 of 0) |
+| model | scoring | QUD words graded | QUD flagged | QUD per 1,000 | Tadabur sample per 1,000 [interval] (flags) | device, all eras, per 1,000 (flags of words) | device, 1 s hop, per 1,000 (flags of words) |
+|---|---|---|---|---|---|---|---|
+| base | shipped_default | 152729 | 385 | 2.5 | 26.5 [1.0, 59.3] (4 of 155) | 17.1 (35 of 2042) | 10.1 (15 of 1485) |
+| base | allowances_off | 152728 | 409 | 2.7 | 26.5 [1.0, 59.3] (4 of 155) | 22.0 (45 of 2042) | 16.2 (24 of 1485) |
+| h448 | shipped_default | 152715 | 660 | 4.3 | 21.0 [0.0, 53.3] (3 of 155) | – | – |
+| h448 | allowances_off | 152713 | 690 | 4.5 | 21.0 [0.0, 53.3] (3 of 155) | – | – |
+
+Diagnostic: the device sessions with every graded word, explained ones included, per 1,000: teacher shipped_default 110.6; teacher allowances_off 115.0; teacher, 1 s hop shipped_default 47.9; teacher, 1 s hop allowances_off 53.7.
 
 Causes of the QUD flags (a word may carry several; `training.word_flags`):
 
 | model | scoring | other_consonant | shaddah | skipped | soft_pair | target_pair | tashkeel | unrecorded |
 |---|---|---|---|---|---|---|---|---|
-| base | shipped_default | 167 | 11 | 24 | 0 | 69 | 130 | 3 |
-| base | allowances_off | 168 | 16 | 25 | 12 | 69 | 130 | 8 |
-| h448 | shipped_default | 389 | 9 | 30 | 0 | 77 | 165 | 5 |
-| h448 | allowances_off | 394 | 12 | 31 | 19 | 77 | 163 | 9 |
+| base | shipped_default | 166 | 11 | 17 | 0 | 69 | 130 | 2 |
+| base | allowances_off | 167 | 16 | 18 | 12 | 69 | 130 | 7 |
+| h448 | shipped_default | 389 | 9 | 23 | 0 | 77 | 165 | 5 |
+| h448 | allowances_off | 394 | 12 | 24 | 19 | 77 | 163 | 9 |
 
-Where in its item a word flagged as skipped sits (the engine's skip marking; each item is one session, starting on its first word): base shipped_default first word 5, inside 19; h448 shipped_default first word 4, inside 26.
+**Consonant false flags by substitution** (expected → heard; a deletion is `del:<letter>`; a word counts once per substitution; `word_flags.substitution_tally`). Per model and scoring, the substitutions carried by at least three flagged words:
 
-Per mushaf, per 1,000 words: base shipped_default `abdul_hamid_ghraio_2026_yt` 2.3, `anas_almiman_yt` 2.9; base allowances_off `abdul_hamid_ghraio_2026_yt` 2.5, `anas_almiman_yt` 3.0; h448 shipped_default `abdul_hamid_ghraio_2026_yt` 4.4, `anas_almiman_yt` 4.3; h448 allowances_off `abdul_hamid_ghraio_2026_yt` 4.6, `anas_almiman_yt` 4.5.
+- base, shipped_default: س→ش 50 (target_pair), ا→∅ 25 (other_consonant), ط→ق 19 (target_pair), ء→∅ 14 (other_consonant), ن→ل 13 (other_consonant), ل→ر 12 (other_consonant), ب→∅ 11 (other_consonant), ه→ء 9 (other_consonant), ي→∅ 9 (shaddah), ف→∅ 8 (other_consonant), ل→ن 8 (other_consonant), ن→∅ 8 (other_consonant), و→∅ 6 (other_consonant), ه→∅ 5 (other_consonant), ر→∅ 4 (other_consonant), غ→و 3 (other_consonant), ل→د 3 (other_consonant), ن→م 3 (other_consonant), ي→∅ 3 (other_consonant).
+- base, allowances_off: س→ش 50 (target_pair), ا→∅ 25 (other_consonant), ط→ق 19 (target_pair), ء→∅ 14 (other_consonant), ن→ل 13 (other_consonant), ل→ر 12 (other_consonant), ب→∅ 11 (other_consonant), ي→∅ 11 (shaddah), ه→ء 9 (other_consonant), ف→∅ 8 (other_consonant), ل→ن 8 (other_consonant), ن→∅ 8 (other_consonant), و→∅ 6 (other_consonant), ه→∅ 5 (other_consonant), ر→∅ 4 (other_consonant), ي→∅ 4 (other_consonant), غ→و 3 (other_consonant), ل→د 3 (other_consonant), ن→م 3 (other_consonant), ز→ذ 3 (soft_pair).
+- h448, shipped_default: س→ش 55 (target_pair), ا→∅ 33 (other_consonant), ن→ل 31 (other_consonant), ث→س 24 (other_consonant), ط→ق 19 (target_pair), ل→ر 17 (other_consonant), ه→ء 15 (other_consonant), م→ب 13 (other_consonant), ء→∅ 12 (other_consonant), ب→∅ 12 (other_consonant), ف→∅ 12 (other_consonant), ل→ن 12 (other_consonant), ل→د 11 (other_consonant), ل→∅ 8 (other_consonant), ن→∅ 8 (other_consonant), ه→∅ 8 (other_consonant), ي→∅ 8 (shaddah), ث→ف 7 (other_consonant), د→ب 7 (other_consonant), غ→و 7 (other_consonant), م→∅ 7 (other_consonant), خ→ف 6 (other_consonant), م→ن 6 (other_consonant), ن→م 6 (other_consonant), و→∅ 6 (other_consonant), ء→ه 5 (other_consonant), ب→ف 5 (other_consonant), ث→ت 5 (other_consonant), ب→د 4 (other_consonant), ت→ك 4 (other_consonant), ض→ط 4 (other_consonant), ك→∅ 4 (other_consonant), ي→∅ 4 (other_consonant), ء→ع 3 (other_consonant), ء→ك 3 (other_consonant), ب→ض 3 (other_consonant), د→ت 3 (other_consonant), د→ل 3 (other_consonant), س→ف 3 (other_consonant), س→∅ 3 (other_consonant), ن→ر 3 (other_consonant).
+- h448, allowances_off: س→ش 55 (target_pair), ا→∅ 33 (other_consonant), ن→ل 31 (other_consonant), ث→س 24 (other_consonant), ط→ق 19 (target_pair), ل→ر 17 (other_consonant), ه→ء 15 (other_consonant), م→ب 13 (other_consonant), ء→∅ 12 (other_consonant), ب→∅ 12 (other_consonant), ف→∅ 12 (other_consonant), ل→ن 12 (other_consonant), ل→د 11 (other_consonant), ل→∅ 9 (other_consonant), ه→∅ 9 (other_consonant), ن→∅ 8 (other_consonant), ي→∅ 8 (shaddah), ث→ف 7 (other_consonant), د→ب 7 (other_consonant), غ→و 7 (other_consonant), م→∅ 7 (other_consonant), ذ→ز 7 (soft_pair), خ→ف 6 (other_consonant), م→ن 6 (other_consonant), ن→م 6 (other_consonant), و→∅ 6 (other_consonant), ء→ه 5 (other_consonant), ب→ف 5 (other_consonant), ث→ت 5 (other_consonant), ي→∅ 5 (other_consonant), ظ→ض 5 (soft_pair), ب→د 4 (other_consonant), ت→ك 4 (other_consonant), ض→ط 4 (other_consonant), ك→∅ 4 (other_consonant), ء→ع 3 (other_consonant), ء→ك 3 (other_consonant), ب→ض 3 (other_consonant), د→ت 3 (other_consonant), د→ل 3 (other_consonant), س→ف 3 (other_consonant), س→∅ 3 (other_consonant), ن→ر 3 (other_consonant).
+
+By expected letter and cause (every consonant false flag; a word once per letter and cause):
+
+- base, shipped_default: س 50 (target_pair), ا 27 (other_consonant), ل 26 (other_consonant), ن 23 (other_consonant), ط 19 (target_pair), ء 16 (other_consonant), ب 14 (other_consonant), ه 14 (other_consonant), ف 10 (other_consonant), ي 9 (shaddah), و 7 (other_consonant), ث 5 (other_consonant), غ 5 (other_consonant), م 5 (other_consonant), خ 4 (other_consonant), ر 4 (other_consonant), ت 3 (other_consonant), د 3 (other_consonant), س 3 (other_consonant), ط 3 (other_consonant), ع 3 (other_consonant), ق 3 (other_consonant), ي 3 (other_consonant), ـ 2 (other_consonant), ك 2 (other_consonant), ب 2 (shaddah), ج 1 (other_consonant), ح 1 (other_consonant), ص 1 (other_consonant), ض 1 (other_consonant), ٲ 1 (other_consonant), ں 1 (other_consonant).
+- base, allowances_off: س 50 (target_pair), ا 27 (other_consonant), ل 26 (other_consonant), ن 23 (other_consonant), ط 19 (target_pair), ء 16 (other_consonant), ب 14 (other_consonant), ه 14 (other_consonant), ي 11 (shaddah), ف 10 (other_consonant), و 7 (other_consonant), ث 5 (other_consonant), غ 5 (other_consonant), م 5 (other_consonant), خ 4 (other_consonant), ر 4 (other_consonant), ي 4 (other_consonant), ت 3 (other_consonant), د 3 (other_consonant), س 3 (other_consonant), ط 3 (other_consonant), ع 3 (other_consonant), ق 3 (other_consonant), ز 3 (soft_pair), ـ 2 (other_consonant), ك 2 (other_consonant), ب 2 (shaddah), ل 2 (shaddah), ذ 2 (soft_pair), ك 2 (soft_pair), ه 2 (soft_pair), ج 1 (other_consonant), ح 1 (other_consonant), ص 1 (other_consonant), ض 1 (other_consonant), ٲ 1 (other_consonant), ں 1 (other_consonant), س 1 (shaddah), س 1 (soft_pair), ص 1 (soft_pair), ظ 1 (soft_pair).
+- h448, shipped_default: س 55 (target_pair), ل 54 (other_consonant), ن 49 (other_consonant), ا 36 (other_consonant), ث 36 (other_consonant), ب 30 (other_consonant), م 28 (other_consonant), ء 25 (other_consonant), ه 25 (other_consonant), ف 20 (other_consonant), ط 19 (target_pair), د 18 (other_consonant), غ 13 (other_consonant), ت 12 (other_consonant), ي 10 (other_consonant), خ 9 (other_consonant), ك 8 (other_consonant), و 8 (other_consonant), ي 8 (shaddah), س 6 (other_consonant), ذ 5 (other_consonant), ض 5 (other_consonant), ق 5 (other_consonant), ر 3 (other_consonant), ظ 3 (other_consonant), ع 3 (other_consonant), ج 2 (other_consonant), ز 2 (other_consonant), ـ 2 (other_consonant), ق 2 (target_pair), ح 1 (other_consonant), ش 1 (other_consonant), ط 1 (other_consonant), ٲ 1 (other_consonant), ث 1 (shaddah), ظ 1 (target_pair).
+- h448, allowances_off: ل 55 (other_consonant), س 55 (target_pair), ن 49 (other_consonant), ا 36 (other_consonant), ث 36 (other_consonant), ب 30 (other_consonant), م 28 (other_consonant), ه 26 (other_consonant), ء 25 (other_consonant), ف 20 (other_consonant), ط 19 (target_pair), د 18 (other_consonant), غ 13 (other_consonant), ت 12 (other_consonant), ي 11 (other_consonant), خ 9 (other_consonant), ك 9 (other_consonant), و 8 (other_consonant), ي 8 (shaddah), ذ 7 (soft_pair), س 6 (other_consonant), ذ 5 (other_consonant), ض 5 (other_consonant), ق 5 (other_consonant), ظ 5 (soft_pair), ر 3 (other_consonant), ظ 3 (other_consonant), ع 3 (other_consonant), ج 2 (other_consonant), ز 2 (other_consonant), ط 2 (other_consonant), ـ 2 (other_consonant), ص 2 (soft_pair), ض 2 (soft_pair), ق 2 (target_pair), ح 1 (other_consonant), ش 1 (other_consonant), ٲ 1 (other_consonant), ب 1 (shaddah), ث 1 (shaddah), ف 1 (shaddah), ل 1 (shaddah), ز 1 (soft_pair), ط 1 (soft_pair), ك 1 (soft_pair), ظ 1 (target_pair).
+
+Where in its item a word flagged as skipped sits (the engine's skip marking; each item is one session, starting on its first word): base shipped_default first word 4, inside 13; h448 shipped_default first word 3, inside 20.
+
+Per mushaf, per 1,000 words: base shipped_default `abdul_hamid_ghraio_2026_yt` 2.3, `anas_almiman_yt` 2.8; base allowances_off `abdul_hamid_ghraio_2026_yt` 2.5, `anas_almiman_yt` 2.9; h448 shipped_default `abdul_hamid_ghraio_2026_yt` 4.4, `anas_almiman_yt` 4.2; h448 allowances_off `abdul_hamid_ghraio_2026_yt` 4.6, `anas_almiman_yt` 4.4.
 
 ## The owner's listening, from the measured disagreements
 
@@ -160,11 +178,12 @@ Disagreed carriers per stratum (pooled): geminate 2656, ت 115, ح 16, ذ 101, �
 
 - GPU: 6.81 h of wall time holding the GPU lock (up to 6 shard runs side by side on one NVIDIA GeForce RTX 5060 Ti), for 48.19 h of segment audio decoded by both models in all three protocols.
 - Peak cuda-dev disk for the pilot: 10.58 GB, sampled each minute from 2026-10-14T16:58:28Z (the shards being read, each deleted once read, the decodes, and the overlap check's Tadabur shards); no audio was kept.
-- The overlap check's stage 2 read every Tadabur shard once (each deleted once read), CPU only, in 4.93 h of wall time beside the decoding.
+- The overlap check's stage 2 read every Tadabur shard once (each deleted once read), CPU only, in 8.05 h of wall time over 4 runs (each resumed where the last stopped), the first beside the decoding.
 - Committed decodes: 11.3 MB gzipped.
 
 ## What this can and cannot say
 
 - **Can:** how often each model, under each protocol, commits a letter other than the mushaf's at a target-pair carrier or collapses an in-word geminate in two professional recordings neither model heard, and how many words the app would flag there.
 - **Cannot:** whether a disagreement is a model error or the reciter's: nobody has listened, so every disagreement is `pending`. The agreed sites hold only if the reciter recited correctly (`assumes_competent_reciter`), and they were chosen by both baselines committing the mushaf, so a candidate can only lose on them. Two reciters are no population: no rate here generalises to reciters, and no interval is clustered by reciter.
+- **Overlap:** neither mushaf matched Tadabur or Muaalem under the screen; a copy of one of them re-processed past what the fingerprint survives would not have been detected (see the overlap section).
 - Nothing here sets a threshold, a margin or a floor.

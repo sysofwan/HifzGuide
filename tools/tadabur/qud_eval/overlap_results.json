@@ -596,7 +596,7 @@
    "row_group": 0
   }
  ],
- "stage_two": "every pair within the timing line, and every pair of the pilot reciter's named Tadabur id",
+ "stage_two": "every pair within the timing line, and every row of the pilot reciter's named Tadabur id with a pilot ayah, timed or not",
  "tadabur": {
   "abdul_hamid_ghraio_2026_yt": {
    "between_line_and_hard_negatives": [
@@ -734,6 +734,9 @@
    "fingerprinted": 35869,
    "lowest_ber": 0.4033,
    "matches": [],
+   "named_ids": [],
+   "named_pairs": 0,
+   "named_pairs_untimed": 0,
    "pairs": 35885,
    "per_tadabur_reciter_lowest": {
     "0": 0.4443,
@@ -1305,6 +1308,16 @@
      "surah_ayah": "80:7"
     },
     {
+     "audio_filename": "tadabur_spk0093_S107_A1_3f52050a_000463.wav",
+     "ber": 0.4001,
+     "distance": null,
+     "reciter_id": 93,
+     "row_index": 447,
+     "shard": 218,
+     "slug": "anas_almiman_yt",
+     "surah_ayah": "108:1"
+    },
+    {
      "audio_filename": "tadabur_spk0093_S10_A97_bbe9cf64_000205.wav",
      "ber": 0.411,
      "distance": 0.8465,
@@ -1393,12 +1406,27 @@
      "shard": 362,
      "slug": "anas_almiman_yt",
      "surah_ayah": "19:89"
+    },
+    {
+     "audio_filename": "tadabur_spk0093_S99_A2_3f52050a_000417.wav",
+     "ber": 0.375,
+     "distance": null,
+     "reciter_id": 93,
+     "row_index": 133,
+     "shard": 381,
+     "slug": "anas_almiman_yt",
+     "surah_ayah": "100:2"
     }
    ],
-   "fingerprinted": 43060,
+   "fingerprinted": 43693,
    "lowest_ber": 0.3693,
    "matches": [],
-   "pairs": 43096,
+   "named_ids": [
+    93
+   ],
+   "named_pairs": 3523,
+   "named_pairs_untimed": 633,
+   "pairs": 43729,
    "per_tadabur_reciter_lowest": {
     "0": 0.4252,
     "1": 0.4105,
@@ -1894,7 +1922,7 @@
     "90": 0.431,
     "91": 0.4318,
     "92": 0.4445,
-    "93": 0.3893,
+    "93": 0.375,
     "94": 0.4408,
     "95": 0.4195,
     "96": 0.4479,

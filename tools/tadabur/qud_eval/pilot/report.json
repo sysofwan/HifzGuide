@@ -2993,7 +2993,8 @@
   "disk_sampled_from": "2026-10-14T16:58:28Z",
   "gpu": "NVIDIA GeForce RTX 5060 Ti",
   "gpu_hours": 6.81,
-  "overlap_check_wall_hours": 4.93,
+  "overlap_check_runs": 4,
+  "overlap_check_wall_hours": 8.05,
   "parallel_runs": "up to 6",
   "peak_disk_gb": 10.58,
   "shard_runs_completed": 11

@@ -187,7 +187,7 @@ class FakeHarness:
             final[1]["quality"] = "pending"
             final[-1] = {"word": words[-1], "quality": "minor", "errors": [
                 {"kind": {"type": "mismatch", "expected": "ن", "heard": "ل"}, "group_index": 0}]}
-            results += [{"item": r["item"], "scoring": s["name"], "final": final, "letters": []}
+            results += [{"item": r["item"], "scoring": s["name"], "final": final, "letters": [], "checks": []}
                         for s in r["scorings"]]
         return {"protocol_version": 3}, results
 

@@ -9,7 +9,8 @@ import pytest
 
 from training import consonant_flags as cf
 from training.consonant_flags_doc import render
-from training.device_logs import committed_transcript
+from training.decoding import committed_text
+from training.device_logs import session_checks
 from training.word_flags import OTHER_CONSONANT, SHADDAH_CAUSE
 
 
@@ -78,6 +79,28 @@ def test_a_phonetizer_slip_is_where_it_kept_a_letter_the_mushaf_assimilates():
     assert cf.phonetizer_slips(uthmani, kept, kept_spans) == {2: "unmarked ن before a shaddah ل (complete idgham)"}
 
 
+@pytest.mark.parametrize("text, index, letter, spelled", [
+    ("قُلْنَا", 2, "ل", cf.ITSELF_MARKED),       # sukun
+    ("مِّن لَّدُنْهُ", 3, "ل", cf.ANOTHER_LETTER),  # the noon assimilated into the lam
+    ("مِن قَبْلِ", 2, "ن", cf.ITSELF_UNMARKED),   # an ikhfa noon, unmarked
+    ("مِّن لَّدُنْهُ", 7, "ل", cf.ITSELF_MARKED),   # the shaddah: the geminate's second lam
+    ("عَلِيمٌ", 6, "ن", cf.A_MARK),                # the tanween's noon
+    ("أَحَدٌ", 0, "ء", cf.ITSELF_MARKED),          # a hamza on its seat
+])
+def test_the_spelling_says_whether_the_mushaf_writes_and_marks_the_letter(text, index, letter, spelled):
+    assert cf.spelling(text, index, letter) == spelled
+
+
+def test_a_planted_wrong_letter_is_not_spelled_as_itself():
+    """4:158 بَل رَّفَعَهُ: the reference's geminate raa is spelled as itself; a noon planted in its
+    place is spelled as another letter, so the spelling check cannot pass it."""
+    uthmani = "بَل رَّفَعَهُ"
+    phonemes = "بَ ررَفَعَهُ"
+    spans = [(0, 1), (1, 2), (3, 4), None, (4, 5), (5, 6), None, (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 12)]
+    assert cf.spellings(uthmani, phonemes, spans)[3] == cf.ITSELF_MARKED
+    assert cf.spellings(uthmani, phonemes.replace("رَ", "نَ"), spans)[3] == cf.ANOTHER_LETTER
+
+
 # --- the classification -------------------------------------------------------------------------------
 
 AYAH = "قَالَ رَببُ لعَاالَمِۦۦنَ"  # word 2 holds a geminate baa, word 3 a lam
@@ -89,23 +112,59 @@ def test_a_letter_the_realized_reference_lacks_is_the_reference_and_the_scorer()
     assert (reading.klass, reading.rule, reading.responsible) == (cf.REFERENCE, "waqf form", cf.MURAJA_SCORER)
 
 
-def test_a_pronounced_letter_the_decode_holds_is_grading_one_it_does_not_hold_the_models():
-    ayah = cf.Ayah(AYAH)
-    realized = AYAH
-    held = cf.classify(ayah, 3, mismatch("ل", "ر", 0), cf.Recital(realized, decode="قَالَرَببُلعَاالَمِۦۦنَ"),
-                       OTHER_CONSONANT)[0]
-    misheard = cf.classify(ayah, 3, mismatch("ل", "ر", 0), cf.Recital(realized, decode="قَالَرَببُرعَاالَمِۦۦنَ"),
+def check(hop: str, overlap: str = "") -> dict:
+    return {"hop": hop, "overlap": overlap, "flush": False}
+
+
+def recital(realized: str | None, checks: list[dict], setting: tuple[int, ...] = (0,)) -> cf.Recital:
+    return cf.Recital(realized, checks=tuple(checks), setting=lambda position: setting)
+
+
+def test_a_check_may_have_aligned_any_count_of_its_pending_hops():
+    """Past the 20 confirmed Characters, which hops were pending changes the query."""
+    ba, ta, tha = "\u0628\u064e", "\u062a\u064e", "\u062b\u064e"
+    checks = [check(ba * 25), check("", tha), check(ta, tha)]
+    assert cf.possible_queries(checks, 2) == [ba * 19 + ta + tha, ba * 20 + ta + tha, ba * 25 + ta + tha]
+    # a preview adds no hop: none or the one before it pending
+    assert cf.possible_queries(checks, 1) == [ba * 20 + tha, ba * 25 + tha]
+    # a stop has no overlap, and no more than MAX_PENDING_HOPS hops are ever pending
+    many = [check(ba * 25) for _ in range(cf.MAX_PENDING_HOPS + 3)] + [{**check(ta), "stop": True}]
+    queries = cf.possible_queries(many, len(many) - 1)
+    assert len(queries) == cf.MAX_PENDING_HOPS + 1 and not queries[-1].endswith(tha)
+
+
+def test_a_pronounced_letter_every_possible_query_holds_is_grading_none_holds_the_models():
+    error = mismatch("ل", "ر", 0)
+    held = cf.classify(cf.Ayah(AYAH), 3, error, recital(AYAH, [check("قَالَرَببُلعَاالَمِۦۦنَ")]), OTHER_CONSONANT)[0]
+    misheard = cf.classify(cf.Ayah(AYAH), 3, error, recital(AYAH, [check("قَالَرَببُرعَاالَمِۦۦنَ")]),
                            OTHER_CONSONANT)[0]
-    assert (held.klass, held.responsible) == (cf.GRADING, cf.MURAJA_SCORER)
-    assert (misheard.klass, misheard.responsible, misheard.evidence) == (cf.MODEL, None, "decode")
+    assert (held.klass, held.responsible, held.evidence) == (cf.GRADING, cf.MURAJA_SCORER, "query")
+    assert (misheard.klass, misheard.responsible, misheard.evidence) == (cf.MODEL, None, "query")
 
 
-def test_a_collapsed_geminate_is_grading_only_when_the_decode_holds_both_halves():
-    ayah = cf.Ayah(AYAH)
+def test_the_setting_check_decides_not_the_committed_transcript():
+    """The transcript commits the lam in a later hop; the preview that set the grade heard raa."""
+    checks = [check("", "قَالَرَببُرعَاالَمِۦۦنَ"), check("قَالَرَببُلعَاالَمِۦۦنَ")]
+    by_preview = cf.classify(cf.Ayah(AYAH), 3, mismatch("ل", "ر", 0), recital(AYAH, checks, (0,)), OTHER_CONSONANT)
+    assert by_preview[0].klass == cf.MODEL
+    both = cf.classify(cf.Ayah(AYAH), 3, mismatch("ل", "ر", 0), recital(AYAH, checks, (0, 1)), OTHER_CONSONANT)
+    assert (both[0].klass, both[0].rule) == (cf.UNCLEAR, "pronounced; the queries that can have set the kept grade disagree")
+    none = cf.classify(cf.Ayah(AYAH), 3, mismatch("ل", "ر", 0), recital(AYAH, checks, ()), OTHER_CONSONANT)
+    assert none[0].klass == cf.UNCLEAR
+
+
+def test_a_collapsed_geminate_is_grading_only_when_the_query_holds_both_halves():
     error = deletion("ب", 1)
-    held = cf.classify(ayah, 2, error, cf.Recital(AYAH, decode="قَالَرَببُلعَاالَمِۦۦنَ"), SHADDAH_CAUSE)[0]
-    single = cf.classify(ayah, 2, error, cf.Recital(AYAH, decode="قَالَرَبُلعَاالَمِۦۦنَ"), SHADDAH_CAUSE)[0]
+    held = cf.classify(cf.Ayah(AYAH), 2, error, recital(AYAH, [check("قَالَرَببُلعَاالَمِۦۦنَ")]), SHADDAH_CAUSE)[0]
+    single = cf.classify(cf.Ayah(AYAH), 2, error, recital(AYAH, [check("قَالَرَبُلعَاالَمِۦۦنَ")]), SHADDAH_CAUSE)[0]
     assert (held.klass, single.klass) == (cf.GRADING, cf.MODEL)
+
+
+def test_a_device_letter_is_read_in_every_check_whose_query_can_hold_it():
+    checks = [check("قَالَ", "رَب"), check("رَببُ", "لعَا"), check("لعَاالَمِۦۦنَ")]
+    position = cf.word_start(AYAH, 3)
+    assert cf.covering_checks(checks, AYAH, position) == (1, 2)
+    assert cf.covering_checks([check("زَيدُن")], AYAH, position) == ()
 
 
 def test_with_no_recital_a_wasl_dependent_letter_is_unclear_and_a_slip_is_the_phonetizers():
@@ -113,9 +172,9 @@ def test_with_no_recital_a_wasl_dependent_letter_is_unclear_and_a_slip_is_the_ph
     ayah = cf.Ayah("عَذَاابُن عَظِۦۦم", forms=lambda word: pause)
     reading, _ = cf.classify(ayah, 1, deletion("ن", 4), cf.Recital(), OTHER_CONSONANT)
     assert (reading.klass, reading.rule) == (cf.UNCLEAR, f"wasl-dependent: dropped on {cf.WAQF_HERE}")
-    # a letter every form keeps is pronounced: the model's on the kept grade alone
+    # a letter every form keeps is pronounced, but with no decode and no verdict it is unclear
     kept, _ = cf.classify(ayah, 1, mismatch("ذ", "ز", 1), cf.Recital(), OTHER_CONSONANT)
-    assert (kept.klass, kept.evidence) == (cf.MODEL, "kept grade")
+    assert (kept.klass, kept.rule) == (cf.UNCLEAR, "pronounced; no decode to read and no owner verdict")
     slipped = cf.Ayah("مِن لَهُ", slips={2: "unmarked ن before a shaddah ل (complete idgham)"})
     reading, _ = cf.classify(slipped, 1, mismatch("ن", "ل", 1), cf.Recital(), OTHER_CONSONANT)
     assert (reading.klass, reading.responsible) == (cf.REFERENCE, cf.PHONETIZER)
@@ -132,8 +191,8 @@ def test_a_letter_not_in_the_word_or_candidates_that_disagree_are_unclear():
     assert cf.classify(ayah, 1, mismatch("ق", "ك", 0), cf.Recital(), OTHER_CONSONANT)[0].rule == \
         "the letter is not in the word"
     # without a group, the three dals are candidates; the realized form lacks only the last
-    realized = cf.Recital("مَددَمَ", decode="مَددَمَ")
-    reading, unit = cf.classify(ayah, 1, cf.error_without_group("د→ت"), realized, OTHER_CONSONANT)
+    reading, unit = cf.classify(ayah, 1, cf.error_without_group("د→ت"), recital("مَددَمَ", [check("مَددَمَ")]),
+                                OTHER_CONSONANT)
     assert (reading.klass, unit) == (cf.UNCLEAR, None)
 
 
@@ -152,11 +211,22 @@ def test_the_decode_excerpt_is_what_the_decode_aligns_to_the_word():
     assert cf.decode_excerpt("قَالَرَبُلعَاالَمِۦۦنَ", AYAH, (5, 10)) == "رَبُ"
 
 
-def test_a_session_transcript_is_its_updates_hops_in_order():
-    log = ("x Update: type=window, hop=قَا, overlap=لَ رَب, didFlush=false\n"
-           "x Update: type=preview, hop=, overlap=لَ, didFlush=false\n"
-           "x Update: type=window, hop=لَ, overlap=, didFlush=false\n")
-    assert committed_transcript(log) == "قَالَ"
+def test_a_sessions_checks_are_read_as_the_pinned_replay_parses_its_log():
+    log = ("[10:00:00.000] [INFO] [FollowAlong] Update: type=window, hop=قَا, overlap=لَ رَب, didFlush=false\n"
+           "Update: type=preview, hop=, overlap=لَ, didFlush=false\n"
+           "Withheld update: hop=زَ, didFlush=false\n"
+           "Update: type=flush, hop=لَ, overlap=, didFlush=true\n"
+           "Stop: finalPhonemes=رَب\n")
+    assert session_checks(log) == [
+        {"hop": "قَا", "overlap": "لَ رَب", "flush": False}, {"hop": "", "overlap": "لَ", "flush": False},
+        {"hop": "لَ", "overlap": "", "flush": True}, {"hop": "رَب", "overlap": "", "flush": False, "stop": True}]
+    assert committed_text(session_checks(log)) == "قَالَرَب"
+    legacy = ("[Engine] Window inference 302ms \u2014 confirmed: كَاا, unconfirmed: فهَا \n"
+              "Preview inference 337ms \u2014 \n"
+              "Preview inference 337ms \u2014 فهَاا\n")
+    assert session_checks(legacy) == [{"hop": "كَاا", "overlap": "فهَا", "flush": False},
+                                      {"hop": "", "overlap": "فهَاا", "flush": False}]
+    assert session_checks("Position \u2192 1:1:1\n") == []
 
 
 # --- records, rates and the doc ------------------------------------------------------------------------
@@ -165,9 +235,10 @@ def test_a_session_transcript_is_its_updates_hops_in_order():
 def record(word: str, substitution: str, klass: str, cluster: str, **kw) -> cf.FlagRecord:
     return cf.FlagRecord(
         population=kw.get("population", cf.QUD), model="h448", scoring=kw.get("scoring", "shipped_default"),
-        word=word, printed="كلمة", cause=OTHER_CONSONANT, substitution=substitution, kind=cf.CONSONANT,
-        group=0, unit=0, context="#|x|#", klass=klass, rule=kw.get("rule", "pronounced"),
-        responsible=kw.get("responsible"), evidence="decode", cluster=cluster)
+        word=word, occurrence=kw.get("occurrence", f"{cluster}:{word}"), cause=OTHER_CONSONANT,
+        substitution=substitution, kind=cf.CONSONANT, group=0, unit=0, spelled=kw.get("spelled", cf.ITSELF_MARKED),
+        klass=klass, rule=kw.get("rule", "pronounced"), responsible=kw.get("responsible"), evidence="query",
+        cluster=cluster, printed="كلمة", context="#|x|#")
 
 
 def population(clustered: bool) -> cf.Population:
@@ -208,6 +279,29 @@ def test_the_owner_checks_list_each_class_top_substitutions_in_quran_order_a_wor
     assert checks[cf.REFERENCE] == []
 
 
+def test_the_owner_checks_count_every_substitution_a_word_carries():
+    """A word's last error must not hide its others (Sol, #157): ف→∅ rides on words that also
+    carry another substitution."""
+    flags = [record(f"{s}:1:1", sub, cf.GRADING, f"m:{s}") for s in range(1, 4) for sub in ("ف→∅", "ب→∅")]
+    flags += [record("9:1:1", "ء→∅", cf.GRADING, "m:9")]
+    assert [c["substitution"] for c in cf.owner_checks(flags)[cf.GRADING]] == ["ب→∅", "ف→∅", "ء→∅"]
+
+
+def test_a_private_populations_checklist_holds_word_references_only():
+    flags = [record("2:19:9", "ج→د", cf.MODEL, "69#1", population=cf.OWNER)]
+    (entry,) = cf.owner_checks(flags)[cf.MODEL]
+    assert entry["words"] == [{"word": "2:19:9", "rule": "pronounced"}]
+
+
+def test_repeated_recitals_count_once_each_in_numerator_and_denominator():
+    """16:80:15 recited in two items of one surah is two occurrences, as the graded words count it."""
+    graded = {"m:16": 10}
+    flags = (record("16:80:15", "ظ→ض", cf.MODEL, "m:16", occurrence="a#0:w15"),
+             record("16:80:15", "ظ→ض", cf.MODEL, "m:16", occurrence="b#1:w15"))
+    pop = cf.Population(cf.QUD, "h448", "shipped_default", graded, False, flags)
+    assert cf.rate_rows(pop, cf.MODEL, by_expected=False)[0]["words"] == 2
+
+
 def test_the_doc_renders_every_population_and_the_owner_checks():
     pop = population(clustered=True)
     report = {"muraja_commit": "99c326f3fb", "populations": [cf.population_view(pop)],
@@ -219,8 +313,37 @@ def test_the_doc_renders_every_population_and_the_owner_checks():
     assert "| reference | Muraja word scorer | ه→∅ | waqf form | 1 | 0.33 |" in doc
     assert "## Owner-check list" in doc and "`1:1:1` كلمة" in doc
     assert "6228 ayat checked; 1 not checked" in doc
-    assert "| QUD pilot | h448 | shipped_default | ن→ل | 2 | 0 | 0 | 0 |" in doc
+    assert "| QUD pilot | h448 | shipped_default | ن→ل | 2 | 0 | 0 | 0 | 2 |" in doc
+    assert "(`ن→ل`, `ل→ر`, `م→ب`): 3 of 3 of their errors sit" in doc
     assert "grading (Muraja word scorer) 1; reference (Muraja word scorer) 1; unclear (none named) 1" in doc
+
+
+def test_the_committed_report_and_doc_keep_the_private_sessions_to_word_references():
+    """#151's logs and #153's sessions are private: their records, views, checklists and doc
+    sections hold no Arabic but a label or a one-letter expected letter (the invariant of
+    ``test_device_logs`` and ``test_device_exports``)."""
+    import json
+    import re
+
+    from training.test_device_logs import arabic_beyond_labels
+
+    report = json.loads(cf.REPORT_PATH.read_text(encoding="utf-8"))
+    private = [part for key in ("records", "populations", "owner_checks") for part in report[key]
+               if part["population"] in cf.PRIVATE]
+    assert private and not arabic_beyond_labels(private, longest=1)
+    assert all("printed" not in r and "context" not in r and "decode" not in r
+               for r in report["records"] if r["population"] in cf.PRIVATE)
+    doc = cf.DOC_PATH.read_text(encoding="utf-8")
+    sections = [m for name in cf.PRIVATE for pattern in (rf"\n## {re.escape(name)}\n(.*?)(?=\n## )",
+                                                       rf"\n### {re.escape(name)}, [^\n]*\n(.*?)(?=\n##)")
+                for m in re.findall(pattern, doc, flags=re.S)]
+    assert len(sections) == 2 * len(cf.PRIVATE) and not arabic_beyond_labels(sections, longest=1)
+
+
+def test_the_doc_is_rendered_from_the_committed_report():
+    import json
+
+    assert cf.DOC_PATH.read_text(encoding="utf-8") == render(json.loads(cf.REPORT_PATH.read_text(encoding="utf-8")))
 
 
 QURAN_DB = Path(__file__).parent.parent.parent / "data" / "quran.db"
@@ -233,12 +356,16 @@ def test_the_forms_of_a_real_ayah_say_which_letters_a_pause_or_a_start_drops():
 
     text = MurajaText(QURAN_DB)
     assert text.text_words(109, 6, 3) == [3]
-    ayat = cf.Ayat(text)
+    from training.consonant_flag_populations import Ayat
+
+    ayat = Ayat(text)
     ayah = ayat.get(109, 6)  # لَكُمۡ دِينُكُمۡ وَلِيَ دِينِ
     assert ayah.phonemes == "لَكُم دِۦۦنُكُم وَلِيَ دِۦۦن"
     assert ayah.slips == {}
+    # the lam of dinukum's neighbour is spelled as itself, voweled
+    assert ayah.spelled[ayah.ordinal(cf.word_start(ayah.phonemes, 3) + 2)] == cf.ITSELF_MARKED
     # a pause on وَلِيَ makes its yaa a madd; a start at the last word keeps all of it
     yaa = cf.word_start(ayah.phonemes, 3) + 4
     reading, _ = cf.classify(ayah, 3, mismatch("ي", "ۦ", 2), cf.Recital(), OTHER_CONSONANT)
     assert (ayah.phonemes[yaa], reading.rule) == ("ي", f"wasl-dependent: dropped on {cf.WAQF_HERE}")
-    assert cf.classify(ayah, 4, deletion("ن", 1), cf.Recital(), OTHER_CONSONANT)[0].klass == cf.MODEL
+    assert cf.classify(ayah, 4, deletion("ن", 1), cf.Recital(verdict=cf.MODEL), OTHER_CONSONANT)[0].klass == cf.MODEL

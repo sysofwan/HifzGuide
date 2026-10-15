@@ -8,7 +8,15 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from training.consonant_flags import CLASSES, GRADING, MODEL, POPULATIONS, REFERENCE, UNCLEAR
+from training.consonant_flags import (
+    CLASSES,
+    GRADING,
+    ITSELF_MARKED,
+    MODEL,
+    POPULATIONS,
+    REFERENCE,
+    UNCLEAR,
+)
 
 #: Rows of each ranking shown here; the report holds every row.
 TOP = 15
@@ -75,9 +83,11 @@ def _population(report: Mapping, population: str) -> list[str]:
 
 def _owner_checks(report: Mapping) -> list[str]:
     out = ["## Owner-check list", "",
-           f"Per population and model, both scorings' flags together (a word once), the five most frequent "
-           f"substitutions of each class with up to ten of their words, in Quran order. The bracket marks "
-           f"the flagged letter in Muraja's phonemes; `|` the word boundaries (`#` an ayah's edge).", ""]
+           "Per population and model, both scorings' flags together (a word reference once per "
+           "substitution, every substitution it carries counted), the five most frequent substitutions "
+           "of each class with up to ten of their words, in Quran order, with the rule that classed it. "
+           "The bracket marks the flagged letter in Muraja's phonemes; `|` the word boundaries (`#` an "
+           "ayah's edge). The device and owner sessions are private: word references only.", ""]
     for entry in report["owner_checks"]:
         out += [f"### {entry['population']}, {entry['model']}", ""]
         for klass in CLASSES:
@@ -87,7 +97,8 @@ def _owner_checks(report: Mapping) -> list[str]:
             out.append(f"**{klass}**")
             out.append("")
             for item in lists:
-                words = "; ".join(f"`{w['word']}` {w['printed']} ({w['context']})" for w in item["words"])
+                words = "; ".join(f"`{w['word']}`" + (f" {w['printed']} ({w['context']})" if "printed" in w else "")
+                                  for w in item["words"])
                 out.append(f"- {item['substitution']}: {words}")
             out.append("")
     return out
@@ -95,14 +106,19 @@ def _owner_checks(report: Mapping) -> list[str]:
 
 def _phonetizer_check(check: Mapping) -> list[str]:
     slips = check["slips"]
-    found = (f"{len(slips)} positions where the phonetizer kept a letter the mushaf marks as not "
-             "pronounced so: " + "; ".join(f"{x['ayah']} ({x['reason']})" for x in slips) + ".") if slips else (
-        "none: wherever the mushaf marks a letter as not pronounced as itself, the phonetizer does "
-        "not write it as itself.")
+    found = (f"{len(slips)} positions where the phonetizer kept, as itself, a letter the mushaf marks as "
+             "silent or assimilated: " + "; ".join(f"{x['ayah']} ({x['reason']})" for x in slips) + ".") if slips else (
+        "none.")
     return ["## The phonetizer against the mushaf, every ayah", "",
             f"Step 1's guard run over the whole Quran, not only the flagged words: {check['ayat_checked']} "
             f"ayat checked; {len(check['not_checked'])} not checked (the phonetizer does not reproduce "
-            f"Muraja's reference there: {', '.join(check['not_checked']) or 'none'}). Slips found: {found}",
+            f"Muraja's reference there: {', '.join(check['not_checked']) or 'none'}). Positions where the "
+            f"reference keeps, as itself, a letter the mushaf marks as silent or assimilated: {found}",
+            "",
+            "**What this does not check:** where an assimilated letter goes, or that the letters the "
+            "reference keeps are the right ones. A reference that wrote a wrong letter in place of a "
+            "pronounced one (a planted `ن` for 4:158's geminate `ر`) passes it. It is no claim that the "
+            "reference equals Hafs; the flags rest on the spelling check below.",
             ""]
 
 
@@ -111,15 +127,18 @@ SUSPECTED = ("ن→ل", "ل→ر", "م→ب", "ا→∅")
 
 
 def _suspected(report: Mapping) -> list[str]:
-    """The issue's suspected substitutions, per class, in every population and arm."""
+    """The issue's suspected substitutions, per class, in every population and arm, with how
+    many sit at a letter the mushaf spells as itself and marks pronounced."""
     counts: dict[tuple, dict[str, int]] = {}
     for r in report["records"]:
         if r["substitution"] in SUSPECTED:
-            row = counts.setdefault((r["population"], r["model"], r["scoring"], r["substitution"]), dict.fromkeys(CLASSES, 0))
+            row = counts.setdefault((r["population"], r["model"], r["scoring"], r["substitution"]),
+                                    dict.fromkeys((*CLASSES, ITSELF_MARKED), 0))
             row[r["klass"]] += 1
-    out = ["| population | model | scoring | substitution | " + " | ".join(CLASSES) + " |",
-           "|---|---|---|---|" + "---|" * len(CLASSES)]
-    out += [f"| {p} | {m} | {s} | {sub} | " + " | ".join(str(row[k]) for k in CLASSES) + " |"
+            row[ITSELF_MARKED] += r["spelled"] == ITSELF_MARKED
+    out = ["| population | model | scoring | substitution | " + " | ".join(CLASSES) + " | spelled as itself, marked |",
+           "|---|---|---|---|" + "---|" * (len(CLASSES) + 1)]
+    out += [f"| {p} | {m} | {s} | {sub} | " + " | ".join(str(row[k]) for k in (*CLASSES, ITSELF_MARKED)) + " |"
             for (p, m, s, sub), row in sorted(counts.items(), key=lambda kv: (
                 POPULATIONS.index(kv[0][0]), kv[0][1], kv[0][2], SUSPECTED.index(kv[0][3])))]
     return out
@@ -135,10 +154,23 @@ def _responsible(report: Mapping) -> str:
     return "; ".join(f"{k} ({who}) {n}" for (k, who), n in sorted(tally.items())) or "none"
 
 
+def _spelled(report: Mapping) -> str:
+    """The suspected consonant substitutions' errors (``ا→∅`` is a madd) at a letter the mushaf
+    spells as itself and marks pronounced, of all their errors."""
+    mine = [r for r in report["records"] if r["substitution"] in SUSPECTED[:3]]
+    return f"{sum(r['spelled'] == ITSELF_MARKED for r in mine)} of {len(mine)}"
+
+
 def _headline(report: Mapping) -> list[str]:
+    check = report["phonetizer_check"]
     out = [f"- **Every population, every arm and scoring, the flags that are not the model's:** "
-           f"{_responsible(report)} (consonant errors). The phonetizer is responsible for none: its "
-           "letters agree with the mushaf's marks in every ayah it reproduces (below)."]
+           f"{_responsible(report)} (consonant errors).",
+           f"- **The reference never keeps, as itself, a letter the mushaf marks as silent or assimilated** "
+           f"({check['ayat_checked']} ayat checked, {len(check['slips'])} found). That is all the audit checks: "
+           "not where an assimilated letter goes, nor that a kept letter is right.",
+           f"- **The suspected tajweed substitutions** (`ن→ل`, `ل→ر`, `م→ب`): {_spelled(report)} of their "
+           "errors sit at a letter the mushaf spells as itself with a haraka, sukun or shaddah, so the "
+           "mushaf marks it pronounced there (per population and arm in the table below)."]
     for population in POPULATIONS:
         for v in _views(report, population):
             c = v["classes"]
@@ -180,10 +212,15 @@ def render(report: Mapping) -> str:
         "realized reference, its last word in waqf) and does not hold the letter there;",
         "3. **unclear:** what was recited is not known (device sessions) and the letter drops if the "
         "reader paused on the word, started at it, or joined it across an ayah boundary;",
-        "4. otherwise Hafs pronounces the letter. **Grading** (Muraja's word scorer) where the "
-        "committed decode holds it there and the engine flagged it anyway; **model** where the decode "
-        "has another letter or nothing there. The owner's sessions have no decode in the repo: the "
-        "owner's verdict stands in where the phone showed the word, else the kept grade alone.",
+        "4. otherwise Hafs pronounces the letter. What the engine heard decides: the query of the check "
+        "that set the kept grade (QUD, Tadabur: the checks whose own grade of the word is the kept "
+        "one; a device session keeps no per-check grade, so every check whose query can hold the "
+        "letter). A query is the last 20 confirmed Characters, the pending hops and the check's "
+        "overlap; which hops were pending is not recorded, so every count up to Muraja's 7 is a "
+        "possible query, and one whose alignment does not reach the letter is set aside. **Grading** "
+        "(Muraja's word scorer) where every possible query holds the letter there; **model** where "
+        "none does; **unclear** where they disagree or none reaches it. The owner's sessions have no "
+        "decode in the repo: the owner's verdict stands in where the phone showed the word.",
         "",
         "A flag whose letter is not in the word, or whose candidate letters (no group kept) are "
         "classified differently, is **unclear**. Idgham, iqlab, lam shamsiyyah and the madd and "
@@ -210,16 +247,15 @@ def render(report: Mapping) -> str:
     out += [
         "## What this can and cannot say",
         "",
-        "- **Can:** for each consonant false flag in these populations, whether Hafs pronounces the "
-        "expected letter there by the phonetizer's rules and the mushaf's marks, and whether the "
-        "committed decode holds it.",
+        "- **Can:** for each consonant false flag in these populations, whether the realized "
+        "reference holds the expected letter there, how the mushaf spells and marks it, and whether "
+        "the queries that can have set the kept grade hold it.",
         "- **Cannot:** whether a professional reciter actually pronounced every letter (the QUD "
-        "recitation is presumed correct, nobody listened); the check windows the engine graded "
-        "differ from the committed transcript, so *grading* is read from the transcript the app "
-        "commits, not from the window that set the kept grade, and by the truth-site scorer's carrier "
-        "rule, so a decode that holds the letter next to an inserted one, or one half of a geminate "
-        "the scorer split, can read as holding it (the grading list is for the owner to check); "
-        "device sessions' pauses are unknown.",
+        "recitation is presumed correct, nobody listened); which hops a check still held pending (a "
+        "class holds only where every possible query agrees); a device session's pauses and the check "
+        "that set its kept grade. A query is read by the truth-site scorer's carrier rule, so one that "
+        "holds the letter next to an inserted one, or one half of a geminate the scorer split, can "
+        "read as holding it (the grading list is for the owner to check).",
         "- QUD's intervals are clustered by mushaf and surah (two reciters: they describe these "
         "recordings, not reciters); the device logs' by log; the owner's sessions, the word sample "
         "and the held-out verified sites (selected at target-pair swaps, so their rates are not "

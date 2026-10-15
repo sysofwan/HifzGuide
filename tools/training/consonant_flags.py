@@ -10,8 +10,10 @@ classified, mechanically, by whose error it is.
 **Records.** Every consonant error (another consonant, a target or soft pair, a collapsed
 geminate: :func:`training.word_flags.consonant_cause`) behind a false flag, per population,
 model and scoring: the word (``surah:ayah:word``, Muraja's phoneme word), the substitution, where
-it sits in the word, the word's neighbours across both boundaries, and, for QUD and Tadabur
-audio only, the decode around it. Device and owner data keep word references only.
+it sits in the word, how the mushaf spells the letter there (:func:`spelling`), and, for QUD and
+Tadabur audio only, the printed word, its neighbours across both boundaries and the query
+around it. The device and owner sessions are private (:data:`PRIVATE`): their records and
+checklists keep word references, substitutions and rules only.
 
 **Where the letter is.** Muraja's word scorer numbers a word's groups after skipping what it
 never scores (``QuranFollowAlong+WordScoring.swift:131-226`` at the pin: the leading tanween
@@ -42,22 +44,35 @@ phonetizer's, ``generate_phonemes.py``):
    **wasl-dependent**: it drops when the reader pauses on the word, starts at it, joins it to
    the previous ayah or carries it into the next (:data:`FORMS`, each phonetized). Whether the
    reader did is not in the data;
-4. otherwise Hafs pronounces the letter there. It is **grading** (responsible: **Muraja's word
-   scorer**) where the decode holds the expected letter at that place (a geminate held, for a
-   collapsed-geminate flag) and the engine still flagged it, and **model** where the decode has
-   something else or nothing there. The decode is the transcript the app commits (the recorded
-   check sequence's hops, or a device session's logged hops), aligned on the realized reference
-   (or, for a device session, on Muraja's ayah) by the truth-site scorer's rule
-   (:func:`training.site_outcomes.pair_outcome`, :func:`~training.site_outcomes.shaddah_outcome`).
-   The owner's sessions have no decode in the repo; the owner's verdict on a word the phone
-   showed stands in (a model error read from the decode is ``model``, one explained by a word
-   boundary is ``grading``). A flag with neither is ``model`` on the kept grade alone, and says so
-   (``evidence``).
+4. otherwise Hafs pronounces the letter there, and what the engine heard decides (:func:`heard`).
+   The evidence is the **query of the check that set the kept grade**: for QUD and Tadabur the
+   checks whose own grade of the word is the kept one
+   (:attr:`training.muraja_policy.SiteGrade.setting_checks`); a device replay keeps no per-check
+   grade, so there every check whose query can hold the letter (:func:`covering_checks`). A
+   query is the last :data:`CONFIRMED_TAIL` confirmed Characters, the pending hops and the
+   check's overlap or preview; which hops were pending is not recorded, so each count up to
+   :data:`MAX_PENDING_HOPS` gives a possible query (:func:`possible_queries`), each aligned on the
+   realized reference (or Muraja's ayah) by the truth-site scorer's rule
+   (:func:`training.site_outcomes.pair_outcome`, :func:`~training.site_outcomes.shaddah_outcome`); one
+   whose alignment does not reach the letter is set aside. It is **grading** (responsible:
+   **Muraja's word scorer**) where every possible query holds the expected letter there (a
+   geminate held, for a collapsed-geminate flag), **model** where none does, and **unclear**
+   where they disagree, none reaches it, or no setting check is found. The owner's sessions have
+   no decode in the repo; the owner's verdict on a word the phone showed stands in (a model error
+   read from the decode is ``model``, one explained by a word boundary is ``grading``); a flag with
+   neither is ``unclear``.
 
 A flag whose letter cannot be found in the word is ``unclear``. Each record names its rule.
 
-**Rates.** Per 1,000 graded words (correctly recited words the app graded), by substitution and
-by expected letter (:func:`training.word_flags.substitution_tally`: a word counts once per key).
+**What the phonetizer audit checks.** Step 1 only finds a letter the reference keeps as itself
+where the mushaf marks it silent or assimilated; it does not check where an assimilated letter
+goes or that a kept letter is right. That a flagged letter is pronounced rests on the realized
+reference holding it and on how the mushaf spells it there: as itself with a haraka, sukun or
+shaddah (:data:`ITSELF_MARKED`) is the mushaf marking it pronounced.
+
+**Rates.** Per 1,000 graded word occurrences (a word of one item, log or session the app graded,
+the occurrence also the numerators' unit), by substitution and by expected letter
+(:func:`training.word_flags.substitution_tally`: an occurrence counts once per key).
 QUD's intervals are clustered by mushaf and surah (each mushaf is one reciter); the teacher's
 device sessions' by log (#151's rule); the owner's three sessions and the two Tadabur
 populations carry counts and points only. Nothing here sets a threshold.
@@ -91,7 +106,7 @@ import numpy as np
 from tadabur.contrast_attribution import CarrierAlignment, align_on_carriers
 from tadabur.truth_sites import HELD
 from training.acceptance_stats import Resample, ratio_interval
-from training.decoding import clusters
+from training.decoding import clusters, committed_text
 from training.muraja_policy import NOT_FLAGGED, TASHKEEL_ERROR, WORD_FLAGGED, MurajaText, SiteGrade, counterparts_in
 from training.site_outcomes import consonant_run, shaddah_outcome
 from training.tashkeel_eval import write_text_atomically
@@ -195,7 +210,8 @@ def word_start(ayah: str, word: int) -> int:
 
 # --- what the mushaf says -------------------------------------------------------------------------
 
-SHADDA, SILENT = "\u0651", "\u06df"  # shaddah, the small rounded zero
+SHADDA, SUKUN, SILENT = "\u0651", "\u0652", "\u06df"  # shaddah, sukun, the small rounded zero
+HARAKAT = frozenset("\u064e\u064f\u0650")
 TANWEEN = frozenset("\u064b\u064c\u064d")
 #: The marks after a tanween for not-izhar (idgham or ikhfa) and, after a tanween or a noon, for iqlab.
 NOT_IZHAR_MARK, IQLAB_MARK = "\u06ed", "\u06e2"
@@ -291,16 +307,55 @@ class Form:
         return position - self.start in counterparts_in(self.phonemes, ayah[self.start:self.end])
 
 
+#: How the mushaf spells the letter an expected phoneme comes from (:func:`spelling`).
+ITSELF_MARKED, ITSELF_UNMARKED, ANOTHER_LETTER, A_MARK = (
+    "as itself, marked", "as itself, unmarked", "as another letter", "from a mark")
+#: The Uthmani letters a phonetic letter may be spelled with (a hamza on its seat, a taa
+#: marbuta, an alif maqsura, the noon and meem of ikhfa).
+SPELLED_AS = {"ء": "ءأإؤئ" + HAMZAT_WASL, "ت": "تة", "ه": "هة", "ا": "اى", "ي": "يى", "ں": "ن", "۾": "م"}
+
+
+def spelling(uthmani: str, index: int, letter: str) -> str:
+    """How the Uthmani character at ``index`` spells the phonetic ``letter`` it produced: as
+    that letter with a haraka, sukun, shaddah or tanween on it (or a hamza's seat) — the mushaf
+    marking it pronounced —, as that letter with no mark, as another letter (an assimilation's
+    source), or from a mark (a tanween's noon, a dagger alif, a small waw or yaa)."""
+    char = uthmani[index]
+    if unicodedata.combining(char) and char != SHADDA:
+        return A_MARK
+    base = index
+    while unicodedata.combining(uthmani[base]):
+        base -= 1
+    if uthmani[base] not in SPELLED_AS.get(letter, letter):
+        return ANOTHER_LETTER
+    marked = uthmani[base] in SPELLED_AS["ء"] or set(_marks(uthmani, base)) & {*HARAKAT, SUKUN, SHADDA, *TANWEEN}
+    return ITSELF_MARKED if marked else ITSELF_UNMARKED
+
+
+def spellings(uthmani: str, phonemes: str, spans: Sequence[tuple[int, int] | None]) -> dict[int, str]:
+    """:func:`spelling` of each phoneme position (by non-space ordinal), from the first Uthmani
+    character whose phonetizer span holds it."""
+    nonspace = {i: k for k, i in enumerate(i for i, c in enumerate(phonemes) if c != " ")}
+    out: dict[int, str] = {}
+    for index, span in enumerate(spans):
+        for q in range(*span) if span else ():
+            if q in nonspace and nonspace[q] not in out:
+                out[nonspace[q]] = spelling(uthmani, index, phonemes[q])
+    return out
+
+
 @dataclass(frozen=True)
 class Ayah:
-    """Muraja's reference for one ayah and what can be said about each position of it: the
-    phonetizer slips the mushaf contradicts (by non-space ordinal), and the ayah's other
-    realizations around a word (:data:`FORMS`), each as phonemes, for a recital not known."""
+    """Muraja's reference for one ayah and what can be said about each position of it (by
+    non-space ordinal): where the phonetizer kept a letter the mushaf marks as not pronounced so,
+    how the mushaf spells each phoneme's letter, and the ayah's other realizations around a word
+    (:data:`FORMS`), for a recital not known."""
 
     phonemes: str
     slips: Mapping[int, str] = field(default_factory=dict)
     #: Whether the slips were looked for: the phonetizer reproduces Muraja's reference here.
     checked: bool = True
+    spelled: Mapping[int, str] = field(default_factory=dict)
     forms: Callable[[int], Mapping[str, Form]] = field(default=lambda word: {}, compare=False)
 
     def ordinal(self, position: int) -> int:
@@ -313,15 +368,112 @@ WAQF_HERE, IBTIDA_HERE, FROM_PREVIOUS, INTO_NEXT = (
 FORMS = (WAQF_HERE, IBTIDA_HERE, FROM_PREVIOUS, INTO_NEXT)
 
 
+# --- what the engine heard ---------------------------------------------------------------------------
+
+#: The confirmed Characters the engine puts before the pending hops (``recentHeard``,
+#: ``FollowAlongEngine.swift:3656-3659``).
+CONFIRMED_TAIL = 20
+#: The most hops a query can hold pending: the engine discards the oldest past
+#: ``maxPendingHops`` (6, ``FollowAlongEngine.swift:265, 869-871``), and the check's own hop
+#: joins them before it aligns.
+MAX_PENDING_HOPS = 7
+
+
+def possible_queries(checks: Sequence[dict], index: int) -> list[str]:
+    """Every query check ``index`` may have aligned (``runFollowAlongCheck``,
+    ``FollowAlongEngine.swift:1565-1628``): :data:`CONFIRMED_TAIL` confirmed Characters, the
+    pending hops — which hops were still pending is not recorded, so none up to the last
+    :data:`MAX_PENDING_HOPS` non-empty hops — and the check's overlap or preview (a stop has
+    none). Distinct queries only, shortest pending run first."""
+    hops = [clusters(c["hop"]) for c in checks[: index + 1] if c["hop"]]
+    overlap = "" if checks[index].get("stop") else checks[index]["overlap"]
+    out: dict[str, None] = {}
+    for k in range(min(MAX_PENDING_HOPS, len(hops)) + 1):
+        confirmed = [c for hop in hops[: len(hops) - k] for c in hop][-CONFIRMED_TAIL:]
+        pending = [c for hop in hops[len(hops) - k:] for c in hop]
+        out["".join(confirmed + pending) + overlap] = None
+    return list(out)
+
+
+def _carrier(alignment: CarrierAlignment, index: int) -> int | None:
+    """The raw-reference carrier of the normalized group that holds raw index ``index``."""
+    starts = [*alignment.cluster_starts, len(alignment.raw_reference)]
+    for lo, hi in alignment.reference.offset_map:
+        if starts[lo] <= index < starts[hi]:
+            return starts[lo]
+    return None
+
+
+def decode_holds(decode: str, reference: str, index: int, expected: str, geminate: bool) -> bool | None:
+    """Whether ``decode``, aligned on ``reference`` by the truth-site scorer's rule, holds
+    ``expected`` at ``index`` (the geminate there held, for a collapsed geminate); ``None`` where
+    the alignment does not reach it."""
+    alignment = align_on_carriers(decode, reference)
+    if geminate:
+        held = shaddah_outcome(alignment, consonant_run(reference, index)[0]).committed
+        return None if held is None else held == HELD
+    carrier = _carrier(alignment, index)
+    consonants = alignment.consonants()
+    if carrier is None or carrier not in consonants:
+        return None
+    return consonants[carrier] == FOLDED.get(expected, expected)
+
+
+def check_evidence(queries: Sequence[str], reference: str, index: int, expected: str,
+                   geminate: bool) -> frozenset[bool]:
+    """What a check's possible queries say at the letter (:func:`decode_holds`): a query whose
+    alignment does not reach the letter is taken not to be the one that graded it, and is set
+    aside."""
+    return frozenset(held for q in queries
+                     if (held := decode_holds(q, reference, index, expected, geminate)) is not None)
+
+
+def query_cluster(decode: str, reference: str, index: int) -> int | None:
+    """The Character (cluster) of ``decode`` its alignment on ``reference`` pairs with the group
+    holding raw index ``index`` (the nearest decode Character before it, at a gap)."""
+    alignment = align_on_carriers(decode, reference)
+    carrier = _carrier(alignment, index)
+    starts = [*alignment.cluster_starts, len(reference)]
+    last = None
+    for pos, query in zip(alignment.positions, alignment.query_positions):
+        last = query if query is not None else last
+        if pos is not None and starts[alignment.reference.offset_map[pos][0]] == carrier:
+            return None if last is None else alignment.decode.offset_map[last][0]
+    return None
+
+
+def covering_checks(checks: Sequence[dict], reference: str, index: int) -> tuple[int, ...]:
+    """The checks of a session whose query can hold the letter at ``index`` of ``reference``:
+    the letter's Character in the committed transcript (the hops, in order) lies in the
+    check's longest possible query (:func:`possible_queries`) — its pending hops and confirmed
+    tail, or the overlap that follows them."""
+    at = query_cluster(committed_text(checks), reference, index)
+    if at is None:
+        return ()
+    lengths = [len(clusters(c["hop"])) for c in checks]
+    ends = list(accumulate(lengths))
+    out = []
+    for i, (check, end) in enumerate(zip(checks, ends)):
+        pending = [n for n in lengths[: i + 1] if n][-MAX_PENDING_HOPS:]
+        overlap = 0 if check.get("stop") else len(clusters(check["overlap"]))
+        if end - sum(pending) - CONFIRMED_TAIL <= at < end + overlap:
+            out.append(i)
+    return tuple(out)
+
+
 @dataclass(frozen=True)
 class Recital:
-    """What is known of how a word was recited: the item's realized reference, whether the item
-    ends on the word, the committed decode (read against ``realized``, or against Muraja's ayah
-    when no realized reference is known), and the owner's verdict standing in for a decode."""
+    """What is known of how a word was recited: the item's realized reference and whether the
+    item ends on the word; the checks the engine graded it on, with the ones that can have set
+    its kept grade (given the letter's position in Muraja's ayah: the checks whose own grade is
+    the kept one, or for a device session every check whose query can hold the letter), read
+    against ``realized`` (or Muraja's ayah when none is known); and the owner's verdict standing
+    in for a decode the repo does not hold."""
 
     realized: str | None = None
     ends_here: bool = False
-    decode: str | None = None
+    checks: tuple[dict, ...] | None = None
+    setting: Callable[[int], Sequence[int]] = field(default=lambda position: (), compare=False)
     verdict: str | None = None
 
 
@@ -335,27 +487,25 @@ class Reading:
     evidence: str | None = None
 
 
-def _carrier(alignment: CarrierAlignment, index: int) -> int | None:
-    """The raw-reference carrier of the normalized group that holds raw index ``index``."""
-    starts = [*alignment.cluster_starts, len(alignment.raw_reference)]
-    for lo, hi in alignment.reference.offset_map:
-        if starts[lo] <= index < starts[hi]:
-            return starts[lo]
-    return None
-
-
-def decode_holds(decode: str, reference: str, index: int, expected: str, geminate: bool) -> bool | None:
-    """Whether ``decode``, aligned on ``reference``, holds ``expected`` at ``index`` (the geminate
-    there held, for a collapsed geminate); ``None`` outside the alignment."""
-    alignment = align_on_carriers(decode, reference)
-    if geminate:
-        held = shaddah_outcome(alignment, consonant_run(reference, index)[0]).committed
-        return None if held is None else held == HELD
-    carrier = _carrier(alignment, index)
-    consonants = alignment.consonants()
-    if carrier is None or carrier not in consonants:
-        return None
-    return consonants[carrier] == FOLDED.get(expected, expected)
+def heard(recital: Recital, reference: str, index: int, position: int, expected: str, geminate: bool) -> Reading:
+    """Step 4: the class of a pronounced letter from what the engine heard (module docstring)."""
+    if recital.checks is None:
+        if recital.verdict is None:
+            return Reading(UNCLEAR, "pronounced; no decode to read and no owner verdict")
+        return Reading(recital.verdict, f"pronounced; the owner's verdict ({recital.verdict})",
+                       MURAJA_SCORER if recital.verdict == GRADING else None, "owner")
+    setting = recital.setting(position)
+    if not setting:
+        return Reading(UNCLEAR, "pronounced; no check that can have set the kept grade is identified")
+    said = frozenset().union(*(check_evidence(possible_queries(recital.checks, i), reference, index, expected,
+                                              geminate) for i in setting))
+    if said == {True}:
+        return Reading(GRADING, "pronounced; the query that set the kept grade holds it", MURAJA_SCORER, "query")
+    if said == {False}:
+        return Reading(MODEL, "pronounced; the query that set the kept grade has another letter or none there",
+                       None, "query")
+    return Reading(UNCLEAR, "pronounced; the queries that can have set the kept grade disagree" if said
+                   else "pronounced; no query that can have set the kept grade reaches the letter")
 
 
 def read_position(ayah: Ayah, position: int, word: int, expected: str, geminate: bool,
@@ -375,16 +525,7 @@ def read_position(ayah: Ayah, position: int, word: int, expected: str, geminate:
         dropped = [name for name, form in ayah.forms(word).items() if not form.keeps(ayah.phonemes, position)]
         if dropped:
             return Reading(UNCLEAR, f"wasl-dependent: dropped on {', '.join(dropped)}")
-    if recital.decode is not None:
-        holds = decode_holds(recital.decode, reference, index, expected, geminate)
-        if holds:
-            return Reading(GRADING, "pronounced; the decode holds it", MURAJA_SCORER, "decode")
-        return Reading(MODEL, "pronounced; the decode has another" if holds is False
-                       else "pronounced; the decode has nothing aligned there", None, "decode")
-    if recital.verdict is not None:
-        return Reading(recital.verdict, f"pronounced; the owner's verdict ({recital.verdict})",
-                       MURAJA_SCORER if recital.verdict == GRADING else None, "owner")
-    return Reading(MODEL, "pronounced; kept grade only", None, "kept grade")
+    return heard(recital, reference, index, position, expected, geminate)
 
 
 def classify(ayah: Ayah, word: int, error: dict, recital: Recital, cause: str) -> tuple[Reading, int | None]:
@@ -407,6 +548,14 @@ def classify(ayah: Ayah, word: int, error: dict, recital: Recital, cause: str) -
 
 # --- records -----------------------------------------------------------------------------------------
 
+#: The populations whose recordings are private: their records keep word references only (no
+#: Arabic beyond a substitution's or a letter's label).
+QUD, DEVICE_LOGS, OWNER, WORD_SAMPLE, HELD_OUT_SITES = (
+    "QUD pilot", "#151 device logs (teacher)", "#153 owner sessions (h448)", "#90 word sample (h448/checks)",
+    "Ship A held-out verified sites (h448/checks)")
+POPULATIONS = (QUD, DEVICE_LOGS, OWNER, WORD_SAMPLE, HELD_OUT_SITES)
+PRIVATE = frozenset({DEVICE_LOGS, OWNER})
+
 
 @dataclass(frozen=True)
 class FlagRecord:
@@ -416,20 +565,25 @@ class FlagRecord:
     model: str
     scoring: str
     word: str
-    printed: str
+    #: One recital of the word: an item's, a session's, a log's.
+    occurrence: str
     cause: str
     substitution: str
     kind: str
     group: int | None
     unit: int | None
-    context: str
+    #: How the mushaf spells the expected letter there (:func:`spelling`; ``None`` unplaced).
+    spelled: str | None
     klass: str
     rule: str
     responsible: str | None
     evidence: str | None
-    #: The word's carrier group: a QUD mushaf and surah, a log, a session, a reciter.
+    #: The word's interval cluster: a QUD mushaf and surah, a log, a session, an item.
     cluster: str
-    #: QUD and Tadabur only: the committed decode aligned to the word.
+    #: Public populations only: the printed word and its context (:func:`context`).
+    printed: str | None = None
+    context: str | None = None
+    #: QUD and Tadabur only: the query that set the kept grade, aligned to the word.
     decode: str | None = None
 
 
@@ -475,32 +629,57 @@ class FlaggedWord:
     errors: tuple[dict, ...]
     recital: Recital
     cluster: str
+    occurrence: str
     #: The word's span in the realized reference, for the decode excerpt.
     span: tuple[int, int] | None = None
 
 
 def records(flagged: FlaggedWord, ayah: Ayah, printed: str) -> list[FlagRecord]:
-    """Every consonant error of a flagged word, classified."""
+    """Every consonant error of a flagged word, classified; a private population's without its
+    Arabic."""
     phonemes = ayah.phonemes.split(" ")[flagged.word - 1]
+    public = flagged.population not in PRIVATE
+    recital = flagged.recital
     out = []
     for error in flagged.errors:
         cause = consonant_cause(error, phonemes)
         if cause is None:
             continue
-        reading, offset = classify(ayah, flagged.word, error, flagged.recital, cause)
+        reading, offset = classify(ayah, flagged.word, error, recital, cause)
         units = [o for o, _ in scored_units(phonemes)]
+        position = None if offset is None else word_start(ayah.phonemes, flagged.word) + offset
         excerpt = None
-        if flagged.recital.decode is not None and flagged.recital.realized is not None and flagged.span:
-            excerpt = decode_excerpt(flagged.recital.decode, flagged.recital.realized, flagged.span)
+        if public and position is not None and recital.checks and recital.realized is not None and flagged.span:
+            setting = recital.setting(position)
+            if setting:
+                query = possible_queries(recital.checks, setting[0])[-1]
+                excerpt = decode_excerpt(query, recital.realized, flagged.span)
         out.append(FlagRecord(
             population=flagged.population, model=flagged.model, scoring=flagged.scoring,
-            word=f"{flagged.surah}:{flagged.ayah}:{flagged.word}", printed=printed, cause=cause,
+            word=f"{flagged.surah}:{flagged.ayah}:{flagged.word}", occurrence=flagged.occurrence, cause=cause,
             substitution=substitution(error), kind=letter_kind(error["kind"]["expected"]),
-            group=None if error["group_index"] == UNKNOWN_GROUP else error["group_index"], unit=units.index(offset) if offset is not None else None,
-            context=context(ayah.phonemes, flagged.word, offset), klass=reading.klass, rule=reading.rule,
-            responsible=reading.responsible, evidence=reading.evidence, cluster=flagged.cluster,
+            group=None if error["group_index"] == UNKNOWN_GROUP else error["group_index"],
+            unit=None if offset is None else units.index(offset),
+            spelled=None if position is None else ayah.spelled.get(ayah.ordinal(position)),
+            klass=reading.klass, rule=reading.rule, responsible=reading.responsible, evidence=reading.evidence,
+            cluster=flagged.cluster,
+            printed=printed if public else None,
+            context=context(ayah.phonemes, flagged.word, offset) if public else None,
             decode=excerpt))
     return out
+
+
+#: The group of an error whose group the table did not keep: outside every word, so
+#: ``word_flags.deleted_run`` reads the occurrence from the word's runs alone.
+UNKNOWN_GROUP = -1
+
+
+def error_without_group(label: str) -> dict:
+    """A consonant error back from its substitution (``ل→ء``, ``ه→∅``), its group unknown."""
+    expected, heard_ = label.split("→")
+    kind = ({"type": "deletion", "expected": expected} if heard_ == DELETED
+            else {"type": "mismatch", "expected": expected, "heard": heard_})
+    return {"kind": kind, "group_index": UNKNOWN_GROUP}
 
 
 # --- rates -------------------------------------------------------------------------------------------
@@ -540,7 +719,8 @@ def per_1000(hits: int, words: int) -> float | None:
 
 
 def _word_key(record: FlagRecord) -> tuple[str, str]:
-    return record.cluster, record.word
+    """A flagged word occurrence: its cluster and its recital, the unit graded words count in."""
+    return record.cluster, record.occurrence
 
 
 def interval(population: Population, hits: Mapping[str, int]) -> dict:
@@ -598,19 +778,24 @@ def responsible_table(population: Population) -> list[dict]:
 
 
 def owner_checks(flags: Sequence[FlagRecord]) -> dict[str, list[dict]]:
-    """Per class, the top :data:`CHECK_SUBSTITUTIONS` substitutions with up to
-    :data:`CHECK_WORDS` of their words (in Quran order) for the owner to confirm."""
+    """Per class, the top :data:`CHECK_SUBSTITUTIONS` substitutions (each word reference once
+    per substitution, every substitution it carries counted) with up to :data:`CHECK_WORDS` of
+    their words, in Quran order, for the owner to confirm. A private population's words carry
+    no Arabic (:data:`PRIVATE`)."""
     out = {}
     for klass in CLASSES:
         mine = [r for r in flags if r.klass == klass]
-        top = [row["substitution"] for row in substitution_tally(
-            [[(r.cause, r.substitution)] for r in {_word_key(r): r for r in mine}.values()])]
+        by_word: dict[str, set[tuple[str, str]]] = defaultdict(set)
+        for r in mine:
+            by_word[r.word].add((r.cause, r.substitution))
+        top = dict.fromkeys(row["substitution"] for row in substitution_tally(by_word.values()))
         lists = []
-        for sub in list(dict.fromkeys(top))[:CHECK_SUBSTITUTIONS]:
+        for sub in list(top)[:CHECK_SUBSTITUTIONS]:
             words = sorted({r.word: r for r in mine if r.substitution == sub}.values(),
                            key=lambda r: tuple(int(x) for x in r.word.split(":")))
             lists.append({"substitution": sub, "words": [
-                {"word": r.word, "printed": r.printed, "context": r.context, "rule": r.rule}
+                {"word": r.word, "rule": r.rule,
+                 **({"printed": r.printed, "context": r.context} if r.population not in PRIVATE else {})}
                 for r in words[:CHECK_WORDS]]})
         out[klass] = lists
     return out
@@ -629,293 +814,7 @@ def population_view(population: Population) -> dict:
     }
 
 
-# --- the populations -----------------------------------------------------------------------------------
-
-QUD, DEVICE_LOGS, OWNER, WORD_SAMPLE, HELD_OUT_SITES = (
-    "QUD pilot", "#151 device logs (teacher)", "#153 owner sessions (h448)", "#90 word sample (h448/checks)",
-    "Ship A held-out verified sites (h448/checks)")
-POPULATIONS = (QUD, DEVICE_LOGS, OWNER, WORD_SAMPLE, HELD_OUT_SITES)
-
-
-class Ayat:
-    """Each ayah's :class:`Ayah`: Muraja's reference, the phonetizer's slips against the
-    mushaf, and the forms around a word, from quran-transcript (computed once per ayah)."""
-
-    def __init__(self, text: MurajaText):
-        self.text = text
-
-    @cache
-    def uthmani_words(self, surah: int, ayah: int) -> tuple[str, ...]:
-        from tadabur.waqf_segments import _uthmani_words
-
-        return tuple(_uthmani_words(f"{surah}:{ayah}"))
-
-    def _phonetized(self, words: Sequence[str]) -> str | None:
-        from hafs_phonetizer import phonetize
-
-        try:
-            return phonetize(" ".join(words)).phonemes
-        except (KeyError, IndexError):
-            return None  # quran-transcript 0.5.2's known gap
-
-    @cache
-    def get(self, surah: int, ayah: int) -> Ayah:
-        from hafs_phonetizer import phonetize
-
-        phonemes = self.text.phonemes(surah, ayah)
-        words = self.uthmani_words(surah, ayah)
-        slips: dict[int, str] = {}
-        try:
-            out = phonetize(" ".join(words))
-        except (KeyError, IndexError):
-            out = None
-        checked = out is not None and out.phonemes.replace(" ", "") == phonemes.replace(" ", "")
-        if checked:
-            spans = [None if m.deleted else m.pos for m in out.mappings]
-            slips = phonetizer_slips(" ".join(words), out.phonemes, spans)
-        return Ayah(phonemes, slips, checked, lambda word: self.forms(surah, ayah, word))
-
-    def every_ayah(self) -> Iterable[tuple[int, int]]:
-        from quran_transcript import Aya
-
-        for surah in range(1, 115):
-            yield from ((surah, ayah) for ayah in range(1, Aya(surah, 1).get().num_ayat_in_sura + 1))
-
-    @cache
-    def forms(self, surah: int, ayah: int, word: int) -> dict[str, Form]:
-        """The :data:`FORMS` a phoneme word's context can take (those the phonetizer handles)."""
-        words = self.uthmani_words(surah, ayah)
-        reference = self.text.phonemes(surah, ayah)
-        start = word_start(reference, word)
-        end = start + len(reference.split(" ")[word - 1])
-        printed = self.text.text_words(surah, ayah, word)
-        first, last = printed[0], printed[-1]
-        spans: dict[str, tuple[list[str], int, int]] = {}
-        if last < len(words):
-            spans[WAQF_HERE] = (list(words[:last]), 0, end)
-        if first > 1:
-            spans[IBTIDA_HERE] = (list(words[first - 1:]), start, len(reference))
-        if first == 1 and ayah > 1:
-            spans[FROM_PREVIOUS] = ([self.uthmani_words(surah, ayah - 1)[-1], *words], 0, len(reference))
-        if last == len(words) and self._has(surah, ayah + 1):
-            spans[INTO_NEXT] = ([*words, self.uthmani_words(surah, ayah + 1)[0]], 0, len(reference))
-        return {name: Form(phonemes, lo, hi) for name, (w, lo, hi) in spans.items()
-                if (phonemes := self._phonetized(w)) is not None}
-
-    @cache
-    def _has(self, surah: int, ayah: int) -> bool:
-        from quran_transcript import Aya
-
-        return ayah <= Aya(surah, 1).get().num_ayat_in_sura
-
-
-def phonetizer_check(ayat: Ayat) -> dict:
-    """The orthography guard (:func:`mushaf_reason`) over every ayah, not only the flagged ones:
-    the ayat checked, those it cannot check (the phonetizer does not reproduce Muraja's reference
-    there: its fallback ayat), and every slip found."""
-    readings = {(s, a): ayat.get(s, a) for s, a in ayat.every_ayah()}
-    return {"ayat_checked": sum(r.checked for r in readings.values()),
-            "not_checked": [f"{s}:{a}" for (s, a), r in readings.items() if not r.checked],
-            "slips": [{"ayah": f"{s}:{a}", "ordinal": q, "reason": why}
-                      for (s, a), r in readings.items() for q, why in sorted(r.slips.items())]}
-
-
-def build_population(name: str, model: str, scoring: str, graded: Iterable[str],
-                     flagged: Iterable[FlaggedWord], ayat: Ayat, clustered: bool) -> Population:
-    """A population from its graded words' clusters and its flagged words, classified."""
-    out: list[FlagRecord] = []
-    for f in flagged:
-        out += records(f, ayat.get(f.surah, f.ayah), ayat.text.printed(f.surah, f.ayah, f.word))
-    return Population(name, model, scoring, dict(sorted(Counter(graded).items())), clustered, tuple(out))
-
-
-def qud_populations(harness, ayat: Ayat) -> list[Population]:
-    """The QUD pilot, both models, every word of every item regraded from the committed check
-    sequences; clustered by mushaf and surah."""
-    from training.decoding import committed_text
-    from training.qud_pilot import MODELS, grade_words, load_pilot
-    from training.truth_baseline import CHECKS
-
-    pilot = load_pilot()
-    words = grade_words(pilot.items, pilot.decodes, harness)
-    out = []
-    for model in MODELS:
-        decodes = {item.key: committed_text(pilot.decodes[model][item.key][CHECKS]) for item in pilot.items}
-        for scoring in SCORING_NAMES:
-            graded, flagged = [], []
-            for item in pilot.items:
-                offsets = item.reference.offsets
-                last = words.placed[item.key][-1][0].site_id
-                for word, site in words.placed[item.key]:
-                    grade = words.grade(scoring, model, item, word)
-                    if grade.outcome not in (*WORD_FLAGGED, NOT_FLAGGED):
-                        continue
-                    cluster = f"{item.slug}:{item.row.surah}"
-                    graded.append(cluster)
-                    if grade.outcome not in WORD_FLAGGED or grade.quality in (TASHKEEL_ERROR, SKIPPED_QUALITY):
-                        continue
-                    k = item.reference.word_indices.index(word.word_index)
-                    flagged.append(FlaggedWord(
-                        QUD, model, scoring, site.surah, site.ayah, site.word, grade.errors,
-                        Recital(item.reference.reference, word.site_id == last, decodes[item.key]),
-                        cluster, (offsets[k], offsets[k + 1])))
-            out.append(build_population(QUD, model, scoring, graded, flagged, ayat, clustered=True))
-    return out
-
-
-def device_log_populations(ayat: Ayat) -> list[Population]:
-    """#151's included teacher sessions replayed at the pin, the words its docs explain left out;
-    each log's committed transcript is the decode (read here, never written)."""
-    from training import device_logs as dl
-    from training.muraja_policy import MURAJA_COMMIT, SCORINGS
-
-    pin = dl.require(MURAJA_COMMIT)
-    entries = [e for e in dl.load_inventory() if e.included and e.model == dl.TEACHER]
-    paths = {e.log: dl.log_dir(MURAJA_COMMIT) / f"{e.log}.log" for e in entries}
-    scorings = [s for s in SCORINGS if s.name in SCORING_NAMES]
-    _, replays = dl.replay_logs(pin, paths, scorings)
-    transcripts = {log: dl.committed_transcript(path.read_text(encoding="utf-8")) for log, path in paths.items()}
-    out = []
-    for scoring in scorings:
-        graded, flagged = [], []
-        for e in entries:
-            for g in dl.word_grades(e, replays[e.log], [scoring], ayat.text):
-                if g.explained:
-                    continue
-                graded.append(e.log)
-                if g.flagged and g.consonants:
-                    surah, ayah, word = dl.position(g.word)
-                    flagged.append(FlaggedWord(DEVICE_LOGS, dl.TEACHER, scoring.name, surah, ayah, word, g.errors,
-                                               Recital(decode=transcripts[e.log]), e.log))
-        out.append(build_population(DEVICE_LOGS, dl.TEACHER, scoring.name, graded, flagged, ayat, clustered=True))
-    return out
-
-
-#: The owner's verdict on a word the phone showed, as a class (``owner_sessions.json``).
-OWNER_VERDICTS = {"decode": MODEL, "boundary": GRADING}
-
-
-#: The group of an error whose group the table did not keep: outside every word, so
-#: ``word_flags.deleted_run`` reads the occurrence from the word's runs alone.
-UNKNOWN_GROUP = -1
-
-
-def error_without_group(label: str) -> dict:
-    """A consonant error back from its substitution (``ل→ء``, ``ه→∅``), its group unknown."""
-    expected, heard = label.split("→")
-    kind = ({"type": "deletion", "expected": expected} if heard == DELETED
-            else {"type": "mismatch", "expected": expected, "heard": heard})
-    return {"kind": kind, "group_index": UNKNOWN_GROUP}
-
-
-def owner_populations(ayat: Ayat) -> list[Population]:
-    """#153's committed per-word table (no group index: every unit holding the letter is a
-    candidate); the owner's mistakes left out; no interval (three sessions)."""
-    from training.device_exports import MODEL_ERROR, REPORT_PATH as OWNER_REPORT
-    from training.device_logs import UNEXPLAINED, position
-
-    report = json.loads(OWNER_REPORT.read_text(encoding="utf-8"))
-    out = []
-    for scoring in SCORING_NAMES:
-        words = report["rates"][scoring][UNEXPLAINED]["false_flags"]["words"]
-        flagged = []
-        for row in report["words"]:
-            if row["scoring"] != scoring or row["explained"] is not None or not row["substitutions"]:
-                continue
-            surah, ayah, word = position(row["word"])
-            verdict = row["verdict"]
-            evidence = OWNER_VERDICTS.get(verdict.get("explained_by")) if verdict["status"] == MODEL_ERROR else None
-            errors = tuple(error_without_group(label) for label in row["substitutions"])
-            flagged.append(FlaggedWord(OWNER, "h448", scoring, surah, ayah, word, errors,
-                                       Recital(verdict=evidence), row["log"]))
-        # three sessions carry no interval: the words are counted, not clustered
-        out.append(build_population(OWNER, "h448", scoring, ["sessions"] * words, flagged, ayat, clustered=False))
-    return out
-
-
-def tadabur_populations(harness, ayat: Ayat) -> list[Population]:
-    """#90's word sample and Ship A's held-out verified sites (correct side) on ``h448``'s
-    recorded checks, regraded from the committed check sequences; a word is a site's word."""
-    from tadabur.exclusions import current
-    from tadabur.listening_session import adjudicated, read_verdicts
-    from tadabur.ship_a import HELD_OUT
-    from tadabur.ship_a_verified import SHIP_A, load_designs
-    from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
-    from tadabur.word_sample import load_words, verified_words
-    from training import truth_baseline as tb
-    from training.decoding import committed_text
-    from training.site_outcomes import CORRECT_SIDE
-    from training.truth_scorer import item_key
-
-    arm = tb.arm("h448", tb.CHECKS)
-    verdicts = read_verdicts()
-    designs = load_designs()
-    excluded = current()
-    sites = [s for s in adjudicated(tb.load_sites(tb.truth_site_files()), verdicts)
-             if s.site_id in designs and (designs[s.site_id].frame, designs[s.site_id].half) == (SHIP_A, HELD_OUT)]
-    words = verified_words(load_words(), verdicts)
-    registry = load_staged_clips(REGISTRY_PATH)
-    items = tb.items_of([*sites, *(w.site for w in words)], registry)
-    _, recorded = tb.model_caches("h448", tb.DEFAULT_MODELS["h448"], items, registry, None)
-    sequences = {arm: {k: v[tb.CHECKS] for k, v in recorded["items"].items() if k in items}}
-    decodes = {arm: {k: committed_text(c) for k, c in sequences[arm].items()}}
-    _, kept = tb.app_outcomes(sites, words, decodes, sequences, harness)
-    correct_sites = [s for s in sites if s.heard == s.prescribed and s.site_id not in excluded]
-    correct_words = [w.site for w in words if w.side == CORRECT_SIDE and w.site.site_id not in excluded]
-    out = []
-    for name, located in ((WORD_SAMPLE, correct_words), (HELD_OUT_SITES, correct_sites)):
-        for scoring in SCORING_NAMES:
-            grades: Mapping[str, SiteGrade] = kept.grades[scoring][arm]
-            graded, flagged, seen = [], [], set()
-            for site in located:
-                grade = grades[site.site_id]
-                where = ayat.text.locate(site)
-                if where is None or grade.outcome not in (*WORD_FLAGGED, NOT_FLAGGED):
-                    continue
-                graded.append(item_key(site))
-                key = (item_key(site), where.word)
-                if (grade.outcome not in WORD_FLAGGED or grade.quality in (TASHKEEL_ERROR, SKIPPED_QUALITY)
-                        or key in seen):
-                    continue
-                seen.add(key)
-                span = _word_span(site.reference, site.reference_index)
-                flagged.append(FlaggedWord(
-                    name, "h448", scoring, where.surah, where.ayah, where.word, grade.errors,
-                    Recital(site.reference, span[1] >= len(site.reference.rstrip()), decodes[arm][item_key(site)]),
-                    item_key(site), span))
-            out.append(build_population(name, "h448", scoring, graded, flagged, ayat, clustered=False))
-    return out
-
-
-def _word_span(reference: str, index: int) -> tuple[int, int]:
-    """The space-delimited word of ``reference`` around ``index``."""
-    start = reference.rfind(" ", 0, index) + 1
-    end = reference.find(" ", index)
-    return start, len(reference) if end < 0 else end
-
-
 # --- running it --------------------------------------------------------------------------------------
-
-
-def build() -> dict:
-    from training.muraja_policy import MURAJA_COMMIT, require_harness
-
-    harness = require_harness()
-    ayat = Ayat(MurajaText(harness.quran_db))
-    populations = [*qud_populations(harness, ayat), *device_log_populations(ayat), *owner_populations(ayat),
-                   *tadabur_populations(harness, ayat)]
-    return {
-        "issue": 155,
-        "muraja_commit": MURAJA_COMMIT,
-        "phonetizer_check": phonetizer_check(ayat),
-        "populations": [population_view(p) for p in populations],
-        # each population and model, its scorings' flags together (a word once)
-        "owner_checks": [{"population": name, "model": model, "checks": owner_checks(
-            [r for p in populations if (p.name, p.model) == (name, model) for r in p.records])}
-            for name, model in dict.fromkeys((p.name, p.model) for p in populations)],
-        "records": [{k: v for k, v in asdict(r).items() if v is not None or k != "decode"}
-                    for p in populations for r in p.records],
-    }
 
 
 def main() -> None:
@@ -925,6 +824,8 @@ def main() -> None:
     commands.add_parser("doc", help=f"render {DOC_PATH.name} from the report")
     args = parser.parse_args()
     if args.command == "build":
+        from training.consonant_flag_populations import build
+
         report = build()
         REPORT_DIR.mkdir(parents=True, exist_ok=True)
         write_text_atomically(REPORT_PATH, json.dumps(report, ensure_ascii=False, indent=1) + "\n")

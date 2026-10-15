@@ -628,6 +628,9 @@ class SiteGrade:
     outcome: str
     quality: str | None = None
     errors: tuple = field(default=(), compare=False)
+    #: The checks (indices into the item's checks) whose own grade of the word is the one kept:
+    #: the check that set the kept grade, or every check that graded the word so.
+    setting_checks: tuple[int, ...] = field(default=(), compare=False)
 
 
 def site_outcome(
@@ -717,12 +720,25 @@ class AppOutcomes:
     unattributed: tuple[str, ...]
 
 
+def setting_checks(checks: Sequence[dict], word: int, kept: dict | None) -> tuple[int, ...]:
+    """The checks whose own grade of ``word`` (the harness's per-check statuses, before the
+    ratchet) is the kept one: its quality, or the quality the end-word holdback withheld, its
+    score and its errors."""
+    if kept is None or not checks:
+        return ()
+    same = (kept["quality"], kept["score"], kept["errors"])
+    return tuple(i for i, check in enumerate(checks) for status in check["statuses"]
+                 if status["word"] == word
+                 and (status.get("withheld") or status["quality"], status["score"], status["errors"]) == same)
+
+
 def read_results(
     items: Sequence[Item], where: dict, results: Iterable[dict], scorings: Sequence[Scoring], build: dict
 ) -> AppOutcomes:
     """Parse the harness's results into every site's outcome under every scoring."""
     results = list(results)
     kept = {(r["item"], r["scoring"]): {s["word"]: s for s in r["final"]} for r in results}
+    checks = {(r["item"], r["scoring"]): r["checks"] for r in results}
     marks = {(r["item"], w["word"]): highlights(w) for r in results for w in r["letters"]}
     grades: dict[str, dict[tuple[str, str], SiteGrade]] = {s.name: {} for s in scorings}
     for item in items:
@@ -731,7 +747,9 @@ def read_results(
             word_marks = marks.get((item.key, loc.word), ()) if loc else ()
             for scoring in scorings:
                 status = kept[(item.key, scoring.engine_name)].get(loc.word) if loc else None
-                grades[scoring.name][(item.key, site.site_id)] = site_outcome(loc, status, word_marks, scoring)
+                grades[scoring.name][(item.key, site.site_id)] = replace(
+                    site_outcome(loc, status, word_marks, scoring),
+                    setting_checks=setting_checks(checks[(item.key, scoring.engine_name)], loc.word, status) if loc else ())
     placed = [(s.site_id, where[i.key][s.site_id]) for i in items for s in i.sites]
     unplaced = sorted({site_id for site_id, loc in placed if loc is None})
     unattributed = sorted({site_id for site_id, loc in placed if loc is not None and loc.group is None})

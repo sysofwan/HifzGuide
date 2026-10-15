@@ -163,3 +163,131 @@ def test_every_decoded_recording_is_registered_once():
     rows = qp.qud_exposures({SLUG: {"a#0": line, "a#1": line}, qp.PILOT[1]: {}})
     assert [(r.slug, r.surah_ayah, r.mp3_sha256) for r in rows] == [(SLUG, "1:1", "e" * 64)]
     assert rows[0].qud_revision == qp.QUD_REVISION
+
+
+# --- through the pipeline (review round 2, #149) ------------------------------------------
+
+
+class FakeHarness:
+    """A harness that records each request and grades each requested word: the first
+    correct, the second still pending (never graded), the last minor for a ن→ل mismatch."""
+
+    def __init__(self, quran_db: Path):
+        self.quran_db = quran_db
+        self.requests: list[dict] = []
+
+    def run(self, requests):
+        self.requests += requests
+        results = []
+        for r in requests:
+            words = r["report_words"]
+            final = [{"word": w, "quality": "correct", "errors": []} for w in words]
+            final[1]["quality"] = "pending"
+            final[-1] = {"word": words[-1], "quality": "minor", "errors": [
+                {"kind": {"type": "mismatch", "expected": "ن", "heard": "ل"}, "group_index": 0}]}
+            results += [{"item": r["item"], "scoring": s["name"], "final": final, "letters": []}
+                        for s in r["scorings"]]
+        return {"protocol_version": 3}, results
+
+
+def _real_item(key: str):
+    """A committed pilot item rebuilt as the pipeline builds it: its canonical words, realized
+    reference and decodes."""
+    from tadabur.waqf_segments import _uthmani_words, hafs_segment_reference
+
+    slug = key.removeprefix("qud_").rsplit("_", 2)[0]
+    decodes = {m: {key: qp.read_decodes(slug, m)[key]} for m in qp.MODELS}
+    line = decodes["base"][key]
+    surah, ayah = map(int, line["surah_ayah"].split(":"))
+    canonical = _uthmani_words(line["surah_ayah"])
+    row = QudRow(slug, surah, ayah, 0, " ".join(canonical), (tuple(line["segment"]),), (), "u", 0)
+    reference = qp.item_reference(line["segment"], canonical, hafs_segment_reference())
+    item = qp.PilotItem(key, slug, row, 0, line["start_sample"], line["end_sample"],
+                        line["mp3_sha256"], reference)
+    return item, decodes
+
+
+@pytest.mark.skipif(not QURAN_DB.exists(), reason="data/quran.db is not built here")
+def test_the_app_outcome_requests_and_grades_an_items_own_canonical_words():
+    item, decodes = _real_item("qud_abdul_hamid_ghraio_2026_yt_002_061.mp3#2")
+    assert item.reference.word_indices == tuple(range(30, 36))  # canonical words 31-36
+    harness = FakeHarness(QURAN_DB)
+    out = qp.app_outcome([item], decodes, harness)
+    assert {(r["start_word"], tuple(r["report_words"])) for r in harness.requests} == \
+        {(31, (31, 32, 33, 34, 35, 36))}
+    view = out["h448"]["shipped_default"]
+    assert (view["words"], view["graded"], view["flagged"]) == (6, 5, 1)
+    assert view["substitutions"] == [{"cause": "other_consonant", "substitution": "ن→ل",
+                                      "words": 1}]
+
+
+@pytest.mark.skipif(not QURAN_DB.exists(), reason="data/quran.db is not built here")
+def test_a_per_mushaf_rate_divides_by_the_graded_words():
+    item, decodes = _real_item("qud_abdul_hamid_ghraio_2026_yt_002_061.mp3#2")
+    view = qp.app_outcome([item], decodes, FakeHarness(QURAN_DB))["base"]["allowances_off"]
+    assert view["per_1000"] == pytest.approx(1000 / 5)  # one flag of five graded, not six words
+    assert view["per_mushaf"][item.slug]["per_1000"] == pytest.approx(1000 / 5)
+
+
+def test_build_registers_a_decoded_recording_that_yields_no_item(tmp_path, monkeypatch):
+    from tadabur import exposure
+
+    item = _item()
+    lines = {m: {item.key: {"surah_ayah": "1:1", "mp3_sha256": "e" * 64, "spans": REFERENCE,
+                            "stream_b0": REFERENCE, "checks": [{"hop": REFERENCE}]},
+                 "qud_x_090_008.mp3#0": {"surah_ayah": "90:8", "mp3_sha256": "f" * 64}}
+             for m in qp.MODELS}
+    decodes = {m: {item.key: {k: v for k, v in lines[m][item.key].items()
+                              if k in ("spans", "stream_b0", "checks")}} for m in qp.MODELS}
+    pilot = qp.Pilot([item], decodes, {slug: {"unmapped_ayat": [], "phonetizer_unsupported":
+                                              ["qud_x_090_008.mp3#0"], "repeated_words_ayat": 0}
+                                       for slug in qp.PILOT})
+    written = {}
+    monkeypatch.setattr(qp, "load_pilot", lambda: pilot)
+    monkeypatch.setattr(qp, "read_decodes",
+                        lambda slug, model: lines[model] if slug == SLUG else {})
+    monkeypatch.setattr(qp, "SITES_DIR", tmp_path / "sites")
+    monkeypatch.setattr(qp, "WORKLIST_PATH", tmp_path / "worklist.jsonl")
+    monkeypatch.setattr(exposure, "write_qud_use",
+                        lambda use, rows, directory=None: written.update({use: list(rows)}))
+    qp.build(workers=1)
+    registered = {(r.surah_ayah, r.mp3_sha256) for r in written[exposure.QUD_CORRECT_RECITATION]}
+    assert registered == {("1:1", "e" * 64), ("90:8", "f" * 64)}
+
+
+def test_the_doc_compares_with_the_explained_excluded_device_rates_by_protocol():
+    import json
+
+    from training.qud_pilot_doc import render
+
+    report = json.loads(qp.REPORT_PATH.read_text(encoding="utf-8"))
+    report["device_logs"] = qp.device_log_rates()  # read from #151's report, as `app` does
+    doc = render(report)
+    header = next(line for line in doc.splitlines() if line.startswith("| model | scoring |"))
+    assert "device, all eras" in header and "device, 1 s hop" in header
+    rows = [line for line in doc.splitlines() if line.startswith("| base | ")]
+    shipped = next(r for r in rows if "| shipped_default |" in r)
+    off = next(r for r in rows if "| allowances_off |" in r)
+    assert "| 17.1 (35 of 2042) | 10.1 (15 of 1485) |" in shipped
+    assert "| 22.0 (45 of 2042) | 16.2 (24 of 1485) |" in off
+    assert "110.6" not in shipped and "115.0" not in off  # every graded word: diagnostic only
+    assert "Diagnostic: the device sessions with every graded word" in doc
+
+
+def test_the_doc_discloses_what_the_fingerprint_can_miss():
+    import json
+
+    from training.qud_pilot_doc import render
+
+    doc = render(json.loads(qp.REPORT_PATH.read_text(encoding="utf-8")))
+    assert "no overlap detected under this screen, not proven absence" in doc
+    assert "`ahmed_nuayna_qdc`" in doc and "0.4365" in doc and "not retuned" in doc
+
+
+def test_the_committed_doc_is_what_the_renderer_writes():
+    import json
+
+    from training.qud_pilot_doc import render
+
+    report = json.loads(qp.REPORT_PATH.read_text(encoding="utf-8"))
+    assert qp.DOC_PATH.read_text(encoding="utf-8") == render(report)

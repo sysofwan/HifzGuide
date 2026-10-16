@@ -1,4 +1,5 @@
-"""Decode an external corpus with the base teacher and ``h448``, every arm (#144, #156).
+"""Decode an external corpus with the base teacher and ``h448``, every arm (#144, #156), or with
+other models named by :class:`ModelSpec` (the augmentation readout's arms, #95).
 
 An **external corpus** is audio from outside Tadabur that no model has heard (QUD's
 professional mushafs, #144; the non-professional app-user corpora, #156). Its items are spans
@@ -90,23 +91,57 @@ def resume_keys(path: Path) -> set[str]:
     return keys
 
 
-def load_decoders(identity_path: Callable[[str], Path]) -> dict:
-    """Both models, checked against the truth baseline's frozen protocol and against the
-    identity a previous run recorded at ``identity_path(model)``."""
+@dataclass(frozen=True)
+class ModelSpec:
+    """One model to decode with: its reference (a hub id or a distillation checkpoint), and for
+    a checkpoint, which weights (``use_ema``: the averaged ones) and the training step it must
+    hold (``step``; ``None`` checks nothing). A checkpoint's live and averaged weights share one
+    reference and so one fingerprint; the identity record tells them apart."""
+
+    ref: str
+    use_ema: bool = False
+    step: int | None = None
+
+    def identity_extra(self) -> dict:
+        """What the identity record adds to :func:`training.truth_baseline.model_identity`:
+        nothing for the truth baseline's two models, so their committed records still match."""
+        if not self.use_ema and self.step is None:
+            return {}
+        return {"weights": "ema" if self.use_ema else "live", "step": self.step}
+
+
+#: The truth baseline's two models, as every external corpus decodes them.
+DEFAULT_SPECS = {name: ModelSpec(ref) for name, ref in DEFAULT_MODELS.items()}
+
+
+def checkpoint_step(path: Path) -> int:
+    """The training step a distillation checkpoint was saved at, read without its weights."""
+    import torch
+
+    return int(torch.load(path, map_location="cpu", weights_only=False, mmap=True)["step"])
+
+
+def load_decoders(identity_path: Callable[[str], Path],
+                  models: Mapping[str, ModelSpec] = DEFAULT_SPECS) -> dict:
+    """Each model of ``models`` (both truth-baseline models by default), checked against the
+    truth baseline's frozen protocol, against the step its spec names and against the identity
+    a previous run recorded at ``identity_path(model)``."""
     from training.decoding import Decoder
 
     decoders = {}
-    for name, ref in DEFAULT_MODELS.items():
-        decoder = Decoder.load(ref, DEVICE_TYPE, weights_dtype=WEIGHTS_DTYPE,
-                               batch_size=BATCH_SIZE)
+    for name, spec in models.items():
+        if spec.step is not None and (found := checkpoint_step(Path(spec.ref))) != spec.step:
+            raise ValueError(f"{name}: {spec.ref} holds step {found}, not {spec.step}")
+        decoder = Decoder.load(spec.ref, DEVICE_TYPE, weights_dtype=WEIGHTS_DTYPE,
+                               batch_size=BATCH_SIZE, use_ema=spec.use_ema)
         record = {
             "model": name,
-            "identity": model_identity(ref, decoder),
+            "identity": {**model_identity(spec.ref, decoder), **spec.identity_extra()},
             "fingerprints": {arm: decoder.fingerprint(mode).as_dict()
                              for arm, mode in MODES.items()},
         }
         for arm, mode in MODES.items():
-            if record["fingerprints"][arm] != expected_fingerprint(ref, mode):
+            if record["fingerprints"][arm] != expected_fingerprint(spec.ref, mode):
                 raise ValueError(f"{name} decodes {arm} as {record['fingerprints'][arm]}")
         path = identity_path(name)
         if path.exists():

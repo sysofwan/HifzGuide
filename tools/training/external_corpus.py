@@ -469,23 +469,25 @@ def app_scorings() -> list:
 
 
 def word_grades(items: Sequence[CorpusItem], decodes: Mapping[str, Mapping[str, dict]],
-                harness) -> tuple[dict, list[WordGrade]]:
-    """Every word of every item graded per model (its recorded checks) and scoring through the
-    harness, and the harness build that graded them."""
+                harness, models: Sequence[str] = MODELS,
+                scorings: Sequence | None = None) -> tuple[dict, list[WordGrade]]:
+    """Every word of every item graded per model of ``models`` (its recorded checks) and
+    scoring (:func:`app_scorings` by default) through the harness, and the harness build that
+    graded them."""
     from training.muraja_policy import WORD_FLAGGED, Item, MurajaText, grade_placed
     from training.word_flags import flag
 
-    scorings = app_scorings()
+    scorings = app_scorings() if scorings is None else list(scorings)
     text = MurajaText(harness.quran_db)
     placed = {item.key: placed_words(item, text.phoneme_word) for item in items}
     requests = [Item(f"{model}#{item.key}", tuple(w for w, _ in placed[item.key]),
                      tuple(decodes[model][item.key][CHECKS]))
-                for model in MODELS for item in items]
+                for model in models for item in items]
     placements = {f"{model}#{item.key}": placement(item, placed[item.key])
-                  for model in MODELS for item in items}
+                  for model in models for item in items}
     graded = grade_placed(requests, placements, scorings, harness)
     out = []
-    for model in MODELS:
+    for model in models:
         for scoring in scorings:
             for item in items:
                 words = placed[item.key]

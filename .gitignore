@@ -161,6 +161,9 @@ tools/export/
 tools/tadabur/nonpro_eval/restricted/
 !tools/tadabur/nonpro_eval/*/worklist.jsonl
 !tools/tadabur/nonpro_eval/*/consonant_worklist.jsonl
+# The augmentation readout (#95): RetaSy's per-clip decodes (licence unknown) stay local;
+# only aggregates are committed.
+tools/tadabur/aug_readout/restricted/
 # The owner's listening at h448's excess flags on Tarteel v1 (#160): the frozen worklist, where
 # each staged clip came from, and what the owner heard (the page writes the last two).
 !tools/tadabur/tarteel_excess/worklist.jsonl

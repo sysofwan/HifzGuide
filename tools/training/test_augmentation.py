@@ -219,3 +219,92 @@ def test_a_pool_holding_a_d2_recording_is_refused(tmp_path, monkeypatch):
     record_path.write_text(json.dumps({"recordings": [r.as_dict() for r in clean]}),
                            encoding="utf-8")
     assert [r.freesound_id for r in aug.load_training_pool(path)] == [5, 8]
+
+
+# --- silent noise segments (the first candidate run's crash) --------------------------------
+
+
+def _silent(i: int, seconds: float = 2.0) -> pt.NoiseRecording:
+    return pt.NoiseRecording(i, "CC0-1.0", "u", np.zeros(int(seconds * SR), np.float32))
+
+
+def _noise_row(pool_size: int, index: int, seed: int = 7) -> int:
+    """A row of shard 21 whose keyed draw is noise from recording ``index``."""
+    return next(r for r in range(100_000) if (d := aug.draw(seed, 21, r, pool_size)).kind
+                == pt.NOISE_KIND and d.noise_index == index)
+
+
+def test_a_silent_noise_segment_is_redrawn_and_never_raises(monkeypatch):
+    pool = (_silent(1), *_pool(3))
+    augmenter = _augmenter(monkeypatch, pool=pool)
+    clean = (0.3 * np.sin(2 * np.pi * 440 * np.arange(SR) / SR)).astype(np.float32)
+    row = _noise_row(len(pool), 0)
+    with pytest.raises(ValueError, match="silent"):  # what the first run did with it
+        aug.apply(clean, aug.draw(7, 21, row, len(pool)), pool)
+    resolved = augmenter.resolve(clean, 21, row)
+    assert resolved.kind == pt.NOISE_KIND and resolved.noise_index == 1
+    assert resolved.noise_redraws >= 1
+    assert resolved.level == aug.draw(7, 21, row, len(pool)).level  # the SNR is kept
+    noisy = augmenter(clean, 21, row)
+    assert np.array_equal(noisy, aug.apply(clean, resolved, pool)) and not np.array_equal(
+        noisy, clean)
+    assert (augmenter.noise_redrawn, augmenter.noise_left_clean) == (2, 0)  # resolve + call
+    assert augmenter.resolve(clean, 21, row) == resolved  # deterministic
+
+
+def test_a_segment_inside_a_recordings_silent_stretch_is_redrawn_and_one_across_it_is_not():
+    """The pool's case: a recording that passes the pool's checks overall but holds a
+    stretch of zeros longer than the clip."""
+    samples = np.random.default_rng(0).standard_normal(10 * SR).astype(np.float32)
+    samples[2 * SR:8 * SR] = 0.0  # 6 s of zeros in a 10 s recording
+    pool = (pt.NoiseRecording(1, "CC0-1.0", "u", samples),)
+    assert pt.pool_eligible(samples)
+    inside = aug.Draw(pt.NOISE_KIND, 10.0, 0, 0.3)  # starts at 3 s
+    across = aug.Draw(pt.NOISE_KIND, 10.0, 0, 0.1)  # starts at 1 s, audible first second
+    assert aug.audible_noise(across, 7, 21, 4, pool, 4 * SR) == across
+    redrawn = aug.audible_noise(inside, 7, 21, 4, pool, 4 * SR)
+    assert redrawn != inside and redrawn.noise_redraws >= 1
+
+
+def test_a_noise_clip_with_no_audible_segment_stays_clean(monkeypatch):
+    pool = (_silent(1), _silent(2))
+    augmenter = _augmenter(monkeypatch, pool=pool)
+    clean = (0.3 * np.sin(2 * np.pi * 440 * np.arange(SR) / SR)).astype(np.float32)
+    row = _noise_row(len(pool), 0)
+    resolved = augmenter.resolve(clean, 21, row)
+    assert resolved == aug.Draw(pt.CLEAN, noise_redraws=aug.NOISE_DRAWS)
+    assert augmenter(clean, 21, row) is clean
+    assert (augmenter.noise_redrawn, augmenter.noise_left_clean) == (0, 2)
+
+
+def test_a_clip_whose_segment_is_audible_keeps_its_draw_exactly(monkeypatch):
+    augmenter = _augmenter(monkeypatch, pool=_pool(3, 9, 12))
+    clip = np.ones(3 * SR, np.float32)
+    for row in range(2000):
+        assert augmenter.resolve(clip, 21, row) == aug.draw(7, 21, row, 3)
+    assert (augmenter.noise_redrawn, augmenter.noise_left_clean) == (0, 0)
+
+
+def test_the_recipe_records_the_silent_noise_rule():
+    record = aug.recipe_record()
+    assert record["version"] == "aug94-mixture-v2"
+    assert record["silent_noise"]["floor_rms"] == pt.NOISE_MIN_RMS
+    assert record["silent_noise"]["draws"] == aug.NOISE_DRAWS
+
+
+def test_a_dry_run_counts_the_redraws_a_run_would_hit():
+    pytest.importorskip("torch")  # the stream's windowing
+    pool = (_silent(1, 30.0), *_pool(3, 9))
+    rows = [(shard, row, 6 * SR) for shard in (21, 22) for row in range(300)]
+    report = aug.dry_run(7, pool, rows, [22, 21], windows_per_step=32, steps=10)
+    expected = Counter()
+    for shard, row, length in rows:
+        chosen = aug.draw(7, shard, row, len(pool))
+        if chosen.kind == pt.NOISE_KIND and chosen.noise_index == 0:
+            resolved = aug.audible_noise(chosen, 7, shard, row, pool, length)
+            expected["left_clean" if resolved.kind == pt.CLEAN else "redrawn"] += 1
+    assert report["all_shards"]["redrawn"] == expected["redrawn"] > 0
+    assert report["all_shards"].get("left_clean", 0) == expected["left_clean"]
+    assert report["all_shards"]["clips"] == 600
+    assert report["reached"]["shards"] == 1  # 300 clips x 2 windows > 10 steps x 32
+    assert report["first"][0]["shard"] == 22 and report["first"][0]["freesound_id"] == 1

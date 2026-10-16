@@ -65,3 +65,35 @@ def test_a_verdict_no_drawn_word_can_take_is_refused():
         report(rows, {"elsewhere": Verdict("elsewhere", "correct")})
     with pytest.raises(ValueError):
         report(rows, _verdicts(rows, ["fatha"]))
+
+
+def test_controls_give_the_baseline_and_each_excess_cell_is_netted_against_it():
+    rows = ([_row(k, "ل→ن", 100, 4) for k in range(4)]
+            + [_row(k, "ج→ش", 8, 4) for k in range(4, 8)]
+            + [_row(k, te.CONTROL, 40, 4) for k in range(8, 12)])
+    heard = ["correct", "correct", "correct", "mistake",
+             "mistake", "mistake", "unclear", None,
+             "correct", "correct", "correct", "mistake"]  # controls: one mistake in four
+    result = report(rows, _verdicts(rows, heard))
+    control = result[te.CONTROL]
+    assert (control["drawn"], control["mistake"]["share"]) == (4, 0.25)
+    assert result[POOLED]["drawn"] == 8  # the pooled excess cell leaves the controls out
+    net = result["net_of_control"]
+    # Pooled excess mistakes (25 + 2 + 2) / 106, less the controls' 1 / 4.
+    assert net[POOLED]["mistake"]["difference"] == pytest.approx(29 / 106 - 0.25, abs=1e-4)
+    assert net["ل→ن"]["correct"]["difference"] == 0.0  # 3 / 4 against 3 / 4
+    # Twelve words: sparse, and two disjoint groups have no paired score bound.
+    assert net[POOLED]["mistake"]["interval"]["method"] == "none"
+    assert net["ز→س"]["mistake"]["difference"] is None  # nothing drawn there
+    assert "Net of the controls" in table(result)
+
+
+def test_a_net_share_on_enough_surahs_has_a_bootstrap_interval():
+    rows = ([_row(k, "other", 300, 30) for k in range(30)]
+            + [_row(k, te.CONTROL, 1000, 20) for k in range(30, 50)])
+    heard = ["mistake"] * 15 + ["correct"] * 15 + ["mistake"] * 2 + ["correct"] * 18
+    net = report(rows, _verdicts(rows, heard))["net_of_control"][POOLED]["mistake"]
+    assert net["difference"] == pytest.approx(0.5 - 0.1)
+    interval = net["interval"]
+    assert interval["method"] == "bootstrap" and interval["lower"] < 0.4 < interval["upper"]
+    assert interval["lower"] > 0  # half the flags against a tenth of the controls

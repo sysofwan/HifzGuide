@@ -56,14 +56,16 @@ def test_the_clips_used_here_sit_in_the_halves_they_claim():
     assert {half(c) for c in LOOK_CLIPS} == {LOOK} and half(CONFIRM_CLIP) == CONFIRM
 
 
-def test_the_frame_is_the_look_half_s_h448_flags_the_teacher_grades_correct():
+def test_the_frame_is_the_look_half_s_words_the_teacher_grades_correct():
     grades = (_grades(LOOK_CLIPS[0], (None, _flag("ل→ن")), (None, None))
-              + _grades(LOOK_CLIPS[1], (_flag("ل→ن"), None), (_flag("ل→ن"), None))
+              + _grades(LOOK_CLIPS[1], (_flag("ل→ن"), None), (_flag("ل→ن"), _flag("ز→س")))
               + _grades(CONFIRM_CLIP, (None, _flag("ل→ن")), (None, None)))
-    [word] = te.excess_words(grades, RANKS)
-    assert word.clip == LOOK_CLIPS[0] and word.stratum == "ل→ن"
+    control, excess = te.frame_words(grades, RANKS)
+    assert excess.clip == LOOK_CLIPS[0] and excess.stratum == "ل→ن"
     # Muraja's second word covers the second and third canonical words.
-    assert (word.position_from, word.position_to) == (1, 3)
+    assert (excess.position_from, excess.position_to) == (1, 3)
+    # The control: neither model flags it. Clip 2's words each have a teacher flag.
+    assert (control.clip, control.stratum, control.position_from) == (LOOK_CLIPS[0], te.CONTROL, 0)
 
 
 def test_the_top_substitution_by_the_tally_picks_the_stratum():
@@ -79,22 +81,29 @@ def test_the_issue_s_strata_are_the_tally_s_order():
     assert sorted(te.NAMED, key=lambda s: ranks[(OC, s)]) == list(te.NAMED)
 
 
-def _frame() -> list[te.ExcessWord]:
-    """Clip 0 has two excess words (one per stratum), the others one each."""
-    words = []
+def _control(clip: str) -> te.FrameWord:
+    grade = WordGrade("h448", "shipped_default", _item(clip), 0, 2, 1, 0, "not_flagged", None)
+    return te.FrameWord(grade, 0, 1, te.CONTROL)
+
+
+def _frame(controls: bool = False) -> list[te.FrameWord]:
+    """Clip 0 has two excess words (one per stratum), the others one each; with ``controls``,
+    three more clips hold a control word, and clip 0 one too."""
+    words = [_control(c) for c in (LOOK_CLIPS[0], "11_1_11.wav", "12_1_12.wav", "13_1_13.wav")
+             if controls]
     for k, clip in enumerate(LOOK_CLIPS):
         for word, sub in ([(0, "ل→ن"), (1, "ز→س")] if k == 0 else [(k % 2, ("ل→ن", "ز→س")[k % 2])]):
             grade = WordGrade("h448", "shipped_default", _item(clip), word, 2, word + 1,
                               (0, 1)[word], "flagged", _flag(sub))
-            words.append(te.ExcessWord(grade, word, (1, 3)[word], sub))
+            words.append(te.FrameWord(grade, word, (1, 3)[word], sub))
     return words
 
 
 def test_the_draw_keeps_one_word_per_clip_and_records_both_stages():
     frame = _frame()
     sizes = {**{s: 1 for s in te.NAMED}, te.OTHER: 1}
-    rows = te.draw(frame, sizes)
-    assert rows == te.draw(list(reversed(frame)), sizes)  # a function of the ids alone
+    rows = te.draw(frame, sizes, controls=0)
+    assert rows == te.draw(list(reversed(frame)), sizes, controls=0)  # a function of the ids
     assert len({r.audio_filename for r in rows}) == len(rows) == 2
     for row in rows:
         members = [w for w in frame if w.stratum == row.stratum]
@@ -108,6 +117,25 @@ def test_the_draw_keeps_one_word_per_clip_and_records_both_stages():
     assert sum(r.stratum_population for r in rows) == len(LOOK_CLIPS)
     everything = te.draw(frame)  # the default sizes take every representative
     assert {r.draw_probability for r in everything} == {1.0}
+
+
+def test_controls_come_from_clips_the_excess_draw_left():
+    frame = _frame(controls=True)
+    sizes = {**{s: 1 for s in te.NAMED}, te.OTHER: 1}
+    rows = te.draw(frame, sizes, controls=2)
+    excess = [r for r in rows if r.stratum != te.CONTROL]
+    controls = [r for r in rows if r.stratum == te.CONTROL]
+    assert len(excess) == 2 and len(controls) == 2
+    assert len({r.audio_filename for r in rows}) == 4  # one word per clip, across both
+    taken = {r.audio_filename for r in excess}
+    eligible = {"11_1_11.wav", "12_1_12.wav", "13_1_13.wav", LOOK_CLIPS[0]} - taken
+    for row in controls:
+        assert row.audio_filename in eligible and row.h448_flag == {}
+        assert (row.stratum_population, row.draw_probability) == (len(eligible), 2 / len(eligible))
+        assert row.inclusion_probability == row.draw_probability / row.clip_words
+        assert te.parse_row(te.row_json(row), "here") == row
+    with pytest.raises(ValueError, match="flag"):
+        te.parse_row({**te.row_json(controls[0]), "stratum": te.OTHER}, "here")
 
 
 def test_a_row_round_trips_and_the_page_highlights_the_whole_muraja_word():
@@ -153,6 +181,11 @@ def test_staging_checks_the_dataset_s_bytes_and_length_against_156(tmp_path):
     staged = _stage(good, published, tmp_path / "a")
     te.verify_audio(good, staged, tmp_path / "a")
     assert _stage(good, published, tmp_path / "b", staged) == staged  # re-staged alike
+
+    def unreachable(*args):
+        raise AssertionError("a clip already staged is not read again")
+
+    assert te.stage(good, tmp_path / "a", staged, unreachable, unreachable) == staged
     with pytest.raises(ValueError, match="SHA-256"):
         _stage(rows, published, tmp_path / "c")  # #156's checksum is "e" * 64
     from dataclasses import replace
@@ -203,3 +236,28 @@ def test_a_worklist_the_summary_did_not_freeze_is_refused(tmp_path):
     path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="froze"):
         te.session(audio_dir, directory)
+
+
+def test_push_copies_the_verified_clips_and_checks_them_on_the_box(tmp_path):
+    rows, directory, audio_dir = _session_dir(tmp_path)
+    staged = te.load_staged(directory / "staged.jsonl")
+    calls = []
+
+    def run(command, **kwargs):
+        import subprocess
+
+        calls.append(command)
+        listing = "".join(f"{staged[n].staged_sha256}  {n}\n" for n in sorted(staged))
+        return subprocess.CompletedProcess(command, 0, stdout=listing)
+
+    te.push(rows, staged, audio_dir, "box", "/scratch/clips", run)
+    assert calls[1][:2] == ["rsync", "-a"] and calls[1][-1] == "box:/scratch/clips/"
+    assert calls[2][:2] == ["ssh", "box"] and "sha256sum" in calls[2][2]
+
+    def tampered(command, **kwargs):
+        result = run(command, **kwargs)
+        return result if "sha256sum" not in command[-1] else type(result)(
+            command, 0, stdout=result.stdout.replace(result.stdout[:4], "0000", 1))
+
+    with pytest.raises(ValueError, match="other bytes"):
+        te.push(rows, staged, audio_dir, "box", "/scratch/clips", tampered)

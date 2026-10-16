@@ -1,7 +1,10 @@
 {
+ "controls": 20,
  "drawn": 100,
+ "drawn_controls": 20,
+ "drawn_excess": 80,
  "frozen": {
-  "worklist.jsonl": "2859ff79f01fe2001767635dec7b93e09a1761fada34401378ecde050962b3cd"
+  "worklist.jsonl": "a4d0fb148ea19746e1e76e09b8705fb620a584e914626c28da8e510a2bf63838"
  },
  "inputs": {
   "nonpro_eval/report.json": "e964f39c52d8b0d722fab7a5698973ca890ac5e7d19e6fc476f4ec97a2be91df",
@@ -10,9 +13,11 @@
   "nonpro_eval/tarteel_v1/split.json": "5979ead86bf9e3abf01c5e3ee88158e4843603389ca65ebc628a7868d6fc283c"
  },
  "issue": 160,
- "listening_minutes": 47.1,
+ "listening_minutes": 48.1,
  "look_half": {
+  "clips_with_a_control_word": 4459,
   "clips_with_excess": 1281,
+  "control_words": 40963,
   "excess_words": 1724,
   "h448_flagged": 2479,
   "h448_graded": 43683,
@@ -45,78 +50,85 @@
  "salt": "tarteel-v1-excess-listening-2026-10",
  "scoring": "shipped_default",
  "sizes": {
-  "other": 44,
-  "ء→∅": 7,
-  "ا→∅": 7,
-  "ج→ش": 7,
-  "د→ت": 7,
-  "ز→س": 7,
-  "ل→ن": 7,
-  "ن→ل": 7,
-  "ن→∅": 7
+  "other": 32,
+  "ء→∅": 6,
+  "ا→∅": 6,
+  "ج→ش": 6,
+  "د→ت": 6,
+  "ز→س": 6,
+  "ل→ن": 6,
+  "ن→ل": 6,
+  "ن→∅": 6
  },
  "strata": {
+  "control": {
+   "clips_with_a_word": 4459,
+   "draw_probability": 0.004567252797442339,
+   "drawn": 20,
+   "population": 4379,
+   "words": 40963
+  },
   "other": {
    "clips_with_a_word": 1090,
-   "draw_probability": 0.043095004897159644,
-   "drawn": 44,
-   "representatives": 1021,
+   "draw_probability": 0.031341821743388835,
+   "drawn": 32,
+   "population": 1021,
    "words": 1374
   },
   "ء→∅": {
    "clips_with_a_word": 62,
-   "draw_probability": 0.16666666666666666,
-   "drawn": 7,
-   "representatives": 42,
+   "draw_probability": 0.14285714285714285,
+   "drawn": 6,
+   "population": 42,
    "words": 63
   },
   "ا→∅": {
    "clips_with_a_word": 29,
-   "draw_probability": 0.2692307692307692,
-   "drawn": 7,
-   "representatives": 26,
+   "draw_probability": 0.23076923076923078,
+   "drawn": 6,
+   "population": 26,
    "words": 30
   },
   "ج→ش": {
    "clips_with_a_word": 54,
-   "draw_probability": 0.16279069767441862,
-   "drawn": 7,
-   "representatives": 43,
+   "draw_probability": 0.13953488372093023,
+   "drawn": 6,
+   "population": 43,
    "words": 58
   },
   "د→ت": {
    "clips_with_a_word": 35,
-   "draw_probability": 0.2916666666666667,
-   "drawn": 7,
-   "representatives": 24,
+   "draw_probability": 0.25,
+   "drawn": 6,
+   "population": 24,
    "words": 35
   },
   "ز→س": {
    "clips_with_a_word": 34,
-   "draw_probability": 0.2692307692307692,
-   "drawn": 7,
-   "representatives": 26,
+   "draw_probability": 0.23076923076923078,
+   "drawn": 6,
+   "population": 26,
    "words": 34
   },
   "ل→ن": {
    "clips_with_a_word": 45,
-   "draw_probability": 0.16666666666666666,
-   "drawn": 7,
-   "representatives": 42,
+   "draw_probability": 0.14285714285714285,
+   "drawn": 6,
+   "population": 42,
    "words": 46
   },
   "ن→ل": {
    "clips_with_a_word": 37,
-   "draw_probability": 0.30434782608695654,
-   "drawn": 7,
-   "representatives": 23,
+   "draw_probability": 0.2608695652173913,
+   "drawn": 6,
+   "population": 23,
    "words": 37
   },
   "ن→∅": {
    "clips_with_a_word": 46,
-   "draw_probability": 0.20588235294117646,
-   "drawn": 7,
-   "representatives": 34,
+   "draw_probability": 0.17647058823529413,
+   "drawn": 6,
+   "population": 34,
    "words": 47
   }
  }

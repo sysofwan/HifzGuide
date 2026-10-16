@@ -16,7 +16,8 @@ see a held-out decode passes through this module, so the order is enforced in on
   look's inputs and to the candidate's validated identities. Nothing gated is decoded, merged or
   read without it.
 * **A sitting's claim** (:func:`claim`): an exclusive-create marker binding the sitting to its
-  choice, identities and input files' SHA-256, held under an exclusive lock while it reads. A
+  choice, identities, input files' SHA-256 and the Muraja harness that grades it
+  (:func:`harness_identity`), held under an exclusive lock while it reads. A
   second invocation while one runs fails; after an interruption only the same sitting (the same
   claim) may run again; another sitting is refused.
 """
@@ -305,16 +306,22 @@ class CommittedChoice:
 
 def committed_choice(layout: Layout = Layout()) -> CommittedChoice:
     """The choice, refused unless it, ``look.json`` and the look's claim are tracked by git and
-    unchanged from ``HEAD``, it names valid weights, it is bound to that ``look.json`` and to its look
-    sitting's claim, and the candidate identities it holds are complete."""
+    unchanged from ``HEAD``, and bound to them by content as well as by hash: its weights are the
+    ones the look chose, its candidate identities (checkpoint SHA-256, weights, step) the ones the
+    look and its claim recorded, and its inputs and harness the claim's."""
     for path in (layout.choice, layout.look, layout.claim(LOOK)):
         if not is_committed(path):
             raise SystemExit(f"{path.name} is not committed (tracked and unchanged from HEAD)")
     raw = layout.choice.read_bytes()
     choice = json.loads(raw)
-    look = layout.look.read_bytes()
-    if choice.get("weights") not in WEIGHTS or choice.get("look_sha256") != sha256_bytes(look):
+    look_raw = layout.look.read_bytes()
+    look = json.loads(look_raw)
+    look_claim = json.loads(layout.claim(LOOK).read_text(encoding="utf-8"))
+    if choice.get("look_sha256") != sha256_bytes(look_raw):
         raise SystemExit(f"{layout.choice.name} is not bound to the committed {layout.look.name}")
+    # The semantic bindings: the weights the look chose, and the checkpoints the look read.
+    if choice.get("weights") not in WEIGHTS or choice["weights"] != look.get("choice"):
+        raise SystemExit(f"{layout.choice.name} names other weights than {layout.look.name} chose")
     if choice.get("models") != {arm: arm_model(arm, choice["weights"]) for arm in ARMS}:
         raise SystemExit(f"{layout.choice.name} names other models than its weights")
     identities = choice.get("identities") or {}
@@ -324,10 +331,12 @@ def committed_choice(layout: Layout = Layout()) -> CommittedChoice:
         validate_identity(TARTEEL_LOOK, model, {"model": model, "identity": identity,
                                                 "fingerprints": expected_fingerprints(
                                                     model_spec(model).ref)})
-    claim_path = layout.claim(LOOK)
-    if not claim_path.exists() or choice.get("look_inputs_sha256") != sha256_bytes(
-            canonical(json.loads(claim_path.read_text(encoding="utf-8"))["inputs"])
-            .encode("utf-8")):
+    if not (identities == look.get("identities") == look_claim.get("identities")):
+        raise SystemExit(f"{layout.choice.name} holds other checkpoints than the look read")
+    if look_claim.get("phase") != LOOK or choice.get("look_inputs_sha256") != sha256_bytes(
+            canonical(look_claim["inputs"]).encode("utf-8")) \
+            or look.get("input_sha256") != look_claim["inputs"] \
+            or look.get("harness") != look_claim.get("harness"):
         raise SystemExit(f"{layout.choice.name} is not bound to the look sitting's inputs")
     commit = _git(layout.choice.parent, "log", "-1", "--format=%H", "--",
                   layout.choice.name).stdout.strip()
@@ -335,6 +344,16 @@ def committed_choice(layout: Layout = Layout()) -> CommittedChoice:
 
 
 # --- a sitting's claim --------------------------------------------------------------------------
+
+
+def harness_identity(harness) -> dict:
+    """What grades a sitting's words: the Muraja harness's build record, and the SHA-256 of its
+    binary and of the Quran and layout databases it reads (:class:`training.muraja_policy.Harness`)."""
+    return {"build": harness.build, "muraja_commit": harness.muraja_commit,
+            "compiler": harness.compiler,
+            "binary_sha256": sha256_file(harness.binary),
+            "quran_db_sha256": sha256_file(harness.quran_db),
+            "layout_db_sha256": sha256_file(harness.layout_db)}
 
 
 TOOLS_DIR = Path(__file__).parent.parent

@@ -81,6 +81,7 @@ from training.aug_readout_gate import (
     committed_choice,
     decodes_file,
     digests,
+    harness_identity,
     make_choice,
     needs,
     read_manifest,
@@ -289,19 +290,32 @@ class Sources:
 
         return bench_transcripts()
 
+    def harness(self):
+        """The one harness every grade of this run uses (located once)."""
+        from training.muraja_policy import require_harness
+
+        if not hasattr(self, "_harness"):
+            self._harness = require_harness()
+        return self._harness
+
+    def harness_identity(self) -> dict:
+        return harness_identity(self.harness())
+
     def grade(self, items: Sequence, decodes: Mapping[str, Mapping[str, dict]],
               models: Sequence[str]) -> list:
         """Every placed word of every item, per model, under the shipped default."""
         from training.external_corpus import word_grades
-        from training.muraja_policy import SHIPPED_DEFAULT, require_harness
+        from training.muraja_policy import SHIPPED_DEFAULT
 
-        _, grades = word_grades(items, decodes, require_harness(), models, [SHIPPED_DEFAULT])
+        _, grades = word_grades(items, decodes, self.harness(), models, [SHIPPED_DEFAULT])
         return grades
 
-    def harness_build(self) -> dict:
-        from training.muraja_policy import require_harness
 
-        return require_harness().build
+def same_harness(sources: Sources, sitting: Mapping) -> None:
+    """Refuse to write a sitting's result if the harness it graded with is not the one it
+    claimed."""
+    if sources.harness_identity() != sitting["harness"]:
+        raise SystemExit("the Muraja harness changed during the sitting; nothing is written")
 
 
 def read_readout(set_name: str, model: str, base: Mapping[str, dict], keys: set[str]
@@ -371,7 +385,8 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1) -> d
         raise SystemExit(f"the look half was read: {layout.choice.name} exists; it is read once")
     identities = require_manifest(read_manifest(layout), needs(LOOK, None), None)
     sitting = {"phase": LOOK, "identities": identities,
-               "inputs": digests(sources.input_files(LOOK, None))}
+               "inputs": digests(sources.input_files(LOOK, None)),
+               "harness": sources.harness_identity()}
     with claim(layout.claim(LOOK), sitting):
         data = sources.tarteel(LOOK, (*LOOK_MODELS, BASE))
         if any(half(i.audio_filename) != LOOK for i in data.items):
@@ -380,10 +395,12 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1) -> d
                        sources.grade(data.items, data.decodes, LOOK_MODELS))
         inputs = look_inputs(data, workers)
         weights = choose(inputs)
+        same_harness(sources, sitting)
         look_text = canonical({"issue": 95, "half": LOOK, "items": len(data.items),
                                "inputs": inputs, "rule": CHOICE_RULE, "choice": weights,
                                "control": CONTROL_ON_LOOK, "identities": identities,
-                               "input_sha256": sitting["inputs"]})
+                               "input_sha256": sitting["inputs"],
+                               "harness": sitting["harness"]})
         write_text_atomically(layout.look, look_text)
         choice = make_choice(weights, look_text, sitting)
         write_text_atomically(layout.choice, canonical(choice))
@@ -509,12 +526,13 @@ def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
                                   committed.choice)
     sitting = {"phase": CONFIRM, "choice_commit": committed.commit,
                "choice_sha256": committed.sha256, "identities": identities,
-               "inputs": digests(sources.input_files(CONFIRM, weights))}
+               "inputs": digests(sources.input_files(CONFIRM, weights)),
+               "harness": sources.harness_identity()}
     with claim(layout.claim(CONFIRM), sitting):
         report = confirm_report(load_confirm(sources, weights), workers)
+        same_harness(sources, sitting)
         report = {"issue": 95, "choice": committed.choice, "audit": sitting,
-                  "baselines": baseline_identities(), "muraja_build": sources.harness_build(),
-                  **report}
+                  "baselines": baseline_identities(), **report}
         write_text_atomically(layout.report, canonical(report))
         write_text_atomically(layout.verdict, canonical(
             {"issue": 95, "choice": weights, "choice_commit": committed.commit,

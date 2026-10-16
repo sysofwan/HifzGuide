@@ -611,8 +611,10 @@ class FakeSources(ar.Sources):
         return [_grade(m, i, p, _flags(self._role(m), index[i.key], p))
                 for m in models for i in items for p in (0, 1)]
 
-    def harness_build(self):
-        return {"muraja_commit": "test"}
+    harness_record = {"build": {"muraja_commit": "test"}, "binary_sha256": "a" * 64}
+
+    def harness_identity(self):
+        return dict(self.harness_record)
 
 
 def _looked(tmp_path) -> tuple[ag.Layout, FakeSources, dict]:
@@ -760,3 +762,118 @@ def test_an_interrupted_confirm_resumes_only_as_the_same_sitting(tmp_path, monke
         ar.run_confirm(sources, layout)
     (sources.files / "confirm.input").write_text("confirm")
     assert ar.run_confirm(sources, layout)["verdict"]["verdict"] == PASS
+
+
+
+def _amend(layout: ag.Layout, edit) -> dict:
+    """Rewrite the committed choice with ``edit`` and commit it again (Sol's round 2)."""
+    choice = json.loads(layout.choice.read_text())
+    edit(choice)
+    layout.choice.write_text(ag.canonical(choice))
+    _commit(layout, layout.choice)
+    return choice
+
+
+def test_an_amended_choice_cannot_pick_weights_the_look_did_not(tmp_path):
+    layout, sources, choice = _committed(tmp_path)
+    assert choice["weights"] == "live"
+
+    def to_ema(c):
+        c["weights"] = "ema"
+        c["models"] = {"candidate": "candidate_ema", "control": "control_ema"}
+
+    _amend(layout, to_ema)
+    with pytest.raises(SystemExit, match="other weights than look.json chose"):
+        ag.committed_choice(layout)
+    with pytest.raises(SystemExit, match="other weights"):
+        ard.check_models(ag.QUD_SET, ["candidate_ema", "control_ema"], layout,
+                         checkpoint_sha256=lambda ref: SHA["candidate"])
+    layout.models.write_text(json.dumps({**_manifest(LOOK, None), **_manifest(CONFIRM, "ema")}))
+    with pytest.raises(SystemExit, match="other weights"):
+        ar.run_confirm(sources, layout)
+    assert not layout.verdict.exists()
+
+
+def test_an_amended_choice_cannot_substitute_a_checkpoint_the_look_did_not_read(tmp_path):
+    layout, sources, _ = _committed(tmp_path)
+    other = "e" * 64
+
+    def substitute(c):
+        for identity in c["identities"].values():
+            identity["checkpoint_sha256"] = other
+
+    _amend(layout, substitute)
+    with pytest.raises(SystemExit, match="other checkpoints than the look read"):
+        ag.committed_choice(layout)
+    with pytest.raises(SystemExit, match="other checkpoints"):
+        ard.check_models(ag.QUD_SET, ["candidate_live", "control_live"], layout,
+                         checkpoint_sha256=lambda ref: other)
+    # A confirm manifest naming the substitute agrees with the amended choice, and is refused.
+    records = {**_manifest(LOOK, None), **_manifest(CONFIRM, "live")}
+    for name, record in records.items():
+        if name.endswith("/candidate_live") and not name.startswith(ag.TARTEEL_LOOK):
+            record["identity"]["checkpoint_sha256"] = other
+    layout.models.write_text(json.dumps(records))
+    with pytest.raises(SystemExit, match="other checkpoints"):
+        ar.run_confirm(sources, layout)
+    assert not layout.verdict.exists()
+
+
+def test_a_confirm_candidate_must_be_the_checkpoint_the_choice_read(tmp_path):
+    layout, sources, _ = _committed(tmp_path)
+    records = json.loads(layout.models.read_text())
+    records[f"{ag.QUD_SET}/candidate_live"]["identity"]["checkpoint_sha256"] = "e" * 64
+    layout.models.write_text(json.dumps(records))
+    with pytest.raises(ValueError):
+        ar.run_confirm(sources, layout)
+
+
+def test_a_sitting_resumes_only_under_the_harness_it_claimed(tmp_path, monkeypatch):
+    layout, sources, _ = _committed(tmp_path)
+    original = ar.write_text_atomically
+
+    def crash_on_verdict(path, text):
+        if path == layout.verdict:
+            raise KeyboardInterrupt
+        original(path, text)
+
+    monkeypatch.setattr(ar, "write_text_atomically", crash_on_verdict)
+    with pytest.raises(KeyboardInterrupt):
+        ar.run_confirm(sources, layout)
+    monkeypatch.setattr(ar, "write_text_atomically", original)
+    claimed = json.loads(layout.claim(CONFIRM).read_text())["harness"]
+    assert claimed == FakeSources.harness_record
+    sources.harness_record = {**FakeSources.harness_record, "quran_db_sha256": "b" * 64}
+    with pytest.raises(SystemExit, match="another sitting"):
+        ar.run_confirm(sources, layout)
+    assert not layout.verdict.exists()
+
+
+def test_a_harness_that_changes_during_a_sitting_writes_nothing(tmp_path):
+    layout, sources, _ = _committed(tmp_path)
+    grade = sources.grade
+
+    def grade_and_swap(*args):
+        sources.harness_record = {**FakeSources.harness_record, "binary_sha256": "f" * 64}
+        return grade(*args)
+
+    sources.grade = grade_and_swap
+    with pytest.raises(SystemExit, match="harness changed"):
+        ar.run_confirm(sources, layout)
+    assert not layout.report.exists() and not layout.verdict.exists()
+
+
+def test_the_harness_identity_hashes_the_binary_and_both_databases(tmp_path):
+    from training.muraja_policy import Harness
+
+    files = {}
+    for name in ("binary", "quran.db", "layout.db"):
+        files[name] = tmp_path / name
+        files[name].write_text(name)
+    harness = Harness(files["binary"], files["quran.db"], files["layout.db"], "c" * 40, "swift",
+                      {"protocol_version": 3})
+    identity = ag.harness_identity(harness)
+    assert identity["quran_db_sha256"] == ag.sha256_file(files["quran.db"])
+    assert identity["binary_sha256"] == ag.sha256_file(files["binary"])
+    files["layout.db"].write_text("changed")
+    assert ag.harness_identity(harness) != identity

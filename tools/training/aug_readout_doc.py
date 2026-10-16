@@ -154,7 +154,7 @@ def render(look: Mapping, report: Mapping) -> str:
             *(f"- `{m}`: `{identity}`" for m, identity in sorted(audit["identities"].items())),
             *(f"- `{m}` (committed decodes): `{identity}`"
               for m, identity in sorted(report["baselines"].items())),
-            f"- Muraja harness: `{report['muraja_build']}`",
+            f"- Muraja harness: `{audit['harness']}`",
             f"- Input files read, each with its SHA-256 in `report.json`: {len(audit['inputs'])}.",
             ""]
     return "\n".join(out)

@@ -161,3 +161,9 @@ tools/export/
 tools/tadabur/nonpro_eval/restricted/
 !tools/tadabur/nonpro_eval/*/worklist.jsonl
 !tools/tadabur/nonpro_eval/*/consonant_worklist.jsonl
+# The owner's listening at h448's excess flags on Tarteel v1 (#160): the frozen worklist, where
+# each staged clip came from, and what the owner heard (the page writes the last two).
+!tools/tadabur/tarteel_excess/worklist.jsonl
+!tools/tadabur/tarteel_excess/staged.jsonl
+!tools/tadabur/tarteel_excess/verdicts.jsonl
+!tools/tadabur/tarteel_excess/review.jsonl

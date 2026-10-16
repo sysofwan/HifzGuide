@@ -235,6 +235,17 @@ the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you
   `assume_competent_reciter`; its exposure uses are refused by `check_disjoint`.
 : _Avoid_: held-out set (it was never part of any split), test set
 
+**Look half / confirm half**
+: Tarteel v1's two halves by clip hash (`tadabur.tarteel_split`, pre-registered in #128): a
+  clip is in the look half when the first 8 bytes of `sha256("tarteel-v1-split-2026-10:" +
+  clip_id)` are below 2**63. The look half may be read while a recipe is chosen; the confirm
+  half is read once, for the final candidate.
+: _Avoid_: dev/test (they are halves of one evaluation corpus, never training data)
+
+**Excess flag**
+: A word `h448` flags under Muraja's shipped default where the base teacher's checks grade it
+  correct, on the same recitation (#160): the gap the augmentation experiment tries to close.
+
 ## Re-read Corpus
 
 The vocabulary of Muraja ADR-0016, which mines the Tadabur clips the ADR-0001 gate **rejects**

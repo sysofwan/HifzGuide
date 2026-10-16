@@ -19,6 +19,7 @@ from tadabur.nonpro_sources import (
     Unplaced,
     canonical_words,
     locate,
+    locate_clips,
     select,
 )
 from tadabur.truth_sites import NONPRO_SOURCES
@@ -88,3 +89,9 @@ def test_a_qdat_label_the_dataset_leaves_empty_stays_empty():
     row = {"audio": {"path": "s7_3.wav"}, "id": "abcd1234", "original_id": "s7_3",
            "separate_tide": 1, "the_tight_noon": None, "concealment": 0, "target": 0}
     assert select(QDAT, row).labels["the_tight_noon"] is None
+
+
+def test_only_a_dataset_named_by_audio_path_is_located_by_it():
+    """qdat names its clips by ``id``: its audio paths would locate nothing it names."""
+    with pytest.raises(ValueError):
+        locate_clips(QDAT, ["x.wav"])

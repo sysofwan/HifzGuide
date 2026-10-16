@@ -192,9 +192,11 @@ def test_every_training_configuration_keeps_timing(residual_table):
 
 @pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
 def test_the_committed_table_holds_within_a_toolchains_drift(residual_table):
-    """The committed table (ffmpeg 8.1.2, libopus 1.6.1) against this build: the codec is not
-    pinned, and another build moves the constants by a few thousandths of a sample, so lags
-    agree within 0.01 samples and residuals within 0.05."""
+    """The committed table (ffmpeg 8.1.2, libopus 1.6.1) against this build. The contract is
+    the portable test above (every residual within 2 samples); this one only guards against
+    gross drift from the committed table. The codec is not pinned, and another build moves the
+    calibrated lags by a few thousandths of a sample and a probe's lag by up to ~0.06 (ffmpeg
+    7.1), so calibrated lags agree within 0.05 samples and raw and residual lags within 0.25."""
     import json
 
     from training.nonpro_gap import CODEC_RESIDUALS_PATH
@@ -203,11 +205,11 @@ def test_the_committed_table_holds_within_a_toolchains_drift(residual_table):
     assert set(committed) == set(residual_table)
     for label, entry in committed.items():
         fresh = residual_table[label]
-        assert fresh["calibrated_lag"] == pytest.approx(entry["calibrated_lag"], abs=0.01)
+        assert fresh["calibrated_lag"] == pytest.approx(entry["calibrated_lag"], abs=0.05)
         for kind in ("raw", "residual"):
             assert fresh[kind].keys() == entry[kind].keys()
             for probe, value in entry[kind].items():
-                assert fresh[kind][probe] == pytest.approx(value, abs=0.05), (label, kind, probe)
+                assert fresh[kind][probe] == pytest.approx(value, abs=0.25), (label, kind, probe)
 
 
 @pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")

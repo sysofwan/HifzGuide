@@ -94,44 +94,60 @@ def resume_keys(path: Path) -> set[str]:
 @dataclass(frozen=True)
 class ModelSpec:
     """One model to decode with: its reference (a hub id or a distillation checkpoint), and for
-    a checkpoint, which weights (``use_ema``: the averaged ones) and the training step it must
-    hold (``step``; ``None`` checks nothing). A checkpoint's live and averaged weights share one
-    reference and so one fingerprint; the identity record tells them apart."""
+    a checkpoint, which weights (``use_ema``: the averaged ones), the training step it must hold
+    (``step``) and the augmentation recipe it was trained under (``recipe``: the version its
+    config's ``augment`` names, or :data:`NO_AUGMENTATION` for none); ``None`` checks nothing.
+    A checkpoint's live and averaged weights share one reference and so one fingerprint; the
+    identity record tells them apart."""
 
     ref: str
     use_ema: bool = False
     step: int | None = None
+    recipe: str | None = None
 
     def identity_extra(self) -> dict:
         """What the identity record adds to :func:`training.truth_baseline.model_identity`:
         nothing for the truth baseline's two models, so their committed records still match."""
-        if not self.use_ema and self.step is None:
+        if not self.use_ema and self.step is None and self.recipe is None:
             return {}
-        return {"weights": "ema" if self.use_ema else "live", "step": self.step}
+        return {"weights": "ema" if self.use_ema else "live", "step": self.step,
+                **({} if self.recipe is None else {"recipe": self.recipe})}
 
 
 #: The truth baseline's two models, as every external corpus decodes them.
 DEFAULT_SPECS = {name: ModelSpec(ref) for name, ref in DEFAULT_MODELS.items()}
+#: The recipe of a run trained without augmentation (its config's ``augment`` is empty).
+NO_AUGMENTATION = "none"
 
 
-def checkpoint_step(path: Path) -> int:
-    """The training step a distillation checkpoint was saved at, read without its weights."""
+def checkpoint_facts(path: Path) -> tuple[int, str]:
+    """The training step a distillation checkpoint was saved at, and the augmentation recipe its
+    config records (:data:`NO_AUGMENTATION` when it has none), read without its weights."""
     import torch
 
-    return int(torch.load(path, map_location="cpu", weights_only=False, mmap=True)["step"])
+    state = torch.load(path, map_location="cpu", weights_only=False, mmap=True)
+    augment = state["config"].get("augment") or {}
+    return int(state["step"]), augment.get("version", NO_AUGMENTATION) if augment else \
+        NO_AUGMENTATION
 
 
 def load_decoders(identity_path: Callable[[str], Path],
                   models: Mapping[str, ModelSpec] = DEFAULT_SPECS) -> dict:
     """Each model of ``models`` (both truth-baseline models by default), checked against the
-    truth baseline's frozen protocol, against the step its spec names and against the identity
-    a previous run recorded at ``identity_path(model)``."""
+    truth baseline's frozen protocol, against the step and recipe its spec names (before its
+    weights are loaded) and against the identity a previous run recorded at
+    ``identity_path(model)``."""
     from training.decoding import Decoder
 
     decoders = {}
     for name, spec in models.items():
-        if spec.step is not None and (found := checkpoint_step(Path(spec.ref))) != spec.step:
-            raise ValueError(f"{name}: {spec.ref} holds step {found}, not {spec.step}")
+        if spec.step is not None or spec.recipe is not None:
+            step, recipe = checkpoint_facts(Path(spec.ref))
+            if spec.step is not None and step != spec.step:
+                raise ValueError(f"{name}: {spec.ref} holds step {step}, not {spec.step}")
+            if spec.recipe is not None and recipe != spec.recipe:
+                raise ValueError(f"{name}: {spec.ref} was trained under {recipe!r}, "
+                                 f"not {spec.recipe!r}")
         decoder = Decoder.load(spec.ref, DEVICE_TYPE, weights_dtype=WEIGHTS_DTYPE,
                                batch_size=BATCH_SIZE, use_ema=spec.use_ema)
         record = {

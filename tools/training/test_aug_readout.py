@@ -285,14 +285,16 @@ def test_beating_h448_but_not_the_control_is_a_null_for_augmentation():
 
 
 def test_readout_models_name_an_arm_s_weights_at_the_final_step():
-    assert ag.model_spec("candidate_ema") == ModelSpec(ag.ARMS["candidate"], True, 10_000)
-    assert ag.model_spec("control_live") == ModelSpec(ag.ARMS["control"], False, 10_000)
+    assert ag.model_spec("candidate_ema") == ModelSpec(ag.ARMS["candidate"], True, 10_000,
+                                                       "aug94-mixture-v2")
+    assert ag.model_spec("control_live") == ModelSpec(ag.ARMS["control"], False, 10_000, "none")
     assert ag.model_spec("h448") is DEFAULT_SPECS["h448"]
     with pytest.raises(ValueError):
         ag.model_spec("candidate_best")
     # The truth baseline's identity records stay exactly what they were.
     assert DEFAULT_SPECS["h448"].identity_extra() == {}
-    assert ag.model_spec("candidate_ema").identity_extra() == {"weights": "ema", "step": 10_000}
+    assert ag.model_spec("candidate_ema").identity_extra() == {
+        "weights": "ema", "step": 10_000, "recipe": "aug94-mixture-v2"}
 
 
 def test_before_the_choice_only_the_candidate_s_look_half_may_be_read():
@@ -391,13 +393,45 @@ def test_tarteel_s_halves_split_by_clip_hash():
     assert 0 < len(look) < 200 and all(half(c) == CONFIRM for c in set(clips) - set(look))
 
 
-def test_a_checkpoint_at_another_step_is_refused_before_it_is_loaded(monkeypatch, tmp_path):
+def test_a_checkpoint_at_another_step_or_recipe_is_refused_before_it_is_loaded(monkeypatch,
+                                                                              tmp_path):
     from training import external_decode as ed
 
-    monkeypatch.setattr(ed, "checkpoint_step", lambda path: 8_000)
+    def load(model):
+        ed.load_decoders(lambda m: tmp_path / f"{m}.json", {model: ag.model_spec(model)})
+
+    monkeypatch.setattr(ed, "checkpoint_facts", lambda path: (8_000, "aug94-mixture-v2"))
     with pytest.raises(ValueError, match="holds step 8000, not 10000"):
-        ed.load_decoders(lambda model: tmp_path / f"{model}.json",
-                         {"candidate_ema": ag.model_spec("candidate_ema")})
+        load("candidate_ema")
+    # The crashed first candidate's recipe, or none, is not the re-run's.
+    monkeypatch.setattr(ed, "checkpoint_facts", lambda path: (10_000, "aug94-mixture-v1"))
+    with pytest.raises(ValueError, match="'aug94-mixture-v1', not 'aug94-mixture-v2'"):
+        load("candidate_live")
+    monkeypatch.setattr(ed, "checkpoint_facts", lambda path: (10_000, ed.NO_AUGMENTATION))
+    with pytest.raises(ValueError, match="'none', not 'aug94-mixture-v2'"):
+        load("candidate_live")
+    monkeypatch.setattr(ed, "checkpoint_facts", lambda path: (10_000, "aug94-mixture-v2"))
+    with pytest.raises(ValueError, match="not 'none'"):
+        load("control_live")  # the control was trained without augmentation
+
+
+def test_the_arms_are_the_re_run_candidate_and_the_unaugmented_control():
+    assert ag.ARMS["candidate"].endswith("/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt")
+    assert ag.ARMS["control"].endswith("/repo/tools/runs/aug94_control/checkpoint.pt")
+    assert ag.model_spec("candidate_ema").recipe == "aug94-mixture-v2"
+    assert ag.model_spec("control_live").recipe == "none"
+
+
+def test_checkpoint_facts_read_the_config_s_recipe(tmp_path):
+    import torch
+
+    from training import external_decode as ed
+
+    for augment, recipe in (({"version": "aug94-mixture-v2"}, "aug94-mixture-v2"),
+                            ({}, ed.NO_AUGMENTATION)):
+        path = tmp_path / "c.pt"
+        torch.save({"step": 10_000, "config": {"augment": augment}}, path)
+        assert ed.checkpoint_facts(path) == (10_000, recipe)
 
 
 # --- identity -------------------------------------------------------------------------------------
@@ -422,7 +456,9 @@ def test_a_complete_identity_names_the_checkpoint_s_sha_its_weights_and_the_fina
     assert ag.validate_identity(ag.QUD_SET, "candidate_ema", _record("candidate_ema"))["step"] \
         == 10_000
     for edit in ({"step": 8_000}, {"weights": "live"}, {"checkpoint_sha256": "x"},
-                 {"model_ref": "/elsewhere.pt"}):
+                 {"model_ref": "/elsewhere.pt"}, {"recipe": "aug94-mixture-v1"},
+                 {"model_ref": "/root/scratch/issue-94/repo/tools/runs/aug94_candidate/"
+                               "checkpoint.pt"}):
         record = _record("candidate_ema")
         record["identity"].update(edit)
         with pytest.raises(ValueError):

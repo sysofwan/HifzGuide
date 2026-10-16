@@ -1,8 +1,8 @@
 """The readout of #94's augmentation experiment (#95), under the discipline #95 and #128 fix.
 
 #94 continued ``h448`` for 10,000 steps with augmented student input and KL to the clean teacher
-(the **candidate**, ``runs/aug94_candidate``), and bit-identically without augmentation (the
-**control**, ``runs/aug94_control``). Each run keeps two weights at its final step: live and EMA.
+(the **candidate**, ``runs/aug94_candidate_v2``, recipe ``aug94-mixture-v2``), and bit-identically
+without augmentation (the **control**, ``runs/aug94_control``). Each run keeps two weights at its final step: live and EMA.
 This module reads them against ``h448`` and the base teacher (whose decodes are committed and
 reused) on the sets #95 names, through the pre-registered bars of
 :mod:`training.aug_readout_verdict`, in a fixed order :mod:`training.aug_readout_gate` enforces:

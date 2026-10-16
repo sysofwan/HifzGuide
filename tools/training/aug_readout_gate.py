@@ -37,7 +37,7 @@ from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK
 from training.aug_readout_metrics import BASE, CANDIDATE, CONTROL, H448
-from training.external_decode import DEFAULT_SPECS, ModelSpec
+from training.external_decode import DEFAULT_SPECS, NO_AUGMENTATION, ModelSpec
 from training.truth_baseline import ARM_PROTOCOLS, CHECKS, DEFAULT_MODELS, expected_fingerprint
 
 READOUT_DIR = Path(__file__).parent.parent / "tadabur" / "aug_readout"
@@ -79,11 +79,16 @@ class Layout:
 # --- the models ---------------------------------------------------------------------------------
 
 #: #94's two runs on the GPU box (its run note, ``docs/augmentation-experiment.md``); each saves
-#: one ``checkpoint.pt``, overwritten at every save, so the file holds the last step saved.
+#: one ``checkpoint.pt``, overwritten at every save, so the file holds the last step saved. The
+#: candidate is ``aug94_candidate_v2``, re-run from its own code directory under the silent-segment
+#: fix (PR #166) after the first candidate crashed at step ~1,913 and saved nothing.
 ARMS = {
-    CANDIDATE: "/root/scratch/issue-94/repo/tools/runs/aug94_candidate/checkpoint.pt",
+    CANDIDATE: "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
     CONTROL: "/root/scratch/issue-94/repo/tools/runs/aug94_control/checkpoint.pt",
 }
+#: The augmentation recipe each arm's checkpoint config must record: the candidate's
+#: ``aug94-mixture-v2`` (a silent noise segment re-drawn), the control's none.
+RECIPES = {CANDIDATE: "aug94-mixture-v2", CONTROL: NO_AUGMENTATION}
 #: #94's checkpoint rule, fixed before training: the final step.
 FINAL_STEP = 10_000
 LIVE, EMA = "live", "ema"
@@ -108,7 +113,7 @@ def model_spec(name: str) -> ModelSpec:
     arm, _, weights = name.rpartition("_")
     if arm not in ARMS or weights not in WEIGHTS:
         raise ValueError(f"{name!r} is no readout model")
-    return ModelSpec(ARMS[arm], use_ema=weights == EMA, step=FINAL_STEP)
+    return ModelSpec(ARMS[arm], use_ema=weights == EMA, step=FINAL_STEP, recipe=RECIPES[arm])
 
 
 # --- the sets -----------------------------------------------------------------------------------
@@ -206,7 +211,8 @@ def baseline_identities() -> dict[str, dict]:
 def validate_identity(set_name: str, model: str, record: Mapping) -> dict:
     """One decode run's identity record, complete and the model the readout names: the frozen
     fingerprints; a baseline's committed identity; an arm's checkpoint path, its SHA-256, its
-    weights and step :data:`FINAL_STEP`, and nothing else. Returns the identity."""
+    weights, step :data:`FINAL_STEP` and its arm's recipe (:data:`RECIPES`), and nothing else.
+    Returns the identity."""
     spec = model_spec(model)
     name = f"{set_name}/{model}"
     if record.get("model") != model or record.get("fingerprints") != expected_fingerprints(spec.ref):
@@ -217,12 +223,12 @@ def validate_identity(set_name: str, model: str, record: Mapping) -> dict:
             raise ValueError(f"{name}: not the committed {model}")
         return dict(identity)
     expected = {"model_ref": spec.ref, "weights": EMA if spec.use_ema else LIVE,
-                "step": FINAL_STEP}
+                "step": FINAL_STEP, "recipe": spec.recipe}
     if not isinstance(identity, Mapping) or set(identity) != {*expected, "checkpoint_sha256"} \
             or any(identity[k] != v for k, v in expected.items()) \
             or not _SHA256.fullmatch(str(identity["checkpoint_sha256"])):
-        raise ValueError(f"{name}: {identity} is not {model} at step {FINAL_STEP} with a "
-                         "checkpoint SHA-256")
+        raise ValueError(f"{name}: {identity} is not {model} at step {FINAL_STEP} under "
+                         f"{spec.recipe!r} with a checkpoint SHA-256")
     return dict(identity)
 
 

@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from training.aug_readout_metrics import COMPARISONS, PER_1000, comparison_name
+from training.aug_readout_metrics import PER_1000
 from training.aug_readout_verdict import BAR_TEXT
 
 ORDER = ("candidate", "control", "h448", "base")
+LABELS = {"base": "base (the teacher)"}
 VERDICT_TEXT = {"pass": "pass", "fail": "fail", "cannot_certify": "cannot certify"}
 
 
@@ -46,14 +47,11 @@ def table(title: str, view: Mapping | None) -> list[str]:
     for model in ORDER:
         if model in view["models"]:
             row = view["models"][model]
-            lines.append(f"| {model} | {_number(row['point'])} | {_interval(row['interval'])} | "
+            lines.append(f"| {LABELS.get(model, model)} | {_number(row['point'])} | {_interval(row['interval'])} | "
                          f"{row['num']:g} / {row['den']:g} |")
-    for a, b in COMPARISONS:
-        name = comparison_name(a, b)
-        if name in view["comparisons"]:
-            row = view["comparisons"][name]
-            lines.append(f"| {name} | {_signed(row['point'])} | "
-                         f"{_interval(row['interval'], signed=True)} | paired |")
+    for name, row in view["comparisons"].items():
+        lines.append(f"| {name} | {_signed(row['point'])} | "
+                     f"{_interval(row['interval'], signed=True)} | paired |")
     return lines + [""]
 
 
@@ -87,13 +85,23 @@ def render(look: Mapping, report: Mapping) -> str:
         out.append(f"| {c['name']} | {BAR_TEXT[c['name']]} | {reading} | "
                    f"{VERDICT_TEXT[c['verdict']]} |")
     attribution = verdict["attribution"]
+    control = attribution.get("control_vs_h448")
     out += ["", f"**Against the control:** {attribution['reading']} (main bound against "
                 f"`h448`: {VERDICT_TEXT[attribution['against_h448']]}; against the control: "
-                f"{VERDICT_TEXT[attribution['against_control']]}).", ""]
+                f"{VERDICT_TEXT[attribution['against_control']]}). Described, never part of "
+                "the verdict: control − `h448` "
+                + (f"{_signed(control['point'])} per 1,000 "
+                   f"{_interval(control['interval'], signed=True)}." if control else "–."), "",
+            "**Pre-registered edge rules** (#95, 2026-10-16, before any candidate decode): an "
+            "`h448` − teacher gap on the confirm half that is not positive makes the quarter-gap "
+            "bar \"cannot certify\", an additional condition the bar presumes; qdat's consistency "
+            "is required for a pass. **A \"cannot certify\" is resolved by a new "
+            "pre-registration on #128, never by a re-run.**", ""]
 
     out += ["## 1. The look half: live or EMA", "",
             f"Tarteel v1's look half, {look['items']} clips, checks protocol. Rule: "
-            f"{look['rule']}. **Chosen: {look['choice']}.**", "",
+            f"{look['rule']}. **Chosen: {look['choice']}.** {look['control'].capitalize()}.",
+            "",
             "| weights | graded words | flagged | false flags per 1,000 | word agreement "
             "with the teacher (points) |", "|---|---|---|---|---|"]
     for model, row in sorted(look["inputs"].items()):
@@ -120,7 +128,8 @@ def render(look: Mapping, report: Mapping) -> str:
 
     out += ["## 4. Catch side (descriptive)", ""]
     catch = report["catch"]
-    out += table("RetaSy `in_correct`, flagged words per 1,000 graded",
+    out += table("RetaSy `in_correct`, flagged words per 1,000 graded (teacher, `h448`, "
+                 "candidate and control side by side)",
                  catch["retasy_in_correct"]["words"])
     out += table("RetaSy `in_correct`, clips with a flagged word", catch["retasy_in_correct"]["clips"])
     out += table("qdat_bench, flags on the words where the experts heard a departure",
@@ -138,9 +147,14 @@ def render(look: Mapping, report: Mapping) -> str:
     for name, view in leniency["ungraded"].items():
         out += table(f"{name}, words the engine leaves ungraded, per 1,000", view)
 
-    out += ["## Identity", "",
-            *(f"- `{m}`: `{identity}`" for m, identity in sorted(report["models"].items())),
+    audit = report["audit"]
+    out += ["## Identity and audit", "",
+            f"- `choice.json`: SHA-256 `{audit['choice_sha256']}`, commit "
+            f"`{audit['choice_commit']}`.",
+            *(f"- `{m}`: `{identity}`" for m, identity in sorted(audit["identities"].items())),
             *(f"- `{m}` (committed decodes): `{identity}`"
               for m, identity in sorted(report["baselines"].items())),
-            f"- Muraja harness: `{report['muraja_build']}`", ""]
+            f"- Muraja harness: `{report['muraja_build']}`",
+            f"- Input files read, each with its SHA-256 in `report.json`: {len(audit['inputs'])}.",
+            ""]
     return "\n".join(out)

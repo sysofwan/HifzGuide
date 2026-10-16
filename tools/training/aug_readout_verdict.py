@@ -24,9 +24,16 @@ statistic), and the verdict folds them by §1's truth table
 (:func:`training.acceptance_stats.aggregate`): any fail is a fail, else any cannot_certify is
 "cannot certify", else pass. "Cannot certify" is never a pass.
 
+**Edge rules** (#95, settled 2026-10-16 before any candidate decode): an ``h448`` − teacher gap on
+the confirm half that is not positive makes the quarter-gap bar "cannot certify" (an additional
+condition the bar presumes); qdat's consistency is required for a pass.
+
 **Attribution** (#95): every result is also read as candidate − control. A candidate whose main
 app-outcome bound beats ``h448`` but whose bound against the control does not is reported as a
-**null for augmentation** (:func:`attribution`); this reading never changes the verdict.
+**null for augmentation** (:func:`attribution`), with control − ``h448`` beside it as
+description; this reading never changes the verdict.
+
+A "cannot certify" is resolved by a new pre-registration on #128, never by a re-run.
 """
 
 from __future__ import annotations
@@ -69,6 +76,7 @@ BAR_TEXT = {
 }
 CANDIDATE_VS_H448 = comparison_name(CANDIDATE, H448)
 CANDIDATE_VS_CONTROL = comparison_name(CANDIDATE, CONTROL)
+CONTROL_VS_H448 = comparison_name(CONTROL, H448)
 NULL_FOR_AUGMENTATION = "null for augmentation"
 BEATS_CONTROL = "beats the control"
 NOT_APPLICABLE = "not applicable: the candidate does not beat h448"
@@ -170,10 +178,13 @@ def attribution(report: Mapping) -> dict:
         reading = NOT_APPLICABLE
     else:
         reading = BEATS_CONTROL if against_control["verdict"] == PASS else NULL_FOR_AUGMENTATION
+    control_vs_h448 = main["comparisons"].get(CONTROL_VS_H448)
     return {"reading": reading, "against_h448": against_h448["verdict"],
             "against_control": against_control["verdict"],
             "control_upper_bound": against_control.get("bound"),
-            "control_point": against_control.get("point")}
+            "control_point": against_control.get("point"),
+            # Description only: how far the extra steps alone moved h448.
+            "control_vs_h448": control_vs_h448}
 
 
 def verdict(report: Mapping) -> dict:

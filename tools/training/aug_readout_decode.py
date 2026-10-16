@@ -14,10 +14,11 @@ committed base decode of the same item) and its decodes under the set's protocol
 * Tadabur dev, the clips ``h448`` holds no copy of: ``stream_b0`` and the blank count of the argmax
   frames the stream read (:func:`stream_with_blanks`), as #159's clean pass decoded them.
 
-**The order** (:func:`training.aug_readout.allowed_models`): before ``choice.json`` exists only the
-look half, for the candidate's live and EMA weights; after it, every other set, for both arms at
-the chosen weights only (and, on Tadabur, ``h448`` and the base teacher, for the blank share). An
-arm's checkpoint must hold #94's final step.
+**The order** (:mod:`training.aug_readout_gate`): the look half only for the candidate's live and
+EMA weights; every other set only from a checkout where ``choice.json``, ``look.json`` and the
+look's claim are committed (a git clone, never an rsync'd copy), for both arms at the chosen
+weights (and, on Tadabur, ``h448`` and the base teacher, for the blank share), the candidate's
+checkpoint the one the choice read. An arm's checkpoint must hold #94's final step.
 
 Decodes go to ``<out>/<set>.<shard>.<model>.jsonl``, each model's identity to
 ``<out>/<set>.<model>.identity.json``, the run's timing to ``<out>/<set>.<shard>.timing.jsonl``.
@@ -40,7 +41,8 @@ from pathlib import Path
 import numpy as np
 
 from tadabur.tarteel_split import half
-from training.aug_readout import (
+from training.aug_readout import load_qud_selection
+from training.aug_readout_gate import (
     BLANKS,
     QDAT_SET,
     QUD_SET,
@@ -50,10 +52,10 @@ from training.aug_readout import (
     TADABUR_SET,
     TARTEEL_CONFIRM,
     TARTEEL_LOOK,
+    Layout,
     allowed_models,
-    load_qud_selection,
+    committed_choice,
     model_spec,
-    read_choice,
 )
 from training.external_decode import Recording, append_timing, decode_recordings, load_decoders
 from training.truth_baseline import CHECK_STORE, CHECKS, DECODE_STORE, PROTOCOLS, Store
@@ -153,11 +155,29 @@ def tadabur_recordings(clips_dir: Path) -> Iterator[Recording]:
         yield Recording((clip.filename,), load)
 
 
-def check_models(set_name: str, models: Sequence[str]) -> None:
-    """Refuse a model the readout's order does not allow on this set now."""
-    allowed = allowed_models(set_name, read_choice())
+def check_models(set_name: str, models: Sequence[str], layout: Layout = Layout(),
+                 checkpoint_sha256: Callable[[str], str] | None = None) -> None:
+    """Refuse a model the readout's order does not allow on this set now, before any recording
+    is read: a gated set needs the committed choice (:func:`committed_choice`: tracked by git,
+    unchanged from ``HEAD``, bound to the committed look), its weights only, and the candidate's
+    checkpoint the one the choice read."""
+    if not SETS[set_name].gated:
+        allowed = allowed_models(set_name, None)
+        choice = None
+    else:
+        choice = committed_choice(layout).choice
+        allowed = allowed_models(set_name, choice)
     if refused := [m for m in models if m not in allowed]:
         raise SystemExit(f"{set_name} may be decoded now only for {list(allowed)}, not {refused}")
+    if choice is None:
+        return
+    if checkpoint_sha256 is None:
+        from training.truth_baseline import file_sha256 as checkpoint_sha256
+    for model in models:
+        if model in choice["identities"]:
+            found = checkpoint_sha256(model_spec(model).ref)
+            if found != choice["identities"][model]["checkpoint_sha256"]:
+                raise SystemExit(f"{model}: the checkpoint is not the one the choice read")
 
 
 def run(set_name: str, shard_index: int, models: Sequence[str], out_dir: Path, cache_dir: Path,

@@ -15,6 +15,7 @@ import pytest
 from tadabur.qud_text import ItemReference
 from tadabur.tarteel_split import CONFIRM, LOOK, half
 from training import aug_readout as ar
+from training import aug_readout_gate as ag
 from training import aug_readout_decode as ard
 from training import aug_readout_metrics as am
 from training import aug_readout_verdict as av
@@ -284,43 +285,28 @@ def test_beating_h448_but_not_the_control_is_a_null_for_augmentation():
 
 
 def test_readout_models_name_an_arm_s_weights_at_the_final_step():
-    assert ar.model_spec("candidate_ema") == ModelSpec(ar.ARMS["candidate"], True, 10_000)
-    assert ar.model_spec("control_live") == ModelSpec(ar.ARMS["control"], False, 10_000)
-    assert ar.model_spec("h448") is DEFAULT_SPECS["h448"]
+    assert ag.model_spec("candidate_ema") == ModelSpec(ag.ARMS["candidate"], True, 10_000)
+    assert ag.model_spec("control_live") == ModelSpec(ag.ARMS["control"], False, 10_000)
+    assert ag.model_spec("h448") is DEFAULT_SPECS["h448"]
     with pytest.raises(ValueError):
-        ar.model_spec("candidate_best")
+        ag.model_spec("candidate_best")
     # The truth baseline's identity records stay exactly what they were.
     assert DEFAULT_SPECS["h448"].identity_extra() == {}
-    assert ar.model_spec("candidate_ema").identity_extra() == {"weights": "ema", "step": 10_000}
+    assert ag.model_spec("candidate_ema").identity_extra() == {"weights": "ema", "step": 10_000}
 
 
 def test_before_the_choice_only_the_candidate_s_look_half_may_be_read():
-    assert ar.allowed_models(ar.TARTEEL_LOOK, None) == ("candidate_live", "candidate_ema")
-    for name in set(ar.SETS) - {ar.TARTEEL_LOOK}:
+    assert ag.allowed_models(ag.TARTEEL_LOOK, None) == ("candidate_live", "candidate_ema")
+    for name in set(ag.SETS) - {ag.TARTEEL_LOOK}:
         with pytest.raises(SystemExit, match="only after the look half"):
-            ar.allowed_models(name, None)
+            ag.allowed_models(name, None)
 
 
 def test_after_the_choice_only_the_chosen_weights_are_read():
     choice = {"weights": "ema"}
-    assert ar.allowed_models(ar.TARTEEL_CONFIRM, choice) == ("candidate_ema", "control_ema")
-    assert ar.allowed_models(ar.TADABUR_SET, choice) == ("candidate_ema", "control_ema", "h448",
+    assert ag.allowed_models(ag.TARTEEL_CONFIRM, choice) == ("candidate_ema", "control_ema")
+    assert ag.allowed_models(ag.TADABUR_SET, choice) == ("candidate_ema", "control_ema", "h448",
                                                          "base")
-
-
-def test_the_decoder_refuses_what_the_order_does_not_allow(monkeypatch):
-    monkeypatch.setattr(ard, "read_choice", lambda: None)
-    ard.check_models(ar.TARTEEL_LOOK, ["candidate_live", "candidate_ema"])
-    with pytest.raises(SystemExit):
-        ard.check_models(ar.TARTEEL_LOOK, ["control_live"])
-    with pytest.raises(SystemExit):
-        ard.check_models(ar.QUD_SET, ["candidate_live"])
-    monkeypatch.setattr(ard, "read_choice", lambda: {"weights": "live"})
-    ard.check_models(ar.QUD_SET, ["candidate_live", "control_live"])
-    with pytest.raises(SystemExit):
-        ard.check_models(ar.QUD_SET, ["candidate_ema"])
-    with pytest.raises(SystemExit):
-        ard.check_models(ar.QUD_SET, ["h448"])  # its QUD decodes are committed
 
 
 def test_the_choice_is_fewer_look_half_flags_then_agreement_then_live():
@@ -376,9 +362,9 @@ def test_the_blank_count_rides_on_exactly_the_deployed_stream():
 
     span = np.zeros(16000 * 12, dtype=np.float32)
     out = ard.stream_with_blanks(Fake(), span)
-    assert out[ar.STREAM] == Fake().decode_stream(span, block=0, flush_tail=True)
+    assert out[ag.STREAM] == Fake().decode_stream(span, block=0, flush_tail=True)
     rows = Fake().window_rows(window_audio(span))
-    assert out[ar.BLANKS] == [sum(int((r == BLANK_ID).sum()) for r in rows), 125 * len(rows)]
+    assert out[ag.BLANKS] == [sum(int((r == BLANK_ID).sum()) for r in rows), 125 * len(rows)]
 
 
 def test_a_set_keeps_only_its_items_and_never_loads_a_recording_without_any():
@@ -405,65 +391,151 @@ def test_tarteel_s_halves_split_by_clip_hash():
     assert 0 < len(look) < 200 and all(half(c) == CONFIRM for c in set(clips) - set(look))
 
 
+def test_a_checkpoint_at_another_step_is_refused_before_it_is_loaded(monkeypatch, tmp_path):
+    from training import external_decode as ed
+
+    monkeypatch.setattr(ed, "checkpoint_step", lambda path: 8_000)
+    with pytest.raises(ValueError, match="holds step 8000, not 10000"):
+        ed.load_decoders(lambda model: tmp_path / f"{model}.json",
+                         {"candidate_ema": ag.model_spec("candidate_ema")})
+
+
 # --- identity -------------------------------------------------------------------------------------
 
-
-def _record(model: str, set_name: str) -> dict:
-    spec = ar.model_spec(model)
-    committed = ar.baseline_identities()
-    identity = committed[model] if model in ar.BASELINES else {
-        "model_ref": spec.ref, "checkpoint_sha256": "f" * 64, **spec.identity_extra()}
-    return {"model": model, "identity": identity,
-            "fingerprints": ar._expected_fingerprints(spec.ref)}
+SHA = {"candidate": "c" * 64, "control": "d" * 64}
 
 
-def test_identity_records_are_checked_against_the_protocol_the_step_and_the_choice():
-    records = {f"{ar.TARTEEL_LOOK}/candidate_live": _record("candidate_live", ar.TARTEEL_LOOK),
-               f"{ar.TARTEEL_LOOK}/candidate_ema": _record("candidate_ema", ar.TARTEEL_LOOK),
-               f"{ar.QUD_SET}/candidate_ema": _record("candidate_ema", ar.QUD_SET),
-               f"{ar.TADABUR_SET}/h448": _record("h448", ar.TADABUR_SET)}
-    out = ar.verify_models(records, {"weights": "ema"})
-    assert out["candidate_ema"]["step"] == 10_000
-    with pytest.raises(ValueError, match="did not pick"):
-        ar.verify_models(records, {"weights": "live"})
-    wrong = json.loads(json.dumps(records))
-    wrong[f"{ar.QUD_SET}/candidate_ema"]["identity"]["step"] = 8_000
-    with pytest.raises(ValueError, match="step"):
-        ar.verify_models(wrong, {"weights": "ema"})
-    wrong = json.loads(json.dumps(records))
-    wrong[f"{ar.QUD_SET}/candidate_ema"]["identity"]["checkpoint_sha256"] = "0" * 64
-    with pytest.raises(ValueError, match="one checkpoint"):
-        ar.verify_models(wrong, {"weights": "ema"})
-    wrong = json.loads(json.dumps(records))
-    wrong[f"{ar.TADABUR_SET}/h448"]["fingerprints"]["checks"]["batch_size"] = 32
+def _record(model: str) -> dict:
+    spec = ag.model_spec(model)
+    identity = ag.baseline_identities()[model] if model in ag.BASELINES else {
+        "model_ref": spec.ref, "checkpoint_sha256": SHA[model.rsplit("_", 1)[0]],
+        **spec.identity_extra()}
+    return {"model": model, "identity": identity, "fingerprints": ag.expected_fingerprints(spec.ref)}
+
+
+def _manifest(phase: str, weights: str | None) -> dict:
+    return {f"{s}/{m}": _record(m) for s, models in ag.needs(phase, weights).items()
+            for m in models}
+
+
+def test_a_complete_identity_names_the_checkpoint_s_sha_its_weights_and_the_final_step():
+    assert ag.validate_identity(ag.QUD_SET, "candidate_ema", _record("candidate_ema"))["step"] \
+        == 10_000
+    for edit in ({"step": 8_000}, {"weights": "live"}, {"checkpoint_sha256": "x"},
+                 {"model_ref": "/elsewhere.pt"}):
+        record = _record("candidate_ema")
+        record["identity"].update(edit)
+        with pytest.raises(ValueError):
+            ag.validate_identity(ag.QUD_SET, "candidate_ema", record)
+    record = _record("candidate_ema")
+    del record["identity"]["checkpoint_sha256"]  # Sol's finding 2: no SHA, no identity
+    with pytest.raises(ValueError, match="checkpoint SHA-256"):
+        ag.validate_identity(ag.QUD_SET, "candidate_ema", record)
+    record = _record("h448")
+    record["fingerprints"]["checks"]["batch_size"] = 32
     with pytest.raises(ValueError, match="fingerprints"):
-        ar.verify_models(wrong, {"weights": "ema"})
+        ag.validate_identity(ag.TADABUR_SET, "h448", record)
+
+
+def test_a_sitting_needs_every_identity_it_reads():
+    with pytest.raises(ValueError, match="no identity record"):  # Sol's finding 2: empty models
+        ag.require_manifest({}, ag.needs(CONFIRM, "ema"), {"weights": "ema", "identities": {}})
+    records = _manifest(CONFIRM, "ema")
+    del records[f"{ag.QUD_SET}/control_ema"]
+    with pytest.raises(ValueError, match="no identity record for qud_half/control_ema"):
+        ag.require_manifest(records, ag.needs(CONFIRM, "ema"), {"weights": "ema",
+                                                                 "identities": {}})
+    records = _manifest(CONFIRM, "ema")
+    records[f"{ag.QDAT_SET}/control_ema"]["identity"]["checkpoint_sha256"] = "e" * 64
+    with pytest.raises(ValueError, match="one checkpoint"):
+        ag.require_manifest(records, ag.needs(CONFIRM, "ema"), {"weights": "ema",
+                                                                 "identities": {}})
+    choice = {"weights": "ema", "identities": {"candidate_ema": {
+        **_record("candidate_ema")["identity"], "checkpoint_sha256": "0" * 64}}}
+    with pytest.raises(ValueError, match="the committed choice read"):
+        ag.require_manifest(_manifest(CONFIRM, "ema"), ag.needs(CONFIRM, "ema"), choice)
 
 
 def test_every_reused_baseline_decode_is_one_model_under_the_frozen_protocol():
-    found = ar.baseline_identities()
+    found = ag.baseline_identities()
     assert set(found) == {"base", "h448"}
     assert found["h448"]["model_ref"].endswith("h448_stream/checkpoint.pt")
 
 
-def test_a_readout_decode_must_read_the_audio_the_base_decode_read(tmp_path, monkeypatch):
+def test_a_readout_decode_must_carry_and_match_its_set_s_whole_provenance(tmp_path, monkeypatch):
     import gzip
 
     item = _item(0)
     line = _line(item, CLEAN)
     path = tmp_path / "x.jsonl.gz"
-    path.write_bytes(gzip.compress((json.dumps({**line, "audio_sha256": "0" * 64}) + "\n")
-                                   .encode()))
     monkeypatch.setattr(ar, "decodes_file", lambda set_name, model: path)
+
+    def write(record):
+        path.write_bytes(gzip.compress((json.dumps(record) + "\n").encode()))
+
+    write({**line, "audio_sha256": "0" * 64})
     with pytest.raises(ValueError, match="not the audio"):
-        ar.read_readout(ar.QDAT_SET, "candidate_ema", {item.key: line}, {item.key})
-    path.write_bytes(gzip.compress((json.dumps(line) + "\n").encode()))
-    assert ar.read_readout(ar.QDAT_SET, "candidate_ema", {item.key: line}, {item.key})
+        ar.read_readout(ag.QDAT_SET, "candidate_ema", {item.key: line}, {item.key})
+    # Sol's finding 3: a field missing on either side is refused, never skipped.
+    write({k: v for k, v in line.items() if k != "audio_sha256"})
+    with pytest.raises(ValueError, match="no \\['audio_sha256'\\]"):
+        ar.read_readout(ag.QDAT_SET, "candidate_ema", {item.key: line}, {item.key})
+    write(line)
+    with pytest.raises(ValueError, match="no \\['end_sample'\\]"):
+        ar.read_readout(ag.QDAT_SET, "candidate_ema",
+                        {item.key: {k: v for k, v in line.items() if k != "end_sample"}},
+                        {item.key})
+    with pytest.raises(ValueError, match="mp3_sha256"):
+        ar.read_readout(ag.QUD_SET, "candidate_ema", {item.key: line}, {item.key})
+    assert ar.read_readout(ag.QDAT_SET, "candidate_ema", {item.key: line}, {item.key})
     with pytest.raises(ValueError, match="not decoded"):
-        ar.read_readout(ar.QDAT_SET, "candidate_ema", {item.key: line}, {item.key, "y#0"})
+        ar.read_readout(ag.QDAT_SET, "candidate_ema", {item.key: line}, {item.key, "y#0"})
 
 
-# --- look and confirm, end to end on synthetic sets --------------------------------------------
+# --- the committed choice and the claims ----------------------------------------------------------
+
+
+def _git(root, *args):
+    subprocess.run(["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+                   check=True, capture_output=True)
+
+
+def _repo(tmp_path) -> ag.Layout:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    _git(tmp_path, "init", "-q")
+    (tmp_path / "README").write_text("x")
+    _git(tmp_path, "add", "README")
+    _git(tmp_path, "commit", "-qm", "init")
+    return ag.Layout(tmp_path)
+
+
+def _commit(layout: ag.Layout, *paths) -> None:
+    _git(layout.root, "add", *(p.name for p in paths))
+    _git(layout.root, "commit", "-qm", "c")
+
+
+def test_a_choice_counts_as_committed_only_when_tracked_and_unchanged(tmp_path):
+    layout = _repo(tmp_path)
+    path = layout.choice
+    path.write_text("{}")
+    assert not ag.is_committed(path)
+    _commit(layout, path)
+    assert ag.is_committed(path)
+    path.write_text('{"weights": "live"}')
+    assert not ag.is_committed(path)
+
+
+def test_a_claim_is_held_once_and_recovered_only_by_the_same_sitting(tmp_path):
+    path = tmp_path / "x.claim.json"
+    with ag.claim(path, {"a": 1}):
+        with pytest.raises(SystemExit, match="being read now"):  # a concurrent invocation
+            with ag.claim(path, {"a": 1}):
+                pass
+    with ag.claim(path, {"a": 1}):  # after an interruption, the same sitting may run again
+        pass
+    with pytest.raises(SystemExit, match="another sitting"):
+        with ag.claim(path, {"a": 2}):
+            pass
 
 
 N = 48
@@ -487,16 +559,22 @@ def _flags(model: str, i: int, position: int) -> bool:
 
 
 class FakeSources(ar.Sources):
-    """Every set synthetic: names are bound to roles by the weights in :attr:`weights`."""
+    """Every set synthetic, its input files in ``files``; names are bound to roles."""
 
-    def __init__(self, weights: str = "ema"):
-        self.weights = weights
+    def __init__(self, files):
+        self.files = files
+        files.mkdir(exist_ok=True)
+        for name in ("look", "confirm"):
+            (files / f"{name}.input").write_text(name)
         self.read: list[str] = []
         # Eleven clusters, so no pattern below lines up with them.
         self.items = [_item(i, clusters=11, clip=f"{i:03d}_{i}_c.wav") for i in range(4 * N)]
 
+    def input_files(self, phase, weights):
+        return [self.files / f"{phase}.input"]
+
     def _role(self, model: str) -> str:
-        return model if model in ar.BASELINES else model.rsplit("_", 1)[0]
+        return model if model in ag.BASELINES else model.rsplit("_", 1)[0]
 
     def _set(self, name: str, items, models) -> ar.SetData:
         self.read.append(name)
@@ -519,7 +597,7 @@ class FakeSources(ar.Sources):
     def tadabur(self, models):
         self.read.append("tadabur")
         clips = [DevClip(f"d{i}.wav", i % 12, (0, i), 1.0, CLEAN) for i in range(N)]
-        roles = (*models, *ar.BASELINES)
+        roles = (*models, *ag.BASELINES)
         decodes = {m: {c.filename: CLEAN if self._role(m) == "candidate" or i % 5 else SWAPPED
                        for i, c in enumerate(clips)} for m in roles}
         blanks = {m: {c.filename: [80, 125] for c in clips} for m in roles}
@@ -537,79 +615,148 @@ class FakeSources(ar.Sources):
         return {"muraja_commit": "test"}
 
 
-def test_look_reads_the_look_half_once_and_writes_the_choice(tmp_path):
-    sources = FakeSources()
-    look, choice = tmp_path / "look.json", tmp_path / "choice.json"
-    written = ar.run_look(sources, look_path=look, choice_path=choice)
+def _looked(tmp_path) -> tuple[ag.Layout, FakeSources, dict]:
+    """A readout whose look sitting ran, with its manifest; nothing committed yet."""
+    layout = _repo(tmp_path / "readout")
+    sources = FakeSources(tmp_path / "files")
+    layout.models.write_text(json.dumps(_manifest(LOOK, None)))
+    choice = ar.run_look(sources, layout)
+    return layout, sources, choice
+
+
+def _committed(tmp_path) -> tuple[ag.Layout, FakeSources, dict]:
+    layout, sources, choice = _looked(tmp_path)
+    _commit(layout, layout.look, layout.choice, layout.claim(LOOK))
+    layout.models.write_text(json.dumps({**_manifest(LOOK, None),
+                                         **_manifest(CONFIRM, choice["weights"])}))
+    return layout, sources, choice
+
+
+def test_look_needs_the_candidate_s_identities_before_it_reads(tmp_path):
+    layout = _repo(tmp_path / "readout")
+    sources = FakeSources(tmp_path / "files")
+    with pytest.raises(ValueError, match="no identity record"):
+        ar.run_look(sources, layout)
+    assert sources.read == [] and not layout.claim(LOOK).exists()
+
+
+def test_look_reads_the_look_half_once_and_binds_the_choice(tmp_path):
+    layout, sources, choice = _looked(tmp_path)
     assert sources.read == ["tarteel_v1.look"]
-    assert written["weights"] == "live"  # live and EMA tie here; a tie goes to live
-    inputs = json.loads(look.read_text())["inputs"]
-    assert set(inputs) == {"candidate_live", "candidate_ema"}
-    assert json.loads(choice.read_text())["models"] == {"candidate": "candidate_live",
-                                                        "control": "control_live"}
+    assert choice["weights"] == "live"  # live and EMA tie here; a tie goes to live
+    look = json.loads(layout.look.read_text())
+    assert set(look["inputs"]) == {"candidate_live", "candidate_ema"}
+    assert look["control"] == ar.CONTROL_ON_LOOK
+    assert choice["models"] == {"candidate": "candidate_live", "control": "control_live"}
+    assert choice["identities"]["candidate_live"]["checkpoint_sha256"] == SHA["candidate"]
+    assert choice["look_sha256"] == ag.sha256_file(layout.look)
     with pytest.raises(SystemExit, match="read once"):
-        ar.run_look(sources, look_path=look, choice_path=choice)
+        ar.run_look(sources, layout)
 
 
-def test_confirm_refuses_without_a_committed_choice_and_after_a_verdict(tmp_path):
-    paths = {"choice_path": tmp_path / "choice.json", "report_path": tmp_path / "report.json",
-             "verdict_path": tmp_path / "verdict.json", "models_path": tmp_path / "models.json"}
-    with pytest.raises(SystemExit, match="committed"):
-        ar.run_confirm(FakeSources(), committed=lambda path: True, **paths)
-    paths["choice_path"].write_text(json.dumps({"weights": "ema"}))
-    with pytest.raises(SystemExit, match="committed"):
-        ar.run_confirm(FakeSources(), committed=lambda path: False, **paths)
-    paths["verdict_path"].write_text("{}")
-    with pytest.raises(SystemExit, match="read once"):
-        ar.run_confirm(FakeSources(), committed=lambda path: True, **paths)
+def test_an_untracked_or_edited_choice_unlocks_nothing(tmp_path, monkeypatch):
+    layout, sources, choice = _looked(tmp_path)
+    layout.models.write_text(json.dumps({**_manifest(LOOK, None),
+                                         **_manifest(CONFIRM, "live")}))
+    # Sol's finding 1: an untracked choice opens neither the decoder, nor merge, nor confirm.
+    with pytest.raises(SystemExit, match="not committed"):
+        ard.check_models(ag.QUD_SET, ["candidate_live", "control_live"], layout)
+    with pytest.raises(SystemExit, match="not committed"):
+        ar.run_confirm(sources, layout)
+    decodes = tmp_path / "box"
+    decodes.mkdir()
+    (decodes / f"{ag.QUD_SET}.candidate_live.identity.json").write_text(
+        json.dumps(_record("candidate_live")))
+    published = []
+    monkeypatch.setattr("training.external_corpus.merge_decode_files",
+                        lambda *a: published.append(a))
+    with pytest.raises(SystemExit, match="not committed"):
+        ar.merge(decodes, layout)
+    assert published == []
+    _commit(layout, layout.look, layout.choice, layout.claim(LOOK))
+    ard.check_models(ag.QUD_SET, ["candidate_live", "control_live"], layout,
+                     checkpoint_sha256=lambda ref: SHA["candidate"])
+    with pytest.raises(SystemExit, match="not the one the choice read"):
+        ard.check_models(ag.QUD_SET, ["candidate_live"], layout,
+                         checkpoint_sha256=lambda ref: "0" * 64)
+    # Editing the committed choice to the other weights unlocks nothing either.
+    layout.choice.write_text(json.dumps({**choice, "weights": "ema"}))
+    with pytest.raises(SystemExit, match="not committed"):
+        ard.check_models(ag.QUD_SET, ["candidate_ema", "control_ema"], layout)
 
 
-def test_confirm_reads_every_set_once_and_writes_the_verdict(tmp_path):
-    sources = FakeSources("ema")
-    paths = {"choice_path": tmp_path / "choice.json", "report_path": tmp_path / "report.json",
-             "verdict_path": tmp_path / "verdict.json", "models_path": tmp_path / "models.json"}
-    paths["choice_path"].write_text(json.dumps({"weights": "ema"}))
-    paths["models_path"].write_text(json.dumps({
-        f"{ar.QDAT_SET}/candidate_ema": _record("candidate_ema", ar.QDAT_SET)}))
-    report = ar.run_confirm(sources, committed=lambda path: True, **paths)
-    assert sorted(sources.read) == sorted(["tarteel_v1.confirm", "qdat", "qud_half", "retasy",
-                                           "tadabur"])
+def test_a_committed_choice_must_be_bound_to_the_committed_look(tmp_path):
+    layout, _, choice = _looked(tmp_path)
+    layout.choice.write_text(json.dumps({**choice, "look_sha256": "0" * 64}))
+    _commit(layout, layout.look, layout.choice, layout.claim(LOOK))
+    with pytest.raises(SystemExit, match="not bound"):
+        ag.committed_choice(layout)
+
+
+def test_the_decoder_reads_the_look_half_only_for_the_candidate(tmp_path):
+    layout = _repo(tmp_path)
+    ard.check_models(ag.TARTEEL_LOOK, ["candidate_live", "candidate_ema"], layout)
+    with pytest.raises(SystemExit):
+        ard.check_models(ag.TARTEEL_LOOK, ["control_live"], layout)
+    with pytest.raises(SystemExit, match="not committed"):
+        ard.check_models(ag.QUD_SET, ["candidate_live"], layout)
+
+
+def test_confirm_needs_every_identity_before_it_reads(tmp_path):
+    layout, sources, _ = _committed(tmp_path)
+    layout.models.write_text(json.dumps(_manifest(LOOK, None)))  # no confirm identities
+    with pytest.raises(ValueError, match="no identity record"):
+        ar.run_confirm(sources, layout)
+    assert "qdat" not in sources.read and not layout.claim(CONFIRM).exists()
+
+
+def test_confirm_reads_every_set_once_and_writes_an_audited_verdict(tmp_path):
+    layout, sources, choice = _committed(tmp_path)
+    report = ar.run_confirm(sources, layout)
+    assert sorted(sources.read) == sorted(["tarteel_v1.look", "tarteel_v1.confirm", "qdat",
+                                           "qud_half", "retasy", "tadabur"])
     main = report["main"]["tarteel_v1_confirm"]
     assert set(main["models"]) == {"candidate", "control", "h448", "base"}
     assert main["models"]["h448"]["point"] == pytest.approx(250.0)
     assert main["models"]["candidate"]["point"] == pytest.approx(125.0)
-    verdict = json.loads(paths["verdict_path"].read_text())
+    retasy = report["catch"]["retasy_in_correct"]["words"]["models"]
+    assert set(retasy) == {"base", "h448", "candidate", "control"}  # side by side
+    verdict = json.loads(layout.verdict.read_text())
     assert verdict["verdict"] == PASS, [c for c in verdict["conditions"] if c["verdict"] != PASS]
     assert verdict["attribution"]["reading"] == av.BEATS_CONTROL
+    assert verdict["attribution"]["control_vs_h448"]["point"] == pytest.approx(0.0)
+    audit = report["audit"]
+    assert audit["choice_commit"] and audit["choice_sha256"] == ag.sha256_file(layout.choice)
+    assert audit["identities"]["control_live"]["checkpoint_sha256"] == SHA["control"]
+    assert audit["inputs"] == {str((sources.files / "confirm.input").resolve()):
+                               ag.sha256_file(sources.files / "confirm.input")}
     assert report["leniency"]["blank_ratio"]["models"]["candidate"]["point"] == pytest.approx(64.0)
+    with pytest.raises(SystemExit, match="read once"):
+        ar.run_confirm(sources, layout)
     from training.aug_readout_doc import render
 
-    text = render({"items": 1, "rule": ar.CHOICE_RULE, "choice": "ema", "inputs": {
-        "candidate_ema": {"graded_words": 2, "flagged_words": 1, "false_flags_per_1000": 500.0,
-                          "word_agreement_points": 50.0}}}, json.loads(paths["report_path"]
-                                                                      .read_text()))
+    text = render(json.loads(layout.look.read_text()), json.loads(layout.report.read_text()))
     assert "## Verdict: pass" in text and "candidate−control" in text
+    assert "never by a re-run" in text and "control was not decoded" in text
 
 
-def test_a_choice_counts_as_committed_only_when_tracked_and_unchanged(tmp_path):
-    def git(*args):
-        subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True)
+def test_an_interrupted_confirm_resumes_only_as_the_same_sitting(tmp_path, monkeypatch):
+    layout, sources, _ = _committed(tmp_path)
+    original = ar.write_text_atomically
 
-    git("init", "-q")
-    path = tmp_path / "choice.json"
-    path.write_text("{}")
-    assert not ar.is_committed(path)
-    git("add", "choice.json")
-    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c")
-    assert ar.is_committed(path)
-    path.write_text('{"weights": "live"}')
-    assert not ar.is_committed(path)
+    def crash_on_verdict(path, text):
+        if path == layout.verdict:
+            raise KeyboardInterrupt
+        original(path, text)
 
-
-def test_a_checkpoint_at_another_step_is_refused_before_it_is_loaded(monkeypatch, tmp_path):
-    from training import external_decode as ed
-
-    monkeypatch.setattr(ed, "checkpoint_step", lambda path: 8_000)
-    with pytest.raises(ValueError, match="holds step 8000, not 10000"):
-        ed.load_decoders(lambda model: tmp_path / f"{model}.json",
-                         {"candidate_ema": ar.model_spec("candidate_ema")})
+    monkeypatch.setattr(ar, "write_text_atomically", crash_on_verdict)
+    with pytest.raises(KeyboardInterrupt):
+        ar.run_confirm(sources, layout)
+    assert layout.report.exists() and not layout.verdict.exists()
+    monkeypatch.setattr(ar, "write_text_atomically", original)
+    # Sol's finding 4: the inputs moved, so this is another sitting, and it is refused.
+    (sources.files / "confirm.input").write_text("another decode")
+    with pytest.raises(SystemExit, match="another sitting"):
+        ar.run_confirm(sources, layout)
+    (sources.files / "confirm.input").write_text("confirm")
+    assert ar.run_confirm(sources, layout)["verdict"]["verdict"] == PASS

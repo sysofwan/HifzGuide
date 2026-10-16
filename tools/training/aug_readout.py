@@ -5,40 +5,44 @@
 **control**, ``runs/aug94_control``). Each run keeps two weights at its final step: live and EMA.
 This module reads them against ``h448`` and the base teacher (whose decodes are committed and
 reused) on the sets #95 names, through the pre-registered bars of
-:mod:`training.aug_readout_verdict`, in a fixed order the code enforces:
+:mod:`training.aug_readout_verdict`, in a fixed order :mod:`training.aug_readout_gate` enforces:
 
 1. ``look``: Tarteel v1's **look** half (:mod:`tadabur.tarteel_split`), checks protocol, read for
-   the candidate's live and EMA weights: false flags per 1,000 graded words (shipped default)
-   and word agreement with the teacher. It chooses one thing only, live or EMA
-   (:func:`choose`), writes ``look.json`` and ``choice.json``, and refuses to run again once a
-   choice exists. The choice binds both arms, so candidate − control compares like weights.
-2. ``confirm``: refuses to run unless ``choice.json`` is committed (tracked by git and unchanged
-   from ``HEAD``), and refuses once a verdict exists. It reads the **confirm** half and every
-   guard once, for the chosen weights, and writes ``report.json`` and ``verdict.json``: pass,
-   fail or "cannot certify", never reinterpreted.
+   the candidate's live and EMA weights only (the control is never decoded on it): false flags
+   per 1,000 graded words (shipped default) and word agreement with the teacher. It chooses one
+   thing only, live or EMA (:func:`choose`), and writes ``look.json`` and ``choice.json``; the
+   choice binds both arms and holds the candidate's identities and the look inputs' SHA-256.
+2. ``confirm``: refuses unless ``choice.json``, ``look.json`` and the look's claim are committed
+   (:func:`training.aug_readout_gate.committed_choice`). It reads the **confirm** half and every
+   guard once, for the chosen weights, and writes ``report.json`` (with the choice's commit, the
+   checkpoint SHA-256s and every input file's SHA-256) and ``verdict.json``: pass, fail or
+   "cannot certify", never reinterpreted. A "cannot certify" is resolved by a new
+   pre-registration on #128, never by a re-run.
 
-The GPU box's decoder (:mod:`training.aug_readout_decode`) enforces the same order: before a
-choice, only the candidate on the look half; after it, only the chosen weights elsewhere.
+Each sitting first requires a complete identity manifest for every model it reads, then claims
+itself exclusively (:func:`training.aug_readout_gate.claim`): it runs once, a concurrent run
+fails, and after an interruption only the same sitting may run again.
 
-**Sets** (:data:`SETS`): Tarteel v1's halves; qdat (and qdat_bench, its clips, stream arm);
-RetaSy (catch side, restricted: aggregates only); QUD's two professional mushafs on a **salted
-50% of segments** (:func:`qud_selection_record`, frozen in ``qud_selection.json`` before any
-candidate decode); Tadabur's ``decode_evalset`` dev clips ``h448`` holds no copy of (#159's 671),
-at ``stream_b0``, where ``h448`` and the base teacher are decoded again for the blank share only.
+**Sets** (:data:`~training.aug_readout_gate.SETS`): Tarteel v1's halves; qdat (and qdat_bench, its
+clips, stream arm); RetaSy (catch side, restricted: aggregates only); QUD's two professional
+mushafs on a **salted 50% of segments** (:func:`qud_selection_record`, frozen in
+``qud_selection.json`` before any candidate decode); Tadabur's ``decode_evalset`` dev clips
+``h448`` holds no copy of (#159's 671), at ``stream_b0``, where ``h448`` and the base teacher are
+decoded again for the blank share only.
 
-**Identity.** Every decode carries its audio's checksum and span, checked against the committed
-base decode of the same item; every model's identity record (checkpoint SHA-256, weights, step,
-fingerprints) is checked against the truth baseline's frozen protocol (:func:`verify_models`).
+**Identity.** Every decode line carries its set's whole provenance (audio name, checksum, span),
+each field equal to the committed base decode's of the same item (:func:`read_readout`).
 
 Files (``tadabur/aug_readout/``): ``qud_selection.json``, ``decodes/<set>.<model>.jsonl.gz``
-(RetaSy's under the ignored ``restricted/``), ``models.json``, ``look.json``, ``choice.json``,
-``report.json``, ``verdict.json``; the doc ``docs/augmentation-readout.md``.
+(RetaSy's under the ignored ``restricted/``), ``models.json``, ``look.json``,
+``look.claim.json``, ``choice.json``, ``confirm.claim.json``, ``report.json``, ``verdict.json``;
+the doc ``docs/augmentation-readout.md``.
 
 Usage (from ``tools/``; torch-free; ``look`` and ``confirm`` need the Muraja harness)::
 
   python -m training.aug_readout select-qud                 # once, before any candidate decode
   python -m training.aug_readout merge --decodes-dir <the GPU box's decodes, copied>
-  python -m training.aug_readout look                       # then commit choice.json
+  python -m training.aug_readout look                       # then commit look*.json, choice.json
   python -m training.aug_readout confirm
   python -m training.aug_readout doc
 """
@@ -48,15 +52,45 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK, half
+from training.aug_readout_gate import (
+    ARMS,
+    BASELINES,
+    BLANKS,
+    LOOK_MODELS,
+    QDAT_SET,
+    QUD_SET,
+    READOUT_DIR,
+    RETASY_SET,
+    SETS,
+    STREAM,
+    TADABUR_SET,
+    TARTEEL_CONFIRM,
+    TARTEEL_LOOK,
+    WEIGHTS,
+    CommittedChoice,
+    Layout,
+    arm_model,
+    baseline_identities,
+    canonical,
+    claim,
+    committed_choice,
+    decodes_file,
+    digests,
+    make_choice,
+    needs,
+    read_manifest,
+    require_manifest,
+    validate_identity,
+)
 from training.aug_readout_metrics import (
     BASE,
     CANDIDATE,
+    COMPARISONS,
     CONTROL,
     H448,
     PER_1000,
@@ -72,99 +106,13 @@ from training.aug_readout_metrics import (
     word_agreement_terms,
 )
 from training.aug_readout_verdict import verdict
-from training.external_decode import DEFAULT_SPECS, ModelSpec
 from training.tashkeel_eval import write_text_atomically
-from training.truth_baseline import ARM_PROTOCOLS, CHECKS, DEFAULT_MODELS, expected_fingerprint
+from training.truth_baseline import CHECKS
 
-READOUT_DIR = Path(__file__).parent.parent / "tadabur" / "aug_readout"
-DECODES_DIR = READOUT_DIR / "decodes"
-#: Per-item outputs of a corpus whose licence allows only aggregates (ignored by git).
-RESTRICTED_DIR = READOUT_DIR / "restricted"
 QUD_SELECTION_PATH = READOUT_DIR / "qud_selection.json"
-MODELS_PATH = READOUT_DIR / "models.json"
-LOOK_PATH = READOUT_DIR / "look.json"
-CHOICE_PATH = READOUT_DIR / "choice.json"
-REPORT_PATH = READOUT_DIR / "report.json"
-VERDICT_PATH = READOUT_DIR / "verdict.json"
 DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "augmentation-readout.md"
-
-# --- the models ---------------------------------------------------------------------------------
-
-#: #94's two runs on the GPU box (its run note, ``docs/augmentation-experiment.md``); each saves
-#: one ``checkpoint.pt``, overwritten at every save, so the file holds the last step saved.
-ARMS = {
-    CANDIDATE: "/root/scratch/issue-94/repo/tools/runs/aug94_candidate/checkpoint.pt",
-    CONTROL: "/root/scratch/issue-94/repo/tools/runs/aug94_control/checkpoint.pt",
-}
-#: #94's checkpoint rule, fixed before training: the final step.
-FINAL_STEP = 10_000
-LIVE, EMA = "live", "ema"
-WEIGHTS = (LIVE, EMA)
-#: The models the look half is decoded and read for: the candidate's two weights.
-LOOK_MODELS = (f"{CANDIDATE}_{LIVE}", f"{CANDIDATE}_{EMA}")
-BASELINES = (H448, BASE)
-
-
-def arm_model(arm: str, weights: str) -> str:
-    return f"{arm}_{weights}"
-
-
-def model_spec(name: str) -> ModelSpec:
-    """The decode spec of a readout model: an arm's weights at :data:`FINAL_STEP`, or a
-    truth-baseline model."""
-    if name in DEFAULT_SPECS:
-        return DEFAULT_SPECS[name]
-    arm, _, weights = name.rpartition("_")
-    if arm not in ARMS or weights not in WEIGHTS:
-        raise ValueError(f"{name!r} is no readout model")
-    return ModelSpec(ARMS[arm], use_ema=weights == EMA, step=FINAL_STEP)
-
-
-# --- the sets -----------------------------------------------------------------------------------
-
-TARTEEL_LOOK, TARTEEL_CONFIRM = f"tarteel_v1.{LOOK}", f"tarteel_v1.{CONFIRM}"
-QDAT_SET, RETASY_SET, QUD_SET, TADABUR_SET = "qdat", "retasy", "qud_half", "tadabur_dev_unseen"
-STREAM = "stream_b0"
-#: The argmax frames' blank count beside a ``stream_b0`` decode: ``[blank, frames]``.
-BLANKS = "stream_b0_blanks"
-
-
-@dataclass(frozen=True)
-class ReadoutSet:
-    """One set the readout decodes: the protocols each item is decoded under, whether it is
-    read only after the choice (``gated``), and whether its per-item decodes may be committed."""
-
-    name: str
-    protocols: tuple[str, ...]
-    gated: bool = True
-    open: bool = True
-
-
-SETS = {s.name: s for s in (
-    ReadoutSet(TARTEEL_LOOK, (CHECKS,), gated=False),
-    ReadoutSet(TARTEEL_CONFIRM, (CHECKS,)),
-    ReadoutSet(QDAT_SET, (CHECKS, STREAM)),
-    ReadoutSet(RETASY_SET, (CHECKS,), open=False),
-    ReadoutSet(QUD_SET, (CHECKS,)),
-    ReadoutSet(TADABUR_SET, (STREAM,)),
-)}
-
-
-def decodes_file(set_name: str, model: str) -> Path:
-    directory = DECODES_DIR if SETS[set_name].open else RESTRICTED_DIR
-    return directory / f"{set_name}.{model}.jsonl.gz"
-
-
-def allowed_models(set_name: str, choice: Mapping | None) -> tuple[str, ...]:
-    """The models a set may be decoded (and read) for: the look half, the candidate's two
-    weights, before or after the choice; any other set only once a choice exists, for both
-    arms at the chosen weights (and, on Tadabur, the two baselines, for the blank share)."""
-    if not SETS[set_name].gated:
-        return LOOK_MODELS
-    if choice is None:
-        raise SystemExit(f"{set_name} is read only after the look half: no {CHOICE_PATH.name}")
-    chosen = tuple(arm_model(arm, choice["weights"]) for arm in ARMS)
-    return chosen + BASELINES if set_name == TADABUR_SET else chosen
+#: What ``look.json`` states of the control (#95, settled 2026-10-16).
+CONTROL_ON_LOOK = "the control was not decoded on the look half; the choice binds both arms"
 
 
 # --- QUD: the salted half ---------------------------------------------------------------------
@@ -207,21 +155,7 @@ def load_qud_selection(path: Path = QUD_SELECTION_PATH) -> set[str]:
     return keys
 
 
-# --- discipline: the choice and the verdict ----------------------------------------------------
-
-
-def read_choice(path: Path = CHOICE_PATH) -> dict | None:
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
-
-
-def is_committed(path: Path) -> bool:
-    """Whether ``path`` is tracked by git and unchanged from ``HEAD``."""
-    def ok(*args: str) -> bool:
-        return subprocess.run(["git", "-C", str(path.parent), *args], capture_output=True
-                              ).returncode == 0
-
-    return path.exists() and ok("ls-files", "--error-unmatch", path.name) and \
-        ok("diff", "--quiet", "HEAD", "--", path.name)
+# --- the choice ---------------------------------------------------------------------------------
 
 
 def choose(inputs: Mapping[str, dict]) -> str:
@@ -267,7 +201,28 @@ class TadaburData:
 
 class Sources:
     """Where the readout reads its inputs: the committed decodes, the datasets' metadata and the
-    harness. Tests substitute it; each method reads only the set it names."""
+    harness. Tests substitute it; each method reads only the set it names, and
+    :meth:`input_files` names every file a sitting's methods read."""
+
+    def input_files(self, phase: str, weights: str | None) -> list[Path]:
+        """Every file the sitting reads: the readout decodes of each model it needs, the
+        committed baseline decodes it reuses and the frozen selections."""
+        from tadabur.exposure import EVALSET_MANIFEST_PATH
+        from tadabur.nonpro_sources import QDAT, RETASY, TARTEEL_V1
+        from tadabur.qud_overlap import PILOT
+        from training.nonpro_eval import decodes_file as committed
+        from training.nonpro_gap import DECODES_DIR as GAP_DECODES, GRID_PATH
+        from training.qud_pilot import decodes_file as qud_committed
+
+        readout = [decodes_file(s, m) for s, models in needs(phase, weights).items()
+                   for m in models]
+        if phase == LOOK:
+            return [*readout, committed(TARTEEL_V1, BASE)]
+        return [*readout,
+                *(committed(d, m) for d in (TARTEEL_V1, QDAT, RETASY) for m in BASELINES),
+                *(qud_committed(slug, m) for slug in PILOT for m in BASELINES),
+                *(GAP_DECODES / f"clean.{m}.jsonl.gz" for m in BASELINES),
+                QUD_SELECTION_PATH, EVALSET_MANIFEST_PATH, GRID_PATH]
 
     def tarteel(self, which_half: str, models: Sequence[str]) -> SetData:
         from tadabur.nonpro_sources import TARTEEL_V1
@@ -292,7 +247,8 @@ class Sources:
         from training.external_corpus import read_decode_file
         from training.nonpro_eval import build_items, decodes_file as committed
 
-        baselines = {m: read_decode_file(committed(dataset, m)) for m in BASELINES}
+        baselines = {m: read_decode_file(committed(dataset, m)) for m in BASELINES
+                     if m == BASE or m in models}
         items, _ = build_items(dataset, list(baselines[BASE].values()), hafs_segment_reference())
         items = [i for i in items if keep is None or keep(i)]
         decodes = {**{m: baselines[m] for m in models if m in BASELINES},
@@ -319,7 +275,7 @@ class Sources:
         clips = [c for c in dev_clips() if c.filename not in seen]
         keys = {c.filename for c in clips}
         committed = gap_decodes("clean")
-        readout = {m: read_readout(TADABUR_SET, m, committed[BASE], keys, audio_key="clean_sha256")
+        readout = {m: read_readout(TADABUR_SET, m, committed[BASE], keys)
                    for m in (*models, *BASELINES)}
         decodes = {m: {k: (committed[m] if m in BASELINES else readout[m])[k][STREAM]
                        for k in keys} for m in (*models, *BASELINES)}
@@ -348,18 +304,14 @@ class Sources:
         return require_harness().build
 
 
-#: What identifies a decode's audio, per set (a Tadabur clip is checked by its clean samples).
-AUDIO_FIELDS = ("audio_filename", "audio_sha256", "mp3_sha256", "clean_sha256", "start_sample",
-                "end_sample")
-
-
-def read_readout(set_name: str, model: str, base: Mapping[str, dict], keys: set[str],
-                 audio_key: str | None = None) -> dict[str, dict]:
+def read_readout(set_name: str, model: str, base: Mapping[str, dict], keys: set[str]
+                 ) -> dict[str, dict]:
     """A model's merged readout decodes of ``set_name`` (``merge`` checked their count), holding
-    every item of ``keys``, each line's audio the same as the committed base decode's of its item
-    (:data:`AUDIO_FIELDS` both carry)."""
+    every item of ``keys`` and only items the base decoded, each line carrying every field of
+    its set's provenance, equal to the committed base decode's of its item."""
     from training.external_corpus import read_decode_file
 
+    fields = SETS[set_name].provenance
     lines = read_decode_file(decodes_file(set_name, model))
     if missing := keys - set(lines):
         raise ValueError(f"{set_name}.{model}: {len(missing)} items not decoded")
@@ -367,10 +319,9 @@ def read_readout(set_name: str, model: str, base: Mapping[str, dict], keys: set[
         raise ValueError(f"{set_name}.{model}: {len(stray)} items the base never decoded")
     for key, line in lines.items():
         theirs = base[key]
-        fields = [f for f in AUDIO_FIELDS if f in line and f in theirs]
-        if audio_key is not None and audio_key not in fields:
-            raise ValueError(f"{set_name}.{model} {key}: no {audio_key} to check")
-        if not fields or any(line[f] != theirs[f] for f in fields):
+        if absent := [f for f in fields if f not in line or f not in theirs]:
+            raise ValueError(f"{set_name}.{model} {key}: no {absent} to check its audio by")
+        if any(line[f] != theirs[f] for f in fields):
             raise ValueError(f"{set_name}.{model} {key}: not the audio the base decode read")
     return lines
 
@@ -412,25 +363,30 @@ def look_inputs(data: SetData, workers: int = 1) -> dict:
             for m in LOOK_MODELS}
 
 
-def run_look(sources: Sources, workers: int = 1, look_path: Path = LOOK_PATH,
-             choice_path: Path = CHOICE_PATH) -> dict:
-    """Read the look half once and write the choice; refused once a choice exists."""
-    if choice_path.exists() or look_path.exists():
-        raise SystemExit(f"the look half was read: {choice_path.name} exists; it is read once")
-    data = sources.tarteel(LOOK, (*LOOK_MODELS, BASE))
-    if any(half(i.audio_filename) != LOOK for i in data.items):
-        raise ValueError("an item outside the look half reached the look")
-    data = SetData(data.items, data.decodes, sources.grade(data.items, data.decodes, LOOK_MODELS))
-    inputs = look_inputs(data, workers)
-    weights = choose(inputs)
-    look = {"issue": 95, "half": LOOK, "items": len(data.items), "inputs": inputs,
-            "rule": CHOICE_RULE, "choice": weights}
-    look_text = json.dumps(look, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
-    write_text_atomically(look_path, look_text)
-    choice = {"issue": 95, "weights": weights, "rule": CHOICE_RULE,
-              "models": {arm: arm_model(arm, weights) for arm in ARMS},
-              "look_sha256": hashlib.sha256(look_text.encode("utf-8")).hexdigest()}
-    write_text_atomically(choice_path, json.dumps(choice, indent=1, sort_keys=True) + "\n")
+def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1) -> dict:
+    """Read the look half once and write the choice. Refused once a choice exists, without a
+    complete identity manifest for the candidate's two weights, and while (or after) another
+    look sitting holds the claim."""
+    if layout.choice.exists():
+        raise SystemExit(f"the look half was read: {layout.choice.name} exists; it is read once")
+    identities = require_manifest(read_manifest(layout), needs(LOOK, None), None)
+    sitting = {"phase": LOOK, "identities": identities,
+               "inputs": digests(sources.input_files(LOOK, None))}
+    with claim(layout.claim(LOOK), sitting):
+        data = sources.tarteel(LOOK, (*LOOK_MODELS, BASE))
+        if any(half(i.audio_filename) != LOOK for i in data.items):
+            raise ValueError("an item outside the look half reached the look")
+        data = SetData(data.items, data.decodes,
+                       sources.grade(data.items, data.decodes, LOOK_MODELS))
+        inputs = look_inputs(data, workers)
+        weights = choose(inputs)
+        look_text = canonical({"issue": 95, "half": LOOK, "items": len(data.items),
+                               "inputs": inputs, "rule": CHOICE_RULE, "choice": weights,
+                               "control": CONTROL_ON_LOOK, "identities": identities,
+                               "input_sha256": sitting["inputs"]})
+        write_text_atomically(layout.look, look_text)
+        choice = make_choice(weights, look_text, sitting)
+        write_text_atomically(layout.choice, canonical(choice))
     return choice
 
 
@@ -465,8 +421,9 @@ def confirm_report(data: ConfirmData, workers: int = 1) -> dict:
 
     shipped = SHIPPED_DEFAULT.name
 
-    def flags(grades: Sequence, models: Sequence[str] = ROLES) -> dict:
-        return compare(false_flag_terms(grades, models, shipped), PER_1000)
+    def flags(grades: Sequence, models: Sequence[str] = ROLES,
+              comparisons: Sequence[tuple[str, str]] = COMPARISONS) -> dict:
+        return compare(false_flag_terms(grades, models, shipped), PER_1000, comparisons)
 
     def agreement(d: SetData) -> dict:
         return compare(word_agreement_terms(d.items, checks_text(d, ROLES), STUDENTS,
@@ -479,7 +436,9 @@ def confirm_report(data: ConfirmData, workers: int = 1) -> dict:
                 and g.word_index in departures[g.item.key]]
     tadabur = data.tadabur
     report = {
-        "main": {"tarteel_v1_confirm": flags(data.tarteel.grades)},
+        # control − h448 beside the two differences, for the attribution's description only.
+        "main": {"tarteel_v1_confirm": flags(data.tarteel.grades,
+                                             comparisons=(*COMPARISONS, (CONTROL, H448)))},
         "mechanism": {"tarteel_v1_confirm": agreement(data.tarteel), "qdat": agreement(data.qdat)},
         "consistency": {"qdat": flags(data.qdat.grades)},
         "guards": {
@@ -536,82 +495,31 @@ def load_confirm(sources: Sources, weights: str) -> ConfirmData:
         bench=sources.bench())
 
 
-def run_confirm(sources: Sources, workers: int = 1, committed: Callable[[Path], bool] = is_committed,
-                choice_path: Path = CHOICE_PATH, report_path: Path = REPORT_PATH,
-                verdict_path: Path = VERDICT_PATH, models_path: Path = MODELS_PATH) -> dict:
+def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
+                gate: Callable[[Layout], CommittedChoice] = committed_choice) -> dict:
     """Read the confirm half and the guards once, for the committed choice, and write the
-    report and the verdict; refused without a committed choice, and once a verdict exists."""
-    choice = read_choice(choice_path)
-    if choice is None or not committed(choice_path):
-        raise SystemExit(f"confirm needs a committed {choice_path.name}: run look, commit it")
-    if verdict_path.exists():
-        raise SystemExit(f"{verdict_path.name} exists: the confirm half is read once")
-    identities = verify_models(json.loads(models_path.read_text(encoding="utf-8")), choice)
-    report = confirm_report(load_confirm(sources, choice["weights"]), workers)
-    report = {"issue": 95, "choice": choice, "models": identities,
-              "baselines": baseline_identities(), "muraja_build": sources.harness_build(),
-              **report}
-    write_text_atomically(report_path, json.dumps(report, ensure_ascii=False, indent=1,
-                                                  sort_keys=True) + "\n")
-    write_text_atomically(verdict_path, json.dumps(
-        {"issue": 95, "choice": choice["weights"], **report["verdict"]}, ensure_ascii=False,
-        indent=1, sort_keys=True) + "\n")
+    report and the verdict. Refused without a committed choice, once a verdict exists, without
+    a complete identity manifest for every model read, and while (or after) another confirm
+    sitting holds the claim."""
+    committed = gate(layout)
+    if layout.verdict.exists():
+        raise SystemExit(f"{layout.verdict.name} exists: the confirm half is read once")
+    weights = committed.choice["weights"]
+    identities = require_manifest(read_manifest(layout), needs(CONFIRM, weights),
+                                  committed.choice)
+    sitting = {"phase": CONFIRM, "choice_commit": committed.commit,
+               "choice_sha256": committed.sha256, "identities": identities,
+               "inputs": digests(sources.input_files(CONFIRM, weights))}
+    with claim(layout.claim(CONFIRM), sitting):
+        report = confirm_report(load_confirm(sources, weights), workers)
+        report = {"issue": 95, "choice": committed.choice, "audit": sitting,
+                  "baselines": baseline_identities(), "muraja_build": sources.harness_build(),
+                  **report}
+        write_text_atomically(layout.report, canonical(report))
+        write_text_atomically(layout.verdict, canonical(
+            {"issue": 95, "choice": weights, "choice_commit": committed.commit,
+             **report["verdict"]}))
     return report
-
-
-# --- identity -----------------------------------------------------------------------------------
-
-
-def _expected_fingerprints(ref: str) -> dict:
-    return {arm: expected_fingerprint(ref, mode) for arm, mode in ARM_PROTOCOLS.items()}
-
-
-def verify_models(records: Mapping[str, dict], choice: Mapping | None) -> dict:
-    """Every merged decode's identity record (``<set>/<model>``): an arm's checkpoint at its
-    path, weights and :data:`FINAL_STEP`, one SHA-256 per checkpoint across every set; a
-    baseline's the committed one; every fingerprint the truth baseline's frozen protocol; and,
-    after the choice, nothing but the look half read at other weights. Returns the identity per
-    model."""
-    committed = baseline_identities()
-    per_model: dict[str, dict] = {}
-    for name, record in sorted(records.items()):
-        set_name, model = name.split("/")
-        spec = model_spec(model)
-        identity = record["identity"]
-        if record["fingerprints"] != _expected_fingerprints(spec.ref):
-            raise ValueError(f"{name}: fingerprints are not the frozen protocol's")
-        if model in BASELINES:
-            if identity != committed[model]:
-                raise ValueError(f"{name}: not the committed {model}")
-        elif (identity["model_ref"], identity["weights"], identity["step"]) != \
-                (spec.ref, EMA if spec.use_ema else LIVE, FINAL_STEP):
-            raise ValueError(f"{name}: {identity} is not {model} at step {FINAL_STEP}")
-        if SETS[set_name].gated and model not in allowed_models(set_name, choice):
-            raise ValueError(f"{name}: decoded at weights the choice did not pick")
-        if per_model.setdefault(model, identity) != identity:
-            raise ValueError(f"{model} is not one checkpoint across sets")
-    return per_model
-
-
-def baseline_identities() -> dict[str, dict]:
-    """The one identity of each baseline across every committed corpus the readout reuses
-    (Tarteel v1, qdat and RetaSy, #156; QUD, #144; Tadabur dev, #159), each fingerprint checked
-    against the truth baseline's protocol."""
-    from training.nonpro_eval import REPORT_PATH as NONPRO_REPORT
-    from training.nonpro_gap import REPORT_PATH as GAP_REPORT
-    from training.qud_pilot import REPORT_PATH as QUD_REPORT
-
-    found: dict[str, dict] = {}
-    for path in (NONPRO_REPORT, QUD_REPORT, GAP_REPORT):
-        for name, record in json.loads(path.read_text(encoding="utf-8"))["models"].items():
-            model = name.rsplit("/", 1)[1]
-            for arm, fingerprint in record["fingerprints"].items():
-                if fingerprint != expected_fingerprint(DEFAULT_MODELS[model], ARM_PROTOCOLS[arm]):
-                    raise ValueError(f"{path.name} {name}: {arm} is not the frozen protocol")
-            if found.setdefault(model, record["identity"]) != record["identity"]:
-                raise ValueError(f"{path.name} {name}: another {model} than the other corpora's")
-    return found
-
 
 
 # --- merging the GPU box's decodes -----------------------------------------------------------
@@ -637,21 +545,32 @@ def expected_counts() -> dict[str, int]:
     }
 
 
-def merge(decodes_dir: Path, models_path: Path = MODELS_PATH) -> dict:
+def merge(decodes_dir: Path, layout: Layout = Layout(),
+          gate: Callable[[Layout], CommittedChoice] = committed_choice) -> dict:
     """Every set's per-shard decodes on the GPU box as one gzipped file per set and model, each
-    checked against its set's count; the identity records, verified, into ``models.json``."""
+    checked against its set's count, with the identity records into ``models.json``. Every
+    identity is validated first, and a gated set's decodes are not read before the choice is
+    committed and names their weights."""
     from training.external_corpus import merge_decode_files
 
+    found = {}
+    for path in sorted(decodes_dir.glob("*.identity.json")):
+        set_name, model = path.name.removesuffix(".identity.json").rsplit(".", 1)
+        found[(set_name, model)] = path
+    choice = gate(layout).choice if any(SETS[s].gated for s, _ in found) else None
+    records = read_manifest(layout)
+    required: dict[str, list[str]] = {}
+    for (set_name, model), path in found.items():
+        record = json.loads(path.read_text(encoding="utf-8"))
+        validate_identity(set_name, model, record)
+        records[f"{set_name}/{model}"] = record
+        required.setdefault(set_name, []).append(model)
+    require_manifest(records, required, choice)
     counts = expected_counts()
-    choice = read_choice()
-    records = json.loads(models_path.read_text(encoding="utf-8")) if models_path.exists() else {}
-    for identity in sorted(decodes_dir.glob("*.identity.json")):
-        set_name, model = identity.name.removesuffix(".identity.json").rsplit(".", 1)
-        records[f"{set_name}/{model}"] = merge_decode_files(
-            sorted(decodes_dir.glob(f"{set_name}.*.{model}.jsonl")), identity,
-            decodes_file(set_name, model), counts[set_name])
-    verify_models(records, choice)
-    write_text_atomically(models_path, json.dumps(records, indent=1, sort_keys=True) + "\n")
+    for (set_name, model), path in found.items():
+        merge_decode_files(sorted(decodes_dir.glob(f"{set_name}.*.{model}.jsonl")), path,
+                           decodes_file(set_name, model), counts[set_name])
+    write_text_atomically(layout.models, canonical(records))
     return records
 
 
@@ -683,22 +602,23 @@ def main() -> None:
         command.add_argument("--workers", type=int, default=8)
     commands.add_parser("doc", help="render docs/augmentation-readout.md")
     args = parser.parse_args()
+    layout = Layout()
 
     if args.command == "select-qud":
         record = write_qud_selection()
         print(f"wrote {QUD_SELECTION_PATH}: {record['kept_counts']} of {record['segments']}")
     elif args.command == "merge":
-        print(f"wrote {MODELS_PATH}: {sorted(merge(args.decodes_dir))}")
+        print(f"wrote {layout.models}: {sorted(merge(args.decodes_dir, layout))}")
     elif args.command == "look":
-        print(f"wrote {CHOICE_PATH}: {run_look(Sources(), args.workers)['weights']}")
+        print(f"wrote {layout.choice}: {run_look(Sources(), layout, args.workers)['weights']}")
     elif args.command == "confirm":
-        report = run_confirm(Sources(), args.workers)
-        print(f"wrote {VERDICT_PATH}: {report['verdict']['verdict']}")
+        report = run_confirm(Sources(), layout, args.workers)
+        print(f"wrote {layout.verdict}: {report['verdict']['verdict']}")
     else:
         from training.aug_readout_doc import render
 
-        look = json.loads(LOOK_PATH.read_text(encoding="utf-8"))
-        report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
+        look = json.loads(layout.look.read_text(encoding="utf-8"))
+        report = json.loads(layout.report.read_text(encoding="utf-8"))
         write_text_atomically(DOC_PATH, render(look, report))
         print(f"wrote {DOC_PATH}")
 

@@ -97,3 +97,24 @@ def test_a_net_share_on_enough_surahs_has_a_bootstrap_interval():
     interval = net["interval"]
     assert interval["method"] == "bootstrap" and interval["lower"] < 0.4 < interval["upper"]
     assert interval["lower"] > 0  # half the flags against a tenth of the controls
+
+
+def test_six_words_against_twenty_controls_have_no_bound_for_their_difference():
+    """Pooled support must not stand in for a six-word stratum's (Sol, #162)."""
+    rows = ([_row(k, "ا→∅", 26, 6) for k in range(6)]
+            + [_row(k, te.CONTROL, 4379, 20) for k in range(6, 26)])
+    heard = ["mistake"] * 3 + ["correct"] * 3 + ["mistake"] * 5 + ["correct"] * 15
+    net = report(rows, _verdicts(rows, heard))["net_of_control"]["ا→∅"]["mistake"]
+    assert net["difference"] == pytest.approx(0.5 - 0.25)
+    assert net["interval"]["method"] == "none" and net["interval"]["lower"] is None
+
+
+def test_all_correct_verdicts_on_the_committed_worklist_certify_nothing():
+    """Sol's reproduction (#162): every answer ``correct`` gave the six-word strata a
+    bootstrap interval of [0, 0]. A degenerate group has no bound, however many words."""
+    rows = te.load_worklist()
+    result = report(rows, _verdicts(rows, ["correct"] * len(rows)))
+    for name, net in result["net_of_control"].items():
+        for measure, cell in net.items():
+            assert cell["interval"]["method"] == "none", (name, measure)
+    assert result["net_of_control"][POOLED]["mistake"]["difference"] == 0.0

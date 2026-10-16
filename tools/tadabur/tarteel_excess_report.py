@@ -22,8 +22,11 @@ other evaluation does with an unclear verdict.
 Intervals follow acceptance rules §1 (:mod:`training.acceptance_stats`): the bootstrap clustered
 by surah (#156's clusters, as Tarteel v1 names no user) where a cell is not sparse, a Wilson
 bound for a share whose sparse cell is independent and equally weighted, none otherwise. A
-difference resamples the surahs of both groups in one draw (``difference_interval``); its two
-groups are disjoint, never paired, so it has no score-interval fallback. A stratum holds about
+difference resamples the surahs of both groups in one draw (``difference_interval``), and has
+a bound only where **each** group alone would have a bootstrap one: neither sparse, and
+neither's replicates (those that define it) all equal. Pooled support must not stand in for a
+six-word group's, and its two groups are disjoint, never paired, so there is no score-interval
+fallback. A stratum holds about
 six words, so its interval is wide or absent: read the strata as where the model errs, and the
 pooled share as how often.
 
@@ -40,7 +43,16 @@ from pathlib import Path
 
 import numpy as np
 
-from training.acceptance_stats import difference_interval, ratio, ratio_interval, unit_if_equal
+from training.acceptance_stats import (
+    NO_BOUND,
+    Interval,
+    Resample,
+    difference_interval,
+    is_sparse,
+    ratio,
+    ratio_interval,
+    unit_if_equal,
+)
 from training.site_outcomes import CORRECT_SIDE, MISTAKE_SIDE
 from training.tashkeel_eval import write_text_atomically
 
@@ -109,9 +121,23 @@ def _difference(words: Sequence[ListeningWord], controls: Sequence[ListeningWord
     first = np.array([f for _, f in kept], dtype=float)
     arm = (weights * hits * first, weights * first)
     baseline = (weights * hits * (1 - first), weights * (1 - first))
-    return {"difference": round(ratio(*arm) - ratio(*baseline), 4),
-            "interval": difference_interval([w.cluster for w, _ in kept], arm,
-                                            baseline).as_dict()}
+    clusters = [w.cluster for w, _ in kept]
+    resample = Resample.by_cluster(clusters)
+    supported = all(_supported(resample, terms, [c for (_, f), c in zip(kept, clusters) if f == own])
+                    for terms, own in ((arm, True), (baseline, False)))
+    interval = (difference_interval(clusters, arm, baseline, resample=resample) if supported
+                else Interval(None, None, NO_BOUND, "a group is sparse or degenerate on its own"))
+    return {"difference": round(ratio(*arm) - ratio(*baseline), 4), "interval": interval.as_dict()}
+
+
+def _supported(resample: Resample, terms: tuple[np.ndarray, np.ndarray],
+               clusters: Sequence[int]) -> bool:
+    """Whether one group of a difference would have a bootstrap bound on its own: not sparse
+    (its own words and surahs), and its replicates, where defined, not all equal."""
+    replicates = resample.ratios(*terms)
+    defined = replicates[~np.isnan(replicates)]
+    return not is_sparse(len(clusters), len(set(clusters))) and bool(
+        defined.size) and not np.all(defined == defined[0])
 
 
 def cell(words: Sequence[ListeningWord], verdicts: Mapping[str, Verdict]) -> dict:

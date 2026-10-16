@@ -150,7 +150,9 @@ scp root@cuda-dev:/root/scratch/issue-160/HifzGuide/tools/tadabur/tarteel_excess
 scp root@cuda-dev:/root/scratch/issue-160/HifzGuide/tools/tadabur/tarteel_excess/review.jsonl \
     tools/tadabur/tarteel_excess/ 2>/dev/null || true
 git add tools/tadabur/tarteel_excess/verdicts.jsonl && git commit -m "..."
-# Stop the server: ssh root@cuda-dev 'pkill -f "tadabur.tarteel_excess serve"'
+# Stop the server: find its PID (the [t] keeps pgrep from matching its own ssh command line),
+# then kill that PID: ssh root@cuda-dev 'pgrep -af "[t]adabur.tarteel_excess serve"', then
+# ssh root@cuda-dev 'kill <pid>'
 ```
 
 ### On the Mac (the alternative)

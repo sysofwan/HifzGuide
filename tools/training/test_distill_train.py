@@ -174,6 +174,100 @@ def test_every_loss_weight_is_guarded():
     )
 
 
+# --- Augmentation (#94) -------------------------------------------------------------
+
+
+def test_resume_refuses_a_changed_augmentation_recipe():
+    """The control arm resumed as the augmented one (or under another recipe or noise pool)
+    would splice two experiments onto one optimiser state."""
+    recipe = {"version": "aug94-mixture-v1", "noise_pool_sha256": "a" * 64}
+    for saved, current in (({}, recipe), (recipe, {}),
+                           (recipe, {**recipe, "noise_pool_sha256": "b" * 64})):
+        with pytest.raises(SystemExit, match="augment"):
+            dt.check_resume_compatible(dt.asdict(_config(augment=saved)),
+                                       _config(augment=current))
+    dt.check_resume_compatible(dt.asdict(_config(augment=recipe)), _config(augment=dict(recipe)))
+
+
+def test_the_data_order_and_exclusion_are_resume_critical_and_the_pool_path_is_not():
+    for field in ("augment", "shuffle_buffer", "exposure_use", "stream_shards", "seed"):
+        assert field in dt.RESUME_CRITICAL_FIELDS
+    assert "noise_pool" not in dt.RESUME_CRITICAL_FIELDS  # its content is in the recipe's hash
+    with pytest.raises(SystemExit, match="shuffle_buffer"):
+        dt.check_resume_compatible(dt.asdict(_config(shuffle_buffer=1024)),
+                                   _config(shuffle_buffer=512))
+    with pytest.raises(SystemExit, match="exposure_use"):
+        dt.check_resume_compatible(dt.asdict(_config(exposure_use="aug.control")),
+                                   _config(exposure_use="aug.training"))
+
+
+def test_a_legacy_checkpoint_resumes_only_as_the_clean_run_it_was():
+    """A checkpoint from before #94 has none of the new fields: it ran clean, with no
+    exposure use and a 1024-window buffer, and resuming it as anything else is refused."""
+    legacy = dt.asdict(_config())
+    for field in dt.LEGACY_FIELD_VALUES:
+        legacy.pop(field)
+    dt.check_resume_compatible(legacy, _config(shuffle_buffer=1024))  # as it ran
+    for changed, match in (
+        (_config(shuffle_buffer=1024, augment={"version": "aug94-mixture-v1"}), "augment"),
+        (_config(shuffle_buffer=1024, exposure_use="aug.training"), "exposure_use"),
+        (_config(), "shuffle_buffer"),  # today's default, 512: a different data order
+    ):
+        with pytest.raises(SystemExit, match=match):
+            dt.check_resume_compatible(legacy, changed)
+
+
+def test_a_new_checkpoint_is_not_read_through_the_legacy_values():
+    recipe = {"version": "aug94-mixture-v1"}
+    saved = dt.asdict(_config(augment=recipe, exposure_use="aug.training"))
+    dt.check_resume_compatible(saved, _config(augment=recipe, exposure_use="aug.training"))
+    with pytest.raises(SystemExit, match="augment"):
+        dt.check_resume_compatible(saved, _config(exposure_use="aug.training"))
+
+
+def test_a_warm_start_reads_weights_and_never_the_source_runs_config(tmp_path):
+    """--init-from starts a new run from h448's weights (a legacy checkpoint), so it must
+    not be held to that run's config the way a resume is."""
+    student, projector = torch.nn.Linear(2, 2), torch.nn.Linear(2, 2)
+    legacy = dt.asdict(_config())
+    for field in dt.LEGACY_FIELD_VALUES:
+        legacy.pop(field)
+    path = tmp_path / "checkpoint.pt"
+    torch.save({"step": 40_000, "student": student.state_dict(),
+                "projector": projector.state_dict(), "config": legacy}, path)
+    fresh, fresh_projector = torch.nn.Linear(2, 2), torch.nn.Linear(2, 2)
+    assert dt.load_student_weights(path, fresh, fresh_projector, "cpu") == 40_000
+    assert torch.equal(fresh.weight, student.weight)
+
+
+def test_a_streamed_pair_splits_into_teacher_and_student_inputs():
+    clean, augmented = torch.zeros(2, 250, 160), torch.ones(2, 250, 160)
+    assert dt.teacher_student_inputs([clean, augmented]) == (clean, augmented)
+    teacher, student = dt.teacher_student_inputs(clean)  # the staged corpus: one tensor
+    assert teacher is clean and student is clean
+
+
+def test_the_teacher_reads_clean_input_and_the_student_augmented(monkeypatch):
+    seen = {}
+
+    class Model(torch.nn.Module):
+        def __init__(self, name):
+            super().__init__()
+            self.name = name
+
+        def forward(self, features, output_hidden_states=False, return_dict=True):
+            seen[self.name] = features
+            return {"logits": {"phonemes": features.sum(-1, keepdim=True)}}
+
+    monkeypatch.setattr(dt, "distillation_loss", lambda **kwargs: kwargs)
+    clean, augmented = torch.zeros(1, 250, 160), torch.ones(1, 250, 160)
+    out = dt.forward_step(clean, augmented, Model("teacher"), Model("student"), None,
+                          _config().loss_config())
+    assert seen["teacher"] is clean and seen["student"] is augmented
+    assert torch.equal(out["teacher_logits"], clean.sum(-1, keepdim=True))
+    assert torch.equal(out["student_logits"], augmented.sum(-1, keepdim=True))
+
+
 # --- Weight averaging ---
 
 

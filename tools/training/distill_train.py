@@ -48,7 +48,7 @@ import json
 import math
 import random
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -70,6 +70,7 @@ from training.distill_loss import (
     distillation_loss,
     fmt_term,
 )
+from training.distill_stream import DEFAULT_SHUFFLE_BUFFER
 from training.distill_student import (
     PRESETS,
     TEACHER_HIDDEN_SIZE,
@@ -117,6 +118,18 @@ class TrainConfig:
     # from --audio-root, which stays the (held-out) validation source. Peak disk is one
     # shard per worker; see training.distill_stream.
     stream_shards: str = ""
+    # The streamed windows' shuffle buffer, per worker (training.distill_stream). It orders
+    # the data, so it is recorded; h448 ran with 1024, the #94 arms with 512.
+    shuffle_buffer: int = DEFAULT_SHUFFLE_BUFFER
+    # The exposure-registry use the streamed rows serve (acceptance rules §6): the reciters
+    # it must not touch are dropped before decoding. Empty for none.
+    exposure_use: str = ""
+    # The augmentation recipe the student's input is perturbed under, as
+    # training.augmentation.recipe_record() states it; empty for none (the teacher always
+    # reads clean audio). ``noise_pool`` is where its pool's audio is on this machine: an
+    # operational path, its content checked against the committed record the recipe hashes.
+    augment: dict = field(default_factory=dict)
+    noise_pool: str = ""
     num_workers: int = 8
     log_every: int = 50
     eval_every: int = 2_000
@@ -167,6 +180,9 @@ RESUME_CRITICAL_FIELDS = (
     "hop_seconds",
     "val_fraction",
     "stream_shards",
+    "shuffle_buffer",
+    "exposure_use",
+    "augment",
     "seed",
     "audio_root",
     "logit_weight",
@@ -180,6 +196,13 @@ RESUME_CRITICAL_FIELDS = (
 )
 
 
+# What a checkpoint written before these fields existed ran with. A field missing from a
+# saved config is read as its legacy value, never skipped: skipping it would let a clean
+# run resume augmented, under an exposure use, or with a smaller shuffle buffer than the
+# one its data order came from (h448 and every run before #94 used 1024).
+LEGACY_FIELD_VALUES = {"augment": {}, "exposure_use": "", "shuffle_buffer": 1024}
+
+
 def check_resume_compatible(saved: dict, current: TrainConfig) -> None:
     """Fail fast when a resume would splice two different experiments together.
 
@@ -189,6 +212,7 @@ def check_resume_compatible(saved: dict, current: TrainConfig) -> None:
     curve.
     """
     current_values = asdict(current)
+    saved = {**LEGACY_FIELD_VALUES, **saved}
     mismatches = [
         f"  {field}: checkpoint={saved[field]!r} current={current_values[field]!r}"
         for field in RESUME_CRITICAL_FIELDS
@@ -290,6 +314,18 @@ def load_teacher(device: torch.device, model_id: str = TEACHER_MODEL_ID):
     return teacher
 
 
+def build_augmenter(config: TrainConfig):
+    """The student's augmentation for a run whose config carries a recipe, else ``None``."""
+    if not config.augment:
+        return None
+    from training.augmentation import Augmenter, load_training_pool
+
+    augmenter = Augmenter(config.seed, load_training_pool(Path(config.noise_pool)))
+    print(f"[augment] {config.augment['version']}: {len(augmenter.pool)} noise recordings, "
+          f"codec lags {augmenter.codec_lags}")
+    return augmenter
+
+
 def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
     """Train and validation loaders over disjoint *clips*."""
     audio_root = Path(config.audio_root)
@@ -315,7 +351,10 @@ def build_dataloaders(config: TrainConfig) -> tuple[DataLoader, DataLoader]:
         train_dataset = StreamingWindowDataset(
             parse_shard_spec(config.stream_shards),
             hop_seconds=config.hop_seconds,
+            shuffle_buffer=config.shuffle_buffer,
             seed=config.seed,
+            exposure_use=config.exposure_use or None,
+            augment=build_augmenter(config),
         )
         train_loader = DataLoader(
             train_dataset,
@@ -391,14 +430,32 @@ def lr_lambda(
     return 1.0 - (1.0 - LR_FLOOR) * progress
 
 
+def teacher_student_inputs(batch) -> tuple[torch.Tensor, torch.Tensor]:
+    """The teacher's and the student's input from one training batch.
+
+    The streamed dataset yields ``(teacher, student)`` pairs -- clean and, under a recipe,
+    augmented windows (:class:`training.distill_stream.StreamingWindowDataset`); the staged
+    corpus yields one tensor, which both models read.
+    """
+    if isinstance(batch, torch.Tensor):
+        return batch, batch
+    teacher_features, student_features = batch
+    return teacher_features, student_features
+
+
 def forward_step(
-    features: torch.Tensor,
+    teacher_features: torch.Tensor,
+    student_features: torch.Tensor,
     teacher,
     student,
     projector: FeatureProjector,
     loss_config: DistillLossConfig,
 ):
     """One teacher+student forward and the loss over them.
+
+    The teacher reads ``teacher_features`` (always clean audio) and the student
+    ``student_features`` (the same windows, augmented under a recipe, else the same tensor),
+    so the student learns to give the clean audio's distribution from perturbed input.
 
     Hidden states are requested only when the feature term is on. They are 25 layers x
     B x 250 x d per model -- ~410 MB for the teacher at batch 32 in bf16, plus the
@@ -409,10 +466,14 @@ def forward_step(
     want_hidden = bool(loss_config.feature_weight)
 
     with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
-        teacher_out = teacher(features, output_hidden_states=want_hidden, return_dict=True)
+        teacher_out = teacher(
+            teacher_features, output_hidden_states=want_hidden, return_dict=True
+        )
 
     with torch.autocast("cuda", dtype=torch.bfloat16):
-        student_out = student(features, output_hidden_states=want_hidden, return_dict=True)
+        student_out = student(
+            student_features, output_hidden_states=want_hidden, return_dict=True
+        )
 
     return distillation_loss(
         student_logits=student_out["logits"]["phonemes"],
@@ -490,7 +551,9 @@ def preflight(
 
     features = torch.randn(config.batch_size, 250, 160, device=device)
     try:
-        output = forward_step(features, teacher, student, projector, config.loss_config())
+        output = forward_step(
+            features, features, teacher, student, projector, config.loss_config()
+        )
         output.total.backward()
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
@@ -662,12 +725,14 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     while step < config.steps:
-        for features in train_loader:
+        for batch in train_loader:
             if step >= config.steps:
                 break
-            features = features.to(device, non_blocking=True)
+            teacher_in, student_in = (
+                t.to(device, non_blocking=True) for t in teacher_student_inputs(batch)
+            )
 
-            output = forward_step(features, teacher, student, projector, loss_config)
+            output = forward_step(teacher_in, student_in, teacher, student, projector, loss_config)
             (output.total / config.grad_accum).backward()
 
             if (step + 1) % config.grad_accum == 0:
@@ -762,6 +827,31 @@ def main() -> None:
         "reading --audio-root (which then serves only the held-out validation clips). "
         "Peak disk is one ~2.5 GB shard per worker however many shards the run covers.",
     )
+    parser.add_argument(
+        "--shuffle-buffer",
+        type=int,
+        default=DEFAULT_SHUFFLE_BUFFER,
+        help="streamed windows buffered per worker for shuffling. It orders the data, so a "
+        "resume must match it: runs before #94 used 1024.",
+    )
+    parser.add_argument(
+        "--exposure-use",
+        default="",
+        help="the exposure-registry use the streamed rows serve (e.g. aug.training): drop "
+        "the rows of reciters it must not touch, before decoding (acceptance rules §6)",
+    )
+    parser.add_argument(
+        "--augment",
+        action="store_true",
+        help="perturb the student's input under training.augmentation's recipe (#94); the "
+        "teacher reads clean audio. Needs --stream-shards, --noise-pool and ffmpeg.",
+    )
+    parser.add_argument(
+        "--noise-pool",
+        type=Path,
+        help="the augmentation noise pool's .npz on this machine (training.augmentation "
+        "noise-pool), checked against its committed record",
+    )
     parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument("--log-every", type=int, default=50)
     parser.add_argument("--eval-batches", type=int, default=40)
@@ -829,6 +919,13 @@ def main() -> None:
 
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is required")
+    if args.augment and (args.noise_pool is None or not args.stream_shards):
+        raise SystemExit("--augment needs --noise-pool and --stream-shards")
+    augment = {}
+    if args.augment:
+        from training.augmentation import recipe_record
+
+        augment = recipe_record()
 
     config = TrainConfig(
         preset=args.preset,
@@ -842,6 +939,10 @@ def main() -> None:
         cooldown_steps=args.cooldown_steps,
         hop_seconds=args.hop_seconds,
         stream_shards=args.stream_shards,
+        shuffle_buffer=args.shuffle_buffer,
+        exposure_use=args.exposure_use,
+        augment=augment,
+        noise_pool=str(args.noise_pool or ""),
         num_workers=args.num_workers,
         log_every=args.log_every,
         eval_batches=args.eval_batches,

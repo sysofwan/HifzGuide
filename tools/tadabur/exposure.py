@@ -147,6 +147,11 @@ PROBE_KL_CONTROL = "probe.kl_control"
 BIAS_TUNE = "bias.tune"
 BIAS_SCORE = "bias.score"
 SHADDAH_PROBE_TUNING = "shaddah_probe.tuning"
+#: #94's augmentation experiment: ``h448`` continued with augmented student input, and its
+#: control, the same run with augmentation off. Streaming training over ``h448``'s shards
+#: (shard uses), written when the arms launch.
+AUG_TRAINING = "aug.training"
+AUG_CONTROL = "aug.control"
 
 USES = frozenset({
     *TRUTH_SITE_USES.values(),
@@ -155,7 +160,7 @@ USES = frozenset({
     MINING_POOL, EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, H448_TRAINING, H448_INIT_VALIDATION,
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
-    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
+    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
 })
 
 #: ``h448``'s ``--stream-shards``, verbatim from ``runs/h448_stream/run_config.json`` on the
@@ -811,13 +816,13 @@ def copies_across_uses(registry: ExposureRegistry) -> dict[tuple[str, str], int]
 PRD_USES = frozenset({
     *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
-    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
+    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
 })
 #: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
 #: them, edit donors included.
 TRAINING_AND_TUNING_USES = frozenset({
     SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
-    SHADDAH_PROBE_TUNING, SHIP_A_TRAIN,
+    SHADDAH_PROBE_TUNING, SHIP_A_TRAIN, AUG_TRAINING, AUG_CONTROL,
 })
 
 
@@ -860,6 +865,30 @@ def unseen_violations(
                      if clip.shard in shards or (clip.shard, clip.row_index) in linked)
 
 
+#: The uses a training or tuning stream may hold no recording of, not even as an alias or a
+#: probable copy (#94): every evaluation use -- the frozen ``decode_evalset`` (both halves and
+#: the legacy sample), the sealed panel, the truth sites, the human-label fixtures -- and both
+#: of Ship A's verified halves. ``nonpro.evaluation_only`` is not here: it holds no Tadabur
+#: recording, so the registry ties no shard row to it.
+TRAINING_BARRED_USES = (
+    EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, SEALED_PANEL, *sorted(TRUTH_SITE_USES.values()),
+    LABEL_P35_FIXTURE, LABEL_REJECT_REREAD, LABEL_REJECT_BLEED, LABEL_WAQF_EVENTS,
+    LABEL_TASHKEEL_COUNTERFACTUAL, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
+)
+
+
+def barred_recordings(
+    uses: Iterable[str], registry: ExposureRegistry
+) -> dict[Source, tuple[str, ...]]:
+    """Every ``(shard, row)`` that is, or is tied to (an alias or a probable copy), a recording
+    of one of ``uses``, with the uses it is tied to (:func:`linked_sources`, per use)."""
+    barred: dict[Source, list[str]] = {}
+    for use in uses:
+        for source in linked_sources([use], registry):
+            barred.setdefault(source, []).append(use)
+    return {source: tuple(found) for source, found in sorted(barred.items())}
+
+
 def excluded_reciters(for_use: str, registry: ExposureRegistry | None = None) -> frozenset[int]:
     """The canonical reciters a PRD use must not touch (§6): the sealed panel's always, and
     for a training or tuning use the bias score half's as well. Read from a complete
@@ -875,35 +904,48 @@ def excluded_reciters(for_use: str, registry: ExposureRegistry | None = None) ->
 
 @dataclass
 class RowExclusion:
-    """Drops the rows of excluded reciters from a stream of Tadabur rows **before** any
-    audio is read, and counts them, so a full-shard consumer (training, mining) never
-    reaches the sealed panel's audio and can report what it left out. Rows keep their
-    order; a consumer that numbers rows numbers them before filtering."""
+    """Drops what a use must not touch from a stream of Tadabur rows **before** any audio is
+    read, and counts it, so a full-shard consumer (training, mining) never reaches the sealed
+    panel's audio and can report what it left out: the rows of excluded reciters
+    (:func:`excluded_reciters`) and, for a training or tuning use, every row that is or is
+    tied to a recording of :data:`TRAINING_BARRED_USES` (:func:`barred_recordings`). Each row
+    is identified by its ``(shard, row_index)``, numbered before filtering, so the numbering
+    is the parquet row's whatever is dropped."""
 
     use: str
     reciters: frozenset[int]
+    recordings: Mapping[Source, tuple[str, ...]] = field(default_factory=dict)
     rows_seen: int = 0
     rows_excluded: int = 0
+    #: Rows excluded per reason: ``reciter``, or each barred use a recording is tied to (a
+    #: row tied to two uses counts under both, once in ``rows_excluded``).
+    excluded_by: Counter = field(default_factory=Counter)
 
     @classmethod
     def for_use(cls, use: str, registry: ExposureRegistry | None = None) -> "RowExclusion":
-        return cls(use, excluded_reciters(use, registry))
+        registry = registry or load_registry()
+        recordings = (barred_recordings(TRAINING_BARRED_USES, registry)
+                      if use in TRAINING_AND_TUNING_USES else {})
+        return cls(use, excluded_reciters(use, registry), recordings)
 
-    def keeps(self, row: Mapping) -> bool:
-        """Whether one row may be used; counts it either way."""
+    def keeps(self, source: Source, row: Mapping) -> bool:
+        """Whether the row at ``source`` may be used; counts it either way."""
         self.rows_seen += 1
         if int(row["reciter_id"]) in self.reciters:
-            self.rows_excluded += 1
-            return False
-        return True
-
-    def filter(self, rows: Iterable[Mapping]) -> Iterable[Mapping]:
-        """The rows :meth:`keeps` admits, in order."""
-        return (row for row in rows if self.keeps(row))
+            reasons: tuple[str, ...] = ("reciter",)
+        else:
+            reasons = self.recordings.get(source, ())
+        if not reasons:
+            return True
+        self.rows_excluded += 1
+        self.excluded_by.update(reasons)
+        return False
 
     def report(self) -> dict:
         return {"use": self.use, "excluded_reciters": len(self.reciters),
-                "rows_seen": self.rows_seen, "rows_excluded": self.rows_excluded}
+                "barred_recordings": len(self.recordings), "rows_seen": self.rows_seen,
+                "rows_excluded": self.rows_excluded,
+                "excluded_by": dict(sorted(self.excluded_by.items()))}
 
 
 # --- building the uses that exist ------------------------------------------------------
@@ -1021,6 +1063,45 @@ def shard_exposure(
     )
 
 
+def training_stream_exposure(
+    index_path: Path, shards: Iterable[int], use: str, *, membership: str, note: str,
+    registry: ExposureRegistry | None = None,
+) -> tuple[ShardExposure, dict]:
+    """A streaming training use's shard use, and what its exclusion drops: rows per canonical
+    reciter in ``shards`` counting only the rows :meth:`RowExclusion.for_use` admits (no
+    excluded reciter, no row tied to an evaluation recording), from a full shard index. Not
+    a shared-baseline exposure: it is the candidate's or the control's own."""
+    wanted = set(shards)
+    index = read_shard_index(index_path)
+    if missing := wanted - {row.shard for row in index.values()}:
+        raise ValueError(f"{index_path} does not index shards {sorted(missing)[:10]}")
+    exclusion = RowExclusion.for_use(use, registry)
+    counts = Counter(
+        row.reciter_id
+        for row in sorted(index.values(), key=lambda r: (r.shard, r.row_index))
+        if row.shard in wanted
+        and exclusion.keeps((row.shard, row.row_index), {"reciter_id": row.reciter_id})
+    )
+    exposure = ShardExposure(
+        tuple(sorted(wanted)), dict(counts), hashlib.sha256(index_path.read_bytes()).hexdigest(),
+        membership, False, note,
+    )
+    return exposure, exclusion.report()
+
+
+def write_training_stream_use(
+    use: str, exposure: ShardExposure, directory: Path = EXPOSURE_DIR
+) -> None:
+    """Write a streaming training use as a shard use, replacing the empty recording-level
+    file that declared it unused (a use is recorded in one shape only)."""
+    declared = _recording_path(use, directory)
+    if declared.exists():
+        if declared.read_text(encoding="utf-8").strip():
+            raise ValueError(f"{declared} records recordings; refusing to replace it")
+        declared.unlink()
+    write_shard_use(use, exposure, directory)
+
+
 def describe(registry: ExposureRegistry) -> str:
     """One line per use: recordings (or shards), reciters."""
     lines = [f"{use:40s} {len(rows):>11d} QUD ayat {len({r.qud_reciter for r in rows}):>5d} "
@@ -1053,7 +1134,26 @@ def main() -> None:
     copies.add_argument("--index", type=Path, required=True,
                         help="a shard index of all 385 shards (tadabur.staged_audio index)")
     commands.add_parser("duplicates", help="report recordings held under two shard rows")
+    stream = commands.add_parser(
+        "training-stream", help="write a streaming training use (#94's arms) as a shard use: "
+        "rows per reciter of the rows its exclusion admits")
+    stream.add_argument("--use", required=True, choices=sorted(TRAINING_AND_TUNING_USES))
+    stream.add_argument("--index", type=Path, required=True,
+                        help="a shard index of all 385 shards (tadabur.staged_audio index)")
+    stream.add_argument("--shards", required=True, help="the run's --stream-shards")
+    stream.add_argument("--membership", choices=MEMBERSHIPS, required=True)
+    stream.add_argument("--note", required=True)
     args = parser.parse_args()
+
+    if args.command == "training-stream":
+        from .shard_reader import parse_shard_spec
+
+        exposure, report = training_stream_exposure(
+            args.index, parse_shard_spec(args.shards), args.use, membership=args.membership,
+            note=args.note)
+        write_training_stream_use(args.use, exposure)
+        print(json.dumps(report, indent=1))
+        return
 
     if args.command == "describe":
         print(describe(load_registry()))

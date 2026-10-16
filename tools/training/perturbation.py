@@ -472,16 +472,18 @@ def perturb(clean: np.ndarray, condition: Condition, clip_id: str,
 # --- the noise pool ----------------------------------------------------------------------------
 
 
-def build_pool(cache_dir: Path) -> tuple[tuple[NoiseRecording, ...], dict]:
-    """The eligible recordings of :data:`NOISE_SHARDS` (downloaded into ``cache_dir``, each shard
+def build_pool(cache_dir: Path,
+               dataset: Dataset = NOISE) -> tuple[tuple[NoiseRecording, ...], dict]:
+    """The eligible recordings of ``dataset``'s shards (D2's, :data:`NOISE_SHARDS`, unless
+    another selection of the collection is given; downloaded into ``cache_dir``, each shard
     deleted once read), ordered by Freesound id, and what was left out and why."""
     from tadabur.audio import decode_to_mono_16k
     from tadabur.nonpro_sources import iter_rows
     from tadabur.panel_seal import SealedPanelError
 
     pool, left_out = [], {"undecodable": 0, "ineligible": 0}
-    for shard in NOISE_SHARDS:
-        for row in iter_rows(NOISE, shard, cache_dir):
+    for shard in dataset.shards:
+        for row in iter_rows(dataset, shard, cache_dir):
             try:
                 samples = decode_to_mono_16k(row["audio"]["bytes"])
             except SealedPanelError:  # a seal violation is never a corrupt input

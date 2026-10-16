@@ -432,6 +432,37 @@ def test_checkpoint_facts_read_the_config_s_recipe(tmp_path):
         path = tmp_path / "c.pt"
         torch.save({"step": 10_000, "config": {"augment": augment}}, path)
         assert ed.checkpoint_facts(path) == (10_000, recipe)
+    path = tmp_path / "c.pt"
+    torch.save({"step": 10_000, "config": {}}, path)  # a legacy config with no augment field
+    assert ed.checkpoint_facts(path) == (10_000, ed.NO_AUGMENTATION)
+
+
+@pytest.mark.parametrize("augment", [
+    {"mixture": {"noise": 1.0}},  # Sol's round 3: augmented, but no version
+    {"version": "none", "mixture": {"noise": 1.0}},  # the reserved name, yet augmented
+    {"version": "", "mixture": {"noise": 1.0}},
+    {"version": 2},
+])
+def test_an_augmented_config_that_names_no_recipe_is_refused_before_loading(tmp_path, augment,
+                                                                            monkeypatch):
+    import torch
+
+    from training import external_decode as ed
+
+    path = tmp_path / "c.pt"
+    torch.save({"step": 10_000, "config": {"augment": augment}}, path)
+    with pytest.raises(ValueError, match="names no recipe"):
+        ed.checkpoint_facts(path)
+
+    def no_gpu_load(*args, **kwargs):
+        raise AssertionError("weights loaded before the recipe was checked")
+
+    import training.decoding
+
+    monkeypatch.setattr(training.decoding.Decoder, "load", no_gpu_load)
+    with pytest.raises(ValueError, match="names no recipe"):
+        ed.load_decoders(lambda m: tmp_path / f"{m}.json",
+                         {"control_live": ed.ModelSpec(str(path), step=10_000, recipe="none")})
 
 
 # --- identity -------------------------------------------------------------------------------------

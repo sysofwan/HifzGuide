@@ -122,13 +122,21 @@ NO_AUGMENTATION = "none"
 
 def checkpoint_facts(path: Path) -> tuple[int, str]:
     """The training step a distillation checkpoint was saved at, and the augmentation recipe its
-    config records (:data:`NO_AUGMENTATION` when it has none), read without its weights."""
+    config records, read without its weights. Training augments whenever ``augment`` is
+    non-empty, so only an absent or empty ``augment`` is :data:`NO_AUGMENTATION`; a non-empty one
+    must name its recipe by a ``version`` string other than that reserved name, or the
+    checkpoint is refused."""
     import torch
 
     state = torch.load(path, map_location="cpu", weights_only=False, mmap=True)
-    augment = state["config"].get("augment") or {}
-    return int(state["step"]), augment.get("version", NO_AUGMENTATION) if augment else \
-        NO_AUGMENTATION
+    augment = state["config"].get("augment")
+    if not augment:
+        return int(state["step"]), NO_AUGMENTATION
+    version = augment.get("version") if isinstance(augment, dict) else None
+    if not isinstance(version, str) or not version or version == NO_AUGMENTATION:
+        raise ValueError(f"{path}: an augment config that names no recipe ({version!r}); "
+                         "training augmented under it")
+    return int(state["step"]), version
 
 
 def load_decoders(identity_path: Callable[[str], Path],

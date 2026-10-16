@@ -601,3 +601,34 @@ def test_the_committed_registry_bars_a_truth_sites_copy_from_both_arms():
         assert 202 not in exclusion.reciters
         assert WAQF in exclusion.recordings[(322, 602)]
         assert not exclusion.keeps((322, 602), {"reciter_id": 202})
+
+
+def test_a_training_streams_shard_use_counts_only_the_rows_it_admits(tmp_path, tmp_path_factory):
+    from tadabur.exposure import (
+        AUG_TRAINING, SEALED_PANEL, training_stream_exposure, write_empty,
+        write_training_stream_use,
+    )
+
+    _copied_registry(tmp_path)  # a truth site at (3, 7) with a probable copy at (21, 5)
+    write_use(SEALED_PANEL, [_row("p.wav", shard=39, row=0, reciter=77)], tmp_path)
+    for use in load_registry(tmp_path).missing():
+        write_empty(use, tmp_path)
+    index_path = tmp_path_factory.mktemp("index") / "index.jsonl"  # beside the registry
+    index_path.write_text("".join(json.dumps({
+        "audio_filename": f"r{shard}_{row}.wav", "shard": shard, "row_index": row,
+        "reciter_id": reciter, "surah_id": 1, "ayah_id": 1, "ayah_duration_s": 5.0}) + "\n"
+        for shard, row, reciter in ((21, 4, 12), (21, 5, 12), (21, 6, 77), (22, 0, 13),
+                                    (23, 0, 14))), encoding="utf-8")
+    exposure, report = training_stream_exposure(
+        index_path, [21, 22], AUG_TRAINING, membership="uncertain", note="n",
+        registry=load_registry(tmp_path))
+    assert exposure.rows_per_reciter == {12: 1, 13: 1}  # the copy and the panel row dropped
+    assert exposure.shards == (21, 22) and not exposure.shared_baseline
+    assert report["excluded_by"] == {"reciter": 1, WAQF: 1}
+    with pytest.raises(ValueError, match="does not index"):
+        training_stream_exposure(index_path, [24], AUG_TRAINING, membership="exact",
+                                 note="n", registry=load_registry(tmp_path))
+    write_training_stream_use(AUG_TRAINING, exposure, tmp_path)
+    registry = load_registry(tmp_path)
+    assert registry.shard_uses[AUG_TRAINING] == exposure
+    assert AUG_TRAINING not in registry.recordings

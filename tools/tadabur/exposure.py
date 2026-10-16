@@ -1063,6 +1063,45 @@ def shard_exposure(
     )
 
 
+def training_stream_exposure(
+    index_path: Path, shards: Iterable[int], use: str, *, membership: str, note: str,
+    registry: ExposureRegistry | None = None,
+) -> tuple[ShardExposure, dict]:
+    """A streaming training use's shard use, and what its exclusion drops: rows per canonical
+    reciter in ``shards`` counting only the rows :meth:`RowExclusion.for_use` admits (no
+    excluded reciter, no row tied to an evaluation recording), from a full shard index. Not
+    a shared-baseline exposure: it is the candidate's or the control's own."""
+    wanted = set(shards)
+    index = read_shard_index(index_path)
+    if missing := wanted - {row.shard for row in index.values()}:
+        raise ValueError(f"{index_path} does not index shards {sorted(missing)[:10]}")
+    exclusion = RowExclusion.for_use(use, registry)
+    counts = Counter(
+        row.reciter_id
+        for row in sorted(index.values(), key=lambda r: (r.shard, r.row_index))
+        if row.shard in wanted
+        and exclusion.keeps((row.shard, row.row_index), {"reciter_id": row.reciter_id})
+    )
+    exposure = ShardExposure(
+        tuple(sorted(wanted)), dict(counts), hashlib.sha256(index_path.read_bytes()).hexdigest(),
+        membership, False, note,
+    )
+    return exposure, exclusion.report()
+
+
+def write_training_stream_use(
+    use: str, exposure: ShardExposure, directory: Path = EXPOSURE_DIR
+) -> None:
+    """Write a streaming training use as a shard use, replacing the empty recording-level
+    file that declared it unused (a use is recorded in one shape only)."""
+    declared = _recording_path(use, directory)
+    if declared.exists():
+        if declared.read_text(encoding="utf-8").strip():
+            raise ValueError(f"{declared} records recordings; refusing to replace it")
+        declared.unlink()
+    write_shard_use(use, exposure, directory)
+
+
 def describe(registry: ExposureRegistry) -> str:
     """One line per use: recordings (or shards), reciters."""
     lines = [f"{use:40s} {len(rows):>11d} QUD ayat {len({r.qud_reciter for r in rows}):>5d} "
@@ -1095,7 +1134,26 @@ def main() -> None:
     copies.add_argument("--index", type=Path, required=True,
                         help="a shard index of all 385 shards (tadabur.staged_audio index)")
     commands.add_parser("duplicates", help="report recordings held under two shard rows")
+    stream = commands.add_parser(
+        "training-stream", help="write a streaming training use (#94's arms) as a shard use: "
+        "rows per reciter of the rows its exclusion admits")
+    stream.add_argument("--use", required=True, choices=sorted(TRAINING_AND_TUNING_USES))
+    stream.add_argument("--index", type=Path, required=True,
+                        help="a shard index of all 385 shards (tadabur.staged_audio index)")
+    stream.add_argument("--shards", required=True, help="the run's --stream-shards")
+    stream.add_argument("--membership", choices=MEMBERSHIPS, required=True)
+    stream.add_argument("--note", required=True)
     args = parser.parse_args()
+
+    if args.command == "training-stream":
+        from .shard_reader import parse_shard_spec
+
+        exposure, report = training_stream_exposure(
+            args.index, parse_shard_spec(args.shards), args.use, membership=args.membership,
+            note=args.note)
+        write_training_stream_use(args.use, exposure)
+        print(json.dumps(report, indent=1))
+        return
 
     if args.command == "describe":
         print(describe(load_registry()))

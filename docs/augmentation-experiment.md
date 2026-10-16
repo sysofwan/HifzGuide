@@ -1,7 +1,7 @@
 # #94's augmentation experiment: run note
 
-**Status (2026-10-16): plumbing, noise pool, smoke runs and the review's fixes are done;
-both full arms are not yet launched.** The recipe is the 2026-10-15 rewrite on #94, which supersedes the issue body. The
+**Status (2026-10-16): both full arms are running on cuda-dev, the candidate first.** Their
+exposure uses are registered. The recipe is the 2026-10-15 rewrite on #94, which supersedes the issue body. The
 readout belongs to #95, and the bars were pre-registered on #128 before any candidate existed.
 This note records what each arm trains on, under which configuration, and where its outputs
 are. It contains no results. Checkpoints stay on cuda-dev.
@@ -70,7 +70,7 @@ skipped. `--init-from` is a fresh run, not a resume, so it reads only the weight
   345 shards: `21-38,40-57,59-76,78-95,97-114,116-133,135-152,154-171,173-190,192-209,211-228,230-247,249-266,268-285,287-304,306-323,325-342,344-361,363-380,382-384`.
   `distill_stream.held_out_shards` refuses the rest.
 - **Exposure:** the shard uses `aug.training` and `aug.control` are declared in
-  `tadabur.exposure` and are empty until the arms launch. Both are PRD training uses, so
+  `tadabur.exposure` and registered when the arms launched (see Exposure registration). Both are PRD training uses, so
   `tadabur.exposure.RowExclusion` drops two kinds of row before any audio is decoded. The same
   rows are dropped in both arms, and every kept row keeps its parquet row number.
   - **Excluded reciters** (acceptance rules §6): the sealed panel's 79 reciters, and the bias
@@ -233,8 +233,108 @@ Both arms were then run again on the same configuration, with `--log-every 25`.
   available.
 - **Health:** no NaN and no warning. The checkpoints were deleted.
 
-## Full runs
+## Full runs (launched 2026-10-16T05:36:29Z)
 
-Not launched. The commands, PIDs, start times and output directories are added here when the
-arms launch, with the first-300-step health check of each and the exposure registration
-(`aug.training`, `aug.control`).
+Both arms run 10,000 steps, back to back, from one detached chain on cuda-dev. The candidate
+runs first. The control starts when the candidate exits, so the two never hold the GPU
+together. Each arm also takes `flock /root/scratch/gpu.lock` in `run_arm.sh`. The code is
+`/root/scratch/issue-94/repo`, byte-identical to the reviewed commit `67749b9` in all 343
+`.py`/`.json` files under `tools/training` and `tools/tadabur`; the rebase onto `main`
+changed none of them. Registration ran from a separate copy (`/root/scratch/issue-94/register`),
+so the code the control imports is unchanged.
+
+**Scripts** in `/root/scratch/issue-94/`:
+
+- **`full_runs.sh`** (the chain) runs, in order:
+
+  ```bash
+  ./run_arm.sh aug runs/aug94_candidate 10000 --num-workers 1 \
+    --init-from /root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt > logs/aug94_candidate.log 2>&1
+  ./run_arm.sh control runs/aug94_control 10000 --num-workers 1 \
+    --init-from /root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt > logs/aug94_control.log 2>&1
+  ```
+
+  It appends each arm's start and exit (with exit code) to `logs/full_runs.events`.
+- **`monitor_full.sh`** samples VRAM, disk and RAM every 60 s into `logs/monitor_full.log`,
+  until the control exits.
+
+**Processes:**
+
+| process | PID |
+|---|---|
+| chain (`full_runs.sh`) | 1187415 |
+| candidate `flock` | 1187418 |
+| candidate trainer | 1187425 |
+| candidate data worker | 1187685 |
+| monitor | 1187427 |
+
+The control's PIDs are assigned when it starts; `ps -eo pid,args | grep "[d]istill_train"`
+lists them. Kill only by explicit PID.
+
+**Where outputs land** (under `/root/scratch/issue-94/repo/tools/runs/`):
+
+| arm | directory | log |
+|---|---|---|
+| candidate | `aug94_candidate/` | `/root/scratch/issue-94/logs/aug94_candidate.log` |
+| control | `aug94_control/` | `/root/scratch/issue-94/logs/aug94_control.log` |
+
+Each directory holds `checkpoint.pt` (live weights plus the EMA shadow), `metrics.jsonl` and
+`run_config.json`. The checkpoint is saved every 2,000 steps and at the end; it is about
+1.87 GB and stays on the box. **The candidate is fixed now: the final step, step 10,000.**
+#95's look half chooses only live vs EMA weights.
+
+**To resume** an interrupted arm, rerun its line from `full_runs.sh` with `--resume` added.
+The resume guard refuses any change to the recipe, exposure use, buffer or schedule.
+
+### Candidate: first 300 steps (health check)
+
+| step | 50 | 100 | 150 | 200 | 250 | 300 |
+|---|---|---|---|---|---|---|
+| KL loss | 0.220 | 0.218 | 0.262 | 0.192 | 0.191 | 0.233 |
+| pre-clip gradient norm | 0.64 | 0.67 | 0.95 | 0.48 | 0.68 | 0.97 |
+| lr | 5.1e-6 | 1.0e-5 | 1.5e-5 | 2.0e-5 | 2.5e-5 | 3.0e-5 |
+
+- **Health:** every loss is finite (no NaN), none was clipped, and there was no
+  blank-collapse warning.
+- **Throughput:** **0.89 steps/s** over steps 50-300.
+- **Resources:** peak VRAM 13.8 of 16.3 GB, at least 29 GB of disk free, at least 13.9 GB
+  of RAM available.
+- **Exclusion, first two shards:** after shard 169, 8 of 1,000 rows were dropped; after
+  shard 354, 19 of 2,000. Shard 169's breakdown is the same as in the re-smoke.
+
+**Expected finish.** At 0.89 steps/s the candidate finishes about 3.2 h after launch, near
+**08:55Z**. The control then starts. It ran at 0.81-0.92 steps/s in the smokes, so it should
+finish about 3.1-3.5 h later, near **12:00-12:30Z** on 2026-10-16.
+
+### Control: first 300 steps (check when it starts)
+
+`logs/full_runs.events` shows `control start <time>` when the control starts. Its first
+300 steps are then in `logs/aug94_control.log` and in
+`repo/tools/runs/aug94_control/metrics.jsonl`. Check four things:
+
+1. Every `total` is finite and there is no `[warn]`.
+2. `grad_norm_preclip` stays well under 5.0.
+3. Steps/s over steps 50-300, from `elapsed_s`, is at least 0.6.
+4. The control's `teacher_blank_ratio` equals the candidate's at every logged step. They
+   share one teacher stream, as in both smokes.
+
+## Exposure registration
+
+`aug.training` and `aug.control` are written as shard uses
+(`tools/tadabur/exposure/aug.{training,control}.shards.json`). Each was written by:
+
+```bash
+python -m tadabur.exposure training-stream --use <aug.training|aug.control> \
+  --index /root/scratch/issue-89/stage/full_index.jsonl --shards "$(python -m training.decode_evalset --print-training-shards)" \
+  --membership exact --note "…"
+```
+
+- **Shards:** `h448`'s 345, with membership `exact` as for `h448.training`. At 10k steps an
+  arm streams only a prefix of the seed-9494 shard permutation, so this overstates its
+  exposure rather than understating it.
+- **Not shared-baseline.**
+- **`rows_per_reciter`:** counts only the admitted rows, 340,804 of 344,450, over 591
+  reciters. `h448.training`'s 667 reciters minus the 76 panel reciters present in these
+  shards gives 591. No other reciter loses all of its rows.
+- **The two files** have identical shards and counts. Both pass
+  `check_disjoint(<use>, sealed_panel)` by reciter.

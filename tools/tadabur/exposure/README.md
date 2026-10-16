@@ -58,6 +58,7 @@ which the baseline and every candidate warm-started from it share.
 | `synthetic_edit.source` | 150 | 44 | [`../synthetic_edits/edits.jsonl`](../synthetic_edits/README.md) (#88, deduplicated by #117): source clips, whole |
 | `synthetic_edit.donor` | 77 | 22 | the same: donor spans |
 | `ship_a.mining` | 21,651 | 422 | every recording Ship A's mining extension decoded (#126), from its `scan.jsonl`; the hits among them are staged with use `ship_a_mining` |
+| `aug.training` / `aug.control` | 345 shards | 591 | #94's augmentation candidate and its control (shard uses, membership `exact`, not shared-baseline): `h448`'s `--stream-shards` streamed again, with the sealed panel's reciters and every row tied to an evaluation recording (`TRAINING_BARRED_USES`, by alias or probable copy) dropped before decoding. `rows_per_reciter` counts the admitted rows (340,804 of 344,450). Written by `python -m tadabur.exposure training-stream` from the full shard index |
 | `ship_a.verified_train` / `ship_a.verified_held_out` | see the files | | the recordings of Ship A's sites and sampled words per half of its reciter split (#126, D11), written by `tadabur.ship_a_worklist build` |
 
 | `qud.correct_recitation` | see the file | | the QUD ayat of #144's pilot (`exposure/qud.correct_recitation.qud.jsonl`): a **QUD use**, one row per ayah clip (QUD revision, mushaf slug, `surah:ayah`, the MP3's SHA-256, QUD's reciter id), written by `python -m training.qud_pilot build`. It holds no Tadabur recording, so `check_disjoint` refuses it; its overlap with Tadabur and Muaalem is the audio check's finding (`../qud_eval/overlap_results.json`) |
@@ -65,9 +66,7 @@ which the baseline and every candidate warm-started from it share.
 
 Empty until their issues write them: `truth_site.new_audit` (#87),
 `truth_site.synthetic_edit`, `probe.training`, `probe.kl_control`, `bias.tune`,
-`bias.score`, `shaddah_probe.tuning`, and `aug.training` / `aug.control` (#94's augmentation
-experiment and its control: `h448`'s shards streamed again, the sealed panel's and the bias
-score half's reciters dropped before decoding; shard uses, written when the arms launch).
+`bias.score`, `shaddah_probe.tuning`.
 
 Tadabur has 671 reciters and `h448`'s training shards hold 667 of them, so every held-out
 set overlaps `h448.training` by reciter. Under the owner's §6 amendment (2026-10-08) the

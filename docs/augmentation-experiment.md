@@ -14,7 +14,7 @@ are. It contains no results. Checkpoints stay on cuda-dev.
 
 | arm | student input | teacher input | exposure use |
 |---|---|---|---|
-| **candidate** | augmented under `aug94-mixture-v1` | clean | `aug.training` |
+| **candidate** | augmented under `aug94-mixture-v2` (v1 for the crashed first run) | clean | `aug.training` |
 | **control** | clean (one tensor with the teacher's) | clean | `aug.control` |
 
 Both arms continue `h448` with the existing frame-weighted KL. Everything else is the same in
@@ -335,7 +335,10 @@ worker.
 
 **Diagnosis.**
 - A noise draw's segment is a window of one pool recording, as long as the clip, starting at
-  the drawn offset. It loops only when the clip is longer than the recording.
+  the drawn offset. It wraps round to the recording's start whenever the offset plus the clip's
+  length passes the recording's end, which happens even for a clip shorter than the
+  recording. So a segment lies wholly inside a silent stretch only when the clip is shorter
+  than the stretch.
 - Freesound recording **370282** (57.7 s) passed the pool's checks: it is longer than 1 s,
   finite, and its RMS is above -80 dBFS overall. But it holds **17.6 s of exact zeros**.
 - Tadabur row `(57, 612)` drew it at an offset inside that stretch, so its segment was

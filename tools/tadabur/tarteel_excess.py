@@ -113,6 +113,8 @@ STAGED_PATH = EXCESS_DIR / "staged.jsonl"
 VERDICTS_PATH = EXCESS_DIR / "verdicts.jsonl"
 REVIEW_PATH = EXCESS_DIR / "review.jsonl"
 NONPRO_REPORT = Path(__file__).parent / "nonpro_eval" / "report.json"
+#: The mushaf's Uthmani words, which the page shows in place of the phonetic reference.
+QURAN_DB = Path(__file__).resolve().parents[2] / "data" / "quran.db"
 
 SALT = "tarteel-v1-excess-listening-2026-10"
 #: The tally's most frequent ``h448`` substitutions the issue names, each a stratum.
@@ -253,25 +255,61 @@ class ListeningWord:
     def weight(self) -> float:
         return 1 / self.inclusion_probability
 
-    def word_site(self) -> WordSite:
-        """The row as the listening page's word mode asks it: the whole clip, the reference
-        with the Muraja word's canonical words joined into the one word highlighted."""
-        offsets = (*self.word_offsets[:self.position_from + 1],
-                   *self.word_offsets[self.position_to:])
+    def word_site(self, words: Sequence[str] | None = None) -> WordSite:
+        """The row as the listening page's word mode asks it: the whole clip, the text with
+        the Muraja word's canonical words joined into the one word highlighted. With
+        ``words`` (the ayah's Uthmani words, :func:`uthmani_words`) the page shows the mushaf's
+        text, which the owner reads more easily (2026-10-15); otherwise the phonetic
+        reference."""
+        if words is None:
+            text, cuts = self.reference, self.word_offsets
+        else:
+            text, cuts = uthmani_text(words, len(self.word_offsets) - 1)
+        offsets = (*cuts[:self.position_from + 1], *cuts[self.position_to:])
         return WordSite(
             site=SampledWord(
                 site_id=self.site_id, audio_filename=self.audio_filename, shard=-1,
                 audio_sha256=self.audio_sha256, reciter_id=self.cluster,
                 surah_ayah=self.surah_ayah, segment_index=0, start_sample=self.start_sample,
-                end_sample=self.end_sample, reference=self.reference,
+                end_sample=self.end_sample, reference=text,
                 word_index=self.position_from,
-                reference_index=self.word_offsets[self.position_from], stratum=self.stratum,
+                reference_index=cuts[self.position_from], stratum=self.stratum,
                 stratum_population=self.stratum_population),
             clip_inclusion_probability=self.representative_probability,
             draw_probability=self.draw_probability,
             inclusion_probability=self.inclusion_probability,
             word_start=0, word_offsets=offsets,
             excerpt_start_sample=self.start_sample, excerpt_end_sample=self.end_sample)
+
+
+def uthmani_words(surah_ayah: str, db: Path = QURAN_DB) -> list[str]:
+    """The ayah's Uthmani words from ``quran.db``, in order, without the ayah-number marker
+    the table stores as its last word."""
+    import sqlite3
+
+    surah, ayah = (int(part) for part in surah_ayah.split(":"))
+    with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as connection:
+        words = [text for (text,) in connection.execute(
+            "SELECT text FROM words WHERE surah = ? AND ayah = ? ORDER BY word", (surah, ayah))]
+    if not words or any(ch.isalpha() for ch in words[-1]):
+        raise ValueError(f"{surah_ayah}: quran.db's last word is not the ayah-number marker")
+    return words[:-1]
+
+
+def uthmani_text(words: Sequence[str], count: int) -> tuple[str, tuple[int, ...]]:
+    """The ayah's words joined by spaces and the offset where each starts (plus the end), as
+    the reference's ``word_offsets`` run: word k spans ``[cuts[k], cuts[k + 1])`` with its
+    trailing space. Refused unless the ayah has the reference's ``count`` canonical words,
+    so the highlight lands on the word the verdict is about."""
+    if len(words) != count:
+        raise ValueError(f"the mushaf has {len(words)} words where the reference has {count}")
+    text = " ".join(words)
+    cuts, at = [0], 0
+    for word in words[:-1]:
+        at += len(word) + 1
+        cuts.append(at)
+    cuts.append(len(text))
+    return text, tuple(cuts)
 
 
 _TUPLES = ("word_offsets",)
@@ -577,17 +615,19 @@ def push(rows: Sequence[ListeningWord], staged: Mapping[str, StagedTarteelClip],
 # --- the session -------------------------------------------------------------------------------
 
 
-def session(audio_dir: Path, directory: Path = EXCESS_DIR) -> SessionState:
+def session(audio_dir: Path, directory: Path = EXCESS_DIR,
+            words: Callable[[str], Sequence[str]] = uthmani_words) -> SessionState:
     """The listening page's state for the frozen worklist in ``directory``, once every clip is
     verified: word mode only, in one seeded order of the ids
-    (:func:`tadabur.tashkeel_audit_ui.queue`); the verdicts and the review list are that
+    (:func:`tadabur.tashkeel_audit_ui.queue`), each ayah shown in the mushaf's Uthmani text
+    that ``words`` gives (:func:`uthmani_words`); the verdicts and the review list are that
     directory's."""
     from .tashkeel_audit_ui import SessionState, queue
 
     rows = load_worklist(directory / WORKLIST_PATH.name, directory / SUMMARY_PATH.name)
     verify_audio(rows, load_staged(directory / STAGED_PATH.name), audio_dir)
     verdicts, review = directory / VERDICTS_PATH.name, directory / REVIEW_PATH.name
-    return SessionState(rows=queue([], [], [r.word_site() for r in rows]),
+    return SessionState(rows=queue([], [], [r.word_site(words(r.surah_ayah)) for r in rows]),
                         verdicts_path=verdicts, audio_dir=audio_dir,
                         verdicts=read_verdicts(verdicts), review_path=review,
                         review=read_review(review))

@@ -865,6 +865,30 @@ def unseen_violations(
                      if clip.shard in shards or (clip.shard, clip.row_index) in linked)
 
 
+#: The uses a training or tuning stream may hold no recording of, not even as an alias or a
+#: probable copy (#94): every evaluation use -- the frozen ``decode_evalset`` (both halves and
+#: the legacy sample), the sealed panel, the truth sites, the human-label fixtures -- and both
+#: of Ship A's verified halves. ``nonpro.evaluation_only`` is not here: it holds no Tadabur
+#: recording, so the registry ties no shard row to it.
+TRAINING_BARRED_USES = (
+    EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, SEALED_PANEL, *sorted(TRUTH_SITE_USES.values()),
+    LABEL_P35_FIXTURE, LABEL_REJECT_REREAD, LABEL_REJECT_BLEED, LABEL_WAQF_EVENTS,
+    LABEL_TASHKEEL_COUNTERFACTUAL, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
+)
+
+
+def barred_recordings(
+    uses: Iterable[str], registry: ExposureRegistry
+) -> dict[Source, tuple[str, ...]]:
+    """Every ``(shard, row)`` that is, or is tied to (an alias or a probable copy), a recording
+    of one of ``uses``, with the uses it is tied to (:func:`linked_sources`, per use)."""
+    barred: dict[Source, list[str]] = {}
+    for use in uses:
+        for source in linked_sources([use], registry):
+            barred.setdefault(source, []).append(use)
+    return {source: tuple(found) for source, found in sorted(barred.items())}
+
+
 def excluded_reciters(for_use: str, registry: ExposureRegistry | None = None) -> frozenset[int]:
     """The canonical reciters a PRD use must not touch (§6): the sealed panel's always, and
     for a training or tuning use the bias score half's as well. Read from a complete
@@ -880,35 +904,48 @@ def excluded_reciters(for_use: str, registry: ExposureRegistry | None = None) ->
 
 @dataclass
 class RowExclusion:
-    """Drops the rows of excluded reciters from a stream of Tadabur rows **before** any
-    audio is read, and counts them, so a full-shard consumer (training, mining) never
-    reaches the sealed panel's audio and can report what it left out. Rows keep their
-    order; a consumer that numbers rows numbers them before filtering."""
+    """Drops what a use must not touch from a stream of Tadabur rows **before** any audio is
+    read, and counts it, so a full-shard consumer (training, mining) never reaches the sealed
+    panel's audio and can report what it left out: the rows of excluded reciters
+    (:func:`excluded_reciters`) and, for a training or tuning use, every row that is or is
+    tied to a recording of :data:`TRAINING_BARRED_USES` (:func:`barred_recordings`). Each row
+    is identified by its ``(shard, row_index)``, numbered before filtering, so the numbering
+    is the parquet row's whatever is dropped."""
 
     use: str
     reciters: frozenset[int]
+    recordings: Mapping[Source, tuple[str, ...]] = field(default_factory=dict)
     rows_seen: int = 0
     rows_excluded: int = 0
+    #: Rows excluded per reason: ``reciter``, or each barred use a recording is tied to (a
+    #: row tied to two uses counts under both, once in ``rows_excluded``).
+    excluded_by: Counter = field(default_factory=Counter)
 
     @classmethod
     def for_use(cls, use: str, registry: ExposureRegistry | None = None) -> "RowExclusion":
-        return cls(use, excluded_reciters(use, registry))
+        registry = registry or load_registry()
+        recordings = (barred_recordings(TRAINING_BARRED_USES, registry)
+                      if use in TRAINING_AND_TUNING_USES else {})
+        return cls(use, excluded_reciters(use, registry), recordings)
 
-    def keeps(self, row: Mapping) -> bool:
-        """Whether one row may be used; counts it either way."""
+    def keeps(self, source: Source, row: Mapping) -> bool:
+        """Whether the row at ``source`` may be used; counts it either way."""
         self.rows_seen += 1
         if int(row["reciter_id"]) in self.reciters:
-            self.rows_excluded += 1
-            return False
-        return True
-
-    def filter(self, rows: Iterable[Mapping]) -> Iterable[Mapping]:
-        """The rows :meth:`keeps` admits, in order."""
-        return (row for row in rows if self.keeps(row))
+            reasons: tuple[str, ...] = ("reciter",)
+        else:
+            reasons = self.recordings.get(source, ())
+        if not reasons:
+            return True
+        self.rows_excluded += 1
+        self.excluded_by.update(reasons)
+        return False
 
     def report(self) -> dict:
         return {"use": self.use, "excluded_reciters": len(self.reciters),
-                "rows_seen": self.rows_seen, "rows_excluded": self.rows_excluded}
+                "barred_recordings": len(self.recordings), "rows_seen": self.rows_seen,
+                "rows_excluded": self.rows_excluded,
+                "excluded_by": dict(sorted(self.excluded_by.items()))}
 
 
 # --- building the uses that exist ------------------------------------------------------

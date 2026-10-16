@@ -201,6 +201,45 @@ def test_the_data_order_and_exclusion_are_resume_critical_and_the_pool_path_is_n
                                    _config(exposure_use="aug.training"))
 
 
+def test_a_legacy_checkpoint_resumes_only_as_the_clean_run_it_was():
+    """A checkpoint from before #94 has none of the new fields: it ran clean, with no
+    exposure use and a 1024-window buffer, and resuming it as anything else is refused."""
+    legacy = dt.asdict(_config())
+    for field in dt.LEGACY_FIELD_VALUES:
+        legacy.pop(field)
+    dt.check_resume_compatible(legacy, _config(shuffle_buffer=1024))  # as it ran
+    for changed, match in (
+        (_config(shuffle_buffer=1024, augment={"version": "aug94-mixture-v1"}), "augment"),
+        (_config(shuffle_buffer=1024, exposure_use="aug.training"), "exposure_use"),
+        (_config(), "shuffle_buffer"),  # today's default, 512: a different data order
+    ):
+        with pytest.raises(SystemExit, match=match):
+            dt.check_resume_compatible(legacy, changed)
+
+
+def test_a_new_checkpoint_is_not_read_through_the_legacy_values():
+    recipe = {"version": "aug94-mixture-v1"}
+    saved = dt.asdict(_config(augment=recipe, exposure_use="aug.training"))
+    dt.check_resume_compatible(saved, _config(augment=recipe, exposure_use="aug.training"))
+    with pytest.raises(SystemExit, match="augment"):
+        dt.check_resume_compatible(saved, _config(exposure_use="aug.training"))
+
+
+def test_a_warm_start_reads_weights_and_never_the_source_runs_config(tmp_path):
+    """--init-from starts a new run from h448's weights (a legacy checkpoint), so it must
+    not be held to that run's config the way a resume is."""
+    student, projector = torch.nn.Linear(2, 2), torch.nn.Linear(2, 2)
+    legacy = dt.asdict(_config())
+    for field in dt.LEGACY_FIELD_VALUES:
+        legacy.pop(field)
+    path = tmp_path / "checkpoint.pt"
+    torch.save({"step": 40_000, "student": student.state_dict(),
+                "projector": projector.state_dict(), "config": legacy}, path)
+    fresh, fresh_projector = torch.nn.Linear(2, 2), torch.nn.Linear(2, 2)
+    assert dt.load_student_weights(path, fresh, fresh_projector, "cpu") == 40_000
+    assert torch.equal(fresh.weight, student.weight)
+
+
 def test_a_streamed_pair_splits_into_teacher_and_student_inputs():
     clean, augmented = torch.zeros(2, 250, 160), torch.ones(2, 250, 160)
     assert dt.teacher_student_inputs([clean, augmented]) == (clean, augmented)

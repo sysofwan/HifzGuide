@@ -737,16 +737,20 @@ def test_excluded_reciters_follow_section_6(tmp_path):
 
     write_use(SEALED_PANEL, [Exposure("p.wav", 39, 0, 1, None, None, SHA)], tmp_path)
     write_use(BIAS_SCORE, [Exposure("s.wav", 39, 1, 2, None, None, SHA)], tmp_path)
+    for use in load_registry(tmp_path).missing():
+        write_empty(use, tmp_path)
     registry = load_registry(tmp_path)
     assert excluded_reciters(PROBE_TRAINING, registry) == {1, 2}  # training: panel + score half
     assert excluded_reciters(MINING_POOL, registry) == {1}  # any PRD use: the panel
     with pytest.raises(ValueError, match="not a use this PRD makes"):
         excluded_reciters(H448_TRAINING, registry)
     exclusion = RowExclusion.for_use(PROBE_TRAINING, registry)
-    kept = list(exclusion.filter([{"reciter_id": r} for r in (1, 3, 2, 3)]))
+    rows = [((40, i), {"reciter_id": r}) for i, r in enumerate((1, 3, 2, 3))]
+    kept = [row for source, row in rows if exclusion.keeps(source, row)]
     assert kept == [{"reciter_id": 3}, {"reciter_id": 3}]
     assert exclusion.report() == {"use": PROBE_TRAINING, "excluded_reciters": 2,
-                                  "rows_seen": 4, "rows_excluded": 2}
+                                  "barred_recordings": 1, "rows_seen": 4, "rows_excluded": 2,
+                                  "excluded_by": {"reciter": 2}}
 
 
 def test_the_committed_registry_excludes_every_panel_reciter_from_training():

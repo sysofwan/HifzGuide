@@ -561,3 +561,43 @@ def test_every_external_use_is_declared_and_missing_until_written(tmp_path):
     assert EXTERNAL_USES == QUD_USES | {NONPRO_EVALUATION}
     write_use(WAQF, [_row()], tmp_path)
     assert NONPRO_EVALUATION in load_registry(tmp_path).missing()
+
+
+# --- training streams: recordings tied to an evaluation use (#94) ------------------------
+
+
+def test_a_training_stream_drops_rows_tied_to_an_evaluation_recording(tmp_path):
+    from tadabur.exposure import (
+        AUG_CONTROL, AUG_TRAINING, TRAINING_BARRED_USES, RowExclusion, barred_recordings,
+        write_empty,
+    )
+
+    _copied_registry(tmp_path)  # a truth site at (3, 7) with a probable copy at (21, 5)
+    for use in load_registry(tmp_path).missing():
+        write_empty(use, tmp_path)
+    registry = load_registry(tmp_path)
+    assert barred_recordings(TRAINING_BARRED_USES, registry) == {(3, 7): (WAQF,),
+                                                                 (21, 5): (WAQF,)}
+    exclusion = RowExclusion.for_use(AUG_TRAINING, registry)
+    rows = [((21, 4), {"reciter_id": 12}), ((21, 5), {"reciter_id": 12}),
+            ((22, 3), {"reciter_id": 12})]  # (22, 3): an edit source, not evaluation
+    assert [source for source, row in rows if exclusion.keeps(source, row)] == [(21, 4), (22, 3)]
+    assert exclusion.report()["excluded_by"] == {WAQF: 1}
+    assert exclusion.report()["rows_excluded"] == 1
+    assert RowExclusion.for_use(AUG_CONTROL, registry).recordings == exclusion.recordings
+    assert RowExclusion.for_use(MINING_POOL, registry).recordings == {}  # not a training use
+
+
+def test_the_committed_registry_bars_a_truth_sites_copy_from_both_arms():
+    """The review's case: (322, 602), reciter 202, is a probable copy of the waqf truth
+    site recording (16, 714); its reciter is not excluded, so only the recording bar
+    keeps it out of #94's arms."""
+    from tadabur.exposure import AUG_CONTROL, AUG_TRAINING, RowExclusion
+
+    registry = load_registry()
+    assert (16, 714) in registry.same_recording((322, 602))
+    for use in (AUG_TRAINING, AUG_CONTROL):
+        exclusion = RowExclusion.for_use(use, registry)
+        assert 202 not in exclusion.reciters
+        assert WAQF in exclusion.recordings[(322, 602)]
+        assert not exclusion.keeps((322, 602), {"reciter_id": 202})

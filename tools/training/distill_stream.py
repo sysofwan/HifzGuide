@@ -250,27 +250,13 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         features = self.extract(clean)
         return features, (features if augmented is clean else self.extract(augmented))
 
-    def _numbered_rows(self):
-        """``(shard, row, row dict)`` for every row of this worker's shards, numbered by its
-        parquet row before any exclusion (the registry's ``row_index``)."""
-        from tadabur.shard_reader import iter_shard_rows
-
-        for shard in self._my_shards():
-            rows = iter_shard_rows([shard], delete_after=self.delete_after)
-            for row_index, row in enumerate(rows):
-                yield shard, row_index, row
-
     def _raw_windows(self):
         """``(clean, augmented)`` waveform pairs for every window of every admitted clip in
         this worker's shards, in stream order; one array twice without ``augment``."""
-        exclusion = None
-        if self.exposure_use is not None:
-            from tadabur.exposure import RowExclusion
-
-            exclusion = RowExclusion.for_use(self.exposure_use)
-        for shard, row_index, row in self._numbered_rows():
-            if exclusion is not None and not exclusion.keeps(row):
-                continue
+        rows, exclusion = exclude_rows(
+            numbered_rows(self._my_shards(), self.delete_after), self.exposure_use
+        )
+        for (shard, row_index), row in rows:
             try:
                 waveform = decode_row_waveform(row)
             except SealedPanelError:  # a seal violation is never a corrupt input
@@ -310,30 +296,53 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
             yield self.extract_pair(pair)
 
 
+def numbered_rows(shards: list[int], delete_after: bool):
+    """``((shard, row_index), row)`` for every row of ``shards`` in order, numbered by its
+    parquet row before any exclusion (the exposure registry's ``row_index``)."""
+    from tadabur.shard_reader import iter_shard_rows
+
+    for shard in shards:
+        for row_index, row in enumerate(iter_shard_rows([shard], delete_after=delete_after)):
+            yield (shard, row_index), row
+
+
 def exclude_rows(rows, exposure_use: str | None):
-    """``rows`` with the reciters ``exposure_use`` must not touch dropped before decoding,
-    and the :class:`tadabur.exposure.RowExclusion` counting them (``None`` without a use)."""
+    """Numbered ``rows`` (:func:`numbered_rows`) without what ``exposure_use`` must not touch
+    -- excluded reciters and, for a training use, rows tied to an evaluation recording --
+    dropped before decoding, and the :class:`tadabur.exposure.RowExclusion` counting them
+    (``None`` without a use)."""
     if exposure_use is None:
         return rows, None
     from tadabur.exposure import RowExclusion
 
     exclusion = RowExclusion.for_use(exposure_use)
-    return exclusion.filter(rows), exclusion
+
+    def kept():
+        # A stream may never reach its end inside a run, so the running count is logged as
+        # each shard finishes.
+        shard = None
+        for source, row in rows:
+            if shard is not None and source[0] != shard:
+                print(f"[data] exposure exclusion through shard {shard} {exclusion.report()}",
+                      flush=True)
+            shard = source[0]
+            if exclusion.keeps(source, row):
+                yield source, row
+
+    return kept(), exclusion
 
 
 def probe(
     shard_index: int, hop_seconds: float = DEFAULT_HOP_SECONDS, exposure_use: str | None = None
 ) -> dict:
     """Download one shard, measure what it yields, delete it. Bounded disk by construction."""
-    from tadabur.shard_reader import iter_shard_rows
-
     started = time.time()
     clips = 0
     windows = 0
     seconds = 0.0
 
-    rows, exclusion = exclude_rows(iter_shard_rows([shard_index], delete_after=True), exposure_use)
-    for row in rows:
+    rows, exclusion = exclude_rows(numbered_rows([shard_index], True), exposure_use)
+    for _, row in rows:
         try:
             waveform = decode_row_waveform(row)
         except SealedPanelError:  # a seal violation is never a corrupt input

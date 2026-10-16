@@ -1,7 +1,7 @@
 # #94's augmentation experiment: run note
 
-**Status (2026-10-16): plumbing, noise pool and smoke runs done; both full arms not yet
-launched.** The recipe is the 2026-10-15 rewrite on #94, which supersedes the issue body. The
+**Status (2026-10-16): plumbing, noise pool, smoke runs and the review's fixes are done;
+both full arms are not yet launched.** The recipe is the 2026-10-15 rewrite on #94, which supersedes the issue body. The
 readout belongs to #95, and the bars were pre-registered on #128 before any candidate existed.
 This note records what each arm trains on, under which configuration, and where its outputs
 are. It contains no results. Checkpoints stay on cuda-dev.
@@ -60,7 +60,9 @@ ratio matched to four places at every logged step.
 **Resume guard.** The run's config carries the recipe as `TrainConfig.augment`
 (`python -m training.augmentation record`). This record includes the committed pool's SHA-256.
 `augment`, `exposure_use` and `shuffle_buffer` are resume-critical, so a resume under another
-recipe, pool, arm or buffer is refused.
+recipe, pool, arm or buffer is refused. A checkpoint written before these fields existed is
+read as the clean run it was (`augment={}`, `exposure_use=""`, `shuffle_buffer=1024`), never
+skipped. `--init-from` is a fresh run, not a resume, so it reads only the weights.
 
 ## Data
 
@@ -68,14 +70,50 @@ recipe, pool, arm or buffer is refused.
   345 shards: `21-38,40-57,59-76,78-95,97-114,116-133,135-152,154-171,173-190,192-209,211-228,230-247,249-266,268-285,287-304,306-323,325-342,344-361,363-380,382-384`.
   `distill_stream.held_out_shards` refuses the rest.
 - **Exposure:** the shard uses `aug.training` and `aug.control` are declared in
-  `tadabur.exposure` and are empty until the arms launch.
-  - Both are PRD training uses. The stream therefore drops the sealed panel's reciters (79,
-    with 1,988 rows in these shards, 0.58%) and the bias score half's reciters (none yet)
-    before decoding (acceptance rules §6). The same rows are dropped in both arms.
-- **Never read:** `decode_evalset` dev or test, the sealed panel, the Ship A halves, the truth
-  sites, `nonpro.evaluation_only` and muaalem-annotated-v3.
-  - None of these has a recording in these shards. As for `h448`, 299 of the 970 dev clips
-    have probable copies in them. #95's Tadabur guard reads the 671 dev clips that have none.
+  `tadabur.exposure` and are empty until the arms launch. Both are PRD training uses, so
+  `tadabur.exposure.RowExclusion` drops two kinds of row before any audio is decoded. The same
+  rows are dropped in both arms, and every kept row keeps its parquet row number.
+  - **Excluded reciters** (acceptance rules §6): the sealed panel's 79 reciters, and the bias
+    score half's (none yet).
+  - **Rows tied to an evaluation recording** (`exposure.TRAINING_BARRED_USES`): a row that is,
+    or that the registry ties to as an alias or a probable copy, a recording of:
+    - `decode_evalset` dev, test or the legacy sample;
+    - the sealed panel;
+    - a truth site or a human-label fixture;
+    - either Ship A half.
+- **Not in these shards, but linked by copies:** none of these uses has its own recording in
+  `h448`'s shards. The copy screen does tie shard rows to them, though. One example is
+  `(322, 602)`, a probable copy of the `truth_site.waqf_boundary` recording `(16, 714)`.
+  `h448` trained on all of these rows, and its 299 dev copies are why #95's Tadabur guard
+  reads only the 671 dev clips that have none. The arms train on none of them.
+- **What is dropped**, counted from the full shard index
+  (`/root/scratch/issue-89/stage/full_index.jsonl`, SHA-256 `a20ad072…`). In all, 3,646 of
+  the 344,450 rows are dropped (1.06%). No row falls in both categories.
+
+  | reason | rows |
+  |---|---|
+  | panel reciter | 1,988 |
+  | `decode_evalset.dev` | 642 |
+  | `decode_evalset.test` | 534 |
+  | `decode_evalset.legacy_stratified` | 363 |
+  | `human_label.p35_fixture` | 74 |
+  | `truth_site.p35_fixture` | 50 |
+  | `truth_site.waqf_boundary` | 31 |
+  | `human_label.waqf_events` | 31 |
+  | `human_label.tashkeel_counterfactual` | 12 |
+  | `human_label.reject_reread` | 5 |
+  | `human_label.reject_bleed` | 1 |
+  | sealed panel, Ship A halves | 0 |
+  | **total** | **3,646** |
+
+  A row tied to two uses counts under both, so the recording rows sum to more than the
+  1,658 distinct rows. The running count is logged as each shard finishes
+  (`[data] exposure exclusion through shard …`).
+- **Never read:** muaalem-annotated-v3 and `nonpro.evaluation_only`. Neither is Tadabur
+  audio, so the registry ties no shard row to them. `nonpro.evaluation_only` holds app users'
+  and amateurs' recordings. #156's overlap sample compared 59 of its clips against
+  EveryAyah's professional recordings and found no match. No audio check against Tadabur
+  exists.
 - **Seed:** 9494, the same in both arms (`h448` used 1234). The shuffle buffer is 512, half
   `h448`'s 1024, because a buffered entry is now a window pair.
 - **Validation (monitoring only):** `--audio-root` is a directory of symlinks to the 970
@@ -166,6 +204,34 @@ The smoke checkpoints were deleted. The logs and metrics are in
 **Step count: 10,000 per arm.** Both arms run at least 0.6 steps/s, the recipe's threshold for
 cutting to 8k. At about 0.8 steps/s each arm takes about 3.5 h, so both arms take about 7 GPU-h
 run back to back.
+
+## Re-smoke after review (200 steps per arm, 2026-10-16)
+
+GPT-6.1 Sol's review found two problems, and both are fixed:
+
+- **P1:** a training row that is a probable copy of an evaluation recording was admitted.
+  The recording exclusion above now drops such rows.
+- **P2:** a pre-#94 checkpoint bypassed the new resume guards. A missing field is now read
+  as its legacy value.
+
+Both arms were then run again on the same configuration, with `--log-every 25`.
+
+| | candidate | control |
+|---|---|---|
+| steps/s, steps 25-200 | 0.98 | 0.92 |
+| KL loss, steps 25…200 | 0.444 / 0.220 / 0.343 / 0.218 / 0.250 / 0.262 / 0.252 / 0.192 | 0.165 / 0.171 / 0.155 / 0.185 / 0.175 / 0.199 / 0.189 / 0.147 |
+| gradient norm, range | 0.48-1.27, never clipped | 0.37-0.86, never clipped |
+| val at step 200, overall / confirmed | 0.9500 / 0.9481 | 0.9512 / 0.9500 |
+
+- **The filter, on the first shard (169):** 8 of its 1,000 rows were dropped in each arm:
+  3 for a panel reciter, 3 tied to `decode_evalset.dev` and 2 tied to
+  `decode_evalset.legacy_stratified`. Recomputing from the full shard index gives the same
+  counts.
+- **Teacher batches:** the teacher's blank ratio is identical between the arms at all 8
+  logged steps.
+- **Resources:** peak VRAM 13.8 GB, at least 27 GB of disk free, at least 14.0 GB of RAM
+  available.
+- **Health:** no NaN and no warning. The checkpoints were deleted.
 
 ## Full runs
 

@@ -196,6 +196,13 @@ RESUME_CRITICAL_FIELDS = (
 )
 
 
+# What a checkpoint written before these fields existed ran with. A field missing from a
+# saved config is read as its legacy value, never skipped: skipping it would let a clean
+# run resume augmented, under an exposure use, or with a smaller shuffle buffer than the
+# one its data order came from (h448 and every run before #94 used 1024).
+LEGACY_FIELD_VALUES = {"augment": {}, "exposure_use": "", "shuffle_buffer": 1024}
+
+
 def check_resume_compatible(saved: dict, current: TrainConfig) -> None:
     """Fail fast when a resume would splice two different experiments together.
 
@@ -205,6 +212,7 @@ def check_resume_compatible(saved: dict, current: TrainConfig) -> None:
     curve.
     """
     current_values = asdict(current)
+    saved = {**LEGACY_FIELD_VALUES, **saved}
     mismatches = [
         f"  {field}: checkpoint={saved[field]!r} current={current_values[field]!r}"
         for field in RESUME_CRITICAL_FIELDS
@@ -820,6 +828,13 @@ def main() -> None:
         "Peak disk is one ~2.5 GB shard per worker however many shards the run covers.",
     )
     parser.add_argument(
+        "--shuffle-buffer",
+        type=int,
+        default=DEFAULT_SHUFFLE_BUFFER,
+        help="streamed windows buffered per worker for shuffling. It orders the data, so a "
+        "resume must match it: runs before #94 used 1024.",
+    )
+    parser.add_argument(
         "--exposure-use",
         default="",
         help="the exposure-registry use the streamed rows serve (e.g. aug.training): drop "
@@ -924,6 +939,7 @@ def main() -> None:
         cooldown_steps=args.cooldown_steps,
         hop_seconds=args.hop_seconds,
         stream_shards=args.stream_shards,
+        shuffle_buffer=args.shuffle_buffer,
         exposure_use=args.exposure_use,
         augment=augment,
         noise_pool=str(args.noise_pool or ""),

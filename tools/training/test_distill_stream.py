@@ -137,12 +137,21 @@ def test_the_pairing_does_not_depend_on_the_shuffle(shards):
     assert pairs(1) == pairs(3) == pairs(64)
 
 
-def test_augmentation_is_keyed_by_the_parquet_row_before_exclusion(shards, monkeypatch):
-    from tadabur.exposure import AUG_TRAINING, RowExclusion
+def test_rows_are_excluded_by_reciter_and_recording_and_keyed_before_exclusion(
+    shards, monkeypatch, capsys
+):
+    """Row 1's reciter is excluded, and shard 22's row 3 is tied to an evaluation recording:
+    neither is decoded, and the rest keep their parquet row numbers."""
+    from tadabur.exposure import AUG_TRAINING, EVALSET_DEV, RowExclusion
 
     monkeypatch.setattr(RowExclusion, "for_use", classmethod(
-        lambda cls, use, registry=None: cls(use, frozenset({RECITERS[1]}))))
+        lambda cls, use, registry=None: cls(use, frozenset({RECITERS[1]}),
+                                            {(22, 3): (EVALSET_DEV,)})))
     calls: list = []
     list(_dataset(shards, exposure_use=AUG_TRAINING, augment=_keyed_augment(calls)))
     kept = [row for row, reciter in enumerate(RECITERS) if reciter != RECITERS[1]]
-    assert sorted(calls) == sorted((shard, row) for shard in shards for row in kept)
+    assert sorted(calls) == sorted((shard, row) for shard in shards for row in kept
+                                   if (shard, row) != (22, 3))
+    log = capsys.readouterr().out
+    assert "exposure exclusion through shard" in log  # logged as each shard finishes
+    assert "'excluded_by': {'decode_evalset.dev': 1, 'reciter': 2}" in log

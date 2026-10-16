@@ -30,7 +30,7 @@ import json
 import os
 import time
 from collections import defaultdict
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -47,6 +47,7 @@ from training.truth_baseline import (
     DEVICE_TYPE,
     PROTOCOLS,
     WEIGHTS_DTYPE,
+    Store,
     expected_fingerprint,
     model_identity,
 )
@@ -121,10 +122,12 @@ def load_decoders(identity_path: Callable[[str], Path]) -> dict:
 
 
 def decode_recordings(recordings: Iterable[Recording], decoders: dict,
-                      paths: dict[str, Path], label: str) -> dict:
-    """Decode every item of ``recordings`` not yet in its model's file (``paths`` by model),
-    appending each as one line; return the run's timing (items, audio and wall seconds, and
-    decode seconds per model and store). ``label`` names the run in progress lines."""
+                      paths: dict[str, Path], label: str,
+                      stores: Mapping[str, Store] = STORES) -> dict:
+    """Decode every item of ``recordings`` not yet in its model's file (``paths`` by model)
+    into each of ``stores`` (every arm by default), appending each item as one line; return
+    the run's timing (items, audio and wall seconds, and decode seconds per model and store).
+    ``label`` names the run in progress lines."""
     done = {name: resume_keys(path) for name, path in paths.items()}
     seconds: dict[str, dict[str, float]] = {name: defaultdict(float) for name in decoders}
     audio_seconds = 0.0
@@ -144,7 +147,7 @@ def decode_recordings(recordings: Iterable[Recording], decoders: dict,
                     if record["key"] in done[name]:
                         continue
                     line = dict(record)
-                    for store_label, store in STORES.items():
+                    for store_label, store in stores.items():
                         tick = time.time()
                         line.update(store.decode(decoder, span))
                         seconds[name][store_label] += time.time() - tick

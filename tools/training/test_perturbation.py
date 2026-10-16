@@ -176,17 +176,38 @@ def test_each_codec_configuration_gets_its_own_calibration():
     assert pt.opus_round_trip(_tone(500), audio)[1] == pt.codec_lag(audio)
 
 
+@pytest.fixture(scope="module")
+def residual_table() -> dict:
+    return pt.codec_residuals()
+
+
 @pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
-def test_every_training_configuration_keeps_timing_and_matches_the_committed_table():
+def test_every_training_configuration_keeps_timing(residual_table):
+    """Portable: holds on any ffmpeg/libopus build."""
+    assert set(residual_table) == {c.label for c in pt.OPUS_CONFIGS}
+    for config in residual_table.values():
+        assert 0 < config["calibrated_lag"] < pt.MAX_CODEC_LAG
+        assert all(abs(v) <= pt.MAX_RESIDUAL_LAG for v in config["residual"].values())
+
+
+@pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")
+def test_the_committed_table_holds_within_a_toolchains_drift(residual_table):
+    """The committed table (ffmpeg 8.1.2, libopus 1.6.1) against this build: the codec is not
+    pinned, and another build moves the constants by a few thousandths of a sample, so lags
+    agree within 0.01 samples and residuals within 0.05."""
     import json
 
     from training.nonpro_gap import CODEC_RESIDUALS_PATH
 
-    table = pt.codec_residuals()
-    assert set(table) == {c.label for c in pt.OPUS_CONFIGS}
-    for config in table.values():
-        assert all(abs(v) <= pt.MAX_RESIDUAL_LAG for v in config["residual"].values())
-    assert table == json.loads(CODEC_RESIDUALS_PATH.read_text(encoding="utf-8"))["configs"]
+    committed = json.loads(CODEC_RESIDUALS_PATH.read_text(encoding="utf-8"))["configs"]
+    assert set(committed) == set(residual_table)
+    for label, entry in committed.items():
+        fresh = residual_table[label]
+        assert fresh["calibrated_lag"] == pytest.approx(entry["calibrated_lag"], abs=0.01)
+        for kind in ("raw", "residual"):
+            assert fresh[kind].keys() == entry[kind].keys()
+            for probe, value in entry[kind].items():
+                assert fresh[kind][probe] == pytest.approx(value, abs=0.05), (label, kind, probe)
 
 
 @pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg is not installed")

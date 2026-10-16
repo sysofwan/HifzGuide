@@ -18,6 +18,7 @@ from tadabur.qud_text import ItemReference
 from tadabur.tarteel_split import CONFIRM, LOOK, half
 from tadabur.tashkeel_audit_ui import blind_reference
 from training.external_corpus import WordGrade
+from training.muraja_policy import SiteGrade
 from training.nonpro_eval import ClipItem
 from training.word_flags import Flag
 
@@ -45,7 +46,7 @@ def _grades(clip: str, h448: tuple, base: tuple) -> list[WordGrade]:
     """Both Muraja words of ``clip`` under each model: a flag (or ``None``) per word."""
     item = _item(clip)
     return [WordGrade(model, "shipped_default", item, k, 2, k + 1, (0, 1)[k],
-                      "flagged" if flag else "not_flagged", flag)
+                      SiteGrade("flagged" if flag else "not_flagged"), flag)
             for model, flags in (("h448", h448), ("base", base)) for k, flag in enumerate(flags)]
 
 
@@ -82,7 +83,8 @@ def test_the_issue_s_strata_are_the_tally_s_order():
 
 
 def _control(clip: str) -> te.FrameWord:
-    grade = WordGrade("h448", "shipped_default", _item(clip), 0, 2, 1, 0, "not_flagged", None)
+    grade = WordGrade("h448", "shipped_default", _item(clip), 0, 2, 1, 0, SiteGrade("not_flagged"),
+                      None)
     return te.FrameWord(grade, 0, 1, te.CONTROL)
 
 
@@ -94,7 +96,7 @@ def _frame(controls: bool = False) -> list[te.FrameWord]:
     for k, clip in enumerate(LOOK_CLIPS):
         for word, sub in ([(0, "ل→ن"), (1, "ز→س")] if k == 0 else [(k % 2, ("ل→ن", "ز→س")[k % 2])]):
             grade = WordGrade("h448", "shipped_default", _item(clip), word, 2, word + 1,
-                              (0, 1)[word], "flagged", _flag(sub))
+                              (0, 1)[word], SiteGrade("flagged"), _flag(sub))
             words.append(te.FrameWord(grade, word, (1, 3)[word], sub))
     return words
 

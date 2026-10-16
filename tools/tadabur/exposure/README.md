@@ -65,7 +65,9 @@ which the baseline and every candidate warm-started from it share.
 
 Empty until their issues write them: `truth_site.new_audit` (#87),
 `truth_site.synthetic_edit`, `probe.training`, `probe.kl_control`, `bias.tune`,
-`bias.score`, `shaddah_probe.tuning`.
+`bias.score`, `shaddah_probe.tuning`, and `aug.training` / `aug.control` (#94's augmentation
+experiment and its control: `h448`'s shards streamed again, the sealed panel's and the bias
+score half's reciters dropped before decoding; shard uses, written when the arms launch).
 
 Tadabur has 671 reciters and `h448`'s training shards hold 667 of them, so every held-out
 set overlaps `h448.training` by reciter. Under the owner's §6 amendment (2026-10-08) the

@@ -58,7 +58,9 @@ from __future__ import annotations
 import argparse
 import random
 import time
+from collections.abc import Callable
 
+import numpy as np
 import torch
 
 from tadabur.panel_seal import SealedPanelError
@@ -104,13 +106,15 @@ def default_train_shards() -> str:
 # Sized against RAM, **per worker**, and the sizing was got wrong once already. A buffered
 # window is a 5 s float32 waveform: 80,000 x 4 = **320 KB**, so 4096 of them is 1.3 GB per
 # worker, and three workers died on this 24 GB box once each also held a 2.5 GB shard and
-# pyarrow's batch buffers. 1024 is ~330 MB per worker.
+# pyarrow's batch buffers. ``h448`` ran with 1024 (~330 MB per worker). A buffered entry is
+# now a clean and an augmented window, twice that, so the buffer is halved to 512 (#94),
+# which keeps it at ~330 MB.
 #
 # Note that buffering waveforms is the *more* expensive choice: extracted features are
 # 250 x 160 x 4 = 160 KB, half as much. It is kept because the shuffle then reorders raw
 # audio and extraction happens on the way out, which keeps the buffer independent of the
 # feature extractor -- but if RAM ever binds again, buffering features is the cheaper fix.
-DEFAULT_SHUFFLE_BUFFER = 1024
+DEFAULT_SHUFFLE_BUFFER = 512
 
 
 def decode_row_waveform(row: dict):
@@ -120,26 +124,42 @@ def decode_row_waveform(row: dict):
     return decode_to_mono_16k(row["audio"]["bytes"])
 
 
+def row_window_starts(
+    num_samples: int,
+    hop_seconds: float = DEFAULT_HOP_SECONDS,
+    min_window_seconds: float = DEFAULT_MIN_WINDOW_SECONDS,
+) -> list[int]:
+    """Where every fixed-length window of a clip of ``num_samples`` starts."""
+    return window_starts(num_samples, WINDOW_SAMPLES, int(SAMPLE_RATE * hop_seconds),
+                         int(SAMPLE_RATE * min_window_seconds))
+
+
+def cut_window(waveform, start: int):
+    """The window of ``waveform`` from ``start``, zero-padded like the device pads."""
+    chunk = waveform[start : start + WINDOW_SAMPLES]
+    if len(chunk) < WINDOW_SAMPLES:
+        chunk = np.pad(chunk, (0, WINDOW_SAMPLES - len(chunk)))
+    return chunk
+
+
 def iter_row_windows(
     waveform,
     hop_seconds: float = DEFAULT_HOP_SECONDS,
     min_window_seconds: float = DEFAULT_MIN_WINDOW_SECONDS,
 ):
     """Yield every fixed-length window of one clip, zero-padded like the device pads."""
-    import numpy as np
+    for start in row_window_starts(len(waveform), hop_seconds, min_window_seconds):
+        yield cut_window(waveform, start)
 
-    hop_samples = int(SAMPLE_RATE * hop_seconds)
-    min_samples = int(SAMPLE_RATE * min_window_seconds)
 
-    for start in window_starts(len(waveform), WINDOW_SAMPLES, hop_samples, min_samples):
-        chunk = waveform[start : start + WINDOW_SAMPLES]
-        if len(chunk) < WINDOW_SAMPLES:
-            chunk = np.pad(chunk, (0, WINDOW_SAMPLES - len(chunk)))
-        yield chunk
+#: ``augment(clean, shard, row)``: the student's clip for Tadabur row ``row`` of ``shard``,
+#: the clean clip's length and timing (:class:`training.augmentation.Augmenter`).
+Augment = Callable[[np.ndarray, int, int], np.ndarray]
 
 
 class StreamingWindowDataset(torch.utils.data.IterableDataset):
-    """Fixed ``(250, 160)`` feature windows streamed from Tadabur parquet shards.
+    """``(teacher, student)`` pairs of ``(250, 160)`` feature windows streamed from Tadabur
+    parquet shards.
 
     Must genuinely subclass ``IterableDataset``: ``DataLoader`` dispatches on
     ``isinstance``, not on the presence of ``__iter__``, and a duck-typed class is silently
@@ -149,9 +169,14 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
     and fetches, consumes and **deletes** its shards one at a time, so peak disk is one
     shard per worker regardless of how many shards the run covers.
 
-    Yields only input features, exactly like
-    :class:`training.distill_data.DistillWindowDataset` -- the teacher runs online in the
-    training step and produces targets from this same tensor.
+    Yields only input features -- the teacher runs online in the training step and produces
+    targets from the first tensor of each pair, the student reads the second. Without
+    ``augment`` the two are one tensor (the clean window), and the stream is the same windows
+    in the same order as with it: the augmentation draws are keyed by the clip's
+    ``(shard, row)`` (:mod:`training.augmentation`) and never touch the shuffle's random
+    state. With ``augment``, each admitted clip is perturbed whole, **before** windowing,
+    and the clean and the augmented clip are cut at the same window starts, so a teacher
+    frame and the student frame it is compared with cover the same audio.
 
     ``exposure_use`` opts a run into acceptance rules §6: it names the exposure-registry use
     the run makes (e.g. ``probe.training``), and the rows of every reciter that use must
@@ -169,6 +194,7 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         seed: int = 1234,
         delete_after: bool = True,
         exposure_use: str | None = None,
+        augment: Augment | None = None,
     ) -> None:
         overlap = sorted(set(shard_indices) & held_out_shards())
         if overlap:
@@ -185,6 +211,7 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         self.seed = seed
         self.delete_after = delete_after
         self.exposure_use = exposure_use
+        self.augment = augment
         self._extractor = None
 
     @property
@@ -217,15 +244,33 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
             )
         return features[:FEATURE_FRAMES]
 
-    def _raw_windows(self):
-        """Every window of every admitted clip in this worker's shards, in stream order."""
+    def extract_pair(self, pair):
+        """A window pair's features; one extraction when the student reads the clean window."""
+        clean, augmented = pair
+        features = self.extract(clean)
+        return features, (features if augmented is clean else self.extract(augmented))
+
+    def _numbered_rows(self):
+        """``(shard, row, row dict)`` for every row of this worker's shards, numbered by its
+        parquet row before any exclusion (the registry's ``row_index``)."""
         from tadabur.shard_reader import iter_shard_rows
 
-        rows, exclusion = exclude_rows(
-            iter_shard_rows(self._my_shards(), delete_after=self.delete_after),
-            self.exposure_use,
-        )
-        for row in rows:
+        for shard in self._my_shards():
+            rows = iter_shard_rows([shard], delete_after=self.delete_after)
+            for row_index, row in enumerate(rows):
+                yield shard, row_index, row
+
+    def _raw_windows(self):
+        """``(clean, augmented)`` waveform pairs for every window of every admitted clip in
+        this worker's shards, in stream order; one array twice without ``augment``."""
+        exclusion = None
+        if self.exposure_use is not None:
+            from tadabur.exposure import RowExclusion
+
+            exclusion = RowExclusion.for_use(self.exposure_use)
+        for shard, row_index, row in self._numbered_rows():
+            if exclusion is not None and not exclusion.keeps(row):
+                continue
             try:
                 waveform = decode_row_waveform(row)
             except SealedPanelError:  # a seal violation is never a corrupt input
@@ -234,12 +279,16 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
                 # A corrupt row must not kill a 17-hour stream. A sealed-panel row is not
                 # corrupt: it is re-raised above and stops the run.
                 continue
-            yield from iter_row_windows(waveform, self.hop_seconds)
+            augmented = (waveform if self.augment is None
+                         else self.augment(waveform, shard, row_index))
+            for start in row_window_starts(len(waveform), self.hop_seconds):
+                clean = cut_window(waveform, start)
+                yield clean, (clean if augmented is waveform else cut_window(augmented, start))
         if exclusion is not None:
             print(f"[data] exposure exclusion {exclusion.report()}", flush=True)
 
     def __iter__(self):
-        """Shuffle-buffered feature windows.
+        """Shuffle-buffered ``(teacher, student)`` feature pairs.
 
         Waveforms are buffered rather than features. That is the **more** expensive choice
         -- a 5 s float32 waveform is 320 KB against a feature window's 160 KB, see
@@ -249,16 +298,16 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
         rng = random.Random(self.seed + 1)
         buffer: list = []
 
-        for waveform in self._raw_windows():
-            buffer.append(waveform)
+        for pair in self._raw_windows():
+            buffer.append(pair)
             if len(buffer) >= self.shuffle_buffer:
                 index = rng.randrange(len(buffer))
                 buffer[index], buffer[-1] = buffer[-1], buffer[index]
-                yield self.extract(buffer.pop())
+                yield self.extract_pair(buffer.pop())
 
         rng.shuffle(buffer)
-        for waveform in buffer:
-            yield self.extract(waveform)
+        for pair in buffer:
+            yield self.extract_pair(pair)
 
 
 def exclude_rows(rows, exposure_use: str | None):

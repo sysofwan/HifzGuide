@@ -147,6 +147,11 @@ PROBE_KL_CONTROL = "probe.kl_control"
 BIAS_TUNE = "bias.tune"
 BIAS_SCORE = "bias.score"
 SHADDAH_PROBE_TUNING = "shaddah_probe.tuning"
+#: #94's augmentation experiment: ``h448`` continued with augmented student input, and its
+#: control, the same run with augmentation off. Streaming training over ``h448``'s shards
+#: (shard uses), written when the arms launch.
+AUG_TRAINING = "aug.training"
+AUG_CONTROL = "aug.control"
 
 USES = frozenset({
     *TRUTH_SITE_USES.values(),
@@ -155,7 +160,7 @@ USES = frozenset({
     MINING_POOL, EVALSET_DEV, EVALSET_TEST, EVALSET_LEGACY, H448_TRAINING, H448_INIT_VALIDATION,
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
-    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
+    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
 })
 
 #: ``h448``'s ``--stream-shards``, verbatim from ``runs/h448_stream/run_config.json`` on the
@@ -811,13 +816,13 @@ def copies_across_uses(registry: ExposureRegistry) -> dict[tuple[str, str], int]
 PRD_USES = frozenset({
     *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
-    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT,
+    SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
 })
 #: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
 #: them, edit donors included.
 TRAINING_AND_TUNING_USES = frozenset({
     SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
-    SHADDAH_PROBE_TUNING, SHIP_A_TRAIN,
+    SHADDAH_PROBE_TUNING, SHIP_A_TRAIN, AUG_TRAINING, AUG_CONTROL,
 })
 
 

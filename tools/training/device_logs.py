@@ -69,7 +69,7 @@ from tadabur.truth_sites import SOFT_PAIRS, UNFORGIVEN_PAIRS
 from tadabur.word_sample import load_words, verified_words
 from training import truth_baseline
 from training.acceptance_stats import ratio_interval
-from training.decoding import clusters
+from training.decoding import STOP, clusters, make_check
 from training.muraja_policy import (
     ALLOWANCES_ON,
     CORRECT,
@@ -322,6 +322,50 @@ def read_facts(text: str) -> LogFacts:
     )
 
 
+_CONSOLE_PREFIX = re.compile(r"^(?:\[[^\]]*\] ?)+")
+_LEGACY_WINDOW = re.compile(r"^Window inference (\d+)ms \u2014 confirmed: (.*?), unconfirmed: (.*)$")
+_LEGACY_PREVIEW = re.compile(r"^Preview inference (\d+)ms \u2014 (.*)$")
+
+
+def _update_check(line: str) -> dict | None:
+    """``Update: type=…, hop=…, overlap=…, didFlush=…`` (or ``confirmed=`` / ``unconfirmed=``) as
+    ``parseUpdateLine`` reads it: each field up to the next field's first separator."""
+    hop_key = "hop=" if "hop=" in line else "confirmed="
+    overlap_key = ", overlap=" if "overlap=" in line else ", unconfirmed="
+    if "type=" not in line or hop_key not in line or overlap_key not in line:
+        return None
+    after_hop = line[line.index(hop_key) + len(hop_key):]
+    after_overlap = line[line.index(overlap_key) + len(overlap_key):]
+    if overlap_key not in after_hop or ", didFlush=" not in after_overlap:
+        return None
+    flush = line[line.index("didFlush=") + len("didFlush="):].strip() == "true"
+    return {"hop": after_hop[:after_hop.index(overlap_key)],
+            "overlap": after_overlap[:after_overlap.index(", didFlush=")], "flush": flush}
+
+
+def session_checks(text: str) -> list[dict]:
+    """The checks a session's log hands the engine, in order, read as the pinned Muraja replay
+    parses a log (``tools/replay_log.swift``, ``parseLogEvents``): each ``Update`` line and the
+    ``Stop`` line's final phonemes (as the session's stop); in a log with no structured line, each
+    legacy ``Window inference`` (confirmed, unconfirmed) and non-empty ``Preview inference``.
+    Withheld hops are never aligned and are left out. The console prefix (``[time] [level]
+    [category]``) is stripped first."""
+    structured = "Update: type=" in text or "Withheld update: " in text
+    checks: list[dict] = []
+    for raw in text.splitlines():
+        line = _CONSOLE_PREFIX.sub("", raw.strip()).strip()
+        if structured:
+            if line.startswith("Update: type=") and (check := _update_check(line)) is not None:
+                checks.append(check)
+            elif line.startswith("Stop: ") and "finalPhonemes=" in line:
+                checks.append(make_check(STOP, line[line.index("finalPhonemes=") + len("finalPhonemes="):], ""))
+        elif m := _LEGACY_WINDOW.match(line):
+            checks.append({"hop": m[2], "overlap": m[3].strip(), "flush": False})
+        elif (m := _LEGACY_PREVIEW.match(line)) and m[2].strip():
+            checks.append({"hop": "", "overlap": m[2].strip(), "flush": False})
+    return checks
+
+
 def lengthened_previews(text: str) -> tuple[str, int]:
     """The log with each preview update's overlap replaced by the longer text the transcriber's
     own line logged just before it (40 Characters, ``RealtimeTranscriber+iOS.swift:642``, where
@@ -400,6 +444,8 @@ class WordGrade:
     explained: Explained | None
     #: The consonant errors behind its consonant causes, ``(cause, substitution)``.
     consonants: tuple[tuple[str, str], ...] = ()
+    #: The kept grade's errors as the engine reports them (with their group indices).
+    errors: tuple[dict, ...] = ()
 
     @property
     def flagged(self) -> bool:
@@ -421,7 +467,7 @@ def word_grades(
             out.append(WordGrade(
                 entry.log, word, scoring.name, shown,
                 why.causes if why else (), why.marks if why else (), why.pairs if why else (),
-                entry.explanation(word), why.consonants if why else ()))
+                entry.explanation(word), why.consonants if why else (), tuple(status["errors"])))
     return out
 
 

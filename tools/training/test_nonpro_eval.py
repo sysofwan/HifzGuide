@@ -12,6 +12,7 @@ import pytest
 from tadabur.qud_text import ItemReference
 from training import nonpro_eval as ne
 from training.external_corpus import WordGrade
+from training.muraja_policy import SiteGrade
 from training.word_flags import Flag
 
 # Two words, ``قَالَ سَططَ``: a ق, a ل, a س and the geminate طط, each with a haraka.
@@ -27,7 +28,7 @@ def _item(key="c#0", reciter="s1", labels=None) -> ne.ClipItem:
 
 def _grade(item, word_index, flag=None, model="h448", scoring="shipped_default", graded=True):
     return WordGrade(model, scoring, item, word_index - 7, 2, word_index + 1, word_index,
-                     "flagged" if flag else "not_flagged" if graded else "not_graded", flag)
+                     SiteGrade("flagged" if flag else "not_flagged" if graded else "not_graded"), flag)
 
 
 def _flag(*consonants) -> Flag:

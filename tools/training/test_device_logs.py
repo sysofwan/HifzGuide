@@ -250,24 +250,34 @@ def test_the_report_covers_the_inventory_and_every_log_reproduces_its_baseline()
     assert (REPORT["muraja"]["pin"], REPORT["muraja"]["main"]) == (MURAJA_COMMIT, d.MURAJA_MAIN)
 
 
+#: A pair's or a substitution's label (``ح↔ه``, ``ل→ء``, ``ه→∅``): the Arabic a private report may hold.
+LABEL = re.compile("[\u0600-\u06ff][↔→][\u0600-\u06ff∅]")
+
+
+def report_strings(value):
+    """Every key and string of a report, recursively."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield key
+            yield from report_strings(item)
+    elif isinstance(value, list | tuple):
+        for item in value:
+            yield from report_strings(item)
+    elif isinstance(value, str):
+        yield value
+
+
+def arabic_beyond_labels(value, longest: int = 0) -> list[str]:
+    """The report's strings holding a run of more than ``longest`` Arabic letters once the
+    labels are taken out (0: no Arabic at all; 1: a one-letter label allowed)."""
+    run = re.compile(f"[\u0600-\u06ff]{{{longest + 1},}}")
+    return [s for s in report_strings(value) if run.search(LABEL.sub("", s))]
+
+
 def test_the_report_carries_no_log_text():
     """Positions, counts, causes, commits and docs only: no Arabic but a pair's or a
     substitution's label."""
-    arabic = re.compile("[\u0600-\u06ff]")
-    pair = re.compile("[\u0600-\u06ff][↔→][\u0600-\u06ff∅]")
-
-    def strings(value):
-        if isinstance(value, dict):
-            for key, item in value.items():
-                yield key
-                yield from strings(item)
-        elif isinstance(value, list):
-            for item in value:
-                yield from strings(item)
-        elif isinstance(value, str):
-            yield value
-
-    assert not [s for s in strings(REPORT) if arabic.search(pair.sub("", s))]
+    assert not arabic_beyond_labels(REPORT)
 
 
 def test_the_doc_is_rendered_from_the_report():

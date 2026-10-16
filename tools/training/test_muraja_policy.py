@@ -256,7 +256,7 @@ def test_requests_out_and_results_in(text):
     json.dumps(request, ensure_ascii=False)
     results = [
         {"item": "arm#item", "scoring": s["name"], "final": [{"word": 3, **kept("tashkeelError", 2)}],
-         "letters": [W3_LETTERS]}
+         "letters": [W3_LETTERS], "checks": []}
         for s in request["scorings"]
     ]
     out = read_results([item], {"arm#item": where}, results, SCORINGS, {"muraja_commit": MURAJA_COMMIT})
@@ -305,3 +305,20 @@ def test_a_request_with_a_scoring_key_the_binary_does_not_declare_is_refused(tmp
     harness.check([{"scorings": [{"name": "a", "mode": "balanced", "soft_pairs_enabled": False}]}])
     with pytest.raises(ValueError, match="soft_pairs_disabled"):
         harness.check([{"scorings": [{"name": "a", "mode": "balanced", "soft_pairs_disabled": ["ح↔ه"]}]}])
+
+def test_the_checks_that_set_a_kept_grade_are_those_whose_own_grade_is_it():
+    from training.muraja_policy import setting_checks
+
+    error = [{"kind": {"type": "mismatch", "expected": "ن", "heard": "ل"}, "group_index": 0}]
+    kept = {"word": 3, "quality": "minor", "score": 0.7, "withheld": None, "errors": error}
+
+    def status(quality: str, withheld: str | None = None, score: float = 0.7, errors=error) -> dict:
+        return {"word": 3, "quality": quality, "score": score, "withheld": withheld, "errors": errors}
+
+    checks = [{"statuses": [status("minor", score=0.6)]},                  # another score
+              {"statuses": [status("pending", withheld="minor")]},         # withheld at the end word
+              {"statuses": [status("minor", errors=[])]},                  # other errors
+              {"statuses": [{**status("minor"), "word": 4}]},              # another word
+              {"statuses": [status("minor")]}]
+    assert setting_checks(checks, 3, kept) == (1, 4)
+    assert setting_checks(checks, 3, None) == ()

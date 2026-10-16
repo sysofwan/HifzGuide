@@ -45,7 +45,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from tadabur.audio import TARGET_SAMPLE_RATE
 from tadabur.contrast_attribution import align_on_carriers
@@ -65,6 +65,9 @@ from training.direction_table import direction
 from training.site_outcomes import pair_outcome
 from training.truth_baseline import CHECKS
 from training.truth_scorer import SiteRow
+
+if TYPE_CHECKING:
+    from training.muraja_policy import SiteGrade
 
 #: The two decodes #144's rule reads (Ship A's frame): the base teacher on the whole item,
 #: and ``h448`` as shipped, streamed at b = 0.
@@ -429,8 +432,8 @@ def placement(item: CorpusItem, placed: Sequence[tuple]):
 class WordGrade:
     """One word of one item under one model's checks and one scoring: where it sits in the
     item (``position``, 0-based, of ``words``), its Muraja phoneme word and the canonical word
-    it starts on (0-based ``word_index``), the engine's outcome and, for a flagged word, why
-    (:func:`training.word_flags.flag`)."""
+    it starts on (0-based ``word_index``), the grade the engine kept (its outcome, errors and the
+    checks that set it) and, for a flagged word, why (:func:`training.word_flags.flag`)."""
 
     model: str
     scoring: str
@@ -439,8 +442,12 @@ class WordGrade:
     words: int
     word: int
     word_index: int
-    outcome: str
+    kept: SiteGrade
     reason: object | None
+
+    @property
+    def outcome(self) -> str:
+        return self.kept.outcome
 
     @property
     def graded(self) -> bool:
@@ -487,7 +494,7 @@ def word_grades(items: Sequence[CorpusItem], decodes: Mapping[str, Mapping[str, 
                     reason = (flag(grade, text.word_phonemes(site))
                               if grade.outcome in WORD_FLAGGED else None)
                     out.append(WordGrade(model, scoring.name, item, position, len(words),
-                                         site.word, word.word_index, grade.outcome, reason))
+                                         site.word, word.word_index, grade, reason))
     return graded.build, out
 
 

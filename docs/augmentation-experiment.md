@@ -1,7 +1,11 @@
 # #94's augmentation experiment: run note
 
-**Status (2026-10-16): both full arms are running on cuda-dev, the candidate first.** Their
-exposure uses are registered. The recipe is the 2026-10-15 rewrite on #94, which supersedes the issue body. The
+**Status (2026-10-16, 07:20Z):**
+- **Candidate:** the first run crashed at about step 1,900, before any checkpoint (see "The
+  candidate's crash"). Its re-run under recipe v2 is queued behind the control and waits
+  for the coordinator's go-file.
+- **Control:** running.
+- **Exposure:** both uses are registered. The recipe is the 2026-10-15 rewrite on #94, which supersedes the issue body. The
 readout belongs to #95, and the bars were pre-registered on #128 before any candidate existed.
 This note records what each arm trains on, under which configuration, and where its outputs
 are. It contains no results. Checkpoints stay on cuda-dev.
@@ -275,12 +279,13 @@ lists them. Kill only by explicit PID.
 
 | arm | directory | log |
 |---|---|---|
-| candidate | `aug94_candidate/` | `/root/scratch/issue-94/logs/aug94_candidate.log` |
+| candidate (crashed, superseded) | `aug94_candidate/` | `/root/scratch/issue-94/logs/aug94_candidate.log` |
+| candidate re-run (v2) | `/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/` | `/root/scratch/issue-94/logs/aug94_candidate_v2.log` |
 | control | `aug94_control/` | `/root/scratch/issue-94/logs/aug94_control.log` |
 
 Each directory holds `checkpoint.pt` (live weights plus the EMA shadow), `metrics.jsonl` and
 `run_config.json`. The checkpoint is saved every 2,000 steps and at the end; it is about
-1.87 GB and stays on the box. **The candidate is fixed now: the final step, step 10,000.**
+1.87 GB and stays on the box. **The candidate is fixed now: the re-run's final step, step 10,000.**
 #95's look half chooses only live vs EMA weights.
 
 **To resume** an interrupted arm, rerun its line from `full_runs.sh` with `--resume` added.
@@ -317,6 +322,97 @@ finish about 3.1-3.5 h later, near **12:00-12:30Z** on 2026-10-16.
 3. Steps/s over steps 50-300, from `elapsed_s`, is at least 0.6.
 4. The control's `teacher_blank_ratio` equals the candidate's at every logged step. They
    share one teacher stream, as in both smokes.
+
+## The candidate's crash, and its re-run (recipe v2)
+
+**What happened.** The candidate exited with code 1 at 06:16:33Z, about 40 minutes in. Its last
+logged step was 1,850 and it had saved no checkpoint. The chain then started the control,
+which runs normally and is unaffected.
+
+**The traceback:** `Augmenter.__call__` → `apply` → `perturbation.add_noise` →
+`_power(noise)`: `ValueError: cannot set a level on silent audio`, raised in the DataLoader
+worker.
+
+**Diagnosis.**
+- A noise draw's segment is a window of one pool recording, as long as the clip, starting at
+  the drawn offset. It loops only when the clip is longer than the recording.
+- Freesound recording **370282** (57.7 s) passed the pool's checks: it is longer than 1 s,
+  finite, and its RMS is above -80 dBFS overall. But it holds **17.6 s of exact zeros**.
+- Tadabur row `(57, 612)` drew it at an offset inside that stretch, so its segment was
+  digitally silent. A dry run of the draws puts that row at step 1,913, and the last logged
+  step was 1,850.
+
+**Pool audit** (458 recordings; median clip 11.1 s, p10 4.6 s, p90 25.6 s):
+
+| silent stretch at least | exact-zero run | at or below -80 dBFS (100 ms frames) |
+|---|---|---|
+| 1 s | 12 recordings | 34 recordings |
+| 5 s | 1 | 2 |
+| 11.1 s (the median clip) | 1 (370282) | 2 (370282; 620699, 11.2 s) |
+
+**The pool is not trimmed.** Trimming would change the committed pool's checksum and the
+audio of every draw from those recordings. The re-draw below touches 11 clips of the 22,830
+noise clips a 10k-step run reads. The pool's provenance and checksum are unchanged.
+
+**The fix (`aug94-mixture-v2`, PR "Re-draw a silent noise segment").**
+`training.augmentation.audible_noise` checks a noise draw's segment against the pool's own
+silence floor, an RMS above `NOISE_MIN_RMS` (-80 dBFS). That floor is stricter than
+`_power`'s zero, which it includes: a nonzero segment below it would be scaled by an
+enormous gain to reach the SNR.
+- **Re-draw:** a failing draw re-draws the recording and offset from
+  `random.Random('<seed+2>:<shard>:<row>:<attempt>')`, keeping its SNR, up to 8 draws in
+  all.
+- **Fallback:** if all 8 are silent, the clip stays clean.
+- **Logging:** each event is logged (`[augment] silent noise segment at (shard, row) ...`),
+  and nothing raises.
+- **Unchanged:** every clip whose first segment is audible keeps its v1 draw exactly. The
+  control has no augmenter, so v2 cannot change it.
+
+**Dry run** (`python -m training.augmentation dry-run`, seed 9494, `aug.training`'s rows, with
+lengths from the full shard index; 191 rows have no indexed duration and are skipped):
+
+| | first 66 shards (what 10k steps reach) | all 345 shards |
+|---|---|---|
+| noise draws | 22,830 | 119,109 |
+| re-drawn | **11** | 63 |
+| left clean | 0 | 0 |
+
+- **Re-draws:** every one is settled by the first re-draw.
+- **Zero-power segments**, the ones that crash v1: 5 of the 11 (34 of the 63).
+- **The other 6** were nonzero but below -80 dBFS. 4 of those come before step 1,913, so the
+  crashed run had already trained on them, heavily amplified.
+
+**The re-run.**
+- **Code:** a new directory, `/root/scratch/issue-94/repo-fix`, a `git archive` of the fix
+  branch (its commit is in `repo-fix/COMMIT`). `/root/scratch/issue-94/repo` is untouched
+  while the control runs.
+- **Configuration:** the same recipe, seed 9494, 10,000 steps, `--init-from` h448, one
+  worker.
+- **Output:** `/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/`.
+- **The crashed run's directory** `repo/tools/runs/aug94_candidate/` keeps its
+  `metrics.jsonl` and `run_config.json` as the record. It has no checkpoint.
+- **The readout path needs updating.** #95's `aug_readout_gate.ARMS[CANDIDATE]` names
+  `/root/scratch/issue-94/repo/tools/runs/aug94_candidate/checkpoint.pt`. It must name
+  `/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt`.
+
+**Scripts** in `/root/scratch/issue-94/`, queued 2026-10-16T07:18:46Z:
+
+| script | PID | what it does |
+|---|---|---|
+| `candidate_v2.sh` | 1238592 | waits for `/root/scratch/issue-94/GO_CANDIDATE`, then runs `run_arm_fix.sh aug runs/aug94_candidate_v2 10000 --num-workers 1 --init-from /root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt` |
+| `monitor_v2.sh` | 1238593 | samples VRAM, disk and RAM into `logs/monitor_v2.log` from the go-file to the re-run's exit |
+
+- **Ordering:** `run_arm_fix.sh` is `run_arm.sh` against `repo-fix`. It blocks on
+  `flock /root/scratch/gpu.lock`, which the control holds for its whole run, so the re-run
+  starts only once the go-file exists **and** the control has exited.
+- **Events** go to `logs/full_runs.events`: queued, go-file seen, exit.
+- **Log:** `logs/aug94_candidate_v2.log`.
+- **Expected:** the control finishes near 09:20Z, at 0.91 steps/s. Given the go-file by then,
+  the re-run finishes about 3.2 h later, near 12:35Z.
+
+**Health check of the re-run's first 300 steps:** the same checks as the control's below.
+Also check that `[augment] aug94-mixture-v2` is in the log, and that re-draw lines appear at
+the dry run's rows (the first are `(207, 553)` near step 388 and `(312, 928)` near step 603).
 
 ## Exposure registration
 

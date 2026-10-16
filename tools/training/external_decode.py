@@ -1,4 +1,5 @@
-"""Decode an external corpus with the base teacher and ``h448``, every arm (#144, #156).
+"""Decode an external corpus with the base teacher and ``h448``, every arm (#144, #156), or with
+other models named by :class:`ModelSpec` (the augmentation readout's arms, #95).
 
 An **external corpus** is audio from outside Tadabur that no model has heard (QUD's
 professional mushafs, #144; the non-professional app-user corpora, #156). Its items are spans
@@ -90,23 +91,81 @@ def resume_keys(path: Path) -> set[str]:
     return keys
 
 
-def load_decoders(identity_path: Callable[[str], Path]) -> dict:
-    """Both models, checked against the truth baseline's frozen protocol and against the
-    identity a previous run recorded at ``identity_path(model)``."""
+@dataclass(frozen=True)
+class ModelSpec:
+    """One model to decode with: its reference (a hub id or a distillation checkpoint), and for
+    a checkpoint, which weights (``use_ema``: the averaged ones), the training step it must hold
+    (``step``) and the augmentation recipe it was trained under (``recipe``: the version its
+    config's ``augment`` names, or :data:`NO_AUGMENTATION` for none); ``None`` checks nothing.
+    A checkpoint's live and averaged weights share one reference and so one fingerprint; the
+    identity record tells them apart."""
+
+    ref: str
+    use_ema: bool = False
+    step: int | None = None
+    recipe: str | None = None
+
+    def identity_extra(self) -> dict:
+        """What the identity record adds to :func:`training.truth_baseline.model_identity`:
+        nothing for the truth baseline's two models, so their committed records still match."""
+        if not self.use_ema and self.step is None and self.recipe is None:
+            return {}
+        return {"weights": "ema" if self.use_ema else "live", "step": self.step,
+                **({} if self.recipe is None else {"recipe": self.recipe})}
+
+
+#: The truth baseline's two models, as every external corpus decodes them.
+DEFAULT_SPECS = {name: ModelSpec(ref) for name, ref in DEFAULT_MODELS.items()}
+#: The recipe of a run trained without augmentation (its config's ``augment`` is empty).
+NO_AUGMENTATION = "none"
+
+
+def checkpoint_facts(path: Path) -> tuple[int, str]:
+    """The training step a distillation checkpoint was saved at, and the augmentation recipe its
+    config records, read without its weights. Training augments whenever ``augment`` is
+    non-empty, so only an absent or empty ``augment`` is :data:`NO_AUGMENTATION`; a non-empty one
+    must name its recipe by a ``version`` string other than that reserved name, or the
+    checkpoint is refused."""
+    import torch
+
+    state = torch.load(path, map_location="cpu", weights_only=False, mmap=True)
+    augment = state["config"].get("augment")
+    if not augment:
+        return int(state["step"]), NO_AUGMENTATION
+    version = augment.get("version") if isinstance(augment, dict) else None
+    if not isinstance(version, str) or not version or version == NO_AUGMENTATION:
+        raise ValueError(f"{path}: an augment config that names no recipe ({version!r}); "
+                         "training augmented under it")
+    return int(state["step"]), version
+
+
+def load_decoders(identity_path: Callable[[str], Path],
+                  models: Mapping[str, ModelSpec] = DEFAULT_SPECS) -> dict:
+    """Each model of ``models`` (both truth-baseline models by default), checked against the
+    truth baseline's frozen protocol, against the step and recipe its spec names (before its
+    weights are loaded) and against the identity a previous run recorded at
+    ``identity_path(model)``."""
     from training.decoding import Decoder
 
     decoders = {}
-    for name, ref in DEFAULT_MODELS.items():
-        decoder = Decoder.load(ref, DEVICE_TYPE, weights_dtype=WEIGHTS_DTYPE,
-                               batch_size=BATCH_SIZE)
+    for name, spec in models.items():
+        if spec.step is not None or spec.recipe is not None:
+            step, recipe = checkpoint_facts(Path(spec.ref))
+            if spec.step is not None and step != spec.step:
+                raise ValueError(f"{name}: {spec.ref} holds step {step}, not {spec.step}")
+            if spec.recipe is not None and recipe != spec.recipe:
+                raise ValueError(f"{name}: {spec.ref} was trained under {recipe!r}, "
+                                 f"not {spec.recipe!r}")
+        decoder = Decoder.load(spec.ref, DEVICE_TYPE, weights_dtype=WEIGHTS_DTYPE,
+                               batch_size=BATCH_SIZE, use_ema=spec.use_ema)
         record = {
             "model": name,
-            "identity": model_identity(ref, decoder),
+            "identity": {**model_identity(spec.ref, decoder), **spec.identity_extra()},
             "fingerprints": {arm: decoder.fingerprint(mode).as_dict()
                              for arm, mode in MODES.items()},
         }
         for arm, mode in MODES.items():
-            if record["fingerprints"][arm] != expected_fingerprint(ref, mode):
+            if record["fingerprints"][arm] != expected_fingerprint(spec.ref, mode):
                 raise ValueError(f"{name} decodes {arm} as {record['fingerprints'][arm]}")
         path = identity_path(name)
         if path.exists():

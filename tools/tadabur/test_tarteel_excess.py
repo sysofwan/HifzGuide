@@ -50,6 +50,9 @@ def _grades(clip: str, h448: tuple, base: tuple) -> list[WordGrade]:
             for model, flags in (("h448", h448), ("base", base)) for k, flag in enumerate(flags)]
 
 
+# The same three words in the mushaf's script, as the page shows them.
+UTHMANI = ("قَالَ", "سَطَّ", "نَا")
+
 RANKS = {(OC, "م→∅"): 0, (OC, "ز→س"): 1, (OC, "ل→ن"): 2}
 
 
@@ -217,11 +220,11 @@ def _session_dir(tmp_path):
 
 def test_the_page_asks_the_word_question_blind(tmp_path):
     rows, directory, audio_dir = _session_dir(tmp_path)
-    state = te.session(audio_dir, directory)
+    state = te.session(audio_dir, directory, words=lambda _: UTHMANI)
     payload = state.payload()
     assert payload["progress"] == {"answered": 0, "total": len(rows)}
     assert {s["mode"] for s in payload["sites"]} == {"word"}
-    assert {s["carrier"] for s in payload["sites"]} <= {"قَالَ ", "سَططَ نَا"}
+    assert {s["carrier"] for s in payload["sites"]} <= {"قَالَ ", "سَطَّ نَا"}
     shown = json.dumps(payload, ensure_ascii=False)
     for secret in ("h448", "stratum", "→", "probability", *(r.site_id for r in rows)):
         assert secret not in shown
@@ -263,3 +266,24 @@ def test_push_copies_the_verified_clips_and_checks_them_on_the_box(tmp_path):
 
     with pytest.raises(ValueError, match="other bytes"):
         te.push(rows, staged, audio_dir, "box", "/scratch/clips", tampered)
+
+
+def test_the_page_shows_the_mushaf_s_words_with_the_same_word_highlighted():
+    row = next(r for r in te.draw(_frame()) if r.position_from == 1)
+    assert blind_reference(row.word_site(UTHMANI), {}) == ("قَالَ ", "سَطَّ نَا", "")
+    with pytest.raises(ValueError, match="mushaf has 2 words where the reference has 3"):
+        row.word_site(UTHMANI[:2])
+
+
+def test_every_frozen_row_highlights_its_own_word_in_the_mushaf():
+    """The committed worklist against the committed quran.db: the highlighted Uthmani words
+    are the canonical words each verdict is about, position for position."""
+    for row in te.load_worklist():
+        words = te.uthmani_words(row.surah_ayah)
+        _, carrier, _ = blind_reference(row.word_site(words), {})
+        assert carrier.strip() == " ".join(words[row.position_from:row.position_to]), row.site_id
+
+
+def test_the_ayah_number_marker_is_not_a_word():
+    words = te.uthmani_words("1:1")
+    assert len(words) == 4 and all(any(ch.isalpha() for ch in w) for w in words)

@@ -26,7 +26,8 @@ reverb             0.15   RT60 ~ U(0.2, 1.0) s, DRR 3 dB (:func:`perturbation.sy
 Opus               0.10   voip, narrowband, 8 / 12 / 16 kbit/s, each its own calibrated lag
 =================  =====  =================================================================
 
-**Draws are a pure function of the run's seed and the clip's Tadabur row** (:func:`draw`):
+**Draws are a pure function of the run's seed and the clip's Tadabur row** (:func:`draw`;
+a noise segment too quiet to scale is re-drawn from the same keyed stream, :func:`audible_noise`):
 each clip gets its own ``random.Random`` seeded by ``seed + 2`` and its ``(shard, row)``, so
 which condition a clip gets does not depend on the shuffle (``seed + 1``), the worker count or
 the order clips arrive in.
@@ -41,8 +42,11 @@ Usage (from ``tools/``; the codec needs ``ffmpeg`` with ``libopus`` on the path)
 
   python -m training.augmentation noise-pool --cache-dir <scratch> --out <scratch>/pool.npz
   python -m training.augmentation record     # the recipe a run's config carries
+  python -m training.augmentation dry-run --pool <npz> --index <full index> \
+      --exposure-use aug.training --seed 9494 --steps 10000   # silent draws a run would hit
 
-Torch-free.
+Torch-free, but ``dry-run``, which cuts windows as the training stream does
+(:mod:`training.distill_stream`).
 """
 
 from __future__ import annotations
@@ -52,7 +56,7 @@ import hashlib
 import json
 import random
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -67,6 +71,7 @@ from training.perturbation import (
     NARROWBAND_RATE,
     NOISE,
     NOISE_KIND,
+    NOISE_MIN_RMS,
     OPUS_CONFIGS,
     REVERB,
     NoiseRecording,
@@ -83,7 +88,10 @@ from training.perturbation import (
     synthetic_rir,
 )
 
-RECIPE_VERSION = "aug94-mixture-v1"
+#: v2 (after the first candidate run crashed on a silent noise segment, before any result):
+#: a noise segment at or below the pool's silence floor is re-drawn (:func:`audible_noise`);
+#: every other clip's draw is v1's.
+RECIPE_VERSION = "aug94-mixture-v2"
 
 #: Each condition kind and its share of clips; the shares sum to one.
 MIXTURE = ((CLEAN, 0.30), (NOISE_KIND, 0.35), (REVERB, 0.15), (BAND_LIMIT, 0.10), (CODEC, 0.10))
@@ -92,6 +100,11 @@ RT60_RANGE_S = (0.2, 1.0)
 #: The run seed's offset for the augmentation draws: ``seed`` orders the shards and
 #: ``seed + 1`` drives the shuffle buffer (:mod:`training.distill_stream`).
 DRAW_SEED_OFFSET = 2
+#: How many recordings and offsets a noise clip may draw (its own and up to seven re-draws)
+#: before it gives up and stays clean. A
+#: pool recording can hold a long silent stretch (one holds 17.6 s of exact zeros), so a
+#: segment as long as a clip can be silent although the recording passed the pool's checks.
+NOISE_DRAWS = 8
 
 #: Two shards of D2's noise collection, at its pinned revision, that D2 never read (it read
 #: 00000 and 00052), far apart in the collection's order.
@@ -113,13 +126,16 @@ assert abs(sum(share for _, share in MIXTURE) - 1.0) < 1e-12
 class Draw:
     """What one clip gets: its condition kind and level (SNR in dB, RT60 in s, bitrate in
     bit/s; none for clean and the band limit), and for noise the pool recording and its start
-    (a fraction of its length), for reverb the impulse response's seed."""
+    (a fraction of its length), for reverb the impulse response's seed. ``noise_redraws``
+    counts the silent noise segments drawn before this one (:func:`audible_noise`); a clean
+    draw with :data:`NOISE_DRAWS` of them is a noise clip that found no audible segment."""
 
     kind: str
     level: float | None = None
     noise_index: int | None = None
     noise_offset: float | None = None
     rir_seed: int | None = None
+    noise_redraws: int = 0
 
 
 def draw(seed: int, shard: int, row: int, pool_size: int) -> Draw:
@@ -136,6 +152,27 @@ def draw(seed: int, shard: int, row: int, pool_size: int) -> Draw:
     if kind == CODEC:
         return Draw(kind, float(rng.choice(OPUS_CONFIGS).bitrate))
     return Draw(kind)
+
+
+def audible_noise(chosen: Draw, seed: int, shard: int, row: int,
+                  pool: tuple[NoiseRecording, ...], length: int) -> Draw:
+    """``chosen`` (a noise draw) if its segment of ``length`` samples is audible -- its RMS
+    above the pool's silence floor, :data:`perturbation.NOISE_MIN_RMS` (-80 dBFS), below which
+    no SNR can be set from it; else the first audible re-draw of the recording and offset,
+    attempt ``k`` from ``random.Random('<seed + 2>:<shard>:<row>:<k>')`` (the SNR kept); else,
+    when all :data:`NOISE_DRAWS` segments are silent, a clean draw. A clip whose first segment
+    is audible keeps its draw exactly."""
+    candidate = chosen
+    for attempt in range(NOISE_DRAWS):
+        if attempt:
+            rng = random.Random(f"{seed + DRAW_SEED_OFFSET}:{shard}:{row}:{attempt}")
+            candidate = replace(chosen, noise_index=rng.randrange(len(pool)),
+                                noise_offset=rng.random(), noise_redraws=attempt)
+        segment = noise_segment(pool[candidate.noise_index].samples, candidate.noise_offset,
+                                length)
+        if np.sqrt(np.mean(np.square(segment, dtype=np.float64))) > NOISE_MIN_RMS:
+            return candidate
+    return Draw(CLEAN, noise_redraws=NOISE_DRAWS)
 
 
 def apply(clean: np.ndarray, chosen: Draw, pool: tuple[NoiseRecording, ...]) -> np.ndarray:
@@ -171,13 +208,33 @@ class Augmenter:
         self.seed = seed
         self.pool = pool
         self.codec_lags = {config.label: codec_lag(config) for config in OPUS_CONFIGS}
+        #: Noise clips whose first segment was silent: re-drawn, and left clean (this worker).
+        self.noise_redrawn = 0
+        self.noise_left_clean = 0
+
+    def resolve(self, clean: np.ndarray, shard: int, row: int) -> Draw:
+        """The draw a clip is augmented under: its keyed draw, a silent noise segment
+        re-drawn (:func:`audible_noise`). Logs each re-draw; never raises for one."""
+        chosen = draw(self.seed, shard, row, len(self.pool))
+        if chosen.kind != NOISE_KIND:
+            return chosen
+        resolved = audible_noise(chosen, self.seed, shard, row, self.pool, len(clean))
+        if resolved.noise_redraws:
+            left_clean = resolved.kind == CLEAN
+            self.noise_left_clean += left_clean
+            self.noise_redrawn += not left_clean
+            print(f"[augment] silent noise segment at ({shard}, {row}): "
+                  f"{'left clean after ' if left_clean else ''}{resolved.noise_redraws} "
+                  f"re-draw(s); this worker: {self.noise_redrawn} re-drawn, "
+                  f"{self.noise_left_clean} left clean", flush=True)
+        return resolved
 
     def __call__(self, clean: np.ndarray, shard: int, row: int) -> np.ndarray:
         # A clip of digital silence has no level to set an SNR or a reverberant level
         # against; it is the only clip that stays clean whatever it drew.
         if not np.any(clean):
             return clean
-        return apply(clean, draw(self.seed, shard, row, len(self.pool)), self.pool)
+        return apply(clean, self.resolve(clean, shard, row), self.pool)
 
 
 def recipe_record() -> dict:
@@ -193,6 +250,9 @@ def recipe_record() -> dict:
         "band_limit_rate": NARROWBAND_RATE,
         "opus": [config.label for config in OPUS_CONFIGS],
         "draw_seed": f"random.Random('<seed + {DRAW_SEED_OFFSET}>:<shard>:<row>')",
+        "silent_noise": {"floor_rms": NOISE_MIN_RMS, "draws": NOISE_DRAWS,
+                         "redraw_seed": f"random.Random('<seed + {DRAW_SEED_OFFSET}>:<shard>:"
+                                        "<row>:<attempt>')", "exhausted": "clean"},
         "noise_pool_sha256": hashlib.sha256(POOL_PATH.read_bytes()).hexdigest(),
     }
 
@@ -234,6 +294,43 @@ def load_training_pool(path: Path) -> tuple[NoiseRecording, ...]:
     return pool
 
 
+# --- a dry run of a run's noise draws ------------------------------------------------------
+
+
+def dry_run(seed: int, pool: tuple[NoiseRecording, ...], rows, shard_order: list[int],
+            windows_per_step: int, steps: int) -> dict:
+    """How a run's noise draws resolve (:func:`audible_noise`), without its audio: ``rows``
+    are ``(shard, row, samples)`` of the admitted clips (lengths from a shard index), read in
+    ``shard_order``. Counts over the shards a run of ``steps`` reaches (its windows, as the
+    stream cuts them) and over all of them; the first silent draws are listed."""
+    from training.distill_stream import row_window_starts
+
+    by_shard: dict[int, list[tuple[int, int]]] = {}
+    for shard, row, samples in rows:
+        by_shard.setdefault(shard, []).append((row, samples))
+    counts = Counter()
+    reached, windows, first = None, 0, []
+    for position, shard in enumerate(shard_order, 1):
+        for row, samples in sorted(by_shard.get(shard, ())):
+            windows += len(row_window_starts(samples))
+            chosen = draw(seed, shard, row, len(pool))
+            counts["clips"] += 1
+            if chosen.kind != NOISE_KIND:
+                continue
+            counts["noise"] += 1
+            resolved = audible_noise(chosen, seed, shard, row, pool, samples)
+            if resolved.noise_redraws:
+                counts["left_clean" if resolved.kind == CLEAN else "redrawn"] += 1
+                if len(first) < 10:
+                    first.append({"shard": shard, "row": row,
+                                  "freesound_id": pool[chosen.noise_index].freesound_id,
+                                  "redraws": resolved.noise_redraws,
+                                  "step": windows // windows_per_step})
+        if reached is None and windows >= steps * windows_per_step:
+            reached = {"shards": position, **counts}
+    return {"steps": steps, "reached": reached, "all_shards": dict(counts), "first": first}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -243,10 +340,39 @@ def main() -> None:
     pooled.add_argument("--cache-dir", type=Path, required=True)
     pooled.add_argument("--out", type=Path, required=True, help="the pool's .npz (scratch)")
     commands.add_parser("record", help="print the recipe a run's config carries")
+    dry = commands.add_parser("dry-run", help="count how a run's noise draws resolve, from a "
+                              "shard index and the pool (no other audio, no GPU)")
+    dry.add_argument("--pool", type=Path, required=True)
+    dry.add_argument("--index", type=Path, required=True,
+                     help="a full shard index (tadabur.staged_audio index)")
+    dry.add_argument("--exposure-use", required=True, help="the run's exposure use")
+    dry.add_argument("--seed", type=int, required=True)
+    dry.add_argument("--steps", type=int, required=True)
+    dry.add_argument("--batch-size", type=int, default=32)
     args = parser.parse_args()
 
     if args.command == "record":
         print(json.dumps(recipe_record(), indent=1, ensure_ascii=False))
+        return
+    if args.command == "dry-run":
+        from tadabur.exposure import RowExclusion
+        from tadabur.shard_reader import parse_shard_spec
+        from tadabur.staged_audio import read_shard_index
+        from training.decode_evalset import training_shard_spec
+
+        shards = parse_shard_spec(training_shard_spec())
+        order = list(shards)
+        random.Random(args.seed).shuffle(order)  # one worker's order (distill_stream)
+        exclusion = RowExclusion.for_use(args.exposure_use)
+        index = sorted(read_shard_index(args.index).values(), key=lambda r: (r.shard, r.row_index))
+        rows = [(r.shard, r.row_index, int(round(r.duration_s * TARGET_SAMPLE_RATE)))
+                for r in index if r.shard in set(shards) and r.duration_s > 0
+                and exclusion.keeps((r.shard, r.row_index), {"reciter_id": r.reciter_id})]
+        report = dry_run(args.seed, load_training_pool(args.pool), rows, order,
+                         args.batch_size, args.steps)
+        print(json.dumps({**report, "no_duration": sum(1 for r in index if r.shard in
+                                                        set(shards) and r.duration_s <= 0)},
+                         indent=1))
         return
     pool, record = build_training_pool(args.cache_dir)
     save_pool(pool, args.out)

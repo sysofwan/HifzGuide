@@ -417,6 +417,21 @@ lengths from the full shard index; 191 rows have no indexed duration and are ski
 Also check that `[augment] aug94-mixture-v2` is in the log, and that re-draw lines appear at
 the dry run's rows (the first are `(207, 553)` near step 388 and `(312, 928)` near step 603).
 
+## Both arms finished (recorded 2026-10-21)
+
+From `/root/scratch/issue-94/logs/full_runs.events` and each run's `metrics.jsonl` on cuda-dev:
+
+| arm | exit | finished (UTC) | last step | last train loss | max grad norm (pre-clip) | clipped | final val agreement (overall / confirmed) | checkpoint SHA-256 |
+|---|---|---|---|---|---|---|---|---|
+| control (`repo/tools/runs/aug94_control`) | 0 | 2026-10-16T09:17:18Z | 10,000 | 0.187 | 0.96 | never | 0.955 / 0.956 | `ad9b9329…8e30cd4` |
+| candidate v2 (`repo-fix/tools/runs/aug94_candidate_v2`) | 0 | 2026-10-16T12:18:58Z | 10,000 | 0.242 | 2.26 | never | 0.954 / 0.955 | `8490b63d…8839cd6` |
+
+- **The candidate logged `aug94-mixture-v2`.** It logged 9 silent-segment re-draws, each resolved on the first re-draw, with none left clean. One of them was the row that crashed v1, `(57, 612)`.
+- **Discrepancy with the dry run:** it predicted 11 re-draws in the first 66 shards, the first at `(207, 553)`. That row does not appear in the log. The likely cause is the dry run's mapping from rows to steps (a shuffle buffer of 512 and one worker), but **this has not been verified**.
+- **The control's own 300-step health check was never recorded live:** the session's agent hit a usage limit. Its finished metrics show finite losses throughout, no clipping, and a gradient norm ≤ 0.96.
+- **cuda-dev rebooted on 2026-10-20T20:00Z, after both arms had finished.** The checkpoints are intact (SHA-256 above).
+- **No readout decode has been made yet.** `/root/scratch/issue-95/decodes` is empty. #95's look half is the next step.
+
 ## Exposure registration
 
 `aug.training` and `aug.control` are written as shard uses

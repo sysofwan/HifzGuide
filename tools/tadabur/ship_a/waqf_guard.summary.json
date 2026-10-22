@@ -1,14 +1,14 @@
 {
  "all": {
   "decided_by_owner_note": 13,
-  "detector_paused": 62,
-  "items": 2423,
+  "detector_paused": 6,
+  "items": 2367,
   "not_dependent": 2152,
   "phonetizer_unsupported": 24,
   "site": 2353,
   "unplaced": 20,
-  "waqf_realized": 70,
-  "wasl_dependent": 247
+  "waqf_realized": 14,
+  "wasl_dependent": 191
  },
  "calibration": {
   "calibration_curve": [
@@ -4617,7 +4617,7 @@
  },
  "inputs": {
   "listening_session/verdicts.jsonl": "447ffc05633231f7f9d1ffcd404144445254344146fec5c856f92124d80c060d",
-  "ship_a/sites.jsonl": "8eaf6d0dbeb9fcf328bcc8d24c9b08b49580045d0f677f30dd5bb6813eb730dc",
+  "ship_a/sites.jsonl": "061355b8d73fe7ba3f0f68ad8d0186cfa04026bbf60c5912052c7097f4c1166d",
   "ship_a/waqf_guard.boundaries.jsonl": "51547c41475cb06e0308581a5215bcf1c65d86442a225a72b0de430043588621",
   "ship_a/waqf_guard.segmentations.jsonl": "2fae7bb81dfa4b3548b7136b54b61d43cafbf6cd9f07ea429a63fc84a38fadfa",
   "ship_a/word_sample.jsonl": "073deb66db996b9c638292468378f9923f33893b00d9e7c04fafb9414ed15e03",
@@ -4674,14 +4674,14 @@
   },
   "ship_a_sites": {
    "decided_by_owner_note": 11,
-   "detector_paused": 61,
-   "items": 2225,
+   "detector_paused": 5,
+   "items": 2169,
    "not_dependent": 2066,
    "phonetizer_unsupported": 16,
    "site": 2157,
    "unplaced": 11,
-   "waqf_realized": 68,
-   "wasl_dependent": 143
+   "waqf_realized": 12,
+   "wasl_dependent": 87
   },
   "word_sample": {
    "decided_by_owner_note": 0,
@@ -4961,14 +4961,14 @@
   },
   "ship_a:ت:h448_other": {
    "decided_by_owner_note": 0,
-   "detector_paused": 56,
-   "items": 106,
+   "detector_paused": 0,
+   "items": 50,
    "not_dependent": 42,
    "phonetizer_unsupported": 1,
    "site": 50,
    "unplaced": 2,
-   "waqf_realized": 56,
-   "wasl_dependent": 63
+   "waqf_realized": 0,
+   "wasl_dependent": 7
   },
   "ship_a:ح:h448_other": {
    "decided_by_owner_note": 0,

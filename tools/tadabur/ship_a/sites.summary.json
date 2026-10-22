@@ -208,21 +208,21 @@
    }
   },
   "ت↔ط": {
-   "base_already_right": 64,
+   "base_already_right": 59,
    "held_out": {
-    "base_already_right": 31,
+    "base_already_right": 30,
     "listened": 6,
-    "reciters": 48,
-    "sites": 62
+    "reciters": 33,
+    "sites": 40
    },
    "listened": 7,
-   "reciters": 96,
-   "sites": 129,
+   "reciters": 63,
+   "sites": 73,
    "train": {
-    "base_already_right": 33,
+    "base_already_right": 29,
     "listened": 1,
-    "reciters": 48,
-    "sites": 67
+    "reciters": 30,
+    "sites": 33
    }
   },
   "ح↔ه": {
@@ -372,7 +372,7 @@
  },
  "frame_populations": {
   "pair:ت→ط": {
-   "carriers": 4264,
+   "carriers": 4208,
    "reciters": 367
   },
   "pair:ح→ه": {
@@ -440,12 +440,12 @@
    "reciters": 351
   },
   "pair:ه→ح": {
-   "carriers": 5249,
+   "carriers": 5305,
    "reciters": 369
   },
   "shaddah:held:cross_word": {
-   "carriers": 878,
-   "reciters": 257
+   "carriers": 834,
+   "reciters": 252
   },
   "shaddah:held:in_word": {
    "carriers": 7663,
@@ -458,7 +458,8 @@
   "mining_pool/h448_stream_decodes.json": "1bf9b8cf15c1d2062cfa5fea3ace7cb44ed1a4d0526b16a3e7c7f496ca7dd3b8",
   "ship_a/mining/base_decodes.json": "4ff4bcb24bf73559c2699de7f7bc55cf543f605596aaaf9b84e3435944bc5b04",
   "ship_a/mining/clips.jsonl": "32f9f4e9dc50344c35ba846c5d9104ebd3c164a0dd435dc9cd26e3d2c9008cf1",
-  "ship_a/mining/h448_stream_decodes.json": "9b5c936d1efb3f9108adb607f75b2fe492616b957cffbb322c4b0430c58f422b"
+  "ship_a/mining/h448_stream_decodes.json": "9b5c936d1efb3f9108adb607f75b2fe492616b957cffbb322c4b0430c58f422b",
+  "ship_a/waqf_correction.jsonl": "1495aafc5546c571ef7b2acf8d1407f555aa159442d94db0c6e28068ba2ae27c"
  },
  "listening": {
   "geminate": {
@@ -471,7 +472,7 @@
   },
   "other letter": {
    "listened": 0,
-   "sites": 323
+   "sites": 267
   },
   "swap, teacher right, held_out": {
    "listened": 222,
@@ -693,7 +694,7 @@
    "ت→ك": 5,
    "ت→ل": 2,
    "ت→ن": 5,
-   "ت→ه": 62,
+   "ت→ه": 6,
    "ت→ي": 2,
    "ح→ء": 3,
    "ح→خ": 2,
@@ -795,21 +796,21 @@
    "ه→ي": 10
   },
   "other_letter": {
-   "base_already_right": 231,
+   "base_already_right": 226,
    "held_out": {
-    "base_already_right": 127,
+    "base_already_right": 126,
     "listened": 0,
-    "reciters": 86,
-    "sites": 170
+    "reciters": 74,
+    "sites": 148
    },
    "listened": 0,
-   "reciters": 163,
-   "sites": 323,
+   "reciters": 138,
+   "sites": 267,
    "train": {
-    "base_already_right": 104,
+    "base_already_right": 100,
     "listened": 0,
-    "reciters": 77,
-    "sites": 153
+    "reciters": 64,
+    "sites": 119
    }
   },
   "partner": {
@@ -892,21 +893,21 @@
    }
   },
   "ship_a:ت:h448_other": {
-   "base_already_right": 45,
+   "base_already_right": 40,
    "held_out": {
-    "base_already_right": 22,
+    "base_already_right": 21,
     "listened": 0,
-    "reciters": 43,
-    "sites": 50
+    "reciters": 27,
+    "sites": 28
    },
    "listened": 0,
-   "reciters": 84,
-   "sites": 106,
+   "reciters": 48,
+   "sites": 50,
    "train": {
-    "base_already_right": 23,
+    "base_already_right": 19,
     "listened": 0,
-    "reciters": 41,
-    "sites": 56
+    "reciters": 21,
+    "sites": 22
    }
   },
   "ship_a:ح:h448_other": {

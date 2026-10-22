@@ -1,0 +1,26 @@
+{
+ "identities": {
+  "candidate_ema": {
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "candidate_live": {
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "live"
+  }
+ },
+ "issue": 95,
+ "look_inputs_sha256": "238b14de312d1910045deefc7b89a6c59bdaef513a7161d12bc344d85d68b464",
+ "look_sha256": "1c1d67be8c8c51cea3417bb0de8f2cde40ce12fbb61ce128cd9f57e9f16416e6",
+ "models": {
+  "candidate": "candidate_ema",
+  "control": "control_ema"
+ },
+ "weights": "ema"
+}

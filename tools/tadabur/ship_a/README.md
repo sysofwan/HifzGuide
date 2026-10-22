@@ -12,6 +12,7 @@ answers are in [`docs/ship-a-sizing.md`](../../../../docs/ship-a-sizing.md).
 
 | file | what it is | written by |
 |---|---|---|
+| `waqf_correction.jsonl` | the paused ta-marbuta corrections (#130): per clip and segment, the ayah word a heard pause precedes and the guard decision's provenance; `pool_candidates` re-realizes that segment with a waqf there, so a wasl `ت` no longer becomes a false `ت`→`ه` site | `python -m tadabur.waqf_correction` |
 | `frame.json` | the planning frame: per reference-defined stratum (pair direction, in-word / cross-word geminates, single consonants, each tashkeel mark) and per canonical reciter, the sums of `power_frame.FIELDS` (what `h448` and the base teacher commit against the mushaf, the base already right where `h448` flags, listening seconds) | `python -m tadabur.power_frame` |
 | `sites.jsonl` | every Ship A site, one per line: a worklist row of `listening_session` (truth-site skeleton with provenance: `audio_filename`, `shard`, sample span, `audio_sha256`; stratum and population; inclusion probabilities; excerpt) plus `reciter_id`, `half` and what `h448` and the base committed at the carrier | `python -m tadabur.ship_a mine` |
 | `sites.summary.json` | its population sidecar: per Ship A stratum, per family and for partner swaps against other letters, sites and reciters per half and how many the base already gets right; the frame's carrier populations; input checksums | the same |
@@ -30,7 +31,8 @@ answers are in [`docs/ship-a-sizing.md`](../../../../docs/ship-a-sizing.md).
 
 Rebuild in that order, from `tools/` (torch-free but the guard's VAD pass; `quran-transcript`
 for the Uthmani words). Each step checks the inputs it reads against the checksums the previous
-one recorded.
+one recorded. `waqf_correction.jsonl` comes first: it is derived from the committed guard's
+boundary scores and operating point, and the frame and the sites are re-realized from it.
 
 ## The waqf guard (#134)
 
@@ -41,8 +43,12 @@ mark under a waqf at a boundary of their word; where one does, `tadabur.local_pa
 VAD there, at the operating point its calibration on the waqf fixtures picks. A site judged
 paused is `waqf_realized`: out of every evaluation denominator (the sizing, and
 `truth_scorer.score(excluded_items=tadabur.exclusions.current())`), its verdict kept as a
-training target. **Owner notes decide first**: type `waqf` in the note box when the reciter
-stopped (or `wasl` when the check is wrong about a pause); notes are read from
+training target. Where the paused boundary follows a ta marbuta, the reference itself is
+corrected (#130): `waqf_correction.jsonl` freezes the guard's paused ta-marbuta boundaries and
+the segment is re-realized with a waqf there before its sites are mined, so the wasl `ت` is no
+site at all rather than one the guard has to exclude. **Owner notes decide first**: type
+`waqf` in the note box when the reciter stopped (or `wasl` when the check is wrong about a
+pause); notes are read from
 `listening_session/verdicts.jsonl` at every use. After a sitting, refresh the counts with
 `python -m tadabur.waqf_guard build`, then re-run the sizing and its page. The frozen worklist
 and word sample are untouched.

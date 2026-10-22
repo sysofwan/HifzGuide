@@ -150,7 +150,8 @@ def test_the_committed_summary_and_split_agree_with_the_sites():
     frame = json.loads(FRAME_PATH.read_text(encoding="utf-8"))
     assert summary["inputs"] == inputs(FILES)
     assert frame["inputs"] == {k: v for k, v in summary["inputs"].items()
-                               if k.startswith("mining_pool/")}
+                               if k.startswith("mining_pool/")
+                               or k == "ship_a/waqf_correction.jsonl"}
     assert {name: entry["sites"] for name, entry in summary["strata"].items()} == dict(
         Counter(s.site.stratum for s in sites))
     assert summary["families"]["shaddah"]["listened"] == sum(

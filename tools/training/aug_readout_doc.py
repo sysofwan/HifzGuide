@@ -55,7 +55,38 @@ def table(title: str, view: Mapping | None) -> list[str]:
     return lines + [""]
 
 
-def render(look: Mapping, report: Mapping) -> str:
+def coverage_section(coverage: Mapping, look: Mapping, report: Mapping) -> list[str]:
+    """Each frozen population's decoded and evaluated size, its excluded keys and the statement
+    of what the verdict does not cover (review R1.1)."""
+    order = ("tarteel_v1.look", "tarteel_v1.confirm", "qud_half")
+    if set(coverage["populations"]) != set(order):
+        raise ValueError(f"coverage records {sorted(coverage['populations'])}, not {list(order)}")
+    populations = {name: coverage["populations"][name] for name in order}
+    evaluated = {"tarteel_v1.look": look["items"],
+                 "tarteel_v1.confirm": report["sizes"]["tarteel_v1_confirm"],
+                 "qud_half": report["sizes"]["qud_half"]}
+    for name, row in populations.items():
+        if row["evaluated"] != evaluated[name]:
+            raise ValueError(f"coverage {name}: {row['evaluated']} evaluated, the readout read "
+                             f"{evaluated[name]}")
+    out = ["## 3. Coverage of the frozen populations", "", coverage["statement"], "",
+           "| population | decoded | evaluated | excluded | excluded canonical word "
+           "occurrences |", "|---|---|---|---|---|"]
+    for name, row in populations.items():
+        out.append(f"| {name} | {row['decoded']} | {row['evaluated']} | {row['excluded']} | "
+                   f"{row['excluded_words']} |")
+    out.append("")
+    for name, row in populations.items():
+        out += [f"**{name}**, the {row['excluded']} excluded: {row['reason']}.", ""]
+    out += ["The excluded keys, one per line:", ""]
+    for name, row in populations.items():
+        out += [f"`{name}`:", "", "```text", *row["excluded_keys"], "```", ""]
+    return out
+
+
+def render(look: Mapping, report: Mapping, coverage: Mapping | None = None) -> str:
+    """The document. ``coverage`` is :func:`training.aug_readout.coverage`'s record (committed
+    as ``coverage.json``); without one the scope section is omitted."""
     verdict = report["verdict"]
     out = [
         "# The augmentation experiment's readout (#95)",
@@ -97,7 +128,15 @@ def render(look: Mapping, report: Mapping) -> str:
             "`h448` − teacher gap on the confirm half that is not positive makes the quarter-gap "
             "bar \"cannot certify\", an additional condition the bar presumes; qdat's consistency "
             "is required for a pass. **A \"cannot certify\" is resolved by a new "
-            "pre-registration on #128, never by a re-run.**", ""]
+            "pre-registration on #128, never by a re-run.**", "",
+            "## A caveat on Tarteel's absolute rates (the owner's listening, #160)", "",
+            "The owner listened to 100 Tarteel v1 look-half words on 2026-10-21. Of the 80 "
+            "excess flags (`h448` flags, the teacher does not), 77 were heard as correctly "
+            "recited, 0 as mistakes and 3 as unclear; all 20 controls were correct. So `h448`'s "
+            "excess flags on app-user audio are model errors. **The Tarteel clips also contain "
+            "real reciter mistakes that no model highlighted**, so Tarteel's absolute rates on "
+            "presumed-correct recitation include some real mistakes. The paired "
+            "excess-over-teacher comparisons are unaffected.", ""]
 
     out += ["## 1. The look half: live or EMA", "",
             f"Tarteel v1's look half, {look['items']} clips, checks protocol. Rule: "
@@ -119,15 +158,19 @@ def render(look: Mapping, report: Mapping) -> str:
     out += table("qdat, word agreement with the teacher", report["mechanism"]["qdat"])
     out += table("qdat, false flags per 1,000 graded words", report["consistency"]["qdat"])
 
-    out += ["## 3. Guards", ""]
+    if coverage is not None:
+        out += coverage_section(coverage, look, report)
+
+    out += ["## 4. Guards", ""]
     guards = report["guards"]
-    out += table("QUD, salted half of segments, false flags per 1,000", guards["qud_half"])
+    out += table("QUD, salted half of segments, false flags per 1,000 (evaluated share; §3)",
+                 guards["qud_half"])
     out += table("Tadabur dev (no copy in `h448`'s training), teacher agreement at stream_b0",
                  guards["tadabur_dev_unseen"])
     for kind, view in guards["qdat_bench"].items():
         out += table(f"qdat_bench stream arm, {kind} agreement with the experts", view)
 
-    out += ["## 4. Catch side (descriptive)", ""]
+    out += ["## 5. Catch side (descriptive)", ""]
     catch = report["catch"]
     out += table("RetaSy `in_correct`, flagged words per 1,000 graded (teacher, `h448`, "
                  "candidate and control side by side)",
@@ -136,7 +179,7 @@ def render(look: Mapping, report: Mapping) -> str:
     out += table("qdat_bench, flags on the words where the experts heard a departure",
                  catch["qdat_bench_departures"])
 
-    out += ["## 5. Leniency (descriptive)", ""]
+    out += ["## 6. Leniency (descriptive)", ""]
     leniency = report["leniency"]
     out += table("Tadabur dev, blank share of the argmax frames", leniency["blank_ratio"])
     same = leniency["baselines_redecoded_identical"]

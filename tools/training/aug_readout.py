@@ -35,8 +35,9 @@ each field equal to the committed base decode's of the same item (:func:`read_re
 
 Files (``tadabur/aug_readout/``): ``qud_selection.json``, ``decodes/<set>.<model>.jsonl.gz``
 (RetaSy's under the ignored ``restricted/``), ``models.json``, ``look.json``,
-``look.claim.json``, ``choice.json``, ``confirm.claim.json``, ``report.json``, ``verdict.json``;
-the doc ``docs/augmentation-readout.md``.
+``look.claim.json``, ``choice.json``, ``confirm.claim.json``, ``report.json``, ``verdict.json``,
+``coverage.json`` (each frozen population's decoded and reference-evaluable sizes, with the keys
+the phonetizer could not build a reference for); the doc ``docs/augmentation-readout.md``.
 
 Usage (from ``tools/``; torch-free; ``look`` and ``confirm`` need the Muraja harness)::
 
@@ -44,6 +45,7 @@ Usage (from ``tools/``; torch-free; ``look`` and ``confirm`` need the Muraja har
   python -m training.aug_readout merge --decodes-dir <the GPU box's decodes, copied>
   python -m training.aug_readout look                       # then commit look*.json, choice.json
   python -m training.aug_readout confirm
+  python -m training.aug_readout coverage                   # then commit coverage.json, doc
   python -m training.aug_readout doc
 """
 
@@ -111,7 +113,16 @@ from training.tashkeel_eval import write_text_atomically
 from training.truth_baseline import CHECKS
 
 QUD_SELECTION_PATH = READOUT_DIR / "qud_selection.json"
+COVERAGE_PATH = READOUT_DIR / "coverage.json"
 DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "augmentation-readout.md"
+#: What the coverage record states of the verdict's scope (review R1.1, 2026-10-22).
+COVERAGE_STATEMENT = (
+    "The verdict and every table above apply to the reference-evaluable population recorded "
+    "here. The excluded segments were not graded, so this readout does not measure them and "
+    "does not bound their possible grades; the exclusions are reference-dependent, common to "
+    "every model and not a random additional subsample. In particular the QUD guard's pass "
+    "describes the evaluated share of the frozen half, not the whole pre-registered half."
+)
 #: What ``look.json`` states of the control (#95, settled 2026-10-16).
 CONTROL_ON_LOOK = "the control was not decoded on the look half; the choice binds both arms"
 
@@ -563,6 +574,58 @@ def expected_counts() -> dict[str, int]:
     }
 
 
+def coverage() -> dict:
+    """Each frozen population's decoded and reference-evaluable sizes, the keys the phonetizer
+    could not build a reference for, and the canonical word occurrences they carry.
+
+    Reads the committed base decodes, the frozen QUD selection and the QUD pilot's committed
+    left-out lists: the disclosure of the reading's scope, not a new reading."""
+    from tadabur.nonpro_sources import TARTEEL_V1
+    from tadabur.qud_overlap import PILOT
+    from tadabur.waqf_segments import hafs_segment_reference
+    from training.nonpro_eval import build_items, decodes_file as committed, read_decode_file
+    from training.qud_pilot import REPORT_PATH as QUD_REPORT, read_decodes
+
+    base = read_decode_file(committed(TARTEEL_V1, BASE))
+    _, unsupported = build_items(TARTEEL_V1, list(base.values()), hafs_segment_reference())
+    unsupported = set(unsupported)
+    populations = {}
+    for which in (LOOK, CONFIRM):
+        decoded = {k for k, line in base.items() if half(line["audio_filename"]) == which}
+        excluded = sorted(decoded & unsupported)
+        populations[f"tarteel_v1.{which}"] = {
+            "decoded": len(decoded),
+            "evaluated": len(decoded) - len(excluded),
+            "excluded": len(excluded),
+            "excluded_words": sum(base[k]["word_to"] - base[k]["word_from"] + 1
+                                  for k in excluded),
+            "excluded_keys": excluded,
+            "reason": "the phonetizer could not build a reference for these clips "
+                      "(`training.nonpro_eval.build_items` returns them unsupported); every "
+                      "model shares the exclusion",
+        }
+    frozen = load_qud_selection()
+    pilot = json.loads(QUD_REPORT.read_text(encoding="utf-8"))
+    unsupported = {key for slug in PILOT
+                   for key in pilot["items"][slug]["phonetizer_unsupported_list"]}
+    excluded = sorted(frozen & unsupported)
+    lines = {}
+    for slug in PILOT:
+        lines.update(read_decodes(slug, BASE))
+    populations[QUD_SET] = {
+        "decoded": len(frozen),
+        "evaluated": len(frozen) - len(excluded),
+        "excluded": len(excluded),
+        "excluded_words": sum(lines[k]["segment"][1] - lines[k]["segment"][0] + 1
+                              for k in excluded),
+        "excluded_keys": excluded,
+        "reason": "the QUD pilot left these segments out as phonetizer-unsupported (its "
+                  "waqf/leen reference limitation), recorded in `qud_eval/pilot/report.json`; "
+                  "every model shares the exclusion",
+    }
+    return {"issue": 95, "statement": COVERAGE_STATEMENT, "populations": populations}
+
+
 def merge(decodes_dir: Path, layout: Layout = Layout(),
           gate: Callable[[Layout], CommittedChoice] = committed_choice) -> dict:
     """Every set's per-shard decodes on the GPU box as one gzipped file per set and model, each
@@ -618,6 +681,7 @@ def main() -> None:
                        ("confirm", "read the confirm half and the guards once: the verdict")):
         command = commands.add_parser(name, help=text)
         command.add_argument("--workers", type=int, default=8)
+    commands.add_parser("coverage", help="record each frozen population's evaluated share")
     commands.add_parser("doc", help="render docs/augmentation-readout.md")
     args = parser.parse_args()
     layout = Layout()
@@ -632,12 +696,19 @@ def main() -> None:
     elif args.command == "confirm":
         report = run_confirm(Sources(), layout, args.workers)
         print(f"wrote {layout.verdict}: {report['verdict']['verdict']}")
+    elif args.command == "coverage":
+        record = coverage()
+        write_text_atomically(COVERAGE_PATH, canonical(record))
+        print(f"wrote {COVERAGE_PATH}: " + ", ".join(
+            f"{name} {row['evaluated']} of {row['decoded']}"
+            for name, row in record["populations"].items()))
     else:
         from training.aug_readout_doc import render
 
         look = json.loads(layout.look.read_text(encoding="utf-8"))
         report = json.loads(layout.report.read_text(encoding="utf-8"))
-        write_text_atomically(DOC_PATH, render(look, report))
+        disclosed = json.loads(COVERAGE_PATH.read_text(encoding="utf-8"))
+        write_text_atomically(DOC_PATH, render(look, report, disclosed))
         print(f"wrote {DOC_PATH}")
 
 

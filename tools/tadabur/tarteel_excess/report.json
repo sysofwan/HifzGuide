@@ -1,0 +1,931 @@
+{
+ "control": {
+  "answered": 20,
+  "correct": {
+   "interval": {
+    "lower": null,
+    "method": "none",
+    "reason": "sparse or degenerate, and not independent and equally weighted",
+    "upper": null
+   },
+   "of": 20,
+   "share": 1.0,
+   "words": 20
+  },
+  "drawn": 20,
+  "estimated_frame_words": 44665.8,
+  "mistake": {
+   "interval": {
+    "lower": null,
+    "method": "none",
+    "reason": "sparse or degenerate, and not independent and equally weighted",
+    "upper": null
+   },
+   "of": 20,
+   "share": 0.0,
+   "words": 0
+  },
+  "model_error_of_clear": {
+   "interval": {
+    "lower": null,
+    "method": "none",
+    "reason": "sparse or degenerate, and not independent and equally weighted",
+    "upper": null
+   },
+   "of": 20,
+   "share": 1.0,
+   "words": 20
+  },
+  "unclear": {
+   "interval": {
+    "lower": null,
+    "method": "none",
+    "reason": "sparse or degenerate, and not independent and equally weighted",
+    "upper": null
+   },
+   "of": 20,
+   "share": 0.0,
+   "words": 0
+  }
+ },
+ "issue": 160,
+ "net_of_control": {
+  "other": {
+   "correct": {
+    "difference": -0.069,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.069,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "pooled": {
+   "correct": {
+    "difference": -0.0564,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0564,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "ء→∅": {
+   "correct": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "ا→∅": {
+   "correct": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "ج→ش": {
+   "correct": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "د→ت": {
+   "correct": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "ز→س": {
+   "correct": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "ل→ن": {
+   "correct": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "ن→ل": {
+   "correct": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  },
+  "ن→∅": {
+   "correct": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "mistake": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "model_error_of_clear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   },
+   "unclear": {
+    "difference": 0.0,
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "a group is sparse or degenerate on its own",
+     "upper": null
+    }
+   }
+  }
+ },
+ "pooled": {
+  "answered": 80,
+  "correct": {
+   "interval": {
+    "lower": 0.8586423216930428,
+    "method": "bootstrap",
+    "reason": "",
+    "upper": 1.0
+   },
+   "of": 80,
+   "share": 0.9436,
+   "words": 77
+  },
+  "drawn": 80,
+  "estimated_frame_words": 2261.9,
+  "mistake": {
+   "interval": {
+    "lower": null,
+    "method": "none",
+    "reason": "sparse or degenerate, and not independent and equally weighted",
+    "upper": null
+   },
+   "of": 80,
+   "share": 0.0,
+   "words": 0
+  },
+  "model_error_of_clear": {
+   "interval": {
+    "lower": null,
+    "method": "none",
+    "reason": "sparse or degenerate, and not independent and equally weighted",
+    "upper": null
+   },
+   "of": 77,
+   "share": 1.0,
+   "words": 77
+  },
+  "unclear": {
+   "interval": {
+    "lower": 0.0,
+    "method": "bootstrap",
+    "reason": "",
+    "upper": 0.1413576783069573
+   },
+   "of": 80,
+   "share": 0.0564,
+   "words": 3
+  }
+ },
+ "strata": {
+  "other": {
+   "answered": 32,
+   "correct": {
+    "interval": {
+     "lower": 0.8181818181818182,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 1.0
+    },
+    "of": 32,
+    "share": 0.931,
+    "words": 29
+   },
+   "drawn": 32,
+   "estimated_frame_words": 1850.6,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 32,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 29,
+    "share": 1.0,
+    "words": 29
+   },
+   "unclear": {
+    "interval": {
+     "lower": 0.0,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": 0.18181818181818182
+    },
+    "of": 32,
+    "share": 0.069,
+    "words": 3
+   }
+  },
+  "ء→∅": {
+   "answered": 6,
+   "correct": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "drawn": 6,
+   "estimated_frame_words": 70.0,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "unclear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   }
+  },
+  "ا→∅": {
+   "answered": 6,
+   "correct": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "drawn": 6,
+   "estimated_frame_words": 52.0,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "unclear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   }
+  },
+  "ج→ش": {
+   "answered": 6,
+   "correct": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "drawn": 6,
+   "estimated_frame_words": 57.3,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "unclear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   }
+  },
+  "د→ت": {
+   "answered": 6,
+   "correct": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "drawn": 6,
+   "estimated_frame_words": 36.0,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "unclear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   }
+  },
+  "ز→س": {
+   "answered": 6,
+   "correct": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "drawn": 6,
+   "estimated_frame_words": 56.3,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "unclear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   }
+  },
+  "ل→ن": {
+   "answered": 6,
+   "correct": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "drawn": 6,
+   "estimated_frame_words": 56.0,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "unclear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   }
+  },
+  "ن→ل": {
+   "answered": 6,
+   "correct": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "drawn": 6,
+   "estimated_frame_words": 38.3,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "unclear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   }
+  },
+  "ن→∅": {
+   "answered": 6,
+   "correct": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "drawn": 6,
+   "estimated_frame_words": 45.3,
+   "mistake": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   },
+   "model_error_of_clear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 1.0,
+    "words": 6
+   },
+   "unclear": {
+    "interval": {
+     "lower": null,
+     "method": "none",
+     "reason": "sparse or degenerate, and not independent and equally weighted",
+     "upper": null
+    },
+    "of": 6,
+    "share": 0.0,
+    "words": 0
+   }
+  }
+ },
+ "verdicts": {
+  "correct": 97,
+  "mistake": 0,
+  "unclear": 3
+ }
+}

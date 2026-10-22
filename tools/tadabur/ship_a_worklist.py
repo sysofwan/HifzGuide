@@ -146,6 +146,15 @@ def assemble(
     return rows, parts, duplicates
 
 
+def committed_rows(path: Path = WORKLIST_PATH) -> dict[str, SessionSite]:
+    """The rows the committed worklist already holds, by id. The file is frozen by checksum
+    (module docstring): a rebuild keeps every row it already has, so a site's later
+    correction to its realized reference does not rewrite the owner's queue."""
+    if not path.exists():
+        return {}
+    return {row.site.site_id: row for row in load_worklist(path)}
+
+
 def shared_words(rows: Iterable, words: Iterable[WordSite]) -> int:
     """How many sampled words another row asks about too (the same ayah and word, any
     recitation): the page shows a sampled word whole, so the words are asked last."""
@@ -232,6 +241,8 @@ def main() -> None:
     linked = unseen_violations({r.site.audio_filename: registry[r.site.audio_filename]
                                 for r in session_rows})
     rows, parts, duplicates = assemble(sites, session_rows, linked)
+    committed = committed_rows()
+    rows = [committed.get(row.site.site_id, row) for row in rows]
     words = load_words()
     write_worklist(rows, WORKLIST_PATH)
     items = load_edit_check()

@@ -522,15 +522,31 @@ def pool_candidates(
     h448_decodes: Mapping[str, str],
     registry: Mapping[str, StagedClip],
     tanween_of: Callable[[str], list[bool]],
+    cuts: Mapping[tuple[str, int], tuple[int, ...]] | None = None,
 ) -> list[Candidate]:
-    """Every eligible site on the kept segments of the pool, with provenance."""
+    """Every eligible site on the kept segments of the pool, with provenance.
+
+    ``cuts`` corrects a segment's realized reference where the reciter paused on a ta
+    marbuta (:mod:`tadabur.waqf_correction`), keyed by clip and segment start sample; the
+    committed manifest is the default. A corrected reference is the segment read with a waqf
+    at each cut, so the sites are mined from what was heard, never from a decode."""
+    from .waqf_correction import load_cuts, paused_segment
+    from .waqf_segments import _uthmani_words
+
+    corrections = load_cuts() if cuts is None else cuts
     candidates: list[Candidate] = []
     for clip in clips:
         staged = registry[clip.audio_filename]
         tanween = tanween_of(clip.surah_ayah)
+        words: tuple[str, ...] | None = None
         for segment in clip.segments:
             if not segment.kept:
                 continue
+            segment_cuts = corrections.get((clip.audio_filename, segment.start_sample))
+            if segment_cuts:
+                if words is None:
+                    words = tuple(_uthmani_words(clip.surah_ayah))
+                segment = paused_segment(segment, words, segment_cuts)
             key = segment_key(clip.audio_filename, segment.segment_index)
             for found in segment_sites(
                 segment.reference, base_decodes[key], h448_decodes[key],

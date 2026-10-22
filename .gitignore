@@ -58,6 +58,9 @@ wandb/
 !tools/tadabur/ship_a/sites.jsonl
 !tools/tadabur/ship_a/worklist.jsonl
 !tools/tadabur/ship_a/word_sample.jsonl
+# The paused ta-marbuta corrections (#130): the guard's own pause decisions, frozen before
+# the references they correct are derived.
+!tools/tadabur/ship_a/waqf_correction.jsonl
 # Ship A's waqf guard (#134): every boundary the local pause check measured (fixtures and
 # sites), the guard's per-item sidecar, and the segmentation records the windows are read on.
 !tools/tadabur/ship_a/waqf_guard.boundaries.jsonl

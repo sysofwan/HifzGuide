@@ -40,7 +40,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import Counter
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -182,6 +182,37 @@ def hafs_segment_reference() -> SegmentReference:
         return out.phonemes, _spaced_word_offsets(out.phonemes, out.mappings, uthmani_words)
 
     return compute
+
+
+def hafs_paused_reference(words: list[str], cuts: Iterable[int]) -> tuple[str, list[int]]:
+    """One segment realized with a waqf at each of ``cuts``: a heard pause inside a segment.
+
+    ``cuts`` are word indices into ``words`` (the segment's Uthmani words); the word before
+    each cut therefore ends a run and takes the pausal form the phonetizer gives a segment's
+    last word, and the word after it starts a new run. Each run is phonetized on its own with
+    :func:`hafs_segment_reference` — the rule lives in ``tools/hafs_phonetizer.py``, so a
+    mid-segment pause gets exactly the waqf form a segment end does — and the runs are joined
+    with one space. The offsets are the per-word character offsets into the joined string
+    (``len(words) + 1`` entries, word ``j`` spanning ``[offsets[j], offsets[j + 1])``, the
+    space after a word in its span); the cut boundary carries the separating space, as the
+    phonetizer's own per-word offsets carry the space that follows a word. A cut at either
+    end of the segment, a duplicate or an out-of-range index is ignored, so no cuts gives
+    :func:`hafs_segment_reference` exactly.
+    """
+    count = len(words)
+    boundaries = sorted({cut for cut in cuts if 0 < cut < count})
+    starts = [0, *boundaries]
+    ends = [*boundaries, count]
+    reference = hafs_segment_reference()
+    pieces: list[str] = []
+    offsets: list[int] = []
+    base = 0
+    for start, end in zip(starts, ends):
+        run = reference(words[start:end])
+        pieces.append(run[0])
+        offsets.extend(base + offset for offset in run[1][:-1])
+        base += len(run[0]) + 1  # the space joining this run to the next
+    return " ".join(pieces), [*offsets, base - 1]
 
 
 def hafs_word_reference() -> WordReference:

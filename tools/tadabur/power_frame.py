@@ -78,6 +78,7 @@ from .truth_sites import (
     SUKUN,
     TruthSite,
 )
+from .waqf_correction import CORRECTION_PATH
 
 SHIP_A_DIR = Path(__file__).parent / "ship_a"
 FRAME_PATH = SHIP_A_DIR / "frame.json"
@@ -102,6 +103,8 @@ INPUTS = {
     "mining_pool/clips.jsonl": POOL_CLIPS_PATH,
     "mining_pool/base_decodes.json": POOL_DECODES_PATH,
     "mining_pool/h448_stream_decodes.json": H448_DECODES_PATH,
+    # The paused ta-marbuta corrections the references are re-derived with (#130).
+    "ship_a/waqf_correction.jsonl": CORRECTION_PATH,
 }
 
 
@@ -164,9 +167,11 @@ def score_pool(
     h448_decodes: Mapping[str, str],
     registry: Mapping[str, StagedClip],
     tanween_of: Callable[[str], list[bool]],
+    cuts: Mapping[tuple[str, int], tuple[int, ...]] | None = None,
 ) -> list[ScoredSite]:
     """Every eligible site of the pool's kept segments with both decodes' outcomes, in
-    segment-key order."""
+    segment-key order. ``cuts`` are the frozen pause corrections
+    (:mod:`tadabur.waqf_correction`; the committed manifest by default)."""
     segment_of = {
         (clip.audio_filename, segment.start_sample): segment_key(clip.audio_filename,
                                                                  segment.segment_index)
@@ -175,7 +180,8 @@ def score_pool(
     }
     reciter_of = {clip.audio_filename: clip.reciter_id for clip in clips}
     rows_by_segment: dict[str, list[SessionSite]] = defaultdict(list)
-    for row in census(pool_candidates(clips, base_decodes, h448_decodes, registry, tanween_of)):
+    for row in census(pool_candidates(clips, base_decodes, h448_decodes, registry, tanween_of,
+                                      cuts=cuts)):
         rows_by_segment[segment_of[(row.site.audio_filename, row.site.start_sample)]].append(row)
     scored = []
     for key in sorted(rows_by_segment):

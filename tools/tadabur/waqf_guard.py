@@ -148,7 +148,9 @@ UNPLACED = "unplaced"
 class Item:
     """Anything a guard classifies: a site of Ship A or the worklist, or a sampled word,
     with the segment it is read in (its realized reference and words, its sample span), the
-    excerpt the owner hears it in (its first sample), and where it appears."""
+    excerpt the owner hears it in (its first sample), and where it appears. ``cuts`` are the
+    absolute ayah word indices the segment's reference carries a waqf at
+    (:mod:`tadabur.waqf_correction`); empty for a frozen reference."""
 
     item_id: str
     parts: tuple[str, ...]
@@ -165,14 +167,15 @@ class Item:
     start_sample: int
     end_sample: int
     excerpt_start_sample: int
+    cuts: tuple[int, ...] = ()
 
 
-def site_item(row: SessionSite, part: str) -> Item:
+def site_item(row: SessionSite, part: str, cuts: tuple[int, ...] = ()) -> Item:
     site = row.site
     return Item(site.site_id, (part,), site.source, site.stratum, site.mark, site.prescribed,
                 site.audio_filename, site.surah_ayah, row.word_start, row.word_offsets,
                 site.reference, site.reference_index, site.start_sample, site.end_sample,
-                row.excerpt_start_sample)
+                row.excerpt_start_sample, cuts)
 
 
 def worklist_part(row: SessionSite) -> str:
@@ -180,22 +183,43 @@ def worklist_part(row: SessionSite) -> str:
     return carried_part(row) or (GEMINATE if row.site.mark == SHADDAH else PAIR_PARTNER)
 
 
+#: The fields copies of an item may differ in: its parts (a merged item is in every part any
+#: copy is) and its realized reference (a frozen worklist or word-sample copy predates the
+#: paused ta-marbuta corrections, #130). Everything else is the site's identity.
+COPY_FIELDS = ("parts", "reference", "word_offsets", "cuts")
+
+
+def _identity(item: Item) -> dict:
+    """An item's identity: every field but its parts and its realized reference."""
+    return {name: value for name, value in asdict(item).items() if name not in COPY_FIELDS}
+
+
 def merge(items: Iterable[Item]) -> list[Item]:
-    """One item per id, appearing in every part any copy does; the copies must agree."""
+    """One item per id, appearing in every part any copy does; the copies must agree on the
+    site. The first copy's realization is kept, so a Ship A site's corrected reference wins
+    over a frozen row's older one."""
     merged: dict[str, Item] = {}
     for item in items:
         known = merged.get(item.item_id)
         if known is not None:
-            if replace(known, parts=()) != replace(item, parts=()):
+            if _identity(known) != _identity(item):
                 raise ValueError(f"{item.item_id}: two rows disagree on the site")
-            item = replace(item, parts=tuple(sorted({*known.parts, *item.parts})))
+            item = replace(known, parts=tuple(sorted({*known.parts, *item.parts})))
         merged[item.item_id] = item
     return [merged[k] for k in sorted(merged)]
 
 
 def all_items() -> list[Item]:
-    """Ship A's sites, the frozen worklist's site rows and the word sample, merged by id."""
-    sites = (site_item(s.row, SHIP_A_SITES) for s in load_sites())
+    """Ship A's sites, the frozen worklist's site rows and the word sample, merged by id.
+
+    Only Ship A's sites take the paused ta-marbuta corrections: the frozen worklist and word
+    sample rows keep the reference they were frozen with (their populations must not move)."""
+    from .waqf_correction import load_cuts
+
+    cuts = load_cuts()
+    sites = (site_item(s.row, SHIP_A_SITES,
+                       cuts.get((s.site.audio_filename, s.site.start_sample), ()))
+             for s in load_sites())
     rows = (site_item(r, worklist_part(r)) for r in load_worklist(WORKLIST_PATH))
     words = (Item(w.site.site_id, (WORD_SAMPLE,), WORD_SAMPLE, w.site.stratum, WORD, WORD,
                   w.site.audio_filename, w.site.surah_ayah, w.word_start, w.word_offsets,
@@ -275,9 +299,16 @@ class Classification:
 
 def classify(item: Item) -> Classification:
     """The boundaries of the item's word, inside its segment, where a waqf changes its
-    prescribed mark (module docstring)."""
+    prescribed mark (module docstring). The reference is the segment read with the item's
+    cuts (:data:`Item.cuts`): a boundary that is already a cut realizes a waqf in the
+    reference, so no wasl form of the word is left to depend on."""
+    from .waqf_segments import hafs_paused_reference
+
     count, start = len(item.word_offsets) - 1, item.word_start
-    if realize(item.surah_ayah, start, start + count) != (item.reference, item.word_offsets):
+    local = tuple(sorted({cut - start for cut in item.cuts if start < cut < start + count}))
+    realized_reference, realized_offsets = hafs_paused_reference(
+        list(_ayah_words(item.surah_ayah)[start:start + count]), local)
+    if (realized_reference, tuple(realized_offsets)) != (item.reference, item.word_offsets):
         raise ValueError(f"{item.item_id}: its reference is not the realization of its words")
     word = bisect.bisect_right(item.word_offsets, item.reference_index) - 1
     lo, hi = item.word_offsets[word], item.word_offsets[word + 1]
@@ -285,12 +316,14 @@ def classify(item: Item) -> Classification:
     positions = mark_positions(item)
     if positions is not None and max(positions) >= lo + len(wasl):
         raise ValueError(f"{item.item_id}: its mark is not read inside one word")
+    run_start = max((cut for cut in local if cut <= word), default=0)
+    run_end = min((cut for cut in local if cut > word), default=count)
     dependences, unsupported = [], []
     for cut, side in ((word, AFTER), (word + 1, BEFORE)):
-        if not 0 < cut < count:
-            continue  # a segment edge: the reference already realizes a waqf there
-        part = (realize(item.surah_ayah, start + cut, start + count) if side == AFTER
-                else realize(item.surah_ayah, start, start + cut))
+        if not 0 < cut < count or cut in local:
+            continue  # a segment edge or a cut: the reference realizes a waqf there
+        part = (realize(item.surah_ayah, start + cut, start + run_end) if side == AFTER
+                else realize(item.surah_ayah, start + run_start, start + cut))
         if part is None:
             unsupported.append(start + cut)
             continue

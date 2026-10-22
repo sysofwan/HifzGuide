@@ -1,0 +1,78 @@
+{
+ "choice_commit": "77968efd92d9b3f87a34c82542dbb759088f85af",
+ "choice_sha256": "a8d9b741ea4b3aa714877a638bcf55c4ada7dc7bdd6d19fd7678549af4cceabf",
+ "harness": {
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+ },
+ "identities": {
+  "base": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  },
+  "candidate_ema": {
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "control_ema": {
+   "checkpoint_sha256": "ad9b932956155be0ea6a4197fc23b5ec1d42f184c2e82049644362cfe8e30cd4",
+   "model_ref": "/root/scratch/issue-94/repo/tools/runs/aug94_control/checkpoint.pt",
+   "recipe": "none",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "h448": {
+   "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+   "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+  }
+ },
+ "inputs": {
+  "tadabur/aug_readout/decodes/qdat.candidate_ema.jsonl.gz": "20e376eca7f88bd64d58a56402a2859c6b14b272e247f8b1c5caadd5497f4f56",
+  "tadabur/aug_readout/decodes/qdat.control_ema.jsonl.gz": "9be86e604239ce0fceb1b68927b810f9481c2c9a2d3c01e6e68d08af1aa5a580",
+  "tadabur/aug_readout/decodes/qud_half.candidate_ema.jsonl.gz": "7700b770d78f7b313c4afdf6eaf25ff80bb1decfea9f0d2cf1f23cc6cdabb48a",
+  "tadabur/aug_readout/decodes/qud_half.control_ema.jsonl.gz": "d6f2b2e767f84a7f2a17c1c764b3fa812bc7bb3e53d1a98392837a56eec39368",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.base.jsonl.gz": "c42bac7d9c90bf0cfaf84e095fd6b72061745e32d903c2c3fa3710bf294c8840",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.candidate_ema.jsonl.gz": "378faca688f6774531215ad7ccac8916381c71d5e446647bd4f7a71fb5b3af77",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.control_ema.jsonl.gz": "db645564fd6490266a11f48f312f214b01e2ffc58cc4dd75b7302807edd093f5",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.h448.jsonl.gz": "c707478ab2d4ee39da388b43e9740db2437f626ac18de969997aae1e7af058a3",
+  "tadabur/aug_readout/decodes/tarteel_v1.confirm.candidate_ema.jsonl.gz": "e1b39548997c83f641a910820bcc582429456a5254db15e30dfbd2bc3ad54c7e",
+  "tadabur/aug_readout/decodes/tarteel_v1.confirm.control_ema.jsonl.gz": "a903031f708a3d14181f218d9f65208d1e4600e90e506840577268668664d81e",
+  "tadabur/aug_readout/qud_selection.json": "8adfb1b9c0c5ad141fb4d04a2b3bcda152df7a6c4314115dd20001ab79de7d8d",
+  "tadabur/aug_readout/restricted/retasy.candidate_ema.jsonl.gz": "d4d6f70d1f0851d0f7e4a2324ebc56129946e1d63e8a79a216522b6b156f1a06",
+  "tadabur/aug_readout/restricted/retasy.control_ema.jsonl.gz": "bd1274879a09faccc42947107b82eb0d18a0eace657fb005ef2992cb869c44b5",
+  "tadabur/exposure/sources/decode_evalset.manifest.json": "3d5d237ac8530f6ccbd78d00697ff6fef27462afed39d07cde7d68fd0600ff4b",
+  "tadabur/nonpro_eval/qdat/decodes.base.jsonl.gz": "affd6d7f906daf7d16e4b88ace754f3c82db9e8bba714776729d9478636b894b",
+  "tadabur/nonpro_eval/qdat/decodes.h448.jsonl.gz": "577294415c6dd508a02e70f066fb5ed14b32a1410e4a5a3c017ca7141d2dfecd",
+  "tadabur/nonpro_eval/restricted/retasy/decodes.base.jsonl.gz": "c085363b94248a907a7f5a41c913d18413fa4fbb8544513f9b3c3fa554bee1a7",
+  "tadabur/nonpro_eval/restricted/retasy/decodes.h448.jsonl.gz": "100b25820db9f3934c8448dc251fa0f9e3ac105b7d47b2c65581936209f4fb2e",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.h448.jsonl.gz": "873fbdfaa15f89f5712e3f62b0dbca644b177c845d97225ad7ee2de3cc589602",
+  "tadabur/nonpro_gap/decodes/clean.base.jsonl.gz": "d5083ec28cdf8e34d4f29a88e90a3b277de9dfea98c1414f53403dbee246e4bd",
+  "tadabur/nonpro_gap/decodes/clean.h448.jsonl.gz": "82eda39d21f35cab49890d71596487b8ca06630f87a722cbe4627d2b009ffa33",
+  "tadabur/nonpro_gap/grid.json": "d4c9cb9bbea3a1a8815fb31137c2784b4539c828cf27a6168c06477f97f8048f",
+  "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.base.jsonl.gz": "2a3989e67201c8b10f56cc7ce7cae17713062ecb8fdfc70196b2021b575a19d4",
+  "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.h448.jsonl.gz": "6654b7d3d4ca64b50627b90d61a5d37e1eb6364ba2256c8c71ab1f1a11704cc9",
+  "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.base.jsonl.gz": "e6790caca1ccd3bb71b7f177e11d1d2c065fb1a3fb55f1a00e8e7c2c8723bd17",
+  "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.h448.jsonl.gz": "5f44c7e01dd715f6903aeac5f5b5426c23439d051ab5cf008ee431651a80d004"
+ },
+ "phase": "confirm"
+}

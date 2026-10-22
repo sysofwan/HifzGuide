@@ -97,7 +97,15 @@ def render(look: Mapping, report: Mapping) -> str:
             "`h448` − teacher gap on the confirm half that is not positive makes the quarter-gap "
             "bar \"cannot certify\", an additional condition the bar presumes; qdat's consistency "
             "is required for a pass. **A \"cannot certify\" is resolved by a new "
-            "pre-registration on #128, never by a re-run.**", ""]
+            "pre-registration on #128, never by a re-run.**", "",
+            "## A caveat on Tarteel's absolute rates (the owner's listening, #160)", "",
+            "The owner listened to 100 Tarteel v1 look-half words on 2026-10-21. Of the 80 "
+            "excess flags (`h448` flags, the teacher does not), 77 were heard as correctly "
+            "recited, 0 as mistakes and 3 as unclear; all 20 controls were correct. So `h448`'s "
+            "excess flags on app-user audio are model errors. **The Tarteel clips also contain "
+            "real reciter mistakes that no model highlighted**, so Tarteel's absolute rates on "
+            "presumed-correct recitation include some real mistakes. The paired "
+            "excess-over-teacher comparisons are unaffected.", ""]
 
     out += ["## 1. The look half: live or EMA", "",
             f"Tarteel v1's look half, {look['items']} clips, checks protocol. Rule: "

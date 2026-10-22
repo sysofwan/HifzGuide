@@ -1,0 +1,146 @@
+{
+ "attribution": {
+  "against_control": "pass",
+  "against_h448": "pass",
+  "control_point": -4.282971584023152,
+  "control_upper_bound": -2.7526020780738234,
+  "control_vs_h448": {
+   "interval": {
+    "lower": -7.539439315636356,
+    "method": "bootstrap",
+    "reason": "",
+    "upper": -3.5684791178233146
+   },
+   "point": -5.6349119994248
+  },
+  "reading": "beats the control"
+ },
+ "bars": {
+  "bench_lower_at_least": -2.0,
+  "main_gap_share": 0.25,
+  "main_upper_below": 0.0,
+  "mechanism_lower_above": 0.0,
+  "qud_upper_at_most": 1.0,
+  "tadabur_lower_at_least": -1.0
+ },
+ "choice": "ema",
+ "choice_commit": "77968efd92d9b3f87a34c82542dbb759088f85af",
+ "conditions": [
+  {
+   "bar": "Tarteel v1 confirm half, false flags per 1,000 (shipped default): candidate − h448 paired 95% upper bound < 0",
+   "bound": -7.77882525053479,
+   "comparison": "candidate−h448",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "main.app_outcome",
+   "point": -9.917883583447953,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "the point reduction at least a quarter of the h448 − teacher gap on the confirm half",
+   "base_per_1000": 20.189682425635866,
+   "candidate_per_1000": 47.4117194265371,
+   "gap": 37.139920584349184,
+   "h448_per_1000": 57.32960300998505,
+   "name": "main.quarter_gap",
+   "reduction": 9.917883583447953,
+   "required_reduction": 9.284980146087296,
+   "verdict": "pass"
+  },
+  {
+   "bar": "word-level agreement with the teacher on Tarteel v1 (confirm half) rises: paired 95% lower bound > 0",
+   "bound": 1.279457257146303,
+   "comparison": "candidate−h448",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "mechanism.tarteel_v1",
+   "point": 1.5609020937617846,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "word-level agreement with the teacher on qdat rises: paired 95% lower bound > 0",
+   "bound": 0.9514413982501085,
+   "comparison": "candidate−h448",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "mechanism.qdat",
+   "point": 1.5863787375415273,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "qdat false flags per 1,000: candidate point estimate lower than h448's",
+   "candidate": 58.250739001912706,
+   "h448": 65.00739709337742,
+   "name": "consistency.qdat",
+   "verdict": "pass"
+  },
+  {
+   "bar": "QUD false flags per 1,000: candidate − h448 paired upper bound ≤ +1.0",
+   "bound": -0.36344808882973795,
+   "comparison": "candidate−h448",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "guard.qud",
+   "point": -0.7059545303548884,
+   "strict": false,
+   "threshold": 1.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "Tadabur decode_evalset dev (no copy in h448's training), decode agreement with the teacher at stream_b0: paired lower bound ≥ −1.0 pt",
+   "bound": 0.021765174491739096,
+   "comparison": "candidate−h448",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "guard.tadabur",
+   "point": 0.15263644773357843,
+   "strict": false,
+   "threshold": -1.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "qdat_bench stream arm, consonant agreement with the experts: paired lower bound ≥ −2.0 pt",
+   "bound": 0.18348623853211565,
+   "comparison": "candidate−h448",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "guard.qdat_bench.consonant",
+   "point": 0.8567931456548328,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "qdat_bench stream arm, haraka agreement with the experts: paired lower bound ≥ −2.0 pt",
+   "bound": 0.517746694156121,
+   "comparison": "candidate−h448",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "guard.qdat_bench.haraka",
+   "point": 1.1843079200592133,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "qdat_bench stream arm, shaddah agreement with the experts: paired lower bound ≥ −2.0 pt",
+   "bound": 1.0899182561307952,
+   "comparison": "candidate−h448",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "guard.qdat_bench.shaddah",
+   "point": 3.287671232876721,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "pass"
+  }
+ ],
+ "issue": 95,
+ "verdict": "pass"
+}

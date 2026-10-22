@@ -1,0 +1,1558 @@
+{
+ "audit": {
+  "choice_commit": "77968efd92d9b3f87a34c82542dbb759088f85af",
+  "choice_sha256": "a8d9b741ea4b3aa714877a638bcf55c4ada7dc7bdd6d19fd7678549af4cceabf",
+  "harness": {
+   "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+   "build": {
+    "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+    "harness": "tools/muraja_harness/main.swift",
+    "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+    "protocol_version": 3,
+    "scoring_keys": [
+     "name",
+     "mode",
+     "softPairsEnabled",
+     "shaddahSuppression",
+     "softPairsDisabled"
+    ]
+   },
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+  },
+  "identities": {
+   "base": {
+    "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+    "model_ref": "obadx/muaalem-model-v3_2"
+   },
+   "candidate_ema": {
+    "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+    "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "recipe": "aug94-mixture-v2",
+    "step": 10000,
+    "weights": "ema"
+   },
+   "control_ema": {
+    "checkpoint_sha256": "ad9b932956155be0ea6a4197fc23b5ec1d42f184c2e82049644362cfe8e30cd4",
+    "model_ref": "/root/scratch/issue-94/repo/tools/runs/aug94_control/checkpoint.pt",
+    "recipe": "none",
+    "step": 10000,
+    "weights": "ema"
+   },
+   "h448": {
+    "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+    "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+   }
+  },
+  "inputs": {
+   "tadabur/aug_readout/decodes/qdat.candidate_ema.jsonl.gz": "20e376eca7f88bd64d58a56402a2859c6b14b272e247f8b1c5caadd5497f4f56",
+   "tadabur/aug_readout/decodes/qdat.control_ema.jsonl.gz": "9be86e604239ce0fceb1b68927b810f9481c2c9a2d3c01e6e68d08af1aa5a580",
+   "tadabur/aug_readout/decodes/qud_half.candidate_ema.jsonl.gz": "7700b770d78f7b313c4afdf6eaf25ff80bb1decfea9f0d2cf1f23cc6cdabb48a",
+   "tadabur/aug_readout/decodes/qud_half.control_ema.jsonl.gz": "d6f2b2e767f84a7f2a17c1c764b3fa812bc7bb3e53d1a98392837a56eec39368",
+   "tadabur/aug_readout/decodes/tadabur_dev_unseen.base.jsonl.gz": "c42bac7d9c90bf0cfaf84e095fd6b72061745e32d903c2c3fa3710bf294c8840",
+   "tadabur/aug_readout/decodes/tadabur_dev_unseen.candidate_ema.jsonl.gz": "378faca688f6774531215ad7ccac8916381c71d5e446647bd4f7a71fb5b3af77",
+   "tadabur/aug_readout/decodes/tadabur_dev_unseen.control_ema.jsonl.gz": "db645564fd6490266a11f48f312f214b01e2ffc58cc4dd75b7302807edd093f5",
+   "tadabur/aug_readout/decodes/tadabur_dev_unseen.h448.jsonl.gz": "c707478ab2d4ee39da388b43e9740db2437f626ac18de969997aae1e7af058a3",
+   "tadabur/aug_readout/decodes/tarteel_v1.confirm.candidate_ema.jsonl.gz": "e1b39548997c83f641a910820bcc582429456a5254db15e30dfbd2bc3ad54c7e",
+   "tadabur/aug_readout/decodes/tarteel_v1.confirm.control_ema.jsonl.gz": "a903031f708a3d14181f218d9f65208d1e4600e90e506840577268668664d81e",
+   "tadabur/aug_readout/qud_selection.json": "8adfb1b9c0c5ad141fb4d04a2b3bcda152df7a6c4314115dd20001ab79de7d8d",
+   "tadabur/aug_readout/restricted/retasy.candidate_ema.jsonl.gz": "d4d6f70d1f0851d0f7e4a2324ebc56129946e1d63e8a79a216522b6b156f1a06",
+   "tadabur/aug_readout/restricted/retasy.control_ema.jsonl.gz": "bd1274879a09faccc42947107b82eb0d18a0eace657fb005ef2992cb869c44b5",
+   "tadabur/exposure/sources/decode_evalset.manifest.json": "3d5d237ac8530f6ccbd78d00697ff6fef27462afed39d07cde7d68fd0600ff4b",
+   "tadabur/nonpro_eval/qdat/decodes.base.jsonl.gz": "affd6d7f906daf7d16e4b88ace754f3c82db9e8bba714776729d9478636b894b",
+   "tadabur/nonpro_eval/qdat/decodes.h448.jsonl.gz": "577294415c6dd508a02e70f066fb5ed14b32a1410e4a5a3c017ca7141d2dfecd",
+   "tadabur/nonpro_eval/restricted/retasy/decodes.base.jsonl.gz": "c085363b94248a907a7f5a41c913d18413fa4fbb8544513f9b3c3fa554bee1a7",
+   "tadabur/nonpro_eval/restricted/retasy/decodes.h448.jsonl.gz": "100b25820db9f3934c8448dc251fa0f9e3ac105b7d47b2c65581936209f4fb2e",
+   "tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770",
+   "tadabur/nonpro_eval/tarteel_v1/decodes.h448.jsonl.gz": "873fbdfaa15f89f5712e3f62b0dbca644b177c845d97225ad7ee2de3cc589602",
+   "tadabur/nonpro_gap/decodes/clean.base.jsonl.gz": "d5083ec28cdf8e34d4f29a88e90a3b277de9dfea98c1414f53403dbee246e4bd",
+   "tadabur/nonpro_gap/decodes/clean.h448.jsonl.gz": "82eda39d21f35cab49890d71596487b8ca06630f87a722cbe4627d2b009ffa33",
+   "tadabur/nonpro_gap/grid.json": "d4c9cb9bbea3a1a8815fb31137c2784b4539c828cf27a6168c06477f97f8048f",
+   "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.base.jsonl.gz": "2a3989e67201c8b10f56cc7ce7cae17713062ecb8fdfc70196b2021b575a19d4",
+   "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.h448.jsonl.gz": "6654b7d3d4ca64b50627b90d61a5d37e1eb6364ba2256c8c71ab1f1a11704cc9",
+   "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.base.jsonl.gz": "e6790caca1ccd3bb71b7f177e11d1d2c065fb1a3fb55f1a00e8e7c2c8723bd17",
+   "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.h448.jsonl.gz": "5f44c7e01dd715f6903aeac5f5b5426c23439d051ab5cf008ee431651a80d004"
+  },
+  "phase": "confirm"
+ },
+ "baselines": {
+  "base": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  },
+  "h448": {
+   "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+   "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+  }
+ },
+ "catch": {
+  "qdat_bench_departures": {
+   "clusters": 23,
+   "comparisons": {
+    "candidate−control": {
+     "interval": {
+      "lower": 0.0,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 146.52014652014657
+     },
+     "point": 55.65217391304345
+    },
+    "candidate−h448": {
+     "interval": {
+      "lower": 0.0,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 112.55507455507451
+     },
+     "point": 39.99999999999998
+    }
+   },
+   "models": {
+    "base": {
+     "den": 26.0,
+     "interval": {
+      "lower": 45.45454545454545,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 360.0
+     },
+     "num": 5.0,
+     "point": 192.30769230769232
+    },
+    "candidate": {
+     "den": 25.0,
+     "interval": {
+      "lower": 173.91304347826087,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 560.0
+     },
+     "num": 9.0,
+     "point": 360.0
+    },
+    "control": {
+     "den": 23.0,
+     "interval": {
+      "lower": 130.43478260869566,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 500.0
+     },
+     "num": 7.0,
+     "point": 304.34782608695656
+    },
+    "h448": {
+     "den": 25.0,
+     "interval": {
+      "lower": 148.14814814814815,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 520.0
+     },
+     "num": 8.0,
+     "point": 320.0
+    }
+   },
+   "observations": 28,
+   "scale": 1000.0
+  },
+  "retasy_in_correct": {
+   "clips": {
+    "clusters": 73,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": -7.2796934865900385,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 3.4042553191489358
+      },
+      "point": -1.937984496124029
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": -5.793094069426171,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 3.1872509960159334
+      },
+      "point": -1.550387596899222
+     }
+    },
+    "models": {
+     "base": {
+      "den": 258.0,
+      "interval": {
+       "lower": 36.82003613541271,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 48.9628690470092
+      },
+      "num": 111.0,
+      "point": 43.02325581395349
+     },
+     "candidate": {
+      "den": 258.0,
+      "interval": {
+       "lower": 25.118226954719848,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 39.737991266375545
+      },
+      "num": 83.0,
+      "point": 32.17054263565892
+     },
+     "control": {
+      "den": 258.0,
+      "interval": {
+       "lower": 26.621030638861132,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 41.92338709677419
+      },
+      "num": 88.0,
+      "point": 34.10852713178294
+     },
+     "h448": {
+      "den": 258.0,
+      "interval": {
+       "lower": 26.339166560752414,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 40.84518549203719
+      },
+      "num": 87.0,
+      "point": 33.72093023255814
+     }
+    },
+    "observations": 258,
+    "scale": 100.0
+   },
+   "words": {
+    "clusters": 73,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": -90.96084355315726,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 23.934191346982033
+      },
+      "point": -36.411703646036074
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": -92.12425821657106,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 26.140258267954213
+      },
+      "point": -34.89515072083882
+     }
+    },
+    "models": {
+     "base": {
+      "den": 621.0,
+      "interval": {
+       "lower": 417.90967201414963,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 508.16696914700543
+      },
+      "num": 287.0,
+      "point": 462.1578099838969
+     },
+     "candidate": {
+      "den": 336.0,
+      "interval": {
+       "lower": 532.1632205513785,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 671.876543972332
+      },
+      "num": 202.0,
+      "point": 601.1904761904761
+     },
+     "control": {
+      "den": 367.0,
+      "interval": {
+       "lower": 574.6597892888499,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 703.1702833983361
+      },
+      "num": 234.0,
+      "point": 637.6021798365123
+     },
+     "h448": {
+      "den": 327.0,
+      "interval": {
+       "lower": 570.1754385964912,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 705.8870513061455
+      },
+      "num": 208.0,
+      "point": 636.085626911315
+     }
+    },
+    "observations": 1141,
+    "scale": 1000.0
+   }
+  }
+ },
+ "choice": {
+  "identities": {
+   "candidate_ema": {
+    "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+    "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "recipe": "aug94-mixture-v2",
+    "step": 10000,
+    "weights": "ema"
+   },
+   "candidate_live": {
+    "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+    "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "recipe": "aug94-mixture-v2",
+    "step": 10000,
+    "weights": "live"
+   }
+  },
+  "issue": 95,
+  "look_inputs_sha256": "238b14de312d1910045deefc7b89a6c59bdaef513a7161d12bc344d85d68b464",
+  "look_sha256": "1c1d67be8c8c51cea3417bb0de8f2cde40ce12fbb61ce128cd9f57e9f16416e6",
+  "models": {
+   "candidate": "candidate_ema",
+   "control": "control_ema"
+  },
+  "weights": "ema"
+ },
+ "consistency": {
+  "qdat": {
+   "clusters": 161,
+   "comparisons": {
+    "candidate−control": {
+     "interval": {
+      "lower": -8.108734561474142,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -0.360223464194585
+     },
+     "point": -4.27112178857348
+    },
+    "candidate−h448": {
+     "interval": {
+      "lower": -10.682565969814462,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -2.9945518589636158
+     },
+     "point": -6.7566580914647165
+    }
+   },
+   "models": {
+    "base": {
+     "den": 11620.0,
+     "interval": {
+      "lower": 22.42619260972808,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 37.35028749810749
+     },
+     "num": 343.0,
+     "point": 29.518072289156624
+    },
+    "candidate": {
+     "den": 11502.0,
+     "interval": {
+      "lower": 47.07819653469471,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 70.95251967288529
+     },
+     "num": 670.0,
+     "point": 58.250739001912706
+    },
+    "control": {
+     "den": 11436.0,
+     "interval": {
+      "lower": 51.73297822745811,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 74.50592195407708
+     },
+     "num": 715.0,
+     "point": 62.52186079048619
+    },
+    "h448": {
+     "den": 11491.0,
+     "interval": {
+      "lower": 52.94053861531885,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 78.48455960541855
+     },
+     "num": 747.0,
+     "point": 65.00739709337742
+    }
+   },
+   "observations": 12040,
+   "scale": 1000.0
+  }
+ },
+ "guards": {
+  "qdat_bench": {
+   "consonant": {
+    "clusters": 159,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": 0.6402390240185499,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 1.957186544342504
+      },
+      "point": 1.2851897184822492
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": 0.18348623853211565,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 1.5313935681470108
+      },
+      "point": 0.8567931456548328
+     }
+    },
+    "models": {
+     "base": {
+      "den": 3268.0,
+      "interval": {
+       "lower": 90.67073170731707,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 92.75672371638142
+      },
+      "num": 2998.0,
+      "point": 91.73806609547124
+     },
+     "candidate": {
+      "den": 3268.0,
+      "interval": {
+       "lower": 86.99510403916769,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 90.06134969325153
+      },
+      "num": 2895.0,
+      "point": 88.58629130966952
+     },
+     "control": {
+      "den": 3268.0,
+      "interval": {
+       "lower": 85.59156467488216,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 88.83777982214045
+      },
+      "num": 2853.0,
+      "point": 87.30110159118726
+     },
+     "h448": {
+      "den": 3268.0,
+      "interval": {
+       "lower": 85.98589389757743,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 89.30877968859524
+      },
+      "num": 2867.0,
+      "point": 87.72949816401469
+     }
+    },
+    "observations": 159,
+    "scale": 100.0
+   },
+   "haraka": {
+    "clusters": 159,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": 0.7029226785053688,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.071005917159763
+      },
+      "point": 1.3693560325684695
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": 0.517746694156121,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 1.8860946745562157
+      },
+      "point": 1.1843079200592133
+     }
+    },
+    "models": {
+     "base": {
+      "den": 2702.0,
+      "interval": {
+       "lower": 89.41916389197189,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 92.07994078460399
+      },
+      "num": 2453.0,
+      "point": 90.78460399703923
+     },
+     "candidate": {
+      "den": 2702.0,
+      "interval": {
+       "lower": 87.59707138645494,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 91.26572908956328
+      },
+      "num": 2419.0,
+      "point": 89.52627683197632
+     },
+     "control": {
+      "den": 2702.0,
+      "interval": {
+       "lower": 86.21072088724584,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 89.89637305699482
+      },
+      "num": 2382.0,
+      "point": 88.15692079940784
+     },
+     "h448": {
+      "den": 2702.0,
+      "interval": {
+       "lower": 86.46437185178861,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 90.00740192450037
+      },
+      "num": 2387.0,
+      "point": 88.3419689119171
+     }
+    },
+    "observations": 159,
+    "scale": 100.0
+   },
+   "shaddah": {
+    "clusters": 159,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": 1.377410468319562,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 4.86486486486486
+      },
+      "point": 3.013698630136996
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": 1.0899182561307952,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 5.722070844686645
+      },
+      "point": 3.287671232876721
+     }
+    },
+    "models": {
+     "base": {
+      "den": 365.0,
+      "interval": {
+       "lower": 90.83333333333333,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 96.24664879356568
+      },
+      "num": 342.0,
+      "point": 93.69863013698631
+     },
+     "candidate": {
+      "den": 365.0,
+      "interval": {
+       "lower": 90.36827195467421,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 96.17486338797814
+      },
+      "num": 341.0,
+      "point": 93.42465753424658
+     },
+     "control": {
+      "den": 365.0,
+      "interval": {
+       "lower": 86.90783593761637,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 93.4959349593496
+      },
+      "num": 330.0,
+      "point": 90.41095890410958
+     },
+     "h448": {
+      "den": 365.0,
+      "interval": {
+       "lower": 86.46408839779005,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 93.44294481160415
+      },
+      "num": 329.0,
+      "point": 90.13698630136986
+     }
+    },
+    "observations": 159,
+    "scale": 100.0
+   }
+  },
+  "qud_half": {
+   "clusters": 226,
+   "comparisons": {
+    "candidate−control": {
+     "interval": {
+      "lower": -0.45161375360348394,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 0.14830122220233813
+     },
+     "point": -0.14397256382581938
+    },
+    "candidate−h448": {
+     "interval": {
+      "lower": -1.0755737047748306,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -0.36344808882973795
+     },
+     "point": -0.7059545303548884
+    }
+   },
+   "models": {
+    "base": {
+     "den": 76627.0,
+     "interval": {
+      "lower": 1.9844104232680748,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 2.668759929348845
+     },
+     "num": 178.0,
+     "point": 2.3229409999086483
+    },
+    "candidate": {
+     "den": 76627.0,
+     "interval": {
+      "lower": 2.914683766396982,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 3.9416322532736445
+     },
+     "num": 263.0,
+     "point": 3.432210578516711
+    },
+    "control": {
+     "den": 76618.0,
+     "interval": {
+      "lower": 3.0728689750042433,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 4.102586029391777
+     },
+     "num": 274.0,
+     "point": 3.57618314234253
+    },
+    "h448": {
+     "den": 76604.0,
+     "interval": {
+      "lower": 3.6142685048026175,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 4.692425255343345
+     },
+     "num": 317.0,
+     "point": 4.1381651088716
+    }
+   },
+   "observations": 77261,
+   "scale": 1000.0
+  },
+  "tadabur_dev_unseen": {
+   "clusters": 137,
+   "comparisons": {
+    "candidate−control": {
+     "interval": {
+      "lower": -0.17370389830045793,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 0.046762444475983905
+     },
+     "point": -0.06167129201356536
+    },
+    "candidate−h448": {
+     "interval": {
+      "lower": 0.021765174491739096,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 0.2796971668736706
+     },
+     "point": 0.15263644773357843
+    }
+   },
+   "models": {
+    "base": {
+     "den": 64860.0,
+     "interval": {
+      "lower": 99.76043456931983,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 99.82749001357428
+     },
+     "num": 64726.0,
+     "point": 99.79340117175455
+    },
+    "candidate": {
+     "den": 64860.0,
+     "interval": {
+      "lower": 94.3806322205656,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 95.12735647126843
+     },
+     "num": 61478.0,
+     "point": 94.78569226025286
+    },
+    "control": {
+     "den": 64860.0,
+     "interval": {
+      "lower": 94.45020621233795,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 95.17635985326682
+     },
+     "num": 61518.0,
+     "point": 94.84736355226642
+    },
+    "h448": {
+     "den": 64860.0,
+     "interval": {
+      "lower": 94.20499101317866,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 94.97925795442053
+     },
+     "num": 61379.0,
+     "point": 94.63305581251927
+    }
+   },
+   "observations": 671,
+   "scale": 100.0
+  }
+ },
+ "issue": 95,
+ "leniency": {
+  "abstentions": {
+   "qdat": {
+    "clusters": 161,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": -1.0681273435607377,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": -0.5536836287052571
+      },
+      "point": -0.8039867109634558
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": -0.705131403858949,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": -0.21708673252015903
+      },
+      "point": -0.4617940199335549
+     }
+    },
+    "models": {
+     "base": {
+      "den": 30100.0,
+      "interval": {
+       "lower": 5.105656110162047,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 6.331558361648322
+      },
+      "num": 1713.0,
+      "point": 5.691029900332226
+     },
+     "candidate": {
+      "den": 30100.0,
+      "interval": {
+       "lower": 5.774591925327732,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 7.5986868742134925
+      },
+      "num": 1997.0,
+      "point": 6.634551495016611
+     },
+     "control": {
+      "den": 30100.0,
+      "interval": {
+       "lower": 6.532038828453279,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 8.418758823427154
+      },
+      "num": 2239.0,
+      "point": 7.438538205980066
+     },
+     "h448": {
+      "den": 30100.0,
+      "interval": {
+       "lower": 6.253324247629663,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 8.027545210984593
+      },
+      "num": 2136.0,
+      "point": 7.0963455149501655
+     }
+    },
+    "observations": 1505,
+    "scale": 100.0
+   },
+   "tarteel_v1_confirm": {
+    "clusters": 113,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": -0.6816510111309282,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": -0.5202419786802274
+      },
+      "point": -0.6010626442442504
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": -0.8515494113148695,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": -0.6515829075878192
+      },
+      "point": -0.7506093308504755
+     }
+    },
+    "models": {
+     "base": {
+      "den": 139087.0,
+      "interval": {
+       "lower": 7.945921710348354,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 8.460384981867652
+      },
+      "num": 11434.0,
+      "point": 8.220753916613342
+     },
+     "candidate": {
+      "den": 139087.0,
+      "interval": {
+       "lower": 7.987344820387687,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 8.545615092655295
+      },
+      "num": 11518.0,
+      "point": 8.281147770819702
+     },
+     "control": {
+      "den": 139087.0,
+      "interval": {
+       "lower": 8.562209225344244,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 9.167629920291384
+      },
+      "num": 12354.0,
+      "point": 8.882210415063954
+     },
+     "h448": {
+      "den": 139087.0,
+      "interval": {
+       "lower": 8.696223596691958,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 9.331922903258906
+      },
+      "num": 12562.0,
+      "point": 9.031757101670177
+     }
+    },
+    "observations": 4408,
+    "scale": 100.0
+   }
+  },
+  "baselines_redecoded_identical": {
+   "base": 671,
+   "clips": 671,
+   "h448": 671
+  },
+  "blank_ratio": {
+   "clusters": 137,
+   "comparisons": {
+    "candidate−control": {
+     "interval": {
+      "lower": -0.30189268791697255,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -0.17250847163346156
+     },
+     "point": -0.22999999999999687
+    },
+    "candidate−h448": {
+     "interval": {
+      "lower": -0.22536770784199353,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -0.10570213141199386
+     },
+     "point": -0.1581318681318722
+    }
+   },
+   "models": {
+    "base": {
+     "den": 910000.0,
+     "interval": {
+      "lower": 63.60301142176611,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 66.05907984649218
+     },
+     "num": 589625.0,
+     "point": 64.79395604395604
+    },
+    "candidate": {
+     "den": 910000.0,
+     "interval": {
+      "lower": 61.155312107510575,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 63.74441151820475
+     },
+     "num": 568021.0,
+     "point": 62.419890109890105
+    },
+    "control": {
+     "den": 910000.0,
+     "interval": {
+      "lower": 61.401298341128175,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 63.96087053266369
+     },
+     "num": 570114.0,
+     "point": 62.64989010989011
+    },
+    "h448": {
+     "den": 910000.0,
+     "interval": {
+      "lower": 61.319854745001564,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 63.89888641048027
+     },
+     "num": 569460.0,
+     "point": 62.57802197802198
+    }
+   },
+   "observations": 671,
+   "scale": 100.0
+  },
+  "ungraded": {
+   "qdat": {
+    "clusters": 161,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": -11.142115229955765,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": -0.7590965148880296
+      },
+      "point": -5.481727574750829
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": -4.32770750110964,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.647297303220091
+      },
+      "point": -0.913621262458475
+     }
+    },
+    "models": {
+     "base": {
+      "den": 12040.0,
+      "interval": {
+       "lower": 16.18432561587652,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 57.67310225547666
+      },
+      "num": 420.0,
+      "point": 34.883720930232556
+     },
+     "candidate": {
+      "den": 12040.0,
+      "interval": {
+       "lower": 22.15072671252062,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 70.81284135959157
+      },
+      "num": 538.0,
+      "point": 44.6843853820598
+     },
+     "control": {
+      "den": 12040.0,
+      "interval": {
+       "lower": 27.360245182775778,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 76.92307692307693
+      },
+      "num": 604.0,
+      "point": 50.16611295681063
+     },
+     "h448": {
+      "den": 12040.0,
+      "interval": {
+       "lower": 24.145431350029767,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 70.68588608046413
+      },
+      "num": 549.0,
+      "point": 45.59800664451828
+     }
+    },
+    "observations": 12040,
+    "scale": 1000.0
+   },
+   "qud_half": {
+    "clusters": 226,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": -0.247659628446038,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 0.0
+      },
+      "point": -0.11648826704288053
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": -0.5348075172311794,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": -0.10320006750180202
+      },
+      "point": -0.29769223799847205
+     }
+    },
+    "models": {
+     "base": {
+      "den": 77261.0,
+      "interval": {
+       "lower": 6.304026828511005,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.461044912167802
+      },
+      "num": 634.0,
+      "point": 8.205951256131813
+     },
+     "candidate": {
+      "den": 77261.0,
+      "interval": {
+       "lower": 6.337221816322073,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.417637912416222
+      },
+      "num": 634.0,
+      "point": 8.205951256131813
+     },
+     "control": {
+      "den": 77261.0,
+      "interval": {
+       "lower": 6.451581639689129,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.545405914584483
+      },
+      "num": 643.0,
+      "point": 8.322439523174694
+     },
+     "h448": {
+      "den": 77261.0,
+      "interval": {
+       "lower": 6.6005351008264315,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 10.763229149871528
+      },
+      "num": 657.0,
+      "point": 8.503643494130285
+     }
+    },
+    "observations": 77261,
+    "scale": 1000.0
+   },
+   "tarteel_v1_confirm": {
+    "clusters": 113,
+    "comparisons": {
+     "candidate−control": {
+      "interval": {
+       "lower": -2.5226081235482076,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 2.1776036053835344
+      },
+      "point": -0.02364066193853709
+     },
+     "candidate−h448": {
+      "interval": {
+       "lower": -5.374262657669786,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": -0.3038907089681347
+      },
+      "point": -2.600472813238771
+     }
+    },
+    "models": {
+     "base": {
+      "den": 42300.0,
+      "interval": {
+       "lower": 9.47121116046321,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 17.596807050395523
+      },
+      "num": 546.0,
+      "point": 12.907801418439718
+     },
+     "candidate": {
+      "den": 42300.0,
+      "interval": {
+       "lower": 13.0537515059867,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 22.609368371965473
+      },
+      "num": 728.0,
+      "point": 17.210401891252953
+     },
+     "control": {
+      "den": 42300.0,
+      "interval": {
+       "lower": 12.947722693233835,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 22.668861955944934
+      },
+      "num": 729.0,
+      "point": 17.23404255319149
+     },
+     "h448": {
+      "den": 42300.0,
+      "interval": {
+       "lower": 15.112481948468185,
+       "method": "bootstrap",
+       "reason": "",
+       "upper": 25.752571169573883
+      },
+      "num": 838.0,
+      "point": 19.810874704491724
+     }
+    },
+    "observations": 42300,
+    "scale": 1000.0
+   }
+  }
+ },
+ "main": {
+  "tarteel_v1_confirm": {
+   "clusters": 113,
+   "comparisons": {
+    "candidate−control": {
+     "interval": {
+      "lower": -5.849425848268162,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -2.7526020780738234
+     },
+     "point": -4.282971584023152
+    },
+    "candidate−h448": {
+     "interval": {
+      "lower": -11.986085028642599,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -7.77882525053479
+     },
+     "point": -9.917883583447953
+    },
+    "control−h448": {
+     "interval": {
+      "lower": -7.539439315636356,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": -3.5684791178233146
+     },
+     "point": -5.6349119994248
+    }
+   },
+   "models": {
+    "base": {
+     "den": 41754.0,
+     "interval": {
+      "lower": 18.1940670561395,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 22.316936084376415
+     },
+     "num": 843.0,
+     "point": 20.189682425635866
+    },
+    "candidate": {
+     "den": 41572.0,
+     "interval": {
+      "lower": 44.140160139063234,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 50.80009159805325
+     },
+     "num": 1971.0,
+     "point": 47.4117194265371
+    },
+    "control": {
+     "den": 41571.0,
+     "interval": {
+      "lower": 48.11775231473124,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 55.36894141353759
+     },
+     "num": 2149.0,
+     "point": 51.69469101056025
+    },
+    "h448": {
+     "den": 41462.0,
+     "interval": {
+      "lower": 53.21367133046306,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 61.421003647218974
+     },
+     "num": 2377.0,
+     "point": 57.32960300998505
+    }
+   },
+   "observations": 42300,
+   "scale": 1000.0
+  }
+ },
+ "mechanism": {
+  "qdat": {
+   "clusters": 161,
+   "comparisons": {
+    "candidate−control": {
+     "interval": {
+      "lower": -1.0863134765711187,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 0.3337862586882397
+     },
+     "point": -0.373754152823913
+    },
+    "candidate−h448": {
+     "interval": {
+      "lower": 0.9514413982501085,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 2.234527205887426
+     },
+     "point": 1.5863787375415273
+    }
+   },
+   "models": {
+    "candidate": {
+     "den": 12040.0,
+     "interval": {
+      "lower": 62.24682217429351,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 66.31363235474143
+     },
+     "num": 7744.0,
+     "point": 64.31893687707641
+    },
+    "control": {
+     "den": 12040.0,
+     "interval": {
+      "lower": 62.649965323645965,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 66.61974540481782
+     },
+     "num": 7789.0,
+     "point": 64.69269102990033
+    },
+    "h448": {
+     "den": 12040.0,
+     "interval": {
+      "lower": 60.59578993209265,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 64.79579812183665
+     },
+     "num": 7553.0,
+     "point": 62.73255813953489
+    }
+   },
+   "observations": 1505,
+   "scale": 100.0
+  },
+  "tarteel_v1_confirm": {
+   "clusters": 113,
+   "comparisons": {
+    "candidate−control": {
+     "interval": {
+      "lower": -0.329065443183289,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 0.27018972769927135
+     },
+     "point": -0.03767694709079228
+    },
+    "candidate−h448": {
+     "interval": {
+      "lower": 1.279457257146303,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 1.8474523116624928
+     },
+     "point": 1.5609020937617846
+    }
+   },
+   "models": {
+    "candidate": {
+     "den": 37158.0,
+     "interval": {
+      "lower": 64.47628755512595,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 66.94347436040088
+     },
+     "num": 24379.0,
+     "point": 65.60902093761774
+    },
+    "control": {
+     "den": 37158.0,
+     "interval": {
+      "lower": 64.55922067798873,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 66.86350226854921
+     },
+     "num": 24393.0,
+     "point": 65.64669788470854
+    },
+    "h448": {
+     "den": 37158.0,
+     "interval": {
+      "lower": 62.96642929741627,
+      "method": "bootstrap",
+      "reason": "",
+      "upper": 65.30327808243884
+     },
+     "num": 23799.0,
+     "point": 64.04811884385596
+    }
+   },
+   "observations": 4408,
+   "scale": 100.0
+  }
+ },
+ "sizes": {
+  "qdat": 1505,
+  "qdat_bench": 159,
+  "qud_half": 10283,
+  "retasy_in_correct": 258,
+  "tadabur_dev_unseen": 671,
+  "tarteel_v1_confirm": 4408
+ },
+ "verdict": {
+  "attribution": {
+   "against_control": "pass",
+   "against_h448": "pass",
+   "control_point": -4.282971584023152,
+   "control_upper_bound": -2.7526020780738234,
+   "control_vs_h448": {
+    "interval": {
+     "lower": -7.539439315636356,
+     "method": "bootstrap",
+     "reason": "",
+     "upper": -3.5684791178233146
+    },
+    "point": -5.6349119994248
+   },
+   "reading": "beats the control"
+  },
+  "bars": {
+   "bench_lower_at_least": -2.0,
+   "main_gap_share": 0.25,
+   "main_upper_below": 0.0,
+   "mechanism_lower_above": 0.0,
+   "qud_upper_at_most": 1.0,
+   "tadabur_lower_at_least": -1.0
+  },
+  "conditions": [
+   {
+    "bar": "Tarteel v1 confirm half, false flags per 1,000 (shipped default): candidate − h448 paired 95% upper bound < 0",
+    "bound": -7.77882525053479,
+    "comparison": "candidate−h448",
+    "end": "upper",
+    "method": "bootstrap",
+    "name": "main.app_outcome",
+    "point": -9.917883583447953,
+    "strict": true,
+    "threshold": 0.0,
+    "verdict": "pass"
+   },
+   {
+    "bar": "the point reduction at least a quarter of the h448 − teacher gap on the confirm half",
+    "base_per_1000": 20.189682425635866,
+    "candidate_per_1000": 47.4117194265371,
+    "gap": 37.139920584349184,
+    "h448_per_1000": 57.32960300998505,
+    "name": "main.quarter_gap",
+    "reduction": 9.917883583447953,
+    "required_reduction": 9.284980146087296,
+    "verdict": "pass"
+   },
+   {
+    "bar": "word-level agreement with the teacher on Tarteel v1 (confirm half) rises: paired 95% lower bound > 0",
+    "bound": 1.279457257146303,
+    "comparison": "candidate−h448",
+    "end": "lower",
+    "method": "bootstrap",
+    "name": "mechanism.tarteel_v1",
+    "point": 1.5609020937617846,
+    "strict": true,
+    "threshold": 0.0,
+    "verdict": "pass"
+   },
+   {
+    "bar": "word-level agreement with the teacher on qdat rises: paired 95% lower bound > 0",
+    "bound": 0.9514413982501085,
+    "comparison": "candidate−h448",
+    "end": "lower",
+    "method": "bootstrap",
+    "name": "mechanism.qdat",
+    "point": 1.5863787375415273,
+    "strict": true,
+    "threshold": 0.0,
+    "verdict": "pass"
+   },
+   {
+    "bar": "qdat false flags per 1,000: candidate point estimate lower than h448's",
+    "candidate": 58.250739001912706,
+    "h448": 65.00739709337742,
+    "name": "consistency.qdat",
+    "verdict": "pass"
+   },
+   {
+    "bar": "QUD false flags per 1,000: candidate − h448 paired upper bound ≤ +1.0",
+    "bound": -0.36344808882973795,
+    "comparison": "candidate−h448",
+    "end": "upper",
+    "method": "bootstrap",
+    "name": "guard.qud",
+    "point": -0.7059545303548884,
+    "strict": false,
+    "threshold": 1.0,
+    "verdict": "pass"
+   },
+   {
+    "bar": "Tadabur decode_evalset dev (no copy in h448's training), decode agreement with the teacher at stream_b0: paired lower bound ≥ −1.0 pt",
+    "bound": 0.021765174491739096,
+    "comparison": "candidate−h448",
+    "end": "lower",
+    "method": "bootstrap",
+    "name": "guard.tadabur",
+    "point": 0.15263644773357843,
+    "strict": false,
+    "threshold": -1.0,
+    "verdict": "pass"
+   },
+   {
+    "bar": "qdat_bench stream arm, consonant agreement with the experts: paired lower bound ≥ −2.0 pt",
+    "bound": 0.18348623853211565,
+    "comparison": "candidate−h448",
+    "end": "lower",
+    "method": "bootstrap",
+    "name": "guard.qdat_bench.consonant",
+    "point": 0.8567931456548328,
+    "strict": false,
+    "threshold": -2.0,
+    "verdict": "pass"
+   },
+   {
+    "bar": "qdat_bench stream arm, haraka agreement with the experts: paired lower bound ≥ −2.0 pt",
+    "bound": 0.517746694156121,
+    "comparison": "candidate−h448",
+    "end": "lower",
+    "method": "bootstrap",
+    "name": "guard.qdat_bench.haraka",
+    "point": 1.1843079200592133,
+    "strict": false,
+    "threshold": -2.0,
+    "verdict": "pass"
+   },
+   {
+    "bar": "qdat_bench stream arm, shaddah agreement with the experts: paired lower bound ≥ −2.0 pt",
+    "bound": 1.0899182561307952,
+    "comparison": "candidate−h448",
+    "end": "lower",
+    "method": "bootstrap",
+    "name": "guard.qdat_bench.shaddah",
+    "point": 3.287671232876721,
+    "strict": false,
+    "threshold": -2.0,
+    "verdict": "pass"
+   }
+  ],
+  "verdict": "pass"
+ }
+}

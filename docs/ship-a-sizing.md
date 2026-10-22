@@ -28,22 +28,22 @@ a probable copy, to what `h448` trained on, `decode_evalset` or the sealed panel
 clips.
 
 - **Pair carriers in the mining pool.** `h448` commits a letter other than the mushaf's at
-  **477 unique carriers**. **154** of them are **partner swaps** (the
+  **421 unique carriers**. **154** of them are **partner swaps** (the
   pair's other letter), the sites Ship A's listening is drawn from (below); the other
-  **323** commit a letter outside every target pair and are not asked (D9). The commonest commits:
-  `ط→ق` 71, `ت→ه` 62, `ظ→ض` 16, `س→ش` 13, `ذ→د` 11, `ه→ء` 11. The owner traced `ت`→`ه` to a ta marbuta the reciter paused on where the
+  **267** commit a letter outside every target pair and are not asked (D9). The commonest commits:
+  `ط→ق` 71, `ظ→ض` 16, `س→ش` 13, `ذ→د` 11, `ه→ء` 11, `ت→س` 10. The owner traced `ت`→`ه` to a ta marbuta the reciter paused on where the
   realized reference has wasl `ت`: a reference problem (#130), not a model one. The base teacher
   already commits the mushaf letter at 99 of the swaps.
 - **In-word geminates.** Of 7,663, `h448` decodes **752**
   as one consonant (the base teacher 192). The base
   holds **659** of those 752, whose
   target is its decode with no listening (D10); **93** are listened to.
-  Cross-word geminates (878, of which `h448` collapses
-  219) are out: the app never scores them.
+  Cross-word geminates (834, of which `h448` collapses
+  177) are out: the app never scores them.
 - **Goal 3 (Ship B), counted only.** `h448` leaves the slot empty at
   8,801 of 9,518
-  mid-word prescribed sukun and at 2,228 of
-  49,866 mid-word harakat.
+  mid-word prescribed sukun and at 2,227 of
+  49,813 mid-word harakat.
 
 Off-letter commits in the pool and the mining extension per direction (a partner swap is
 named by the letter committed; any other letter is grouped per carrier):
@@ -193,7 +193,7 @@ amended to say so, and the #84 scorer takes these per-site weights
 |---|---|---|
 | geminate | 93 | 93 |
 | geminate, teacher holds | 659 | 0 |
-| other letter | 323 | 0 |
+| other letter | 267 | 0 |
 | swap, teacher right, held_out | 429 | 222 |
 | swap, teacher right, train | 423 | 0 |
 | swap, teacher wrong | 180 | 180 |
@@ -262,7 +262,7 @@ the guard was built:
 | p35_fixture:shadda | 13 | 3 | 0 | 1 | 0 | 2 | 2 |
 | ship_a:shaddah:held:h448_single:base_held | 659 | 64 | 0 | 0 | 9 | 0 | 0 |
 | ship_a:shaddah:held:h448_single:base_not_held | 93 | 15 | 0 | 5 | 0 | 11 | 12 |
-| ship_a:ت:h448_other | 106 | 63 | 1 | 56 | 2 | 0 | 56 |
+| ship_a:ت:h448_other | 50 | 7 | 1 | 0 | 2 | 0 | 0 |
 | ship_a:ش:h448_other | 8 | 0 | 3 | 0 | 0 | 0 | 0 |
 | ship_a:ط→ت:h448_partner:base_wrong | 2 | 1 | 0 | 0 | 0 | 0 | 0 |
 | ship_a:ظ:h448_other | 7 | 0 | 1 | 0 | 0 | 0 | 0 |
@@ -275,15 +275,13 @@ the guard was built:
 | ship_a_mining:ك→ق:h448_partner:base_wrong | 9 | 0 | 1 | 0 | 0 | 0 | 0 |
 | word_sample | 160 | 101 | 8 | 0 | 9 | 0 | 0 |
 
-The sizing below leaves out 68 realized sites and 0 sampled words
+The sizing below leaves out 12 realized sites and 0 sampled words
 (per cell, sites and held-out listened sites); question 4 reads the P3.5 fixtures without the
 2 realized there:
 
 | cell | sites | held-out listened |
 |---|---|---|
 | geminates (base not held) | 12 | 7 |
-| soft pairs (pooled) | 56 | 0 |
-| ت↔ط | 56 | 0 |
 
 ## The onset guard (#138)
 
@@ -614,7 +612,7 @@ Every site with the reciter bootstrap, recovery, at ICC 0.15 and at ICC 0:
 
 Once a candidate exists, the **changed sites** (its decode ≠ `h448`'s at a pair carrier or an
 in-word geminate where `h448` commits the mushaf value) are a census, computed without
-listening. On the held-out half that is 14,905 carriers of
+listening. On the held-out half that is 14,927 carriers of
 200 reciters. A blind, candidate-locked **PPS cluster sample** draws reciters in
 proportion to their changed sites and adjudicates every changed site of each reciter drawn;
 `cluster_mistake_bound` gives a design-valid 97.5% bound on the new errors among all of them.
@@ -625,48 +623,48 @@ site. **Report only: not on #61's worklist.**
 
 | churn | new errors | reciters drawn | sites heard | minutes | true /1,000 | median bound /1,000 | P(bound ≤ 1) | P(bound ≤ 2) | P(bound ≤ 5) | P(bound ≤ 10) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 0.25% | 10% | 10 | 15.2 | 3.2 | 0.25 | 1.72 | 0.23 | 0.67 | 1.00 | 1.00 |
-| 0.25% | 10% | 20 | 27.7 | 5.9 | 0.25 | 0.91 | 0.61 | 0.99 | 1.00 | 1.00 |
+| 0.25% | 10% | 10 | 15.2 | 3.2 | 0.25 | 1.67 | 0.24 | 0.68 | 1.00 | 1.00 |
+| 0.25% | 10% | 20 | 27.7 | 5.9 | 0.25 | 0.91 | 0.60 | 0.99 | 1.00 | 1.00 |
 | 0.25% | 10% | 40 | 37.3 | 8.0 | 0.25 | 0.27 | 1.00 | 1.00 | 1.00 | 1.00 |
-| 0.25% | 10% | 80 | 37.3 | 8.0 | 0.25 | 0.27 | 1.00 | 1.00 | 1.00 | 1.00 |
-| 0.25% | 50% | 10 | 15.2 | 3.2 | 1.25 | 2.42 | 0.00 | 0.19 | 1.00 | 1.00 |
+| 0.25% | 10% | 80 | 37.5 | 8.0 | 0.25 | 0.27 | 1.00 | 1.00 | 1.00 | 1.00 |
+| 0.25% | 50% | 10 | 15.1 | 3.2 | 1.25 | 2.41 | 0.00 | 0.17 | 1.00 | 1.00 |
 | 0.25% | 50% | 20 | 27.4 | 5.9 | 1.25 | 2.01 | 0.02 | 0.47 | 1.00 | 1.00 |
-| 0.25% | 50% | 40 | 37.1 | 7.9 | 1.25 | 1.21 | 0.18 | 0.98 | 1.00 | 1.00 |
-| 0.25% | 50% | 80 | 37.1 | 7.9 | 1.25 | 1.21 | 0.19 | 0.99 | 1.00 | 1.00 |
-| 0.25% | 100% | 10 | 15.1 | 3.2 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
-| 0.25% | 100% | 20 | 27.5 | 5.9 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
-| 0.25% | 100% | 40 | 37.1 | 7.9 | 2.50 | 2.48 | 0.00 | 0.12 | 1.00 | 1.00 |
-| 0.25% | 100% | 80 | 37.3 | 8.0 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
-| 1.00% | 10% | 10 | 31.7 | 6.8 | 1.00 | 8.84 | 0.00 | 0.00 | 0.08 | 0.75 |
-| 1.00% | 10% | 20 | 60.1 | 12.8 | 1.00 | 6.08 | 0.00 | 0.01 | 0.26 | 0.97 |
-| 1.00% | 10% | 40 | 103.3 | 22.0 | 1.00 | 3.28 | 0.00 | 0.07 | 0.95 | 1.00 |
-| 1.00% | 10% | 80 | 147.5 | 31.5 | 1.00 | 1.14 | 0.36 | 0.94 | 1.00 | 1.00 |
-| 1.00% | 50% | 10 | 31.5 | 6.7 | 5.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.54 |
-| 1.00% | 50% | 20 | 60.3 | 12.9 | 5.00 | 9.66 | 0.00 | 0.00 | 0.00 | 0.65 |
-| 1.00% | 50% | 40 | 102.6 | 21.9 | 5.00 | 8.39 | 0.00 | 0.00 | 0.00 | 0.95 |
-| 1.00% | 50% | 80 | 147.8 | 31.5 | 5.00 | 5.23 | 0.00 | 0.00 | 0.42 | 1.00 |
-| 1.00% | 100% | 10 | 31.6 | 6.7 | 10.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.54 |
-| 1.00% | 100% | 20 | 59.9 | 12.8 | 10.00 | 9.93 | 0.00 | 0.00 | 0.00 | 0.53 |
-| 1.00% | 100% | 40 | 102.9 | 22.0 | 10.00 | 10.00 | 0.00 | 0.00 | 0.00 | 0.51 |
-| 1.00% | 100% | 80 | 147.6 | 31.5 | 10.00 | 10.00 | 0.00 | 0.00 | 0.00 | 0.52 |
-| 2.50% | 10% | 10 | 63.2 | 13.5 | 2.50 | 24.35 | 0.00 | 0.00 | 0.00 | 0.01 |
-| 2.50% | 10% | 20 | 122.8 | 26.2 | 2.50 | 21.51 | 0.00 | 0.00 | 0.00 | 0.01 |
-| 2.50% | 10% | 40 | 212.9 | 45.4 | 2.50 | 12.99 | 0.00 | 0.00 | 0.00 | 0.13 |
-| 2.50% | 10% | 80 | 322.8 | 68.9 | 2.50 | 5.20 | 0.00 | 0.00 | 0.44 | 1.00 |
-| 2.50% | 50% | 10 | 62.2 | 13.3 | 12.50 | 24.82 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 50% | 20 | 120.4 | 25.7 | 12.50 | 24.35 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 50% | 40 | 212.8 | 45.4 | 12.50 | 22.14 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 50% | 80 | 322.0 | 68.7 | 12.50 | 16.91 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 100% | 10 | 62.9 | 13.4 | 25.00 | 24.82 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 100% | 20 | 120.6 | 25.7 | 25.00 | 24.96 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 100% | 40 | 212.6 | 45.4 | 25.00 | 24.82 | 0.00 | 0.00 | 0.00 | 0.00 |
-| 2.50% | 100% | 80 | 322.0 | 68.7 | 25.00 | 24.96 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 0.25% | 50% | 40 | 37.4 | 8.0 | 1.25 | 1.21 | 0.19 | 0.98 | 1.00 | 1.00 |
+| 0.25% | 50% | 80 | 37.3 | 8.0 | 1.25 | 1.21 | 0.19 | 0.99 | 1.00 | 1.00 |
+| 0.25% | 100% | 10 | 15.1 | 3.2 | 2.50 | 2.48 | 0.00 | 0.12 | 1.00 | 1.00 |
+| 0.25% | 100% | 20 | 27.7 | 5.9 | 2.50 | 2.48 | 0.00 | 0.11 | 1.00 | 1.00 |
+| 0.25% | 100% | 40 | 37.2 | 7.9 | 2.50 | 2.48 | 0.00 | 0.13 | 1.00 | 1.00 |
+| 0.25% | 100% | 80 | 37.4 | 8.0 | 2.50 | 2.48 | 0.00 | 0.12 | 1.00 | 1.00 |
+| 1.00% | 10% | 10 | 31.6 | 6.8 | 1.00 | 8.83 | 0.00 | 0.00 | 0.08 | 0.74 |
+| 1.00% | 10% | 20 | 59.8 | 12.8 | 1.00 | 6.07 | 0.00 | 0.01 | 0.28 | 0.97 |
+| 1.00% | 10% | 40 | 103.0 | 22.0 | 1.00 | 3.25 | 0.00 | 0.08 | 0.95 | 1.00 |
+| 1.00% | 10% | 80 | 146.9 | 31.3 | 1.00 | 1.07 | 0.38 | 0.93 | 1.00 | 1.00 |
+| 1.00% | 50% | 10 | 31.8 | 6.8 | 5.00 | 9.91 | 0.00 | 0.00 | 0.00 | 0.55 |
+| 1.00% | 50% | 20 | 60.1 | 12.8 | 5.00 | 9.65 | 0.00 | 0.00 | 0.00 | 0.64 |
+| 1.00% | 50% | 40 | 103.3 | 22.0 | 5.00 | 8.37 | 0.00 | 0.00 | 0.00 | 0.95 |
+| 1.00% | 50% | 80 | 147.9 | 31.5 | 5.00 | 5.23 | 0.00 | 0.00 | 0.41 | 1.00 |
+| 1.00% | 100% | 10 | 31.6 | 6.7 | 10.00 | 9.91 | 0.00 | 0.00 | 0.00 | 0.53 |
+| 1.00% | 100% | 20 | 60.3 | 12.9 | 10.00 | 9.91 | 0.00 | 0.00 | 0.00 | 0.53 |
+| 1.00% | 100% | 40 | 102.9 | 21.9 | 10.00 | 9.91 | 0.00 | 0.00 | 0.00 | 0.53 |
+| 1.00% | 100% | 80 | 148.0 | 31.6 | 10.00 | 9.98 | 0.00 | 0.00 | 0.00 | 0.51 |
+| 2.50% | 10% | 10 | 63.5 | 13.5 | 2.50 | 24.32 | 0.00 | 0.00 | 0.00 | 0.01 |
+| 2.50% | 10% | 20 | 120.5 | 25.7 | 2.50 | 21.37 | 0.00 | 0.00 | 0.00 | 0.01 |
+| 2.50% | 10% | 40 | 213.1 | 45.5 | 2.50 | 13.02 | 0.00 | 0.00 | 0.00 | 0.13 |
+| 2.50% | 10% | 80 | 321.7 | 68.6 | 2.50 | 5.18 | 0.00 | 0.00 | 0.45 | 1.00 |
+| 2.50% | 50% | 10 | 62.9 | 13.4 | 12.50 | 24.92 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 50% | 20 | 121.9 | 26.0 | 12.50 | 24.39 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 50% | 40 | 213.4 | 45.5 | 12.50 | 22.04 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 50% | 80 | 321.9 | 68.7 | 12.50 | 16.88 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 100% | 10 | 62.5 | 13.3 | 25.00 | 24.79 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 100% | 20 | 121.4 | 25.9 | 25.00 | 24.95 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 100% | 40 | 213.1 | 45.5 | 25.00 | 24.85 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 2.50% | 100% | 80 | 321.9 | 68.7 | 25.00 | 24.92 | 0.00 | 0.00 | 0.00 | 0.00 |
 
 - The census of changed sites bounds the new errors **without listening**: they cannot exceed
   the changes (churn × 1,000 per 1,000). Listening tightens that only where many changes are
   *not* errors, and only by reaching most changed reciters: at the highest churn
   (2.5%) with 10% of changes new errors, 80
-  reciters (68.9 minutes) bring the median bound from
+  reciters (68.6 minutes) bring the median bound from
   25.0 to 5.2 per 1,000 (truth
   2.5).
 - **No separate draw on unflagged strata is needed** for decode-level harm at pair and

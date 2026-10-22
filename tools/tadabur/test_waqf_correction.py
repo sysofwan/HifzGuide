@@ -14,6 +14,7 @@ from functools import cache
 from pathlib import Path
 
 from tadabur import waqf_correction as wc
+from tadabur.ship_a_verified import REJECT_PILE_STRATUM
 from tadabur.waqf_segments import _uthmani_words
 
 DIR = Path(__file__).resolve().parent
@@ -96,7 +97,15 @@ def test_verified_sites_keep_their_ids_and_reference_indices():
         json.dumps(pairs, ensure_ascii=False).encode("utf-8")
     ).hexdigest()
     assert digest == VERIFIED_ID_INDEX_SHA256
-    for row in verified:
+    # #87's reject-pile draws are no Ship A site (tadabur.ship_a_verified), so they are not
+    # in sites.jsonl; their ids stay as the truth file holds them.
+    reject_pile = [row for row in verified if row["stratum"].endswith(REJECT_PILE_STRATUM)]
+    assert len(reject_pile) == 15
+    assert all("↔" in row["mark"] for row in reject_pile)
+    assert not any(row["site_id"] in sites for row in reject_pile)
+    ship_a = [row for row in verified if not row["stratum"].endswith(REJECT_PILE_STRATUM)]
+    assert len(ship_a) == 515
+    for row in ship_a:
         assert row["site_id"] in sites
         assert sites[row["site_id"]]["reference_index"] == row["reference_index"]
 

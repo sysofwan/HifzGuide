@@ -79,9 +79,194 @@ Tarteel v1's look half, 4530 clips, checks protocol. Rule: the candidate's weigh
 | candidate−control | -4.27 | [-8.11, -0.36] | paired |
 | candidate−h448 | -6.76 | [-10.68, -2.99] | paired |
 
-## 3. Guards
+## 3. Coverage of the frozen populations
 
-**QUD, salted half of segments, false flags per 1,000** (per 1,000; 77261 observations in 226 clusters)
+The verdict and every table above apply to the reference-evaluable population recorded here. The excluded segments were not graded, so this readout does not measure them and does not bound their possible grades; the exclusions are reference-dependent, common to every model and not a random additional subsample. In particular the QUD guard's pass describes the evaluated share of the frozen half, not the whole pre-registered half.
+
+| population | decoded | evaluated | excluded | excluded canonical word occurrences |
+|---|---|---|---|---|
+| tarteel_v1.look | 4537 | 4530 | 7 | 22 |
+| tarteel_v1.confirm | 4413 | 4408 | 5 | 21 |
+| qud_half | 10423 | 10283 | 140 | 1168 |
+
+**tarteel_v1.look**, the 7 excluded: the phonetizer could not build a reference for these clips (`training.nonpro_eval.build_items` returns them unsupported); every model shares the exclusion.
+
+**tarteel_v1.confirm**, the 5 excluded: the phonetizer could not build a reference for these clips (`training.nonpro_eval.build_items` returns them unsupported); every model shares the exclusion.
+
+**qud_half**, the 140 excluded: the QUD pilot left these segments out as phonetizer-unsupported (its waqf/leen reference limitation), recorded in `qud_eval/pilot/report.json`; every model shares the exclusion.
+
+The excluded keys, one per line:
+
+`tarteel_v1.look`:
+
+```text
+106_3_256846847.wav#0
+106_3_4073713589.wav#0
+55_17_2296406797.wav#0
+90_8_2368733304.wav#0
+90_9_1797349274.wav#0
+90_9_215734432.wav#0
+90_9_420239702.wav#0
+```
+
+`tarteel_v1.confirm`:
+
+```text
+106_2_1418981016.wav#0
+106_3_322750066.wav#0
+106_4_3029688449.wav#0
+90_10_2982713815.wav#0
+90_8_4130793449.wav#0
+```
+
+`qud_half`:
+
+```text
+qud_abdul_hamid_ghraio_2026_yt_002_187.mp3#5
+qud_abdul_hamid_ghraio_2026_yt_002_259.mp3#3
+qud_abdul_hamid_ghraio_2026_yt_003_013.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_003_026.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_003_044.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_003_119.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_003_185.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_004_011.mp3#7
+qud_abdul_hamid_ghraio_2026_yt_004_012.mp3#2
+qud_abdul_hamid_ghraio_2026_yt_004_108.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_004_158.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_004_164.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_004_176.mp3#4
+qud_abdul_hamid_ghraio_2026_yt_005_004.mp3#2
+qud_abdul_hamid_ghraio_2026_yt_005_006.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_005_048.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_005_094.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_006_025.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_006_143.mp3#2
+qud_abdul_hamid_ghraio_2026_yt_007_026.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_007_143.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_007_145.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_007_156.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_008_054.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_008_066.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_010_042.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_010_043.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_011_061.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_011_081.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_012_033.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_012_092.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_013_033.mp3#2
+qud_abdul_hamid_ghraio_2026_yt_014_018.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_016_035.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_016_051.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_016_060.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_017_011.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_017_012.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_018_019.mp3#2
+qud_abdul_hamid_ghraio_2026_yt_019_061.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_022_036.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_028_015.mp3#2
+qud_abdul_hamid_ghraio_2026_yt_028_027.mp3#2
+qud_abdul_hamid_ghraio_2026_yt_029_012.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_030_040.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_033_030.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_033_051.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_033_059.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_034_018.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_037_138.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_040_016.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_040_017.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_040_020.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_040_078.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_048_006.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_055_017.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_057_025.mp3#1
+qud_abdul_hamid_ghraio_2026_yt_058_018.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_060_004.mp3#2
+qud_abdul_hamid_ghraio_2026_yt_090_008.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_106_002.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_106_003.mp3#0
+qud_abdul_hamid_ghraio_2026_yt_106_004.mp3#0
+qud_anas_almiman_yt_002_037.mp3#0
+qud_anas_almiman_yt_002_061.mp3#2
+qud_anas_almiman_yt_002_182.mp3#0
+qud_anas_almiman_yt_002_187.mp3#5
+qud_anas_almiman_yt_002_220.mp3#2
+qud_anas_almiman_yt_003_044.mp3#0
+qud_anas_almiman_yt_003_119.mp3#1
+qud_anas_almiman_yt_003_154.mp3#2
+qud_anas_almiman_yt_003_185.mp3#0
+qud_anas_almiman_yt_004_011.mp3#0
+qud_anas_almiman_yt_004_104.mp3#0
+qud_anas_almiman_yt_004_108.mp3#0
+qud_anas_almiman_yt_004_113.mp3#1
+qud_anas_almiman_yt_004_128.mp3#1
+qud_anas_almiman_yt_004_164.mp3#0
+qud_anas_almiman_yt_004_176.mp3#4
+qud_anas_almiman_yt_005_006.mp3#0
+qud_anas_almiman_yt_006_119.mp3#0
+qud_anas_almiman_yt_006_143.mp3#1
+qud_anas_almiman_yt_006_144.mp3#0
+qud_anas_almiman_yt_006_144.mp3#1
+qud_anas_almiman_yt_006_154.mp3#0
+qud_anas_almiman_yt_006_159.mp3#0
+qud_anas_almiman_yt_006_164.mp3#0
+qud_anas_almiman_yt_007_143.mp3#0
+qud_anas_almiman_yt_007_150.mp3#2
+qud_anas_almiman_yt_008_054.mp3#1
+qud_anas_almiman_yt_008_065.mp3#1
+qud_anas_almiman_yt_008_066.mp3#1
+qud_anas_almiman_yt_009_098.mp3#1
+qud_anas_almiman_yt_010_043.mp3#0
+qud_anas_almiman_yt_011_049.mp3#0
+qud_anas_almiman_yt_011_073.mp3#1
+qud_anas_almiman_yt_011_090.mp3#0
+qud_anas_almiman_yt_011_123.mp3#0
+qud_anas_almiman_yt_012_033.mp3#0
+qud_anas_almiman_yt_012_111.mp3#1
+qud_anas_almiman_yt_013_036.mp3#0
+qud_anas_almiman_yt_014_018.mp3#1
+qud_anas_almiman_yt_016_060.mp3#0
+qud_anas_almiman_yt_016_076.mp3#0
+qud_anas_almiman_yt_016_112.mp3#1
+qud_anas_almiman_yt_017_011.mp3#0
+qud_anas_almiman_yt_018_019.mp3#1
+qud_anas_almiman_yt_018_022.mp3#0
+qud_anas_almiman_yt_018_083.mp3#0
+qud_anas_almiman_yt_019_029.mp3#0
+qud_anas_almiman_yt_023_027.mp3#0
+qud_anas_almiman_yt_026_011.mp3#0
+qud_anas_almiman_yt_026_050.mp3#0
+qud_anas_almiman_yt_027_016.mp3#1
+qud_anas_almiman_yt_028_015.mp3#1
+qud_anas_almiman_yt_028_087.mp3#0
+qud_anas_almiman_yt_029_042.mp3#0
+qud_anas_almiman_yt_030_040.mp3#1
+qud_anas_almiman_yt_031_014.mp3#0
+qud_anas_almiman_yt_033_023.mp3#0
+qud_anas_almiman_yt_033_030.mp3#0
+qud_anas_almiman_yt_033_051.mp3#1
+qud_anas_almiman_yt_033_059.mp3#1
+qud_anas_almiman_yt_034_010.mp3#1
+qud_anas_almiman_yt_034_031.mp3#0
+qud_anas_almiman_yt_036_011.mp3#0
+qud_anas_almiman_yt_039_005.mp3#1
+qud_anas_almiman_yt_039_062.mp3#0
+qud_anas_almiman_yt_040_016.mp3#0
+qud_anas_almiman_yt_040_017.mp3#1
+qud_anas_almiman_yt_040_078.mp3#0
+qud_anas_almiman_yt_042_013.mp3#2
+qud_anas_almiman_yt_046_026.mp3#1
+qud_anas_almiman_yt_052_021.mp3#0
+qud_anas_almiman_yt_060_004.mp3#4
+qud_anas_almiman_yt_067_008.mp3#0
+qud_anas_almiman_yt_090_008.mp3#0
+qud_anas_almiman_yt_090_010.mp3#0
+qud_anas_almiman_yt_106_001.mp3#0
+qud_anas_almiman_yt_106_003.mp3#0
+```
+
+## 4. Guards
+
+**QUD, salted half of segments, false flags per 1,000 (evaluated share; §3)** (per 1,000; 77261 observations in 226 clusters)
 
 | | value | 95% interval | numerator / denominator |
 |---|---|---|---|
@@ -136,7 +321,7 @@ Tarteel v1's look half, 4530 clips, checks protocol. Rule: the candidate's weigh
 | candidate−control | +3.01 | [+1.38, +4.86] | paired |
 | candidate−h448 | +3.29 | [+1.09, +5.72] | paired |
 
-## 4. Catch side (descriptive)
+## 5. Catch side (descriptive)
 
 **RetaSy `in_correct`, flagged words per 1,000 graded (teacher, `h448`, candidate and control side by side)** (per 1,000; 1141 observations in 73 clusters)
 
@@ -171,7 +356,7 @@ Tarteel v1's look half, 4530 clips, checks protocol. Rule: the candidate's weigh
 | candidate−control | +55.65 | [+0.00, +146.52] | paired |
 | candidate−h448 | +40.00 | [+0.00, +112.56] | paired |
 
-## 5. Leniency (descriptive)
+## 6. Leniency (descriptive)
 
 **Tadabur dev, blank share of the argmax frames** (points; 671 observations in 137 clusters)
 

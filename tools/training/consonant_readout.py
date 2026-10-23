@@ -1,0 +1,515 @@
+"""The consonant round's own data: its QUD half, freeze, catch arm and C95-against-C95 tracer (#175).
+
+The bars and sets are #174's pre-registration (``docs/consonant-round-preregistration.md``); this
+module holds what the round adds to :mod:`training.aug_readout`'s pipeline:
+
+* **The unread QUD half** (:func:`qud_complement_record`): the pilot segments #95's salted half did
+  not keep, frozen in ``tadabur/consonant_readout/qud_selection.json``.
+* **The freeze** (:func:`run_freeze`): a model's cause split and its top substitution list, read
+  from the look half only — the confirm half is never frozen (data discipline 1). #177 owns the
+  committed ``freeze.json``; this module never writes it.
+* **The catch arm** (G6, :func:`catch_arm`): Ship A's held-out verified real mistakes at
+  ط↔ق and س↔ش, graded through :mod:`training.truth_baseline`'s recorded check sequences, read
+  read-only from its caches. The site ids are frozen in ``g6_sites.json``.
+* **The tracer** (:func:`tracer_text`): C95 against itself — every point difference 0.00, every
+  interval "no bound", so nothing is certified.
+
+Usage (from ``tools/``)::
+
+  python -m training.consonant_readout select-qud
+  python -m training.consonant_readout g6
+  python -m training.consonant_readout models
+  python -m training.consonant_readout freeze --half look
+  python -m training.consonant_readout tracer
+
+Files (``tadabur/consonant_readout/``): ``qud_selection.json``, ``g6_sites.json``,
+``models.json`` (C95's identity per set); ``freeze.json`` is #177's.
+"""
+
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import json
+from collections import Counter
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+
+from tadabur.tarteel_split import CONFIRM, LOOK
+from training.aug_readout_metrics import (
+    BASE,
+    CANDIDATE,
+    CONSONANT,
+    DEPARTS,
+    H448,
+    PER_1000,
+    POINTS,
+    TASHKEEL_CAUSE,
+    carries_cause,
+    compare,
+    comparison_name,
+    false_flag_terms,
+    substitution_terms,
+    substitution_views,
+    teacher_agreement_terms,
+    word_agreement_terms,
+)
+from training.aug_readout_spec import C95, CONSONANT1, RoundSpec
+from training.muraja_policy import SHIPPED_DEFAULT
+from training.tashkeel_eval import write_text_atomically
+
+ROUND_DIR = Path(__file__).parent.parent / "tadabur" / "consonant_readout"
+QUD_SELECTION_PATH = ROUND_DIR / "qud_selection.json"
+G6_SITES_PATH = ROUND_DIR / "g6_sites.json"
+MODELS_PATH = ROUND_DIR / "models.json"
+#: #177's artifact, never written here (its freeze list fixes G5).
+FREEZE_PATH = ROUND_DIR / "freeze.json"
+#: The committed decode file C95's identity and decodes are recorded under (#95's candidate).
+C95_DECODE = "candidate_ema"
+#: G6's pairs (#174): the two the pre-registration reads.
+G6_MARKS = ("س↔ش", "ط↔ق")
+
+
+# --- the unread QUD half -----------------------------------------------------------------------
+
+
+def qud_complement_record(keys_by_mushaf: Mapping[str, Sequence[str]]) -> dict:
+    """Every decoded pilot segment #95's ``aug95-qud-half-2026-10`` rule did **not** keep."""
+    from training.aug_readout import QUD_CUTOFF, QUD_SALT, qud_kept
+
+    other = {slug: sorted(key for key in keys if not qud_kept(key))
+             for slug, keys in sorted(keys_by_mushaf.items())}
+    return {
+        "issue": CONSONANT1.issue,
+        "rule": "the complement of #95's half: kept when the first 8 bytes (big-endian) of "
+                'sha256("<salt>:<key>") are at or above 2**63',
+        "salt": QUD_SALT,
+        "cutoff": QUD_CUTOFF,
+        "segments": {slug: len(keys) for slug, keys in sorted(keys_by_mushaf.items())},
+        "kept_counts": {slug: len(k) for slug, k in other.items()},
+        "kept": other,
+    }
+
+
+def load_qud_complement(path: Path = QUD_SELECTION_PATH) -> set[str]:
+    """The frozen other half, each key re-checked as one #95 kept out."""
+    from training.aug_readout import QUD_CUTOFF, QUD_SALT, qud_kept
+
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if record["salt"] != QUD_SALT or record["cutoff"] != QUD_CUTOFF:
+        raise ValueError(f"{path} was drawn under another rule")
+    keys = {key for keys in record["kept"].values() for key in keys}
+    if any(qud_kept(key) for key in keys):
+        raise ValueError(f"{path} holds a segment #95 kept: it is another half")
+    return keys
+
+
+def write_qud_complement(path: Path = QUD_SELECTION_PATH) -> dict:
+    """Freeze the complement from every segment the QUD pilot decoded."""
+    from tadabur.qud_overlap import PILOT
+    from training.qud_pilot import read_decodes
+
+    if path.exists():
+        raise SystemExit(f"{path.name} exists: the half is fixed")
+    record = qud_complement_record({slug: sorted(read_decodes(slug, BASE)) for slug in PILOT})
+    write_text_atomically(path, json.dumps(record, ensure_ascii=False, indent=1) + "\n")
+    return record
+
+
+# --- freeze: the look half only -----------------------------------------------------------------
+
+
+def freeze_report(grades: Sequence, model: str, top: int = 10) -> dict:
+    """One model's false flags by cause and its top substitutions over the graded words, read
+    from the words whose kept grade is a flag (``training.word_flags.Flag``)."""
+    causes: Counter = Counter()
+    substitutions: Counter = Counter()
+    for grade in grades:
+        if grade.model != model or grade.scoring != SHIPPED_DEFAULT.name:
+            continue
+        if not grade.graded or not grade.flagged:
+            continue
+        for cause in (CONSONANT, TASHKEEL_CAUSE):
+            if carries_cause(grade.reason, cause):
+                causes[cause] += 1
+        substitutions.update(set(grade.reason.consonants))
+    return {
+        "model": model,
+        "causes": {cause: causes[cause] for cause in (CONSONANT, TASHKEEL_CAUSE)},
+        "substitutions": [{"cause": cause, "substitution": substitution, "words": words}
+                          for (cause, substitution), words in
+                          sorted(substitutions.items(), key=lambda kv: (-kv[1], kv[0]))[:top]],
+    }
+
+
+def run_freeze(spec: RoundSpec, sources, half: str, model: str | None = None) -> dict:
+    """A model's cause split and top substitutions on the **look** half. The confirm half is the
+    verdict phase's to read (:func:`confirm_report`), never the freeze's (data discipline 1)."""
+    if half != LOOK:
+        raise SystemExit(f"freeze reads the look half only: {half!r} is the verdict phase's")
+    model = model or spec.baseline
+    data = sources.tarteel(LOOK, (model,))
+    return freeze_report(sources.grade(data.items, data.decodes, (model,)), model)
+
+
+def frozen_substitutions(spec: RoundSpec, path: Path = FREEZE_PATH) -> tuple[str, ...]:
+    """The substitution list #177 froze before training; empty until it lands, so G5 cannot
+    certify."""
+    if spec.name != CONSONANT1.name or not path.exists():
+        return ()
+    record = json.loads(path.read_text(encoding="utf-8"))
+    return tuple(row["substitution"] for row in record["substitutions"])
+
+
+# --- the catch arm (G6) -------------------------------------------------------------------------
+
+
+def g6_sites() -> list:
+    """Ship A's held-out verified sites heard as the partner letter at ط↔ق or س↔ش, less the
+    shared exclusions (an existing definition, applied as :mod:`training.truth_baseline` does)."""
+    from tadabur.exclusions import current
+    from tadabur.ship_a import HELD_OUT
+    from tadabur.ship_a_verified import SHIP_A, load_verified
+    from training.site_outcomes import MISTAKE_SIDE, side
+
+    sites, designs = load_verified()
+    excluded = current()
+    return [site for site in sites
+            if site.mark in G6_MARKS and side(site) == MISTAKE_SIDE
+            and site.site_id in designs
+            and (designs[site.site_id].frame, designs[site.site_id].half) == (SHIP_A, HELD_OUT)
+            and site.site_id not in excluded]
+
+
+def load_g6_sites(path: Path = G6_SITES_PATH) -> list[str]:
+    """The frozen G6 site ids, in the order :func:`g6_sites` reads them."""
+    return json.loads(path.read_text(encoding="utf-8"))["sites"]
+
+
+def write_g6_sites(path: Path = G6_SITES_PATH) -> list[str]:
+    """Freeze G6's ids, so the denominator cannot drift between C95 and the readout."""
+    if path.exists():
+        raise SystemExit(f"{path.name} exists: G6's sites are fixed")
+    sites = [site.site_id for site in g6_sites()]
+    write_text_atomically(path, json.dumps(
+        {"issue": CONSONANT1.issue, "rule": "Ship A's held-out verified real mistakes at ط↔ق "
+         "and س↔ش, heard as the partner letter, less the shared exclusions",
+         "sites": sites}, ensure_ascii=False, indent=1) + "\n")
+    return sites
+
+
+def catch_difference(candidate: int, baseline: int) -> int:
+    """The paired count of flagged sites, candidate − baseline (G6's bar reads it)."""
+    return candidate - baseline
+
+
+def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = None,
+              cache_dir: Path | None = None) -> dict | None:
+    """Each site's word graded through Muraja on every model's recorded check sequence, reusing
+    :func:`training.truth_baseline.app_outcomes`. ``None`` when a model has no check cache yet:
+    a missing input, which reads "cannot certify", never an error."""
+    from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
+    from training.aug_readout_gate import model_spec
+    from training.truth_baseline import (
+        CHECK_PROTOCOLS, CHECK_STORE, CHECKS, DEFAULT_MODELS, app_outcomes, check_cache,
+        committed_text, items_of, model_caches, read_cache,
+    )
+    from training.muraja_policy import WORD_FLAGGED, require_harness
+
+    spec = spec or CONSONANT1
+    directory = Path(cache_dir) if cache_dir is not None else CHECK_STORE.directory
+    if any(not (directory / f"{name}.json").exists() for name in models):
+        return None
+    registry = load_staged_clips(REGISTRY_PATH)
+    items = items_of(sites, registry)
+    sequences = {}
+    for name in models:
+        ref = DEFAULT_MODELS.get(name) or model_spec(name, spec=spec).ref
+        if directory == CHECK_STORE.directory:
+            _, recorded = model_caches(name, ref, items, registry, None)
+        else:
+            path = directory / f"{name}.json"
+            recorded = read_cache(path)
+            check_cache(path, recorded, ref, CHECK_PROTOCOLS)
+        sequences[name] = {key: row[CHECKS] for key, row in recorded["items"].items()
+                           if key in items}
+        if missing := set(items) - set(sequences[name]):
+            raise SystemExit(f"{name}: its check cache lacks {len(missing)} of G6's items")
+    decodes = {name: {key: committed_text(checks) for key, checks in sequences[name].items()}
+               for name in models}
+    _, kept = app_outcomes(sites, [], decodes, sequences, require_harness())
+    scoring = SHIPPED_DEFAULT.name
+    table = {"sites": [site.site_id for site in sites], "models": {}}
+    for name in models:
+        outcomes = {site.site_id: kept.grades[scoring][name][site.site_id].outcome
+                    for site in sites}
+        table["models"][name] = {
+            "graded": len(sites),
+            "flagged": sum(outcome in WORD_FLAGGED for outcome in outcomes.values()),
+            "outcomes": outcomes}
+    pair = (CANDIDATE, spec.baseline)
+    table["difference"] = (catch_difference(table["models"][pair[0]]["flagged"],
+                                            table["models"][pair[1]]["flagged"])
+                           if all(name in table["models"] for name in pair) else None)
+    return table
+
+
+# --- C95 against C95: the tracer ----------------------------------------------------------------
+
+
+def tracer_text(views: Mapping[str, Mapping],
+                comparisons: Sequence[tuple[str, str]] = ((CANDIDATE, C95),)) -> str:
+    """The tracer's summary: one line per table with each paired difference's point, its
+    interval and the fact that nothing is certified."""
+    from training.aug_readout_doc import interval_text
+
+    names = [comparison_name(*pair) for pair in comparisons]
+    lines = ["C95 against C95: no candidate exists yet, so every read is plumbing.", ""]
+    for table, view in views.items():
+        for name in names:
+            row = view["comparisons"].get(name)
+            if row is not None:
+                lines.append(f"{table} ({name}): point difference {row['point']:.2f} / "
+                             f"{interval_text(row['interval'])} / cannot certify")
+    return "\n".join(lines)
+
+
+def tracer_spec(spec: RoundSpec = CONSONANT1) -> RoundSpec:
+    """The round's spec with both the candidate and C95 reading C95's committed decodes."""
+    names = {**spec.decode_names, C95: C95_DECODE, CANDIDATE: C95_DECODE,
+             "candidate_live": C95_DECODE, "candidate_ema": C95_DECODE}
+    return dataclasses.replace(spec, decode_names=names)
+
+
+def tracer(sources, workers: int = 1) -> dict:
+    """The look half, qdat and Tadabur dev, C95 against itself (:func:`tracer_text`'s views)."""
+    from training import aug_readout as ar
+
+    models = (CANDIDATE, C95)
+    views = {}
+    for name, read in (("tarteel_v1.look",
+                        lambda: sources.tarteel(LOOK, (*models, BASE))),
+                       ("qdat", lambda: sources.qdat((*models, BASE)))):
+        data = read()
+        grades = sources.grade(data.items, data.decodes, models)
+        views[f"{name}.false_flags"] = compare(
+            false_flag_terms(grades, models, SHIPPED_DEFAULT.name), PER_1000)
+        views[f"{name}.word_agreement"] = compare(
+            word_agreement_terms(data.items, ar.checks_text(data, (*models, BASE)), models,
+                                 workers=workers), POINTS)
+    tadabur = sources.tadabur(models)
+    views["tadabur_dev_unseen.teacher_agreement"] = compare(
+        teacher_agreement_terms(tadabur.clips, tadabur.decodes, models), POINTS)
+    return views
+
+
+# --- C95's identity -----------------------------------------------------------------------------
+
+
+def write_models(path: Path = MODELS_PATH) -> dict:
+    """C95's identity per set, from #95's committed identity records."""
+    from training.aug_readout_gate import READOUT_DIR
+
+    if path.exists():
+        raise SystemExit(f"{path.name} exists: C95's identity is frozen")
+    committed = json.loads((READOUT_DIR / "models.json").read_text(encoding="utf-8"))
+    records = {}
+    for set_name in ("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "tadabur_dev_unseen"):
+        records[f"{set_name}/{C95}"] = {**committed[f"{set_name}/{C95_DECODE}"], "model": C95}
+    write_text_atomically(path, json.dumps(records, ensure_ascii=False, indent=1) + "\n")
+    return records
+
+
+# --- the round's confirm sitting ----------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class RoundData:
+    """Every set the round's confirm sitting reads, with the roles bound."""
+
+    tarteel: object
+    qdat: object
+    qud_other: object
+    tadabur: object
+    bench: Mapping[str, str]
+    catch: Mapping | None
+
+
+ROUND_ROLES = (CANDIDATE, C95, H448, BASE)
+STUDENTS = (CANDIDATE, C95, H448)
+
+
+def bind_round(decodes: Mapping[str, Mapping], weights: str) -> dict:
+    """Role names to decodes: the candidate's chosen weights, then C95, ``h448`` and the teacher."""
+    from training.aug_readout_gate import arm_model
+
+    roles = {arm_model(CANDIDATE, weights): CANDIDATE, C95: C95, H448: H448, BASE: BASE}
+    return {roles.get(name, name): rows for name, rows in decodes.items()}
+
+
+def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int = 1) -> dict:
+    """The round's confirm tables and verdict, the bars read as #174 states them."""
+    from training import aug_readout as ar
+    from training.aug_readout_metrics import (
+        abstention_terms, bench_terms, blank_terms, ungraded_terms,
+    )
+    from training.aug_readout_verdict import verdict
+
+    shipped = SHIPPED_DEFAULT.name
+    comparisons = spec.comparisons
+    student = (CANDIDATE, C95, H448)
+
+    def flags(grades, cause=None) -> dict:
+        return compare(false_flag_terms(grades, ROUND_ROLES, shipped, cause=cause), PER_1000,
+                       comparisons)
+
+    def agreement(d, subset=None) -> dict:
+        return compare(word_agreement_terms(d.items, ar.checks_text(d, ROUND_ROLES), student,
+                                            subset=subset, workers=workers), POINTS,
+                       comparisons)
+
+    bench = ar.bench_items(data.qdat, data.bench)
+    substitutions = substitution_views(
+        substitution_terms(data.tarteel.grades, ROUND_ROLES, shipped,
+                           frozen_substitutions(spec)), PER_1000, comparisons)
+    report = {
+        "issue": spec.issue,
+        "main": {"all_cause": flags(data.tarteel.grades),
+                 "consonant_cause": flags(data.tarteel.grades, CONSONANT),
+                 "tashkeel_cause": flags(data.tarteel.grades, TASHKEEL_CAUSE)},
+        "mechanism": {"tarteel_v1_confirm": agreement(data.tarteel),
+                      "qdat": agreement(data.qdat),
+                      "tarteel_v1_confirm_departs": agreement(data.tarteel, DEPARTS),
+                      "qdat_departs": agreement(data.qdat, DEPARTS)},
+        "consistency": {"qdat": flags(data.qdat.grades)},
+        "guards": {
+            "qud_other": flags(data.qud_other.grades),
+            "tadabur_dev_unseen": compare(
+                teacher_agreement_terms(data.tadabur.clips, data.tadabur.decodes, ROUND_ROLES),
+                POINTS, comparisons),
+            "qdat_bench": {
+                kind: compare(terms, POINTS, comparisons) for kind, terms in bench_terms(
+                    bench, ar.stream_text(ar.SetData(bench, data.qdat.decodes), ROUND_ROLES),
+                    data.bench, ROUND_ROLES).items()},
+        },
+        "substitutions": substitutions,
+        "catch": {"ship_a_verified": data.catch},
+        "leniency": {
+            "blank_ratio": compare(blank_terms(data.tadabur.clips, data.tadabur.blanks,
+                                               ROUND_ROLES), POINTS, comparisons),
+            "abstentions": {name: compare(
+                abstention_terms(d.items, ar.checks_text(d, ROUND_ROLES), ROUND_ROLES, workers),
+                POINTS, comparisons)
+                for name, d in (("tarteel_v1_confirm", data.tarteel), ("qdat", data.qdat))},
+            "ungraded": {name: compare(ungraded_terms(d.grades, ROUND_ROLES, shipped), PER_1000,
+                                       comparisons)
+                         for name, d in (("tarteel_v1_confirm", data.tarteel),
+                                         ("qdat", data.qdat), ("qud_other", data.qud_other))},
+        },
+        "sizes": {"tarteel_v1_confirm": len(data.tarteel.items),
+                  "qdat": len(data.qdat.items), "qud_other": len(data.qud_other.items),
+                  "tadabur_dev_unseen": len(data.tadabur.clips), "qdat_bench": len(bench),
+                  "ship_a_verified": len(data.catch["sites"]) if data.catch else 0},
+    }
+    report["verdict"] = verdict(report, spec=spec)
+    return report
+
+
+def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1) -> RoundData:
+    """Every set the round's confirm sitting reads, graded, with the roles bound."""
+    from training import aug_readout as ar
+    from training.aug_readout_gate import arm_model
+
+    candidate = arm_model(CANDIDATE, weights)
+    models = (candidate, C95, H448, BASE)
+
+    def graded(data) -> object:
+        decodes = bind_round(data.decodes, weights)
+        return ar.SetData(data.items, decodes,
+                          sources.grade(data.items, decodes, ROUND_ROLES))
+
+    tadabur = sources.tadabur(models)
+    return RoundData(
+        tarteel=graded(sources.tarteel(CONFIRM, models)),
+        qdat=graded(sources.qdat(models)),
+        qud_other=graded(sources.qud_other(models)),
+        tadabur=ar.TadaburData(tadabur.clips, bind_round(tadabur.decodes, weights),
+                               bind_round(tadabur.blanks, weights),
+                               tadabur.redecoded_identical),
+        bench=sources.bench(),
+        catch=catch_arm(g6_sites(), (candidate, C95), spec=spec))
+
+
+def coverage() -> dict:
+    """The round's frozen populations, decoded and reference-evaluable, with the reasons."""
+    from training.aug_readout import COVERAGE_STATEMENT, coverage as aug95_coverage
+
+    base = aug95_coverage()["populations"]
+    return {"issue": CONSONANT1.issue, "statement": COVERAGE_STATEMENT,
+            "populations": {name: base[name]
+                            for name in ("tarteel_v1.look", "tarteel_v1.confirm")}
+            | {"qud_other": _qud_coverage(load_qud_complement())}}
+
+
+def _qud_coverage(frozen: set[str]) -> dict:
+    """The QUD other half's decoded, evaluated and excluded segments."""
+    from tadabur.qud_overlap import PILOT
+    from training.qud_pilot import REPORT_PATH, read_decodes
+
+    report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
+    unsupported = {key for slug in PILOT
+                   for key in report["items"][slug]["phonetizer_unsupported_list"]}
+    excluded = sorted(frozen & unsupported)
+    lines = {}
+    for slug in PILOT:
+        lines.update(read_decodes(slug, BASE))
+    return {
+        "decoded": len(frozen),
+        "evaluated": len(frozen) - len(excluded),
+        "excluded": len(excluded),
+        "excluded_words": sum(lines[key]["segment"][1] - lines[key]["segment"][0] + 1
+                              for key in excluded),
+        "excluded_keys": excluded,
+        "reason": "the QUD pilot left these segments out as phonetizer-unsupported (its "
+                  "waqf/leen reference limitation, `qud_eval/pilot/report.json`); every model "
+                  "shares the exclusion",
+    }
+
+
+# --- running it ---------------------------------------------------------------------------------
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("select-qud", help="freeze the QUD other half")
+    commands.add_parser("g6", help="freeze G6's held-out site ids")
+    commands.add_parser("models", help="record C95's identity per set")
+    freeze = commands.add_parser("freeze", help="a model's look-half causes and substitutions")
+    freeze.add_argument("--half", required=True, choices=(LOOK, CONFIRM))
+    freeze.add_argument("--model", default=None)
+    tracer_command = commands.add_parser("tracer", help="C95 against C95 on committed decodes")
+    tracer_command.add_argument("--workers", type=int, default=8)
+    args = parser.parse_args()
+
+    if args.command == "select-qud":
+        record = write_qud_complement()
+        print(f"wrote {QUD_SELECTION_PATH}: {record['kept_counts']}")
+    elif args.command == "g6":
+        print(f"wrote {G6_SITES_PATH}: {write_g6_sites()}")
+    elif args.command == "models":
+        print(f"wrote {MODELS_PATH}: {sorted(write_models())}")
+    elif args.command == "freeze":
+        from training import aug_readout as ar
+
+        print(json.dumps(run_freeze(CONSONANT1, ar.Sources(tracer_spec()), args.half,
+                                    args.model), ensure_ascii=False, indent=1))
+    else:
+        from training import aug_readout as ar
+
+        print(tracer_text(tracer(ar.Sources(tracer_spec()), args.workers)))
+
+
+if __name__ == "__main__":
+    main()

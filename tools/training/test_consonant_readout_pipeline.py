@@ -15,7 +15,9 @@ from tadabur.qud_text import ItemReference
 from training import aug_readout as ar
 from training import aug_readout_doc as adoc
 from training import aug_readout_gate as ag
+from training import aug_readout_metrics as am
 from training import aug_readout_spec as asp
+from training import aug_readout_verdict as av
 from training import consonant_readout as cr
 from training import truth_baseline as tb
 from training.external_corpus import WordGrade
@@ -217,3 +219,256 @@ def test_g6_plumbing_reproduces_truth_baseline_s_outcomes_on_the_eight_sites():
             outcome in WORD_FLAGGED for outcome in expected[name].values())
         assert arm["models"][name]["graded"] == len(sites)
     assert arm["difference"] is None  # candidate and baseline are not both read
+
+
+# --- #95's report from the committed data alone (self-check r2, S2.7) --------------------------
+
+
+def _synthetic_retasy() -> ar.SetData:
+    """One RetaSy-shaped item graded for every role: its tables come from the committed report,
+    but the other tables must not need restricted decodes to be regenerated (#171)."""
+    item = _item(0)
+    grades = [_grade(role, item, 0, None) for role in ar.ROLES]
+    return ar.SetData([item], {role: {} for role in ar.ROLES}, grades)
+
+
+class _NoRetasy:
+    """Sources whose RetaSy set is synthetic (its decodes are absent here, #171); every other
+    set is the real one, read from the committed decodes."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self._retasy = _synthetic_retasy()
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def retasy(self, models) -> ar.SetData:
+        return ar.SetData(list(self._retasy.items), {model: {} for model in models})
+
+    def grade(self, items, decodes, models) -> list:
+        if items and items[0] is self._retasy.items[0]:
+            return self._retasy.grades
+        return self._inner.grade(items, decodes, models)
+
+
+def test_the_aug95_report_regenerates_key_for_key_without_the_restricted_decodes():
+    _skip_without_harness()
+    data = ar.load_confirm(_NoRetasy(ar.Sources()), "ema", spec=asp.AUG95)
+    regenerated = ar.confirm_report(data, spec=asp.AUG95)
+    committed = json.loads((ar.READOUT_DIR / "report.json").read_text(encoding="utf-8"))
+    assert "retasy_in_correct" in committed["catch"]  # taken from the committed file
+    for key in ("audit", "baselines", "choice", "issue"):
+        regenerated.pop(key, None)
+        committed.pop(key, None)
+    # RetaSy's restricted decodes are #171's; its subtree is the committed file's.
+    regenerated["catch"]["retasy_in_correct"] = committed["catch"]["retasy_in_correct"]
+    regenerated["sizes"]["retasy_in_correct"] = committed["sizes"]["retasy_in_correct"]
+    assert ag.canonical(regenerated) == ag.canonical(committed)
+
+
+# --- the round's spec-driven requirements (self-check r2, S2.3) --------------------------------
+
+
+def test_the_consonant_round_never_demands_the_control_s_decodes():
+    consonant = ag.needs("confirm", "ema", asp.CONSONANT1)
+    assert all("control_ema" not in models for models in consonant.values())
+    assert consonant["qdat"] == ("candidate_ema", "c95", "h448")
+    assert "control_ema" in ag.needs("confirm", "ema", asp.AUG95)["qdat"]  # #95 unchanged
+    files = ar.Sources(asp.CONSONANT1).input_files("confirm", "ema")
+    assert not any("control" in path.name for path in files)
+
+
+def test_the_sitting_lists_the_freeze_and_the_caches_it_reads(monkeypatch, tmp_path):
+    freeze = tmp_path / "freeze.json"
+    freeze.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(cr, "FREEZE_PATH", freeze)
+    files = ar.Sources(asp.CONSONANT1).input_files("confirm", "ema")
+    assert freeze in files
+    from training.truth_baseline import CHECK_STORE, DECODE_STORE
+
+    for store in (CHECK_STORE, DECODE_STORE):
+        if store.path("c95").exists():
+            assert store.path("c95") in files
+
+
+# --- the freeze's list is the round's consonant causes (self-check r2, S2.4) -------------------
+
+
+def test_the_freeze_substitution_list_holds_only_the_round_s_consonant_causes():
+    item = _item(0)
+    flags = [Flag(("other_consonant",), (), "minor", (),
+                  consonants=(("other_consonant", "ا→∅"),)),
+             Flag(("shaddah",), (), "minor", (), consonants=(("shaddah", "ل→∅"),)),
+             Flag(("target_pair",), (), "minor", (), consonants=(("target_pair", "ط→ق"),)),
+             Flag(("soft_pair",), (), "minor", (), consonants=(("soft_pair", "ن→ل"),))]
+    record = cr.freeze_report([_grade("c95", item, i, flag) for i, flag in enumerate(flags)],
+                              "c95")
+    assert {row["substitution"] for row in record["substitutions"]} == {"ط→ق", "ن→ل"}
+    assert record["causes"]["consonant"] == 2
+
+
+# --- the catch arm's pairing, frozen ids and scope (self-check r2, S2.1/S2.2/S2.12) ------------
+
+
+class _Site:
+    def __init__(self, site_id: str):
+        self.site_id = site_id
+
+
+def test_the_catch_table_pairs_the_candidate_against_the_baseline_it_reads():
+    sites = [_Site(f"a{i}") for i in range(3)]
+    outcomes = {"candidate_ema": {"a0": "flagged", "a1": "not_flagged", "a2": "flagged"},
+                "c95": {"a0": "flagged", "a1": "flagged", "a2": "not_flagged"}}
+    table = cr.catch_table(sites, outcomes, asp.C95)
+    assert [table["models"][name]["flagged"] for name in outcomes] == [2, 2]
+    assert table["difference"] == 0  # 2 − 2: the earlier wiring read None here
+    assert cr.catch_table(sites, {"h448": outcomes["c95"]}, asp.C95)["difference"] is None
+
+
+def test_the_confirm_sitting_reads_the_frozen_g6_sites_and_refuses_drift(monkeypatch):
+    frozen = cr.load_g6_sites()
+    assert [site.site_id for site in cr.g6_scope()["sites"]] == frozen
+    live = cr.g6_sites()
+    monkeypatch.setattr(cr, "_held_out_mistakes", lambda: live[:-1])
+    with pytest.raises(SystemExit, match="denominator moved"):
+        cr.g6_scope()
+
+
+def test_the_frozen_g6_record_discloses_what_the_exclusions_removed():
+    record = json.loads(cr.G6_SITES_PATH.read_text(encoding="utf-8"))
+    scope = cr.g6_scope()
+    assert record["candidates"] == scope["candidates"]
+    assert record["excluded"] == scope["excluded"]
+    assert record["sites"] == [site.site_id for site in scope["sites"]]
+
+
+# --- the tracer runs #95's reproduction check (self-check r2, S2.8) ---------------------------
+
+
+def test_the_tracer_runs_the_reproduction_check_and_prints_totals(monkeypatch):
+    monkeypatch.setattr(ar, "reproduction", lambda sources: ar.REPRODUCTION)
+    monkeypatch.setattr(cr, "tracer_views", lambda sources, workers: {})
+    record = cr.tracer(object(), workers=1)
+    assert record["reproduction"] == ar.REPRODUCTION
+    text = cr.tracer_text(record["views"], reproduction_totals=record["reproduction"])
+    assert "1971/41572" in text and "670/11502" in text
+    assert "the #95 reproduction check" in text
+
+
+def test_the_tracer_aborts_on_a_perturbed_reproduction(monkeypatch):
+    perturbed = json.loads(json.dumps(ar.REPRODUCTION))
+    perturbed["qdat"]["flagged"] += 1
+    monkeypatch.setattr(ar, "reproduction", lambda sources: perturbed)
+    monkeypatch.setattr(cr, "tracer_views", lambda sources, workers: {})
+    with pytest.raises(SystemExit, match="reproduc"):
+        cr.tracer(object())
+
+
+# --- the consonant document (self-check r2, S2.5/S2.6) -----------------------------------------
+
+
+def _render_interval() -> dict:
+    return {"lower": None, "upper": None, "method": "none", "reason": "sparse or degenerate"}
+
+
+def _view(points: dict, scale: float = am.POINTS, paired: bool = True,
+          veto: bool = False) -> dict:
+    comparisons = {}
+    if paired:
+        row = {"point": 0.0, "interval": _render_interval()}
+        if veto:
+            row["veto_interval"] = _render_interval()
+        comparisons["candidate−c95"] = row
+    return {"scale": scale, "observations": 4, "clusters": 2,
+            "models": {name: {"point": point, "num": 1, "den": 2,
+                              "interval": _render_interval()}
+                       for name, point in points.items()},
+            "comparisons": comparisons}
+
+
+def _look() -> dict:
+    return {"items": 4, "rule": "fewer false flags", "choice": "ema",
+            "inputs": {"candidate_live": {"graded_words": 4, "flagged_words": 1,
+                                          "false_flags_per_1000": 250.0,
+                                          "word_agreement_points": 90.0}}}
+
+
+def _catch() -> dict:
+    return {"sites": ["s0", "s1", "s2"],
+            "models": {"candidate_ema": {"graded": 3, "flagged": 1, "outcomes": {}},
+                       "c95": {"graded": 3, "flagged": 2, "outcomes": {}}},
+            "difference": -1,
+            "scope": {"candidates": 3, "excluded": []}}
+
+
+def _round_report(catch: dict) -> dict:
+    students = {"candidate": 90.0, "c95": 89.0, "h448": 88.0, "base": 99.0}
+    report = {
+        "issue": asp.CONSONANT1.issue,
+        "main": {"all_cause": _view({"candidate": 40.0, "c95": 47.41, "h448": 57.0}),
+                 "consonant_cause": _view({"candidate": 10.0, "c95": 13.0, "h448": 15.0}),
+                 "tashkeel_cause": _view({"candidate": 5.2, "c95": 5.0, "h448": 6.0}),
+                 "qud_other_tashkeel_cause": _view({"candidate": 3.0, "c95": 3.1,
+                                                    "h448": 4.0})},
+        "mechanism": {name: _view(students) for name in (
+            "tarteel_v1_confirm", "qdat", "tarteel_v1_confirm_departs", "qdat_departs",
+            "tarteel_v1_confirm_equals", "qdat_equals")},
+        "consistency": {"qdat": _view({"candidate": 60.0, "c95": 64.0, "h448": 70.0},
+                                      scale=am.PER_1000)},
+        "guards": {"qud_other": _view({"candidate": 4.0, "c95": 3.9, "h448": 5.0}),
+                   "qud_half": _view({"candidate": 4.5, "c95": 4.6, "h448": 5.5}),
+                   "tadabur_dev_unseen": _view({"candidate": 94.0, "c95": 94.1, "h448": 93.0,
+                                                "base": 95.0}),
+                   "qdat_bench": {kind: _view({"candidate": 90.0, "c95": 90.0, "h448": 89.0})
+                                  for kind in ("consonant", "haraka", "shaddah")}},
+        "substitutions": {"س→ش": _view({"candidate": 1.0, "c95": 1.2, "h448": 2.0},
+                                       scale=am.PER_1000, veto=True)},
+        "catch": {"ship_a_verified": catch,
+                  "qdat_bench_departures": _view({"candidate": 5.0, "c95": 4.0, "h448": 6.0},
+                                                 scale=am.PER_1000)},
+        "leniency": {"blank_ratio": _view({"candidate": 1.0, "c95": 1.0, "h448": 2.0}),
+                     "abstentions": {name: _view(students) for name in (
+                         "tarteel_v1_confirm", "qdat")},
+                     "ungraded": {name: _view({"candidate": 1.0, "c95": 2.0, "h448": 3.0},
+                                              scale=am.PER_1000) for name in (
+                         "tarteel_v1_confirm", "qdat", "qud_other")}},
+        "sizes": {"tarteel_v1_confirm": 4, "qdat": 3, "qud_other": 2, "qud_half": 5,
+                  "tadabur_dev_unseen": 6, "qdat_bench": 3, "ship_a_verified": len(catch["sites"])},
+    }
+    report["verdict"] = av.verdict(report, spec=asp.CONSONANT1)
+    return report
+
+
+def _population(evaluated: int) -> dict:
+    return {"decoded": evaluated + 1, "evaluated": evaluated, "excluded": 1,
+            "excluded_words": 2, "excluded_keys": ["x"], "reason": "a reason"}
+
+
+def _round_coverage() -> dict:
+    return {"issue": asp.CONSONANT1.issue, "statement": "The reading covers these populations.",
+            "populations": {"tarteel_v1.look": _population(4),
+                            "tarteel_v1.confirm": _population(4),
+                            "qud_other": _population(2)}}
+
+
+def test_the_consonant_doc_renders_c95_and_every_reported_item():
+    text = adoc.render(_look(), _round_report(_catch()), _round_coverage(),
+                       spec=asp.CONSONANT1)
+    assert text.startswith("# The consonant round's readout (#175)")
+    assert "| c95 (the baseline) |" in text  # S2.5: the baseline is a column
+    assert "| h448 |" in text and "| base (the teacher) |" in text
+    assert "where the teacher equals the reference" in text
+    assert "G4's companion" in text
+    assert "the salted half #95 read" in text
+    assert "where the experts heard a departure" in text
+    assert "candidate − c95: -1 sites" in text
+    assert "Of the 3 held-out mistakes" in text
+
+
+def test_the_consonant_doc_reads_a_missing_catch_difference_as_not_read():
+    catch = dict(_catch(), difference=None)
+    text = adoc.render(_look(), _round_report(catch), _round_coverage(),
+                       spec=asp.CONSONANT1)
+    assert "candidate − c95: not read" in text
+    assert "G6 cannot certify" in text

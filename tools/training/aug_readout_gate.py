@@ -37,6 +37,8 @@ from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK
 from training.aug_readout_metrics import BASE, CANDIDATE, CONTROL, H448
+from training.aug_readout_spec import AUG95, RoundSpec
+from training.aug_readout_spec import model_spec as pinned_model_spec
 from training.external_decode import DEFAULT_SPECS, NO_AUGMENTATION, ModelSpec
 from training.truth_baseline import ARM_PROTOCOLS, CHECKS, DEFAULT_MODELS, expected_fingerprint
 
@@ -105,11 +107,13 @@ def arm_model(arm: str, weights: str) -> str:
 LOOK_MODELS = tuple(arm_model(CANDIDATE, w) for w in WEIGHTS)
 
 
-def model_spec(name: str) -> ModelSpec:
-    """The decode spec of a readout model: an arm's weights at :data:`FINAL_STEP`, or a
-    truth-baseline model."""
+def model_spec(name: str, spec: RoundSpec | None = None) -> ModelSpec:
+    """The decode spec of a readout model: a round's pinned model, an arm's weights at
+    :data:`FINAL_STEP`, or a truth-baseline model."""
     if name in DEFAULT_SPECS:
         return DEFAULT_SPECS[name]
+    if (pinned := pinned_model_spec(spec or AUG95, name)) is not None:
+        return pinned
     arm, _, weights = name.rpartition("_")
     if arm not in ARMS or weights not in WEIGHTS:
         raise ValueError(f"{name!r} is no readout model")
@@ -119,7 +123,8 @@ def model_spec(name: str) -> ModelSpec:
 # --- the sets -----------------------------------------------------------------------------------
 
 TARTEEL_LOOK, TARTEEL_CONFIRM = f"tarteel_v1.{LOOK}", f"tarteel_v1.{CONFIRM}"
-QDAT_SET, RETASY_SET, QUD_SET, TADABUR_SET = "qdat", "retasy", "qud_half", "tadabur_dev_unseen"
+QDAT_SET, RETASY_SET, QUD_SET = "qdat", "retasy", "qud_half"
+QUD_OTHER_SET, TADABUR_SET = "qud_other", "tadabur_dev_unseen"
 STREAM = "stream_b0"
 #: The argmax frames' blank count beside a ``stream_b0`` decode: ``[blank, frames]``.
 BLANKS = "stream_b0_blanks"
@@ -148,6 +153,8 @@ SETS = {s.name: s for s in (
     ReadoutSet(RETASY_SET, (CHECKS,), CLIP_PROVENANCE, open=False),
     ReadoutSet(QUD_SET, (CHECKS,), ("audio_filename", "mp3_sha256", "segment_index",
                                     "start_sample", "end_sample")),
+    ReadoutSet(QUD_OTHER_SET, (CHECKS,), ("audio_filename", "mp3_sha256", "segment_index",
+                                          "start_sample", "end_sample")),
     ReadoutSet(TADABUR_SET, (STREAM,), ("reciter_id", "clean_sha256", "start_sample",
                                         "end_sample")),
 )}
@@ -172,11 +179,14 @@ def allowed_models(set_name: str, choice: Mapping | None) -> tuple[str, ...]:
     return chosen + BASELINES if set_name == TADABUR_SET else chosen
 
 
-def needs(phase: str, weights: str | None) -> dict[str, tuple[str, ...]]:
+def needs(phase: str, weights: str | None,
+          spec: RoundSpec | None = None) -> dict[str, tuple[str, ...]]:
     """Every set a sitting reads readout decodes of, and the models it reads there."""
+    declared = (spec or AUG95).sets
     if phase == LOOK:
-        return {TARTEEL_LOOK: LOOK_MODELS}
-    return {name: allowed_models(name, {"weights": weights}) for name in GATED}
+        return {name: LOOK_MODELS for name in declared if name == TARTEEL_LOOK}
+    return {name: allowed_models(name, {"weights": weights}) for name in declared
+            if name in SETS and SETS[name].gated}
 
 
 # --- identity -----------------------------------------------------------------------------------
@@ -208,32 +218,42 @@ def baseline_identities() -> dict[str, dict]:
     return found
 
 
-def validate_identity(set_name: str, model: str, record: Mapping) -> dict:
+def validate_identity(set_name: str, model: str, record: Mapping,
+                      spec: RoundSpec | None = None) -> dict:
     """One decode run's identity record, complete and the model the readout names: the frozen
     fingerprints; a baseline's committed identity; an arm's checkpoint path, its SHA-256, its
     weights, step :data:`FINAL_STEP` and its arm's recipe (:data:`RECIPES`), and nothing else.
     Returns the identity."""
-    spec = model_spec(model)
+    specification = spec or AUG95
+    decoded = model_spec(model, spec=specification)
+    pinned = specification.models.get(model)
     name = f"{set_name}/{model}"
-    if record.get("model") != model or record.get("fingerprints") != expected_fingerprints(spec.ref):
+    if record.get("model") != model or record.get("fingerprints") != expected_fingerprints(
+            decoded.ref):
         raise ValueError(f"{name}: not {model} under the frozen protocol's fingerprints")
     identity = record.get("identity")
+    if pinned is not None:  # a round's pinned baseline, e.g. C95 for the consonant round
+        expected = {"model_ref": pinned.ref, "weights": pinned.weights, "step": pinned.step,
+                    "recipe": pinned.recipe, "checkpoint_sha256": pinned.checkpoint_sha256}
+        if identity != expected:
+            raise ValueError(f"{name}: {identity} is not {model}'s pinned checkpoint")
+        return dict(identity)
     if model in BASELINES:
         if identity != baseline_identities()[model]:
             raise ValueError(f"{name}: not the committed {model}")
         return dict(identity)
-    expected = {"model_ref": spec.ref, "weights": EMA if spec.use_ema else LIVE,
-                "step": FINAL_STEP, "recipe": spec.recipe}
+    expected = {"model_ref": decoded.ref, "weights": EMA if decoded.use_ema else LIVE,
+                "step": FINAL_STEP, "recipe": decoded.recipe}
     if not isinstance(identity, Mapping) or set(identity) != {*expected, "checkpoint_sha256"} \
             or any(identity[k] != v for k, v in expected.items()) \
             or not _SHA256.fullmatch(str(identity["checkpoint_sha256"])):
         raise ValueError(f"{name}: {identity} is not {model} at step {FINAL_STEP} under "
-                         f"{spec.recipe!r} with a checkpoint SHA-256")
+                         f"{decoded.recipe!r} with a checkpoint SHA-256")
     return dict(identity)
 
 
 def require_manifest(records: Mapping[str, Mapping], required: Mapping[str, Iterable[str]],
-                     choice: Mapping | None) -> dict[str, dict]:
+                     choice: Mapping | None, spec: RoundSpec | None = None) -> dict[str, dict]:
     """Every ``(set, model)`` a sitting reads has a valid identity record, each model one
     identity across its sets, each gated set only the chosen weights, and the candidate the
     identity the committed choice holds. Returns the identity per model."""
@@ -247,7 +267,7 @@ def require_manifest(records: Mapping[str, Mapping], required: Mapping[str, Iter
             record = records.get(f"{set_name}/{model}")
             if record is None:
                 raise ValueError(f"no identity record for {set_name}/{model}")
-            identity = validate_identity(set_name, model, record)
+            identity = validate_identity(set_name, model, record, spec=spec)
             if per_model.setdefault(model, identity) != identity:
                 raise ValueError(f"{model} is not one checkpoint across sets")
     if choice is not None:

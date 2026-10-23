@@ -1,7 +1,8 @@
 """Render ``docs/augmentation-readout.md`` from the readout's ``look.json`` and ``report.json`` (#95).
 
 Torch-free and harness-free: numbers in, Markdown out. Every table shows each model's rate and
-the two paired differences #95 asks for, candidate − ``h448`` and candidate − control.
+the round's paired differences (#95: candidate − ``h448`` and candidate − control; the consonant
+round: candidate − C95, with C95's own row beside the candidate's).
 """
 
 from __future__ import annotations
@@ -12,8 +13,8 @@ from training.aug_readout_metrics import PER_1000
 from training.aug_readout_spec import AUG95, RoundSpec
 from training.aug_readout_verdict import BAR_TEXT
 
-ORDER = ("candidate", "control", "h448", "base")
-LABELS = {"base": "base (the teacher)"}
+ORDER = ("candidate", "c95", "control", "h448", "base")
+LABELS = {"c95": "c95 (the baseline)", "base": "base (the teacher)"}
 VERDICT_TEXT = {"pass": "pass", "fail": "fail", "cannot_certify": "cannot certify"}
 
 
@@ -272,6 +273,8 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
                  main["consonant_cause"])
     out += table("Tarteel v1 confirm, tashkeel-caused false flags per 1,000 (G4)",
                  main["tashkeel_cause"])
+    out += table("QUD other half, tashkeel-caused false flags per 1,000 (G4's companion, "
+                 "reported)", main["qud_other_tashkeel_cause"])
     out += table("Tarteel v1 confirm, word agreement with the teacher (bar 4a)",
                  report["mechanism"]["tarteel_v1_confirm"])
     out += table("qdat, word agreement with the teacher (bar 4a)", report["mechanism"]["qdat"])
@@ -279,6 +282,10 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
                  report["mechanism"]["tarteel_v1_confirm_departs"])
     out += table("qdat, agreement on the teacher-departure words (bar 4b)",
                  report["mechanism"]["qdat_departs"])
+    out += table("Tarteel v1 confirm, agreement where the teacher equals the reference (bar 4b's "
+                 "companion, reported)", report["mechanism"]["tarteel_v1_confirm_equals"])
+    out += table("qdat, agreement where the teacher equals the reference (bar 4b's companion, "
+                 "reported)", report["mechanism"]["qdat_equals"])
     out += table("qdat, all-cause false flags per 1,000 (bar 5)", report["consistency"]["qdat"])
 
     out += ["## 3. The G5 substitutions (99.5% veto)", "",
@@ -300,16 +307,32 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
     out += ["## 5. Catch side: G6", ""]
     catch = report["catch"]["ship_a_verified"]
     if catch is None:
-        out += ["No catch input (C95's and the candidate's check caches): G6 cannot certify.", ""]
+        out += ["No catch input (C95's and the candidate's caches): G6 cannot certify.", ""]
     else:
-        out += [f"Ship A's held-out verified real mistakes at ط↔ق and س↔ش: {catch['sites']} "
-                f"sites, words the app flags (checks, shipped default).", "",
-                "| model | graded sites | flagged |", "|---|---|---|"]
+        out += [f"Ship A's held-out verified real mistakes at ط↔ق and س↔ش: {len(catch['sites'])} "
+                f"sites, words the app flags (checks, shipped default).", ""]
+        if "scope" in catch:
+            scope = catch["scope"]
+            out += [f"Of the {scope['candidates']} held-out mistakes at the two pairs, the "
+                    f"shared exclusions remove {len(scope['excluded'])}; G6 reads "
+                    f"{len(catch['sites'])}.", ""]
+            if scope["excluded"]:
+                out += ["Excluded: " + ", ".join(f"`{key}`" for key in scope["excluded"]), ""]
+        out += ["| model | graded sites | flagged |", "|---|---|---|"]
         out += [f"| {model} | {row['graded']} | {row['flagged']} |"
                 for model, row in catch["models"].items()]
-        out += ["", f"candidate − C95: {catch['difference']:+d} sites; the bar is ≥ −2.", ""]
+        difference = catch.get("difference")
+        out += ["", (f"candidate − {spec.baseline}: {difference:+d} sites; the bar is ≥ −2."
+                     if difference is not None else
+                     f"candidate − {spec.baseline}: not read (one side's caches are missing); "
+                     "G6 cannot certify."), ""]
+    out += table("qdat_bench, flags on the words where the experts heard a departure (the catch "
+                 "side as #95 read it, reported)",
+                 report["catch"]["qdat_bench_departures"])
 
     out += ["## 6. Reported, not gating", ""]
+    out += table("QUD, the salted half #95 read, false flags per 1,000 (reported)",
+                 report["guards"]["qud_half"])
     for name, view in report["leniency"]["abstentions"].items():
         out += table(f"{name}, consonant carriers the decode commits nothing at", view)
     for name, view in report["leniency"]["ungraded"].items():
@@ -320,7 +343,9 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
         out += _round_coverage(coverage, look, report)
     out += ["**Reported, not gating:** every substitution's change on the confirm half (§3), "
             "the false flags by cause (§2), `h448` and the teacher columns in every table, the "
-            "catch side, abstentions and coverage, and #95's QUD half beside G1.", ""]
+            "catch side (§5), abstentions and coverage (§6–7), the #95 QUD half (§6), the "
+            "teacher-equals subset beside bar 4b (§2), and G4's QUD-other-half companion (§2). "
+            "RetaSy is #171's, absent here.", ""]
 
     audit = report.get("audit")
     if audit:

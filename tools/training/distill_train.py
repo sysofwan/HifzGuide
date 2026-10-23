@@ -208,8 +208,15 @@ RESUME_CRITICAL_FIELDS = (
 # What a checkpoint written before these fields existed ran with. A field missing from a
 # saved config is read as its legacy value, never skipped: skipping it would let a clean
 # run resume augmented, under an exposure use, or with a smaller shuffle buffer than the
-# one its data order came from (h448 and every run before #94 used 1024).
-LEGACY_FIELD_VALUES = {"augment": {}, "exposure_use": "", "shuffle_buffer": 1024}
+# one its data order came from (h448 and every run before #94 used 1024). ``teacher_revision``
+# is the same kind of fact in the other direction: every run before #178 loaded the teacher's
+# default branch, so a legacy checkpoint that resumes with a pinned one is a swapped target.
+LEGACY_FIELD_VALUES = {
+    "augment": {},
+    "exposure_use": "",
+    "shuffle_buffer": 1024,
+    "teacher_revision": "",
+}
 
 
 def check_resume_compatible(saved: dict, current: TrainConfig) -> None:

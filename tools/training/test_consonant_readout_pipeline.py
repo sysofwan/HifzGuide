@@ -291,6 +291,13 @@ def test_the_reported_qud_half_is_a_declared_input_of_the_sitting():
     counts = ar.expected_counts(asp.CONSONANT1)
     assert {name for name in asp.CONSONANT1.sets if name in ag.SETS} <= set(counts)
     assert counts["qud_half"] == len(ar.load_qud_selection())
+    # The merge writes the candidate's half under the round's root; C95's stays #95's file, so
+    # a supplied candidate half is neither overwritten nor ever read as C95's (R1.6/R1.1).
+    sources = ar.Sources(asp.CONSONANT1)
+    assert sources.decode_path("qud_half", "candidate_ema") == (
+        asp.CONSONANT_ROOT / "decodes" / "qud_half.candidate_ema.jsonl.gz")
+    assert sources.decode_path("qud_half", asp.C95) == (
+        asp.AUG95_ROOT / "decodes" / "qud_half.candidate_ema.jsonl.gz")
 
 
 def test_the_sitting_lists_the_freeze_and_the_caches_it_reads(monkeypatch, tmp_path):
@@ -551,6 +558,29 @@ def test_the_noisier_mistake_marks_are_reported_and_never_g6_s():
     assert all(row["read"] == 0 and row["models"] == {} for row in empty.values())
 
 
+def test_the_round_report_builder_reports_every_observed_substitution(monkeypatch):
+    """The builder, not a hand-built report: a substitution outside the freeze is reported and
+    never gated (review R1.4)."""
+    monkeypatch.setattr(cr, "frozen_substitutions", lambda spec: ("س→ش",))
+    items = [_item(0), _item(1)]
+    reference = "قَالَ سَططَ"
+    decodes = {role: {item.key: {"checks": [{"hop": reference}]} for item in items}
+               for role in cr.ROUND_ROLES}
+    soft = Flag(("soft_pair",), (), "minor", (), consonants=(("soft_pair", "س→ش"),))
+    target = Flag(("target_pair",), (), "minor", (), consonants=(("target_pair", "ق→ك"),))
+    flags = {"candidate": (soft, None), "c95": (None, target), "h448": (None, None),
+             "base": (None, None)}
+    grades = [_grade(role, item, position, flags[role][position])
+              for role in cr.ROUND_ROLES for item in items for position in (0, 1)]
+    data = cr.RoundData(tarteel=ar.SetData(items, decodes, grades), qdat=None,
+                        qud_other=None, qud_half=None, tadabur=None, bench={}, catch=None)
+    report = cr.confirm_report(data, spec=asp.CONSONANT1)
+    assert set(report["substitutions"]) == {"س→ش", "ق→ك"}
+    assert report["g5_frozen"] == ["س→ش"]
+    gated = {condition["name"] for condition in report["verdict"]["conditions"]}
+    assert "g5.س→ش" in gated and "g5.ق→ك" not in gated
+
+
 # --- a missing input cannot certify, never crashes (review R1.3) --------------------------------
 
 
@@ -580,6 +610,23 @@ def test_absent_sets_names_the_declared_sets_whose_decodes_are_missing(tmp_path)
         present.parent.mkdir(parents=True, exist_ok=True)
         present.write_bytes(b"")
     assert "qdat" not in ar.absent_sets(sources, "confirm", "ema", spec)
+
+
+def test_a_missing_decodes_root_reads_every_set_absent_not_a_crash(tmp_path):
+    """The sitting names a set whose decodes are missing and never fetches it (review R1.3): the
+    reviewer's ``Sources.qud_other`` FileNotFoundError must not reach the report."""
+    import dataclasses
+
+    spec = dataclasses.replace(asp.CONSONANT1, root=tmp_path, decode_sources={})
+    sources = ar.Sources(spec)
+    absent = ar.absent_sets(sources, "confirm", "ema", spec)
+    assert set(absent) == {"tarteel_v1.confirm", "qdat", "qud_other", "qud_half",
+                           "tadabur_dev_unseen"}
+    data = cr.load_confirm(sources, "ema", spec, absent=absent)
+    assert (data.tarteel, data.qdat, data.qud_other, data.qud_half,
+            data.tadabur) == (None,) * 5
+    report = cr.confirm_report(data, spec)
+    assert report["verdict"]["verdict"] == av.CANNOT_CERTIFY
 
 
 def test_a_sitting_with_no_decodes_reports_every_set_absent_and_certifies_nothing():

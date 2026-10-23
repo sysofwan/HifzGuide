@@ -100,6 +100,16 @@ KASB_SAMPLE = 20
 KASB_DIRECTION = "س→ش"
 #: The ``كسب`` swaps' stratum (after the source's prefix): one sample is drawn across both.
 KASB_STRATUM = "kasb:س→ش:h448_partner"
+#: The verdict-bearing sites the owner authorized removing from the Ship A population
+#: (#130 amendment, 2026-10-23: the owner re-listened to
+#: ``tadabur_spk0167_S17_A15_6d312abb_000008.wav`` 18:15 «ءَالِهَةً لَّوْلَا» and heard the
+#: waqf, so the pause before its shaddah makes that site waqf_realized):
+#: https://github.com/sysofwan/HifzGuide/issues/130#issuecomment-6358608933. Every other
+#: verdict-bearing site must keep its id and reference index through a rebuild.
+OWNER_AUTHORIZED_REMOVALS = frozenset({
+    "new_audit:tadabur_spk0167_S17_A15_6d312abb_000008.wav#0@63:shaddah",
+})
+
 #: The strata prefixes of the pool's sites and of the mining extension's.
 POOL_PREFIX = "ship_a"
 MINING_PREFIX = "ship_a_mining"
@@ -334,6 +344,22 @@ def write_sites(sites: list[ShipASite], path: Path = SITES_PATH) -> None:
     write_text_atomically(path, "".join(
         json.dumps(site_json(site), ensure_ascii=False, sort_keys=True) + "\n" for site in sites
     ))
+
+
+def assert_verdict_sites_kept(current: Iterable[tuple[str, int]],
+                              before: Iterable[tuple[str, int]],
+                              verdict_ids: Iterable[str]) -> None:
+    """The rebuild preflight: fail before artifacts are written if a verdict-bearing site
+    ``before`` (id and reference index) is dropped or moved, less
+    :data:`OWNER_AUTHORIZED_REMOVALS`. ``current`` is the rebuilt set's (id, index)."""
+    now = dict(current)
+    verdicts = set(verdict_ids)
+    moved = sorted(i for i, index in before
+                   if i in verdicts and i not in OWNER_AUTHORIZED_REMOVALS
+                   and now.get(i) != index)
+    if moved:
+        raise ValueError(f"{len(moved)} verdict-bearing site(s) would move or disappear, "
+                         f"e.g. {moved[0]}")
 
 
 def load_sites(path: Path = SITES_PATH) -> list[ShipASite]:

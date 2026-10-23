@@ -39,7 +39,7 @@ from pathlib import Path
 from training.tashkeel_eval import write_text_atomically
 
 from .listening_session import VERDICTS_PATH, Verdict, adjudicated, load_worklist, read_verdicts
-from .ship_a import HALVES, SHIP_A_DIR, load_sites, reciter_half
+from .ship_a import HALVES, SHIP_A_DIR, assert_verdict_sites_kept, load_sites, reciter_half
 from .staged_audio import load_staged_clips
 from .truth_sites import NEW_AUDIT, TRUTH_SITES_DIR, TruthSite, load_truth_sites, write_truth_sites
 
@@ -131,13 +131,20 @@ def build(verdicts_path: Path = VERDICTS_PATH) -> tuple[list[TruthSite], list[De
     from .ship_a_worklist import GEMINATE, PAIR_PARTNER, worklist_part
 
     rows = load_worklist(WORKLIST_PATH)
-    ship_a = {s.site.site_id: s.listen_probability for s in load_sites() if s.listened}
+    sites = load_sites()
+    ship_a = {s.site.site_id: s.listen_probability for s in sites if s.listened}
     for row in rows:
         if worklist_part(row) in (PAIR_PARTNER, GEMINATE):
             ship_a.setdefault(row.site.site_id, row.draw_probability)
+    verdicts = read_verdicts(verdicts_path)
+    assert_verdict_sites_kept(
+        ((s.site.site_id, s.site.reference_index) for s in sites),
+        ((r.site_id, r.reference_index) for r in load_truth_sites(SITES_PATH)
+         if not r.stratum.endswith(REJECT_PILE_STRATUM)),
+        verdicts)
     reciter_of = {name: clip.reciter_id for name, clip in load_staged_clips().items()}
     return fold([r.site for r in rows], ship_a, {r.site.site_id: r.draw_probability for r in rows},
-                reciter_of, read_verdicts(verdicts_path))
+                reciter_of, verdicts)
 
 
 def main() -> None:

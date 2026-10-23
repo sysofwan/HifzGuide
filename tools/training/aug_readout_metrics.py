@@ -283,6 +283,18 @@ def word_agreement_terms(items: Sequence, decodes: Mapping[str, Mapping[str, str
     return _terms([i.cluster for i in items], rows)
 
 
+def observed_substitutions(grades: Sequence, models: Sequence[str],
+                           scoring: str) -> tuple[str, ...]:
+    """Every substitution a model's flagged word carries under ``scoring``, sorted: what the
+    readout reports descriptively. The frozen veto list is a separate selection (#174)."""
+    found: set[str] = set()
+    for grade in grades:
+        if grade.model in models and grade.scoring == scoring and grade.flagged \
+                and grade.reason is not None:
+            found.update(substitution for _, substitution in grade.reason.consonants)
+    return tuple(sorted(found))
+
+
 def substitution_terms(grades: Sequence, models: Sequence[str], scoring: str,
                        substitutions: Sequence[str]) -> dict[str, Terms]:
     """Each substitution's observations, one per word every model places: flagged **and**

@@ -39,7 +39,7 @@ A "cannot certify" is resolved by a new pre-registration on #128, never by a re-
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from training.acceptance_stats import CANNOT_CERTIFY, FAIL, NO_BOUND, PASS, aggregate
 from training.aug_readout_metrics import CANDIDATE, CONTROL, H448, BASE, comparison_name
@@ -123,10 +123,14 @@ def _finite(value) -> float | None:
     return float(value)
 
 
-def bound_condition(name: str, table: Mapping, comparison: str, end: str, threshold: float,
-                    strict: bool, text: str | None = None) -> dict:
+def bound_condition(name: str, table: Mapping | None, comparison: str, end: str,
+                    threshold: float, strict: bool, text: str | None = None) -> dict:
     """One bound of a table's paired difference against ``threshold``: ``end`` is ``lower``
-    (it must be above, or at least, the threshold) or ``upper`` (below, or at most)."""
+    (it must be above, or at least, the threshold) or ``upper`` (below, or at most). A table
+    that was not read (its input is missing) cannot certify."""
+    if table is None:
+        return {"name": name, "bar": text or BAR_TEXT[name], "verdict": CANNOT_CERTIFY,
+                "reason": "no input: the set's decodes are not committed"}
     difference = table["comparisons"].get(comparison)
     if difference is None:
         return {"name": name, "bar": text or BAR_TEXT[name], "verdict": CANNOT_CERTIFY,
@@ -145,10 +149,14 @@ def bound_condition(name: str, table: Mapping, comparison: str, end: str, thresh
     return {**out, "verdict": PASS if holds else FAIL}
 
 
-def quarter_gap_condition(table: Mapping) -> dict:
+def quarter_gap_condition(table: Mapping | None) -> dict:
     """The candidate's point reduction against ``h448`` at least :data:`BARS` ``main_gap_share``
     of the ``h448`` − teacher gap, all on the confirm half; an undefined rate, or a gap that is
     not positive (the bar presumes ``h448`` flags more than the teacher), cannot certify."""
+    if table is None:
+        return {"name": "main.quarter_gap", "bar": BAR_TEXT["main.quarter_gap"],
+                "verdict": CANNOT_CERTIFY,
+                "reason": "no input: the set's decodes are not committed"}
     models = table["models"]
     points = {m: models[m]["point"] if m in models else None for m in (CANDIDATE, H448, BASE)}
     out = {"name": "main.quarter_gap", "bar": BAR_TEXT["main.quarter_gap"], **{
@@ -164,9 +172,12 @@ def quarter_gap_condition(table: Mapping) -> dict:
     return {**out, "verdict": PASS if reduction >= required else FAIL}
 
 
-def point_lower_condition(name: str, table: Mapping, text: str | None = None,
+def point_lower_condition(name: str, table: Mapping | None, text: str | None = None,
                           baseline: str = H448) -> dict:
     """The candidate's point estimate strictly lower than the baseline's."""
+    if table is None:
+        return {"name": name, "bar": text or BAR_TEXT[name], "verdict": CANNOT_CERTIFY,
+                "reason": "no input: the set's decodes are not committed"}
     models = table["models"]
     a, b = (models.get(m, {}).get("point") for m in (CANDIDATE, baseline))
     out = {"name": name, "bar": text or BAR_TEXT[name], "candidate": a, baseline: b}
@@ -211,7 +222,7 @@ def attribution(report: Mapping) -> dict:
         reading = NOT_APPLICABLE
     else:
         reading = BEATS_CONTROL if against_control["verdict"] == PASS else NULL_FOR_AUGMENTATION
-    control_vs_h448 = main["comparisons"].get(CONTROL_VS_H448)
+    control_vs_h448 = None if main is None else main["comparisons"].get(CONTROL_VS_H448)
     return {"reading": reading, "against_h448": against_h448["verdict"],
             "against_control": against_control["verdict"],
             "control_upper_bound": against_control.get("bound"),
@@ -237,9 +248,13 @@ def verdict(report: Mapping, spec: RoundSpec | None = None) -> dict:
 # --- the consonant round's bars (#174) ----------------------------------------------------------
 
 
-def reduction_condition(table: Mapping, spec: RoundSpec) -> dict:
+def reduction_condition(table: Mapping | None, spec: RoundSpec) -> dict:
     """Bar 2: the point reduction against the round's baseline at least the pre-registered
     number of flags per 1,000 (4.7 for C95's published 47.41)."""
+    if table is None:
+        return {"name": "bar2.reduction", "bar": CONSONANT_BAR_TEXT["bar2.reduction"],
+                "verdict": CANNOT_CERTIFY,
+                "reason": "no input: the set's decodes are not committed"}
     models = table["models"]
     points = {m: models[m]["point"] if m in models else None
               for m in (CANDIDATE, spec.baseline)}
@@ -255,19 +270,25 @@ def reduction_condition(table: Mapping, spec: RoundSpec) -> dict:
             "verdict": PASS if reduction >= required else FAIL}
 
 
-def veto_conditions(substitutions: Mapping, spec: RoundSpec) -> list[dict]:
-    """G5: every frozen substitution's paired 99.5 % lower bound at most 0. No list, or no
-    interval, cannot certify."""
-    if not substitutions:
+def veto_conditions(substitutions: Mapping, frozen: Sequence[str], spec: RoundSpec) -> list[dict]:
+    """G5: every **frozen** substitution's paired 99.5 % lower bound at most 0. Every other
+    observed substitution is reported descriptively and never vetoes (#174). No list, or a
+    frozen substitution the confirm half did not observe, cannot certify."""
+    if not frozen:
         return [{"name": "g5", "bar": CONSONANT_BAR_TEXT["g5"], "verdict": CANNOT_CERTIFY,
                  "reason": "no frozen substitution list"}]
     comparison = comparison_name(CANDIDATE, spec.baseline)
     out = []
-    for substitution, view in sorted(substitutions.items()):
-        row = view["comparisons"].get(comparison)
-        veto = row.get("veto_interval") if row else None
+    for substitution in sorted(frozen):
         item = {"name": f"g5.{substitution}", "bar": CONSONANT_BAR_TEXT["g5"],
                 "substitution": substitution}
+        view = substitutions.get(substitution)
+        if view is None:
+            out.append({**item, "verdict": CANNOT_CERTIFY,
+                        "reason": "not observed on the confirm half"})
+            continue
+        row = view["comparisons"].get(comparison)
+        veto = row.get("veto_interval") if row else None
         if veto is None:
             out.append({**item, "verdict": CANNOT_CERTIFY, "reason": "no 99.5% interval"})
             continue
@@ -325,6 +346,9 @@ def consonant_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
           for kind in ("consonant", "haraka", "shaddah")),
         bound("g4.tashkeel_cause", main["tashkeel_cause"], "upper",
               bars["tashkeel_upper_at_most"], False),
-        *veto_conditions(report["substitutions"], spec),
+        # The round's report always writes ``g5_frozen`` (empty before #177). A report that
+        # omits it entirely is the pre-#175 shape: its substitutions are the list it gates.
+        *veto_conditions(report["substitutions"],
+                         report.get("g5_frozen", tuple(report["substitutions"])), spec),
         catch_condition(report["catch"]["ship_a_verified"], spec),
     ]

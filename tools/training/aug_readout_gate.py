@@ -37,15 +37,12 @@ from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK
 from training.aug_readout_metrics import BASE, CANDIDATE, CONTROL, H448
-from training.aug_readout_spec import AUG95, RoundSpec
+from training.aug_readout_spec import AUG95, AUG95_ROOT, ModelIdentity, RoundSpec
 from training.aug_readout_spec import model_spec as pinned_model_spec
 from training.external_decode import DEFAULT_SPECS, NO_AUGMENTATION, ModelSpec
 from training.truth_baseline import ARM_PROTOCOLS, CHECKS, DEFAULT_MODELS, expected_fingerprint
 
-READOUT_DIR = Path(__file__).parent.parent / "tadabur" / "aug_readout"
-DECODES_DIR = READOUT_DIR / "decodes"
-#: Per-item outputs of a corpus whose licence allows only aggregates (ignored by git).
-RESTRICTED_DIR = READOUT_DIR / "restricted"
+READOUT_DIR = AUG95_ROOT
 
 
 @dataclass(frozen=True)
@@ -162,8 +159,17 @@ GATED = tuple(name for name, s in SETS.items() if s.gated)
 
 
 def decodes_file(set_name: str, model: str) -> Path:
-    directory = DECODES_DIR if SETS[set_name].open else RESTRICTED_DIR
-    return directory / f"{set_name}.{model}.jsonl.gz"
+    """#95's decode file of ``set_name`` for ``model`` (the default round's)."""
+    return round_decodes_file(AUG95, set_name, model)
+
+
+def round_decodes_file(spec: RoundSpec, set_name: str, model: str) -> Path:
+    """A round's decode file of ``set_name`` for ``model``: in the other round's directory when
+    the round reuses its committed decodes (C95's are #95's), else in the round's own root."""
+    source = spec.decode_sources.get((set_name, model))
+    root, name = (source.root, source.model) if source is not None else (spec.root, model)
+    directory = root / "decodes" if SETS[set_name].open else root / "restricted"
+    return directory / f"{set_name}.{name}.jsonl.gz"
 
 
 def allowed_models(set_name: str, choice: Mapping | None,
@@ -224,6 +230,12 @@ def baseline_identities() -> dict[str, dict]:
     return found
 
 
+def identity_record(identity: ModelIdentity) -> dict:
+    """A round's pinned model as the identity a decode run records and the readout checks."""
+    return {"model_ref": identity.ref, "weights": identity.weights, "step": identity.step,
+            "recipe": identity.recipe, "checkpoint_sha256": identity.checkpoint_sha256}
+
+
 def validate_identity(set_name: str, model: str, record: Mapping,
                       spec: RoundSpec | None = None) -> dict:
     """One decode run's identity record, complete and the model the readout names: the frozen
@@ -239,8 +251,7 @@ def validate_identity(set_name: str, model: str, record: Mapping,
         raise ValueError(f"{name}: not {model} under the frozen protocol's fingerprints")
     identity = record.get("identity")
     if pinned is not None:  # a round's pinned baseline, e.g. C95 for the consonant round
-        expected = {"model_ref": pinned.ref, "weights": pinned.weights, "step": pinned.step,
-                    "recipe": pinned.recipe, "checkpoint_sha256": pinned.checkpoint_sha256}
+        expected = identity_record(pinned)
         if identity != expected:
             raise ValueError(f"{name}: {identity} is not {model}'s pinned checkpoint")
         return dict(identity)
@@ -391,14 +402,16 @@ def harness_identity(harness) -> dict:
 TOOLS_DIR = Path(__file__).parent.parent
 
 
-def digests(paths: Iterable[Path]) -> dict[str, str]:
-    """Each input file's SHA-256, by its path (relative to ``tools/`` when inside it)."""
-    def name(path: Path) -> str:
-        path = path.resolve()
-        return str(path.relative_to(TOOLS_DIR.resolve())) \
-            if path.is_relative_to(TOOLS_DIR.resolve()) else str(path)
+def input_name(path: Path) -> str:
+    """A sitting's name for one input file: relative to ``tools/`` when inside it."""
+    path = path.resolve()
+    return str(path.relative_to(TOOLS_DIR.resolve())) \
+        if path.is_relative_to(TOOLS_DIR.resolve()) else str(path)
 
-    return {name(p): sha256_file(p) for p in sorted(set(paths))}
+
+def digests(paths: Iterable[Path]) -> dict[str, str]:
+    """Each input file's SHA-256, by its name (:func:`input_name`)."""
+    return {input_name(p): sha256_file(p) for p in sorted(set(paths))}
 
 
 @contextmanager

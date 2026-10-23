@@ -52,6 +52,7 @@ from training.aug_readout_metrics import (
     compare,
     comparison_name,
     false_flag_terms,
+    observed_substitutions,
     substitution_terms,
     substitution_views,
     teacher_agreement_terms,
@@ -71,6 +72,8 @@ FREEZE_PATH = ROUND_DIR / "freeze.json"
 C95_DECODE = "candidate_ema"
 #: G6's pairs (#174): the two the pre-registration reads.
 G6_MARKS = ("س↔ش", "ط↔ق")
+#: The noisier real-mistake marks #174 reports but never gates ("reported only").
+DESCRIPTIVE_MARKS = ("س↔ص", "ث", "ض↔ظ")
 
 
 # --- the unread QUD half -----------------------------------------------------------------------
@@ -173,8 +176,8 @@ def frozen_substitutions(spec: RoundSpec, path: Path = FREEZE_PATH) -> tuple[str
 # --- the catch arm (G6) -------------------------------------------------------------------------
 
 
-def _held_out_mistakes() -> list:
-    """Ship A's held-out verified sites heard as the partner letter at ط↔ق or س↔ش, before the
+def _held_out_mistakes(marks: Sequence[str] = G6_MARKS) -> list:
+    """Ship A's held-out verified sites heard as the partner letter at ``marks``, before the
     shared exclusions (an existing definition, applied as :mod:`training.truth_baseline` does)."""
     from tadabur.ship_a import HELD_OUT
     from tadabur.ship_a_verified import SHIP_A, load_verified
@@ -182,7 +185,7 @@ def _held_out_mistakes() -> list:
 
     sites, designs = load_verified()
     return [site for site in sites
-            if site.mark in G6_MARKS and side(site) == MISTAKE_SIDE
+            if site.mark in marks and side(site) == MISTAKE_SIDE
             and site.site_id in designs
             and (designs[site.site_id].frame, designs[site.site_id].half) == (SHIP_A, HELD_OUT)]
 
@@ -260,13 +263,43 @@ def catch_table(sites: Sequence, outcomes: Mapping[str, Mapping[str, str]],
     return table
 
 
+def binds_cache(recorded: Mapping, expected: Mapping) -> bool:
+    """Whether a truth-baseline cache's identity is the round's: the same checkpoint's bytes,
+    and no recorded field (weights, step, recipe, where a cache keeps them) that disagrees."""
+    if recorded.get("model_ref") != expected["model_ref"] \
+            or recorded.get("checkpoint_sha256") != expected["checkpoint_sha256"]:
+        return False
+    return all(recorded[key] == value for key, value in expected.items() if key in recorded)
+
+
+def _expected_identity(spec: RoundSpec, name: str,
+                       identities: Mapping[str, Mapping]) -> dict | None:
+    """The identity ``name``'s caches must be: the sitting's validated one for the candidate,
+    the round's pin for C95. The truth baseline's own caches are already bound to the frozen
+    protocol and the database's checkpoint, so they need no round identity; any other model
+    cannot be bound and G6 cannot read it."""
+    from training.aug_readout_gate import identity_record
+    from training.truth_baseline import DEFAULT_MODELS
+
+    if name in identities:
+        return dict(identities[name])
+    if (pinned := spec.models.get(name)) is not None:
+        return identity_record(pinned)
+    if name in DEFAULT_MODELS:
+        return None
+    raise ValueError(f"{name}: no identity to bind its caches to; G6 cannot read it")
+
+
 def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = None,
-              cache_dir: Path | None = None, scope: Mapping | None = None) -> dict | None:
+              cache_dir: Path | None = None, scope: Mapping | None = None,
+              identities: Mapping[str, Mapping] | None = None) -> dict | None:
     """Each site's word graded through Muraja on every model's recorded check sequence, reusing
     :func:`training.truth_baseline.app_outcomes`; ``models[0]`` is the candidate and the count
     difference is read against ``spec.baseline``. ``None`` when a model has no cache: a missing
     input, which reads "cannot certify", never an error. ``scope`` (from :func:`g6_scope`) records
-    what the shared exclusions removed."""
+    what the shared exclusions removed. ``identities`` are the sitting's validated identities
+    (the candidate's, from its manifest): each model's decodes **and** check caches must be that
+    identity, so G6 cannot decide against other weights (#175 review R1.2)."""
     from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
     from training.aug_readout_gate import model_spec
     from training.truth_baseline import (
@@ -276,6 +309,7 @@ def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = N
     from training.muraja_policy import require_harness
 
     spec = spec or CONSONANT1
+    identities = identities or {}
     directory = Path(cache_dir) if cache_dir is not None else CHECK_STORE.directory
     reading_caches = directory == CHECK_STORE.directory
     missing = [name for name in models
@@ -288,12 +322,19 @@ def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = N
     sequences = {}
     for name in models:
         ref = DEFAULT_MODELS.get(name) or model_spec(name, spec=spec).ref
+        expected = _expected_identity(spec, name, identities)
         if reading_caches:
-            _, recorded = model_caches(name, ref, items, registry, None)
+            cache, recorded = model_caches(name, ref, items, registry, None)
         else:
+            cache = None
             path = directory / f"{name}.json"
             recorded = read_cache(path)
             check_cache(path, recorded, ref, CHECK_PROTOCOLS)
+        for kind, held in (("decodes", cache), ("checks", recorded)):
+            if expected is not None and held is not None \
+                    and not binds_cache(held["identity"] or {}, expected):
+                raise ValueError(f"{name}: its {kind} cache is {held['identity']}, not the "
+                                 f"round's {expected}")
         sequences[name] = {key: row[CHECKS] for key, row in recorded["items"].items()
                            if key in items}
         if lost := set(items) - set(sequences[name]):
@@ -308,6 +349,52 @@ def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = N
     if scope is not None:
         table["scope"] = {"candidates": scope["candidates"], "excluded": scope["excluded"]}
     return table
+
+
+def descriptive_sites() -> dict[str, list]:
+    """#174's report-only real-mistake marks, less the shared exclusions, grouped by mark."""
+    from tadabur.exclusions import current
+
+    excluded = current()
+    groups: dict[str, list] = {mark: [] for mark in DESCRIPTIVE_MARKS}
+    for site in _held_out_mistakes(DESCRIPTIVE_MARKS):
+        if site.site_id not in excluded:
+            groups[site.mark].append(site)
+    return groups
+
+
+def held_sites(sites: Sequence, models: Sequence[str], cache_dir: Path | None = None) -> list:
+    """The sites every model's check cache holds, from the caches' keys (no replay)."""
+    from training.truth_baseline import CHECK_STORE, item_key, read_cache
+
+    directory = Path(cache_dir) if cache_dir is not None else CHECK_STORE.directory
+    held: set[str] | None = None
+    for name in models:
+        path = directory / f"{name}.json"
+        if not path.exists():
+            return []
+        keys = set(read_cache(path)["items"])
+        held = keys if held is None else held & keys
+    return [site for site in sites if item_key(site) in (held or set())]
+
+
+def descriptive_catch(models: Sequence[str], spec: RoundSpec | None = None,
+                      cache_dir: Path | None = None,
+                      identities: Mapping[str, Mapping] | None = None) -> dict:
+    """The noisier mistake marks #174 reports and never gates: per mark, how many sites survive
+    the shared exclusions, how many both caches hold, and each model's flagged count there. It
+    never enters G6's frozen denominator; a mark with no surviving site is disclosed."""
+    spec = spec or CONSONANT1
+    out = {}
+    for mark, sites in descriptive_sites().items():
+        readable = held_sites(sites, models, cache_dir)
+        table = (catch_arm(readable, models, spec=spec, cache_dir=cache_dir,
+                           identities=identities) if readable else None)
+        out[mark] = {"sites": len(sites), "read": len(readable),
+                     "models": {} if table is None else {
+                         name: {"graded": row["graded"], "flagged": row["flagged"]}
+                         for name, row in table["models"].items()}}
+    return out
 
 
 # --- C95 against C95: the tracer ----------------------------------------------------------------
@@ -336,10 +423,16 @@ def tracer_text(views: Mapping[str, Mapping],
 
 
 def tracer_spec(spec: RoundSpec = CONSONANT1) -> RoundSpec:
-    """The round's spec with both the candidate and C95 reading C95's committed decodes."""
-    names = {**spec.decode_names, C95: C95_DECODE, CANDIDATE: C95_DECODE,
-             "candidate_live": C95_DECODE, "candidate_ema": C95_DECODE}
-    return dataclasses.replace(spec, decode_names=names)
+    """The round's spec with both the candidate and C95 reading C95's committed decodes. Only
+    the tracer does this: the production round reads its candidate's own files."""
+    from training.aug_readout_spec import AUG95_ROOT, Decodes
+
+    shadow = {name: Decodes(AUG95_ROOT, C95_DECODE) for name in
+              ("tarteel_v1.look", "qdat", "tadabur_dev_unseen")}
+    return dataclasses.replace(
+        spec, decode_sources={**spec.decode_sources,
+                              **{(name, CANDIDATE): source
+                                 for name, source in shadow.items()}})
 
 
 def tracer_views(sources, workers: int = 1) -> dict:
@@ -369,7 +462,7 @@ def tracer(sources, workers: int = 1) -> dict:
     difference 0.00 and every interval unbounded, so nothing certifies."""
     from training import aug_readout as ar
 
-    totals = ar.reproduction(sources)
+    totals = ar.reproduction(ar.Sources())
     ar.require_reproduction(totals)
     return {"reproduction": totals, "views": tracer_views(sources, workers)}
 
@@ -385,7 +478,8 @@ def write_models(path: Path = MODELS_PATH) -> dict:
         raise SystemExit(f"{path.name} exists: C95's identity is frozen")
     committed = json.loads((READOUT_DIR / "models.json").read_text(encoding="utf-8"))
     records = {}
-    for set_name in ("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "tadabur_dev_unseen"):
+    for set_name in ("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "qud_half",
+                     "tadabur_dev_unseen"):
         records[f"{set_name}/{C95}"] = {**committed[f"{set_name}/{C95_DECODE}"], "model": C95}
     write_text_atomically(path, json.dumps(records, ensure_ascii=False, indent=1) + "\n")
     return records
@@ -396,15 +490,20 @@ def write_models(path: Path = MODELS_PATH) -> dict:
 
 @dataclasses.dataclass(frozen=True)
 class RoundData:
-    """Every set the round's confirm sitting reads, with the roles bound."""
+    """Every set the round's confirm sitting reads, with the roles bound. A set whose decodes
+    are not committed is ``None`` and named in ``absent``: it is reported as an absent input and
+    every rule that reads it cannot certify, never a crash (#174, review R1.3)."""
 
-    tarteel: object
-    qdat: object
-    qud_other: object
-    qud_half: object
-    tadabur: object
+    tarteel: object | None
+    qdat: object | None
+    qud_other: object | None
+    qud_half: object | None
+    tadabur: object | None
     bench: Mapping[str, str]
     catch: Mapping | None
+    #: The report-only mistake marks (#174); never G6's frozen denominator.
+    report_only_catch: Mapping | None = None
+    absent: tuple[str, ...] = ()
 
 
 ROUND_ROLES = (CANDIDATE, C95, H448, BASE)
@@ -433,30 +532,40 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
     comparisons = spec.comparisons
     student = (CANDIDATE, C95, H448)
 
-    def flags(grades, cause=None) -> dict:
-        return compare(false_flag_terms(grades, ROUND_ROLES, shipped, cause=cause), PER_1000,
-                       comparisons)
+    def flags(d, cause=None) -> dict | None:
+        return None if d is None else compare(
+            false_flag_terms(d.grades, ROUND_ROLES, shipped, cause=cause), PER_1000,
+            comparisons)
 
-    def agreement(d, subset=None) -> dict:
-        return compare(word_agreement_terms(d.items, ar.checks_text(d, ROUND_ROLES), student,
-                                            subset=subset, workers=workers), POINTS,
-                       comparisons)
+    def agreement(d, subset=None) -> dict | None:
+        return None if d is None else compare(
+            word_agreement_terms(d.items, ar.checks_text(d, ROUND_ROLES), student,
+                                 subset=subset, workers=workers), POINTS, comparisons)
 
-    bench = ar.bench_items(data.qdat, data.bench)
+    bench = [] if data.qdat is None else ar.bench_items(data.qdat, data.bench)
     bench_keys = {i.key for i in bench}
     departures = {i.key: bench_departures(i, data.bench[i.audio_filename]) for i in bench}
-    departed = [grade for grade in data.qdat.grades if grade.item.key in bench_keys
+    departed = [grade for grade in (data.qdat.grades if data.qdat is not None else ())
+                if grade.item.key in bench_keys
                 and grade.word_index in departures[grade.item.key]]
-    substitutions = substitution_views(
+    bench_views = {} if data.qdat is None else {
+        kind: compare(terms, POINTS, comparisons) for kind, terms in bench_terms(
+            bench, ar.stream_text(ar.SetData(bench, data.qdat.decodes), ROUND_ROLES),
+            data.bench, ROUND_ROLES).items()}
+    frozen = frozen_substitutions(spec)
+    # Every substitution any model carries is reported; only the freeze's list gates G5 (#174).
+    substitutions = {} if data.tarteel is None else substitution_views(
         substitution_terms(data.tarteel.grades, ROUND_ROLES, shipped,
-                           frozen_substitutions(spec)), PER_1000, comparisons)
+                           observed_substitutions(data.tarteel.grades, ROUND_ROLES, shipped)),
+        PER_1000, comparisons)
+    tadabur = data.tadabur
     report = {
         "issue": spec.issue,
-        "main": {"all_cause": flags(data.tarteel.grades),
-                 "consonant_cause": flags(data.tarteel.grades, CONSONANT),
-                 "tashkeel_cause": flags(data.tarteel.grades, TASHKEEL_CAUSE),
+        "main": {"all_cause": flags(data.tarteel),
+                 "consonant_cause": flags(data.tarteel, CONSONANT),
+                 "tashkeel_cause": flags(data.tarteel, TASHKEEL_CAUSE),
                  # G4's companion (#174, reported beside it).
-                 "qud_other_tashkeel_cause": flags(data.qud_other.grades, TASHKEEL_CAUSE)},
+                 "qud_other_tashkeel_cause": flags(data.qud_other, TASHKEEL_CAUSE)},
         "mechanism": {"tarteel_v1_confirm": agreement(data.tarteel),
                       "qdat": agreement(data.qdat),
                       "tarteel_v1_confirm_departs": agreement(data.tarteel, DEPARTS),
@@ -464,50 +573,61 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
                       # Reported beside bar 4b (#174).
                       "tarteel_v1_confirm_equals": agreement(data.tarteel, EQUALS),
                       "qdat_equals": agreement(data.qdat, EQUALS)},
-        "consistency": {"qdat": flags(data.qdat.grades)},
+        "consistency": {"qdat": flags(data.qdat)},
         "guards": {
-            "qud_other": flags(data.qud_other.grades),
+            "qud_other": flags(data.qud_other),
             # Reported, not gating: the half #95 read.
-            "qud_half": flags(data.qud_half.grades),
-            "tadabur_dev_unseen": compare(
-                teacher_agreement_terms(data.tadabur.clips, data.tadabur.decodes, ROUND_ROLES),
+            "qud_half": flags(data.qud_half),
+            "tadabur_dev_unseen": None if tadabur is None else compare(
+                teacher_agreement_terms(tadabur.clips, tadabur.decodes, ROUND_ROLES),
                 POINTS, comparisons),
-            "qdat_bench": {
-                kind: compare(terms, POINTS, comparisons) for kind, terms in bench_terms(
-                    bench, ar.stream_text(ar.SetData(bench, data.qdat.decodes), ROUND_ROLES),
-                    data.bench, ROUND_ROLES).items()},
+            "qdat_bench": bench_views or {kind: None
+                                          for kind in ("consonant", "haraka", "shaddah")},
         },
         "substitutions": substitutions,
+        "g5_frozen": list(frozen),
         "catch": {"ship_a_verified": data.catch,
+                  "ship_a_verified_report_only": data.report_only_catch,
                   # The catch side as #95 read it (RetaSy is #171's).
                   "qdat_bench_departures": flags(departed) if departed else None},
         "leniency": {
-            "blank_ratio": compare(blank_terms(data.tadabur.clips, data.tadabur.blanks,
-                                               ROUND_ROLES), POINTS, comparisons),
-            "abstentions": {name: compare(
+            "blank_ratio": None if tadabur is None else compare(
+                blank_terms(tadabur.clips, tadabur.blanks, ROUND_ROLES), POINTS, comparisons),
+            "abstentions": {name: None if d is None else compare(
                 abstention_terms(d.items, ar.checks_text(d, ROUND_ROLES), ROUND_ROLES, workers),
                 POINTS, comparisons)
                 for name, d in (("tarteel_v1_confirm", data.tarteel), ("qdat", data.qdat))},
-            "ungraded": {name: compare(ungraded_terms(d.grades, ROUND_ROLES, shipped), PER_1000,
-                                       comparisons)
-                         for name, d in (("tarteel_v1_confirm", data.tarteel),
-                                         ("qdat", data.qdat), ("qud_other", data.qud_other))},
+            "ungraded": {name: None if d is None else compare(
+                ungraded_terms(d.grades, ROUND_ROLES, shipped), PER_1000, comparisons)
+                for name, d in (("tarteel_v1_confirm", data.tarteel), ("qdat", data.qdat),
+                                ("qud_other", data.qud_other))},
         },
-        "sizes": {"tarteel_v1_confirm": len(data.tarteel.items),
-                  "qdat": len(data.qdat.items), "qud_other": len(data.qud_other.items),
-                  "qud_half": len(data.qud_half.items),
-                  "tadabur_dev_unseen": len(data.tadabur.clips), "qdat_bench": len(bench),
-                  "ship_a_verified": len(data.catch["sites"]) if data.catch else 0},
+        "sizes": {name: None if d is None else len(d.items)
+                  for name, d in (("tarteel_v1_confirm", data.tarteel), ("qdat", data.qdat),
+                                  ("qud_other", data.qud_other), ("qud_half", data.qud_half))}
+        | {"tadabur_dev_unseen": None if tadabur is None else len(tadabur.clips),
+           "qdat_bench": None if data.qdat is None else len(bench),
+           "ship_a_verified": len(data.catch["sites"]) if data.catch else 0},
     }
+    if data.absent:
+        report["absent"] = list(data.absent)
     report["verdict"] = verdict(report, spec=spec)
     return report
 
 
-def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1) -> RoundData:
-    """Every set the round's confirm sitting reads, graded, with the roles bound."""
+def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
+                 identities: Mapping[str, Mapping] | None = None,
+                 absent: Sequence[str] = ()) -> RoundData:
+    """Every set the round's confirm sitting reads, graded, with the roles bound. A set named
+    ``absent`` (its decodes are not committed) is not read. ``identities`` are the sitting's
+    validated per-model identities: G6 binds both models' truth-baseline caches to them (and to
+    the round's pin) before replay."""
     from training import aug_readout as ar
-    from training.aug_readout_gate import arm_model
+    from training.aug_readout_gate import (
+        QDAT_SET, QUD_OTHER_SET, QUD_SET, TADABUR_SET, TARTEEL_CONFIRM, arm_model,
+    )
 
+    absent = tuple(sorted(set(absent)))
     candidate = arm_model(CANDIDATE, weights)
     models = (candidate, C95, H448, BASE)
 
@@ -516,18 +636,27 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1) -> RoundDa
         return ar.SetData(data.items, decodes,
                           sources.grade(data.items, decodes, ROUND_ROLES))
 
-    tadabur = sources.tadabur(models)
+    def read(name, fetch):
+        return None if name in absent else graded(fetch())
+
+    tadabur = None if TADABUR_SET in absent else sources.tadabur(models)
     scope = g6_scope()
+    catch_identities = ({candidate: identities[candidate]}
+                        if identities and candidate in identities else {})
     return RoundData(
-        tarteel=graded(sources.tarteel(CONFIRM, models)),
-        qdat=graded(sources.qdat(models)),
-        qud_other=graded(sources.qud_other(models)),
-        qud_half=graded(sources.qud(models)),
-        tadabur=ar.TadaburData(tadabur.clips, bind_round(tadabur.decodes, weights),
-                               bind_round(tadabur.blanks, weights),
-                               tadabur.redecoded_identical),
-        bench=sources.bench(),
-        catch=catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope))
+        tarteel=read(TARTEEL_CONFIRM, lambda: sources.tarteel(CONFIRM, models)),
+        qdat=read(QDAT_SET, lambda: sources.qdat(models)),
+        qud_other=read(QUD_OTHER_SET, lambda: sources.qud_other(models)),
+        qud_half=read(QUD_SET, lambda: sources.qud(models)),
+        tadabur=None if tadabur is None else ar.TadaburData(
+            tadabur.clips, bind_round(tadabur.decodes, weights),
+            bind_round(tadabur.blanks, weights), tadabur.redecoded_identical),
+        bench=sources.bench() if "qdat" not in absent else {},
+        catch=catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope,
+                        identities=catch_identities),
+        report_only_catch=descriptive_catch((candidate, C95), spec=spec,
+                                            identities=catch_identities),
+        absent=absent)
 
 
 def coverage() -> dict:

@@ -138,6 +138,19 @@ def test_the_substitution_metric_counts_only_the_words_that_carry_it():
     assert _totals(terms["ط→ق"], "c95") == (1, 2)
 
 
+def test_observed_substitutions_lists_every_substitution_the_models_carry():
+    """The descriptive report is the union, not the frozen veto list (review R1.4)."""
+    item = _item(0)
+    grades = [_grade("candidate", item, 0, _flag("other_consonant", "س→ش")),
+              _grade("candidate", item, 1, _flag("target_pair", "ق→ك")),
+              _grade("c95", item, 0, _flag("soft_pair", "ن→ل")),
+              _grade("c95", item, 1, None)]
+    assert am.observed_substitutions(grades, ("candidate", "c95"), SHIPPED) == (
+        "س→ش", "ق→ك", "ن→ل")
+    assert am.observed_substitutions(grades, ("c95",), SHIPPED) == ("ن→ل",)
+    assert am.observed_substitutions(grades, ("candidate", "c95"), "another-scoring") == ()
+
+
 def test_the_veto_interval_is_the_99_5_percent_bound_from_the_same_draws():
     assert am.VETO_QUANTILES == (0.0025, 0.9975)
     items = [_item(i) for i in range(24)]

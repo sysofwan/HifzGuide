@@ -193,5 +193,44 @@
    "weights": "ema"
   },
   "model": "c95"
+ },
+ "qud_other/c95": {
+  "fingerprints": {
+   "checks": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "muraja-app-checks-v2",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "spans": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "stream_b0": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "confirmed-stream-v2-flush",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   }
+  },
+  "identity": {
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "model": "c95"
  }
 }

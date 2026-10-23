@@ -36,6 +36,10 @@ Usage::
     python export_student_coreml.py --checkpoint runs/h384/checkpoint.pt \\
         --output-dir student_coreml
 
+    # Export the averaged weights -- what a scored readout binds (#95)
+    python export_student_coreml.py --checkpoint runs/h448/checkpoint.pt --ema \\
+        --output-dir student_coreml
+
 macOS only (coremltools targets Apple Silicon; ``--compile`` needs Xcode's
 ``coremlcompiler``).
 """
@@ -88,16 +92,27 @@ class PhonemesOnlyWrapper(nn.Module):
         )
 
 
-def load_student(checkpoint: Path | None, preset: str | None):
-    """The student to export, from a checkpoint or freshly initialised."""
-    if checkpoint is not None:
-        state = torch.load(checkpoint, map_location="cpu", weights_only=False)
-        name = state["config"]["preset"]
-        model = build_student(PRESETS[name])
-        model.load_state_dict(state["student"])
-        print(f"Loaded {name} from {checkpoint} @ step {state['step']}")
-        return model, name, state["step"]
+def load_student(checkpoint: Path | None, preset: str | None, use_ema: bool = False):
+    """The student to export, from a checkpoint or freshly initialised.
 
+    ``use_ema`` selects the averaged weights a ``--ema-decay`` run stored beside the live
+    ones, through the same loader every eval tool uses (``training.decoding``): which of the
+    two sets a release carries is a scored decision (#95 read the look half and chose EMA),
+    not something the exporter may re-decide. The loader raises rather than falling back when
+    a checkpoint has no average, so an ``--ema`` export can never silently ship the live ones.
+    """
+    if checkpoint is not None:
+        from training.decoding import load_student_from_checkpoint
+
+        model, config, step = load_student_from_checkpoint(
+            checkpoint, "cpu", use_ema=use_ema
+        )
+        weights = "ema" if use_ema else "live"
+        print(f"Loaded {config['preset']} from {checkpoint} @ step {step} ({weights})")
+        return model, config["preset"], step
+
+    if use_ema:
+        raise SystemExit("--ema needs --checkpoint: an initialisation has no average")
     if preset is None:
         raise SystemExit("pass --checkpoint or --preset with --random-init")
     print(f"Building randomly-initialised {preset} (sizing de-risk only)")
@@ -306,6 +321,11 @@ def main() -> None:
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--preset", choices=sorted(PRESETS))
     parser.add_argument(
+        "--ema",
+        action="store_true",
+        help="export the averaged weights a --ema-decay run stored beside the live ones",
+    )
+    parser.add_argument(
         "--random-init",
         action="store_true",
         help="export an untrained student to settle size/conversion only",
@@ -332,7 +352,7 @@ def main() -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     model, preset, step = load_student(
-        None if args.random_init else args.checkpoint, args.preset
+        None if args.random_init else args.checkpoint, args.preset, use_ema=args.ema
     )
     num_params = count_parameters(model)
     print(f"Student {preset}: {num_params:,} parameters")

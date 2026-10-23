@@ -107,7 +107,7 @@ launch() {
     | ssh "$HOST" "rm -rf '$ROOT/repo' && mkdir -p '$ROOT/repo' && tar -x -C '$ROOT/repo'"
   ssh "$HOST" "$ROOT/repo/scripts/issue-176-decode.sh setup"
   ssh "$HOST" "nohup flock /root/scratch/gpu.lock $ROOT/repo/scripts/issue-176-decode.sh run \
-    >> '$ROOT/logs/run.out' 2>&1 & echo 'started: '$!"
+    >> '$ROOT/logs/run.out' 2>&1 & echo 'started: '\$!"
 }
 
 check() {

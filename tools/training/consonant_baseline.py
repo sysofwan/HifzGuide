@@ -225,12 +225,18 @@ def g6_baseline(cache_dir: Path | None = None) -> dict | None:
 
 def read() -> dict:
     """The PR's numbers: the QUD other half's coverage and C95's false flags per 1,000, G6's
-    site count and C95's flagged count, and the report-only marks."""
+    site count and C95's flagged count, and the report-only marks. The round's pins are
+    enforced before any input is read: a same-commit harness with another binary, or a moved
+    pre-registration, refuses here as #175's confirm path refuses it."""
     from training import aug_readout as ar
+    from training.aug_readout_gate import sha256_file
     from training.aug_readout_metrics import PER_1000, compare, false_flag_terms
+    from training.aug_readout_spec import PREREG_PATH, check_pins
     from training.muraja_policy import SHIPPED_DEFAULT
 
     sources = ar.Sources(CONSONANT1)
+    check_pins(CONSONANT1, sources.harness_identity(),
+               sha256_file(PREREG_PATH) if PREREG_PATH.exists() else "")
     data = sources.qud_other((BASELINE,))
     grades = sources.grade(data.items, data.decodes, (BASELINE,))
     flags = compare(false_flag_terms(grades, (BASELINE,), SHIPPED_DEFAULT.name), PER_1000,

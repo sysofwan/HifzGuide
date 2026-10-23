@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -31,6 +34,8 @@ from training.external_corpus import read_decode_file
 
 C95 = "c95"
 QOTHER = ag.QUD_OTHER_SET
+#: The box-side launcher #176 commits (the test mocks `git`, `ssh` and `flock`).
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "issue-176-decode.sh"
 
 
 @pytest.fixture(scope="module")
@@ -312,3 +317,61 @@ def test_the_baseline_read_reports_the_qud_half_and_g6(cb):
     assert 0.0 < qud["false_flags_per_1000"] < 100.0
     assert numbers["g6"]["sites"] == 8
     assert 0 <= numbers["g6"]["flagged"] <= 8
+
+
+def test_an_unpinned_harness_is_refused_before_any_input_is_read(cb, monkeypatch):
+    """A same-commit, protocol-3 harness with another binary is not the pre-registered one:
+    the read refuses it before it reads a decode, as #175's confirm path does (#176 R1.3)."""
+    from training import aug_readout as ar
+
+    pins = asp.CONSONANT1.pins
+    unpinned = {"muraja_commit": pins.muraja_commit, "protocol": 3,
+                "binary_sha256": "0" * 64}
+    monkeypatch.setattr(ar.Sources, "harness_identity", lambda self: unpinned)
+    monkeypatch.setattr(ar.Sources, "qud_other",
+                        lambda self, models: pytest.fail("read an input before the pins"))
+    with pytest.raises(SystemExit, match="harness pin"):
+        cb.read()
+
+
+# --- the launcher -------------------------------------------------------------------------------
+
+
+def _mock(path: Path, body: str) -> None:
+    """An executable stand-in for the launcher's `git`, `ssh` or `flock`."""
+    path.write_text(body, encoding="utf-8")
+    path.chmod(0o755)
+
+
+def test_the_launch_starts_the_detached_run_with_the_remote_pid(tmp_path):
+    """`launch` hands the nohup line to the remote shell with `$!` unexpanded — the local
+    `set -u` shell has no background pid — and the job the remote shell starts really runs
+    (#176 R1.1)."""
+    root = tmp_path / "issue"
+    (root / "logs").mkdir(parents=True)
+    (root / "repo" / "scripts").mkdir(parents=True)
+    marker = tmp_path / "started"
+    _mock(root / "repo" / "scripts" / "issue-176-decode.sh",
+          f"#!/bin/sh\nprintf 'ran\\n' > '{marker}'\n")
+    bindir, log = tmp_path / "bin", tmp_path / "ssh.log"
+    bindir.mkdir()
+    _mock(bindir / "git",
+          '#!/bin/sh\ncase "$*" in *rev-parse*) printf "%s\\n" "$PWD";; esac\n')
+    _mock(bindir / "ssh", '#!/bin/sh\n'
+          'printf "%s\\n" "$2" >> "$SSH_LOG"\n'
+          'case "$2" in\n'
+          '  nohup*) exec sh -c "$2" ;;\n'
+          '  *tar\\ -x*) cat >/dev/null ;;\n'
+          'esac\n')
+    _mock(bindir / "flock", '#!/bin/sh\nshift\nexec "$@"\n')
+    env = {**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}", "HOST": "box",
+           "ISSUE_ROOT": str(root), "SSH_LOG": str(log)}
+    done = subprocess.run(["bash", str(SCRIPT), "launch"], env=env, capture_output=True,
+                          text=True, stdin=subprocess.DEVNULL, timeout=30)
+    assert done.returncode == 0, done.stderr
+    assert re.fullmatch(r"started: \d+", done.stdout.strip()), done.stdout
+    assert "nohup flock" in log.read_text(encoding="utf-8")
+    deadline = time.monotonic() + 10
+    while not marker.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert marker.exists()

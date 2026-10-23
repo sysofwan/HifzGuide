@@ -944,3 +944,14 @@ def test_the_harness_identity_hashes_the_binary_and_both_databases(tmp_path):
     assert identity["binary_sha256"] == ag.sha256_file(files["binary"])
     files["layout.db"].write_text("changed")
     assert ag.harness_identity(harness) != identity
+
+
+def test_select_qud_runs_without_a_round_spec(monkeypatch, capsys):
+    """``select-qud`` freezes #95's half: the only command with no ``--spec`` (review R1.7)."""
+    import sys
+
+    monkeypatch.setattr(ar, "write_qud_selection",
+                        lambda: {"kept_counts": {"mp3": 1}, "segments": {"mp3": 2}})
+    monkeypatch.setattr(sys, "argv", ["aug_readout", "select-qud"])
+    ar.main()
+    assert "{'mp3': 1} of {'mp3': 2}" in capsys.readouterr().out

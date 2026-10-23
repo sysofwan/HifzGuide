@@ -42,7 +42,7 @@ def interval_text(interval: Mapping, signed: bool = False) -> str:
 def table(title: str, view: Mapping | None) -> list[str]:
     """One compare() view: a row per model, then a row per paired difference."""
     if view is None:
-        return [f"**{title}**: nothing to read.", ""]
+        return [f"**{title}**: not read (an input is missing); cannot certify.", ""]
     unit = "per 1,000" if view["scale"] == PER_1000 else "points"
     lines = [f"**{title}** ({unit}; {view['observations']} observations in "
              f"{view['clusters']} clusters)", "", "| | value | 95% interval | numerator / denominator |",
@@ -288,12 +288,18 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
                  "reported)", report["mechanism"]["qdat_equals"])
     out += table("qdat, all-cause false flags per 1,000 (bar 5)", report["consistency"]["qdat"])
 
-    out += ["## 3. The G5 substitutions (99.5% veto)", "",
-            "Each substitution the freeze listed, flagged words per 1,000 graded words. G5 trips "
-            "only on a large regression; a pass does not mean no consonant got worse.", ""]
+    out += ["## 3. Substitutions (G5 vetoes the frozen list only)", "",
+            "Every substitution a model carried on the confirm half, flagged words per 1,000 "
+            "graded words. G5 reads only the frozen list (marked ‡); the rest are reported, "
+            "never vetoed. G5 trips only on a large regression; a pass does not mean no "
+            "consonant got worse.", ""]
+    frozen = set(report.get("g5_frozen", ()))
     for substitution, view in report["substitutions"].items():
-        out += table(f"`{substitution}`", view)
+        mark = " ‡ (frozen, G5)" if substitution in frozen else ""
+        out += table(f"`{substitution}`{mark}", view)
     if not report["substitutions"]:
+        out += ["No substitution was observed on the confirm half: G5 cannot certify.", ""]
+    elif not frozen:
         out += ["No frozen substitution list: G5 cannot certify.", ""]
 
     out += ["## 4. Guards", ""]
@@ -326,6 +332,20 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
                      if difference is not None else
                      f"candidate − {spec.baseline}: not read (one side's caches are missing); "
                      "G6 cannot certify."), ""]
+    report_only = report["catch"].get("ship_a_verified_report_only")
+    if report_only:
+        out += ["The real-mistake marks #174 reports only (noisier verdicts): each mark's sites "
+                "after the shared exclusions, how many both models' caches hold, and the flags "
+                "there. They never enter G6's denominator.", "",
+                "| mark | sites after exclusions | read | model | graded | flagged |",
+                "|---|---|---|---|---|---|"]
+        for mark, row in report_only.items():
+            if not row["models"]:
+                out += [f"| {mark} | {row['sites']} | {row['read']} | – | – | – |"]
+            for name, model_row in row["models"].items():
+                out += [f"| {mark} | {row['sites']} | {row['read']} | {name} | "
+                        f"{model_row['graded']} | {model_row['flagged']} |"]
+        out += [""]
     out += table("qdat_bench, flags on the words where the experts heard a departure (the catch "
                  "side as #95 read it, reported)",
                  report["catch"]["qdat_bench_departures"])
@@ -347,6 +367,11 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
             "teacher-equals subset beside bar 4b (§2), and G4's QUD-other-half companion (§2). "
             "RetaSy is #171's, absent here.", ""]
 
+    if report.get("absent"):
+        out += ["**Absent inputs:** the decodes of " + ", ".join(
+            f"`{name}`" for name in report["absent"]) + " are not committed; every rule that "
+            "reads them cannot certify.", ""]
+
     audit = report.get("audit")
     if audit:
         out += ["## Identity and audit", "",
@@ -366,7 +391,7 @@ def _round_coverage(coverage: Mapping, look: Mapping, report: Mapping) -> list[s
                  "tarteel_v1.confirm": report["sizes"]["tarteel_v1_confirm"],
                  "qud_other": report["sizes"]["qud_other"]}
     for name, row in populations.items():
-        if row["evaluated"] != evaluated[name]:
+        if evaluated[name] is not None and row["evaluated"] != evaluated[name]:
             raise ValueError(f"coverage {name}: {row['evaluated']} evaluated, the readout read "
                              f"{evaluated[name]}")
     out = ["## 7. Coverage of the frozen populations", "", coverage["statement"], "",

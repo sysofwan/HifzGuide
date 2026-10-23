@@ -87,10 +87,12 @@ from training.aug_readout_gate import (
     decodes_file,
     digests,
     harness_identity,
+    input_name,
     make_choice,
     needs,
     read_manifest,
     require_manifest,
+    round_decodes_file,
     sha256_file,
     validate_identity,
 )
@@ -218,17 +220,25 @@ class TadaburData:
 class Sources:
     """Where the readout reads its inputs: the committed decodes, the datasets' metadata and the
     harness. Tests substitute it; each method reads only the set it names, and
-    :meth:`input_files` names every file a sitting's methods read. A round's spec maps a role
-    to the committed decode file's model name (:meth:`decode_name`)."""
+    :meth:`input_files` names every file a sitting's methods read. A round's spec says where a
+    role's decodes are committed (:meth:`decode_path`), so one round's merge never writes into
+    another round's immutable inputs."""
 
     spec: RoundSpec = AUG95
 
     def __init__(self, spec: RoundSpec = AUG95):
         self.spec = spec
 
-    def decode_name(self, model: str) -> str:
-        """The model name a role's decode file is committed under."""
-        return self.spec.decode_names.get(model, model)
+    def decode_path(self, set_name: str, model: str) -> Path:
+        """The decode file of ``set_name`` this sitting reads for ``model``. #95's own files are
+        the readout directory's; every other round resolves through its spec's sources."""
+        if self.spec is AUG95:
+            return decodes_file(set_name, model)
+        return round_decodes_file(self.spec, set_name, model)
+
+    def missing_inputs(self, phase: str, weights: str | None) -> tuple[Path, ...]:
+        """Every file this sitting would read which is not committed."""
+        return tuple(path for path in self.input_files(phase, weights) if not path.exists())
 
     def input_files(self, phase: str, weights: str | None) -> list[Path]:
         """Every file the sitting reads: the readout decodes of each model it needs, the
@@ -240,7 +250,7 @@ class Sources:
         from training.nonpro_gap import DECODES_DIR as GAP_DECODES, GRID_PATH
         from training.qud_pilot import decodes_file as qud_committed
 
-        readout = [decodes_file(s, self.decode_name(m))
+        readout = [self.decode_path(s, m)
                    for s, models in needs(phase, weights, self.spec).items() for m in models]
         if self.spec.name == "consonant1":
             from training.consonant_readout import (
@@ -295,8 +305,8 @@ class Sources:
         items, _ = build_items(dataset, list(baselines[BASE].values()), hafs_segment_reference())
         items = [i for i in items if keep is None or keep(i)]
         decodes = {**{m: baselines[m] for m in models if m in BASELINES},
-                   **{m: read_readout(set_name, self.decode_name(m), baselines[BASE],
-                                      {i.key for i in items})
+                   **{m: read_readout(set_name, m, baselines[BASE],
+                                      {i.key for i in items}, spec=self.spec)
                       for m in models if m not in BASELINES}}
         return SetData(items, decodes)
 
@@ -315,7 +325,7 @@ class Sources:
         items = [i for i in pilot.items if i.key in keys]
         keys = {i.key for i in items}
         decodes = {**{m: pilot.decodes[m] for m in models if m in BASELINES},
-                   **{m: read_readout(set_name, self.decode_name(m), pilot.decodes[BASE], keys)
+                   **{m: read_readout(set_name, m, pilot.decodes[BASE], keys, spec=self.spec)
                       for m in models if m not in BASELINES}}
         return SetData(items, decodes)
 
@@ -326,7 +336,7 @@ class Sources:
         clips = [c for c in dev_clips() if c.filename not in seen]
         keys = {c.filename for c in clips}
         committed = gap_decodes("clean")
-        readout = {m: read_readout(TADABUR_SET, self.decode_name(m), committed[BASE], keys)
+        readout = {m: read_readout(TADABUR_SET, m, committed[BASE], keys, spec=self.spec)
                    for m in (*models, *BASELINES)}
         decodes = {m: {k: (committed[m] if m in BASELINES else readout[m])[k][STREAM]
                        for k in keys} for m in (*models, *BASELINES)}
@@ -361,6 +371,16 @@ class Sources:
         return grades
 
 
+def absent_sets(sources: Sources, phase: str, weights: str | None,
+                spec: RoundSpec) -> tuple[str, ...]:
+    """The sets a sitting declares whose readout decodes are not all committed. A set with no
+    input file is read nowhere and recorded absent; every rule that reads it cannot certify,
+    while corrupt identities and provenance still refuse (#174, review R1.3)."""
+    missing = set(sources.missing_inputs(phase, weights))
+    return tuple(sorted(name for name, models in needs(phase, weights, spec).items()
+                        if any(sources.decode_path(name, model) in missing for model in models)))
+
+
 def same_harness(sources: Sources, sitting: Mapping) -> None:
     """Refuse to write a sitting's result if the harness it graded with is not the one it
     claimed."""
@@ -368,15 +388,16 @@ def same_harness(sources: Sources, sitting: Mapping) -> None:
         raise SystemExit("the Muraja harness changed during the sitting; nothing is written")
 
 
-def read_readout(set_name: str, model: str, base: Mapping[str, dict], keys: set[str]
-                 ) -> dict[str, dict]:
+def read_readout(set_name: str, model: str, base: Mapping[str, dict], keys: set[str],
+                 spec: RoundSpec = AUG95) -> dict[str, dict]:
     """A model's merged readout decodes of ``set_name`` (``merge`` checked their count), holding
     every item of ``keys`` and only items the base decoded, each line carrying every field of
-    its set's provenance, equal to the committed base decode's of its item."""
+    its set's provenance, equal to the committed base decode's of its item. ``spec`` says which
+    round's decode file holds them."""
     from training.external_corpus import read_decode_file
 
     fields = SETS[set_name].provenance
-    lines = read_decode_file(decodes_file(set_name, model))
+    lines = read_decode_file(Sources(spec).decode_path(set_name, model))
     if missing := keys - set(lines):
         raise ValueError(f"{set_name}.{model}: {len(missing)} items not decoded")
     if stray := set(lines) - set(base):
@@ -464,13 +485,14 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
 
 @dataclass(frozen=True)
 class ConfirmData:
-    """Every set the confirm sitting reads, with roles bound (candidate, control, h448, base)."""
+    """Every set the confirm sitting reads, with roles bound (candidate, control, h448, base).
+    A set whose decodes are not committed is ``None``: its rules cannot certify (R1.3)."""
 
-    tarteel: SetData
-    qdat: SetData
-    qud: SetData
-    retasy: SetData
-    tadabur: TadaburData
+    tarteel: SetData | None
+    qdat: SetData | None
+    qud: SetData | None
+    retasy: SetData | None
+    tadabur: TadaburData | None
     bench: Mapping[str, str]
 
 
@@ -494,66 +516,81 @@ def confirm_report(data: ConfirmData, workers: int = 1, spec: RoundSpec = AUG95)
 
     shipped = SHIPPED_DEFAULT.name
 
-    def flags(grades: Sequence, models: Sequence[str] = ROLES,
-              comparisons: Sequence[tuple[str, str]] = COMPARISONS) -> dict:
-        return compare(false_flag_terms(grades, models, shipped), PER_1000, comparisons)
+    def flags(d: SetData | None, models: Sequence[str] = ROLES,
+              comparisons: Sequence[tuple[str, str]] = COMPARISONS) -> dict | None:
+        return None if d is None else compare(false_flag_terms(d.grades, models, shipped),
+                                              PER_1000, comparisons)
 
-    def agreement(d: SetData) -> dict:
-        return compare(word_agreement_terms(d.items, checks_text(d, ROLES), STUDENTS,
-                                            workers=workers), POINTS)
+    def agreement(d: SetData | None) -> dict | None:
+        return None if d is None else compare(
+            word_agreement_terms(d.items, checks_text(d, ROLES), STUDENTS, workers=workers),
+            POINTS)
 
-    bench = bench_items(data.qdat, data.bench)
+    bench = [] if data.qdat is None else bench_items(data.qdat, data.bench)
     bench_keys = {i.key for i in bench}
     departures = {i.key: bench_departures(i, data.bench[i.audio_filename]) for i in bench}
-    departed = [g for g in data.qdat.grades if g.item.key in bench_keys
-                and g.word_index in departures[g.item.key]]
+    departed = [g for g in (data.qdat.grades if data.qdat is not None else ())
+                if g.item.key in bench_keys and g.word_index in departures[g.item.key]]
+    bench_views = {} if data.qdat is None else {
+        kind: compare(terms, POINTS) for kind, terms in bench_terms(
+            bench, stream_text(SetData(bench, data.qdat.decodes), ROLES), data.bench,
+            ROLES).items()}
     tadabur = data.tadabur
     report = {
         # control − h448 beside the two differences, for the attribution's description only.
-        "main": {"tarteel_v1_confirm": flags(data.tarteel.grades,
+        "main": {"tarteel_v1_confirm": flags(data.tarteel,
                                              comparisons=(*COMPARISONS, (CONTROL, H448)))},
         "mechanism": {"tarteel_v1_confirm": agreement(data.tarteel), "qdat": agreement(data.qdat)},
-        "consistency": {"qdat": flags(data.qdat.grades)},
+        "consistency": {"qdat": flags(data.qdat)},
         "guards": {
-            "qud_half": flags(data.qud.grades),
-            "tadabur_dev_unseen": compare(teacher_agreement_terms(tadabur.clips, tadabur.decodes,
-                                                                  ROLES), POINTS),
-            "qdat_bench": {kind: compare(terms, POINTS) for kind, terms in bench_terms(
-                bench, stream_text(SetData(bench, data.qdat.decodes), ROLES), data.bench,
-                ROLES).items()},
+            "qud_half": flags(data.qud),
+            "tadabur_dev_unseen": None if tadabur is None else compare(
+                teacher_agreement_terms(tadabur.clips, tadabur.decodes, ROLES), POINTS),
+            "qdat_bench": bench_views or {kind: None
+                                          for kind in ("consonant", "haraka", "shaddah")},
         },
         "catch": {
-            "retasy_in_correct": {"words": flags(data.retasy.grades),
-                                  "clips": compare(clips_flagged_terms(data.retasy.grades, ROLES,
-                                                                       shipped), POINTS)},
+            "retasy_in_correct": {
+                "words": flags(data.retasy),
+                "clips": None if data.retasy is None else compare(
+                    clips_flagged_terms(data.retasy.grades, ROLES, shipped), POINTS)},
             "qdat_bench_departures": flags(departed) if departed else None,
         },
         "leniency": {
-            "blank_ratio": compare(blank_terms(tadabur.clips, tadabur.blanks, ROLES), POINTS),
-            "baselines_redecoded_identical": {**dict(tadabur.redecoded_identical),
-                                              "clips": len(tadabur.clips)},
-            "abstentions": {name: compare(abstention_terms(d.items, checks_text(d, ROLES), ROLES,
-                                                           workers), POINTS)
-                            for name, d in (("tarteel_v1_confirm", data.tarteel),
-                                            ("qdat", data.qdat))},
-            "ungraded": {name: compare(ungraded_terms(d.grades, ROLES, shipped), PER_1000)
-                         for name, d in (("tarteel_v1_confirm", data.tarteel), ("qdat", data.qdat),
-                                         ("qud_half", data.qud))},
+            "blank_ratio": None if tadabur is None else compare(
+                blank_terms(tadabur.clips, tadabur.blanks, ROLES), POINTS),
+            "baselines_redecoded_identical": None if tadabur is None else {
+                **dict(tadabur.redecoded_identical), "clips": len(tadabur.clips)},
+            "abstentions": {name: None if d is None else compare(
+                abstention_terms(d.items, checks_text(d, ROLES), ROLES, workers), POINTS)
+                for name, d in (("tarteel_v1_confirm", data.tarteel),
+                                ("qdat", data.qdat))},
+            "ungraded": {name: None if d is None else compare(
+                ungraded_terms(d.grades, ROLES, shipped), PER_1000)
+                for name, d in (("tarteel_v1_confirm", data.tarteel), ("qdat", data.qdat),
+                                ("qud_half", data.qud))},
         },
-        "sizes": {"tarteel_v1_confirm": len(data.tarteel.items), "qdat": len(data.qdat.items),
-                  "qud_half": len(data.qud.items), "retasy_in_correct": len(data.retasy.items),
-                  "tadabur_dev_unseen": len(tadabur.clips), "qdat_bench": len(bench)},
+        "sizes": {name: None if d is None else len(d.items)
+                  for name, d in (("tarteel_v1_confirm", data.tarteel), ("qdat", data.qdat),
+                                  ("qud_half", data.qud), ("retasy_in_correct", data.retasy))}
+        | {"tadabur_dev_unseen": None if tadabur is None else len(tadabur.clips),
+           "qdat_bench": None if data.qdat is None else len(bench)},
     }
     report["verdict"] = verdict(report)
     return report
 
 
-def load_confirm(sources: Sources, weights: str, spec: RoundSpec = AUG95) -> ConfirmData:
-    """Every confirm set, graded, with roles bound."""
+def load_confirm(sources: Sources, weights: str, spec: RoundSpec = AUG95,
+                 identities: Mapping[str, Mapping] | None = None,
+                 absent: Sequence[str] = ()) -> ConfirmData:
+    """Every confirm set, graded, with roles bound. A set named ``absent`` is not read.
+    ``identities`` are the sitting's validated identities; a round that replays truth-baseline
+    caches binds them to it."""
     if spec.name == "consonant1":
         from training.consonant_readout import load_confirm as round_load
 
-        return round_load(sources, weights, spec)
+        return round_load(sources, weights, spec, identities, absent)
+    absent = set(absent)
     chosen = tuple(arm_model(arm, weights) for arm in ARMS)
     models = (*chosen, *BASELINES)
 
@@ -561,15 +598,19 @@ def load_confirm(sources: Sources, weights: str, spec: RoundSpec = AUG95) -> Con
         decodes = bind(data.decodes, weights)
         return SetData(data.items, decodes, sources.grade(data.items, decodes, ROLES))
 
-    tadabur = sources.tadabur(chosen)
+    def read(name: str, fetch) -> SetData | None:
+        return None if name in absent else graded(fetch())
+
+    tadabur = None if TADABUR_SET in absent else sources.tadabur(chosen)
     return ConfirmData(
-        tarteel=graded(sources.tarteel(CONFIRM, models)),
-        qdat=graded(sources.qdat(models)),
-        qud=graded(sources.qud(models)),
-        retasy=graded(sources.retasy(models)),
-        tadabur=TadaburData(tadabur.clips, bind(tadabur.decodes, weights),
-                            bind(tadabur.blanks, weights), tadabur.redecoded_identical),
-        bench=sources.bench())
+        tarteel=read(TARTEEL_CONFIRM, lambda: sources.tarteel(CONFIRM, models)),
+        qdat=read(QDAT_SET, lambda: sources.qdat(models)),
+        qud=read(QUD_SET, lambda: sources.qud(models)),
+        retasy=read(RETASY_SET, lambda: sources.retasy(models)),
+        tadabur=None if tadabur is None else TadaburData(
+            tadabur.clips, bind(tadabur.decodes, weights), bind(tadabur.blanks, weights),
+            tadabur.redecoded_identical),
+        bench=sources.bench() if QDAT_SET not in absent else {})
 
 
 def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
@@ -583,18 +624,31 @@ def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
     if layout.verdict.exists():
         raise SystemExit(f"{layout.verdict.name} exists: the confirm half is read once")
     weights = committed.choice["weights"]
-    identities = require_manifest(read_manifest(layout), needs(CONFIRM, weights, spec),
+    required = needs(CONFIRM, weights, spec)
+    files = sources.input_files(CONFIRM, weights)
+    missing = [path for path in files if not path.exists()]
+    absent = absent_sets(sources, CONFIRM, weights, spec)
+    identities = require_manifest(read_manifest(layout),
+                                  {name: models for name, models in required.items()
+                                   if name not in absent},
                                   committed.choice, spec=spec)
     sitting = {"phase": CONFIRM, "choice_commit": committed.commit,
                "choice_sha256": committed.sha256, "identities": identities,
-               "inputs": digests(sources.input_files(CONFIRM, weights)),
+               "inputs": digests(path for path in files if path not in missing),
                "harness": sources.harness_identity()}
+    if absent or missing:  # #95's committed sitting had none, so its claim is unchanged
+        sitting |= {"missing_inputs": sorted(input_name(path) for path in missing),
+                    "absent": list(absent)}
     with claim(layout.claim(CONFIRM), sitting):
         if spec.pins is not None:  # the pre-registration's pins, before any candidate is read
             check_pins(spec, sitting["harness"],
                        sha256_file(PREREG_PATH) if PREREG_PATH.exists() else "")
-            require_reproduction(reproduction(sources))
-        report = confirm_report(load_confirm(sources, weights, spec=spec), workers, spec=spec)
+            # #95's own inputs, not this round's: the check is against history (#175 R1.1).
+            require_reproduction(reproduction(Sources()))
+        report = confirm_report(load_confirm(sources, weights, spec=spec, identities=identities,
+                                             absent=absent), workers, spec=spec)
+        if absent and "absent" not in report:
+            report["absent"] = list(absent)
         same_harness(sources, sitting)
         report = {"issue": spec.issue, "choice": committed.choice, "audit": sitting,
                   "baselines": baseline_identities(), **report}
@@ -616,8 +670,15 @@ REPRODUCTION = {"tarteel_v1_confirm": {"flagged": 1971, "graded": 41572},
 
 def reproduction(sources: Sources) -> dict:
     """Re-grade C95 on #95's two confirm sets with #95's model set and return **totals only**:
-    no per-word, per-cause or per-substitution datum is returned, logged or written."""
+    no per-word, per-cause or per-substitution datum is returned, logged or written.
+
+    ``sources`` must be #95's own (:class:`Sources` of :data:`AUG95`): the check compares
+    against #95's historical decodes, so a later round's candidate decodes can never stand in
+    for them (#175 review R1.1)."""
     from training.muraja_policy import SHIPPED_DEFAULT
+
+    if sources.spec is not AUG95:
+        raise ValueError("the reproduction check reads #95's own inputs, never another round's")
 
     totals = {}
     for name, data in (("tarteel_v1_confirm", sources.tarteel(CONFIRM, REPRODUCTION_MODELS)),
@@ -746,7 +807,7 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     counts = expected_counts(spec)
     for (set_name, model), path in found.items():
         merge_decode_files(sorted(decodes_dir.glob(f"{set_name}.*.{model}.jsonl")), path,
-                           decodes_file(set_name, model), counts[set_name])
+                           Sources(spec).decode_path(set_name, model), counts[set_name])
     write_text_atomically(layout.models, canonical(records))
     return records
 
@@ -787,16 +848,17 @@ def main() -> None:
         command.add_argument("--spec", default=AUG95.name,
                              choices=("aug95", "consonant1"))
     args = parser.parse_args()
+    if args.command == "select-qud":  # #95's frozen half: the one command with no --spec
+        record = write_qud_selection()
+        print(f"wrote {QUD_SELECTION_PATH}: {record['kept_counts']} of {record['segments']}")
+        return
     specification = round_spec(args.spec)
     from training.consonant_readout import ROUND_DIR
 
     layout = Layout(ROUND_DIR) if specification.name == "consonant1" else Layout()
     sources = Sources(specification)
 
-    if args.command == "select-qud":
-        record = write_qud_selection()
-        print(f"wrote {QUD_SELECTION_PATH}: {record['kept_counts']} of {record['segments']}")
-    elif args.command == "merge":
+    if args.command == "merge":
         print(f"wrote {layout.models}: "
               f"{sorted(merge(args.decodes_dir, layout, spec=specification))}")
     elif args.command == "look":

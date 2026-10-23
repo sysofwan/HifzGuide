@@ -8,6 +8,7 @@ caches read-only; the tracer reports it as "cannot certify" until C95's caches e
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -280,6 +281,18 @@ def test_the_consonant_round_never_demands_the_control_s_decodes():
     assert not any("control" in path.name for path in files)
 
 
+def test_the_reported_qud_half_is_a_declared_input_of_the_sitting():
+    """Reporting-only means "not in the verdict", never "outside provenance" (review R1.6)."""
+    assert ag.needs("confirm", "ema", asp.CONSONANT1)["qud_half"] == ("candidate_ema", "c95")
+    files = ar.Sources(asp.CONSONANT1).input_files("confirm", "ema")
+    assert asp.CONSONANT_ROOT / "decodes" / "qud_half.candidate_ema.jsonl.gz" in files
+    assert asp.AUG95_ROOT / "decodes" / "qud_half.candidate_ema.jsonl.gz" in files
+    # The merge's count table covers every declared set, so a supplied identity cannot KeyError.
+    counts = ar.expected_counts(asp.CONSONANT1)
+    assert {name for name in asp.CONSONANT1.sets if name in ag.SETS} <= set(counts)
+    assert counts["qud_half"] == len(ar.load_qud_selection())
+
+
 def test_the_sitting_lists_the_freeze_and_the_caches_it_reads(monkeypatch, tmp_path):
     freeze = tmp_path / "freeze.json"
     freeze.write_text("{}", encoding="utf-8")
@@ -325,6 +338,55 @@ def test_the_catch_table_pairs_the_candidate_against_the_baseline_it_reads():
     assert [table["models"][name]["flagged"] for name in outcomes] == [2, 2]
     assert table["difference"] == 0  # 2 − 2: the earlier wiring read None here
     assert cr.catch_table(sites, {"h448": outcomes["c95"]}, asp.C95)["difference"] is None
+
+
+def _check_cache(path, name: str, ref: str, identity: dict) -> None:
+    """A truth-baseline check cache of ``ref`` with the given identity and no items."""
+    path.write_text(json.dumps({
+        "model": name, "identity": identity,
+        "fingerprints": {protocol: tb.expected_fingerprint(ref, mode)
+                         for protocol, mode in tb.CHECK_PROTOCOLS.items()},
+        "items": {}}), encoding="utf-8")
+
+
+def test_a_cache_whose_identity_is_not_the_round_s_pin_is_refused():
+    """G6 must not decide against other weights (review R1.2)."""
+    expected = {"model_ref": asp.C95_REF, "weights": "ema", "step": 10_000,
+                "recipe": "aug94-mixture-v2", "checkpoint_sha256": asp.C95_SHA256}
+    assert cr.binds_cache({"model_ref": asp.C95_REF, "checkpoint_sha256": asp.C95_SHA256},
+                          expected)
+    for edit in ({"weights": "live"}, {"step": 1}, {"recipe": "wrong"},
+                 {"checkpoint_sha256": "0" * 64}):
+        assert not cr.binds_cache({**expected, **edit}, expected)
+
+
+def test_the_catch_arm_refuses_a_c95_cache_that_is_not_the_pinned_checkpoint(tmp_path):
+    sites = cr.g6_sites()[:1]
+    tampered = {"model_ref": asp.C95_REF, "weights": "live", "step": 1, "recipe": "wrong",
+                "checkpoint_sha256": "0" * 64}
+    _check_cache(tmp_path / "c95.json", "c95", asp.C95_REF, tampered)
+    with pytest.raises(ValueError, match="not the round"):
+        cr.catch_arm(sites, ("c95",), cache_dir=tmp_path)
+    _check_cache(tmp_path / "c95.json", "c95", asp.C95_REF,
+                 {"model_ref": asp.C95_REF, "weights": "ema", "step": 10_000,
+                  "recipe": "aug94-mixture-v2", "checkpoint_sha256": asp.C95_SHA256})
+    with pytest.raises(SystemExit, match="lacks"):  # the identity bound; the items are missing
+        cr.catch_arm(sites, ("c95",), cache_dir=tmp_path)
+
+
+def test_the_catch_arm_binds_the_candidate_s_cache_to_the_sitting_s_identity(tmp_path):
+    from training.aug_readout_gate import ARMS
+
+    ref = ARMS["candidate"]
+    identity = {"model_ref": ref, "weights": "ema", "step": 10_000,
+                "recipe": "aug94-mixture-v2", "checkpoint_sha256": "a" * 64}
+    _check_cache(tmp_path / "candidate_ema.json", "candidate_ema", ref, identity)
+    sites = cr.g6_sites()[:1]
+    with pytest.raises(ValueError, match="no identity"):
+        cr.catch_arm(sites, ("candidate_ema",), cache_dir=tmp_path)
+    with pytest.raises(SystemExit, match="lacks"):
+        cr.catch_arm(sites, ("candidate_ema",), cache_dir=tmp_path,
+                     identities={"candidate_ema": identity})
 
 
 def test_the_confirm_sitting_reads_the_frozen_g6_sites_and_refuses_drift(monkeypatch):
@@ -451,6 +513,88 @@ def _round_coverage() -> dict:
             "populations": {"tarteel_v1.look": _population(4),
                             "tarteel_v1.confirm": _population(4),
                             "qud_other": _population(2)}}
+
+
+# --- reported substitutions and mistake marks are not the gating lists (review R1.4) -----------
+
+
+def test_an_observed_substitution_outside_the_frozen_list_is_reported_not_gated():
+    report = _round_report(_catch())
+    report["substitutions"]["ق→ك"] = report["substitutions"]["س→ش"]
+    report["g5_frozen"] = ["س→ش"]
+    found = av.verdict(report, spec=asp.CONSONANT1)
+    names = {condition["name"] for condition in found["conditions"]}
+    assert "g5.س→ش" in names and "g5.ق→ك" not in names
+    text = adoc.render(_look(), report, _round_coverage(), spec=asp.CONSONANT1)
+    assert "`ق→ك`" in text and "`س→ش` ‡ (frozen, G5)" in text
+
+
+def test_a_frozen_substitution_the_confirm_half_did_not_observe_cannot_certify():
+    report = _round_report(_catch())
+    report["substitutions"] = {}
+    report["g5_frozen"] = ["ق→ك"]
+    found = av.verdict(report, spec=asp.CONSONANT1)
+    g5 = [condition for condition in found["conditions"] if condition["name"] == "g5.ق→ك"]
+    assert g5 and g5[0]["verdict"] == av.CANNOT_CERTIFY
+
+
+def test_the_noisier_mistake_marks_are_reported_and_never_g6_s():
+    groups = cr.descriptive_sites()
+    assert set(groups) == set(cr.DESCRIPTIVE_MARKS)
+    assert {site.mark for sites in groups.values() for site in sites} <= set(
+        cr.DESCRIPTIVE_MARKS)
+    assert len(groups["س↔ص"]) == 3 and len(groups["ض↔ظ"]) == 6
+    assert groups["ث"] == []  # disclosed, not silently absent
+    g6 = set(cr.load_g6_sites())
+    assert not any(site.site_id in g6 for sites in groups.values() for site in sites)
+    empty = cr.descriptive_catch(("c95",), cache_dir=Path("/nonexistent"))
+    assert all(row["read"] == 0 and row["models"] == {} for row in empty.values())
+
+
+# --- a missing input cannot certify, never crashes (review R1.3) --------------------------------
+
+
+def test_a_missing_guard_table_cannot_certify_instead_of_crashing():
+    report = _round_report(_catch())
+    for section, name in (("guards", "qud_other"), ("guards", "tadabur_dev_unseen"),
+                          ("main", "all_cause"), ("consistency", "qdat")):
+        broken = json.loads(json.dumps(report))
+        broken[section][name] = None
+        found = av.verdict(broken, spec=asp.CONSONANT1)
+        assert all("verdict" in condition for condition in found["conditions"])
+        assert found["verdict"] == av.CANNOT_CERTIFY
+        reading = {c["name"]: c for c in found["conditions"]}
+        assert any(condition.get("reason", "").startswith("no input")
+                   for condition in reading.values())
+
+
+def test_absent_sets_names_the_declared_sets_whose_decodes_are_missing(tmp_path):
+    import dataclasses
+
+    spec = dataclasses.replace(asp.CONSONANT1, root=tmp_path, decode_sources={})
+    sources = ar.Sources(spec)
+    assert ar.absent_sets(sources, "confirm", "ema", spec) == tuple(sorted(
+        name for name in asp.CONSONANT1.sets if name in ag.SETS and ag.SETS[name].gated))
+    for model in ("candidate_ema", "c95"):
+        present = sources.decode_path("qdat", model)
+        present.parent.mkdir(parents=True, exist_ok=True)
+        present.write_bytes(b"")
+    assert "qdat" not in ar.absent_sets(sources, "confirm", "ema", spec)
+
+
+def test_a_sitting_with_no_decodes_reports_every_set_absent_and_certifies_nothing():
+    absent = ("qdat", "qud_half", "qud_other", "tadabur_dev_unseen", "tarteel_v1.confirm")
+    data = cr.load_confirm(ar.Sources(asp.CONSONANT1), "ema", asp.CONSONANT1, absent=absent)
+    assert (data.tarteel, data.qdat, data.qud_other, data.qud_half,
+            data.tadabur) == (None,) * 5
+    assert data.bench == {} and data.absent == absent
+    report = cr.confirm_report(data, asp.CONSONANT1)
+    assert report["absent"] == list(absent)
+    assert report["sizes"]["qdat"] is None and report["mechanism"]["qdat"] is None
+    assert report["verdict"]["verdict"] == av.CANNOT_CERTIFY
+    text = adoc.render(_look(), report, _round_coverage(), spec=asp.CONSONANT1)
+    assert "not read (an input is missing); cannot certify" in text
+    assert "**Absent inputs:**" in text
 
 
 def test_the_consonant_doc_renders_c95_and_every_reported_item():

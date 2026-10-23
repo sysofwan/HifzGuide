@@ -13,9 +13,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from collections.abc import Mapping
 
-from training.aug_readout_metrics import C95, CANDIDATE, CONTROL, H448
+from training.aug_readout_metrics import BASE, C95, CANDIDATE, CONTROL, H448
 from training.external_decode import ModelSpec
 
+AUG95_ROOT = Path(__file__).parent.parent / "tadabur" / "aug_readout"
+CONSONANT_ROOT = Path(__file__).parent.parent / "tadabur" / "consonant_readout"
 DOCS_DIR = Path(__file__).parent.parent.parent / "docs"
 PREREG_PATH = DOCS_DIR / "consonant-round-preregistration.md"
 AUG95_DOC_PATH = DOCS_DIR / "augmentation-readout.md"
@@ -52,6 +54,14 @@ class ModelIdentity:
 
 
 @dataclass(frozen=True)
+class Decodes:
+    """Where one model's decode files of a set are committed: a readout root and the file name."""
+
+    root: Path
+    model: str
+
+
+@dataclass(frozen=True)
 class RoundSpec:
     """Everything one round fixes before its readout: the sets, the baseline, the bars, the pins."""
 
@@ -68,8 +78,12 @@ class RoundSpec:
     students: tuple[str, ...] = (CANDIDATE, CONTROL)
     bars: Mapping[str, float] = field(default_factory=dict)
     models: Mapping[str, ModelIdentity] = field(default_factory=dict)
-    #: Role -> the committed decode file's model name (C95's decodes are #95's candidate's).
-    decode_names: Mapping[str, str] = field(default_factory=dict)
+    #: This round's own readout directory: its decodes, manifests, choice and results live here,
+    #: never in another round's, whose committed decodes stay immutable (#175 review R1.1).
+    root: Path = AUG95_ROOT
+    #: ``(set, role)`` -> the decode files another round already committed for it, e.g. #95's
+    #: immutable candidate for C95. Every other set and role reads this round's own root.
+    decode_sources: Mapping[tuple[str, str], Decodes] = field(default_factory=dict)
     pins: Pins | None = None
 
 
@@ -80,10 +94,18 @@ AUG95 = RoundSpec(
     doc_path=AUG95_DOC_PATH, title="The augmentation experiment's readout (#95)",
     comparisons=((CANDIDATE, H448), (CANDIDATE, CONTROL)))
 
+#: The sets #95 committed decodes of and the round reads, so the round reuses those files
+#: unchanged instead of decoding its own models on them again. ``qud_other`` is the round's own
+#: set (no #95 file exists); RetaSy stays #171's descriptive-only subtree.
+REUSED_SETS = tuple(name for name in AUG95.sets if name != "retasy")
+
+
 CONSONANT1 = RoundSpec(
     name="consonant1", issue=175, baseline=C95,
-    sets=("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "qud_other", "tadabur_dev_unseen",
-          "ship_a_verified"),
+    #: ``qud_half`` is #95's half, reported not gating: it is still declared, so its identities,
+    #: merge counts and input digests are validated like every other set the sitting reads.
+    sets=("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "qud_other", "qud_half",
+          "tadabur_dev_unseen", "ship_a_verified"),
     doc_path=CONSONANT_DOC_PATH, title="The consonant round's readout (#175)",
     #: The round has no control (#174): C95 is its paired baseline and its one extra student.
     students=(CANDIDATE, C95),
@@ -94,7 +116,14 @@ CONSONANT1 = RoundSpec(
           "tadabur_lower_at_least": -1.0, "bench_lower_at_least": -2.0,
           "tashkeel_upper_at_most": 1.0, "catch_at_least": -2.0},
     models={C95: ModelIdentity(C95_REF, EMA, 10_000, "aug94-mixture-v2", C95_SHA256)},
-    decode_names={C95: "candidate_ema"},
+    root=CONSONANT_ROOT,
+    #: C95's decodes are #95's committed candidate's, for the sets #95 fixed; the baselines'
+    #: are #95's too. The round's candidate decodes land in :data:`CONSONANT_ROOT`, so merging
+    #: it can never overwrite #95's immutable inputs.
+    decode_sources={
+        **{(name, C95): Decodes(AUG95_ROOT, "candidate_ema") for name in REUSED_SETS},
+        **{(name, model): Decodes(AUG95_ROOT, model)
+           for name in REUSED_SETS for model in (H448, BASE)}},
     comparisons=((CANDIDATE, C95),),
     pins=Pins(MURAJA_COMMIT, HARNESS_SHA256, PREREG_SHA256))
 

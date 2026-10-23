@@ -79,3 +79,59 @@ def test_c95_is_the_pinned_checkpoint_the_readout_validates():
         edit(altered)
         with pytest.raises(ValueError, match=match):
             ag.validate_identity("qdat", "c95", altered, spec=spec)
+
+
+# --- the round's decodes are its own; C95's are #95's immutable inputs (review R1.1) ----------
+
+
+def test_the_round_reads_c95_s_committed_decodes_and_never_overwrites_them():
+    from training import aug_readout as ar
+
+    round_sources = ar.Sources(asp.CONSONANT1)
+    for set_name in asp.REUSED_SETS:
+        c95 = round_sources.decode_path(set_name, asp.C95)
+        assert c95 == ag.decodes_file(set_name, "candidate_ema")  # #95's file, byte for byte
+        assert c95.is_file()
+        candidate = round_sources.decode_path(set_name, "candidate_ema")
+        assert candidate == asp.CONSONANT_ROOT / "decodes" / f"{set_name}.candidate_ema.jsonl.gz"
+        assert candidate != c95  # merging the candidate cannot touch #95's input
+    # qud_other is the round's own set: C95 is decoded for it and stored in the round's root.
+    qud_other = round_sources.decode_path("qud_other", asp.C95)
+    assert qud_other == asp.CONSONANT_ROOT / "decodes" / "qud_other.c95.jsonl.gz"
+    assert qud_other != round_sources.decode_path("qud_other", "candidate_ema")
+    # The baselines are #95's everywhere: no round decodes them.
+    for model in ("h448", "base"):
+        assert round_sources.decode_path("tadabur_dev_unseen", model) == ag.decodes_file(
+            "tadabur_dev_unseen", model)
+
+
+def test_a_round_s_merge_and_reads_target_that_round_s_root(tmp_path):
+    import dataclasses
+
+    from training import aug_readout as ar
+
+    spec = dataclasses.replace(asp.CONSONANT1, root=tmp_path)
+    assert ar.Sources(spec).decode_path("qdat", "candidate_ema") == (
+        tmp_path / "decodes" / "qdat.candidate_ema.jsonl.gz")
+    assert ar.Sources(spec).decode_path("qdat", asp.C95) == (
+        asp.AUG95_ROOT / "decodes" / "qdat.candidate_ema.jsonl.gz")
+
+
+def test_only_the_tracer_shadows_the_candidate_with_c95_s_decodes():
+    from training import aug_readout as ar
+    from training import consonant_readout as cr
+
+    role = "candidate"  # the tracer reads the candidate by its role, C95 by its name
+    production = ar.Sources(asp.CONSONANT1)
+    tracer = ar.Sources(cr.tracer_spec())
+    for set_name in ("tarteel_v1.look", "qdat", "tadabur_dev_unseen"):
+        assert production.decode_path(set_name, role) != production.decode_path(set_name, asp.C95)
+        assert tracer.decode_path(set_name, role) == tracer.decode_path(set_name, asp.C95)
+    assert not any(role == "candidate" for _, role in asp.CONSONANT1.decode_sources)
+
+
+def test_the_reproduction_check_refuses_a_later_round_s_sources():
+    from training import aug_readout as ar
+
+    with pytest.raises(ValueError, match="#95"):
+        ar.reproduction(ar.Sources(asp.CONSONANT1))

@@ -22,12 +22,15 @@ from training.acceptance_stats import (
     TANGO,
     TUNE,
     UPPER,
+    VETO_QUANTILES,
     WILSON,
+    Z,
     AgreementRecord,
     Interval,
     Resample,
     aggregate,
     agreement_terms,
+    critical_value,
     difference_interval,
     difference_verdict,
     independent_equal_weight,
@@ -313,3 +316,31 @@ def test_difference_interval_falls_back_to_tango_or_none():
 def test_an_infinite_adverse_bound_serializes_explicitly():
     interval = Interval(-math.inf, 0.5, BOOTSTRAP)
     assert interval.as_dict()["lower"] == "-inf"
+
+
+def test_critical_value_is_95s_frozen_1_96_and_derives_other_widths():
+    assert critical_value((0.025, 0.975)) == Z == 1.96
+    assert critical_value(VETO_QUANTILES) == pytest.approx(2.807033768343811, abs=1e-12)
+
+
+def test_the_score_fallbacks_read_the_requested_width_not_95_percent():
+    """G5's 99.5% veto must never be read off a 95% Tango bound (review R1.5)."""
+    clusters = list(range(8))
+    den = np.ones(8)
+    arm = np.array([1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0])
+    comparator = (np.zeros(8), den)
+    wide = difference_interval(clusters, (arm, den), comparator, quantiles=VETO_QUANTILES)
+    narrow = difference_interval(clusters, (arm, den), comparator)
+    assert wide.method == narrow.method == TANGO
+    assert narrow.lower == pytest.approx(0.013376570734, abs=1e-9)
+    assert wide.lower == pytest.approx(-0.244305776801, abs=1e-9)
+    assert wide.upper == pytest.approx(0.852208692113, abs=1e-9)
+    assert wide.lower < narrow.lower and wide.upper > narrow.upper
+
+
+def test_the_wilson_fallback_widens_at_99_5_percent():
+    clusters, num, den = _sites(0, 73)
+    narrow = ratio_interval(clusters, num, den)
+    wide = ratio_interval(clusters, num, den, quantiles=VETO_QUANTILES)
+    assert narrow.method == wide.method == WILSON
+    assert wide.upper > narrow.upper

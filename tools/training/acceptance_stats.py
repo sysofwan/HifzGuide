@@ -67,6 +67,7 @@ import math
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
+from statistics import NormalDist
 
 import numpy as np
 
@@ -81,10 +82,20 @@ LOWER_QUANTILE = 0.025
 UPPER_QUANTILE = 0.975
 #: The two-sided 99.5 % interval (#174, G5's veto only): the same draws, a wider tail.
 VETO_QUANTILES = (0.0025, 0.9975)
-#: The normal quantile the Wilson and Tango bounds use: the same one-sided 97.5% end.
+#: The normal quantile the Wilson and Tango bounds use at the default width: #95's frozen
+#: 1.96, kept exactly so its committed report stays byte-identical. Other widths derive theirs
+#: (:func:`critical_value`), so a 99.5% interval is never read off a 95% bound.
 Z = 1.96
 SPARSE_MIN_RECITERS = 10
 SPARSE_MIN_SITES = 20
+
+
+def critical_value(quantiles: tuple[float, float]) -> float:
+    """The two-sided normal critical value of ``quantiles``' width: :data:`Z` at the default
+    (frozen for #95's report), the matching normal quantile otherwise (G5's 99.5% veto)."""
+    if quantiles == (LOWER_QUANTILE, UPPER_QUANTILE):
+        return Z
+    return NormalDist().inv_cdf(quantiles[1])
 
 PASS = "pass"
 FAIL = "fail"
@@ -305,7 +316,8 @@ def ratio_interval(
                         upper_bound(replicates, quantiles[1]), BOOTSTRAP)
     if not independent_equal_weight(clusters, den, weights=weights):
         return Interval(None, None, NO_BOUND, _NOT_INDEPENDENT)
-    low, high = wilson_interval(int(round(np.sum(num))), len(clusters), Z)
+    low, high = wilson_interval(int(round(np.sum(num))), len(clusters),
+                                critical_value(quantiles))
     return Interval(low, high, WILSON, "sparse or degenerate")
 
 
@@ -336,7 +348,8 @@ def difference_interval(
         return Interval(None, None, NO_BOUND, _NOT_INDEPENDENT)
     gains = int(np.sum((num_a == 1) & (num_b == 0)))
     losses = int(np.sum((num_a == 0) & (num_b == 1)))
-    low, high = paired_score_interval(gains, losses, len(clusters), Z)
+    low, high = paired_score_interval(gains, losses, len(clusters),
+                                      critical_value(quantiles))
     return Interval(low, high, TANGO, "sparse or degenerate")
 
 

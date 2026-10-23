@@ -193,13 +193,13 @@
    "base_already_right": 659,
    "held_out": {
     "base_already_right": 344,
-    "listened": 52,
+    "listened": 51,
     "reciters": 133,
-    "sites": 396
+    "sites": 395
    },
-   "listened": 93,
+   "listened": 92,
    "reciters": 239,
-   "sites": 752,
+   "sites": 751,
    "train": {
     "base_already_right": 315,
     "listened": 41,
@@ -208,16 +208,16 @@
    }
   },
   "ت↔ط": {
-   "base_already_right": 59,
+   "base_already_right": 58,
    "held_out": {
-    "base_already_right": 30,
+    "base_already_right": 29,
     "listened": 6,
-    "reciters": 33,
-    "sites": 40
+    "reciters": 32,
+    "sites": 39
    },
    "listened": 7,
-   "reciters": 63,
-   "sites": 73,
+   "reciters": 62,
+   "sites": 72,
    "train": {
     "base_already_right": 29,
     "listened": 1,
@@ -372,7 +372,7 @@
  },
  "frame_populations": {
   "pair:ت→ط": {
-   "carriers": 4208,
+   "carriers": 4207,
    "reciters": 367
   },
   "pair:ح→ه": {
@@ -440,7 +440,7 @@
    "reciters": 351
   },
   "pair:ه→ح": {
-   "carriers": 5305,
+   "carriers": 5306,
    "reciters": 369
   },
   "shaddah:held:cross_word": {
@@ -448,7 +448,7 @@
    "reciters": 252
   },
   "shaddah:held:in_word": {
-   "carriers": 7663,
+   "carriers": 7662,
    "reciters": 372
   }
  },
@@ -459,12 +459,12 @@
   "ship_a/mining/base_decodes.json": "4ff4bcb24bf73559c2699de7f7bc55cf543f605596aaaf9b84e3435944bc5b04",
   "ship_a/mining/clips.jsonl": "32f9f4e9dc50344c35ba846c5d9104ebd3c164a0dd435dc9cd26e3d2c9008cf1",
   "ship_a/mining/h448_stream_decodes.json": "9b5c936d1efb3f9108adb607f75b2fe492616b957cffbb322c4b0430c58f422b",
-  "ship_a/waqf_correction.jsonl": "47e95198d6d42bfeb45fb9c1c8088fd355d0c1b0944a6a471122d69d069275a4"
+  "ship_a/waqf_correction.jsonl": "fd3dd2628cc7ce56f55a00f69042f34fc7769e1403f03a0da3dd4b5424499f7a"
  },
  "listening": {
   "geminate": {
-   "listened": 93,
-   "sites": 93
+   "listened": 92,
+   "sites": 92
   },
   "geminate, teacher holds": {
    "listened": 0,
@@ -472,7 +472,7 @@
   },
   "other letter": {
    "listened": 0,
-   "sites": 267
+   "sites": 266
   },
   "swap, teacher right, held_out": {
    "listened": 222,
@@ -694,7 +694,7 @@
    "ت→ك": 5,
    "ت→ل": 2,
    "ت→ن": 5,
-   "ت→ه": 6,
+   "ت→ه": 5,
    "ت→ي": 2,
    "ح→ء": 3,
    "ح→خ": 2,
@@ -796,16 +796,16 @@
    "ه→ي": 10
   },
   "other_letter": {
-   "base_already_right": 226,
+   "base_already_right": 225,
    "held_out": {
-    "base_already_right": 126,
+    "base_already_right": 125,
     "listened": 0,
-    "reciters": 74,
-    "sites": 148
+    "reciters": 73,
+    "sites": 147
    },
    "listened": 0,
-   "reciters": 138,
-   "sites": 267,
+   "reciters": 137,
+   "sites": 266,
    "train": {
     "base_already_right": 100,
     "listened": 0,
@@ -878,13 +878,13 @@
    "base_already_right": 0,
    "held_out": {
     "base_already_right": 0,
-    "listened": 52,
-    "reciters": 37,
-    "sites": 52
+    "listened": 51,
+    "reciters": 36,
+    "sites": 51
    },
-   "listened": 93,
-   "reciters": 64,
-   "sites": 93,
+   "listened": 92,
+   "reciters": 63,
+   "sites": 92,
    "train": {
     "base_already_right": 0,
     "listened": 41,
@@ -893,16 +893,16 @@
    }
   },
   "ship_a:ت:h448_other": {
-   "base_already_right": 40,
+   "base_already_right": 39,
    "held_out": {
-    "base_already_right": 21,
+    "base_already_right": 20,
     "listened": 0,
-    "reciters": 27,
-    "sites": 28
+    "reciters": 26,
+    "sites": 27
    },
    "listened": 0,
-   "reciters": 48,
-   "sites": 50,
+   "reciters": 47,
+   "sites": 49,
    "train": {
     "base_already_right": 19,
     "listened": 0,

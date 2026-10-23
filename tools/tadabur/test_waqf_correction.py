@@ -32,16 +32,20 @@ WORKLIST_SUMMARY = SHIP_A / "worklist.summary.json"
 WORD_SAMPLE = SHIP_A / "word_sample.jsonl"
 WORKLIST = SHIP_A / "worklist.jsonl"
 
-#: The sites whose paused ta-marbuta reference is corrected: 56 of the 62 h448→ه sites.
-#: The six kept are the four the local check did not pause and the two it could not place.
+#: The sites whose paused ta-marbuta reference is corrected: 57 of the 62 h448→ه sites
+#: (spk0167's through the owner's waqf note on the shaddah item after its boundary). The five
+#: kept are the three the local check did not pause and the two it could not place.
 KEPT = {
     "new_audit:tadabur_spk0017_S23_A3_e47c197e_000001.wav#0@58:ت↔ط",
     "new_audit:tadabur_spk0095_S17_A47_67115993_000013.wav#0@50:ت↔ط",
-    "new_audit:tadabur_spk0167_S17_A15_6d312abb_000008.wav#0@61:ت↔ط",
     "new_audit:tadabur_spk0412_S5_A74_cb983a4d_000000.wav#0@79:ت↔ط",
     "new_audit:tadabur_spk0485_S4_A66_70923c7f_000087.wav#2@29:ت↔ط",
     "new_audit:tadabur_spk0603_S97_A5_5016ad75_000000.wav#1@49:ت↔ط",
 }
+
+#: The verified site whose own pause note corrects its boundary: its mark is waqf-dependent,
+#: so it leaves the wasl population while its frozen verdict, index and design stay.
+ORPHANED = "new_audit:tadabur_spk0167_S17_A15_6d312abb_000008.wav#0@63:shaddah"
 
 #: Frozen by this issue; the correction changes no verdicted site id or index.
 WORD_SAMPLE_SHA256 = "073deb66db996b9c638292468378f9923f33893b00d9e7c04fafb9414ed15e03"
@@ -65,7 +69,7 @@ def read_jsonl(path: Path) -> list[dict]:
 def test_the_committed_manifest_is_the_set_the_guard_derives():
     assert wc.CORRECTION_PATH == SHIP_A / "waqf_correction.jsonl"
     rows = wc.load_corrections()
-    assert len(rows) == 56
+    assert len(rows) == 57
     assert rows == wc.derive_corrections()
 
 
@@ -108,9 +112,16 @@ def test_verified_sites_keep_their_ids_and_reference_indices():
     assert not any(row["site_id"] in sites for row in reject_pile)
     ship_a = [row for row in verified if not row["stratum"].endswith(REJECT_PILE_STRATUM)]
     assert len(ship_a) == 515
+    # A site whose own pause note corrects its boundary leaves the wasl population; the
+    # guard realizes it under waqf, so its frozen row keeps its verdict and index.
+    from tadabur.waqf_guard import realized_ids
+
+    realized = realized_ids()
+    assert [row["site_id"] for row in ship_a if row["site_id"] not in sites] == [ORPHANED]
+    assert ORPHANED in realized
     for row in ship_a:
-        assert row["site_id"] in sites
-        assert sites[row["site_id"]]["reference_index"] == row["reference_index"]
+        if row["site_id"] in sites:
+            assert sites[row["site_id"]]["reference_index"] == row["reference_index"]
 
 
 def test_worklist_sites_keep_their_reference_indices():
@@ -182,7 +193,7 @@ def _dependent_item(clip: str, word: int) -> str:
     from tadabur import waqf_guard as g
 
     for item in g.frozen_items():
-        if item.audio_filename == clip and item.word_start in (word - 1, word):
+        if item.audio_filename == clip and g.carrier_word(item) in (word - 1, word):
             if any(d.word == word for d in g.classify(g.wasl_item(item)).dependences):
                 return item.item_id
     raise AssertionError(f"{clip}@{word}: no item depends on it")
@@ -271,6 +282,22 @@ def test_an_owner_note_places_an_unplaced_taa_marbuta_boundary(tmp_path):
     keys = lambda *a, **k: {(r.audio_filename, r.cut_word) for r in wc.derive_corrections(*a, **k)}
     assert (name, word) not in keys(boundaries_path=unplaced)
     assert (name, word) in keys(_verdicts_with(tmp_path, item, "waqf"), unplaced)
+
+
+SPK0017 = "new_audit:tadabur_spk0017_S23_A3_e47c197e_000001.wav#0@58:ت↔ط"
+
+
+def test_the_reported_site_s_pause_note_corrects_its_boundary(tmp_path):
+    """#130's reported case: the carrier is an interior word (the segment starts at word 0,
+    the carrier is word 6, the ta-marbuta boundary is 7), not the segment's first word."""
+    from tadabur import waqf_guard as g
+
+    item = {i.item_id: i for i in g.frozen_items()}[SPK0017]
+    assert g.carrier_word(item) == 6
+    path = _verdicts_with(tmp_path, SPK0017, "waqf")
+    rows = {(r.audio_filename, r.cut_word): r for r in wc.derive_corrections(path)}
+    assert (item.audio_filename, 7) in rows
+    assert SPK0017 in rows[(item.audio_filename, 7)].provenance
 
 
 def test_the_manifest_pins_its_decision_inputs():

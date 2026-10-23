@@ -19,16 +19,16 @@
     }
    },
    "soft pairs (pooled)": {
-    "base_already_right": 463,
+    "base_already_right": 462,
     "held_out": {
      "listened": 152,
      "listened_reciters": 75,
-     "sites": 311
+     "sites": 310
     },
     "held_out_sparse": false,
     "listened": 201,
     "partner_swaps": 367,
-    "sites": 588,
+    "sites": 587,
     "train": {
      "listened": 49,
      "listened_reciters": 30,
@@ -36,16 +36,16 @@
     }
    },
    "ت↔ط": {
-    "base_already_right": 59,
+    "base_already_right": 58,
     "held_out": {
      "listened": 6,
      "listened_reciters": 4,
-     "sites": 40
+     "sites": 39
     },
     "held_out_sparse": true,
     "listened": 7,
     "partner_swaps": 13,
-    "sites": 73,
+    "sites": 72,
     "train": {
      "listened": 1,
      "listened_reciters": 1,
@@ -208,16 +208,16 @@
     }
    },
    "ت→other letter": {
-    "base_already_right": 40,
+    "base_already_right": 39,
     "held_out": {
      "listened": 0,
      "listened_reciters": 0,
-     "sites": 28
+     "sites": 27
     },
     "held_out_sparse": true,
     "listened": 0,
     "partner_swaps": 0,
-    "sites": 50,
+    "sites": 49,
     "train": {
      "listened": 0,
      "listened_reciters": 0,
@@ -754,16 +754,16 @@
     }
    },
    "ت↔ط": {
-    "base_already_right": 59,
+    "base_already_right": 58,
     "held_out": {
      "listened": 6,
      "listened_reciters": 4,
-     "sites": 40
+     "sites": 39
     },
     "held_out_sparse": true,
     "listened": 7,
     "partner_swaps": 13,
-    "sites": 73,
+    "sites": 72,
     "train": {
      "listened": 1,
      "listened_reciters": 1,
@@ -961,11 +961,11 @@
  "fixture_report": {
   "inputs": {
    "clips.jsonl": "2c3597aca616391168815a38d49cfbae429d41397d4a655e2497df0237ceb192",
-   "onset_guard.jsonl": "6b07cd36148b532ee49ef3ad12f3184d5bf073af69b8ebdb46b57bba9306428a",
+   "onset_guard.jsonl": "84da862132a4ee9117f846577b734a3259d70241c4cd800061f4ed40bf2e9745",
    "p35_fixtures.jsonl": "654f8ff890e8dd66ddc4db52522c07267ba85f1b0cdb392f0d7990b86689a2f8",
    "p35_fixtures.relocation.jsonl": "8a49c872035eef2ba8f69259106f04e1ff3b345c34412b7e0632b71cf3e8d7b8",
    "verdicts.jsonl": "447ffc05633231f7f9d1ffcd404144445254344146fec5c856f92124d80c060d",
-   "waqf_guard.jsonl": "9316153a3e3b29685f44db5a46941e59c5560850ebe4650c6dde350240e64de8"
+   "waqf_guard.jsonl": "02899104da97557c868a4b8b54fbcea52e5ee1149e8fc8db091d3e96b5a55884"
   },
   "not_hafs": [
    "p35_fixture:tadabur_spk0066_S26_A89_008098b6_000033__seg0.wav:shadda#69",
@@ -1104,50 +1104,50 @@
   "words": 0
  },
  "harm": {
-  "held_out_carriers": 14927,
+  "held_out_carriers": 14928,
   "reciters": 200,
   "scenarios": [
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.0,
-    "mean_minutes": 2.772128237713177,
-    "mean_sites_heard": 12.9948,
-    "median_bound_per_1000": 1.6729580549050584,
+    "mean_minutes": 2.79910187509075,
+    "mean_sites_heard": 13.1212,
+    "median_bound_per_1000": 1.716868249240468,
     "n": 10,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.2584,
+     "1.0": 0.2528,
      "10.0": 1.0,
-     "2.0": 0.6992,
+     "2.0": 0.6672,
      "5.0": 1.0
     },
     "true_rate_per_1000": 0.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.0,
-    "mean_minutes": 5.376752928449688,
-    "mean_sites_heard": 25.2044,
-    "median_bound_per_1000": 0.9538795927090247,
+    "mean_minutes": 5.334361327300038,
+    "mean_sites_heard": 25.0056,
+    "median_bound_per_1000": 0.9515896128578318,
     "n": 20,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.5424,
+     "1.0": 0.5416,
      "10.0": 1.0,
-     "2.0": 0.9812,
+     "2.0": 0.9852,
      "5.0": 1.0
     },
     "true_rate_per_1000": 0.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.0,
-    "mean_minutes": 7.978476386075039,
-    "mean_sites_heard": 37.4004,
-    "median_bound_per_1000": 0.267970791183761,
+    "mean_minutes": 7.987718422868946,
+    "mean_sites_heard": 37.4436,
+    "median_bound_per_1000": 0.2679528403001072,
     "n": 40,
     "new_error_share": 0.1,
     "power": {
@@ -1160,11 +1160,11 @@
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.0,
-    "mean_minutes": 8.016960389990718,
-    "mean_sites_heard": 37.5808,
-    "median_bound_per_1000": 0.267970791183761,
+    "mean_minutes": 8.011013695005634,
+    "mean_sites_heard": 37.5528,
+    "median_bound_per_1000": 0.2679528403001072,
     "n": 80,
     "new_error_share": 0.1,
     "power": {
@@ -1177,49 +1177,49 @@
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.05,
-    "mean_minutes": 2.935706586951216,
-    "mean_sites_heard": 13.7616,
-    "median_bound_per_1000": 1.672958054905059,
+    "mean_minutes": 2.8919416409688323,
+    "mean_sites_heard": 13.5564,
+    "median_bound_per_1000": 1.67470525187567,
     "n": 10,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.2492,
+     "1.0": 0.24,
      "10.0": 1.0,
-     "2.0": 0.6876,
+     "2.0": 0.676,
      "5.0": 1.0
     },
     "true_rate_per_1000": 0.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.05,
-    "mean_minutes": 5.492716922510457,
-    "mean_sites_heard": 25.748,
-    "median_bound_per_1000": 0.9314131001365751,
+    "mean_minutes": 5.507070597646765,
+    "mean_sites_heard": 25.8152,
+    "median_bound_per_1000": 0.9319359338947214,
     "n": 20,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.5792,
+     "1.0": 0.572,
      "10.0": 1.0,
-     "2.0": 0.98,
+     "2.0": 0.9824,
      "5.0": 1.0
     },
     "true_rate_per_1000": 0.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.05,
-    "mean_minutes": 7.925742207760428,
-    "mean_sites_heard": 37.1532,
-    "median_bound_per_1000": 0.267970791183761,
+    "mean_minutes": 7.953842148003504,
+    "mean_sites_heard": 37.2848,
+    "median_bound_per_1000": 0.2679528403001072,
     "n": 40,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.99,
+     "1.0": 0.9916,
      "10.0": 1.0,
      "2.0": 1.0,
      "5.0": 1.0
@@ -1228,11 +1228,11 @@
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.05,
-    "mean_minutes": 7.985729468852938,
-    "mean_sites_heard": 37.4344,
-    "median_bound_per_1000": 0.267970791183761,
+    "mean_minutes": 7.946162387958443,
+    "mean_sites_heard": 37.2488,
+    "median_bound_per_1000": 0.2679528403001072,
     "n": 80,
     "new_error_share": 0.1,
     "power": {
@@ -1245,49 +1245,49 @@
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 3.235045579714408,
-    "mean_sites_heard": 15.1648,
-    "median_bound_per_1000": 1.6729580549050587,
+    "mean_minutes": 3.2199527255601454,
+    "mean_sites_heard": 15.094,
+    "median_bound_per_1000": 1.6728459864394298,
     "n": 10,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.2368,
+     "1.0": 0.2404,
      "10.0": 1.0,
-     "2.0": 0.6832,
+     "2.0": 0.6788,
      "5.0": 1.0
     },
     "true_rate_per_1000": 0.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 5.91057982090309,
-    "mean_sites_heard": 27.7068,
-    "median_bound_per_1000": 0.9050544293028087,
+    "mean_minutes": 5.9153778400425585,
+    "mean_sites_heard": 27.7292,
+    "median_bound_per_1000": 0.9009872123121822,
     "n": 20,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.6008,
+     "1.0": 0.6124,
      "10.0": 1.0,
-     "2.0": 0.9856,
+     "2.0": 0.9816,
      "5.0": 1.0
     },
     "true_rate_per_1000": 0.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 7.959191718924389,
-    "mean_sites_heard": 37.31,
-    "median_bound_per_1000": 0.267970791183761,
+    "mean_minutes": 7.986011809525598,
+    "mean_sites_heard": 37.4356,
+    "median_bound_per_1000": 0.2679528403001072,
     "n": 40,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.9964,
+     "1.0": 0.998,
      "10.0": 1.0,
      "2.0": 1.0,
      "5.0": 1.0
@@ -1296,11 +1296,11 @@
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 7.990849291990278,
-    "mean_sites_heard": 37.4584,
-    "median_bound_per_1000": 0.267970791183761,
+    "mean_minutes": 7.941981185267243,
+    "mean_sites_heard": 37.2292,
+    "median_bound_per_1000": 0.2679528403001072,
     "n": 80,
     "new_error_share": 0.1,
     "power": {
@@ -1313,83 +1313,83 @@
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.0,
-    "mean_minutes": 2.793204842961897,
-    "mean_sites_heard": 13.0936,
-    "median_bound_per_1000": 2.478729818449789,
-    "n": 10,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0028,
-     "10.0": 1.0,
-     "2.0": 0.1392,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 1.25
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.0,
-    "mean_minutes": 5.343132756514484,
-    "mean_sites_heard": 25.0468,
-    "median_bound_per_1000": 2.143766329470088,
-    "n": 20,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0048,
-     "10.0": 1.0,
-     "2.0": 0.3644,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 1.25
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.0,
-    "mean_minutes": 7.909273443335317,
-    "mean_sites_heard": 37.076,
-    "median_bound_per_1000": 1.2058685603269244,
-    "n": 40,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.166,
-     "10.0": 1.0,
-     "2.0": 0.9464,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 1.25
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.0,
-    "mean_minutes": 7.99340920355895,
-    "mean_sites_heard": 37.4704,
-    "median_bound_per_1000": 1.2058685603269244,
-    "n": 80,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.1792,
-     "10.0": 1.0,
-     "2.0": 0.992,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 1.25
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.05,
-    "mean_minutes": 2.896454609564936,
-    "mean_sites_heard": 13.5776,
-    "median_bound_per_1000": 2.478729818449789,
+    "mean_minutes": 2.788862195030667,
+    "mean_sites_heard": 13.0732,
+    "median_bound_per_1000": 2.4785637727759915,
     "n": 10,
     "new_error_share": 0.5,
     "power": {
      "1.0": 0.0008,
+     "10.0": 1.0,
+     "2.0": 0.1236,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 1.25
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.0,
+    "mean_minutes": 5.357997922105395,
+    "mean_sites_heard": 25.1164,
+    "median_bound_per_1000": 2.124799806338135,
+    "n": 20,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0052,
+     "10.0": 1.0,
+     "2.0": 0.3628,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 1.25
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.0,
+    "mean_minutes": 7.911603467755664,
+    "mean_sites_heard": 37.0868,
+    "median_bound_per_1000": 1.2057877813504823,
+    "n": 40,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.1836,
+     "10.0": 1.0,
+     "2.0": 0.944,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 1.25
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.0,
+    "mean_minutes": 7.990107681549631,
+    "mean_sites_heard": 37.4548,
+    "median_bound_per_1000": 1.272775991425509,
+    "n": 80,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.172,
+     "10.0": 1.0,
+     "2.0": 0.9948,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 1.25
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.05,
+    "mean_minutes": 2.924452625159595,
+    "mean_sites_heard": 13.7088,
+    "median_bound_per_1000": 2.4115755627009645,
+    "n": 10,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0036,
      "10.0": 1.0,
      "2.0": 0.1348,
      "5.0": 1.0
@@ -1398,165 +1398,250 @@
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.05,
-    "mean_minutes": 5.488791724771829,
-    "mean_sites_heard": 25.7296,
-    "median_bound_per_1000": 2.0767736316741474,
+    "mean_minutes": 5.503742701627238,
+    "mean_sites_heard": 25.7996,
+    "median_bound_per_1000": 2.0766345123258305,
     "n": 20,
     "new_error_share": 0.5,
     "power": {
-     "1.0": 0.012,
+     "1.0": 0.0092,
      "10.0": 1.0,
-     "2.0": 0.4028,
+     "2.0": 0.394,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.05,
-    "mean_minutes": 7.89886313628939,
-    "mean_sites_heard": 37.0272,
-    "median_bound_per_1000": 1.2058685603269244,
+    "mean_minutes": 7.895561302328202,
+    "mean_sites_heard": 37.0116,
+    "median_bound_per_1000": 1.272775991425509,
     "n": 40,
     "new_error_share": 0.5,
     "power": {
-     "1.0": 0.1752,
+     "1.0": 0.1824,
      "10.0": 1.0,
-     "2.0": 0.9632,
+     "2.0": 0.9596,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.05,
-    "mean_minutes": 7.949464054963442,
-    "mean_sites_heard": 37.2644,
-    "median_bound_per_1000": 1.2058685603269244,
+    "mean_minutes": 7.946077057291276,
+    "mean_sites_heard": 37.2484,
+    "median_bound_per_1000": 1.2057877813504823,
     "n": 80,
     "new_error_share": 0.5,
     "power": {
-     "1.0": 0.2016,
+     "1.0": 0.1796,
      "10.0": 1.0,
-     "2.0": 0.9852,
+     "2.0": 0.9888,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 3.22420862074037,
-    "mean_sites_heard": 15.114,
-    "median_bound_per_1000": 2.4117371206538487,
+    "mean_minutes": 3.241541384353486,
+    "mean_sites_heard": 15.1952,
+    "median_bound_per_1000": 2.4115755627009645,
     "n": 10,
     "new_error_share": 0.5,
     "power": {
-     "1.0": 0.0024,
+     "1.0": 0.002,
      "10.0": 1.0,
-     "2.0": 0.1668,
+     "2.0": 0.1716,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 5.855029739862942,
-    "mean_sites_heard": 27.4464,
-    "median_bound_per_1000": 2.0097809338782073,
+    "mean_minutes": 5.876808378482915,
+    "mean_sites_heard": 27.5484,
+    "median_bound_per_1000": 2.009646302250804,
     "n": 20,
     "new_error_share": 0.5,
     "power": {
-     "1.0": 0.0228,
+     "1.0": 0.0216,
      "10.0": 1.0,
-     "2.0": 0.4684,
+     "2.0": 0.4744,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 7.967724757486623,
-    "mean_sites_heard": 37.35,
-    "median_bound_per_1000": 1.2058685603269244,
+    "mean_minutes": 7.920904510476906,
+    "mean_sites_heard": 37.1304,
+    "median_bound_per_1000": 1.2057877813504823,
     "n": 40,
     "new_error_share": 0.5,
     "power": {
-     "1.0": 0.1892,
+     "1.0": 0.186,
      "10.0": 1.0,
-     "2.0": 0.9768,
+     "2.0": 0.976,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 7.9607276658655906,
-    "mean_sites_heard": 37.3172,
-    "median_bound_per_1000": 1.2058685603269244,
+    "mean_minutes": 7.940018579922393,
+    "mean_sites_heard": 37.22,
+    "median_bound_per_1000": 1.2057877813504823,
     "n": 80,
     "new_error_share": 0.5,
     "power": {
-     "1.0": 0.1924,
+     "1.0": 0.1764,
      "10.0": 1.0,
-     "2.0": 0.9872,
+     "2.0": 0.9888,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.25
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.0,
-    "mean_minutes": 2.792095547948806,
-    "mean_sites_heard": 13.0884,
-    "median_bound_per_1000": 2.478729818449789,
+    "mean_minutes": 2.815741355188384,
+    "mean_sites_heard": 13.1992,
+    "median_bound_per_1000": 2.4785637727759915,
     "n": 10,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
      "10.0": 1.0,
-     "2.0": 0.0888,
+     "2.0": 0.0892,
      "5.0": 1.0
     },
     "true_rate_per_1000": 2.5
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.0,
-    "mean_minutes": 5.3636973794494684,
-    "mean_sites_heard": 25.1432,
-    "median_bound_per_1000": 2.478729818449789,
+    "mean_minutes": 5.37881860489423,
+    "mean_sites_heard": 25.214,
+    "median_bound_per_1000": 2.4785637727759915,
     "n": 20,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
      "10.0": 1.0,
-     "2.0": 0.0916,
+     "2.0": 0.0928,
      "5.0": 1.0
     },
     "true_rate_per_1000": 2.5
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.0,
-    "mean_minutes": 7.950232028434042,
-    "mean_sites_heard": 37.268,
-    "median_bound_per_1000": 2.478729818449789,
+    "mean_minutes": 7.942578499937414,
+    "mean_sites_heard": 37.232,
+    "median_bound_per_1000": 2.4785637727759915,
     "n": 40,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 1.0,
+     "2.0": 0.1016,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.0,
+    "mean_minutes": 7.933533449217674,
+    "mean_sites_heard": 37.1896,
+    "median_bound_per_1000": 2.4785637727759915,
+    "n": 80,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 1.0,
+     "2.0": 0.1076,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.05,
+    "mean_minutes": 2.9069598383902866,
+    "mean_sites_heard": 13.6268,
+    "median_bound_per_1000": 2.4785637727759915,
+    "n": 10,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 1.0,
+     "2.0": 0.1072,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.05,
+    "mean_minutes": 5.513385067017149,
+    "mean_sites_heard": 25.8448,
+    "median_bound_per_1000": 2.4785637727759915,
+    "n": 20,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 1.0,
+     "2.0": 0.1,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.05,
+    "mean_minutes": 7.943261145274753,
+    "mean_sites_heard": 37.2352,
+    "median_bound_per_1000": 2.4785637727759915,
+    "n": 40,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 1.0,
+     "2.0": 0.1036,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.0025,
+    "expected_changed_sites": 37.32,
+    "icc": 0.05,
+    "mean_minutes": 8.00367525762924,
+    "mean_sites_heard": 37.5184,
+    "median_bound_per_1000": 2.4785637727759915,
+    "n": 80,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
@@ -1568,373 +1653,458 @@
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.0,
-    "mean_minutes": 7.932227317067727,
-    "mean_sites_heard": 37.1836,
-    "median_bound_per_1000": 2.478729818449789,
-    "n": 80,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 1.0,
-     "2.0": 0.1108,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.05,
-    "mean_minutes": 2.924442976049066,
-    "mean_sites_heard": 13.7088,
-    "median_bound_per_1000": 2.478729818449789,
+    "expected_changed_sites": 37.32,
+    "icc": 0.15,
+    "mean_minutes": 3.212187634847916,
+    "mean_sites_heard": 15.0576,
+    "median_bound_per_1000": 2.4785637727759915,
     "n": 10,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
      "10.0": 1.0,
-     "2.0": 0.1068,
+     "2.0": 0.1268,
      "5.0": 1.0
     },
     "true_rate_per_1000": 2.5
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.05,
-    "mean_minutes": 5.498946040660888,
-    "mean_sites_heard": 25.7772,
-    "median_bound_per_1000": 2.478729818449789,
-    "n": 20,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0004,
-     "10.0": 1.0,
-     "2.0": 0.1036,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.05,
-    "mean_minutes": 7.937091149048201,
-    "mean_sites_heard": 37.2064,
-    "median_bound_per_1000": 2.478729818449789,
-    "n": 40,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 1.0,
-     "2.0": 0.1024,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.05,
-    "mean_minutes": 7.9596183708525,
-    "mean_sites_heard": 37.312,
-    "median_bound_per_1000": 2.478729818449789,
-    "n": 80,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 1.0,
-     "2.0": 0.0976,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 3.2200274318448754,
-    "mean_sites_heard": 15.0944,
-    "median_bound_per_1000": 2.478729818449789,
-    "n": 10,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 1.0,
-     "2.0": 0.1188,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
-    "icc": 0.15,
-    "mean_minutes": 5.902388103883343,
-    "mean_sites_heard": 27.6684,
-    "median_bound_per_1000": 2.478729818449789,
+    "mean_minutes": 5.90018898128677,
+    "mean_sites_heard": 27.658,
+    "median_bound_per_1000": 2.4785637727759915,
     "n": 20,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
      "10.0": 1.0,
-     "2.0": 0.114,
+     "2.0": 0.1156,
      "5.0": 1.0
     },
     "true_rate_per_1000": 2.5
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 7.927278154701631,
-    "mean_sites_heard": 37.1604,
-    "median_bound_per_1000": 2.478729818449789,
+    "mean_minutes": 7.929778899862311,
+    "mean_sites_heard": 37.172,
+    "median_bound_per_1000": 2.4785637727759915,
     "n": 40,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
      "10.0": 1.0,
-     "2.0": 0.1336,
+     "2.0": 0.1224,
      "5.0": 1.0
     },
     "true_rate_per_1000": 2.5
    },
    {
     "churn": 0.0025,
-    "expected_changed_sites": 37.3175,
+    "expected_changed_sites": 37.32,
     "icc": 0.15,
-    "mean_minutes": 7.9884600411928535,
-    "mean_sites_heard": 37.4472,
-    "median_bound_per_1000": 2.478729818449789,
+    "mean_minutes": 7.973980185455001,
+    "mean_sites_heard": 37.3792,
+    "median_bound_per_1000": 2.4785637727759915,
     "n": 80,
     "new_error_share": 1.0,
     "power": {
-     "1.0": 0.0004,
+     "1.0": 0.0,
      "10.0": 1.0,
-     "2.0": 0.1192,
+     "2.0": 0.1224,
      "5.0": 1.0
     },
     "true_rate_per_1000": 2.5
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.0,
-    "mean_minutes": 4.818436215322674,
-    "mean_sites_heard": 22.5872,
-    "median_bound_per_1000": 8.419388511611352,
+    "mean_minutes": 4.858642857842033,
+    "mean_sites_heard": 22.7756,
+    "median_bound_per_1000": 8.418824511845035,
     "n": 10,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.8036,
+     "10.0": 0.8132,
      "2.0": 0.0,
-     "5.0": 0.1296
+     "5.0": 0.1184
     },
     "true_rate_per_1000": 1.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.0,
-    "mean_minutes": 9.693105154770475,
-    "mean_sites_heard": 45.438,
-    "median_bound_per_1000": 6.010756871614616,
+    "mean_minutes": 9.70363280893729,
+    "mean_sites_heard": 45.4872,
+    "median_bound_per_1000": 5.96974372027214,
     "n": 20,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.9832,
-     "2.0": 0.0104,
-     "5.0": 0.2776
+     "10.0": 0.9824,
+     "2.0": 0.0152,
+     "5.0": 0.284
     },
     "true_rate_per_1000": 1.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.0,
-    "mean_minutes": 18.57207310031814,
-    "mean_sites_heard": 87.0596,
-    "median_bound_per_1000": 3.7983540946775767,
+    "mean_minutes": 18.516925436650396,
+    "mean_sites_heard": 86.8008,
+    "median_bound_per_1000": 3.7909856833289157,
     "n": 40,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.0024,
+     "1.0": 0.0012,
      "10.0": 1.0,
-     "2.0": 0.0252,
-     "5.0": 0.8704
+     "2.0": 0.0208,
+     "5.0": 0.8732
     },
     "true_rate_per_1000": 1.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.0,
-    "mean_minutes": 29.955317203110432,
-    "mean_sites_heard": 140.4204,
-    "median_bound_per_1000": 1.638615079883974,
+    "mean_minutes": 29.955245378432846,
+    "mean_sites_heard": 140.4196,
+    "median_bound_per_1000": 1.6177302646736134,
     "n": 80,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.0764,
+     "1.0": 0.0696,
      "10.0": 1.0,
-     "2.0": 0.8228,
+     "2.0": 0.842,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.05,
-    "mean_minutes": 5.319922891625205,
-    "mean_sites_heard": 24.938,
-    "median_bound_per_1000": 8.642058015676291,
+    "mean_minutes": 5.33717723931656,
+    "mean_sites_heard": 25.0188,
+    "median_bound_per_1000": 8.57449088960343,
     "n": 10,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.8028,
+     "10.0": 0.8008,
      "2.0": 0.0,
-     "5.0": 0.1124
+     "5.0": 0.104
     },
     "true_rate_per_1000": 1.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.05,
-    "mean_minutes": 10.661263710041618,
-    "mean_sites_heard": 49.9764,
-    "median_bound_per_1000": 6.173209760036625,
+    "mean_minutes": 10.575541566053323,
+    "mean_sites_heard": 49.5744,
+    "median_bound_per_1000": 6.091575224767488,
     "n": 20,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.9732,
+     "10.0": 0.9812,
+     "2.0": 0.0124,
+     "5.0": 0.2632
+    },
+    "true_rate_per_1000": 1.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.05,
+    "mean_minutes": 19.651567317974717,
+    "mean_sites_heard": 92.1196,
+    "median_bound_per_1000": 3.63676707144883,
+    "n": 40,
+    "new_error_share": 0.1,
+    "power": {
+     "1.0": 0.002,
+     "10.0": 1.0,
+     "2.0": 0.032,
+     "5.0": 0.8972
+    },
+    "true_rate_per_1000": 1.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.05,
+    "mean_minutes": 30.5981266248717,
+    "mean_sites_heard": 143.4332,
+    "median_bound_per_1000": 1.5407288317256163,
+    "n": 80,
+    "new_error_share": 0.1,
+    "power": {
+     "1.0": 0.1604,
+     "10.0": 1.0,
+     "2.0": 0.866,
+     "5.0": 1.0
+    },
+    "true_rate_per_1000": 1.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 6.691204265928151,
+    "mean_sites_heard": 31.366,
+    "median_bound_per_1000": 8.7648036013729,
+    "n": 10,
+    "new_error_share": 0.1,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.7448,
+     "2.0": 0.0,
+     "5.0": 0.0736
+    },
+    "true_rate_per_1000": 1.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 12.866499318162475,
+    "mean_sites_heard": 60.3136,
+    "median_bound_per_1000": 6.057630551999297,
+    "n": 20,
+    "new_error_share": 0.1,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.9764,
      "2.0": 0.0092,
-     "5.0": 0.2492
+     "5.0": 0.2716
     },
     "true_rate_per_1000": 1.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.05,
-    "mean_minutes": 19.67326172677452,
-    "mean_sites_heard": 92.2216,
-    "median_bound_per_1000": 3.6479507876272232,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 22.117538268444108,
+    "mean_sites_heard": 103.6792,
+    "median_bound_per_1000": 3.2900066306340467,
     "n": 40,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.0036,
+     "1.0": 0.0016,
      "10.0": 1.0,
-     "2.0": 0.0268,
-     "5.0": 0.8988
+     "2.0": 0.0672,
+     "5.0": 0.9444
     },
     "true_rate_per_1000": 1.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.05,
-    "mean_minutes": 30.551435277068144,
-    "mean_sites_heard": 143.2148,
-    "median_bound_per_1000": 1.5471752304762094,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 31.39972291224183,
+    "mean_sites_heard": 147.1908,
+    "median_bound_per_1000": 1.0718113612004287,
     "n": 80,
     "new_error_share": 0.1,
     "power": {
-     "1.0": 0.1456,
+     "1.0": 0.3692,
      "10.0": 1.0,
-     "2.0": 0.8584,
+     "2.0": 0.9368,
      "5.0": 1.0
     },
     "true_rate_per_1000": 1.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 6.75023081542698,
-    "mean_sites_heard": 31.6428,
-    "median_bound_per_1000": 8.833046966438001,
-    "n": 10,
-    "new_error_share": 0.1,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.736,
-     "2.0": 0.0,
-     "5.0": 0.0808
-    },
-    "true_rate_per_1000": 1.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 12.752796792030958,
-    "mean_sites_heard": 59.7808,
-    "median_bound_per_1000": 6.070607935770101,
-    "n": 20,
-    "new_error_share": 0.1,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.9744,
-     "2.0": 0.0132,
-     "5.0": 0.276
-    },
-    "true_rate_per_1000": 1.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 21.971635663512426,
-    "mean_sites_heard": 102.9956,
-    "median_bound_per_1000": 3.2535986843182796,
-    "n": 40,
-    "new_error_share": 0.1,
-    "power": {
-     "1.0": 0.0028,
-     "10.0": 1.0,
-     "2.0": 0.0772,
-     "5.0": 0.9508
-    },
-    "true_rate_per_1000": 1.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 31.346202488754685,
-    "mean_sites_heard": 146.9404,
-    "median_bound_per_1000": 1.071883164735044,
-    "n": 80,
-    "new_error_share": 0.1,
-    "power": {
-     "1.0": 0.3756,
-     "10.0": 1.0,
-     "2.0": 0.934,
-     "5.0": 1.0
-    },
-    "true_rate_per_1000": 1.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.0,
-    "mean_minutes": 4.868183830140501,
-    "mean_sites_heard": 22.8204,
-    "median_bound_per_1000": 9.981911971595096,
+    "mean_minutes": 4.848317847114783,
+    "mean_sites_heard": 22.7272,
+    "median_bound_per_1000": 9.981243301178992,
     "n": 10,
     "new_error_share": 0.5,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.5228,
+     "10.0": 0.5248,
+     "2.0": 0.0,
+     "5.0": 0.0004
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.0,
+    "mean_minutes": 9.756623153248217,
+    "mean_sites_heard": 45.7356,
+    "median_bound_per_1000": 9.981243301178992,
+    "n": 20,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.53,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.0,
+    "mean_minutes": 18.502675215233445,
+    "mean_sites_heard": 86.734,
+    "median_bound_per_1000": 9.110396570203644,
+    "n": 40,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.8684,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.0,
+    "mean_minutes": 29.947992271723624,
+    "mean_sites_heard": 140.3856,
+    "median_bound_per_1000": 6.1536081697935145,
+    "n": 80,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 1.0,
+     "2.0": 0.0,
+     "5.0": 0.0924
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.05,
+    "mean_minutes": 5.2998877377644265,
+    "mean_sites_heard": 24.844,
+    "median_bound_per_1000": 9.914255091103966,
+    "n": 10,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.538,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.05,
+    "mean_minutes": 10.608308542245588,
+    "mean_sites_heard": 49.728,
+    "median_bound_per_1000": 9.847266881028938,
+    "n": 20,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.5652,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.05,
+    "mean_minutes": 19.6701694034172,
+    "mean_sites_heard": 92.2068,
+    "median_bound_per_1000": 8.842443729903536,
+    "n": 40,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.9132,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.05,
+    "mean_minutes": 30.537285859181377,
+    "mean_sites_heard": 143.148,
+    "median_bound_per_1000": 6.024111312652988,
+    "n": 80,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.9996,
+     "2.0": 0.0,
+     "5.0": 0.188
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 6.791211807848293,
+    "mean_sites_heard": 31.8348,
+    "median_bound_per_1000": 9.914255091103966,
+    "n": 10,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.5324,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 12.806853181812492,
+    "mean_sites_heard": 60.034,
+    "median_bound_per_1000": 9.646302250803858,
+    "n": 20,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.644,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 5.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 22.0085710064714,
+    "mean_sites_heard": 103.1684,
+    "median_bound_per_1000": 8.310994664543873,
+    "n": 40,
+    "new_error_share": 0.5,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.9544,
      "2.0": 0.0,
      "5.0": 0.0008
     },
@@ -1942,203 +2112,33 @@
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.0,
-    "mean_minutes": 9.772889065327368,
-    "mean_sites_heard": 45.812,
-    "median_bound_per_1000": 9.981911971595096,
-    "n": 20,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5264,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.0,
-    "mean_minutes": 18.537940946069202,
-    "mean_sites_heard": 86.8996,
-    "median_bound_per_1000": 9.044014202451933,
-    "n": 40,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.8744,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.0,
-    "mean_minutes": 29.952842621927388,
-    "mean_sites_heard": 140.4088,
-    "median_bound_per_1000": 6.191300702879966,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 31.531985446351236,
+    "mean_sites_heard": 147.8108,
+    "median_bound_per_1000": 5.22508038585209,
     "n": 80,
     "new_error_share": 0.5,
     "power": {
      "1.0": 0.0,
      "10.0": 1.0,
      "2.0": 0.0,
-     "5.0": 0.0892
+     "5.0": 0.4076
     },
     "true_rate_per_1000": 5.0
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.05,
-    "mean_minutes": 5.290313247814251,
-    "mean_sites_heard": 24.7992,
-    "median_bound_per_1000": 9.914919273799155,
-    "n": 10,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5384,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.05,
-    "mean_minutes": 10.56603499968708,
-    "mean_sites_heard": 49.53,
-    "median_bound_per_1000": 9.847926576003216,
-    "n": 20,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5728,
-     "2.0": 0.0,
-     "5.0": 0.0004
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.05,
-    "mean_minutes": 19.712257713003932,
-    "mean_sites_heard": 92.4044,
-    "median_bound_per_1000": 8.843036109064112,
-    "n": 40,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.892,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.05,
-    "mean_minutes": 30.563381531055274,
-    "mean_sites_heard": 143.2708,
-    "median_bound_per_1000": 6.04631565561181,
-    "n": 80,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 1.0,
-     "2.0": 0.0,
-     "5.0": 0.1764
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 6.788288167414548,
-    "mean_sites_heard": 31.8212,
-    "median_bound_per_1000": 9.914919273799155,
-    "n": 10,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.548,
-     "2.0": 0.0,
-     "5.0": 0.0012
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 12.811930749267246,
-    "mean_sites_heard": 60.058,
-    "median_bound_per_1000": 9.646948482615395,
-    "n": 20,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.6444,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 22.03631609581417,
-    "mean_sites_heard": 103.2988,
-    "median_bound_per_1000": 8.37408722449253,
-    "n": 40,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.9532,
-     "2.0": 0.0,
-     "5.0": 0.0004
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 31.5440836530129,
-    "mean_sites_heard": 147.868,
-    "median_bound_per_1000": 5.225430428083339,
-    "n": 80,
-    "new_error_share": 0.5,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 1.0,
-     "2.0": 0.0,
-     "5.0": 0.4056
-    },
-    "true_rate_per_1000": 5.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.0,
-    "mean_minutes": 4.84301136638191,
-    "mean_sites_heard": 22.7024,
-    "median_bound_per_1000": 9.981911971595096,
+    "mean_minutes": 4.848915161784955,
+    "mean_sites_heard": 22.73,
+    "median_bound_per_1000": 9.981243301178992,
     "n": 10,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.5076,
+     "10.0": 0.5108,
      "2.0": 0.0,
      "5.0": 0.0
     },
@@ -2146,16 +2146,16 @@
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.0,
-    "mean_minutes": 9.66827401255437,
-    "mean_sites_heard": 45.3216,
-    "median_bound_per_1000": 9.981911971595096,
+    "mean_minutes": 9.739557019814747,
+    "mean_sites_heard": 45.6556,
+    "median_bound_per_1000": 9.981243301178992,
     "n": 20,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.5328,
+     "10.0": 0.5244,
      "2.0": 0.0,
      "5.0": 0.0
     },
@@ -2163,12 +2163,29 @@
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.0,
-    "mean_minutes": 18.53649032951362,
-    "mean_sites_heard": 86.8928,
-    "median_bound_per_1000": 9.981911971595096,
+    "mean_minutes": 18.503443191237956,
+    "mean_sites_heard": 86.7376,
+    "median_bound_per_1000": 9.981243301178992,
     "n": 40,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.5244,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 10.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.0,
+    "mean_minutes": 29.85293390849919,
+    "mean_sites_heard": 139.94,
+    "median_bound_per_1000": 9.981243301178992,
+    "n": 80,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
@@ -2180,33 +2197,16 @@
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.0,
-    "mean_minutes": 29.84575298797134,
-    "mean_sites_heard": 139.9068,
-    "median_bound_per_1000": 9.981911971595096,
-    "n": 80,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5316,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 10.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.05,
-    "mean_minutes": 5.319752230853961,
-    "mean_sites_heard": 24.9372,
-    "median_bound_per_1000": 10.048904669391037,
+    "mean_minutes": 5.383255799586932,
+    "mean_sites_heard": 25.2348,
+    "median_bound_per_1000": 9.981243301178992,
     "n": 10,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.4936,
+     "10.0": 0.5016,
      "2.0": 0.0,
      "5.0": 0.0
     },
@@ -2214,16 +2214,16 @@
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.05,
-    "mean_minutes": 10.648976134512,
-    "mean_sites_heard": 49.9188,
-    "median_bound_per_1000": 9.981911971595096,
+    "mean_minutes": 10.640051550431846,
+    "mean_sites_heard": 49.8768,
+    "median_bound_per_1000": 9.981243301178992,
     "n": 20,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.5292,
+     "10.0": 0.5264,
      "2.0": 0.0,
      "5.0": 0.0
     },
@@ -2231,12 +2231,97 @@
    },
    {
     "churn": 0.01,
-    "expected_changed_sites": 149.27,
+    "expected_changed_sites": 149.28,
     "icc": 0.05,
-    "mean_minutes": 19.707991193722815,
-    "mean_sites_heard": 92.3844,
-    "median_bound_per_1000": 9.981911971595096,
+    "mean_minutes": 19.690307440868693,
+    "mean_sites_heard": 92.3012,
+    "median_bound_per_1000": 9.981243301178992,
     "n": 40,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.518,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 10.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.05,
+    "mean_minutes": 30.580377846100887,
+    "mean_sites_heard": 143.35,
+    "median_bound_per_1000": 9.981243301178992,
+    "n": 80,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.516,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 10.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 6.720387354099387,
+    "mean_sites_heard": 31.5028,
+    "median_bound_per_1000": 9.981243301178992,
+    "n": 10,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.5256,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 10.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 12.815130256527727,
+    "mean_sites_heard": 60.0728,
+    "median_bound_per_1000": 9.914255091103966,
+    "n": 20,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.5392,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 10.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 21.99440611572162,
+    "mean_sites_heard": 103.102,
+    "median_bound_per_1000": 9.981243301178992,
+    "n": 40,
+    "new_error_share": 1.0,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.5152,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 10.0
+   },
+   {
+    "churn": 0.01,
+    "expected_changed_sites": 149.28,
+    "icc": 0.15,
+    "mean_minutes": 31.51756456359995,
+    "mean_sites_heard": 147.7432,
+    "median_bound_per_1000": 9.981243301178992,
+    "n": 80,
     "new_error_share": 1.0,
     "power": {
      "1.0": 0.0,
@@ -2247,102 +2332,17 @@
     "true_rate_per_1000": 10.0
    },
    {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.05,
-    "mean_minutes": 30.605278750395843,
-    "mean_sites_heard": 143.4672,
-    "median_bound_per_1000": 9.981911971595096,
-    "n": 80,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5064,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 10.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 6.738540552596719,
-    "mean_sites_heard": 31.588,
-    "median_bound_per_1000": 9.914919273799155,
-    "n": 10,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5284,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 10.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 12.860910390614471,
-    "mean_sites_heard": 60.2876,
-    "median_bound_per_1000": 9.914919273799155,
-    "n": 20,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5328,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 10.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 21.94296465394332,
-    "mean_sites_heard": 102.8612,
-    "median_bound_per_1000": 9.914919273799155,
-    "n": 40,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5288,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 10.0
-   },
-   {
-    "churn": 0.01,
-    "expected_changed_sites": 149.27,
-    "icc": 0.15,
-    "mean_minutes": 31.571645367568923,
-    "mean_sites_heard": 147.9972,
-    "median_bound_per_1000": 9.981911971595096,
-    "n": 80,
-    "new_error_share": 1.0,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.5144,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 10.0
-   },
-   {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 9.003635638941914,
-    "mean_sites_heard": 42.206,
-    "median_bound_per_1000": 24.18436390433443,
+    "mean_minutes": 9.025680658292652,
+    "mean_sites_heard": 42.3092,
+    "median_bound_per_1000": 24.182743837084672,
     "n": 10,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.0308,
+     "10.0": 0.0268,
      "2.0": 0.0,
      "5.0": 0.0
     },
@@ -2350,84 +2350,16 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 17.96537405854325,
-    "mean_sites_heard": 84.2156,
-    "median_bound_per_1000": 20.20407735911925,
+    "mean_minutes": 17.986766001539618,
+    "mean_sites_heard": 84.3156,
+    "median_bound_per_1000": 20.111875510242896,
     "n": 20,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.008,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.0,
-    "mean_minutes": 35.43514923739191,
-    "mean_sites_heard": 166.108,
-    "median_bound_per_1000": 15.024796592659062,
-    "n": 40,
-    "new_error_share": 0.1,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.04,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.0,
-    "mean_minutes": 62.12939509317312,
-    "mean_sites_heard": 291.2416,
-    "median_bound_per_1000": 6.986623060114621,
-    "n": 80,
-    "new_error_share": 0.1,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.9568,
-     "2.0": 0.0,
-     "5.0": 0.0744
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.05,
-    "mean_minutes": 10.186997426752615,
-    "mean_sites_heard": 47.7532,
-    "median_bound_per_1000": 24.251356602130368,
-    "n": 10,
-    "new_error_share": 0.1,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.0164,
-     "2.0": 0.0,
-     "5.0": 0.0
-    },
-    "true_rate_per_1000": 2.5
-   },
-   {
-    "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.05,
-    "mean_minutes": 20.340630672726892,
-    "mean_sites_heard": 95.35,
-    "median_bound_per_1000": 21.28817897837866,
-    "n": 20,
-    "new_error_share": 0.1,
-    "power": {
-     "1.0": 0.0,
-     "10.0": 0.0052,
+     "10.0": 0.0084,
      "2.0": 0.0,
      "5.0": 0.0004
     },
@@ -2435,16 +2367,16 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.05,
-    "mean_minutes": 38.94427601572531,
-    "mean_sites_heard": 182.5576,
-    "median_bound_per_1000": 14.681778412811067,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.0,
+    "mean_minutes": 35.366233644849174,
+    "mean_sites_heard": 165.7844,
+    "median_bound_per_1000": 15.06010766654502,
     "n": 40,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.0504,
+     "10.0": 0.0328,
      "2.0": 0.0,
      "5.0": 0.0
     },
@@ -2452,33 +2384,33 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.05,
-    "mean_minutes": 64.46104788030375,
-    "mean_sites_heard": 302.1716,
-    "median_bound_per_1000": 6.1768293075856295,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.0,
+    "mean_minutes": 62.19368341826261,
+    "mean_sites_heard": 291.542,
+    "median_bound_per_1000": 7.041117048663209,
     "n": 80,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.99,
+     "10.0": 0.9504,
      "2.0": 0.0,
-     "5.0": 0.1484
+     "5.0": 0.0716
     },
     "true_rate_per_1000": 2.5
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.15,
-    "mean_minutes": 13.537665678985304,
-    "mean_sites_heard": 63.46,
-    "median_bound_per_1000": 24.318349299926307,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.05,
+    "mean_minutes": 10.114243979346602,
+    "mean_sites_heard": 47.412,
+    "median_bound_per_1000": 24.182743837084672,
     "n": 10,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.0104,
+     "10.0": 0.0212,
      "2.0": 0.0,
      "5.0": 0.0
     },
@@ -2486,16 +2418,33 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.15,
-    "mean_minutes": 25.698696246725287,
-    "mean_sites_heard": 120.4668,
-    "median_bound_per_1000": 21.368686887974896,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.05,
+    "mean_minutes": 20.223282787995995,
+    "mean_sites_heard": 94.7996,
+    "median_bound_per_1000": 21.0334242882331,
     "n": 20,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.0072,
+     "10.0": 0.0088,
+     "2.0": 0.0,
+     "5.0": 0.0008
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.025,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.05,
+    "mean_minutes": 38.735344376617846,
+    "mean_sites_heard": 181.5776,
+    "median_bound_per_1000": 14.584270508575418,
+    "n": 40,
+    "new_error_share": 0.1,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.05,
      "2.0": 0.0,
      "5.0": 0.0
     },
@@ -2503,16 +2452,50 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
-    "icc": 0.15,
-    "mean_minutes": 45.463688138043835,
-    "mean_sites_heard": 213.1184,
-    "median_bound_per_1000": 13.018627273588042,
-    "n": 40,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.05,
+    "mean_minutes": 64.55154041343097,
+    "mean_sites_heard": 302.5948,
+    "median_bound_per_1000": 6.19089650367167,
+    "n": 80,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.1336,
+     "10.0": 0.9916,
+     "2.0": 0.0,
+     "5.0": 0.1368
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.025,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.15,
+    "mean_minutes": 13.488559881812494,
+    "mean_sites_heard": 63.2296,
+    "median_bound_per_1000": 24.316720257234728,
+    "n": 10,
+    "new_error_share": 0.1,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.0136,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.025,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.15,
+    "mean_minutes": 25.757744529803478,
+    "mean_sites_heard": 120.7432,
+    "median_bound_per_1000": 21.372632750225492,
+    "n": 20,
+    "new_error_share": 0.1,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.0076,
      "2.0": 0.0,
      "5.0": 0.0004
     },
@@ -2520,28 +2503,45 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 68.63011986104037,
-    "mean_sites_heard": 321.7148,
-    "median_bound_per_1000": 5.181773341847814,
+    "mean_minutes": 45.48738940823633,
+    "mean_sites_heard": 213.2288,
+    "median_bound_per_1000": 13.118459966167112,
+    "n": 40,
+    "new_error_share": 0.1,
+    "power": {
+     "1.0": 0.0,
+     "10.0": 0.1304,
+     "2.0": 0.0,
+     "5.0": 0.0
+    },
+    "true_rate_per_1000": 2.5
+   },
+   {
+    "churn": 0.025,
+    "expected_changed_sites": 373.20000000000005,
+    "icc": 0.15,
+    "mean_minutes": 68.62616510133935,
+    "mean_sites_heard": 321.6952,
+    "median_bound_per_1000": 5.216022136065643,
     "n": 80,
     "new_error_share": 0.1,
     "power": {
      "1.0": 0.0,
-     "10.0": 0.9992,
+     "10.0": 0.9988,
      "2.0": 0.0004,
-     "5.0": 0.4496
+     "5.0": 0.4444
     },
     "true_rate_per_1000": 2.5
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 9.071473295511678,
-    "mean_sites_heard": 42.524,
-    "median_bound_per_1000": 24.98827627788571,
+    "mean_minutes": 9.025339335623983,
+    "mean_sites_heard": 42.3076,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 10,
     "new_error_share": 0.5,
     "power": {
@@ -2554,11 +2554,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 17.932009877764916,
-    "mean_sites_heard": 84.0592,
-    "median_bound_per_1000": 24.98827627788571,
+    "mean_minutes": 18.006904038991113,
+    "mean_sites_heard": 84.41,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 20,
     "new_error_share": 0.5,
     "power": {
@@ -2571,11 +2571,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 35.449996724490205,
-    "mean_sites_heard": 166.1776,
-    "median_bound_per_1000": 24.45233469551819,
+    "mean_minutes": 35.31972843124296,
+    "mean_sites_heard": 165.5664,
+    "median_bound_per_1000": 24.517684887459808,
     "n": 40,
     "new_error_share": 0.5,
     "power": {
@@ -2588,11 +2588,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 61.927674061561895,
-    "mean_sites_heard": 290.296,
-    "median_bound_per_1000": 18.891940778455147,
+    "mean_minutes": 62.092566577669295,
+    "mean_sites_heard": 291.068,
+    "median_bound_per_1000": 18.823687031082528,
     "n": 80,
     "new_error_share": 0.5,
     "power": {
@@ -2605,11 +2605,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.05,
-    "mean_minutes": 10.244424776276455,
-    "mean_sites_heard": 48.0224,
-    "median_bound_per_1000": 24.92128358008977,
+    "mean_minutes": 10.086426181850044,
+    "mean_sites_heard": 47.2816,
+    "median_bound_per_1000": 24.919614147909968,
     "n": 10,
     "new_error_share": 0.5,
     "power": {
@@ -2622,11 +2622,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.05,
-    "mean_minutes": 20.02652952325104,
-    "mean_sites_heard": 93.8776,
-    "median_bound_per_1000": 24.8877872311918,
+    "mean_minutes": 20.14247464618851,
+    "mean_sites_heard": 94.4208,
+    "median_bound_per_1000": 24.785637727759916,
     "n": 20,
     "new_error_share": 0.5,
     "power": {
@@ -2639,11 +2639,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.05,
-    "mean_minutes": 38.83718638176926,
-    "mean_sites_heard": 182.0556,
-    "median_bound_per_1000": 23.849400415354726,
+    "mean_minutes": 38.95839874059332,
+    "mean_sites_heard": 182.6232,
+    "median_bound_per_1000": 23.914790996784564,
     "n": 40,
     "new_error_share": 0.5,
     "power": {
@@ -2656,11 +2656,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.05,
-    "mean_minutes": 64.39687943031574,
-    "mean_sites_heard": 301.8708,
-    "median_bound_per_1000": 17.887050311516045,
+    "mean_minutes": 64.43677066609088,
+    "mean_sites_heard": 302.0568,
+    "median_bound_per_1000": 17.885852090032156,
     "n": 80,
     "new_error_share": 0.5,
     "power": {
@@ -2673,11 +2673,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 13.408390144767449,
-    "mean_sites_heard": 62.854,
-    "median_bound_per_1000": 24.92128358008977,
+    "mean_minutes": 13.525081407360119,
+    "mean_sites_heard": 63.4008,
+    "median_bound_per_1000": 24.919614147909968,
     "n": 10,
     "new_error_share": 0.5,
     "power": {
@@ -2690,11 +2690,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 26.005202991880758,
-    "mean_sites_heard": 121.9036,
-    "median_bound_per_1000": 24.385341997722247,
+    "mean_minutes": 25.631881795731633,
+    "mean_sites_heard": 120.1532,
+    "median_bound_per_1000": 24.2497320471597,
     "n": 20,
     "new_error_share": 0.5,
     "power": {
@@ -2707,11 +2707,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 45.53203777692733,
-    "mean_sites_heard": 213.4388,
-    "median_bound_per_1000": 22.04059757486434,
+    "mean_minutes": 45.72239006561522,
+    "mean_sites_heard": 214.3304,
+    "median_bound_per_1000": 22.106109324758844,
     "n": 40,
     "new_error_share": 0.5,
     "power": {
@@ -2724,11 +2724,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 68.66066813909316,
-    "mean_sites_heard": 321.858,
-    "median_bound_per_1000": 16.88215984457694,
+    "mean_minutes": 68.8452942546251,
+    "mean_sites_heard": 322.7224,
+    "median_bound_per_1000": 16.881028938906752,
     "n": 80,
     "new_error_share": 0.5,
     "power": {
@@ -2741,11 +2741,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 9.06029501499515,
-    "mean_sites_heard": 42.4716,
-    "median_bound_per_1000": 25.05526897568165,
+    "mean_minutes": 8.98668454339717,
+    "mean_sites_heard": 42.1264,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 10,
     "new_error_share": 1.0,
     "power": {
@@ -2758,11 +2758,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 17.884992835287,
-    "mean_sites_heard": 83.8388,
-    "median_bound_per_1000": 24.98827627788571,
+    "mean_minutes": 18.047180113894104,
+    "mean_sites_heard": 84.5988,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 20,
     "new_error_share": 1.0,
     "power": {
@@ -2775,11 +2775,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 35.37345536858696,
-    "mean_sites_heard": 165.8188,
-    "median_bound_per_1000": 24.98827627788571,
+    "mean_minutes": 35.44840707733133,
+    "mean_sites_heard": 166.1696,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 40,
     "new_error_share": 1.0,
     "power": {
@@ -2792,11 +2792,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.0,
-    "mean_minutes": 61.95694238383036,
-    "mean_sites_heard": 290.4332,
-    "median_bound_per_1000": 24.92128358008977,
+    "mean_minutes": 61.99639891577169,
+    "mean_sites_heard": 290.6172,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 80,
     "new_error_share": 1.0,
     "power": {
@@ -2809,11 +2809,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.05,
-    "mean_minutes": 10.19766372495541,
-    "mean_sites_heard": 47.8032,
-    "median_bound_per_1000": 25.02177262678368,
+    "mean_minutes": 10.034545136212293,
+    "mean_sites_heard": 47.0384,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 10,
     "new_error_share": 1.0,
     "power": {
@@ -2826,11 +2826,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.05,
-    "mean_minutes": 20.518459196363867,
-    "mean_sites_heard": 96.1836,
-    "median_bound_per_1000": 24.98827627788571,
+    "mean_minutes": 20.22260014265866,
+    "mean_sites_heard": 94.7964,
+    "median_bound_per_1000": 24.919614147909968,
     "n": 20,
     "new_error_share": 1.0,
     "power": {
@@ -2843,11 +2843,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.05,
-    "mean_minutes": 38.839746293337924,
-    "mean_sites_heard": 182.0676,
-    "median_bound_per_1000": 24.98827627788571,
+    "mean_minutes": 38.555126007560396,
+    "mean_sites_heard": 180.7328,
+    "median_bound_per_1000": 24.919614147909968,
     "n": 40,
     "new_error_share": 1.0,
     "power": {
@@ -2860,11 +2860,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.05,
-    "mean_minutes": 64.4974839549645,
-    "mean_sites_heard": 302.3424,
-    "median_bound_per_1000": 24.98827627788571,
+    "mean_minutes": 64.31141991602203,
+    "mean_sites_heard": 301.4692,
+    "median_bound_per_1000": 24.919614147909968,
     "n": 80,
     "new_error_share": 1.0,
     "power": {
@@ -2877,11 +2877,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 13.33901654125648,
-    "mean_sites_heard": 62.5288,
-    "median_bound_per_1000": 24.78729818449789,
+    "mean_minutes": 13.373534142470898,
+    "mean_sites_heard": 62.6904,
+    "median_bound_per_1000": 24.85262593783494,
     "n": 10,
     "new_error_share": 1.0,
     "power": {
@@ -2894,11 +2894,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 25.900075956794026,
-    "mean_sites_heard": 121.4108,
-    "median_bound_per_1000": 24.95477992898774,
+    "mean_minutes": 25.94547199757166,
+    "mean_sites_heard": 121.6232,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 20,
     "new_error_share": 1.0,
     "power": {
@@ -2911,11 +2911,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 45.46001893146207,
-    "mean_sites_heard": 213.1012,
-    "median_bound_per_1000": 24.85429088229383,
+    "mean_minutes": 45.55292336062086,
+    "mean_sites_heard": 213.536,
+    "median_bound_per_1000": 24.919614147909968,
     "n": 40,
     "new_error_share": 1.0,
     "power": {
@@ -2928,11 +2928,11 @@
    },
    {
     "churn": 0.025,
-    "expected_changed_sites": 373.175,
+    "expected_changed_sites": 373.20000000000005,
     "icc": 0.15,
-    "mean_minutes": 68.67790487698888,
-    "mean_sites_heard": 321.9388,
-    "median_bound_per_1000": 24.92128358008977,
+    "mean_minutes": 68.75757432877707,
+    "mean_sites_heard": 322.3112,
+    "median_bound_per_1000": 24.986602357984996,
     "n": 80,
     "new_error_share": 1.0,
     "power": {
@@ -2944,7 +2944,7 @@
     "true_rate_per_1000": 25.0
    }
   ],
-  "seconds_per_site": 12.799557843352005
+  "seconds_per_site": 12.799600075103267
  },
  "held_out_power": [
   {
@@ -17694,8 +17694,8 @@
   "mining_pool/base_decodes.json": "57f2b60727381bfa29019c5813835e1403c835784a73c1052b440f11026ed9d7",
   "mining_pool/clips.jsonl": "885901089d5ed50f21f40405d0c8568a79fbe2319560b906ea429f46e629cf6e",
   "mining_pool/h448_stream_decodes.json": "1bf9b8cf15c1d2062cfa5fea3ace7cb44ed1a4d0526b16a3e7c7f496ca7dd3b8",
-  "ship_a/sites.jsonl": "061355b8d73fe7ba3f0f68ad8d0186cfa04026bbf60c5912052c7097f4c1166d",
-  "ship_a/waqf_correction.jsonl": "47e95198d6d42bfeb45fb9c1c8088fd355d0c1b0944a6a471122d69d069275a4",
+  "ship_a/sites.jsonl": "8b17b930e4caf6fe8a54aa9ebdae6c64adc630ec4e36bcb29752a94998668210",
+  "ship_a/waqf_correction.jsonl": "fd3dd2628cc7ce56f55a00f69042f34fc7769e1403f03a0da3dd4b5424499f7a",
   "ship_a/word_sample.jsonl": "073deb66db996b9c638292468378f9923f33893b00d9e7c04fafb9414ed15e03"
  },
  "mistake_mix": {
@@ -17792,7 +17792,7 @@
   "families": {
    "shaddah": 18
   },
-  "guard": "6b07cd36148b532ee49ef3ad12f3184d5bf073af69b8ebdb46b57bba9306428a",
+  "guard": "84da862132a4ee9117f846577b734a3259d70241c4cd800061f4ed40bf2e9745",
   "sites": 18,
   "trimmed": [
    "new_audit:tadabur_spk0017_S3_A37_a74cb622_000020.wav#0@2:shaddah",
@@ -17929,14 +17929,14 @@
  "waqf_guard": {
   "cells": {
    "geminates (base not held)": {
-    "held_out_listened": 7,
-    "sites": 12
+    "held_out_listened": 6,
+    "sites": 11
    }
   },
   "families": {
-   "shaddah": 12
+   "shaddah": 11
   },
-  "guard": "9316153a3e3b29685f44db5a46941e59c5560850ebe4650c6dde350240e64de8",
+  "guard": "02899104da97557c868a4b8b54fbcea52e5ee1149e8fc8db091d3e96b5a55884",
   "realized": [
    "new_audit:tadabur_spk0012_S5_A151_d8eccf7c_000127.wav#2@47:shaddah",
    "new_audit:tadabur_spk0044_S14_A44_30fb3422_000021.wav#0@26:shaddah",
@@ -17953,7 +17953,7 @@
    "p35_fixture:tadabur_spk0097_S20_A18_14e487d0_000013__seg0.wav:shadda#74",
    "p35_fixture:tadabur_spk0229_S1_A163_8b480c21_000000__seg0.wav:shadda#32"
   ],
-  "sites": 12,
+  "sites": 11,
   "verdicts": "447ffc05633231f7f9d1ffcd404144445254344146fec5c856f92124d80c060d",
   "words": 0
  },

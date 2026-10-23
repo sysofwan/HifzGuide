@@ -123,9 +123,18 @@ def load_verified(sites_path: Path = SITES_PATH, design_path: Path = DESIGN_PATH
 
 
 def build(verdicts_path: Path = VERDICTS_PATH) -> tuple[list[TruthSite], list[Design]]:
-    """The fold of the committed worklist, Ship A sites and verdicts (module docstring)."""
+    """The fold of the committed worklist, Ship A sites and verdicts (module docstring).
+
+    A worklist row whose site a paused ta-marbuta correction removed (#130) keeps the
+    listening probability the frozen worklist recorded for it: its verdict is still an
+    answer, and the guard excludes it through :func:`tadabur.waqf_guard.realized_ids`."""
+    from .ship_a_worklist import GEMINATE, PAIR_PARTNER, worklist_part
+
     rows = load_worklist(WORKLIST_PATH)
     ship_a = {s.site.site_id: s.listen_probability for s in load_sites() if s.listened}
+    for row in rows:
+        if worklist_part(row) in (PAIR_PARTNER, GEMINATE):
+            ship_a.setdefault(row.site.site_id, row.draw_probability)
     reciter_of = {name: clip.reciter_id for name, clip in load_staged_clips().items()}
     return fold([r.site for r in rows], ship_a, {r.site.site_id: r.draw_probability for r in rows},
                 reciter_of, read_verdicts(verdicts_path))

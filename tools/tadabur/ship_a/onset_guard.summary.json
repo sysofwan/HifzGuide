@@ -5,10 +5,10 @@
   "detector_trimmed": 0,
   "exposed": 187,
   "file_start": 108,
-  "items": 2367,
+  "items": 2366,
   "onset_trimmed": 19,
   "segmenter_cut": 79,
-  "site": 2348
+  "site": 2347
  },
  "calibration": {
   "candidates": {
@@ -200,7 +200,7 @@
   "listening_session/verdicts.jsonl": "447ffc05633231f7f9d1ffcd404144445254344146fec5c856f92124d80c060d",
   "ship_a/onset_guard.scores.jsonl": "b63a055191a052c8ca172be46d49fc0d32dbda0d1f351f37e9c84b1545eb08a7",
   "ship_a/onset_guard.synthetic.jsonl": "30bd566d9423d01d2ce04b365ba66debca8c6207340d2bd9c72823be3729aed8",
-  "ship_a/sites.jsonl": "061355b8d73fe7ba3f0f68ad8d0186cfa04026bbf60c5912052c7097f4c1166d",
+  "ship_a/sites.jsonl": "8b17b930e4caf6fe8a54aa9ebdae6c64adc630ec4e36bcb29752a94998668210",
   "ship_a/word_sample.jsonl": "073deb66db996b9c638292468378f9923f33893b00d9e7c04fafb9414ed15e03",
   "ship_a/worklist.jsonl": "097181fd5d56316c057c5f615812e262ab73bcf4a788d6f5e75ef67cd3576bb0"
  },
@@ -1151,10 +1151,10 @@
    "detector_trimmed": 0,
    "exposed": 156,
    "file_start": 86,
-   "items": 2169,
+   "items": 2167,
    "onset_trimmed": 18,
    "segmenter_cut": 70,
-   "site": 2151
+   "site": 2149
   },
   "word_sample": {
    "chosen_candidate_calls_trimmed": 19,
@@ -1384,10 +1384,10 @@
    "detector_trimmed": 0,
    "exposed": 6,
    "file_start": 4,
-   "items": 50,
+   "items": 49,
    "onset_trimmed": 0,
    "segmenter_cut": 2,
-   "site": 50
+   "site": 49
   },
   "ship_a:ح:h448_other": {
    "chosen_candidate_calls_trimmed": 0,

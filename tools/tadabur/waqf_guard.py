@@ -100,7 +100,7 @@ from .local_pause import SPLITS, TEST, boundary_window, calibrate, fires, point
 from .mining_pool import CLIPS_PATH as POOL_CLIPS_PATH
 from .owner_notes import PAUSE, says
 from .ship_a import SHIP_A_DIR, SITES_PATH, load_sites
-from .ship_a_worklist import GEMINATE, PAIR_PARTNER, WORKLIST_PATH, carried_part
+from .ship_a_worklist import WORKLIST_PATH, worklist_part
 from .staged_audio import load_staged_clips
 from .truth_sites import NOT_HELD, P35_FIXTURE, SHADDAH, TARGET_PAIRS
 from .waqf_event_fixtures import WAQF, load_waqf_events
@@ -176,11 +176,6 @@ def site_item(row: SessionSite, part: str, cuts: tuple[int, ...] = ()) -> Item:
                 site.audio_filename, site.surah_ayah, row.word_start, row.word_offsets,
                 site.reference, site.reference_index, site.start_sample, site.end_sample,
                 row.excerpt_start_sample, cuts)
-
-
-def worklist_part(row: SessionSite) -> str:
-    """A worklist row's part (``ship_a_worklist.PARTS``)."""
-    return carried_part(row) or (GEMINATE if row.site.mark == SHADDAH else PAIR_PARTNER)
 
 
 #: The fields copies of an item may differ in: its parts (a merged item is in every part any
@@ -322,6 +317,12 @@ class Classification:
         return UNSUPPORTED if self.unsupported else NOT_DEPENDENT
 
 
+def carrier_word(item: Item) -> int:
+    """The ayah word carrying the item's mark: its index inside the segment (read off the
+    realized offsets, a mark is inside one word) plus the segment's ``word_start``."""
+    return item.word_start + bisect.bisect_right(item.word_offsets, item.reference_index) - 1
+
+
 def classify(item: Item) -> Classification:
     """The boundaries of the item's word, inside its segment, where a waqf changes its
     prescribed mark (module docstring). The reference is the segment read with the item's
@@ -335,7 +336,7 @@ def classify(item: Item) -> Classification:
         list(_ayah_words(item.surah_ayah)[start:start + count]), local)
     if (realized_reference, tuple(realized_offsets)) != (item.reference, item.word_offsets):
         raise ValueError(f"{item.item_id}: its reference is not the realization of its words")
-    word = bisect.bisect_right(item.word_offsets, item.reference_index) - 1
+    word = carrier_word(item) - start
     lo, hi = item.word_offsets[word], item.word_offsets[word + 1]
     wasl = item.reference[lo:hi].rstrip(" ")
     positions = mark_positions(item)

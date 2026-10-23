@@ -82,6 +82,7 @@ from .ship_a import (
 )
 from .staged_audio import StagedClip, load_staged_clips
 from .tashkeel_audit_ui import queue, target_of
+from .truth_sites import SHADDAH
 from .word_sample import WORD_SAMPLE_PATH, WordSite, load_words
 
 WORKLIST_PATH = SHIP_A_DIR / "worklist.jsonl"
@@ -113,6 +114,11 @@ def carried_part(row: SessionSite) -> str | None:
     if row.site.stratum.startswith(P35_PREFIX):
         return P35
     return REJECT_PILE if row.site.stratum.endswith(REJECT_PILE_SUFFIX) else None
+
+
+def worklist_part(row: SessionSite) -> str:
+    """A worklist row's part (:data:`PARTS`): a carried #87 row's own, else the site's kind."""
+    return carried_part(row) or (GEMINATE if row.site.mark == SHADDAH else PAIR_PARTNER)
 
 
 def listened_row(site: ShipASite) -> SessionSite:
@@ -241,8 +247,12 @@ def main() -> None:
     linked = unseen_violations({r.site.audio_filename: registry[r.site.audio_filename]
                                 for r in session_rows})
     rows, parts, duplicates = assemble(sites, session_rows, linked)
+    # The queue is frozen: every committed row stays (a correction that removed its site
+    # still leaves the owner's answer in place), and only a genuinely new row is appended.
     committed = committed_rows()
-    rows = [committed.get(row.site.site_id, row) for row in rows]
+    parts.update({i: worklist_part(row) for i, row in committed.items()})
+    rows = [*committed.values(),
+            *(row for row in rows if row.site.site_id not in committed)]
     words = load_words()
     write_worklist(rows, WORKLIST_PATH)
     items = load_edit_check()

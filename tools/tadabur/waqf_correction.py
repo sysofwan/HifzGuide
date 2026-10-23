@@ -110,9 +110,9 @@ def _sha256(path: Path) -> str:
 
 def _dependent(by_word: Mapping[tuple[str, int], list], name: str, word: int) -> list[str]:
     """The items whose prescribed mark a waqf at the boundary changes
-    (:func:`tadabur.waqf_guard.classify`): those whose own word is the one after the
-    boundary or the one before it, read on the realization without cuts so a boundary a
-    correction removed still has its site."""
+    (:func:`tadabur.waqf_guard.classify`): those whose carrier word (not the segment's
+    start) is the one after the boundary or the one before it, read on the realization
+    without cuts so a boundary a correction removed still has its site."""
     from .waqf_guard import classify, wasl_item
 
     return [item.item_id
@@ -153,7 +153,7 @@ def derive_corrections(verdicts_path: Path = VERDICTS_PATH,
     is written per containing segment, with its start sample; the provenance names the
     deciding note or the detector and pins both inputs' checksums.
     """
-    from .waqf_guard import frozen_items, read_verdicts
+    from .waqf_guard import carrier_word, frozen_items, read_verdicts
 
     operating_point = json.loads(GUARD_SUMMARY_PATH.read_text(encoding="utf-8"))[
         "calibration"]["operating_point"]
@@ -162,7 +162,7 @@ def derive_corrections(verdicts_path: Path = VERDICTS_PATH,
     verdicts = read_verdicts(verdicts_path)
     by_word: dict[tuple[str, int], list] = defaultdict(list)
     for item in frozen_items():
-        by_word[(item.audio_filename, item.word_start)].append(item)
+        by_word[(item.audio_filename, carrier_word(item))].append(item)
     inputs = (f"inputs: waqf_guard.boundaries.jsonl={_sha256(boundaries_path)}, "
               f"listening_session/verdicts.jsonl={_sha256(verdicts_path)}")
     detector = (f"local_pause fires at the guard's operating point "

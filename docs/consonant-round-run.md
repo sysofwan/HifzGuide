@@ -52,6 +52,11 @@ optional. If bar 2 fails, an unseen corpus is the natural next lever, as its own
 #94's frame-weighted KL to the clean base teacher, unchanged:
 
 - **Teacher:** `obadx/muaalem-model-v3_2` @ `01a1ef9`, frozen, bf16, reading **clean** audio.
+  The commit is **pinned**: the launcher passes `--teacher-revision
+  01a1ef9fbe40d144ef845101e89ff924aed3fef5` to both the preflight and the training load
+  (`load_run_teacher`), and the run's `run_config.json` and checkpoint config record it. The
+  hub's default branch can move between two loads — including between the smoke and the run
+  it gates.
 - **Loss:** temperature 2.0, nonblank weight 3.0, confirm weight 2.0, logit weight 1.0; feature,
   CTC and hard-label weights 0. **No supervised term on human labels** (#174).
 - **Health metrics:** KL, pre-clip gradient norm, confirmed agreement, blank-collapse margin.

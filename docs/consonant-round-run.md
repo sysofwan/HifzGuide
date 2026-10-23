@@ -104,10 +104,12 @@ The noise pool is `/root/scratch/issue-94/noise_pool.npz` (458 recordings, SHA-2
   use with **membership `exact`** on the 278 shards, `shared_baseline` false, counted from the
   full shard index (SHA-256 in the file). Written by
   `python -m tadabur.exposure training-stream`.
-- **Launch assertion:** `scripts/issue-178-train.sh` recomputes the derivation from the log and
-  runs `training-stream --check`, which recomputes the shard use and exits non-zero on any
-  drift in shards, admitted rows, index or membership. The trainer additionally refuses a
-  held-out shard before it downloads anything, so the framed reserve cannot reach training.
+- **Launch assertion:** `scripts/issue-178-train.sh` recomputes the derivation from the log
+  (shard 90 named as the monitor shard, entered only after 277 completions) and runs
+  `training-stream --check`, which recomputes the shard use and exits non-zero on any drift in
+  shards, admitted rows, index or membership. The trainer additionally refuses a held-out shard
+  before it downloads anything, so the framed reserve cannot reach training. The monitor shard
+  is asserted after the run (see "Validation").
 - **Never read:** Tarteel v1, RetaSy, qdat, qdat_bench, QUD, `decode_evalset`, the sealed panel,
   Ship A held-out, any truth site. None is decoded, graded or streamed by this run.
 
@@ -116,19 +118,32 @@ The noise pool is `/root/scratch/issue-94/noise_pool.npz` (458 recordings, SHA-2
 As #94, with a new seed: batch 32, lr 5e-5, warmup 500, WSD with `--cooldown-steps 3000`, EMA
 0.999, bf16 autocast, 10,000 steps, **seed 178** (fresh shard order and fresh augmentation
 draws; it is resume-critical). `--num-workers 1` (one shard on disk at a time),
-`--save-every 2000`, `--log-every 50`, `--eval-every 2000`, `--shuffle-buffer 512`.
+`--save-every 2000`, `--log-every 50`, `--eval-every 2000` (the smoke uses 150, see "Launch"),
+`--shuffle-buffer 512`.
 
 **The candidate is the final step.** Validation is logged and never selects a checkpoint; only
 live vs EMA is chosen later, on the look half (#179).
 
 ## Validation (monitoring only, and not an evaluation set)
 
-`--audio-root` is `$ROOT/val_clips`: up to 200 clips staged at launch from the **last shard of
-the run's own seed-178 permutation**, which 10,000 steps (~150 steps per shard, ~41k steps of
-capacity) never reaches. Its 2% hash split gives the logged val rows. This departs from #94,
-which monitored on `decode_evalset` dev clips: #178 requires that no evaluation set is decoded
-during training, and dev is one (G2 reads it in #179). The val numbers are a health signal on
-training-set audio, not a generalisation estimate, and are not comparable to #94's.
+`--audio-root` is `$ROOT/val_clips`: up to 200 clips staged at launch from **shard 90, the
+last of the run's own seed-178 permutation**; its 2% hash split gives the logged val rows, and
+`setup` refuses a staging with no clip in that split. The trainer's in-training evaluation is
+monitoring only: it selects nothing.
+
+Shard 90 is inside the 278 the run streams — the registration is the stream's exact input — so
+the step budget is what keeps the clips out of training: 10,000 steps at ~150 steps per shard
+is ~65 of the 278, and the shard would be entered only after 277 shards are completed
+(`consumed_prefix.monitoring_shard`). Because that is arithmetic and not a property of the
+stream, it is **asserted after the run**: `assert_monitor` reads `train.log`'s shard-completion
+lines and, if the run entered shard 90, fails the chain (so `logs/train.exit` is non-zero) and
+refuses to print a report. The launch assertion records the shard and its position in
+`logs/val_shard.txt`.
+
+This departs from #94, which monitored on `decode_evalset` dev clips: #178 requires that no
+evaluation set is decoded during training, and dev is one (G2 reads it in #179). The val
+numbers are a health signal on training-set audio, not a generalisation estimate, and are not
+comparable to #94's.
 
 ## Launch
 
@@ -136,8 +151,11 @@ training-set audio, not a generalisation estimate, and are not comparable to #94
   `launch` refuses while `/root/scratch/gpu.lock` is held, archives HEAD to
   `/root/scratch/issue-178/repo`, stages the validation clips, and starts `run` detached
   under `flock /root/scratch/gpu.lock`.
-- **Smoke first:** 300 steps, then a gate (throughput ≥ 0.6 steps/s, KL finite, averaged
-  weights saved) before the 10,000-step run. Anything else stops the chain.
+- **Smoke first:** 300 steps with `--eval-every 150`, so the staged validation clips are
+  exercised before the gate rather than 40 minutes into the full arm. The gate requires
+  throughput ≥ 0.6 steps/s, finite KL, averaged weights saved, **at least one non-empty val
+  record**, and the log's `[init] warm-started from … weights=ema` line. Anything else stops
+  the chain.
 - **Done file:** `run` writes `logs/train.exit` and then `logs/train.done` on every path
   (early failure included); a budget stop writes exit 2 and a `budget-exceeded` done-file.
   `check` reads those, never a log tail. `BUDGET` is 6 h from the lock's acquisition.
@@ -156,6 +174,8 @@ training-set audio, not a generalisation estimate, and are not comparable to #94
 | pre-clip gradient norm, range | pending |
 | blank-collapse margin, range | pending |
 | averaged weights saved | pending |
+| val records (non-empty) / steps | pending |
+| warm start line (`weights=ema`) | pending |
 | peak VRAM, minimum free disk | pending |
 
 ## Full run (10,000 steps) — pending
@@ -192,4 +212,5 @@ on the look half. Recorded for completeness, from `docs/consonant-round-freeze.m
 - [x] No extra corpus, so no fingerprint report is owed.
 - [ ] Smoke table and full-run metrics recorded here, with the final checkpoint SHA-256.
 - [ ] No evaluation set decoded or graded during training (asserted by the staged validation
-      clips and by the run streaming only the registered 278 shards).
+      clips, by the run streaming only the registered 278 shards, and — because shard 90 is one
+      of them — by `assert_monitor` refusing a run that entered it).

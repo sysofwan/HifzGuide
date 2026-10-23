@@ -643,6 +643,21 @@ def test_absent_sets_names_the_declared_sets_whose_decodes_are_missing(tmp_path)
     assert "qdat" not in ar.absent_sets(sources, "confirm", "ema", spec)
 
 
+def test_a_choice_identity_survives_every_absent_corpus_for_the_catch_arm():
+    """With no corpus identity record the choice's own candidate identity still binds G6
+    (review R2.3): otherwise a supplied cache pair crashes instead of cannot-certifying."""
+    identity = {"model_ref": "ref", "weights": "ema", "step": 10_000,
+                "recipe": "aug94-mixture-v2", "checkpoint_sha256": "a" * 64}
+    choice = {"weights": "ema", "models": {"candidate": "candidate_ema",
+                                           "control": "control_ema"},
+              "identities": {"candidate_ema": identity, "candidate_live": {}}}
+    identities = ag.require_manifest({}, {}, choice, spec=asp.CONSONANT1)
+    assert identities == {"candidate_ema": identity}  # the unchosen look arm is not carried
+    assert cr._expected_identity(asp.CONSONANT1, "candidate_ema", identities) == identity
+    with pytest.raises(ValueError, match="no identity"):
+        cr._expected_identity(asp.CONSONANT1, "candidate_ema", {})
+
+
 def test_a_missing_decodes_root_reads_every_set_absent_not_a_crash(tmp_path):
     """The sitting names a set whose decodes are missing and never fetches it (review R1.3): the
     reviewer's ``Sources.qud_other`` FileNotFoundError must not reach the report."""

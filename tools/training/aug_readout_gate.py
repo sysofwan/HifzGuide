@@ -275,7 +275,8 @@ def require_manifest(records: Mapping[str, Mapping], required: Mapping[str, Iter
                      choice: Mapping | None, spec: RoundSpec | None = None) -> dict[str, dict]:
     """Every ``(set, model)`` a sitting reads has a valid identity record, each model one
     identity across its sets, each gated set only the chosen weights, and the candidate the
-    identity the committed choice holds. Returns the identity per model."""
+    identity the committed choice holds. Returns the identity per model, including the choice's
+    for each model it selected even when no corpus file of this sitting arrived."""
     per_model: dict[str, dict] = {}
     for set_name, models in required.items():
         if SETS[set_name].gated:
@@ -290,9 +291,15 @@ def require_manifest(records: Mapping[str, Mapping], required: Mapping[str, Iter
             if per_model.setdefault(model, identity) != identity:
                 raise ValueError(f"{model} is not one checkpoint across sets")
     if choice is not None:
+        selected = set(choice.get("models", {}).values())
         for model, identity in choice["identities"].items():
             if per_model.get(model, identity) != identity:
                 raise ValueError(f"{model} is not the checkpoint the committed choice read")
+            # The choice validated its selected models on the look half. Carry that identity
+            # even when none of this sitting's corpus files arrived, so a reader that binds
+            # the truth-baseline caches (G6) is not left without one (#175 review R2.3).
+            if model in selected:
+                per_model.setdefault(model, identity)
     return per_model
 
 

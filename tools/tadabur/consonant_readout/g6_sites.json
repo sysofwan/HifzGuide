@@ -1,6 +1,8 @@
 {
  "issue": 175,
  "rule": "Ship A's held-out verified real mistakes at ط↔ق and س↔ش, heard as the partner letter, less the shared exclusions",
+ "candidates": 8,
+ "excluded": [],
  "sites": [
   "new_audit:tadabur_spk0017_S29_A58_af27f86c_000049.wav#0@166:ط↔ق",
   "new_audit:tadabur_spk0017_S5_A52_1c9ae517_000012.wav#0@9:ط↔ق",

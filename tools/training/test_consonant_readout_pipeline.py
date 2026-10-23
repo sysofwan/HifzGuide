@@ -903,11 +903,17 @@ def test_the_freeze_doc_prints_the_top_ten_of_each_cause_s_full_tally():
     full = _committed_freeze()["models"]["c95"]["scorings"]["shipped_default"][
         "substitution_tally"]
     text = cr.FREEZE_DOC_PATH.read_text(encoding="utf-8")
+    # The same substitution and count can legitimately appear under the other scoring, so the
+    # absence check reads the shipped-default block alone (the causes' tables have a header of
+    # the same name earlier in the doc).
+    substitutions = text.split("## C95's top substitutions by cause", 1)[1]
+    shipped = substitutions.split("### Shipped default", 1)[1].split(
+        "### Allowances off", 1)[0]
     for rows in full.values():
         for row in rows[:10]:
-            assert f"| {row['substitution']} | {row['words']} |" in text
+            assert f"| {row['substitution']} | {row['words']} |" in shipped
         for row in rows[10:]:
-            assert f"| {row['substitution']} | {row['words']} |" not in text
+            assert f"| {row['substitution']} | {row['words']} |" not in shipped
 
 
 def test_the_freeze_writer_refuses_the_confirm_half_before_reading_or_writing(tmp_path):

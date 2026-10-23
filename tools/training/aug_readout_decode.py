@@ -45,6 +45,7 @@ from training.aug_readout import load_qud_selection
 from training.aug_readout_gate import (
     BLANKS,
     QDAT_SET,
+    QUD_OTHER_SET,
     QUD_SET,
     RETASY_SET,
     SETS,
@@ -91,7 +92,7 @@ def shards(set_name: str) -> list[str]:
         return list(QDAT.shards)
     if set_name == RETASY_SET:
         return list(RETASY.shards)
-    if set_name == QUD_SET:
+    if set_name in (QUD_SET, QUD_OTHER_SET):
         return [f"{slug}:{shard}" for slug in PILOT for shard in mushaf_shards(slug)]
     return ["clips"]
 
@@ -127,9 +128,12 @@ def recordings(set_name: str, shard: str, cache_dir: Path, clips_dir: Path | Non
     if set_name in (QDAT_SET, RETASY_SET):
         return nonpro_decode.recordings(QDAT if set_name == QDAT_SET else RETASY, shard,
                                         cache_dir)
-    if set_name == QUD_SET:
+    if set_name in (QUD_SET, QUD_OTHER_SET):
+        from training.consonant_readout import load_qud_complement
+
         slug, parquet = shard.split(":", 1)
-        selection = load_qud_selection()
+        selection = (load_qud_selection() if set_name == QUD_SET
+                     else load_qud_complement())
         return kept(qud_decode.recordings(slug, parquet, cache_dir), selection.__contains__)
     if clips_dir is None:
         raise SystemExit(f"{TADABUR_SET} reads the decode_evalset's clips: pass --clips-dir")

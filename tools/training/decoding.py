@@ -704,6 +704,32 @@ def load_hf_model(model_ref: str, revision: str | None = None):
     return model.eval()
 
 
+def averaged_state(state: dict) -> dict:
+    """The averaged weights a checkpoint stored beside its live ones, as a state dict.
+
+    Reconstructed from the averager's shadow rather than read from a second stored copy:
+    the shadow holds only the floating-point tensors, so the live state supplies the
+    remaining buffers (``num_batches_tracked`` and the like). Older checkpoints carry a
+    materialised ``student_ema`` and are still read directly.
+
+    Raises rather than falling back when the checkpoint has neither: loading the live
+    weights under a name that promises the average scores, or trains, a different model.
+    """
+    if "student_ema" in state:
+        return state["student_ema"]
+    if "ema_state" in state:
+        live = state["student"]
+        shadow = state["ema_state"]["shadow"]
+        return {
+            name: (shadow[name].to(value.dtype) if name in shadow else value)
+            for name, value in live.items()
+        }
+    raise SystemExit(
+        "the checkpoint carries no averaged weights -- it was trained without --ema-decay. "
+        "Ask for the live weights, or use a run that kept an average."
+    )
+
+
 def load_student_from_checkpoint(checkpoint_path: Path, device, use_ema: bool = False):
     """Rebuild the student described by a checkpoint and load its weights.
 
@@ -711,38 +737,18 @@ def load_student_from_checkpoint(checkpoint_path: Path, device, use_ema: bool = 
     refuse a split the checkpoint was not trained under.
 
     ``use_ema`` selects the averaged weights a run with ``--ema-decay`` stored beside the
-    live ones. It raises rather than falling back when they are absent: silently scoring the
-    live weights under an ``--ema`` flag would report the wrong model's number, and the two
-    are meant to be compared.
+    live ones (:func:`averaged_state`). It raises rather than falling back when they are
+    absent: silently scoring the live weights under an ``--ema`` flag would report the
+    wrong model's number, and the two are meant to be compared.
     """
     import torch
 
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     config = state["config"]
     student = build_student(PRESETS[config["preset"]])
+    student.load_state_dict(state["student"])
     if use_ema:
-        # Reconstructed from the averager's shadow rather than read from a second stored
-        # copy: the shadow holds only the floating-point tensors, so the live state supplies
-        # the remaining buffers. Older checkpoints carry a materialised ``student_ema`` and
-        # are still read directly.
-        if "student_ema" in state:
-            student.load_state_dict(state["student_ema"])
-        elif "ema_state" in state:
-            live = state["student"]
-            shadow = state["ema_state"]["shadow"]
-            student.load_state_dict(
-                {
-                    name: (shadow[name].to(value.dtype) if name in shadow else value)
-                    for name, value in live.items()
-                }
-            )
-        else:
-            raise SystemExit(
-                f"{checkpoint_path} carries no averaged weights -- it was trained without "
-                f"--ema-decay. Drop --ema, or train a run that keeps an average."
-            )
-    else:
-        student.load_state_dict(state["student"])
+        student.load_state_dict(averaged_state(state))
     student = student.to(device)
     student.eval()
     return student, config, state["step"]

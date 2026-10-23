@@ -55,6 +55,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+from training.decoding import averaged_state
 from training.distill_data import (
     DistillWindowDataset,
     build_window_index,
@@ -610,7 +611,9 @@ def save_checkpoint(
     tmp.replace(path)
 
 
-def load_student_weights(checkpoint_path: Path, student, projector, device) -> int:
+def load_student_weights(
+    checkpoint_path: Path, student, projector, device, use_ema: bool = False
+) -> int:
     """Warm-start weights from another run, without its optimiser or schedule.
 
     Distinct from ``--resume`` on purpose. A resume continues one experiment and therefore
@@ -619,16 +622,25 @@ def load_student_weights(checkpoint_path: Path, student, projector, device) -> i
     run's learned weights. Using resume for that would either be refused by the guard or,
     without it, silently splice two objectives onto one optimiser state.
 
+    ``use_ema`` reads the averaged shadow the checkpoint stores beside its live weights
+    (:func:`training.decoding.averaged_state`), which #174's candidate warm start names.
+    It raises rather than falling back when the checkpoint kept no average.
+
     Returns the step the source checkpoint reached, for the log only.
     """
     state = torch.load(checkpoint_path, map_location=device, weights_only=False)
     student.load_state_dict(state["student"])
+    if use_ema:
+        student.load_state_dict(averaged_state(state))
     if "projector" in state:
         projector.load_state_dict(state["projector"])
     return state.get("step", 0)
 
 
-def train(config: TrainConfig, resume: bool = False, init_from: Path | None = None) -> None:
+def train(
+    config: TrainConfig, resume: bool = False, init_from: Path | None = None,
+    use_ema: bool = False,
+) -> None:
     device = torch.device("cuda")
     seed_everything(config.seed)
 
@@ -666,9 +678,9 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
 
     start_step = 0
     if init_from is not None:
-        source_step = load_student_weights(init_from, student, projector, device)
-        print(f"[init] warm-started from {init_from} (its step {source_step}); "
-              f"fresh optimiser and schedule")
+        source_step = load_student_weights(init_from, student, projector, device, use_ema)
+        print(f"[init] warm-started from {init_from} (its step {source_step}, "
+              f"weights={'ema' if use_ema else 'live'}); fresh optimiser and schedule")
 
     checkpoint_path = out_dir / CHECKPOINT_FILENAME
     restored_ema = None
@@ -801,7 +813,9 @@ def train(config: TrainConfig, resume: bool = False, init_from: Path | None = No
     print(f"[done] {step} steps in {(time.time() - started) / 3600:.2f}h -- final {val}")
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """The command line, separate from :func:`main` so a test can check the flags a run's
+    reproducibility rests on without a GPU or a corpus."""
     parser = argparse.ArgumentParser(description="Distil a thin Muaalem student")
     parser.add_argument("--preset", choices=sorted(PRESETS), default="h384")
     parser.add_argument("--audio-root", type=Path, required=True)
@@ -906,6 +920,14 @@ def main() -> None:
         "fresh optimiser and schedule. Use this, not --resume, when changing the objective.",
     )
     parser.add_argument(
+        "--init-weights",
+        choices=("live", "ema"),
+        default="live",
+        help="which weights --init-from reads: the live ones (the default, as every run "
+        "before #178), or the averaged shadow stored beside them. A run started from the "
+        "wrong one is a different experiment under the same name.",
+    )
+    parser.add_argument(
         "--hard-weight",
         type=float,
         default=0.0,
@@ -915,12 +937,21 @@ def main() -> None:
     )
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--budget-gib", type=float, default=DEFAULT_VRAM_BUDGET_GIB)
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
 
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is required")
     if args.augment and (args.noise_pool is None or not args.stream_shards):
         raise SystemExit("--augment needs --noise-pool and --stream-shards")
+    if args.init_weights == "ema" and args.init_from is None:
+        raise SystemExit(
+            "--init-weights ema needs --init-from: there is no checkpoint to read an "
+            "average from"
+        )
     augment = {}
     if args.augment:
         from training.augmentation import recipe_record
@@ -978,7 +1009,8 @@ def main() -> None:
     if args.preflight_only:
         return
 
-    train(config, resume=args.resume, init_from=args.init_from)
+    train(config, resume=args.resume, init_from=args.init_from,
+          use_ema=args.init_weights == "ema")
 
 
 if __name__ == "__main__":

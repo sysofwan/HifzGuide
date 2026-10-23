@@ -197,17 +197,9 @@ def training_shard_spec(
     available = [i for i in range(held_out_below, num_shards) if i not in reserved]
     if not available:
         raise ValueError("no training shards left after the reservation")
+    from training.consumed_prefix import shard_spec
 
-    terms: list[str] = []
-    start = previous = available[0]
-    for index in available[1:]:
-        if index == previous + 1:
-            previous = index
-            continue
-        terms.append(str(start) if start == previous else f"{start}-{previous}")
-        start = previous = index
-    terms.append(str(start) if start == previous else f"{start}-{previous}")
-    return ",".join(terms)
+    return shard_spec(available)
 
 
 def reciter_split(reciter_id: int) -> str:

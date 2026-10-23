@@ -145,3 +145,12 @@ def test_the_rounds_use_is_exact_on_exactly_the_remaining_shards():
     # A training use, so the stream drops the sealed panel's reciters and every row tied to
     # an evaluation recording before decoding (acceptance rules §6).
     assert CONSONANT_TRAINING in TRAINING_AND_TUNING_USES
+
+
+def test_a_log_with_no_completions_is_refused():
+    """An empty, rotated or wrongly-pathed log would otherwise 'prove' an empty prefix and
+    move every shard #94 consumed back into the corpus."""
+    from training.consumed_prefix import consumed_prefix
+
+    with pytest.raises(ValueError, match="no shard-completion"):
+        consumed_prefix(_h448_shards(), [], SOURCE_SEED)

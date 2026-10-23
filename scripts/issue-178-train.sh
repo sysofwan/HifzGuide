@@ -113,15 +113,24 @@ assert_ready() {
     echo "[assert] noise pool is $actual, expected $POOL_SHA" >&2
     return 1
   fi
+  assert_stream
+}
+
+assert_stream() {
   # The data: rebuild #94's consumed prefix from its log and refuse if the remainder has
   # drifted from the committed registration. The derivation reads only `h448`'s 345-shard
   # spec, and the trainer refuses a held-out shard before it downloads anything, so the
   # reserve cannot reach training by this path.
+  #
+  # Every failure is an explicit `|| return 1`: called as `assert_ready || return 1`, bash
+  # disables errexit for the whole body, so a bare failing command would be swallowed and
+  # a drift would launch anyway.
+  mkdir -p "$ROOT/logs"
   local spec
-  spec=$(python -m training.consumed_prefix --log "$SOURCE_LOG")
+  spec=$(python -m training.consumed_prefix --log "$SOURCE_LOG") || return 1
   echo "[assert] stream shards: $spec"
   python -m tadabur.exposure training-stream --use "$EXPOSURE_USE" --index "$INDEX" \
-    --shards "$spec" --membership exact --note "launch assertion" --check
+    --shards "$spec" --membership exact --note "launch assertion" --check || return 1
   printf '%s\n' "$spec" > "$ROOT/logs/spec.txt"
 }
 
@@ -357,8 +366,16 @@ case ${1:-} in
   report) report ;;
   setup) setup ;;
   run) run ;;
+  # The data assertion alone, in the shape `chain` reaches it: through `assert_ready || return
+  # 1`, where bash disables errexit inside the function. Run it from `tools/` with the env
+  # active; it exists so a test can prove the assertion can fail at all.
+  verify)
+    status=0
+    assert_stream || status=$?
+    exit "$status"
+    ;;
   *)
-    echo "usage: $0 {launch|check|report}" >&2
+    echo "usage: $0 {launch|check|report} (on the box: setup|run|verify)" >&2
     exit 2
     ;;
 esac

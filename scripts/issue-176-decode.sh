@@ -17,16 +17,16 @@
 # one exit line per QUD shard to logs/events and writes, last, logs/baseline.exit and then
 # logs/baseline.done; `check` is the readiness signal, never a log tail.
 #
-# Budget (#176): the QUD half costs ~17.3k decode-seconds for one model at #95's measured
-# 1.46 s/item; P=6 puts the pass near 1 wall hour on the 12-core box. Stop and report above
-# 2 GPU-h.
+# Budget (#176): the QUD half costs ~15.0k decode-seconds for one model at #95's measured
+# 1.46 s/item (10,261 complement segments), so P=6 is ~42 wall minutes on the 12-core box.
+# Stop and report above 2 GPU-h.
 set -euo pipefail
 
 HOST=${HOST:-root@cuda-dev}
 ROOT=${ISSUE_ROOT:-/root/scratch/issue-176}
 PARALLEL=${PARALLEL:-6}
 CLIP_DIRS=(/root/scratch/issue-83/stage/clips /root/scratch/issue-126/stage/clips)
-CONDA=/root/miniconda3/etc/profile.d/conda.sh
+CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 
 setup() {
   mkdir -p "$ROOT"/{decodes,hf_cache,logs,clips}
@@ -52,35 +52,51 @@ setup() {
 }
 
 run() {
+  mkdir -p "$ROOT/decodes" "$ROOT/logs"
+  rm -f "$ROOT/logs/baseline.done" "$ROOT/logs/baseline.exit"
+  : > "$ROOT/logs/events"
+  # Global: the trap can fire after `run` returns, when its locals are gone.
+  SAMPLER=""
+  # Any exit — failed conda, shard listing, xargs, held-out pass — leaves a readiness marker,
+  # so `check` never hangs in `pending`; the sampler dies with the run.
+  finish() {
+    local code=$?
+    [ -z "$SAMPLER" ] || kill "$SAMPLER" 2>/dev/null || true
+    if [ ! -e "$ROOT/logs/baseline.done" ]; then
+      printf '%s\n' "$code" > "$ROOT/logs/baseline.exit"
+      printf '%s early-fail code=%s\n' "$(date -u +%FT%TZ)" "$code" \
+        > "$ROOT/logs/baseline.done"
+    fi
+  }
+  trap finish EXIT
   cd "$ROOT/repo/tools"
   # shellcheck source=/dev/null
   source "$CONDA"
   conda activate hifzguide
   export OMP_NUM_THREADS=1
-  mkdir -p "$ROOT/decodes" "$ROOT/logs"
-  rm -f "$ROOT/logs/baseline.done" "$ROOT/logs/baseline.exit"
-  : > "$ROOT/logs/events"
   ( while true; do
       printf '%s %s %s\n' "$(date -u +%FT%TZ)" "$(du -sb "$ROOT" | cut -f1)" \
         "$(df -B1 --output=avail /root/scratch | tail -1)" >> "$ROOT/logs/df.log"
       sleep 60
     done ) &
-  local sampler=$!
+  SAMPLER=$!
   local n qother=0 held=0
   n=$(python -m training.consonant_baseline qother --list-shards | wc -l)
   seq 0 $((n - 1)) | xargs -P "$PARALLEL" -I{} bash -c "
     python -m training.consonant_baseline qother --shard {} \
       --out-dir '$ROOT/decodes' --cache-dir '$ROOT/hf_cache' > '$ROOT/logs/qother.{}.log' 2>&1
-    printf '%s qother shard %s exit %s\n' \"\$(date -u +%FT%TZ)\" {} \$? >> '$ROOT/logs/events'
+    rc=\$?
+    printf '%s qother shard %s exit %s\n' \"\$(date -u +%FT%TZ)\" {} \"\$rc\" >> '$ROOT/logs/events'
+    exit \"\$rc\"
   " || qother=$?
   python -m training.consonant_baseline held-out --audio-dir "$ROOT/clips" \
     > "$ROOT/logs/held_out.log" 2>&1 || held=$?
-  kill "$sampler" 2>/dev/null || true
   local code=0
   if [ "$qother" -ne 0 ] || [ "$held" -ne 0 ]; then code=1; fi
   printf '%s\n' "$code" > "$ROOT/logs/baseline.exit"
   printf '%s qother=%s held_out=%s\n' "$(date -u +%FT%TZ)" "$qother" "$held" \
     > "$ROOT/logs/baseline.done"
+  return "$code"
 }
 
 launch() {

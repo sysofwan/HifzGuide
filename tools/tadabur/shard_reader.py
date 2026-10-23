@@ -86,6 +86,29 @@ def _shard_index(text: str, spec: str) -> int:
     return index
 
 
+def shard_spec(shards: Iterable[int]) -> str:
+    """The compact spec :func:`parse_shard_spec` reads, for a shard list:
+    ``[1, 2, 3, 7]`` → ``"1-3,7"``.
+
+    The inverse of the parser and its only writer, so a run's ``--stream-shards`` is never
+    hand-typed: an empty list is refused rather than formatted into a spec that streams
+    nothing.
+    """
+    indices = sorted(set(shards))
+    if not indices:
+        raise ValueError("no shards: an empty spec would stream nothing")
+    terms: list[str] = []
+    start = previous = indices[0]
+    for index in indices[1:]:
+        if index == previous + 1:
+            previous = index
+            continue
+        terms.append(str(start) if start == previous else f"{start}-{previous}")
+        start = previous = index
+    terms.append(str(start) if start == previous else f"{start}-{previous}")
+    return ",".join(terms)
+
+
 def iter_shard_rows(
     shard_indices: Iterable[int],
     *,

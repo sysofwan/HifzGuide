@@ -8,8 +8,8 @@ retrains on audio the earlier run already streamed is not the experiment its not
 The pieces are kept apart so each can be checked on its own: the permutation
 (:func:`shard_permutation`), the log's reading of it (:func:`completion_order`), the
 cross-check that turns the two into the consumed set (:func:`consumed_prefix`), and the
-complement (:func:`remaining_shards`) with the ``--stream-shards`` spec it launches with
-(:func:`shard_spec`).
+complement (:func:`remaining_shards`) written as a ``--stream-shards`` spec by
+:func:`tadabur.shard_reader.shard_spec`, the parser's inverse.
 
 One subtlety of the log: a shard's line is printed when the *next* shard's first row
 arrives, so the last completed shard is not the last shard entered. A run stopped at step
@@ -38,6 +38,8 @@ import re
 import sys
 from collections.abc import Iterable, Sequence
 from pathlib import Path
+
+from tadabur.shard_reader import shard_spec
 
 #: The line ``training.distill_stream.exclude_rows`` prints when it leaves a shard.
 COMPLETION_LINE = re.compile(r"\[data\] exposure exclusion through shard (\d+)\b")
@@ -133,24 +135,6 @@ def remaining_from_log(
     source = parse_shard_spec(shards or training_shard_spec())
     completed = completion_order(log.read_text(encoding="utf-8"))
     return remaining_shards(source, consumed_prefix(source, completed, seed))
-
-
-def shard_spec(shards: Iterable[int]) -> str:
-    """The compact ``--stream-shards`` spec for a shard list, as ``parse_shard_spec`` reads
-    it: ``[1, 2, 3, 7]`` → ``"1-3,7"``."""
-    indices = sorted(set(shards))
-    if not indices:
-        raise ValueError("no shards: an empty spec would stream nothing")
-    terms: list[str] = []
-    start = previous = indices[0]
-    for index in indices[1:]:
-        if index == previous + 1:
-            previous = index
-            continue
-        terms.append(str(start) if start == previous else f"{start}-{previous}")
-        start = previous = index
-    terms.append(str(start) if start == previous else f"{start}-{previous}")
-    return ",".join(terms)
 
 
 def main() -> None:

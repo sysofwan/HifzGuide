@@ -71,11 +71,12 @@ import sys
 
 import soundfile as sf
 
-from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
+from tadabur.audio import TARGET_SAMPLE_RATE
 from tadabur.exposure import CONSONANT_TRAINING, RowExclusion
 from tadabur.shard_reader import iter_shard_rows
 from training.consumed_prefix import monitoring_shard, remaining_from_log
 from training.distill_data import clip_split
+from training.distill_stream import decode_row_waveform
 
 out = pathlib.Path(sys.argv[1])
 wanted = int(sys.argv[2])
@@ -95,7 +96,9 @@ for row_index, row in enumerate(iter_shard_rows([monitor], delete_after=True)):
     if not exclusion.keeps((monitor, row_index), row):
         continue
     try:
-        waveform = decode_to_mono_16k(row["audio"]["bytes"])
+        # The stream's own decoder, so staging and training decode identically by
+        # construction: these clips are fed back to the same trainer as validation.
+        waveform = decode_row_waveform(row)
     except Exception:  # a corrupt row is not a reason to stage nothing
         continue
     sf.write(out / f"{monitor}_{row_index:04d}.wav", waveform, TARGET_SAMPLE_RATE)

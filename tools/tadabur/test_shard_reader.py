@@ -14,6 +14,7 @@ from tadabur.shard_reader import (
     NUM_SHARDS,
     iter_shard_rows,
     parse_shard_spec,
+    shard_spec,
 )
 
 
@@ -61,6 +62,20 @@ def test_parse_shard_spec_rejects_out_of_range():
 def test_parse_shard_spec_rejects_non_integer():
     with pytest.raises(ValueError):
         parse_shard_spec("0-x")
+
+
+# MARK: - shard_spec
+
+
+def test_shard_spec_round_trips_through_the_parser():
+    """The writer lives beside its parser so a run's spec is never hand-typed."""
+    assert shard_spec([1, 2, 3, 7]) == "1-3,7"
+    assert parse_shard_spec(shard_spec([3, 4, 5, 9, 11, 12])) == [3, 4, 5, 9, 11, 12]
+
+
+def test_shard_spec_refuses_an_empty_list():
+    with pytest.raises(ValueError, match="empty spec"):
+        shard_spec([])
 
 
 # MARK: - iter_shard_rows

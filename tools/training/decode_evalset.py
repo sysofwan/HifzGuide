@@ -81,6 +81,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tadabur.panel_seal import SealedPanelError
+from tadabur.shard_reader import shard_spec
 
 # Bumped whenever the manifest layout, the strata, or anything the cached teacher decisions
 # depend on changes, so a stale set is refused rather than silently reused.
@@ -197,8 +198,6 @@ def training_shard_spec(
     available = [i for i in range(held_out_below, num_shards) if i not in reserved]
     if not available:
         raise ValueError("no training shards left after the reservation")
-    from training.consumed_prefix import shard_spec
-
     return shard_spec(available)
 
 

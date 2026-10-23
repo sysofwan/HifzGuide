@@ -154,3 +154,58 @@ def test_merge_never_writes_another_round_s_committed_decodes(tmp_path):
     with pytest.raises(SystemExit, match="another round"):
         ar.merge(gpu, ag.Layout(tmp_path / "round"), spec=asp.CONSONANT1)
     assert historical.read_bytes() == before
+
+
+# --- #179: the #178 candidate is the round's, pinned before any decode --------------------------
+
+#: #178's checkpoint on cuda-dev (``docs/consonant-round-run.md``): one file, live and EMA.
+CANDIDATE_REF = ("/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt")
+CANDIDATE_SHA256 = "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2"
+CANDIDATE_RECIPE = "aug94-mixture-v2"
+
+
+def test_the_round_pins_the_178_candidate_for_both_weight_selectors():
+    """The spec says which checkpoint the round decodes, at which weights, step and recipe: the
+    decode run must refuse anything else, so the pin cannot live only in a run note."""
+    pins = asp.CONSONANT1.models
+    assert set(pins) == {"c95", "candidate_live", "candidate_ema"}
+    for model, weights in (("candidate_live", "live"), ("candidate_ema", "ema")):
+        assert pins[model] == asp.ModelIdentity(CANDIDATE_REF, weights, 10_000,
+                                                CANDIDATE_RECIPE, CANDIDATE_SHA256)
+    assert pins["candidate_live"].ref == pins["candidate_ema"].ref
+
+
+def test_the_candidate_resolves_to_the_178_checkpoint_live_and_ema():
+    for weights, use_ema in (("live", False), ("ema", True)):
+        model = ag.model_spec(f"candidate_{weights}", spec=asp.CONSONANT1)
+        assert (model.ref, model.use_ema, model.step, model.recipe) == (
+            CANDIDATE_REF, use_ema, 10_000, CANDIDATE_RECIPE)
+    # #95's arm is untouched: the pin is this round's, not the pipeline's.
+    assert ag.model_spec("candidate_ema", spec=asp.AUG95).ref == ag.ARMS["candidate"]
+    assert ag.model_spec("candidate_ema").ref == ag.ARMS["candidate"]
+
+
+def _candidate_record(model: str) -> dict:
+    pin = asp.CONSONANT1.models[model]
+    return {"model": model, "fingerprints": ag.expected_fingerprints(pin.ref),
+            "identity": ag.identity_record(pin)}
+
+
+def test_the_candidate_s_identity_is_the_round_s_pin_and_nothing_else():
+    for model in ("candidate_live", "candidate_ema"):
+        record = _candidate_record(model)
+        assert ag.validate_identity("tarteel_v1.look", model, record,
+                                    spec=asp.CONSONANT1) == record["identity"]
+    for edit in ({"checkpoint_sha256": "b" * 64},
+                 {"model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/"
+                               "aug94_candidate_v2/checkpoint.pt"},
+                 {"step": 8_000}, {"recipe": "aug94-mixture-v1"}, {"weights": "live"}):
+        record = _candidate_record("candidate_ema")
+        record["identity"].update(edit)
+        with pytest.raises(ValueError, match="pinned checkpoint"):
+            ag.validate_identity("tarteel_v1.look", "candidate_ema", record,
+                                 spec=asp.CONSONANT1)
+    record = _candidate_record("candidate_ema")
+    record["fingerprints"]["checks"]["batch_size"] = 8
+    with pytest.raises(ValueError, match="fingerprint"):
+        ag.validate_identity("tarteel_v1.look", "candidate_ema", record, spec=asp.CONSONANT1)

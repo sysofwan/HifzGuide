@@ -1033,3 +1033,61 @@ def test_freeze_tables_takes_the_top_ten_consonant_substitutions_by_words_then_u
     assert len(diagnostic["other_consonant"]) == 10  # the eleventh other_consonant row drops
     assert "ي→ى" not in {row["substitution"] for row in diagnostic["other_consonant"]}
     assert set(shipped["causes"]) == set(CAUSES)
+
+
+# --- #179: coverage for every set, and RetaSy's absence stated (acceptance criteria) -----------
+
+
+def test_the_round_discloses_a_coverage_row_for_every_set():
+    record = cr.coverage()
+    populations = record["populations"]
+    assert set(populations) == {
+        "tarteel_v1.look", "tarteel_v1.confirm", "qud_other", "qud_half", "qdat",
+        "tadabur_dev_unseen", "qdat_bench", "ship_a_verified"}
+    for name, row in populations.items():
+        assert isinstance(row["decoded"], int) and isinstance(row["evaluated"], int)
+        assert row["evaluated"] + row["excluded"] == row["decoded"], name
+        assert isinstance(row["excluded_words"], int)
+        assert len(row["excluded_keys"]) == row["excluded"]
+        assert row["reason"].strip()
+    counts = ar.expected_counts(asp.CONSONANT1)
+    for name in ("qdat", "tadabur_dev_unseen", "qud_other", "qud_half"):
+        assert populations[name]["decoded"] == counts[name], name
+    # A set with no reference exclusions says so with zeroes, not a missing count.
+    for name in ("qdat", "tadabur_dev_unseen", "qdat_bench", "ship_a_verified"):
+        assert populations[name]["excluded"] == 0, name
+    assert populations["qdat"]["evaluated"] == 1505
+    assert populations["tadabur_dev_unseen"]["evaluated"] == 671
+    assert populations["qdat_bench"]["decoded"] == 159  # qdat's clips the bench reads
+    assert populations["ship_a_verified"]["decoded"] == len(cr.g6_scope()["sites"]) == 8
+    assert populations["tarteel_v1.look"]["evaluated"] == 4530
+    assert populations["tarteel_v1.confirm"]["evaluated"] == 4408
+    assert populations["qud_half"]["evaluated"] == 10283
+    assert populations["qud_other"]["excluded"] == 176  # the pilot's waqf/leen limitation
+
+
+def test_the_round_s_doc_renders_every_coverage_row():
+    record = cr.coverage()
+    report = _round_report(_catch())
+    sizes = {"tarteel_v1.confirm": "tarteel_v1_confirm", "qdat": "qdat",
+             "qud_other": "qud_other", "qud_half": "qud_half",
+             "tadabur_dev_unseen": "tadabur_dev_unseen", "qdat_bench": "qdat_bench",
+             "ship_a_verified": "ship_a_verified"}
+    for population, size in sizes.items():
+        report["sizes"][size] = record["populations"][population]["evaluated"]
+    look = _look()
+    look["items"] = record["populations"]["tarteel_v1.look"]["evaluated"]
+    text = adoc.render(look, report, record, spec=asp.CONSONANT1)
+    for name in record["populations"]:
+        assert f"| {name} |" in text
+
+
+def test_retasy_is_reported_not_run_with_its_reason():
+    data = cr.RoundData(tarteel=None, qdat=None, qud_other=None, qud_half=None,
+                        tadabur=None, bench={}, catch=None)
+    report = cr.confirm_report(data, spec=asp.CONSONANT1)
+    retasy = report["not_run"]["retasy"]
+    assert retasy["status"] == "not run"
+    assert "#171" in retasy["reason"]
+    text = adoc.render(_look(), report, _round_coverage(), spec=asp.CONSONANT1)
+    assert "RetaSy" in text and "not run" in text and "#171" in text

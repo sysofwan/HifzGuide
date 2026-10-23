@@ -47,13 +47,13 @@ def _cause_table(record: Mapping, scoring: str) -> list[str]:
 
 
 def _substitution_table(record: Mapping, scoring: str) -> list[str]:
-    """C95's top ten substitutions for each consonant cause, with their look-half counts."""
+    """C95's top ten substitutions for every ``word_flags`` cause, with their look-half counts."""
     c95 = record["models"]["c95"]["scorings"][scoring]
     out: list[str] = []
     for cause, rows in c95["substitutions"].items():
         out += ["", f"**{cause}**", ""]
         if not rows:
-            out.append("No substitution.")
+            out.append("No substitution carries this cause.")
             continue
         out += ["| substitution | words | per 1,000 |", "|---|---|---|"]
         out += [f"| {row['substitution']} | {row['words']} | "
@@ -107,10 +107,9 @@ def render(record: Mapping) -> str:
         "## C95's top substitutions by cause",
         "",
         "The top ten substitutions behind C95's false-flagged look-half words, by "
-        "`word_flags.substitution_tally` (a word counts once per substitution). The table "
-        "covers the round's three consonant causes; `shaddah`, `tashkeel`, `skipped` and "
-        "`unrecorded` carry no entry here. The madd alif (`ا→∅`) is counted in the split but "
-        "is not a consonant substitution (Muraja#263).",
+        "`word_flags.substitution_tally` (a word counts once per substitution), for every "
+        "`word_flags` cause; a shaddah deletion is its own cause and the madd alif (`ا→∅`) is "
+        "counted (Muraja#263). An empty list means no substitution carries that cause.",
         "",
         "### Shipped default",
         *_substitution_table(record, "shipped_default"),
@@ -123,8 +122,8 @@ def render(record: Mapping) -> str:
         "The ten consonant substitutions behind the most C95 false-flagged words at the "
         "shipped default, the madd alif (`ا→∅`) aside; ties are broken by the substitution "
         "string (Unicode order), so the list is deterministic. G5 reads each one's flagged "
-        "words per 1,000 on the confirm half and fails if a paired 99.5% lower bound is above "
-        "zero. It is a veto, not a detector.",
+        "words per 1,000 on the confirm half as **candidate minus C95**, and fails if any "
+        "substitution's paired 99.5% lower bound is above zero. It is a veto, not a detector.",
         "",
         "| substitution | cause | look-half words |",
         "|---|---|---|",

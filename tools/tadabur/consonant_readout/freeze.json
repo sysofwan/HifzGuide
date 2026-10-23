@@ -74,58 +74,7 @@
       }
      },
      "substitutions": {
-      "other_consonant": [
-       {
-        "cause": "other_consonant",
-        "substitution": "ء→∅",
-        "words": 98
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→ن",
-        "words": 59
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ن→∅",
-        "words": 49
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ج→ش",
-        "words": 46
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "م→∅",
-        "words": 38
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ء→ي",
-        "words": 33
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "و→∅",
-        "words": 33
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "د→ت",
-        "words": 32
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ر→ل",
-        "words": 31
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→∅",
-        "words": 31
-       }
-      ],
+      "tashkeel": [],
       "soft_pair": [
        {
         "cause": "soft_pair",
@@ -199,7 +148,98 @@
         "substitution": "ق→ط",
         "words": 3
        }
-      ]
+      ],
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 98
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ا→∅",
+        "words": 72
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 59
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 49
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ج→ش",
+        "words": 46
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 38
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→ي",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "و→∅",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "د→ت",
+        "words": 32
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→ل",
+        "words": 31
+       }
+      ],
+      "shaddah": [
+       {
+        "cause": "shaddah",
+        "substitution": "ن→∅",
+        "words": 16
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ب→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ل→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ي→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ر→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "م→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ق→∅",
+        "words": 1
+       }
+      ],
+      "skipped": [],
+      "unrecorded": []
      }
     },
     "allowances_off": {
@@ -237,58 +277,7 @@
       }
      },
      "substitutions": {
-      "other_consonant": [
-       {
-        "cause": "other_consonant",
-        "substitution": "ء→∅",
-        "words": 100
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→ن",
-        "words": 59
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ن→∅",
-        "words": 51
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ج→ش",
-        "words": 46
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "م→∅",
-        "words": 38
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ء→ي",
-        "words": 33
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "د→ت",
-        "words": 33
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→∅",
-        "words": 33
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ر→ل",
-        "words": 32
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "و→∅",
-        "words": 32
-       }
-      ],
+      "tashkeel": [],
       "soft_pair": [
        {
         "cause": "soft_pair",
@@ -372,7 +361,113 @@
         "substitution": "ق→ط",
         "words": 3
        }
-      ]
+      ],
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 100
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ا→∅",
+        "words": 72
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 59
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 51
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ج→ش",
+        "words": 46
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 38
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→ي",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "د→ت",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→ل",
+        "words": 32
+       }
+      ],
+      "shaddah": [
+       {
+        "cause": "shaddah",
+        "substitution": "ب→∅",
+        "words": 20
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ن→∅",
+        "words": 16
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ل→∅",
+        "words": 12
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ي→∅",
+        "words": 8
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ر→∅",
+        "words": 4
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ذ→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "خ→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ع→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ك→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "م→∅",
+        "words": 2
+       }
+      ],
+      "skipped": [],
+      "unrecorded": []
      }
     }
    }
@@ -415,58 +510,7 @@
       }
      },
      "substitutions": {
-      "other_consonant": [
-       {
-        "cause": "other_consonant",
-        "substitution": "ء→∅",
-        "words": 99
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ن→∅",
-        "words": 68
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→ن",
-        "words": 63
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ج→ش",
-        "words": 61
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "م→∅",
-        "words": 57
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "د→ت",
-        "words": 47
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→∅",
-        "words": 45
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ن→ل",
-        "words": 45
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ر→∅",
-        "words": 39
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ز→س",
-        "words": 39
-       }
-      ],
+      "tashkeel": [],
       "soft_pair": [
        {
         "cause": "soft_pair",
@@ -545,7 +589,113 @@
         "substitution": "ق→ط",
         "words": 4
        }
-      ]
+      ],
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 99
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ا→∅",
+        "words": 84
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 68
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 63
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ج→ش",
+        "words": 61
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 57
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "د→ت",
+        "words": 47
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 45
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→ل",
+        "words": 45
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→∅",
+        "words": 39
+       }
+      ],
+      "shaddah": [
+       {
+        "cause": "shaddah",
+        "substitution": "ن→∅",
+        "words": 12
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ل→∅",
+        "words": 6
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ب→∅",
+        "words": 4
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ر→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "م→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ز→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ي→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ت→∅",
+        "words": 1
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "د→∅",
+        "words": 1
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ع→∅",
+        "words": 1
+       }
+      ],
+      "skipped": [],
+      "unrecorded": []
      }
     },
     "allowances_off": {
@@ -583,58 +733,7 @@
       }
      },
      "substitutions": {
-      "other_consonant": [
-       {
-        "cause": "other_consonant",
-        "substitution": "ء→∅",
-        "words": 100
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ن→∅",
-        "words": 73
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→ن",
-        "words": 63
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ج→ش",
-        "words": 61
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "م→∅",
-        "words": 60
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "د→ت",
-        "words": 47
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→∅",
-        "words": 47
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ن→ل",
-        "words": 46
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ز→س",
-        "words": 39
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ه→∅",
-        "words": 39
-       }
-      ],
+      "tashkeel": [],
       "soft_pair": [
        {
         "cause": "soft_pair",
@@ -718,7 +817,113 @@
         "substitution": "ق→ط",
         "words": 4
        }
-      ]
+      ],
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 100
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ا→∅",
+        "words": 85
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 73
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 63
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ج→ش",
+        "words": 61
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 60
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "د→ت",
+        "words": 47
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 47
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→ل",
+        "words": 46
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ز→س",
+        "words": 39
+       }
+      ],
+      "shaddah": [
+       {
+        "cause": "shaddah",
+        "substitution": "ب→∅",
+        "words": 18
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ل→∅",
+        "words": 15
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ن→∅",
+        "words": 12
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ر→∅",
+        "words": 6
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ك→∅",
+        "words": 4
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "م→∅",
+        "words": 4
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ي→∅",
+        "words": 4
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ت→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ز→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ع→∅",
+        "words": 3
+       }
+      ],
+      "skipped": [],
+      "unrecorded": []
      }
     }
    }
@@ -761,58 +966,7 @@
       }
      },
      "substitutions": {
-      "other_consonant": [
-       {
-        "cause": "other_consonant",
-        "substitution": "ء→∅",
-        "words": 59
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ن→∅",
-        "words": 29
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→∅",
-        "words": 25
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "و→∅",
-        "words": 22
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "م→∅",
-        "words": 21
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→ن",
-        "words": 20
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ب→∅",
-        "words": 17
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "غ→ق",
-        "words": 17
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ر→∅",
-        "words": 13
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ه→∅",
-        "words": 12
-       }
-      ],
+      "tashkeel": [],
       "soft_pair": [
        {
         "cause": "soft_pair",
@@ -881,7 +1035,103 @@
         "substitution": "ق→ط",
         "words": 1
        }
-      ]
+      ],
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ا→∅",
+        "words": 66
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 59
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 29
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 25
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "و→∅",
+        "words": 22
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 21
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 20
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ب→∅",
+        "words": 17
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "غ→ق",
+        "words": 17
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→∅",
+        "words": 13
+       }
+      ],
+      "shaddah": [
+       {
+        "cause": "shaddah",
+        "substitution": "ن→∅",
+        "words": 11
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ب→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "م→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ل→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ر→∅",
+        "words": 1
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ض→∅",
+        "words": 1
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ق→∅",
+        "words": 1
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ي→∅",
+        "words": 1
+       }
+      ],
+      "skipped": [],
+      "unrecorded": []
      }
     },
     "allowances_off": {
@@ -919,58 +1169,7 @@
       }
      },
      "substitutions": {
-      "other_consonant": [
-       {
-        "cause": "other_consonant",
-        "substitution": "ء→∅",
-        "words": 59
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ن→∅",
-        "words": 31
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→∅",
-        "words": 27
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "و→∅",
-        "words": 22
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "م→∅",
-        "words": 21
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ل→ن",
-        "words": 20
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ب→∅",
-        "words": 17
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "غ→ق",
-        "words": 17
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ر→∅",
-        "words": 13
-       },
-       {
-        "cause": "other_consonant",
-        "substitution": "ع→ء",
-        "words": 11
-       }
-      ],
+      "tashkeel": [],
       "soft_pair": [
        {
         "cause": "soft_pair",
@@ -1049,7 +1248,113 @@
         "substitution": "ق→ط",
         "words": 1
        }
-      ]
+      ],
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ا→∅",
+        "words": 66
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 59
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 31
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 27
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "و→∅",
+        "words": 22
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 21
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 20
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ب→∅",
+        "words": 17
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "غ→ق",
+        "words": 17
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→∅",
+        "words": 13
+       }
+      ],
+      "shaddah": [
+       {
+        "cause": "shaddah",
+        "substitution": "ب→∅",
+        "words": 19
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ل→∅",
+        "words": 12
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ن→∅",
+        "words": 9
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ت→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ر→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "م→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ي→∅",
+        "words": 3
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ذ→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ع→∅",
+        "words": 2
+       },
+       {
+        "cause": "shaddah",
+        "substitution": "ج→∅",
+        "words": 1
+       }
+      ],
+      "skipped": [],
+      "unrecorded": []
      }
     }
    }

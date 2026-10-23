@@ -42,24 +42,13 @@ Counts, with the rate per 1,000 graded words in parentheses. `h448` and the teac
 
 ## C95's top substitutions by cause
 
-The top ten substitutions behind C95's false-flagged look-half words, by `word_flags.substitution_tally` (a word counts once per substitution). The table covers the round's three consonant causes; `shaddah`, `tashkeel`, `skipped` and `unrecorded` carry no entry here. The madd alif (`ا→∅`) is counted in the split but is not a consonant substitution (Muraja#263).
+The top ten substitutions behind C95's false-flagged look-half words, by `word_flags.substitution_tally` (a word counts once per substitution), for every `word_flags` cause; a shaddah deletion is its own cause and the madd alif (`ا→∅`) is counted (Muraja#263). An empty list means no substitution carries that cause.
 
 ### Shipped default
 
-**other_consonant**
+**tashkeel**
 
-| substitution | words | per 1,000 |
-|---|---|---|
-| ء→∅ | 98 | 2.24 |
-| ل→ن | 59 | 1.35 |
-| ن→∅ | 49 | 1.12 |
-| ج→ش | 46 | 1.05 |
-| م→∅ | 38 | 0.87 |
-| ء→ي | 33 | 0.75 |
-| و→∅ | 33 | 0.75 |
-| د→ت | 32 | 0.73 |
-| ر→ل | 31 | 0.71 |
-| ل→∅ | 31 | 0.71 |
+No substitution carries this cause.
 
 **soft_pair**
 
@@ -85,22 +74,46 @@ The top ten substitutions behind C95's false-flagged look-half words, by `word_f
 | ذ→ظ | 3 | 0.07 |
 | ق→ط | 3 | 0.07 |
 
-### Allowances off
-
 **other_consonant**
 
 | substitution | words | per 1,000 |
 |---|---|---|
-| ء→∅ | 100 | 2.29 |
+| ء→∅ | 98 | 2.24 |
+| ا→∅ | 72 | 1.65 |
 | ل→ن | 59 | 1.35 |
-| ن→∅ | 51 | 1.17 |
+| ن→∅ | 49 | 1.12 |
 | ج→ش | 46 | 1.05 |
 | م→∅ | 38 | 0.87 |
 | ء→ي | 33 | 0.75 |
-| د→ت | 33 | 0.75 |
-| ل→∅ | 33 | 0.75 |
-| ر→ل | 32 | 0.73 |
-| و→∅ | 32 | 0.73 |
+| و→∅ | 33 | 0.75 |
+| د→ت | 32 | 0.73 |
+| ر→ل | 31 | 0.71 |
+
+**shaddah**
+
+| substitution | words | per 1,000 |
+|---|---|---|
+| ن→∅ | 16 | 0.37 |
+| ب→∅ | 3 | 0.07 |
+| ل→∅ | 3 | 0.07 |
+| ي→∅ | 3 | 0.07 |
+| ر→∅ | 2 | 0.05 |
+| م→∅ | 2 | 0.05 |
+| ق→∅ | 1 | 0.02 |
+
+**skipped**
+
+No substitution carries this cause.
+
+**unrecorded**
+
+No substitution carries this cause.
+
+### Allowances off
+
+**tashkeel**
+
+No substitution carries this cause.
 
 **soft_pair**
 
@@ -128,9 +141,47 @@ The top ten substitutions behind C95's false-flagged look-half words, by `word_f
 | ذ→ظ | 3 | 0.07 |
 | ق→ط | 3 | 0.07 |
 
+**other_consonant**
+
+| substitution | words | per 1,000 |
+|---|---|---|
+| ء→∅ | 100 | 2.29 |
+| ا→∅ | 72 | 1.65 |
+| ل→ن | 59 | 1.35 |
+| ن→∅ | 51 | 1.17 |
+| ج→ش | 46 | 1.05 |
+| م→∅ | 38 | 0.87 |
+| ء→ي | 33 | 0.75 |
+| د→ت | 33 | 0.75 |
+| ل→∅ | 33 | 0.75 |
+| ر→ل | 32 | 0.73 |
+
+**shaddah**
+
+| substitution | words | per 1,000 |
+|---|---|---|
+| ب→∅ | 20 | 0.46 |
+| ن→∅ | 16 | 0.37 |
+| ل→∅ | 12 | 0.27 |
+| ي→∅ | 8 | 0.18 |
+| ر→∅ | 4 | 0.09 |
+| ذ→∅ | 3 | 0.07 |
+| خ→∅ | 2 | 0.05 |
+| ع→∅ | 2 | 0.05 |
+| ك→∅ | 2 | 0.05 |
+| م→∅ | 2 | 0.05 |
+
+**skipped**
+
+No substitution carries this cause.
+
+**unrecorded**
+
+No substitution carries this cause.
+
 ## G5's veto list, frozen before training
 
-The ten consonant substitutions behind the most C95 false-flagged words at the shipped default, the madd alif (`ا→∅`) aside; ties are broken by the substitution string (Unicode order), so the list is deterministic. G5 reads each one's flagged words per 1,000 on the confirm half and fails if a paired 99.5% lower bound is above zero. It is a veto, not a detector.
+The ten consonant substitutions behind the most C95 false-flagged words at the shipped default, the madd alif (`ا→∅`) aside; ties are broken by the substitution string (Unicode order), so the list is deterministic. G5 reads each one's flagged words per 1,000 on the confirm half as **candidate minus C95**, and fails if any substitution's paired 99.5% lower bound is above zero. It is a veto, not a detector.
 
 | substitution | cause | look-half words |
 |---|---|---|

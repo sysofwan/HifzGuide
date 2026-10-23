@@ -915,6 +915,38 @@ def test_the_freeze_writer_refuses_to_move_a_committed_freeze(tmp_path):
     assert not doc.exists()
 
 
+def test_the_freeze_doc_reads_g5_s_bound_as_candidate_minus_c95():
+    """R1.3: an absolute rate bound would veto an unchanged candidate; the guard is paired."""
+    text = cr.FREEZE_DOC_PATH.read_text(encoding="utf-8")
+    paragraph = next(line for line in text.splitlines() if "99.5%" in line)
+    assert "candidate minus C95" in paragraph
+
+
+def _tables_for_tally(tally) -> dict:
+    plan = [Flag((cause,), (), "minor", (), consonants=((cause, substitution),))
+            for substitution, cause, words in tally for _ in range(words)]
+    items = [_item(i) for i in range((len(plan) + 1) // 2)]
+    grades = [_scored_grade("c95", SHIPPED, item, position, plan[2 * i + position])
+              for i, item in enumerate(items) for position in (0, 1)]
+    return cr.freeze_tables(grades)
+
+
+def test_g5_reads_the_untruncated_tally_while_the_diagnostic_is_truncated_per_cause():
+    """The madd alif takes a display slot but is not a G5 candidate, so a row eleventh in the
+    displayed cause can still be G5's tenth (review R1.1)."""
+    ranked = [(f"{letter}→∅", "other_consonant", 19 - i)
+              for i, letter in enumerate("رزسشصضطظع")]
+    tally = [(am.MADD_ALIF, "other_consonant", 20), *ranked,
+             ("ي→∅", "other_consonant", 11)]
+    tables = _tables_for_tally(tally)
+    assert [row["substitution"] for row in tables["substitutions"]] == [
+        *(label for label, _, _ in ranked), "ي→∅"]
+    shown = [row["substitution"] for row
+             in tables["models"]["c95"]["scorings"]["shipped_default"]["substitutions"]
+             ["other_consonant"]]
+    assert am.MADD_ALIF in shown and "ي→∅" not in shown
+
+
 #: A synthetic tally for the freeze's two readings: substitution, cause, flagged words. The
 #: diagnostic keeps every cause, the madd alif and the shaddah rows included, and truncates each
 #: cause to ten; only G5 excludes them. Ties at 5, 4, 3, 2 and 1 order by substitution only.

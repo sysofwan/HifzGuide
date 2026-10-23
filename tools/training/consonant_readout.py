@@ -188,13 +188,15 @@ def _per_1000(count: int, graded: int) -> float:
 
 def freeze_tables(grades: Sequence) -> dict:
     """The freeze's two readings from the look half's grades: each model's false flags by
-    ``word_flags`` cause under both scorings (with their rates), C95's top ten substitutions for
-    each consonant cause, and the G5 list — the ten consonant substitutions behind the most C95
-    false-flagged words at the shipped default, the madd alif (``ا→∅``) aside, ties by
+    ``word_flags`` cause under both scorings (with their rates) and C95's full substitution
+    diagnostic — every cause's top ten, shaddah and the madd alif (``ا→∅``) included — plus G5,
+    derived separately from the untruncated shipped-default tally: the ten consonant
+    substitutions behind the most C95 false-flagged words, the madd alif aside, ties by
     substitution (Unicode order)."""
     from training.external_corpus import app_scorings, flag_view
 
     models: dict[str, dict] = {}
+    g5_rows: list[dict] = []
     for model in FREEZE_MODELS:
         scorings = {}
         for scoring in (s.name for s in app_scorings()):
@@ -204,6 +206,9 @@ def freeze_tables(grades: Sequence) -> dict:
                 continue
             view = flag_view(mine)
             graded = view["graded"]
+            by_cause = {cause: [row for row in view["substitutions"]
+                                if row["cause"] == cause]
+                        for cause in CAUSES}
             scorings[scoring] = {
                 "graded": graded,
                 "flagged": view["flagged"],
@@ -211,19 +216,20 @@ def freeze_tables(grades: Sequence) -> dict:
                 "causes": {cause: {"words": view["causes"][cause],
                                    "per_1000": _per_1000(view["causes"][cause], graded)}
                            for cause in CAUSES},
-                # The round's consonant causes carry the substitutions G5 gates; a shaddah
-                # deletion is its own cause and stays out of the veto (#174). The madd alif is
-                # counted in the split but is not a consonant substitution (Muraja#263).
-                "substitutions": {
-                    cause: [row for row in view["substitutions"]
-                            if row["cause"] == cause and row["substitution"] != MADD_ALIF][:10]
-                    for cause in sorted(CONSONANT_FLAG_CAUSES)},
+                # The diagnostic is the canonical tally whole: a shaddah deletion is its own
+                # cause and the madd alif is counted (Muraja#263), so both stay in. Only the
+                # display is truncated, per cause, to ten.
+                "substitutions": {cause: rows[:10] for cause, rows in by_cause.items()},
             }
+            if model == C95 and scoring == SHIPPED_DEFAULT.name:
+                # G5 alone applies the round's exclusions (#174), and it reads the whole tally:
+                # the madd alif still takes a display slot, so a truncated list can be short.
+                g5_rows = [row for cause in sorted(CONSONANT_FLAG_CAUSES)
+                           for row in by_cause[cause]
+                           if row["substitution"] != MADD_ALIF]
         if scorings:
             models[model] = {"label": FREEZE_LABELS[model], "scorings": scorings}
-    shipped = models[C95]["scorings"]["shipped_default"]["substitutions"]
-    rows = [row for cause in sorted(CONSONANT_FLAG_CAUSES) for row in shipped[cause]]
-    g5 = sorted(rows, key=lambda row: (-row["words"], row["substitution"]))[:10]
+    g5 = sorted(g5_rows, key=lambda row: (-row["words"], row["substitution"]))[:10]
     if len(g5) < 10:
         raise SystemExit(f"the look half yields {len(g5)} consonant substitutions; G5 needs 10")
     return {"models": models, "substitutions": g5}

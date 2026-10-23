@@ -209,6 +209,34 @@ def merge(items: Iterable[Item]) -> list[Item]:
     return [merged[k] for k in sorted(merged)]
 
 
+def word_item(word) -> Item:
+    """A sampled word's item: judged whole, read in the word sample's frozen segment."""
+    return Item(word.site.site_id, (WORD_SAMPLE,), WORD_SAMPLE, word.site.stratum, WORD, WORD,
+                word.site.audio_filename, word.site.surah_ayah, word.word_start,
+                word.word_offsets, word.site.reference, word.site.reference_index,
+                word.site.start_sample, word.site.end_sample, word.excerpt_start_sample)
+
+
+def frozen_items() -> list[Item]:
+    """Every identity a verdict can name — Ship A's sites, the worklist's site rows and the
+    word sample — as its files hold it (a site's reference may already carry a paused
+    ta-marbuta cut; :func:`wasl_item` restores the realization the guard measured)."""
+    return merge([*(site_item(s.row, SHIP_A_SITES) for s in load_sites()),
+                  *(site_item(r, worklist_part(r)) for r in load_worklist(WORKLIST_PATH)),
+                  *(word_item(w) for w in load_words())])
+
+
+def wasl_item(item: Item) -> Item:
+    """The item as its segment reads without the paused ta-marbuta cuts: its words realized
+    as one run, the reference the guard's dependence was measured on."""
+    count, start = len(item.word_offsets) - 1, item.word_start
+    realized = realize(item.surah_ayah, start, start + count)
+    if realized is None:
+        raise ValueError(f"{item.item_id}: its words have no realization")
+    reference, offsets = realized
+    return replace(item, reference=reference, word_offsets=tuple(offsets), cuts=())
+
+
 def all_items() -> list[Item]:
     """Ship A's sites, the frozen worklist's site rows and the word sample, merged by id.
 
@@ -221,10 +249,7 @@ def all_items() -> list[Item]:
                        cuts.get((s.site.audio_filename, s.site.start_sample), ()))
              for s in load_sites())
     rows = (site_item(r, worklist_part(r)) for r in load_worklist(WORKLIST_PATH))
-    words = (Item(w.site.site_id, (WORD_SAMPLE,), WORD_SAMPLE, w.site.stratum, WORD, WORD,
-                  w.site.audio_filename, w.site.surah_ayah, w.word_start, w.word_offsets,
-                  w.site.reference, w.site.reference_index, w.site.start_sample,
-                  w.site.end_sample, w.excerpt_start_sample) for w in load_words())
+    words = (word_item(w) for w in load_words())
     return merge([*sites, *rows, *words])
 
 

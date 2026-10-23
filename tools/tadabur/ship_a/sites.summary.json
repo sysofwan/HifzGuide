@@ -459,7 +459,7 @@
   "ship_a/mining/base_decodes.json": "4ff4bcb24bf73559c2699de7f7bc55cf543f605596aaaf9b84e3435944bc5b04",
   "ship_a/mining/clips.jsonl": "32f9f4e9dc50344c35ba846c5d9104ebd3c164a0dd435dc9cd26e3d2c9008cf1",
   "ship_a/mining/h448_stream_decodes.json": "9b5c936d1efb3f9108adb607f75b2fe492616b957cffbb322c4b0430c58f422b",
-  "ship_a/waqf_correction.jsonl": "1495aafc5546c571ef7b2acf8d1407f555aa159442d94db0c6e28068ba2ae27c"
+  "ship_a/waqf_correction.jsonl": "47e95198d6d42bfeb45fb9c1c8088fd355d0c1b0944a6a471122d69d069275a4"
  },
  "listening": {
   "geminate": {

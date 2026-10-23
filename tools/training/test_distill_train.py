@@ -631,13 +631,17 @@ def test_the_teacher_revision_is_resume_critical():
     saved = {**dataclasses.asdict(config), "teacher_revision": "0" * 40}
     with pytest.raises(SystemExit, match="teacher_revision"):
         dt.check_resume_compatible(saved, config)
-    # A checkpoint written before the field existed resumes as the unpinned run it was.
-    saved = {
+
+    # A checkpoint written before the field existed ran the default branch, so it resumes
+    # as that unpinned run -- and is refused against a pinned config, which is the swap.
+    legacy = {
         field: value
         for field, value in dataclasses.asdict(config).items()
         if field != "teacher_revision"
     }
-    dt.check_resume_compatible(saved, config)
+    dt.check_resume_compatible(legacy, _config())
+    with pytest.raises(SystemExit, match="teacher_revision"):
+        dt.check_resume_compatible(legacy, config)
 
 
 def test_the_teacher_revision_flag_defaults_to_the_hub_branch():

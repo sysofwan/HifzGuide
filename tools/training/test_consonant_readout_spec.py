@@ -135,3 +135,22 @@ def test_the_reproduction_check_refuses_a_later_round_s_sources():
 
     with pytest.raises(ValueError, match="#95"):
         ar.reproduction(ar.Sources(asp.CONSONANT1))
+
+
+def test_merge_never_writes_another_round_s_committed_decodes(tmp_path):
+    """The read resolver may point at #95's files; the merge's write may not (review R2.2)."""
+    from training import aug_readout as ar
+    from training import aug_readout_gate as ag
+
+    pinned = ag.identity_record(asp.CONSONANT1.models[asp.C95])
+    gpu = tmp_path / "gpu"
+    gpu.mkdir()
+    for set_name, model in (("qdat", asp.C95), ("tadabur_dev_unseen", "h448")):
+        (gpu / f"{set_name}.{model}.identity.json").write_text(
+            json.dumps({"model": model, "fingerprints": {}, "identity": pinned}),
+            encoding="utf-8")
+    historical = ag.decodes_file("qdat", "candidate_ema")
+    before = historical.read_bytes()
+    with pytest.raises(SystemExit, match="another round"):
+        ar.merge(gpu, ag.Layout(tmp_path / "round"), spec=asp.CONSONANT1)
+    assert historical.read_bytes() == before

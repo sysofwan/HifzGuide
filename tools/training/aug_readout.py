@@ -797,6 +797,11 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     for path in sorted(decodes_dir.glob("*.identity.json")):
         set_name, model = path.name.removesuffix(".identity.json").rsplit(".", 1)
         found[(set_name, model)] = path
+    reused = sorted(key for key in found if key in spec.decode_sources)
+    if reused:  # a reused source is another round's committed file: the merge never writes it
+        raise SystemExit(
+            f"{', '.join('/'.join(key) for key in reused)} read another round's committed "
+            "decodes; the round's merge writes only its own root")
     choice = gate(layout).choice if any(SETS[s].gated for s, _ in found) else None
     records = read_manifest(layout)
     required: dict[str, list[str]] = {}

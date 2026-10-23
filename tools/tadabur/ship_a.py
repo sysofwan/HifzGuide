@@ -58,7 +58,7 @@ from training.acceptance_stats import reciter_hash
 from training.site_outcomes import family
 from training.tashkeel_eval import write_text_atomically
 
-from .listening_session import SessionSite, parse_row, row_json
+from .listening_session import SessionSite, parse_row, read_verdicts, row_json
 from .mining_pool import load_manifest
 from .power_frame import (
     FRAME_PATH,
@@ -514,6 +514,14 @@ def main() -> None:
     pool_provenance, pool = load_scored_pool(MINING_POOL_FILES)
     extension_provenance, extension = load_scored_pool(EXTENSION_FILES)
     sites = mine_all(pool, extension)
+    # The population writer enforces its own invariant: a verdict-bearing site the previous
+    # building held must not drop or move (less the owner-authorized removal).
+    verdicts = read_verdicts()
+    assert_verdict_sites_kept(
+        ((s.site.site_id, s.site.reference_index) for s in sites),
+        ((s.site.site_id, s.site.reference_index) for s in load_sites()
+         if s.site.site_id in verdicts),
+        verdicts)
     write_sites(sites)
     provenance = {"inputs": inputs(EXTENSION_FILES), "pool": pool_provenance,
                   "extension": extension_provenance}

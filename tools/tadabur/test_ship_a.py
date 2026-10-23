@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections import Counter
+from dataclasses import replace
 
 import pytest
 
@@ -308,3 +310,47 @@ def test_a_rebuild_may_not_drop_or_move_a_verdict_site():
         assert_verdict_sites_kept([(other, 4)], [(other, 3)], verdicts)
     assert_verdict_sites_kept([(other, 3)], [(other, 3)], verdicts)
     assert_verdict_sites_kept([], [(other, 3)], {allowed})
+
+
+def test_the_mining_entrypoint_refuses_a_moved_verdict_site_before_any_write(monkeypatch):
+    """The population writer enforces the invariant itself: no writer is reached before the
+    preflight, an unauthorized drop or index move fails, and the allowlisted removal runs."""
+    from tadabur import listening_session
+    from tadabur import ship_a as s
+
+    sites = s.load_sites()
+    verdicts = listening_session.read_verdicts()
+    protected = next(x for x in sites
+                     if x.site.site_id in verdicts
+                     and x.site.site_id not in s.OWNER_AUTHORIZED_REMOVALS)
+    frame = json.loads(s.FRAME_PATH.read_text(encoding="utf-8"))
+    writes = []
+    monkeypatch.setattr(sys, "argv", ["ship_a", "mine"])
+    monkeypatch.setattr(s, "input_checksums", lambda *a, **k: frame["inputs"])
+    monkeypatch.setattr(s, "inputs", lambda *a: {})
+    monkeypatch.setattr(s, "load_scored_pool", lambda files: ({}, None))
+    monkeypatch.setattr(s, "read_verdicts", lambda: verdicts)
+    monkeypatch.setattr(s, "summarize", lambda *a: {"strata": {}})
+    monkeypatch.setattr(s, "split_record", lambda *a: {})
+    monkeypatch.setattr(s, "write_sites", lambda rows: writes.append("sites"))
+    monkeypatch.setattr(s, "write_text_atomically", lambda path, text: writes.append(path.name))
+
+    monkeypatch.setattr(s, "mine_all", lambda *a: [x for x in sites if x is not protected])
+    with pytest.raises(ValueError, match="verdict-bearing"):
+        s.main()
+    assert writes == []
+
+    monkeypatch.setattr(s, "mine_all", lambda *a: [
+        replace(x, row=replace(x.row, site=replace(x.site, reference_index=x.site.reference_index + 1)))
+        for x in sites])
+    with pytest.raises(ValueError, match="verdict-bearing"):
+        s.main()
+    assert writes == []
+
+    allowed = next(iter(s.OWNER_AUTHORIZED_REMOVALS))
+    fabricated = replace(protected, row=replace(protected.row,
+                                                site=replace(protected.site, site_id=allowed)))
+    monkeypatch.setattr(s, "load_sites", lambda: [*sites, fabricated])
+    monkeypatch.setattr(s, "mine_all", lambda *a: sites)
+    s.main()
+    assert writes == ["sites", "sites.summary.json", "split.json"]

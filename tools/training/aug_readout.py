@@ -554,7 +554,9 @@ def confirm_report(data: ConfirmData, workers: int = 1, spec: RoundSpec = AUG95)
                 "words": flags(data.retasy),
                 "clips": None if data.retasy is None else compare(
                     clips_flagged_terms(data.retasy.grades, ROLES, shipped), POINTS)},
-            "qdat_bench_departures": flags(departed) if departed else None,
+            # ``departed`` is already each word's grade: grade it, never read it as a set.
+            "qdat_bench_departures": None if not departed else compare(
+                false_flag_terms(departed, ROLES, shipped), PER_1000, COMPARISONS),
         },
         "leniency": {
             "blank_ratio": None if tadabur is None else compare(

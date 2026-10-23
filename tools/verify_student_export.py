@@ -43,6 +43,9 @@ Usage::
     python verify_student_export.py --checkpoint runs/h384/checkpoint.pt \\
         --eval-set ../tadabur/gate_eval --export student_coreml --num-clips 300
 
+Both take ``--ema`` to read the averaged weights a ``--ema-decay`` run stored beside the live
+ones; pass it to both so the scored weights are the exported ones.
+
 macOS only (coremltools). The evaluation set and checkpoint come from the Linux box.
 """
 
@@ -103,6 +106,11 @@ def main() -> None:
     )
     parser.add_argument("--num-clips", type=int, default=300)
     parser.add_argument("--split", default="dev", choices=("dev", "test", "both"))
+    parser.add_argument(
+        "--ema",
+        action="store_true",
+        help="score the averaged weights the release exports, not the live ones",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -110,6 +118,7 @@ def main() -> None:
     import torch
     from transformers import SeamlessM4TFeatureExtractor
 
+    from export_student_coreml import load_student
     from training.decode_evalset import (
         CLIPS_DIRNAME,
         check_provenance,
@@ -118,7 +127,7 @@ def main() -> None:
     )
     from training.distill_data import SAMPLE_RATE
     from training.distill_eval import levenshtein, score_decode_agreement
-    from training.distill_student import PRESETS, TEACHER_MODEL_ID, build_student
+    from training.distill_student import TEACHER_MODEL_ID
 
     evalset = load_manifest(args.eval_set)
     # This is the one tool that runs on a different machine, against assets copied across a
@@ -132,10 +141,7 @@ def main() -> None:
     clips_dir = Path(args.eval_set) / CLIPS_DIRNAME
     extractor = SeamlessM4TFeatureExtractor.from_pretrained("obadx/muaalem-model-v3_2")
 
-    state = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
-    student = build_student(PRESETS[state["config"]["preset"]])
-    student.load_state_dict(state["student"])
-    student.eval()
+    student, _, _ = load_student(args.checkpoint, None, use_ema=args.ema)
 
     def torch_logits(features):
         with torch.no_grad():
@@ -197,11 +203,21 @@ def main() -> None:
             }
         )
 
+    weights = "ema" if args.ema else "live"
     if args.json:
-        print(json.dumps({"num_clips": len(clips), "phonemes": total, "rows": rows}, indent=2))
+        print(json.dumps(
+            {
+                "checkpoint": str(args.checkpoint),
+                "weights": weights,
+                "num_clips": len(clips),
+                "phonemes": total,
+                "rows": rows,
+            },
+            indent=2,
+        ))
         return
 
-    print(f"\n{len(clips)} {args.split} clips, {total:,} teacher phonemes\n")
+    print(f"\n{len(clips)} {args.split} clips, {total:,} teacher phonemes, {weights} weights\n")
     for row in rows:
         print(
             f"  {row['model']:<16} vs teacher {row['char_accuracy']:>7.2%}  "

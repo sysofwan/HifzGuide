@@ -146,7 +146,8 @@ def run_freeze(spec: RoundSpec, sources, half: str, model: str | None = None) ->
     """A model's cause split and top substitutions on the **look** half. The confirm half is the
     verdict phase's to read (:func:`confirm_report`), never the freeze's (data discipline 1)."""
     if half != LOOK:
-        raise SystemExit(f"freeze reads the look half only: {half!r} is the verdict phase's")
+        raise SystemExit(f"freeze reads the look half only; {half!r} belongs to the verdict "
+                         "phase")
     model = model or spec.baseline
     data = sources.tarteel(LOOK, (model,))
     return freeze_report(sources.grade(data.items, data.decodes, (model,)), model)
@@ -503,7 +504,7 @@ def main() -> None:
     elif args.command == "freeze":
         from training import aug_readout as ar
 
-        print(json.dumps(run_freeze(CONSONANT1, ar.Sources(tracer_spec()), args.half,
+        print(json.dumps(run_freeze(CONSONANT1, ar.Sources(CONSONANT1), args.half,
                                     args.model), ensure_ascii=False, indent=1))
     else:
         from training import aug_readout as ar

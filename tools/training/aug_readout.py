@@ -244,16 +244,21 @@ class Sources:
                    for s, models in needs(phase, weights, self.spec).items() for m in models]
         if self.spec.name == "consonant1":
             from training.consonant_readout import (
-                G6_SITES_PATH, MODELS_PATH, QUD_SELECTION_PATH as ROUND_QUD)
-            from training.truth_baseline import CHECK_STORE
+                FREEZE_PATH as ROUND_FREEZE, G6_SITES_PATH, MODELS_PATH,
+                QUD_SELECTION_PATH as ROUND_QUD)
+            from training.truth_baseline import CHECK_STORE, DECODE_STORE
 
             models = sorted({m for names in needs(phase, weights, self.spec).values()
                              for m in names})
+            caches = [store.path(m) for m in models for store in (CHECK_STORE, DECODE_STORE)
+                      if store.path(m).exists()]
             return [*readout,
                     *(committed(d, m) for d in (TARTEEL_V1, QDAT) for m in BASELINES),
                     *(qud_committed(slug, m) for slug in PILOT for m in BASELINES),
-                    *(CHECK_STORE.path(m) for m in models if CHECK_STORE.path(m).exists()),
-                    ROUND_QUD, G6_SITES_PATH, MODELS_PATH, EVALSET_MANIFEST_PATH, GRID_PATH]
+                    *caches,
+                    ROUND_QUD, G6_SITES_PATH, MODELS_PATH,
+                    *(path for path in (ROUND_FREEZE,) if path.exists()),
+                    EVALSET_MANIFEST_PATH, GRID_PATH]
         if phase == LOOK:
             return [*readout, committed(TARTEEL_V1, BASE)]
         return [*readout,
@@ -429,7 +434,8 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
     look sitting holds the claim."""
     if layout.choice.exists():
         raise SystemExit(f"the look half was read: {layout.choice.name} exists; it is read once")
-    identities = require_manifest(read_manifest(layout), needs(LOOK, None), None)
+    identities = require_manifest(read_manifest(layout), needs(LOOK, None, spec), None,
+                                  spec=spec)
     sitting = {"phase": LOOK, "identities": identities,
                "inputs": digests(sources.input_files(LOOK, None)),
                "harness": sources.harness_identity()}
@@ -733,10 +739,10 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     required: dict[str, list[str]] = {}
     for (set_name, model), path in found.items():
         record = json.loads(path.read_text(encoding="utf-8"))
-        validate_identity(set_name, model, record)
+        validate_identity(set_name, model, record, spec=spec)
         records[f"{set_name}/{model}"] = record
         required.setdefault(set_name, []).append(model)
-    require_manifest(records, required, choice)
+    require_manifest(records, required, choice, spec=spec)
     counts = expected_counts(spec)
     for (set_name, model), path in found.items():
         merge_decode_files(sorted(decodes_dir.glob(f"{set_name}.*.{model}.jsonl")), path,

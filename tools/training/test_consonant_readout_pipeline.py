@@ -24,7 +24,7 @@ from training import truth_baseline as tb
 from training.external_corpus import WordGrade
 from training.muraja_policy import SHIPPED_DEFAULT, SiteGrade, WORD_FLAGGED
 from training.nonpro_eval import ClipItem
-from training.word_flags import Flag
+from training.word_flags import CAUSES, Flag
 
 SHIPPED = SHIPPED_DEFAULT.name
 C95_CHECKPOINT = "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6"
@@ -789,3 +789,138 @@ def test_the_consonant_doc_reads_a_missing_catch_difference_as_not_read():
                        spec=asp.CONSONANT1)
     assert "candidate − c95: not read" in text
     assert "G6 cannot certify" in text
+
+
+# --- #177: the committed look-half freeze ------------------------------------------------------
+
+#: The G5 list #177 freezes: C95's consonant substitutions behind the most look-half flagged
+#: words at the shipped default, the madd alif aside, ties by substitution (Unicode order).
+G5_SUBSTITUTIONS = ("ء→∅", "ل→ن", "ن→∅", "ج→ش", "م→∅", "ء→ي", "و→∅", "د→ت", "ر→ل", "ل→∅")
+
+
+def _committed_freeze() -> dict:
+    return json.loads(cr.FREEZE_PATH.read_text(encoding="utf-8"))
+
+
+def test_the_committed_g5_list_is_ten_consonant_substitutions_without_the_madd_alif():
+    rows = _committed_freeze()["substitutions"]
+    assert [row["substitution"] for row in rows] == list(G5_SUBSTITUTIONS)
+    assert len(rows) == len({row["substitution"] for row in rows}) == 10
+    assert {row["cause"] for row in rows} <= set(am.CONSONANT_FLAG_CAUSES)
+    assert am.MADD_ALIF not in {row["substitution"] for row in rows}
+    assert all(isinstance(row["words"], int) and row["words"] > 0 for row in rows)
+    assert rows == sorted(rows, key=lambda row: (-row["words"], row["substitution"]))
+
+
+def test_the_committed_g5_list_is_c95_s_shipped_consonant_tally_s_top_ten():
+    models = _committed_freeze()["models"]
+    shipped = models["c95"]["scorings"]["shipped_default"]["substitutions"]
+    assert set(shipped) == set(am.CONSONANT_FLAG_CAUSES)
+    for cause, rows in shipped.items():
+        assert 0 < len(rows) <= 10
+        assert {row["cause"] for row in rows} == {cause}
+        assert rows == sorted(rows, key=lambda row: (-row["words"], row["substitution"]))
+    rows = [row for rows in shipped.values() for row in rows
+            if row["substitution"] != am.MADD_ALIF]
+    assert _committed_freeze()["substitutions"] == sorted(
+        rows, key=lambda row: (-row["words"], row["substitution"]))[:10]
+
+
+def test_the_committed_cause_split_covers_every_word_flags_cause_with_counts_and_rates():
+    record = _committed_freeze()
+    assert record["half"] == "look"
+    assert set(record["models"]) == {"c95", "h448", "base"}
+    for model, table in record["models"].items():
+        assert set(table["scorings"]) == {"shipped_default", "allowances_off"}
+        for scoring, row in table["scorings"].items():
+            assert row["graded"] > 0 and row["flagged"] >= 0
+            assert row["per_1000"] == round(1000 * row["flagged"] / row["graded"], 2)
+            assert set(row["causes"]) == set(CAUSES)
+            for cause, entry in row["causes"].items():
+                assert 0 <= entry["words"] <= row["flagged"]
+                assert entry["per_1000"] == round(1000 * entry["words"] / row["graded"], 2)
+
+
+def test_the_committed_c95_shipped_row_reproduces_95_s_look_half_totals():
+    look = json.loads((ar.READOUT_DIR / "look.json").read_text(encoding="utf-8"))
+    committed = look["inputs"]["candidate_ema"]
+    row = _committed_freeze()["models"]["c95"]["scorings"]["shipped_default"]
+    assert row["graded"] == int(committed["graded_words"])
+    assert row["flagged"] == int(committed["flagged_words"])
+
+
+def test_the_committed_freeze_binds_its_inputs_harness_muraja_and_preregistration():
+    record = _committed_freeze()
+    assert record["issue"] == 177
+    assert "freeze" in record["command"] and "look" in record["command"]
+    assert set(record["inputs"]) == {
+        "tadabur/aug_readout/decodes/tarteel_v1.look.candidate_ema.jsonl.gz",
+        "tadabur/nonpro_eval/tarteel_v1/decodes.h448.jsonl.gz",
+        "tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz"}
+    assert not any("confirm" in name for name in record["inputs"])
+    for name, digest in record["inputs"].items():
+        assert ag.sha256_file(ag.TOOLS_DIR / name) == digest
+    assert record["harness"]["binary_sha256"] == asp.HARNESS_SHA256
+    assert record["harness"]["muraja_commit"] == asp.MURAJA_COMMIT
+    assert record["pins"] == {"muraja_commit": asp.MURAJA_COMMIT,
+                              "harness_sha256": asp.HARNESS_SHA256,
+                              "prereg_sha256": asp.PREREG_SHA256}
+    assert ag.sha256_file(asp.PREREG_PATH) == asp.PREREG_SHA256
+    assert record["items"] == 4530
+
+
+def test_the_freeze_doc_is_generated_from_the_committed_record():
+    from training.consonant_freeze_doc import render
+
+    record = _committed_freeze()
+    text = cr.FREEZE_DOC_PATH.read_text(encoding="utf-8")
+    assert text == render(record)
+    assert "C95, look half only" in text
+
+
+def test_the_freeze_writer_refuses_the_confirm_half_before_reading_or_writing(tmp_path):
+    record, doc = tmp_path / "freeze.json", tmp_path / "freeze.md"
+    with pytest.raises(SystemExit, match="look"):
+        cr.write_freeze(ConfirmHalf(), half="confirm", path=record, doc_path=doc)
+    assert not record.exists() and not doc.exists()
+
+
+def test_the_freeze_writer_refuses_to_move_a_committed_freeze(tmp_path):
+    record, doc = tmp_path / "freeze.json", tmp_path / "freeze.md"
+    record.write_text("{}\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="exists|fixed|frozen"):
+        cr.write_freeze(ConfirmHalf(), half="look", path=record, doc_path=doc)
+    assert record.read_text(encoding="utf-8") == "{}\n"
+    assert not doc.exists()
+
+
+#: A synthetic tally for the G5 rule: substitution, cause, flagged words. The madd alif and the
+#: shaddah cause never enter the list; ties at 5, 4, 3 and 2 order by substitution only.
+FREEZE_TALLY = (
+    ("ا→∅", "other_consonant", 99), ("ن→∅", "shaddah", 9), ("ز→س", "other_consonant", 6),
+    ("ب→ت", "other_consonant", 5), ("ج→د", "other_consonant", 5),
+    ("س→ش", "target_pair", 4), ("ص→س", "soft_pair", 4),
+    ("ح→ه", "soft_pair", 3), ("خ→ح", "other_consonant", 3),
+    ("د→ض", "other_consonant", 2), ("ر→ل", "other_consonant", 2),
+    ("ط→ت", "other_consonant", 2), ("ع→ء", "other_consonant", 1),
+    ("ي→ى", "other_consonant", 1),
+)
+
+
+def _scored_grade(model: str, scoring: str, item: ClipItem, position: int,
+                  flag: Flag | None) -> WordGrade:
+    return WordGrade(model, scoring, item, position, 2, position + 1, 7 + position,
+                     SiteGrade("flagged" if flag is not None else "not_flagged"), flag)
+
+
+def test_freeze_tables_takes_the_top_ten_consonant_substitutions_by_words_then_unicode():
+    plan = [Flag((cause,), (), "minor", (), consonants=((cause, substitution),))
+            for substitution, cause, words in FREEZE_TALLY for _ in range(words)]
+    items = [_item(i) for i in range((len(plan) + 1) // 2)]
+    grades = [_scored_grade("c95", SHIPPED, item, position, plan[2 * i + position])
+              for i, item in enumerate(items) for position in (0, 1)]
+    tables = cr.freeze_tables(grades)
+    assert [row["substitution"] for row in tables["substitutions"]] == [
+        "ز→س", "ب→ت", "ج→د", "س→ش", "ص→س", "ح→ه", "خ→ح", "د→ض", "ر→ل", "ط→ت"]
+    assert len(tables["substitutions"]) == 10
+    assert set(tables["models"]["c95"]["scorings"]["shipped_default"]["causes"]) == set(CAUSES)

@@ -160,7 +160,8 @@ def load_decoders(identity_path: Callable[[str], Path],
                                batch_size=BATCH_SIZE, use_ema=spec.use_ema)
         record = {
             "model": name,
-            "identity": {**model_identity(spec.ref, decoder), **spec.identity_extra()},
+            "identity": {**model_identity(spec.ref, decoder, spec.use_ema),
+                         **spec.identity_extra()},
             "fingerprints": {arm: decoder.fingerprint(mode).as_dict()
                              for arm, mode in MODES.items()},
         }

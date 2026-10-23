@@ -360,11 +360,23 @@ def test_a_cache_whose_identity_is_not_the_round_s_pin_is_refused():
     """G6 must not decide against other weights (review R1.2)."""
     expected = {"model_ref": asp.C95_REF, "weights": "ema", "step": 10_000,
                 "recipe": "aug94-mixture-v2", "checkpoint_sha256": asp.C95_SHA256}
-    assert cr.binds_cache({"model_ref": asp.C95_REF, "checkpoint_sha256": asp.C95_SHA256},
-                          expected)
-    for edit in ({"weights": "live"}, {"step": 1}, {"recipe": "wrong"},
+    # One checkpoint holds both selectors: a selector-free identity is no evidence (R2.1).
+    assert not cr.binds_cache({"model_ref": asp.C95_REF, "checkpoint_sha256": asp.C95_SHA256},
+                              expected)
+    for edit in ({"weights": "live"}, {"weights": None}, {"step": 1}, {"recipe": "wrong"},
                  {"checkpoint_sha256": "0" * 64}):
         assert not cr.binds_cache({**expected, **edit}, expected)
+    assert cr.binds_cache({**expected}, expected)
+
+
+def test_the_cache_producer_records_which_weights_it_decoded(tmp_path):
+    """A SHA cannot select live or EMA; the producer records the selector it loaded (R2.1)."""
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"weights")
+    assert tb.model_identity(str(checkpoint), object())["weights"] == tb.LIVE
+    assert tb.model_identity(str(checkpoint), object(), use_ema=True)["weights"] == tb.EMA
+    assert tb.model_identity(str(checkpoint)) == {
+        "model_ref": str(checkpoint), "checkpoint_sha256": tb.file_sha256(checkpoint)}
 
 
 def test_the_catch_arm_refuses_a_c95_cache_that_is_not_the_pinned_checkpoint(tmp_path):

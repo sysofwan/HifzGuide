@@ -421,3 +421,111 @@ def test_asking_for_averaged_weights_a_run_never_kept_is_an_error(tmp_path):
     )
     with pytest.raises(SystemExit, match="no averaged weights"):
         load_student_from_checkpoint(path, torch.device("cpu"), use_ema=True)
+
+
+# --- the warm start (#178) ----------------------------------------------------------
+
+# #174 fixes C95 as the *EMA* weights, but `--init-from` loaded only the live ones: the two
+# sit in one checkpoint, and a run that silently warm-started from the wrong one would be a
+# different experiment under the same name. These pin the choice and its failure mode.
+
+
+class _Shaped(torch.nn.Module):
+    """A student-shaped module: a float weight, a float buffer and an int buffer.
+
+    The buffers are the point. ``WeightAverage.apply_to`` substitutes the averaged shadow's
+    floating tensors and keeps everything else from the live state, so an averaged warm
+    start has to move ``running`` and leave ``count`` alone; a loader that rebuilt the
+    module from the shadow alone would silently drop the latter.
+    """
+
+    def __init__(self, value: float, count: int = 1) -> None:
+        super().__init__()
+        self.lin = torch.nn.Linear(2, 2)
+        torch.nn.init.constant_(self.lin.weight, value)
+        torch.nn.init.constant_(self.lin.bias, value)
+        self.register_buffer("running", torch.full((2,), value))
+        self.register_buffer("count", torch.tensor(count))
+
+
+def _warm_start(tmp_path, live: float, averaged: float | None, *, legacy: bool = False):
+    """A checkpoint of a run that reached step 10,000, optionally with an average."""
+    student, projector = _Shaped(live, count=7), torch.nn.Linear(2, 2)
+    state = {
+        "step": 10_000,
+        "student": student.state_dict(),
+        "projector": projector.state_dict(),
+        "config": {},
+    }
+    if legacy:
+        averaged_state = {
+            name: (torch.full_like(value, averaged) if value.is_floating_point() else value)
+            for name, value in student.state_dict().items()
+        }
+        state["student_ema"] = averaged_state
+    elif averaged is not None:
+        state["ema_state"] = {
+            "decay": 0.999,
+            "step": 10_000,
+            "shadow": {
+                name: torch.full_like(value, averaged)
+                for name, value in student.state_dict().items()
+                if value.is_floating_point()
+            },
+        }
+    path = tmp_path / "checkpoint.pt"
+    torch.save(state, path)
+    return path
+
+
+def test_a_warm_start_defaults_to_the_live_weights(tmp_path):
+    """The default is live even when the checkpoint carries an average: #94 unchanged."""
+    path = _warm_start(tmp_path, live=0.5, averaged=0.1)
+    student, projector = _Shaped(9.0), torch.nn.Linear(2, 2)
+    assert dt.load_student_weights(path, student, projector, "cpu") == 10_000
+    assert torch.allclose(student.lin.weight, torch.full((2, 2), 0.5))
+    assert torch.allclose(student.running, torch.full((2,), 0.5))
+
+
+def test_asking_for_the_averaged_weights_loads_the_averaged_shadow(tmp_path):
+    path = _warm_start(tmp_path, live=0.5, averaged=0.1)
+    student, projector = _Shaped(9.0), torch.nn.Linear(2, 2)
+    dt.load_student_weights(path, student, projector, "cpu", use_ema=True)
+    assert torch.allclose(student.lin.weight, torch.full((2, 2), 0.1))
+    assert torch.allclose(student.lin.bias, torch.full((2,), 0.1))
+    assert torch.allclose(student.running, torch.full((2,), 0.1))  # a float buffer averages
+    assert student.count.item() == 7  # an integer buffer does not: it comes from the live state
+
+
+def test_a_legacy_materialised_average_is_read_verbatim(tmp_path):
+    path = _warm_start(tmp_path, live=0.5, averaged=0.1, legacy=True)
+    student, projector = _Shaped(9.0), torch.nn.Linear(2, 2)
+    dt.load_student_weights(path, student, projector, "cpu", use_ema=True)
+    assert torch.allclose(student.lin.weight, torch.full((2, 2), 0.1))
+    assert torch.allclose(student.running, torch.full((2,), 0.1))
+
+
+def test_an_averaged_warm_start_without_an_average_is_refused(tmp_path):
+    """Falling back to the live weights would warm-start a different model than #174 names."""
+    path = _warm_start(tmp_path, live=0.5, averaged=None)
+    student, projector = _Shaped(9.0), torch.nn.Linear(2, 2)
+    with pytest.raises(SystemExit, match="averaged"):
+        dt.load_student_weights(path, student, projector, "cpu", use_ema=True)
+
+
+def test_the_init_weights_flag_defaults_to_live_and_accepts_ema():
+    parser = dt.build_parser()
+    assert parser.parse_args(["--audio-root", "audio"]).init_weights == "live"
+    assert parser.parse_args(
+        ["--audio-root", "audio", "--init-weights", "ema"]
+    ).init_weights == "ema"
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--audio-root", "audio", "--init-weights", "shadow"])
+
+
+def test_the_init_weights_choice_is_not_resume_critical():
+    """It initialises a fresh run; it is not part of what a resume must reproduce."""
+    import dataclasses
+
+    assert "init_weights" not in dt.RESUME_CRITICAL_FIELDS
+    assert "init_weights" not in {field.name for field in dataclasses.fields(dt.TrainConfig)}

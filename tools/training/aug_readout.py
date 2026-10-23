@@ -59,6 +59,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from tadabur.tarteel_split import CONFIRM, LOOK, half
+from training.aug_readout_spec import AUG95, PREREG_PATH, RoundSpec, check_pins
+from training.aug_readout_spec import spec as round_spec
 from training.aug_readout_gate import (
     ARMS,
     BASELINES,
@@ -67,6 +69,7 @@ from training.aug_readout_gate import (
     QDAT_SET,
     QUD_SET,
     READOUT_DIR,
+    QUD_OTHER_SET,
     RETASY_SET,
     SETS,
     STREAM,
@@ -88,6 +91,7 @@ from training.aug_readout_gate import (
     needs,
     read_manifest,
     require_manifest,
+    sha256_file,
     validate_identity,
 )
 from training.aug_readout_metrics import (
@@ -214,7 +218,17 @@ class TadaburData:
 class Sources:
     """Where the readout reads its inputs: the committed decodes, the datasets' metadata and the
     harness. Tests substitute it; each method reads only the set it names, and
-    :meth:`input_files` names every file a sitting's methods read."""
+    :meth:`input_files` names every file a sitting's methods read. A round's spec maps a role
+    to the committed decode file's model name (:meth:`decode_name`)."""
+
+    spec: RoundSpec = AUG95
+
+    def __init__(self, spec: RoundSpec = AUG95):
+        self.spec = spec
+
+    def decode_name(self, model: str) -> str:
+        """The model name a role's decode file is committed under."""
+        return self.spec.decode_names.get(model, model)
 
     def input_files(self, phase: str, weights: str | None) -> list[Path]:
         """Every file the sitting reads: the readout decodes of each model it needs, the
@@ -226,8 +240,20 @@ class Sources:
         from training.nonpro_gap import DECODES_DIR as GAP_DECODES, GRID_PATH
         from training.qud_pilot import decodes_file as qud_committed
 
-        readout = [decodes_file(s, m) for s, models in needs(phase, weights).items()
-                   for m in models]
+        readout = [decodes_file(s, self.decode_name(m))
+                   for s, models in needs(phase, weights, self.spec).items() for m in models]
+        if self.spec.name == "consonant1":
+            from training.consonant_readout import (
+                G6_SITES_PATH, MODELS_PATH, QUD_SELECTION_PATH as ROUND_QUD)
+            from training.truth_baseline import CHECK_STORE
+
+            models = sorted({m for names in needs(phase, weights, self.spec).values()
+                             for m in names})
+            return [*readout,
+                    *(committed(d, m) for d in (TARTEEL_V1, QDAT) for m in BASELINES),
+                    *(qud_committed(slug, m) for slug in PILOT for m in BASELINES),
+                    *(CHECK_STORE.path(m) for m in models if CHECK_STORE.path(m).exists()),
+                    ROUND_QUD, G6_SITES_PATH, MODELS_PATH, EVALSET_MANIFEST_PATH, GRID_PATH]
         if phase == LOOK:
             return [*readout, committed(TARTEEL_V1, BASE)]
         return [*readout,
@@ -264,19 +290,27 @@ class Sources:
         items, _ = build_items(dataset, list(baselines[BASE].values()), hafs_segment_reference())
         items = [i for i in items if keep is None or keep(i)]
         decodes = {**{m: baselines[m] for m in models if m in BASELINES},
-                   **{m: read_readout(set_name, m, baselines[BASE], {i.key for i in items})
+                   **{m: read_readout(set_name, self.decode_name(m), baselines[BASE],
+                                      {i.key for i in items})
                       for m in models if m not in BASELINES}}
         return SetData(items, decodes)
 
     def qud(self, models: Sequence[str]) -> SetData:
+        return self._qud(QUD_SET, load_qud_selection(), models)
+
+    def qud_other(self, models: Sequence[str]) -> SetData:
+        from training.consonant_readout import load_qud_complement
+
+        return self._qud(QUD_OTHER_SET, load_qud_complement(), models)
+
+    def _qud(self, set_name: str, keys: set[str], models: Sequence[str]) -> SetData:
         from training.qud_pilot import load_pilot
 
         pilot = load_pilot()
-        kept = load_qud_selection()
-        items = [i for i in pilot.items if i.key in kept]
+        items = [i for i in pilot.items if i.key in keys]
         keys = {i.key for i in items}
         decodes = {**{m: pilot.decodes[m] for m in models if m in BASELINES},
-                   **{m: read_readout(QUD_SET, m, pilot.decodes[BASE], keys)
+                   **{m: read_readout(set_name, self.decode_name(m), pilot.decodes[BASE], keys)
                       for m in models if m not in BASELINES}}
         return SetData(items, decodes)
 
@@ -287,7 +321,7 @@ class Sources:
         clips = [c for c in dev_clips() if c.filename not in seen]
         keys = {c.filename for c in clips}
         committed = gap_decodes("clean")
-        readout = {m: read_readout(TADABUR_SET, m, committed[BASE], keys)
+        readout = {m: read_readout(TADABUR_SET, self.decode_name(m), committed[BASE], keys)
                    for m in (*models, *BASELINES)}
         decodes = {m: {k: (committed[m] if m in BASELINES else readout[m])[k][STREAM]
                        for k in keys} for m in (*models, *BASELINES)}
@@ -388,7 +422,8 @@ def look_inputs(data: SetData, workers: int = 1) -> dict:
             for m in LOOK_MODELS}
 
 
-def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1) -> dict:
+def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
+             spec: RoundSpec = AUG95) -> dict:
     """Read the look half once and write the choice. Refused once a choice exists, without a
     complete identity manifest for the candidate's two weights, and while (or after) another
     look sitting holds the claim."""
@@ -407,7 +442,7 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1) -> d
         inputs = look_inputs(data, workers)
         weights = choose(inputs)
         same_harness(sources, sitting)
-        look_text = canonical({"issue": 95, "half": LOOK, "items": len(data.items),
+        look_text = canonical({"issue": spec.issue, "half": LOOK, "items": len(data.items),
                                "inputs": inputs, "rule": CHOICE_RULE, "choice": weights,
                                "control": CONTROL_ON_LOOK, "identities": identities,
                                "input_sha256": sitting["inputs"],
@@ -442,8 +477,12 @@ def bench_items(qdat: SetData, bench: Mapping[str, str]) -> list:
     return [by_clip[clip] for clip in sorted(bench)]
 
 
-def confirm_report(data: ConfirmData, workers: int = 1) -> dict:
+def confirm_report(data: ConfirmData, workers: int = 1, spec: RoundSpec = AUG95) -> dict:
     """Every table of #95's confirm sitting, then the verdict (:mod:`training.aug_readout_verdict`)."""
+    if spec.name == "consonant1":
+        from training.consonant_readout import confirm_report as round_report
+
+        return round_report(data, spec, workers)
     from training.muraja_policy import SHIPPED_DEFAULT
     from training.nonpro_eval import bench_departures
 
@@ -503,8 +542,12 @@ def confirm_report(data: ConfirmData, workers: int = 1) -> dict:
     return report
 
 
-def load_confirm(sources: Sources, weights: str) -> ConfirmData:
+def load_confirm(sources: Sources, weights: str, spec: RoundSpec = AUG95) -> ConfirmData:
     """Every confirm set, graded, with roles bound."""
+    if spec.name == "consonant1":
+        from training.consonant_readout import load_confirm as round_load
+
+        return round_load(sources, weights, spec)
     chosen = tuple(arm_model(arm, weights) for arm in ARMS)
     models = (*chosen, *BASELINES)
 
@@ -524,7 +567,8 @@ def load_confirm(sources: Sources, weights: str) -> ConfirmData:
 
 
 def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
-                gate: Callable[[Layout], CommittedChoice] = committed_choice) -> dict:
+                gate: Callable[[Layout], CommittedChoice] = committed_choice,
+                spec: RoundSpec = AUG95) -> dict:
     """Read the confirm half and the guards once, for the committed choice, and write the
     report and the verdict. Refused without a committed choice, once a verdict exists, without
     a complete identity manifest for every model read, and while (or after) another confirm
@@ -533,28 +577,63 @@ def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
     if layout.verdict.exists():
         raise SystemExit(f"{layout.verdict.name} exists: the confirm half is read once")
     weights = committed.choice["weights"]
-    identities = require_manifest(read_manifest(layout), needs(CONFIRM, weights),
-                                  committed.choice)
+    identities = require_manifest(read_manifest(layout), needs(CONFIRM, weights, spec),
+                                  committed.choice, spec=spec)
     sitting = {"phase": CONFIRM, "choice_commit": committed.commit,
                "choice_sha256": committed.sha256, "identities": identities,
                "inputs": digests(sources.input_files(CONFIRM, weights)),
                "harness": sources.harness_identity()}
     with claim(layout.claim(CONFIRM), sitting):
-        report = confirm_report(load_confirm(sources, weights), workers)
+        if spec.pins is not None:  # the pre-registration's pins, before any candidate is read
+            check_pins(spec, sitting["harness"], sha256_file(PREREG_PATH))
+            require_reproduction(reproduction(sources))
+        report = confirm_report(load_confirm(sources, weights, spec=spec), workers, spec=spec)
         same_harness(sources, sitting)
-        report = {"issue": 95, "choice": committed.choice, "audit": sitting,
+        report = {"issue": spec.issue, "choice": committed.choice, "audit": sitting,
                   "baselines": baseline_identities(), **report}
         write_text_atomically(layout.report, canonical(report))
         write_text_atomically(layout.verdict, canonical(
-            {"issue": 95, "choice": weights, "choice_commit": committed.commit,
+            {"issue": spec.issue, "choice": weights, "choice_commit": committed.commit,
              **report["verdict"]}))
     return report
+
+
+# --- the reproduction check ---------------------------------------------------------------------
+
+#: #95's exact confirm model set: the numbers below come from words every one of them places.
+REPRODUCTION_MODELS = ("candidate_ema", "control_ema", "h448", "base")
+#: #95's committed confirm totals (#95's report.json): flagged / graded at the shipped default.
+REPRODUCTION = {"tarteel_v1_confirm": {"flagged": 1971, "graded": 41572},
+                "qdat": {"flagged": 670, "graded": 11502}}
+
+
+def reproduction(sources: Sources) -> dict:
+    """Re-grade C95 on #95's two confirm sets with #95's model set and return **totals only**:
+    no per-word, per-cause or per-substitution datum is returned, logged or written."""
+    from training.muraja_policy import SHIPPED_DEFAULT
+
+    totals = {}
+    for name, data in (("tarteel_v1_confirm", sources.tarteel(CONFIRM, REPRODUCTION_MODELS)),
+                       ("qdat", sources.qdat(REPRODUCTION_MODELS))):
+        grades = sources.grade(data.items, data.decodes, REPRODUCTION_MODELS)
+        num, den = false_flag_terms(grades, REPRODUCTION_MODELS, SHIPPED_DEFAULT.name
+                                    ).by_model["candidate_ema"]
+        totals[name] = {"flagged": int(num.sum()), "graded": int(den.sum())}
+    return totals
+
+
+def require_reproduction(counts: Mapping, expected: Mapping = REPRODUCTION) -> None:
+    """Abort unless the reproduction check matches #95's committed totals exactly: a mismatch is
+    a tooling fault (the spec generalisation or the harness), never a result."""
+    if dict(counts) != dict(expected):
+        raise SystemExit(f"the reproduction check failed: {counts} is not #95's {expected}; "
+                         "a tooling fault, so nothing is read")
 
 
 # --- merging the GPU box's decodes -----------------------------------------------------------
 
 
-def expected_counts() -> dict[str, int]:
+def expected_counts(spec: RoundSpec = AUG95) -> dict[str, int]:
     """Items per set, from the committed base decodes and the frozen QUD half."""
     from tadabur.nonpro_sources import QDAT, RETASY, TARTEEL_V1
     from training.external_corpus import read_decode_file
@@ -563,15 +642,24 @@ def expected_counts() -> dict[str, int]:
 
     tarteel = [line["audio_filename"] for line in
                read_decode_file(committed(TARTEEL_V1, BASE)).values()]
+    from training.aug_readout_gate import QUD_OTHER_SET
+
     seen = set(committed_grid()["sample"]["h448_seen"])
-    return {
+    counts = {
         TARTEEL_LOOK: sum(half(c) == LOOK for c in tarteel),
         TARTEEL_CONFIRM: sum(half(c) == CONFIRM for c in tarteel),
         QDAT_SET: len(read_decode_file(committed(QDAT, BASE))),
-        RETASY_SET: len(read_decode_file(committed(RETASY, BASE))),
-        QUD_SET: len(load_qud_selection()),
         TADABUR_SET: sum(c.filename not in seen for c in dev_clips()),
     }
+    if RETASY_SET in spec.sets:
+        counts[RETASY_SET] = len(read_decode_file(committed(RETASY, BASE)))
+    if QUD_SET in spec.sets:
+        counts[QUD_SET] = len(load_qud_selection())
+    if QUD_OTHER_SET in spec.sets:
+        from training.consonant_readout import load_qud_complement
+
+        counts[QUD_OTHER_SET] = len(load_qud_complement())
+    return {name: counts[name] for name in (*spec.sets, *counts) if name in counts}
 
 
 def coverage() -> dict:
@@ -627,7 +715,8 @@ def coverage() -> dict:
 
 
 def merge(decodes_dir: Path, layout: Layout = Layout(),
-          gate: Callable[[Layout], CommittedChoice] = committed_choice) -> dict:
+          gate: Callable[[Layout], CommittedChoice] = committed_choice,
+          spec: RoundSpec = AUG95) -> dict:
     """Every set's per-shard decodes on the GPU box as one gzipped file per set and model, each
     checked against its set's count, with the identity records into ``models.json``. Every
     identity is validated first, and a gated set's decodes are not read before the choice is
@@ -647,7 +736,7 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
         records[f"{set_name}/{model}"] = record
         required.setdefault(set_name, []).append(model)
     require_manifest(records, required, choice)
-    counts = expected_counts()
+    counts = expected_counts(spec)
     for (set_name, model), path in found.items():
         merge_decode_files(sorted(decodes_dir.glob(f"{set_name}.*.{model}.jsonl")), path,
                            decodes_file(set_name, model), counts[set_name])
@@ -681,10 +770,20 @@ def main() -> None:
                        ("confirm", "read the confirm half and the guards once: the verdict")):
         command = commands.add_parser(name, help=text)
         command.add_argument("--workers", type=int, default=8)
-    commands.add_parser("coverage", help="record each frozen population's evaluated share")
-    commands.add_parser("doc", help="render docs/augmentation-readout.md")
+    coverage_command = commands.add_parser(
+        "coverage", help="record each frozen population's evaluated share")
+    doc_command = commands.add_parser(
+        "doc", help="render the round's readout document")
+    for command in (*[commands.choices[name] for name in ("look", "confirm")],
+                    coverage_command, doc_command):
+        command.add_argument("--spec", default=AUG95.name,
+                             choices=("aug95", "consonant1"))
     args = parser.parse_args()
-    layout = Layout()
+    specification = round_spec(getattr(args, "spec", AUG95.name))
+    from training.consonant_readout import ROUND_DIR
+
+    layout = Layout(ROUND_DIR) if specification.name == "consonant1" else Layout()
+    sources = Sources(specification)
 
     if args.command == "select-qud":
         record = write_qud_selection()
@@ -692,14 +791,21 @@ def main() -> None:
     elif args.command == "merge":
         print(f"wrote {layout.models}: {sorted(merge(args.decodes_dir, layout))}")
     elif args.command == "look":
-        print(f"wrote {layout.choice}: {run_look(Sources(), layout, args.workers)['weights']}")
+        print(f"wrote {layout.choice}: "
+              f"{run_look(sources, layout, args.workers, spec=specification)['weights']}")
     elif args.command == "confirm":
-        report = run_confirm(Sources(), layout, args.workers)
+        report = run_confirm(sources, layout, args.workers, spec=specification)
         print(f"wrote {layout.verdict}: {report['verdict']['verdict']}")
     elif args.command == "coverage":
-        record = coverage()
-        write_text_atomically(COVERAGE_PATH, canonical(record))
-        print(f"wrote {COVERAGE_PATH}: " + ", ".join(
+        if specification.name == "consonant1":
+            from training.consonant_readout import coverage as round_coverage
+
+            record = round_coverage()
+        else:
+            record = coverage()
+        path = layout.root / "coverage.json"
+        write_text_atomically(path, canonical(record))
+        print(f"wrote {path}: " + ", ".join(
             f"{name} {row['evaluated']} of {row['decoded']}"
             for name, row in record["populations"].items()))
     else:
@@ -707,9 +813,10 @@ def main() -> None:
 
         look = json.loads(layout.look.read_text(encoding="utf-8"))
         report = json.loads(layout.report.read_text(encoding="utf-8"))
-        disclosed = json.loads(COVERAGE_PATH.read_text(encoding="utf-8"))
-        write_text_atomically(DOC_PATH, render(look, report, disclosed))
-        print(f"wrote {DOC_PATH}")
+        disclosed = json.loads((layout.root / "coverage.json").read_text(encoding="utf-8"))
+        write_text_atomically(specification.doc_path,
+                              render(look, report, disclosed, spec=specification))
+        print(f"wrote {specification.doc_path}")
 
 
 if __name__ == "__main__":

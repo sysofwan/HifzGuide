@@ -43,6 +43,7 @@ from collections.abc import Mapping
 
 from training.acceptance_stats import CANNOT_CERTIFY, FAIL, NO_BOUND, PASS, aggregate
 from training.aug_readout_metrics import CANDIDATE, CONTROL, H448, BASE, comparison_name
+from training.aug_readout_spec import AUG95, RoundSpec
 
 #: #128's bars, on the scale each table reports (false flags per 1,000; agreement in points).
 BARS = {
@@ -74,6 +75,37 @@ BAR_TEXT = {
     "guard.qdat_bench.shaddah": "qdat_bench stream arm, shaddah agreement with the experts: "
                                 "paired lower bound ≥ −2.0 pt",
 }
+#: The consonant round's bars, as #174 states them (#175).
+CONSONANT_BAR_TEXT = {
+    "bar1.all_cause": "Tarteel v1 confirm half, all-cause false flags per 1,000 (shipped "
+                      "default): candidate − C95 paired 95% upper bound < 0",
+    "bar2.reduction": "the same difference as a point reduction of at least 4.7 per 1,000",
+    "bar3.consonant_cause": "consonant-caused false flags per 1,000: candidate − C95 paired "
+                            "95% upper bound < 0",
+    "bar4a.tarteel_v1_confirm": "word agreement with the teacher on Tarteel v1 confirm: "
+                                "paired 95% lower bound > 0",
+    "bar4a.qdat": "word agreement with the teacher on qdat: paired 95% lower bound > 0",
+    "bar4b.tarteel_v1_confirm": "the same on the teacher-departure words of Tarteel v1 "
+                                "confirm: paired 95% lower bound ≥ −0.5 pt",
+    "bar4b.qdat": "the same on the teacher-departure words of qdat: paired 95% lower bound "
+                  "≥ −0.5 pt",
+    "bar5.qdat": "qdat all-cause false flags per 1,000: candidate point estimate < C95's",
+    "g1.qud_other": "QUD other half, all-cause false flags per 1,000: candidate − C95 paired "
+                    "95% upper bound ≤ +1.0",
+    "g2.tadabur_dev_unseen": "Tadabur dev, decode agreement with the teacher at stream_b0: "
+                             "paired 95% lower bound ≥ −1.0 pt",
+    "g3.qdat_bench.consonant": "qdat_bench stream arm, consonant agreement: paired 95% lower "
+                               "bound ≥ −2.0 pt",
+    "g3.qdat_bench.haraka": "qdat_bench stream arm, haraka agreement: paired 95% lower "
+                            "bound ≥ −2.0 pt",
+    "g3.qdat_bench.shaddah": "qdat_bench stream arm, shaddah agreement: paired 95% lower "
+                             "bound ≥ −2.0 pt",
+    "g4.tashkeel_cause": "Tarteel v1 confirm, tashkeel-caused false flags per 1,000: "
+                         "candidate − C95 paired 95% upper bound ≤ +1.0",
+    "g5": "no substitution's paired 99.5% lower bound > 0",
+    "g6.ship_a_verified": "Ship A held-out verified mistakes at ط↔ق and س↔ش: candidate flags "
+                          "≥ C95 − 2 sites (paired count)",
+}
 CANDIDATE_VS_H448 = comparison_name(CANDIDATE, H448)
 CANDIDATE_VS_CONTROL = comparison_name(CANDIDATE, CONTROL)
 CONTROL_VS_H448 = comparison_name(CONTROL, H448)
@@ -92,16 +124,16 @@ def _finite(value) -> float | None:
 
 
 def bound_condition(name: str, table: Mapping, comparison: str, end: str, threshold: float,
-                    strict: bool) -> dict:
+                    strict: bool, text: str | None = None) -> dict:
     """One bound of a table's paired difference against ``threshold``: ``end`` is ``lower``
     (it must be above, or at least, the threshold) or ``upper`` (below, or at most)."""
     difference = table["comparisons"].get(comparison)
     if difference is None:
-        return {"name": name, "bar": BAR_TEXT[name], "verdict": CANNOT_CERTIFY,
+        return {"name": name, "bar": text or BAR_TEXT[name], "verdict": CANNOT_CERTIFY,
                 "reason": f"no {comparison} comparison"}
     interval = difference["interval"]
     bound = _finite(interval[end])
-    out = {"name": name, "bar": BAR_TEXT[name], "comparison": comparison,
+    out = {"name": name, "bar": text or BAR_TEXT[name], "comparison": comparison,
            "point": difference["point"], "bound": interval[end], "end": end,
            "threshold": threshold, "strict": strict, "method": interval["method"]}
     if interval["method"] == NO_BOUND or bound is None:
@@ -132,11 +164,12 @@ def quarter_gap_condition(table: Mapping) -> dict:
     return {**out, "verdict": PASS if reduction >= required else FAIL}
 
 
-def point_lower_condition(name: str, table: Mapping) -> dict:
-    """The candidate's point estimate strictly lower than ``h448``'s."""
+def point_lower_condition(name: str, table: Mapping, text: str | None = None,
+                          baseline: str = H448) -> dict:
+    """The candidate's point estimate strictly lower than the baseline's."""
     models = table["models"]
-    a, b = (models.get(m, {}).get("point") for m in (CANDIDATE, H448))
-    out = {"name": name, "bar": BAR_TEXT[name], "candidate": a, "h448": b}
+    a, b = (models.get(m, {}).get("point") for m in (CANDIDATE, baseline))
+    out = {"name": name, "bar": text or BAR_TEXT[name], "candidate": a, baseline: b}
     if a is None or b is None:
         return {**out, "verdict": CANNOT_CERTIFY, "reason": "an undefined rate"}
     return {**out, "verdict": PASS if a < b else FAIL}
@@ -187,9 +220,111 @@ def attribution(report: Mapping) -> dict:
             "control_vs_h448": control_vs_h448}
 
 
-def verdict(report: Mapping) -> dict:
-    """The verdict as #128 defines it: every condition, their fold, and the attribution."""
-    parts = conditions(report)
-    return {"bars": dict(BARS), "conditions": parts,
-            "verdict": aggregate([c["verdict"] for c in parts]),
-            "attribution": attribution(report)}
+def verdict(report: Mapping, spec: RoundSpec | None = None) -> dict:
+    """The pre-registered verdict of ``spec``'s round: every condition, their fold, and (#95
+    only) the attribution. Bars are read as the round's pre-registration states them."""
+    specification = spec or AUG95
+    if specification.name == "aug95":
+        parts = conditions(report)
+        return {"bars": dict(BARS), "conditions": parts,
+                "verdict": aggregate([c["verdict"] for c in parts]),
+                "attribution": attribution(report)}
+    parts = consonant_conditions(report, specification)
+    return {"bars": dict(specification.bars), "conditions": parts,
+            "verdict": aggregate([c["verdict"] for c in parts])}
+
+
+# --- the consonant round's bars (#174) ----------------------------------------------------------
+
+
+def reduction_condition(table: Mapping, spec: RoundSpec) -> dict:
+    """Bar 2: the point reduction against the round's baseline at least the pre-registered
+    number of flags per 1,000 (4.7 for C95's published 47.41)."""
+    models = table["models"]
+    points = {m: models[m]["point"] if m in models else None
+              for m in (CANDIDATE, spec.baseline)}
+    out = {"name": "bar2.reduction", "bar": CONSONANT_BAR_TEXT["bar2.reduction"],
+           "candidate_per_1000": points[CANDIDATE],
+           "baseline_per_1000": points[spec.baseline]}
+    if any(point is None for point in points.values()):
+        return {**out, "verdict": CANNOT_CERTIFY, "reason": "an undefined rate"}
+    # At the report's precision: 47.41 − 42.71 is 4.699999999999996 in binary floating point.
+    reduction = round(points[spec.baseline] - points[CANDIDATE], 9)
+    required = spec.bars["reduction_at_least"]
+    return {**out, "reduction": reduction, "required": required,
+            "verdict": PASS if reduction >= required else FAIL}
+
+
+def veto_conditions(substitutions: Mapping, spec: RoundSpec) -> list[dict]:
+    """G5: every frozen substitution's paired 99.5 % lower bound at most 0. No list, or no
+    interval, cannot certify."""
+    if not substitutions:
+        return [{"name": "g5", "bar": CONSONANT_BAR_TEXT["g5"], "verdict": CANNOT_CERTIFY,
+                 "reason": "no frozen substitution list"}]
+    comparison = comparison_name(CANDIDATE, spec.baseline)
+    out = []
+    for substitution, view in sorted(substitutions.items()):
+        row = view["comparisons"].get(comparison)
+        veto = row.get("veto_interval") if row else None
+        item = {"name": f"g5.{substitution}", "bar": CONSONANT_BAR_TEXT["g5"],
+                "substitution": substitution}
+        if veto is None:
+            out.append({**item, "verdict": CANNOT_CERTIFY, "reason": "no 99.5% interval"})
+            continue
+        bound = _finite(veto["lower"])
+        if veto["method"] == NO_BOUND or bound is None:
+            out.append({**item, "verdict": CANNOT_CERTIFY,
+                        "reason": veto["reason"] or "no bound"})
+            continue
+        out.append({**item, "bound": veto["lower"], "end": "lower", "method": veto["method"],
+                    "verdict": PASS if bound <= 0 else FAIL})
+    return out
+
+
+def catch_condition(table: Mapping | None, spec: RoundSpec) -> dict:
+    """G6: the candidate flags at least the baseline's count less two sites."""
+    item = {"name": "g6.ship_a_verified", "bar": CONSONANT_BAR_TEXT["g6.ship_a_verified"]}
+    difference = None if table is None else table.get("difference")
+    if difference is None:
+        return {**item, "verdict": CANNOT_CERTIFY, "reason": "no catch input"}
+    threshold = spec.bars["catch_at_least"]
+    return {**item, "difference": difference, "threshold": threshold,
+            "verdict": PASS if difference >= threshold else FAIL}
+
+
+def consonant_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
+    """Bars 1–5 and guards G1–G6, exactly as #174 states them, in the pre-registration's order."""
+    bars = spec.bars
+    comparison = comparison_name(CANDIDATE, spec.baseline)
+    main, mechanism, guards = report["main"], report["mechanism"], report["guards"]
+
+    def bound(name: str, table: Mapping, end: str, threshold: float, strict: bool) -> dict:
+        return bound_condition(name, table, comparison, end, threshold, strict,
+                               text=CONSONANT_BAR_TEXT[name])
+
+    return [
+        bound("bar1.all_cause", main["all_cause"], "upper",
+              bars["all_cause_upper_below"], True),
+        reduction_condition(main["all_cause"], spec),
+        bound("bar3.consonant_cause", main["consonant_cause"], "upper",
+              bars["consonant_upper_below"], True),
+        bound("bar4a.tarteel_v1_confirm", mechanism["tarteel_v1_confirm"], "lower",
+              bars["agreement_lower_above"], True),
+        bound("bar4a.qdat", mechanism["qdat"], "lower", bars["agreement_lower_above"], True),
+        bound("bar4b.tarteel_v1_confirm", mechanism["tarteel_v1_confirm_departs"], "lower",
+              bars["departs_lower_at_least"], False),
+        bound("bar4b.qdat", mechanism["qdat_departs"], "lower",
+              bars["departs_lower_at_least"], False),
+        point_lower_condition("bar5.qdat", report["consistency"]["qdat"],
+                              text=CONSONANT_BAR_TEXT["bar5.qdat"], baseline=spec.baseline),
+        bound("g1.qud_other", guards["qud_other"], "upper", bars["qud_upper_at_most"], False),
+        bound("g2.tadabur_dev_unseen", guards["tadabur_dev_unseen"], "lower",
+              bars["tadabur_lower_at_least"], False),
+        *(bound(f"g3.qdat_bench.{kind}", guards["qdat_bench"][kind], "lower",
+                bars["bench_lower_at_least"], False)
+          for kind in ("consonant", "haraka", "shaddah")),
+        bound("g4.tashkeel_cause", main["tashkeel_cause"], "upper",
+              bars["tashkeel_upper_at_most"], False),
+        *veto_conditions(report["substitutions"], spec),
+        catch_condition(report["catch"]["ship_a_verified"], spec),
+    ]

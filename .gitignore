@@ -97,6 +97,7 @@ tools/tadabur/cache/
 coreml_models/
 coreml_models_chunked/
 compiled_models/
+student_coreml/
 *.mlpackage/
 *.mlmodelc/
 models.zip

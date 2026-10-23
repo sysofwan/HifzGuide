@@ -5,9 +5,10 @@ module holds what the round adds to :mod:`training.aug_readout`'s pipeline:
 
 * **The unread QUD half** (:func:`qud_complement_record`): the pilot segments #95's salted half did
   not keep, frozen in ``tadabur/consonant_readout/qud_selection.json``.
-* **The freeze** (:func:`run_freeze`): a model's cause split and its top substitution list, read
-  from the look half only — the confirm half is never frozen (data discipline 1). #177 owns the
-  committed ``freeze.json``; this module never writes it.
+* **The freeze** (:func:`run_freeze`, :func:`write_freeze`): a model's cause split and its top
+  substitution list, read from the look half only — the confirm half is never frozen (data
+  discipline 1). :func:`write_freeze` writes #177's committed ``freeze.json`` and its generated
+  doc; the dry run prints one model's summary and writes nothing.
 * **The catch arm** (G6, :func:`catch_arm`): Ship A's held-out verified real mistakes at
   ط↔ق and س↔ش, graded through :mod:`training.truth_baseline`'s recorded check sequences, read
   read-only from its caches. The site ids are frozen in ``g6_sites.json``.
@@ -20,10 +21,13 @@ Usage (from ``tools/``)::
   python -m training.consonant_readout g6
   python -m training.consonant_readout models
   python -m training.consonant_readout freeze --half look
+  python -m training.consonant_readout freeze --half look --dry-run
+  python -m training.consonant_readout doc
   python -m training.consonant_readout tracer
 
 Files (``tadabur/consonant_readout/``): ``qud_selection.json``, ``g6_sites.json``,
-``models.json`` (C95's identity per set); ``freeze.json`` is #177's.
+``models.json`` (C95's identity per set), ``freeze.json`` (#177's look-half freeze); its doc is
+``docs/consonant-round-freeze.md``.
 """
 
 from __future__ import annotations
@@ -35,7 +39,7 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from tadabur.tarteel_split import CONFIRM, LOOK
+from tadabur.tarteel_split import CONFIRM, LOOK, half
 from training.aug_readout_metrics import (
     BASE,
     CANDIDATE,
@@ -61,13 +65,21 @@ from training.aug_readout_metrics import (
 from training.aug_readout_spec import C95, CONSONANT1, RoundSpec
 from training.muraja_policy import SHIPPED_DEFAULT
 from training.tashkeel_eval import write_text_atomically
+from training.word_flags import CAUSES
 
 ROUND_DIR = Path(__file__).parent.parent / "tadabur" / "consonant_readout"
 QUD_SELECTION_PATH = ROUND_DIR / "qud_selection.json"
 G6_SITES_PATH = ROUND_DIR / "g6_sites.json"
 MODELS_PATH = ROUND_DIR / "models.json"
-#: #177's artifact, never written here (its freeze list fixes G5).
+#: #177's artifact, written by :func:`write_freeze`; its list fixes G5.
 FREEZE_PATH = ROUND_DIR / "freeze.json"
+#: #177's generated doc, rendered from ``freeze.json`` by :mod:`training.consonant_freeze_doc`.
+FREEZE_DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "consonant-round-freeze.md"
+#: The command that writes the freeze; recorded in the artifact for the PR's command log.
+FREEZE_COMMAND = "python -m training.consonant_readout freeze --half look"
+#: The models the freeze reads on the look half: C95 and the two baseline columns (#174).
+FREEZE_MODELS = (C95, H448, BASE)
+FREEZE_LABELS = {C95: "C95", H448: "h448", BASE: "teacher"}
 #: The committed decode file C95's identity and decodes are recorded under (#95's candidate).
 C95_DECODE = "candidate_ema"
 #: G6's pairs (#174): the two the pre-registration reads.
@@ -153,15 +165,131 @@ def freeze_report(grades: Sequence, model: str, top: int = 10) -> dict:
     }
 
 
-def run_freeze(spec: RoundSpec, sources, half: str, model: str | None = None) -> dict:
-    """A model's cause split and top substitutions on the **look** half. The confirm half is the
-    verdict phase's to read (:func:`confirm_report`), never the freeze's (data discipline 1)."""
+def _require_look(half: str) -> None:
+    """The freeze reads the look half only; the confirm half is the verdict phase's to read
+    (:func:`confirm_report`), never the freeze's (data discipline 1)."""
     if half != LOOK:
         raise SystemExit(f"freeze reads the look half only; {half!r} belongs to the verdict "
                          "phase")
+
+
+def run_freeze(spec: RoundSpec, sources, half: str, model: str | None = None) -> dict:
+    """A model's cause split and top substitutions on the **look** half, for the freeze command's
+    dry run: it grades and prints, and writes nothing."""
+    _require_look(half)
     model = model or spec.baseline
     data = sources.tarteel(LOOK, (model,))
     return freeze_report(sources.grade(data.items, data.decodes, (model,)), model)
+
+
+def _per_1000(count: int, graded: int) -> float:
+    return round(1000 * count / graded, 2) if graded else 0.0
+
+
+def freeze_tables(grades: Sequence) -> dict:
+    """The freeze's two readings from the look half's grades: each model's false flags by
+    ``word_flags`` cause under both scorings (with their rates), C95's top ten substitutions for
+    each consonant cause, and the G5 list — the ten consonant substitutions behind the most C95
+    false-flagged words at the shipped default, the madd alif (``ا→∅``) aside, ties by
+    substitution (Unicode order)."""
+    from training.external_corpus import app_scorings, flag_view
+
+    models: dict[str, dict] = {}
+    for model in FREEZE_MODELS:
+        scorings = {}
+        for scoring in (s.name for s in app_scorings()):
+            mine = [grade for grade in grades
+                    if grade.model == model and grade.scoring == scoring]
+            if not mine:
+                continue
+            view = flag_view(mine)
+            graded = view["graded"]
+            scorings[scoring] = {
+                "graded": graded,
+                "flagged": view["flagged"],
+                "per_1000": _per_1000(view["flagged"], graded),
+                "causes": {cause: {"words": view["causes"][cause],
+                                   "per_1000": _per_1000(view["causes"][cause], graded)}
+                           for cause in CAUSES},
+                # The round's consonant causes carry the substitutions G5 gates; a shaddah
+                # deletion is its own cause and stays out of the veto (#174). The madd alif is
+                # counted in the split but is not a consonant substitution (Muraja#263).
+                "substitutions": {
+                    cause: [row for row in view["substitutions"]
+                            if row["cause"] == cause and row["substitution"] != MADD_ALIF][:10]
+                    for cause in sorted(CONSONANT_FLAG_CAUSES)},
+            }
+        if scorings:
+            models[model] = {"label": FREEZE_LABELS[model], "scorings": scorings}
+    shipped = models[C95]["scorings"]["shipped_default"]["substitutions"]
+    rows = [row for cause in sorted(CONSONANT_FLAG_CAUSES) for row in shipped[cause]]
+    g5 = sorted(rows, key=lambda row: (-row["words"], row["substitution"]))[:10]
+    if len(g5) < 10:
+        raise SystemExit(f"the look half yields {len(g5)} consonant substitutions; G5 needs 10")
+    return {"models": models, "substitutions": g5}
+
+
+def freeze_input_paths(sources) -> list[Path]:
+    """The committed decodes the freeze reads: C95's look-half decodes and the baselines'
+    full-corpus decodes, which :meth:`Sources.tarteel` filters to the look half."""
+    from tadabur.nonpro_sources import TARTEEL_V1
+    from training.aug_readout_gate import TARTEEL_LOOK
+    from training.nonpro_eval import decodes_file
+
+    return [sources.decode_path(TARTEEL_LOOK, C95),
+            decodes_file(TARTEEL_V1, H448), decodes_file(TARTEEL_V1, BASE)]
+
+
+def freeze_record(sources) -> dict:
+    """#177's record: the look-half cause split for C95, h448 and the teacher under both
+    scorings, C95's G5 list, and the inputs, pins and harness that produced them. The confirm
+    half is never read."""
+    from training.aug_readout_gate import digests, sha256_file
+    from training.aug_readout_spec import PREREG_PATH, check_pins
+    from training.external_corpus import app_scorings, word_grades
+
+    paths = freeze_input_paths(sources)
+    data = sources.tarteel(LOOK, FREEZE_MODELS)
+    if any(half(item.audio_filename) != LOOK for item in data.items):
+        raise SystemExit("the freeze read a word outside the look half")
+    _, grades = word_grades(data.items, data.decodes, sources.harness(), FREEZE_MODELS,
+                            app_scorings())
+    harness = sources.harness_identity()
+    prereg = sha256_file(PREREG_PATH)
+    check_pins(CONSONANT1, harness, prereg)
+    return {
+        "issue": 177,
+        "round": CONSONANT1.name,
+        "half": LOOK,
+        "command": FREEZE_COMMAND,
+        "rule": "C95's Tarteel v1 look-half false flags per 1,000 graded words by "
+                "word_flags cause, under the shipped default and with allowances off, graded "
+                "through the Muraja harness at the round's pin; G5 is the ten consonant "
+                "substitutions behind the most C95 false-flagged words at the shipped default, "
+                "the madd alif (ا→∅) aside, ties by substitution (Unicode order)",
+        "pins": {"muraja_commit": CONSONANT1.pins.muraja_commit,
+                 "harness_sha256": CONSONANT1.pins.harness_sha256,
+                 "prereg_sha256": CONSONANT1.pins.prereg_sha256},
+        "harness": harness,
+        "inputs": digests(paths),
+        "items": len(data.items),
+        **freeze_tables(grades),
+    }
+
+
+def write_freeze(sources, half: str, path: Path = FREEZE_PATH,
+                 doc_path: Path = FREEZE_DOC_PATH) -> dict:
+    """Write #177's committed record and its generated doc. Refuses the confirm half before
+    reading anything, and refuses to move a freeze that already exists."""
+    _require_look(half)
+    if path.exists():
+        raise SystemExit(f"{path.name} exists: the freeze is fixed")
+    from training.consonant_freeze_doc import render
+
+    record = freeze_record(sources)
+    write_text_atomically(path, json.dumps(record, ensure_ascii=False, indent=1) + "\n")
+    write_text_atomically(doc_path, render(record))
+    return record
 
 
 def frozen_substitutions(spec: RoundSpec, path: Path = FREEZE_PATH) -> tuple[str, ...]:
@@ -713,9 +841,13 @@ def main() -> None:
     commands.add_parser("select-qud", help="freeze the QUD other half")
     commands.add_parser("g6", help="freeze G6's held-out site ids")
     commands.add_parser("models", help="record C95's identity per set")
-    freeze = commands.add_parser("freeze", help="a model's look-half causes and substitutions")
+    freeze = commands.add_parser("freeze", help="write the round's look-half freeze and its doc")
     freeze.add_argument("--half", required=True, choices=(LOOK, CONFIRM))
-    freeze.add_argument("--model", default=None)
+    freeze.add_argument("--dry-run", action="store_true",
+                        help="print one model's look-half summary; write nothing")
+    freeze.add_argument("--model", default=None,
+                        help="with --dry-run: the model to summarise (C95 by default)")
+    commands.add_parser("doc", help=f"render {FREEZE_DOC_PATH.name} from freeze.json")
     tracer_command = commands.add_parser("tracer", help="C95 against C95 on committed decodes")
     tracer_command.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
@@ -730,8 +862,23 @@ def main() -> None:
     elif args.command == "freeze":
         from training import aug_readout as ar
 
-        print(json.dumps(run_freeze(CONSONANT1, ar.Sources(CONSONANT1), args.half,
-                                    args.model), ensure_ascii=False, indent=1))
+        sources = ar.Sources(CONSONANT1)
+        if args.dry_run:
+            print(json.dumps(run_freeze(CONSONANT1, sources, args.half, args.model),
+                             ensure_ascii=False, indent=1))
+        else:
+            if args.model:
+                raise SystemExit("--model belongs to --dry-run: the freeze reads "
+                                 f"{', '.join(FREEZE_LABELS[m] for m in FREEZE_MODELS)}")
+            record = write_freeze(sources, args.half)
+            print(f"wrote {FREEZE_PATH} and {FREEZE_DOC_PATH}: "
+                  f"{len(record['substitutions'])} G5 substitutions, {record['items']} clips")
+    elif args.command == "doc":
+        from training.consonant_freeze_doc import render
+
+        write_text_atomically(FREEZE_DOC_PATH,
+                              render(json.loads(FREEZE_PATH.read_text(encoding="utf-8"))))
+        print(f"wrote {FREEZE_DOC_PATH}")
     else:
         from training import aug_readout as ar
 

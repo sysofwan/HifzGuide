@@ -199,15 +199,25 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def model_identity(model_ref: str, decoder=None) -> dict:
+#: The weight selector a checkpoint cache records: one checkpoint holds the live weights and
+#: the averaged ones, so its SHA-256 names neither.
+LIVE, EMA = "live", "ema"
+
+
+def model_identity(model_ref: str, decoder=None, use_ema: bool = False) -> dict:
     """The immutable identity of the weights behind ``model_ref``.
 
-    A checkpoint file is its SHA-256; a hub model is the commit its loaded config resolved to
+    A checkpoint file is its SHA-256, plus the selector the caller loaded when it passes the
+    ``decoder``: the same file holds live and averaged weights, so the hash alone cannot say
+    which one a cache decodes. A hub model is the commit its loaded config resolved to
     (``config._commit_hash``), which needs the loaded ``decoder``.
     """
     path = Path(model_ref)
     if path.is_file():
-        return {"model_ref": model_ref, "checkpoint_sha256": file_sha256(path)}
+        identity = {"model_ref": model_ref, "checkpoint_sha256": file_sha256(path)}
+        if decoder is not None:
+            identity["weights"] = EMA if use_ema else LIVE
+        return identity
     if decoder is None:
         raise ValueError(f"{model_ref}: a hub model's revision is read from its loaded config")
     revision = getattr(decoder.model.config, "_commit_hash", None)
@@ -300,7 +310,10 @@ def check_cache(path: Path, cache: dict, model_ref: str, protocols: Mapping[str,
         found, expected = cache["fingerprints"][protocol], expected_fingerprint(model_ref, mode)
         if found != expected:
             raise ValueError(f"{path}: {protocol} was decoded as {found}, expected {expected}")
-    if Path(model_ref).is_file() and model_identity(model_ref) != cache["identity"]:
+    # The file hash only: the cache's own identity records which selector it decoded, and both
+    # selectors live in the same bytes.
+    if Path(model_ref).is_file() and model_identity(model_ref)["checkpoint_sha256"] \
+            != cache["identity"].get("checkpoint_sha256"):
         raise ValueError(f"{model_ref} no longer has the bytes {path} was decoded from")
 
 
@@ -335,11 +348,13 @@ def update_cache(
     items: Mapping[str, Located],
     registry: Mapping[str, StagedClip],
     audio_dir: Path | None,
+    use_ema: bool = False,
 ) -> dict:
     """The model's cache in ``store``, checked, and extended with any item it lacks.
 
     New decodes are merged only when the loaded weights' identity (:func:`model_identity`)
     and every fingerprint match the cache's, so one cache never mixes two checkpoints.
+    ``use_ema`` decodes a checkpoint's averaged weights and records that selector.
     """
     path = store.path(name)
     cache = read_cache(path)
@@ -356,9 +371,10 @@ def update_cache(
 
     print(f"{path}: decoding {len(missing)} item(s) with {model_ref}", flush=True)
     decoder = Decoder.load(
-        model_ref, DEVICE_TYPE, weights_dtype=WEIGHTS_DTYPE, batch_size=BATCH_SIZE
+        model_ref, DEVICE_TYPE, weights_dtype=WEIGHTS_DTYPE, batch_size=BATCH_SIZE,
+        use_ema=use_ema,
     )
-    identity = model_identity(model_ref, decoder)
+    identity = model_identity(model_ref, decoder, use_ema)
     fingerprints = {p: decoder.fingerprint(mode).as_dict() for p, mode in store.protocols.items()}
     for protocol, record in fingerprints.items():
         if record != expected_fingerprint(model_ref, store.protocols[protocol]):
@@ -384,9 +400,10 @@ def update_decodes(
     items: Mapping[str, Located],
     registry: Mapping[str, StagedClip],
     audio_dir: Path | None,
+    use_ema: bool = False,
 ) -> dict:
     """The model's decodes cache (:data:`DECODE_STORE`), extended as :func:`update_cache` says."""
-    return update_cache(DECODE_STORE, name, model_ref, items, registry, audio_dir)
+    return update_cache(DECODE_STORE, name, model_ref, items, registry, audio_dir, use_ema)
 
 
 def model_caches(
@@ -395,12 +412,13 @@ def model_caches(
     items: Mapping[str, Located],
     registry: Mapping[str, StagedClip],
     audio_dir: Path | None,
+    use_ema: bool = False,
 ) -> tuple[dict, dict]:
     """The model's decodes and check sequences, each checked and extended as
     :func:`update_cache` says, and refused when the two come from different weights. With no
     ``audio_dir`` it only reads: every item must already be decoded, from its own audio."""
-    cache = update_decodes(name, model_ref, items, registry, audio_dir)
-    recorded = update_cache(CHECK_STORE, name, model_ref, items, registry, audio_dir)
+    cache = update_decodes(name, model_ref, items, registry, audio_dir, use_ema)
+    recorded = update_cache(CHECK_STORE, name, model_ref, items, registry, audio_dir, use_ema)
     if recorded["identity"] != cache["identity"]:
         raise ValueError(f"{name}: its decodes and check sequences come from different weights")
     return cache, recorded

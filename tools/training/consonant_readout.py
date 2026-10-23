@@ -265,9 +265,12 @@ def catch_table(sites: Sequence, outcomes: Mapping[str, Mapping[str, str]],
 
 def binds_cache(recorded: Mapping, expected: Mapping) -> bool:
     """Whether a truth-baseline cache's identity is the round's: the same checkpoint's bytes,
-    and no recorded field (weights, step, recipe, where a cache keeps them) that disagrees."""
+    the same weight selector, and no recorded field (step, recipe, where a cache keeps them)
+    that disagrees. One checkpoint holds live and averaged weights, so its hash names neither:
+    a selector-free identity is insufficient evidence and never binds (#175 review R2.1)."""
     if recorded.get("model_ref") != expected["model_ref"] \
-            or recorded.get("checkpoint_sha256") != expected["checkpoint_sha256"]:
+            or recorded.get("checkpoint_sha256") != expected["checkpoint_sha256"] \
+            or recorded.get("weights") != expected["weights"]:
         return False
     return all(recorded[key] == value for key, value in expected.items() if key in recorded)
 

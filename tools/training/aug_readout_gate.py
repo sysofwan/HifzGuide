@@ -40,7 +40,9 @@ from training.aug_readout_metrics import BASE, CANDIDATE, CONTROL, H448
 from training.aug_readout_spec import AUG95, AUG95_ROOT, ModelIdentity, RoundSpec
 from training.aug_readout_spec import model_spec as pinned_model_spec
 from training.external_decode import DEFAULT_SPECS, NO_AUGMENTATION, ModelSpec
-from training.truth_baseline import ARM_PROTOCOLS, CHECKS, DEFAULT_MODELS, expected_fingerprint
+from training.truth_baseline import (
+    ARM_PROTOCOLS, CHECKS, DEFAULT_MODELS, EMA, LIVE, expected_fingerprint,
+)
 
 READOUT_DIR = AUG95_ROOT
 
@@ -90,7 +92,7 @@ ARMS = {
 RECIPES = {CANDIDATE: "aug94-mixture-v2", CONTROL: NO_AUGMENTATION}
 #: #94's checkpoint rule, fixed before training: the final step.
 FINAL_STEP = 10_000
-LIVE, EMA = "live", "ema"
+#: The selector vocabulary is the cache producer's (:data:`training.truth_baseline.LIVE`).
 WEIGHTS = (LIVE, EMA)
 BASELINES = (H448, BASE)
 

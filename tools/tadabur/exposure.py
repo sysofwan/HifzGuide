@@ -152,6 +152,11 @@ SHADDAH_PROBE_TUNING = "shaddah_probe.tuning"
 #: (shard uses), written when the arms launch.
 AUG_TRAINING = "aug.training"
 AUG_CONTROL = "aug.control"
+#: #178's consonant round: C95 continued toward the teacher on the shards #94's run left --
+#: `h448`'s 345 `--stream-shards` minus the prefix #94 streamed (derived by
+#: ``training.consumed_prefix`` from the seed-9494 permutation and its log), warm-started
+#: from C95's averaged weights. A shard use, membership `exact`, written before launch.
+CONSONANT_TRAINING = "consonant1.training"
 
 USES = frozenset({
     *TRUTH_SITE_USES.values(),
@@ -161,6 +166,7 @@ USES = frozenset({
     MURAJA_REREAD_CORPUS, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, SEALED_PANEL,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
     SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
+    CONSONANT_TRAINING,
 })
 
 #: ``h448``'s ``--stream-shards``, verbatim from ``runs/h448_stream/run_config.json`` on the
@@ -817,12 +823,13 @@ PRD_USES = frozenset({
     *TRUTH_SITE_USES.values(), MINING_POOL, SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR,
     PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE, BIAS_SCORE, SHADDAH_PROBE_TUNING,
     SHIP_A_MINING, SHIP_A_TRAIN, SHIP_A_HELD_OUT, AUG_TRAINING, AUG_CONTROL,
+    CONSONANT_TRAINING,
 })
 #: The PRD uses that train or tune; §6 also keeps the bias score half's reciters out of
 #: them, edit donors included.
 TRAINING_AND_TUNING_USES = frozenset({
     SYNTHETIC_EDIT_SOURCE, SYNTHETIC_EDIT_DONOR, PROBE_TRAINING, PROBE_KL_CONTROL, BIAS_TUNE,
-    SHADDAH_PROBE_TUNING, SHIP_A_TRAIN, AUG_TRAINING, AUG_CONTROL,
+    SHADDAH_PROBE_TUNING, SHIP_A_TRAIN, AUG_TRAINING, AUG_CONTROL, CONSONANT_TRAINING,
 })
 
 
@@ -1102,6 +1109,37 @@ def write_training_stream_use(
     write_shard_use(use, exposure, directory)
 
 
+def shard_use_drift(committed: ShardExposure, recomputed: ShardExposure) -> list[str]:
+    """The fields on which a recomputed shard use disagrees with the committed one.
+
+    ``note`` is prose about where the shards came from, not evidence, so an edited note is
+    not drift; a changed shard list, admission count, index or membership is.
+    """
+    lines: list[str] = []
+    if committed.shards != recomputed.shards:
+        added = sorted(set(recomputed.shards) - set(committed.shards))
+        removed = sorted(set(committed.shards) - set(recomputed.shards))
+        lines.append(
+            f"shards: committed {len(committed.shards)}, recomputed {len(recomputed.shards)}; "
+            f"added {added[:10]}, removed {removed[:10]}"
+        )
+    if committed.rows_per_reciter != recomputed.rows_per_reciter:
+        committed_rows = sum(committed.rows_per_reciter.values())
+        recomputed_rows = sum(recomputed.rows_per_reciter.values())
+        lines.append(
+            f"rows_per_reciter: committed {committed_rows:,} rows over "
+            f"{len(committed.rows_per_reciter)} reciters, recomputed {recomputed_rows:,} over "
+            f"{len(recomputed.rows_per_reciter)}"
+        )
+    for name in ("index_sha256", "membership", "shared_baseline"):
+        if getattr(committed, name) != getattr(recomputed, name):
+            lines.append(
+                f"{name}: committed {getattr(committed, name)!r}, "
+                f"recomputed {getattr(recomputed, name)!r}"
+            )
+    return lines
+
+
 def describe(registry: ExposureRegistry) -> str:
     """One line per use: recordings (or shards), reciters."""
     lines = [f"{use:40s} {len(rows):>11d} QUD ayat {len({r.qud_reciter for r in rows}):>5d} "
@@ -1143,6 +1181,12 @@ def main() -> None:
     stream.add_argument("--shards", required=True, help="the run's --stream-shards")
     stream.add_argument("--membership", choices=MEMBERSHIPS, required=True)
     stream.add_argument("--note", required=True)
+    stream.add_argument(
+        "--check",
+        action="store_true",
+        help="recompute and compare with the committed shard use instead of writing it; "
+        "exits non-zero on drift, which is a run's launch-time data assertion",
+    )
     args = parser.parse_args()
 
     if args.command == "training-stream":
@@ -1151,6 +1195,20 @@ def main() -> None:
         exposure, report = training_stream_exposure(
             args.index, parse_shard_spec(args.shards), args.use, membership=args.membership,
             note=args.note)
+        if args.check:
+            committed = load_registry().shard_uses.get(args.use)
+            if committed is None:
+                raise SystemExit(f"{args.use} has no committed shard use: write it first")
+            drift = shard_use_drift(committed, exposure)
+            if drift:
+                raise SystemExit(
+                    f"{args.use} has drifted from its committed shard use:\n"
+                    + "\n".join(f"  {line}" for line in drift)
+                )
+            print(f"{args.use}: {len(exposure.shards)} shards, "
+                  f"{sum(exposure.rows_per_reciter.values()):,} admitted rows -- "
+                  f"matches the committed use")
+            return
         write_training_stream_use(args.use, exposure)
         print(json.dumps(report, indent=1))
         return

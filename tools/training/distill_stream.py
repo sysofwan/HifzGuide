@@ -64,6 +64,7 @@ import numpy as np
 import torch
 
 from tadabur.panel_seal import SealedPanelError
+from training.consumed_prefix import shard_permutation
 from training.distill_data import (
     FEATURE_DIM,
     FEATURE_FRAMES,
@@ -224,8 +225,7 @@ class StreamingWindowDataset(torch.utils.data.IterableDataset):
 
     def _my_shards(self) -> list[int]:
         """This worker's disjoint slice of the shard list, permuted per run."""
-        shards = list(self.shard_indices)
-        random.Random(self.seed).shuffle(shards)
+        shards = shard_permutation(self.shard_indices, self.seed)
 
         info = torch.utils.data.get_worker_info()
         if info is None:

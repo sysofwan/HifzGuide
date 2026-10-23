@@ -188,11 +188,11 @@ def _per_1000(count: int, graded: int) -> float:
 
 def freeze_tables(grades: Sequence) -> dict:
     """The freeze's two readings from the look half's grades: each model's false flags by
-    ``word_flags`` cause under both scorings (with their rates) and C95's full substitution
-    diagnostic — every cause's top ten, shaddah and the madd alif (``ا→∅``) included — plus G5,
-    derived separately from the untruncated shipped-default tally: the ten consonant
-    substitutions behind the most C95 false-flagged words, the madd alif aside, ties by
-    substitution (Unicode order)."""
+    ``word_flags`` cause under both scorings (with their rates) and C95's canonical
+    substitution tally, whole, with each cause's top ten reported beside it — shaddah and the
+    madd alif (``ا→∅``) included — plus G5, derived separately from the untruncated
+    shipped-default tally: the ten consonant substitutions behind the most C95 false-flagged
+    words, the madd alif aside, ties by substitution (Unicode order)."""
     from training.external_corpus import app_scorings, flag_view
 
     models: dict[str, dict] = {}
@@ -217,8 +217,10 @@ def freeze_tables(grades: Sequence) -> dict:
                                    "per_1000": _per_1000(view["causes"][cause], graded)}
                            for cause in CAUSES},
                 # The diagnostic is the canonical tally whole: a shaddah deletion is its own
-                # cause and the madd alif is counted (Muraja#263), so both stay in. Only the
-                # display is truncated, per cause, to ten.
+                # cause and the madd alif is counted (Muraja#263), so both stay in. The record
+                # keeps the entire tally, so G5's derivation is auditable from the artifact;
+                # only the reported view is truncated, per cause, to ten.
+                "substitution_tally": by_cause,
                 "substitutions": {cause: rows[:10] for cause, rows in by_cause.items()},
             }
             if model == C95 and scoring == SHIPPED_DEFAULT.name:

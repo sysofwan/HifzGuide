@@ -7,14 +7,16 @@ architect that a drifted shard list would refuse to launch, and the run launches
 
 These execute the real script (its `verify`, `gate` and `monitor` subcommands are the
 assertion, the smoke gate and the post-run monitoring guard alone, without the trainer or
-the GPU) in a temporary `ISSUE_ROOT`, with a `python` shim on PATH so the host's interpreter
-name does not matter.
+the GPU) in a temporary `ISSUE_ROOT`. The `monitor` tests run with the box's shell shape —
+`/usr/bin:/bin` and a conda stub that supplies `python` — so a subcommand that forgets to
+activate its environment fails here as it did on cuda-dev.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -36,6 +38,31 @@ def _env(tmp_path: Path, **overrides: str) -> dict[str, str]:
     if not python.exists():
         python.symlink_to(sys.executable)
     env = {**os.environ, "ISSUE_ROOT": str(tmp_path), "PATH": f"{shim}:{os.environ['PATH']}"}
+    env.update(overrides)
+    return env
+
+
+def _fresh_shell_env(tmp_path: Path, **overrides: str) -> dict[str, str]:
+    """The box as `report` sees it: a fresh SSH shell with no `python` on PATH.
+
+    The only interpreter is the one the conda environment provides, so a subcommand that
+    does not activate the environment fails here exactly as it did on cuda-dev (exit 127).
+    """
+    prefix = tmp_path / "env"
+    (prefix / "bin").mkdir(parents=True, exist_ok=True)
+    python = prefix / "bin" / "python"
+    if not python.exists():
+        python.symlink_to(sys.executable)
+    conda = tmp_path / "conda.sh"
+    conda.write_text(
+        f'conda() {{ PATH="{prefix}/bin:$PATH"; export PATH; }}\n', encoding="utf-8"
+    )
+    env = {
+        **os.environ,
+        "ISSUE_ROOT": str(tmp_path),
+        "PATH": "/usr/bin:/bin",
+        "CONDA": str(conda),
+    }
     env.update(overrides)
     return env
 
@@ -163,7 +190,9 @@ def _derived(tmp_path: Path) -> tuple[Path, list[int], int]:
     return log, remaining, monitoring_shard(remaining, RUN_SEED)[1]
 
 
-def _monitor(tmp_path: Path, completions: int) -> subprocess.CompletedProcess:
+def _monitor(
+    tmp_path: Path, completions: int, **overrides: str
+) -> subprocess.CompletedProcess:
     from training.consumed_prefix import shard_permutation
 
     log, remaining, _ = _derived(tmp_path)
@@ -178,7 +207,7 @@ def _monitor(tmp_path: Path, completions: int) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["bash", str(SCRIPT), "monitor", str(streamed)],
         cwd=TOOLS,
-        env=_env(tmp_path, SOURCE_LOG=str(log)),
+        env=_fresh_shell_env(tmp_path, SOURCE_LOG=str(log), **overrides),
         capture_output=True,
         text=True,
     )
@@ -197,3 +226,20 @@ def test_the_monitoring_guard_accepts_a_run_that_stopped_short(tmp_path):
     done = _monitor(tmp_path, position - 1)
     assert done.returncode == 0, done.stdout + done.stderr
     assert "never streamed" in done.stdout
+
+
+def test_the_monitor_hook_finds_python_only_through_the_environment(tmp_path):
+    """R1.2: `report` runs `monitor` from a fresh shell, where only conda provides `python`."""
+    assert shutil.which("python", path="/usr/bin:/bin") is None  # the shell has no python
+    _, _, position = _derived(tmp_path)
+    done = _monitor(tmp_path, position - 1)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "never streamed" in done.stdout
+
+
+def test_the_monitor_hook_fails_when_the_environment_cannot_be_activated(tmp_path):
+    """The control: activation is what supplies the interpreter, not the host's PATH."""
+    _, _, position = _derived(tmp_path)
+    done = _monitor(tmp_path, position - 1, CONDA=str(tmp_path / "missing-conda.sh"))
+    assert done.returncode != 0
+    assert "never streamed" not in done.stdout

@@ -48,6 +48,10 @@ INDEX=${INDEX:-/root/scratch/issue-89/stage/full_index.jsonl}
 SEED=178
 STEPS=10000
 SMOKE_STEPS=300
+# The teacher commit #174 pre-registers (`obadx/muaalem-model-v3_2` @ 01a1ef9). Pinned
+# through preflight and training: the hub's default branch can move between the two loads,
+# which would silently change the run the smoke gated.
+TEACHER_REVISION=01a1ef9fbe40d144ef845101e89ff924aed3fef5
 # The smoke evaluates early enough to exercise the staged validation clips before the gate;
 # the full run keeps #94's cadence.
 SMOKE_EVAL_EVERY=150
@@ -59,12 +63,20 @@ EXPOSURE_USE=consonant1.training
 # --- on the box -------------------------------------------------------------------------
 
 
-setup() {
-  mkdir -p "$ROOT/logs" "$VAL_CLIPS"
-  cd "$ROOT/repo/tools"
+activate() {
+  # The one place the box's environment is entered. Every subcommand that runs Python on the
+  # box goes through it (`report` reaches `monitor` from a fresh SSH shell, where the conda
+  # env -- and a bare `python` -- are not on PATH).
   # shellcheck source=/dev/null
   source "$CONDA"
   conda activate hifzguide
+}
+
+
+setup() {
+  mkdir -p "$ROOT/logs" "$VAL_CLIPS"
+  cd "$ROOT/repo/tools"
+  activate
   python - "$VAL_CLIPS" "$VAL_CLIPS_COUNT" "$SOURCE_LOG" "$SEED" <<'PY'
 import pathlib
 import sys
@@ -281,6 +293,7 @@ train_arm() {  # <out-dir> <steps> <log-every> <eval-every>
     --temperature 2.0 --nonblank-weight 3.0 --confirm-weight 2.0 \
     --ema-decay 0.999 --seed "$SEED" --save-every 2000 --log-every "$log_every" \
     --eval-every "$eval_every" --num-workers 1 --exposure-use "$EXPOSURE_USE" \
+    --teacher-revision "$TEACHER_REVISION" \
     --augment --noise-pool "$POOL" --init-from "$C95" --init-weights ema
 }
 
@@ -328,9 +341,7 @@ run() {
   }
   trap finish EXIT
   cd "$ROOT/repo/tools"
-  # shellcheck source=/dev/null
-  source "$CONDA"
-  conda activate hifzguide
+  activate
   export OMP_NUM_THREADS=1
   # Job control gives every background job its own process group, so the trap and the
   # deadline stop the chain and the trainer with every worker beneath them.
@@ -401,7 +412,10 @@ step = rows[-1]['step']
 rate = (rows[-1]['step'] - rows[0]['step']) / (rows[-1]['elapsed_s'] - rows[0]['elapsed_s'])
 losses = [row['total'] for row in rows]
 grads = [row['grad_norm_preclip'] for row in rows]
+config = json.loads((root / 'run_config.json').read_text())
 print('step', step)
+print('teacher_revision', config.get('teacher_revision') or 'unpinned')
+print('initialisation', json.dumps(config.get('initialisation', {}), sort_keys=True))
 print('sha256', digest.hexdigest())
 print('throughput {:.2f} steps/s over {} logged steps'.format(rate, len(rows)))
 print('kl min {:.4f} max {:.4f} last {:.4f}'.format(min(losses), max(losses), losses[-1]))
@@ -482,9 +496,9 @@ case ${1:-} in
   # smoke that never evaluated the staged clips or never proved the warm start.
   gate) gate_smoke "${2:?metrics.jsonl}" "${3:?smoke.log}" ;;
   # The post-run monitoring guard alone (`chain` runs it after the full run, `report`
-  # before printing). A test uses it to prove the guard refuses a log that entered the shard
-  # the validation clips were decoded from.
-  monitor) assert_monitor "${2:-$ROOT/logs/train.log}" ;;
+  # before printing). It activates the box's environment itself: `report` reaches it from a
+  # fresh SSH shell, where neither conda nor a bare `python` is on PATH. Run it from `tools/`.
+  monitor) activate; assert_monitor "${2:-$ROOT/logs/train.log}" ;;
   *)
     echo "usage: $0 {launch|check|report} (on the box: setup|run|verify|gate|monitor)" >&2
     exit 2

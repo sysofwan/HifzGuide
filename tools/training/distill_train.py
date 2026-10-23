@@ -574,6 +574,35 @@ def preflight(
     return peak_gib, fits
 
 
+def write_run_config(
+    out_dir: Path, config: TrainConfig, init_from: Path | None, use_ema: bool
+) -> None:
+    """Write the run's config, plus the warm start it was given.
+
+    The warm start is provenance, not config: a resume restores weights from the checkpoint
+    and never reads ``--init-from``, so it must not join :data:`RESUME_CRITICAL_FIELDS` (which
+    compares a checkpoint's config against a resume's). It is still recorded, because which
+    weights a run learned on top of defines the run and is not recoverable from the
+    checkpoint it produced.
+    """
+    (out_dir / CONFIG_FILENAME).write_text(
+        json.dumps(
+            {
+                **asdict(config),
+                "initialisation": {
+                    "init_from": None if init_from is None else str(init_from),
+                    "init_weights": (
+                        None if init_from is None else ("ema" if use_ema else "live")
+                    ),
+                },
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
 def save_checkpoint(
     path: Path,
     step: int,
@@ -646,9 +675,7 @@ def train(
 
     out_dir = Path(config.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / CONFIG_FILENAME).write_text(
-        json.dumps(asdict(config), indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    write_run_config(out_dir, config, init_from, use_ema)
 
     spec = PRESETS[config.preset]
     print(f"[setup] preset {config.preset}: {spec}")

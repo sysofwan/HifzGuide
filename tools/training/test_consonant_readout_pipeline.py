@@ -8,6 +8,7 @@ caches read-only; the tracer reports it as "cannot certify" until C95's caches e
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,7 @@ from training import aug_readout_spec as asp
 from training import aug_readout_verdict as av
 from training import consonant_readout as cr
 from training import truth_baseline as tb
-from training.external_corpus import WordGrade
+from training.external_corpus import WordGrade, flag_view
 from training.muraja_policy import SHIPPED_DEFAULT, SiteGrade, WORD_FLAGGED
 from training.nonpro_eval import ClipItem
 from training.word_flags import CAUSES, Flag
@@ -156,17 +157,33 @@ def test_freeze_refuses_the_confirm_half_always():
         cr.run_freeze(asp.CONSONANT1, ConfirmHalf(), half="confirm")
 
 
-def test_freeze_dry_runs_on_the_look_half_without_writing_freeze_json():
+def test_freeze_dry_runs_on_the_look_half_and_writes_neither_artifact(monkeypatch, tmp_path,
+                                                                      capsys):
+    """The CLI's dry run prints the summary and leaves both artifacts alone (review R1.2):
+    absent when they never existed, byte-identical when they do."""
     items = [_item(i) for i in range(3)]
-    before = (cr.ROUND_DIR / "freeze.json").exists()
     sources = LookHalf(items, _freeze_grades(items))
-    record = cr.run_freeze(asp.CONSONANT1, sources, half="look")
+    record_path, doc_path = tmp_path / "freeze.json", tmp_path / "freeze.md"
+    monkeypatch.setattr(cr, "FREEZE_PATH", record_path)
+    monkeypatch.setattr(cr, "FREEZE_DOC_PATH", doc_path)
+    monkeypatch.setattr(ar, "Sources", lambda spec: sources)
+    monkeypatch.setattr(sys, "argv", ["consonant_readout", "freeze", "--half", "look",
+                                      "--dry-run"])
+
+    cr.main()
+    record = json.loads(capsys.readouterr().out)
     assert sources.read == ["look"]
     assert record["model"] == "c95"  # the round's baseline
     assert record["causes"] == {"consonant": 1, "tashkeel": 1}
     assert record["substitutions"] == [{"cause": "other_consonant",
                                         "substitution": "س→ش", "words": 1}]
-    assert (cr.ROUND_DIR / "freeze.json").exists() == before  # #177's artifact, not #175's
+    assert not record_path.exists() and not doc_path.exists()
+
+    record_path.write_text('{"kept": 1}\n', encoding="utf-8")
+    doc_path.write_text("kept\n", encoding="utf-8")
+    cr.main()
+    assert record_path.read_text(encoding="utf-8") == '{"kept": 1}\n'
+    assert doc_path.read_text(encoding="utf-8") == "kept\n"
 
 
 # --- the round's models and the frozen G6 sites -------------------------------------------------
@@ -812,15 +829,19 @@ def test_the_committed_g5_list_is_ten_consonant_substitutions_without_the_madd_a
     assert rows == sorted(rows, key=lambda row: (-row["words"], row["substitution"]))
 
 
-def test_the_committed_g5_list_is_c95_s_shipped_consonant_tally_s_top_ten():
+def test_the_committed_g5_list_is_c95_s_shipped_tally_s_consonant_top_ten():
+    """G5 is derived from the full diagnostic (review R1.1): consonant causes only, the madd
+    alif aside, while the diagnostic itself keeps shaddah and the madd alif."""
     models = _committed_freeze()["models"]
     shipped = models["c95"]["scorings"]["shipped_default"]["substitutions"]
-    assert set(shipped) == set(am.CONSONANT_FLAG_CAUSES)
+    assert {"other_consonant", "soft_pair", "target_pair", "shaddah"} <= set(shipped)
     for cause, rows in shipped.items():
-        assert 0 < len(rows) <= 10
-        assert {row["cause"] for row in rows} == {cause}
+        assert len(rows) <= 10
+        assert all(row["cause"] == cause for row in rows)
         assert rows == sorted(rows, key=lambda row: (-row["words"], row["substitution"]))
-    rows = [row for rows in shipped.values() for row in rows
+    assert shipped["shaddah"]  # the diagnostic reports the cause it measures
+    assert am.MADD_ALIF in {row["substitution"] for row in shipped["other_consonant"]}
+    rows = [row for cause in am.CONSONANT_FLAG_CAUSES for row in shipped[cause]
             if row["substitution"] != am.MADD_ALIF]
     assert _committed_freeze()["substitutions"] == sorted(
         rows, key=lambda row: (-row["words"], row["substitution"]))[:10]
@@ -894,16 +915,17 @@ def test_the_freeze_writer_refuses_to_move_a_committed_freeze(tmp_path):
     assert not doc.exists()
 
 
-#: A synthetic tally for the G5 rule: substitution, cause, flagged words. The madd alif and the
-#: shaddah cause never enter the list; ties at 5, 4, 3 and 2 order by substitution only.
+#: A synthetic tally for the freeze's two readings: substitution, cause, flagged words. The
+#: diagnostic keeps every cause, the madd alif and the shaddah rows included, and truncates each
+#: cause to ten; only G5 excludes them. Ties at 5, 4, 3, 2 and 1 order by substitution only.
 FREEZE_TALLY = (
     ("ا→∅", "other_consonant", 99), ("ن→∅", "shaddah", 9), ("ز→س", "other_consonant", 6),
     ("ب→ت", "other_consonant", 5), ("ج→د", "other_consonant", 5),
     ("س→ش", "target_pair", 4), ("ص→س", "soft_pair", 4),
     ("ح→ه", "soft_pair", 3), ("خ→ح", "other_consonant", 3),
     ("د→ض", "other_consonant", 2), ("ر→ل", "other_consonant", 2),
-    ("ط→ت", "other_consonant", 2), ("ع→ء", "other_consonant", 1),
-    ("ي→ى", "other_consonant", 1),
+    ("ط→ت", "other_consonant", 2), ("ق→ك", "other_consonant", 2),
+    ("ع→ء", "other_consonant", 1), ("ي→ى", "other_consonant", 1),
 )
 
 
@@ -913,6 +935,12 @@ def _scored_grade(model: str, scoring: str, item: ClipItem, position: int,
                      SiteGrade("flagged" if flag is not None else "not_flagged"), flag)
 
 
+def _top(rows: list[dict], cause: str) -> list[dict]:
+    """Each cause's top ten from the canonical tally: words first, then substitution."""
+    return sorted((row for row in rows if row["cause"] == cause),
+                  key=lambda row: (-row["words"], row["substitution"]))[:10]
+
+
 def test_freeze_tables_takes_the_top_ten_consonant_substitutions_by_words_then_unicode():
     plan = [Flag((cause,), (), "minor", (), consonants=((cause, substitution),))
             for substitution, cause, words in FREEZE_TALLY for _ in range(words)]
@@ -920,7 +948,24 @@ def test_freeze_tables_takes_the_top_ten_consonant_substitutions_by_words_then_u
     grades = [_scored_grade("c95", SHIPPED, item, position, plan[2 * i + position])
               for i, item in enumerate(items) for position in (0, 1)]
     tables = cr.freeze_tables(grades)
+
+    # G5: the round's consonant causes only, the madd alif aside, the list over every cause.
     assert [row["substitution"] for row in tables["substitutions"]] == [
         "ز→س", "ب→ت", "ج→د", "س→ش", "ص→س", "ح→ه", "خ→ح", "د→ض", "ر→ل", "ط→ت"]
     assert len(tables["substitutions"]) == 10
-    assert set(tables["models"]["c95"]["scorings"]["shipped_default"]["causes"]) == set(CAUSES)
+
+    # The cause diagnostic is the full canonical tally (review R1.1): shaddah and the madd alif
+    # stay in, and each cause is truncated to ten only after its own rows are ranked.
+    shipped = tables["models"]["c95"]["scorings"]["shipped_default"]
+    diagnostic = shipped["substitutions"]
+    canonical = flag_view(grades)["substitutions"]
+    assert {row["cause"] for row in canonical} == {"other_consonant", "shaddah",
+                                                   "soft_pair", "target_pair"}
+    for cause in {row["cause"] for row in canonical}:
+        assert diagnostic[cause] == _top(canonical, cause)
+    assert diagnostic["shaddah"] == [{"cause": "shaddah", "substitution": "ن→∅", "words": 9}]
+    assert {"cause": "other_consonant", "substitution": am.MADD_ALIF, "words": 99} \
+        in diagnostic["other_consonant"]
+    assert len(diagnostic["other_consonant"]) == 10  # the eleventh other_consonant row drops
+    assert "ي→ى" not in {row["substitution"] for row in diagnostic["other_consonant"]}
+    assert set(shipped["causes"]) == set(CAUSES)

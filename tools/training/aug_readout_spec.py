@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from collections.abc import Mapping
 
-from training.aug_readout_metrics import CANDIDATE, CONTROL, H448
+from training.aug_readout_metrics import C95, CANDIDATE, CONTROL, H448
 from training.external_decode import ModelSpec
 
 DOCS_DIR = Path(__file__).parent.parent.parent / "docs"
@@ -26,7 +26,6 @@ HARNESS_SHA256 = "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d
 #: The pre-registration's committed text (#174), owner-approved 2026-10-22.
 PREREG_SHA256 = "daa611ab401f1350ef920b6801c9c439262579d4aced3f7be062a240cf7ed9d7"
 #: C95's checkpoint: the consonant round's paired baseline (#174).
-C95 = "c95"
 C95_REF = "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt"
 C95_SHA256 = "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6"
 EMA = "ema"
@@ -63,6 +62,9 @@ class RoundSpec:
     doc_path: Path
     title: str
     comparisons: tuple[tuple[str, str], ...]
+    #: The roles a gated set reads (the round's students), as roles: an arm's role becomes its
+    #: chosen weights, a pinned model or a baseline keeps its name (``#176`` decodes C95).
+    students: tuple[str, ...] = (CANDIDATE, CONTROL, H448)
     bars: Mapping[str, float] = field(default_factory=dict)
     models: Mapping[str, ModelIdentity] = field(default_factory=dict)
     #: Role -> the committed decode file's model name (C95's decodes are #95's candidate's).
@@ -82,6 +84,8 @@ CONSONANT1 = RoundSpec(
     sets=("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "qud_other", "tadabur_dev_unseen",
           "ship_a_verified"),
     doc_path=CONSONANT_DOC_PATH, title="The consonant round's readout (#175)",
+    #: The round has no control (#174): C95 is its paired baseline.
+    students=(CANDIDATE, C95, H448),
     #: Bar 2's 4.7 is 10 % of C95's published 47.41 flags per 1,000 (#174).
     bars={"all_cause_upper_below": 0.0, "reduction_at_least": 4.7,
           "consonant_upper_below": 0.0, "agreement_lower_above": 0.0,

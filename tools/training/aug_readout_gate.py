@@ -166,26 +166,32 @@ def decodes_file(set_name: str, model: str) -> Path:
     return directory / f"{set_name}.{model}.jsonl.gz"
 
 
-def allowed_models(set_name: str, choice: Mapping | None) -> tuple[str, ...]:
+def allowed_models(set_name: str, choice: Mapping | None,
+                   spec: RoundSpec | None = None) -> tuple[str, ...]:
     """The models a set may be decoded (and read) for: the look half, the candidate's two
     weights; any gated set only with a committed choice (``choice``, from
-    :func:`committed_choice`), for both arms at the chosen weights (and, on Tadabur, the two
-    baselines, for the blank share)."""
+    :func:`committed_choice`), for the round's students at the chosen weights (and, on Tadabur,
+    the two baselines, for the blank share). A round with no control (``consonant1``) reads no
+    control decodes."""
+    specification = spec or AUG95
     if not SETS[set_name].gated:
         return LOOK_MODELS
     if choice is None:
         raise SystemExit(f"{set_name} is read only after the look half, with a committed choice")
-    chosen = tuple(arm_model(arm, choice["weights"]) for arm in ARMS)
-    return chosen + BASELINES if set_name == TADABUR_SET else chosen
+    students = tuple(arm_model(role, choice["weights"]) if role in ARMS else role
+                     for role in specification.students)
+    baselines = BASELINES if set_name == TADABUR_SET else ()
+    return tuple(dict.fromkeys((*students, *baselines)))
 
 
 def needs(phase: str, weights: str | None,
           spec: RoundSpec | None = None) -> dict[str, tuple[str, ...]]:
     """Every set a sitting reads readout decodes of, and the models it reads there."""
-    declared = (spec or AUG95).sets
+    specification = spec or AUG95
+    declared = specification.sets
     if phase == LOOK:
         return {name: LOOK_MODELS for name in declared if name == TARTEEL_LOOK}
-    return {name: allowed_models(name, {"weights": weights}) for name in declared
+    return {name: allowed_models(name, {"weights": weights}, specification) for name in declared
             if name in SETS and SETS[name].gated}
 
 
@@ -260,7 +266,7 @@ def require_manifest(records: Mapping[str, Mapping], required: Mapping[str, Iter
     per_model: dict[str, dict] = {}
     for set_name, models in required.items():
         if SETS[set_name].gated:
-            allowed = allowed_models(set_name, choice)
+            allowed = allowed_models(set_name, choice, spec)
         for model in models:
             if SETS[set_name].gated and model not in allowed:
                 raise ValueError(f"{set_name}/{model}: weights the choice did not pick")

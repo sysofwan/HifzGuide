@@ -289,7 +289,7 @@ Some clips start after their first sound: Tadabur's source file is cut inside th
 letter (the `ء` of `ءَلَّذِينَ`, the `ث` of `ثُمَّ`), so a mark read from it tests the clip, not the
 model. `tadabur.onset_guard` marks an item **exposed** when its mark is read in the first word
 of its segment, which starts at the file's sample 0 or at a cut the segmenter placed
-(187 of 2423 items: 108 at a
+(187 of 2367 items: 108 at a
 file start, 79 at a segmenter cut). An owner note with `trim`,
 `cut` or `split` makes an item `onset_trimmed` (a negated one, "no trim", keeps it), and it
 leaves every cell below; such an item is no training target either.
@@ -338,7 +338,7 @@ verdicts committed when the guard was built:
 | p35_fixture:shadda | 13 | 1 | 1 | 0 | 1 | 0 | 0 |
 | ship_a:shaddah:held:h448_single:base_held | 659 | 43 | 3 | 40 | 2 | 0 | 0 |
 | ship_a:shaddah:held:h448_single:base_not_held | 93 | 40 | 33 | 7 | 28 | 18 | 18 |
-| ship_a:ت:h448_other | 106 | 6 | 4 | 2 | 5 | 0 | 0 |
+| ship_a:ت:h448_other | 50 | 6 | 4 | 2 | 5 | 0 | 0 |
 | ship_a:ذ:h448_other | 34 | 2 | 1 | 1 | 2 | 0 | 0 |
 | ship_a:س→ش:h448_partner:base_wrong | 2 | 1 | 1 | 0 | 1 | 0 | 0 |
 | ship_a:ص:h448_other | 8 | 1 | 0 | 1 | 0 | 0 | 0 |

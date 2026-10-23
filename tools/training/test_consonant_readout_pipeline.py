@@ -581,6 +581,25 @@ def test_the_round_report_builder_reports_every_observed_substitution(monkeypatc
     assert "g5.س→ش" in gated and "g5.ق→ك" not in gated
 
 
+def test_the_report_grades_the_bench_departures_it_found(monkeypatch):
+    """A non-empty departure list is grades, not a set: the real-data regeneration found the
+    builders reading ``.grades`` off it."""
+    item = _item(0)
+    reference = "قَالَ سَططَ"
+    decodes = {role: {item.key: {"checks": [{"hop": reference}], "stream_b0": reference}}
+               for role in cr.ROUND_ROLES}
+    grades = [_grade(role, item, position, None)
+              for role in cr.ROUND_ROLES for position in (0, 1)]
+    data = cr.RoundData(tarteel=None, qdat=ar.SetData([item], decodes, grades),
+                        qud_other=None, qud_half=None, tadabur=None,
+                        bench={item.audio_filename: reference}, catch=None)
+    monkeypatch.setattr("training.nonpro_eval.bench_departures",
+                        lambda item, text: {grades[0].word_index})
+    report = cr.confirm_report(data, spec=asp.CONSONANT1)
+    departures = report["catch"]["qdat_bench_departures"]
+    assert departures is not None and departures["comparisons"]
+
+
 # --- a missing input cannot certify, never crashes (review R1.3) --------------------------------
 
 

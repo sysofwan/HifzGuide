@@ -13,6 +13,8 @@ be mistaken for each other.
 
 from __future__ import annotations
 
+import json
+import re
 import sys
 
 import pytest
@@ -119,4 +121,73 @@ def test_both_clis_expose_the_ema_flag(module, monkeypatch, capsys):
         module.main()
 
     assert exit_info.value.code == 0
-    assert "--ema" in capsys.readouterr().out
+    # A whole option, not a substring: "--ema-decay" in the help prose or a rename to
+    # "--ema-weights" must not satisfy this.
+    assert re.search(r"^\s+--ema\b", capsys.readouterr().out, re.MULTILINE)
+
+
+def test_a_record_for_the_other_weight_set_is_refused(tmp_path):
+    export = tmp_path / "export"
+    export.mkdir()
+    (export / "sizing_h256.json").write_text(json.dumps({"weights": "live"}), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="weights='live'"):
+        verify_student_export.check_export_record(export, use_ema=True)
+    verify_student_export.check_export_record(export, use_ema=False)
+
+
+def test_an_export_without_a_record_is_refused(tmp_path):
+    """Proceeding would print a plausible table with nothing saying which weights it read."""
+    export = tmp_path / "export"
+    export.mkdir()
+
+    with pytest.raises(SystemExit, match="no sizing_"):
+        verify_student_export.check_export_record(export, use_ema=True)
+
+
+def test_verify_loads_its_reference_row_with_the_requested_weights(tmp_path, monkeypatch):
+    """Dropping ``use_ema=args.ema`` from the verifier must fail here, not in a release."""
+    from training import decode_evalset, decoding
+
+    export = tmp_path / "export"
+    export.mkdir()
+    (export / "sizing_h256.json").write_text(json.dumps({"weights": "ema"}), encoding="utf-8")
+
+    class EvalSet:
+        def subset(self, split):
+            return [object()]
+
+    monkeypatch.setattr(decode_evalset, "load_manifest", lambda path: EvalSet())
+    monkeypatch.setattr(decode_evalset, "check_provenance", lambda evalset, teacher: None)
+
+    import transformers
+
+    monkeypatch.setattr(
+        transformers.SeamlessM4TFeatureExtractor, "from_pretrained",
+        staticmethod(lambda *args, **kwargs: object()),
+    )
+
+    seen = {}
+
+    class _StopAfterLoad(Exception):
+        pass
+
+    def record(checkpoint, device, use_ema=False):
+        seen["use_ema"] = use_ema
+        raise _StopAfterLoad
+
+    monkeypatch.setattr(decoding, "load_student_from_checkpoint", record)
+    monkeypatch.setattr(
+        sys, "argv",
+        [
+            "verify_student_export.py",
+            "--checkpoint", str(tmp_path / "checkpoint.pt"),
+            "--eval-set", str(tmp_path / "eval"),
+            "--export", str(export),
+            "--ema",
+        ],
+    )
+    with pytest.raises(_StopAfterLoad):
+        verify_student_export.main()
+
+    assert seen["use_ema"] is True

@@ -44,7 +44,9 @@ Usage::
         --eval-set ../tadabur/gate_eval --export student_coreml --num-clips 300
 
 Both take ``--ema`` to read the averaged weights a ``--ema-decay`` run stored beside the live
-ones; pass it to both so the scored weights are the exported ones.
+ones; pass it to both so the scored weights are the exported ones. The verifier also refuses an
+export directory whose ``sizing_*.json`` records the other weight set -- the drift table reads
+the same for both, so that mismatch cannot surface any other way.
 
 macOS only (coremltools). The evaluation set and checkpoint come from the Linux box.
 """
@@ -57,6 +59,32 @@ import time
 from pathlib import Path
 
 import numpy as np
+
+
+def check_export_record(export_dir: Path, use_ema: bool) -> None:
+    """Refuse an export whose recorded weight set is not the one asked for.
+
+    ``sizing_{preset}.json`` is the only surviving record of which weights an export holds.
+    The packages cannot answer it: on a probe, the live and EMA weights agree on 100% of frame
+    argmaxes with a mean |Δlogit| of 0.0256 -- the same order as 6-bit quantization noise -- so
+    a drift table against the wrong set still reads "no material drift". A mismatch has to be
+    loud here or it is invisible everywhere.
+    """
+    wanted = "ema" if use_ema else "live"
+    records = sorted(Path(export_dir).glob("sizing_*.json"))
+    if not records:
+        raise SystemExit(
+            f"no sizing_*.json in {export_dir}: it does not record which weights were "
+            f"exported. Re-run export_student_coreml.py --output-dir there (with --ema for "
+            f"the release), then verify that directory."
+        )
+    for path in records:
+        recorded = json.loads(path.read_text(encoding="utf-8")).get("weights")
+        if recorded != wanted:
+            raise SystemExit(
+                f"{path.name} records weights={recorded!r}, but this run asks for "
+                f"{wanted!r} (--ema {'set' if use_ema else 'not set'})."
+            )
 
 
 def window_features(extractor, samples, frames: int = 250):
@@ -113,18 +141,19 @@ def main() -> None:
     )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
+    check_export_record(args.export, args.ema)
 
     import coremltools as ct
     import torch
     from transformers import SeamlessM4TFeatureExtractor
 
-    from export_student_coreml import load_student
     from training.decode_evalset import (
         CLIPS_DIRNAME,
         check_provenance,
         load_manifest,
         read_clip_audio,
     )
+    from training.decoding import load_student_from_checkpoint
     from training.distill_data import SAMPLE_RATE
     from training.distill_eval import levenshtein, score_decode_agreement
     from training.distill_student import TEACHER_MODEL_ID
@@ -141,7 +170,9 @@ def main() -> None:
     clips_dir = Path(args.eval_set) / CLIPS_DIRNAME
     extractor = SeamlessM4TFeatureExtractor.from_pretrained("obadx/muaalem-model-v3_2")
 
-    student, _, _ = load_student(args.checkpoint, None, use_ema=args.ema)
+    student, _, _ = load_student_from_checkpoint(
+        args.checkpoint, "cpu", use_ema=args.ema
+    )
 
     def torch_logits(features):
         with torch.no_grad():

@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import argparse
 import gc
+import hashlib
 import json
 import shutil
 import subprocess
@@ -218,6 +219,15 @@ def palettize(mlpackage_path: Path, output_path: Path, nbits: int = 6):
 
 def directory_size_mb(path: Path) -> float:
     return sum(f.stat().st_size for f in path.rglob("*") if f.is_file()) / (1024 * 1024)
+
+
+def sha256_file(path: Path) -> str:
+    """The checkpoint's identity, recorded beside the export it produced."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def benchmark_ane(mlpackage_path: Path, runs: int = 20, warmup: int = 5) -> float | None:
@@ -399,6 +409,13 @@ def main() -> None:
     report = {
         "preset": preset,
         "step": step,
+        # The record a release is audited against: live and EMA decode almost identically on
+        # a probe, so the weights cannot be inferred from the packages or the drift table.
+        "weights": "ema" if args.ema else "live",
+        "checkpoint": None if args.random_init else str(args.checkpoint),
+        "checkpoint_sha256": (
+            None if args.random_init else sha256_file(args.checkpoint)
+        ),
         "random_init": args.random_init,
         "num_params": num_params,
         "fp16_mb": round(fp16_mb, 1),

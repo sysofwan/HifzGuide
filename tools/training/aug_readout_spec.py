@@ -62,9 +62,10 @@ class RoundSpec:
     doc_path: Path
     title: str
     comparisons: tuple[tuple[str, str], ...]
-    #: The roles a gated set reads (the round's students), as roles: an arm's role becomes its
-    #: chosen weights, a pinned model or a baseline keeps its name (``#176`` decodes C95).
-    students: tuple[str, ...] = (CANDIDATE, CONTROL, H448)
+    #: The roles whose **readout decodes** a gated set reads, as roles: an arm's role becomes its
+    #: chosen weights, a pinned model (``#176`` decodes C95) keeps its name. The reused baselines
+    #: (``h448``, the teacher) are committed elsewhere and added on Tadabur, as #95 does.
+    students: tuple[str, ...] = (CANDIDATE, CONTROL)
     bars: Mapping[str, float] = field(default_factory=dict)
     models: Mapping[str, ModelIdentity] = field(default_factory=dict)
     #: Role -> the committed decode file's model name (C95's decodes are #95's candidate's).
@@ -84,8 +85,8 @@ CONSONANT1 = RoundSpec(
     sets=("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "qud_other", "tadabur_dev_unseen",
           "ship_a_verified"),
     doc_path=CONSONANT_DOC_PATH, title="The consonant round's readout (#175)",
-    #: The round has no control (#174): C95 is its paired baseline.
-    students=(CANDIDATE, C95, H448),
+    #: The round has no control (#174): C95 is its paired baseline and its one extra student.
+    students=(CANDIDATE, C95),
     #: Bar 2's 4.7 is 10 % of C95's published 47.41 flags per 1,000 (#174).
     bars={"all_cause_upper_below": 0.0, "reduction_at_least": 4.7,
           "consonant_upper_below": 0.0, "agreement_lower_above": 0.0,

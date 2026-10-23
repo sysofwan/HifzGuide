@@ -12,6 +12,7 @@ Locked (#176): later turns may add tests here but must not weaken these.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -179,12 +180,16 @@ def test_the_qother_merge_appends_its_models_entry_and_never_rewrites_one(cb, tm
 
 def test_the_committed_qother_decode_is_the_complement_under_the_round_s_pin(cb):
     """The committed file holds every complement segment, on the audio the base decode read,
-    and the round records C95's pinned identity for the set (`validate_identity`)."""
+    and the round records C95's pinned identity for the set (`validate_identity`). The two
+    baselines' committed decodes already cover the half — h448's checked here, base's by
+    `read_readout` below."""
     from training.qud_pilot import read_decodes
 
-    base = {}
+    base, h448 = {}, {}
     for slug in PILOT:
         base.update(read_decodes(slug, "base"))
+        h448.update(read_decodes(slug, "h448"))
+    assert cr.load_qud_complement() <= set(h448)
     lines = ar.read_readout(QOTHER, C95, base, cr.load_qud_complement(),
                             spec=asp.CONSONANT1)
     assert set(lines) == cr.load_qud_complement()
@@ -288,7 +293,15 @@ def test_the_g6_read_cannot_certify_without_c95_s_caches(cb, tmp_path):
 
 # --- the reading --------------------------------------------------------------------------------
 
+#: The reading re-grades 10k items through the Muraja harness and reads QUD's metadata from the
+#: Hub (the slow, Hub-gated class of #144's full regeneration, `test_qud_pilot.py`), so it runs
+#: only when asked:
+#: ``HIFZGUIDE_FULL_REGENERATION=1 MURAJA_HARNESS_DIR=<a protocol-3 harness> pytest -k baseline_read``.
+FULL_REGENERATION = os.environ.get("HIFZGUIDE_FULL_REGENERATION") == "1"
 
+
+@pytest.mark.skipif(not FULL_REGENERATION, reason="set HIFZGUIDE_FULL_REGENERATION=1 (slow, "
+                    "needs the Hub and the Muraja harness)")
 def test_the_baseline_read_reports_the_qud_half_and_g6(cb):
     """The PR's numbers, from the committed decodes through the #175 harness."""
     _skip_without_harness()

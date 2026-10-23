@@ -52,7 +52,7 @@ FLAG = Flag(("other_consonant",), (), "minor", (), consonants=(("other_consonant
 def _cause_grades() -> list[WordGrade]:
     """Four items, two words each: one flag per cause, and the madd alif alone."""
     flags = [(("other_consonant", "س→ش")), (("other_consonant", "ا→∅")),
-             (None, None), (("target_pair", "ط→ق")),
+             None, (("target_pair", "ط→ق")),
              (("soft_pair", "ن→ل")), None, None, None]
     items = [_item(i) for i in range(4)]
     out = []
@@ -110,7 +110,7 @@ def test_the_departure_and_equals_subsets_partition_the_pooled_agreement():
     # The teacher departs from the reference word on the second word of items 0 and 2.
     assert departs.by_model["candidate"][1].tolist() == [1, 0, 1]
     assert departs.by_model["candidate"][0].tolist() == [1, 0, 0]
-    assert equals.by_model["candidate"][1].tolist() == [1, 1, 1]
+    assert equals.by_model["candidate"][1].tolist() == [1, 2, 1]
     assert equals.by_model["candidate"][0].tolist() == [1, 0, 1]
     for model in models:
         assert np.array_equal(departs.by_model[model][0] + equals.by_model[model][0],

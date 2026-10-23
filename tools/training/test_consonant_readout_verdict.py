@@ -120,7 +120,7 @@ def test_every_pre_registered_condition_is_read_from_the_report():
     (lambda r: _comparison(r, "main", "tashkeel_cause").update(
         interval=_interval(-1.0, 1.01)), "g4.tashkeel_cause"),
     (lambda r: _comparison(r, "substitutions", "س→ش").update(
-        veto_interval=_interval(-0.1, 0.001)), "g5.س→ش"),
+        veto_interval=_interval(0.001, 0.2)), "g5.س→ش"),
     (lambda r: r["catch"]["ship_a_verified"].update(difference=-3), "g6.ship_a_verified"),
 ])
 def test_each_bar_fails_just_past_its_boundary(edit, name):

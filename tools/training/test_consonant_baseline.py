@@ -360,7 +360,7 @@ def test_the_launch_starts_the_detached_run_with_the_remote_pid(tmp_path):
     _mock(bindir / "ssh", '#!/bin/sh\n'
           'printf "%s\\n" "$2" >> "$SSH_LOG"\n'
           'case "$2" in\n'
-          '  nohup*) exec sh -c "$2" ;;\n'
+          '  *nohup*) exec sh -c "$2" ;;\n'
           '  *tar\\ -x*) cat >/dev/null ;;\n'
           'esac\n')
     _mock(bindir / "flock", '#!/bin/sh\nshift\nexec "$@"\n')
@@ -375,3 +375,41 @@ def test_the_launch_starts_the_detached_run_with_the_remote_pid(tmp_path):
     while not marker.exists() and time.monotonic() < deadline:
         time.sleep(0.05)
     assert marker.exists()
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def test_the_run_stops_the_decode_group_at_the_gpu_budget(tmp_path):
+    """A pass still decoding at the deadline is stopped with every decode under it; the run
+    writes the distinct budget-exceeded result and the per-item output already on disk stays
+    (#176 R1.2)."""
+    root = tmp_path / "issue"
+    (root / "repo" / "tools").mkdir(parents=True)
+    (root / "decodes").mkdir()
+    shard = root / "decodes" / "qud_other.0.c95.jsonl"
+    shard.write_text('{"key": "decoded-before-expiry"}\n', encoding="utf-8")
+    bindir, pids = tmp_path / "bin", tmp_path / "pids"
+    bindir.mkdir()
+    _mock(bindir / "python", f'#!/bin/sh\nprintf "%s\\n" "$$" >> "{pids}"\nsleep 60\n')
+    conda = tmp_path / "conda.sh"
+    conda.write_text("conda() { :; }\n", encoding="utf-8")
+    env = {**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}",
+           "ISSUE_ROOT": str(root), "CONDA": str(conda), "BUDGET": "2", "PARALLEL": "1"}
+    done = subprocess.run(["bash", str(SCRIPT), "run"], env=env, capture_output=True,
+                          text=True, stdin=subprocess.DEVNULL, timeout=60)
+    assert done.returncode == 2, (done.returncode, done.stdout, done.stderr)
+    assert (root / "logs" / "baseline.exit").read_text(encoding="utf-8").strip() == "2"
+    assert "budget-exceeded" in (root / "logs" / "baseline.done").read_text(encoding="utf-8")
+    assert shard.read_text(encoding="utf-8") == '{"key": "decoded-before-expiry"}\n'
+    recorded = [int(pid) for pid in pids.read_text(encoding="utf-8").split()]
+    assert recorded, "the pass never started a decode"
+    deadline = time.monotonic() + 5
+    while any(_alive(pid) for pid in recorded) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not [pid for pid in recorded if _alive(pid)], "a decode survived the deadline"

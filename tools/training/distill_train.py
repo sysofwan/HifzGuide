@@ -146,6 +146,11 @@ class TrainConfig:
     temperature: float = 2.0
     nonblank_weight: float = 3.0
     confirm_weight: float = 2.0
+    # The teacher's hub commit. Empty fetches the default branch, which is what every run
+    # before #178 did (and what the default must stay); a run whose budget was
+    # pre-registered against a commit pins it, because the hub's default branch can move
+    # between two loads -- including between a smoke and the run it gates.
+    teacher_revision: str = ""
     # 0.0 disables averaging. 0.999 is ~1000 steps of memory, which at ~1 step/s is the
     # timescale over which this run's loss visibly oscillates.
     ema_decay: float = 0.0
@@ -194,6 +199,9 @@ RESUME_CRITICAL_FIELDS = (
     "nonblank_weight",
     "confirm_weight",
     "ema_decay",
+    # The teacher every step was fitted against: a resume that swapped it would splice two
+    # targets onto one optimiser state, which is what this guard exists to refuse.
+    "teacher_revision",
 )
 
 
@@ -301,18 +309,32 @@ def seed_everything(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
-def load_teacher(device: torch.device, model_id: str = TEACHER_MODEL_ID):
+def load_teacher(
+    device: torch.device, model_id: str = TEACHER_MODEL_ID, revision: str | None = None
+):
     """The frozen teacher in bf16, eval mode, gradients disabled.
 
     Loaded by :func:`training.decoding.load_hf_model`, the one loader every tool decodes a
     Hugging Face reference through, so training targets and evaluation see identical weights.
+    ``revision`` pins the hub commit; ``None`` keeps the loader's default branch.
     """
     from training.decoding import load_hf_model
 
-    teacher = load_hf_model(model_id).to(device=device, dtype=torch.bfloat16)
+    teacher = load_hf_model(model_id, revision=revision).to(
+        device=device, dtype=torch.bfloat16
+    )
     for param in teacher.parameters():
         param.requires_grad_(False)
     return teacher
+
+
+def load_run_teacher(device: torch.device, config: TrainConfig):
+    """The run's teacher: the base model at the commit ``config.teacher_revision`` names.
+
+    Both loads -- the preflight's and the run's -- go through here, so a pinned run cannot
+    preflight against one teacher and train against another.
+    """
+    return load_teacher(device, revision=config.teacher_revision or None)
 
 
 def build_augmenter(config: TrainConfig):
@@ -539,7 +561,7 @@ def preflight(
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats(device)
 
-    teacher = load_teacher(device)
+    teacher = load_run_teacher(device, config)
     student = build_student(spec).to(device)
     student.train()
     projector = FeatureProjector(
@@ -680,14 +702,15 @@ def train(
     spec = PRESETS[config.preset]
     print(f"[setup] preset {config.preset}: {spec}")
 
-    teacher = load_teacher(device)
+    teacher = load_run_teacher(device, config)
     student = build_student(spec).to(device)
     student.train()
     projector = FeatureProjector(
         spec.hidden_size, TEACHER_HIDDEN_SIZE, len(DEFAULT_TAP_LAYERS)
     ).to(device)
 
-    print(f"[setup] teacher {count_parameters(teacher) / 1e6:.1f}M (frozen, bf16)")
+    print(f"[setup] teacher {count_parameters(teacher) / 1e6:.1f}M (frozen, bf16) "
+          f"@ {config.teacher_revision or 'the hub default branch'}")
     print(f"[setup] student {count_parameters(student) / 1e6:.1f}M trainable")
     print(f"[setup] projector {count_parameters(projector) / 1e6:.1f}M (training only)")
 
@@ -956,6 +979,13 @@ def build_parser() -> argparse.ArgumentParser:
         "wrong one is a different experiment under the same name.",
     )
     parser.add_argument(
+        "--teacher-revision",
+        default="",
+        help="the teacher's hub commit to load (default: the hub's default branch, as every "
+        "run before #178). Pin it when the budget was pre-registered against a commit: the "
+        "default branch can move between two loads, including between a smoke and its run.",
+    )
+    parser.add_argument(
         "--hard-weight",
         type=float,
         default=0.0,
@@ -1016,6 +1046,7 @@ def main() -> None:
         nonblank_weight=args.nonblank_weight,
         confirm_weight=args.confirm_weight,
         ema_decay=args.ema_decay,
+        teacher_revision=args.teacher_revision,
     )
 
     device = torch.device("cuda")

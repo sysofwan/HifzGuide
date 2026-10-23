@@ -561,3 +561,88 @@ def test_a_run_with_no_warm_start_records_no_initialisation(tmp_path):
     dt.write_run_config(tmp_path, config, None, False)
     record = json.loads((tmp_path / dt.CONFIG_FILENAME).read_text(encoding="utf-8"))
     assert record["initialisation"] == {"init_from": None, "init_weights": None}
+
+
+#: #174's frozen teacher commit (`obadx/muaalem-model-v3_2` @ 01a1ef9).
+TEACHER_REVISION = "01a1ef9fbe40d144ef845101e89ff924aed3fef5"
+
+
+def test_load_teacher_pins_the_hub_revision(monkeypatch):
+    """The loader's default is the hub's moving branch; a pinned run must not get it."""
+    import training.decoding as decoding
+
+    calls = []
+
+    class _Model:
+        def to(self, **kwargs):
+            return self
+
+        def parameters(self):
+            return []
+
+    def fake_load(model_ref, revision=None):
+        calls.append((model_ref, revision))
+        return _Model()
+
+    monkeypatch.setattr(decoding, "load_hf_model", fake_load)
+    dt.load_teacher(torch.device("cpu"), revision=TEACHER_REVISION)
+    dt.load_teacher(torch.device("cpu"))  # existing callers keep the unpinned default
+    assert calls == [(dt.TEACHER_MODEL_ID, TEACHER_REVISION), (dt.TEACHER_MODEL_ID, None)]
+
+
+def test_the_preflight_and_the_run_load_the_teachers_pinned_revision(tmp_path, monkeypatch):
+    """Both loads -- the preflight's and the run's -- carry the config's revision.
+
+    Each is stopped at its teacher load, so the recorded argument is what that path would
+    have fetched.
+    """
+    loaded = []
+
+    def stop_at_the_teacher(device, model_id=dt.TEACHER_MODEL_ID, revision=None):
+        loaded.append(revision)
+        raise RuntimeError("stop at the teacher")
+
+    monkeypatch.setattr(dt, "load_teacher", stop_at_the_teacher)
+    monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
+    monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda *a, **k: None)
+
+    config = dt.TrainConfig(
+        preset="h384", audio_root="/audio", out_dir=str(tmp_path),
+        teacher_revision=TEACHER_REVISION,
+    )
+    with pytest.raises(RuntimeError, match="stop at the teacher"):
+        dt.preflight(config, torch.device("cpu"), 15.0)
+    with pytest.raises(RuntimeError, match="stop at the teacher"):
+        dt.train(config)
+
+    assert loaded == [TEACHER_REVISION, TEACHER_REVISION]
+    # The run records the pin before it loads anything, so a crash still leaves the recipe.
+    import json
+
+    record = json.loads((tmp_path / dt.CONFIG_FILENAME).read_text(encoding="utf-8"))
+    assert record["teacher_revision"] == TEACHER_REVISION
+
+
+def test_the_teacher_revision_is_resume_critical():
+    """A resume that swapped the teacher would splice two targets onto one optimiser state."""
+    import dataclasses
+
+    config = _config(teacher_revision=TEACHER_REVISION)
+    saved = {**dataclasses.asdict(config), "teacher_revision": "0" * 40}
+    with pytest.raises(SystemExit, match="teacher_revision"):
+        dt.check_resume_compatible(saved, config)
+    # A checkpoint written before the field existed resumes as the unpinned run it was.
+    saved = {
+        field: value
+        for field, value in dataclasses.asdict(config).items()
+        if field != "teacher_revision"
+    }
+    dt.check_resume_compatible(saved, config)
+
+
+def test_the_teacher_revision_flag_defaults_to_the_hub_branch():
+    parser = dt.build_parser()
+    assert parser.parse_args(["--audio-root", "audio"]).teacher_revision == ""
+    assert parser.parse_args(
+        ["--audio-root", "audio", "--teacher-revision", TEACHER_REVISION]
+    ).teacher_revision == TEACHER_REVISION

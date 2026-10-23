@@ -38,7 +38,8 @@ optional. If bar 2 fails, an unseen corpus is the natural next lever, as its own
 - **Read with `--init-from … --init-weights ema`.** The flag is new here: `--init-from` used to
   read the live weights only, and #174 fixes the candidate's start as the averaged ones. It
   stays out of `TrainConfig` and the resume-critical fields, because it initialises a fresh
-  run; the run's log line records `weights=ema`.
+  run; the run's log line records `weights=ema`, and `run_config.json` records both under
+  `initialisation` (`init_from`, `init_weights`).
 - **Preset `h448`, 43 classes** (`training.distill_student.py`): hidden 448, FFN 1792, 7 heads.
   Export size is unchanged from `h448`'s 80.5 MB, inside the ANE budget the preset was sized
   against (`distill_student.py:174-181`; `ml-model-transformation.md`). No export happens in

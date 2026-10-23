@@ -67,7 +67,16 @@ def test_the_committed_worklist_is_frozen_and_its_summary_adds_up():
     linked = unseen_violations({r.site.audio_filename: registry[r.site.audio_filename]
                                 for r in session})
     expected, parts, _ = assemble(load_sites(), session, linked)
-    assert [row.site.site_id for row in rows] == [row.site.site_id for row in expected]
+    # The build keeps a frozen queue row whose site a paused ta-marbuta correction removed
+    # (#130); every other row is the assembly's, in its order.
+    from tadabur import waqf_guard
+
+    got = [row.site.site_id for row in rows]
+    assembled = [row.site.site_id for row in expected]
+    assert [i for i in got if i in set(assembled)] == assembled
+    frozen = [i for i in got if i not in set(assembled)]
+    assert frozen == ["new_audit:tadabur_spk0167_S17_A15_6d312abb_000008.wav#0@63:shaddah"]
+    assert set(frozen) <= waqf_guard.realized_ids()
     by_part = summary["parts"]
     assert set(by_part) == set(PARTS)
     assert by_part[WORDS]["rows"] == len(words)

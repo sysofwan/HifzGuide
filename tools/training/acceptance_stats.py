@@ -79,6 +79,8 @@ REPLICATES = 10_000
 SEED = 20261008
 LOWER_QUANTILE = 0.025
 UPPER_QUANTILE = 0.975
+#: The two-sided 99.5 % interval (#174, G5's veto only): the same draws, a wider tail.
+VETO_QUANTILES = (0.0025, 0.9975)
 #: The normal quantile the Wilson and Tango bounds use: the same one-sided 97.5% end.
 Z = 1.96
 SPARSE_MIN_RECITERS = 10
@@ -139,14 +141,14 @@ def quantile_type7(values: np.ndarray, q: float) -> float:
     return float(a + fraction * (b - a))
 
 
-def lower_bound(replicates: np.ndarray) -> float:
-    """The 2.5th percentile, an undefined replicate counting as −∞."""
-    return quantile_type7(np.where(np.isnan(replicates), -np.inf, replicates), LOWER_QUANTILE)
+def lower_bound(replicates: np.ndarray, quantile: float = LOWER_QUANTILE) -> float:
+    """The ``quantile`` of the replicates (the 2.5th by default), an undefined one as −∞."""
+    return quantile_type7(np.where(np.isnan(replicates), -np.inf, replicates), quantile)
 
 
-def upper_bound(replicates: np.ndarray) -> float:
-    """The 97.5th percentile, an undefined replicate counting as +∞."""
-    return quantile_type7(np.where(np.isnan(replicates), np.inf, replicates), UPPER_QUANTILE)
+def upper_bound(replicates: np.ndarray, quantile: float = UPPER_QUANTILE) -> float:
+    """The ``quantile`` of the replicates (the 97.5th by default), an undefined one as +∞."""
+    return quantile_type7(np.where(np.isnan(replicates), np.inf, replicates), quantile)
 
 
 def ratio(num: np.ndarray, den: np.ndarray) -> float:
@@ -283,20 +285,24 @@ def ratio_interval(
     den: np.ndarray,
     weights: np.ndarray | None = None,
     resample: Resample | None = None,
+    quantiles: tuple[float, float] = (LOWER_QUANTILE, UPPER_QUANTILE),
 ) -> Interval:
     """A single weighted ratio's interval under §1's rules.
 
     The reciter-clustered bootstrap when the cell is neither sparse nor degenerate;
     otherwise the Wilson score interval if the observations are independent and equally
     weighted (``weights`` are the site weights behind ``num`` and ``den``); otherwise none.
-    A zero denominator has none. ``resample`` lets several statistics share one draw.
+    A zero denominator has none. ``resample`` lets several statistics share one draw;
+    ``quantiles`` widens or narrows the two-sided interval (the 99.5 % veto asks for
+    :data:`VETO_QUANTILES`).
     """
     ((num, den),) = _arrays((num, den))
     if not np.sum(den):
         return Interval(None, None, NO_BOUND, "zero denominator")
     replicates = (resample or Resample.by_cluster(clusters)).ratios(num, den)
     if not (is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates)):
-        return Interval(lower_bound(replicates), upper_bound(replicates), BOOTSTRAP)
+        return Interval(lower_bound(replicates, quantiles[0]),
+                        upper_bound(replicates, quantiles[1]), BOOTSTRAP)
     if not independent_equal_weight(clusters, den, weights=weights):
         return Interval(None, None, NO_BOUND, _NOT_INDEPENDENT)
     low, high = wilson_interval(int(round(np.sum(num))), len(clusters), Z)
@@ -309,13 +315,14 @@ def difference_interval(
     comparator: tuple[np.ndarray, np.ndarray],
     weights: np.ndarray | None = None,
     resample: Resample | None = None,
+    quantiles: tuple[float, float] = (LOWER_QUANTILE, UPPER_QUANTILE),
 ) -> Interval:
     """The paired difference arm − comparator of two ratios on one observation set (§1).
 
     Both ratios are recomputed inside every replicate of one shared draw; the observations
     are never restricted to the ones both arms committed. A sparse or degenerate cell takes
     the Tango score interval if independent and equally weighted with a common fixed
-    denominator, otherwise none.
+    denominator, otherwise none. ``quantiles`` selects the two-sided width.
     """
     (num_a, den_a), (num_b, den_b) = _arrays(arm, comparator)
     if not np.sum(den_a) or not np.sum(den_b):
@@ -323,7 +330,8 @@ def difference_interval(
     resample = resample or Resample.by_cluster(clusters)
     replicates = resample.ratios(num_a, den_a) - resample.ratios(num_b, den_b)
     if not (is_sparse(len(clusters), len(set(clusters))) or is_degenerate(replicates)):
-        return Interval(lower_bound(replicates), upper_bound(replicates), BOOTSTRAP)
+        return Interval(lower_bound(replicates, quantiles[0]),
+                        upper_bound(replicates, quantiles[1]), BOOTSTRAP)
     if not independent_equal_weight(clusters, den_a, den_b, weights=weights):
         return Interval(None, None, NO_BOUND, _NOT_INDEPENDENT)
     gains = int(np.sum((num_a == 1) & (num_b == 0)))

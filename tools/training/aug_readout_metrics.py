@@ -35,6 +35,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from training.acceptance_stats import (
+    LOWER_QUANTILE,
+    UPPER_QUANTILE,
+    VETO_QUANTILES,
     AgreementRecord,
     Interval,
     Resample,
@@ -44,14 +47,41 @@ from training.acceptance_stats import (
     ratio,
     ratio_interval,
 )
+from training.word_flags import OTHER_CONSONANT, SOFT_PAIR, TARGET_PAIR, TASHKEEL
 
 #: Scales a ratio is reported on.
 PER_1000 = 1000.0
 POINTS = 100.0
 #: The models every table reads, by role (:mod:`training.aug_readout` binds the arms).
 CANDIDATE, CONTROL, H448, BASE = "candidate", "control", "h448", "base"
-#: The two differences every table shows (#95: "every table is shown twice").
-COMPARISONS = ((CANDIDATE, H448), (CANDIDATE, CONTROL))
+#: The consonant round's paired baseline (#174).
+C95 = "c95"
+#: The paired differences every readout table shows: against ``h448`` and the control (#95,
+#: "every table is shown twice"), and against C95, the consonant round's baseline (#174). A
+#: comparison whose model a set does not carry is left out, so #95's tables are unchanged.
+COMPARISONS = ((CANDIDATE, H448), (CANDIDATE, CONTROL), (CANDIDATE, C95))
+#: The consonant round's two causes (#174): a consonant substitution other than the madd alif,
+#: or a tashkeel error as :mod:`training.word_flags` reads it.
+CONSONANT, TASHKEEL_CAUSE = "consonant", "tashkeel"
+CAUSES = (CONSONANT, TASHKEEL_CAUSE)
+#: The flag causes a consonant error carries; ``ا→∅`` is the madd alif (Muraja#263).
+CONSONANT_FLAG_CAUSES = frozenset({OTHER_CONSONANT, SOFT_PAIR, TARGET_PAIR})
+MADD_ALIF = "ا→∅"
+#: The teacher-departure subsets of agreement (#174, bar 4b).
+DEPARTS, EQUALS = "departs", "equals"
+SUBSETS = (DEPARTS, EQUALS)
+
+
+def carries_cause(flag, cause: str) -> bool:
+    """Whether one flagged word's :class:`training.word_flags.Flag` carries ``cause`` in the
+    round's sense: ``tashkeel`` exactly as ``word_flags`` records it; ``consonant`` through a
+    consonant substitution other than the madd alif (``ا→∅``, Muraja#263)."""
+    if cause == TASHKEEL_CAUSE:
+        return TASHKEEL in flag.causes
+    if cause == CONSONANT:
+        return any(c in CONSONANT_FLAG_CAUSES and substitution != MADD_ALIF
+                   for c, substitution in flag.consonants)
+    raise ValueError(f"{cause!r} is no cause; the round reads {CAUSES}")
 
 
 def comparison_name(a: str, b: str) -> str:
@@ -93,18 +123,22 @@ def _point(value: float, scale: float) -> float | None:
 
 
 def compare(terms: Terms, scale: float,
-            comparisons: Sequence[tuple[str, str]] = COMPARISONS) -> dict:
+            comparisons: Sequence[tuple[str, str]] = COMPARISONS,
+            quantiles: tuple[float, float] = (LOWER_QUANTILE, UPPER_QUANTILE),
+            resample: Resample | None = None) -> dict:
     """Each model's ratio with its interval, and each comparison's paired difference with its
-    interval, every number on ``scale``; one bootstrap draw serves every statistic, and a
-    comparison whose models are not both present is left out."""
-    resample = Resample.by_cluster(terms.clusters)
+    interval, every number on ``scale``; one bootstrap draw serves every statistic (``resample``
+    lets a caller share it), ``quantiles`` sets the two-sided width, and a comparison whose
+    models are not both present is left out."""
+    resample = resample or Resample.by_cluster(terms.clusters)
     clusters = list(terms.clusters)
     models = {}
     for model, (num, den) in terms.by_model.items():
         models[model] = {"num": float(num.sum()), "den": float(den.sum()),
                          "point": _point(ratio(num, den), scale),
                          "interval": _scaled(ratio_interval(clusters, num, den,
-                                                            resample=resample), scale)}
+                                                            resample=resample,
+                                                            quantiles=quantiles), scale)}
     differences = {}
     for a, b in comparisons:
         if a not in terms.by_model or b not in terms.by_model:
@@ -113,8 +147,8 @@ def compare(terms: Terms, scale: float,
         differences[comparison_name(a, b)] = {
             "point": _point(pa - pb, scale),
             "interval": _scaled(difference_interval(clusters, terms.by_model[a],
-                                                    terms.by_model[b], resample=resample),
-                                scale)}
+                                                    terms.by_model[b], resample=resample,
+                                                    quantiles=quantiles), scale)}
     return {"observations": len(clusters), "clusters": len(set(clusters)), "scale": scale,
             "models": models, "comparisons": differences}
 
@@ -140,16 +174,25 @@ def _by_model(grades: Sequence, models: Sequence[str], scoring: str) -> dict[str
 
 
 def false_flag_terms(grades: Sequence, models: Sequence[str], scoring: str,
-                     keep: Callable | None = None) -> Terms:
+                     keep: Callable | None = None, cause: str | None = None) -> Terms:
     """One observation per word every model places: flagged over graded, clustered by the
     word's item; ``keep(grade)`` restricts the words (a word kept for one model is kept for
-    all, so it must not read the model)."""
+    all, so it must not read the model), and ``cause`` keeps only the flagged words whose
+    :class:`training.word_flags.Flag` carries it (:func:`carries_cause`)."""
+    if cause is not None and cause not in CAUSES:
+        raise ValueError(f"{cause!r} is no cause; the round reads {CAUSES}")
     by_model = _by_model(grades, models, scoring)
     first = by_model[models[0]]
     words = sorted(k for k, g in first.items() if keep is None or keep(g))
     clusters = [first[k].item.cluster for k in words]
-    return _terms(clusters, {m: [(float(by_model[m][k].flagged), float(by_model[m][k].graded))
-                                 for k in words] for m in models})
+
+    def counted(grade) -> bool:
+        """A flagged word counts; with a cause, only when its own flag carries it. The
+        denominator is every graded word either way."""
+        return grade.flagged and (cause is None or carries_cause(grade.reason, cause))
+
+    return _terms(clusters, {m: [(float(counted(by_model[m][k])),
+                                  float(by_model[m][k].graded)) for k in words] for m in models})
 
 
 def ungraded_terms(grades: Sequence, models: Sequence[str], scoring: str) -> Terms:
@@ -200,10 +243,17 @@ def word_segments(decode: str, reference: str) -> tuple[str, ...]:
     return tuple("".join(chars) for chars in out)
 
 
-def _agreeing_words(job: tuple[str, str, str]) -> tuple[int, int]:
-    decode, teacher, reference = job
+def _agreeing_words(job: tuple[str, str, str, str | None]) -> tuple[int, int]:
+    """The reference words the decoded ones equal, over the words ``subset`` keeps: the words
+    whose teacher word differs from the reference word (:data:`DEPARTS`), or those where it is
+    equal (:data:`EQUALS`), or every word (``None``)."""
+    decode, teacher, reference, subset = job
     mine, theirs = word_segments(decode, reference), word_segments(teacher, reference)
-    return sum(a == b for a, b in zip(mine, theirs, strict=True)), len(theirs)
+    words = reference.split(" ")
+    kept = (range(len(theirs)) if subset is None else
+            [k for k, word in enumerate(theirs)
+             if (word == words[k]) == (subset == EQUALS)])
+    return sum(mine[k] == theirs[k] for k in kept), len(kept)
 
 
 def _map(function, jobs: Sequence, workers: int) -> list:
@@ -215,18 +265,65 @@ def _map(function, jobs: Sequence, workers: int) -> list:
 
 def word_agreement_terms(items: Sequence, decodes: Mapping[str, Mapping[str, str]],
                          models: Sequence[str], teacher: str = BASE,
-                         workers: int = 1) -> Terms:
+                         workers: int = 1, subset: str | None = None) -> Terms:
     """One observation per item: its reference words whose decoded letters are the teacher's
     (both cut by :func:`word_segments`; every decode first projected onto the teacher's
     vocabulary, :func:`training.acceptance_stats.project_to_teacher`) over its words.
-    ``decodes[model][item key]`` is the decode compared (the committed text of the checks)."""
+    ``decodes[model][item key]`` is the decode compared (the committed text of the checks).
+    ``subset`` restricts the words to those the teacher's word departs from the reference at
+    (:data:`DEPARTS`) or those where it is equal (:data:`EQUALS`); ``None`` pools them."""
+    if subset is not None and subset not in SUBSETS:
+        raise ValueError(f"{subset!r} is no subset; the round reads {SUBSETS}")
     rows: dict[str, list[tuple[float, float]]] = {}
     for model in models:
         jobs = [(project_to_teacher(decodes[model][i.key]),
-                 project_to_teacher(decodes[teacher][i.key]), i.reference.reference)
+                 project_to_teacher(decodes[teacher][i.key]), i.reference.reference, subset)
                 for i in items]
         rows[model] = [(float(a), float(n)) for a, n in _map(_agreeing_words, jobs, workers)]
     return _terms([i.cluster for i in items], rows)
+
+
+def substitution_terms(grades: Sequence, models: Sequence[str], scoring: str,
+                       substitutions: Sequence[str]) -> dict[str, Terms]:
+    """Each substitution's observations, one per word every model places: flagged **and**
+    carrying that substitution over graded (:func:`training.word_flags.Flag.consonants`), so
+    every substitution keeps the same denominator and a model's own flag decides its
+    numerator."""
+    by_model = _by_model(grades, models, scoring)
+    first = by_model[models[0]]
+    words = sorted(first)
+    clusters = [first[k].item.cluster for k in words]
+
+    def carries(grade, substitution: str) -> bool:
+        flag = grade.reason
+        return bool(grade.flagged and flag and any(s == substitution
+                                                   for _, s in flag.consonants))
+
+    return {substitution: _terms(
+        clusters, {m: [(float(carries(by_model[m][k], substitution)),
+                        float(by_model[m][k].graded)) for k in words] for m in models})
+        for substitution in substitutions}
+
+
+def substitution_views(terms: Mapping[str, Terms], scale: float,
+                       comparisons: Sequence[tuple[str, str]] | None = None) -> dict[str, dict]:
+    """Each substitution's :func:`compare` view with the round's 99.5 % veto interval on every
+    comparison (``veto_interval``), from the same bootstrap draw as its 95 % interval.
+    ``comparisons`` defaults to the candidate against every other model present."""
+    out = {}
+    for substitution, one in terms.items():
+        pairs = comparisons or tuple((CANDIDATE, m) for m in sorted(one.by_model)
+                                     if m != CANDIDATE)
+        resample = Resample.by_cluster(one.clusters)
+        view = compare(one, scale, pairs, resample=resample)
+        for a, b in pairs:
+            name = comparison_name(a, b)
+            if name in view["comparisons"]:
+                view["comparisons"][name]["veto_interval"] = _scaled(
+                    difference_interval(one.clusters, one.by_model[a], one.by_model[b],
+                                        resample=resample, quantiles=VETO_QUANTILES), scale)
+        out[substitution] = view
+    return out
 
 
 # --- teacher agreement on Tadabur (§2) ----------------------------------------------------------

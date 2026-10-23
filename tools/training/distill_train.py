@@ -718,7 +718,8 @@ def train(
         print(
             f"[data] streaming shards {config.stream_shards} "
             f"(one shard per worker on disk), "
-            f"{len(val_loader.dataset):,} held-out val windows"
+            f"{len(val_loader.dataset):,} monitoring-only val windows from --audio-root "
+            f"(never streamed)"
         )
     else:
         print(

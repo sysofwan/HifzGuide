@@ -5,13 +5,15 @@ function called that way -- so every step inside the assertion has to carry its 
 `|| return 1`. A swallowed failure here is worse than no check: the run note tells the
 architect that a drifted shard list would refuse to launch, and the run launches anyway.
 
-These execute the real script (its `verify` subcommand is the assertion alone, without the
-trainer or the GPU) in a temporary `ISSUE_ROOT`, with a `python` shim on PATH so the host's
-interpreter name does not matter.
+These execute the real script (its `verify`, `gate` and `monitor` subcommands are the
+assertion, the smoke gate and the post-run monitoring guard alone, without the trainer or
+the GPU) in a temporary `ISSUE_ROOT`, with a `python` shim on PATH so the host's interpreter
+name does not matter.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -22,6 +24,9 @@ SCRIPT = TOOLS.parent / "scripts" / "issue-178-train.sh"
 
 #: The head of the seed-9494 permutation, as #94's log reports it.
 OBSERVED_HEAD = (169, 354, 207, 312, 227)
+
+#: #178's seed: the continuation's shard order (`--monitor-seed`).
+RUN_SEED = 178
 
 
 def _env(tmp_path: Path, **overrides: str) -> dict[str, str]:
@@ -75,3 +80,120 @@ def test_the_data_assertion_fails_when_the_registration_has_drifted(tmp_path):
     assert done.returncode != 0
     assert "does not index" in done.stdout + done.stderr
     assert not (tmp_path / "logs" / "spec.txt").exists()
+
+
+# --- the smoke gate ------------------------------------------------------------------
+
+
+def _gate(tmp_path: Path, metrics: list[dict], log_text: str) -> subprocess.CompletedProcess:
+    metrics_path = tmp_path / "metrics.jsonl"
+    metrics_path.write_text(
+        "".join(json.dumps(record) + "\n" for record in metrics), encoding="utf-8"
+    )
+    log = tmp_path / "smoke.log"
+    log.write_text(log_text, encoding="utf-8")
+    return subprocess.run(
+        ["bash", str(SCRIPT), "gate", str(metrics_path), str(log)],
+        cwd=TOOLS,
+        env=_env(tmp_path),
+        capture_output=True,
+        text=True,
+    )
+
+
+#: Two training records at ~0.9 steps/s: 300 steps in 330 s.
+TRAINED = [
+    {"step": 0, "elapsed_s": 0.0, "total": 2.0},
+    {"step": 275, "elapsed_s": 305.0, "total": 1.5},
+]
+#: One evaluation of the staged clips, as `evaluate` logs it.
+VALIDATED = {"step": 0, "split": "val", "agreement": 0.41, "target_prob": 0.2}
+WARM_START_EMA = (
+    "[init] warm-started from checkpoint.pt (its step 10000, weights=ema); "
+    "fresh optimiser and schedule\n"
+)
+
+
+def test_the_smoke_gate_refuses_a_smoke_that_never_validated(tmp_path):
+    """`--eval-every` must reach the staged clips in the smoke, not 40 min into the full run."""
+    done = _gate(tmp_path, TRAINED, WARM_START_EMA)
+    assert done.returncode != 0
+    assert "no evaluation of the staged clips" in done.stdout + done.stderr
+
+
+def test_the_smoke_gate_refuses_an_empty_validation_split(tmp_path):
+    """A val split that resolved to no clip logs `{}` and would otherwise pass silently."""
+    done = _gate(tmp_path, [*TRAINED, {"step": 0, "split": "val"}], WARM_START_EMA)
+    assert done.returncode != 0
+    assert "val split was empty" in done.stdout + done.stderr
+
+
+def test_the_smoke_gate_refuses_a_warm_start_that_is_not_the_averaged_weights(tmp_path):
+    """The averaged-weights warm start is the candidate's defining ingredient."""
+    live = WARM_START_EMA.replace("weights=ema", "weights=live")
+    done = _gate(tmp_path, [*TRAINED, VALIDATED], live)
+    assert done.returncode != 0
+    assert "not the averaged weights" in done.stdout + done.stderr
+
+
+def test_the_smoke_gate_accepts_a_smoke_that_validated_and_warm_started_in_ema(tmp_path):
+    done = _gate(tmp_path, [*TRAINED, VALIDATED], WARM_START_EMA)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "steps/s" in done.stdout
+    assert "[gate] 1 val evaluations" in done.stdout
+    assert "weights=ema" in done.stdout
+
+
+# --- the post-run monitoring guard ----------------------------------------------------
+
+
+def _derived(tmp_path: Path) -> tuple[Path, list[int], int]:
+    """The source log of the `verify` tests, the shards left, and the monitor shard's position."""
+    from training.consumed_prefix import monitoring_shard, remaining_from_log
+
+    log = tmp_path / "source.log"
+    log.write_text(
+        "".join(
+            f"[data] exposure exclusion through shard {shard} {{'use': 'x'}}\n"
+            for shard in OBSERVED_HEAD
+        ),
+        encoding="utf-8",
+    )
+    remaining = remaining_from_log(log)
+    return log, remaining, monitoring_shard(remaining, RUN_SEED)[1]
+
+
+def _monitor(tmp_path: Path, completions: int) -> subprocess.CompletedProcess:
+    from training.consumed_prefix import shard_permutation
+
+    log, remaining, _ = _derived(tmp_path)
+    streamed = tmp_path / "train.log"
+    streamed.write_text(
+        "".join(
+            f"[data] exposure exclusion through shard {shard} {{'use': 'x'}}\n"
+            for shard in shard_permutation(remaining, RUN_SEED)[:completions]
+        ),
+        encoding="utf-8",
+    )
+    return subprocess.run(
+        ["bash", str(SCRIPT), "monitor", str(streamed)],
+        cwd=TOOLS,
+        env=_env(tmp_path, SOURCE_LOG=str(log)),
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_the_monitoring_guard_refuses_a_run_that_entered_the_validation_shard(tmp_path):
+    """10,000 steps stop ~65 shards in, but the guard must not depend on that staying true."""
+    _, _, position = _derived(tmp_path)
+    done = _monitor(tmp_path, position)
+    assert done.returncode != 0
+    assert "entered monitor shard" in done.stdout + done.stderr
+
+
+def test_the_monitoring_guard_accepts_a_run_that_stopped_short(tmp_path):
+    _, _, position = _derived(tmp_path)
+    done = _monitor(tmp_path, position - 1)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "never streamed" in done.stdout

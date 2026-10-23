@@ -53,6 +53,14 @@ def test_confirm_refuses_a_pin_that_differs():
             asp.check_pins(spec, observed, prereg)
 
 
+def test_the_round_s_baseline_is_the_metrics_constant():
+    from training import aug_readout_metrics as am
+
+    assert asp.C95 is am.C95
+    assert am.comparison_name(am.CANDIDATE, am.C95) == f"candidate−{asp.C95}"
+    assert asp.CONSONANT1.baseline is am.C95
+
+
 def test_c95_is_the_pinned_checkpoint_the_readout_validates():
     spec = asp.CONSONANT1
     assert asp.C95_SHA256 == C95_CHECKPOINT

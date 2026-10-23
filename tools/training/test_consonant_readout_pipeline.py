@@ -273,7 +273,8 @@ def test_the_aug95_report_regenerates_key_for_key_without_the_restricted_decodes
 def test_the_consonant_round_never_demands_the_control_s_decodes():
     consonant = ag.needs("confirm", "ema", asp.CONSONANT1)
     assert all("control_ema" not in models for models in consonant.values())
-    assert consonant["qdat"] == ("candidate_ema", "c95", "h448")
+    assert consonant["qdat"] == ("candidate_ema", "c95")
+    assert consonant["tadabur_dev_unseen"] == ("candidate_ema", "c95", "h448", "base")
     assert "control_ema" in ag.needs("confirm", "ema", asp.AUG95)["qdat"]  # #95 unchanged
     files = ar.Sources(asp.CONSONANT1).input_files("confirm", "ema")
     assert not any("control" in path.name for path in files)

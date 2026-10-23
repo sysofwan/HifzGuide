@@ -12,10 +12,12 @@ from tadabur.mining_pool import PoolClip, PoolSegment, load_manifest
 from tadabur.power_frame import FIELDS, FRAME_PATH, score_pool
 from tadabur.ship_a import (
     HELD_OUT,
+    OWNER_AUTHORIZED_REMOVALS,
     SITES_SUMMARY_PATH,
     SPLIT_PATH,
     SPLIT_SALT,
     TRAIN,
+    assert_verdict_sites_kept,
     inputs,
     load_sites,
     mine_all,
@@ -291,3 +293,18 @@ def test_a_kasb_site_s_chance_includes_the_reciter_draw():
         if site.site.site_id in chances:
             n = 2 if site.reciter_id < 40 else 1
             assert chances[site.site.site_id] == pytest.approx(20 / 80 / n)
+
+
+def test_a_rebuild_may_not_drop_or_move_a_verdict_site():
+    """The preflight fails before artifacts are written; the owner's one authorized removal
+    is the only absence it lets through."""
+    allowed = next(iter(OWNER_AUTHORIZED_REMOVALS))
+    other = "new_audit:example.wav#0@1:ت↔ط"
+    verdicts = {allowed, other}
+    assert_verdict_sites_kept([], [(allowed, 3)], verdicts)
+    with pytest.raises(ValueError, match=other):
+        assert_verdict_sites_kept([], [(other, 3)], verdicts)
+    with pytest.raises(ValueError, match=other):
+        assert_verdict_sites_kept([(other, 4)], [(other, 3)], verdicts)
+    assert_verdict_sites_kept([(other, 3)], [(other, 3)], verdicts)
+    assert_verdict_sites_kept([], [(other, 3)], {allowed})

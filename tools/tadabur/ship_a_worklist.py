@@ -60,6 +60,7 @@ from .listening_session import (
     SessionSite,
     listening_seconds,
     load_worklist,
+    read_verdicts,
     write_worklist,
 )
 from .exposure import (
@@ -77,6 +78,7 @@ from .ship_a import (
     SITES_PATH,
     TRAIN,
     ShipASite,
+    assert_verdict_sites_kept,
     load_sites,
     reciter_half,
 )
@@ -250,6 +252,12 @@ def main() -> None:
     # The queue is frozen: every committed row stays (a correction that removed its site
     # still leaves the owner's answer in place), and only a genuinely new row is appended.
     committed = committed_rows()
+    assert_verdict_sites_kept(
+        ((s.site.site_id, s.site.reference_index) for s in sites),
+        ((r.site.site_id, r.site.reference_index) for r in committed.values()
+         if not r.site.site_id.startswith(P35_PREFIX)
+         and not r.site.stratum.endswith(REJECT_PILE_SUFFIX)),
+        read_verdicts())
     parts.update({i: worklist_part(row) for i, row in committed.items()})
     rows = [*committed.values(),
             *(row for row in rows if row.site.site_id not in committed)]

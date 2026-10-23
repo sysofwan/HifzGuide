@@ -44,7 +44,8 @@ KEPT = {
 }
 
 #: The verified site whose own pause note corrects its boundary: its mark is waqf-dependent,
-#: so it leaves the wasl population while its frozen verdict, index and design stay.
+#: so it leaves the wasl population while its frozen verdict, index and design stay. It is
+#: the owner's one authorized removal (``tadabur.ship_a.OWNER_AUTHORIZED_REMOVALS``).
 ORPHANED = "new_audit:tadabur_spk0167_S17_A15_6d312abb_000008.wav#0@63:shaddah"
 
 #: Frozen by this issue; the correction changes no verdicted site id or index.
@@ -112,16 +113,19 @@ def test_verified_sites_keep_their_ids_and_reference_indices():
     assert not any(row["site_id"] in sites for row in reject_pile)
     ship_a = [row for row in verified if not row["stratum"].endswith(REJECT_PILE_STRATUM)]
     assert len(ship_a) == 515
-    # A site whose own pause note corrects its boundary leaves the wasl population; the
-    # guard realizes it under waqf, so its frozen row keeps its verdict and index.
+    # The owner authorized exactly this removal (#130 amendment); the guard realizes it
+    # under waqf. Every other verified row must still be the mined site at its frozen index.
+    from tadabur.ship_a import OWNER_AUTHORIZED_REMOVALS
     from tadabur.waqf_guard import realized_ids
 
-    realized = realized_ids()
+    assert OWNER_AUTHORIZED_REMOVALS == {ORPHANED}
     assert [row["site_id"] for row in ship_a if row["site_id"] not in sites] == [ORPHANED]
-    assert ORPHANED in realized
+    assert ORPHANED in realized_ids()
     for row in ship_a:
-        if row["site_id"] in sites:
-            assert sites[row["site_id"]]["reference_index"] == row["reference_index"]
+        if row["site_id"] in OWNER_AUTHORIZED_REMOVALS:
+            continue
+        assert row["site_id"] in sites
+        assert sites[row["site_id"]]["reference_index"] == row["reference_index"]
 
 
 def test_worklist_sites_keep_their_reference_indices():

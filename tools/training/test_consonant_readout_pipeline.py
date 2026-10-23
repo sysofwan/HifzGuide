@@ -830,18 +830,17 @@ def test_the_committed_g5_list_is_ten_consonant_substitutions_without_the_madd_a
 
 
 def test_the_committed_g5_list_is_c95_s_shipped_tally_s_consonant_top_ten():
-    """G5 is derived from the full diagnostic (review R1.1): consonant causes only, the madd
-    alif aside, while the diagnostic itself keeps shaddah and the madd alif."""
-    models = _committed_freeze()["models"]
-    shipped = models["c95"]["scorings"]["shipped_default"]["substitutions"]
-    assert {"other_consonant", "soft_pair", "target_pair", "shaddah"} <= set(shipped)
-    for cause, rows in shipped.items():
-        assert len(rows) <= 10
+    """G5 is read from the **untruncated** shipped-default tally (review R1.1): consonant causes
+    only, the madd alif aside. The display list truncates per cause; the tally does not."""
+    shipped = _committed_freeze()["models"]["c95"]["scorings"]["shipped_default"]
+    full = shipped["substitution_tally"]
+    assert {"other_consonant", "soft_pair", "target_pair", "shaddah"} <= set(full)
+    for cause, rows in full.items():
         assert all(row["cause"] == cause for row in rows)
         assert rows == sorted(rows, key=lambda row: (-row["words"], row["substitution"]))
-    assert shipped["shaddah"]  # the diagnostic reports the cause it measures
-    assert am.MADD_ALIF in {row["substitution"] for row in shipped["other_consonant"]}
-    rows = [row for cause in am.CONSONANT_FLAG_CAUSES for row in shipped[cause]
+        assert shipped["substitutions"][cause] == rows[:10]
+    assert len(full["other_consonant"]) > 10  # the tally keeps what the display drops
+    rows = [row for cause in am.CONSONANT_FLAG_CAUSES for row in full[cause]
             if row["substitution"] != am.MADD_ALIF]
     assert _committed_freeze()["substitutions"] == sorted(
         rows, key=lambda row: (-row["words"], row["substitution"]))[:10]
@@ -899,6 +898,18 @@ def test_the_freeze_doc_is_generated_from_the_committed_record():
     assert "C95, look half only" in text
 
 
+def test_the_freeze_doc_prints_the_top_ten_of_each_cause_s_full_tally():
+    """R1.1: the record keeps the whole tally; the generated doc reports each cause's top ten."""
+    full = _committed_freeze()["models"]["c95"]["scorings"]["shipped_default"][
+        "substitution_tally"]
+    text = cr.FREEZE_DOC_PATH.read_text(encoding="utf-8")
+    for rows in full.values():
+        for row in rows[:10]:
+            assert f"| {row['substitution']} | {row['words']} |" in text
+        for row in rows[10:]:
+            assert f"| {row['substitution']} | {row['words']} |" not in text
+
+
 def test_the_freeze_writer_refuses_the_confirm_half_before_reading_or_writing(tmp_path):
     record, doc = tmp_path / "freeze.json", tmp_path / "freeze.md"
     with pytest.raises(SystemExit, match="look"):
@@ -929,6 +940,21 @@ def _tables_for_tally(tally) -> dict:
     grades = [_scored_grade("c95", SHIPPED, item, position, plan[2 * i + position])
               for i, item in enumerate(items) for position in (0, 1)]
     return cr.freeze_tables(grades)
+
+
+def test_the_freeze_keeps_the_full_tally_beside_each_cause_s_top_ten():
+    """R1.1: the record preserves the canonical tally; only the display is truncated."""
+    tables = _tables_for_tally(FREEZE_TALLY)
+    shipped = tables["models"]["c95"]["scorings"]["shipped_default"]
+    expected = sorted(({"cause": cause, "substitution": substitution, "words": words}
+                       for substitution, cause, words in FREEZE_TALLY),
+                      key=lambda row: (-row["words"], row["substitution"]))
+    full = shipped["substitution_tally"]
+    for cause in {row["cause"] for row in expected}:
+        rows = [row for row in expected if row["cause"] == cause]
+        assert full[cause] == rows
+        assert shipped["substitutions"][cause] == rows[:10]
+    assert len(full["other_consonant"]) == 11
 
 
 def test_g5_reads_the_untruncated_tally_while_the_diagnostic_is_truncated_per_cause():

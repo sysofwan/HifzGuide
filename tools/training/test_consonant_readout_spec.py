@@ -1,0 +1,73 @@
+"""#95 and the consonant round as two specs over one readout, and the round's pins (#175).
+
+The bars and sets are #174's pre-registration (its own document pin lives in
+``test_aug_readout_prereg.py``); this file pins the facts the readout must not invent: which model
+is the baseline, what fixes Muraja and the harness, and that C95 is the checkpoint it says it is.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import json
+
+import pytest
+
+from training import aug_readout_gate as ag
+from training import aug_readout_spec as asp
+
+MURAJA_COMMIT = "99c326f3fb7c6c53ff525568976c7e2442ccde3c"
+HARNESS_SHA256 = "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b"
+C95_CHECKPOINT = "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6"
+C95_REF = "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt"
+
+
+def test_95_and_the_consonant_round_are_two_specs_over_one_pipeline():
+    aug, con = asp.spec("aug95"), asp.spec("consonant1")
+    assert (aug.issue, con.issue) == (95, 175)
+    assert (aug.baseline, con.baseline) == ("h448", "c95")
+    assert {"tarteel_v1.look", "tarteel_v1.confirm", "qdat", "retasy", "qud_half",
+            "tadabur_dev_unseen"} <= set(aug.sets)
+    assert {"tarteel_v1.look", "tarteel_v1.confirm", "qdat", "qud_other",
+            "tadabur_dev_unseen", "ship_a_verified"} <= set(con.sets)
+    assert "retasy" not in con.sets  # descriptive only for this round (#171)
+    with pytest.raises(KeyError):
+        asp.spec("consonant2")
+
+
+def test_the_consonant_spec_pins_muraja_and_the_harness():
+    pins = asp.CONSONANT1.pins
+    assert pins.muraja_commit == MURAJA_COMMIT
+    assert pins.harness_sha256 == HARNESS_SHA256
+
+
+def test_confirm_refuses_a_pin_that_differs():
+    pins = asp.Pins(muraja_commit=MURAJA_COMMIT, harness_sha256=HARNESS_SHA256,
+                    prereg_sha256="a" * 64)
+    spec = dataclasses.replace(asp.CONSONANT1, pins=pins)
+    harness = {"muraja_commit": MURAJA_COMMIT, "binary_sha256": HARNESS_SHA256}
+    asp.check_pins(spec, harness, "a" * 64)  # every pin matches: no refusal
+    for observed, prereg in (({**harness, "muraja_commit": "0" * 40}, "a" * 64),
+                             ({**harness, "binary_sha256": "0" * 64}, "a" * 64),
+                             (harness, "b" * 64)):
+        with pytest.raises(SystemExit, match="pin"):
+            asp.check_pins(spec, observed, prereg)
+
+
+def test_c95_is_the_pinned_checkpoint_the_readout_validates():
+    spec = asp.CONSONANT1
+    assert asp.C95_SHA256 == C95_CHECKPOINT
+    model = ag.model_spec("c95", spec=spec)
+    assert (model.ref, model.use_ema, model.step, model.recipe) == (
+        C95_REF, True, 10_000, "aug94-mixture-v2")
+    record = {"model": "c95", "fingerprints": ag.expected_fingerprints(model.ref),
+              "identity": {"model_ref": model.ref, "weights": "ema", "step": 10_000,
+                           "recipe": "aug94-mixture-v2",
+                           "checkpoint_sha256": C95_CHECKPOINT}}
+    assert ag.validate_identity("qdat", "c95", record, spec=spec) == record["identity"]
+    for edit, match in (
+            (lambda r: r["fingerprints"]["checks"].update(batch_size=8), "fingerprint"),
+            (lambda r: r["identity"].update(checkpoint_sha256="b" * 64), "checkpoint")):
+        altered = json.loads(json.dumps(record))
+        edit(altered)
+        with pytest.raises(ValueError, match=match):
+            ag.validate_identity("qdat", "c95", altered, spec=spec)

@@ -15,10 +15,19 @@ One subtlety of the log: a shard's line is printed when the *next* shard's first
 arrives, so the last completed shard is not the last shard entered. A run stopped at step
 N was inside one more, and that one counts as consumed: some of its rows were streamed.
 
+A continuation also needs a shard it does *not* train on: validation clips staged from a shard
+the run streams turn the health signal in-sample. :func:`monitoring_shard` names that shard
+(the last of the run's own seed permutation, which its step budget reaches last) and the
+completion count at which the run enters it, and :func:`monitor_reached` checks a finished
+log against it -- so "the validation audio was never streamed" is asserted, not assumed.
+
 Usage::
 
     # The --stream-shards spec a continuation runs with, from the source run's log
     python -m training.consumed_prefix --log /root/scratch/issue-94/logs/aug94_candidate_v2.log
+
+    # ... with the monitoring shard and the point it would be entered (monitor=, position=)
+    python -m training.consumed_prefix --log <log> --monitor-seed 178
 """
 
 from __future__ import annotations
@@ -89,6 +98,43 @@ def remaining_shards(shards: Iterable[int], consumed: Iterable[int]) -> list[int
     return sorted(set(shards) - set(consumed))
 
 
+def monitoring_shard(shards: Iterable[int], seed: int) -> tuple[int, int]:
+    """The shard a run monitors on, and how many shards it must finish to reach it.
+
+    The monitor shard is the last of the run's seed permutation, so a run of the expected
+    step budget never enters it -- but that is arithmetic over steps per shard, not a
+    property of the stream. :func:`monitor_reached` turns the log's completions into a check.
+    """
+    permutation = shard_permutation(shards, seed)
+    return permutation[-1], len(permutation) - 1
+
+
+def monitor_reached(shards: Iterable[int], completed: Sequence[int], seed: int) -> bool:
+    """Whether the run whose shard-completion lines these are entered the monitor shard.
+
+    A completion line means the shard was *left*, so the run is inside shard *i* once *i*
+    earlier shards are done: the monitor shard is entered at its own position, not after it.
+    """
+    _, position = monitoring_shard(shards, seed)
+    return len(list(completed)) >= position
+
+
+def remaining_from_log(
+    log: Path, *, seed: int = AUG94_SEED, shards: str = ""
+) -> list[int]:
+    """The shards a continuation of the run whose log this is has left.
+
+    ``shards`` overrides the source run's ``--stream-shards``; by default it is ``h448``'s
+    training spec, the only shard set a training run may stream.
+    """
+    from tadabur.shard_reader import parse_shard_spec
+    from training.decode_evalset import training_shard_spec
+
+    source = parse_shard_spec(shards or training_shard_spec())
+    completed = completion_order(log.read_text(encoding="utf-8"))
+    return remaining_shards(source, consumed_prefix(source, completed, seed))
+
+
 def shard_spec(shards: Iterable[int]) -> str:
     """The compact ``--stream-shards`` spec for a shard list, as ``parse_shard_spec`` reads
     it: ``[1, 2, 3, 7]`` → ``"1-3,7"``."""
@@ -117,20 +163,25 @@ def main() -> None:
         help="the source run's --stream-shards (default: h448's training spec, the only "
              "shard set a training run may use)",
     )
+    parser.add_argument(
+        "--monitor-seed", type=int, default=None,
+        help="also report the shard a run with this seed monitors on and the completion "
+             "count at which it would enter it, as 'monitor=<n>' and 'position=<n>' lines "
+             "ahead of the spec",
+    )
     args = parser.parse_args()
 
-    from tadabur.shard_reader import parse_shard_spec
-    from training.decode_evalset import training_shard_spec
-
-    shards = parse_shard_spec(args.shards or training_shard_spec())
-    completed = completion_order(args.log.read_text(encoding="utf-8"))
-    consumed = consumed_prefix(shards, completed, args.seed)
-    remaining = remaining_shards(shards, consumed)
-    print(
-        f"{len(completed)} completions, {len(consumed)} shards consumed, "
-        f"{len(remaining)} remaining",
-        file=sys.stderr,
-    )
+    remaining = remaining_from_log(args.log, seed=args.seed, shards=args.shards)
+    print(f"{len(remaining)} shards remaining after the source run's consumed prefix",
+          file=sys.stderr)
+    if args.monitor_seed is not None:
+        monitor, position = monitoring_shard(remaining, args.monitor_seed)
+        print(f"monitor shard {monitor} is entered after {position} shards are completed",
+              file=sys.stderr)
+        print(f"monitor={monitor}")
+        print(f"position={position}")
+        print(f"stream={shard_spec(remaining)}")
+        return
     print(shard_spec(remaining))
 
 

@@ -26,6 +26,9 @@ import pytest
 #: #94's seed (`h448` used 1234; both #94 arms used 9494).
 SOURCE_SEED = 9494
 
+#: #178's own seed: the continuation's shard order and augmentation draws.
+RUN_SEED = 178
+
 #: Shard-completion lines of #94's C95 log, in order. See the module docstring.
 OBSERVED_COMPLETIONS = (
     169, 354, 207, 312, 227, 63, 382, 251, 217, 333, 213, 212, 57, 49, 322, 244, 363, 133,
@@ -154,3 +157,25 @@ def test_a_log_with_no_completions_is_refused():
 
     with pytest.raises(ValueError, match="no shard-completion"):
         consumed_prefix(_h448_shards(), [], SOURCE_SEED)
+
+
+# --- the shard validation reads, and the guard that keeps it out of training ----------
+
+
+def test_the_monitor_shard_is_the_last_of_the_runs_seed_permutation():
+    """Validation clips come from this shard, so the run must never stream it."""
+    from training.consumed_prefix import monitoring_shard, remaining_shards, shard_permutation
+
+    remaining = remaining_shards(_h448_shards(), _consumed())
+    monitor, position = monitoring_shard(remaining, RUN_SEED)
+    assert monitor == shard_permutation(remaining, RUN_SEED)[-1] == 90
+    assert position == len(remaining) - 1 == 277
+
+
+def test_the_monitor_guard_fires_only_once_the_run_enters_the_shard():
+    """A shard's line is printed when it is *left*: entering needs one fewer completion."""
+    from training.consumed_prefix import monitor_reached, remaining_shards
+
+    remaining = remaining_shards(_h448_shards(), _consumed())
+    assert not monitor_reached(remaining, [0] * 276, RUN_SEED)
+    assert monitor_reached(remaining, [0] * 277, RUN_SEED)

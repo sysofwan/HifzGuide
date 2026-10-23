@@ -267,10 +267,13 @@ def binds_cache(recorded: Mapping, expected: Mapping) -> bool:
     """Whether a truth-baseline cache's identity is the round's: the same checkpoint's bytes,
     the same weight selector, and no recorded field (step, recipe, where a cache keeps them)
     that disagrees. One checkpoint holds live and averaged weights, so its hash names neither:
-    a selector-free identity is insufficient evidence and never binds (#175 review R2.1)."""
+    a selector-free identity means the live weights, never the pin's EMA (#175 review R2.1,
+    R3.1)."""
+    from training.truth_baseline import LIVE
+
     if recorded.get("model_ref") != expected["model_ref"] \
             or recorded.get("checkpoint_sha256") != expected["checkpoint_sha256"] \
-            or recorded.get("weights") != expected["weights"]:
+            or recorded.get("weights", LIVE) != expected["weights"]:
         return False
     return all(recorded[key] == value for key, value in expected.items() if key in recorded)
 

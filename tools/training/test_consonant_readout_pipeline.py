@@ -367,16 +367,95 @@ def test_a_cache_whose_identity_is_not_the_round_s_pin_is_refused():
                  {"checkpoint_sha256": "0" * 64}):
         assert not cr.binds_cache({**expected, **edit}, expected)
     assert cr.binds_cache({**expected}, expected)
+    # A live pin accepts the legacy selector-free identity: absence means live (R3.1).
+    live = {**expected, "weights": tb.LIVE}
+    assert cr.binds_cache({"model_ref": asp.C95_REF,
+                           "checkpoint_sha256": asp.C95_SHA256}, live)
+    assert not cr.binds_cache({"model_ref": asp.C95_REF, "checkpoint_sha256": asp.C95_SHA256,
+                               "weights": tb.EMA}, live)
 
 
 def test_the_cache_producer_records_which_weights_it_decoded(tmp_path):
-    """A SHA cannot select live or EMA; the producer records the selector it loaded (R2.1)."""
+    """A SHA cannot select live or EMA, so the producer records EMA; live stays the legacy,
+    selector-free shape every historical cache and identity already has (R2.1, R3.1)."""
     checkpoint = tmp_path / "checkpoint.pt"
     checkpoint.write_bytes(b"weights")
-    assert tb.model_identity(str(checkpoint), object())["weights"] == tb.LIVE
-    assert tb.model_identity(str(checkpoint), object(), use_ema=True)["weights"] == tb.EMA
-    assert tb.model_identity(str(checkpoint)) == {
-        "model_ref": str(checkpoint), "checkpoint_sha256": tb.file_sha256(checkpoint)}
+    legacy = {"model_ref": str(checkpoint), "checkpoint_sha256": tb.file_sha256(checkpoint)}
+    assert tb.model_identity(str(checkpoint), object()) == legacy
+    assert tb.model_identity(str(checkpoint), object(), use_ema=True) == {
+        **legacy, "weights": tb.EMA}
+    assert tb.model_identity(str(checkpoint)) == legacy
+
+
+class _FakeDecoder:
+    """A decoder that supplies only what the cache code compares: the frozen fingerprints."""
+
+    def __init__(self, ref: str):
+        self.ref = ref
+
+    def fingerprint(self, mode: str):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(as_dict=lambda: tb.expected_fingerprint(self.ref, mode))
+
+
+def test_extending_a_legacy_baseline_cache_keeps_its_identity(tmp_path, monkeypatch):
+    """R3.1: a committed h448 cache (no selector) still accepts one new item."""
+    from types import SimpleNamespace
+
+    checkpoint = tmp_path / "h448.pt"
+    checkpoint.write_bytes(b"weights")
+    ref = str(checkpoint)
+    store = tb.Store(tmp_path / "cache", tb.CHECK_PROTOCOLS, lambda decoder, span: {})
+    legacy = tb.model_identity(ref)
+    path = store.path("h448")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(tb.cache_text({
+        "model": "h448", "identity": legacy,
+        "fingerprints": {p: tb.expected_fingerprint(ref, m)
+                         for p, m in store.protocols.items()},
+        "items": {}}, store.one_item_per_line), encoding="utf-8")
+    monkeypatch.setattr(tb.Decoder, "load", classmethod(
+        lambda cls, model_ref, device, **kw: _FakeDecoder(model_ref)))
+    monkeypatch.setattr(tb, "decode_items", lambda decoder, missing, registry, audio_dir,
+                                              decode: {
+        key: {"audio_sha256": site.audio_sha256} for key, site in missing.items()})
+    cache = tb.update_cache(store, "h448", ref,
+                            {"k0": SimpleNamespace(audio_sha256="a" * 64)}, {}, tmp_path)
+    assert cache["identity"] == legacy and "k0" in cache["items"]
+
+
+def test_resuming_an_external_decode_accepts_its_legacy_identity(tmp_path, monkeypatch):
+    """R3.1: the h448 identity record a previous run wrote still matches this one."""
+    from training import decoding, external_decode as ext
+
+    checkpoint = tmp_path / "h448.pt"
+    checkpoint.write_bytes(b"weights")
+    record = {"model": "h448", "identity": tb.model_identity(str(checkpoint)),
+              "fingerprints": {arm: tb.expected_fingerprint(str(checkpoint), mode)
+                               for arm, mode in ext.MODES.items()}}
+    (tmp_path / "h448.identity.json").write_text(
+        json.dumps(record, indent=1) + "\n", encoding="utf-8")
+    monkeypatch.setattr(decoding.Decoder, "load", classmethod(
+        lambda cls, model_ref, device, **kw: _FakeDecoder(model_ref)))
+    decoders = ext.load_decoders(lambda name: tmp_path / f"{name}.identity.json",
+                                 models={"h448": ext.ModelSpec(str(checkpoint))})
+    assert decoders["h448"].ref == str(checkpoint)
+
+
+def test_a_fresh_default_baseline_identity_validates_against_the_committed_one(monkeypatch):
+    """R3.1: the default (live) producer emits exactly the committed baseline identity."""
+    from types import SimpleNamespace
+
+    committed = ag.baseline_identities()["h448"]
+    monkeypatch.setattr(tb, "Path", lambda ref: SimpleNamespace(is_file=lambda: True))
+    monkeypatch.setattr(tb, "file_sha256", lambda path: committed["checkpoint_sha256"])
+    produced = tb.model_identity(tb.DEFAULT_MODELS["h448"], object())
+    assert produced == committed
+    record = {"model": "h448",
+              "fingerprints": ag.expected_fingerprints(tb.DEFAULT_MODELS["h448"]),
+              "identity": produced}
+    assert ag.validate_identity("tadabur_dev_unseen", "h448", record) == committed
 
 
 def test_the_catch_arm_refuses_a_c95_cache_that_is_not_the_pinned_checkpoint(tmp_path):

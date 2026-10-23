@@ -207,16 +207,18 @@ LIVE, EMA = "live", "ema"
 def model_identity(model_ref: str, decoder=None, use_ema: bool = False) -> dict:
     """The immutable identity of the weights behind ``model_ref``.
 
-    A checkpoint file is its SHA-256, plus the selector the caller loaded when it passes the
-    ``decoder``: the same file holds live and averaged weights, so the hash alone cannot say
-    which one a cache decodes. A hub model is the commit its loaded config resolved to
+    A checkpoint file is its SHA-256; the averaged selector is recorded when the caller loaded
+    it, because the same file holds live and averaged weights and the hash cannot say which.
+    Live stays **unrecorded**: every historical cache and external identity carries no
+    selector, and a selector-free record means live, so extending or resuming them still
+    matches. A hub model is the commit its loaded config resolved to
     (``config._commit_hash``), which needs the loaded ``decoder``.
     """
     path = Path(model_ref)
     if path.is_file():
         identity = {"model_ref": model_ref, "checkpoint_sha256": file_sha256(path)}
-        if decoder is not None:
-            identity["weights"] = EMA if use_ema else LIVE
+        if decoder is not None and use_ema:
+            identity["weights"] = EMA
         return identity
     if decoder is None:
         raise ValueError(f"{model_ref}: a hub model's revision is read from its loaded config")

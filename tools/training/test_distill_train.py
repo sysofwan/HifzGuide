@@ -6,6 +6,8 @@ watching, so they are pinned here rather than discovered on a 12-hour job.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 torch = pytest.importorskip("torch")
@@ -529,3 +531,33 @@ def test_the_init_weights_choice_is_not_resume_critical():
 
     assert "init_weights" not in dt.RESUME_CRITICAL_FIELDS
     assert "init_weights" not in {field.name for field in dataclasses.fields(dt.TrainConfig)}
+
+
+def test_the_run_config_records_the_warm_start(tmp_path):
+    """`--init-from`/`--init-weights` define the run, and a checkpoint does not carry them.
+
+    They stay out of `TrainConfig`, so they cannot join the resume guard: a resume restores
+    weights from the checkpoint and never reads `--init-from`.
+    """
+    import json
+
+    config = dt.TrainConfig(preset="h448", audio_root="clips", out_dir=str(tmp_path))
+    dt.write_run_config(tmp_path, config, Path("/box/issue-94/checkpoint.pt"), True)
+    record = json.loads((tmp_path / dt.CONFIG_FILENAME).read_text(encoding="utf-8"))
+    assert record["initialisation"] == {
+        "init_from": "/box/issue-94/checkpoint.pt",
+        "init_weights": "ema",
+    }
+    assert record["preset"] == "h448"  # the config itself stays flat
+    assert "init_from" not in record
+    # A resume compares the checkpoint's config with this one; the extra key must not trip it.
+    dt.check_resume_compatible(record, config)
+
+
+def test_a_run_with_no_warm_start_records_no_initialisation(tmp_path):
+    import json
+
+    config = dt.TrainConfig(preset="h448", audio_root="clips", out_dir=str(tmp_path))
+    dt.write_run_config(tmp_path, config, None, False)
+    record = json.loads((tmp_path / dt.CONFIG_FILENAME).read_text(encoding="utf-8"))
+    assert record["initialisation"] == {"init_from": None, "init_weights": None}

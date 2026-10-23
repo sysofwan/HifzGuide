@@ -589,7 +589,9 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
         "catch": {"ship_a_verified": data.catch,
                   "ship_a_verified_report_only": data.report_only_catch,
                   # The catch side as #95 read it (RetaSy is #171's).
-                  "qdat_bench_departures": flags(departed) if departed else None},
+                  # ``departed`` is already each word's grade: grade it, never read it as a set.
+                  "qdat_bench_departures": None if not departed else compare(
+                      false_flag_terms(departed, ROUND_ROLES, shipped), PER_1000, comparisons)},
         "leniency": {
             "blank_ratio": None if tadabur is None else compare(
                 blank_terms(tadabur.clips, tadabur.blanks, ROUND_ROLES), POINTS, comparisons),

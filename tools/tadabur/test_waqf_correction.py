@@ -10,10 +10,13 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Iterable
+from dataclasses import replace
 from functools import cache
 from pathlib import Path
 
 from tadabur import waqf_correction as wc
+from tadabur.local_pause import fires
 from tadabur.ship_a_verified import REJECT_PILE_STRATUM
 from tadabur.waqf_segments import _uthmani_words
 
@@ -172,3 +175,107 @@ def _kept_segments(path: Path) -> tuple[int, int]:
 def test_no_kept_segment_ends_on_a_wasl_taa_marbuta():
     assert _kept_segments(EXTENSION_CLIPS) == (2016, 0)
     assert _kept_segments(POOL_CLIPS) == (3785, 0)
+
+
+def _dependent_item(clip: str, word: int) -> str:
+    """The frozen item whose mark a waqf at the boundary changes."""
+    from tadabur import waqf_guard as g
+
+    for item in g.frozen_items():
+        if item.audio_filename == clip and item.word_start in (word - 1, word):
+            if any(d.word == word for d in g.classify(g.wasl_item(item)).dependences):
+                return item.item_id
+    raise AssertionError(f"{clip}@{word}: no item depends on it")
+
+
+def _verdicts_with(tmp_path: Path, item_id: str, note: str) -> Path:
+    from tadabur.listening_session import Verdict, read_verdicts, write_verdicts
+
+    verdicts = read_verdicts()
+    verdicts[item_id] = (replace(verdicts[item_id], note=note) if item_id in verdicts
+                         else Verdict(item_id, "correct", note=note))
+    path = tmp_path / "verdicts.jsonl"
+    write_verdicts(verdicts, path)
+    return path
+
+
+def _taa_boundaries() -> list[tuple[str, int, bool]]:
+    """(clip, ayah word the pause precedes, unplaced) for every site boundary the ayahs make
+    a ta marbuta pause, interior to a kept segment."""
+    from tadabur import waqf_guard as g
+
+    clips = wc._clips()
+    found = []
+    for row in wc._read_jsonl(wc.BOUNDARIES_PATH):
+        name, word = row["audio_filename"], row["word"]
+        if row["kind"] != "site" or name not in clips:
+            continue
+        ayah, segments = clips[name]
+        if "ة" not in _uthmani_words(ayah)[word - 1]:
+            continue
+        if any(s.kept and s.word_start < word < s.word_end for s in segments):
+            found.append((name, word, row["window"] is None))
+    return found
+
+
+def _boundary_with_an_item() -> tuple[str, int, str]:
+    """A placed ta-marbuta boundary the detector did not pause, with an item whose mark a
+    waqf there changes (the kept sites of this issue)."""
+    corrected = {(r.audio_filename, r.cut_word) for r in wc.load_corrections()}
+    for name, word, unplaced in _taa_boundaries():
+        if unplaced or (name, word) in corrected:
+            continue
+        try:
+            return name, word, _dependent_item(name, word)
+        except AssertionError:
+            continue
+    raise AssertionError("no kept ta-marbuta boundary with an item")
+
+
+def _firing_boundary(name: str, word: int) -> dict:
+    """The boundary's measured row with the scores of one the detector pauses."""
+    summary = json.loads(wc.GUARD_SUMMARY_PATH.read_text(encoding="utf-8"))
+    point = summary["calibration"]["operating_point"]
+    rows = wc._read_jsonl(wc.BOUNDARIES_PATH)
+    row = next(r for r in rows if r["kind"] == "site"
+               and (r["audio_filename"], r["word"]) == (name, word))
+    firing = next(r for r in rows if r["kind"] == "site" and r["window"] is not None
+                  and fires(r["scores"], point["threshold"], point["duration"]))
+    return {**row, "scores": firing["scores"]}
+
+
+def _written(tmp_path: Path, name: str, rows: Iterable[dict]) -> Path:
+    path = tmp_path / name
+    path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows),
+                    encoding="utf-8")
+    return path
+
+
+def test_an_owner_note_overrides_the_detector_both_ways(tmp_path):
+    """The owner's note decides first: wasl removes a boundary the detector pauses, and waqf
+    adds one at which the detector reads no pause."""
+    name, word, item = _boundary_with_an_item()
+    forced = _written(tmp_path, "boundaries.jsonl", [_firing_boundary(name, word)])
+    keys = lambda *a, **k: {(r.audio_filename, r.cut_word) for r in wc.derive_corrections(*a, **k)}
+    assert (name, word) in keys(boundaries_path=forced)
+    wasl = _verdicts_with(tmp_path, item, "no waqf, wasl")
+    assert (name, word) not in keys(wasl, forced)
+    assert (name, word) in keys(_verdicts_with(tmp_path, item, "waqf"))
+
+
+def test_an_owner_note_places_an_unplaced_taa_marbuta_boundary(tmp_path):
+    """An unplaced boundary is no pause without a note; the owner's waqf realizes it."""
+    name, word, item = _boundary_with_an_item()
+    unplaced = _written(tmp_path, "unplaced.jsonl",
+                        [{**_firing_boundary(name, word), "window": None}])
+    keys = lambda *a, **k: {(r.audio_filename, r.cut_word) for r in wc.derive_corrections(*a, **k)}
+    assert (name, word) not in keys(boundaries_path=unplaced)
+    assert (name, word) in keys(_verdicts_with(tmp_path, item, "waqf"), unplaced)
+
+
+def test_the_manifest_pins_its_decision_inputs():
+    boundaries = sha256_of(wc.BOUNDARIES_PATH)
+    verdicts = sha256_of(wc.VERDICTS_PATH)
+    for row in wc.load_corrections():
+        assert f"waqf_guard.boundaries.jsonl={boundaries}" in row.provenance
+        assert f"listening_session/verdicts.jsonl={verdicts}" in row.provenance

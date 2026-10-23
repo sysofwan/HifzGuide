@@ -23,7 +23,9 @@ boundaries are corrected: every other pause stays #134's exclusion.
 
 from __future__ import annotations
 
+import hashlib
 import json
+from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
 from functools import cache
@@ -41,6 +43,9 @@ CORRECTION_PATH = SHIP_A_DIR / "waqf_correction.jsonl"
 EXTENSION_CLIPS_PATH = SHIP_A_DIR / "mining" / "clips.jsonl"
 BOUNDARIES_PATH = SHIP_A_DIR / "waqf_guard.boundaries.jsonl"
 GUARD_SUMMARY_PATH = SHIP_A_DIR / "waqf_guard.summary.json"
+#: The owner's answers, repeated from :mod:`tadabur.listening_session` (the import cycle the
+#: module docstring names).
+VERDICTS_PATH = Path(__file__).resolve().parent / "listening_session" / "verdicts.jsonl"
 
 #: A segment's cuts: absolute ayah word indices the reference carries a waqf at.
 Cuts = tuple[int, ...]
@@ -99,37 +104,93 @@ def _clips() -> dict[str, tuple[str, tuple[PoolSegment, ...]]]:
     return {clip.audio_filename: (clip.surah_ayah, clip.segments) for clip in clips}
 
 
-def derive_corrections() -> list[Correction]:
-    """The guard's paused ta-marbuta boundaries, from the frozen boundary scores and the
-    calibration operating point.
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
-    A boundary is corrected when the local pause check fires there at the operating point
-    (:func:`tadabur.local_pause.fires`) and the word before it carries a ta marbuta. The
-    boundary must be interior to a kept segment — a pause at a segment end is already the
-    reference's waqf — so one row is written per segment that contains it, with that
-    segment's start sample. Rows are sorted and unique.
+
+def _dependent(by_word: Mapping[tuple[str, int], list], name: str, word: int) -> list[str]:
+    """The items whose prescribed mark a waqf at the boundary changes
+    (:func:`tadabur.waqf_guard.classify`): those whose own word is the one after the
+    boundary or the one before it, read on the realization without cuts so a boundary a
+    correction removed still has its site."""
+    from .waqf_guard import classify, wasl_item
+
+    return [item.item_id
+            for start in (word - 1, word)
+            for item in by_word.get((name, start), ())
+            if any(d.word == word for d in classify(wasl_item(item)).dependences)]
+
+
+def _owner_decision(item_ids: Iterable[str], verdicts: Mapping[str, Verdict]
+                    ) -> tuple[bool, str | None]:
+    """The owner's reading of a boundary's pause, when any of its dependent items' notes
+    states one (:func:`tadabur.waqf_guard.owner_says`), and the item that said it. Notes
+    that disagree on one boundary are an error, not a tie-break."""
+    from .waqf_guard import owner_says
+
+    said = [(item_id, owner_says(verdicts[item_id].note))
+            for item_id in item_ids if item_id in verdicts]
+    pauses = [item_id for item_id, says in said if says is True]
+    wasls = [item_id for item_id, says in said if says is False]
+    if pauses and wasls:
+        raise ValueError(f"{pauses[0]} and {wasls[0]} disagree on their shared boundary")
+    if pauses:
+        return True, pauses[0]
+    return False, (wasls[0] if wasls else None)
+
+
+def derive_corrections(verdicts_path: Path = VERDICTS_PATH,
+                       boundaries_path: Path = BOUNDARIES_PATH) -> list[Correction]:
+    """The guard's paused ta-marbuta boundaries: the owner's note first, then the local
+    pause check, at the current verdicts (:func:`tadabur.waqf_guard.resolve`).
+
+    A boundary is corrected when the word before it carries a ta marbuta, it is interior to
+    a kept segment (a pause at a segment end is already the reference's waqf), and the
+    guard hears a pause there: a dependent item's owner note overrides the detector both
+    ways, else the local pause check fires at the calibration operating point (an unplaced
+    boundary is no pause without an owner note). Dependences are read on the frozen items'
+    own references, so a boundary stays visible after a correction removed its site. One row
+    is written per containing segment, with its start sample; the provenance names the
+    deciding note or the detector and pins both inputs' checksums.
     """
+    from .waqf_guard import frozen_items, read_verdicts
+
     operating_point = json.loads(GUARD_SUMMARY_PATH.read_text(encoding="utf-8"))[
         "calibration"]["operating_point"]
     if operating_point is None:
         raise ValueError("the guard has no calibration operating point")
+    verdicts = read_verdicts(verdicts_path)
+    by_word: dict[tuple[str, int], list] = defaultdict(list)
+    for item in frozen_items():
+        by_word[(item.audio_filename, item.word_start)].append(item)
+    inputs = (f"inputs: waqf_guard.boundaries.jsonl={_sha256(boundaries_path)}, "
+              f"listening_session/verdicts.jsonl={_sha256(verdicts_path)}")
+    detector = (f"local_pause fires at the guard's operating point "
+                f"(threshold={operating_point['threshold']}, "
+                f"duration={operating_point['duration']}); {inputs}")
     clips = _clips()
     found: set[Correction] = set()
-    provenance = (f"local_pause fires at the guard's operating point "
-                  f"(threshold={operating_point['threshold']}, "
-                  f"duration={operating_point['duration']})")
-    for boundary in _read_jsonl(BOUNDARIES_PATH):
-        if boundary["kind"] != "site" or boundary["window"] is None:
+    for boundary in _read_jsonl(boundaries_path):
+        if boundary["kind"] != "site":
             continue
         name, word = boundary["audio_filename"], boundary["word"]
         if name not in clips:
             continue  # a frozen worklist or P3.5 clip: its reference is not rebuilt here
         ayah, segments = clips[name]
-        if not fires(boundary["scores"], operating_point["threshold"],
-                     operating_point["duration"]):
-            continue
         if "ة" not in _words(ayah)[word - 1]:
             continue
+        paused, decided_by = _owner_decision(_dependent(by_word, name, word), verdicts)
+        if decided_by is None:
+            if boundary["window"] is None:
+                continue  # unplaced: the guard reads no pause without an owner note
+            if not fires(boundary["scores"], operating_point["threshold"],
+                         operating_point["duration"]):
+                continue
+            provenance = detector
+        elif not paused:
+            continue  # the owner says wasl: no correction
+        else:
+            provenance = f"the owner's note says a pause: {decided_by}; {inputs}"
         for segment in segments:
             if segment.kept and segment.word_start < word < segment.word_end:
                 found.add(Correction(name, ayah, segment.start_sample, word, provenance))

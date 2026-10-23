@@ -1,10 +1,11 @@
 # #178's consonant round: continue C95 toward the teacher
 
-**Status (2026-10-23, 17:05Z):** the recipe and data below are fixed and committed **before
-launch**; the run has not started. #176 has finished (`logs/baseline.exit` = 0) and
-`gpu.lock` is free, so `scripts/issue-178-train.sh launch` is the next step.
-Everything marked *pending* is recorded from the run and never chosen: the candidate is the
-final step. Checkpoints stay on cuda-dev.
+**Status (2026-10-23, 21:34Z):** the run finished at step 10,000 with chain exit 0, 3.37 h
+after the full arm started. It launched from `91d5d93`, this note's own commit, so the recipe
+and data below were committed before launch. The smoke and full-run tables are the run's
+readings, taken from `metrics.jsonl` and the logs by `scripts/issue-178-train.sh report`;
+nothing in them was chosen after seeing a result — the candidate is the final step. Checkpoints
+stay on cuda-dev.
 
 This note is #174's pre-registration executed, under the amendment recorded on #178 on
 2026-10-23 (data: the shards the student has *not* trained on are the evaluation frame, so
@@ -144,7 +145,8 @@ is ~65 of the 278, and the shard would be entered only after 277 shards are comp
 stream, it is **asserted after the run**: `assert_monitor` reads `train.log`'s shard-completion
 lines and, if the run entered shard 90, fails the chain (so `logs/train.exit` is non-zero) and
 refuses to print a report. The launch assertion records the shard and its position in
-`logs/val_shard.txt`.
+`logs/val_shard.txt`. **The finished run passed it:** 66 shards completed, monitor shard 90
+entered at position 277 and never streamed.
 
 This departs from #94, which monitored on `decode_evalset` dev clips: #178 requires that no
 evaluation set is decoded during training, and dev is one (G2 reads it in #179). The val
@@ -167,36 +169,40 @@ comparable to #94's.
   `check` reads those, never a log tail. `BUDGET` is 6 h from the lock's acquisition.
 - **Launch commit:** this note's commit descends from `8961fdc` (2026-10-23 09:52 -0700, #177's
   freeze) and carries #174's doc (`85da3b6`, 2026-10-22 22:54 -0700) in its history; the
-  launcher records the exact archived SHA in `logs/launch.txt`.
+  launcher archived `91d5d93165f2b49f56d01badd97c222b1015692a` at `2026-10-23T18:02:33Z`
+  (`logs/launch.txt`).
 - **Software:** conda `hifzguide` on cuda-dev, unchanged from #94 — torch 2.11.0+cu128,
   transformers 5.13.0, ffmpeg 8.1.2 with libopus; `OMP_NUM_THREADS=1`.
 
-## Smoke run (300 steps) — pending
+## Smoke run (300 steps)
 
 | | candidate |
 |---|---|
-| steps/s, steps 25-300 | pending |
-| KL at steps 25 / 100 / 200 / 300 | pending |
-| pre-clip gradient norm, range | pending |
-| blank-collapse margin, range | pending |
-| averaged weights saved | pending |
-| val records (non-empty) / steps | pending |
-| warm start line (`weights=ema`) | pending |
-| peak VRAM, minimum free disk | pending |
+| steps/s, steps 25-300 | **0.75** (gate threshold 0.6) |
+| KL at steps 25 / 100 / 200 / 300 | 0.168 / 0.169 / 0.180 / 0.250 |
+| pre-clip gradient norm, range | 0.47-0.91 (none clipped) |
+| blank-collapse margin, range | −0.028 … −0.016 |
+| averaged weights saved | yes — `ema_state` beside the live `student` at step 300 |
+| val records (non-empty) / steps | 3 records at steps 150 and 300 (the step-300 record is also the final eval); overall agreement 0.958 then 0.956 |
+| warm start line (`weights=ema`) | present: `[init] warm-started from …aug94_candidate_v2/checkpoint.pt (its step 10000, weights=ema); fresh optimiser and schedule` |
+| peak VRAM, minimum free disk | 11.05 GiB of the 15.0 GiB budget (the preflight probe; this launcher samples disk only) / minimum 30.9 GB (28.7 GiB) free across smoke and run, from 35.3 GB |
 
-## Full run (10,000 steps) — pending
+## Full run (10,000 steps)
 
 | | candidate |
 |---|---|
-| launched (UTC) / wall time | pending |
-| steps/s | pending |
-| KL, first / last / range | pending |
-| final val (monitor only) | pending |
-| **checkpoint SHA-256, live and EMA** | pending (one file holds both; the identity is `weights`) |
-| minimum free disk / peak VRAM | pending |
+| launched (UTC) / wall time | `2026-10-23T18:02:33Z` (lock acquired; smoke 18:03-18:11Z); full arm `18:11:31Z` → `21:33:45Z`, **3.37 h** |
+| steps/s | **0.83** over steps 50-10000 |
+| KL, first / last / range | 0.172 / 0.212 / 0.134-0.380 |
+| final val (monitor only) | overall 0.957, confirmed 0.949, nonblank 0.966, blank-collapse margin −0.021, teacher/student blank ratio 0.636 / 0.615 |
+| **checkpoint SHA-256, live and EMA** | `057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2` — one file holds both (`student` live, `ema_state` averaged; the loader's `weights` picks) |
+| minimum free disk / peak VRAM | 30.9 GB (28.7 GiB) free; the run directory peaked at 2.03 GiB / 11.05 GiB preflight probe (no in-loop VRAM sampler) |
 
 `report` prints the final step, the checkpoint SHA-256, throughput, KL range and the final val
-row from `metrics.jsonl`; those fill the table above and nothing is re-run to get them.
+row from `metrics.jsonl`; those fill the table above and nothing is re-run to get them. Its
+first step is the monitoring guard, which read the finished log as
+`66 shards completed, monitor shard 90 entered at 277: never streamed` — the step budget ended
+the run 211 shards before the validation clips' shard.
 
 ## The look-half readings (shared-text rule)
 
@@ -216,7 +222,7 @@ on the look half. Recorded for completeness, from `docs/consonant-round-freeze.m
 - [x] Exposure registered (`consonant1.training`, membership `exact`, 278 shards).
 - [x] Launch commit later than #174's doc and #177's freeze (see "Launch").
 - [x] No extra corpus, so no fingerprint report is owed.
-- [ ] Smoke table and full-run metrics recorded here, with the final checkpoint SHA-256.
-- [ ] No evaluation set decoded or graded during training (asserted by the staged validation
+- [x] Smoke table and full-run metrics recorded here, with the final checkpoint SHA-256.
+- [x] No evaluation set decoded or graded during training (asserted by the staged validation
       clips, by the run streaming only the registered 278 shards, and — because shard 90 is one
-      of them — by `assert_monitor` refusing a run that entered it).
+      of them — by `assert_monitor`, which passed: 66 shards completed, shard 90 never entered).

@@ -1,0 +1,1110 @@
+{
+ "issue": 177,
+ "round": "consonant1",
+ "half": "look",
+ "command": "python -m training.consonant_readout freeze --half look",
+ "rule": "C95's Tarteel v1 look-half false flags per 1,000 graded words by word_flags cause, under the shipped default and with allowances off, graded through the Muraja harness at the round's pin; G5 is the ten consonant substitutions behind the most C95 false-flagged words at the shipped default, the madd alif (ا→∅) aside, ties by substitution (Unicode order)",
+ "pins": {
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "harness_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "prereg_sha256": "daa611ab401f1350ef920b6801c9c439262579d4aced3f7be062a240cf7ed9d7"
+ },
+ "harness": {
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398"
+ },
+ "inputs": {
+  "tadabur/aug_readout/decodes/tarteel_v1.look.candidate_ema.jsonl.gz": "b6ef6a513f7d29398503a81d58726b36990c1d13d2be82f6bb0385f8977f6947",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.h448.jsonl.gz": "873fbdfaa15f89f5712e3f62b0dbca644b177c845d97225ad7ee2de3cc589602"
+ },
+ "items": 4530,
+ "models": {
+  "c95": {
+   "label": "C95",
+   "scorings": {
+    "shipped_default": {
+     "graded": 43740,
+     "flagged": 2105,
+     "per_1000": 48.13,
+     "causes": {
+      "tashkeel": {
+       "words": 212,
+       "per_1000": 4.85
+      },
+      "soft_pair": {
+       "words": 23,
+       "per_1000": 0.53
+      },
+      "target_pair": {
+       "words": 48,
+       "per_1000": 1.1
+      },
+      "other_consonant": {
+       "words": 1532,
+       "per_1000": 35.03
+      },
+      "shaddah": {
+       "words": 30,
+       "per_1000": 0.69
+      },
+      "skipped": {
+       "words": 88,
+       "per_1000": 2.01
+      },
+      "unrecorded": {
+       "words": 210,
+       "per_1000": 4.8
+      }
+     },
+     "substitutions": {
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 98
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 59
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 49
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ج→ش",
+        "words": 46
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 38
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→ي",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "و→∅",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "د→ت",
+        "words": 32
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→ل",
+        "words": 31
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 31
+       }
+      ],
+      "soft_pair": [
+       {
+        "cause": "soft_pair",
+        "substitution": "ق→ك",
+        "words": 5
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ه→ح",
+        "words": 4
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ص→س",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ظ→ض",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ذ→ز",
+        "words": 2
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "س→ص",
+        "words": 2
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ط→ت",
+        "words": 2
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ك→ق",
+        "words": 2
+       }
+      ],
+      "target_pair": [
+       {
+        "cause": "target_pair",
+        "substitution": "س→ش",
+        "words": 27
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ط→ق",
+        "words": 6
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ش→س",
+        "words": 5
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ظ→ذ",
+        "words": 4
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ذ→ظ",
+        "words": 3
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ق→ط",
+        "words": 3
+       }
+      ]
+     }
+    },
+    "allowances_off": {
+     "graded": 43737,
+     "flagged": 2306,
+     "per_1000": 52.72,
+     "causes": {
+      "tashkeel": {
+       "words": 203,
+       "per_1000": 4.64
+      },
+      "soft_pair": {
+       "words": 154,
+       "per_1000": 3.52
+      },
+      "target_pair": {
+       "words": 48,
+       "per_1000": 1.1
+      },
+      "other_consonant": {
+       "words": 1545,
+       "per_1000": 35.32
+      },
+      "shaddah": {
+       "words": 80,
+       "per_1000": 1.83
+      },
+      "skipped": {
+       "words": 94,
+       "per_1000": 2.15
+      },
+      "unrecorded": {
+       "words": 225,
+       "per_1000": 5.14
+      }
+     },
+     "substitutions": {
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 100
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 59
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 51
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ج→ش",
+        "words": 46
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 38
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→ي",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "د→ت",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 33
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→ل",
+        "words": 32
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "و→∅",
+        "words": 32
+       }
+      ],
+      "soft_pair": [
+       {
+        "cause": "soft_pair",
+        "substitution": "ه→ح",
+        "words": 26
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ص→س",
+        "words": 24
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ظ→ض",
+        "words": 20
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "س→ص",
+        "words": 19
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ق→ك",
+        "words": 14
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ط→ت",
+        "words": 13
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ت→ط",
+        "words": 11
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ح→ه",
+        "words": 10
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ك→ق",
+        "words": 10
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ذ→ز",
+        "words": 6
+       }
+      ],
+      "target_pair": [
+       {
+        "cause": "target_pair",
+        "substitution": "س→ش",
+        "words": 27
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ط→ق",
+        "words": 6
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ش→س",
+        "words": 5
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ظ→ذ",
+        "words": 4
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ذ→ظ",
+        "words": 3
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ق→ط",
+        "words": 3
+       }
+      ]
+     }
+    }
+   }
+  },
+  "h448": {
+   "label": "h448",
+   "scorings": {
+    "shipped_default": {
+     "graded": 43683,
+     "flagged": 2479,
+     "per_1000": 56.75,
+     "causes": {
+      "tashkeel": {
+       "words": 234,
+       "per_1000": 5.36
+      },
+      "soft_pair": {
+       "words": 37,
+       "per_1000": 0.85
+      },
+      "target_pair": {
+       "words": 54,
+       "per_1000": 1.24
+      },
+      "other_consonant": {
+       "words": 1889,
+       "per_1000": 43.24
+      },
+      "shaddah": {
+       "words": 38,
+       "per_1000": 0.87
+      },
+      "skipped": {
+       "words": 88,
+       "per_1000": 2.01
+      },
+      "unrecorded": {
+       "words": 197,
+       "per_1000": 4.51
+      }
+     },
+     "substitutions": {
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 99
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 68
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 63
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ج→ش",
+        "words": 61
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 57
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "د→ت",
+        "words": 47
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 45
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→ل",
+        "words": 45
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→∅",
+        "words": 39
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ز→س",
+        "words": 39
+       }
+      ],
+      "soft_pair": [
+       {
+        "cause": "soft_pair",
+        "substitution": "ه→ح",
+        "words": 10
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ك→ق",
+        "words": 6
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ظ→ض",
+        "words": 4
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ق→ك",
+        "words": 4
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ذ→ز",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "س→ص",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ص→س",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ط→ت",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ت→ط",
+        "words": 2
+       }
+      ],
+      "target_pair": [
+       {
+        "cause": "target_pair",
+        "substitution": "س→ش",
+        "words": 24
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ط→ق",
+        "words": 12
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ش→س",
+        "words": 6
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ذ→ظ",
+        "words": 4
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ظ→ذ",
+        "words": 4
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ق→ط",
+        "words": 4
+       }
+      ]
+     }
+    },
+    "allowances_off": {
+     "graded": 43682,
+     "flagged": 2709,
+     "per_1000": 62.02,
+     "causes": {
+      "tashkeel": {
+       "words": 227,
+       "per_1000": 5.2
+      },
+      "soft_pair": {
+       "words": 191,
+       "per_1000": 4.37
+      },
+      "target_pair": {
+       "words": 55,
+       "per_1000": 1.26
+      },
+      "other_consonant": {
+       "words": 1905,
+       "per_1000": 43.61
+      },
+      "shaddah": {
+       "words": 86,
+       "per_1000": 1.97
+      },
+      "skipped": {
+       "words": 92,
+       "per_1000": 2.11
+      },
+      "unrecorded": {
+       "words": 217,
+       "per_1000": 4.97
+      }
+     },
+     "substitutions": {
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 100
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 73
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 63
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ج→ش",
+        "words": 61
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 60
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "د→ت",
+        "words": 47
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 47
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→ل",
+        "words": 46
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ز→س",
+        "words": 39
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ه→∅",
+        "words": 39
+       }
+      ],
+      "soft_pair": [
+       {
+        "cause": "soft_pair",
+        "substitution": "ه→ح",
+        "words": 34
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ظ→ض",
+        "words": 28
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ص→س",
+        "words": 27
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ط→ت",
+        "words": 17
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ك→ق",
+        "words": 17
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "س→ص",
+        "words": 15
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ق→ك",
+        "words": 15
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ذ→ز",
+        "words": 14
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ت→ط",
+        "words": 12
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ح→ه",
+        "words": 11
+       }
+      ],
+      "target_pair": [
+       {
+        "cause": "target_pair",
+        "substitution": "س→ش",
+        "words": 24
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ط→ق",
+        "words": 13
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ش→س",
+        "words": 6
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ذ→ظ",
+        "words": 4
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ظ→ذ",
+        "words": 4
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ق→ط",
+        "words": 4
+       }
+      ]
+     }
+    }
+   }
+  },
+  "base": {
+   "label": "teacher",
+   "scorings": {
+    "shipped_default": {
+     "graded": 43901,
+     "flagged": 982,
+     "per_1000": 22.37,
+     "causes": {
+      "tashkeel": {
+       "words": 150,
+       "per_1000": 3.42
+      },
+      "soft_pair": {
+       "words": 15,
+       "per_1000": 0.34
+      },
+      "target_pair": {
+       "words": 26,
+       "per_1000": 0.59
+      },
+      "other_consonant": {
+       "words": 559,
+       "per_1000": 12.73
+      },
+      "shaddah": {
+       "words": 23,
+       "per_1000": 0.52
+      },
+      "skipped": {
+       "words": 42,
+       "per_1000": 0.96
+      },
+      "unrecorded": {
+       "words": 193,
+       "per_1000": 4.4
+      }
+     },
+     "substitutions": {
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 59
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 29
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 25
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "و→∅",
+        "words": 22
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 21
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 20
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ب→∅",
+        "words": 17
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "غ→ق",
+        "words": 17
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→∅",
+        "words": 13
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ه→∅",
+        "words": 12
+       }
+      ],
+      "soft_pair": [
+       {
+        "cause": "soft_pair",
+        "substitution": "ه→ح",
+        "words": 4
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ز→ذ",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ط→ت",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ح→ه",
+        "words": 1
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ص→س",
+        "words": 1
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ظ→ض",
+        "words": 1
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ق→ك",
+        "words": 1
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ك→ق",
+        "words": 1
+       }
+      ],
+      "target_pair": [
+       {
+        "cause": "target_pair",
+        "substitution": "س→ش",
+        "words": 17
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ط→ق",
+        "words": 4
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ذ→ظ",
+        "words": 3
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ش→س",
+        "words": 1
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ق→ط",
+        "words": 1
+       }
+      ]
+     }
+    },
+    "allowances_off": {
+     "graded": 43901,
+     "flagged": 1106,
+     "per_1000": 25.19,
+     "causes": {
+      "tashkeel": {
+       "words": 141,
+       "per_1000": 3.21
+      },
+      "soft_pair": {
+       "words": 87,
+       "per_1000": 1.98
+      },
+      "target_pair": {
+       "words": 26,
+       "per_1000": 0.59
+      },
+      "other_consonant": {
+       "words": 564,
+       "per_1000": 12.85
+      },
+      "shaddah": {
+       "words": 65,
+       "per_1000": 1.48
+      },
+      "skipped": {
+       "words": 43,
+       "per_1000": 0.98
+      },
+      "unrecorded": {
+       "words": 205,
+       "per_1000": 4.67
+      }
+     },
+     "substitutions": {
+      "other_consonant": [
+       {
+        "cause": "other_consonant",
+        "substitution": "ء→∅",
+        "words": 59
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ن→∅",
+        "words": 31
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→∅",
+        "words": 27
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "و→∅",
+        "words": 22
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "م→∅",
+        "words": 21
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ل→ن",
+        "words": 20
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ب→∅",
+        "words": 17
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "غ→ق",
+        "words": 17
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ر→∅",
+        "words": 13
+       },
+       {
+        "cause": "other_consonant",
+        "substitution": "ع→ء",
+        "words": 11
+       }
+      ],
+      "soft_pair": [
+       {
+        "cause": "soft_pair",
+        "substitution": "ص→س",
+        "words": 18
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ط→ت",
+        "words": 17
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ه→ح",
+        "words": 12
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ظ→ض",
+        "words": 11
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ح→ه",
+        "words": 7
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ك→ق",
+        "words": 7
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "س→ص",
+        "words": 6
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ز→ذ",
+        "words": 4
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ق→ك",
+        "words": 3
+       },
+       {
+        "cause": "soft_pair",
+        "substitution": "ت→ط",
+        "words": 2
+       }
+      ],
+      "target_pair": [
+       {
+        "cause": "target_pair",
+        "substitution": "س→ش",
+        "words": 17
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ط→ق",
+        "words": 4
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ذ→ظ",
+        "words": 3
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ش→س",
+        "words": 1
+       },
+       {
+        "cause": "target_pair",
+        "substitution": "ق→ط",
+        "words": 1
+       }
+      ]
+     }
+    }
+   }
+  }
+ },
+ "substitutions": [
+  {
+   "cause": "other_consonant",
+   "substitution": "ء→∅",
+   "words": 98
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "ل→ن",
+   "words": 59
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "ن→∅",
+   "words": 49
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "ج→ش",
+   "words": 46
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "م→∅",
+   "words": 38
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "ء→ي",
+   "words": 33
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "و→∅",
+   "words": 33
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "د→ت",
+   "words": 32
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "ر→ل",
+   "words": 31
+  },
+  {
+   "cause": "other_consonant",
+   "substitution": "ل→∅",
+   "words": 31
+  }
+ ]
+}

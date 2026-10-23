@@ -585,7 +585,8 @@ def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
                "harness": sources.harness_identity()}
     with claim(layout.claim(CONFIRM), sitting):
         if spec.pins is not None:  # the pre-registration's pins, before any candidate is read
-            check_pins(spec, sitting["harness"], sha256_file(PREREG_PATH))
+            check_pins(spec, sitting["harness"],
+                       sha256_file(PREREG_PATH) if PREREG_PATH.exists() else "")
             require_reproduction(reproduction(sources))
         report = confirm_report(load_confirm(sources, weights, spec=spec), workers, spec=spec)
         same_harness(sources, sitting)
@@ -766,6 +767,7 @@ def main() -> None:
     commands.add_parser("select-qud", help="freeze QUD's salted half (before any decode)")
     merged = commands.add_parser("merge", help="gather the GPU box's decodes")
     merged.add_argument("--decodes-dir", type=Path, required=True)
+    merged.add_argument("--spec", default=AUG95.name, choices=("aug95", "consonant1"))
     for name, text in (("look", "read the look half once and write the choice"),
                        ("confirm", "read the confirm half and the guards once: the verdict")):
         command = commands.add_parser(name, help=text)
@@ -779,7 +781,7 @@ def main() -> None:
         command.add_argument("--spec", default=AUG95.name,
                              choices=("aug95", "consonant1"))
     args = parser.parse_args()
-    specification = round_spec(getattr(args, "spec", AUG95.name))
+    specification = round_spec(args.spec)
     from training.consonant_readout import ROUND_DIR
 
     layout = Layout(ROUND_DIR) if specification.name == "consonant1" else Layout()
@@ -789,7 +791,8 @@ def main() -> None:
         record = write_qud_selection()
         print(f"wrote {QUD_SELECTION_PATH}: {record['kept_counts']} of {record['segments']}")
     elif args.command == "merge":
-        print(f"wrote {layout.models}: {sorted(merge(args.decodes_dir, layout))}")
+        print(f"wrote {layout.models}: "
+              f"{sorted(merge(args.decodes_dir, layout, spec=specification))}")
     elif args.command == "look":
         print(f"wrote {layout.choice}: "
               f"{run_look(sources, layout, args.workers, spec=specification)['weights']}")

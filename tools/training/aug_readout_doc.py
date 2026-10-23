@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from training.aug_readout_metrics import PER_1000
+from training.aug_readout_spec import AUG95, RoundSpec
 from training.aug_readout_verdict import BAR_TEXT
 
 ORDER = ("candidate", "control", "h448", "base")
@@ -29,7 +30,8 @@ def _signed(value) -> str:
     return _number(value, "+")
 
 
-def _interval(interval: Mapping, signed: bool = False) -> str:
+def interval_text(interval: Mapping, signed: bool = False) -> str:
+    """One interval as a reader sees it: its two ends, or why it has no bound."""
     if interval["method"] == "none":
         return f"(no bound: {interval['reason']})"
     show = _signed if signed else _number
@@ -47,11 +49,14 @@ def table(title: str, view: Mapping | None) -> list[str]:
     for model in ORDER:
         if model in view["models"]:
             row = view["models"][model]
-            lines.append(f"| {LABELS.get(model, model)} | {_number(row['point'])} | {_interval(row['interval'])} | "
+            lines.append(f"| {LABELS.get(model, model)} | {_number(row['point'])} | {interval_text(row['interval'])} | "
                          f"{row['num']:g} / {row['den']:g} |")
     for name, row in view["comparisons"].items():
         lines.append(f"| {name} | {_signed(row['point'])} | "
-                     f"{_interval(row['interval'], signed=True)} | paired |")
+                     f"{interval_text(row['interval'], signed=True)} | paired |")
+        if "veto_interval" in row:
+            lines.append(f"| {name} (99.5%) | {_signed(row['point'])} | "
+                         f"{interval_text(row['veto_interval'], signed=True)} | paired |")
     return lines + [""]
 
 
@@ -84,9 +89,34 @@ def coverage_section(coverage: Mapping, look: Mapping, report: Mapping) -> list[
     return out
 
 
-def render(look: Mapping, report: Mapping, coverage: Mapping | None = None) -> str:
+def _condition_reading(condition: Mapping) -> str:
+    """One verdict row's reading, from whatever the condition recorded."""
+    if "bound" in condition:
+        return (f"point {_signed(condition.get('point'))}, {condition.get('end')} bound "
+                f"{_signed(condition['bound'])} ({condition.get('method')})")
+    if "gap" in condition:
+        return (f"reduction {_number(condition['reduction'])} of a gap of "
+                f"{_number(condition['gap'])}; needs {_number(condition['required_reduction'])}")
+    if "reduction" in condition:
+        return (f"reduction {_number(condition['reduction'])}; needs "
+                f"{_number(condition['required'])}")
+    if "difference" in condition:
+        return f"candidate − C95 {condition['difference']:+d} sites"
+    if "verdict" in condition and condition.get("reason"):
+        return condition["reason"]
+    if "candidate" in condition:
+        return f"candidate {_number(condition['candidate'])}, C95 {_number(condition['c95'])}" \
+            if "c95" in condition else \
+            f"candidate {_number(condition['candidate'])}, h448 {_number(condition['h448'])}"
+    return condition.get("reason", "")
+
+
+def render(look: Mapping, report: Mapping, coverage: Mapping | None = None,
+           spec: RoundSpec = AUG95) -> str:
     """The document. ``coverage`` is :func:`training.aug_readout.coverage`'s record (committed
     as ``coverage.json``); without one the scope section is omitted."""
+    if spec.name == "consonant1":
+        return _render_consonant(look, report, coverage, spec)
     verdict = report["verdict"]
     out = [
         "# The augmentation experiment's readout (#95)",
@@ -104,17 +134,7 @@ def render(look: Mapping, report: Mapping, coverage: Mapping | None = None) -> s
         "|---|---|---|---|",
     ]
     for c in verdict["conditions"]:
-        if "bound" in c:
-            reading = (f"point {_signed(c['point'])}, {c['end']} bound "
-                       f"{_signed(c['bound'])} ({c['method']})")
-        elif "gap" in c:
-            reading = (f"reduction {_number(c['reduction'])} of a gap of {_number(c['gap'])}; "
-                       f"needs {_number(c['required_reduction'])}")
-        elif "candidate" in c:
-            reading = f"candidate {_number(c['candidate'])}, h448 {_number(c['h448'])}"
-        else:
-            reading = c.get("reason", "")
-        out.append(f"| {c['name']} | {BAR_TEXT[c['name']]} | {reading} | "
+        out.append(f"| {c['name']} | {BAR_TEXT[c['name']]} | {_condition_reading(c)} | "
                    f"{VERDICT_TEXT[c['verdict']]} |")
     attribution = verdict["attribution"]
     control = attribution.get("control_vs_h448")
@@ -123,7 +143,7 @@ def render(look: Mapping, report: Mapping, coverage: Mapping | None = None) -> s
                 f"{VERDICT_TEXT[attribution['against_control']]}). Described, never part of "
                 "the verdict: control − `h448` "
                 + (f"{_signed(control['point'])} per 1,000 "
-                   f"{_interval(control['interval'], signed=True)}." if control else "–."), "",
+                   f"{interval_text(control['interval'], signed=True)}." if control else "–."), "",
             "**Pre-registered edge rules** (#95, 2026-10-16, before any candidate decode): an "
             "`h448` − teacher gap on the confirm half that is not positive makes the quarter-gap "
             "bar \"cannot certify\", an additional condition the bar presumes; qdat's consistency "
@@ -202,3 +222,134 @@ def render(look: Mapping, report: Mapping, coverage: Mapping | None = None) -> s
             f"- Input files read, each with its SHA-256 in `report.json`: {len(audit['inputs'])}.",
             ""]
     return "\n".join(out)
+
+
+# --- the consonant round's document -------------------------------------------------------------
+
+
+def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
+                      spec: RoundSpec) -> str:
+    """#174's readout in #95's layout: the verdict table, every reported-only table, the G6
+    catch arm and the frozen populations' coverage."""
+    verdict = report["verdict"]
+    out = [
+        f"# {spec.title}",
+        "",
+        "Generated by `python -m training.aug_readout doc --spec consonant1` from "
+        "`tools/tadabur/consonant_readout/`'s `look.json` and `report.json`. The bars are #174's "
+        "pre-registration, frozen 2026-10-22 before any training of the round and read exactly "
+        "as written. Candidate: C95 continued toward the base teacher; baseline: C95. Nothing "
+        "here trains, sets a threshold or touches the sealed panel.",
+        "",
+        f"## Verdict: {VERDICT_TEXT[verdict['verdict']]}",
+        "",
+        "| condition | bar (#174) | reading | verdict |",
+        "|---|---|---|---|",
+    ]
+    for condition in verdict["conditions"]:
+        out.append(f"| {condition['name']} | {condition['bar']} | "
+                   f"{_condition_reading(condition)} | "
+                   f"{VERDICT_TEXT[condition['verdict']]} |")
+    out += ["", "**A \"cannot certify\" is resolved by a new dated pre-registration, never by "
+                "a re-run.**", ""]
+
+    out += ["## 1. The look half: live or EMA", "",
+            f"Tarteel v1's look half, {look['items']} clips. Rule: {look['rule']}. "
+            f"**Chosen: {look['choice']}.**", "",
+            "| weights | graded words | flagged | false flags per 1,000 | word agreement "
+            "with the teacher (points) |", "|---|---|---|---|---|"]
+    for model, row in sorted(look["inputs"].items()):
+        out.append(f"| {model} | {row['graded_words']:g} | {row['flagged_words']:g} | "
+                   f"{_number(row['false_flags_per_1000'])} | "
+                   f"{_number(row['word_agreement_points'])} |")
+    out.append("")
+
+    main = report["main"]
+    out += ["## 2. Confirm: bars 1–5", ""]
+    out += table("Tarteel v1 confirm, all-cause false flags per 1,000 graded words (bar 1; bar 2 "
+                 "reads the point reduction)", main["all_cause"])
+    out += table("Tarteel v1 confirm, consonant-caused false flags per 1,000 (bar 3)",
+                 main["consonant_cause"])
+    out += table("Tarteel v1 confirm, tashkeel-caused false flags per 1,000 (G4)",
+                 main["tashkeel_cause"])
+    out += table("Tarteel v1 confirm, word agreement with the teacher (bar 4a)",
+                 report["mechanism"]["tarteel_v1_confirm"])
+    out += table("qdat, word agreement with the teacher (bar 4a)", report["mechanism"]["qdat"])
+    out += table("Tarteel v1 confirm, agreement on the teacher-departure words (bar 4b)",
+                 report["mechanism"]["tarteel_v1_confirm_departs"])
+    out += table("qdat, agreement on the teacher-departure words (bar 4b)",
+                 report["mechanism"]["qdat_departs"])
+    out += table("qdat, all-cause false flags per 1,000 (bar 5)", report["consistency"]["qdat"])
+
+    out += ["## 3. The G5 substitutions (99.5% veto)", "",
+            "Each substitution the freeze listed, flagged words per 1,000 graded words. G5 trips "
+            "only on a large regression; a pass does not mean no consonant got worse.", ""]
+    for substitution, view in report["substitutions"].items():
+        out += table(f"`{substitution}`", view)
+    if not report["substitutions"]:
+        out += ["No frozen substitution list: G5 cannot certify.", ""]
+
+    out += ["## 4. Guards", ""]
+    guards = report["guards"]
+    out += table("QUD other half, all-cause false flags per 1,000 (G1)", guards["qud_other"])
+    out += table("Tadabur dev, teacher agreement at stream_b0 (G2)",
+                 guards["tadabur_dev_unseen"])
+    for kind, view in guards["qdat_bench"].items():
+        out += table(f"qdat_bench stream arm, {kind} agreement with the experts (G3)", view)
+
+    out += ["## 5. Catch side: G6", ""]
+    catch = report["catch"]["ship_a_verified"]
+    if catch is None:
+        out += ["No catch input (C95's and the candidate's check caches): G6 cannot certify.", ""]
+    else:
+        out += [f"Ship A's held-out verified real mistakes at ط↔ق and س↔ش: {catch['sites']} "
+                f"sites, words the app flags (checks, shipped default).", "",
+                "| model | graded sites | flagged |", "|---|---|---|"]
+        out += [f"| {model} | {row['graded']} | {row['flagged']} |"
+                for model, row in catch["models"].items()]
+        out += ["", f"candidate − C95: {catch['difference']:+d} sites; the bar is ≥ −2.", ""]
+
+    out += ["## 6. Reported, not gating", ""]
+    for name, view in report["leniency"]["abstentions"].items():
+        out += table(f"{name}, consonant carriers the decode commits nothing at", view)
+    for name, view in report["leniency"]["ungraded"].items():
+        out += table(f"{name}, words the engine leaves ungraded, per 1,000", view)
+    out += table("Tadabur dev, blank share of the argmax frames",
+                 report["leniency"]["blank_ratio"])
+    if coverage is not None:
+        out += _round_coverage(coverage, look, report)
+    out += ["**Reported, not gating:** every substitution's change on the confirm half (§3), "
+            "the false flags by cause (§2), `h448` and the teacher columns in every table, the "
+            "catch side, abstentions and coverage, and #95's QUD half beside G1.", ""]
+
+    audit = report.get("audit")
+    if audit:
+        out += ["## Identity and audit", "",
+                f"- `choice.json`: SHA-256 `{audit['choice_sha256']}`, commit "
+                f"`{audit['choice_commit']}`.",
+                f"- Muraja harness: `{audit['harness']}`",
+                f"- Input files read, each with its SHA-256 in `report.json`: "
+                f"{len(audit['inputs'])}.", ""]
+    return "\n".join(out)
+
+
+def _round_coverage(coverage: Mapping, look: Mapping, report: Mapping) -> list[str]:
+    """The round's frozen populations: decoded, evaluated and excluded, with the reasons."""
+    order = ("tarteel_v1.look", "tarteel_v1.confirm", "qud_other")
+    populations = {name: coverage["populations"][name] for name in order}
+    evaluated = {"tarteel_v1.look": look["items"],
+                 "tarteel_v1.confirm": report["sizes"]["tarteel_v1_confirm"],
+                 "qud_other": report["sizes"]["qud_other"]}
+    for name, row in populations.items():
+        if row["evaluated"] != evaluated[name]:
+            raise ValueError(f"coverage {name}: {row['evaluated']} evaluated, the readout read "
+                             f"{evaluated[name]}")
+    out = ["## 7. Coverage of the frozen populations", "", coverage["statement"], "",
+           "| population | decoded | evaluated | excluded | excluded canonical word "
+           "occurrences |", "|---|---|---|---|---|"]
+    out += [f"| {name} | {row['decoded']} | {row['evaluated']} | {row['excluded']} | "
+            f"{row['excluded_words']} |" for name, row in populations.items()]
+    out += [""]
+    for name, row in populations.items():
+        out += [f"**{name}**, the {row['excluded']} excluded: {row['reason']}.", ""]
+    return out

@@ -40,8 +40,11 @@ from training.aug_readout_metrics import (
     BASE,
     CANDIDATE,
     CONSONANT,
+    CONSONANT_FLAG_CAUSES,
     DEPARTS,
+    EQUALS,
     H448,
+    MADD_ALIF,
     PER_1000,
     POINTS,
     TASHKEEL_CAUSE,
@@ -132,7 +135,12 @@ def freeze_report(grades: Sequence, model: str, top: int = 10) -> dict:
         for cause in (CONSONANT, TASHKEEL_CAUSE):
             if carries_cause(grade.reason, cause):
                 causes[cause] += 1
-        substitutions.update(set(grade.reason.consonants))
+        # G5's list is the round's consonant causes only: the madd alif is Muraja#263 and a
+        # shaddah deletion is its own cause, so neither enters the veto (#174).
+        substitutions.update({(cause, substitution)
+                              for cause, substitution in grade.reason.consonants
+                              if cause in CONSONANT_FLAG_CAUSES
+                              and substitution != MADD_ALIF})
     return {
         "model": model,
         "causes": {cause: causes[cause] for cause in (CONSONANT, TASHKEEL_CAUSE)},
@@ -165,38 +173,66 @@ def frozen_substitutions(spec: RoundSpec, path: Path = FREEZE_PATH) -> tuple[str
 # --- the catch arm (G6) -------------------------------------------------------------------------
 
 
-def g6_sites() -> list:
-    """Ship A's held-out verified sites heard as the partner letter at ط↔ق or س↔ش, less the
+def _held_out_mistakes() -> list:
+    """Ship A's held-out verified sites heard as the partner letter at ط↔ق or س↔ش, before the
     shared exclusions (an existing definition, applied as :mod:`training.truth_baseline` does)."""
-    from tadabur.exclusions import current
     from tadabur.ship_a import HELD_OUT
     from tadabur.ship_a_verified import SHIP_A, load_verified
     from training.site_outcomes import MISTAKE_SIDE, side
 
     sites, designs = load_verified()
-    excluded = current()
     return [site for site in sites
             if site.mark in G6_MARKS and side(site) == MISTAKE_SIDE
             and site.site_id in designs
-            and (designs[site.site_id].frame, designs[site.site_id].half) == (SHIP_A, HELD_OUT)
-            and site.site_id not in excluded]
+            and (designs[site.site_id].frame, designs[site.site_id].half) == (SHIP_A, HELD_OUT)]
+
+
+def g6_sites() -> list:
+    """The held-out mistakes less the shared exclusions, as the readout froze them."""
+    from tadabur.exclusions import current
+
+    excluded = current()
+    return [site for site in _held_out_mistakes() if site.site_id not in excluded]
 
 
 def load_g6_sites(path: Path = G6_SITES_PATH) -> list[str]:
-    """The frozen G6 site ids, in the order :func:`g6_sites` reads them."""
+    """The frozen G6 site ids, in the order they were frozen."""
     return json.loads(path.read_text(encoding="utf-8"))["sites"]
 
 
+def g6_scope(path: Path = G6_SITES_PATH) -> dict:
+    """G6's sites **by their frozen ids**, refused when the live recomputation differs, so a
+    verdict edit cannot move the denominator between C95's baseline and the readout. Carries the
+    held-out mistakes before the shared exclusions and the ids it removed."""
+    from tadabur.exclusions import current
+
+    sites = _held_out_mistakes()
+    excluded = current()
+    live = {site.site_id: site for site in sites if site.site_id not in excluded}
+    frozen = load_g6_sites(path)
+    if sorted(live) != sorted(frozen):
+        raise SystemExit(f"{path.name} and the live G6 list differ: G6's denominator moved")
+    return {"sites": [live[key] for key in frozen], "candidates": len(sites),
+            "excluded": sorted(site.site_id for site in sites if site.site_id in excluded)}
+
+
 def write_g6_sites(path: Path = G6_SITES_PATH) -> list[str]:
-    """Freeze G6's ids, so the denominator cannot drift between C95 and the readout."""
+    """Freeze G6's ids, so the denominator cannot drift between C95 and the readout, with the
+    held-out mistakes the shared exclusions removed."""
+    from tadabur.exclusions import current
+
     if path.exists():
         raise SystemExit(f"{path.name} exists: G6's sites are fixed")
-    sites = [site.site_id for site in g6_sites()]
+    sites = _held_out_mistakes()
+    excluded = current()
+    kept = [site.site_id for site in sites if site.site_id not in excluded]
     write_text_atomically(path, json.dumps(
         {"issue": CONSONANT1.issue, "rule": "Ship A's held-out verified real mistakes at ط↔ق "
          "and س↔ش, heard as the partner letter, less the shared exclusions",
-         "sites": sites}, ensure_ascii=False, indent=1) + "\n")
-    return sites
+         "candidates": len(sites),
+         "excluded": sorted(site.site_id for site in sites if site.site_id in excluded),
+         "sites": kept}, ensure_ascii=False, indent=1) + "\n")
+    return kept
 
 
 def catch_difference(candidate: int, baseline: int) -> int:
@@ -204,29 +240,55 @@ def catch_difference(candidate: int, baseline: int) -> int:
     return candidate - baseline
 
 
+def catch_table(sites: Sequence, outcomes: Mapping[str, Mapping[str, str]],
+                baseline: str) -> dict:
+    """G6's table from each model's kept outcome per site: the flag counts, and the paired
+    count difference against ``baseline``, read from the models actually there (the first is the
+    candidate). ``None`` difference when the baseline is not among them."""
+    from training.muraja_policy import WORD_FLAGGED
+
+    table = {"sites": [site.site_id for site in sites], "models": {}}
+    for name, per_site in outcomes.items():
+        table["models"][name] = {
+            "graded": len(sites),
+            "flagged": sum(outcome in WORD_FLAGGED for outcome in per_site.values()),
+            "outcomes": dict(per_site)}
+    first = next(iter(outcomes), None)
+    table["difference"] = (catch_difference(table["models"][first]["flagged"],
+                                            table["models"][baseline]["flagged"])
+                           if first is not None and baseline in table["models"] else None)
+    return table
+
+
 def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = None,
-              cache_dir: Path | None = None) -> dict | None:
+              cache_dir: Path | None = None, scope: Mapping | None = None) -> dict | None:
     """Each site's word graded through Muraja on every model's recorded check sequence, reusing
-    :func:`training.truth_baseline.app_outcomes`. ``None`` when a model has no check cache yet:
-    a missing input, which reads "cannot certify", never an error."""
+    :func:`training.truth_baseline.app_outcomes`; ``models[0]`` is the candidate and the count
+    difference is read against ``spec.baseline``. ``None`` when a model has no cache: a missing
+    input, which reads "cannot certify", never an error. ``scope`` (from :func:`g6_scope`) records
+    what the shared exclusions removed."""
     from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
     from training.aug_readout_gate import model_spec
     from training.truth_baseline import (
-        CHECK_PROTOCOLS, CHECK_STORE, CHECKS, DEFAULT_MODELS, app_outcomes, check_cache,
-        committed_text, items_of, model_caches, read_cache,
+        CHECK_PROTOCOLS, CHECK_STORE, CHECKS, DECODE_STORE, DEFAULT_MODELS, app_outcomes,
+        check_cache, committed_text, items_of, model_caches, read_cache,
     )
-    from training.muraja_policy import WORD_FLAGGED, require_harness
+    from training.muraja_policy import require_harness
 
     spec = spec or CONSONANT1
     directory = Path(cache_dir) if cache_dir is not None else CHECK_STORE.directory
-    if any(not (directory / f"{name}.json").exists() for name in models):
+    reading_caches = directory == CHECK_STORE.directory
+    missing = [name for name in models
+               if not (directory / f"{name}.json").exists()
+               or (reading_caches and not DECODE_STORE.path(name).exists())]
+    if missing:
         return None
     registry = load_staged_clips(REGISTRY_PATH)
     items = items_of(sites, registry)
     sequences = {}
     for name in models:
         ref = DEFAULT_MODELS.get(name) or model_spec(name, spec=spec).ref
-        if directory == CHECK_STORE.directory:
+        if reading_caches:
             _, recorded = model_caches(name, ref, items, registry, None)
         else:
             path = directory / f"{name}.json"
@@ -234,24 +296,17 @@ def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = N
             check_cache(path, recorded, ref, CHECK_PROTOCOLS)
         sequences[name] = {key: row[CHECKS] for key, row in recorded["items"].items()
                            if key in items}
-        if missing := set(items) - set(sequences[name]):
-            raise SystemExit(f"{name}: its check cache lacks {len(missing)} of G6's items")
+        if lost := set(items) - set(sequences[name]):
+            raise SystemExit(f"{name}: its check cache lacks {len(lost)} of G6's items")
     decodes = {name: {key: committed_text(checks) for key, checks in sequences[name].items()}
                for name in models}
     _, kept = app_outcomes(sites, [], decodes, sequences, require_harness())
     scoring = SHIPPED_DEFAULT.name
-    table = {"sites": [site.site_id for site in sites], "models": {}}
-    for name in models:
-        outcomes = {site.site_id: kept.grades[scoring][name][site.site_id].outcome
-                    for site in sites}
-        table["models"][name] = {
-            "graded": len(sites),
-            "flagged": sum(outcome in WORD_FLAGGED for outcome in outcomes.values()),
-            "outcomes": outcomes}
-    pair = (CANDIDATE, spec.baseline)
-    table["difference"] = (catch_difference(table["models"][pair[0]]["flagged"],
-                                            table["models"][pair[1]]["flagged"])
-                           if all(name in table["models"] for name in pair) else None)
+    outcomes = {name: {site.site_id: kept.grades[scoring][name][site.site_id].outcome
+                       for site in sites} for name in models}
+    table = catch_table(sites, outcomes, spec.baseline)
+    if scope is not None:
+        table["scope"] = {"candidates": scope["candidates"], "excluded": scope["excluded"]}
     return table
 
 
@@ -259,13 +314,18 @@ def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = N
 
 
 def tracer_text(views: Mapping[str, Mapping],
-                comparisons: Sequence[tuple[str, str]] = ((CANDIDATE, C95),)) -> str:
-    """The tracer's summary: one line per table with each paired difference's point, its
-    interval and the fact that nothing is certified."""
+                comparisons: Sequence[tuple[str, str]] = ((CANDIDATE, C95),),
+                reproduction_totals: Mapping | None = None) -> str:
+    """The tracer's summary: the #95 reproduction check's totals, then one line per table with
+    each paired difference's point, its interval and the fact that nothing is certified."""
     from training.aug_readout_doc import interval_text
 
     names = [comparison_name(*pair) for pair in comparisons]
     lines = ["C95 against C95: no candidate exists yet, so every read is plumbing.", ""]
+    if reproduction_totals is not None:
+        totals = ", ".join(f"{name} {row['flagged']}/{row['graded']}"
+                           for name, row in reproduction_totals.items())
+        lines += [f"the #95 reproduction check: {totals}", ""]
     for table, view in views.items():
         for name in names:
             row = view["comparisons"].get(name)
@@ -282,7 +342,7 @@ def tracer_spec(spec: RoundSpec = CONSONANT1) -> RoundSpec:
     return dataclasses.replace(spec, decode_names=names)
 
 
-def tracer(sources, workers: int = 1) -> dict:
+def tracer_views(sources, workers: int = 1) -> dict:
     """The look half, qdat and Tadabur dev, C95 against itself (:func:`tracer_text`'s views)."""
     from training import aug_readout as ar
 
@@ -302,6 +362,16 @@ def tracer(sources, workers: int = 1) -> dict:
     views["tadabur_dev_unseen.teacher_agreement"] = compare(
         teacher_agreement_terms(tadabur.clips, tadabur.decodes, models), POINTS)
     return views
+
+
+def tracer(sources, workers: int = 1) -> dict:
+    """The #95 reproduction check (its totals only), then C95 against itself: every point
+    difference 0.00 and every interval unbounded, so nothing certifies."""
+    from training import aug_readout as ar
+
+    totals = ar.reproduction(sources)
+    ar.require_reproduction(totals)
+    return {"reproduction": totals, "views": tracer_views(sources, workers)}
 
 
 # --- C95's identity -----------------------------------------------------------------------------
@@ -331,6 +401,7 @@ class RoundData:
     tarteel: object
     qdat: object
     qud_other: object
+    qud_half: object
     tadabur: object
     bench: Mapping[str, str]
     catch: Mapping | None
@@ -349,12 +420,14 @@ def bind_round(decodes: Mapping[str, Mapping], weights: str) -> dict:
 
 
 def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int = 1) -> dict:
-    """The round's confirm tables and verdict, the bars read as #174 states them."""
+    """The round's confirm tables and verdict, the bars read as #174 states them, and every
+    "reported, not gating" item the pre-registration lists."""
     from training import aug_readout as ar
     from training.aug_readout_metrics import (
         abstention_terms, bench_terms, blank_terms, ungraded_terms,
     )
     from training.aug_readout_verdict import verdict
+    from training.nonpro_eval import bench_departures
 
     shipped = SHIPPED_DEFAULT.name
     comparisons = spec.comparisons
@@ -370,6 +443,10 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
                        comparisons)
 
     bench = ar.bench_items(data.qdat, data.bench)
+    bench_keys = {i.key for i in bench}
+    departures = {i.key: bench_departures(i, data.bench[i.audio_filename]) for i in bench}
+    departed = [grade for grade in data.qdat.grades if grade.item.key in bench_keys
+                and grade.word_index in departures[grade.item.key]]
     substitutions = substitution_views(
         substitution_terms(data.tarteel.grades, ROUND_ROLES, shipped,
                            frozen_substitutions(spec)), PER_1000, comparisons)
@@ -377,14 +454,21 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
         "issue": spec.issue,
         "main": {"all_cause": flags(data.tarteel.grades),
                  "consonant_cause": flags(data.tarteel.grades, CONSONANT),
-                 "tashkeel_cause": flags(data.tarteel.grades, TASHKEEL_CAUSE)},
+                 "tashkeel_cause": flags(data.tarteel.grades, TASHKEEL_CAUSE),
+                 # G4's companion (#174, reported beside it).
+                 "qud_other_tashkeel_cause": flags(data.qud_other.grades, TASHKEEL_CAUSE)},
         "mechanism": {"tarteel_v1_confirm": agreement(data.tarteel),
                       "qdat": agreement(data.qdat),
                       "tarteel_v1_confirm_departs": agreement(data.tarteel, DEPARTS),
-                      "qdat_departs": agreement(data.qdat, DEPARTS)},
+                      "qdat_departs": agreement(data.qdat, DEPARTS),
+                      # Reported beside bar 4b (#174).
+                      "tarteel_v1_confirm_equals": agreement(data.tarteel, EQUALS),
+                      "qdat_equals": agreement(data.qdat, EQUALS)},
         "consistency": {"qdat": flags(data.qdat.grades)},
         "guards": {
             "qud_other": flags(data.qud_other.grades),
+            # Reported, not gating: the half #95 read.
+            "qud_half": flags(data.qud_half.grades),
             "tadabur_dev_unseen": compare(
                 teacher_agreement_terms(data.tadabur.clips, data.tadabur.decodes, ROUND_ROLES),
                 POINTS, comparisons),
@@ -394,7 +478,9 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
                     data.bench, ROUND_ROLES).items()},
         },
         "substitutions": substitutions,
-        "catch": {"ship_a_verified": data.catch},
+        "catch": {"ship_a_verified": data.catch,
+                  # The catch side as #95 read it (RetaSy is #171's).
+                  "qdat_bench_departures": flags(departed) if departed else None},
         "leniency": {
             "blank_ratio": compare(blank_terms(data.tadabur.clips, data.tadabur.blanks,
                                                ROUND_ROLES), POINTS, comparisons),
@@ -409,6 +495,7 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
         },
         "sizes": {"tarteel_v1_confirm": len(data.tarteel.items),
                   "qdat": len(data.qdat.items), "qud_other": len(data.qud_other.items),
+                  "qud_half": len(data.qud_half.items),
                   "tadabur_dev_unseen": len(data.tadabur.clips), "qdat_bench": len(bench),
                   "ship_a_verified": len(data.catch["sites"]) if data.catch else 0},
     }
@@ -430,15 +517,17 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1) -> RoundDa
                           sources.grade(data.items, decodes, ROUND_ROLES))
 
     tadabur = sources.tadabur(models)
+    scope = g6_scope()
     return RoundData(
         tarteel=graded(sources.tarteel(CONFIRM, models)),
         qdat=graded(sources.qdat(models)),
         qud_other=graded(sources.qud_other(models)),
+        qud_half=graded(sources.qud(models)),
         tadabur=ar.TadaburData(tadabur.clips, bind_round(tadabur.decodes, weights),
                                bind_round(tadabur.blanks, weights),
                                tadabur.redecoded_identical),
         bench=sources.bench(),
-        catch=catch_arm(g6_sites(), (candidate, C95), spec=spec))
+        catch=catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope))
 
 
 def coverage() -> dict:
@@ -509,7 +598,9 @@ def main() -> None:
     else:
         from training import aug_readout as ar
 
-        print(tracer_text(tracer(ar.Sources(tracer_spec()), args.workers)))
+        record = tracer(ar.Sources(tracer_spec()), args.workers)
+        print(tracer_text(record["views"],
+                          reproduction_totals=record["reproduction"]))
 
 
 if __name__ == "__main__":

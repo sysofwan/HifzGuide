@@ -64,6 +64,13 @@ def consumed_prefix(
     """
     permutation = shard_permutation(shards, seed)
     observed = list(completed)
+    if not observed:
+        # A rotated, truncated or wrongly-pathed log would otherwise "prove" an empty prefix
+        # and silently move the whole corpus back into a continuation's training set.
+        raise ValueError(
+            "the log has no shard-completion lines: it is empty, truncated, or not a "
+            f"streamed run's log (expected '[data] exposure exclusion through shard N')"
+        )
     if observed != permutation[: len(observed)]:
         first = next(
             (i for i, (seen, expected) in enumerate(zip(observed, permutation)) if seen != expected),

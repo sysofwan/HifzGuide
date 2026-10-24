@@ -32,6 +32,7 @@ from tadabur.speaker_cluster import (
     decide,
     knn_edges,
     metrics,
+    model_outcome,
     no_chaining,
     normalise,
     text_independent,
@@ -74,18 +75,35 @@ CIRCLE = np.array([_unit(0.0), _unit(9.0), _unit(20.0), _unit(180.0)], dtype=np.
 
 def test_the_knn_graph_is_the_union_of_each_row_s_neighbours():
     # k = 1: a->b, b->a, c->b, d->c, so the undirected union is a-b, b-c, c-d. The highly
-    # similar a-c pair (.940) is in neither list and must not appear, even at tau = 0.
+    # similar a-c pair (.940) is in neither list and must not appear, even at tau = -1.0.
     edges = knn_edges(CIRCLE_IDS, CIRCLE, tau=-1.0, k=1)
     assert edges == {frozenset({"a", "b"}), frozenset({"b", "c"}), frozenset({"c", "d"})}
     assert frozenset({"a", "c"}) not in edges
 
 
 def test_an_edge_needs_a_cosine_at_least_tau_among_the_k_nearest():
-    # k = 2: a-b (.988), a-c (.940), b-c (.982) and d's two nearest are c and b, both negative.
+    # k defaults to 20 and is clamped to rows - 1 = 3, so every row keeps all its neighbours;
+    # tau 0.95 keeps only a-b (.988) and b-c (.982), since c-d is -.940.
     edges = knn_edges(CIRCLE_IDS, CIRCLE, tau=0.95)
     assert edges == {frozenset({"a", "b"}), frozenset({"b", "c"})}
     # Tau 1.0 leaves nothing: no pair reaches a cosine of one.
     assert knn_edges(CIRCLE_IDS, CIRCLE, tau=1.0) == set()
+
+
+@pytest.mark.parametrize("block_rows,block_columns", [(1, 1), (3, 7), (5, 4)])
+def test_the_blocked_knn_merge_matches_the_unblocked_graph(monkeypatch, block_rows,
+                                                          block_columns):
+    # The chunk merge is the only reason _block_topk exists; every fixture above fits in one
+    # block, so without this the merge is untested (selfcheck-r1 S1.7).
+    from tadabur import speaker_cluster
+
+    rng = np.random.default_rng(20261025)
+    ids = [f"clip{index:03d}" for index in range(40)]
+    embeddings = rng.normal(size=(40, 6))
+    expected = knn_edges(ids, embeddings, 0.3)
+    monkeypatch.setattr(speaker_cluster, "BLOCK_ROWS", block_rows)
+    monkeypatch.setattr(speaker_cluster, "BLOCK_COLUMNS", block_columns)
+    assert knn_edges(ids, embeddings, 0.3) == expected
 
 
 def _circle_clusters(tau: float) -> Clustering:
@@ -253,6 +271,15 @@ def test_the_run_passes_only_if_recall_at_the_chosen_tau_is_0_9_or_more():
     at_bar = {0.30: _entry(largest_cluster=40, recall=0.9)}
     assert decide({"a": low}) == {"fallback": True}
     assert decide({"a": at_bar}) == {"model": "a", "tau": 0.30}
+
+
+def test_each_model_s_outcome_names_its_tau_recall_and_pass():
+    assert model_outcome({0.30: _entry(largest_cluster=40, recall=0.9)}) == {
+        "tau": 0.30, "recall": 0.9, "pass": True}
+    assert model_outcome({0.30: _entry(largest_cluster=40, recall=0.5)}) == {
+        "tau": 0.30, "recall": 0.5, "pass": False}
+    assert model_outcome({0.30: _entry(largest_cluster=61)}) == {
+        "tau": None, "recall": None, "pass": False}
 
 
 def test_the_first_passing_model_wins_and_the_fallback_is_stated():

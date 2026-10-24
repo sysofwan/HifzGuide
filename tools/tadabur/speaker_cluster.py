@@ -8,15 +8,17 @@ is frozen; this module is its only implementation, shared with S3b:
   union of each row's k neighbours whichever way the blocks fall;
 * an undirected edge wherever the cosine is **>= tau**; clusters are the connected components;
 * the **1% cap**: any component over 1% of rows is re-clustered by the same procedure inside
-  itself, at **tau + 0.02** and then +0.02 a round, until no component exceeds the cap or a
-  round cannot split one further (an unsplittable component is reported, not looped on);
+  itself, at **tau + 0.02** and then +0.02 a round, until no component exceeds the cap. A
+  round that splits nothing is not a stopping condition: the threshold keeps rising and the
+  loop stops at 1.0, above which no cosine edge survives (exact duplicates included);
 * deterministic: the rows are sorted by clip id before any arithmetic, and a cluster is named
   by its **smallest member clip id**, never by run or edge order. Exact cosine ties at the
   k-th neighbour are all included, so a tie never depends on iteration order.
 
 Reading of "k nearest": a neighbour is any clip whose cosine reaches the row's k-th largest
 cosine. That makes the k-th-place tie group complete rather than arbitrarily cut, and it is
-what the per-row threshold below computes.
+what the per-row threshold below computes: the (k+1)-th cosine is read only to detect a tie
+that straddles the k-th place.
 
 The τ pick, the chaining and text-independence tests and the same-reciter recall are read from
 the components **before** the cap; the post-cap components are reported alongside for
@@ -135,21 +137,23 @@ def knn_edges(clip_ids: Sequence[str], embeddings, tau: float, k: int = K) -> se
     rows = len(ids)
     if rows < 2:
         return set()
-    values, indices = _block_topk(matrix, min(k, rows - 1))
+    values, indices = _block_topk(matrix, min(k + 1, rows - 1))
     edges = {frozenset((ids[row], ids[column]))
              for row in range(rows)
-             for value, column in zip(values[row], indices[row])
-             if value >= tau and column != row}
-    # The k-th cosine may be tied with columns the top-k cut; add the whole tie group, so the
-    # graph never depends on which of equal values happened to be picked.
-    kth = values[:, -1]
-    for row in np.nonzero((values[:, :-1] == kth[:, None]).any(axis=1))[0]:
-        if kth[row] < tau:
-            continue
-        ties = np.nonzero(matrix[row] @ matrix.T >= kth[row])[0]
-        for column in ties:
-            if column != row:
-                edges.add(frozenset((ids[row], ids[column])))
+             for value, column in zip(values[row, :k], indices[row, :k])
+             if value >= tau}
+    # The k-th cosine may be tied with columns the top-k cut; read the (k+1)-th to detect that
+    # boundary and add the whole tie group, so the graph never depends on which of equal
+    # values happened to be picked.
+    if values.shape[1] > k:
+        kth = values[:, k - 1]
+        for row in np.nonzero(values[:, k] == kth)[0]:
+            if kth[row] < tau:
+                continue
+            ties = np.nonzero(matrix[row] @ matrix.T >= kth[row])[0]
+            for column in ties:
+                if column != row:
+                    edges.add(frozenset((ids[row], ids[column])))
     return edges
 
 
@@ -181,27 +185,24 @@ def cluster(clip_ids: Sequence[str], embeddings, tau: float, k: int = K) -> Clus
     cap = CAP_FRACTION * len(ids)
     threshold = tau
     resplits = 0
-    while True:
+    while threshold <= 1.0:  # above 1.0 no cosine edge survives, so every row is a singleton
         sizes = Counter(post_cap.values())
         oversized = sorted(name for name, size in sizes.items() if size > cap)
         if not oversized:
             break
-        threshold += CAP_STEP
+        # Round to the grid's two decimals: repeated float addition drifts past 1.0 early.
+        threshold = round(threshold + CAP_STEP, 2)
         resplits += 1
-        changed = False
         for name in oversized:
             members = sorted(clip for clip, cluster_id in post_cap.items()
                              if cluster_id == name)
             if len(members) < 2:
-                continue
+                continue  # 1% of fewer than 200 rows is under one row; the loop stops at 1.0
             within = matrix[[position[clip] for clip in members]]
             pieces = _components(members, knn_edges(members, within, threshold, k))
             if len(set(pieces.values())) < 2:
-                continue  # unsplittable at this threshold: report it, do not loop on it
+                continue  # this round cannot split it; the next threshold may
             post_cap.update(pieces)
-            changed = True
-        if not changed:
-            break
     return Clustering(pre_cap=pre_cap, post_cap=post_cap, resplits=resplits)
 
 
@@ -285,12 +286,19 @@ def choose_tau(per_tau: Mapping[float, Mapping]) -> float | None:
     return None
 
 
+def model_outcome(per_tau: Mapping[float, Mapping]) -> dict:
+    """One model's rule reading: its lowest admissible tau, recall there, and pass/fail."""
+    tau = choose_tau(per_tau)
+    if tau is None:
+        return {"tau": None, "recall": None, "pass": False}
+    recall = per_tau[tau]["pre_cap"]["recall"]
+    return {"tau": tau, "recall": recall, "pass": recall >= RECALL_FLOOR}
+
+
 def decide(per_model: Mapping[str, Mapping[float, Mapping]]) -> dict:
     """The pre-registered choice: the first candidate model that passes, or the fallback."""
     for model in per_model:  # A, then B: the caller's order is the pre-registered one
-        tau = choose_tau(per_model[model])
-        if tau is None:
-            continue
-        if per_model[model][tau]["pre_cap"]["recall"] >= RECALL_FLOOR:
-            return {"model": model, "tau": tau}
+        outcome = model_outcome(per_model[model])
+        if outcome["pass"]:
+            return {"model": model, "tau": outcome["tau"]}
     return {"fallback": True}

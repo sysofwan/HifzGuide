@@ -57,7 +57,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from . import qud_source
-from .nonpro_sources import TARTEEL_V1, TLOG, Dataset, tlog_split
+from .nonpro_sources import TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, tlog_split
 
 SCHEMA_VERSION = 1
 #: Where the committed index lives (``tools/tadabur/tlog/index``).
@@ -289,11 +289,11 @@ def build(index_dir: Path = INDEX_DIR, quran_db: Path = DEFAULT_QURAN_DB,
         "source": {"repo": TLOG.repo, "revision": TLOG.revision,
                    "splits": {split: sum(1 for shard in TLOG.shards
                                          if tlog_split(shard) == split)
-                              for split in ("clean", "unclean")},
+                              for split in TLOG_SPLITS},
                    "licence": TLOG.licence},
         "code_sha": code_sha or head_sha(),
         "counts": {
-            "rows": {**{split: totals[split] for split in ("clean", "unclean")},
+            "rows": {**{split: totals[split] for split in TLOG_SPLITS},
                      "total": sum(totals.values())},
             "filename_labels": labels,
             "recording_ids": with_id,

@@ -14,6 +14,7 @@ from tadabur.nonpro_sources import (
     QDAT_PASSAGE,
     RETASY,
     TARTEEL_V1,
+    TLOG,
     Clip,
     LeftOut,
     Unplaced,
@@ -21,6 +22,7 @@ from tadabur.nonpro_sources import (
     locate,
     locate_clips,
     select,
+    tlog_split,
 )
 from tadabur.truth_sites import NONPRO_SOURCES
 
@@ -95,3 +97,24 @@ def test_only_a_dataset_named_by_audio_path_is_located_by_it():
     """qdat names its clips by ``id``: its audio paths would locate nothing it names."""
     with pytest.raises(ValueError):
         locate_clips(QDAT, ["x.wav"])
+
+
+def test_tlog_is_pinned_at_the_approved_revision_with_its_two_splits():
+    """tlog (#185): gated, metadata-only, clean then unclean, licence as the card's tag."""
+    assert (TLOG.name, TLOG.repo) == ("tlog", "tarteel-ai/tlog")
+    assert TLOG.revision == "9fe4f7e6d1b372c2c11157d6d2f0f91ca344eb51"
+    assert TLOG.licence == "cc-by-4.0"
+    assert len(TLOG.shards) == 743 == len(set(TLOG.shards))
+    assert TLOG.shards[0] == "data/clean-00000-of-00411.parquet"
+    assert TLOG.shards[410] == "data/clean-00410-of-00411.parquet"
+    assert TLOG.shards[411] == "data/unclean-00000-of-00332.parquet"
+    assert TLOG.shards[-1] == "data/unclean-00331-of-00332.parquet"
+    assert {tlog_split(shard) for shard in TLOG.shards} == {"clean", "unclean"}
+    assert [tlog_split(shard) for shard in TLOG.shards].count("clean") == 411
+
+
+def test_tlog_is_not_a_decoded_dataset():
+    """Its audio is never copied and ``nonpro_sources.metadata`` would read ``label``: the
+    index reads ``audio.path`` alone, so tlog is no entry of the decode path."""
+    assert TLOG.name not in DATASETS
+    assert TLOG not in DECODED

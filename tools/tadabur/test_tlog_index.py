@@ -271,3 +271,88 @@ def test_the_preregistration_is_committed_with_only_its_fields_filled():
                 "| [0.08, 0.10) | `confirm.4` |", "| otherwise | `train` |"):
         assert row in text
     assert "<date>" not in text and "<sha>" not in text
+
+
+# --- the frozen pre-registration, and the build that writes the index ------------------------
+# Added after selfcheck-r1 (S1.1, S1.3): the fragment checks above cannot see a changed threshold,
+# and the build-only logic had no test. Both live here so the brief's targeted command runs them.
+from tadabur.nonpro_sources import Dataset
+
+PREREGISTRATION_PATH = (
+    Path(ti.__file__).resolve().parents[2] / "docs" / "tlog-holdout-preregistration.md")
+#: SHA-256 of the committed text, the owner-approved hold-out of 2026-10-24.
+PREREGISTRATION_SHA256 = "85ee88878fe1b5862795b39fa46b4ce10711a6329cd22c06d76d55db91e5d680"
+
+
+def test_the_tlog_preregistration_is_the_pinned_document():
+    digest = hashlib.sha256(PREREGISTRATION_PATH.read_bytes()).hexdigest()
+    assert digest == PREREGISTRATION_SHA256, (
+        "docs/tlog-holdout-preregistration.md changed: the hold-out is frozen, so a deliberate "
+        "change needs a new dated pre-registration and its pin updated here"
+    )
+
+
+CLEAN_SHARD = "data/clean-00000-of-00001.parquet"
+UNCLEAN_SHARD = "data/unclean-00000-of-00001.parquet"
+TARTEEL_SHARD = "data/train-00000-of-00001.parquet"
+#: Fake pins: two tlog shards and the Tarteel v1 metadata the "any" overlap reads.
+TLOG_FAKE = Dataset("tlog", "fake/tlog", "0" * 40, (CLEAN_SHARD, UNCLEAN_SHARD), "cc-by-4.0",
+                    False)
+TARTEEL_FAKE = Dataset("tarteel_v1", "fake/tarteel_v1", "0" * 40, (TARTEEL_SHARD,),
+                       "CC BY 4.0", True)
+PATHS = {
+    ("tlog", CLEAN_SHARD): ["1_1_111.flac", "1_2_111.flac", "1_3_null.flac",
+                            "1_4_222_AbC.flac"],
+    ("tlog", UNCLEAN_SHARD): ["-1_-1_111.wav", "-1_-1_222.wav", "-1_-1_222.wav", "2_9_1.wav",
+                              "3_4_500.wav"],
+    ("tarteel_v1", TARTEEL_SHARD): ["1_1_111.wav", "3_3_500.wav"],
+}
+
+
+def _read_shard(path: Path) -> list[dict]:
+    with gzip.open(path, "rt", encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle]
+
+
+def test_the_build_writes_the_index_and_counts_it_describes(tmp_path, monkeypatch):
+    split_path = tmp_path / "split.json"
+    split_path.write_text(json.dumps({"look": ["1_1_111.wav"], "confirm": []}),
+                          encoding="utf-8")
+    monkeypatch.setattr(ti, "TLOG", TLOG_FAKE)
+    monkeypatch.setattr(ti, "TARTEEL_V1", TARTEEL_FAKE)
+    monkeypatch.setattr(ti, "TARTEEL_V1_SPLIT", split_path)
+    monkeypatch.setattr(ti, "fetch_paths",
+                        lambda shard, dataset=TLOG_FAKE: PATHS[(dataset.name, shard)])
+
+    index_dir = tmp_path / "index"
+    meta = ti.build(index_dir=index_dir, quran_db=QURAN_DB, code_sha="ab" * 20, workers=1)
+
+    clean = _read_shard(index_dir / "clean" / "clean-00000-of-00001.jsonl.gz")
+    unclean = _read_shard(index_dir / "unclean" / "unclean-00000-of-00001.jsonl.gz")
+    assert [row["row"] for row in clean] == [0, 1, 2, 3]
+    assert [row["row"] for row in unclean] == list(range(5))
+    assert all(set(row) == ROW_KEYS for row in clean + unclean)
+    assert {row["split"] for row in clean} == {"clean"}
+    assert {row["shard_file"] for row in unclean} == {"unclean-00000-of-00001"}
+    # One row's parse: the label, the id, and the cross-split group's smallest path.
+    assert (clean[0]["audio_path"], clean[0]["filename_label"], clean[0]["recording_id"],
+            clean[0]["id_group"]) == ("1_1_111.flac", "1:1", "111", "-1_-1_111.wav")
+    assert (clean[2]["filename_label"], clean[2]["recording_id"]) == ("1:3", None)
+    # A row on the "any" overlap but not among the decoded eval clips.
+    flags = {row["audio_path"]: (row["tarteel_v1_eval_overlap"], row["tarteel_v1_any_overlap"])
+             for row in unclean}
+    assert flags["3_4_500.wav"] == (False, True) and flags["-1_-1_111.wav"] == (True, True)
+
+    assert meta["source"]["repo"] == "fake/tlog"
+    assert meta["source"]["splits"] == {"clean": 1, "unclean": 1}
+    assert meta["code_sha"] == "ab" * 20
+    assert meta["counts"] == {
+        "rows": {"clean": 4, "unclean": 5, "total": 9},
+        "filename_labels": 6,
+        "recording_ids": 8,
+        "id_groups": 5,
+        "rows_on_duplicated_ids": 6,
+        "tarteel_v1_eval_overlap": 3,
+        "tarteel_v1_any_overlap": 4,
+    }
+    assert json.loads((index_dir / "meta.json").read_text(encoding="utf-8")) == meta

@@ -7,8 +7,11 @@ column of each shard and commits, beside it, the metadata every later slice keys
 ``tools/tadabur/tlog/index/<split>/<shard>.jsonl.gz``
     one row per shard row: ``schema_version``, ``split``, ``shard_file``, ``row``, ``audio_path``,
     ``filename_label``, ``recording_id``, ``id_group``, ``tarteel_v1_eval_overlap`` and
-    ``tarteel_v1_any_overlap``. Keys sorted, ``mtime`` 0, written atomically, so a rerun at the
-    same code SHA reproduces every byte.
+    ``tarteel_v1_any_overlap``. Keys sorted, ``mtime`` 0, written atomically, so a rerun with the
+    same code SHA on the **build interpreter** reproduces every byte. gzip's header carries an
+    OS byte (index 9) that the zlib binding writes per platform: cuda-dev's Python 3.11 wrote
+    ``0x03`` into the committed files, and a macOS Python 3.13 writes ``0xff`` with the payload
+    otherwise identical. A rerun elsewhere therefore changes that one byte in all 743 files.
 ``tools/tadabur/tlog/index/meta.json``
     the source pin, the code SHA and the counts the issue posts on #173.
 
@@ -207,7 +210,12 @@ def fetch_paths(shard: str, dataset: Dataset = TLOG) -> list[str]:
 
 
 def write_shard(rows: Sequence[Mapping[str, object]], path: Path) -> None:
-    """Write one shard's rows as JSON lines, gzipped without a timestamp (same rows, same bytes)."""
+    """Write one shard's rows as JSON lines, gzipped without a timestamp.
+
+    The bytes are deterministic on one interpreter: the same rows written twice are identical,
+    but gzip's OS header byte is platform-dependent (module docstring), so another platform
+    rewrites that byte and nothing else.
+    """
     text = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
                    for row in rows).encode("utf-8")
     _write_atomically(path, gzip.compress(text, mtime=0))

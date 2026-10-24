@@ -313,6 +313,20 @@ def test_run_writes_meta_to_disk_and_a_fingerprint_store_when_asked(tp, tmp_path
     assert len(stored[stored.files[0]]) > 0
 
 
+def test_run_tolerates_a_shard_with_no_fingerprintable_row(tp, tmp_path):
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+    fp_dir = tmp_path / "fp"
+
+    meta = tp.run([CLEAN_SHARD], out_dir=tmp_path / "pass1", cache_dir=tmp_path / "cache",
+                  floors_path=floors, speech_seconds_of=lambda waveform: 0.0,
+                  stream=fake_stream([{"audio": {"path": "a.flac", "bytes": b"broken"}}]),
+                  fp_dir=fp_dir, code_sha="0" * 40)
+
+    assert meta["counts"]["rows"]["total"] == 1
+    assert not fp_dir.exists()
+
+
 def test_run_refuses_a_vad_config_that_differs_from_the_floors(tp, tmp_path):
     floors = tmp_path / "silence_floors.json"
     floors.write_text(json.dumps({"vad": {**tp.VAD_CONFIG, "threshold": 0.4}}),

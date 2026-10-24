@@ -57,3 +57,35 @@ python -m tadabur.tlog_s2 sample                 # redraw the sample (same bytes
 python -m tadabur.tlog_s2 embed --out-dir DIR    # on cuda-dev: pin and embed, GPU
 python -m tadabur.tlog_s2 report --embeddings-dir DIR
 ```
+
+## The pass-1 facts and the silence floors (#187)
+
+`pass1/` is what `tadabur.tlog_pass1` commits about the tracer shards:
+`pass1/<split>/<shard>.jsonl.gz` carries, per row, `split`, `shard_file`, `row`, `audio_path`,
+`audio_sha256`, `codec_ok`, `sample_rate`, `duration_s`, `speech_s` and `speech_ratio`, and
+`pass1/meta.json` records the code SHA, the VAD config, the floors' SHA-256, the counts and the
+measured throughput. Nothing else is computed: no label, transcript, teacher/student output or
+speaker embedding (the owner accepted the clip-level fallback on 2026-10-24, so
+`"embeddings"` records it). The Haitsma–Kalker fingerprint goes to cuda-dev scratch
+(`/root/scratch/tlog/fp/`) and is never committed; each tlog shard is downloaded, read and
+deleted.
+
+`silence_floors.json` is the pre-registration's Exclusions floor: `f_s` and `d_s` are the
+type-7 0.5th percentiles of `speech_ratio` and `speech_s` over the Tarteel v1 look clips that
+decode. Both are measured by Silero VAD `6.2.3` (ONNX, CPU), with the config recorded in the
+file; `run` refuses to start when its config differs. The floors commit must land before any
+pass-1 output commit.
+
+The tracer rule, fixed before the run: clean shard indices 0 and 205 (of 411) and unclean index
+0 (of 332). On cuda-dev, under the GPU lock, with the Hub token in the environment:
+
+```bash
+flock /root/scratch/gpu.lock python -m tadabur.tlog_pass1 floors \
+  --cache-dir /root/scratch/tlog/cache
+flock /root/scratch/gpu.lock python -m tadabur.tlog_pass1 run --tracer \
+  --cache-dir /root/scratch/tlog/cache
+```
+
+The branch is squash-merged, so a `code_sha` it cites survives only under
+`refs/pull/<N>/head`; record the PR number beside any cited SHA. The offline tests, which need
+no network, GPU or Silero install, are `python -m pytest -q tools/tadabur/test_tlog_pass1.py`.

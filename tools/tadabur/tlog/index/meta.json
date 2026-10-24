@@ -1,0 +1,26 @@
+{
+ "code_sha": "717f22d392c8820edc25cb46ca207e28588af3d5",
+ "counts": {
+  "filename_labels": 398753,
+  "id_groups": 710589,
+  "recording_ids": 704491,
+  "rows": {
+   "clean": 398490,
+   "total": 719853,
+   "unclean": 321363
+  },
+  "rows_on_duplicated_ids": 15639,
+  "tarteel_v1_any_overlap": 10581,
+  "tarteel_v1_eval_overlap": 10581
+ },
+ "schema_version": 1,
+ "source": {
+  "licence": "cc-by-4.0",
+  "repo": "tarteel-ai/tlog",
+  "revision": "9fe4f7e6d1b372c2c11157d6d2f0f91ca344eb51",
+  "splits": {
+   "clean": 411,
+   "unclean": 332
+  }
+ }
+}

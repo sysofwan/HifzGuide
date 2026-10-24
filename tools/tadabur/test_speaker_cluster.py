@@ -90,6 +90,76 @@ def test_an_edge_needs_a_cosine_at_least_tau_among_the_k_nearest():
     assert knn_edges(CIRCLE_IDS, CIRCLE, tau=1.0) == set()
 
 
+def _sol_cutoff_tie_fixture() -> tuple[list[str], np.ndarray, set[frozenset[str]]]:
+    """Sol reviewer-r1 R1.1: two 21-row components whose cutoff ties y and z lose to leaves."""
+    ids = ([f"a{index:02d}" for index in range(20)]
+           + [f"b{index:02d}" for index in range(20)] + ["y", "z"])
+    x = np.zeros((42, 43), dtype=np.float64)
+    x[:20, 0] = 1
+    x[20:40, 1] = 1
+    for index in range(20):
+        x[index, index + 2] = 1
+        x[index + 20, index + 22] = 1
+    x[40, 0] = x[40, 42] = 1
+    x[41, 1] = x[41, 42] = 1
+
+    matrix = normalise(x)
+    scores = matrix @ matrix.T
+    np.fill_diagonal(scores, -np.inf)
+    expected = set()
+    for row in range(len(ids)):
+        neighbours = sorted(range(len(ids)),
+                            key=lambda column: (-scores[row, column], ids[column]))[:K]
+        expected.update(frozenset((ids[row], ids[column]))
+                        for column in neighbours if scores[row, column] >= 0.49)
+    return ids, x, expected
+
+
+def test_exactly_k_neighbours_break_a_cutoff_tie_by_clip_id():
+    # Whole-tie expansion added y--z and merged the two components; exactly k neighbours,
+    # ordered by cosine then clip id, leaves y with the a-leaves and z with the b-leaves.
+    ids, x, expected = _sol_cutoff_tie_fixture()
+    actual = knn_edges(ids, x, 0.49)
+    assert actual == expected
+    assert frozenset(("y", "z")) not in actual
+    found = cluster(ids, x, 0.49)
+    assert found.pre_cap["y"] != found.pre_cap["z"]
+    assert len(set(found.pre_cap.values())) == 2
+
+
+def test_a_duplicate_group_cannot_make_the_graph_quadratic():
+    # Sol reviewer-r1 R1.1 scaling case: 256 identical rows give every row exactly its 20
+    # lowest-id others, so the union stays under N * k. Rows 0-20 connect to each other
+    # (C(21, 2) pairs); every later row connects to clips 0-19. Whole-tie expansion gave all
+    # 32,640 pairs instead.
+    ids = [f"clip{index:03d}" for index in range(256)]
+    edges = knn_edges(ids, np.ones((256, 8), dtype=np.float64), 0.9)
+    assert len(edges) == 235 * 20 + 21 * 20 // 2
+    assert len(edges) <= 256 * K
+
+
+def test_block_shape_cannot_move_an_edge_that_sits_exactly_at_tau(monkeypatch):
+    # Sol reviewer-r1 R1.2: the blocked GEMM gives this pair either side of 0.5 depending on
+    # the block shape; the CPU rescoring must decide it the same way in every configuration.
+    from tadabur import speaker_cluster as sc
+
+    rng = np.random.default_rng(42)
+    x = rng.choice([-1.0, 1.0], size=(40, 192))
+    x[0] = 1.0
+    x[1] = 1.0
+    x[1, :48] = -1.0  # squared norms 192, dot product 96: cosine exactly 0.5
+    ids = [f"c{index:02d}" for index in range(40)]
+
+    graphs, partitions = [], []
+    for block_rows, block_columns in [(2048, 16384), (3, 7), (5, 4)]:
+        monkeypatch.setattr(sc, "BLOCK_ROWS", block_rows)
+        monkeypatch.setattr(sc, "BLOCK_COLUMNS", block_columns)
+        graphs.append(knn_edges(ids, x, 0.50))
+        partitions.append(cluster(ids, x, 0.50).pre_cap)
+    assert graphs[0] == graphs[1] == graphs[2]
+    assert partitions[0] == partitions[1] == partitions[2]
+
+
 @pytest.mark.parametrize("block_rows,block_columns", [(1, 1), (3, 7), (5, 4)])
 def test_the_blocked_knn_merge_matches_the_unblocked_graph(monkeypatch, block_rows,
                                                           block_columns):

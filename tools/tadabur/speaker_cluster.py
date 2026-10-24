@@ -4,21 +4,23 @@
 is frozen; this module is its only implementation, shared with S3b:
 
 * L2-normalised embeddings, one per clip, from the first 20 s at 16 kHz mono;
-* exact cosine k-nearest neighbours (**k = 20**), computed in blocks, so the kNN graph is the
-  union of each row's k neighbours whichever way the blocks fall;
+* exact cosine k-nearest neighbours (**k = 20**): exactly k per row, ordered by descending
+  cosine and, for an exact tie, by ascending clip id. The blocked search only discovers
+  candidates; the final order and the **>= tau** decision come from one float64 CPU
+  rescoring path, so block shape or backend cannot move an edge;
 * an undirected edge wherever the cosine is **>= tau**; clusters are the connected components;
 * the **1% cap**: any component over 1% of rows is re-clustered by the same procedure inside
   itself, at **tau + 0.02** and then +0.02 a round, until no component exceeds the cap. A
   round that splits nothing is not a stopping condition: the threshold keeps rising and the
   loop stops at 1.0, above which no cosine edge survives (exact duplicates included);
 * deterministic: the rows are sorted by clip id before any arithmetic, and a cluster is named
-  by its **smallest member clip id**, never by run or edge order. Exact cosine ties at the
-  k-th neighbour are all included, so a tie never depends on iteration order.
+  by its **smallest member clip id**, never by run or edge order.
 
-Reading of "k nearest": a neighbour is any clip whose cosine reaches the row's k-th largest
-cosine. That makes the k-th-place tie group complete rather than arbitrarily cut, and it is
-what the per-row threshold below computes: the (k+1)-th cosine is read only to detect a tie
-that straddles the k-th place.
+Reading of "k nearest": a row keeps exactly its k nearest columns, compared by float64 cosine
+and, where cosines are exactly equal, by clip id. A tie at the k-th place only widens the
+candidate set that the final rescoring orders; it never adds an edge. The blocked search is
+not authoritative: every candidate's cosine is recomputed on the CPU before the k are chosen
+and before any edge is tested against tau. No epsilon enters either comparison.
 
 The τ pick, the chaining and text-independence tests and the same-reciter recall are read from
 the components **before** the cap; the post-cap components are reported alongside for
@@ -55,6 +57,9 @@ RECALL_FLOOR = 0.9
 #: Rows scored per kNN block, and columns per score chunk (sized for ~2 GiB of float64).
 BLOCK_ROWS = 2048
 BLOCK_COLUMNS = 16384
+#: Columns scored per authoritative CPU rescoring chunk. Each pair is still one elementwise
+#: product and one fixed-axis sum, so the result cannot depend on where a chunk ends.
+RESCORE_COLUMNS = 16384
 
 
 @dataclass(frozen=True)
@@ -93,10 +98,12 @@ def _canonical(clip_ids: Sequence[str], embeddings) -> tuple[list[str], np.ndarr
 
 
 def _block_topk(matrix: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
-    """Each row's ``k`` largest cosine values and their column indices, self excluded.
+    """Each row's ``k`` largest blocked cosine values and their column indices, self excluded.
 
-    Exact and blocked: rows in :data:`BLOCK_ROWS`, columns in :data:`BLOCK_COLUMNS`, merging
-    each chunk's top ``k`` into the running one. float64, on CUDA when available.
+    Blocked: rows in :data:`BLOCK_ROWS`, columns in :data:`BLOCK_COLUMNS`, merging each
+    chunk's top ``k`` into the running one. float64, on CUDA when available. This is
+    candidate discovery only: :func:`knn_edges` decides order and edges by rescoring the
+    candidates on one CPU path, so the values here never order the graph.
     """
     import torch
 
@@ -131,29 +138,48 @@ def _block_topk(matrix: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
     return values.cpu().numpy(), indices.cpu().numpy()
 
 
+def _authoritative_scores(matrix: np.ndarray, row: int, columns) -> np.ndarray:
+    """One row's cosine to each candidate, on the one path allowed to decide the graph.
+
+    The blocked search only proposes candidates; this rescoring orders them and tests
+    ``tau``. An elementwise product followed by a fixed-axis sum depends on the embedding
+    dimension alone, never on block shape or backend.
+    """
+    columns = np.asarray(columns, dtype=np.int64)
+    scores = np.empty(len(columns), dtype=np.float64)
+    for start in range(0, len(columns), RESCORE_COLUMNS):
+        part = columns[start:start + RESCORE_COLUMNS]
+        scores[start:start + RESCORE_COLUMNS] = (matrix[part] * matrix[row]).sum(axis=1)
+    return scores
+
+
 def knn_edges(clip_ids: Sequence[str], embeddings, tau: float, k: int = K) -> set[frozenset[str]]:
     """The undirected kNN pairs whose cosine is at least ``tau``, as two-id frozensets."""
     ids, matrix = _canonical(clip_ids, embeddings)
     rows = len(ids)
     if rows < 2:
         return set()
-    values, indices = _block_topk(matrix, min(k + 1, rows - 1))
-    edges = {frozenset((ids[row], ids[column]))
-             for row in range(rows)
-             for value, column in zip(values[row, :k], indices[row, :k])
-             if value >= tau}
-    # The k-th cosine may be tied with columns the top-k cut; read the (k+1)-th to detect that
-    # boundary and add the whole tie group, so the graph never depends on which of equal
-    # values happened to be picked.
-    if values.shape[1] > k:
-        kth = values[:, k - 1]
-        for row in np.nonzero(values[:, k] == kth)[0]:
-            if kth[row] < tau:
-                continue
-            ties = np.nonzero(matrix[row] @ matrix.T >= kth[row])[0]
-            for column in ties:
-                if column != row:
-                    edges.add(frozenset((ids[row], ids[column])))
+    # Discovery only: the blocked search proposes k + 5 candidates (architect r11 Q3.4).
+    # Every candidate is then rescored on the CPU path, which picks exactly k per row.
+    width = min(k + 5, rows - 1)
+    _, indices = _block_topk(matrix, width)
+    all_columns = np.arange(rows, dtype=np.int64)
+    edges = set()
+    for row in range(rows):
+        candidates = indices[row].astype(np.int64)
+        scores = _authoritative_scores(matrix, row, candidates)
+        order = np.lexsort((candidates, -scores))
+        # If the smallest discovered score still reaches the k-th, the cutoff tie may extend
+        # past discovery, and only the clip-id order can break it: score this row whole.
+        if width >= k and width < rows - 1 and scores[order[-1]] == scores[order[k - 1]]:
+            candidates = all_columns
+            scores = _authoritative_scores(matrix, row, candidates)
+            scores[row] = -np.inf
+            order = np.lexsort((candidates, -scores))
+        # Descending cosine, ascending clip id (the columns are in canonical id order).
+        for position in order[:k]:
+            if scores[position] >= tau:
+                edges.add(frozenset((ids[row], ids[int(candidates[position])])))
     return edges
 
 

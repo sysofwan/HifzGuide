@@ -58,10 +58,11 @@ from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k_with_rate
 from .nonpro_sources import (TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, audio_sha256, iter_rows,
                              tlog_split)
 from .qud_fingerprint import fingerprint, save_fingerprints
-from .tarteel_split import load_split
+from .tarteel_split import SPLIT_PATH, load_split
 from .tlog_index import head_sha, write_shard
 
 SCHEMA_VERSION = 1
+REPO_ROOT = Path(__file__).resolve().parents[2]
 #: Where the committed pass-1 output and the pre-registration's floors live.
 PASS1_DIR = Path(__file__).parent / "tlog" / "pass1"
 FLOORS_PATH = Path(__file__).parent / "tlog" / "silence_floors.json"
@@ -133,6 +134,7 @@ def measure(audio: bytes, speech_seconds_of: Callable[[np.ndarray], float], *,
     speech_s = float(speech_seconds_of(waveform))
     if timings is not None:
         timings["vad_seconds"] += time.perf_counter() - started
+        timings["vad_rows"] += 1
     return Measured(
         {"audio_sha256": digest, "codec_ok": True, "sample_rate": sample_rate,
          "duration_s": duration_s, "speech_s": speech_s,
@@ -179,6 +181,7 @@ def process_shard(shard: str, cache_dir: Path, *,
             prints[row["audio"]["path"]] = (measured.facts["audio_sha256"],
                                             fingerprint(measured.waveform))
             timings["fingerprint_seconds"] += time.perf_counter() - started
+            timings["fingerprint_rows"] += 1
     if fp_dir is not None and prints:
         fp_dir = Path(fp_dir)
         fp_dir.mkdir(parents=True, exist_ok=True)
@@ -209,6 +212,8 @@ def silence_floors(rows: Iterable[dict], *, look_clips: int, decodes_sha256: str
         "schema_version": SCHEMA_VERSION,
         "source": {"dataset": "tarteel_v1", "split": "look", "clips": look_clips,
                    "decodes_sha256": decodes_sha256},
+        "look_split": {"path": _repo_relative(SPLIT_PATH),
+                       "sha256": sha256_file(SPLIT_PATH)},
         "percentile": {"method": "type-7", "q": 0.005},
         "vad": VAD_CONFIG,
         "count": len(usable),
@@ -229,8 +234,7 @@ def build_floors(shards: Iterable[str], *, look_ids: Iterable[str], cache_dir: P
     look = frozenset(look_ids)
     timings = _timings()
     begin, record = _download_meter(timings)
-    facts: list[dict] = []
-    seen = 0
+    facts: dict[str, dict] = {}
     for shard in shards:
         if stream is None:
             begin()
@@ -238,13 +242,18 @@ def build_floors(shards: Iterable[str], *, look_ids: Iterable[str], cache_dir: P
         else:
             rows = stream(shard, cache_dir)
         for row in rows:
-            if row["audio"]["path"] not in look:
+            path = row["audio"]["path"]
+            if path not in look:
                 continue
-            seen += 1
-            facts.append(measure(row["audio"]["bytes"], speech_seconds_of,
-                                 timings=timings).facts)
+            facts[path] = measure(row["audio"]["bytes"], speech_seconds_of,
+                                  timings=timings).facts
         timings["peak_disk_bytes"] = max(timings["peak_disk_bytes"], timings["shard_bytes"])
-    floors = silence_floors(facts, look_clips=seen,
+    missing = sorted(look - facts.keys())
+    if missing:
+        raise ValueError(
+            f"{len(missing)} of {len(look)} Tarteel look clips were not read "
+            f"(first: {missing[0]!r}): the floors need the whole frozen split")
+    floors = silence_floors(facts.values(), look_clips=len(look),
                             decodes_sha256=sha256_file(DECODES_PATH))
     floors["run"] = {
         "shards": len(shards),
@@ -290,8 +299,9 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         fp_path = Path(fp_dir) / f"{stem}.npz" if fp_dir is not None else None
         fp_bytes = (fp_path.stat().st_size
                     if fp_path is not None and fp_path.exists() else 0)
+        # The shard blob is deleted before the npz is written, so these never coexist.
         timings["peak_disk_bytes"] = max(timings["peak_disk_bytes"],
-                                         timings["shard_bytes"] + fp_bytes,
+                                         timings["shard_bytes"], fp_bytes,
                                          path.stat().st_size)
     meta = {
         "schema_version": SCHEMA_VERSION,
@@ -303,7 +313,8 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         "code_sha": code_sha or head_sha(),
         "vad": VAD_CONFIG,
         "embeddings": "none (owner fallback 2026-10-24, #187)",
-        "floors": {"path": str(floors_path), "sha256": sha256_file(floors_path)},
+        "floors": {"path": _repo_relative(floors_path),
+                   "sha256": sha256_file(floors_path)},
         "counts": {"rows": {**{split: counts[split] for split in TLOG_SPLITS},
                             "total": sum(counts.values())}},
         "throughput": _throughput(timings, len(shards)),
@@ -332,7 +343,7 @@ def silero_speech_seconds() -> Callable[[np.ndarray], float]:
     if installed != SILERO_VAD_VERSION:
         raise RuntimeError(
             f"silero-vad {installed} is installed; the pinned VAD is {SILERO_VAD_VERSION}")
-    model = load_silero_vad(onnx=True)
+    model = load_silero_vad(onnx=True, force_onnx_cpu=True)
 
     def speech_seconds_of(waveform: np.ndarray) -> float:
         import torch
@@ -354,6 +365,14 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def _repo_relative(path: Path) -> str:
+    """``path`` inside the checkout as a repo-relative string; a file outside it unchanged."""
+    try:
+        return str(Path(path).resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def _quantile(values: np.ndarray, q: float) -> float:
     from training.acceptance_stats import quantile_type7
 
@@ -363,7 +382,8 @@ def _quantile(values: np.ndarray, q: float) -> float:
 def _timings() -> dict:
     return {"download_seconds": 0.0, "download_bytes": 0, "decode_seconds": 0.0,
             "vad_seconds": 0.0, "fingerprint_seconds": 0.0, "fingerprint_bytes": 0,
-            "rows": 0, "shard_bytes": 0, "peak_disk_bytes": 0}
+            "rows": 0, "vad_rows": 0, "fingerprint_rows": 0,
+            "shard_bytes": 0, "peak_disk_bytes": 0}
 
 
 def _download_meter(timings: dict):
@@ -387,8 +407,8 @@ def _throughput(timings: dict, shard_count: int) -> dict:
     """The measured stage rates, and the sequential extrapolation to (:data:`TOTAL_SHARDS`)."""
     rows = timings["rows"]
 
-    def rate(seconds: float) -> float | None:
-        return round(rows / seconds, 3) if seconds > 0 and rows else None
+    def rate(stage_rows: int, seconds: float) -> float | None:
+        return round(stage_rows / seconds, 3) if seconds > 0 and stage_rows else None
 
     cpu_seconds = (timings["decode_seconds"] + timings["vad_seconds"]
                    + timings["fingerprint_seconds"])
@@ -408,10 +428,13 @@ def _throughput(timings: dict, shard_count: int) -> dict:
         "decode_seconds": round(timings["decode_seconds"], 3),
         "vad_seconds": round(timings["vad_seconds"], 3),
         "fingerprint_seconds": round(timings["fingerprint_seconds"], 3),
+        "stage_rows": {"decode": rows, "vad": timings["vad_rows"],
+                       "fingerprint": timings["fingerprint_rows"]},
         "rows_per_s": {
-            "decode": rate(timings["decode_seconds"]),
-            "vad": rate(timings["vad_seconds"]),
-            "fingerprint": rate(timings["fingerprint_seconds"]),
+            "decode": rate(rows, timings["decode_seconds"]),
+            "vad": rate(timings["vad_rows"], timings["vad_seconds"]),
+            "fingerprint": rate(timings["fingerprint_rows"],
+                                timings["fingerprint_seconds"]),
         },
         "gpu_seconds_per_1000_rows": 0.0,
         "gpu_note": "VAD and fingerprint are CPU (owner decision 2026-10-24)",

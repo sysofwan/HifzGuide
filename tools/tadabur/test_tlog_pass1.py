@@ -327,6 +327,26 @@ def test_run_tolerates_a_shard_with_no_fingerprintable_row(tp, tmp_path):
     assert not fp_dir.exists()
 
 
+def test_throughput_counts_each_stage_by_its_own_rows(tp, tmp_path):
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+    rows = [{"audio": {"path": "ok.flac", "bytes": wav(1.0, 16000)}},
+            {"audio": {"path": "bad.flac", "bytes": b"broken"}}]
+
+    meta = tp.run([CLEAN_SHARD], out_dir=tmp_path / "pass1", cache_dir=tmp_path / "cache",
+                  floors_path=floors, speech_seconds_of=lambda waveform: 0.5,
+                  stream=fake_stream(rows), fp_dir=tmp_path / "fp", code_sha="0" * 40)
+
+    # Decode runs on every row; VAD and the fingerprint only on the decodable one.
+    assert meta["throughput"]["stage_rows"] == {"decode": 2, "vad": 1, "fingerprint": 1}
+    assert all(rate is not None for rate in meta["throughput"]["rows_per_s"].values())
+
+
+def test_meta_records_a_repo_relative_floors_path(tp):
+    assert tp._repo_relative(tp.FLOORS_PATH) == \
+        "tools/tadabur/tlog/silence_floors.json"
+
+
 def test_run_refuses_a_vad_config_that_differs_from_the_floors(tp, tmp_path):
     floors = tmp_path / "silence_floors.json"
     floors.write_text(json.dumps({"vad": {**tp.VAD_CONFIG, "threshold": 0.4}}),
@@ -400,6 +420,42 @@ def test_build_floors_measures_only_the_look_clips_and_deletes_the_shard(
     assert len(floors["source"]["decodes_sha256"]) == 64
     assert floors["vad"] == tp.VAD_CONFIG
     assert not parquet.exists()
+
+
+def test_build_floors_refuses_a_look_clip_that_no_row_yields(tp, tmp_path):
+    shard = TARTEEL_V1.shards[0]
+    present, missing = "100_10_1111111111.wav", "100_10_2222222222.wav"
+    rows = [{"audio": {"path": present, "bytes": wav(1.0, 16000)}}]
+
+    def stream(shard_name, cache_dir):
+        assert shard_name == shard
+        yield from rows
+
+    with pytest.raises(ValueError, match="look clips"):
+        tp.build_floors([shard], look_ids={present, missing}, cache_dir=tmp_path / "cache",
+                        speech_seconds_of=lambda waveform: 0.5, stream=stream)
+
+
+def test_build_floors_counts_a_repeated_look_row_once(tp, tmp_path):
+    shard = TARTEEL_V1.shards[0]
+    look = "100_10_1111111111.wav"
+    audio = wav(1.0, 16000)
+    rows = [{"audio": {"path": look, "bytes": audio}},
+            {"audio": {"path": look, "bytes": audio}}]
+
+    def stream(shard_name, cache_dir):
+        assert shard_name == shard
+        yield from rows
+
+    floors = tp.build_floors([shard], look_ids={look}, cache_dir=tmp_path / "cache",
+                             speech_seconds_of=lambda waveform: 0.5, stream=stream)
+
+    assert floors["count"] == 1
+    assert floors["source"]["clips"] == 1
+    # The split that selected the look ids is the provenance, not just the decodes file.
+    assert floors["look_split"] == {
+        "path": "tools/tadabur/nonpro_eval/tarteel_v1/split.json",
+        "sha256": tp.sha256_file(tp.SPLIT_PATH)}
 
 
 def test_the_floor_config_must_match_the_floors_file(tp):

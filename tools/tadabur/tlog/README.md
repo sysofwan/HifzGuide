@@ -72,9 +72,11 @@ deleted.
 
 `silence_floors.json` is the pre-registration's Exclusions floor: `f_s` and `d_s` are the
 type-7 0.5th percentiles of `speech_ratio` and `speech_s` over the Tarteel v1 look clips that
-decode. Both are measured by Silero VAD `6.2.3` (ONNX, CPU), with the config recorded in the
-file; `run` refuses to start when its config differs. The floors commit must land before any
-pass-1 output commit.
+decode. `build_floors` refuses a run that does not yield every id in the frozen look split, and
+the record hashes both `split.json` (the id set) and the decodes (the population's provenance).
+The speech is measured by Silero VAD `6.2.3` (ONNX, CPU), with the config recorded in the file;
+`run` refuses to start when its config differs. The floors commit must land before any pass-1
+output commit.
 
 The tracer rule, fixed before the run: clean shard indices 0 and 205 (of 411) and unclean index
 0 (of 332). On cuda-dev, under the GPU lock, with the Hub token in the environment:

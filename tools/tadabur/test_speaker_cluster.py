@@ -127,6 +127,19 @@ def test_exactly_k_neighbours_break_a_cutoff_tie_by_clip_id():
     assert len(set(found.pre_cap.values())) == 2
 
 
+@pytest.mark.parametrize("block_rows,block_columns", [(3, 7), (5, 4)])
+def test_the_cutoff_tie_graph_is_block_and_row_order_independent(monkeypatch, block_rows,
+                                                                block_columns):
+    from tadabur import speaker_cluster as sc
+
+    ids, x, expected = _sol_cutoff_tie_fixture()
+    monkeypatch.setattr(sc, "BLOCK_ROWS", block_rows)
+    monkeypatch.setattr(sc, "BLOCK_COLUMNS", block_columns)
+    assert knn_edges(ids, x, 0.49) == expected
+    order = list(range(len(ids)))[::-1]
+    assert knn_edges([ids[index] for index in order], x[order], 0.49) == expected
+
+
 def test_a_duplicate_group_cannot_make_the_graph_quadratic():
     # Sol reviewer-r1 R1.1 scaling case: 256 identical rows give every row exactly its 20
     # lowest-id others, so the union stays under N * k. Rows 0-20 connect to each other

@@ -58,14 +58,13 @@ from pathlib import Path
 
 from . import qud_source
 from .nonpro_sources import TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, tlog_split
+from .tarteel_split import load_split
 
 SCHEMA_VERSION = 1
 #: Where the committed index lives (``tools/tadabur/tlog/index``).
 INDEX_DIR = Path(__file__).parent / "tlog" / "index"
 #: The repo's canonical ``quran.db``: the ayah counts the filename labels are checked against.
 DEFAULT_QURAN_DB = Path(__file__).resolve().parents[2] / "data" / "quran.db"
-#: Tarteel v1's frozen look / confirm split (#160); its clip ids are the overlap's reference.
-TARTEEL_V1_SPLIT = (Path(__file__).parent / "nonpro_eval" / "tarteel_v1" / "split.json")
 
 # --- the pre-registered role (docs/tlog-holdout-preregistration.md) --------------------------
 
@@ -253,7 +252,7 @@ def build(index_dir: Path = INDEX_DIR, quran_db: Path = DEFAULT_QURAN_DB,
                for index, path in enumerate(paths)]
     groups = id_groups({"audio_path": record[3], "recording_id": record[5]}
                        for record in records)
-    eval_ids = tarteel_v1_ids(json.loads(TARTEEL_V1_SPLIT.read_text(encoding="utf-8")))
+    eval_ids = tarteel_v1_ids(load_split())
     any_ids = clip_ids(path for shard in TARTEEL_V1.shards
                        for path in fetch_paths(shard, TARTEEL_V1))
 

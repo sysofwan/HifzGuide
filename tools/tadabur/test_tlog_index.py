@@ -315,12 +315,9 @@ def _read_shard(path: Path) -> list[dict]:
 
 
 def test_the_build_writes_the_index_and_counts_it_describes(tmp_path, monkeypatch):
-    split_path = tmp_path / "split.json"
-    split_path.write_text(json.dumps({"look": ["1_1_111.wav"], "confirm": []}),
-                          encoding="utf-8")
     monkeypatch.setattr(ti, "TLOG", TLOG_FAKE)
     monkeypatch.setattr(ti, "TARTEEL_V1", TARTEEL_FAKE)
-    monkeypatch.setattr(ti, "TARTEEL_V1_SPLIT", split_path)
+    monkeypatch.setattr(ti, "load_split", lambda: {"look": ["1_1_111.wav"], "confirm": []})
     monkeypatch.setattr(ti, "fetch_paths",
                         lambda shard, dataset=TLOG_FAKE: PATHS[(dataset.name, shard)])
 

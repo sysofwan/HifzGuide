@@ -6,8 +6,9 @@ is frozen; this module is its only implementation, shared with S3b:
 * L2-normalised embeddings, one per clip, from the first 20 s at 16 kHz mono;
 * exact cosine k-nearest neighbours (**k = 20**): exactly k per row, ordered by descending
   cosine and, for an exact tie, by ascending clip id. The blocked search only discovers
-  candidates; the final order and the **>= tau** decision come from one float64 CPU
-  rescoring path, so block shape or backend cannot move an edge;
+  candidates -- every column within :data:`DELTA` of the k-th blocked score, or the whole row
+  when that set outgrows a block -- and the final order and the **>= tau** decision come from
+  one float64 CPU rescoring path, so block shape or backend cannot move an edge;
 * an undirected edge wherever the cosine is **>= tau**; clusters are the connected components;
 * the **1% cap**: any component over 1% of rows is re-clustered by the same procedure inside
   itself, at **tau + 0.02** and then +0.02 a round, until no component exceeds the cap. A
@@ -19,8 +20,11 @@ is frozen; this module is its only implementation, shared with S3b:
 Reading of "k nearest": a row keeps exactly its k nearest columns, compared by float64 cosine
 and, where cosines are exactly equal, by clip id. A tie at the k-th place only widens the
 candidate set that the final rescoring orders; it never adds an edge. The blocked search is
-not authoritative: every candidate's cosine is recomputed on the CPU before the k are chosen
-and before any edge is tested against tau. No epsilon enters either comparison.
+not authoritative: discovery keeps every column within a stated 1e-9 of the k-th blocked
+score (above the float64 GEMM-versus-CPU discrepancy for unit rows) and the whole row is
+rescored when that set outgrows a column block. Every kept candidate's cosine is recomputed
+on the CPU before the k are chosen and before any edge is tested against tau; no epsilon
+enters either comparison.
 
 The τ pick, the chaining and text-independence tests and the same-reciter recall are read from
 the components **before** the cap; the post-cap components are reported alongside for
@@ -60,6 +64,13 @@ BLOCK_COLUMNS = 16384
 #: Columns scored per authoritative CPU rescoring chunk. Each pair is still one elementwise
 #: product and one fixed-axis sum, so the result cannot depend on where a chunk ends.
 RESCORE_COLUMNS = 16384
+#: Discovery slack around the k-th blocked score. The blocked GEMM and the authoritative CPU
+#: reduction differ only in summation order; for unit rows the absolute difference is
+#: O(dimension * float64 eps) -- about 2e-13 at dimension 768 -- so 1e-9 is comfortably
+#: above it. Every column whose authoritative score could reach the k-th blocked score is
+#: therefore a candidate. The slack applies to discovery only: ordering, the clip-id tie
+#: break and the tau comparison all use the exact rescored values.
+DELTA = 1e-9
 
 
 @dataclass(frozen=True)
@@ -101,9 +112,10 @@ def _block_topk(matrix: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
     """Each row's ``k`` largest blocked cosine values and their column indices, self excluded.
 
     Blocked: rows in :data:`BLOCK_ROWS`, columns in :data:`BLOCK_COLUMNS`, merging each
-    chunk's top ``k`` into the running one. float64, on CUDA when available. This is
-    candidate discovery only: :func:`knn_edges` decides order and edges by rescoring the
-    candidates on one CPU path, so the values here never order the graph.
+    chunk's top ``k`` into the running one. float64, on CUDA when available. Only the k-th
+    value matters: :func:`_block_candidates` uses it to bound discovery, and
+    :func:`knn_edges` decides order and edges by rescoring on one CPU path, so the values
+    here never order the graph.
     """
     import torch
 
@@ -138,6 +150,57 @@ def _block_topk(matrix: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
     return values.cpu().numpy(), indices.cpu().numpy()
 
 
+def _block_candidates(matrix: np.ndarray, k: int) -> tuple[list[list[int]], list[bool]]:
+    """Per row: every column within :data:`DELTA` of the k-th blocked cosine.
+
+    Two blocked passes: the k-th blocked score, then every column at or above it minus
+    :data:`DELTA`. A row whose set would outgrow one column block is reported as truncated,
+    and the caller must rescore that row whole instead of trusting the discovery.
+    """
+    import torch
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tensor = torch.as_tensor(np.ascontiguousarray(matrix), dtype=torch.float64, device=device)
+    rows_total = tensor.shape[0]
+    kth_values, _ = _block_topk(matrix, min(k, rows_total - 1))
+    kth = torch.as_tensor(kth_values[:, -1], dtype=torch.float64, device=device)
+
+    candidates: list[list[int]] = [[] for _ in range(rows_total)]
+    counts = np.zeros(rows_total, dtype=np.int64)
+    truncated = np.zeros(rows_total, dtype=bool)
+    for block_start in range(0, rows_total, BLOCK_ROWS):
+        block_stop = min(block_start + BLOCK_ROWS, rows_total)
+        block = tensor[block_start:block_stop]
+        row_index = torch.arange(block_start, block_stop, device=device)
+        thresholds = (kth[block_start:block_stop] - DELTA)[:, None]
+        for column_start in range(0, rows_total, BLOCK_COLUMNS):
+            column_stop = min(column_start + BLOCK_COLUMNS, rows_total)
+            scores = block @ tensor[column_start:column_stop].T
+            column_index = torch.arange(column_start, column_stop, device=device)
+            scores[row_index[:, None] == column_index[None, :]] = -torch.inf
+            mask = scores >= thresholds
+            chunk_counts = mask.sum(dim=1).cpu().numpy()
+            segment = counts[block_start:block_stop]
+            over = truncated[block_start:block_stop] | (segment + chunk_counts > BLOCK_COLUMNS)
+            if over.any():
+                for row in (block_start + np.nonzero(over)[0]).tolist():
+                    if not truncated[row]:
+                        truncated[row] = True
+                        candidates[row] = []
+                mask[torch.from_numpy(over).to(device)] = False
+            keep = ~over
+            segment[keep] += chunk_counts[keep]
+            rows_index, columns_index = mask.nonzero(as_tuple=True)
+            if rows_index.numel() == 0:
+                continue
+            unique_rows, run_counts = torch.unique_consecutive(rows_index, return_counts=True)
+            for row_offset, part in zip(unique_rows.tolist(),
+                                        torch.split(columns_index + column_start,
+                                                    run_counts.tolist())):
+                candidates[block_start + row_offset].extend(part.tolist())
+    return candidates, truncated.tolist()
+
+
 def _authoritative_scores(matrix: np.ndarray, row: int, columns) -> np.ndarray:
     """One row's cosine to each candidate, on the one path allowed to decide the graph.
 
@@ -159,24 +222,22 @@ def knn_edges(clip_ids: Sequence[str], embeddings, tau: float, k: int = K) -> se
     rows = len(ids)
     if rows < 2:
         return set()
-    # Discovery only: the blocked search proposes k + 5 candidates (architect r11 Q3.4).
-    # Every candidate is then rescored on the CPU path, which picks exactly k per row.
-    width = min(k + 5, rows - 1)
-    _, indices = _block_topk(matrix, width)
+    # Discovery: every column within DELTA of the k-th blocked score, or the whole row when
+    # that set outgrows a block. The candidates are then rescored on the CPU path, which
+    # picks exactly k and applies tau.
+    discovered, truncated = _block_candidates(matrix, k)
     all_columns = np.arange(rows, dtype=np.int64)
     edges = set()
     for row in range(rows):
-        candidates = indices[row].astype(np.int64)
-        scores = _authoritative_scores(matrix, row, candidates)
-        order = np.lexsort((candidates, -scores))
-        # If the smallest discovered score still reaches the k-th, the cutoff tie may extend
-        # past discovery, and only the clip-id order can break it: score this row whole.
-        if width >= k and width < rows - 1 and scores[order[-1]] == scores[order[k - 1]]:
+        if truncated[row]:
             candidates = all_columns
             scores = _authoritative_scores(matrix, row, candidates)
             scores[row] = -np.inf
-            order = np.lexsort((candidates, -scores))
+        else:
+            candidates = np.asarray(discovered[row], dtype=np.int64)
+            scores = _authoritative_scores(matrix, row, candidates)
         # Descending cosine, ascending clip id (the columns are in canonical id order).
+        order = np.lexsort((candidates, -scores))
         for position in order[:k]:
             if scores[position] >= tau:
                 edges.add(frozenset((ids[row], ids[int(candidates[position])])))

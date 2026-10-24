@@ -173,6 +173,68 @@ def test_block_shape_cannot_move_an_edge_that_sits_exactly_at_tau(monkeypatch):
     assert partitions[0] == partitions[1] == partitions[2]
 
 
+def _exhaustive_knn(ids: list[str], embeddings, tau: float) -> set[frozenset[str]]:
+    """The same authoritative arithmetic with no candidate truncation: the oracle."""
+    matrix = normalise(embeddings)
+    columns = np.arange(len(ids))
+    expected = set()
+    for row in range(len(ids)):
+        scores = (matrix * matrix[row]).sum(axis=1)
+        scores[row] = -np.inf
+        order = np.lexsort((columns, -scores))[:K]
+        expected.update(frozenset((ids[row], ids[column]))
+                        for column in order if scores[column] >= tau)
+    return expected
+
+
+def _oracle_components(ids: list[str], edges) -> dict[str, str]:
+    """Connected components by the cluster naming rule, for an independently built graph."""
+    parent = {clip: clip for clip in ids}
+
+    def find(clip: str) -> str:
+        while parent[clip] != clip:
+            parent[clip] = parent[parent[clip]]
+            clip = parent[clip]
+        return clip
+
+    for edge in edges:
+        first, second = sorted(edge)
+        left, right = find(first), find(second)
+        if left != right:
+            parent[max(left, right)] = min(left, right)
+    return {clip: find(clip) for clip in ids}
+
+
+def test_near_duplicate_discovery_matches_the_exhaustive_oracle(monkeypatch):
+    # Sol reviewer-r2 R2.1: 80 near-identical float32 rows. The blocked GEMM can order any
+    # boundary neighbour either way, so discovery keeps the 1e-9 band and rescoring takes
+    # the whole row when it overflows; the graph and the tau=1.0 partition must equal the
+    # exhaustive oracle, and be identical, under every block shape.
+    from tadabur import speaker_cluster as sc
+
+    rng = np.random.default_rng(0)
+    x = (rng.normal(size=(1, 192))
+         + 1e-8 * rng.normal(size=(80, 192))).astype(np.float32)
+    ids = [f"c{index:03d}" for index in range(80)]
+
+    expected = _exhaustive_knn(ids, x, 0.90)
+    # cluster() normalises once, then knn_edges normalises the result again.
+    expected_partition = _oracle_components(ids, _exhaustive_knn(ids, normalise(x), 1.0))
+
+    graphs, partitions = [], []
+    for block_rows, block_columns in [(2048, 16384), (3, 7), (5, 4)]:
+        monkeypatch.setattr(sc, "BLOCK_ROWS", block_rows)
+        monkeypatch.setattr(sc, "BLOCK_COLUMNS", block_columns)
+        graphs.append(knn_edges(ids, x, 0.90))
+        partitions.append(cluster(ids, x, 1.0).pre_cap)
+    assert graphs[0] == expected
+    assert graphs[1] == expected
+    assert graphs[2] == expected
+    assert partitions[0] == expected_partition
+    assert partitions[1] == expected_partition
+    assert partitions[2] == expected_partition
+
+
 @pytest.mark.parametrize("block_rows,block_columns", [(1, 1), (3, 7), (5, 4)])
 def test_the_blocked_knn_merge_matches_the_unblocked_graph(monkeypatch, block_rows,
                                                           block_columns):

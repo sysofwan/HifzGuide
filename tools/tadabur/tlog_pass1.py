@@ -18,6 +18,8 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     the code SHA with the PR number and ``refs/pull/<N>/head`` (the squash merge drops the
     branch commit from main's history), the VAD config, the floors file's SHA-256, the row
     counts and the measured throughput. ``"embeddings"`` records the fallback, not omission.
+    Both commands refuse a checkout with uncommitted or untracked changes, so the cited SHA is
+    the code that actually ran.
 ``tools/tadabur/tlog/silence_floors.json``
     the pre-registration's Exclusions floors: ``f_s`` and ``d_s`` are the type-7 0.5th
     percentiles of ``speech_ratio`` and ``speech_s`` over the Tarteel v1 look clips that decode.
@@ -62,7 +64,7 @@ from .nonpro_sources import (TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, audio_sha25
                              tlog_split)
 from .qud_fingerprint import fingerprint, save_fingerprints
 from .tarteel_split import SPLIT_PATH, load_split
-from .tlog_index import head_sha, write_shard
+from .tlog_index import head_sha, require_clean_tree, write_shard
 
 SCHEMA_VERSION = 1
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -366,7 +368,7 @@ def silero_speech_seconds() -> Callable[[np.ndarray], float]:
     if installed != SILERO_VAD_VERSION:
         raise RuntimeError(
             f"silero-vad {installed} is installed; the pinned VAD is {SILERO_VAD_VERSION}")
-    model = load_silero_vad(onnx=True, force_onnx_cpu=True)
+    model = load_silero_vad(onnx=True)  # 6.x's ONNX wrapper is CPU-forced internally
 
     def speech_seconds_of(waveform: np.ndarray) -> float:
         import torch
@@ -518,6 +520,7 @@ def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int) -> d
 
 
 def _floors_command(args) -> None:
+    require_clean_tree()
     look_ids = set(load_split()["look"])
     floors = build_floors(args.shards, look_ids=look_ids, cache_dir=args.cache_dir,
                           speech_seconds_of=silero_speech_seconds())
@@ -529,6 +532,7 @@ def _floors_command(args) -> None:
 
 
 def _run_command(args) -> None:
+    require_clean_tree()
     shards = tracer_shards() if args.tracer else args.shards
     meta = run(shards, out_dir=args.out_dir, cache_dir=args.cache_dir,
                floors_path=args.floors, speech_seconds_of=silero_speech_seconds(),

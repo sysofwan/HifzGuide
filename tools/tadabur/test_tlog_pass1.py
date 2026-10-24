@@ -20,7 +20,9 @@ import gzip
 import hashlib
 import io
 import json
+import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pyarrow as pa
@@ -569,3 +571,67 @@ def test_the_tracer_rule_is_two_clean_shards_and_one_unclean(tp):
     chosen = tp.tracer_shards()
     assert chosen == TRACER_SHARDS
     assert tuple(tlog_split(shard) for shard in chosen) == ("clean", "clean", "unclean")
+
+
+# --- the provenance guard --------------------------------------------------------------------
+
+
+def _committed_repo(path: Path) -> Path:
+    """A fresh one-file git checkout at ``path``; returns it."""
+    path.mkdir()
+    (path / "tracked.txt").write_text("base\n", encoding="utf-8")
+    git = ["git", "-C", str(path), "-c", "user.name=test", "-c", "user.email=test@example.com"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "add", "tracked.txt"], check=True)
+    subprocess.run([*git, "commit", "-qm", "base"], check=True)
+    return path
+
+
+def test_the_clean_tree_guard_passes_a_committed_checkout_and_refuses_any_drift(tmp_path):
+    from tadabur.tlog_index import require_clean_tree
+
+    repo = _committed_repo(tmp_path / "repo")
+    assert require_clean_tree(repo) is None
+
+    (repo / "untracked.txt").write_text("scratch\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="dirty"):
+        require_clean_tree(repo)
+
+    (repo / "untracked.txt").unlink()
+    (repo / "tracked.txt").write_text("changed\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="tracked.txt"):
+        require_clean_tree(repo)
+
+
+@pytest.mark.parametrize("command", ["_floors_command", "_run_command"])
+def test_a_measuring_command_refuses_a_dirty_tree_before_it_measures(
+        tp, tmp_path, monkeypatch, command):
+    measured: list[tuple] = []
+
+    def refuse():
+        raise RuntimeError("the checkout is dirty; commit or remove these paths first")
+
+    monkeypatch.setattr(tp, "require_clean_tree", refuse)
+    monkeypatch.setattr(tp, "build_floors", lambda *args, **kwargs: measured.append(args))
+    monkeypatch.setattr(tp, "run", lambda *args, **kwargs: measured.append(args))
+    args = SimpleNamespace(shards=[], cache_dir=tmp_path / "cache", out=tmp_path / "floors.json",
+                           out_dir=tmp_path / "pass1", floors=tmp_path / "floors.json",
+                           fp_dir=tmp_path / "fp", code_sha=None, pr=198, tracer=True)
+
+    with pytest.raises(RuntimeError, match="dirty"):
+        getattr(tp, command)(args)
+    assert measured == []
+
+
+# --- the VAD ---------------------------------------------------------------------------------
+
+
+def test_the_pinned_vad_builds_and_finds_no_speech_in_a_second_of_silence():
+    """The real loader, once silero is installed: 6.2.3's API is what the CLI actually calls."""
+    pytest.importorskip("silero_vad")
+    pytest.importorskip("onnxruntime")
+
+    from tadabur.tlog_pass1 import TARGET_SAMPLE_RATE, silero_speech_seconds
+
+    speech_seconds_of = silero_speech_seconds()
+    assert speech_seconds_of(np.zeros(TARGET_SAMPLE_RATE, dtype=np.float32)) == 0.0

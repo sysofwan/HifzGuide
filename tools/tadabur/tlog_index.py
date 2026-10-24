@@ -239,6 +239,21 @@ def head_sha(repo: Path = Path(__file__).resolve().parents[2]) -> str:
                           capture_output=True, text=True).stdout.strip()
 
 
+def require_clean_tree(repo: Path = Path(__file__).resolve().parents[2]) -> None:
+    """Refuse a checkout with uncommitted or untracked changes.
+
+    The committed metadata cites the commit the measurement ran from; a dirty tree would make
+    that provenance a lie, so the measuring commands check this before they download anything.
+    """
+    status = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
+                            capture_output=True, text=True)
+    if status.returncode != 0:
+        raise RuntimeError(f"{repo} is not a readable git checkout: {status.stderr.strip()}")
+    if status.stdout:
+        raise RuntimeError("the checkout is dirty; commit or remove these paths first:\n"
+                           + status.stdout)
+
+
 # --- the build -------------------------------------------------------------------------------
 
 

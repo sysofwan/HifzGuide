@@ -665,7 +665,8 @@ class RoundData:
     #: The report-only mistake marks (#174); never G6's frozen denominator.
     report_only_catch: Mapping | None = None
     absent: tuple[str, ...] = ()
-    #: The cache files G6 needed and did not find, so "cannot certify" names them (R1.6).
+    #: The inputs G6 needed and did not find — a cache file, or the sitting's candidate
+    #: identity — so "cannot certify" names them (R1.6).
     catch_missing: tuple[str, ...] = ()
 
 
@@ -799,7 +800,8 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
     """Every set the round's confirm sitting reads, graded, with the roles bound. A set named
     ``absent`` (its decodes are not committed) is not read. ``identities`` are the sitting's
     validated per-model identities: G6 binds both models' truth-baseline caches to them (and to
-    the round's pin) before replay."""
+    the round's pin) before replay. Without the candidate's identity G6 reads nothing and names
+    that as its missing input."""
     from training import aug_readout as ar
     from training.aug_readout_gate import (
         QDAT_SET, QUD_OTHER_SET, QUD_SET, TADABUR_SET, TARTEEL_CONFIRM, arm_model,
@@ -821,10 +823,19 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
     scope = g6_scope()
     catch_identities = ({candidate: identities[candidate]}
                         if identities and candidate in identities else {})
-    catch = catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope,
-                      identities=catch_identities)
-    catch_missing = (() if catch is not None else tuple(
-        str(path) for path in catch_required((candidate, C95)) if not path.exists()))
+    # G6's caches must be the sitting's candidate identity. A sitting without one (no decodes,
+    # so no manifest) has nothing to bind them to: the caches are a missing input, named like a
+    # missing cache, and G6 cannot certify — never a crash and never a guessed identity (R1.6).
+    if catch_identities:
+        catch = catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope,
+                          identities=catch_identities)
+        catch_missing = (() if catch is not None else tuple(
+            str(path) for path in catch_required((candidate, C95)) if not path.exists()))
+        report_only = descriptive_catch((candidate, C95), spec=spec,
+                                        identities=catch_identities)
+    else:
+        catch, report_only = None, None
+        catch_missing = (f"{candidate}: no identity in the sitting; G6 cannot read its caches",)
     return RoundData(
         tarteel=read(TARTEEL_CONFIRM, lambda: sources.tarteel(CONFIRM, models)),
         qdat=read(QDAT_SET, lambda: sources.qdat(models)),
@@ -835,8 +846,7 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
             bind_round(tadabur.blanks, weights), tadabur.redecoded_identical),
         bench=sources.bench() if "qdat" not in absent else {},
         catch=catch,
-        report_only_catch=descriptive_catch((candidate, C95), spec=spec,
-                                            identities=catch_identities),
+        report_only_catch=report_only,
         absent=absent,
         catch_missing=catch_missing)
 

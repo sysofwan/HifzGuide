@@ -161,13 +161,15 @@ def tadabur_recordings(clips_dir: Path) -> Iterator[Recording]:
         yield Recording((clip.filename,), load)
 
 
-def check_models(set_name: str, models: Sequence[str], layout: Layout = Layout(),
+def check_models(set_name: str, models: Sequence[str], layout: Layout | None = None,
                  checkpoint_sha256: Callable[[str], str] | None = None,
                  spec: RoundSpec = AUG95) -> None:
     """Refuse a model the readout's order does not allow on this set now, before any recording
     is read: a gated set needs the round's committed choice (:func:`committed_choice`: tracked
     by git, unchanged from ``HEAD``, bound to the committed look), its weights only, and the
-    candidate's checkpoint the one the choice read and the round pinned."""
+    candidate's checkpoint the one the choice read and the round pinned. ``layout`` defaults to
+    the round's own root, never another round's."""
+    layout = layout if layout is not None else Layout(spec.root)
     if not SETS[set_name].gated:
         allowed = allowed_models(set_name, None, spec)
         choice = None

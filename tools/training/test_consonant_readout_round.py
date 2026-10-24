@@ -8,6 +8,7 @@ GPU-free: every source is synthetic.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import subprocess
 import sys
@@ -226,6 +227,18 @@ def test_the_decoder_gates_the_round_s_students_and_its_checkpoint(tmp_path):
     with pytest.raises(SystemExit, match="not the one the choice read"):
         ard.check_models(ag.TARTEEL_CONFIRM, ["candidate_ema"], layout,
                          checkpoint_sha256=lambda ref: "0" * 64, spec=asp.CONSONANT1)
+
+
+def test_a_gated_decode_resolves_the_round_s_layout(tmp_path):
+    """A gated run with no layout reads this round's committed choice, never #95's (S1.1)."""
+    layout = _repo(tmp_path)
+    _round_choice(layout)
+    spec = dataclasses.replace(asp.CONSONANT1, root=layout.root)
+    ard.check_models(ag.QUD_SET, ["candidate_ema"], spec=spec,
+                     checkpoint_sha256=lambda ref: CANDIDATE_SHA256)
+    elsewhere = dataclasses.replace(spec, root=tmp_path / "none")
+    with pytest.raises(SystemExit, match="not committed"):
+        ard.check_models(ag.QUD_SET, ["candidate_ema"], spec=elsewhere)
 
 
 def test_the_decode_run_binds_the_round_s_checkpoint(tmp_path, monkeypatch):

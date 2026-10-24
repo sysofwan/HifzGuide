@@ -37,6 +37,10 @@ BUDGET=${BUDGET:-18000}
 CLIP_DIRS=(/root/scratch/issue-94/dev_clips /root/scratch/issue-83/stage/clips \
            /root/scratch/issue-126/stage/clips)
 LOOK_MODELS=candidate_live,candidate_ema
+#: The two clip populations the confirm pass reads: Ship A's held-out clips (G6) and Tadabur's
+#: dev clips h448 holds no copy of (G2). Both are staged by name.
+HELD_CLIPS=357
+DEV_CLIPS=671
 #: The confirm sets, in the order the readout reads them; each is one shard range.
 CONFIRM_SETS=(tarteel_v1.confirm qdat qud_other qud_half tadabur_dev_unseen)
 CHOICE=tools/tadabur/consonant_readout/choice.json
@@ -80,29 +84,48 @@ stage_repo() {
   }
 }
 
+stage_names() {  # <list> <expected> <label>
+  # Symlink every name in ``list`` from the first clip directory that holds it; a name with no
+  # source, or a count other than the frozen one, fails here, never mid-decode.
+  local list=$1 expected=$2 label=$3 name dir staged=0 missing=0
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    for dir in "${CLIP_DIRS[@]}"; do
+      if [ -f "$dir/$name" ]; then ln -sf "$dir/$name" "$name"; break; fi
+    done
+    if [ -e "$name" ]; then
+      staged=$((staged + 1))
+    else
+      echo "$label: no $name in ${CLIP_DIRS[*]}" >&2
+      missing=$((missing + 1))
+    fi
+  done < "$list"
+  if [ "$staged" -ne "$expected" ] || [ "$missing" -ne 0 ]; then
+    echo "$label: $staged of $expected staged, $missing missing" >&2
+    return 1
+  fi
+  echo "$label: $staged of $expected staged"
+}
+
 setup_clips() {
-  # The Ship A held-out clips (the G6 caches) and the Tadabur dev clips (tadabur_dev_unseen)
-  # are staged by symlink from the box's existing clip directories; a missing clip fails here.
+  # Both populations the confirm pass reads are staged by symlink from the box's existing clip
+  # directories: Ship A's held-out clips (G6's caches) and the Tadabur dev clips h448 holds no
+  # copy of (G2's tadabur_dev_unseen). A missing clip fails the setup.
   mkdir -p "$ROOT"/{decodes,hf_cache,logs,clips}
   cd "$ROOT/repo/tools"
   activate
   python -m training.consonant_baseline held-out --list-clips > "$ROOT/held_clips.txt"
+  # The same filter ``tadabur_recordings`` applies: every dev clip h448 did not see.
+  python - <<'PY' > "$ROOT/dev_clips.txt"
+from training.nonpro_gap import committed_grid, dev_clips
+
+seen = set(committed_grid()["sample"]["h448_seen"])
+print("\n".join(sorted(c.filename for c in dev_clips() if c.filename not in seen)))
+PY
   cd "$ROOT/clips"
   rm -f -- ./*.wav
-  local name dir
-  while IFS= read -r name; do
-    for dir in "${CLIP_DIRS[@]}"; do
-      if [ -f "$dir/$name" ]; then ln -sf "$dir/$name" "$name"; break; fi
-    done
-  done < "$ROOT/held_clips.txt"
-  local wanted staged
-  wanted=$(wc -l < "$ROOT/held_clips.txt")
-  staged=$(find . -maxdepth 1 -name '*.wav' | wc -l)
-  if [ "$staged" -ne "$wanted" ]; then
-    echo "clips: $staged of $wanted staged from ${CLIP_DIRS[*]}" >&2
-    return 1
-  fi
-  echo "clips: $staged of $wanted staged"
+  stage_names "$ROOT/held_clips.txt" "$HELD_CLIPS" "Ship A held-out"
+  stage_names "$ROOT/dev_clips.txt" "$DEV_CLIPS" "Tadabur dev-unseen"
 }
 
 # --- the two decode passes (on the box) ---------------------------------------------------------

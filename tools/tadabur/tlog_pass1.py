@@ -25,7 +25,8 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     percentiles of ``speech_ratio`` and ``speech_s`` over the Tarteel v1 look clips that decode.
     Silero VAD (:data:`SILERO_VAD_VERSION`, ONNX on CPU) supplies ``speech_s``; the padded
     Silero spans are summed. The floors commit lands **before** any pass-1 output commit, and
-    :func:`run` refuses to start when its VAD config differs from the committed floors.
+    :func:`run` refuses to start when its VAD config differs from the committed floors. Like
+    ``meta.json`` it records ``code_sha``, ``pull_request`` and ``pull_request_ref``.
 
 **Tracer rule (written before the run).** The tracer reads clean shard indices 0 and 205 (of
 411) and unclean index 0 (of 332): :func:`tracer_shards`. It measures download, decode+resample,
@@ -36,10 +37,11 @@ only under ``refs/pull/<N>/head`` and is recorded with the PR number.
 tlog audio is gated: the reads need a Hub token that accepted the dataset's terms and run on
 cuda-dev, where the scratch directories live. Shards and their audio are never committed.
 
-Usage (from ``tools/``, on cuda-dev; under ``flock /root/scratch/gpu.lock``)::
+Usage (from ``tools/``, on cuda-dev). VAD and fingerprinting are CPU-only, so neither command
+takes the GPU lock::
 
-  python -m tadabur.tlog_pass1 floors --cache-dir /root/scratch/tlog/cache
-  python -m tadabur.tlog_pass1 run --tracer --cache-dir /root/scratch/tlog/cache
+  python -m tadabur.tlog_pass1 floors --cache-dir /root/scratch/tlog/cache --pr 198
+  python -m tadabur.tlog_pass1 run --tracer --cache-dir /root/scratch/tlog/cache --pr 198
 """
 
 from __future__ import annotations
@@ -290,6 +292,13 @@ def require_floor_config(floors: dict, config: dict | None = None) -> None:
             f"pass 1 would run {expected!r}")
 
 
+def _provenance(code_sha: str | None, pull_request: int | None) -> dict:
+    """The commit a measurement ran from, and the PR ref that keeps it after the squash merge."""
+    return {"code_sha": code_sha or head_sha(), "pull_request": pull_request,
+            "pull_request_ref": (f"refs/pull/{pull_request}/head"
+                                 if pull_request is not None else None)}
+
+
 def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         speech_seconds_of: Callable[[np.ndarray], float], floors_path: Path = FLOORS_PATH,
         fp_dir: Path | None = None, stream=None, code_sha: str | None = None,
@@ -332,10 +341,7 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
             "splits": {split: sum(1 for shard in TLOG.shards if tlog_split(shard) == split)
                        for split in TLOG_SPLITS},
         },
-        "code_sha": code_sha or head_sha(),
-        "pull_request": pull_request,
-        "pull_request_ref": (f"refs/pull/{pull_request}/head"
-                             if pull_request is not None else None),
+        **_provenance(code_sha, pull_request),
         "vad": VAD_CONFIG,
         "embeddings": "none (owner fallback 2026-10-24, #187)",
         "floors": {"path": _repo_relative(floors_path),
@@ -524,6 +530,7 @@ def _floors_command(args) -> None:
     look_ids = set(load_split()["look"])
     floors = build_floors(args.shards, look_ids=look_ids, cache_dir=args.cache_dir,
                           speech_seconds_of=silero_speech_seconds())
+    floors.update(_provenance(None, args.pr))
     write_text_atomically(
         Path(args.out),
         json.dumps(floors, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
@@ -551,6 +558,9 @@ def main() -> None:
                                 help="HF cache for the look shards (each is deleted after)")
     floors_command.add_argument("--out", type=Path, default=FLOORS_PATH)
     floors_command.add_argument("--shards", nargs="+", default=TARTEEL_V1.shards)
+    floors_command.add_argument("--pr", type=int, required=True,
+                                help="the PR number whose refs/pull/<N>/head keeps the run's "
+                                     "code_sha reachable after the squash merge")
     floors_command.set_defaults(execute=_floors_command)
 
     run_command = commands.add_parser(

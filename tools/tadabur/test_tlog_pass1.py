@@ -603,6 +603,23 @@ def test_the_clean_tree_guard_passes_a_committed_checkout_and_refuses_any_drift(
         require_clean_tree(repo)
 
 
+def test_the_floors_command_stamps_the_commit_and_the_pull_request(tp, tmp_path, monkeypatch):
+    monkeypatch.setattr(tp, "require_clean_tree", lambda: None)
+    monkeypatch.setattr(tp, "load_split", lambda: {"look": []})
+    monkeypatch.setattr(tp, "silero_speech_seconds", lambda: (lambda waveform: 0.0))
+    monkeypatch.setattr(tp, "build_floors",
+                        lambda *args, **kwargs: {"f_s": 0.1, "d_s": 1.0, "count": 1, "run": {}})
+    out = tmp_path / "silence_floors.json"
+
+    tp._floors_command(SimpleNamespace(shards=[], cache_dir=tmp_path / "cache", out=out, pr=198))
+
+    floors = json.loads(out.read_text(encoding="utf-8"))
+    assert floors["code_sha"] == tp.head_sha()
+    assert floors["pull_request"] == 198
+    assert floors["pull_request_ref"] == "refs/pull/198/head"
+    assert (floors["f_s"], floors["d_s"], floors["count"]) == (0.1, 1.0, 1)
+
+
 @pytest.mark.parametrize("command", ["_floors_command", "_run_command"])
 def test_a_measuring_command_refuses_a_dirty_tree_before_it_measures(
         tp, tmp_path, monkeypatch, command):

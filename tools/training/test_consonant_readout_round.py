@@ -22,6 +22,8 @@ from training import aug_readout as ar
 from training import aug_readout_decode as ard
 from training import aug_readout_gate as ag
 from training import aug_readout_spec as asp
+from training import consonant_baseline as cb
+from training import consonant_readout as cr
 from training.external_corpus import WordGrade
 from training.muraja_policy import SHIPPED_DEFAULT, SiteGrade
 from training.nonpro_eval import ClipItem
@@ -259,6 +261,58 @@ def test_the_decode_run_binds_the_round_s_checkpoint(tmp_path, monkeypatch):
     captured.clear()
     ard.run(ag.TARTEEL_LOOK, 0, ["candidate_ema"], tmp_path, tmp_path, None)  # #95 unchanged
     assert captured["candidate_ema"].ref == ag.ARMS["candidate"]
+
+
+def test_a_candidate_only_merge_completes_the_confirm_manifest(tmp_path, monkeypatch):
+    """R1.1: the merge inherits the reused baselines' identities from their own manifest."""
+    layout = _repo(tmp_path / "round")
+    # The committed round manifest already holds C95's records, qud_other included.
+    layout.models.write_text(cr.MODELS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+    _round_choice(layout)
+    gpu = tmp_path / "gpu"
+    gpu.mkdir()
+    for set_name in ("tarteel_v1.confirm", "qdat", "qud_other", "qud_half",
+                     "tadabur_dev_unseen"):
+        (gpu / f"{set_name}.candidate_ema.identity.json").write_text(
+            json.dumps(_record("candidate_ema")), encoding="utf-8")
+    monkeypatch.setattr("training.external_corpus.merge_decode_files", lambda *a: None)
+    ar.merge(gpu, layout, spec=asp.CONSONANT1)
+    manifest = json.loads(layout.models.read_text(encoding="utf-8"))
+    identities = ag.require_manifest(manifest, ag.needs("confirm", "ema", asp.CONSONANT1),
+                                     ag.committed_choice(layout, spec=asp.CONSONANT1).choice,
+                                     spec=asp.CONSONANT1)
+    assert {"h448", "base"} <= set(identities)
+    assert {"tadabur_dev_unseen/h448", "tadabur_dev_unseen/base"} <= set(manifest)
+
+
+def test_a_candidate_guard_decode_waits_for_the_committed_choice(tmp_path, monkeypatch):
+    """R1.3: no held-out clip is decoded for the candidate before the choice is committed."""
+    monkeypatch.setattr(cb, "model_caches",
+                        lambda *a, **k: pytest.fail("decoded the guard sites"))
+    monkeypatch.setattr(cb, "CONSONANT1",
+                        dataclasses.replace(asp.CONSONANT1, root=tmp_path / "absent"))
+    with pytest.raises(SystemExit, match="not committed"):
+        cb.update_held_out(tmp_path, "candidate_ema")
+    layout = _repo(tmp_path / "round")
+    layout.look.write_text("{}", encoding="utf-8")
+    layout.claim(LOOK).write_text("{}", encoding="utf-8")
+    layout.choice.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(cb, "CONSONANT1",
+                        dataclasses.replace(asp.CONSONANT1, root=layout.root))
+    with pytest.raises(SystemExit, match="not committed"):
+        cb.update_held_out(tmp_path, "candidate_ema")
+
+
+def test_a_guard_decode_refuses_weights_the_choice_did_not_pick(tmp_path, monkeypatch):
+    """R1.3: the guard caches read only the selector the committed choice named."""
+    layout = _repo(tmp_path / "round")
+    _round_choice(layout, weights="ema")
+    monkeypatch.setattr(cb, "CONSONANT1",
+                        dataclasses.replace(asp.CONSONANT1, root=layout.root))
+    monkeypatch.setattr(cb, "model_caches",
+                        lambda *a, **k: pytest.fail("decoded the guard sites"))
+    with pytest.raises(SystemExit, match="committed choice reads"):
+        cb.update_held_out(tmp_path, "candidate_live")
 
 
 def test_the_decode_cli_takes_the_round_spec():

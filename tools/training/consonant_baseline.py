@@ -47,6 +47,8 @@ from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
 from training import aug_readout_decode as ad
 from training.aug_readout_gate import (
     QUD_OTHER_SET,
+    Layout,
+    committed_choice,
     identity_record,
     model_spec,
     round_decodes_file,
@@ -179,7 +181,14 @@ def held_out_identity(model: str = BASELINE) -> dict:
 def update_held_out(audio_dir: Path, model: str = BASELINE) -> dict:
     """Decode one model's decodes and check sequences of every held-out item, then prove the
     caches are the round's pin; the baselines' caches already hold the same items. The
-    candidate's caches are built at the weights the look half chose (#179)."""
+    candidate's caches are built at the weights the look half chose (#179), so they wait for
+    the committed choice and read only its selected model (R1.3)."""
+    if model != BASELINE:
+        choice = committed_choice(Layout(CONSONANT1.root), spec=CONSONANT1).choice
+        chosen = choice["models"].get("candidate")
+        if chosen != model:
+            raise SystemExit(f"{model}: the committed choice reads {chosen}; the guard sites "
+                             "are decoded at the chosen weights only")
     expected = held_out_identity(model)
     ref = expected["model_ref"]
     if not Path(ref).is_file():

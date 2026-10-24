@@ -809,6 +809,22 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     choice = (committed_choice(layout, spec=spec).choice
               if any(SETS[s].gated for s, _ in found) else None)
     records = read_manifest(layout)
+    # A candidate-only merge leaves the reused sources' identities unmerged. Resolve each one
+    # from the manifest that committed its decodes and validate it under this round's spec, so
+    # the round's manifest is complete for the confirm sitting (R1.1).
+    inherited_needs = needs(CONFIRM, "ema", spec)
+    for (set_name, model), source in spec.decode_sources.items():
+        key = f"{set_name}/{model}"
+        if key in records or model not in inherited_needs.get(set_name, ()):
+            continue
+        manifest = json.loads((source.root / "models.json").read_text(encoding="utf-8"))
+        inherited = manifest.get(f"{set_name}/{source.model}")
+        if inherited is None:
+            raise SystemExit(f"{source.root / 'models.json'}: no identity for "
+                             f"{set_name}/{source.model}")
+        inherited = {**inherited, "model": model}
+        validate_identity(set_name, model, inherited, spec=spec)
+        records[key] = inherited
     required: dict[str, list[str]] = {}
     for (set_name, model), path in found.items():
         record = json.loads(path.read_text(encoding="utf-8"))

@@ -1,0 +1,4406 @@
+{
+ "issue": 186,
+ "preregistration": {
+  "path": "docs/tlog-holdout-preregistration.md",
+  "sha256": "85ee88878fe1b5862795b39fa46b4ce10711a6329cd22c06d76d55db91e5d680"
+ },
+ "tarteel_look": {
+  "path": "tools/tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz",
+  "sha256": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770",
+  "clips": 4537,
+  "edges": [
+   1.6254375,
+   4.181375,
+   5.2245,
+   6.229375,
+   7.267875,
+   8.5449375,
+   9.9149375,
+   11.4475,
+   13.4211875,
+   15.9985625
+  ],
+  "min_seconds": 1.6254375,
+  "max_seconds": 19.992375
+ },
+ "sample": {
+  "path": "tools/tadabur/tlog/s2/sample.jsonl",
+  "sha256": "032e0f2a739c47a6ca45cbcc218569cef0c360a9763b64375e5f1f64f6d14836",
+  "salt": "issue-186-tlog-s2-v1",
+  "shards": [
+   21,
+   38,
+   56,
+   74,
+   92,
+   110,
+   128,
+   146,
+   164,
+   182,
+   200,
+   218,
+   236,
+   254,
+   272,
+   290,
+   308,
+   326,
+   344,
+   361
+  ],
+  "clips": 2000,
+  "reciters": 353,
+  "ayat_with_five_reciters": 63,
+  "reciter_cap": 20,
+  "bins": [
+   200,
+   200,
+   200,
+   200,
+   200,
+   200,
+   200,
+   200,
+   200,
+   200
+  ]
+ },
+ "embedding_run": {
+  "code_sha": "5cbe86895043a61d6acda06a8cb612d6bc55677a",
+  "device": "cuda",
+  "sample_sha256": "032e0f2a739c47a6ca45cbcc218569cef0c360a9763b64375e5f1f64f6d14836"
+ },
+ "models": {
+  "a": {
+   "repo_id": "speechbrain/spkrec-ecapa-voxceleb",
+   "revision": "0f99f2d0ebe89ac095bcc5903c4dd8f72b367286",
+   "dim": 192
+  },
+  "b": {
+   "repo_id": "microsoft/wavlm-base-plus-sv",
+   "revision": "feb593a6c23c1cc3d9510425c29b0a14d2b07b1e",
+   "dim": 512
+  }
+ },
+ "grid": [
+  0.3,
+  0.32,
+  0.34,
+  0.36,
+  0.38,
+  0.4,
+  0.42,
+  0.44,
+  0.46,
+  0.48,
+  0.5,
+  0.52,
+  0.54,
+  0.56,
+  0.58,
+  0.6,
+  0.62,
+  0.64,
+  0.66,
+  0.68,
+  0.7,
+  0.72,
+  0.74,
+  0.76,
+  0.78,
+  0.8,
+  0.82,
+  0.84,
+  0.86,
+  0.88,
+  0.9
+ ],
+ "results": {
+  "a": {
+   "0.30": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.32": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.34": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 18,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.634416365824308,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5272,
+      "rate": 0.634416365824308,
+      "wilson": [
+       0.624001795313,
+       0.644706716045
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.36": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 17,
+    "pre_cap": {
+     "largest_cluster": 1998,
+     "largest_cluster_share": 0.999,
+     "recall": 0.9989169675090253,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8301,
+      "rate": 0.9989169675090253,
+      "wilson": [
+       0.997942761813,
+       0.999430101292
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1274,
+      "rate": 0.9984326018808778,
+      "wilson": [
+       0.994302925168,
+       0.999570066615
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1985428,
+      "rate": 0.9979963949183026,
+      "wilson": [
+       0.99793328693,
+       0.998057579627
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.634416365824308,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5272,
+      "rate": 0.634416365824308,
+      "wilson": [
+       0.624001795313,
+       0.644706716045
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.38": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 16,
+    "pre_cap": {
+     "largest_cluster": 1995,
+     "largest_cluster_share": 0.9975,
+     "recall": 0.9980746089049338,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8294,
+      "rate": 0.9980746089049338,
+      "wilson": [
+       0.996874449092,
+       0.998814475267
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1274,
+      "rate": 0.9984326018808778,
+      "wilson": [
+       0.994302925168,
+       0.999570066615
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1979448,
+      "rate": 0.9949904846351739,
+      "wilson": [
+       0.994891417055,
+       0.995087640545
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.634416365824308,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5272,
+      "rate": 0.634416365824308,
+      "wilson": [
+       0.624001795313,
+       0.644706716045
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.40": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 15,
+    "pre_cap": {
+     "largest_cluster": 1994,
+     "largest_cluster_share": 0.997,
+     "recall": 0.9961492178098676,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8278,
+      "rate": 0.9961492178098676,
+      "wilson": [
+       0.994569017153,
+       0.997270904358
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1274,
+      "rate": 0.9984326018808778,
+      "wilson": [
+       0.994302925168,
+       0.999570066615
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1977470,
+      "rate": 0.9939962220030623,
+      "wilson": [
+       0.993887914913,
+       0.994102621263
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.634416365824308,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5272,
+      "rate": 0.634416365824308,
+      "wilson": [
+       0.624001795313,
+       0.644706716045
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.42": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 14,
+    "pre_cap": {
+     "largest_cluster": 1991,
+     "largest_cluster_share": 0.9955,
+     "recall": 0.9939831528279182,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8260,
+      "rate": 0.9939831528279182,
+      "wilson": [
+       0.992076923446,
+       0.995432869861
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1273,
+      "rate": 0.9976489028213166,
+      "wilson": [
+       0.99311018423,
+       0.99920011417
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1971514,
+      "rate": 0.9910023755739127,
+      "wilson": [
+       0.990870205733,
+       0.991132649147
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.634416365824308,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5272,
+      "rate": 0.634416365824308,
+      "wilson": [
+       0.624001795313,
+       0.644706716045
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.44": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 13,
+    "pre_cap": {
+     "largest_cluster": 1982,
+     "largest_cluster_share": 0.991,
+     "recall": 0.9883273164861612,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8213,
+      "rate": 0.9883273164861612,
+      "wilson": [
+       0.98578184916,
+       0.99042149828
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1260,
+      "rate": 0.987460815047022,
+      "wilson": [
+       0.979728127645,
+       0.992267156772
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1953701,
+      "rate": 0.9820484826184998,
+      "wilson": [
+       0.981863043588,
+       0.982232059961
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.634416365824308,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5272,
+      "rate": 0.634416365824308,
+      "wilson": [
+       0.624001795313,
+       0.644706716045
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.46": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 12,
+    "pre_cap": {
+     "largest_cluster": 1967,
+     "largest_cluster_share": 0.9835,
+     "recall": 0.9831528279181708,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8170,
+      "rate": 0.9831528279181708,
+      "wilson": [
+       0.980154091974,
+       0.98570506031
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1244,
+      "rate": 0.9749216300940439,
+      "wilson": [
+       0.964811618803,
+       0.98218057148
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1924150,
+      "rate": 0.9671943597461363,
+      "wilson": [
+       0.966945928015,
+       0.967440987156
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.634416365824308,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5272,
+      "rate": 0.634416365824308,
+      "wilson": [
+       0.624001795313,
+       0.644706716045
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.48": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 11,
+    "pre_cap": {
+     "largest_cluster": 1931,
+     "largest_cluster_share": 0.9655,
+     "recall": 0.9740072202166065,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8094,
+      "rate": 0.9740072202166065,
+      "wilson": [
+       0.970360900853,
+       0.977215487901
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1203,
+      "rate": 0.9427899686520376,
+      "wilson": [
+       0.928667716133,
+       0.954254045435
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1854148,
+      "rate": 0.9320071136525631,
+      "wilson": [
+       0.931656466673,
+       0.932356092205
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.634416365824308,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5272,
+      "rate": 0.634416365824308,
+      "wilson": [
+       0.624001795313,
+       0.644706716045
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.50": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 10,
+    "pre_cap": {
+     "largest_cluster": 1866,
+     "largest_cluster_share": 0.933,
+     "recall": 0.9566787003610109,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 7950,
+      "rate": 0.9566787003610109,
+      "wilson": [
+       0.952086479141,
+       0.960848883977
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1100,
+      "rate": 0.8620689655172413,
+      "wilson": [
+       0.842058849582,
+       0.879905493506
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1731343,
+      "rate": 0.8702778808231972,
+      "wilson": [
+       0.86981025969,
+       0.87074407193
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.6342960288808664,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5271,
+      "rate": 0.6342960288808664,
+      "wilson": [
+       0.623880792688,
+       0.644587155992
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.52": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 9,
+    "pre_cap": {
+     "largest_cluster": 1767,
+     "largest_cluster_share": 0.8835,
+     "recall": 0.9235860409145608,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 7675,
+      "rate": 0.9235860409145608,
+      "wilson": [
+       0.917676379953,
+       0.929104246707
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 980,
+      "rate": 0.768025078369906,
+      "wilson": [
+       0.744081342328,
+       0.790359794763
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1552095,
+      "rate": 0.7801769767378736,
+      "wilson": [
+       0.779600960777,
+       0.780751910646
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.6336943441636582,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5266,
+      "rate": 0.6336943441636582,
+      "wilson": [
+       0.623275790002,
+       0.643989345288
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1332,
+      "rate": 0.0006695438958406847,
+      "wilson": [
+       0.000634550292,
+       0.000706465931
+      ]
+     }
+    }
+   },
+   "0.54": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 8,
+    "pre_cap": {
+     "largest_cluster": 1635,
+     "largest_cluster_share": 0.8175,
+     "recall": 0.8945848375451263,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 7434,
+      "rate": 0.8945848375451263,
+      "wilson": [
+       0.887798874966,
+       0.901006146289
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 857,
+      "rate": 0.6716300940438872,
+      "wilson": [
+       0.64538066172,
+       0.696849189225
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1328310,
+      "rate": 0.6676890782913963,
+      "wilson": [
+       0.667034189806,
+       0.668343319156
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.6324909747292419,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5256,
+      "rate": 0.6324909747292419,
+      "wilson": [
+       0.622065836772,
+       0.642793671737
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1320,
+      "rate": 0.000663511968851129,
+      "wilson": [
+       0.00062868049,
+       0.000700271903
+      ]
+     }
+    }
+   },
+   "0.56": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 7,
+    "pre_cap": {
+     "largest_cluster": 1462,
+     "largest_cluster_share": 0.731,
+     "recall": 0.8458483754512636,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 7029,
+      "rate": 0.8458483754512636,
+      "wilson": [
+       0.83792488995,
+       0.853452246703
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 664,
+      "rate": 0.5203761755485894,
+      "wilson": [
+       0.492944174306,
+       0.54768585366
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1061584,
+      "rate": 0.5336164317733765,
+      "wilson": [
+       0.532923133766,
+       0.534309599953
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.6305655836341757,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5240,
+      "rate": 0.6305655836341757,
+      "wilson": [
+       0.620130055907,
+       0.640880449753
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1264,
+      "rate": 0.0006353629762332023,
+      "wilson": [
+       0.000601298025,
+       0.00067135649
+      ]
+     }
+    }
+   },
+   "0.58": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 6,
+    "pre_cap": {
+     "largest_cluster": 1229,
+     "largest_cluster_share": 0.6145,
+     "recall": 0.7885679903730445,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 6553,
+      "rate": 0.7885679903730445,
+      "wilson": [
+       0.779656354436,
+       0.797212947476
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 479,
+      "rate": 0.37539184952978055,
+      "wilson": [
+       0.349234036505,
+       0.402297715549
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 749772,
+      "rate": 0.37688083023443086,
+      "wilson": [
+       0.376207656254,
+       0.377554479705
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.6287605294825511,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5225,
+      "rate": 0.6287605294825511,
+      "wilson": [
+       0.618315422198,
+       0.639086643293
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1135,
+      "rate": 0.0005705197610954783,
+      "wilson": [
+       0.000538288009,
+       0.000604680327
+      ]
+     }
+    }
+   },
+   "0.60": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 5,
+    "pre_cap": {
+     "largest_cluster": 915,
+     "largest_cluster_share": 0.4575,
+     "recall": 0.7280385078219013,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 6050,
+      "rate": 0.7280385078219013,
+      "wilson": [
+       0.718367532673,
+       0.737498742191
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 255,
+      "rate": 0.19984326018808776,
+      "wilson": [
+       0.178817320427,
+       0.222671113767
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 414732,
+      "rate": 0.20846942868603519,
+      "wilson": [
+       0.20790551195,
+       0.209034471323
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.6117930204572803,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5084,
+      "rate": 0.6117930204572803,
+      "wilson": [
+       0.601265390063,
+       0.622217337825
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1130,
+      "rate": 0.0005680064581831635,
+      "wilson": [
+       0.000535847807,
+       0.000602093933
+      ]
+     }
+    }
+   },
+   "0.62": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 4,
+    "pre_cap": {
+     "largest_cluster": 503,
+     "largest_cluster_share": 0.2515,
+     "recall": 0.6542719614921781,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5437,
+      "rate": 0.6542719614921781,
+      "wilson": [
+       0.643976879773,
+       0.664424473459
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 78,
+      "rate": 0.061128526645768025,
+      "wilson": [
+       0.049254799058,
+       0.075636906291
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 126023,
+      "rate": 0.06334679458373169,
+      "wilson": [
+       0.06300914753,
+       0.063686128007
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.5782190132370638,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 4805,
+      "rate": 0.5782190132370638,
+      "wilson": [
+       0.567567200618,
+       0.588798540101
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 2,
+      "rate": 0.001567398119122257,
+      "wilson": [
+       0.000429933385,
+       0.005697074832
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 937,
+      "rate": 0.00047099296576780903,
+      "wilson": [
+       0.000441791399,
+       0.000502123731
+      ]
+     }
+    }
+   },
+   "0.64": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 3,
+    "pre_cap": {
+     "largest_cluster": 308,
+     "largest_cluster_share": 0.154,
+     "recall": 0.5930204572803851,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 4928,
+      "rate": 0.5930204572803851,
+      "wilson": [
+       0.582417085885,
+       0.603537864231
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 30,
+      "rate": 0.023510971786833857,
+      "wilson": [
+       0.016517588196,
+       0.033364834754
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 47246,
+      "rate": 0.023748701879045788,
+      "wilson": [
+       0.023538030174,
+       0.023961212883
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.5404332129963899,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 4491,
+      "rate": 0.5404332129963899,
+      "wilson": [
+       0.529701774438,
+       0.55112728538
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1,
+      "rate": 0.0007836990595611285,
+      "wilson": [
+       0.000138351967,
+       0.004425962867
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 724,
+      "rate": 0.000363926261703195,
+      "wilson": [
+       0.000338368945,
+       0.00039141319
+      ]
+     }
+    }
+   },
+   "0.66": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 2,
+    "pre_cap": {
+     "largest_cluster": 161,
+     "largest_cluster_share": 0.0805,
+     "recall": 0.5081829121540313,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 4223,
+      "rate": 0.5081829121540313,
+      "wilson": [
+       0.497432630605,
+       0.5189256315
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 6,
+      "rate": 0.004702194357366771,
+      "wilson": [
+       0.002156756671,
+       0.010221025079
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 12995,
+      "rate": 0.00653207426910638,
+      "wilson": [
+       0.006421080467,
+       0.006644973861
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 20,
+     "largest_cluster_share": 0.01,
+     "recall": 0.4861612515042118,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 4040,
+      "rate": 0.4861612515042118,
+      "wilson": [
+       0.475423822352,
+       0.496911469675
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 596,
+      "rate": 0.000299585707147934,
+      "wilson": [
+       0.000276482756,
+       0.000324618519
+      ]
+     }
+    }
+   },
+   "0.68": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 31,
+     "largest_cluster_share": 0.0155,
+     "recall": 0.43862815884476536,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 3645,
+      "rate": 0.43862815884476536,
+      "wilson": [
+       0.427989811722,
+       0.449323222483
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 806,
+      "rate": 0.0004051444294651591,
+      "wilson": [
+       0.00037812783,
+       0.000434090481
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 18,
+     "largest_cluster_share": 0.009,
+     "recall": 0.43381468110709986,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 3605,
+      "rate": 0.43381468110709986,
+      "wilson": [
+       0.423191859154,
+       0.44449866793
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 437,
+      "rate": 0.00021966267453632073,
+      "wilson": [
+       0.000200011974,
+       0.000241243544
+      ]
+     }
+    }
+   },
+   "0.70": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 18,
+     "largest_cluster_share": 0.009,
+     "recall": 0.34380264741275574,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 2857,
+      "rate": 0.34380264741275574,
+      "wilson": [
+       0.333664536262,
+       0.354085107657
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 174,
+      "rate": 8.746294134855791e-05,
+      "wilson": [
+       7.5397182e-05,
+       0.00010145938
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 18,
+     "largest_cluster_share": 0.009,
+     "recall": 0.34380264741275574,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 2857,
+      "rate": 0.34380264741275574,
+      "wilson": [
+       0.333664536262,
+       0.354085107657
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 174,
+      "rate": 8.746294134855791e-05,
+      "wilson": [
+       7.5397182e-05,
+       0.00010145938
+      ]
+     }
+    }
+   },
+   "0.72": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 15,
+     "largest_cluster_share": 0.0075,
+     "recall": 0.2700361010830325,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 2244,
+      "rate": 0.2700361010830325,
+      "wilson": [
+       0.260598069064,
+       0.279686653224
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 54,
+      "rate": 2.714367145300073e-05,
+      "wilson": [
+       2.0805322e-05,
+       3.5412933e-05
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 15,
+     "largest_cluster_share": 0.0075,
+     "recall": 0.2700361010830325,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 2244,
+      "rate": 0.2700361010830325,
+      "wilson": [
+       0.260598069064,
+       0.279686653224
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 54,
+      "rate": 2.714367145300073e-05,
+      "wilson": [
+       2.0805322e-05,
+       3.5412933e-05
+      ]
+     }
+    }
+   },
+   "0.74": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 14,
+     "largest_cluster_share": 0.007,
+     "recall": 0.20806257521058966,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 1729,
+      "rate": 0.20806257521058966,
+      "wilson": [
+       0.199470782338,
+       0.216924160765
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 31,
+      "rate": 1.5582478056352274e-05,
+      "wilson": [
+       1.0978243e-05,
+       2.211767e-05
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 14,
+     "largest_cluster_share": 0.007,
+     "recall": 0.20806257521058966,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 1729,
+      "rate": 0.20806257521058966,
+      "wilson": [
+       0.199470782338,
+       0.216924160765
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 31,
+      "rate": 1.5582478056352274e-05,
+      "wilson": [
+       1.0978243e-05,
+       2.211767e-05
+      ]
+     }
+    }
+   },
+   "0.76": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 12,
+     "largest_cluster_share": 0.006,
+     "recall": 0.1299638989169675,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 1080,
+      "rate": 0.1299638989169675,
+      "wilson": [
+       0.122904576633,
+       0.13736518843
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 11,
+      "rate": 5.529266407092742e-06,
+      "wilson": [
+       3.087531e-06,
+       9.901997e-06
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 12,
+     "largest_cluster_share": 0.006,
+     "recall": 0.1299638989169675,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 1080,
+      "rate": 0.1299638989169675,
+      "wilson": [
+       0.122904576633,
+       0.13736518843
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 11,
+      "rate": 5.529266407092742e-06,
+      "wilson": [
+       3.087531e-06,
+       9.901997e-06
+      ]
+     }
+    }
+   },
+   "0.78": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 8,
+     "largest_cluster_share": 0.004,
+     "recall": 0.0740072202166065,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 615,
+      "rate": 0.0740072202166065,
+      "wilson": [
+       0.068573370382,
+       0.079834749397
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 6,
+      "rate": 3.015963494777859e-06,
+      "wilson": [
+       1.382225e-06,
+       6.580708e-06
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 8,
+     "largest_cluster_share": 0.004,
+     "recall": 0.0740072202166065,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 615,
+      "rate": 0.0740072202166065,
+      "wilson": [
+       0.068573370382,
+       0.079834749397
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 6,
+      "rate": 3.015963494777859e-06,
+      "wilson": [
+       1.382225e-06,
+       6.580708e-06
+      ]
+     }
+    }
+   },
+   "0.80": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 7,
+     "largest_cluster_share": 0.0035,
+     "recall": 0.043080625752105896,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 358,
+      "rate": 0.043080625752105896,
+      "wilson": [
+       0.03892215837,
+       0.047661353156
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 2,
+      "rate": 1.0053211649259532e-06,
+      "wilson": [
+       2.7569e-07,
+       3.665966e-06
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 7,
+     "largest_cluster_share": 0.0035,
+     "recall": 0.043080625752105896,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 358,
+      "rate": 0.043080625752105896,
+      "wilson": [
+       0.03892215837,
+       0.047661353156
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 2,
+      "rate": 1.0053211649259532e-06,
+      "wilson": [
+       2.7569e-07,
+       3.665966e-06
+      ]
+     }
+    }
+   },
+   "0.82": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 5,
+     "largest_cluster_share": 0.0025,
+     "recall": 0.019735258724428398,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 164,
+      "rate": 0.019735258724428398,
+      "wilson": [
+       0.016959109107,
+       0.022955242882
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 5,
+     "largest_cluster_share": 0.0025,
+     "recall": 0.019735258724428398,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 164,
+      "rate": 0.019735258724428398,
+      "wilson": [
+       0.016959109107,
+       0.022955242882
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    }
+   },
+   "0.84": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 4,
+     "largest_cluster_share": 0.002,
+     "recall": 0.009987966305655837,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 83,
+      "rate": 0.009987966305655837,
+      "wilson": [
+       0.008064890404,
+       0.012363884664
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 4,
+     "largest_cluster_share": 0.002,
+     "recall": 0.009987966305655837,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 83,
+      "rate": 0.009987966305655837,
+      "wilson": [
+       0.008064890404,
+       0.012363884664
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    }
+   },
+   "0.86": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 3,
+     "largest_cluster_share": 0.0015,
+     "recall": 0.0024067388688327317,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 20,
+      "rate": 0.0024067388688327317,
+      "wilson": [
+       0.001558573556,
+       0.003714752796
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 3,
+     "largest_cluster_share": 0.0015,
+     "recall": 0.0024067388688327317,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 20,
+      "rate": 0.0024067388688327317,
+      "wilson": [
+       0.001558573556,
+       0.003714752796
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    }
+   },
+   "0.88": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 2,
+     "largest_cluster_share": 0.001,
+     "recall": 0.0009626955475330926,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8,
+      "rate": 0.0009626955475330926,
+      "wilson": [
+       0.000487893852,
+       0.001898680364
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2,
+     "largest_cluster_share": 0.001,
+     "recall": 0.0009626955475330926,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8,
+      "rate": 0.0009626955475330926,
+      "wilson": [
+       0.000487893852,
+       0.001898680364
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    }
+   },
+   "0.90": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 0,
+    "pre_cap": {
+     "largest_cluster": 2,
+     "largest_cluster_share": 0.001,
+     "recall": 0.0006016847172081829,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5,
+      "rate": 0.0006016847172081829,
+      "wilson": [
+       0.000257026475,
+       0.001407859708
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2,
+     "largest_cluster_share": 0.001,
+     "recall": 0.0006016847172081829,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 5,
+      "rate": 0.0006016847172081829,
+      "wilson": [
+       0.000257026475,
+       0.001407859708
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       0.003001621451
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 0,
+      "rate": 0.0,
+      "wilson": [
+       0.0,
+       1.931017e-06
+      ]
+     }
+    }
+   }
+  },
+  "b": {
+   "0.30": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.32": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.34": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.36": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.38": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.40": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.42": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.44": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.46": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.48": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.50": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.52": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.54": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.56": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.58": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.60": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.62": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.64": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.66": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.68": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.70": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.72": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.74": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.76": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.78": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.80": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.82": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.84": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 1,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    }
+   },
+   "0.86": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 6,
+    "pre_cap": {
+     "largest_cluster": 2000,
+     "largest_cluster_share": 1.0,
+     "recall": 1.0,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8310,
+      "rate": 1.0,
+      "wilson": [
+       0.999537927208,
+       1.0
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1276,
+      "rate": 1.0,
+      "wilson": [
+       0.996998378549,
+       1.0
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1989414,
+      "rate": 1.0,
+      "wilson": [
+       0.999998068983,
+       1.0
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 11,
+     "largest_cluster_share": 0.0055,
+     "recall": 0.02045728038507822,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 170,
+      "rate": 0.02045728038507822,
+      "wilson": [
+       0.017627884782,
+       0.023729843275
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1,
+      "rate": 0.0007836990595611285,
+      "wilson": [
+       0.000138351967,
+       0.004425962867
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 238,
+      "rate": 0.00011963321862618841,
+      "wilson": [
+       0.000105369645,
+       0.000135827348
+      ]
+     }
+    }
+   },
+   "0.88": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 5,
+    "pre_cap": {
+     "largest_cluster": 1999,
+     "largest_cluster_share": 0.9995,
+     "recall": 0.9983152827918171,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8296,
+      "rate": 0.9983152827918171,
+      "wilson": [
+       0.997173888638,
+       0.998996161078
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1275,
+      "rate": 0.9992163009404389,
+      "wilson": [
+       0.995574037133,
+       0.999861648033
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1987430,
+      "rate": 0.9990027214043935,
+      "wilson": [
+       0.99895788562,
+       0.999045630023
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 11,
+     "largest_cluster_share": 0.0055,
+     "recall": 0.02045728038507822,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 170,
+      "rate": 0.02045728038507822,
+      "wilson": [
+       0.017627884782,
+       0.023729843275
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1,
+      "rate": 0.0007836990595611285,
+      "wilson": [
+       0.000138351967,
+       0.004425962867
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 238,
+      "rate": 0.00011963321862618841,
+      "wilson": [
+       0.000105369645,
+       0.000135827348
+      ]
+     }
+    }
+   },
+   "0.90": {
+    "rows": 2000,
+    "largest_reciter": 20,
+    "resplits": 4,
+    "pre_cap": {
+     "largest_cluster": 1970,
+     "largest_cluster_share": 0.985,
+     "recall": 0.9709987966305655,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 8069,
+      "rate": 0.9709987966305655,
+      "wilson": [
+       0.967167382152,
+       0.974394939651
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1230,
+      "rate": 0.9639498432601881,
+      "wilson": [
+       0.952249607643,
+       0.972864875275
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 1930168,
+      "rate": 0.9702193711313984,
+      "wilson": [
+       0.969982253185,
+       0.970454673075
+      ]
+     }
+    },
+    "post_cap": {
+     "largest_cluster": 11,
+     "largest_cluster_share": 0.0055,
+     "recall": 0.02045728038507822,
+     "same_reciter": {
+      "pairs": 8310,
+      "clustered": 170,
+      "rate": 0.02045728038507822,
+      "wilson": [
+       0.017627884782,
+       0.023729843275
+      ]
+     },
+     "same_ayah": {
+      "pairs": 1276,
+      "clustered": 1,
+      "rate": 0.0007836990595611285,
+      "wilson": [
+       0.000138351967,
+       0.004425962867
+      ]
+     },
+     "different_ayah": {
+      "pairs": 1989414,
+      "clustered": 238,
+      "rate": 0.00011963321862618841,
+      "wilson": [
+       0.000105369645,
+       0.000135827348
+      ]
+     }
+    }
+   }
+  }
+ },
+ "choice": {
+  "fallback": true
+ }
+}

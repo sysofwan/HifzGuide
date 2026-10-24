@@ -77,7 +77,6 @@ from training.aug_readout_gate import (
     TARTEEL_CONFIRM,
     TARTEEL_LOOK,
     WEIGHTS,
-    CommittedChoice,
     Layout,
     arm_model,
     baseline_identities,
@@ -475,7 +474,7 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
                                "input_sha256": sitting["inputs"],
                                "harness": sitting["harness"]})
         write_text_atomically(layout.look, look_text)
-        choice = make_choice(weights, look_text, sitting)
+        choice = make_choice(weights, look_text, sitting, spec=spec)
         write_text_atomically(layout.choice, canonical(choice))
     return choice
 
@@ -616,13 +615,12 @@ def load_confirm(sources: Sources, weights: str, spec: RoundSpec = AUG95,
 
 
 def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
-                gate: Callable[[Layout], CommittedChoice] = committed_choice,
                 spec: RoundSpec = AUG95) -> dict:
     """Read the confirm half and the guards once, for the committed choice, and write the
     report and the verdict. Refused without a committed choice, once a verdict exists, without
     a complete identity manifest for every model read, and while (or after) another confirm
     sitting holds the claim."""
-    committed = gate(layout)
+    committed = committed_choice(layout, spec=spec)
     if layout.verdict.exists():
         raise SystemExit(f"{layout.verdict.name} exists: the confirm half is read once")
     weights = committed.choice["weights"]
@@ -641,12 +639,17 @@ def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
     if absent or missing:  # #95's committed sitting had none, so its claim is unchanged
         sitting |= {"missing_inputs": sorted(input_name(path) for path in missing),
                     "absent": list(absent)}
+    reproduction_record = None
     with claim(layout.claim(CONFIRM), sitting):
         if spec.pins is not None:  # the pre-registration's pins, before any candidate is read
             check_pins(spec, sitting["harness"],
                        sha256_file(PREREG_PATH) if PREREG_PATH.exists() else "")
             # #95's own inputs, not this round's: the check is against history (#175 R1.1).
-            require_reproduction(reproduction(Sources()))
+            # It must pass before any confirm set is read, and is recorded in the report.
+            totals = reproduction(Sources())
+            require_reproduction(totals)
+            reproduction_record = {"passed": True, "counts": totals,
+                                   "expected": dict(REPRODUCTION)}
         report = confirm_report(load_confirm(sources, weights, spec=spec, identities=identities,
                                              absent=absent), workers, spec=spec)
         if absent and "absent" not in report:
@@ -654,6 +657,8 @@ def run_confirm(sources: Sources, layout: Layout = Layout(), workers: int = 1,
         same_harness(sources, sitting)
         report = {"issue": spec.issue, "choice": committed.choice, "audit": sitting,
                   "baselines": baseline_identities(), **report}
+        if reproduction_record is not None:
+            report["reproduction"] = reproduction_record
         write_text_atomically(layout.report, canonical(report))
         write_text_atomically(layout.verdict, canonical(
             {"issue": spec.issue, "choice": weights, "choice_commit": committed.commit,
@@ -785,7 +790,6 @@ def coverage() -> dict:
 
 
 def merge(decodes_dir: Path, layout: Layout = Layout(),
-          gate: Callable[[Layout], CommittedChoice] = committed_choice,
           spec: RoundSpec = AUG95) -> dict:
     """Every set's per-shard decodes on the GPU box as one gzipped file per set and model, each
     checked against its set's count, with the identity records into ``models.json``. Every
@@ -802,7 +806,8 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
         raise SystemExit(
             f"{', '.join('/'.join(key) for key in reused)} read another round's committed "
             "decodes; the round's merge writes only its own root")
-    choice = gate(layout).choice if any(SETS[s].gated for s, _ in found) else None
+    choice = (committed_choice(layout, spec=spec).choice
+              if any(SETS[s].gated for s, _ in found) else None)
     records = read_manifest(layout)
     required: dict[str, list[str]] = {}
     for (set_name, model), path in found.items():

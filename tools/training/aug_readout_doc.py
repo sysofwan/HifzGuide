@@ -361,6 +361,11 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
                  report["leniency"]["blank_ratio"])
     if coverage is not None:
         out += _round_coverage(coverage, look, report)
+    if report.get("not_run"):
+        out += ["**Not run:**", ""]
+        out += [f"- {name}: {row['status']} — {row['reason']}."
+                for name, row in report["not_run"].items()]
+        out += [""]
     out += ["**Reported, not gating:** every substitution's change on the confirm half (§3), "
             "the false flags by cause (§2), `h448` and the teacher columns in every table, the "
             "catch side (§5), abstentions and coverage (§6–7), the #95 QUD half (§6), the "
@@ -384,12 +389,12 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
 
 
 def _round_coverage(coverage: Mapping, look: Mapping, report: Mapping) -> list[str]:
-    """The round's frozen populations: decoded, evaluated and excluded, with the reasons."""
-    order = ("tarteel_v1.look", "tarteel_v1.confirm", "qud_other")
-    populations = {name: coverage["populations"][name] for name in order}
-    evaluated = {"tarteel_v1.look": look["items"],
-                 "tarteel_v1.confirm": report["sizes"]["tarteel_v1_confirm"],
-                 "qud_other": report["sizes"]["qud_other"]}
+    """The round's frozen populations: every set's decoded, evaluated and excluded counts, with
+    the reasons, each checked against the size the readout actually read."""
+    populations = dict(coverage["populations"])
+    evaluated = {"tarteel_v1.look": look["items"]}
+    for name in populations:
+        evaluated.setdefault(name, report["sizes"].get(name.replace(".", "_")))
     for name, row in populations.items():
         if evaluated[name] is not None and row["evaluated"] != evaluated[name]:
             raise ValueError(f"coverage {name}: {row['evaluated']} evaluated, the readout read "

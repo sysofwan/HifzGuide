@@ -425,7 +425,9 @@ def _expected_identity(spec: RoundSpec, name: str,
 
     if name in identities:
         return dict(identities[name])
-    if (pinned := spec.models.get(name)) is not None:
+    # The baseline's cache is the round's pin; the candidate's must be the sitting's identity
+    # (the chosen weights the choice read), so a pin alone never stands in for it (R2.3).
+    if name == spec.baseline and (pinned := spec.models.get(name)) is not None:
         return identity_record(pinned)
     if name in DEFAULT_MODELS:
         return None
@@ -463,8 +465,12 @@ def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = N
     items = items_of(sites, registry)
     sequences = {}
     for name in models:
-        ref = DEFAULT_MODELS.get(name) or model_spec(name, spec=spec).ref
         expected = _expected_identity(spec, name, identities)
+        # The baseline and the truth baseline's own models resolve through their pins; the
+        # candidate's caches are the ones the sitting's validated identity names, so a pin
+        # alone cannot stand in for them (R1.2, R2.3).
+        ref = (expected["model_ref"] if expected is not None
+               else DEFAULT_MODELS.get(name) or model_spec(name, spec=spec).ref)
         if reading_caches:
             cache, recorded = model_caches(name, ref, items, registry, None)
         else:
@@ -751,8 +757,14 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
                                   ("qud_other", data.qud_other), ("qud_half", data.qud_half))}
         | {"tadabur_dev_unseen": None if tadabur is None else len(tadabur.clips),
            "qdat_bench": None if data.qdat is None else len(bench),
-           "ship_a_verified": len(data.catch["sites"]) if data.catch else 0},
+           "ship_a_verified": None if data.catch is None else len(data.catch["sites"])},
     }
+    # #174 reads RetaSy as descriptive only, and #171 has not made its baseline reproducible,
+    # so the round neither decodes nor grades it. Stated, not silently omitted (#179).
+    report["not_run"] = {"retasy": {
+        "status": "not run",
+        "reason": "RetaSy is not run: #171's baseline decode is not reproducible yet, and "
+                  "#174 reads it as descriptive only"}}
     if data.absent:
         report["absent"] = list(data.absent)
     report["verdict"] = verdict(report, spec=spec)
@@ -803,15 +815,44 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
         absent=absent)
 
 
+#: The coverage table's order: the sets #174 names, the look half first and the two derived
+#: populations last.
+COVERAGE_SETS = ("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "qud_other", "qud_half",
+                 "tadabur_dev_unseen", "qdat_bench", "ship_a_verified")
+
+
+def _whole(decoded: int, reason: str) -> dict:
+    """A population with no reference exclusion: every decoded item was evaluated."""
+    return {"decoded": decoded, "evaluated": decoded, "excluded": 0, "excluded_words": 0,
+            "excluded_keys": [], "reason": reason}
+
+
 def coverage() -> dict:
-    """The round's frozen populations, decoded and reference-evaluable, with the reasons."""
+    """The round's frozen populations, decoded and reference-evaluable, with the reasons. Every
+    set the round reads has a row; a set with no exclusion says so with zeroes (#179)."""
     from training.aug_readout import COVERAGE_STATEMENT, coverage as aug95_coverage
+    from training.aug_readout import expected_counts
+    from training.nonpro_eval import bench_transcripts
 
     base = aug95_coverage()["populations"]
+    counts = expected_counts(CONSONANT1)
+    populations = {
+        **{name: base[name] for name in ("tarteel_v1.look", "tarteel_v1.confirm", "qud_half")},
+        "qdat": _whole(counts["qdat"],
+                       "no reference exclusion: every qdat clip has its corpus reference"),
+        "qud_other": _qud_coverage(load_qud_complement()),
+        "tadabur_dev_unseen": _whole(
+            counts["tadabur_dev_unseen"],
+            "no reference exclusion: the dev clips h448 holds no copy of, read at stream_b0"),
+        "qdat_bench": _whole(
+            len(bench_transcripts()),
+            "no reference exclusion: the qdat clips the expert bench marks"),
+        "ship_a_verified": _whole(
+            len(g6_scope()["sites"]),
+            "no reference exclusion: Ship A's held-out sites after the shared exclusions"),
+    }
     return {"issue": CONSONANT1.issue, "statement": COVERAGE_STATEMENT,
-            "populations": {name: base[name]
-                            for name in ("tarteel_v1.look", "tarteel_v1.confirm")}
-            | {"qud_other": _qud_coverage(load_qud_complement())}}
+            "populations": {name: populations[name] for name in COVERAGE_SETS}}
 
 
 def _qud_coverage(frozen: set[str]) -> dict:

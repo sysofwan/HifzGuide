@@ -42,6 +42,8 @@ import numpy as np
 
 from tadabur.tarteel_split import half
 from training.aug_readout import load_qud_selection
+from training.aug_readout_spec import AUG95, SPECS, RoundSpec
+from training.aug_readout_spec import spec as round_spec
 from training.aug_readout_gate import (
     BLANKS,
     QDAT_SET,
@@ -160,17 +162,18 @@ def tadabur_recordings(clips_dir: Path) -> Iterator[Recording]:
 
 
 def check_models(set_name: str, models: Sequence[str], layout: Layout = Layout(),
-                 checkpoint_sha256: Callable[[str], str] | None = None) -> None:
+                 checkpoint_sha256: Callable[[str], str] | None = None,
+                 spec: RoundSpec = AUG95) -> None:
     """Refuse a model the readout's order does not allow on this set now, before any recording
-    is read: a gated set needs the committed choice (:func:`committed_choice`: tracked by git,
-    unchanged from ``HEAD``, bound to the committed look), its weights only, and the candidate's
-    checkpoint the one the choice read."""
+    is read: a gated set needs the round's committed choice (:func:`committed_choice`: tracked
+    by git, unchanged from ``HEAD``, bound to the committed look), its weights only, and the
+    candidate's checkpoint the one the choice read and the round pinned."""
     if not SETS[set_name].gated:
-        allowed = allowed_models(set_name, None)
+        allowed = allowed_models(set_name, None, spec)
         choice = None
     else:
-        choice = committed_choice(layout).choice
-        allowed = allowed_models(set_name, choice)
+        choice = committed_choice(layout, spec=spec).choice
+        allowed = allowed_models(set_name, choice, spec)
     if refused := [m for m in models if m not in allowed]:
         raise SystemExit(f"{set_name} may be decoded now only for {list(allowed)}, not {refused}")
     if choice is None:
@@ -179,18 +182,18 @@ def check_models(set_name: str, models: Sequence[str], layout: Layout = Layout()
         from training.truth_baseline import file_sha256 as checkpoint_sha256
     for model in models:
         if model in choice["identities"]:
-            found = checkpoint_sha256(model_spec(model).ref)
+            found = checkpoint_sha256(model_spec(model, spec=spec).ref)
             if found != choice["identities"][model]["checkpoint_sha256"]:
                 raise SystemExit(f"{model}: the checkpoint is not the one the choice read")
 
 
 def run(set_name: str, shard_index: int, models: Sequence[str], out_dir: Path, cache_dir: Path,
-        clips_dir: Path | None) -> None:
-    check_models(set_name, models)
+        clips_dir: Path | None, spec: RoundSpec = AUG95) -> None:
+    check_models(set_name, models, spec=spec)
     out_dir.mkdir(parents=True, exist_ok=True)
     shard = shards(set_name)[shard_index]
     decoders = load_decoders(lambda model: out_dir / f"{set_name}.{model}.identity.json",
-                             {m: model_spec(m) for m in models})
+                             {m: model_spec(m, spec=spec) for m in models})
     paths = {m: out_dir / f"{set_name}.{shard_index}.{m}.jsonl" for m in models}
     stores = {p: STORES[p] for p in SETS[set_name].protocols}
     timing = decode_recordings(recordings(set_name, shard, cache_dir, clips_dir), decoders, paths,
@@ -209,6 +212,8 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path)
     parser.add_argument("--cache-dir", type=Path)
     parser.add_argument("--clips-dir", type=Path, help="the decode_evalset's clips (Tadabur)")
+    parser.add_argument("--spec", default=AUG95.name, choices=sorted(SPECS),
+                        help="the round the models and the choice belong to")
     args = parser.parse_args()
     if args.list_shards:
         print("\n".join(f"{i} {s}" for i, s in enumerate(shards(args.set))))
@@ -216,7 +221,7 @@ def main() -> None:
     if None in (args.shard, args.models, args.out_dir, args.cache_dir):
         parser.error("--shard, --models, --out-dir and --cache-dir are required")
     run(args.set, args.shard, args.models.split(","), args.out_dir, args.cache_dir,
-        args.clips_dir)
+        args.clips_dir, spec=round_spec(args.spec))
 
 
 if __name__ == "__main__":

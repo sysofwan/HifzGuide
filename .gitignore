@@ -174,3 +174,6 @@ tools/tadabur/aug_readout/restricted/
 !tools/tadabur/tarteel_excess/staged.jsonl
 !tools/tadabur/tarteel_excess/verdicts.jsonl
 !tools/tadabur/tarteel_excess/review.jsonl
+# The tlog S2 validation sample (#186): the fixed-seed Tadabur draw the speaker-clustering rule
+# was validated on, with each clip's shard and row. Data the slice depends on; committed.
+!tools/tadabur/tlog/s2/sample.jsonl

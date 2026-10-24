@@ -16,7 +16,10 @@
 # bitsandbytes 0.49.2.
 
 numpy>=1.26
-transformers>=4.44
+# Pinned: candidate B's WavLM x-vector pooling (statistics pooling over the attention mask)
+# is implementation-dependent, so the tlog hold-out's S2 embeddings name this version
+# alongside the checkpoint revision. See docs/tlog-speaker-clustering.md (#186).
+transformers==5.13.0
 peft>=0.11
 accelerate>=0.30
 datasets>=2.19
@@ -30,3 +33,8 @@ jiwer>=3.0
 quran-transcript==0.5.2
 recitations-segmenter>=1.0   # obadx/recitation-segmenter-v2 VAD for waqf pause detection
 bitsandbytes>=0.45   # optional 8-bit optimizer; >=0.45 for Blackwell (sm_120)
+# Candidate A's speaker encoder for the tlog hold-out's S2 clustering (#186). Pinned: the
+# ECAPA checkpoint is loaded from a revision-pinned snapshot, and a major bump could change
+# the inference interface. transformers (already above) covers candidate B. See
+# docs/tlog-speaker-clustering.md.
+speechbrain==1.1.2

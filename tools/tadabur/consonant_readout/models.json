@@ -1,82 +1,4 @@
 {
- "tarteel_v1.look/c95": {
-  "fingerprints": {
-   "checks": {
-    "autocast": true,
-    "batch_size": 1,
-    "device_type": "cuda",
-    "mode": "muraja-app-checks-v2",
-    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
-    "policy": "fp32-features-v1",
-    "weights_dtype": "bf16"
-   },
-   "spans": {
-    "autocast": true,
-    "batch_size": 1,
-    "device_type": "cuda",
-    "mode": "whole-spans",
-    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
-    "policy": "fp32-features-v1",
-    "weights_dtype": "bf16"
-   },
-   "stream_b0": {
-    "autocast": true,
-    "batch_size": 1,
-    "device_type": "cuda",
-    "mode": "confirmed-stream-v2-flush",
-    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
-    "policy": "fp32-features-v1",
-    "weights_dtype": "bf16"
-   }
-  },
-  "identity": {
-   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
-   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
-   "recipe": "aug94-mixture-v2",
-   "step": 10000,
-   "weights": "ema"
-  },
-  "model": "c95"
- },
- "tarteel_v1.confirm/c95": {
-  "fingerprints": {
-   "checks": {
-    "autocast": true,
-    "batch_size": 1,
-    "device_type": "cuda",
-    "mode": "muraja-app-checks-v2",
-    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
-    "policy": "fp32-features-v1",
-    "weights_dtype": "bf16"
-   },
-   "spans": {
-    "autocast": true,
-    "batch_size": 1,
-    "device_type": "cuda",
-    "mode": "whole-spans",
-    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
-    "policy": "fp32-features-v1",
-    "weights_dtype": "bf16"
-   },
-   "stream_b0": {
-    "autocast": true,
-    "batch_size": 1,
-    "device_type": "cuda",
-    "mode": "confirmed-stream-v2-flush",
-    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
-    "policy": "fp32-features-v1",
-    "weights_dtype": "bf16"
-   }
-  },
-  "identity": {
-   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
-   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
-   "recipe": "aug94-mixture-v2",
-   "step": 10000,
-   "weights": "ema"
-  },
-  "model": "c95"
- },
  "qdat/c95": {
   "fingerprints": {
    "checks": {
@@ -155,6 +77,81 @@
   },
   "model": "c95"
  },
+ "qud_other/c95": {
+  "fingerprints": {
+   "checks": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "muraja-app-checks-v2",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "spans": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "stream_b0": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "confirmed-stream-v2-flush",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   }
+  },
+  "identity": {
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "model": "c95"
+ },
+ "tadabur_dev_unseen/base": {
+  "fingerprints": {
+   "checks": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "muraja-app-checks-v2",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "spans": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "stream_b0": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "confirmed-stream-v2-flush",
+    "model": "obadx/muaalem-model-v3_2",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   }
+  },
+  "identity": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  },
+  "model": "base"
+ },
  "tadabur_dev_unseen/c95": {
   "fingerprints": {
    "checks": {
@@ -194,7 +191,43 @@
   },
   "model": "c95"
  },
- "qud_other/c95": {
+ "tadabur_dev_unseen/h448": {
+  "fingerprints": {
+   "checks": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "muraja-app-checks-v2",
+    "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "spans": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "stream_b0": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "confirmed-stream-v2-flush",
+    "model": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   }
+  },
+  "identity": {
+   "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+   "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+  },
+  "model": "h448"
+ },
+ "tarteel_v1.confirm/c95": {
   "fingerprints": {
    "checks": {
     "autocast": true,
@@ -232,5 +265,122 @@
    "weights": "ema"
   },
   "model": "c95"
+ },
+ "tarteel_v1.look/c95": {
+  "fingerprints": {
+   "checks": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "muraja-app-checks-v2",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "spans": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "stream_b0": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "confirmed-stream-v2-flush",
+    "model": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   }
+  },
+  "identity": {
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "model": "c95"
+ },
+ "tarteel_v1.look/candidate_ema": {
+  "fingerprints": {
+   "checks": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "muraja-app-checks-v2",
+    "model": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "spans": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "stream_b0": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "confirmed-stream-v2-flush",
+    "model": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   }
+  },
+  "identity": {
+   "checkpoint_sha256": "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2",
+   "model_ref": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "model": "candidate_ema"
+ },
+ "tarteel_v1.look/candidate_live": {
+  "fingerprints": {
+   "checks": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "muraja-app-checks-v2",
+    "model": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "spans": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "whole-spans",
+    "model": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   },
+   "stream_b0": {
+    "autocast": true,
+    "batch_size": 1,
+    "device_type": "cuda",
+    "mode": "confirmed-stream-v2-flush",
+    "model": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+    "policy": "fp32-features-v1",
+    "weights_dtype": "bf16"
+   }
+  },
+  "identity": {
+   "checkpoint_sha256": "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2",
+   "model_ref": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "live"
+  },
+  "model": "candidate_live"
  }
 }

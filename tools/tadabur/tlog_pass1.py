@@ -64,7 +64,7 @@ import numpy as np
 
 from training.tashkeel_eval import write_text_atomically
 
-from .audio import (TARGET_SAMPLE_RATE, decode_to_mono_16k_with_rate_and_decoder,
+from .audio import (DecodeError, TARGET_SAMPLE_RATE, decode_to_mono_16k_with_rate_and_decoder,
                     decoder_versions, require_pyav)
 from .nonpro_sources import (TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, audio_sha256, iter_rows,
                              tlog_split)
@@ -142,12 +142,14 @@ def measure(audio: bytes, speech_seconds_of: Callable[[np.ndarray], float], *,
     or whose duration is 0, is a ``codec_ok: false`` fact (the pre-registration's ``codec``
     exclusion), not an exception; the VAD is never called for it. ``decoder`` names which of
     the two decoders read the bytes, so the fallback's share of the corpus stays visible.
+    Only :class:`~tadabur.audio.DecodeError` is a row fact: allocation failures, a missing
+    dependency and programming errors abort the run instead of becoming codec exclusions.
     """
     digest = audio_sha256(audio)
     started = time.perf_counter()
     try:
         waveform, sample_rate, decoder = decode_to_mono_16k_with_rate_and_decoder(audio)
-    except (OSError, ValueError):
+    except DecodeError:
         waveform, sample_rate, decoder = None, None, None
     if timings is not None:
         timings["decode_seconds"] += time.perf_counter() - started

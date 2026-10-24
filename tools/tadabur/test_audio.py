@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 
 import numpy as np
+import pytest
 import soundfile as sf
 
 from tadabur.audio import TARGET_SAMPLE_RATE, decode_to_mono_16k
@@ -40,3 +41,17 @@ def test_passes_through_already_16k_mono():
     assert waveform.ndim == 1
     assert len(waveform) == n
     np.testing.assert_allclose(waveform, tone, atol=1e-6)
+
+
+def test_the_legacy_decoder_keeps_libsndfile_errors_for_a_non_audio_page():
+    """``nonpro_overlap.compare`` counts a served HTML page as ``not_audio`` via this contract."""
+    with pytest.raises(sf.LibsndfileError):
+        decode_to_mono_16k(b"<html><body>404 not found</body></html>")
+
+
+def test_the_fallback_decoder_reports_a_non_audio_page_as_a_decode_error():
+    pytest.importorskip("av")
+    from tadabur.audio import DecodeError, decode_to_mono_16k_with_rate_and_decoder
+
+    with pytest.raises(DecodeError):
+        decode_to_mono_16k_with_rate_and_decoder(b"<html><body>404 not found</body></html>")

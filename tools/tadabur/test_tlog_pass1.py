@@ -222,6 +222,32 @@ def test_empty_bytes_are_a_codec_failure_even_with_the_fallback(tp):
     assert called == []
 
 
+def test_an_allocation_failure_in_the_fallback_aborts_instead_of_excluding(tp, monkeypatch):
+    pytest.importorskip("av")
+    from tadabur import audio
+
+    def out_of_memory(*args, **kwargs):
+        raise MemoryError("out of memory")
+
+    monkeypatch.setattr(audio.np, "concatenate", out_of_memory)
+
+    with pytest.raises(MemoryError):
+        tp.measure(mp4_aac(seconds=0.5), lambda waveform: 0.25)
+
+
+def test_a_pyav_memory_error_aborts_instead_of_becoming_a_codec_exclusion(tp, monkeypatch):
+    av = pytest.importorskip("av")
+    from tadabur import audio
+
+    def out_of_memory(data):
+        raise av.error.MemoryError(12, "out of memory")
+
+    monkeypatch.setattr(audio, "_decode_with_pyav", out_of_memory)
+
+    with pytest.raises(MemoryError):
+        tp.measure(mp4_aac(seconds=0.5), lambda waveform: 0.25)
+
+
 # --- the shard loop --------------------------------------------------------------------------
 
 

@@ -23,7 +23,7 @@ import librosa
 import numpy as np
 import soundfile as sf
 
-from .panel_seal import SealedPanelError, refuse_sealed, refuse_sealed_bytes
+from .panel_seal import refuse_sealed, refuse_sealed_bytes
 
 # The Muaalem feature extractor / model operate at 16 kHz; resample everything here.
 TARGET_SAMPLE_RATE = 16000
@@ -51,13 +51,26 @@ def decode_to_mono_16k(raw_audio: bytes) -> np.ndarray:
     return decode_to_mono_16k_with_rate(raw_audio)[0]
 
 
+class DecodeError(ValueError):
+    """The bytes carry no audio either decoder can read: a data fact, not a resource failure.
+
+    Only malformed containers and bitstreams (``soundfile``'s ``LibsndfileError``, PyAV's
+    ``InvalidDataError``/``EOFError``) and a container without an audio stream become this.
+    Allocation failures, a missing PyAV and programming errors propagate instead: the tlog pass
+    would rather abort than write a permanent codec exclusion for a resource failure.
+    """
+
+
 def decode_to_mono_16k_with_rate(raw_audio: bytes) -> tuple[np.ndarray, int]:
     """:func:`decode_to_mono_16k` plus the source's sample rate.
 
     The pass-1 tlog facts record the stored audio's own rate beside the 16 kHz duration,
-    so the decode returns both instead of dropping the rate.
+    so the decode returns both instead of dropping the rate. Decoding is soundfile's, as it
+    has always been: consumers such as ``nonpro_overlap.compare`` catch
+    ``soundfile.LibsndfileError`` to count a served HTML page as "not audio", so the tlog
+    pass's container fallback lives in :func:`decode_to_mono_16k_with_rate_and_decoder`.
     """
-    return decode_to_mono_16k_with_rate_and_decoder(raw_audio)[:2]
+    return _decode_with_soundfile(refuse_sealed_bytes(raw_audio))
 
 
 def decode_to_mono_16k_with_rate_and_decoder(
@@ -68,17 +81,18 @@ def decode_to_mono_16k_with_rate_and_decoder(
     the container — tlog's unclean split ships MP4/AAC behind ``.wav`` paths — the pinned PyAV
     fallback demuxes the same bytes; its wheel bundles ffmpeg, so no system ffmpeg is needed.
     Both decoders end in :func:`_to_mono_16k`, so they differ in demuxing, not in resampling.
+    Raises :class:`DecodeError` when neither can read the bytes, and nothing else for bad data.
     """
     data = refuse_sealed_bytes(raw_audio)
     try:
         return (*_decode_with_soundfile(data), "soundfile")
-    except (sf.LibsndfileError, OSError, ValueError) as soundfile_error:
+    except sf.LibsndfileError as soundfile_error:
+        import av
+
         try:
             return (*_decode_with_pyav(data), "pyav")
-        except SealedPanelError:
-            raise
-        except Exception as pyav_error:  # noqa: BLE001 - undecodable bytes are a row fact
-            raise ValueError(
+        except (av.error.InvalidDataError, av.error.EOFError) as pyav_error:
+            raise DecodeError(
                 f"no decoder read these bytes: soundfile: {soundfile_error}; "
                 f"pyav: {pyav_error!r}") from pyav_error
 
@@ -122,11 +136,11 @@ def _decode_with_pyav(data: bytes) -> tuple[np.ndarray, int]:
 
     with av.open(io.BytesIO(data), mode="r") as container:
         if not container.streams.audio:
-            raise ValueError("no audio stream")
+            raise DecodeError("the container has no audio stream")
         stream = container.streams.audio[0]
         sample_rate = stream.rate
         if sample_rate is None:
-            raise ValueError("no sample rate")
+            raise DecodeError("the audio stream has no sample rate")
         resampler = av.AudioResampler(format="fltp", layout="mono")
         chunks = [_flatten(resampled)
                   for frame in container.decode(stream)

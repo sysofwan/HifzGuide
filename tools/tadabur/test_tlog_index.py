@@ -114,7 +114,8 @@ def test_the_tarteel_v1_ids_are_the_third_field_of_every_decoded_clip():
     split = json.loads(TARTEEL_V1_SPLIT.read_text(encoding="utf-8"))
     ids = ti.tarteel_v1_ids(split)
     assert len(split["look"]) + len(split["confirm"]) == 8950
-    assert len(ids) == 8840 and all(value.isdigit() for value in ids)
+    # Four decoded names (``36_35_null.wav`` and three others) carry no id.
+    assert len(ids) == 8839 and all(value.isdigit() for value in ids)
 
 
 def test_the_overlap_flags_report_eval_and_any_separately():
@@ -205,10 +206,10 @@ def _rows() -> list[dict]:
 
 
 def test_the_committed_index_covers_every_shard_and_its_rows():
-    expected = {ti.INDEX_DIR / tlog_split(shard) / f"{Path(shard).stem}.jsonl.gz"
-                for shard in TLOG.shards}
+    expected = {ti.INDEX_DIR / tlog_split(shard) / f"{Path(shard).stem}.jsonl.gz":
+                Path(shard).stem for shard in TLOG.shards}
     files = set(_index_files())
-    assert files == expected and len(files) == 743
+    assert files == set(expected) and len(files) == 743
     totals = Counter()
     for path in sorted(files):
         split = path.parent.name
@@ -217,7 +218,7 @@ def test_the_committed_index_covers_every_shard_and_its_rows():
         assert rows
         assert [row["row"] for row in rows] == list(range(len(rows)))
         assert {row["split"] for row in rows} == {split}
-        assert {row["shard_file"] for row in rows} == {path.stem}
+        assert {row["shard_file"] for row in rows} == {expected[path]}
         assert {row["schema_version"] for row in rows} == {ti.SCHEMA_VERSION}
         assert all(set(row) == ROW_KEYS for row in rows)
         assert all(isinstance(row["audio_path"], str) and row["audio_path"] for row in rows)
@@ -242,9 +243,9 @@ def test_the_committed_rows_are_parsed_and_grouped_as_the_meta_records():
     assert all(row["id_group"] == recomputed[row["audio_path"]] for row in rows)
     assert all(row["id_group"] <= row["audio_path"] for row in rows)
     assert all(recomputed[row["id_group"]] == row["id_group"] for row in rows)
-    sizes = Counter(recomputed.values())
-    duplicated = sum(size for size in sizes.values() if size > 1)
-    assert len(sizes) == ID_GROUPS == counts["id_groups"]
+    row_sizes = Counter(recomputed[row["audio_path"]] for row in rows)
+    duplicated = sum(size for size in row_sizes.values() if size > 1)
+    assert len(row_sizes) == ID_GROUPS == counts["id_groups"]
     assert duplicated == ROWS_ON_DUPLICATED_IDS == counts["rows_on_duplicated_ids"]
 
     eval_ids = ti.tarteel_v1_ids(json.loads(TARTEEL_V1_SPLIT.read_text(encoding="utf-8")))

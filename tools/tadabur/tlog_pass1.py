@@ -5,19 +5,23 @@ the shard's committed rows, and deletes the shard. Only the ``audio`` parquet co
 projected, so tlog's own outcome labels are never read, and a failed deletion aborts the run
 before the next download: the disk budget is an invariant here. It runs **no teacher, student
 or ASR model** and produces no transcript. The committed facts are ``audio_sha256``, ``codec_ok``,
-``sample_rate``, ``duration_s``, ``speech_s`` and ``speech_ratio``; the Haitsma-Kalker
+``sample_rate``, ``duration_s``, ``speech_s``, ``speech_ratio`` and ``decoder`` (``soundfile`` or
+``pyav``; ``null`` when neither reads the bytes). ``soundfile`` is tried first and PyAV
+(:data:`PYAV_PIN`) only when it refuses the container, which the unclean split's MP4/AAC rows
+need; the pins are recorded under ``decoders`` in ``meta.json``. The Haitsma-Kalker
 fingerprint (:mod:`tadabur.qud_fingerprint`) is written to cuda-dev scratch only. The owner
 accepted the clip-level fallback (2026-10-24), so no speaker embedding is computed at all.
 
 ``tools/tadabur/tlog/pass1/<split>/<shard>.jsonl.gz``
-    one row per shard row: ``schema_version``, ``split``, ``shard_file``, ``row``, ``audio_path``
-    and the six facts. Keys sorted, ``mtime`` 0 and written atomically, so a rerun on the build
-    interpreter reproduces every byte (the gzip OS header byte is platform-dependent, as in the
-    index).
+    one row per shard row: ``schema_version`` (2), ``split``, ``shard_file``, ``row``,
+    ``audio_path`` and the seven facts. Keys sorted, ``mtime`` 0 and written atomically, so a
+    rerun on the build interpreter reproduces every byte (the gzip OS header byte is
+    platform-dependent, as in the index).
 ``tools/tadabur/tlog/pass1/meta.json``
     the code SHA with the PR number and ``refs/pull/<N>/head`` (the squash merge drops the
-    branch commit from main's history), the VAD config, the floors file's SHA-256, the row
-    counts and the measured throughput. ``"embeddings"`` records the fallback, not omission.
+    branch commit from main's history), the VAD config, the installed decoder versions
+    (``soundfile``, ``libsndfile``, ``pyav``), the floors file's SHA-256, the row counts and
+    the measured throughput. ``"embeddings"`` records the fallback, not omission.
     Both commands refuse a checkout with uncommitted or untracked changes, so the cited SHA is
     the code that actually ran.
 ``tools/tadabur/tlog/silence_floors.json``
@@ -57,11 +61,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-import soundfile as sf
 
 from training.tashkeel_eval import write_text_atomically
 
-from .audio import TARGET_SAMPLE_RATE, decode_to_mono_16k_with_rate
+from .audio import (TARGET_SAMPLE_RATE, decode_to_mono_16k_with_rate_and_decoder,
+                    decoder_versions, require_pyav)
 from .nonpro_sources import (TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, audio_sha256, iter_rows,
                              tlog_split)
 from .qud_fingerprint import fingerprint, save_fingerprints
@@ -69,6 +73,9 @@ from .tarteel_split import SPLIT_PATH, load_split
 from .tlog_index import head_sha, require_clean_tree, write_shard
 
 SCHEMA_VERSION = 1
+#: Rows gained ``decoder`` after the first tracer run, so a row is schema 2 while the floors and
+#: ``meta.json`` keep their (additively extended) schema 1.
+ROW_SCHEMA_VERSION = 2
 REPO_ROOT = Path(__file__).resolve().parents[2]
 #: Where the committed pass-1 output and the pre-registration's floors live.
 PASS1_DIR = Path(__file__).parent / "tlog" / "pass1"
@@ -91,6 +98,10 @@ VAD_CONFIG = {
     "min_silence_duration_ms": 100,
     "speech_pad_ms": 30,
 }
+
+#: The container fallback's pin, in ``requirements-train.txt`` and ``meta.json``. The unclean
+#: split's MP4/AAC rows decode through it, so a version bump can change their samples.
+PYAV_PIN = "19.0.2"
 
 #: The tracer rule, fixed before the run: clean shard indices 0 and 205, unclean 0.
 TRACER_CLEAN = (0, 205)
@@ -129,21 +140,22 @@ def measure(audio: bytes, speech_seconds_of: Callable[[np.ndarray], float], *,
 
     Decode+resample and VAD are timed separately into ``timings``. A row that does not decode,
     or whose duration is 0, is a ``codec_ok: false`` fact (the pre-registration's ``codec``
-    exclusion), not an exception; the VAD is never called for it.
+    exclusion), not an exception; the VAD is never called for it. ``decoder`` names which of
+    the two decoders read the bytes, so the fallback's share of the corpus stays visible.
     """
     digest = audio_sha256(audio)
     started = time.perf_counter()
     try:
-        waveform, sample_rate = decode_to_mono_16k_with_rate(audio)
-    except (sf.LibsndfileError, OSError, ValueError):
-        waveform, sample_rate = None, None
+        waveform, sample_rate, decoder = decode_to_mono_16k_with_rate_and_decoder(audio)
+    except (OSError, ValueError):
+        waveform, sample_rate, decoder = None, None, None
     if timings is not None:
         timings["decode_seconds"] += time.perf_counter() - started
     duration_s = len(waveform) / TARGET_SAMPLE_RATE if waveform is not None else 0.0
     if waveform is None or duration_s <= 0:
         return Measured(
             {"audio_sha256": digest, "codec_ok": False, "sample_rate": None,
-             "duration_s": None, "speech_s": None, "speech_ratio": None},
+             "duration_s": None, "speech_s": None, "speech_ratio": None, "decoder": None},
             None)
     started = time.perf_counter()
     speech_s = float(speech_seconds_of(waveform))
@@ -153,7 +165,7 @@ def measure(audio: bytes, speech_seconds_of: Callable[[np.ndarray], float], *,
     return Measured(
         {"audio_sha256": digest, "codec_ok": True, "sample_rate": sample_rate,
          "duration_s": duration_s, "speech_s": speech_s,
-         "speech_ratio": speech_s / duration_s},
+         "speech_ratio": speech_s / duration_s, "decoder": decoder},
         waveform)
 
 
@@ -193,7 +205,7 @@ def process_shard(shard: str, cache_dir: Path, *,
     for index, row in enumerate(rows):
         measured = measure(row["audio"]["bytes"], speech_seconds_of, timings=timings)
         records.append({
-            "schema_version": SCHEMA_VERSION, "split": split, "shard_file": stem,
+            "schema_version": ROW_SCHEMA_VERSION, "split": split, "shard_file": stem,
             "row": index, "audio_path": row["audio"]["path"], **measured.facts})
         if fp_dir is not None and measured.waveform is not None:
             started = time.perf_counter()
@@ -343,6 +355,7 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         },
         **_provenance(code_sha, pull_request),
         "vad": VAD_CONFIG,
+        "decoders": decoder_versions(),
         "embeddings": "none (owner fallback 2026-10-24, #187)",
         "floors": {"path": _repo_relative(floors_path),
                    "sha256": sha256_file(floors_path)},
@@ -540,6 +553,10 @@ def _floors_command(args) -> None:
 
 def _run_command(args) -> None:
     require_clean_tree()
+    installed = require_pyav()
+    if installed != PYAV_PIN:
+        raise RuntimeError(
+            f"av {installed} is installed; the pinned container fallback is av=={PYAV_PIN}")
     shards = tracer_shards() if args.tracer else args.shards
     meta = run(shards, out_dir=args.out_dir, cache_dir=args.cache_dir,
                floors_path=args.floors, speech_seconds_of=silero_speech_seconds(),

@@ -34,7 +34,8 @@ from tadabur.nonpro_sources import TARTEEL_V1, TLOG, tlog_split
 
 #: Every fact a committed row carries, in no particular order.
 FACT_KEYS = frozenset(
-    {"audio_sha256", "codec_ok", "sample_rate", "duration_s", "speech_s", "speech_ratio"})
+    {"audio_sha256", "codec_ok", "sample_rate", "duration_s", "speech_s", "speech_ratio",
+     "decoder"})
 #: The identity every committed row carries beside its facts.
 IDENTITY_KEYS = frozenset({"schema_version", "split", "shard_file", "row", "audio_path"})
 #: The tracer's fixed rule, written before the run: clean shards 0 and 205 of 411, unclean 0.
@@ -72,6 +73,26 @@ def empty_wav(sample_rate: int = 16000) -> bytes:
     return buffer.getvalue()
 
 
+def mp4_aac(seconds: float = 0.5, sample_rate: int = 44100) -> bytes:
+    """A mono AAC-in-MP4 clip: the container tlog's unclean split hides behind ``.wav`` paths."""
+    import av
+
+    frames = (0.2 * np.sin(2 * np.pi * 220 * np.arange(round(seconds * sample_rate))
+                            / sample_rate)).astype(np.float32)[None, :]
+    buffer = io.BytesIO()
+    with av.open(buffer, mode="w", format="mp4") as container:
+        stream = container.add_stream("aac", rate=sample_rate)
+        stream.layout = "mono"
+        frame = av.AudioFrame.from_ndarray(frames, format="fltp", layout="mono")
+        frame.sample_rate = sample_rate
+        frame.pts = 0
+        for packet in stream.encode(frame):
+            container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
+    return buffer.getvalue()
+
+
 def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -106,6 +127,7 @@ def test_a_decodable_row_carries_the_stored_bytes_facts(tp):
         "duration_s": 1.0,
         "speech_s": 0.5,
         "speech_ratio": 0.5,
+        "decoder": "soundfile",
     }
     assert len(seen) == 1 and seen[0].dtype == np.float32
     assert len(seen[0]) == 16000
@@ -147,6 +169,7 @@ def test_an_undecodable_row_is_recorded_and_the_vad_is_not_called(tp):
         "duration_s": None,
         "speech_s": None,
         "speech_ratio": None,
+        "decoder": None,
     }
     assert measured.waveform is None
     assert called == []
@@ -161,6 +184,38 @@ def test_a_zero_frame_row_is_a_codec_failure(tp):
     assert measured.facts["codec_ok"] is False
     assert measured.facts["duration_s"] is None
     assert measured.facts["speech_ratio"] is None
+    assert measured.facts["decoder"] is None
+    assert measured.waveform is None
+    assert called == []
+
+
+def test_an_mp4_aac_row_decodes_through_the_pyav_fallback(tp):
+    pytest.importorskip("av")
+    seen: list[np.ndarray] = []
+
+    measured = tp.measure(mp4_aac(seconds=0.5), lambda waveform: seen.append(waveform) or 0.25)
+
+    assert measured.facts["codec_ok"] is True
+    assert measured.facts["decoder"] == "pyav"
+    assert measured.facts["sample_rate"] == 44100
+    assert measured.facts["duration_s"] == pytest.approx(0.5, abs=0.02)
+    assert measured.facts["speech_ratio"] == pytest.approx(0.5, abs=0.02)
+    assert len(seen) == 1 and len(seen[0]) == 8000
+
+
+def test_soundfile_remains_the_decoder_when_it_reads_the_bytes(tp):
+    measured = tp.measure(wav(1.0, 16000), lambda waveform: 0.5)
+
+    assert measured.facts["decoder"] == "soundfile"
+
+
+def test_empty_bytes_are_a_codec_failure_even_with_the_fallback(tp):
+    called: list[np.ndarray] = []
+
+    measured = tp.measure(b"", lambda waveform: called.append(waveform) or 0.0)
+
+    assert measured.facts["codec_ok"] is False
+    assert measured.facts["decoder"] is None
     assert measured.waveform is None
     assert called == []
 
@@ -357,6 +412,8 @@ def test_run_writes_the_shard_and_the_meta(tp, tmp_path):
     assert meta["schema_version"] == tp.SCHEMA_VERSION
     assert meta["code_sha"] == "0" * 40
     assert meta["vad"] == tp.VAD_CONFIG
+    assert set(meta["decoders"]) == {"soundfile", "libsndfile", "pyav"}
+    assert meta["decoders"]["soundfile"] is not None
     assert meta["embeddings"] == "none (owner fallback 2026-10-24, #187)"
     assert meta["counts"]["rows"] == {"clean": 2, "unclean": 0, "total": 2}
     assert "throughput" in meta
@@ -618,6 +675,26 @@ def test_the_floors_command_stamps_the_commit_and_the_pull_request(tp, tmp_path,
     assert floors["pull_request"] == 198
     assert floors["pull_request_ref"] == "refs/pull/198/head"
     assert (floors["f_s"], floors["d_s"], floors["count"]) == (0.1, 1.0, 1)
+
+
+@pytest.mark.parametrize("installed, match", [
+    (lambda: (_ for _ in ()).throw(RuntimeError("PyAV is not installed")),
+     "PyAV is not installed"),
+    (lambda: "99.0.0", "pinned container fallback"),
+])
+def test_the_run_command_refuses_a_wrong_or_missing_pyav(
+        tp, tmp_path, monkeypatch, installed, match):
+    measured: list[tuple] = []
+    monkeypatch.setattr(tp, "require_clean_tree", lambda: None)
+    monkeypatch.setattr(tp, "require_pyav", installed)
+    monkeypatch.setattr(tp, "run", lambda *args, **kwargs: measured.append(args))
+    args = SimpleNamespace(tracer=True, shards=None, out_dir=tmp_path / "pass1",
+                           cache_dir=tmp_path / "cache", floors=tmp_path / "floors.json",
+                           fp_dir=tmp_path / "fp", code_sha=None, pr=198)
+
+    with pytest.raises(RuntimeError, match=match):
+        tp._run_command(args)
+    assert measured == []
 
 
 @pytest.mark.parametrize("command", ["_floors_command", "_run_command"])

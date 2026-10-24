@@ -62,13 +62,14 @@ python -m tadabur.tlog_s2 report --embeddings-dir DIR
 
 `pass1/` is what `tadabur.tlog_pass1` commits about the tracer shards:
 `pass1/<split>/<shard>.jsonl.gz` carries, per row, `split`, `shard_file`, `row`, `audio_path`,
-`audio_sha256`, `codec_ok`, `sample_rate`, `duration_s`, `speech_s` and `speech_ratio`, and
-`pass1/meta.json` records the code SHA, the VAD config, the floors' SHA-256, the counts and the
-measured throughput. Nothing else is computed: no label, transcript, teacher/student output or
-speaker embedding (the owner accepted the clip-level fallback on 2026-10-24, so
-`"embeddings"` records it). The Haitsma–Kalker fingerprint goes to cuda-dev scratch
-(`/root/scratch/tlog/fp/`) and is never committed; each tlog shard is downloaded, read and
-deleted.
+`audio_sha256`, `codec_ok`, `sample_rate`, `duration_s`, `speech_s`, `speech_ratio` and
+`decoder` (`soundfile` or `pyav`, the two decoders pass 1 tries in that order), and
+`pass1/meta.json` records the code SHA, the VAD config, the installed decoder versions, the
+floors' SHA-256, the counts and the measured throughput. Nothing else is computed: no label,
+transcript, teacher/student output or speaker embedding (the owner accepted the clip-level
+fallback on 2026-10-24, so `"embeddings"` records it). The Haitsma–Kalker fingerprint goes to
+cuda-dev scratch (`/root/scratch/tlog/fp/`) and is never committed; each tlog shard is
+downloaded, read and deleted.
 
 `silence_floors.json` is the pre-registration's Exclusions floor: `f_s` and `d_s` are the
 type-7 0.5th percentiles of `speech_ratio` and `speech_s` over the Tarteel v1 look clips that

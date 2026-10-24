@@ -23,7 +23,7 @@ import librosa
 import numpy as np
 import soundfile as sf
 
-from .panel_seal import refuse_sealed, refuse_sealed_bytes
+from .panel_seal import SealedPanelError, refuse_sealed, refuse_sealed_bytes
 
 # The Muaalem feature extractor / model operate at 16 kHz; resample everything here.
 TARGET_SAMPLE_RATE = 16000
@@ -57,11 +57,94 @@ def decode_to_mono_16k_with_rate(raw_audio: bytes) -> tuple[np.ndarray, int]:
     The pass-1 tlog facts record the stored audio's own rate beside the 16 kHz duration,
     so the decode returns both instead of dropping the rate.
     """
-    waveform, sample_rate = sf.read(io.BytesIO(refuse_sealed_bytes(raw_audio)), dtype="float32")
+    return decode_to_mono_16k_with_rate_and_decoder(raw_audio)[:2]
+
+
+def decode_to_mono_16k_with_rate_and_decoder(
+        raw_audio: bytes) -> tuple[np.ndarray, int, str]:
+    """``decode_to_mono_16k_with_rate`` and which decoder read the bytes.
+
+    ``soundfile``/libsndfile covers WAV, FLAC and the other native containers. When it refuses
+    the container — tlog's unclean split ships MP4/AAC behind ``.wav`` paths — the pinned PyAV
+    fallback demuxes the same bytes; its wheel bundles ffmpeg, so no system ffmpeg is needed.
+    Both decoders end in :func:`_to_mono_16k`, so they differ in demuxing, not in resampling.
+    """
+    data = refuse_sealed_bytes(raw_audio)
+    try:
+        return (*_decode_with_soundfile(data), "soundfile")
+    except (sf.LibsndfileError, OSError, ValueError) as soundfile_error:
+        try:
+            return (*_decode_with_pyav(data), "pyav")
+        except SealedPanelError:
+            raise
+        except Exception as pyav_error:  # noqa: BLE001 - undecodable bytes are a row fact
+            raise ValueError(
+                f"no decoder read these bytes: soundfile: {soundfile_error}; "
+                f"pyav: {pyav_error!r}") from pyav_error
+
+
+def decoder_versions() -> dict[str, str | None]:
+    """The installed versions of the decoders pass 1 records: soundfile, libsndfile and PyAV.
+
+    PyAV is ``None`` when it is absent; the tlog pass refuses to run in that state
+    (:func:`require_pyav`) rather than quietly counting MP4 rows as undecodable.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
+    def installed(name: str) -> str | None:
+        try:
+            return version(name)
+        except PackageNotFoundError:
+            return None
+
+    return {"soundfile": installed("soundfile"), "libsndfile": sf.__libsndfile_version__,
+            "pyav": installed("av")}
+
+
+def require_pyav() -> str:
+    """The installed PyAV version, or an error: the tlog pass needs the fallback for MP4/AAC."""
+    installed = decoder_versions()["pyav"]
+    if installed is None:
+        raise RuntimeError(
+            "PyAV is not installed; the tlog pass needs it for the unclean split's MP4/AAC rows "
+            "(pip install -r tools/requirements-train.txt)")
+    return installed
+
+
+def _decode_with_soundfile(data: bytes) -> tuple[np.ndarray, int]:
+    waveform, sample_rate = sf.read(io.BytesIO(data), dtype="float32")
+    return _to_mono_16k(waveform, sample_rate), sample_rate
+
+
+def _decode_with_pyav(data: bytes) -> tuple[np.ndarray, int]:
+    """PyAV's decode of a container libsndfile refuses, at the source's own rate."""
+    import av
+
+    with av.open(io.BytesIO(data), mode="r") as container:
+        if not container.streams.audio:
+            raise ValueError("no audio stream")
+        stream = container.streams.audio[0]
+        sample_rate = stream.rate
+        if sample_rate is None:
+            raise ValueError("no sample rate")
+        resampler = av.AudioResampler(format="fltp", layout="mono")
+        chunks = [_flatten(resampled)
+                  for frame in container.decode(stream)
+                  for resampled in resampler.resample(frame)]
+        chunks += [_flatten(resampled) for resampled in resampler.resample(None)]
+    waveform = np.concatenate(chunks) if chunks else np.zeros(0, dtype=np.float32)
+    return _to_mono_16k(waveform, sample_rate), sample_rate
+
+
+def _flatten(frame) -> np.ndarray:
+    return frame.to_ndarray().reshape(-1).astype(np.float32, copy=False)
+
+
+def _to_mono_16k(waveform: np.ndarray, sample_rate: int) -> np.ndarray:
     if waveform.ndim > 1:
         waveform = waveform.mean(axis=1)
     if sample_rate != TARGET_SAMPLE_RATE:
         waveform = librosa.resample(
             waveform, orig_sr=sample_rate, target_sr=TARGET_SAMPLE_RATE
         )
-    return np.ascontiguousarray(waveform, dtype=np.float32), sample_rate
+    return np.ascontiguousarray(waveform, dtype=np.float32)

@@ -321,3 +321,26 @@ def test_the_round_s_launcher_parses():
     assert LAUNCHER.is_file(), f"{LAUNCHER} must exist (commit A ships it)"
     parsed = subprocess.run(["bash", "-n", str(LAUNCHER)], capture_output=True, text=True)
     assert parsed.returncode == 0, parsed.stderr
+
+
+def test_the_launcher_bundles_a_detached_head(tmp_path):
+    """The harness's worktrees are detached: the bundle still carries a real ref (S1.3)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "README").write_text("x")
+    _git(repo, "add", "README")
+    _git(repo, "commit", "-qm", "one")
+    _git(repo, "checkout", "-q", "--detach")
+    sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                         capture_output=True, text=True).stdout.strip()
+    bundle = tmp_path / "repo.bundle"
+    subprocess.run(["bash", "-c", 'source "$1"; bundle_repo "$2" "$3"', "_",
+                    str(LAUNCHER), str(repo), str(bundle)], check=True,
+                   capture_output=True, text=True)
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(bundle), str(clone)], check=True,
+                   capture_output=True, text=True)
+    head = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+    assert head == sha

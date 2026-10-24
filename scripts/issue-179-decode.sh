@@ -17,8 +17,9 @@
 # git history, so the box gets a bundle clone, never a bare tar. `launch-look` refuses once a
 # choice is committed: the look half is read once.
 #
-# On the box, `launch-*` stages the clips and starts `run look|confirm` under
-# flock /root/scratch/gpu.lock. `run` appends one exit line per shard to logs/events and
+# On the box, `launch-*` stages the repo and starts `run look|confirm` under
+# flock /root/scratch/gpu.lock; `run` stages the clips under that lock, then appends one exit
+# line per shard to logs/events and
 # writes, last, logs/<phase>.exit and then logs/<phase>.done; `check` reads that, never a log
 # tail. A run stopped by the budget writes exit 2 and a `budget-exceeded` done-file.
 #
@@ -57,21 +58,32 @@ activate() {
 # --- staging ------------------------------------------------------------------------------------
 
 
+bundle_ref() {  # <repo_root>
+  # The ref to bundle, never a raw SHA: ``git bundle create`` with a SHA records no ref and
+  # refuses an empty bundle. A detached HEAD is still a ref and clones detached.
+  local branch
+  branch=$(git -C "$1" rev-parse --abbrev-ref HEAD)
+  if [ "$branch" = HEAD ]; then
+    echo HEAD
+  else
+    echo "$branch"
+  fi
+}
+
+bundle_repo() {  # <repo_root> <bundle path, - for stdout>
+  git -C "$1" bundle create "$2" "$(bundle_ref "$1")"
+}
+
 stage_repo() {
   # A bundle clone, not a tar: the confirm decode's committed_choice reads choice.json,
   # look.json and look.claim.json through git at HEAD, so the box needs the history, and the
   # report records the real commit, not a synthetic one.
-  local repo_root=$1 branch sha rev
+  local repo_root=$1 branch sha
   repo_root=$(git -C "$repo_root" rev-parse --show-toplevel)
   branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)
   sha=$(git -C "$repo_root" rev-parse HEAD)
   ssh "$HOST" "mkdir -p '$ROOT' && rm -rf '$ROOT/repo' '$ROOT/repo.bundle'"
-  if [ "$branch" = HEAD ]; then
-    rev=$sha
-  else
-    rev=$branch
-  fi
-  git -C "$repo_root" bundle create - "$rev" | ssh "$HOST" "cat > '$ROOT/repo.bundle'"
+  bundle_repo "$repo_root" - | ssh "$HOST" "cat > '$ROOT/repo.bundle'"
   if [ "$branch" = HEAD ]; then
     ssh "$HOST" "git clone -q '$ROOT/repo.bundle' '$ROOT/repo'"
   else
@@ -211,6 +223,9 @@ run() {
     fi
   }
   trap finish EXIT
+  # Staged under the lock, so no launch reads the clips outside it; a failure here writes the
+  # phase's done/exit through the trap.
+  setup_clips
   cd "$ROOT/repo/tools"
   activate
   export OMP_NUM_THREADS=1
@@ -240,15 +255,17 @@ run() {
   local code=0
   if [ -e "$ROOT/logs/budget.exceeded" ]; then
     code=2
+    printf '%s\n' "$code" > "$ROOT/logs/$PHASE.exit"
     printf '%s budget-exceeded budget=%ss; decode group stopped, per-item output kept\n' \
       "$(date -u +%FT%TZ)" "$BUDGET" > "$ROOT/logs/$PHASE.done"
   else
     [ "$status" -eq 0 ] || code=1
     printf '%s %s exit %s\n' "$(date -u +%FT%TZ)" "$PHASE" "$status" \
       > "$ROOT/logs/$PHASE.pass.exit"
+    # ``check`` keys off done and then reads exit: write exit first.
+    printf '%s\n' "$code" > "$ROOT/logs/$PHASE.exit"
     cat "$ROOT/logs/$PHASE.pass.exit" > "$ROOT/logs/$PHASE.done"
   fi
-  printf '%s\n' "$code" > "$ROOT/logs/$PHASE.exit"
   return "$code"
 }
 
@@ -287,7 +304,6 @@ launch() {
     require_committed_choice "$repo_root"
   fi
   stage_repo "$repo_root"
-  ssh "$HOST" "$ROOT/repo/scripts/issue-179-decode.sh setup-clips"
   ssh "$HOST" "BUDGET=$BUDGET nohup flock /root/scratch/gpu.lock \
     '$ROOT/repo/scripts/issue-179-decode.sh' run '$phase' \
     >> '$ROOT/logs/run.out' 2>&1 & echo 'started: '\$!"
@@ -343,18 +359,21 @@ fetch() {
   echo "$phase decodes in $dest"
 }
 
-case "${1:-}" in
-  setup-clips) setup_clips ;;
-  run) run "${2:-}" ;;
-  launch-look) launch look ;;
-  launch-confirm) launch confirm ;;
-  check-look) check look ;;
-  check-confirm) check confirm ;;
-  fetch-look) fetch look ;;
-  fetch-confirm) fetch confirm ;;
-  *)
-    echo "usage: $0 {launch-look|check-look|fetch-look|launch-confirm|check-confirm|" \
-         "fetch-confirm}   (setup-clips and run execute on the box)" >&2
-    exit 2
-    ;;
-esac
+# Sourceable for the local bundle helpers; only a direct run dispatches.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  case "${1:-}" in
+    setup-clips) setup_clips ;;
+    run) run "${2:-}" ;;
+    launch-look) launch look ;;
+    launch-confirm) launch confirm ;;
+    check-look) check look ;;
+    check-confirm) check confirm ;;
+    fetch-look) fetch look ;;
+    fetch-confirm) fetch confirm ;;
+    *)
+      echo "usage: $0 {launch-look|check-look|fetch-look|launch-confirm|check-confirm|" \
+           "fetch-confirm}   (setup-clips and run execute on the box)" >&2
+      exit 2
+      ;;
+  esac
+fi

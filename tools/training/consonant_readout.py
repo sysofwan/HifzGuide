@@ -759,12 +759,17 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
            "qdat_bench": None if data.qdat is None else len(bench),
            "ship_a_verified": None if data.catch is None else len(data.catch["sites"])},
     }
-    # #174 reads RetaSy as descriptive only, and #171 has not made its baseline reproducible,
-    # so the round neither decodes nor grades it. Stated, not silently omitted (#179).
-    report["not_run"] = {"retasy": {
-        "status": "not run",
-        "reason": "RetaSy is not run: #171's baseline decode is not reproducible yet, and "
-                  "#174 reads it as descriptive only"}}
+    # #174 reads RetaSy as descriptive only (and #171 has not made its baseline reproducible),
+    # and #178 deliberately ran no control arm. Both are stated, not silently omitted (#179).
+    report["not_run"] = {
+        "retasy": {
+            "status": "not run",
+            "reason": "RetaSy is not run: #171's baseline decode is not reproducible yet, and "
+                      "#174 reads it as descriptive only"},
+        "control": {
+            "status": "not run",
+            "reason": "no control arm (#178): the round's ingredient is more of C95's own "
+                      "recipe; #174 makes the control optional and non-gating"}}
     if data.absent:
         report["absent"] = list(data.absent)
     report["verdict"] = verdict(report, spec=spec)

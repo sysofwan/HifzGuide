@@ -1,0 +1,85 @@
+{
+ "choice_commit": "12d5418608ae6b6c39cc906a7a788edc4b45e1f3",
+ "choice_sha256": "b6a7eb6dbf0b932bb550993a9cb22e36db14ea813212be6d8e5ab1f699db84e2",
+ "harness": {
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+ },
+ "identities": {
+  "base": {
+   "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "model_ref": "obadx/muaalem-model-v3_2"
+  },
+  "c95": {
+   "checkpoint_sha256": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+   "model_ref": "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "candidate_ema": {
+   "checkpoint_sha256": "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2",
+   "model_ref": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "h448": {
+   "checkpoint_sha256": "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a",
+   "model_ref": "/root/repos/HifzGuide/tools/runs/h448_stream/checkpoint.pt"
+  }
+ },
+ "inputs": {
+  "tadabur/aug_readout/decodes/qdat.candidate_ema.jsonl.gz": "20e376eca7f88bd64d58a56402a2859c6b14b272e247f8b1c5caadd5497f4f56",
+  "tadabur/aug_readout/decodes/qud_half.candidate_ema.jsonl.gz": "7700b770d78f7b313c4afdf6eaf25ff80bb1decfea9f0d2cf1f23cc6cdabb48a",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.base.jsonl.gz": "c42bac7d9c90bf0cfaf84e095fd6b72061745e32d903c2c3fa3710bf294c8840",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.candidate_ema.jsonl.gz": "378faca688f6774531215ad7ccac8916381c71d5e446647bd4f7a71fb5b3af77",
+  "tadabur/aug_readout/decodes/tadabur_dev_unseen.h448.jsonl.gz": "c707478ab2d4ee39da388b43e9740db2437f626ac18de969997aae1e7af058a3",
+  "tadabur/aug_readout/decodes/tarteel_v1.confirm.candidate_ema.jsonl.gz": "e1b39548997c83f641a910820bcc582429456a5254db15e30dfbd2bc3ad54c7e",
+  "tadabur/consonant_readout/decodes/qdat.candidate_ema.jsonl.gz": "da2680d7a94eb241817ae3bed34b5981034fca28969e7548eba789fda8c85667",
+  "tadabur/consonant_readout/decodes/qud_half.candidate_ema.jsonl.gz": "3571d007f7a08f8f28b70964ebe5654e479d8d33ccd1e8d283a3acce334d1457",
+  "tadabur/consonant_readout/decodes/qud_other.c95.jsonl.gz": "3919a61c9df643dcbc5079fb5a658f0abd5d1e01496fa15a6201d7e51bce2db2",
+  "tadabur/consonant_readout/decodes/qud_other.candidate_ema.jsonl.gz": "ce39df399cac72d480887e525dcbcbc2f3e4793f715ef00c644884b18c10e63c",
+  "tadabur/consonant_readout/decodes/tadabur_dev_unseen.candidate_ema.jsonl.gz": "a84cb133da968e3d6bbeea7cfdfd948a14ea035d801501d53ff320c9825a3800",
+  "tadabur/consonant_readout/decodes/tarteel_v1.confirm.candidate_ema.jsonl.gz": "84a7e315f70dd700fa17bbfd92fe08475371e8d33bdae6e29f85fcfc8db5e626",
+  "tadabur/consonant_readout/freeze.json": "8d4b1020ae7f6e427b1180bcbe1149466ee96e1539000804e9c4af64dc454684",
+  "tadabur/consonant_readout/g6_sites.json": "ba7ba8418cad5782ee92c7b84537e2115d0058347ce7fbe97aedd6b67fe9e370",
+  "tadabur/consonant_readout/models.json": "f4a7f11390df23d5c219db6582cb502e03b09a69b4c2e33a2815f1e5a0683f13",
+  "tadabur/consonant_readout/qud_selection.json": "7deded427258020018ddb256572a0c0b3d0e3b1e1ae8fe1648c0d698ff5f2fad",
+  "tadabur/exposure/sources/decode_evalset.manifest.json": "3d5d237ac8530f6ccbd78d00697ff6fef27462afed39d07cde7d68fd0600ff4b",
+  "tadabur/nonpro_eval/qdat/decodes.base.jsonl.gz": "affd6d7f906daf7d16e4b88ace754f3c82db9e8bba714776729d9478636b894b",
+  "tadabur/nonpro_eval/qdat/decodes.h448.jsonl.gz": "577294415c6dd508a02e70f066fb5ed14b32a1410e4a5a3c017ca7141d2dfecd",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.h448.jsonl.gz": "873fbdfaa15f89f5712e3f62b0dbca644b177c845d97225ad7ee2de3cc589602",
+  "tadabur/nonpro_gap/grid.json": "d4c9cb9bbea3a1a8815fb31137c2784b4539c828cf27a6168c06477f97f8048f",
+  "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.base.jsonl.gz": "2a3989e67201c8b10f56cc7ce7cae17713062ecb8fdfc70196b2021b575a19d4",
+  "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.h448.jsonl.gz": "6654b7d3d4ca64b50627b90d61a5d37e1eb6364ba2256c8c71ab1f1a11704cc9",
+  "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.base.jsonl.gz": "e6790caca1ccd3bb71b7f177e11d1d2c065fb1a3fb55f1a00e8e7c2c8723bd17",
+  "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.h448.jsonl.gz": "5f44c7e01dd715f6903aeac5f5b5426c23439d051ab5cf008ee431651a80d004",
+  "tadabur/truth_baseline/checks/base.json": "c6e84e86f0155fc86e8dac22710d89cd860e217c2c5481f52caaea5f5e307538",
+  "tadabur/truth_baseline/checks/c95.json": "1107ebfcee61c5f913214bec633ded0608ef618ab56ab2bf4529fbc4b9e3c493",
+  "tadabur/truth_baseline/checks/candidate_ema.json": "f797f920a376d45203bbab06bd15ff1a34094635f613758af62c4734bff6113a",
+  "tadabur/truth_baseline/checks/h448.json": "8cedd305280bd84104c40491e7c206772e2fdb2962ee13ae890f7ad7a551fcb3",
+  "tadabur/truth_baseline/decodes/base.json": "8a68dd73055ad4d2799b6e9132ca538f01dee8cd5eafa6c96a2b88f9d30240a5",
+  "tadabur/truth_baseline/decodes/c95.json": "b43bf5b9b36709caed28b1afe8dce29b95bb05c5ea0118584d0f06c996b82857",
+  "tadabur/truth_baseline/decodes/candidate_ema.json": "9c1247ce3495302d9ec7e65d2fff5721b5cdff13fdcb8e89013234b522c89911",
+  "tadabur/truth_baseline/decodes/h448.json": "8575ab206d48dddb379e424053a4a71849f3133bf477e6762711602a045206a1"
+ },
+ "phase": "confirm"
+}

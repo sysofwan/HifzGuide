@@ -1,0 +1,277 @@
+{
+ "bars": {
+  "agreement_lower_above": 0.0,
+  "all_cause_upper_below": 0.0,
+  "bench_lower_at_least": -2.0,
+  "catch_at_least": -2.0,
+  "consonant_upper_below": 0.0,
+  "departs_lower_at_least": -0.5,
+  "qud_upper_at_most": 1.0,
+  "reduction_at_least": 4.7,
+  "tadabur_lower_at_least": -1.0,
+  "tashkeel_upper_at_most": 1.0
+ },
+ "choice": "ema",
+ "choice_commit": "12d5418608ae6b6c39cc906a7a788edc4b45e1f3",
+ "conditions": [
+  {
+   "bar": "Tarteel v1 confirm half, all-cause false flags per 1,000 (shipped default): candidate − C95 paired 95% upper bound < 0",
+   "bound": -2.0353952288605823,
+   "comparison": "candidate−c95",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "bar1.all_cause",
+   "point": -3.3081949859340014,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "the same difference as a point reduction of at least 4.7 per 1,000",
+   "baseline_per_1000": 47.4117194265371,
+   "candidate_per_1000": 44.103524440603096,
+   "name": "bar2.reduction",
+   "reduction": 3.308194986,
+   "required": 4.7,
+   "verdict": "fail"
+  },
+  {
+   "bar": "consonant-caused false flags per 1,000: candidate − C95 paired 95% upper bound < 0",
+   "bound": -1.5032627646264116,
+   "comparison": "candidate−c95",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "bar3.consonant_cause",
+   "point": -2.757278076556284,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "word agreement with the teacher on Tarteel v1 confirm: paired 95% lower bound > 0",
+   "bound": 0.979284163628153,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "bar4a.tarteel_v1_confirm",
+   "point": 1.2890898326067046,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "word agreement with the teacher on qdat: paired 95% lower bound > 0",
+   "bound": 0.4926437487792673,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "bar4a.qdat",
+   "point": 1.1295681063122842,
+   "strict": true,
+   "threshold": 0.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "the same on the teacher-departure words of Tarteel v1 confirm: paired 95% lower bound ≥ −0.5 pt",
+   "bound": 1.2428901117189841,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "bar4b.tarteel_v1_confirm",
+   "point": 1.6685901134833592,
+   "strict": false,
+   "threshold": -0.5,
+   "verdict": "pass"
+  },
+  {
+   "bar": "the same on the teacher-departure words of qdat: paired 95% lower bound ≥ −0.5 pt",
+   "bound": -0.07577193074894517,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "bar4b.qdat",
+   "point": 0.8230452674897082,
+   "strict": false,
+   "threshold": -0.5,
+   "verdict": "pass"
+  },
+  {
+   "bar": "qdat all-cause false flags per 1,000: candidate point estimate < C95's",
+   "c95": 58.250739001912706,
+   "candidate": 56.061789464549165,
+   "name": "bar5.qdat",
+   "verdict": "pass"
+  },
+  {
+   "bar": "QUD other half, all-cause false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0",
+   "bound": 0.09785889236470156,
+   "comparison": "candidate−c95",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "g1.qud_other",
+   "point": -0.20996640513351897,
+   "strict": false,
+   "threshold": 1.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "Tadabur dev, decode agreement with the teacher at stream_b0: paired 95% lower bound ≥ −1.0 pt",
+   "bound": -0.03282934674318727,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g2.tadabur_dev_unseen",
+   "point": 0.06783842121492745,
+   "strict": false,
+   "threshold": -1.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "qdat_bench stream arm, consonant agreement: paired 95% lower bound ≥ −2.0 pt",
+   "bound": -0.398773006134967,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g3.qdat_bench.consonant",
+   "point": 0.15299877600979395,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "qdat_bench stream arm, haraka agreement: paired 95% lower bound ≥ −2.0 pt",
+   "bound": -0.8875739644970352,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g3.qdat_bench.haraka",
+   "point": -0.18504811250925624,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "qdat_bench stream arm, shaddah agreement: paired 95% lower bound ≥ −2.0 pt",
+   "bound": -2.2408963585434205,
+   "comparison": "candidate−c95",
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g3.qdat_bench.shaddah",
+   "point": -0.8219178082191858,
+   "strict": false,
+   "threshold": -2.0,
+   "verdict": "fail"
+  },
+  {
+   "bar": "Tarteel v1 confirm, tashkeel-caused false flags per 1,000: candidate − C95 paired 95% upper bound ≤ +1.0",
+   "bound": 0.3366178953427981,
+   "comparison": "candidate−c95",
+   "end": "upper",
+   "method": "bootstrap",
+   "name": "g4.tashkeel_cause",
+   "point": -0.1540763651605324,
+   "strict": false,
+   "threshold": 1.0,
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.4504938744552981,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ء→ي",
+   "substitution": "ء→ي",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.5630866073513552,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ء→∅",
+   "substitution": "ء→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.29914036508473707,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ج→ش",
+   "substitution": "ج→ش",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": 0.022055845209998638,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.د→ت",
+   "substitution": "د→ت",
+   "verdict": "fail"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.23091422572646178,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ر→ل",
+   "substitution": "ر→ل",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.8272265449868468,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ل→ن",
+   "substitution": "ل→ن",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.18043885033865467,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ل→∅",
+   "substitution": "ل→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.4019518775938905,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.م→∅",
+   "substitution": "م→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.4937419674171526,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.ن→∅",
+   "substitution": "ن→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "no substitution's paired 99.5% lower bound > 0",
+   "bound": -0.3162213837702227,
+   "end": "lower",
+   "method": "bootstrap",
+   "name": "g5.و→∅",
+   "substitution": "و→∅",
+   "verdict": "pass"
+  },
+  {
+   "bar": "Ship A held-out verified mistakes at ط↔ق and س↔ش: candidate flags ≥ C95 − 2 sites (paired count)",
+   "difference": 0,
+   "name": "g6.ship_a_verified",
+   "threshold": -2.0,
+   "verdict": "pass"
+  }
+ ],
+ "issue": 175,
+ "verdict": "fail"
+}

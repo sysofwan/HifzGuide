@@ -1,0 +1,76 @@
+{
+ "choice": "ema",
+ "control": "no control arm (#178); the choice binds the candidate only",
+ "half": "look",
+ "harness": {
+  "binary_sha256": "cfcb99ba583fd2324f7ede0e5ab896379c54fa52783460d583e44d103eb68d8b",
+  "build": {
+   "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+   "harness": "tools/muraja_harness/main.swift",
+   "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+   "protocol_version": 3,
+   "scoring_keys": [
+    "name",
+    "mode",
+    "softPairsEnabled",
+    "shaddahSuppression",
+    "softPairsDisabled"
+   ]
+  },
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "layout_db_sha256": "ee66eef38212467182efa2a6744be2ef810e8f14bdb6ac0849d5c5e0eaad1398",
+  "muraja_commit": "99c326f3fb7c6c53ff525568976c7e2442ccde3c",
+  "quran_db_sha256": "02fe3dd80db1878b7027dd02dba86b42177ead660036362c69791e85994689ad"
+ },
+ "identities": {
+  "candidate_ema": {
+   "checkpoint_sha256": "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2",
+   "model_ref": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "ema"
+  },
+  "candidate_live": {
+   "checkpoint_sha256": "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2",
+   "model_ref": "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt",
+   "recipe": "aug94-mixture-v2",
+   "step": 10000,
+   "weights": "live"
+  }
+ },
+ "input_sha256": {
+  "tadabur/consonant_readout/decodes/tarteel_v1.look.candidate_ema.jsonl.gz": "ba3105dacdceed3e05ccce2fff4d7c8b72d5aac1325f3e3b4107b4a9573c0b7b",
+  "tadabur/consonant_readout/decodes/tarteel_v1.look.candidate_live.jsonl.gz": "1e3ab0c74dc3e9f1b1c9d817fd437432bec6d61882542bfe15fcfab6be5229aa",
+  "tadabur/consonant_readout/freeze.json": "8d4b1020ae7f6e427b1180bcbe1149466ee96e1539000804e9c4af64dc454684",
+  "tadabur/consonant_readout/g6_sites.json": "ba7ba8418cad5782ee92c7b84537e2115d0058347ce7fbe97aedd6b67fe9e370",
+  "tadabur/consonant_readout/models.json": "95306cd3dfd4327da0af6f1252538541ad420fbdc2464533ca02fd83e98f83ae",
+  "tadabur/consonant_readout/qud_selection.json": "7deded427258020018ddb256572a0c0b3d0e3b1e1ae8fe1648c0d698ff5f2fad",
+  "tadabur/exposure/sources/decode_evalset.manifest.json": "3d5d237ac8530f6ccbd78d00697ff6fef27462afed39d07cde7d68fd0600ff4b",
+  "tadabur/nonpro_eval/qdat/decodes.base.jsonl.gz": "affd6d7f906daf7d16e4b88ace754f3c82db9e8bba714776729d9478636b894b",
+  "tadabur/nonpro_eval/qdat/decodes.h448.jsonl.gz": "577294415c6dd508a02e70f066fb5ed14b32a1410e4a5a3c017ca7141d2dfecd",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770",
+  "tadabur/nonpro_eval/tarteel_v1/decodes.h448.jsonl.gz": "873fbdfaa15f89f5712e3f62b0dbca644b177c845d97225ad7ee2de3cc589602",
+  "tadabur/nonpro_gap/grid.json": "d4c9cb9bbea3a1a8815fb31137c2784b4539c828cf27a6168c06477f97f8048f",
+  "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.base.jsonl.gz": "2a3989e67201c8b10f56cc7ce7cae17713062ecb8fdfc70196b2021b575a19d4",
+  "tadabur/qud_eval/pilot/decodes/abdul_hamid_ghraio_2026_yt.h448.jsonl.gz": "6654b7d3d4ca64b50627b90d61a5d37e1eb6364ba2256c8c71ab1f1a11704cc9",
+  "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.base.jsonl.gz": "e6790caca1ccd3bb71b7f177e11d1d2c065fb1a3fb55f1a00e8e7c2c8723bd17",
+  "tadabur/qud_eval/pilot/decodes/anas_almiman_yt.h448.jsonl.gz": "5f44c7e01dd715f6903aeac5f5b5426c23439d051ab5cf008ee431651a80d004"
+ },
+ "inputs": {
+  "candidate_ema": {
+   "false_flags_per_1000": 45.73177696050437,
+   "flagged_words": 2002.0,
+   "graded_words": 43777.0,
+   "word_agreement_points": 66.69827276920711
+  },
+  "candidate_live": {
+   "false_flags_per_1000": 46.368063653199805,
+   "flagged_words": 2028.0,
+   "graded_words": 43737.0,
+   "word_agreement_points": 66.46250832863512
+  }
+ },
+ "issue": 175,
+ "items": 4530,
+ "rule": "the candidate's weights with fewer Tarteel v1 look-half false flags per 1,000 graded words (shipped default); a tie goes to higher word agreement with the teacher, then to live; no control arm (#178): the choice binds the candidate only"
+}

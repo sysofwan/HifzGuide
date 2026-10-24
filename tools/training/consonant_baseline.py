@@ -25,7 +25,8 @@ Usage (on the GPU box from a copy of ``tools/``, under ``flock /root/scratch/gpu
 launcher and its done-file check are ``scripts/issue-176-decode.sh``)::
 
   python -m training.consonant_baseline qother --shard 3 --out-dir <decodes> --cache-dir <hf>
-  python -m training.consonant_baseline held-out --audio-dir <clips>
+  python -m training.consonant_baseline held-out --audio-dir <clips> [--model <model>]
+  # --model selects C95 (the default) or the candidate's chosen weights for G6 (#179).
 
 Then on the Mac, from ``tools/``::
 
@@ -46,13 +47,15 @@ from tadabur.staged_audio import REGISTRY_PATH, load_staged_clips
 from training import aug_readout_decode as ad
 from training.aug_readout_gate import (
     QUD_OTHER_SET,
+    Layout,
+    committed_choice,
     identity_record,
     model_spec,
     round_decodes_file,
     validate_identity,
 )
 from training.aug_readout_metrics import C95
-from training.aug_readout_spec import CONSONANT1, C95_REF
+from training.aug_readout_spec import CONSONANT1
 from training import consonant_readout as cr
 from training.external_corpus import merge_decode_files
 from training.external_decode import append_timing, decode_recordings, load_decoders
@@ -75,11 +78,6 @@ BASELINE = C95
 QOTHER = QUD_OTHER_SET
 #: Where the merged QUD decode is committed (the round's own root, as the readout resolves it).
 QOTHER_PATH = round_decodes_file(CONSONANT1, QOTHER, BASELINE)
-
-
-def pin() -> dict:
-    """C95's identity as the round fixed it (#174): the checkpoint, its SHA-256, EMA."""
-    return identity_record(CONSONANT1.models[BASELINE])
 
 
 # --- the QUD other half -------------------------------------------------------------------------
@@ -174,33 +172,51 @@ def held_out_items(registry: Mapping | None = None) -> dict:
     return items_of(held_out_sites(), registry)
 
 
-def update_held_out(audio_dir: Path) -> dict:
-    """Decode C95's decodes and check sequences of every held-out item, then prove the caches
-    are the round's pin; the baselines' caches already hold the same items."""
-    if not Path(C95_REF).is_file():
-        raise SystemExit(f"{C95_REF}: the round's checkpoint is not on this machine")
-    found = file_sha256(C95_REF)
-    if found != pin()["checkpoint_sha256"]:
-        raise SystemExit(f"{C95_REF} is {found}, not the round's pin")
+def held_out_identity(model: str = BASELINE) -> dict:
+    """The round's identity for one held-out cache producer: C95's pin or the candidate's
+    chosen weights (``candidate_live``/``candidate_ema``)."""
+    return identity_record(CONSONANT1.models[model])
+
+
+def update_held_out(audio_dir: Path, model: str = BASELINE) -> dict:
+    """Decode one model's decodes and check sequences of every held-out item, then prove the
+    caches are the round's pin; the baselines' caches already hold the same items. The
+    candidate's caches are built at the weights the look half chose (#179), so they wait for
+    the committed choice and read only its selected model (R1.3)."""
+    if model != BASELINE:
+        choice = committed_choice(Layout(CONSONANT1.root), spec=CONSONANT1).choice
+        chosen = choice["models"].get("candidate")
+        if chosen != model:
+            raise SystemExit(f"{model}: the committed choice reads {chosen}; the guard sites "
+                             "are decoded at the chosen weights only")
+    expected = held_out_identity(model)
+    ref = expected["model_ref"]
+    if not Path(ref).is_file():
+        raise SystemExit(f"{ref}: the round's checkpoint is not on this machine")
+    found = file_sha256(ref)
+    if found != expected["checkpoint_sha256"]:
+        raise SystemExit(f"{ref} is {found}, not the round's pin")
     registry = load_staged_clips(REGISTRY_PATH)
     items = held_out_items(registry)
-    model_caches(BASELINE, C95_REF, items, registry, Path(audio_dir), use_ema=True)
-    return assert_held_out_caches(items)
+    model_caches(model, ref, items, registry, Path(audio_dir),
+                 use_ema=expected.get("weights") == "ema")
+    return assert_held_out_caches(items, model=model)
 
 
-def assert_held_out_caches(items: Sequence, check_dir: Path | None = None,
+def assert_held_out_caches(items: Sequence, model: str = BASELINE,
+                           check_dir: Path | None = None,
                            decode_dir: Path | None = None) -> dict:
     """Refuse anything but the round's pin, holding every item's decode and check sequence."""
     check_dir = Path(check_dir or CHECK_STORE.directory)
     decode_dir = Path(decode_dir or DECODE_STORE.directory)
-    expected = pin()
+    expected = held_out_identity(model)
     for store, directory, protocols in ((CHECK_STORE, check_dir, CHECK_PROTOCOLS),
                                         (DECODE_STORE, decode_dir, PROTOCOLS)):
-        path = directory / f"{BASELINE}.json"
+        path = directory / f"{model}.json"
         if not path.exists():
-            raise SystemExit(f"{path}: no {BASELINE} cache; decode the held-out clips first")
+            raise SystemExit(f"{path}: no {model} cache; decode the held-out clips first")
         cache = read_cache(path)
-        check_cache(path, cache, C95_REF, protocols)
+        check_cache(path, cache, expected["model_ref"], protocols)
         if not cr.binds_cache(cache["identity"] or {}, expected):
             raise ValueError(f"{path}: {cache['identity']} is not the round's pin {expected}")
         missing = set(items) - set(cache["items"])
@@ -272,6 +288,9 @@ def main() -> None:
     held = commands.add_parser("held-out", help="decode Ship A's held-out verified sites")
     held.add_argument("--audio-dir", type=Path)
     held.add_argument("--list-clips", action="store_true")
+    held.add_argument("--model", default=BASELINE, choices=tuple(CONSONANT1.models),
+                      help="the model whose caches to produce (the candidate's chosen weights "
+                           "for G6; C95's are the round's baseline)")
 
     merged = commands.add_parser("merge", help="the shard decodes as the round's one file")
     merged.add_argument("--decodes-dir", type=Path, required=True)
@@ -295,7 +314,8 @@ def main() -> None:
             return
         if args.audio_dir is None:
             parser.error("--audio-dir is required")
-        print(json.dumps(update_held_out(args.audio_dir), ensure_ascii=False, indent=1))
+        print(json.dumps(update_held_out(args.audio_dir, args.model),
+                         ensure_ascii=False, indent=1))
     elif args.command == "merge":
         print(json.dumps(merge_qother(args.decodes_dir, args.destination,
                                       models_path=args.models, expected=args.expected),

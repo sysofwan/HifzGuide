@@ -27,7 +27,7 @@ python -m tadabur.tlog_index build --workers 4 \
 ```
 
 - Use 4–8 workers. Two back-to-back full sweeps trip the Hub's rate limit, whose retry waits run
-  to minutes; a single sweep of 743 shards takes about 3 minutes.
+  to minutes; one sweep of 743 shards took 170 s at 16 workers, so give 4-8 a few minutes.
 - `--code-sha` defaults to `git rev-parse HEAD`; pass the commit that holds the code being built.
 - The shard files are byte-identical on the build interpreter. gzip's header OS byte is
   platform-dependent (Python 3.12 on cuda-dev writes `0x03`, macOS Python 3.13 writes `0xff`), so

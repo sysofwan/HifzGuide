@@ -150,13 +150,14 @@ def test_the_cap_re_splits_a_component_over_one_percent_at_tau_plus_0_02():
 
 
 def test_the_cap_terminates_when_a_component_cannot_be_split_further():
-    # Identical rows stay one component at every threshold above tau: the procedure must stop
-    # rather than loop, and report the component it could not break.
+    # Identical rows stay one component at every threshold up to 1.0, so the cap must keep
+    # raising rather than stop after one no-op round; at 1.02 no cosine edge survives and the
+    # duplicates become singletons.
     ids, embeddings = _hundred_with_a_pair(1.0)
     found = cluster(ids, embeddings, 0.50)
     assert found.pre_cap["p"] == found.pre_cap["q"] == "p"
-    assert found.post_cap["p"] == found.post_cap["q"] == "p"
-    assert isinstance(found.resplits, int) and found.resplits >= 1
+    assert found.post_cap == {clip: clip for clip in ids}
+    assert found.resplits == 26  # 0.52 through 1.02, one round each
 
 
 # --- the validation metrics ------------------------------------------------------------------

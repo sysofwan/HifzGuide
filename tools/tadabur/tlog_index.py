@@ -13,7 +13,10 @@ column of each shard and commits, beside it, the metadata every later slice keys
     ``0x03`` into the committed files, and a macOS Python 3.13 writes ``0xff`` with the payload
     otherwise identical. A rerun elsewhere therefore changes that one byte in all 743 files.
 ``tools/tadabur/tlog/index/meta.json``
-    the source pin, the code SHA and the counts the issue posts on #173.
+    the source pin, the code SHA and the counts the issue posts on #173. ``code_sha`` names the
+    commit that built the index, never HEAD: a rerun writes its own, so ``meta.json`` differs by
+    that field alone even when every shard is identical. The shard files are the reproducibility
+    witness; ``meta.json`` is not.
 
 **The filename is the only label.** A clip's stem splits on ``_``: fields 1-2 are its surah and
 ayah, kept as ``"surah:ayah"`` only when ``quran.db`` gives that ayah range; field 3 is the

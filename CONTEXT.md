@@ -246,6 +246,51 @@ the wrong headline metric for the whole fine-tune (ADR-0008). Name which one you
 : A word `h448` flags under Muraja's shipped default where the base teacher's checks grade it
   correct, on the same recitation (#160): the gap the augmentation experiment tries to close.
 
+## tlog Hold-out
+
+The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips are split by
+**group** before any audio is decoded. The rules are frozen in
+`docs/tlog-holdout-preregistration.md`; this section only names them.
+
+**tlog**
+: The gated Hub corpus of 719,853 amateur app clips in the `clean` and `unclean` source splits.
+  Only its metadata (`audio.path`) is used and committed; its audio is never copied, and its own
+  `label` column is never read.
+
+**Metadata index**
+: The committed per-shard metadata (`tools/tadabur/tlog/index/`, built by
+  `python -m tadabur.tlog_index build`): one row per `(split, shard_file, row)` with the clip's
+  path, filename label, recording id, **id group** and Tarteel v1 overlap flags. The committed
+  copy is the source of truth; a rebuild only runs on a host with an accepted Hub token.
+
+**Id group**
+: Rows sharing an `audio_path`, or a parsed recording id, across both source splits — one
+  component, named by its lexicographically smallest `audio_path`. It is the unit the S3b
+  **group** and every later count are built on.
+: _Avoid_: duplicate (that is one specific exclusion rule), cluster (that is the speaker cluster)
+
+**Group**
+: The connected components over two kinds of link: same **id group**, and same **speaker
+  cluster**. Under the pre-registered fallback the group is the id group alone. Its
+  `group_key` is its lexicographically smallest `audio_path`.
+
+**Speaker cluster**
+: Clips the S2 clustering links as one voice: L2-normalised speaker embeddings, exact cosine
+  k-nearest neighbours, connected components, capped at 1% of rows. Validated on Tadabur only;
+  embeddings are deleted after the split freeze.
+
+**Role**
+: Which use a group's rows are reserved for, from `u` — the first 8 bytes, big-endian, of
+  `sha256("tlog-holdout-2026-10:" + group_key)` over 2**64 (`tadabur.tlog_index.role`):
+  `look` in [0.00, 0.02), `confirm.1` … `confirm.4` in the next four 2% bands, else `train`.
+  A role is not one of the Tarteel v1 halves: different corpus, different salt, six values.
+: _Avoid_: split (that is `clean`/`unclean`, or Tarteel v1's look/confirm halves), fold
+
+**Tranche**
+: One role's rows as a frozen set: `look`, or `confirm.k` for k = 1…4. `look` may be inspected
+  freely; `confirm.k` is decoded once, in order, for one round's verdict and is never listened
+  to before it.
+
 ## Re-read Corpus
 
 The vocabulary of Muraja ADR-0016, which mines the Tadabur clips the ADR-0001 gate **rejects**

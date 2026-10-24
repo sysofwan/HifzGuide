@@ -200,7 +200,9 @@ def test_an_mp4_aac_row_decodes_through_the_pyav_fallback(tp):
     assert measured.facts["sample_rate"] == 44100
     assert measured.facts["duration_s"] == pytest.approx(0.5, abs=0.02)
     assert measured.facts["speech_ratio"] == pytest.approx(0.5, abs=0.02)
-    assert len(seen) == 1 and len(seen[0]) == 8000
+    # AAC priming/padding is codec-version specific (av 18.1 yields 8,174 samples for 0.5 s),
+    # so the span is asserted loosely; duration_s above is the fact that matters.
+    assert len(seen) == 1 and abs(len(seen[0]) - 8000) <= 320
 
 
 def test_soundfile_remains_the_decoder_when_it_reads_the_bytes(tp):

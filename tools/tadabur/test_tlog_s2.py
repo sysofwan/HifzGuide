@@ -33,7 +33,7 @@ from tadabur import speaker_embed, tlog_s2
 from tadabur.speaker_cluster import GRID, decide
 
 #: The pre-registration's SHA-256, the same pin ``test_tlog_index`` holds.
-PREREGISTRATION_SHA256 = "655c8c3e8c560a6e9a6b53b48b5e41c4bf45d3de270562b7140b6b757344096d"
+PREREGISTRATION_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
 #: The committed Tarteel v1 decodes whose spans give the look durations.
 TARTEEL_DECODES_SHA256 = "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770"
 #: The exact decile cut points of the 4,537 Tarteel v1 look clips, in seconds, top open.

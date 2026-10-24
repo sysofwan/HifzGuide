@@ -101,7 +101,7 @@ VAD_CONFIG = {
 
 #: The container fallback's pin, in ``requirements-train.txt`` and ``meta.json``. The unclean
 #: split's MP4/AAC rows decode through it, so a version bump can change their samples.
-PYAV_PIN = "19.0.2"
+PYAV_PIN = "18.1.0"
 
 #: The tracer rule, fixed before the run: clean shard indices 0 and 205, unclean 0.
 TRACER_CLEAN = (0, 205)

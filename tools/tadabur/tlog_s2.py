@@ -49,7 +49,7 @@ import numpy as np
 
 from . import speaker_embed
 from .shard_reader import NUM_SHARDS
-from .speaker_cluster import GRID, cluster, decide, metrics
+from .speaker_cluster import GRID, RECALL_FLOOR, cluster, decide, metrics, model_outcome
 from .tlog_index import head_sha
 from training.tashkeel_eval import write_text_atomically
 
@@ -146,6 +146,7 @@ def _rank(text: str, salt: str) -> str:
 
 
 def _sample_row(row: dict) -> dict:
+    """One committed row: the clip's identity, its true first-20-s span, and its duration."""
     return {
         "audio_filename": row["audio_filename"],
         "shard": row["shard"],
@@ -153,7 +154,9 @@ def _sample_row(row: dict) -> dict:
         "reciter_id": row["reciter_id"],
         "surah_ayah": f"{row['surah_id'] + 1}:{row['ayah_id']}",
         "start_sample": 0,
-        "end_sample": SPAN_SAMPLES,
+        "end_sample": min(SPAN_SAMPLES,
+                          round(row["ayah_duration_s"] * speaker_embed.SAMPLE_RATE)),
+        "ayah_duration_s": row["ayah_duration_s"],
     }
 
 
@@ -321,15 +324,34 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+#: The encoder stack whose versions the pins and the report record: candidate B's numbers
+#: depend on ``transformers``' x-vector implementation, exactly as A's depend on ECAPA's.
+LIBRARIES = ("torch", "transformers", "speechbrain")
+
+
+def library_versions() -> dict[str, str | None]:
+    """The installed encoder-stack versions, ``None`` where a package is absent."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    found = {}
+    for name in LIBRARIES:
+        try:
+            found[name] = version(name)
+        except PackageNotFoundError:
+            found[name] = None
+    return found
+
+
 def write_pins(out_dir: Path, *, sample_sha256: str, code_sha: str,
                models=speaker_embed.MODELS, device: str = "cuda") -> Path:
-    """Record every model's revision before the first embedding, and print it to the run log."""
+    """Record every model's revision and library versions before the first embedding."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     payload = {
         "sample_sha256": sample_sha256,
         "code_sha": code_sha,
         "device": device,
+        "libraries": library_versions(),
         "models": {model.key: {"repo_id": model.repo_id, "revision": model.revision,
                                "dim": model.dim} for model in models},
     }
@@ -338,6 +360,8 @@ def write_pins(out_dir: Path, *, sample_sha256: str, code_sha: str,
     for model in models:
         print(f"model {model.key}: {model.repo_id} @ {model.revision} (dim {model.dim})",
               flush=True)
+    libraries = ", ".join(f"{name} {value}" for name, value in payload["libraries"].items())
+    print(f"libraries: {libraries}", flush=True)
     return path
 
 
@@ -432,11 +456,15 @@ def build_report(*, sample_path: Path = SAMPLE_PATH, embeddings_dir: Path,
     rows = read_sample(sample_path)
     census = json.loads(Path(selection_path).read_text(encoding="utf-8"))
     pins = json.loads((Path(embeddings_dir) / "pins.json").read_text(encoding="utf-8"))
+    if "libraries" not in pins:
+        raise ValueError(f"{embeddings_dir}/pins.json records no library versions; rerun "
+                         f"`python -m tadabur.tlog_s2 embed` to write them")
     embeddings = {}
     for model in speaker_embed.MODELS:
         stored = np.load(Path(embeddings_dir) / f"embeddings.{model.key}.npz")
         embeddings[model.key] = (list(stored["clip_ids"]), stored["embeddings"])
     results = analyse(rows, embeddings)
+    outcomes = {key: model_outcome(per_tau) for key, per_tau in results.items()}
     choice = decide(results)
     if "model" in choice:
         choice["revision"] = pins["models"][choice["model"]]["revision"]
@@ -456,12 +484,14 @@ def build_report(*, sample_path: Path = SAMPLE_PATH, embeddings_dir: Path,
                    "ayat_with_five_reciters": census["ayat_with_five_reciters"],
                    "reciter_cap": census["reciter_cap"], "bins": census["bins"]},
         "embedding_run": {"code_sha": pins["code_sha"], "device": pins["device"],
-                          "sample_sha256": pins["sample_sha256"]},
+                          "sample_sha256": pins["sample_sha256"],
+                          "libraries": pins["libraries"]},
         "models": {model.key: {"repo_id": model.repo_id, "revision": model.revision,
                                "dim": model.dim} for model in speaker_embed.MODELS},
         "grid": list(GRID),
         "results": {key: {f"{tau:.2f}": entry for tau, entry in per_tau.items()}
                     for key, per_tau in results.items()},
+        "per_model": outcomes,
         "choice": choice,
     }
 
@@ -493,11 +523,11 @@ def render(report: dict) -> str:
         "as written, with three readings. The kNN graph is the undirected union of each row's "
         "20 nearest by cosine, an edge wherever the cosine is at least τ, and an exact tie at "
         "the 20th neighbour is included whole rather than cut by iteration order. The 1% cap "
-        "re-clusters an oversized component inside itself at τ + 0.02, then +0.02 a round; a "
-        "component that cannot split is reported and stops. The τ pick, the chaining and "
-        "text-independence tests and the recall bar are read from the components **before** "
-        "the cap (architect decision 2026-10-24); the post-cap numbers are reported beside "
-        "them for information.",
+        "re-clusters an oversized component inside itself at τ + 0.02, then +0.02 a round, "
+        "until no component exceeds the cap; the threshold stops at 1.0, above which no cosine "
+        "edge survives. The τ pick, the chaining and text-independence tests and the recall "
+        "bar are read from the components **before** the cap (architect decision 2026-10-24); "
+        "the post-cap numbers are reported beside them for information.",
         "",
         "## Inputs",
         "",
@@ -551,11 +581,17 @@ def render(report: dict) -> str:
                 f"| {_pct(entry['post_cap']['largest_cluster_share'])} "
                 f"| {entry['resplits']} |")
         lines.append("")
-        if chosen is None:
-            lines.append(f"No τ on the grid is selected for model {key.upper()}.")
+        outcome = report["per_model"][key]
+        if outcome["tau"] is None:
+            lines.append(f"No τ on the grid meets both chaining and text-independence for "
+                         f"model {key.upper()}.")
+        elif not outcome["pass"]:
+            lines.append(f"τ = {outcome['tau']:.2f} is model {key.upper()}'s lowest admissible "
+                         f"value; same-reciter recall {_pct(outcome['recall'])} is below the "
+                         f"{_pct(RECALL_FLOOR)} bar, so the model fails.")
         else:
-            lines.append(f"`*` marks τ = {chosen:.2f}, the value the rule selects for model "
-                         f"{key.upper()}.")
+            lines.append(f"`*` marks τ = {outcome['tau']:.2f}, the value the rule selects for "
+                         f"model {key.upper()} (recall {_pct(outcome['recall'])}).")
         lines.append("")
     choice = report["choice"]
     lines.extend(["## Choice", ""])

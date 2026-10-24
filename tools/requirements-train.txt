@@ -16,7 +16,10 @@
 # bitsandbytes 0.49.2.
 
 numpy>=1.26
-transformers>=4.44
+# Pinned: candidate B's WavLM x-vector pooling (statistics pooling over the attention mask)
+# is implementation-dependent, so the tlog hold-out's S2 embeddings name this version
+# alongside the checkpoint revision. See docs/tlog-speaker-clustering.md (#186).
+transformers==5.13.0
 peft>=0.11
 accelerate>=0.30
 datasets>=2.19

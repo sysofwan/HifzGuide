@@ -6,8 +6,9 @@ pre-registered clustering rule on it, and commits the sample plus a generated re
 No tlog audio is read anywhere in the slice.
 
 ``sample.jsonl`` carries one row per clip: ``audio_filename``, ``shard``, ``row``,
-``reciter_id``, ``surah_ayah`` and the embedding ``span`` (``start_sample``/``end_sample``,
-the first 20 s at 16 kHz). The report's ``results`` hold, per model and per τ of the
+``reciter_id``, ``surah_ayah``, the frame's ``ayah_duration_s`` and the exact embedding span
+(``start_sample``/``end_sample``, the first 20 s at 16 kHz, cut to the clip's length). The
+report's ``results`` hold, per model and per τ of the
 pre-registered grid, the :func:`tadabur.speaker_cluster.metrics` entry with Wilson 95% intervals
 on the two co-cluster rates; ``choice`` is exactly
 :func:`tadabur.speaker_cluster.decide` over those entries, plus the chosen model's revision.
@@ -43,7 +44,7 @@ TARTEEL_MAX_SECONDS = 19.992375
 SAMPLE_SHARDS = (21, 38, 56, 74, 92, 110, 128, 146, 164, 182,
                  200, 218, 236, 254, 272, 290, 308, 326, 344, 361)
 SAMPLE_KEYS = frozenset({"audio_filename", "shard", "row", "reciter_id", "surah_ayah",
-                         "start_sample", "end_sample"})
+                         "ayah_duration_s", "start_sample", "end_sample"})
 
 
 # --- the Tarteel look duration match ---------------------------------------------------------
@@ -76,7 +77,7 @@ def test_the_sample_constants_are_the_approved_ones():
 
 
 def _synthetic_frame() -> list[dict]:
-    """10 deciles x 5 ayat x 4 of 20 reciters, one ayah-duration per bin."""
+    """10 deciles x 5 ayat x 4 clips, 200 distinct reciters, one ayah-duration per bin."""
     seconds = (2.0, 4.5, 5.5, 6.5, 7.5, 9.0, 10.5, 12.0, 14.0, 17.0)
     frame, row = [], 0
     for decile, duration in enumerate(seconds):
@@ -145,7 +146,13 @@ def test_the_committed_sample_is_the_approved_draw():
     assert all(set(row) == SAMPLE_KEYS for row in rows)
     assert {row["shard"] for row in rows} == set(SAMPLE_SHARDS)
     assert not {row["shard"] for row in rows} & held_out_shards()
-    assert all(row["start_sample"] == 0 and row["end_sample"] == 320_000 for row in rows)
+    assert all(row["start_sample"] == 0 for row in rows)
+    # The span is the clip's true length cut at 20 s, not the full window: every clip is
+    # shorter than 20 s (the frame is the Tarteel look range), so the field cannot be read as
+    # "we embedded 20 s of a longer file" (selfcheck-r1 S1.5).
+    assert all(row["end_sample"] == min(320_000, round(row["ayah_duration_s"] * 16_000))
+               for row in rows)
+    assert all(row["end_sample"] < 320_000 for row in rows)
     assert len({row["audio_filename"] for row in rows}) == len(rows)
     assert rows == sorted(rows, key=lambda row: (row["shard"], row["row"]))
 
@@ -229,6 +236,16 @@ def test_the_revisions_are_written_before_the_first_embedding(tmp_path):
                              encoder=lambda batch: np.zeros((2, 512)))
 
 
+def test_the_pins_record_the_embedding_library_versions(tmp_path):
+    # Model revisions alone do not reproduce the embeddings: B's pooling depends on the
+    # transformers implementation, so the stack's versions are pinned beside them (#186 S1.6).
+    tlog_s2.write_pins(tmp_path, sample_sha256="a" * 64, code_sha="b" * 40,
+                       models=(speaker_embed.MODELS[0],))
+    pins = json.loads((tmp_path / "pins.json").read_text(encoding="utf-8"))
+    assert set(pins["libraries"]) == {"torch", "transformers", "speechbrain"}
+    assert all(value is None or isinstance(value, str) for value in pins["libraries"].values())
+
+
 # --- the committed report and page -----------------------------------------------------------
 
 
@@ -292,6 +309,43 @@ def test_the_choice_is_the_preregistered_rule_and_nothing_else():
         assert choice["model"] == recomputed["model"]
         assert choice["tau"] == recomputed["tau"]
         assert choice["revision"] == report["models"][choice["model"]]["revision"]
+
+
+def test_the_report_names_each_model_s_rule_outcome():
+    # A's failure is the recall bar, not the absence of an admissible tau, and the page must
+    # say so: the fallback's cause is the number that decides it (selfcheck-r1 S1.4).
+    report = _report()
+    assert list(report["per_model"]) == ["a", "b"]
+    for key, outcome in report["per_model"].items():
+        if outcome["tau"] is None:
+            assert outcome == {"tau": None, "recall": None, "pass": False}
+        else:
+            entry = report["results"][key][f"{outcome['tau']:.2f}"]
+            assert outcome["recall"] == entry["pre_cap"]["recall"]
+            assert outcome["pass"] == (outcome["recall"] >= 0.9)
+
+
+def test_the_report_records_the_embedding_library_versions():
+    libraries = _report()["embedding_run"]["libraries"]
+    assert set(libraries) == {"torch", "transformers", "speechbrain"}
+    assert libraries["transformers"] == "5.13.0"
+    assert libraries["speechbrain"] == "1.1.2"
+    assert libraries["torch"] == "2.11.0+cu128"
+
+
+def test_the_page_states_each_model_s_outcome():
+    report = _report()
+    page = tlog_s2.DOC_PATH.read_text(encoding="utf-8")
+    for key, outcome in report["per_model"].items():
+        if outcome["tau"] is None:
+            assert (f"No τ on the grid meets both chaining and text-independence for "
+                    f"model {key.upper()}.") in page
+        elif outcome["pass"]:
+            assert (f"`*` marks τ = {outcome['tau']:.2f}, the value the rule selects for "
+                    f"model {key.upper()}") in page
+        else:
+            assert (f"τ = {outcome['tau']:.2f} is model {key.upper()}'s lowest admissible "
+                    f"value") in page
 
 
 def test_the_page_is_generated_from_the_report():

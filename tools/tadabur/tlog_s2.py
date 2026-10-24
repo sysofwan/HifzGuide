@@ -50,7 +50,7 @@ import numpy as np
 from . import speaker_embed
 from .shard_reader import NUM_SHARDS
 from .speaker_cluster import GRID, RECALL_FLOOR, cluster, decide, metrics, model_outcome
-from .tlog_index import head_sha
+from .tlog_index import head_sha, installed_versions, sha256_file
 from training.tashkeel_eval import write_text_atomically
 
 #: The draw's fixed seed: every rank below is ``sha256("<salt>:<key>")``, so a rerun ranks
@@ -320,26 +320,9 @@ def assert_tadabur_sample(rows: list[dict]) -> None:
 # --- the pinned models and the embedding pass ------------------------------------------------
 
 
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-
 #: The encoder stack whose versions the pins and the report record: candidate B's numbers
 #: depend on ``transformers``' x-vector implementation, exactly as A's depend on ECAPA's.
 LIBRARIES = ("torch", "transformers", "speechbrain")
-
-
-def library_versions() -> dict[str, str | None]:
-    """The installed encoder-stack versions, ``None`` where a package is absent."""
-    from importlib.metadata import PackageNotFoundError, version
-
-    found = {}
-    for name in LIBRARIES:
-        try:
-            found[name] = version(name)
-        except PackageNotFoundError:
-            found[name] = None
-    return found
 
 
 def write_pins(out_dir: Path, *, sample_sha256: str, code_sha: str,
@@ -351,7 +334,7 @@ def write_pins(out_dir: Path, *, sample_sha256: str, code_sha: str,
         "sample_sha256": sample_sha256,
         "code_sha": code_sha,
         "device": device,
-        "libraries": library_versions(),
+        "libraries": installed_versions(LIBRARIES),
         "models": {model.key: {"repo_id": model.repo_id, "revision": model.revision,
                                "dim": model.dim} for model in models},
     }

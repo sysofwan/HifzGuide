@@ -46,9 +46,12 @@ def decode_to_mono_16k(raw_audio: bytes) -> np.ndarray:
 
     Downmixes multi-channel audio by averaging channels and resamples to
     ``TARGET_SAMPLE_RATE`` only when the source rate differs, so already-16 kHz mono
-    clips pass through unresampled.
+    clips pass through unresampled. Decoding is soundfile's, as it has always been:
+    consumers such as ``nonpro_overlap.compare`` catch ``soundfile.LibsndfileError`` to
+    count a served HTML page as "not audio", so the tlog pass's container fallback lives in
+    :func:`decode_to_mono_16k_with_rate_and_decoder`.
     """
-    return decode_to_mono_16k_with_rate(raw_audio)[0]
+    return _decode_with_soundfile(refuse_sealed_bytes(raw_audio))[0]
 
 
 class DecodeError(ValueError):
@@ -61,21 +64,9 @@ class DecodeError(ValueError):
     """
 
 
-def decode_to_mono_16k_with_rate(raw_audio: bytes) -> tuple[np.ndarray, int]:
-    """:func:`decode_to_mono_16k` plus the source's sample rate.
-
-    The pass-1 tlog facts record the stored audio's own rate beside the 16 kHz duration,
-    so the decode returns both instead of dropping the rate. Decoding is soundfile's, as it
-    has always been: consumers such as ``nonpro_overlap.compare`` catch
-    ``soundfile.LibsndfileError`` to count a served HTML page as "not audio", so the tlog
-    pass's container fallback lives in :func:`decode_to_mono_16k_with_rate_and_decoder`.
-    """
-    return _decode_with_soundfile(refuse_sealed_bytes(raw_audio))
-
-
 def decode_to_mono_16k_with_rate_and_decoder(
         raw_audio: bytes) -> tuple[np.ndarray, int, str]:
-    """``decode_to_mono_16k_with_rate`` and which decoder read the bytes.
+    """16 kHz mono audio, its source sample rate, and which decoder read the bytes.
 
     ``soundfile``/libsndfile covers WAV, FLAC and the other native containers. When it refuses
     the container — tlog's unclean split ships MP4/AAC behind ``.wav`` paths — the pinned PyAV
@@ -103,16 +94,11 @@ def decoder_versions() -> dict[str, str | None]:
     PyAV is ``None`` when it is absent; the tlog pass refuses to run in that state
     (:func:`require_pyav`) rather than quietly counting MP4 rows as undecodable.
     """
-    from importlib.metadata import PackageNotFoundError, version
+    from .tlog_index import installed_versions  # lazy: tlog_index imports this module's peers
 
-    def installed(name: str) -> str | None:
-        try:
-            return version(name)
-        except PackageNotFoundError:
-            return None
-
-    return {"soundfile": installed("soundfile"), "libsndfile": sf.__libsndfile_version__,
-            "pyav": installed("av")}
+    versions = installed_versions(("soundfile", "av"))
+    return {"soundfile": versions["soundfile"], "libsndfile": sf.__libsndfile_version__,
+            "pyav": versions["av"]}
 
 
 def require_pyav() -> str:

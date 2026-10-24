@@ -20,6 +20,7 @@ import gzip
 import hashlib
 import io
 import json
+import re
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -658,6 +659,54 @@ def test_the_tracer_rule_is_two_clean_shards_and_one_unclean(tp):
     assert tuple(tlog_split(shard) for shard in chosen) == ("clean", "clean", "unclean")
 
 
+# --- the committed artifacts and the constants they imply ------------------------------------
+
+
+def test_the_corpus_constants_follow_the_committed_index_meta(tp):
+    """The S3b scale must move with #185's index instead of drifting as copied literals."""
+    index = json.loads(tp.INDEX_META_PATH.read_text(encoding="utf-8"))
+
+    assert tp.ROWS_BY_SPLIT == {split: index["counts"]["rows"][split]
+                                for split in tp.TLOG_SPLITS}
+    assert tp.TOTAL_ROWS == index["counts"]["rows"]["total"]
+    assert tp.TOTAL_SHARDS == len(tp.TLOG.shards) == sum(index["source"]["splits"].values())
+
+
+def test_the_decoder_and_vad_pins_match_the_training_requirements(tp):
+    requirements = (Path(tp.__file__).resolve().parents[1]
+                    / "requirements-train.txt").read_text(encoding="utf-8")
+    pins = dict(re.findall(r"^([A-Za-z0-9_-]+)(?:\[[^\]]*\])?==([^\s#]+)", requirements,
+                           flags=re.MULTILINE))
+
+    assert pins["av"] == tp.PYAV_PIN
+    assert pins["silero-vad"] == tp.SILERO_VAD_VERSION
+
+
+def test_the_committed_pass1_artifacts_agree_with_meta_and_the_floors(tp):
+    meta = json.loads((tp.PASS1_DIR / "meta.json").read_text(encoding="utf-8"))
+    assert meta["floors"] == {"path": "tools/tadabur/tlog/silence_floors.json",
+                              "sha256": tp.sha256_file(tp.FLOORS_PATH)}
+
+    counted = {}
+    for split in tp.TLOG_SPLITS:
+        rows = []
+        for path in sorted((tp.PASS1_DIR / split).glob("*.jsonl.gz")):
+            stem = path.name[: -len(".jsonl.gz")]
+            with gzip.open(path, "rt", encoding="utf-8") as handle:
+                content = [json.loads(line) for line in handle]
+            assert {row["shard_file"] for row in content} == {stem}
+            assert {row["split"] for row in content} == {split}
+            assert {row["schema_version"] for row in content} == {tp.ROW_SCHEMA_VERSION}
+            rows += content
+        counted[split] = len(rows)
+
+    assert counted == {split: meta["counts"]["rows"][split] for split in tp.TLOG_SPLITS}
+    assert meta["counts"]["rows"]["total"] == sum(counted.values())
+
+    floors = json.loads(tp.FLOORS_PATH.read_text(encoding="utf-8"))
+    assert floors["source"]["clips"] == floors["count"]
+
+
 # --- the provenance guard --------------------------------------------------------------------
 
 
@@ -710,18 +759,21 @@ def test_the_floors_command_stamps_the_commit_and_the_pull_request(tp, tmp_path,
      "PyAV is not installed"),
     (lambda: "99.0.0", "pinned container fallback"),
 ])
-def test_the_run_command_refuses_a_wrong_or_missing_pyav(
-        tp, tmp_path, monkeypatch, installed, match):
+@pytest.mark.parametrize("command", ["_floors_command", "_run_command"])
+def test_both_commands_refuse_a_wrong_or_missing_pyav(
+        tp, tmp_path, monkeypatch, installed, match, command):
     measured: list[tuple] = []
     monkeypatch.setattr(tp, "require_clean_tree", lambda: None)
     monkeypatch.setattr(tp, "require_pyav", installed)
     monkeypatch.setattr(tp, "run", lambda *args, **kwargs: measured.append(args))
-    args = SimpleNamespace(tracer=True, shards=None, out_dir=tmp_path / "pass1",
-                           cache_dir=tmp_path / "cache", floors=tmp_path / "floors.json",
-                           fp_dir=tmp_path / "fp", code_sha=None, pr=198)
+    monkeypatch.setattr(tp, "build_floors", lambda *args, **kwargs: measured.append(args))
+    args = SimpleNamespace(tracer=True, shards=[], out=tmp_path / "floors.json",
+                           out_dir=tmp_path / "pass1", cache_dir=tmp_path / "cache",
+                           floors=tmp_path / "floors.json", fp_dir=tmp_path / "fp",
+                           code_sha=None, pr=198)
 
     with pytest.raises(RuntimeError, match=match):
-        tp._run_command(args)
+        getattr(tp, command)(args)
     assert measured == []
 
 

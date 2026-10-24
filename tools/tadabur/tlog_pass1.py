@@ -51,7 +51,6 @@ takes the GPU lock::
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import time
@@ -70,7 +69,7 @@ from .nonpro_sources import (TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, audio_sha25
                              tlog_split)
 from .qud_fingerprint import fingerprint, save_fingerprints
 from .tarteel_split import SPLIT_PATH, load_split
-from .tlog_index import head_sha, require_clean_tree, write_shard
+from .tlog_index import head_sha, require_clean_tree, sha256_file, write_shard
 
 SCHEMA_VERSION = 1
 #: Rows gained ``decoder`` after the first tracer run, so a row is schema 2 while the floors and
@@ -106,9 +105,14 @@ PYAV_PIN = "18.1.0"
 #: The tracer rule, fixed before the run: clean shard indices 0 and 205, unclean 0.
 TRACER_CLEAN = (0, 205)
 TRACER_UNCLEAN = 0
-#: The corpus' committed size (#185's index): 411 clean + 332 unclean shards, 719,853 rows.
-TOTAL_SHARDS = 743
-ROWS_BY_SPLIT = {"clean": 398_490, "unclean": 321_363}
+#: The corpus' committed size, read from #185's index rather than copied: a re-pin of the index
+#: would otherwise silently skew every S3b number. ``len(TLOG.shards)`` is 411 + 332.
+INDEX_META_PATH = Path(__file__).parent / "tlog" / "index" / "meta.json"
+ROWS_BY_SPLIT = {
+    split: int(rows) for split, rows in
+    json.loads(INDEX_META_PATH.read_text(encoding="utf-8"))["counts"]["rows"].items()
+    if split in TLOG_SPLITS}
+TOTAL_SHARDS = len(TLOG.shards)
 TOTAL_ROWS = sum(ROWS_BY_SPLIT.values())
 #: The brief's corpus byte count (313 GiB), used to price downloads from the measured rate
 #: instead of assuming the three tracer shards are byte-representative.
@@ -407,10 +411,6 @@ def silero_speech_seconds() -> Callable[[np.ndarray], float]:
     return speech_seconds_of
 
 
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-
 def _repo_relative(path: Path) -> str:
     """``path`` inside the checkout as a repo-relative string; a file outside it unchanged."""
     try:
@@ -490,6 +490,8 @@ def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int) -> d
     download_hours = (TOTAL_AUDIO_BYTES / download_rate / 3600
                       if download_rate else None)
     wall_hours = cpu_hours + (download_hours or 0.0)
+    # Pooled over every tracer row, unlike the per-split CPU scaling above: rows without audio
+    # contribute 0 bytes and are still counted, so this is not a per-split weighted figure.
     store_bytes = (timings["fingerprint_bytes"] / rows * TOTAL_ROWS) if rows else 0
     within = (download_rate is not None and wall_hours <= WALL_ENVELOPE_HOURS
               and timings["peak_disk_bytes"] <= DISK_ENVELOPE_BYTES)
@@ -540,8 +542,17 @@ def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int) -> d
 # --- the commands ----------------------------------------------------------------------------
 
 
+def _require_pinned_pyav() -> None:
+    """The fallback's installed version must be the pin: a bump can move decoded samples."""
+    installed = require_pyav()
+    if installed != PYAV_PIN:
+        raise RuntimeError(
+            f"av {installed} is installed; the pinned container fallback is av=={PYAV_PIN}")
+
+
 def _floors_command(args) -> None:
     require_clean_tree()
+    _require_pinned_pyav()
     look_ids = set(load_split()["look"])
     floors = build_floors(args.shards, look_ids=look_ids, cache_dir=args.cache_dir,
                           speech_seconds_of=silero_speech_seconds())
@@ -555,10 +566,7 @@ def _floors_command(args) -> None:
 
 def _run_command(args) -> None:
     require_clean_tree()
-    installed = require_pyav()
-    if installed != PYAV_PIN:
-        raise RuntimeError(
-            f"av {installed} is installed; the pinned container fallback is av=={PYAV_PIN}")
+    _require_pinned_pyav()
     shards = tracer_shards() if args.tracer else args.shards
     meta = run(shards, out_dir=args.out_dir, cache_dir=args.cache_dir,
                floors_path=args.floors, speech_seconds_of=silero_speech_seconds(),

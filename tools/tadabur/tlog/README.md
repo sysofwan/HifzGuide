@@ -80,15 +80,30 @@ The speech is measured by Silero VAD `6.2.3` (ONNX, CPU), with the config record
 output commit.
 
 The tracer rule, fixed before the run: clean shard indices 0 and 205 (of 411) and unclean index
-0 (of 332). On cuda-dev, under the GPU lock, with the Hub token in the environment:
+0 (of 332). On cuda-dev, with the Hub token in the environment — **no GPU lock**: decode, VAD
+and fingerprinting are CPU-only, so taking `/root/scratch/gpu.lock` would block every GPU job
+for the length of the run:
 
 ```bash
-flock /root/scratch/gpu.lock python -m tadabur.tlog_pass1 floors \
-  --cache-dir /root/scratch/tlog/cache
-flock /root/scratch/gpu.lock python -m tadabur.tlog_pass1 run --tracer --pr 198 \
-  --cache-dir /root/scratch/tlog/cache
+python -m tadabur.tlog_pass1 floors --pr 198 --cache-dir /root/scratch/tlog/cache
+python -m tadabur.tlog_pass1 run --tracer --pr 198 --cache-dir /root/scratch/tlog/cache
 ```
+
+Both commands refuse a dirty checkout and a missing or unpinned PyAV, and `run` refuses a floors
+file whose VAD config differs. Rows are **schema 2** (`schema_version` in each row; `decoder`
+arrived in schema 2); `meta.json` and `silence_floors.json` are schema 1 and are extended
+additively.
+
+The committed rows were measured at `d2af0e3`; `f139f16` later narrowed the decoder's error path
+so resource failures abort instead of becoming a codec exclusion. That changed no recorded fact
+(the 268 `codec_ok: false` rows are all empty-byte audio, the 48 MP4/AAC rows still decode), and
+S3b will cite its own later `code_sha`. The floors were measured at `5e6d121`, **before the
+container fallback existed**, which is why all 4,537 look clips decoded with soundfile. The
+pre-registration SHA recorded in `s2/report.json` and `docs/tlog-speaker-clustering.md` was
+re-stamped for the dated `codec` amendment, not recomputed: the S2 decision and results are
+unchanged.
 
 The branch is squash-merged, so a `code_sha` it cites survives only under
 `refs/pull/<N>/head`; record the PR number beside any cited SHA. The offline tests, which need
-no network, GPU or Silero install, are `python -m pytest -q tools/tadabur/test_tlog_pass1.py`.
+no network, GPU or Silero install (PyAV is needed for the MP4/AAC fallback tests), are
+`python -m pytest -q tools/tadabur/test_tlog_pass1.py`.

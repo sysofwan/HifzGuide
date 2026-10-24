@@ -57,6 +57,17 @@ TARTEEL_V1 = Dataset(
     "tarteel_v1", "greentechapps/user_recited_verses_full",
     "eae2dbb47ac763fb2c0cad00c1699f4b58521987",
     tuple(f"data/train-{i:05d}-of-00008.parquet" for i in range(8)), "CC BY 4.0", True)
+#: tlog (#185): 720k amateur app clips, gated on the Hub (a token with accepted access reads it),
+#: metadata only — its audio is never copied into the repo. ``open`` is false because no per-clip
+#: output is committed until S9 decides the overlay's shape. The licence is the card's tag; the
+#: card has no licence text.
+TLOG = Dataset(
+    "tlog", "tarteel-ai/tlog", "9fe4f7e6d1b372c2c11157d6d2f0f91ca344eb51",
+    tuple(f"data/clean-{i:05d}-of-00411.parquet" for i in range(411))
+    + tuple(f"data/unclean-{i:05d}-of-00332.parquet" for i in range(332)),
+    "cc-by-4.0", False)
+#: tlog's splits, in shard order (:data:`TLOG` lists clean's 411 shards before unclean's 332).
+TLOG_SPLITS = ("clean", "unclean")
 RETASY = Dataset(
     "retasy", "RetaSy/quranic_audio_dataset", "b1fcc39cbc045f367bb07e39025a0e3aaeabf34f",
     tuple(f"data/train-{i:05d}-of-00003.parquet" for i in range(3)), "unknown", False)
@@ -69,6 +80,16 @@ QDAT_BENCH = Dataset(
 #: The corpora decoded, in report order (qdat_bench's clips are qdat's).
 DECODED = (TARTEEL_V1, RETASY, QDAT)
 DATASETS = {d.name: d for d in (*DECODED, QDAT_BENCH)}
+
+
+def tlog_split(shard: str) -> str:
+    """Which tlog split a shard's file name belongs to (:data:`TLOG_SPLITS`)."""
+    name = shard.rsplit("/", 1)[-1]
+    for split in TLOG_SPLITS:
+        if name.startswith(f"{split}-"):
+            return split
+    raise ValueError(f"not a tlog shard: {shard}")
+
 
 #: RetaSy's ``Surah`` names that are Quran, and their surah; ``Ayat al-Kursi`` is 2:255's words.
 RETASY_SURAHS = {

@@ -434,6 +434,22 @@ def _expected_identity(spec: RoundSpec, name: str,
     raise ValueError(f"{name}: no identity to bind its caches to; G6 cannot read it")
 
 
+def catch_required(models: Sequence[str], cache_dir: Path | None = None) -> tuple[Path, ...]:
+    """The cache files G6 reads for ``models``: each model's check cache, plus its decode cache
+    when the producer writes the sitting's committed stores. A missing one is named, never
+    silently treated as zero flags (#179, R1.6)."""
+    from training.truth_baseline import CHECK_STORE, DECODE_STORE
+
+    directory = Path(cache_dir) if cache_dir is not None else CHECK_STORE.directory
+    reading = directory == CHECK_STORE.directory
+    paths = []
+    for name in models:
+        paths.append(directory / f"{name}.json")
+        if reading:
+            paths.append(DECODE_STORE.path(name))
+    return tuple(paths)
+
+
 def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = None,
               cache_dir: Path | None = None, scope: Mapping | None = None,
               identities: Mapping[str, Mapping] | None = None) -> dict | None:
@@ -456,10 +472,7 @@ def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = N
     identities = identities or {}
     directory = Path(cache_dir) if cache_dir is not None else CHECK_STORE.directory
     reading_caches = directory == CHECK_STORE.directory
-    missing = [name for name in models
-               if not (directory / f"{name}.json").exists()
-               or (reading_caches and not DECODE_STORE.path(name).exists())]
-    if missing:
+    if any(not path.exists() for path in catch_required(models, cache_dir)):
         return None
     registry = load_staged_clips(REGISTRY_PATH)
     items = items_of(sites, registry)
@@ -652,6 +665,8 @@ class RoundData:
     #: The report-only mistake marks (#174); never G6's frozen denominator.
     report_only_catch: Mapping | None = None
     absent: tuple[str, ...] = ()
+    #: The cache files G6 needed and did not find, so "cannot certify" names them (R1.6).
+    catch_missing: tuple[str, ...] = ()
 
 
 ROUND_ROLES = (CANDIDATE, C95, H448, BASE)
@@ -772,6 +787,8 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
                       "recipe; #174 makes the control optional and non-gating"}}
     if data.absent:
         report["absent"] = list(data.absent)
+    if data.catch_missing:
+        report["missing_inputs"] = list(data.catch_missing)
     report["verdict"] = verdict(report, spec=spec)
     return report
 
@@ -804,6 +821,10 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
     scope = g6_scope()
     catch_identities = ({candidate: identities[candidate]}
                         if identities and candidate in identities else {})
+    catch = catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope,
+                      identities=catch_identities)
+    catch_missing = (() if catch is not None else tuple(
+        str(path) for path in catch_required((candidate, C95)) if not path.exists()))
     return RoundData(
         tarteel=read(TARTEEL_CONFIRM, lambda: sources.tarteel(CONFIRM, models)),
         qdat=read(QDAT_SET, lambda: sources.qdat(models)),
@@ -813,11 +834,11 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
             tadabur.clips, bind_round(tadabur.decodes, weights),
             bind_round(tadabur.blanks, weights), tadabur.redecoded_identical),
         bench=sources.bench() if "qdat" not in absent else {},
-        catch=catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope,
-                        identities=catch_identities),
+        catch=catch,
         report_only_catch=descriptive_catch((candidate, C95), spec=spec,
                                             identities=catch_identities),
-        absent=absent)
+        absent=absent,
+        catch_missing=catch_missing)
 
 
 #: The coverage table's order: the sets #174 names, the look half first and the two derived

@@ -128,8 +128,10 @@ COVERAGE_STATEMENT = (
     "every model and not a random additional subsample. In particular the QUD guard's pass "
     "describes the evaluated share of the frozen half, not the whole pre-registered half."
 )
-#: What ``look.json`` states of the control (#95, settled 2026-10-16).
+#: What ``look.json`` states of the control (#95, settled 2026-10-16) and of a round that ran
+#: none (#178).
 CONTROL_ON_LOOK = "the control was not decoded on the look half; the choice binds both arms"
+NO_CONTROL_ON_LOOK = "no control arm (#178); the choice binds the candidate only"
 
 
 # --- QUD: the salted half ---------------------------------------------------------------------
@@ -189,6 +191,18 @@ def choose(inputs: Mapping[str, dict]) -> str:
 CHOICE_RULE = ("the candidate's weights with fewer Tarteel v1 look-half false flags per 1,000 "
                "graded words (shipped default); a tie goes to higher word agreement with the "
                "teacher, then to live; both arms are read at the chosen weights")
+NO_CONTROL_CHOICE_RULE = (
+    "the candidate's weights with fewer Tarteel v1 look-half false flags per 1,000 graded words "
+    "(shipped default); a tie goes to higher word agreement with the teacher, then to live; no "
+    "control arm (#178): the choice binds the candidate only")
+
+
+def look_wording(spec: RoundSpec) -> tuple[str, str]:
+    """The look artifact's rule and control note: #95 binds both arms, a round with no control
+    (``consonant1``) says so (#179)."""
+    if CONTROL in spec.students:
+        return CHOICE_RULE, CONTROL_ON_LOOK
+    return NO_CONTROL_CHOICE_RULE, NO_CONTROL_ON_LOOK
 
 
 # --- the data -----------------------------------------------------------------------------------
@@ -259,8 +273,10 @@ class Sources:
 
             models = sorted({m for names in needs(phase, weights, self.spec).values()
                              for m in names})
+            # The confirm sitting binds G6 to these caches, so they are its declared inputs
+            # even when absent: the audit names what is missing (R1.6).
             caches = [store.path(m) for m in models for store in (CHECK_STORE, DECODE_STORE)
-                      if store.path(m).exists()]
+                      if phase == CONFIRM or store.path(m).exists()]
             return [*readout,
                     *(committed(d, m) for d in (TARTEEL_V1, QDAT) for m in BASELINES),
                     *(qud_committed(slug, m) for slug in PILOT for m in BASELINES),
@@ -468,9 +484,10 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
         inputs = look_inputs(data, workers)
         weights = choose(inputs)
         same_harness(sources, sitting)
+        rule, control = look_wording(spec)
         look_text = canonical({"issue": spec.issue, "half": LOOK, "items": len(data.items),
-                               "inputs": inputs, "rule": CHOICE_RULE, "choice": weights,
-                               "control": CONTROL_ON_LOOK, "identities": identities,
+                               "inputs": inputs, "rule": rule, "choice": weights,
+                               "control": control, "identities": identities,
                                "input_sha256": sitting["inputs"],
                                "harness": sitting["harness"]})
         write_text_atomically(layout.look, look_text)

@@ -314,6 +314,9 @@ def _render_consonant(look: Mapping, report: Mapping, coverage: Mapping | None,
     catch = report["catch"]["ship_a_verified"]
     if catch is None:
         out += ["No catch input (C95's and the candidate's caches): G6 cannot certify.", ""]
+        missing = report.get("missing_inputs")
+        if missing:
+            out += ["Missing: " + ", ".join(f"`{path}`" for path in missing), ""]
     else:
         out += [f"Ship A's held-out verified real mistakes at ط↔ق and س↔ش: {len(catch['sites'])} "
                 f"sites, words the app flags (checks, shipped default).", ""]

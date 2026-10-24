@@ -48,6 +48,9 @@ CHOICE=tools/tadabur/consonant_readout/choice.json
 LOOK=tools/tadabur/consonant_readout/look.json
 CLAIM=tools/tadabur/consonant_readout/look.claim.json
 DECODES=tools/tadabur/consonant_readout/decodes
+#: A candidate's confirm-half decode, by the committed file name: C95's baseline files
+#: (``qud_other.c95.jsonl.gz``) and the look decodes do not match.
+CONFIRM_DECODE_RE='/(tarteel_v1\.confirm|qdat|qud_other|qud_half|tadabur_dev_unseen)\.(candidate_live|candidate_ema)\.jsonl\.gz$'
 
 activate() {
   # shellcheck source=/dev/null
@@ -82,7 +85,7 @@ stage_repo() {
   repo_root=$(git -C "$repo_root" rev-parse --show-toplevel)
   branch=$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)
   sha=$(git -C "$repo_root" rev-parse HEAD)
-  ssh "$HOST" "mkdir -p '$ROOT' && rm -rf '$ROOT/repo' '$ROOT/repo.bundle'"
+  ssh "$HOST" "mkdir -p '$ROOT/logs' && rm -rf '$ROOT/repo' '$ROOT/repo.bundle'"
   bundle_repo "$repo_root" - | ssh "$HOST" "cat > '$ROOT/repo.bundle'"
   if [ "$branch" = HEAD ]; then
     ssh "$HOST" "git clone -q '$ROOT/repo.bundle' '$ROOT/repo'"
@@ -280,19 +283,36 @@ require_no_choice() {  # the look half is read once
   fi
 }
 
+confirm_decodes_at() {  # <repo_root> <rev>
+  git -C "$1" ls-tree -r --name-only "$2" -- "$DECODES" | grep -Eq "$CONFIRM_DECODE_RE"
+}
+
 require_committed_choice() {  # the two-phase order: choice before any confirm decode
-  local repo_root=$1 path
+  local repo_root=$1 path choice_commit commit
   for path in "$CHOICE" "$LOOK" "$CLAIM"; do
     if ! git -C "$repo_root" cat-file -e "HEAD:$path" 2>/dev/null; then
       echo "confirm refuses: $path is not committed at HEAD" >&2
       return 1
     fi
   done
-  if git -C "$repo_root" ls-tree -r --name-only HEAD -- "$DECODES" \
-      | grep -Eq '\.(tarteel_v1\.confirm|qdat|qud_other|qud_half|tadabur_dev_unseen)\.'; then
-    echo "confirm refuses: a confirm decode is already committed" >&2
+  if confirm_decodes_at "$repo_root" HEAD; then
+    echo "confirm refuses: a candidate confirm decode is already committed" >&2
     return 1
   fi
+  choice_commit=$(git -C "$repo_root" log -1 --format=%H -- "$CHOICE")
+  # A decode committed before the choice, or with it, is an earlier read even if a later commit
+  # deleted the file: the choice commit must be an ancestor of every such commit.
+  while IFS= read -r commit; do
+    [ -n "$commit" ] || continue
+    if confirm_decodes_at "$repo_root" "$commit"; then
+      if [ "$commit" = "$choice_commit" ] \
+          || ! git -C "$repo_root" merge-base --is-ancestor "$choice_commit" "$commit"; then
+        echo "confirm refuses: a candidate confirm decode at $commit is not after the choice" \
+             "($choice_commit)" >&2
+        return 1
+      fi
+    fi
+  done < <(git -C "$repo_root" log --all --format=%H -- "$DECODES")
 }
 
 launch() {

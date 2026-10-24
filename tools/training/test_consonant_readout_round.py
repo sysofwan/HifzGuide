@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -214,6 +215,13 @@ def test_the_look_sitting_writes_the_round_s_choice(tmp_path):
     assert look["input_sha256"] == ag.digests(sources.input_files(LOOK, None))
     assert choice["look_inputs_sha256"] == ag.sha256_bytes(
         ag.canonical(look["input_sha256"]).encode("utf-8"))
+    # The round ran no control: the artifact says so instead of borrowing #95's wording.
+    assert "no control arm" in look["rule"] and "no control arm" in look["control"]
+    assert "both arms" not in look["rule"] + look["control"]
+
+
+def test_95_s_look_wording_is_unchanged():
+    assert ar.look_wording(asp.AUG95) == (ar.CHOICE_RULE, ar.CONTROL_ON_LOOK)
 
 
 # --- the decode run -----------------------------------------------------------------------------
@@ -398,3 +406,104 @@ def test_the_launcher_bundles_a_detached_head(tmp_path):
     head = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], check=True,
                           capture_output=True, text=True).stdout.strip()
     assert head == sha
+
+
+def _choice_repo(tmp_path):
+    """A repo with the round's committed choice files and an empty decodes directory."""
+    repo = tmp_path / "repo"
+    decodes = repo / "tools" / "tadabur" / "consonant_readout" / "decodes"
+    decodes.mkdir(parents=True)
+    _git(repo, "init", "-q")
+    for name in ("choice.json", "look.json", "look.claim.json"):
+        (repo / "tools" / "tadabur" / "consonant_readout" / name).write_text(
+            "{}", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "the choice")
+    return repo, decodes
+
+
+def _require_choice(repo):
+    return subprocess.run(["bash", "-c", 'source "$1"; require_committed_choice "$2"',
+                           "_", str(LAUNCHER), str(repo)], capture_output=True, text=True)
+
+
+def test_a_fresh_launch_reaches_the_runner(tmp_path):
+    """R1.2: the launch redirect has a log directory before it starts the runner."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "README").write_text("x", encoding="utf-8")
+    _git(repo, "add", "README")
+    _git(repo, "commit", "-qm", "init")
+    root = tmp_path / "box"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    flock = bin_dir / "flock"
+    flock.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    flock.chmod(0o755)
+    script = ('ssh() { shift; bash -c "$*"; }\n'
+              'export -f ssh\n'
+              'source "$1"\n'
+              'HOST=local ROOT="$2" launch look\n')
+    launched = subprocess.run(["bash", "-c", script, "_", str(LAUNCHER), str(root)],
+                              cwd=repo, capture_output=True, text=True,
+                              env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"})
+    assert launched.returncode == 0, launched.stderr
+    assert (root / "logs" / "run.out").exists()
+
+
+def test_the_confirm_guard_refuses_every_candidate_confirm_decode(tmp_path):
+    """R1.4: the real set-first filenames, either selector, every gated set."""
+    sets = ("tarteel_v1.confirm", "qdat", "qud_other", "qud_half", "tadabur_dev_unseen")
+    for selector in ("candidate_live", "candidate_ema"):
+        for name in sets:
+            repo, decodes = _choice_repo(tmp_path / selector / name)
+            (decodes / f"{name}.{selector}.jsonl.gz").write_bytes(b"")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-qm", "a confirm decode")
+            refused = _require_choice(repo)
+            assert refused.returncode != 0, f"{name}.{selector} was accepted"
+            assert "confirm refuses" in refused.stderr
+
+
+def test_the_confirm_guard_allows_c95_and_look_decodes(tmp_path):
+    repo, decodes = _choice_repo(tmp_path)
+    (decodes / "qud_other.c95.jsonl.gz").write_bytes(b"")
+    (decodes / "tarteel_v1.look.candidate_ema.jsonl.gz").write_bytes(b"")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "C95's baseline and the look decode")
+    assert _require_choice(repo).returncode == 0
+
+
+def test_the_confirm_guard_remembers_a_deleted_earlier_decode(tmp_path):
+    """R1.4: deleting an early decode never erases the chronology."""
+    repo = tmp_path / "repo"
+    decodes = repo / "tools" / "tadabur" / "consonant_readout" / "decodes"
+    decodes.mkdir(parents=True)
+    _git(repo, "init", "-q")
+    decoded = decodes / "qdat.candidate_ema.jsonl.gz"
+    decoded.write_bytes(b"")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "a decode first")
+    for name in ("choice.json", "look.json", "look.claim.json"):
+        (repo / "tools" / "tadabur" / "consonant_readout" / name).write_text(
+            "{}", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "the choice after it")
+    decoded.unlink()
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "remove the decode")
+    refused = _require_choice(repo)
+    assert refused.returncode != 0 and "confirm refuses" in refused.stderr
+
+
+def test_the_confirm_guard_allows_a_deleted_decode_after_the_choice(tmp_path):
+    repo, decodes = _choice_repo(tmp_path)
+    decoded = decodes / "qdat.candidate_ema.jsonl.gz"
+    decoded.write_bytes(b"")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "the confirm decode")
+    decoded.unlink()
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "remove it")
+    assert _require_choice(repo).returncode == 0

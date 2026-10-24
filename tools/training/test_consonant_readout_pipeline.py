@@ -504,6 +504,24 @@ def test_the_catch_arm_binds_the_candidate_s_cache_to_the_sitting_s_identity(tmp
                      identities={"candidate_ema": identity})
 
 
+def test_the_catch_arm_declares_both_cache_files(tmp_path):
+    """R1.6: the required files are named even when absent."""
+    assert cr.catch_required(("candidate_ema",), cache_dir=tmp_path) == (
+        tmp_path / "candidate_ema.json",)
+    assert set(cr.catch_required(("candidate_ema",))) == {
+        tb.CHECK_STORE.path("candidate_ema"), tb.DECODE_STORE.path("candidate_ema")}
+
+
+def test_a_missing_catch_cache_is_named_in_the_report_and_doc(tmp_path):
+    missing = str(tmp_path / "candidate_ema.json")
+    data = cr.RoundData(tarteel=None, qdat=None, qud_other=None, qud_half=None,
+                        tadabur=None, bench={}, catch=None, catch_missing=(missing,))
+    report = cr.confirm_report(data, spec=asp.CONSONANT1)
+    assert report["missing_inputs"] == [missing]
+    text = adoc.render(_look(), report, _round_coverage(), spec=asp.CONSONANT1)
+    assert missing in text and "G6 cannot certify" in text
+
+
 def test_the_confirm_sitting_reads_the_frozen_g6_sites_and_refuses_drift(monkeypatch):
     frozen = cr.load_g6_sites()
     assert [site.site_id for site in cr.g6_scope()["sites"]] == frozen

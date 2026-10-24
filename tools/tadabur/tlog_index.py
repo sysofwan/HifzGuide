@@ -9,7 +9,7 @@ column of each shard and commits, beside it, the metadata every later slice keys
     ``filename_label``, ``recording_id``, ``id_group``, ``tarteel_v1_eval_overlap`` and
     ``tarteel_v1_any_overlap``. Keys sorted, ``mtime`` 0, written atomically, so a rerun with the
     same code SHA on the **build interpreter** reproduces every byte. gzip's header carries an
-    OS byte (index 9) that the zlib binding writes per platform: cuda-dev's Python 3.11 wrote
+    OS byte (index 9) that the zlib binding writes per platform: cuda-dev's Python 3.12.3 wrote
     ``0x03`` into the committed files, and a macOS Python 3.13 writes ``0xff`` with the payload
     otherwise identical. A rerun elsewhere therefore changes that one byte in all 743 files.
 ``tools/tadabur/tlog/index/meta.json``

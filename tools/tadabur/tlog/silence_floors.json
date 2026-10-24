@@ -1,0 +1,39 @@
+{
+ "code_sha": "5e6d12125319b45e4345391faf2504ff7f80654d",
+ "count": 4537,
+ "d_s": 1.756378,
+ "f_s": 0.392731,
+ "look_split": {
+  "path": "tools/tadabur/nonpro_eval/tarteel_v1/split.json",
+  "sha256": "5979ead86bf9e3abf01c5e3ee88158e4843603389ca65ebc628a7868d6fc283c"
+ },
+ "percentile": {
+  "method": "type-7",
+  "q": 0.005
+ },
+ "pull_request": 198,
+ "pull_request_ref": "refs/pull/198/head",
+ "run": {
+  "download_bytes": 10399568954,
+  "download_seconds": 115.273,
+  "peak_disk_bytes": 2547396142,
+  "shards": 8
+ },
+ "schema_version": 1,
+ "source": {
+  "clips": 4537,
+  "dataset": "tarteel_v1",
+  "decodes_sha256": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770",
+  "split": "look"
+ },
+ "vad": {
+  "backend": "onnx-cpu",
+  "min_silence_duration_ms": 100,
+  "min_speech_duration_ms": 250,
+  "model": "silero-vad",
+  "sample_rate": 16000,
+  "speech_pad_ms": 30,
+  "threshold": 0.5,
+  "version": "6.2.3"
+ }
+}

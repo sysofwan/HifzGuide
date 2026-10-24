@@ -237,19 +237,25 @@ def _identity(shard: int, row_index: int, row: dict) -> dict:
     }
 
 
-def remove_shard_blob(path: str) -> None:
-    """Best-effort delete of a downloaded shard, following the HF cache symlink to its blob.
+def remove_shard_blob(path: str, *, strict: bool = False) -> None:
+    """Delete a downloaded shard, following the HF cache symlink to its blob.
 
     ``hf_hub_download`` returns a ``snapshots/`` symlink into a content-addressed
     ``blobs/`` file; unlinking only the symlink would leave the 2.4 GB blob on disk, so we
-    remove the resolved target too. Failures are swallowed — freeing disk is an
-    optimization, not a correctness requirement.
+    remove the resolved target too. Failures are swallowed by default — freeing disk is an
+    optimization for most readers. ``strict`` is for a caller whose disk budget is a
+    correctness requirement: it re-raises the deletion error, and also raises if either the
+    link or the blob survives a call that reported no error.
     """
+    real = os.path.realpath(path)
     try:
-        real = os.path.realpath(path)
         if os.path.islink(path):
             os.unlink(path)
         if os.path.exists(real):
             os.remove(real)
     except OSError:
-        pass
+        if strict:
+            raise
+        return
+    if strict and (os.path.lexists(path) or os.path.exists(real)):
+        raise OSError(f"{path} or its blob {real} still exists after cleanup")

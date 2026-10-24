@@ -2,7 +2,7 @@
  "issue": 186,
  "preregistration": {
   "path": "docs/tlog-holdout-preregistration.md",
-  "sha256": "85ee88878fe1b5862795b39fa46b4ce10711a6329cd22c06d76d55db91e5d680"
+  "sha256": "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
  },
  "tarteel_look": {
   "path": "tools/tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz",

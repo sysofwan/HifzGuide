@@ -71,6 +71,14 @@ SHA-256 of the stored audio bytes). No tlog audio is ever committed or published
     exclude the others.
   - Within one role, keep the copy with the smallest `audio_path`.
 - `codec`: the audio does not decode, or its duration is 0.
+  - Amended 2026-10-24 (S3a, pre-outcome): "decodes" means **soundfile, or the pinned PyAV
+    fallback** (`av`, pinned in `tools/requirements-train.txt` and recorded in
+    `pass1/meta.json`; its wheel bundles ffmpeg), which S3a's pass 1 uses only when soundfile
+    refuses the container. The unclean split carries MP4/AAC bytes behind `.wav` paths (48 of
+    the tracer's 465 unclean-0 rows) next to 268 zero-byte rows; the zero-byte rows stay
+    `codec_ok = false`, and only container support was added. No tlog outcome had been read
+    when this was written, so it is not outcome-informed. The floors are unaffected: all 4,537
+    Tarteel v1 look clips decoded with soundfile, so `silence_floors.json` needed no rerun.
 - `silence`: speech ratio below f_s, or speech seconds below d_s.
   - Speech is measured by Silero VAD, pinned in S3a.
   - f_s and d_s are the 0.5th percentiles over Tarteel v1 look clips, computed and committed in S3a,

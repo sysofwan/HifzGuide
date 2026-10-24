@@ -95,7 +95,7 @@ from .dataset_source import canonical_surah_ayah
 from training.counterfactual_eval import wilson_interval
 
 from .qud_fingerprint import BANDS, FRAME_S, HIGH_HZ, HOP_S, LOW_HZ, MIN_OVERLAP
-from .qud_fingerprint import best_match, fingerprint
+from .qud_fingerprint import best_match, fingerprint, load_fingerprints, save_fingerprints
 from .qud_selection import QUD_DIR, SELECTION_PATH, SOURCES_PATH
 from .qud_source import QUD_DATASET, QudRow, mp3_sha256, mushaf_metadata, parquet_table
 from .qud_text import Unmapped, map_words
@@ -514,15 +514,6 @@ def pilot_fingerprints(slug: str, shards: Sequence[str], cache_dir: Path) -> dic
 
     return {row.surah_ayah: (mp3_sha256(row.mp3), fingerprint(decode_ayah(row)))
             for row in iter_mushaf_rows(slug, shards, cache_dir)}
-
-
-def save_fingerprints(path: Path, prints: Mapping[str, tuple[str, np.ndarray]]) -> None:
-    np.savez_compressed(path, **{f"{key}|{sha}": fp for key, (sha, fp) in prints.items()})
-
-
-def load_fingerprints(path: Path) -> dict[str, np.ndarray]:
-    with np.load(path) as data:
-        return {name.split("|")[0]: data[name] for name in data.files}
 
 
 #: Each stage-2 worker's pilot fingerprints, by mushaf and ayah (set by :func:`_init_worker`).

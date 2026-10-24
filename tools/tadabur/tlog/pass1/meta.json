@@ -1,0 +1,91 @@
+{
+ "code_sha": "d2af0e3abefee2f331c731e435755ffbf422604d",
+ "counts": {
+  "rows": {
+   "clean": 1940,
+   "total": 2405,
+   "unclean": 465
+  }
+ },
+ "decoders": {
+  "libsndfile": "1.2.2",
+  "pyav": "18.1.0",
+  "soundfile": "0.14.0"
+ },
+ "embeddings": "none (owner fallback 2026-10-24, #187)",
+ "floors": {
+  "path": "tools/tadabur/tlog/silence_floors.json",
+  "sha256": "11a50d7d9d59c76aaf1eb5a6e41471efdc3db5a239ad5704c695510843bf4599"
+ },
+ "pull_request": 198,
+ "pull_request_ref": "refs/pull/198/head",
+ "schema_version": 1,
+ "source": {
+  "licence": "cc-by-4.0",
+  "repo": "tarteel-ai/tlog",
+  "revision": "9fe4f7e6d1b372c2c11157d6d2f0f91ca344eb51",
+  "splits": {
+   "clean": 411,
+   "unclean": 332
+  }
+ },
+ "throughput": {
+  "decode_seconds": 27.436,
+  "download_bytes": 683525446,
+  "download_mb_s": 61.676,
+  "download_seconds": 11.083,
+  "extrapolated": {
+   "cpu_hours": 15.874,
+   "download_hours": 1.514,
+   "download_priced": true,
+   "envelope": {
+    "gpu_hours_max": 3.0,
+    "peak_disk_bytes_max": 5000000000,
+    "wall_hours_max": 8.0
+   },
+   "gpu_hours": 0.0,
+   "peak_disk_bytes": 462019856,
+   "rows": 719853,
+   "rows_by_split": {
+    "clean": 398490,
+    "unclean": 321363
+   },
+   "shards": 743,
+   "wall_hours": 17.388,
+   "within_owner_envelope": false
+  },
+  "fingerprint_seconds": 79.596,
+  "fingerprint_store_bytes": 1648589382,
+  "gpu_note": "VAD and fingerprint are CPU (owner decision 2026-10-24)",
+  "gpu_seconds_per_1000_rows": 0.0,
+  "peak_disk_bytes": 462019856,
+  "rows": 2405,
+  "rows_by_split": {
+   "clean": 1940,
+   "unclean": 465
+  },
+  "rows_per_s": {
+   "decode": 87.658,
+   "fingerprint": 26.848,
+   "vad": 14.586
+  },
+  "shards_measured": 3,
+  "stage_rows": {
+   "decode": 2405,
+   "fingerprint": 2137,
+   "vad": 2137
+  },
+  "vad_seconds": 146.507,
+  "workers": 1
+ },
+ "vad": {
+  "backend": "onnx-cpu",
+  "min_silence_duration_ms": 100,
+  "min_speech_duration_ms": 250,
+  "model": "silero-vad",
+  "sample_rate": 16000,
+  "speech_pad_ms": 30,
+  "threshold": 0.5,
+  "version": "6.2.3"
+ }
+}

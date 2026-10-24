@@ -57,3 +57,53 @@ python -m tadabur.tlog_s2 sample                 # redraw the sample (same bytes
 python -m tadabur.tlog_s2 embed --out-dir DIR    # on cuda-dev: pin and embed, GPU
 python -m tadabur.tlog_s2 report --embeddings-dir DIR
 ```
+
+## The pass-1 facts and the silence floors (#187)
+
+`pass1/` is what `tadabur.tlog_pass1` commits about the tracer shards:
+`pass1/<split>/<shard>.jsonl.gz` carries, per row, `split`, `shard_file`, `row`, `audio_path`,
+`audio_sha256`, `codec_ok`, `sample_rate`, `duration_s`, `speech_s`, `speech_ratio` and
+`decoder` (`soundfile` or `pyav`, the two decoders pass 1 tries in that order), and
+`pass1/meta.json` records the code SHA, the VAD config, the installed decoder versions, the
+floors' SHA-256, the counts and the measured throughput. Nothing else is computed: no label,
+transcript, teacher/student output or speaker embedding (the owner accepted the clip-level
+fallback on 2026-10-24, so `"embeddings"` records it). The Haitsma–Kalker fingerprint goes to
+cuda-dev scratch (`/root/scratch/tlog/fp/`) and is never committed; each tlog shard is
+downloaded, read and deleted.
+
+`silence_floors.json` is the pre-registration's Exclusions floor: `f_s` and `d_s` are the
+type-7 0.5th percentiles of `speech_ratio` and `speech_s` over the Tarteel v1 look clips that
+decode. `build_floors` refuses a run that does not yield every id in the frozen look split, and
+the record hashes both `split.json` (the id set) and the decodes (the population's provenance).
+The speech is measured by Silero VAD `6.2.3` (ONNX, CPU), with the config recorded in the file;
+`run` refuses to start when its config differs. The floors commit must land before any pass-1
+output commit.
+
+The tracer rule, fixed before the run: clean shard indices 0 and 205 (of 411) and unclean index
+0 (of 332). On cuda-dev, with the Hub token in the environment — **no GPU lock**: decode, VAD
+and fingerprinting are CPU-only, so taking `/root/scratch/gpu.lock` would block every GPU job
+for the length of the run:
+
+```bash
+python -m tadabur.tlog_pass1 floors --pr 198 --cache-dir /root/scratch/tlog/cache
+python -m tadabur.tlog_pass1 run --tracer --pr 198 --cache-dir /root/scratch/tlog/cache
+```
+
+Both commands refuse a dirty checkout and a missing or unpinned PyAV, and `run` refuses a floors
+file whose VAD config differs. Rows are **schema 2** (`schema_version` in each row; `decoder`
+arrived in schema 2); `meta.json` and `silence_floors.json` are schema 1 and are extended
+additively.
+
+The committed rows were measured at `d2af0e3`; `f139f16` later narrowed the decoder's error path
+so resource failures abort instead of becoming a codec exclusion. That changed no recorded fact
+(the 268 `codec_ok: false` rows are all empty-byte audio, the 48 MP4/AAC rows still decode), and
+S3b will cite its own later `code_sha`. The floors were measured at `5e6d121`, **before the
+container fallback existed**, which is why all 4,537 look clips decoded with soundfile. The
+pre-registration SHA recorded in `s2/report.json` and `docs/tlog-speaker-clustering.md` was
+re-stamped for the dated `codec` amendment, not recomputed: the S2 decision and results are
+unchanged.
+
+The branch is squash-merged, so a `code_sha` it cites survives only under
+`refs/pull/<N>/head`; record the PR number beside any cited SHA. The offline tests, which need
+no network, GPU or Silero install (PyAV is needed for the MP4/AAC fallback tests), are
+`python -m pytest -q tools/tadabur/test_tlog_pass1.py`.

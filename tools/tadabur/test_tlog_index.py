@@ -281,7 +281,7 @@ from tadabur.nonpro_sources import Dataset
 PREREGISTRATION_PATH = (
     Path(ti.__file__).resolve().parents[2] / "docs" / "tlog-holdout-preregistration.md")
 #: SHA-256 of the committed text, the owner-approved hold-out of 2026-10-24.
-PREREGISTRATION_SHA256 = "85ee88878fe1b5862795b39fa46b4ce10711a6329cd22c06d76d55db91e5d680"
+PREREGISTRATION_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
 
 
 def test_the_tlog_preregistration_is_the_pinned_document():

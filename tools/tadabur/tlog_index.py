@@ -239,6 +239,43 @@ def head_sha(repo: Path = Path(__file__).resolve().parents[2]) -> str:
                           capture_output=True, text=True).stdout.strip()
 
 
+def sha256_file(path: Path) -> str:
+    """The SHA-256 of a file's bytes — the one definition every tlog writer cites."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def installed_versions(names: Iterable[str]) -> dict[str, str | None]:
+    """The installed versions of ``names``, ``None`` where a package is absent.
+
+    Shared by the index/S2 metadata and the pass-1 ``decoders`` record, so one provenance
+    idiom reports what ran instead of three.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
+    found: dict[str, str | None] = {}
+    for name in names:
+        try:
+            found[name] = version(name)
+        except PackageNotFoundError:
+            found[name] = None
+    return found
+
+
+def require_clean_tree(repo: Path = Path(__file__).resolve().parents[2]) -> None:
+    """Refuse a checkout with uncommitted or untracked changes.
+
+    The committed metadata cites the commit the measurement ran from; a dirty tree would make
+    that provenance a lie, so the measuring commands check this before they download anything.
+    """
+    status = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
+                            capture_output=True, text=True)
+    if status.returncode != 0:
+        raise RuntimeError(f"{repo} is not a readable git checkout: {status.stderr.strip()}")
+    if status.stdout:
+        raise RuntimeError("the checkout is dirty; commit or remove these paths first:\n"
+                           + status.stdout)
+
+
 # --- the build -------------------------------------------------------------------------------
 
 

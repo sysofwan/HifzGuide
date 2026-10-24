@@ -20,7 +20,9 @@ controls (:mod:`tadabur.qud_overlap`).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -62,6 +64,17 @@ def fingerprint(samples: np.ndarray) -> np.ndarray:
     across = energy[:, :-1] - energy[:, 1:]
     bits = (across[1:] - across[:-1]) > 0  # (frames - 1, BANDS)
     return (bits.astype(np.uint64) @ _WEIGHTS).astype(np.uint32)
+
+
+def save_fingerprints(path: Path, prints: Mapping[str, tuple[str, np.ndarray]]) -> None:
+    """Write ``clip -> (sha256, fingerprint)`` as one ``clip|sha256`` npz member each."""
+    np.savez_compressed(path, **{f"{key}|{sha}": fp for key, (sha, fp) in prints.items()})
+
+
+def load_fingerprints(path: Path) -> dict[str, np.ndarray]:
+    """The fingerprints :func:`save_fingerprints` wrote, keyed by clip id again."""
+    with np.load(path) as data:
+        return {name.split("|")[0]: data[name] for name in data.files}
 
 
 @dataclass(frozen=True)

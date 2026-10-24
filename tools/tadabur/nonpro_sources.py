@@ -243,9 +243,11 @@ def select(dataset: Dataset, record: dict) -> Clip | LeftOut:
 
 
 def iter_rows(dataset: Dataset, shard: str, cache_dir: Path,
-              batch_rows: int = 64) -> Iterator[dict]:
+              batch_rows: int = 64, *, on_download: Callable[[str], None] | None = None
+              ) -> Iterator[dict]:
     """A shard's rows with their audio, downloaded into ``cache_dir`` at the dataset's revision;
-    its cached blob is deleted once read."""
+    its cached blob is deleted once read. ``on_download`` is called with the cached path as soon
+    as the download finishes, so a caller can time or size it without downloading twice."""
     import pyarrow.parquet as pq
     from huggingface_hub import hf_hub_download
 
@@ -253,6 +255,8 @@ def iter_rows(dataset: Dataset, shard: str, cache_dir: Path,
 
     path = hf_hub_download(dataset.repo, shard, repo_type="dataset", revision=dataset.revision,
                            cache_dir=str(cache_dir))
+    if on_download is not None:
+        on_download(path)
     try:
         for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_rows):
             yield from batch.to_pylist()

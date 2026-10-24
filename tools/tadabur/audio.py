@@ -48,6 +48,15 @@ def decode_to_mono_16k(raw_audio: bytes) -> np.ndarray:
     ``TARGET_SAMPLE_RATE`` only when the source rate differs, so already-16 kHz mono
     clips pass through unresampled.
     """
+    return decode_to_mono_16k_with_rate(raw_audio)[0]
+
+
+def decode_to_mono_16k_with_rate(raw_audio: bytes) -> tuple[np.ndarray, int]:
+    """:func:`decode_to_mono_16k` plus the source's sample rate.
+
+    The pass-1 tlog facts record the stored audio's own rate beside the 16 kHz duration,
+    so the decode returns both instead of dropping the rate.
+    """
     waveform, sample_rate = sf.read(io.BytesIO(refuse_sealed_bytes(raw_audio)), dtype="float32")
     if waveform.ndim > 1:
         waveform = waveform.mean(axis=1)
@@ -55,4 +64,4 @@ def decode_to_mono_16k(raw_audio: bytes) -> np.ndarray:
         waveform = librosa.resample(
             waveform, orig_sr=sample_rate, target_sr=TARGET_SAMPLE_RATE
         )
-    return np.ascontiguousarray(waveform, dtype=np.float32)
+    return np.ascontiguousarray(waveform, dtype=np.float32), sample_rate

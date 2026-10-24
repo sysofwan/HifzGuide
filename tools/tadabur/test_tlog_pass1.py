@@ -258,6 +258,70 @@ def test_shard_rows_deletes_the_shard_when_the_reader_stops_early(tp, tmp_path, 
 # --- the committed output --------------------------------------------------------------------
 
 
+def test_shard_rows_projects_only_the_audio_column(tp, tmp_path, monkeypatch):
+    import huggingface_hub
+
+    parquet = tmp_path / "cached.parquet"
+    table = pa.table({
+        "audio": pa.array([{"path": "a.flac", "bytes": b"stored"}],
+                          type=pa.struct([("path", pa.string()), ("bytes", pa.binary())])),
+        "label": pa.array(["an outcome the pass must never read"]),
+        "is_clean": pa.array([True]),
+    })
+    pq.write_table(table, parquet)
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download",
+                        lambda repo, filename, **kwargs: str(parquet))
+    requested: list[list[str] | None] = []
+    original = pq.ParquetFile.iter_batches
+
+    def tracked(self, *args, **kwargs):
+        requested.append(kwargs.get("columns"))
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(pq.ParquetFile, "iter_batches", tracked)
+
+    rows = list(tp.shard_rows(CLEAN_SHARD, tmp_path / "cache"))
+
+    assert requested == [("audio",)]
+    assert [list(row) for row in rows] == [["audio"]]
+
+
+def test_a_failed_delete_aborts_before_the_next_download(tp, tmp_path, monkeypatch):
+    import os
+
+    import huggingface_hub
+
+    first, second = TLOG.shards[0], TLOG.shards[1]
+    table = pa.table({"audio": pa.array(
+        [{"path": "a.flac", "bytes": b"stored"}],
+        type=pa.struct([("path", pa.string()), ("bytes", pa.binary())]))})
+    cached = {}
+    for shard in (first, second):
+        path = tmp_path / f"{Path(shard).stem}.parquet"
+        pq.write_table(table, path)
+        cached[shard] = path
+    downloaded: list[str] = []
+
+    def fake_download(repo, filename, **kwargs):
+        downloaded.append(filename)
+        return str(cached[filename])
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_download)
+    monkeypatch.setattr(os, "remove",
+                        lambda path: (_ for _ in ()).throw(PermissionError("denied")))
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+
+    with pytest.raises(PermissionError):
+        tp.run([first, second], out_dir=tmp_path / "pass1", cache_dir=tmp_path / "cache",
+               floors_path=floors, speech_seconds_of=lambda waveform: 0.0,
+               code_sha="0" * 40)
+
+    assert downloaded == [first]  # the second shard is never fetched
+    assert cached[first].exists()
+    assert not (tmp_path / "pass1" / "meta.json").exists()
+
+
 def test_a_pass1_file_written_twice_is_the_same_bytes(tp, tmp_path):
     rows = tp.process_shard(UNCLEAN_SHARD, tmp_path / "cache",
                             speech_seconds_of=lambda waveform: 0.1,
@@ -340,6 +404,39 @@ def test_throughput_counts_each_stage_by_its_own_rows(tp, tmp_path):
     # Decode runs on every row; VAD and the fingerprint only on the decodable one.
     assert meta["throughput"]["stage_rows"] == {"decode": 2, "vad": 1, "fingerprint": 1}
     assert all(rate is not None for rate in meta["throughput"]["rows_per_s"].values())
+
+
+def test_extrapolation_scales_each_split_to_its_own_rows(tp):
+    timings = tp._timings()
+    by_split = {split: tp._timings() for split in tp.TLOG_SPLITS}
+    # The tracer's real shard populations, at a constant 45 ms decode cost per row.
+    for split, rows in (("clean", 970), ("unclean", 465)):
+        by_split[split]["rows"] = rows
+        by_split[split]["decode_seconds"] = 0.045 * rows
+        timings["rows"] += rows
+        timings["decode_seconds"] += 0.045 * rows
+
+    throughput = tp._throughput(timings, by_split, 3)
+    extrapolated = throughput["extrapolated"]
+
+    # 0.045 s x 719,853 rows, not 0.045 s x 2,405 rows x 743 / 3 shards.
+    assert extrapolated["cpu_hours"] == 8.998
+    assert extrapolated["wall_hours"] == 8.998
+    assert extrapolated["download_priced"] is False
+    assert extrapolated["within_owner_envelope"] is False
+
+
+def test_meta_records_the_pull_request_that_keeps_the_sha(tp, tmp_path):
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+
+    meta = tp.run([CLEAN_SHARD], out_dir=tmp_path / "pass1", cache_dir=tmp_path / "cache",
+                  floors_path=floors, speech_seconds_of=lambda waveform: 0.0,
+                  stream=fake_stream([]), code_sha="a" * 40, pull_request=198)
+
+    assert meta["code_sha"] == "a" * 40
+    assert meta["pull_request"] == 198
+    assert meta["pull_request_ref"] == "refs/pull/198/head"
 
 
 def test_meta_records_a_repo_relative_floors_path(tp):

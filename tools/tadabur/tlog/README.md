@@ -84,7 +84,7 @@ The tracer rule, fixed before the run: clean shard indices 0 and 205 (of 411) an
 ```bash
 flock /root/scratch/gpu.lock python -m tadabur.tlog_pass1 floors \
   --cache-dir /root/scratch/tlog/cache
-flock /root/scratch/gpu.lock python -m tadabur.tlog_pass1 run --tracer \
+flock /root/scratch/gpu.lock python -m tadabur.tlog_pass1 run --tracer --pr 198 \
   --cache-dir /root/scratch/tlog/cache
 ```
 

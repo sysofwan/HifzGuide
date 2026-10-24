@@ -243,11 +243,15 @@ def select(dataset: Dataset, record: dict) -> Clip | LeftOut:
 
 
 def iter_rows(dataset: Dataset, shard: str, cache_dir: Path,
-              batch_rows: int = 64, *, on_download: Callable[[str], None] | None = None
-              ) -> Iterator[dict]:
+              batch_rows: int = 64, *, on_download: Callable[[str], None] | None = None,
+              columns: Sequence[str] | None = None,
+              strict_delete: bool = False) -> Iterator[dict]:
     """A shard's rows with their audio, downloaded into ``cache_dir`` at the dataset's revision;
     its cached blob is deleted once read. ``on_download`` is called with the cached path as soon
-    as the download finishes, so a caller can time or size it without downloading twice."""
+    as the download finishes, so a caller can time or size it without downloading twice.
+    ``columns`` projects the parquet read (``None`` reads every column, the historical
+    behavior); ``strict_delete`` turns a failed cleanup into an error instead of swallowing it.
+    """
     import pyarrow.parquet as pq
     from huggingface_hub import hf_hub_download
 
@@ -258,10 +262,11 @@ def iter_rows(dataset: Dataset, shard: str, cache_dir: Path,
     if on_download is not None:
         on_download(path)
     try:
-        for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_rows):
+        for batch in pq.ParquetFile(path).iter_batches(batch_size=batch_rows,
+                                                       columns=columns):
             yield from batch.to_pylist()
     finally:
-        remove_shard_blob(path)
+        remove_shard_blob(path, strict=strict_delete)
 
 
 def metadata(dataset: Dataset) -> list[dict]:

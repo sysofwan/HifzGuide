@@ -1,8 +1,10 @@
 """The tlog pass-1 tracer (#187): outcome-blind facts for three shards, and the silence floors.
 
 Pass 1 reads a shard once, records per-row facts that depend on nothing but the audio, writes
-the shard's committed rows, and deletes the shard. It runs **no teacher, student or ASR model**
-and produces no transcript. The committed facts are ``audio_sha256``, ``codec_ok``,
+the shard's committed rows, and deletes the shard. Only the ``audio`` parquet column is
+projected, so tlog's own outcome labels are never read, and a failed deletion aborts the run
+before the next download: the disk budget is an invariant here. It runs **no teacher, student
+or ASR model** and produces no transcript. The committed facts are ``audio_sha256``, ``codec_ok``,
 ``sample_rate``, ``duration_s``, ``speech_s`` and ``speech_ratio``; the Haitsma-Kalker
 fingerprint (:mod:`tadabur.qud_fingerprint`) is written to cuda-dev scratch only. The owner
 accepted the clip-level fallback (2026-10-24), so no speaker embedding is computed at all.
@@ -13,8 +15,9 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     interpreter reproduces every byte (the gzip OS header byte is platform-dependent, as in the
     index).
 ``tools/tadabur/tlog/pass1/meta.json``
-    the code SHA, the VAD config, the floors file's SHA-256, the row counts and the measured
-    throughput. ``"embeddings"`` records the fallback rather than omitting it.
+    the code SHA with the PR number and ``refs/pull/<N>/head`` (the squash merge drops the
+    branch commit from main's history), the VAD config, the floors file's SHA-256, the row
+    counts and the measured throughput. ``"embeddings"`` records the fallback, not omission.
 ``tools/tadabur/tlog/silence_floors.json``
     the pre-registration's Exclusions floors: ``f_s`` and ``d_s`` are the type-7 0.5th
     percentiles of ``speech_ratio`` and ``speech_s`` over the Tarteel v1 look clips that decode.
@@ -45,7 +48,7 @@ import json
 import os
 import time
 from collections import Counter
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -90,7 +93,15 @@ TRACER_CLEAN = (0, 205)
 TRACER_UNCLEAN = 0
 #: The corpus' committed size (#185's index): 411 clean + 332 unclean shards, 719,853 rows.
 TOTAL_SHARDS = 743
-TOTAL_ROWS = 719_853
+ROWS_BY_SPLIT = {"clean": 398_490, "unclean": 321_363}
+TOTAL_ROWS = sum(ROWS_BY_SPLIT.values())
+#: The brief's corpus byte count (313 GiB), used to price downloads from the measured rate
+#: instead of assuming the three tracer shards are byte-representative.
+TOTAL_AUDIO_BYTES = 313 * 2**30
+#: The owner's S3b envelope: wall hours, GPU hours and peak disk bytes.
+WALL_ENVELOPE_HOURS = 8.0
+GPU_ENVELOPE_HOURS = 3.0
+DISK_ENVELOPE_BYTES = 5_000_000_000
 
 
 @dataclass(frozen=True)
@@ -143,15 +154,19 @@ def measure(audio: bytes, speech_seconds_of: Callable[[np.ndarray], float], *,
 
 
 def shard_rows(shard: str, cache_dir: Path, *, dataset: Dataset = TLOG,
-               on_download: Callable[[str], None] | None = None) -> Iterator[dict]:
+               on_download: Callable[[str], None] | None = None,
+               columns: Sequence[str] | None = ("audio",),
+               strict_delete: bool = True) -> Iterator[dict]:
     """A shard's rows, downloaded and then deleted by :func:`nonpro_sources.iter_rows`.
 
     The dataset guard runs before the download: pass 1 reads tlog shards only, and the floors
-    read Tarteel v1 only.
+    read Tarteel v1 only. Only the ``audio`` column is projected, so tlog's own outcome label
+    is never materialized, and a failed deletion is an error: the disk budget is an invariant.
     """
     if shard not in dataset.shards:
         raise ValueError(f"not a {dataset.name} shard: {shard}")
-    return iter_rows(dataset, shard, cache_dir, on_download=on_download)
+    return iter_rows(dataset, shard, cache_dir, on_download=on_download, columns=columns,
+                     strict_delete=strict_delete)
 
 
 def process_shard(shard: str, cache_dir: Path, *,
@@ -275,24 +290,29 @@ def require_floor_config(floors: dict, config: dict | None = None) -> None:
 
 def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         speech_seconds_of: Callable[[np.ndarray], float], floors_path: Path = FLOORS_PATH,
-        fp_dir: Path | None = None, stream=None, code_sha: str | None = None) -> dict:
+        fp_dir: Path | None = None, stream=None, code_sha: str | None = None,
+        pull_request: int | None = None) -> dict:
     """Process the shards in order, write each output, and return the ``meta.json`` record."""
     shards = list(shards)
     floors_path = Path(floors_path)
     require_floor_config(json.loads(floors_path.read_text(encoding="utf-8")))
     out_dir = Path(out_dir)
     timings = _timings()
+    by_split = {split: _timings() for split in TLOG_SPLITS}
     begin, record = _download_meter(timings)
     counts: Counter = Counter()
     for shard in shards:
         split, stem = tlog_split(shard), Path(shard).stem
+        shard_timings = _timings()
         if stream is None:
             begin()
             rows = process_shard(shard, cache_dir, speech_seconds_of=speech_seconds_of,
-                                 fp_dir=fp_dir, on_download=record, timings=timings)
+                                 fp_dir=fp_dir, on_download=record, timings=shard_timings)
         else:
             rows = process_shard(shard, cache_dir, speech_seconds_of=speech_seconds_of,
-                                 fp_dir=fp_dir, stream=stream, timings=timings)
+                                 fp_dir=fp_dir, stream=stream, timings=shard_timings)
+        _accumulate(timings, shard_timings)
+        _accumulate(by_split[split], shard_timings)
         path = out_dir / split / f"{stem}.jsonl.gz"
         write_pass1(rows, path)
         counts[split] += len(rows)
@@ -311,13 +331,16 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
                        for split in TLOG_SPLITS},
         },
         "code_sha": code_sha or head_sha(),
+        "pull_request": pull_request,
+        "pull_request_ref": (f"refs/pull/{pull_request}/head"
+                             if pull_request is not None else None),
         "vad": VAD_CONFIG,
         "embeddings": "none (owner fallback 2026-10-24, #187)",
         "floors": {"path": _repo_relative(floors_path),
                    "sha256": sha256_file(floors_path)},
         "counts": {"rows": {**{split: counts[split] for split in TLOG_SPLITS},
                             "total": sum(counts.values())}},
-        "throughput": _throughput(timings, len(shards)),
+        "throughput": _throughput(timings, by_split, len(shards)),
     }
     write_text_atomically(
         out_dir / "meta.json",
@@ -386,6 +409,17 @@ def _timings() -> dict:
             "shard_bytes": 0, "peak_disk_bytes": 0}
 
 
+#: The per-shard stage counters :func:`run` adds into the run and per-split timings. Download
+#: and peak disk are tracked once for the run, never per shard.
+_STAGE_KEYS = ("decode_seconds", "vad_seconds", "fingerprint_seconds", "fingerprint_bytes",
+               "rows", "vad_rows", "fingerprint_rows")
+
+
+def _accumulate(total: dict, part: dict) -> None:
+    for key in _STAGE_KEYS:
+        total[key] += part[key]
+
+
 def _download_meter(timings: dict):
     """``(begin, record)``: ``begin`` starts a shard's download clock, ``record`` adds its time
     and on-disk size (the ``iter_rows`` hook), so no shard is downloaded twice."""
@@ -403,23 +437,44 @@ def _download_meter(timings: dict):
     return begin, record
 
 
-def _throughput(timings: dict, shard_count: int) -> dict:
-    """The measured stage rates, and the sequential extrapolation to (:data:`TOTAL_SHARDS`)."""
+def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int) -> dict:
+    """Measured stage rates, and the corpus extrapolation priced from the measurements.
+
+    Compute is scaled by each split's own measured per-row cost to that split's known row
+    population (:data:`ROWS_BY_SPLIT`), never by the tracer's shard count: the tracer's shards
+    hold 2,405 rows, not 743 equal shards. A split with no measured row borrows the pooled
+    per-row cost. Download is the corpus' 313 GiB at the measured rate, not a per-shard guess.
+    """
     rows = timings["rows"]
 
     def rate(stage_rows: int, seconds: float) -> float | None:
         return round(stage_rows / seconds, 3) if seconds > 0 and stage_rows else None
 
-    cpu_seconds = (timings["decode_seconds"] + timings["vad_seconds"]
-                   + timings["fingerprint_seconds"])
-    scale = TOTAL_SHARDS / shard_count if shard_count else 0.0
-    cpu_hours = cpu_seconds / 3600 * scale
-    download_hours = timings["download_seconds"] / 3600 * scale
+    def stage_seconds(stage: dict) -> float:
+        return (stage["decode_seconds"] + stage["vad_seconds"]
+                + stage["fingerprint_seconds"])
+
+    pooled_per_row = stage_seconds(timings) / rows if rows else 0.0
+    cpu_hours = 0.0
+    for split in TLOG_SPLITS:
+        measured = by_split[split]
+        split_rows = measured["rows"]
+        per_row = (stage_seconds(measured) / split_rows if split_rows
+                   else pooled_per_row)
+        cpu_hours += per_row * ROWS_BY_SPLIT[split] / 3600
+    download_rate = (timings["download_bytes"] / timings["download_seconds"]
+                     if timings["download_seconds"] > 0 else None)
+    download_hours = (TOTAL_AUDIO_BYTES / download_rate / 3600
+                      if download_rate else None)
+    wall_hours = cpu_hours + (download_hours or 0.0)
     store_bytes = (timings["fingerprint_bytes"] / rows * TOTAL_ROWS) if rows else 0
+    within = (download_rate is not None and wall_hours <= WALL_ENVELOPE_HOURS
+              and timings["peak_disk_bytes"] <= DISK_ENVELOPE_BYTES)
     return {
         "workers": 1,
         "shards_measured": shard_count,
         "rows": rows,
+        "rows_by_split": {split: by_split[split]["rows"] for split in TLOG_SPLITS},
         "download_bytes": timings["download_bytes"],
         "download_seconds": round(timings["download_seconds"], 3),
         "download_mb_s": (round(timings["download_bytes"] / 1e6
@@ -443,10 +498,18 @@ def _throughput(timings: dict, shard_count: int) -> dict:
         "extrapolated": {
             "shards": TOTAL_SHARDS,
             "rows": TOTAL_ROWS,
+            "rows_by_split": dict(ROWS_BY_SPLIT),
             "cpu_hours": round(cpu_hours, 3),
-            "download_hours": round(download_hours, 3),
-            "wall_hours": round(cpu_hours + download_hours, 3),
+            "download_hours": (round(download_hours, 3)
+                               if download_hours is not None else None),
+            "wall_hours": round(wall_hours, 3),
+            "download_priced": download_rate is not None,
             "gpu_hours": 0.0,
+            "peak_disk_bytes": timings["peak_disk_bytes"],
+            "envelope": {"wall_hours_max": WALL_ENVELOPE_HOURS,
+                         "gpu_hours_max": GPU_ENVELOPE_HOURS,
+                         "peak_disk_bytes_max": DISK_ENVELOPE_BYTES},
+            "within_owner_envelope": within,
         },
     }
 
@@ -469,7 +532,7 @@ def _run_command(args) -> None:
     shards = tracer_shards() if args.tracer else args.shards
     meta = run(shards, out_dir=args.out_dir, cache_dir=args.cache_dir,
                floors_path=args.floors, speech_seconds_of=silero_speech_seconds(),
-               fp_dir=args.fp_dir, code_sha=args.code_sha)
+               fp_dir=args.fp_dir, code_sha=args.code_sha, pull_request=args.pr)
     print(json.dumps(meta["throughput"], indent=1, sort_keys=True), flush=True)
 
 
@@ -495,6 +558,9 @@ def main() -> None:
                              help="scratch for the fingerprints (never committed)")
     run_command.add_argument("--floors", type=Path, default=FLOORS_PATH)
     run_command.add_argument("--code-sha", default=None)
+    run_command.add_argument("--pr", type=int, required=True,
+                             help="the PR number whose refs/pull/<N>/head keeps code_sha "
+                                  "reachable after the squash merge")
     which = run_command.add_mutually_exclusive_group(required=True)
     which.add_argument("--tracer", action="store_true",
                        help="the three shards the module's tracer rule names")

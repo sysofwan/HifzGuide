@@ -41,3 +41,19 @@ python -m pytest -q tools/tadabur/test_tlog_index.py   # from the repo root
 
 The tests assert every shard's coverage and row schema, the counts in `meta.json`, the pre-
 registration's SHA-256, and the build itself against fake pins (offline).
+
+## The S2 validation (#186)
+
+`s2/` holds what the speaker-cluster procedure was validated on: `sample.jsonl` (the fixed-seed
+Tadabur draw — `audio_filename`, `shard`, `row`, `reciter_id`, `surah_ayah` and the 20 s embedding
+span), `selection.json` (its census: salt, shards, frame checksum, deciles, reciter and
+same-ayah counts) and `report.json` (every model's τ-grid metrics and the chosen model, revision
+and τ). `docs/tlog-speaker-clustering.md` is generated from the report by
+`python -m tadabur.tlog_s2 report`; neither is edited by hand. Embeddings are scratch, never
+committed.
+
+```bash
+python -m tadabur.tlog_s2 sample                 # redraw the sample (same bytes)
+python -m tadabur.tlog_s2 embed --out-dir DIR    # on cuda-dev: pin and embed, GPU
+python -m tadabur.tlog_s2 report --embeddings-dir DIR
+```

@@ -13,9 +13,11 @@
 #   scripts/issue-179-decode.sh fetch-confirm    # pull the confirm decodes and caches
 #
 # `launch-confirm` refuses unless `choice.json`, `look.json` and `look.claim.json` are
-# committed at HEAD and no confirm decode is: the decode gate reads them from the archive's
-# git history, so the box gets a bundle clone, never a bare tar. `launch-look` refuses once a
-# choice is committed: the look half is read once.
+# committed at HEAD and no candidate confirm decode exists anywhere in the history: the decode
+# gate reads them from the archive's git history, so the box gets a bundle clone, never a bare
+# tar. A confirm read already taken is restored from its commit, never re-run, so a deleted
+# decode still blocks the launch. `launch-look` refuses once a choice is committed: the look
+# half is read once.
 #
 # On the box, `launch-*` stages the repo and starts `run look|confirm` under
 # flock /root/scratch/gpu.lock; `run` stages the clips under that lock, then appends one exit
@@ -287,30 +289,27 @@ confirm_decodes_at() {  # <repo_root> <rev>
   git -C "$1" ls-tree -r --name-only "$2" -- "$DECODES" | grep -Eq "$CONFIRM_DECODE_RE"
 }
 
-require_committed_choice() {  # the two-phase order: choice before any confirm decode
-  local repo_root=$1 path choice_commit commit
+require_committed_choice() {  # the confirm population is read once
+  local repo_root=$1 path commit
   for path in "$CHOICE" "$LOOK" "$CLAIM"; do
     if ! git -C "$repo_root" cat-file -e "HEAD:$path" 2>/dev/null; then
       echo "confirm refuses: $path is not committed at HEAD" >&2
       return 1
     fi
   done
+  # One confirm read, ever. A decode that exists in any commit — including one a later commit
+  # deleted, and one committed before the choice — is that read; restore it from its commit
+  # instead of decoding again.
   if confirm_decodes_at "$repo_root" HEAD; then
     echo "confirm refuses: a candidate confirm decode is already committed" >&2
     return 1
   fi
-  choice_commit=$(git -C "$repo_root" log -1 --format=%H -- "$CHOICE")
-  # A decode committed before the choice, or with it, is an earlier read even if a later commit
-  # deleted the file: the choice commit must be an ancestor of every such commit.
   while IFS= read -r commit; do
     [ -n "$commit" ] || continue
     if confirm_decodes_at "$repo_root" "$commit"; then
-      if [ "$commit" = "$choice_commit" ] \
-          || ! git -C "$repo_root" merge-base --is-ancestor "$choice_commit" "$commit"; then
-        echo "confirm refuses: a candidate confirm decode at $commit is not after the choice" \
-             "($choice_commit)" >&2
-        return 1
-      fi
+      echo "confirm refuses: a candidate confirm decode exists in history at $commit;" \
+           "the confirm population is read once" >&2
+      return 1
     fi
   done < <(git -C "$repo_root" log --all --format=%H -- "$DECODES")
 }

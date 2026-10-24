@@ -497,7 +497,8 @@ def test_the_confirm_guard_remembers_a_deleted_earlier_decode(tmp_path):
     assert refused.returncode != 0 and "confirm refuses" in refused.stderr
 
 
-def test_the_confirm_guard_allows_a_deleted_decode_after_the_choice(tmp_path):
+def test_the_confirm_guard_refuses_a_deleted_decode_even_after_the_choice(tmp_path):
+    """R2.1: one confirm read, ever — deleting the correctly ordered decode changes nothing."""
     repo, decodes = _choice_repo(tmp_path)
     decoded = decodes / "qdat.candidate_ema.jsonl.gz"
     decoded.write_bytes(b"")
@@ -506,4 +507,6 @@ def test_the_confirm_guard_allows_a_deleted_decode_after_the_choice(tmp_path):
     decoded.unlink()
     _git(repo, "add", "-A")
     _git(repo, "commit", "-qm", "remove it")
-    assert _require_choice(repo).returncode == 0
+    refused = _require_choice(repo)
+    assert refused.returncode != 0, "a second confirm read was accepted"
+    assert "confirm refuses" in refused.stderr

@@ -28,7 +28,7 @@ import pyarrow.parquet as pq
 import pytest
 import soundfile as sf
 
-from tadabur.nonpro_sources import TLOG, tlog_split
+from tadabur.nonpro_sources import TARTEEL_V1, TLOG, tlog_split
 
 #: Every fact a committed row carries, in no particular order.
 FACT_KEYS = frozenset(
@@ -296,6 +296,23 @@ def test_run_writes_the_shard_and_the_meta(tp, tmp_path):
     assert "throughput" in meta
 
 
+def test_run_writes_meta_to_disk_and_a_fingerprint_store_when_asked(tp, tmp_path):
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+    audio = wav(1.0, 16000)
+    rows = [{"audio": {"path": "a.flac", "bytes": audio}}]
+    out_dir, fp_dir = tmp_path / "pass1", tmp_path / "fp"
+
+    meta = tp.run([CLEAN_SHARD], out_dir=out_dir, cache_dir=tmp_path / "cache",
+                  floors_path=floors, speech_seconds_of=lambda waveform: 0.5,
+                  stream=fake_stream(rows), fp_dir=fp_dir, code_sha="0" * 40)
+
+    assert json.loads((out_dir / "meta.json").read_text(encoding="utf-8")) == meta
+    stored = np.load(fp_dir / "clean-00000-of-00411.npz")
+    assert stored.files == [f"a.flac|{sha(audio)}"]
+    assert len(stored[stored.files[0]]) > 0
+
+
 def test_run_refuses_a_vad_config_that_differs_from_the_floors(tp, tmp_path):
     floors = tmp_path / "silence_floors.json"
     floors.write_text(json.dumps({"vad": {**tp.VAD_CONFIG, "threshold": 0.4}}),
@@ -331,6 +348,44 @@ def test_the_floors_are_the_type7_half_percentile_over_decodable_look_rows(tp):
         "decodes_sha256": "ab" * 32}
     assert floors["percentile"] == {"method": "type-7", "q": 0.005}
     assert floors["vad"] == tp.VAD_CONFIG
+
+
+def test_build_floors_measures_only_the_look_clips_and_deletes_the_shard(
+        tp, tmp_path, monkeypatch):
+    import huggingface_hub
+
+    shard = TARTEEL_V1.shards[0]
+    look, other = "100_10_1111111111.wav", "100_10_2222222222.wav"
+    parquet = tmp_path / "tarteel.parquet"
+    table = pa.table({"audio": pa.array(
+        [{"path": look, "bytes": wav(1.0, 16000)},
+         {"path": other, "bytes": wav(1.0, 16000)}],
+        type=pa.struct([("path", pa.string()), ("bytes", pa.binary())]))})
+    pq.write_table(table, parquet)
+    calls: list[tuple[str, str, object]] = []
+
+    def fake_download(repo, filename, **kwargs):
+        calls.append((repo, filename, kwargs.get("revision")))
+        return str(parquet)
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_download)
+    seen: list[np.ndarray] = []
+
+    floors = tp.build_floors(
+        [shard], look_ids={look}, cache_dir=tmp_path / "cache",
+        speech_seconds_of=lambda waveform: seen.append(waveform) or 0.5)
+
+    assert calls == [(TARTEEL_V1.repo, shard, TARTEEL_V1.revision)]
+    assert len(seen) == 1  # the look clip, never the other row
+    assert floors["count"] == 1
+    assert floors["f_s"] == 0.5
+    assert floors["d_s"] == 0.5
+    assert floors["source"]["dataset"] == "tarteel_v1"
+    assert floors["source"]["split"] == "look"
+    assert floors["source"]["clips"] == 1
+    assert len(floors["source"]["decodes_sha256"]) == 64
+    assert floors["vad"] == tp.VAD_CONFIG
+    assert not parquet.exists()
 
 
 def test_the_floor_config_must_match_the_floors_file(tp):

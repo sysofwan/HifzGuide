@@ -75,7 +75,7 @@ CIRCLE = np.array([_unit(0.0), _unit(9.0), _unit(20.0), _unit(180.0)], dtype=np.
 def test_the_knn_graph_is_the_union_of_each_row_s_neighbours():
     # k = 1: a->b, b->a, c->b, d->c, so the undirected union is a-b, b-c, c-d. The highly
     # similar a-c pair (.940) is in neither list and must not appear, even at tau = 0.
-    edges = knn_edges(CIRCLE_IDS, CIRCLE, tau=0.0, k=1)
+    edges = knn_edges(CIRCLE_IDS, CIRCLE, tau=-1.0, k=1)
     assert edges == {frozenset({"a", "b"}), frozenset({"b", "c"}), frozenset({"c", "d"})}
     assert frozenset({"a", "c"}) not in edges
 

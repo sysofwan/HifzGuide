@@ -82,7 +82,7 @@ def _synthetic_frame() -> list[dict]:
     for decile, duration in enumerate(seconds):
         for ayah in range(1, 6):
             for offset in range(4):
-                reciter = 1 + ((decile * 5 + ayah) * 4 + offset) % 20
+                reciter = 1 + (decile * 20 + ayah * 4 + offset) % 200
                 frame.append({
                     "audio_filename": f"tadabur_spk{reciter:04d}_S0_A{ayah}_"
                                       f"{decile:02d}{offset:02d}abcd_000001.wav",
@@ -216,7 +216,7 @@ def test_the_revisions_are_written_before_the_first_embedding(tmp_path):
     tlog_s2.write_pins(tmp_path, sample_sha256="a" * 64, code_sha="b" * 40,
                        models=(model,))
     out = tlog_s2.embed_sample(clip_ids, waveforms, model, tmp_path, encoder=encoder)
-    assert seen == [[(320_000,)]]
+    assert seen == [[320_000]]
     assert out.shape == (2, model.dim)
     assert np.allclose(np.linalg.norm(out, axis=1), 1.0)
     stored = np.load(tmp_path / f"embeddings.{model.key}.npz")

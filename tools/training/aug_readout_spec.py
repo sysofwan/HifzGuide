@@ -30,6 +30,12 @@ PREREG_SHA256 = "daa611ab401f1350ef920b6801c9c439262579d4aced3f7be062a240cf7ed9d
 #: C95's checkpoint: the consonant round's paired baseline (#174).
 C95_REF = "/root/scratch/issue-94/repo-fix/tools/runs/aug94_candidate_v2/checkpoint.pt"
 C95_SHA256 = "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6"
+#: #178's candidate: C95 continued for 10,000 steps under ``aug94-mixture-v2``. One file holds
+#: both weight selectors (docs/consonant-round-run.md).
+CANDIDATE_REF = "/root/scratch/issue-178/repo/tools/runs/consonant1_candidate/checkpoint.pt"
+CANDIDATE_SHA256 = "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2"
+CANDIDATE_RECIPE = "aug94-mixture-v2"
+LIVE = "live"
 EMA = "ema"
 
 
@@ -115,7 +121,15 @@ CONSONANT1 = RoundSpec(
           "departs_lower_at_least": -0.5, "qud_upper_at_most": 1.0,
           "tadabur_lower_at_least": -1.0, "bench_lower_at_least": -2.0,
           "tashkeel_upper_at_most": 1.0, "catch_at_least": -2.0},
-    models={C95: ModelIdentity(C95_REF, EMA, 10_000, "aug94-mixture-v2", C95_SHA256)},
+    models={
+        C95: ModelIdentity(C95_REF, EMA, 10_000, "aug94-mixture-v2", C95_SHA256),
+        # The candidate's two selectors of the one #178 checkpoint: the round decodes both on
+        # the look half and refuses any other checkpoint, step or recipe (#178, #179).
+        "candidate_live": ModelIdentity(CANDIDATE_REF, LIVE, 10_000, CANDIDATE_RECIPE,
+                                        CANDIDATE_SHA256),
+        "candidate_ema": ModelIdentity(CANDIDATE_REF, EMA, 10_000, CANDIDATE_RECIPE,
+                                       CANDIDATE_SHA256),
+    },
     root=CONSONANT_ROOT,
     #: C95's decodes are #95's committed candidate's, for the sets #95 fixed; the baselines'
     #: are #95's too. The round's candidate decodes land in :data:`CONSONANT_ROOT`, so merging

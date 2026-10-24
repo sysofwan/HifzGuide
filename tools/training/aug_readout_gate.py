@@ -337,11 +337,18 @@ def canonical(payload) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
 
 
-def make_choice(weights: str, look_text: str, sitting: Mapping) -> dict:
-    """``choice.json``: the weights, bound to the look's SHA-256, to the look sitting (its input
-    files' SHA-256 and the candidate's identities)."""
-    return {"issue": 95, "weights": weights,
-            "models": {arm: arm_model(arm, weights) for arm in ARMS},
+def choice_models(spec: RoundSpec, weights: str) -> dict[str, str]:
+    """The arms a round's choice binds at ``weights``: each of its students that is an arm.
+    A round without a control (``consonant1``) names its candidate only."""
+    return {role: arm_model(role, weights) for role in spec.students if role in ARMS}
+
+
+def make_choice(weights: str, look_text: str, sitting: Mapping,
+                spec: RoundSpec = AUG95) -> dict:
+    """``choice.json``: the round's issue, the weights, bound to the look's SHA-256, to the look
+    sitting (its input files' SHA-256 and the candidate's identities)."""
+    return {"issue": spec.issue, "weights": weights,
+            "models": choice_models(spec, weights),
             "identities": dict(sitting["identities"]),
             "look_sha256": sha256_bytes(look_text.encode("utf-8")),
             "look_inputs_sha256": sha256_bytes(canonical(sitting["inputs"]).encode("utf-8"))}
@@ -356,11 +363,13 @@ class CommittedChoice:
     commit: str
 
 
-def committed_choice(layout: Layout = Layout()) -> CommittedChoice:
+def committed_choice(layout: Layout = Layout(),
+                     spec: RoundSpec = AUG95) -> CommittedChoice:
     """The choice, refused unless it, ``look.json`` and the look's claim are tracked by git and
     unchanged from ``HEAD``, and bound to them by content as well as by hash: its weights are the
-    ones the look chose, its candidate identities (checkpoint SHA-256, weights, step) the ones the
-    look and its claim recorded, and its inputs and harness the claim's."""
+    ones the look chose, its candidate identities (checkpoint SHA-256, weights, step, recipe) the
+    ones the look and its claim recorded and the round's pins, and its inputs and harness the
+    claim's."""
     for path in (layout.choice, layout.look, layout.claim(LOOK)):
         if not is_committed(path):
             raise SystemExit(f"{path.name} is not committed (tracked and unchanged from HEAD)")
@@ -374,7 +383,7 @@ def committed_choice(layout: Layout = Layout()) -> CommittedChoice:
     # The semantic bindings: the weights the look chose, and the checkpoints the look read.
     if choice.get("weights") not in WEIGHTS or choice["weights"] != look.get("choice"):
         raise SystemExit(f"{layout.choice.name} names other weights than {layout.look.name} chose")
-    if choice.get("models") != {arm: arm_model(arm, choice["weights"]) for arm in ARMS}:
+    if choice.get("models") != choice_models(spec, choice["weights"]):
         raise SystemExit(f"{layout.choice.name} names other models than its weights")
     identities = choice.get("identities") or {}
     if set(identities) != set(LOOK_MODELS):
@@ -382,7 +391,8 @@ def committed_choice(layout: Layout = Layout()) -> CommittedChoice:
     for model, identity in identities.items():
         validate_identity(TARTEEL_LOOK, model, {"model": model, "identity": identity,
                                                 "fingerprints": expected_fingerprints(
-                                                    model_spec(model).ref)})
+                                                    model_spec(model, spec=spec).ref)},
+                          spec=spec)
     if not (identities == look.get("identities") == look_claim.get("identities")):
         raise SystemExit(f"{layout.choice.name} holds other checkpoints than the look read")
     if look_claim.get("phase") != LOOK or choice.get("look_inputs_sha256") != sha256_bytes(

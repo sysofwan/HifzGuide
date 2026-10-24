@@ -504,6 +504,24 @@ def test_the_catch_arm_binds_the_candidate_s_cache_to_the_sitting_s_identity(tmp
                      identities={"candidate_ema": identity})
 
 
+def test_the_catch_arm_declares_both_cache_files(tmp_path):
+    """R1.6: the required files are named even when absent."""
+    assert cr.catch_required(("candidate_ema",), cache_dir=tmp_path) == (
+        tmp_path / "candidate_ema.json",)
+    assert set(cr.catch_required(("candidate_ema",))) == {
+        tb.CHECK_STORE.path("candidate_ema"), tb.DECODE_STORE.path("candidate_ema")}
+
+
+def test_a_missing_catch_cache_is_named_in_the_report_and_doc(tmp_path):
+    missing = str(tmp_path / "candidate_ema.json")
+    data = cr.RoundData(tarteel=None, qdat=None, qud_other=None, qud_half=None,
+                        tadabur=None, bench={}, catch=None, catch_missing=(missing,))
+    report = cr.confirm_report(data, spec=asp.CONSONANT1)
+    assert report["missing_inputs"] == [missing]
+    text = adoc.render(_look(), report, _round_coverage(), spec=asp.CONSONANT1)
+    assert missing in text and "G6 cannot certify" in text
+
+
 def test_the_confirm_sitting_reads_the_frozen_g6_sites_and_refuses_drift(monkeypatch):
     frozen = cr.load_g6_sites()
     assert [site.site_id for site in cr.g6_scope()["sites"]] == frozen
@@ -1033,3 +1051,61 @@ def test_freeze_tables_takes_the_top_ten_consonant_substitutions_by_words_then_u
     assert len(diagnostic["other_consonant"]) == 10  # the eleventh other_consonant row drops
     assert "ي→ى" not in {row["substitution"] for row in diagnostic["other_consonant"]}
     assert set(shipped["causes"]) == set(CAUSES)
+
+
+# --- #179: coverage for every set, and RetaSy's absence stated (acceptance criteria) -----------
+
+
+def test_the_round_discloses_a_coverage_row_for_every_set():
+    record = cr.coverage()
+    populations = record["populations"]
+    assert set(populations) == {
+        "tarteel_v1.look", "tarteel_v1.confirm", "qud_other", "qud_half", "qdat",
+        "tadabur_dev_unseen", "qdat_bench", "ship_a_verified"}
+    for name, row in populations.items():
+        assert isinstance(row["decoded"], int) and isinstance(row["evaluated"], int)
+        assert row["evaluated"] + row["excluded"] == row["decoded"], name
+        assert isinstance(row["excluded_words"], int)
+        assert len(row["excluded_keys"]) == row["excluded"]
+        assert row["reason"].strip()
+    counts = ar.expected_counts(asp.CONSONANT1)
+    for name in ("qdat", "tadabur_dev_unseen", "qud_other", "qud_half"):
+        assert populations[name]["decoded"] == counts[name], name
+    # A set with no reference exclusions says so with zeroes, not a missing count.
+    for name in ("qdat", "tadabur_dev_unseen", "qdat_bench", "ship_a_verified"):
+        assert populations[name]["excluded"] == 0, name
+    assert populations["qdat"]["evaluated"] == 1505
+    assert populations["tadabur_dev_unseen"]["evaluated"] == 671
+    assert populations["qdat_bench"]["decoded"] == 159  # qdat's clips the bench reads
+    assert populations["ship_a_verified"]["decoded"] == len(cr.g6_scope()["sites"]) == 8
+    assert populations["tarteel_v1.look"]["evaluated"] == 4530
+    assert populations["tarteel_v1.confirm"]["evaluated"] == 4408
+    assert populations["qud_half"]["evaluated"] == 10283
+    assert populations["qud_other"]["excluded"] == 176  # the pilot's waqf/leen limitation
+
+
+def test_the_round_s_doc_renders_every_coverage_row():
+    record = cr.coverage()
+    report = _round_report(_catch())
+    sizes = {"tarteel_v1.confirm": "tarteel_v1_confirm", "qdat": "qdat",
+             "qud_other": "qud_other", "qud_half": "qud_half",
+             "tadabur_dev_unseen": "tadabur_dev_unseen", "qdat_bench": "qdat_bench",
+             "ship_a_verified": "ship_a_verified"}
+    for population, size in sizes.items():
+        report["sizes"][size] = record["populations"][population]["evaluated"]
+    look = _look()
+    look["items"] = record["populations"]["tarteel_v1.look"]["evaluated"]
+    text = adoc.render(look, report, record, spec=asp.CONSONANT1)
+    for name in record["populations"]:
+        assert f"| {name} |" in text
+
+
+def test_retasy_is_reported_not_run_with_its_reason():
+    data = cr.RoundData(tarteel=None, qdat=None, qud_other=None, qud_half=None,
+                        tadabur=None, bench={}, catch=None)
+    report = cr.confirm_report(data, spec=asp.CONSONANT1)
+    retasy = report["not_run"]["retasy"]
+    assert retasy["status"] == "not run"
+    assert "#171" in retasy["reason"]
+    text = adoc.render(_look(), report, _round_coverage(), spec=asp.CONSONANT1)
+    assert "RetaSy" in text and "not run" in text and "#171" in text

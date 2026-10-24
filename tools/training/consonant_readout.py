@@ -425,11 +425,29 @@ def _expected_identity(spec: RoundSpec, name: str,
 
     if name in identities:
         return dict(identities[name])
-    if (pinned := spec.models.get(name)) is not None:
+    # The baseline's cache is the round's pin; the candidate's must be the sitting's identity
+    # (the chosen weights the choice read), so a pin alone never stands in for it (R2.3).
+    if name == spec.baseline and (pinned := spec.models.get(name)) is not None:
         return identity_record(pinned)
     if name in DEFAULT_MODELS:
         return None
     raise ValueError(f"{name}: no identity to bind its caches to; G6 cannot read it")
+
+
+def catch_required(models: Sequence[str], cache_dir: Path | None = None) -> tuple[Path, ...]:
+    """The cache files G6 reads for ``models``: each model's check cache, plus its decode cache
+    when the producer writes the sitting's committed stores. A missing one is named, never
+    silently treated as zero flags (#179, R1.6)."""
+    from training.truth_baseline import CHECK_STORE, DECODE_STORE
+
+    directory = Path(cache_dir) if cache_dir is not None else CHECK_STORE.directory
+    reading = directory == CHECK_STORE.directory
+    paths = []
+    for name in models:
+        paths.append(directory / f"{name}.json")
+        if reading:
+            paths.append(DECODE_STORE.path(name))
+    return tuple(paths)
 
 
 def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = None,
@@ -454,17 +472,18 @@ def catch_arm(sites: Sequence, models: Sequence[str], spec: RoundSpec | None = N
     identities = identities or {}
     directory = Path(cache_dir) if cache_dir is not None else CHECK_STORE.directory
     reading_caches = directory == CHECK_STORE.directory
-    missing = [name for name in models
-               if not (directory / f"{name}.json").exists()
-               or (reading_caches and not DECODE_STORE.path(name).exists())]
-    if missing:
+    if any(not path.exists() for path in catch_required(models, cache_dir)):
         return None
     registry = load_staged_clips(REGISTRY_PATH)
     items = items_of(sites, registry)
     sequences = {}
     for name in models:
-        ref = DEFAULT_MODELS.get(name) or model_spec(name, spec=spec).ref
         expected = _expected_identity(spec, name, identities)
+        # The baseline and the truth baseline's own models resolve through their pins; the
+        # candidate's caches are the ones the sitting's validated identity names, so a pin
+        # alone cannot stand in for them (R1.2, R2.3).
+        ref = (expected["model_ref"] if expected is not None
+               else DEFAULT_MODELS.get(name) or model_spec(name, spec=spec).ref)
         if reading_caches:
             cache, recorded = model_caches(name, ref, items, registry, None)
         else:
@@ -646,6 +665,9 @@ class RoundData:
     #: The report-only mistake marks (#174); never G6's frozen denominator.
     report_only_catch: Mapping | None = None
     absent: tuple[str, ...] = ()
+    #: The inputs G6 needed and did not find — a cache file, or the sitting's candidate
+    #: identity — so "cannot certify" names them (R1.6).
+    catch_missing: tuple[str, ...] = ()
 
 
 ROUND_ROLES = (CANDIDATE, C95, H448, BASE)
@@ -751,10 +773,23 @@ def confirm_report(data: RoundData, spec: RoundSpec = CONSONANT1, workers: int =
                                   ("qud_other", data.qud_other), ("qud_half", data.qud_half))}
         | {"tadabur_dev_unseen": None if tadabur is None else len(tadabur.clips),
            "qdat_bench": None if data.qdat is None else len(bench),
-           "ship_a_verified": len(data.catch["sites"]) if data.catch else 0},
+           "ship_a_verified": None if data.catch is None else len(data.catch["sites"])},
     }
+    # #174 reads RetaSy as descriptive only (and #171 has not made its baseline reproducible),
+    # and #178 deliberately ran no control arm. Both are stated, not silently omitted (#179).
+    report["not_run"] = {
+        "retasy": {
+            "status": "not run",
+            "reason": "RetaSy is not run: #171's baseline decode is not reproducible yet, and "
+                      "#174 reads it as descriptive only"},
+        "control": {
+            "status": "not run",
+            "reason": "no control arm (#178): the round's ingredient is more of C95's own "
+                      "recipe; #174 makes the control optional and non-gating"}}
     if data.absent:
         report["absent"] = list(data.absent)
+    if data.catch_missing:
+        report["missing_inputs"] = list(data.catch_missing)
     report["verdict"] = verdict(report, spec=spec)
     return report
 
@@ -765,7 +800,8 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
     """Every set the round's confirm sitting reads, graded, with the roles bound. A set named
     ``absent`` (its decodes are not committed) is not read. ``identities`` are the sitting's
     validated per-model identities: G6 binds both models' truth-baseline caches to them (and to
-    the round's pin) before replay."""
+    the round's pin) before replay. Without the candidate's identity G6 reads nothing and names
+    that as its missing input."""
     from training import aug_readout as ar
     from training.aug_readout_gate import (
         QDAT_SET, QUD_OTHER_SET, QUD_SET, TADABUR_SET, TARTEEL_CONFIRM, arm_model,
@@ -787,6 +823,19 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
     scope = g6_scope()
     catch_identities = ({candidate: identities[candidate]}
                         if identities and candidate in identities else {})
+    # G6's caches must be the sitting's candidate identity. A sitting without one (no decodes,
+    # so no manifest) has nothing to bind them to: the caches are a missing input, named like a
+    # missing cache, and G6 cannot certify — never a crash and never a guessed identity (R1.6).
+    if catch_identities:
+        catch = catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope,
+                          identities=catch_identities)
+        catch_missing = (() if catch is not None else tuple(
+            str(path) for path in catch_required((candidate, C95)) if not path.exists()))
+        report_only = descriptive_catch((candidate, C95), spec=spec,
+                                        identities=catch_identities)
+    else:
+        catch, report_only = None, None
+        catch_missing = (f"{candidate}: no identity in the sitting; G6 cannot read its caches",)
     return RoundData(
         tarteel=read(TARTEEL_CONFIRM, lambda: sources.tarteel(CONFIRM, models)),
         qdat=read(QDAT_SET, lambda: sources.qdat(models)),
@@ -796,22 +845,50 @@ def load_confirm(sources, weights: str, spec: RoundSpec = CONSONANT1,
             tadabur.clips, bind_round(tadabur.decodes, weights),
             bind_round(tadabur.blanks, weights), tadabur.redecoded_identical),
         bench=sources.bench() if "qdat" not in absent else {},
-        catch=catch_arm(scope["sites"], (candidate, C95), spec=spec, scope=scope,
-                        identities=catch_identities),
-        report_only_catch=descriptive_catch((candidate, C95), spec=spec,
-                                            identities=catch_identities),
-        absent=absent)
+        catch=catch,
+        report_only_catch=report_only,
+        absent=absent,
+        catch_missing=catch_missing)
+
+
+#: The coverage table's order: the sets #174 names, the look half first and the two derived
+#: populations last.
+COVERAGE_SETS = ("tarteel_v1.look", "tarteel_v1.confirm", "qdat", "qud_other", "qud_half",
+                 "tadabur_dev_unseen", "qdat_bench", "ship_a_verified")
+
+
+def _whole(decoded: int, reason: str) -> dict:
+    """A population with no reference exclusion: every decoded item was evaluated."""
+    return {"decoded": decoded, "evaluated": decoded, "excluded": 0, "excluded_words": 0,
+            "excluded_keys": [], "reason": reason}
 
 
 def coverage() -> dict:
-    """The round's frozen populations, decoded and reference-evaluable, with the reasons."""
+    """The round's frozen populations, decoded and reference-evaluable, with the reasons. Every
+    set the round reads has a row; a set with no exclusion says so with zeroes (#179)."""
     from training.aug_readout import COVERAGE_STATEMENT, coverage as aug95_coverage
+    from training.aug_readout import expected_counts
+    from training.nonpro_eval import bench_transcripts
 
     base = aug95_coverage()["populations"]
+    counts = expected_counts(CONSONANT1)
+    populations = {
+        **{name: base[name] for name in ("tarteel_v1.look", "tarteel_v1.confirm", "qud_half")},
+        "qdat": _whole(counts["qdat"],
+                       "no reference exclusion: every qdat clip has its corpus reference"),
+        "qud_other": _qud_coverage(load_qud_complement()),
+        "tadabur_dev_unseen": _whole(
+            counts["tadabur_dev_unseen"],
+            "no reference exclusion: the dev clips h448 holds no copy of, read at stream_b0"),
+        "qdat_bench": _whole(
+            len(bench_transcripts()),
+            "no reference exclusion: the qdat clips the expert bench marks"),
+        "ship_a_verified": _whole(
+            len(g6_scope()["sites"]),
+            "no reference exclusion: Ship A's held-out sites after the shared exclusions"),
+    }
     return {"issue": CONSONANT1.issue, "statement": COVERAGE_STATEMENT,
-            "populations": {name: base[name]
-                            for name in ("tarteel_v1.look", "tarteel_v1.confirm")}
-            | {"qud_other": _qud_coverage(load_qud_complement())}}
+            "populations": {name: populations[name] for name in COVERAGE_SETS}}
 
 
 def _qud_coverage(frozen: set[str]) -> dict:

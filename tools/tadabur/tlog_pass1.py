@@ -37,10 +37,10 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     and would otherwise overwrite the gate's one measured number; the committed pass-1 tree
     carries it, so the envelope can be re-checked without the box.
 ``<out-dir>/gate_override.json``
-    written by a full run the owner raised the wall limit for: the limit in force, the comment
-    that grants it, and the gate's measured hours, GPU hours and peak disk. The gate's own
-    ``gate_projection.json`` keeps the pre-registered verdict, so the record still shows what
-    was measured rather than what was allowed.
+    written by a full run the owner raised the wall limit for, before it measures the first
+    shard: the limit in force, the comment that grants it, and the gate's measured hours, GPU
+    hours and peak disk. The gate's own ``gate_projection.json`` keeps the pre-registered
+    verdict, so the record still shows what was measured rather than what was allowed.
 ``<out-dir>/producers.json``
     the producing commit of every shard in the out-dir, written as each shard is published (and
     when a shard is seeded or resumed), so an interrupted run still attributes the rows it
@@ -188,9 +188,12 @@ TOTAL_ROWS = sum(ROWS_BY_SPLIT.values())
 #: The brief's corpus byte count (313 GiB), used to price downloads from the measured rate
 #: instead of assuming the three tracer shards are byte-representative.
 TOTAL_AUDIO_BYTES = 313 * 2**30
-#: The owner's S3b envelope: wall hours, GPU hours and peak disk bytes.
+#: The owner's S3b envelope: wall hours, GPU hours and peak disk bytes. The pass is CPU-only
+#: (decode, VAD, fingerprint) and takes no GPU lock, so its GPU allowance is zero — the issue's
+#: earlier "<= 3 GPU-h" priced the models S2 would have run, which the fallback removed. The
+#: owner's 12 h grace raised the wall bound only; disk and GPU stay as they are.
 WALL_ENVELOPE_HOURS = 8.0
-GPU_ENVELOPE_HOURS = 3.0
+GPU_ENVELOPE_HOURS = 0.0
 DISK_ENVELOPE_BYTES = 5_000_000_000
 #: The out-dir's own records: each published shard's producer, and the gate's settled phases.
 PRODUCERS_NAME = "producers.json"
@@ -641,8 +644,8 @@ def require_gate_pass(verdict: Mapping[str, object], *, owner_wall_hours: float 
     gpu_hours = float(verdict["gpu_hours"])
     if gpu_hours > GPU_ENVELOPE_HOURS:
         raise SystemExit(
-            f"the gate measured {gpu_hours} GPU hours, over the {GPU_ENVELOPE_HOURS} h "
-            f"envelope; a wall override cannot relax the GPU bound")
+            f"the gate measured {gpu_hours:g} GPU hours, over the {GPU_ENVELOPE_HOURS:g} h "
+            f"envelope; this pass is CPU-only and a wall override cannot relax the GPU bound")
     wall_hours = float(verdict["wall_hours"])
     if wall_hours > wall_max:
         raise SystemExit(
@@ -737,8 +740,8 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
     ``meta.json``; another run leaves both alone. ``shard_provenance`` names the producer of a
     **skipped** shard the records do not cover, which is how the three S3a tracer shards keep
     ``d2af0e3``/``#198``. ``gate_override`` is :func:`require_gate_pass`'s record of an owner's
-    raised wall limit: it lands in ``meta.json`` and ``gate_override.json``, and the gate's own
-    ``gate_projection.json`` is left exactly as measured.
+    raised wall limit: it lands in ``gate_override.json`` before the first shard and in
+    ``meta.json``, and the gate's own ``gate_projection.json`` is left exactly as measured.
     """
     shards = list(shards)
     if gate and set(shards) != set(gate_shards()):
@@ -748,6 +751,13 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
     require_floor_config(json.loads(floors_path.read_text(encoding="utf-8")))
     out_dir, index_dir = Path(out_dir), Path(index_dir)
     seed_dir = Path(seed_dir) if seed_dir is not None else None
+    if gate_override is not None:
+        # Before the first shard: an interrupted full run must still show the limit and the
+        # comment it ran under, just as a published shard keeps its producer.
+        write_text_atomically(
+            out_dir / GATE_OVERRIDE_NAME,
+            json.dumps(dict(gate_override), indent=1, ensure_ascii=False,
+                       sort_keys=True) + "\n")
     producers_path = out_dir / PRODUCERS_NAME
     phases_path = out_dir / GATE_PHASES_NAME
     current = _provenance(code_sha, pull_request)
@@ -834,10 +844,6 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         throughput["gate_projection"] = projection
     if gate_override is not None:
         throughput["gate_override"] = dict(gate_override)
-        write_text_atomically(
-            out_dir / GATE_OVERRIDE_NAME,
-            json.dumps(dict(gate_override), indent=1, ensure_ascii=False,
-                       sort_keys=True) + "\n")
     meta = {
         "schema_version": SCHEMA_VERSION,
         "source": {

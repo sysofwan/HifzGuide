@@ -1519,10 +1519,11 @@ GATE_PEAK_DISK_BYTES = 2_105_123_968
 
 
 def _verdict_for(tp, *, wall_hours: float = GATE_WALL_HOURS,
-                 peak_disk_bytes: int = GATE_PEAK_DISK_BYTES) -> dict:
+                 peak_disk_bytes: int = GATE_PEAK_DISK_BYTES,
+                 gpu_hours: float = 0.0) -> dict:
     """``gate_projection.json``'s shape for the given measurement, as the gate publishes it."""
     within_disk = peak_disk_bytes <= tp.DISK_ENVELOPE_BYTES
-    return {"wall_hours": wall_hours, "gpu_hours": 0.0,
+    return {"wall_hours": wall_hours, "gpu_hours": gpu_hours,
             "peak_disk_bytes": peak_disk_bytes,
             "within_wall_envelope": wall_hours <= tp.WALL_ENVELOPE_HOURS,
             "within_disk_envelope": within_disk,
@@ -1567,6 +1568,15 @@ def test_the_owner_s_wall_override_cannot_relax_the_disk_bound(tp):
         tp.require_gate_pass(
             _verdict_for(tp, peak_disk_bytes=tp.DISK_ENVELOPE_BYTES + 1),
             owner_wall_hours=12.0, owner_decision=OWNER_DECISION)
+
+
+def test_the_owner_s_wall_override_cannot_excuse_gpu_hours(tp):
+    """This pass is CPU-only: the wall grace leaves the zero-GPU bound in force."""
+    with pytest.raises(SystemExit, match="over the 0 h envelope"):
+        tp.require_gate_pass(_verdict_for(tp, wall_hours=7.5, gpu_hours=1.0))
+    with pytest.raises(SystemExit, match="over the 0 h envelope"):
+        tp.require_gate_pass(_verdict_for(tp, gpu_hours=1.0), owner_wall_hours=12.0,
+                             owner_decision=OWNER_DECISION)
 
 
 def test_an_override_without_the_comment_that_grants_it_is_refused(tp):
@@ -1653,3 +1663,27 @@ def test_a_full_run_records_the_override_and_keeps_the_gate_verdict(tp, tmp_path
     override_path = tmp_path / "pass1" / tp.GATE_OVERRIDE_NAME
     assert json.loads(override_path.read_text(encoding="utf-8")) == record
     assert path.read_bytes() == artifact
+
+
+def test_an_interrupted_full_run_still_records_the_override(tp, tmp_path, monkeypatch):
+    """The citation and the applied limit precede the first audio read, as a producer does."""
+    data = _gate_fixture(tp, tmp_path)
+    monkeypatch.setattr(tp, "process_shard", _gate_processor(tp, data.paths))
+    _run_gate(tp, data, tmp_path)
+    record = tp.require_gate_pass(_gate_artifact(tp, tmp_path), owner_wall_hours=12.0,
+                                  owner_decision=OWNER_DECISION)
+    out_dir = tmp_path / "second"
+
+    def failing_process(*args, **kwargs):
+        assert (out_dir / tp.GATE_OVERRIDE_NAME).exists(), "the override must precede the rows"
+        raise RuntimeError("the audio read failed")
+
+    monkeypatch.setattr(tp, "process_shard", failing_process)
+    with pytest.raises(RuntimeError, match="the audio read failed"):
+        tp.run(data.shards, out_dir=out_dir, cache_dir=tmp_path / "cache2",
+               floors_path=data.floors, speech_seconds_of=lambda waveform: 0.5,
+               code_sha="b" * 40, pull_request=200, index_dir=data.index_dir,
+               seed_dir=None, gate_override=record)
+
+    assert json.loads((out_dir / tp.GATE_OVERRIDE_NAME).read_text(encoding="utf-8")) == record
+    assert not (out_dir / tp.GATE_PROJECTION_NAME).exists()

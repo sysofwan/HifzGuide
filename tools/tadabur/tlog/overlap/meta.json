@@ -1,0 +1,646 @@
+{
+ "ambiguous_zone": [
+  {
+   "ber": 0.198,
+   "clip": "210:976",
+   "set": "gate_eval"
+  },
+  {
+   "ber": 0.2079,
+   "clip": "210:976",
+   "set": "gate_eval"
+  },
+  {
+   "ber": 0.1053,
+   "clip": "0:914",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.129,
+   "clip": "115:207",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1296,
+   "clip": "115:207",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1377,
+   "clip": "115:385",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1676,
+   "clip": "11:700",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1091,
+   "clip": "12:646",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.0864,
+   "clip": "14:880",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1511,
+   "clip": "15:165",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1214,
+   "clip": "15:229",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1329,
+   "clip": "15:96",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1319,
+   "clip": "16:536",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1339,
+   "clip": "16:536",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1395,
+   "clip": "172:780",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.0821,
+   "clip": "172:791",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.0909,
+   "clip": "17:623",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.2209,
+   "clip": "18:174",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1072,
+   "clip": "18:21",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.2062,
+   "clip": "210:250",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.0938,
+   "clip": "248:901",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1105,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1411,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1515,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1515,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1515,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1515,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1515,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1515,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1515,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1515,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1517,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1539,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1572,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.2029,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.2089,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.23,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.2362,
+   "clip": "267:845",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1404,
+   "clip": "2:141",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.072,
+   "clip": "2:461",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1077,
+   "clip": "305:338",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1081,
+   "clip": "305:338",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.2369,
+   "clip": "305:652",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.093,
+   "clip": "324:217",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1336,
+   "clip": "324:787",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1156,
+   "clip": "5:165",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1548,
+   "clip": "77:80",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1841,
+   "clip": "7:640",
+   "set": "tadabur_frame"
+  },
+  {
+   "ber": 0.1409,
+   "clip": "9:454",
+   "set": "tadabur_frame"
+  }
+ ],
+ "ber_histogram": {
+  "bins": [
+   0.0,
+   0.05,
+   0.1,
+   0.15,
+   0.2,
+   0.25,
+   0.3,
+   0.35,
+   0.4,
+   0.45,
+   0.5,
+   0.55,
+   0.6,
+   0.65,
+   0.7,
+   0.75,
+   0.8,
+   0.85,
+   0.9,
+   0.95
+  ],
+  "counts": [
+   41863,
+   711,
+   1276,
+   2145,
+   2743,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "rejected": [
+   0,
+   0,
+   0,
+   0,
+   1199,
+   6178,
+   11095,
+   22210,
+   120870,
+   237121,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "blind_spots": {
+  "external_without_checksums": [
+   "gate_eval",
+   "tadabur_frame"
+  ],
+  "sealed_panel": 197,
+  "train_near_duplicates_searched": false,
+  "unfingerprinted": {},
+  "why": "the sealed panel cannot be read (the seal pins two authorisations); train-train near duplicates were scoped out; frame and gate_eval have no source-byte checksums, so they are matched by fingerprint only; a committed clip with no fingerprint (undecodable, or shorter than two frames) is listed in unfingerprinted"
+ },
+ "code_sha": "4e0813f460f21a6ae89fbc860146203f2fbd3e16",
+ "controls": {
+  "stop_word_matches": {
+   "mostly_stop_word": 59623,
+   "mostly_stop_word_share": 0.5,
+   "share": 0.133262,
+   "verified": 447411
+  },
+  "synthetic_recall": {
+   "copies": 210,
+   "found": 210,
+   "found_share": 1.0,
+   "max_ber": 0.1157
+  }
+ },
+ "counts": {
+  "rows": 719853
+ },
+ "duplicates": {
+  "exact": {
+   "confirm.1:confirm.1": 76,
+   "confirm.1:confirm.2": 32,
+   "confirm.1:confirm.3": 33,
+   "confirm.1:confirm.4": 22,
+   "confirm.1:train": 1246,
+   "confirm.2:confirm.2": 92,
+   "confirm.2:confirm.3": 20,
+   "confirm.2:confirm.4": 19,
+   "confirm.2:train": 924,
+   "confirm.3:confirm.3": 73,
+   "confirm.3:confirm.4": 13,
+   "confirm.3:train": 461,
+   "confirm.4:confirm.4": 94,
+   "confirm.4:train": 406,
+   "look:confirm.1": 71,
+   "look:confirm.2": 77,
+   "look:confirm.3": 60,
+   "look:confirm.4": 76,
+   "look:look": 131,
+   "look:train": 2819,
+   "train:train": 6936
+  },
+  "near": {
+   "confirm.1:confirm.1": 2,
+   "confirm.1:confirm.2": 5,
+   "confirm.1:confirm.3": 2,
+   "confirm.1:confirm.4": 11,
+   "confirm.1:train": 172,
+   "confirm.2:confirm.3": 2,
+   "confirm.2:confirm.4": 2,
+   "confirm.2:train": 68,
+   "confirm.3:confirm.3": 3,
+   "confirm.3:confirm.4": 1,
+   "confirm.3:train": 97,
+   "confirm.4:train": 50,
+   "look:confirm.1": 27,
+   "look:confirm.2": 33,
+   "look:confirm.3": 35,
+   "look:confirm.4": 35,
+   "look:look": 25,
+   "look:train": 836
+  }
+ },
+ "frozen": {
+  "pass1_meta_sha256": "847219040d8f5dba273ec322abdf075c9baf4bba225e25763448b2197c765c01",
+  "split_tree_sha256": "6104f5fdb6d77e281fe2d6bae85869053e71ccd7730b7a446a25f4ba29ead8ca"
+ },
+ "hits": {
+  "by_set": {
+   "gate_eval": 2,
+   "tadabur_frame": 52,
+   "tarteel_v1": 10099
+  },
+  "by_set_and_role": {
+   "gate_eval": {
+    "train": 2
+   },
+   "tadabur_frame": {
+    "confirm.1": 2,
+    "confirm.2": 1,
+    "confirm.3": 1,
+    "confirm.4": 2,
+    "train": 46
+   },
+   "tarteel_v1": {
+    "confirm.1": 202,
+    "confirm.2": 217,
+    "confirm.3": 201,
+    "confirm.4": 188,
+    "look": 208,
+    "train": 9083
+   }
+  }
+ },
+ "net_sizes": {
+  "gating_eligible": {
+   "confirm.1": {
+    "before": 6354,
+    "lost": 104,
+    "remaining": 6250
+   },
+   "confirm.2": {
+    "before": 6487,
+    "lost": 153,
+    "remaining": 6334
+   },
+   "confirm.3": {
+    "before": 6282,
+    "lost": 142,
+    "remaining": 6140
+   },
+   "confirm.4": {
+    "before": 6456,
+    "lost": 165,
+    "remaining": 6291
+   },
+   "look": {
+    "before": 6415,
+    "lost": 88,
+    "remaining": 6327
+   }
+  },
+  "usable_before_s4": {
+   "confirm.1": {
+    "before": 9743,
+    "lost": 111,
+    "remaining": 9632
+   },
+   "confirm.2": {
+    "before": 9909,
+    "lost": 162,
+    "remaining": 9747
+   },
+   "confirm.3": {
+    "before": 9614,
+    "lost": 152,
+    "remaining": 9462
+   },
+   "confirm.4": {
+    "before": 9772,
+    "lost": 186,
+    "remaining": 9586
+   },
+   "look": {
+    "before": 9803,
+    "lost": 93,
+    "remaining": 9710
+   }
+  }
+ },
+ "pull_request": 200,
+ "pull_request_ref": "refs/pull/200/head",
+ "row_key": [
+  "split",
+  "shard_file",
+  "row"
+ ],
+ "schema_version": 1,
+ "sets": {
+  "gate_eval": {
+   "checksums": null,
+   "fingerprints": {
+    "members": 2000,
+    "path": "/root/scratch/tlog/overlap/fp/gate_eval",
+    "sha256": "8de074142edff34618e050774c2509e7c8f589c8f39a84568d04114469166f5d"
+   },
+   "members": 2000,
+   "revision": "3947e2953a34ab769e37bb6a6a5887c6c0bbf3ac",
+   "source": "FaisaI/tadabur",
+   "units": 40
+  },
+  "qdat": {
+   "checksums": {
+    "path": "tools/tadabur/exposure/nonpro.evaluation_only.clips.jsonl",
+    "sha256": "7c84a241437a9892ae8b818e9e50598799544425bfb43a71101818c133cc9743"
+   },
+   "fingerprints": {
+    "members": 1505,
+    "path": "/root/scratch/tlog/overlap/fp/qdat",
+    "sha256": "f2d5456d3a70fad386eb20b0380835f466d461f6086304c210f37a9f8ae44d02"
+   },
+   "members": 1505,
+   "revision": "624d5827f9062bc0203170a00f44375b2adca1f1",
+   "source": "obadx/qdat",
+   "units": 2
+  },
+  "qdat_bench": {
+   "checksums": {
+    "path": "tools/tadabur/exposure/nonpro.evaluation_only.clips.jsonl",
+    "sha256": "7c84a241437a9892ae8b818e9e50598799544425bfb43a71101818c133cc9743"
+   },
+   "fingerprints": {
+    "members": 159,
+    "path": "/root/scratch/tlog/overlap/fp/qdat_bench",
+    "sha256": "a00b1dafcb9c6421f773b442e81acafb4a513558b269bba42c7fe91992303be3"
+   },
+   "members": 159,
+   "revision": "53d7221da573b2b9e92d9542507564ae1b88fd30",
+   "source": "obadx/qdat_bench",
+   "units": 1
+  },
+  "qud": {
+   "checksums": {
+    "path": "tools/tadabur/exposure/qud.correct_recitation.qud.jsonl",
+    "sha256": "bcf0375e02205d8e2ec905e424b286f0886547528ff19474fdc571bcce8163f3"
+   },
+   "fingerprints": {
+    "members": 12471,
+    "path": "/root/scratch/tlog/overlap/fp/qud",
+    "sha256": "b8eaef23e7a602dd8f20f5d61bdd436bcaecb11fb9f88bc20fd482cea327a345"
+   },
+   "members": 12471,
+   "revision": "6f45ced88a179dfbb97d5b0f76ae69b4d4d1f175",
+   "source": "QUD-Technologies/quranic-universal-ayahs",
+   "units": 10
+  },
+  "retasy": {
+   "checksums": {
+    "path": "tools/tadabur/exposure/nonpro.evaluation_only.clips.jsonl",
+    "sha256": "7c84a241437a9892ae8b818e9e50598799544425bfb43a71101818c133cc9743"
+   },
+   "fingerprints": {
+    "members": 440,
+    "path": "/root/scratch/tlog/overlap/fp/retasy",
+    "sha256": "93041bb5c4f8b91472e6e6aa96feb1fb07ef7b6eb8767903996220931520e5b4"
+   },
+   "members": 440,
+   "revision": "b1fcc39cbc045f367bb07e39025a0e3aaeabf34f",
+   "source": "RetaSy/quranic_audio_dataset",
+   "units": 3
+  },
+  "tadabur_frame": {
+   "checksums": null,
+   "fingerprints": {
+    "members": 37803,
+    "path": "/root/scratch/tlog/overlap/fp/tadabur_frame",
+    "sha256": "4c028226ffa02295f4a861167e5b88d66c1bce865e48944b0f3dd6787c95ebea"
+   },
+   "members": 37803,
+   "revision": "3947e2953a34ab769e37bb6a6a5887c6c0bbf3ac",
+   "source": "FaisaI/tadabur",
+   "units": 40
+  },
+  "tarteel_v1": {
+   "checksums": {
+    "path": "tools/tadabur/exposure/nonpro.evaluation_only.clips.jsonl",
+    "sha256": "7c84a241437a9892ae8b818e9e50598799544425bfb43a71101818c133cc9743"
+   },
+   "fingerprints": {
+    "members": 8950,
+    "path": "/root/scratch/tlog/overlap/fp/tarteel_v1",
+    "sha256": "5cb2ab9511ffb60030f52f08073912fabd93eb6fba114e1a23f40b7fa3c367f8"
+   },
+   "members": 8950,
+   "revision": "eae2dbb47ac763fb2c0cad00c1699f4b58521987",
+   "source": "greentechapps/user_recited_verses_full",
+   "units": 8
+  }
+ },
+ "stop_words": [
+  0,
+  4294967295
+ ],
+ "threshold": {
+  "line": 0.238,
+  "reused": true,
+  "source": {
+   "path": "tools/tadabur/qud_eval/overlap_rules.json",
+   "sha256": "3f8616a78ce4280d89eb1771ca3ab6ea4846a3cfae5d9776ddec15bfad0eca39"
+  }
+ },
+ "tlog_store": {
+  "census": {
+   "path": "tools/tadabur/tlog/fingerprints.json",
+   "sha256": "b665fcd6b27ed350098756c3f60067a940a763329f3fe2a8ca8a58e909f607b8"
+  },
+  "path": "/root/scratch/tlog/fp"
+ },
+ "vote_threshold": 8
+}

@@ -202,9 +202,16 @@ and recorded as a blind spot. That pass resolves Tadabur's commit once and stamp
 `<store>/<set>/revision.txt` before any unit is written, so a resume under a re-uploaded
 dataset is refused rather than mixed, and the stamped commit is the two frame sets' `revision`
 in `meta.json` — every committed `eval_overlap:gate_eval` / `eval_overlap:tadabur_frame` fact
-names the audio it was measured against. A row that will not decode is skipped, not fatal: the
-committed clips it leaves without a fingerprint are listed in `blind_spots.unfingerprinted`. A
-gate row is the exception — its 2,000-clip population is an invariant, so it raises.
+names the audio it was measured against. It also writes `<store>/frames/index.json`, the
+held-out shard list the store covers, and one disposition record per shard
+(`frames/<NNN>.json`: the rows read, the rows per set, and the sealed-panel, undecodable and
+too-short rows by id). The build refuses a store whose declared shards and records do not match,
+or whose two frame stores hold anything but the fingerprints those records claim, and it lists
+every frame row it could not fingerprint in the same blind spot. A row that will not decode is
+skipped, not fatal; a gate row is the exception — its 2,000-clip population is an invariant, so
+it raises. Every unit publishes its controls first and the file resume keys on last (a frame
+shard's disposition record, a set unit's fingerprint archive), so an interrupted write is
+recomputed instead of trusted.
 
 Intra-tlog duplicates are equal `audio_sha256` across **all** rows (empty bytes are never a
 key) plus verified near matches against an index of the frozen eval-role rows only; a
@@ -241,9 +248,10 @@ Or directly, from `tools/` on the box:
 `python -m tadabur.tlog_overlap external --fp-dir DIR` then
 `python -m tadabur.tlog_overlap build --pr <N> --out DIR2`. The build fails loudly if a set's
 store holds a clip its checksums do not name, if the two frame stores disagree about Tadabur's
-revision, if the tlog npz files are not the committed census's, if a tlog shard's fingerprint
-store is short, or if the recall control misses. The offline tests need no network, GPU or
-audio: `python -m pytest -q tools/tadabur/test_tlog_overlap.py` (the committed-tree cases stay
-red until the run's tree is committed) and
-`python -m pytest -q tools/tadabur/test_tlog_overlap_build.py`, which drives `build` end to end
-over a fabricated store and one real index shard.
+revision, if a frame shard has no disposition record or one that does not cover its rows, if
+the tlog npz files are not the committed census's, if a tlog shard's fingerprint store is
+short, or if the recall control misses. The offline tests need no network, GPU or audio:
+`python -m pytest -q tools/tadabur/test_tlog_overlap.py` (the committed-tree cases stay red
+until the run's tree is committed), `python -m pytest -q tools/tadabur/test_tlog_overlap_build.py`,
+which drives `build` end to end over a fabricated store and one real index shard, and
+`python -m pytest -q tools/tadabur/test_tlog_overlap_launch.py`, which sweeps a stub box.

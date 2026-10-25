@@ -71,11 +71,12 @@ fail() {  # <name> <reason>: a launch that died before the run, visible to `chec
 
 sweep() {  # external|build
   local name=$1
-  [ -d "$ROOT/repo" ] || { echo "run 'launch' first" >&2; return 1; }
   if [ "$name" = build ]; then
     [ -n "$PR" ] || { echo "PR=<N> is required for the build" >&2; return 1; }
   fi
-  remote "mkdir -p '$LOGS' '$OUT'; cd '$ROOT/repo' || exit 1; \
+  # The checkout is the box's, not this Mac's: the test belongs in the remote command.
+  remote "test -d '$ROOT/repo' || { echo \"run 'launch' first\" >&2; exit 1; }; \
+          mkdir -p '$LOGS' '$OUT'; cd '$ROOT/repo' || exit 1; \
           rm -f '$LOGS/$name.done' '$LOGS/$name.exit' '$LOGS/$name.pid'; \
           setsid env PR='$PR' ISSUE_ROOT='$ROOT' OVERLAP_OUT='$OUT' FP_DIR='$FP' \
             STORE_DIR='$STORE' AUDIO_CACHE='$CACHE' \

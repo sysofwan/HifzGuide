@@ -28,8 +28,14 @@ a store whose units carry no stamp, is refused. The stamped commit is the two fr
 
 **Undecodable rows.** One row that will not decode is a fact, not a dead multi-hour pass: the
 row is skipped and the committed clips it leaves without a fingerprint are listed in
-``overlap/meta.json``'s ``unfingerprinted`` blind spot. A ``gate_eval`` row is the exception — its 2,000-clip
-population is an invariant, so it fails loudly.
+``overlap/meta.json``'s ``unfingerprinted`` blind spot. A ``gate_eval`` row is the exception —
+its 2,000-clip population is an invariant, so it fails loudly. The frame pass writes one
+disposition file per held-out shard (``<fp-dir>/frames/<NNN>.json``): the rows it read and every
+row's fate — fingerprinted into ``gate_eval`` or ``tadabur_frame``, sealed panel, undecodable,
+or too short to fingerprint — plus ``frames/index.json``, the shard list the store covers. The
+build refuses a store whose declared shards and dispositions do not match, or whose two frame
+stores hold anything but the fingerprints those dispositions claim, and it lists the frame rows
+it could not fingerprint in the same blind spot.
 
 **Threshold.** :data:`LINE` is the committed line from ``qud_eval/overlap_rules.json`` (0.238,
 halfway between the controls' highest synthetic positive and lowest hard negative), reused
@@ -156,6 +162,10 @@ _NONPRO_DATASETS = {dataset.repo: dataset for dataset in (TARTEEL_V1, QDAT, QDAT
 TADABUR_SOURCE = DATASET_ID
 #: The frame stores' revision stamp: the Tadabur commit their fingerprints were taken at.
 REVISION_NAME = "revision.txt"
+#: The frame pass's per-shard disposition records (``frames/<NNN>.json``) and the shard list
+#: they must cover (``frames/index.json``), which the build reconciles.
+FRAMES_DIR = "frames"
+FRAME_INDEX = "index.json"
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 
 _ROW_SEP = "\x00"
@@ -506,12 +516,18 @@ def _external_wanted(clips: Mapping[str, Mapping[str, str]]) -> dict[str, set[st
 @dataclass
 class _Unit:
     """One source shard's fingerprints-to-be, and the rows it could not fingerprint:
-    ``skipped`` (sealed-panel clips) and ``broken`` (undecodable, recorded per set)."""
+    ``skipped`` (sealed-panel clips) and ``broken`` (undecodable, recorded per set).
+
+    ``rows`` is filled by the clip generator once it is exhausted — the shard's source row
+    count, so a completed unit's dispositions are reconciled against the shard rather than
+    against themselves. It stays empty for a unit whose disposition is not recorded.
+    """
 
     name: str
     clips: Iterator[tuple[str, np.ndarray]]
     skipped: list[str]
     broken: list[str]
+    rows: list[int]
 
 
 def _nonpro_unit(dataset, shard: str, cache_dir: Path, wanted: set[str],
@@ -537,7 +553,7 @@ def _nonpro_units(code: str, cache_dir: Path, wanted: set[str]) -> Iterator[_Uni
     for shard in dataset.shards:
         broken: list[str] = []
         yield _Unit(Path(shard).stem, _nonpro_unit(dataset, shard, cache_dir, wanted, broken),
-                    [], broken)
+                    [], broken, [])
 
 
 def _qud_unit(slug: str, shard: str, cache_dir: Path, wanted: set[str],
@@ -564,16 +580,18 @@ def _qud_units(cache_dir: Path, wanted: set[str]) -> Iterator[_Unit]:
         for shard in shards_by_slug[slug]:
             broken: list[str] = []
             yield _Unit(f"{slug}-{Path(shard).stem}",
-                        _qud_unit(slug, shard, cache_dir, wanted, broken), [], broken)
+                        _qud_unit(slug, shard, cache_dir, wanted, broken), [], broken, [])
 
 
-def _frame_unit(shard: int, cache_dir: Path, skipped: list[str], broken: list[str], panel,
-                gate: Mapping[tuple[int, int], str], revision: str
-                ) -> Iterator[tuple[str, np.ndarray]]:
+def _frame_unit(shard: int, cache_dir: Path, skipped: list[str], broken: list[str],
+                rows: list[int], panel, gate: Mapping[tuple[int, int], str],
+                revision: str) -> Iterator[tuple[str, np.ndarray]]:
     from .shard_reader import iter_shard_rows
 
+    seen = 0
     for position, row in enumerate(iter_shard_rows([shard], cache_dir=cache_dir,
                                                    delete_after=True, revision=revision)):
+        seen = position + 1
         path = (row.get("audio") or {}).get("path") or ""
         expected = gate.get((shard, position))
         if expected is not None and Path(path).name != expected:
@@ -591,6 +609,7 @@ def _frame_unit(shard: int, cache_dir: Path, skipped: list[str], broken: list[st
             broken.append(f"{shard}:{position}")
             continue
         yield f"{shard}:{position}", waveform
+    rows.append(seen)
 
 
 def external_units(code: str, *, cache_dir: Path,
@@ -673,8 +692,10 @@ def _write_unit(set_dir: Path, unit: _Unit, code: str) -> None:
             picker.add(clip, waveform)
     saved = {clip: fp for clip, fp in prints.items() if len(fp)}
     broken = len(unit.broken)
-    _save_arrays(set_dir / f"{unit.name}.npz", saved)
+    # The control archive first: the fingerprint archive is what resume keys on, so a
+    # process killed between the two writes never leaves a unit that looks complete.
     _save_arrays(set_dir / "control" / f"{unit.name}.npz", picker.arrays())
+    _save_arrays(set_dir / f"{unit.name}.npz", saved)
     print(f"[external] {code}/{unit.name}: {len(saved)} fingerprints"
           + (f", {broken} undecodable" if broken else ""), flush=True)
 
@@ -720,16 +741,73 @@ def _frame_revision(fp_dir: Path) -> str:
     return str(recorded[FRAME_SETS[0]])
 
 
-def _frame_units(cache_dir: Path, panel, gate: Mapping[tuple[int, int], str],
-                 revision: str) -> Iterator[tuple[int, _Unit]]:
+def _frame_shards() -> list[int]:
+    """Every held-out shard the frame pass covers (the torch-backed module is imported here)."""
     from training.distill_stream import held_out_shards
 
-    for shard in sorted(held_out_shards()):
+    return sorted(held_out_shards())
+
+
+def _frame_units(cache_dir: Path, panel, gate: Mapping[tuple[int, int], str],
+                 revision: str) -> Iterator[tuple[int, _Unit]]:
+    for shard in _frame_shards():
         skipped: list[str] = []
         broken: list[str] = []
+        rows: list[int] = []
         yield shard, _Unit(f"{shard:03d}",
-                           _frame_unit(shard, cache_dir, skipped, broken, panel, gate, revision),
-                           skipped, broken)
+                           _frame_unit(shard, cache_dir, skipped, broken, rows, panel, gate,
+                                       revision),
+                           skipped, broken, rows)
+
+
+def _frame_record_path(fp_dir: Path, shard: int) -> Path:
+    return Path(fp_dir) / FRAMES_DIR / f"{shard:03d}.json"
+
+
+def _write_frame_record(fp_dir: Path, record: Mapping[str, Any]) -> None:
+    """Publish one shard's dispositions — the last write of its unit, so it is the marker."""
+    write_text_atomically(_frame_record_path(fp_dir, record["shard"]),
+                          json.dumps(record, sort_keys=True) + "\n")
+
+
+def _read_frame_record(fp_dir: Path, shard: int) -> dict:
+    return json.loads(_frame_record_path(fp_dir, shard).read_text(encoding="utf-8"))
+
+
+def _declare_frames(fp_dir: Path, shards: Sequence[int]) -> None:
+    """Declare (or verify) the held-out shard list this store covers; a change is refused."""
+    directory = Path(fp_dir) / FRAMES_DIR
+    path = directory / FRAME_INDEX
+    declared = ([int(shard) for shard in json.loads(path.read_text(encoding="utf-8"))["shards"]]
+                if path.exists() else None)
+    if declared is None:
+        if any(directory.glob("[0-9][0-9][0-9].json")):
+            raise ValueError(f"{directory} holds dispositions but no {FRAME_INDEX}")
+        write_text_atomically(path, json.dumps({"shards": list(shards)}) + "\n")
+    elif declared != list(shards):
+        raise ValueError(f"the frame store covers shards {declared}, the run now declares "
+                         f"{list(shards)}: start a new store")
+
+
+def _frame_dispositions(shard: int, unit: _Unit, saved: Mapping[str, Mapping[str, Any]],
+                        short: Sequence[str]) -> dict:
+    """One shard's dispositions: every row it read is fingerprinted, skipped or accounted for."""
+    covered = (len(unit.skipped) + len(unit.broken) + len(short)
+               + len(saved["gate_eval"]) + len(saved["tadabur_frame"]))
+    rows = unit.rows[-1] if unit.rows else 0
+    if covered != rows:
+        raise ValueError(f"shard {shard}: dispositions cover {covered} of {rows} rows")
+    return {"shard": shard, "rows": rows,
+            "gate_eval": len(saved["gate_eval"]), "tadabur_frame": len(saved["tadabur_frame"]),
+            "panel": len(unit.skipped), "broken": sorted(unit.broken), "short": sorted(short)}
+
+
+def _frame_unit_complete(fp_dir: Path, shard: int, name: str) -> bool:
+    """Whether one frame shard published everything, dispositions last."""
+    return (all((Path(fp_dir) / code / f"{name}.npz").exists() for code in FRAME_SETS)
+            and all((Path(fp_dir) / code / "control" / f"{name}.npz").exists()
+                    for code in FRAME_SETS)
+            and _frame_record_path(fp_dir, shard).exists())
 
 
 def external(fp_dir: Path = FP_DIR, *, cache_dir: Path = CACHE_DIR,
@@ -738,9 +816,10 @@ def external(fp_dir: Path = FP_DIR, *, cache_dir: Path = CACHE_DIR,
 
     The frame sets share one pass over ``held_out_shards()``: a row lands in ``gate_eval``
     when it is a ``decode_evalset.{dev,test}`` row, else in ``tadabur_frame``; sealed-panel
-    rows are skipped and undecodable rows recorded. Existing unit files are verified by
-    nothing but their own completeness (atomic write), so a resumed run reuses them; the
-    build then checks the store against the committed populations.
+    rows are skipped and undecodable rows recorded. A unit is reused only when its fingerprint
+    archive and its control archive are both on disk (the archive is published last), so an
+    interrupted unit is recomputed; the build then checks the store against the committed
+    populations.
     """
     fp_dir, cache_dir = Path(fp_dir), Path(cache_dir)
     wanted = _external_wanted(committed_clips())
@@ -750,7 +829,8 @@ def external(fp_dir: Path = FP_DIR, *, cache_dir: Path = CACHE_DIR,
             continue
         for unit in external_units(code, cache_dir=cache_dir, wanted=wanted):
             path = fp_dir / code / f"{unit.name}.npz"
-            if path.exists():
+            control = fp_dir / code / "control" / path.name
+            if path.exists() and control.exists():
                 print(f"[external] {code}/{unit.name}: reused {_members(path)}", flush=True)
             else:
                 _write_unit(fp_dir / code, unit, code)
@@ -761,45 +841,62 @@ def external(fp_dir: Path = FP_DIR, *, cache_dir: Path = CACHE_DIR,
 
 
 def _frame_pass(fp_dir: Path, cache_dir: Path, *, revision: str | None = None) -> dict[str, dict]:
-    """One pass over the frame shards, pinned to ``revision`` (resolved when None)."""
+    """One pass over the frame shards, pinned to ``revision`` (resolved when None).
+
+    Each shard publishes its controls, then its two fingerprint archives, then its
+    disposition record (:func:`_frame_dispositions`); a unit is reused only when all five are
+    on disk, so an interrupted shard is recomputed rather than trusted.
+    """
     revision = revision or _resolve_frame_revision()
     _pin_frame_revision(fp_dir, revision)
+    _declare_frames(fp_dir, _frame_shards())
     gate = gate_membership()
     panel = panel_provenance()
     seen_gate = 0
     skipped_total = broken_total = 0
     for shard, unit in _frame_units(cache_dir, panel, gate, revision):
         paths = {code: fp_dir / code / f"{unit.name}.npz" for code in FRAME_SETS}
-        if all(path.exists() for path in paths.values()):
-            reused = {code: _members(path) for code, path in paths.items()}
-            print(f"[external] {shard:03d}: reused gate_eval {reused['gate_eval']}, "
-                  f"tadabur_frame {reused['tadabur_frame']}", flush=True)
-            seen_gate += reused["gate_eval"]
+        if _frame_unit_complete(fp_dir, shard, unit.name):
+            record = _read_frame_record(fp_dir, shard)
+            print(f"[external] {shard:03d}: reused gate_eval {record['gate_eval']}, "
+                  f"tadabur_frame {record['tadabur_frame']}", flush=True)
+            seen_gate += record["gate_eval"]
+            skipped_total += record["panel"]
+            broken_total += len(record["broken"]) + len(record["short"])
             continue
         prints = {code: {} for code in FRAME_SETS}
         picker = {code: _ControlPicker(code) for code in FRAME_SETS}
+        short: list[str] = []
         for clip, waveform in unit.clips:
             row_index = int(clip.split(":")[1])
             code = "gate_eval" if (shard, row_index) in gate else "tadabur_frame"
             prints[code][clip] = fingerprint(waveform)
-            if _indexable(prints[code][clip]):
+            if not len(prints[code][clip]):
+                if code == "gate_eval":
+                    raise ValueError(f"gate_eval row {clip} is shorter than two frames")
+                short.append(clip)
+            elif _indexable(prints[code][clip]):
                 picker[code].add(clip, waveform)
         saved = {code: {clip: fp for clip, fp in prints[code].items() if len(fp)}
                  for code in FRAME_SETS}
+        record = _frame_dispositions(shard, unit, saved, short)
+        for code in FRAME_SETS:
+            _save_arrays(fp_dir / code / "control" / paths[code].name, picker[code].arrays())
         for code in FRAME_SETS:
             _save_arrays(paths[code], saved[code])
-            _save_arrays(fp_dir / code / "control" / paths[code].name, picker[code].arrays())
-        seen_gate += len(saved["gate_eval"])
-        skipped_total += len(unit.skipped)
-        broken_total += len(unit.broken)
-        print(f"[external] {shard:03d}: gate_eval {len(saved['gate_eval'])}, "
-              f"tadabur_frame {len(saved['tadabur_frame'])}, "
-              f"panel rows skipped {len(unit.skipped)}"
-              + (f", undecodable {len(unit.broken)}" if unit.broken else ""), flush=True)
+        _write_frame_record(fp_dir, record)
+        seen_gate += record["gate_eval"]
+        skipped_total += record["panel"]
+        broken_total += len(record["broken"]) + len(record["short"])
+        print(f"[external] {shard:03d}: gate_eval {record['gate_eval']}, "
+              f"tadabur_frame {record['tadabur_frame']}, "
+              f"panel rows skipped {record['panel']}, rows {record['rows']}"
+              + (f", undecodable {len(record['broken'])}" if record["broken"] else "")
+              + (f", short {len(record['short'])}" if record["short"] else ""), flush=True)
     if seen_gate != len(gate):
         raise ValueError(f"gate_eval store holds {seen_gate} clips for {len(gate)} committed rows")
     print(f"[external] frame pass at {revision}: {skipped_total} sealed-panel rows skipped, "
-          f"{broken_total} undecodable", flush=True)
+          f"{broken_total} undecodable or too short", flush=True)
     return {code: _set_census(fp_dir / code) for code in FRAME_SETS}
 
 
@@ -1017,6 +1114,41 @@ def _tree_sha256(root: Path) -> str:
     return digest.hexdigest()
 
 
+def _frame_inventory(fp_dir: Path) -> tuple[list[str], dict[str, int]]:
+    """Reconcile the frame pass's inventory; return its misfingerprinted ids and its counts.
+
+    Every declared held-out shard must have a disposition record — a shard without one never
+    completed — and every record's buckets must cover the rows it read. A frame row the pass
+    could not fingerprint (undecodable, or shorter than two frames) is returned as a blind
+    spot with its identity, never dropped: the build must be able to say which clip it could
+    not have matched.
+    """
+    directory = Path(fp_dir) / FRAMES_DIR
+    index_path = directory / FRAME_INDEX
+    if not index_path.exists():
+        raise ValueError(f"the frame store has no {FRAMES_DIR}/{FRAME_INDEX}: run `external`")
+    declared = [int(shard) for shard in
+                json.loads(index_path.read_text(encoding="utf-8"))["shards"]]
+    found = sorted(int(path.stem) for path in directory.glob("[0-9][0-9][0-9].json"))
+    if found != declared:
+        raise ValueError(f"the frame store's dispositions are for shards {found}, not the "
+                         f"declared {declared}: the pass did not complete")
+    missing: list[str] = []
+    counts = {code: 0 for code in FRAME_SETS}
+    for shard in declared:
+        record = _read_frame_record(fp_dir, shard)
+        covered = (record["gate_eval"] + record["tadabur_frame"] + record["panel"]
+                   + len(record["broken"]) + len(record["short"]))
+        if covered != record["rows"]:
+            raise ValueError(f"shard {shard}: dispositions cover {covered} of "
+                             f"{record['rows']} rows")
+        missing.extend(record["broken"])
+        missing.extend(record["short"])
+        for code in FRAME_SETS:
+            counts[code] += record[code]
+    return sorted(missing), counts
+
+
 def _verify_tlog_store(store_dir: Path) -> str:
     """Refuse a tlog fingerprint store that is not the committed census's; return its digest.
 
@@ -1047,7 +1179,8 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
     """Write the committed overlap tree and ``meta.json``; return the meta.
 
     ``fp_dir`` is the external store :func:`external` wrote (and keeps the control candidates;
-    its frame sets' ``revision.txt`` is the pinned Tadabur commit the build records).
+    its frame sets' ``revision.txt`` is the pinned Tadabur commit the build records, and
+    ``frames/`` its per-shard dispositions, which must reconcile).
     ``store_dir`` is S3b's tlog fingerprint store, read only and verified npz by npz against
     the committed census. Rows come from
     :func:`tadabur.tlog_split.iter_frozen_rows`, so the key is the frozen
@@ -1074,6 +1207,12 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
     if census["gate_eval"]["members"] != len(gate):
         raise ValueError(f"gate_eval: {census['gate_eval']['members']} fingerprints "
                          f"for {len(gate)} committed rows")
+    frame_missing, frame_counts = _frame_inventory(Path(fp_dir))
+    for code in FRAME_SETS:
+        if census[code]["members"] != frame_counts[code]:
+            raise ValueError(f"{code}: the store holds {census[code]['members']} fingerprints; "
+                             f"the frame inventory claims {frame_counts[code]}")
+    missing["tadabur_frame"] = frame_missing
     frame_revision = _frame_revision(Path(fp_dir))
     store_census_sha = _verify_tlog_store(Path(store_dir))
 

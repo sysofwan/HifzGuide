@@ -73,7 +73,7 @@ import os
 import time
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -604,12 +604,26 @@ def _measure_phase(shards: list[str], *, out_dir: Path, cache_dir: Path,
                             by_split=by_split, counts=counts, shard_sizes=shard_sizes)
         return
     with ProcessPoolExecutor(max_workers=workers, initializer=_init_worker) as pool:
-        futures = [(shard, pool.submit(_worker_shard, (shard, cache_dir, fp_dir)))
-                   for shard in shards]
-        for shard, future in futures:
-            rows, shard_timings = future.result()
-            _write_measured(shard, rows, shard_timings, out_dir=out_dir, timings=timings,
-                            by_split=by_split, counts=counts, shard_sizes=shard_sizes)
+        queue = iter(shards)
+        pending: dict = {}
+
+        def fill() -> None:
+            while len(pending) < workers * 2:
+                try:
+                    shard = next(queue)
+                except StopIteration:
+                    return
+                pending[pool.submit(_worker_shard, (shard, cache_dir, fp_dir))] = shard
+
+        fill()
+        while pending:
+            done, _ = wait(pending, return_when=FIRST_COMPLETED)
+            for future in done:
+                shard = pending.pop(future)
+                rows, shard_timings = future.result()
+                _write_measured(shard, rows, shard_timings, out_dir=out_dir, timings=timings,
+                                by_split=by_split, counts=counts, shard_sizes=shard_sizes)
+            fill()
 
 
 def _write_measured(shard: str, rows: list[dict], shard_timings: dict, *, out_dir: Path,

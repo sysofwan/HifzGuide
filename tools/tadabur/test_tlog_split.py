@@ -204,6 +204,41 @@ def test_the_build_refuses_an_index_that_its_meta_says_is_incomplete(ts, tmp_pat
                  floors_path=data.floors, code_sha="a" * 40, pull_request=200)
 
 
+def test_the_build_cites_the_pass1_meta_s_producer_for_every_shard_it_names(ts, tmp_path):
+    data = _synthetic(tmp_path)
+    producers = {f"clean/{CLEAN_STEM}": {"code_sha": "b" * 40, "pull_request": 201},
+                 f"unclean/{UNCLEAN_STEM}": {"code_sha": "c" * 40, "pull_request": 202}}
+    (data.pass1_dir / "meta.json").write_text(json.dumps({"shards": producers}),
+                                              encoding="utf-8")
+
+    meta = ts.build(tmp_path / "split", index_dir=data.index_dir, pass1_dir=data.pass1_dir,
+                    floors_path=data.floors, code_sha="a" * 40, pull_request=200)
+
+    assert meta["shards"] == producers
+
+
+def test_the_build_refuses_a_shard_its_pass1_meta_does_not_name(ts, tmp_path):
+    """A present meta is the producer record: a shard it omits was not measured by this build."""
+    data = _synthetic(tmp_path)
+    (data.pass1_dir / "meta.json").write_text(json.dumps({"shards": {
+        f"clean/{CLEAN_STEM}": {"code_sha": "b" * 40, "pull_request": 201}}}),
+        encoding="utf-8")
+
+    with pytest.raises(ValueError, match=f"unclean/{UNCLEAN_STEM}"):
+        ts.build(tmp_path / "split", index_dir=data.index_dir, pass1_dir=data.pass1_dir,
+                 floors_path=data.floors, code_sha="a" * 40, pull_request=200)
+
+
+def test_the_meta_scopes_the_yield_to_the_floors_it_applies(ts, tmp_path):
+    data = _synthetic(tmp_path)
+
+    meta = ts.build(tmp_path / "split", index_dir=data.index_dir, pass1_dir=data.pass1_dir,
+                    floors_path=data.floors, code_sha="a" * 40, pull_request=200)
+
+    assert meta["exclusions"] == {"applied": ["codec", "silence"],
+                                  "deferred": ["eval_overlap", "duplicate"]}
+
+
 # --- the committed freeze --------------------------------------------------------------------
 
 

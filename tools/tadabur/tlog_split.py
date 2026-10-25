@@ -75,7 +75,11 @@ def freeze_row(index_row: Mapping[str, Any]) -> dict:
 
 
 def _yield_record(counts: Counter) -> dict:
-    """One split's usable-row report, after the floors shared with :mod:`tlog_pass1`."""
+    """One split's usable-row report, after the ``codec`` and ``silence`` floors.
+
+    ``usable`` is not the pre-registration's whole exclusion set: ``eval_overlap`` and
+    ``duplicate`` are S4's, and ``meta["exclusions"]`` records that they are deferred.
+    """
     rows = counts["rows"]
     return {
         "rows": rows,
@@ -96,7 +100,8 @@ def build(split_dir: Path = SPLIT_DIR, *, index_dir: Path = INDEX_DIR,
     The index is the row universe; pass 1 must have an aligned output for every index shard.
     A shard's producing SHA and PR come from the pass-1 meta when it records them (the three
     S3a tracer shards were verified, not re-measured), and from this build's own provenance
-    otherwise.
+    only when no pass-1 meta exists at all: a shard a present meta omits is refused, because
+    this build did not measure those rows either.
     """
     index_dir, pass1_dir = Path(index_dir), Path(pass1_dir)
     split_dir, floors_path = Path(split_dir), Path(floors_path)
@@ -142,7 +147,13 @@ def build(split_dir: Path = SPLIT_DIR, *, index_dir: Path = INDEX_DIR,
         require_pass1_alignment(pass1_rows, index_rows, pass1_path)
         rows = [freeze_row(index_row) for index_row in index_rows]
         write_shard(rows, split_dir / split / index_path.name)
-        producer = producers.get(key, current)
+        producer = producers.get(key)
+        if producer is None:
+            if pass1_meta:
+                raise ValueError(
+                    f"pass 1 meta has no producing record for {key}: the freeze would cite "
+                    f"this build's SHA for rows it never produced")
+            producer = current
         shard_producers[key] = {"code_sha": producer["code_sha"],
                                 "pull_request": producer["pull_request"]}
 
@@ -189,6 +200,12 @@ def build(split_dir: Path = SPLIT_DIR, *, index_dir: Path = INDEX_DIR,
                    "f_s": floors["f_s"], "d_s": floors["d_s"]},
         "embeddings": EMBEDDINGS_NOTE,
         "speaker_cluster": SPEAKER_CLUSTER_NOTE,
+        # The pre-registration's exclusion set is codec, silence, eval_overlap and duplicate.
+        # The yield report decides the first two; eval_overlap:tarteel_v1 sits on the S1 index
+        # row and duplicate needs S4's fingerprints, so a training pool must apply both before
+        # it trusts the yield's ``usable`` count.
+        "exclusions": {"applied": ["codec", "silence"],
+                       "deferred": ["eval_overlap", "duplicate"]},
         "counts": {
             "rows": {"by_role": {name: by_role[name] for name in ROLES},
                      "by_split": {**{split: by_split[split] for split in TLOG_SPLITS},

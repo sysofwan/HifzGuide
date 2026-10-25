@@ -107,3 +107,29 @@ The branch is squash-merged, so a `code_sha` it cites survives only under
 `refs/pull/<N>/head`; record the PR number beside any cited SHA. The offline tests, which need
 no network, GPU or Silero install (PyAV is needed for the MP4/AAC fallback tests), are
 `python -m pytest -q tools/tadabur/test_tlog_pass1.py`.
+
+## The S3b full pass and the split freeze (#188)
+
+The gate is `run --gate --workers 3`: clean 0-5 and unclean 0-5. Clean 0 and unclean 0 are the
+tracer's committed outputs, so the resume guard verifies them and skips them; they do not enter
+the measured rate. Each split is timed as its own phase, and `throughput.gate_projection`
+weights each split's measured rows/s by the index's row counts for the shards the run did not
+process (no second division by the worker count; the five-shard tail on three workers is
+conservative). Start the full run (`--all --workers 3`) only when `within_owner_envelope` is
+true: <= 8 wall hours and 0 GPU hours. Outputs go to scratch
+(`--out-dir /root/scratch/tlog/s3b/pass1`), never the measured checkout, so the clean-tree
+guard still holds, a resumed run re-verifies and skips existing shards, and the fetched files
+are metadata only. `scripts/issue-188-pass1.sh` stages the committed branch on cuda-dev, runs
+the gate and the full pass detached without the GPU lock, and fetches the rows; it reports the
+PID, log and completion files.
+
+`tlog/split/` is the freeze: `<split>/<shard>.jsonl.gz` carries `(split, shard_file, row,
+audio_path, speaker_cluster, group_key, role)`. Under the owner's fallback, `speaker_cluster`
+is always `null`, `group_key` is the S1 id group's smallest `audio_path`, and the role is
+`tadabur.tlog_index.role(group_key)`, reproducible from the committed group keys alone.
+`split/meta.json` records the code SHA with its PR, the pre-registration and S2 report
+SHA-256s, `"embeddings": "none (owner fallback 2026-10-24)"`, the counts per role and split,
+the 1% group cap and largest share, each role's surah/ayah distribution against the training
+pool, the yield after the floors, and each shard's producing SHA + PR. Rebuild it offline, from
+the committed index and pass 1, with `python -m tadabur.tlog_split build --pr <N>`.
+

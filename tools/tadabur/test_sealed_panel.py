@@ -321,6 +321,8 @@ def test_lint_only_the_panels_own_modules_name_it_or_its_flags():
     assert naming("sealed_panel") <= {
         "tadabur/sealed_panel.py", "tadabur/test_sealed_panel.py", "tadabur/panel_seal.py",
         "tadabur/exposure.py", "tadabur/test_exposure.py", "tadabur/staged_audio.py",
+        # S4's meta names the panel only as a blind-spot count, never reading its audio.
+        "tadabur/tlog_overlap.py", "tadabur/test_tlog_overlap.py",
     }
     assert naming(SHIP_FLAG) == {"tadabur/panel_seal.py"}  # #97 adds its scoring module
     assert naming(PREP_FLAG) == {"tadabur/panel_seal.py", "tadabur/sealed_panel.py"}

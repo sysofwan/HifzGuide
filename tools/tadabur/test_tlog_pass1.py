@@ -809,3 +809,237 @@ def test_the_pinned_vad_builds_and_finds_no_speech_in_a_second_of_silence():
 
     speech_seconds_of = silero_speech_seconds()
     assert speech_seconds_of(np.zeros(TARGET_SAMPLE_RATE, dtype=np.float32)) == 0.0
+
+
+# --- the gate tranche and its projection -----------------------------------------------------
+
+
+def test_the_gate_tranche_is_the_first_six_shards_of_each_split(tp):
+    """The tranche rule (decision 3) is fixed before the run, not chosen after it."""
+    assert tp.gate_shards() == tuple(
+        [f"data/clean-{i:05d}-of-00411.parquet" for i in range(6)]
+        + [f"data/unclean-{i:05d}-of-00332.parquet" for i in range(6)])
+    assert len(tp.gate_shards()) == 12
+
+
+def test_the_gate_projection_weights_the_remaining_rows_by_each_split_rate(tp):
+    measured = {"clean": {"rows": 3880, "wall_seconds": 100.0},
+                "unclean": {"rows": 970, "wall_seconds": 200.0}}
+    projection = tp.gate_projection(
+        measured, remaining_rows={"clean": 100_000, "unclean": 50_000}, workers=3)
+
+    expected_seconds = 100_000 * 100.0 / 3880 + 50_000 * 200.0 / 970
+    assert projection["workers"] == 3
+    assert projection["rows_measured"] == {"clean": 3880, "unclean": 970}
+    assert projection["rows_remaining"] == {"clean": 100_000, "unclean": 50_000}
+    assert projection["rows_per_s"]["clean"] == pytest.approx(38.8)
+    assert projection["rows_per_s"]["unclean"] == pytest.approx(4.85)
+    assert projection["wall_hours"] == pytest.approx(expected_seconds / 3600)
+    assert projection["gpu_hours"] == 0.0
+    assert projection["within_owner_envelope"] is True
+
+
+def test_a_split_with_no_measured_row_borrows_the_pooled_rate(tp):
+    projection = tp.gate_projection({"clean": {"rows": 1000, "wall_seconds": 250.0}},
+                                    remaining_rows={"clean": 1000, "unclean": 500},
+                                    workers=3)
+
+    assert projection["rows_per_s"]["clean"] == pytest.approx(4.0)
+    assert projection["rows_per_s"]["unclean"] is None
+    assert projection["wall_hours"] == pytest.approx(1500 / 4.0 / 3600)
+
+
+def test_a_gate_projection_over_the_wall_envelope_fails_the_gate(tp):
+    projection = tp.gate_projection({"clean": {"rows": 1, "wall_seconds": 10.0}},
+                                    remaining_rows={"clean": 1_000_000, "unclean": 0},
+                                    workers=3)
+
+    assert projection["wall_hours"] > tp.WALL_ENVELOPE_HOURS
+    assert projection["gpu_hours"] == 0.0
+    assert projection["within_owner_envelope"] is False
+
+
+def test_a_gate_projection_with_no_measured_row_is_refused(tp):
+    with pytest.raises(ValueError, match="no measured row"):
+        tp.gate_projection({}, remaining_rows={"clean": 1, "unclean": 1}, workers=3)
+
+
+# --- the resume guard ------------------------------------------------------------------------
+
+
+def _index_for(tp, tmp_path: Path, shard: str, paths: list[str]) -> Path:
+    """A one-shard S1 index, written by the same deterministic JSONL-gzip writer."""
+    split, stem = tlog_split(shard), Path(shard).stem
+    rows = [{"schema_version": 1, "split": split, "shard_file": stem, "row": index,
+             "audio_path": path, "filename_label": None, "recording_id": None,
+             "id_group": path, "tarteel_v1_eval_overlap": False,
+             "tarteel_v1_any_overlap": False} for index, path in enumerate(paths)]
+    index_dir = tmp_path / "index"
+    tp.write_pass1(rows, index_dir / split / f"{stem}.jsonl.gz")
+    return index_dir
+
+
+def _refuse_download(shard: str, cache_dir: Path):
+    raise AssertionError(f"a resumed shard must not be downloaded: {shard}")
+    yield  # pragma: no cover — makes this a generator like shard_rows
+
+
+def test_a_resumed_shard_is_verified_and_not_downloaded(tp, tmp_path):
+    shard, paths = CLEAN_SHARD, ["a.flac", "b.flac"]
+    index_dir = _index_for(tp, tmp_path, shard, paths)
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+    rows = [{"audio": {"path": path, "bytes": wav(1.0, 16000)}} for path in paths]
+    out_dir = tmp_path / "pass1"
+
+    first = tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache", floors_path=floors,
+                   speech_seconds_of=lambda waveform: 0.5, stream=fake_stream(rows),
+                   code_sha="0" * 40, index_dir=index_dir)
+    second = tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache", floors_path=floors,
+                    speech_seconds_of=lambda waveform: 0.5, stream=_refuse_download,
+                    code_sha="0" * 40, index_dir=index_dir)
+
+    assert first["throughput"]["shards_measured"] == 1
+    assert first["throughput"]["shards_skipped"] == 0
+    assert second["counts"]["rows"] == {"clean": 2, "unclean": 0, "total": 2}
+    assert second["throughput"]["shards_skipped"] == 1
+    assert second["throughput"]["shards_measured"] == 0
+    # The skipped shard's rows are counted in the freeze but not in the gate's rates.
+    assert second["throughput"]["rows"] == 0
+
+
+def test_a_resumed_shard_with_a_different_row_count_is_refused(tp, tmp_path):
+    shard, paths = CLEAN_SHARD, ["a.flac", "b.flac"]
+    index_dir = _index_for(tp, tmp_path, shard, paths)
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+    out_dir = tmp_path / "pass1"
+    rows = [{"audio": {"path": path, "bytes": wav(1.0, 16000)}} for path in paths]
+    tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache", floors_path=floors,
+           speech_seconds_of=lambda waveform: 0.5, stream=fake_stream(rows),
+           code_sha="0" * 40, index_dir=index_dir)
+
+    output = out_dir / "clean" / "clean-00000-of-00411.jsonl.gz"
+    with gzip.open(output, "rt", encoding="utf-8") as handle:
+        content = [json.loads(line) for line in handle]
+    tp.write_pass1(content[:1], output)
+
+    with pytest.raises(ValueError, match="row count"):
+        tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache", floors_path=floors,
+               speech_seconds_of=lambda waveform: 0.5, stream=_refuse_download,
+               code_sha="0" * 40, index_dir=index_dir)
+
+
+def test_a_resumed_shard_whose_paths_drift_from_the_index_is_refused(tp, tmp_path):
+    shard, paths = CLEAN_SHARD, ["a.flac", "b.flac"]
+    index_dir = _index_for(tp, tmp_path, shard, paths)
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+    out_dir = tmp_path / "pass1"
+    rows = [{"audio": {"path": path, "bytes": wav(1.0, 16000)}} for path in paths]
+    tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache", floors_path=floors,
+           speech_seconds_of=lambda waveform: 0.5, stream=fake_stream(rows),
+           code_sha="0" * 40, index_dir=index_dir)
+
+    output = out_dir / "clean" / "clean-00000-of-00411.jsonl.gz"
+    with gzip.open(output, "rt", encoding="utf-8") as handle:
+        content = [json.loads(line) for line in handle]
+    content[0]["audio_path"] = "z.flac"
+    tp.write_pass1(content, output)
+
+    with pytest.raises(ValueError, match="audio_path"):
+        tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache", floors_path=floors,
+               speech_seconds_of=lambda waveform: 0.5, stream=_refuse_download,
+               code_sha="0" * 40, index_dir=index_dir)
+
+
+def test_a_corrupt_resumed_shard_is_refused(tp, tmp_path):
+    shard = CLEAN_SHARD
+    index_dir = _index_for(tp, tmp_path, shard, ["a.flac"])
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+    out_dir = tmp_path / "pass1"
+    output = out_dir / "clean" / "clean-00000-of-00411.jsonl.gz"
+    output.parent.mkdir(parents=True)
+    output.write_bytes(b"not gzip")
+
+    with pytest.raises((OSError, ValueError)):
+        tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache", floors_path=floors,
+               speech_seconds_of=lambda waveform: 0.5, stream=_refuse_download,
+               code_sha="0" * 40, index_dir=index_dir)
+
+
+# --- the shared floors reader ----------------------------------------------------------------
+
+
+@pytest.fixture
+def floors_reading():
+    return {"f_s": 0.4, "d_s": 1.5}
+
+
+def test_a_codec_failure_is_excluded_before_its_null_facts_are_read(tp, floors_reading):
+    row = {"codec_ok": False, "duration_s": None, "speech_s": None, "speech_ratio": None}
+
+    assert tp.exclusion_reasons(row, floors_reading) == ("codec",)
+    assert tp.usable(row, floors_reading) is False
+
+
+def test_the_silence_floors_are_inclusive(tp, floors_reading):
+    at_both_floors = {"codec_ok": True, "duration_s": 4.0, "speech_s": 1.5,
+                      "speech_ratio": 0.4}
+
+    assert tp.exclusion_reasons(at_both_floors, floors_reading) == ()
+    assert tp.usable(at_both_floors, floors_reading) is True
+
+
+@pytest.mark.parametrize("ratio, speech", [(0.39, 5.0), (0.9, 1.49)])
+def test_a_short_or_sparse_clip_is_silence(tp, floors_reading, ratio, speech):
+    row = {"codec_ok": True, "duration_s": 10.0, "speech_s": speech, "speech_ratio": ratio}
+
+    assert tp.exclusion_reasons(row, floors_reading) == ("silence",)
+    assert tp.usable(row, floors_reading) is False
+
+
+# --- the full run's committed facts ----------------------------------------------------------
+
+
+def test_every_index_shard_has_a_committed_pass1_file_with_the_same_rows(tp):
+    index_files = sorted(tp.INDEX_META_PATH.parent.glob("*/*.jsonl.gz"))
+    assert len(index_files) == tp.TOTAL_SHARDS == 743
+
+    for index_path in index_files:
+        split, stem = index_path.parent.name, index_path.name[: -len(".jsonl.gz")]
+        with gzip.open(index_path, "rt", encoding="utf-8") as handle:
+            index_rows = [json.loads(line) for line in handle]
+        pass1_path = tp.PASS1_DIR / split / index_path.name
+        assert pass1_path.exists(), f"pass 1 never committed {split}/{stem}"
+        with gzip.open(pass1_path, "rt", encoding="utf-8") as handle:
+            rows = [json.loads(line) for line in handle]
+        assert [row["row"] for row in rows] == list(range(len(index_rows)))
+        assert [row["audio_path"] for row in rows] == [row["audio_path"] for row in index_rows]
+
+
+def test_the_committed_pass1_counts_match_the_index_exactly(tp):
+    index_meta = json.loads(tp.INDEX_META_PATH.read_text(encoding="utf-8"))
+    meta = json.loads((tp.PASS1_DIR / "meta.json").read_text(encoding="utf-8"))
+
+    assert meta["counts"]["rows"] == index_meta["counts"]["rows"]
+    assert meta["counts"]["rows"]["total"] == tp.TOTAL_ROWS == 719_853
+
+
+def test_the_committed_meta_names_each_shard_s_producing_sha_and_pr(tp):
+    meta = json.loads((tp.PASS1_DIR / "meta.json").read_text(encoding="utf-8"))
+    shards = meta["shards"]
+    assert len(shards) == 743
+
+    for shard in TRACER_SHARDS:
+        split, stem = tlog_split(shard), Path(shard).stem
+        entry = shards[f"{split}/{stem}"]
+        assert entry["code_sha"].startswith("d2af0e3")
+        assert entry["pull_request"] == 198
+    for key, entry in shards.items():
+        if key.split("/")[1] in {Path(shard).stem for shard in TRACER_SHARDS}:
+            continue
+        assert re.fullmatch(r"[0-9a-f]{40}", entry["code_sha"])
+        assert entry["pull_request"] == meta["pull_request"]
+

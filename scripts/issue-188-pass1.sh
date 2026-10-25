@@ -7,7 +7,7 @@
 #   scripts/issue-188-pass1.sh check gate           # done file, gate projection, disk report
 #   PR=198 scripts/issue-188-pass1.sh full          # all 743 shards, detached, 3 workers
 #   scripts/issue-188-pass1.sh check full
-#   scripts/issue-188-pass1.sh fetch DIR            # pull the pass-1 rows + meta (never audio)
+#   scripts/issue-188-pass1.sh fetch DIR            # pull rows, meta and gate records (no audio)
 #
 # The gate names clean 0-5 and unclean 0-5; clean 0 and unclean 0 are the S3a tracer's
 # committed outputs, so --seed-dir verifies and copies them into the scratch output directory
@@ -94,7 +94,7 @@ fetch() {  # <local dir>
   local target=$1
   mkdir -p "$target"
   remote "tar -C '$OUT' -czf - ." | tar -C "$target" -xzf -
-  echo "fetched pass-1 rows and meta into $target (no audio)"
+  echo "fetched pass-1 rows, meta and the gate records into $target (no audio)"
 }
 
 fail() {  # <name> <reason>: a launch that died before the run, visible to `check`

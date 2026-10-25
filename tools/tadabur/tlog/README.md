@@ -60,16 +60,28 @@ python -m tadabur.tlog_s2 report --embeddings-dir DIR
 
 ## The pass-1 facts and the silence floors (#187)
 
-`pass1/` is what `tadabur.tlog_pass1` commits about the tracer shards:
-`pass1/<split>/<shard>.jsonl.gz` carries, per row, `split`, `shard_file`, `row`, `audio_path`,
+`pass1/` is what `tadabur.tlog_pass1` commits: now all 743 shards of both splits (the three
+tracer shards were its first). `pass1/<split>/<shard>.jsonl.gz` carries, per row, `split`,
+`shard_file`, `row`, `audio_path`,
 `audio_sha256`, `codec_ok`, `sample_rate`, `duration_s`, `speech_s`, `speech_ratio` and
 `decoder` (`soundfile` or `pyav`, the two decoders pass 1 tries in that order), and
 `pass1/meta.json` records the code SHA, the VAD config, the installed decoder versions, the
-floors' SHA-256, the counts and the measured throughput. Nothing else is computed: no label,
+floors' SHA-256, the counts and the measured throughput. Its `throughput.extrapolated` block is
+the **single-worker stage model** (`"model": "single_worker_model"`), not a finished run's cost:
+`throughput.wall_hours_actual`, `wall_hours_max` and `scope` are, and `pass1/run_outcome.json`
+restates them as the run's own record. Nothing else is computed: no label,
 transcript, teacher/student output or speaker embedding (the owner accepted the clip-level
 fallback on 2026-10-24, so `"embeddings"` records it). The Haitsma–Kalker fingerprint goes to
 cuda-dev scratch (`/root/scratch/tlog/fp/`) and is never committed; each tlog shard is
 downloaded, read and deleted.
+
+The store is one `<shard>.npz` per shard (`numpy.savez_compressed`), each member keyed
+`<audio_path>|<audio_sha256>` — the path alone is not unique, and the digest distinguishes two
+rows that share it. Member count equals the shard's `codec_ok` rows on every committed shard.
+`tlog/fingerprints.json` is its committed census (`python -m tadabur.tlog_pass1 fingerprints`,
+`tadabur.tlog_pass1.fingerprint_store_record`): per shard, the npz's SHA-256, its member count
+and the `codec_ok` rows it must cover, so a lost or short store is detected without
+re-streaming the corpus.
 
 `silence_floors.json` is the pre-registration's Exclusions floor: `f_s` and `d_s` are the
 type-7 0.5th percentiles of `speech_ratio` and `speech_s` over the Tarteel v1 look clips that
@@ -107,3 +119,54 @@ The branch is squash-merged, so a `code_sha` it cites survives only under
 `refs/pull/<N>/head`; record the PR number beside any cited SHA. The offline tests, which need
 no network, GPU or Silero install (PyAV is needed for the MP4/AAC fallback tests), are
 `python -m pytest -q tools/tadabur/test_tlog_pass1.py`.
+
+## The S3b full pass and the split freeze (#188)
+
+The gate is `run --gate --workers 3`: clean 0-5 and unclean 0-5. Clean 0 and unclean 0 are the
+tracer's committed outputs: `--seed-dir` (the checkout's `pass1/`) verifies them against the S1
+index and copies them into the scratch output directory, so the resume guard skips them. The
+throughput sample is therefore clean 1-5 and unclean 1-5, one timed phase per split; each phase
+is settled in `$OUT/gate_phases.json` as it finishes, bound to the tranche, worker count and code
+SHA, so an interrupted gate keeps the split it measured. A retry reuses a stored phase only for
+the same sample at the same binding, and refuses to gate — rather than pricing one split at the
+other's rate — when a split's phase is neither measured completely nor stored.
+`$OUT/gate_projection.json` is the gate's own record, so the full run (which reuses the scratch
+directory) cannot overwrite it; only a gate run writes it or `throughput.gate_projection`. Its
+`within_owner_envelope` is wall hours **and** the measured peak disk (`within_wall_envelope`,
+`within_disk_envelope`), and it names the shards each phase measured. Start the full run
+(`--all --workers 3`) only when disk and GPU fit and the projected wall hours fit the limit in
+force: the pre-registered <= 8 wall hours, 0 GPU hours and <= 5 GB peak disk — or an owner's
+raised wall limit for this run, passed as `--owner-wall-hours` with `--owner-decision` (the
+comment that grants it). The override is refused without its citation, cannot relax the disk or
+GPU bound, and never rewrites `gate_projection.json`: the raised limit, the citation and the
+measurement it covered land in `meta.json` and `gate_override.json`. Outputs go to scratch
+(`--out-dir /root/scratch/tlog/s3b/pass1`), never the measured checkout, so the clean-tree
+guard still holds, a resumed run re-verifies and skips existing shards, and the fetched files
+are metadata only. `gate_projection.json`, `gate_phases.json` and `gate_override.json` are the
+gate's envelope evidence: commit all three with the pass-1 rows and `meta.json`.
+`$OUT/producers.json` records each published shard's producing commit, so an interrupted run
+keeps its attribution and a resumed run at a later commit does not claim rows it only verified;
+an output with no producing record is refused. `scripts/issue-188-pass1.sh` stages the committed
+branch on cuda-dev, runs the gate and the full pass detached without the GPU lock, refuses
+`full` unless the gate's verdict fits the limit in force (`OWNER_WALL_HOURS` and
+`OWNER_DECISION` are forwarded to the guard), and fetches the rows; it reports the PID, log and
+completion files.
+
+`tlog/split/` is the freeze: `<split>/<shard>.jsonl.gz` carries `(split, shard_file, row,
+audio_path, speaker_cluster, group_key, role)`. Under the owner's fallback, `speaker_cluster`
+is always `null`, `group_key` is the S1 id group's smallest `audio_path`, and the role is
+`tadabur.tlog_index.role(group_key)`, reproducible from the committed group keys alone.
+`split/meta.json` records the code SHA with its PR, the pre-registration and S2 report
+SHA-256s, `"embeddings": "none (owner fallback 2026-10-24)"`, the counts per role and split,
+the 1% group cap and largest share, each role's surah/ayah distribution against the training
+pool, the yield after the `codec` and `silence` floors, and each shard's producing SHA + PR.
+The yield is not the whole exclusion set: `exclusions` names `eval_overlap` and `duplicate` as
+S4's, so a training pool must apply both before trusting `yield.usable`. `split/pool.json` is the gating population S4 consumes, written by the same build: per split
+and per role, `rows`, `usable` after the codec and silence floors, `eval_overlap_tarteel_v1`
+and `usable_after_eval_overlap` (495,030 usable rows contain 10,386 Tarteel v1 eval-overlap
+rows; `meta.json` keeps the floors-only yield). Rebuild it offline, from the committed index
+and pass 1, with `python -m tadabur.tlog_split build --pr <N>`; a shard the pass-1 meta omits is
+refused rather than attributed to the build. A later HEAD changes `meta.json`'s `code_sha` and
+the producers it cites, so reproduce the committed freeze with
+`build --code-sha 7380e1c --pr 199` (every file byte-identical, `pool.json` included).
+

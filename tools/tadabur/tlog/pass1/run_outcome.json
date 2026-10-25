@@ -1,0 +1,22 @@
+{
+ "code_sha": "7380e1ceaa0de5fa57a93ed122d55d3f74318839",
+ "gpu_hours": 0.0,
+ "owner_decision": "https://github.com/sysofwan/HifzGuide/issues/188#issuecomment-6393137890",
+ "pull_request": 199,
+ "pull_request_ref": "refs/pull/199/head",
+ "schema_version": 1,
+ "scope": {
+  "note": "throughput covers 730 measured shards; 13 seeded shards verified, not re-measured",
+  "rows_measured": 707748,
+  "rows_total": 719853,
+  "shards_measured": 730,
+  "shards_seeded": 13
+ },
+ "wall_hours_actual": 11.4813,
+ "wall_hours_max": 12.0,
+ "wall_limit": "owner override",
+ "wall_seconds": {
+  "clean": 22465.464,
+  "unclean": 18867.367
+ }
+}

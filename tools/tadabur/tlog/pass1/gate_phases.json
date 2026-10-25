@@ -1,0 +1,82 @@
+{
+ "binding": {
+  "code_sha": "918c55cb3b7eefc716eead576e2131e53253b767",
+  "tranche": [
+   "data/clean-00000-of-00411.parquet",
+   "data/clean-00001-of-00411.parquet",
+   "data/clean-00002-of-00411.parquet",
+   "data/clean-00003-of-00411.parquet",
+   "data/clean-00004-of-00411.parquet",
+   "data/clean-00005-of-00411.parquet",
+   "data/unclean-00000-of-00332.parquet",
+   "data/unclean-00001-of-00332.parquet",
+   "data/unclean-00002-of-00332.parquet",
+   "data/unclean-00003-of-00332.parquet",
+   "data/unclean-00004-of-00332.parquet",
+   "data/unclean-00005-of-00332.parquet"
+  ],
+  "workers": 3
+ },
+ "splits": {
+  "clean": {
+   "shard_bytes": [
+    144513058,
+    181325969,
+    198807643,
+    193719722,
+    175586835
+   ],
+   "shards": [
+    "data/clean-00001-of-00411.parquet",
+    "data/clean-00002-of-00411.parquet",
+    "data/clean-00003-of-00411.parquet",
+    "data/clean-00004-of-00411.parquet",
+    "data/clean-00005-of-00411.parquet"
+   ],
+   "timings": {
+    "decode_seconds": 63.69302073586732,
+    "download_bytes": 0,
+    "download_seconds": 0.0,
+    "fingerprint_bytes": 8645706,
+    "fingerprint_rows": 4837,
+    "fingerprint_seconds": 196.33898427151144,
+    "peak_disk_bytes": 0,
+    "rows": 4850,
+    "shard_bytes": 0,
+    "vad_rows": 4837,
+    "vad_seconds": 338.6328232837841,
+    "wall_seconds": 240.5255674906075
+   }
+  },
+  "unclean": {
+   "shard_bytes": [
+    390843170,
+    662347644,
+    684668868,
+    718146185,
+    681009526
+   ],
+   "shards": [
+    "data/unclean-00001-of-00332.parquet",
+    "data/unclean-00002-of-00332.parquet",
+    "data/unclean-00003-of-00332.parquet",
+    "data/unclean-00004-of-00332.parquet",
+    "data/unclean-00005-of-00332.parquet"
+   ],
+   "timings": {
+    "decode_seconds": 42.37120560184121,
+    "download_bytes": 0,
+    "download_seconds": 0.0,
+    "fingerprint_bytes": 11904782,
+    "fingerprint_rows": 4850,
+    "fingerprint_seconds": 246.46529161091894,
+    "peak_disk_bytes": 0,
+    "rows": 4850,
+    "shard_bytes": 0,
+    "vad_rows": 4850,
+    "vad_seconds": 413.1927951416001,
+    "wall_seconds": 317.73160468414426
+   }
+  }
+ }
+}

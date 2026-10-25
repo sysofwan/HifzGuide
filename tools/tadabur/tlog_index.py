@@ -64,10 +64,12 @@ from .nonpro_sources import TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, tlog_split
 from .tarteel_split import load_split
 
 SCHEMA_VERSION = 1
+#: The checkout whose commit every tlog writer cites.
+REPO_ROOT = Path(__file__).resolve().parents[2]
 #: Where the committed index lives (``tools/tadabur/tlog/index``).
 INDEX_DIR = Path(__file__).parent / "tlog" / "index"
 #: The repo's canonical ``quran.db``: the ayah counts the filename labels are checked against.
-DEFAULT_QURAN_DB = Path(__file__).resolve().parents[2] / "data" / "quran.db"
+DEFAULT_QURAN_DB = REPO_ROOT / "data" / "quran.db"
 
 # --- the pre-registered role (docs/tlog-holdout-preregistration.md) --------------------------
 
@@ -233,10 +235,30 @@ def _write_atomically(path: Path, data: bytes) -> None:
     os.replace(temporary, path)
 
 
-def head_sha(repo: Path = Path(__file__).resolve().parents[2]) -> str:
+def head_sha(repo: Path = REPO_ROOT) -> str:
     """The code SHA ``meta.json`` records, unless the caller pins one."""
     return subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
                           capture_output=True, text=True).stdout.strip()
+
+
+def provenance(code_sha: str, pull_request: int | None = None) -> dict:
+    """The commit a measurement ran from, and the PR ref that keeps it after the squash merge.
+
+    One definition for the index, pass 1 and the freeze: the branch is squash-merged, so a
+    cited SHA survives only under ``refs/pull/<N>/head`` and is recorded with its PR number.
+    The caller resolves the SHA (:func:`head_sha`, or a pinned ``--code-sha``).
+    """
+    return {"code_sha": code_sha, "pull_request": pull_request,
+            "pull_request_ref": (f"refs/pull/{pull_request}/head"
+                                 if pull_request is not None else None)}
+
+
+def repo_relative(path: Path, repo: Path = REPO_ROOT) -> str:
+    """``path`` inside the checkout as a repo-relative string; a file outside it unchanged."""
+    try:
+        return str(Path(path).resolve().relative_to(repo))
+    except ValueError:
+        return str(path)
 
 
 def sha256_file(path: Path) -> str:
@@ -266,6 +288,7 @@ def require_clean_tree(repo: Path = Path(__file__).resolve().parents[2]) -> None
 
     The committed metadata cites the commit the measurement ran from; a dirty tree would make
     that provenance a lie, so the measuring commands check this before they download anything.
+    Generated outputs therefore go to scratch (``--out-dir``), never into the measured tree.
     """
     status = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
                             capture_output=True, text=True)

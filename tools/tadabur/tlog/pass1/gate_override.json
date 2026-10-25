@@ -1,0 +1,10 @@
+{
+ "decision": "https://github.com/sysofwan/HifzGuide/issues/188#issuecomment-6393137890",
+ "measured": {
+  "gpu_hours": 0.0,
+  "peak_disk_bytes": 2105123968,
+  "wall_hours": 11.160688017396982,
+  "within_owner_envelope": false
+ },
+ "wall_hours_max": 12.0
+}

@@ -1,0 +1,90 @@
+{
+ "audio_paths": {
+  "distinct": 715801,
+  "rows_covered_by_shared_paths": 8104,
+  "shared_by_several_rows": 4052
+ },
+ "code_sha": "7380e1ceaa0de5fa57a93ed122d55d3f74318839",
+ "exclusions": {
+  "applied": [
+   "codec",
+   "silence",
+   "eval_overlap_tarteel_v1"
+  ],
+  "deferred": [
+   "duplicate"
+  ]
+ },
+ "floors": {
+  "d_s": 1.756378,
+  "f_s": 0.392731,
+  "path": "tools/tadabur/tlog/silence_floors.json",
+  "sha256": "11a50d7d9d59c76aaf1eb5a6e41471efdc3db5a239ad5704c695510843bf4599"
+ },
+ "pull_request": 199,
+ "pull_request_ref": "refs/pull/199/head",
+ "roles": {
+  "confirm.1": {
+   "eval_overlap_tarteel_v1": 207,
+   "rows": 14398,
+   "usable": 9949,
+   "usable_after_eval_overlap": 9743
+  },
+  "confirm.2": {
+   "eval_overlap_tarteel_v1": 233,
+   "rows": 14652,
+   "usable": 10135,
+   "usable_after_eval_overlap": 9909
+  },
+  "confirm.3": {
+   "eval_overlap_tarteel_v1": 205,
+   "rows": 14268,
+   "usable": 9812,
+   "usable_after_eval_overlap": 9614
+  },
+  "confirm.4": {
+   "eval_overlap_tarteel_v1": 196,
+   "rows": 14457,
+   "usable": 9967,
+   "usable_after_eval_overlap": 9772
+  },
+  "look": {
+   "eval_overlap_tarteel_v1": 228,
+   "rows": 14484,
+   "usable": 10021,
+   "usable_after_eval_overlap": 9803
+  },
+  "train": {
+   "eval_overlap_tarteel_v1": 9512,
+   "rows": 647594,
+   "usable": 445146,
+   "usable_after_eval_overlap": 435803
+  }
+ },
+ "row_key": [
+  "split",
+  "shard_file",
+  "row"
+ ],
+ "schema_version": 1,
+ "splits": {
+  "clean": {
+   "eval_overlap_tarteel_v1": 10581,
+   "rows": 398490,
+   "usable": 326324,
+   "usable_after_eval_overlap": 315938
+  },
+  "unclean": {
+   "eval_overlap_tarteel_v1": 0,
+   "rows": 321363,
+   "usable": 168706,
+   "usable_after_eval_overlap": 168706
+  }
+ },
+ "total": {
+  "eval_overlap_tarteel_v1": 10581,
+  "rows": 719853,
+  "usable": 495030,
+  "usable_after_eval_overlap": 484644
+ }
+}

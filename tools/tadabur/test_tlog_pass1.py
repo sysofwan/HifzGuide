@@ -1166,34 +1166,252 @@ def test_a_freshly_measured_shard_is_refused_when_it_drifts_from_the_index(tp, t
     assert not (out_dir / "clean" / f"{Path(shard).stem}.jsonl.gz").exists()
 
 
-def test_the_gate_projection_has_its_own_file_the_full_run_cannot_overwrite(tp, tmp_path):
-    shard, out_dir = CLEAN_SHARD, tmp_path / "pass1"
-    floors = _floors_file(tp, tmp_path)
-    paths = ["a.flac", "b.flac"]
-    index_dir = _index_for(tp, tmp_path, shard, paths)
-    rows = [{"audio": {"path": path, "bytes": wav(1.0, 16000)}} for path in paths]
-    run_kwargs = {"out_dir": out_dir, "cache_dir": tmp_path / "cache", "floors_path": floors,
-                  "speech_seconds_of": lambda waveform: 0.5, "code_sha": "0" * 40,
-                  "pull_request": 7, "index_dir": index_dir}
+def _gate_fixture(tp, tmp_path):
+    """The gate's twelve shards on a synthetic index, with the two tracer outputs seeded."""
+    shards = tp.gate_shards()
+    paths = {shard: [f"{Path(shard).stem}-{index}.flac" for index in range(2)]
+             for shard in shards}
+    for shard in shards:
+        _index_for(tp, tmp_path, shard, paths[shard])
+    seed_dir = tmp_path / "committed"
+    for shard in (CLEAN_SHARD, UNCLEAN_SHARD):
+        split, stem = tlog_split(shard), Path(shard).stem
+        _pass1_shard(tp, seed_dir / split / f"{stem}.jsonl.gz", split, stem, paths[shard])
+    return SimpleNamespace(shards=shards, paths=paths, index_dir=tmp_path / "index",
+                           seed_dir=seed_dir, floors=_floors_file(tp, tmp_path))
 
-    meta = tp.run([shard], stream=fake_stream(rows), gate=True, **run_kwargs)
 
-    artifact = json.loads((out_dir / "gate_projection.json").read_text(encoding="utf-8"))
-    assert artifact["rows_measured"] == {"clean": 2, "unclean": 0}
-    assert artifact["code_sha"] == "0" * 40 and artifact["pull_request"] == 7
+def _gate_processor(tp, paths, *, refuse=(), shard_bytes: int = 0):
+    """A ``process_shard`` stand-in: the shard's index rows, or a refusal of one split."""
+
+    def process(shard, cache_dir, *, speech_seconds_of, fp_dir, on_download, timings,
+                stream=None):
+        split = tlog_split(shard)
+        if split in refuse:
+            raise RuntimeError(f"{split} must not be measured again")
+        timings.update(decode_seconds=1.0, vad_seconds=1.0, fingerprint_seconds=1.0,
+                       rows=len(paths[shard]), vad_rows=len(paths[shard]),
+                       fingerprint_rows=len(paths[shard]), shard_bytes=shard_bytes)
+        return [{"schema_version": tp.ROW_SCHEMA_VERSION, "split": split,
+                 "shard_file": Path(shard).stem, "row": index, "audio_path": path}
+                for index, path in enumerate(paths[shard])]
+
+    return process
+
+
+def _run_gate(tp, data, tmp_path, **overrides):
+    options = {"out_dir": tmp_path / "pass1", "cache_dir": tmp_path / "cache",
+               "floors_path": data.floors, "speech_seconds_of": lambda waveform: 0.5,
+               "code_sha": "a" * 40, "pull_request": 200, "index_dir": data.index_dir,
+               "seed_dir": data.seed_dir, "gate": True}
+    options.update(overrides)
+    return tp.run(data.shards, **options)
+
+
+def _gate_artifact(tp, tmp_path) -> dict:
+    return json.loads((tmp_path / "pass1" / tp.GATE_PROJECTION_NAME).read_text(encoding="utf-8"))
+
+
+def test_the_gate_measures_the_declared_sample_and_publishes_its_verdict(tp, tmp_path,
+                                                                        monkeypatch):
+    """Decision 3: clean 1-5 and unclean 1-5, one timed phase each, seeded 0s only verified."""
+    data = _gate_fixture(tp, tmp_path)
+    monkeypatch.setattr(tp, "process_shard", _gate_processor(tp, data.paths))
+
+    meta = _run_gate(tp, data, tmp_path)
+
+    artifact = _gate_artifact(tp, tmp_path)
+    assert artifact["phases"] == {split: sorted(shards)
+                                  for split, shards in tp.gate_measured_shards().items()}
+    assert artifact["rows_measured"] == {"clean": 10, "unclean": 10}
+    assert artifact["workers"] == 1
+    assert artifact["peak_disk_bytes"] <= tp.DISK_ENVELOPE_BYTES
+    assert artifact["within_disk_envelope"] is True
+    assert artifact["within_owner_envelope"] == (artifact["within_wall_envelope"]
+                                                 and artifact["within_disk_envelope"])
+    assert artifact["envelope"]["peak_disk_bytes_max"] == tp.DISK_ENVELOPE_BYTES
+    assert artifact["code_sha"] == "a" * 40 and artifact["pull_request"] == 200
     assert meta["throughput"]["gate_projection"] == {
         key: value for key, value in artifact.items()
         if key not in {"code_sha", "pull_request", "pull_request_ref"}}
+    assert meta["throughput"]["shards_skipped"] == 2
+    assert meta["throughput"]["shards_measured"] == 10
 
-    # The full pass reuses this scratch directory: it resumes the gate's rows and must neither
-    # claim a projection of its own nor overwrite the gate's measured record.
-    resumed = tp.run([shard], stream=_refuse_download, **run_kwargs)
+    producers = tp.scratch_producers(tmp_path / "pass1")
+    assert producers[f"clean/{Path(CLEAN_SHARD).stem}"]["code_sha"].startswith("d2af0e3")
+    assert producers[f"clean/{Path(tp.gate_measured_shards()['clean'][0]).stem}"]["code_sha"] \
+        == "a" * 40
 
-    assert "gate_projection" not in resumed["throughput"]
-    assert json.loads((out_dir / "gate_projection.json").read_text(encoding="utf-8")) == artifact
-    with pytest.raises(ValueError, match="measured no shard"):
-        tp.run([shard], stream=_refuse_download, gate=True, **run_kwargs)
-    assert json.loads((out_dir / "gate_projection.json").read_text(encoding="utf-8")) == artifact
+
+def test_an_interrupted_gate_reuses_the_split_phase_it_settled(tp, tmp_path, monkeypatch):
+    """A retry must not price the clean split at the unclean rate just because it skipped it."""
+    data = _gate_fixture(tp, tmp_path)
+    monkeypatch.setattr(tp, "process_shard",
+                        _gate_processor(tp, data.paths, refuse={"unclean"}))
+
+    with pytest.raises(RuntimeError, match="unclean must not be measured"):
+        _run_gate(tp, data, tmp_path)
+
+    stored = json.loads((tmp_path / "pass1" / tp.GATE_PHASES_NAME).read_text(encoding="utf-8"))
+    assert list(stored["splits"]) == ["clean"]
+    clean_wall = stored["splits"]["clean"]["timings"]["wall_seconds"]
+
+    monkeypatch.setattr(tp, "process_shard",
+                        _gate_processor(tp, data.paths, refuse={"clean"}))
+    meta = _run_gate(tp, data, tmp_path)
+
+    artifact = _gate_artifact(tp, tmp_path)
+    assert artifact["rows_measured"] == {"clean": 10, "unclean": 10}
+    assert artifact["rows_per_s"]["clean"] == round(10 / clean_wall, 3)
+    assert artifact["phases"]["clean"] == sorted(tp.gate_measured_shards()["clean"])
+    assert meta["throughput"]["shards_skipped"] == 7   # the two seeds and clean 1-5
+    assert meta["throughput"]["shards_measured"] == 5  # unclean 1-5
+    settled = _gate_artifact(tp, tmp_path)
+
+    # A phase measured at another concurrency is not this gate's measurement.
+    with pytest.raises(ValueError, match="complete phase measurement"):
+        _run_gate(tp, data, tmp_path, workers=tp.GATE_WORKERS)
+
+    # The same binding settles the same verdict again, entirely from the stored phases.
+    again = _run_gate(tp, data, tmp_path)
+
+    assert again["throughput"]["shards_measured"] == 0
+    assert _gate_artifact(tp, tmp_path) == settled
+
+
+def test_a_gate_run_refuses_a_tranche_that_is_not_the_gate(tp, tmp_path):
+    data = _gate_fixture(tp, tmp_path)
+    options = {"out_dir": tmp_path / "pass1", "cache_dir": tmp_path / "cache",
+               "floors_path": data.floors, "speech_seconds_of": lambda waveform: 0.5,
+               "code_sha": "a" * 40, "index_dir": data.index_dir,
+               "seed_dir": data.seed_dir, "gate": True}
+
+    with pytest.raises(ValueError, match="twelve gate shards"):
+        tp.run(data.shards[:2], **options)
+
+
+def test_a_fast_gate_over_the_disk_budget_does_not_pass(tp, tmp_path, monkeypatch):
+    data = _gate_fixture(tp, tmp_path)
+    monkeypatch.setattr(tp, "process_shard",
+                        _gate_processor(tp, data.paths,
+                                        shard_bytes=tp.DISK_ENVELOPE_BYTES + 1_000_000_000))
+
+    _run_gate(tp, data, tmp_path)
+
+    artifact = _gate_artifact(tp, tmp_path)
+    assert artifact["peak_disk_bytes"] > tp.DISK_ENVELOPE_BYTES
+    assert artifact["within_disk_envelope"] is False
+    assert artifact["within_owner_envelope"] is False
+
+
+def test_a_gate_verdict_needs_both_envelopes(tp):
+    projection = {"within_owner_envelope": True, "wall_hours": 1.0, "gpu_hours": 0.0,
+                  "rows_measured": {"clean": 1, "unclean": 1}}
+    phases = {"clean": {"shards": ["a"]}, "unclean": {"shards": ["b"]}}
+
+    over_disk = tp.gate_verdict(projection, peak_disk_bytes=tp.DISK_ENVELOPE_BYTES + 1,
+                                phases=phases)
+    within = tp.gate_verdict(projection, peak_disk_bytes=tp.DISK_ENVELOPE_BYTES,
+                             phases=phases)
+
+    assert (over_disk["within_wall_envelope"], over_disk["within_disk_envelope"]) == (True,
+                                                                                     False)
+    assert over_disk["within_owner_envelope"] is False
+    assert within["within_owner_envelope"] is True
+
+
+def test_another_run_leaves_the_gate_record_alone(tp, tmp_path, monkeypatch):
+    data = _gate_fixture(tp, tmp_path)
+    monkeypatch.setattr(tp, "process_shard", _gate_processor(tp, data.paths))
+    _run_gate(tp, data, tmp_path)
+    path = tmp_path / "pass1" / tp.GATE_PROJECTION_NAME
+    artifact = path.read_bytes()
+
+    meta = _run_gate(tp, data, tmp_path, gate=False)
+
+    assert "gate_projection" not in meta["throughput"]
+    assert meta["throughput"]["shards_skipped"] == len(data.shards)
+    assert path.read_bytes() == artifact
+
+
+# --- the producing records -------------------------------------------------------------------
+
+
+def test_a_resume_at_a_later_commit_keeps_the_rows_producer(tp, tmp_path):
+    shard, key = CLEAN_SHARD, f"clean/{Path(CLEAN_SHARD).stem}"
+    out_dir = tmp_path / "pass1"
+    index_dir = _index_for(tp, tmp_path, shard, ["a.flac"])
+    rows = [{"audio": {"path": "a.flac", "bytes": wav(1.0, 16000)}}]
+    options = {"out_dir": out_dir, "cache_dir": tmp_path / "cache",
+               "floors_path": _floors_file(tp, tmp_path), "index_dir": index_dir,
+               "speech_seconds_of": lambda waveform: 0.5}
+
+    first = tp.run([shard], stream=fake_stream(rows), code_sha="a" * 40, pull_request=200,
+                   **options)
+    second = tp.run([shard], stream=_refuse_download, code_sha="b" * 40, pull_request=201,
+                    **options)
+
+    assert first["shards"][key]["code_sha"] == "a" * 40
+    assert second["shards"][key] == {"code_sha": "a" * 40, "pull_request": 200,
+                                     "pull_request_ref": "refs/pull/200/head"}
+    assert second["throughput"]["shards_measured"] == 0
+
+
+def test_a_shard_whose_producer_no_record_names_is_refused(tp, tmp_path):
+    shard = tp.gate_measured_shards()["clean"][0]
+    index_dir = _index_for(tp, tmp_path, shard, ["a.flac"])
+    out_dir = tmp_path / "pass1"
+    options = {"out_dir": out_dir, "cache_dir": tmp_path / "cache",
+               "floors_path": _floors_file(tp, tmp_path),
+               "speech_seconds_of": lambda waveform: 0.5, "index_dir": index_dir}
+    rows = [{"audio": {"path": "a.flac", "bytes": wav(1.0, 16000)}}]
+    tp.run([shard], stream=fake_stream(rows), code_sha="a" * 40, pull_request=200, **options)
+    meta_path = out_dir / "meta.json"
+    before = meta_path.read_bytes()
+    (out_dir / tp.PRODUCERS_NAME).unlink()
+
+    with pytest.raises(ValueError, match="no producing record"):
+        tp.run([shard], stream=_refuse_download, code_sha="b" * 40, pull_request=201,
+               **options)
+
+    assert meta_path.read_bytes() == before
+
+
+def test_an_interrupted_run_still_records_the_shards_it_wrote(tp, tmp_path, monkeypatch):
+    first, second = tp.gate_measured_shards()["clean"][:2]
+    index_dir = tmp_path / "index"
+    for shard in (first, second):
+        _index_for(tp, tmp_path, shard, ["a.flac"])
+    out_dir = tmp_path / "pass1"
+    calls: list[str] = []
+
+    def process(shard, cache_dir, **kwargs):
+        if calls:
+            raise RuntimeError("interrupted after the first shard")
+        calls.append(shard)
+        return [{"schema_version": tp.ROW_SCHEMA_VERSION, "split": "clean",
+                 "shard_file": Path(shard).stem, "row": 0, "audio_path": "a.flac"}]
+
+    monkeypatch.setattr(tp, "process_shard", process)
+    options = {"out_dir": out_dir, "cache_dir": tmp_path / "cache",
+               "floors_path": _floors_file(tp, tmp_path),
+               "speech_seconds_of": lambda waveform: 0.5, "index_dir": index_dir}
+
+    with pytest.raises(RuntimeError, match="interrupted"):
+        tp.run([first, second], code_sha="a" * 40, pull_request=200, **options)
+
+    key = f"clean/{Path(first).stem}"
+    assert not (out_dir / "meta.json").exists()
+    assert (out_dir / "clean" / f"{Path(first).stem}.jsonl.gz").exists()
+    assert tp.scratch_producers(out_dir) == {
+        key: {"code_sha": "a" * 40, "pull_request": 200,
+              "pull_request_ref": "refs/pull/200/head"}}
+
+    meta = tp.run([first], stream=_refuse_download, code_sha="b" * 40, pull_request=201,
+                  **options)
+
+    assert meta["shards"][key]["code_sha"] == "a" * 40
+    assert meta["shards"][key]["pull_request"] == 200
 
 
 # --- the worker pool -------------------------------------------------------------------------
@@ -1237,7 +1455,9 @@ def test_a_parallel_phase_writes_every_shard_and_sums_its_counters(tp, tmp_path,
         tp._measure_phase(shards, out_dir=out_dir, cache_dir=tmp_path / "cache", fp_dir=None,
                           speech_seconds_of=lambda waveform: 0.0, stream=None, workers=3,
                           timings=timings, by_split=by_split, counts=counts,
-                          shard_sizes=shard_sizes, index_dir=index_dir)
+                          shard_sizes=shard_sizes, index_dir=index_dir,
+                          producer={"code_sha": "a" * 40, "pull_request": None,
+                                    "pull_request_ref": None})
     finally:
         multiprocessing.set_start_method(previous, force=True)
 

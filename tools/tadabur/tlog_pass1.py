@@ -24,11 +24,19 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     the measured throughput. ``"embeddings"`` records the fallback, not omission.
     Both commands refuse a checkout with uncommitted or untracked changes, so the cited SHA is
     the code that actually ran.
+``<out-dir>/gate_phases.json``
+    a gate run's settled per-split phase measurements: the shards each phase measured, its
+    per-split timings and per-shard byte sizes, bound to the tranche, the worker count and the
+    code SHA. Written after each phase, so an interrupted gate keeps the split it measured.
 ``<out-dir>/gate_projection.json``
-    written by a gate run only: the measured per-split rows and wall seconds, the projection
-    for every row the gate did not process, the owner-envelope verdict, and the code SHA with
-    its PR. It is its own file because the full run reuses the gate's scratch directory and
-    would otherwise overwrite the gate's one measured number.
+    written by a gate run only: the projection for every row the gate did not process, the
+    measured disk bound, the owner-envelope verdict (wall hours **and** peak disk) and the code
+    SHA with its PR. It is its own file because the full run reuses the gate's scratch directory
+    and would otherwise overwrite the gate's one measured number.
+``<out-dir>/producers.json``
+    the producing commit of every shard in the out-dir, written as each shard is published (and
+    when a shard is seeded or resumed), so an interrupted run still attributes the rows it
+    wrote and a resumed run never re-attributes them to its own commit.
 ``tools/tadabur/tlog/silence_floors.json``
     the pre-registration's Exclusions floors: ``f_s`` and ``d_s`` are the type-7 0.5th
     percentiles of ``speech_ratio`` and ``speech_s`` over the Tarteel v1 look clips that decode.
@@ -47,14 +55,19 @@ only under ``refs/pull/<N>/head`` and is recorded with the PR number.
 and unclean 0-5 (of 332): :func:`gate_shards` with :data:`GATE_CLEAN` and :data:`GATE_UNCLEAN`.
 Clean 0 and unclean 0 are already committed by the tracer: ``--seed-dir`` (the checkout's
 ``tools/tadabur/tlog/pass1``) verifies them against the S1 index and copies them into
-``--out-dir``, so the resume guard skips them instead of downloading them again and they
-contribute nothing to the measured throughput. Each split is its own timed
-phase of :data:`GATE_WORKERS` workers (clean, then unclean), so each split's ``wall_seconds`` is
-real elapsed wall time at that concurrency and :func:`gate_projection` does not divide by the
-worker count again. The five fresh shards on three workers leave a tail, which makes the
-projected rate conservative. The projection weights each split's measured rows/s by the index's
-row count for the shards this run did not process; the full run starts only if it projects <=
-the owner's 8 wall hours with 0 GPU hours (:data:`WALL_ENVELOPE_HOURS`).
+``--out-dir``, so the resume guard skips them instead of downloading them again. The throughput
+sample is therefore clean 1-5 and unclean 1-5 (:func:`gate_measured_shards`), each split in its
+own timed phase of :data:`GATE_WORKERS` workers (clean, then unclean), so each split's
+``wall_seconds`` is real elapsed wall time at that concurrency and :func:`gate_projection` does
+not divide by the worker count again. The five fresh shards on three workers leave a tail, which
+makes the projected rate conservative. Each phase is settled in ``gate_phases.json`` as soon as
+it finishes: a retry reuses a stored phase only when it measured the same sample at the same
+concurrency and code, and a split whose sample this attempt did not measure completely and no
+stored phase covers makes the gate refuse — the pooled fallback would price the other split's
+work. The projection weights each split's measured rows/s by the index's row count for the
+shards this run did not process; the full run starts only if it projects <= the owner's 8 wall
+hours with 0 GPU hours (:data:`WALL_ENVELOPE_HOURS`) **and** the measured peak disk is within
+:data:`DISK_ENVELOPE_BYTES` (:func:`gate_verdict`).
 
 **Resume guard (S3b).** A shard whose pass-1 file is already in ``--out-dir`` is verified
 against the S1 index — gzip integrity, row count, ordinals, ``audio_path`` sequence — and
@@ -165,6 +178,10 @@ TOTAL_AUDIO_BYTES = 313 * 2**30
 WALL_ENVELOPE_HOURS = 8.0
 GPU_ENVELOPE_HOURS = 3.0
 DISK_ENVELOPE_BYTES = 5_000_000_000
+#: The out-dir's own records: each published shard's producer, and the gate's settled phases.
+PRODUCERS_NAME = "producers.json"
+GATE_PHASES_NAME = "gate_phases.json"
+GATE_PROJECTION_NAME = "gate_projection.json"
 
 
 @dataclass(frozen=True)
@@ -188,6 +205,19 @@ def gate_shards() -> tuple[str, ...]:
     unclean = [shard for shard in TLOG.shards if tlog_split(shard) == "unclean"]
     return (tuple(clean[index] for index in GATE_CLEAN)
             + tuple(unclean[index] for index in GATE_UNCLEAN))
+
+
+def gate_measured_shards() -> dict[str, tuple[str, ...]]:
+    """The shards each split's throughput sample is measured on: clean 1-5, unclean 1-5.
+
+    Decision 3 excludes the tracer's committed shards (clean 0, unclean 0) from the gate's
+    rate: the seed supplies them and the run only verifies them. A gate whose phase measured
+    anything other than exactly this sample has no measurement it may project from.
+    """
+    committed = set(tracer_shards())
+    return {split: tuple(shard for shard in gate_shards()
+                         if tlog_split(shard) == split and shard not in committed)
+            for split in TLOG_SPLITS}
 
 
 #: The three tracer shards' real producer, keyed as ``<split>/<stem>`` for a run's meta.json.
@@ -450,6 +480,42 @@ def _seed_pass1(seed: Path, target: Path, index_path: Path) -> None:
     os.replace(partial, target)
 
 
+def scratch_producers(out_dir: Path) -> dict[str, dict]:
+    """The producing commit of every shard an out-dir has published, keyed ``<split>/<stem>``."""
+    path = Path(out_dir) / PRODUCERS_NAME
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def committed_producers(seed_dir: Path | None) -> dict[str, dict]:
+    """The producing commits a committed pass-1 tree's ``meta.json`` records (may be none)."""
+    if seed_dir is None:
+        return {}
+    meta_path = Path(seed_dir) / "meta.json"
+    if not meta_path.exists():
+        return {}
+    return json.loads(meta_path.read_text(encoding="utf-8")).get("shards", {})
+
+
+def _record_producer(path: Path, key: str, producer: Mapping[str, object]) -> None:
+    """Record one shard's producer durably, so an interrupted run still attributes its rows."""
+    record = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    record[key] = dict(producer)
+    write_text_atomically(path, json.dumps(record, indent=1, ensure_ascii=False,
+                                           sort_keys=True) + "\n")
+
+
+def _known_producer(key: str, path: Path, known: Mapping[str, Mapping[str, object]]) -> dict:
+    """An existing pass-1 file's recorded producer; never this run, which did not write it."""
+    try:
+        return dict(known[key])
+    except KeyError:
+        raise ValueError(
+            f"no producing record for {key} ({path}): neither the out-dir's {PRODUCERS_NAME} "
+            f"nor the seed's meta.json names the commit that measured these rows, and this run "
+            f"only verified them; delete the file so the shard is measured again, or seed it "
+            f"from a committed pass-1 tree") from None
+
+
 def read_jsonl_gz(path: Path) -> list[dict]:
     """Every row of a committed JSONL-gzip file; a corrupt file is an error, never a skip."""
     try:
@@ -499,6 +565,77 @@ def gate_projection(measured: Mapping[str, Mapping[str, float]], *,
     }
 
 
+def gate_verdict(projection: Mapping[str, object], *, peak_disk_bytes: int,
+                 phases: Mapping[str, Mapping[str, object]]) -> dict:
+    """The gate's published verdict: the projection, the measured disk bound and both envelopes.
+
+    The projection prices time only; the owner's envelope is wall hours **and** peak disk, so a
+    fast gate over the disk budget does not pass. ``extrapolated.within_owner_envelope`` in
+    ``meta.json`` stays the separate single-worker stage model and is not this verdict.
+    ``phases`` names the shards whose timed phase each split's rate came from, so the artifact
+    shows the sample it projected from.
+    """
+    within_wall = bool(projection["within_owner_envelope"])
+    within_disk = int(peak_disk_bytes) <= DISK_ENVELOPE_BYTES
+    return {
+        **projection,
+        "phases": {split: sorted(phase["shards"]) for split, phase in phases.items()},
+        "peak_disk_bytes": int(peak_disk_bytes),
+        "envelope": {"wall_hours_max": WALL_ENVELOPE_HOURS,
+                     "gpu_hours_max": GPU_ENVELOPE_HOURS,
+                     "peak_disk_bytes_max": DISK_ENVELOPE_BYTES},
+        "within_wall_envelope": within_wall,
+        "within_disk_envelope": within_disk,
+        "within_owner_envelope": within_wall and within_disk,
+    }
+
+
+def gate_phases(path: Path, binding: Mapping[str, object]) -> dict[str, dict]:
+    """The per-split gate phases an earlier attempt settled at this binding, else ``{}``.
+
+    A record from another tranche, worker count or code SHA measured different rows (or the
+    same rows at another concurrency), so it is not this gate's measurement and is ignored.
+    """
+    if not path.exists():
+        return {}
+    record = json.loads(path.read_text(encoding="utf-8"))
+    return record.get("splits", {}) if record.get("binding") == binding else {}
+
+
+def _settle_gate_phase(split: str, *, fresh: Sequence[str], required: Sequence[str],
+                       recorded: Mapping[str, object] | None, elapsed: float,
+                       measured: dict, timings: dict, shard_sizes: list[int],
+                       phases: dict, path: Path, binding: Mapping[str, object]) -> None:
+    """Settle one split's gate phase: this attempt's complete measurement, or a stored one.
+
+    The gate's throughput must come from one timed, complete phase per split. A retry that
+    skipped part of the sample has no measurement of its own, so it reuses the stored phase of
+    exactly that sample, and refuses to gate when no such phase exists: the pooled fallback
+    would price this split at the other split's rate.
+    """
+    measured["wall_seconds"] = elapsed
+    if set(fresh) == set(required):
+        phases[split] = {"shards": sorted(fresh), "timings": dict(measured),
+                         "shard_bytes": list(shard_sizes)}
+    elif recorded is not None and set(recorded.get("shards", ())) == set(required):
+        measured.update(recorded["timings"])
+        _accumulate(timings, recorded["timings"])
+        timings["download_seconds"] += recorded["timings"]["download_seconds"]
+        timings["download_bytes"] += recorded["timings"]["download_bytes"]
+        shard_sizes.extend(recorded["shard_bytes"])
+        phases[split] = dict(recorded)
+    else:
+        raise ValueError(
+            f"the gate has no complete phase measurement for the {split} split: this attempt "
+            f"measured {len(fresh)} of the {len(required)} shards the sample names, and "
+            f"{path} holds no phase at this tranche, worker count and code that measured all "
+            f"{len(required)}; remove the gate tranche's outputs and rerun the gate")
+    timings["wall_seconds"] += measured["wall_seconds"]
+    write_text_atomically(path, json.dumps(
+        {"binding": dict(binding), "splits": phases},
+        indent=1, ensure_ascii=False, sort_keys=True) + "\n")
+
+
 def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         speech_seconds_of: Callable[[np.ndarray], float], floors_path: Path = FLOORS_PATH,
         fp_dir: Path | None = None, stream=None, code_sha: str | None = None,
@@ -512,26 +649,38 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
     whose committed or scratch output exists is verified against ``index_dir``'s shard and
     skipped without a download; ``seed_dir`` supplies the committed outputs an empty scratch
     directory starts from, and its shards are skipped the same way. A skipped shard's rows
-    count in the freeze, not in the gate's rates. Fresh shards are measured (serially, or in
-    ``workers`` processes) and written atomically, after the index check.
+    count in the freeze, not in the gate's rates.
 
-    A ``gate`` run writes its measured projection to ``<out_dir>/gate_projection.json`` and into
-    ``meta.json``; another run leaves both alone, so the full pass cannot overwrite the number
-    the gate was decided on. ``shard_provenance`` overrides a **skipped** shard's cited
-    producer — that is how the three S3a tracer shards keep ``d2af0e3``/``#198`` after S3b
-    verifies instead of re-running them; a shard this run measured cites this run.
+    Every output's producer is recorded in ``producers.json`` when it is published or verified,
+    so a later run at another commit never re-attributes rows it did not write, and an
+    interrupted run still attributes the shards it finished; an existing file with no recorded
+    producer is refused. A ``gate`` run settles each split's phase in ``gate_phases.json`` and
+    writes its verdict — wall hours and peak disk — to ``gate_projection.json`` and into
+    ``meta.json``; another run leaves both alone. ``shard_provenance`` names the producer of a
+    **skipped** shard the records do not cover, which is how the three S3a tracer shards keep
+    ``d2af0e3``/``#198``.
     """
     shards = list(shards)
+    if gate and set(shards) != set(gate_shards()):
+        raise ValueError("a gate run measures all twelve gate shards and nothing else: the "
+                         "sample and its two phases are fixed before the run")
     floors_path = Path(floors_path)
     require_floor_config(json.loads(floors_path.read_text(encoding="utf-8")))
     out_dir, index_dir = Path(out_dir), Path(index_dir)
     seed_dir = Path(seed_dir) if seed_dir is not None else None
-    provenance = S3A_PROVENANCE if shard_provenance is None else shard_provenance
+    producers_path = out_dir / PRODUCERS_NAME
+    phases_path = out_dir / GATE_PHASES_NAME
+    current = _provenance(code_sha, pull_request)
+    known_producers = {**(S3A_PROVENANCE if shard_provenance is None else shard_provenance),
+                       **committed_producers(seed_dir), **scratch_producers(out_dir)}
+    measured_sample = gate_measured_shards() if gate else {}
+    binding = ({"tranche": sorted(gate_shards()), "workers": workers,
+                "code_sha": current["code_sha"]} if gate else {})
+    settled = gate_phases(phases_path, binding) if gate else {}
     timings = _timings()
     by_split = {split: _timings() for split in TLOG_SPLITS}
     counts: Counter = Counter()
     skipped = 0
-    skipped_keys: set[str] = set()
     measured_shards = 0
     shard_sizes: list[int] = []
     for split in TLOG_SPLITS:
@@ -539,44 +688,40 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         if not phase:
             continue
         started = time.perf_counter()
+        sizes_before = len(shard_sizes)
         fresh: list[str] = []
         for shard in phase:
             stem = Path(shard).stem
+            key = f"{split}/{stem}"
             path = out_dir / split / f"{stem}.jsonl.gz"
             index_path = index_dir / split / f"{stem}.jsonl.gz"
             if not path.exists() and seed_dir is not None:
                 _seed_pass1(seed_dir / split / path.name, path, index_path)
             if path.exists():
                 counts[split] += verify_pass1_shard(path, index_path)
+                _record_producer(producers_path, key,
+                                 _known_producer(key, path, known_producers))
                 skipped += 1
-                skipped_keys.add(f"{split}/{stem}")
             else:
                 fresh.append(shard)
         _measure_phase(fresh, out_dir=out_dir, cache_dir=cache_dir, fp_dir=fp_dir,
                        speech_seconds_of=speech_seconds_of, stream=stream, workers=workers,
                        timings=timings, by_split=by_split[split], counts=counts,
-                       shard_sizes=shard_sizes, index_dir=index_dir)
+                       shard_sizes=shard_sizes, index_dir=index_dir, producer=current)
         measured_shards += len(fresh)
-        by_split[split]["wall_seconds"] = time.perf_counter() - started
-        timings["wall_seconds"] += by_split[split]["wall_seconds"]
+        elapsed = time.perf_counter() - started
+        if gate:
+            _settle_gate_phase(split, fresh=fresh, required=measured_sample[split],
+                               recorded=settled.get(split), elapsed=elapsed,
+                               measured=by_split[split], timings=timings,
+                               shard_sizes=shard_sizes[sizes_before:],
+                               phases=settled, path=phases_path, binding=binding)
+        else:
+            by_split[split]["wall_seconds"] = elapsed
+            timings["wall_seconds"] += elapsed
 
     measured_rows = sum(by_split[split]["rows"] for split in TLOG_SPLITS)
     remaining = {split: ROWS_BY_SPLIT[split] - counts[split] for split in TLOG_SPLITS}
-    projection = (gate_projection(
-        {split: {"rows": by_split[split]["rows"],
-                 "wall_seconds": by_split[split]["wall_seconds"]}
-         for split in TLOG_SPLITS},
-        remaining_rows=remaining, workers=workers) if measured_rows else None)
-    if gate:
-        if projection is None:
-            raise ValueError(
-                "the gate measured no shard: every gate tranche shard came from --out-dir or "
-                "--seed-dir, so there is no throughput to project from; measure the gate in a "
-                "scratch directory that holds none of its fresh shards")
-        write_text_atomically(
-            out_dir / "gate_projection.json",
-            json.dumps({**projection, **_provenance(code_sha, pull_request)},
-                       indent=1, ensure_ascii=False, sort_keys=True) + "\n")
     # Up to ``workers`` shard blobs coexist; the fingerprint store and the committed outputs
     # accumulate, so the bound adds them to the largest concurrent shard bytes.
     output_bytes = sum(
@@ -585,13 +730,24 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
     concurrent = sum(sorted(shard_sizes, reverse=True)[:max(workers, 1)])
     timings["peak_disk_bytes"] = max(timings["peak_disk_bytes"],
                                      concurrent + timings["fingerprint_bytes"] + output_bytes)
-    current = _provenance(code_sha, pull_request)
-    shard_records = {}
-    for shard in shards:
-        key = f"{tlog_split(shard)}/{Path(shard).stem}"
-        # Only a skipped shard keeps another producer's citation: this run wrote the rest.
-        shard_records[key] = dict(provenance.get(key, current) if key in skipped_keys
-                                  else current)
+    projection = (gate_projection(
+        {split: {"rows": by_split[split]["rows"],
+                 "wall_seconds": by_split[split]["wall_seconds"]}
+         for split in TLOG_SPLITS},
+        remaining_rows=remaining, workers=workers) if measured_rows else None)
+    if gate:
+        if projection is None:
+            raise ValueError("the gate has no measured row to project from")
+        projection = gate_verdict(projection, peak_disk_bytes=timings["peak_disk_bytes"],
+                                  phases=settled)
+        write_text_atomically(
+            out_dir / GATE_PROJECTION_NAME,
+            json.dumps({**projection, **current}, indent=1, ensure_ascii=False,
+                       sort_keys=True) + "\n")
+    settled_producers = scratch_producers(out_dir)
+    shard_records = {key: settled_producers[key]
+                     for key in (f"{tlog_split(shard)}/{Path(shard).stem}"
+                                 for shard in shards)}
     throughput = {**_throughput(timings, by_split, measured_shards, workers=workers),
                   "shards_skipped": skipped}
     if gate:
@@ -603,7 +759,7 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
             "splits": {split: sum(1 for shard in TLOG.shards if tlog_split(shard) == split)
                        for split in TLOG_SPLITS},
         },
-        **_provenance(code_sha, pull_request),
+        **current,
         "vad": VAD_CONFIG,
         "decoders": decoder_versions(),
         "embeddings": "none (owner fallback 2026-10-24, #187)",
@@ -647,7 +803,8 @@ def _worker_shard(task: tuple[str, Path, Path | None]) -> tuple[list[dict], dict
 def _measure_phase(shards: list[str], *, out_dir: Path, cache_dir: Path,
                    fp_dir: Path | None, speech_seconds_of: Callable[[np.ndarray], float],
                    stream, workers: int, timings: dict, by_split: dict, counts: Counter,
-                   shard_sizes: list[int], index_dir: Path) -> None:
+                   shard_sizes: list[int], index_dir: Path,
+                   producer: Mapping[str, object]) -> None:
     """Measure one split's fresh shards, serially or in ``workers`` processes."""
     if not shards:
         return
@@ -665,7 +822,8 @@ def _measure_phase(shards: list[str], *, out_dir: Path, cache_dir: Path,
                                      fp_dir=fp_dir, stream=stream, timings=shard_timings)
             _write_measured(shard, rows, shard_timings, out_dir=out_dir, timings=timings,
                             by_split=by_split, counts=counts, shard_sizes=shard_sizes,
-                            index_dir=index_dir if stream is None else None)
+                            index_dir=index_dir if stream is None else None,
+                            producer=producer)
         return
     with ProcessPoolExecutor(max_workers=workers, initializer=_init_worker) as pool:
         queue = iter(shards)
@@ -687,18 +845,20 @@ def _measure_phase(shards: list[str], *, out_dir: Path, cache_dir: Path,
                 rows, shard_timings = future.result()
                 _write_measured(shard, rows, shard_timings, out_dir=out_dir, timings=timings,
                                 by_split=by_split, counts=counts, shard_sizes=shard_sizes,
-                                index_dir=index_dir)
+                                index_dir=index_dir, producer=producer)
             fill()
 
 
 def _write_measured(shard: str, rows: list[dict], shard_timings: dict, *, out_dir: Path,
                     timings: dict, by_split: dict, counts: Counter,
-                    shard_sizes: list[int], index_dir: Path | None) -> None:
-    """Write one measured shard and add its stage, download and size counters to the run.
+                    shard_sizes: list[int], index_dir: Path | None,
+                    producer: Mapping[str, object]) -> None:
+    """Write one measured shard, its producer, and add its counters to the run.
 
     ``index_dir`` is the S1 index the rows must be exactly: the same rule the resume guard
     applies, checked before the write, so a drifted read fails at that shard instead of at the
-    freeze hours later. A synthetic ``stream`` read has no index, and passes ``None``.
+    freeze hours later. A synthetic ``stream`` read has no index, and passes ``None``. The
+    producer record lands right after the rows, so an interrupted run still attributes them.
     """
     split, stem = tlog_split(shard), Path(shard).stem
     target = out_dir / split / f"{stem}.jsonl.gz"
@@ -710,6 +870,7 @@ def _write_measured(shard: str, rows: list[dict], shard_timings: dict, *, out_di
     timings["download_seconds"] += shard_timings["download_seconds"]
     timings["download_bytes"] += shard_timings["download_bytes"]
     write_pass1(rows, target)
+    _record_producer(out_dir / PRODUCERS_NAME, f"{split}/{stem}", producer)
     counts[split] += len(rows)
     shard_sizes.append(shard_timings["shard_bytes"])
 

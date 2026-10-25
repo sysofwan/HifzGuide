@@ -28,11 +28,14 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     a gate run's settled per-split phase measurements: the shards each phase measured, its
     per-split timings and per-shard byte sizes, bound to the tranche, the worker count and the
     code SHA. Written after each phase, so an interrupted gate keeps the split it measured.
+    Committed beside the pass-1 rows with ``gate_projection.json``: together they are the
+    envelope evidence.
 ``<out-dir>/gate_projection.json``
     written by a gate run only: the projection for every row the gate did not process, the
     measured disk bound, the owner-envelope verdict (wall hours **and** peak disk) and the code
     SHA with its PR. It is its own file because the full run reuses the gate's scratch directory
-    and would otherwise overwrite the gate's one measured number.
+    and would otherwise overwrite the gate's one measured number; the committed pass-1 tree
+    carries it, so the envelope can be re-checked without the box.
 ``<out-dir>/producers.json``
     the producing commit of every shard in the out-dir, written as each shard is published (and
     when a shard is seeded or resumed), so an interrupted run still attributes the rows it
@@ -605,18 +608,24 @@ def gate_phases(path: Path, binding: Mapping[str, object]) -> dict[str, dict]:
 def _settle_gate_phase(split: str, *, fresh: Sequence[str], required: Sequence[str],
                        recorded: Mapping[str, object] | None, elapsed: float,
                        measured: dict, timings: dict, shard_sizes: list[int],
-                       phases: dict, path: Path, binding: Mapping[str, object]) -> None:
+                       sizes_before: int, phases: dict, path: Path,
+                       binding: Mapping[str, object]) -> None:
     """Settle one split's gate phase: this attempt's complete measurement, or a stored one.
 
     The gate's throughput must come from one timed, complete phase per split. A retry that
     skipped part of the sample has no measurement of its own, so it reuses the stored phase of
     exactly that sample, and refuses to gate when no such phase exists: the pooled fallback
     would price this split at the other split's rate.
+
+    ``shard_sizes`` is the run's own list: it gained this phase's bytes from ``sizes_before``
+    onwards. A settled phase records exactly that slice, and a restored phase adds its stored
+    sizes back to the run, so the final concurrency bound counts every measured shard's blob
+    (a resumed gate must not read as an empty disk).
     """
     measured["wall_seconds"] = elapsed
     if set(fresh) == set(required):
         phases[split] = {"shards": sorted(fresh), "timings": dict(measured),
-                         "shard_bytes": list(shard_sizes)}
+                         "shard_bytes": list(shard_sizes[sizes_before:])}
     elif recorded is not None and set(recorded.get("shards", ())) == set(required):
         measured.update(recorded["timings"])
         _accumulate(timings, recorded["timings"])
@@ -714,7 +723,7 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
             _settle_gate_phase(split, fresh=fresh, required=measured_sample[split],
                                recorded=settled.get(split), elapsed=elapsed,
                                measured=by_split[split], timings=timings,
-                               shard_sizes=shard_sizes[sizes_before:],
+                               shard_sizes=shard_sizes, sizes_before=sizes_before,
                                phases=settled, path=phases_path, binding=binding)
         else:
             by_split[split]["wall_seconds"] = elapsed

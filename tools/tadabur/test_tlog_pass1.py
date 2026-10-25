@@ -1242,6 +1242,10 @@ def test_the_gate_measures_the_declared_sample_and_publishes_its_verdict(tp, tmp
     assert producers[f"clean/{Path(tp.gate_measured_shards()['clean'][0]).stem}"]["code_sha"] \
         == "a" * 40
 
+    # Each phase records the bytes it measured: the second phase must not carry the first's.
+    stored = json.loads((tmp_path / "pass1" / tp.GATE_PHASES_NAME).read_text(encoding="utf-8"))
+    assert [len(phase["shard_bytes"]) for phase in stored["splits"].values()] == [5, 5]
+
 
 def test_an_interrupted_gate_reuses_the_split_phase_it_settled(tp, tmp_path, monkeypatch):
     """A retry must not price the clean split at the unclean rate just because it skipped it."""
@@ -1267,6 +1271,9 @@ def test_an_interrupted_gate_reuses_the_split_phase_it_settled(tp, tmp_path, mon
     assert meta["throughput"]["shards_skipped"] == 7   # the two seeds and clean 1-5
     assert meta["throughput"]["shards_measured"] == 5  # unclean 1-5
     settled = _gate_artifact(tp, tmp_path)
+    # Each settled phase records only the bytes it measured, so a restore cannot double count.
+    stored = json.loads((tmp_path / "pass1" / tp.GATE_PHASES_NAME).read_text(encoding="utf-8"))
+    assert [len(phase["shard_bytes"]) for phase in stored["splits"].values()] == [5, 5]
 
     # A phase measured at another concurrency is not this gate's measurement.
     with pytest.raises(ValueError, match="complete phase measurement"):
@@ -1302,6 +1309,13 @@ def test_a_fast_gate_over_the_disk_budget_does_not_pass(tp, tmp_path, monkeypatc
     assert artifact["peak_disk_bytes"] > tp.DISK_ENVELOPE_BYTES
     assert artifact["within_disk_envelope"] is False
     assert artifact["within_owner_envelope"] is False
+
+    # The retry restores both phases and measures nothing: the disk bound must come from the
+    # phases' own shard bytes, or a rejecting gate would read as an empty disk and pass.
+    again = _run_gate(tp, data, tmp_path)
+
+    assert again["throughput"]["shards_measured"] == 0
+    assert _gate_artifact(tp, tmp_path) == artifact
 
 
 def test_a_gate_verdict_needs_both_envelopes(tp):

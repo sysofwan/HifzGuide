@@ -170,3 +170,68 @@ refused rather than attributed to the build. A later HEAD changes `meta.json`'s 
 the producers it cites, so reproduce the committed freeze with
 `build --code-sha 7380e1c --pr 199` (every file byte-identical, `pool.json` included).
 
+
+## The S4 overlap tree (#189)
+
+`overlap/` is what `tadabur.tlog_overlap` commits: `<split>/<shard>.jsonl.gz`, one record per
+frozen row keyed `(split, shard_file, row)` — never by `audio_path`, which 4,052 paths share
+across 8,104 rows — with
+`{schema_version, split, shard_file, row, eval_overlap, duplicate_of, duplicate_ber, excluded}`.
+`eval_overlap` lists **every** set hit, the best match per set, as `{set, clip, ber}` in the
+fixed set order `tarteel_v1, qud, gate_eval, tadabur_frame, qdat, qdat_bench, retasy`;
+`duplicate_of` is the surviving copy's `{split, shard_file, row}`; `duplicate_ber` is `0` only
+for an equal `audio_sha256`; and `excluded` is S4's own primary reason, `eval_overlap:<set>`
+beating `duplicate`, or null. Rows excluded upstream (codec, silence, S1's id overlap) still
+get their S4 record: the final exclusion is the union, and S4 never rewrites another stage.
+
+The sets are fingerprinted with `qud_fingerprint`'s parameters into a scratch store
+(`/root/scratch/tlog/overlap/fp/<set>/<unit>.npz`, one npz per source shard, atomic and
+resumable) and matched by a Haitsma–Kalker inverted index of 32-bit sub-fingerprints: exact-key
+votes at one aligned time offset propose a clip, and `best_match` verifies it at the committed
+line `0.238` (`qud_eval/overlap_rules.json`, reused with its SHA-256 in `meta.json`; the sets
+offer no clean hard negatives to re-derive it from). `0` and `0xFFFFFFFF` are stop-words — not
+indexed, not queried — and every verified match reports the share of its overlap window that is
+a stop-word in either fingerprint, so digital-silence matches are counted rather than hidden.
+The clip ids come from the committed checksum lists
+(`exposure/nonpro.evaluation_only.clips.jsonl`: Tarteel v1's 8,950, qdat's 1,505, qdat_bench's
+159, RetaSy's 440; `exposure/qud.correct_recitation.qud.jsonl`: the two pilot mushafs' 12,471
+ayat), which also give the exact-checksum check. The frame is one pass over
+`held_out_shards()`' 40 shards: a row is labelled `gate_eval` when it is a
+`decode_evalset.{dev,test}` row, else `tadabur_frame`; the 197 sealed-panel clips are skipped
+and recorded as a blind spot.
+
+Intra-tlog duplicates are equal `audio_sha256` across **all** rows (empty bytes are never a
+key) plus verified near matches against an index of the frozen eval-role rows only; a
+train–train near pair is not searched and that gap is in `meta.json`. Resolution is by
+component: one survivor per component, the earliest-opened eval role first (`look`, then
+`confirm.1` … `confirm.4`, then `train`), then the smallest `(audio_path, split, shard_file,
+row)`. No eval row can lose to a training copy, and train–train exact duplicates are recorded
+too.
+
+`meta.json` records the set census and provenance (checksums or fingerprints, each with its
+SHA-256), the threshold and vote threshold, both controls — the required synthetic-positive
+recall (≥ 200 re-encoded, re-cut copies through the real index, ≥ 99% found, every BER ≤ the
+line; the run refuses to write otherwise) and the stop-word match report — the BER histogram,
+the ambiguous zone, hits per set and role, duplicates by role pair, the net-size tables (all
+rows usable before S4, and the gating-eligible subset), the blind spots, and the frozen
+`split/` tree and `pass1/meta.json` digests.
+
+Two resumable, CPU-only stages on cuda-dev (no GPU lock), driven by
+`scripts/issue-189-overlap.sh`:
+
+```bash
+PR=NNN scripts/issue-189-overlap.sh launch      # stage HEAD as a clean clone on the box
+scripts/issue-189-overlap.sh external           # stream + fingerprint every set (detached)
+scripts/issue-189-overlap.sh check external
+PR=NNN scripts/issue-189-overlap.sh build       # index, controls, records, meta (detached)
+scripts/issue-189-overlap.sh check build
+scripts/issue-189-overlap.sh fetch DIR          # pull the overlap tree back (no audio)
+```
+
+Or directly, from `tools/` on the box:
+`python -m tadabur.tlog_overlap external --fp-dir DIR` then
+`python -m tadabur.tlog_overlap build --pr <N> --out DIR2`. The build fails loudly if a set's
+store does not cover its committed population, if a tlog shard's fingerprint store is short, or
+if the recall control misses. The offline tests need no network, GPU or audio:
+`python -m pytest -q tools/tadabur/test_tlog_overlap.py` (the committed-tree cases stay red
+until the run's tree is committed).

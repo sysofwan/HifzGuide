@@ -1357,6 +1357,29 @@ def test_a_resume_at_a_later_commit_keeps_the_rows_producer(tp, tmp_path):
     assert second["throughput"]["shards_measured"] == 0
 
 
+def test_a_seeded_shard_takes_its_producer_from_the_seed_s_meta(tp, tmp_path):
+    shard, paths = CLEAN_SHARD, ["a.flac"]
+    split, stem = tlog_split(shard), Path(shard).stem
+    key = f"{split}/{stem}"
+    index_dir = _index_for(tp, tmp_path, shard, paths)
+    seed_dir = tmp_path / "committed"
+    _pass1_shard(tp, seed_dir / split / f"{stem}.jsonl.gz", split, stem, paths)
+    producer = {"code_sha": "c" * 40, "pull_request": 199,
+                "pull_request_ref": "refs/pull/199/head"}
+    (seed_dir / "meta.json").write_text(json.dumps({"shards": {key: producer}}),
+                                        encoding="utf-8")
+    out_dir = tmp_path / "pass1"
+
+    meta = tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache",
+                  floors_path=_floors_file(tp, tmp_path),
+                  speech_seconds_of=lambda waveform: 0.5, stream=_refuse_download,
+                  code_sha="b" * 40, pull_request=201, index_dir=index_dir,
+                  seed_dir=seed_dir, shard_provenance={})
+
+    assert meta["shards"][key] == producer
+    assert tp.scratch_producers(out_dir) == {key: producer}
+
+
 def test_a_shard_whose_producer_no_record_names_is_refused(tp, tmp_path):
     shard = tp.gate_measured_shards()["clean"][0]
     index_dir = _index_for(tp, tmp_path, shard, ["a.flac"])

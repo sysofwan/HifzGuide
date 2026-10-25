@@ -36,6 +36,11 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     SHA with its PR. It is its own file because the full run reuses the gate's scratch directory
     and would otherwise overwrite the gate's one measured number; the committed pass-1 tree
     carries it, so the envelope can be re-checked without the box.
+``<out-dir>/gate_override.json``
+    written by a full run the owner raised the wall limit for: the limit in force, the comment
+    that grants it, and the gate's measured hours, GPU hours and peak disk. The gate's own
+    ``gate_projection.json`` keeps the pre-registered verdict, so the record still shows what
+    was measured rather than what was allowed.
 ``<out-dir>/producers.json``
     the producing commit of every shard in the out-dir, written as each shard is published (and
     when a shard is seeded or resumed), so an interrupted run still attributes the rows it
@@ -70,7 +75,12 @@ stored phase covers makes the gate refuse — the pooled fallback would price th
 work. The projection weights each split's measured rows/s by the index's row count for the
 shards this run did not process; the full run starts only if it projects <= the owner's 8 wall
 hours with 0 GPU hours (:data:`WALL_ENVELOPE_HOURS`) **and** the measured peak disk is within
-:data:`DISK_ENVELOPE_BYTES` (:func:`gate_verdict`).
+:data:`DISK_ENVELOPE_BYTES` (:func:`gate_verdict`). An owner may raise the wall limit for one
+run by citing the comment that grants it (``--owner-wall-hours`` with ``--owner-decision``):
+:func:`require_gate_pass` then allows the full run when the projected hours fit the raised
+limit and the disk and GPU bounds still hold, and never rewrites the gate's verdict — the
+raised limit and its citation are written into ``meta.json`` and ``gate_override.json``
+instead.
 
 **Resume guard (S3b).** A shard whose pass-1 file is already in ``--out-dir`` is verified
 against the S1 index — gzip integrity, row count, ordinals, ``audio_path`` sequence — and
@@ -100,6 +110,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import math
 import os
 import shutil
 import time
@@ -185,6 +196,8 @@ DISK_ENVELOPE_BYTES = 5_000_000_000
 PRODUCERS_NAME = "producers.json"
 GATE_PHASES_NAME = "gate_phases.json"
 GATE_PROJECTION_NAME = "gate_projection.json"
+#: A full run the owner raised the wall limit for records the limit and the comment granting it.
+GATE_OVERRIDE_NAME = "gate_override.json"
 
 
 @dataclass(frozen=True)
@@ -593,6 +606,61 @@ def gate_verdict(projection: Mapping[str, object], *, peak_disk_bytes: int,
     }
 
 
+def require_gate_pass(verdict: Mapping[str, object], *, owner_wall_hours: float | None = None,
+                      owner_decision: str | None = None) -> dict | None:
+    """The full run's preconditions, and the override record when the owner raised the limit.
+
+    ``verdict`` is the gate's published ``gate_projection.json``, never rewritten: a projection
+    over the pre-registered :data:`WALL_ENVELOPE_HOURS` keeps ``within_owner_envelope: false``
+    there even when the owner grants more wall time. The full run starts when the measured peak
+    disk and GPU hours fit their envelopes and the projected wall hours fit the limit in force —
+    the pre-registered one, or the owner's override, which is valid only with the comment that
+    grants it. The returned record names the applied limit, the citation and the measurement it
+    covered, and is written into ``meta.json`` and ``gate_override.json``; it is ``None`` when
+    the pre-registered envelope already passes.
+    """
+    if (owner_wall_hours is None) != (owner_decision is None):
+        raise SystemExit("an owner wall override needs both --owner-wall-hours and "
+                         "--owner-decision (the comment that grants it)")
+    wall_max = WALL_ENVELOPE_HOURS
+    if owner_wall_hours is not None:
+        if not math.isfinite(owner_wall_hours) or owner_wall_hours <= 0:
+            raise SystemExit(f"--owner-wall-hours is a positive number of hours, not "
+                             f"{owner_wall_hours}")
+        wall_max = float(owner_wall_hours)
+    missing = [key for key in ("wall_hours", "gpu_hours", "peak_disk_bytes",
+                               "within_disk_envelope", "within_owner_envelope")
+               if key not in verdict]
+    if missing:
+        raise SystemExit(f"the gate record names no {', '.join(missing)}: it is not a verdict "
+                         f"this guard can read")
+    if not verdict["within_disk_envelope"]:
+        raise SystemExit(
+            f"the gate measured {verdict['peak_disk_bytes']} bytes of peak disk, over the "
+            f"{DISK_ENVELOPE_BYTES}-byte envelope; a wall override cannot relax the disk bound")
+    gpu_hours = float(verdict["gpu_hours"])
+    if gpu_hours > GPU_ENVELOPE_HOURS:
+        raise SystemExit(
+            f"the gate measured {gpu_hours} GPU hours, over the {GPU_ENVELOPE_HOURS} h "
+            f"envelope; a wall override cannot relax the GPU bound")
+    wall_hours = float(verdict["wall_hours"])
+    if wall_hours > wall_max:
+        raise SystemExit(
+            f"the gate projects {wall_hours:.2f} h, over the {wall_max:g} h wall limit"
+            + ("" if owner_wall_hours is not None else
+               "; the owner's comment raises it: pass --owner-wall-hours with "
+               "--owner-decision"))
+    if owner_wall_hours is None:
+        return None
+    return {
+        "wall_hours_max": wall_max,
+        "decision": str(owner_decision),
+        "measured": {"wall_hours": wall_hours, "gpu_hours": gpu_hours,
+                     "peak_disk_bytes": int(verdict["peak_disk_bytes"]),
+                     "within_owner_envelope": bool(verdict["within_owner_envelope"])},
+    }
+
+
 def gate_phases(path: Path, binding: Mapping[str, object]) -> dict[str, dict]:
     """The per-split gate phases an earlier attempt settled at this binding, else ``{}``.
 
@@ -650,7 +718,8 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         fp_dir: Path | None = None, stream=None, code_sha: str | None = None,
         pull_request: int | None = None, workers: int = 1,
         index_dir: Path = INDEX_DIR, seed_dir: Path | None = None, gate: bool = False,
-        shard_provenance: Mapping[str, Mapping[str, object]] | None = None) -> dict:
+        shard_provenance: Mapping[str, Mapping[str, object]] | None = None,
+        gate_override: Mapping[str, object] | None = None) -> dict:
     """Process the shards split phase by split phase, verify or measure each, and write meta.
 
     Each split is one timed phase, so its ``wall_seconds`` is real elapsed time at ``workers``
@@ -667,7 +736,9 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
     writes its verdict — wall hours and peak disk — to ``gate_projection.json`` and into
     ``meta.json``; another run leaves both alone. ``shard_provenance`` names the producer of a
     **skipped** shard the records do not cover, which is how the three S3a tracer shards keep
-    ``d2af0e3``/``#198``.
+    ``d2af0e3``/``#198``. ``gate_override`` is :func:`require_gate_pass`'s record of an owner's
+    raised wall limit: it lands in ``meta.json`` and ``gate_override.json``, and the gate's own
+    ``gate_projection.json`` is left exactly as measured.
     """
     shards = list(shards)
     if gate and set(shards) != set(gate_shards()):
@@ -761,6 +832,12 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
                   "shards_skipped": skipped}
     if gate:
         throughput["gate_projection"] = projection
+    if gate_override is not None:
+        throughput["gate_override"] = dict(gate_override)
+        write_text_atomically(
+            out_dir / GATE_OVERRIDE_NAME,
+            json.dumps(dict(gate_override), indent=1, ensure_ascii=False,
+                       sort_keys=True) + "\n")
     meta = {
         "schema_version": SCHEMA_VERSION,
         "source": {
@@ -1095,11 +1172,22 @@ def _run_command(args) -> None:
         shards = TLOG.shards
     else:
         shards = args.shards
+    gate_override = None
+    if getattr(args, "all", False):
+        verdict_path = Path(args.out_dir) / GATE_PROJECTION_NAME
+        if not verdict_path.exists():
+            raise SystemExit(f"the full run needs the gate's verdict at {verdict_path}: run "
+                             f"the gate into {args.out_dir} before the full corpus")
+        gate_override = require_gate_pass(
+            json.loads(verdict_path.read_text(encoding="utf-8")),
+            owner_wall_hours=getattr(args, "owner_wall_hours", None),
+            owner_decision=getattr(args, "owner_decision", None))
     meta = run(shards, out_dir=args.out_dir, cache_dir=args.cache_dir,
                floors_path=args.floors, speech_seconds_of=silero_speech_seconds(),
                fp_dir=args.fp_dir, code_sha=args.code_sha, pull_request=args.pr,
                workers=workers, index_dir=getattr(args, "index_dir", INDEX_DIR),
-               seed_dir=getattr(args, "seed_dir", None), gate=gate)
+               seed_dir=getattr(args, "seed_dir", None), gate=gate,
+               gate_override=gate_override)
     print(json.dumps(meta["throughput"], indent=1, sort_keys=True), flush=True)
 
 
@@ -1139,6 +1227,14 @@ def main() -> None:
     run_command.add_argument("--pr", type=int, required=True,
                              help="the PR number whose refs/pull/<N>/head keeps code_sha "
                                   "reachable after the squash merge")
+    run_command.add_argument("--owner-wall-hours", type=float, default=None,
+                             help="the wall limit an owner comment raised for this full run; "
+                                  "it may only relax the wall bound, never the disk or GPU one "
+                                  "(default: the pre-registered %g h)"
+                                  % WALL_ENVELOPE_HOURS)
+    run_command.add_argument("--owner-decision", default=None,
+                             help="the comment URL that grants --owner-wall-hours; recorded in "
+                                  "meta.json and gate_override.json")
     which = run_command.add_mutually_exclusive_group(required=True)
     which.add_argument("--tracer", action="store_true",
                        help="the three shards the module's tracer rule names")

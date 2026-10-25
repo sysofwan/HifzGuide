@@ -14,8 +14,17 @@
 # and the resume guard skips them. The measured sample is clean 1-5 and unclean 1-5, each split
 # timed as its own three-worker phase and settled in $OUT/gate_phases.json, so an interrupted
 # gate keeps the split it measured. `check gate` prints $OUT/gate_projection.json, the gate's
-# own verdict: wall hours AND the measured peak disk. `run full` refuses to start until that
-# record says `within_owner_envelope` (<= 8 wall hours, 0 GPU hours, <= 5 GB peak disk).
+# own verdict: wall hours AND the measured peak disk.
+#
+# The full run starts only under a verdict that fits: peak disk and GPU hours within their
+# envelopes, and the projected wall hours within the limit in force. The gate's verdict is
+# never rewritten; an owner who raised the wall limit for this run cites the comment on the box
+# too:
+#   PR=199 OWNER_WALL_HOURS=12 OWNER_DECISION=<comment URL> \
+#     scripts/issue-188-pass1.sh full
+# Both are forwarded to `run --all`, which records the raised limit and its citation in
+# $OUT/meta.json and $OUT/gate_override.json before it measures anything. Without them the
+# pre-registered 8 h applies.
 #
 # Outputs go to /root/scratch/tlog/s3b/pass1, never into the staged checkout: the tree stays
 # clean for the code SHA the meta cites, and a resumed run re-verifies what is already there
@@ -31,6 +40,10 @@ FP=${FP_DIR:-/root/scratch/tlog/fp}
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 ENV_NAME=${ENV_NAME:-hifzguide}
 PR=${PR:-}
+#: The owner's raised wall limit for this run and the comment that grants it, forwarded to
+#: `run --all`; the envelope decision itself lives in tadabur.tlog_pass1.require_gate_pass.
+OWNER_WALL_HOURS=${OWNER_WALL_HOURS:-}
+OWNER_DECISION=${OWNER_DECISION:-}
 REPO_DIR=${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 
 remote() { ssh "$HOST" "$@"; }
@@ -67,7 +80,8 @@ sweep() {  # gate|full
   [ -n "$PR" ] || { echo "PR=<N> is required" >&2; return 1; }
   remote "cd '$ROOT/repo' && rm -f '$ROOT/logs/$name.done' '$ROOT/logs/$name.exit' \
             '$ROOT/logs/$name.pid' && \
-          nohup env PR='$PR' bash scripts/issue-188-pass1.sh run '$name' \
+          nohup env PR='$PR' OWNER_WALL_HOURS='$OWNER_WALL_HOURS' \
+            OWNER_DECISION='$OWNER_DECISION' bash scripts/issue-188-pass1.sh run '$name' \
             > '$ROOT/logs/$name.log' 2>&1 & echo \$!"
 }
 
@@ -105,29 +119,33 @@ fail() {  # <name> <reason>: a launch that died before the run, visible to `chec
   echo "$name did not run: $reason" >&2
 }
 
-gate_passed() {  # the gate's own measured record says the projection fits the envelope
-  [ "$(cat "$ROOT/logs/gate.exit" 2>/dev/null)" = 0 ] || return 1
-  python3 -c "import json, sys
-sys.exit(0 if json.load(open('$OUT/gate_projection.json'))['within_owner_envelope'] else 1)"
+gate_completed() {  # the gate finished; its envelope verdict is require_gate_pass's decision
+  [ "$(cat "$ROOT/logs/gate.exit" 2>/dev/null)" = 0 ]
 }
 
 run() {  # executed on the box; never `set -e`: the exit code is the run's result
-  local name=$1 selection
+  local name=$1 selection owner=()
   set +e
   mkdir -p "$ROOT/logs" "$OUT"
   cd "$REPO_DIR/tools" || { fail "$name" "no $REPO_DIR/tools on the box"; return 1; }
   # shellcheck source=/dev/null
   source "$CONDA" || { fail "$name" "no $CONDA on the box"; return 1; }
   conda activate "$ENV_NAME" || { fail "$name" "conda activate $ENV_NAME"; return 1; }
-  if [ "$name" = full ] && ! gate_passed; then
-    fail "$name" "the gate has not passed: run 'gate', then 'check gate'"
-    return 1
+  if [ "$name" = full ]; then
+    selection=--all
+    gate_completed || { fail "$name" "the gate has not completed: run 'gate', then 'check gate'"
+                        return 1; }
+  else
+    selection=--gate
   fi
-  if [ "$name" = gate ]; then selection=--gate; else selection=--all; fi
+  # The owner's raised wall limit goes with the comment that grants it; without either the
+  # pre-registered envelope applies and `run --all` refuses a projection over it.
+  [ -n "$OWNER_WALL_HOURS" ] && owner+=(--owner-wall-hours "$OWNER_WALL_HOURS")
+  [ -n "$OWNER_DECISION" ] && owner+=(--owner-decision "$OWNER_DECISION")
   df -B1 "$OUT" > "$ROOT/logs/$name.df.before"
   python -m tadabur.tlog_pass1 run "$selection" --workers 3 --pr "$PR" \
     --seed-dir "$REPO_DIR/tools/tadabur/tlog/pass1" \
-    --cache-dir "$CACHE" --out-dir "$OUT" --fp-dir "$FP" &
+    --cache-dir "$CACHE" --out-dir "$OUT" --fp-dir "$FP" "${owner[@]}" &
   local pass=$!
   echo "$pass" > "$ROOT/logs/$name.pid"
   wait "$pass"

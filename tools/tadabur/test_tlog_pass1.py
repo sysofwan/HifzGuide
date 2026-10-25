@@ -1506,3 +1506,150 @@ def test_a_parallel_phase_writes_every_shard_and_sums_its_counters(tp, tmp_path,
         assert [row["row"] for row in rows] == [0, 1]
         assert [row["audio_path"] for row in rows] == paths[shard]
 
+
+
+# --- the full run's gate guard and the owner's wall override ---------------------------------
+
+
+#: The owner's comment on #188 that raised this run's wall limit to 12 h (2026-10-25).
+OWNER_DECISION = "https://github.com/sysofwan/HifzGuide/issues/188#issuecomment-6393137890"
+#: The gate's own measurement (PR #199, clean 1-5 and unclean 1-5 at three workers).
+GATE_WALL_HOURS = 11.160688017396982
+GATE_PEAK_DISK_BYTES = 2_105_123_968
+
+
+def _verdict_for(tp, *, wall_hours: float = GATE_WALL_HOURS,
+                 peak_disk_bytes: int = GATE_PEAK_DISK_BYTES) -> dict:
+    """``gate_projection.json``'s shape for the given measurement, as the gate publishes it."""
+    within_disk = peak_disk_bytes <= tp.DISK_ENVELOPE_BYTES
+    return {"wall_hours": wall_hours, "gpu_hours": 0.0,
+            "peak_disk_bytes": peak_disk_bytes,
+            "within_wall_envelope": wall_hours <= tp.WALL_ENVELOPE_HOURS,
+            "within_disk_envelope": within_disk,
+            "within_owner_envelope": wall_hours <= tp.WALL_ENVELOPE_HOURS and within_disk}
+
+
+def _all_args(tmp_path: Path, **overrides) -> SimpleNamespace:
+    """`run --all`'s command line, with the scratch out-dir and the override as given."""
+    options = {"gate": False, "tracer": False, "all": True, "shards": None, "workers": 3,
+               "out_dir": tmp_path / "pass1", "cache_dir": tmp_path / "cache",
+               "floors": tmp_path / "floors.json", "fp_dir": tmp_path / "fp",
+               "code_sha": None, "pr": 199, "index_dir": tmp_path / "index",
+               "seed_dir": tmp_path / "seed", "owner_wall_hours": None,
+               "owner_decision": None}
+    options.update(overrides)
+    return SimpleNamespace(**options)
+
+
+def test_the_gate_s_eleven_hour_projection_refuses_the_full_run_without_an_override(tp):
+    with pytest.raises(SystemExit, match=r"11\.16 h, over the 8 h wall limit"):
+        tp.require_gate_pass(_verdict_for(tp))
+
+
+def test_the_owner_s_override_allows_the_eleven_hour_projection(tp):
+    record = tp.require_gate_pass(_verdict_for(tp), owner_wall_hours=12.0,
+                                  owner_decision=OWNER_DECISION)
+
+    assert record == {"wall_hours_max": 12.0, "decision": OWNER_DECISION,
+                      "measured": {"wall_hours": GATE_WALL_HOURS, "gpu_hours": 0.0,
+                                   "peak_disk_bytes": GATE_PEAK_DISK_BYTES,
+                                   "within_owner_envelope": False}}
+
+
+def test_a_projection_over_the_owner_s_override_is_refused(tp):
+    with pytest.raises(SystemExit, match=r"13\.50 h, over the 12 h wall limit"):
+        tp.require_gate_pass(_verdict_for(tp, wall_hours=13.5), owner_wall_hours=12.0,
+                             owner_decision=OWNER_DECISION)
+
+
+def test_the_owner_s_wall_override_cannot_relax_the_disk_bound(tp):
+    with pytest.raises(SystemExit, match="over the 5000000000-byte envelope"):
+        tp.require_gate_pass(
+            _verdict_for(tp, peak_disk_bytes=tp.DISK_ENVELOPE_BYTES + 1),
+            owner_wall_hours=12.0, owner_decision=OWNER_DECISION)
+
+
+def test_an_override_without_the_comment_that_grants_it_is_refused(tp):
+    with pytest.raises(SystemExit, match="both --owner-wall-hours and --owner-decision"):
+        tp.require_gate_pass(_verdict_for(tp), owner_wall_hours=12.0)
+    with pytest.raises(SystemExit, match="both --owner-wall-hours and --owner-decision"):
+        tp.require_gate_pass(_verdict_for(tp), owner_decision=OWNER_DECISION)
+
+
+def test_a_gate_within_the_pre_registered_envelope_needs_no_override(tp):
+    assert tp.require_gate_pass(_verdict_for(tp, wall_hours=7.5)) is None
+
+
+def test_a_record_that_is_not_a_gate_verdict_is_refused(tp):
+    with pytest.raises(SystemExit, match="names no wall_hours"):
+        tp.require_gate_pass({"peak_disk_bytes": 1}, owner_wall_hours=12.0,
+                             owner_decision=OWNER_DECISION)
+
+
+def test_the_all_command_refuses_to_start_without_a_gate_verdict(tp, tmp_path, monkeypatch):
+    monkeypatch.setattr(tp, "require_clean_tree", lambda: None)
+    monkeypatch.setattr(tp, "_require_pinned_pyav", lambda: None)
+    monkeypatch.setattr(tp, "silero_speech_seconds", lambda: None)
+    monkeypatch.setattr(tp, "run", lambda *args, **kwargs: pytest.fail("the run started"))
+
+    with pytest.raises(SystemExit, match="needs the gate's verdict"):
+        tp._run_command(_all_args(tmp_path))
+
+
+def test_the_all_command_refuses_the_eleven_hour_gate_without_an_override(tp, tmp_path,
+                                                                         monkeypatch):
+    out_dir = tmp_path / "pass1"
+    out_dir.mkdir()
+    (out_dir / tp.GATE_PROJECTION_NAME).write_text(json.dumps(_verdict_for(tp)),
+                                                   encoding="utf-8")
+    monkeypatch.setattr(tp, "require_clean_tree", lambda: None)
+    monkeypatch.setattr(tp, "_require_pinned_pyav", lambda: None)
+    monkeypatch.setattr(tp, "silero_speech_seconds", lambda: None)
+    monkeypatch.setattr(tp, "run", lambda *args, **kwargs: pytest.fail("the run started"))
+
+    with pytest.raises(SystemExit, match=r"11\.16 h"):
+        tp._run_command(_all_args(tmp_path))
+
+
+def test_the_all_command_passes_the_override_into_the_run(tp, tmp_path, monkeypatch):
+    out_dir = tmp_path / "pass1"
+    out_dir.mkdir()
+    (out_dir / tp.GATE_PROJECTION_NAME).write_text(json.dumps(_verdict_for(tp)),
+                                                   encoding="utf-8")
+    captured = {}
+
+    def record(shards, **kwargs):
+        captured["shards"], captured["kwargs"] = tuple(shards), kwargs
+        return {"throughput": {}}
+
+    monkeypatch.setattr(tp, "require_clean_tree", lambda: None)
+    monkeypatch.setattr(tp, "_require_pinned_pyav", lambda: None)
+    monkeypatch.setattr(tp, "silero_speech_seconds", lambda: None)
+    monkeypatch.setattr(tp, "run", record)
+
+    tp._run_command(_all_args(tmp_path, owner_wall_hours=12.0,
+                              owner_decision=OWNER_DECISION))
+
+    assert captured["shards"] == tuple(tp.TLOG.shards)
+    assert captured["kwargs"]["gate_override"] == {
+        "wall_hours_max": 12.0, "decision": OWNER_DECISION,
+        "measured": {"wall_hours": GATE_WALL_HOURS, "gpu_hours": 0.0,
+                     "peak_disk_bytes": GATE_PEAK_DISK_BYTES,
+                     "within_owner_envelope": False}}
+
+
+def test_a_full_run_records_the_override_and_keeps_the_gate_verdict(tp, tmp_path, monkeypatch):
+    data = _gate_fixture(tp, tmp_path)
+    monkeypatch.setattr(tp, "process_shard", _gate_processor(tp, data.paths))
+    _run_gate(tp, data, tmp_path)
+    path = tmp_path / "pass1" / tp.GATE_PROJECTION_NAME
+    artifact = path.read_bytes()
+    record = tp.require_gate_pass(_gate_artifact(tp, tmp_path), owner_wall_hours=12.0,
+                                  owner_decision=OWNER_DECISION)
+
+    meta = _run_gate(tp, data, tmp_path, gate=False, gate_override=record)
+
+    assert meta["throughput"]["gate_override"] == record
+    override_path = tmp_path / "pass1" / tp.GATE_OVERRIDE_NAME
+    assert json.loads(override_path.read_text(encoding="utf-8")) == record
+    assert path.read_bytes() == artifact

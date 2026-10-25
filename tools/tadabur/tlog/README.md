@@ -122,17 +122,23 @@ other's rate — when a split's phase is neither measured completely nor stored.
 directory) cannot overwrite it; only a gate run writes it or `throughput.gate_projection`. Its
 `within_owner_envelope` is wall hours **and** the measured peak disk (`within_wall_envelope`,
 `within_disk_envelope`), and it names the shards each phase measured. Start the full run
-(`--all --workers 3`) only when it is
-true: <= 8 wall hours, 0 GPU hours and <= 5 GB peak disk. Outputs go to scratch
+(`--all --workers 3`) only when disk and GPU fit and the projected wall hours fit the limit in
+force: the pre-registered <= 8 wall hours, 0 GPU hours and <= 5 GB peak disk — or an owner's
+raised wall limit for this run, passed as `--owner-wall-hours` with `--owner-decision` (the
+comment that grants it). The override is refused without its citation, cannot relax the disk or
+GPU bound, and never rewrites `gate_projection.json`: the raised limit, the citation and the
+measurement it covered land in `meta.json` and `gate_override.json`. Outputs go to scratch
 (`--out-dir /root/scratch/tlog/s3b/pass1`), never the measured checkout, so the clean-tree
 guard still holds, a resumed run re-verifies and skips existing shards, and the fetched files
-are metadata only. `gate_projection.json` and `gate_phases.json` are the gate's envelope
-evidence: commit both with the pass-1 rows and `meta.json`. `$OUT/producers.json` records each
-published shard's producing commit, so an interrupted run keeps its attribution and a resumed
-run at a later commit does not claim rows it only verified; an output with no producing record
-is refused. `scripts/issue-188-pass1.sh` stages the committed branch on cuda-dev, runs the gate
-and the full pass detached without the GPU lock, refuses `full` until the gate's record passes,
-and fetches the rows; it reports the PID, log and completion files.
+are metadata only. `gate_projection.json`, `gate_phases.json` and `gate_override.json` are the
+gate's envelope evidence: commit all three with the pass-1 rows and `meta.json`.
+`$OUT/producers.json` records each published shard's producing commit, so an interrupted run
+keeps its attribution and a resumed run at a later commit does not claim rows it only verified;
+an output with no producing record is refused. `scripts/issue-188-pass1.sh` stages the committed
+branch on cuda-dev, runs the gate and the full pass detached without the GPU lock, refuses
+`full` unless the gate's verdict fits the limit in force (`OWNER_WALL_HOURS` and
+`OWNER_DECISION` are forwarded to the guard), and fetches the rows; it reports the PID, log and
+completion files.
 
 `tlog/split/` is the freeze: `<split>/<shard>.jsonl.gz` carries `(split, shard_file, row,
 audio_path, speaker_cluster, group_key, role)`. Under the owner's fallback, `speaker_cluster`

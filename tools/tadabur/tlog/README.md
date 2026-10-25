@@ -161,13 +161,17 @@ SHA-256s, `"embeddings": "none (owner fallback 2026-10-24)"`, the counts per rol
 the 1% group cap and largest share, each role's surah/ayah distribution against the training
 pool, the yield after the `codec` and `silence` floors, and each shard's producing SHA + PR.
 The yield is not the whole exclusion set: `exclusions` names `eval_overlap` and `duplicate` as
-S4's, so a training pool must apply both before trusting `yield.usable`. `split/pool.json` is the gating population S4 consumes, written by the same build: per split
-and per role, `rows`, `usable` after the codec and silence floors, `eval_overlap_tarteel_v1`
-and `usable_after_eval_overlap` (495,030 usable rows contain 10,386 Tarteel v1 eval-overlap
-rows; `meta.json` keeps the floors-only yield). Rebuild it offline, from the committed index
-and pass 1, with `python -m tadabur.tlog_split build --pr <N>`; a shard the pass-1 meta omits is
-refused rather than attributed to the build. A later HEAD changes `meta.json`'s `code_sha` and
-the producers it cites, so reproduce the committed freeze with
+deferred to the S4 tree, so a training pool is `codec ∪ silence ∪ S1's
+eval_overlap:tarteel_v1 ∪ overlap/excluded`. `split/pool.json` is the gating population S4
+consumes, written by the same build: per split and per role, `rows`, `usable` after the codec
+and silence floors, `eval_overlap_tarteel_v1` and `usable_after_eval_overlap` (495,030 usable
+rows contain 10,386 Tarteel v1 eval-overlap rows; `meta.json` keeps the floors-only yield).
+Those counts stop before S4; `overlap/meta.json` carries `usable_after_s4` per role, train
+included, and `tadabur.tlog_overlap.iter_pool_rows` is the one reader that joins the frozen row
+to its S4 record as a single ordered `exclusions` tuple. Rebuild it offline, from the committed
+index and pass 1, with `python -m tadabur.tlog_split build --pr <N>`; a shard the pass-1 meta
+omits is refused rather than attributed to the build. A later HEAD changes `meta.json`'s
+`code_sha` and the producers it cites, so reproduce the committed freeze with
 `build --code-sha 7380e1c --pr 199` (every file byte-identical, `pool.json` included).
 
 
@@ -219,18 +223,27 @@ train–train near pair is not searched and that gap is in `meta.json`. Resoluti
 component: one survivor per component, the earliest-opened eval role first (`look`, then
 `confirm.1` … `confirm.4`, then `train`), then the smallest `(audio_path, split, shard_file,
 row)`. No eval row can lose to a training copy, and train–train exact duplicates are recorded
-too.
+too. Survivor choice ignores usability by design; `meta.json` records how many usable rows lose
+to an unusable survivor (`duplicates.survivor_unusable`) rather than changing the rule.
+`tadabur.tlog_overlap.iter_pool_rows` joins the frozen row to its record as one view: S4's
+fields under their own names (its `eval_overlap` list no longer collides with S1's boolean,
+renamed `s1_eval_overlap`) plus the ordered `exclusions` union and one `usable` flag.
 
 `meta.json` records the set census and provenance (source, pinned revision, checksums or
 fingerprints, each with its SHA-256), the threshold and vote threshold, both controls — the
 required synthetic-positive recall (≥ 200 re-encoded, re-cut copies through the real index,
 ≥ 99% of them verified as candidates and every candidate BER within the line; the run refuses
-to write otherwise) and the stop-word match report over every verified candidate — the BER
-histogram of every verified candidate, `counts` inside the line and `rejected` above it, the
-ambiguous zone, hits per set and role, duplicates by role pair, the net-size tables (all rows
-usable before S4, and the gating-eligible subset), the blind spots, the tlog fingerprint
-store's census (the committed `fingerprints.json`, which the build verifies npz by npz), and
-the frozen `split/` tree and `pass1/meta.json` digests.
+to write otherwise) and the stop-word match report — the BER histogram of every verified
+candidate, `counts` inside the line and `rejected` above it, the ambiguous zone, hits per set
+and role, duplicates by role pair, the survivor-usability counts, the net-size tables (all rows
+usable before S4, and the gating-eligible subset), `usable_after_s4` per role with `train`
+included, the blind spots, the tlog fingerprint store's census (the committed
+`fingerprints.json`, which the build verifies npz by npz), and the frozen `split/` tree and
+`pass1/meta.json` digests. Three pieces need no audio: the S1 id-overlap recall control verifies
+every S1-flagged row that S4 missed against the Tarteel v1 clips sharing its recording id and
+records the miss BER distribution and stop-word share; the stop-word report keeps the
+all-candidate figure and adds the accepted (≤ line) share split into external hits and
+near-duplicate links; and the survivor-usability counts are read from the written tree.
 
 Two resumable, CPU-only stages on cuda-dev (no GPU lock), driven by
 `scripts/issue-189-overlap.sh`:
@@ -251,7 +264,7 @@ store holds a clip its checksums do not name, if the two frame stores disagree a
 revision, if a frame shard has no disposition record or one that does not cover its rows, if
 the tlog npz files are not the committed census's, if a tlog shard's fingerprint store is
 short, or if the recall control misses. The offline tests need no network, GPU or audio:
-`python -m pytest -q tools/tadabur/test_tlog_overlap.py` (the committed-tree cases stay red
-until the run's tree is committed), `python -m pytest -q tools/tadabur/test_tlog_overlap_build.py`,
-which drives `build` end to end over a fabricated store and one real index shard, and
+`python -m pytest -q tools/tadabur/test_tlog_overlap.py`,
+`python -m pytest -q tools/tadabur/test_tlog_overlap_build.py` (which drives `build` end to
+end over a fabricated store and one real index shard), and
 `python -m pytest -q tools/tadabur/test_tlog_overlap_launch.py`, which sweeps a stub box.

@@ -436,7 +436,7 @@ def test_iter_frozen_rows_joins_the_index_pass1_and_the_freeze(ts, tmp_path):
         data.index_rows[0])
     assert frozen[0]["filename_label"] == "1:1" and frozen[0]["exclusion_reasons"] == ()
     assert frozen[1]["exclusion_reasons"] == ("codec",)
-    assert frozen[1]["eval_overlap"] is True
+    assert frozen[1]["s1_eval_overlap"] is True
     assert frozen[2]["exclusion_reasons"] == ("silence",)   # ratio 0.1 < f_s 0.4
     assert frozen[3]["exclusion_reasons"] == ("silence",)   # speech_s 0.5 < d_s 1.0
 

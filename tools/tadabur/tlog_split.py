@@ -105,9 +105,9 @@ def iter_frozen_rows(*, index_dir: Path = INDEX_DIR, pass1_dir: Path = PASS1_DIR
 
     One row per :data:`ROW_KEY` ``(split, shard_file, row)`` — never per ``audio_path``, which
     is not unique across shards — carrying the committed freeze fields, the index row's
-    ``filename_label``, ``recording_id`` and Tarteel v1 overlap flags, the pass-1 facts
-    (``audio_sha256``, ``codec_ok``, ``speech_s``, ``speech_ratio``) and the row's floor
-    ``exclusion_reasons``. Rows are aligned by
+    ``filename_label``, ``recording_id`` and Tarteel v1 overlap flags (the S1 id flag is
+    ``s1_eval_overlap``), the pass-1 facts (``audio_sha256``, ``codec_ok``, ``speech_s``,
+    ``speech_ratio``) and the row's floor ``exclusion_reasons``. Rows are aligned by
     :func:`tadabur.tlog_pass1.require_pass1_alignment`, the same rule the resume guard applies,
     and arrive shard by shard so a consumer can group on ``(split, shard_file)``.
     """
@@ -130,7 +130,7 @@ def iter_frozen_rows(*, index_dir: Path = INDEX_DIR, pass1_dir: Path = PASS1_DIR
                 **freeze_row(index_row),
                 "filename_label": index_row["filename_label"],
                 "recording_id": index_row["recording_id"],
-                "eval_overlap": bool(index_row["tarteel_v1_eval_overlap"]),
+                "s1_eval_overlap": bool(index_row["tarteel_v1_eval_overlap"]),
                 "any_overlap": bool(index_row["tarteel_v1_any_overlap"]),
                 "audio_sha256": facts["audio_sha256"],
                 "codec_ok": facts["codec_ok"],
@@ -244,7 +244,7 @@ def build(split_dir: Path = SPLIT_DIR, *, index_dir: Path = INDEX_DIR,
             report["silence"] += "silence" in reasons
             report["usable"] += not reasons
             paths[row["audio_path"]] += 1
-            usable, overlap = not reasons, row["eval_overlap"]
+            usable, overlap = not reasons, row["s1_eval_overlap"]
             for population in (pool[split], pool_by_role[row["role"]]):
                 population["rows"] += 1
                 population["usable"] += usable

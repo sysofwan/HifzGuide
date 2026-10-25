@@ -257,7 +257,9 @@ def test_the_build_writes_every_row_from_both_stores(offline):
     assert hits["retasy"]["excluded"] == "eval_overlap:retasy"
     assert hits["retasy"]["eval_overlap"][0]["clip"] == offline.members["retasy"][0]
 
-    assert meta["duplicates"] == {"exact": {"train:train": 1}, "near": {"look:train": 1}}
+    assert meta["duplicates"] == {
+        "exact": {"train:train": 1}, "near": {"look:train": 1},
+        "survivor_unusable": {"eval": {"total": 0}, "train": {"total": 0}}}
     loser = next(record for record in records
                  if record["duplicate_ber"] not in (None, 0) and record["duplicate_of"])
     assert loser["duplicate_ber"] == 1e-4 and loser["excluded"] == "duplicate"
@@ -391,7 +393,7 @@ def test_verify_reports_the_candidates_the_line_rejects():
     assert index.query(probe) == []
     stats = {"verified": 0, "mostly_stop_word": 0, "histogram": Counter(),
              "rejected": Counter()}
-    assert to._count_hit(stats, hits[0]) is False
+    assert to._count_hit(stats, hits[0], kind="external") is False
     assert stats["verified"] == 1 and stats["histogram"].total() == 0
     assert stats["rejected"].total() == 1
 

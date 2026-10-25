@@ -113,7 +113,7 @@ def frozen():
     for row in tlog_split.iter_frozen_rows():
         rows[(row["split"], row["shard_file"], row["row"])] = (
             row["role"], row["audio_path"], row["audio_sha256"],
-            not row["exclusion_reasons"], bool(row["eval_overlap"]), row["filename_label"])
+            not row["exclusion_reasons"], bool(row["s1_eval_overlap"]), row["filename_label"])
     return rows
 
 
@@ -351,6 +351,81 @@ def test_the_overlap_meta_counts_match_the_tree(to, records, derived):
         assert "train" not in meta["net_sizes"][base]
         for role in EVAL_ROLES:
             assert meta["net_sizes"][base][role] == dict(derived["net"][base][role])
+
+
+def test_iter_pool_rows_is_the_one_union_reader(to, records, frozen):
+    """Every row's single view: S4's record fields, the ordered union, and ``usable``."""
+    usable = Counter()
+    rows = 0
+    for row in to.iter_pool_rows():
+        rows += 1
+        key = (row["split"], row["shard_file"], row["row"])
+        assert row["eval_overlap"] == records[key]["eval_overlap"]
+        assert row["duplicate_of"] == records[key]["duplicate_of"]
+        assert row["duplicate_ber"] == records[key]["duplicate_ber"]
+        assert row["excluded"] == records[key]["excluded"]
+        expected = set(row["exclusion_reasons"])
+        if row["s1_eval_overlap"]:
+            expected.add("eval_overlap:tarteel_v1")
+        if row["excluded"] is not None:
+            expected.add(row["excluded"])
+        assert set(row["exclusions"]) == expected
+        assert row["exclusions"] == tuple(reason for reason in to.EXCLUSION_ORDER
+                                          if reason in expected)
+        assert row["usable"] == (not expected)
+        if row["usable"]:
+            usable[row["role"]] += 1
+    assert rows == TOTAL_ROWS == len(frozen)
+    assert usable["train"] == 426_825
+    assert sum(usable.values()) == 474_962
+    assert {role: usable[role] for role in EVAL_ROLES} == {
+        "look": 9_710, "confirm.1": 9_632, "confirm.2": 9_747,
+        "confirm.3": 9_462, "confirm.4": 9_586}
+
+
+def test_the_pool_meta_reports_train_and_every_eval_role(to):
+    meta = json.loads((Path(to.OVERLAP_DIR) / "meta.json").read_text(encoding="utf-8"))
+    assert set(meta["usable_after_s4"]) == set(ROLE_ORDER)
+    assert meta["usable_after_s4"]["train"] == 426_825
+    assert sum(meta["usable_after_s4"].values()) == 474_962
+    for role in EVAL_ROLES:
+        assert (meta["usable_after_s4"][role]
+                == meta["net_sizes"]["usable_before_s4"][role]["remaining"])
+
+
+def test_the_s1_id_overlap_recall_is_measured(to):
+    """The real-positive population S1 flagged, and the direct verification of every miss."""
+    meta = json.loads((Path(to.OVERLAP_DIR) / "meta.json").read_text(encoding="utf-8"))
+    recall = meta["controls"]["s1_id_overlap_recall"]
+    assert recall["rows"] == 10_581
+    assert recall["found"] == 9_997
+    assert recall["found_share"] == pytest.approx(9_997 / 10_581, abs=5e-7)
+    assert recall["misses"] == 584
+    assert recall["unfingerprinted"] == 2
+    assert recall["missing_clip"] == 0
+    assert sum(recall["miss_ber"]["counts"]) == 582
+    assert 0 <= recall["miss_stop_word"]["mostly_stop_word"] <= recall["misses"]
+    assert recall["miss_stop_word"]["share"] == pytest.approx(
+        recall["miss_stop_word"]["mostly_stop_word"] / recall["misses"], abs=5e-7)
+
+
+def test_the_stop_word_report_splits_accepted_candidates(to):
+    meta = json.loads((Path(to.OVERLAP_DIR) / "meta.json").read_text(encoding="utf-8"))
+    stop = meta["controls"]["stop_word_matches"]
+    accepted = stop["accepted"]
+    assert accepted["all"]["hits"] == accepted["external"]["hits"] + accepted["near_duplicate"]["hits"]
+    for record in accepted.values():
+        assert 0 <= record["mostly_stop_word"] <= record["hits"]
+        assert record["share"] == pytest.approx(
+            record["mostly_stop_word"] / record["hits"] if record["hits"] else 0.0, abs=5e-7)
+    assert accepted["all"]["hits"] <= stop["verified"]
+
+
+def test_the_survivor_unusable_counts_are_recorded(to):
+    meta = json.loads((Path(to.OVERLAP_DIR) / "meta.json").read_text(encoding="utf-8"))
+    counts = meta["duplicates"]["survivor_unusable"]
+    assert counts["eval"] == {"total": 21, "floors": 6, "eval_overlap": 15}
+    assert counts["train"] == {"total": 132, "floors": 54, "eval_overlap": 78}
 
 
 def test_no_eval_role_row_is_excluded_for_a_train_copy_in_the_committed_tree(to, records, frozen):

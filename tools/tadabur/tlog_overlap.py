@@ -109,8 +109,8 @@ from .nonpro_sources import (QDAT, QDAT_BENCH, RETASY, TARTEEL_V1, LeftOut, iter
 from .panel_seal import is_panel_name, panel_provenance
 from .qud_fingerprint import best_match, fingerprint
 from .qud_source import QUD_REVISION, QUD_DATASET, audio_filename as qud_audio_filename
-from .tlog_index import (INDEX_DIR, ROLES, TRAIN, head_sha, provenance, repo_relative,
-                         sha256_file, write_shard)
+from .tlog_index import (INDEX_DIR, ROLES, TRAIN, head_sha, provenance, recording_id,
+                         repo_relative, sha256_file, write_shard)
 from .tlog_pass1 import FLOORS_PATH, FP_RECORD_PATH, PASS1_DIR, read_jsonl_gz
 from .tlog_split import EMPTY_SHA256, ROW_KEY, iter_frozen_rows
 
@@ -120,6 +120,9 @@ OVERLAP_DIR = Path(__file__).parent / "tlog" / "overlap"
 META_NAME = "meta.json"
 #: The set codes, in the order that breaks a tie for the primary ``excluded`` reason.
 SETS = ("tarteel_v1", "qud", "gate_eval", "tadabur_frame", "qdat", "qdat_bench", "retasy")
+#: The frozen exclusion union, in order: the floors, S1's id overlap, S4's primary reason.
+EXCLUSION_ORDER = ("codec", "silence", "eval_overlap:tarteel_v1",
+                   *(f"eval_overlap:{code}" for code in SETS), "duplicate")
 #: The frame sets: one audio pass over ``held_out_shards()``, labelled by gate membership.
 FRAME_SETS = ("gate_eval", "tadabur_frame")
 #: Digital silence's word, and the all-ones word: never indexed, never queried.
@@ -322,6 +325,55 @@ def _row_clip(key: tuple[str, str, int]) -> str:
 def _clip_row(clip: str) -> tuple[str, str, int]:
     split, shard, row = clip.split(_ROW_SEP)
     return split, shard, int(row)
+
+
+def _row_exclusions(row: Mapping[str, Any], record: Mapping[str, Any]) -> tuple[str, ...]:
+    """One row's frozen exclusion union, in :data:`EXCLUSION_ORDER` and deduplicated."""
+    found = set(row["exclusion_reasons"])
+    if row["s1_eval_overlap"]:
+        found.add("eval_overlap:tarteel_v1")
+    if record["excluded"]:
+        found.add(record["excluded"])
+    unknown = found - set(EXCLUSION_ORDER)
+    if unknown:
+        raise ValueError(f"{_key(row)} has exclusions outside the union: {sorted(unknown)}")
+    return tuple(reason for reason in EXCLUSION_ORDER if reason in found)
+
+
+def iter_pool_rows(*, overlap_dir: Path = OVERLAP_DIR, index_dir: Path = INDEX_DIR,
+                   pass1_dir: Path = PASS1_DIR, floors_path: Path = FLOORS_PATH) -> Iterator[dict]:
+    """Every row's S1 + S4 view: one ``exclusions`` tuple and one ``usable`` flag.
+
+    The frozen row (with S1's flag renamed ``s1_eval_overlap``) is joined to its committed
+    overlap record by :data:`ROW_KEY`, shard by shard, and the two trees must cover exactly the
+    same rows. The S4 record's fields are then attached under their own names — its
+    ``eval_overlap`` list no longer collides with S1's boolean — and the ordered union is
+    ``exclusions``: ``codec``, ``silence``, S1's ``eval_overlap:tarteel_v1``, S4's primary
+    ``excluded``, then ``usable``. This is the one reader S6/S7 merge, so no caller has to
+    repeat the union or the alignment.
+    """
+    rows = iter_frozen_rows(index_dir=index_dir, pass1_dir=pass1_dir, floors_path=floors_path)
+    for (split, stem), shard_rows in groupby(rows, key=lambda row: (row["split"],
+                                                                    row["shard_file"])):
+        shard = list(shard_rows)
+        path = Path(overlap_dir) / split / f"{stem}.jsonl.gz"
+        if not path.exists():
+            raise ValueError(f"the overlap tree has no {split}/{stem}.jsonl.gz")
+        records = read_jsonl_gz(path)
+        if len(records) != len(shard):
+            raise ValueError(f"{split}/{stem}: {len(records)} overlap records for {len(shard)} "
+                             f"frozen rows")
+        for row, record in zip(shard, records, strict=True):
+            if _key(row) != _key(record):
+                raise ValueError(f"{split}/{stem}: {_key(record)} is not frozen row {_key(row)}")
+            exclusions = _row_exclusions(row, record)
+            yield {**row,
+                   "eval_overlap": record["eval_overlap"],
+                   "duplicate_of": record["duplicate_of"],
+                   "duplicate_ber": record["duplicate_ber"],
+                   "excluded": record["excluded"],
+                   "exclusions": exclusions,
+                   "usable": not exclusions}
 
 
 def _role_rank(role: str) -> int:
@@ -1006,14 +1058,58 @@ def _eval_index(store_dir: Path, split_dir: Path) -> EvalIndex:
     return EvalIndex.build(prints)
 
 
-def _count_hit(stats: dict, hit: Hit) -> bool:
-    """One verified candidate's facts; whether it is inside :data:`LINE`."""
+def _count_hit(stats: dict, hit: Hit, *, kind: str) -> bool:
+    """One verified candidate's facts; whether it is inside :data:`LINE`.
+
+    ``kind`` separates the two questions: ``external`` candidates answer how much of an
+    external-set exclusion rests on a silence-dominated overlap, ``near_duplicate`` the same
+    for a duplicate link. Both accepted buckets are reported beside the all-candidate figure.
+    """
     stats["verified"] += 1
-    if hit.stop_word_share >= MOSTLY_STOP_WORD:
+    mostly = hit.stop_word_share >= MOSTLY_STOP_WORD
+    if mostly:
         stats["mostly_stop_word"] += 1
     accepted = hit.ber <= LINE
     stats["histogram" if accepted else "rejected"][_bin(hit.ber)] += 1
+    if accepted:
+        bucket = stats["accepted"][kind]
+        bucket["hits"] += 1
+        bucket["mostly_stop_word"] += mostly
     return accepted
+
+
+def _count_s1_recall(stats: dict, row: Mapping[str, Any], prints, found: list[dict],
+                     s1_clips: Mapping[str, list[str]],
+                     tarteel_prints: Mapping[str, np.ndarray]) -> None:
+    """Compare one S1 id-flagged row with the Tarteel v1 clips that share its recording id.
+
+    S1's flag is an id match, not an audio match; this is the only real-positive recall the
+    run can measure without audio. A row S4 already found counts as found. A miss is verified
+    directly with :func:`best_match` against every clip sharing its id (ids are not unique in
+    Tarteel v1), and its BER and stop-word share are recorded instead of assumed.
+    """
+    recall = stats["s1_recall"]
+    recall["rows"] += 1
+    if any(hit["set"] == "tarteel_v1" for hit in found):
+        recall["found"] += 1
+        return
+    own = prints.get(row["audio_path"]) if prints is not None else None
+    if own is None or not len(own):
+        recall["unfingerprinted"] += 1
+        return
+    matches = []
+    for clip in s1_clips.get(row["recording_id"] or "", ()):
+        reference = tarteel_prints[clip]
+        match = best_match(own, reference)
+        if match is not None:
+            matches.append((match.ber, match, reference))
+    if not matches:
+        recall["missing_clip"] += 1
+        return
+    _, match, reference = min(matches, key=lambda item: item[0])
+    recall["misses"] += 1
+    recall["miss_ber"][_bin(match.ber)] += 1
+    recall["miss_stop_word"] += _stop_share(own, reference, match.offset) >= MOSTLY_STOP_WORD
 
 
 def _external_hits(digest, prints, index, sha_map, stats) -> list[dict]:
@@ -1024,7 +1120,7 @@ def _external_hits(digest, prints, index, sha_map, stats) -> list[dict]:
             best[code] = {"set": code, "clip": clip, "ber": 0.0}
     if prints is not None and len(prints):
         for hit in index.verify(prints):
-            if not _count_hit(stats, hit):
+            if not _count_hit(stats, hit, kind="external"):
                 continue
             code, clip = hit.clip.split(_ROW_SEP, 1)
             if hit.ber > SYNTHETIC_POSITIVE_MAX:
@@ -1039,14 +1135,23 @@ def _bin(ber: float) -> int:
 
 
 def _scan(index: EvalIndex, eval_index: EvalIndex, sha_map, store_dir: Path,
-          index_dir: Path, pass1_dir: Path, floors_path: Path):
+          index_dir: Path, pass1_dir: Path, floors_path: Path,
+          tarteel_prints: Mapping[str, np.ndarray]):
     """One pass: external hits, duplicate links, exact-checksum groups and row metadata."""
     hits: dict[tuple, list[dict]] = {}
     edges: dict[tuple, float] = {}
     groups: dict[str, list[tuple]] = defaultdict(list)
     metadata: dict[tuple, tuple[str, str]] = {}
+    s1_clips: dict[str, list[str]] = defaultdict(list)
+    for clip in sorted(tarteel_prints):
+        identifier = recording_id(clip)
+        if identifier is not None:
+            s1_clips[identifier].append(clip)
     stats = {"verified": 0, "mostly_stop_word": 0, "histogram": Counter(),
-             "rejected": Counter(), "ambiguous": []}
+             "rejected": Counter(), "ambiguous": [],
+             "accepted": {"external": Counter(), "near_duplicate": Counter()},
+             "s1_recall": {"rows": 0, "found": 0, "unfingerprinted": 0, "missing_clip": 0,
+                           "misses": 0, "miss_ber": Counter(), "miss_stop_word": 0}}
     rows = iter_frozen_rows(index_dir=index_dir, pass1_dir=pass1_dir, floors_path=floors_path)
     for (split, stem), shard_rows in groupby(rows, key=lambda row: (row["split"],
                                                                     row["shard_file"])):
@@ -1063,13 +1168,15 @@ def _scan(index: EvalIndex, eval_index: EvalIndex, sha_map, store_dir: Path,
             if digest and digest != EMPTY_SHA256:
                 groups[digest].append(key)
             found = _external_hits(digest, prints.get(row["audio_path"]), index, sha_map, stats)
+            if row["s1_eval_overlap"]:
+                _count_s1_recall(stats, row, prints, found, s1_clips, tarteel_prints)
             if found:
                 hits[key] = found
             own = prints.get(row["audio_path"])
             if own is None or not len(own):
                 continue
             for hit in eval_index.verify(own, exclude=_row_clip(key)):
-                if not _count_hit(stats, hit):
+                if not _count_hit(stats, hit, kind="near_duplicate"):
                     continue
                 other = _clip_row(hit.clip)
                 pair = (key, other) if key < other else (other, key)
@@ -1077,6 +1184,38 @@ def _scan(index: EvalIndex, eval_index: EvalIndex, sha_map, store_dir: Path,
                     edges[pair] = hit.ber
         print(f"[build] scan {split}/{stem}: {len(shard)} rows", flush=True)
     return hits, edges, groups, metadata, stats
+
+
+def _stop_word_record(counts: Counter) -> dict:
+    hits = counts["hits"]
+    mostly = counts["mostly_stop_word"]
+    return {"hits": hits, "mostly_stop_word": mostly,
+            "share": round(mostly / hits, 6) if hits else 0.0}
+
+
+def _s1_recall_record(stats: dict) -> dict:
+    recall = stats["s1_recall"]
+    rows = recall["rows"]
+    return {"rows": rows, "found": recall["found"],
+            "found_share": round(recall["found"] / rows, 6) if rows else 0.0,
+            "unfingerprinted": recall["unfingerprinted"],
+            "missing_clip": recall["missing_clip"],
+            "misses": recall["misses"],
+            "miss_ber": {"bins": list(_BINS),
+                         "counts": [recall["miss_ber"][index] for index in range(len(_BINS))]},
+            "miss_stop_word": {
+                "mostly_stop_word": recall["miss_stop_word"],
+                "share": (round(recall["miss_stop_word"] / recall["misses"], 6)
+                          if recall["misses"] else 0.0)}}
+
+
+def _survivor_reason(row: Mapping[str, Any]) -> str | None:
+    """Why an unusable duplicate survivor is unusable, grouped for the committed report."""
+    if row["exclusion_reasons"]:
+        return "floors"
+    if row["s1_eval_overlap"] or row["eval_overlap"]:
+        return "eval_overlap"
+    return None
 
 
 def _near_ber(ber: float) -> float:
@@ -1223,7 +1362,7 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
     sha_map = _sha_map(clips)
     hits, edges, groups, metadata, stats = _scan(
         index, eval_index, sha_map, Path(store_dir), Path(index_dir), Path(pass1_dir),
-        Path(floors_path))
+        Path(floors_path), external["tarteel_v1"])
 
     exact = _exact_links(groups)
     links = dict(edges)
@@ -1244,8 +1383,6 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
     hits_by_set: Counter = Counter()
     hits_by_set_and_role: dict[str, Counter] = defaultdict(Counter)
     duplicates = {"exact": Counter(), "near": Counter()}
-    net = {base: {role: Counter() for role in ROLES}
-           for base in ("usable_before_s4", "gating_eligible")}
     written = 0
     rows = iter_frozen_rows(index_dir=index_dir, pass1_dir=pass1_dir, floors_path=floors_path)
     for (split, stem), shard_rows in groupby(rows, key=lambda row: (row["split"],
@@ -1267,23 +1404,56 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
             for hit in record["eval_overlap"]:
                 hits_by_set[hit["set"]] += 1
                 hits_by_set_and_role[hit["set"]][row["role"]] += 1
-            usable = not row["exclusion_reasons"] and not row["eval_overlap"]
-            before = row["role"] != TRAIN and usable
-            gating = before and split == "clean" and row["filename_label"] is not None
-            for base, applies in (("usable_before_s4", before),
-                                  ("gating_eligible", gating)):
-                if applies:
-                    net[base][row["role"]]["before"] += 1
-                    net[base][row["role"]]["lost"] += record["excluded"] is not None
             records.append(record)
         write_shard(records, overlap_dir / split / f"{stem}.jsonl.gz")
         written += len(records)
         print(f"[build] wrote {split}/{stem}: {len(records)} rows", flush=True)
 
+    net = {base: {role: Counter() for role in ROLES}
+           for base in ("usable_before_s4", "gating_eligible")}
+    usable_after_s4: Counter = Counter({role: 0 for role in ROLES})
+    survivor_keys = set(resolved.values())
+    survivor_facts: dict[tuple, tuple[bool, str | None]] = {}
+    losers: list[tuple[tuple, dict]] = []
+    for row in iter_pool_rows(overlap_dir=overlap_dir, index_dir=index_dir,
+                              pass1_dir=pass1_dir, floors_path=floors_path):
+        role, key = row["role"], _key(row)
+        if row["usable"]:
+            usable_after_s4[role] += 1
+        before = (role != TRAIN and not row["exclusion_reasons"]
+                  and not row["s1_eval_overlap"])
+        gating = before and row["split"] == "clean" and row["filename_label"] is not None
+        for base, applies in (("usable_before_s4", before),
+                              ("gating_eligible", gating)):
+            if applies:
+                net[base][role]["before"] += 1
+                net[base][role]["lost"] += not row["usable"]
+        if key in survivor_keys:
+            survivor_facts[key] = (row["usable"], _survivor_reason(row))
+        if row["duplicate_of"] is not None:
+            losers.append((key, row))
+
+    survivor_unusable: dict[str, Counter] = {"eval": Counter(), "train": Counter()}
+    for key, row in losers:
+        if row["exclusion_reasons"] or row["s1_eval_overlap"] or row["eval_overlap"]:
+            continue
+        target = row["duplicate_of"]
+        usable, reason = survivor_facts[(target["split"], target["shard_file"],
+                                         target["row"])]
+        if usable:
+            continue
+        group = "train" if row["role"] == TRAIN else "eval"
+        survivor_unusable[group][reason] += 1
+
     net_sizes = {base: {role: {"before": counts["before"], "lost": counts["lost"],
                                "remaining": counts["before"] - counts["lost"]}
                         for role, counts in roles.items() if role != TRAIN}
                  for base, roles in net.items()}
+    duplicates_meta = {kind: dict(sorted(counts.items()))
+                       for kind, counts in duplicates.items()}
+    duplicates_meta["survivor_unusable"] = {
+        group: {"total": sum(counts.values()), **dict(sorted(counts.items()))}
+        for group, counts in survivor_unusable.items()}
     meta = {
         "schema_version": SCHEMA_VERSION,
         **current,
@@ -1308,17 +1478,24 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
         "hits": {"by_set": dict(sorted(hits_by_set.items())),
                  "by_set_and_role": {code: dict(sorted(roles.items()))
                                      for code, roles in sorted(hits_by_set_and_role.items())}},
-        "duplicates": {kind: dict(sorted(counts.items()))
-                       for kind, counts in duplicates.items()},
+        "duplicates": duplicates_meta,
         "net_sizes": net_sizes,
+        "usable_after_s4": {role: usable_after_s4[role] for role in ROLES},
         "controls": {
             "synthetic_recall": control,
+            "s1_id_overlap_recall": _s1_recall_record(stats),
             "stop_word_matches": {
                 "verified": stats["verified"],
                 "mostly_stop_word": stats["mostly_stop_word"],
                 "share": round(stats["mostly_stop_word"] / stats["verified"], 6)
                 if stats["verified"] else 0.0,
-                "mostly_stop_word_share": MOSTLY_STOP_WORD}},
+                "mostly_stop_word_share": MOSTLY_STOP_WORD,
+                "accepted": {
+                    "all": _stop_word_record(
+                        stats["accepted"]["external"] + stats["accepted"]["near_duplicate"]),
+                    "external": _stop_word_record(stats["accepted"]["external"]),
+                    "near_duplicate": _stop_word_record(
+                        stats["accepted"]["near_duplicate"])}}},
         "ber_histogram": {"bins": list(_BINS),
                           "counts": [stats["histogram"][index]
                                      for index in range(len(_BINS))],

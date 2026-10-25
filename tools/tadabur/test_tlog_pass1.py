@@ -1043,3 +1043,28 @@ def test_the_committed_meta_names_each_shard_s_producing_sha_and_pr(tp):
         assert re.fullmatch(r"[0-9a-f]{40}", entry["code_sha"])
         assert entry["pull_request"] == meta["pull_request"]
 
+
+def test_the_run_command_selects_the_gate_at_three_workers(tp, tmp_path, monkeypatch):
+    captured = []
+
+    def record(shards, **kwargs):
+        captured.append((tuple(shards), kwargs))
+        return {"throughput": {}}
+
+    monkeypatch.setattr(tp, "require_clean_tree", lambda: None)
+    monkeypatch.setattr(tp, "_require_pinned_pyav", lambda: None)
+    monkeypatch.setattr(tp, "silero_speech_seconds", lambda: None)
+    monkeypatch.setattr(tp, "run", record)
+    args = SimpleNamespace(gate=True, tracer=False, all=False, shards=None,
+                           out_dir=tmp_path / "pass1", cache_dir=tmp_path / "cache",
+                           floors=tmp_path / "floors.json", fp_dir=tmp_path / "fp",
+                           code_sha="0" * 40, pr=7, workers=3,
+                           index_dir=tmp_path / "index")
+
+    tp._run_command(args)
+
+    shards, kwargs = captured[0]
+    assert shards == tp.gate_shards()
+    assert kwargs["workers"] == 3
+    assert kwargs["index_dir"] == tmp_path / "index"
+

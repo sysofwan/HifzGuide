@@ -38,6 +38,22 @@ VAD and fingerprint separately, and extrapolates the 743-shard cost from those n
 and #173 carry the restatement. The branch is squash-merged, so a cited ``code_sha`` survives
 only under ``refs/pull/<N>/head`` and is recorded with the PR number.
 
+**Gate rule (written before the run, S3b).** The gate names clean shard indices 0-5 (of 411)
+and unclean 0-5 (of 332): :func:`gate_shards` with :data:`GATE_CLEAN` and :data:`GATE_UNCLEAN`.
+Clean 0 and unclean 0 are already committed by the tracer, so the resume guard verifies and
+skips them and they contribute nothing to the measured throughput. Each split is its own timed
+phase of :data:`GATE_WORKERS` workers (clean, then unclean), so each split's ``wall_seconds`` is
+real elapsed wall time at that concurrency and :func:`gate_projection` does not divide by the
+worker count again. The five fresh shards on three workers leave a tail, which makes the
+projected rate conservative. The projection weights each split's measured rows/s by the index's
+row count for the shards this run did not process; the full run starts only if it projects <=
+the owner's 8 wall hours with 0 GPU hours (:data:`WALL_ENVELOPE_HOURS`).
+
+**Worker concurrency (S3b).** The full run uses :data:`GATE_WORKERS` processes, so up to three
+tlog shards are on disk at once; each worker deletes its shard before the next download. The
+peak-disk check uses the sum of the largest measured shard files plus the accumulated
+fingerprint store, against :data:`DISK_ENVELOPE_BYTES`.
+
 tlog audio is gated: the reads need a Hub token that accepted the dataset's terms and run on
 cuda-dev, where the scratch directories live. Shards and their audio are never committed.
 
@@ -51,11 +67,13 @@ takes the GPU lock::
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import os
 import time
 from collections import Counter
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -69,7 +87,7 @@ from .nonpro_sources import (TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, audio_sha25
                              tlog_split)
 from .qud_fingerprint import fingerprint, save_fingerprints
 from .tarteel_split import SPLIT_PATH, load_split
-from .tlog_index import head_sha, require_clean_tree, sha256_file, write_shard
+from .tlog_index import (INDEX_DIR, head_sha, require_clean_tree, sha256_file, write_shard)
 
 SCHEMA_VERSION = 1
 #: Rows gained ``decoder`` after the first tracer run, so a row is schema 2 while the floors and
@@ -105,6 +123,16 @@ PYAV_PIN = "18.1.0"
 #: The tracer rule, fixed before the run: clean shard indices 0 and 205, unclean 0.
 TRACER_CLEAN = (0, 205)
 TRACER_UNCLEAN = 0
+#: The gate rule, fixed before the run: the first six shards of each split, at three workers.
+#: Clean 0 and unclean 0 are the tracer's committed outputs, so the resume guard skips them.
+GATE_CLEAN = (0, 1, 2, 3, 4, 5)
+GATE_UNCLEAN = (0, 1, 2, 3, 4, 5)
+GATE_WORKERS = 3
+#: The S3a tracer's committed rows were produced by this commit in PR 198; a resumed run
+#: verifies them but must cite their real producer, not the S3b code that skipped them. The SHA
+#: survives only under ``refs/pull/198/head`` because that branch was squash-merged.
+S3A_CODE_SHA = "d2af0e3abefee2f331c731e435755ffbf422604d"
+S3A_PULL_REQUEST = 198
 #: The corpus' committed size, read from #185's index rather than copied: a re-pin of the index
 #: would otherwise silently skew every S3b number. ``len(TLOG.shards)`` is 411 + 332.
 INDEX_META_PATH = Path(__file__).parent / "tlog" / "index" / "meta.json"
@@ -136,6 +164,21 @@ def tracer_shards() -> tuple[str, str, str]:
     clean = [shard for shard in TLOG.shards if tlog_split(shard) == "clean"]
     unclean = [shard for shard in TLOG.shards if tlog_split(shard) == "unclean"]
     return (clean[TRACER_CLEAN[0]], clean[TRACER_CLEAN[1]], unclean[TRACER_UNCLEAN])
+
+
+def gate_shards() -> tuple[str, ...]:
+    """The gate's 12 shards, by the rule in the module docstring (both splits, six each)."""
+    clean = [shard for shard in TLOG.shards if tlog_split(shard) == "clean"]
+    unclean = [shard for shard in TLOG.shards if tlog_split(shard) == "unclean"]
+    return (tuple(clean[index] for index in GATE_CLEAN)
+            + tuple(unclean[index] for index in GATE_UNCLEAN))
+
+
+#: The three tracer shards' real producer, keyed as ``<split>/<stem>`` for a run's meta.json.
+S3A_PROVENANCE = {
+    f"{tlog_split(shard)}/{Path(shard).stem}":
+        {"code_sha": S3A_CODE_SHA, "pull_request": S3A_PULL_REQUEST}
+    for shard in tracer_shards()}
 
 
 def measure(audio: bytes, speech_seconds_of: Callable[[np.ndarray], float], *,
@@ -310,6 +353,27 @@ def require_floor_config(floors: dict, config: dict | None = None) -> None:
             f"pass 1 would run {expected!r}")
 
 
+def exclusion_reasons(row: Mapping[str, object], floors: Mapping[str, float]) -> tuple[str, ...]:
+    """The pre-registration's floor exclusions for one pass-1 row.
+
+    A ``codec_ok: false`` row has null duration, speech and ratio; it is excluded as
+    ``"codec"`` before any floor is compared, so no null arithmetic is attempted. Every other
+    row is ``"silence"`` when its speech ratio is below ``f_s`` or its speech seconds below
+    ``d_s``. The comparison is inclusive: a row exactly on both floors is usable. Later slices
+    read pass-1 rows through this helper rather than re-deriving the floors.
+    """
+    if not row["codec_ok"]:
+        return ("codec",)
+    if (row["speech_ratio"] < floors["f_s"]) or (row["speech_s"] < floors["d_s"]):
+        return ("silence",)
+    return ()
+
+
+def usable(row: Mapping[str, object], floors: Mapping[str, float]) -> bool:
+    """Whether a pass-1 row survives the pre-registration's floors (see :func:`exclusion_reasons`)."""
+    return not exclusion_reasons(row, floors)
+
+
 def _provenance(code_sha: str | None, pull_request: int | None) -> dict:
     """The commit a measurement ran from, and the PR ref that keeps it after the squash merge."""
     return {"code_sha": code_sha or head_sha(), "pull_request": pull_request,
@@ -317,41 +381,156 @@ def _provenance(code_sha: str | None, pull_request: int | None) -> dict:
                                  if pull_request is not None else None)}
 
 
+def require_pass1_alignment(rows: Sequence[Mapping[str, object]],
+                            index_rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    """Refuse pass-1 rows that are not exactly the index shard's rows.
+
+    The row count, the row ordinals and the ``audio_path`` sequence must all match the S1
+    index shard. Both the resume guard and the split freeze use this one rule, so a freeze can
+    never be built from a shard that a resumed run would have refused.
+    """
+    if len(rows) != len(index_rows):
+        raise ValueError(f"pass 1 output {path} has row count {len(rows)}; "
+                         f"the index shard has {len(index_rows)}")
+    if [row.get("row") for row in rows] != list(range(len(index_rows))):
+        raise ValueError(f"pass 1 output {path} does not carry row ordinals 0..n-1")
+    if [row.get("audio_path") for row in rows] != [row["audio_path"] for row in index_rows]:
+        raise ValueError(f"pass 1 output {path} has an audio_path sequence that differs "
+                         f"from the index shard")
+
+
+def verify_pass1_shard(path: Path, index_path: Path) -> int:
+    """Verify a committed or scratch pass-1 file against its S1 index shard, before skipping it.
+
+    Reading the gzip proves its integrity; :func:`require_pass1_alignment` checks the row
+    count, ordinals and ``audio_path`` sequence. Any drift raises ``ValueError``: a resumed run
+    never re-downloads a shard whose facts are not the frozen index's rows. Returns the
+    verified row count.
+    """
+    index_rows = read_jsonl_gz(index_path)
+    rows = read_jsonl_gz(path)
+    require_pass1_alignment(rows, index_rows, path)
+    return len(rows)
+
+
+def read_jsonl_gz(path: Path) -> list[dict]:
+    """Every row of a committed JSONL-gzip file; a corrupt file is an error, never a skip."""
+    try:
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            return [json.loads(line) for line in handle]
+    except (OSError, EOFError, ValueError) as exc:
+        raise ValueError(f"{path} is not a readable JSONL-gzip file: {exc}") from exc
+
+
+def gate_projection(measured: Mapping[str, Mapping[str, float]], *,
+                    remaining_rows: Mapping[str, int], workers: int) -> dict:
+    """Project the unprocessed corpus from the gate's own timed, per-split phases.
+
+    ``measured[split]`` holds ``rows`` and the phase's real ``wall_seconds`` at ``workers``
+    concurrency (decision 7), so the rates already include the workers and are never divided by
+    them again. A split with no measured row borrows the pooled per-row wall. The remaining
+    rows are the index's counts for the shards this run did not process, weighted by each
+    split's own rate. The 8 wall-hour gate passes only when the projection fits; the run is
+    CPU-only, so GPU hours are zero by construction.
+    """
+    measured_rows = {split: int(measured.get(split, {}).get("rows", 0))
+                     for split in TLOG_SPLITS}
+    if not any(measured_rows.values()):
+        raise ValueError("the gate has no measured row to project from")
+    pooled = (sum(float(measured[split]["wall_seconds"]) for split in TLOG_SPLITS
+                  if measured_rows[split])
+              / sum(measured_rows.values()))
+    per_row: dict[str, float] = {}
+    rates: dict[str, float | None] = {}
+    for split in TLOG_SPLITS:
+        if measured_rows[split]:
+            per_row[split] = float(measured[split]["wall_seconds"]) / measured_rows[split]
+            rates[split] = round(1 / per_row[split], 3)
+        else:
+            per_row[split] = pooled
+            rates[split] = None
+    wall_hours = (sum(int(remaining_rows.get(split, 0)) * per_row[split]
+                      for split in TLOG_SPLITS) / 3600)
+    return {
+        "workers": workers,
+        "rows_measured": measured_rows,
+        "rows_remaining": {split: int(remaining_rows.get(split, 0)) for split in TLOG_SPLITS},
+        "rows_per_s": rates,
+        "wall_hours": wall_hours,
+        "gpu_hours": 0.0,
+        "within_owner_envelope": wall_hours <= WALL_ENVELOPE_HOURS,
+    }
+
+
 def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         speech_seconds_of: Callable[[np.ndarray], float], floors_path: Path = FLOORS_PATH,
         fp_dir: Path | None = None, stream=None, code_sha: str | None = None,
-        pull_request: int | None = None) -> dict:
-    """Process the shards in order, write each output, and return the ``meta.json`` record."""
+        pull_request: int | None = None, workers: int = 1,
+        index_dir: Path = INDEX_DIR,
+        shard_provenance: Mapping[str, Mapping[str, object]] | None = None) -> dict:
+    """Process the shards split phase by split phase, verify or measure each, and write meta.
+
+    Each split is one timed phase, so its ``wall_seconds`` is real elapsed time at ``workers``
+    concurrency and the projection never re-divides by the worker count (decision 7). A shard
+    whose committed or scratch output exists is verified against ``index_dir``'s shard and
+    skipped without a download; its rows count in the freeze, not in the gate's rates. Fresh
+    shards are measured (serially, or in ``workers`` processes) and written atomically.
+    ``shard_provenance`` overrides a shard's cited producer, which is how the three S3a tracer
+    shards keep ``d2af0e3``/``#198`` after S3b verifies instead of re-running them.
+    """
     shards = list(shards)
     floors_path = Path(floors_path)
     require_floor_config(json.loads(floors_path.read_text(encoding="utf-8")))
-    out_dir = Path(out_dir)
+    out_dir, index_dir = Path(out_dir), Path(index_dir)
+    provenance = S3A_PROVENANCE if shard_provenance is None else shard_provenance
     timings = _timings()
     by_split = {split: _timings() for split in TLOG_SPLITS}
-    begin, record = _download_meter(timings)
     counts: Counter = Counter()
-    for shard in shards:
-        split, stem = tlog_split(shard), Path(shard).stem
-        shard_timings = _timings()
-        if stream is None:
-            begin()
-            rows = process_shard(shard, cache_dir, speech_seconds_of=speech_seconds_of,
-                                 fp_dir=fp_dir, on_download=record, timings=shard_timings)
-        else:
-            rows = process_shard(shard, cache_dir, speech_seconds_of=speech_seconds_of,
-                                 fp_dir=fp_dir, stream=stream, timings=shard_timings)
-        _accumulate(timings, shard_timings)
-        _accumulate(by_split[split], shard_timings)
-        path = out_dir / split / f"{stem}.jsonl.gz"
-        write_pass1(rows, path)
-        counts[split] += len(rows)
-        fp_path = Path(fp_dir) / f"{stem}.npz" if fp_dir is not None else None
-        fp_bytes = (fp_path.stat().st_size
-                    if fp_path is not None and fp_path.exists() else 0)
-        # The shard blob is deleted before the npz is written, so these never coexist.
-        timings["peak_disk_bytes"] = max(timings["peak_disk_bytes"],
-                                         timings["shard_bytes"], fp_bytes,
-                                         path.stat().st_size)
+    skipped = 0
+    measured_shards = 0
+    shard_sizes: list[int] = []
+    for split in TLOG_SPLITS:
+        phase = [shard for shard in shards if tlog_split(shard) == split]
+        if not phase:
+            continue
+        started = time.perf_counter()
+        fresh: list[str] = []
+        for shard in phase:
+            path = out_dir / split / f"{Path(shard).stem}.jsonl.gz"
+            if path.exists():
+                counts[split] += verify_pass1_shard(
+                    path, index_dir / split / f"{Path(shard).stem}.jsonl.gz")
+                skipped += 1
+            else:
+                fresh.append(shard)
+        _measure_phase(fresh, out_dir=out_dir, cache_dir=cache_dir, fp_dir=fp_dir,
+                       speech_seconds_of=speech_seconds_of, stream=stream, workers=workers,
+                       timings=timings, by_split=by_split[split], counts=counts,
+                       shard_sizes=shard_sizes)
+        measured_shards += len(fresh)
+        by_split[split]["wall_seconds"] = time.perf_counter() - started
+        timings["wall_seconds"] += by_split[split]["wall_seconds"]
+
+    measured_rows = sum(by_split[split]["rows"] for split in TLOG_SPLITS)
+    remaining = {split: ROWS_BY_SPLIT[split] - counts[split] for split in TLOG_SPLITS}
+    projection = (gate_projection(
+        {split: {"rows": by_split[split]["rows"],
+                 "wall_seconds": by_split[split]["wall_seconds"]}
+         for split in TLOG_SPLITS},
+        remaining_rows=remaining, workers=workers) if measured_rows else None)
+    # Up to ``workers`` shard blobs coexist; the fingerprint store and the committed outputs
+    # accumulate, so the bound adds them to the largest concurrent shard bytes.
+    output_bytes = sum(
+        (out_dir / tlog_split(shard) / f"{Path(shard).stem}.jsonl.gz").stat().st_size
+        for shard in shards)
+    concurrent = sum(sorted(shard_sizes, reverse=True)[:max(workers, 1)])
+    timings["peak_disk_bytes"] = max(timings["peak_disk_bytes"],
+                                     concurrent + timings["fingerprint_bytes"] + output_bytes)
+    current = _provenance(code_sha, pull_request)
+    shard_records = {
+        f"{tlog_split(shard)}/{Path(shard).stem}": dict(provenance.get(
+            f"{tlog_split(shard)}/{Path(shard).stem}", current))
+        for shard in shards}
     meta = {
         "schema_version": SCHEMA_VERSION,
         "source": {
@@ -367,12 +546,84 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
                    "sha256": sha256_file(floors_path)},
         "counts": {"rows": {**{split: counts[split] for split in TLOG_SPLITS},
                             "total": sum(counts.values())}},
-        "throughput": _throughput(timings, by_split, len(shards)),
+        "shards": shard_records,
+        "throughput": {**_throughput(timings, by_split, measured_shards, workers=workers),
+                       "shards_skipped": skipped,
+                       "gate_projection": projection},
     }
     write_text_atomically(
         out_dir / "meta.json",
         json.dumps(meta, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
     return meta
+
+
+_WORKER_SPEECH: Callable[[np.ndarray], float] | None = None
+
+
+def _init_worker() -> None:
+    """One Silero VAD per process, and one torch thread: workers share the box, not threads."""
+    global _WORKER_SPEECH
+
+    import torch
+
+    torch.set_num_threads(1)
+    _WORKER_SPEECH = silero_speech_seconds()
+
+
+def _worker_shard(task: tuple[str, Path, Path | None]) -> tuple[list[dict], dict]:
+    """Measure one shard in a worker process, with its own download clock and timings."""
+    shard, cache_dir, fp_dir = task
+    timings = _timings()
+    begin, record = _download_meter(timings)
+    begin()
+    rows = process_shard(shard, cache_dir, speech_seconds_of=_WORKER_SPEECH,
+                         fp_dir=fp_dir, on_download=record, timings=timings)
+    return rows, timings
+
+
+def _measure_phase(shards: list[str], *, out_dir: Path, cache_dir: Path,
+                   fp_dir: Path | None, speech_seconds_of: Callable[[np.ndarray], float],
+                   stream, workers: int, timings: dict, by_split: dict, counts: Counter,
+                   shard_sizes: list[int]) -> None:
+    """Measure one split's fresh shards, serially or in ``workers`` processes."""
+    if not shards:
+        return
+    if stream is not None or workers <= 1:
+        for shard in shards:
+            shard_timings = _timings()
+            if stream is None:
+                begin, record = _download_meter(shard_timings)
+                begin()
+                rows = process_shard(shard, cache_dir, speech_seconds_of=speech_seconds_of,
+                                     fp_dir=fp_dir, on_download=record,
+                                     timings=shard_timings)
+            else:
+                rows = process_shard(shard, cache_dir, speech_seconds_of=speech_seconds_of,
+                                     fp_dir=fp_dir, stream=stream, timings=shard_timings)
+            _write_measured(shard, rows, shard_timings, out_dir=out_dir, timings=timings,
+                            by_split=by_split, counts=counts, shard_sizes=shard_sizes)
+        return
+    with ProcessPoolExecutor(max_workers=workers, initializer=_init_worker) as pool:
+        futures = [(shard, pool.submit(_worker_shard, (shard, cache_dir, fp_dir)))
+                   for shard in shards]
+        for shard, future in futures:
+            rows, shard_timings = future.result()
+            _write_measured(shard, rows, shard_timings, out_dir=out_dir, timings=timings,
+                            by_split=by_split, counts=counts, shard_sizes=shard_sizes)
+
+
+def _write_measured(shard: str, rows: list[dict], shard_timings: dict, *, out_dir: Path,
+                    timings: dict, by_split: dict, counts: Counter,
+                    shard_sizes: list[int]) -> None:
+    """Write one measured shard and add its stage, download and size counters to the run."""
+    split, stem = tlog_split(shard), Path(shard).stem
+    _accumulate(timings, shard_timings)
+    _accumulate(by_split, shard_timings)
+    timings["download_seconds"] += shard_timings["download_seconds"]
+    timings["download_bytes"] += shard_timings["download_bytes"]
+    write_pass1(rows, out_dir / split / f"{stem}.jsonl.gz")
+    counts[split] += len(rows)
+    shard_sizes.append(shard_timings["shard_bytes"])
 
 
 def silero_speech_seconds() -> Callable[[np.ndarray], float]:
@@ -429,7 +680,7 @@ def _timings() -> dict:
     return {"download_seconds": 0.0, "download_bytes": 0, "decode_seconds": 0.0,
             "vad_seconds": 0.0, "fingerprint_seconds": 0.0, "fingerprint_bytes": 0,
             "rows": 0, "vad_rows": 0, "fingerprint_rows": 0,
-            "shard_bytes": 0, "peak_disk_bytes": 0}
+            "shard_bytes": 0, "peak_disk_bytes": 0, "wall_seconds": 0.0}
 
 
 #: The per-shard stage counters :func:`run` adds into the run and per-split timings. Download
@@ -460,13 +711,16 @@ def _download_meter(timings: dict):
     return begin, record
 
 
-def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int) -> dict:
+def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int, *,
+                workers: int = 1) -> dict:
     """Measured stage rates, and the corpus extrapolation priced from the measurements.
 
     Compute is scaled by each split's own measured per-row cost to that split's known row
     population (:data:`ROWS_BY_SPLIT`), never by the tracer's shard count: the tracer's shards
     hold 2,405 rows, not 743 equal shards. A split with no measured row borrows the pooled
     per-row cost. Download is the corpus' 313 GiB at the measured rate, not a per-shard guess.
+    The stage model is a single worker's view; the gate's decision uses
+    :func:`gate_projection`, whose per-split ``wall_seconds`` already include ``workers``.
     """
     rows = timings["rows"]
 
@@ -496,10 +750,12 @@ def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int) -> d
     within = (download_rate is not None and wall_hours <= WALL_ENVELOPE_HOURS
               and timings["peak_disk_bytes"] <= DISK_ENVELOPE_BYTES)
     return {
-        "workers": 1,
+        "workers": workers,
         "shards_measured": shard_count,
         "rows": rows,
         "rows_by_split": {split: by_split[split]["rows"] for split in TLOG_SPLITS},
+        "wall_seconds": {split: round(by_split[split].get("wall_seconds", 0.0), 3)
+                         for split in TLOG_SPLITS},
         "download_bytes": timings["download_bytes"],
         "download_seconds": round(timings["download_seconds"], 3),
         "download_mb_s": (round(timings["download_bytes"] / 1e6
@@ -567,10 +823,19 @@ def _floors_command(args) -> None:
 def _run_command(args) -> None:
     require_clean_tree()
     _require_pinned_pyav()
-    shards = tracer_shards() if args.tracer else args.shards
+    if getattr(args, "gate", False):
+        shards = gate_shards()
+    elif getattr(args, "tracer", False):
+        shards = tracer_shards()
+    elif getattr(args, "all", False):
+        shards = TLOG.shards
+    else:
+        shards = args.shards
     meta = run(shards, out_dir=args.out_dir, cache_dir=args.cache_dir,
                floors_path=args.floors, speech_seconds_of=silero_speech_seconds(),
-               fp_dir=args.fp_dir, code_sha=args.code_sha, pull_request=args.pr)
+               fp_dir=args.fp_dir, code_sha=args.code_sha, pull_request=args.pr,
+               workers=getattr(args, "workers", 1),
+               index_dir=getattr(args, "index_dir", INDEX_DIR))
     print(json.dumps(meta["throughput"], indent=1, sort_keys=True), flush=True)
 
 
@@ -599,12 +864,20 @@ def main() -> None:
                              help="scratch for the fingerprints (never committed)")
     run_command.add_argument("--floors", type=Path, default=FLOORS_PATH)
     run_command.add_argument("--code-sha", default=None)
+    run_command.add_argument("--index-dir", type=Path, default=INDEX_DIR,
+                             help="the S1 index the resume guard verifies against")
+    run_command.add_argument("--workers", type=int, default=1,
+                             help="shard processes; the gate and full run use %d"
+                                  % GATE_WORKERS)
     run_command.add_argument("--pr", type=int, required=True,
                              help="the PR number whose refs/pull/<N>/head keeps code_sha "
                                   "reachable after the squash merge")
     which = run_command.add_mutually_exclusive_group(required=True)
     which.add_argument("--tracer", action="store_true",
                        help="the three shards the module's tracer rule names")
+    which.add_argument("--gate", action="store_true",
+                       help="the twelve shards the module's gate rule names (S3b)")
+    which.add_argument("--all", action="store_true", help="every tlog shard")
     which.add_argument("--shards", nargs="+", help="explicit tlog shard file names")
     run_command.set_defaults(execute=_run_command)
 

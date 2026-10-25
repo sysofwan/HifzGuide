@@ -266,6 +266,7 @@ def require_clean_tree(repo: Path = Path(__file__).resolve().parents[2]) -> None
 
     The committed metadata cites the commit the measurement ran from; a dirty tree would make
     that provenance a lie, so the measuring commands check this before they download anything.
+    Generated outputs therefore go to scratch (``--out-dir``), never into the measured tree.
     """
     status = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
                             capture_output=True, text=True)

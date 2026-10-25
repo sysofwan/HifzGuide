@@ -22,6 +22,7 @@ import io
 import json
 import re
 import subprocess
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -1067,4 +1068,184 @@ def test_the_run_command_selects_the_gate_at_three_workers(tp, tmp_path, monkeyp
     assert shards == tp.gate_shards()
     assert kwargs["workers"] == 3
     assert kwargs["index_dir"] == tmp_path / "index"
+
+
+def test_the_run_command_refuses_a_gate_at_another_worker_count(tp, tmp_path, monkeypatch):
+    measured: list[tuple] = []
+    monkeypatch.setattr(tp, "require_clean_tree", lambda: None)
+    monkeypatch.setattr(tp, "_require_pinned_pyav", lambda: None)
+    monkeypatch.setattr(tp, "run", lambda *args, **kwargs: measured.append(args))
+    args = SimpleNamespace(gate=True, tracer=False, all=False, shards=None, workers=1,
+                           out_dir=tmp_path / "pass1", cache_dir=tmp_path / "cache",
+                           floors=tmp_path / "floors.json", fp_dir=tmp_path / "fp",
+                           code_sha=None, pr=7, index_dir=tmp_path / "index",
+                           seed_dir=tmp_path / "seed")
+
+    with pytest.raises(SystemExit, match=f"{tp.GATE_WORKERS} workers"):
+        tp._run_command(args)
+    assert measured == []
+
+
+# --- the seed, the write-time check and the gate's own record ---------------------------------
+
+
+def _pass1_shard(tp, path: Path, split: str, stem: str, paths: list[str]) -> None:
+    """A committed-looking pass-1 shard for ``paths``, written by the real writer."""
+    rows = [{"schema_version": tp.ROW_SCHEMA_VERSION, "split": split, "shard_file": stem,
+             "row": index, "audio_path": audio} for index, audio in enumerate(paths)]
+    tp.write_pass1(rows, path)
+
+
+def _floors_file(tp, tmp_path: Path) -> Path:
+    floors = tmp_path / "silence_floors.json"
+    floors.write_text(json.dumps({"vad": tp.VAD_CONFIG}), encoding="utf-8")
+    return floors
+
+
+def test_a_committed_seed_is_verified_and_copied_instead_of_downloaded(tp, tmp_path):
+    """Empty scratch must not re-download the tracer's committed shards (decision 3)."""
+    shard, paths = CLEAN_SHARD, ["a.flac", "b.flac"]
+    split, stem = tlog_split(shard), Path(shard).stem
+    key = f"{split}/{stem}"
+    index_dir = _index_for(tp, tmp_path, shard, paths)
+    seed_dir = tmp_path / "committed"
+    _pass1_shard(tp, seed_dir / split / f"{stem}.jsonl.gz", split, stem, paths)
+    out_dir = tmp_path / "pass1"
+
+    meta = tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache",
+                  floors_path=_floors_file(tp, tmp_path),
+                  speech_seconds_of=lambda waveform: 0.5, stream=_refuse_download,
+                  code_sha="0" * 40, index_dir=index_dir, seed_dir=seed_dir,
+                  shard_provenance={key: {"code_sha": "d" * 40, "pull_request": 198,
+                                          "pull_request_ref": "refs/pull/198/head"}})
+
+    copied = out_dir / split / f"{stem}.jsonl.gz"
+    assert copied.read_bytes() == (seed_dir / split / f"{stem}.jsonl.gz").read_bytes()
+    assert meta["counts"]["rows"] == {"clean": 2, "unclean": 0, "total": 2}
+    assert meta["throughput"]["shards_skipped"] == 1
+    assert meta["throughput"]["shards_measured"] == 0
+    # This run verified the rows but did not measure them, so the seed's producer is cited.
+    assert meta["shards"][key] == {"code_sha": "d" * 40, "pull_request": 198,
+                                   "pull_request_ref": "refs/pull/198/head"}
+
+
+def test_a_measured_shard_cites_this_run_not_its_producer_override(tp, tmp_path):
+    shard, split, stem = CLEAN_SHARD, "clean", Path(CLEAN_SHARD).stem
+    key = f"{split}/{stem}"
+    rows = [{"audio": {"path": "a.flac", "bytes": wav(1.0, 16000)}}]
+
+    meta = tp.run([shard], out_dir=tmp_path / "pass1", cache_dir=tmp_path / "cache",
+                  floors_path=_floors_file(tp, tmp_path),
+                  speech_seconds_of=lambda waveform: 0.5, stream=fake_stream(rows),
+                  code_sha="0" * 40, pull_request=7,
+                  shard_provenance={key: {"code_sha": "d" * 40, "pull_request": 198}})
+
+    assert meta["shards"][key] == {"code_sha": "0" * 40, "pull_request": 7,
+                                   "pull_request_ref": "refs/pull/7/head"}
+
+
+def test_a_freshly_measured_shard_is_refused_when_it_drifts_from_the_index(tp, tmp_path,
+                                                                         monkeypatch):
+    """The same alignment rule the resume guard uses, before the write, for a measured shard."""
+    shard, paths = CLEAN_SHARD, ["a.flac", "b.flac"]
+    index_dir = _index_for(tp, tmp_path, shard, paths)
+    out_dir = tmp_path / "pass1"
+
+    def dropped_row(shard_name, cache_dir, **kwargs):
+        return [{"schema_version": tp.ROW_SCHEMA_VERSION, "split": tlog_split(shard_name),
+                 "shard_file": Path(shard_name).stem, "row": 0, "audio_path": "a.flac"}]
+
+    monkeypatch.setattr(tp, "process_shard", dropped_row)
+
+    with pytest.raises(ValueError, match="row count"):
+        tp.run([shard], out_dir=out_dir, cache_dir=tmp_path / "cache",
+               floors_path=_floors_file(tp, tmp_path),
+               speech_seconds_of=lambda waveform: 0.5, code_sha="0" * 40,
+               index_dir=index_dir)
+
+    assert not (out_dir / "clean" / f"{Path(shard).stem}.jsonl.gz").exists()
+
+
+def test_the_gate_projection_has_its_own_file_the_full_run_cannot_overwrite(tp, tmp_path):
+    shard, out_dir = CLEAN_SHARD, tmp_path / "pass1"
+    floors = _floors_file(tp, tmp_path)
+    paths = ["a.flac", "b.flac"]
+    index_dir = _index_for(tp, tmp_path, shard, paths)
+    rows = [{"audio": {"path": path, "bytes": wav(1.0, 16000)}} for path in paths]
+    run_kwargs = {"out_dir": out_dir, "cache_dir": tmp_path / "cache", "floors_path": floors,
+                  "speech_seconds_of": lambda waveform: 0.5, "code_sha": "0" * 40,
+                  "pull_request": 7, "index_dir": index_dir}
+
+    meta = tp.run([shard], stream=fake_stream(rows), gate=True, **run_kwargs)
+
+    artifact = json.loads((out_dir / "gate_projection.json").read_text(encoding="utf-8"))
+    assert artifact["rows_measured"] == {"clean": 2, "unclean": 0}
+    assert artifact["code_sha"] == "0" * 40 and artifact["pull_request"] == 7
+    assert meta["throughput"]["gate_projection"] == {
+        key: value for key, value in artifact.items()
+        if key not in {"code_sha", "pull_request", "pull_request_ref"}}
+
+    # The full pass reuses this scratch directory: it resumes the gate's rows and must neither
+    # claim a projection of its own nor overwrite the gate's measured record.
+    resumed = tp.run([shard], stream=_refuse_download, **run_kwargs)
+
+    assert "gate_projection" not in resumed["throughput"]
+    assert json.loads((out_dir / "gate_projection.json").read_text(encoding="utf-8")) == artifact
+    with pytest.raises(ValueError, match="measured no shard"):
+        tp.run([shard], stream=_refuse_download, gate=True, **run_kwargs)
+    assert json.loads((out_dir / "gate_projection.json").read_text(encoding="utf-8")) == artifact
+
+
+# --- the worker pool -------------------------------------------------------------------------
+
+
+def test_a_parallel_phase_writes_every_shard_and_sums_its_counters(tp, tmp_path, monkeypatch):
+    """The branch the gate and full run take: one process per worker, parent writes and counts."""
+    import multiprocessing
+
+    if "fork" not in multiprocessing.get_all_start_methods():
+        pytest.skip("the pool branch needs a fork start method")
+    previous = multiprocessing.get_start_method()
+    multiprocessing.set_start_method("fork", force=True)
+    try:
+        shards = [shard for shard in TLOG.shards if tlog_split(shard) == "clean"][1:6]
+        paths = {shard: [f"{Path(shard).stem}-{index}.flac" for index in range(2)]
+                 for shard in shards}
+        index_dir = tmp_path / "index"
+        for shard in shards:
+            _pass1_shard(tp, index_dir / "clean" / f"{Path(shard).stem}.jsonl.gz", "clean",
+                         Path(shard).stem, paths[shard])
+
+        def fake_process(shard, cache_dir, *, speech_seconds_of, fp_dir, on_download,
+                         timings, stream=None):
+            blob = cache_dir / f"{Path(shard).stem}.parquet"
+            blob.parent.mkdir(parents=True, exist_ok=True)
+            blob.write_bytes(b"x" * 16)
+            on_download(str(blob))
+            timings.update(decode_seconds=1.0, vad_seconds=2.0, fingerprint_seconds=3.0,
+                           rows=2, vad_rows=2, fingerprint_rows=2)
+            return [{"schema_version": tp.ROW_SCHEMA_VERSION, "split": "clean",
+                     "shard_file": Path(shard).stem, "row": index, "audio_path": path}
+                    for index, path in enumerate(paths[shard])]
+
+        monkeypatch.setattr(tp, "process_shard", fake_process)
+        monkeypatch.setattr(tp, "_init_worker", lambda: None)
+        timings, by_split, counts = tp._timings(), tp._timings(), Counter()
+        shard_sizes: list[int] = []
+        out_dir = tmp_path / "pass1"
+
+        tp._measure_phase(shards, out_dir=out_dir, cache_dir=tmp_path / "cache", fp_dir=None,
+                          speech_seconds_of=lambda waveform: 0.0, stream=None, workers=3,
+                          timings=timings, by_split=by_split, counts=counts,
+                          shard_sizes=shard_sizes, index_dir=index_dir)
+    finally:
+        multiprocessing.set_start_method(previous, force=True)
+
+    assert counts["clean"] == by_split["rows"] == timings["rows"] == 2 * len(shards)
+    assert timings["decode_seconds"] == float(len(shards))
+    assert shard_sizes == [16] * len(shards)
+    for shard in shards:
+        rows = tp.read_jsonl_gz(out_dir / "clean" / f"{Path(shard).stem}.jsonl.gz")
+        assert [row["row"] for row in rows] == [0, 1]
+        assert [row["audio_path"] for row in rows] == paths[shard]
 

@@ -24,6 +24,11 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     the measured throughput. ``"embeddings"`` records the fallback, not omission.
     Both commands refuse a checkout with uncommitted or untracked changes, so the cited SHA is
     the code that actually ran.
+``<out-dir>/gate_projection.json``
+    written by a gate run only: the measured per-split rows and wall seconds, the projection
+    for every row the gate did not process, the owner-envelope verdict, and the code SHA with
+    its PR. It is its own file because the full run reuses the gate's scratch directory and
+    would otherwise overwrite the gate's one measured number.
 ``tools/tadabur/tlog/silence_floors.json``
     the pre-registration's Exclusions floors: ``f_s`` and ``d_s`` are the type-7 0.5th
     percentiles of ``speech_ratio`` and ``speech_s`` over the Tarteel v1 look clips that decode.
@@ -40,14 +45,24 @@ only under ``refs/pull/<N>/head`` and is recorded with the PR number.
 
 **Gate rule (written before the run, S3b).** The gate names clean shard indices 0-5 (of 411)
 and unclean 0-5 (of 332): :func:`gate_shards` with :data:`GATE_CLEAN` and :data:`GATE_UNCLEAN`.
-Clean 0 and unclean 0 are already committed by the tracer, so the resume guard verifies and
-skips them and they contribute nothing to the measured throughput. Each split is its own timed
+Clean 0 and unclean 0 are already committed by the tracer: ``--seed-dir`` (the checkout's
+``tools/tadabur/tlog/pass1``) verifies them against the S1 index and copies them into
+``--out-dir``, so the resume guard skips them instead of downloading them again and they
+contribute nothing to the measured throughput. Each split is its own timed
 phase of :data:`GATE_WORKERS` workers (clean, then unclean), so each split's ``wall_seconds`` is
 real elapsed wall time at that concurrency and :func:`gate_projection` does not divide by the
 worker count again. The five fresh shards on three workers leave a tail, which makes the
 projected rate conservative. The projection weights each split's measured rows/s by the index's
 row count for the shards this run did not process; the full run starts only if it projects <=
 the owner's 8 wall hours with 0 GPU hours (:data:`WALL_ENVELOPE_HOURS`).
+
+**Resume guard (S3b).** A shard whose pass-1 file is already in ``--out-dir`` is verified
+against the S1 index — gzip integrity, row count, ordinals, ``audio_path`` sequence — and
+skipped, never re-downloaded. ``--seed-dir`` also seeds an empty scratch directory from a tree
+of committed pass-1 files: each seed is verified the same way before it is copied into place,
+so the gate measures only the shards neither the tracer nor an earlier run produced. A freshly
+measured shard is verified against the index before it is written, so a drifted read fails at
+that shard instead of at the freeze.
 
 **Worker concurrency (S3b).** The full run uses :data:`GATE_WORKERS` processes, so up to three
 tlog shards are on disk at once; each worker deletes its shard before the next download. The
@@ -70,6 +85,7 @@ import argparse
 import gzip
 import json
 import os
+import shutil
 import time
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -361,6 +377,11 @@ def exclusion_reasons(row: Mapping[str, object], floors: Mapping[str, float]) ->
     row is ``"silence"`` when its speech ratio is below ``f_s`` or its speech seconds below
     ``d_s``. The comparison is inclusive: a row exactly on both floors is usable. Later slices
     read pass-1 rows through this helper rather than re-deriving the floors.
+
+    These are the two **floor** exclusions only. The pre-registration's set also has
+    ``eval_overlap:<set>`` and ``duplicate``: the first needs the S1 index row (the freeze
+    reports its scope in ``split/meta.json``'s ``exclusions``) and the second needs S4's
+    fingerprints, so neither is decided here. A training pool must apply both before it trains.
     """
     if not row["codec_ok"]:
         return ("codec",)
@@ -411,6 +432,22 @@ def verify_pass1_shard(path: Path, index_path: Path) -> int:
     rows = read_jsonl_gz(path)
     require_pass1_alignment(rows, index_rows, path)
     return len(rows)
+
+
+def _seed_pass1(seed: Path, target: Path, index_path: Path) -> None:
+    """Copy a committed pass-1 shard into the run's scratch, so the guard skips it.
+
+    The seed is verified against the S1 index before the copy, so a drifted committed file
+    never becomes this run's resume point. An absent seed is not an error: the shard is simply
+    fresh, and the caller measures it.
+    """
+    if not seed.exists():
+        return
+    verify_pass1_shard(seed, index_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    partial = target.with_name(target.name + ".partial")
+    shutil.copyfile(seed, partial)
+    os.replace(partial, target)
 
 
 def read_jsonl_gz(path: Path) -> list[dict]:
@@ -466,27 +503,35 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         speech_seconds_of: Callable[[np.ndarray], float], floors_path: Path = FLOORS_PATH,
         fp_dir: Path | None = None, stream=None, code_sha: str | None = None,
         pull_request: int | None = None, workers: int = 1,
-        index_dir: Path = INDEX_DIR,
+        index_dir: Path = INDEX_DIR, seed_dir: Path | None = None, gate: bool = False,
         shard_provenance: Mapping[str, Mapping[str, object]] | None = None) -> dict:
     """Process the shards split phase by split phase, verify or measure each, and write meta.
 
     Each split is one timed phase, so its ``wall_seconds`` is real elapsed time at ``workers``
     concurrency and the projection never re-divides by the worker count (decision 7). A shard
     whose committed or scratch output exists is verified against ``index_dir``'s shard and
-    skipped without a download; its rows count in the freeze, not in the gate's rates. Fresh
-    shards are measured (serially, or in ``workers`` processes) and written atomically.
-    ``shard_provenance`` overrides a shard's cited producer, which is how the three S3a tracer
-    shards keep ``d2af0e3``/``#198`` after S3b verifies instead of re-running them.
+    skipped without a download; ``seed_dir`` supplies the committed outputs an empty scratch
+    directory starts from, and its shards are skipped the same way. A skipped shard's rows
+    count in the freeze, not in the gate's rates. Fresh shards are measured (serially, or in
+    ``workers`` processes) and written atomically, after the index check.
+
+    A ``gate`` run writes its measured projection to ``<out_dir>/gate_projection.json`` and into
+    ``meta.json``; another run leaves both alone, so the full pass cannot overwrite the number
+    the gate was decided on. ``shard_provenance`` overrides a **skipped** shard's cited
+    producer — that is how the three S3a tracer shards keep ``d2af0e3``/``#198`` after S3b
+    verifies instead of re-running them; a shard this run measured cites this run.
     """
     shards = list(shards)
     floors_path = Path(floors_path)
     require_floor_config(json.loads(floors_path.read_text(encoding="utf-8")))
     out_dir, index_dir = Path(out_dir), Path(index_dir)
+    seed_dir = Path(seed_dir) if seed_dir is not None else None
     provenance = S3A_PROVENANCE if shard_provenance is None else shard_provenance
     timings = _timings()
     by_split = {split: _timings() for split in TLOG_SPLITS}
     counts: Counter = Counter()
     skipped = 0
+    skipped_keys: set[str] = set()
     measured_shards = 0
     shard_sizes: list[int] = []
     for split in TLOG_SPLITS:
@@ -496,17 +541,21 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         started = time.perf_counter()
         fresh: list[str] = []
         for shard in phase:
-            path = out_dir / split / f"{Path(shard).stem}.jsonl.gz"
+            stem = Path(shard).stem
+            path = out_dir / split / f"{stem}.jsonl.gz"
+            index_path = index_dir / split / f"{stem}.jsonl.gz"
+            if not path.exists() and seed_dir is not None:
+                _seed_pass1(seed_dir / split / path.name, path, index_path)
             if path.exists():
-                counts[split] += verify_pass1_shard(
-                    path, index_dir / split / f"{Path(shard).stem}.jsonl.gz")
+                counts[split] += verify_pass1_shard(path, index_path)
                 skipped += 1
+                skipped_keys.add(f"{split}/{stem}")
             else:
                 fresh.append(shard)
         _measure_phase(fresh, out_dir=out_dir, cache_dir=cache_dir, fp_dir=fp_dir,
                        speech_seconds_of=speech_seconds_of, stream=stream, workers=workers,
                        timings=timings, by_split=by_split[split], counts=counts,
-                       shard_sizes=shard_sizes)
+                       shard_sizes=shard_sizes, index_dir=index_dir)
         measured_shards += len(fresh)
         by_split[split]["wall_seconds"] = time.perf_counter() - started
         timings["wall_seconds"] += by_split[split]["wall_seconds"]
@@ -518,6 +567,16 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
                  "wall_seconds": by_split[split]["wall_seconds"]}
          for split in TLOG_SPLITS},
         remaining_rows=remaining, workers=workers) if measured_rows else None)
+    if gate:
+        if projection is None:
+            raise ValueError(
+                "the gate measured no shard: every gate tranche shard came from --out-dir or "
+                "--seed-dir, so there is no throughput to project from; measure the gate in a "
+                "scratch directory that holds none of its fresh shards")
+        write_text_atomically(
+            out_dir / "gate_projection.json",
+            json.dumps({**projection, **_provenance(code_sha, pull_request)},
+                       indent=1, ensure_ascii=False, sort_keys=True) + "\n")
     # Up to ``workers`` shard blobs coexist; the fingerprint store and the committed outputs
     # accumulate, so the bound adds them to the largest concurrent shard bytes.
     output_bytes = sum(
@@ -527,10 +586,16 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
     timings["peak_disk_bytes"] = max(timings["peak_disk_bytes"],
                                      concurrent + timings["fingerprint_bytes"] + output_bytes)
     current = _provenance(code_sha, pull_request)
-    shard_records = {
-        f"{tlog_split(shard)}/{Path(shard).stem}": dict(provenance.get(
-            f"{tlog_split(shard)}/{Path(shard).stem}", current))
-        for shard in shards}
+    shard_records = {}
+    for shard in shards:
+        key = f"{tlog_split(shard)}/{Path(shard).stem}"
+        # Only a skipped shard keeps another producer's citation: this run wrote the rest.
+        shard_records[key] = dict(provenance.get(key, current) if key in skipped_keys
+                                  else current)
+    throughput = {**_throughput(timings, by_split, measured_shards, workers=workers),
+                  "shards_skipped": skipped}
+    if gate:
+        throughput["gate_projection"] = projection
     meta = {
         "schema_version": SCHEMA_VERSION,
         "source": {
@@ -547,9 +612,7 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         "counts": {"rows": {**{split: counts[split] for split in TLOG_SPLITS},
                             "total": sum(counts.values())}},
         "shards": shard_records,
-        "throughput": {**_throughput(timings, by_split, measured_shards, workers=workers),
-                       "shards_skipped": skipped,
-                       "gate_projection": projection},
+        "throughput": throughput,
     }
     write_text_atomically(
         out_dir / "meta.json",
@@ -584,7 +647,7 @@ def _worker_shard(task: tuple[str, Path, Path | None]) -> tuple[list[dict], dict
 def _measure_phase(shards: list[str], *, out_dir: Path, cache_dir: Path,
                    fp_dir: Path | None, speech_seconds_of: Callable[[np.ndarray], float],
                    stream, workers: int, timings: dict, by_split: dict, counts: Counter,
-                   shard_sizes: list[int]) -> None:
+                   shard_sizes: list[int], index_dir: Path) -> None:
     """Measure one split's fresh shards, serially or in ``workers`` processes."""
     if not shards:
         return
@@ -601,7 +664,8 @@ def _measure_phase(shards: list[str], *, out_dir: Path, cache_dir: Path,
                 rows = process_shard(shard, cache_dir, speech_seconds_of=speech_seconds_of,
                                      fp_dir=fp_dir, stream=stream, timings=shard_timings)
             _write_measured(shard, rows, shard_timings, out_dir=out_dir, timings=timings,
-                            by_split=by_split, counts=counts, shard_sizes=shard_sizes)
+                            by_split=by_split, counts=counts, shard_sizes=shard_sizes,
+                            index_dir=index_dir if stream is None else None)
         return
     with ProcessPoolExecutor(max_workers=workers, initializer=_init_worker) as pool:
         queue = iter(shards)
@@ -622,20 +686,30 @@ def _measure_phase(shards: list[str], *, out_dir: Path, cache_dir: Path,
                 shard = pending.pop(future)
                 rows, shard_timings = future.result()
                 _write_measured(shard, rows, shard_timings, out_dir=out_dir, timings=timings,
-                                by_split=by_split, counts=counts, shard_sizes=shard_sizes)
+                                by_split=by_split, counts=counts, shard_sizes=shard_sizes,
+                                index_dir=index_dir)
             fill()
 
 
 def _write_measured(shard: str, rows: list[dict], shard_timings: dict, *, out_dir: Path,
                     timings: dict, by_split: dict, counts: Counter,
-                    shard_sizes: list[int]) -> None:
-    """Write one measured shard and add its stage, download and size counters to the run."""
+                    shard_sizes: list[int], index_dir: Path | None) -> None:
+    """Write one measured shard and add its stage, download and size counters to the run.
+
+    ``index_dir`` is the S1 index the rows must be exactly: the same rule the resume guard
+    applies, checked before the write, so a drifted read fails at that shard instead of at the
+    freeze hours later. A synthetic ``stream`` read has no index, and passes ``None``.
+    """
     split, stem = tlog_split(shard), Path(shard).stem
+    target = out_dir / split / f"{stem}.jsonl.gz"
+    if index_dir is not None:
+        require_pass1_alignment(rows, read_jsonl_gz(index_dir / split / f"{stem}.jsonl.gz"),
+                                target)
     _accumulate(timings, shard_timings)
     _accumulate(by_split, shard_timings)
     timings["download_seconds"] += shard_timings["download_seconds"]
     timings["download_bytes"] += shard_timings["download_bytes"]
-    write_pass1(rows, out_dir / split / f"{stem}.jsonl.gz")
+    write_pass1(rows, target)
     counts[split] += len(rows)
     shard_sizes.append(shard_timings["shard_bytes"])
 
@@ -837,7 +911,13 @@ def _floors_command(args) -> None:
 def _run_command(args) -> None:
     require_clean_tree()
     _require_pinned_pyav()
-    if getattr(args, "gate", False):
+    workers = getattr(args, "workers", 1)
+    gate = getattr(args, "gate", False)
+    if gate and workers != GATE_WORKERS:
+        raise SystemExit(f"the gate's tranche is measured at {GATE_WORKERS} workers, not "
+                         f"{workers}: a rerun at another concurrency is not the pre-registered "
+                         f"measurement")
+    if gate:
         shards = gate_shards()
     elif getattr(args, "tracer", False):
         shards = tracer_shards()
@@ -848,8 +928,8 @@ def _run_command(args) -> None:
     meta = run(shards, out_dir=args.out_dir, cache_dir=args.cache_dir,
                floors_path=args.floors, speech_seconds_of=silero_speech_seconds(),
                fp_dir=args.fp_dir, code_sha=args.code_sha, pull_request=args.pr,
-               workers=getattr(args, "workers", 1),
-               index_dir=getattr(args, "index_dir", INDEX_DIR))
+               workers=workers, index_dir=getattr(args, "index_dir", INDEX_DIR),
+               seed_dir=getattr(args, "seed_dir", None), gate=gate)
     print(json.dumps(meta["throughput"], indent=1, sort_keys=True), flush=True)
 
 
@@ -880,6 +960,9 @@ def main() -> None:
     run_command.add_argument("--code-sha", default=None)
     run_command.add_argument("--index-dir", type=Path, default=INDEX_DIR,
                              help="the S1 index the resume guard verifies against")
+    run_command.add_argument("--seed-dir", type=Path, default=PASS1_DIR,
+                             help="committed pass-1 files to verify and copy into --out-dir "
+                                  "instead of downloading those shards again")
     run_command.add_argument("--workers", type=int, default=1,
                              help="shard processes; the gate and full run use %d"
                                   % GATE_WORKERS)

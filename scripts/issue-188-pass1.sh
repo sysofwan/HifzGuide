@@ -11,10 +11,11 @@
 #
 # The gate names clean 0-5 and unclean 0-5; clean 0 and unclean 0 are the S3a tracer's
 # committed outputs, so --seed-dir verifies and copies them into the scratch output directory
-# and the resume guard skips them, and they do not enter the measured rate. Each split is timed
-# as its own phase at three workers. `check gate` prints `$OUT/gate_projection.json`, the gate's
-# own measured record; `run full` refuses to start until that file records
-# `within_owner_envelope` (<= 8 wall hours, 0 GPU hours) and the peak disk is <= 5 GB.
+# and the resume guard skips them. The measured sample is clean 1-5 and unclean 1-5, each split
+# timed as its own three-worker phase and settled in $OUT/gate_phases.json, so an interrupted
+# gate keeps the split it measured. `check gate` prints $OUT/gate_projection.json, the gate's
+# own verdict: wall hours AND the measured peak disk. `run full` refuses to start until that
+# record says `within_owner_envelope` (<= 8 wall hours, 0 GPU hours, <= 5 GB peak disk).
 #
 # Outputs go to /root/scratch/tlog/s3b/pass1, never into the staged checkout: the tree stays
 # clean for the code SHA the meta cites, and a resumed run re-verifies what is already there

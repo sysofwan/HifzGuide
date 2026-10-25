@@ -112,19 +112,26 @@ no network, GPU or Silero install (PyAV is needed for the MP4/AAC fallback tests
 
 The gate is `run --gate --workers 3`: clean 0-5 and unclean 0-5. Clean 0 and unclean 0 are the
 tracer's committed outputs: `--seed-dir` (the checkout's `pass1/`) verifies them against the S1
-index and copies them into the scratch output directory, so the resume guard skips them and they
-do not enter the measured rate. Each split is timed as its own phase, and
-`$OUT/gate_projection.json` weights each split's measured rows/s by the index's row counts for
-the shards the run did not process (no second division by the worker count; the five-shard tail
-on three workers is conservative). That file is the gate's own record, so the full run — which
-reuses the same scratch directory — cannot overwrite it; only a gate run writes it or
-`throughput.gate_projection`. Start the full run (`--all --workers 3`) only when it says
-`within_owner_envelope`: <= 8 wall hours and 0 GPU hours. Outputs go to scratch
+index and copies them into the scratch output directory, so the resume guard skips them. The
+throughput sample is therefore clean 1-5 and unclean 1-5, one timed phase per split; each phase
+is settled in `$OUT/gate_phases.json` as it finishes, bound to the tranche, worker count and code
+SHA, so an interrupted gate keeps the split it measured. A retry reuses a stored phase only for
+the same sample at the same binding, and refuses to gate — rather than pricing one split at the
+other's rate — when a split's phase is neither measured completely nor stored.
+`$OUT/gate_projection.json` is the gate's own record, so the full run (which reuses the scratch
+directory) cannot overwrite it; only a gate run writes it or `throughput.gate_projection`. Its
+`within_owner_envelope` is wall hours **and** the measured peak disk (`within_wall_envelope`,
+`within_disk_envelope`), and it names the shards each phase measured. Start the full run
+(`--all --workers 3`) only when it is
+true: <= 8 wall hours, 0 GPU hours and <= 5 GB peak disk. Outputs go to scratch
 (`--out-dir /root/scratch/tlog/s3b/pass1`), never the measured checkout, so the clean-tree
 guard still holds, a resumed run re-verifies and skips existing shards, and the fetched files
-are metadata only. `scripts/issue-188-pass1.sh` stages the committed branch on cuda-dev, runs
-the gate and the full pass detached without the GPU lock, refuses `full` until the gate's record
-passes, and fetches the rows; it reports the PID, log and completion files.
+are metadata only. `$OUT/producers.json` records each published shard's producing commit, so an
+interrupted run keeps its attribution and a resumed run at a later commit does not claim rows it
+only verified; an output with no producing record is refused. `scripts/issue-188-pass1.sh` stages
+the committed branch on cuda-dev, runs the gate and the full pass detached without the GPU lock,
+refuses `full` until the gate's record passes, and fetches the rows; it reports the PID, log and
+completion files.
 
 `tlog/split/` is the freeze: `<split>/<shard>.jsonl.gz` carries `(split, shard_file, row,
 audio_path, speaker_cluster, group_key, role)`. Under the owner's fallback, `speaker_cluster`

@@ -193,6 +193,17 @@ def test_the_build_refuses_pass1_rows_that_disagree_with_the_index(ts, tmp_path)
                  floors_path=data.floors, code_sha="a" * 40, pull_request=200)
 
 
+def test_the_build_refuses_an_index_that_its_meta_says_is_incomplete(ts, tmp_path):
+    data = _synthetic(tmp_path)
+    (data.index_dir / "meta.json").write_text(
+        json.dumps({"source": {"splits": {"clean": 1, "unclean": 1}}}), encoding="utf-8")
+    (data.index_dir / "unclean" / f"{UNCLEAN_STEM}.jsonl.gz").unlink()
+
+    with pytest.raises(ValueError, match="whole index"):
+        ts.build(tmp_path / "split", index_dir=data.index_dir, pass1_dir=data.pass1_dir,
+                 floors_path=data.floors, code_sha="a" * 40, pull_request=200)
+
+
 # --- the committed freeze --------------------------------------------------------------------
 
 

@@ -462,8 +462,9 @@ def test_every_external_set_is_recorded_with_its_provenance(to):
     assert recall["max_ber"] <= meta["threshold"]["line"]
     stop = meta["controls"]["stop_word_matches"]
     assert 0 <= stop["mostly_stop_word"] <= stop["verified"]
+    # meta.json rounds the share to six decimals; the committed value must still pin the ratio.
     assert stop["share"] == pytest.approx(
-        stop["mostly_stop_word"] / stop["verified"] if stop["verified"] else 0.0)
+        stop["mostly_stop_word"] / stop["verified"] if stop["verified"] else 0.0, abs=5e-7)
 
     assert meta["blind_spots"]["sealed_panel"] == SEALED_PANEL
     assert meta["blind_spots"]["train_near_duplicates_searched"] is False

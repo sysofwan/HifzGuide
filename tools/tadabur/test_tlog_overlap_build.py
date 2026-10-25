@@ -39,6 +39,10 @@ ROWS = "unclean-00000-of-00332.jsonl.gz"
 #: The frame pass's pinned commit, and another one for the resume-mismatch case.
 REVISION = "a" * 40
 OTHER_REVISION = "b" * 40
+#: The frame store's fabricated shard count (the real pass has 40, one per held-out shard).
+FRAME_SHARDS = 2
+#: The frame pass's inventory directory (``tlog_overlap.FRAMES_DIR``).
+FRAME_DIRS = to.FRAMES_DIR
 #: Clips per fabricated set: exactly the control's copy count, so every control is available.
 MEMBERS = to.CONTROL_COPIES
 NONPRO_SETS = {"tarteel_v1": TARTEEL_V1.repo, "qdat": QDAT.repo,
@@ -78,6 +82,29 @@ def _jsonl(path: Path, rows: list[dict]) -> None:
                     encoding="utf-8")
 
 
+def _halves(clips: list[str]) -> list[list[str]]:
+    """The list in :data:`FRAME_SHARDS` equal pieces."""
+    size = len(clips) // FRAME_SHARDS
+    return [clips[shard * size:(shard + 1) * size] for shard in range(FRAME_SHARDS)]
+
+
+def _frame_records(fp: Path) -> list[Path]:
+    """The frame pass's declared shard list and one disposition record per shard."""
+    directory = fp / FRAME_DIRS
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "index.json").write_text(
+        json.dumps({"shards": list(range(FRAME_SHARDS))}) + "\n", encoding="utf-8")
+    size = MEMBERS // FRAME_SHARDS
+    paths = []
+    for shard in range(FRAME_SHARDS):
+        path = directory / f"{shard:03d}.json"
+        path.write_text(json.dumps({"shard": shard, "rows": 2 * size, "gate_eval": size,
+                                    "tadabur_frame": size, "panel": 0, "broken": [],
+                                    "short": []}, sort_keys=True) + "\n", encoding="utf-8")
+        paths.append(path)
+    return paths
+
+
 @dataclass
 class Offline:
     """The fabricated inputs ``build`` reads, all inside one test's ``tmp_path``."""
@@ -89,8 +116,9 @@ class Offline:
     split: Path
     out: Path
     census: Path
-    units: dict[str, Path]
+    units: dict[str, list[Path]]
     members: dict[str, list[str]]
+    frame_records: list[Path]
 
     def build(self, **overrides) -> dict:
         return to.build(self.out, fp_dir=self.fp, store_dir=self.store,
@@ -98,8 +126,8 @@ class Offline:
                         floors_path=FLOORS_PATH, split_dir=self.split,
                         code_sha="0" * 40, pull_request=7, **overrides)
 
-    def rewrite_unit(self, code: str, prints: dict[str, np.ndarray]) -> None:
-        _save(self.units[code], prints)
+    def rewrite_unit(self, code: str, prints: dict[str, np.ndarray], shard: int = 0) -> None:
+        _save(self.units[code][shard], prints)
 
     def rewrite_census(self) -> None:
         """The committed ``fingerprints.json`` census of the fabricated tlog store."""
@@ -131,23 +159,34 @@ def offline(tmp_path, monkeypatch):
     near = (trains[2], look)
     fingerprint_hit, checksum_hit = trains[3], trains[4]
 
-    # Every external set: one unit of MEMBERS indexed clips with their control waveforms.
+    # Every external set: units of MEMBERS indexed clips with their control waveforms. The
+    # frame sets are split over FRAME_SHARDS units, like the pass's real 40.
     members = {code: [f"{code}-{position:03d}.wav" for position in range(MEMBERS)]
                for code in NONPRO_SETS}
     members["qud"] = [qud_audio_filename("pilot", 1, ayah) for ayah in range(1, MEMBERS + 1)]
     members["gate_eval"] = [f"{position}:0" for position in range(MEMBERS)]
     members["tadabur_frame"] = [f"{100 + position}:0" for position in range(MEMBERS)]
-    units: dict[str, Path] = {}
     waves: dict[str, dict[str, np.ndarray]] = {}
     for order, code in enumerate(to.SETS):
         waves[code] = {clip: _signal(5_000 + 100 * order + position)
                        for position, clip in enumerate(members[code])}
-        _save(fp / code / f"{code}.npz",
-              {clip: to.fingerprint(wave) for clip, wave in waves[code].items()})
-        _save(fp / code / "control" / f"{code}.npz", waves[code])
-        units[code] = fp / code / f"{code}.npz"
+    units: dict[str, list[Path]] = {}
+    for code in to.SETS:
+        prints = {clip: to.fingerprint(wave) for clip, wave in waves[code].items()}
+        if code not in to.FRAME_SETS:
+            _save(fp / code / f"{code}.npz", prints)
+            _save(fp / code / "control" / f"{code}.npz", waves[code])
+            units[code] = [fp / code / f"{code}.npz"]
+            continue
+        units[code] = []
+        for shard, clips in enumerate(_halves(members[code])):
+            _save(fp / code / f"{shard:03d}.npz", {clip: prints[clip] for clip in clips})
+            _save(fp / code / "control" / f"{shard:03d}.npz",
+                  {clip: waves[code][clip] for clip in clips})
+            units[code].append(fp / code / f"{shard:03d}.npz")
     for code in to.FRAME_SETS:
         (fp / code / to.REVISION_NAME).write_text(REVISION + "\n", encoding="utf-8")
+    frame_records = _frame_records(fp)
 
     # Committed checksum lists: the external store's population, with distinct checksums.
     nonpro = tmp_path / "nonpro.jsonl"
@@ -194,7 +233,8 @@ def offline(tmp_path, monkeypatch):
     # Control A re-encodes through MP3; offline the copy is the clip, so it must be found.
     monkeypatch.setattr("tadabur.qud_overlap.synthetic_copy",
                         lambda samples, cut_ms: samples)
-    fabricated = Offline(fp, store, index, pass1, split, out, census, units, members)
+    fabricated = Offline(fp, store, index, pass1, split, out, census, units, members,
+                         frame_records)
     fabricated.rewrite_census()
     return fabricated
 
@@ -244,7 +284,7 @@ def test_the_build_writes_every_row_from_both_stores(offline):
 
 def test_the_build_records_a_committed_clip_without_a_fingerprint(offline):
     code, dropped = "tarteel_v1", offline.members["tarteel_v1"][3]
-    with np.load(offline.units[code]) as data:
+    with np.load(offline.units[code][0]) as data:
         prints = {name: data[name] for name in data.files if name != dropped}
     offline.rewrite_unit(code, prints)
 
@@ -255,7 +295,7 @@ def test_the_build_records_a_committed_clip_without_a_fingerprint(offline):
 
 
 def test_the_build_refuses_a_store_clip_the_checksums_do_not_name(offline):
-    with np.load(offline.units["qdat"]) as data:
+    with np.load(offline.units["qdat"][0]) as data:
         prints = {name: data[name] for name in data.files}
     prints["qdat-intruder.wav"] = to.fingerprint(_signal(1))
 
@@ -290,6 +330,43 @@ def test_the_build_refuses_a_tlog_store_that_is_not_the_census(offline):
         offline.build()
 
 
+def test_the_build_reports_a_frame_row_without_a_fingerprint(offline):
+    """A frame row the pass could not fingerprint is a recorded blind spot, not a silent hole:
+    the store, its control and its disposition record must agree (R1.2)."""
+    code, shard = "tadabur_frame", 1
+    clip = offline.members[code][MEMBERS // 2]
+    with np.load(offline.units[code][shard]) as data:
+        prints = {name: data[name] for name in data.files if name != clip}
+    offline.rewrite_unit(code, prints, shard=shard)
+    record = json.loads(offline.frame_records[shard].read_text(encoding="utf-8"))
+    record["tadabur_frame"] -= 1
+    record["broken"] = [clip]
+    offline.frame_records[shard].write_text(json.dumps(record, sort_keys=True) + "\n",
+                                            encoding="utf-8")
+
+    meta = offline.build()
+
+    assert meta["blind_spots"]["unfingerprinted"] == {code: [clip]}
+    assert meta["sets"][code]["members"] == MEMBERS - 1
+    assert meta["controls"]["synthetic_recall"]["found"] == MEMBERS * len(to.SETS) - 1
+
+
+def test_the_build_refuses_an_incomplete_frame_inventory(offline):
+    saved = offline.frame_records[1].read_text(encoding="utf-8")
+    offline.frame_records[1].unlink()
+    with pytest.raises(ValueError, match="did not complete"):
+        offline.build()
+
+    offline.frame_records[1].write_text(saved, encoding="utf-8")
+    with np.load(offline.units["tadabur_frame"][0]) as data:
+        prints = {name: data[name] for name in data.files}
+    prints.pop(offline.members["tadabur_frame"][0])
+    offline.rewrite_unit("tadabur_frame", prints, shard=0)
+
+    with pytest.raises(ValueError, match="the frame inventory claims"):
+        offline.build()
+
+
 def test_the_frame_pass_refuses_a_store_of_another_or_unknown_revision(offline):
     with pytest.raises(ValueError, match="fingerprinted at"):
         to._pin_frame_revision(offline.fp, OTHER_REVISION)
@@ -321,7 +398,8 @@ def test_verify_reports_the_candidates_the_line_rejects():
 
 def test_a_unit_offers_no_control_candidate_the_index_cannot_hold(tmp_path):
     silent = np.zeros(2 * 16000, dtype=np.float32)
-    unit = to._Unit("unit", iter([("loud.wav", _signal(11)), ("silent.wav", silent)]), [], [])
+    unit = to._Unit("unit", iter([("loud.wav", _signal(11)), ("silent.wav", silent)]),
+                    [], [], [])
 
     to._write_unit(tmp_path, unit, "retasy")
 
@@ -343,13 +421,72 @@ def test_an_undecodable_frame_row_is_a_fact_but_a_gate_row_is_not(tmp_path, monk
 
     monkeypatch.setattr(to, "decode_to_mono_16k", decode)
     broken: list[str] = []
+    counted: list[int] = []
     rows((b"good", "a.wav"), (b"broken", "b.wav"))
 
-    seen = list(to._frame_unit(0, tmp_path, [], broken, EMPTY_PANEL, {}, REVISION))
+    seen = list(to._frame_unit(0, tmp_path, [], broken, counted, EMPTY_PANEL, {}, REVISION))
     assert [clip for clip, _ in seen] == ["0:0"]
     assert np.array_equal(seen[0][1], _signal(3))
     assert broken == ["0:1"]
+    assert counted == [2], "the unit did not count the rows it read"
 
     rows((b"broken", "gate.wav"))
     with pytest.raises(ValueError, match="does not decode"):
-        list(to._frame_unit(0, tmp_path, [], [], EMPTY_PANEL, {(0, 0): "gate.wav"}, REVISION))
+        list(to._frame_unit(0, tmp_path, [], [], [], EMPTY_PANEL, {(0, 0): "gate.wav"}, REVISION))
+
+
+def test_a_unit_is_published_only_after_its_control_archive(tmp_path, monkeypatch):
+    """A process killed while writing the controls must not leave a fingerprint archive that
+    resume would trust (R1.4)."""
+    unit = to._Unit("unit", iter([("loud.wav", _signal(12))]), [], [], [])
+    real = to._save_arrays
+
+    def flaky(path: Path, arrays) -> None:
+        if Path(path).parent.name == "control":
+            raise OSError("disk full")
+        real(path, arrays)
+
+    monkeypatch.setattr(to, "_save_arrays", flaky)
+    with pytest.raises(OSError):
+        to._write_unit(tmp_path, unit, "retasy")
+    assert not (tmp_path / "unit.npz").exists()
+
+    monkeypatch.setattr(to, "_save_arrays", real)
+    to._write_unit(tmp_path, unit, "retasy")
+    assert (tmp_path / "unit.npz").exists()
+    assert (tmp_path / "control" / "unit.npz").exists()
+
+
+def test_an_interrupted_frame_unit_is_recomputed(tmp_path, monkeypatch):
+    """The frame stores publish their disposition record last; a shard interrupted between
+    writes is recomputed rather than reused (R1.4)."""
+    fp, cache = tmp_path / "fp", tmp_path / "cache"
+    monkeypatch.setattr(to, "_frame_shards", lambda: [7])
+    monkeypatch.setattr(to, "gate_membership", lambda: {})
+    monkeypatch.setattr(to, "_frame_units", lambda *args: iter([
+        (7, to._Unit("007", iter([("7:0", _signal(41))]), [], [], [1]))]))
+    real = to._save_arrays
+    writes: list[Path] = []
+    state = {"fail": True}
+
+    def flaky(path: Path, arrays) -> None:
+        writes.append(Path(path))
+        if state["fail"] and len(writes) == 3:  # controls on disk, the first archive not
+            raise OSError("disk full")
+        real(path, arrays)
+
+    monkeypatch.setattr(to, "_save_arrays", flaky)
+    with pytest.raises(OSError):
+        to._frame_pass(fp, cache, revision=REVISION)
+    assert not (fp / "tadabur_frame" / "007.npz").exists()
+    assert not (fp / to.FRAMES_DIR / "007.json").exists()
+
+    state["fail"], writes = False, []
+    census = to._frame_pass(fp, cache, revision=REVISION)
+    assert len(writes) == 4, "the interrupted unit was reused instead of recomputed"
+    assert (fp / to.FRAMES_DIR / "007.json").exists()
+    assert census["tadabur_frame"]["members"] == 1
+
+    writes.clear()
+    to._frame_pass(fp, cache, revision=REVISION)
+    assert writes == [], "a completed unit was rewritten instead of reused"

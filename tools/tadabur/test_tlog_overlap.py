@@ -353,7 +353,7 @@ def test_the_overlap_meta_counts_match_the_tree(to, records, derived):
             assert meta["net_sizes"][base][role] == dict(derived["net"][base][role])
 
 
-def test_no_eval_role_row_is_excluded_for_a_train_copy_in_the_committed_tree(records, frozen):
+def test_no_eval_role_row_is_excluded_for_a_train_copy_in_the_committed_tree(to, records, frozen):
     for key, record in records.items():
         if record["duplicate_of"] is None:
             assert record["duplicate_ber"] is None
@@ -373,6 +373,31 @@ def test_no_eval_role_row_is_excluded_for_a_train_copy_in_the_committed_tree(rec
         else:
             assert 0 < record["duplicate_ber"] <= to.LINE
             assert frozen[key][2] != frozen[survivor][2]
+
+
+def test_the_duplicate_rule_holds_for_a_fabricated_near_duplicate(to):
+    """The near branch of the test above, on fabricated records: a valid committed output that
+    holds a training copy of a look row must pass it, data or no data (self-check R1.3)."""
+    survivor, key = ("clean", "s", 0), ("clean", "s", 1)
+    records = {survivor: {"duplicate_of": None, "duplicate_ber": None},
+               key: {"duplicate_of": {"split": "clean", "shard_file": "s", "row": 0},
+                     "duplicate_ber": 0.1}}
+    frozen = {survivor: ("look", "a.wav", "a" * 64),
+              key: ("train", "b.wav", "b" * 64)}
+
+    record = records[key]
+    found = (record["duplicate_of"]["split"], record["duplicate_of"]["shard_file"],
+             record["duplicate_of"]["row"])
+    assert found in frozen and found != key
+    loser_role, loser_path = frozen[key][0], frozen[key][1]
+    winner_role, winner_path = frozen[found][0], frozen[found][1]
+    assert not (loser_role != "train" and winner_role == "train")
+    assert ROLE_ORDER.index(winner_role) <= ROLE_ORDER.index(loser_role)
+    if winner_role == loser_role:
+        assert (winner_path, found) < (loser_path, key)
+    assert records[found]["duplicate_of"] is None
+    assert 0 < record["duplicate_ber"] <= to.LINE
+    assert frozen[key][2] != frozen[found][2]
 
 
 def test_the_exclusions_are_s4s_own_and_follow_the_fixed_precedence(to, records):

@@ -198,7 +198,13 @@ The clip ids come from the committed checksum lists
 ayat), which also give the exact-checksum check. The frame is one pass over
 `held_out_shards()`' 40 shards: a row is labelled `gate_eval` when it is a
 `decode_evalset.{dev,test}` row, else `tadabur_frame`; the 197 sealed-panel clips are skipped
-and recorded as a blind spot.
+and recorded as a blind spot. That pass resolves Tadabur's commit once and stamps it into
+`<store>/<set>/revision.txt` before any unit is written, so a resume under a re-uploaded
+dataset is refused rather than mixed, and the stamped commit is the two frame sets' `revision`
+in `meta.json` — every committed `eval_overlap:gate_eval` / `eval_overlap:tadabur_frame` fact
+names the audio it was measured against. A row that will not decode is skipped, not fatal: the
+committed clips it leaves without a fingerprint are listed in `blind_spots.unfingerprinted`. A
+gate row is the exception — its 2,000-clip population is an invariant, so it raises.
 
 Intra-tlog duplicates are equal `audio_sha256` across **all** rows (empty bytes are never a
 key) plus verified near matches against an index of the frozen eval-role rows only; a
@@ -208,13 +214,16 @@ component: one survivor per component, the earliest-opened eval role first (`loo
 row)`. No eval row can lose to a training copy, and train–train exact duplicates are recorded
 too.
 
-`meta.json` records the set census and provenance (checksums or fingerprints, each with its
-SHA-256), the threshold and vote threshold, both controls — the required synthetic-positive
-recall (≥ 200 re-encoded, re-cut copies through the real index, ≥ 99% found, every BER ≤ the
-line; the run refuses to write otherwise) and the stop-word match report — the BER histogram,
-the ambiguous zone, hits per set and role, duplicates by role pair, the net-size tables (all
-rows usable before S4, and the gating-eligible subset), the blind spots, and the frozen
-`split/` tree and `pass1/meta.json` digests.
+`meta.json` records the set census and provenance (source, pinned revision, checksums or
+fingerprints, each with its SHA-256), the threshold and vote threshold, both controls — the
+required synthetic-positive recall (≥ 200 re-encoded, re-cut copies through the real index,
+≥ 99% of them verified as candidates and every candidate BER within the line; the run refuses
+to write otherwise) and the stop-word match report over every verified candidate — the BER
+histogram of every verified candidate, `counts` inside the line and `rejected` above it, the
+ambiguous zone, hits per set and role, duplicates by role pair, the net-size tables (all rows
+usable before S4, and the gating-eligible subset), the blind spots, the tlog fingerprint
+store's census (the committed `fingerprints.json`, which the build verifies npz by npz), and
+the frozen `split/` tree and `pass1/meta.json` digests.
 
 Two resumable, CPU-only stages on cuda-dev (no GPU lock), driven by
 `scripts/issue-189-overlap.sh`:
@@ -231,7 +240,10 @@ scripts/issue-189-overlap.sh fetch DIR          # pull the overlap tree back (no
 Or directly, from `tools/` on the box:
 `python -m tadabur.tlog_overlap external --fp-dir DIR` then
 `python -m tadabur.tlog_overlap build --pr <N> --out DIR2`. The build fails loudly if a set's
-store does not cover its committed population, if a tlog shard's fingerprint store is short, or
-if the recall control misses. The offline tests need no network, GPU or audio:
-`python -m pytest -q tools/tadabur/test_tlog_overlap.py` (the committed-tree cases stay red
-until the run's tree is committed).
+store holds a clip its checksums do not name, if the two frame stores disagree about Tadabur's
+revision, if the tlog npz files are not the committed census's, if a tlog shard's fingerprint
+store is short, or if the recall control misses. The offline tests need no network, GPU or
+audio: `python -m pytest -q tools/tadabur/test_tlog_overlap.py` (the committed-tree cases stay
+red until the run's tree is committed) and
+`python -m pytest -q tools/tadabur/test_tlog_overlap_build.py`, which drives `build` end to end
+over a fabricated store and one real index shard.

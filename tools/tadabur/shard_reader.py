@@ -117,6 +117,7 @@ def iter_shard_rows(
     batch_size: int = DEFAULT_BATCH_SIZE,
     columns: list[str] | None = None,
     delete_after: bool = False,
+    revision: str | None = None,
 ) -> Iterator[dict]:
     """Yield Tadabur rows from the given full-config parquet ``shard_indices``, in order.
 
@@ -125,7 +126,9 @@ def iter_shard_rows(
     docstring). Rows are ``datasets``-shaped dicts, ready for
     :func:`tadabur.filter.parse_clip`. With ``delete_after`` the shard's cached blob is
     removed once consumed, so a long run over many 2.4 GB shards stays within a bounded
-    disk budget; leave it off to keep shards cached across resumes.
+    disk budget; leave it off to keep shards cached across resumes. ``revision`` pins the
+    dataset commit a caller must be able to name afterwards (``None`` reads the dataset's
+    current main).
     """
     import pyarrow.parquet as pq
     from huggingface_hub import hf_hub_download
@@ -135,6 +138,7 @@ def iter_shard_rows(
             dataset_id,
             SHARD_TEMPLATE.format(index=index),
             repo_type="dataset",
+            revision=revision,
             cache_dir=str(cache_dir) if cache_dir is not None else None,
         )
         try:

@@ -19,13 +19,27 @@ labelled ``gate_eval`` when it is a ``decode_evalset.{dev,test}`` row, else ``ta
 The 197 sealed-panel clips cannot be read (the seal's two authorisations are pinned), so they
 are skipped and recorded as a blind spot.
 
+**Revision.** The frame sets share one audio pass over a re-uploadable Hub dataset, so the pass
+resolves that dataset's commit once (:func:`_resolve_frame_revision`) and stamps it into
+``<fp-dir>/<set>/revision.txt`` before any unit is written: a resume under another revision, or
+a store whose units carry no stamp, is refused. The stamped commit is the two frame sets'
+``revision`` in ``overlap/meta.json``, so every committed ``eval_overlap:gate_eval`` /
+``eval_overlap:tadabur_frame`` fact names the audio it was measured against.
+
+**Undecodable rows.** One row that will not decode is a fact, not a dead multi-hour pass: the
+row is skipped and the committed clips it leaves without a fingerprint are listed in
+``overlap/meta.json``'s ``unfingerprinted`` blind spot. A ``gate_eval`` row is the exception — its 2,000-clip
+population is an invariant, so it fails loudly.
+
 **Threshold.** :data:`LINE` is the committed line from ``qud_eval/overlap_rules.json`` (0.238,
 halfway between the controls' highest synthetic positive and lowest hard negative), reused
 with its file SHA-256 recorded in ``overlap/meta.json``. It is not re-derived: these sets offer
 no clean hard negatives. The positives are re-checked instead, by a required run-level control
 :func:`synthetic_recall_control` — at least :data:`CONTROL_COPIES` re-encoded, re-cut copies of
-external clips through the real index; the run refuses to write anything unless ≥ 99% are found
-and every copy's BER ≤ the line.
+external clips through the real index; the run refuses to write anything unless ≥ 99% of those
+copies are verified candidates and every candidate's BER is within the line. The line filter
+inside :meth:`EvalIndex.query` hides the band above it, so the control, the BER histogram and
+the stop-word report read :meth:`EvalIndex.verify` — every candidate the votes propose.
 
 **Silence.** Digital silence makes every band difference zero, so the fingerprint emits the
 word ``0``; two silent clips then match at BER 0. :data:`STOP_WORDS` (``0`` and ``0xFFFFFFFF``)
@@ -47,9 +61,11 @@ are recorded too (the pre-registration's within-role rule applies to every role)
     primary reason or null). S4 never rewrites another stage's facts: a row excluded by codec,
     silence or S1's id overlap still gets its S4 record.
 ``tools/tadabur/tlog/overlap/meta.json``
-    the set census and provenance, the threshold and its source SHA-256, the vote threshold
-    and stop-words, both run controls, hits per set and role, duplicates by role pair, the
-    net-size tables, the blind spots, and the frozen inputs' digests.
+    the set census and provenance (source, pinned revision, checksums, fingerprint digest),
+    the threshold and its source SHA-256, the vote threshold and stop-words, both run controls,
+    the BER histogram of every verified candidate — inside the line and rejected above it —
+    with the ambiguous zone, hits per set and role, duplicates by role pair, the net-size
+    tables, the blind spots, the tlog store's census and the frozen inputs' digests.
 
 Usage (from ``tools/``; the external pass and the build are separate, resumable steps)::
 
@@ -68,6 +84,7 @@ import hashlib
 import heapq
 import json
 import os
+import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -79,7 +96,7 @@ import numpy as np
 
 from training.tashkeel_eval import write_text_atomically
 
-from .audio import decode_to_mono_16k
+from .audio import DecodeError, decode_to_mono_16k
 from .dataset_source import DATASET_ID
 from .nonpro_sources import (QDAT, QDAT_BENCH, RETASY, TARTEEL_V1, LeftOut, iter_rows,
                              select)
@@ -88,7 +105,7 @@ from .qud_fingerprint import best_match, fingerprint
 from .qud_source import QUD_REVISION, QUD_DATASET, audio_filename as qud_audio_filename
 from .tlog_index import (INDEX_DIR, ROLES, TRAIN, head_sha, provenance, repo_relative,
                          sha256_file, write_shard)
-from .tlog_pass1 import FLOORS_PATH, PASS1_DIR, read_jsonl_gz
+from .tlog_pass1 import FLOORS_PATH, FP_RECORD_PATH, PASS1_DIR, read_jsonl_gz
 from .tlog_split import EMPTY_SHA256, ROW_KEY, iter_frozen_rows
 
 SCHEMA_VERSION = 1
@@ -135,8 +152,11 @@ MOD = 1 << 18
 NONPRO_SET_CODES = {TARTEEL_V1.repo: "tarteel_v1", QDAT.repo: "qdat",
                     QDAT_BENCH.repo: "qdat_bench", RETASY.repo: "retasy"}
 _NONPRO_DATASETS = {dataset.repo: dataset for dataset in (TARTEEL_V1, QDAT, QDAT_BENCH, RETASY)}
-#: The frame rows' source: Tadabur's full-config shards, at whatever the reader fetches.
+#: The frame rows' source: Tadabur's full-config shards, at whatever :func:`_frame_pass` pins.
 TADABUR_SOURCE = DATASET_ID
+#: The frame stores' revision stamp: the Tadabur commit their fingerprints were taken at.
+REVISION_NAME = "revision.txt"
+_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 
 _ROW_SEP = "\x00"
 _STOP = np.array(sorted(STOP_WORDS), dtype=np.uint32)
@@ -220,10 +240,20 @@ class EvalIndex:
 
     def query(self, prints: np.ndarray, *, line: float = LINE, min_votes: int = MIN_VOTES,
               exclude: str | None = None) -> list[Hit]:
-        """Every clip verified within ``line``, best BER first; stops below ``min_votes``.
+        """Every :meth:`verify` candidate within ``line``, best BER first.
 
         ``exclude`` is one clip id never verified — the eval-row index's own query would
         otherwise spend a full ``best_match`` on the row against itself.
+        """
+        return [hit for hit in self.verify(prints, min_votes=min_votes, exclude=exclude)
+                if hit.ber <= line]
+
+    def verify(self, prints: np.ndarray, *, min_votes: int = MIN_VOTES,
+               exclude: str | None = None) -> list[Hit]:
+        """Every clip the votes propose, verified with :func:`best_match`, best BER first.
+
+        Unfiltered by any line: the run's recall control, its BER histogram and its stop-word
+        report need the candidates the line rejects, which :meth:`query` would hide.
         """
         query = np.asarray(prints, dtype=np.uint32)
         if not len(self._keys) or not len(self._unique) or query.size == 0 or min_votes < 1:
@@ -260,7 +290,7 @@ class EvalIndex:
                 continue
             reference = self._fps[clip_id]
             match = best_match(query, reference)
-            if match is None or match.ber > line:
+            if match is None:
                 continue
             hits.append(Hit(clip_id, match.ber, match.offset, match.overlap,
                             _stop_share(query, reference, match.offset)))
@@ -390,6 +420,12 @@ def overlap_record(row: Mapping[str, Any], hits: Iterable[Mapping[str, Any]], *,
 
 @dataclass(frozen=True)
 class SetSource:
+    """One set's upstream identity: its Hub dataset, the pinned commit and, where one exists,
+    its committed checksum list. The frame sets' revision is ``None`` here because they share
+    a pass that resolves it: :func:`_frame_pass` stamps the commit in their stores and the
+    build reads it back from there.
+    """
+
     code: str
     source: str
     revision: str | None
@@ -411,6 +447,10 @@ def set_sources() -> dict[str, SetSource]:
     }
     if set(sources) != set(SETS):
         raise ValueError(f"set registry {sorted(sources)} is not {list(SETS)}")
+    unresolved = {code for code, source in sources.items() if source.revision is None}
+    if unresolved != set(FRAME_SETS):
+        raise ValueError(f"sets without a pinned revision: {sorted(unresolved)}; "
+                         f"only the frame sets resolve theirs at run time")
     return sources
 
 
@@ -465,15 +505,17 @@ def _external_wanted(clips: Mapping[str, Mapping[str, str]]) -> dict[str, set[st
 
 @dataclass
 class _Unit:
-    """One source shard's fingerprints-to-be: its clips, and the panel rows it must skip."""
+    """One source shard's fingerprints-to-be, and the rows it could not fingerprint:
+    ``skipped`` (sealed-panel clips) and ``broken`` (undecodable, recorded per set)."""
 
     name: str
     clips: Iterator[tuple[str, np.ndarray]]
     skipped: list[str]
+    broken: list[str]
 
 
-def _nonpro_unit(dataset, shard: str, cache_dir: Path, wanted: set[str]) -> Iterator[
-        tuple[str, np.ndarray]]:
+def _nonpro_unit(dataset, shard: str, cache_dir: Path, wanted: set[str],
+                 broken: list[str]) -> Iterator[tuple[str, np.ndarray]]:
     for record in iter_rows(dataset, shard, cache_dir, strict_delete=True):
         if dataset is QDAT_BENCH:
             clip, raw = record["id"], record["audio"]["bytes"]
@@ -482,24 +524,34 @@ def _nonpro_unit(dataset, shard: str, cache_dir: Path, wanted: set[str]) -> Iter
             if isinstance(clip, LeftOut):
                 continue
             clip, raw = clip.audio_filename, clip.audio
-        if clip in wanted:
+        if clip not in wanted:
+            continue
+        try:
             yield clip, decode_to_mono_16k(raw)
+        except DecodeError:
+            broken.append(clip)
 
 
 def _nonpro_units(code: str, cache_dir: Path, wanted: set[str]) -> Iterator[_Unit]:
     dataset = _NONPRO_DATASETS[set_sources()[code].source]
     for shard in dataset.shards:
-        yield _Unit(Path(shard).stem, _nonpro_unit(dataset, shard, cache_dir, wanted), [])
+        broken: list[str] = []
+        yield _Unit(Path(shard).stem, _nonpro_unit(dataset, shard, cache_dir, wanted, broken),
+                    [], broken)
 
 
-def _qud_unit(slug: str, shard: str, cache_dir: Path,
-              wanted: set[str]) -> Iterator[tuple[str, np.ndarray]]:
+def _qud_unit(slug: str, shard: str, cache_dir: Path, wanted: set[str],
+              broken: list[str]) -> Iterator[tuple[str, np.ndarray]]:
     from .qud_source import decode_ayah, iter_mushaf_rows
 
     for row in iter_mushaf_rows(slug, [shard], cache_dir):
         name = row.audio_filename
-        if name in wanted:
+        if name not in wanted:
+            continue
+        try:
             yield name, decode_ayah(row)
+        except DecodeError:
+            broken.append(name)
 
 
 def _qud_units(cache_dir: Path, wanted: set[str]) -> Iterator[_Unit]:
@@ -510,16 +562,18 @@ def _qud_units(cache_dir: Path, wanted: set[str]) -> Iterator[_Unit]:
         if slug not in shards_by_slug:
             raise ValueError(f"{slug} is not in {SELECTION_PATH}")
         for shard in shards_by_slug[slug]:
+            broken: list[str] = []
             yield _Unit(f"{slug}-{Path(shard).stem}",
-                        _qud_unit(slug, shard, cache_dir, wanted), [])
+                        _qud_unit(slug, shard, cache_dir, wanted, broken), [], broken)
 
 
-def _frame_unit(shard: int, cache_dir: Path, skipped: list[str], panel,
-                gate: Mapping[tuple[int, int], str]) -> Iterator[tuple[str, np.ndarray]]:
+def _frame_unit(shard: int, cache_dir: Path, skipped: list[str], broken: list[str], panel,
+                gate: Mapping[tuple[int, int], str], revision: str
+                ) -> Iterator[tuple[str, np.ndarray]]:
     from .shard_reader import iter_shard_rows
 
     for position, row in enumerate(iter_shard_rows([shard], cache_dir=cache_dir,
-                                                   delete_after=True)):
+                                                   delete_after=True, revision=revision)):
         path = (row.get("audio") or {}).get("path") or ""
         expected = gate.get((shard, position))
         if expected is not None and Path(path).name != expected:
@@ -528,7 +582,15 @@ def _frame_unit(shard: int, cache_dir: Path, skipped: list[str], panel,
         if is_panel_name(path, panel):
             skipped.append(path)
             continue
-        yield f"{shard}:{position}", decode_to_mono_16k(row["audio"]["bytes"])
+        try:
+            waveform = decode_to_mono_16k(row["audio"]["bytes"])
+        except DecodeError:
+            if expected is not None:
+                raise ValueError(f"gate_eval row {shard}:{position} ({expected}) "
+                                 f"does not decode") from None
+            broken.append(f"{shard}:{position}")
+            continue
+        yield f"{shard}:{position}", waveform
 
 
 def external_units(code: str, *, cache_dir: Path,
@@ -586,29 +648,88 @@ class _ControlPicker:
                 for clip, waveform in self._waves.items()}
 
 
-def _write_unit(set_dir: Path, unit: _Unit, code: str) -> tuple[int, int]:
-    """Fingerprint one unit, save it with its control candidates; ``(members, skipped)``."""
+def _indexable(prints: np.ndarray) -> bool:
+    """Whether the index will hold any of this fingerprint's frames.
+
+    An empty fingerprint (shorter than two frames) and an all-stop-word one (digital silence)
+    both index nothing, so neither may become a control candidate: the control must measure
+    the index the build uses.
+    """
+    return bool((~np.isin(np.asarray(prints), _STOP)).any())
+
+
+def _write_unit(set_dir: Path, unit: _Unit, code: str) -> None:
+    """Fingerprint one unit and save it with its control candidates.
+
+    Every decoded fingerprint is saved, but only an indexable one (:func:`_indexable`) is
+    offered as a control candidate: a copy of a clip that the index cannot hold could never be
+    found, and one such miss per set would fail the run's required control.
+    """
     prints: dict[str, np.ndarray] = {}
     picker = _ControlPicker(code)
     for clip, waveform in unit.clips:
         prints[clip] = fingerprint(waveform)
-        picker.add(clip, waveform)
-    members = int(sum(1 for fp in prints.values() if len(fp)))
-    _save_arrays(set_dir / f"{unit.name}.npz", {clip: fp for clip, fp in prints.items()
-                                                if len(fp)})
+        if _indexable(prints[clip]):
+            picker.add(clip, waveform)
+    saved = {clip: fp for clip, fp in prints.items() if len(fp)}
+    broken = len(unit.broken)
+    _save_arrays(set_dir / f"{unit.name}.npz", saved)
     _save_arrays(set_dir / "control" / f"{unit.name}.npz", picker.arrays())
-    print(f"[external] {code}/{unit.name}: {members} fingerprints", flush=True)
-    return members, len(unit.skipped)
+    print(f"[external] {code}/{unit.name}: {len(saved)} fingerprints"
+          + (f", {broken} undecodable" if broken else ""), flush=True)
 
 
-def _frame_units(cache_dir: Path, panel,
-                 gate: Mapping[tuple[int, int], str]) -> Iterator[tuple[int, _Unit]]:
+def _resolve_frame_revision(source: str = TADABUR_SOURCE) -> str:
+    """The frame source's current commit, resolved once per pass and then pinned in the store."""
+    from huggingface_hub import HfApi
+
+    revision = HfApi().dataset_info(source).sha
+    if not _COMMIT.match(revision):
+        raise ValueError(f"{source} resolved to {revision!r}, not a commit")
+    return revision
+
+
+def _recorded_revision(set_dir: Path) -> str | None:
+    path = Path(set_dir) / REVISION_NAME
+    return path.read_text(encoding="utf-8").strip() if path.exists() else None
+
+
+def _pin_frame_revision(fp_dir: Path, revision: str) -> None:
+    """Stamp ``revision`` into both frame stores, refusing a unit of unknown or other vintage."""
+    for code in FRAME_SETS:
+        set_dir = Path(fp_dir) / code
+        recorded = _recorded_revision(set_dir)
+        if recorded is not None and recorded != revision:
+            raise ValueError(f"{code}: the store was fingerprinted at {recorded}; "
+                             f"the source now resolves {revision}")
+        if recorded is None and any(set_dir.glob("*.npz")):
+            raise ValueError(f"{code}: the store holds fingerprints but no {REVISION_NAME}, "
+                             f"so the revision they were taken at cannot be verified")
+    for code in FRAME_SETS:
+        set_dir = Path(fp_dir) / code
+        if _recorded_revision(set_dir) is None:
+            write_text_atomically(set_dir / REVISION_NAME, revision + "\n")
+
+
+def _frame_revision(fp_dir: Path) -> str:
+    """The commit both frame stores were fingerprinted at; the build refuses a mismatch."""
+    recorded = {code: _recorded_revision(Path(fp_dir) / code) for code in FRAME_SETS}
+    if len(set(recorded.values())) != 1 or None in recorded.values():
+        raise ValueError(f"the frame stores' {REVISION_NAME} is {recorded}: run `external` "
+                         f"first, and never mix revisions")
+    return str(recorded[FRAME_SETS[0]])
+
+
+def _frame_units(cache_dir: Path, panel, gate: Mapping[tuple[int, int], str],
+                 revision: str) -> Iterator[tuple[int, _Unit]]:
     from training.distill_stream import held_out_shards
 
     for shard in sorted(held_out_shards()):
         skipped: list[str] = []
+        broken: list[str] = []
         yield shard, _Unit(f"{shard:03d}",
-                           _frame_unit(shard, cache_dir, skipped, panel, gate), skipped)
+                           _frame_unit(shard, cache_dir, skipped, broken, panel, gate, revision),
+                           skipped, broken)
 
 
 def external(fp_dir: Path = FP_DIR, *, cache_dir: Path = CACHE_DIR,
@@ -617,40 +738,37 @@ def external(fp_dir: Path = FP_DIR, *, cache_dir: Path = CACHE_DIR,
 
     The frame sets share one pass over ``held_out_shards()``: a row lands in ``gate_eval``
     when it is a ``decode_evalset.{dev,test}`` row, else in ``tadabur_frame``; sealed-panel
-    rows are skipped. Existing unit files are verified by nothing but their own completeness
-    (atomic write), so a resumed run reuses them.
+    rows are skipped and undecodable rows recorded. Existing unit files are verified by
+    nothing but their own completeness (atomic write), so a resumed run reuses them; the
+    build then checks the store against the committed populations.
     """
     fp_dir, cache_dir = Path(fp_dir), Path(cache_dir)
-    clips = committed_clips()
-    wanted = _external_wanted(clips)
+    wanted = _external_wanted(committed_clips())
     census = {}
     for code in codes:
         if code in FRAME_SETS:
             continue
-        expected = len(wanted[code])
-        seen = 0
         for unit in external_units(code, cache_dir=cache_dir, wanted=wanted):
             path = fp_dir / code / f"{unit.name}.npz"
             if path.exists():
-                members = _members(path)
-                print(f"[external] {code}/{unit.name}: reused {members}", flush=True)
+                print(f"[external] {code}/{unit.name}: reused {_members(path)}", flush=True)
             else:
-                members, _ = _write_unit(fp_dir / code, unit, code)
-            seen += members
-        if seen != expected:
-            raise ValueError(f"{code}: {seen} fingerprints for {expected} committed clips")
+                _write_unit(fp_dir / code, unit, code)
         census[code] = _set_census(fp_dir / code)
     if set(codes) & set(FRAME_SETS):
         census.update(_frame_pass(fp_dir, cache_dir))
     return census
 
 
-def _frame_pass(fp_dir: Path, cache_dir: Path) -> dict[str, dict]:
+def _frame_pass(fp_dir: Path, cache_dir: Path, *, revision: str | None = None) -> dict[str, dict]:
+    """One pass over the frame shards, pinned to ``revision`` (resolved when None)."""
+    revision = revision or _resolve_frame_revision()
+    _pin_frame_revision(fp_dir, revision)
     gate = gate_membership()
     panel = panel_provenance()
     seen_gate = 0
-    skipped_total = 0
-    for shard, unit in _frame_units(cache_dir, panel, gate):
+    skipped_total = broken_total = 0
+    for shard, unit in _frame_units(cache_dir, panel, gate, revision):
         paths = {code: fp_dir / code / f"{unit.name}.npz" for code in FRAME_SETS}
         if all(path.exists() for path in paths.values()):
             reused = {code: _members(path) for code, path in paths.items()}
@@ -664,18 +782,24 @@ def _frame_pass(fp_dir: Path, cache_dir: Path) -> dict[str, dict]:
             row_index = int(clip.split(":")[1])
             code = "gate_eval" if (shard, row_index) in gate else "tadabur_frame"
             prints[code][clip] = fingerprint(waveform)
-            picker[code].add(clip, waveform)
+            if _indexable(prints[code][clip]):
+                picker[code].add(clip, waveform)
+        saved = {code: {clip: fp for clip, fp in prints[code].items() if len(fp)}
+                 for code in FRAME_SETS}
         for code in FRAME_SETS:
-            _save_arrays(paths[code], {clip: fp for clip, fp in prints[code].items() if len(fp)})
+            _save_arrays(paths[code], saved[code])
             _save_arrays(fp_dir / code / "control" / paths[code].name, picker[code].arrays())
-        seen_gate += sum(1 for fp in prints["gate_eval"].values() if len(fp))
+        seen_gate += len(saved["gate_eval"])
         skipped_total += len(unit.skipped)
-        print(f"[external] {shard:03d}: gate_eval {len(prints['gate_eval'])}, "
-              f"tadabur_frame {len(prints['tadabur_frame'])}, "
-              f"panel rows skipped {len(unit.skipped)}", flush=True)
+        broken_total += len(unit.broken)
+        print(f"[external] {shard:03d}: gate_eval {len(saved['gate_eval'])}, "
+              f"tadabur_frame {len(saved['tadabur_frame'])}, "
+              f"panel rows skipped {len(unit.skipped)}"
+              + (f", undecodable {len(unit.broken)}" if unit.broken else ""), flush=True)
     if seen_gate != len(gate):
         raise ValueError(f"gate_eval store holds {seen_gate} clips for {len(gate)} committed rows")
-    print(f"[external] frame pass: {skipped_total} sealed-panel rows skipped", flush=True)
+    print(f"[external] frame pass at {revision}: {skipped_total} sealed-panel rows skipped, "
+          f"{broken_total} undecodable", flush=True)
     return {code: _set_census(fp_dir / code) for code in FRAME_SETS}
 
 
@@ -725,9 +849,12 @@ def _control_waves(fp_dir: Path, code: str) -> list[tuple[str, np.ndarray]]:
 def synthetic_recall_control(index: EvalIndex, fp_dir: Path) -> dict:
     """Control A: re-encode and re-cut copies of external clips through the real index.
 
-    Required, not advisory: fewer than :data:`CONTROL_COPIES` copies per set, any copy whose
-    BER exceeds :data:`LINE`, or fewer than 99% found raises — the run must not write a tree
-    from an index that cannot find a copy of a clip it indexed.
+    Required, not advisory: fewer than :data:`CONTROL_COPIES` copies per set, fewer than 99%
+    verified as candidates, or any candidate whose BER exceeds :data:`LINE` raises — the run
+    must not write a tree from an index that cannot find a copy of a clip it indexed.
+
+    The copy's BER is read from :meth:`EvalIndex.verify`, not :meth:`EvalIndex.query`: a copy
+    the index would reject must be visible as a high BER rather than counted as found.
     """
     from .qud_overlap import synthetic_copy
 
@@ -742,8 +869,7 @@ def synthetic_recall_control(index: EvalIndex, fp_dir: Path) -> dict:
             cut_ms = 100 + _control_rank(code, clip) % 401
             probe = fingerprint(synthetic_copy(waveform, cut_ms))
             copies += 1
-            hits = index.query(probe)
-            match = next((hit for hit in hits
+            match = next((hit for hit in index.verify(probe)
                           if hit.clip.split(_ROW_SEP, 1) == [code, clip]), None)
             if match is None:
                 continue
@@ -774,12 +900,23 @@ def _eval_index(store_dir: Path, split_dir: Path) -> EvalIndex:
         rows = read_jsonl_gz(split_path)
         if not any(row["role"] != TRAIN for row in rows):
             continue
-        store = _load_tlog_prints(Path(store_dir) / split_path.name)
+        stem = split_path.name[: -len(".jsonl.gz")]
+        store = _load_tlog_prints(Path(store_dir) / f"{stem}.npz")
         for row in rows:
             if row["role"] == TRAIN:
                 continue
             prints[_row_clip(_key(row))] = store.get(row["audio_path"], np.zeros(0, np.uint32))
     return EvalIndex.build(prints)
+
+
+def _count_hit(stats: dict, hit: Hit) -> bool:
+    """One verified candidate's facts; whether it is inside :data:`LINE`."""
+    stats["verified"] += 1
+    if hit.stop_word_share >= MOSTLY_STOP_WORD:
+        stats["mostly_stop_word"] += 1
+    accepted = hit.ber <= LINE
+    stats["histogram" if accepted else "rejected"][_bin(hit.ber)] += 1
+    return accepted
 
 
 def _external_hits(digest, prints, index, sha_map, stats) -> list[dict]:
@@ -789,12 +926,10 @@ def _external_hits(digest, prints, index, sha_map, stats) -> list[dict]:
         for code, clip in sha_map.get(digest, ()):
             best[code] = {"set": code, "clip": clip, "ber": 0.0}
     if prints is not None and len(prints):
-        for hit in index.query(prints):
+        for hit in index.verify(prints):
+            if not _count_hit(stats, hit):
+                continue
             code, clip = hit.clip.split(_ROW_SEP, 1)
-            stats["verified"] += 1
-            if hit.stop_word_share >= MOSTLY_STOP_WORD:
-                stats["mostly_stop_word"] += 1
-            stats["histogram"][_bin(hit.ber)] += 1
             if hit.ber > SYNTHETIC_POSITIVE_MAX:
                 stats["ambiguous"].append({"set": code, "clip": clip, "ber": hit.ber})
             if code not in best or hit.ber < best[code]["ber"]:
@@ -813,7 +948,8 @@ def _scan(index: EvalIndex, eval_index: EvalIndex, sha_map, store_dir: Path,
     edges: dict[tuple, float] = {}
     groups: dict[str, list[tuple]] = defaultdict(list)
     metadata: dict[tuple, tuple[str, str]] = {}
-    stats = {"verified": 0, "mostly_stop_word": 0, "histogram": Counter(), "ambiguous": []}
+    stats = {"verified": 0, "mostly_stop_word": 0, "histogram": Counter(),
+             "rejected": Counter(), "ambiguous": []}
     rows = iter_frozen_rows(index_dir=index_dir, pass1_dir=pass1_dir, floors_path=floors_path)
     for (split, stem), shard_rows in groupby(rows, key=lambda row: (row["split"],
                                                                     row["shard_file"])):
@@ -835,12 +971,10 @@ def _scan(index: EvalIndex, eval_index: EvalIndex, sha_map, store_dir: Path,
             own = prints.get(row["audio_path"])
             if own is None or not len(own):
                 continue
-            for hit in eval_index.query(own, exclude=_row_clip(key)):
+            for hit in eval_index.verify(own, exclude=_row_clip(key)):
+                if not _count_hit(stats, hit):
+                    continue
                 other = _clip_row(hit.clip)
-                stats["verified"] += 1
-                if hit.stop_word_share >= MOSTLY_STOP_WORD:
-                    stats["mostly_stop_word"] += 1
-                stats["histogram"][_bin(hit.ber)] += 1
                 pair = (key, other) if key < other else (other, key)
                 if hit.ber < edges.get(pair, 1.0):
                     edges[pair] = hit.ber
@@ -883,6 +1017,26 @@ def _tree_sha256(root: Path) -> str:
     return digest.hexdigest()
 
 
+def _verify_tlog_store(store_dir: Path) -> str:
+    """Refuse a tlog fingerprint store that is not the committed census's; return its digest.
+
+    S3b's store lives on scratch and costs a full re-stream to rebuild, so the committed
+    census (``tlog/fingerprints.json``) is the only thing that proves the build queries the
+    store S3b wrote. A missing or different npz would silently change every duplicate, so it
+    raises; the census's own SHA-256 is recorded in ``meta.json``.
+    """
+    census = json.loads(FP_RECORD_PATH.read_text(encoding="utf-8"))
+    for key, record in sorted(census["shards"].items()):
+        stem = key.split("/", 1)[1]
+        path = Path(store_dir) / f"{stem}.npz"
+        if not path.exists():
+            raise ValueError(f"the tlog fingerprint store has no {stem}.npz ({key})")
+        if sha256_file(path) != record["sha256"]:
+            raise ValueError(f"{stem}.npz is not the fingerprint file the committed census "
+                             f"names for {key}")
+    return sha256_file(FP_RECORD_PATH)
+
+
 # --- the build ---------------------------------------------------------------------------------
 
 
@@ -892,8 +1046,10 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
           code_sha: str | None = None, pull_request: int | None = None) -> dict:
     """Write the committed overlap tree and ``meta.json``; return the meta.
 
-    ``fp_dir`` is the external store :func:`external` wrote (and keeps the control candidates).
-    ``store_dir`` is S3b's tlog fingerprint store, read only. Rows come from
+    ``fp_dir`` is the external store :func:`external` wrote (and keeps the control candidates;
+    its frame sets' ``revision.txt`` is the pinned Tadabur commit the build records).
+    ``store_dir`` is S3b's tlog fingerprint store, read only and verified npz by npz against
+    the committed census. Rows come from
     :func:`tadabur.tlog_split.iter_frozen_rows`, so the key is the frozen
     ``(split, shard_file, row)`` on both passes.
     """
@@ -905,15 +1061,21 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
 
     external = load_external(fp_dir)
     census = {code: _set_census(Path(fp_dir) / code) for code in SETS}
-    for code, store in clips.items():
-        expected = len(store)
-        if census[code]["members"] != expected:
-            raise ValueError(f"{code}: the store holds {census[code]['members']} fingerprints "
-                             f"for {expected} committed clips")
+    missing: dict[str, list[str]] = {}
+    for code in SETS:
+        if code in FRAME_SETS:
+            continue
+        unexpected = sorted(set(external[code]) - set(clips[code]))
+        if unexpected:
+            raise ValueError(f"{code}: the store holds {len(unexpected)} clips the committed "
+                             f"checksums do not name, e.g. {unexpected[0]}")
+        missing[code] = sorted(set(clips[code]) - set(external[code]))
     gate = gate_membership()
     if census["gate_eval"]["members"] != len(gate):
         raise ValueError(f"gate_eval: {census['gate_eval']['members']} fingerprints "
                          f"for {len(gate)} committed rows")
+    frame_revision = _frame_revision(Path(fp_dir))
+    store_census_sha = _verify_tlog_store(Path(store_dir))
 
     index = EvalIndex.build({f"{code}{_ROW_SEP}{clip}": external[code][clip]
                              for code in SETS for clip in sorted(external[code])})
@@ -995,7 +1157,7 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
         "sets": {code: {
             "members": census[code]["members"],
             "source": sources[code].source,
-            "revision": sources[code].revision,
+            "revision": (frame_revision if code in FRAME_SETS else sources[code].revision),
             "checksums": ({"path": repo_relative(sources[code].checksums),
                            "sha256": sha256_file(sources[code].checksums)}
                           if sources[code].checksums is not None else None),
@@ -1020,17 +1182,25 @@ def build(overlap_dir: Path = OVERLAP_DIR, *, fp_dir: Path = FP_DIR, store_dir: 
                 "mostly_stop_word_share": MOSTLY_STOP_WORD}},
         "ber_histogram": {"bins": list(_BINS),
                           "counts": [stats["histogram"][index]
-                                     for index in range(len(_BINS))]},
+                                     for index in range(len(_BINS))],
+                          "rejected": [stats["rejected"][index]
+                                       for index in range(len(_BINS))]},
         "ambiguous_zone": sorted(stats["ambiguous"],
                                  key=lambda hit: (hit["set"], hit["clip"], hit["ber"])),
         "blind_spots": {
             "sealed_panel": SEALED_PANEL,
             "train_near_duplicates_searched": False,
             "external_without_checksums": sorted(FRAME_SETS),
+            "unfingerprinted": {code: ids for code, ids in missing.items() if ids},
             "why": ("the sealed panel cannot be read (the seal pins two authorisations); "
                     "train-train near duplicates were scoped out; frame and gate_eval have "
-                    "no source-byte checksums, so they are matched by fingerprint only")},
+                    "no source-byte checksums, so they are matched by fingerprint only; a "
+                    "committed clip with no fingerprint (undecodable, or shorter than two "
+                    "frames) is listed in unfingerprinted")},
         "frozen": _frozen_inputs(split_dir, Path(pass1_dir)),
+        "tlog_store": {"path": str(store_dir),
+                       "census": {"path": repo_relative(FP_RECORD_PATH),
+                                  "sha256": store_census_sha}},
         "counts": {"rows": written},
     }
     write_text_atomically(overlap_dir / META_NAME,

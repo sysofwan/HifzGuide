@@ -1687,3 +1687,104 @@ def test_an_interrupted_full_run_still_records_the_override(tp, tmp_path, monkey
 
     assert json.loads((out_dir / tp.GATE_OVERRIDE_NAME).read_text(encoding="utf-8")) == record
     assert not (out_dir / tp.GATE_PROJECTION_NAME).exists()
+
+
+# --- the run's own outcome, its scope, and the fingerprint store's census --------------------
+
+
+def test_a_finished_run_records_its_actual_wall_its_limit_and_its_scope(tp, tmp_path,
+                                                                      monkeypatch):
+    data = _gate_fixture(tp, tmp_path)
+    monkeypatch.setattr(tp, "process_shard", _gate_processor(tp, data.paths))
+    override = {"wall_hours_max": 12.0, "decision": OWNER_DECISION,
+                "measured": {"wall_hours": GATE_WALL_HOURS, "gpu_hours": 0.0,
+                             "peak_disk_bytes": GATE_PEAK_DISK_BYTES,
+                             "within_owner_envelope": False}}
+
+    meta = _run_gate(tp, data, tmp_path, gate=False, gate_override=override)
+
+    throughput = meta["throughput"]
+    assert throughput["wall_hours_actual"] == round(
+        sum(throughput["wall_seconds"].values()) / 3600, 4)
+    assert (throughput["wall_hours_max"], throughput["wall_limit"]) == (12.0, "owner override")
+    assert throughput["scope"]["shards_measured"] == len(data.shards) - 2
+    assert throughput["scope"]["shards_seeded"] == 2
+    assert throughput["scope"]["rows_total"] == 2 * len(data.shards)
+    assert "verified, not re-measured" in throughput["scope"]["note"]
+    assert throughput["extrapolated"]["model"] == "single_worker_model"
+
+    outcome = json.loads((tmp_path / "pass1" / tp.RUN_OUTCOME_NAME).read_text(encoding="utf-8"))
+    assert outcome == tp.run_outcome(meta)
+    assert outcome["wall_hours_actual"] == throughput["wall_hours_actual"]
+    assert outcome["wall_hours_max"] == 12.0
+    assert outcome["owner_decision"] == OWNER_DECISION
+
+
+def test_a_run_without_an_override_records_the_pre_registered_limit(tp, tmp_path, monkeypatch):
+    data = _gate_fixture(tp, tmp_path)
+    monkeypatch.setattr(tp, "process_shard", _gate_processor(tp, data.paths))
+    _run_gate(tp, data, tmp_path)
+
+    meta = _run_gate(tp, data, tmp_path, gate=False)
+
+    throughput = meta["throughput"]
+    assert (throughput["wall_hours_max"], throughput["wall_limit"]) == (
+        8.0, "pre-registered envelope")
+    outcome = json.loads((tmp_path / "pass1" / tp.RUN_OUTCOME_NAME).read_text(encoding="utf-8"))
+    assert outcome["wall_hours_max"] == 8.0 and outcome["owner_decision"] is None
+
+
+def test_the_committed_outcome_is_the_runs_own_record(tp):
+    """The committed meta predates the outcome fields; the record derives them from it."""
+    meta = json.loads((tp.PASS1_DIR / "meta.json").read_text(encoding="utf-8"))
+    outcome = json.loads((tp.PASS1_DIR / tp.RUN_OUTCOME_NAME).read_text(encoding="utf-8"))
+
+    assert outcome == tp.run_outcome(meta)
+    assert outcome["code_sha"] == meta["code_sha"]
+    assert outcome["pull_request"] == 199
+    assert outcome["wall_hours_actual"] == 11.4813
+    assert (outcome["wall_hours_max"], outcome["wall_limit"]) == (12.0, "owner override")
+    assert outcome["owner_decision"].endswith("#issuecomment-6393137890")
+    assert outcome["scope"] == {
+        "shards_measured": 730, "shards_seeded": 13,
+        "rows_measured": 707_748, "rows_total": 719_853,
+        "note": "throughput covers 730 measured shards; 13 seeded shards verified, "
+                "not re-measured"}
+
+
+def test_the_fingerprint_census_covers_every_codec_ok_row(tp):
+    record = json.loads(tp.FP_RECORD_PATH.read_text(encoding="utf-8"))
+    shards = record["shards"]
+    assert record["npz_key"] == "audio_path|audio_sha256"
+    assert len(shards) == len(tp.TLOG.shards)
+
+    for shard in tp.TLOG.shards:
+        split, stem = tlog_split(shard), Path(shard).stem
+        entry = shards[f"{split}/{stem}"]
+        rows = tp.read_jsonl_gz(tp.PASS1_DIR / split / f"{stem}.jsonl.gz")
+        assert entry["codec_ok_rows"] == sum(1 for row in rows if row["codec_ok"])
+        assert entry["members"] == entry["codec_ok_rows"]
+        assert re.fullmatch(r"[0-9a-f]{64}", entry["sha256"])
+    assert sum(entry["members"] for entry in shards.values()) == 714_027
+
+
+def test_the_store_record_refuses_a_store_that_lost_a_shard_or_a_row(tp, tmp_path, monkeypatch):
+    shard = tp.tracer_shards()[0]
+    split, stem = tlog_split(shard), Path(shard).stem
+    fp_dir, pass1_dir = tmp_path / "fp", tmp_path / "pass1"
+    fp_dir.mkdir()
+    pass1_shard = pass1_dir / split / f"{stem}.jsonl.gz"
+    pass1_shard.parent.mkdir(parents=True)
+    with gzip.open(pass1_shard, "wt", encoding="utf-8") as handle:
+        for path in ("a.flac", "b.flac"):
+            handle.write(json.dumps({"audio_path": path, "codec_ok": True}) + "\n")
+    npz = fp_dir / f"{stem}.npz"
+    np.savez_compressed(npz, **{f"a.flac|{'0' * 64}": np.zeros(3, dtype=np.uint8)})
+    monkeypatch.setattr(tp, "TLOG", SimpleNamespace(shards=(shard,)))
+
+    with pytest.raises(ValueError, match="holds 1 fingerprints"):
+        tp.fingerprint_store_record(fp_dir, pass1_dir=pass1_dir)
+
+    npz.unlink()
+    with pytest.raises(ValueError, match=r"no .*\.npz"):
+        tp.fingerprint_store_record(fp_dir, pass1_dir=pass1_dir)

@@ -45,6 +45,18 @@ accepted the clip-level fallback (2026-10-24), so no speaker embedding is comput
     the producing commit of every shard in the out-dir, written as each shard is published (and
     when a shard is seeded or resumed), so an interrupted run still attributes the rows it
     wrote and a resumed run never re-attributes them to its own commit.
+``<out-dir>/run_outcome.json``
+    the finished run's own outcome, written beside ``meta.json`` and derived from it by
+    :func:`run_outcome`: the actual wall hours (the sum of the per-split phase seconds), the
+    wall limit in force with the owner comment when one raised it, and the scope the throughput
+    covers (shards measured, shards seeded and merely verified, rows). ``meta.json``'s
+    ``extrapolated`` block is the single-worker stage model, labelled as such.
+``tools/tadabur/tlog/fingerprints.json``
+    the census of the scratch fingerprint store (:func:`fingerprint_store_record`, ``fingerprints``
+    command): one entry per shard with the npz's SHA-256, its member count, and the ``codec_ok``
+    rows pass 1 says it must cover. The store itself is cuda-dev scratch — one
+    ``<shard>.npz`` per shard, each member keyed ``<audio_path>|<audio_sha256>`` — and this
+    record is how a lost or short store is detected without re-streaming the corpus.
 ``tools/tadabur/tlog/silence_floors.json``
     the pre-registration's Exclusions floors: ``f_s`` and ``d_s`` are the type-7 0.5th
     percentiles of ``speech_ratio`` and ``speech_s`` over the Tarteel v1 look clips that decode.
@@ -130,13 +142,15 @@ from .nonpro_sources import (TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, audio_sha25
                              tlog_split)
 from .qud_fingerprint import fingerprint, save_fingerprints
 from .tarteel_split import SPLIT_PATH, load_split
-from .tlog_index import (INDEX_DIR, head_sha, require_clean_tree, sha256_file, write_shard)
+from .tlog_index import (INDEX_DIR, head_sha, provenance, repo_relative,
+                         require_clean_tree, sha256_file, write_shard)
+#: The frozen test suite calls the shared helper by its old private name.
+_repo_relative = repo_relative
 
 SCHEMA_VERSION = 1
 #: Rows gained ``decoder`` after the first tracer run, so a row is schema 2 while the floors and
 #: ``meta.json`` keep their (additively extended) schema 1.
 ROW_SCHEMA_VERSION = 2
-REPO_ROOT = Path(__file__).resolve().parents[2]
 #: Where the committed pass-1 output and the pre-registration's floors live.
 PASS1_DIR = Path(__file__).parent / "tlog" / "pass1"
 FLOORS_PATH = Path(__file__).parent / "tlog" / "silence_floors.json"
@@ -201,6 +215,10 @@ GATE_PHASES_NAME = "gate_phases.json"
 GATE_PROJECTION_NAME = "gate_projection.json"
 #: A full run the owner raised the wall limit for records the limit and the comment granting it.
 GATE_OVERRIDE_NAME = "gate_override.json"
+#: A finished run's own outcome record, derived from its ``meta.json``.
+RUN_OUTCOME_NAME = "run_outcome.json"
+#: The committed census of the scratch fingerprint store.
+FP_RECORD_PATH = Path(__file__).parent / "tlog" / "fingerprints.json"
 
 
 @dataclass(frozen=True)
@@ -357,7 +375,7 @@ def silence_floors(rows: Iterable[dict], *, look_clips: int, decodes_sha256: str
         "schema_version": SCHEMA_VERSION,
         "source": {"dataset": "tarteel_v1", "split": "look", "clips": look_clips,
                    "decodes_sha256": decodes_sha256},
-        "look_split": {"path": _repo_relative(SPLIT_PATH),
+        "look_split": {"path": repo_relative(SPLIT_PATH),
                        "sha256": sha256_file(SPLIT_PATH)},
         "percentile": {"method": "type-7", "q": 0.005},
         "vad": VAD_CONFIG,
@@ -442,13 +460,6 @@ def exclusion_reasons(row: Mapping[str, object], floors: Mapping[str, float]) ->
 def usable(row: Mapping[str, object], floors: Mapping[str, float]) -> bool:
     """Whether a pass-1 row survives the pre-registration's floors (see :func:`exclusion_reasons`)."""
     return not exclusion_reasons(row, floors)
-
-
-def _provenance(code_sha: str | None, pull_request: int | None) -> dict:
-    """The commit a measurement ran from, and the PR ref that keeps it after the squash merge."""
-    return {"code_sha": code_sha or head_sha(), "pull_request": pull_request,
-            "pull_request_ref": (f"refs/pull/{pull_request}/head"
-                                 if pull_request is not None else None)}
 
 
 def require_pass1_alignment(rows: Sequence[Mapping[str, object]],
@@ -742,6 +753,8 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
     ``d2af0e3``/``#198``. ``gate_override`` is :func:`require_gate_pass`'s record of an owner's
     raised wall limit: it lands in ``gate_override.json`` before the first shard and in
     ``meta.json``, and the gate's own ``gate_projection.json`` is left exactly as measured.
+    ``meta.json`` is followed by ``run_outcome.json``, the finished run's actual wall hours,
+    limit in force and scope (:func:`run_outcome`).
     """
     shards = list(shards)
     if gate and set(shards) != set(gate_shards()):
@@ -760,7 +773,7 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
                        sort_keys=True) + "\n")
     producers_path = out_dir / PRODUCERS_NAME
     phases_path = out_dir / GATE_PHASES_NAME
-    current = _provenance(code_sha, pull_request)
+    current = provenance(code_sha or head_sha(), pull_request)
     known_producers = {**(S3A_PROVENANCE if shard_provenance is None else shard_provenance),
                        **committed_producers(seed_dir), **scratch_producers(out_dir)}
     measured_sample = gate_measured_shards() if gate else {}
@@ -839,7 +852,21 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
                      for key in (f"{tlog_split(shard)}/{Path(shard).stem}"
                                  for shard in shards)}
     throughput = {**_throughput(timings, by_split, measured_shards, workers=workers),
-                  "shards_skipped": skipped}
+                  "shards_skipped": skipped,
+                  # The run's own cost: the sum of its per-split phase seconds, and the wall
+                  # limit it ran under. ``extrapolated`` is a single-worker stage model and
+                  # says so; a finished run is priced here.
+                  "wall_hours_actual": round(sum(by_split[split]["wall_seconds"]
+                                                 for split in TLOG_SPLITS) / 3600, 4),
+                  "wall_hours_max": (float(gate_override["wall_hours_max"])
+                                     if gate_override is not None else WALL_ENVELOPE_HOURS),
+                  "wall_limit": ("owner override" if gate_override is not None
+                                 else "pre-registered envelope"),
+                  "scope": {"shards_measured": measured_shards, "shards_seeded": skipped,
+                            "rows_measured": measured_rows,
+                            "rows_total": sum(counts.values()),
+                            "note": f"throughput covers {measured_shards} measured shards; "
+                                    f"{skipped} seeded shards verified, not re-measured"}}
     if gate:
         throughput["gate_projection"] = projection
     if gate_override is not None:
@@ -855,7 +882,7 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
         "vad": VAD_CONFIG,
         "decoders": decoder_versions(),
         "embeddings": "none (owner fallback 2026-10-24, #187)",
-        "floors": {"path": _repo_relative(floors_path),
+        "floors": {"path": repo_relative(floors_path),
                    "sha256": sha256_file(floors_path)},
         "counts": {"rows": {**{split: counts[split] for split in TLOG_SPLITS},
                             "total": sum(counts.values())}},
@@ -865,7 +892,76 @@ def run(shards: Iterable[str], *, out_dir: Path, cache_dir: Path,
     write_text_atomically(
         out_dir / "meta.json",
         json.dumps(meta, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
+    write_text_atomically(
+        out_dir / RUN_OUTCOME_NAME,
+        json.dumps(run_outcome(meta), indent=1, ensure_ascii=False, sort_keys=True) + "\n")
     return meta
+
+
+def run_outcome(meta: Mapping[str, object]) -> dict:
+    """A run's own outcome, derived from its ``meta.json``.
+
+    ``meta.json``'s throughput prices only the shards the run measured, and its ``extrapolated``
+    block is the single-worker stage model; this record states the run's actual wall hours (the
+    sum of the per-split phase seconds), the wall limit that was in force with the comment that
+    raised it, and what the throughput covers. A run recorded before these fields existed still
+    yields the record: everything is derived from the meta, never asserted alongside it.
+    """
+    throughput = meta["throughput"]
+    wall_seconds = {split: float(throughput["wall_seconds"].get(split, 0.0))
+                    for split in TLOG_SPLITS}
+    override = throughput.get("gate_override")
+    measured, seeded = int(throughput["shards_measured"]), int(throughput["shards_skipped"])
+    scope = throughput.get("scope") or {
+        "shards_measured": measured, "shards_seeded": seeded,
+        "rows_measured": int(throughput["rows"]),
+        "rows_total": int(meta["counts"]["rows"]["total"]),
+        "note": (f"throughput covers {measured} measured shards; {seeded} seeded shards "
+                 f"verified, not re-measured")}
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "code_sha": meta["code_sha"], "pull_request": meta["pull_request"],
+        "pull_request_ref": meta.get("pull_request_ref"),
+        "wall_seconds": {split: round(wall_seconds[split], 3) for split in TLOG_SPLITS},
+        "wall_hours_actual": round(sum(wall_seconds.values()) / 3600, 4),
+        "wall_hours_max": (float(override["wall_hours_max"]) if override
+                           else float(throughput.get("wall_hours_max",
+                                                     WALL_ENVELOPE_HOURS))),
+        "wall_limit": "owner override" if override else "pre-registered envelope",
+        "owner_decision": override["decision"] if override else None,
+        "gpu_hours": float(throughput.get("extrapolated", {}).get("gpu_hours", 0.0)),
+        "scope": dict(scope),
+    }
+
+
+def fingerprint_store_record(fp_dir: Path = FP_DIR, *,
+                             pass1_dir: Path = PASS1_DIR) -> dict:
+    """The scratch fingerprint store's census: one npz per shard, hashed and counted.
+
+    S4's duplicate search and every later overlap check read the store, which lives on cuda-dev
+    scratch only and costs a full re-stream to rebuild. This record lets a lost or partial store
+    be detected without it: each shard's npz SHA-256, its member count, and the ``codec_ok``
+    rows pass 1 says it must cover. A store that is missing a shard, or whose npz holds a
+    different number of members than the shard has decodable rows, is refused rather than
+    recorded — a silently short store would drop clips from the duplicate search.
+    """
+    shards = {}
+    for shard in TLOG.shards:
+        split, stem = tlog_split(shard), Path(shard).stem
+        path = Path(fp_dir) / f"{stem}.npz"
+        if not path.exists():
+            raise ValueError(f"the fingerprint store has no {path.name}")
+        codec_ok = sum(1 for row in read_jsonl_gz(Path(pass1_dir) / split / f"{stem}.jsonl.gz")
+                       if row["codec_ok"])
+        with np.load(path) as data:
+            members = len(data.files)
+        if members != codec_ok:
+            raise ValueError(f"{path.name} holds {members} fingerprints; pass 1 has {codec_ok} "
+                             f"codec_ok rows for {split}/{stem}")
+        shards[f"{split}/{stem}"] = {"sha256": sha256_file(path), "members": members,
+                                     "codec_ok_rows": codec_ok}
+    return {"schema_version": SCHEMA_VERSION, "store": str(Path(fp_dir)),
+            "npz_key": "audio_path|audio_sha256", "shards": shards}
 
 
 _WORKER_SPEECH: Callable[[np.ndarray], float] | None = None
@@ -1003,14 +1099,6 @@ def silero_speech_seconds() -> Callable[[np.ndarray], float]:
     return speech_seconds_of
 
 
-def _repo_relative(path: Path) -> str:
-    """``path`` inside the checkout as a repo-relative string; a file outside it unchanged."""
-    try:
-        return str(Path(path).resolve().relative_to(REPO_ROOT))
-    except ValueError:
-        return str(path)
-
-
 def _quantile(values: np.ndarray, q: float) -> float:
     from training.acceptance_stats import quantile_type7
 
@@ -1060,8 +1148,10 @@ def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int, *,
     population (:data:`ROWS_BY_SPLIT`), never by the tracer's shard count: the tracer's shards
     hold 2,405 rows, not 743 equal shards. A split with no measured row borrows the pooled
     per-row cost. Download is the corpus' 313 GiB at the measured rate, not a per-shard guess.
-    The stage model is a single worker's view; the gate's decision uses
-    :func:`gate_projection`, whose per-split ``wall_seconds`` already include ``workers``.
+    The stage model is a single worker's view and is labelled ``single_worker_model`` in the
+    record; it is never a finished run's cost. The gate's decision uses
+    :func:`gate_projection`, whose per-split ``wall_seconds`` already include ``workers``, and
+    :func:`run` writes the actual wall hours and the limit in force beside it.
     """
     rows = timings["rows"]
 
@@ -1118,6 +1208,9 @@ def _throughput(timings: dict, by_split: dict[str, dict], shard_count: int, *,
         "peak_disk_bytes": timings["peak_disk_bytes"],
         "fingerprint_store_bytes": round(store_bytes),
         "extrapolated": {
+            "model": "single_worker_model",
+            "note": ("advisory single-worker stage model: not this run's cost — see "
+                     "wall_hours_actual and scope"),
             "shards": TOTAL_SHARDS,
             "rows": TOTAL_ROWS,
             "rows_by_split": dict(ROWS_BY_SPLIT),
@@ -1153,12 +1246,36 @@ def _floors_command(args) -> None:
     look_ids = set(load_split()["look"])
     floors = build_floors(args.shards, look_ids=look_ids, cache_dir=args.cache_dir,
                           speech_seconds_of=silero_speech_seconds())
-    floors.update(_provenance(None, args.pr))
+    floors.update(provenance(head_sha(), args.pr))
     write_text_atomically(
         Path(args.out),
         json.dumps(floors, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
     print(json.dumps({key: floors[key] for key in ("f_s", "d_s", "count")}), flush=True)
     print(json.dumps(floors["run"], sort_keys=True), flush=True)
+
+
+def _outcome_command(args) -> None:
+    """Derive a finished run's outcome record from its meta, without touching the meta."""
+    pass1_dir = Path(args.pass1_dir)
+    meta = json.loads((pass1_dir / "meta.json").read_text(encoding="utf-8"))
+    record = run_outcome(meta)
+    out = Path(args.out) if args.out is not None else pass1_dir / RUN_OUTCOME_NAME
+    write_text_atomically(out, json.dumps(record, indent=1, ensure_ascii=False,
+                                          sort_keys=True) + "\n")
+    print(json.dumps({key: record[key]
+                      for key in ("wall_hours_actual", "wall_hours_max", "wall_limit")},
+                     sort_keys=True), flush=True)
+
+
+def _fingerprints_command(args) -> None:
+    """Write the fingerprint store's census; a missing or short shard refuses the record."""
+    record = fingerprint_store_record(args.fp_dir, pass1_dir=args.pass1_dir)
+    write_text_atomically(
+        Path(args.out), json.dumps(record, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
+    print(json.dumps({"shards": len(record["shards"]),
+                      "members": sum(entry["members"]
+                                     for entry in record["shards"].values())},
+                     sort_keys=True), flush=True)
 
 
 def _run_command(args) -> None:
@@ -1249,6 +1366,21 @@ def main() -> None:
     which.add_argument("--all", action="store_true", help="every tlog shard")
     which.add_argument("--shards", nargs="+", help="explicit tlog shard file names")
     run_command.set_defaults(execute=_run_command)
+
+    outcome_command = commands.add_parser(
+        "outcome", help="derive a finished run's wall hours, limit and scope from its meta.json")
+    outcome_command.add_argument("--pass1-dir", type=Path, default=PASS1_DIR)
+    outcome_command.add_argument("--out", type=Path, default=None,
+                                 help="where to write it (default: <pass1-dir>/%s)"
+                                      % RUN_OUTCOME_NAME)
+    outcome_command.set_defaults(execute=_outcome_command)
+
+    fingerprints_command = commands.add_parser(
+        "fingerprints", help="census the scratch fingerprint store into the committed record")
+    fingerprints_command.add_argument("--fp-dir", type=Path, default=FP_DIR)
+    fingerprints_command.add_argument("--pass1-dir", type=Path, default=PASS1_DIR)
+    fingerprints_command.add_argument("--out", type=Path, default=FP_RECORD_PATH)
+    fingerprints_command.set_defaults(execute=_fingerprints_command)
 
     args = parser.parse_args()
     args.execute(args)

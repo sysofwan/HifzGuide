@@ -408,3 +408,75 @@ def test_the_meta_names_each_shard_s_producing_sha_and_pr(ts):
             continue
         assert re.fullmatch(r"[0-9a-f]{40}", entry["code_sha"])
         assert entry["pull_request"] == meta["pull_request"]
+
+
+# --- the merged row view, the gating pool, and the freeze's reproducibility -------------------
+
+
+#: The commit the freeze and the pass it cites were produced at (PR #199).
+FREEZE_CODE_SHA = "7380e1ceaa0de5fa57a93ed122d55d3f74318839"
+
+
+def test_iter_frozen_rows_joins_the_index_pass1_and_the_freeze(ts, tmp_path):
+    """One row per (split, shard_file, row), with the facts, the label and the floor reasons."""
+    data = _synthetic(tmp_path)
+    index_path = data.index_dir / "clean" / f"{CLEAN_STEM}.jsonl.gz"
+    index_rows = read_jsonl_gz(index_path)
+    index_rows[1]["tarteel_v1_eval_overlap"] = True
+    write_jsonl_gz(index_path, index_rows)
+
+    frozen = list(ts.iter_frozen_rows(index_dir=data.index_dir, pass1_dir=data.pass1_dir,
+                                      floors_path=data.floors))
+
+    assert [(row["split"], row["shard_file"], row["row"]) for row in frozen] == [
+        ("clean", CLEAN_STEM, 0), ("clean", CLEAN_STEM, 1),
+        ("unclean", UNCLEAN_STEM, 0), ("unclean", UNCLEAN_STEM, 1)]
+    assert set(SPLIT_KEYS) <= set(frozen[0])
+    assert {field: frozen[0][field] for field in SPLIT_KEYS} == ts.freeze_row(
+        data.index_rows[0])
+    assert frozen[0]["filename_label"] == "1:1" and frozen[0]["exclusion_reasons"] == ()
+    assert frozen[1]["exclusion_reasons"] == ("codec",)
+    assert frozen[1]["eval_overlap"] is True
+    assert frozen[2]["exclusion_reasons"] == ("silence",)   # ratio 0.1 < f_s 0.4
+    assert frozen[3]["exclusion_reasons"] == ("silence",)   # speech_s 0.5 < d_s 1.0
+
+
+def test_the_pool_reports_the_usable_population_and_the_overlap(ts, tmp_path):
+    data = _synthetic(tmp_path)
+    index_path = data.index_dir / "clean" / f"{CLEAN_STEM}.jsonl.gz"
+    index_rows = read_jsonl_gz(index_path)
+    index_rows[0]["tarteel_v1_eval_overlap"] = True
+    write_jsonl_gz(index_path, index_rows)
+
+    ts.build(tmp_path / "split", index_dir=data.index_dir, pass1_dir=data.pass1_dir,
+             floors_path=data.floors, code_sha="a" * 40, pull_request=200)
+    pool = json.loads((tmp_path / "split" / ts.POOL_NAME).read_text(encoding="utf-8"))
+
+    # clean row 0 is usable but sits in Tarteel v1's eval set; row 1 fails the codec floor.
+    assert pool["splits"]["clean"] == {"rows": 2, "usable": 1, "eval_overlap_tarteel_v1": 1,
+                                       "usable_after_eval_overlap": 0}
+    assert pool["splits"]["unclean"] == {"rows": 2, "usable": 0, "eval_overlap_tarteel_v1": 0,
+                                         "usable_after_eval_overlap": 0}
+    assert pool["row_key"] == ["split", "shard_file", "row"]
+    assert pool["exclusions"] == {"applied": ["codec", "silence", "eval_overlap_tarteel_v1"],
+                                 "deferred": ["duplicate"]}
+    assert pool["audio_paths"] == {"distinct": 4, "shared_by_several_rows": 0,
+                                   "rows_covered_by_shared_paths": 0}
+    assert sum(entry["rows"] for entry in pool["roles"].values()) == 4
+    assert pool["total"]["usable"] == sum(entry["usable"]
+                                          for entry in pool["roles"].values())
+
+
+def test_rebuilding_the_freeze_reproduces_the_committed_tree(ts, tmp_path):
+    """--code-sha 7380e1c --pr 199 rebuilds split/ byte for byte, pool.json included."""
+    target = tmp_path / "split"
+    ts.build(target, code_sha=FREEZE_CODE_SHA, pull_request=199)
+
+    committed = sorted(path.relative_to(ts.SPLIT_DIR) for path in ts.SPLIT_DIR.rglob("*")
+                       if path.is_file())
+    rebuilt = sorted(path.relative_to(target) for path in target.rglob("*") if path.is_file())
+    assert rebuilt == committed
+    assert len(rebuilt) == TOTAL_SHARDS + 2   # the rows, meta.json and pool.json
+    for relative in committed:
+        assert (target / relative).read_bytes() == (ts.SPLIT_DIR / relative).read_bytes(), \
+            str(relative)

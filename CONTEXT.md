@@ -275,21 +275,49 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
   `group_key` is its lexicographically smallest `audio_path`.
 
 **Speaker cluster**
-: Clips the S2 clustering links as one voice: L2-normalised speaker embeddings, exact cosine
-  k-nearest neighbours, connected components, capped at 1% of rows. Validated on Tadabur only;
-  embeddings are deleted after the split freeze.
+: Clips the S2 clustering would link as one voice: L2-normalised speaker embeddings, exact
+  cosine k-nearest neighbours, connected components, capped at 1% of rows. S2 failed its
+  pre-registered validation and the owner accepted the fallback on 2026-10-24, so **no
+  embedding was ever computed for tlog and no cluster exists**: every freeze row's
+  `speaker_cluster` is `null`, and the group is the id group alone. (Tadabur's own clusters
+  are a different corpus and rule.)
 
 **Role**
 : Which use a group's rows are reserved for, from `u` — the first 8 bytes, big-endian, of
   `sha256("tlog-holdout-2026-10:" + group_key)` over 2**64 (`tadabur.tlog_index.role`):
   `look` in [0.00, 0.02), `confirm.1` … `confirm.4` in the next four 2% bands, else `train`.
   A role is not one of the Tarteel v1 halves: different corpus, different salt, six values.
+  The committed freeze lives in `tools/tadabur/tlog/split/` — the issue's directory name, not
+  a data split; each file carries `split` (clean/unclean) and `role` as separate fields.
 : _Avoid_: split (that is `clean`/`unclean`, or Tarteel v1's look/confirm halves), fold
 
 **Tranche**
 : One role's rows as a frozen set: `look`, or `confirm.k` for k = 1…4. `look` may be inspected
   freely; `confirm.k` is decoded once, in order, for one round's verdict and is never listened
   to before it.
+
+**Freeze**
+: The committed `tools/tadabur/tlog/split/` tree: one row per tlog row with its `group_key`
+  and `role`, plus `meta.json` (provenance, counts, distribution) and `pool.json` (the usable
+  population per role and split). From the freeze commit on, every role is fixed. A row's
+  identity is `(split, shard_file, row)`; an `audio_path` can appear in several rows and is not
+  a key. The directory keeps the issue's path; the concept is the freeze.
+: _Avoid_: split (the directory name only — `split` itself means clean/unclean), hold-out set
+  (that is look ∪ confirm)
+
+**Silence floor**
+: The pre-registration's two Exclusions thresholds from
+  `tools/tadabur/tlog/silence_floors.json`: `f_s` (0.392731) and `d_s` (1.756378 seconds), the
+  type-7 0.5th percentiles of `speech_ratio` and `speech_s` over the Tarteel v1 look clips that
+  decode. A pass-1 row is excluded as **silence** when its ratio is below `f_s` **or** its
+  speech seconds below `d_s`; a row exactly on both is kept.
+
+**Usable**
+: A pass-1 row that survives both floors. The pre-registration's full exclusion set also has
+  `eval_overlap:tarteel_v1` (decidable from the index row) and `duplicate` (S4's, from the
+  fingerprints); `split/pool.json` reports `usable` after the floors and
+  `usable_after_eval_overlap`, per role and split, and only the latter is a training pool.
+: _Avoid_: valid (that is the app's own label column, never read)
 
 ## Re-read Corpus
 

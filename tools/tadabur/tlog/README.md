@@ -60,16 +60,28 @@ python -m tadabur.tlog_s2 report --embeddings-dir DIR
 
 ## The pass-1 facts and the silence floors (#187)
 
-`pass1/` is what `tadabur.tlog_pass1` commits about the tracer shards:
-`pass1/<split>/<shard>.jsonl.gz` carries, per row, `split`, `shard_file`, `row`, `audio_path`,
+`pass1/` is what `tadabur.tlog_pass1` commits: now all 743 shards of both splits (the three
+tracer shards were its first). `pass1/<split>/<shard>.jsonl.gz` carries, per row, `split`,
+`shard_file`, `row`, `audio_path`,
 `audio_sha256`, `codec_ok`, `sample_rate`, `duration_s`, `speech_s`, `speech_ratio` and
 `decoder` (`soundfile` or `pyav`, the two decoders pass 1 tries in that order), and
 `pass1/meta.json` records the code SHA, the VAD config, the installed decoder versions, the
-floors' SHA-256, the counts and the measured throughput. Nothing else is computed: no label,
+floors' SHA-256, the counts and the measured throughput. Its `throughput.extrapolated` block is
+the **single-worker stage model** (`"model": "single_worker_model"`), not a finished run's cost:
+`throughput.wall_hours_actual`, `wall_hours_max` and `scope` are, and `pass1/run_outcome.json`
+restates them as the run's own record. Nothing else is computed: no label,
 transcript, teacher/student output or speaker embedding (the owner accepted the clip-level
 fallback on 2026-10-24, so `"embeddings"` records it). The Haitsma–Kalker fingerprint goes to
 cuda-dev scratch (`/root/scratch/tlog/fp/`) and is never committed; each tlog shard is
 downloaded, read and deleted.
+
+The store is one `<shard>.npz` per shard (`numpy.savez_compressed`), each member keyed
+`<audio_path>|<audio_sha256>` — the path alone is not unique, and the digest distinguishes two
+rows that share it. Member count equals the shard's `codec_ok` rows on every committed shard.
+`tlog/fingerprints.json` is its committed census (`python -m tadabur.tlog_pass1 fingerprints`,
+`tadabur.tlog_pass1.fingerprint_store_record`): per shard, the npz's SHA-256, its member count
+and the `codec_ok` rows it must cover, so a lost or short store is detected without
+re-streaming the corpus.
 
 `silence_floors.json` is the pre-registration's Exclusions floor: `f_s` and `d_s` are the
 type-7 0.5th percentiles of `speech_ratio` and `speech_s` over the Tarteel v1 look clips that
@@ -149,7 +161,12 @@ SHA-256s, `"embeddings": "none (owner fallback 2026-10-24)"`, the counts per rol
 the 1% group cap and largest share, each role's surah/ayah distribution against the training
 pool, the yield after the `codec` and `silence` floors, and each shard's producing SHA + PR.
 The yield is not the whole exclusion set: `exclusions` names `eval_overlap` and `duplicate` as
-S4's, so a training pool must apply both before trusting `yield.usable`. Rebuild it offline, from
-the committed index and pass 1, with `python -m tadabur.tlog_split build --pr <N>`; a shard the
-pass-1 meta omits is refused rather than attributed to the build.
+S4's, so a training pool must apply both before trusting `yield.usable`. `split/pool.json` is the gating population S4 consumes, written by the same build: per split
+and per role, `rows`, `usable` after the codec and silence floors, `eval_overlap_tarteel_v1`
+and `usable_after_eval_overlap` (495,030 usable rows contain 10,386 Tarteel v1 eval-overlap
+rows; `meta.json` keeps the floors-only yield). Rebuild it offline, from the committed index
+and pass 1, with `python -m tadabur.tlog_split build --pr <N>`; a shard the pass-1 meta omits is
+refused rather than attributed to the build. A later HEAD changes `meta.json`'s `code_sha` and
+the producers it cites, so reproduce the committed freeze with
+`build --code-sha 7380e1c --pr 199` (every file byte-identical, `pool.json` included).
 

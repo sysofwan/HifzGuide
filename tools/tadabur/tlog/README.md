@@ -111,17 +111,20 @@ no network, GPU or Silero install (PyAV is needed for the MP4/AAC fallback tests
 ## The S3b full pass and the split freeze (#188)
 
 The gate is `run --gate --workers 3`: clean 0-5 and unclean 0-5. Clean 0 and unclean 0 are the
-tracer's committed outputs, so the resume guard verifies them and skips them; they do not enter
-the measured rate. Each split is timed as its own phase, and `throughput.gate_projection`
-weights each split's measured rows/s by the index's row counts for the shards the run did not
-process (no second division by the worker count; the five-shard tail on three workers is
-conservative). Start the full run (`--all --workers 3`) only when `within_owner_envelope` is
-true: <= 8 wall hours and 0 GPU hours. Outputs go to scratch
+tracer's committed outputs: `--seed-dir` (the checkout's `pass1/`) verifies them against the S1
+index and copies them into the scratch output directory, so the resume guard skips them and they
+do not enter the measured rate. Each split is timed as its own phase, and
+`$OUT/gate_projection.json` weights each split's measured rows/s by the index's row counts for
+the shards the run did not process (no second division by the worker count; the five-shard tail
+on three workers is conservative). That file is the gate's own record, so the full run — which
+reuses the same scratch directory — cannot overwrite it; only a gate run writes it or
+`throughput.gate_projection`. Start the full run (`--all --workers 3`) only when it says
+`within_owner_envelope`: <= 8 wall hours and 0 GPU hours. Outputs go to scratch
 (`--out-dir /root/scratch/tlog/s3b/pass1`), never the measured checkout, so the clean-tree
 guard still holds, a resumed run re-verifies and skips existing shards, and the fetched files
 are metadata only. `scripts/issue-188-pass1.sh` stages the committed branch on cuda-dev, runs
-the gate and the full pass detached without the GPU lock, and fetches the rows; it reports the
-PID, log and completion files.
+the gate and the full pass detached without the GPU lock, refuses `full` until the gate's record
+passes, and fetches the rows; it reports the PID, log and completion files.
 
 `tlog/split/` is the freeze: `<split>/<shard>.jsonl.gz` carries `(split, shard_file, row,
 audio_path, speaker_cluster, group_key, role)`. Under the owner's fallback, `speaker_cluster`
@@ -130,6 +133,9 @@ is always `null`, `group_key` is the S1 id group's smallest `audio_path`, and th
 `split/meta.json` records the code SHA with its PR, the pre-registration and S2 report
 SHA-256s, `"embeddings": "none (owner fallback 2026-10-24)"`, the counts per role and split,
 the 1% group cap and largest share, each role's surah/ayah distribution against the training
-pool, the yield after the floors, and each shard's producing SHA + PR. Rebuild it offline, from
-the committed index and pass 1, with `python -m tadabur.tlog_split build --pr <N>`.
+pool, the yield after the `codec` and `silence` floors, and each shard's producing SHA + PR.
+The yield is not the whole exclusion set: `exclusions` names `eval_overlap` and `duplicate` as
+S4's, so a training pool must apply both before trusting `yield.usable`. Rebuild it offline, from
+the committed index and pass 1, with `python -m tadabur.tlog_split build --pr <N>`; a shard the
+pass-1 meta omits is refused rather than attributed to the build.
 

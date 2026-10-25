@@ -4,16 +4,17 @@
 # Mac side, from the worktree root, in this order:
 #   PR=198 scripts/issue-188-pass1.sh launch        # stage HEAD as a clean clone on the box
 #   PR=198 scripts/issue-188-pass1.sh gate          # gate tranche, detached, 3 workers
-#   scripts/issue-188-pass1.sh check gate           # done file, projection, disk report
+#   scripts/issue-188-pass1.sh check gate           # done file, gate projection, disk report
 #   PR=198 scripts/issue-188-pass1.sh full          # all 743 shards, detached, 3 workers
 #   scripts/issue-188-pass1.sh check full
 #   scripts/issue-188-pass1.sh fetch DIR            # pull the pass-1 rows + meta (never audio)
 #
 # The gate names clean 0-5 and unclean 0-5; clean 0 and unclean 0 are the S3a tracer's
-# committed outputs, so the resume guard verifies them and skips them, and they do not enter
-# the measured rate. Each split is timed as its own phase at three workers. `check gate` prints
-# `throughput.gate_projection`; run `full` only when its `within_owner_envelope` is true
-# (<= 8 wall hours, 0 GPU hours) and the peak disk is <= 5 GB.
+# committed outputs, so --seed-dir verifies and copies them into the scratch output directory
+# and the resume guard skips them, and they do not enter the measured rate. Each split is timed
+# as its own phase at three workers. `check gate` prints `$OUT/gate_projection.json`, the gate's
+# own measured record; `run full` refuses to start until that file records
+# `within_owner_envelope` (<= 8 wall hours, 0 GPU hours) and the peak disk is <= 5 GB.
 #
 # Outputs go to /root/scratch/tlog/s3b/pass1, never into the staged checkout: the tree stays
 # clean for the code SHA the meta cites, and a resumed run re-verifies what is already there
@@ -77,12 +78,15 @@ check() {  # gate|full
             exit 3; fi; \
           cat '$ROOT/logs/$name.done'; \
           test \"\$(cat '$ROOT/logs/$name.exit')\" = 0 || exit 4; \
-          echo '--- disk before/after (bytes)'; cat '$ROOT/logs/$name.df.before' '$ROOT/logs/$name.df.after'; \
-          python -c \"import json; m=json.load(open('$OUT/meta.json')); \
+          echo '--- disk before/after (bytes)'; \
+          cat '$ROOT/logs/$name.df.before' '$ROOT/logs/$name.df.after' 2>/dev/null || true; \
+          echo '--- gate projection'; \
+          cat '$OUT/gate_projection.json' 2>/dev/null || echo 'none recorded'; \
+          python3 -c \"import json; m=json.load(open('$OUT/meta.json')); \
 t=m['throughput']; print(json.dumps({'counts': m['counts']['rows'], 'workers': t['workers'], \
 'shards_measured': t['shards_measured'], 'shards_skipped': t['shards_skipped'], \
-'wall_seconds': t['wall_seconds'], 'peak_disk_bytes': t['peak_disk_bytes'], \
-'gate_projection': t['gate_projection']}, indent=1, sort_keys=True))\""
+'wall_seconds': t['wall_seconds'], 'peak_disk_bytes': t['peak_disk_bytes']}, indent=1, \
+sort_keys=True))\""
 }
 
 fetch() {  # <local dir>
@@ -92,15 +96,36 @@ fetch() {  # <local dir>
   echo "fetched pass-1 rows and meta into $target (no audio)"
 }
 
+fail() {  # <name> <reason>: a launch that died before the run, visible to `check`
+  local name=$1 reason=$2
+  mkdir -p "$ROOT/logs"
+  echo 1 > "$ROOT/logs/$name.exit"
+  echo "$(date -u +%FT%TZ) $name did not run: $reason" > "$ROOT/logs/$name.done"
+  echo "$name did not run: $reason" >&2
+}
+
+gate_passed() {  # the gate's own measured record says the projection fits the envelope
+  [ "$(cat "$ROOT/logs/gate.exit" 2>/dev/null)" = 0 ] || return 1
+  python3 -c "import json, sys
+sys.exit(0 if json.load(open('$OUT/gate_projection.json'))['within_owner_envelope'] else 1)"
+}
+
 run() {  # executed on the box; never `set -e`: the exit code is the run's result
   local name=$1 selection
   set +e
-  cd "$REPO_DIR/tools" || exit 1
-  source "$CONDA" && conda activate "$ENV_NAME" || exit 1
   mkdir -p "$ROOT/logs" "$OUT"
+  cd "$REPO_DIR/tools" || { fail "$name" "no $REPO_DIR/tools on the box"; return 1; }
+  # shellcheck source=/dev/null
+  source "$CONDA" || { fail "$name" "no $CONDA on the box"; return 1; }
+  conda activate "$ENV_NAME" || { fail "$name" "conda activate $ENV_NAME"; return 1; }
+  if [ "$name" = full ] && ! gate_passed; then
+    fail "$name" "the gate has not passed: run 'gate', then 'check gate'"
+    return 1
+  fi
   if [ "$name" = gate ]; then selection=--gate; else selection=--all; fi
   df -B1 "$OUT" > "$ROOT/logs/$name.df.before"
   python -m tadabur.tlog_pass1 run "$selection" --workers 3 --pr "$PR" \
+    --seed-dir "$REPO_DIR/tools/tadabur/tlog/pass1" \
     --cache-dir "$CACHE" --out-dir "$OUT" --fp-dir "$FP" &
   local pass=$!
   echo "$pass" > "$ROOT/logs/$name.pid"

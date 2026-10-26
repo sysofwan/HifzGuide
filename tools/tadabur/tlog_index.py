@@ -262,8 +262,16 @@ def repo_relative(path: Path, repo: Path = REPO_ROOT) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    """The SHA-256 of a file's bytes — the one definition every tlog writer cites."""
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    """The SHA-256 of a file's bytes — the one definition every tlog writer cites.
+
+    Streamed, not read whole: the S5b archives run to tens of gigabytes, and a one-shot
+    ``read_bytes`` of the 95 GB Common Voice archive is an out-of-memory bomb.
+    """
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def installed_versions(names: Iterable[str]) -> dict[str, str | None]:

@@ -274,6 +274,23 @@ def test_the_margin_is_the_best_different_class_at_a_non_overlapping_location(id
     assert decoded.margin_class == db.text_class(2, 1)
 
 
+def test_every_row_carries_margin_and_margin_class(ident, two_surahs):
+    """The margin is on every identification row, including one with no match; applying the
+    floor replaces the row without dropping it."""
+    decoded = ident.identify("بجح", database=two_surahs)
+    assert decoded.margin is not None
+    assert decoded.margin_class == two_surahs.text_class(2, 1)
+
+    empty = ident.identify("", database=two_surahs)
+    assert (empty.match, empty.margin, empty.margin_class) == (None, None, None)
+
+    floors = {ident.floor_bin(3): 1.0}
+    floored = ident.apply_floors(decoded, floors)
+    assert floored.floor_ok is False
+    assert floored.margin == decoded.margin
+    assert floored.margin_class == decoded.margin_class
+
+
 # --- the shortlist ----------------------------------------------------------------------------
 
 

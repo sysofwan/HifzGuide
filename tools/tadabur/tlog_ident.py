@@ -28,7 +28,9 @@ sequences; the exhaustive decoy best is reported for sensitivity, never used.
 **Thresholds.** Per decode-length bin the floor is the type-7 99th percentile of the best decoy
 score over Tarteel v1 look decodes. ``b`` is the smallest grid value at which ≤ 0.5% of look clips
 relabel and 0 of the 52 real-mistake clips relabel; ``b_u`` the smallest at which ≥ 99% of look
-clips, labels hidden, are assigned their own class. The bars and floors are committed in
+clips, labels hidden, are assigned their own class. ``b_u``'s literal coverage cannot rise with
+the bar, so it is either the smallest grid value or none; the per-bar precision table is
+informational and never sets it. The bars and floors are committed in
 ``tools/tadabur/tlog/ident/ident_calibration.json`` with the generated page
 ``docs/tlog-ayah-identification.md``; every value is re-derived from the committed inputs by the
 acceptance tests.
@@ -526,14 +528,27 @@ class ReferenceDatabase:
 
     def _match(self, query: str, candidate: _Candidate) -> Match:
         distance, start, end, ops = _path(query, candidate.text)
-        aligned = [0] * len(candidate.constituents)
+        #: Per constituent, the words touched by a matched or substituted character.
+        touched: list[set[int]] = [set() for _ in candidate.constituents]
         position = start
         for operation, length in ops:
-            if operation in ("=", "X", "D"):
-                if operation != "D" and length:
-                    aligned[_constituent_at(candidate.constituents, position)] += length
+            if operation in ("=", "X"):
+                # Split the run at ayah boundaries. A run that crosses one belongs to each
+                # ayah it touches, not whole to the ayah it starts in.
+                run_start = position
+                cursor = run_start
+                while cursor < run_start + length:
+                    index = _constituent_at(candidate.constituents, cursor)
+                    constituent = candidate.constituents[index]
+                    stop = min(run_start + length, constituent.end)
+                    reference = self.ayat[(constituent.surah, constituent.ayah)]
+                    touched[index].update(range(
+                        _word_at(reference, constituent.start, cursor),
+                        _word_at(reference, constituent.start, stop - 1) + 1))
+                    cursor = stop
+            if operation != "I":
                 position += length
-        chosen = _chosen_constituent(candidate.constituents, aligned, start)
+        chosen = _chosen_constituent(candidate.constituents, touched, start)
         first = candidate.constituents[_constituent_at(candidate.constituents, start)]
         last = candidate.constituents[_constituent_at(candidate.constituents, max(start,
                                                                                 end - 1))]
@@ -552,11 +567,11 @@ def _constituent_at(constituents: Sequence[_Constituent], position: int) -> int:
     return max(0, len(constituents) - 1)
 
 
-def _chosen_constituent(constituents: Sequence[_Constituent], aligned: Sequence[int],
+def _chosen_constituent(constituents: Sequence[_Constituent], touched: Sequence[set[int]],
                         start: int) -> _Constituent:
-    """The ayah with the most aligned target characters; ties go to the earlier ayah."""
-    best = max(range(len(constituents)), key=lambda index: (aligned[index], -index))
-    if aligned[best] == 0:  # nothing aligned to a character: fall back on the location
+    """The ayah with the most aligned words; ties go to the earlier ayah."""
+    best = max(range(len(constituents)), key=lambda index: (len(touched[index]), -index))
+    if not touched[best]:  # nothing aligned to a character: fall back on the location
         return constituents[_constituent_at(constituents, start)]
     return constituents[best]
 
@@ -828,11 +843,18 @@ def derive_floors(identifications: Iterable[Identification]) -> dict[str, float]
 
 def derive_bars(look: Sequence[Identification], mistake: Sequence[Identification],
                 *, grid: Sequence[float] = GRID) -> dict:
-    """The pre-registered ``b`` and ``b_u``, each the smallest grid value meeting its rule."""
+    """The pre-registered ``b`` and ``b_u``, each the smallest grid value meeting its rule.
+
+    ``b_u`` is the literal frozen rule: the smallest grid value at which at least
+    ``ASSIGNED_MIN`` of **all** look clips are assigned their own class. Raising the bar only
+    removes assignments, so that share cannot rise with the bar and the search is vacuous:
+    ``b_u`` is either the smallest grid value or ``None``. The per-bar precision table is
+    informational and never used to set it.
+    """
     if not look:
         raise ValueError("no look identification: the bars are undefined")
     labels = ("grid", "b", "b_u", "look_relabel_at_b", "mistake_relabels_at_b",
-              "look_assigned_at_b_u", "no_bar")
+              "look_assigned_at_b_u", "no_bar", "precision")
     result = dict.fromkeys(labels)
     result["grid"] = list(grid)
     result["no_bar"] = True
@@ -843,12 +865,17 @@ def derive_bars(look: Sequence[Identification], mistake: Sequence[Identification
             result.update(b=value, look_relabel_at_b=rate,
                           mistake_relabels_at_b=0, no_bar=False)
             break
+    by_bar = []
     for value in grid:
-        own = sum(assigned(row, value) and row.match.text_class == row.filename_class
-                  for row in look) / len(look)
-        if own >= ASSIGNED_MIN:
-            result.update(b_u=value, look_assigned_at_b_u=own)
-            break
+        assigned_rows = [row for row in look if assigned(row, value)]
+        own = sum(row.match.text_class == row.filename_class for row in assigned_rows)
+        by_bar.append({
+            "bar": value, "assigned": len(assigned_rows),
+            "precision": own / len(assigned_rows) if assigned_rows else None,
+            "coverage": own / len(look)})
+        if result["b_u"] is None and by_bar[-1]["coverage"] >= ASSIGNED_MIN:
+            result.update(b_u=value, look_assigned_at_b_u=by_bar[-1]["coverage"])
+    result["precision"] = {"used_for_b_u": False, "by_bar": by_bar}
     return result
 
 
@@ -968,6 +995,14 @@ def _calibration(database: ReferenceDatabase) -> dict:
             "parent": {"path": repo_relative(HOLDOUT_PREREGISTRATION_PATH),
                        "sha256": sha256_file(HOLDOUT_PREREGISTRATION_PATH)},
         },
+        "first_pass": {
+            "engine_commit": "79acded",
+            "defect": "each CIGAR run was credited whole to the ayah it started in, and "
+                      "aligned characters were counted rather than words",
+            "fix": "runs are split at ayah boundaries and the ayah with the most aligned "
+                   "words is credited",
+            "rules_changed": False,
+        },
         "parameters": {
             "k": K, "gram": GRAM, "grid": list(GRID), "floor_bins": list(FLOOR_BINS),
             "floor_percentile": FLOOR_PERCENTILE,
@@ -1066,6 +1101,14 @@ def render(report: Mapping[str, Any]) -> str:
         f"- floors: type-7 {parameters['floor_percentile']}th percentile of the best decoy "
         f"score per length bin",
         "",
+        "## Superseded first pass",
+        "",
+        f"The first look pass (engine `{report['first_pass']['engine_commit']}`) had a "
+        f"span-attribution defect: {report['first_pass']['defect']}. Before this report the "
+        f"engine was brought to the frozen rule: {report['first_pass']['fix']}. No rule, grid "
+        "value or input changed, and the same committed look decodes were rescored; only the "
+        "numbers below count.",
+        "",
         "## Inputs",
         "",
         "| | |",
@@ -1096,8 +1139,18 @@ def render(report: Mapping[str, Any]) -> str:
         f"**b = {bars['b']:.2f}**" if bars["b"] is not None else "**b: none on the grid**",
         f" ({_pct(bars['look_relabel_at_b'])} of look relabelled, "
         f"{bars['mistake_relabels_at_b']} of the real-mistake clips relabelled).",
-        f"**b_u = {bars['b_u']:.2f}**" if bars["b_u"] is not None else "**b_u: none on the grid**",
-        f" ({_pct(bars['look_assigned_at_b_u'])} assigned their own class with labels hidden).",
+        *([f"**b_u = {bars['b_u']:.2f}** ({_pct(bars['look_assigned_at_b_u'])} assigned their "
+           "own class with labels hidden)."] if bars["b_u"] is not None else
+          ["**b_u: none on the grid.** The literal rule counts own-class assignments over all "
+           "look clips; that share cannot rise with the bar, so the search is vacuous. A dated "
+           "post-look amendment (precision reading) is parked for the owner."]),
+        "",
+        "| bar | assigned | precision | coverage |",
+        "|---|---|---|---|",
+        *[f"| {row['bar']:.2f} | {row['assigned']} | {_pct(row['precision'])} | "
+          f"{_pct(row['coverage'])} |" for row in bars["precision"]["by_bar"]],
+        "",
+        "_The per-bar precision table is informational and was not used to derive b_u._",
         "",
         "## Reported, never tuned on",
         "",

@@ -1,8 +1,9 @@
 """Acceptance tests for tlog S5 ayah identification (``tadabur.tlog_ident``, #190).
 
 Committed before the module exists and **locked**: later turns may add tests but never weaken or
-rewrite these. The rules are "Ayah identification" in
-``docs/tlog-holdout-preregistration.md`` with its dated 2026-10-25 (S5, pre-outcome) amendment.
+rewrite these. The rules are "Ayah identification" in the frozen
+``docs/tlog-holdout-preregistration.md`` plus S5's dated 2026-10-25 (S5, pre-outcome) amendment in
+``docs/tlog-ident-preregistration.md``, which cites the frozen text by path and SHA-256.
 
 Contract this file pins
 -----------------------
@@ -54,7 +55,10 @@ TARTEEL_DIR = ROOT / "tools" / "tadabur" / "nonpro_eval" / "tarteel_v1"
 SPLIT_PATH = TARTEEL_DIR / "split.json"
 NOISE_POOL = ROOT / "tools" / "tadabur" / "nonpro_gap" / "noise_pool.json"
 TRUTH_SITES = ROOT / "tools" / "tadabur" / "truth_sites" / "ship_a_verified.jsonl"
-PREREGISTRATION = ROOT / "docs" / "tlog-holdout-preregistration.md"
+PREREGISTRATION = ROOT / "docs" / "tlog-ident-preregistration.md"
+HOLDOUT_PREREGISTRATION = ROOT / "docs" / "tlog-holdout-preregistration.md"
+#: The frozen hold-out text the S5 amendment cites; it is never edited (S3b's meta.json hashes it).
+HOLDOUT_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
 BASE_REVISION = "01a1ef9fbe40d144ef845101e89ff924aed3fef5"
 
 
@@ -372,6 +376,12 @@ def test_the_committed_references_are_the_whole_mushaf(ident):
 # --- the committed clip list and the calibration population -----------------------------------
 
 
+def test_the_amendment_cites_the_frozen_holdout_text():
+    assert _sha256(HOLDOUT_PREREGISTRATION) == HOLDOUT_SHA256
+    assert HOLDOUT_SHA256 in PREREGISTRATION.read_text(encoding="utf-8")
+    assert "Amended 2026-10-25 (S5, pre-outcome" in PREREGISTRATION.read_text(encoding="utf-8")
+
+
 def test_the_real_mistake_clips_file_is_the_pinned_52_over_56(ident):
     rows = [json.loads(line) for line in
             ident.REAL_MISTAKE_CLIPS_PATH.read_text(encoding="utf-8").splitlines()]
@@ -428,8 +438,9 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
     assert calibration["schema"] == "tadabur.tlog_ident/calibration-v1"
     assert calibration["issue"] == 190
     assert calibration["preregistration"] == {
-        "path": "docs/tlog-holdout-preregistration.md",
-        "sha256": _sha256(PREREGISTRATION)}
+        "path": "docs/tlog-ident-preregistration.md",
+        "sha256": _sha256(PREREGISTRATION),
+        "parent": {"path": "docs/tlog-holdout-preregistration.md", "sha256": HOLDOUT_SHA256}}
     assert calibration["real_mistake"]["sha256"] == _sha256(ident.REAL_MISTAKE_CLIPS_PATH)
     assert calibration["parameters"]["k"] == ident.K
     assert calibration["parameters"]["gram"] == ident.GRAM

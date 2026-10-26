@@ -274,7 +274,7 @@ def common_voice(args: argparse.Namespace) -> None:
     for locale in requested:
         try:
             download_archive(locale, pins[locale], archives_dir, remote=args.remote)
-        except Exception as error:  # one locale failing must not hide the others' state
+        except (OSError, RuntimeError) as error:  # one locale must not hide the others' state
             failures += 1
             print(f"{locale}: FAILED {error}", flush=True)
     if failures:

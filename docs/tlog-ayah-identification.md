@@ -103,6 +103,25 @@ Literal-rule b_u (share of all clips): none; recorded for transparency.
 
 _Precision is the amended b_u's quantity; coverage is the literal rule's, which can only fall as the bar rises._
 
+## Length bins in S7's pool
+
+The floors are keyed on the **decode's** character length, and the look half they come from is at most 20 s of audio: its longest decode is 138 characters, so no look clip reached `161-` and that bin has no floor. The pool's own decode lengths do not exist until S7 runs, so its pass-1 speech seconds are the only predictor (`speech_s`, which the decode's length tracks; the frozen row does not carry the clip's duration):
+
+| speech | rows | share | decode bin |
+|---|---|---|---|
+| ≤ 20 s | 454,774 | 95.75% | the four calibrated bins |
+| > 20 s | 20,188 | 4.25% | may reach `161-` |
+| > 30 s | 6,378 | 1.34% |
+| > 60 s | 759 | 0.16% |
+
+At the look half's own ceiling about 23 s of recitation is needed to reach 161 characters, so the floor-less `161-` bin holds at most the 20,188 rows with over 20 s of speech (4.25%) of the 474,962 usable rows. Its exact share is measured when S7 decodes; until then no row in it is assigned or relabelled.
+
+## For S7: the row contract and the decode mode
+
+- **Row contract.** `tadabur.tlog_ident.identification_record` is the one place the committed row's field names are fixed: the span, `straddles`, `class_label`, `score`, `decoy`, `delta`, `margin`, `margin_class`, `id_floor_ok`, `overlaps_filename`, `filename_label`, `label_source`, `assigned_label`. `id_floor_ok: null` means **no floor for this length bin**, not 'below the floor': the row is unverified, so an unlabelled row stays `none`, a filename row keeps its own label, and nothing in that bin is relabelled.
+- **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(floors, bars, k)` and refuses a report whose floors are stopped or whose bars are provisional — this one — unless the caller passes `allow_provisional=True` and reports that it did.
+- **Decode mode.** The frozen rule fixes a whole-clip greedy decode (`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are whole-clip; the look half is at most 20 s of audio. The pool is not: 759 usable rows carry over 60 s of speech, the longest 982 s, which a whole pass cannot decode within the VRAM budget (S5's Freesound pool already needed `stream_b0`, as its own row above says). `identify` takes a bare string and cannot tell the modes apart. S7 must either obtain an amendment of the decode mode or record `decode_mode` beside every identification and report the floor-bin and streamed populations separately; S5 decides neither.
+
 ## Floor status
 
 `stopped: noise 35.7% > 1%`
@@ -125,7 +144,7 @@ B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C
 | `cer_wav ≥ 0.2` tail relabel rate at b | 0.06% |
 | Freesound noise pass | 35.73% |
 | exhaustive-decoy floors (sensitivity) | retention 99.98% |
-| throughput | 8.45 ms per clip |
+| throughput | 8.71 ms per clip |
 
 The noise population is decoded in `stream_b0`, while look and the floors use whole-clip `spans`; the noise rate compares a different decode mode, not the calibration population's.
 

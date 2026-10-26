@@ -136,6 +136,7 @@ import numpy as np
 
 from training.tashkeel_eval import write_text_atomically
 
+from . import tarteel_split
 from .audio import (DecodeError, TARGET_SAMPLE_RATE, decode_to_mono_16k_with_rate_and_decoder,
                     decoder_versions, require_pyav)
 from .nonpro_sources import (TARTEEL_V1, TLOG, TLOG_SPLITS, Dataset, audio_sha256, iter_rows,
@@ -157,7 +158,8 @@ FLOORS_PATH = Path(__file__).parent / "tlog" / "silence_floors.json"
 #: cuda-dev scratch: fingerprints only, never a committed row or the repo.
 FP_DIR = Path("/root/scratch/tlog/fp")
 #: The Tarteel v1 look clips' decodes: the floors' population, and the provenance hash.
-DECODES_PATH = Path(__file__).parent / "nonpro_eval" / "tarteel_v1" / "decodes.base.jsonl.gz"
+#: One definition, in :mod:`tadabur.tarteel_split`; this name stays for its callers.
+DECODES_PATH = tarteel_split.DECODES_PATH
 
 #: The pinned VAD. The exact config is recorded in the floors and in ``pass1/meta.json``, and a
 #: run refuses a floors file whose config differs (the pre-registration requires one VAD).

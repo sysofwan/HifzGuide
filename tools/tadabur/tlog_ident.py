@@ -41,6 +41,12 @@ normalised references and offsets), ``real_mistake_clips.jsonl`` (the 52 clips h
 owner-verified real-mistake sites), ``decodes/real_mistake.base.json`` and ``decodes/noise.base.json``
 (the base teacher's whole-clip decodes), ``ident_calibration.json``.
 
+Consumers use two functions, so S6 and S7 cannot fork the schema: :func:`identification_record`
+names the committed row's fields, and :func:`load_calibration` returns ``(floors, bars, k)`` and
+refuses a report whose floors are stopped or whose bars are provisional — this one is — unless
+the caller passes ``allow_provisional=True``. The read path (a committed database and
+:func:`identify`) imports edlib only; the phonetizer is imported where a reference is built.
+
 Usage (from ``tools/``)::
 
   python -m tadabur.tlog_ident references    # build and commit references.json.gz (~5 min)
@@ -70,15 +76,12 @@ from typing import Any
 
 import edlib
 
-import generate_phonemes
-import hafs_phonetizer
-
 from training.tashkeel_eval import write_text_atomically
 
 from . import normalization
 from .normalization import map_char_offsets, normalize_phonemes
+from .tarteel_split import DECODES_PATH, SPLIT_PATH, load_split
 from .tlog_index import repo_relative, sha256_file
-from .waqf_segments import spaceless_word_offsets
 
 SCHEMA_VERSION = 1
 #: The shortlist size the pre-registration fixes, and the gram size its S5 amendment adds.
@@ -110,9 +113,8 @@ REAL_MISTAKE_CLIPS_PATH = IDENT_DIR / "real_mistake_clips.jsonl"
 DECODES_DIR = IDENT_DIR / "decodes"
 REAL_MISTAKE_DECODES_PATH = DECODES_DIR / "real_mistake.base.json"
 NOISE_DECODES_PATH = DECODES_DIR / "noise.base.json"
-TARTEEL_DIR = Path(__file__).parent / "nonpro_eval" / "tarteel_v1"
-LOOK_DECODES_PATH = TARTEEL_DIR / "decodes.base.jsonl.gz"
-SPLIT_PATH = TARTEEL_DIR / "split.json"
+#: The Freesound gap pool (the noise stop's population); the look decodes and the split come
+#: from :mod:`tadabur.tarteel_split`, which owns their one definition.
 NOISE_POOL_PATH = Path(__file__).parent / "nonpro_gap" / "noise_pool.json"
 PREREGISTRATION_PATH = (Path(__file__).resolve().parents[2]
                         / "docs" / "tlog-ident-preregistration.md")
@@ -218,6 +220,8 @@ class Identification:
 
     ``class_label`` and ``filename_label`` are the label strings the class and the filename
     name; they let :func:`apply_floors` recompute the label fields without the database.
+    ``floor_ok is None`` means the decode's length bin has **no floor** (no look decode in it):
+    the row is unverified, which :func:`identification_record` names as ``id_floor_ok: null``.
     """
 
     length: int
@@ -729,13 +733,22 @@ def _overlaps_ayah(match: Match, key: tuple[int, int]) -> bool:
 
 
 def _spaceless_phonetization(words: Sequence[str]) -> tuple[str, list[int]]:
-    """The words phonetized as one utterance: space-free text and its per-word offsets."""
+    """The words phonetized as one utterance: space-free text and its per-word offsets.
+
+    The phonetizer is imported here, not at module level: the read path (a committed
+    database and :func:`identify`) needs edlib alone.
+    """
+    import hafs_phonetizer
+    from .waqf_segments import spaceless_word_offsets
+
     out = hafs_phonetizer.phonetize(" ".join(words))
     return spaceless_word_offsets(out.phonemes, out.mappings, list(words))
 
 
 def _fallback_offsets(key: str, words: Sequence[str]) -> tuple[str, list[int]]:
     """The fallback string and the word boundaries the S5 amendment derives for it."""
+    import generate_phonemes
+
     raw = generate_phonemes.FALLBACK_PHONEMES[key].replace(" ", "")
     prefix_words = list(words[:-1])
     if not prefix_words:
@@ -752,6 +765,7 @@ def _fallback_offsets(key: str, words: Sequence[str]) -> tuple[str, list[int]]:
 
 def ayah_reference(surah: int, ayah: int) -> AyahReference:
     """One ayah's reference: phonetized in waqf form, normalised, with remapped word offsets."""
+    import generate_phonemes
     from quran_transcript import Aya
 
     words = Aya(surah, ayah).get().uthmani.split()
@@ -769,6 +783,8 @@ def ayah_reference(surah: int, ayah: int) -> AyahReference:
 
 def build_references() -> ReferenceDatabase:
     """The whole mushaf's references, all 6,236 ayat in order."""
+    import generate_phonemes
+
     return ReferenceDatabase.build([
         ayah_reference(surah, ayah)
         for surah, count in enumerate(generate_phonemes.HAFS_AYAH_COUNTS, start=1)
@@ -776,6 +792,8 @@ def build_references() -> ReferenceDatabase:
 
 
 def references_payload(database: ReferenceDatabase) -> dict:
+    import hafs_phonetizer
+
     return {
         "schema": "tadabur.tlog_ident/references-v1",
         "phonetizer_revision": hafs_phonetizer.REVISION,
@@ -809,6 +827,9 @@ def write_references(path: Path = REFERENCES_PATH,
 
 def load_references(path: Path = REFERENCES_PATH) -> ReferenceDatabase:
     """The committed reference database, refused unless it is this code's build."""
+    import generate_phonemes
+    import hafs_phonetizer
+
     with gzip.open(Path(path), "rt", encoding="utf-8") as handle:
         payload = json.load(handle)
     expected = {
@@ -878,6 +899,38 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
         class_label=database.class_label(best.text_class),
         filename_label=filename_label)
     return _with_label(identification, bars)
+
+
+def identification_record(identification: Identification) -> dict:
+    """The committed row for one identification: the one place its field names are fixed.
+
+    The keys are the issue's output list — span, ``straddles``, class, score, decoy, Δ,
+    ``margin``, ``margin_class``, ``id_floor_ok``, ``label_source``, ``assigned_label`` — plus
+    the inputs a consumer joins on. ``id_floor_ok`` is the issue's name for ``floor_ok``;
+    ``None`` means the decode's length bin has **no floor**, so the row is unverified.
+    """
+    match = identification.match
+    span = ({"surah": match.surah, "ayah_from": match.ayah_from,
+             "word_from": match.word_from, "ayah_to": match.ayah_to,
+             "word_to": match.word_to, "straddles": match.straddles, "score": match.score}
+            if match is not None else
+            dict.fromkeys(("surah", "ayah_from", "word_from", "ayah_to", "word_to",
+                           "straddles", "score")))
+    return {
+        **span,
+        "length": identification.length,
+        "class_label": identification.class_label,
+        "decoy": identification.decoy,
+        "exhaustive_decoy": identification.exhaustive_decoy,
+        "delta": identification.delta,
+        "margin": identification.margin,
+        "margin_class": identification.margin_class,
+        "id_floor_ok": identification.floor_ok,
+        "overlaps_filename": identification.overlaps_filename,
+        "filename_label": identification.filename_label,
+        "label_source": identification.label_source,
+        "assigned_label": identification.assigned_label,
+    }
 
 
 def apply_floors(identification: Identification, floors: Mapping[str, float],
@@ -1071,10 +1124,35 @@ def recall_sample(clips: Iterable[str]) -> tuple[str, ...]:
     return tuple(ranked[:RECALL_CLIPS])
 
 
-def load_look_decodes(path: Path = LOOK_DECODES_PATH,
+def load_calibration(path: Path = CALIBRATION_PATH, *,
+                     allow_provisional: bool = False) -> tuple[dict, dict, int]:
+    """The committed ``(floors, bars, k)`` a consumer labels rows with.
+
+    Confirmed only: the committed S5 report records its ``floor_status`` and whether its bars
+    are provisional, and the frozen noise stop leaves both provisional (architect r16). A
+    consumer must pass ``allow_provisional=True`` — and say so in its output — to use them.
+    """
+    report = json.loads(Path(path).read_text(encoding="utf-8"))
+    reason = _provisional_reason(report)
+    if reason is not None and not allow_provisional:
+        raise ValueError(f"{path} is not a confirmed calibration ({reason}); "
+                         f"pass allow_provisional=True to use it anyway")
+    return report["floors"], report["bars"], report["parameters"]["k"]
+
+
+def _provisional_reason(report: Mapping[str, Any]) -> str | None:
+    """Why a calibration report is not confirmed, or ``None`` when it is."""
+    if report.get("floor_status") != "passed":
+        return f"floor_status {report.get('floor_status')!r}"
+    if report["bars"].get("provisional"):
+        return f"bars provisional: {report['bars'].get('provisional_reason')}"
+    return None
+
+
+def load_look_decodes(path: Path = DECODES_PATH,
                       split_path: Path = SPLIT_PATH) -> list[Decode]:
     """The Tarteel v1 **look** decodes, and only them: the calibration's population."""
-    look = set(json.loads(Path(split_path).read_text(encoding="utf-8"))["look"])
+    look = set(load_split(split_path)["look"])
     decodes: list[Decode] = []
     with gzip.open(Path(path), "rt", encoding="utf-8") as handle:
         for line in handle:
@@ -1142,7 +1220,35 @@ def _phase(message: str) -> None:
     print(f"[tlog_ident] {message}", flush=True)
 
 
+def pool_summary(rows: Iterable[Mapping[str, Any]]) -> tuple[dict, int]:
+    """The pool's length facts and b_u's reach, from :func:`tadabur.tlog_overlap.iter_pool_rows`.
+
+    A row's length fact is ``speech_s``: the frozen row carries the pass-1 facts
+    ``speech_s``/``speech_ratio`` (not the clip's ``duration_s``), and speech is what the decode's
+    character length tracks. ``usable`` rows only, so a row the codec floor rejected (and whose
+    ``speech_s`` is ``None``) is skipped before any conversion.
+    """
+    usable = unlabelled = 0
+    over = {20: 0, 30: 0, 60: 0}
+    longest = 0.0
+    for row in rows:
+        if not row["usable"]:
+            continue
+        usable += 1
+        speech = float(row["speech_s"])
+        for edge in over:
+            over[edge] += speech > edge
+        longest = max(longest, speech)
+        if row["split"] == "unclean" and row["filename_label"] is None:
+            unlabelled += 1
+    return ({"source": "tadabur.tlog_overlap.iter_pool_rows", "usable": usable,
+             "field": "speech_s", "over_20_s": over[20], "over_30_s": over[30],
+             "over_60_s": over[60], "longest_s": round(longest, 3)}, unlabelled)
+
+
 def _calibration(database: ReferenceDatabase) -> dict:
+    import hafs_phonetizer
+
     look = load_look_decodes()
     by_clip = {decode.audio_filename: decode for decode in look}
     sample = recall_sample(by_clip)
@@ -1198,10 +1304,8 @@ def _calibration(database: ReferenceDatabase) -> dict:
 
     from .tlog_overlap import iter_pool_rows  # heavy import, calibration only
 
-    _phase("walking the S1+S4 pool for b_u's reach")
-    unlabelled = sum(1 for row in iter_pool_rows()
-                     if row["split"] == "unclean" and row["filename_label"] is None
-                     and row["usable"])
+    _phase("walking the S1+S4 pool for b_u's reach and the pool's length histogram")
+    pool_lengths, unlabelled = pool_summary(iter_pool_rows())
 
     retention = sum(row.floor_ok for row in applied) / len(applied)
     relabel_rate = bars["look_relabel_at_b"]
@@ -1266,8 +1370,8 @@ def _calibration(database: ReferenceDatabase) -> dict:
                       "classes": database.class_count, "surahs": database.surah_count},
         "decodes": {
             "base_model": BASE_MODEL, "base_revision": BASE_REVISION,
-            "look": {"path": repo_relative(LOOK_DECODES_PATH),
-                     "sha256": sha256_file(LOOK_DECODES_PATH), "clips": len(look)},
+            "look": {"path": repo_relative(DECODES_PATH),
+                     "sha256": sha256_file(DECODES_PATH), "clips": len(look)},
             "real_mistake": {"path": repo_relative(REAL_MISTAKE_DECODES_PATH),
                              "sha256": sha256_file(REAL_MISTAKE_DECODES_PATH),
                              "clips": len(clip_list)},
@@ -1301,6 +1405,7 @@ def _calibration(database: ReferenceDatabase) -> dict:
                     if bars["b"] is not None else None},
         "unlabelled_unclean": {"source": "tadabur.tlog_overlap.iter_pool_rows",
                                "usable": unlabelled},
+        "pool_lengths": pool_lengths,
         "noise": {"recordings": len(noise), "pass": noise_pass,
                   "floor_passed": conventions["B"]["passed"],
                   "conventions": conventions,
@@ -1321,6 +1426,37 @@ def _pct(value: float | None) -> str:
 
 def _bar(value: float | None) -> str:
     return "none" if value is None else f"{value:.2f}"
+
+
+def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
+    """The page's length-bin section: what the floors cover, and the floor-less bin's bound."""
+    pool = report["pool_lengths"]
+    usable = pool["usable"]
+
+    def share(count: int) -> str:
+        return _pct(count / usable if usable else None)
+
+    return [
+        "The floors are keyed on the **decode's** character length, and the look half they come "
+        "from is at most 20 s of audio: its longest decode is 138 characters, so no look clip "
+        "reached `161-` and that bin has no floor. The pool's own decode lengths do not exist "
+        "until S7 runs, so its pass-1 speech seconds are the only predictor (`speech_s`, which "
+        "the decode's length tracks; the frozen row does not carry the clip's duration):",
+        "",
+        "| speech | rows | share | decode bin |",
+        "|---|---|---|---|",
+        f"| ≤ 20 s | {usable - pool['over_20_s']:,} | "
+        f"{share(usable - pool['over_20_s'])} | the four calibrated bins |",
+        f"| > 20 s | {pool['over_20_s']:,} | {share(pool['over_20_s'])} | may reach `161-` |",
+        f"| > 30 s | {pool['over_30_s']:,} | {share(pool['over_30_s'])} |",
+        f"| > 60 s | {pool['over_60_s']:,} | {share(pool['over_60_s'])} |",
+        "",
+        f"At the look half's own ceiling about 23 s of recitation is needed to reach 161 "
+        f"characters, so the floor-less `161-` bin holds at most the {pool['over_20_s']:,} rows "
+        f"with over 20 s of speech ({share(pool['over_20_s'])}) of the {usable:,} usable rows. "
+        f"Its exact share is "
+        f"measured when S7 decodes; until then no row in it is assigned or relabelled.",
+    ]
 
 
 def render(report: Mapping[str, Any]) -> str:
@@ -1422,6 +1558,34 @@ def render(report: Mapping[str, Any]) -> str:
         "",
         "_Precision is the amended b_u's quantity; coverage is the literal rule's, which can "
         "only fall as the bar rises._",
+        "",
+        "## Length bins in S7's pool",
+        "",
+        *pool_length_lines(report),
+        "",
+        "## For S7: the row contract and the decode mode",
+        "",
+        "- **Row contract.** `tadabur.tlog_ident.identification_record` is the one place the "
+        "committed row's field names are fixed: the span, `straddles`, `class_label`, `score`, "
+        "`decoy`, `delta`, `margin`, `margin_class`, `id_floor_ok`, `overlaps_filename`, "
+        "`filename_label`, `label_source`, `assigned_label`. `id_floor_ok: null` means **no "
+        "floor for this length bin**, not 'below the floor': the row is unverified, so an "
+        "unlabelled row stays `none`, a filename row keeps its own label, and nothing in that "
+        "bin is relabelled.",
+        "- **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(floors, bars, k)` "
+        "and refuses a report whose floors are stopped or whose bars are provisional — this "
+        "one — unless the caller passes `allow_provisional=True` and reports that it did.",
+        f"- **Decode mode.** The frozen rule fixes a whole-clip greedy decode "
+        f"(`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are "
+        f"whole-clip; the look half is at most 20 s of audio. The pool is not: "
+        f"{report['pool_lengths']['over_60_s']:,} usable rows carry over 60 s of speech, the "
+        f"longest {report['pool_lengths']['longest_s']:,.0f} s, which a whole pass cannot "
+        f"decode within "
+        f"the VRAM budget (S5's Freesound pool already needed `{report['decodes']['noise']['mode']}`, "
+        f"as its own row above says). `identify` takes a bare string and cannot tell the modes "
+        f"apart. S7 must either obtain an amendment of the decode mode or record `decode_mode` "
+        f"beside every identification and report the floor-bin and streamed populations "
+        f"separately; S5 decides neither.",
         "",
         "## Floor status",
         "",

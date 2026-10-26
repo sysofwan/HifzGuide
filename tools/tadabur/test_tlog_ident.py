@@ -517,6 +517,31 @@ def test_the_bounded_search_visits_no_fewer_spans_than_the_word_span_oracle(iden
                                         else None)
 
 
+def test_identification_record_is_the_committed_row_contract(ident, two_surahs):
+    """S6 and S7 must not invent two row shapes: one key set, the issue's field names."""
+    decoded = ident.identify("خدذ", database=two_surahs, filename_ayah="1:1",
+                             floors={"0-20": 0.0}, bars={"b": 0.01, "b_u": 0.01})
+    record = ident.identification_record(decoded)
+    assert set(record) == {
+        "surah", "ayah_from", "word_from", "ayah_to", "word_to", "straddles", "score",
+        "length", "class_label", "decoy", "exhaustive_decoy", "delta", "margin",
+        "margin_class", "id_floor_ok", "overlaps_filename", "filename_label",
+        "label_source", "assigned_label"}
+    assert (record["surah"], record["ayah_from"], record["word_from"]) == (2, 1, 1)
+    assert record["straddles"] is False
+    assert record["class_label"] == "2:1"
+    assert record["id_floor_ok"] is True
+    assert record["label_source"] == ident.IDENTIFIED
+    assert record["assigned_label"] == "2:1"
+    assert json.loads(json.dumps(record, ensure_ascii=False)) == record
+
+    # A row with no match keeps every key, and a bin with no floor reads as null.
+    empty = ident.identification_record(ident.identify("", database=two_surahs))
+    assert set(empty) == set(record)
+    assert (empty["surah"], empty["score"], empty["straddles"]) == (None, None, None)
+    assert empty["id_floor_ok"] is None
+
+
 def test_every_row_carries_margin_and_margin_class(ident, two_surahs):
     """The margin is on every identification row, including one with no match; applying the
     floor replaces the row without dropping it."""
@@ -827,6 +852,63 @@ def test_the_bu_amendment_is_the_owner_approved_post_look_precision_rule():
     assert S5_PREREGISTRATION_SHA256 in text
 
 
+def test_load_calibration_refuses_a_provisional_report(ident, calibration):
+    """The committed report is provisional by the frozen noise stop: a consumer must opt in."""
+    with pytest.raises(ValueError, match="not a confirmed calibration"):
+        ident.load_calibration()
+    floors, bars, k = ident.load_calibration(allow_provisional=True)
+    assert floors == calibration["floors"]
+    assert bars == calibration["bars"]
+    assert k == calibration["parameters"]["k"] == ident.K
+
+
+def test_load_calibration_accepts_a_confirmed_report(ident, calibration, tmp_path):
+    bars = {**calibration["bars"], "provisional": False}
+    bars.pop("provisional_reason", None)
+    path = tmp_path / "confirmed.json"
+    path.write_text(json.dumps({**calibration, "floor_status": "passed", "bars": bars}),
+                    encoding="utf-8")
+    floors, loaded, k = ident.load_calibration(path)
+    assert (floors, k) == (calibration["floors"], ident.K)
+    assert loaded["provisional"] is False
+
+    # Confirmed floors but provisional bars is still refused.
+    path.write_text(json.dumps({**calibration, "floor_status": "passed",
+                                "bars": {**bars, "provisional": True,
+                                         "provisional_reason": "x"}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="bars provisional"):
+        ident.load_calibration(path)
+
+
+def test_pool_summary_reads_the_frozen_row_shape(ident):
+    """A pool row carries the pass-1 ``speech_s``, never the clip's ``duration_s``: reading the
+    wrong field failed the r5 calibration with a KeyError. Rows the codec floor rejected are
+    skipped before any conversion, so their ``None`` never reaches ``float``."""
+    rows = [
+        {"split": "clean", "usable": True, "speech_s": 12.0, "filename_label": "1:1"},
+        {"split": "clean", "usable": True, "speech_s": 25.0, "filename_label": "1:2"},
+        {"split": "unclean", "usable": True, "speech_s": 75.0, "filename_label": None},
+        {"split": "unclean", "usable": False, "speech_s": None, "filename_label": None},
+    ]
+    lengths, unlabelled = ident.pool_summary(rows)
+    assert lengths["usable"] == 3
+    assert lengths["field"] == "speech_s"
+    assert (lengths["over_20_s"], lengths["over_30_s"], lengths["over_60_s"]) == (2, 1, 1)
+    assert lengths["longest_s"] == 75.0
+    assert unlabelled == 1
+
+
+def test_the_page_renders_from_the_committed_report(ident, calibration):
+    """The generated page must be ``render`` of the report, and the report carries the pool's
+    duration histogram the page's floor-less-bin bound is read from."""
+    assert ident.render(calibration) == ident.DOC_PATH.read_text(encoding="utf-8")
+    pool = calibration["pool_lengths"]
+    assert pool["source"] == "tadabur.tlog_overlap.iter_pool_rows"
+    assert pool["field"] == "speech_s"  # the frozen row's length fact, not duration_s
+    assert 0 < pool["over_60_s"] < pool["over_30_s"] < pool["over_20_s"] <= pool["usable"]
+    assert pool["longest_s"] > 60
+
+
 def test_the_margin_amendment_pins_the_committed_competitor_search(ident, calibration):
     """The dated amendment pins the word-span search, cites both frozen parents by SHA-256,
     names the engine commit it pins, and the calibration records its path and hash."""
@@ -889,7 +971,7 @@ def test_only_tarteel_look_clips_enter_the_calibration(ident, calibration):
     assert calibration["split"] == {
         "path": "tools/tadabur/nonpro_eval/tarteel_v1/split.json",
         "sha256": _sha256(SPLIT_PATH), "look": 4537}
-    assert calibration["decodes"]["look"]["sha256"] == _sha256(ident.LOOK_DECODES_PATH)
+    assert calibration["decodes"]["look"]["sha256"] == _sha256(ident.DECODES_PATH)
     assert calibration["decodes"]["look"]["clips"] == 4537
 
 

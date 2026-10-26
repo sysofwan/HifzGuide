@@ -574,6 +574,15 @@
   "recordings": 445,
   "sha256": "7811d08b095b23a45ac95d270fc32955e6e5e287857bd9f7c51969fdd64deb85"
  },
+ "pool_lengths": {
+  "field": "speech_s",
+  "longest_s": 982.128,
+  "over_20_s": 20188,
+  "over_30_s": 6378,
+  "over_60_s": 759,
+  "source": "tadabur.tlog_overlap.iter_pool_rows",
+  "usable": 474962
+ },
  "preregistration": {
   "parent": {
    "path": "docs/tlog-holdout-preregistration.md",
@@ -628,8 +637,8 @@
  },
  "throughput": {
   "clips": 4537,
-  "ms_per_clip": 8.449,
-  "seconds": 38.335
+  "ms_per_clip": 8.705,
+  "seconds": 39.493
  },
  "unlabelled_unclean": {
   "source": "tadabur.tlog_overlap.iter_pool_rows",

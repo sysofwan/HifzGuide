@@ -17,7 +17,7 @@ import pytest
 
 import tadabur.waqf_segments as ws
 from tadabur.manifest import ManifestRecord
-from tadabur.waqf_segments import SegmentRecord, _spaceless_word_offsets
+from tadabur.waqf_segments import SegmentRecord, spaceless_word_offsets
 
 
 def _passing(name: str, surah_ayah: str, predicted: str = "") -> ManifestRecord:
@@ -120,7 +120,7 @@ def test_shard_staging_records_clips_outside_shards_without_raising(tmp_path, mo
     assert next(captured["row_source"]) == {"marker": [0, 1]}
 
 
-# --- _spaceless_word_offsets ------------------------------------------------
+# --- spaceless_word_offsets ------------------------------------------------
 
 
 def test_spaceless_word_offsets_strips_spaces_and_remaps_boundaries():
@@ -135,7 +135,7 @@ def test_spaceless_word_offsets_strips_spaces_and_remaps_boundaries():
         SimpleNamespace(pos=(3, 4)),  # 'c' -> phoneme index 3 (after the space)
         SimpleNamespace(pos=(4, 5)),  # 'd'
     ]
-    reference, boundaries = _spaceless_word_offsets("XY ZW", mappings, words)
+    reference, boundaries = spaceless_word_offsets("XY ZW", mappings, words)
     assert reference == "XYZW"
     assert boundaries == [0, 2, 4]
 
@@ -151,7 +151,7 @@ def test_spaceless_word_offsets_handles_wasl_merged_words():
         SimpleNamespace(pos=(2, 3)),  # 'c' -> phoneme index 2 (no gap)
         SimpleNamespace(pos=(3, 4)),  # 'd'
     ]
-    reference, boundaries = _spaceless_word_offsets("XYZW", mappings, words)
+    reference, boundaries = spaceless_word_offsets("XYZW", mappings, words)
     assert reference == "XYZW"
     assert boundaries == [0, 2, 4]
 

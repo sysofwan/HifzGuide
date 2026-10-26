@@ -27,10 +27,11 @@ sequences; the exhaustive decoy best is reported for sensitivity, never used.
 
 **Thresholds.** Per decode-length bin the floor is the type-7 99th percentile of the best decoy
 score over Tarteel v1 look decodes. ``b`` is the smallest grid value at which ≤ 0.5% of look clips
-relabel and 0 of the 52 real-mistake clips relabel; ``b_u`` the smallest at which ≥ 99% of look
-clips, labels hidden, are assigned their own class. ``b_u``'s literal coverage cannot rise with
-the bar, so it is either the smallest grid value or none; the per-bar precision table is
-informational and never sets it. The bars and floors are committed in
+relabel and 0 of the 52 real-mistake clips relabel; ``b_u`` follows the owner-approved post-look
+erratum (``docs/tlog-ident-bu-amendment.md``): the smallest bar at which ≥ 99% of the look clips
+the identifier **names** are their own class. The literal share-of-all wording's result is
+recorded as ``b_u_literal``; its coverage cannot rise with the bar. A length bin with no look
+decode has no floor and no verdict. The bars and floors are committed in
 ``tools/tadabur/tlog/ident/ident_calibration.json`` with the generated page
 ``docs/tlog-ayah-identification.md``; every value is re-derived from the committed inputs by the
 acceptance tests.
@@ -114,6 +115,8 @@ SPLIT_PATH = TARTEEL_DIR / "split.json"
 NOISE_POOL_PATH = Path(__file__).parent / "nonpro_gap" / "noise_pool.json"
 PREREGISTRATION_PATH = (Path(__file__).resolve().parents[2]
                         / "docs" / "tlog-ident-preregistration.md")
+BU_AMENDMENT_PATH = (Path(__file__).resolve().parents[2]
+                     / "docs" / "tlog-ident-bu-amendment.md")
 HOLDOUT_PREREGISTRATION_PATH = (Path(__file__).resolve().parents[2]
                                 / "docs" / "tlog-holdout-preregistration.md")
 DOC_PATH = Path(__file__).resolve().parents[2] / "docs" / "tlog-ayah-identification.md"
@@ -750,7 +753,7 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
         # match, so the margin is measured against the empty competitor (score 0).
         margin=best.score - (competitor.score if competitor is not None else 0.0),
         margin_class=competitor.text_class if competitor is not None else None,
-        floor_ok=(best.score > floors[floor_bin(len(query))] if floors is not None else None),
+        floor_ok=_floor_verdict(best.score, len(query), floors),
         overlaps_filename=(_overlaps_ayah(best, name) if name is not None else None),
         label_source=NONE, assigned_label=None,
         class_label=database.class_label(best.text_class),
@@ -761,8 +764,8 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
 def apply_floors(identification: Identification, floors: Mapping[str, float],
                  *, bars: Mapping[str, float] | None = None) -> Identification:
     """``identification`` with the floor verdict for its length, and the label it implies."""
-    floor_ok = (identification.match is not None
-                and identification.match.score > floors[floor_bin(identification.length)])
+    floor_ok = (False if identification.match is None else
+                _floor_verdict(identification.match.score, identification.length, floors))
     return _with_label(replace(identification, floor_ok=floor_ok), bars)
 
 
@@ -825,6 +828,57 @@ def floor_bin(length: int) -> str:
     return FLOOR_BINS[4]
 
 
+def _floor_verdict(score: float, length: int,
+                   floors: Mapping[str, float] | None) -> bool | None:
+    """The bin's floor verdict; a bin with no floor (no look decode in it) has none."""
+    if floors is None:
+        return None
+    floor = floors.get(floor_bin(length))
+    return None if floor is None else score > floor
+
+
+def _backoff_floor(bin_: str, floors: Mapping[str, float]) -> float | None:
+    """The nearest present floor below ``bin_``, else the nearest present one above it."""
+    index = FLOOR_BINS.index(bin_)
+    for candidate in reversed(FLOOR_BINS[:index]):
+        if candidate in floors:
+            return floors[candidate]
+    for candidate in FLOOR_BINS[index + 1:]:
+        if candidate in floors:
+            return floors[candidate]
+    return None
+
+
+def noise_pass_by_convention(rows: Sequence[Identification],
+                             floors: Mapping[str, float]) -> dict:
+    """The Freesound pass rate under the three empty-bin conventions.
+
+    A: a row in a bin with no floor never passes. B: it is judged against the nearest
+    calibrated bin's floor. C: it is excluded from the denominator. A row with no match never
+    passes and stays in A's and B's denominator.
+    """
+    counts = {key: {"recordings": 0, "passed": 0} for key in ("A", "B", "C")}
+    for row in rows:
+        bin_ = floor_bin(row.length)
+        floor = floors.get(bin_)
+        passed = row.match is not None and floor is not None and row.match.score > floor
+        counts["A"]["recordings"] += 1
+        counts["A"]["passed"] += passed
+        counts["B"]["recordings"] += 1
+        if floor is None:
+            backed = _backoff_floor(bin_, floors)
+            counts["B"]["passed"] += (row.match is not None and backed is not None
+                                      and row.match.score > backed)
+        else:
+            counts["B"]["passed"] += passed
+        if floor is not None:
+            counts["C"]["recordings"] += 1
+            counts["C"]["passed"] += passed
+    return {key: {**count, "pass": (count["passed"] / count["recordings"]
+                                    if count["recordings"] else None)}
+            for key, count in counts.items()}
+
+
 def _quantile(values: Sequence[float], q: float) -> float:
     from training.acceptance_stats import quantile_type7
 
@@ -843,18 +897,19 @@ def derive_floors(identifications: Iterable[Identification]) -> dict[str, float]
 
 def derive_bars(look: Sequence[Identification], mistake: Sequence[Identification],
                 *, grid: Sequence[float] = GRID) -> dict:
-    """The pre-registered ``b`` and ``b_u``, each the smallest grid value meeting its rule.
+    """The pre-registered ``b`` and the owner-approved amended ``b_u``.
 
-    ``b_u`` is the literal frozen rule: the smallest grid value at which at least
-    ``ASSIGNED_MIN`` of **all** look clips are assigned their own class. Raising the bar only
-    removes assignments, so that share cannot rise with the bar and the search is vacuous:
-    ``b_u`` is either the smallest grid value or ``None``. The per-bar precision table is
-    informational and never used to set it.
+    ``b`` is the smallest grid value at which at most ``RELABEL_LIMIT`` of look relabels and no
+    real-mistake clip relabels. ``b_u`` (``docs/tlog-ident-bu-amendment.md``) is the smallest
+    grid value at which at least ``ASSIGNED_MIN`` of the look clips the identifier **names**
+    are their own class. The literal wording's share-of-all coverage is recorded as
+    ``b_u_literal`` for transparency; that coverage can only fall as the bar rises.
     """
     if not look:
         raise ValueError("no look identification: the bars are undefined")
-    labels = ("grid", "b", "b_u", "look_relabel_at_b", "mistake_relabels_at_b",
-              "look_assigned_at_b_u", "no_bar", "precision")
+    labels = ("grid", "b", "b_u", "look_assigned_at_b_u", "b_u_literal",
+              "look_assigned_at_b_u_literal", "look_relabel_at_b",
+              "mistake_relabels_at_b", "no_bar", "precision")
     result = dict.fromkeys(labels)
     result["grid"] = list(grid)
     result["no_bar"] = True
@@ -866,16 +921,22 @@ def derive_bars(look: Sequence[Identification], mistake: Sequence[Identification
                           mistake_relabels_at_b=0, no_bar=False)
             break
     by_bar = []
+    b_u = assigned_at = None
+    literal = literal_coverage = None
     for value in grid:
-        assigned_rows = [row for row in look if assigned(row, value)]
-        own = sum(row.match.text_class == row.filename_class for row in assigned_rows)
-        by_bar.append({
-            "bar": value, "assigned": len(assigned_rows),
-            "precision": own / len(assigned_rows) if assigned_rows else None,
-            "coverage": own / len(look)})
-        if result["b_u"] is None and by_bar[-1]["coverage"] >= ASSIGNED_MIN:
-            result.update(b_u=value, look_assigned_at_b_u=by_bar[-1]["coverage"])
-    result["precision"] = {"used_for_b_u": False, "by_bar": by_bar}
+        named = [row for row in look if assigned(row, value)]
+        own = sum(row.match.text_class == row.filename_class for row in named)
+        precision = own / len(named) if named else None
+        coverage = own / len(look)
+        by_bar.append({"bar": value, "assigned": len(named),
+                       "precision": precision, "coverage": coverage})
+        if b_u is None and precision is not None and precision >= ASSIGNED_MIN:
+            b_u, assigned_at = value, precision
+        if literal is None and coverage >= ASSIGNED_MIN:
+            literal, literal_coverage = value, coverage
+    result.update(b_u=b_u, look_assigned_at_b_u=assigned_at,
+                  b_u_literal=literal, look_assigned_at_b_u_literal=literal_coverage,
+                  precision={"used_for_b_u": True, "by_bar": by_bar})
     return result
 
 
@@ -968,9 +1029,22 @@ def _calibration(database: ReferenceDatabase) -> dict:
 
     pool = json.loads(NOISE_POOL_PATH.read_text(encoding="utf-8"))["recordings"]
     noise_store = load_decode_store(NOISE_DECODES_PATH)
-    noise = [apply_floors(identify(item["spans"], database=database), floors)
+    noise = [identify(item["spans"], database=database)
              for item in noise_store["items"].values()]
-    noise_pass = sum(row.floor_ok for row in noise) / len(noise)
+    conventions = noise_pass_by_convention(noise, floors)
+    # B (back off to the nearest calibrated bin) is the headline: the most faithful reading of
+    # the binned rule. A and C are reported beside it (architect r16).
+    noise_pass = conventions["B"]["pass"]
+    floor_status = (f"stopped: noise {100 * noise_pass:.1f}% > {100 * NOISE_PASS_MAX:g}%"
+                    if noise_pass > NOISE_PASS_MAX else "passed")
+    bars["provisional"] = True
+    bars["provisional_reason"] = floor_status
+
+    from .tlog_overlap import iter_pool_rows  # heavy import, calibration only
+
+    unlabelled = sum(1 for row in iter_pool_rows()
+                     if row["split"] == "unclean" and row["filename_label"] is None
+                     and row["usable"])
 
     retention = sum(row.floor_ok for row in applied) / len(applied)
     relabel_rate = bars["look_relabel_at_b"]
@@ -995,6 +1069,9 @@ def _calibration(database: ReferenceDatabase) -> dict:
             "parent": {"path": repo_relative(HOLDOUT_PREREGISTRATION_PATH),
                        "sha256": sha256_file(HOLDOUT_PREREGISTRATION_PATH)},
         },
+        "bu_amendment": {"path": repo_relative(BU_AMENDMENT_PATH),
+                         "sha256": sha256_file(BU_AMENDMENT_PATH)},
+        "floor_status": floor_status,
         "first_pass": {
             "engine_commit": "79acded",
             "defect": "each CIGAR run was credited whole to the ayah it started in, and "
@@ -1050,8 +1127,11 @@ def _calibration(database: ReferenceDatabase) -> dict:
                     "relabelled_at_b": sum(relabelled(row, bars["b"])
                                            for row in mistakes)
                     if bars["b"] is not None else None},
+        "unlabelled_unclean": {"source": "tadabur.tlog_overlap.iter_pool_rows",
+                               "usable": unlabelled},
         "noise": {"recordings": len(noise), "pass": noise_pass,
-                  "floor_passed": sum(row.floor_ok for row in noise)},
+                  "floor_passed": conventions["B"]["passed"],
+                  "conventions": conventions},
         "bars": bars,
         "stop_conditions": stop,
         "throughput": {"clips": len(look), "seconds": round(seconds, 3),
@@ -1091,7 +1171,10 @@ def render(report: Mapping[str, Any]) -> str:
         f"`{report['preregistration']['parent']['sha256'][:12]}`), with the S5 pre-outcome "
         f"amendment in [`docs/tlog-ident-preregistration.md`]"
         f"(tlog-ident-preregistration.md) (sha256 "
-        f"`{report['preregistration']['sha256'][:12]}`).",
+        f"`{report['preregistration']['sha256'][:12]}`), and the owner-approved post-look b_u "
+        f"erratum in [`docs/tlog-ident-bu-amendment.md`]"
+        f"(tlog-ident-bu-amendment.md) (sha256 "
+        f"`{report['bu_amendment']['sha256'][:12]}`).",
         "",
         f"- alphabet: `normalize_phonemes` {parameters['normalization_algorithm_version']}, "
         f"words `{parameters['word_tokenisation']}`",
@@ -1120,6 +1203,8 @@ def render(report: Mapping[str, Any]) -> str:
         f"{report['real_mistake']['sites']} sites |",
         f"| Freesound pool | {report['noise']['recordings']} recordings, "
         f"`{report['decodes']['noise']['mode']}` |",
+        f"| b_u reach (unclean, no filename label, usable) | "
+        f"{report['unlabelled_unclean']['usable']:,} rows |",
         "",
         "## Shortlist guard",
         "",
@@ -1136,21 +1221,36 @@ def render(report: Mapping[str, Any]) -> str:
     lines += [f"| `{bin_}` | {value:.6f} |" for bin_, value in report["floors"].items()]
     lines += [
         "",
-        f"**b = {bars['b']:.2f}**" if bars["b"] is not None else "**b: none on the grid**",
+        f"**b = {bars['b']:.2f} (PROVISIONAL)**" if bars["b"] is not None
+        else "**b: none on the grid**",
         f" ({_pct(bars['look_relabel_at_b'])} of look relabelled, "
         f"{bars['mistake_relabels_at_b']} of the real-mistake clips relabelled).",
-        *([f"**b_u = {bars['b_u']:.2f}** ({_pct(bars['look_assigned_at_b_u'])} assigned their "
-           "own class with labels hidden)."] if bars["b_u"] is not None else
-          ["**b_u: none on the grid.** The literal rule counts own-class assignments over all "
-           "look clips; that share cannot rise with the bar, so the search is vacuous. A dated "
-           "post-look amendment (precision reading) is parked for the owner."]),
+        *([f"**b_u = {bars['b_u']:.2f} (PROVISIONAL)**: {_pct(bars['look_assigned_at_b_u'])} "
+           "of the look clips it names are their own class."] if bars["b_u"] is not None else
+          ["**b_u: none on the grid** (no bar names at least 99% own-class clips)."]),
+        f"Literal-rule b_u (share of all clips): {_bar(bars['b_u_literal'])}; recorded for "
+        "transparency.",
         "",
         "| bar | assigned | precision | coverage |",
         "|---|---|---|---|",
         *[f"| {row['bar']:.2f} | {row['assigned']} | {_pct(row['precision'])} | "
           f"{_pct(row['coverage'])} |" for row in bars["precision"]["by_bar"]],
         "",
-        "_The per-bar precision table is informational and was not used to derive b_u._",
+        "_Precision is the amended b_u's quantity; coverage is the literal rule's, which can "
+        "only fall as the bar rises._",
+        "",
+        "## Floor status",
+        "",
+        f"`{report['floor_status']}`",
+        "",
+        "| convention | recordings | passed | pass |",
+        "|---|---|---|---|",
+        *[f"| {key} | {value['recordings']} | {value['passed']} | {_pct(value['pass'])} |"
+          for key, value in report["noise"]["conventions"].items()],
+        "",
+        "B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C "
+        "excludes it. The frozen noise stop fires under all three, so b and b_u are provisional "
+        "and no replacement floor is applied here (parked for the owner).",
         "",
         "## Reported, never tuned on",
         "",

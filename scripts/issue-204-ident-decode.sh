@@ -36,7 +36,8 @@ stage_repo() {
   sha=$(git -C "$REPO_DIR" rev-parse HEAD)
   [ "$branch" = HEAD ] && branch=HEAD
   remote "mkdir -p '$ROOT' '$LOGS' && rm -rf '$REPO' '$ROOT/repo.bundle'"
-  git -C "$REPO_DIR" bundle create - "$branch" | remote "cat > '$ROOT/repo.bundle'"
+  # stdin is the bundle itself, so this one ssh must not use -n.
+  git -C "$REPO_DIR" bundle create - "$branch" | ssh "$HOST" "cat > '$ROOT/repo.bundle'"
   if [ "$branch" = HEAD ]; then
     remote "git clone -q '$ROOT/repo.bundle' '$REPO'"
   else

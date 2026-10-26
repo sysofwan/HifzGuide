@@ -1016,6 +1016,10 @@ def _pct(value: float | None) -> str:
     return "n/c" if value is None else f"{100 * value:.2f}%"
 
 
+def _bar(value: float | None) -> str:
+    return "none" if value is None else f"{value:.2f}"
+
+
 def render(report: Mapping[str, Any]) -> str:
     """The generated page; every number is read from the report."""
     parameters, look, bars = report["parameters"], report["look"], report["bars"]
@@ -1102,8 +1106,7 @@ def render(report: Mapping[str, Any]) -> str:
         f"{_pct(stop['look_retention']['value'])} | {stop['look_retention']['fired']} |",
         f"| noise pass | {_pct(stop['noise_pass']['limit'])} | "
         f"{_pct(stop['noise_pass']['value'])} | {stop['noise_pass']['fired']} |",
-        f"| bar b | — | {'none' if bars['b'] is None else f'{bars["b"]:.2f}'} | "
-        f"{stop['bar']['fired']} |",
+        f"| bar b | — | {_bar(bars['b'])} | {stop['bar']['fired']} |",
         "",
     ]
     return "\n".join(lines)

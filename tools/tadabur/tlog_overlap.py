@@ -120,9 +120,11 @@ OVERLAP_DIR = Path(__file__).parent / "tlog" / "overlap"
 META_NAME = "meta.json"
 #: The set codes, in the order that breaks a tie for the primary ``excluded`` reason.
 SETS = ("tarteel_v1", "qud", "gate_eval", "tadabur_frame", "qdat", "qdat_bench", "retasy")
-#: The frozen exclusion union, in order: the floors, S1's id overlap, S4's primary reason.
-EXCLUSION_ORDER = ("codec", "silence", "eval_overlap:tarteel_v1",
-                   *(f"eval_overlap:{code}" for code in SETS), "duplicate")
+#: The frozen exclusion union, in order: the floors, S4's set reasons in :data:`SETS` order
+#: (which starts with ``tarteel_v1``, so S1's id reason appears once), then ``duplicate``.
+EXCLUSION_ORDER = ("codec", "silence", *(f"eval_overlap:{code}" for code in SETS),
+                   "duplicate")
+assert len(EXCLUSION_ORDER) == len(set(EXCLUSION_ORDER))
 #: The frame sets: one audio pass over ``held_out_shards()``, labelled by gate membership.
 FRAME_SETS = ("gate_eval", "tadabur_frame")
 #: Digital silence's word, and the all-ones word: never indexed, never queried.
@@ -337,7 +339,10 @@ def _row_exclusions(row: Mapping[str, Any], record: Mapping[str, Any]) -> tuple[
     unknown = found - set(EXCLUSION_ORDER)
     if unknown:
         raise ValueError(f"{_key(row)} has exclusions outside the union: {sorted(unknown)}")
-    return tuple(reason for reason in EXCLUSION_ORDER if reason in found)
+    exclusions = tuple(reason for reason in EXCLUSION_ORDER if reason in found)
+    if len(exclusions) != len(found):
+        raise AssertionError(f"{_key(row)} emitted a duplicated exclusion: {exclusions}")
+    return exclusions
 
 
 def iter_pool_rows(*, overlap_dir: Path = OVERLAP_DIR, index_dir: Path = INDEX_DIR,

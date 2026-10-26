@@ -53,6 +53,11 @@ EVAL_ROLES = ("look", "confirm.1", "confirm.2", "confirm.3", "confirm.4")
 ROLE_ORDER = (*EVAL_ROLES, "train")
 EVAL_SETS = ("tarteel_v1", "qud", "gate_eval", "tadabur_frame", "qdat", "qdat_bench", "retasy")
 LINE = 0.238
+#: The exclusion union written out independently of the module constant the reader uses.
+EXCLUSION_LITERAL = ("codec", "silence", "eval_overlap:tarteel_v1", "eval_overlap:qud",
+                     "eval_overlap:gate_eval", "eval_overlap:tadabur_frame",
+                     "eval_overlap:qdat", "eval_overlap:qdat_bench",
+                     "eval_overlap:retasy", "duplicate")
 #: The 197 frame clips the panel seal forbids fingerprinting (architect r13 §3).
 SEALED_PANEL = 197
 #: The frozen inputs, pinned before S4's run: ``split/``'s file-hash manifest and pass-1 meta.
@@ -370,8 +375,9 @@ def test_iter_pool_rows_is_the_one_union_reader(to, records, frozen):
         if row["excluded"] is not None:
             expected.add(row["excluded"])
         assert set(row["exclusions"]) == expected
-        assert row["exclusions"] == tuple(reason for reason in to.EXCLUSION_ORDER
+        assert row["exclusions"] == tuple(reason for reason in EXCLUSION_LITERAL
                                           if reason in expected)
+        assert len(row["exclusions"]) == len(set(row["exclusions"]))
         assert row["usable"] == (not expected)
         if row["usable"]:
             usable[row["role"]] += 1
@@ -381,6 +387,26 @@ def test_iter_pool_rows_is_the_one_union_reader(to, records, frozen):
     assert {role: usable[role] for role in EVAL_ROLES} == {
         "look": 9_710, "confirm.1": 9_632, "confirm.2": 9_747,
         "confirm.3": 9_462, "confirm.4": 9_586}
+
+
+def test_row_exclusions_is_ordered_and_deduplicated(to):
+    """Literal expected tuples: the production constant is checked, never used as the oracle."""
+    assert to.EXCLUSION_ORDER == EXCLUSION_LITERAL
+    assert len(to.EXCLUSION_ORDER) == len(set(to.EXCLUSION_ORDER))
+
+    def row(reasons=(), s1=False):
+        return {"split": "clean", "shard_file": "s", "row": 0,
+                "exclusion_reasons": tuple(reasons), "s1_eval_overlap": s1}
+
+    def record(excluded=None):
+        return {"excluded": excluded}
+
+    assert to._row_exclusions(row(s1=True), record()) == ("eval_overlap:tarteel_v1",)
+    assert to._row_exclusions(row(), record("eval_overlap:retasy")) == ("eval_overlap:retasy",)
+    assert to._row_exclusions(row(s1=True), record("eval_overlap:tarteel_v1")) == (
+        "eval_overlap:tarteel_v1",)
+    assert to._row_exclusions(row(("silence", "codec")), record("duplicate")) == (
+        "codec", "silence", "duplicate")
 
 
 def test_the_pool_meta_reports_train_and_every_eval_role(to):

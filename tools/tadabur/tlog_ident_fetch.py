@@ -1,4 +1,4 @@
-"""S5b (#204): fetch the two fresh negative sources and write their manifests.
+"""S5b (#204): fetch and draw the two fresh negative sources.
 
 Two sources, one draw rule each, both fixed by ``docs/tlog-ident-floor-preregistration.md``
 (whose SHA-256 is pinned in :mod:`tadabur.tlog_ident`):
@@ -23,19 +23,24 @@ Usage (from ``tools/``)::
     python -m tadabur.tlog_ident_fetch freesound --cache-dir /tmp/s5b-freesound
     python -m tadabur.tlog_ident_fetch common-voice \\
         --archives-dir /Volumes/NetBackup/HifzGuide/scratch/common-voice/archives
+    python -m tadabur.tlog_ident_fetch common-voice-draw \\
+        --archives-dir /Volumes/NetBackup/HifzGuide/scratch/common-voice/archives \\
+        --clips-dir /Volumes/NetBackup/HifzGuide/scratch/common-voice/clips
 """
 
 from __future__ import annotations
 
 import argparse
+import codecs
+import csv
 import hashlib
 import json
 import os
 import re
 import subprocess
+import tarfile
 import tempfile
 from collections import Counter
-from dataclasses import replace
 from pathlib import Path
 
 from tadabur import tlog_ident_confirm as confirm
@@ -49,6 +54,7 @@ from training.perturbation import NOISE_LICENCES, NoiseRecording, pool_eligible
 ROOT = Path(__file__).resolve().parents[2]
 NONPRO_GAP_POOL = ROOT / "tools" / "tadabur" / "nonpro_gap" / "noise_pool.json"
 AUGMENTATION_POOL = ROOT / "tools" / "tadabur" / "augmentation" / "noise_pool.json"
+IMLAEI_PATH = ROOT / "data" / "imlaei.json"
 
 #: Mozilla Data Collective: the presigned-URL endpoint and where the key lives on the GPU box.
 MDC_API = "https://mozilladatacollective.com/api"
@@ -281,6 +287,188 @@ def common_voice(args: argparse.Namespace) -> None:
         raise SystemExit(f"{failures} of {len(requested)} archives failed")
 
 
+# --- Common Voice: the draw, streamed from the archives ----------------------------------------
+
+
+def _member_basename(member: tarfile.TarInfo) -> str:
+    return member.name.rsplit("/", 1)[-1]
+
+
+def _tsv(tar: tarfile.TarFile, member: tarfile.TarInfo) -> csv.DictReader:
+    """One TSV member's rows, streamed off the tar (never the whole member at once).
+
+    ``codecs.getreader`` rather than ``io.TextIOWrapper``: a streamed tar's member file has no
+    ``seekable`` and the wrapper insists on asking.
+    """
+    handle = tar.extractfile(member)
+    if handle is None:
+        raise RuntimeError(f"{member.name} is not a regular file")
+    return csv.DictReader(codecs.getreader("utf-8")(handle), delimiter="\t")
+
+
+def _archive(archives_dir: Path, pin: dict) -> Path:
+    """The downloaded archive for ``pin``, checked against the pinned size."""
+    path = archives_dir / pin["filename"]
+    if not path.is_file():
+        raise RuntimeError(f"{path} is not downloaded")
+    size = path.stat().st_size
+    if size != pin["size_bytes"]:
+        raise RuntimeError(f"{path} is {size} bytes, pinned {pin['size_bytes']}")
+    return path
+
+
+def locale_stats(archive: Path, locale: str, ngrams) -> dict:
+    """Examined / guard-excluded / eligible clips and distinct speakers, from validated.tsv.
+
+    ``validated.tsv`` precedes ``clips/`` in the published archives, so this stops after the
+    table and never decompresses audio.
+    """
+    examined = excluded = 0
+    speakers: set[str] = set()
+    with tarfile.open(archive, "r|gz") as tar:
+        for member in tar:
+            if _member_basename(member) != "validated.tsv":
+                continue
+            for row in _tsv(tar, member):
+                examined += 1
+                if locale in confirm.ARABIC_SCRIPT and confirm.fails_quran_guard(
+                        row["sentence"], ngrams):
+                    excluded += 1
+                    continue
+                speakers.add(row["client_id"])
+            break
+    eligible = examined - excluded
+    return {"examined": examined, "excluded_guard": excluded, "eligible": eligible,
+            "speakers": len(speakers), "capacity": min(eligible, 2 * len(speakers))}
+
+
+def draw_locale(archive: Path, locale: str, count: int, ngrams,
+                clips_dir: Path) -> tuple[dict, list[dict], int]:
+    """Draw ``count`` clips and capture exactly those, in one streaming pass.
+
+    The archive's tables precede ``clips/``, so the draw is fixed before any audio streams past;
+    nothing but the drawn clips is stored. Peak memory is the locale's validated rows
+    (path, speaker, sentence), not the archive.
+    """
+    durations: dict[str, int] = {}
+    chosen: dict[str, dict] = {}
+    selected: dict = {}
+    eligible = 0
+    captured: set[str] = set()
+    (clips_dir / locale).mkdir(parents=True, exist_ok=True)
+    with tarfile.open(archive, "r|gz") as tar:
+        for member in tar:
+            name = _member_basename(member)
+            if name == "clip_durations.tsv":
+                durations = {row["clip"]: int(row["duration[ms]"])
+                             for row in _tsv(tar, member)}
+                continue
+            if name == "validated.tsv" and not chosen:
+                rows = []
+                for row in _tsv(tar, member):
+                    if locale in confirm.ARABIC_SCRIPT and confirm.fails_quran_guard(
+                            row["sentence"], ngrams):
+                        continue
+                    rows.append({"path": row["path"], "client_id": row["client_id"],
+                                 "sentence": row["sentence"]})
+                eligible = len(rows)
+                selected = confirm.cv_draw(rows, locale=locale, count=count)
+                chosen = {row["path"]: row for row in selected["drawn"]}
+                rows = []  # the draw is fixed; release the table before the audio
+                continue
+            if chosen and name in chosen and "/clips/" in member.name:
+                data = tar.extractfile(member).read()
+                row = chosen[name]
+                row["audio_sha256"] = hashlib.sha256(data).hexdigest()
+                (clips_dir / locale / name).write_bytes(data)
+                captured.add(name)
+                if len(captured) == len(chosen):
+                    break
+    if not chosen:
+        raise RuntimeError(f"{archive}: validated.tsv was not read")
+    missing = sorted(set(chosen) - captured)
+    if missing:
+        raise RuntimeError(f"{locale}: {len(missing)} drawn clips missing from {archive}: "
+                           f"{missing[:3]}")
+    return selected, [_manifest_row(locale, chosen[path], durations)
+                      for path in sorted(chosen)], eligible
+
+
+def _manifest_row(locale: str, row: dict, durations: dict[str, int]) -> dict:
+    return {"arm": "ar" if locale == "ar" else "other", "locale": locale,
+            "path": row["path"], "client_id": row["client_id"],
+            "sentence": row["sentence"], "audio_sha256": row["audio_sha256"],
+            "duration_ms": durations[row["path"]], "release": confirm.CV_RELEASE}
+
+
+def _write_jsonl(path: Path, rows: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
+                         encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def common_voice_draw(args: argparse.Namespace) -> None:
+    """Draw the five 100-clip arms and 500 Arabic clips from the downloaded archives."""
+    confirm.require_committed([FLOOR_PREREGISTRATION_PATH])
+    pins = archive_pins()
+    ngrams = confirm.quran_ngrams(json.loads(IMLAEI_PATH.read_text(encoding="utf-8")))
+    archives_dir = Path(args.archives_dir)
+    clips_dir = Path(args.clips_dir)
+
+    stats = {}
+    for locale in CV_PRIMARY_LOCALES:
+        stats[locale] = locale_stats(_archive(archives_dir, pins[locale]), locale, ngrams)
+        print(f"{locale}: {stats[locale]}", flush=True)
+    plan = confirm.locale_plan({locale: stats[locale]["capacity"]
+                                for locale in confirm.PRIMARY_LOCALES})
+    if stats["ar"]["capacity"] < confirm.CV_AR_SIZE:
+        raise SystemExit(f"ar has {stats['ar']['capacity']} clips at cap 2, "
+                         f"not {confirm.CV_AR_SIZE}")
+
+    rows: list[dict] = []
+    locales: dict[str, dict] = {}
+    for primary in CV_PRIMARY_LOCALES:
+        if primary == "ar":
+            result, drawn, eligible = draw_locale(
+                _archive(archives_dir, pins["ar"]), "ar", confirm.CV_AR_SIZE, ngrams,
+                clips_dir)
+            if len(drawn) != confirm.CV_AR_SIZE:
+                raise SystemExit(f"ar drew {len(drawn)} of {confirm.CV_AR_SIZE}")
+        else:
+            entry = plan[primary]
+            if entry["substituted"]:
+                raise SystemExit(f"{primary}: needs the {entry['locale']} archive, "
+                                 "which the fetch did not download")
+            result, drawn, eligible = draw_locale(
+                _archive(archives_dir, pins[primary]), primary, confirm.CV_OTHER_PER_LOCALE,
+                ngrams, clips_dir)
+            if len(drawn) != confirm.CV_OTHER_PER_LOCALE:
+                raise SystemExit(f"{primary} drew {len(drawn)} of {confirm.CV_OTHER_PER_LOCALE}")
+        if eligible != stats[primary]["eligible"]:
+            raise SystemExit(f"{primary}: the draw pass saw {eligible} eligible clips, "
+                             f"the count pass {stats[primary]['eligible']}")
+        rows += drawn
+        locales[primary] = {"primary": primary, "locale": primary, "substituted": False,
+                            "cap_reached": result["cap_reached"],
+                            "eligible": stats[primary]["eligible"],
+                            "excluded_guard": stats[primary]["excluded_guard"],
+                            "examined": stats[primary]["examined"]}
+        print(f"{primary}: drew {len(drawn)} at cap {result['cap_reached']}", flush=True)
+
+    rows.sort(key=lambda row: (row["locale"], row["path"]))
+    _write_jsonl(Path(args.manifest), rows)
+    _write_json(Path(args.counts), {
+        "salt": confirm.SALT,
+        "release": confirm.CV_RELEASE,
+        "archives": [pins[locale] for locale in sorted(pins)],
+        "locales": locales,
+        "provenance": _provenance(),
+    })
+    print(f"wrote {args.manifest}: {len(rows)} clips from {len(locales)} arms", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -301,6 +489,15 @@ def main() -> None:
     cv_parser.add_argument("--remote", default=MDC_REMOTE,
                            help="the host that holds the MDC key")
     cv_parser.set_defaults(run=common_voice)
+
+    draw_parser = commands.add_parser(
+        "common-voice-draw", help="draw the CV negatives from the downloaded archives")
+    draw_parser.add_argument("--archives-dir", type=Path, required=True)
+    draw_parser.add_argument("--clips-dir", type=Path, required=True,
+                             help="scratch for the drawn clips (rsynced to the GPU box)")
+    draw_parser.add_argument("--manifest", type=Path, default=confirm.CV_MANIFEST_PATH)
+    draw_parser.add_argument("--counts", type=Path, default=confirm.CV_COUNTS_PATH)
+    draw_parser.set_defaults(run=common_voice_draw)
 
     args = parser.parse_args()
     args.run(args)

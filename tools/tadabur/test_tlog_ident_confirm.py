@@ -388,7 +388,8 @@ def test_the_cv_manifest_is_500_arabic_plus_500_non_arabic_with_the_cap_respecte
                               "excluded_guard", "examined"}
         assert entry["primary"] == primary
         assert entry["cap_reached"] in (1, 2) or entry["cap_reached"] is None
-        assert per_locale[entry["locale"]] == 100
+        assert per_locale[entry["locale"]] == (
+            confirm.CV_AR_SIZE if primary == "ar" else 100)
         counts_by_speaker = Counter(row["client_id"] for row in rows
                                     if row["locale"] == entry["locale"])
         if entry["cap_reached"] is not None:

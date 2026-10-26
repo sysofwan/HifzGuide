@@ -634,9 +634,9 @@ def rule_database(ident):
 
 def test_a_decode_under_l_min_is_non_recitation_however_wide_its_margin(ident, rule_database):
     """S5b (#204): the rule is ``len >= L_MIN`` and ``real - own decoy >= DELTA``; the binned
-    floor is retired for verdicts. Seven characters fail on length even at Δ = 0.57."""
+    floor is retired for verdicts. Six characters fail on length even at Δ = 0.57."""
     decoded = ident.identify("بجحدذر", database=rule_database)
-    assert decoded.length == 7 < ident.L_MIN
+    assert decoded.length == 6 < ident.L_MIN
     assert decoded.match.score - decoded.decoy > ident.DELTA
     assert decoded.floor_ok is False
     assert decoded.label_source == ident.NONE

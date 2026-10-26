@@ -413,9 +413,10 @@ def test_the_five_bars_use_the_limits_wilson_intervals_and_the_first_fired_bar(c
     def negatives(passed: int, total: int) -> list[bool]:
         return [True] * passed + [False] * (total - passed)
 
+    # Every arm takes the floor verdict itself: True = the clip passed the rule.
     passing = confirm.five_bars(
         freesound=negatives(10, 1000), cv_ar=negatives(5, 500), cv_other=negatives(5, 500),
-        mistakes=[False] * 52, look_retention=0.90)
+        mistakes=[True] * 52, look_retention=0.90)
     assert passing["status"] == "confirmed"
     assert passing["freesound"]["limit"] == pytest.approx(0.01)
     assert passing["freesound"]["clips"] == 1000
@@ -429,19 +430,19 @@ def test_the_five_bars_use_the_limits_wilson_intervals_and_the_first_fired_bar(c
 
     over = confirm.five_bars(
         freesound=negatives(11, 1000), cv_ar=negatives(0, 500), cv_other=negatives(0, 500),
-        mistakes=[False] * 52, look_retention=0.99)
+        mistakes=[True] * 52, look_retention=0.99)
     assert over["status"] == "stopped: freesound 0.011 > 0.01"
     assert over["freesound"]["fired"] is True
 
     missed = confirm.five_bars(
         freesound=negatives(0, 1000), cv_ar=negatives(0, 500), cv_other=negatives(0, 500),
-        mistakes=[True] * 52, look_retention=0.99)
+        mistakes=[False] * 52, look_retention=0.99)
     assert missed["status"] == "stopped: mistakes 0/52"
-    assert missed["mistakes"]["fired"] is True
+    assert missed["mistakes"] == {"clips": 52, "passed": 0, "fired": True}
 
     dropped = confirm.five_bars(
         freesound=negatives(0, 1000), cv_ar=negatives(0, 500), cv_other=negatives(0, 500),
-        mistakes=[False] * 52, look_retention=0.899)
+        mistakes=[True] * 52, look_retention=0.899)
     assert dropped["status"].startswith("stopped: look_retention")
     assert dropped["look_retention"]["fired"] is True
 

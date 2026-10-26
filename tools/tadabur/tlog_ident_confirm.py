@@ -256,18 +256,17 @@ def five_bars(*, freesound: Sequence[bool], cv_ar: Sequence[bool],
               look_retention: float) -> dict[str, Any]:
     """The five bars and the status the first fired one names.
 
-    ``freesound``, ``cv_ar`` and ``cv_other`` are recitation verdicts (``True`` = passed as
-    recitation, the failure each 1% limit counts). ``mistakes`` are the 52 real-mistake clips'
-    **failure** flags: ``True`` means the clip did not pass, so the bar is met when every flag is
-    false. ``look_retention`` is the share of look clips the rule keeps.
+    Every arm takes the floor verdict itself (``floor_ok``): ``True`` = the clip passed the
+    rule. For ``freesound``, ``cv_ar`` and ``cv_other`` a pass is the failure each 1% limit
+    counts; the mistakes bar holds only when all 52 clips pass.
+    ``look_retention`` is the share of look clips the rule keeps.
     """
     arms = {
         "freesound": pass_rate(sum(freesound), len(freesound), limit=PASS_LIMIT),
         "cv_ar": pass_rate(sum(cv_ar), len(cv_ar), limit=PASS_LIMIT),
         "cv_other": pass_rate(sum(cv_other), len(cv_other), limit=PASS_LIMIT),
     }
-    failure_flags = sum(1 for flag in mistakes if flag)
-    mistake_passed = len(mistakes) - failure_flags
+    mistake_passed = sum(1 for passed in mistakes if passed)
     arms["mistakes"] = {"clips": len(mistakes), "passed": mistake_passed,
                         "fired": mistake_passed != len(mistakes)}
     # A retention rate, not a count: ``passed`` has no meaning here and stays null.

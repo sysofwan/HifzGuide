@@ -16,7 +16,7 @@ Frozen by [`docs/tlog-holdout-preregistration.md`](tlog-holdout-preregistration.
 
 The first look pass (engine `79acded`) had a span-attribution defect: each CIGAR run was credited whole to the ayah it started in, and aligned characters were counted rather than words. Before this report the engine was brought to the frozen rule: runs are split at ayah boundaries and the ayah with the most aligned words is credited. No rule, grid value or input changed, and the same committed look decodes were rescored; only the numbers below count.
 
-A second look pass (engine `37c18cf`) overstated the margin: a different-class runner-up that started mid-ayah and ran on into the next one was split at every boundary, so its location was lost. The window's free characters are now searched as one joined range per side and as the separate ayah slices (a joined range's best alignment can be the best class and hide a worse different-class one beside it), and a sliced ayah keeps its origin so its words stay its own. Margins only: b_u, its precision table and the assigned counts. Floors and b are unchanged, because they read the decoy score and Δ. The same committed inputs were rescored; only the numbers below count.
+A second look pass (engine `c993a79`) overstated the margin: the runner-up search took one alignment per free range, so a location beside a same-class optimum was lost whenever that optimum was the best class: a tied location, or a worse straddling one. Every free word run of every shortlisted window is now searched span by span with branch and bound: a span's score cannot exceed its parent's, so the search skips what cannot beat the best competitor yet and returns as soon as a span is admissible. A sliced ayah keeps its origin, so its words stay its own. Margins only: b_u, its precision table and the assigned counts. Floors and b are unchanged, because they read the decoy score and Δ. The same committed inputs were rescored; only the numbers below count.
 
 ## Inputs
 
@@ -124,7 +124,7 @@ B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C
 | `cer_wav ≥ 0.2` tail relabel rate at b | 0.06% |
 | Freesound noise pass | 35.73% |
 | exhaustive-decoy floors (sensitivity) | retention 99.98% |
-| throughput | 9.74 ms per clip |
+| throughput | 8.54 ms per clip |
 
 The noise population is decoded in `stream_b0`, while look and the floors use whole-clip `spans`; the noise rate compares a different decode mode, not the calibration population's.
 

@@ -578,42 +578,82 @@ class ReferenceDatabase:
             return None
         return _Candidate(candidate.surah, candidate.ayah, candidate.text[lo:hi], pieces)
 
-    def _non_overlapping_segments(self, candidate: _Candidate, best: Match
-                                  ) -> tuple[tuple[int, int], ...]:
-        """The window's character ranges whose words do not overlap the best span.
+    def _free_word_runs(self, candidate: _Candidate, best: Match
+                        ) -> tuple[tuple[tuple[int, int], ...], ...]:
+        """The window's words outside the best span, split into maximal contiguous runs.
 
-        One range per ayah slice: the slices are what :meth:`competitor` searches both
-        separately and joined across ayah boundaries.
+        Each word is its ``[start, end)`` character range in the window text. The best span's
+        words are contiguous, so there are at most two runs; every location that does not
+        overlap the winner lies inside one of them.
         """
-        segments: list[tuple[int, int]] = []
+        inside: list[bool] = []
+        spans: list[tuple[int, int]] = []
         for constituent in candidate.constituents:
             reference = self.ayat[(constituent.surah, constituent.ayah)]
-            if constituent.surah != best.surah or not (
-                    best.ayah_from <= constituent.ayah <= best.ayah_to):
-                segments.append((constituent.start, constituent.end))
-                continue
-            first = best.word_from if constituent.ayah == best.ayah_from else 1
-            last = best.word_to if constituent.ayah == best.ayah_to else reference.words
-            overlap_start = constituent.start + reference.offsets[first - 1]
-            overlap_end = constituent.start + reference.offsets[last]
-            if overlap_start > constituent.start:
-                segments.append((constituent.start, overlap_start))
-            if overlap_end < constituent.end:
-                segments.append((overlap_end, constituent.end))
-        return tuple(segments)
+            for word in range(1, reference.words + 1):
+                spans.append((constituent.start + reference.offsets[word - 1],
+                              constituent.start + reference.offsets[word]))
+                inside.append(
+                    constituent.surah == best.surah
+                    and best.ayah_from <= constituent.ayah <= best.ayah_to
+                    and (constituent.ayah != best.ayah_from or word >= best.word_from)
+                    and (constituent.ayah != best.ayah_to or word <= best.word_to))
+        runs: list[list[tuple[int, int]]] = []
+        run: list[tuple[int, int]] = []
+        for span, taken in zip(spans, inside):
+            if taken:
+                if run:
+                    runs.append(run)
+                    run = []
+            else:
+                run.append(span)
+        if run:
+            runs.append(run)
+        return tuple(tuple(word_run) for word_run in runs)
+
+    def _run_competitor(self, query: str, candidate: _Candidate,
+                        run: Sequence[tuple[int, int]], best: Match,
+                        floor: float) -> Match | None:
+        """The best different-class alignment inside one free word run.
+
+        Branch and bound over word spans: a span's best score cannot exceed its parent's, so a
+        span whose parent scores below the best competitor so far is skipped, and an
+        admissible span prunes its own sub-spans, because its alignment is the earliest
+        location at that score and so wins the frozen tie-break. This reaches a location that
+        the whole run's single best alignment hides when that alignment is the best class.
+        """
+        found: Match | None = None
+        seen: set[tuple[int, int]] = set()
+
+        def visit(first: int, last: int, bound: float) -> None:
+            nonlocal found
+            if bound < max(floor, found.score if found is not None else 0.0):
+                return
+            if (first, last) in seen:
+                return
+            seen.add((first, last))
+            sub = self._sub_candidate(candidate, run[first][0], run[last][1])
+            match = self._match(query, sub)
+            if match.text_class != best.text_class:
+                if found is None or _rank(match) > _rank(found):
+                    found = match
+                return
+            if first < last:
+                visit(first + 1, last, match.score)
+                visit(first, last - 1, match.score)
+
+        visit(0, len(run) - 1, float("inf"))
+        return found
 
     def competitor(self, query: str, windows: Sequence[Window], best: Match) -> Match | None:
         """The best different-class alignment at a location that does not overlap ``best``.
 
-        Every shortlisted window is searched, including the winning one. Its characters
-        outside the best span's words are searched twice: as one joined range per side, so a
-        different class that starts mid-ayah and runs on into the next one is found as one
-        location, and as the separate ayah slices, because a range's single best alignment may
-        be the best class and would otherwise hide a worse different-class alignment beside it.
+        Every shortlisted window is searched, including the winning one: each of its free word
+        runs is searched span by span (branch and bound), so a different class beside the
+        winner is found whether it scores the same as a same-class optimum or less.
         """
         def key(row: Match, winner: bool) -> tuple:
-            return (row.score, winner, -row.surah, -row.ayah_from, -row.word_from,
-                    -row.ayah_to, -row.word_to)
+            return _rank(row, winner)
 
         found: tuple[tuple, Match] | None = None
 
@@ -625,19 +665,16 @@ class ReferenceDatabase:
 
         for window in windows:
             # A window's own winning alignment keeps the pre-existing tie-break: on equal
-            # scores it is preferred over a segment found inside another window.
+            # scores it is preferred over a location found inside another window.
             if window.match.text_class != best.text_class and not _overlaps(window.match, best):
                 offer(window.match, True)
             candidate = self._candidate(window.surah, window.ayah, decoy=False)
-            pieces = self._non_overlapping_segments(candidate, best)
-            for lo, hi in dict.fromkeys(pieces + _join_adjacent(pieces)):
-                sub = self._sub_candidate(candidate, lo, hi)
-                if sub is None:
-                    continue
-                match = self._match(query, sub)
-                if match.text_class == best.text_class or _overlaps(match, best):
-                    continue
-                offer(match, False)
+            for run in self._free_word_runs(candidate, best):
+                match = self._run_competitor(
+                    query, candidate, run, best,
+                    found[0][0] if found is not None else float("-inf"))
+                if match is not None:
+                    offer(match, False)
         return None if found is None else found[1]
 
 
@@ -664,15 +701,10 @@ def _word_at(reference: AyahReference, offset: int, position: int) -> int:
     return min(max(word, 0), reference.words - 1) + 1
 
 
-def _join_adjacent(ranges: Iterable[tuple[int, int]]) -> tuple[tuple[int, int], ...]:
-    """``ranges`` with character-adjacent neighbours joined into one range."""
-    joined: list[tuple[int, int]] = []
-    for start, stop in ranges:
-        if joined and joined[-1][1] == start:
-            joined[-1] = (joined[-1][0], stop)
-        else:
-            joined.append((start, stop))
-    return tuple(joined)
+def _rank(row: Match, winner: bool = False) -> tuple:
+    """The frozen competitor ranking: score, the window-winner flag, then the earlier span."""
+    return (row.score, winner, -row.surah, -row.ayah_from, -row.word_from,
+            -row.ayah_to, -row.word_to)
 
 
 def _overlaps(first: Match, second: Match) -> bool:
@@ -1204,13 +1236,15 @@ def _calibration(database: ReferenceDatabase) -> dict:
             "rules_changed": False,
         },
         "margin_fix": {
-            "engine_commit": "37c18cf",
-            "defect": "a different-class runner-up that started mid-ayah and ran on into the "
-                      "next one was split at every boundary, so its location was lost",
-            "fix": "The window's free characters are now searched as one joined range per "
-                   "side and as the separate ayah slices (a joined range's best alignment can "
-                   "be the best class and hide a worse different-class one beside it), and a "
-                   "sliced ayah keeps its origin so its words stay its own.",
+            "engine_commit": "c993a79",
+            "defect": "the runner-up search took one alignment per free range, so a location "
+                      "beside a same-class optimum was lost whenever that optimum was the "
+                      "best class: a tied location, or a worse straddling one",
+            "fix": "Every free word run of every shortlisted window is now searched span by "
+                   "span with branch and bound: a span's score cannot exceed its parent's, so "
+                   "the search skips what cannot beat the best competitor yet and returns as "
+                   "soon as a span is admissible. A sliced ayah keeps its origin, so its "
+                   "words stay its own.",
             "affected": "Margins only: b_u, its precision table and the assigned counts. "
                         "Floors and b are unchanged, because they read the decoy score and Δ.",
         },

@@ -453,9 +453,9 @@
  },
  "margin_fix": {
   "affected": "Margins only: b_u, its precision table and the assigned counts. Floors and b are unchanged, because they read the decoy score and Δ.",
-  "defect": "a different-class runner-up that started mid-ayah and ran on into the next one was split at every boundary, so its location was lost",
-  "engine_commit": "37c18cf",
-  "fix": "The window's free characters are now searched as one joined range per side and as the separate ayah slices (a joined range's best alignment can be the best class and hide a worse different-class one beside it), and a sliced ayah keeps its origin so its words stay its own."
+  "defect": "the runner-up search took one alignment per free range, so a location beside a same-class optimum was lost whenever that optimum was the best class: a tied location, or a worse straddling one",
+  "engine_commit": "c993a79",
+  "fix": "Every free word run of every shortlisted window is now searched span by span with branch and bound: a span's score cannot exceed its parent's, so the search skips what cannot beat the best competitor yet and returns as soon as a span is admissible. A sliced ayah keeps its origin, so its words stay its own."
  },
  "mistake": {
   "clips": 52,
@@ -624,8 +624,8 @@
  },
  "throughput": {
   "clips": 4537,
-  "ms_per_clip": 9.742,
-  "seconds": 44.198
+  "ms_per_clip": 8.54,
+  "seconds": 38.746
  },
  "unlabelled_unclean": {
   "source": "tadabur.tlog_overlap.iter_pool_rows",

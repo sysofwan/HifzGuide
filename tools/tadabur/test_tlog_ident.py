@@ -350,6 +350,131 @@ def test_a_joined_range_never_hides_the_different_class_beside_it(ident):
     assert decoded.label_source == ident.NONE
 
 
+def test_a_tied_different_class_location_sets_the_margin(ident):
+    """R3.1: the window centred at 1:3 holds two perfect locations. The first is 1:2, which
+    repeats the winner's class; the second is 1:2 word 2 through 1:3 word 4, whose class is
+    1:3. The margin is the difference against that second location, so it is zero."""
+    db = ident.ReferenceDatabase.build([
+        ident.AyahReference(1, 1, "بتثجبتثج", (0, 4, 8)),
+        ident.AyahReference(1, 2, "بتثجبتثج", (0, 4, 8)),
+        ident.AyahReference(1, 3, "بتثج", (0, 1, 2, 3, 4)),
+    ])
+    decoded = ident.identify("بتثجبتثج", database=db, floors={"0-20": 0.0},
+                             bars={"b": 0.01, "b_u": 0.01})
+    assert decoded.match.score == pytest.approx(1.0)
+    assert decoded.margin == pytest.approx(0.0)
+    assert decoded.margin_class == db.text_class(1, 3)
+    assert decoded.label_source == ident.NONE
+    assert decoded.assigned_label is None
+
+
+def test_a_lower_scoring_straddling_location_sets_the_margin(ident):
+    """R3.1: only a worse straddling location exists beside the same-class optimum. It scores
+    0.875 (one substitution over eight characters), so the margin is 0.125, not the 0.625 the
+    single-optimum search reports. The row is still named at the provisional b_u = 0.01."""
+    db = ident.ReferenceDatabase.build([
+        ident.AyahReference(1, 1, "بتثجبتثج", (0, 4, 8)),
+        ident.AyahReference(1, 2, "بتثجبتثج", (0, 4, 8)),
+        ident.AyahReference(1, 3, "بتثح", (0, 1, 2, 3, 4)),
+    ])
+    shortlisted = db.shortlist("بتثجبتثج")
+    best = shortlisted[0].match
+    competitor = db.competitor("بتثجبتثج", shortlisted, best)
+    assert competitor.text_class == db.text_class(1, 3)
+    assert competitor.score == pytest.approx(0.875)
+
+    decoded = ident.identify("بتثجبتثج", database=db, floors={"0-20": 0.0},
+                             bars={"b": 0.01, "b_u": 0.01})
+    assert decoded.margin == pytest.approx(0.125)
+    assert decoded.margin_class == db.text_class(1, 3)
+    assert decoded.label_source == ident.IDENTIFIED
+
+
+@pytest.fixture
+def repeated_classes(ident):
+    """1:1 and 1:2 share a class; 1:3 opens with their text but is its own class; 1:4 is
+    unrelated. Enough shared text for a same-class optimum to sit beside a competitor."""
+    ayat = {
+        (1, 1): ident.AyahReference(1, 1, "بجحدبج", (0, 4, 6)),
+        (1, 2): ident.AyahReference(1, 2, "بجحدبج", (0, 4, 6)),
+        (1, 3): ident.AyahReference(1, 3, "بجحدخ", (0, 4, 5)),
+        (1, 4): ident.AyahReference(1, 4, "خدذرز", (0, 2, 4, 6)),
+    }
+    return ayat, ident.ReferenceDatabase.build(ayat.values())
+
+
+def _brute_force_competitor(ident, ayat, db, decode):
+    """The best different-class span over *every* word span of every shortlisted window.
+
+    The oracle owns the enumeration (no bound, no early exit) and the ranking; slicing,
+    attribution and distance are the engine's, which the locked attribution tests pin.
+    """
+    shortlisted = db.shortlist(decode)
+    best = shortlisted[0].match
+
+    def rank(row, winner):
+        return (row.score, winner, -row.surah, -row.ayah_from, -row.word_from,
+                -row.ayah_to, -row.word_to)
+
+    found = None
+    spans_scored = 0
+    for window in shortlisted:
+        if window.match.text_class != best.text_class and not _overlaps(window.match, best):
+            if found is None or rank(window.match, True) > found[0]:
+                found = (rank(window.match, True), window.match)
+        candidate = db._candidate(window.surah, window.ayah, decoy=False)
+        spans: list[tuple[int, int, bool]] = []
+        cursor = 0
+        for other in (window.ayah - 1, window.ayah, window.ayah + 1):
+            reference = ayat.get((window.surah, other))
+            if reference is None:
+                continue
+            for word in range(1, reference.words + 1):
+                spans.append((
+                    cursor + reference.offsets[word - 1], cursor + reference.offsets[word],
+                    best.surah == reference.surah
+                    and best.ayah_from <= other <= best.ayah_to
+                    and (other != best.ayah_from or word >= best.word_from)
+                    and (other != best.ayah_to or word <= best.word_to)))
+            cursor += len(reference.reference)
+        runs: list[list[tuple[int, int]]] = []
+        run: list[tuple[int, int]] = []
+        for lo, hi, inside in spans:
+            if inside:
+                if run:
+                    runs.append(run)
+                    run = []
+            else:
+                run.append((lo, hi))
+        if run:
+            runs.append(run)
+        for run in runs:
+            for first in range(len(run)):
+                for last in range(first, len(run)):
+                    match = db._match(decode, db._sub_candidate(
+                        candidate, run[first][0], run[last][1]))
+                    spans_scored += 1
+                    if match.text_class == best.text_class:
+                        continue
+                    if found is None or rank(match, False) > found[0]:
+                        found = (rank(match, False), match)
+    return best, (None if found is None else found[1]), spans_scored
+
+
+def test_the_search_matches_a_brute_force_span_enumeration(ident, repeated_classes):
+    """The branch and bound must reach the brute force's margin and class on every decode."""
+    ayat, db = repeated_classes
+    for decode in ("بجحدبج", "بجحد", "بجح", "خدذ"):
+        best, competitor, spans = _brute_force_competitor(ident, ayat, db, decode)
+        assert spans > 1  # the enumeration is more than the engine's few probes
+        decoded = ident.identify(decode, database=db)
+        assert decoded.match == best
+        assert decoded.margin == pytest.approx(
+            best.score - (competitor.score if competitor is not None else 0.0))
+        assert decoded.margin_class == (competitor.text_class if competitor is not None
+                                        else None)
+
+
 def test_every_row_carries_margin_and_margin_class(ident, two_surahs):
     """The margin is on every identification row, including one with no match; applying the
     floor replaces the row without dropping it."""

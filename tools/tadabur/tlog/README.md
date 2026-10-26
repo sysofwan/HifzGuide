@@ -243,7 +243,8 @@ included, the blind spots, the tlog fingerprint store's census (the committed
 every S1-flagged row that S4 missed against the Tarteel v1 clips sharing its recording id and
 records the miss BER distribution and stop-word share; the stop-word report keeps the
 all-candidate figure and adds the accepted (≤ line) share split into external hits and
-near-duplicate links; and the survivor-usability counts are read from the written tree.
+near-duplicate links; and the survivor-usability counts (rows otherwise usable after S4, lost to
+an unusable survivor) are read from the written tree.
 
 Two resumable, CPU-only stages on cuda-dev (no GPU lock), driven by
 `scripts/issue-189-overlap.sh`:

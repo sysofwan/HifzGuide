@@ -400,10 +400,14 @@ def test_the_s1_id_overlap_recall_is_measured(to):
     assert recall["rows"] == 10_581
     assert recall["found"] == 9_997
     assert recall["found_share"] == pytest.approx(9_997 / 10_581, abs=5e-7)
-    assert recall["misses"] == 584
-    assert recall["unfingerprinted"] == 2
+    assert recall["misses"] == 576
+    assert recall["unfingerprinted"] == 8
     assert recall["missing_clip"] == 0
-    assert sum(recall["miss_ber"]["counts"]) == 582
+    assert sum(recall["miss_ber"]["counts"]) == 576
+    missed_hits = sum(count for bound, count in zip(recall["miss_ber"]["bins"],
+                                                    recall["miss_ber"]["counts"])
+                      if bound < to.LINE)
+    assert missed_hits == 2
     assert 0 <= recall["miss_stop_word"]["mostly_stop_word"] <= recall["misses"]
     assert recall["miss_stop_word"]["share"] == pytest.approx(
         recall["miss_stop_word"]["mostly_stop_word"] / recall["misses"], abs=5e-7)
@@ -419,13 +423,21 @@ def test_the_stop_word_report_splits_accepted_candidates(to):
         assert record["share"] == pytest.approx(
             record["mostly_stop_word"] / record["hits"] if record["hits"] else 0.0, abs=5e-7)
     assert accepted["all"]["hits"] <= stop["verified"]
+    assert accepted["external"]["share"] < 0.01
+    assert accepted["near_duplicate"]["share"] > 0.01
+    assert accepted["all"]["share"] > 0.01
 
 
 def test_the_survivor_unusable_counts_are_recorded(to):
+    """Rows that S4 would otherwise keep, lost to a survivor this run cannot use.
+
+    The integrator's pre-S4 base is 21 eval + 132 train; the extra 15 + 78 losers are
+    themselves S4 eval-overlap exclusions, so only these rows leave the usable pool.
+    """
     meta = json.loads((Path(to.OVERLAP_DIR) / "meta.json").read_text(encoding="utf-8"))
     counts = meta["duplicates"]["survivor_unusable"]
-    assert counts["eval"] == {"total": 21, "floors": 6, "eval_overlap": 15}
-    assert counts["train"] == {"total": 132, "floors": 54, "eval_overlap": 78}
+    assert counts["eval"] == {"total": 6, "floors": 6}
+    assert counts["train"] == {"total": 54, "floors": 54}
 
 
 def test_no_eval_role_row_is_excluded_for_a_train_copy_in_the_committed_tree(to, records, frozen):

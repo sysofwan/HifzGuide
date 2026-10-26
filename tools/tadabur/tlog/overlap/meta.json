@@ -364,9 +364,84 @@
   "unfingerprinted": {},
   "why": "the sealed panel cannot be read (the seal pins two authorisations); train-train near duplicates were scoped out; frame and gate_eval have no source-byte checksums, so they are matched by fingerprint only; a committed clip with no fingerprint (undecodable, or shorter than two frames) is listed in unfingerprinted"
  },
- "code_sha": "4e0813f460f21a6ae89fbc860146203f2fbd3e16",
+ "code_sha": "ea3fded09b246e16ed1f41ca265d72f1c1a9262e",
  "controls": {
+  "s1_id_overlap_recall": {
+   "found": 9997,
+   "found_share": 0.944807,
+   "miss_ber": {
+    "bins": [
+     0.0,
+     0.05,
+     0.1,
+     0.15,
+     0.2,
+     0.25,
+     0.3,
+     0.35,
+     0.4,
+     0.45,
+     0.5,
+     0.55,
+     0.6,
+     0.65,
+     0.7,
+     0.75,
+     0.8,
+     0.85,
+     0.9,
+     0.95
+    ],
+    "counts": [
+     0,
+     0,
+     1,
+     1,
+     0,
+     3,
+     4,
+     28,
+     306,
+     233,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "miss_stop_word": {
+    "mostly_stop_word": 6,
+    "share": 0.010417
+   },
+   "misses": 576,
+   "missing_clip": 0,
+   "rows": 10581,
+   "unfingerprinted": 8
+  },
   "stop_word_matches": {
+   "accepted": {
+    "all": {
+     "hits": 48738,
+     "mostly_stop_word": 6193,
+     "share": 0.127067
+    },
+    "external": {
+     "hits": 10158,
+     "mostly_stop_word": 26,
+     "share": 0.00256
+    },
+    "near_duplicate": {
+     "hits": 38580,
+     "mostly_stop_word": 6167,
+     "share": 0.15985
+    }
+   },
    "mostly_stop_word": 59623,
    "mostly_stop_word_share": 0.5,
    "share": 0.133262,
@@ -425,6 +500,16 @@
    "look:confirm.4": 35,
    "look:look": 25,
    "look:train": 836
+  },
+  "survivor_unusable": {
+   "eval": {
+    "floors": 6,
+    "total": 6
+   },
+   "train": {
+    "floors": 54,
+    "total": 54
+   }
   }
  },
  "frozen": {
@@ -641,6 +726,14 @@
    "sha256": "b665fcd6b27ed350098756c3f60067a940a763329f3fe2a8ca8a58e909f607b8"
   },
   "path": "/root/scratch/tlog/fp"
+ },
+ "usable_after_s4": {
+  "confirm.1": 9632,
+  "confirm.2": 9747,
+  "confirm.3": 9462,
+  "confirm.4": 9586,
+  "look": 9710,
+  "train": 426825
  },
  "vote_threshold": 8
 }

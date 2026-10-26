@@ -118,6 +118,8 @@ DOC_PATH = Path(__file__).resolve().parents[2] / "docs" / "tlog-ayah-identificat
 
 #: The alphabet the reference envelope records.
 WORD_TOKENISATION = "quran-transcript uthmani.split"
+#: The mode the Freesound pool is decoded in: a pool recording is too long for a whole pass.
+NOISE_DECODE_MODE = "stream_b0"
 LIBRARY = {"name": "edlib", "version": "1.3.9.post1", "mode": "HW"}
 #: Relabel rate the look half must stay under, and the noise pass rate the pool must stay under.
 RELABEL_LIMIT = 0.005
@@ -722,7 +724,9 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
         exhaustive_decoy=(database.decoy_exhaustive_best(query) if exhaustive_decoy else None),
         filename_class=filename_class, filename_score=filename_score,
         delta=(best.score - filename_score) if filename_score is not None else None,
-        margin=(best.score - competitor.score) if competitor is not None else None,
+        # With no different class at a non-overlapping location nothing contradicts the
+        # match, so the margin is measured against the empty competitor (score 0).
+        margin=best.score - (competitor.score if competitor is not None else 0.0),
         margin_class=competitor.text_class if competitor is not None else None,
         floor_ok=(best.score > floors[floor_bin(len(query))] if floors is not None else None),
         overlaps_filename=(_overlaps_ayah(best, name) if name is not None else None),
@@ -831,7 +835,7 @@ def derive_bars(look: Sequence[Identification], mistake: Sequence[Identification
                           mistake_relabels_at_b=0, no_bar=False)
             break
     for value in grid:
-        own = sum(assigned(row, value) and row.margin_class == row.filename_class
+        own = sum(assigned(row, value) and row.match.text_class == row.filename_class
                   for row in look) / len(look)
         if own >= ASSIGNED_MIN:
             result.update(b_u=value, look_assigned_at_b_u=own)
@@ -975,7 +979,8 @@ def _calibration(database: ReferenceDatabase) -> dict:
                              "sha256": sha256_file(REAL_MISTAKE_DECODES_PATH),
                              "clips": len(clip_list)},
             "noise": {"path": repo_relative(NOISE_DECODES_PATH),
-                      "sha256": sha256_file(NOISE_DECODES_PATH), "recordings": len(noise)},
+                      "sha256": sha256_file(NOISE_DECODES_PATH), "recordings": len(noise),
+                      "mode": NOISE_DECODE_MODE},
         },
         "real_mistake": {"path": repo_relative(REAL_MISTAKE_CLIPS_PATH),
                          "sha256": sha256_file(REAL_MISTAKE_CLIPS_PATH),
@@ -1061,7 +1066,8 @@ def render(report: Mapping[str, Any]) -> str:
         f"| Tarteel v1 look | {report['decodes']['look']['clips']:,} clips |",
         f"| real-mistake clips | {report['real_mistake']['clips']} clips over "
         f"{report['real_mistake']['sites']} sites |",
-        f"| Freesound pool | {report['noise']['recordings']} recordings |",
+        f"| Freesound pool | {report['noise']['recordings']} recordings, "
+        f"`{report['decodes']['noise']['mode']}` |",
         "",
         "## Shortlist guard",
         "",

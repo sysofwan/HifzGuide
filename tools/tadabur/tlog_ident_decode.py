@@ -8,7 +8,11 @@ S5 amendment requires:
   (``tlog/ident/real_mistake_clips.jsonl``), read from the staged clip directories and checked
   against each row's ``audio_sha256`` before decoding;
 * the Freesound noise pool (``nonpro_gap/noise_pool.json``), rebuilt on scratch when it is not
-  there, verified against the committed provenance, and decoded recording by recording.
+  there, verified against the committed provenance, and decoded recording by recording. A pool
+  recording is up to 174 s, and a whole-recording pass overflows the card's 16 GB, so a
+  recording is decoded with the deployed ``stream_b0`` protocol (5 s windows, 1 s hop, tail
+  flushed) — the repo's canonical long-audio decode, recorded with the store. The floor itself
+  is measured on Tarteel v1 look's whole-clip ``spans``, as pre-registered.
 
 Outputs are the committed stores ``tlog/ident/decodes/real_mistake.base.json`` and
 ``tlog/ident/decodes/noise.base.json``: the weights' identity, the decode fingerprint, and one
@@ -40,6 +44,7 @@ from training.tashkeel_eval import write_text_atomically
 from training.truth_baseline import (
     BATCH_SIZE,
     DEVICE_TYPE,
+    PROTOCOLS,
     WEIGHTS_DTYPE,
     model_identity,
 )
@@ -47,6 +52,7 @@ from training.truth_baseline import (
 from .tlog_ident import (
     BASE_MODEL,
     BASE_REVISION,
+    NOISE_DECODE_MODE,
     NOISE_DECODES_PATH,
     NOISE_POOL_PATH,
     REAL_MISTAKE_DECODES_PATH,
@@ -54,16 +60,19 @@ from .tlog_ident import (
 )
 
 SCHEMA_VERSION = 1
+#: The pool's decode mode: the deployed stream, which is the only VRAM-safe whole-recording pass.
+STREAM_MODE = PROTOCOLS[NOISE_DECODE_MODE]
 
 
 def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _write_store(path: Path, identity: dict, fingerprint: dict, items: dict) -> None:
+def _write_store(path: Path, identity: dict, mode: str, fingerprint: dict,
+                 items: dict) -> None:
     write_text_atomically(Path(path), json.dumps(
         {"schema_version": SCHEMA_VERSION, "model": "base", "identity": identity,
-         "fingerprints": {SPANS: fingerprint}, "items": dict(sorted(items.items()))},
+         "fingerprints": {mode: fingerprint}, "items": dict(sorted(items.items()))},
         ensure_ascii=False, indent=1, sort_keys=True) + "\n")
 
 
@@ -96,7 +105,7 @@ def decode_clips(decoder, clips: list[dict], clips_dirs: list[Path], out: Path,
             "spans": decoder.decode_spans([samples])[0],
         }
         print(f"clip {position}/{len(clips)} {clip['audio_filename']}", flush=True)
-    _write_store(out, identity, fingerprint, items)
+    _write_store(out, identity, SPANS, fingerprint, items)
     print(f"wrote {out} after {time.time() - started:.0f} s", flush=True)
     return items
 
@@ -119,11 +128,12 @@ def decode_pool(decoder, pool_path: Path, cache_dir: Path, out: Path, identity: 
     for position, recording in enumerate(pool, start=1):
         items[str(recording.freesound_id)] = {
             "samples_sha256": _sha256_bytes(recording.samples.tobytes()),
-            "spans": decoder.decode_spans([recording.samples])[0],
+            "spans": decoder.decode_stream(recording.samples, block=0, flush_tail=True),
         }
         if position % 25 == 0:
             print(f"pool {position}/{len(pool)}", flush=True)
-    _write_store(out, identity, fingerprint, items)
+    _write_store(out, identity, STREAM_MODE,
+                 decoder.fingerprint(STREAM_MODE).as_dict(), items)
     print(f"wrote {out} after {time.time() - started:.0f} s", flush=True)
     return items
 

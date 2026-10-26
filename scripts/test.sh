@@ -40,6 +40,12 @@ case "${1:-}" in
     -h|--help) usage; exit 0 ;;
 esac
 
+if ! "$python" -c "import xdist" 2>/dev/null; then
+    echo "scripts/test.sh: pytest-xdist is not installed for $python" >&2
+    echo "  install it (pip install pytest-xdist) or set TEST_PYTHON to the test venv" >&2
+    exit 2
+fi
+
 # The slow tier is a marker filter, so `--full` simply drops it.
 if [ "$full" -eq 0 ]; then
     set -- -m "not slow" "$@"

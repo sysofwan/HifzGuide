@@ -29,10 +29,11 @@ pip install -r tools/requirements.txt
 ## Tests
 
 One command, from the repo root (it pins the BLAS/torch thread counts and runs pytest-xdist;
-hand-rolled `pytest` flags are 2-10x slower):
+hand-rolled `pytest` flags are 2-10x slower). Its dependencies are test-only:
 
 ```bash
-scripts/test.sh          # inner loop: every test except the `slow` tier (~2 min)
+pip install -r tools/requirements-test.txt
+scripts/test.sh          # inner loop: every test except the `slow` tier
 scripts/test.sh --full   # merge gate: every test, slow tier included
 ```
 

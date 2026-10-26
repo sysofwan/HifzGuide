@@ -1,0 +1,7 @@
+# Test-only dependencies: the suite runs on both environments (Linux + CUDA and macOS) through
+# scripts/test.sh, which needs xdist for its worker pool.
+#
+#   pip install -r tools/requirements-test.txt
+
+pytest>=8
+pytest-xdist>=3.6

@@ -3,7 +3,8 @@
 Committed before the module exists and **locked**: later turns may add tests but never weaken or
 rewrite these. The rules are "Ayah identification" in the frozen
 ``docs/tlog-holdout-preregistration.md`` plus S5's dated 2026-10-25 (S5, pre-outcome) amendment in
-``docs/tlog-ident-preregistration.md``, which cites the frozen text by path and SHA-256.
+``docs/tlog-ident-preregistration.md``, which cites the frozen text by path and SHA-256, plus the
+owner-approved post-look b_u erratum in ``docs/tlog-ident-bu-amendment.md``.
 
 Contract this file pins
 -----------------------
@@ -24,7 +25,8 @@ Contract this file pins
   ``exhaustive_decoy``, ``filename_class``, ``filename_score``, ``delta``, ``margin``,
   ``margin_class``, ``floor_ok``, ``overlaps_filename``, ``label_source``, ``assigned_label``.
 * ``score``, ``reverse_clusters``, ``floor_bin``, ``identify``, ``apply_floors``, ``relabelled``,
-  ``assigned``, ``derive_floors``, ``derive_bars``, ``ayah_reference``, ``load_references``,
+  ``assigned``, ``derive_floors``, ``derive_bars``, ``noise_pass_by_convention``,
+  ``ayah_reference``, ``load_references``,
   ``load_look_decodes``, ``recall_sample``, ``load_decode_store``.
 * The committed artifacts under ``tlog/ident/``: ``references.json.gz``,
   ``real_mistake_clips.jsonl``, ``ident_calibration.json``, the whole-clip base decodes and the
@@ -34,7 +36,8 @@ Ordering contract: ``shortlist`` and ``all_windows`` return scored windows best 
 ties by ``(surah, ayah)``. A span's words are quran-transcript ``uthmani.split()`` words, 1-based.
 A matched run is split at ayah boundaries, and a span's text class is the ayah with the most
 words touched by a matched or substituted character (ties: the earlier ayah). ``derive_bars``
-also reports an informational per-bar ``precision`` table labelled ``used_for_b_u: False``.
+derives the amended ``b_u`` (precision of the clips it names) from its per-bar ``precision``
+table and records the literal rule's ``b_u_literal`` for transparency.
 Synthetic references here avoid adjacent equal cores, so ``normalize_phonemes`` (which ``identify``
 applies to the decode) leaves them unchanged.
 
@@ -60,8 +63,12 @@ NOISE_POOL = ROOT / "tools" / "tadabur" / "nonpro_gap" / "noise_pool.json"
 TRUTH_SITES = ROOT / "tools" / "tadabur" / "truth_sites" / "ship_a_verified.jsonl"
 PREREGISTRATION = ROOT / "docs" / "tlog-ident-preregistration.md"
 HOLDOUT_PREREGISTRATION = ROOT / "docs" / "tlog-holdout-preregistration.md"
+BU_AMENDMENT = ROOT / "docs" / "tlog-ident-bu-amendment.md"
 #: The frozen hold-out text the S5 amendment cites; it is never edited (S3b's meta.json hashes it).
 HOLDOUT_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
+#: The S5 pre-registration is frozen too: the owner's b_u erratum cites this hash, never edits it.
+S5_PREREGISTRATION_SHA256 = (
+    "a383fcfdbd375c9e6c052d8032788a8eda69bd2d9fbd12fcd3b921b1fbb6a3ab")
 BASE_REVISION = "01a1ef9fbe40d144ef845101e89ff924aed3fef5"
 
 
@@ -344,6 +351,50 @@ def test_floor_pass_is_strictly_above_the_bin_floor(ident, two_surahs):
     assert ident.identify("بجح", database=two_surahs).floor_ok is None
 
 
+def test_a_row_in_an_empty_floor_bin_gets_no_floor_verdict(ident):
+    """Look has no >160-character decode, so the 161- bin has no floor. A row there must not
+    crash: it simply has no floor verdict (architect r16; no replacement floor is invented)."""
+    letters = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
+    long = "".join(letters[index % len(letters)] for index in range(170))
+    assert all(a != b for a, b in itertools.pairwise(long))
+    db = ident.ReferenceDatabase.build([_ayah(ident, 1, 1, [long])])
+    floors = {"0-20": 0.0}
+    decoded = ident.identify(long, database=db, floors=floors)
+    assert decoded.length == 170
+    assert ident.floor_bin(decoded.length) == "161-"
+    assert decoded.floor_ok is None
+    assert ident.apply_floors(decoded, floors).floor_ok is None
+
+
+def test_noise_pass_is_reported_under_the_three_empty_bin_conventions(ident):
+    """A: an empty bin's rows fail; B: back off to the nearest lower calibrated bin (81-160);
+    C: exclude them. Empty decodes never pass, and stay in the denominator."""
+    def row(length: int, score: float | None):
+        match = (None if score is None else
+                 ident.Match(surah=1, ayah_from=1, word_from=1, ayah_to=1, word_to=1,
+                             text_class=0, score=score))
+        return ident.Identification(
+            length=length, match=match, decoy=0.0, exhaustive_decoy=None,
+            filename_class=None, filename_score=None, delta=None, margin=None,
+            margin_class=None, floor_ok=None, overlaps_filename=None,
+            label_source=ident.NONE, assigned_label=None)
+
+    rows = [row(10, 0.9), row(10, 0.9), row(10, None),
+            row(200, 0.9), row(200, 0.9), row(200, 0.2),
+            row(100, 0.3), row(100, 0.5)]
+    floors = {"0-20": 0.5, "81-160": 0.4}
+    conventions = ident.noise_pass_by_convention(rows, floors)
+    assert conventions["A"]["recordings"] == 8
+    assert conventions["A"]["passed"] == 3  # two 0-20 hits and the 0.5 in 81-160
+    assert conventions["A"]["pass"] == pytest.approx(3 / 8)
+    assert conventions["B"]["recordings"] == 8
+    assert conventions["B"]["passed"] == 5  # 161- rows are judged against 81-160's floor
+    assert conventions["B"]["pass"] == pytest.approx(5 / 8)
+    assert conventions["C"]["recordings"] == 5  # the three 161- rows are excluded
+    assert conventions["C"]["passed"] == 3
+    assert conventions["C"]["pass"] == pytest.approx(3 / 5)
+
+
 def _identification(ident, *, match_class: int = 0, **changes):
     match = ident.Match(surah=1, ayah_from=1, word_from=1, ayah_to=1, word_to=1,
                         text_class=match_class, score=1.0)
@@ -375,7 +426,10 @@ def _look_population(ident):
     )
 
 
-def test_derive_bars_is_the_smallest_grid_value_meeting_both_rules(ident):
+def test_derive_bars_b_u_is_the_amended_precision_rule(ident):
+    """Owner-approved erratum (docs/tlog-ident-bu-amendment.md): b_u is the smallest bar at
+    which >= 99% of the clips the identifier NAMES are their own class. The literal
+    share-of-all result is still recorded alongside it for transparency."""
     # The one mistake clip's delta is 0.05, so b is the first grid value above it (0.06);
     # exactly the five relabel-eligible look clips relabel there.
     mistake = [_identification(ident, delta=0.05)]
@@ -383,20 +437,35 @@ def test_derive_bars_is_the_smallest_grid_value_meeting_both_rules(ident):
     assert bars["b"] == pytest.approx(0.06)
     assert bars["look_relabel_at_b"] == pytest.approx(5 / 1000)
     assert bars["mistake_relabels_at_b"] == 0
-    # The literal b_u rule counts own-class assignments over ALL look clips: 985/1000 =
-    # 98.5% at bar 0.00. Raising the bar only removes assignments, so no grid value reaches
-    # 99% and b_u is None (never a positive bar, which is what the old fixture expected).
-    assert bars["b_u"] is None
-    assert bars["look_assigned_at_b_u"] is None
+    # 990 named at 0.00, 985 of them own-class: precision 985/990 >= 99%, so b_u = 0.00.
+    assert bars["b_u"] == ident.GRID[0]
+    assert bars["look_assigned_at_b_u"] == pytest.approx(985 / 990)
+    # The literal rule's quantity is coverage over ALL clips (985/1000), which cannot rise.
+    assert bars["b_u_literal"] is None
+    assert bars["look_assigned_at_b_u_literal"] is None
 
-    # A population already >= 99% own-class at 0.00 gets b_u = 0.00, the smallest grid value.
+    # Precision rises from 97% to 99.5% when the 25 low-margin rows drop out: b_u = 0.01,
+    # the smallest bar that qualifies (not a later, even more precise one).
+    rising = (
+        [_identification(ident, match_class=1, margin=0.02) for _ in range(970)]
+        + [_identification(ident, match_class=2, margin=0.005) for _ in range(25)]
+        + [_identification(ident, match_class=2, margin=0.02) for _ in range(5)]
+    )
+    risen = ident.derive_bars(rising, mistake)
+    assert risen["b_u"] == pytest.approx(0.01)
+    assert risen["look_assigned_at_b_u"] == pytest.approx(970 / 975)
+    assert risen["b_u_literal"] is None
+
+    # A population already >= 99% own-class over all clips meets both rules at 0.00.
     mostly_own = (
         [_identification(ident, match_class=1, margin=0.02) for _ in range(995)]
         + [_identification(ident, match_class=2, margin=0.02) for _ in range(5)]
     )
     found = ident.derive_bars(mostly_own, mistake)
     assert found["b_u"] == ident.GRID[0]
+    assert found["b_u_literal"] == ident.GRID[0]
     assert found["look_assigned_at_b_u"] == pytest.approx(0.995)
+    assert found["look_assigned_at_b_u_literal"] == pytest.approx(0.995)
 
     never = [_identification(ident, delta=0.5) for _ in range(1000)]
     barred = ident.derive_bars(never, mistake)
@@ -404,12 +473,12 @@ def test_derive_bars_is_the_smallest_grid_value_meeting_both_rules(ident):
     assert barred["no_bar"] is True
 
 
-def test_derive_bars_reports_an_informational_precision_table(ident):
-    """The per-bar table (assigned, precision, coverage) is reported, labelled not used, and
-    coverage never rises with the bar: the literal b_u search is vacuous."""
+def test_derive_bars_reports_the_precision_table_that_sets_b_u(ident):
+    """The per-bar table (assigned, precision, coverage): precision drives the amended b_u,
+    while the literal rule's coverage is kept visible and never rises with the bar."""
     bars = ident.derive_bars(_look_population(ident), [_identification(ident, delta=0.05)])
     table = bars["precision"]
-    assert table["used_for_b_u"] is False
+    assert table["used_for_b_u"] is True
     rows = table["by_bar"]
     assert [row["bar"] for row in rows] == list(ident.GRID)
 
@@ -427,7 +496,8 @@ def test_derive_bars_reports_an_informational_precision_table(ident):
     assert last["coverage"] == 0.0
     coverage = [row["coverage"] for row in rows]
     assert all(later <= earlier for earlier, later in itertools.pairwise(coverage))
-    assert bars["b_u"] is None
+    assert bars["b_u"] == ident.GRID[0]
+    assert bars["b_u_literal"] is None
 
 
 # --- the reference builder, including the 8 fallback ayat -------------------------------------
@@ -480,6 +550,20 @@ def test_the_amendment_cites_the_frozen_holdout_text():
     assert _sha256(HOLDOUT_PREREGISTRATION) == HOLDOUT_SHA256
     assert HOLDOUT_SHA256 in PREREGISTRATION.read_text(encoding="utf-8")
     assert "Amended 2026-10-25 (S5, pre-outcome" in PREREGISTRATION.read_text(encoding="utf-8")
+
+
+def test_the_bu_amendment_is_the_owner_approved_post_look_precision_rule():
+    """The owner's dated erratum: precision (of the clips we name), not share of all clips.
+    It is post-look, cites the frozen S5 pre-registration by SHA-256, and never edits it."""
+    assert _sha256(PREREGISTRATION) == S5_PREREGISTRATION_SHA256
+    text = BU_AMENDMENT.read_text(encoding="utf-8")
+    assert "2026-10-25" in text
+    assert "post-look" in text
+    assert S5_PREREGISTRATION_SHA256 in text
+    assert "smallest" in text and "99%" in text
+    assert "can only fall" in text  # the drafting error the amendment fixes
+    assert "99.68" in text and "0.01" in text  # the architect's diagnostic
+    assert "gate" in text and "training" in text  # what it does not touch
 
 
 def test_the_real_mistake_clips_file_is_the_pinned_52_clips_over_46_ayat(ident):
@@ -542,6 +626,8 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
         "path": "docs/tlog-ident-preregistration.md",
         "sha256": _sha256(PREREGISTRATION),
         "parent": {"path": "docs/tlog-holdout-preregistration.md", "sha256": HOLDOUT_SHA256}}
+    assert calibration["bu_amendment"] == {
+        "path": "docs/tlog-ident-bu-amendment.md", "sha256": _sha256(BU_AMENDMENT)}
     assert calibration["real_mistake"]["sha256"] == _sha256(ident.REAL_MISTAKE_CLIPS_PATH)
     assert calibration["parameters"]["k"] == ident.K
     assert calibration["parameters"]["gram"] == ident.GRAM
@@ -552,7 +638,8 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
     scored = [ident.identify(decode.spans, database=database,
                              filename_ayah=decode.surah_ayah) for decode in look]
     floors = ident.derive_floors(scored)
-    assert set(floors) == set(ident.FLOOR_BINS)
+    # Look's longest decode is 138 characters, so the 161- bin has no floor and no verdict.
+    assert set(floors) == set(ident.FLOOR_BINS) - {"161-"}
     assert {bin_: round(value, 6) for bin_, value in floors.items()} == {
         bin_: round(value, 6) for bin_, value in calibration["floors"].items()}
     applied = [ident.apply_floors(row, floors) for row in scored]
@@ -567,16 +654,21 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
 
     bars = ident.derive_bars(applied, mistakes)
     assert bars["b"] == calibration["bars"]["b"]
+    # Amended (owner-approved) b_u, and the literal-rule result None for transparency.
+    assert calibration["bars"]["b_u"] == pytest.approx(0.01)
     assert bars["b_u"] == calibration["bars"]["b_u"]
-    # The literal rule's outcome on the look (architect r15): own-class coverage cannot rise
-    # with the bar, so no grid value reaches 99% and b_u is None.
-    assert calibration["bars"]["b_u"] is None
+    assert calibration["bars"]["b_u_literal"] is None
+    assert bars["b_u_literal"] is None
+    assert bars["look_assigned_at_b_u"] == pytest.approx(
+        calibration["bars"]["look_assigned_at_b_u"])
+    assert calibration["bars"]["look_assigned_at_b_u_literal"] is None
     assert bars["look_relabel_at_b"] == pytest.approx(calibration["bars"]["look_relabel_at_b"])
     assert bars["mistake_relabels_at_b"] == calibration["bars"]["mistake_relabels_at_b"]
     assert bars["no_bar"] is (bars["b"] is None)
-    # The informational per-bar table is committed as rederived, and never feeds b_u.
+    # Floors are stopped, so both bars are provisional.
+    assert calibration["bars"]["provisional"] is True
     table = calibration["bars"]["precision"]
-    assert table["used_for_b_u"] is False
+    assert table["used_for_b_u"] is True
     assert table["by_bar"] == bars["precision"]["by_bar"]
 
     retention = sum(row.floor_ok for row in applied) / len(applied)
@@ -591,11 +683,20 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
     pool = json.loads(NOISE_POOL.read_text(encoding="utf-8"))["recordings"]
     noise = ident.load_decode_store(ident.NOISE_DECODES_PATH)
     assert set(noise["items"]) == {str(record["freesound_id"]) for record in pool}
-    noise_scored = [ident.apply_floors(ident.identify(
-        item["spans"], database=database), floors) for item in noise["items"].values()]
-    noise_pass = sum(row.floor_ok for row in noise_scored) / len(noise_scored)
+    noise_rows = [ident.identify(item["spans"], database=database)
+                  for item in noise["items"].values()]
+    conventions = ident.noise_pass_by_convention(noise_rows, floors)
     assert calibration["noise"]["recordings"] == len(pool) == 445
-    assert calibration["noise"]["pass"] == pytest.approx(noise_pass)
+    reported = calibration["noise"]["conventions"]
+    for key in ("A", "B", "C"):
+        assert reported[key]["recordings"] == conventions[key]["recordings"]
+        assert reported[key]["passed"] == conventions[key]["passed"]
+        assert reported[key]["pass"] == pytest.approx(conventions[key]["pass"])
+    # B (back off to 81-160) is the headline: the most faithful reading of the binned rule.
+    assert calibration["noise"]["pass"] == pytest.approx(conventions["B"]["pass"])
+    assert calibration["noise"]["floor_passed"] == conventions["B"]["passed"]
+    assert calibration["floor_status"] == (
+        f"stopped: noise {100 * conventions['B']['pass']:.1f}% > 1%")
 
     stopped = calibration["stop_conditions"]
     assert stopped["look_retention"]["limit"] == 0.90
@@ -603,18 +704,29 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
     assert stopped["bar"]["limit"] is None
     assert stopped["look_retention"]["value"] == pytest.approx(retention)
     assert stopped["look_retention"]["fired"] is (retention < 0.90)
-    assert stopped["noise_pass"]["value"] == pytest.approx(noise_pass)
-    assert stopped["noise_pass"]["fired"] is (noise_pass > 0.01)
+    assert stopped["noise_pass"]["value"] == pytest.approx(conventions["B"]["pass"])
+    assert stopped["noise_pass"]["fired"] is (conventions["B"]["pass"] > 0.01)
+    assert stopped["noise_pass"]["fired"] is True  # the frozen floor stop fires (r16)
     assert stopped["bar"]["value"] == bars["b"]
     assert stopped["bar"]["fired"] is (bars["b"] is None)
 
     guard = calibration["shortlist_guard"]
-    assert guard["clips"] == ident.RECALL_CLIPS
+    assert guard["clips"] == ident.RECALL_CLIPS == 1000
     assert guard["salt"] == ident.SALT
     assert guard["k"] >= ident.K
     assert guard["passed"] is (guard["recall"] >= ident.RECALL_MIN)
     assert calibration["parameters"]["recall"]["minimum"] == ident.RECALL_MIN
     assert calibration["throughput"]["ms_per_clip"] > 0
+
+    # b_u's reach: the unclean rows without a filename label that pass codec and silence and
+    # survive S4, through the one S6/S7 reader.
+    from tadabur.tlog_overlap import iter_pool_rows
+
+    usable = sum(1 for row in iter_pool_rows()
+                 if row["split"] == "unclean" and row["filename_label"] is None
+                 and row["usable"])
+    assert calibration["unlabelled_unclean"] == {
+        "source": "tadabur.tlog_overlap.iter_pool_rows", "usable": usable}
 
     assert ident.DOC_PATH.is_file()
     assert all(path.name.endswith(".base.json") for path in ident.DECODES_DIR.iterdir())

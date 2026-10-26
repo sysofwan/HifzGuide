@@ -313,11 +313,43 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
   speech seconds below `d_s`; a row exactly on both is kept.
 
 **Usable**
-: A pass-1 row that survives both floors. The pre-registration's full exclusion set also has
-  `eval_overlap:tarteel_v1` (decidable from the index row) and `duplicate` (S4's, from the
-  fingerprints); `split/pool.json` reports `usable` after the floors and
-  `usable_after_eval_overlap`, per role and split, and only the latter is a training pool.
+: A row that survives the full frozen exclusion union: the two floors (`codec`, `silence`),
+  S1's `eval_overlap:tarteel_v1` id flag, and S4's `excluded` reason (`eval_overlap:<set>`
+  or `duplicate`). `split/pool.json` stops after the floors and S1's id flag, so it is not a
+  training pool; `overlap/meta.json`'s `usable_after_s4` (per role, train included) is the
+  population after the whole union, and `tadabur.tlog_overlap.iter_pool_rows` is the reader
+  that exposes it as one `exclusions` tuple.
 : _Avoid_: valid (that is the app's own label column, never read)
+
+**Exclusion union**
+: The ordered, deduplicated tuple a row carries after S4: `codec`, `silence`,
+  `eval_overlap:tarteel_v1` (S1's id overlap), S4's primary `excluded`
+  (`eval_overlap:<set>` before `duplicate`), then usable. "Deferred" in the frozen
+  `split/meta.json` and `split/pool.json` means "decided in `overlap/`"; those files cannot be
+  rewritten.
+
+**Overlap record**
+: One row's S4 fact in `overlap/<split>/<shard>.jsonl.gz`: its `eval_overlap` list (best match
+  per external set, `{set, clip, ber}` in the fixed set order), `duplicate_of`, `duplicate_ber`
+  (`0` only for an equal `audio_sha256`) and `excluded` (S4's primary reason). Keyed by
+  `(split, shard_file, row)`, never by `audio_path`.
+
+**Survivor**
+: A duplicate component's kept copy. Resolution is the pre-registered earliest-opened eval role
+  (`look`, then `confirm.1`…`confirm.4`, then `train`), then the smallest
+  `(audio_path, split, shard_file, row)`; every other member's `duplicate_of` names it directly.
+  Usability does not enter the choice — `meta.json` records the rows lost to an unusable
+  survivor instead.
+
+**Stop-word**
+: `0` and `0xFFFFFFFF`, the sub-fingerprint words of digital silence. They are neither indexed
+  nor queried; each verified match reports the share of its overlap window that is a stop-word
+  in either fingerprint, and `meta.json` splits the mostly-stop-word share into all candidates
+  and accepted exclusions (external and near-duplicate).
+
+**Ambiguous zone**
+: Verified matches above the highest synthetic-positive BER (`0.0625`) and inside the `0.238`
+  line. They are listed with their set, clip and BER, never silently passed.
 
 ## Re-read Corpus
 

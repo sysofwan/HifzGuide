@@ -44,7 +44,8 @@ owner-verified real-mistake sites), ``decodes/real_mistake.base.json`` and ``dec
 Usage (from ``tools/``)::
 
   python -m tadabur.tlog_ident references    # build and commit references.json.gz (~5 min)
-  python -m tadabur.tlog_ident calibrate     # thresholds, floors and the page
+  python -m tadabur.tlog_ident calibrate     # thresholds, floors and the page (~40 min CPU:
+                                             # look + guard + exhaustive decoy + pool walk)
   python -m tadabur.tlog_ident report        # re-render the page from the committed report
 
 The GPU decodes of the two calibration populations are produced by
@@ -369,6 +370,7 @@ class ReferenceDatabase:
         self._real = self._windows(decoy=False)
         self._decoys = self._windows(decoy=True)
         self._real_index = self._index(self._real)
+        self._decoy_index = self._index(self._decoys)
 
     # --- construction ---
 
@@ -444,25 +446,27 @@ class ReferenceDatabase:
     def surah_count(self) -> int:
         return len(self._text)
 
-    def _ranked(self, query: str, *, k: int) -> tuple[int, ...]:
+    def _ranked(self, query: str, *, k: int, decoy: bool = False) -> tuple[int, ...]:
         """The shortlist as window positions, ranked by distinct shared 3-grams.
 
-        A decode that hits no 3-gram has no signal to rank with, so the search is exhaustive
-        for it — on the real side and, through the same positions, on the decoy side, which
-        keeps the two comparable (the S5 amendment's target-decoy parity).
+        The decoy side is ranked with its own index over the decoy sequences, never with the
+        real one (the frozen rule and the S5 amendment). A decode that hits no 3-gram has no
+        signal to rank with, so the search is exhaustive for it.
         """
+        candidates = self._decoys if decoy else self._real
+        index = self._decoy_index if decoy else self._real_index
         skeleton = _skeleton(query)
         grams = {skeleton[position:position + self.gram]
                  for position in range(len(skeleton) - self.gram + 1)}
         if not grams:
-            return tuple(range(len(self._real)))[:k]
+            return tuple(range(len(candidates)))
         counts: Counter[int] = Counter()
         for gram in grams:
-            counts.update(self._real_index.get(gram, ()))
+            counts.update(index.get(gram, ()))
         ranked = sorted(counts, key=lambda position: (
-            -counts[position], self._real[position].surah, self._real[position].ayah))
+            -counts[position], candidates[position].surah, candidates[position].ayah))
         if len(ranked) < k:  # the top k is filled with the windows no gram reached
-            ranked += [position for position in range(len(self._real))
+            ranked += [position for position in range(len(candidates))
                        if position not in counts]
         return tuple(ranked[:k])
 
@@ -500,18 +504,14 @@ class ReferenceDatabase:
         return windows[0].score if windows else 0.0
 
     def decoy_best(self, decode: str, *, k: int = K) -> float:
-        """The best score over the decoy text of the windows the real search shortlisted.
-
-        The candidate pool is the real shortlist's, which is what makes the floor comparable
-        with the score a non-recitation row is tested against (S5 amendment); only the text
-        differs, and it is each window's reversed references.
-        """
+        """The best score over the decoy shortlist: the same construction as the real search,
+        built over the decoy sequences (frozen rule; S5 amendment)."""
         query = _normalise(decode)
         if not query:
             return 0.0
         return max(1.0 - edlib.align(query, self._decoys[position].text,
                                      mode="HW")["editDistance"] / len(query)
-                   for position in self._ranked(query, k=k))
+                   for position in self._ranked(query, k=k, decoy=True))
 
     def decoy_exhaustive_best(self, decode: str) -> float:
         """The best score over every decoy window; reported, never used."""
@@ -782,7 +782,8 @@ def _with_label(identification: Identification,
         if match.text_class == identification.filename_class:
             return replace(identification, label_source=BOTH,
                            assigned_label=identification.filename_label)
-        if (bars is not None and bars.get("b") is not None
+        if (identification.floor_ok is True
+                and bars is not None and bars.get("b") is not None
                 and identification.delta is not None
                 and identification.delta >= bars["b"]
                 and not identification.overlaps_filename):
@@ -790,7 +791,8 @@ def _with_label(identification: Identification,
                            assigned_label=identification.class_label)
         return replace(identification, label_source=FILENAME,
                        assigned_label=identification.filename_label)
-    if (bars is not None and bars.get("b_u") is not None
+    if (identification.floor_ok is True
+            and bars is not None and bars.get("b_u") is not None
             and identification.margin is not None
             and identification.margin >= bars["b_u"]):
         return replace(identification, label_source=IDENTIFIED,
@@ -800,7 +802,7 @@ def _with_label(identification: Identification,
 
 def relabelled(identification: Identification, bar: float) -> bool:
     """Whether the relabel rule fires at ``bar``; the same class is never a disagreement."""
-    return (identification.match is not None and identification.floor_ok is not False
+    return (identification.match is not None and identification.floor_ok is True
             and identification.delta is not None and identification.delta >= bar
             and not identification.overlaps_filename
             and identification.match.text_class != identification.filename_class)
@@ -808,7 +810,7 @@ def relabelled(identification: Identification, bar: float) -> bool:
 
 def assigned(identification: Identification, bar: float) -> bool:
     """Whether the assign rule fires at ``bar`` (labels hidden)."""
-    return (identification.match is not None and identification.floor_ok is not False
+    return (identification.match is not None and identification.floor_ok is True
             and identification.margin is not None and identification.margin >= bar)
 
 
@@ -1000,25 +1002,38 @@ def _shortlist_guard(database: ReferenceDatabase, sample: Sequence[str],
             "passed": recalled / len(sample) >= RECALL_MIN}
 
 
+def _phase(message: str) -> None:
+    print(f"[tlog_ident] {message}", flush=True)
+
+
 def _calibration(database: ReferenceDatabase) -> dict:
     look = load_look_decodes()
     by_clip = {decode.audio_filename: decode for decode in look}
+    _phase(f"scoring {len(look)} look decodes")
     raw, seconds = _look_measurements(database, look)
     floors = derive_floors(raw)
+    _phase(f"floors {floors}")
     applied = [apply_floors(row, floors) for row in raw]
 
     clip_list = real_mistake_clips()
     truth = load_decode_store(REAL_MISTAKE_DECODES_PATH)
+    _phase(f"scoring {len(clip_list)} real-mistake clips")
     mistakes = [apply_floors(identify(truth["items"][clip["audio_filename"]]["spans"],
                                       database=database, filename_ayah=clip["surah_ayah"]),
                              floors) for clip in clip_list]
     bars = derive_bars(applied, mistakes)
 
     sample = recall_sample(by_clip)
-    guard = _shortlist_guard(database, sample, by_clip)
-    while not guard["passed"]:
-        guard = _shortlist_guard(database, sample, by_clip, k=guard["k"] * 2)
+    k = K
+    while True:
+        _phase(f"shortlist guard: {len(sample)} clips at k = {k}")
+        guard = _shortlist_guard(database, sample, by_clip, k=k)
+        _phase(f"guard recall {guard['recalled']}/{guard['clips']}")
+        if guard["passed"]:
+            break
+        k *= 2
 
+    _phase(f"exhaustive-decoy sensitivity on {len(look)} clips")
     exhaustive = [identify(decode.spans, database=database, filename_ayah=decode.surah_ayah,
                            exhaustive_decoy=True) for decode in look]
     exhaustive_floors = derive_floors(replace(row, decoy=row.exhaustive_decoy)
@@ -1029,6 +1044,16 @@ def _calibration(database: ReferenceDatabase) -> dict:
 
     pool = json.loads(NOISE_POOL_PATH.read_text(encoding="utf-8"))["recordings"]
     noise_store = load_decode_store(NOISE_DECODES_PATH)
+    pool_samples = {str(record["freesound_id"]): record["samples_sha256"]
+                    for record in pool}
+    if set(noise_store["items"]) != set(pool_samples):
+        raise ValueError("the noise decode store does not cover the committed pool")
+    mismatched = [key for key, item in noise_store["items"].items()
+                  if item["samples_sha256"] != pool_samples[key]]
+    if mismatched:
+        raise ValueError(f"{len(mismatched)} noise decodes are not the pool's samples: "
+                         f"{sorted(mismatched)[:5]}")
+    _phase(f"scoring {len(noise_store['items'])} noise recordings")
     noise = [identify(item["spans"], database=database)
              for item in noise_store["items"].values()]
     conventions = noise_pass_by_convention(noise, floors)
@@ -1042,6 +1067,7 @@ def _calibration(database: ReferenceDatabase) -> dict:
 
     from .tlog_overlap import iter_pool_rows  # heavy import, calibration only
 
+    _phase("walking the S1+S4 pool for b_u's reach")
     unlabelled = sum(1 for row in iter_pool_rows()
                      if row["split"] == "unclean" and row["filename_label"] is None
                      and row["usable"])
@@ -1131,7 +1157,9 @@ def _calibration(database: ReferenceDatabase) -> dict:
                                "usable": unlabelled},
         "noise": {"recordings": len(noise), "pass": noise_pass,
                   "floor_passed": conventions["B"]["passed"],
-                  "conventions": conventions},
+                  "conventions": conventions,
+                  "samples_sha256": {"recordings": len(noise_store["items"]),
+                                     "mismatched": 0}},
         "bars": bars,
         "stop_conditions": stop,
         "throughput": {"clips": len(look), "seconds": round(seconds, 3),
@@ -1218,7 +1246,8 @@ def render(report: Mapping[str, Any]) -> str:
         "| bin | floor |",
         "|---|---|",
     ]
-    lines += [f"| `{bin_}` | {value:.6f} |" for bin_, value in report["floors"].items()]
+    lines += [f"| `{bin_}` | {report['floors'][bin_]:.6f} |"
+              for bin_ in FLOOR_BINS if bin_ in report["floors"]]
     lines += [
         "",
         f"**b = {bars['b']:.2f} (PROVISIONAL)**" if bars["b"] is not None
@@ -1265,6 +1294,10 @@ def render(report: Mapping[str, Any]) -> str:
         f"| exhaustive-decoy floors (sensitivity) | retention "
         f"{_pct(report['exhaustive_decoy']['look_retention'])} |",
         f"| throughput | {report['throughput']['ms_per_clip']:.2f} ms per clip |",
+        "",
+        f"The noise population is decoded in `{report['decodes']['noise']['mode']}`, while look "
+        "and the floors use whole-clip `spans`; the noise rate compares a different decode "
+        "mode, not the calibration population's.",
         "",
         "## Stop conditions",
         "",

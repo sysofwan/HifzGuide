@@ -373,7 +373,7 @@
    "used_for_b_u": true
   },
   "provisional": true,
-  "provisional_reason": "stopped: noise 40.7% > 1%"
+  "provisional_reason": "stopped: noise 35.7% > 1%"
  },
  "bu_amendment": {
   "path": "docs/tlog-ident-bu-amendment.md",
@@ -414,12 +414,12 @@
   "fix": "runs are split at ayah boundaries and the ayah with the most aligned words is credited",
   "rules_changed": false
  },
- "floor_status": "stopped: noise 40.7% > 1%",
+ "floor_status": "stopped: noise 35.7% > 1%",
  "floors": {
-  "0-20": 0.578452,
-  "21-40": 0.464524,
-  "41-80": 0.380952,
-  "81-160": 0.337043
+  "0-20": 0.654242,
+  "21-40": 0.5,
+  "41-80": 0.390244,
+  "81-160": 0.344143
  },
  "floors_source": {
   "bin_counts": {
@@ -458,24 +458,28 @@
  "noise": {
   "conventions": {
    "A": {
-    "pass": 0.4067415730337079,
-    "passed": 181,
+    "pass": 0.35730337078651686,
+    "passed": 159,
     "recordings": 445
    },
    "B": {
-    "pass": 0.4067415730337079,
-    "passed": 181,
+    "pass": 0.35730337078651686,
+    "passed": 159,
     "recordings": 445
    },
    "C": {
-    "pass": 0.4238875878220141,
-    "passed": 181,
+    "pass": 0.37236533957845436,
+    "passed": 159,
     "recordings": 427
    }
   },
-  "floor_passed": 181,
-  "pass": 0.4067415730337079,
-  "recordings": 445
+  "floor_passed": 159,
+  "pass": 0.35730337078651686,
+  "recordings": 445,
+  "samples_sha256": {
+   "mismatched": 0,
+   "recordings": 445
+  }
  },
  "parameters": {
   "floor_bins": [
@@ -609,13 +613,13 @@
   "noise_pass": {
    "fired": true,
    "limit": 0.01,
-   "value": 0.4067415730337079
+   "value": 0.35730337078651686
   }
  },
  "throughput": {
   "clips": 4537,
-  "ms_per_clip": 8.805,
-  "seconds": 39.95
+  "ms_per_clip": 7.817,
+  "seconds": 35.465
  },
  "unlabelled_unclean": {
   "source": "tadabur.tlog_overlap.iter_pool_rows",

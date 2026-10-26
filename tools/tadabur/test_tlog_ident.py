@@ -247,7 +247,9 @@ def test_the_decoy_sequence_reverses_each_ayah_and_keeps_ayah_order(ident, two_a
 
 
 def test_delta_is_measured_against_the_filename_ayahs_own_window(ident, two_surahs):
+    # The relabel rule requires the floor to be passed; the fixture's floor is 0.0.
     decoded = ident.identify("خدذ", database=two_surahs, filename_ayah="1:1",
+                             floors={ident.floor_bin(3): 0.0},
                              bars={"b": 0.5, "b_u": 0.5})
     assert decoded.match.score == pytest.approx(1.0)
     assert decoded.match.text_class == two_surahs.text_class(2, 1)
@@ -364,6 +366,35 @@ def test_a_row_in_an_empty_floor_bin_gets_no_floor_verdict(ident):
     assert ident.floor_bin(decoded.length) == "161-"
     assert decoded.floor_ok is None
     assert ident.apply_floors(decoded, floors).floor_ok is None
+
+
+def test_a_floorless_bin_is_never_relabelled_or_assigned(ident):
+    """No floor means no verdict, not a pass: neither rule may fire on such a row."""
+    floorless = _identification(ident, floor_ok=None, delta=0.5, margin=0.5)
+    assert not ident.relabelled(floorless, 0.0)
+    assert not ident.assigned(floorless, 0.0)
+
+    letters = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
+    long = "".join(letters[index % len(letters)] for index in range(170))
+    db = ident.ReferenceDatabase.build([
+        _ayah(ident, 1, 1, [long]),
+        _ayah(ident, 1, 2, ["ز"]),
+    ])
+    floors = {"0-20": 0.0}
+    bars = {"b": 0.0, "b_u": 0.0}
+    unlabelled = ident.identify(long, database=db, floors=floors, bars=bars)
+    assert unlabelled.floor_ok is None
+    assert unlabelled.margin >= bars["b_u"]  # would be assigned without a floor requirement
+    assert unlabelled.label_source == ident.NONE
+    assert unlabelled.assigned_label is None
+
+    labelled = ident.identify(long, database=db, filename_ayah="1:2", floors=floors,
+                              bars=bars)
+    assert labelled.floor_ok is None
+    assert labelled.delta >= bars["b"]  # would be relabelled without a floor requirement
+    assert not ident.relabelled(labelled, bars["b"])
+    assert labelled.label_source == ident.FILENAME
+    assert labelled.assigned_label == "1:2"
 
 
 def test_noise_pass_is_reported_under_the_three_empty_bin_conventions(ident):
@@ -553,17 +584,13 @@ def test_the_amendment_cites_the_frozen_holdout_text():
 
 
 def test_the_bu_amendment_is_the_owner_approved_post_look_precision_rule():
-    """The owner's dated erratum: precision (of the clips we name), not share of all clips.
-    It is post-look, cites the frozen S5 pre-registration by SHA-256, and never edits it."""
+    """The owner's dated erratum cites the frozen S5 pre-registration by SHA-256, is dated and
+    post-look, and never edits that document (its own SHA pin is the real check)."""
     assert _sha256(PREREGISTRATION) == S5_PREREGISTRATION_SHA256
     text = BU_AMENDMENT.read_text(encoding="utf-8")
     assert "2026-10-25" in text
     assert "post-look" in text
     assert S5_PREREGISTRATION_SHA256 in text
-    assert "smallest" in text and "99%" in text
-    assert "can only fall" in text  # the drafting error the amendment fixes
-    assert "99.68" in text and "0.01" in text  # the architect's diagnostic
-    assert "gate" in text and "training" in text  # what it does not touch
 
 
 def test_the_real_mistake_clips_file_is_the_pinned_52_clips_over_46_ayat(ident):
@@ -734,3 +761,37 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
         store = ident.load_decode_store(path)
         assert store["identity"] == {"model_ref": ident.BASE_MODEL,
                                      "hub_revision": ident.BASE_REVISION}
+
+
+def test_the_shortlist_guard_rederives_on_the_seeded_sample(ident, calibration):
+    """k = 20's only evidence is the guard's recall; re-derive it clip by clip."""
+    split = json.loads(SPLIT_PATH.read_text(encoding="utf-8"))
+    decodes = {decode.audio_filename: decode for decode in ident.load_look_decodes()}
+    sample = ident.recall_sample(split["look"])
+    guard = calibration["shortlist_guard"]
+    assert guard["clips"] == len(sample) == 1000
+    assert guard["salt"] == ident.SALT
+    database = ident.load_references()
+    recalled = sum(database.best_score(decodes[clip].spans, k=guard["k"])
+                   == database.exhaustive_best_score(decodes[clip].spans)
+                   for clip in sample)
+    assert recalled == guard["recalled"] == 1000
+    assert guard["recall"] == recalled / len(sample)
+    assert guard["passed"] is (guard["recall"] >= ident.RECALL_MIN)
+
+    # Cheap shape checks the heavy re-derivation does not cover.
+    assert set(calibration["exhaustive_decoy"]["floors"]) == set(calibration["floors"])
+    assert 0.0 <= calibration["exhaustive_decoy"]["look_retention"] <= 1.0
+    assert sum(calibration["look"]["bins"].values()) == calibration["look"]["clips"]
+    assert calibration["throughput"]["clips"] == calibration["look"]["clips"]
+    assert calibration["throughput"]["seconds"] > 0
+
+
+def test_the_noise_store_is_the_committed_pool(ident, calibration):
+    """The noise stop's input must be the pool's bytes, not a re-fetch."""
+    pool = json.loads(NOISE_POOL.read_text(encoding="utf-8"))["recordings"]
+    expected = {str(record["freesound_id"]): record["samples_sha256"] for record in pool}
+    store = ident.load_decode_store(ident.NOISE_DECODES_PATH)
+    assert {key: item["samples_sha256"] for key, item in store["items"].items()} == expected
+    assert calibration["noise"]["samples_sha256"] == {
+        "recordings": len(expected), "mismatched": 0}

@@ -34,10 +34,10 @@ The first look pass (engine `79acded`) had a span-attribution defect: each CIGAR
 
 | bin | floor |
 |---|---|
-| `0-20` | 0.578452 |
-| `21-40` | 0.464524 |
-| `41-80` | 0.380952 |
-| `81-160` | 0.337043 |
+| `0-20` | 0.654242 |
+| `21-40` | 0.500000 |
+| `41-80` | 0.390244 |
+| `81-160` | 0.344143 |
 
 **b = 0.01 (PROVISIONAL)**
  (0.04% of look relabelled, 0 of the real-mistake clips relabelled).
@@ -102,13 +102,13 @@ _Precision is the amended b_u's quantity; coverage is the literal rule's, which 
 
 ## Floor status
 
-`stopped: noise 40.7% > 1%`
+`stopped: noise 35.7% > 1%`
 
 | convention | recordings | passed | pass |
 |---|---|---|---|
-| A | 445 | 181 | 40.67% |
-| B | 445 | 181 | 40.67% |
-| C | 427 | 181 | 42.39% |
+| A | 445 | 159 | 35.73% |
+| B | 445 | 159 | 35.73% |
+| C | 427 | 159 | 37.24% |
 
 B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C excludes it. The frozen noise stop fires under all three, so b and b_u are provisional and no replacement floor is applied here (parked for the owner).
 
@@ -120,14 +120,16 @@ B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C
 | look relabel rate at b | 0.04% |
 | `cer_wav ≥ 0.2` tail (1806 clips) retention | 100.00% |
 | `cer_wav ≥ 0.2` tail relabel rate at b | 0.06% |
-| Freesound noise pass | 40.67% |
+| Freesound noise pass | 35.73% |
 | exhaustive-decoy floors (sensitivity) | retention 99.98% |
-| throughput | 8.80 ms per clip |
+| throughput | 7.82 ms per clip |
+
+The noise population is decoded in `stream_b0`, while look and the floors use whole-clip `spans`; the noise rate compares a different decode mode, not the calibration population's.
 
 ## Stop conditions
 
 | condition | limit | value | fired |
 |---|---|---|---|
 | look retention | 90.00% | 99.98% | False |
-| noise pass | 1.00% | 40.67% | True |
+| noise pass | 1.00% | 35.73% | True |
 | bar b | — | 0.01 | False |

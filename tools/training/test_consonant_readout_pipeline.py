@@ -77,6 +77,7 @@ def test_the_aug95_report_regenerates_key_for_key_except_the_retasy_subtree():
 # --- the reproduction check --------------------------------------------------------------------
 
 
+@pytest.mark.slow
 def test_the_reproduction_check_reproduces_95_s_published_totals_and_writes_nothing(monkeypatch):
     _skip_without_harness()
 
@@ -270,6 +271,7 @@ class _NoRetasy:
         return self._inner.grade(items, decodes, models)
 
 
+@pytest.mark.slow
 def test_the_aug95_report_regenerates_key_for_key_without_the_restricted_decodes():
     _skip_without_harness()
     data = ar.load_confirm(_NoRetasy(ar.Sources()), "ema", spec=asp.AUG95)

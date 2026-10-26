@@ -1429,7 +1429,12 @@ def _bar(value: float | None) -> str:
 
 
 def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
-    """The page's length-bin section: what the floors cover, and the floor-less bin's bound."""
+    """The page's pool section: an indicative VAD speech histogram, not decode-bin membership.
+
+    The pool's decode lengths do not exist until S7 runs, and `speech_s` is not one of them:
+    characters per second vary between clips, so speech seconds say nothing certain about a
+    row's floor bin (a short row can still decode past 160 characters).
+    """
     pool = report["pool_lengths"]
     usable = pool["usable"]
 
@@ -1437,25 +1442,25 @@ def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
         return _pct(count / usable if usable else None)
 
     return [
-        "The floors are keyed on the **decode's** character length, and the look half they come "
-        "from is at most 20 s of audio: its longest decode is 138 characters, so no look clip "
-        "reached `161-` and that bin has no floor. The pool's own decode lengths do not exist "
-        "until S7 runs, so its pass-1 speech seconds are the only predictor (`speech_s`, which "
-        "the decode's length tracks; the frozen row does not carry the clip's duration):",
+        "The floors are keyed on the **decode's** character length. The look half's longest "
+        "decode is 138 characters, so none reached `161-` and that bin has no floor. The pool's "
+        "decode lengths do not exist until S7 runs. Its only committed length fact is the "
+        "pass-1 VAD speech seconds (`speech_s`; the frozen row does not carry the clip's "
+        "`duration_s`), which is **not** the decode's length: characters per second vary "
+        "between clips, so a row with little speech can still decode past 160 characters. Read "
+        "this as an indicative distribution of speech seconds, with no inference about a row's "
+        "floor bin:",
         "",
-        "| speech | rows | share | decode bin |",
-        "|---|---|---|---|",
-        f"| ≤ 20 s | {usable - pool['over_20_s']:,} | "
-        f"{share(usable - pool['over_20_s'])} | the four calibrated bins |",
-        f"| > 20 s | {pool['over_20_s']:,} | {share(pool['over_20_s'])} | may reach `161-` |",
+        "| VAD speech | rows | share |",
+        "|---|---|---|",
+        f"| ≤ 20 s | {usable - pool['over_20_s']:,} | {share(usable - pool['over_20_s'])} |",
+        f"| > 20 s | {pool['over_20_s']:,} | {share(pool['over_20_s'])} |",
         f"| > 30 s | {pool['over_30_s']:,} | {share(pool['over_30_s'])} |",
         f"| > 60 s | {pool['over_60_s']:,} | {share(pool['over_60_s'])} |",
         "",
-        f"At the look half's own ceiling about 23 s of recitation is needed to reach 161 "
-        f"characters, so the floor-less `161-` bin holds at most the {pool['over_20_s']:,} rows "
-        f"with over 20 s of speech ({share(pool['over_20_s'])}) of the {usable:,} usable rows. "
-        f"Its exact share is "
-        f"measured when S7 decodes; until then no row in it is assigned or relabelled.",
+        f"The share of the {usable:,} usable rows whose decode lands in `161-` is unknown until "
+        "S7 decodes and measures normalised lengths (#192); this section claims nothing about "
+        "it. Until then no row in that bin is assigned or relabelled.",
     ]
 
 
@@ -1559,7 +1564,7 @@ def render(report: Mapping[str, Any]) -> str:
         "_Precision is the amended b_u's quantity; coverage is the literal rule's, which can "
         "only fall as the bar rises._",
         "",
-        "## Length bins in S7's pool",
+        "## The pool's VAD speech duration (indicative)",
         "",
         *pool_length_lines(report),
         "",
@@ -1577,7 +1582,7 @@ def render(report: Mapping[str, Any]) -> str:
         "one — unless the caller passes `allow_provisional=True` and reports that it did.",
         f"- **Decode mode.** The frozen rule fixes a whole-clip greedy decode "
         f"(`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are "
-        f"whole-clip; the look half is at most 20 s of audio. The pool is not: "
+        f"whole-clip. The pool is not: "
         f"{report['pool_lengths']['over_60_s']:,} usable rows carry over 60 s of speech, the "
         f"longest {report['pool_lengths']['longest_s']:,.0f} s, which a whole pass cannot "
         f"decode within "

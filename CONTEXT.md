@@ -364,9 +364,10 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
 **Floor** (non-recitation)
 : The type-7 99th percentile of the best **decoy** score over the Tarteel v1 look decodes in a
   decode-length bin (`0-20`, `21-40`, `41-80`, `81-160`, `161-` characters). A row passes when its
-  best real score is strictly above its bin's floor. The look half is at most 20 s of audio, so
-  `161-` has **no floor**: a row there gets `id_floor_ok: null` — "no floor for this bin", not
-  "below the floor" — and is left alone (an unlabelled row stays `none`, nothing is relabelled).
+  best real score is strictly above its bin's floor. The look half's longest decode is 138
+  characters, so `161-` has **no floor**: a row there gets `id_floor_ok: null` — "no floor for
+  this bin", not "below the floor" — and is left alone (an unlabelled row stays `none`, nothing
+  is relabelled).
 : _Avoid_: threshold (the bars are the thresholds), silence floor (that is the pass-1 `silence`
   exclusion, a different rule)
 

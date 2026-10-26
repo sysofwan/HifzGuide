@@ -103,24 +103,24 @@ Literal-rule b_u (share of all clips): none; recorded for transparency.
 
 _Precision is the amended b_u's quantity; coverage is the literal rule's, which can only fall as the bar rises._
 
-## Length bins in S7's pool
+## The pool's VAD speech duration (indicative)
 
-The floors are keyed on the **decode's** character length, and the look half they come from is at most 20 s of audio: its longest decode is 138 characters, so no look clip reached `161-` and that bin has no floor. The pool's own decode lengths do not exist until S7 runs, so its pass-1 speech seconds are the only predictor (`speech_s`, which the decode's length tracks; the frozen row does not carry the clip's duration):
+The floors are keyed on the **decode's** character length. The look half's longest decode is 138 characters, so none reached `161-` and that bin has no floor. The pool's decode lengths do not exist until S7 runs. Its only committed length fact is the pass-1 VAD speech seconds (`speech_s`; the frozen row does not carry the clip's `duration_s`), which is **not** the decode's length: characters per second vary between clips, so a row with little speech can still decode past 160 characters. Read this as an indicative distribution of speech seconds, with no inference about a row's floor bin:
 
-| speech | rows | share | decode bin |
-|---|---|---|---|
-| ≤ 20 s | 454,774 | 95.75% | the four calibrated bins |
-| > 20 s | 20,188 | 4.25% | may reach `161-` |
+| VAD speech | rows | share |
+|---|---|---|
+| ≤ 20 s | 454,774 | 95.75% |
+| > 20 s | 20,188 | 4.25% |
 | > 30 s | 6,378 | 1.34% |
 | > 60 s | 759 | 0.16% |
 
-At the look half's own ceiling about 23 s of recitation is needed to reach 161 characters, so the floor-less `161-` bin holds at most the 20,188 rows with over 20 s of speech (4.25%) of the 474,962 usable rows. Its exact share is measured when S7 decodes; until then no row in it is assigned or relabelled.
+The share of the 474,962 usable rows whose decode lands in `161-` is unknown until S7 decodes and measures normalised lengths (#192); this section claims nothing about it. Until then no row in that bin is assigned or relabelled.
 
 ## For S7: the row contract and the decode mode
 
 - **Row contract.** `tadabur.tlog_ident.identification_record` is the one place the committed row's field names are fixed: the span, `straddles`, `class_label`, `score`, `decoy`, `delta`, `margin`, `margin_class`, `id_floor_ok`, `overlaps_filename`, `filename_label`, `label_source`, `assigned_label`. `id_floor_ok: null` means **no floor for this length bin**, not 'below the floor': the row is unverified, so an unlabelled row stays `none`, a filename row keeps its own label, and nothing in that bin is relabelled.
 - **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(floors, bars, k)` and refuses a report whose floors are stopped or whose bars are provisional — this one — unless the caller passes `allow_provisional=True` and reports that it did.
-- **Decode mode.** The frozen rule fixes a whole-clip greedy decode (`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are whole-clip; the look half is at most 20 s of audio. The pool is not: 759 usable rows carry over 60 s of speech, the longest 982 s, which a whole pass cannot decode within the VRAM budget (S5's Freesound pool already needed `stream_b0`, as its own row above says). `identify` takes a bare string and cannot tell the modes apart. S7 must either obtain an amendment of the decode mode or record `decode_mode` beside every identification and report the floor-bin and streamed populations separately; S5 decides neither.
+- **Decode mode.** The frozen rule fixes a whole-clip greedy decode (`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are whole-clip. The pool is not: 759 usable rows carry over 60 s of speech, the longest 982 s, which a whole pass cannot decode within the VRAM budget (S5's Freesound pool already needed `stream_b0`, as its own row above says). `identify` takes a bare string and cannot tell the modes apart. S7 must either obtain an amendment of the decode mode or record `decode_mode` beside every identification and report the floor-bin and streamed populations separately; S5 decides neither.
 
 ## Floor status
 

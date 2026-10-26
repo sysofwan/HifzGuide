@@ -900,13 +900,34 @@ def test_pool_summary_reads_the_frozen_row_shape(ident):
 
 def test_the_page_renders_from_the_committed_report(ident, calibration):
     """The generated page must be ``render`` of the report, and the report carries the pool's
-    duration histogram the page's floor-less-bin bound is read from."""
+    speech histogram the page's pool section is read from."""
     assert ident.render(calibration) == ident.DOC_PATH.read_text(encoding="utf-8")
     pool = calibration["pool_lengths"]
     assert pool["source"] == "tadabur.tlog_overlap.iter_pool_rows"
     assert pool["field"] == "speech_s"  # the frozen row's length fact, not duration_s
     assert 0 < pool["over_60_s"] < pool["over_30_s"] < pool["over_20_s"] <= pool["usable"]
     assert pool["longest_s"] > 60
+
+
+def test_pool_speech_seconds_make_no_floor_bin_claim(ident, calibration):
+    """R6.1: VAD speech seconds are not the decode's length. A row with 19 s of speech can
+    still decode past 160 characters into the floor-less bin, so neither the histogram nor the
+    page may infer a row's floor bin from its speech duration."""
+    lengths, _ = ident.pool_summary(
+        [{"split": "unclean", "usable": True, "speech_s": 19.0, "filename_label": None}])
+    letters = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
+    long = (letters * 6)[:161]
+    assert all(left != right for left, right in itertools.pairwise(long))
+    db = ident.ReferenceDatabase.build([_ayah(ident, 1, 1, [long])])
+    decoded = ident.identify(long, database=db, floors={"0-20": 0.0})
+    assert decoded.length == 161
+    assert ident.floor_bin(decoded.length) == "161-"
+    assert decoded.floor_ok is None
+
+    section = "\n".join(ident.pool_length_lines(calibration))
+    for claim in ("calibrated bin", "at most", "needed to reach"):
+        assert claim not in section
+    assert "#192" in section
 
 
 def test_the_margin_amendment_pins_the_committed_competitor_search(ident, calibration):

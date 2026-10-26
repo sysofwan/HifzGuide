@@ -294,13 +294,16 @@ against a 1% ceiling), so `floor_status` is `stopped` and both bars are provisio
 `tadabur.tlog_ident.load_calibration()` refuses the committed report unless the caller passes
 `allow_provisional=True`, and a consumer that does must say so in its output.
 
-**The floor-less bin.** Floors are keyed on the **decode's** character length, and the look half
-they come from is at most 20 s of audio (138 characters at its longest), so `161-` has no floor.
-A row decoded longer than 161 characters gets `id_floor_ok: null` — "no floor for this bin", not
+**The floor-less bin.** Floors are keyed on the **decode's** character length. The look half's
+longest decode is 138 characters, so `161-` has no floor and none is invented for it. A row
+decoded longer than 161 characters gets `id_floor_ok: null` — "no floor for this bin", not
 "below the floor": it is never relabelled, and without a filename label it stays `none`. The
-pool's pass-1 `speech_s` is the only committed predictor of how many rows that is (the frozen
-row does not carry the clip's duration); the page's "Length bins in S7's pool" section bounds it
-from speech seconds and S7 measures it exactly.
+pool's pass-1 `speech_s` is its only committed length fact (the frozen row does not carry the
+clip's `duration_s`), and it is VAD speech duration, **not** the decode's character length:
+characters per second vary between clips, so a short-speech row can still decode into `161-`.
+The page's "The pool's VAD speech duration (indicative)" section therefore reports the speech
+histogram with no claim about floor-bin membership; S7's decodes measure the real coverage
+(#192).
 
 **Decode mode.** The frozen rule fixes a whole-clip greedy decode, and both the look decodes and
 these floors are whole-clip; the pool's long rows cannot be decoded whole within the VRAM budget

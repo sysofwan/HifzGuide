@@ -124,249 +124,249 @@
      "precision": 0.9997661365762395
     },
     {
-     "assigned": 4261,
+     "assigned": 4260,
      "bar": 0.1,
-     "coverage": 0.9389464403791051,
-     "precision": 0.9997653133067355
+     "coverage": 0.9387260304165749,
+     "precision": 0.9997652582159624
     },
     {
-     "assigned": 4244,
+     "assigned": 4243,
      "bar": 0.11,
-     "coverage": 0.9354198809786203,
+     "coverage": 0.9351994710160899,
      "precision": 1.0
     },
     {
-     "assigned": 4217,
+     "assigned": 4216,
      "bar": 0.12,
-     "coverage": 0.929468811990302,
+     "coverage": 0.9292484020277717,
      "precision": 1.0
     },
     {
-     "assigned": 4193,
+     "assigned": 4192,
      "bar": 0.13,
-     "coverage": 0.9241789728895746,
+     "coverage": 0.9239585629270443,
      "precision": 1.0
     },
     {
-     "assigned": 4165,
+     "assigned": 4164,
      "bar": 0.14,
-     "coverage": 0.918007493938726,
+     "coverage": 0.9177870839761957,
      "precision": 1.0
     },
     {
-     "assigned": 4138,
+     "assigned": 4137,
      "bar": 0.15,
-     "coverage": 0.9120564249504077,
+     "coverage": 0.9118360149878775,
      "precision": 1.0
     },
     {
-     "assigned": 4112,
+     "assigned": 4111,
      "bar": 0.16,
-     "coverage": 0.9063257659246198,
+     "coverage": 0.9061053559620895,
      "precision": 1.0
     },
     {
-     "assigned": 4085,
+     "assigned": 4084,
      "bar": 0.17,
-     "coverage": 0.9003746969363016,
+     "coverage": 0.9001542869737712,
      "precision": 1.0
     },
     {
-     "assigned": 4061,
+     "assigned": 4060,
      "bar": 0.18,
-     "coverage": 0.8950848578355741,
+     "coverage": 0.8948644478730439,
      "precision": 1.0
     },
     {
-     "assigned": 4017,
+     "assigned": 4016,
      "bar": 0.19,
-     "coverage": 0.8853868194842407,
+     "coverage": 0.8851664095217103,
      "precision": 1.0
     },
     {
-     "assigned": 3965,
+     "assigned": 3964,
      "bar": 0.2,
-     "coverage": 0.8739255014326648,
+     "coverage": 0.8737050914701344,
      "precision": 1.0
     },
     {
-     "assigned": 3947,
+     "assigned": 3946,
      "bar": 0.21,
-     "coverage": 0.8699581221071192,
+     "coverage": 0.869737712144589,
      "precision": 1.0
     },
     {
-     "assigned": 3906,
+     "assigned": 3902,
      "bar": 0.22,
-     "coverage": 0.8609213136433767,
+     "coverage": 0.8600396737932554,
      "precision": 1.0
     },
     {
-     "assigned": 3874,
+     "assigned": 3870,
      "bar": 0.23,
-     "coverage": 0.8538681948424068,
+     "coverage": 0.8529865549922857,
      "precision": 1.0
     },
     {
-     "assigned": 3831,
+     "assigned": 3827,
      "bar": 0.24,
-     "coverage": 0.8443905664536037,
+     "coverage": 0.8435089266034824,
      "precision": 1.0
     },
     {
-     "assigned": 3814,
+     "assigned": 3810,
      "bar": 0.25,
-     "coverage": 0.8406435970905884,
+     "coverage": 0.8397619572404673,
      "precision": 1.0
     },
     {
-     "assigned": 3740,
+     "assigned": 3736,
      "bar": 0.26,
-     "coverage": 0.8243332598633458,
+     "coverage": 0.8234516200132246,
      "precision": 1.0
     },
     {
-     "assigned": 3671,
+     "assigned": 3667,
      "bar": 0.27,
-     "coverage": 0.8091249724487547,
+     "coverage": 0.8082433325986335,
      "precision": 1.0
     },
     {
-     "assigned": 3619,
+     "assigned": 3615,
      "bar": 0.28,
-     "coverage": 0.7976636543971788,
+     "coverage": 0.7967820145470575,
      "precision": 1.0
     },
     {
-     "assigned": 3545,
+     "assigned": 3542,
      "bar": 0.29,
-     "coverage": 0.7813533171699361,
+     "coverage": 0.7806920872823452,
      "precision": 1.0
     },
     {
-     "assigned": 3502,
+     "assigned": 3498,
      "bar": 0.3,
-     "coverage": 0.7718756887811329,
+     "coverage": 0.7709940489310116,
      "precision": 1.0
     },
     {
-     "assigned": 3428,
+     "assigned": 3424,
      "bar": 0.31,
-     "coverage": 0.7555653515538903,
+     "coverage": 0.754683711703769,
      "precision": 1.0
     },
     {
-     "assigned": 3347,
+     "assigned": 3337,
      "bar": 0.32,
-     "coverage": 0.7377121445889354,
+     "coverage": 0.7355080449636323,
      "precision": 1.0
     },
     {
-     "assigned": 3306,
+     "assigned": 3296,
      "bar": 0.33,
-     "coverage": 0.7286753361251929,
+     "coverage": 0.7264712364998898,
      "precision": 1.0
     },
     {
-     "assigned": 3210,
+     "assigned": 3199,
      "bar": 0.34,
-     "coverage": 0.7075159797222834,
+     "coverage": 0.7050914701344501,
      "precision": 1.0
     },
     {
-     "assigned": 3160,
+     "assigned": 3149,
      "bar": 0.35,
-     "coverage": 0.6964954815957681,
+     "coverage": 0.6940709720079348,
      "precision": 1.0
     },
     {
-     "assigned": 3066,
+     "assigned": 3054,
      "bar": 0.36,
-     "coverage": 0.6757769451179193,
+     "coverage": 0.6731320255675557,
      "precision": 1.0
     },
     {
-     "assigned": 2961,
+     "assigned": 2944,
      "bar": 0.37,
-     "coverage": 0.6526338990522371,
+     "coverage": 0.6488869296892219,
      "precision": 1.0
     },
     {
-     "assigned": 2874,
+     "assigned": 2856,
      "bar": 0.38,
-     "coverage": 0.6334582323121005,
+     "coverage": 0.6294908529865549,
      "precision": 1.0
     },
     {
-     "assigned": 2781,
+     "assigned": 2762,
      "bar": 0.39,
-     "coverage": 0.6129601057967821,
+     "coverage": 0.6087723165087062,
      "precision": 1.0
     },
     {
-     "assigned": 2726,
+     "assigned": 2707,
      "bar": 0.4,
-     "coverage": 0.6008375578576152,
+     "coverage": 0.5966497685695393,
      "precision": 1.0
     },
     {
-     "assigned": 2596,
+     "assigned": 2575,
      "bar": 0.41,
-     "coverage": 0.5721842627286753,
+     "coverage": 0.5675556535155389,
      "precision": 1.0
     },
     {
-     "assigned": 2484,
+     "assigned": 2458,
      "bar": 0.42,
-     "coverage": 0.547498346925281,
+     "coverage": 0.541767687899493,
      "precision": 1.0
     },
     {
-     "assigned": 2369,
+     "assigned": 2347,
      "bar": 0.43,
-     "coverage": 0.5221512012342958,
+     "coverage": 0.5173021820586291,
      "precision": 1.0
     },
     {
-     "assigned": 2273,
+     "assigned": 2251,
      "bar": 0.44,
-     "coverage": 0.5009918448313864,
+     "coverage": 0.49614282565571965,
      "precision": 1.0
     },
     {
-     "assigned": 2136,
+     "assigned": 2114,
      "bar": 0.45,
-     "coverage": 0.4707956799647344,
+     "coverage": 0.46594666078906766,
      "precision": 1.0
     },
     {
-     "assigned": 2029,
+     "assigned": 2008,
      "bar": 0.46,
-     "coverage": 0.4472118139739916,
+     "coverage": 0.44258320476085516,
      "precision": 1.0
     },
     {
-     "assigned": 1913,
+     "assigned": 1896,
      "bar": 0.47,
-     "coverage": 0.4216442583204761,
+     "coverage": 0.41789728895746087,
      "precision": 1.0
     },
     {
-     "assigned": 1764,
+     "assigned": 1747,
      "bar": 0.48,
-     "coverage": 0.3888031739034604,
+     "coverage": 0.3850562045404452,
      "precision": 1.0
     },
     {
-     "assigned": 1641,
+     "assigned": 1620,
      "bar": 0.49,
-     "coverage": 0.36169274851223276,
+     "coverage": 0.3570641392990963,
      "precision": 1.0
     },
     {
-     "assigned": 1614,
+     "assigned": 1593,
      "bar": 0.5,
-     "coverage": 0.3557416795239145,
+     "coverage": 0.35111307031077804,
      "precision": 1.0
     }
    ],
@@ -618,8 +618,8 @@
  },
  "throughput": {
   "clips": 4537,
-  "ms_per_clip": 7.817,
-  "seconds": 35.465
+  "ms_per_clip": 13.098,
+  "seconds": 59.426
  },
  "unlabelled_unclean": {
   "source": "tadabur.tlog_overlap.iter_pool_rows",

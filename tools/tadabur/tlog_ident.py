@@ -562,6 +562,72 @@ class ReferenceDatabase:
                      text_class=self._class_of[(chosen.surah, chosen.ayah)],
                      score=1.0 - distance / len(query))
 
+    def _sub_candidate(self, candidate: _Candidate, lo: int, hi: int) -> _Candidate | None:
+        """The part of a window in ``[lo, hi)``, with offsets rebased to its start."""
+        pieces = tuple(
+            _Constituent(constituent.surah, constituent.ayah,
+                         max(constituent.start, lo) - lo, min(constituent.end, hi) - lo)
+            for constituent in candidate.constituents
+            if max(constituent.start, lo) < min(constituent.end, hi))
+        if not pieces:
+            return None
+        return _Candidate(candidate.surah, candidate.ayah, candidate.text[lo:hi], pieces)
+
+    def _non_overlapping_segments(self, candidate: _Candidate, best: Match
+                                  ) -> tuple[tuple[int, int], ...]:
+        """The window's character ranges whose words do not overlap the best span."""
+        segments: list[tuple[int, int]] = []
+        for constituent in candidate.constituents:
+            reference = self.ayat[(constituent.surah, constituent.ayah)]
+            if constituent.surah != best.surah or not (
+                    best.ayah_from <= constituent.ayah <= best.ayah_to):
+                segments.append((constituent.start, constituent.end))
+                continue
+            first = best.word_from if constituent.ayah == best.ayah_from else 1
+            last = best.word_to if constituent.ayah == best.ayah_to else reference.words
+            overlap_start = constituent.start + reference.offsets[first - 1]
+            overlap_end = constituent.start + reference.offsets[last]
+            if overlap_start > constituent.start:
+                segments.append((constituent.start, overlap_start))
+            if overlap_end < constituent.end:
+                segments.append((overlap_end, constituent.end))
+        return tuple(segments)
+
+    def competitor(self, query: str, windows: Sequence[Window], best: Match) -> Match | None:
+        """The best different-class alignment at a location that does not overlap ``best``.
+
+        Every shortlisted window is searched, including the winning one: each constituent's
+        words outside the best span are aligned on their own, so a window whose winner is the
+        best class can still supply a competitor.
+        """
+        def key(row: Match, winner: bool) -> tuple:
+            return (row.score, winner, -row.surah, -row.ayah_from, -row.word_from,
+                    -row.ayah_to, -row.word_to)
+
+        found: tuple[tuple, Match] | None = None
+
+        def offer(row: Match, winner: bool) -> None:
+            nonlocal found
+            rank = key(row, winner)
+            if found is None or rank > found[0]:
+                found = (rank, row)
+
+        for window in windows:
+            # A window's own winning alignment keeps the pre-existing tie-break: on equal
+            # scores it is preferred over a segment found inside another window.
+            if window.match.text_class != best.text_class and not _overlaps(window.match, best):
+                offer(window.match, True)
+            candidate = self._candidate(window.surah, window.ayah, decoy=False)
+            for lo, hi in self._non_overlapping_segments(candidate, best):
+                sub = self._sub_candidate(candidate, lo, hi)
+                if sub is None:
+                    continue
+                match = self._match(query, sub)
+                if match.text_class == best.text_class or _overlaps(match, best):
+                    continue
+                offer(match, False)
+        return None if found is None else found[1]
+
 
 def _constituent_at(constituents: Sequence[_Constituent], position: int) -> int:
     for index, constituent in enumerate(constituents):
@@ -737,11 +803,7 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
 
     shortlisted = database.shortlist(decode, k=k)
     best = shortlisted[0].match
-    competitor = None
-    for window in shortlisted[1:]:
-        if window.match.text_class != best.text_class and not _overlaps(window.match, best):
-            competitor = window.match
-            break
+    competitor = database.competitor(query, shortlisted, best)
     filename_score = (database.score_window(decode, *name) if name is not None else None)
     identification = Identification(
         length=len(query), match=best, decoy=database.decoy_best(decode, k=k),
@@ -981,10 +1043,11 @@ def real_mistake_clips(path: Path = REAL_MISTAKE_CLIPS_PATH) -> list[dict]:
 # --- the calibration --------------------------------------------------------------------------
 
 
-def _look_measurements(database: ReferenceDatabase, look: Sequence[Decode]) -> tuple[list, float]:
+def _look_measurements(database: ReferenceDatabase, look: Sequence[Decode], *,
+                       k: int = K) -> tuple[list, float]:
     """Score every look decode, timed; returns the raw identifications and the elapsed seconds."""
     started = time.time()
-    scored = [identify(decode.spans, database=database, filename_ayah=decode.surah_ayah)
+    scored = [identify(decode.spans, database=database, filename_ayah=decode.surah_ayah, k=k)
               for decode in look]
     return scored, time.time() - started
 
@@ -1002,6 +1065,22 @@ def _shortlist_guard(database: ReferenceDatabase, sample: Sequence[str],
             "passed": recalled / len(sample) >= RECALL_MIN}
 
 
+def select_k(database: ReferenceDatabase, sample: Sequence[str],
+             decodes: Mapping[str, Decode], *, k: int = K) -> dict:
+    """The guard's k, doubling until the shortlist's best equals exhaustive search.
+
+    The selected k is the search every calibration population is then scored with; the guard
+    is not a separate measurement.
+    """
+    while True:
+        _phase(f"shortlist guard: {len(sample)} clips at k = {k}")
+        guard = _shortlist_guard(database, sample, decodes, k=k)
+        _phase(f"guard recall {guard['recalled']}/{guard['clips']}")
+        if guard["passed"]:
+            return guard
+        k *= 2
+
+
 def _phase(message: str) -> None:
     print(f"[tlog_ident] {message}", flush=True)
 
@@ -1009,8 +1088,13 @@ def _phase(message: str) -> None:
 def _calibration(database: ReferenceDatabase) -> dict:
     look = load_look_decodes()
     by_clip = {decode.audio_filename: decode for decode in look}
-    _phase(f"scoring {len(look)} look decodes")
-    raw, seconds = _look_measurements(database, look)
+    sample = recall_sample(by_clip)
+    # The guard picks the search; every population below is scored with the same k.
+    guard = select_k(database, sample, by_clip)
+    k = guard["k"]
+
+    _phase(f"scoring {len(look)} look decodes at k = {k}")
+    raw, seconds = _look_measurements(database, look, k=k)
     floors = derive_floors(raw)
     _phase(f"floors {floors}")
     applied = [apply_floors(row, floors) for row in raw]
@@ -1019,23 +1103,13 @@ def _calibration(database: ReferenceDatabase) -> dict:
     truth = load_decode_store(REAL_MISTAKE_DECODES_PATH)
     _phase(f"scoring {len(clip_list)} real-mistake clips")
     mistakes = [apply_floors(identify(truth["items"][clip["audio_filename"]]["spans"],
-                                      database=database, filename_ayah=clip["surah_ayah"]),
-                             floors) for clip in clip_list]
+                                      database=database, filename_ayah=clip["surah_ayah"],
+                                      k=k), floors) for clip in clip_list]
     bars = derive_bars(applied, mistakes)
-
-    sample = recall_sample(by_clip)
-    k = K
-    while True:
-        _phase(f"shortlist guard: {len(sample)} clips at k = {k}")
-        guard = _shortlist_guard(database, sample, by_clip, k=k)
-        _phase(f"guard recall {guard['recalled']}/{guard['clips']}")
-        if guard["passed"]:
-            break
-        k *= 2
 
     _phase(f"exhaustive-decoy sensitivity on {len(look)} clips")
     exhaustive = [identify(decode.spans, database=database, filename_ayah=decode.surah_ayah,
-                           exhaustive_decoy=True) for decode in look]
+                           exhaustive_decoy=True, k=k) for decode in look]
     exhaustive_floors = derive_floors(replace(row, decoy=row.exhaustive_decoy)
                                       for row in exhaustive) if exhaustive else {}
     exhaustive_applied = [apply_floors(row, exhaustive_floors) for row in exhaustive]
@@ -1054,7 +1128,7 @@ def _calibration(database: ReferenceDatabase) -> dict:
         raise ValueError(f"{len(mismatched)} noise decodes are not the pool's samples: "
                          f"{sorted(mismatched)[:5]}")
     _phase(f"scoring {len(noise_store['items'])} noise recordings")
-    noise = [identify(item["spans"], database=database)
+    noise = [identify(item["spans"], database=database, k=k)
              for item in noise_store["items"].values()]
     conventions = noise_pass_by_convention(noise, floors)
     # B (back off to the nearest calibrated bin) is the headline: the most faithful reading of
@@ -1107,7 +1181,7 @@ def _calibration(database: ReferenceDatabase) -> dict:
             "rules_changed": False,
         },
         "parameters": {
-            "k": K, "gram": GRAM, "grid": list(GRID), "floor_bins": list(FLOOR_BINS),
+            "k": k, "gram": GRAM, "grid": list(GRID), "floor_bins": list(FLOOR_BINS),
             "floor_percentile": FLOOR_PERCENTILE,
             "library": LIBRARY,
             "normalization_algorithm_version": normalization.ALGORITHM_VERSION,

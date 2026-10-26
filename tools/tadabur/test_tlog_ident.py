@@ -283,6 +283,22 @@ def test_the_margin_is_the_best_different_class_at_a_non_overlapping_location(id
     assert decoded.margin_class == db.text_class(2, 1)
 
 
+def test_adjacent_ayat_that_both_match_make_the_margin_zero(ident):
+    """Both 1:1 and 1:2 match "بجح" perfectly at non-overlapping locations; the winning
+    window's other ayah is a competitor, so an unlabelled row stays unnamed."""
+    db = ident.ReferenceDatabase.build([
+        ident.AyahReference(1, 1, "بجح", (0, 3)),
+        ident.AyahReference(1, 2, "بجحد", (0, 4)),
+    ])
+    decoded = ident.identify("بجح", database=db, floors={"0-20": 0.0},
+                             bars={"b": 0.01, "b_u": 0.01})
+    assert decoded.match.score == pytest.approx(1.0)
+    assert decoded.margin == pytest.approx(0.0)
+    assert decoded.margin_class == db.text_class(1, 2)
+    assert decoded.label_source == ident.NONE
+    assert decoded.assigned_label is None
+
+
 def test_every_row_carries_margin_and_margin_class(ident, two_surahs):
     """The margin is on every identification row, including one with no match; applying the
     floor replaces the row without dropping it."""
@@ -761,6 +777,46 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
         store = ident.load_decode_store(path)
         assert store["identity"] == {"model_ref": ident.BASE_MODEL,
                                      "hub_revision": ident.BASE_REVISION}
+
+
+def test_the_calibration_scores_every_population_with_the_guard_k(ident, monkeypatch):
+    """When the guard needs k = 40, the look scores, floors, bars, exhaustive pass and noise
+    must all be measured with k = 40, and the report must record it."""
+    query = "بتثجحخدذرزسش"
+    grams = [query[index:index + 3] for index in range(len(query) - 2)]
+    bait = "قفق".join(reversed(grams))
+    true = "بتصجحصدذصزسش"
+    database = ident.ReferenceDatabase.build(
+        [ident.AyahReference(surah, 1, bait, (0, len(bait))) for surah in range(1, 23)]
+        + [ident.AyahReference(23, 1, true, (0, len(true)))])
+    decodes = [ident.Decode(f"k{index}", f"clip{index}", "23:1", 1, 1, 0.0, query)
+               for index in range(1000)]
+    pool = json.loads(NOISE_POOL.read_text(encoding="utf-8"))["recordings"]
+    noise_items = {str(record["freesound_id"]):
+                   {"spans": "", "samples_sha256": record["samples_sha256"]}
+                   for record in pool}
+
+    monkeypatch.setattr(ident, "load_look_decodes", lambda: decodes)
+    monkeypatch.setattr(ident, "real_mistake_clips", lambda: [])
+    monkeypatch.setattr(ident, "load_decode_store",
+                        lambda path: {"items": noise_items}
+                        if Path(path) == ident.NOISE_DECODES_PATH else {"items": {}})
+    import tadabur.tlog_overlap as overlap
+    monkeypatch.setattr(overlap, "iter_pool_rows", lambda: iter(()))
+
+    calls = []
+    original = ident.identify
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs.get("k"))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(ident, "identify", spy)
+    report = ident._calibration(database)
+    assert report["shortlist_guard"]["k"] == 40
+    assert report["parameters"]["k"] == 40
+    assert set(calls) == {40}
+    assert len(calls) == 1000 + 1000 + len(noise_items)
 
 
 def test_the_shortlist_guard_rederives_on_the_seeded_sample(ident, calibration):

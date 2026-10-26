@@ -297,13 +297,17 @@ def _member_basename(member: tarfile.TarInfo) -> str:
 def _tsv(tar: tarfile.TarFile, member: tarfile.TarInfo) -> csv.DictReader:
     """One TSV member's rows, streamed off the tar (never the whole member at once).
 
+    ``QUOTE_NONE``: the published tables are unquoted TSV, so a literal ``"`` in a sentence
+    must stay data. Reading them as quoted CSV made one Urdu quote swallow adjacent rows into
+    a 200 KB "sentence", and the 587 English rows whose text contains a quote vanished.
     ``codecs.getreader`` rather than ``io.TextIOWrapper``: a streamed tar's member file has no
     ``seekable`` and the wrapper insists on asking.
     """
     handle = tar.extractfile(member)
     if handle is None:
         raise RuntimeError(f"{member.name} is not a regular file")
-    return csv.DictReader(codecs.getreader("utf-8")(handle), delimiter="\t")
+    return csv.DictReader(codecs.getreader("utf-8")(handle), delimiter="\t",
+                          quoting=csv.QUOTE_NONE)
 
 
 def _archive(archives_dir: Path, pin: dict) -> Path:

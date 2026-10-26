@@ -299,6 +299,34 @@ def test_adjacent_ayat_that_both_match_make_the_margin_zero(ident):
     assert decoded.assigned_label is None
 
 
+def test_a_competitor_straddling_an_ayah_boundary_sets_the_margin(ident):
+    """The runner-up starts mid-ayah and runs on into the next one, so it is one location.
+
+    Splitting the window's free characters at the boundary loses it; rebasing the sliced ayah
+    to 0 would restart it at word 1 and make it overlap the winner. Either error yields
+    ``margin = 0.5`` and names the row instead of leaving it unnamed.
+    """
+    db = ident.ReferenceDatabase.build([
+        ident.AyahReference(1, 1, "بجحدبج", (0, 4, 6)),
+        ident.AyahReference(1, 2, "حد", (0, 1, 2)),
+    ])
+    shortlisted = db.shortlist("بجحد")
+    best = shortlisted[0].match
+    assert (best.ayah_from, best.word_from, best.ayah_to, best.word_to) == (1, 1, 1, 1)
+    competitor = db.competitor("بجحد", shortlisted, best)
+    assert (competitor.ayah_from, competitor.word_from) == (1, 2)
+    assert (competitor.ayah_to, competitor.word_to) == (2, 2)
+    assert competitor.text_class == db.text_class(1, 2)
+    assert competitor.score == pytest.approx(1.0)
+
+    decoded = ident.identify("بجحد", database=db, floors={"0-20": 0.0},
+                             bars={"b": 0.01, "b_u": 0.01})
+    assert decoded.margin == pytest.approx(0.0)
+    assert decoded.margin_class == db.text_class(1, 2)
+    assert decoded.label_source == ident.NONE
+    assert decoded.assigned_label is None
+
+
 def test_every_row_carries_margin_and_margin_class(ident, two_surahs):
     """The margin is on every identification row, including one with no match; applying the
     floor replaces the row without dropping it."""

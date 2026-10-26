@@ -563,19 +563,28 @@ class ReferenceDatabase:
                      score=1.0 - distance / len(query))
 
     def _sub_candidate(self, candidate: _Candidate, lo: int, hi: int) -> _Candidate | None:
-        """The part of a window in ``[lo, hi)``, with offsets rebased to its start."""
+        """The part of a window in ``[lo, hi)``.
+
+        A constituent's extent stays anchored to its ayah's first character, so it may start
+        before the slice: a suffix of an ayah must still resolve to that ayah's real words,
+        not restart at word 1.
+        """
         pieces = tuple(
             _Constituent(constituent.surah, constituent.ayah,
-                         max(constituent.start, lo) - lo, min(constituent.end, hi) - lo)
+                         constituent.start - lo, constituent.end - lo)
             for constituent in candidate.constituents
-            if max(constituent.start, lo) < min(constituent.end, hi))
+            if constituent.start < hi and constituent.end > lo)
         if not pieces:
             return None
         return _Candidate(candidate.surah, candidate.ayah, candidate.text[lo:hi], pieces)
 
     def _non_overlapping_segments(self, candidate: _Candidate, best: Match
                                   ) -> tuple[tuple[int, int], ...]:
-        """The window's character ranges whose words do not overlap the best span."""
+        """The window's character ranges whose words do not overlap the best span.
+
+        Character-adjacent ranges are joined: a competitor that starts mid-ayah and runs on
+        into the next one must be searched as one continuous range, or its location is lost.
+        """
         segments: list[tuple[int, int]] = []
         for constituent in candidate.constituents:
             reference = self.ayat[(constituent.surah, constituent.ayah)]
@@ -591,14 +600,15 @@ class ReferenceDatabase:
                 segments.append((constituent.start, overlap_start))
             if overlap_end < constituent.end:
                 segments.append((overlap_end, constituent.end))
-        return tuple(segments)
+        return _join_adjacent(segments)
 
     def competitor(self, query: str, windows: Sequence[Window], best: Match) -> Match | None:
         """The best different-class alignment at a location that does not overlap ``best``.
 
-        Every shortlisted window is searched, including the winning one: each constituent's
-        words outside the best span are aligned on their own, so a window whose winner is the
-        best class can still supply a competitor.
+        Every shortlisted window is searched, including the winning one: the window's
+        characters outside the best span's words form one or two continuous ranges (they cross
+        ayah boundaries), and each range is aligned whole, so a different class that straddles
+        a boundary is found as one location rather than split at the boundary.
         """
         def key(row: Match, winner: bool) -> tuple:
             return (row.score, winner, -row.surah, -row.ayah_from, -row.word_from,
@@ -650,6 +660,17 @@ def _word_at(reference: AyahReference, offset: int, position: int) -> int:
     local = min(max(position - offset, 0), len(reference.reference) - 1)
     word = bisect_right(reference.offsets, local) - 1
     return min(max(word, 0), reference.words - 1) + 1
+
+
+def _join_adjacent(ranges: Iterable[tuple[int, int]]) -> tuple[tuple[int, int], ...]:
+    """``ranges`` with character-adjacent neighbours joined into one range."""
+    joined: list[tuple[int, int]] = []
+    for start, stop in ranges:
+        if joined and joined[-1][1] == start:
+            joined[-1] = (joined[-1][0], stop)
+        else:
+            joined.append((start, stop))
+    return tuple(joined)
 
 
 def _overlaps(first: Match, second: Match) -> bool:
@@ -1180,6 +1201,15 @@ def _calibration(database: ReferenceDatabase) -> dict:
                    "words is credited",
             "rules_changed": False,
         },
+        "margin_fix": {
+            "engine_commit": "37c18cf",
+            "defect": "a different-class runner-up that started mid-ayah and ran on into the "
+                      "next one was split at every boundary, so its location was lost",
+            "fix": "the window's free characters are searched as one contiguous range per "
+                   "side, with a sliced ayah keeping its origin so its words stay its own",
+            "affected": "Margins only: b_u, its precision table and the assigned counts. "
+                        "Floors and b are unchanged, because they read the decoy score and Δ.",
+        },
         "parameters": {
             "k": k, "gram": GRAM, "grid": list(GRID), "floor_bins": list(FLOOR_BINS),
             "floor_percentile": FLOOR_PERCENTILE,
@@ -1286,13 +1316,18 @@ def render(report: Mapping[str, Any]) -> str:
         f"- floors: type-7 {parameters['floor_percentile']}th percentile of the best decoy "
         f"score per length bin",
         "",
-        "## Superseded first pass",
+        "## Superseded calibration passes",
         "",
         f"The first look pass (engine `{report['first_pass']['engine_commit']}`) had a "
         f"span-attribution defect: {report['first_pass']['defect']}. Before this report the "
         f"engine was brought to the frozen rule: {report['first_pass']['fix']}. No rule, grid "
         "value or input changed, and the same committed look decodes were rescored; only the "
         "numbers below count.",
+        "",
+        f"A second look pass (engine `{report['margin_fix']['engine_commit']}`) overstated the "
+        f"margin: {report['margin_fix']['defect']}. The search now "
+        f"{report['margin_fix']['fix']}. {report['margin_fix']['affected']} The same committed "
+        "inputs were rescored; only the numbers below count.",
         "",
         "## Inputs",
         "",

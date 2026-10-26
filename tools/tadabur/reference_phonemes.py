@@ -12,6 +12,11 @@ across all reciters. The cache is wrapped in a versioned envelope
 normalized fallback sentinels), so a stale or partial cache is rebuilt rather
 than silently reused. Regeneration is deterministic and idempotent.
 
+The file is **committed**: a cold rebuild is a full 6236-ayah phonetization, so every fresh
+worktree reads the checked-in copy instead. Never hand-edit it — regenerate with
+``python -m tadabur.reference_phonemes --rebuild`` and commit the result.
+``test_full_reference_set_is_swift_faithful`` asserts the committed file is the generator's output.
+
 Usage:
   python3 -m tadabur.reference_phonemes [--cache PATH] [--rebuild]
 """

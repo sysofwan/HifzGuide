@@ -81,13 +81,16 @@ def generate_reference_phonemes() -> dict[str, str]:
     """
     from quran_transcript import Aya
 
+    # Each bare ``Aya()`` re-reads the 3.3 MB Quran JSON (~12 ms); 6,236 of them cost more than
+    # a minute of the build, so the first one's dict is threaded through every later one.
+    quran_dict = Aya(1, 1).quran_dict
     phonemes: dict[str, str] = {}
     for sura in range(1, 115):
-        num_ayat = Aya(sura, 1).get().num_ayat_in_sura
+        num_ayat = Aya(sura, 1, quran_dict=quran_dict).get().num_ayat_in_sura
         for ayah in range(1, num_ayat + 1):
             key = f"{sura}:{ayah}"
             try:
-                seg = Aya(sura, ayah).get()
+                seg = Aya(sura, ayah, quran_dict=quran_dict).get()
                 phonemes[key] = phonetize(seg.uthmani).phonemes
             except KeyError:
                 # The phonetizer raises KeyError on the 8 leen-madd-on-sukoon

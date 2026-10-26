@@ -22,16 +22,18 @@ Contract this file pins
   ``class_label``, ``shortlist``, ``all_windows``, ``best``, ``decoy_best``,
   ``decoy_exhaustive_best``.
 * ``Match(surah, ayah_from, word_from, ayah_to, word_to, text_class, score)`` with ``straddles``;
-  ``Window(surah, ayah, match)``; ``Identification`` with ``length``, ``match``, ``decoy``,
+* ``Identification`` with ``length``, ``match``, ``decoy``,
   ``exhaustive_decoy``, ``filename_class``, ``filename_score``, ``delta``, ``margin``,
   ``margin_class``, ``floor_ok``, ``overlaps_filename``, ``label_source``, ``assigned_label``.
-* ``score``, ``reverse_clusters``, ``floor_bin``, ``identify``, ``apply_floors``, ``relabelled``,
-  ``assigned``, ``derive_floors``, ``derive_bars``, ``noise_pass_by_convention``,
-  ``ayah_reference``, ``load_references``,
+  ``floor_ok`` is the S5b recitation verdict (#204): ``length >= L_MIN`` and
+  ``real - own decoy >= DELTA``, computed inside ``identify``.
+* ``score``, ``reverse_clusters``, ``floor_bin``, ``identify``, ``relabelled``, ``assigned``,
+  ``derive_floors``, ``derive_bars``, ``noise_pass_by_convention``, ``floor_rule``,
+  ``oracle_consequence``, ``ayah_reference``, ``load_references``,
   ``load_look_decodes``, ``recall_sample``, ``load_decode_store``.
 * The committed artifacts under ``tlog/ident/``: ``references.json.gz``,
-  ``real_mistake_clips.jsonl``, ``ident_calibration.json``, the whole-clip base decodes and the
-  generated ``docs/tlog-ayah-identification.md``.
+  ``real_mistake_clips.jsonl``, ``ident_calibration.json``, the whole-clip base decodes, the
+  S5b confirmation draws, the oracle pass and the generated ``docs/tlog-ayah-identification.md``.
 
 Ordering contract: ``shortlist`` and ``all_windows`` return scored windows best score first,
 ties by ``(surah, ayah)``. A span's words are quran-transcript ``uthmani.split()`` words, 1-based.
@@ -66,6 +68,7 @@ PREREGISTRATION = ROOT / "docs" / "tlog-ident-preregistration.md"
 HOLDOUT_PREREGISTRATION = ROOT / "docs" / "tlog-holdout-preregistration.md"
 BU_AMENDMENT = ROOT / "docs" / "tlog-ident-bu-amendment.md"
 MARGIN_AMENDMENT = ROOT / "docs" / "tlog-ident-margin-amendment.md"
+FLOOR_PREREGISTRATION = ROOT / "docs" / "tlog-ident-floor-preregistration.md"
 #: The frozen hold-out text the S5 amendment cites; it is never edited (S3b's meta.json hashes it).
 HOLDOUT_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
 #: The S5 pre-registration is frozen too: the owner's b_u erratum cites this hash, never edits it.
@@ -157,6 +160,10 @@ def test_the_parameters_are_the_pre_registered_ones(ident):
         "filename", "both", "identified", "none")
     assert (ident.BASE_MODEL, ident.BASE_REVISION) == (
         "obadx/muaalem-model-v3_2", BASE_REVISION)
+    # S5b (#204): the recitation rule is fixed in its own dated pre-registration.
+    assert (ident.L_MIN, ident.DELTA) == (8, pytest.approx(0.30))
+    assert ident.FLOOR_SALT == "tlog-s5b-floor-confirm-v1"
+    assert ident.FLOOR_PREREGISTRATION_PATH == FLOOR_PREREGISTRATION
 
 
 # --- the reference database: text classes, spans, decoys --------------------------------------
@@ -248,18 +255,28 @@ def test_the_decoy_sequence_reverses_each_ayah_and_keeps_ayah_order(ident, two_a
 # --- Δ and the margin -------------------------------------------------------------------------
 
 
-def test_delta_is_measured_against_the_filename_ayahs_own_window(ident, two_surahs):
-    # The relabel rule requires the floor to be passed; the fixture's floor is 0.0.
-    decoded = ident.identify("خدذ", database=two_surahs, filename_ayah="1:1",
-                             floors={ident.floor_bin(3): 0.0},
+def _rule_passes(monkeypatch, database):
+    """The margin fixtures test the margin, not the decoy: pin the decoy best to 0 so the S5b
+    rule passes whenever the real score clears DELTA (every fixture here scores at least 0.875).
+    Patched on the instance so the search under test is unchanged."""
+    monkeypatch.setattr(database, "decoy_best", lambda decode, *, k=None: 0.0)
+    return database
+
+
+def test_delta_is_measured_against_the_filename_ayahs_own_window(ident, monkeypatch):
+    # The relabel rule needs the S5b verdict; the decoy is pinned so only the margin matters.
+    db = _rule_passes(monkeypatch, ident.ReferenceDatabase.build([
+        _ayah(ident, 1, 1, ["بجح"]), _ayah(ident, 2, 1, ["بتث", "جحخ", "دذر"])]))
+    decoded = ident.identify("بتثجحخدذر", database=db, filename_ayah="1:1",
                              bars={"b": 0.5, "b_u": 0.5})
     assert decoded.match.score == pytest.approx(1.0)
-    assert decoded.match.text_class == two_surahs.text_class(2, 1)
-    assert decoded.filename_class == two_surahs.text_class(1, 1)
-    assert decoded.filename_score == ident.score("خدذ", two_surahs.window(1, 1))
+    assert decoded.match.text_class == db.text_class(2, 1)
+    assert decoded.filename_class == db.text_class(1, 1)
+    assert decoded.filename_score == ident.score("بتثجحخدذر", db.window(1, 1))
     assert decoded.delta == pytest.approx(decoded.match.score - decoded.filename_score)
-    assert decoded.delta == pytest.approx(1.0)
+    assert decoded.delta >= 0.5  # the bar the fixture relabels at
     assert decoded.overlaps_filename is False
+    assert decoded.floor_ok is True
     assert ident.relabelled(decoded, 0.5) is True
     assert decoded.label_source == ident.IDENTIFIED
     assert decoded.assigned_label == "2:1"
@@ -292,7 +309,7 @@ def test_adjacent_ayat_that_both_match_make_the_margin_zero(ident):
         ident.AyahReference(1, 1, "بجح", (0, 3)),
         ident.AyahReference(1, 2, "بجحد", (0, 4)),
     ])
-    decoded = ident.identify("بجح", database=db, floors={"0-20": 0.0},
+    decoded = ident.identify("بجح", database=db,
                              bars={"b": 0.01, "b_u": 0.01})
     assert decoded.match.score == pytest.approx(1.0)
     assert decoded.margin == pytest.approx(0.0)
@@ -321,7 +338,7 @@ def test_a_competitor_straddling_an_ayah_boundary_sets_the_margin(ident):
     assert competitor.text_class == db.text_class(1, 2)
     assert competitor.score == pytest.approx(1.0)
 
-    decoded = ident.identify("بجحد", database=db, floors={"0-20": 0.0},
+    decoded = ident.identify("بجحد", database=db,
                              bars={"b": 0.01, "b_u": 0.01})
     assert decoded.margin == pytest.approx(0.0)
     assert decoded.margin_class == db.text_class(1, 2)
@@ -345,7 +362,7 @@ def test_a_joined_range_never_hides_the_different_class_beside_it(ident):
     assert (competitor.ayah_from, competitor.word_from) == (3, 1)
     assert competitor.score == pytest.approx(1.0)
 
-    decoded = ident.identify("بجح", database=db, floors={"0-20": 0.0},
+    decoded = ident.identify("بجح", database=db,
                              bars={"b": 0.01, "b_u": 0.01})
     assert decoded.margin == pytest.approx(0.0)
     assert decoded.margin_class == db.text_class(1, 3)
@@ -361,7 +378,7 @@ def test_a_tied_different_class_location_sets_the_margin(ident):
         ident.AyahReference(1, 2, "بتثجبتثج", (0, 4, 8)),
         ident.AyahReference(1, 3, "بتثج", (0, 1, 2, 3, 4)),
     ])
-    decoded = ident.identify("بتثجبتثج", database=db, floors={"0-20": 0.0},
+    decoded = ident.identify("بتثجبتثج", database=db,
                              bars={"b": 0.01, "b_u": 0.01})
     assert decoded.match.score == pytest.approx(1.0)
     assert decoded.margin == pytest.approx(0.0)
@@ -370,39 +387,40 @@ def test_a_tied_different_class_location_sets_the_margin(ident):
     assert decoded.assigned_label is None
 
 
-def test_a_lower_scoring_straddling_location_sets_the_margin(ident):
+def test_a_lower_scoring_straddling_location_sets_the_margin(ident, monkeypatch):
     """R3.1: only a worse straddling location exists beside the same-class optimum. It scores
     0.875 (one substitution over eight characters), so the margin is 0.125, not the 0.625 the
     single-optimum search reports. The row is still named at the provisional b_u = 0.01."""
-    db = ident.ReferenceDatabase.build([
+    db = _rule_passes(monkeypatch, ident.ReferenceDatabase.build([
         ident.AyahReference(1, 1, "بتثجبتثج", (0, 4, 8)),
         ident.AyahReference(1, 2, "بتثجبتثج", (0, 4, 8)),
         ident.AyahReference(1, 3, "بتثح", (0, 1, 2, 3, 4)),
-    ])
+    ]))
     shortlisted = db.shortlist("بتثجبتثج")
     best = shortlisted[0].match
     competitor = db.competitor("بتثجبتثج", shortlisted, best)
     assert competitor.text_class == db.text_class(1, 3)
     assert competitor.score == pytest.approx(0.875)
 
-    decoded = ident.identify("بتثجبتثج", database=db, floors={"0-20": 0.0},
+    decoded = ident.identify("بتثجبتثج", database=db,
                              bars={"b": 0.01, "b_u": 0.01})
     assert decoded.margin == pytest.approx(0.125)
     assert decoded.margin_class == db.text_class(1, 3)
+    assert decoded.floor_ok is True
     assert decoded.label_source == ident.IDENTIFIED
 
 
-def test_the_pinned_margin_misses_a_location_inside_a_shared_word(ident):
+def test_the_pinned_margin_misses_a_location_inside_a_shared_word(ident, monkeypatch):
     """R4.1 under the pin: the different-class location starts inside the single word a
     same-class optimum also uses, so no word span reaches it. ``docs/tlog-ident-margin-
     amendment.md`` records the case and its one-way direction — the margin is overstated (0.5
     here, where a character-level search gives 0), so the row is named, never left unnamed."""
-    db = ident.ReferenceDatabase.build([
+    db = _rule_passes(monkeypatch, ident.ReferenceDatabase.build([
         ident.AyahReference(1, 1, "بتثجبتثج", (0, 8)),
         ident.AyahReference(1, 2, "بتثجبتثج", (0, 8)),
         ident.AyahReference(1, 3, "بتثج", (0, 1, 2, 3, 4)),
-    ])
-    decoded = ident.identify("بتثجبتثج", database=db, floors={"0-20": 0.0},
+    ]))
+    decoded = ident.identify("بتثجبتثج", database=db,
                              bars={"b": 0.01, "b_u": 0.01})
     assert decoded.match.score == pytest.approx(1.0)
     assert decoded.margin == pytest.approx(0.5)
@@ -411,16 +429,16 @@ def test_the_pinned_margin_misses_a_location_inside_a_shared_word(ident):
     assert decoded.assigned_label == "1:1"
 
 
-def test_the_pinned_margin_misses_a_worse_location_inside_a_shared_word(ident):
+def test_the_pinned_margin_misses_a_worse_location_inside_a_shared_word(ident, monkeypatch):
     """R4.1's second fixture: the only different-class location starts inside the shared word
     and scores 0.875, so a character-level search gives m ≤ 0.125. The pin reports 0.625 and
     names the row even at b_u = 0.50."""
-    db = ident.ReferenceDatabase.build([
+    db = _rule_passes(monkeypatch, ident.ReferenceDatabase.build([
         ident.AyahReference(1, 1, "بتثجبتثج", (0, 8)),
         ident.AyahReference(1, 2, "بتثجبتثج", (0, 8)),
         ident.AyahReference(1, 3, "بتثح", (0, 1, 2, 3, 4)),
-    ])
-    decoded = ident.identify("بتثجبتثج", database=db, floors={"0-20": 0.0},
+    ]))
+    decoded = ident.identify("بتثجبتثج", database=db,
                              bars={"b": 0.01, "b_u": 0.50})
     assert decoded.margin == pytest.approx(0.625)
     assert decoded.margin_class == db.text_class(1, 3)
@@ -517,16 +535,19 @@ def test_the_bounded_search_visits_no_fewer_spans_than_the_word_span_oracle(iden
                                         else None)
 
 
-def test_identification_record_is_the_committed_row_contract(ident, two_surahs):
-    """S6 and S7 must not invent two row shapes: one key set, the issue's field names."""
-    decoded = ident.identify("خدذ", database=two_surahs, filename_ayah="1:1",
-                             floors={"0-20": 0.0}, bars={"b": 0.01, "b_u": 0.01})
+def test_identification_record_is_the_committed_row_contract(ident, rule_database):
+    """S6 and S7 must not invent two row shapes: one key set, the issue's field names, and the
+    rule that produced the verdict on every row (architect r19: ``floor_rule``)."""
+    decoded = ident.identify("طظعغفقكل", database=rule_database, filename_ayah="1:1",
+                             bars={"b": 0.01, "b_u": 0.01})
     record = ident.identification_record(decoded)
     assert set(record) == {
         "surah", "ayah_from", "word_from", "ayah_to", "word_to", "straddles", "score",
         "length", "class_label", "decoy", "exhaustive_decoy", "delta", "margin",
         "margin_class", "id_floor_ok", "overlaps_filename", "filename_label",
-        "label_source", "assigned_label"}
+        "label_source", "assigned_label", "floor_rule"}
+    assert record["floor_rule"] == ident.floor_rule()
+    assert record["floor_rule"]["sha256"] == _sha256(FLOOR_PREREGISTRATION)
     assert (record["surah"], record["ayah_from"], record["word_from"]) == (2, 1, 1)
     assert record["straddles"] is False
     assert record["class_label"] == "2:1"
@@ -535,28 +556,28 @@ def test_identification_record_is_the_committed_row_contract(ident, two_surahs):
     assert record["assigned_label"] == "2:1"
     assert json.loads(json.dumps(record, ensure_ascii=False)) == record
 
-    # A row with no match keeps every key, and a bin with no floor reads as null.
-    empty = ident.identification_record(ident.identify("", database=two_surahs))
+    # A row with no match keeps every key: it is non_recitation, never "unverified".
+    empty = ident.identification_record(ident.identify("", database=rule_database))
     assert set(empty) == set(record)
     assert (empty["surah"], empty["score"], empty["straddles"]) == (None, None, None)
-    assert empty["id_floor_ok"] is None
+    assert empty["id_floor_ok"] is False
+    assert empty["floor_rule"] == record["floor_rule"]
 
 
-def test_every_row_carries_margin_and_margin_class(ident, two_surahs):
-    """The margin is on every identification row, including one with no match; applying the
-    floor replaces the row without dropping it."""
-    decoded = ident.identify("بجح", database=two_surahs)
+def test_every_row_carries_margin_and_margin_class(ident, rule_database):
+    """The margin is on every identification row, including one with no match, and the rule
+    verdict never drops it."""
+    decoded = ident.identify("بجحدذرزسط", database=rule_database)
+    assert decoded.floor_ok is True
     assert decoded.margin is not None
-    assert decoded.margin_class == two_surahs.text_class(2, 1)
+    assert decoded.margin_class == rule_database.text_class(2, 1)
 
-    empty = ident.identify("", database=two_surahs)
+    empty = ident.identify("", database=rule_database)
     assert (empty.match, empty.margin, empty.margin_class) == (None, None, None)
 
-    floors = {ident.floor_bin(3): 1.0}
-    floored = ident.apply_floors(decoded, floors)
-    assert floored.floor_ok is False
-    assert floored.margin == decoded.margin
-    assert floored.margin_class == decoded.margin_class
+    short = ident.identify("بجحدذر", database=rule_database)
+    assert short.floor_ok is False
+    assert short.margin is not None and short.margin_class is not None
 
 
 # --- the shortlist ----------------------------------------------------------------------------
@@ -579,15 +600,16 @@ def test_the_shortlist_never_misses_the_exhaustive_best_on_a_fixture(ident):
 # --- the in-ayah mistake fixture ---------------------------------------------------------------
 
 
-def test_an_in_ayah_mistake_keeps_its_label(ident):
-    """Two substitutions and a skipped word inside the right ayah keep the filename label."""
-    db = ident.ReferenceDatabase.build([_ayah(ident, 1, 1, ["بجح", "دذر", "زسط"])])
-    assert db.text(1) == "بجحدذرزسط"
-    decode = "بجحدذز"  # word 2's final ر went to ز; the whole third word is skipped
-    decoded = ident.identify(decode, database=db, filename_ayah="1:1",
+def test_an_in_ayah_mistake_keeps_its_label(ident, rule_database):
+    """A dropped letter inside the right ayah keeps the filename label; the eight-character
+    decode also clears the S5b rule, so the verdict is what the mistake bar reads."""
+    decode = "بجحدذزسط"  # 1:1 without word 2's final ر: eight characters, one deletion
+    decoded = ident.identify(decode, database=rule_database, filename_ayah="1:1",
                              bars={"b": 0.01, "b_u": 0.01})
-    assert decoded.match.text_class == decoded.filename_class == db.text_class(1, 1)
+    assert decoded.length == ident.L_MIN
+    assert decoded.match.text_class == decoded.filename_class == rule_database.text_class(1, 1)
     assert decoded.match.ayah_from == decoded.match.ayah_to == 1
+    assert decoded.floor_ok is True
     assert decoded.label_source == ident.BOTH
     assert decoded.assigned_label == "1:1"
     assert not ident.relabelled(decoded, 0.01)
@@ -601,59 +623,85 @@ def test_the_floor_bins_are_the_pre_registered_length_bins(ident):
         "0-20", "0-20", "21-40", "21-40", "41-80", "41-80", "81-160", "81-160", "161-", "161-"]
 
 
-def test_floor_pass_is_strictly_above_the_bin_floor(ident, two_surahs):
-    decoded = ident.identify("بجح", database=two_surahs, floors={ident.floor_bin(3): 0.0})
-    assert decoded.floor_ok is True
-    at_floor = ident.identify("بجح", database=two_surahs, floors={ident.floor_bin(3): 1.0})
-    assert at_floor.floor_ok is False
-    assert at_floor.label_source == ident.NONE
-    assert at_floor.assigned_label is None
-    # Without floors the engine reports no floor verdict rather than assuming one.
-    assert ident.identify("بجح", database=two_surahs).floor_ok is None
-
-
-def test_a_row_in_an_empty_floor_bin_gets_no_floor_verdict(ident):
-    """Look has no >160-character decode, so the 161- bin has no floor. A row there must not
-    crash: it simply has no floor verdict (architect r16; no replacement floor is invented)."""
-    letters = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
-    long = "".join(letters[index % len(letters)] for index in range(170))
-    assert all(a != b for a, b in itertools.pairwise(long))
-    db = ident.ReferenceDatabase.build([_ayah(ident, 1, 1, [long])])
-    floors = {"0-20": 0.0}
-    decoded = ident.identify(long, database=db, floors=floors)
-    assert decoded.length == 170
-    assert ident.floor_bin(decoded.length) == "161-"
-    assert decoded.floor_ok is None
-    assert ident.apply_floors(decoded, floors).floor_ok is None
-
-
-def test_a_floorless_bin_is_never_relabelled_or_assigned(ident):
-    """No floor means no verdict, not a pass: neither rule may fire on such a row."""
-    floorless = _identification(ident, floor_ok=None, delta=0.5, margin=0.5)
-    assert not ident.relabelled(floorless, 0.0)
-    assert not ident.assigned(floorless, 0.0)
-
-    letters = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
-    long = "".join(letters[index % len(letters)] for index in range(170))
-    db = ident.ReferenceDatabase.build([
-        _ayah(ident, 1, 1, [long]),
-        _ayah(ident, 1, 2, ["ز"]),
+@pytest.fixture
+def rule_database(ident):
+    """Two ayat, neither a decoy of the other: 1:1 ``بجحدذرزسط``, 2:1 ``طظعغفقكلم``."""
+    return ident.ReferenceDatabase.build([
+        _ayah(ident, 1, 1, ["بجح", "دذر", "زسط"]),
+        _ayah(ident, 2, 1, ["طظع", "غفق", "كلم"]),
     ])
-    floors = {"0-20": 0.0}
-    bars = {"b": 0.0, "b_u": 0.0}
-    unlabelled = ident.identify(long, database=db, floors=floors, bars=bars)
-    assert unlabelled.floor_ok is None
-    assert unlabelled.margin >= bars["b_u"]  # would be assigned without a floor requirement
+
+
+def test_a_decode_under_l_min_is_non_recitation_however_wide_its_margin(ident, rule_database):
+    """S5b (#204): the rule is ``len >= L_MIN`` and ``real - own decoy >= DELTA``; the binned
+    floor is retired for verdicts. Seven characters fail on length even at Δ = 0.57."""
+    decoded = ident.identify("بجحدذر", database=rule_database)
+    assert decoded.length == 7 < ident.L_MIN
+    assert decoded.match.score - decoded.decoy > ident.DELTA
+    assert decoded.floor_ok is False
+    assert decoded.label_source == ident.NONE
+
+    empty = ident.identify("", database=rule_database)
+    assert empty.length == 0 and empty.match is None
+    assert empty.floor_ok is False
+
+
+def test_a_decode_matching_its_own_decoy_is_non_recitation(ident):
+    """The failure mode the rule exists for: eight characters that match the reversed ayah
+    better than the real one (real 0.125, own decoy 1.0)."""
+    database = ident.ReferenceDatabase.build([_ayah(ident, 1, 1, ["بتثجحخدذر"])])
+    decoded = ident.identify("رذدخحجثت", database=database)
+    assert decoded.length == 8 >= ident.L_MIN
+    assert decoded.match.score == pytest.approx(0.125)
+    assert decoded.decoy == pytest.approx(1.0)
+    assert decoded.match.score - decoded.decoy < ident.DELTA
+    assert decoded.floor_ok is False
+
+
+def test_the_delta_boundary_is_strict(ident, rule_database, monkeypatch):
+    """``< DELTA`` is non-recitation, so exactly DELTA passes."""
+    score = ident.identify("بجحدذرزسط", database=rule_database).match.score
+    for offset, expected in ((ident.DELTA, True), (ident.DELTA - 1e-9, False)):
+        monkeypatch.setattr(rule_database, "decoy_best", lambda decode, *, k=ident.K,
+                            _v=score - offset: _v)
+        assert ident.identify("بجحدذرزسط", database=rule_database).floor_ok is expected
+
+
+def test_real_and_decoy_scores_come_from_the_same_shortlist(ident, rule_database, monkeypatch):
+    """The decoy best is the same decode's own search at the same k, never a second ranking."""
+    calls: list[int] = []
+
+    def spy(decode: str, *, k: int = ident.K) -> float:
+        calls.append(k)
+        return 0.1
+
+    monkeypatch.setattr(rule_database, "decoy_best", spy)
+    decoded = ident.identify("بجحدذرزسط", database=rule_database, k=7)
+    assert calls == [7]
+    assert decoded.decoy == 0.1
+    assert decoded.floor_ok is (decoded.match.score - decoded.decoy >= ident.DELTA)
+
+
+def test_a_non_recitation_row_is_never_relabelled_or_assigned(ident):
+    """The verdict gates both rules: a below-rule row keeps its filename label and is never
+    assigned."""
+    failed = _identification(ident, floor_ok=False, delta=0.5, margin=0.5)
+    assert not ident.relabelled(failed, 0.0)
+    assert not ident.assigned(failed, 0.0)
+
+    bars = {"b": 0.01, "b_u": 0.01}
+    database = ident.ReferenceDatabase.build([
+        _ayah(ident, 1, 1, ["بجح"]), _ayah(ident, 2, 1, ["خدذ"])])
+    unlabelled = ident.identify("خدذ", database=database, bars=bars)  # three characters
+    assert unlabelled.margin >= bars["b_u"]  # would be assigned without the rule
     assert unlabelled.label_source == ident.NONE
     assert unlabelled.assigned_label is None
 
-    labelled = ident.identify(long, database=db, filename_ayah="1:2", floors=floors,
-                              bars=bars)
-    assert labelled.floor_ok is None
-    assert labelled.delta >= bars["b"]  # would be relabelled without a floor requirement
+    labelled = ident.identify("خدذ", database=database, filename_ayah="1:1", bars=bars)
+    assert labelled.delta >= bars["b"]  # would be relabelled without the rule
     assert not ident.relabelled(labelled, bars["b"])
     assert labelled.label_source == ident.FILENAME
-    assert labelled.assigned_label == "1:2"
+    assert labelled.assigned_label == "1:1"
 
 
 def test_noise_pass_is_reported_under_the_three_empty_bin_conventions(ident):
@@ -852,32 +900,40 @@ def test_the_bu_amendment_is_the_owner_approved_post_look_precision_rule():
     assert S5_PREREGISTRATION_SHA256 in text
 
 
-def test_load_calibration_refuses_a_provisional_report(ident, calibration):
-    """The committed report is provisional by the frozen noise stop: a consumer must opt in."""
-    with pytest.raises(ValueError, match="not a confirmed calibration"):
-        ident.load_calibration()
-    floors, bars, k = ident.load_calibration(allow_provisional=True)
-    assert floors == calibration["floors"]
-    assert bars == calibration["bars"]
+def test_load_calibration_requires_the_s5b_floor_to_be_confirmed(ident, calibration, tmp_path):
+    """r19: S6 and S7 may label only under a confirmed floor. ``floor_status`` must be exactly
+    "confirmed" — S5's binned "passed" is not confirmation — and provisional bars are refused."""
+    bars = {key: value for key, value in calibration["bars"].items()
+            if key not in ("provisional", "provisional_reason")}
+    path = tmp_path / "confirmed.json"
+    path.write_text(json.dumps({**calibration, "floor_status": "confirmed", "bars": bars}),
+                    encoding="utf-8")
+    loaded, k = ident.load_calibration(path)
+    assert loaded == bars
     assert k == calibration["parameters"]["k"] == ident.K
 
+    for status in ("passed", "stopped: freesound 0.011 > 0.01"):
+        path.write_text(json.dumps({**calibration, "floor_status": status, "bars": bars}),
+                        encoding="utf-8")
+        with pytest.raises(ValueError, match="not a confirmed calibration"):
+            ident.load_calibration(path)
 
-def test_load_calibration_accepts_a_confirmed_report(ident, calibration, tmp_path):
-    bars = {**calibration["bars"], "provisional": False}
-    bars.pop("provisional_reason", None)
-    path = tmp_path / "confirmed.json"
-    path.write_text(json.dumps({**calibration, "floor_status": "passed", "bars": bars}),
-                    encoding="utf-8")
-    floors, loaded, k = ident.load_calibration(path)
-    assert (floors, k) == (calibration["floors"], ident.K)
-    assert loaded["provisional"] is False
-
-    # Confirmed floors but provisional bars is still refused.
-    path.write_text(json.dumps({**calibration, "floor_status": "passed",
+    path.write_text(json.dumps({**calibration, "floor_status": "confirmed",
                                 "bars": {**bars, "provisional": True,
                                          "provisional_reason": "x"}}), encoding="utf-8")
-    with pytest.raises(ValueError, match="bars provisional"):
+    with pytest.raises(ValueError, match="provisional"):
         ident.load_calibration(path)
+
+    # The committed report is accepted exactly when it records itself as confirmed.
+    try:
+        loaded, k = ident.load_calibration()
+    except ValueError as error:
+        assert "not a confirmed calibration" in str(error)
+        assert calibration["floor_status"] != "confirmed"
+    else:
+        assert calibration["floor_status"] == "confirmed"
+        assert loaded == calibration["bars"]
+        assert k == ident.K
 
 
 def test_pool_summary_reads_the_frozen_row_shape(ident):
@@ -919,10 +975,11 @@ def test_pool_speech_seconds_make_no_floor_bin_claim(ident, calibration):
     long = (letters * 6)[:161]
     assert all(left != right for left, right in itertools.pairwise(long))
     db = ident.ReferenceDatabase.build([_ayah(ident, 1, 1, [long])])
-    decoded = ident.identify(long, database=db, floors={"0-20": 0.0})
+    decoded = ident.identify(long, database=db)
     assert decoded.length == 161
     assert ident.floor_bin(decoded.length) == "161-"
-    assert decoded.floor_ok is None
+    # The verdict is the S5b rule, not a bin: no bin can leave a row unverified.
+    assert isinstance(decoded.floor_ok, bool)
 
     section = "\n".join(ident.pool_length_lines(calibration))
     for claim in ("calibrated bin", "at most", "needed to reach"):
@@ -943,9 +1000,12 @@ def test_the_margin_amendment_pins_the_committed_competitor_search(ident, calibr
     assert HOLDOUT_SHA256 in text
     assert S5_PREREGISTRATION_SHA256 in text
     assert "8138e8e" in text
-    assert calibration["margin_definition"] == {
+    assert {key: calibration["margin_definition"][key] for key in ("path", "sha256")} == {
         "path": "docs/tlog-ident-margin-amendment.md",
         "sha256": _sha256(MARGIN_AMENDMENT)}
+    # The oracle's mechanical consequence: "final" only when it changed neither b_u nor a look
+    # assignment at b_u, otherwise the owner decides (architect r18/r19).
+    assert calibration["margin_definition"]["status"] in ("final", "owner")
 
 
 def test_the_real_mistake_clips_file_is_the_pinned_52_clips_over_46_ayat(ident):
@@ -1003,13 +1063,22 @@ def calibration(ident):
 
 def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration):
     assert calibration["schema"] == "tadabur.tlog_ident/calibration-v1"
-    assert calibration["issue"] == 190
+    assert calibration["issue"] == 204
     assert calibration["preregistration"] == {
         "path": "docs/tlog-ident-preregistration.md",
         "sha256": _sha256(PREREGISTRATION),
         "parent": {"path": "docs/tlog-holdout-preregistration.md", "sha256": HOLDOUT_SHA256}}
     assert calibration["bu_amendment"] == {
         "path": "docs/tlog-ident-bu-amendment.md", "sha256": _sha256(BU_AMENDMENT)}
+    # S5b's own pre-registration, which cites every frozen parent by SHA-256.
+    assert calibration["floor_preregistration"] == {
+        "path": "docs/tlog-ident-floor-preregistration.md",
+        "sha256": ident.FLOOR_PREREGISTRATION_SHA256,
+        "parents": {"holdout": HOLDOUT_SHA256,
+                    "ident": S5_PREREGISTRATION_SHA256,
+                    "bu": _sha256(BU_AMENDMENT)}}
+    assert calibration["floor_preregistration"]["sha256"] == _sha256(FLOOR_PREREGISTRATION)
+    assert calibration["floor_rule"] == ident.floor_rule()
     assert calibration["real_mistake"]["sha256"] == _sha256(ident.REAL_MISTAKE_CLIPS_PATH)
     assert calibration["parameters"]["k"] == ident.K
     assert calibration["parameters"]["gram"] == ident.GRAM
@@ -1019,49 +1088,49 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
     look = ident.load_look_decodes()
     scored = [ident.identify(decode.spans, database=database,
                              filename_ayah=decode.surah_ayah) for decode in look]
+    # The binned floors are the retired record and still derive from the committed decodes.
     floors = ident.derive_floors(scored)
-    # Look's longest decode is 138 characters, so the 161- bin has no floor and no verdict.
     assert set(floors) == set(ident.FLOOR_BINS) - {"161-"}
     assert {bin_: round(value, 6) for bin_, value in floors.items()} == {
         bin_: round(value, 6) for bin_, value in calibration["floors"].items()}
-    applied = [ident.apply_floors(row, floors) for row in scored]
+    # The verdict is the S5b rule inside ``identify``; nothing is applied afterwards.
+    assert all(isinstance(row.floor_ok, bool) for row in scored)
 
     clips = [json.loads(line) for line in
              ident.REAL_MISTAKE_CLIPS_PATH.read_text(encoding="utf-8").splitlines()]
     decodes = ident.load_decode_store(ident.REAL_MISTAKE_DECODES_PATH)
-    mistakes = [ident.apply_floors(ident.identify(
-        decodes["items"][clip["audio_filename"]]["spans"], database=database,
-        filename_ayah=clip["surah_ayah"]), floors) for clip in clips]
+    mistakes = [ident.identify(decodes["items"][clip["audio_filename"]]["spans"],
+                               database=database, filename_ayah=clip["surah_ayah"])
+                for clip in clips]
     assert len(mistakes) == calibration["mistake"]["clips"] == 52
+    assert calibration["mistake"]["passed"] == sum(row.floor_ok for row in mistakes)
+    assert calibration["mistake"]["passed"] == 52  # the bar: every mistake clip still passes
 
-    bars = ident.derive_bars(applied, mistakes)
+    bars = ident.derive_bars(scored, mistakes)
     assert bars["b"] == calibration["bars"]["b"]
-    # Amended (owner-approved) b_u, and the literal-rule result None for transparency.
-    assert calibration["bars"]["b_u"] == pytest.approx(0.01)
+    assert calibration["bars"]["b_u"] in ident.GRID
     assert bars["b_u"] == calibration["bars"]["b_u"]
-    assert calibration["bars"]["b_u_literal"] is None
-    assert bars["b_u_literal"] is None
+    assert bars["b_u_literal"] == calibration["bars"]["b_u_literal"]
     assert bars["look_assigned_at_b_u"] == pytest.approx(
         calibration["bars"]["look_assigned_at_b_u"])
-    assert calibration["bars"]["look_assigned_at_b_u_literal"] is None
     assert bars["look_relabel_at_b"] == pytest.approx(calibration["bars"]["look_relabel_at_b"])
     assert bars["mistake_relabels_at_b"] == calibration["bars"]["mistake_relabels_at_b"]
     assert bars["no_bar"] is (bars["b"] is None)
-    # Floors are stopped, so both bars are provisional.
-    assert calibration["bars"]["provisional"] is True
-    table = calibration["bars"]["precision"]
-    assert table["used_for_b_u"] is True
-    assert table["by_bar"] == bars["precision"]["by_bar"]
+    # b and b_u are final only under a confirmed floor; L_min and DELTA never move.
+    assert (ident.L_MIN, ident.DELTA) == (8, pytest.approx(0.30))
+    assert calibration["bars"].get("provisional") is (calibration["floor_status"] != "confirmed")
+    assert calibration["bars"]["precision"]["by_bar"] == bars["precision"]["by_bar"]
 
-    retention = sum(row.floor_ok for row in applied) / len(applied)
+    retention = sum(row.floor_ok for row in scored) / len(scored)
     assert calibration["look"]["retention"] == pytest.approx(retention)
     assert calibration["look"]["relabel_rate_at_b"] == pytest.approx(
         bars["look_relabel_at_b"])
-    tail = [row for decode, row in zip(look, applied) if decode.cer_wav >= 0.2]
+    tail = [row for decode, row in zip(look, scored) if decode.cer_wav >= 0.2]
     assert len(tail) == calibration["look"]["tail"]["clips"]
     assert calibration["look"]["tail"]["retention"] == pytest.approx(
         sum(row.floor_ok for row in tail) / len(tail))
 
+    # The 445-recording pool: its binned A/B/C record (the S5 stop) and the rule's own rate.
     pool = json.loads(NOISE_POOL.read_text(encoding="utf-8"))["recordings"]
     noise = ident.load_decode_store(ident.NOISE_DECODES_PATH)
     assert set(noise["items"]) == {str(record["freesound_id"]) for record in pool}
@@ -1074,23 +1143,17 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
         assert reported[key]["recordings"] == conventions[key]["recordings"]
         assert reported[key]["passed"] == conventions[key]["passed"]
         assert reported[key]["pass"] == pytest.approx(conventions[key]["pass"])
-    # B (back off to 81-160) is the headline: the most faithful reading of the binned rule.
+    # B (back off to 81-160) is the S5 headline, kept as history: the retired binned rule.
     assert calibration["noise"]["pass"] == pytest.approx(conventions["B"]["pass"])
     assert calibration["noise"]["floor_passed"] == conventions["B"]["passed"]
-    assert calibration["floor_status"] == (
-        f"stopped: noise {100 * conventions['B']['pass']:.1f}% > 1%")
+    rule_passed = sum(row.floor_ok for row in noise_rows)
+    assert calibration["noise"]["rule_pass"]["clips"] == 445
+    assert calibration["noise"]["rule_pass"]["passed"] == rule_passed
+    assert calibration["noise"]["rule_pass"]["pass"] == pytest.approx(rule_passed / 445)
 
-    stopped = calibration["stop_conditions"]
-    assert stopped["look_retention"]["limit"] == 0.90
-    assert stopped["noise_pass"]["limit"] == 0.01
-    assert stopped["bar"]["limit"] is None
-    assert stopped["look_retention"]["value"] == pytest.approx(retention)
-    assert stopped["look_retention"]["fired"] is (retention < 0.90)
-    assert stopped["noise_pass"]["value"] == pytest.approx(conventions["B"]["pass"])
-    assert stopped["noise_pass"]["fired"] is (conventions["B"]["pass"] > 0.01)
-    assert stopped["noise_pass"]["fired"] is True  # the frozen floor stop fires (r16)
-    assert stopped["bar"]["value"] == bars["b"]
-    assert stopped["bar"]["fired"] is (bars["b"] is None)
+    # The five bars are the S5b floor's status; the S5 record above is history.
+    assert calibration["floor_status"] == calibration["confirm"]["status"]
+    assert calibration["confirm"]["salt"] == ident.FLOOR_SALT
 
     guard = calibration["shortlist_guard"]
     assert guard["clips"] == ident.RECALL_CLIPS == 1000

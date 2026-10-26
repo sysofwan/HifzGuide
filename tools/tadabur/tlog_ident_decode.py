@@ -44,6 +44,8 @@ import subprocess
 import time
 from pathlib import Path
 
+import numpy as np
+
 from training.decoding import SPANS, Decoder
 from training.decode_evalset import read_clip_audio
 from training.perturbation import (NOISE_LICENCES, NoiseRecording, build_pool, load_pool,
@@ -57,7 +59,7 @@ from training.truth_baseline import (
     model_identity,
 )
 
-from .audio import decode_to_mono_16k
+from .audio import decode_to_mono_16k, decode_to_mono_16k_with_rate_and_decoder
 from .nonpro_sources import Dataset, iter_rows
 from .tlog_ident import (
     BASE_MODEL,
@@ -78,6 +80,8 @@ from .tlog_ident_confirm import (
 from .tlog_index import repo_relative, sha256_file
 
 SCHEMA_VERSION = 1
+#: The three S5b confirmation stores, and the arms a rerun may select.
+CONFIRM_ARMS = ("freesound", "cv_ar", "cv_other")
 #: The pool's decode mode: the deployed stream, which is the only VRAM-safe whole-recording pass.
 STREAM_MODE = PROTOCOLS[NOISE_DECODE_MODE]
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -192,6 +196,19 @@ def _store_provenance(chain: dict, manifest: str) -> dict:
             "pull_request_ref": chain["pull_request_ref"]}
 
 
+def confirm_cv_samples(path: Path) -> np.ndarray:
+    """A Common Voice clip at 16 kHz mono, through the loader the pre-registration pins.
+
+    CV publishes 48 kHz MP3s, and the frozen sets' ``read_clip_audio`` refuses anything but
+    16 kHz. The doc names ``tadabur.audio:decode_to_mono_16k_with_rate_and_decoder`` for the
+    confirmation rows: soundfile (PyAV when the container needs it), downmix, then
+    ``librosa.resample`` (``orig_sr`` -> 16 kHz) — the same loader and resampler the S6/S7
+    tlog rows use.
+    """
+    samples, _rate, _decoder = decode_to_mono_16k_with_rate_and_decoder(path.read_bytes())
+    return samples
+
+
 def _confirm_recordings(manifest: dict, cache_dir: Path) -> dict[int, NoiseRecording]:
     """Stream the drawn shards and return the 1,000 recordings, each checked to its row.
 
@@ -228,11 +245,28 @@ def _confirm_recordings(manifest: dict, cache_dir: Path) -> dict[int, NoiseRecor
 
 
 def decode_confirm(decoder, cache_dir: Path, cv_clips_dir: Path, out_dir: Path,
-                   identity: dict) -> None:
-    """The three S5b confirmation stores, each citing the doc and its manifest."""
+                   identity: dict, arms: set[str] | None = None) -> None:
+    """The S5b confirmation stores, each citing the doc and its manifest.
+
+    ``arms`` selects any of ``freesound``, ``cv_ar`` and ``cv_other``; ``None`` is all three.
+    A rerun after one arm failed redoes only that arm, never the finished store.
+    """
     require_committed([FLOOR_PREREGISTRATION_PATH, FREESOUND_MANIFEST_PATH,
                        CV_MANIFEST_PATH])
     chain = _confirm_chain()
+    selected = set(CONFIRM_ARMS if arms is None else arms)
+    if "freesound" in selected:
+        _decode_confirm_freesound(decoder, cache_dir, out_dir, identity, chain)
+    rows = [json.loads(line) for line in
+            CV_MANIFEST_PATH.read_text(encoding="utf-8").splitlines()]
+    for arm, key in (("ar", "cv_ar"), ("other", "cv_other")):
+        if key in selected:
+            _decode_confirm_cv(decoder, rows, arm, key, Path(cv_clips_dir), out_dir,
+                               identity, chain)
+
+
+def _decode_confirm_freesound(decoder, cache_dir: Path, out_dir: Path, identity: dict,
+                              chain: dict) -> None:
     manifest = json.loads(FREESOUND_MANIFEST_PATH.read_text(encoding="utf-8"))
     recordings = _confirm_recordings(manifest, cache_dir)
     items: dict[str, dict] = {}
@@ -251,29 +285,29 @@ def decode_confirm(decoder, cache_dir: Path, cv_clips_dir: Path, out_dir: Path,
                  items, _store_provenance(chain, "freesound"))
     print(f"wrote {out} after {time.time() - started:.0f} s", flush=True)
 
-    rows = [json.loads(line) for line in
-            CV_MANIFEST_PATH.read_text(encoding="utf-8").splitlines()]
-    for arm, key in (("ar", "cv_ar"), ("other", "cv_other")):
-        started = time.time()
-        arm_items: dict[str, dict] = {}
-        arm_rows = [row for row in rows if row["arm"] == arm]
-        for position, row in enumerate(arm_rows, start=1):
-            path = Path(cv_clips_dir) / row["locale"] / row["path"]
-            checksum = _sha256_bytes(path.read_bytes())
-            if checksum != row["audio_sha256"]:
-                raise ValueError(f"{row['path']}: {checksum} is not the recorded "
-                                 f"{row['audio_sha256']}")
-            samples = read_clip_audio(path.parent, path.name)
-            arm_items[row["path"]] = {
-                "audio_sha256": checksum,
-                "spans": decoder.decode_spans([samples])[0],
-            }
-            if position % 50 == 0:
-                print(f"{arm} {position}/{len(arm_rows)}", flush=True)
-        out = out_dir / CONFIRM_DECODES[key].name
-        _write_store(out, identity, SPANS, decoder.fingerprint(SPANS).as_dict(), arm_items,
-                     _store_provenance(chain, "common_voice"))
-        print(f"wrote {out} after {time.time() - started:.0f} s", flush=True)
+
+def _decode_confirm_cv(decoder, rows: list[dict], arm: str, key: str, cv_clips_dir: Path,
+                       out_dir: Path, identity: dict, chain: dict) -> None:
+    started = time.time()
+    arm_items: dict[str, dict] = {}
+    arm_rows = [row for row in rows if row["arm"] == arm]
+    for position, row in enumerate(arm_rows, start=1):
+        path = Path(cv_clips_dir) / row["locale"] / row["path"]
+        checksum = _sha256_bytes(path.read_bytes())
+        if checksum != row["audio_sha256"]:
+            raise ValueError(f"{row['path']}: {checksum} is not the recorded "
+                             f"{row['audio_sha256']}")
+        samples = confirm_cv_samples(path)
+        arm_items[row["path"]] = {
+            "audio_sha256": checksum,
+            "spans": decoder.decode_spans([samples])[0],
+        }
+        if position % 50 == 0:
+            print(f"{arm} {position}/{len(arm_rows)}", flush=True)
+    out = out_dir / CONFIRM_DECODES[key].name
+    _write_store(out, identity, SPANS, decoder.fingerprint(SPANS).as_dict(), arm_items,
+                 _store_provenance(chain, "common_voice"))
+    print(f"wrote {out} after {time.time() - started:.0f} s", flush=True)
 
 
 def main() -> None:
@@ -289,6 +323,8 @@ def main() -> None:
                         help="the drawn Common Voice clips (for --only confirm)")
     parser.add_argument("--out-dir", type=Path, default=NOISE_DECODES_PATH.parent)
     parser.add_argument("--only", choices=("clips", "pool", "confirm"), default=None)
+    parser.add_argument("--confirm-arms", nargs="+", choices=CONFIRM_ARMS, default=None,
+                        help="which confirmation stores to write (default: all three)")
     args = parser.parse_args()
     if args.only in (None, "clips") and not args.clips_dir:
         parser.error("--clips-dir is required for the real-mistake clips")
@@ -305,7 +341,8 @@ def main() -> None:
         decode_pool(decoder, args.pool, args.cache_dir,
                     args.out_dir / NOISE_DECODES_PATH.name, identity, fingerprint)
     if args.only in (None, "confirm"):
-        decode_confirm(decoder, args.cache_dir, args.cv_clips_dir, args.out_dir, identity)
+        decode_confirm(decoder, args.cache_dir, args.cv_clips_dir, args.out_dir, identity,
+                       set(args.confirm_arms) if args.confirm_arms else None)
 
 
 if __name__ == "__main__":

@@ -23,6 +23,7 @@ LOGS=$ROOT/logs
 REPO=$ROOT/repo
 CACHE=$ROOT/freesound
 CV_CLIPS=${CV_CLIPS:-/root/scratch/tlog/s5b/cv-clips}
+CONFIRM_ARMS=${CONFIRM_ARMS:-freesound cv_ar cv_other}
 OUT=tools/tadabur/tlog/ident/decodes
 CONDA=${CONDA:-/root/miniconda3/etc/profile.d/conda.sh}
 ENV_NAME=${ENV_NAME:-hifzguide}
@@ -55,7 +56,7 @@ source '$CONDA'
 conda activate $ENV_NAME
 cd '$REPO/tools' || exit 1
 flock /root/scratch/gpu.lock python -u -m tadabur.tlog_ident_decode \\
-  --only confirm \\
+  --only confirm --confirm-arms $CONFIRM_ARMS \\
   --cache-dir '$CACHE' --cv-clips-dir '$CV_CLIPS' \\
   --out-dir '$REPO/$OUT'
 code=\$?

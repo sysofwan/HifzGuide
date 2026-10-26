@@ -193,7 +193,14 @@ def _store_provenance(chain: dict, manifest: str) -> dict:
 
 
 def _confirm_recordings(manifest: dict, cache_dir: Path) -> dict[int, NoiseRecording]:
-    """Stream the drawn shards and return the 1,000 recordings, each checked to its row."""
+    """Stream the drawn shards and return the 1,000 recordings, each checked to its row.
+
+    The check is identity, licence and duration, not the manifest's ``samples_sha256``: the
+    float samples are a function of the host's MP3 decoder and resampler, so the Mac draw's
+    hash cannot equal the GPU box's reading of the same recording. The id is the draw key;
+    the metadata and duration (within one MP3 frame) pin the row, and each store records the
+    hash of the samples it actually decoded.
+    """
     wanted = {row["freesound_id"]: row for row in manifest["recordings"]}
     found: dict[int, NoiseRecording] = {}
     for shard in manifest["drawn_shards"]:
@@ -206,10 +213,13 @@ def _confirm_recordings(manifest: dict, cache_dir: Path) -> dict[int, NoiseRecor
             samples = decode_to_mono_16k(row["audio"]["bytes"])
             recording = NoiseRecording(freesound_id, NOISE_LICENCES[row["license"]],
                                        row["username"], samples)
-            expected = {key: value for key, value in wanted[freesound_id].items()
-                        if key != "shard"}
-            if recording.as_dict() != expected:
-                raise ValueError(f"{freesound_id} is not the drawn recording")
+            expected = wanted[freesound_id]
+            actual = recording.as_dict()
+            if actual["licence"] != expected["licence"] or \
+                    actual["username"] != expected["username"] or \
+                    abs(actual["seconds"] - expected["seconds"]) > 0.1:
+                raise ValueError(f"{freesound_id} is not the drawn recording: "
+                                 f"{actual} vs {expected}")
             found[freesound_id] = recording
     missing = set(wanted) - set(found)
     if missing:

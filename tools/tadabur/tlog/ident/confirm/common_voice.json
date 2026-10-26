@@ -1,0 +1,148 @@
+{
+ "salt": "tlog-s5b-floor-confirm-v1",
+ "release": "cv-corpus-27.0-2026-09-11",
+ "archives": [
+  {
+   "locale": "ar",
+   "dataset_id": "cmu5wom3z00ceo107guxtg4xa",
+   "filename": "common-voice-scripted-speech-27-0-arabic-b05a34b5.tar.gz",
+   "sha256": "dbde785fa6e721202bf70d8aecd940e763703b84c573e043fa71ac1e1665913a",
+   "size_bytes": 3542436951
+  },
+  {
+   "locale": "bn",
+   "dataset_id": "cmu5kut0d00pomh07yay2f34r",
+   "filename": "common-voice-scripted-speech-27-0-bengal-dca36a3e.tar.gz",
+   "sha256": "3cdebe9005bef6b53d829e0f544297c04df0b1b801c170b1be23adfc917783a6",
+   "size_bytes": 26681655257
+  },
+  {
+   "locale": "ckb",
+   "dataset_id": "cmu5wr35b00donq07jqzj68wa",
+   "filename": "common-voice-scripted-speech-27-0-centra-cd0ad022.tar.gz",
+   "sha256": "88c7f0322898b5402146ba296cf19a9b4e07297ae33667227a5b9afb5259f3b4",
+   "size_bytes": 3916538045
+  },
+  {
+   "locale": "en",
+   "dataset_id": "cmu5jplf300nwmh07iqvk9leo",
+   "filename": "common-voice-scripted-speech-27-0-englis-e4a13e08.tar.gz",
+   "sha256": "2fbc16e9811e0a727c7fde5c71158a9295a2aa5e26f9ec21b305f0a8368a10c7",
+   "size_bytes": 94956262763
+  },
+  {
+   "locale": "es",
+   "dataset_id": "cmu5kitx700pemi073feoiqqu",
+   "filename": "common-voice-scripted-speech-27-0-spanis-8d20e589.tar.gz",
+   "sha256": "b7c1f303ebe3c4a637afdd3d31c5aaa3da131a893ce77169db182068f342e4c1",
+   "size_bytes": 51943162413
+  },
+  {
+   "locale": "fa",
+   "dataset_id": "cmu5xazgy00finq074vaqo1b3",
+   "filename": "common-voice-scripted-speech-27-0-persia-9d86e98b.tar.gz",
+   "sha256": "f71fd362846433376b529d3f2ce4258a4075d9da8fe2b0f4b12465c12672a65d",
+   "size_bytes": 11236660956
+  },
+  {
+   "locale": "hi",
+   "dataset_id": "cmu5vlext009to107ev1s9lk8",
+   "filename": "common-voice-scripted-speech-27-0-hindi-25c8439c.tar.gz",
+   "sha256": "8d08563ef25a9796a0f12f8c8c6d4190b976ed2bf95d9c8082c1ce8a12466513",
+   "size_bytes": 573120742
+  },
+  {
+   "locale": "id",
+   "dataset_id": "cmu5wcato00cknq07yjnu14e0",
+   "filename": "common-voice-scripted-speech-27-0-indone-27d20112.tar.gz",
+   "sha256": "d25a6b734ed0e317515eb1264fa03a925a4638aa12f275abb31637e8504d28fa",
+   "size_bytes": 1531290920
+  },
+  {
+   "locale": "sw",
+   "dataset_id": "cmu5sgles002zo1071nphgtby",
+   "filename": "common-voice-scripted-speech-27-0-swahil-a1aabcc5.tar.gz",
+   "sha256": "45811dfd9c6146513e6ef350c5d60b7bc97ce55411e553e204ac082b31bdc2ba",
+   "size_bytes": 22427928356
+  },
+  {
+   "locale": "tr",
+   "dataset_id": "cmu5wkah500c2o10719lem8m8",
+   "filename": "common-voice-scripted-speech-27-0-turkis-b14760fe.tar.gz",
+   "sha256": "10becdc2fb112f8cf7ffd983e269dd2013aef5cb3f747b7e5f455146a21d6c8e",
+   "size_bytes": 2992390702
+  },
+  {
+   "locale": "ur",
+   "dataset_id": "cmu5x1w3400cyo107st8cgsoq",
+   "filename": "common-voice-scripted-speech-27-0-urdu-19469962.tar.gz",
+   "sha256": "12ad5f359fd94805db1bdaeb1441eb35720221f3c99229034069375fa246d990",
+   "size_bytes": 6218878938
+  }
+ ],
+ "locales": {
+  "ar": {
+   "primary": "ar",
+   "locale": "ar",
+   "substituted": false,
+   "cap_reached": 1,
+   "eligible": 66173,
+   "excluded_guard": 14523,
+   "examined": 80696
+  },
+  "en": {
+   "primary": "en",
+   "locale": "en",
+   "substituted": false,
+   "cap_reached": 1,
+   "eligible": 1929854,
+   "excluded_guard": 0,
+   "examined": 1929854
+  },
+  "ur": {
+   "primary": "ur",
+   "locale": "ur",
+   "substituted": false,
+   "cap_reached": 1,
+   "eligible": 67940,
+   "excluded_guard": 0,
+   "examined": 67940
+  },
+  "fa": {
+   "primary": "fa",
+   "locale": "fa",
+   "substituted": false,
+   "cap_reached": 1,
+   "eligible": 341785,
+   "excluded_guard": 0,
+   "examined": 341785
+  },
+  "tr": {
+   "primary": "tr",
+   "locale": "tr",
+   "substituted": false,
+   "cap_reached": 1,
+   "eligible": 121612,
+   "excluded_guard": 0,
+   "examined": 121612
+  },
+  "id": {
+   "primary": "id",
+   "locale": "id",
+   "substituted": false,
+   "cap_reached": 1,
+   "eligible": 30901,
+   "excluded_guard": 0,
+   "examined": 30901
+  }
+ },
+ "provenance": {
+  "doc": {
+   "path": "docs/tlog-ident-floor-preregistration.md",
+   "sha256": "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a",
+   "commit": "1c3ddd94edfcc2daae5cf4ef006b9c68ff5e3542"
+  },
+  "pull_request": null,
+  "pull_request_ref": null
+ }
+}

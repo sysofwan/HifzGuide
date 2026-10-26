@@ -1,0 +1,624 @@
+{
+ "bars": {
+  "b": 0.01,
+  "b_u": 0.01,
+  "b_u_literal": null,
+  "grid": [
+   0.0,
+   0.01,
+   0.02,
+   0.03,
+   0.04,
+   0.05,
+   0.06,
+   0.07,
+   0.08,
+   0.09,
+   0.1,
+   0.11,
+   0.12,
+   0.13,
+   0.14,
+   0.15,
+   0.16,
+   0.17,
+   0.18,
+   0.19,
+   0.2,
+   0.21,
+   0.22,
+   0.23,
+   0.24,
+   0.25,
+   0.26,
+   0.27,
+   0.28,
+   0.29,
+   0.3,
+   0.31,
+   0.32,
+   0.33,
+   0.34,
+   0.35,
+   0.36,
+   0.37,
+   0.38,
+   0.39,
+   0.4,
+   0.41,
+   0.42,
+   0.43,
+   0.44,
+   0.45,
+   0.46,
+   0.47,
+   0.48,
+   0.49,
+   0.5
+  ],
+  "look_assigned_at_b_u": 0.999546176537327,
+  "look_assigned_at_b_u_literal": null,
+  "look_relabel_at_b": 0.00044081992506061276,
+  "mistake_relabels_at_b": 0,
+  "no_bar": false,
+  "precision": {
+   "by_bar": [
+    {
+     "assigned": 4536,
+     "bar": 0.0,
+     "coverage": 0.9814855631474543,
+     "precision": 0.9817019400352733
+    },
+    {
+     "assigned": 4407,
+     "bar": 0.01,
+     "coverage": 0.9709058849459996,
+     "precision": 0.999546176537327
+    },
+    {
+     "assigned": 4407,
+     "bar": 0.02,
+     "coverage": 0.9709058849459996,
+     "precision": 0.999546176537327
+    },
+    {
+     "assigned": 4396,
+     "bar": 0.03,
+     "coverage": 0.9684813753581661,
+     "precision": 0.9995450409463148
+    },
+    {
+     "assigned": 4388,
+     "bar": 0.04,
+     "coverage": 0.9667180956579238,
+     "precision": 0.9995442114858706
+    },
+    {
+     "assigned": 4371,
+     "bar": 0.05,
+     "coverage": 0.9629711262949086,
+     "precision": 0.9995424388011896
+    },
+    {
+     "assigned": 4345,
+     "bar": 0.06,
+     "coverage": 0.9572404672691206,
+     "precision": 0.9995397008055236
+    },
+    {
+     "assigned": 4325,
+     "bar": 0.07,
+     "coverage": 0.9528322680185144,
+     "precision": 0.9995375722543353
+    },
+    {
+     "assigned": 4298,
+     "bar": 0.08,
+     "coverage": 0.9471016089927264,
+     "precision": 0.9997673336435552
+    },
+    {
+     "assigned": 4276,
+     "bar": 0.09,
+     "coverage": 0.9422525898170597,
+     "precision": 0.9997661365762395
+    },
+    {
+     "assigned": 4261,
+     "bar": 0.1,
+     "coverage": 0.9389464403791051,
+     "precision": 0.9997653133067355
+    },
+    {
+     "assigned": 4244,
+     "bar": 0.11,
+     "coverage": 0.9354198809786203,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4217,
+     "bar": 0.12,
+     "coverage": 0.929468811990302,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4193,
+     "bar": 0.13,
+     "coverage": 0.9241789728895746,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4165,
+     "bar": 0.14,
+     "coverage": 0.918007493938726,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4138,
+     "bar": 0.15,
+     "coverage": 0.9120564249504077,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4112,
+     "bar": 0.16,
+     "coverage": 0.9063257659246198,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4085,
+     "bar": 0.17,
+     "coverage": 0.9003746969363016,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4061,
+     "bar": 0.18,
+     "coverage": 0.8950848578355741,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4017,
+     "bar": 0.19,
+     "coverage": 0.8853868194842407,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3965,
+     "bar": 0.2,
+     "coverage": 0.8739255014326648,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3947,
+     "bar": 0.21,
+     "coverage": 0.8699581221071192,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3906,
+     "bar": 0.22,
+     "coverage": 0.8609213136433767,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3874,
+     "bar": 0.23,
+     "coverage": 0.8538681948424068,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3831,
+     "bar": 0.24,
+     "coverage": 0.8443905664536037,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3814,
+     "bar": 0.25,
+     "coverage": 0.8406435970905884,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3740,
+     "bar": 0.26,
+     "coverage": 0.8243332598633458,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3671,
+     "bar": 0.27,
+     "coverage": 0.8091249724487547,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3619,
+     "bar": 0.28,
+     "coverage": 0.7976636543971788,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3545,
+     "bar": 0.29,
+     "coverage": 0.7813533171699361,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3502,
+     "bar": 0.3,
+     "coverage": 0.7718756887811329,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3428,
+     "bar": 0.31,
+     "coverage": 0.7555653515538903,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3347,
+     "bar": 0.32,
+     "coverage": 0.7377121445889354,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3306,
+     "bar": 0.33,
+     "coverage": 0.7286753361251929,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3210,
+     "bar": 0.34,
+     "coverage": 0.7075159797222834,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3160,
+     "bar": 0.35,
+     "coverage": 0.6964954815957681,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3066,
+     "bar": 0.36,
+     "coverage": 0.6757769451179193,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2961,
+     "bar": 0.37,
+     "coverage": 0.6526338990522371,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2874,
+     "bar": 0.38,
+     "coverage": 0.6334582323121005,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2781,
+     "bar": 0.39,
+     "coverage": 0.6129601057967821,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2726,
+     "bar": 0.4,
+     "coverage": 0.6008375578576152,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2596,
+     "bar": 0.41,
+     "coverage": 0.5721842627286753,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2484,
+     "bar": 0.42,
+     "coverage": 0.547498346925281,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2369,
+     "bar": 0.43,
+     "coverage": 0.5221512012342958,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2273,
+     "bar": 0.44,
+     "coverage": 0.5009918448313864,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2136,
+     "bar": 0.45,
+     "coverage": 0.4707956799647344,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2029,
+     "bar": 0.46,
+     "coverage": 0.4472118139739916,
+     "precision": 1.0
+    },
+    {
+     "assigned": 1913,
+     "bar": 0.47,
+     "coverage": 0.4216442583204761,
+     "precision": 1.0
+    },
+    {
+     "assigned": 1764,
+     "bar": 0.48,
+     "coverage": 0.3888031739034604,
+     "precision": 1.0
+    },
+    {
+     "assigned": 1641,
+     "bar": 0.49,
+     "coverage": 0.36169274851223276,
+     "precision": 1.0
+    },
+    {
+     "assigned": 1614,
+     "bar": 0.5,
+     "coverage": 0.3557416795239145,
+     "precision": 1.0
+    }
+   ],
+   "used_for_b_u": true
+  },
+  "provisional": true,
+  "provisional_reason": "stopped: noise 40.7% > 1%"
+ },
+ "bu_amendment": {
+  "path": "docs/tlog-ident-bu-amendment.md",
+  "sha256": "579f9ba1bb751e65663e3a6f477b6d39c8503c94811050951e1338cc71aa76c8"
+ },
+ "decodes": {
+  "base_model": "obadx/muaalem-model-v3_2",
+  "base_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+  "look": {
+   "clips": 4537,
+   "path": "tools/tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz",
+   "sha256": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770"
+  },
+  "noise": {
+   "mode": "stream_b0",
+   "path": "tools/tadabur/tlog/ident/decodes/noise.base.json",
+   "recordings": 445,
+   "sha256": "faa664ce3069d09e02b9c995778973dadc0956a6fd02f5c24098e37cbdb9587c"
+  },
+  "real_mistake": {
+   "clips": 52,
+   "path": "tools/tadabur/tlog/ident/decodes/real_mistake.base.json",
+   "sha256": "3d64b6f1f1a76fa835a943ffc547dea58e536652f4b0d52abfa04aec56ed165c"
+  }
+ },
+ "exhaustive_decoy": {
+  "floors": {
+   "0-20": 0.692308,
+   "21-40": 0.52381,
+   "41-80": 0.419093,
+   "81-160": 0.353451
+  },
+  "look_retention": 0.9997795900374697
+ },
+ "first_pass": {
+  "defect": "each CIGAR run was credited whole to the ayah it started in, and aligned characters were counted rather than words",
+  "engine_commit": "79acded",
+  "fix": "runs are split at ayah boundaries and the ayah with the most aligned words is credited",
+  "rules_changed": false
+ },
+ "floor_status": "stopped: noise 40.7% > 1%",
+ "floors": {
+  "0-20": 0.578452,
+  "21-40": 0.464524,
+  "41-80": 0.380952,
+  "81-160": 0.337043
+ },
+ "floors_source": {
+  "bin_counts": {
+   "0-20": 1042,
+   "21-40": 1399,
+   "41-80": 1766,
+   "81-160": 330
+  },
+  "percentile": {
+   "method": "type-7",
+   "q": 0.99
+  }
+ },
+ "issue": 190,
+ "look": {
+  "bins": {
+   "0-20": 1042,
+   "161-": 0,
+   "21-40": 1399,
+   "41-80": 1766,
+   "81-160": 330
+  },
+  "clips": 4537,
+  "relabel_rate_at_b": 0.00044081992506061276,
+  "retention": 0.9997795900374697,
+  "tail": {
+   "clips": 1806,
+   "relabel_rate": 0.0005537098560354374,
+   "retention": 1.0
+  }
+ },
+ "mistake": {
+  "clips": 52,
+  "relabelled_at_b": 0
+ },
+ "noise": {
+  "conventions": {
+   "A": {
+    "pass": 0.4067415730337079,
+    "passed": 181,
+    "recordings": 445
+   },
+   "B": {
+    "pass": 0.4067415730337079,
+    "passed": 181,
+    "recordings": 445
+   },
+   "C": {
+    "pass": 0.4238875878220141,
+    "passed": 181,
+    "recordings": 427
+   }
+  },
+  "floor_passed": 181,
+  "pass": 0.4067415730337079,
+  "recordings": 445
+ },
+ "parameters": {
+  "floor_bins": [
+   "0-20",
+   "21-40",
+   "41-80",
+   "81-160",
+   "161-"
+  ],
+  "floor_percentile": 99.0,
+  "gram": 3,
+  "grid": [
+   0.0,
+   0.01,
+   0.02,
+   0.03,
+   0.04,
+   0.05,
+   0.06,
+   0.07,
+   0.08,
+   0.09,
+   0.1,
+   0.11,
+   0.12,
+   0.13,
+   0.14,
+   0.15,
+   0.16,
+   0.17,
+   0.18,
+   0.19,
+   0.2,
+   0.21,
+   0.22,
+   0.23,
+   0.24,
+   0.25,
+   0.26,
+   0.27,
+   0.28,
+   0.29,
+   0.3,
+   0.31,
+   0.32,
+   0.33,
+   0.34,
+   0.35,
+   0.36,
+   0.37,
+   0.38,
+   0.39,
+   0.4,
+   0.41,
+   0.42,
+   0.43,
+   0.44,
+   0.45,
+   0.46,
+   0.47,
+   0.48,
+   0.49,
+   0.5
+  ],
+  "k": 20,
+  "library": {
+   "mode": "HW",
+   "name": "edlib",
+   "version": "1.3.9.post1"
+  },
+  "normalization_algorithm_version": "2",
+  "phonetizer_revision": "1",
+  "recall": {
+   "clips": 1000,
+   "minimum": 0.999,
+   "salt": "issue-190-tlog-s5-v1"
+  },
+  "word_tokenisation": "quran-transcript uthmani.split"
+ },
+ "pool": {
+  "path": "tools/tadabur/nonpro_gap/noise_pool.json",
+  "recordings": 445,
+  "sha256": "7811d08b095b23a45ac95d270fc32955e6e5e287857bd9f7c51969fdd64deb85"
+ },
+ "preregistration": {
+  "parent": {
+   "path": "docs/tlog-holdout-preregistration.md",
+   "sha256": "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
+  },
+  "path": "docs/tlog-ident-preregistration.md",
+  "sha256": "a383fcfdbd375c9e6c052d8032788a8eda69bd2d9fbd12fcd3b921b1fbb6a3ab"
+ },
+ "real_mistake": {
+  "clips": 52,
+  "path": "tools/tadabur/tlog/ident/real_mistake_clips.jsonl",
+  "sha256": "6b8c4002b098a77218d68e3cfa730b088703b37dd03a9c3768df2ffbcbec59df",
+  "sites": 56
+ },
+ "reference": {
+  "ayat": 6236,
+  "classes": 6053,
+  "path": "tools/tadabur/tlog/ident/references.json.gz",
+  "sha256": "8be5fb70d15882d591832008db7195839069197feb74022e75247da5ecdddb81",
+  "surahs": 114
+ },
+ "schema": "tadabur.tlog_ident/calibration-v1",
+ "shortlist_guard": {
+  "clips": 1000,
+  "k": 20,
+  "passed": true,
+  "recall": 1.0,
+  "recalled": 1000,
+  "salt": "issue-190-tlog-s5-v1"
+ },
+ "split": {
+  "look": 4537,
+  "path": "tools/tadabur/nonpro_eval/tarteel_v1/split.json",
+  "sha256": "5979ead86bf9e3abf01c5e3ee88158e4843603389ca65ebc628a7868d6fc283c"
+ },
+ "stop_conditions": {
+  "bar": {
+   "fired": false,
+   "limit": null,
+   "value": 0.01
+  },
+  "look_retention": {
+   "fired": false,
+   "limit": 0.9,
+   "value": 0.9997795900374697
+  },
+  "noise_pass": {
+   "fired": true,
+   "limit": 0.01,
+   "value": 0.4067415730337079
+  }
+ },
+ "throughput": {
+  "clips": 4537,
+  "ms_per_clip": 8.805,
+  "seconds": 39.95
+ },
+ "unlabelled_unclean": {
+  "source": "tadabur.tlog_overlap.iter_pool_rows",
+  "usable": 168263
+ }
+}

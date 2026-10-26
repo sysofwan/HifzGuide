@@ -188,6 +188,7 @@ def test_a_text_is_phonetized_once_and_its_offsets_come_back_as_a_copy(monkeypat
         return phonetize(text)
 
     monkeypatch.setattr(ws, "phonetize", counting)
+    monkeypatch.setattr(ws, "_REALIZED_REFERENCES", {})
     reference = ws.hafs_segment_reference()
     words = ["بِسْمِ", "ٱللَّهِ"]
     first = reference(words)

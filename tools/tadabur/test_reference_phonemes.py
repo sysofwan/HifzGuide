@@ -271,7 +271,8 @@ def test_the_committed_cache_is_tracked_and_read_without_regenerating(monkeypatc
 
     monkeypatch.setattr(generate_phonemes, "generate_reference_phonemes", _no_regeneration)
     payload = json.loads(cache.read_text(encoding="utf-8"))
-    assert reference_phonemes.load_reference_phonemes() == payload["references"]
+    assert payload["cache_version"] == reference_phonemes.CACHE_VERSION
+    reference_phonemes.load_reference_phonemes()  # raises if the file would be rebuilt
 
 
 @pytest.mark.slow

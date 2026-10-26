@@ -32,6 +32,9 @@ Contract this file pins
 
 Ordering contract: ``shortlist`` and ``all_windows`` return scored windows best score first,
 ties by ``(surah, ayah)``. A span's words are quran-transcript ``uthmani.split()`` words, 1-based.
+A matched run is split at ayah boundaries, and a span's text class is the ayah with the most
+words touched by a matched or substituted character (ties: the earlier ayah). ``derive_bars``
+also reports an informational per-bar ``precision`` table labelled ``used_for_b_u: False``.
 Synthetic references here avoid adjacent equal cores, so ``normalize_phonemes`` (which ``identify``
 applies to the decode) leaves them unchanged.
 
@@ -83,12 +86,18 @@ def _ayah(ident, surah: int, ayah: int, words: list[str]):
 
 
 def _distinct_references(count: int) -> list[str]:
-    """``count`` distinct four-letter references with no adjacent equal cores."""
+    """``count`` distinct four-letter references with no adjacent equal cores.
+
+    Four consecutive letters of the alphabet (wrapping), with the fourth shifted by one for
+    each further lap: distinct, adjacent characters always differ, and no two references
+    repeat.
+    """
     letters = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
     seen: list[str] = []
     for index in range(count):
-        ref = "".join(letters[(index * step + shift) % len(letters)]
-                      for step, shift in ((7, 0), (11, 3), (13, 5), (17, 7)))
+        start, lap = index % len(letters), index // len(letters)
+        positions = (start, start + 1, start + 2, start + 3 + lap)
+        ref = "".join(letters[position % len(letters)] for position in positions)
         assert all(a != b for a, b in itertools.pairwise(ref)), ref
         assert ref not in seen
         seen.append(ref)
@@ -183,8 +192,39 @@ def test_a_single_ayah_decode_does_not_straddle(ident, two_ayat):
     assert match.straddles is False
 
 
+def test_a_run_crossing_a_boundary_credits_the_ayah_with_most_aligned_words(ident):
+    """One aligned character in 1:1 and 46 in 1:2: the run is split, and 1:2 wins (2 words
+    against 1). Attributing the whole run to the ayah it starts in would pick 1:1."""
+    letters = "بتثجحخدذرزسشصضطظعغفقكلمنهوي"
+    tail = "".join(letters[(index + 1) % len(letters)] for index in range(46))
+    db = ident.ReferenceDatabase.build([
+        _ayah(ident, 1, 1, ["ب"]),
+        _ayah(ident, 1, 2, [tail[:23], tail[23:]]),
+    ])
+    match = ident.identify("ب" + tail, database=db).match
+    assert match.score == pytest.approx(1.0)
+    assert (match.ayah_from, match.word_from) == (1, 1)
+    assert (match.ayah_to, match.word_to) == (2, 2)
+    assert match.straddles is True
+    assert match.text_class == db.text_class(1, 2)
+
+
+def test_attribution_counts_words_not_characters(ident):
+    """1:1 aligns four characters in one word; 1:2 three characters over three words. The
+    ayah with the most aligned words wins, so the single-character words take it."""
+    db = ident.ReferenceDatabase.build([
+        _ayah(ident, 1, 1, ["بجحد"]),
+        _ayah(ident, 1, 2, ["ز", "س", "ش"]),
+    ])
+    match = ident.identify("بجحدزسش", database=db).match
+    assert match.score == pytest.approx(1.0)
+    assert (match.ayah_from, match.word_from, match.ayah_to, match.word_to) == (1, 1, 2, 3)
+    assert match.text_class == db.text_class(1, 2)
+
+
 def test_reverse_clusters_reverses_a_base_with_its_marks(ident):
-    assert ident.reverse_clusters("بَتب") == "بتَب"
+    # A fatha belongs to the base before it, so the cluster moves together: بَ ت ب -> ب ت بَ
+    assert ident.reverse_clusters("بَتب") == "بتبَ"
     assert ident.reverse_clusters("بتب") == "بتب"[::-1]
 
 
@@ -287,9 +327,9 @@ def test_floor_pass_is_strictly_above_the_bin_floor(ident, two_surahs):
     assert ident.identify("بجح", database=two_surahs).floor_ok is None
 
 
-def _identification(ident, **changes):
+def _identification(ident, *, match_class: int = 0, **changes):
     match = ident.Match(surah=1, ayah_from=1, word_from=1, ayah_to=1, word_to=1,
-                        text_class=0, score=1.0)
+                        text_class=match_class, score=1.0)
     fields = dict(length=10, match=match, decoy=0.05, exhaustive_decoy=None,
                   filename_class=1, filename_score=1.0, delta=0.0, margin=0.25, margin_class=1,
                   floor_ok=True, overlaps_filename=False, label_source=ident.FILENAME,
@@ -306,28 +346,71 @@ def test_derive_floors_is_the_type_7_99th_percentile_per_bin(ident):
     assert floors["161-"] == pytest.approx(0.5)
 
 
-def test_derive_bars_is_the_smallest_grid_value_meeting_both_rules(ident):
-    # 960 assigned from 0.02 up, 30 only from 0.30, 10 never above the floor; five look clips
-    # carry delta 0.10 and the one mistake clip delta 0.05.
-    look = (
-        [_identification(ident, margin=0.02) for _ in range(955)]
-        + [_identification(ident, margin=0.02, delta=0.10) for _ in range(5)]
-        + [_identification(ident, margin=0.30) for _ in range(30)]
-        + [_identification(ident, floor_ok=False, margin=None, margin_class=None)
-           for _ in range(10)]
+def _look_population(ident):
+    """985 own-class rows (955 from margin 0.02, 30 from 0.30), five relabel-eligible, ten
+    never above the floor."""
+    return (
+        [_identification(ident, match_class=1, margin=0.02) for _ in range(955)]
+        + [_identification(ident, match_class=2, margin=0.02, delta=0.10) for _ in range(5)]
+        + [_identification(ident, match_class=1, margin=0.30) for _ in range(30)]
+        + [_identification(ident, match_class=1, floor_ok=False, margin=None,
+                           margin_class=None) for _ in range(10)]
     )
+
+
+def test_derive_bars_is_the_smallest_grid_value_meeting_both_rules(ident):
+    # The one mistake clip's delta is 0.05, so b is the first grid value above it (0.06);
+    # exactly the five relabel-eligible look clips relabel there.
     mistake = [_identification(ident, delta=0.05)]
-    bars = ident.derive_bars(look, mistake)
+    bars = ident.derive_bars(_look_population(ident), mistake)
     assert bars["b"] == pytest.approx(0.06)
     assert bars["look_relabel_at_b"] == pytest.approx(5 / 1000)
     assert bars["mistake_relabels_at_b"] == 0
-    assert bars["b_u"] == pytest.approx(0.03)
-    assert bars["no_bar"] is (bars["b"] is None)
+    # The literal b_u rule counts own-class assignments over ALL look clips: 985/1000 =
+    # 98.5% at bar 0.00. Raising the bar only removes assignments, so no grid value reaches
+    # 99% and b_u is None (never a positive bar, which is what the old fixture expected).
+    assert bars["b_u"] is None
+    assert bars["look_assigned_at_b_u"] is None
+
+    # A population already >= 99% own-class at 0.00 gets b_u = 0.00, the smallest grid value.
+    mostly_own = (
+        [_identification(ident, match_class=1, margin=0.02) for _ in range(995)]
+        + [_identification(ident, match_class=2, margin=0.02) for _ in range(5)]
+    )
+    found = ident.derive_bars(mostly_own, mistake)
+    assert found["b_u"] == ident.GRID[0]
+    assert found["look_assigned_at_b_u"] == pytest.approx(0.995)
 
     never = [_identification(ident, delta=0.5) for _ in range(1000)]
     barred = ident.derive_bars(never, mistake)
     assert barred["b"] is None
     assert barred["no_bar"] is True
+
+
+def test_derive_bars_reports_an_informational_precision_table(ident):
+    """The per-bar table (assigned, precision, coverage) is reported, labelled not used, and
+    coverage never rises with the bar: the literal b_u search is vacuous."""
+    bars = ident.derive_bars(_look_population(ident), [_identification(ident, delta=0.05)])
+    table = bars["precision"]
+    assert table["used_for_b_u"] is False
+    rows = table["by_bar"]
+    assert [row["bar"] for row in rows] == list(ident.GRID)
+
+    first = rows[0]
+    assert first["assigned"] == 990  # 955 + 5 + 30 pass the floor; the ten floored rows do not
+    assert first["precision"] == pytest.approx(985 / 990)
+    assert first["coverage"] == pytest.approx(985 / 1000)
+    at_030 = rows[ident.GRID.index(0.30)]
+    assert at_030["assigned"] == 30
+    assert at_030["precision"] == pytest.approx(1.0)
+    assert at_030["coverage"] == pytest.approx(30 / 1000)
+    last = rows[-1]
+    assert last["assigned"] == 0
+    assert last["precision"] is None
+    assert last["coverage"] == 0.0
+    coverage = [row["coverage"] for row in rows]
+    assert all(later <= earlier for earlier, later in itertools.pairwise(coverage))
+    assert bars["b_u"] is None
 
 
 # --- the reference builder, including the 8 fallback ayat -------------------------------------
@@ -382,14 +465,15 @@ def test_the_amendment_cites_the_frozen_holdout_text():
     assert "Amended 2026-10-25 (S5, pre-outcome" in PREREGISTRATION.read_text(encoding="utf-8")
 
 
-def test_the_real_mistake_clips_file_is_the_pinned_52_over_56(ident):
+def test_the_real_mistake_clips_file_is_the_pinned_52_clips_over_46_ayat(ident):
     rows = [json.loads(line) for line in
             ident.REAL_MISTAKE_CLIPS_PATH.read_text(encoding="utf-8").splitlines()]
     assert len(rows) == 52
     assert [row["audio_filename"] for row in rows] == sorted(row["audio_filename"] for row in rows)
     sites = [site for row in rows for site in row["sites"]]
     assert len(sites) == 56 == len(set(sites))
-    assert len({row["surah_ayah"] for row in rows}) == 52
+    # The 52 clips cover 46 distinct ayat: one recited ayah can appear in several clips.
+    assert len({row["surah_ayah"] for row in rows}) == 46
     assert all(len(row["audio_sha256"]) == 64 for row in rows)
     assert _sha256(ident.REAL_MISTAKE_CLIPS_PATH) in PREREGISTRATION.read_text(encoding="utf-8")
 
@@ -467,9 +551,16 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
     bars = ident.derive_bars(applied, mistakes)
     assert bars["b"] == calibration["bars"]["b"]
     assert bars["b_u"] == calibration["bars"]["b_u"]
+    # The literal rule's outcome on the look (architect r15): own-class coverage cannot rise
+    # with the bar, so no grid value reaches 99% and b_u is None.
+    assert calibration["bars"]["b_u"] is None
     assert bars["look_relabel_at_b"] == pytest.approx(calibration["bars"]["look_relabel_at_b"])
     assert bars["mistake_relabels_at_b"] == calibration["bars"]["mistake_relabels_at_b"]
     assert bars["no_bar"] is (bars["b"] is None)
+    # The informational per-bar table is committed as rederived, and never feeds b_u.
+    table = calibration["bars"]["precision"]
+    assert table["used_for_b_u"] is False
+    assert table["by_bar"] == bars["precision"]["by_bar"]
 
     retention = sum(row.floor_ok for row in applied) / len(applied)
     assert calibration["look"]["retention"] == pytest.approx(retention)

@@ -366,9 +366,14 @@ def test_the_yield_report_uses_the_shared_floors_reader(ts, tp):
         expected[split]["rows"] for split in ("clean", "unclean"))
 
 
+#: SHA-256 of the pre-registration text at the S3b split freeze (2026-10-24), before S5's
+#: 2026-10-25 amendment.
+FROZEN_PREREGISTRATION_SHA256 = (
+    "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086")
+
+
 def test_the_meta_cites_the_frozen_inputs_and_the_owner_fallback(ts):
     meta = json.loads((ts.SPLIT_DIR / "meta.json").read_text(encoding="utf-8"))
-    prereg = ROOT / "docs/tlog-holdout-preregistration.md"
     report = ROOT / "tools/tadabur/tlog/s2/report.json"
     pass1_meta = ROOT / "tools/tadabur/tlog/pass1/meta.json"
     floors = ROOT / "tools/tadabur/tlog/silence_floors.json"
@@ -381,9 +386,11 @@ def test_the_meta_cites_the_frozen_inputs_and_the_owner_fallback(ts):
     assert meta["s2_report"] == {
         "path": "tools/tadabur/tlog/s2/report.json",
         "sha256": hashlib.sha256(report.read_bytes()).hexdigest()}
+    # The meta cites the text the split was frozen against (S3b); S5 amended the document after
+    # the freeze (2026-10-25), so it is pinned here rather than re-hashed from the working tree.
     assert meta["preregistration"] == {
         "path": "docs/tlog-holdout-preregistration.md",
-        "sha256": hashlib.sha256(prereg.read_bytes()).hexdigest()}
+        "sha256": FROZEN_PREREGISTRATION_SHA256}
     assert meta["pass1"] == {
         "path": "tools/tadabur/tlog/pass1",
         "meta_sha256": hashlib.sha256(pass1_meta.read_bytes()).hexdigest()}

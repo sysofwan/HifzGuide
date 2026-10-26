@@ -93,6 +93,33 @@ SHA-256 of the stored audio bytes). No tlog audio is ever committed or published
   - **text class:** ayat with identical references are one class. Agreement, relabel and margin compare
     classes, never ayah numbers;
   - **decoys:** each ayah's reference reversed, concatenated the same way.
+- Amended 2026-10-25 (S5, pre-outcome; no Tarteel v1 look clip had been scored when this was
+  written). These pins fill in procedures the text above leaves open, and correct one count. No
+  threshold rule changes.
+  - **Alphabet:**
+    - decodes and references are compared after `normalize_phonemes` (algorithm version recorded);
+    - each ayah is normalised separately, and word offsets are remapped through its `offset_map`;
+    - `len(decode)` is the normalised length;
+    - words are quran-transcript `uthmani.split()` words;
+    - the 8 `FALLBACK_PHONEMES` ayat take boundaries 0…n−2 from phonetizing `words[:-1]`, and the
+      last word's start from an infix alignment of that prefix into the fallback string;
+    - text classes are equality of the normalised per-ayah references.
+  - **Decoys:** each normalised ayah reference is reversed by grapheme cluster (a base plus its
+    combining marks), and the reversed ayat are concatenated in ayah order per surah.
+  - **Shortlist:**
+    - consonant-skeleton 3-grams over windows of an ayah ± 1;
+    - a window's rank is its number of distinct query 3-grams, ties by (surah, ayah) of the centre
+      ayah;
+    - shortlist recall for the guard means the shortlist's best score equals the best score over all
+      windows;
+    - the library is `edlib` 1.3.9.post1, mode `HW`.
+  - **The best decoy score uses the same search as the real one:** the same shortlist construction
+    over the decoy sequences, the same k, the same scoring. The best over all decoy windows is
+    reported, never used.
+  - **Real-mistake clips:** the bar on b uses the **52** clips that hold the 56 sites
+    ("42" above was the reciter count). They are listed in
+    `tools/tadabur/tlog/ident/real_mistake_clips.jsonl`
+    (sha256 `6b8c4002b098a77218d68e3cfa730b088703b37dd03a9c3768df2ffbcbec59df`).
 - **Search:**
   - a consonant-skeleton n-gram index shortlists the top k = 20 windows (an ayah ± 1 neighbour);
   - infix (semi-global) edit distance with a pinned C-backed library scores each window:
@@ -117,8 +144,8 @@ SHA-256 of the stored audio bytes). No tlog audio is ever committed or published
   - relabel to the best class when all of these hold: the floor is passed, Δ ≥ b, and the best span does
     not overlap the filename ayah;
   - b is the smallest value on the grid 0.00, 0.01, …, 0.50 at which both hold: ≤ 0.5% of Tarteel v1
-    look clips would be relabelled, and 0 of the 42 clips holding the 56 owner-verified real-mistake
-    sites (`docs/truth-baseline.md`) would be relabelled;
+    look clips would be relabelled, and 0 of the 52 clips holding the 56 owner-verified real-mistake
+    sites (`docs/truth-baseline.md`) would be relabelled (52, not 42: amended 2026-10-25);
   - the relabel rate in the `cer_wav ≥ 0.2` tail is reported;
   - if no b on the grid meets both, stop and ask the owner.
 - **Identify (rows without a filename label):**

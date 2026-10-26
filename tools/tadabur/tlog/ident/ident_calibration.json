@@ -1,0 +1,647 @@
+{
+ "bars": {
+  "b": 0.01,
+  "b_u": 0.01,
+  "b_u_literal": null,
+  "grid": [
+   0.0,
+   0.01,
+   0.02,
+   0.03,
+   0.04,
+   0.05,
+   0.06,
+   0.07,
+   0.08,
+   0.09,
+   0.1,
+   0.11,
+   0.12,
+   0.13,
+   0.14,
+   0.15,
+   0.16,
+   0.17,
+   0.18,
+   0.19,
+   0.2,
+   0.21,
+   0.22,
+   0.23,
+   0.24,
+   0.25,
+   0.26,
+   0.27,
+   0.28,
+   0.29,
+   0.3,
+   0.31,
+   0.32,
+   0.33,
+   0.34,
+   0.35,
+   0.36,
+   0.37,
+   0.38,
+   0.39,
+   0.4,
+   0.41,
+   0.42,
+   0.43,
+   0.44,
+   0.45,
+   0.46,
+   0.47,
+   0.48,
+   0.49,
+   0.5
+  ],
+  "look_assigned_at_b_u": 0.999546176537327,
+  "look_assigned_at_b_u_literal": null,
+  "look_relabel_at_b": 0.00044081992506061276,
+  "mistake_relabels_at_b": 0,
+  "no_bar": false,
+  "precision": {
+   "by_bar": [
+    {
+     "assigned": 4536,
+     "bar": 0.0,
+     "coverage": 0.9814855631474543,
+     "precision": 0.9817019400352733
+    },
+    {
+     "assigned": 4407,
+     "bar": 0.01,
+     "coverage": 0.9709058849459996,
+     "precision": 0.999546176537327
+    },
+    {
+     "assigned": 4407,
+     "bar": 0.02,
+     "coverage": 0.9709058849459996,
+     "precision": 0.999546176537327
+    },
+    {
+     "assigned": 4396,
+     "bar": 0.03,
+     "coverage": 0.9684813753581661,
+     "precision": 0.9995450409463148
+    },
+    {
+     "assigned": 4388,
+     "bar": 0.04,
+     "coverage": 0.9667180956579238,
+     "precision": 0.9995442114858706
+    },
+    {
+     "assigned": 4371,
+     "bar": 0.05,
+     "coverage": 0.9629711262949086,
+     "precision": 0.9995424388011896
+    },
+    {
+     "assigned": 4345,
+     "bar": 0.06,
+     "coverage": 0.9572404672691206,
+     "precision": 0.9995397008055236
+    },
+    {
+     "assigned": 4325,
+     "bar": 0.07,
+     "coverage": 0.9528322680185144,
+     "precision": 0.9995375722543353
+    },
+    {
+     "assigned": 4298,
+     "bar": 0.08,
+     "coverage": 0.9471016089927264,
+     "precision": 0.9997673336435552
+    },
+    {
+     "assigned": 4276,
+     "bar": 0.09,
+     "coverage": 0.9422525898170597,
+     "precision": 0.9997661365762395
+    },
+    {
+     "assigned": 4260,
+     "bar": 0.1,
+     "coverage": 0.9387260304165749,
+     "precision": 0.9997652582159624
+    },
+    {
+     "assigned": 4243,
+     "bar": 0.11,
+     "coverage": 0.9351994710160899,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4216,
+     "bar": 0.12,
+     "coverage": 0.9292484020277717,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4192,
+     "bar": 0.13,
+     "coverage": 0.9239585629270443,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4164,
+     "bar": 0.14,
+     "coverage": 0.9177870839761957,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4137,
+     "bar": 0.15,
+     "coverage": 0.9118360149878775,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4111,
+     "bar": 0.16,
+     "coverage": 0.9061053559620895,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4084,
+     "bar": 0.17,
+     "coverage": 0.9001542869737712,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4060,
+     "bar": 0.18,
+     "coverage": 0.8948644478730439,
+     "precision": 1.0
+    },
+    {
+     "assigned": 4016,
+     "bar": 0.19,
+     "coverage": 0.8851664095217103,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3964,
+     "bar": 0.2,
+     "coverage": 0.8737050914701344,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3946,
+     "bar": 0.21,
+     "coverage": 0.869737712144589,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3902,
+     "bar": 0.22,
+     "coverage": 0.8600396737932554,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3870,
+     "bar": 0.23,
+     "coverage": 0.8529865549922857,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3827,
+     "bar": 0.24,
+     "coverage": 0.8435089266034824,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3810,
+     "bar": 0.25,
+     "coverage": 0.8397619572404673,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3736,
+     "bar": 0.26,
+     "coverage": 0.8234516200132246,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3667,
+     "bar": 0.27,
+     "coverage": 0.8082433325986335,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3615,
+     "bar": 0.28,
+     "coverage": 0.7967820145470575,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3542,
+     "bar": 0.29,
+     "coverage": 0.7806920872823452,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3498,
+     "bar": 0.3,
+     "coverage": 0.7709940489310116,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3424,
+     "bar": 0.31,
+     "coverage": 0.754683711703769,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3337,
+     "bar": 0.32,
+     "coverage": 0.7355080449636323,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3296,
+     "bar": 0.33,
+     "coverage": 0.7264712364998898,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3199,
+     "bar": 0.34,
+     "coverage": 0.7050914701344501,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3149,
+     "bar": 0.35,
+     "coverage": 0.6940709720079348,
+     "precision": 1.0
+    },
+    {
+     "assigned": 3054,
+     "bar": 0.36,
+     "coverage": 0.6731320255675557,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2944,
+     "bar": 0.37,
+     "coverage": 0.6488869296892219,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2856,
+     "bar": 0.38,
+     "coverage": 0.6294908529865549,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2762,
+     "bar": 0.39,
+     "coverage": 0.6087723165087062,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2707,
+     "bar": 0.4,
+     "coverage": 0.5966497685695393,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2575,
+     "bar": 0.41,
+     "coverage": 0.5675556535155389,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2458,
+     "bar": 0.42,
+     "coverage": 0.541767687899493,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2347,
+     "bar": 0.43,
+     "coverage": 0.5173021820586291,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2251,
+     "bar": 0.44,
+     "coverage": 0.49614282565571965,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2113,
+     "bar": 0.45,
+     "coverage": 0.46572625082653735,
+     "precision": 1.0
+    },
+    {
+     "assigned": 2007,
+     "bar": 0.46,
+     "coverage": 0.4423627947983249,
+     "precision": 1.0
+    },
+    {
+     "assigned": 1895,
+     "bar": 0.47,
+     "coverage": 0.41767687899493056,
+     "precision": 1.0
+    },
+    {
+     "assigned": 1745,
+     "bar": 0.48,
+     "coverage": 0.38461538461538464,
+     "precision": 1.0
+    },
+    {
+     "assigned": 1618,
+     "bar": 0.49,
+     "coverage": 0.3566233193740357,
+     "precision": 1.0
+    },
+    {
+     "assigned": 1591,
+     "bar": 0.5,
+     "coverage": 0.3506722503857174,
+     "precision": 1.0
+    }
+   ],
+   "used_for_b_u": true
+  },
+  "provisional": true,
+  "provisional_reason": "stopped: noise 35.7% > 1%"
+ },
+ "bu_amendment": {
+  "path": "docs/tlog-ident-bu-amendment.md",
+  "sha256": "579f9ba1bb751e65663e3a6f477b6d39c8503c94811050951e1338cc71aa76c8"
+ },
+ "decodes": {
+  "base_model": "obadx/muaalem-model-v3_2",
+  "base_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+  "look": {
+   "clips": 4537,
+   "path": "tools/tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz",
+   "sha256": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770"
+  },
+  "noise": {
+   "mode": "stream_b0",
+   "path": "tools/tadabur/tlog/ident/decodes/noise.base.json",
+   "recordings": 445,
+   "sha256": "faa664ce3069d09e02b9c995778973dadc0956a6fd02f5c24098e37cbdb9587c"
+  },
+  "real_mistake": {
+   "clips": 52,
+   "path": "tools/tadabur/tlog/ident/decodes/real_mistake.base.json",
+   "sha256": "3d64b6f1f1a76fa835a943ffc547dea58e536652f4b0d52abfa04aec56ed165c"
+  }
+ },
+ "exhaustive_decoy": {
+  "floors": {
+   "0-20": 0.692308,
+   "21-40": 0.52381,
+   "41-80": 0.419093,
+   "81-160": 0.353451
+  },
+  "look_retention": 0.9997795900374697
+ },
+ "first_pass": {
+  "defect": "each CIGAR run was credited whole to the ayah it started in, and aligned characters were counted rather than words",
+  "engine_commit": "79acded",
+  "fix": "runs are split at ayah boundaries and the ayah with the most aligned words is credited",
+  "rules_changed": false
+ },
+ "floor_status": "stopped: noise 35.7% > 1%",
+ "floors": {
+  "0-20": 0.654242,
+  "21-40": 0.5,
+  "41-80": 0.390244,
+  "81-160": 0.344143
+ },
+ "floors_source": {
+  "bin_counts": {
+   "0-20": 1042,
+   "21-40": 1399,
+   "41-80": 1766,
+   "81-160": 330
+  },
+  "percentile": {
+   "method": "type-7",
+   "q": 0.99
+  }
+ },
+ "issue": 190,
+ "look": {
+  "bins": {
+   "0-20": 1042,
+   "161-": 0,
+   "21-40": 1399,
+   "41-80": 1766,
+   "81-160": 330
+  },
+  "clips": 4537,
+  "relabel_rate_at_b": 0.00044081992506061276,
+  "retention": 0.9997795900374697,
+  "tail": {
+   "clips": 1806,
+   "relabel_rate": 0.0005537098560354374,
+   "retention": 1.0
+  }
+ },
+ "margin_definition": {
+  "path": "docs/tlog-ident-margin-amendment.md",
+  "sha256": "eded44e95dc58a3d5ccb86659f296eb50b8b5e0cf236a21b0e5acb5258e3aba2"
+ },
+ "margin_fix": {
+  "affected": "Margins only: b_u, its precision table and the assigned counts. Floors and b are unchanged, because they read the decoy score and Δ.",
+  "defect": "the runner-up search took one alignment per free range, so a location beside a same-class optimum was lost whenever that optimum was the best class: a tied location, or a worse straddling one",
+  "engine_commit": "c993a79",
+  "fix": "Every free word run of every shortlisted window is now searched span by span with branch and bound: a span's score cannot exceed its parent's, so the search skips what cannot beat the best competitor yet and returns as soon as a span is admissible. A sliced ayah keeps its origin, so its words stay its own."
+ },
+ "mistake": {
+  "clips": 52,
+  "relabelled_at_b": 0
+ },
+ "noise": {
+  "conventions": {
+   "A": {
+    "pass": 0.35730337078651686,
+    "passed": 159,
+    "recordings": 445
+   },
+   "B": {
+    "pass": 0.35730337078651686,
+    "passed": 159,
+    "recordings": 445
+   },
+   "C": {
+    "pass": 0.37236533957845436,
+    "passed": 159,
+    "recordings": 427
+   }
+  },
+  "floor_passed": 159,
+  "pass": 0.35730337078651686,
+  "recordings": 445,
+  "samples_sha256": {
+   "mismatched": 0,
+   "recordings": 445
+  }
+ },
+ "parameters": {
+  "floor_bins": [
+   "0-20",
+   "21-40",
+   "41-80",
+   "81-160",
+   "161-"
+  ],
+  "floor_percentile": 99.0,
+  "gram": 3,
+  "grid": [
+   0.0,
+   0.01,
+   0.02,
+   0.03,
+   0.04,
+   0.05,
+   0.06,
+   0.07,
+   0.08,
+   0.09,
+   0.1,
+   0.11,
+   0.12,
+   0.13,
+   0.14,
+   0.15,
+   0.16,
+   0.17,
+   0.18,
+   0.19,
+   0.2,
+   0.21,
+   0.22,
+   0.23,
+   0.24,
+   0.25,
+   0.26,
+   0.27,
+   0.28,
+   0.29,
+   0.3,
+   0.31,
+   0.32,
+   0.33,
+   0.34,
+   0.35,
+   0.36,
+   0.37,
+   0.38,
+   0.39,
+   0.4,
+   0.41,
+   0.42,
+   0.43,
+   0.44,
+   0.45,
+   0.46,
+   0.47,
+   0.48,
+   0.49,
+   0.5
+  ],
+  "k": 20,
+  "library": {
+   "mode": "HW",
+   "name": "edlib",
+   "version": "1.3.9.post1"
+  },
+  "normalization_algorithm_version": "2",
+  "phonetizer_revision": "1",
+  "recall": {
+   "clips": 1000,
+   "minimum": 0.999,
+   "salt": "issue-190-tlog-s5-v1"
+  },
+  "word_tokenisation": "quran-transcript uthmani.split"
+ },
+ "pool": {
+  "path": "tools/tadabur/nonpro_gap/noise_pool.json",
+  "recordings": 445,
+  "sha256": "7811d08b095b23a45ac95d270fc32955e6e5e287857bd9f7c51969fdd64deb85"
+ },
+ "pool_lengths": {
+  "field": "speech_s",
+  "longest_s": 982.128,
+  "over_20_s": 20188,
+  "over_30_s": 6378,
+  "over_60_s": 759,
+  "source": "tadabur.tlog_overlap.iter_pool_rows",
+  "usable": 474962
+ },
+ "preregistration": {
+  "parent": {
+   "path": "docs/tlog-holdout-preregistration.md",
+   "sha256": "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
+  },
+  "path": "docs/tlog-ident-preregistration.md",
+  "sha256": "a383fcfdbd375c9e6c052d8032788a8eda69bd2d9fbd12fcd3b921b1fbb6a3ab"
+ },
+ "real_mistake": {
+  "clips": 52,
+  "path": "tools/tadabur/tlog/ident/real_mistake_clips.jsonl",
+  "sha256": "6b8c4002b098a77218d68e3cfa730b088703b37dd03a9c3768df2ffbcbec59df",
+  "sites": 56
+ },
+ "reference": {
+  "ayat": 6236,
+  "classes": 6053,
+  "path": "tools/tadabur/tlog/ident/references.json.gz",
+  "sha256": "8be5fb70d15882d591832008db7195839069197feb74022e75247da5ecdddb81",
+  "surahs": 114
+ },
+ "schema": "tadabur.tlog_ident/calibration-v1",
+ "shortlist_guard": {
+  "clips": 1000,
+  "k": 20,
+  "passed": true,
+  "recall": 1.0,
+  "recalled": 1000,
+  "salt": "issue-190-tlog-s5-v1"
+ },
+ "split": {
+  "look": 4537,
+  "path": "tools/tadabur/nonpro_eval/tarteel_v1/split.json",
+  "sha256": "5979ead86bf9e3abf01c5e3ee88158e4843603389ca65ebc628a7868d6fc283c"
+ },
+ "stop_conditions": {
+  "bar": {
+   "fired": false,
+   "limit": null,
+   "value": 0.01
+  },
+  "look_retention": {
+   "fired": false,
+   "limit": 0.9,
+   "value": 0.9997795900374697
+  },
+  "noise_pass": {
+   "fired": true,
+   "limit": 0.01,
+   "value": 0.35730337078651686
+  }
+ },
+ "throughput": {
+  "clips": 4537,
+  "ms_per_clip": 8.705,
+  "seconds": 39.493
+ },
+ "unlabelled_unclean": {
+  "source": "tadabur.tlog_overlap.iter_pool_rows",
+  "usable": 168263
+ }
+}

@@ -182,3 +182,6 @@ tools/tadabur/aug_readout/restricted/
 # The tlog S2 validation sample (#186): the fixed-seed Tadabur draw the speaker-clustering rule
 # was validated on, with each clip's shard and row. Data the slice depends on; committed.
 !tools/tadabur/tlog/s2/sample.jsonl
+# The tlog S5 real-mistake clip list (#190): the 52 clips holding the 56 owner-verified
+# real-mistake sites, pinned by sha in the pre-registration's S5 amendment. Committed.
+!tools/tadabur/tlog/ident/real_mistake_clips.jsonl

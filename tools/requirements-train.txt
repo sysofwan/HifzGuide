@@ -48,3 +48,9 @@ bitsandbytes>=0.45   # optional 8-bit optimizer; >=0.45 for Blackwell (sm_120)
 # the inference interface. transformers (already above) covers candidate B. See
 # docs/tlog-speaker-clustering.md.
 speechbrain==1.1.2
+# tlog S5's ayah identification (#190): infix (semi-global) edit distance, mode HW, over the whole
+# mushaf (114 surah sequences, ~370k characters) and its decoys. C-backed; rapidfuzz exposes only a
+# normalised infix alignment (fuzz.partial_ratio_alignment), not the raw edit distance the
+# pre-registration's `score = 1 - distance / len(decode)` needs. Pinned: the length-bin floors and
+# the bars are percentiles of this library's distances, so a version bump must be an owner decision.
+edlib==1.3.9.post1

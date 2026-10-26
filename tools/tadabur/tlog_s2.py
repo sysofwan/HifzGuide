@@ -47,7 +47,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import speaker_embed
+from . import speaker_embed, tarteel_split
 from .shard_reader import NUM_SHARDS
 from .speaker_cluster import GRID, RECALL_FLOOR, cluster, decide, metrics, model_outcome
 from .tlog_index import head_sha, installed_versions, sha256_file
@@ -76,9 +76,9 @@ SELECTION_PATH = S2_DIR / "selection.json"
 REPORT_PATH = S2_DIR / "report.json"
 DOC_PATH = Path(__file__).resolve().parents[2] / "docs" / "tlog-speaker-clustering.md"
 PREREGISTRATION_PATH = Path(__file__).resolve().parents[2] / "docs" / "tlog-holdout-preregistration.md"
-TARTEEL_DIR = Path(__file__).parent / "nonpro_eval" / "tarteel_v1"
-DECODES_PATH = TARTEEL_DIR / "decodes.base.jsonl.gz"
-SPLIT_PATH = TARTEEL_DIR / "split.json"
+TARTEEL_DIR = tarteel_split.TARTEEL_DIR
+DECODES_PATH = tarteel_split.DECODES_PATH
+SPLIT_PATH = tarteel_split.SPLIT_PATH
 
 
 def sample_shards() -> tuple[int, ...]:

@@ -30,7 +30,10 @@ from pathlib import Path
 SALT = "tarteel-v1-split-2026-10"
 CUTOFF = 2**63
 LOOK, CONFIRM = "look", "confirm"
-SPLIT_PATH = Path(__file__).parent / "nonpro_eval" / "tarteel_v1" / "split.json"
+TARTEEL_DIR = Path(__file__).parent / "nonpro_eval" / "tarteel_v1"
+SPLIT_PATH = TARTEEL_DIR / "split.json"
+#: The base teacher's whole-clip decodes of the corpus: the one definition of this path.
+DECODES_PATH = TARTEEL_DIR / "decodes.base.jsonl.gz"
 
 
 def clip_hash(clip_id: str) -> int:

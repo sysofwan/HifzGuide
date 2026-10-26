@@ -119,7 +119,7 @@ def _spaced_word_offsets(
 ) -> list[int]:
     """Per-word character offsets into the phonetizer's own (space-bearing) output.
 
-    The same ``mappings[i].pos[0]`` trick :func:`_spaceless_word_offsets` uses — robust
+    The same ``mappings[i].pos[0]`` trick :func:`spaceless_word_offsets` uses — robust
     to the wasl word-merges that leave no separating space — but *without* the spaceless
     remap, so the offsets index the exact string :data:`Phonetizer` returns and a
     segment's realized reference can be sliced per word. ``len == len(uthmani_words) + 1``
@@ -133,7 +133,7 @@ def _spaced_word_offsets(
     return [mappings[s].pos[0] for s in input_starts] + [len(phonemes)]
 
 
-def _spaceless_word_offsets(
+def spaceless_word_offsets(
     phonemes: str, mappings: list, uthmani_words: list[str]
 ) -> tuple[str, list[int]]:
     """Spaceless phoneme reference + per-word phoneme offsets from a phonetizer run.
@@ -235,7 +235,7 @@ def hafs_word_reference() -> WordReference:
 
     Phonetizes the whole ayah once with the Hafs moshaf (single words fail the
     phonetizer standalone) and derives per-word phoneme boundaries from the
-    phonetizer's char-level ``mappings`` (:func:`_spaceless_word_offsets`) — robust to
+    phonetizer's char-level ``mappings`` (:func:`spaceless_word_offsets`) — robust to
     wasl word-merges, unlike splitting the phonetic output on spaces. Injected into
     :func:`tadabur.waqf_detect.segment_clip` as its alignment ``reference`` /
     ``boundaries``. Raises ``KeyError`` / ``IndexError`` on the ayat quran_phonetizer
@@ -244,7 +244,7 @@ def hafs_word_reference() -> WordReference:
     """
     def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
         out = phonetize(" ".join(uthmani_words))
-        return _spaceless_word_offsets(out.phonemes, out.mappings, uthmani_words)
+        return spaceless_word_offsets(out.phonemes, out.mappings, uthmani_words)
 
     return compute
 

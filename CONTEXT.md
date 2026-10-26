@@ -351,6 +351,47 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
 : Verified matches above the highest synthetic-positive BER (`0.0625`) and inside the `0.238`
   line. They are listed with their set, clip and BER, never silently passed.
 
+**Text class**
+: Ayat with an identical normalised reference. Agreement, Δ and the margin compare classes, never
+  ayah numbers, so a repeated ayah (55:13 and its 30 repeats) is never a disagreement
+  (`tadabur.tlog_ident`). A class is named by its earliest ayah.
+
+**Decoy**
+: An ayah's reference with its grapheme clusters reversed, concatenated in ayah order per surah.
+  The best decoy score per decode-length bin is the **floor**'s population; it is a control for
+  non-recitation, never a candidate answer.
+
+**Floor** (non-recitation)
+: The type-7 99th percentile of the best **decoy** score over the Tarteel v1 look decodes in a
+  decode-length bin (`0-20`, `21-40`, `41-80`, `81-160`, `161-` characters). A row passes when its
+  best real score is strictly above its bin's floor. The look half's longest decode is 138
+  characters, so `161-` has **no floor**: a row there gets `id_floor_ok: null` — "no floor for
+  this bin", not "below the floor" — and is left alone (an unlabelled row stays `none`, nothing
+  is relabelled).
+: _Avoid_: threshold (the bars are the thresholds), silence floor (that is the pass-1 `silence`
+  exclusion, a different rule)
+
+**Bar b**
+: The smallest value on the grid 0.00, 0.01, …, 0.50 at which at most 0.5% of look clips would be
+  **relabelled** and none of the 52 real-mistake clips would be. Δ, not the margin, is what `b`
+  bars.
+
+**Bar b_u**
+: The smallest grid value at which at least 99% of the look clips the identifier **names** (floor
+  passed, margin ≥ bar, labels hidden) are their own class — the owner's post-look erratum
+  (`docs/tlog-ident-bu-amendment.md`). Both bars are **provisional** while the floor is stopped.
+
+**Margin**
+: `m`, for a row without a filename label: the best score minus the best score of a **different
+  text class** at a non-overlapping location. The competitor is pinned by
+  `docs/tlog-ident-margin-amendment.md` (word spans, edlib's first optimal alignment per span);
+  the pin's known gap is one-directional — `m` can be overstated, never understated.
+
+**Label source**
+: `filename` (below the bar, kept under the filename label), `both` (the best class equals the
+  filename's), `identified` (relabelled or assigned) or `none`. A row whose bin has no floor is
+  never `identified` without a filename label.
+
 ## Re-read Corpus
 
 The vocabulary of Muraja ADR-0016, which mines the Tadabur clips the ADR-0001 gate **rejects**

@@ -22,3 +22,7 @@ huggingface_hub>=0.20.0
 numpy>=1.24.0
 soundfile>=0.12.0
 librosa>=0.10.0
+# tlog S5's ayah identification (#190) is CPU-only and its tests live here; edlib is not a
+# CUDA dependency. Pinned for the same reason as requirements-train.txt: the floors and bars
+# are percentiles of this library's distances.
+edlib==1.3.9.post1

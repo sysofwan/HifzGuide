@@ -269,3 +269,47 @@ short, or if the recall control misses. The offline tests need no network, GPU o
 `python -m pytest -q tools/tadabur/test_tlog_overlap_build.py` (which drives `build` end to
 end over a fabricated store and one real index shard), and
 `python -m pytest -q tools/tadabur/test_tlog_overlap_launch.py`, which sweeps a stub box.
+
+## Ayah identification and its calibration (#190, S5)
+
+`ident/` is what `tadabur.tlog_ident` commits: `references.json.gz` (all 6,236 ayat' normalised
+references and word offsets), `real_mistake_clips.jsonl` (the 52 clips holding the 56
+owner-verified real-mistake sites, committed before any look clip was scored),
+`decodes/real_mistake.base.json` and `decodes/noise.base.json` (the base teacher's whole-clip
+decodes) and `ident_calibration.json`; the generated page is
+`docs/tlog-ayah-identification.md`. The rules are the frozen hold-out text plus three dated
+documents: `docs/tlog-ident-preregistration.md` (S5, pre-outcome), `docs/tlog-ident-bu-amendment.md`
+(the owner's `b_u` erratum) and `docs/tlog-ident-margin-amendment.md` (the margin's competitor
+definition). The frozen text still says "42 clips" at its real-mistake line; the committed store is
+52 clips over 46 ayat, and the S5 documents are the record of that erratum.
+
+```bash
+python -m tadabur.tlog_ident references   # rebuild references.json.gz (~5 min)
+python -m tadabur.tlog_ident calibrate    # floors, bars, counts and the page (~40 min CPU)
+python -m tadabur.tlog_ident report       # re-render the page from the committed report
+```
+
+**Provisional.** The frozen noise stop fires (159 of 445 Freesound recordings pass = 35.7%
+against a 1% ceiling), so `floor_status` is `stopped` and both bars are provisional.
+`tadabur.tlog_ident.load_calibration()` refuses the committed report unless the caller passes
+`allow_provisional=True`, and a consumer that does must say so in its output.
+
+**The floor-less bin.** Floors are keyed on the **decode's** character length. The look half's
+longest decode is 138 characters, so `161-` has no floor and none is invented for it. A row
+decoded longer than 161 characters gets `id_floor_ok: null` — "no floor for this bin", not
+"below the floor": it is never relabelled, and without a filename label it stays `none`. The
+pool's pass-1 `speech_s` is its only committed length fact (the frozen row does not carry the
+clip's `duration_s`), and it is VAD speech duration, **not** the decode's character length:
+characters per second vary between clips, so a short-speech row can still decode into `161-`.
+The page's "The pool's VAD speech duration (indicative)" section therefore reports the speech
+histogram with no claim about floor-bin membership; S7's decodes measure the real coverage
+(#192).
+
+**Decode mode.** The frozen rule fixes a whole-clip greedy decode, and both the look decodes and
+these floors are whole-clip; the pool's long rows cannot be decoded whole within the VRAM budget
+(S5's Freesound pool already needed `stream_b0`). `identify` takes a bare string, so S7 must either
+obtain an amendment of the decode mode or record `decode_mode` beside every identification and
+report the floor-bin and streamed populations separately — see the page's "For S7" section.
+
+Consumer contract: `identification_record()` fixes the committed row's field names and
+`load_calibration()` the threshold guard.

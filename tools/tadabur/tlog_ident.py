@@ -25,13 +25,18 @@ span; its ayah is the one with the most aligned words, and ``straddles`` says wh
 crosses an ayah boundary. The best decoy score comes from the same shortlist over the decoy
 sequences; the exhaustive decoy best is reported for sensitivity, never used.
 
-**Thresholds.** Per decode-length bin the floor is the type-7 99th percentile of the best decoy
-score over Tarteel v1 look decodes. ``b`` is the smallest grid value at which ≤ 0.5% of look clips
-relabel and 0 of the 52 real-mistake clips relabel; ``b_u`` follows the owner-approved post-look
-erratum (``docs/tlog-ident-bu-amendment.md``): the smallest bar at which ≥ 99% of the look clips
-the identifier **names** are their own class. The literal share-of-all wording's result is
-recorded as ``b_u_literal``; its coverage cannot rise with the bar. A length bin with no look
-decode has no floor and no verdict. The bars and floors are committed in
+**Verdicts (S5b).** A decode with speech is ``non_recitation`` when its normalised length is
+under ``L_MIN`` (8) or its real best is within ``DELTA`` (0.30) of its own decoy best from the
+same shortlisted search (``docs/tlog-ident-floor-preregistration.md``, #204). :func:`identify`
+computes that verdict; no length bin is consulted. The retired binned floors — the type-7 99th
+percentile of the best decoy score over Tarteel v1 look decodes, per length bin — are still
+derived and committed as history, with the three empty-bin conventions of the S5 noise stop.
+
+**Bars.** ``b`` is the smallest grid value at which ≤ 0.5% of look clips relabel and 0 of the 52
+real-mistake clips relabel; ``b_u`` follows the owner-approved post-look erratum
+(``docs/tlog-ident-bu-amendment.md``): the smallest bar at which ≥ 99% of the look clips the
+identifier **names** are their own class. The literal share-of-all wording's result is recorded as
+``b_u_literal``; its coverage cannot rise with the bar. The bars and floors are committed in
 ``tools/tadabur/tlog/ident/ident_calibration.json`` with the generated page
 ``docs/tlog-ayah-identification.md``; every value is re-derived from the committed inputs by the
 acceptance tests.
@@ -42,9 +47,9 @@ owner-verified real-mistake sites), ``decodes/real_mistake.base.json`` and ``dec
 (the base teacher's whole-clip decodes), ``ident_calibration.json``.
 
 Consumers use two functions, so S6 and S7 cannot fork the schema: :func:`identification_record`
-names the committed row's fields, and :func:`load_calibration` returns ``(floors, bars, k)`` and
-refuses a report whose floors are stopped or whose bars are provisional — this one is — unless
-the caller passes ``allow_provisional=True``. The read path (a committed database and
+names the committed row's fields, including the ``floor_rule`` that produced the verdict on every
+row, and :func:`load_calibration` returns ``(bars, k)`` and refuses any report whose
+``floor_status`` is not ``"confirmed"``. The read path (a committed database and
 :func:`identify`) imports edlib only; the phonetizer is imported where a reference is built.
 
 Usage (from ``tools/``)::
@@ -97,6 +102,18 @@ RECALL_CLIPS = 1000
 RECALL_MIN = 0.999
 SALT = "issue-190-tlog-s5-v1"
 
+#: S5b (#204): the recitation rule is fixed in its own dated pre-registration, never selected on
+#: the confirmation sets. A decode is non-recitation when it is shorter than ``L_MIN`` or its own
+#: decoy is within ``DELTA`` of its real best, both from the same shortlisted search.
+L_MIN = 8
+DELTA = 0.30
+FLOOR_SALT = "tlog-s5b-floor-confirm-v1"
+FLOOR_PREREGISTRATION_PATH = (Path(__file__).resolve().parents[2]
+                              / "docs" / "tlog-ident-floor-preregistration.md")
+#: The pinned SHA-256 of that document; a test re-checks it against the committed file.
+FLOOR_PREREGISTRATION_SHA256 = (
+    "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a")
+
 BASE_MODEL = "obadx/muaalem-model-v3_2"
 BASE_REVISION = "01a1ef9fbe40d144ef845101e89ff924aed3fef5"
 
@@ -113,6 +130,8 @@ REAL_MISTAKE_CLIPS_PATH = IDENT_DIR / "real_mistake_clips.jsonl"
 DECODES_DIR = IDENT_DIR / "decodes"
 REAL_MISTAKE_DECODES_PATH = DECODES_DIR / "real_mistake.base.json"
 NOISE_DECODES_PATH = DECODES_DIR / "noise.base.json"
+#: The character-level margin oracle's result (look only; recorded, never a selection step).
+ORACLE_PATH = IDENT_DIR / "oracle_margin.json"
 #: The Freesound gap pool (the noise stop's population); the look decodes and the split come
 #: from :mod:`tadabur.tarteel_split`, which owns their one definition.
 NOISE_POOL_PATH = Path(__file__).parent / "nonpro_gap" / "noise_pool.json"
@@ -219,9 +238,9 @@ class Identification:
     """One decode's identification: the span, its class, the decoy, Δ and the margin.
 
     ``class_label`` and ``filename_label`` are the label strings the class and the filename
-    name; they let :func:`apply_floors` recompute the label fields without the database.
-    ``floor_ok is None`` means the decode's length bin has **no floor** (no look decode in it):
-    the row is unverified, which :func:`identification_record` names as ``id_floor_ok: null``.
+    name; they let the label rule recompute the fields without the database. ``floor_ok`` is the
+    S5b recitation verdict, computed by :func:`identify`: ``length >= L_MIN`` and
+    ``real - own decoy >= DELTA``.
     """
 
     length: int
@@ -233,7 +252,7 @@ class Identification:
     delta: float | None
     margin: float | None
     margin_class: int | None
-    floor_ok: bool | None
+    floor_ok: bool
     overlaps_filename: bool | None
     label_source: str
     assigned_label: str | None
@@ -854,13 +873,13 @@ def load_references(path: Path = REFERENCES_PATH) -> ReferenceDatabase:
 
 
 def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | None = None,
-             floors: Mapping[str, float] | None = None,
              bars: Mapping[str, float] | None = None, k: int = K,
              exhaustive_decoy: bool = False) -> Identification:
-    """One decode's identification (module docstring).
+    """One decode's identification and its S5b recitation verdict (module docstring).
 
-    ``floors`` maps a length bin to its floor; without it ``floor_ok`` is ``None`` rather than an
-    assumption. ``bars`` carries ``b`` and ``b_u``; without them no row is assigned or relabelled.
+    The verdict is ``length >= L_MIN`` and ``real best - own decoy best >= DELTA``; both scores
+    come from this decode's one shortlisted search. ``bars`` carries ``b`` and ``b_u``; without
+    them no row is assigned or relabelled.
     """
     name = _split_label(filename_ayah) if filename_ayah else None
     if name is not None and name not in database.ayat:
@@ -874,7 +893,7 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
             length=0, match=None, decoy=0.0,
             exhaustive_decoy=0.0 if exhaustive_decoy else None,
             filename_class=filename_class, filename_score=None, delta=None, margin=None,
-            margin_class=None, floor_ok=False if floors is not None else None,
+            margin_class=None, floor_ok=False,
             overlaps_filename=None, label_source=NONE, assigned_label=None,
             filename_label=filename_label)
         return _with_label(identification, bars)
@@ -883,8 +902,9 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
     best = shortlisted[0].match
     competitor = database.competitor(query, shortlisted, best)
     filename_score = (database.score_window(decode, *name) if name is not None else None)
+    decoy = database.decoy_best(decode, k=k)
     identification = Identification(
-        length=len(query), match=best, decoy=database.decoy_best(decode, k=k),
+        length=len(query), match=best, decoy=decoy,
         exhaustive_decoy=(database.decoy_exhaustive_best(decode)
                           if exhaustive_decoy else None),
         filename_class=filename_class, filename_score=filename_score,
@@ -893,7 +913,7 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
         # match, so the margin is measured against the empty competitor (score 0).
         margin=best.score - (competitor.score if competitor is not None else 0.0),
         margin_class=competitor.text_class if competitor is not None else None,
-        floor_ok=_floor_verdict(best.score, len(query), floors),
+        floor_ok=len(query) >= L_MIN and best.score - decoy >= DELTA,
         overlaps_filename=(_overlaps_ayah(best, name) if name is not None else None),
         label_source=NONE, assigned_label=None,
         class_label=database.class_label(best.text_class),
@@ -906,8 +926,9 @@ def identification_record(identification: Identification) -> dict:
 
     The keys are the issue's output list — span, ``straddles``, class, score, decoy, Δ,
     ``margin``, ``margin_class``, ``id_floor_ok``, ``label_source``, ``assigned_label`` — plus
-    the inputs a consumer joins on. ``id_floor_ok`` is the issue's name for ``floor_ok``;
-    ``None`` means the decode's length bin has **no floor**, so the row is unverified.
+    the inputs a consumer joins on and the ``floor_rule`` that produced ``id_floor_ok``.
+    ``id_floor_ok`` is the S5b recitation verdict (:func:`identify`), under its own
+    pre-registration; no row is left unverified.
     """
     match = identification.match
     span = ({"surah": match.surah, "ayah_from": match.ayah_from,
@@ -930,32 +951,44 @@ def identification_record(identification: Identification) -> dict:
         "filename_label": identification.filename_label,
         "label_source": identification.label_source,
         "assigned_label": identification.assigned_label,
+        "floor_rule": floor_rule(),
     }
 
 
-def apply_floors(identification: Identification, floors: Mapping[str, float],
-                 *, bars: Mapping[str, float] | None = None) -> Identification:
-    """``identification`` with the floor verdict for its length, and the label it implies."""
-    floor_ok = (False if identification.match is None else
-                _floor_verdict(identification.match.score, identification.length, floors))
-    return _with_label(replace(identification, floor_ok=floor_ok), bars)
+def floor_rule() -> dict:
+    """The recitation rule that sets ``floor_ok``: its pre-registration's path and SHA-256."""
+    return {"path": repo_relative(FLOOR_PREREGISTRATION_PATH),
+            "sha256": FLOOR_PREREGISTRATION_SHA256}
+
+
+def oracle_consequence(b_u: float | None, oracle: Mapping[str, Any]) -> str:
+    """The mechanical margin-pin consequence: ``final`` only if the oracle changed neither
+    ``b_u`` nor a look assignment at ``b_u``; otherwise the owner decides (architect r18/r19)."""
+    if oracle["b_u_oracle"] == b_u and oracle["assignments_changed_at_b_u"] == 0:
+        return "final"
+    return "owner"
 
 
 def _with_label(identification: Identification,
                 bars: Mapping[str, float] | None) -> Identification:
-    """The label rule: ``both``/``identified``/``filename``/``none`` (pre-registration table)."""
+    """The label rule: ``both``/``identified``/``filename``/``none`` (pre-registration table).
+
+    ``both`` is the table's class-equality fact and does not depend on the recitation rule; the
+    rule gates only relabelling and assignment (``identified``). A non-recitation row is
+    therefore never relabelled or assigned, but a matching filename class is still ``both``.
+    """
     match = identification.match
-    if match is None or identification.floor_ok is False:
+    if (match is not None and identification.filename_label is not None
+            and match.text_class == identification.filename_class):
+        return replace(identification, label_source=BOTH,
+                       assigned_label=identification.filename_label)
+    if match is None or identification.floor_ok is not True:
         if identification.filename_label is not None:
             return replace(identification, label_source=FILENAME,
                            assigned_label=identification.filename_label)
         return replace(identification, label_source=NONE, assigned_label=None)
     if identification.filename_label is not None:
-        if match.text_class == identification.filename_class:
-            return replace(identification, label_source=BOTH,
-                           assigned_label=identification.filename_label)
-        if (identification.floor_ok is True
-                and bars is not None and bars.get("b") is not None
+        if (bars is not None and bars.get("b") is not None
                 and identification.delta is not None
                 and identification.delta >= bars["b"]
                 and not identification.overlaps_filename):
@@ -963,8 +996,7 @@ def _with_label(identification: Identification,
                            assigned_label=identification.class_label)
         return replace(identification, label_source=FILENAME,
                        assigned_label=identification.filename_label)
-    if (identification.floor_ok is True
-            and bars is not None and bars.get("b_u") is not None
+    if (bars is not None and bars.get("b_u") is not None
             and identification.margin is not None
             and identification.margin >= bars["b_u"]):
         return replace(identification, label_source=IDENTIFIED,
@@ -1000,15 +1032,6 @@ def floor_bin(length: int) -> str:
     if length <= 160:
         return FLOOR_BINS[3]
     return FLOOR_BINS[4]
-
-
-def _floor_verdict(score: float, length: int,
-                   floors: Mapping[str, float] | None) -> bool | None:
-    """The bin's floor verdict; a bin with no floor (no look decode in it) has none."""
-    if floors is None:
-        return None
-    floor = floors.get(floor_bin(length))
-    return None if floor is None else score > floor
 
 
 def _backoff_floor(bin_: str, floors: Mapping[str, float]) -> float | None:
@@ -1124,29 +1147,21 @@ def recall_sample(clips: Iterable[str]) -> tuple[str, ...]:
     return tuple(ranked[:RECALL_CLIPS])
 
 
-def load_calibration(path: Path = CALIBRATION_PATH, *,
-                     allow_provisional: bool = False) -> tuple[dict, dict, int]:
-    """The committed ``(floors, bars, k)`` a consumer labels rows with.
+def load_calibration(path: Path = CALIBRATION_PATH) -> tuple[dict, int]:
+    """The committed ``(bars, k)`` a consumer labels rows with, confirmed only.
 
-    Confirmed only: the committed S5 report records its ``floor_status`` and whether its bars
-    are provisional, and the frozen noise stop leaves both provisional (architect r16). A
-    consumer must pass ``allow_provisional=True`` — and say so in its output — to use them.
+    The S5b floor must be recorded as exactly ``"confirmed"``; a stopped, passed or provisional
+    report is refused. The floors are history (the rule is inside :func:`identify`), so they are
+    not returned.
     """
     report = json.loads(Path(path).read_text(encoding="utf-8"))
-    reason = _provisional_reason(report)
-    if reason is not None and not allow_provisional:
-        raise ValueError(f"{path} is not a confirmed calibration ({reason}); "
-                         f"pass allow_provisional=True to use it anyway")
-    return report["floors"], report["bars"], report["parameters"]["k"]
-
-
-def _provisional_reason(report: Mapping[str, Any]) -> str | None:
-    """Why a calibration report is not confirmed, or ``None`` when it is."""
-    if report.get("floor_status") != "passed":
-        return f"floor_status {report.get('floor_status')!r}"
+    status = report.get("floor_status")
+    if status != "confirmed":
+        raise ValueError(f"{path} is not a confirmed calibration (floor_status {status!r})")
     if report["bars"].get("provisional"):
-        return f"bars provisional: {report['bars'].get('provisional_reason')}"
-    return None
+        raise ValueError(f"{path} is not a confirmed calibration (bars provisional: "
+                         f"{report['bars'].get('provisional_reason')})")
+    return report["bars"], report["parameters"]["k"]
 
 
 def load_look_decodes(path: Path = DECODES_PATH,
@@ -1259,25 +1274,29 @@ def _calibration(database: ReferenceDatabase) -> dict:
     _phase(f"scoring {len(look)} look decodes at k = {k}")
     raw, seconds = _look_measurements(database, look, k=k)
     floors = derive_floors(raw)
-    _phase(f"floors {floors}")
-    applied = [apply_floors(row, floors) for row in raw]
+    _phase(f"floors (history) {floors}")
+    # The rule's verdict is already on every row; the binned floors are committed as history.
 
     clip_list = real_mistake_clips()
     truth = load_decode_store(REAL_MISTAKE_DECODES_PATH)
     _phase(f"scoring {len(clip_list)} real-mistake clips")
-    mistakes = [apply_floors(identify(truth["items"][clip["audio_filename"]]["spans"],
-                                      database=database, filename_ayah=clip["surah_ayah"],
-                                      k=k), floors) for clip in clip_list]
-    bars = derive_bars(applied, mistakes)
+    mistakes = [identify(truth["items"][clip["audio_filename"]]["spans"],
+                         database=database, filename_ayah=clip["surah_ayah"], k=k)
+                for clip in clip_list]
+    bars = derive_bars(raw, mistakes)
 
-    _phase(f"exhaustive-decoy sensitivity on {len(look)} clips")
+    # History: the retired binned floors' sensitivity to scoring the exhaustive decoy. The
+    # rule's verdict never reads it, but S5's report and the guard-k test pin the pass.
+    _phase(f"exhaustive-decoy sensitivity on {len(look)} clips (history)")
     exhaustive = [identify(decode.spans, database=database, filename_ayah=decode.surah_ayah,
                            exhaustive_decoy=True, k=k) for decode in look]
     exhaustive_floors = derive_floors(replace(row, decoy=row.exhaustive_decoy)
                                       for row in exhaustive) if exhaustive else {}
-    exhaustive_applied = [apply_floors(row, exhaustive_floors) for row in exhaustive]
-    exhaustive_retention = sum(row.floor_ok for row in exhaustive_applied) / len(
-        exhaustive_applied)
+    exhaustive_retention = sum(
+        row.match is not None
+        and (floor := exhaustive_floors.get(floor_bin(row.length))) is not None
+        and row.match.score > floor
+        for row in exhaustive) / len(exhaustive)
 
     pool = json.loads(NOISE_POOL_PATH.read_text(encoding="utf-8"))["recordings"]
     noise_store = load_decode_store(NOISE_DECODES_PATH)
@@ -1307,9 +1326,9 @@ def _calibration(database: ReferenceDatabase) -> dict:
     _phase("walking the S1+S4 pool for b_u's reach and the pool's length histogram")
     pool_lengths, unlabelled = pool_summary(iter_pool_rows())
 
-    retention = sum(row.floor_ok for row in applied) / len(applied)
+    retention = sum(row.floor_ok for row in raw) / len(raw)
     relabel_rate = bars["look_relabel_at_b"]
-    tail = [(decode, row) for decode, row in zip(look, applied) if decode.cer_wav >= 0.2]
+    tail = [(decode, row) for decode, row in zip(look, raw) if decode.cer_wav >= 0.2]
     tail_retention = sum(row.floor_ok for _, row in tail) / len(tail) if tail else None
     tail_relabel = (sum(relabelled(row, bars["b"]) for _, row in tail) / len(tail)
                     if tail and bars["b"] is not None else None)
@@ -1323,7 +1342,7 @@ def _calibration(database: ReferenceDatabase) -> dict:
     }
     return {
         "schema": "tadabur.tlog_ident/calibration-v1",
-        "issue": 190,
+        "issue": 204,
         "preregistration": {
             "path": repo_relative(PREREGISTRATION_PATH),
             "sha256": sha256_file(PREREGISTRATION_PATH),
@@ -1332,6 +1351,14 @@ def _calibration(database: ReferenceDatabase) -> dict:
         },
         "bu_amendment": {"path": repo_relative(BU_AMENDMENT_PATH),
                          "sha256": sha256_file(BU_AMENDMENT_PATH)},
+        "floor_preregistration": {
+            "path": repo_relative(FLOOR_PREREGISTRATION_PATH),
+            "sha256": FLOOR_PREREGISTRATION_SHA256,
+            "parents": {"holdout": sha256_file(HOLDOUT_PREREGISTRATION_PATH),
+                        "ident": sha256_file(PREREGISTRATION_PATH),
+                        "bu": sha256_file(BU_AMENDMENT_PATH)},
+        },
+        "floor_rule": floor_rule(),
         "margin_definition": {"path": repo_relative(MARGIN_AMENDMENT_PATH),
                               "sha256": sha256_file(MARGIN_AMENDMENT_PATH)},
         "floor_status": floor_status,
@@ -1393,9 +1420,9 @@ def _calibration(database: ReferenceDatabase) -> dict:
                                                    == bin_) for bin_ in floors}},
         "exhaustive_decoy": {"floors": exhaustive_floors,
                              "look_retention": exhaustive_retention},
-        "look": {"clips": len(applied), "retention": retention,
+        "look": {"clips": len(raw), "retention": retention,
                  "relabel_rate_at_b": relabel_rate,
-                 "bins": {bin_: sum(1 for row in applied if floor_bin(row.length) == bin_)
+                 "bins": {bin_: sum(1 for row in raw if floor_bin(row.length) == bin_)
                           for bin_ in FLOOR_BINS},
                  "tail": {"clips": len(tail), "retention": tail_retention,
                           "relabel_rate": tail_relabel}},
@@ -1573,13 +1600,14 @@ def render(report: Mapping[str, Any]) -> str:
         "- **Row contract.** `tadabur.tlog_ident.identification_record` is the one place the "
         "committed row's field names are fixed: the span, `straddles`, `class_label`, `score`, "
         "`decoy`, `delta`, `margin`, `margin_class`, `id_floor_ok`, `overlaps_filename`, "
-        "`filename_label`, `label_source`, `assigned_label`. `id_floor_ok: null` means **no "
-        "floor for this length bin**, not 'below the floor': the row is unverified, so an "
-        "unlabelled row stays `none`, a filename row keeps its own label, and nothing in that "
-        "bin is relabelled.",
-        "- **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(floors, bars, k)` "
-        "and refuses a report whose floors are stopped or whose bars are provisional — this "
-        "one — unless the caller passes `allow_provisional=True` and reports that it did.",
+        "`filename_label`, `label_source`, `assigned_label`, plus `floor_rule` (the "
+        "pre-registration's path and SHA-256). `id_floor_ok` is the S5b recitation verdict: the "
+        "decode is at least `L_min = 8` characters and its real best is at least `DELTA = 0.30` "
+        "above its own decoy best. Every row names the rule that produced it, so binned and "
+        "rule verdicts cannot be mixed silently.",
+        "- **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and "
+        "refuses any report whose `floor_status` is not `\"confirmed\"`. The retired binned "
+        "floors stay in the report as history and are not returned.",
         f"- **Decode mode.** The frozen rule fixes a whole-clip greedy decode "
         f"(`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are "
         f"whole-clip. The pool is not: "
@@ -1615,8 +1643,9 @@ def render(report: Mapping[str, Any]) -> str:
         f"{_pct(look['tail']['retention'])} |",
         f"| `cer_wav ≥ 0.2` tail relabel rate at b | {_pct(look['tail']['relabel_rate'])} |",
         f"| Freesound noise pass | {_pct(report['noise']['pass'])} |",
-        f"| exhaustive-decoy floors (sensitivity) | retention "
-        f"{_pct(report['exhaustive_decoy']['look_retention'])} |",
+        *([f"| exhaustive-decoy floors (sensitivity) | retention "
+           f"{_pct(report['exhaustive_decoy']['look_retention'])} |"]
+          if "exhaustive_decoy" in report else []),
         f"| throughput | {report['throughput']['ms_per_clip']:.2f} ms per clip |",
         "",
         f"The noise population is decoded in `{report['decodes']['noise']['mode']}`, while look "

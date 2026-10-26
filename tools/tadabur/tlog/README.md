@@ -289,21 +289,32 @@ python -m tadabur.tlog_ident calibrate    # floors, bars, counts and the page (~
 python -m tadabur.tlog_ident report       # re-render the page from the committed report
 ```
 
-**Provisional.** The frozen noise stop fires (159 of 445 Freesound recordings pass = 35.7%
-against a 1% ceiling), so `floor_status` is `stopped` and both bars are provisional.
-`tadabur.tlog_ident.load_calibration()` refuses the committed report unless the caller passes
-`allow_provisional=True`, and a consumer that does must say so in its output.
+**Confirmed only (S5b, #204).** S5's binned floor stopped on its own noise bar (159 of 445
+Freesound recordings passed = 35.7% against a 1% ceiling). S5b replaces it for **verdicts** with
+the per-decode rule in `docs/tlog-ident-floor-preregistration.md`: a decode is
+`non_recitation` when its normalised length is under `L_min = 8` characters or its own decoy is
+within `DELTA = 0.30` of its real best from the same shortlisted search. `identify()` computes
+the verdict; `floor_ok` / `id_floor_ok` are always booleans and every identification record
+carries `floor_rule {path, sha256}`. The binned floors and the three empty-bin conventions stay
+in the report as history. `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and
+refuses any report whose `floor_status` is not `"confirmed"`; S6 and S7 may label under nothing
+else.
 
-**The floor-less bin.** Floors are keyed on the **decode's** character length. The look half's
-longest decode is 138 characters, so `161-` has no floor and none is invented for it. A row
-decoded longer than 161 characters gets `id_floor_ok: null` — "no floor for this bin", not
-"below the floor": it is never relabelled, and without a filename label it stays `none`. The
-pool's pass-1 `speech_s` is its only committed length fact (the frozen row does not carry the
-clip's `duration_s`), and it is VAD speech duration, **not** the decode's character length:
-characters per second vary between clips, so a short-speech row can still decode into `161-`.
-The page's "The pool's VAD speech duration (indicative)" section therefore reports the speech
-histogram with no claim about floor-bin membership; S7's decodes measure the real coverage
-(#192).
+**The fresh confirmation draws.** `ident/confirm/freesound.json` and
+`ident/confirm/common_voice.jsonl` (with its `common_voice.json` counts sidecar) are drawn and
+committed before any of them is decoded, under the salt `tlog-s5b-floor-confirm-v1`: 1,000
+Freesound recordings from the 100 shared shards, 500 Common Voice Arabic clips and 500 non-Arabic
+clips (100 each from `en`, `ur`, `fa`, `tr`, `id`, with `es`, `hi`, `ckb`, `sw`, `bn` as one-shot
+substitutes). No audio is committed.
+
+**The floor-less bin.** Floors are history now, but the report still keys them on the **decode's**
+character length. The look half's longest decode is 138 characters, so `161-` has no floor and
+none is invented for it. The pool's pass-1 `speech_s` is its only committed length fact (the
+frozen row does not carry the clip's `duration_s`), and it is VAD speech duration, **not** the
+decode's character length: characters per second vary between clips, so a short-speech row can
+still decode into `161-`. The page's "The pool's VAD speech duration (indicative)" section
+therefore reports the speech histogram with no claim about floor-bin membership; S7's decodes
+measure the real coverage (#192).
 
 **Decode mode.** The frozen rule fixes a whole-clip greedy decode, and both the look decodes and
 these floors are whole-clip; the pool's long rows cannot be decoded whole within the VRAM budget

@@ -103,7 +103,7 @@ def archive_pins(doc_path: Path = FLOOR_PREREGISTRATION_PATH) -> dict[str, dict]
         if match is None:
             continue
         locale = match["locale"]
-        pins[locale] = {"locale": locale, "role": match["role"],
+        pins[locale] = {"locale": locale,
                         "dataset_id": match["dataset_id"], "filename": match["filename"],
                         "sha256": match["sha256"],
                         "size_bytes": int(match["size"].replace(",", ""))}

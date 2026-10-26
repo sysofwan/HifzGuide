@@ -14,6 +14,7 @@ quran.db
 # Conda / virtual envs created inside the repo
 /envs/
 .venv/
+.venv-test/
 # Hugging Face + dataset caches and local downloads
 .cache/
 data_cache/
@@ -94,8 +95,12 @@ wandb/
 # twin, read by the scorer. Source-of-truth for an experiment whose audio is recorded by hand,
 # so it must stay tracked or the recordings become unscorable.
 !tools/tadabur/tashkeel_counterfactual_fixtures/counterfactual_items.jsonl
-# Tadabur reference-phoneme cache (regenerated deterministically)
-tools/tadabur/cache/
+# Tadabur reference-phoneme cache: committed, because a cold rebuild is a full 6236-ayah
+# phonetization paid once per worktree, and the parity test checks the committed file against
+# the generator. Never hand-edit it; regenerate with
+# `python -m tadabur.reference_phonemes --rebuild` and commit the result.
+tools/tadabur/cache/*
+!tools/tadabur/cache/reference_phonemes.json
 # CoreML export outputs (macOS)
 coreml_models/
 coreml_models_chunked/

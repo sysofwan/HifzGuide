@@ -96,6 +96,16 @@ Publishing a new asset release is handled by the **`hifzguide-asset-release`** s
 - Write UTF-8 explicitly (`encoding="utf-8"`, `ensure_ascii=False`) — the data is Arabic text.
 - Keep generators deterministic and idempotent; re-running should reproduce identical output.
 
+### Tests (`tools/`)
+
+- One command, from the repo root: `scripts/test.sh` (inner loop — everything but the `slow`
+  tier, thread-pinned xdist). Before a merge run `scripts/test.sh --full`. Both resolve the test
+  interpreter themselves: the worktree's `.venv-test`, else the primary checkout's, else
+  `python`; `TEST_PYTHON` overrides, `TEST_WORKERS` sets the worker count (default 6).
+- Mark a test `@pytest.mark.slow` only when it regenerates a full-corpus artifact or re-derives
+  a whole frozen result (a parity pass); the tier is declared in `tools/pytest.ini` and the
+  merge gate always runs it. See `tools/README.md` "Tests".
+
 ### Data & assets
 
 - `data/` holds source-of-truth inputs; generated artifacts (`quran.db`, models) are release
@@ -116,6 +126,7 @@ Publishing a new asset release is handled by the **`hifzguide-asset-release`** s
 - Include the co-author trailer for the harness that made the commit:
   - Claude Code: `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>`
   - Copilot: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
+  - omp (DeepSeek coder, via the user-level `orchestrate` skill): `Co-authored-by: DeepSeek V4 Flash (omp) <noreply@deepseek.com>`
 
 ## Agent Skills
 

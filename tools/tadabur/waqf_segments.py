@@ -165,6 +165,14 @@ def spaceless_word_offsets(
     return "".join(spaceless), [remap[offset] for offset in spaced_offsets]
 
 
+#: Realized references phonetized so far, keyed by the segment's words. The phonetizer is a pure
+#: function of the pinned quran-transcript version, and Tarteel's whole-ayah clips cover only
+#: 4,491 distinct ayat, so one text is phonetized once per process. The key keeps the word
+#: boundaries because the returned offsets depend on them. Offsets are stored as a tuple and
+#: copied out, so a caller mutating its list cannot poison the memo.
+_REALIZED_REFERENCES: dict[tuple[str, ...], tuple[str, tuple[int, ...]]] = {}
+
+
 def hafs_segment_reference() -> SegmentReference:
     """A :data:`SegmentReference` over a waqf segment's Uthmani words.
 
@@ -178,8 +186,15 @@ def hafs_segment_reference() -> SegmentReference:
     :func:`hafs_word_reference` on the ayat quran_phonetizer cannot handle.
     """
     def compute(uthmani_words: list[str]) -> tuple[str, list[int]]:
-        out = phonetize(" ".join(uthmani_words))
-        return out.phonemes, _spaced_word_offsets(out.phonemes, out.mappings, uthmani_words)
+        key = tuple(uthmani_words)
+        cached = _REALIZED_REFERENCES.get(key)
+        if cached is None:
+            out = phonetize(" ".join(uthmani_words))
+            cached = (out.phonemes,
+                      tuple(_spaced_word_offsets(out.phonemes, out.mappings, uthmani_words)))
+            _REALIZED_REFERENCES[key] = cached
+        phonemes, offsets = cached
+        return phonemes, list(offsets)
 
     return compute
 

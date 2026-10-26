@@ -1,12 +1,16 @@
 """Tests for reference-phoneme generation and caching."""
 
 import json
+import subprocess
+from pathlib import Path
 
 import pytest
 
 import generate_phonemes
 
 from tadabur import reference_phonemes
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Expected normalized (.balanced-scorer) references for the 8 fallback ayat.
 # Swift's normalizePhonemes keeps shadda expansion DOUBLED (رَببُ → ربب, not رب):
@@ -244,13 +248,41 @@ _SPOT_CHECK_REFERENCES = {
 }
 
 
-def test_full_reference_set_is_swift_faithful():
+def _no_regeneration():
+    """Fail if the loader rebuilds: the committed cache is the generator's output."""
+    raise AssertionError(
+        "the reference cache was regenerated instead of read; rebuild it with "
+        "`python -m tadabur.reference_phonemes --rebuild` and commit the file")
+
+
+def test_the_committed_cache_is_tracked_and_read_without_regenerating(monkeypatch):
+    """The cache ships with the checkout: every fresh worktree reads it, none rebuilds it.
+
+    The file is deterministic and versioned (``tadabur/reference_phonemes.py``); regenerating
+    it per worktree cost a full 6236-ayah phonetization at the first test that loads it.
+    """
+    cache = reference_phonemes.DEFAULT_CACHE_PATH
+    relative = cache.relative_to(REPO_ROOT)
+    assert cache.exists(), f"{relative} is missing; rebuild and commit it"
+    tracked = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "--error-unmatch", str(relative)],
+        capture_output=True, text=True)
+    assert tracked.returncode == 0, f"{relative} is untracked; un-ignore and commit it"
+
+    monkeypatch.setattr(generate_phonemes, "generate_reference_phonemes", _no_regeneration)
+    payload = json.loads(cache.read_text(encoding="utf-8"))
+    assert payload["cache_version"] == reference_phonemes.CACHE_VERSION
+    reference_phonemes.load_reference_phonemes()  # raises if the file would be rebuilt
+
+
+@pytest.mark.slow
+def test_full_reference_set_is_swift_faithful(monkeypatch):
     # Full-set parity: build the reference for all 6236 ayat through the real
     # generate → normalize path, then assert every value matches an independent
     # re-implementation of Swift's group-collapse (shadda expansion stays doubled,
     # e.g. 55:17 is ربب, not رب), carries no combining marks or tajweed variants,
-    # and has clean word boundaries. The cache itself is a gitignored, regenerable
-    # artifact, so this exercises the generator rather than a committed file.
+    # and has clean word boundaries. The cache is committed, so the same test proves
+    # the committed file is this generator's output.
     import unicodedata
 
     pytest.importorskip("quran_transcript")
@@ -278,3 +310,8 @@ def test_full_reference_set_is_swift_faithful():
         assert "\u06FE" not in value and "\u06BA" not in value
         assert "  " not in value
         assert value == value.strip(" ") or value == ""
+
+    # The committed cache is the generator's output: a stale version or a hand-edited
+    # value fails here instead of being silently trusted by every downstream test.
+    monkeypatch.setattr(generate_phonemes, "generate_reference_phonemes", _no_regeneration)
+    assert built == reference_phonemes.load_reference_phonemes()

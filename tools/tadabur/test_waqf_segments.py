@@ -173,3 +173,26 @@ def test_importing_waqf_segments_does_not_import_torch():
         cwd=str(__import__("pathlib").Path(__file__).resolve().parent.parent),
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_a_text_is_phonetized_once_and_its_offsets_come_back_as_a_copy(monkeypatch):
+    # The realized reference is a pure function of the space-joined words, so a segment
+    # referenced twice reaches the phonetizer once (Tarteel's 8,950 whole-ayah clips cover
+    # 4,491 distinct ayat). The offsets are the caller's own list, so mutating one result
+    # cannot poison the memo.
+    calls: list[str] = []
+    phonetize = ws.phonetize
+
+    def counting(text: str):
+        calls.append(text)
+        return phonetize(text)
+
+    monkeypatch.setattr(ws, "phonetize", counting)
+    reference = ws.hafs_segment_reference()
+    words = ["بِسْمِ", "ٱللَّهِ"]
+    first = reference(words)
+    second = reference(words)
+    assert len(calls) == 1
+    assert first == second
+    first[1].append(-1)
+    assert reference(words) == second

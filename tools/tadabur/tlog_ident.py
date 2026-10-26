@@ -118,6 +118,8 @@ PREREGISTRATION_PATH = (Path(__file__).resolve().parents[2]
                         / "docs" / "tlog-ident-preregistration.md")
 BU_AMENDMENT_PATH = (Path(__file__).resolve().parents[2]
                      / "docs" / "tlog-ident-bu-amendment.md")
+MARGIN_AMENDMENT_PATH = (Path(__file__).resolve().parents[2]
+                         / "docs" / "tlog-ident-margin-amendment.md")
 HOLDOUT_PREREGISTRATION_PATH = (Path(__file__).resolve().parents[2]
                                 / "docs" / "tlog-holdout-preregistration.md")
 DOC_PATH = Path(__file__).resolve().parents[2] / "docs" / "tlog-ayah-identification.md"
@@ -1226,6 +1228,8 @@ def _calibration(database: ReferenceDatabase) -> dict:
         },
         "bu_amendment": {"path": repo_relative(BU_AMENDMENT_PATH),
                          "sha256": sha256_file(BU_AMENDMENT_PATH)},
+        "margin_definition": {"path": repo_relative(MARGIN_AMENDMENT_PATH),
+                              "sha256": sha256_file(MARGIN_AMENDMENT_PATH)},
         "floor_status": floor_status,
         "first_pass": {
             "engine_commit": "79acded",
@@ -1353,6 +1357,10 @@ def render(report: Mapping[str, Any]) -> str:
         f"({parameters['library']['mode']})",
         f"- floors: type-7 {parameters['floor_percentile']}th percentile of the best decoy "
         f"score per length bin",
+        f"- margin competitor: word spans, first optimal alignment, per "
+        f"[`docs/tlog-ident-margin-amendment.md`](tlog-ident-margin-amendment.md) (sha256 "
+        f"`{report['margin_definition']['sha256'][:12]}`); it can overstate the margin, never "
+        f"understate it",
         "",
         "## Superseded calibration passes",
         "",

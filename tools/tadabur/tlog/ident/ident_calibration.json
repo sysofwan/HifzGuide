@@ -451,6 +451,10 @@
    "retention": 1.0
   }
  },
+ "margin_definition": {
+  "path": "docs/tlog-ident-margin-amendment.md",
+  "sha256": "eded44e95dc58a3d5ccb86659f296eb50b8b5e0cf236a21b0e5acb5258e3aba2"
+ },
  "margin_fix": {
   "affected": "Margins only: b_u, its precision table and the assigned counts. Floors and b are unchanged, because they read the decoy score and Δ.",
   "defect": "the runner-up search took one alignment per free range, so a location beside a same-class optimum was lost whenever that optimum was the best class: a tied location, or a worse straddling one",
@@ -624,8 +628,8 @@
  },
  "throughput": {
   "clips": 4537,
-  "ms_per_clip": 8.54,
-  "seconds": 38.746
+  "ms_per_clip": 8.449,
+  "seconds": 38.335
  },
  "unlabelled_unclean": {
   "source": "tadabur.tlog_overlap.iter_pool_rows",

@@ -4,7 +4,8 @@ Committed before the module exists and **locked**: later turns may add tests but
 rewrite these. The rules are "Ayah identification" in the frozen
 ``docs/tlog-holdout-preregistration.md`` plus S5's dated 2026-10-25 (S5, pre-outcome) amendment in
 ``docs/tlog-ident-preregistration.md``, which cites the frozen text by path and SHA-256, plus the
-owner-approved post-look b_u erratum in ``docs/tlog-ident-bu-amendment.md``.
+owner-approved post-look b_u erratum in ``docs/tlog-ident-bu-amendment.md`` and the post-look
+margin-definition pin in ``docs/tlog-ident-margin-amendment.md``.
 
 Contract this file pins
 -----------------------
@@ -64,6 +65,7 @@ TRUTH_SITES = ROOT / "tools" / "tadabur" / "truth_sites" / "ship_a_verified.json
 PREREGISTRATION = ROOT / "docs" / "tlog-ident-preregistration.md"
 HOLDOUT_PREREGISTRATION = ROOT / "docs" / "tlog-holdout-preregistration.md"
 BU_AMENDMENT = ROOT / "docs" / "tlog-ident-bu-amendment.md"
+MARGIN_AMENDMENT = ROOT / "docs" / "tlog-ident-margin-amendment.md"
 #: The frozen hold-out text the S5 amendment cites; it is never edited (S3b's meta.json hashes it).
 HOLDOUT_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
 #: The S5 pre-registration is frozen too: the owner's b_u erratum cites this hash, never edits it.
@@ -390,6 +392,42 @@ def test_a_lower_scoring_straddling_location_sets_the_margin(ident):
     assert decoded.label_source == ident.IDENTIFIED
 
 
+def test_the_pinned_margin_misses_a_location_inside_a_shared_word(ident):
+    """R4.1 under the pin: the different-class location starts inside the single word a
+    same-class optimum also uses, so no word span reaches it. ``docs/tlog-ident-margin-
+    amendment.md`` records the case and its one-way direction — the margin is overstated (0.5
+    here, where a character-level search gives 0), so the row is named, never left unnamed."""
+    db = ident.ReferenceDatabase.build([
+        ident.AyahReference(1, 1, "بتثجبتثج", (0, 8)),
+        ident.AyahReference(1, 2, "بتثجبتثج", (0, 8)),
+        ident.AyahReference(1, 3, "بتثج", (0, 1, 2, 3, 4)),
+    ])
+    decoded = ident.identify("بتثجبتثج", database=db, floors={"0-20": 0.0},
+                             bars={"b": 0.01, "b_u": 0.01})
+    assert decoded.match.score == pytest.approx(1.0)
+    assert decoded.margin == pytest.approx(0.5)
+    assert decoded.margin_class == db.text_class(1, 3)
+    assert decoded.label_source == ident.IDENTIFIED
+    assert decoded.assigned_label == "1:1"
+
+
+def test_the_pinned_margin_misses_a_worse_location_inside_a_shared_word(ident):
+    """R4.1's second fixture: the only different-class location starts inside the shared word
+    and scores 0.875, so a character-level search gives m ≤ 0.125. The pin reports 0.625 and
+    names the row even at b_u = 0.50."""
+    db = ident.ReferenceDatabase.build([
+        ident.AyahReference(1, 1, "بتثجبتثج", (0, 8)),
+        ident.AyahReference(1, 2, "بتثجبتثج", (0, 8)),
+        ident.AyahReference(1, 3, "بتثح", (0, 1, 2, 3, 4)),
+    ])
+    decoded = ident.identify("بتثجبتثج", database=db, floors={"0-20": 0.0},
+                             bars={"b": 0.01, "b_u": 0.50})
+    assert decoded.margin == pytest.approx(0.625)
+    assert decoded.margin_class == db.text_class(1, 3)
+    assert decoded.label_source == ident.IDENTIFIED
+    assert decoded.assigned_label == "1:1"
+
+
 @pytest.fixture
 def repeated_classes(ident):
     """1:1 and 1:2 share a class; 1:3 opens with their text but is its own class; 1:4 is
@@ -403,11 +441,14 @@ def repeated_classes(ident):
     return ayat, ident.ReferenceDatabase.build(ayat.values())
 
 
-def _brute_force_competitor(ident, ayat, db, decode):
+def _word_span_oracle(ident, ayat, db, decode):
     """The best different-class span over *every* word span of every shortlisted window.
 
-    The oracle owns the enumeration (no bound, no early exit) and the ranking; slicing,
-    attribution and distance are the engine's, which the locked attribution tests pin.
+    A word-span oracle, not a location-level one: it shares the pinned restriction of
+    ``docs/tlog-ident-margin-amendment.md`` (a location inside a shared word is unreachable),
+    and its point is that the engine's bounded search visits no fewer spans. The oracle owns the
+    enumeration (no bound, no early exit) and the ranking; slicing, attribution and distance are
+    the engine's, which the locked attribution tests pin.
     """
     shortlisted = db.shortlist(decode)
     best = shortlisted[0].match
@@ -461,11 +502,12 @@ def _brute_force_competitor(ident, ayat, db, decode):
     return best, (None if found is None else found[1]), spans_scored
 
 
-def test_the_search_matches_a_brute_force_span_enumeration(ident, repeated_classes):
-    """The branch and bound must reach the brute force's margin and class on every decode."""
+def test_the_bounded_search_visits_no_fewer_spans_than_the_word_span_oracle(ident,
+                                                                           repeated_classes):
+    """The bounded search must reach the word-span oracle's margin and class on every decode."""
     ayat, db = repeated_classes
     for decode in ("بجحدبج", "بجحد", "بجح", "خدذ"):
-        best, competitor, spans = _brute_force_competitor(ident, ayat, db, decode)
+        best, competitor, spans = _word_span_oracle(ident, ayat, db, decode)
         assert spans > 1  # the enumeration is more than the engine's few probes
         decoded = ident.identify(decode, database=db)
         assert decoded.match == best
@@ -783,6 +825,24 @@ def test_the_bu_amendment_is_the_owner_approved_post_look_precision_rule():
     assert "2026-10-25" in text
     assert "post-look" in text
     assert S5_PREREGISTRATION_SHA256 in text
+
+
+def test_the_margin_amendment_pins_the_committed_competitor_search(ident, calibration):
+    """The dated amendment pins the word-span search, cites both frozen parents by SHA-256,
+    names the engine commit it pins, and the calibration records its path and hash."""
+    assert _sha256(HOLDOUT_PREREGISTRATION) == HOLDOUT_SHA256
+    assert _sha256(PREREGISTRATION) == S5_PREREGISTRATION_SHA256
+    text = MARGIN_AMENDMENT.read_text(encoding="utf-8")
+    assert "2026-10-26" in text
+    assert "post-look" in text
+    assert "definitional" in text
+    assert "one-directional" in text
+    assert HOLDOUT_SHA256 in text
+    assert S5_PREREGISTRATION_SHA256 in text
+    assert "8138e8e" in text
+    assert calibration["margin_definition"] == {
+        "path": "docs/tlog-ident-margin-amendment.md",
+        "sha256": _sha256(MARGIN_AMENDMENT)}
 
 
 def test_the_real_mistake_clips_file_is_the_pinned_52_clips_over_46_ayat(ident):

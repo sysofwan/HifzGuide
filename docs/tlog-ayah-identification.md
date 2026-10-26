@@ -11,6 +11,7 @@ Frozen by [`docs/tlog-holdout-preregistration.md`](tlog-holdout-preregistration.
 - alphabet: `normalize_phonemes` 2, words `quran-transcript uthmani.split`
 - shortlist: consonant-skeleton 3-grams, k = 20, library `edlib` 1.3.9.post1 (HW)
 - floors: type-7 99.0th percentile of the best decoy score per length bin
+- margin competitor: word spans, first optimal alignment, per [`docs/tlog-ident-margin-amendment.md`](tlog-ident-margin-amendment.md) (sha256 `eded44e95dc5`); it can overstate the margin, never understate it
 
 ## Superseded calibration passes
 
@@ -124,7 +125,7 @@ B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C
 | `cer_wav ≥ 0.2` tail relabel rate at b | 0.06% |
 | Freesound noise pass | 35.73% |
 | exhaustive-decoy floors (sensitivity) | retention 99.98% |
-| throughput | 8.54 ms per clip |
+| throughput | 8.45 ms per clip |
 
 The noise population is decoded in `stream_b0`, while look and the floors use whole-clip `spans`; the noise rate compares a different decode mode, not the calibration population's.
 

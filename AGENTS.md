@@ -96,6 +96,13 @@ Publishing a new asset release is handled by the **`hifzguide-asset-release`** s
 - Write UTF-8 explicitly (`encoding="utf-8"`, `ensure_ascii=False`) — the data is Arabic text.
 - Keep generators deterministic and idempotent; re-running should reproduce identical output.
 
+### Tests (`tools/`)
+
+- One command, from the repo root: `scripts/test.sh` (inner loop — everything but the `slow`
+  tier, thread-pinned xdist). Before a merge run `scripts/test.sh --full`.
+- Mark a test `@pytest.mark.slow` only when it regenerates a full-corpus artifact; the tier is
+  declared in `tools/pytest.ini` and the merge gate always runs it. See `tools/README.md` "Tests".
+
 ### Data & assets
 
 - `data/` holds source-of-truth inputs; generated artifacts (`quran.db`, models) are release

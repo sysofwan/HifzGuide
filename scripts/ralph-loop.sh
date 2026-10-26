@@ -350,7 +350,7 @@ run_coding_agent() {
     echo "4. Run the tests before you are done (this is a Python + data repo — see AGENTS.md):"
     echo "   - Activate the env: source ~/miniconda3/etc/profile.d/conda.sh && conda activate hifzguide"
     echo "   - For Linux/CUDA work (tools/tadabur, tools/training) ensure deps: pip install -r tools/requirements-train.txt (torch comes from the cu128 index — see tools/README.md)"
-    echo "   - Run the test suite: python -m pytest -q (pip install pytest if missing; skip only if the area genuinely has no tests)"
+    echo "   - Run the test suite: scripts/test.sh (the inner loop; scripts/test.sh --full before the merge). It pins thread counts and runs xdist — do not hand-roll pytest flags. Skip only if the area genuinely has no tests; see tools/README.md \"Tests\""
     echo "5. Commit your changes with a descriptive message: git add -A && git commit -m 'fix/feat: description'"
     echo "   - Commit message should summarize what you changed and why."
     echo "   - Do NOT push. The review agent will review your commits next."

@@ -280,9 +280,8 @@ from tadabur.nonpro_sources import Dataset
 
 PREREGISTRATION_PATH = (
     Path(ti.__file__).resolve().parents[2] / "docs" / "tlog-holdout-preregistration.md")
-#: SHA-256 of the committed text: the owner-approved hold-out of 2026-10-24, with S5's dated
-#: pre-outcome amendment (2026-10-25, "Ayah identification").
-PREREGISTRATION_SHA256 = "69c67476b275c3d026a4dda1da572f8017e0f077259827bd23305733663021cc"
+#: SHA-256 of the committed text, the owner-approved hold-out of 2026-10-24.
+PREREGISTRATION_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
 
 
 def test_the_tlog_preregistration_is_the_pinned_document():

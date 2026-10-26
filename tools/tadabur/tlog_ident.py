@@ -41,6 +41,16 @@ identifier **names** are their own class. The literal share-of-all wording's res
 ``docs/tlog-ayah-identification.md``; every value is re-derived from the committed inputs by the
 acceptance tests.
 
+**The margin's bound (S5b).** The pinned competitor search is a word-span one, and
+``docs/tlog-ident-margin-amendment.md`` discloses that it can overstate ``m``, never understate
+it. :func:`oracle_margin` measures the bound once on the look half only: every character start of
+every free word run is aligned in ``SHW`` mode and attributed by the same rule, one end and one
+path per start. :func:`oracle_pass` records the result in ``tlog/ident/oracle_margin.json`` —
+``b_u`` re-derived under the bound, the clips whose ``m`` changed and whether they cross ``b_u``.
+It never chooses a bar or a label: the report's ``b_u``, precision table and assignments always
+come from the pinned margins, and the mechanical consequence
+(:func:`oracle_consequence`) is ``final`` only if the bound changed neither.
+
 Committed inputs under ``tools/tadabur/tlog/ident/``: ``references.json.gz`` (the whole mushaf's
 normalised references and offsets), ``real_mistake_clips.jsonl`` (the 52 clips holding the 56
 owner-verified real-mistake sites), ``decodes/real_mistake.base.json`` and ``decodes/noise.base.json``
@@ -58,6 +68,8 @@ Usage (from ``tools/``)::
   python -m tadabur.tlog_ident calibrate     # thresholds, floors and the page (~40 min CPU:
                                              # look + guard + exhaustive decoy + pool walk)
   python -m tadabur.tlog_ident report        # re-render the page from the committed report
+  python -m tadabur.tlog_ident oracle        # the character-start margin bound on look
+                                             # (recorded only); --limit N times the projection
 
 The GPU decodes of the two calibration populations are produced by
 ``tadabur.tlog_ident_decode`` on cuda-dev; see ``scripts/issue-190-ident-decode.sh``.
@@ -74,7 +86,7 @@ import time
 import unicodedata
 from bisect import bisect_right
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -556,6 +568,15 @@ class ReferenceDatabase:
 
     def _match(self, query: str, candidate: _Candidate) -> Match:
         distance, start, end, ops = _path(query, candidate.text)
+        return self._attribute(query, candidate, distance, start, end, ops)
+
+    def _attribute(self, query: str, candidate: _Candidate, distance: int, start: int,
+                   end: int, ops: tuple[tuple[str, int], ...]) -> Match:
+        """The word-span facts of one alignment of ``query`` inside ``candidate``.
+
+        Shared by the pinned search (:meth:`_match`) and the character-start oracle
+        (:meth:`_char_run_competitor`), so both attribute an alignment's words the same way.
+        """
         #: Per constituent, the words touched by a matched or substituted character.
         touched: list[set[int]] = [set() for _ in candidate.constituents]
         position = start
@@ -701,6 +722,61 @@ class ReferenceDatabase:
                 if match is not None:
                     offer(match, False)
         return None if found is None else found[1]
+
+    def char_competitor(self, query: str, windows: Sequence[Window], best: Match,
+                        floor: float) -> Match | None:
+        """The best different-class alignment that begins at a character outside ``best``.
+
+        The character-start margin oracle (architect r18/r19): every character start of every
+        free word run of every shortlisted window is aligned in ``SHW`` mode (the query must
+        start at that character, the run's end is free) and attributed by :meth:`_attribute`.
+        One end and one path per start, so it is a stricter bound on the margin, not the exact
+        margin. Only a start whose score is strictly above ``floor`` (the pinned competitor's
+        score) can lower the margin: equal scores leave it as it is.
+        """
+        found: Match | None = None
+        for window in windows:
+            candidate = self._candidate(window.surah, window.ayah, decoy=False)
+            for run in self._free_word_runs(candidate, best):
+                match = self._char_run_competitor(
+                    query, candidate, run, best,
+                    floor if found is None else max(floor, found.score))
+                if match is not None and (found is None or _rank(match) > _rank(found)):
+                    found = match
+        return found
+
+    def _char_run_competitor(self, query: str, candidate: _Candidate,
+                             run: Sequence[tuple[int, int]], best: Match,
+                             floor: float) -> Match | None:
+        """The best different-class alignment starting at a character of one free run.
+
+        Stage one scores every start's ``SHW`` distance and keeps the starts strictly above
+        ``floor``; stage two visits them best first and stops as soon as no remaining start can
+        beat the best different class found, so the paths are only computed where they can
+        change the margin.
+        """
+        text = candidate.text
+        stop = run[-1][1]
+        starts: list[tuple[float, int]] = []
+        for start in range(run[0][0], stop):
+            distance = edlib.align(query, text[start:stop], mode="SHW")["editDistance"]
+            score = 1.0 - distance / len(query)
+            if score > floor:
+                starts.append((-score, start))
+        starts.sort()
+        found: Match | None = None
+        for negative, start in starts:
+            if found is not None and -negative <= found.score:
+                break
+            result = edlib.align(query, text[start:stop], mode="SHW", task="path")
+            local_start, local_end = result["locations"][0]
+            match = self._attribute(query, candidate, result["editDistance"],
+                                    start + int(local_start), start + int(local_end) + 1,
+                                    _cigar_ops(result["cigar"]))
+            if match.text_class != best.text_class and (
+                    found is None or _rank(match) > _rank(found)):
+                found = match
+        return found
 
 
 def _constituent_at(constituents: Sequence[_Constituent], position: int) -> int:
@@ -1137,6 +1213,102 @@ def derive_bars(look: Sequence[Identification], mistake: Sequence[Identification
     return result
 
 
+# --- the character-start margin oracle --------------------------------------------------------
+
+
+def oracle_margin(database: ReferenceDatabase, decode: str, *, pinned: float,
+                  k: int = K) -> float:
+    """One decode's character-start margin bound: ``min(pinned, best − char competitor)``.
+
+    ``pinned`` is the margin :func:`identify` reports for the same decode. Only an alignment
+    scoring strictly above the pinned competitor's (``best.score - pinned``) can lower the
+    margin, so that score prunes the character starts. The bound is recorded, never a selection
+    step: ``b_u`` and every assignment stay the pinned ones (architect r18/r19).
+    """
+    query = _normalise(decode)
+    if not query:
+        raise ValueError("an empty decode has no margin")
+    shortlisted = database.shortlist(decode, k=k)
+    best = shortlisted[0].match
+    found = database.char_competitor(query, shortlisted, best, best.score - pinned)
+    return pinned if found is None else min(pinned, best.score - found.score)
+
+
+def oracle_pass(database: ReferenceDatabase, look: Sequence[Decode],
+                mistakes: Sequence[Identification], *, k: int = K,
+                progress: Callable[[str], None] | None = None) -> dict:
+    """The character-start margin oracle's recorded result, over the look half only.
+
+    Each look decode is identified under the pinned rule, then bounded by
+    :func:`oracle_margin`. ``b_u`` is re-derived from the **pinned** margins and, separately,
+    from the min(pinned, oracle) margins; ``assignments_changed_at_b_u`` counts the look rows
+    whose assignment at the pinned ``b_u`` the bound would change. The oracle never chooses a
+    bar: it records what an exact definition would have done (architect r18/r19).
+    """
+    emit = progress or _phase
+    started = time.time()
+    rows: list[Identification] = []
+    bounded: dict[int, float] = {}
+    for index, decode in enumerate(look, 1):
+        row = identify(decode.spans, database=database, filename_ayah=decode.surah_ayah, k=k)
+        rows.append(row)
+        if row.margin is not None:
+            bounded[index] = oracle_margin(database, decode.spans, pinned=row.margin, k=k)
+        if index % 500 == 0:
+            emit(f"oracle {index}/{len(look)}")
+    seconds = time.time() - started
+
+    pinned_bars = derive_bars(rows, mistakes)
+    oracle_rows = [row if index not in bounded else replace(row, margin=bounded[index])
+                   for index, row in enumerate(rows, 1)]
+    oracle_bars = derive_bars(oracle_rows, mistakes)
+    b_u = pinned_bars["b_u"]
+    if b_u is None:
+        raise ValueError("the look population names no row at any bar: no b_u to check")
+
+    details = [{
+        "key": decode.key, "audio_filename": decode.audio_filename,
+        "surah_ayah": decode.surah_ayah, "length": row.length,
+        "class_label": row.class_label, "margin_class": row.margin_class,
+        "pinned_margin": row.margin, "oracle_margin": oracle_rows[index].margin,
+        "assigned_pinned": assigned(row, b_u),
+        "assigned_oracle": assigned(oracle_rows[index], b_u),
+    } for index, (decode, row) in enumerate(zip(look, rows), 1)
+        if index in bounded and bounded[index] < row.margin]
+    for item in details:
+        item["crosses_b_u"] = item["assigned_pinned"] != item["assigned_oracle"]
+    details.sort(key=lambda item: item["key"])
+
+    return {
+        "schema": "tadabur.tlog_ident/oracle-margin-v1",
+        "definition": {"path": repo_relative(MARGIN_AMENDMENT_PATH),
+                       "sha256": sha256_file(MARGIN_AMENDMENT_PATH)},
+        "disclosure": "one end and one path per character start: a stricter bound on the "
+                      "margin, not the exact margin (docs/tlog-ident-margin-amendment.md)",
+        "population": {
+            "decodes": {"path": repo_relative(DECODES_PATH),
+                        "sha256": sha256_file(DECODES_PATH), "clips": len(look)},
+            "split": {"path": repo_relative(SPLIT_PATH), "sha256": sha256_file(SPLIT_PATH)},
+            "mistakes": {"path": repo_relative(REAL_MISTAKE_CLIPS_PATH),
+                         "sha256": sha256_file(REAL_MISTAKE_CLIPS_PATH),
+                         "clips": len(mistakes)},
+        },
+        "clips": len(rows),
+        "clips_m_changed": len(details),
+        "share_m_changed": len(details) / len(rows),
+        "b": pinned_bars["b"],
+        "b_u": b_u,
+        "b_oracle": oracle_bars["b"],
+        "b_u_oracle": oracle_bars["b_u"],
+        "assignments_at_b_u": {"pinned": sum(assigned(row, b_u) for row in rows),
+                               "oracle": sum(assigned(row, b_u) for row in oracle_rows)},
+        "assignments_changed_at_b_u": sum(
+            item["crosses_b_u"] for item in details),
+        "changed": details,
+        "seconds": round(seconds, 3),
+    }
+
+
 # --- the committed populations ----------------------------------------------------------------
 
 
@@ -1188,6 +1360,14 @@ def load_decode_store(path: Path = REAL_MISTAKE_DECODES_PATH) -> dict:
 def real_mistake_clips(path: Path = REAL_MISTAKE_CLIPS_PATH) -> list[dict]:
     return [json.loads(line) for line in
             Path(path).read_text(encoding="utf-8").splitlines()]
+
+
+def _mistake_identifications(database: ReferenceDatabase, k: int) -> list[Identification]:
+    """The 52 real-mistake clips, identified from their committed whole-clip decodes."""
+    truth = load_decode_store(REAL_MISTAKE_DECODES_PATH)
+    return [identify(truth["items"][clip["audio_filename"]]["spans"],
+                     database=database, filename_ayah=clip["surah_ayah"], k=k)
+            for clip in real_mistake_clips()]
 
 
 # --- the calibration --------------------------------------------------------------------------
@@ -1278,11 +1458,8 @@ def _calibration(database: ReferenceDatabase) -> dict:
     # The rule's verdict is already on every row; the binned floors are committed as history.
 
     clip_list = real_mistake_clips()
-    truth = load_decode_store(REAL_MISTAKE_DECODES_PATH)
     _phase(f"scoring {len(clip_list)} real-mistake clips")
-    mistakes = [identify(truth["items"][clip["audio_filename"]]["spans"],
-                         database=database, filename_ayah=clip["surah_ayah"], k=k)
-                for clip in clip_list]
+    mistakes = _mistake_identifications(database, k)
     bars = derive_bars(raw, mistakes)
 
     # History: the retired binned floors' sensitivity to scoring the exhaustive decoy. The
@@ -1682,6 +1859,12 @@ def main() -> None:
     references.add_argument("--out", type=Path, default=REFERENCES_PATH)
     commands.add_parser("calibrate", help="derive the floors and bars, write the report and page")
     commands.add_parser("report", help="re-render the page from the committed report")
+    oracle = commands.add_parser(
+        "oracle", help="run the character-start margin oracle on the look half (recorded only)")
+    oracle.add_argument("--limit", type=int,
+                        help="score only the first N look clips, print the projection and write "
+                             "nothing (the cost check before the full run)")
+    oracle.add_argument("--out", type=Path, default=ORACLE_PATH)
     args = parser.parse_args()
 
     if args.command == "references":
@@ -1694,6 +1877,31 @@ def main() -> None:
         print(json.dumps({"floors": report["floors"], "b": report["bars"]["b"],
                           "b_u": report["bars"]["b_u"],
                           "stop": report["stop_conditions"]}, indent=1))
+    elif args.command == "oracle":
+        database = load_references()
+        # The committed calibration's k, read as data: load_calibration refuses a stopped
+        # report, and the oracle's search is the calibration's search.
+        k = json.loads(CALIBRATION_PATH.read_text(encoding="utf-8"))["parameters"]["k"]
+        look = load_look_decodes()
+        mistakes = _mistake_identifications(database, k)
+        sampled = look[:args.limit] if args.limit else look
+        payload = oracle_pass(database, sampled, mistakes, k=k)
+        timing = {"clips": len(sampled), "seconds": payload["seconds"],
+                  "ms_per_clip": round(1000 * payload["seconds"] / len(sampled), 3)}
+        if args.limit:
+            timing["projected_seconds"] = round(
+                payload["seconds"] / len(sampled) * len(look), 1)
+            print(json.dumps(timing, indent=1))
+        else:
+            write_text_atomically(Path(args.out),
+                                  json.dumps(payload, ensure_ascii=False, indent=1,
+                                             sort_keys=True) + "\n")
+            print(json.dumps({**timing, "b_u": payload["b_u"],
+                              "b_u_oracle": payload["b_u_oracle"],
+                              "clips_m_changed": payload["clips_m_changed"],
+                              "assignments_changed_at_b_u":
+                                  payload["assignments_changed_at_b_u"],
+                              "out": str(args.out)}, indent=1))
     else:
         report = json.loads(CALIBRATION_PATH.read_text(encoding="utf-8"))
         write_text_atomically(DOC_PATH, render(report))

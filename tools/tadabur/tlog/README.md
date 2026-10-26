@@ -287,7 +287,19 @@ definition). The frozen text still says "42 clips" at its real-mistake line; the
 python -m tadabur.tlog_ident references   # rebuild references.json.gz (~5 min)
 python -m tadabur.tlog_ident calibrate    # floors, bars, counts and the page (~40 min CPU)
 python -m tadabur.tlog_ident report       # re-render the page from the committed report
+python -m tadabur.tlog_ident oracle       # the character-start margin bound (look only)
+python -m tadabur.tlog_ident oracle --limit 100   # its cost check: prints the projection
 ```
+
+**The margin's bound (S5b).** `ident/ident_calibration.json` records `margin_definition {path,
+sha256}`: the competitor is the pinned **word-span** search of
+`docs/tlog-ident-margin-amendment.md`, which discloses that it can overstate the margin, never
+understate it. `ident/oracle_margin.json` records the one measured bound: every character start of
+every free word run of every shortlisted window, `SHW`, attributed by the engine's own rule (one
+end and one path per start, so a stricter bound, not the exact margin). It holds `b_u` (pinned),
+`b_u_oracle`, `clips_m_changed` and `assignments_changed_at_b_u`; `oracle_consequence` turns those
+into `margin_definition.status = "final"` only when the bound changed neither, else `"owner"`. The
+oracle never chooses `b_u` or a label.
 
 **Confirmed only (S5b, #204).** S5's binned floor stopped on its own noise bar (159 of 445
 Freesound recordings passed = 35.7% against a 1% ceiling). S5b replaces it for **verdicts** with

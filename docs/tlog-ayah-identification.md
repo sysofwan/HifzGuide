@@ -12,9 +12,11 @@ Frozen by [`docs/tlog-holdout-preregistration.md`](tlog-holdout-preregistration.
 - shortlist: consonant-skeleton 3-grams, k = 20, library `edlib` 1.3.9.post1 (HW)
 - floors: type-7 99.0th percentile of the best decoy score per length bin
 
-## Superseded first pass
+## Superseded calibration passes
 
 The first look pass (engine `79acded`) had a span-attribution defect: each CIGAR run was credited whole to the ayah it started in, and aligned characters were counted rather than words. Before this report the engine was brought to the frozen rule: runs are split at ayah boundaries and the ayah with the most aligned words is credited. No rule, grid value or input changed, and the same committed look decodes were rescored; only the numbers below count.
+
+A second look pass (engine `37c18cf`) overstated the margin: a different-class runner-up that started mid-ayah and ran on into the next one was split at every boundary, so its location was lost. The window's free characters are now searched as one joined range per side and as the separate ayah slices (a joined range's best alignment can be the best class and hide a worse different-class one beside it), and a sliced ayah keeps its origin so its words stay its own. Margins only: b_u, its precision table and the assigned counts. Floors and b are unchanged, because they read the decoy score and Δ. The same committed inputs were rescored; only the numbers below count.
 
 ## Inputs
 
@@ -91,12 +93,12 @@ Literal-rule b_u (share of all clips): none; recorded for transparency.
 | 0.42 | 2458 | 100.00% | 54.18% |
 | 0.43 | 2347 | 100.00% | 51.73% |
 | 0.44 | 2251 | 100.00% | 49.61% |
-| 0.45 | 2114 | 100.00% | 46.59% |
-| 0.46 | 2008 | 100.00% | 44.26% |
-| 0.47 | 1896 | 100.00% | 41.79% |
-| 0.48 | 1747 | 100.00% | 38.51% |
-| 0.49 | 1620 | 100.00% | 35.71% |
-| 0.50 | 1593 | 100.00% | 35.11% |
+| 0.45 | 2113 | 100.00% | 46.57% |
+| 0.46 | 2007 | 100.00% | 44.24% |
+| 0.47 | 1895 | 100.00% | 41.77% |
+| 0.48 | 1745 | 100.00% | 38.46% |
+| 0.49 | 1618 | 100.00% | 35.66% |
+| 0.50 | 1591 | 100.00% | 35.07% |
 
 _Precision is the amended b_u's quantity; coverage is the literal rule's, which can only fall as the bar rises._
 
@@ -122,7 +124,7 @@ B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C
 | `cer_wav ≥ 0.2` tail relabel rate at b | 0.06% |
 | Freesound noise pass | 35.73% |
 | exhaustive-decoy floors (sensitivity) | retention 99.98% |
-| throughput | 13.10 ms per clip |
+| throughput | 9.74 ms per clip |
 
 The noise population is decoded in `stream_b0`, while look and the floors use whole-clip `spans`; the noise rate compares a different decode mode, not the calibration population's.
 

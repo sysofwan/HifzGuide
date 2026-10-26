@@ -334,39 +334,39 @@
      "precision": 1.0
     },
     {
-     "assigned": 2114,
+     "assigned": 2113,
      "bar": 0.45,
-     "coverage": 0.46594666078906766,
+     "coverage": 0.46572625082653735,
      "precision": 1.0
     },
     {
-     "assigned": 2008,
+     "assigned": 2007,
      "bar": 0.46,
-     "coverage": 0.44258320476085516,
+     "coverage": 0.4423627947983249,
      "precision": 1.0
     },
     {
-     "assigned": 1896,
+     "assigned": 1895,
      "bar": 0.47,
-     "coverage": 0.41789728895746087,
+     "coverage": 0.41767687899493056,
      "precision": 1.0
     },
     {
-     "assigned": 1747,
+     "assigned": 1745,
      "bar": 0.48,
-     "coverage": 0.3850562045404452,
+     "coverage": 0.38461538461538464,
      "precision": 1.0
     },
     {
-     "assigned": 1620,
+     "assigned": 1618,
      "bar": 0.49,
-     "coverage": 0.3570641392990963,
+     "coverage": 0.3566233193740357,
      "precision": 1.0
     },
     {
-     "assigned": 1593,
+     "assigned": 1591,
      "bar": 0.5,
-     "coverage": 0.35111307031077804,
+     "coverage": 0.3506722503857174,
      "precision": 1.0
     }
    ],
@@ -450,6 +450,12 @@
    "relabel_rate": 0.0005537098560354374,
    "retention": 1.0
   }
+ },
+ "margin_fix": {
+  "affected": "Margins only: b_u, its precision table and the assigned counts. Floors and b are unchanged, because they read the decoy score and Δ.",
+  "defect": "a different-class runner-up that started mid-ayah and ran on into the next one was split at every boundary, so its location was lost",
+  "engine_commit": "37c18cf",
+  "fix": "The window's free characters are now searched as one joined range per side and as the separate ayah slices (a joined range's best alignment can be the best class and hide a worse different-class one beside it), and a sliced ayah keeps its origin so its words stay its own."
  },
  "mistake": {
   "clips": 52,
@@ -618,8 +624,8 @@
  },
  "throughput": {
   "clips": 4537,
-  "ms_per_clip": 13.098,
-  "seconds": 59.426
+  "ms_per_clip": 9.742,
+  "seconds": 44.198
  },
  "unlabelled_unclean": {
   "source": "tadabur.tlog_overlap.iter_pool_rows",

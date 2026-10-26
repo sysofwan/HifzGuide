@@ -582,8 +582,8 @@ class ReferenceDatabase:
                                   ) -> tuple[tuple[int, int], ...]:
         """The window's character ranges whose words do not overlap the best span.
 
-        Character-adjacent ranges are joined: a competitor that starts mid-ayah and runs on
-        into the next one must be searched as one continuous range, or its location is lost.
+        One range per ayah slice: the slices are what :meth:`competitor` searches both
+        separately and joined across ayah boundaries.
         """
         segments: list[tuple[int, int]] = []
         for constituent in candidate.constituents:
@@ -600,15 +600,16 @@ class ReferenceDatabase:
                 segments.append((constituent.start, overlap_start))
             if overlap_end < constituent.end:
                 segments.append((overlap_end, constituent.end))
-        return _join_adjacent(segments)
+        return tuple(segments)
 
     def competitor(self, query: str, windows: Sequence[Window], best: Match) -> Match | None:
         """The best different-class alignment at a location that does not overlap ``best``.
 
-        Every shortlisted window is searched, including the winning one: the window's
-        characters outside the best span's words form one or two continuous ranges (they cross
-        ayah boundaries), and each range is aligned whole, so a different class that straddles
-        a boundary is found as one location rather than split at the boundary.
+        Every shortlisted window is searched, including the winning one. Its characters
+        outside the best span's words are searched twice: as one joined range per side, so a
+        different class that starts mid-ayah and runs on into the next one is found as one
+        location, and as the separate ayah slices, because a range's single best alignment may
+        be the best class and would otherwise hide a worse different-class alignment beside it.
         """
         def key(row: Match, winner: bool) -> tuple:
             return (row.score, winner, -row.surah, -row.ayah_from, -row.word_from,
@@ -628,7 +629,8 @@ class ReferenceDatabase:
             if window.match.text_class != best.text_class and not _overlaps(window.match, best):
                 offer(window.match, True)
             candidate = self._candidate(window.surah, window.ayah, decoy=False)
-            for lo, hi in self._non_overlapping_segments(candidate, best):
+            pieces = self._non_overlapping_segments(candidate, best)
+            for lo, hi in dict.fromkeys(pieces + _join_adjacent(pieces)):
                 sub = self._sub_candidate(candidate, lo, hi)
                 if sub is None:
                     continue
@@ -1205,8 +1207,10 @@ def _calibration(database: ReferenceDatabase) -> dict:
             "engine_commit": "37c18cf",
             "defect": "a different-class runner-up that started mid-ayah and ran on into the "
                       "next one was split at every boundary, so its location was lost",
-            "fix": "the window's free characters are searched as one contiguous range per "
-                   "side, with a sliced ayah keeping its origin so its words stay its own",
+            "fix": "The window's free characters are now searched as one joined range per "
+                   "side and as the separate ayah slices (a joined range's best alignment can "
+                   "be the best class and hide a worse different-class one beside it), and a "
+                   "sliced ayah keeps its origin so its words stay its own.",
             "affected": "Margins only: b_u, its precision table and the assigned counts. "
                         "Floors and b are unchanged, because they read the decoy score and Δ.",
         },
@@ -1325,9 +1329,9 @@ def render(report: Mapping[str, Any]) -> str:
         "numbers below count.",
         "",
         f"A second look pass (engine `{report['margin_fix']['engine_commit']}`) overstated the "
-        f"margin: {report['margin_fix']['defect']}. The search now "
-        f"{report['margin_fix']['fix']}. {report['margin_fix']['affected']} The same committed "
-        "inputs were rescored; only the numbers below count.",
+        f"margin: {report['margin_fix']['defect']}. {report['margin_fix']['fix']} "
+        f"{report['margin_fix']['affected']} The same committed inputs were rescored; only the "
+        "numbers below count.",
         "",
         "## Inputs",
         "",

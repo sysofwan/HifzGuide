@@ -327,6 +327,29 @@ def test_a_competitor_straddling_an_ayah_boundary_sets_the_margin(ident):
     assert decoded.assigned_label is None
 
 
+def test_a_joined_range_never_hides_the_different_class_beside_it(ident):
+    """The joined range's single best alignment is the best class (1:2 repeats 1:1), so the
+    joined search alone would drop 1:3 and report an uncontradicted margin of 1.0. The separate
+    ayah slice must still be searched."""
+    db = ident.ReferenceDatabase.build([
+        ident.AyahReference(1, 1, "بجح", (0, 3)),
+        ident.AyahReference(1, 2, "بجح", (0, 3)),
+        ident.AyahReference(1, 3, "بجحخ", (0, 4)),
+    ])
+    shortlisted = db.shortlist("بجح")
+    best = shortlisted[0].match
+    competitor = db.competitor("بجح", shortlisted, best)
+    assert competitor.text_class == db.text_class(1, 3)
+    assert (competitor.ayah_from, competitor.word_from) == (3, 1)
+    assert competitor.score == pytest.approx(1.0)
+
+    decoded = ident.identify("بجح", database=db, floors={"0-20": 0.0},
+                             bars={"b": 0.01, "b_u": 0.01})
+    assert decoded.margin == pytest.approx(0.0)
+    assert decoded.margin_class == db.text_class(1, 3)
+    assert decoded.label_source == ident.NONE
+
+
 def test_every_row_carries_margin_and_margin_class(ident, two_surahs):
     """The margin is on every identification row, including one with no match; applying the
     floor replaces the row without dropping it."""

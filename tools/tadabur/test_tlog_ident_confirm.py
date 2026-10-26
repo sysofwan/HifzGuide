@@ -15,6 +15,7 @@ import hashlib
 import importlib
 import json
 import random
+import re
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -85,23 +86,34 @@ def _git(*args: str) -> str:
                           text=True).stdout
 
 
-def _first_commit(path: Path) -> str:
-    """The commit that added ``path`` (the oldest one)."""
-    out = _git("log", "--format=%H", "--diff-filter=A", "--",
-               str(path.relative_to(ROOT))).split()
-    assert out, f"{path} has no adding commit"
-    return out[-1]
+def _present(sha: str) -> bool:
+    """Whether a recorded commit is in this clone. Squash merges drop the branch commits."""
+    return subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{sha}^{{commit}}"],
+                          capture_output=True).returncode == 0
 
 
-def _last_commit(path: Path) -> str:
-    out = _git("log", "-1", "--format=%H", "--", str(path.relative_to(ROOT))).split()
-    assert out, f"{path} has no commit"
-    return out[0]
+def _assert_before(earlier: str, later: str, label: str) -> None:
+    """The recorded SHAs' order, re-walked only where both commit objects exist.
+
+    A squash merge puts every file of a slice in one commit on main, so the order an artifact
+    records cannot be recovered from the working branch's log there. Each artifact carries the
+    commit it cites instead; this checks the chain with ``merge-base --is-ancestor`` when the
+    clone still has those objects (the branch, or a fetched ``refs/pull/<n>/head``).
+    """
+    assert re.fullmatch(r"[0-9a-f]{40}", earlier), label
+    assert re.fullmatch(r"[0-9a-f]{40}", later), label
+    if not (_present(earlier) and _present(later)):
+        return
+    assert subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                           earlier, later], capture_output=True).returncode == 0, label
 
 
-def _is_ancestor(earlier: str, later: str) -> bool:
-    return subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
-                           earlier, later], capture_output=True).returncode == 0
+def _assert_pull_request(block: dict) -> None:
+    """A recorded PR number and its head ref, or the pair of nulls before a PR exists."""
+    pull = block["pull_request"]
+    if pull is not None:
+        assert isinstance(pull, int) and pull > 0
+    assert block["pull_request_ref"] == (f"refs/pull/{pull}/head" if pull is not None else None)
 
 
 def _jsonl(path: Path) -> list[dict]:
@@ -492,18 +504,28 @@ def test_the_confirm_decode_stores_cite_the_doc_and_their_manifest(ident, confir
     manifests = {"freesound": confirm.FREESOUND_MANIFEST_PATH,
                  "cv_ar": confirm.CV_MANIFEST_PATH,
                  "cv_other": confirm.CV_MANIFEST_PATH}
+    manifest_keys = {"freesound": "freesound", "cv_ar": "common_voice",
+                     "cv_other": "common_voice"}
     recorded_keys = {"freesound": "confirm_freesound", "cv_ar": "confirm_cv_ar",
                      "cv_other": "confirm_cv_other"}
+    chain = calibration["confirm"]["provenance"]
     for arm, manifest in manifests.items():
         path = confirm.CONFIRM_DECODES[arm]
         store = json.loads(path.read_text(encoding="utf-8"))
         assert store["model"] == "base"
         assert store["identity"] == {"model_ref": ident.BASE_MODEL,
                                      "hub_revision": ident.BASE_REVISION}
-        assert store["provenance"] == {
-            "doc": {"path": "docs/tlog-ident-floor-preregistration.md",
-                    "sha256": ident.FLOOR_PREREGISTRATION_SHA256},
-            "manifest": {"path": str(manifest.relative_to(ROOT)), "sha256": _sha256(manifest)}}
+        provenance = store["provenance"]
+        assert chain["doc"]["path"] == "docs/tlog-ident-floor-preregistration.md"
+        assert chain["doc"]["sha256"] == ident.FLOOR_PREREGISTRATION_SHA256
+        assert re.fullmatch(r"[0-9a-f]{40}", chain["doc"]["commit"])
+        assert provenance["doc"] == chain["doc"]
+        assert provenance["manifest"] == chain["manifests"][manifest_keys[arm]]
+        assert provenance["manifest"]["path"] == str(manifest.relative_to(ROOT))
+        assert provenance["manifest"]["sha256"] == _sha256(manifest)
+        assert (provenance["pull_request"], provenance["pull_request_ref"]) == (
+            chain["pull_request"], chain["pull_request_ref"])
+        _assert_pull_request(provenance)
         mode = "stream_b0" if arm == "freesound" else "whole-spans"
         assert set(store["fingerprints"]) == {mode}
         recorded = calibration["decodes"][recorded_keys[arm]]
@@ -511,21 +533,50 @@ def test_the_confirm_decode_stores_cite_the_doc_and_their_manifest(ident, confir
                             "items": len(store["items"]), "mode": mode}
 
 
-def test_the_commit_order_is_doc_then_manifests_then_decodes_then_scoring(ident, confirm):
-    doc = _first_commit(ident.FLOOR_PREREGISTRATION_PATH)
-    for manifest in (confirm.FREESOUND_MANIFEST_PATH, confirm.CV_MANIFEST_PATH):
-        commit = _first_commit(manifest)
-        assert commit != doc, f"{manifest.name} shares the doc's commit"
-        assert _is_ancestor(doc, commit), f"{manifest.name} predates the doc"
-    for store in confirm.CONFIRM_DECODES.values():
-        commit = _first_commit(store)
-        for manifest in (confirm.FREESOUND_MANIFEST_PATH, confirm.CV_MANIFEST_PATH):
-            assert commit != _first_commit(manifest), f"{store.name} shares a manifest's commit"
-            assert _is_ancestor(_first_commit(manifest), commit), f"{store.name} predates a manifest"
-    scored = _last_commit(ident.CALIBRATION_PATH)
-    for store in confirm.CONFIRM_DECODES.values():
-        assert scored != _first_commit(store)
-        assert _is_ancestor(_first_commit(store), scored)
+def test_the_commit_order_is_doc_then_manifests_then_decodes_then_scoring(ident, confirm,
+                                                                          calibration):
+    """The order is the chain each artifact records, never this branch's ``git log``.
+
+    PRs are squash-merged, so main holds one commit per slice and the branch commits these
+    artifacts cite are absent from a fresh clone. Every artifact therefore carries the commit it
+    was produced from (``provenance``), and the chain is re-walked with
+    ``merge-base --is-ancestor`` only where those objects exist.
+    """
+    chain = calibration["confirm"]["provenance"]
+    doc = chain["doc"]
+    assert doc["path"] == "docs/tlog-ident-floor-preregistration.md"
+    assert doc["sha256"] == ident.FLOOR_PREREGISTRATION_SHA256
+    assert re.fullmatch(r"[0-9a-f]{40}", doc["commit"])
+
+    freesound = json.loads(confirm.FREESOUND_MANIFEST_PATH.read_text(encoding="utf-8"))
+    counts = json.loads(confirm.CV_COUNTS_PATH.read_text(encoding="utf-8"))
+    for provenance in (freesound["provenance"], counts["provenance"]):
+        assert provenance["doc"] == doc  # both manifests cite the same committed doc
+        _assert_pull_request(provenance)
+        assert (provenance["pull_request"], provenance["pull_request_ref"]) == (
+            chain["pull_request"], chain["pull_request_ref"])
+    _assert_pull_request(chain)
+
+    manifests = {"freesound": confirm.FREESOUND_MANIFEST_PATH,
+                 "common_voice": confirm.CV_MANIFEST_PATH}
+    for key, path in manifests.items():
+        record = chain["manifests"][key]
+        assert record["path"] == str(path.relative_to(ROOT))
+        assert record["sha256"] == _sha256(path)
+        assert record["commit"] != doc["commit"], f"{key} shares the doc's commit"
+        _assert_before(doc["commit"], record["commit"], f"{key} predates the doc")
+
+    for arm, path in confirm.CONFIRM_DECODES.items():
+        record = chain["decodes"][arm]
+        assert record["path"] == str(path.relative_to(ROOT))
+        assert record["sha256"] == _sha256(path)
+        manifest = chain["manifests"]["freesound" if arm == "freesound" else "common_voice"]
+        assert record["commit"] != manifest["commit"], f"{arm} shares its manifest's commit"
+        _assert_before(manifest["commit"], record["commit"], f"{arm} predates its manifest")
+        store = json.loads(path.read_text(encoding="utf-8"))
+        assert store["provenance"]["manifest"] == manifest
+        # Scoring may run at the store's own commit; the ordering claim is "after", not "later".
+        _assert_before(record["commit"], chain["scoring"]["commit"], f"scoring predates {arm}")
 
 
 def test_require_committed_passes_a_committed_file_and_refuses_any_drift(confirm, tmp_path):

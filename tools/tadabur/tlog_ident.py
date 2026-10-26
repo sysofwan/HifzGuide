@@ -142,7 +142,13 @@ def _split_label(label: str) -> tuple[int, int]:
 
 
 def _normalise(text: str) -> str:
-    """The scorer's normalisation, space-free: what both sides of every comparison use."""
+    """The scorer's normalisation, space-free: what both sides of every comparison use.
+
+    Deliberately not idempotent: the normal form drops combining marks, so a doubled core the
+    first pass produced from a shadda would collapse on a second pass. Every entry point
+    therefore normalises the **raw** decode exactly once; the database's public methods take the
+    raw decode and internal ones take the normalised query.
+    """
     return normalize_phonemes(text).normalized.replace(" ", "")
 
 
@@ -711,17 +717,18 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
             filename_label=filename_label)
         return _with_label(identification, bars)
 
-    shortlisted = database.shortlist(query, k=k)
+    shortlisted = database.shortlist(decode, k=k)
     best = shortlisted[0].match
     competitor = None
     for window in shortlisted[1:]:
         if window.match.text_class != best.text_class and not _overlaps(window.match, best):
             competitor = window.match
             break
-    filename_score = (database.score_window(query, *name) if name is not None else None)
+    filename_score = (database.score_window(decode, *name) if name is not None else None)
     identification = Identification(
-        length=len(query), match=best, decoy=database.decoy_best(query, k=k),
-        exhaustive_decoy=(database.decoy_exhaustive_best(query) if exhaustive_decoy else None),
+        length=len(query), match=best, decoy=database.decoy_best(decode, k=k),
+        exhaustive_decoy=(database.decoy_exhaustive_best(decode)
+                          if exhaustive_decoy else None),
         filename_class=filename_class, filename_score=filename_score,
         delta=(best.score - filename_score) if filename_score is not None else None,
         # With no different class at a non-overlapping location nothing contradicts the
@@ -757,14 +764,16 @@ def _with_label(identification: Identification,
         if match.text_class == identification.filename_class:
             return replace(identification, label_source=BOTH,
                            assigned_label=identification.filename_label)
-        if (bars is not None and identification.delta is not None
+        if (bars is not None and bars.get("b") is not None
+                and identification.delta is not None
                 and identification.delta >= bars["b"]
                 and not identification.overlaps_filename):
             return replace(identification, label_source=IDENTIFIED,
                            assigned_label=identification.class_label)
         return replace(identification, label_source=FILENAME,
                        assigned_label=identification.filename_label)
-    if (bars is not None and identification.margin is not None
+    if (bars is not None and bars.get("b_u") is not None
+            and identification.margin is not None
             and identification.margin >= bars["b_u"]):
         return replace(identification, label_source=IDENTIFIED,
                        assigned_label=identification.class_label)

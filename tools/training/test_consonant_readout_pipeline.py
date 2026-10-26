@@ -1056,8 +1056,9 @@ def test_freeze_tables_takes_the_top_ten_consonant_substitutions_by_words_then_u
 # --- #179: coverage for every set, and RetaSy's absence stated (acceptance criteria) -----------
 
 
-def test_the_round_discloses_a_coverage_row_for_every_set():
-    record = cr.coverage()
+@pytest.mark.xdist_group("coverage")
+def test_the_round_discloses_a_coverage_row_for_every_set(coverage_record):
+    record = coverage_record
     populations = record["populations"]
     assert set(populations) == {
         "tarteel_v1.look", "tarteel_v1.confirm", "qud_other", "qud_half", "qdat",
@@ -1084,8 +1085,9 @@ def test_the_round_discloses_a_coverage_row_for_every_set():
     assert populations["qud_other"]["excluded"] == 176  # the pilot's waqf/leen limitation
 
 
-def test_the_round_s_doc_renders_every_coverage_row():
-    record = cr.coverage()
+@pytest.mark.xdist_group("coverage")
+def test_the_round_s_doc_renders_every_coverage_row(coverage_record):
+    record = coverage_record
     report = _round_report(_catch())
     sizes = {"tarteel_v1.confirm": "tarteel_v1_confirm", "qdat": "qdat",
              "qud_other": "qud_other", "qud_half": "qud_half",

@@ -203,9 +203,10 @@ def test_the_committed_qother_decode_is_the_complement_under_the_round_s_pin(cb)
                                 spec=asp.CONSONANT1) == _pin()["identity"]
 
 
-def test_the_qud_other_coverage_is_the_frozen_population(cb):
+@pytest.mark.xdist_group("coverage")
+def test_the_qud_other_coverage_is_the_frozen_population(cb, coverage_record):
     """The waqf/leen exclusions both models share: the reading's denominator."""
-    population = cr.coverage()["populations"][QOTHER]
+    population = coverage_record["populations"][QOTHER]
     assert (population["decoded"], population["evaluated"], population["excluded"]) \
         == (10261, 10085, 176)
 

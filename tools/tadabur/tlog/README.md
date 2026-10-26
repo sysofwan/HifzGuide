@@ -319,6 +319,13 @@ Freesound recordings from the 100 shared shards, 500 Common Voice Arabic clips a
 clips (100 each from `en`, `ur`, `fa`, `tr`, `id`, with `es`, `hi`, `ckb`, `sw`, `bn` as one-shot
 substitutes). No audio is committed.
 
+**The five bars.** `ident_calibration.json` → `confirm` records them: the three negative pass
+rates with Wilson 95% intervals, the 52 real-mistake clips, look retention, the per-language
+rates, the rule's catches split into `length` / `margin`, the items that passed with their decodes
+and spans, and the doc → manifests → stores provenance chain (`scoring.commit` is the commit the
+calibration ran from). `floor_status` is that status, `bars.provisional` is true unless it is
+exactly `"confirmed"`, and the page shows the five bars above S5's binned stop as history.
+
 **The floor-less bin.** Floors are history now, but the report still keys them on the **decode's**
 character length. The look half's longest decode is 138 characters, so `161-` has no floor and
 none is invented for it. The pool's pass-1 `speech_s` is its only committed length fact (the

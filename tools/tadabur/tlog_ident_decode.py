@@ -40,7 +40,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import time
 from pathlib import Path
 
@@ -77,7 +76,7 @@ from .tlog_ident_confirm import (
     FREESOUND_MANIFEST_PATH,
     require_committed,
 )
-from .tlog_index import repo_relative, sha256_file
+from .tlog_index import record_of
 
 SCHEMA_VERSION = 1
 #: The three S5b confirmation stores, and the arms a rerun may select.
@@ -166,27 +165,11 @@ def decode_pool(decoder, pool_path: Path, cache_dir: Path, out: Path, identity: 
 # --- the S5b confirmation stores (#204) --------------------------------------------------------
 
 
-def _commit_of(path: Path) -> str:
-    """The commit that last touched ``path`` in the checkout this runs from."""
-    result = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "log", "-1", "--format=%H", "--",
-         repo_relative(path, REPO_ROOT)], check=True, capture_output=True, text=True)
-    commit = result.stdout.strip()
-    if not commit:
-        raise ValueError(f"{repo_relative(path, REPO_ROOT)} has no commit")
-    return commit
-
-
-def _record(path: Path) -> dict:
-    return {"path": repo_relative(path, REPO_ROOT), "sha256": sha256_file(path),
-            "commit": _commit_of(path)}
-
-
 def _confirm_chain() -> dict:
     """The doc -> manifests chain every confirmation store cites."""
-    return {"doc": _record(FLOOR_PREREGISTRATION_PATH),
-            "manifests": {"freesound": _record(FREESOUND_MANIFEST_PATH),
-                          "common_voice": _record(CV_MANIFEST_PATH)},
+    return {"doc": record_of(FLOOR_PREREGISTRATION_PATH),
+            "manifests": {"freesound": record_of(FREESOUND_MANIFEST_PATH),
+                          "common_voice": record_of(CV_MANIFEST_PATH)},
             "pull_request": None, "pull_request_ref": None}
 
 

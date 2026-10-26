@@ -25,6 +25,7 @@ this module holds the rules they share with the acceptance tests.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import subprocess
 import unicodedata
@@ -35,6 +36,9 @@ from typing import Any
 
 from generate_quran_db import normalize_imlai
 from training.counterfactual_eval import wilson_interval
+
+from . import tlog_ident
+from .tlog_index import head_sha, record_of, repo_relative, sha256_file
 
 ROOT = Path(__file__).resolve().parents[2]
 IDENT_DIR = Path(__file__).parent / "tlog" / "ident"
@@ -286,6 +290,118 @@ def five_bars(*, freesound: Sequence[bool], cv_ar: Sequence[bool],
         elif look["fired"]:
             status = f"stopped: look_retention {look_retention:g} < {LOOK_RETENTION_MIN:g}"
     return {"status": status, **arms, "look_retention": look}
+
+
+# --- the committed confirmation block ----------------------------------------------------------
+
+#: The decode mode of each arm: the Freesound set repeats the 445's ``stream_b0``; the Common
+#: Voice clips are whole-clip, the mode S6/S7 use for tlog rows.
+CONFIRM_MODES = {"freesound": tlog_ident.NOISE_DECODE_MODE, "cv_ar": "whole-spans",
+                 "cv_other": "whole-spans"}
+
+
+def caught_by(identification: Any) -> dict[str, bool]:
+    """The rule's two clauses on one row: below ``L_MIN``, or within ``DELTA`` of its decoy."""
+    length = identification.length < tlog_ident.L_MIN
+    margin = (identification.match is not None
+              and identification.match.score - identification.decoy < tlog_ident.DELTA)
+    return {"length": length, "margin": margin}
+
+
+def _passing(key: str, spans: str, identification: Any) -> dict[str, Any]:
+    match = identification.match
+    return {"key": key, "decode": spans,
+            "score": None if match is None else match.score,
+            "length": identification.length,
+            "class_label": identification.class_label,
+            "span": None if match is None else {
+                "surah": match.surah, "ayah_from": match.ayah_from,
+                "word_from": match.word_from, "ayah_to": match.ayah_to,
+                "word_to": match.word_to}}
+
+
+def _evidence(rows: Sequence[tuple[str, Mapping[str, Any], Any]]
+              ) -> tuple[dict[str, int], list[dict[str, Any]]]:
+    """One arm's rejects by clause and the items the rule let through, decode and span."""
+    catches = {"length": 0, "margin": 0, "both": 0}
+    passing: list[dict[str, Any]] = []
+    for key, item, identification in rows:
+        caught = caught_by(identification)
+        catches["length"] += caught["length"]
+        catches["margin"] += caught["margin"]
+        catches["both"] += caught["length"] and caught["margin"]
+        if identification.floor_ok:
+            passing.append(_passing(key, item["spans"], identification))
+    return catches, passing
+
+
+def _locale_rate(locale: str, rows: Sequence[tuple[str, Mapping[str, Any], Any]]) -> dict:
+    passed = sum(identification.floor_ok for _, _, identification in rows)
+    return {"locale": locale, "clips": len(rows), "passed": passed,
+            "pass": passed / len(rows) if rows else None,
+            "wilson": list(wilson_interval(passed, len(rows))) if rows else None}
+
+
+def confirm_block(database: Any, *, k: int, look_retention: float,
+                  mistakes: Sequence[bool]) -> dict[str, Any]:
+    """The five bars and the committed confirmation record, from the committed stores.
+
+    Each store is scored once, at the calibration's ``k``, label-blind (no filename): a fresh
+    negative that passes the rule is the failure each 1% limit counts. ``catches`` splits the
+    rows the rule rejected by clause; ``passing`` records the decodes and best spans of the
+    ones it let through. The provenance chain is the doc -> manifests -> stores order the
+    calibration cites, with the scoring commit it ran from.
+    """
+    scored: dict[str, list[tuple[str, Mapping[str, Any], Any]]] = {}
+    for arm, path in CONFIRM_DECODES.items():
+        store = tlog_ident.load_decode_store(path)
+        scored[arm] = [(key, item, tlog_ident.identify(item["spans"], database=database, k=k))
+                       for key, item in store["items"].items()]
+    verdicts = {arm: [identification.floor_ok for _, _, identification in rows]
+                for arm, rows in scored.items()}
+    bars = five_bars(freesound=verdicts["freesound"], cv_ar=verdicts["cv_ar"],
+                     cv_other=verdicts["cv_other"], mistakes=mistakes,
+                     look_retention=look_retention)
+
+    catches: dict[str, dict[str, int]] = {}
+    passing: dict[str, list[dict[str, Any]]] = {}
+    for arm, rows in scored.items():
+        catches[arm], passing[arm] = _evidence(rows)
+
+    counts = json.loads(CV_COUNTS_PATH.read_text(encoding="utf-8"))
+    locale_of = {row["path"]: row["locale"] for row in
+                 map(json.loads, CV_MANIFEST_PATH.read_text(encoding="utf-8").splitlines())}
+    per_language = {}
+    for primary in PRIMARY_LOCALES:
+        locale = counts["locales"][primary]["locale"]
+        per_language[primary] = _locale_rate(
+            locale, [row for row in scored["cv_other"] if locale_of.get(row[0]) == locale])
+
+    freesound = json.loads(FREESOUND_MANIFEST_PATH.read_text(encoding="utf-8"))
+    if counts["provenance"] != freesound["provenance"]:
+        raise ValueError("the two confirmation manifests cite different provenance")
+    provenance = freesound["provenance"]
+    return {
+        "salt": SALT,
+        "status": bars["status"],
+        "arms": {arm: bars[arm] for arm in
+                 ("freesound", "cv_ar", "cv_other", "mistakes", "look_retention")},
+        "per_language": per_language,
+        "catches": catches,
+        "passing": passing,
+        "stores": {arm: {"path": repo_relative(path), "sha256": sha256_file(path),
+                         "items": len(scored[arm]), "mode": CONFIRM_MODES[arm]}
+                   for arm, path in CONFIRM_DECODES.items()},
+        "provenance": {
+            "doc": provenance["doc"],
+            "manifests": {"freesound": record_of(FREESOUND_MANIFEST_PATH),
+                          "common_voice": record_of(CV_MANIFEST_PATH)},
+            "decodes": {arm: record_of(path) for arm, path in CONFIRM_DECODES.items()},
+            "scoring": {"commit": head_sha()},
+            "pull_request": provenance["pull_request"],
+            "pull_request_ref": provenance["pull_request_ref"],
+        },
+    }
 
 
 # --- the commit gate ---------------------------------------------------------------------------

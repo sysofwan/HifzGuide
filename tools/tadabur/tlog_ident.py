@@ -41,6 +41,15 @@ identifier **names** are their own class. The literal share-of-all wording's res
 ``docs/tlog-ayah-identification.md``; every value is re-derived from the committed inputs by the
 acceptance tests.
 
+**The five bars (S5b).** ``floor_status`` is the first fired confirmation bar
+(:mod:`tadabur.tlog_ident_confirm`): the fresh Freesound, Common Voice ``ar`` and Common Voice
+non-Arabic pass rates at ≤ 1%, all 52 real-mistake clips passing, and look retention at ≥ 90%.
+The committed report carries them under ``confirm`` — the arms with Wilson 95% intervals, the
+per-language rates, the rule's catches split by clause, the items that passed with their decodes
+and spans, and the doc → manifests → stores provenance chain — so a stop is inspectable without a
+rerun. ``b`` and ``b_u`` are ``provisional`` unless that status is exactly ``"confirmed"``, and
+:func:`load_calibration` refuses anything else.
+
 **The margin's bound (S5b).** The pinned competitor search is a word-span one, and
 ``docs/tlog-ident-margin-amendment.md`` discloses that it can overstate ``m``, never understate
 it. :func:`oracle_margin` measures the bound once on the look half only: every character start of
@@ -98,7 +107,7 @@ from training.tashkeel_eval import write_text_atomically
 from . import normalization
 from .normalization import map_char_offsets, normalize_phonemes
 from .tarteel_split import DECODES_PATH, SPLIT_PATH, load_split
-from .tlog_index import repo_relative, sha256_file
+from .tlog_index import record_of, repo_relative, sha256_file
 
 SCHEMA_VERSION = 1
 #: The shortlist size the pre-registration fixes, and the gram size its S5 amendment adds.
@@ -1461,6 +1470,33 @@ def _calibration(database: ReferenceDatabase) -> dict:
     _phase(f"scoring {len(clip_list)} real-mistake clips")
     mistakes = _mistake_identifications(database, k)
     bars = derive_bars(raw, mistakes)
+    retention = sum(row.floor_ok for row in raw) / len(raw)
+
+    # The character-start margin bound, measured before this run and recorded beside the
+    # pinned bars (architect r18/r19). It never chooses a bar: its own b_u is recorded for the
+    # owner, and ``margin_definition.status`` is the mechanical consequence.
+    oracle_artifact = json.loads(ORACLE_PATH.read_text(encoding="utf-8"))
+    measured = oracle_artifact["population"]
+    if (measured["decodes"]["sha256"] != sha256_file(DECODES_PATH)
+            or measured["mistakes"]["sha256"] != sha256_file(REAL_MISTAKE_CLIPS_PATH)):
+        raise ValueError("the oracle was measured on different look or real-mistake inputs")
+    oracle = {"b_u_oracle": oracle_artifact["b_u_oracle"],
+              "clips_m_changed": oracle_artifact["clips_m_changed"],
+              "assignments_changed_at_b_u": oracle_artifact["assignments_changed_at_b_u"],
+              "artifact": record_of(ORACLE_PATH)}
+    margin_status = oracle_consequence(bars["b_u"], oracle)
+
+    # The S5b confirmation: the five bars are the floor's status, and the S5 binned stop below
+    # is history.
+    from .tlog_ident_confirm import confirm_block  # lazy: one import direction at load
+
+    _phase("scoring the three confirmation stores (Freesound, CV ar, CV other)")
+    confirmation = confirm_block(database, k=k, look_retention=retention,
+                                 mistakes=[row.floor_ok for row in mistakes])
+    floor_status = confirmation["status"]
+    _phase(f"confirmation status {floor_status}")
+    bars["provisional"] = floor_status != "confirmed"
+    bars["provisional_reason"] = floor_status
 
     # History: the retired binned floors' sensitivity to scoring the exhaustive decoy. The
     # rule's verdict never reads it, but S5's report and the guard-k test pin the pass.
@@ -1493,17 +1529,13 @@ def _calibration(database: ReferenceDatabase) -> dict:
     # B (back off to the nearest calibrated bin) is the headline: the most faithful reading of
     # the binned rule. A and C are reported beside it (architect r16).
     noise_pass = conventions["B"]["pass"]
-    floor_status = (f"stopped: noise {100 * noise_pass:.1f}% > {100 * NOISE_PASS_MAX:g}%"
-                    if noise_pass > NOISE_PASS_MAX else "passed")
-    bars["provisional"] = True
-    bars["provisional_reason"] = floor_status
+    rule_passed = sum(row.floor_ok for row in noise)
 
     from .tlog_overlap import iter_pool_rows  # heavy import, calibration only
 
     _phase("walking the S1+S4 pool for b_u's reach and the pool's length histogram")
     pool_lengths, unlabelled = pool_summary(iter_pool_rows())
 
-    retention = sum(row.floor_ok for row in raw) / len(raw)
     relabel_rate = bars["look_relabel_at_b"]
     tail = [(decode, row) for decode, row in zip(look, raw) if decode.cer_wav >= 0.2]
     tail_retention = sum(row.floor_ok for _, row in tail) / len(tail) if tail else None
@@ -1537,8 +1569,11 @@ def _calibration(database: ReferenceDatabase) -> dict:
         },
         "floor_rule": floor_rule(),
         "margin_definition": {"path": repo_relative(MARGIN_AMENDMENT_PATH),
-                              "sha256": sha256_file(MARGIN_AMENDMENT_PATH)},
+                              "sha256": sha256_file(MARGIN_AMENDMENT_PATH),
+                              "status": margin_status},
         "floor_status": floor_status,
+        "confirm": confirmation,
+        "oracle": oracle,
         "first_pass": {
             "engine_commit": "79acded",
             "defect": "each CIGAR run was credited whole to the ayah it started in, and "
@@ -1582,6 +1617,9 @@ def _calibration(database: ReferenceDatabase) -> dict:
             "noise": {"path": repo_relative(NOISE_DECODES_PATH),
                       "sha256": sha256_file(NOISE_DECODES_PATH), "recordings": len(noise),
                       "mode": NOISE_DECODE_MODE},
+            # The S5b confirmation stores, exactly as the block that scored them recorded them.
+            **{f"confirm_{arm}": store
+               for arm, store in confirmation["stores"].items()},
         },
         "real_mistake": {"path": repo_relative(REAL_MISTAKE_CLIPS_PATH),
                          "sha256": sha256_file(REAL_MISTAKE_CLIPS_PATH),
@@ -1612,6 +1650,8 @@ def _calibration(database: ReferenceDatabase) -> dict:
         "pool_lengths": pool_lengths,
         "noise": {"recordings": len(noise), "pass": noise_pass,
                   "floor_passed": conventions["B"]["passed"],
+                  "rule_pass": {"clips": len(noise), "passed": rule_passed,
+                                "pass": rule_passed / len(noise)},
                   "conventions": conventions,
                   "samples_sha256": {"recordings": len(noise_store["items"]),
                                      "mismatched": 0}},
@@ -1668,12 +1708,89 @@ def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
     ]
 
 
+def confirm_lines(report: Mapping[str, Any]) -> list[str]:
+    """The page's S5b sections: the five bars, their evidence and the margin's bound.
+
+    Every number is read from the report; ``passing`` lists the items the rule let through, so
+    a stop can be inspected without rerunning anything.
+    """
+    confirm, bars = report["confirm"], report["confirm"]["arms"]
+    lines = [
+        "## The confirmation (S5b, #204)",
+        "",
+        "The floor is the per-decode rule of "
+        "[`docs/tlog-ident-floor-preregistration.md`](tlog-ident-floor-preregistration.md) "
+        f"(sha256 `{report['floor_rule']['sha256'][:12]}`): a decode is `non_recitation` when "
+        f"its normalised length is under `L_min = {L_MIN}` characters or its real best is "
+        f"within `DELTA = {DELTA:.2f}` of its own decoy best, both from one shortlisted "
+        f"search. The three fresh sets were drawn and committed before decoding, under the salt "
+        f"`{confirm['salt']}`.",
+        "",
+        "| arm | clips | passed | rate | Wilson 95% | limit | fired |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for arm in ("freesound", "cv_ar", "cv_other"):
+        entry = bars[arm]
+        low, high = entry["wilson"]
+        lines.append(f"| {arm} | {entry['clips']:,} | {entry['passed']} | "
+                     f"{_pct(entry['pass'])} | {_pct(low)}–{_pct(high)} | "
+                     f"{_pct(entry['limit'])} | {entry['fired']} |")
+    lines += [
+        f"| real-mistake clips | {bars['mistakes']['clips']} | {bars['mistakes']['passed']} | "
+        f"— | — | all | {bars['mistakes']['fired']} |",
+        f"| look retention | {report['look']['clips']:,} | — | "
+        f"{_pct(bars['look_retention']['pass'])} | — | "
+        f"{_pct(bars['look_retention']['limit'])} | {bars['look_retention']['fired']} |",
+        "",
+        f"**Status: `{confirm['status']}`.**",
+        "",
+        "Per language (reported, not a bar):",
+        "",
+        "| arm | locale | clips | passed | rate | Wilson 95% |",
+        "|---|---|---|---|---|---|",
+    ]
+    for primary, entry in confirm["per_language"].items():
+        wilson = entry["wilson"]
+        interval = "—" if wilson is None else f"{_pct(wilson[0])}–{_pct(wilson[1])}"
+        lines.append(f"| {primary} | {entry['locale']} | {entry['clips']} | "
+                     f"{entry['passed']} | {_pct(entry['pass'])} | {interval} |")
+    lines += [
+        "",
+        "Which clause caught the rejects (`length` = under `L_min`, `margin` = within `DELTA`):",
+        "",
+        "| arm | rejected | length | margin | both |",
+        "|---|---|---|---|---|",
+        *[f"| {arm} | {bars[arm]['clips'] - bars[arm]['passed']} | {catches['length']} | "
+          f"{catches['margin']} | {catches['both']} |"
+          for arm, catches in confirm["catches"].items()],
+        "",
+        "The items that got through:",
+        "",
+        "| arm | key | length | class | span | decode |",
+        "|---|---|---|---|---|---|",
+    ]
+    for arm, items in confirm["passing"].items():
+        if not items:
+            lines.append(f"| {arm} | — | — | — | — | — |")
+        for item in items:
+            span = item["span"]
+            where = "—" if span is None else (f"{span['surah']}:{span['ayah_from']}."
+                                              f"{span['word_from']}–{span['ayah_to']}."
+                                              f"{span['word_to']}")
+            decode = item["decode"].replace("|", "\\|") or "&nbsp;"
+            lines.append(f"| {arm} | `{item['key']}` | {item['length']} | "
+                         f"{item['class_label']} | {where} | `{decode}` |")
+    return lines
+
+
 def render(report: Mapping[str, Any]) -> str:
     """The generated page; every number is read from the report."""
     parameters, look, bars = report["parameters"], report["look"], report["bars"]
     stop = report["stop_conditions"]
+    margin = report.get("margin_definition", {})
+    provisional = " (PROVISIONAL)" if bars.get("provisional") else ""
     lines = [
-        "# Ayah identification on Tarteel v1 look (#190)",
+        "# Ayah identification on Tarteel v1 look (#190, floor #204)",
         "",
         "Generated by `python -m tadabur.tlog_ident calibrate` (from `tools/`); do not edit by "
         "hand. The machine-readable report is "
@@ -1700,8 +1817,12 @@ def render(report: Mapping[str, Any]) -> str:
         f"- shortlist: consonant-skeleton {parameters['gram']}-grams, k = {parameters['k']}, "
         f"library `{parameters['library']['name']}` {parameters['library']['version']} "
         f"({parameters['library']['mode']})",
-        f"- floors: type-7 {parameters['floor_percentile']}th percentile of the best decoy "
-        f"score per length bin",
+        f"- floors (history): type-7 {parameters['floor_percentile']}th percentile of the best "
+        f"decoy score per length bin",
+        f"- floor: the per-decode rule of "
+        f"[`docs/tlog-ident-floor-preregistration.md`](tlog-ident-floor-preregistration.md) "
+        f"(sha256 `{report['floor_rule']['sha256'][:12]}`): under `L_min = {L_MIN}` characters, "
+        f"or within `DELTA = {DELTA:.2f}` of the decode's own decoy best",
         f"- margin competitor: word spans, first optimal alignment, per "
         f"[`docs/tlog-ident-margin-amendment.md`](tlog-ident-margin-amendment.md) (sha256 "
         f"`{report['margin_definition']['sha256'][:12]}`); it can overstate the margin, never "
@@ -1731,6 +1852,12 @@ def render(report: Mapping[str, Any]) -> str:
         f"{report['real_mistake']['sites']} sites |",
         f"| Freesound pool | {report['noise']['recordings']} recordings, "
         f"`{report['decodes']['noise']['mode']}` |",
+        f"| Freesound confirmation | {report['decodes']['confirm_freesound']['items']:,} "
+        f"recordings, `{report['decodes']['confirm_freesound']['mode']}` |",
+        f"| Common Voice confirmation | "
+        f"{report['decodes']['confirm_cv_ar']['items']:,} non-Quran Arabic + "
+        f"{report['decodes']['confirm_cv_other']['items']:,} non-Arabic clips, "
+        f"`{report['decodes']['confirm_cv_ar']['mode']}` |",
         f"| b_u reach (unclean, no filename label, usable) | "
         f"{report['unlabelled_unclean']['usable']:,} rows |",
         "",
@@ -1750,11 +1877,11 @@ def render(report: Mapping[str, Any]) -> str:
               for bin_ in FLOOR_BINS if bin_ in report["floors"]]
     lines += [
         "",
-        f"**b = {bars['b']:.2f} (PROVISIONAL)**" if bars["b"] is not None
+        f"**b = {bars['b']:.2f}{provisional}**" if bars["b"] is not None
         else "**b: none on the grid**",
         f" ({_pct(bars['look_relabel_at_b'])} of look relabelled, "
         f"{bars['mistake_relabels_at_b']} of the real-mistake clips relabelled).",
-        *([f"**b_u = {bars['b_u']:.2f} (PROVISIONAL)**: {_pct(bars['look_assigned_at_b_u'])} "
+        *([f"**b_u = {bars['b_u']:.2f}{provisional}**: {_pct(bars['look_assigned_at_b_u'])} "
            "of the look clips it names are their own class."] if bars["b_u"] is not None else
           ["**b_u: none on the grid** (no bar names at least 99% own-class clips)."]),
         f"Literal-rule b_u (share of all clips): {_bar(bars['b_u_literal'])}; recorded for "
@@ -1767,6 +1894,16 @@ def render(report: Mapping[str, Any]) -> str:
         "",
         "_Precision is the amended b_u's quantity; coverage is the literal rule's, which can "
         "only fall as the bar rises._",
+        "",
+        "## The margin's bound (S5b)",
+        "",
+        f"`margin_definition.status = \"{margin['status']}\"`. The pinned competitor can "
+        f"overstate a margin, never understate it; the one measurement of that bound on the "
+        f"look half (artifact sha256 `{report['oracle']['artifact']['sha256'][:12]}`) gives "
+        f"`b_u_oracle = {_bar(report['oracle']['b_u_oracle'])}` against the pinned "
+        f"`b_u = {_bar(bars['b_u'])}`, changed {report['oracle']['clips_m_changed']} clips' "
+        f"margins and {report['oracle']['assignments_changed_at_b_u']} assignments at b_u. It "
+        "never fed a bar or a label.",
         "",
         "## The pool's VAD speech duration (indicative)",
         "",
@@ -1801,14 +1938,20 @@ def render(report: Mapping[str, Any]) -> str:
         "",
         f"`{report['floor_status']}`",
         "",
+        *confirm_lines(report),
+        "",
+        "## S5's binned stop (history)",
+        "",
+        "The retired binned rule's record on the 445-recording pool. Its stop fired under all "
+        "three conventions, which is what triggered the S5b re-pre-registration above.",
+        "",
         "| convention | recordings | passed | pass |",
         "|---|---|---|---|",
         *[f"| {key} | {value['recordings']} | {value['passed']} | {_pct(value['pass'])} |"
           for key, value in report["noise"]["conventions"].items()],
         "",
         "B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C "
-        "excludes it. The frozen noise stop fires under all three, so b and b_u are provisional "
-        "and no replacement floor is applied here (parked for the owner).",
+        "excludes it.",
         "",
         "## Reported, never tuned on",
         "",
@@ -1819,7 +1962,9 @@ def render(report: Mapping[str, Any]) -> str:
         f"| `cer_wav ≥ 0.2` tail ({look['tail']['clips']} clips) retention | "
         f"{_pct(look['tail']['retention'])} |",
         f"| `cer_wav ≥ 0.2` tail relabel rate at b | {_pct(look['tail']['relabel_rate'])} |",
-        f"| Freesound noise pass | {_pct(report['noise']['pass'])} |",
+        f"| 445 pool, the rule's pass | {_pct(report['noise']['rule_pass']['pass'])} "
+        f"({report['noise']['rule_pass']['passed']}/{report['noise']['rule_pass']['clips']}) |",
+        f"| 445 pool, the binned rule's pass | {_pct(report['noise']['pass'])} |",
         *([f"| exhaustive-decoy floors (sensitivity) | retention "
            f"{_pct(report['exhaustive_decoy']['look_retention'])} |"]
           if "exhaustive_decoy" in report else []),
@@ -1829,7 +1974,7 @@ def render(report: Mapping[str, Any]) -> str:
         "and the floors use whole-clip `spans`; the noise rate compares a different decode "
         "mode, not the calibration population's.",
         "",
-        "## Stop conditions",
+        "## S5's binned stop conditions (history)",
         "",
         "| condition | limit | value | fired |",
         "|---|---|---|---|",

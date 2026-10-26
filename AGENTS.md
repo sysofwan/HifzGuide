@@ -99,9 +99,12 @@ Publishing a new asset release is handled by the **`hifzguide-asset-release`** s
 ### Tests (`tools/`)
 
 - One command, from the repo root: `scripts/test.sh` (inner loop — everything but the `slow`
-  tier, thread-pinned xdist). Before a merge run `scripts/test.sh --full`.
-- Mark a test `@pytest.mark.slow` only when it regenerates a full-corpus artifact; the tier is
-  declared in `tools/pytest.ini` and the merge gate always runs it. See `tools/README.md` "Tests".
+  tier, thread-pinned xdist). Before a merge run `scripts/test.sh --full`. Both resolve the test
+  interpreter themselves: the worktree's `.venv-test`, else the primary checkout's, else
+  `python`; `TEST_PYTHON` overrides, `TEST_WORKERS` sets the worker count (default 6).
+- Mark a test `@pytest.mark.slow` only when it regenerates a full-corpus artifact or re-derives
+  a whole frozen result (a parity pass); the tier is declared in `tools/pytest.ini` and the
+  merge gate always runs it. See `tools/README.md` "Tests".
 
 ### Data & assets
 

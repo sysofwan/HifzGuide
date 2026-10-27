@@ -103,6 +103,76 @@ def test_the_oracle_pass_records_the_bound_and_keeps_the_pinned_b_u(ident):
         payload["clips_m_changed"] / payload["clips"])
 
 
+@pytest.fixture
+def mixed(ident):
+    """Three clips over six ayat, one whose margin the bound lowers and two it leaves alone
+    (reviewer r1's fixture). The changed clip is first, so a one-based index into the
+    zero-based row list reports the second clip's margin to it."""
+    return ident.ReferenceDatabase.build([
+        ident.AyahReference(1, 1, "بتثجبتثج", (0, 8)),
+        ident.AyahReference(1, 2, "بتثجبتثج", (0, 8)),
+        ident.AyahReference(1, 3, "بتثج", (0, 1, 2, 3, 4)),
+        ident.AyahReference(2, 1, "دذرزسطظع", (0, 8)),
+        ident.AyahReference(2, 2, "دذرزسطظعغ", (0, 9)),
+        ident.AyahReference(3, 1, "غفقكلمنه", (0, 8)),
+    ])
+
+
+def _decode(ident, key, surah_ayah, spans):
+    return ident.Decode(key, f"{key}.wav", surah_ayah, 1, 1, 0.0, spans)
+
+
+def test_each_changed_row_carries_its_own_margins_and_crossing(ident, mixed):
+    """r1: `enumerate(..., 1)` into a zero-based row list gave the changed clip the *next*
+    clip's bounded margin and counted 0 crossings where one assignment moves. The fixture's
+    totals fall from 2 to 1 and the mechanical consequence is therefore ``owner``."""
+    look = [_decode(ident, "changed", "1:1", "بتثجبتثج"),
+            _decode(ident, "unchanged", "3:1", "غفقكلمنه"),
+            _decode(ident, "wrong_ambiguous", "1:3", "دذرزسطظع")]
+    payload = ident.oracle_pass(mixed, look, [], progress=lambda _: None)
+
+    pinned = {item.key: ident.identify(item.spans, database=mixed,
+                                       filename_ayah=item.surah_ayah) for item in look}
+    assert pinned["changed"].margin == pytest.approx(0.5)
+    assert payload["assignments_at_b_u"] == {"pinned": 2, "oracle": 1}
+    assert payload["clips_m_changed"] == len(payload["changed"]) == 1
+    assert payload["assignments_changed_at_b_u"] == 1
+
+    item, = payload["changed"]
+    assert item["key"] == "changed"
+    assert item["pinned_margin"] == pytest.approx(pinned["changed"].margin)
+    assert item["oracle_margin"] == pytest.approx(
+        ident.oracle_margin(mixed, "بتثجبتثج", pinned=pinned["changed"].margin)) == 0.0
+    assert item["oracle_margin"] < item["pinned_margin"]
+    assert (item["assigned_pinned"], item["assigned_oracle"]) == (True, False)
+    assert item["crosses_b_u"] is True
+    assert ident.oracle_consequence(payload["b_u"], payload) == "owner"
+
+
+def test_a_changed_last_row_is_aggregated_not_indexed_past(ident, mixed):
+    """The same bound as a two-row population whose changed clip is last: the old index read
+    past the list (IndexError) instead of recording the row."""
+    look = [_decode(ident, "good", "3:1", "غفقكلمنه"),
+            _decode(ident, "last", "1:1", "بتثجبتثج")]
+    payload = ident.oracle_pass(mixed, look, [], progress=lambda _: None)
+
+    item, = payload["changed"]
+    assert item["key"] == "last"
+    assert (item["pinned_margin"], item["oracle_margin"]) == pytest.approx((0.5, 0.0))
+    assert item["crosses_b_u"] is False  # b_u is 0.0 here, so 0.0 still assigns
+    assert payload["assignments_changed_at_b_u"] == sum(
+        changed["crosses_b_u"] for changed in payload["changed"])
+
+
+def test_the_committed_oracle_recorded_no_changed_row(ident):
+    """The r1 index bug could only reach a changed row's evidence; ``b_u_oracle`` never read
+    that list. The committed artifact has no changed row, so its recorded zero stands."""
+    artifact = ident.oracle_artifact(ident.K)
+    assert artifact["clips_m_changed"] == 0 == len(artifact["changed"])
+    assert artifact["assignments_changed_at_b_u"] == 0
+    assert artifact["assignments_at_b_u"]["pinned"] == artifact["assignments_at_b_u"]["oracle"]
+
+
 def test_the_oracle_artifact_is_refused_when_a_recorded_input_is_stale(ident, tmp_path):
     """`b_u_oracle` is trusted only for the inputs the artifact names: the margin definition,
     the look decodes, their split, the real-mistake clips, and — from self-check r1 — its k."""

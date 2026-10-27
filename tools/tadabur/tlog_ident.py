@@ -1281,33 +1281,35 @@ def oracle_pass(database: ReferenceDatabase, look: Sequence[Decode],
     emit = progress or _phase
     started = time.time()
     rows: list[Identification] = []
-    bounded: dict[int, float] = {}
+    bounds: list[float | None] = []
     for index, decode in enumerate(look, 1):
         row = identify(decode.spans, database=database, filename_ayah=decode.surah_ayah, k=k)
         rows.append(row)
-        if row.margin is not None:
-            bounded[index] = oracle_margin(database, decode.spans, pinned=row.margin, k=k)
+        bounds.append(oracle_margin(database, decode.spans, pinned=row.margin, k=k)
+                      if row.margin is not None else None)
         if index % 500 == 0:
             emit(f"oracle {index}/{len(look)}")
     seconds = time.time() - started
 
     pinned_bars = derive_bars(rows, mistakes)
-    oracle_rows = [row if index not in bounded else replace(row, margin=bounded[index])
-                   for index, row in enumerate(rows, 1)]
+    oracle_rows = [row if bound is None else replace(row, margin=bound)
+                   for row, bound in zip(rows, bounds)]
     oracle_bars = derive_bars(oracle_rows, mistakes)
     b_u = pinned_bars["b_u"]
     if b_u is None:
         raise ValueError("the look population names no row at any bar: no b_u to check")
 
+    # Each detail joins a decode with *its own* pinned and bounded rows: a zip, never a shared
+    # index into another list (the r1 off-by-one read the following clip's margin).
     details = [{
         "key": decode.key, "audio_filename": decode.audio_filename,
         "surah_ayah": decode.surah_ayah, "length": row.length,
         "class_label": row.class_label, "margin_class": row.margin_class,
-        "pinned_margin": row.margin, "oracle_margin": oracle_rows[index].margin,
+        "pinned_margin": row.margin, "oracle_margin": oracle.margin,
         "assigned_pinned": assigned(row, b_u),
-        "assigned_oracle": assigned(oracle_rows[index], b_u),
-    } for index, (decode, row) in enumerate(zip(look, rows), 1)
-        if index in bounded and bounded[index] < row.margin]
+        "assigned_oracle": assigned(oracle, b_u),
+    } for decode, row, oracle in zip(look, rows, oracle_rows)
+        if oracle.margin is not None and oracle.margin < row.margin]
     for item in details:
         item["crosses_b_u"] = item["assigned_pinned"] != item["assigned_oracle"]
     details.sort(key=lambda item: item["key"])

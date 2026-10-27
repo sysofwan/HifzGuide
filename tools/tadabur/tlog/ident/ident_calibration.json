@@ -582,7 +582,7 @@
    "pull_request": null,
    "pull_request_ref": null,
    "scoring": {
-    "commit": "ce699ce50adf8a853621f1f87c38a916f0dbe2da"
+    "commit": "272783dd2d8d574148ade579b8dc6f5935800a88"
    }
   },
   "salt": "tlog-s5b-floor-confirm-v1",
@@ -724,6 +724,7 @@
  },
  "mistake": {
   "clips": 52,
+  "passed": 52,
   "relabelled_at_b": 0
  },
  "noise": {
@@ -913,8 +914,8 @@
  },
  "throughput": {
   "clips": 4537,
-  "ms_per_clip": 13.416,
-  "seconds": 60.867
+  "ms_per_clip": 10.086,
+  "seconds": 45.76
  },
  "unlabelled_unclean": {
   "source": "tadabur.tlog_overlap.iter_pool_rows",

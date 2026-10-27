@@ -152,10 +152,10 @@ Per language (reported, not a bar):
 | arm | locale | clips | passed | rate | Wilson 95% |
 |---|---|---|---|---|---|
 | en | en | 100 | 0 | 0.00% | 0.00%–3.70% |
-| ur | ur | 100 | 0 | 0.00% | 0.00%–3.70% |
 | fa | fa | 100 | 0 | 0.00% | 0.00%–3.70% |
-| tr | tr | 100 | 0 | 0.00% | 0.00%–3.70% |
 | id | id | 100 | 0 | 0.00% | 0.00%–3.70% |
+| tr | tr | 100 | 0 | 0.00% | 0.00%–3.70% |
+| ur | ur | 100 | 0 | 0.00% | 0.00%–3.70% |
 
 Which clause caught the rejects (`length` = under `L_min`, `margin` = within `DELTA`):
 
@@ -198,7 +198,7 @@ B backs a row in an empty bin off to the nearest calibrated floor, A fails it, C
 | 445 pool, the rule's pass | 0.00% (0/445) |
 | 445 pool, the binned rule's pass | 35.73% |
 | exhaustive-decoy floors (sensitivity) | retention 99.98% |
-| throughput | 13.42 ms per clip |
+| throughput | 10.09 ms per clip |
 
 The noise population is decoded in `stream_b0`, while look and the floors use whole-clip `spans`; the noise rate compares a different decode mode, not the calibration population's.
 

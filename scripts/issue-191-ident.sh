@@ -12,6 +12,7 @@
 #   scripts/issue-191-ident.sh audit            # draw the stratified worklist
 #   scripts/issue-191-ident.sh stage            # stage the drawn clips for listening
 #   scripts/issue-191-ident.sh ui launch        # serve the listening page on 0.0.0.0:8000
+#   scripts/issue-191-ident.sh ui fetch DIR     # pull the owner's verdicts after a sitting
 #   scripts/issue-191-ident.sh report           # render docs/tlog-audit.md
 #
 # Every job stages the current branch as a bundle on the box, writes one log, and writes its
@@ -31,6 +32,9 @@ AUDIO=$ROOT/audio
 # The UI reads Uthmani ayah text from quran.db, a gitignored release asset: copy it once from
 # any checkout that has one (`scp` it to this path, or set QURAN_DB).
 QURAN_DB=${QURAN_DB:-$ROOT/data/quran.db}
+# The owner's verdicts live in the scratch root, not the clone: a relaunch re-clones and would
+# drop them. `ui fetch` pulls the file; commit it at tools/tadabur/tlog/audit/verdicts.jsonl.
+VERDICTS=$ROOT/verdicts.jsonl
 OUT=tools/tadabur/tlog/ident/decodes
 IDENT=tools/tadabur/tlog/ident
 
@@ -79,7 +83,7 @@ command_for() {
     stage)
       echo "python -u -m tadabur.tlog_ident_run stage --draw '$ROOT/draw.jsonl' --audio-dir '$AUDIO' --cache-dir '$CACHE'" ;;
     ui)
-      echo "python -u -m tadabur.tlog_audit_ui --worklist '$REPO/tools/tadabur/tlog/audit/worklist.jsonl' --audio-dir '$AUDIO' --verdicts '$REPO/tools/tadabur/tlog/audit/verdicts.jsonl' --quran-db '$QURAN_DB' --port 8000 --host 0.0.0.0" ;;
+      echo "python -u -m tadabur.tlog_audit_ui --worklist '$REPO/tools/tadabur/tlog/audit/worklist.jsonl' --audio-dir '$AUDIO' --verdicts '$VERDICTS' --quran-db '$QURAN_DB' --port 8000 --host 0.0.0.0" ;;
     report)
       echo "python -u -m tadabur.tlog_ident_run report" ;;
   esac
@@ -130,6 +134,7 @@ fetch() {
     decode) rsync -a "$HOST:$REPO/$OUT/" "$destination/" ;;
     identify) rsync -a "$HOST:$REPO/$IDENT/" "$destination/" ;;
     audit|stage) rsync -a "$HOST:$REPO/tools/tadabur/tlog/audit/" "$destination/" ;;
+    ui) rsync -a "$HOST:$VERDICTS" "$destination/" ;;
     report)
       rsync -a "$HOST:$REPO/docs/tlog-audit.md" "$destination/"
       rsync -a "$HOST:$REPO/tools/tadabur/tlog/audit/" "$destination/audit/" ;;

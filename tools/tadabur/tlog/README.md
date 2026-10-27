@@ -414,11 +414,13 @@ python -m tadabur.tlog_ident_run limit --out tools/tadabur/tlog/ident/decode_lim
 python -m tadabur.tlog_ident_run decode --cache-dir /root/scratch/tlog/s6/cache
 python -m tadabur.tlog_ident_run identify       # after margin_approval.json is on main
 python -m tadabur.tlog_ident_run audit
-python -m tadabur.tlog_ident_run stage --audio-dir /root/scratch/tlog/s6/audio \
-    --cache-dir /root/scratch/tlog/s6/cache
+python -m tadabur.tlog_ident_run stage --draw /root/scratch/tlog/s6/draw.jsonl \
+    --audio-dir /root/scratch/tlog/s6/audio --cache-dir /root/scratch/tlog/s6/cache
 python -m tadabur.tlog_audit_ui --worklist tools/tadabur/tlog/audit/worklist.jsonl \
     --audio-dir /root/scratch/tlog/s6/audio \
-    --verdicts tools/tadabur/tlog/audit/verdicts.jsonl \
+    --verdicts /root/scratch/tlog/s6/verdicts.jsonl \
     --quran-db /root/scratch/tlog/s6/data/quran.db --host 0.0.0.0 --port 8000
+# after a sitting, `scripts/issue-191-ident.sh ui fetch DIR` pulls the verdicts; commit them at
+# tools/tadabur/tlog/audit/verdicts.jsonl, then `report` renders the doc from the committed copy.
 python -m tadabur.tlog_ident_run report --audio-dir /root/scratch/tlog/s6/audio
 ```

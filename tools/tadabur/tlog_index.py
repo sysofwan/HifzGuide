@@ -241,6 +241,28 @@ def head_sha(repo: Path = REPO_ROOT) -> str:
                           capture_output=True, text=True).stdout.strip()
 
 
+def commit_of(path: Path, repo: Path = REPO_ROOT) -> str:
+    """The commit that last touched ``path`` in ``repo``.
+
+    An artifact records the commit it was produced at, so the order a report's inputs were
+    committed in is recoverable even when the branch is squash-merged and the commits it cites
+    only survive under ``refs/pull/<n>/head``.
+    """
+    relative = repo_relative(path, repo)
+    result = subprocess.run(["git", "-C", str(repo), "log", "-1", "--format=%H", "--",
+                             relative], check=True, capture_output=True, text=True)
+    commit = result.stdout.strip()
+    if not commit:
+        raise ValueError(f"{relative} has no commit")
+    return commit
+
+
+def record_of(path: Path, repo: Path = REPO_ROOT) -> dict:
+    """An artifact's committed record: its repo path, SHA-256 and the commit that added it."""
+    return {"path": repo_relative(path, repo), "sha256": sha256_file(path),
+            "commit": commit_of(path, repo)}
+
+
 def provenance(code_sha: str, pull_request: int | None = None) -> dict:
     """The commit a measurement ran from, and the PR ref that keeps it after the squash merge.
 
@@ -262,8 +284,16 @@ def repo_relative(path: Path, repo: Path = REPO_ROOT) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    """The SHA-256 of a file's bytes — the one definition every tlog writer cites."""
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    """The SHA-256 of a file's bytes — the one definition every tlog writer cites.
+
+    Streamed, not read whole: the S5b archives run to tens of gigabytes, and a one-shot
+    ``read_bytes`` of the 95 GB Common Voice archive is an out-of-memory bomb.
+    """
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def installed_versions(names: Iterable[str]) -> dict[str, str | None]:

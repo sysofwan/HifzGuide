@@ -1,0 +1,38 @@
+{
+ "assignments_at_b_u": {
+  "oracle": 4394,
+  "pinned": 4394
+ },
+ "assignments_changed_at_b_u": 0,
+ "b": 0.01,
+ "b_oracle": 0.01,
+ "b_u": 0.01,
+ "b_u_oracle": 0.01,
+ "changed": [],
+ "clips": 4537,
+ "clips_m_changed": 0,
+ "definition": {
+  "path": "docs/tlog-ident-margin-amendment.md",
+  "sha256": "eded44e95dc58a3d5ccb86659f296eb50b8b5e0cf236a21b0e5acb5258e3aba2"
+ },
+ "disclosure": "one end and one path per character start: a stricter bound on the margin, not the exact margin (docs/tlog-ident-margin-amendment.md)",
+ "population": {
+  "decodes": {
+   "clips": 4537,
+   "path": "tools/tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz",
+   "sha256": "ce45d840c73d34a1fc41d915c633ff8f6e30729f52b2aa7f2b9788c13ae18770"
+  },
+  "mistakes": {
+   "clips": 52,
+   "path": "tools/tadabur/tlog/ident/real_mistake_clips.jsonl",
+   "sha256": "6b8c4002b098a77218d68e3cfa730b088703b37dd03a9c3768df2ffbcbec59df"
+  },
+  "split": {
+   "path": "tools/tadabur/nonpro_eval/tarteel_v1/split.json",
+   "sha256": "5979ead86bf9e3abf01c5e3ee88158e4843603389ca65ebc628a7868d6fc283c"
+  }
+ },
+ "schema": "tadabur.tlog_ident/oracle-margin-v1",
+ "seconds": 791.906,
+ "share_m_changed": 0.0
+}

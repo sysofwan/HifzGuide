@@ -362,12 +362,13 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
   non-recitation, never a candidate answer.
 
 **Floor** (non-recitation)
-: The type-7 99th percentile of the best **decoy** score over the Tarteel v1 look decodes in a
-  decode-length bin (`0-20`, `21-40`, `41-80`, `81-160`, `161-` characters). A row passes when its
-  best real score is strictly above its bin's floor. The look half's longest decode is 138
-  characters, so `161-` has **no floor**: a row there gets `id_floor_ok: null` — "no floor for
-  this bin", not "below the floor" — and is left alone (an unlabelled row stays `none`, nothing
-  is relabelled).
+: The S5b per-decode rule (`docs/tlog-ident-floor-preregistration.md`, #204): a decode is
+  `non_recitation` when its normalised length is under `L_min = 8` characters **or** its best
+  real score is within `DELTA = 0.30` of its own best **decoy** score, both from the same
+  shortlisted search. Every identification record carries `floor_rule {path, sha256}`. The
+  retired per-bin floors — the type-7 99th percentile of the best decoy score per decode-length
+  bin (`0-20`, `21-40`, `41-80`, `81-160`, `161-`) — stay in the report as history and decide
+  nothing.
 : _Avoid_: threshold (the bars are the thresholds), silence floor (that is the pass-1 `silence`
   exclusion, a different rule)
 
@@ -379,7 +380,15 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
 **Bar b_u**
 : The smallest grid value at which at least 99% of the look clips the identifier **names** (floor
   passed, margin ≥ bar, labels hidden) are their own class — the owner's post-look erratum
-  (`docs/tlog-ident-bu-amendment.md`). Both bars are **provisional** while the floor is stopped.
+  (`docs/tlog-ident-bu-amendment.md`). Both bars are **provisional** unless `floor_status` is
+  exactly `confirmed`.
+
+**Owner margin approval**
+: The owner's clearance of the pinned **margin** definition at the S5b check-in (frozen floor
+  document §7), a separate committed record `tlog/ident/margin_approval.json` written by
+  `python -m tadabur.tlog_ident approve`. It cites the margin definition by SHA-256 and the `b_u`
+  it clears; `load_calibration` and `load_identifier` refuse until one matches the report. The
+  oracle's mechanical `final` is **not** this approval.
 
 **Margin**
 : `m`, for a row without a filename label: the best score minus the best score of a **different
@@ -389,8 +398,9 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
 
 **Label source**
 : `filename` (below the bar, kept under the filename label), `both` (the best class equals the
-  filename's), `identified` (relabelled or assigned) or `none`. A row whose bin has no floor is
-  never `identified` without a filename label.
+  filename's), `identified` (relabelled or assigned) or `none`. The floor rule gates relabelling
+  and assignment only: a `non_recitation` row is never `identified` — though a matching filename
+  class is still `both` — and an unlabelled row below the floor stays `none`.
 
 ## Re-read Corpus
 

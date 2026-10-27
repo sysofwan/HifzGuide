@@ -56,287 +56,287 @@
    0.49,
    0.5
   ],
-  "look_assigned_at_b_u": 0.999546176537327,
+  "look_assigned_at_b_u": 0.9997724169321802,
   "look_assigned_at_b_u_literal": null,
-  "look_relabel_at_b": 0.00044081992506061276,
+  "look_relabel_at_b": 0.00022040996253030638,
   "mistake_relabels_at_b": 0,
   "no_bar": false,
   "precision": {
    "by_bar": [
     {
-     "assigned": 4536,
+     "assigned": 4520,
      "bar": 0.0,
-     "coverage": 0.9814855631474543,
-     "precision": 0.9817019400352733
+     "coverage": 0.9788406435970906,
+     "precision": 0.9825221238938053
     },
     {
-     "assigned": 4407,
+     "assigned": 4394,
      "bar": 0.01,
-     "coverage": 0.9709058849459996,
-     "precision": 0.999546176537327
+     "coverage": 0.9682609653956359,
+     "precision": 0.9997724169321802
     },
     {
-     "assigned": 4407,
+     "assigned": 4394,
      "bar": 0.02,
-     "coverage": 0.9709058849459996,
-     "precision": 0.999546176537327
+     "coverage": 0.9682609653956359,
+     "precision": 0.9997724169321802
     },
     {
-     "assigned": 4396,
+     "assigned": 4383,
      "bar": 0.03,
-     "coverage": 0.9684813753581661,
-     "precision": 0.9995450409463148
+     "coverage": 0.9658364558078025,
+     "precision": 0.999771845767739
     },
     {
-     "assigned": 4388,
+     "assigned": 4375,
      "bar": 0.04,
-     "coverage": 0.9667180956579238,
-     "precision": 0.9995442114858706
+     "coverage": 0.96407317610756,
+     "precision": 0.9997714285714285
     },
     {
-     "assigned": 4371,
+     "assigned": 4359,
      "bar": 0.05,
-     "coverage": 0.9629711262949086,
-     "precision": 0.9995424388011896
+     "coverage": 0.9605466167070752,
+     "precision": 0.9997705895847672
     },
     {
-     "assigned": 4345,
+     "assigned": 4333,
      "bar": 0.06,
-     "coverage": 0.9572404672691206,
-     "precision": 0.9995397008055236
+     "coverage": 0.9548159576812872,
+     "precision": 0.9997692130163859
     },
     {
-     "assigned": 4325,
+     "assigned": 4313,
      "bar": 0.07,
-     "coverage": 0.9528322680185144,
-     "precision": 0.9995375722543353
+     "coverage": 0.950407758430681,
+     "precision": 0.9997681428240204
     },
     {
-     "assigned": 4298,
+     "assigned": 4286,
      "bar": 0.08,
-     "coverage": 0.9471016089927264,
-     "precision": 0.9997673336435552
+     "coverage": 0.9446770994048931,
+     "precision": 1.0
     },
     {
-     "assigned": 4276,
+     "assigned": 4264,
      "bar": 0.09,
-     "coverage": 0.9422525898170597,
-     "precision": 0.9997661365762395
+     "coverage": 0.9398280802292264,
+     "precision": 1.0
     },
     {
-     "assigned": 4260,
+     "assigned": 4248,
      "bar": 0.1,
-     "coverage": 0.9387260304165749,
-     "precision": 0.9997652582159624
+     "coverage": 0.9363015208287414,
+     "precision": 1.0
     },
     {
-     "assigned": 4243,
+     "assigned": 4232,
      "bar": 0.11,
-     "coverage": 0.9351994710160899,
+     "coverage": 0.9327749614282566,
      "precision": 1.0
     },
     {
-     "assigned": 4216,
+     "assigned": 4205,
      "bar": 0.12,
-     "coverage": 0.9292484020277717,
+     "coverage": 0.9268238924399382,
      "precision": 1.0
     },
     {
-     "assigned": 4192,
+     "assigned": 4183,
      "bar": 0.13,
-     "coverage": 0.9239585629270443,
+     "coverage": 0.9219748732642715,
      "precision": 1.0
     },
     {
-     "assigned": 4164,
+     "assigned": 4155,
      "bar": 0.14,
-     "coverage": 0.9177870839761957,
+     "coverage": 0.915803394313423,
      "precision": 1.0
     },
     {
-     "assigned": 4137,
+     "assigned": 4128,
      "bar": 0.15,
-     "coverage": 0.9118360149878775,
+     "coverage": 0.9098523253251047,
      "precision": 1.0
     },
     {
-     "assigned": 4111,
+     "assigned": 4102,
      "bar": 0.16,
-     "coverage": 0.9061053559620895,
+     "coverage": 0.9041216662993168,
      "precision": 1.0
     },
     {
-     "assigned": 4084,
+     "assigned": 4075,
      "bar": 0.17,
-     "coverage": 0.9001542869737712,
+     "coverage": 0.8981705973109985,
      "precision": 1.0
     },
     {
-     "assigned": 4060,
+     "assigned": 4051,
      "bar": 0.18,
-     "coverage": 0.8948644478730439,
+     "coverage": 0.8928807582102711,
      "precision": 1.0
     },
     {
-     "assigned": 4016,
+     "assigned": 4007,
      "bar": 0.19,
-     "coverage": 0.8851664095217103,
+     "coverage": 0.8831827198589376,
      "precision": 1.0
     },
     {
-     "assigned": 3964,
+     "assigned": 3955,
      "bar": 0.2,
-     "coverage": 0.8737050914701344,
+     "coverage": 0.8717214018073617,
      "precision": 1.0
     },
     {
-     "assigned": 3946,
+     "assigned": 3938,
      "bar": 0.21,
-     "coverage": 0.869737712144589,
+     "coverage": 0.8679744324443465,
      "precision": 1.0
     },
     {
-     "assigned": 3902,
+     "assigned": 3895,
      "bar": 0.22,
-     "coverage": 0.8600396737932554,
+     "coverage": 0.8584968040555433,
      "precision": 1.0
     },
     {
-     "assigned": 3870,
+     "assigned": 3863,
      "bar": 0.23,
-     "coverage": 0.8529865549922857,
+     "coverage": 0.8514436852545735,
      "precision": 1.0
     },
     {
-     "assigned": 3827,
+     "assigned": 3820,
      "bar": 0.24,
-     "coverage": 0.8435089266034824,
+     "coverage": 0.8419660568657703,
      "precision": 1.0
     },
     {
-     "assigned": 3810,
+     "assigned": 3803,
      "bar": 0.25,
-     "coverage": 0.8397619572404673,
+     "coverage": 0.8382190875027551,
      "precision": 1.0
     },
     {
-     "assigned": 3736,
+     "assigned": 3729,
      "bar": 0.26,
-     "coverage": 0.8234516200132246,
+     "coverage": 0.8219087502755125,
      "precision": 1.0
     },
     {
-     "assigned": 3667,
+     "assigned": 3660,
      "bar": 0.27,
-     "coverage": 0.8082433325986335,
+     "coverage": 0.8067004628609213,
      "precision": 1.0
     },
     {
-     "assigned": 3615,
+     "assigned": 3608,
      "bar": 0.28,
-     "coverage": 0.7967820145470575,
+     "coverage": 0.7952391448093454,
      "precision": 1.0
     },
     {
-     "assigned": 3542,
+     "assigned": 3537,
      "bar": 0.29,
-     "coverage": 0.7806920872823452,
+     "coverage": 0.7795900374696936,
      "precision": 1.0
     },
     {
-     "assigned": 3498,
+     "assigned": 3494,
      "bar": 0.3,
-     "coverage": 0.7709940489310116,
+     "coverage": 0.7701124090808904,
      "precision": 1.0
     },
     {
-     "assigned": 3424,
+     "assigned": 3420,
      "bar": 0.31,
-     "coverage": 0.754683711703769,
+     "coverage": 0.7538020718536478,
      "precision": 1.0
     },
     {
-     "assigned": 3337,
+     "assigned": 3333,
      "bar": 0.32,
-     "coverage": 0.7355080449636323,
+     "coverage": 0.7346264051135112,
      "precision": 1.0
     },
     {
-     "assigned": 3296,
+     "assigned": 3292,
      "bar": 0.33,
-     "coverage": 0.7264712364998898,
+     "coverage": 0.7255895966497685,
      "precision": 1.0
     },
     {
-     "assigned": 3199,
+     "assigned": 3196,
      "bar": 0.34,
-     "coverage": 0.7050914701344501,
+     "coverage": 0.7044302402468592,
      "precision": 1.0
     },
     {
-     "assigned": 3149,
+     "assigned": 3146,
      "bar": 0.35,
-     "coverage": 0.6940709720079348,
+     "coverage": 0.6934097421203438,
      "precision": 1.0
     },
     {
-     "assigned": 3054,
+     "assigned": 3052,
      "bar": 0.36,
-     "coverage": 0.6731320255675557,
+     "coverage": 0.6726912056424951,
      "precision": 1.0
     },
     {
-     "assigned": 2944,
+     "assigned": 2942,
      "bar": 0.37,
-     "coverage": 0.6488869296892219,
+     "coverage": 0.6484461097641614,
      "precision": 1.0
     },
     {
-     "assigned": 2856,
+     "assigned": 2854,
      "bar": 0.38,
-     "coverage": 0.6294908529865549,
+     "coverage": 0.6290500330614944,
      "precision": 1.0
     },
     {
-     "assigned": 2762,
+     "assigned": 2760,
      "bar": 0.39,
-     "coverage": 0.6087723165087062,
+     "coverage": 0.6083314965836456,
      "precision": 1.0
     },
     {
-     "assigned": 2707,
+     "assigned": 2705,
      "bar": 0.4,
-     "coverage": 0.5966497685695393,
+     "coverage": 0.5962089486444787,
      "precision": 1.0
     },
     {
-     "assigned": 2575,
+     "assigned": 2573,
      "bar": 0.41,
-     "coverage": 0.5675556535155389,
+     "coverage": 0.5671148335904783,
      "precision": 1.0
     },
     {
-     "assigned": 2458,
+     "assigned": 2456,
      "bar": 0.42,
-     "coverage": 0.541767687899493,
+     "coverage": 0.5413268679744324,
      "precision": 1.0
     },
     {
-     "assigned": 2347,
+     "assigned": 2346,
      "bar": 0.43,
-     "coverage": 0.5173021820586291,
+     "coverage": 0.5170817720960987,
      "precision": 1.0
     },
     {
-     "assigned": 2251,
+     "assigned": 2250,
      "bar": 0.44,
-     "coverage": 0.49614282565571965,
+     "coverage": 0.49592241569318934,
      "precision": 1.0
     },
     {
-     "assigned": 2113,
+     "assigned": 2112,
      "bar": 0.45,
-     "coverage": 0.46572625082653735,
+     "coverage": 0.46550584086400704,
      "precision": 1.0
     },
     {
@@ -372,16 +372,263 @@
    ],
    "used_for_b_u": true
   },
-  "provisional": true,
-  "provisional_reason": "stopped: noise 35.7% > 1%"
+  "provisional": false,
+  "provisional_reason": "confirmed"
  },
  "bu_amendment": {
   "path": "docs/tlog-ident-bu-amendment.md",
   "sha256": "579f9ba1bb751e65663e3a6f477b6d39c8503c94811050951e1338cc71aa76c8"
  },
+ "confirm": {
+  "arms": {
+   "cv_ar": {
+    "clips": 500,
+    "fired": false,
+    "limit": 0.01,
+    "pass": 0.006,
+    "passed": 3,
+    "wilson": [
+     0.002042559298,
+     0.017490563811
+    ]
+   },
+   "cv_other": {
+    "clips": 500,
+    "fired": false,
+    "limit": 0.01,
+    "pass": 0.0,
+    "passed": 0,
+    "wilson": [
+     0.0,
+     0.007624618531
+    ]
+   },
+   "freesound": {
+    "clips": 1000,
+    "fired": false,
+    "limit": 0.01,
+    "pass": 0.0,
+    "passed": 0,
+    "wilson": [
+     0.0,
+     0.003826898586
+    ]
+   },
+   "look_retention": {
+    "clips": null,
+    "fired": false,
+    "limit": 0.9,
+    "pass": 0.9962530306369848,
+    "passed": null
+   },
+   "mistakes": {
+    "clips": 52,
+    "fired": false,
+    "passed": 52
+   }
+  },
+  "catches": {
+   "cv_ar": {
+    "both": 44,
+    "length": 46,
+    "margin": 495
+   },
+   "cv_other": {
+    "both": 63,
+    "length": 63,
+    "margin": 500
+   },
+   "freesound": {
+    "both": 401,
+    "length": 474,
+    "margin": 927
+   }
+  },
+  "passing": {
+   "cv_ar": [
+    {
+     "class_label": "80:6",
+     "decode": "فَءَنتَلَهُۥتَصَددَاا",
+     "key": "common_voice_ar_24041172.mp3",
+     "length": 12,
+     "score": 1.0,
+     "span": {
+      "ayah_from": 6,
+      "ayah_to": 6,
+      "surah": 80,
+      "word_from": 1,
+      "word_to": 3
+     }
+    },
+    {
+     "class_label": "83:27",
+     "decode": "وَمِزَااجُهُمِتَسنِۦۦم",
+     "key": "common_voice_ar_24053514.mp3",
+     "length": 12,
+     "score": 0.8333333333333334,
+     "span": {
+      "ayah_from": 27,
+      "ayah_to": 27,
+      "surah": 83,
+      "word_from": 1,
+      "word_to": 3
+     }
+    },
+    {
+     "class_label": "26:214",
+     "decode": "وَءَںںذِرعَشِۦۦرَتَكَلءَكرَبِۦۦن",
+     "key": "common_voice_ar_24167513.mp3",
+     "length": 18,
+     "score": 0.9444444444444444,
+     "span": {
+      "ayah_from": 214,
+      "ayah_to": 214,
+      "surah": 26,
+      "word_from": 1,
+      "word_to": 3
+     }
+    }
+   ],
+   "cv_other": [],
+   "freesound": []
+  },
+  "per_language": {
+   "en": {
+    "clips": 100,
+    "locale": "en",
+    "pass": 0.0,
+    "passed": 0,
+    "wilson": [
+     0.0,
+     0.036994807476
+    ]
+   },
+   "fa": {
+    "clips": 100,
+    "locale": "fa",
+    "pass": 0.0,
+    "passed": 0,
+    "wilson": [
+     0.0,
+     0.036994807476
+    ]
+   },
+   "id": {
+    "clips": 100,
+    "locale": "id",
+    "pass": 0.0,
+    "passed": 0,
+    "wilson": [
+     0.0,
+     0.036994807476
+    ]
+   },
+   "tr": {
+    "clips": 100,
+    "locale": "tr",
+    "pass": 0.0,
+    "passed": 0,
+    "wilson": [
+     0.0,
+     0.036994807476
+    ]
+   },
+   "ur": {
+    "clips": 100,
+    "locale": "ur",
+    "pass": 0.0,
+    "passed": 0,
+    "wilson": [
+     0.0,
+     0.036994807476
+    ]
+   }
+  },
+  "provenance": {
+   "decodes": {
+    "cv_ar": {
+     "commit": "27c7598e897a37a1a3f6adcefc4a2d6a21159909",
+     "path": "tools/tadabur/tlog/ident/decodes/confirm_cv_ar.base.json",
+     "sha256": "56787befb7789e46f76489120e7839b4d9f7cd1daf901933eca9cab4d961f590"
+    },
+    "cv_other": {
+     "commit": "27c7598e897a37a1a3f6adcefc4a2d6a21159909",
+     "path": "tools/tadabur/tlog/ident/decodes/confirm_cv_other.base.json",
+     "sha256": "10918eb82baa7707ec2f8f29362dbb7310c0c0f869529a01b293ab1c69c87a0d"
+    },
+    "freesound": {
+     "commit": "27c7598e897a37a1a3f6adcefc4a2d6a21159909",
+     "path": "tools/tadabur/tlog/ident/decodes/confirm_freesound.base.json",
+     "sha256": "7136fc075e3db5bf21ff8843291473bbda51f4bbf101af85465a140698aa50a9"
+    }
+   },
+   "doc": {
+    "commit": "1c3ddd94edfcc2daae5cf4ef006b9c68ff5e3542",
+    "path": "docs/tlog-ident-floor-preregistration.md",
+    "sha256": "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a"
+   },
+   "manifests": {
+    "common_voice": {
+     "commit": "5a85d48f16fa3116654bd6a6f2ab0a09773e3083",
+     "path": "tools/tadabur/tlog/ident/confirm/common_voice.jsonl",
+     "sha256": "279b238a163021d21523ce93682bbb57b7958ffdc6a5901eba4eedea507b0b23"
+    },
+    "freesound": {
+     "commit": "cd46731dba5e98d84e00b6521b67884c97fffb76",
+     "path": "tools/tadabur/tlog/ident/confirm/freesound.json",
+     "sha256": "0547fe19c14e1f70edc5953bc8d3dc96ec8a7391f41005c5fa0452f04b09fd91"
+    }
+   },
+   "pull_request": null,
+   "pull_request_ref": null,
+   "scoring": {
+    "commit": "272783dd2d8d574148ade579b8dc6f5935800a88"
+   }
+  },
+  "salt": "tlog-s5b-floor-confirm-v1",
+  "status": "confirmed",
+  "stores": {
+   "cv_ar": {
+    "items": 500,
+    "mode": "whole-spans",
+    "path": "tools/tadabur/tlog/ident/decodes/confirm_cv_ar.base.json",
+    "sha256": "56787befb7789e46f76489120e7839b4d9f7cd1daf901933eca9cab4d961f590"
+   },
+   "cv_other": {
+    "items": 500,
+    "mode": "whole-spans",
+    "path": "tools/tadabur/tlog/ident/decodes/confirm_cv_other.base.json",
+    "sha256": "10918eb82baa7707ec2f8f29362dbb7310c0c0f869529a01b293ab1c69c87a0d"
+   },
+   "freesound": {
+    "items": 1000,
+    "mode": "stream_b0",
+    "path": "tools/tadabur/tlog/ident/decodes/confirm_freesound.base.json",
+    "sha256": "7136fc075e3db5bf21ff8843291473bbda51f4bbf101af85465a140698aa50a9"
+   }
+  }
+ },
  "decodes": {
   "base_model": "obadx/muaalem-model-v3_2",
   "base_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+  "confirm_cv_ar": {
+   "items": 500,
+   "mode": "whole-spans",
+   "path": "tools/tadabur/tlog/ident/decodes/confirm_cv_ar.base.json",
+   "sha256": "56787befb7789e46f76489120e7839b4d9f7cd1daf901933eca9cab4d961f590"
+  },
+  "confirm_cv_other": {
+   "items": 500,
+   "mode": "whole-spans",
+   "path": "tools/tadabur/tlog/ident/decodes/confirm_cv_other.base.json",
+   "sha256": "10918eb82baa7707ec2f8f29362dbb7310c0c0f869529a01b293ab1c69c87a0d"
+  },
+  "confirm_freesound": {
+   "items": 1000,
+   "mode": "stream_b0",
+   "path": "tools/tadabur/tlog/ident/decodes/confirm_freesound.base.json",
+   "sha256": "7136fc075e3db5bf21ff8843291473bbda51f4bbf101af85465a140698aa50a9"
+  },
   "look": {
    "clips": 4537,
    "path": "tools/tadabur/nonpro_eval/tarteel_v1/decodes.base.jsonl.gz",
@@ -414,7 +661,20 @@
   "fix": "runs are split at ayah boundaries and the ayah with the most aligned words is credited",
   "rules_changed": false
  },
- "floor_status": "stopped: noise 35.7% > 1%",
+ "floor_preregistration": {
+  "parents": {
+   "bu": "579f9ba1bb751e65663e3a6f477b6d39c8503c94811050951e1338cc71aa76c8",
+   "holdout": "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086",
+   "ident": "a383fcfdbd375c9e6c052d8032788a8eda69bd2d9fbd12fcd3b921b1fbb6a3ab"
+  },
+  "path": "docs/tlog-ident-floor-preregistration.md",
+  "sha256": "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a"
+ },
+ "floor_rule": {
+  "path": "docs/tlog-ident-floor-preregistration.md",
+  "sha256": "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a"
+ },
+ "floor_status": "confirmed",
  "floors": {
   "0-20": 0.654242,
   "21-40": 0.5,
@@ -433,7 +693,7 @@
    "q": 0.99
   }
  },
- "issue": 190,
+ "issue": 204,
  "look": {
   "bins": {
    "0-20": 1042,
@@ -443,17 +703,18 @@
    "81-160": 330
   },
   "clips": 4537,
-  "relabel_rate_at_b": 0.00044081992506061276,
-  "retention": 0.9997795900374697,
+  "relabel_rate_at_b": 0.00022040996253030638,
+  "retention": 0.9962530306369848,
   "tail": {
    "clips": 1806,
-   "relabel_rate": 0.0005537098560354374,
-   "retention": 1.0
+   "relabel_rate": 0.0,
+   "retention": 0.9950166112956811
   }
  },
  "margin_definition": {
   "path": "docs/tlog-ident-margin-amendment.md",
-  "sha256": "eded44e95dc58a3d5ccb86659f296eb50b8b5e0cf236a21b0e5acb5258e3aba2"
+  "sha256": "eded44e95dc58a3d5ccb86659f296eb50b8b5e0cf236a21b0e5acb5258e3aba2",
+  "status": "final"
  },
  "margin_fix": {
   "affected": "Margins only: b_u, its precision table and the assigned counts. Floors and b are unchanged, because they read the decoy score and Δ.",
@@ -463,6 +724,7 @@
  },
  "mistake": {
   "clips": 52,
+  "passed": 52,
   "relabelled_at_b": 0
  },
  "noise": {
@@ -486,10 +748,25 @@
   "floor_passed": 159,
   "pass": 0.35730337078651686,
   "recordings": 445,
+  "rule_pass": {
+   "clips": 445,
+   "pass": 0.0,
+   "passed": 0
+  },
   "samples_sha256": {
    "mismatched": 0,
    "recordings": 445
   }
+ },
+ "oracle": {
+  "artifact": {
+   "commit": "5f08ba3b652c9841d01a1355bd6844f1eea4d79a",
+   "path": "tools/tadabur/tlog/ident/oracle_margin.json",
+   "sha256": "3e0cda5a70421f7bb3bd391eaf4d3950a61a23798ffb0378434793ba262adafc"
+  },
+  "assignments_changed_at_b_u": 0,
+  "b_u_oracle": 0.01,
+  "clips_m_changed": 0
  },
  "parameters": {
   "floor_bins": [
@@ -627,7 +904,7 @@
   "look_retention": {
    "fired": false,
    "limit": 0.9,
-   "value": 0.9997795900374697
+   "value": 0.9962530306369848
   },
   "noise_pass": {
    "fired": true,
@@ -637,8 +914,8 @@
  },
  "throughput": {
   "clips": 4537,
-  "ms_per_clip": 8.705,
-  "seconds": 39.493
+  "ms_per_clip": 10.086,
+  "seconds": 45.76
  },
  "unlabelled_unclean": {
   "source": "tadabur.tlog_overlap.iter_pool_rows",

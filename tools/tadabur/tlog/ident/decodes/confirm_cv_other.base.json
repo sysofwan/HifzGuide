@@ -1,0 +1,2035 @@
+{
+ "fingerprints": {
+  "whole-spans": {
+   "autocast": true,
+   "batch_size": 1,
+   "device_type": "cuda",
+   "mode": "whole-spans",
+   "model": "obadx/muaalem-model-v3_2@01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+   "policy": "fp32-features-v1",
+   "weights_dtype": "bf16"
+  }
+ },
+ "identity": {
+  "hub_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+  "model_ref": "obadx/muaalem-model-v3_2"
+ },
+ "items": {
+  "common_voice_en_1112328.mp3": {
+   "audio_sha256": "43dfae1a60405460ff04ba7a72119322a739f81eb2c2e0e6bd9cabd586d20bbb",
+   "spans": "ذبَعلبِۦۦوَسبُومَوتنحَكس"
+  },
+  "common_voice_en_112059.mp3": {
+   "audio_sha256": "4c01cb1c79b923aa32d996178a053b38229dd48c43eb6bea1605467c53a683ac",
+   "spans": "يشِكِدَحَوسدَون"
+  },
+  "common_voice_en_139888.mp3": {
+   "audio_sha256": "6a3a9ef01452c0547fbf0d5fe38a679700287904966581d371edbe70adf84457",
+   "spans": "مِبِدَنَوضوَزكَنَبِهبَثمَاان"
+  },
+  "common_voice_en_144110.mp3": {
+   "audio_sha256": "81828d5fb72bf61f006d7dd7667846057f3e1a965bb2cad3da4e2e29ea7db197",
+   "spans": "ءَبوسِتفِرِيكسَتدت"
+  },
+  "common_voice_en_1479883.mp3": {
+   "audio_sha256": "c136d199c69c0230f02ff20446c68376d28e6c2b48cbe2c150cb7b288db0b758",
+   "spans": "يُكَنَتلُۥۥزوَشنَفهَاادڇ"
+  },
+  "common_voice_en_149562.mp3": {
+   "audio_sha256": "9471ad7a14188933796d39bc08863de498d24c29f5dda4749a012c95682d8b53",
+   "spans": "كَنَكَدوُرُۥت"
+  },
+  "common_voice_en_15735246.mp3": {
+   "audio_sha256": "5ba2d177216ca6cce2ae167e2e9568b3546620f6505332caf84275ef6959291f",
+   "spans": "دكَكِوسكَدِنمَس"
+  },
+  "common_voice_en_17255365.mp3": {
+   "audio_sha256": "27f01e2a06e57a28f1873052de55883fc5a0c4efe95a7189bf247e75ce55e113",
+   "spans": "ءَزيسَااسَُشَلعِۦك"
+  },
+  "common_voice_en_17258580.mp3": {
+   "audio_sha256": "b11a3a30e0357269c8a33cb3ef5fef94e8128044e79db1a9353b26844fe50eb5",
+   "spans": "سَمَنِزوَنذمُكَكِلفِشمفَعِتڇلِشَسذُيجلِنَسستَِنبُ"
+  },
+  "common_voice_en_17388982.mp3": {
+   "audio_sha256": "83bf35b4c7957f97330c37b7e2b1274b06014f50a8c0da134d27b2fd4b9f0772",
+   "spans": "مَيكرَنمَدَرهَزتَكوَندَيبِتِس"
+  },
+  "common_voice_en_17474205.mp3": {
+   "audio_sha256": "5ea8a72e214784a0c968b41df311054e1e9a87130c76c61b678b9e73834d233c",
+   "spans": "كَمموِنِتتَنمَجِۦكِيَسسوِدَتَدَكِنمِلنَوَ"
+  },
+  "common_voice_en_17739476.mp3": {
+   "audio_sha256": "007b536f011c35d38eea44c3392568f55d5287b281a4db6d132e91b3f608d64b",
+   "spans": "مِليزبيسكَوءسَبكَتنسفوَنسُكَتنكَضكشِي"
+  },
+  "common_voice_en_17910803.mp3": {
+   "audio_sha256": "f0c223f4b204760cdb7c5fde79613efbe593284de9ea50dce08116f09e272e93",
+   "spans": "ءُفكُۥاسَدڇو"
+  },
+  "common_voice_en_17958249.mp3": {
+   "audio_sha256": "a52e381be0031ae3118e1d3e9bc934427955046c9a0f1fc40dd122ae11eda71e",
+   "spans": "شِفتَجِبَيسبِسُضءودسمَعكِت"
+  },
+  "common_voice_en_18064538.mp3": {
+   "audio_sha256": "46a4c9c540f932b76076a98a3ea5b764f963fcf173ec0afa3831368349279941",
+   "spans": "لَتمِجِزيڇتبَجَمِن"
+  },
+  "common_voice_en_18188026.mp3": {
+   "audio_sha256": "710a7a6947e08ee5caaf04c4b5875eb8ac257f0b33cd40ae5e093942702be604",
+   "spans": "تَمِزِكوَتَكِكِءوَتسَدِدمُلَكَجَكِتِبَقَيفَعمِتذَءكِسشَسككَشسَكشَن"
+  },
+  "common_voice_en_18241313.mp3": {
+   "audio_sha256": "45aad0737bcffef0f514388fb26028a1511b76a296dcf239f40daf1a9fef9f56",
+   "spans": "وَشششِتَهِم"
+  },
+  "common_voice_en_18342658.mp3": {
+   "audio_sha256": "14e33d2d55a141cd2ddbaa3d52f6d0404df79527f930e077468454e00f11410b",
+   "spans": "ذِيكسَسفهِتءِفَكرِتدنِلِءُۥظوُتَ"
+  },
+  "common_voice_en_18404226.mp3": {
+   "audio_sha256": "7e06a0b2156b4386fcd73099bc47b149efd2b5630804f0f142f266a940af93b8",
+   "spans": "ثنِمرَدِيِسنَفَدفِرِيَفتِنِنبِن"
+  },
+  "common_voice_en_18489092.mp3": {
+   "audio_sha256": "51593c5bee8a3f5e06d517f2f32871f66517214fbb342a1354c93fa6549f615b",
+   "spans": "ءَهفتُلمَكَلستَدتِءُتُبِءِمِهحَيَر"
+  },
+  "common_voice_en_18506055.mp3": {
+   "audio_sha256": "4ad2c160c53bc8a2a8c6834d24b7aa017ba4ce7374abacde882811e5224f1bb1",
+   "spans": "كَلَتِنَدِجُيَلَا"
+  },
+  "common_voice_en_18526005.mp3": {
+   "audio_sha256": "00e37bc27d5d87280b17b76d4260dbbf9798fca60b3f7c8f8b6179ced0bb4b04",
+   "spans": "حَكشِدڇسَو"
+  },
+  "common_voice_en_18531656.mp3": {
+   "audio_sha256": "cac795cc94966e364c5b8b32ed7207e24c16771d298593d6da63958a430f796a",
+   "spans": "مِشِملَنهُبِكَمءِدسَسلستءُحَسكَبنِس"
+  },
+  "common_voice_en_18564242.mp3": {
+   "audio_sha256": "a6203d2da6d5b169b7ad91d36c941fc3999f9968e88983a50158036bf6da101c",
+   "spans": "دڇجِمزجَستذِيكَعمكَبَكس"
+  },
+  "common_voice_en_18707448.mp3": {
+   "audio_sha256": "e6cdd6a6c04ee095c0f98a53f63475ef52a51fef18912f8a2e49d432702a1e64",
+   "spans": "ءَتُِزدِۦسدُوَلشءَلبَشَاتوَسكتدَون"
+  },
+  "common_voice_en_18780215.mp3": {
+   "audio_sha256": "acb250defe6a1639d11b5f35e15b1f38b8063af7084012e5ea311f2552f3e0af",
+   "spans": "ءِزركُرڇدَكَرنَسءِستِِيسءستَكسس"
+  },
+  "common_voice_en_18869802.mp3": {
+   "audio_sha256": "e79751d649d6a908af7cbbe62d53b7694eef52412edc5f33ab4c9d9c0b1e2143",
+   "spans": "هِبڇستڇصَنءبَنُعسمَنِفَكتعه"
+  },
+  "common_voice_en_19164742.mp3": {
+   "audio_sha256": "0afef10144733b94012971283f2a73b331ead0eed5ec7a985ead42056776248c",
+   "spans": "تِتمزبِتكنَمجِفنَضِمكَستمَسلِشنستمَتفَيبَكت"
+  },
+  "common_voice_en_19467667.mp3": {
+   "audio_sha256": "08f0c0f736476a2ed0b1fe7eed853a7dade8f6003351f5709a77cbf3462e6d45",
+   "spans": "تعَِوذِزءَرِشنسذڇشَكُسَفنَودِمجكَشتِس"
+  },
+  "common_voice_en_19627437.mp3": {
+   "audio_sha256": "b0491bcec9ddc7bf7b4c9015bc2465cec1d3a5b3e6a7368fe6ff83c3b537299a",
+   "spans": "كِذِممَعَدَاالَتُفَيلِںءَليكُبمَلِهكُتِم"
+  },
+  "common_voice_en_19717966.mp3": {
+   "audio_sha256": "5ea37cdb27530e7a59ab0804f096aa229140058fe4c9a1ff922d9e145dc66649",
+   "spans": "ثِءَنِكَفرِجِكمِنِدِءفحَوءِءَسَلَكِدِءِنتَون"
+  },
+  "common_voice_en_19720226.mp3": {
+   "audio_sha256": "039b9da13340a82d932709397d48cda46dbcc88e3ccb553262137b873181206c",
+   "spans": "ءهَشِستِتَذِسفِنتَكنَفِۦۦتتِفَلَفمءَكشوءَسكَنَمكُستَتِسِنءِشتءِجِي"
+  },
+  "common_voice_en_19856660.mp3": {
+   "audio_sha256": "b057fe70cf1b01ee4086e31f68debe3cbfa14b55e28d159693ff5c470266d0df",
+   "spans": "ءِنَسشسكِيِزبَُثءَفَءِنبِلَتجَجَمِنجسكفُمَس"
+  },
+  "common_voice_en_19958388.mp3": {
+   "audio_sha256": "655710315604fbfcccbd19620f061bc01673fd604d8bcb7117f4de467c32beff",
+   "spans": "جَنءَسَوءَدمَنِشِسذِنُمعسءِجِكشَنسهُوَبَدِنكِشكِيَنتِءِفِيفءَفءِزلَم"
+  },
+  "common_voice_en_19999945.mp3": {
+   "audio_sha256": "8293f714c1ac273b5c74613f3b87b2e7e25376eac678b54b6f9126d86bfcd548",
+   "spans": "حَافبِزنسرِبِيو"
+  },
+  "common_voice_en_201400.mp3": {
+   "audio_sha256": "2a733944e34da43310550c26693e3a7fa53bab78cd1668ccd9b35636ea98bc9b",
+   "spans": "ذَنهِتَانتُدَبُي"
+  },
+  "common_voice_en_20183186.mp3": {
+   "audio_sha256": "433753b755addb44ada93d12c1a346505d3e26d0a4b44c07232b063e0af02321",
+   "spans": "كَسكُوَزءبِدِشءِفُمِترِكِبُسِستَمبِستءَنتحَظتَكستكُدكَوس"
+  },
+  "common_voice_en_20301157.mp3": {
+   "audio_sha256": "25d525265b4477a904217cf1c2517f52380f9b91026e6cfff314e492f6fc2bb4",
+   "spans": "كُنوَهَدڇدَرسَعَ"
+  },
+  "common_voice_en_20305413.mp3": {
+   "audio_sha256": "a82a2996a58185cb74cf601abe559d1ba180cc37a39499a580ea6027f04567bc",
+   "spans": "يورفَيدسَمثَِشَدڇۦ"
+  },
+  "common_voice_en_20322776.mp3": {
+   "audio_sha256": "328093254d489a4f07b2b6b629bf108b1872d52a14a6e33123400e24cc2d5834",
+   "spans": "ذمَبستسقَيكَوتءَبءَاامسءَفسَوثءَفكَ"
+  },
+  "common_voice_en_20333043.mp3": {
+   "audio_sha256": "a6282f116001ba3ca9006a6c43d751ef44b6fc985f2ad83993e92301f854bed5",
+   "spans": "ذكشَفسِكتكَستُكتعنُوكَترِس"
+  },
+  "common_voice_en_20835195.mp3": {
+   "audio_sha256": "660ffad96b7c5987e91a67523af5264e021762cd7fd9c85850d9ebb70a145d93",
+   "spans": "فُذكَكسفِجدڇدڇسَنِںرِشتنَبِت"
+  },
+  "common_voice_en_20876847.mp3": {
+   "audio_sha256": "665605e809c77a7771f93aea370cc3477a30f48fe4ed29dee27355c75467e771",
+   "spans": "سِسنَرِلَكلِءترِيذَم"
+  },
+  "common_voice_en_20984415.mp3": {
+   "audio_sha256": "e35bd3fd001f5515b31e2ea18c50417f0ebb16000432a1e8ccd18f8533fccf2e",
+   "spans": "سَبڇسلَفَنِںءِسءِنكِۦسِںضِۦبِۦۦںلِںتوِثسَستِنبُتڇفَوَمَنءَنهُلَففَريَو"
+  },
+  "common_voice_en_21130287.mp3": {
+   "audio_sha256": "1f9f26e5220ba6612f4aa28262700f0232ef172a8d733804f296549f011de467",
+   "spans": "فَمذِذودسسَشڇسسَثتشكتِتَن"
+  },
+  "common_voice_en_216023.mp3": {
+   "audio_sha256": "fd2ad6d68c93c61bc964980ee8f5a7b06f59035be8de46d589e3e65c8cb94cf3",
+   "spans": "مَںكلِنِمءَںكَرِمءَفَش"
+  },
+  "common_voice_en_21775847.mp3": {
+   "audio_sha256": "9a1e867716888b1e9b77f0864913a5991e11d1b60c5b42edc4050d604a06254e",
+   "spans": "هِءَسءكرِتِدءسكعَمحَف"
+  },
+  "common_voice_en_21821172.mp3": {
+   "audio_sha256": "9da19fa1ebcbebe4526bbb0337012f1fbdc0b1aca5593812c46bfd15a3a53705",
+   "spans": "تسمَوستِكِسوَسنِءِسفَكوُد"
+  },
+  "common_voice_en_22092935.mp3": {
+   "audio_sha256": "66e435c58b82f8e4b4594938a290ae3a0494faa683cf23acc16a77328facc2ca",
+   "spans": "حَكَمكَمنستَنِںهَوَستَتشتِذَءِيسَكشِنِتِريءَملَفُفَيف"
+  },
+  "common_voice_en_22539148.mp3": {
+   "audio_sha256": "11a103df898949b870e0a51e3e4bea527d3a6d14cf1b9df76dbc0af2f2402953",
+   "spans": "فُيَسحَوَبَانَثِںحَكت"
+  },
+  "common_voice_en_22716652.mp3": {
+   "audio_sha256": "e8a775306df7aa0c4f2b5ff9adde71a5e6c5e7530c2626dead49694572e5b92d",
+   "spans": "حَوَذِوزفَشضِكِست"
+  },
+  "common_voice_en_22756988.mp3": {
+   "audio_sha256": "23c82bcc2fa3d400e9ba7c3029957d87e7c11bd083742b012b65e8e0c26a2b8b",
+   "spans": "ذِءُرجِنذنِۦمءِكَببِتكك"
+  },
+  "common_voice_en_22816586.mp3": {
+   "audio_sha256": "7614b0569be36cefe0c5166aae3eb0f17ce62ac4bf3ab8477bcc44f50a188ee6",
+   "spans": "كُتَوَنَتركُردنستُلِيَوَنبِيسكُجَك"
+  },
+  "common_voice_en_23752000.mp3": {
+   "audio_sha256": "33146191170f849be1b073609c615546b6d519168c940f21191a1474c9219de1",
+   "spans": "ذِسكَمبِدَنِسَرُفَشنسبَتسَتنَومَسرَمَينءِنءنِدڇسَين"
+  },
+  "common_voice_en_23759168.mp3": {
+   "audio_sha256": "078d9983917a5aee7399be43f9bc325baf258554dac426046a582d946d09b626",
+   "spans": "ءِتءِسحَغدءِنوَنءَذكُتسءذسسِتِۦۦ"
+  },
+  "common_voice_en_23891485.mp3": {
+   "audio_sha256": "06e597041331c04281f4f85f0b00e60e9829e217550f2f7f789a863d2de0495a",
+   "spans": "ءِسمَينبَيسوَسضُبرَفنِكءَكُت"
+  },
+  "common_voice_en_23915304.mp3": {
+   "audio_sha256": "26b6bcf5b026323ef8701cda739e5a9aa9d57da8815e04e1e729bcac84116f3b",
+   "spans": "تُوَنوزفِتدبَفَمنفوتسسوِۦسكِتكَه"
+  },
+  "common_voice_en_24551015.mp3": {
+   "audio_sha256": "0d70789d8a63aced1da4b3747ce735da67a55f2a582a4458ba7ce39a77cdf882",
+   "spans": "بُثحَشلِںسءَنجُفَنَيصحَفسرِدڇدكَستِريمَجنُسكيُتسوِشبِكَمسمُۥۥذوِثيج"
+  },
+  "common_voice_en_24983443.mp3": {
+   "audio_sha256": "702107812d45efcddd7332bb203c92c5c4bb4e5ab6758ed33da2d06dc31804fe",
+   "spans": "جَكجَنَسَكرِتَتءتءَمَعكَنشجَونءتَتتبنِںسكَفت"
+  },
+  "common_voice_en_25291526.mp3": {
+   "audio_sha256": "4e87f155f50711b74b9c7ad81efffc98982e957bb80b5afce538dc705e04c37a",
+   "spans": "شِبِكِمكَمفِكشمَرءَدِهَتِسَنس"
+  },
+  "common_voice_en_25355860.mp3": {
+   "audio_sha256": "377904bf920655576695a3b72a61452f1eb6bc6e77becbb8722d058727d04c23",
+   "spans": "ءَزكَلمَشنَشلجُستَنءِسبَكِزَنِبَوَنمَشُكَصمَم"
+  },
+  "common_voice_en_25427349.mp3": {
+   "audio_sha256": "9f3599890f7c956a7a769bdbc1130a393cd233844460f6aaff63a4218cae2738",
+   "spans": "بَثكَمزَدِكَنبِيشِۦۦفتءَفتَءِۦۦذرفوِشكَيمَيكتِنيس"
+  },
+  "common_voice_en_26974075.mp3": {
+   "audio_sha256": "651f38c1c19c0acd7af4257563ec437a37acaa7bc87a678aa6b8ff56120b9e15",
+   "spans": "ذِسرِستشَنوزِفَتفلِيكنُلَفكفَسِفَكُوِدسسءَبسِۦءِنتعَ"
+  },
+  "common_voice_en_27319039.mp3": {
+   "audio_sha256": "231edb64bcc000486923d2d85ee68a632b8c48f294eebbc3ef6c778147d7b0f4",
+   "spans": "دِۦسِنكلُدتتُۥءِترِمسِںبڇلسنيدمبَبِدِكَدَترِيشنَلرَنبَيمَنجَءَالَنكَمبَل"
+  },
+  "common_voice_en_27587015.mp3": {
+   "audio_sha256": "8b31021411e3b9bd8a70fbac0e30ad59cd24f489efc35e0a5457c0541f47b882",
+   "spans": "سكُلفِشستِۦتدسَتورمِنكَوتءتَضكَمفلكتوزرزَوفت"
+  },
+  "common_voice_en_27612512.mp3": {
+   "audio_sha256": "bf20604f244dcca848e31029b56b1e7432e1323fdfd16ce639b3b9062255134f",
+   "spans": "ستِتمَشَهِسوَيفكِيسِۦۦهَفتُشِجَنسَنشَاانءَدَتءَملي"
+  },
+  "common_voice_en_27784449.mp3": {
+   "audio_sha256": "ea809cc56f0380bc73a7bc6469cb0349accf80747c2ec7ef51d597ba4a7b485b",
+   "spans": "قَتِسبَسَرنكَرِجتتُبرِنلَںدَكتكفُررِكَسدفِۦض"
+  },
+  "common_voice_en_28983067.mp3": {
+   "audio_sha256": "7315f615f557252e6a27bd6974e65ca834823d7179c22de47009dd2a3a316521",
+   "spans": "لُتءَشكَموَسسَكسِدڇدبَكِسسَندڇسَكتبَعَن"
+  },
+  "common_voice_en_30307589.mp3": {
+   "audio_sha256": "34fe64183eda031248d285245bd993413a654730b6a4fadba2329c3d5842a998",
+   "spans": "ءَِكحَتَفتڇتَمبُءِسمَكءَعكِتَكسُدِسَيس"
+  },
+  "common_voice_en_30339262.mp3": {
+   "audio_sha256": "0264cbd448ad784290dded6e23e007e61fc2c05dbe4b452d8ee5a0c49fa4c332",
+   "spans": "هِبِكَترَفكِريَدِكُزكڇدِنسَتدَيرفِي"
+  },
+  "common_voice_en_30696175.mp3": {
+   "audio_sha256": "243f2067e0afa03dcaee821fe5c4cc15d610ae7f73e7d8add8282a860e9698f7",
+   "spans": "ءَنَبرفكجِشِستنِتءِيوكََءفتفلِۦت"
+  },
+  "common_voice_en_31769.mp3": {
+   "audio_sha256": "517f8ed54765537ca96d6989527ccb53a81e8d288436a72410b8b95823460ce0",
+   "spans": "كُوزدستِجڇرهُسفِسفومَءَعصلدڇشِكََيدبُي"
+  },
+  "common_voice_en_32640165.mp3": {
+   "audio_sha256": "9233e7d38a6c84e92415a8201f9bfe4bd2f5640830f83d48831220d927df1e7f",
+   "spans": "شِۦيزَزكُدڇءَنَسشُۥۥءَزءَنِكلءبءَنِتَيم"
+  },
+  "common_voice_en_33377791.mp3": {
+   "audio_sha256": "966da960e8b58b1e4eb52a00092f92a9f8266e014dcd54fd15f35b856fb58f55",
+   "spans": "ءِدوَعتسَرءِندَبلَكخَقوَاارءَزَنءُفِسَر"
+  },
+  "common_voice_en_34153794.mp3": {
+   "audio_sha256": "14cb1fc0ea88f78e095d5159d0a26a98b3419a28db61de8f3b99e323304d634d",
+   "spans": "تَسِتوَسوَمبَيلَيبكَدِدَيففَستِنسَيلَ"
+  },
+  "common_voice_en_37935604.mp3": {
+   "audio_sha256": "b04352c35b449f95889c9d194cdbb0302fa5c448e538707d6bd2f869936072c0",
+   "spans": "دِتَنحَزوَنكَتُلِكشَاش"
+  },
+  "common_voice_en_39333199.mp3": {
+   "audio_sha256": "014d1e71b88c974dc4701d6272ec438353cf90398245411d138f05c050b85470",
+   "spans": "ثَدَيظَاكِسبِتِنتڇۥءَننِتسِكس"
+  },
+  "common_voice_en_39748270.mp3": {
+   "audio_sha256": "3e0c2dad2572d048069cfe20e72d24a8791e6101253b66e884390113307cf24d",
+   "spans": "لَاجسرمَنِيكَتِسءَفنكَرسكَنتوسِبُبلِسفُوس"
+  },
+  "common_voice_en_421576.mp3": {
+   "audio_sha256": "4489208f9345c3c3e3c69f19ca4c978591173e4e3e99fdecf572ff82dd773ceb",
+   "spans": "لَسدُدِسءكرنَلَجِكَلءُردر"
+  },
+  "common_voice_en_505098.mp3": {
+   "audio_sha256": "95cd7a9c913b6be199cf8f62b00d3698509a1da88db9e4d5b0948b5711309d23",
+   "spans": "سمَكِنِزكهِبڇدڇت"
+  },
+  "common_voice_en_518540.mp3": {
+   "audio_sha256": "48ee43dff75363b5d6e0b6ad0f4308cd02ccc445b7a0437185d7bb6c8f2fb381",
+   "spans": "وِنِترَن"
+  },
+  "common_voice_en_546266.mp3": {
+   "audio_sha256": "a208e3b17185858ff5dbb3feb7633da7166106b2dc6be6183b9f6cf62775a533",
+   "spans": "جَسبَلُكِنَتَم"
+  },
+  "common_voice_en_554175.mp3": {
+   "audio_sha256": "a5ec97797a481e022884a90bed6e1f08caea05e182cde60c0b3f7ea3c8e4f831",
+   "spans": "ونسَمسَتتمَنوَنسكَنسرَندڇدَرَعستمِۦي"
+  },
+  "common_voice_en_573447.mp3": {
+   "audio_sha256": "f70503536c9d7bd02f7a3485ca60976c0304229e79022f0edd308697b9bd497f",
+   "spans": "هِكَتحَرتَنِبَدِ"
+  },
+  "common_voice_en_598841.mp3": {
+   "audio_sha256": "a87a7661a2151241a55cd248cb91ea4663f6a0ad32e9f900a0a7253f14adb387",
+   "spans": "تِتِۦسِملَسبِد"
+  },
+  "common_voice_en_608111.mp3": {
+   "audio_sha256": "95109939625dd67569604298da84f98a84a076f82be5524c962a5f791434df78",
+   "spans": "ءَلَتءَزوثفِشءنكيت"
+  },
+  "common_voice_en_620096.mp3": {
+   "audio_sha256": "342e56944cfcfc9f157a46abae1d1751071f19abc2b927cee69a5c454ff79d6f",
+   "spans": "ثَفِوَونِظِتڇسَتتسَذَِكعۦزتءَفكسلِتِذَءِكست"
+  },
+  "common_voice_en_626735.mp3": {
+   "audio_sha256": "4a6024919ee309ea4a3bed69f78d3b8b411cb9ef357f4e1038b7e97a25c2e29c",
+   "spans": "قُرَانَمءِتِشربِۦذَاا"
+  },
+  "common_voice_en_641645.mp3": {
+   "audio_sha256": "6e96f7bdd6cd4217d3c8a332e39da7695c43c8923a1c05b46c90a09908753cd8",
+   "spans": "ءِتتَيكسَلَتفهَبتفِنشذِۦۦز"
+  },
+  "common_voice_en_65488.mp3": {
+   "audio_sha256": "fe761d0cd0d1888f8f3070343ce60409181cc657367f4d5f8f3c7cc7dcaed013",
+   "spans": "وَيكِكعتتفَاستَيميَءمُسشَتوِن"
+  },
+  "common_voice_en_658761.mp3": {
+   "audio_sha256": "04406086121569476bb997762d3ff945a3d4fdc85ddc7b879374be6ccc07f485",
+   "spans": "شِيزَوبِرِكَدفَلِتوَفِوَنءِبنسشِج"
+  },
+  "common_voice_en_662746.mp3": {
+   "audio_sha256": "215faad7010769173741e21c381cd43375b280ec5c67d36e9074f8ef014eb02c",
+   "spans": "ءِلَرَدِسِۦۦنمَنِكِكُكَمںكَوءددَزمَِدَزوَز"
+  },
+  "common_voice_en_666691.mp3": {
+   "audio_sha256": "8a1a9a8a3dd14fa58107b2a4fa14d27e8617c227540020c5d3f853ff546a8bc5",
+   "spans": "ذِلَكتِشَندَتكَزت"
+  },
+  "common_voice_en_686865.mp3": {
+   "audio_sha256": "7c479056daa9d41148b7c62d3d6e1d0ab90baab985ab2c195d7697207169edc7",
+   "spans": "ءَفَدنِۦفبَيمِكِكءَدتفِكِشفَمكَاامءِمِجِستِكبَءِفَرِتحَدهَكَمعَسكَسشَنبَ"
+  },
+  "common_voice_en_70442.mp3": {
+   "audio_sha256": "97e96f9309d897542aa8f2d5901e345f43916b6656469f85aa9f8154fdc11850",
+   "spans": "ذَسوَنهُبِسَيفنَلممِنبِفُو"
+  },
+  "common_voice_en_72614.mp3": {
+   "audio_sha256": "9d248d2b119f89ef6445f4aa2d5ca60a7cf63d7322a168fea3ab24f9e4356ddc",
+   "spans": "ذهُءَفِسفسشَكبَيتَفنِهسَلنس"
+  },
+  "common_voice_en_75905.mp3": {
+   "audio_sha256": "9d8ce90bc24a5c54ecba8ae4699ca28ce4117fa998339d88d54f5c1417e7666f",
+   "spans": "بُكءَرَزَربِيشَنءَتسَسَتءِنفرَيءَيلَند"
+  },
+  "common_voice_en_916.mp3": {
+   "audio_sha256": "faff4bd90c9764d763a01c3f615756e678716158b3319d36ae261a132e906965",
+   "spans": "ءَثِكڇسبَتبڇتحتربَنَوكسِيهَدَمَبِمِستكتت"
+  },
+  "common_voice_en_9347124.mp3": {
+   "audio_sha256": "a0935240925f33f7dc2032128cf3207112b1946718f54b946dbdf4a509c3b9b7",
+   "spans": "وَتدمَتبِدَم"
+  },
+  "common_voice_en_97609.mp3": {
+   "audio_sha256": "1c9a99188b7d69fce94c1989069ec7f9505717ef0cb2096fe6a55b07ac97d3f1",
+   "spans": "فَتِمَدِكۥلسَتءبُتِںهرءَي"
+  },
+  "common_voice_fa_18441489.mp3": {
+   "audio_sha256": "5d779ec567fc71870bb44392aec7d7cb8dafc624d4ae7fb6ef10c44fa113d526",
+   "spans": "مَنكتِتُربَرمِترَه"
+  },
+  "common_voice_fa_18558851.mp3": {
+   "audio_sha256": "4b57f7dc9dc77362ac1cdaf593ba82945770a1320414b46c9c5ef0e57e3495ff",
+   "spans": "بَلرَسَنُزلمِدن"
+  },
+  "common_voice_fa_18565208.mp3": {
+   "audio_sha256": "8106107599d2ef7780e9db297da1e815ea40d0734fa509a3c55146f1e9af5c78",
+   "spans": "وَدَربڇزُركمِكِااءِندِكِجَشيَتكَلفتيَتهَمَشَمِبَ"
+  },
+  "common_voice_fa_18566017.mp3": {
+   "audio_sha256": "f2022e57583b65a73bd32c15f9534ee808020b6f08962bd480c03ea7a71d9319",
+   "spans": "دِيِنَمتنَمبَكَسِكمُستَرَهرَفتَنِشَمَشكُكَزِدِكِكنم"
+  },
+  "common_voice_fa_18566678.mp3": {
+   "audio_sha256": "4077b05bc4c3b8a8c5921c3964437bd7d73434ccae3b192381016d416c880648",
+   "spans": "ءَحنكَكَنشِمَ"
+  },
+  "common_voice_fa_18568216.mp3": {
+   "audio_sha256": "d7fab6c91e56e10f7f9830664589f365d075e842663224000740efbe08054c9d",
+   "spans": "خلولبَرمجَ"
+  },
+  "common_voice_fa_18576118.mp3": {
+   "audio_sha256": "317312ac204a90216f835012168122ebf48b0985b9f0dabb6161c842d3f90193",
+   "spans": "بِمَهزِكِسخَِرشرُكَدَمفَفَهِيبِمرِشرڇشَتءَفكِسَهَمسُبَتَمرَقَتمِكَتَن"
+  },
+  "common_voice_fa_18577915.mp3": {
+   "audio_sha256": "9daec5f7181e7aa306d5fe2f9125daea338ec161b4bb45eb75185d54aa821ff4",
+   "spans": "كَيءَلَقنَرَبمَبِتَه"
+  },
+  "common_voice_fa_18581080.mp3": {
+   "audio_sha256": "618b37c77a430186358ef7324790033a081aefe9b56a109a51fe21b0611e6eb8",
+   "spans": "ءُمِدمَذَشقُششبِت"
+  },
+  "common_voice_fa_18583616.mp3": {
+   "audio_sha256": "545ff327d3761d3ef06ad326888d4fd0a4cb6f689daa4c9f4bcd7a81aa3f8ad9",
+   "spans": "مُتنَمَستِزَيكءِجَسخلِخشِشمِمَ"
+  },
+  "common_voice_fa_18601107.mp3": {
+   "audio_sha256": "bdbdf57e981fd6bcf158eb5a4864b67bcbfad68a73d978f6c3d5ddbbbe477ee4",
+   "spans": "يَدَشتهَيمَشهُرمرُكبَتهَبڇسيَمُفِبَغشُتمسلكُمِبَيَدبَشِم"
+  },
+  "common_voice_fa_18604282.mp3": {
+   "audio_sha256": "bf4f09f1ac004d08987bfd9b94377ec480dfcf4d98e99ca4f6f0ed913194a7ce",
+   "spans": "ءَيَينِجَهدَسَيستَلَشكَمَسُسِذَيخدَبَشَه"
+  },
+  "common_voice_fa_18613321.mp3": {
+   "audio_sha256": "922c244472d774db0076af0c227999af570483757cbdeb88414ffee5462fd50c",
+   "spans": "تُزِندِِمَفَعَتءبهَبُكِتَغِمِكَن"
+  },
+  "common_voice_fa_18613379.mp3": {
+   "audio_sha256": "bce6ee79c9864e9af63bcf9d1379dc6c8af238d217c4f6cdd6e3300f6950d502",
+   "spans": "ءَمَشسَرِشبُكريخُلُتشِدِشكَم"
+  },
+  "common_voice_fa_18616581.mp3": {
+   "audio_sha256": "4b640b10ece3b7cda43df505a95a26885c543500376b3be0701a0d50b6e246f3",
+   "spans": "سِكَسبءعنَزَبِكَدَزَت"
+  },
+  "common_voice_fa_18617268.mp3": {
+   "audio_sha256": "82e7ca04e2ea6974a39f8219e30bca1c447c70c85b2ceeaa6e96c5a366905da0",
+   "spans": "وَلَنَمِدنَمُقِلِءَلَمزِيه"
+  },
+  "common_voice_fa_18621650.mp3": {
+   "audio_sha256": "49b2f8568dd421377fa80523efe2323e2633de328bb437aff158c7bba82d5fb4",
+   "spans": "رَفِقِدتُختَلمَنَه"
+  },
+  "common_voice_fa_18629402.mp3": {
+   "audio_sha256": "9a7cdcb5d80495fec010615fe1ea2b9e3251fdbf74400ec0b18f79b16bad97b8",
+   "spans": "مَنَمَدڇخُنَربِتَرَفِديَتكَت"
+  },
+  "common_voice_fa_18639899.mp3": {
+   "audio_sha256": "edc16ca7cd15a8ab8bfea9d4ad468b43c5a192fa37508a72661405b90355949a",
+   "spans": "خَيلِبَاشلَكسَستَم"
+  },
+  "common_voice_fa_18642544.mp3": {
+   "audio_sha256": "f307808f4a9fe1d0468505372c79c7ea0267564fe1fdb51d2f222db11593ba13",
+   "spans": "تُهِمكُنِتبِتََجُهِكُنِتيَنَدِدَبكِرِت"
+  },
+  "common_voice_fa_18652810.mp3": {
+   "audio_sha256": "798026ba95df8423d97010c687bc04db71760f6cca02cb86650552691f9c9620",
+   "spans": "فَقَدجڇكدرنَفَسمِيرزُرمِزَن"
+  },
+  "common_voice_fa_18665396.mp3": {
+   "audio_sha256": "2466f9de6c4109dc0a6b7dabb45dc09b0b336efe665338e14f7b24f8ef58b78e",
+   "spans": "شَرَمَفِكرمِكُنِمحَركَرِءَمرِكَيهَبَءُرُكَيهَءَجَمِدَدُرُستَاا"
+  },
+  "common_voice_fa_18679121.mp3": {
+   "audio_sha256": "62efc48470e568e84637cbc1da6af4bdf33c79a4db09b55898fd8fbcb1f81a9d",
+   "spans": "مَُزَوشكنبَتَمنَعيَشَبِءَلزخمسَمِش"
+  },
+  "common_voice_fa_18683701.mp3": {
+   "audio_sha256": "1ab1262d3ef23b40886416f0db6089b75ded4ebff8792ce7b18abea891a6b268",
+   "spans": "وَسَبَلسَزعمدِۦۦ"
+  },
+  "common_voice_fa_18701921.mp3": {
+   "audio_sha256": "4c84810167b8f919a9c485f970873b2a5e447e5dfdbd396309bc954f561ca434",
+   "spans": "شُننافشحِلِخبَه"
+  },
+  "common_voice_fa_18759075.mp3": {
+   "audio_sha256": "19206ce9ee54191772844dfd818f6bfe593e823bca18263b56504b7a187d8d08",
+   "spans": "بِشَِمَنخَدَتَربَسمكَن"
+  },
+  "common_voice_fa_18780704.mp3": {
+   "audio_sha256": "3eff689800bd4abe6d6882f328de86f5bf9b50d0151858aef628f018340fa71f",
+   "spans": "ءَعمَعفُتحَقُدَ"
+  },
+  "common_voice_fa_18830931.mp3": {
+   "audio_sha256": "7d6f81c0d35f8d1d73b78e3ed84f689f99a1097e35ae6d4030a61ac8b0aed08b",
+   "spans": "مَيِتَشخِصتِكِدَب"
+  },
+  "common_voice_fa_18983073.mp3": {
+   "audio_sha256": "b7f8628650caecc744ff129c183743f900c4bc5df0fd0daef9930ebe57c98af5",
+   "spans": "وُجُدنَدَرَتكَفَيدَكنِ"
+  },
+  "common_voice_fa_19054753.mp3": {
+   "audio_sha256": "d2f0871e8fa1583940720f4f010ce3a58b7a698513048a8207b8aafab85de036",
+   "spans": "ءَكَبڇكُشِمَشمِتنِبڇبَرِمشجَه"
+  },
+  "common_voice_fa_19086404.mp3": {
+   "audio_sha256": "ac0243e39298acedc2123168c03ebdf5650f898ddf1e437d1d54c56d513b83ee",
+   "spans": "ءَخَلبِتنلَغدَرَه"
+  },
+  "common_voice_fa_19113104.mp3": {
+   "audio_sha256": "28cec33672051a78fa9d34e373197b1c9369e1072d1b987b407f3c6bd8edeb39",
+   "spans": "ءُجَبُكِفَهمِدَمَزدَنشكَءخرَجَمكَدم"
+  },
+  "common_voice_fa_19207774.mp3": {
+   "audio_sha256": "39d5953fc725725879106fa02e430fa38103a76ad45dac874c00f4e0c46e9d94",
+   "spans": "فَرهَجَءَترَفَمِخَسمَربِشِكَسبِكِشنَ"
+  },
+  "common_voice_fa_19213090.mp3": {
+   "audio_sha256": "9ad30d66da16e1dce3e06e9af6395408fe5982dea4f4b33a1a7adf985663bf0c",
+   "spans": "بَختِرَبَزدَشكَلَمريكُلَسءَسبِزَمِنُفتَدَومِنل"
+  },
+  "common_voice_fa_19213600.mp3": {
+   "audio_sha256": "17d915139935622cd84731534d6af871b669da4d1e26a460080b804dc269cdcc",
+   "spans": "تُكَلَسَونِفَسَرَهلِسفَهَنبُت"
+  },
+  "common_voice_fa_19215383.mp3": {
+   "audio_sha256": "ac520b856c363e583fdbe5d6dbef3b9707e0bba6fb67c7b1219141a10d30b7d1",
+   "spans": "كُدُممَرتبِرَكِمُيمَدَرشتَفَجُهمِكَن"
+  },
+  "common_voice_fa_19216470.mp3": {
+   "audio_sha256": "49a0730bc171adbc602e5078416ff1783218bab84824efa73d9bad809657a119",
+   "spans": "ءِنهَشَسِبَرِتِتَنيمرمَعشَخُدڇشَنَس"
+  },
+  "common_voice_fa_19222282.mp3": {
+   "audio_sha256": "2b68cf1460f1309f7c9ee3bfdda2be4ff244dff89d538045b0cc0b07a529fd7b",
+   "spans": "فَقتِكَهَمسُكُفَمِشَبِمتِمهَيبِهتَرمَهسُلَتبِهتَربَشِركَتهَيبِهتَرِمِسزِم"
+  },
+  "common_voice_fa_19227020.mp3": {
+   "audio_sha256": "3d6088464fe53e1effa5b5c0e75dbec13c8f1d554b40c686be0a976893fbf747",
+   "spans": "سَلَمرِيتشَلكرِنهَستَه"
+  },
+  "common_voice_fa_19228249.mp3": {
+   "audio_sha256": "5adfc81152c32e0b2b800268512945a98a49c0a34a525392497b7a9671a5492d",
+   "spans": "فِلكُفتُتَقكرت"
+  },
+  "common_voice_fa_19230419.mp3": {
+   "audio_sha256": "e49936c26955ded81e30a97450968deb5678b70b282731bd4b64749a5f9aaae3",
+   "spans": "كِدَسَييَوفشَروَشُكُهَفهشتَنعشد"
+  },
+  "common_voice_fa_19232737.mp3": {
+   "audio_sha256": "b59a10ff2e472f1fcfa454ae076cf7320f09a4fe01628a0ae1e98aa837a28bd2",
+   "spans": "دُبَرِزبِبَتكَلِۦۦ"
+  },
+  "common_voice_fa_19242643.mp3": {
+   "audio_sha256": "1522d58d1618d71e9bd4f915a1106a8dc2055eb4802a20eea0b7b79b00e723f3",
+   "spans": "لبُزعشبَعزشَسسَااوَوجڇدكِشَتشِشمِربَلِبَلمَادَنِءعَاا"
+  },
+  "common_voice_fa_19247614.mp3": {
+   "audio_sha256": "4c50b28d9fed06a4c9d1c19b5804191f76b50548287e2abb3e8db477073e654e",
+   "spans": "يَلَمَنَكَهشدَرِ"
+  },
+  "common_voice_fa_19269338.mp3": {
+   "audio_sha256": "d83dc7a43c4a162622835c20c9e990a193f4f64a8b8087029b84babe2a928301",
+   "spans": "تُزِيمُجَدَدُقُۥرِيسِبَتَرمِۦۦمِتَوَنَيِيبَرغَررِييدُلَتتَسَرُسَرمَنَتِۦق"
+  },
+  "common_voice_fa_19273687.mp3": {
+   "audio_sha256": "e0de298d3ac561f9f6f6b10a27417ad040352b9db66a0204f9e6babde313b9e4",
+   "spans": "ءَوتتُبِنزَنِنُقُششَكبَخكُدُرَتِشِزَزَتُبڇدڇنَكِرَ"
+  },
+  "common_voice_fa_19327445.mp3": {
+   "audio_sha256": "3d0811eded01694df3a3b7db64df37073c8976dee11ddd2a93a9ddb532407365",
+   "spans": "وَغءمخُقُت"
+  },
+  "common_voice_fa_19350557.mp3": {
+   "audio_sha256": "b84a420f80ca067f572fe709412973c90b4e84adb7564419a03de0903541ad6b",
+   "spans": "ءَمُزِكَدِتَنُروَزمِخَت"
+  },
+  "common_voice_fa_19361065.mp3": {
+   "audio_sha256": "ec22e6d610d0421efd025ac740a492f0a66863f24218d128b9ccb3061076e5bc",
+   "spans": "ءِشتَبَهمكَنِه"
+  },
+  "common_voice_fa_19393281.mp3": {
+   "audio_sha256": "5ab9386c34d3729146c012e01709b06e5f4d4d8f41fd0c54313ef212608edfae",
+   "spans": "ءِتَوَلهمِنلَمجَبِدَهم"
+  },
+  "common_voice_fa_19401621.mp3": {
+   "audio_sha256": "ce84d14efc5c8cc1e8ce3f43e36bb8e12248417677a93b8b0f32c8c6b62d8baf",
+   "spans": "ءِسمِكِضَتِست"
+  },
+  "common_voice_fa_19408883.mp3": {
+   "audio_sha256": "5a6003880b736fd6edb4f85d2d78763e1c89d3158681c02857869e528178e33b",
+   "spans": "قَيَيشَرشِۦنَ"
+  },
+  "common_voice_fa_19436023.mp3": {
+   "audio_sha256": "1e410761f6c89ce58dcba40f001ef563576cff2d75e2d15efb9837fa8f99d5dc",
+   "spans": "حَسنِيءِجڇرِۦۦزَمِتقَرَس"
+  },
+  "common_voice_fa_19445946.mp3": {
+   "audio_sha256": "e8707db50a9248cce1819bdf8f212a3069994fd699767014f12d851f4746b785",
+   "spans": "تَجڇسَاتِه"
+  },
+  "common_voice_fa_19477372.mp3": {
+   "audio_sha256": "78aed743dd72205fcc4ce47341b28ab8984902000db0ad24488b93c03b8c8a0a",
+   "spans": "خُبَمشَكَعبَشَمَه"
+  },
+  "common_voice_fa_19673706.mp3": {
+   "audio_sha256": "cc1505ac461c58c619704eb2f69004dbe2530b6a6f32ae597a5cd5d647dac7d5",
+   "spans": "كرَيِرُزِشَغَترَست"
+  },
+  "common_voice_fa_19858796.mp3": {
+   "audio_sha256": "4a2e3a6b2bb98238d0f06a6f65e9deaf1b87ee176d736a8fa2e00776b5feec47",
+   "spans": "مَنكَمِءِسفَنَتمِخرَم"
+  },
+  "common_voice_fa_19878762.mp3": {
+   "audio_sha256": "0659a043fd077f8eecc0df3404d09acc6b15234424e88dd02cd6ec4996a647ef",
+   "spans": "يكَففِهلُتفَن"
+  },
+  "common_voice_fa_19880992.mp3": {
+   "audio_sha256": "8dc8432634c36489c0b62d046e6171847c2e92d5e3aee44bdded2254969f65b9",
+   "spans": "ءَفِنمكنكُنَمَدِلسَفَحشَس"
+  },
+  "common_voice_fa_19885422.mp3": {
+   "audio_sha256": "b9a7b2a5391968561d8033ec9f67a85f355efd5b7d2181c5c752fc22ffc71d37",
+   "spans": "خُشرَمرَفبَهكُنِتُتمه"
+  },
+  "common_voice_fa_19890136.mp3": {
+   "audio_sha256": "886c818cacf3edce888cb355cbc0866e8a1eedc7ec330d0ab3d713e4ee11c031",
+   "spans": "ءِشَمَكَجَرلَبَسكن"
+  },
+  "common_voice_fa_19904359.mp3": {
+   "audio_sha256": "866d5a50e8e604fea397a43ec894589614e5d6162fbb4d114b1d89008f17069b",
+   "spans": "لَتفَيكصَرمَبَجُلِتَمَبڇدَهِت"
+  },
+  "common_voice_fa_20048081.mp3": {
+   "audio_sha256": "c11223dc8e5dcc9a3a2426122e42bb3ab16151dc1565d8b5d602c669611fb1ee",
+   "spans": "مَمضَجِمِخَ"
+  },
+  "common_voice_fa_20082122.mp3": {
+   "audio_sha256": "20eed08e93d56f2c4b1e653d10e61f0ce570a16c8b092e4452f019f5ebeb7e07",
+   "spans": "شَدِدَترَبتَبَهَعلكُنِه"
+  },
+  "common_voice_fa_20121919.mp3": {
+   "audio_sha256": "1bd58a393968b592d0b3e14529318444c772ab7ebce9ef03d5d7ca06871f15c2",
+   "spans": "ءۦنَكَينَروَش"
+  },
+  "common_voice_fa_20156793.mp3": {
+   "audio_sha256": "921b16d9f97e76497752e7cb4e982f6cb75389081d5b44425f87d34e54bfbe84",
+   "spans": "خَقُجَشدَره"
+  },
+  "common_voice_fa_20375999.mp3": {
+   "audio_sha256": "561798a8ba0818c299bcbaa7a7bab6202654f42373ab861f4e53ee0ff2178658",
+   "spans": "تُتبِلسبَرفَسَبِخحَا"
+  },
+  "common_voice_fa_20491623.mp3": {
+   "audio_sha256": "abdb953e38485bc50d6bfde2d0b8e738c3b8ef002957ff07415f59a904df446a",
+   "spans": "كَفتَرِمَدَكِشرشوَتِست"
+  },
+  "common_voice_fa_20583617.mp3": {
+   "audio_sha256": "cb13e3aa3f3474e877bf546d06896111474113af616da9e577990d1c0c6d5019",
+   "spans": "مَنمَهِيَمُرَكَبِيسُرخشُدڇخَهَمخُرت"
+  },
+  "common_voice_fa_20941441.mp3": {
+   "audio_sha256": "86e4770677a20e906a91f1a9b28a30961d0934cc7f00938bfdb26260f2c3fe4a",
+   "spans": "مَءَهلِسُءتس"
+  },
+  "common_voice_fa_21201638.mp3": {
+   "audio_sha256": "a8d2727721c37c7384f70e0fde18b2d5f327459dc190dc724e56573249f24a25",
+   "spans": "شِكُنمِتَوَنَسخُتَبَرَبَربِمَرِهَيجِسِبِشتَمرَقَبَتكَرت"
+  },
+  "common_voice_fa_21252707.mp3": {
+   "audio_sha256": "a159e0ecd3a67c3b38e22dcc043d7d555cce9894e450ac6450bf28c184ec59a4",
+   "spans": "خَبَبِدِكتُرَ"
+  },
+  "common_voice_fa_21261439.mp3": {
+   "audio_sha256": "d6992eecc0277b31dd3f9dfca5659d9cb627cb7eaa82f42d0e1534a0bc6a0240",
+   "spans": "بَسَسَيَنِكَربَيَدَسفِكسِيتِفسفَدكَت"
+  },
+  "common_voice_fa_21303898.mp3": {
+   "audio_sha256": "65c65f89694b064d995f29f8ea29c98c3eef38b7998bdd98c1b5dc2121d49f2b",
+   "spans": "حِسسِۦسَركِجِمِثلَءِنكَاقَرَربُدبِففَزَاابِيُفتَم"
+  },
+  "common_voice_fa_21592950.mp3": {
+   "audio_sha256": "308ee7fee4f7eff4d6737000943186de585627e7bc2681e6361b1a0d464aac0e",
+   "spans": "مِمَيقرِسمُفجِدَه"
+  },
+  "common_voice_fa_21598817.mp3": {
+   "audio_sha256": "cdf5e2159c68dfa3811aadab4b5591c7038234c1b0924819939876cd8ef91b21",
+   "spans": "تَلُلُددِۦنمُهَمَدڇبَلخِۦۦمَعرُفبَمُلَنَاامُلَبِۦۦوَرُمِيَس"
+  },
+  "common_voice_fa_21661762.mp3": {
+   "audio_sha256": "10ed09d39c7fd452249e3d8a5a5d0ad9a07552d862108800faf9270f68d06fb7",
+   "spans": "تَبكتجَشءت"
+  },
+  "common_voice_fa_21825926.mp3": {
+   "audio_sha256": "99f847851803ab8ea44d05434bb21ce00844dd5bd7bbf35167e349d082519bb3",
+   "spans": "مَمبءشَلِكنَكَتَ"
+  },
+  "common_voice_fa_22207253.mp3": {
+   "audio_sha256": "5964d720f137fab99f24d8b03fc3646fb3530e18ba2922b265bb4a8652ba9eca",
+   "spans": "بَريَرَسَكَدَنِدِبَهَيسَقَخَنَهَيتَفَدَمِكَردَنت"
+  },
+  "common_voice_fa_22780257.mp3": {
+   "audio_sha256": "92379b6234eeb92e3cad804fc225fd136213e94301ca4cb8e3731861e6f7d993",
+   "spans": "ءَزَركُن"
+  },
+  "common_voice_fa_22918975.mp3": {
+   "audio_sha256": "c16a95fe49877e49ea04b51e731e984049c7f243ad0f79f139c0d742deb3f951",
+   "spans": "شَمسَل"
+  },
+  "common_voice_fa_23241292.mp3": {
+   "audio_sha256": "c379e5ed9cfcf7aa8f432c9a4627af030b349eb668c2af77606830c9f5bced67",
+   "spans": "يِكَِزَهَهَيمَعرُفِشُبِخُن"
+  },
+  "common_voice_fa_23712137.mp3": {
+   "audio_sha256": "737d00c69c391ea0f45d815fb655933fbef243c9c95abc5358294c93062d422d",
+   "spans": "ءَمُحفِلِمسَحنَجرِت"
+  },
+  "common_voice_fa_24058931.mp3": {
+   "audio_sha256": "257fbe386b3e26a9d1ac6877b72bc94afffc465fb167076f467c3ed62f1b9717",
+   "spans": "ءُنَشَرَسبِءتَعَت"
+  },
+  "common_voice_fa_25153271.mp3": {
+   "audio_sha256": "62e6eaca11db7491b0d8d5dd1a5f2da9519472da4a2180f20765c00c0b762185",
+   "spans": "ءَنَنمِكُشَدءَقَيدَقُرُنَكُستَيرَدُبَرِزِدِكَنَت"
+  },
+  "common_voice_fa_26606407.mp3": {
+   "audio_sha256": "e9c923706235d863c78d349c860ffe3ec4b8d887e512ea387b7685b63df9828d",
+   "spans": "زَدَجِيَخَنَبَدِكِءُرَكَرَفتَركَدَست"
+  },
+  "common_voice_fa_27949730.mp3": {
+   "audio_sha256": "aa311116ae1dc9c88ea7db66550659a5c8566ca55b3175a763c7ea83ad7ecb5b",
+   "spans": "فِدَردُقتَاارءَسبَنسبَخَستِدَرمُردڇبَرسِءَردت"
+  },
+  "common_voice_fa_28127370.mp3": {
+   "audio_sha256": "5dafdb4012985eb766f2a0ac92540aefb389b97eea6a6eb84538b1c6a2cc4cc0",
+   "spans": "بَنزَرمِۦرَسَتككِدَرَشءَدَبِسيَرمِهرَبَنِيَست"
+  },
+  "common_voice_fa_28299212.mp3": {
+   "audio_sha256": "e5190fa58e103d86de2d0a02e4cc9789eee25676ac46def44ff39977659cbfe0",
+   "spans": "ءُۥدَرسَدَديَفتَنِشُغلِجَدِتَست"
+  },
+  "common_voice_fa_28448863.mp3": {
+   "audio_sha256": "f8000148e2b71e259185d2ffd6a04292b1803c02064b488aaab6a09e14aa7e8e",
+   "spans": "ءِسدَدِجَفَربِشَهشَدَ"
+  },
+  "common_voice_fa_28506709.mp3": {
+   "audio_sha256": "2ed785ed8e310417c28eb657c271a14684ea12d682ba2b859c68fd36f36776c0",
+   "spans": "كدَرَكَمبَدخُترفُكَفبفَهَيوشَلَغس"
+  },
+  "common_voice_fa_28962734.mp3": {
+   "audio_sha256": "14e6b679d7c95893baad82023303d370fda8be2ed7b7f50b8a17940c2499c8f8",
+   "spans": "ءَذَبرُصقَمَتَه"
+  },
+  "common_voice_fa_29383486.mp3": {
+   "audio_sha256": "1b601354cea6b904186dca7a1b046f25f3ad3d278ffb16d20996a05034604d0d",
+   "spans": "تَعرِفَبِشِكلِيِككُلتِه"
+  },
+  "common_voice_fa_29386135.mp3": {
+   "audio_sha256": "ffb123b39b18d950f9a75ff9924fc87b842fc873224879eb575dcdc5cd68a23b",
+   "spans": "خَبَرمِهنَدضَرمَريرَءِسجُمهُۥۥر"
+  },
+  "common_voice_fa_30391358.mp3": {
+   "audio_sha256": "c0c80838251eded6186efa344732b945f482b99df15e2dd4ad14caf6e35fb8a2",
+   "spans": "ءُۥدَرمَرسكَشمِزَنَتوَنَردَهَيشِكَسسِرَمَرمَتمِكَنَت"
+  },
+  "common_voice_fa_30427844.mp3": {
+   "audio_sha256": "1aad320df56a741d128855f7367272f72d20e1775b5d18cf3df82b0d52284b00",
+   "spans": "سَخرهجِنِمَمعَللَقڇ"
+  },
+  "common_voice_fa_30503400.mp3": {
+   "audio_sha256": "8c85c375b34b0f55025ff66e226b2942b201067c4f15352675308674281f1c83",
+   "spans": "بُيَتُديَزسُكَردَ"
+  },
+  "common_voice_fa_32094726.mp3": {
+   "audio_sha256": "a83239eae6a13bdf3143876a664ff33d81b5214b491125a76dc716bc8718309e",
+   "spans": "بِدَت"
+  },
+  "common_voice_fa_38032636.mp3": {
+   "audio_sha256": "5685740e71f28dd07a1fd8f88ddffc8f0652ecc448b71c29042987846dfd0086",
+   "spans": "ءُمِخَسشَهنِشِشَوَدءَخَرَِصَررُستَنشِنِيَخُدرَمَعفكُنَت"
+  },
+  "common_voice_fa_40974530.mp3": {
+   "audio_sha256": "2823fc0e8f38cfca7c4b7d584aced3eab72f896031710a033f2bfeae14664dcd",
+   "spans": "بَشَكُشكُبِرَبِدَرُنَكُدڇرَدَ"
+  },
+  "common_voice_id_19062043.mp3": {
+   "audio_sha256": "0eacebb9ab866d822cc3a1f44b67289a9285bebd219733ba8523321d12a98abe",
+   "spans": "سبَيكيَكِتَدِرُمَدَمنَتَتَلفِسِۦۦ"
+  },
+  "common_voice_id_19192830.mp3": {
+   "audio_sha256": "ba32bd4dd687f21ff7247d337ac2127571f5de3646c90bf5a3231131aaa6d8c6",
+   "spans": "دِيَمںَلَمِسدِكِتكمَجُوَنَلَبَهسءِںرِس"
+  },
+  "common_voice_id_19197563.mp3": {
+   "audio_sha256": "6291fee4d3adb75f396608f44e9adc094abbcb3c0721e516c261d498c48e793e",
+   "spans": "مَبَكِتَتِدَءُلَه"
+  },
+  "common_voice_id_19258270.mp3": {
+   "audio_sha256": "cfd65c99a0faf1dd2a1d4e5e6e86b6259298d5a95a26a2ff7289e43ef6c3ec93",
+   "spans": "سَيَمُمرِتَوتمَنسَيَءَلَمَتيَںبَرُ"
+  },
+  "common_voice_id_19315800.mp3": {
+   "audio_sha256": "238c2203f8354cfe9e4ba5b76e5c75820d70b1882298a17d7f5c1e749f7e146f",
+   "spans": "ءَمُںكِنَقَمرُبَفِكرَنَتِه"
+  },
+  "common_voice_id_19597203.mp3": {
+   "audio_sha256": "2aab93655a1aa584900e4bc233c3a9cbcef570e7e06fbd6b5ba8c8450d271ea6",
+   "spans": "ُمردِيَهَمبَبَفقتَ"
+  },
+  "common_voice_id_19648528.mp3": {
+   "audio_sha256": "8c24b2f8fb2d2be2e2c7ed095609c4d912fb3792e98f2adea8e2ed1e6b0be59f",
+   "spans": "فَمءِنءَجڇلِبَممَمتُه"
+  },
+  "common_voice_id_19704658.mp3": {
+   "audio_sha256": "c3fcbdf62b81bcd8bbadd5b7213e626613b4e082e8f17a54ec83230ac44ebe88",
+   "spans": "يَتِدممَبُقُينوَضِفمَقَفَنسِر"
+  },
+  "common_voice_id_19748940.mp3": {
+   "audio_sha256": "a4cf5dd5892957d3d5bb4de059de341b662e5560eaef2672d5fda45e45865ea4",
+   "spans": "ءتِكَبَبِدفتبَ"
+  },
+  "common_voice_id_19804928.mp3": {
+   "audio_sha256": "a3466b2934f0cbe5df262505e9ddc8d3a6a30f473624a01bf28df7a984e11e9b",
+   "spans": "تَرجَمَهمبُنَكَكَتَكَتِربرتَمَدَنكَتَكَتِرتِكَدَلترجَمَهن"
+  },
+  "common_voice_id_19830425.mp3": {
+   "audio_sha256": "2ed500dd007fdb7725cfb84d9f4e24b99251ac73f14404633745bb398139a7b7",
+   "spans": "ءكُهيقَوِن"
+  },
+  "common_voice_id_19987547.mp3": {
+   "audio_sha256": "a660eb63628400a9af136006cbd3e131f49e5220c9d2df5d1dcf159101eb8ffb",
+   "spans": "سَهَرسَكَمُتَقلُمعَسَمَلُ"
+  },
+  "common_voice_id_20120767.mp3": {
+   "audio_sha256": "c40a8fba7394d3c74c7dd4eada117463d3bad6962518bb4866d5d4dbbd28ca63",
+   "spans": "ءَفَتَحَمُممَهَبِمَستقُقَه"
+  },
+  "common_voice_id_20248270.mp3": {
+   "audio_sha256": "a7879d7a5e77bb029d935c1f38b2614710685314f7eed32fc0bd4b064e6cbcf4",
+   "spans": "تَلمَتكَمَسي"
+  },
+  "common_voice_id_20263215.mp3": {
+   "audio_sha256": "3bffae9dfe1457731aa869b8b4f4775894afb50205fd605ea518d4a3f464a5e1",
+   "spans": "ءَوَلبُلَدكَسيكبُلَقنجَرسَيَ"
+  },
+  "common_voice_id_20362402.mp3": {
+   "audio_sha256": "39cb85e1bc66f4c3f7842838e6764f6405e6720fe17dd181b397f316b63a50eb",
+   "spans": "كَِسءِنِتِدَبرفُسِسَمَسكَلِ"
+  },
+  "common_voice_id_20406082.mp3": {
+   "audio_sha256": "97d954d8aa87a582c7c4546f0d3147d250b152df5ca005307769e9c05b7dc09e",
+   "spans": "ءَبَقَهيںدِبَجَرِسُفيَتلك"
+  },
+  "common_voice_id_20531373.mp3": {
+   "audio_sha256": "2478f5b562a326b4432e4b15cf64e6ca1046f36f73f013c1c788467b06cbad26",
+   "spans": "تِممَكنَمَيَه"
+  },
+  "common_voice_id_20679936.mp3": {
+   "audio_sha256": "a273da24113ba68dc0b1091e630bd4e7161eda035e38dc49a2287d2a9d3f4587",
+   "spans": "بَكِمَنكمبِسسلَلُبرسمَنَت"
+  },
+  "common_voice_id_20879242.mp3": {
+   "audio_sha256": "feb44c4a0299fae8807e63e4252226d7654b871b7654c32942c25e14d34abfbb",
+   "spans": "تِدَءنِفرشِتَستلَدبُكَتقبُهبَرُه"
+  },
+  "common_voice_id_20900279.mp3": {
+   "audio_sha256": "4cf3c5ad1c547f8a3cc1ab1f0e9a88ee30a8322598d8f615240ee4331ba6159a",
+   "spans": "كَبَكَمُفُلذرُمَه"
+  },
+  "common_voice_id_20952925.mp3": {
+   "audio_sha256": "17911874d460b40f90a89bbc087ccd67ab1f84824a3143c77399385d8f35bbfe",
+   "spans": "تَمهَرسمَشَفڇتُںجُقدِفِنتِيَقَلِمدقمَںوَرتِءِشِفتجُقِتُه"
+  },
+  "common_voice_id_20953236.mp3": {
+   "audio_sha256": "7145ccdb4682290d1457a5db5b90625add8feeb036ea8ac8bf9a92cd403f7825",
+   "spans": "فَءمَتسِۦۦدَنفَءلِۦۦبتمَن"
+  },
+  "common_voice_id_20953269.mp3": {
+   "audio_sha256": "037235d2403a06569d08fbda0e9011fdb44bc5ae74d46a6a2c583044dbe621dc",
+   "spans": "سَيقتِنَدِسِِسَمَسمِںُ"
+  },
+  "common_voice_id_20953322.mp3": {
+   "audio_sha256": "a6f665a1d61ce15490df6e6ef90839b9c0974f9ed8b6872c76fdd9843f3dae3a",
+   "spans": "سَيَتِدَتَوقَكَِقنكمَلِ"
+  },
+  "common_voice_id_20953324.mp3": {
+   "audio_sha256": "cdd6cab2228a21b097187eea4756b0fd2984100913848c698c662be51880acb1",
+   "spans": "كِتَهرسمِتَبَسمُوَه"
+  },
+  "common_voice_id_20953408.mp3": {
+   "audio_sha256": "8dffc32af6835e33d00710e598e064686356e1e0187f06635bc1438b809784f8",
+   "spans": "سِيَبَقَيَمَنمُقَنَمِرِكَاا"
+  },
+  "common_voice_id_20953961.mp3": {
+   "audio_sha256": "3c5cad64f48f47b16d99fb038d253b396ef953e47e506393f79c70587951e0e1",
+   "spans": "تَنَبَمعَتَقَبَوَمِرِءفردِۦۦ"
+  },
+  "common_voice_id_20954422.mp3": {
+   "audio_sha256": "0ace0da84c59095f54d22121778748e4b1218064218a32dc0474e02c850a4bfd",
+   "spans": "مِنَقبِذرِهَنَرِهُلَقَير"
+  },
+  "common_voice_id_20954805.mp3": {
+   "audio_sha256": "dbb9a4e3c8aa6be5929a1f1bd9a39cbd21eed265ef1d534255e8dd59f590f58a",
+   "spans": "فَقَرجَءَنسَيَااسِبُقتَتَقِهمنَرِ"
+  },
+  "common_voice_id_20954812.mp3": {
+   "audio_sha256": "48d1f84d78d198b12e893e3b4e3af57531d8730b1c610b55951393e52b9ad674",
+   "spans": "تَمرَيِكمَلِمنرنِتَبَ"
+  },
+  "common_voice_id_20954843.mp3": {
+   "audio_sha256": "64b3701fc469496a9e2bb230e2480d5090c90119e2693b04b328dc5a1f4f4747",
+   "spans": "دَِمَنِهدنءمَرسيَه"
+  },
+  "common_voice_id_20955015.mp3": {
+   "audio_sha256": "7469a8e53efbe1c2e78116b61ce587f8bb6ab38dc01c0da4569d3b20c3442757",
+   "spans": "مُمكِدِيَظقَرِوَمَوكُ"
+  },
+  "common_voice_id_20955151.mp3": {
+   "audio_sha256": "1f5fd076e5bf3a6591c421b689ea20183b78eabe9ac5add8854fa4f67c48392c",
+   "spans": "سِستَمَكَنمِشَرِييهينِبڇلُدفرَكتَكَملِقَلمسَبَه"
+  },
+  "common_voice_id_20955229.mp3": {
+   "audio_sha256": "718263723e5d4a10e867e12bd2d7abe41392e9c7ed4c5cd32282ecb1456b62ad",
+   "spans": "ءَقَيملَتَوُقَتَتَهجمَ"
+  },
+  "common_voice_id_20962332.mp3": {
+   "audio_sha256": "ca058ff5643cf5c628012b8c22167ee40e128e2f59c71b718c83cb2d1e91138a",
+   "spans": "بِسَقَقَمُربركَسسلين"
+  },
+  "common_voice_id_20966852.mp3": {
+   "audio_sha256": "c341d1d132f035838f3e73f989339c68d5447a07dbb9bf2c62798e4325020c39",
+   "spans": "سَيَمِتُبنَر"
+  },
+  "common_voice_id_20971278.mp3": {
+   "audio_sha256": "c367a94453be524e206f9adf53a60cdab83dae52aa9b8ce592311fd232f7e225",
+   "spans": "سفرتِكَتَفَفَتَحوَكتُلوَم"
+  },
+  "common_voice_id_21583575.mp3": {
+   "audio_sha256": "2d1287951ff8fb06f760ca4c73335f017bdfe9a3ca6c45191088ad024e7142f6",
+   "spans": "تفَتَح"
+  },
+  "common_voice_id_21930680.mp3": {
+   "audio_sha256": "1397a29ff6426d7f14e00aa501dd845e45f07e4d2f2c9a4f8feeb72aa6d32df9",
+   "spans": "دِيَمَمَبِلدَكِدَرِفِرِه"
+  },
+  "common_voice_id_21955157.mp3": {
+   "audio_sha256": "d95b62da98caa9557dc3dbf92c88d37eac159740b0df26822581451e3c535ef4",
+   "spans": "لُوَربِيَسَه"
+  },
+  "common_voice_id_22005569.mp3": {
+   "audio_sha256": "fdbe371cb099d88d36c16c7e9d4a14e8e0bd262363e028f29c6938a2975db55b",
+   "spans": "تَمبردِرِۦدَبرجَرنكلوَروَمَت"
+  },
+  "common_voice_id_22274517.mp3": {
+   "audio_sha256": "1f078bfca30ad8a3be217a79b3175ed1f3d806b034cb6c3438184997b772c5f2",
+   "spans": "قِدَ"
+  },
+  "common_voice_id_22308253.mp3": {
+   "audio_sha256": "97eb59924340ba602849034466a03df923b0daad96ac6c4560eee5854caf7147",
+   "spans": "دَُ"
+  },
+  "common_voice_id_22647820.mp3": {
+   "audio_sha256": "126cefcb81c8d6dbfd941c5f4cd41bf2e7f0b1f017efba4ef3b130208cf7fb35",
+   "spans": "وُمَحِتُبڇسَا"
+  },
+  "common_voice_id_22794283.mp3": {
+   "audio_sha256": "eb6abf44bfd21b445d30c1e972262abaa551ddca14a4c2fdc0e9b14c47be0ce4",
+   "spans": "مَريَمںلُوَركَنفيَءوتَُكَيَن"
+  },
+  "common_voice_id_22918101.mp3": {
+   "audio_sha256": "0a6e61339e8d9d999c6c4abb955906d322880430706579ea7c8389ed6722d999",
+   "spans": "قَسدكمفِكركَ"
+  },
+  "common_voice_id_22951170.mp3": {
+   "audio_sha256": "7f8699fa5dccf80eed944fa7f16a8fce34898568e40b558461c4484797fbaeb7",
+   "spans": "كَمُتلِهَكَهرِن"
+  },
+  "common_voice_id_22967167.mp3": {
+   "audio_sha256": "d6b97ae25bf971131507d5efd513aaeb5f5ab84e5a30a91db81f334f3b8c5e45",
+   "spans": "طَمترلِيَتتِدَتَفتَر"
+  },
+  "common_voice_id_23656681.mp3": {
+   "audio_sha256": "d01c3fe8adc3f8c36bd798d3755b4b43adcae1b3606fd9945d5644561d0039ad",
+   "spans": "ءَبَكَكَمُتِدَمرسَدِهِن"
+  },
+  "common_voice_id_23677606.mp3": {
+   "audio_sha256": "e68655061e5cc1fc6b30e89b156ffd4cd398f582ff1a8c4ee3c9e0f06d46e1cd",
+   "spans": "ءَكُفيتَمَنںبَفَءيَسرفَِنِتركنَل"
+  },
+  "common_voice_id_23724079.mp3": {
+   "audio_sha256": "11d13d593637d5bb62a58c02e1f6682d8989a2b034df52942327ed7ee49f3996",
+   "spans": "ءَدَكُتِم"
+  },
+  "common_voice_id_23817582.mp3": {
+   "audio_sha256": "c02c46755a269b1acaaac53a4bc7e91ce179cd2206daeac57d2e4bbd55010930",
+   "spans": "تَسدُ"
+  },
+  "common_voice_id_24015602.mp3": {
+   "audio_sha256": "3f873985cf7b4c64071eccee5d137592fdaff3343b4b504c8e9ed0b465efd412",
+   "spans": "كُمُدُمُرفَقَنسَتوَلَقَه"
+  },
+  "common_voice_id_24015815.mp3": {
+   "audio_sha256": "ef0806c0f26d01295406b9933cc34d683312204571638777a42c42152d3cfebf",
+   "spans": "مُبڇرَقَه"
+  },
+  "common_voice_id_24018369.mp3": {
+   "audio_sha256": "35da88c430ba7cfb3c4f01eebdd1879b74c75479ac9b0ffc9af354c772445442",
+   "spans": "سترَسرِقَلِميَبَقتِكَملِهَجَلَنَمَتتَذذِبُقڇتَ"
+  },
+  "common_voice_id_24069560.mp3": {
+   "audio_sha256": "548fc3830bd00d865c723d3eecf87fb38f511f1e322fabb8d3af37b42e43e12f",
+   "spans": "كَهِدُقَنكُبرلَجڇسفرتِبِيَسَااكُرَلببِۦۦءنَمبُلَلَمَيَه"
+  },
+  "common_voice_id_24931140.mp3": {
+   "audio_sha256": "b6ffe16b0512295ae8e8591fbc735e2fbe9e74b2fef27f9aa84fb5081d8ab7df",
+   "spans": "تَمسَمسكبمَنهِتَر"
+  },
+  "common_voice_id_24971161.mp3": {
+   "audio_sha256": "5fc1e9e5eede211bb3b77324a02ba2205218207c0d4e0605fa4fb495055979e6",
+   "spans": "مَنتقِنِسبُلرِبيَن"
+  },
+  "common_voice_id_24979763.mp3": {
+   "audio_sha256": "606091e8a5802f5608b4e4e64add14c2bd01a34148a979d546c89d08aba630a0",
+   "spans": "دِيَمَمبهتِكمُبِل"
+  },
+  "common_voice_id_24981990.mp3": {
+   "audio_sha256": "de7330317776d12148b8b8938fcd637d7e59ba2d3d5558b9ecc3585ae0dbaf06",
+   "spans": "ءتكَكَلِجَلَجَلَسَمَلِبرسِبَنَه"
+  },
+  "common_voice_id_24982663.mp3": {
+   "audio_sha256": "7cf5309f65b62cbb54f232618e9c489cac0f556ae607e39dd627ea77f30c5f9b",
+   "spans": "ءكَيسمعلكُكنسنِه"
+  },
+  "common_voice_id_24982824.mp3": {
+   "audio_sha256": "e59e744f4e0a0f592c4e58f171d02ed2c5ca394c5dff26699fd43899d403024c",
+   "spans": "تَتَعَفَلَوَتُيَققَت"
+  },
+  "common_voice_id_24983815.mp3": {
+   "audio_sha256": "f53b6ba756e6390d6958efb86ef84b732ad477a8eea0f435ce4132a7bf04807b",
+   "spans": "قَلَسَكِديَلَمَبُنَه"
+  },
+  "common_voice_id_25034662.mp3": {
+   "audio_sha256": "bf4da72e641c8808bde2b6189c3bc756d58aa17ca02d3824b8233fed617594f0",
+   "spans": "تَمبرهَتِسقَلَح"
+  },
+  "common_voice_id_25039478.mp3": {
+   "audio_sha256": "ccf40ed9efca236a50b7c544d5293414d1a156b79e02a73763214d64dc39949b",
+   "spans": "ءَدِبربَُسَيَبَديَفِدِكنَربُتِبَجَں"
+  },
+  "common_voice_id_25039784.mp3": {
+   "audio_sha256": "5af8e91d114113153256f5d25f9e8c6745eafbe3710a7f4340928b8441ca32ff",
+   "spans": "ستلَهمِنمسَيَمجتِكلَسسَمِيبسِح"
+  },
+  "common_voice_id_25221520.mp3": {
+   "audio_sha256": "690f49a9041da3daea76a673f1e366109534ab4230e7bc3028846c53c29c4ce6",
+   "spans": "ءبرلِتَمَنَمسفَنسنِه"
+  },
+  "common_voice_id_25262289.mp3": {
+   "audio_sha256": "3634e6506b00194d591677d31f2dc491100b324896b2b9dd750f02ec9a1e29fc",
+   "spans": "ءنكءِهمجدِمَتَرَه"
+  },
+  "common_voice_id_25264539.mp3": {
+   "audio_sha256": "0446a860a9410c25ea31876b8ec97f0390dee9568c2538f3ec0320586b22ff09",
+   "spans": "تَمُكِلقَءِنِدِسِنِه"
+  },
+  "common_voice_id_25287240.mp3": {
+   "audio_sha256": "927d3fad3db67fd71b3a64e9d582495cbae573a942ae800cbf25f949f74dbabc",
+   "spans": "ءَكُبكتَدِسِنِۦۦءَكُبَُلَتَمُه"
+  },
+  "common_voice_id_25294863.mp3": {
+   "audio_sha256": "ddfdc52b5df97d174bb6a8117f9bf4cb491d360957e270917c1293a607e4eae8",
+   "spans": "ِدبَرمَحكُسدَدِبَوُنسبُوَكِدُں"
+  },
+  "common_voice_id_25303263.mp3": {
+   "audio_sha256": "68f38d869af8140bc1768ff757227046b7cca935773fdde808032e450851562c",
+   "spans": "سَيَبڇربلَںجَادِتُسربَاادَنسُبَرمَركَت"
+  },
+  "common_voice_id_25464754.mp3": {
+   "audio_sha256": "75e6ce799652fdf66d22532b65aac254320c569b2750530504b07067a7017953",
+   "spans": "قَمجُكَملِهنَمَمِرِدِدَفتَر"
+  },
+  "common_voice_id_25848679.mp3": {
+   "audio_sha256": "3df3e6bdf37a276d372479eeb956cd542dc7f8a1dd9017437cf24ad107b83771",
+   "spans": "مِبِكُمَلمءَنِه"
+  },
+  "common_voice_id_25856358.mp3": {
+   "audio_sha256": "2fa66de0e85c4f9da0003b7adaf675933ecd7a28f777bd6e328049025ef07830",
+   "spans": "كَدَسَيتُُملَلُكَجڇدِسيلبِمِلتِدَءِينرمِثيَه"
+  },
+  "common_voice_id_25968363.mp3": {
+   "audio_sha256": "7441f430c23e619a0dbf1c10d3b9f9e2a1d0b948b783cdb39ef766bddde09112",
+   "spans": "جِكَءِتُدِلُكَنستِيَءَكُيَكِنِسكَرَںمَكَءِتُبنَردَنبرمُرَه"
+  },
+  "common_voice_id_25990822.mp3": {
+   "audio_sha256": "1124f97f595a3e0fd42c1f35bc835de564e3db6a45d45566cf416d3cc808f2c8",
+   "spans": "رِجڇءدلَفُترَدَرِرُبُتكِسكَتبِسِكُكِتَسورَوَنِتَبںسَوَنلُمَلُوَبِيس"
+  },
+  "common_voice_id_26008524.mp3": {
+   "audio_sha256": "7d35e56b5468d9398daa563271319c5266b3c5520f8aa07177d9572789d53a02",
+   "spans": "سَيَسمَتتَرِكمَنءَلمَيه"
+  },
+  "common_voice_id_26242855.mp3": {
+   "audio_sha256": "f94b62b766da15ad013048331193c3bdf8e8594ed06e89a1289fca3d300da05f",
+   "spans": "لَكِلَكِبرتُكِمِرَهدَنبركِهِتَمدَنكُنِںسدَمَمَسكِكَن"
+  },
+  "common_voice_id_26266488.mp3": {
+   "audio_sha256": "3ecd6c0ae1e0b1cae0ed4f25751f4ec5124b52bcdf3aa6ddcbbb16ea9e5552d0",
+   "spans": "فَنَںَنءُمُمءدَلَهبَهوَروَكرِفَدَكَبلِكدِكَبُركَدِِترنَت"
+  },
+  "common_voice_id_27404391.mp3": {
+   "audio_sha256": "902a87da1b20f2f25c9e78c0328358aa49da59041917c78f1457d2d629a8ea11",
+   "spans": "ببِكَعَدَعَءرَءَهِسَعَمَينَقَل"
+  },
+  "common_voice_id_27435475.mp3": {
+   "audio_sha256": "3f4f6626068b79254955fd12af05758e650d3d0f888fac40f2987b5a15da5b8f",
+   "spans": "دِمَنكُلبَنكُه"
+  },
+  "common_voice_id_27457859.mp3": {
+   "audio_sha256": "24604093dc7c5b2ff7fcade1e99563e48ad16c9f43ee94894c54c99fa911886a",
+   "spans": "فَقُتِلَتَبفَتَمسَعوِجَ"
+  },
+  "common_voice_id_27651921.mp3": {
+   "audio_sha256": "8db26f2d9805dbd16a0edaa04806f0e1828ab0bedca11131cf4b47da63b0ab32",
+   "spans": "لِيَتَسكُسَنَءدڇبُر"
+  },
+  "common_voice_id_27853829.mp3": {
+   "audio_sha256": "a20e29fd575f4bac55fa942466e2dbfa43bb0bf247f1be092d181de0faa1b4ba",
+   "spans": "بَكِمَنكَلكِدبمَينَنِسفَتِهَرِسَتُسيَه"
+  },
+  "common_voice_id_28161670.mp3": {
+   "audio_sha256": "57539ada182fbe1469ae43742e7e1ab861fa1f3c759557e452e690903bf5f824",
+   "spans": "بكِتلحِدُ"
+  },
+  "common_voice_id_28672347.mp3": {
+   "audio_sha256": "b8ff5cc4e195ad213c60b0f210d7212c6953f3edb96f1a6efb477391c98efea8",
+   "spans": "سِيَبَمَبَِلَنمُه"
+  },
+  "common_voice_id_28734942.mp3": {
+   "audio_sha256": "2817607b331470146b74bc07ce45f42af67ecdf95139f9eeba5578ab66cff682",
+   "spans": "سَفَهصَنُنمللسدبرَهِر"
+  },
+  "common_voice_id_30467909.mp3": {
+   "audio_sha256": "01ab60604d1bdf4af8b554070ee44dfc25ec5d45246807c4cd319e61235c9048",
+   "spans": "بُلكِجَقدِ"
+  },
+  "common_voice_id_31392395.mp3": {
+   "audio_sha256": "5ff6aa619476f8601915a5d9c18bfd470d9c11c117660b95445fef43a9748147",
+   "spans": "ءقدَلمَسَلَيَ"
+  },
+  "common_voice_id_33325689.mp3": {
+   "audio_sha256": "b134fe3cacc01e801e0fcbb9b8dbd507c2c60fb9b52b337aca6d610d7feba06e",
+   "spans": "فَسكُبِشُرِ"
+  },
+  "common_voice_id_34369371.mp3": {
+   "audio_sha256": "a5157dd34f312ee9aa42b0166cc6868a3c4a743a99251f03c18639df035a99f4",
+   "spans": "ءِفَعيبسِهمَمِكبڇتَرَ"
+  },
+  "common_voice_id_35117798.mp3": {
+   "audio_sha256": "fb7a7ce54e31f1d9613027f24658ecf5d68c0117930f575b94d4cd737b9b1273",
+   "spans": "كَءَلءنمرَُكَنءكرُنِمدَرِبهسَءَندِسركنكَرَه"
+  },
+  "common_voice_id_35277678.mp3": {
+   "audio_sha256": "7000686fe34956c550581ad466928f03a6e6b32a701bb95a15f8d1db993c0dc2",
+   "spans": "بَنَكتَرِلَكُۥۥرَلِكِتِلَتِنُۥۥيَمربَكَتتمَدَرِبَسَءِبرَنِۦم"
+  },
+  "common_voice_id_35377657.mp3": {
+   "audio_sha256": "ea28122f42e4c547704398b91e9dc3e5071a18989e46d6f1ef9f7fe609100953",
+   "spans": "بَءتَمَكَااسَمبَيدِستَسِيُنسكِتَركُكُلسبُلُه"
+  },
+  "common_voice_id_35411053.mp3": {
+   "audio_sha256": "cc166f84af31c878f10e4912158451370ff72eeec481bec9e28539343b8a8c64",
+   "spans": "ءَبَكَكَمُتِدَءِمِسبَرتِدِيَ"
+  },
+  "common_voice_id_35506631.mp3": {
+   "audio_sha256": "5bbd2b23d3a964de9d84f24f96130bb9190df3d6bc9cbd0c24d97f6a28ff80a9",
+   "spans": "سَيَرصقكِكَسَنَتمِءيَحصيَه"
+  },
+  "common_voice_id_39591296.mp3": {
+   "audio_sha256": "d41bbf1f707ad23d8f5ed557d48db12b6086d247962f4bef952ac949ffde1042",
+   "spans": "ءَكرَسِمرَُكَنهَليبتِدَلَمَرِثمَتِكَ"
+  },
+  "common_voice_id_39652796.mp3": {
+   "audio_sha256": "9ea4d77fd99a66d92673da4e9e12829b44f74ef3d726d07f43a24840192b9ba2",
+   "spans": "تَممَنُبُيكَتَريَدِكَفِسيَںءِنِۦ"
+  },
+  "common_voice_tr_17343926.mp3": {
+   "audio_sha256": "d172b45f1af7c24afff18c68c052ad1eaf743f015941c5e56fb44119f99d1aec",
+   "spans": "سِربِستَندَءُهَالَيكلَمر"
+  },
+  "common_voice_tr_17357166.mp3": {
+   "audio_sha256": "53dbe5094799907b73c0fba7b55eb79a211ffdeda9bd227bd9bb340a9f266fa2",
+   "spans": "دَهَفَزَرِكَبِترُلنِدڇر"
+  },
+  "common_voice_tr_17553923.mp3": {
+   "audio_sha256": "6d0e1884bf2962fff3c4016ef6c12d24e0ea79d9d16bf9d9226710932bda100b",
+   "spans": "قرشيقلشكءَتِيِزينءِشيرتجَك"
+  },
+  "common_voice_tr_17819415.mp3": {
+   "audio_sha256": "9768f239d2ada5c3470e9014b40ad99c63a6abec454bbade52a71e7f1006466e",
+   "spans": "كِكنَادَهَتَيَتلَر"
+  },
+  "common_voice_tr_18359783.mp3": {
+   "audio_sha256": "b12e565880f7a0581eea9b3021ab4eacbe10cae1fe6105d735a7dc687bea6d45",
+   "spans": "ُسَضرِلورشجَكزَمَمرُظمَد"
+  },
+  "common_voice_tr_18377313.mp3": {
+   "audio_sha256": "4f7fc5d8a237796316b33793a69afe7be58989680ec3bbdd5196db4afd2d316a",
+   "spans": "كِمِدَنبربيِنبِرشديل"
+  },
+  "common_voice_tr_18434357.mp3": {
+   "audio_sha256": "7e60c91a3c561b6fdb6108c73d0b49eb30d13e34ee5de4590df26fcff0e1f8b6",
+   "spans": "كَكَءنَعتِف"
+  },
+  "common_voice_tr_19048386.mp3": {
+   "audio_sha256": "2d9ffb52e256f67eb80b985f3d8a268d5fe1d48d4cae90bbabbfa57997610855",
+   "spans": "تَعدِشءِسَبنيَفمِرتت"
+  },
+  "common_voice_tr_19196923.mp3": {
+   "audio_sha256": "922f08a655ef3a1e452d6d5afb4e19a169641b2aef5a22a460131d0a43ceb0d3",
+   "spans": "بُربَعكَلَشَرمءيَنَحلبَح"
+  },
+  "common_voice_tr_19292146.mp3": {
+   "audio_sha256": "5a1ea2edc13768fbe2720dc549a5bed056291037a8fbcb0d6195c36eebb2d5e8",
+   "spans": "تُركِيَرَفرمدَتَكلمشنيتَلشَببستَريَرم"
+  },
+  "common_voice_tr_19507050.mp3": {
+   "audio_sha256": "97671f325e49bbb07fc27b5685392a6a0d0d0777bf191f32176d9b9ddb86a97b",
+   "spans": "ءُرِجِنَلنَكسِنَكِيَفِتلَرشكَرلمَدڇ"
+  },
+  "common_voice_tr_19536644.mp3": {
+   "audio_sha256": "e7812613670480f75f6929bb38381469c358a8bcbdba0aed3f88d9ba64c5caa7",
+   "spans": "قُربَملَعںشُۥۥمشُجڇكلَرُضشتريَح"
+  },
+  "common_voice_tr_19596396.mp3": {
+   "audio_sha256": "1767e5b37e199f5715093d94708740394c3a7365bf1c3e70941b5b12ca1271fd",
+   "spans": "ءَنجَككَزتَبَشكَءَيرتبَرمَدڇ"
+  },
+  "common_voice_tr_19648783.mp3": {
+   "audio_sha256": "b9244169cb74d322e17cd9a887f69b4bc93096a734589f3b566da7cbd5de52e3",
+   "spans": "قنمِسِجرجرسَ"
+  },
+  "common_voice_tr_19807581.mp3": {
+   "audio_sha256": "25924a4dce1aba6ac77e43b7097355850ea1a57442885f8819d588e8963115b5",
+   "spans": "ءَلكيدَكءُرتَنَمَءَلِكجِتءتڇزبِيِتمِشبِشءرريت"
+  },
+  "common_voice_tr_19821329.mp3": {
+   "audio_sha256": "66d26ff7494c128b06c37292e3ccbce650caada26a768a84908283348eacdf02",
+   "spans": "كُكرِءُيِدلكدَكَتلجڇلَكَتلد"
+  },
+  "common_voice_tr_19878371.mp3": {
+   "audio_sha256": "cd7d6a26e2a2ae97681931d2d215212bba42b8d1785968be59d75f0b9a0cc857",
+   "spans": "رُمَنكمتدكرجِيكَتفدَبُنِير"
+  },
+  "common_voice_tr_20516197.mp3": {
+   "audio_sha256": "38c6b9c0cde0ccd4aecdfa718042ce62ef71ed9a11fc184d4062f24e1625cfcb",
+   "spans": "كِشِرميَكلَشكءُتزبِشتكِكسفه"
+  },
+  "common_voice_tr_20518041.mp3": {
+   "audio_sha256": "3660043e7438d64fed1483d38402874958bfe520783d862ad169e7278af10404",
+   "spans": "كَركلِيَسَبَردَمَبشُددِيل"
+  },
+  "common_voice_tr_20547068.mp3": {
+   "audio_sha256": "fcc9106c4d4840559f4ca07e0544a61fd9a8a0375a13af6b5a3915a292653e74",
+   "spans": "ءَدنَءِمَكبَركسدمَعب"
+  },
+  "common_voice_tr_20763748.mp3": {
+   "audio_sha256": "ee742c9952989e91be1d3a3a82c7a3ea58ebab955744b7c777bfa1221ad4a080",
+   "spans": "بلجَزلرِسَكنِيشفِلقشِر"
+  },
+  "common_voice_tr_21135431.mp3": {
+   "audio_sha256": "e51ba9767844abcf5005b93c3932a3f2640434466820abd85edbc40c76a70211",
+   "spans": "كَمقَيَلَرءبِشَزِرَدَبَشلَتَ"
+  },
+  "common_voice_tr_21197675.mp3": {
+   "audio_sha256": "0655b748ace8402bb6c99b108b11ec1c5ec6f21ec6c496cb5353285d7019ee2c",
+   "spans": "ءَجَكيزِرمَتََبَلِلِكتُلُصَلَمَته"
+  },
+  "common_voice_tr_21287891.mp3": {
+   "audio_sha256": "2578dc59ad07d48666379c0f547a61a36e2ac78e6a56b737d754b2ce1b3cbdff",
+   "spans": "بُصرَبِتمدَتَيسسلَردَلَتَدَبَدِلجَك"
+  },
+  "common_voice_tr_21342014.mp3": {
+   "audio_sha256": "fed142237127722185ebaf81914c8a5436fad583aa563ec2c670d6a2cc9f8b69",
+   "spans": "بَشكَبِشَيدَهجَردك"
+  },
+  "common_voice_tr_21427171.mp3": {
+   "audio_sha256": "01eed98d2d3b60198629ed990775efe76ea6f99782bfefcdd20d8c9e64f6fae2",
+   "spans": "سَدلتَعسُسشتملكَِمشت"
+  },
+  "common_voice_tr_21454201.mp3": {
+   "audio_sha256": "0c3507bcf572f1bb8a6736613c09098f7319c9179603457e81e0e9584a685789",
+   "spans": "للمسنِتمِر"
+  },
+  "common_voice_tr_21711723.mp3": {
+   "audio_sha256": "f2b84b60017187966d1a5ae396edac304f539b5f68a01fd971de4011f92642c8",
+   "spans": "تُركِيَبِردِكتَترلُكتِيل"
+  },
+  "common_voice_tr_23872431.mp3": {
+   "audio_sha256": "6d0869051338ae3b9e840e4512ecfc0d08133751ba5bbad00733372c879b7c0d",
+   "spans": "ءِكَ"
+  },
+  "common_voice_tr_24762354.mp3": {
+   "audio_sha256": "6086a39e618cdff3e6f0ceb46cae7026aa504da85425e8af34412c4cc5ef7537",
+   "spans": "كرُجَهَزِرَمنَكَلَتََملَمَجَك"
+  },
+  "common_voice_tr_24975711.mp3": {
+   "audio_sha256": "570a27d34e7ca35868d9ddcd6d9f128f684bc6325af417c7b674853c2c69c078",
+   "spans": "صرفلَرءِتَلييَءُجصفرمَلفِتتلَر"
+  },
+  "common_voice_tr_25013735.mp3": {
+   "audio_sha256": "c7bdbbead237bda8d62fd0692b6be4706cea7e56fa4d7681657e267264abe778",
+   "spans": "شُكَلدِه"
+  },
+  "common_voice_tr_25106572.mp3": {
+   "audio_sha256": "cb6d6ac03520970972ab734c1e33cf2d9173e6085d7a48520629e3c7f3775b9b",
+   "spans": "بُسَسكسِذلنءِكِجكتَب"
+  },
+  "common_voice_tr_25224068.mp3": {
+   "audio_sha256": "dab17fe7d49d2c77da2c0cb191ba71bc7f90618ad4631a0d1b8aa99db60459a2",
+   "spans": "حَكَردويبَرمُرَنجِتَتدَكَرد"
+  },
+  "common_voice_tr_25257185.mp3": {
+   "audio_sha256": "0371711eb157d9f44c0bd2d45f45e7328ba33d6c52f09187b42008f6a1f65954",
+   "spans": "نَدَه"
+  },
+  "common_voice_tr_25325438.mp3": {
+   "audio_sha256": "f20a8844cd3bce9fc3d941fc7f9ea7863d21cd80b896c9832866848e0a2c8cca",
+   "spans": "شِمدِسَيَتَدلتيتَ"
+  },
+  "common_voice_tr_25329298.mp3": {
+   "audio_sha256": "e01254c60df3ff8a6f4dff1b7869dfcdbf3dfa7ca2d5fff6cedf11afc832cb67",
+   "spans": "زَمَنِشِندَءِكلِننَرَسندَبِرءَشتويُح"
+  },
+  "common_voice_tr_25535070.mp3": {
+   "audio_sha256": "163ffaa3632d2d35374fcb654b73fd2a5ac8984c61f2043f55a1e34f02113a63",
+   "spans": "حَرعدءييُته"
+  },
+  "common_voice_tr_25798582.mp3": {
+   "audio_sha256": "924602f447826eedb9f40c4fcd7b7a1636749e05d993e4417d82bfbe1263f1fa",
+   "spans": "ءَتبزميَك"
+  },
+  "common_voice_tr_25853018.mp3": {
+   "audio_sha256": "201bb2d13bbf04549075fbe7879fd66b5bc6415e01cfc2fe364bf31ce3ebd104",
+   "spans": "ءُمكِجَوَكتسُكَكَرڇدشرَنءجَبءِشنمبُبُشلُۥۥحَيَتنبُكَعيسزلِتِۦلمِت"
+  },
+  "common_voice_tr_25960583.mp3": {
+   "audio_sha256": "9af95eea777694dbeff68fd84b71fdc0cf678762c0afd8bfd6f219751d508bf1",
+   "spans": "ءَركَكسملَرءِيمدَشُكييكَدَدِيِشكَنِككڇستَرِح"
+  },
+  "common_voice_tr_26448760.mp3": {
+   "audio_sha256": "ccfdc3e261e16dee3192f079d52309d40d90c820a27385ef7fa42639cca069eb",
+   "spans": "ءِلمَءُمظمَكيتم"
+  },
+  "common_voice_tr_26540184.mp3": {
+   "audio_sha256": "384169e149e06a3c464886f12f0630a401c048d1ddd405fc511d76653a0094f8",
+   "spans": "بَنُندِلِيَرضُم"
+  },
+  "common_voice_tr_26552601.mp3": {
+   "audio_sha256": "126d837e4ee9a2ba53f12283026fb9eaf2d9dacb43dc2b4f3341df7a44907831",
+   "spans": "ءِدِبُ"
+  },
+  "common_voice_tr_26954239.mp3": {
+   "audio_sha256": "0ece687eb92c0458cb18c271068ce4ad07813c68e5b3a5172798cf1088a3f028",
+   "spans": "ءَِنسَرجِدرِسمتِشرِتكلِرَمشليرد"
+  },
+  "common_voice_tr_27213120.mp3": {
+   "audio_sha256": "7551b655b721e70d4aa647a4fcd7665c21e414649fdfadffa7766b9312d17a77",
+   "spans": "ءِترَفدكِمستِهسۦبَكشَركِكدتَضِت"
+  },
+  "common_voice_tr_27777560.mp3": {
+   "audio_sha256": "55e7bea8e2a95300b7dd718d12dc2112591b270e4988334415afe19014d45b67",
+   "spans": "نِشنَم"
+  },
+  "common_voice_tr_28090854.mp3": {
+   "audio_sha256": "3bca82a7fed36677a064b99f825d9a8b5232f7cb8b76885c2718d86cafa47641",
+   "spans": "كَرممصبَه"
+  },
+  "common_voice_tr_28847000.mp3": {
+   "audio_sha256": "ba51a0f6ceae3be338ab9bc350c85abd83b1885446dac2ca2ac476a3e7054347",
+   "spans": "بُلرنَيبُشت"
+  },
+  "common_voice_tr_28858152.mp3": {
+   "audio_sha256": "6050d7cb3eb895355556cb276a88815792e8f2c529884177286d72341dda9d03",
+   "spans": "دَهَدُۥرسُكفَمَهبِشيلَمَكتَنمِنِتمشتم"
+  },
+  "common_voice_tr_28858764.mp3": {
+   "audio_sha256": "bfe15a8adfb45c764248caa334bb4a088b14284317d55ae47bbd3bfdd20d7b26",
+   "spans": "بُشَكَ"
+  },
+  "common_voice_tr_28868666.mp3": {
+   "audio_sha256": "9d8c37f2edafe4a88eaa81ead4974834927945f691c61ff8ac8ad0cd8db8df50",
+   "spans": "تَرلَعبيمعَشتكلَرِءِشِننِتَرفكِتِمبِمَدَنِلَيد"
+  },
+  "common_voice_tr_28884734.mp3": {
+   "audio_sha256": "2b1eaeb31b1a2e958fd277762822a7944a9f7dddde7c2d4cc48c48a909204629",
+   "spans": "شِيتَدِدِكِشُصَرهُشَلدبُربَشنءدمِكَبَس"
+  },
+  "common_voice_tr_28908255.mp3": {
+   "audio_sha256": "9b1a2ffe220e6733f4c96f1f15a4e8112e27ef1cbc07f0184f2f18457bb1ea84",
+   "spans": "ءَلَتَكڇمَس"
+  },
+  "common_voice_tr_29139387.mp3": {
+   "audio_sha256": "5004db7f1de42243e9ee6392d0ead759b3f344a0c5b86c6caf15b31df5817e4d",
+   "spans": "قَلِكتُكنشرمَمَءعَزمسُضُلكِش"
+  },
+  "common_voice_tr_29576605.mp3": {
+   "audio_sha256": "b89239d726bedf40142d4fcc3ac1418e2a2ce113c11ffe3beb3c91d0d7f7b7a3",
+   "spans": "بِعَسكَلِك"
+  },
+  "common_voice_tr_29696262.mp3": {
+   "audio_sha256": "66a9288f2e0b760c3c581f80158e254ab90c85842ffc6c82b8345586892e0479",
+   "spans": "شَيمهبَ"
+  },
+  "common_voice_tr_29817019.mp3": {
+   "audio_sha256": "2ae46715f8c819690ba9561a4370a745ea4f3fa9f1488975b3e00affdd91532c",
+   "spans": "ءَفقَدڇه"
+  },
+  "common_voice_tr_29901636.mp3": {
+   "audio_sha256": "05ec8de91a8e2215deb4e5def5643139fc7405ca0bbb8bfe3a6b7cc330189b62",
+   "spans": "بِنعتَلتِكِۦم"
+  },
+  "common_voice_tr_30312635.mp3": {
+   "audio_sha256": "e4a30865bd91307d501d7373f80e7914d5b982cc4721323311aa766438534beb",
+   "spans": "كُتبِزَمَم"
+  },
+  "common_voice_tr_30356805.mp3": {
+   "audio_sha256": "4639c22f1b5d5d0b49870ce02fb0c3b788032d05e55d89ae5c0c503a886a26e2",
+   "spans": "رَسفَكرفكَلعَيره"
+  },
+  "common_voice_tr_30440510.mp3": {
+   "audio_sha256": "d796073374302c10d10629389549df22ca37fcdc6809f6b7aa92144b1e9bba71",
+   "spans": "بِشَكَس"
+  },
+  "common_voice_tr_30460516.mp3": {
+   "audio_sha256": "6b879265e60debfe3c59b1bfd5728a0b848b721052c5e32350d86a7606026f24",
+   "spans": "ءَدجَك"
+  },
+  "common_voice_tr_30469202.mp3": {
+   "audio_sha256": "f9b93955597e55c604672fe75d3de35bb3b11208797d114de7125e22938dd176",
+   "spans": "صُبڇ"
+  },
+  "common_voice_tr_30500861.mp3": {
+   "audio_sha256": "1d48c8d6bdb632fdfccd96cce90bf7faacccc29d4d8e31a2c4cba13049f65796",
+   "spans": "لِمَكِۦۦجِس"
+  },
+  "common_voice_tr_30682920.mp3": {
+   "audio_sha256": "90fd55e5416281246f1341d911c2d7b8b28eb799e10254c621887748e4ec0180",
+   "spans": "تُكبِتَس"
+  },
+  "common_voice_tr_30812042.mp3": {
+   "audio_sha256": "efaea7887e9d371e50b8c7ea0a8aefe7fe24db902695362bef581471a6656924",
+   "spans": "نَكَدَرزَك"
+  },
+  "common_voice_tr_32698449.mp3": {
+   "audio_sha256": "d8c94e734261d3746643aeeada21bf6fe848bb7b72eda935b49d3e4ce9c95ab1",
+   "spans": "وَزُرسُقَكُم"
+  },
+  "common_voice_tr_32701185.mp3": {
+   "audio_sha256": "0c375c6eb032d18ab819316db411bf81d106d1cc73b810d355e0f994c450389a",
+   "spans": "مَربِجَن"
+  },
+  "common_voice_tr_34155363.mp3": {
+   "audio_sha256": "427b5c3b5d77441526080fe755dfb0a70fcdb2c184d80138b3c7c240a5382033",
+   "spans": "يَشَيشمزنهَرَيبِريَردَءُلمَسبِزمسَعدتمزبُصمَمَل"
+  },
+  "common_voice_tr_34435039.mp3": {
+   "audio_sha256": "722f248e6fc20bcd2bddfba46662ddab1526aa4730aa892090eb45ac9003ff8d",
+   "spans": "ءِبِتسِزلَكَيكِيركَدَشُلَبِلرس"
+  },
+  "common_voice_tr_34747837.mp3": {
+   "audio_sha256": "d1e812150b9430331ce885dd961753cc3c7ecf974c5649a4a428409c5b186cfd",
+   "spans": "بِلِسَدَبُكَدَتُكشِتَلِفِتمِكءَعكضُردِل"
+  },
+  "common_voice_tr_35263176.mp3": {
+   "audio_sha256": "d67c37b44e80b002b2cd059b55eaf7a11625287bf64a2927fe3213237f393f3b",
+   "spans": "ءَمِركَيَحُشكَدس"
+  },
+  "common_voice_tr_35782209.mp3": {
+   "audio_sha256": "9a05dece532cfb83e5e625641bbbb47c3a10dbc5c04328624f6f0cfd895745f6",
+   "spans": "بِنملبِسرممَذَر"
+  },
+  "common_voice_tr_36406556.mp3": {
+   "audio_sha256": "3b8cfc8b37f146e86d56c11e38841baeacbe0e2da61b82071e60c1a177a99f75",
+   "spans": "بُيشِۦرَمَيتَك"
+  },
+  "common_voice_tr_36414658.mp3": {
+   "audio_sha256": "ecd50f1164aeed9fe554a343fbd5ae043dbe4b6050cccf2b28c1503151b4fd63",
+   "spans": "بِركڇنءُفِكرلَرنءُنَءَشتۥزَمَننِهَتشَليُرميَتت"
+  },
+  "common_voice_tr_36439251.mp3": {
+   "audio_sha256": "95c759bebfb17f64987a2f4513c9afb83740bbc6556372752338875ee74de51c",
+   "spans": "بُكَسقُرليدزلَريِبِۦۦد"
+  },
+  "common_voice_tr_36441203.mp3": {
+   "audio_sha256": "01ed7f0d11026ce279dfa05f525093f7e108c9486dac00c7c75232ca3117dc4b",
+   "spans": "ءَلمَتح"
+  },
+  "common_voice_tr_36795698.mp3": {
+   "audio_sha256": "5218d226a39d9980b77d690d88a57c84ddeba110ad835d4d3e5863b36229511a",
+   "spans": "دڇرِستَبَ"
+  },
+  "common_voice_tr_36852932.mp3": {
+   "audio_sha256": "a802a82e7ed4d4947c696b382634db71cea72fe9c9ffd7b57bda6f3abca9bfbc",
+   "spans": "سِنَازدِجَس"
+  },
+  "common_voice_tr_36966518.mp3": {
+   "audio_sha256": "937ac6442cd77f12e0754ee2d94609199706e35ff35505605be3303b4be887a4",
+   "spans": "سِزربَي"
+  },
+  "common_voice_tr_37380883.mp3": {
+   "audio_sha256": "28a0de133b94532bc6b5576cc85fb5cecd33c56249d1a051eb01812d26765ed7",
+   "spans": "مَعدَمَيلَه"
+  },
+  "common_voice_tr_37536133.mp3": {
+   "audio_sha256": "2624521933c1f26648368f1a1ddae84852c10972f4f3b00759be414081037855",
+   "spans": "يِلَشَوكلَمشت"
+  },
+  "common_voice_tr_37556457.mp3": {
+   "audio_sha256": "971652e3050ffa07d13fe6f5380c60b0c0eb8ba36948ac37d94b8dd1e667a061",
+   "spans": "ءُمَربُللَردَمبِلنَيَكلَشَرَك"
+  },
+  "common_voice_tr_37655701.mp3": {
+   "audio_sha256": "bcf7e7cfc1a838c44522529c1fc06aab487d3368c63e578d3b376c43190c2786",
+   "spans": "بُلَبِمدَتكَضڇتَسُرَءِسرَتدرَبِلَت"
+  },
+  "common_voice_tr_37773066.mp3": {
+   "audio_sha256": "3bf1e6815f0375c07a73d973ac8ad162df2e9207f59381cbd62b3a725b522618",
+   "spans": "فَعلكلتِۦيث"
+  },
+  "common_voice_tr_37855188.mp3": {
+   "audio_sha256": "26b5ca2a7dfaedddcf5d80bad112ff42bcccb06e55d307c4567aca20fc8c131d",
+   "spans": "صُكَمبِرَسءِلرِسِدِكِحَالَكَفِسلِءَلتَنبِلِنِںجَمَكُرلتۦلَيُكَرِسرڇلد"
+  },
+  "common_voice_tr_38027861.mp3": {
+   "audio_sha256": "961f74c8ca3f7399f0e424bf5b07d7228dff74a75bb08663e7ecf26cdfafc146",
+   "spans": "ءِيلَركِشَريرته"
+  },
+  "common_voice_tr_39824523.mp3": {
+   "audio_sha256": "5ac04c533dfe5b8fc345cbbcc33a4f3777b5220f7b5e8791e32b004635c704b4",
+   "spans": "ءَيرجَبلتَسزبِسَكَنِكتر"
+  },
+  "common_voice_tr_40475599.mp3": {
+   "audio_sha256": "c0aa0c02403db5f2b24c9b74a4563cc986cc880cc1e8516adbb40a0bda9a49a4",
+   "spans": "كَهرمَننبرَصلَيتَصمَمءَمَصُردح"
+  },
+  "common_voice_tr_40492940.mp3": {
+   "audio_sha256": "e73b56c15d7830109e552df3ea544f95310f7f0a49ec671b5c948050e31cc29b",
+   "spans": "سَكَكِلمِسَءَهمِنِشلَردڇنمِدَسُرَءِسكِفَرشَدكُلَنمَيَبَشَمشتر"
+  },
+  "common_voice_tr_40686631.mp3": {
+   "audio_sha256": "e4f46a76c2b5de707162a0a938b273216b4dc8f14f8b790fb5b9793d3506ebff",
+   "spans": "ُصسجڇزَمَحكمسيَردِجڇدف"
+  },
+  "common_voice_tr_40794028.mp3": {
+   "audio_sha256": "eca92b684eafbf0fb40e21245023d0444b061d122dfaadbe0db0fa4b04cbcecb",
+   "spans": "تِغَمندَءُرضسُبَيلَرجَدَرمُكُبِتتِرِنِءِمِركُمتَسدِبرَلت"
+  },
+  "common_voice_tr_40977381.mp3": {
+   "audio_sha256": "40f87f693547a391121a32c88eaf51ee58ca3dc4a1723607e799ea4036f29755",
+   "spans": "ءَيرِجَدَرِيُسيَتڇفِتِهلَلَكَسلَرشِنشُكءُنِملسَيلر"
+  },
+  "common_voice_tr_41860278.mp3": {
+   "audio_sha256": "0950facd9badd32b5d19d2d8648d930ebdbffc330cb47bd6eb94ae86152aeba9",
+   "spans": "كُسلمبَشَبِريَربشكِشتِ"
+  },
+  "common_voice_tr_42565079.mp3": {
+   "audio_sha256": "28cfde52690d6a6341b93e572276a2e48f736c824229a1b57c39152103efee99",
+   "spans": "سِدَتسِمَذِۦترَفنَيينَمشتح"
+  },
+  "common_voice_tr_42617111.mp3": {
+   "audio_sha256": "932e9a79ed0bae657a064d3529229505b854148cf17910961ca2df83dac10349",
+   "spans": "بَشبَكَننءُولُءسَءَينزَمَندَتَكڇمنيِدِكمِيسدڇر"
+  },
+  "common_voice_tr_43729336.mp3": {
+   "audio_sha256": "c5add721b6e8436ad816b65a96a43c0ae41da8c91f1527c74f2d1a3506011935",
+   "spans": "بُيشيكَمرمَرَوُزنت"
+  },
+  "common_voice_tr_49033838.mp3": {
+   "audio_sha256": "cc4df0c2fe46b4e387db021eefac0a1aa2f2fb48295c2aaada0d8018e0883ca1",
+   "spans": "رُمَمِتُلجسدِكِدِِمُرتَتف"
+  },
+  "common_voice_tr_49421196.mp3": {
+   "audio_sha256": "435b2d274e7c8b585b2efdf12d1fa52ecc3b5df576423aea57fcd53cd80edd11",
+   "spans": "جَمذِكرسلدكلنضِسممَكتتر"
+  },
+  "common_voice_ur_26630112.mp3": {
+   "audio_sha256": "d3a317cc67195a8ac67580f226560433bc74ff48f2a94bd7bffeffa83d5cb604",
+   "spans": "لَكِنءِنكِيكُمَشَخسِيتُمَتعتِه"
+  },
+  "common_voice_ur_26646867.mp3": {
+   "audio_sha256": "91c9503f1afc3979fb7702c83f692d2d224158a6b7dcfc575ad1b19f0d10b63a",
+   "spans": "ءَمَشَذَتِتَرِيتَكتتَه"
+  },
+  "common_voice_ur_26652138.mp3": {
+   "audio_sha256": "74702dc6db273713abefeb224ff051bc5191f813f482b4d2aaea85d868adedbe",
+   "spans": "ءَلحَاالءِهںدَمِصُرتَهَلمَسوَلهِفَدَنهِهُتَ"
+  },
+  "common_voice_ur_26654498.mp3": {
+   "audio_sha256": "710cb1e7f3d5db70dade19ed519b7deea87632c4efcc47ab21d2d45d5925b14b",
+   "spans": "دُنيَهَمَعدِنِهِ"
+  },
+  "common_voice_ur_27209999.mp3": {
+   "audio_sha256": "23ed830169bb099570be5ba4309ccc6553475ced10f1612ccb69c122ee6e3419",
+   "spans": "فَقَعَتكِبَدمَمهسُكَرتِهكِ"
+  },
+  "common_voice_ur_27804312.mp3": {
+   "audio_sha256": "d50410ca84a1dd17edd72c18e17b08f3f35f12ceb9ec4b4e796954d80895ed9b",
+   "spans": "سَبَرسيَسَددَنكِءجزَيتتَركِۦبِمِشَمِلهُتَه"
+  },
+  "common_voice_ur_27950398.mp3": {
+   "audio_sha256": "1fb8d060f6ef6b4d1078976f728fa662c01e2a6b69b7b614bbec7766de870284",
+   "spans": "ءِسكِتَتِۦكِلُبءِذسمَرَسك"
+  },
+  "common_voice_ur_28485701.mp3": {
+   "audio_sha256": "43280e273f811564af2af6fca57b4bbe2a479d83b6268f7327c3dd3c4ff81e1f",
+   "spans": "جِسكَمَكسَدءِكمُلكِشَهرِكَدُسرِمُلكمِسَفَركرَتِنَهءُرءِسلِشَنكبَغَهُبَع"
+  },
+  "common_voice_ur_30124278.mp3": {
+   "audio_sha256": "66a935c67aaa7b98bf02181e74715dbef586449fde77a6aeaf51ffa76da7ed7a",
+   "spans": "كِعبجَتَه"
+  },
+  "common_voice_ur_30645032.mp3": {
+   "audio_sha256": "d446a94b46c16ea65cbb60f4b0fdf366e6eb11fb1091bdd2a6cce827d2ed9b25",
+   "spans": "ءَلبَتتَاييِخرَج"
+  },
+  "common_voice_ur_31348863.mp3": {
+   "audio_sha256": "5ac4c0fbcf0710a20a35d28d4f50201c9bebcd2c189e57429ca5a0c28784bf5a",
+   "spans": "مَعدرِزبَعنكِۦۦهَسيَسِۦۦبُلتَهَاا"
+  },
+  "common_voice_ur_31350547.mp3": {
+   "audio_sha256": "574fb8757e0fbccbf1620282b4af1bc7557c1a8fff3e45439b2cc57b7cf52092",
+   "spans": "نَيِسكِيسلبِهجَ"
+  },
+  "common_voice_ur_31774890.mp3": {
+   "audio_sha256": "d80f97d742211f66da865a876b24a29eaf2cfaf516311991bdfbc61e55a159c3",
+   "spans": "ءِنتِخَاابهُم"
+  },
+  "common_voice_ur_31777610.mp3": {
+   "audio_sha256": "688118d6a31aaf79cb7f712c375f2c169891ad79c7d8f32e3f2948d045c0dcc4",
+   "spans": "جَهَيِجَنَءَكنِخُرَكِتلَشمَِتِه"
+  },
+  "common_voice_ur_31794901.mp3": {
+   "audio_sha256": "7a852e4e902ea6437d40afd44705eebb3c807deba4160b2f79a64e1983fe87ab",
+   "spans": "جَاجَتُءَصقَاكَرَهَهَجَستُءِتِشَوَرقَءقَتِله"
+  },
+  "common_voice_ur_31800367.mp3": {
+   "audio_sha256": "96ca3454f11d857925de28430f8f45e6c4d315be474f40b21d9a063fecbcccd4",
+   "spans": "جِتدِمَدُسلَيكِبَت"
+  },
+  "common_voice_ur_31813963.mp3": {
+   "audio_sha256": "3690f06cf91ff4a0f04d03da6d1ed3bc71186f6703d4035e10965af0e7eca708",
+   "spans": "جِيءجِنِ"
+  },
+  "common_voice_ur_31830640.mp3": {
+   "audio_sha256": "20a51e02784ba5e4d35b2ea8ecb0e6d9c74d8d1817806e49ce2bd0c2a75ef5db",
+   "spans": "ءَمءَنءَسزَرِۦ"
+  },
+  "common_voice_ur_31834545.mp3": {
+   "audio_sha256": "882f105e1ccf49eb14191f950acf3123e4b70801fd984c95447e70cba0be0bbe",
+   "spans": "مُتكُشتِزكنَكِفَتبَتتَمَهُتَي"
+  },
+  "common_voice_ur_31837151.mp3": {
+   "audio_sha256": "8fd0bffdfdc5a617c353082b9f99852610f6923815a7a09166dabc804a021b1d",
+   "spans": "هَمِشَكِتَلَعنَهِنكسَنكِيَا"
+  },
+  "common_voice_ur_31842233.mp3": {
+   "audio_sha256": "5e3eb98c682b63e69a312c93606be45d1ec50b5d7c7b6ebb227e40c17e088050",
+   "spans": "فَرَهِرَسفَروَزُسِيسَودِعَفقَرمِسَركِدَرِمِيمسَهسُفَلُومَلَكَه"
+  },
+  "common_voice_ur_31844240.mp3": {
+   "audio_sha256": "693afd2fcb9590c369d3c52fdf7ba68360dc8c34321f806b5b340c8444afaeae",
+   "spans": "بَسلهِۦسَمِلستَ"
+  },
+  "common_voice_ur_31847190.mp3": {
+   "audio_sha256": "15759540f0b9a47e479361d282795232d5369d4e0be43aaa71ef614bdd8a6be6",
+   "spans": "كِدِكسِلسلَتَلَوتَتَييَ"
+  },
+  "common_voice_ur_31847628.mp3": {
+   "audio_sha256": "6a8cb25f96f843b9f048010ee996134cd1592b8daff147c6b997d34f0f67c829",
+   "spans": "ءِسَلمركبِسَمِشنَه"
+  },
+  "common_voice_ur_31852845.mp3": {
+   "audio_sha256": "24ab61b1bea5b6253cc83916d1acbf14fd2068314841b9f43d5f4b95600a3f3e",
+   "spans": "كَتكرِتِۦۦ"
+  },
+  "common_voice_ur_31854845.mp3": {
+   "audio_sha256": "94d756ea1e04662219eb9b10812306cbb55bf953083cf9d7c3411d59f6c2fcad",
+   "spans": "بِيبهُتبَلَثمَتَه"
+  },
+  "common_voice_ur_31856151.mp3": {
+   "audio_sha256": "fc8372332d17e710aba3698b416e5479528bbd0b7dfdcab8dfa95acc66fff9cb",
+   "spans": "فَصلَءَمءَدِكَهَتمِنهِه"
+  },
+  "common_voice_ur_31863820.mp3": {
+   "audio_sha256": "ffd012164d8c52c202d1c57b554f89124cf14946d807f3578a3b152e1f2fd1b0",
+   "spans": "لََكِفِلءِلَسرِبِءمَتِه"
+  },
+  "common_voice_ur_31864636.mp3": {
+   "audio_sha256": "af77601c6586edae67ec95fb9e4c70b97f74b245cc0ee29799693882578c9c10",
+   "spans": "تَءنهِيءكَرءتَعَكَسَدِتيتِنلَبِه"
+  },
+  "common_voice_ur_31888667.mp3": {
+   "audio_sha256": "22c892dbd188e92aca6286092acc8a7462933f249c7f88961791cfdecda5b7bd",
+   "spans": "تُءِنكِكُوَتِِكتِدَرءُنكِجُدهِۦكُمِتَدِكِۦ"
+  },
+  "common_voice_ur_31892410.mp3": {
+   "audio_sha256": "e33b31327a840719e1480662246002c63d06161dbc6dea63babe936aa2025d5f",
+   "spans": "ءَبدُررَهمَاانكَااءِنتَنَشنَكرِكِتسِۦۦرِتَمِتكَءلَان"
+  },
+  "common_voice_ur_31894653.mp3": {
+   "audio_sha256": "4180dd370bb4411d1aca82923abec690cef860a35f99213cbeece8cdd006b8b7",
+   "spans": "شَذررهمَتنِءِهُلَمكُلهَفلِيَءُرءِنكُ"
+  },
+  "common_voice_ur_31897610.mp3": {
+   "audio_sha256": "2b0898db80714c27af2c7b4c94eb06764b705046bbf6957d36ae0ef3bd9da2e0",
+   "spans": "ءِتَهَكِتَكبِكِلبِترِمَقَ"
+  },
+  "common_voice_ur_31898571.mp3": {
+   "audio_sha256": "dfaa48b94814b4692123f7f8699b126a4b854f342c6566bce9a948db7d256e1a",
+   "spans": "جَفكَانيَكتِبَبِه"
+  },
+  "common_voice_ur_31898669.mp3": {
+   "audio_sha256": "66ae8f6e156ef17683827c881348d8a8332463bea49e1a0282a424e77c9d1a10",
+   "spans": "ءِسِترَمَيتَرَفبِمجُۥدهَ"
+  },
+  "common_voice_ur_31918448.mp3": {
+   "audio_sha256": "1276bd76ee1d2c170a4c335b8d6628b2626015c46316c3ad369193998f637f78",
+   "spans": "وتَكِشَكِككتبَكسَنبِستدِسكَمَبِمَتفَتسَ"
+  },
+  "common_voice_ur_31918574.mp3": {
+   "audio_sha256": "64b32c90c34a02a8a88005e66840c68989a2c22eecdbc8f517d31d6d5fe44fe3",
+   "spans": "ءَلفَزكِءِتَخَاامِهتيَدركتَه"
+  },
+  "common_voice_ur_31921567.mp3": {
+   "audio_sha256": "ec95d31acceda2e99e2fecdc1840e3aa51873d8a7bed92aa09b93a3bd228a634",
+   "spans": "ءِسُرتهَلكَستبدِلكِجَسكِ"
+  },
+  "common_voice_ur_31927916.mp3": {
+   "audio_sha256": "a346447072fe8e0d17f1255e046011c90923aab66a50919fa3e01e6f918253e0",
+   "spans": "رَشِكَي"
+  },
+  "common_voice_ur_31928055.mp3": {
+   "audio_sha256": "09d496fb2cc1b870d83da0363b24d24b15c2f2079926bb437bcf70b7aa39f3d1",
+   "spans": "ءمَرِشِكَستكِۦۦءَسبَبكَه"
+  },
+  "common_voice_ur_31931562.mp3": {
+   "audio_sha256": "23ec35e38b3ed6e118ac7413995da15cea4da47269ab6fa785b78d7b4ad32cf6",
+   "spans": "بِبِۦۦوَلَعكُبَحِسَمعهُرَا"
+  },
+  "common_voice_ur_31933403.mp3": {
+   "audio_sha256": "d591ffd635f3b6aa1cdca8a81dadba3c30944f3dc2254226932be2f2fdab815a",
+   "spans": "جَكَتَهَ"
+  },
+  "common_voice_ur_31934607.mp3": {
+   "audio_sha256": "ae3908283ce9bead9cdfd4cc398ac6a19ed6d3af23a28f30eacb4b2e6be8d44b",
+   "spans": "جَهَكِءَكثَرمُلكُمِۦسَالكِبِشتَرهِسِمكِدرَنتدَكرتي"
+  },
+  "common_voice_ur_31934717.mp3": {
+   "audio_sha256": "4844878c93fe4a20cf7abe19e71162cde5b5a1023e3aad1e17df48a907e56e09",
+   "spans": "ءَكِمُمكِنهَكِفَكسَنبِهُ"
+  },
+  "common_voice_ur_31936841.mp3": {
+   "audio_sha256": "b79d66ec3c214a849e3d22680005967e05929046bdde668d25a81e4ac54489b2",
+   "spans": "قَمِسِكَعَزكنَجَتَه"
+  },
+  "common_voice_ur_31937355.mp3": {
+   "audio_sha256": "0885d26cb73b6afa83c80892fa10206b2d5b0c1217263b009384d699cf01bef0",
+   "spans": "ءَتِسَامءتَلتِه"
+  },
+  "common_voice_ur_31938318.mp3": {
+   "audio_sha256": "bad960e61f4e1b492aa922ecf48876fb3a9ad628b902ac97da86b4b24c83b621",
+   "spans": "ءِسمصَِلي"
+  },
+  "common_voice_ur_31947114.mp3": {
+   "audio_sha256": "99d149243528d4ef67d0c09eea5086e673c1afb4ec2c41cf867558eec7694eb0",
+   "spans": "لَكسِفِفِهمَنِسقَمِلءكِر"
+  },
+  "common_voice_ur_31951694.mp3": {
+   "audio_sha256": "b1a57f44ad5ebbf27839a9e5b0caa070bf2781f7bc5f23e1a6861cd1d1283545",
+   "spans": "عفقِبِنهِدِكتَه"
+  },
+  "common_voice_ur_31954485.mp3": {
+   "audio_sha256": "1315f13036b781efd9b1f76f27291baab74052d42979a754979d1d43fee970e2",
+   "spans": "سَفكِمَتبشِكنِبره"
+  },
+  "common_voice_ur_31955349.mp3": {
+   "audio_sha256": "782e7f2c5ff15d331e1ea5bb81d18b82bbca3c50d6ac7670fc48d90f09b5c60e",
+   "spans": "كُۥںرِسِمِكرِنهَكَهَجَتَه"
+  },
+  "common_voice_ur_31956553.mp3": {
+   "audio_sha256": "71946c61446e642f49be58e2c8504a6358ba340266fdc7c5d725a629cc6f8dab",
+   "spans": "مُجڇءُسِخَفَتَ"
+  },
+  "common_voice_ur_31958544.mp3": {
+   "audio_sha256": "8df2b53d90c6fefa92daf1e6dbba921faa57a608973eb701ddf9a0ce753f556f",
+   "spans": "كَستَمنِمتُرَمبَجَفَءَرضُهِكَرَكشكجُكَرَردِدِ"
+  },
+  "common_voice_ur_31964093.mp3": {
+   "audio_sha256": "290e5734b2526e2bb52c17e42417ee51d69754ab334fd8ab1d9d055c412071fb",
+   "spans": "كَشَتَهَ"
+  },
+  "common_voice_ur_31966056.mp3": {
+   "audio_sha256": "251cc598c8667ca9cbc97a621f1e38f31978980aabdbffad2622dc2d8dd064aa",
+   "spans": "وَيِمَكسَدهجَنبَرفَكَركِهَسِلكَنَشَتِهَ"
+  },
+  "common_voice_ur_31968934.mp3": {
+   "audio_sha256": "9f65dc9596d7c91cca5fd3e228cb604d2fcb4be0ad60965a7280033566af3e19",
+   "spans": "يَجُۥمَجُدَه"
+  },
+  "common_voice_ur_31969788.mp3": {
+   "audio_sha256": "c8dc47713f25ae7d5e0cfc61d60df7c6a683e92fa1dd43fe2d2178b92c1b604f",
+   "spans": "لَقَلُفِهمَتءِبَيم"
+  },
+  "common_voice_ur_31975322.mp3": {
+   "audio_sha256": "d15eef61703ac600a2c7ebeefb3ceb80b060e542f996377573b7583402515413",
+   "spans": "نَسِرفيِكِجمُدهَ"
+  },
+  "common_voice_ur_31975567.mp3": {
+   "audio_sha256": "f3a7d2b411462a47154eafe5d987e3aa9af60a5fab5e2a39539b7f6fa6bd7e2c",
+   "spans": "كَبِكبَكلتَها"
+  },
+  "common_voice_ur_31986411.mp3": {
+   "audio_sha256": "6361dcb8788a7a5ef34e8b53236b5c9515116f096314ba9e26c248eba49d0143",
+   "spans": "يِءِكشَدَرهَنِتجَربَتهَه"
+  },
+  "common_voice_ur_31987908.mp3": {
+   "audio_sha256": "f6f25dc7c1cc79bf514edfdfca6db303bdc3b3127224c69e9333857a3e1aebb2",
+   "spans": "وُسرتَجڇربَكَككِۦۦتشِۦۦههَااءَعبَتَينَهِجَسك"
+  },
+  "common_voice_ur_31994652.mp3": {
+   "audio_sha256": "0639b6fb5ce19614e2450d6eca328285a3be3031552d808b7265c7ef0deac5fb",
+   "spans": "ودَفُنر"
+  },
+  "common_voice_ur_32002871.mp3": {
+   "audio_sha256": "40b5b2f6c08a39afcfb2597428e520492593ae98eb96d24e8c022283a0f90bde",
+   "spans": "فَسُكِفَسَليولجَر"
+  },
+  "common_voice_ur_32005702.mp3": {
+   "audio_sha256": "1e2e7a5dbdd3f539a042db8d0dc92f2117c91f213768255d0077fb3b83d5f0a0",
+   "spans": "سِرلَكَسدكِكركتَسَبَهَعكسوَرتكَربَنكِفِشقَش"
+  },
+  "common_voice_ur_32006687.mp3": {
+   "audio_sha256": "f01dabb569d4c727cdf5e3fcb8c7d786984ecc51698f7c9eb6de62e3b7d68d41",
+   "spans": "فرِدِںستَسكسَتمُتَبِكَتنيركتِۦ"
+  },
+  "common_voice_ur_32013674.mp3": {
+   "audio_sha256": "09d224c23cfd8be8d32fc4cfab3b3ca0702a8279175f6ce158660fbe5da7de68",
+   "spans": "نوَسرِفَدره"
+  },
+  "common_voice_ur_32018261.mp3": {
+   "audio_sha256": "df96184df49cb32da67bc0071c32379c29c1616dd27429d1cf8593a1e91b537c",
+   "spans": "كِلَرِكَجَهَسسِبَلبَسكِكَنِكَكَنَمَ"
+  },
+  "common_voice_ur_32018699.mp3": {
+   "audio_sha256": "3b9c926f6b89ab5692b44f882ed8e30358be4d2ad28bd4bdf2e831d215577af8",
+   "spans": "هُنُنِمَااتَيينَااتدَترُسِمُلَكَتكِ"
+  },
+  "common_voice_ur_32036933.mp3": {
+   "audio_sha256": "bb16c5493504c3ba1e024b1af10abed3a80d77cf1c5dc97e35705879f78f96bc",
+   "spans": "حَلَكِءِنمِتتِلنِكُينسَبتَاجڇهِه"
+  },
+  "common_voice_ur_32041763.mp3": {
+   "audio_sha256": "c7131f756b6ce4307f6f914a522a13ecf723f0b093fbdfd9b48e232e3ec630aa",
+   "spans": "ءِسكِيَتِهَنِبَغمرُكِزَرِيكَرَيجَتِهَ"
+  },
+  "common_voice_ur_32045729.mp3": {
+   "audio_sha256": "14c5c1af416418a49bab8dbf0c6c1fe744381c62a4afdf39c0263e802bb25bcf",
+   "spans": "يَمَزكَلمتَرصحَرفَهُبُرَاا"
+  },
+  "common_voice_ur_32050520.mp3": {
+   "audio_sha256": "fa80db5388235eff796d79274031382d681f7128b13d3e3de48686f66c48f758",
+   "spans": "ءَمَتَدِه"
+  },
+  "common_voice_ur_32051249.mp3": {
+   "audio_sha256": "0da39e2127f1eed5bb26e49a9d2120735089c386c34ef78d5a52b0617279f7f0",
+   "spans": "صلَتتِكمَزهُكَ"
+  },
+  "common_voice_ur_32056710.mp3": {
+   "audio_sha256": "38991d830509ce401e8f7943a4cda60bd7b42211eef636cd8e50b231fbcee95a",
+   "spans": "كَينَشكَنهِهَاا"
+  },
+  "common_voice_ur_32839134.mp3": {
+   "audio_sha256": "60b63b3d38008328a0640ff6ba8732159c1e0dd2a958284dc0bf2394ca8afaaf",
+   "spans": "دُسرِكَمَنسسَتِكُشمِلتي"
+  },
+  "common_voice_ur_38409856.mp3": {
+   "audio_sha256": "de95b8a36a16c0a2b6aa9fbc3d2272442212ebe8928a42b4d97aa6b535263029",
+   "spans": "قِركِۦۦفِۦۦتفَربَتِبِدِكِشرَرَتسِۦۦ"
+  },
+  "common_voice_ur_38423151.mp3": {
+   "audio_sha256": "cb2345165109fa75bf194274c4f516ebbad50e483cfdabdfd7b49e6be09f9231",
+   "spans": "جُسَرَدِنمِرِهَضُكُرِزَرِزَكتِهَ"
+  },
+  "common_voice_ur_38424633.mp3": {
+   "audio_sha256": "8a3853a13133f58b1c34c064ac61abdf1166b13cbb3b55e6951f988a0ab48bd1",
+   "spans": "كَبِجَنَهَااغُلَبهَ"
+  },
+  "common_voice_ur_38431322.mp3": {
+   "audio_sha256": "694556e46b6613733353ce3b784c9a34e27a3b46bf428eab541605d1830fc2ce",
+   "spans": "وُءِلقَاازهَه"
+  },
+  "common_voice_ur_38431517.mp3": {
+   "audio_sha256": "21ed96a0f3423d32406a973dd23e295902cf40754b7af050d9e02082bfebae1f",
+   "spans": "كَمُجِكُجِيَرمِرهنِكِبَزَايَتتِۦۦ"
+  },
+  "common_voice_ur_38435665.mp3": {
+   "audio_sha256": "445781486d6893226bddfff147df3d0b224bcc045b9b33648642d93f040d354d",
+   "spans": "رُنَجِهِيَاكِبُزمَنَكَا"
+  },
+  "common_voice_ur_38438745.mp3": {
+   "audio_sha256": "1b1856598287d7ee28542109c12a86c086f3f1b6356571f1336ee1e0cb3f5c53",
+   "spans": "سَاتَِقِبِبَلِيَتهَتِبَك"
+  },
+  "common_voice_ur_38439527.mp3": {
+   "audio_sha256": "395ed33010c2739c6f28a50081f149741b42c6b3eb9e2dbd3a6582d696e0cebe",
+   "spans": "ءَفنِكرَبَنمِجَمنِكِۦبَجَيدُسركُبُرَفَلَكَهَجَه"
+  },
+  "common_voice_ur_38440374.mp3": {
+   "audio_sha256": "c90ab2ae4d1ce4e18d8ae4adec6e5f52f40e04cc4bd6791c375a062559e3e81e",
+   "spans": "تَدَاادءَرمِددَرسِقَتَنزَءدَرءسُلُغَتنَبِسِكِلِهَسِدِكَجَي"
+  },
+  "common_voice_ur_38440828.mp3": {
+   "audio_sha256": "c0f031c125581ba9791b10c7277ef4e0ff580344974a763c115aba02fb39c795",
+   "spans": "دِبَنَكَرنَهِهَتََشيَربِنَهِۦۦ"
+  },
+  "common_voice_ur_38441180.mp3": {
+   "audio_sha256": "97cfaaeb8ed021fc1e6ac00bd76ca963aa32571214698a87d15f25ea51ea1cb5",
+   "spans": "بَهَتزَدَبلَندِكِۦبَجَسِءكسِجَنكِكَمِهُجَتِهَاجُءُكڇرتشَنِوَلُۥكِۦممُشكِلَااتمِۦءِذَفَكَردِتِهَ"
+  },
+  "common_voice_ur_38452165.mp3": {
+   "audio_sha256": "0d04c24e1bd5e55d50172a88081e21e0b262482d4225ffafe99790ab68c8fb97",
+   "spans": "مَنِكَوكِكَرسِءِسلَمَبَجَنَهَتُءِكهِتَلَكتَه"
+  },
+  "common_voice_ur_38455317.mp3": {
+   "audio_sha256": "1b65150fca2bdb72bd755fd9c82c0793fce74020ac432794fe6c0d0924581ead",
+   "spans": "دِلَتَبفتِتُرفَكيدمَيدِدِتَتُكَهَتتَ"
+  },
+  "common_voice_ur_38456219.mp3": {
+   "audio_sha256": "71bb2e190052a491c3fdb856ad323bde7d59a2fa35c2e2676267a44182774cae",
+   "spans": "ءِدِكِسَقَفَكِبَكِتَبَلَهجَسَفكِسَمنِه"
+  },
+  "common_voice_ur_38467123.mp3": {
+   "audio_sha256": "8e08590f5a24b5618a848ca03c15fbb864a0dd0a1e948fb0574a8a64d52c2c97",
+   "spans": "دُششَكِنَزكبعشيَانَبَنِكَهنَبَيدَفُكَ"
+  },
+  "common_voice_ur_38477448.mp3": {
+   "audio_sha256": "fb6863c64cb4e9025ac0c9dc43a9983afb28ea8f7a015826bc16cf04285d34e1",
+   "spans": "تِۦۦنِںبِۦۦعسلكَلِه"
+  },
+  "common_voice_ur_38478531.mp3": {
+   "audio_sha256": "873fe4ea3d32776b5faa696afb16f03e413454fd075c4118c497c593b2ab6df4",
+   "spans": "فُنكَرتِۦۦهُۥۥتُءِنتِزَميَكِءَفرَادكُشنَهِبَتَتِكَتِهَمِرَبَشَنيَكمِتَهِۦۦهُبَ"
+  },
+  "common_voice_ur_38478571.mp3": {
+   "audio_sha256": "8c319c529f7a3a71777e545cc929b615deb83f1b9417d58ecd301dfcf5ae0cb5",
+   "spans": "تَفَيتِيكَنكَذَيسكَتَرءصَصج"
+  },
+  "common_voice_ur_38499117.mp3": {
+   "audio_sha256": "bc532af4c135d325c711a60143f19a362d342e3be9c2aac9a4352869e2778bc5",
+   "spans": "جِسَرءملِنِرُكَتُبُلنِلكِۦ"
+  },
+  "common_voice_ur_38503265.mp3": {
+   "audio_sha256": "1c396fcf668f42e6521ddd9940481bc50fb19754457862a0a59df19a5f4aff45",
+   "spans": "ءَجهمَرَسَسِبََمَسلَكَركشَنيَنِفَزِيسلَمنَهِه"
+  },
+  "common_voice_ur_38504648.mp3": {
+   "audio_sha256": "48c7e9275af7849f80e0c9930b3a4fbda204057ddf2f0db14cf8af4c374918f3",
+   "spans": "دَسلَكِدَلمِمَرهِه"
+  },
+  "common_voice_ur_41120572.mp3": {
+   "audio_sha256": "71ff6aa18ee7b24d40cb05468dc99c551846536f8fd5098ffa586519452ec6c8",
+   "spans": "بَكسَنِمَسنُعَتكِۦۦتَشهِۦۦركِلييخُسُسِكلَتفَتَيَر"
+  },
+  "common_voice_ur_41122914.mp3": {
+   "audio_sha256": "5dae999155b3f4138b82ad6740a54f3c917620df4892b7f3e3178edb85d8f33f",
+   "spans": "ءَرمهَبِتِجِدِكِجَسَكتِهَ"
+  },
+  "common_voice_ur_41142679.mp3": {
+   "audio_sha256": "b2cedd4a32b64d6055c07842dd2e0b322b3f284b6a59d57d2f5becb475bd6142",
+   "spans": "تِۦفمنستسَممبهمسَااءِدتوَبتِيَ"
+  },
+  "common_voice_ur_41142813.mp3": {
+   "audio_sha256": "d42dff3abc07a3157d9f174e2c51f5d868ad1261d81bc0c8b3d69894183e00e3",
+   "spans": "بِسمِكِتَبَتلكِي"
+  }
+ },
+ "model": "base",
+ "provenance": {
+  "doc": {
+   "commit": "1c3ddd94edfcc2daae5cf4ef006b9c68ff5e3542",
+   "path": "docs/tlog-ident-floor-preregistration.md",
+   "sha256": "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a"
+  },
+  "manifest": {
+   "commit": "5a85d48f16fa3116654bd6a6f2ab0a09773e3083",
+   "path": "tools/tadabur/tlog/ident/confirm/common_voice.jsonl",
+   "sha256": "279b238a163021d21523ce93682bbb57b7958ffdc6a5901eba4eedea507b0b23"
+  },
+  "pull_request": null,
+  "pull_request_ref": null
+ },
+ "schema_version": 1
+}

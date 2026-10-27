@@ -287,29 +287,94 @@ definition). The frozen text still says "42 clips" at its real-mistake line; the
 python -m tadabur.tlog_ident references   # rebuild references.json.gz (~5 min)
 python -m tadabur.tlog_ident calibrate    # floors, bars, counts and the page (~40 min CPU)
 python -m tadabur.tlog_ident report       # re-render the page from the committed report
+python -m tadabur.tlog_ident oracle       # the character-start margin bound (look only)
+python -m tadabur.tlog_ident oracle --limit 100   # its cost check: prints the projection
 ```
 
-**Provisional.** The frozen noise stop fires (159 of 445 Freesound recordings pass = 35.7%
-against a 1% ceiling), so `floor_status` is `stopped` and both bars are provisional.
-`tadabur.tlog_ident.load_calibration()` refuses the committed report unless the caller passes
-`allow_provisional=True`, and a consumer that does must say so in its output.
+**The margin's bound (S5b).** `ident/ident_calibration.json` records `margin_definition {path,
+sha256}`: the competitor is the pinned **word-span** search of
+`docs/tlog-ident-margin-amendment.md`, which discloses that it can overstate the margin, never
+understate it. `ident/oracle_margin.json` records the one measured bound: every character start of
+every free word run of every shortlisted window, `SHW`, attributed by the engine's own rule (one
+end and one path per start, so a stricter bound, not the exact margin). It holds `b_u` (pinned),
+`b_u_oracle`, `clips_m_changed` and `assignments_changed_at_b_u`; `oracle_consequence` turns those
+into `margin_definition.status = "final"` only when the bound changed neither, else `"owner"`. The
+oracle never chooses `b_u` or a label.
 
-**The floor-less bin.** Floors are keyed on the **decode's** character length. The look half's
-longest decode is 138 characters, so `161-` has no floor and none is invented for it. A row
-decoded longer than 161 characters gets `id_floor_ok: null` — "no floor for this bin", not
-"below the floor": it is never relabelled, and without a filename label it stays `none`. The
-pool's pass-1 `speech_s` is its only committed length fact (the frozen row does not carry the
-clip's `duration_s`), and it is VAD speech duration, **not** the decode's character length:
-characters per second vary between clips, so a short-speech row can still decode into `161-`.
-The page's "The pool's VAD speech duration (indicative)" section therefore reports the speech
-histogram with no claim about floor-bin membership; S7's decodes measure the real coverage
-(#192).
+**Confirmed only (S5b, #204).** S5's binned floor stopped on its own noise bar (159 of 445
+Freesound recordings passed = 35.7% against a 1% ceiling). S5b replaces it for **verdicts** with
+the per-decode rule in `docs/tlog-ident-floor-preregistration.md`: a decode is
+`non_recitation` when its normalised length is under `L_min = 8` characters or its own decoy is
+within `DELTA = 0.30` of its real best from the same shortlisted search. `identify()` computes
+the verdict; `floor_ok` / `id_floor_ok` are always booleans and every identification record
+carries `floor_rule {path, sha256}`. The binned floors and the three empty-bin conventions stay
+in the report as history. `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and
+refuses any report whose `floor_status` is not `"confirmed"`, whose
+`margin_definition.status` is not `"final"`, or whose margin definition has no recorded owner
+approval: S6 and S7 may label under nothing else.
+
+**The owner's margin approval.** The frozen floor pre-registration's §7 requires the owner to
+approve the pinned margin definition at the S5b check-in before `b_u` is final, which the oracle's
+mechanical `final` cannot supply. The approval is its own small committed record,
+`ident/margin_approval.json`, written by the owner with:
+
+```bash
+python -m tadabur.tlog_ident approve --issue 204   # the owner runs this
+```
+
+after the amendment, the floor document and the calibration are committed (it refuses a dirty
+tree or an existing record). The record is:
+
+```json
+{"schema": "tadabur.tlog_ident/margin-approval-v1",
+ "doc": {"path": "docs/tlog-ident-margin-amendment.md", "sha256": "<the pinned SHA-256>"},
+ "b_u": 0.01, "approved_on": "YYYY-MM-DD", "approved_by": "owner", "issue": 204}
+```
+
+It is **absent until the owner approves** (this slice's PR adds the gate and the command, not the
+record). The loader validates the schema, `approved_by == "owner"`, the date, the document's
+path and SHA-256 **and the `b_u` it clears**, so a recalibration that moves `b_u` needs a new
+approval. A matching record clears the gate with no recalibration; a stale SHA-256 or `b_u`
+refuses again.
+
+**The S6/S7 precondition.** #191 and #192 may label only once this PR is merged *and* the owner's
+approval commit is on main: `load_identifier()` (the consumer entry point) refuses until then.
+The approval commit is recorded as an explicit blocker on both issues.
+
+**The fresh confirmation draws.** `ident/confirm/freesound.json` and
+`ident/confirm/common_voice.jsonl` (with its `common_voice.json` counts sidecar) are drawn and
+committed before any of them is decoded, under the salt `tlog-s5b-floor-confirm-v1`: 1,000
+Freesound recordings from the 100 shared shards, 500 Common Voice Arabic clips and 500 non-Arabic
+clips (100 each from `en`, `ur`, `fa`, `tr`, `id`, with `es`, `hi`, `ckb`, `sw`, `bn` as one-shot
+substitutes). No audio is committed.
+
+**The five bars.** `ident_calibration.json` → `confirm` records them: the three negative pass
+rates with Wilson 95% intervals, the 52 real-mistake clips, look retention, the per-language
+rates, the rule's catches split into `length` / `margin`, the items that passed with their decodes
+and spans, and the doc → manifests → stores provenance chain (`scoring.commit` is the commit the
+calibration ran from). `floor_status` is that status, `bars.provisional` is true unless it is
+exactly `"confirmed"`, and the page shows the five bars above S5's binned stop as history.
+`docs/tlog-ident-floor-erratum.md` records the three disclosures the confirmed run required: the
+pre-registration's look figures are S5's `dc602df` measurement, one search change (`659bce0`) from
+the re-measured 99.63%/99.50%, the Quran-text guard does not match Urdu/Persian letter variants
+(the folded check excludes none of the committed draw), and `samples_sha256` is host-scoped.
+
+**The retired bins (history).** The binned floors stay in the report as history; no verdict reads
+them. They are keyed on the **decode's** character length, and the look half's longest decode is
+138 characters, so `161-` never had a floor. The pool's pass-1 `speech_s` is its only committed
+length fact (the frozen row does not carry the clip's `duration_s`), and it is VAD speech
+duration, **not** the decode's character length: characters per second vary between clips, so a
+short-speech row can still decode past 160 characters. The page's "The pool's VAD speech
+duration (indicative)" section therefore reports the speech histogram with no claim about a
+decode's length; S7's decodes measure the real lengths (#192).
 
 **Decode mode.** The frozen rule fixes a whole-clip greedy decode, and both the look decodes and
-these floors are whole-clip; the pool's long rows cannot be decoded whole within the VRAM budget
-(S5's Freesound pool already needed `stream_b0`). `identify` takes a bare string, so S7 must either
-obtain an amendment of the decode mode or record `decode_mode` beside every identification and
-report the floor-bin and streamed populations separately — see the page's "For S7" section.
+the confirmation sets are whole-clip (the Freesound arm repeats the 445 pool's `stream_b0` so it
+confirms the same condition). The pool's long rows cannot be decoded whole within the VRAM
+budget (S5's Freesound pool already needed `stream_b0`). `identify` takes a bare string, so S7
+must either obtain an amendment of the decode mode or record which mode produced each row and
+report the rule's pass rate separately for the whole-clip and streamed populations — see the
+page's "For S7" section.
 
 Consumer contract: `identification_record()` fixes the committed row's field names and
-`load_calibration()` the threshold guard.
+`load_calibration()` / `load_identifier()` the consumer gates.

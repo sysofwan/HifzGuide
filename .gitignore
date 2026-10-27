@@ -185,3 +185,6 @@ tools/tadabur/aug_readout/restricted/
 # The tlog S5 real-mistake clip list (#190): the 52 clips holding the 56 owner-verified
 # real-mistake sites, pinned by sha in the pre-registration's S5 amendment. Committed.
 !tools/tadabur/tlog/ident/real_mistake_clips.jsonl
+# The tlog S5b Common Voice manifest (#204): one line per drawn clip with its id, sentence,
+# audio SHA-256 and duration; committed, no audio. *.jsonl is ignored by default.
+!tools/tadabur/tlog/ident/confirm/common_voice.jsonl

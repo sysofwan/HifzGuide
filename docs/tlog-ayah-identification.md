@@ -135,7 +135,9 @@ The share of the 474,962 usable rows whose decode lands in `161-` is unknown unt
 
 ## The confirmation (S5b, #204)
 
-The floor is the per-decode rule of [`docs/tlog-ident-floor-preregistration.md`](tlog-ident-floor-preregistration.md) (sha256 `7bd2e1958ea8`): a decode is `non_recitation` when its normalised length is under `L_min = 8` characters or its real best is within `DELTA = 0.30` of its own decoy best, both from one shortlisted search. The three fresh sets were drawn and committed before decoding, under the salt `tlog-s5b-floor-confirm-v1`.
+The floor is the per-decode rule of [`docs/tlog-ident-floor-preregistration.md`](tlog-ident-floor-preregistration.md) (sha256 `7bd2e1958ea8`): a decode is `non_recitation` when its normalised length is under `L_min = 8` characters or its real best is within `DELTA = 0.30` of its own decoy best, both from one shortlisted The three fresh sets were drawn and committed before decoding, under the salt `tlog-s5b-floor-confirm-v1`.
+
+Three disclosures are corrected in [`docs/tlog-ident-floor-erratum.md`](tlog-ident-floor-erratum.md) (2026-10-27): the pre-registration's look figures were measured on the S5 engine before `79acded`; the Quran-text guard the draw used does not match Urdu/Persian letter variants, and the folded check excludes none of the 1,000 drawn sentences; and the provenance chain cites branch commits, reachable after a squash merge only through the PR ref.
 
 | arm | clips | passed | rate | Wilson 95% | limit | fired |
 |---|---|---|---|---|---|---|

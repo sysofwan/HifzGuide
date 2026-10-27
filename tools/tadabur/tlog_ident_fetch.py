@@ -48,7 +48,7 @@ from tadabur.audio import decode_to_mono_16k
 from tadabur.nonpro_sources import Dataset, iter_rows
 from tadabur.panel_seal import SealedPanelError
 from tadabur.tlog_ident import (FLOOR_PREREGISTRATION_PATH, FLOOR_PREREGISTRATION_SHA256)
-from tadabur.tlog_index import repo_relative, sha256_file
+from tadabur.tlog_index import commit_of, repo_relative, sha256_file
 from training.perturbation import NOISE_LICENCES, NoiseRecording, pool_eligible
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -82,16 +82,10 @@ def _provenance(doc_path: Path = FLOOR_PREREGISTRATION_PATH,
     order the chain only when the recorded commits exist in the clone.
     """
     relative = repo_relative(doc_path, repo)
-    result = subprocess.run(
-        ["git", "-C", str(repo), "log", "-1", "--format=%H", "--", relative],
-        check=True, capture_output=True, text=True)
-    commit = result.stdout.strip()
-    if not commit:
-        raise RuntimeError(f"{relative} has no commit to cite")
     sha = sha256_file(doc_path)
     if sha != FLOOR_PREREGISTRATION_SHA256:
         raise RuntimeError(f"{relative} is {sha}, not the pinned {FLOOR_PREREGISTRATION_SHA256}")
-    return {"doc": {"path": relative, "sha256": sha, "commit": commit},
+    return {"doc": {"path": relative, "sha256": sha, "commit": commit_of(doc_path, repo)},
             "pull_request": None, "pull_request_ref": None}
 
 

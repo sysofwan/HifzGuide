@@ -325,6 +325,10 @@ rates, the rule's catches split into `length` / `margin`, the items that passed 
 and spans, and the doc → manifests → stores provenance chain (`scoring.commit` is the commit the
 calibration ran from). `floor_status` is that status, `bars.provisional` is true unless it is
 exactly `"confirmed"`, and the page shows the five bars above S5's binned stop as history.
+`docs/tlog-ident-floor-erratum.md` records the three disclosures the confirmed run required: the
+pre-registration's look figures are the S5 engine's, the Quran-text guard does not match
+Urdu/Persian letter variants (the folded check excludes none of the committed draw), and
+`samples_sha256` is host-scoped.
 
 **The floor-less bin.** Floors are history now, but the report still keys them on the **decode's**
 character length. The look half's longest decode is 138 characters, so `161-` has no floor and

@@ -1243,6 +1243,30 @@ def oracle_margin(database: ReferenceDatabase, decode: str, *, pinned: float,
     return pinned if found is None else min(pinned, best.score - found.score)
 
 
+def oracle_artifact(k: int, path: Path = ORACLE_PATH) -> dict:
+    """The committed margin-bound artifact, refused unless it measured this checkout's inputs.
+
+    Every hash the artifact records — the margin definition, the look decodes, their split and
+    the real-mistake clips — must be this checkout's, or the bound belongs to other data. ``k``
+    is recorded from self-check r1 on; a future artifact must match the calibration's shortlist
+    size, while the committed one predates the field.
+    """
+    artifact = json.loads(Path(path).read_text(encoding="utf-8"))
+    expected = {"definition": sha256_file(MARGIN_AMENDMENT_PATH),
+                "decodes": sha256_file(DECODES_PATH),
+                "split": sha256_file(SPLIT_PATH),
+                "mistakes": sha256_file(REAL_MISTAKE_CLIPS_PATH)}
+    recorded = {"definition": artifact["definition"]["sha256"],
+                **{key: artifact["population"][key]["sha256"]
+                   for key in ("decodes", "split", "mistakes")}}
+    stale = sorted(key for key, value in recorded.items() if expected[key] != value)
+    if stale:
+        raise ValueError(f"the oracle was measured on different inputs: {stale}")
+    if "k" in artifact and artifact["k"] != k:
+        raise ValueError(f"the oracle ran at k = {artifact['k']}, not {k}")
+    return artifact
+
+
 def oracle_pass(database: ReferenceDatabase, look: Sequence[Decode],
                 mistakes: Sequence[Identification], *, k: int = K,
                 progress: Callable[[str], None] | None = None) -> dict:
@@ -1290,6 +1314,7 @@ def oracle_pass(database: ReferenceDatabase, look: Sequence[Decode],
 
     return {
         "schema": "tadabur.tlog_ident/oracle-margin-v1",
+        "k": k,
         "definition": {"path": repo_relative(MARGIN_AMENDMENT_PATH),
                        "sha256": sha256_file(MARGIN_AMENDMENT_PATH)},
         "disclosure": "one end and one path per character start: a stricter bound on the "
@@ -1475,14 +1500,10 @@ def _calibration(database: ReferenceDatabase) -> dict:
     # The character-start margin bound, measured before this run and recorded beside the
     # pinned bars (architect r18/r19). It never chooses a bar: its own b_u is recorded for the
     # owner, and ``margin_definition.status`` is the mechanical consequence.
-    oracle_artifact = json.loads(ORACLE_PATH.read_text(encoding="utf-8"))
-    measured = oracle_artifact["population"]
-    if (measured["decodes"]["sha256"] != sha256_file(DECODES_PATH)
-            or measured["mistakes"]["sha256"] != sha256_file(REAL_MISTAKE_CLIPS_PATH)):
-        raise ValueError("the oracle was measured on different look or real-mistake inputs")
-    oracle = {"b_u_oracle": oracle_artifact["b_u_oracle"],
-              "clips_m_changed": oracle_artifact["clips_m_changed"],
-              "assignments_changed_at_b_u": oracle_artifact["assignments_changed_at_b_u"],
+    bound = oracle_artifact(k)
+    oracle = {"b_u_oracle": bound["b_u_oracle"],
+              "clips_m_changed": bound["clips_m_changed"],
+              "assignments_changed_at_b_u": bound["assignments_changed_at_b_u"],
               "artifact": record_of(ORACLE_PATH)}
     margin_status = oracle_consequence(bars["b_u"], oracle)
 
@@ -1724,8 +1745,15 @@ def confirm_lines(report: Mapping[str, Any]) -> list[str]:
         f"(sha256 `{report['floor_rule']['sha256'][:12]}`): a decode is `non_recitation` when "
         f"its normalised length is under `L_min = {L_MIN}` characters or its real best is "
         f"within `DELTA = {DELTA:.2f}` of its own decoy best, both from one shortlisted "
-        f"search. The three fresh sets were drawn and committed before decoding, under the salt "
+        f"The three fresh sets were drawn and committed before decoding, under the salt "
         f"`{confirm['salt']}`.",
+        "",
+        "Three disclosures are corrected in "
+        "[`docs/tlog-ident-floor-erratum.md`](tlog-ident-floor-erratum.md) (2026-10-27): the "
+        "pre-registration's look figures were measured on the S5 engine before `79acded`; the "
+        "Quran-text guard the draw used does not match Urdu/Persian letter variants, and the "
+        "folded check excludes none of the 1,000 drawn sentences; and the provenance chain "
+        "cites branch commits, reachable after a squash merge only through the PR ref.",
         "",
         "| arm | clips | passed | rate | Wilson 95% | limit | fired |",
         "|---|---|---|---|---|---|---|",

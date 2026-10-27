@@ -14,6 +14,7 @@ Test command, from ``tools/``::
 from __future__ import annotations
 
 import importlib
+import json
 
 import pytest
 
@@ -100,3 +101,28 @@ def test_the_oracle_pass_records_the_bound_and_keeps_the_pinned_b_u(ident):
     assert payload["definition"]["path"] == "docs/tlog-ident-margin-amendment.md"
     assert payload["share_m_changed"] == pytest.approx(
         payload["clips_m_changed"] / payload["clips"])
+
+
+def test_the_oracle_artifact_is_refused_when_a_recorded_input_is_stale(ident, tmp_path):
+    """`b_u_oracle` is trusted only for the inputs the artifact names: the margin definition,
+    the look decodes, their split, the real-mistake clips, and — from self-check r1 — its k."""
+    base = json.loads(ident.ORACLE_PATH.read_text(encoding="utf-8"))
+    assert ident.oracle_artifact(ident.K)["b_u_oracle"] == base["b_u_oracle"]
+
+    def written(mutate):
+        copy = json.loads(json.dumps(base))
+        mutate(copy)
+        path = tmp_path / "oracle.json"
+        path.write_text(json.dumps(copy), encoding="utf-8")
+        return path
+
+    stale = [
+        lambda a: a["definition"].__setitem__("sha256", "0" * 64),
+        lambda a: a["population"]["decodes"].__setitem__("sha256", "0" * 64),
+        lambda a: a["population"]["split"].__setitem__("sha256", "0" * 64),
+        lambda a: a["population"]["mistakes"].__setitem__("sha256", "0" * 64),
+        lambda a: a.__setitem__("k", ident.K * 2),
+    ]
+    for mutate in stale:
+        with pytest.raises(ValueError):
+            ident.oracle_artifact(ident.K, path=written(mutate))

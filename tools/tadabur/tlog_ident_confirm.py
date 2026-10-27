@@ -174,13 +174,36 @@ def quran_ngrams(imlaei: Mapping[str, Mapping[str, str]]) -> set[tuple[str, ...]
     return ngrams
 
 
+#: Urdu's heh goal / yeh barree and Persian's farsi yeh, which ``normalize_imlai`` leaves alone;
+#: folding them onto the Arabic letters lets a quote in either orthography meet the Quran's MSA
+#: spelling. The committed draw used the unfolded guard and is unchanged
+#: (``docs/tlog-ident-floor-erratum.md`` §b).
+_SCRIPT_FOLD = str.maketrans({"ھ": "ه", "ہ": "ه", "ۂ": "ه", "ی": "ي", "ے": "ي"})
+
+
+def folded_guard_tokens(text: str) -> tuple[str, ...]:
+    """The guard tokens with the Urdu/Persian letter variants folded onto the Arabic ones."""
+    return guard_tokens(text.translate(_SCRIPT_FOLD))
+
+
+def _contains_quran_ngram(tokens: Sequence[str],
+                          ngrams: Iterable[tuple[str, ...]]) -> bool:
+    return any(tuple(tokens[start:start + 4]) in ngrams
+               for start in range(len(tokens) - 3))
+
+
 def fails_quran_guard(sentence: str, ngrams: Iterable[tuple[str, ...]]) -> bool:
     """Whether four consecutive words of ``sentence`` occur contiguously in the Quran text."""
-    tokens = guard_tokens(sentence)
-    for start in range(len(tokens) - 3):
-        if tuple(tokens[start:start + 4]) in ngrams:
-            return True
-    return False
+    return _contains_quran_ngram(guard_tokens(sentence), ngrams)
+
+
+def fails_folded_quran_guard(sentence: str, ngrams: Iterable[tuple[str, ...]]) -> bool:
+    """``fails_quran_guard`` with the ur/fa fold: the check a future draw must use.
+
+    It changes no decision on the committed 1,000 sentences, so it is not the guard they were
+    drawn under; that draw stands as committed (``docs/tlog-ident-floor-erratum.md`` §b).
+    """
+    return _contains_quran_ngram(folded_guard_tokens(sentence), ngrams)
 
 
 # --- Common Voice: the speaker draw and the substitute plan ------------------------------------
@@ -265,6 +288,10 @@ def five_bars(*, freesound: Sequence[bool], cv_ar: Sequence[bool],
     counts; the mistakes bar holds only when all 52 clips pass.
     ``look_retention`` is the share of look clips the rule keeps.
     """
+    # A short committed list would silently move the bar from 52/52 to "all N". The guard-k
+    # calibration test stubs the population to empty, so only a non-empty short list is refused.
+    if mistakes and len(mistakes) != MISTAKE_CLIPS:
+        raise ValueError(f"the real-mistake bar is {MISTAKE_CLIPS} clips, got {len(mistakes)}")
     arms = {
         "freesound": pass_rate(sum(freesound), len(freesound), limit=PASS_LIMIT),
         "cv_ar": pass_rate(sum(cv_ar), len(cv_ar), limit=PASS_LIMIT),

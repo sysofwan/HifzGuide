@@ -646,3 +646,39 @@ def test_the_confirm_bars_rederive_from_the_committed_decodes(ident, confirm, ca
         assert reported["fired"] == bars[arm]["fired"], arm
     assert calibration["look"]["retention"] == pytest.approx(retention)
     assert calibration["bars"]["provisional"] is (bars["status"] != "confirmed")
+
+
+# --- self-check r1 (docs/tlog-ident-floor-erratum.md) ------------------------------------------
+
+
+def test_the_folded_guard_catches_urdu_and_persian_basmala_and_excludes_none_of_the_draw(confirm):
+    """Erratum §b: the committed draw used the unfolded guard. The fold catches the Basmala in
+    both orthographies and changes no decision on the 1,000 committed sentences, so the draw
+    stands as drawn."""
+    ngrams = confirm.quran_ngrams(json.loads(IMLAEI.read_text(encoding="utf-8")))
+    assert confirm.fails_quran_guard("بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ", ngrams)
+    # The gap the erratum records: the unfolded guard cannot see the ur/fa spellings.
+    assert not confirm.fails_quran_guard("بسم اللہ الرحمن الرحیم", ngrams)
+    assert not confirm.fails_quran_guard("بسم الله الرحمن الرحیم", ngrams)
+    assert confirm.fails_folded_quran_guard("بسم اللہ الرحمن الرحیم", ngrams)  # Urdu
+    assert confirm.fails_folded_quran_guard("بسم الله الرحمن الرحیم", ngrams)  # Persian
+    assert [row["path"] for row in _jsonl(CV_MANIFEST)
+            if confirm.fails_folded_quran_guard(row["sentence"], ngrams)] == []
+
+
+def test_a_short_real_mistake_population_cannot_move_the_bar(confirm):
+    """A truncated list would turn 52/52 into "all N" and still report the floor confirmed."""
+    with pytest.raises(ValueError, match="52"):
+        confirm.five_bars(freesound=[False], cv_ar=[False], cv_other=[False],
+                          mistakes=[True] * 51, look_retention=1.0)
+    held = confirm.five_bars(freesound=[False], cv_ar=[False], cv_other=[False],
+                             mistakes=[True] * confirm.MISTAKE_CLIPS, look_retention=1.0)
+    assert held["mistakes"] == {"clips": 52, "passed": 52, "fired": False}
+
+
+def test_the_freesound_store_is_keyed_by_the_manifest_ids(ident, confirm):
+    """Erratum §c: `samples_sha256` is host-scoped, so the store is joined to its manifest by
+    id; this pins that join (the replacement for the impossible hash equality)."""
+    store = json.loads(confirm.CONFIRM_DECODES["freesound"].read_text(encoding="utf-8"))
+    manifest = json.loads(confirm.FREESOUND_MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert set(store["items"]) == {str(row["freesound_id"]) for row in manifest["recordings"]}

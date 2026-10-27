@@ -708,6 +708,6 @@ def test_no_confirm_row_is_in_any_committed_tree(run):
         for row in read_jsonl_gz(path):
             assert row["split"] in ("clean", "unclean")
             assert not str(row.get("role", "")).startswith("confirm")
-    for row in read_jsonl_gz(run.AUDIT_DIR / "worklist.jsonl"):
+    for row in run._read_jsonl(run.AUDIT_DIR / "worklist.jsonl"):
         assert not str(row.get("role", "")).startswith("confirm")
         assert row["split"] in ("clean", "unclean")

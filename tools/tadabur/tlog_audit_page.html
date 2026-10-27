@@ -48,6 +48,7 @@ function progress() {
 
 async function send(item, body, status) {
   body.key = item.key;
+  body.previous = item.heard ? [item.heard, item.heard_ayah] : null;
   const note = item.card.querySelector(".note");
   if (note && note.value.trim()) body.note = note.value.trim();
   status.textContent = "saving…";
@@ -56,6 +57,8 @@ async function send(item, body, status) {
     headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const data = await response.json();
   if (!response.ok) { status.textContent = data.error || "not saved"; status.className = "status wrong"; return; }
+  item.heard = data.verdict;
+  item.heard_ayah = data.heard_ayah;
   payload.progress = data.progress;
   progress();
   item.card.classList.add("saved");

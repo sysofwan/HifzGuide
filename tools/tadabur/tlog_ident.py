@@ -1654,9 +1654,10 @@ def _phase(message: str) -> None:
 def pool_summary(rows: Iterable[Mapping[str, Any]]) -> tuple[dict, int]:
     """The pool's length facts and b_u's reach, from :func:`tadabur.tlog_overlap.iter_pool_rows`.
 
-    A row's length fact is ``speech_s``: the frozen row carries the pass-1 facts
-    ``speech_s``/``speech_ratio`` (not the clip's ``duration_s``), and speech is what the decode's
-    character length tracks. ``usable`` rows only, so a row the codec floor rejected (and whose
+    A row's length fact is ``speech_s``: the frozen view joins the pass-1 facts
+    ``speech_s``/``speech_ratio`` and the clip's ``duration_s`` as distinct fields, and speech is
+    what the decode's character length tracks (``duration_s`` is what the whole-clip decode limit
+    bounds). ``usable`` rows only, so a row the codec floor rejected (and whose
     ``speech_s`` is ``None``) is skipped before any conversion.
     """
     usable = unlabelled = 0
@@ -1916,11 +1917,13 @@ def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
         "pool's decode lengths do not exist until S7 runs (#192): the S6 amendment decided the "
         "mode (whole-clip up to a measured `D_max`, rows above it recorded as "
         "`not_decoded:over_d_max`), not the pool's lengths. The only committed length fact for "
-        "the pool is the pass-1 VAD speech seconds (`speech_s`, joined to the frozen row as "
-        "`duration_s`), which is **not** the decode's length: characters per second vary "
-        "between clips, so a row with little speech can still decode past 160 characters. Read "
-        "this as an indicative distribution of speech seconds, with no inference about a row's "
-        "floor bin:",
+        "the pool is the pass-1 VAD speech seconds (`speech_s`): the frozen view joins "
+        "`speech_s` and the clip's `duration_s` as two distinct fields, this histogram uses the "
+        "former and the whole-clip decode limit `D_max` applies to the latter (total clip "
+        "duration, not speech). Speech seconds are **not** the decode's length: characters per "
+        "second vary between clips, so a row with little speech can still decode past 160 "
+        "characters. Read this as an indicative distribution of speech seconds, with no "
+        "inference about a row's floor bin:",
         "",
         "| VAD speech | rows | share |",
         "|---|---|---|",

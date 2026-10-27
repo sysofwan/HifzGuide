@@ -400,7 +400,9 @@ referent; it also governs S7). The amendment and the measured
 - **Audit:** the frozen strata, drawn by salted rank from look and the sample only. A stratum
   short of its target takes all its rows, and the freed slots go to `both`. The page hides the
   stratum and shows the candidate ayat unattributed; the server derives
-  right/other ayah from the ayah the owner picks. `report` renders `docs/tlog-audit.md` from
+  right/other ayah from the ayah the owner picks. The page reads the Uthmani text from
+  `quran.db` (a gitignored release asset copied into the scratch root) and refuses to start if a
+  candidate label has no text. `report` renders `docs/tlog-audit.md` from
   the committed worklist and verdicts and deletes the staged audio.
 
 `decode_limit.json`, the six trees and the two audit files are the slice's committed outputs.
@@ -416,6 +418,7 @@ python -m tadabur.tlog_ident_run stage --audio-dir /root/scratch/tlog/s6/audio \
     --cache-dir /root/scratch/tlog/s6/cache
 python -m tadabur.tlog_audit_ui --worklist tools/tadabur/tlog/audit/worklist.jsonl \
     --audio-dir /root/scratch/tlog/s6/audio \
-    --verdicts tools/tadabur/tlog/audit/verdicts.jsonl --host 0.0.0.0 --port 8000
+    --verdicts tools/tadabur/tlog/audit/verdicts.jsonl \
+    --quran-db /root/scratch/tlog/s6/data/quran.db --host 0.0.0.0 --port 8000
 python -m tadabur.tlog_ident_run report --audio-dir /root/scratch/tlog/s6/audio
 ```

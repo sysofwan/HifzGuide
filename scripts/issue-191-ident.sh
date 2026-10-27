@@ -28,6 +28,9 @@ LOGS=$ROOT/logs
 REPO=$ROOT/repo
 CACHE=$ROOT/cache
 AUDIO=$ROOT/audio
+# The UI reads Uthmani ayah text from quran.db, a gitignored release asset: copy it once from
+# any checkout that has one (`scp` it to this path, or set QURAN_DB).
+QURAN_DB=${QURAN_DB:-$ROOT/data/quran.db}
 OUT=tools/tadabur/tlog/ident/decodes
 IDENT=tools/tadabur/tlog/ident
 
@@ -76,7 +79,7 @@ command_for() {
     stage)
       echo "python -u -m tadabur.tlog_ident_run stage --audio-dir '$AUDIO' --cache-dir '$CACHE'" ;;
     ui)
-      echo "python -u -m tadabur.tlog_audit_ui --worklist '$REPO/tools/tadabur/tlog/audit/worklist.jsonl' --audio-dir '$AUDIO' --verdicts '$REPO/tools/tadabur/tlog/audit/verdicts.jsonl' --port 8000 --host 0.0.0.0" ;;
+      echo "python -u -m tadabur.tlog_audit_ui --worklist '$REPO/tools/tadabur/tlog/audit/worklist.jsonl' --audio-dir '$AUDIO' --verdicts '$REPO/tools/tadabur/tlog/audit/verdicts.jsonl' --quran-db '$QURAN_DB' --port 8000 --host 0.0.0.0" ;;
     report)
       echo "python -u -m tadabur.tlog_ident_run report" ;;
   esac

@@ -61,6 +61,11 @@ class Session:
         labels = {label for row in rows
                   for label in (row.get("filename_label"), row.get("class_label")) if label}
         texts = uthmani_index(Path(quran_db), labels)
+        missing = sorted(labels - set(texts))
+        if missing:
+            raise ValueError(f"{quran_db} has no Uthmani text for {len(missing)} of "
+                             f"{len(labels)} ayah labels ({', '.join(missing[:3])}); "
+                             "point --quran-db at a checkout's data/quran.db")
         return cls(rows=rows, audio_dir=Path(audio_dir), verdicts_path=Path(verdicts),
                    texts=texts, verdicts=run.read_verdicts(Path(verdicts)))
 

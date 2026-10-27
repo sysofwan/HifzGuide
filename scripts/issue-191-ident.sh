@@ -89,7 +89,6 @@ set -uo pipefail
 source '$CONDA'
 conda activate $ENV_NAME
 cd '$REPO/tools' || exit 1
-export HF_HOME='$ROOT/hf'
 $(command_for)
 code=\$?
 echo \"\$code\" > '$LOGS/$NAME.exit'

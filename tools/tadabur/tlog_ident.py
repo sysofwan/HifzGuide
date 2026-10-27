@@ -949,6 +949,22 @@ def write_references(path: Path = REFERENCES_PATH,
     return payload
 
 
+def canonical_label(database: ReferenceDatabase, label: object) -> str | None:
+    """The text class's canonical ``surah:ayah`` label, or ``None`` for a label the database
+    does not hold.
+
+    Identical recitations share a text class and the mushaf order fixes the class's label, so
+    two labels are the same recitation exactly when their canonical labels are equal. This is
+    the comparison the frozen contract uses: ayah numbers alone cannot say which copy of a
+    repeated ayah a reciter meant.
+    """
+    try:
+        surah, ayah = _split_label(str(label))
+        return database.class_label(database.text_class(surah, ayah))
+    except (KeyError, ValueError):
+        return None
+
+
 def load_references(path: Path = REFERENCES_PATH) -> ReferenceDatabase:
     """The committed reference database, from the file alone — no phonetizer import.
 

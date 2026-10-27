@@ -89,3 +89,33 @@ def test_the_five_percent_rule_and_the_s4_disclosure_are_generated_from_committe
     assert "## Disclosure: the floor's calibration population" in document
     assert "tlog clean look retention is" in document
     assert "## Served order" in document
+
+def test_an_unclear_verdict_in_a_labelled_stratum_is_not_a_wrong_ayah(tmp_path):
+    rows = [_row(row, "both") for row in range(1, 41)]
+    document = _render(tmp_path, rows, [
+        *[(row, {"verdict": run.RIGHT, "ayah": "2:1"}) for row in rows[:39]],
+        (rows[39], {"verdict": run.UNCLEAR, "ayah": None})])
+    assert "Residual wrong-ayah rate in `both`: 0.00%" in document
+    assert "Trigger fired: **False**" in document
+    assert "| both | 40 | 40 | 39 | 39 | 100.00% |" in document
+
+
+def test_the_best_class_readout_follows_the_heard_ayah(tmp_path):
+    rows = [_row(row, "below-bar disagreement", class_label="2:2") for row in range(1, 16)]
+    matching = _render(tmp_path, rows, [
+        (row, {"verdict": run.OTHER, "ayah": "2:2"}) for row in rows])
+    elsewhere = _render(tmp_path, rows, [
+        (row, {"verdict": run.OTHER, "ayah": "3:1"}) for row in rows])
+    assert "Best-class suggestions heard as the recitation: **15 of 15 answered**" in matching
+    assert "Best-class suggestions heard as the recitation: **0 of 15 answered**" in elsewhere
+    assert "Filename-label precision in the same items: 0.00%" in matching
+
+
+def test_the_floor_sampling_frame_is_disclosed(tmp_path):
+    frame = run._floor_frame(run.IDENT_DIR)
+    assert frame == {"failing": 2_439, "both": 450}
+    rows = [_row(1, "both")]
+    document = _render(tmp_path, rows, [(rows[0], {"verdict": run.RIGHT, "ayah": "2:1"})])
+    assert "Sampling frame of the `non_recitation` stratum" in document
+    assert f"{frame['both']} also match their filename class" in document
+    assert f"estimates the {frame['failing'] - frame['both']} floor-failing rows" in document

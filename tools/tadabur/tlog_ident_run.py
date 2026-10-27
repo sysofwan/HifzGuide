@@ -40,7 +40,7 @@ import os
 import shutil
 import time
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -342,12 +342,13 @@ def decode_shard(decoder, shard: str, wanted: Sequence[Mapping[str, Any]], *, d_
 
 
 def _write_jsonl_gz(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
+    """One JSONL-gzip file with no timestamp: the same rows give the same bytes, always."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    body = "".join(json.dumps(dict(row), ensure_ascii=False, sort_keys=True) + "\n"
+                   for row in rows).encode("utf-8")
     temporary = path.with_name(path.name + ".tmp")
-    with gzip.open(temporary, "wt", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(dict(row), ensure_ascii=False, sort_keys=True) + "\n")
+    temporary.write_bytes(gzip.compress(body, mtime=0))
     os.replace(temporary, path)
 
 
@@ -570,27 +571,42 @@ def _floor_ok(row: Mapping[str, Any]) -> bool | None:
     return row["id_floor_ok"]
 
 
-def _stratum_of(row: Mapping[str, Any]) -> str | None:
+#: Which stratum takes a row that satisfies more than one predicate, first match winning.
+#: The predicates in amendment §4 overlap: a decoded row that fails the floor *and* matches its
+#: filename class satisfies ``non_recitation`` and ``both``. ``both`` wins, so the
+#: ``non_recitation`` stratum samples the floor-failing rows that do *not* match their filename
+#: class; ``docs/tlog-audit.md`` discloses that frame and its size.
+AUDIT_PRIORITY = (SILENCE, "both", "relabelled", "unclean identified", "non_recitation",
+                  "below-bar disagreement")
+
+
+def _matching_strata(row: Mapping[str, Any]) -> tuple[str, ...]:
+    """Every stratum predicate this row satisfies, in :data:`AUDIT_PRIORITY` order."""
     if row.get("decode_mode") == NOT_DECODED:
-        return None
-    exclusions = tuple(row.get("exclusions") or ())
-    if exclusions == ("silence",):
-        return SILENCE
+        return ()
+    floor_ok = _floor_ok(row)
+    matched = []
+    if tuple(row.get("exclusions") or ()) == ("silence",):
+        matched.append(SILENCE)
     if row.get("label_source") == BOTH:
-        return "both"
+        matched.append("both")
     if row["split"] == "clean" and row.get("filename_label") and \
             row.get("label_source") == IDENTIFIED:
-        return "relabelled"
+        matched.append("relabelled")
     if row["split"] == "unclean" and row.get("label_source") == IDENTIFIED:
-        return "unclean identified"
-    floor_ok = _floor_ok(row)
+        matched.append("unclean identified")
     if row.get("decode_mode") == WHOLE_CLIP and floor_ok is False:
-        return "non_recitation"
+        matched.append("non_recitation")
     if (row.get("filename_label") and floor_ok is True
             and row.get("class_label") != row.get("filename_label")
             and row.get("label_source") != IDENTIFIED):
-        return "below-bar disagreement"
-    return None
+        matched.append("below-bar disagreement")
+    return tuple(matched)
+
+
+def _stratum_of(row: Mapping[str, Any]) -> str | None:
+    matched = _matching_strata(row)
+    return matched[0] if matched else None
 
 
 def _blocking_reason(row: Mapping[str, Any]) -> str:
@@ -667,25 +683,42 @@ def label_under_test(row: Mapping[str, Any]) -> str | None:
     return None
 
 
-def verdict_outcome(item: Mapping[str, Any], verdict: Mapping[str, Any]) -> dict:
-    """Score one verdict against the stratum's label under test (r20 Q4)."""
+def verdict_outcome(item: Mapping[str, Any], verdict: Mapping[str, Any], *,
+                    canonical: Callable[[str], str | None] | None = None) -> dict:
+    """Score one verdict against the stratum's label under test (r20 Q4).
+
+    ``unclear`` is an undecided outcome for every stratum: not hearing a clip is not a measured
+    wrong ayah. When ``canonical`` is given (the report has the reference database), the heard
+    ayah is compared by text class, so an identical recitation of a repeated ayah counts as the
+    same ayah; without it, labels are compared literally.
+    """
     heard = verdict.get("verdict")
     if heard not in VERDICTS:
         raise ValueError(f"{heard!r} is not one of {VERDICTS}")
     recitation = heard in (RIGHT, OTHER)
     label = label_under_test(item)
+    heard_ayah = verdict.get("ayah")
+
+    def same(first: object, second: object) -> bool | None:
+        if first is None or second is None:
+            return None
+        if canonical is None:
+            return first == second
+        one, two = canonical(str(first)), canonical(str(second))
+        return None if one is None or two is None else one == two
+
+    if heard == UNCLEAR:
+        return {"label_under_test": label, "correct": None, "best_correct": None,
+                "recitation": False}
     if label is not None:
-        correct = heard == RIGHT
+        matched = same(heard_ayah, label)
+        correct = (heard == RIGHT) if matched is None else (recitation and matched)
         best_correct = None
         if item["stratum"] == "below-bar disagreement":
-            best = item.get("class_label")
-            heard_ayah = label if heard == RIGHT else verdict.get("ayah")
-            best_correct = heard_ayah == best
+            best = same(heard_ayah, item.get("class_label"))
+            best_correct = False if best is None else (recitation and best)
         return {"label_under_test": label, "correct": correct,
                 "best_correct": best_correct, "recitation": recitation}
-    if heard == UNCLEAR:
-        return {"label_under_test": None, "correct": None, "best_correct": None,
-                "recitation": False}
     if item["stratum"] == "non_recitation":
         return {"label_under_test": None, "correct": not recitation, "best_correct": None,
                 "recitation": recitation}
@@ -700,24 +733,34 @@ def _item_key(row: Mapping[str, Any]) -> str:
 
 
 def audit_payload(draw: AuditDraw, *, texts: Mapping[str, str] | None = None,
-                  verdicts: Mapping[str, Mapping[str, Any]] | None = None) -> dict:
-    """The served payload: anonymous candidate texts, no stratum or attribution."""
+                  verdicts: Mapping[str, Mapping[str, Any]] | None = None,
+                  canonical: Callable[[str], str | None] | None = None) -> dict:
+    """The served payload: anonymous candidate texts, no stratum or attribution.
+
+    With ``canonical``, labels that are the same text class are one candidate (the class's
+    canonical label), so an identical recitation is not offered twice and either copy scores the
+    same.
+    """
     verdicts = verdicts or {}
     texts = texts or {}
     items = []
     for row in draw.items:
         key = _item_key(row)
-        labels = []
+        labels: list[str] = []
         for label in (row.get("filename_label"), row.get("class_label")):
-            if label and label not in labels:
-                labels.append(label)
+            if not label:
+                continue
+            name = label if canonical is None else canonical(label)
+            if name is not None and name not in labels:
+                labels.append(name)
         labels.sort(key=lambda label: _rank(SALT, "candidate", key, label))
         candidates = [{"ayah": label, "text": texts.get(label, "")} for label in labels]
         saved = verdicts.get(key)
         items.append({"key": key, "candidates": candidates,
                       "choices": [RIGHT, OTHER, SILENCE, NOT_RECITATION, UNCLEAR],
                       "heard": saved.get("verdict") if saved else None,
-                      "heard_ayah": saved.get("ayah") if saved else None,
+                      "heard_ayah": (saved.get("heard_ayah", saved.get("ayah"))
+                                     if saved else None),
                       "note": saved.get("note", "") if saved else ""})
     answered = sum(1 for item in items if item["heard"])
     return {"items": items, "progress": {"answered": answered, "total": len(items)}}
@@ -814,14 +857,14 @@ def read_verdicts(path: Path = AUDIT_DIR / "verdicts.jsonl") -> dict[str, dict]:
     return verdicts
 
 
-def _precision(rows: Sequence[Mapping[str, Any]], verdicts: Mapping[str, Mapping[str, Any]]
-               ) -> dict:
+def _precision(rows: Sequence[Mapping[str, Any]], verdicts: Mapping[str, Mapping[str, Any]],
+               canonical: Callable[[str], str | None] | None = None) -> dict:
     scored = []
     for row in rows:
         verdict = verdicts.get(_item_key(row))
         if verdict is None:
             continue
-        outcome = verdict_outcome(row, verdict)
+        outcome = verdict_outcome(row, verdict, canonical=canonical)
         scored.append(outcome)
     decided = [outcome for outcome in scored if outcome["correct"] is not None]
     correct = sum(1 for outcome in decided if outcome["correct"])
@@ -833,14 +876,18 @@ def _precision(rows: Sequence[Mapping[str, Any]], verdicts: Mapping[str, Mapping
             "best_correct": sum(1 for outcome in scored if outcome["best_correct"])}
 
 
-def _wilson_cell(stats: Mapping[str, Any]) -> str:
+def _interval_text(correct: int, n: int) -> str:
     """The amendment §4 rule: an interval at any n, unreadable below ten decided items."""
-    if stats["wilson"] is None:
+    if n == 0:
         return "—"
-    if stats["decided"] < MIN_READABLE_N:
+    if n < MIN_READABLE_N:
         return "n too small to read"
-    low, high = stats["wilson"]
+    low, high = wilson_interval(correct, n)
     return f"{low:.2%}–{high:.2%}"
+
+
+def _wilson_cell(stats: Mapping[str, Any]) -> str:
+    return _interval_text(stats["correct"], stats["decided"])
 
 
 def _band_cell(stats: Mapping[str, Any]) -> str:
@@ -870,6 +917,29 @@ def _within_ayat(first: object, second: object, distance: int) -> bool:
     return surah_a == surah_b and 0 < abs(ayah_a - ayah_b) <= distance
 
 
+def _ident_rows(ident_dir: Path) -> list[dict]:
+    """The committed ident trees, each row tagged with the population it came from."""
+    look = [{**row, "population": "look"} for split in ("clean", "unclean")
+            for row in read_jsonl_gz(Path(ident_dir) / "look" / f"{split}.jsonl.gz")]
+    sample = [{**row, "population": "train_sample"}
+              for row in read_jsonl_gz(Path(ident_dir) / "train_sample.jsonl.gz")]
+    return look + sample
+
+
+def _floor_frame(ident_dir: Path) -> dict[str, int]:
+    """The frame the ``non_recitation`` stratum actually samples (review R1.1).
+
+    A decoded row that fails the floor *and* matches its filename class satisfies two stratum
+    predicates; by :data:`AUDIT_PRIORITY` it is drawn as ``both``. The ``non_recitation``
+    precision therefore estimates the floor-failing rows that do *not* match their filename
+    class, and the document says so rather than presenting it as the whole flag.
+    """
+    failing = [row for row in _ident_rows(ident_dir)
+               if row["decode_mode"] == WHOLE_CLIP and row["id_floor_ok"] is False]
+    return {"failing": len(failing),
+            "both": sum(1 for row in failing if row.get("label_source") == BOTH)}
+
+
 def _label_independent(ident_dir: Path) -> dict[str, float]:
     """r21 §2a/§2d: how the floor behaves on tlog, from the committed ident trees.
 
@@ -878,9 +948,8 @@ def _label_independent(ident_dir: Path) -> dict[str, float]:
     decoded clean look rows the floor keeps; the calibration's own retention comes from
     ``ident_calibration.json``.
     """
-    rows = [row for split in ("clean", "unclean")
-            for row in read_jsonl_gz(Path(ident_dir) / "look" / f"{split}.jsonl.gz")]
-    decoded = [row for row in rows if row["decode_mode"] == WHOLE_CLIP]
+    decoded = [row for row in _ident_rows(ident_dir)
+               if row["population"] == "look" and row["decode_mode"] == WHOLE_CLIP]
     clean = [row for row in decoded if row["split"] == "clean"]
     labelled = [row for row in clean if row.get("filename_label")]
     flagged = [row for row in labelled if row["id_floor_ok"] is False]
@@ -920,6 +989,8 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
     verdicts = read_verdicts(verdicts_path)
     _require_verdicts(worklist, verdicts, verdicts_path)
     d_max = float(decode_limit()["d_max_seconds"])
+    database, _bars, _k = load_identifier()
+    canonical = lambda label: tlog_ident.canonical_label(database, label)
     by_stratum: dict[str, list[dict]] = defaultdict(list)
     for row in worklist:
         by_stratum[row["stratum"]].append(row)
@@ -937,7 +1008,7 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
              "|---|---|---|---|---|---|---|"]
     for stratum in AUDIT_SIZES:
         rows = by_stratum.get(stratum, [])
-        stats = _precision(rows, verdicts)
+        stats = _precision(rows, verdicts, canonical)
         unreadable = bool(stats["decided"]) and stats["decided"] < MIN_READABLE_N
         precision = ("n too small to read" if unreadable else
                      "—" if stats["precision"] is None else f"{stats['precision']:.2%}")
@@ -947,9 +1018,10 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
               "| stratum | 0-20 s | 20-60 s | 60-d_max |", "|---|---|---|---|"]
     for stratum in AUDIT_SIZES:
         bands = _by_band(by_stratum.get(stratum, []), d_max)
-        cells = [_band_cell(_precision(bands[band], verdicts)) for band in DURATION_BANDS]
+        cells = [_band_cell(_precision(bands[band], verdicts, canonical))
+                 for band in DURATION_BANDS]
         lines.append(f"| {stratum} | " + " | ".join(cells) + " |")
-    both = _precision(by_stratum.get("both", []), verdicts)
+    both = _precision(by_stratum.get("both", []), verdicts, canonical)
     wrong = 1 - both["precision"] if both["precision"] is not None else None
     trigger = wrong is not None and wrong > OUTSIDE_ASR_LIMIT
     lines += ["", "## Outside-ASR trigger", "",
@@ -960,7 +1032,7 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
               + (" A follow-up issue is opened for an outside-family ASR cross-check."
                  if trigger else "")]
     drawn_floor = len(by_stratum.get("non_recitation", []))
-    floor = _precision(by_stratum.get("non_recitation", []), verdicts)
+    floor = _precision(by_stratum.get("non_recitation", []), verdicts, canonical)
     paused = floor["recitation"] >= FLOOR_PAUSE_AT
     lines += ["", "## The S5b §9 trigger", "",
               f"- Audited `non_recitation` clips heard as real recitation: "
@@ -972,7 +1044,15 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
                  if paused else " They proceed as frozen, through the follow-up issue."),
               "- The follow-up issue for the whole-pool decode and the filter is drafted, not "
               "filed: it is blocked on the owner's decision and on this outcome.", ""]
-    silence = _precision(by_stratum.get("silence", []), verdicts)
+    below = _precision(by_stratum.get("below-bar disagreement", []), verdicts, canonical)
+    below_precision = ("—" if below["precision"] is None
+                       else f"{below['precision']:.2%}")
+    lines += ["", "## The best class in the below-bar stratum (reported, never gating)", "",
+              f"- Best-class suggestions heard as the recitation: **{below['best_correct']} of "
+              f"{below['n']} answered** (Wilson 95% "
+              f"{_interval_text(below['best_correct'], below['n'])}).",
+              f"- Filename-label precision in the same items: {below_precision}.", ""]
+    silence = _precision(by_stratum.get("silence", []), verdicts, canonical)
     unclean = [row for row in by_stratum.get("silence", []) if row["split"] == "unclean"]
     lines += ["## The recitation floor in the field", "",
               f"- `non_recitation` items heard as real recitation: {floor['recitation']} of "
@@ -1007,6 +1087,7 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
               "train usable rows were lost as `survivor_unusable`.",
               "- No audited item: those rows are excluded.", ""]
     field = _label_independent(Path(ident_dir))
+    frame = _floor_frame(Path(ident_dir))
     lines += ["## Disclosure: the floor's calibration population", "",
               f"- The floor and its 0.30 decoy margin were calibrated on Tarteel v1, whose "
               "clips were filtered upstream (`cer_wav <= 0.299`, completeness >= 0.85); tlog "
@@ -1018,7 +1099,14 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
               f"{field['same']} ({field['same'] / field['flagged']:.1%}) match exactly the "
               f"labelled ayah and {field['near']} ({field['near'] / field['flagged']:.1%}) a "
               "neighbour within two ayat. Many flagged rows are recitation the teacher decodes "
-              "poorly, not non-recitation.", ""]
+              "poorly, not non-recitation.",
+              f"- Sampling frame of the `non_recitation` stratum: of {frame['failing']} decoded "
+              f"rows that fail the floor, {frame['both']} also match their filename class "
+              "(`both`) and are drawn as `both` by `AUDIT_PRIORITY`; the precision above "
+              f"therefore estimates the {frame['failing'] - frame['both']} floor-failing rows "
+              "that do not match their filename class. A supplemental sample covering the "
+              "`both` overlap is pre-stated in a dated correction before supplemental "
+              "listening; the committed worklist is not redrawn.", ""]
     lines += ["## Served order", "",
               "- The page serves the committed worklist in its written (shard) order rather "
               "than the amendment §5 salted shuffle: the worklist was frozen once verdicts "

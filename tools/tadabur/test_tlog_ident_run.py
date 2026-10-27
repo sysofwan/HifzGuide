@@ -452,6 +452,42 @@ def test_results_are_reported_by_the_three_pre_registered_duration_bands(run):
 # --- the audit draw (r20 Q3) --------------------------------------------------------------------
 
 
+def test_a_floor_failing_row_that_matches_its_filename_is_drawn_as_both(run):
+    row = _candidate(run, split="clean", label_source="both", id_floor_ok=False)
+    assert run._matching_strata(row) == ("both", "non_recitation")
+    assert run._stratum_of(row) == "both"
+    draw = run.audit_draw([row], sizes=dict.fromkeys(run.AUDIT_SIZES, 1))
+    assert [item["stratum"] for item in draw.items] == ["both"]
+
+
+def test_an_identical_recitation_scores_the_class_of_the_label_under_test(run, ident):
+    database = ident.ReferenceDatabase.build([
+        ident.AyahReference(2, 1, "بجح", (0, 3)),
+        ident.AyahReference(2, 2, "بجح", (0, 3)),
+    ])
+    canonical = lambda label: ident.canonical_label(database, label)
+    both = {"stratum": "both", "filename_label": "2:1", "assigned_label": "2:1",
+            "class_label": "2:1"}
+    assert run.verdict_outcome(both, {"verdict": run.OTHER, "ayah": "2:2"},
+                               canonical=canonical)["correct"] is True
+    assert run.verdict_outcome(both, {"verdict": run.OTHER, "ayah": "2:2"})["correct"] is False
+    outcome = run.verdict_outcome({"stratum": "relabelled", "filename_label": "2:1",
+                                   "assigned_label": "2:2", "class_label": "2:2"},
+                                  {"verdict": run.UNCLEAR})
+    assert (outcome["label_under_test"], outcome["correct"]) == ("2:2", None)
+
+
+def test_the_jsonl_gzip_writer_is_byte_stable_across_the_clock(run, tmp_path, monkeypatch):
+    first, second = tmp_path / "a.jsonl.gz", tmp_path / "b.jsonl.gz"
+    rows = [{"row": 1, "spans": "بجح"}]
+    monkeypatch.setattr(run.time, "time", lambda: 1000.0)
+    run._write_jsonl_gz(first, rows)
+    monkeypatch.setattr(run.time, "time", lambda: 1001.0)
+    run._write_jsonl_gz(second, rows)
+    assert first.read_bytes() == second.read_bytes()
+    assert first.read_bytes()[4:8] == b"\x00\x00\x00\x00"
+
+
 def test_the_frozen_audit_sizes_are_the_pre_registered_table(run):
     assert run.AUDIT_SIZES == SIZES
     assert sum(run.AUDIT_SIZES.values()) == 150

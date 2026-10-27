@@ -35,6 +35,7 @@ from training.counterfactual_eval import wilson_interval
 from training.tashkeel_eval import write_text_atomically
 
 from . import tlog_ident
+from .nonpro_sources import audio_sha256
 from .tlog_ident import BOTH, FILENAME, IDENTIFIED, NONE, load_identifier
 from .tlog_ident_run import AMENDMENT_APPROVAL, AMENDMENT_PATH, DURATION_BANDS, SALT, band_of
 from .tlog_index import REPO_ROOT, read_jsonl, sha256_file, write_jsonl
@@ -392,10 +393,12 @@ def stage(draw: AuditDraw, *, audio_dir: Path, cache_dir: Path) -> None:
                 "local_audio": name})
     if len(worklist) != len(draw.items):
         raise ValueError(f"staged {len(worklist)} of {len(draw.items)} drawn items")
-    kept = {row["local_audio"] for row in worklist}
-    for previous in read_jsonl(Path(AUDIT_DIR) / "worklist.jsonl"):
-        if previous["local_audio"] not in kept:
-            (audio_dir / previous["local_audio"]).unlink(missing_ok=True)
+    previous_path = Path(AUDIT_DIR) / "worklist.jsonl"
+    if previous_path.is_file():
+        kept = {row["local_audio"] for row in worklist}
+        for previous in read_jsonl(previous_path):
+            if previous["local_audio"] not in kept:
+                (audio_dir / previous["local_audio"]).unlink(missing_ok=True)
     write_jsonl(worklist, Path(AUDIT_DIR) / "worklist.jsonl", sort_keys=True)
 
 

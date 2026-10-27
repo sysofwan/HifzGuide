@@ -1642,6 +1642,7 @@ def _calibration(database: ReferenceDatabase) -> dict:
                  "tail": {"clips": len(tail), "retention": tail_retention,
                           "relabel_rate": tail_relabel}},
         "mistake": {"clips": len(mistakes),
+                    "passed": sum(row.floor_ok for row in mistakes),
                     "relabelled_at_b": sum(relabelled(row, bars["b"])
                                            for row in mistakes)
                     if bars["b"] is not None else None},
@@ -1749,7 +1750,8 @@ def confirm_lines(report: Mapping[str, Any]) -> list[str]:
         "| arm | locale | clips | passed | rate | Wilson 95% |",
         "|---|---|---|---|---|---|",
     ]
-    for primary, entry in confirm["per_language"].items():
+    for primary in sorted(confirm["per_language"]):
+        entry = confirm["per_language"][primary]
         wilson = entry["wilson"]
         interval = "—" if wilson is None else f"{_pct(wilson[0])}–{_pct(wilson[1])}"
         lines.append(f"| {primary} | {entry['locale']} | {entry['clips']} | "
@@ -1762,14 +1764,16 @@ def confirm_lines(report: Mapping[str, Any]) -> list[str]:
         "|---|---|---|---|---|",
         *[f"| {arm} | {bars[arm]['clips'] - bars[arm]['passed']} | {catches['length']} | "
           f"{catches['margin']} | {catches['both']} |"
-          for arm, catches in confirm["catches"].items()],
+          for arm, catches in ((arm, confirm["catches"][arm])
+                               for arm in ("freesound", "cv_ar", "cv_other"))],
         "",
         "The items that got through:",
         "",
         "| arm | key | length | class | span | decode |",
         "|---|---|---|---|---|---|",
     ]
-    for arm, items in confirm["passing"].items():
+    for arm in ("freesound", "cv_ar", "cv_other"):
+        items = confirm["passing"][arm]
         if not items:
             lines.append(f"| {arm} | — | — | — | — | — |")
         for item in items:

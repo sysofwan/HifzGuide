@@ -85,7 +85,7 @@ command_for() {
     ui)
       echo "python -u -m tadabur.tlog_audit_ui --worklist '$REPO/tools/tadabur/tlog/audit/worklist.jsonl' --audio-dir '$AUDIO' --verdicts '$VERDICTS' --quran-db '$QURAN_DB' --port 8000 --host 0.0.0.0" ;;
     report)
-      echo "python -u -m tadabur.tlog_ident_run report" ;;
+      echo "python -u -m tadabur.tlog_ident_run report --audio-dir '$AUDIO'" ;;
   esac
 }
 

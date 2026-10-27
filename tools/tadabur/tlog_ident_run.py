@@ -608,8 +608,8 @@ def audit_draw(records: Iterable[Mapping[str, Any]], *, sizes: Mapping[str, int]
             continue
         item = dict(row)
         item["stratum"] = stratum
-        if stratum == "below-bar disagreement":
-            item["blocking_reason"] = _blocking_reason(row)
+        item["blocking_reason"] = (_blocking_reason(row)
+                                   if stratum == "below-bar disagreement" else None)
         by_stratum[stratum].append(item)
 
     drawn: dict[str, list[dict]] = {}

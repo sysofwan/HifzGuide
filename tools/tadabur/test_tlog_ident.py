@@ -1073,6 +1073,28 @@ def test_the_reference_reader_does_not_import_the_phonetizer(ident, monkeypatch)
     assert len(ident.load_references().ayat) == 6236
 
 
+def test_the_reference_reader_refuses_an_incompatible_normalization_pin(ident, approval,
+                                                                        monkeypatch):
+    """r4 (R4.1): the reader keeps its dependency-free compatibility contract. A normalisation
+    bump (which changes how a decode normalises) or a tokenisation change must not score new
+    decodes against references built by the old algorithm, so both the reader and the consumer
+    entry point refuse."""
+    assert len(ident.load_references().ayat) == 6236
+
+    monkeypatch.setattr(ident.normalization, "ALGORITHM_VERSION", "3")
+    with pytest.raises(ValueError, match="normalization_algorithm_version"):
+        ident.load_references()
+    with pytest.raises(ValueError, match="normalization_algorithm_version"):
+        ident.load_identifier(approval_path=approval)
+    monkeypatch.undo()
+
+    monkeypatch.setattr(ident, "WORD_TOKENISATION", "some-other tokenisation")
+    with pytest.raises(ValueError, match="word_tokenisation"):
+        ident.load_references()
+    with pytest.raises(ValueError, match="word_tokenisation"):
+        ident.load_identifier(approval_path=approval)
+
+
 def test_pool_summary_reads_the_frozen_row_shape(ident):
     """A pool row carries the pass-1 ``speech_s``, never the clip's ``duration_s``: reading the
     wrong field failed the r5 calibration with a KeyError. Rows the codec floor rejected are

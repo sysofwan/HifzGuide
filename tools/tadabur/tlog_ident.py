@@ -952,13 +952,20 @@ def write_references(path: Path = REFERENCES_PATH,
 def load_references(path: Path = REFERENCES_PATH) -> ReferenceDatabase:
     """The committed reference database, from the file alone — no phonetizer import.
 
-    The envelope's own records are checked for internal consistency here. Binding them to the
-    calibration that used them (the file's SHA-256, the ayah and class counts) is
-    :func:`load_identifier`'s job, so S6/S7 can read the database without quran-transcript
-    installed; only rebuilding references needs the phonetizer.
+    Two kinds of check, both dependency-free. The envelope's records must be internally
+    consistent (the ayah and class counts), and its preprocessing pins must be this code's:
+    ``normalization_algorithm_version`` and ``word_tokenisation`` are the live constants, so a
+    version bump that changes how a decode normalises cannot read references normalised by the
+    old algorithm. Binding the envelope to the calibration that used it (the file's SHA-256 and
+    counts) is :func:`load_identifier`'s job; only rebuilding references needs the phonetizer.
     """
     with gzip.open(Path(path), "rt", encoding="utf-8") as handle:
         payload = json.load(handle)
+    expected = {"normalization_algorithm_version": normalization.ALGORITHM_VERSION,
+                "word_tokenisation": WORD_TOKENISATION}
+    for key, value in expected.items():
+        if payload.get(key) != value:
+            raise ValueError(f"{path} records {key}={payload.get(key)!r}, not {value!r}")
     ayat = [AyahReference(item["surah"], item["ayah"], item["reference"],
                           tuple(item["offsets"])) for item in payload["items"]]
     if len(ayat) != payload.get("ayat"):
@@ -1480,7 +1487,9 @@ def load_identifier(path: Path = CALIBRATION_PATH, *,
 
     S6 and S7 must not assemble a database and a bars pair by hand. Beyond the three gates of
     :func:`load_calibration`, every input the report records is compared with this checkout:
-    the references file's SHA-256 and its ayah, class and surah counts; the floor rule (its
+    the references file's SHA-256 and its ayah, class and surah counts, together with its
+    normalisation and tokenisation pins (:func:`load_references`, which refuses a cache built by
+    a different algorithm); the floor rule (its
     document's SHA-256 through :func:`floor_rule`, and the ``L_min``/``δ`` the pinned document
     states, against the code's constants); and the edlib name, version and mode whose distances
     the floors and bars are percentiles of.

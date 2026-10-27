@@ -20,7 +20,8 @@ def _row(row: int, stratum: str, *, split: str = "clean", **fields) -> dict:
             "audio_path": f"audio/{split}-00000-of-00411.parquet", "audio_sha256": "0" * 64,
             "duration_s": 12.5, "filename_label": "2:1", "assigned_label": "2:1",
             "class_label": "2:1", "label_source": "both", "id_floor_ok": True,
-            "overlaps_filename": False, "blocking_reason": None, "stratum": stratum,
+            "overlaps_filename": False, "blocking_reason": None,
+            "strata": [stratum], "stratum": stratum,
             "local_audio": f"{row:016x}_00000000.wav", **fields}
 
 
@@ -106,8 +107,8 @@ def test_the_best_class_readout_follows_the_heard_ayah(tmp_path):
         (row, {"verdict": run.OTHER, "ayah": "2:2"}) for row in rows])
     elsewhere = _render(tmp_path, rows, [
         (row, {"verdict": run.OTHER, "ayah": "3:1"}) for row in rows])
-    assert "Best-class suggestions heard as the recitation: **15 of 15 answered**" in matching
-    assert "Best-class suggestions heard as the recitation: **0 of 15 answered**" in elsewhere
+    assert "Best-class suggestions heard as the recitation: **15 of 15 decided**" in matching
+    assert "Best-class suggestions heard as the recitation: **0 of 15 decided**" in elsewhere
     assert "Filename-label precision in the same items: 0.00%" in matching
 
 
@@ -117,5 +118,6 @@ def test_the_floor_sampling_frame_is_disclosed(tmp_path):
     rows = [_row(1, "both")]
     document = _render(tmp_path, rows, [(rows[0], {"verdict": run.RIGHT, "ayah": "2:1"})])
     assert "Sampling frame of the `non_recitation` stratum" in document
-    assert f"{frame['both']} also match their filename class" in document
-    assert f"estimates the {frame['failing'] - frame['both']} floor-failing rows" in document
+    assert f"all {frame['failing']} decoded rows that fail the floor" in document
+    assert f"{frame['both']} of them also match their filename class" in document
+    assert "covers the whole flag" in document

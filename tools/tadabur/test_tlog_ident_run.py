@@ -189,7 +189,7 @@ def _candidate(run, *, population="look", split="clean", role="look", row=1, **o
         "population": population, "split": split, "role": role, "row": row,
         "shard_file": f"{split}-00000-of-00411",
         "audio_path": f"100_10_{row}.flac", "audio_sha256": _sha256(str(row).encode()),
-        "filename_label": "2:1", "label_source": "both", "floor_ok": True,
+        "filename_label": "2:1", "label_source": "both", "id_floor_ok": True,
         "class_label": "2:1", "assigned_label": "2:1", "delta": None,
         "overlaps_filename": False, "exclusions": (),
         "decode_mode": run.WHOLE_CLIP,
@@ -465,7 +465,7 @@ def test_each_stratum_is_defined_by_the_r20_rule(run):
         "relabelled": _candidate(run, split="clean", label_source="identified",
                                  assigned_label="2:2", class_label="2:2"),
         "non_recitation": _candidate(run, split="unclean", filename_label=None,
-                                     label_source="none", floor_ok=False,
+                                     label_source="none", id_floor_ok=False,
                                      class_label=None, assigned_label=None),
         "unclean identified": _candidate(run, split="unclean", filename_label=None,
                                          label_source="identified", assigned_label="2:2",
@@ -480,7 +480,7 @@ def test_each_stratum_is_defined_by_the_r20_rule(run):
         assert [item["stratum"] for item in draw.items] == [stratum]
 
     silence = _candidate(run, split="unclean", filename_label=None, label_source="none",
-                         floor_ok=None, class_label=None, assigned_label=None,
+                         id_floor_ok=None, class_label=None, assigned_label=None,
                          exclusions=("silence",), decode_mode=None)
     sizes = {name: 0 for name in STRATA}
     sizes["silence"] = 1
@@ -489,7 +489,7 @@ def test_each_stratum_is_defined_by_the_r20_rule(run):
     # Not one definition: a silence row with another exclusion, or a row above D_max.
     mixed = dict(silence, exclusions=("silence", "duplicate"))
     over = _candidate(run, split="unclean", filename_label=None, label_source="none",
-                      floor_ok=False, class_label=None, assigned_label=None,
+                      id_floor_ok=False, class_label=None, assigned_label=None,
                       decode_mode=run.NOT_DECODED)
     sizes = {name: 1 for name in STRATA}
     draw = _draw(run, [mixed, over], sizes=sizes)
@@ -504,14 +504,14 @@ def test_a_short_stratum_takes_all_its_rows_and_frees_the_rest_to_both(run):
                       delta=0.0) for i in range(2)]
         + [_candidate(run, row=2_000 + i) for i in range(80)]
         + [_candidate(run, row=3_000 + i, split="unclean", filename_label=None,
-                      label_source="none", floor_ok=False, class_label=None,
+                      label_source="none", id_floor_ok=False, class_label=None,
                       assigned_label=None) for i in range(30)]
         + [_candidate(run, row=4_000 + i, split="clean", filename_label=None,
-                      label_source="none", floor_ok=None, class_label=None,
+                      label_source="none", id_floor_ok=None, class_label=None,
                       assigned_label=None, exclusions=("silence",), decode_mode=None)
            for i in range(10)]
         + [_candidate(run, row=4_100 + i, split="unclean", filename_label=None,
-                      label_source="none", floor_ok=None, class_label=None,
+                      label_source="none", id_floor_ok=None, class_label=None,
                       assigned_label=None, exclusions=("silence",), decode_mode=None)
            for i in range(10)]
         + [_candidate(run, row=5_000 + i, split="unclean", filename_label=None,
@@ -532,7 +532,7 @@ def test_a_short_stratum_takes_all_its_rows_and_frees_the_rest_to_both(run):
     assert sum(item["stratum"] == "both" for item in draw.items) == 68
 
     small = _draw(run, [_candidate(run, row=7_000 + i, split="unclean", filename_label=None,
-                                   label_source="none", floor_ok=False, class_label=None,
+                                   label_source="none", id_floor_ok=False, class_label=None,
                                    assigned_label=None) for i in range(5)]
                   + [_candidate(run, row=8_000 + i) for i in range(60)])
     assert small.strata["non_recitation"]["drawn"] == 5
@@ -543,7 +543,7 @@ def test_a_short_stratum_takes_all_its_rows_and_frees_the_rest_to_both(run):
 def test_the_silence_stratum_takes_at_least_eight_unclean_rows(run):
     def silence(row, split):
         return _candidate(run, row=row, split=split, filename_label=None,
-                          label_source="none", floor_ok=None, class_label=None,
+                          label_source="none", id_floor_ok=None, class_label=None,
                           assigned_label=None, exclusions=("silence",), decode_mode=None)
 
     clean = [silence(1_000 + i, "clean") for i in range(10)]
@@ -707,7 +707,38 @@ def test_no_confirm_row_is_in_any_committed_tree(run):
     for path in trees:
         for row in read_jsonl_gz(path):
             assert row["split"] in ("clean", "unclean")
-            assert not str(row.get("role", "")).startswith("confirm")
     for row in run._read_jsonl(run.AUDIT_DIR / "worklist.jsonl"):
-        assert not str(row.get("role", "")).startswith("confirm")
+        assert not str(row["role"]).startswith("confirm")
         assert row["split"] in ("clean", "unclean")
+
+
+def test_each_decode_meta_census_counts_its_own_tree(run):
+    pairs = [
+        (run.DECODES_DIR / "look" / "meta.json",
+         read_jsonl_gz(run.DECODES_DIR / "look" / "clean.jsonl.gz")
+         + read_jsonl_gz(run.DECODES_DIR / "look" / "unclean.jsonl.gz")),
+        (run.DECODES_DIR / "train_sample.meta.json",
+         read_jsonl_gz(run.DECODES_DIR / "train_sample.jsonl.gz")),
+    ]
+    for meta_path, rows in pairs:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        tree_rows = len(rows) if isinstance(meta["rows"], int) else sum(meta["rows"].values())
+        assert sum(meta["census"].values()) == tree_rows
+        assert tree_rows == len(rows)
+
+
+def test_the_committed_sample_trees_are_the_salted_draw(run):
+    selection = run.select(d_max=run.decode_limit()["d_max_seconds"])
+    expected = _keyset(selection.train_sample)
+    assert len(expected) == 2_000
+    for path in (run.DECODES_DIR / "train_sample.jsonl.gz",
+                 run.IDENT_DIR / "train_sample.jsonl.gz"):
+        assert _keyset(read_jsonl_gz(path)) == expected
+
+
+def test_the_committed_worklist_is_the_draw_it_was_staged_from(run):
+    worklist = run._read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
+    draw = run.audit_draw(run.audit_candidates())
+    assert len(worklist) == len(draw.items) == 150
+    assert {_key(row): row["stratum"] for row in worklist} == {
+        _key(item): item["stratum"] for item in draw.items}

@@ -53,7 +53,6 @@ from .tlog_ident import (
     BASE_MODEL,
     BASE_REVISION,
     BOTH,
-    FILENAME,
     IDENTIFIED,
     NONE,
     identification_record,
@@ -86,7 +85,6 @@ AMENDMENT_APPROVAL = {"status": "given", "date": "2026-10-27",
 #: The pre-registered audit strata and sizes (frozen table; architect r20 Q3).
 AUDIT_SIZES = {"both": 40, "relabelled": 30, "non_recitation": 25, "silence": 15,
                "unclean identified": 25, "below-bar disagreement": 15}
-AUDIT_TOTAL = 150
 #: At least this many silence items come from the unclean split (architect r13).
 SILENCE_UNCLEAN = 8
 #: The frozen verdict vocabulary (pre-registration "Audit (S6)"), and r20 Q4's table.
@@ -100,8 +98,11 @@ VERDICTS = (RIGHT, OTHER, SILENCE, NOT_RECITATION, UNCLEAR)
 DURATION_BANDS = ("0-20", "20-60", "60-d_max")
 #: The overlap disclosure (r20 Q6), read from ``overlap/meta.json`` at render time.
 OUTSIDE_ASR_LIMIT = 0.02
-EXPECTED_LOOK_ROWS = 9_710
-EXPECTED_TRAIN_ROWS = 426_825
+#: Below this many decided items an interval is not read (amendment §4).
+MIN_READABLE_N = 10
+#: The S5b §9 rule, pre-stated before any verdict: at this many audited
+#: ``non_recitation`` clips heard as recitation, the 5% consequence pauses.
+FLOOR_PAUSE_AT = 3
 
 ROOT = Path(__file__).resolve().parents[2]
 IDENT_DIR = Path(__file__).parent / "tlog" / "ident"
@@ -111,7 +112,6 @@ DECODE_LIMIT_PATH = IDENT_DIR / "decode_limit.json"
 AMENDMENT_PATH = ROOT / "docs" / "tlog-s6-amendment.md"
 DOC_PATH = ROOT / "docs" / "tlog-audit.md"
 OVERLAP_META_PATH = Path(__file__).parent / "tlog" / "overlap" / "meta.json"
-FLOOR_PREREGISTRATION_PATH = tlog_ident.FLOOR_PREREGISTRATION_PATH
 
 
 @dataclass(frozen=True)
@@ -360,14 +360,12 @@ def _census(counts: Mapping[tuple[str, str], int]) -> dict:
         (tlog_split(shard), Path(shard).stem), 0) for shard in shards}
 
 
-def _provenance(calibration: bool = True) -> dict:
-    record = {"model": BASE_MODEL, "revision": BASE_REVISION,
-              "code_sha": head_sha(ROOT),
-              "decode_limit_sha256": sha256_file(DECODE_LIMIT_PATH),
-              "amendment_sha256": sha256_file(AMENDMENT_PATH)}
-    if calibration:
-        record["calibration_sha256"] = sha256_file(tlog_ident.CALIBRATION_PATH)
-    return record
+def _provenance() -> dict:
+    return {"model": BASE_MODEL, "revision": BASE_REVISION,
+            "code_sha": head_sha(ROOT),
+            "decode_limit_sha256": sha256_file(DECODE_LIMIT_PATH),
+            "calibration_sha256": sha256_file(tlog_ident.CALIBRATION_PATH),
+            "amendment_sha256": sha256_file(AMENDMENT_PATH)}
 
 
 def _decoder():
@@ -431,15 +429,20 @@ def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
     for split, rows in look.items():
         _write_jsonl_gz(out_dir / "look" / f"{split}.jsonl.gz", sorted(rows, key=_key))
     _write_jsonl_gz(out_dir / "train_sample.jsonl.gz", sorted(sample, key=_key))
-    meta = {**_provenance(), "schema_version": SCHEMA_VERSION,
-            "selection": {"salt": SALT, **selection.counts},
-            "census": _census(written)}
+    # Each meta's census counts the rows written to its own tree: ``rows`` and the census
+    # must agree, so the provenance of one tree is never read off another's.
+    base = {**_provenance(), "schema_version": SCHEMA_VERSION,
+            "selection": {"salt": SALT, **selection.counts}}
+    look_census = _census(_count_by_shard(
+        [row for split in ("clean", "unclean") for row in look[split]]))
     write_text_atomically(out_dir / "look" / "meta.json",
-                          json.dumps({**meta, "rows": {split: len(rows)
-                                                       for split, rows in look.items()}},
+                          json.dumps({**base, "census": look_census,
+                                      "rows": {split: len(rows)
+                                               for split, rows in look.items()}},
                                      ensure_ascii=False, indent=1, sort_keys=True) + "\n")
     write_text_atomically(out_dir / "train_sample.meta.json",
-                          json.dumps({**meta, "rows": len(sample)},
+                          json.dumps({**base, "census": _census(_count_by_shard(sample)),
+                                      "rows": len(sample)},
                                      ensure_ascii=False, indent=1, sort_keys=True) + "\n")
     return {"look": {split: len(rows) for split, rows in look.items()},
             "train_sample": len(sample), "seconds": round(time.time() - started, 1)}
@@ -563,8 +566,8 @@ def _identified_row(database, bars, k: int, row: Mapping[str, Any]) -> dict:
 
 
 def _floor_ok(row: Mapping[str, Any]) -> bool | None:
-    """The recitation verdict on a committed ident row, or on a fixture using S5's name."""
-    return row["id_floor_ok"] if "id_floor_ok" in row else row.get("floor_ok")
+    """The recitation verdict on a committed ident row (``None`` off the decoded population)."""
+    return row["id_floor_ok"]
 
 
 def _stratum_of(row: Mapping[str, Any]) -> str | None:
@@ -830,32 +833,122 @@ def _precision(rows: Sequence[Mapping[str, Any]], verdicts: Mapping[str, Mapping
             "best_correct": sum(1 for outcome in scored if outcome["best_correct"])}
 
 
+def _wilson_cell(stats: Mapping[str, Any]) -> str:
+    """The amendment §4 rule: an interval at any n, unreadable below ten decided items."""
+    if stats["wilson"] is None:
+        return "—"
+    if stats["decided"] < MIN_READABLE_N:
+        return "n too small to read"
+    low, high = stats["wilson"]
+    return f"{low:.2%}–{high:.2%}"
+
+
+def _band_cell(stats: Mapping[str, Any]) -> str:
+    if not stats["decided"]:
+        return "—"
+    if stats["decided"] < MIN_READABLE_N:
+        return f"{stats['correct']}/{stats['decided']} (n too small to read)"
+    return f"{stats['correct']}/{stats['decided']} ({stats['precision']:.0%})"
+
+
+def _by_band(rows: Iterable[Mapping[str, Any]], d_max: float) -> dict[str, list[dict]]:
+    bands: dict[str, list[dict]] = {band: [] for band in DURATION_BANDS}
+    for row in rows:
+        band = band_of(row["duration_s"], d_max)
+        if band is not None:
+            bands[band].append(dict(row))
+    return bands
+
+
+def _within_ayat(first: object, second: object, distance: int) -> bool:
+    """Whether two ``surah:ayah`` labels are within ``distance`` ayat of one another."""
+    try:
+        surah_a, ayah_a = (int(part) for part in str(first).split(":"))
+        surah_b, ayah_b = (int(part) for part in str(second).split(":"))
+    except ValueError:
+        return False
+    return surah_a == surah_b and 0 < abs(ayah_a - ayah_b) <= distance
+
+
+def _label_independent(ident_dir: Path) -> dict[str, float]:
+    """r21 §2a/§2d: how the floor behaves on tlog, from the committed ident trees.
+
+    The shortlist is label-free, so a best match landing on the labelled ayah is not caused by
+    the label: at about 6,053 text classes that is not chance. Retention is the share of
+    decoded clean look rows the floor keeps; the calibration's own retention comes from
+    ``ident_calibration.json``.
+    """
+    rows = [row for split in ("clean", "unclean")
+            for row in read_jsonl_gz(Path(ident_dir) / "look" / f"{split}.jsonl.gz")]
+    decoded = [row for row in rows if row["decode_mode"] == WHOLE_CLIP]
+    clean = [row for row in decoded if row["split"] == "clean"]
+    labelled = [row for row in clean if row.get("filename_label")]
+    flagged = [row for row in labelled if row["id_floor_ok"] is False]
+    if not flagged:
+        raise SystemExit("no flagged clean look row: the §2a disclosure would be empty")
+    same = sum(1 for row in flagged if row.get("class_label") == row["filename_label"])
+    near = sum(1 for row in flagged
+               if _within_ayat(row.get("class_label"), row["filename_label"], 2))
+    calibration = json.loads(Path(tlog_ident.CALIBRATION_PATH).read_text(encoding="utf-8"))
+    return {"flagged": len(flagged), "same": same, "near": near,
+            "retention": sum(1 for row in clean if row["id_floor_ok"] is True) / len(clean),
+            "calibration_retention": calibration["look"]["retention"]}
+
+
+def _require_verdicts(worklist: Sequence[Mapping[str, Any]],
+                      verdicts: Mapping[str, Any], path: Path) -> None:
+    """Refuse a document built from no verdicts, or from verdicts off another worklist."""
+    if not verdicts:
+        raise SystemExit(f"{path} has no verdicts: commit the owner's sitting before reporting")
+    stray = sorted(set(verdicts) - {_item_key(row) for row in worklist})
+    if stray:
+        raise SystemExit(f"{path}: {len(stray)} verdicts name items that are not in the "
+                         f"worklist ({', '.join(stray[:3])})")
+
+
 def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
                  verdicts_path: Path = AUDIT_DIR / "verdicts.jsonl",
                  ident_dir: Path = IDENT_DIR) -> str:
-    """Render ``docs/tlog-audit.md`` from the committed worklist and verdicts."""
+    """Render ``docs/tlog-audit.md`` from the committed worklist and verdicts.
+
+    A render from zero verdicts would assert ``trigger fired: False`` from no evidence, so it
+    refuses instead; a partly answered sitting still renders.
+    """
     worklist = [dict(row) for row in _read_jsonl(worklist_path)]
+    if not worklist:
+        raise SystemExit(f"{worklist_path} is empty: there is no audit to report")
     verdicts = read_verdicts(verdicts_path)
+    _require_verdicts(worklist, verdicts, verdicts_path)
+    d_max = float(decode_limit()["d_max_seconds"])
     by_stratum: dict[str, list[dict]] = defaultdict(list)
     for row in worklist:
-        by_stratum[row["stratum"]].append({**row, "stratum": row["stratum"]})
+        by_stratum[row["stratum"]].append(row)
     lines = ["# tlog S6 audit (#191)", "",
              "Generated by `python -m tadabur.tlog_ident_run report` from",
              "`tools/tadabur/tlog/audit/{worklist,verdicts}.jsonl`. Never hand-edited.", "",
              f"The S6 amendment (`docs/tlog-s6-amendment.md`, SHA-256 "
              f"`{sha256_file(AMENDMENT_PATH)}`) was approved by the owner on "
              f"{AMENDMENT_APPROVAL['date']} ({AMENDMENT_APPROVAL['url']}).", "",
+             f"{len(verdicts)} of {len(worklist)} drawn items answered. A Wilson 95% interval "
+             f"is reported at any n; below {MIN_READABLE_N} decided items it reads "
+             "`n too small to read` (amendment §4).", "",
              "## Verdicts", "",
              "| stratum | drawn | answered | decided | right | precision | Wilson 95% |",
              "|---|---|---|---|---|---|---|"]
     for stratum in AUDIT_SIZES:
         rows = by_stratum.get(stratum, [])
         stats = _precision(rows, verdicts)
-        precision = "—" if stats["precision"] is None else f"{stats['precision']:.2%}"
-        interval = ("—" if stats["wilson"] is None
-                    else f"{stats['wilson'][0]:.2%}–{stats['wilson'][1]:.2%}")
+        unreadable = bool(stats["decided"]) and stats["decided"] < MIN_READABLE_N
+        precision = ("n too small to read" if unreadable else
+                     "—" if stats["precision"] is None else f"{stats['precision']:.2%}")
         lines.append(f"| {stratum} | {len(rows)} | {stats['n']} | {stats['decided']} | "
-                     f"{stats['correct']} | {precision} | {interval} |")
+                     f"{stats['correct']} | {precision} | {_wilson_cell(stats)} |")
+    lines += ["", "## Precision by duration band", "",
+              "| stratum | 0-20 s | 20-60 s | 60-d_max |", "|---|---|---|---|"]
+    for stratum in AUDIT_SIZES:
+        bands = _by_band(by_stratum.get(stratum, []), d_max)
+        cells = [_band_cell(_precision(bands[band], verdicts)) for band in DURATION_BANDS]
+        lines.append(f"| {stratum} | " + " | ".join(cells) + " |")
     both = _precision(by_stratum.get("both", []), verdicts)
     wrong = 1 - both["precision"] if both["precision"] is not None else None
     trigger = wrong is not None and wrong > OUTSIDE_ASR_LIMIT
@@ -866,45 +959,70 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
               f"- Trigger fired: **{trigger}**."
               + (" A follow-up issue is opened for an outside-family ASR cross-check."
                  if trigger else "")]
-    non_recitation = _precision(by_stratum.get("non_recitation", []), verdicts)
+    drawn_floor = len(by_stratum.get("non_recitation", []))
+    floor = _precision(by_stratum.get("non_recitation", []), verdicts)
+    paused = floor["recitation"] >= FLOOR_PAUSE_AT
+    lines += ["", "## The S5b §9 trigger", "",
+              f"- Audited `non_recitation` clips heard as real recitation: "
+              f"**{floor['recitation']} of {drawn_floor} drawn** ({floor['n']} answered).",
+              f"- Pre-stated before any verdict: {FLOOR_PAUSE_AT} or more suspends the 5% "
+              "rule's consequence pending a dated floor revision the owner decides.",
+              f"- **Suspended: {paused}.**"
+              + (" The whole-pool decode and the `not non_recitation` filter do not start."
+                 if paused else " They proceed as frozen, through the follow-up issue."),
+              "- The follow-up issue for the whole-pool decode and the filter is drafted, not "
+              "filed: it is blocked on the owner's decision and on this outcome.", ""]
     silence = _precision(by_stratum.get("silence", []), verdicts)
     unclean = [row for row in by_stratum.get("silence", []) if row["split"] == "unclean"]
-    lines += ["", "## The recitation floor in the field", "",
-              f"- `non_recitation` items heard as real recitation: "
-              f"{non_recitation['recitation']} of {non_recitation['n']} "
-              f"(report at 3 or more).",
+    lines += ["## The recitation floor in the field", "",
+              f"- `non_recitation` items heard as real recitation: {floor['recitation']} of "
+              f"{drawn_floor} drawn ({floor['n']} answered).",
               f"- silence items heard as real recitation: {silence['recitation']} of "
-              f"{silence['n']}; unclean alone {sum(1 for row in unclean)} drawn.",
-              ""]
+              f"{len(by_stratum.get('silence', []))} drawn; unclean alone {len(unclean)} "
+              "drawn.", ""]
     meta_path = Path(ident_dir) / "train_sample.meta.json"
-    if meta_path.is_file():
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        rule = meta.get("five_percent_rule", {})
-        lines += ["## The 5% rule", "",
-                  f"- sample n = {rule.get('n')}, non_recitation = "
-                  f"{rule.get('non_recitation')}, Wilson 95% upper = "
-                  f"{rule.get('wilson', [None, None])[1]}, triggered = "
-                  f"**{rule.get('triggered')}**.", ""]
-        if "bands" in meta:
-            lines += ["## By duration band", "",
-                      "| band | rows | non_recitation |", "|---|---|---|"]
-            for band in DURATION_BANDS:
-                counts = meta["bands"].get(band, {})
-                lines.append(f"| {band} | {counts.get('rows', 0)} | "
-                             f"{counts.get('non_recitation', 0)} |")
-            lines.append("")
-    if OVERLAP_META_PATH.is_file():
-        overlap = json.loads(OVERLAP_META_PATH.read_text(encoding="utf-8"))
-        words = overlap.get("controls", {}).get("stop_word_matches", {}).get("accepted", {})
-        survivors = overlap.get("duplicates", {}).get("survivor_unusable", {})
-        lines += ["## Disclosure: the S4 exclusions (not audited here)", "",
-                  f"- {words.get('near_duplicate', {}).get('share', 0):.2%} of accepted "
-                  "near-duplicate matches are dominated by stop-words; "
-                  f"{words.get('all', {}).get('share', 0):.2%} combined, above the 1% warning.",
-                  f"- {survivors.get('eval', {}).get('total', 0)} eval-role and "
-                  f"{survivors.get('train', {}).get('total', 0)} train usable rows were lost as "
-                  "`survivor_unusable`.",
-                  "- No audited item: those rows are excluded.", ""]
+    if not meta_path.is_file():
+        raise SystemExit(f"{meta_path} is absent: the 5% rule has not been computed")
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    rule = meta["five_percent_rule"]
+    lines += ["## The 5% rule", "",
+              f"- sample n = {rule['n']}, non_recitation = {rule['non_recitation']}, "
+              f"Wilson 95% upper = {rule['wilson'][1]:.2%}, triggered = "
+              f"**{rule['triggered']}**.", "",
+              "| band | rows | non_recitation |", "|---|---|---|"]
+    for band in DURATION_BANDS:
+        counts = meta["bands"][band]
+        lines.append(f"| {band} | {counts['rows']} | {counts['non_recitation']} |")
+    lines.append("")
+    if not OVERLAP_META_PATH.is_file():
+        raise SystemExit(f"{OVERLAP_META_PATH} is absent: the S4 disclosure cannot be skipped")
+    overlap = json.loads(OVERLAP_META_PATH.read_text(encoding="utf-8"))
+    words = overlap["controls"]["stop_word_matches"]["accepted"]
+    survivors = overlap["duplicates"]["survivor_unusable"]
+    lines += ["## Disclosure: the S4 exclusions (not audited here)", "",
+              f"- {words['near_duplicate']['share']:.2%} of accepted near-duplicate matches are "
+              f"dominated by stop-words; {words['all']['share']:.2%} combined, above the 1% "
+              "warning.",
+              f"- {survivors['eval']['total']} eval-role and {survivors['train']['total']} "
+              "train usable rows were lost as `survivor_unusable`.",
+              "- No audited item: those rows are excluded.", ""]
+    field = _label_independent(Path(ident_dir))
+    lines += ["## Disclosure: the floor's calibration population", "",
+              f"- The floor and its 0.30 decoy margin were calibrated on Tarteel v1, whose "
+              "clips were filtered upstream (`cer_wav <= 0.299`, completeness >= 0.85); tlog "
+              f"is unfiltered. Tarteel look retention was "
+              f"{field['calibration_retention']:.2%}; tlog clean look retention is "
+              f"{field['retention']:.2%}.",
+              f"- The shortlist is label-free, so a best match on the labelled ayah is not "
+              f"driven by the label: of {field['flagged']} flagged clean look rows, "
+              f"{field['same']} ({field['same'] / field['flagged']:.1%}) match exactly the "
+              f"labelled ayah and {field['near']} ({field['near'] / field['flagged']:.1%}) a "
+              "neighbour within two ayat. Many flagged rows are recitation the teacher decodes "
+              "poorly, not non-recitation.", ""]
+    lines += ["## Served order", "",
+              "- The page serves the committed worklist in its written (shard) order rather "
+              "than the amendment §5 salted shuffle: the worklist was frozen once verdicts "
+              "began, and the order carries no stratum information.", ""]
     return "\n".join(lines).rstrip() + "\n"
 
 

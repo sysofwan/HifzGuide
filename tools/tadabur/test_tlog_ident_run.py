@@ -231,7 +231,7 @@ def test_the_overlap_note_is_frozen_and_cites_the_amendment(run):
     assert _sha256(run.AMENDMENT_PATH.read_bytes()) in text
     assert "2026-10-27" in text
     assert "unclear" in text and "right ayah" in text
-    assert "with_floor_supplement" in text
+    assert "whatever other stratum they also belong to" in text
 
 
 def test_the_amendment_and_decode_limit_must_exist_before_a_decode(run, tmp_path, monkeypatch):
@@ -506,26 +506,6 @@ def test_a_shared_row_is_served_once_and_scored_in_each_stratum(run):
     floor = run._precision(views["non_recitation"], verdicts)
     assert (both["correct"], both["decided"]) == (2, 2)
     assert (floor["recitation"], floor["n"]) == (1, 1)
-
-
-def test_the_fallback_marks_and_completes_the_floor_sample(run):
-    rows = [_candidate(run, row=1_000 + i, split="unclean", filename_label=None,
-                       label_source="none", id_floor_ok=False,
-                       class_label=None, assigned_label=None) for i in range(40)]
-    sizes = {name: 0 for name in STRATA}
-    sizes["non_recitation"] = 25
-    draw = _draw(run, rows, sizes=sizes)
-    prefix, later = list(draw.items)[:25], list(draw.items)[25:]
-    earlier = prefix[5:] + later  # an earlier draw: 20 sample rows, 15 restricted-only extras
-    corrected = run.with_floor_supplement(rows, earlier, salt="audit-test")
-    assert _keys(list(corrected[:len(earlier)])) == _keys(earlier)
-    assert _keyset(corrected[len(earlier):]) == _keyset(prefix[:5])
-    assert sum(1 for row in corrected if row["floor_sample"]) == 25
-    assert _keyset(row for row in corrected if not row["floor_sample"]) == _keyset(later)
-    assert all("non_recitation" in row["strata"] for row in corrected)
-
-    complete = run.with_floor_supplement(rows, draw.items, salt="audit-test")
-    assert len(complete) == 25 and all(row["floor_sample"] for row in complete)
 
 
 def test_an_identical_recitation_scores_the_class_of_the_label_under_test(run, ident):

@@ -666,6 +666,47 @@ def test_the_folded_guard_catches_urdu_and_persian_basmala_and_excludes_none_of_
             if confirm.fails_folded_quran_guard(row["sentence"], ngrams)] == []
 
 
+@pytest.mark.slow
+def test_the_disclosed_look_figures_reproduce_with_the_real_index_decoy_search(ident, calibration):
+    """Erratum §a: the pre-registration's 99.78% / 99.72% are the S5 measurement at `dc602df`,
+    whose decoy shortlist was ranked with the *real* index; `659bce0` ranks it with the decoy
+    index. Both columns are re-derived here from the committed look decodes at the committed k."""
+    import edlib
+
+    database = ident.load_references()
+    k = calibration["parameters"]["k"]
+    rows = []
+    for decode in ident.load_look_decodes():
+        row = ident.identify(decode.spans, database=database,
+                             filename_ayah=decode.surah_ayah, k=k)
+        query = ident._normalise(decode.spans)
+        old_decoy = max(1.0 - edlib.align(query, database._decoys[position].text,
+                                          mode="HW")["editDistance"] / len(query)
+                        for position in database._ranked(query, k=k))
+        rows.append((decode.cer_wav, row, old_decoy))
+
+    def kept(entry, decoy: float) -> bool:
+        _, row, _ = entry
+        return (row.match is not None and row.length >= ident.L_MIN
+                and row.match.score - decoy >= ident.DELTA)
+
+    tail = [entry for entry in rows if entry[0] >= 0.2]
+    assert len(rows) == calibration["look"]["clips"]
+    assert len(tail) == calibration["look"]["tail"]["clips"]
+
+    # The committed engine reproduces the confirmed report's own retention.
+    committed = sum(kept(entry, entry[1].decoy) for entry in rows)
+    committed_tail = sum(kept(entry, entry[1].decoy) for entry in tail)
+    assert committed / len(rows) == pytest.approx(calibration["look"]["retention"])
+    assert committed_tail / len(tail) == pytest.approx(calibration["look"]["tail"]["retention"])
+
+    # The disclosed figures are the real-index decoy search's, exactly.
+    assert sum(kept(entry, entry[2]) for entry in rows) == 4527
+    assert sum(kept(entry, entry[2]) for entry in tail) == 1801
+    assert committed == 4520
+    assert committed_tail == 1797
+
+
 def test_a_short_real_mistake_population_cannot_move_the_bar(confirm):
     """A truncated list would turn 52/52 into "all N" and still report the floor confirmed."""
     with pytest.raises(ValueError, match="52"):
@@ -674,6 +715,14 @@ def test_a_short_real_mistake_population_cannot_move_the_bar(confirm):
     held = confirm.five_bars(freesound=[False], cv_ar=[False], cv_other=[False],
                              mistakes=[True] * confirm.MISTAKE_CLIPS, look_retention=1.0)
     assert held["mistakes"] == {"clips": 52, "passed": 52, "fired": False}
+
+
+def test_an_empty_real_mistake_population_cannot_confirm_the_floor(confirm):
+    """r1: the zero-clip list is the dangerous case — ``real_mistake_clips`` permits an empty
+    file, and "all 0 of 0 passed" would confirm the floor in place of the 52/52 bar."""
+    with pytest.raises(ValueError, match="52"):
+        confirm.five_bars(freesound=[False] * 1000, cv_ar=[False] * 500,
+                          cv_other=[False] * 500, mistakes=[], look_retention=1.0)
 
 
 def test_the_freesound_store_is_keyed_by_the_manifest_ids(ident, confirm):

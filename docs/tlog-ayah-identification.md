@@ -126,7 +126,7 @@ The share of the 474,962 usable rows whose decode lands in `161-` is unknown unt
 ## For S7: the row contract and the decode mode
 
 - **Row contract.** `tadabur.tlog_ident.identification_record` is the one place the committed row's field names are fixed: the span, `straddles`, `class_label`, `score`, `decoy`, `delta`, `margin`, `margin_class`, `id_floor_ok`, `overlaps_filename`, `filename_label`, `label_source`, `assigned_label`, plus `floor_rule` (the pre-registration's path and SHA-256). `id_floor_ok` is the S5b recitation verdict: the decode is at least `L_min = 8` characters and its real best is at least `DELTA = 0.30` above its own decoy best. Every row names the rule that produced it, so binned and rule verdicts cannot be mixed silently.
-- **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and refuses any report whose `floor_status` is not `"confirmed"`. The retired binned floors stay in the report as history and are not returned.
+- **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and refuses any report whose `floor_status` is not `"confirmed"` or whose `margin_definition.status` is not `"final"` (an undecided `b_u` waits for the owner). The retired binned floors stay in the report as history and are not returned.
 - **Decode mode.** The frozen rule fixes a whole-clip greedy decode (`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are whole-clip. The pool is not: 759 usable rows carry over 60 s of speech, the longest 982 s, which a whole pass cannot decode within the VRAM budget (S5's Freesound pool already needed `stream_b0`, as its own row above says). `identify` takes a bare string and cannot tell the modes apart. S7 must either obtain an amendment of the decode mode or record `decode_mode` beside every identification and report the floor-bin and streamed populations separately; S5 decides neither.
 
 ## Floor status
@@ -135,9 +135,9 @@ The share of the 474,962 usable rows whose decode lands in `161-` is unknown unt
 
 ## The confirmation (S5b, #204)
 
-The floor is the per-decode rule of [`docs/tlog-ident-floor-preregistration.md`](tlog-ident-floor-preregistration.md) (sha256 `7bd2e1958ea8`): a decode is `non_recitation` when its normalised length is under `L_min = 8` characters or its real best is within `DELTA = 0.30` of its own decoy best, both from one shortlisted The three fresh sets were drawn and committed before decoding, under the salt `tlog-s5b-floor-confirm-v1`.
+The floor is the per-decode rule of [`docs/tlog-ident-floor-preregistration.md`](tlog-ident-floor-preregistration.md) (sha256 `7bd2e1958ea8`): a decode is `non_recitation` when its normalised length is under `L_min = 8` characters or its real best is within `DELTA = 0.30` of its own decoy best, both from the same shortlisted search. The three fresh sets were drawn and committed before decoding, under the salt `tlog-s5b-floor-confirm-v1`.
 
-Three disclosures are corrected in [`docs/tlog-ident-floor-erratum.md`](tlog-ident-floor-erratum.md) (2026-10-27): the pre-registration's look figures were measured on the S5 engine before `79acded`; the Quran-text guard the draw used does not match Urdu/Persian letter variants, and the folded check excludes none of the 1,000 drawn sentences; and the provenance chain cites branch commits, reachable after a squash merge only through the PR ref.
+Three disclosures are corrected in [`docs/tlog-ident-floor-erratum.md`](tlog-ident-floor-erratum.md) (2026-10-27): the pre-registration's look figures are S5's measurement at `dc602df`, one search change (`659bce0`, the decoy shortlist ranked by its own index) away from the 99.63%/99.50% re-measured here; the Quran-text guard the draw used does not match Urdu/Persian letter variants, and the folded check excludes none of the 1,000 drawn sentences; and the provenance chain cites branch commits, reachable after a squash merge only through the PR ref.
 
 | arm | clips | passed | rate | Wilson 95% | limit | fired |
 |---|---|---|---|---|---|---|

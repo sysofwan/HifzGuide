@@ -48,7 +48,9 @@ The committed report carries them under ``confirm`` — the arms with Wilson 95%
 per-language rates, the rule's catches split by clause, the items that passed with their decodes
 and spans, and the doc → manifests → stores provenance chain — so a stop is inspectable without a
 rerun. ``b`` and ``b_u`` are ``provisional`` unless that status is exactly ``"confirmed"``, and
-:func:`load_calibration` refuses anything else.
+:func:`load_calibration` refuses anything else. It also refuses a report whose
+``margin_definition.status`` is not ``"final"``: when the character-start oracle changes ``b_u``
+or a look assignment the owner decides, and no consumer labels rows under an undecided ``b_u``.
 
 **The margin's bound (S5b).** The pinned competitor search is a word-span one, and
 ``docs/tlog-ident-margin-amendment.md`` discloses that it can overstate ``m``, never understate
@@ -68,7 +70,8 @@ owner-verified real-mistake sites), ``decodes/real_mistake.base.json`` and ``dec
 Consumers use two functions, so S6 and S7 cannot fork the schema: :func:`identification_record`
 names the committed row's fields, including the ``floor_rule`` that produced the verdict on every
 row, and :func:`load_calibration` returns ``(bars, k)`` and refuses any report whose
-``floor_status`` is not ``"confirmed"``. The read path (a committed database and
+``floor_status`` is not ``"confirmed"``, or whose ``margin_definition.status`` is not
+``"final"``. The read path (a committed database and
 :func:`identify`) imports edlib only; the phonetizer is imported where a reference is built.
 
 Usage (from ``tools/``)::
@@ -1356,11 +1359,13 @@ def recall_sample(clips: Iterable[str]) -> tuple[str, ...]:
 
 
 def load_calibration(path: Path = CALIBRATION_PATH) -> tuple[dict, int]:
-    """The committed ``(bars, k)`` a consumer labels rows with, confirmed only.
+    """The committed ``(bars, k)`` a consumer labels rows with, cleared only.
 
-    The S5b floor must be recorded as exactly ``"confirmed"``; a stopped, passed or provisional
-    report is refused. The floors are history (the rule is inside :func:`identify`), so they are
-    not returned.
+    Two gates. The S5b floor must be recorded as exactly ``"confirmed"``; a stopped, passed or
+    provisional report is refused. And the margin pin must be ``"final"``: when the
+    character-start oracle changes ``b_u`` or a look assignment the owner decides, and ``b_u``
+    is not usable until then (architect r18/r19). The floors are history (the rule is inside
+    :func:`identify`), so they are not returned.
     """
     report = json.loads(Path(path).read_text(encoding="utf-8"))
     status = report.get("floor_status")
@@ -1369,6 +1374,10 @@ def load_calibration(path: Path = CALIBRATION_PATH) -> tuple[dict, int]:
     if report["bars"].get("provisional"):
         raise ValueError(f"{path} is not a confirmed calibration (bars provisional: "
                          f"{report['bars'].get('provisional_reason')})")
+    margin = report.get("margin_definition", {}).get("status")
+    if margin != "final":
+        raise ValueError(f"{path} is not cleared for use (margin_definition.status "
+                         f"{margin!r}: the owner decides b_u)")
     return report["bars"], report["parameters"]["k"]
 
 
@@ -1746,16 +1755,18 @@ def confirm_lines(report: Mapping[str, Any]) -> list[str]:
         "[`docs/tlog-ident-floor-preregistration.md`](tlog-ident-floor-preregistration.md) "
         f"(sha256 `{report['floor_rule']['sha256'][:12]}`): a decode is `non_recitation` when "
         f"its normalised length is under `L_min = {L_MIN}` characters or its real best is "
-        f"within `DELTA = {DELTA:.2f}` of its own decoy best, both from one shortlisted "
-        f"The three fresh sets were drawn and committed before decoding, under the salt "
+        f"within `DELTA = {DELTA:.2f}` of its own decoy best, both from the same shortlisted "
+        f"search. The three fresh sets were drawn and committed before decoding, under the salt "
         f"`{confirm['salt']}`.",
         "",
         "Three disclosures are corrected in "
         "[`docs/tlog-ident-floor-erratum.md`](tlog-ident-floor-erratum.md) (2026-10-27): the "
-        "pre-registration's look figures were measured on the S5 engine before `79acded`; the "
-        "Quran-text guard the draw used does not match Urdu/Persian letter variants, and the "
-        "folded check excludes none of the 1,000 drawn sentences; and the provenance chain "
-        "cites branch commits, reachable after a squash merge only through the PR ref.",
+        "pre-registration's look figures are S5's measurement at `dc602df`, one search change "
+        "(`659bce0`, the decoy shortlist ranked by its own index) away from the 99.63%/99.50% "
+        "re-measured here; the Quran-text guard the draw used does not match Urdu/Persian "
+        "letter variants, and the folded check excludes none of the 1,000 drawn sentences; and "
+        "the provenance chain cites branch commits, reachable after a squash merge only "
+        "through the PR ref.",
         "",
         "| arm | clips | passed | rate | Wilson 95% | limit | fired |",
         "|---|---|---|---|---|---|---|",
@@ -1954,8 +1965,9 @@ def render(report: Mapping[str, Any]) -> str:
         "above its own decoy best. Every row names the rule that produced it, so binned and "
         "rule verdicts cannot be mixed silently.",
         "- **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and "
-        "refuses any report whose `floor_status` is not `\"confirmed\"`. The retired binned "
-        "floors stay in the report as history and are not returned.",
+        "refuses any report whose `floor_status` is not `\"confirmed\"` or whose "
+        "`margin_definition.status` is not `\"final\"` (an undecided `b_u` waits for the "
+        "owner). The retired binned floors stay in the report as history and are not returned.",
         f"- **Decode mode.** The frozen rule fixes a whole-clip greedy decode "
         f"(`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are "
         f"whole-clip. The pool is not: "

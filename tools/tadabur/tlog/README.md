@@ -309,8 +309,8 @@ within `DELTA = 0.30` of its real best from the same shortlisted search. `identi
 the verdict; `floor_ok` / `id_floor_ok` are always booleans and every identification record
 carries `floor_rule {path, sha256}`. The binned floors and the three empty-bin conventions stay
 in the report as history. `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and
-refuses any report whose `floor_status` is not `"confirmed"`; S6 and S7 may label under nothing
-else.
+refuses any report whose `floor_status` is not `"confirmed"` or whose
+`margin_definition.status` is not `"final"`; S6 and S7 may label under nothing else.
 
 **The fresh confirmation draws.** `ident/confirm/freesound.json` and
 `ident/confirm/common_voice.jsonl` (with its `common_voice.json` counts sidecar) are drawn and
@@ -326,9 +326,9 @@ and spans, and the doc → manifests → stores provenance chain (`scoring.commi
 calibration ran from). `floor_status` is that status, `bars.provisional` is true unless it is
 exactly `"confirmed"`, and the page shows the five bars above S5's binned stop as history.
 `docs/tlog-ident-floor-erratum.md` records the three disclosures the confirmed run required: the
-pre-registration's look figures are the S5 engine's, the Quran-text guard does not match
-Urdu/Persian letter variants (the folded check excludes none of the committed draw), and
-`samples_sha256` is host-scoped.
+pre-registration's look figures are S5's `dc602df` measurement, one search change (`659bce0`) from
+the re-measured 99.63%/99.50%, the Quran-text guard does not match Urdu/Persian letter variants
+(the folded check excludes none of the committed draw), and `samples_sha256` is host-scoped.
 
 **The floor-less bin.** Floors are history now, but the report still keys them on the **decode's**
 character length. The look half's longest decode is 138 characters, so `161-` has no floor and

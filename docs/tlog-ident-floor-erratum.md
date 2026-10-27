@@ -10,30 +10,48 @@ edited; the margin definition stays as pinned in `docs/tlog-ident-margin-amendme
 
 The confirmed run (`tools/tadabur/tlog/ident/ident_calibration.json`, `floor_status:
 "confirmed"`) exposed three things a reader needs before trusting or reproducing the result:
-(a) the pre-registration's disclosed post-look look figures were measured on the S5 engine, not
-the engine that confirms the floor; (b) the Quran-text guard the draw used cannot match Urdu or
-Persian orthography, and the fold that fixes it excludes none of the committed draw; (c) two
-provenance facts that otherwise read as corruption.
+(a) the pre-registration's disclosed post-look look figures are an older engine's, and one search
+change separates them from the confirmed run's; (b) the Quran-text guard the draw used cannot
+match Urdu or Persian orthography, and the fold that fixes it excludes none of the committed
+draw; (c) two provenance facts that otherwise read as corruption.
 
-## (a) The disclosed look figures are the S5 engine's
+## (a) The disclosed look figures are the S5 measurement's, one search change back
 
 The pre-registration's §3 table discloses "Tarteel look kept 99.78%" and "look tail
-(`cer_wav ≥ 0.2`) kept 99.72%". Those were probed in S5 on the engine that preceded the #201
-margin fix `79acded`; that fix changes the ayah a matched run is credited to, and so the
-`score − decoy` verdict on some rows.
+(`cer_wav ≥ 0.2`) kept 99.72%". Those were measured in S5 on the engine architect r16 names,
+`dc602df` — the commit whose look decodes the table was read from. That engine already includes
+`79acded` (one normalisation per decode, not one per call) and `c851fa0` (span attribution to the
+frozen rule): `git merge-base --is-ancestor 79acded dc602df` succeeds.
 
-On the committed engine, re-derived from the committed look decodes at the committed `k = 20`:
+One score change since then moves the figures: `659bce0` (S5's self-check r1) ranks the decoy
+shortlist with the decoy 3-gram index, where the measurement had ranked it with the real index.
+Rebuilding the old search on the committed look decodes at the committed `k = 20` reproduces the
+disclosed numbers exactly, and the decoy index gives the ones the confirmed run reports:
 
-| set | disclosed (S5 engine) | committed engine |
+| set | real-index decoy search (`dc602df`) | decoy-index search (`659bce0` on, committed) |
 |---|---|---|
-| Tarteel look kept | 99.78% | 99.63% (4,520/4,537) |
-| look tail (`cer_wav ≥ 0.2`) kept | 99.72% | 99.50% (1,797/1,806) |
+| Tarteel look kept | 99.78% (4,527/4,537) | 99.63% (4,520/4,537) |
+| look tail (`cer_wav ≥ 0.2`) kept | 99.72% (1,801/1,806) | 99.50% (1,797/1,806) |
 
-17 look rows fail the rule: 3 by `L_min` (none empty), 14 by `δ`.
+Nine rows differ between the two searches. 17 look rows fail the rule on the committed engine: 3
+have fewer than `L_min = 8` normalised characters (none empty), and the other 14 fail on the
+margin.
 
-Neither disclosed value chose `L_min` or `δ`. The rule and both values were fixed in the
-pre-registration before this engine existed; look retention's bar is 90%, and the confirmed
-99.63% is inside it. `b` and `b_u` read Δ and the margin, never retention, so no bar moves.
+The pre-registration was **not** written before this engine existed. At its own commit `1c3ddd9`,
+`tools/tadabur/tlog_ident.py` is byte-identical to main's fixed engine (blob
+`5f7eb4047e6c50306d4ef75732f4287a26e2b8be`); the document copied r16's stale disclosure table
+into a document written after the engine that confirms it.
+
+What does stand is the post-look disclosure: both values were **picked after the look half had
+been scored**. Architect r16 chose `L_min = 8` over 10 *for look retention* and `δ = 0.30` over
+0.20 after reading its neighbourhood table (every `L` 6–10 × `δ` 0.20–0.40 gives 0–3 of the 445
+noise recordings passing and ≥ 99.4% look kept). No value was chosen on any confirmation clip;
+the three fresh sets exist to test that choice. Look retention's bar is 90%, so the committed
+99.63% is inside it, and `b` and `b_u` read Δ and the margin, never retention, so no bar moves.
+
+`test_the_disclosed_look_figures_reproduce_with_the_real_index_decoy_search`
+(`tools/tadabur/test_tlog_ident_confirm.py`, slow tier) re-derives both columns from the
+committed look decodes.
 
 ## (b) The Quran-text guard does not match Urdu or Persian letter variants
 

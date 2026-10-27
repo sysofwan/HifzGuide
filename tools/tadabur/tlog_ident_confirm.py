@@ -288,9 +288,9 @@ def five_bars(*, freesound: Sequence[bool], cv_ar: Sequence[bool],
     counts; the mistakes bar holds only when all 52 clips pass.
     ``look_retention`` is the share of look clips the rule keeps.
     """
-    # A short committed list would silently move the bar from 52/52 to "all N". The guard-k
-    # calibration test stubs the population to empty, so only a non-empty short list is refused.
-    if mistakes and len(mistakes) != MISTAKE_CLIPS:
+    # The bar is 52/52, unconditionally: a short or empty list would silently restate it as
+    # "all N" and let a missing population confirm the floor.
+    if len(mistakes) != MISTAKE_CLIPS:
         raise ValueError(f"the real-mistake bar is {MISTAKE_CLIPS} clips, got {len(mistakes)}")
     arms = {
         "freesound": pass_rate(sum(freesound), len(freesound), limit=PASS_LIMIT),

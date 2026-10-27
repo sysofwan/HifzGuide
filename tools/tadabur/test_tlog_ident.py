@@ -936,6 +936,28 @@ def test_load_calibration_requires_the_s5b_floor_to_be_confirmed(ident, calibrat
         assert k == ident.K
 
 
+def test_load_calibration_refuses_a_margin_that_needs_the_owner(ident, calibration, tmp_path):
+    """r1: a confirmed floor is not enough to consume ``b_u``. When the character-start oracle
+    changes ``b_u`` or a look assignment the owner decides, and the bars stay unusable until
+    then; a report that records no margin status at all is refused the same way."""
+    bars = {key: value for key, value in calibration["bars"].items()
+            if key not in ("provisional", "provisional_reason")}
+    path = tmp_path / "margin.json"
+
+    def written(definition):
+        path.write_text(json.dumps({**calibration, "floor_status": "confirmed", "bars": bars,
+                                    "margin_definition": definition}), encoding="utf-8")
+        return path
+
+    final = {**calibration["margin_definition"], "status": "final"}
+    loaded, k = ident.load_calibration(written(final))
+    assert (loaded, k) == (bars, calibration["parameters"]["k"])
+
+    for definition in ({**final, "status": "owner"}, {}):
+        with pytest.raises(ValueError, match="margin_definition.status"):
+            ident.load_calibration(written(definition))
+
+
 def test_pool_summary_reads_the_frozen_row_shape(ident):
     """A pool row carries the pass-1 ``speech_s``, never the clip's ``duration_s``: reading the
     wrong field failed the r5 calibration with a KeyError. Rows the codec floor rejected are
@@ -1183,7 +1205,12 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
 
 def test_the_calibration_scores_every_population_with_the_guard_k(ident, monkeypatch):
     """When the guard needs k = 40, the look scores, floors, bars, exhaustive pass and noise
-    must all be measured with k = 40, and the report must record it."""
+    must all be measured with k = 40, and the report must record it.
+
+    This test is about ``k``'s propagation, not the five bars: the confirmation is stubbed, so
+    the empty synthetic mistake population never reaches ``five_bars``, which requires all 52
+    clips (``test_a_short_real_mistake_population_cannot_move_the_bar``).
+    """
     query = "بتثجحخدذرزسش"
     grams = [query[index:index + 3] for index in range(len(query) - 2)]
     bait = "قفق".join(reversed(grams))
@@ -1203,6 +1230,9 @@ def test_the_calibration_scores_every_population_with_the_guard_k(ident, monkeyp
     monkeypatch.setattr(ident, "load_decode_store",
                         lambda path: {"items": noise_items}
                         if Path(path) == ident.NOISE_DECODES_PATH else {"items": {}})
+    import tadabur.tlog_ident_confirm as confirm
+    monkeypatch.setattr(confirm, "confirm_block",
+                        lambda *args, **kwargs: {"status": "confirmed", "stores": {}})
     import tadabur.tlog_overlap as overlap
     monkeypatch.setattr(overlap, "iter_pool_rows", lambda: iter(()))
 

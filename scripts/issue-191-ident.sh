@@ -126,7 +126,10 @@ fetch() {
     limit) rsync -a "$HOST:$REPO/$IDENT/decode_limit.json" "$destination/" ;;
     decode) rsync -a "$HOST:$REPO/$OUT/" "$destination/" ;;
     identify) rsync -a "$HOST:$REPO/$IDENT/" "$destination/" ;;
-    audit|stage|report) rsync -a "$HOST:$REPO/tools/tadabur/tlog/audit/" "$destination/" ;;
+    audit|stage) rsync -a "$HOST:$REPO/tools/tadabur/tlog/audit/" "$destination/" ;;
+    report)
+      rsync -a "$HOST:$REPO/docs/tlog-audit.md" "$destination/"
+      rsync -a "$HOST:$REPO/tools/tadabur/tlog/audit/" "$destination/audit/" ;;
     *) echo "fetch: $job has no fetched tree" >&2; exit 2 ;;
   esac
   echo "fetched $job into $destination"

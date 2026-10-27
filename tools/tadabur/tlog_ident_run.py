@@ -975,6 +975,8 @@ def main() -> None:
     stage_ = commands.add_parser("stage", help="stage the drawn clips for listening")
     stage_.add_argument("--audio-dir", type=Path, required=True)
     stage_.add_argument("--cache-dir", type=Path, required=True)
+    stage_.add_argument("--draw", type=Path, default=AUDIT_DIR / "draw.jsonl",
+                        help="the draw to stage (default: the box's audit/draw.jsonl)")
     report_ = commands.add_parser("report", help="render docs/tlog-audit.md")
     report_.add_argument("--audio-dir", type=Path, default=None,
                          help="the session-only staged audio to delete after the report")
@@ -995,8 +997,7 @@ def main() -> None:
         _write_jsonl(AUDIT_DIR / "draw.jsonl", draw.items)
         print(json.dumps(draw.strata, indent=1, sort_keys=True), flush=True)
     elif args.command == "stage":
-        draw = AuditDraw(items=tuple(_read_jsonl(AUDIT_DIR / "draw.jsonl")),
-                         strata={})
+        draw = AuditDraw(items=tuple(_read_jsonl(args.draw)), strata={})
         stage(draw, audio_dir=args.audio_dir, cache_dir=args.cache_dir)
     elif args.command == "report":
         write_text_atomically(DOC_PATH, render_audit())

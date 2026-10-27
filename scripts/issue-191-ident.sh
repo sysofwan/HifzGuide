@@ -75,9 +75,9 @@ command_for() {
     identify)
       echo "python -u -m tadabur.tlog_ident_run identify --decodes-dir '$REPO/$OUT' --out-dir '$REPO/$IDENT'" ;;
     audit)
-      echo "python -u -m tadabur.tlog_ident_run audit" ;;
+      echo "python -u -m tadabur.tlog_ident_run audit && cp '$REPO/tools/tadabur/tlog/audit/draw.jsonl' '$ROOT/draw.jsonl'" ;;
     stage)
-      echo "python -u -m tadabur.tlog_ident_run stage --audio-dir '$AUDIO' --cache-dir '$CACHE'" ;;
+      echo "python -u -m tadabur.tlog_ident_run stage --draw '$ROOT/draw.jsonl' --audio-dir '$AUDIO' --cache-dir '$CACHE'" ;;
     ui)
       echo "python -u -m tadabur.tlog_audit_ui --worklist '$REPO/tools/tadabur/tlog/audit/worklist.jsonl' --audio-dir '$AUDIO' --verdicts '$REPO/tools/tadabur/tlog/audit/verdicts.jsonl' --quran-db '$QURAN_DB' --port 8000 --host 0.0.0.0" ;;
     report)

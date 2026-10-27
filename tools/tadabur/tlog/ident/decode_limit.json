@@ -1,0 +1,66 @@
+{
+ "batch_size": 1,
+ "d_max_seconds": 90,
+ "dtype": "bf16",
+ "gpu": "NVIDIA GeForce RTX 5060 Ti",
+ "headroom_gib": 5.15,
+ "issue": 191,
+ "ladder": [
+  60,
+  90,
+  120,
+  150,
+  180,
+  240,
+  300
+ ],
+ "measured_on": "2026-10-26",
+ "model": "obadx/muaalem-model-v3_2",
+ "revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+ "rungs": [
+  {
+   "headroom_gib": 10.219,
+   "oom": false,
+   "peak_gib": 5.26,
+   "seconds": 60
+  },
+  {
+   "headroom_gib": 5.15,
+   "oom": false,
+   "peak_gib": 10.328,
+   "seconds": 90
+  },
+  {
+   "headroom_gib": 0.0,
+   "oom": true,
+   "peak_gib": 15.478,
+   "seconds": 120
+  },
+  {
+   "headroom_gib": 0.0,
+   "oom": true,
+   "peak_gib": 15.478,
+   "seconds": 150
+  },
+  {
+   "headroom_gib": 0.0,
+   "oom": true,
+   "peak_gib": 15.478,
+   "seconds": 180
+  },
+  {
+   "headroom_gib": 0.0,
+   "oom": true,
+   "peak_gib": 15.478,
+   "seconds": 240
+  },
+  {
+   "headroom_gib": 0.0,
+   "oom": true,
+   "peak_gib": 15.478,
+   "seconds": 300
+  }
+ ],
+ "schema_version": 1,
+ "seed": 19100620
+}

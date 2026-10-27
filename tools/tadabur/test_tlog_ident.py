@@ -1221,8 +1221,13 @@ def test_the_calibration_scores_every_population_with_the_guard_k(ident, monkeyp
     assert len(calls) == 1000 + 1000 + len(noise_items)
 
 
+@pytest.mark.slow
 def test_the_shortlist_guard_rederives_on_the_seeded_sample(ident, calibration):
-    """k = 20's only evidence is the guard's recall; re-derive it clip by clip."""
+    """k = 20's only evidence is the guard's recall; re-derive it clip by clip.
+
+    A parity pass over a frozen result (1,000 clips, each scored against every window of the
+    mushaf), measured at 497 s on the Mac: the merge gate runs it, the inner loop does not.
+    """
     split = json.loads(SPLIT_PATH.read_text(encoding="utf-8"))
     decodes = {decode.audio_filename: decode for decode in ident.load_look_decodes()}
     sample = ident.recall_sample(split["look"])

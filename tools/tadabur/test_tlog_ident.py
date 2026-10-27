@@ -540,12 +540,12 @@ def test_identification_record_is_the_committed_row_contract(ident, rule_databas
     rule that produced the verdict on every row (architect r19: ``floor_rule``)."""
     decoded = ident.identify("طظعغفقكل", database=rule_database, filename_ayah="1:1",
                              bars={"b": 0.01, "b_u": 0.01})
-    record = ident.identification_record(decoded)
+    record = ident.identification_record(decoded, decode_mode="whole_clip")
     assert set(record) == {
         "surah", "ayah_from", "word_from", "ayah_to", "word_to", "straddles", "score",
         "length", "class_label", "decoy", "exhaustive_decoy", "delta", "margin",
         "margin_class", "id_floor_ok", "overlaps_filename", "filename_label",
-        "label_source", "assigned_label", "floor_rule"}
+        "label_source", "assigned_label", "floor_rule", "decode_mode"}
     assert record["floor_rule"] == ident.floor_rule()
     assert record["floor_rule"]["sha256"] == _sha256(FLOOR_PREREGISTRATION)
     assert (record["surah"], record["ayah_from"], record["word_from"]) == (2, 1, 1)
@@ -557,7 +557,8 @@ def test_identification_record_is_the_committed_row_contract(ident, rule_databas
     assert json.loads(json.dumps(record, ensure_ascii=False)) == record
 
     # A row with no match keeps every key: it is non_recitation, never "unverified".
-    empty = ident.identification_record(ident.identify("", database=rule_database))
+    empty = ident.identification_record(ident.identify("", database=rule_database),
+                                       decode_mode="whole_clip")
     assert set(empty) == set(record)
     assert (empty["surah"], empty["score"], empty["straddles"]) == (None, None, None)
     assert empty["id_floor_ok"] is False
@@ -1025,7 +1026,8 @@ def test_load_identifier_binds_the_database_bars_and_engine(ident, calibration, 
     assert (bars, k) == (calibration["bars"], calibration["parameters"]["k"])
     assert len(database.ayat) == calibration["reference"]["ayat"]
     record = ident.identification_record(
-        ident.identify("بتثج", database=database, filename_ayah="1:1", k=k))
+        ident.identify("بتثج", database=database, filename_ayah="1:1", k=k),
+        decode_mode="whole_clip")
     assert record["floor_rule"] == ident.floor_rule()
     assert record["id_floor_ok"] is False  # 4 characters < L_MIN
 

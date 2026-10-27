@@ -378,3 +378,44 @@ page's "For S7" section.
 
 Consumer contract: `identification_record()` fixes the committed row's field names and
 `load_calibration()` / `load_identifier()` the consumer gates.
+
+## The S6 decodes, sample, 5% rule and audit (#191)
+
+`tadabur.tlog_ident_run` is the first content read of tlog. Its rules are the frozen
+pre-registration plus `docs/tlog-s6-amendment.md` (Q1 decode limit, Q3 strata, Q4 verdict
+referent; it also governs S7). The amendment and the measured
+`ident/decode_limit.json` are committed **before** the first tlog decode.
+
+- **Decode mode:** whole-clip only. D_max is measured on seeded synthetic audio on the GPU box
+  (ladder 60–300 s, production settings) and is the largest rung keeping 1.5 GiB of headroom.
+  A row above D_max is not decoded or identified: it carries
+  `decode_mode = "not_decoded:over_d_max"` and `label_source = "none"`. If more than 1% of the
+  usable pool is above D_max, the run stops for the owner. Every row and every identification
+  carries `decode_mode`.
+- **Look:** every usable `look` row at or below D_max (9,710 before the cap).
+- **Training sample:** the first 2,000 usable `train` rows at or below D_max by salted rank of
+  `(split, shard_file, row)`; salt `tlog-s6-2026-10-27-v1`. The 5% rule's Wilson 95% upper
+  bound over the sample's `non_recitation` rate is recorded in
+  `ident/train_sample.meta.json`; above 5%, the follow-up is a new overlay commit, not S6 work.
+- **Audit:** the frozen strata, drawn by salted rank from look and the sample only. A stratum
+  short of its target takes all its rows, and the freed slots go to `both`. The page hides the
+  stratum and shows the candidate ayat unattributed; the server derives
+  right/other ayah from the ayah the owner picks. `report` renders `docs/tlog-audit.md` from
+  the committed worklist and verdicts and deletes the staged audio.
+
+`decode_limit.json`, the six trees and the two audit files are the slice's committed outputs.
+No tlog audio is committed.
+
+```bash
+# GPU box, under /root/scratch/gpu.lock; `scripts/issue-191-ident.sh` drives these detached.
+python -m tadabur.tlog_ident_run limit --out tools/tadabur/tlog/ident/decode_limit.json
+python -m tadabur.tlog_ident_run decode --cache-dir /root/scratch/tlog/s6/cache
+python -m tadabur.tlog_ident_run identify       # after margin_approval.json is on main
+python -m tadabur.tlog_ident_run audit
+python -m tadabur.tlog_ident_run stage --audio-dir /root/scratch/tlog/s6/audio \
+    --cache-dir /root/scratch/tlog/s6/cache
+python -m tadabur.tlog_audit_ui --worklist tools/tadabur/tlog/audit/worklist.jsonl \
+    --audio-dir /root/scratch/tlog/s6/audio \
+    --verdicts tools/tadabur/tlog/audit/verdicts.jsonl --host 0.0.0.0 --port 8000
+python -m tadabur.tlog_ident_run report --audio-dir /root/scratch/tlog/s6/audio
+```

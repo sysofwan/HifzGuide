@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tlog S6 listening</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; background: #f6f6f4; }
+  header { position: sticky; top: 0; background: #f6f6f4; padding: .5rem 0 1rem; z-index: 2; }
+  h1 { font-size: 1.1rem; margin: 0 0 .3rem; }
+  #progress { color: #555; font-size: .9rem; }
+  .item { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 1rem; margin: 0 0 1rem; }
+  .item.saved { border-color: #7a9; }
+  audio { width: 100%; margin: .4rem 0; }
+  .ayah { font-size: 1.25rem; direction: rtl; line-height: 2; margin: .3rem 0; }
+  button { font: inherit; padding: .5rem .8rem; margin: .25rem .25rem .25rem 0; border-radius: 8px; border: 1px solid #bbb; background: #fafafa; cursor: pointer; }
+  button:hover { background: #eee; }
+  button.bad { border-color: #b55; }
+  input[type=text] { font: inherit; padding: .45rem; width: 9rem; margin-right: .3rem; }
+  .note { width: 100%; margin-top: .5rem; }
+  .status { color: #567; font-size: .85rem; margin-top: .4rem; }
+  .wrong { color: #b33; }
+</style>
+</head>
+<body>
+<header>
+  <h1>tlog S6 listening</h1>
+  <div id="progress">loading…</div>
+</header>
+<main id="items"></main>
+<script>
+const VERDICT_COLOURS = { "right ayah": "✓", "other ayah": "other", "silence": "silence",
+                          "not recitation": "not recitation", "unclear": "unclear" };
+let payload = null;
+
+function el(tag, attrs = {}, text = "") {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  if (text) node.textContent = text;
+  return node;
+}
+
+function progress() {
+  const p = payload.progress;
+  document.getElementById("progress").textContent =
+    `${p.answered} of ${p.total} answered`;
+}
+
+async function send(item, body, status) {
+  body.key = item.key;
+  status.textContent = "saving…";
+  status.className = "status";
+  const response = await fetch("/api/verdict", { method: "POST",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await response.json();
+  if (!response.ok) { status.textContent = data.error || "not saved"; status.className = "status wrong"; return; }
+  payload.progress = data.progress;
+  progress();
+  item.card.classList.add("saved");
+  status.textContent = `saved: ${VERDICT_COLOURS[data.verdict] || data.verdict}`;
+}
+
+function render(item) {
+  const card = el("section", { class: "item" });
+  card.id = `item-${item.key}`;
+  card.appendChild(el("audio", { controls: "controls", preload: "none",
+                                src: item.audio_url }));
+  for (const candidate of item.candidates) {
+    const button = el("button", {}, candidate.text || candidate.ayah);
+    button.className = "ayah";
+    button.onclick = () => send(item, { choice: "candidate", ayah: candidate.ayah }, status);
+    card.appendChild(button);
+  }
+  const another = el("div", {});
+  const ayah = el("input", { type: "text", placeholder: "2:255", inputmode: "numeric" });
+  const other = el("button", {}, "another ayah");
+  other.onclick = () => send(item, { choice: "another", ayah: ayah.value.trim() }, status);
+  another.append(ayah, other);
+  card.appendChild(another);
+  for (const choice of ["silence", "not recitation", "unclear"]) {
+    const button = el("button", { class: choice === "silence" ? "bad" : "" }, choice);
+    button.onclick = () => send(item, { choice }, status);
+    card.appendChild(button);
+  }
+  const note = el("input", { type: "text", class: "note", placeholder: "note (optional)" });
+  card.appendChild(note);
+  const status = el("div", { class: "status" },
+                    item.heard ? `saved: ${VERDICT_COLOURS[item.heard] || item.heard}` : "");
+  card.appendChild(status);
+  item.card = card;
+  return card;
+}
+
+async function main() {
+  const response = await fetch("/api/items");
+  payload = await response.json();
+  progress();
+  const main = document.getElementById("items");
+  for (const item of payload.items) main.appendChild(render(item));
+}
+main();
+</script>
+</body>
+</html>

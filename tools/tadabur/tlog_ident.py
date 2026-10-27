@@ -1029,15 +1029,17 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
     return _with_label(identification, bars)
 
 
-def identification_record(identification: Identification) -> dict:
+def identification_record(identification: Identification, *, decode_mode: str) -> dict:
     """The committed row for one identification: the one place its field names are fixed.
 
     The keys are the issue's output list — span, ``straddles``, class, score, decoy, Δ,
     ``margin``, ``margin_class``, ``id_floor_ok``, ``label_source``, ``assigned_label`` — plus
-    the inputs a consumer joins on and the ``floor_rule`` that produced ``id_floor_ok``.
-    ``id_floor_ok`` is the S5b recitation verdict (:func:`identify`), under its own
-    pre-registration; no row is left unverified.
+    the inputs a consumer joins on, the ``floor_rule`` that produced ``id_floor_ok`` and the
+    ``decode_mode`` that produced the decode (S5b I3.3: required, never defaulted, so S6/S7
+    cannot omit which mode a verdict belongs to).
     """
+    if not isinstance(decode_mode, str) or not decode_mode:
+        raise ValueError("decode_mode is required on every identification record")
     match = identification.match
     span = ({"surah": match.surah, "ayah_from": match.ayah_from,
              "word_from": match.word_from, "ayah_to": match.ayah_to,
@@ -1060,6 +1062,7 @@ def identification_record(identification: Identification) -> dict:
         "label_source": identification.label_source,
         "assigned_label": identification.assigned_label,
         "floor_rule": floor_rule(),
+        "decode_mode": decode_mode,
     }
 
 

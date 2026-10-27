@@ -1,0 +1,11 @@
+{
+ "approved_by": "owner",
+ "approved_on": "2026-10-27",
+ "b_u": 0.01,
+ "doc": {
+  "path": "docs/tlog-ident-margin-amendment.md",
+  "sha256": "eded44e95dc58a3d5ccb86659f296eb50b8b5e0cf236a21b0e5acb5258e3aba2"
+ },
+ "issue": 204,
+ "schema": "tadabur.tlog_ident/margin-approval-v1"
+}

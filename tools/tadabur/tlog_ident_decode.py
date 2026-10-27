@@ -32,7 +32,8 @@ Usage (on the GPU box, from a copy of ``tools/``)::
       --cache-dir /root/scratch/tlog/s5/freesound --pool /root/scratch/tlog/s5/noise_pool.npz \\
       --out-dir tools/tadabur/tlog/ident/decodes
 
-``scripts/issue-190-ident-decode.sh`` stages the repo, rebuilds the pool and starts this detached.
+``scripts/ident-decode.sh s5 launch`` (or ``s5b``) stages the repo, rebuilds the pool and
+starts this detached.
 """
 
 from __future__ import annotations

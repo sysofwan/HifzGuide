@@ -316,17 +316,30 @@ approval: S6 and S7 may label under nothing else.
 **The owner's margin approval.** The frozen floor pre-registration's §7 requires the owner to
 approve the pinned margin definition at the S5b check-in before `b_u` is final, which the oracle's
 mechanical `final` cannot supply. The approval is its own small committed record,
-`ident/margin_approval.json`:
+`ident/margin_approval.json`, written by the owner with:
+
+```bash
+python -m tadabur.tlog_ident approve --issue 204   # the owner runs this
+```
+
+after the amendment, the floor document and the calibration are committed (it refuses a dirty
+tree or an existing record). The record is:
 
 ```json
 {"schema": "tadabur.tlog_ident/margin-approval-v1",
  "doc": {"path": "docs/tlog-ident-margin-amendment.md", "sha256": "<the pinned SHA-256>"},
- "approved_on": "YYYY-MM-DD", "approved_by": "owner", "issue": 204}
+ "b_u": 0.01, "approved_on": "YYYY-MM-DD", "approved_by": "owner", "issue": 204}
 ```
 
-It is **absent until the owner approves** (this slice's PR adds the gate, not the record), and
-`load_calibration` refuses with a message naming the missing approval. A matching approval clears
-the gate with no recalibration; a stale SHA-256 (an edited or re-pinned amendment) refuses again.
+It is **absent until the owner approves** (this slice's PR adds the gate and the command, not the
+record). The loader validates the schema, `approved_by == "owner"`, the date, the document's
+path and SHA-256 **and the `b_u` it clears**, so a recalibration that moves `b_u` needs a new
+approval. A matching record clears the gate with no recalibration; a stale SHA-256 or `b_u`
+refuses again.
+
+**The S6/S7 precondition.** #191 and #192 may label only once this PR is merged *and* the owner's
+approval commit is on main: `load_identifier()` (the consumer entry point) refuses until then.
+The approval commit is recorded as an explicit blocker on both issues.
 
 **The fresh confirmation draws.** `ident/confirm/freesound.json` and
 `ident/confirm/common_voice.jsonl` (with its `common_voice.json` counts sidecar) are drawn and
@@ -346,20 +359,22 @@ pre-registration's look figures are S5's `dc602df` measurement, one search chang
 the re-measured 99.63%/99.50%, the Quran-text guard does not match Urdu/Persian letter variants
 (the folded check excludes none of the committed draw), and `samples_sha256` is host-scoped.
 
-**The floor-less bin.** Floors are history now, but the report still keys them on the **decode's**
-character length. The look half's longest decode is 138 characters, so `161-` has no floor and
-none is invented for it. The pool's pass-1 `speech_s` is its only committed length fact (the
-frozen row does not carry the clip's `duration_s`), and it is VAD speech duration, **not** the
-decode's character length: characters per second vary between clips, so a short-speech row can
-still decode into `161-`. The page's "The pool's VAD speech duration (indicative)" section
-therefore reports the speech histogram with no claim about floor-bin membership; S7's decodes
-measure the real coverage (#192).
+**The retired bins (history).** The binned floors stay in the report as history; no verdict reads
+them. They are keyed on the **decode's** character length, and the look half's longest decode is
+138 characters, so `161-` never had a floor. The pool's pass-1 `speech_s` is its only committed
+length fact (the frozen row does not carry the clip's `duration_s`), and it is VAD speech
+duration, **not** the decode's character length: characters per second vary between clips, so a
+short-speech row can still decode past 160 characters. The page's "The pool's VAD speech
+duration (indicative)" section therefore reports the speech histogram with no claim about a
+decode's length; S7's decodes measure the real lengths (#192).
 
 **Decode mode.** The frozen rule fixes a whole-clip greedy decode, and both the look decodes and
-these floors are whole-clip; the pool's long rows cannot be decoded whole within the VRAM budget
-(S5's Freesound pool already needed `stream_b0`). `identify` takes a bare string, so S7 must either
-obtain an amendment of the decode mode or record `decode_mode` beside every identification and
-report the floor-bin and streamed populations separately — see the page's "For S7" section.
+the confirmation sets are whole-clip (the Freesound arm repeats the 445 pool's `stream_b0` so it
+confirms the same condition). The pool's long rows cannot be decoded whole within the VRAM
+budget (S5's Freesound pool already needed `stream_b0`). `identify` takes a bare string, so S7
+must either obtain an amendment of the decode mode or record which mode produced each row and
+report the rule's pass rate separately for the whole-clip and streamed populations — see the
+page's "For S7" section.
 
 Consumer contract: `identification_record()` fixes the committed row's field names and
-`load_calibration()` the threshold guard.
+`load_calibration()` / `load_identifier()` the consumer gates.

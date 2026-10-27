@@ -40,11 +40,11 @@ from training.counterfactual_eval import wilson_interval
 from . import tlog_ident
 from .tlog_index import head_sha, record_of, repo_relative, sha256_file
 
-ROOT = Path(__file__).resolve().parents[2]
-IDENT_DIR = Path(__file__).parent / "tlog" / "ident"
+ROOT = tlog_ident.ROOT
+IDENT_DIR = tlog_ident.IDENT_DIR
 
 #: The one salt every S5b draw ranks with; it is written in the pre-registration.
-SALT = "tlog-s5b-floor-confirm-v1"
+SALT = tlog_ident.FLOOR_SALT
 FREESOUND_SIZE = 1000
 CV_AR_SIZE = 500
 CV_OTHER_PER_LOCALE = 100
@@ -74,9 +74,7 @@ CONFIRM_DECODES = {
 }
 
 #: The five bars: the three negative arms and look retention are rates; mistakes is a count.
-PASS_LIMIT = 0.01
 MISTAKE_CLIPS = 52
-LOOK_RETENTION_MIN = 0.90
 
 _SHARD_PATTERN = re.compile(r"train-(\d+)-of-\d+")
 
@@ -293,16 +291,17 @@ def five_bars(*, freesound: Sequence[bool], cv_ar: Sequence[bool],
     if len(mistakes) != MISTAKE_CLIPS:
         raise ValueError(f"the real-mistake bar is {MISTAKE_CLIPS} clips, got {len(mistakes)}")
     arms = {
-        "freesound": pass_rate(sum(freesound), len(freesound), limit=PASS_LIMIT),
-        "cv_ar": pass_rate(sum(cv_ar), len(cv_ar), limit=PASS_LIMIT),
-        "cv_other": pass_rate(sum(cv_other), len(cv_other), limit=PASS_LIMIT),
+        "freesound": pass_rate(sum(freesound), len(freesound), limit=tlog_ident.PASS_LIMIT),
+        "cv_ar": pass_rate(sum(cv_ar), len(cv_ar), limit=tlog_ident.PASS_LIMIT),
+        "cv_other": pass_rate(sum(cv_other), len(cv_other), limit=tlog_ident.PASS_LIMIT),
     }
     mistake_passed = sum(1 for passed in mistakes if passed)
     arms["mistakes"] = {"clips": len(mistakes), "passed": mistake_passed,
                         "fired": mistake_passed != len(mistakes)}
     # A retention rate, not a count: ``passed`` has no meaning here and stays null.
     look = {"clips": None, "passed": None, "pass": look_retention,
-            "limit": LOOK_RETENTION_MIN, "fired": look_retention < LOOK_RETENTION_MIN}
+            "limit": tlog_ident.LOOK_RETENTION_MIN,
+            "fired": look_retention < tlog_ident.LOOK_RETENTION_MIN}
 
     status = "confirmed"
     for arm in ("freesound", "cv_ar", "cv_other"):
@@ -315,7 +314,8 @@ def five_bars(*, freesound: Sequence[bool], cv_ar: Sequence[bool],
         if arms["mistakes"]["fired"]:
             status = f"stopped: mistakes {mistake_passed}/{len(mistakes)}"
         elif look["fired"]:
-            status = f"stopped: look_retention {look_retention:g} < {LOOK_RETENTION_MIN:g}"
+            status = (f"stopped: look_retention {look_retention:g} < "
+                      f"{tlog_ident.LOOK_RETENTION_MIN:g}")
     return {"status": status, **arms, "look_retention": look}
 
 

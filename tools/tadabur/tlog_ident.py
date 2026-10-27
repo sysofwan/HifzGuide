@@ -70,13 +70,16 @@ normalised references and offsets), ``real_mistake_clips.jsonl`` (the 52 clips h
 owner-verified real-mistake sites), ``decodes/real_mistake.base.json`` and ``decodes/noise.base.json``
 (the base teacher's whole-clip decodes), ``ident_calibration.json``.
 
-Consumers use two functions, so S6 and S7 cannot fork the schema: :func:`identification_record`
+Consumers use three functions, so S6 and S7 cannot fork the schema: :func:`identification_record`
 names the committed row's fields, including the ``floor_rule`` that produced the verdict on every
-row, and :func:`load_calibration` returns ``(bars, k)`` and refuses any report whose
+row; :func:`load_calibration` returns ``(bars, k)`` and refuses any report whose
 ``floor_status`` is not ``"confirmed"``, whose ``margin_definition.status`` is not
-``"final"``, or whose margin definition has no recorded owner approval. The read path (a
-committed database and
-:func:`identify`) imports edlib only; the phonetizer is imported where a reference is built.
+``"final"``, or whose margin definition has no recorded owner approval
+(:func:`margin_approval`, §7 of the frozen floor document, written by
+``python -m tadabur.tlog_ident approve``); and :func:`load_identifier` is the entry point, which
+additionally binds the reference database, the rule's values and the edlib version to the report.
+The read path (a committed database and :func:`identify`) imports edlib only; the phonetizer is
+imported where a reference is built.
 
 Usage (from ``tools/``)::
 
@@ -86,9 +89,11 @@ Usage (from ``tools/``)::
   python -m tadabur.tlog_ident report        # re-render the page from the committed report
   python -m tadabur.tlog_ident oracle        # the character-start margin bound on look
                                              # (recorded only); --limit N times the projection
+  python -m tadabur.tlog_ident approve       # the owner records their approval of the margin
+                                             # definition; S6/S7 load nothing before it
 
 The GPU decodes of the two calibration populations are produced by
-``tadabur.tlog_ident_decode`` on cuda-dev; see ``scripts/issue-190-ident-decode.sh``.
+``tadabur.tlog_ident_decode`` on cuda-dev; see ``scripts/ident-decode.sh``.
 """
 
 from __future__ import annotations
@@ -96,14 +101,17 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import importlib.metadata
 import json
 import os
+import re
 import time
 import unicodedata
 from bisect import bisect_right
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -151,6 +159,8 @@ BOTH = "both"
 IDENTIFIED = "identified"
 NONE = "none"
 
+#: The repository root and the one artifact directory; other modules import these, never rebuild.
+ROOT = Path(__file__).resolve().parents[2]
 IDENT_DIR = Path(__file__).parent / "tlog" / "ident"
 REFERENCES_PATH = IDENT_DIR / "references.json.gz"
 CALIBRATION_PATH = IDENT_DIR / "ident_calibration.json"
@@ -162,31 +172,30 @@ NOISE_DECODES_PATH = DECODES_DIR / "noise.base.json"
 ORACLE_PATH = IDENT_DIR / "oracle_margin.json"
 #: The owner's clearance of the pinned margin definition — frozen floor document §7 requires it
 #: at the S5b check-in, separately from the oracle's mechanical consequence. Committed only when
-#: the owner approves; absent until then, and :func:`load_calibration` refuses without it.
+#: the owner approves (:func:`approve_margin` writes it); absent until then, and
+#: :func:`load_calibration` refuses without it.
 MARGIN_APPROVAL_PATH = IDENT_DIR / "margin_approval.json"
+MARGIN_APPROVAL_SCHEMA = "tadabur.tlog_ident/margin-approval-v1"
 #: The Freesound gap pool (the noise stop's population); the look decodes and the split come
 #: from :mod:`tadabur.tarteel_split`, which owns their one definition.
 NOISE_POOL_PATH = Path(__file__).parent / "nonpro_gap" / "noise_pool.json"
-PREREGISTRATION_PATH = (Path(__file__).resolve().parents[2]
-                        / "docs" / "tlog-ident-preregistration.md")
-BU_AMENDMENT_PATH = (Path(__file__).resolve().parents[2]
-                     / "docs" / "tlog-ident-bu-amendment.md")
-MARGIN_AMENDMENT_PATH = (Path(__file__).resolve().parents[2]
-                         / "docs" / "tlog-ident-margin-amendment.md")
-HOLDOUT_PREREGISTRATION_PATH = (Path(__file__).resolve().parents[2]
-                                / "docs" / "tlog-holdout-preregistration.md")
-DOC_PATH = Path(__file__).resolve().parents[2] / "docs" / "tlog-ayah-identification.md"
+PREREGISTRATION_PATH = ROOT / "docs" / "tlog-ident-preregistration.md"
+BU_AMENDMENT_PATH = ROOT / "docs" / "tlog-ident-bu-amendment.md"
+MARGIN_AMENDMENT_PATH = ROOT / "docs" / "tlog-ident-margin-amendment.md"
+HOLDOUT_PREREGISTRATION_PATH = ROOT / "docs" / "tlog-holdout-preregistration.md"
+DOC_PATH = ROOT / "docs" / "tlog-ayah-identification.md"
 
 #: The alphabet the reference envelope records.
 WORD_TOKENISATION = "quran-transcript uthmani.split"
 #: The mode the Freesound pool is decoded in: a pool recording is too long for a whole pass.
 NOISE_DECODE_MODE = "stream_b0"
 LIBRARY = {"name": "edlib", "version": "1.3.9.post1", "mode": "HW"}
-#: Relabel rate the look half must stay under, and the noise pass rate the pool must stay under.
+#: Relabel rate the look half must stay under, and the negative arms' 1% limit (S5's noise stop
+#: and S5b's three confirmation arms are one limit, so the two cannot drift apart).
 RELABEL_LIMIT = 0.005
 ASSIGNED_MIN = 0.99
 LOOK_RETENTION_MIN = 0.90
-NOISE_PASS_MAX = 0.01
+PASS_LIMIT = 0.01
 
 #: Diacritics the consonant skeleton drops (normalised references hold none of them, but a raw
 #: decode may).
@@ -941,23 +950,19 @@ def write_references(path: Path = REFERENCES_PATH,
 
 
 def load_references(path: Path = REFERENCES_PATH) -> ReferenceDatabase:
-    """The committed reference database, refused unless it is this code's build."""
-    import generate_phonemes
-    import hafs_phonetizer
+    """The committed reference database, from the file alone — no phonetizer import.
 
+    The envelope's own records are checked for internal consistency here. Binding them to the
+    calibration that used them (the file's SHA-256, the ayah and class counts) is
+    :func:`load_identifier`'s job, so S6/S7 can read the database without quran-transcript
+    installed; only rebuilding references needs the phonetizer.
+    """
     with gzip.open(Path(path), "rt", encoding="utf-8") as handle:
         payload = json.load(handle)
-    expected = {
-        "phonetizer_revision": hafs_phonetizer.REVISION,
-        "normalization_algorithm_version": normalization.ALGORITHM_VERSION,
-        "word_tokenisation": WORD_TOKENISATION,
-        "ayat": sum(generate_phonemes.HAFS_AYAH_COUNTS),
-    }
-    for key, value in expected.items():
-        if payload.get(key) != value:
-            raise ValueError(f"{path} records {key}={payload.get(key)!r}, not {value!r}")
     ayat = [AyahReference(item["surah"], item["ayah"], item["reference"],
                           tuple(item["offsets"])) for item in payload["items"]]
+    if len(ayat) != payload.get("ayat"):
+        raise ValueError(f"{path} records {payload.get('ayat')} ayat, holds {len(ayat)}")
     database = ReferenceDatabase.build(ayat)
     if database.class_count != payload.get("classes"):
         raise ValueError(f"{path} records {payload.get('classes')} classes, "
@@ -1366,38 +1371,72 @@ def recall_sample(clips: Iterable[str]) -> tuple[str, ...]:
     return tuple(ranked[:RECALL_CLIPS])
 
 
+_RULE_LENGTH = re.compile(r"L_min = (\d+)")
+_RULE_DELTA = re.compile(r"δ = (\d+(?:\.\d+)?)")
+
+
+def _documented_rule(path: Path = FLOOR_PREREGISTRATION_PATH) -> tuple[int, float]:
+    """The ``(L_min, δ)`` the pinned pre-registration states, refused if the file drifted.
+
+    The report records the rule as that document's SHA-256, so the values are checked against
+    the frozen text whose hash the report cites — none of them is a separate report field.
+    """
+    digest = sha256_file(path)
+    if digest != FLOOR_PREREGISTRATION_SHA256:
+        raise ValueError(f"{repo_relative(path)} is {digest}, not the pinned "
+                         f"{FLOOR_PREREGISTRATION_SHA256}")
+    text = Path(path).read_text(encoding="utf-8")
+    length, delta = _RULE_LENGTH.search(text), _RULE_DELTA.search(text)
+    if length is None or delta is None:
+        raise ValueError(f"{repo_relative(path)} no longer states L_min and δ")
+    return int(length[1]), float(delta[1])
+
+
 def margin_approval(path: Path = MARGIN_APPROVAL_PATH) -> dict:
     """The recorded owner approval of the pinned margin definition, or a refusal.
 
     The frozen floor pre-registration's §7 requires the owner to approve the margin definition
     at the S5b check-in before ``b_u`` is final — a condition the oracle's mechanical
-    consequence cannot supply. The record is its own small file, committed when the owner
-    approves, and it cites ``docs/tlog-ident-margin-amendment.md`` by path and SHA-256. An
-    absent record is a refusal, never a default.
+    consequence cannot supply. The record is its own small file, written by
+    :func:`approve_margin` when the owner approves: it names its schema, the approving owner and
+    date, the margin definition by path and SHA-256, and the ``b_u`` it clears. An absent or
+    malformed record is a refusal, never a default.
     """
     if not Path(path).exists():
         raise ValueError(
             f"the owner approval of {repo_relative(MARGIN_AMENDMENT_PATH)} is not recorded "
             f"({repo_relative(path)} is absent): b_u is not cleared for use")
     record = json.loads(Path(path).read_text(encoding="utf-8"))
+    if record.get("schema") != MARGIN_APPROVAL_SCHEMA:
+        raise ValueError(f"{path} is not a margin approval (schema "
+                         f"{record.get('schema')!r}, not {MARGIN_APPROVAL_SCHEMA!r})")
+    if record.get("approved_by") != "owner":
+        raise ValueError(f"{path} is not the owner's approval (approved_by "
+                         f"{record.get('approved_by')!r})")
+    try:
+        date.fromisoformat(str(record.get("approved_on")))
+    except ValueError:
+        raise ValueError(f"{path} records no approved_on date "
+                         f"({record.get('approved_on')!r})") from None
     doc = record.get("doc") or {}
     if not all(isinstance(doc.get(key), str) and doc.get(key)
                for key in ("path", "sha256")):
         raise ValueError(f"{path} does not cite the approved margin definition's path and "
                          f"SHA-256")
+    if not isinstance(record.get("b_u"), (int, float)):
+        raise ValueError(f"{path} does not record the approved b_u")
     return record
 
 
-def load_calibration(path: Path = CALIBRATION_PATH, *,
-                     approval_path: Path = MARGIN_APPROVAL_PATH) -> tuple[dict, int]:
-    """The committed ``(bars, k)`` a consumer labels rows with, cleared only.
+def _cleared_report(path: Path, approval_path: Path) -> dict:
+    """The calibration report, refused unless every consumer gate clears it.
 
-    Three gates. The S5b floor must be recorded as exactly ``"confirmed"``; a stopped, passed or
-    provisional report is refused. The margin pin must be mechanically ``"final"``: when the
-    character-start oracle changes ``b_u`` or a look assignment, the owner decides. And the
-    owner must have approved the pinned margin definition
-    (:func:`margin_approval`), which the mechanical outcome does not imply. The floors are
-    history (the rule is inside :func:`identify`), so they are not returned.
+    The S5b floor must be recorded as exactly ``"confirmed"``; a stopped, passed or provisional
+    report is refused. The margin pin must be mechanically ``"final"``: when the character-start
+    oracle changes ``b_u`` or a look assignment, the owner decides. And the owner must have
+    approved the pinned margin definition (:func:`margin_approval`) *at the report's ``b_u``* —
+    the mechanical outcome does not imply that, and a recalibration that moves ``b_u`` needs a
+    new approval.
     """
     report = json.loads(Path(path).read_text(encoding="utf-8"))
     status = report.get("floor_status")
@@ -1410,13 +1449,99 @@ def load_calibration(path: Path = CALIBRATION_PATH, *,
     if margin.get("status") != "final":
         raise ValueError(f"{path} is not cleared for use (margin_definition.status "
                          f"{margin.get('status')!r}: the owner decides b_u)")
-    approval = margin_approval(approval_path)["doc"]
-    if (approval["path"], approval["sha256"]) != (margin.get("path"), margin.get("sha256")):
+    approval = margin_approval(approval_path)
+    approved = approval["doc"]
+    if (approved["path"], approved["sha256"]) != (margin.get("path"), margin.get("sha256")):
         raise ValueError(
-            f"{approval_path} approves {approval['path']} at {approval['sha256']}, not the "
+            f"{approval_path} approves {approved['path']} at {approved['sha256']}, not the "
             f"report's margin definition ({margin.get('path')} at {margin.get('sha256')}): "
             f"b_u is not cleared for use")
+    if approval["b_u"] != report["bars"]["b_u"]:
+        raise ValueError(
+            f"{approval_path} approves b_u {approval['b_u']}, not the report's "
+            f"{report['bars']['b_u']}: b_u is not cleared for use")
+    return report
+
+
+def load_calibration(path: Path = CALIBRATION_PATH, *,
+                     approval_path: Path = MARGIN_APPROVAL_PATH) -> tuple[dict, int]:
+    """The committed ``(bars, k)`` a consumer labels rows with, cleared only
+    (:func:`_cleared_report`). The floors are history — the rule is inside :func:`identify` —
+    so they are not returned."""
+    report = _cleared_report(path, approval_path)
     return report["bars"], report["parameters"]["k"]
+
+
+def load_identifier(path: Path = CALIBRATION_PATH, *,
+                    approval_path: Path = MARGIN_APPROVAL_PATH,
+                    references_path: Path = REFERENCES_PATH
+                    ) -> tuple[ReferenceDatabase, dict, int]:
+    """The consumer entry point: the cleared report's ``(database, bars, k)``, bound together.
+
+    S6 and S7 must not assemble a database and a bars pair by hand. Beyond the three gates of
+    :func:`load_calibration`, every input the report records is compared with this checkout:
+    the references file's SHA-256 and its ayah, class and surah counts; the floor rule (its
+    document's SHA-256 through :func:`floor_rule`, and the ``L_min``/``δ`` the pinned document
+    states, against the code's constants); and the edlib name, version and mode whose distances
+    the floors and bars are percentiles of.
+    """
+    report = _cleared_report(path, approval_path)
+    database = load_references(references_path)
+    reference = report["reference"]
+    digest = sha256_file(references_path)
+    if digest != reference["sha256"]:
+        raise ValueError(f"{references_path} is {digest}, not the calibrated "
+                         f"{reference['sha256']}")
+    if (len(database.ayat), database.class_count, database.surah_count) != (
+            reference["ayat"], reference["classes"], reference["surahs"]):
+        raise ValueError(
+            f"{references_path} holds {len(database.ayat)} ayat, {database.class_count} "
+            f"classes and {database.surah_count} surahs, not the calibrated "
+            f"{reference['ayat']}, {reference['classes']} and {reference['surahs']}")
+    if report["floor_rule"] != floor_rule():
+        raise ValueError(f"{path} carries the floor rule {report['floor_rule']}, not "
+                         f"{floor_rule()}")
+    if (L_MIN, DELTA) != _documented_rule():
+        raise ValueError(f"the code's rule (L_min {L_MIN}, DELTA {DELTA}) is not the pinned "
+                         f"document's {_documented_rule()}")
+    library = report["parameters"]["library"]
+    installed = importlib.metadata.version("edlib")
+    if library != LIBRARY or installed != LIBRARY["version"]:
+        raise ValueError(f"the calibration's search is {library}; this checkout's is {LIBRARY} "
+                         f"and its installed edlib is {installed}")
+    return database, report["bars"], report["parameters"]["k"]
+
+
+def approve_margin(issue: int = 204, *, path: Path = MARGIN_APPROVAL_PATH,
+                   calibration_path: Path = CALIBRATION_PATH) -> dict:
+    """Write the owner's approval of the pinned margin definition (the owner runs this).
+
+    Only the owner approves, so nothing here decides *whether* to: the command records the live
+    amendment's SHA-256, the committed calibration's ``b_u`` and today's date, after refusing a
+    dirty tree or an existing record. The written file is committed; S6/S7 then load it.
+    """
+    from .tlog_ident_confirm import require_committed  # lazy: one import direction at load
+
+    require_committed([MARGIN_AMENDMENT_PATH, FLOOR_PREREGISTRATION_PATH, calibration_path])
+    if Path(path).exists():
+        raise ValueError(f"{path} already records an approval; edit the repository, not this "
+                         f"command, to supersede it")
+    report = json.loads(Path(calibration_path).read_text(encoding="utf-8"))
+    if report.get("margin_definition", {}).get("status") != "final":
+        raise ValueError(f"{calibration_path} has no mechanically final margin to approve")
+    record = {
+        "schema": MARGIN_APPROVAL_SCHEMA,
+        "issue": issue,
+        "doc": {"path": repo_relative(MARGIN_AMENDMENT_PATH),
+                "sha256": sha256_file(MARGIN_AMENDMENT_PATH)},
+        "b_u": report["bars"]["b_u"],
+        "approved_on": date.today().isoformat(),
+        "approved_by": "owner",
+    }
+    write_text_atomically(Path(path),
+                          json.dumps(record, ensure_ascii=False, indent=1,
+                                     sort_keys=True) + "\n")
+    return record
 
 
 def load_look_decodes(path: Path = DECODES_PATH,
@@ -1615,8 +1740,8 @@ def _calibration(database: ReferenceDatabase) -> dict:
     stop = {
         "look_retention": {"limit": LOOK_RETENTION_MIN, "value": retention,
                            "fired": retention < LOOK_RETENTION_MIN},
-        "noise_pass": {"limit": NOISE_PASS_MAX, "value": noise_pass,
-                       "fired": noise_pass > NOISE_PASS_MAX},
+        "noise_pass": {"limit": PASS_LIMIT, "value": noise_pass,
+                       "fired": noise_pass > PASS_LIMIT},
         "bar": {"limit": None, "value": bars["b"], "fired": bars["b"] is None},
     }
     return {
@@ -2006,8 +2131,12 @@ def render(report: Mapping[str, Any]) -> str:
         "refuses any report whose `floor_status` is not `\"confirmed\"`, whose "
         "`margin_definition.status` is not `\"final\"` (an undecided `b_u` waits for the "
         "owner), or whose margin definition has no recorded owner approval "
-        "(`tlog/ident/margin_approval.json`, the frozen floor document's §7 check-in). The "
-        "retired binned floors stay in the report as history and are not returned.",
+        "(`tlog/ident/margin_approval.json`, the frozen floor document's §7 check-in, written "
+        "by `python -m tadabur.tlog_ident approve`). The retired binned floors stay in the "
+        "report as history and are not returned. `load_identifier()` is what S6/S7 call: it "
+        "applies those gates and binds the database to the report — the references file's "
+        "SHA-256 and counts, the floor rule and the `L_min`/`DELTA` the pinned document states, "
+        "and the edlib version.",
         f"- **Decode mode.** The frozen rule fixes a whole-clip greedy decode "
         f"(`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are "
         f"whole-clip. The pool is not: "
@@ -2017,7 +2146,7 @@ def render(report: Mapping[str, Any]) -> str:
         f"the VRAM budget (S5's Freesound pool already needed `{report['decodes']['noise']['mode']}`, "
         f"as its own row above says). `identify` takes a bare string and cannot tell the modes "
         f"apart. S7 must either obtain an amendment of the decode mode or record `decode_mode` "
-        f"beside every identification and report the floor-bin and streamed populations "
+        f"beside every identification and report the whole-clip and streamed populations "
         f"separately; S5 decides neither.",
         "",
         "## Floor status",
@@ -2096,6 +2225,10 @@ def main() -> None:
                         help="score only the first N look clips, print the projection and write "
                              "nothing (the cost check before the full run)")
     oracle.add_argument("--out", type=Path, default=ORACLE_PATH)
+    approve = commands.add_parser(
+        "approve", help="record the owner's approval of the pinned margin definition (the "
+                        "owner runs this)")
+    approve.add_argument("--issue", type=int, default=204)
     args = parser.parse_args()
 
     if args.command == "references":
@@ -2111,7 +2244,7 @@ def main() -> None:
     elif args.command == "oracle":
         database = load_references()
         # The committed calibration's k, read as data: load_calibration refuses a stopped
-        # report, and the oracle's search is the calibration's search.
+        # report and an unapproved margin, while the oracle must stay runnable before approval.
         k = json.loads(CALIBRATION_PATH.read_text(encoding="utf-8"))["parameters"]["k"]
         look = load_look_decodes()
         mistakes = _mistake_identifications(database, k)
@@ -2133,6 +2266,9 @@ def main() -> None:
                               "assignments_changed_at_b_u":
                                   payload["assignments_changed_at_b_u"],
                               "out": str(args.out)}, indent=1))
+    elif args.command == "approve":
+        record = approve_margin(args.issue)
+        print(json.dumps({**record, "written": str(MARGIN_APPROVAL_PATH)}, indent=1))
     else:
         report = json.loads(CALIBRATION_PATH.read_text(encoding="utf-8"))
         write_text_atomically(DOC_PATH, render(report))

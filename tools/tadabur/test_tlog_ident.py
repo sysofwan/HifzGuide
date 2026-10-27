@@ -945,8 +945,8 @@ def test_load_calibration_requires_the_s5b_floor_to_be_confirmed(ident, calibrat
 def test_load_calibration_needs_the_owner_approval_of_the_margin(ident, calibration, tmp_path,
                                                                 approval):
     """r1/r2: a confirmed floor and the oracle's mechanical ``final`` are not the owner's §7
-    clearance. The bars stay unusable until a record cites the report's margin definition by
-    SHA-256; a matching record loads them, and a stale one refuses again."""
+    clearance. The bars stay unusable until a well-formed record cites the report's margin
+    definition by SHA-256 *and* the report's ``b_u``; a matching record loads them."""
     bars = {key: value for key, value in calibration["bars"].items()
             if key not in ("provisional", "provisional_reason")}
     path = tmp_path / "margin.json"
@@ -957,6 +957,11 @@ def test_load_calibration_needs_the_owner_approval_of_the_margin(ident, calibrat
                                     "margin_definition": definition}), encoding="utf-8")
         return path
 
+    def written_approval(name, record):
+        target = tmp_path / name
+        target.write_text(json.dumps(record), encoding="utf-8")
+        return target
+
     # Mechanical owner / missing status: refused before the approval is consulted.
     for definition in ({**final, "status": "owner"}, {}):
         with pytest.raises(ValueError, match="margin_definition.status"):
@@ -965,21 +970,107 @@ def test_load_calibration_needs_the_owner_approval_of_the_margin(ident, calibrat
     # Confirmed floor + mechanical final + no approval record: refused, naming the approval.
     with pytest.raises(ValueError, match="owner approval"):
         ident.load_calibration(written(final), approval_path=tmp_path / "absent.json")
-    empty = tmp_path / "empty-approval.json"
-    empty.write_text("{}", encoding="utf-8")
-    with pytest.raises(ValueError, match="does not cite"):
-        ident.load_calibration(written(final), approval_path=empty)
+
+    base = _approval_record(calibration)
+    # Each field the loader validates is load-bearing.
+    cases = [
+        ({**base, "schema": "not-it"}, "schema"),
+        ({**base, "approved_by": "a bot"}, "approved_by"),
+        ({**base, "approved_on": "27-10-2026"}, "approved_on"),
+        ({k: v for k, v in base.items() if k != "doc"}, "does not cite"),
+        ({**base, "doc": {"path": base["doc"]["path"], "sha256": "0" * 64}},
+         "not the report's margin definition"),
+        ({**base, "b_u": 0.42}, "approves b_u"),
+        ({k: v for k, v in base.items() if k != "b_u"}, "does not record the approved b_u"),
+    ]
+    for record, message in cases:
+        with pytest.raises(ValueError, match=message):
+            ident.load_calibration(written(final),
+                                   approval_path=written_approval("bad.json", record))
 
     # A matching approval loads the bars.
     loaded, k = ident.load_calibration(written(final), approval_path=approval)
     assert (loaded, k) == (bars, calibration["parameters"]["k"])
 
-    # A stale SHA-256 (an edited or re-pinned amendment) refuses again.
-    stale = tmp_path / "stale-approval.json"
-    stale.write_text(json.dumps({"doc": {"path": final["path"], "sha256": "0" * 64}}),
-                     encoding="utf-8")
-    with pytest.raises(ValueError, match="not the report's margin definition"):
-        ident.load_calibration(written(final), approval_path=stale)
+
+def test_approve_margin_writes_the_record_the_loader_accepts(ident, calibration, tmp_path,
+                                                             monkeypatch):
+    """r3: the approval needs a producer, not a hand-written JSON. The command records the live
+    amendment's SHA-256 and the committed ``b_u``, refuses to overwrite, and the loader accepts
+    exactly what it writes."""
+    import tadabur.tlog_ident_confirm as confirm
+
+    monkeypatch.setattr(confirm, "require_committed", lambda *args, **kwargs: None)
+    path = tmp_path / "margin_approval.json"
+    record = ident.approve_margin(204, path=path)
+
+    assert record["schema"] == ident.MARGIN_APPROVAL_SCHEMA
+    assert record["approved_by"] == "owner" and record["issue"] == 204
+    assert record["b_u"] == calibration["bars"]["b_u"]
+    assert record["doc"] == {"path": "docs/tlog-ident-margin-amendment.md",
+                             "sha256": _sha256(MARGIN_AMENDMENT)}
+    assert json.loads(path.read_text(encoding="utf-8")) == record
+
+    loaded, k = ident.load_calibration(approval_path=path)
+    assert (loaded, k) == (calibration["bars"], ident.K)
+    with pytest.raises(ValueError, match="already records"):
+        ident.approve_margin(204, path=path)
+
+
+def test_load_identifier_binds_the_database_bars_and_engine(ident, calibration, approval,
+                                                            tmp_path, monkeypatch):
+    """r3 (I3.1): S6/S7 get the database, bars and k from one call, and every input the report
+    records is compared with this checkout — a mismatch refuses instead of labelling on it."""
+    database, bars, k = ident.load_identifier(approval_path=approval)
+    assert (bars, k) == (calibration["bars"], calibration["parameters"]["k"])
+    assert len(database.ayat) == calibration["reference"]["ayat"]
+    record = ident.identification_record(
+        ident.identify("بتثج", database=database, filename_ayah="1:1", k=k))
+    assert record["floor_rule"] == ident.floor_rule()
+    assert record["id_floor_ok"] is False  # 4 characters < L_MIN
+
+    def mutated(mutate):
+        report = json.loads(json.dumps(calibration))
+        mutate(report)
+        path = tmp_path / "report.json"
+        path.write_text(json.dumps(report), encoding="utf-8")
+        return path
+
+    reports = [
+        (lambda r: r["reference"].__setitem__("sha256", "0" * 64), "not the calibrated"),
+        (lambda r: r["reference"].__setitem__("ayat", 6235), "not the calibrated"),
+        (lambda r: r["floor_rule"].__setitem__("sha256", "0" * 64), "carries the floor rule"),
+    ]
+    for mutate, message in reports:
+        with pytest.raises(ValueError, match=message):
+            ident.load_identifier(path=mutated(mutate), approval_path=approval)
+
+    # The rule's values and the search library are bound to the code, not just to the report.
+    monkeypatch.setattr(ident, "L_MIN", ident.L_MIN + 1)
+    with pytest.raises(ValueError, match="the code's rule"):
+        ident.load_identifier(approval_path=approval)
+    monkeypatch.undo()
+
+    monkeypatch.setattr(ident, "LIBRARY", {**ident.LIBRARY, "version": "1.4.0"})
+    with pytest.raises(ValueError, match="this checkout's is"):
+        ident.load_identifier(approval_path=approval)
+    monkeypatch.undo()
+
+    import importlib.metadata
+
+    monkeypatch.setattr(importlib.metadata, "version", lambda name: "1.4.0")
+    with pytest.raises(ValueError, match="installed edlib"):
+        ident.load_identifier(approval_path=approval)
+
+
+def test_the_reference_reader_does_not_import_the_phonetizer(ident, monkeypatch):
+    """r3 (I3.6): S6/S7 read the committed database without quran-transcript installed; only
+    rebuilding references needs the phonetizer."""
+    import sys
+
+    for module in ("hafs_phonetizer", "generate_phonemes"):
+        monkeypatch.setitem(sys.modules, module, None)
+    assert len(ident.load_references().ayat) == 6236
 
 
 def test_pool_summary_reads_the_frozen_row_shape(ident):
@@ -1107,6 +1198,21 @@ def calibration(ident):
     return json.loads(ident.CALIBRATION_PATH.read_text(encoding="utf-8"))
 
 
+def _approval_record(calibration, **overrides):
+    """A valid owner approval of the committed margin definition (frozen floor document §7)."""
+    record = {
+        "schema": "tadabur.tlog_ident/margin-approval-v1",
+        "issue": 204,
+        "doc": {"path": calibration["margin_definition"]["path"],
+                "sha256": calibration["margin_definition"]["sha256"]},
+        "b_u": calibration["bars"]["b_u"],
+        "approved_on": "2026-10-27",
+        "approved_by": "owner",
+    }
+    record.update(overrides)
+    return record
+
+
 @pytest.fixture
 def approval(tmp_path, calibration):
     """A recorded owner approval of the committed margin definition (frozen floor doc §7).
@@ -1115,11 +1221,7 @@ def approval(tmp_path, calibration):
     needs a loadable calibration writes this fixture instead.
     """
     path = tmp_path / "margin_approval.json"
-    path.write_text(json.dumps({
-        "schema": "tadabur.tlog_ident/margin-approval-v1",
-        "doc": {"path": calibration["margin_definition"]["path"],
-                "sha256": calibration["margin_definition"]["sha256"]},
-        "approved_on": "2026-10-27", "approved_by": "owner", "issue": 204}), encoding="utf-8")
+    path.write_text(json.dumps(_approval_record(calibration)), encoding="utf-8")
     return path
 
 

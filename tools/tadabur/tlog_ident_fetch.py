@@ -47,12 +47,11 @@ from tadabur import tlog_ident_confirm as confirm
 from tadabur.audio import decode_to_mono_16k
 from tadabur.nonpro_sources import Dataset, iter_rows
 from tadabur.panel_seal import SealedPanelError
-from tadabur.tlog_ident import (FLOOR_PREREGISTRATION_PATH, FLOOR_PREREGISTRATION_SHA256)
+from tadabur.tlog_ident import (FLOOR_PREREGISTRATION_PATH, FLOOR_PREREGISTRATION_SHA256,
+                                NOISE_POOL_PATH as NONPRO_GAP_POOL, ROOT)
 from tadabur.tlog_index import commit_of, repo_relative, sha256_file
 from training.perturbation import NOISE_LICENCES, NoiseRecording, pool_eligible
 
-ROOT = Path(__file__).resolve().parents[2]
-NONPRO_GAP_POOL = ROOT / "tools" / "tadabur" / "nonpro_gap" / "noise_pool.json"
 AUGMENTATION_POOL = ROOT / "tools" / "tadabur" / "augmentation" / "noise_pool.json"
 IMLAEI_PATH = ROOT / "data" / "imlaei.json"
 

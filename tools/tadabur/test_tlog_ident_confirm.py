@@ -31,6 +31,7 @@ CV_MANIFEST = CONFIRM_DIR / "common_voice.jsonl"
 CV_COUNTS = CONFIRM_DIR / "common_voice.json"
 NOISE_POOL = ROOT / "tools" / "tadabur" / "nonpro_gap" / "noise_pool.json"
 AUGMENTATION_POOL = ROOT / "tools" / "tadabur" / "augmentation" / "noise_pool.json"
+NONPRO_GAP_REPORT = ROOT / "tools" / "tadabur" / "nonpro_gap" / "report.json"
 IMLAEI = ROOT / "data" / "imlaei.json"
 
 #: The frozen parents the floor re-pre-registration cites by SHA-256 (never edited).
@@ -185,6 +186,21 @@ def test_the_shard_ranking_is_the_salted_order_of_the_100_shared_shards(confirm)
     assert list(ranking) == expected
     assert not {shard for shard in ranking
                 if confirm.shard_index(shard) in confirm.HELD_OUT_SHARDS}
+
+
+def test_the_shard_constants_are_the_committed_sources(confirm):
+    """r3 (I3.5): ``TOTAL_SHARDS`` and ``HELD_OUT_SHARDS`` are hand-copied numbers. The nonpro
+    gap report and the augmentation pool name the four held-out shards, the manifest's candidate
+    ranking is the 100 that remain, and the shard names fix the collection's size."""
+    nonpro = json.loads(NONPRO_GAP_REPORT.read_text(encoding="utf-8"))
+    augmentation = json.loads(AUGMENTATION_POOL.read_text(encoding="utf-8"))
+    held = [*nonpro["grid"]["noise"]["shards"], *augmentation["dataset"]["shards"]]
+    candidates = json.loads(FREESOUND_MANIFEST.read_text(encoding="utf-8"))["dataset"]["shards"]
+
+    assert {int(re.search(r"-of-(\d+)\.parquet$", shard)[1])
+            for shard in (*held, *candidates)} == {confirm.TOTAL_SHARDS}
+    assert {confirm.shard_index(shard) for shard in held} == confirm.HELD_OUT_SHARDS
+    assert set(candidates) == set(confirm.candidate_shards())
 
 
 def test_the_freesound_selection_is_the_first_1000_by_salted_rank(confirm):

@@ -33,14 +33,12 @@ Usage, from ``tools/`` (GPU box for ``limit`` and ``decode``)::
 from __future__ import annotations
 
 import argparse
-import gzip
 import hashlib
 import json
-import os
 import shutil
 import time
 from collections import Counter, defaultdict
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -60,7 +58,9 @@ from .tlog_ident import (
     identify,
     load_identifier,
 )
-from .tlog_index import head_sha, repo_relative, require_clean_tree, sha256_file
+from .nonpro_sources import audio_sha256
+from .tlog_index import (head_sha, provenance, read_jsonl, repo_relative,
+                         require_clean_tree, sha256_file, write_jsonl, write_shard)
 from .tlog_overlap import iter_pool_rows
 from .tlog_pass1 import read_jsonl_gz, shard_rows
 
@@ -201,30 +201,6 @@ def _rank(salt: str, *parts: object) -> bytes:
     return hashlib.sha256(payload.encode("utf-8")).digest()
 
 
-def _duration_map(pass1_dir: Path) -> dict[tuple[str, str, int], float]:
-    durations: dict[tuple[str, str, int], float] = {}
-    for path in sorted(Path(pass1_dir).glob("*/*.jsonl.gz")):
-        split, stem = path.parent.name, path.name[: -len(".jsonl.gz")]
-        for row in read_jsonl_gz(path):
-            durations[(split, stem, row["row"])] = row["duration_s"]
-    return durations
-
-
-def pool_rows(index_dir=None, pass1_dir=None) -> Iterator[dict]:
-    """Every frozen row joined to its pass-1 duration, shard by shard."""
-    from .tlog_overlap import INDEX_DIR, OVERLAP_DIR, PASS1_DIR
-    from .tlog_split import FLOORS_PATH
-
-    index_dir = INDEX_DIR if index_dir is None else Path(index_dir)
-    pass1_dir = PASS1_DIR if pass1_dir is None else Path(pass1_dir)
-    durations = _duration_map(pass1_dir)
-    for row in iter_pool_rows(index_dir=index_dir, pass1_dir=pass1_dir, floors_path=FLOORS_PATH):
-        key = _key(row)
-        if key not in durations:
-            raise ValueError(f"{key} has no pass-1 duration")
-        yield {**row, "duration_s": durations[key]}
-
-
 def _not_decoded(row: Mapping[str, Any]) -> dict:
     return {**row, "decode_mode": NOT_DECODED, "label_source": NONE}
 
@@ -238,7 +214,7 @@ def select(*, d_max: float, count: int = SAMPLE_SIZE, salt: str | None = None,
     ``decode_mode = NOT_DECODED`` and ``label_source = none``, and are never decoded.
     """
     salt = SALT if salt is None else salt
-    source = pool_rows() if rows is None else rows
+    source = iter_pool_rows() if rows is None else rows
     look, train, over = [], [], []
     for row in source:
         if row["role"] not in ("look", "train"):
@@ -302,10 +278,6 @@ def not_decoded_record(row: Mapping[str, Any], *, d_max: float) -> dict:
     return record
 
 
-def _sha256_bytes(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
 def _default_audio(data: bytes):
     from .audio import decode_to_mono_16k_with_rate_and_decoder
 
@@ -330,7 +302,7 @@ def decode_shard(decoder, shard: str, wanted: Sequence[Mapping[str, Any]], *, d_
         if row is None:
             continue
         data = item["audio"]["bytes"]
-        checksum = _sha256_bytes(data)
+        checksum = audio_sha256(data)
         if checksum != row["audio_sha256"]:
             raise ValueError(f"{_key(row)} is {checksum}, not the recorded "
                              f"{row['audio_sha256']}")
@@ -347,17 +319,6 @@ def decode_shard(decoder, shard: str, wanted: Sequence[Mapping[str, Any]], *, d_
     return [records[row["row"]] for row in wanted]
 
 
-def _write_jsonl_gz(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
-    """One JSONL-gzip file with no timestamp: the same rows give the same bytes, always."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    body = "".join(json.dumps(dict(row), ensure_ascii=False, sort_keys=True) + "\n"
-                   for row in rows).encode("utf-8")
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_bytes(gzip.compress(body, mtime=0))
-    os.replace(temporary, path)
-
-
 def _census(counts: Mapping[tuple[str, str], int]) -> dict:
     from .nonpro_sources import TLOG, tlog_split
 
@@ -367,16 +328,22 @@ def _census(counts: Mapping[tuple[str, str], int]) -> dict:
         (tlog_split(shard), Path(shard).stem), 0) for shard in shards}
 
 
-def _provenance() -> dict:
+def _provenance(pull_request: int | None = None) -> dict:
+    """The model, revision and commit a tree was written from, with its PR ref (I4.2).
+
+    The branch is squash-merged, so the cited ``code_sha`` survives only under
+    ``refs/pull/<N>/head``; :func:`tadabur.tlog_index.provenance` records both.
+    """
     return {"model": BASE_MODEL, "revision": BASE_REVISION,
-            "code_sha": head_sha(ROOT),
+            **provenance(head_sha(ROOT), pull_request),
             "decode_limit_sha256": sha256_file(DECODE_LIMIT_PATH),
             "calibration_sha256": sha256_file(tlog_ident.CALIBRATION_PATH),
             "amendment_sha256": sha256_file(AMENDMENT_PATH)}
 
 
-def _decoder():
-    from .tlog_ident_decode import _decoder as load_decoder
+def decoder():
+    """The pinned base teacher, loaded through S5's own loader."""
+    from .tlog_ident_decode import load_decoder
 
     return load_decoder()
 
@@ -391,7 +358,8 @@ def _require_d_max_share(counts: Mapping[str, int]) -> None:
 
 
 def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
-           scratch: Path | None = None, d_max: float | None = None) -> dict:
+           scratch: Path | None = None, d_max: float | None = None,
+           pull_request: int | None = None) -> dict:
     """Stream every selected shard once, decode whole-clip, delete the shard, merge."""
     require_clean_tree(ROOT)
     limit = require_decode_preconditions()
@@ -413,7 +381,7 @@ def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
         write_text_atomically(stamp_path,
                               json.dumps(stamp, ensure_ascii=False, indent=1,
                                          sort_keys=True) + "\n")
-    decoder, _identity, _fingerprint = _decoder()
+    teacher, _identity, _fingerprint = decoder()
     written: dict[tuple[str, str], int] = {}
     started = time.time()
     for position, ((split, stem), wanted) in enumerate(sorted(by_shard.items()), start=1):
@@ -422,9 +390,9 @@ def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
             written[(split, stem)] = len(read_jsonl_gz(target))
             continue
         shard = f"data/{stem}.parquet"
-        records = decode_shard(decoder, shard, wanted, d_max=d_max,
+        records = decode_shard(teacher, shard, wanted, d_max=d_max,
                                stream=lambda name: shard_rows(name, Path(cache_dir)))
-        _write_jsonl_gz(target, records)
+        write_shard(records, target)
         written[(split, stem)] = len(records)
         print(f"[{position}/{len(by_shard)}] {split}/{stem}: {len(records)} rows, "
               f"{time.time() - started:.0f} s", flush=True)
@@ -434,11 +402,11 @@ def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
         for row in read_jsonl_gz(scratch / split / f"{stem}.jsonl.gz"):
             (sample if _key(row) in sample_keys else look[split]).append(row)
     for split, rows in look.items():
-        _write_jsonl_gz(out_dir / "look" / f"{split}.jsonl.gz", sorted(rows, key=_key))
-    _write_jsonl_gz(out_dir / "train_sample.jsonl.gz", sorted(sample, key=_key))
+        write_shard(sorted(rows, key=_key), out_dir / "look" / f"{split}.jsonl.gz")
+    write_shard(sorted(sample, key=_key), out_dir / "train_sample.jsonl.gz")
     # Each meta's census counts the rows written to its own tree: ``rows`` and the census
     # must agree, so the provenance of one tree is never read off another's.
-    base = {**_provenance(), "schema_version": SCHEMA_VERSION,
+    base = {**_provenance(pull_request), "schema_version": SCHEMA_VERSION,
             "selection": {"salt": SALT, **selection.counts}}
     look_census = _census(_count_by_shard(
         [row for split in ("clean", "unclean") for row in look[split]]))
@@ -469,9 +437,13 @@ def band_of(duration_s: float, d_max: float) -> str | None:
     return "60-d_max"
 
 
-def _non_recitation(row: Mapping[str, Any]) -> bool:
-    if "non_recitation" in row:
-        return bool(row["non_recitation"])
+def is_non_recitation(row: Mapping[str, Any]) -> bool:
+    """Whether a decoded row fails the recitation rule ("speech present and the rule failed").
+
+    The one definition of the S6 flag, from the ident row's ``id_floor_ok``: a clip above D_max
+    is not decoded, so its verdict is ``None`` and it is neither flagged nor assigned a label.
+    S7 writes this field, ``label_source`` and ``assigned_label`` to its tranche manifest.
+    """
     return row.get("id_floor_ok") is False
 
 
@@ -483,7 +455,7 @@ def band_report(rows: Iterable[Mapping[str, Any]], d_max: float) -> dict[str, di
         if band is None:
             continue
         report[band]["rows"] += 1
-        if _non_recitation(row):
+        if is_non_recitation(row):
             report[band]["non_recitation"] += 1
     return report
 
@@ -493,7 +465,7 @@ def five_percent_rule(rows: Iterable[Mapping[str, Any]]) -> dict:
     rows = list(rows)
     if not rows:
         raise ValueError("the 5% rule needs at least one sampled row")
-    bad = sum(1 for row in rows if _non_recitation(row))
+    bad = sum(1 for row in rows if is_non_recitation(row))
     low, high = wilson_interval(bad, len(rows))
     return {"n": len(rows), "non_recitation": bad, "rate": bad / len(rows),
             "wilson": [low, high], "limit": FIVE_PERCENT_LIMIT,
@@ -504,13 +476,13 @@ def five_percent_rule(rows: Iterable[Mapping[str, Any]]) -> dict:
 
 
 def identify_trees(*, decodes_dir: Path = DECODES_DIR, out_dir: Path = IDENT_DIR,
-                   d_max: float | None = None) -> dict:
+                   d_max: float | None = None, pull_request: int | None = None) -> dict:
     """Identify the committed decodes with S5's engine and write the ident tree."""
     require_clean_tree(ROOT)
     limit = decode_limit()
     d_max = float(limit["d_max_seconds"] if d_max is None else d_max)
     database, bars, k = load_identifier()
-    provenance = {**_provenance(), "amendment_approval": dict(AMENDMENT_APPROVAL)}
+    provenance = {**_provenance(pull_request), "amendment_approval": dict(AMENDMENT_APPROVAL)}
     selection = select(d_max=d_max)
     look_rows: dict[str, list[dict]] = {"clean": [], "unclean": []}
     for split in ("clean", "unclean"):
@@ -523,8 +495,8 @@ def identify_trees(*, decodes_dir: Path = DECODES_DIR, out_dir: Path = IDENT_DIR
     sample = [_identified_row(database, bars, k, row)
               for row in read_jsonl_gz(decodes_dir / "train_sample.jsonl.gz")]
     for split in ("clean", "unclean"):
-        _write_jsonl_gz(out_dir / "look" / f"{split}.jsonl.gz",
-                        sorted(look_rows[split], key=_key))
+        write_shard(sorted(look_rows[split], key=_key),
+                    out_dir / "look" / f"{split}.jsonl.gz")
     count_by_shard: Counter = Counter()
     for rows in look_rows.values():
         count_by_shard.update(_count_by_shard(rows))
@@ -534,7 +506,7 @@ def identify_trees(*, decodes_dir: Path = DECODES_DIR, out_dir: Path = IDENT_DIR
                                                for split, rows in look_rows.items()},
                                       "census": _census(count_by_shard)},
                                      ensure_ascii=False, indent=1, sort_keys=True) + "\n")
-    _write_jsonl_gz(out_dir / "train_sample.jsonl.gz", sorted(sample, key=_key))
+    write_shard(sorted(sample, key=_key), out_dir / "train_sample.jsonl.gz")
     rule = five_percent_rule(sample)
     decode_meta = json.loads((decodes_dir / "train_sample.meta.json").read_text(encoding="utf-8"))
     meta = {**provenance, "schema_version": SCHEMA_VERSION, "rows": len(sample),
@@ -778,7 +750,8 @@ def verdict_outcome(item: Mapping[str, Any], verdict: Mapping[str, Any], *,
 
 
 def _item_key(row: Mapping[str, Any]) -> str:
-    return _sha256_bytes(f"{row['split']}:{row['shard_file']}:{row['row']}".encode())[:16]
+    return hashlib.sha256(f"{row['split']}:{row['shard_file']}:{row['row']}".encode()
+                          ).hexdigest()[:16]
 
 
 def audit_payload(draw: AuditDraw, *, texts: Mapping[str, str] | None = None,
@@ -820,7 +793,7 @@ def audit_payload(draw: AuditDraw, *, texts: Mapping[str, str] | None = None,
 
 def _silence_candidates() -> list[dict]:
     rows = []
-    for row in pool_rows():
+    for row in iter_pool_rows():
         if row["role"] == "look" and tuple(row["exclusions"]) == ("silence",):
             rows.append({**row, "label_source": NONE, "id_floor_ok": None,
                          "class_label": None, "assigned_label": None,
@@ -869,7 +842,7 @@ def stage(draw: AuditDraw, *, audio_dir: Path, cache_dir: Path) -> None:
             if row is None:
                 continue
             data = item["audio"]["bytes"]
-            checksum = _sha256_bytes(data)
+            checksum = audio_sha256(data)
             if checksum != row["audio_sha256"]:
                 raise ValueError(f"{_key(row)} is {checksum}, not {row['audio_sha256']}")
             name = f"{_item_key(row)}_{checksum[:8]}.wav"
@@ -883,20 +856,10 @@ def stage(draw: AuditDraw, *, audio_dir: Path, cache_dir: Path) -> None:
     if len(worklist) != len(draw.items):
         raise ValueError(f"staged {len(worklist)} of {len(draw.items)} drawn items")
     kept = {row["local_audio"] for row in worklist}
-    for previous in _read_jsonl(Path(AUDIT_DIR) / "worklist.jsonl"):
+    for previous in read_jsonl(Path(AUDIT_DIR) / "worklist.jsonl"):
         if previous["local_audio"] not in kept:
             (audio_dir / previous["local_audio"]).unlink(missing_ok=True)
-    _write_jsonl(Path(AUDIT_DIR) / "worklist.jsonl", worklist)
-
-
-def _write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    with temporary.open("w", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(dict(row), ensure_ascii=False, sort_keys=True) + "\n")
-    os.replace(temporary, path)
+    write_jsonl(worklist, Path(AUDIT_DIR) / "worklist.jsonl", sort_keys=True)
 
 
 def read_verdicts(path: Path = AUDIT_DIR / "verdicts.jsonl") -> dict[str, dict]:
@@ -989,13 +952,28 @@ def _within_ayat(first: object, second: object, distance: int) -> bool:
     return surah_a == surah_b and 0 < abs(ayah_a - ayah_b) <= distance
 
 
+def read_ident_tree(population: str, *, ident_dir: Path = IDENT_DIR) -> list[dict]:
+    """One committed identification tree, by population name.
+
+    A population with splits is a directory of one file per split (``look/``); a single-file
+    population is ``<name>.jsonl.gz`` (``train_sample``). S7 reuses this reader for its tranche
+    manifest: one tree per population, read by name.
+    """
+    base = Path(ident_dir) / population
+    paths = (sorted(base.glob("*.jsonl.gz")) if base.is_dir()
+             else [Path(ident_dir) / f"{population}.jsonl.gz"])
+    if not paths or not all(path.is_file() for path in paths):
+        raise FileNotFoundError(f"no identification tree for {population} under {ident_dir}")
+    return [row for path in paths for row in read_jsonl_gz(path)]
+
+
 def _ident_rows(ident_dir: Path) -> list[dict]:
-    """The committed ident trees, each row tagged with the population it came from."""
-    look = [{**row, "population": "look"} for split in ("clean", "unclean")
-            for row in read_jsonl_gz(Path(ident_dir) / "look" / f"{split}.jsonl.gz")]
-    sample = [{**row, "population": "train_sample"}
-              for row in read_jsonl_gz(Path(ident_dir) / "train_sample.jsonl.gz")]
-    return look + sample
+    """The two S6 populations' committed ident rows, each tagged with its population."""
+    rows = [{**row, "population": "look"}
+            for row in read_ident_tree("look", ident_dir=ident_dir)]
+    rows += [{**row, "population": "train_sample"}
+             for row in read_ident_tree("train_sample", ident_dir=ident_dir)]
+    return rows
 
 
 def _floor_frame(ident_dir: Path) -> dict[str, int]:
@@ -1067,7 +1045,7 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
     A render from zero verdicts would assert ``trigger fired: False`` from no evidence, so it
     refuses instead; a partly answered sitting still renders.
     """
-    worklist = [dict(row) for row in _read_jsonl(worklist_path)]
+    worklist = [dict(row) for row in read_jsonl(worklist_path)]
     if not worklist:
         raise SystemExit(f"{worklist_path} is empty: there is no audit to report")
     verdicts = read_verdicts(verdicts_path)
@@ -1214,11 +1192,6 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _read_jsonl(path: Path) -> list[dict]:
-    return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines()
-            if line.strip()]
-
-
 # --- measuring D_max on synthetic audio --------------------------------------------------------
 
 
@@ -1227,9 +1200,9 @@ def measure_decode_limit(*, seed: int = MEASURE_SEED) -> dict:
     import numpy as np
     import torch
 
-    from .tlog_ident_decode import _decoder as load_decoder
+    from .tlog_ident_decode import load_decoder
 
-    decoder, _identity, _fingerprint = load_decoder()
+    teacher, _identity, _fingerprint = load_decoder()
     total_gib = torch.cuda.get_device_properties(0).total_memory / 2**30
     rng = np.random.default_rng(seed)
     rungs = []
@@ -1238,7 +1211,7 @@ def measure_decode_limit(*, seed: int = MEASURE_SEED) -> dict:
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
         try:
-            decoder.decode_spans([samples])
+            teacher.decode_spans([samples])
             peak = torch.cuda.max_memory_reserved() / 2**30
             headroom = total_gib - peak
             oom = False
@@ -1274,9 +1247,13 @@ def main() -> None:
     decode_.add_argument("--cache-dir", type=Path, required=True)
     decode_.add_argument("--out-dir", type=Path, default=DECODES_DIR)
     decode_.add_argument("--scratch", type=Path, default=None)
+    decode_.add_argument("--pr", type=int, default=None,
+                         help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     identify_ = commands.add_parser("identify", help="identify the committed decodes")
     identify_.add_argument("--decodes-dir", type=Path, default=DECODES_DIR)
     identify_.add_argument("--out-dir", type=Path, default=IDENT_DIR)
+    identify_.add_argument("--pr", type=int, default=None,
+                           help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     commands.add_parser("audit", help="draw the stratified audit worklist")
     stage_ = commands.add_parser("stage", help="stage the drawn clips for listening")
     stage_.add_argument("--audio-dir", type=Path, required=True)
@@ -1294,16 +1271,17 @@ def main() -> None:
         print(f"wrote {args.out}: D_max {record['d_max_seconds']} s", flush=True)
     elif args.command == "decode":
         print(json.dumps(decode(cache_dir=args.cache_dir, out_dir=args.out_dir,
-                                scratch=args.scratch), sort_keys=True), flush=True)
-    elif args.command == "identify":
-        print(json.dumps(identify_trees(decodes_dir=args.decodes_dir, out_dir=args.out_dir),
+                                scratch=args.scratch, pull_request=args.pr),
                          sort_keys=True), flush=True)
+    elif args.command == "identify":
+        print(json.dumps(identify_trees(decodes_dir=args.decodes_dir, out_dir=args.out_dir,
+                                        pull_request=args.pr), sort_keys=True), flush=True)
     elif args.command == "audit":
         draw = audit_draw(audit_candidates())
-        _write_jsonl(AUDIT_DIR / "draw.jsonl", draw.items)
+        write_jsonl(draw.items, AUDIT_DIR / "draw.jsonl", sort_keys=True)
         print(json.dumps(draw.strata, indent=1, sort_keys=True), flush=True)
     elif args.command == "stage":
-        draw = AuditDraw(items=tuple(_read_jsonl(args.draw)), strata={})
+        draw = AuditDraw(items=tuple(read_jsonl(args.draw)), strata={})
         stage(draw, audio_dir=args.audio_dir, cache_dir=args.cache_dir)
     elif args.command == "report":
         write_text_atomically(DOC_PATH, render_audit())

@@ -225,6 +225,24 @@ def write_shard(rows: Sequence[Mapping[str, object]], path: Path) -> None:
     _write_atomically(path, gzip.compress(text, mtime=0))
 
 
+def read_jsonl(path: Path) -> list[dict]:
+    """Every row of a plain JSONL file; a blank line is skipped, a corrupt one is an error."""
+    return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines()
+            if line.strip()]
+
+
+def write_jsonl(rows: Iterable[Mapping[str, object]], path: Path, *,
+                sort_keys: bool = False) -> None:
+    """Write plain JSONL atomically: the one definition for the tlog run records.
+
+    ``sort_keys`` is the worklist's contract (stable bytes for a diffable draw); the run
+    records are left in their written field order.
+    """
+    text = "".join(json.dumps(dict(row), ensure_ascii=False, sort_keys=sort_keys) + "\n"
+                   for row in rows)
+    _write_atomically(path, text.encode("utf-8"))
+
+
 def _write_atomically(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")

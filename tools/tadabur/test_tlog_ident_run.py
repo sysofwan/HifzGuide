@@ -101,7 +101,6 @@ FLOOR = ROOT / "docs" / "tlog-ident-floor-preregistration.md"
 FLOOR_SHA256 = "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a"
 NOTE = ROOT / "docs" / "tlog-s6-amendment-note-overlap.md"
 NOTE_SHA256 = "e47856b8f34b1bd10704498a896fdf7fcc88d903705eb665d12763ed675e285a"
-PASS1_DIR = ROOT / "tools" / "tadabur" / "tlog" / "pass1"
 CALIBRATION = ROOT / "tools" / "tadabur" / "tlog" / "ident" / "ident_calibration.json"
 LOOK_ROWS = 9_710
 TRAIN_ROWS = 426_825
@@ -148,23 +147,14 @@ def _keyset(rows) -> set[tuple[str, str, int]]:
 
 @lru_cache(maxsize=1)
 def _pool() -> tuple[dict, ...]:
-    """The usable look and train rows with their pass-1 duration, once per worker."""
-    durations: dict[tuple[str, str, int], float] = {}
-    for path in sorted(PASS1_DIR.glob("*/*.jsonl.gz")):
-        split, stem = path.parent.name, path.name[: -len(".jsonl.gz")]
-        for record in read_jsonl_gz(path):
-            durations[(split, stem, record["row"])] = record["duration_s"]
+    """The usable look and train rows with their frozen duration, once per worker."""
     rows = []
     for row in iter_pool_rows():
         if row["role"] not in ("look", "train") or not row["usable"]:
             continue
-        rows.append({
-            "split": row["split"], "shard_file": row["shard_file"], "row": row["row"],
-            "role": row["role"], "usable": row["usable"],
-            "filename_label": row["filename_label"], "audio_path": row["audio_path"],
-            "audio_sha256": row["audio_sha256"],
-            "duration_s": durations[(row["split"], row["shard_file"], row["row"])],
-        })
+        rows.append({field: row[field] for field in (
+            "split", "shard_file", "row", "role", "usable", "filename_label", "audio_path",
+            "audio_sha256", "duration_s")})
     return tuple(rows)
 
 
@@ -452,7 +442,7 @@ def test_results_are_reported_by_the_three_pre_registered_duration_bands(run):
     assert run.band_of(120.0, 120.0) == "60-d_max"
     assert run.band_of(120.000_001, 120.0) is None
 
-    rows = [{"duration_s": seconds, "non_recitation": flag}
+    rows = [{"duration_s": seconds, "id_floor_ok": not flag}
             for seconds, flag in ((10.0, False), (20.0, True), (20.5, False), (59.0, True),
                                   (60.0, False), (120.0, True), (121.0, True))]
     report = run.band_report(rows, 120.0)
@@ -523,17 +513,6 @@ def test_an_identical_recitation_scores_the_class_of_the_label_under_test(run, i
                                    "assigned_label": "2:2", "class_label": "2:2"},
                                   {"verdict": run.UNCLEAR})
     assert (outcome["label_under_test"], outcome["correct"]) == ("2:2", None)
-
-
-def test_the_jsonl_gzip_writer_is_byte_stable_across_the_clock(run, tmp_path, monkeypatch):
-    first, second = tmp_path / "a.jsonl.gz", tmp_path / "b.jsonl.gz"
-    rows = [{"row": 1, "spans": "بجح"}]
-    monkeypatch.setattr(run.time, "time", lambda: 1000.0)
-    run._write_jsonl_gz(first, rows)
-    monkeypatch.setattr(run.time, "time", lambda: 1001.0)
-    run._write_jsonl_gz(second, rows)
-    assert first.read_bytes() == second.read_bytes()
-    assert first.read_bytes()[4:8] == b"\x00\x00\x00\x00"
 
 
 def test_the_frozen_audit_sizes_are_the_pre_registered_table(run):
@@ -757,7 +736,7 @@ def test_the_below_bar_frame_holds_only_class_disagreements(run, ident):
 
 def test_the_committed_worklist_marks_the_frozen_floor_sample(run):
     prefix = {run._item_key(row) for row in run._floor_prefix(run.IDENT_DIR)}
-    worklist = run._read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
+    worklist = run.read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
     assert len(prefix) == run.AUDIT_SIZES["non_recitation"] == 25
     assert {run._item_key(row) for row in worklist if row["floor_sample"]} == prefix
 
@@ -805,6 +784,22 @@ def test_the_committed_train_sample_meta_records_provenance_and_the_five_percent
     assert isinstance(rule["triggered"], bool)
 
 
+def test_the_non_recitation_rule_reads_the_floor_verdict(run):
+    """Review I4.3: one public definition, and a row above D_max is neither flagged nor assigned."""
+    look = run.read_ident_tree("look", ident_dir=run.IDENT_DIR)
+    assert len(look) == LOOK_ROWS
+    assert len(run.read_ident_tree("train_sample", ident_dir=run.IDENT_DIR)) == 2_000
+    undecoded = [row for row in look if row["decode_mode"] == run.NOT_DECODED]
+    assert len(undecoded) == 7
+    for row in undecoded:
+        assert row["id_floor_ok"] is None
+        assert run.is_non_recitation(row) is False
+        assert row["label_source"] == "none" and row["assigned_label"] is None
+    assert run.is_non_recitation({"id_floor_ok": False}) is True
+    assert run.is_non_recitation({"id_floor_ok": True}) is False
+    assert "non_recitation" not in look[0]
+
+
 def test_the_committed_trees_are_one_file_per_population_and_split(run):
     for split in ("clean", "unclean"):
         assert (run.DECODES_DIR / "look" / f"{split}.jsonl.gz").is_file()
@@ -837,7 +832,7 @@ def test_no_confirm_row_is_in_any_committed_tree(run):
     for path in trees:
         for row in read_jsonl_gz(path):
             assert row["split"] in ("clean", "unclean")
-    for row in run._read_jsonl(run.AUDIT_DIR / "worklist.jsonl"):
+    for row in run.read_jsonl(run.AUDIT_DIR / "worklist.jsonl"):
         assert not str(row["role"]).startswith("confirm")
         assert row["split"] in ("clean", "unclean")
 
@@ -867,7 +862,7 @@ def test_the_committed_sample_trees_are_the_salted_draw(run):
 
 
 def test_the_committed_worklist_is_the_draw_it_was_staged_from(run):
-    worklist = run._read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
+    worklist = run.read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
     draw = run.audit_draw(run.audit_candidates())
     assert len(worklist) == len(draw.items)
     assert len({_key(row) for row in worklist}) == len(worklist)

@@ -31,6 +31,10 @@ EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
 #: Every committed freeze row, and nothing else (``speaker_cluster`` is present and null).
 SPLIT_KEYS = frozenset({"split", "shard_file", "row", "audio_path", "speaker_cluster",
                         "group_key", "role"})
+#: ``iter_frozen_rows``'s view: the freeze row plus the index, pass-1 and floor facts.
+FROZEN_VIEW_KEYS = SPLIT_KEYS | {"filename_label", "recording_id", "s1_eval_overlap",
+                                 "any_overlap", "audio_sha256", "codec_ok", "duration_s",
+                                 "speech_s", "speech_ratio", "exclusion_reasons"}
 ROOT = Path(__file__).resolve().parents[2]
 TOTAL_SHARDS = 743
 CLEAN_STEM = "clean-00000-of-00411"
@@ -431,9 +435,11 @@ def test_iter_frozen_rows_joins_the_index_pass1_and_the_freeze(ts, tmp_path):
     assert [(row["split"], row["shard_file"], row["row"]) for row in frozen] == [
         ("clean", CLEAN_STEM, 0), ("clean", CLEAN_STEM, 1),
         ("unclean", UNCLEAN_STEM, 0), ("unclean", UNCLEAN_STEM, 1)]
-    assert set(SPLIT_KEYS) <= set(frozen[0])
+    assert set(frozen[0]) == FROZEN_VIEW_KEYS
     assert {field: frozen[0][field] for field in SPLIT_KEYS} == ts.freeze_row(
         data.index_rows[0])
+    assert frozen[0]["duration_s"] == read_jsonl_gz(
+        data.pass1_dir / "clean" / f"{CLEAN_STEM}.jsonl.gz")[0]["duration_s"]
     assert frozen[0]["filename_label"] == "1:1" and frozen[0]["exclusion_reasons"] == ()
     assert frozen[1]["exclusion_reasons"] == ("codec",)
     assert frozen[1]["s1_eval_overlap"] is True

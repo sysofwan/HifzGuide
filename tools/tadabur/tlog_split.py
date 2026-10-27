@@ -106,10 +106,11 @@ def iter_frozen_rows(*, index_dir: Path = INDEX_DIR, pass1_dir: Path = PASS1_DIR
     One row per :data:`ROW_KEY` ``(split, shard_file, row)`` — never per ``audio_path``, which
     is not unique across shards — carrying the committed freeze fields, the index row's
     ``filename_label``, ``recording_id`` and Tarteel v1 overlap flags (the S1 id flag is
-    ``s1_eval_overlap``), the pass-1 facts (``audio_sha256``, ``codec_ok``, ``speech_s``,
-    ``speech_ratio``) and the row's floor ``exclusion_reasons``. Rows are aligned by
-    :func:`tadabur.tlog_pass1.require_pass1_alignment`, the same rule the resume guard applies,
-    and arrive shard by shard so a consumer can group on ``(split, shard_file)``.
+    ``s1_eval_overlap``), the pass-1 facts (``audio_sha256``, ``codec_ok``, ``duration_s``,
+    ``speech_s``, ``speech_ratio``) and the row's floor ``exclusion_reasons``. Rows are aligned
+    by :func:`tadabur.tlog_pass1.require_pass1_alignment`, the same rule the resume guard
+    applies, and arrive shard by shard so a consumer can group on ``(split, shard_file)``.
+    ``duration_s`` is a joined pass-1 fact, not one of the committed freeze fields.
     """
     floors = json.loads(Path(floors_path).read_text(encoding="utf-8"))
     index_dir, pass1_dir = Path(index_dir), Path(pass1_dir)
@@ -134,6 +135,7 @@ def iter_frozen_rows(*, index_dir: Path = INDEX_DIR, pass1_dir: Path = PASS1_DIR
                 "any_overlap": bool(index_row["tarteel_v1_any_overlap"]),
                 "audio_sha256": facts["audio_sha256"],
                 "codec_ok": facts["codec_ok"],
+                "duration_s": facts["duration_s"],
                 "speech_s": facts["speech_s"],
                 "speech_ratio": facts["speech_ratio"],
                 "exclusion_reasons": reasons,

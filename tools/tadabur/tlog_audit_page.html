@@ -48,6 +48,8 @@ function progress() {
 
 async function send(item, body, status) {
   body.key = item.key;
+  const note = item.card.querySelector(".note");
+  if (note && note.value.trim()) body.note = note.value.trim();
   status.textContent = "saving…";
   status.className = "status";
   const response = await fetch("/api/verdict", { method: "POST",

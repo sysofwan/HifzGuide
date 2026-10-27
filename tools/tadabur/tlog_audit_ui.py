@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
+import sqlite3
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -31,21 +31,35 @@ from .audit_http import AuditHandler, serve
 from .audit_ui import DEFAULT_QURAN_DB, uthmani_index
 
 PAGE_PATH = Path(__file__).parent / "tlog_audit_page.html"
-_SURAH_AYAH = re.compile(r"^(?:1[0-4]\d|[1-9]?\d):(?:[1-9]\d{0,2})$")
 
 
 def _sha_key(row: Mapping[str, object]) -> str:
     return run._item_key(row)
 
 
+def _ayah_counts(quran_db: Path) -> dict[int, int]:
+    """Ayat per surah, so "another ayah" is a reference the mushaf actually has."""
+    with sqlite3.connect(quran_db) as conn:
+        return {int(surah): int(count) for surah, count in
+                conn.execute("SELECT surah, COUNT(*) FROM ayahs GROUP BY surah")}
+
+
+def _is_ayah(reference: str, ayah_counts: Mapping[int, int]) -> bool:
+    surah, _, ayah = reference.partition(":")
+    if not (surah.isdigit() and ayah.isdigit()):
+        return False
+    return 1 <= int(surah) <= 114 and 1 <= int(ayah) <= ayah_counts.get(int(surah), 0)
+
+
 @dataclass
 class Session:
-    """The worklist, its texts, the audio and the verdicts on disk."""
+    """The worklist, its texts, the audio, the mushaf's ayat and the verdicts on disk."""
 
     rows: list[dict]
     audio_dir: Path
     verdicts_path: Path
     texts: dict[str, str]
+    ayah_counts: dict[int, int] = field(default_factory=dict)
     verdicts: dict[str, dict] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -67,7 +81,8 @@ class Session:
                              f"{len(labels)} ayah labels ({', '.join(missing[:3])}); "
                              "point --quran-db at a checkout's data/quran.db")
         return cls(rows=rows, audio_dir=Path(audio_dir), verdicts_path=Path(verdicts),
-                   texts=texts, verdicts=run.read_verdicts(Path(verdicts)))
+                   texts=texts, ayah_counts=_ayah_counts(Path(quran_db)),
+                   verdicts=run.read_verdicts(Path(verdicts)))
 
     def payload(self) -> dict:
         """The served payload, with each item's audio URL and nothing identifying."""
@@ -87,8 +102,8 @@ class Session:
                 raise ValueError("a candidate answer needs its ayah")
             verdict = run.RIGHT if ayah == run.label_under_test(row) else run.OTHER
         elif choice == "another":
-            if not ayah or not _SURAH_AYAH.match(ayah):
-                raise ValueError("another ayah must be a surah:ayah such as 2:255")
+            if not ayah or not _is_ayah(ayah, self.ayah_counts):
+                raise ValueError("another ayah must be a surah:ayah the mushaf has, such as 2:255")
             verdict = run.OTHER
         elif choice in (run.SILENCE, run.NOT_RECITATION, run.UNCLEAR):
             verdict, ayah = choice, None

@@ -900,15 +900,19 @@ def test_the_bu_amendment_is_the_owner_approved_post_look_precision_rule():
     assert S5_PREREGISTRATION_SHA256 in text
 
 
-def test_load_calibration_requires_the_s5b_floor_to_be_confirmed(ident, calibration, tmp_path):
+def test_load_calibration_requires_the_s5b_floor_to_be_confirmed(ident, calibration, tmp_path,
+                                                                 approval):
     """r19: S6 and S7 may label only under a confirmed floor. ``floor_status`` must be exactly
-    "confirmed" — S5's binned "passed" is not confirmation — and provisional bars are refused."""
+    "confirmed" — S5's binned "passed" is not confirmation — and provisional bars are refused.
+
+    Success needs the frozen document's §7 owner approval too (r2), so the loadable cases pass
+    the fixture record."""
     bars = {key: value for key, value in calibration["bars"].items()
             if key not in ("provisional", "provisional_reason")}
     path = tmp_path / "confirmed.json"
     path.write_text(json.dumps({**calibration, "floor_status": "confirmed", "bars": bars}),
                     encoding="utf-8")
-    loaded, k = ident.load_calibration(path)
+    loaded, k = ident.load_calibration(path, approval_path=approval)
     assert loaded == bars
     assert k == calibration["parameters"]["k"] == ident.K
 
@@ -916,46 +920,66 @@ def test_load_calibration_requires_the_s5b_floor_to_be_confirmed(ident, calibrat
         path.write_text(json.dumps({**calibration, "floor_status": status, "bars": bars}),
                         encoding="utf-8")
         with pytest.raises(ValueError, match="not a confirmed calibration"):
-            ident.load_calibration(path)
+            ident.load_calibration(path, approval_path=approval)
 
     path.write_text(json.dumps({**calibration, "floor_status": "confirmed",
                                 "bars": {**bars, "provisional": True,
                                          "provisional_reason": "x"}}), encoding="utf-8")
     with pytest.raises(ValueError, match="provisional"):
-        ident.load_calibration(path)
+        ident.load_calibration(path, approval_path=approval)
 
-    # The committed report is accepted exactly when it records itself as confirmed.
-    try:
+    # The committed report loads exactly when its floor is confirmed *and* its margin definition
+    # carries the owner's §7 approval; this PR adds the gate, not the approval record.
+    if calibration["floor_status"] != "confirmed":
+        with pytest.raises(ValueError, match="not a confirmed calibration"):
+            ident.load_calibration()
+    elif ident.MARGIN_APPROVAL_PATH.exists():
         loaded, k = ident.load_calibration()
-    except ValueError as error:
-        assert "not a confirmed calibration" in str(error)
-        assert calibration["floor_status"] != "confirmed"
-    else:
-        assert calibration["floor_status"] == "confirmed"
         assert loaded == calibration["bars"]
         assert k == ident.K
+    else:
+        with pytest.raises(ValueError, match="owner approval"):
+            ident.load_calibration()
 
 
-def test_load_calibration_refuses_a_margin_that_needs_the_owner(ident, calibration, tmp_path):
-    """r1: a confirmed floor is not enough to consume ``b_u``. When the character-start oracle
-    changes ``b_u`` or a look assignment the owner decides, and the bars stay unusable until
-    then; a report that records no margin status at all is refused the same way."""
+def test_load_calibration_needs_the_owner_approval_of_the_margin(ident, calibration, tmp_path,
+                                                                approval):
+    """r1/r2: a confirmed floor and the oracle's mechanical ``final`` are not the owner's §7
+    clearance. The bars stay unusable until a record cites the report's margin definition by
+    SHA-256; a matching record loads them, and a stale one refuses again."""
     bars = {key: value for key, value in calibration["bars"].items()
             if key not in ("provisional", "provisional_reason")}
     path = tmp_path / "margin.json"
+    final = {**calibration["margin_definition"], "status": "final"}
 
     def written(definition):
         path.write_text(json.dumps({**calibration, "floor_status": "confirmed", "bars": bars,
                                     "margin_definition": definition}), encoding="utf-8")
         return path
 
-    final = {**calibration["margin_definition"], "status": "final"}
-    loaded, k = ident.load_calibration(written(final))
-    assert (loaded, k) == (bars, calibration["parameters"]["k"])
-
+    # Mechanical owner / missing status: refused before the approval is consulted.
     for definition in ({**final, "status": "owner"}, {}):
         with pytest.raises(ValueError, match="margin_definition.status"):
-            ident.load_calibration(written(definition))
+            ident.load_calibration(written(definition), approval_path=approval)
+
+    # Confirmed floor + mechanical final + no approval record: refused, naming the approval.
+    with pytest.raises(ValueError, match="owner approval"):
+        ident.load_calibration(written(final), approval_path=tmp_path / "absent.json")
+    empty = tmp_path / "empty-approval.json"
+    empty.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="does not cite"):
+        ident.load_calibration(written(final), approval_path=empty)
+
+    # A matching approval loads the bars.
+    loaded, k = ident.load_calibration(written(final), approval_path=approval)
+    assert (loaded, k) == (bars, calibration["parameters"]["k"])
+
+    # A stale SHA-256 (an edited or re-pinned amendment) refuses again.
+    stale = tmp_path / "stale-approval.json"
+    stale.write_text(json.dumps({"doc": {"path": final["path"], "sha256": "0" * 64}}),
+                     encoding="utf-8")
+    with pytest.raises(ValueError, match="not the report's margin definition"):
+        ident.load_calibration(written(final), approval_path=stale)
 
 
 def test_pool_summary_reads_the_frozen_row_shape(ident):
@@ -1081,6 +1105,22 @@ def test_only_tarteel_look_clips_enter_the_calibration(ident, calibration):
 @pytest.fixture(scope="module")
 def calibration(ident):
     return json.loads(ident.CALIBRATION_PATH.read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def approval(tmp_path, calibration):
+    """A recorded owner approval of the committed margin definition (frozen floor doc §7).
+
+    The real record is absent until the owner approves at the S5b check-in, so every test that
+    needs a loadable calibration writes this fixture instead.
+    """
+    path = tmp_path / "margin_approval.json"
+    path.write_text(json.dumps({
+        "schema": "tadabur.tlog_ident/margin-approval-v1",
+        "doc": {"path": calibration["margin_definition"]["path"],
+                "sha256": calibration["margin_definition"]["sha256"]},
+        "approved_on": "2026-10-27", "approved_by": "owner", "issue": 204}), encoding="utf-8")
+    return path
 
 
 def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration):

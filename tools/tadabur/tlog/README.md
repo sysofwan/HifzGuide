@@ -309,8 +309,24 @@ within `DELTA = 0.30` of its real best from the same shortlisted search. `identi
 the verdict; `floor_ok` / `id_floor_ok` are always booleans and every identification record
 carries `floor_rule {path, sha256}`. The binned floors and the three empty-bin conventions stay
 in the report as history. `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and
-refuses any report whose `floor_status` is not `"confirmed"` or whose
-`margin_definition.status` is not `"final"`; S6 and S7 may label under nothing else.
+refuses any report whose `floor_status` is not `"confirmed"`, whose
+`margin_definition.status` is not `"final"`, or whose margin definition has no recorded owner
+approval: S6 and S7 may label under nothing else.
+
+**The owner's margin approval.** The frozen floor pre-registration's §7 requires the owner to
+approve the pinned margin definition at the S5b check-in before `b_u` is final, which the oracle's
+mechanical `final` cannot supply. The approval is its own small committed record,
+`ident/margin_approval.json`:
+
+```json
+{"schema": "tadabur.tlog_ident/margin-approval-v1",
+ "doc": {"path": "docs/tlog-ident-margin-amendment.md", "sha256": "<the pinned SHA-256>"},
+ "approved_on": "YYYY-MM-DD", "approved_by": "owner", "issue": 204}
+```
+
+It is **absent until the owner approves** (this slice's PR adds the gate, not the record), and
+`load_calibration` refuses with a message naming the missing approval. A matching approval clears
+the gate with no recalibration; a stale SHA-256 (an edited or re-pinned amendment) refuses again.
 
 **The fresh confirmation draws.** `ident/confirm/freesound.json` and
 `ident/confirm/common_voice.jsonl` (with its `common_voice.json` counts sidecar) are drawn and

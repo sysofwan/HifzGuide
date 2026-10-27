@@ -50,7 +50,10 @@ and spans, and the doc → manifests → stores provenance chain — so a stop i
 rerun. ``b`` and ``b_u`` are ``provisional`` unless that status is exactly ``"confirmed"``, and
 :func:`load_calibration` refuses anything else. It also refuses a report whose
 ``margin_definition.status`` is not ``"final"``: when the character-start oracle changes ``b_u``
-or a look assignment the owner decides, and no consumer labels rows under an undecided ``b_u``.
+or a look assignment the owner decides. And the mechanical outcome is not the owner's clearance:
+the frozen floor document's §7 approval of the pinned margin definition is its own committed
+record (``margin_approval.json``, :func:`margin_approval`), and ``load_calibration`` refuses until
+one exists and cites the report's margin definition by SHA-256.
 
 **The margin's bound (S5b).** The pinned competitor search is a word-span one, and
 ``docs/tlog-ident-margin-amendment.md`` discloses that it can overstate ``m``, never understate
@@ -70,8 +73,9 @@ owner-verified real-mistake sites), ``decodes/real_mistake.base.json`` and ``dec
 Consumers use two functions, so S6 and S7 cannot fork the schema: :func:`identification_record`
 names the committed row's fields, including the ``floor_rule`` that produced the verdict on every
 row, and :func:`load_calibration` returns ``(bars, k)`` and refuses any report whose
-``floor_status`` is not ``"confirmed"``, or whose ``margin_definition.status`` is not
-``"final"``. The read path (a committed database and
+``floor_status`` is not ``"confirmed"``, whose ``margin_definition.status`` is not
+``"final"``, or whose margin definition has no recorded owner approval. The read path (a
+committed database and
 :func:`identify`) imports edlib only; the phonetizer is imported where a reference is built.
 
 Usage (from ``tools/``)::
@@ -156,6 +160,10 @@ REAL_MISTAKE_DECODES_PATH = DECODES_DIR / "real_mistake.base.json"
 NOISE_DECODES_PATH = DECODES_DIR / "noise.base.json"
 #: The character-level margin oracle's result (look only; recorded, never a selection step).
 ORACLE_PATH = IDENT_DIR / "oracle_margin.json"
+#: The owner's clearance of the pinned margin definition — frozen floor document §7 requires it
+#: at the S5b check-in, separately from the oracle's mechanical consequence. Committed only when
+#: the owner approves; absent until then, and :func:`load_calibration` refuses without it.
+MARGIN_APPROVAL_PATH = IDENT_DIR / "margin_approval.json"
 #: The Freesound gap pool (the noise stop's population); the look decodes and the split come
 #: from :mod:`tadabur.tarteel_split`, which owns their one definition.
 NOISE_POOL_PATH = Path(__file__).parent / "nonpro_gap" / "noise_pool.json"
@@ -1358,14 +1366,38 @@ def recall_sample(clips: Iterable[str]) -> tuple[str, ...]:
     return tuple(ranked[:RECALL_CLIPS])
 
 
-def load_calibration(path: Path = CALIBRATION_PATH) -> tuple[dict, int]:
+def margin_approval(path: Path = MARGIN_APPROVAL_PATH) -> dict:
+    """The recorded owner approval of the pinned margin definition, or a refusal.
+
+    The frozen floor pre-registration's §7 requires the owner to approve the margin definition
+    at the S5b check-in before ``b_u`` is final — a condition the oracle's mechanical
+    consequence cannot supply. The record is its own small file, committed when the owner
+    approves, and it cites ``docs/tlog-ident-margin-amendment.md`` by path and SHA-256. An
+    absent record is a refusal, never a default.
+    """
+    if not Path(path).exists():
+        raise ValueError(
+            f"the owner approval of {repo_relative(MARGIN_AMENDMENT_PATH)} is not recorded "
+            f"({repo_relative(path)} is absent): b_u is not cleared for use")
+    record = json.loads(Path(path).read_text(encoding="utf-8"))
+    doc = record.get("doc") or {}
+    if not all(isinstance(doc.get(key), str) and doc.get(key)
+               for key in ("path", "sha256")):
+        raise ValueError(f"{path} does not cite the approved margin definition's path and "
+                         f"SHA-256")
+    return record
+
+
+def load_calibration(path: Path = CALIBRATION_PATH, *,
+                     approval_path: Path = MARGIN_APPROVAL_PATH) -> tuple[dict, int]:
     """The committed ``(bars, k)`` a consumer labels rows with, cleared only.
 
-    Two gates. The S5b floor must be recorded as exactly ``"confirmed"``; a stopped, passed or
-    provisional report is refused. And the margin pin must be ``"final"``: when the
-    character-start oracle changes ``b_u`` or a look assignment the owner decides, and ``b_u``
-    is not usable until then (architect r18/r19). The floors are history (the rule is inside
-    :func:`identify`), so they are not returned.
+    Three gates. The S5b floor must be recorded as exactly ``"confirmed"``; a stopped, passed or
+    provisional report is refused. The margin pin must be mechanically ``"final"``: when the
+    character-start oracle changes ``b_u`` or a look assignment, the owner decides. And the
+    owner must have approved the pinned margin definition
+    (:func:`margin_approval`), which the mechanical outcome does not imply. The floors are
+    history (the rule is inside :func:`identify`), so they are not returned.
     """
     report = json.loads(Path(path).read_text(encoding="utf-8"))
     status = report.get("floor_status")
@@ -1374,10 +1406,16 @@ def load_calibration(path: Path = CALIBRATION_PATH) -> tuple[dict, int]:
     if report["bars"].get("provisional"):
         raise ValueError(f"{path} is not a confirmed calibration (bars provisional: "
                          f"{report['bars'].get('provisional_reason')})")
-    margin = report.get("margin_definition", {}).get("status")
-    if margin != "final":
+    margin = report.get("margin_definition") or {}
+    if margin.get("status") != "final":
         raise ValueError(f"{path} is not cleared for use (margin_definition.status "
-                         f"{margin!r}: the owner decides b_u)")
+                         f"{margin.get('status')!r}: the owner decides b_u)")
+    approval = margin_approval(approval_path)["doc"]
+    if (approval["path"], approval["sha256"]) != (margin.get("path"), margin.get("sha256")):
+        raise ValueError(
+            f"{approval_path} approves {approval['path']} at {approval['sha256']}, not the "
+            f"report's margin definition ({margin.get('path')} at {margin.get('sha256')}): "
+            f"b_u is not cleared for use")
     return report["bars"], report["parameters"]["k"]
 
 
@@ -1965,9 +2003,11 @@ def render(report: Mapping[str, Any]) -> str:
         "above its own decoy best. Every row names the rule that produced it, so binned and "
         "rule verdicts cannot be mixed silently.",
         "- **Thresholds.** `tadabur.tlog_ident.load_calibration()` returns `(bars, k)` and "
-        "refuses any report whose `floor_status` is not `\"confirmed\"` or whose "
+        "refuses any report whose `floor_status` is not `\"confirmed\"`, whose "
         "`margin_definition.status` is not `\"final\"` (an undecided `b_u` waits for the "
-        "owner). The retired binned floors stay in the report as history and are not returned.",
+        "owner), or whose margin definition has no recorded owner approval "
+        "(`tlog/ident/margin_approval.json`, the frozen floor document's §7 check-in). The "
+        "retired binned floors stay in the report as history and are not returned.",
         f"- **Decode mode.** The frozen rule fixes a whole-clip greedy decode "
         f"(`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are "
         f"whole-clip. The pool is not: "

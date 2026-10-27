@@ -112,6 +112,8 @@ DECODE_LIMIT_PATH = IDENT_DIR / "decode_limit.json"
 AMENDMENT_PATH = ROOT / "docs" / "tlog-s6-amendment.md"
 DOC_PATH = ROOT / "docs" / "tlog-audit.md"
 OVERLAP_META_PATH = Path(__file__).parent / "tlog" / "overlap" / "meta.json"
+#: The dated clarification of the strata overlap (architect r22), cited by the report.
+OVERLAP_NOTE_PATH = ROOT / "docs" / "tlog-s6-amendment-note-overlap.md"
 
 
 @dataclass(frozen=True)
@@ -571,92 +573,144 @@ def _floor_ok(row: Mapping[str, Any]) -> bool | None:
     return row["id_floor_ok"]
 
 
-#: Which stratum takes a row that satisfies more than one predicate, first match winning.
-#: The predicates in amendment §4 overlap: a decoded row that fails the floor *and* matches its
-#: filename class satisfies ``non_recitation`` and ``both``. ``both`` wins, so the
-#: ``non_recitation`` stratum samples the floor-failing rows that do *not* match their filename
-#: class; ``docs/tlog-audit.md`` discloses that frame and its size.
-AUDIT_PRIORITY = (SILENCE, "both", "relabelled", "unclean identified", "non_recitation",
-                  "below-bar disagreement")
-
-
+#: Amendment §4 defines each stratum by its own predicate and sets no precedence between them: a
+#: row satisfying two predicates is drawn in both and served once
+#: (``docs/tlog-s6-amendment-note-overlap.md``).
 def _matching_strata(row: Mapping[str, Any]) -> tuple[str, ...]:
-    """Every stratum predicate this row satisfies, in :data:`AUDIT_PRIORITY` order."""
+    """Every stratum predicate this row satisfies, in :data:`AUDIT_SIZES` order."""
     if row.get("decode_mode") == NOT_DECODED:
         return ()
     floor_ok = _floor_ok(row)
-    matched = []
+    matched = set()
     if tuple(row.get("exclusions") or ()) == ("silence",):
-        matched.append(SILENCE)
+        matched.add(SILENCE)
     if row.get("label_source") == BOTH:
-        matched.append("both")
+        matched.add("both")
     if row["split"] == "clean" and row.get("filename_label") and \
             row.get("label_source") == IDENTIFIED:
-        matched.append("relabelled")
+        matched.add("relabelled")
     if row["split"] == "unclean" and row.get("label_source") == IDENTIFIED:
-        matched.append("unclean identified")
+        matched.add("unclean identified")
     if row.get("decode_mode") == WHOLE_CLIP and floor_ok is False:
-        matched.append("non_recitation")
+        matched.add("non_recitation")
     if (row.get("filename_label") and floor_ok is True
             and row.get("class_label") != row.get("filename_label")
             and row.get("label_source") != IDENTIFIED):
-        matched.append("below-bar disagreement")
-    return tuple(matched)
+        matched.add("below-bar disagreement")
+    return tuple(stratum for stratum in AUDIT_SIZES if stratum in matched)
 
 
-def _stratum_of(row: Mapping[str, Any]) -> str | None:
-    matched = _matching_strata(row)
-    return matched[0] if matched else None
+def _stratum_label(stratum: str, row: Mapping[str, Any]) -> str | None:
+    """The ayah the stratum scores against (amendment §5)."""
+    if stratum in ("relabelled", "unclean identified"):
+        return row.get("assigned_label")
+    if stratum in ("both", "below-bar disagreement"):
+        return row.get("filename_label")
+    return None
+
+
+def _page_stratum(strata: Sequence[str], row: Mapping[str, Any]) -> str:
+    """The one stratum whose label the served page treats as right for a shared row.
+
+    The report never reads this field: it scores a row in every stratum it was drawn in. The
+    page needs a single label under test for its right/other choice, and a labelled stratum's is
+    the one the owner hears the filename with.
+    """
+    labelled = [stratum for stratum in strata if _stratum_label(stratum, row) is not None]
+    return (labelled or list(strata))[0]
 
 
 def _blocking_reason(row: Mapping[str, Any]) -> str:
     return "overlap" if row.get("overlaps_filename") else "delta"
 
 
+def _stratum_members(records: Iterable[Mapping[str, Any]],
+                     salt: str) -> dict[str, list[dict]]:
+    """Each stratum's full eligible set, sorted by that stratum's salted rank.
+
+    A row satisfying two predicates is in both lists: the strata overlap, and each draws from
+    its own set.
+    """
+    members: dict[str, list[dict]] = defaultdict(list)
+    for row in records:
+        strata = _matching_strata(row)
+        if not strata:
+            continue
+        item = {**dict(row),
+                "blocking_reason": (_blocking_reason(row)
+                                    if "below-bar disagreement" in strata else None)}
+        for stratum in strata:
+            members[stratum].append(item)
+    return {stratum: sorted(rows, key=lambda r: _rank(salt, stratum, *_key(r)))
+            for stratum, rows in members.items()}
+
+
+def _served_item(item: Mapping[str, Any], drawn_in: Iterable[str]) -> dict:
+    """One worklist row carrying the strata it was drawn in, in the frozen table's order."""
+    strata = [stratum for stratum in AUDIT_SIZES if stratum in set(drawn_in)]
+    return {**dict(item), "strata": strata, "stratum": _page_stratum(strata, item)}
+
+
 def audit_draw(records: Iterable[Mapping[str, Any]], *, sizes: Mapping[str, int] | None = None,
                salt: str | None = None) -> AuditDraw:
-    """Draw each stratum's salted prefix; a shortfall is recorded and its slots go to ``both``."""
+    """Draw each stratum's salted prefix; a shortfall is recorded and its slots go to ``both``.
+
+    Each stratum draws from its own full eligible set, so one row can be drawn in two strata and
+    is served once.
+    """
     salt = SALT if salt is None else salt
     sizes = dict(AUDIT_SIZES if sizes is None else sizes)
     if set(sizes) - set(AUDIT_SIZES):
         raise ValueError(f"sizes name unknown strata: {sorted(set(sizes) - set(AUDIT_SIZES))}")
-    by_stratum: dict[str, list[dict]] = defaultdict(list)
-    for row in records:
-        stratum = _stratum_of(row)
-        if stratum is None:
-            continue
-        item = dict(row)
-        item["stratum"] = stratum
-        item["blocking_reason"] = (_blocking_reason(row)
-                                   if stratum == "below-bar disagreement" else None)
-        by_stratum[stratum].append(item)
-
+    members = _stratum_members(records, salt)
     drawn: dict[str, list[dict]] = {}
     census: dict[str, dict[str, int]] = {}
     shortfall = 0
     for stratum in AUDIT_SIZES:
         if stratum == "both":
             continue
-        members = sorted(by_stratum.get(stratum, []), key=lambda r: _rank(salt, stratum, *_key(r)))
+        eligible = members.get(stratum, [])
         target = sizes.get(stratum, 0)
-        if stratum == SILENCE:
-            chosen = _draw_silence(members, target, salt)
-        else:
-            chosen = members[:target]
+        chosen = (_draw_silence(eligible, target, salt) if stratum == SILENCE
+                  else eligible[:target])
         drawn[stratum] = chosen
         missing = max(0, target - len(chosen))
         shortfall += missing
-        census[stratum] = {"target": target, "eligible": len(members),
-                          "drawn": len(chosen), "shortfall": missing}
+        census[stratum] = {"target": target, "eligible": len(eligible),
+                           "drawn": len(chosen), "shortfall": missing}
     both_target = sizes.get("both", 0) + shortfall
-    members = sorted(by_stratum.get("both", []),
-                     key=lambda r: _rank(salt, "both", *_key(r)))
-    drawn["both"] = members[:both_target]
-    census["both"] = {"target": sizes.get("both", 0), "eligible": len(members),
+    eligible = members.get("both", [])
+    drawn["both"] = eligible[:both_target]
+    census["both"] = {"target": sizes.get("both", 0), "eligible": len(eligible),
                       "drawn": len(drawn["both"]),
                       "shortfall": max(0, both_target - len(drawn["both"]))}
-    items = tuple(item for stratum in AUDIT_SIZES for item in drawn[stratum])
-    return AuditDraw(items=items, strata=census)
+    served: dict[str, dict] = {}
+    drawn_in: dict[str, list[str]] = defaultdict(list)
+    for stratum in AUDIT_SIZES:
+        for item in drawn[stratum]:
+            drawn_in[_item_key(item)].append(stratum)
+    for stratum in AUDIT_SIZES:
+        for item in drawn[stratum]:
+            key = _item_key(item)
+            if key not in served:
+                served[key] = _served_item(item, drawn_in[key])
+    return AuditDraw(items=tuple(served.values()), strata=census)
+
+
+def supplemental_items(records: Iterable[Mapping[str, Any]], worklist: Sequence[Mapping[str, Any]],
+                       *, salt: str | None = None) -> tuple[dict, ...]:
+    """The whole-flag floor draw's rows a worklist lacks (the architect r22 fallback).
+
+    If a verdict exists before the corrected list is live, the worklist stands and these rows
+    are heard in a second sitting; the union is the same §9 sample, so no frame weighting is
+    needed.
+    """
+    salt = SALT if salt is None else salt
+    prefix = _stratum_members(records, salt).get("non_recitation", [])[
+        :AUDIT_SIZES["non_recitation"]]
+    present = {_item_key(row) for row in worklist}
+    return tuple(_served_item(item, ["non_recitation"]) for item in prefix
+                 if _item_key(item) not in present)
 
 
 def _draw_silence(members: list[dict], target: int, salt: str) -> list[dict]:
@@ -676,11 +730,8 @@ def _draw_silence(members: list[dict], target: int, salt: str) -> list[dict]:
 
 
 def label_under_test(row: Mapping[str, Any]) -> str | None:
-    if row["stratum"] in ("relabelled", "unclean identified"):
-        return row.get("assigned_label")
-    if row["stratum"] in ("both", "below-bar disagreement"):
-        return row.get("filename_label")
-    return None
+    """The ayah ``row["stratum"]`` scores against."""
+    return _stratum_label(row["stratum"], row)
 
 
 def verdict_outcome(item: Mapping[str, Any], verdict: Mapping[str, Any], *,
@@ -803,7 +854,11 @@ def _wav_bytes(data: bytes) -> bytes:
 
 
 def stage(draw: AuditDraw, *, audio_dir: Path, cache_dir: Path) -> None:
-    """Stream the drawn rows' shards, verify each audio SHA-256 and keep the 150 clips."""
+    """Stream the drawn rows' shards, verify each audio SHA-256 and keep the drawn clips.
+
+    A clip the previous worklist staged and this one does not is deleted, so a redraw leaves no
+    orphan audio behind.
+    """
     wanted: dict[tuple[str, str], dict[int, dict]] = defaultdict(dict)
     for position, row in enumerate(draw.items):
         wanted[(row["split"], row["shard_file"])][row["row"]] = {**row, "index": position}
@@ -825,9 +880,13 @@ def stage(draw: AuditDraw, *, audio_dir: Path, cache_dir: Path) -> None:
                 "population", "split", "shard_file", "row", "role", "audio_path",
                 "audio_sha256", "duration_s", "filename_label", "assigned_label",
                 "class_label", "label_source", "id_floor_ok", "overlaps_filename",
-                "blocking_reason", "stratum")}, "local_audio": name})
+                "blocking_reason", "strata", "stratum")}, "local_audio": name})
     if len(worklist) != len(draw.items):
         raise ValueError(f"staged {len(worklist)} of {len(draw.items)} drawn items")
+    kept = {row["local_audio"] for row in worklist}
+    for previous in _read_jsonl(Path(AUDIT_DIR) / "worklist.jsonl"):
+        if previous["local_audio"] not in kept:
+            (audio_dir / previous["local_audio"]).unlink(missing_ok=True)
     _write_jsonl(Path(AUDIT_DIR) / "worklist.jsonl", worklist)
 
 
@@ -898,6 +957,20 @@ def _band_cell(stats: Mapping[str, Any]) -> str:
     return f"{stats['correct']}/{stats['decided']} ({stats['precision']:.0%})"
 
 
+def _best_class_line(stats: Mapping[str, Any]) -> str:
+    """Best-class precision over decided answers (review R2.2): unclear is not a miss."""
+    return (f"Best-class suggestions heard as the recitation: **{stats['best_correct']} of "
+            f"{stats['decided']} decided** ({stats['n']} answered; Wilson 95% "
+            f"{_interval_text(stats['best_correct'], stats['decided'])}).")
+
+
+def _stratum_views(worklist: Sequence[Mapping[str, Any]]) -> dict[str, list[dict]]:
+    """Each stratum's rows as single-stratum views, so a shared row is scored in every one."""
+    return {stratum: [{**row, "stratum": stratum} for row in worklist
+                      if stratum in row["strata"]]
+            for stratum in AUDIT_SIZES}
+
+
 def _by_band(rows: Iterable[Mapping[str, Any]], d_max: float) -> dict[str, list[dict]]:
     bands: dict[str, list[dict]] = {band: [] for band in DURATION_BANDS}
     for row in rows:
@@ -927,12 +1000,11 @@ def _ident_rows(ident_dir: Path) -> list[dict]:
 
 
 def _floor_frame(ident_dir: Path) -> dict[str, int]:
-    """The frame the ``non_recitation`` stratum actually samples (review R1.1).
+    """The frame the ``non_recitation`` stratum samples.
 
-    A decoded row that fails the floor *and* matches its filename class satisfies two stratum
-    predicates; by :data:`AUDIT_PRIORITY` it is drawn as ``both``. The ``non_recitation``
-    precision therefore estimates the floor-failing rows that do *not* match their filename
-    class, and the document says so rather than presenting it as the whole flag.
+    Every decoded row that fails the floor is in the stratum (architect r22); those that also
+    match their filename class are drawn in ``both`` too and scored in both, so the count here
+    is disclosed next to the precision rather than removed from it.
     """
     failing = [row for row in _ident_rows(ident_dir)
                if row["decode_mode"] == WHOLE_CLIP and row["id_floor_ok"] is False]
@@ -991,9 +1063,7 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
     d_max = float(decode_limit()["d_max_seconds"])
     database, _bars, _k = load_identifier()
     canonical = lambda label: tlog_ident.canonical_label(database, label)
-    by_stratum: dict[str, list[dict]] = defaultdict(list)
-    for row in worklist:
-        by_stratum[row["stratum"]].append(row)
+    by_stratum = _stratum_views(worklist)
     lines = ["# tlog S6 audit (#191)", "",
              "Generated by `python -m tadabur.tlog_ident_run report` from",
              "`tools/tadabur/tlog/audit/{worklist,verdicts}.jsonl`. Never hand-edited.", "",
@@ -1031,10 +1101,13 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
               f"- Trigger fired: **{trigger}**."
               + (" A follow-up issue is opened for an outside-family ASR cross-check."
                  if trigger else "")]
-    drawn_floor = len(by_stratum.get("non_recitation", []))
-    floor = _precision(by_stratum.get("non_recitation", []), verdicts, canonical)
+    drawn_floor = len(by_stratum["non_recitation"])
+    floor = _precision(by_stratum["non_recitation"], verdicts, canonical)
     paused = floor["recitation"] >= FLOOR_PAUSE_AT
     lines += ["", "## The S5b §9 trigger", "",
+              f"- Sample: the first {drawn_floor} rows by the frozen salt's rank among all "
+              "decoded rows failing the floor, whatever other stratum they also belong to "
+              f"(`{OVERLAP_NOTE_PATH.relative_to(ROOT).as_posix()}` §3).",
               f"- Audited `non_recitation` clips heard as real recitation: "
               f"**{floor['recitation']} of {drawn_floor} drawn** ({floor['n']} answered).",
               f"- Pre-stated before any verdict: {FLOOR_PAUSE_AT} or more suspends the 5% "
@@ -1044,13 +1117,11 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
                  if paused else " They proceed as frozen, through the follow-up issue."),
               "- The follow-up issue for the whole-pool decode and the filter is drafted, not "
               "filed: it is blocked on the owner's decision and on this outcome.", ""]
-    below = _precision(by_stratum.get("below-bar disagreement", []), verdicts, canonical)
+    below = _precision(by_stratum["below-bar disagreement"], verdicts, canonical)
     below_precision = ("—" if below["precision"] is None
                        else f"{below['precision']:.2%}")
     lines += ["", "## The best class in the below-bar stratum (reported, never gating)", "",
-              f"- Best-class suggestions heard as the recitation: **{below['best_correct']} of "
-              f"{below['n']} answered** (Wilson 95% "
-              f"{_interval_text(below['best_correct'], below['n'])}).",
+              f"- {_best_class_line(below)}",
               f"- Filename-label precision in the same items: {below_precision}.", ""]
     silence = _precision(by_stratum.get("silence", []), verdicts, canonical)
     unclean = [row for row in by_stratum.get("silence", []) if row["split"] == "unclean"]
@@ -1100,13 +1171,13 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
               f"labelled ayah and {field['near']} ({field['near'] / field['flagged']:.1%}) a "
               "neighbour within two ayat. Many flagged rows are recitation the teacher decodes "
               "poorly, not non-recitation.",
-              f"- Sampling frame of the `non_recitation` stratum: of {frame['failing']} decoded "
-              f"rows that fail the floor, {frame['both']} also match their filename class "
-              "(`both`) and are drawn as `both` by `AUDIT_PRIORITY`; the precision above "
-              f"therefore estimates the {frame['failing'] - frame['both']} floor-failing rows "
-              "that do not match their filename class. A supplemental sample covering the "
-              "`both` overlap is pre-stated in a dated correction before supplemental "
-              "listening; the committed worklist is not redrawn.", ""]
+              f"- Sampling frame of the `non_recitation` stratum: all {frame['failing']} decoded "
+              "rows that fail the floor. "
+              f"{frame['both']} of them also match their filename class and are drawn in `both` "
+              "as well; per "
+              f"`{OVERLAP_NOTE_PATH.relative_to(ROOT).as_posix()}` each such row is heard once "
+              "and scored in both strata, so the precision above covers the whole flag rather "
+              "than a subset of it.", ""]
     lines += ["## Served order", "",
               "- The page serves the committed worklist in its written (shard) order rather "
               "than the amendment §5 salted shuffle: the worklist was frozen once verdicts "

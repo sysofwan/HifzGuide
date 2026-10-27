@@ -99,6 +99,8 @@ FROZEN = ROOT / "docs" / "tlog-holdout-preregistration.md"
 FROZEN_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086"
 FLOOR = ROOT / "docs" / "tlog-ident-floor-preregistration.md"
 FLOOR_SHA256 = "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a"
+NOTE = ROOT / "docs" / "tlog-s6-amendment-note-overlap.md"
+NOTE_SHA256 = "feaad8c67afd346cb55eaecf63bcc1af923acd9d5d904b168f92ef502b5aab8d"
 PASS1_DIR = ROOT / "tools" / "tadabur" / "tlog" / "pass1"
 CALIBRATION = ROOT / "tools" / "tadabur" / "tlog" / "ident" / "ident_calibration.json"
 LOOK_ROWS = 9_710
@@ -220,6 +222,16 @@ def test_the_amendment_and_decode_limit_are_committed_and_cite_the_frozen_rules(
     assert "D_max" in text
     assert run.SALT and run.SALT in text
     assert re.search(r"2026-\d\d-\d\d", text)
+
+
+def test_the_overlap_note_is_frozen_and_cites_the_amendment(run):
+    assert run.OVERLAP_NOTE_PATH == NOTE
+    text = NOTE.read_text(encoding="utf-8")
+    assert _sha256(NOTE.read_bytes()) == NOTE_SHA256
+    assert _sha256(run.AMENDMENT_PATH.read_bytes()) in text
+    assert "2026-10-27" in text
+    assert "unclear" in text and "right ayah" in text
+    assert "supplemental_items" in text
 
 
 def test_the_amendment_and_decode_limit_must_exist_before_a_decode(run, tmp_path, monkeypatch):
@@ -452,12 +464,62 @@ def test_results_are_reported_by_the_three_pre_registered_duration_bands(run):
 # --- the audit draw (r20 Q3) --------------------------------------------------------------------
 
 
-def test_a_floor_failing_row_that_matches_its_filename_is_drawn_as_both(run):
+def test_a_row_that_meets_two_predicates_is_drawn_in_both_strata(run):
+    """Architect r22: §4 sets no precedence, so each stratum draws from its own full set."""
     row = _candidate(run, split="clean", label_source="both", id_floor_ok=False)
     assert run._matching_strata(row) == ("both", "non_recitation")
-    assert run._stratum_of(row) == "both"
     draw = run.audit_draw([row], sizes=dict.fromkeys(run.AUDIT_SIZES, 1))
-    assert [item["stratum"] for item in draw.items] == ["both"]
+    assert len(draw.items) == 1
+    (item,) = draw.items
+    assert item["strata"] == ["both", "non_recitation"]
+    assert item["stratum"] == "both"
+    assert draw.strata["both"]["drawn"] == draw.strata["non_recitation"]["drawn"] == 1
+
+
+def test_the_non_recitation_draw_is_the_first_twenty_five_over_the_whole_flag(run):
+    rows = ([_candidate(run, row=1_000 + i, split="clean", label_source="both",
+                        id_floor_ok=False) for i in range(20)]
+            + [_candidate(run, row=2_000 + i, split="unclean", filename_label=None,
+                          label_source="none", id_floor_ok=False,
+                          class_label=None, assigned_label=None) for i in range(20)])
+    sizes = {name: 0 for name in STRATA}
+    sizes["non_recitation"] = 25
+    draw = _draw(run, rows, sizes=sizes)
+    expected = sorted(rows, key=lambda r: run._rank("audit-test", "non_recitation", *_key(r)))
+    assert draw.strata["non_recitation"]["eligible"] == 40
+    assert _keyset(draw.items) == _keyset(expected[:25])
+    assert all("non_recitation" in item["strata"] for item in draw.items)
+
+
+def test_a_shared_row_is_served_once_and_scored_in_each_stratum(run):
+    shared = _candidate(run, row=1, split="clean", label_source="both", id_floor_ok=False)
+    passed = _candidate(run, row=2, split="clean", label_source="both", id_floor_ok=True)
+    draw = run.audit_draw([shared, passed], sizes=dict.fromkeys(run.AUDIT_SIZES, 2))
+    assert len(draw.items) == 2
+    assert sum(1 for item in draw.items if item["row"] == 1) == 1
+    assert len(run.audit_payload(draw, texts={"2:1": "الْحَمْدُ"})["items"]) == 2
+
+    views = run._stratum_views(draw.items)
+    verdicts = {run._item_key(shared): {"verdict": run.RIGHT},
+                run._item_key(passed): {"verdict": run.RIGHT}}
+    both = run._precision(views["both"], verdicts)
+    floor = run._precision(views["non_recitation"], verdicts)
+    assert (both["correct"], both["decided"]) == (2, 2)
+    assert (floor["recitation"], floor["n"]) == (1, 1)
+
+
+def test_the_fallback_builder_returns_exactly_the_missing_full_frame_rows(run):
+    rows = [_candidate(run, row=1_000 + i, split="unclean", filename_label=None,
+                       label_source="none", id_floor_ok=False,
+                       class_label=None, assigned_label=None) for i in range(40)]
+    sizes = {name: 0 for name in STRATA}
+    sizes["non_recitation"] = 25
+    draw = _draw(run, rows, sizes=sizes)
+    kept, dropped = list(draw.items)[3:], list(draw.items)[:3]
+    missing = run.supplemental_items(rows, kept, salt="audit-test")
+    assert _keyset(missing) == _keyset(dropped)
+    assert all("non_recitation" in item["strata"] for item in missing)
+    assert run.supplemental_items(rows, draw.items, salt="audit-test") == ()
 
 
 def test_an_identical_recitation_scores_the_class_of_the_label_under_test(run, ident):
@@ -684,6 +746,22 @@ def test_the_served_payload_hides_the_stratum_and_the_attribution(run):
 # --- the generated report (brief criteria) -----------------------------------------------------
 
 
+def test_an_unclear_below_bar_answer_is_not_a_best_class_miss(run):
+    """Review R2.2: the best-class readout divides by decided answers, never by answered ones."""
+    rows = [{"stratum": "below-bar disagreement", "split": "clean",
+             "shard_file": "clean-00001-of-00411", "row": number, "filename_label": "2:1",
+             "class_label": "2:2"} for number in range(15)]
+    verdicts = {run._item_key(row): {"verdict": run.OTHER, "ayah": "2:2"}
+                for row in rows[:14]}
+    verdicts[run._item_key(rows[14])] = {"verdict": run.UNCLEAR}
+    stats = run._precision(rows, verdicts)
+    assert (stats["n"], stats["decided"], stats["best_correct"]) == (15, 14, 14)
+    line = run._best_class_line(stats)
+    assert "**14 of 14 decided**" in line
+    assert "(15 answered" in line
+    assert "78.47%–100.00%" in line
+
+
 def test_the_committed_audit_doc_is_a_fresh_render(run):
     assert run.DOC_PATH.read_text(encoding="utf-8") == run.render_audit()
     assert run.render_audit() == run.render_audit()
@@ -775,6 +853,8 @@ def test_the_committed_sample_trees_are_the_salted_draw(run):
 def test_the_committed_worklist_is_the_draw_it_was_staged_from(run):
     worklist = run._read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
     draw = run.audit_draw(run.audit_candidates())
-    assert len(worklist) == len(draw.items) == 150
-    assert {_key(row): row["stratum"] for row in worklist} == {
-        _key(item): item["stratum"] for item in draw.items}
+    assert len(worklist) == len(draw.items)
+    assert len({_key(row) for row in worklist}) == len(worklist)
+    assert {_key(row): row["strata"] for row in worklist} == {
+        _key(item): item["strata"] for item in draw.items}
+    assert sum(census["drawn"] for census in draw.strata.values()) == 150

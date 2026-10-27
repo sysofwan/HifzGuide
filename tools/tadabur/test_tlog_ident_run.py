@@ -90,6 +90,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from tadabur import tlog_audit as audit
+from tadabur import tlog_pool as pool
 from tadabur.tlog_overlap import iter_pool_rows
 from tadabur.tlog_pass1 import read_jsonl_gz
 from training.counterfactual_eval import wilson_interval
@@ -184,14 +186,14 @@ def _candidate(run, *, population="look", split="clean", role="look", row=1, **o
         "filename_label": "2:1", "label_source": "both", "id_floor_ok": True,
         "class_label": "2:1", "assigned_label": "2:1", "delta": None,
         "overlaps_filename": False, "exclusions": (),
-        "decode_mode": run.WHOLE_CLIP,
+        "decode_mode": pool.WHOLE_CLIP,
     }
     candidate.update(overrides)
     return candidate
 
 
 def _draw(run, candidates, sizes=None, salt="audit-test"):
-    return run.audit_draw(candidates, sizes=SIZES if sizes is None else sizes, salt=salt)
+    return audit.audit_draw(candidates, sizes=SIZES if sizes is None else sizes, salt=salt)
 
 
 # --- the order and the pinned paths (r20 Q2/Q9) ------------------------------------------------
@@ -199,12 +201,12 @@ def _draw(run, candidates, sizes=None, salt="audit-test"):
 
 def test_the_amendment_and_decode_limit_are_committed_and_cite_the_frozen_rules(run):
     assert run.AMENDMENT_PATH == ROOT / "docs" / "tlog-s6-amendment.md"
-    assert run.DECODE_LIMIT_PATH == ROOT / "tools" / "tadabur" / "tlog" / "ident" / \
+    assert pool.DECODE_LIMIT_PATH == ROOT / "tools" / "tadabur" / "tlog" / "ident" / \
         "decode_limit.json"
     assert run.DECODES_DIR == ROOT / "tools" / "tadabur" / "tlog" / "ident" / "decodes"
     assert run.IDENT_DIR == ROOT / "tools" / "tadabur" / "tlog" / "ident"
-    assert run.AUDIT_DIR == ROOT / "tools" / "tadabur" / "tlog" / "audit"
-    assert run.DOC_PATH == ROOT / "docs" / "tlog-audit.md"
+    assert audit.AUDIT_DIR == ROOT / "tools" / "tadabur" / "tlog" / "audit"
+    assert audit.DOC_PATH == ROOT / "docs" / "tlog-audit.md"
 
     text = run.AMENDMENT_PATH.read_text(encoding="utf-8")
     assert FROZEN.is_file() and FLOOR.is_file()
@@ -215,7 +217,7 @@ def test_the_amendment_and_decode_limit_are_committed_and_cite_the_frozen_rules(
 
 
 def test_the_overlap_note_is_frozen_and_cites_the_amendment(run):
-    assert run.OVERLAP_NOTE_PATH == NOTE
+    assert audit.OVERLAP_NOTE_PATH == NOTE
     text = NOTE.read_text(encoding="utf-8")
     assert _sha256(NOTE.read_bytes()) == NOTE_SHA256
     assert _sha256(run.AMENDMENT_PATH.read_bytes()) in text
@@ -229,13 +231,13 @@ def test_the_amendment_and_decode_limit_must_exist_before_a_decode(run, tmp_path
     with pytest.raises((FileNotFoundError, ValueError)):
         run.require_decode_preconditions()
     monkeypatch.setattr(run, "AMENDMENT_PATH", ROOT / "docs" / "tlog-s6-amendment.md")
-    monkeypatch.setattr(run, "DECODE_LIMIT_PATH", tmp_path / "absent-limit.json")
+    monkeypatch.setattr(pool, "DECODE_LIMIT_PATH", tmp_path / "absent-limit.json")
     with pytest.raises((FileNotFoundError, ValueError)):
         run.require_decode_preconditions()
 
 
 def test_the_committed_decode_limit_is_the_largest_rung_with_headroom(run):
-    limit = run.decode_limit()
+    limit = pool.decode_limit()
     assert [rung["seconds"] for rung in limit["rungs"]] == list(LADDER)
     assert limit["d_max_seconds"] in LADDER
     assert isinstance(limit["gpu"], str) and limit["gpu"]
@@ -251,10 +253,10 @@ def test_decode_limit_refuses_a_malformed_or_unmeasured_record(run, tmp_path):
                                 "rungs": [{"seconds": 60, "peak_gib": 1.0,
                                            "headroom_gib": 2.0}]}))
     with pytest.raises(ValueError):
-        run.decode_limit(path)
+        pool.decode_limit(path)
     path.write_text(json.dumps({"schema": "x", "gpu": "L4", "rungs": []}))
     with pytest.raises(ValueError):
-        run.decode_limit(path)
+        pool.decode_limit(path)
 
 
 # --- selection (r20 Q1/Q5) ---------------------------------------------------------------------
@@ -280,7 +282,7 @@ def test_the_look_selection_is_the_usable_look_rows_up_to_d_max(run):
     listed = [row for row in capped.over_d_max if row["role"] == "look"]
     assert _keys(listed) == sorted(_keys(over))
     assert capped.counts["look_over_d_max"] == LOOK_OVER_60
-    assert all(row["decode_mode"] == run.NOT_DECODED and row["label_source"] == "none"
+    assert all(row["decode_mode"] == pool.NOT_DECODED and row["label_source"] == "none"
                for row in listed)
     assert all(row["duration_s"] > 60.0 for row in listed)
 
@@ -317,12 +319,12 @@ def test_a_decode_record_requires_its_mode(run):
     fields = {"split": "clean", "shard_file": "clean-00000-of-00411", "row": 7,
               "audio_path": "100_10_1.flac", "audio_sha256": "a" * 64, "duration_s": 5.0,
               "spans": "بجح"}
-    record = run.decode_record(**fields, decode_mode=run.WHOLE_CLIP)
+    record = pool.decode_record(**fields, decode_mode=pool.WHOLE_CLIP)
     assert record["decode_mode"] == "whole_clip"
     assert record["audio_sha256"] == "a" * 64
-    assert run.NOT_DECODED == "not_decoded:over_d_max"
+    assert pool.NOT_DECODED == "not_decoded:over_d_max"
     with pytest.raises(TypeError):
-        run.decode_record(**fields)
+        pool.decode_record(**fields)
 
 
 def test_an_identification_record_requires_its_mode(ident, run):
@@ -338,9 +340,9 @@ def test_an_identification_record_requires_its_mode(ident, run):
     ])
     decoded = ident.identify("طظعغفقكل", database=database, filename_ayah="1:1",
                              bars={"b": 0.01, "b_u": 0.01})
-    record = ident.identification_record(decoded, decode_mode=run.WHOLE_CLIP)
+    record = ident.identification_record(decoded, decode_mode=pool.WHOLE_CLIP)
     assert set(record) == IDENTIFICATION_KEYS
-    assert record["decode_mode"] == run.WHOLE_CLIP
+    assert record["decode_mode"] == pool.WHOLE_CLIP
     with pytest.raises(TypeError):
         ident.identification_record(decoded)
 
@@ -354,13 +356,13 @@ def test_a_row_above_d_max_is_recorded_as_not_decoded_with_no_label(run, ident):
 
     database = ident.ReferenceDatabase.build([ayah(1, 1, ["بجح", "دذر"])])
     decoded = ident.identify("بجحدذر", database=database)
-    record = run.not_decoded_record(
+    record = pool.not_decoded_record(
         {"split": "clean", "shard_file": "clean-00000-of-00411", "row": 1,
          "audio_path": "100_10_1.flac", "audio_sha256": "a" * 64, "duration_s": 130.0,
          "filename_label": "1:1"},
         d_max=120.0)
-    assert set(record) == set(ident.identification_record(decoded, decode_mode=run.WHOLE_CLIP))
-    assert record["decode_mode"] == run.NOT_DECODED
+    assert set(record) == set(ident.identification_record(decoded, decode_mode=pool.WHOLE_CLIP))
+    assert record["decode_mode"] == pool.NOT_DECODED
     assert record["label_source"] == "none"
     assert record["assigned_label"] is None
 
@@ -376,12 +378,12 @@ def test_decode_shard_decodes_only_the_selected_rows(run):
     ]
     stream_rows = [{"audio": {"path": f"{index}.flac", "bytes": payload}}
                    for index, payload in payloads.items()]
-    records = run.decode_shard(decoder, "clean-00000-of-00411", wanted, d_max=60.0,
+    records = pool.decode_shard(decoder, "clean-00000-of-00411", wanted, d_max=60.0,
                                stream=_stream(stream_rows),
                                load_audio=lambda data: np.zeros(1_600, dtype=np.float32))
     assert _keys(records) == _keys([wanted[0], wanted[1]])
     assert decoder.spans == 2
-    assert all(record["decode_mode"] == run.WHOLE_CLIP for record in records)
+    assert all(record["decode_mode"] == pool.WHOLE_CLIP for record in records)
 
 
 def test_decode_shard_refuses_a_row_above_d_max_before_decoding(run):
@@ -392,7 +394,7 @@ def test_decode_shard_refuses_a_row_above_d_max_before_decoding(run):
                "duration_s": 61.0}]
     stream_rows = [{"audio": {"path": "b.flac", "bytes": payload}}]
     with pytest.raises(ValueError):
-        run.decode_shard(decoder, "clean-00000-of-00411", wanted, d_max=60.0,
+        pool.decode_shard(decoder, "clean-00000-of-00411", wanted, d_max=60.0,
                          stream=_stream(stream_rows),
                          load_audio=lambda data: np.zeros(1_600, dtype=np.float32))
     assert decoder.spans == 0
@@ -404,7 +406,7 @@ def test_decode_shard_checks_the_audio_checksum_before_decoding(run):
                "audio_path": "a.flac", "audio_sha256": "0" * 64, "duration_s": 5.0}]
     stream_rows = [{"audio": {"path": "a.flac", "bytes": b"other"}}]
     with pytest.raises(ValueError):
-        run.decode_shard(decoder, "clean-00000-of-00411", wanted, d_max=60.0,
+        pool.decode_shard(decoder, "clean-00000-of-00411", wanted, d_max=60.0,
                          stream=_stream(stream_rows),
                          load_audio=lambda data: np.zeros(1_600, dtype=np.float32))
     assert decoder.spans == 0
@@ -415,9 +417,9 @@ def test_decode_shard_checks_the_audio_checksum_before_decoding(run):
 
 def test_the_five_percent_rule_uses_the_wilson_upper_bound(run):
     def rows(non_recitation: int, total: int = 2_000):
-        return ([{"id_floor_ok": False, "decode_mode": run.WHOLE_CLIP}
+        return ([{"id_floor_ok": False, "decode_mode": pool.WHOLE_CLIP}
                  for _ in range(non_recitation)]
-                + [{"id_floor_ok": True, "decode_mode": run.WHOLE_CLIP}
+                + [{"id_floor_ok": True, "decode_mode": pool.WHOLE_CLIP}
                    for _ in range(total - non_recitation)])
 
     quiet = run.five_percent_rule(rows(0))
@@ -457,8 +459,8 @@ def test_results_are_reported_by_the_three_pre_registered_duration_bands(run):
 def test_a_row_that_meets_two_predicates_is_drawn_in_both_strata(run):
     """Architect r22: §4 sets no precedence, so each stratum draws from its own full set."""
     row = _candidate(run, split="clean", label_source="both", id_floor_ok=False)
-    assert run._matching_strata(row) == ("both", "non_recitation")
-    draw = run.audit_draw([row], sizes=dict.fromkeys(run.AUDIT_SIZES, 1))
+    assert audit._matching_strata(row) == ("both", "non_recitation")
+    draw = audit.audit_draw([row], sizes=dict.fromkeys(audit.AUDIT_SIZES, 1))
     assert len(draw.items) == 1
     (item,) = draw.items
     assert item["strata"] == ["both", "non_recitation"]
@@ -475,7 +477,7 @@ def test_the_non_recitation_draw_is_the_first_twenty_five_over_the_whole_flag(ru
     sizes = {name: 0 for name in STRATA}
     sizes["non_recitation"] = 25
     draw = _draw(run, rows, sizes=sizes)
-    expected = sorted(rows, key=lambda r: run._rank("audit-test", "non_recitation", *_key(r)))
+    expected = sorted(rows, key=lambda r: pool.rank("audit-test", "non_recitation", *_key(r)))
     assert draw.strata["non_recitation"]["eligible"] == 40
     assert _keyset(draw.items) == _keyset(expected[:25])
     assert all("non_recitation" in item["strata"] for item in draw.items)
@@ -484,16 +486,16 @@ def test_the_non_recitation_draw_is_the_first_twenty_five_over_the_whole_flag(ru
 def test_a_shared_row_is_served_once_and_scored_in_each_stratum(run):
     shared = _candidate(run, row=1, split="clean", label_source="both", id_floor_ok=False)
     passed = _candidate(run, row=2, split="clean", label_source="both", id_floor_ok=True)
-    draw = run.audit_draw([shared, passed], sizes=dict.fromkeys(run.AUDIT_SIZES, 2))
+    draw = audit.audit_draw([shared, passed], sizes=dict.fromkeys(audit.AUDIT_SIZES, 2))
     assert len(draw.items) == 2
     assert sum(1 for item in draw.items if item["row"] == 1) == 1
-    assert len(run.audit_payload(draw, texts={"2:1": "الْحَمْدُ"})["items"]) == 2
+    assert len(audit.audit_payload(draw, texts={"2:1": "الْحَمْدُ"})["items"]) == 2
 
-    views = run._stratum_views(draw.items)
-    verdicts = {run._item_key(shared): {"verdict": run.RIGHT},
-                run._item_key(passed): {"verdict": run.RIGHT}}
-    both = run._precision(views["both"], verdicts)
-    floor = run._precision(views["non_recitation"], verdicts)
+    views = audit._stratum_views(draw.items)
+    verdicts = {audit._item_key(shared): {"verdict": audit.RIGHT},
+                audit._item_key(passed): {"verdict": audit.RIGHT}}
+    both = audit._precision(views["both"], verdicts)
+    floor = audit._precision(views["non_recitation"], verdicts)
     assert (both["correct"], both["decided"]) == (2, 2)
     assert (floor["recitation"], floor["n"]) == (1, 1)
 
@@ -506,19 +508,19 @@ def test_an_identical_recitation_scores_the_class_of_the_label_under_test(run, i
     canonical = lambda label: ident.canonical_label(database, label)
     both = {"stratum": "both", "filename_label": "2:1", "assigned_label": "2:1",
             "class_label": "2:1"}
-    assert run.verdict_outcome(both, {"verdict": run.OTHER, "ayah": "2:2"},
+    assert audit.verdict_outcome(both, {"verdict": audit.OTHER, "ayah": "2:2"},
                                canonical=canonical)["correct"] is True
-    assert run.verdict_outcome(both, {"verdict": run.OTHER, "ayah": "2:2"})["correct"] is False
-    outcome = run.verdict_outcome({"stratum": "relabelled", "filename_label": "2:1",
+    assert audit.verdict_outcome(both, {"verdict": audit.OTHER, "ayah": "2:2"})["correct"] is False
+    outcome = audit.verdict_outcome({"stratum": "relabelled", "filename_label": "2:1",
                                    "assigned_label": "2:2", "class_label": "2:2"},
-                                  {"verdict": run.UNCLEAR})
+                                  {"verdict": audit.UNCLEAR})
     assert (outcome["label_under_test"], outcome["correct"]) == ("2:2", None)
 
 
 def test_the_frozen_audit_sizes_are_the_pre_registered_table(run):
-    assert run.AUDIT_SIZES == SIZES
-    assert sum(run.AUDIT_SIZES.values()) == 150
-    assert (run.RIGHT, run.OTHER, run.SILENCE, run.NOT_RECITATION, run.UNCLEAR) == (
+    assert audit.AUDIT_SIZES == SIZES
+    assert sum(audit.AUDIT_SIZES.values()) == 150
+    assert (audit.RIGHT, audit.OTHER, audit.SILENCE, audit.NOT_RECITATION, audit.UNCLEAR) == (
         "right ayah", "other ayah", "silence", "not recitation", "unclear")
 
 
@@ -553,7 +555,7 @@ def test_each_stratum_is_defined_by_the_r20_rule(run):
     mixed = dict(silence, exclusions=("silence", "duplicate"))
     over = _candidate(run, split="unclean", filename_label=None, label_source="none",
                       id_floor_ok=False, class_label=None, assigned_label=None,
-                      decode_mode=run.NOT_DECODED)
+                      decode_mode=pool.NOT_DECODED)
     sizes = {name: 1 for name in STRATA}
     draw = _draw(run, [mixed, over], sizes=sizes)
     assert draw.items == ()
@@ -657,34 +659,34 @@ def test_the_verdict_mapping_scores_the_label_under_test(run):
                       "assigned_label": None, "class_label": None}
     silence = {"stratum": "silence", "filename_label": None, "assigned_label": None,
                "class_label": None}
-    right = {"verdict": run.RIGHT}
-    other = lambda ayah: {"verdict": run.OTHER, "ayah": ayah}
-    not_recitation = {"verdict": run.NOT_RECITATION}
-    unclear = {"verdict": run.UNCLEAR}
+    right = {"verdict": audit.RIGHT}
+    other = lambda ayah: {"verdict": audit.OTHER, "ayah": ayah}
+    not_recitation = {"verdict": audit.NOT_RECITATION}
+    unclear = {"verdict": audit.UNCLEAR}
 
-    outcome = run.verdict_outcome(both, right)
+    outcome = audit.verdict_outcome(both, right)
     assert (outcome["label_under_test"], outcome["correct"]) == ("2:1", True)
-    assert run.verdict_outcome(relabelled, right)["label_under_test"] == "2:2"
-    assert run.verdict_outcome({"stratum": "unclean identified", "filename_label": None,
+    assert audit.verdict_outcome(relabelled, right)["label_under_test"] == "2:2"
+    assert audit.verdict_outcome({"stratum": "unclean identified", "filename_label": None,
                                 "assigned_label": "2:2", "class_label": "2:2"},
                                right)["label_under_test"] == "2:2"
 
-    outcome = run.verdict_outcome(below, right)
+    outcome = audit.verdict_outcome(below, right)
     assert (outcome["label_under_test"], outcome["correct"], outcome["best_correct"]) == (
         "2:1", True, False)
-    outcome = run.verdict_outcome(below, other("2:2"))
+    outcome = audit.verdict_outcome(below, other("2:2"))
     assert (outcome["correct"], outcome["best_correct"]) == (False, True)
-    outcome = run.verdict_outcome(below, other("3:1"))
+    outcome = audit.verdict_outcome(below, other("3:1"))
     assert (outcome["correct"], outcome["best_correct"]) == (False, False)
 
-    outcome = run.verdict_outcome(non_recitation, not_recitation)
+    outcome = audit.verdict_outcome(non_recitation, not_recitation)
     assert (outcome["label_under_test"], outcome["correct"], outcome["recitation"]) == (
         None, True, False)
-    outcome = run.verdict_outcome(non_recitation, right)
+    outcome = audit.verdict_outcome(non_recitation, right)
     assert (outcome["correct"], outcome["recitation"]) == (False, True)
-    assert run.verdict_outcome(non_recitation, unclear)["correct"] is None
-    assert run.verdict_outcome(silence, {"verdict": run.SILENCE})["correct"] is True
-    outcome = run.verdict_outcome(silence, right)
+    assert audit.verdict_outcome(non_recitation, unclear)["correct"] is None
+    assert audit.verdict_outcome(silence, {"verdict": audit.SILENCE})["correct"] is True
+    outcome = audit.verdict_outcome(silence, right)
     assert (outcome["correct"], outcome["recitation"]) == (False, True)
 
 
@@ -694,7 +696,7 @@ def test_the_served_payload_hides_the_stratum_and_the_attribution(run):
         _candidate(run, row=9_001, label_source="both"),
     ]
     draw = _draw(run, candidates)
-    payload = run.audit_payload(draw, texts={"2:1": "الْحَمْدُ", "2:2": "رَبِّ"})
+    payload = audit.audit_payload(draw, texts={"2:1": "الْحَمْدُ", "2:2": "رَبِّ"})
     assert payload["progress"] == {"answered": 0, "total": len(draw.items)}
     for item in payload["items"]:
         assert "stratum" not in item
@@ -717,16 +719,16 @@ def test_a_repeated_ayah_is_not_a_below_bar_disagreement(run, ident):
     assert ident.canonical_label(database, "26:190") == ident.canonical_label(database, "26:8")
     repeated = _candidate(run, row=1, filename_label="26:190", class_label="26:8",
                           label_source="both", id_floor_ok=True, delta=0.0)
-    assert "below-bar disagreement" not in run._matching_strata(repeated)
+    assert "below-bar disagreement" not in audit._matching_strata(repeated)
     genuine = _candidate(run, row=2, filename_label="37:28", class_label="37:27",
                          label_source="filename", id_floor_ok=True, delta=0.0)
-    assert "below-bar disagreement" in run._matching_strata(genuine)
+    assert "below-bar disagreement" in audit._matching_strata(genuine)
 
 
 def test_the_below_bar_frame_holds_only_class_disagreements(run, ident):
     database = ident.load_references()
-    frame = [row for row in run.audit_candidates()
-             if "below-bar disagreement" in run._matching_strata(row)]
+    frame = [row for row in audit.audit_candidates()
+             if "below-bar disagreement" in audit._matching_strata(row)]
     assert len(frame) == 756
     equal = [row for row in frame
              if ident.canonical_label(database, row["class_label"])
@@ -735,10 +737,10 @@ def test_the_below_bar_frame_holds_only_class_disagreements(run, ident):
 
 
 def test_the_committed_worklist_marks_the_frozen_floor_sample(run):
-    prefix = {run._item_key(row) for row in run._floor_prefix(run.IDENT_DIR)}
-    worklist = run.read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
-    assert len(prefix) == run.AUDIT_SIZES["non_recitation"] == 25
-    assert {run._item_key(row) for row in worklist if row["floor_sample"]} == prefix
+    prefix = {audit._item_key(row) for row in audit._floor_prefix(run.IDENT_DIR)}
+    worklist = audit.read_jsonl(audit.AUDIT_DIR / "worklist.jsonl")
+    assert len(prefix) == audit.AUDIT_SIZES["non_recitation"] == 25
+    assert {audit._item_key(row) for row in worklist if row["floor_sample"]} == prefix
 
 
 def test_an_unclear_below_bar_answer_is_not_a_best_class_miss(run):
@@ -746,20 +748,20 @@ def test_an_unclear_below_bar_answer_is_not_a_best_class_miss(run):
     rows = [{"stratum": "below-bar disagreement", "split": "clean",
              "shard_file": "clean-00001-of-00411", "row": number, "filename_label": "2:1",
              "class_label": "2:2"} for number in range(15)]
-    verdicts = {run._item_key(row): {"verdict": run.OTHER, "ayah": "2:2"}
+    verdicts = {audit._item_key(row): {"verdict": audit.OTHER, "ayah": "2:2"}
                 for row in rows[:14]}
-    verdicts[run._item_key(rows[14])] = {"verdict": run.UNCLEAR}
-    stats = run._precision(rows, verdicts)
+    verdicts[audit._item_key(rows[14])] = {"verdict": audit.UNCLEAR}
+    stats = audit._precision(rows, verdicts)
     assert (stats["n"], stats["decided"], stats["best_correct"]) == (15, 14, 14)
-    line = run._best_class_line(stats)
+    line = audit._best_class_line(stats)
     assert "**14 of 14 decided**" in line
     assert "(15 answered" in line
     assert "78.47%–100.00%" in line
 
 
 def test_the_committed_audit_doc_is_a_fresh_render(run):
-    assert run.DOC_PATH.read_text(encoding="utf-8") == run.render_audit()
-    assert run.render_audit() == run.render_audit()
+    assert audit.DOC_PATH.read_text(encoding="utf-8") == audit.render_audit()
+    assert audit.render_audit() == audit.render_audit()
 
 
 def test_the_committed_train_sample_meta_records_provenance_and_the_five_percent_rule(run):
@@ -768,14 +770,14 @@ def test_the_committed_train_sample_meta_records_provenance_and_the_five_percent
     assert meta["revision"] == "01a1ef9fbe40d144ef845101e89ff924aed3fef5"
     assert re.fullmatch(r"[0-9a-f]{40}", meta["code_sha"])
     assert meta["calibration_sha256"] == _sha256(CALIBRATION.read_bytes())
-    assert meta["decode_limit_sha256"] == _sha256(run.DECODE_LIMIT_PATH.read_bytes())
+    assert meta["decode_limit_sha256"] == _sha256(pool.DECODE_LIMIT_PATH.read_bytes())
     assert meta["amendment_sha256"] == _sha256(run.AMENDMENT_PATH.read_bytes())
 
     selection = meta["selection"]
     assert selection["salt"] == run.SALT
     assert selection["train_rows"] == TRAIN_ROWS
     assert selection["train_selected"] == 2_000
-    limit = run.decode_limit()["d_max_seconds"]
+    limit = pool.decode_limit()["d_max_seconds"]
     assert selection["train_over_d_max"] == sum(
         1 for row in _pool() if row["role"] == "train" and row["duration_s"] > limit)
     rule = meta["five_percent_rule"]
@@ -786,17 +788,17 @@ def test_the_committed_train_sample_meta_records_provenance_and_the_five_percent
 
 def test_the_non_recitation_rule_reads_the_floor_verdict(run):
     """Review I4.3: one public definition, and a row above D_max is neither flagged nor assigned."""
-    look = run.read_ident_tree("look", ident_dir=run.IDENT_DIR)
+    look = pool.read_ident_tree("look", ident_dir=run.IDENT_DIR)
     assert len(look) == LOOK_ROWS
-    assert len(run.read_ident_tree("train_sample", ident_dir=run.IDENT_DIR)) == 2_000
-    undecoded = [row for row in look if row["decode_mode"] == run.NOT_DECODED]
+    assert len(pool.read_ident_tree("train_sample", ident_dir=run.IDENT_DIR)) == 2_000
+    undecoded = [row for row in look if row["decode_mode"] == pool.NOT_DECODED]
     assert len(undecoded) == 7
     for row in undecoded:
         assert row["id_floor_ok"] is None
-        assert run.is_non_recitation(row) is False
+        assert pool.is_non_recitation(row) is False
         assert row["label_source"] == "none" and row["assigned_label"] is None
-    assert run.is_non_recitation({"id_floor_ok": False}) is True
-    assert run.is_non_recitation({"id_floor_ok": True}) is False
+    assert pool.is_non_recitation({"id_floor_ok": False}) is True
+    assert pool.is_non_recitation({"id_floor_ok": True}) is False
     assert "non_recitation" not in look[0]
 
 
@@ -806,12 +808,12 @@ def test_the_committed_trees_are_one_file_per_population_and_split(run):
         assert (run.IDENT_DIR / "look" / f"{split}.jsonl.gz").is_file()
     assert (run.DECODES_DIR / "train_sample.jsonl.gz").is_file()
     assert (run.IDENT_DIR / "train_sample.jsonl.gz").is_file()
-    assert (run.AUDIT_DIR / "worklist.jsonl").is_file()
-    assert (run.AUDIT_DIR / "verdicts.jsonl").is_file()
+    assert (audit.AUDIT_DIR / "worklist.jsonl").is_file()
+    assert (audit.AUDIT_DIR / "verdicts.jsonl").is_file()
 
 
 def test_the_look_decodes_and_identifications_cover_the_selected_population(run):
-    selection = run.select(d_max=run.decode_limit()["d_max_seconds"])
+    selection = run.select(d_max=pool.decode_limit()["d_max_seconds"])
     expected = _keyset(selection.look)
     assert len(expected) == LOOK_ROWS - selection.counts["look_over_d_max"]
     decoded: set[tuple[str, str, int]] = set()
@@ -832,7 +834,7 @@ def test_no_confirm_row_is_in_any_committed_tree(run):
     for path in trees:
         for row in read_jsonl_gz(path):
             assert row["split"] in ("clean", "unclean")
-    for row in run.read_jsonl(run.AUDIT_DIR / "worklist.jsonl"):
+    for row in audit.read_jsonl(audit.AUDIT_DIR / "worklist.jsonl"):
         assert not str(row["role"]).startswith("confirm")
         assert row["split"] in ("clean", "unclean")
 
@@ -853,7 +855,7 @@ def test_each_decode_meta_census_counts_its_own_tree(run):
 
 
 def test_the_committed_sample_trees_are_the_salted_draw(run):
-    selection = run.select(d_max=run.decode_limit()["d_max_seconds"])
+    selection = run.select(d_max=pool.decode_limit()["d_max_seconds"])
     expected = _keyset(selection.train_sample)
     assert len(expected) == 2_000
     for path in (run.DECODES_DIR / "train_sample.jsonl.gz",
@@ -862,8 +864,8 @@ def test_the_committed_sample_trees_are_the_salted_draw(run):
 
 
 def test_the_committed_worklist_is_the_draw_it_was_staged_from(run):
-    worklist = run.read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
-    draw = run.audit_draw(run.audit_candidates())
+    worklist = audit.read_jsonl(audit.AUDIT_DIR / "worklist.jsonl")
+    draw = audit.audit_draw(audit.audit_candidates())
     assert len(worklist) == len(draw.items)
     assert len({_key(row) for row in worklist}) == len(worklist)
     assert {_key(row): row["strata"] for row in worklist} == {

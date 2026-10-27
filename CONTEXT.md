@@ -402,6 +402,37 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
   and assignment only: a `non_recitation` row is never `identified` — though a matching filename
   class is still `both` — and an unlabelled row below the floor stays `none`.
 
+**Decode mode**
+: `whole_clip` or `not_decoded:over_d_max`, required on every decode and every identification row
+  (`identification_record(..., decode_mode=)`), so no tree can mix modes silently.
+
+**D_max**
+: The whole-clip decode limit, measured on seeded synthetic audio on the GPU box before any tlog
+  decode and committed in `tlog/ident/decode_limit.json`: the largest ladder rung keeping 1.5 GiB
+  of headroom (90 s on the S6 box). A row longer than D_max is `not_decoded:over_d_max` with
+  `label_source = none` — not decoded, not identified, in no audit stratum, assigned nothing.
+: _Avoid_: max duration, clip cap (D_max bounds the decode, not the clip's role)
+
+**Audit stratum**
+: One pre-registered slice of the S6 listening audit — `both`, `relabelled`,
+  `non_recitation`, `silence`, `unclean identified`, `below-bar disagreement` — each drawn by
+  salted rank from its own eligible rows (`docs/tlog-s6-amendment.md` §4). A row satisfying two
+  predicates is drawn in both, heard once and scored in each
+  (`docs/tlog-s6-amendment-note-overlap.md`).
+: _Avoid_: bucket, category, bin (that is the retired decode-length bins)
+
+**§9 sample**
+: The first 25 rows by the frozen salt's rank among every decoded row failing the floor (2,439),
+  whatever other stratum they belong to; the worklist marks them `floor_sample`. Three or more
+  heard as real recitation suspend the 5% rule's consequence pending a dated floor revision the
+  owner decides.
+
+**Verdict referent**
+: The label a listening verdict is scored against, per stratum: `both` the shared label, the
+  relabel strata the assigned label, `below-bar disagreement` the filename label (the best class
+  is reported too), `non_recitation` and `silence` recitation itself. An `unclear` verdict is
+  undecided, never a wrong ayah.
+
 ## Re-read Corpus
 
 The vocabulary of Muraja ADR-0016, which mines the Tadabur clips the ADR-0001 gate **rejects**

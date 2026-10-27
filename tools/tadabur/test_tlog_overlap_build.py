@@ -210,7 +210,7 @@ def offline(tmp_path, monkeypatch):
     shas[checksum_hit] = _ext_sha("retasy", members["retasy"][0])
     facts = [{"schema_version": 1, "split": SPLIT, "shard_file": SHARD, "row": position,
               "audio_path": row["audio_path"], "audio_sha256": shas[position],
-              "codec_ok": True, "speech_s": 3.0, "speech_ratio": 0.9}
+              "codec_ok": True, "duration_s": 12.0, "speech_s": 3.0, "speech_ratio": 0.9}
              for position, row in enumerate(index_rows)]
     write_shard(facts, pass1 / SPLIT / ROWS)
     (pass1 / "meta.json").write_text("{}\n", encoding="utf-8")

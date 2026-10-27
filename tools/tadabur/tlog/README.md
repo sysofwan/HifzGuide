@@ -361,20 +361,18 @@ the re-measured 99.63%/99.50%, the Quran-text guard does not match Urdu/Persian 
 
 **The retired bins (history).** The binned floors stay in the report as history; no verdict reads
 them. They are keyed on the **decode's** character length, and the look half's longest decode is
-138 characters, so `161-` never had a floor. The pool's pass-1 `speech_s` is its only committed
-length fact (the frozen row does not carry the clip's `duration_s`), and it is VAD speech
-duration, **not** the decode's character length: characters per second vary between clips, so a
-short-speech row can still decode past 160 characters. The page's "The pool's VAD speech
-duration (indicative)" section therefore reports the speech histogram with no claim about a
-decode's length; S7's decodes measure the real lengths (#192).
+138 characters, so `161-` never had a floor. Neither committed pool fact is the decode's length:
+`iter_frozen_rows` joins the clip's `duration_s` and the pass-1 VAD `speech_s`, and characters
+per second vary between clips, so a short-speech row can still decode past 160 characters. The
+page's "The pool's VAD speech duration (indicative)" section therefore reports the speech
+histogram with no claim about a decode's length; S7's decodes measure the real lengths (#192).
 
 **Decode mode.** The frozen rule fixes a whole-clip greedy decode, and both the look decodes and
 the confirmation sets are whole-clip (the Freesound arm repeats the 445 pool's `stream_b0` so it
-confirms the same condition). The pool's long rows cannot be decoded whole within the VRAM
-budget (S5's Freesound pool already needed `stream_b0`). `identify` takes a bare string, so S7
-must either obtain an amendment of the decode mode or record which mode produced each row and
-report the rule's pass rate separately for the whole-clip and streamed populations — see the
-page's "For S7" section.
+confirms the same condition). S6's amendment decided it for the pool: whole-clip up to a measured
+`D_max`, with a row above it recorded as `not_decoded:over_d_max` and no label (see the S6
+section below). `identify` takes a bare string, so every committed row also carries which mode
+produced it and no tree can mix modes silently.
 
 Consumer contract: `identification_record()` fixes the committed row's field names and
 `load_calibration()` / `load_identifier()` the consumer gates.
@@ -385,6 +383,26 @@ Consumer contract: `identification_record()` fixes the committed row's field nam
 pre-registration plus `docs/tlog-s6-amendment.md` (Q1 decode limit, Q3 strata, Q4 verdict
 referent; it also governs S7). The amendment and the measured
 `ident/decode_limit.json` are committed **before** the first tlog decode.
+
+The code is three modules, so S7 imports only what it needs:
+
+- `tadabur.tlog_pool` — the pool pipeline: `select_rows(rows, roles=..., d_max=...)`,
+  `decode_rows(rows, d_max=..., cache_dir=..., scratch=..., already=...)`,
+  `identify_rows(rows, database=..., bars=..., k=...)`, `tree_provenance(pull_request=...)`,
+  `read_ident_tree(population)`, `is_non_recitation(row)`, `decode_limit()` and the D_max
+  measurement. Generic; it knows neither S6's population nor the audit.
+- `tadabur.tlog_ident_run` — S6's population (`select`), the salted 2,000-row sample, the
+  duration bands, the 5% rule and the `limit`/`decode`/`identify` CLI.
+- `tadabur.tlog_audit` — S6's audit only: the strata draw, `stage`, verdict scoring and
+  `render_audit`, with the `audit`/`stage`/`report` CLI.
+
+**The S7 reuse rule.** Reuse S6's committed decodes verbatim: pass them as
+`decode_rows(..., already=...)`, never re-decode a row S6 decoded. A second GPU pass need not
+reproduce the first bit for bit, and the pool tree must agree with the rows the audit heard.
+Write one tree per population and read it back by name with `read_ident_tree`;
+`identification_record()` fixes the row's fields, so every row names its `decode_mode`,
+`label_source` and `assigned_label`. Every cited commit is recorded with its PR number and
+`refs/pull/<N>/head` (`tlog_index.provenance`), because the squash merge drops branch commits.
 
 - **Decode mode:** whole-clip only. D_max is measured on seeded synthetic audio on the GPU box
   (ladder 60–300 s, production settings) and is the largest rung keeping 1.5 GiB of headroom.
@@ -398,12 +416,13 @@ referent; it also governs S7). The amendment and the measured
   bound over the sample's `non_recitation` rate is recorded in
   `ident/train_sample.meta.json`; above 5%, the follow-up is a new overlay commit, not S6 work.
 - **Audit:** the frozen strata, drawn by salted rank from look and the sample only. A stratum
-  short of its target takes all its rows, and the freed slots go to `both`. The page hides the
-  stratum and shows the candidate ayat unattributed; the server derives
-  right/other ayah from the ayah the owner picks. The page reads the Uthmani text from
-  `quran.db` (a gitignored release asset copied into the scratch root) and refuses to start if a
-  candidate label has no text. `report` renders `docs/tlog-audit.md` from
-  the committed worklist and verdicts and deletes the staged audio.
+  short of its target takes all its rows, and the freed slots go to `both`. A row that satisfies
+  two predicates is drawn in both and served once; the §9 sample is the first 25 floor-failing
+  rows over the whole flag, marked `floor_sample` in the worklist. The page hides the stratum and
+  shows the candidate ayat unattributed; the server derives right/other ayah from the ayah the
+  owner picks. The page reads the Uthmani text from `quran.db` (a gitignored release asset copied
+  into the scratch root) and refuses to start if a candidate label has no text. `report` renders
+  `docs/tlog-audit.md` from the committed worklist and verdicts and deletes the staged audio.
 
 `decode_limit.json`, the six trees and the two audit files are the slice's committed outputs.
 No tlog audio is committed.
@@ -411,10 +430,10 @@ No tlog audio is committed.
 ```bash
 # GPU box, under /root/scratch/gpu.lock; `scripts/issue-191-ident.sh` drives these detached.
 python -m tadabur.tlog_ident_run limit --out tools/tadabur/tlog/ident/decode_limit.json
-python -m tadabur.tlog_ident_run decode --cache-dir /root/scratch/tlog/s6/cache
-python -m tadabur.tlog_ident_run identify       # after margin_approval.json is on main
-python -m tadabur.tlog_ident_run audit
-python -m tadabur.tlog_ident_run stage --draw /root/scratch/tlog/s6/draw.jsonl \
+python -m tadabur.tlog_ident_run decode --cache-dir /root/scratch/tlog/s6/cache --pr 207
+python -m tadabur.tlog_ident_run identify --pr 207   # after margin_approval.json is on main
+python -m tadabur.tlog_audit audit
+python -m tadabur.tlog_audit stage --draw /root/scratch/tlog/s6/draw.jsonl \
     --audio-dir /root/scratch/tlog/s6/audio --cache-dir /root/scratch/tlog/s6/cache
 python -m tadabur.tlog_audit_ui --worklist tools/tadabur/tlog/audit/worklist.jsonl \
     --audio-dir /root/scratch/tlog/s6/audio \
@@ -422,5 +441,5 @@ python -m tadabur.tlog_audit_ui --worklist tools/tadabur/tlog/audit/worklist.jso
     --quran-db /root/scratch/tlog/s6/data/quran.db --host 0.0.0.0 --port 8000
 # after a sitting, `scripts/issue-191-ident.sh ui fetch DIR` pulls the verdicts; commit them at
 # tools/tadabur/tlog/audit/verdicts.jsonl, then `report` renders the doc from the committed copy.
-python -m tadabur.tlog_ident_run report --audio-dir /root/scratch/tlog/s6/audio
+python -m tadabur.tlog_audit report --audio-dir /root/scratch/tlog/s6/audio
 ```

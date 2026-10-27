@@ -1,4 +1,4 @@
-"""The S6 audit draw's item shape (``tadabur.tlog_ident_run.audit_draw``).
+"""The S6 audit draw's item shape (``tadabur.tlog_audit.audit_draw``).
 
 ``stage`` copies a fixed key set off every drawn item to build the worklist the page and the
 report read, so a key present on only one stratum crashes the staging run after it has already
@@ -7,7 +7,7 @@ downloaded shards. Every drawn item carries the whole set, ``blocking_reason`` i
 
 from __future__ import annotations
 
-from . import tlog_ident_run as run
+from . import tlog_audit as run
 
 #: The keys ``stage`` reads off a drawn item.
 WORKLIST_KEYS = {"population", "split", "shard_file", "row", "role", "audio_path",

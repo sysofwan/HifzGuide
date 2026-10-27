@@ -15,7 +15,7 @@ import threading
 import pytest
 
 from . import tlog_ident as ident
-from . import tlog_ident_run as run
+from . import tlog_audit as run
 from .tlog_audit_ui import Session, StaleAnswer, stored_answer
 
 #: 2:1 and 2:2 are the same recitation (one text class); 3:1 is a different one.

@@ -1,4 +1,4 @@
-"""The generated audit report's refusals and its §9 outcome (``tlog_ident_run.render_audit``).
+"""The generated audit report's refusals and its §9 outcome (``tlog_audit.render_audit``).
 
 A report rendered from zero verdicts would print "trigger fired: False" from no evidence, and a
 verdict file from another worklist would silently drop rows. Both are refused. A partly answered
@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from . import tlog_ident_run as run
+from . import tlog_audit as run
 
 
 def _row(row: int, stratum: str, *, split: str = "clean", **fields) -> dict:
@@ -119,7 +119,8 @@ def test_the_report_states_the_fallback_never_triggered(tmp_path):
     document = _render(tmp_path, rows, [(rows[0], {"verdict": run.RIGHT, "ayah": "2:1"})])
     assert run.FLOOR_REDRAW_COMMIT == "20e371c"
     assert ("Fallback not triggered: the full-frame redraw went live before any verdict "
-            "(`20e371c`).") in document
+            "(`20e371c`, PR #207, `refs/pull/207/head`).") in document
+    assert "Every cited commit resolves under `refs/pull/207/head` (PR #207)" in document
 
 
 def test_the_floor_sampling_frame_is_disclosed(tmp_path):

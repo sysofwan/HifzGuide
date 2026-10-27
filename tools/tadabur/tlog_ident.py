@@ -1899,9 +1899,10 @@ def _bar(value: float | None) -> str:
 def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
     """The page's pool section: an indicative VAD speech histogram, not decode-bin membership.
 
-    The pool's decode lengths do not exist until S7 runs, and `speech_s` is not one of them:
-    characters per second vary between clips, so speech seconds say nothing certain about a
-    row's floor bin (a short row can still decode past 160 characters).
+    The whole pool's decode lengths arrive with S7 (#192). S6 decoded the look half and a
+    2,000-row sample, and its amendment fixed the mode, not the pool's lengths; `speech_s` is
+    not a length either: characters per second vary between clips, so speech seconds say
+    nothing certain about a row's floor bin (a short row can still decode past 160 characters).
     """
     pool = report["pool_lengths"]
     usable = pool["usable"]
@@ -1911,9 +1912,11 @@ def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
 
     return [
         "The floors are keyed on the **decode's** character length. The look half's longest "
-        "decode is 138 characters, so none reached `161-` and that bin has no floor. The pool's "
-        "decode lengths do not exist until S7 runs. Its only committed length fact is the "
-        "pass-1 VAD speech seconds (`speech_s`; the frozen row does not carry the clip's "
+        "decode is 138 characters, so none reached `161-` and that bin has no floor. The whole "
+        "pool's decode lengths do not exist until S7 runs (#192): the S6 amendment decided the "
+        "mode (whole-clip up to a measured `D_max`, rows above it recorded as "
+        "`not_decoded:over_d_max`), not the pool's lengths. The only committed length fact for "
+        "the pool is the pass-1 VAD speech seconds (`speech_s`, joined to the frozen row as "
         "`duration_s`), which is **not** the decode's length: characters per second vary "
         "between clips, so a row with little speech can still decode past 160 characters. Read "
         "this as an indicative distribution of speech seconds, with no inference about a row's "
@@ -2166,16 +2169,17 @@ def render(report: Mapping[str, Any]) -> str:
         "SHA-256 and counts, the floor rule and the `L_min`/`DELTA` the pinned document states, "
         "and the edlib version.",
         f"- **Decode mode.** The frozen rule fixes a whole-clip greedy decode "
-        f"(`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are "
-        f"whole-clip. The pool is not: "
-        f"{report['pool_lengths']['over_60_s']:,} usable rows carry over 60 s of speech, the "
-        f"longest {report['pool_lengths']['longest_s']:,.0f} s, which a whole pass cannot "
-        f"decode within "
-        f"the VRAM budget (S5's Freesound pool already needed `{report['decodes']['noise']['mode']}`, "
-        f"as its own row above says). `identify` takes a bare string and cannot tell the modes "
-        f"apart. S7 must either obtain an amendment of the decode mode or record `decode_mode` "
-        f"beside every identification and report the whole-clip and streamed populations "
-        f"separately; S5 decides neither.",
+        f"(`docs/tlog-holdout-preregistration.md`), and the S6 amendment (#191) decided it for "
+        f"the pool: every row is decoded whole-clip when its pass-1 `duration_s` is at most a "
+        f"measured `D_max` (committed in `tlog/ident/decode_limit.json`), and a row above it is "
+        f"written as `not_decoded:over_d_max` with `label_source = \"none\"` — never decoded, "
+        f"assigned or relabelled. `decode_mode` is required on every decode and identification "
+        f"row (`identification_record(..., decode_mode=)`), so no tree can mix modes silently. "
+        f"The pool carries {report['pool_lengths']['over_60_s']:,} usable rows of over 60 s of "
+        f"speech, the longest {report['pool_lengths']['longest_s']:,.0f} s, so S6 measured the "
+        f"limit on synthetic audio before decoding rather than guessing it; S7 reuses S6's "
+        f"decoded rows verbatim (`tadabur.tlog_pool.decode_rows(..., already=...)`) and decodes "
+        f"the rest the same way.",
         "",
         "## Floor status",
         "",

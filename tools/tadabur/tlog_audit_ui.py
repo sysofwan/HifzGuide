@@ -30,7 +30,7 @@ from urllib.parse import unquote, urlparse
 
 from training.tashkeel_eval import write_text_atomically
 
-from . import tlog_ident_run as run
+from . import tlog_audit as audit
 from .audit_http import AuditHandler, serve
 from .audit_ui import DEFAULT_QURAN_DB, uthmani_index
 from .tlog_ident import ReferenceDatabase, canonical_label, load_references
@@ -40,7 +40,7 @@ INVALID_AYAH = "another ayah must be a surah:ayah the mushaf has, such as 2:255"
 
 
 def _sha_key(row: Mapping[str, object]) -> str:
-    return run._item_key(row)
+    return audit._item_key(row)
 
 
 def stored_answer(verdict: Mapping[str, object] | None) -> object:
@@ -72,7 +72,7 @@ class Session:
         self._by_key = {_sha_key(row): row for row in self.rows}
         if len(self._by_key) != len(self.rows):
             raise ValueError("two worklist rows share a page key")
-        self._under_test = {_sha_key(row): self.canonical(run.label_under_test(row))
+        self._under_test = {_sha_key(row): self.canonical(audit.label_under_test(row))
                             for row in self.rows}
 
     def canonical(self, label: object) -> str | None:
@@ -103,12 +103,12 @@ class Session:
                              "point --quran-db at a checkout's data/quran.db")
         return cls(rows=rows, audio_dir=Path(audio_dir), verdicts_path=Path(verdicts),
                    texts=texts, database=database,
-                   verdicts=run.read_verdicts(Path(verdicts)))
+                   verdicts=audit.read_verdicts(Path(verdicts)))
 
     def payload(self) -> dict:
         """The served payload, with each item's audio URL and nothing identifying."""
-        draw = run.AuditDraw(items=tuple(self.rows), strata={})
-        payload = run.audit_payload(draw, texts=self.texts, verdicts=self.verdicts,
+        draw = audit.AuditDraw(items=tuple(self.rows), strata={})
+        payload = audit.audit_payload(draw, texts=self.texts, verdicts=self.verdicts,
                                     canonical=self.canonical)
         for item in payload["items"]:
             row = self._by_key[item["key"]]
@@ -135,8 +135,8 @@ class Session:
             reference = self.canonical(heard_ayah)
             if reference is None:
                 raise ValueError(INVALID_AYAH)
-            verdict = run.RIGHT if reference == self._under_test[key] else run.OTHER
-        elif choice in (run.SILENCE, run.NOT_RECITATION, run.UNCLEAR):
+            verdict = audit.RIGHT if reference == self._under_test[key] else audit.OTHER
+        elif choice in (audit.SILENCE, audit.NOT_RECITATION, audit.UNCLEAR):
             verdict = choice
         else:
             raise ValueError(f"{choice!r} is not a page choice")

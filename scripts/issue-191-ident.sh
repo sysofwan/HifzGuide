@@ -75,17 +75,17 @@ command_for() {
     limit)
       echo "flock /root/scratch/gpu.lock python -u -m tadabur.tlog_ident_run limit --out '$REPO/$IDENT/decode_limit.json'" ;;
     decode)
-      echo "flock /root/scratch/gpu.lock python -u -m tadabur.tlog_ident_run decode --cache-dir '$CACHE' --out-dir '$REPO/$OUT'" ;;
+      echo "flock /root/scratch/gpu.lock python -u -m tadabur.tlog_ident_run decode --cache-dir '$CACHE' --out-dir '$REPO/$OUT' --pr 207" ;;
     identify)
-      echo "python -u -m tadabur.tlog_ident_run identify --decodes-dir '$REPO/$OUT' --out-dir '$REPO/$IDENT'" ;;
+      echo "python -u -m tadabur.tlog_ident_run identify --decodes-dir '$REPO/$OUT' --out-dir '$REPO/$IDENT' --pr 207" ;;
     audit)
-      echo "python -u -m tadabur.tlog_ident_run audit && cp '$REPO/tools/tadabur/tlog/audit/draw.jsonl' '$ROOT/draw.jsonl'" ;;
+      echo "python -u -m tadabur.tlog_audit audit && cp '$REPO/tools/tadabur/tlog/audit/draw.jsonl' '$ROOT/draw.jsonl'" ;;
     stage)
-      echo "python -u -m tadabur.tlog_ident_run stage --draw '$ROOT/draw.jsonl' --audio-dir '$AUDIO' --cache-dir '$CACHE'" ;;
+      echo "python -u -m tadabur.tlog_audit stage --draw '$ROOT/draw.jsonl' --audio-dir '$AUDIO' --cache-dir '$CACHE'" ;;
     ui)
       echo "python -u -m tadabur.tlog_audit_ui --worklist '$REPO/tools/tadabur/tlog/audit/worklist.jsonl' --audio-dir '$AUDIO' --verdicts '$VERDICTS' --quran-db '$QURAN_DB' --port 8000 --host 0.0.0.0" ;;
     report)
-      echo "python -u -m tadabur.tlog_ident_run report --audio-dir '$AUDIO'" ;;
+      echo "python -u -m tadabur.tlog_audit report --audio-dir '$AUDIO'" ;;
   esac
 }
 

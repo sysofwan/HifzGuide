@@ -1362,7 +1362,11 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
         "source": "tadabur.tlog_overlap.iter_pool_rows", "usable": usable}
 
     assert ident.DOC_PATH.is_file()
-    assert all(path.name.endswith(".base.json") for path in ident.DECODES_DIR.iterdir())
+    # S6's per-population trees (r20 Q2) share this directory: gzipped JSONL, one meta per tree,
+    # and the look tree's own directory. The calibration's decode stores stay *.base.json.
+    suffixes = (".base.json", ".meta.json", ".jsonl.gz")
+    assert all(path.is_dir() or path.name.endswith(suffixes)
+               for path in ident.DECODES_DIR.iterdir())
     for path in (ident.REAL_MISTAKE_DECODES_PATH, ident.NOISE_DECODES_PATH):
         store = ident.load_decode_store(path)
         assert store["identity"] == {"model_ref": ident.BASE_MODEL,

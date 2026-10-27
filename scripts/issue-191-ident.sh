@@ -10,6 +10,7 @@
 #   scripts/issue-191-ident.sh decode fetch DIR
 #   scripts/issue-191-ident.sh identify         # after the margin approval is on main
 #   scripts/issue-191-ident.sh audit            # draw the stratified worklist
+#   scripts/issue-191-ident.sh supplement       # only if verdicts predate the correction
 #   scripts/issue-191-ident.sh stage            # stage the drawn clips for listening
 #   scripts/issue-191-ident.sh ui launch        # serve the listening page on 0.0.0.0:8000
 #   scripts/issue-191-ident.sh ui fetch DIR     # pull the owner's verdicts after a sitting
@@ -45,10 +46,11 @@ case "$job" in
   decode)    NAME=decode ;;
   identify)  NAME=identify ;;
   audit)     NAME=audit ;;
+  supplement) NAME=supplement ;;
   stage)     NAME=stage ;;
   ui)        NAME=ui ;;
   report)    NAME=report ;;
-  *) echo "usage: $0 limit|decode|identify|audit|stage|ui|report [launch|check|fetch DIR]" >&2
+  *) echo "usage: $0 limit|decode|identify|audit|supplement|stage|ui|report [launch|check|fetch DIR]" >&2
      exit 2 ;;
 esac
 
@@ -80,6 +82,8 @@ command_for() {
       echo "python -u -m tadabur.tlog_ident_run identify --decodes-dir '$REPO/$OUT' --out-dir '$REPO/$IDENT'" ;;
     audit)
       echo "python -u -m tadabur.tlog_ident_run audit && cp '$REPO/tools/tadabur/tlog/audit/draw.jsonl' '$ROOT/draw.jsonl'" ;;
+    supplement)
+      echo "python -u -m tadabur.tlog_ident_run supplement" ;;
     stage)
       echo "python -u -m tadabur.tlog_ident_run stage --draw '$ROOT/draw.jsonl' --audio-dir '$AUDIO' --cache-dir '$CACHE'" ;;
     ui)
@@ -133,7 +137,7 @@ fetch() {
     limit) rsync -a "$HOST:$REPO/$IDENT/decode_limit.json" "$destination/" ;;
     decode) rsync -a "$HOST:$REPO/$OUT/" "$destination/" ;;
     identify) rsync -a "$HOST:$REPO/$IDENT/" "$destination/" ;;
-    audit|stage) rsync -a "$HOST:$REPO/tools/tadabur/tlog/audit/" "$destination/" ;;
+    audit|supplement|stage) rsync -a "$HOST:$REPO/tools/tadabur/tlog/audit/" "$destination/" ;;
     ui) rsync -a "$HOST:$VERDICTS" "$destination/" ;;
     report)
       rsync -a "$HOST:$REPO/docs/tlog-audit.md" "$destination/"

@@ -43,8 +43,13 @@ frame's first 25 were excluded by it.
 `AUDIT_PRIORITY` was removed and the `non_recitation` stratum redrawn over the whole 2,439 while
 the session had **zero** answers. The `both` 40 stand as drawn. Rows the restricted draw had
 taken only to fill the 25 are dropped from the served list; rows already drawn in another
-stratum are not re-staged. The unique item count is therefore slightly below 150, which §4's "at
-about 150" allows.
+stratum are served once. The served count stays at 150 because none of the newly drawn rows was
+already under another stratum.
+
+Removing the precedence also restores the below-bar stratum's own set. That stratum needs the
+best class to *differ* from the filename class, and S5 records `label_source == "both"` exactly
+when the two are one text class; a `both` row is therefore never a below-bar disagreement, even
+when its label strings differ (repeated ayat, e.g. `26:190` and `26:8`).
 
 ## 3. The §9 rule (unchanged in substance, pre-stated 2026-10-27 on #191 and #173)
 
@@ -54,12 +59,15 @@ about 150" allows.
 > count is ≥ 3, the 5% rule's whole-pool consequence is suspended pending a dated floor revision
 > decided by the owner. Otherwise it proceeds as frozen, through the follow-up issue.
 
-`render_audit()` computes the count over exactly that sample and prints the outcome.
+`render_audit()` computes the count over exactly that sample and prints the outcome. The
+worklist marks those rows `floor_sample`; the report counts the marked rows and reports every
+unmarked `non_recitation` row as an extra.
 
 ## 4. Fallback: a sitting that already began
 
 If any verdict exists before the corrected list is live, the worklist stands and the corrected 25
-is assembled instead by appending the rows it lacks: `supplemental_items()` returns exactly the
-full-frame prefix rows absent from the worklist (at most seven), which the owner hears in a short
-second sitting. The restricted-only extras are reported, not counted. §9 then reads the same 25
-as the primary path, so no frame weighting is used.
+is assembled instead by marking the prefix rows it already holds and appending the rows it lacks:
+`with_floor_supplement()` returns the corrected worklist, whose appended part is exactly the
+full-frame prefix rows absent from it (at most seven), which the owner hears in a short second
+sitting. The restricted-only extras stay unmarked, so they are reported, never counted. §9 then
+reads the same 25 as the primary path, so no frame weighting is used.

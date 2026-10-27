@@ -22,6 +22,7 @@ def _row(row: int, stratum: str, *, split: str = "clean", **fields) -> dict:
             "class_label": "2:1", "label_source": "both", "id_floor_ok": True,
             "overlaps_filename": False, "blocking_reason": None,
             "strata": [stratum], "stratum": stratum,
+            "floor_sample": stratum == "non_recitation",
             "local_audio": f"{row:016x}_00000000.wav", **fields}
 
 
@@ -110,6 +111,35 @@ def test_the_best_class_readout_follows_the_heard_ayah(tmp_path):
     assert "Best-class suggestions heard as the recitation: **15 of 15 decided**" in matching
     assert "Best-class suggestions heard as the recitation: **0 of 15 decided**" in elsewhere
     assert "Filename-label precision in the same items: 0.00%" in matching
+
+
+def test_the_fallback_counts_only_the_full_frame_sample(tmp_path):
+    """Review R3.2: restricted-only extras are reported, never counted in §9."""
+    candidates = run.audit_candidates()
+    restricted_pool = [row for row in candidates
+                       if run._matching_strata(row) == ("non_recitation",)]
+    assert len(restricted_pool) == 1_989
+    restricted = sorted(restricted_pool,
+                        key=lambda row: run._rank(run.SALT, "non_recitation",
+                                                  row["split"], row["shard_file"], row["row"]))
+    earlier = [{"population": "look", "role": "look", **row, "strata": ["non_recitation"],
+                "stratum": "non_recitation"} for row in restricted[:25]]
+    worklist = list(run.with_floor_supplement(candidates, earlier))
+    assert len(worklist) == 32
+
+    sample = {run._item_key(row) for row in run._floor_prefix(run.IDENT_DIR)}
+    marked = {run._item_key(row) for row in worklist if row["floor_sample"]}
+    assert marked == sample
+    extras = [row for row in worklist if not row["floor_sample"]]
+    assert len(extras) == 7
+    document = _render(tmp_path, worklist, [
+        *[(row, {"verdict": run.NOT_RECITATION}) for row in worklist
+          if run._item_key(row) in sample],
+        *[(row, {"verdict": run.RIGHT, "ayah": "2:1"}) for row in extras]])
+    assert "**0 of 25 drawn** (25 answered)" in document
+    assert "Restricted-only extras kept from an earlier draw: 7 (7 answered, 7 heard as real" \
+           in document
+    assert "**Suspended: False.**" in document
 
 
 def test_the_floor_sampling_frame_is_disclosed(tmp_path):

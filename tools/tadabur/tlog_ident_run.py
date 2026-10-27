@@ -25,6 +25,7 @@ Usage, from ``tools/`` (GPU box for ``limit`` and ``decode``)::
     python -m tadabur.tlog_ident_run decode --cache-dir /root/scratch/tlog/s6/cache
     python -m tadabur.tlog_ident_run identify
     python -m tadabur.tlog_ident_run audit
+    python -m tadabur.tlog_ident_run supplement  # only if verdicts predate the correction
     python -m tadabur.tlog_ident_run stage --audio-dir /root/scratch/tlog/s6/audio \\
         --cache-dir /root/scratch/tlog/s6/cache
     python -m tadabur.tlog_ident_run report
@@ -53,6 +54,7 @@ from .tlog_ident import (
     BASE_MODEL,
     BASE_REVISION,
     BOTH,
+    FILENAME,
     IDENTIFIED,
     NONE,
     identification_record,
@@ -577,7 +579,13 @@ def _floor_ok(row: Mapping[str, Any]) -> bool | None:
 #: row satisfying two predicates is drawn in both and served once
 #: (``docs/tlog-s6-amendment-note-overlap.md``).
 def _matching_strata(row: Mapping[str, Any]) -> tuple[str, ...]:
-    """Every stratum predicate this row satisfies, in :data:`AUDIT_SIZES` order."""
+    """Every stratum predicate this row satisfies, in :data:`AUDIT_SIZES` order.
+
+    ``below-bar disagreement`` needs ``label_source == "filename"``: S5 records ``both``
+    exactly when the best class and the filename class are one text class, so a ``both`` row is
+    never a disagreement even when its two label strings differ (repeated ayat, e.g. ``26:190``
+    and ``26:8`` are class 2925), and ``identified`` belongs to the relabel strata.
+    """
     if row.get("decode_mode") == NOT_DECODED:
         return ()
     floor_ok = _floor_ok(row)
@@ -593,9 +601,8 @@ def _matching_strata(row: Mapping[str, Any]) -> tuple[str, ...]:
         matched.add("unclean identified")
     if row.get("decode_mode") == WHOLE_CLIP and floor_ok is False:
         matched.add("non_recitation")
-    if (row.get("filename_label") and floor_ok is True
-            and row.get("class_label") != row.get("filename_label")
-            and row.get("label_source") != IDENTIFIED):
+    if (floor_ok is True and row.get("label_source") == FILENAME
+            and row.get("class_label") != row.get("filename_label")):
         matched.add("below-bar disagreement")
     return tuple(stratum for stratum in AUDIT_SIZES if stratum in matched)
 
@@ -646,9 +653,16 @@ def _stratum_members(records: Iterable[Mapping[str, Any]],
 
 
 def _served_item(item: Mapping[str, Any], drawn_in: Iterable[str]) -> dict:
-    """One worklist row carrying the strata it was drawn in, in the frozen table's order."""
+    """One worklist row carrying the strata it was drawn in, in the frozen table's order.
+
+    ``floor_sample`` marks the §9 sample: the ``non_recitation`` draw is exactly the frozen
+    full-frame prefix, and the fallback's supplement adds the prefix rows an earlier draw
+    lacked, so every row this module draws in that stratum is a sample row. A row an earlier
+    draw kept only to fill the 25 is never marked, and the report reports it without counting it.
+    """
     strata = [stratum for stratum in AUDIT_SIZES if stratum in set(drawn_in)]
-    return {**dict(item), "strata": strata, "stratum": _page_stratum(strata, item)}
+    return {**dict(item), "strata": strata, "stratum": _page_stratum(strata, item),
+            "floor_sample": "non_recitation" in strata}
 
 
 def audit_draw(records: Iterable[Mapping[str, Any]], *, sizes: Mapping[str, int] | None = None,
@@ -697,20 +711,25 @@ def audit_draw(records: Iterable[Mapping[str, Any]], *, sizes: Mapping[str, int]
     return AuditDraw(items=tuple(served.values()), strata=census)
 
 
-def supplemental_items(records: Iterable[Mapping[str, Any]], worklist: Sequence[Mapping[str, Any]],
-                       *, salt: str | None = None) -> tuple[dict, ...]:
-    """The whole-flag floor draw's rows a worklist lacks (the architect r22 fallback).
+def with_floor_supplement(records: Iterable[Mapping[str, Any]],
+                          worklist: Sequence[Mapping[str, Any]],
+                          *, salt: str | None = None) -> tuple[dict, ...]:
+    """The architect r22 fallback: the worklist with its §9 sample marked and completed.
 
-    If a verdict exists before the corrected list is live, the worklist stands and these rows
-    are heard in a second sitting; the union is the same §9 sample, so no frame weighting is
-    needed.
+    The frozen prefix's rows the worklist already holds are marked, whatever stratum they were
+    drawn for. The prefix rows it lacks are appended in salted rank order, for a short second
+    sitting; the union is the same 25 as the corrected draw, so no frame weighting is needed.
+    Rows an earlier draw kept only to fill the 25 stay unmarked: reported, never counted.
     """
     salt = SALT if salt is None else salt
     prefix = _stratum_members(records, salt).get("non_recitation", [])[
         :AUDIT_SIZES["non_recitation"]]
+    sample = {_item_key(row) for row in prefix}
     present = {_item_key(row) for row in worklist}
-    return tuple(_served_item(item, ["non_recitation"]) for item in prefix
-                 if _item_key(item) not in present)
+    marked = [{**dict(row), "floor_sample": _item_key(row) in sample} for row in worklist]
+    missing = [_served_item(row, ["non_recitation"]) for row in prefix
+               if _item_key(row) not in present]
+    return tuple(marked + missing)
 
 
 def _draw_silence(members: list[dict], target: int, salt: str) -> list[dict]:
@@ -880,7 +899,8 @@ def stage(draw: AuditDraw, *, audio_dir: Path, cache_dir: Path) -> None:
                 "population", "split", "shard_file", "row", "role", "audio_path",
                 "audio_sha256", "duration_s", "filename_label", "assigned_label",
                 "class_label", "label_source", "id_floor_ok", "overlaps_filename",
-                "blocking_reason", "strata", "stratum")}, "local_audio": name})
+                "blocking_reason", "strata", "stratum", "floor_sample")},
+                "local_audio": name})
     if len(worklist) != len(draw.items):
         raise ValueError(f"staged {len(worklist)} of {len(draw.items)} drawn items")
     kept = {row["local_audio"] for row in worklist}
@@ -1012,6 +1032,19 @@ def _floor_frame(ident_dir: Path) -> dict[str, int]:
             "both": sum(1 for row in failing if row.get("label_source") == BOTH)}
 
 
+def _floor_prefix(ident_dir: Path) -> list[dict]:
+    """The §9 sample: the first 25 floor-failing rows by the frozen salt's rank (r22).
+
+    The draw and the fallback write the worklist's ``floor_sample`` marker; this derivation
+    from the committed ident trees is what binds that marker to the frozen rule
+    (``test_the_committed_worklist_marks_the_frozen_floor_sample``).
+    """
+    failing = [row for row in _ident_rows(ident_dir)
+               if row["decode_mode"] == WHOLE_CLIP and row["id_floor_ok"] is False]
+    ranked = sorted(failing, key=lambda row: _rank(SALT, "non_recitation", *_key(row)))
+    return ranked[:AUDIT_SIZES["non_recitation"]]
+
+
 def _label_independent(ident_dir: Path) -> dict[str, float]:
     """r21 §2a/§2d: how the floor behaves on tlog, from the committed ident trees.
 
@@ -1064,6 +1097,17 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
     database, _bars, _k = load_identifier()
     canonical = lambda label: tlog_ident.canonical_label(database, label)
     by_stratum = _stratum_views(worklist)
+    # The floor table and §9 read the frozen sample only (architect r22): a fallback's
+    # restricted-only extras are reported, never counted. An older worklist carries no marker
+    # at all, which would silently count extras, so it is refused.
+    floor_rows = [{**row, "stratum": "non_recitation"} for row in worklist
+                  if row.get("floor_sample")]
+    extras = [{**row, "stratum": "non_recitation"} for row in worklist
+              if "non_recitation" in row["strata"] and not row.get("floor_sample")]
+    if extras and not floor_rows:
+        raise SystemExit(f"{worklist_path} marks no §9 sample row: the floor outcome cannot "
+                         "tell the frozen sample from an earlier draw's extras")
+    by_stratum["non_recitation"] = floor_rows
     lines = ["# tlog S6 audit (#191)", "",
              "Generated by `python -m tadabur.tlog_ident_run report` from",
              "`tools/tadabur/tlog/audit/{worklist,verdicts}.jsonl`. Never hand-edited.", "",
@@ -1103,6 +1147,7 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
                  if trigger else "")]
     drawn_floor = len(by_stratum["non_recitation"])
     floor = _precision(by_stratum["non_recitation"], verdicts, canonical)
+    extras_stats = _precision(extras, verdicts, canonical)
     paused = floor["recitation"] >= FLOOR_PAUSE_AT
     lines += ["", "## The S5b §9 trigger", "",
               f"- Sample: the first {drawn_floor} rows by the frozen salt's rank among all "
@@ -1110,6 +1155,9 @@ def render_audit(*, worklist_path: Path = AUDIT_DIR / "worklist.jsonl",
               f"(`{OVERLAP_NOTE_PATH.relative_to(ROOT).as_posix()}` §3).",
               f"- Audited `non_recitation` clips heard as real recitation: "
               f"**{floor['recitation']} of {drawn_floor} drawn** ({floor['n']} answered).",
+              f"- Restricted-only extras kept from an earlier draw: {len(extras)} "
+              f"({extras_stats['n']} answered, {extras_stats['recitation']} heard as real "
+              "recitation). Reported, never counted in §9.",
               f"- Pre-stated before any verdict: {FLOOR_PAUSE_AT} or more suspends the 5% "
               "rule's consequence pending a dated floor revision the owner decides.",
               f"- **Suspended: {paused}.**"
@@ -1249,6 +1297,7 @@ def main() -> None:
     identify_.add_argument("--decodes-dir", type=Path, default=DECODES_DIR)
     identify_.add_argument("--out-dir", type=Path, default=IDENT_DIR)
     commands.add_parser("audit", help="draw the stratified audit worklist")
+    commands.add_parser("supplement", help="complete an earlier worklist's §9 sample in place")
     stage_ = commands.add_parser("stage", help="stage the drawn clips for listening")
     stage_.add_argument("--audio-dir", type=Path, required=True)
     stage_.add_argument("--cache-dir", type=Path, required=True)
@@ -1273,6 +1322,12 @@ def main() -> None:
         draw = audit_draw(audit_candidates())
         _write_jsonl(AUDIT_DIR / "draw.jsonl", draw.items)
         print(json.dumps(draw.strata, indent=1, sort_keys=True), flush=True)
+    elif args.command == "supplement":
+        corrected = with_floor_supplement(audit_candidates(),
+                                          _read_jsonl(AUDIT_DIR / "worklist.jsonl"))
+        _write_jsonl(AUDIT_DIR / "worklist.jsonl", corrected)
+        print(f"{len(corrected)} worklist rows, "
+              f"{sum(1 for row in corrected if row['floor_sample'])} in the §9 sample", flush=True)
     elif args.command == "stage":
         draw = AuditDraw(items=tuple(_read_jsonl(args.draw)), strata={})
         stage(draw, audio_dir=args.audio_dir, cache_dir=args.cache_dir)

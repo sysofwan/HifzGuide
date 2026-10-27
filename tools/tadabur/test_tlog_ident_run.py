@@ -100,7 +100,7 @@ FROZEN_SHA256 = "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b6208
 FLOOR = ROOT / "docs" / "tlog-ident-floor-preregistration.md"
 FLOOR_SHA256 = "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a"
 NOTE = ROOT / "docs" / "tlog-s6-amendment-note-overlap.md"
-NOTE_SHA256 = "feaad8c67afd346cb55eaecf63bcc1af923acd9d5d904b168f92ef502b5aab8d"
+NOTE_SHA256 = "e47856b8f34b1bd10704498a896fdf7fcc88d903705eb665d12763ed675e285a"
 PASS1_DIR = ROOT / "tools" / "tadabur" / "tlog" / "pass1"
 CALIBRATION = ROOT / "tools" / "tadabur" / "tlog" / "ident" / "ident_calibration.json"
 LOOK_ROWS = 9_710
@@ -231,7 +231,7 @@ def test_the_overlap_note_is_frozen_and_cites_the_amendment(run):
     assert _sha256(run.AMENDMENT_PATH.read_bytes()) in text
     assert "2026-10-27" in text
     assert "unclear" in text and "right ayah" in text
-    assert "supplemental_items" in text
+    assert "with_floor_supplement" in text
 
 
 def test_the_amendment_and_decode_limit_must_exist_before_a_decode(run, tmp_path, monkeypatch):
@@ -508,18 +508,24 @@ def test_a_shared_row_is_served_once_and_scored_in_each_stratum(run):
     assert (floor["recitation"], floor["n"]) == (1, 1)
 
 
-def test_the_fallback_builder_returns_exactly_the_missing_full_frame_rows(run):
+def test_the_fallback_marks_and_completes_the_floor_sample(run):
     rows = [_candidate(run, row=1_000 + i, split="unclean", filename_label=None,
                        label_source="none", id_floor_ok=False,
                        class_label=None, assigned_label=None) for i in range(40)]
     sizes = {name: 0 for name in STRATA}
     sizes["non_recitation"] = 25
     draw = _draw(run, rows, sizes=sizes)
-    kept, dropped = list(draw.items)[3:], list(draw.items)[:3]
-    missing = run.supplemental_items(rows, kept, salt="audit-test")
-    assert _keyset(missing) == _keyset(dropped)
-    assert all("non_recitation" in item["strata"] for item in missing)
-    assert run.supplemental_items(rows, draw.items, salt="audit-test") == ()
+    prefix, later = list(draw.items)[:25], list(draw.items)[25:]
+    earlier = prefix[5:] + later  # an earlier draw: 20 sample rows, 15 restricted-only extras
+    corrected = run.with_floor_supplement(rows, earlier, salt="audit-test")
+    assert _keys(list(corrected[:len(earlier)])) == _keys(earlier)
+    assert _keyset(corrected[len(earlier):]) == _keyset(prefix[:5])
+    assert sum(1 for row in corrected if row["floor_sample"]) == 25
+    assert _keyset(row for row in corrected if not row["floor_sample"]) == _keyset(later)
+    assert all("non_recitation" in row["strata"] for row in corrected)
+
+    complete = run.with_floor_supplement(rows, draw.items, salt="audit-test")
+    assert len(complete) == 25 and all(row["floor_sample"] for row in complete)
 
 
 def test_an_identical_recitation_scores_the_class_of_the_label_under_test(run, ident):
@@ -744,6 +750,36 @@ def test_the_served_payload_hides_the_stratum_and_the_attribution(run):
 
 
 # --- the generated report (brief criteria) -----------------------------------------------------
+
+
+def test_a_repeated_ayah_is_not_a_below_bar_disagreement(run, ident):
+    """Review R3.1: one text class is never a disagreement, whatever its label strings."""
+    database = ident.load_references()
+    assert ident.canonical_label(database, "26:190") == ident.canonical_label(database, "26:8")
+    repeated = _candidate(run, row=1, filename_label="26:190", class_label="26:8",
+                          label_source="both", id_floor_ok=True, delta=0.0)
+    assert "below-bar disagreement" not in run._matching_strata(repeated)
+    genuine = _candidate(run, row=2, filename_label="37:28", class_label="37:27",
+                         label_source="filename", id_floor_ok=True, delta=0.0)
+    assert "below-bar disagreement" in run._matching_strata(genuine)
+
+
+def test_the_below_bar_frame_holds_only_class_disagreements(run, ident):
+    database = ident.load_references()
+    frame = [row for row in run.audit_candidates()
+             if "below-bar disagreement" in run._matching_strata(row)]
+    assert len(frame) == 756
+    equal = [row for row in frame
+             if ident.canonical_label(database, row["class_label"])
+             == ident.canonical_label(database, row["filename_label"])]
+    assert equal == []
+
+
+def test_the_committed_worklist_marks_the_frozen_floor_sample(run):
+    prefix = {run._item_key(row) for row in run._floor_prefix(run.IDENT_DIR)}
+    worklist = run._read_jsonl(run.AUDIT_DIR / "worklist.jsonl")
+    assert len(prefix) == run.AUDIT_SIZES["non_recitation"] == 25
+    assert {run._item_key(row) for row in worklist if row["floor_sample"]} == prefix
 
 
 def test_an_unclear_below_bar_answer_is_not_a_best_class_miss(run):

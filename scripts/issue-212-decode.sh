@@ -12,11 +12,13 @@
 # The run is the look tranche's 2,853 `gating` rows (the frozen manifest's stratum) decoded by
 # the teacher, C95 and the #178 candidate's EMA, `checks` only, as PROCESSES processes with
 # OMP_NUM_THREADS=1 each (round 1 measured that configuration at ~3x this box's serial
-# per-model rate). After GATE_WAIT seconds it projects the selection from the wall the run has
-# taken, or — when fewer than GATE_ROWS timings arrived and workers are still live — it reaps
-# them and exits 3 rather than run ungated; over LIMIT_HOURS it does the same. Either way it
-# writes `logs/decode.needs-post`, so the orchestrator decides — the architect's fallback is
-# the teacher and C95 alone. Nothing is graded or read.
+# per-model rate). Each item's check features are computed once and shared by all three models
+# (#213); SHARE_FEATURES=0 sends --no-share-features to every worker, the per-model path a
+# benchmark compares against. After GATE_WAIT seconds it projects the selection from the wall
+# the run has taken, or — when fewer than GATE_ROWS timings arrived and workers are still live —
+# it reaps them and exits 3 rather than run ungated; over LIMIT_HOURS it does the same. Either
+# way it writes `logs/decode.needs-post`, so the orchestrator decides — the architect's fallback
+# is the teacher and C95 alone. Nothing is graded or read.
 #
 # The cache job streams the same shards once, keeps every selected clip under its recorded
 # checksum in $CLIPS, and deletes the shard; a later decode pass reads the clips instead of the
@@ -49,6 +51,9 @@ MANIFEST=tools/tadabur/tlog/tranches/look.jsonl
 MODELS=${MODELS:-base,c95,candidate_ema}
 PROCESSES=${PROCESSES:-6}
 THREADS=${THREADS:-1}
+# One feature pass per check for every model (#213). 0 turns sharing off, which is the
+# per-model path the run decoded before it and the benchmark's control.
+SHARE_FEATURES=${SHARE_FEATURES:-1}
 GATE_ROWS=${GATE_ROWS:-12}
 LIMIT_HOURS=${LIMIT_HOURS:-11}
 # Seconds the gate waits for GATE_ROWS timing lines before projecting what it has.
@@ -88,6 +93,8 @@ stage_repo() {
 
 write_runner() {
   local manifest_commit=$1
+  local share_flag=''
+  if [ "$SHARE_FEATURES" != 1 ]; then share_flag='--no-share-features'; fi
   remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
 #!/usr/bin/env bash
 set -uo pipefail
@@ -100,7 +107,7 @@ run() {
   local pids=() index lines gate_code failed pid
   for index in \$(seq 0 $((PROCESSES - 1))); do
     python -u -m tadabur.tlog_eval_decode decode --parts-dir '$PARTS' --cache-dir '$CACHE' \\
-        --clip-cache '$CLIPS' --models ${MODELS//,/ } \\
+        --clip-cache '$CLIPS' --models ${MODELS//,/ } $share_flag \\
         --shard-index \"\$index\" --shard-count $PROCESSES &
     pids+=(\"\$!\")
   done

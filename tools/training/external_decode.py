@@ -199,13 +199,15 @@ def decode_recordings(recordings: Iterable[Recording], decoders: dict,
     ``share_features`` has the stores that declare a split decode (:attr:`Store.shared`)
     featurise an item once, when more than one model is still pending on it, and run each of
     them on those features -- the same records from one feature pass per item instead of one
-    per model. The feature seconds are timed apart, under ``shared_feature_seconds``. Off
+    per model. Every decoder pending on an item must be configured with the same feature
+    extractor, checked once per pending set; decoders that never decode together are never
+    compared. The feature seconds are timed apart, under ``shared_feature_seconds``. Off
     (and for a store with no split, or a single pending model) the loop is unchanged.
     """
     done = {name: resume_keys(path) for name, path in paths.items()}
     seconds: dict[str, dict[str, float]] = {name: defaultdict(float) for name in decoders}
     feature_seconds: dict[str, float] = defaultdict(float)
-    extractor = shared_extractor(decoders.values()) if share_features else None
+    extractors: dict[frozenset[str], object] = {}
     audio_seconds = 0.0
     items = 0
     started = time.time()
@@ -230,8 +232,11 @@ def decode_recordings(recordings: Iterable[Recording], decoders: dict,
                             lines[name].update(store.decode(decoder, span))
                             seconds[name][store_label] += time.time() - tick
                         continue
+                    names = frozenset(pending)
+                    if names not in extractors:
+                        extractors[names] = shared_extractor(pending.values())
                     tick = time.time()
-                    features = shared.featurize(extractor, span)
+                    features = shared.featurize(extractors[names], span)
                     feature_seconds[store_label] += time.time() - tick
                     for name, decoder in pending.items():
                         tick = time.time()

@@ -402,8 +402,8 @@ class ExposureRegistry:
         return sorted(u for u, e in self.shard_uses.items() if e.shared_baseline)
 
     def uses(self) -> list[str]:
-        """Every Tadabur use with a file, sorted (external uses are in :attr:`qud` and
-        :attr:`clips`)."""
+        """Every Tadabur use with a file, sorted (external uses are in :attr:`qud`,
+        :attr:`clips` and :attr:`row_sets`)."""
         return sorted({*self.recordings, *self.shard_uses})
 
     def reciters(self, use: str) -> frozenset[int]:
@@ -733,8 +733,10 @@ def check_row_set_disjoint(
     * ``audio_path``: a clip id of any clip use (``registry.clips``, the non-professional
       corpora's and each tlog role's) equals a row's ``audio_path``;
     * ``audio_sha256``: a clip's checksum, or a QUD ayah's MP3 checksum, equals a row's;
-    * ``fingerprint``: a row carries an S4 ``eval_overlap`` hit, or its ``duplicate_of`` names
-      a row that is not itself in this set (it is the same audio as a row outside it);
+    * ``fingerprint``: a row carries an S4 ``eval_overlap`` hit -- the live case. Also a row
+      whose ``duplicate_of`` names a row outside this set, which no usable pool row can carry
+      (S4 excludes a duplicate: ``usable`` is false when ``duplicate_of`` is set), so this
+      branch fires only on a pool bug and refuses it rather than training the audio twice;
     * ``group_key``: a row's ``group_key`` is one of a tlog evaluation use's
       (``eval_groups``, a ``use -> {group_key}`` map; by default the committed split tree's
       groups of each ``tlog.<role>``, :func:`tadabur.tlog_tranches.split_groups`).
@@ -1291,11 +1293,14 @@ def shard_use_drift(committed: ShardExposure, recomputed: ShardExposure) -> list
 
 
 def describe(registry: ExposureRegistry) -> str:
-    """One line per use: recordings (or shards), reciters."""
+    """One line per use: recordings (or shards, or row-set rows), reciters."""
     lines = [f"{use:40s} {len(rows):>11d} QUD ayat {len({r.qud_reciter for r in rows}):>5d} "
              f"QUD reciters" for use, rows in sorted(registry.qud.items())]
     lines += [f"{use:40s} {len(rows):>11d} clips {len({r.dataset for r in rows}):>5d} datasets"
               for use, rows in sorted(registry.clips.items())]
+    lines += [f"{use:40s} {row_set.count:>11d} rows of {row_set.overlay_commit[:8]} "
+              f"{row_set.predicate['code']}"
+              for use, row_set in sorted(registry.row_sets.items())]
     for use in registry.uses():
         if use in registry.shard_uses:
             size = f"{len(registry.shard_uses[use].shards)} shards"

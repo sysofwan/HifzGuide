@@ -561,8 +561,11 @@ def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
     Yields ``((split, shard_file, row), samples)`` for exactly ``rows`` (default:
     :func:`load_training_rows`, the verified committed use), shard by shard in
     ``(split, shard_file)`` order and row order within a shard. Each shard is read once and
-    dropped -- the disk budget is an invariant -- even when the consumer stops early or a row
-    fails, so a training pass never leaves audio on the box. ``stream`` is the row source
+    dropped -- the disk budget is an invariant. The shard is deleted when the reader is
+    exhausted, when it is closed (:meth:`close`), and when it raises (a checksum mismatch, a
+    wanted row the shard lacks); a consumer that raises inside its own loop never resumes the
+    reader, so it must hold it in :func:`contextlib.closing` (or close it in a ``finally``) or
+    the download is dropped only when the generator is finalised. ``stream`` is the row source
     (default :func:`tadabur.tlog_pass1.shard_rows` at the pinned revision, downloading into
     ``cache_dir``) and ``load_audio`` the decoder (default :func:`default_audio`, 16 kHz mono
     float32). A row outside :data:`TRAINING_PREDICATE` refuses before any shard is read; a

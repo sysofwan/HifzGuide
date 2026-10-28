@@ -532,14 +532,19 @@ is still there and the counts reconcile stage by stage.
 - `split/`: `audio_path`, `group_key`, `role`, `row`, `shard_file`, `speaker_cluster`, `split`
 - `overlap/`: `duplicate_ber`, `duplicate_of`, `eval_overlap`, `excluded`, `row`, `schema_version`, `shard_file`, `split`
 
-`schema_version` is 1 in `index`, `pass1` and `overlap`; `split` rows carry none, because the
-split tree is a freeze of a whole pass rather than a re-derivable pass (its `meta.json` names
-the pass). Each stage's `meta.json` is its provenance: the code commit (and PR ref) that wrote
-the tree, the model and revision where one ran, input checksums, and the census, so a stage is
-reproducible without a run log. The other directories are not row trees:
+`schema_version` is per stage — 1 in `index`, 2 in `pass1`, 1 in `overlap`
+(`tadabur.tlog_schema.SCHEMA_VERSIONS`); `split` rows carry none, because the split tree is a
+freeze of a whole pass rather than a re-derivable pass (its `meta.json` names the pass). Each
+row stage's `meta.json` is its provenance: the code commit (and PR ref) that wrote the tree,
+the model and revision where one ran, input checksums, and the census, so a stage is
+reproducible without a run log. `pass1/` also holds the gate records beside its two split
+directories: `meta.json`, `gate_override.json`, `gate_phases.json`, `gate_projection.json` and
+`run_outcome.json`. The other directories are not row trees:
 
-- `ident/`: S5's identification and its teacher decodes (`ident/decodes/`), one tree per
-  population, with `meta.json`, `calibration.json` and `decode_limit.json`.
+- `ident/`: S5's identification trees (`look/`, `confirm/`, `confirm.k/`), the teacher decodes
+  (`ident/decodes/`), and their records: `decode_limit.json`, `ident_calibration.json`,
+  `margin_approval.json`, `oracle_margin.json`, `references.json.gz`, `train_sample.jsonl.gz`,
+  `train_sample.meta.json`, `real_mistake_clips.jsonl`.
 - `tranches/`: S7's per-role manifests, `meta.json` and the opening claims (not yet written).
 - `audit/`: S6's audit sample, verdicts and report.
 - `s2/`: the S2 validation's (page-aware preprocessing) records.

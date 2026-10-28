@@ -180,3 +180,22 @@ def test_the_readme_says_rows_are_never_deleted_only_excluded_with_a_reason():
 def test_the_readme_says_the_public_subset_drops_role_until_a_tranche_is_spent():
     _, public_text = _split_section()
     assert "tranche is spent" in public_text
+
+
+def test_each_stages_schema_version_is_the_committed_rows(tlog_schema):
+    """The README states a per-stage version (self-check r1 S1.1); pin it to the rows."""
+    assert set(tlog_schema.SCHEMA_VERSIONS) == {"index", "pass1", "overlap"}
+    for stage, version in tlog_schema.SCHEMA_VERSIONS.items():
+        path = TLOG_DIR / stage / "clean" / f"{FIRST_SHARDS['clean']}.jsonl.gz"
+        with gzip.open(path, "rt", encoding="utf-8") as stream:
+            versions = {json.loads(line)["schema_version"] for line in stream}
+        assert versions == {version}, stage
+
+
+def test_the_public_subset_dropped_line_names_the_teacher_decode_tree(tlog_schema):
+    """The dropped tree is a constant (self-check r1 S1.4), so the line is checked against it."""
+    _, public_text = _split_section()
+    [dropped] = [line for line in public_text.splitlines() if line.startswith("- dropped:")]
+    assert any(token.startswith(tlog_schema.PUBLIC_DROPPED_TREE)
+               for token in _tokens(dropped)), dropped
+    assert "teacher decodes" in dropped

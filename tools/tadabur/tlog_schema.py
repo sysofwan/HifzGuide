@@ -28,6 +28,10 @@ STAGES = {
     "overlap": ("duplicate_ber", "duplicate_of", "eval_overlap", "excluded", "row",
                 "schema_version", "shard_file", "split"),
 }
+#: Stage directory name -> the ``schema_version`` its rows carry. ``split`` is absent: the
+#: freeze's rows carry none (the tree's ``meta.json`` names the pass that wrote it).
+SCHEMA_VERSIONS = {"index": 1, "pass1": 2, "overlap": 1}
+
 #: The fields the public subset drops, and the whole tree it also drops: S5's teacher decodes
 #: (``ident/decodes/``), the teacher's answers with them.
 PUBLIC_DROPPED = ("speaker_cluster", "group_key", "nn_train_sim", "role")

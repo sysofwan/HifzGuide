@@ -16,6 +16,8 @@ offset, so a decoder that read another's features, or none, would show in its ro
 
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 import torch
@@ -117,7 +119,7 @@ def test_every_decoders_shared_checks_equal_its_unshared_checks():
                             padding_value=1.0).app_checks_at(samples, BLOCKS)
         assert checks == unshared
         assert set(checks) == set(BLOCKS) and checks[1] != checks[0]
-    assert shared[0] != shared[1] != shared[2]  # a decoder that ignored its model would pass
+    assert len({json.dumps(checks, sort_keys=True) for checks in shared}) == 3  # all differ
 
 
 def test_the_features_are_computed_once_per_piece_for_every_decoder():

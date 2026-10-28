@@ -12,8 +12,9 @@ bit-identical to #212's committed look decodes, which this file pins three ways:
   line for line, with the committed decodes of the same shards;
 * the record: the committed ``shared_parity.json`` of the real cuda-dev run on the first
   :data:`PARITY_SHARDS` gating shards, which must agree with the committed decodes it names.
-  Until that run is committed, ``test_the_committed_parity_record_*`` fails: the real-data
-  parity is an acceptance criterion, not something a fake can stand in for.
+  The real-data parity is an acceptance criterion, not something a fake can stand in for, so
+  the record carries what shows the shared decode ran: the items it decoded, its timing and
+  the digest of every part file it wrote.
 
 The decoders are real ``Decoder`` s around the fakes of ``training.test_shared_check_features``.
 """
@@ -21,6 +22,7 @@ The decoders are real ``Decoder`` s around the fakes of ``training.test_shared_c
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 import re
 import subprocess
@@ -265,10 +267,18 @@ def _committed(tmp_path, per_shard: dict[str, list[dict]]) -> None:
                 tmp_path / "committed" / "tlog.look.base.jsonl.gz")
 
 
-def _shared_parts(tmp_path, per_shard: dict[str, list[dict]]) -> None:
+def _shared_parts(tmp_path, per_shard: dict[str, list[dict]], timed: bool = True) -> None:
+    """The parts a shared re-decode wrote, and the timing line each shard's visit appended
+    (``timed=False``: parts that were put there, not decoded)."""
     for shard_file, lines in per_shard.items():
         _write_jsonl(ted.decodes_path(tmp_path / "parts", shard_file, "base"),
                      [{**line, "word_from": 1, "word_to": 99} for line in lines])
+    if timed:
+        _write_jsonl(tmp_path / "parts" / "timing.jsonl", [
+            {"shard_file": shard_file, "items": len(lines), "audio_seconds": 10.0 * len(lines),
+             "wall_seconds": 5.0, "decode_seconds": {"base": {"checks": 2.0}},
+             "shared_feature_seconds": {"checks": 1.0}}
+            for shard_file, lines in per_shard.items()])
 
 
 def _parity(tmp_path, monkeypatch, shards=(SHARD, OTHER_SHARD)) -> dict:
@@ -296,6 +306,12 @@ def test_identical_parts_are_the_committed_decodes_of_those_shards(tmp_path, mon
     assert record["shared_sha256"] == record["committed_sha256"]
     assert (record["processes"], record["threads"], record["share_features"]) == (6, 1, True)
     assert record["code_sha"] == "abc123"
+    assert record["items"] == 3 == record["rows"]["base"]
+    assert record["timing"] == ted.timing_totals(tmp_path / "parts", models=("base",))
+    assert record["timing"]["items"] == 3 and record["timing"]["shards"] == 2
+    assert record["part_sha256"] == {"base": {
+        shard: hashlib.sha256(ted.decodes_path(tmp_path / "parts", shard, "base")
+                              .read_bytes()).hexdigest() for shard in (SHARD, OTHER_SHARD)}}
 
 
 def test_one_changed_check_is_a_mismatch(tmp_path, monkeypatch):
@@ -319,6 +335,19 @@ def test_a_row_the_shared_decode_lacks_is_a_mismatch(tmp_path, monkeypatch):
     record = _parity(tmp_path, monkeypatch)
 
     assert record["identical"] == {"base": False} and record["mismatches"] == {"base": 1}
+
+
+def test_parts_that_were_never_decoded_record_no_items(tmp_path, monkeypatch):
+    """A parts directory seeded from the committed decodes (or kept from an earlier run) is
+    identical to them, but nothing was decoded: the record's items are what tell."""
+    per_shard = _per_shard()
+    _committed(tmp_path, per_shard)
+    _shared_parts(tmp_path, {s: per_shard[s] for s in (SHARD, OTHER_SHARD)}, timed=False)
+
+    record = _parity(tmp_path, monkeypatch)
+
+    assert record["identical"] == {"base": True} and record["rows"] == {"base": 3}
+    assert record["items"] == 0 != record["rows"]["base"]
 
 
 def test_the_parity_shards_are_the_first_twenty_gating_shards():
@@ -365,6 +394,18 @@ def test_the_committed_parity_record_matches_the_committed_decodes_of_the_first_
         assert record["committed_sha256"][model] == ted.parity_digest(committed)
         assert record["shared_sha256"][model] == record["committed_sha256"][model]
         assert record["identical"][model] is True and record["mismatches"][model] == 0
+        assert record["items"] == record["rows"][model]  # every row was decoded by this run
+        digests = record["part_sha256"][model]
+        assert list(digests) == shards and len(set(digests.values())) == len(shards)
+        assert all(re.fullmatch(r"[0-9a-f]{64}", digest) for digest in digests.values())
+    timing = record["timing"]
+    assert (timing["items"], timing["shards"]) == (record["items"], len(shards))
+    assert timing["audio_seconds"] > 0 and timing["wall_seconds_summed_over_processes"] > 0
+    assert set(timing["decode_seconds"]) == set(ted.RUN_MODELS)
+    assert all(seconds["checks"] > 0 for seconds in timing["decode_seconds"].values())
+    assert timing["shared_feature_seconds"]["checks"] > 0  # the features were shared
+    parts = [digest for digests in record["part_sha256"].values() for digest in digests.values()]
+    assert len(set(parts)) == len(parts)  # one file per model and shard, none copied
 
 
 # --- the launcher -------------------------------------------------------------------------------

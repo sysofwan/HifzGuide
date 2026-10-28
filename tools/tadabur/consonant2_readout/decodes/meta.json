@@ -1,0 +1,59 @@
+{
+ "base_revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+ "checkpoint_sha256": {
+  "c95": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
+  "candidate_ema": "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2"
+ },
+ "code_sha": "22e38f473d4b4ddad195a1879348d4bdee4ba789",
+ "gate": {
+  "items": 87,
+  "limit_hours": 11.0,
+  "processes": 6,
+  "projected_hours": 1.7590051865072298,
+  "shards": 13,
+  "slice_audio_s": 417.59999999999997,
+  "slice_wall_s": 105.0,
+  "threads": 1,
+  "total_audio_s": 25184.933687500084,
+  "within_budget": true
+ },
+ "manifest_commit": "ace12dfb83449f343ebf0f2e789616083854db2b",
+ "manifest_rows": 2853,
+ "manifest_sha256": "7d7df748abd3a103d607a6b1f1c5c73836a126db0517fb3999394589515d9e57",
+ "models": [
+  "base",
+  "c95",
+  "candidate_ema"
+ ],
+ "processes": 6,
+ "pull_request": null,
+ "pull_request_ref": null,
+ "rows": {
+  "base": 2853,
+  "c95": 2853,
+  "candidate_ema": 2853
+ },
+ "selection": "look.gating",
+ "stores": [
+  "checks"
+ ],
+ "threads": 1,
+ "timings": {
+  "audio_seconds": 25184.8,
+  "decode_seconds": {
+   "base": {
+    "checks": 7701.1
+   },
+   "c95": {
+    "checks": 5484.1
+   },
+   "candidate_ema": {
+    "checks": 5484.9
+   }
+  },
+  "items": 2853,
+  "shards": 405,
+  "wall_seconds": 22755.6
+ },
+ "tranche_meta_sha256": "a49c75e166f63d6509d783b04b79616035a3b291ae9b09951afff732bd7f0462"
+}

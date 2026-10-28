@@ -27,11 +27,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import subprocess
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
-from pathlib import Path
 from typing import Any
 
 from generate_quran_db import normalize_imlai
@@ -431,30 +429,3 @@ def confirm_block(database: Any, *, k: int, look_retention: float,
     }
 
 
-# --- the commit gate ---------------------------------------------------------------------------
-
-
-def require_committed(paths: Iterable[Path], *, repo: Path = ROOT) -> None:
-    """Refuse unless every path is tracked in ``repo`` and has no staged or unstaged change.
-
-    The decode script may run only on committed inputs: the pre-registration and the manifests
-    it cites.
-    """
-    root = Path(repo).resolve()
-    for path in paths:
-        resolved = Path(path).resolve()
-        try:
-            relative = resolved.relative_to(root).as_posix()
-        except ValueError as error:
-            raise RuntimeError(f"{path} is outside {root}") from error
-        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "--error-unmatch", "--",
-                                  relative], capture_output=True)
-        if tracked.returncode != 0:
-            raise RuntimeError(f"{relative} is not committed")
-        for staged in (False, True):
-            command = ["git", "-C", str(root), "diff", "--quiet"]
-            if staged:
-                command.append("--cached")
-            if subprocess.run([*command, "--", relative],
-                              capture_output=True).returncode != 0:
-                raise RuntimeError(f"{relative} has uncommitted changes")

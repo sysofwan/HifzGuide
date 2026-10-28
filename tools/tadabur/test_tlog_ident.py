@@ -999,9 +999,9 @@ def test_approve_margin_writes_the_record_the_loader_accepts(ident, calibration,
     """r3: the approval needs a producer, not a hand-written JSON. The command records the live
     amendment's SHA-256 and the committed ``b_u``, refuses to overwrite, and the loader accepts
     exactly what it writes."""
-    import tadabur.tlog_ident_confirm as confirm
+    import tadabur.tlog_index as index
 
-    monkeypatch.setattr(confirm, "require_committed", lambda *args, **kwargs: None)
+    monkeypatch.setattr(index, "require_committed", lambda *args, **kwargs: None)
     path = tmp_path / "margin_approval.json"
     record = ident.approve_margin(204, path=path)
 
@@ -1362,12 +1362,14 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
         "source": "tadabur.tlog_overlap.iter_pool_rows", "usable": usable}
 
     assert ident.DOC_PATH.is_file()
-    # S6's per-population trees (r20 Q2) share this directory, so the guard enumerates the exact
-    # set (I4.7): a new file here must be a deliberate addition, never a loosened suffix rule.
+    # S6's per-population trees (r20 Q2) and S7's four sealed tranches (#192) share this
+    # directory, so the guard enumerates the exact set (I4.7): a new file here must be a
+    # deliberate addition, never a loosened suffix rule.
     assert {path.name for path in ident.DECODES_DIR.iterdir()} == {
         "confirm_cv_ar.base.json", "confirm_cv_other.base.json", "confirm_freesound.base.json",
         "noise.base.json", "real_mistake.base.json", "look", "train_sample.jsonl.gz",
-        "train_sample.meta.json"}
+        "train_sample.meta.json", "confirm.1", "confirm.2", "confirm.3", "confirm.4",
+        "slice_timing.json"}
     assert {path.name for path in (ident.DECODES_DIR / "look").iterdir()} == {
         "clean.jsonl.gz", "unclean.jsonl.gz", "meta.json"}
     for path in (ident.REAL_MISTAKE_DECODES_PATH, ident.NOISE_DECODES_PATH):

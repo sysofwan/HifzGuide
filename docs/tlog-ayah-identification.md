@@ -112,7 +112,7 @@ _Precision is the amended b_u's quantity; coverage is the literal rule's, which 
 
 ## The pool's VAD speech duration (indicative)
 
-The floors are keyed on the **decode's** character length. The look half's longest decode is 138 characters, so none reached `161-` and that bin has no floor. The whole pool's decode lengths do not exist until S7 runs (#192): the S6 amendment decided the mode (whole-clip up to a measured `D_max`, rows above it recorded as `not_decoded:over_d_max`), not the pool's lengths. The only committed length fact for the pool is the pass-1 VAD speech seconds (`speech_s`): the frozen view joins `speech_s` and the clip's `duration_s` as two distinct fields, this histogram uses the former and the whole-clip decode limit `D_max` applies to the latter (total clip duration, not speech). Speech seconds are **not** the decode's length: characters per second vary between clips, so a row with little speech can still decode past 160 characters. Read this as an indicative distribution of speech seconds, with no inference about a row's floor bin:
+The floors are keyed on the **decode's** character length. The look half's longest decode is 138 characters, so none reached `161-` and that bin has no floor. S7 (#192) decoded the confirm tranches, but its committed summaries report gating and floor counts, not the pool's decode lengths: the S6 amendment decided the mode (whole-clip up to a measured `D_max`, rows above it recorded as `not_decoded:over_d_max`), not the lengths. The only committed length fact for the pool is the pass-1 VAD speech seconds (`speech_s`): the frozen view joins `speech_s` and the clip's `duration_s` as two distinct fields, this histogram uses the former and the whole-clip decode limit `D_max` applies to the latter (total clip duration, not speech). Speech seconds are **not** the decode's length: characters per second vary between clips, so a row with little speech can still decode past 160 characters. Read this as an indicative distribution of speech seconds, with no inference about a row's floor bin:
 
 | VAD speech | rows | share |
 |---|---|---|
@@ -121,7 +121,7 @@ The floors are keyed on the **decode's** character length. The look half's longe
 | > 30 s | 6,378 | 1.34% |
 | > 60 s | 759 | 0.16% |
 
-The share of the 474,962 usable rows whose decode lands in `161-` is unknown until S7 decodes and measures normalised lengths (#192); this section claims nothing about it. Until then no row in that bin is assigned or relabelled.
+The share of the 474,962 usable rows whose decode lands in `161-` is not reported: S7 (#192) reports gating and floor verdicts, not normalised lengths, so this section claims nothing about it and no row in that bin is assigned or relabelled.
 
 ## For S7: the row contract and the decode mode
 

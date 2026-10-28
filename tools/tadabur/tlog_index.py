@@ -243,6 +243,15 @@ def write_jsonl(rows: Iterable[Mapping[str, object]], path: Path, *,
     _write_atomically(path, text.encode("utf-8"))
 
 
+def write_json(record: Mapping[str, object], path: Path) -> None:
+    """Write one JSON record atomically, indent 1 and sorted keys: a tlog ``meta.json``.
+
+    Every tlog meta uses this shape, so a meta diff shows only what changed.
+    """
+    text = json.dumps(dict(record), ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+    _write_atomically(path, text.encode("utf-8"))
+
+
 def _write_atomically(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
@@ -347,6 +356,33 @@ def require_clean_tree(repo: Path = Path(__file__).resolve().parents[2]) -> None
                            + status.stdout)
 
 
+def require_committed(paths: Iterable[Path], *, repo: Path = REPO_ROOT) -> None:
+    """Refuse unless every path is tracked in ``repo`` and has no staged or unstaged change.
+
+    The decode and manifest scripts may run only on committed inputs: the frozen documents they
+    cite, the trees they read and a tranche's claim. A path outside ``repo`` cannot be committed
+    evidence, so it is refused too (a claim in a scratch directory opens nothing).
+    """
+    root = Path(repo).resolve()
+    for path in paths:
+        resolved = Path(path).resolve()
+        try:
+            relative = resolved.relative_to(root).as_posix()
+        except ValueError as error:
+            raise RuntimeError(f"{path} is outside {root}") from error
+        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "--error-unmatch", "--",
+                                  relative], capture_output=True)
+        if tracked.returncode != 0:
+            raise RuntimeError(f"{relative} is not committed")
+        for staged in (False, True):
+            command = ["git", "-C", str(root), "diff", "--quiet"]
+            if staged:
+                command.append("--cached")
+            if subprocess.run([*command, "--", relative],
+                              capture_output=True).returncode != 0:
+                raise RuntimeError(f"{relative} has uncommitted changes")
+
+
 # --- the build -------------------------------------------------------------------------------
 
 
@@ -413,9 +449,7 @@ def build(index_dir: Path = INDEX_DIR, quran_db: Path = DEFAULT_QURAN_DB,
             "tarteel_v1_any_overlap": overlaps["any"],
         },
     }
-    _write_atomically(index_dir / "meta.json",
-                      (json.dumps(meta, ensure_ascii=False, indent=1, sort_keys=True)
-                       + "\n").encode("utf-8"))
+    write_json(meta, index_dir / "meta.json")
     return meta
 
 

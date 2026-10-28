@@ -293,8 +293,41 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
 
 **Tranche**
 : One role's rows as a frozen set: `look`, or `confirm.k` for k = 1…4. `look` may be inspected
-  freely; `confirm.k` is decoded once, in order, for one round's verdict and is never listened
-  to before it.
+  freely. `confirm.k` is opened by one round, in order, and is never listened to, audited or
+  inspected before that round: **no student, C95 or candidate model decodes a confirm row before
+  its opening round**, and only for that round's verdict (`docs/tlog-holdout-preregistration.md`
+  §7). S7's identification of all four tranches used the base teacher only
+  (`docs/tlog-gating-amendment.md`).
+
+**Gating item**
+: A clean row with a filename label, not excluded, non-straddling and `label_source == both`: the
+  base teacher's best class is the filename ayah's text class. The recitation floor and the Δ
+  relabel bar do not decide it (`docs/tlog-gating-amendment.md` §1). Only gating items carry a
+  round's verdict; every other manifest row is reported.
+: _Avoid_: eval set, test set (that is the whole role, exposure `tlog.<role>`)
+
+**Straddle**
+: A decoded span that crosses an ayah boundary rather than sitting inside one, so the row's ayah
+  is assigned but not trusted (`straddles`, `docs/tlog-holdout-preregistration.md`). A straddling
+  row is reported, never gating.
+
+**Manifest stratum**
+: A tranche manifest row's one value, in a fixed precedence: `reported:unclean` (the unclean
+  split), `reported:undecided` (`label_source == none`), `reported:straddles`, `gating`
+  (`both`), `reported:identified`, `reported:below_bar` (the old below-bar rows)
+  (`tadabur.tlog_tranches.stratum_of`, architect r24 item 2). Total and single-valued, so a
+  re-slice is a filter over committed rows.
+: _Avoid_: audit stratum (S6's listening draw), bucket, bin
+
+**Claim**
+: A committed `tranches/confirm.k.claim.json` (`{role, issue, commit, date}`) written by the round
+  that opens that tranche (`tadabur.tlog_tranches.claim_tranche`). `confirm.k` cannot be opened or
+  read while `confirm.(k-1)`'s claim is not in HEAD with no staged or unstaged change; reading
+  `tranches/confirm.k.jsonl` needs `confirm.k`'s own claim in HEAD unchanged too, and the manifest
+  itself must be committed. One round may claim two consecutive tranches, in order. `commit` names
+  the existing input commit the round opens from — it holds the frozen tranche manifest and the
+  round's pre-registration, so the manifest at that commit is what the round read; the claim is
+  committed after it is written and cannot name its own enclosing commit.
 
 **Freeze**
 : The committed `tools/tadabur/tlog/split/` tree: one row per tlog row with its `group_key`

@@ -192,3 +192,7 @@ tools/tadabur/aug_readout/restricted/
 # (each verdict carries its split, shard, row, audio path and SHA-256). No audio is committed.
 !tools/tadabur/tlog/audit/worklist.jsonl
 !tools/tadabur/tlog/audit/verdicts.jsonl
+# The tlog S7 tranche manifests (#192): one line per usable row of a role (look + confirm.1-4),
+# with its group key, frozen label facts and stratum. The sealed tranches' rows are committed by
+# design — gating membership cannot be recomputed without them — but nobody inspects them.
+!tools/tadabur/tlog/tranches/*.jsonl

@@ -9,6 +9,7 @@ from collections import Counter
 
 import pytest
 
+from tadabur import exposure
 from tadabur.exposure import (
     EXTERNAL_USES,
     NONPRO_EVALUATION,
@@ -409,7 +410,7 @@ def test_the_committed_registry_is_complete():
     require_complete(registry)  # every declared use has a file, empty if unused
     assert set(registry.uses()) == USES
     assert set(registry.qud) == QUD_USES
-    assert set(registry.clips) == {NONPRO_EVALUATION}
+    assert set(registry.clips) == {NONPRO_EVALUATION} | exposure.TLOG_USES
     assert registry.recordings[PROBE_TRAINING] == ()  # declared, unused until #94/#95
 
 
@@ -558,7 +559,9 @@ def test_a_clip_use_round_trips_and_is_refused_as_evidence_of_disjointness(tmp_p
 
 
 def test_every_external_use_is_declared_and_missing_until_written(tmp_path):
-    assert EXTERNAL_USES == QUD_USES | {NONPRO_EVALUATION}
+    assert exposure.TLOG_USES == {"tlog.look", "tlog.confirm.1", "tlog.confirm.2",
+                                  "tlog.confirm.3", "tlog.confirm.4"}
+    assert EXTERNAL_USES == QUD_USES | {NONPRO_EVALUATION} | exposure.TLOG_USES
     write_use(WAQF, [_row()], tmp_path)
     assert NONPRO_EVALUATION in load_registry(tmp_path).missing()
 

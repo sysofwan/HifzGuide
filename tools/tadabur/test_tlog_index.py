@@ -353,3 +353,29 @@ def test_the_build_writes_the_index_and_counts_it_describes(tmp_path, monkeypatc
         "tarteel_v1_any_overlap": 4,
     }
     assert json.loads((index_dir / "meta.json").read_text(encoding="utf-8")) == meta
+
+
+def test_require_committed_passes_a_committed_file_and_refuses_any_drift(tmp_path):
+    """The one committed-input gate: S5's decode script, S7's claims and the trees use it."""
+    import subprocess
+
+    repo = tmp_path / "repo"
+    (repo / "docs").mkdir(parents=True)
+    doc = repo / "docs" / "doc.md"
+    doc.write_text("frozen\n", encoding="utf-8")
+    git = ["git", "-C", str(repo), "-c", "user.name=test", "-c", "user.email=test@example.com"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "add", "docs/doc.md"], check=True)
+    subprocess.run([*git, "commit", "-qm", "doc"], check=True)
+
+    assert ti.require_committed([doc], repo=repo) is None
+
+    doc.write_text("changed\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="doc.md"):
+        ti.require_committed([doc], repo=repo)
+
+    doc.write_text("frozen\n", encoding="utf-8")
+    extra = repo / "docs" / "untracked.md"
+    extra.write_text("scratch\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="untracked.md"):
+        ti.require_committed([extra], repo=repo)

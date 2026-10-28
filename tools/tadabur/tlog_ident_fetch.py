@@ -49,7 +49,7 @@ from tadabur.nonpro_sources import Dataset, iter_rows
 from tadabur.panel_seal import SealedPanelError
 from tadabur.tlog_ident import (FLOOR_PREREGISTRATION_PATH, FLOOR_PREREGISTRATION_SHA256,
                                 NOISE_POOL_PATH as NONPRO_GAP_POOL, ROOT)
-from tadabur.tlog_index import commit_of, repo_relative, sha256_file
+from tadabur.tlog_index import commit_of, repo_relative, require_committed, sha256_file
 from training.perturbation import NOISE_LICENCES, NoiseRecording, pool_eligible
 
 AUGMENTATION_POOL = ROOT / "tools" / "tadabur" / "augmentation" / "noise_pool.json"
@@ -189,7 +189,7 @@ def _write_json(path: Path, payload: dict) -> None:
 
 
 def freesound(args: argparse.Namespace) -> None:
-    confirm.require_committed([FLOOR_PREREGISTRATION_PATH])
+    require_committed([FLOOR_PREREGISTRATION_PATH])
     manifest = freesound_manifest(Path(args.cache_dir))
     _write_json(Path(args.out), manifest)
     if manifest["short"]:
@@ -408,7 +408,7 @@ def _write_jsonl(path: Path, rows: list[dict]) -> None:
 
 def common_voice_draw(args: argparse.Namespace) -> None:
     """Draw the five 100-clip arms and 500 Arabic clips from the downloaded archives."""
-    confirm.require_committed([FLOOR_PREREGISTRATION_PATH])
+    require_committed([FLOOR_PREREGISTRATION_PATH])
     pins = archive_pins()
     ngrams = confirm.quran_ngrams(json.loads(IMLAEI_PATH.read_text(encoding="utf-8")))
     archives_dir = Path(args.archives_dir)

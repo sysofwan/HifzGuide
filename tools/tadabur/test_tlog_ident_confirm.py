@@ -597,32 +597,11 @@ def test_the_commit_order_is_doc_then_manifests_then_decodes_then_scoring(ident,
         _assert_before(record["commit"], chain["scoring"]["commit"], f"scoring predates {arm}")
 
 
-def test_require_committed_passes_a_committed_file_and_refuses_any_drift(confirm, tmp_path):
-    repo = tmp_path / "repo"
-    (repo / "docs").mkdir(parents=True)
-    doc = repo / "docs" / "doc.md"
-    doc.write_text("frozen\n", encoding="utf-8")
-    git = ["git", "-C", str(repo), "-c", "user.name=test", "-c", "user.email=test@example.com"]
-    subprocess.run([*git, "init", "-q"], check=True)
-    subprocess.run([*git, "add", "docs/doc.md"], check=True)
-    subprocess.run([*git, "commit", "-qm", "doc"], check=True)
-
-    assert confirm.require_committed([doc], repo=repo) is None
-
-    doc.write_text("changed\n", encoding="utf-8")
-    with pytest.raises(RuntimeError, match="doc.md"):
-        confirm.require_committed([doc], repo=repo)
-
-    doc.write_text("frozen\n", encoding="utf-8")
-    extra = repo / "docs" / "untracked.md"
-    extra.write_text("scratch\n", encoding="utf-8")
-    with pytest.raises(RuntimeError, match="untracked.md"):
-        confirm.require_committed([extra], repo=repo)
-
-
 def test_the_s5b_inputs_are_committed_before_the_decode_script_may_run(ident, confirm):
-    confirm.require_committed([ident.FLOOR_PREREGISTRATION_PATH,
-                               confirm.FREESOUND_MANIFEST_PATH, confirm.CV_MANIFEST_PATH])
+    from tadabur.tlog_index import require_committed
+
+    require_committed([ident.FLOOR_PREREGISTRATION_PATH,
+                       confirm.FREESOUND_MANIFEST_PATH, confirm.CV_MANIFEST_PATH])
 
 
 @pytest.mark.slow

@@ -738,6 +738,20 @@ def _parity_line(line: Mapping) -> dict:
     return {key: value for key, value in line.items() if key not in PARITY_IGNORED}
 
 
+def _keyed_lines(lines: Iterable[Mapping], *, model: str, side: str) -> dict[str, dict]:
+    """The lines by row key, refusing a repeated key rather than keeping the last one.
+
+    A decode claims each row once (``merge_decodes`` refuses repeats the same way); a part
+    concatenated twice must not be able to put a wrong decode behind a right one.
+    """
+    by_key: dict[str, dict] = {}
+    for line in lines:
+        if line["key"] in by_key:
+            raise ValueError(f"{model}: {line['key']} appears twice in the {side}")
+        by_key[line["key"]] = _parity_line(line)
+    return by_key
+
+
 def parity_digest(lines: Iterable[Mapping]) -> str:
     """The SHA-256 of a set of decode lines, key-sorted and without ``word_from``/``word_to``.
 
@@ -762,7 +776,9 @@ def parity_record(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
     graded. The record names the comparison's rows, mismatches and digests, plus what shows the
     parts were decoded rather than put there: the timing lines' items and seconds
     (:func:`timing_totals`) and each part file's SHA-256. A parts directory seeded from the
-    committed decodes compares identical but records no items.
+    committed decodes compares identical but records no items. A row key that appears twice on
+    either side is refused: a concatenated part could otherwise hide a wrong decode behind a
+    right one, and the line count would hide the extra row.
     """
     shards = parity_shards() if shards is None else sorted(set(shards))
     selected = set(shards)
@@ -778,8 +794,8 @@ def parity_record(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
         committed = [line for line in read_jsonl_gz(
             Path(decodes_dir) / f"tlog.look.{model}.jsonl.gz")
             if line["shard_file"] in selected]
-        expected = {line["key"]: _parity_line(line) for line in committed}
-        found = {line["key"]: _parity_line(line) for line in shared}
+        expected = _keyed_lines(committed, model=model, side="committed decodes")
+        found = _keyed_lines(shared, model=model, side="shared parts")
         record["rows"][model] = len(found)
         record["mismatches"][model] = (
             len(set(expected) ^ set(found))

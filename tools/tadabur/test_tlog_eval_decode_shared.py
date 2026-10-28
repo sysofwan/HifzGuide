@@ -337,6 +337,28 @@ def test_a_row_the_shared_decode_lacks_is_a_mismatch(tmp_path, monkeypatch):
     assert record["identical"] == {"base": False} and record["mismatches"] == {"base": 1}
 
 
+def test_a_repeated_key_in_the_shared_parts_is_refused(tmp_path, monkeypatch):
+    """A part concatenated twice can put a wrong decode behind a right one; the last key would
+    win and the comparison would call it identical."""
+    per_shard = _per_shard()
+    _committed(tmp_path, per_shard)
+    doubled = {**per_shard, SHARD: [_line("a", SHARD, "WRONG")] + per_shard[SHARD]}
+    _shared_parts(tmp_path, {s: doubled[s] for s in (SHARD, OTHER_SHARD)})
+
+    with pytest.raises(ValueError, match="appears twice in the shared parts"):
+        _parity(tmp_path, monkeypatch)
+
+
+def test_a_repeated_key_in_the_committed_decodes_is_refused(tmp_path, monkeypatch):
+    per_shard = _per_shard()
+    doubled = {**per_shard, SHARD: per_shard[SHARD] + [_line("a", SHARD, "y")]}
+    _committed(tmp_path, doubled)
+    _shared_parts(tmp_path, {s: per_shard[s] for s in (SHARD, OTHER_SHARD)})
+
+    with pytest.raises(ValueError, match="appears twice in the committed decodes"):
+        _parity(tmp_path, monkeypatch)
+
+
 def test_parts_that_were_never_decoded_record_no_items(tmp_path, monkeypatch):
     """A parts directory seeded from the committed decodes (or kept from an earlier run) is
     identical to them, but nothing was decoded: the record's items are what tell."""

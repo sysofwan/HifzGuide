@@ -13,16 +13,15 @@ store only, from the box clip cache (no shard read, no audio off the box). Every
 `decode` command directly (the launcher's worker line), with the selection named explicitly:
 
 ```bash
-# The parity selection's shard names; each process takes its share of them.
-shards=$(cd tools && python -c "from tadabur.tlog_eval_decode import parity_shards; \
+# From the repository root (the CLI is run with PYTHONPATH=tools, as the launcher's staged
+# checkout does from tools/). The parity selection's shard names, then each process's share:
+shards=$(PYTHONPATH=tools python -c "from tadabur.tlog_eval_decode import parity_shards; \
     print(' '.join(parity_shards()))")
-# P processes, single-threaded (or unpinned), all three models, sharing on unless
-# --no-share-features is given:
-OMP_NUM_THREADS=1 python -m tadabur.tlog_eval_decode decode --parts-dir DIR \
+PYTHONPATH=tools OMP_NUM_THREADS=1 python -m tadabur.tlog_eval_decode decode --parts-dir DIR \
     --cache-dir DIR --clip-cache DIR --models base c95 candidate_ema \
     --shard-files $shards --shard-index i --shard-count P
 # The self-checking record of the shared parts against the committed decodes:
-python -m tadabur.tlog_eval_decode parity --parts-dir DIR \
+PYTHONPATH=tools python -m tadabur.tlog_eval_decode parity --parts-dir DIR \
     --out tools/tadabur/consonant2_readout/decodes/shared_parity.json --pr 216
 ```
 

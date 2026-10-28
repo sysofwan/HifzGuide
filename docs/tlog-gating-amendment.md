@@ -39,7 +39,8 @@ with a candidate; otherwise the eval population would depend on the model being 
 
 On clean look this is **2,853** rows of 6,327, against **3,059** under the frozen rule: 208
 floor-failing `both` rows enter and 414 below-bar rows leave (about 385 of those 414 carried the
-wrong reference). The 1,293 straddling `both` rows (31%) stay reported-only, as frozen.
+wrong reference). The 1,293 straddling `both` rows (31% of the 4,146 `both` rows) stay
+reported-only, as frozen.
 `unclean` and `identified` rows remain reported strata.
 
 ## 2. Why the Δ relabel rule is out: a window defect
@@ -67,7 +68,9 @@ the best class **14 of 15**, and **11 of the 14** were the adjacent ayah (e.g. 1
 - Real mistakes survive: all **52** owner-verified real-mistake decodes identify as `both` and
   pass the floor; 51 are non-straddling, and the straddling clip was already outside the frozen
   gating set.
-- Floor-passing audited clips: **0 of 110** were non-recitation.
+- Floor-passing audited clips: **0 of 107** were non-recitation. The owner note's 110 is the
+  stratum-size sum `150 − 25 − 15`; three `both` draws fail the floor, so the committed worklist
+  holds 107 floor-passing audited rows.
 - Silence floor: **7 of 15** silence-excluded clips were recitation (clean 5/7, unclean 2/8).
 - Training-pool non-recitation: 397 of the 2,000-row sample are flagged (19.85%) and the flag's
   audited precision is 4/25 = 16%, so the composed estimate is about 3%. By split the flagged
@@ -95,3 +98,10 @@ Training is KL to the teacher and uses no labels.
 - The silence floor is unchanged. It only removes data, never admits it; on clean it removes
   recitation 5/7, so gating under-represents quiet and pause-heavy recordings.
 - No candidate has been scored on tlog look. No threshold was tuned; the rule has none.
+
+## Changelog
+
+- 2026-10-28: created; `0 of 110` floor-passing audited clips corrected to `0 of 107`. The
+  owner-approved [#173 comment](https://github.com/sysofwan/HifzGuide/issues/173#issuecomment-6466464463)
+  and principal r7 carry 110, the stratum-size sum `150 − 25 − 15`; three `both` draws fail the
+  floor, so the committed worklist has 107.

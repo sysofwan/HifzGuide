@@ -1,0 +1,97 @@
+{
+ "calibration_sha256": "b0040b99fac1714c4600775aaa8eced57bf65ae7ae9790d14c45498cfe7bbb0b",
+ "code_sha": "5280a5b564dbb8e3749af720748fac418f98e559",
+ "decode_limit_sha256": "1382979892ddd6a8d3c52019e7a6b1b5768f74865863fefec40c81768a74ad54",
+ "gating_amendment_sha256": "23d6bf7abc9882909e9686d19b2bdcd8b19fb19ed49a38829c4db9e58a4ce085",
+ "model": "obadx/muaalem-model-v3_2",
+ "overlay": {
+  "overlap_code_sha": "ea3fded09b246e16ed1f41ca265d72f1c1a9262e",
+  "split_code_sha": "7380e1ceaa0de5fa57a93ed122d55d3f74318839"
+ },
+ "preregistration_sha256": "204fe7f980488aff73402c56f1729f7f17f7c9471ea0664f6365bb8870b62086",
+ "pull_request": 211,
+ "pull_request_ref": "refs/pull/211/head",
+ "revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
+ "schema_version": 1,
+ "slice_timing": {
+  "rows": 500,
+  "seconds": 276.0
+ },
+ "tranches": {
+  "confirm.1": {
+   "entries": 9632,
+   "gating": 2843,
+   "gating_id_floor_ok": 2645,
+   "gating_surahs": 113,
+   "rows": 9632,
+   "strata": {
+    "gating": 2843,
+    "reported:below_bar": 848,
+    "reported:identified": 445,
+    "reported:straddles": 2114,
+    "reported:unclean": 3382,
+    "reported:undecided": 0
+   }
+  },
+  "confirm.2": {
+   "entries": 9747,
+   "gating": 2919,
+   "gating_id_floor_ok": 2706,
+   "gating_surahs": 114,
+   "rows": 9747,
+   "strata": {
+    "gating": 2919,
+    "reported:below_bar": 875,
+    "reported:identified": 383,
+    "reported:straddles": 2157,
+    "reported:unclean": 3413,
+    "reported:undecided": 0
+   }
+  },
+  "confirm.3": {
+   "entries": 9462,
+   "gating": 2804,
+   "gating_id_floor_ok": 2613,
+   "gating_surahs": 114,
+   "rows": 9462,
+   "strata": {
+    "gating": 2804,
+    "reported:below_bar": 838,
+    "reported:identified": 397,
+    "reported:straddles": 2101,
+    "reported:unclean": 3322,
+    "reported:undecided": 0
+   }
+  },
+  "confirm.4": {
+   "entries": 9586,
+   "gating": 2866,
+   "gating_id_floor_ok": 2672,
+   "gating_surahs": 114,
+   "rows": 9586,
+   "strata": {
+    "gating": 2866,
+    "reported:below_bar": 816,
+    "reported:identified": 403,
+    "reported:straddles": 2206,
+    "reported:unclean": 3295,
+    "reported:undecided": 0
+   }
+  },
+  "look": {
+   "entries": 9710,
+   "gating": 2853,
+   "gating_id_floor_ok": 2645,
+   "gating_surahs": 113,
+   "rows": 9710,
+   "strata": {
+    "gating": 2853,
+    "reported:below_bar": 854,
+    "reported:identified": 466,
+    "reported:straddles": 2154,
+    "reported:unclean": 3383,
+    "reported:undecided": 0
+   }
+  }
+ }
+}

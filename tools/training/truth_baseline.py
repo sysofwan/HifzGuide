@@ -86,10 +86,12 @@ from tadabur.word_sample import SampledWord, VerifiedWord, load_words, verified_
 from training import direction_table
 from training.decoding import (
     APP_CHECKS,
+    DEPLOYED_BLOCK,
     INFERENCE_POLICY,
     SPANS,
     DecodeFingerprint,
     Decoder,
+    check_features,
     committed_text,
     stream_protocol,
 )
@@ -243,15 +245,28 @@ def expected_fingerprint(model_ref: str, mode: str) -> dict:
 
 
 @dataclass(frozen=True)
+class SharedDecode:
+    """A store's split decode (#213): ``featurize(extractor, span)`` computes one item's
+    model-independent features, and ``decode(decoder, features)`` turns them into the record
+    that model makes. Only decoders whose feature extractors are configured alike may share
+    the pass (``training.decoding.shared_extractor``)."""
+
+    featurize: Callable[[object, np.ndarray], object]
+    decode: Callable[[Decoder, object], dict]
+
+
+@dataclass(frozen=True)
 class Store:
     """One kind of per-model cache: its directory, the protocols it holds (name -> decode
     mode), how one item's audio is decoded into them, and whether each item is written on one
-    line (a check sequence runs to hundreds of checks)."""
+    line (a check sequence runs to hundreds of checks). ``shared`` splits the decode into a
+    model-independent feature pass and a per-model pass, which a multi-model run may share."""
 
     directory: Path
     protocols: Mapping[str, str]
     decode: Callable[[Decoder, np.ndarray], dict]
     one_item_per_line: bool = False
+    shared: SharedDecode | None = None
 
     def path(self, name: str) -> Path:
         return self.directory / f"{name}.json"
@@ -268,10 +283,17 @@ def _check_sequence(decoder: Decoder, span: np.ndarray) -> dict:
     return {CHECKS: decoder.app_checks(span)}
 
 
+def _shared_check_sequence(decoder: Decoder, features) -> dict:
+    """The recorded check sequence from one feature pass shared by every model: exactly what
+    :func:`_check_sequence` returns."""
+    return {CHECKS: decoder.app_checks_from(features, (DEPLOYED_BLOCK,))[DEPLOYED_BLOCK]}
+
+
 #: Each item decoded whole and streamed at b = 0.
 DECODE_STORE = Store(DECODES_DIR, PROTOCOLS, _spans_and_stream)
 #: Each item's recorded check sequence (``training.decoding.Decoder.app_checks``).
-CHECK_STORE = Store(CHECKS_DIR, CHECK_PROTOCOLS, _check_sequence, one_item_per_line=True)
+CHECK_STORE = Store(CHECKS_DIR, CHECK_PROTOCOLS, _check_sequence, one_item_per_line=True,
+                    shared=SharedDecode(check_features, _shared_check_sequence))
 
 
 def read_cache(path: Path) -> dict:

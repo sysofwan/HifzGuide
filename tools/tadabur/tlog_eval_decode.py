@@ -277,11 +277,14 @@ def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
                   provenance: Mapping, models: Sequence[str] = MODELS) -> dict:
     """Gather the per-shard parts into one sorted file per model, and write ``meta.json``.
 
-    Every model must hold each manifest row exactly once: a missing, repeated or foreign row
+    The expected rows are the **selection this run decodes** — the manifest's gating stratum,
+    never the whole look tranche — so a merge checks the parts against what was asked for.
+    Every model must hold each selected row exactly once: a missing, repeated or foreign row
     is a ``ValueError`` naming the model, so a partial run can never look complete. The merged
     files are gzipped without a timestamp (:func:`tlog_index.write_shard`), sorted by item key.
     """
-    expected = {item_key(row["audio_path"]) for row in read_jsonl(Path(manifest_path))}
+    selected = gating_rows(read_jsonl(Path(manifest_path)))
+    expected = {item_key(row["audio_path"]) for row in selected}
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     counts = {}

@@ -163,6 +163,17 @@ check() {
   fi
 }
 
+merge_job() {
+  [ -z "$(git -C "$REPO_DIR" status --porcelain)" ] \
+    || { echo "the worktree is dirty; commit before merging" >&2; return 1; }
+  require_manifest_on_main
+  stage_repo
+  remote "source '$CONDA' && conda activate $ENV_NAME && cd '$REPO/tools' && \\
+          OMP_NUM_THREADS=$THREADS python -u -m tadabur.tlog_eval_decode merge \\
+          --parts-dir '$PARTS' --out-dir '$REPO/$OUT' --models ${MODELS//,/ } \\
+          --processes $PROCESSES --threads $THREADS $(pr_args)"
+}
+
 fetch() {
   local destination=${1:?fetch needs a destination directory}
   mkdir -p "$destination"
@@ -173,7 +184,8 @@ fetch() {
 case "$action" in
   launch) launch ;;
   check) check ;;
+  merge) merge_job ;;
   fetch) fetch "${3:-}" ;;
   "") launch ;;
-  *) echo "usage: $0 $job [launch|check|fetch DIR]" >&2; exit 2 ;;
+  *) echo "usage: $0 $job [launch|check|merge|fetch DIR]" >&2; exit 2 ;;
 esac

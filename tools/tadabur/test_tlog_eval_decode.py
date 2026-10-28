@@ -514,3 +514,27 @@ def test_a_process_decodes_only_its_shard_subset_with_the_runs_checks(monkeypatc
     assert result["shards"] == 2 and decoder.checks == 2 and decoder.streams == []
     assert sorted(path.name for path in tmp_path.glob("tlog.look.*.jsonl")) == [
         f"tlog.look.{OTHER_SHARD}.base.jsonl", f"tlog.look.{shards[3]}.base.jsonl"]
+
+
+def test_the_merge_checks_the_gating_selection_not_the_whole_look_manifest(tmp_path):
+    rows = [_manifest_row(1), _manifest_row(2, stratum="reported:unclean")]
+    parts = tmp_path / "parts"
+    _write_jsonl(ted.decodes_path(parts, SHARD, "base"),
+                 [{"key": "2_1_1.flac#0", "checks": []}])
+    counts = ted.merge_decodes(parts, tmp_path / "decodes",
+                               manifest_path=_manifest(tmp_path, rows), provenance={},
+                               models=("base",))
+    assert counts == {"base": 1}
+    meta = json.loads((tmp_path / "decodes" / "meta.json").read_text(encoding="utf-8"))
+    assert meta["manifest_rows"] == 1 and meta["rows"] == {"base": 1}
+
+
+def test_the_merge_refuses_a_part_row_outside_the_gating_selection(tmp_path):
+    rows = [_manifest_row(1), _manifest_row(2, stratum="reported:unclean")]
+    parts = tmp_path / "parts"
+    _write_jsonl(ted.decodes_path(parts, SHARD, "base"),
+                 [{"key": "2_1_1.flac#0", "checks": []},
+                  {"key": "2_1_2.flac#0", "checks": []}])
+    with pytest.raises(ValueError, match="base"):
+        ted.merge_decodes(parts, tmp_path / "decodes", manifest_path=_manifest(tmp_path, rows),
+                          provenance={}, models=("base",))

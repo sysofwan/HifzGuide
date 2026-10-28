@@ -12,14 +12,16 @@ byte. Other stores are not shared: they are called per decoder, as before.
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 
 import pytest
 
 from tadabur.audio import TARGET_SAMPLE_RATE
 from training import decoding as dc
+from training import external_decode
 from training.external_decode import Recording, decode_recordings
 from training.test_shared_check_features import _audio, _decoder
-from training.truth_baseline import CHECK_STORE, CHECKS, Store
+from training.truth_baseline import CHECK_STORE, CHECKS, SharedDecode, Store
 
 STORES = {CHECKS: CHECK_STORE}
 #: One recording of two items, over different sub-spans of it (neither starts at 0 and the
@@ -111,27 +113,49 @@ def test_sharing_on_times_the_features_apart_from_each_models_decode(tmp_path):
     assert set(timing["decode_seconds"]) == set(decoders)
     assert all(set(arms) == {CHECKS} for arms in timing["decode_seconds"].values())
     assert set(timing["shared_feature_seconds"]) == {CHECKS}
-    assert timing["shared_feature_seconds"][CHECKS] >= 0
 
 
 def test_a_resumed_item_with_one_model_left_is_decoded_as_before(tmp_path):
     _, paths = _run(tmp_path / "first")
     resumed = tmp_path / "resumed"
     resumed.mkdir()
-    done = _lines(paths["c95"])[:1]  # c95 already holds a#0; base holds nothing
-    (resumed / "c95.jsonl").write_text("".join(json.dumps(line, ensure_ascii=False,
-                                                           separators=(",", ":")) + "\n"
-                                               for line in done), encoding="utf-8")
+    done = _lines(paths["base"])[:1]  # base already holds a#0; c95 holds nothing
+    (resumed / "base.jsonl").write_text("".join(json.dumps(line, ensure_ascii=False,
+                                                            separators=(",", ":")) + "\n"
+                                                for line in done), encoding="utf-8")
     decoders = _decoders()
 
     _, again = _run(resumed, decoders, share_features=True)
 
     assert _lines(again["base"]) == _expected("base")
     assert _lines(again["c95"]) == _expected("c95")
-    # a#0 has only base pending (featurised for it alone), b#0 has both (featurised once)
-    first_item = len(dc.check_schedule(SPANS["a#0"][1] - SPANS["a#0"][0]))
-    second_item = len(dc.check_schedule(SPANS["b#0"][1] - SPANS["b#0"][0]))
-    assert _extractor_calls(decoders) == first_item + second_item
+    # a#0 has only c95 pending: its own extractor featurises it, unshared. b#0 has both
+    # pending: the first decoder's extractor featurises it once for both.
+    pieces = {key: [s.end - s.start for s in dc.check_schedule(end - start)]
+              for key, (start, end) in SPANS.items()}
+    assert decoders["c95"].extractor.lengths == pieces["a#0"]
+    assert decoders["base"].extractor.lengths == pieces["b#0"]
+
+
+def test_the_feature_seconds_are_timed_apart_from_each_models_decode(monkeypatch, tmp_path):
+    clock = [0.0]
+
+    def featurize(extractor, span):
+        clock[0] += 10.0  # a feature pass costs 10 s
+        return len(span)
+
+    def decode_shared(decoder, features):
+        clock[0] += 1.0  # each model's own pass costs 1 s
+        return {"x": features}
+
+    monkeypatch.setattr(external_decode, "time", SimpleNamespace(time=lambda: clock[0]))
+    stores = {"x": Store(tmp_path, {}, lambda decoder, span: {"x": len(span)},
+                         shared=SharedDecode(featurize, decode_shared))}
+
+    timing, _ = _run(tmp_path / "out", stores=stores, share_features=True)
+
+    assert timing["shared_feature_seconds"] == {"x": 20.0}  # two items, one pass each
+    assert timing["decode_seconds"] == {"base": {"x": 2.0}, "c95": {"x": 2.0}}
 
 
 def test_other_stores_are_called_per_decoder_as_before(tmp_path):

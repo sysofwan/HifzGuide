@@ -173,6 +173,18 @@ def test_two_teacher_extractors_built_alike_are_the_same_configuration():
     assert dc.shared_extractor(decoders) is decoders[0].extractor
 
 
+def test_two_teacher_extractors_built_alike_compute_equal_features():
+    """Production builds one extractor per decoder; the sharing premise is that their features
+    are equal, not only their configurations."""
+    samples = _audio(3.4, seed=5)
+    first = dc.check_features(_teacher_extractor(), samples)
+    second = dc.check_features(_teacher_extractor(), samples)
+
+    assert first.spans == second.spans and len(first.pairs) == len(first.spans)
+    for (pairs, real), (other_pairs, other_real) in zip(first.pairs, second.pairs):
+        assert real == other_real and torch.equal(pairs, other_pairs)
+
+
 def test_extractors_configured_differently_are_refused():
     alike = _decoder(0, padding_value=1.0)
     other = _decoder(1, padding_value=0.0)

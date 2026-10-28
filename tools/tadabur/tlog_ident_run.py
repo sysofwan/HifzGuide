@@ -39,11 +39,11 @@ from pathlib import Path
 from typing import Any
 
 from training.counterfactual_eval import wilson_interval
-from training.tashkeel_eval import write_text_atomically
 
 from . import tlog_pool
 from .tlog_ident import load_identifier
-from .tlog_index import REPO_ROOT, repo_relative, require_clean_tree, sha256_file, write_shard
+from .tlog_index import (REPO_ROOT, repo_relative, require_clean_tree, sha256_file, write_json,
+                         write_shard)
 from .tlog_overlap import iter_pool_rows
 from .tlog_pass1 import read_jsonl_gz
 from .tlog_pool import (
@@ -178,15 +178,11 @@ def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
             "selection": {"salt": SALT, **selection.counts}}
     look_census = tree_census(count_by_shard(
         [row for split in ("clean", "unclean") for row in look[split]]))
-    write_text_atomically(out_dir / "look" / "meta.json",
-                          json.dumps({**base, "census": look_census,
-                                      "rows": {split: len(rows)
-                                               for split, rows in look.items()}},
-                                     ensure_ascii=False, indent=1, sort_keys=True) + "\n")
-    write_text_atomically(out_dir / "train_sample.meta.json",
-                          json.dumps({**base, "census": tree_census(count_by_shard(sample)),
-                                      "rows": len(sample)},
-                                     ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+    write_json({**base, "census": look_census,
+                "rows": {split: len(rows) for split, rows in look.items()}},
+               out_dir / "look" / "meta.json")
+    write_json({**base, "census": tree_census(count_by_shard(sample)),
+                "rows": len(sample)}, out_dir / "train_sample.meta.json")
     return {"look": {split: len(rows) for split, rows in look.items()},
             "train_sample": len(sample), "seconds": round(time.time() - started, 1)}
 
@@ -255,14 +251,11 @@ def identify_trees(*, decodes_dir: Path = DECODES_DIR, out_dir: Path = IDENT_DIR
     for split in ("clean", "unclean"):
         write_shard(sorted(look_rows[split], key=row_key),
                     out_dir / "look" / f"{split}.jsonl.gz")
-    write_text_atomically(out_dir / "look" / "meta.json",
-                          json.dumps({**provenance, "schema_version": SCHEMA_VERSION,
-                                      "rows": {split: len(rows)
-                                               for split, rows in look_rows.items()},
-                                      "census": tree_census(count_by_shard(
-                                          [row for rows in look_rows.values()
-                                           for row in rows]))},
-                                     ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+    write_json({**provenance, "schema_version": SCHEMA_VERSION,
+                "rows": {split: len(rows) for split, rows in look_rows.items()},
+                "census": tree_census(count_by_shard(
+                    [row for rows in look_rows.values() for row in rows]))},
+               out_dir / "look" / "meta.json")
     write_shard(sorted(sample, key=row_key), out_dir / "train_sample.jsonl.gz")
     rule = five_percent_rule(sample)
     decode_meta = json.loads((decodes_dir / "train_sample.meta.json").read_text(encoding="utf-8"))
@@ -271,8 +264,7 @@ def identify_trees(*, decodes_dir: Path = DECODES_DIR, out_dir: Path = IDENT_DIR
             "five_percent_rule": rule,
             "bands": band_report(sample, d_max),
             "census": tree_census(count_by_shard(sample))}
-    write_text_atomically(out_dir / "train_sample.meta.json",
-                          json.dumps(meta, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+    write_json(meta, out_dir / "train_sample.meta.json")
     return {"look": {split: len(rows) for split, rows in look_rows.items()},
             "train_sample": len(sample), "five_percent_rule": rule}
 
@@ -300,8 +292,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.command == "limit":
         record = measure_decode_limit()
-        write_text_atomically(args.out, json.dumps(record, ensure_ascii=False, indent=1,
-                                                   sort_keys=True) + "\n")
+        write_json(record, args.out)
         print(f"wrote {args.out}: D_max {record['d_max_seconds']} s", flush=True)
     elif args.command == "decode":
         print(json.dumps(decode(cache_dir=args.cache_dir, out_dir=args.out_dir,

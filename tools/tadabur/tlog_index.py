@@ -422,9 +422,7 @@ def build(index_dir: Path = INDEX_DIR, quran_db: Path = DEFAULT_QURAN_DB,
             "tarteel_v1_any_overlap": overlaps["any"],
         },
     }
-    _write_atomically(index_dir / "meta.json",
-                      (json.dumps(meta, ensure_ascii=False, indent=1, sort_keys=True)
-                       + "\n").encode("utf-8"))
+    write_json(meta, index_dir / "meta.json")
     return meta
 
 

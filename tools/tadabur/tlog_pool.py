@@ -246,7 +246,8 @@ def decode_rows(rows: Iterable[Mapping[str, Any]], *, d_max: float, cache_dir: P
                                                      sort_keys=True) + "\n")
     decoded: dict[tuple[str, str, int], dict] = {}
     if by_shard:
-        teacher = decoder() if teacher is None else teacher
+        if teacher is None:
+            teacher, _identity, _fingerprint = decoder()
         started = time.time()
         for position, ((split, stem), shard_wanted) in enumerate(sorted(by_shard.items()),
                                                                  start=1):

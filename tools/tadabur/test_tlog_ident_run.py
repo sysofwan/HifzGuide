@@ -440,6 +440,53 @@ def test_decode_shard_checks_the_audio_checksum_before_decoding(run):
     assert decoder.spans == 0
 
 
+def _decode_rows_inputs(payload=b"row-one"):
+    """One selected row and the fake shard stream that serves its audio."""
+    wanted = [{"split": "clean", "shard_file": "clean-00000-of-00411", "row": 0,
+               "audio_path": "b.flac", "audio_sha256": _sha256(payload), "duration_s": 5.0}]
+    stream_rows = [{"audio": {"path": "b.flac", "bytes": payload}}]
+    return wanted, lambda name: iter(stream_rows)
+
+
+def test_decode_rows_loads_the_teacher_itself_and_unpacks_it(run, tmp_path, monkeypatch):
+    """The default branch of R1.1: ``decoder()`` returns ``(decoder, identity, fingerprint)``.
+
+    ``tadabur.tlog_ident_run.decode`` and S7 both go through here, so the tuple must be
+    unpacked before ``decode_shard`` sees the model.
+    """
+    teacher = _fake_decoder()
+    loaded = []
+
+    def fake_decoder():
+        loaded.append(teacher)
+        return teacher, {"model_ref": pool.BASE_MODEL, "hub_revision": pool.BASE_REVISION}, {}
+
+    wanted, stream = _decode_rows_inputs()
+    monkeypatch.setattr(pool, "decoder", fake_decoder)
+    monkeypatch.setattr(pool, "shard_rows", lambda name, cache: stream(name))
+    monkeypatch.setattr(pool, "default_audio", lambda data: np.zeros(1_600, dtype=np.float32))
+    records = pool.decode_rows(wanted, d_max=60.0, cache_dir=tmp_path,
+                               scratch=tmp_path / "decoded")
+    assert loaded == [teacher] and teacher.spans == 1
+    assert _keys(records) == _keys(wanted)
+    assert records[0]["decode_mode"] == pool.WHOLE_CLIP
+
+
+def test_decode_rows_uses_the_teacher_it_is_given_without_a_second_load(run, tmp_path,
+                                                                        monkeypatch):
+    """S7 loads the teacher once (for the slice and the full pass): never a second copy."""
+    teacher = _fake_decoder()
+    wanted, stream = _decode_rows_inputs()
+    monkeypatch.setattr(pool, "decoder",
+                        lambda: pytest.fail("decode_rows loaded a second teacher"))
+    monkeypatch.setattr(pool, "shard_rows", lambda name, cache: stream(name))
+    monkeypatch.setattr(pool, "default_audio", lambda data: np.zeros(1_600, dtype=np.float32))
+    records = pool.decode_rows(wanted, d_max=60.0, cache_dir=tmp_path,
+                               scratch=tmp_path / "decoded", teacher=teacher)
+    assert teacher.spans == 1
+    assert _keys(records) == _keys(wanted)
+
+
 # --- the 5% rule and per-band reporting (r20 Q1/Q5) --------------------------------------------
 
 

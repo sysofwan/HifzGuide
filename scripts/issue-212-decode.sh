@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# issue-212-decode.sh — the tlog look decode and its box clip cache on cuda-dev (#212).
+# issue-212-decode.sh — the tlog look decode, its box clip cache and the P3 VRAM check (#212).
 #
 # Mac side, from the worktree root:
 #   scripts/issue-212-decode.sh decode launch    # gating rows, 3 models, checks, 6 x OMP=1
@@ -8,6 +8,16 @@
 #   scripts/issue-212-decode.sh decode merge     # re-run the merge over the parts already there
 #   scripts/issue-212-decode.sh cache launch     # retain the gating clips in $CLIPS
 #   scripts/issue-212-decode.sh cache check
+#   scripts/issue-212-decode.sh vram launch      # peak VRAM of 4 models at 6, then 5, 4 procs
+#   scripts/issue-212-decode.sh vram check
+#   scripts/issue-212-decode.sh vram fetch       # pull vram_check.json into the worktree
+#
+# The vram job answers #216's open risk before round 2 is approved: it decodes the parity
+# selection with the teacher, C95, the #178 candidate's EMA and h448 (standing in for the
+# control), 1 thread per process and shared features, at 6 processes and — only if that peak
+# exceeds 14,500 MiB — at 5 and 4. `tadabur.tlog_vram_check` samples nvidia-smi every second
+# and writes `tools/tadabur/consonant2_readout/vram_check.json`; nothing is graded or merged,
+# and the parts are deleted from scratch afterwards, h448's included.
 #
 # The run is the look tranche's 2,853 `gating` rows (the frozen manifest's stratum) decoded by
 # the teacher, C95 and the #178 candidate's EMA, `checks` only, as PROCESSES processes with
@@ -46,6 +56,9 @@ CACHE=$ROOT/cache
 # The retained look clips: box scratch, never the repo or the fetched output directory.
 CLIPS=${CLIP_CACHE_DIR:-$ROOT/clips}
 PARTS=${PARTS_DIR:-$ROOT/parts-gating-o1x6}
+# The VRAM check's fresh scratch parts and the record it writes inside the staged checkout.
+VRAM_PARTS=${VRAM_PARTS:-$ROOT/parts-vram}
+VRAM_OUT=tools/tadabur/consonant2_readout/vram_check.json
 OUT=tools/tadabur/consonant2_readout/decodes
 MANIFEST=tools/tadabur/tlog/tranches/look.jsonl
 MODELS=${MODELS:-base,c95,candidate_ema}
@@ -64,8 +77,8 @@ PR=${PR:-}
 job=${1:-}
 action=${2:-}
 case "$job" in
-  decode|cache) NAME=$job ;;
-  *) echo "usage: $0 {decode|cache} [launch|check]" >&2
+  decode|cache|vram) NAME=$job ;;
+  *) echo "usage: $0 {decode|cache|vram} [launch|check]" >&2
      exit 2 ;;
 esac
 
@@ -185,6 +198,26 @@ SH
 chmod +x '$ROOT/run-$NAME.sh'"
 }
 
+write_vram_runner() {
+  remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
+#!/usr/bin/env bash
+set -uo pipefail
+run() {
+  source '$CONDA' || return 1
+  conda activate $ENV_NAME || return 1
+  cd '$REPO/tools' || return 1
+  python -u -m tadabur.tlog_vram_check --parts-root '$VRAM_PARTS' \\
+      --cache-dir '$CACHE' --clip-cache '$CLIPS' --out '$REPO/$VRAM_OUT' $(pr_args)
+}
+run
+code=\$?
+rm -rf '$VRAM_PARTS'
+echo \"\$code\" > '$LOGS/$NAME.exit'
+exit \$code
+SH
+chmod +x '$ROOT/run-$NAME.sh'"
+}
+
 require_manifest_on_main() {
   git -C "$REPO_DIR" fetch -q origin main
   git -C "$REPO_DIR" cat-file -e "origin/main:$MANIFEST" 2>/dev/null \
@@ -192,12 +225,12 @@ require_manifest_on_main() {
   git -C "$REPO_DIR" log -1 --format=%H origin/main -- "$MANIFEST"
 }
 
-# Both jobs run from the one checked-out $REPO, and staging replaces it. Every stage_repo is
-# guarded by this check, for both runner names, so a live job is never pulled out from under
+# Every job runs from the one checked-out $REPO, and staging replaces it. Every stage_repo is
+# guarded by this check, for every runner name, so a live job is never pulled out from under
 # its own imports; RESUME deliberately does not bypass it.
 refuse_if_live() {
   local other
-  for other in decode cache; do
+  for other in decode cache vram; do
     if remote "test -f '$LOGS/$other.pid' && test ! -f '$LOGS/$other.exit' \\
                && kill -0 \"\$(cat '$LOGS/$other.pid')\" 2>/dev/null"; then
       echo "the $other runner is live on $HOST; not replacing $REPO under it" >&2
@@ -258,6 +291,15 @@ launch_cache() {
   start_job
 }
 
+launch_vram() {
+  preflight >/dev/null || return 1
+  remote "mkdir -p '$ROOT' '$LOGS' '$CACHE'"
+  remote "rm -rf '$VRAM_PARTS'"
+  stage_repo
+  write_vram_runner
+  start_job /root/scratch/gpu.lock
+}
+
 check() {
   if remote "test -f '$LOGS/$NAME.needs-post'"; then
     echo "needs-post: $(remote "cat '$LOGS/$NAME.needs-post'")"
@@ -298,14 +340,25 @@ fetch() {
   echo "fetched $job into $destination"
 }
 
+fetch_vram() {
+  mkdir -p "$REPO_DIR/$(dirname "$VRAM_OUT")"
+  remote "cat '$REPO/$VRAM_OUT'" > "$REPO_DIR/$VRAM_OUT"
+  echo "fetched $VRAM_OUT"
+}
+
 case "$action" in
   launch) "launch_$NAME" ;;
   check) check ;;
-  fetch) [ "$NAME" = decode ] || { echo "fetch is decode-only" >&2; exit 2; }
-         fetch "${3:-}" ;;
+  fetch)
+    case "$NAME" in
+      decode) fetch "${3:-}" ;;
+      vram) fetch_vram ;;
+      *) echo "fetch is decode-only" >&2; exit 2 ;;
+    esac ;;
   merge) [ "$NAME" = decode ] || { echo "merge is decode-only" >&2; exit 2; }
          merge_job ;;
   "") "launch_$NAME" ;;
-  *) echo "usage: $0 {decode|cache} [launch|check] (decode also: merge|fetch DIR)" >&2
+  *) echo "usage: $0 {decode|cache|vram} [launch|check] " \
+          "(decode also: merge|fetch DIR; vram also: fetch)" >&2
      exit 2 ;;
 esac

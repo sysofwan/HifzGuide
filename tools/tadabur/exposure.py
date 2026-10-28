@@ -144,9 +144,18 @@ NONPRO_EVALUATION = "nonpro.evaluation_only"
 TLOG_USES = frozenset({f"tlog.{role}" for role in
                        ("look", "confirm.1", "confirm.2", "confirm.3", "confirm.4")})
 CLIP_USES = frozenset({NONPRO_EVALUATION}) | TLOG_USES
-#: Every use of audio from outside Tadabur. Each is evaluation only, and holds no Tadabur
-#: recording: :func:`check_disjoint` refuses to certify anything with one.
-EXTERNAL_USES = QUD_USES | CLIP_USES
+#: The tlog training pool (#193, S8): a **row-set use**, not a clip or shard use. tlog shards
+#: hold training and evaluation rows side by side, so this use names its rows exactly, by a
+#: predicate over the overlay at ``overlay_commit`` and the count and SHA-256 of their sorted
+#: row keys (:class:`RowSetExposure`, ``exposure/<use>.rows.json``). It is the one external
+#: use that may train; :func:`check_disjoint` still refuses it in every evaluation context and
+#: :func:`check_row_set_disjoint` checks it against every evaluation use.
+TLOG_TRAINING = "tlog.training"
+ROW_SET_USES = frozenset({TLOG_TRAINING})
+#: Every use of audio from outside Tadabur: evaluation only, except :data:`TLOG_TRAINING`, and
+#: none holds a Tadabur recording, so :func:`check_disjoint` refuses to certify anything with
+#: one.
+EXTERNAL_USES = QUD_USES | CLIP_USES | ROW_SET_USES
 #: The uses acceptance rules §6 names that no issue has made yet. Each has an empty file
 #: until its issue writes it, so "unused" is recorded rather than inferred from absence.
 PROBE_TRAINING = "probe.training"
@@ -266,6 +275,46 @@ def parse_clip_exposure(data: dict, where: str) -> ClipExposure:
 
 
 @dataclass(frozen=True)
+class RowSetExposure:
+    """A use that names its rows by predicate rather than listing them (#193): the overlay
+    commit the predicate was evaluated at, the predicate itself (the rule's text and the code
+    that applies it), how many rows it selected, and the SHA-256 of their sorted row keys
+    (``split:shard_file:row`` newline-joined). The loader re-materialises the rows and
+    verifies the count and the hash, so a use file cannot drift from the overlay it cites.
+    """
+
+    overlay_commit: str
+    predicate: Mapping[str, str]
+    count: int
+    rows_sha256: str
+
+
+_ROW_SET_FIELDS = {f.name for f in fields(RowSetExposure)}
+_PREDICATE_FIELDS = {"text", "code"}
+
+
+def parse_row_set_exposure(data: dict, where: str) -> RowSetExposure:
+    """One validated :class:`RowSetExposure` from its JSON object; ``where`` prefixes errors."""
+    if set(data) != _ROW_SET_FIELDS:
+        raise ValueError(f"{where}: fields {sorted(data)} are not the row-set use's "
+                         f"{sorted(_ROW_SET_FIELDS)}")
+    commit = data["overlay_commit"]
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError(f"{where}: overlay_commit is not a 40-character lowercase hex commit")
+    predicate = data["predicate"]
+    if (not isinstance(predicate, Mapping) or set(predicate) != _PREDICATE_FIELDS
+            or not all(type(value) is str and value for value in predicate.values())):
+        raise ValueError(f"{where}: predicate is an object with exactly the non-empty strings "
+                         f"{sorted(_PREDICATE_FIELDS)}")
+    if type(data["count"]) is not int or data["count"] < 0:
+        raise ValueError(f"{where}: count is not a non-negative integer")
+    digest = data["rows_sha256"]
+    if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
+        raise ValueError(f"{where}: rows_sha256 is not a SHA-256")
+    return RowSetExposure(commit, dict(predicate), data["count"], digest)
+
+
+@dataclass(frozen=True)
 class ShardExposure:
     """A use that consumed whole shards: the shards, how many rows each canonical reciter
     has in them, and the SHA-256 of the shard index the rows were counted from.
@@ -332,6 +381,7 @@ class ExposureRegistry:
     aliases: Mapping[tuple[int, int], tuple[tuple[int, int], ...]] = field(default_factory=dict)
     qud: Mapping[str, tuple[QudExposure, ...]] = field(default_factory=dict)
     clips: Mapping[str, tuple[ClipExposure, ...]] = field(default_factory=dict)
+    row_sets: Mapping[str, RowSetExposure] = field(default_factory=dict)
 
     def same_recording(self, source: tuple[int, int]) -> set[tuple[int, int]]:
         """``source`` and every row that is, or probably is, the same recording."""
@@ -345,7 +395,7 @@ class ExposureRegistry:
         """Declared uses (:data:`USES`, :data:`EXTERNAL_USES`) with no file: evidence that is
         absent, not empty."""
         return sorted((USES | EXTERNAL_USES) - set(self.recordings) - set(self.shard_uses)
-                      - set(self.qud) - set(self.clips))
+                      - set(self.qud) - set(self.clips) - set(self.row_sets))
 
     def shared_baseline_uses(self) -> list[str]:
         """The shard uses marked as exposures shared by the baseline and its candidates."""
@@ -399,8 +449,9 @@ def load_registry(directory: Path = EXPOSURE_DIR) -> ExposureRegistry:
     shard_uses: dict[str, ShardExposure] = {}
     qud: dict[str, tuple[QudExposure, ...]] = {}
     clips: dict[str, tuple[ClipExposure, ...]] = {}
+    row_sets: dict[str, RowSetExposure] = {}
     for path in sorted(directory.iterdir()):
-        if path.name in ("README.md", SOURCES_DIRNAME, *_RELATION_FILES):
+        if path.name in ("README.md", SOURCES_DIRNAME, *_RELATION_FILES) or path.is_dir():
             continue
         if path.name.endswith(".qud.jsonl"):
             use = path.name.removesuffix(".qud.jsonl")
@@ -412,6 +463,12 @@ def load_registry(directory: Path = EXPOSURE_DIR) -> ExposureRegistry:
             if use not in CLIP_USES:
                 raise ValueError(f"unknown clip use {use!r}; the vocabulary is CLIP_USES")
             clips[use] = _read_external_use(path, parse_clip_exposure)
+        elif path.name.endswith(".rows.json"):
+            use = path.name.removesuffix(".rows.json")
+            if use not in ROW_SET_USES:
+                raise ValueError(f"unknown row-set use {use!r}; the vocabulary is ROW_SET_USES")
+            row_sets[use] = parse_row_set_exposure(
+                json.loads(path.read_text(encoding="utf-8")), str(path))
         elif path.name.endswith(".shards.json"):
             use = _known(path.name.removesuffix(".shards.json"))
             shard_uses[use] = _parse_shard_use(json.loads(path.read_text(encoding="utf-8")), path)
@@ -431,7 +488,7 @@ def load_registry(directory: Path = EXPOSURE_DIR) -> ExposureRegistry:
             Exposure(r.audio_filename, r.shard, r.row_index, r.reciter_id, None, None,
                      r.audio_sha256) for r in groups]})
         aliases = relations(_alias_groups(groups))
-    return ExposureRegistry(recordings, shard_uses, copies, aliases, qud, clips)
+    return ExposureRegistry(recordings, shard_uses, copies, aliases, qud, clips, row_sets)
 
 
 def _read_use(path: Path) -> tuple[Exposure, ...]:
@@ -469,6 +526,17 @@ def write_clip_use(use: str, rows: Iterable[ClipExposure], directory: Path = EXP
     _write_external_use(directory / f"{use}.clips.jsonl", rows, parse_clip_exposure)
 
 
+def write_row_set_use(use: str, row_set: RowSetExposure,
+                      directory: Path = EXPOSURE_DIR) -> None:
+    """Atomically write the one row-set use, validated first."""
+    if use not in ROW_SET_USES:
+        raise ValueError(f"unknown row-set use {use!r}; the vocabulary is ROW_SET_USES")
+    data = asdict(row_set)
+    path = directory / f"{use}.rows.json"
+    parse_row_set_exposure(data, str(path))
+    _write_atomic(path, json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+
+
 def _write_external_use(path: Path, rows: Iterable, parse) -> None:
     ordered = sorted(set(rows))
     for number, row in enumerate(ordered):
@@ -483,6 +551,10 @@ def write_empty(use: str, directory: Path = EXPOSURE_DIR) -> None:
         write_qud_use(use, [], directory)
     elif use in CLIP_USES:
         write_clip_use(use, [], directory)
+    elif use in ROW_SET_USES:
+        from .tlog_pool import empty_training_use
+
+        write_row_set_use(use, empty_training_use(), directory)
     else:
         write_use(use, [], directory)
 
@@ -613,7 +685,8 @@ def check_disjoint(
                          "tlog tranches) is evaluation only and holds no Tadabur recording, so "
                          "it certifies no training use; its overlap with Tadabur is an audio "
                          "check's (qud_eval/overlap_results.json, nonpro_eval/overlap.json, "
-                         "tlog/overlap/)")
+                         "tlog/overlap/). #193's tlog.training is a row-set use, checked by "
+                         "check_row_set_disjoint")
     for name in (use, *others):
         registry._require(name)
     problems = []
@@ -645,6 +718,75 @@ def _shared_sources(registry: ExposureRegistry, a: str, b: str) -> list:
     checksums_b = {r.audio_sha256 for r in rows_b} - {None}
     return sorted({r.source for r in registry.recordings.get(a, ())
                    if r.source in sources_b or r.audio_sha256 in checksums_b})
+
+
+def check_row_set_disjoint(
+    rows: Iterable[Mapping[str, object]], *, registry: ExposureRegistry | None = None,
+    eval_groups: Mapping[str, Iterable[str]] | None = None,
+) -> None:
+    """Raise :class:`ExposureOverlap` unless a row-set use's rows are disjoint from every
+    evaluation use (#193).
+
+    ``rows`` are pool rows (:func:`tadabur.tlog_overlap.iter_pool_rows`' records). A collision,
+    checked in that order, is:
+
+    * ``audio_path``: a clip id of any clip use (``registry.clips``, the non-professional
+      corpora's and each tlog role's) equals a row's ``audio_path``;
+    * ``audio_sha256``: a clip's checksum, or a QUD ayah's MP3 checksum, equals a row's;
+    * ``fingerprint``: a row carries an S4 ``eval_overlap`` hit, or its ``duplicate_of`` names
+      a row that is not itself in this set (it is the same audio as a row outside it);
+    * ``group_key``: a row's ``group_key`` is one of a tlog evaluation use's
+      (``eval_groups``, a ``use -> {group_key}`` map; by default the committed split tree's
+      groups of each ``tlog.<role>``, :func:`tadabur.tlog_tranches.split_groups`).
+
+    ``eval_groups`` defaults to the committed split tree, so the real registry is checked
+    without passing anything. The registry is loaded from ``exposure/`` unless one is passed.
+    """
+    registry = registry or load_registry()
+    rows = list(rows)
+    keys = {_row_key(row) for row in rows}
+    paths = {clip.audio_filename: use
+             for use, clips in sorted(registry.clips.items()) for clip in clips}
+    checksums: dict[str, str] = {}
+    for use, clips in sorted(registry.clips.items()):
+        for clip in clips:
+            checksums.setdefault(clip.audio_sha256, use)
+    for use, ayat in sorted(registry.qud.items()):
+        for ayah in ayat:
+            checksums.setdefault(ayah.mp3_sha256, use)
+    groups = _tlog_eval_groups() if eval_groups is None else {
+        use: set(members) for use, members in eval_groups.items()}
+    for row in rows:
+        key = _row_key(row)
+        if (use := paths.get(row["audio_path"])) is not None:
+            raise ExposureOverlap(f"{key}: audio_path {row['audio_path']} is a clip of the "
+                                  f"evaluation use {use}")
+        if (use := checksums.get(row["audio_sha256"])) is not None:
+            raise ExposureOverlap(f"{key}: audio_sha256 {row['audio_sha256']} is an evaluation "
+                                  f"clip's, in {use}")
+        if row["eval_overlap"]:
+            hit = row["eval_overlap"][0]
+            raise ExposureOverlap(f"{key}: fingerprint match to {hit['set']} clip {hit['clip']} "
+                                  f"at BER {hit['ber']} (S4 eval_overlap)")
+        duplicate = row["duplicate_of"]
+        if duplicate is not None and _row_key(duplicate) not in keys:
+            raise ExposureOverlap(f"{key}: fingerprint of {_row_key(duplicate)}, a row outside "
+                                  "this training set")
+        for use, members in sorted(groups.items()):
+            if row["group_key"] in members:
+                raise ExposureOverlap(f"{key}: group_key {row['group_key']} is in the tlog "
+                                      f"evaluation use {use}")
+
+
+def _row_key(row: Mapping[str, object]) -> tuple[str, str, int]:
+    return row["split"], row["shard_file"], row["row"]
+
+
+def _tlog_eval_groups() -> dict[str, set[str]]:
+    """Each tlog evaluation use's group keys, from the committed split tree."""
+    from .tlog_tranches import split_groups
+
+    return split_groups()
 
 
 # --- duplicate recordings --------------------------------------------------------------

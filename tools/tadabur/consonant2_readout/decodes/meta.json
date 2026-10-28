@@ -4,7 +4,8 @@
   "c95": "8490b63d0664827d5a2e2e3121eb4af7b22069273db39268c7638cc7d8839cd6",
   "candidate_ema": "057678950541569739d3bb40bed8e8bcf490d97096ea814d14df97627dc214a2"
  },
- "code_sha": "22e38f473d4b4ddad195a1879348d4bdee4ba789",
+ "code_sha": "492c7c4ce37d9b37e55357865c9bc01a1077880a",
+ "elapsed_seconds": 4265.0,
  "gate": {
   "items": 87,
   "limit_hours": 11.0,
@@ -17,7 +18,7 @@
   "total_audio_s": 25184.933687500084,
   "within_budget": true
  },
- "manifest_commit": "ace12dfb83449f343ebf0f2e789616083854db2b",
+ "manifest_commit": "e11fbf52fef85adcadbad4cd468bdd37e6c4b944",
  "manifest_rows": 2853,
  "manifest_sha256": "7d7df748abd3a103d607a6b1f1c5c73836a126db0517fb3999394589515d9e57",
  "models": [
@@ -53,7 +54,13 @@
   },
   "items": 2853,
   "shards": 405,
-  "wall_seconds": 22755.6
+  "wall_seconds_summed_over_processes": 22755.6
  },
- "tranche_meta_sha256": "a49c75e166f63d6509d783b04b79616035a3b291ae9b09951afff732bd7f0462"
+ "tranche_meta_sha256": "a49c75e166f63d6509d783b04b79616035a3b291ae9b09951afff732bd7f0462",
+ "word_spans": {
+  "fallback": 0,
+  "identified": 2853,
+  "rule": "the clip's S6 identified word_from/word_to (tlog/ident/look), joined by the row key",
+  "source": "tlog/ident/look"
+ }
 }

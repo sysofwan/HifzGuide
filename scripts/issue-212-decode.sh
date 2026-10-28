@@ -74,6 +74,7 @@ stage_repo() {
 }
 
 write_runner() {
+  local manifest_commit=$1
   remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
 #!/usr/bin/env bash
 set -uo pipefail
@@ -115,7 +116,8 @@ run() {
   for pid in \"\${pids[@]}\"; do wait \"\$pid\" || failed=1; done
   [ \"\$failed\" -eq 0 ] || return 1
   python -u -m tadabur.tlog_eval_decode merge --parts-dir '$PARTS' --out-dir '$REPO/$OUT' \\
-      --models ${MODELS//,/ } --processes $PROCESSES --threads $THREADS $(pr_args)
+      --models ${MODELS//,/ } --processes $PROCESSES --threads $THREADS $(pr_args) \\
+      --elapsed-seconds \$((SECONDS - start)) --manifest-commit $manifest_commit
 }
 run
 code=\$?
@@ -130,15 +132,25 @@ require_manifest_on_main() {
   git -C "$REPO_DIR" fetch -q origin main
   git -C "$REPO_DIR" cat-file -e "origin/main:$MANIFEST" 2>/dev/null \
     || { echo "PR #211 is not merged: origin/main does not hold $MANIFEST" >&2; return 1; }
+  git -C "$REPO_DIR" log -1 --format=%H origin/main -- "$MANIFEST"
 }
 
 launch() {
+  local manifest_commit
   [ -z "$(git -C "$REPO_DIR" status --porcelain)" ] \
     || { echo "the worktree is dirty; commit before launching" >&2; return 1; }
-  require_manifest_on_main
+  if [ "${RESUME:-0}" != 1 ]; then
+    remote "test -f '$LOGS/$NAME.pid' && kill -0 \"\$(cat '$LOGS/$NAME.pid')\" 2>/dev/null" \
+      && { echo "a $NAME runner is live on $HOST; RESUME=1 to stage anyway" >&2; return 1; }
+    remote "test -f '$PARTS/timing.jsonl'" \
+      && { echo "$HOST:$PARTS already holds timings; pass PARTS_DIR=<fresh dir> " \
+             "(RESUME=1 to continue it)" >&2; return 1; }
+  fi
+  manifest_commit=$(require_manifest_on_main) \
+    || { echo "PR #211 is not merged: origin/main does not hold $MANIFEST" >&2; return 1; }
   remote "mkdir -p '$ROOT' '$LOGS' '$CACHE' '$PARTS'"
   stage_repo
-  write_runner
+  write_runner "$manifest_commit"
   remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.needs-post' '$LOGS/$NAME.pid'
           setsid flock /root/scratch/gpu.lock bash '$ROOT/run-$NAME.sh' </dev/null \\
             >'$LOGS/$NAME.log' 2>&1 &
@@ -164,14 +176,22 @@ check() {
 }
 
 merge_job() {
+  local manifest_commit elapsed
   [ -z "$(git -C "$REPO_DIR" status --porcelain)" ] \
     || { echo "the worktree is dirty; commit before merging" >&2; return 1; }
-  require_manifest_on_main
+  manifest_commit=$(require_manifest_on_main) \
+    || { echo "PR #211 is not merged: origin/main does not hold $MANIFEST" >&2; return 1; }
+  elapsed=''
+  [ -n "${ELAPSED_SECONDS:-}" ] && elapsed="--elapsed-seconds $ELAPSED_SECONDS"
   stage_repo
   remote "source '$CONDA' && conda activate $ENV_NAME && cd '$REPO/tools' && \\
           OMP_NUM_THREADS=$THREADS python -u -m tadabur.tlog_eval_decode merge \\
           --parts-dir '$PARTS' --out-dir '$REPO/$OUT' --models ${MODELS//,/ } \\
-          --processes $PROCESSES --threads $THREADS $(pr_args)"
+          --processes $PROCESSES --threads $THREADS $(pr_args) \\
+          --manifest-commit $manifest_commit $elapsed" \
+    || return 1
+  remote "echo 0 > '$LOGS/$NAME.exit'"
+  echo "merged into $HOST:$REPO/$OUT; $LOGS/$NAME.exit is 0"
 }
 
 fetch() {

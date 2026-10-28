@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import time
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
@@ -49,6 +50,7 @@ from . import tlog_pool
 from .exposure import EXPOSURE_DIR, ClipExposure, write_clip_use
 from .nonpro_sources import TLOG
 from .tlog_ident import BOTH, FILENAME, IDENTIFIED, NONE, load_identifier
+from .tlog_ident_confirm import require_committed
 from .tlog_ident_run import D_MAX_STOP_SHARE
 from .tlog_index import (require_clean_tree, sha256_file, write_json, write_jsonl, write_shard)
 from .tlog_overlap import iter_pool_rows
@@ -229,7 +231,9 @@ def require_claim_order(role: str, tranches_dir: Path = TRANCHES_DIR) -> None:
     """Refuse a tranche whose predecessor no round has claimed yet.
 
     ``confirm.1`` needs no claim. A round may claim ``confirm.(k-1)`` and ``confirm.k``
-    together, in that order, by writing each claim before opening the next tranche. S7 writes
+    together, in that order, by writing each claim before opening the next tranche. A claim
+    counts only once it is **committed** (r24 item 4): the predecessor file must be in HEAD with
+    no staged or unstaged change, so a provisional or rewritten claim opens nothing. S7 writes
     no claim: the file is the opening round's, with exactly :data:`CLAIM_FIELDS`.
     """
     if role not in CONFIRM_ROLES:
@@ -241,10 +245,23 @@ def require_claim_order(role: str, tranches_dir: Path = TRANCHES_DIR) -> None:
     path = Path(tranches_dir) / f"{previous}.claim.json"
     if not path.is_file():
         raise ValueError(f"{role} needs {previous} claimed first; {path} is absent")
+    _require_committed_claim(path)
     record = json.loads(path.read_text(encoding="utf-8"))
     if set(record) != set(CLAIM_FIELDS) or record["role"] != previous:
         raise ValueError(f"{path} is not a {previous} claim: it needs exactly the fields "
                          f"{list(CLAIM_FIELDS)} and role {previous}")
+
+
+def _require_committed_claim(path: Path) -> None:
+    """Refuse a claim outside a repository, untracked, staged-only, or changed since HEAD."""
+    root = subprocess.run(["git", "-C", str(path.parent), "rev-parse", "--show-toplevel"],
+                          capture_output=True, text=True).stdout.strip()
+    if not root:
+        raise ValueError(f"{path} is in no git repository: a claim counts only once committed")
+    try:
+        require_committed([path], repo=Path(root))
+    except RuntimeError as error:
+        raise ValueError(f"{path} is not a committed claim: {error}") from error
 
 
 # --- the committed tree readers -----------------------------------------------------------------

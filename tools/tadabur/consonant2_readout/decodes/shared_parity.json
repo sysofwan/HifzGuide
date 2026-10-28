@@ -1,0 +1,58 @@
+{
+ "code_sha": "63d29387999eeb00f07ffd7204db452dbf1587b0",
+ "committed_sha256": {
+  "base": "5e1f69cd104a87abb34849fe20605105edf24e7b6d248c3290b6ed976a5d09bb",
+  "c95": "ad7b7c5143fd8b532a52a67661897558b19477fcaa61cd7b3cbfa665fbfdeb40",
+  "candidate_ema": "56606eb1b0ec46be838b663f702ef002b1a420d7d0d0915a82a0a9c2569c2d8b"
+ },
+ "identical": {
+  "base": true,
+  "c95": true,
+  "candidate_ema": true
+ },
+ "mismatches": {
+  "base": 0,
+  "c95": 0,
+  "candidate_ema": 0
+ },
+ "models": [
+  "base",
+  "c95",
+  "candidate_ema"
+ ],
+ "processes": 6,
+ "rows": {
+  "base": 140,
+  "c95": 140,
+  "candidate_ema": 140
+ },
+ "shards": [
+  "clean-00000-of-00411",
+  "clean-00001-of-00411",
+  "clean-00002-of-00411",
+  "clean-00003-of-00411",
+  "clean-00004-of-00411",
+  "clean-00005-of-00411",
+  "clean-00006-of-00411",
+  "clean-00007-of-00411",
+  "clean-00008-of-00411",
+  "clean-00009-of-00411",
+  "clean-00010-of-00411",
+  "clean-00011-of-00411",
+  "clean-00012-of-00411",
+  "clean-00013-of-00411",
+  "clean-00014-of-00411",
+  "clean-00015-of-00411",
+  "clean-00016-of-00411",
+  "clean-00017-of-00411",
+  "clean-00018-of-00411",
+  "clean-00019-of-00411"
+ ],
+ "share_features": true,
+ "shared_sha256": {
+  "base": "5e1f69cd104a87abb34849fe20605105edf24e7b6d248c3290b6ed976a5d09bb",
+  "c95": "ad7b7c5143fd8b532a52a67661897558b19477fcaa61cd7b3cbfa665fbfdeb40",
+  "candidate_ema": "56606eb1b0ec46be838b663f702ef002b1a420d7d0d0915a82a0a9c2569c2d8b"
+ },
+ "threads": 1
+}

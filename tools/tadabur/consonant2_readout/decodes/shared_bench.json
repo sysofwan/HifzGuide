@@ -1,0 +1,109 @@
+{
+ "measured": "2026-10-28 on cuda-dev, code 63d29387999eeb00f07ffd7204db452dbf1587b0",
+ "selection": {
+  "shard_files": [
+   "clean-00000-of-00411",
+   "clean-00001-of-00411",
+   "clean-00002-of-00411",
+   "clean-00003-of-00411",
+   "clean-00004-of-00411",
+   "clean-00005-of-00411",
+   "clean-00006-of-00411",
+   "clean-00007-of-00411",
+   "clean-00008-of-00411",
+   "clean-00009-of-00411",
+   "clean-00010-of-00411",
+   "clean-00011-of-00411",
+   "clean-00012-of-00411",
+   "clean-00013-of-00411",
+   "clean-00014-of-00411",
+   "clean-00015-of-00411",
+   "clean-00016-of-00411",
+   "clean-00017-of-00411",
+   "clean-00018-of-00411",
+   "clean-00019-of-00411"
+  ],
+  "rows": 140,
+  "audio_seconds": 902.6,
+  "models": ["base", "c95", "candidate_ema"],
+  "stores": ["checks"],
+  "clip_cache": "/root/scratch/tlog/r2/clips"
+ },
+ "cells": {
+  "plain-p1": {
+   "processes": 1,
+   "threads": "unpinned",
+   "wall_seconds": 850,
+   "rows_per_hour": 592.9,
+   "audio_per_wall_second": 1.06,
+   "audio_per_wall_per_model": 0.35,
+   "checks_seconds_summed": 832.6,
+   "shared_feature_seconds": 0.0
+  },
+  "plain-p3": {
+   "processes": 3,
+   "threads": 1,
+   "wall_seconds": 189,
+   "rows_per_hour": 2666.7,
+   "audio_per_wall_second": 4.78,
+   "audio_per_wall_per_model": 1.59,
+   "checks_seconds_summed": 502.9,
+   "shared_feature_seconds": 0.0
+  },
+  "plain-p6": {
+   "processes": 6,
+   "threads": 1,
+   "wall_seconds": 161,
+   "rows_per_hour": 3130.4,
+   "audio_per_wall_second": 5.61,
+   "audio_per_wall_per_model": 1.87,
+   "checks_seconds_summed": 599.3,
+   "shared_feature_seconds": 0.0
+  },
+  "shared-p6": {
+   "processes": 6,
+   "threads": 1,
+   "wall_seconds": 149,
+   "rows_per_hour": 3382.6,
+   "audio_per_wall_second": 6.06,
+   "audio_per_wall_per_model": 2.02,
+   "checks_seconds_summed": 541.0,
+   "shared_feature_seconds": 29.9
+  }
+ },
+ "repeat_first_pass_wall_seconds": {
+  "plain-p1": 841.1,
+  "plain-p3": 184.3,
+  "plain-p6": 148.0,
+  "shared-p6": 139.2
+ },
+ "profile": {
+  "warmup_shards": ["clean-00000-of-00411"],
+  "shard_files": [
+   "clean-00001-of-00411",
+   "clean-00002-of-00411",
+   "clean-00003-of-00411",
+   "clean-00004-of-00411",
+   "clean-00005-of-00411"
+  ],
+  "rows": 20,
+  "audio_seconds": 87.6,
+  "models": {
+   "base": {
+    "checks_seconds": 12.932,
+    "calls": {"features": 279, "forward": 279, "checks": 20},
+    "shares": {"features": 0.158, "forward": 0.841, "checks": 0.001}
+   },
+   "c95": {
+    "checks_seconds": 11.955,
+    "calls": {"features": 279, "forward": 279, "checks": 20},
+    "shares": {"features": 0.17, "forward": 0.829, "checks": 0.001}
+   },
+   "candidate_ema": {
+    "checks_seconds": 11.98,
+    "calls": {"features": 279, "forward": 279, "checks": 20},
+    "shares": {"features": 0.171, "forward": 0.828, "checks": 0.001}
+   }
+  }
+ }
+}

@@ -14,9 +14,10 @@ Contract this file pins
 ``tadabur.tlog_tranches`` exposes:
 
 * ``ROLES = ("look", "confirm.1", ..., "confirm.4")``, ``CONFIRM_ROLES`` (the last four), the
-  stratum names ``GATING = "gating"`` and ``STRATA`` (in precedence order: ``gating``,
-  ``reported:unclean``, ``reported:undecided``, ``reported:straddles``, ``reported:identified``,
-  ``reported:below_bar``), ``CLAIM_FIELDS = ("role", "issue", "commit", "date")`` and
+  stratum names ``GATING = "gating"`` and ``STRATA`` (the six names in summary
+  order, which is NOT the precedence: ``gating``, ``reported:unclean``, ``reported:undecided``,
+  ``reported:straddles``, ``reported:identified``, ``reported:below_bar``; the precedence is
+  ``stratum_of``'s branch order, below), ``CLAIM_FIELDS = ("role", "issue", "commit", "date")`` and
   ``TRANCHES_DIR = tools/tadabur/tlog/tranches``.
 * ``stratum_of(record) -> str``: one stratum per ident row, the first matching of r24's table
   (unclean; ``label_source == none``; straddles; ``both``; ``identified``; ``filename``). An
@@ -102,6 +103,7 @@ LOOK_TREE_SHA256 = {
 }
 ROLES = ("look", "confirm.1", "confirm.2", "confirm.3", "confirm.4")
 CONFIRM_ROLES = ROLES[1:]
+# The summary order, not the precedence: precedence is `_expected_stratum`'s branch order.
 STRATA = ("gating", "reported:unclean", "reported:undecided", "reported:straddles",
           "reported:identified", "reported:below_bar")
 MANIFEST_FIELDS = frozenset({
@@ -227,7 +229,7 @@ def test_stratum_of_applies_the_first_matching_row_of_the_precedence_table(tranc
     assert tranches.stratum_of(_ident(**record)) == stratum
 
 
-def test_the_strata_are_the_six_names_in_precedence_order(tranches):
+def test_the_strata_are_the_six_names_in_summary_order(tranches):
     assert tuple(tranches.STRATA) == STRATA and tranches.GATING == "gating"
     assert tuple(tranches.ROLES) == ROLES and tuple(tranches.CONFIRM_ROLES) == CONFIRM_ROLES
 
@@ -682,7 +684,8 @@ def test_the_five_exposure_uses_are_committed_and_loaded(tranches):
         expected = set(tranches.exposure_rows(_read_jsonl(_manifest_path(role))))
         committed = registry.clips[use]
         assert len(committed) == len(expected)
-        assert len(set(committed) ^ expected) == 0
+        differing = len(set(committed) ^ expected)  # a count: a failure prints no clip
+        assert differing == 0
         meta_entries = json.loads(
             (TLOG_DIR / "tranches" / "meta.json").read_text())["tranches"][role]["entries"]
         assert meta_entries == len(committed)

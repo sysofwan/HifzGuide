@@ -552,9 +552,14 @@ def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict:
 def _decode_shards(shards: Sequence[str], by_shard: Mapping[str, list[Mapping]], *,
                    parts_dir: Path, cache_dir: Path, decoders: dict,
                    word_counts: Callable[[str], int], stores: Mapping,
-                   clip_cache: Path | None = None, share_features: bool = False,
+                   clip_cache: Path | None = None, share_features: bool,
                    on_download: Callable[[str], None] | None = None) -> list[dict]:
-    """Decode ``shards`` in order through :func:`run_shard`, one timing line per shard."""
+    """Decode ``shards`` in order through :func:`run_shard`, one timing line per shard.
+
+    ``share_features`` is required: it is the one place where the run's sharing choice is
+    made, so a new entry point cannot inherit one silently. ``decode_shards`` shares;
+    ``run_shard`` stays off by default as the per-shard control the tests decode.
+    """
     stream = shard_stream(cache_dir, on_download)
     timings = []
     for shard_file in shards:
@@ -747,21 +752,26 @@ def parity_digest(lines: Iterable[Mapping]) -> str:
 
 def parity_record(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
                   shards: Sequence[str] | None = None, decodes_dir: Path = DECODES_ROOT,
-                  processes: int = RUN_PROCESSES, threads: int = RUN_THREADS) -> dict:
+                  processes: int = RUN_PROCESSES, threads: int = RUN_THREADS,
+                  pull_request: int | None = None) -> dict:
     """Compare a shared-feature re-decode's parts with the committed decodes, shard by shard.
 
     ``shards`` defaults to :func:`parity_shards`; the parts are the per-shard files
     :func:`decodes_path` wrote for those shards, and the committed lines are the same shards'
     lines of ``decodes_dir/tlog.look.<model>.jsonl.gz``. A line pair is compared whole, never
-    graded. The record names the comparison's rows, mismatches and digests, so a committed
-    run's parity is checkable without re-decoding.
+    graded. The record names the comparison's rows, mismatches and digests, plus what shows the
+    parts were decoded rather than put there: the timing lines' items and seconds
+    (:func:`timing_totals`) and each part file's SHA-256. A parts directory seeded from the
+    committed decodes compares identical but records no items.
     """
     shards = parity_shards() if shards is None else sorted(set(shards))
     selected = set(shards)
-    record = {"shards": shards, "models": list(models), "processes": processes,
-              "threads": threads, "share_features": True, "code_sha": head_sha(),
+    timing = timing_totals(parts_dir, models)
+    record = {**provenance(head_sha(), pull_request), "shards": shards,
+              "models": list(models), "processes": processes, "threads": threads,
+              "share_features": True, "items": timing["items"], "timing": timing,
               "rows": {}, "mismatches": {}, "identical": {},
-              "shared_sha256": {}, "committed_sha256": {}}
+              "shared_sha256": {}, "committed_sha256": {}, "part_sha256": {}}
     for model in models:
         shared = [line for shard_file in shards
                   for line in read_jsonl(decodes_path(parts_dir, shard_file, model))]
@@ -777,6 +787,10 @@ def parity_record(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
         record["identical"][model] = record["mismatches"][model] == 0
         record["shared_sha256"][model] = parity_digest(shared)
         record["committed_sha256"][model] = parity_digest(committed)
+        record["part_sha256"][model] = {
+            shard_file: hashlib.sha256(
+                decodes_path(parts_dir, shard_file, model).read_bytes()).hexdigest()
+            for shard_file in shards}
     return record
 
 
@@ -830,6 +844,8 @@ def main() -> None:
     parity_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
     parity_.add_argument("--processes", type=int, default=RUN_PROCESSES)
     parity_.add_argument("--threads", type=int, default=RUN_THREADS)
+    parity_.add_argument("--pr", type=int, default=None,
+                         help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     args = parser.parse_args()
     if args.command == "decode":
         result = decode_shards(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
@@ -848,7 +864,8 @@ def main() -> None:
         result = cache_coverage(gating_rows(read_manifest(LOOK)), args.clip_cache)
     elif args.command == "parity":
         result = parity_record(args.parts_dir, models=args.models, shards=parity_shards(),
-                               processes=args.processes, threads=args.threads)
+                               processes=args.processes, threads=args.threads,
+                               pull_request=args.pr)
         write_json(result, args.out)
     else:
         result = merge_decodes(args.parts_dir, args.out_dir,

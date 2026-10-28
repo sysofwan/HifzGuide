@@ -256,7 +256,7 @@ def decode_recordings(recordings: Iterable[Recording], decoders: dict,
               "wall_seconds": round(time.time() - started, 1),
               "decode_seconds": {n: {a: round(s, 1) for a, s in arms.items()}
                                  for n, arms in seconds.items()}}
-    if share_features:
+    if share_features and feature_seconds:
         timing["shared_feature_seconds"] = {a: round(s, 1) for a, s in feature_seconds.items()}
     return timing
 

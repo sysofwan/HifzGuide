@@ -529,6 +529,52 @@ def device_output_steps(pairs: int) -> int:
     return min(max((pairs + 1) // 2, 1), DEPLOYED_LOGIT_FRAMES)
 
 
+@dataclass(frozen=True)
+class CheckFeatures:
+    """One item's checks and their device features: what :func:`check_features` computes.
+
+    ``pairs`` holds each check's ``(DEVICE_FEATURE_PAIRS feature pairs, real pairs)``, float32
+    CPU as the extractor made them. Nothing in them depends on the model that decodes them,
+    so one pass serves every model (:meth:`Decoder.rows_from_pairs`)."""
+
+    spans: list[CheckSpan]
+    pairs: list[tuple[object, int]]
+
+
+def device_pairs(extractor, piece: np.ndarray) -> tuple[object, int]:
+    """The model's 250 feature pairs for one piece as the app builds them, and how many of
+    them are real (``Models/MelFeatureExtractor+iOS.swift:81-166``).
+
+    The teacher's extractor computes the same features, except for a single frame
+    (400-559 samples): its ``ddof=1`` variance is NaN there, while the device takes the
+    variance as 0 (:107-115), so the frame normalizes to zeros. The padding frame after it
+    is 1.0 on both.
+    """
+    import torch
+
+    if not FRAME_SAMPLES <= len(piece) <= WINDOW_SAMPLES:
+        raise ValueError(f"a piece of {len(piece)} samples is not one the app decodes")
+    (pairs,) = extractor(
+        [piece], sampling_rate=SAMPLE_RATE, return_tensors="pt", padding=True
+    ).input_features
+    if (len(piece) - FRAME_SAMPLES) // FRAME_HOP_SAMPLES == 0:  # one frame
+        pairs = pairs.clone()
+        pairs[0, : pairs.shape[1] // 2] = 0.0
+    if torch.isnan(pairs).any():
+        raise ValueError(f"the features of a {len(piece)}-sample piece are not finite")
+    repeated = pairs[-1:].expand(DEVICE_FEATURE_PAIRS - len(pairs), -1)
+    return torch.cat([pairs, repeated]), len(pairs)
+
+
+def check_features(extractor, samples: np.ndarray) -> CheckFeatures:
+    """One item's check schedule (:func:`check_schedule`) and each check's device features
+    (:func:`device_pairs`), computed once for every model that decodes the item."""
+    spans = check_schedule(len(samples))
+    return CheckFeatures(
+        spans, [device_pairs(extractor, samples[span.start : span.end]) for span in spans]
+    )
+
+
 def likely_hallucination(class_ids: np.ndarray) -> bool:
     """``CTCDecoder.Stats.isLikelyHallucination`` over the decoded timesteps, its ratios in
     float32 as Swift computes them."""
@@ -757,6 +803,28 @@ def load_student_from_checkpoint(checkpoint_path: Path, device, use_ema: bool = 
 # --- The interface ---------------------------------------------------------------------
 
 
+def shared_extractor(decoders: Iterable["Decoder"]):
+    """The feature extractor decoders may share a check pass on: the first one's.
+
+    A check's features do not depend on the model, so a multi-model check decode can
+    featurise an item once (:func:`check_features`) and feed every decoder. That holds only
+    while every decoder is configured with the same extractor, which the fingerprint does not
+    cover: any difference is refused rather than handing a model input it never ran on.
+    """
+    decoders = list(decoders)
+    if not decoders:
+        raise ValueError("no decoders to share a check pass between")
+    extractor, *rest = (decoder.extractor for decoder in decoders)
+    configuration = extractor.to_dict()
+    for other in rest:
+        if other.to_dict() != configuration:
+            raise ValueError(
+                "the decoders' feature extractor configurations differ, so their check "
+                "features are not the same; decode them unshared"
+            )
+    return extractor
+
+
 class Decoder:
     """A loaded phoneme model, its feature extractor, and the one way they are run.
 
@@ -906,44 +974,33 @@ class Decoder:
         model's 250 feature pairs are filled by repeating its last real pair. Every forward is
         the fixed shape the device runs, so no attention mask is passed.
         """
-        import torch
+        return self.rows_from_pairs([self.device_pairs(piece) for piece in pieces])
 
-        rows: list[np.ndarray] = []
-        for offset in range(0, len(pieces), self.batch_size):
-            features, steps = [], []
-            for piece in pieces[offset : offset + self.batch_size]:
-                pairs, real = self.device_pairs(piece)
-                features.append(pairs)
-                steps.append(device_output_steps(real))
-            class_ids = self._class_ids(torch.stack(features))
-            if class_ids.shape[1] != DEPLOYED_LOGIT_FRAMES:
-                raise ValueError(f"the model emits {class_ids.shape[1]} timesteps for 5 s, not 125")
-            rows.extend(row[:n] for row, n in zip(class_ids, steps))
-        return rows
+    def device_pairs(self, piece: np.ndarray) -> tuple[object, int]:
+        """This decoder's extractor's 250 feature pairs for one piece, and how many are real
+        (:func:`device_pairs`)."""
+        return device_pairs(self.extractor, piece)
 
-    def device_pairs(self, piece: np.ndarray):
-        """The model's 250 feature pairs for one piece as the app builds them, and how many of
-        them are real (``Models/MelFeatureExtractor+iOS.swift:81-166``).
+    def rows_from_pairs(self, pairs: Sequence[tuple[object, int]]) -> list[np.ndarray]:
+        """Each check's argmax over the output timesteps its real feature pairs reach, from
+        features computed once for every model (:func:`check_features`): what
+        :meth:`device_rows` returns for the same pieces.
 
-        The teacher's extractor computes the same features, except for a single frame
-        (400-559 samples): its ``ddof=1`` variance is NaN there, while the device takes the
-        variance as 0 (:107-115), so the frame normalizes to zeros. The padding frame after it
-        is 1.0 on both.
+        The features are the model's input, not its output, so batching stays this decoder's
+        ``batch_size`` and the fixed 125-timestep check is unchanged.
         """
         import torch
 
-        if not FRAME_SAMPLES <= len(piece) <= WINDOW_SAMPLES:
-            raise ValueError(f"a piece of {len(piece)} samples is not one the app decodes")
-        (pairs,) = self.extractor(
-            [piece], sampling_rate=SAMPLE_RATE, return_tensors="pt", padding=True
-        ).input_features
-        if (len(piece) - FRAME_SAMPLES) // FRAME_HOP_SAMPLES == 0:  # one frame
-            pairs = pairs.clone()
-            pairs[0, : pairs.shape[1] // 2] = 0.0
-        if torch.isnan(pairs).any():
-            raise ValueError(f"the features of a {len(piece)}-sample piece are not finite")
-        repeated = pairs[-1:].expand(DEVICE_FEATURE_PAIRS - len(pairs), -1)
-        return torch.cat([pairs, repeated]), len(pairs)
+        rows: list[np.ndarray] = []
+        for offset in range(0, len(pairs), self.batch_size):
+            batch = pairs[offset : offset + self.batch_size]
+            class_ids = self._class_ids(torch.stack([features for features, _ in batch]))
+            if class_ids.shape[1] != DEPLOYED_LOGIT_FRAMES:
+                raise ValueError(f"the model emits {class_ids.shape[1]} timesteps for 5 s, not 125")
+            rows.extend(
+                row[: device_output_steps(real)] for row, (_, real) in zip(class_ids, batch)
+            )
+        return rows
 
     def app_checks(self, samples: np.ndarray) -> list[dict]:
         """The checks Muraja's transcriber hands its engine over one 16 kHz item, in order
@@ -954,9 +1011,15 @@ class Decoder:
         """The item's check sequence for a transcriber committing each of ``blocks``
         (:func:`app_checks_mode`), all cut from one inference per scheduled check: the blocks
         differ only in what each inference sends."""
-        spans = check_schedule(len(samples))
-        rows = self.device_rows([samples[s.start : s.end] for s in spans])
-        return {block: app_checks(spans, rows, block) for block in blocks}
+        return self.app_checks_from(check_features(self.extractor, samples), blocks)
+
+    def app_checks_from(
+        self, features: CheckFeatures, blocks: Sequence[int]
+    ) -> dict[int, list[dict]]:
+        """The item's check sequence for each of ``blocks``, from features another extractor
+        computed (:func:`check_features`): what :meth:`app_checks_at` returns for the item."""
+        rows = self.rows_from_pairs(features.pairs)
+        return {block: app_checks(features.spans, rows, block) for block in blocks}
 
     def span_class_ids(self, spans: Iterable[np.ndarray]) -> list[np.ndarray]:
         """Each 16 kHz span's per-timestep argmax from one whole variable-length pass.

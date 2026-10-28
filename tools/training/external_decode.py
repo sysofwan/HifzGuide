@@ -21,6 +21,11 @@ and its sample span among it) followed by its three decodes. The run's wall time
 arm is appended to a timing file. The work is CPU-bound (one feature extraction and one batch-1
 forward per check), so several runs share the GPU, each with few CPU threads.
 
+The feature extraction does not depend on the model, so a run decoding several models over the
+same items can featurise each item once and run every model on those features
+(``decode_recordings(..., share_features=True)``, #213). Features and forwards are still timed
+apart: ``shared_feature_seconds`` beside each model's own ``decode_seconds``.
+
 A corpus hands this loop its :class:`Recording` s; the loop owns resuming, identity, decoding,
 writing and timing (:func:`decode_recordings`).
 """
@@ -38,6 +43,7 @@ from pathlib import Path
 import numpy as np
 
 from tadabur.audio import TARGET_SAMPLE_RATE
+from training.decoding import shared_extractor
 from training.truth_baseline import (
     BATCH_SIZE,
     CHECK_PROTOCOLS,
@@ -183,13 +189,25 @@ def load_decoders(identity_path: Callable[[str], Path],
 
 def decode_recordings(recordings: Iterable[Recording], decoders: dict,
                       paths: dict[str, Path], label: str,
-                      stores: Mapping[str, Store] = STORES) -> dict:
+                      stores: Mapping[str, Store] = STORES,
+                      share_features: bool = False) -> dict:
     """Decode every item of ``recordings`` not yet in its model's file (``paths`` by model)
     into each of ``stores`` (every arm by default), appending each item as one line; return
     the run's timing (items, audio and wall seconds, and decode seconds per model and store).
-    ``label`` names the run in progress lines."""
+    ``label`` names the run in progress lines.
+
+    ``share_features`` has the stores that declare a split decode (:attr:`Store.shared`)
+    featurise an item once, when more than one model is still pending on it, and run each of
+    them on those features -- the same records from one feature pass per item instead of one
+    per model. Every decoder pending on an item must be configured with the same feature
+    extractor, checked once per pending set; decoders that never decode together are never
+    compared. The feature seconds are timed apart, under ``shared_feature_seconds``. Off
+    (and for a store with no split, or a single pending model) the loop is unchanged.
+    """
     done = {name: resume_keys(path) for name, path in paths.items()}
     seconds: dict[str, dict[str, float]] = {name: defaultdict(float) for name in decoders}
+    feature_seconds: dict[str, float] = defaultdict(float)
+    extractors: dict[frozenset[str], object] = {}
     audio_seconds = 0.0
     items = 0
     started = time.time()
@@ -203,14 +221,28 @@ def decode_recordings(recordings: Iterable[Recording], decoders: dict,
                 span = samples[record["start_sample"]:record["end_sample"]]
                 audio_seconds += len(span) / TARGET_SAMPLE_RATE
                 items += 1
-                for name, decoder in decoders.items():
-                    if record["key"] in done[name]:
+                pending = {name: decoder for name, decoder in decoders.items()
+                           if record["key"] not in done[name]}
+                lines = {name: dict(record) for name in pending}
+                for store_label, store in stores.items():
+                    shared = store.shared if share_features and len(pending) > 1 else None
+                    if shared is None:
+                        for name, decoder in pending.items():
+                            tick = time.time()
+                            lines[name].update(store.decode(decoder, span))
+                            seconds[name][store_label] += time.time() - tick
                         continue
-                    line = dict(record)
-                    for store_label, store in stores.items():
+                    names = frozenset(pending)
+                    if names not in extractors:
+                        extractors[names] = shared_extractor(pending.values())
+                    tick = time.time()
+                    features = shared.featurize(extractors[names], span)
+                    feature_seconds[store_label] += time.time() - tick
+                    for name, decoder in pending.items():
                         tick = time.time()
-                        line.update(store.decode(decoder, span))
+                        lines[name].update(shared.decode(decoder, features))
                         seconds[name][store_label] += time.time() - tick
+                for name, line in lines.items():
                     files[name].write(json.dumps(line, ensure_ascii=False,
                                                  separators=(",", ":")) + "\n")
                     files[name].flush()
@@ -220,10 +252,13 @@ def decode_recordings(recordings: Iterable[Recording], decoders: dict,
     finally:
         for handle in files.values():
             handle.close()
-    return {"items": items, "audio_seconds": round(audio_seconds, 1),
-            "wall_seconds": round(time.time() - started, 1),
-            "decode_seconds": {n: {a: round(s, 1) for a, s in arms.items()}
-                               for n, arms in seconds.items()}}
+    timing = {"items": items, "audio_seconds": round(audio_seconds, 1),
+              "wall_seconds": round(time.time() - started, 1),
+              "decode_seconds": {n: {a: round(s, 1) for a, s in arms.items()}
+                                 for n, arms in seconds.items()}}
+    if share_features and feature_seconds:
+        timing["shared_feature_seconds"] = {a: round(s, 1) for a, s in feature_seconds.items()}
+    return timing
 
 
 def append_timing(path: Path, timing: dict) -> None:

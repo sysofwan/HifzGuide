@@ -25,6 +25,14 @@ selection from the wall the run has taken; over :data:`RUN_LIMIT_HOURS` it stops
 writes ``<parts-dir>/gate_timing.json`` (exit 3), so nobody spends a day on a run the
 orchestrator has not sized. The fallback the architect named is the teacher and C95 alone.
 
+A check's features do not depend on the model, so a ``decode`` pass shares them: each item is
+featurised once and every model still pending on it runs on those features
+(``--no-share-features`` reproduces the per-model path, which is a benchmark's control). The
+records are unchanged by sharing -- ``parity`` re-decodes the first :data:`PARITY_SHARDS`
+gating shards and compares its parts with the committed decodes of exactly those shards,
+line for line, writing ``tools/tadabur/consonant2_readout/decodes/shared_parity.json``. It
+compares decode text only: nothing here grades.
+
 Model identities are the round's pins, checked here rather than through
 ``training.aug_readout_decode``'s #95 gate: C95 and the #178 candidate by their checkpoint
 SHA-256, the teacher by the hub revision its loaded config resolved to.
@@ -48,15 +56,17 @@ Usage, from ``tools/`` on the GPU box (``decode`` and ``merge`` under
         --processes 6 --threads 1 --limit-hours 11
     python -m tadabur.tlog_eval_decode merge  --parts-dir DIR --out-dir DIR \\
         --models base c95 candidate_ema --processes 6 --threads 1 --pr 213
+    python -m tadabur.tlog_eval_decode parity --parts-dir DIR --out shared_parity.json
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from collections import Counter, defaultdict
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
 
 from .nonpro_sources import audio_sha256
@@ -94,6 +104,11 @@ RUN_THREADS = 1
 GATE_ROWS = 12
 RUN_LIMIT_HOURS = 11.0
 DECODES_ROOT = Path(__file__).parent / "consonant2_readout" / "decodes"
+#: The shards the shared-feature re-decode is compared with the committed decodes on: the
+#: first 20 gating shards in name order (#213).
+PARITY_SHARDS = 20
+#: The committed record of that comparison, written by ``parity``.
+PARITY_PATH = DECODES_ROOT / "shared_parity.json"
 #: S6's identified look tree: the per-row audio durations the gate's projection sums.
 IDENT_LOOK_DIR = Path(__file__).parent / "tlog" / "ident" / "look"
 
@@ -287,12 +302,14 @@ def recordings(rows: Sequence[Mapping], *, stream, word_counts: Callable[[str], 
 def run_shard(shard_file: str, rows: Sequence[Mapping], out_dir: Path, decoders: dict, *,
               stream, word_counts: Callable[[str], int],
               load_audio: Callable[[bytes], object] | None = None,
-              stores: Mapping = STORES, clip_cache: Path | None = None) -> dict:
+              stores: Mapping = STORES, clip_cache: Path | None = None,
+              share_features: bool = False) -> dict:
     """Read ``shard_file`` once and decode each wanted row with every decoder in ``decoders``.
 
     The records are appended to :func:`decodes_path` (one file per shard and model), so a
     rerun decodes only what is missing; returns ``decode_recordings``' timing. Clips in
-    ``clip_cache`` are decoded without reading the shard.
+    ``clip_cache`` are decoded without reading the shard. ``share_features`` is
+    ``decode_recordings``' flag: one feature pass per item for a store that declares one.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -300,7 +317,8 @@ def run_shard(shard_file: str, rows: Sequence[Mapping], out_dir: Path, decoders:
     return decode_recordings(
         recordings(rows, stream=stream, word_counts=word_counts, load_audio=load_audio,
                    clip_cache=clip_cache),
-        decoders, paths, f"tlog look {shard_file}", stores=stores)
+        decoders, paths, f"tlog look {shard_file}", stores=stores,
+        share_features=share_features)
 
 
 # --- the on-box clip cache ----------------------------------------------------------------------
@@ -534,15 +552,21 @@ def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict:
 def _decode_shards(shards: Sequence[str], by_shard: Mapping[str, list[Mapping]], *,
                    parts_dir: Path, cache_dir: Path, decoders: dict,
                    word_counts: Callable[[str], int], stores: Mapping,
-                   clip_cache: Path | None = None,
+                   clip_cache: Path | None = None, share_features: bool,
                    on_download: Callable[[str], None] | None = None) -> list[dict]:
-    """Decode ``shards`` in order through :func:`run_shard`, one timing line per shard."""
+    """Decode ``shards`` in order through :func:`run_shard`, one timing line per shard.
+
+    ``share_features`` is required: it is the one place where the run's sharing choice is
+    made, so a new entry point cannot inherit one silently. ``decode_shards`` shares;
+    ``run_shard`` stays off by default as the per-shard control the tests decode.
+    """
     stream = shard_stream(cache_dir, on_download)
     timings = []
     for shard_file in shards:
         timing = {"shard_file": shard_file, **run_shard(
             shard_file, by_shard[shard_file], parts_dir, decoders, stream=stream,
-            word_counts=word_counts, stores=stores, clip_cache=clip_cache)}
+            word_counts=word_counts, stores=stores, clip_cache=clip_cache,
+            share_features=share_features)}
         append_timing(Path(parts_dir) / "timing.jsonl", timing)
         timings.append(timing)
     return timings
@@ -553,13 +577,17 @@ def _totals(timings: Sequence[Mapping], models: Sequence[str], stores: Mapping) 
 
     A shard counts once however often a resume visited it; its visits' work is summed, and a
     model that decoded nothing in a visit has no store seconds there — a legitimate zero, not
-    a missing key. A record naming another model or store is refused.
+    a missing key. A record naming another model or store is refused. A visit that shared a
+    store's feature pass adds its feature seconds under ``shared_feature_seconds``; the key is
+    absent when no visit shared one.
 
     ``wall_seconds_summed_over_processes`` adds every shard's own wall, so with several
     processes it is not the run's wall (the gate's ``slice_wall_s`` and the run's
     ``elapsed_seconds`` are).
     """
     seconds = {(model, store): 0.0 for model in models for store in stores}
+    features: dict[str, float] = defaultdict(float)
+    shared = False
     for timing in timings:
         for model, arms in timing["decode_seconds"].items():
             if model not in models:
@@ -570,25 +598,42 @@ def _totals(timings: Sequence[Mapping], models: Sequence[str], stores: Mapping) 
                     raise ValueError(f"{timing['shard_file']}: timing names {store!r}, "
                                      f"not one of {list(stores)}")
                 seconds[(model, store)] += value
-    return {"shards": len({timing["shard_file"] for timing in timings}),
-            "items": sum(timing["items"] for timing in timings),
-            "audio_seconds": round(sum(timing["audio_seconds"] for timing in timings), 1),
-            "wall_seconds_summed_over_processes": round(
-                sum(timing["wall_seconds"] for timing in timings), 1),
-            "decode_seconds": {model: {store: round(seconds[(model, store)], 1)
-                                       for store in stores}
-                               for model in models}}
+        if "shared_feature_seconds" in timing:
+            shared = True
+            for store, value in timing["shared_feature_seconds"].items():
+                if store not in stores:
+                    raise ValueError(f"{timing['shard_file']}: shared features name {store!r}, "
+                                     f"not one of {list(stores)}")
+                features[store] += value
+    totals = {"shards": len({timing["shard_file"] for timing in timings}),
+              "items": sum(timing["items"] for timing in timings),
+              "audio_seconds": round(sum(timing["audio_seconds"] for timing in timings), 1),
+              "wall_seconds_summed_over_processes": round(
+                  sum(timing["wall_seconds"] for timing in timings), 1),
+              "decode_seconds": {model: {store: round(seconds[(model, store)], 1)
+                                         for store in stores}
+                                 for model in models}}
+    if shared:
+        totals["shared_feature_seconds"] = {store: round(value, 1)
+                                            for store, value in features.items()}
+    return totals
 
 
 def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = RUN_MODELS,
                   stores: Mapping = RUN_STORES, shard_index: int = 0, shard_count: int = 1,
                   clip_cache: Path | None = None,
-                  on_download: Callable[[str], None] | None = None) -> dict:
+                  on_download: Callable[[str], None] | None = None,
+                  shard_files: Sequence[str] | None = None,
+                  share_features: bool = True) -> dict:
     """Decode one process's share of the look gating rows: ``shards[shard_index::shard_count]``.
 
     Each shard is streamed once for every model in ``models`` under ``stores``; processes
     write disjoint part files and resume by key, so they share no state but the parts. Clips
-    already in ``clip_cache`` are decoded without fetching their shard.
+    already in ``clip_cache`` are decoded without fetching their shard. ``shard_files``
+    restricts the selection to the named gating shards (the parity run's first 20), each of
+    which must hold a gating row; index and count then split that selection. With
+    ``share_features`` (on by default, off only to reproduce the per-model path) the checks
+    store featurises each item once for every model pending on it.
     """
     if not 0 <= shard_index < shard_count:
         raise ValueError(f"--shard-index must be in [0, {shard_count})")
@@ -596,11 +641,19 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
     by_shard: dict[str, list[Mapping]] = defaultdict(list)
     for row in rows:
         by_shard[row["shard_file"]].append(row)
-    shards = sorted(by_shard)[shard_index::shard_count]
+    if shard_files is None:
+        chosen = sorted(by_shard)
+    else:
+        unknown = sorted(set(shard_files) - set(by_shard))
+        if unknown:
+            raise ValueError(f"{unknown[0]} is not a gating shard of the {LOOK!r} tranche")
+        chosen = sorted(set(shard_files))
+    shards = chosen[shard_index::shard_count]
     timings = _decode_shards(shards, by_shard, parts_dir=parts_dir, cache_dir=cache_dir,
                              decoders=load_models(parts_dir, models),
                              word_counts=ayah_word_counts(), stores=stores,
-                             clip_cache=clip_cache, on_download=on_download)
+                             clip_cache=clip_cache, share_features=share_features,
+                             on_download=on_download)
     return _totals(timings, models, stores)
 
 
@@ -666,6 +719,97 @@ def run_provenance(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
             "timings": timing_totals(parts_dir, models, stores)}
 
 
+# --- the shared-feature parity (#213) -----------------------------------------------------------
+
+
+def parity_shards(rows: Sequence[Mapping] | None = None) -> list[str]:
+    """The shards the parity run re-decodes and compares: the first :data:`PARITY_SHARDS`
+    gating shards in name order."""
+    rows = gating_rows(read_manifest(LOOK)) if rows is None else rows
+    return sorted({row["shard_file"] for row in rows})[:PARITY_SHARDS]
+
+
+#: Fields a decode line did not write: ``merge`` joins the identified tree's word span in, so
+#: a part's span is not part of what the decode computed.
+PARITY_IGNORED = ("word_from", "word_to")
+
+
+def _parity_line(line: Mapping) -> dict:
+    return {key: value for key, value in line.items() if key not in PARITY_IGNORED}
+
+
+def _keyed_lines(lines: Iterable[Mapping], *, model: str, side: str) -> dict[str, dict]:
+    """The lines by row key, refusing a repeated key rather than keeping the last one.
+
+    A decode claims each row once (``merge_decodes`` refuses repeats the same way); a part
+    concatenated twice must not be able to put a wrong decode behind a right one.
+    """
+    by_key: dict[str, dict] = {}
+    for line in lines:
+        if line["key"] in by_key:
+            raise ValueError(f"{model}: {line['key']} appears twice in the {side}")
+        by_key[line["key"]] = _parity_line(line)
+    return by_key
+
+
+def parity_digest(lines: Iterable[Mapping]) -> str:
+    """The SHA-256 of a set of decode lines, key-sorted and without ``word_from``/``word_to``.
+
+    Two sets of lines are byte-identical decodes exactly when their digests agree: the same
+    records, whatever order they were written or read in.
+    """
+    canonical = sorted((_parity_line(line) for line in lines), key=lambda line: line["key"])
+    text = "".join(json.dumps(line, ensure_ascii=False, sort_keys=True,
+                              separators=(",", ":")) + "\n" for line in canonical)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def parity_record(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
+                  shards: Sequence[str] | None = None, decodes_dir: Path = DECODES_ROOT,
+                  processes: int = RUN_PROCESSES, threads: int = RUN_THREADS,
+                  pull_request: int | None = None) -> dict:
+    """Compare a shared-feature re-decode's parts with the committed decodes, shard by shard.
+
+    ``shards`` defaults to :func:`parity_shards`; the parts are the per-shard files
+    :func:`decodes_path` wrote for those shards, and the committed lines are the same shards'
+    lines of ``decodes_dir/tlog.look.<model>.jsonl.gz``. A line pair is compared whole, never
+    graded. The record names the comparison's rows, mismatches and digests, plus what shows the
+    parts were decoded rather than put there: the timing lines' items and seconds
+    (:func:`timing_totals`) and each part file's SHA-256. A parts directory seeded from the
+    committed decodes compares identical but records no items. A row key that appears twice on
+    either side is refused: a concatenated part could otherwise hide a wrong decode behind a
+    right one, and the line count would hide the extra row.
+    """
+    shards = parity_shards() if shards is None else sorted(set(shards))
+    selected = set(shards)
+    timing = timing_totals(parts_dir, models)
+    record = {**provenance(head_sha(), pull_request), "shards": shards,
+              "models": list(models), "processes": processes, "threads": threads,
+              "share_features": True, "items": timing["items"], "timing": timing,
+              "rows": {}, "mismatches": {}, "identical": {},
+              "shared_sha256": {}, "committed_sha256": {}, "part_sha256": {}}
+    for model in models:
+        shared = [line for shard_file in shards
+                  for line in read_jsonl(decodes_path(parts_dir, shard_file, model))]
+        committed = [line for line in read_jsonl_gz(
+            Path(decodes_dir) / f"tlog.look.{model}.jsonl.gz")
+            if line["shard_file"] in selected]
+        expected = _keyed_lines(committed, model=model, side="committed decodes")
+        found = _keyed_lines(shared, model=model, side="shared parts")
+        record["rows"][model] = len(found)
+        record["mismatches"][model] = (
+            len(set(expected) ^ set(found))
+            + sum(found[key] != expected[key] for key in set(found) & set(expected)))
+        record["identical"][model] = record["mismatches"][model] == 0
+        record["shared_sha256"][model] = parity_digest(shared)
+        record["committed_sha256"][model] = parity_digest(committed)
+        record["part_sha256"][model] = {
+            shard_file: hashlib.sha256(
+                decodes_path(parts_dir, shard_file, model).read_bytes()).hexdigest()
+            for shard_file in shards}
+    return record
+
+
 # --- CLI ----------------------------------------------------------------------------------------
 
 
@@ -681,6 +825,10 @@ def main() -> None:
     decode_.add_argument("--shard-count", type=int, default=RUN_PROCESSES)
     decode_.add_argument("--clip-cache", type=Path, default=None,
                          help="the box cache of selected clips, keyed by their checksum")
+    decode_.add_argument("--shard-files", nargs="+", default=None,
+                         help="decode only the named gating shards (the parity selection)")
+    decode_.add_argument("--no-share-features", action="store_true",
+                         help="featurise every check once per model, as before #213")
     cache_ = commands.add_parser("cache", help="persist the gating rows' clips into the box cache")
     cache_.add_argument("--clip-cache", type=Path, required=True)
     cache_.add_argument("--shard-cache", type=Path, required=True)
@@ -706,11 +854,21 @@ def main() -> None:
                         help="the run's own wall, for meta.json")
     merge_.add_argument("--manifest-commit", default=None,
                         help="the commit main holds the frozen manifest at")
+    parity_ = commands.add_parser("parity", help="compare a shared re-decode with the decodes")
+    parity_.add_argument("--parts-dir", type=Path, required=True)
+    parity_.add_argument("--out", type=Path, default=PARITY_PATH)
+    parity_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
+    parity_.add_argument("--processes", type=int, default=RUN_PROCESSES)
+    parity_.add_argument("--threads", type=int, default=RUN_THREADS)
+    parity_.add_argument("--pr", type=int, default=None,
+                         help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     args = parser.parse_args()
     if args.command == "decode":
         result = decode_shards(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
                                models=args.models, shard_index=args.shard_index,
-                               shard_count=args.shard_count, clip_cache=args.clip_cache)
+                               shard_count=args.shard_count, clip_cache=args.clip_cache,
+                               shard_files=args.shard_files,
+                               share_features=not args.no_share_features)
     elif args.command == "gate":
         result = gate_verdict(args.parts_dir, elapsed_seconds=args.elapsed_seconds,
                               limit_hours=args.limit_hours, processes=args.processes,
@@ -720,6 +878,11 @@ def main() -> None:
                                  shard_index=args.shard_index, shard_count=args.shard_count)
     elif args.command == "coverage":
         result = cache_coverage(gating_rows(read_manifest(LOOK)), args.clip_cache)
+    elif args.command == "parity":
+        result = parity_record(args.parts_dir, models=args.models, shards=parity_shards(),
+                               processes=args.processes, threads=args.threads,
+                               pull_request=args.pr)
+        write_json(result, args.out)
     else:
         result = merge_decodes(args.parts_dir, args.out_dir,
                                manifest_path=TRANCHES_DIR / f"{LOOK}.jsonl",

@@ -784,3 +784,183 @@ def test_no_clip_has_two_ayahs_in_a_use_or_sits_in_two_tranches(tranches):
     seen = Counter(key for clips in uses.values()
                    for key in {(c.audio_filename, c.audio_sha256) for c in clips})
     assert sum(1 for count in seen.values() if count > 1) == 0
+
+
+# --- the module's transitive seam and the role vocabulary (integrator r5 I5.1/I5.4) -------------
+
+
+def _module_file(module: str) -> Path | None:
+    """The file of one ``tadabur`` module in this checkout, or ``None`` for anything else."""
+    if not module.startswith("tadabur."):
+        return None
+    relative = module.split(".", 1)[1].replace(".", "/")
+    package = ROOT / "tools" / "tadabur"
+    for candidate in (package / f"{relative}.py", package / relative / "__init__.py"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _imported_modules(path: Path, module: str) -> set[str]:
+    """Every module one module imports **at module level**, absolute.
+
+    A function-level import is a deliberate boundary (the teacher loader is one), so it is not
+    traversed: this reads what loading the module pulls in.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    package = module.rsplit(".", 1)[0]
+    found: set[str] = set()
+
+    def collect(statements) -> None:
+        for node in statements:
+            if isinstance(node, ast.Import):
+                found.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    base = package
+                    if node.level > 1:
+                        base = ".".join(package.split(".")[:-(node.level - 1)])
+                    target = f"{base}.{node.module}" if node.module else base
+                else:
+                    target = node.module or ""
+                found.add(target)
+                found.update(f"{target}.{alias.name}" for alias in node.names)
+            elif isinstance(node, (ast.If, ast.Try)):
+                collect(node.body)
+                collect(node.orelse)
+                for handler in getattr(node, "handlers", ()):
+                    collect(handler.body)
+                collect(getattr(node, "finalbody", ()))
+
+    collect(tree.body)
+    return found
+
+
+def _tadabur_closure(start: str) -> dict[str, set[str]]:
+    """Every ``tadabur`` module reachable from ``start``, with the imports of each."""
+    seen: dict[str, set[str]] = {}
+    queue = [start]
+    while queue:
+        module = queue.pop()
+        if module in seen:
+            continue
+        path = _module_file(module)
+        if path is None:
+            continue
+        seen[module] = _imported_modules(path, module)
+        queue.extend(name for name in seen[module] if _module_file(name) is not None)
+    return seen
+
+
+def test_the_transitive_closure_of_the_module_loads_no_student_or_candidate_model():
+    """I5.1: the brief's code check is about the closure, not the direct imports.
+
+    An imported module could load a model the direct-import test cannot see. Walk every
+    ``tadabur`` module ``tlog_tranches`` reaches and refuse a model library, a model loader or
+    S6's population driver at module level; the only way to the teacher is ``tlog_pool.decoder``
+    (lazy, and pinned by the direct test and the trees' metas).
+    """
+    closure = _tadabur_closure("tadabur.tlog_tranches")
+    assert "tadabur.tlog_pool" in closure and "tadabur.tlog_ident" in closure
+    assert "tadabur.tlog_ident_decode" not in closure  # the loader stays inside tlog_pool
+    assert "tadabur.tlog_ident_run" not in closure  # S6's driver is not S7's seam
+    assert "tadabur.tlog_ident_confirm" not in closure  # nor S5b's confirmation module
+    assert "tadabur.inference" not in closure and "tadabur.eval_harness" not in closure
+    modules = {name for imports in closure.values() for name in imports}
+    assert not modules & {"torch", "transformers", "tadabur.inference",
+                          "tadabur.tlog_ident_decode", "tadabur.eval_harness"}
+    forbidden = {"muaalem", "muaalem_audio", "decode_evalset", "eval_harness", "c95"}
+    assert not {part for name in modules for part in name.split(".")} & forbidden
+
+
+def test_the_exposure_uses_are_the_roles_the_manifests_write(tranches):
+    """I5.4: one role vocabulary — tlog_index's, minus the training pool (S8)."""
+    from tadabur import tlog_index as index
+
+    assert tranches.ROLES == tuple(role for role in index.ROLES if role != index.TRAIN)
+    assert tranches.CONFIRM_ROLES == tuple(role for role in tranches.ROLES if role != index.LOOK)
+    assert exposure.TLOG_USES == {f"tlog.{role}" for role in tranches.ROLES}
+
+
+# --- the trees' provenance chain (I5.6) ---------------------------------------------------------
+
+
+def _present(sha: str) -> bool:
+    """Whether a recorded commit is in this clone. Squash merges drop the branch commits."""
+    return subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{sha}^{{commit}}"],
+                          capture_output=True).returncode == 0
+
+
+def _assert_before(earlier: str, later: str, label: str) -> None:
+    """The recorded SHAs' order, re-walked only where both commit objects exist."""
+    assert re.fullmatch(r"[0-9a-f]{40}", earlier), label
+    assert re.fullmatch(r"[0-9a-f]{40}", later), label
+    if not (_present(earlier) and _present(later)):
+        return
+    assert subprocess.run(["git", "-C", str(ROOT), "merge-base", "--is-ancestor",
+                           earlier, later], capture_output=True).returncode == 0, label
+
+
+def test_the_tranche_metas_cite_their_pr_ref_and_the_commit_chain():
+    """I5.6: decodes -> ident -> manifests, each meta citing a commit under its PR head ref."""
+    records = [json.loads((root / role / "meta.json").read_text(encoding="utf-8"))
+               for root in (pool.DECODES_DIR, pool.IDENT_DIR) for role in CONFIRM_ROLES]
+    records.append(json.loads((TLOG_DIR / "tranches" / "meta.json").read_text(encoding="utf-8")))
+    assert len(records) == 9
+    pulls = {record["pull_request"] for record in records}
+    assert len(pulls) == 1 and None not in pulls
+    pull = pulls.pop()
+    for record in records:
+        assert record["pull_request_ref"] == f"refs/pull/{pull}/head"
+    decodes = {json.loads((pool.DECODES_DIR / role / "meta.json").read_text())["code_sha"]
+               for role in CONFIRM_ROLES}
+    idents = {json.loads((pool.IDENT_DIR / role / "meta.json").read_text())["code_sha"]
+              for role in CONFIRM_ROLES}
+    assert len(decodes) == 1 and len(idents) == 1
+    decodes, idents = decodes.pop(), idents.pop()
+    _assert_before(decodes, idents, "the decodes precede their identifications")
+    _assert_before(idents, records[-1]["code_sha"], "the identifications precede the manifests")
+
+
+# --- the claim writer and loader (I5.3) ---------------------------------------------------------
+
+
+def test_claim_tranche_writes_the_pinned_schema_once_and_in_order(tranches, repo):
+    """I5.3: the opening round's writer, so the file is not hand-written JSON."""
+    path = tranches.claim_tranche("confirm.1", issue=195, commit=CLAIM_COMMIT,
+                                  date="2026-11-02", tranches_dir=repo)
+    record = json.loads(path.read_text(encoding="utf-8"))
+    assert set(record) == set(tranches.CLAIM_FIELDS)
+    assert (record["role"], record["issue"], record["commit"], record["date"]) == (
+        "confirm.1", 195, CLAIM_COMMIT, "2026-11-02")
+    with pytest.raises(ValueError):
+        tranches.claim_tranche("confirm.1", issue=195, commit=CLAIM_COMMIT, date="2026-11-02",
+                               tranches_dir=repo)  # an opening is never overwritten
+    with pytest.raises(ValueError):
+        tranches.claim_tranche("confirm.2", issue=195, commit=CLAIM_COMMIT, date="2026-11-02",
+                               tranches_dir=repo)  # confirm.1 is not committed yet
+    with pytest.raises(ValueError):
+        tranches.claim_tranche("confirm.2", issue=195, commit="short", date="2026-11-02",
+                               tranches_dir=repo)
+
+
+def test_load_tranche_opens_a_confirm_role_only_through_its_committed_claim(tranches, repo):
+    """I5.3: the only reader of ``tranches/<role>.jsonl`` for a confirm role, claim first.
+
+    ``confirm.1`` needs no claim (r24 item 4), so it reads at once; ``confirm.2`` waits for
+    ``confirm.1``'s claim to be committed, so no reader sees a tranche before it opened.
+    """
+    rows = tranches.manifest_rows([_ident()], {_key(_ident()): "g1"})
+    for role in ("confirm.1", "confirm.2"):
+        (repo / f"{role}.jsonl").write_text(
+            "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows), encoding="utf-8")
+    assert [row["row"] for row in tranches.load_tranche("confirm.1", repo)] == [1]
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.load_tranche("confirm.2", repo)  # no claim yet
+    tranches.claim_tranche("confirm.1", issue=195, commit=CLAIM_COMMIT, date="2026-11-02",
+                           tranches_dir=repo)
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.load_tranche("confirm.2", repo)  # claim not committed yet
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "claim confirm.1 and the manifests")
+    assert [row["row"] for row in tranches.load_tranche("confirm.2", repo)] == [1]

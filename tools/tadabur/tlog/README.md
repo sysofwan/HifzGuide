@@ -456,8 +456,11 @@ pre-registration's gating rule) plus the S6 amendment's decode mode
   is `not_decoded:over_d_max` with no label and no floor verdict. The 1% D_max stop is checked
   **per tranche**. `look` is not decoded again: S7 reuses S6's trees verbatim.
 - **The teacher:** only `tlog_pool.decoder()` (`obadx/muaalem-model-v3_2@01a1ef9f`). No
-  student, C95 or candidate model may decode a confirm row; a locked AST test checks the
-  module's imports, and the trees' metas record the base model and revision.
+  student, C95 or candidate model may decode a confirm row: a locked AST test checks the
+  module's direct imports, a second test walks the module-level closure of every `tadabur`
+  module it reaches (no model library, no loader, no S6/S5b driver), and the trees' metas record
+  the base model and revision. `tlog_tranches` imports only `tlog_pool`, `tlog_ident`,
+  `tlog_index`, `tlog_overlap`, `tlog_pass1`, `nonpro_sources` and `exposure`.
 - **Manifest rows:** one per usable row of a role, never omitted, with the row key,
   `audio_sha256`, `group_key` (the S1 id group's smallest `audio_path`, from `split/`; the
   **bootstrap cluster is the surah** under the owner's S2 fallback — `assigned_label`'s,
@@ -467,18 +470,24 @@ pre-registration's gating rule) plus the S6 amendment's decode mode
   `reported:undecided` (`label_source == none`), then `reported:straddles`, then `gating`
   (`label_source == both` — amendment §1), then `reported:identified`, then
   `reported:below_bar` (the old below-bar rows); `STRATA` is only the summary order.
+  `reported:undecided` is empty in every role today because every row above D_max is `unclean`
+  and that branch fires first — the per-role `not_decoded` count and share live in the meta's
+  `d_max` block, never in `reported:undecided`.
   `tranches/meta.json` counts every stratum per
   role, plus `gating ∧ id_floor_ok` (amendment §5's sensitivity line), the gating surah count
   (the cluster count), the pre-registration, amendment, calibration and decode-limit SHAs, the
-  split/overlap overlay commits and the timed slice.
+  split/overlap overlay commits, the timed slice — which streams cold shards, so its seconds are
+  not a per-row rate — the full pass's wall time, and the `d_max` block.
 - **Eval uses:** `exposure/tlog.<role>.clips.jsonl` lists **every** manifest row of the role —
   the whole role is reserved for evaluation, whatever its stratum. `surah_ayah` is the assigned
   label or `unknown`, the dataset is `tarteel-ai/tlog` at the recorded revision, and the reciter
   is `unknown`. One clip carrying two ayahs inside a use, or appearing in two uses, is an error.
-- **Claim order:** a future round writes `tranches/<role>.claim.json`
-  (`{role, issue, commit, date}`) when it opens a tranche; `require_claim_order` refuses
-  `confirm.k` until `confirm.(k-1)` is claimed, so one round may claim two consecutive
-  tranches. S7 writes no claim.
+- **Claim order:** a round opens a tranche with `claim_tranche(role, issue, commit, date)`,
+  which checks the order and creates `tranches/<role>.claim.json` (`{role, issue, commit,
+  date}`) exclusively, then commits it; `load_tranche(role)` is the only reader of a confirm
+  manifest and calls `require_claim_order` first. `require_claim_order` refuses `confirm.k`
+  until `confirm.(k-1)`'s claim is in HEAD with no staged or unstaged change, so one round may
+  claim two consecutive tranches. S7 writes no claim.
 - **Sealed discipline:** logs, failure messages and the PR carry aggregate counts and row keys
   only — never a label, a decode or audio. Nobody listens to or inspects a tranche's items.
 

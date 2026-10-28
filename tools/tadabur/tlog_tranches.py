@@ -38,6 +38,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import subprocess
 import time
 from collections import Counter
@@ -50,17 +52,16 @@ from . import tlog_pool
 from .exposure import EXPOSURE_DIR, ClipExposure, write_clip_use
 from .nonpro_sources import TLOG
 from .tlog_ident import BOTH, FILENAME, IDENTIFIED, NONE, load_identifier
-from .tlog_ident_confirm import require_committed
-from .tlog_ident_run import D_MAX_STOP_SHARE
-from .tlog_index import (require_clean_tree, sha256_file, write_json, write_jsonl, write_shard)
+from .tlog_index import (LOOK, TRAIN, ROLES as ALL_ROLES, require_clean_tree, require_committed,
+                         read_jsonl, sha256_file, write_json, write_jsonl)
 from .tlog_overlap import iter_pool_rows
 from .tlog_pass1 import read_jsonl_gz
 
 SCHEMA_VERSION = tlog_pool.SCHEMA_VERSION
-#: The five pre-registered roles S7 writes a manifest for: look (S6's tree) and the four
-#: separately sealed confirm tranches.
-ROLES = ("look", "confirm.1", "confirm.2", "confirm.3", "confirm.4")
-CONFIRM_ROLES = ROLES[1:]
+#: The five pre-registered roles S7 writes a manifest for: tlog_index's six minus the training
+#: pool (S8's role), so a role can only be added in one place.
+ROLES = tuple(role for role in ALL_ROLES if role != TRAIN)
+CONFIRM_ROLES = tuple(role for role in ROLES if role != LOOK)
 GATING = "gating"
 #: One stratum per manifest row: the six names in **summary** order (``gating`` first, the
 #: primary count). This is not the precedence — that is the branch order in
@@ -75,7 +76,9 @@ LABEL_SOURCES = (BOTH, IDENTIFIED, FILENAME, NONE)
 MANIFEST_FIELDS = ("split", "shard_file", "row", "audio_path", "audio_sha256", "group_key",
                    "filename_label", "assigned_label", "label_source", "straddles",
                    "decode_mode", "id_floor_ok", "stratum")
-#: A claim record's schema (r24 item 4). S7 writes none: the round that opens a tranche does.
+#: A claim record's schema (r24 item 4). ``commit`` binds the commit the round opens from: it
+#: must hold the claim and the round's pre-registration, so the tranche manifest at that commit
+#: is what the round read. S7 writes none; the round that opens a tranche does.
 CLAIM_FIELDS = ("role", "issue", "commit", "date")
 #: The rows the timed slice decodes before the full run (r24 item 6).
 SLICE_ROWS = 500
@@ -181,14 +184,12 @@ def require_d_max_share(selection: Selection) -> None:
     """Refuse a tranche with strictly more than 1% of its usable rows above D_max.
 
     The check is per tranche (r24 item 6): the amendment's stop was measured on the pool, and a
-    single tranche must not slip past it on the others' rows.
+    single tranche must not slip past it on the others' rows. The rule itself is
+    :func:`tadabur.tlog_pool.require_d_max_share`, shared with S6's pool-wide check.
     """
-    total = len(selection.selected) + len(selection.over_d_max)
-    share = len(selection.over_d_max) / total if total else 0.0
-    if share > D_MAX_STOP_SHARE:
-        raise RuntimeError(f"{selection.role}: {len(selection.over_d_max)} of {total} usable "
-                           f"rows ({share:.2%}) are above D_max, over the "
-                           f"{D_MAX_STOP_SHARE:.0%} stop")
+    tlog_pool.require_d_max_share(len(selection.over_d_max),
+                                  len(selection.selected) + len(selection.over_d_max),
+                                  selection.role)
 
 
 # --- the eval uses (r24 item 3) -----------------------------------------------------------------
@@ -247,9 +248,54 @@ def require_claim_order(role: str, tranches_dir: Path = TRANCHES_DIR) -> None:
         raise ValueError(f"{role} needs {previous} claimed first; {path} is absent")
     _require_committed_claim(path)
     record = json.loads(path.read_text(encoding="utf-8"))
-    if set(record) != set(CLAIM_FIELDS) or record["role"] != previous:
-        raise ValueError(f"{path} is not a {previous} claim: it needs exactly the fields "
-                         f"{list(CLAIM_FIELDS)} and role {previous}")
+    if record.get("role") != previous:
+        raise ValueError(f"{path} is not a {previous} claim: it names {record.get('role')!r}")
+    _require_claim(record, path)
+
+
+def claim_tranche(role: str, *, issue: int, commit: str, date: str,
+                  tranches_dir: Path = TRANCHES_DIR) -> Path:
+    """Write the claim that opens one confirm tranche; the caller commits it.
+
+    The order is checked first (:func:`require_claim_order`), and the file is created
+    exclusively: a tranche is claimed once, and a second opening round is a decision, not a
+    silent overwrite. ``commit`` binds the commit the round opens from — it must hold this claim
+    and the round's pre-registration — so the tranche manifest at that commit is what the round
+    read. S7 writes no claim; the next round calls this and commits the file.
+    """
+    require_claim_order(role, tranches_dir)
+    record = {"role": role, "issue": issue, "commit": commit, "date": date}
+    path = Path(tranches_dir) / f"{role}.claim.json"
+    _require_claim(record, path)
+    try:
+        handle = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    except FileExistsError as error:
+        raise ValueError(f"{path} already exists: a tranche is claimed once") from error
+    with os.fdopen(handle, "w", encoding="utf-8") as stream:
+        stream.write(json.dumps(record, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+    return path
+
+
+def load_tranche(role: str, tranches_dir: Path = TRANCHES_DIR) -> list[dict]:
+    """One role's committed manifest rows; a confirm tranche only after its claim is committed."""
+    if role not in ROLES:
+        raise ValueError(f"{role!r} is not a tranche role {ROLES}")
+    if role in CONFIRM_ROLES:
+        require_claim_order(role, tranches_dir)
+    return read_jsonl(Path(tranches_dir) / f"{role}.jsonl")
+
+
+def _require_claim(record: Mapping[str, Any], path: Path) -> None:
+    """Refuse a claim that is not exactly :data:`CLAIM_FIELDS` with usable values."""
+    if set(record) != set(CLAIM_FIELDS) or record["role"] not in CONFIRM_ROLES:
+        raise ValueError(f"{path} needs exactly the fields {list(CLAIM_FIELDS)} and a role in "
+                         f"{CONFIRM_ROLES}")
+    issue, commit, date = record["issue"], record["commit"], record["date"]
+    if (not isinstance(issue, int) or isinstance(issue, bool) or issue <= 0
+            or not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit)
+            or not isinstance(date, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date)):
+        raise ValueError(f"{path}: a claim needs a positive issue, a 40-hex commit and a "
+                         f"YYYY-MM-DD date")
 
 
 def _require_committed_claim(path: Path) -> None:
@@ -316,23 +362,25 @@ def decode(*, cache_dir: Path, out_dir: Path = tlog_pool.DECODES_DIR,
                                           scratch=scratch / "slice", teacher=teacher)
     slice_timing = {"rows": len(slice_records), "seconds": round(time.time() - slice_started, 1)}
     print(f"slice: {slice_timing['rows']} rows in {slice_timing['seconds']} s", flush=True)
+    full_started = time.time()
     records = tlog_pool.decode_rows(rows, d_max=d_max, cache_dir=cache_dir, scratch=scratch,
                                     already=slice_records, teacher=teacher)
+    full_pass_seconds = round(time.time() - full_started, 1)
     trees = {role: {split: [] for split in ("clean", "unclean")} for role in roles}
     for record in records:
         trees[role_of[tlog_pool.row_key(record)]][record["split"]].append(record)
     base = {**tlog_pool.tree_provenance(pull_request), "schema_version": SCHEMA_VERSION}
     for role, splits in trees.items():
-        for split, split_rows in splits.items():
-            write_shard(split_rows, out_dir / role / f"{split}.jsonl.gz")
-        write_json({**base, "census": tlog_pool.tree_census(tlog_pool.count_by_shard(
-            [row for split_rows in splits.values() for row in split_rows])),
-            "rows": {split: len(split_rows) for split, split_rows in splits.items()}},
-            out_dir / role / "meta.json")
-    write_json(slice_timing, out_dir / "slice_timing.json")
+        tlog_pool.write_tree(out_dir / role, splits, base)
+    # The run record: the slice's stage timing (it streams cold shards) and the full pass's
+    # wall time, which the manifests' meta carries so S8 can budget from committed data.
+    write_json({**slice_timing, "includes_shard_streaming": True,
+                "full_pass_seconds": full_pass_seconds}, out_dir / "slice_timing.json")
     counts = {role: {split: len(split_rows) for split, split_rows in splits.items()}
               for role, splits in trees.items()}
-    return {"slice": slice_timing, "roles": counts}
+    print(f"full pass: {len(records)} rows in {full_pass_seconds} s", flush=True)
+    return {"slice": {**slice_timing, "includes_shard_streaming": True,
+                      "full_pass_seconds": full_pass_seconds}, "roles": counts}
 
 
 def identify(*, decodes_dir: Path = tlog_pool.DECODES_DIR,
@@ -356,13 +404,7 @@ def identify(*, decodes_dir: Path = tlog_pool.DECODES_DIR,
         for row in selection.over_d_max:
             splits[row["split"]].append(tlog_pool.with_keys(
                 tlog_pool.not_decoded_record(row, d_max=d_max), row))
-        for split, split_rows in splits.items():
-            write_shard(sorted(split_rows, key=tlog_pool.row_key),
-                        out_dir / role / f"{split}.jsonl.gz")
-        write_json({**base, "census": tlog_pool.tree_census(tlog_pool.count_by_shard(
-            [row for split_rows in splits.values() for row in split_rows])),
-            "rows": {split: len(split_rows) for split, split_rows in splits.items()}},
-            out_dir / role / "meta.json")
+        tlog_pool.write_tree(out_dir / role, splits, base)
         counts[role] = {split: len(split_rows) for split, split_rows in splits.items()}
     return counts
 
@@ -370,27 +412,43 @@ def identify(*, decodes_dir: Path = tlog_pool.DECODES_DIR,
 def manifests(*, ident_dir: Path = tlog_pool.IDENT_DIR, tranches_dir: Path = TRANCHES_DIR,
               exposure_dir: Path = EXPOSURE_DIR,
               slice_timing: Path = tlog_pool.DECODES_DIR / "slice_timing.json",
+              full_pass_seconds: float | None = None,
               pull_request: int | None = None) -> dict:
     """Write the five manifests, their eval uses and ``tranches/meta.json``.
 
     The look tree is S6's committed one, joined — never re-decoded. The confirm trees are
     S7's. Each row keeps ``group_key``, its label facts and ``stratum``, so any re-slice can
     be recomputed from the committed files.
+
+    ``slice_timing`` is the decode run's record. A record that predates ``full_pass_seconds``
+    (the slice's stage timing alone does not show whether the run was download-bound) takes the
+    figure from ``full_pass_seconds``, read off the run's own log.
     """
     require_clean_tree()
     timing = json.loads(Path(slice_timing).read_text(encoding="utf-8"))
+    seconds = timing.get("full_pass_seconds", full_pass_seconds)
+    if seconds is None:
+        raise ValueError(f"{slice_timing} records no full_pass_seconds; pass the decode run's "
+                         f"own wall time as --full-pass-seconds")
     group_keys = split_group_keys()
     summaries = {}
+    d_max = {}
     for role in ROLES:
         rows = manifest_rows(tlog_pool.read_ident_tree(role, ident_dir=ident_dir), group_keys)
         write_jsonl(rows, Path(tranches_dir) / f"{role}.jsonl", sort_keys=True)
         write_clip_use(f"tlog.{role}", exposure_rows(rows), Path(exposure_dir))
         summaries[role] = tranche_summary(rows)
+        not_decoded = sum(1 for row in rows if row["decode_mode"] == tlog_pool.NOT_DECODED)
+        d_max[role] = {"not_decoded": not_decoded, "rows": len(rows),
+                       "share": round(not_decoded / len(rows), 6) if rows else 0.0}
     write_json({**tlog_pool.tree_provenance(pull_request), "schema_version": SCHEMA_VERSION,
                 "preregistration_sha256": sha256_file(PREREGISTRATION_PATH),
                 "gating_amendment_sha256": sha256_file(GATING_AMENDMENT_PATH),
                 "overlay": overlay_commit(),
-                "slice_timing": {"rows": timing["rows"], "seconds": timing["seconds"]},
+                "slice_timing": {"rows": timing["rows"], "seconds": timing["seconds"],
+                                 "includes_shard_streaming": True,
+                                 "full_pass_seconds": seconds},
+                "d_max": {"stop_share": tlog_pool.D_MAX_STOP_SHARE, "tranches": d_max},
                 "tranches": summaries},
                Path(tranches_dir) / "meta.json")
     return summaries
@@ -423,6 +481,8 @@ def main() -> None:
     manifests_.add_argument("--exposure-dir", type=Path, default=EXPOSURE_DIR)
     manifests_.add_argument("--slice-timing", type=Path,
                             default=tlog_pool.DECODES_DIR / "slice_timing.json")
+    manifests_.add_argument("--full-pass-seconds", type=float, default=None,
+                            help="the decode run's wall time, for a record that predates it")
     manifests_.add_argument("--pr", type=int, default=None,
                             help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     args = parser.parse_args()
@@ -436,6 +496,7 @@ def main() -> None:
     else:
         result = manifests(ident_dir=args.ident_dir, tranches_dir=args.tranches_dir,
                            exposure_dir=args.exposure_dir, slice_timing=args.slice_timing,
+                           full_pass_seconds=args.full_pass_seconds,
                            pull_request=args.pr)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
 

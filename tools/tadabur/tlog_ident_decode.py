@@ -75,9 +75,8 @@ from .tlog_ident_confirm import (
     CONFIRM_DECODES,
     CV_MANIFEST_PATH,
     FREESOUND_MANIFEST_PATH,
-    require_committed,
 )
-from .tlog_index import record_of
+from .tlog_index import record_of, require_committed
 
 SCHEMA_VERSION = 1
 #: The three S5b confirmation stores, and the arms a rerun may select.

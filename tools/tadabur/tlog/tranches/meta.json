@@ -1,6 +1,36 @@
 {
  "calibration_sha256": "b0040b99fac1714c4600775aaa8eced57bf65ae7ae9790d14c45498cfe7bbb0b",
- "code_sha": "5280a5b564dbb8e3749af720748fac418f98e559",
+ "code_sha": "ad4a74ede719118b67c225652b92906e3305d2bc",
+ "d_max": {
+  "stop_share": 0.01,
+  "tranches": {
+   "confirm.1": {
+    "not_decoded": 6,
+    "rows": 9632,
+    "share": 0.000623
+   },
+   "confirm.2": {
+    "not_decoded": 3,
+    "rows": 9747,
+    "share": 0.000308
+   },
+   "confirm.3": {
+    "not_decoded": 7,
+    "rows": 9462,
+    "share": 0.00074
+   },
+   "confirm.4": {
+    "not_decoded": 14,
+    "rows": 9586,
+    "share": 0.00146
+   },
+   "look": {
+    "not_decoded": 7,
+    "rows": 9710,
+    "share": 0.000721
+   }
+  }
+ },
  "decode_limit_sha256": "1382979892ddd6a8d3c52019e7a6b1b5768f74865863fefec40c81768a74ad54",
  "gating_amendment_sha256": "23d6bf7abc9882909e9686d19b2bdcd8b19fb19ed49a38829c4db9e58a4ce085",
  "model": "obadx/muaalem-model-v3_2",
@@ -14,6 +44,8 @@
  "revision": "01a1ef9fbe40d144ef845101e89ff924aed3fef5",
  "schema_version": 1,
  "slice_timing": {
+  "full_pass_seconds": 9877.0,
+  "includes_shard_streaming": true,
   "rows": 500,
   "seconds": 276.0
  },

@@ -64,6 +64,7 @@ import hashlib
 import json
 import re
 import subprocess
+from dataclasses import replace
 from functools import lru_cache
 from pathlib import Path
 
@@ -716,3 +717,39 @@ def test_the_committed_training_set_is_disjoint_from_every_evaluation_use():
 def test_the_use_file_is_not_gitignored():
     result = subprocess.run(["git", "check-ignore", "-q", str(USE_PATH)], cwd=ROOT)
     assert result.returncode == 1
+
+
+# --- recording-based evaluation uses (review r1 R1.1) ------------------------------------------
+
+
+def _tadabur_row(*, name: str = "1.wav", sha: str | None = None) -> exposure.Exposure:
+    return exposure.Exposure(name, 0, 0, 1, None, None, sha or "0" * 64)
+
+
+@pytest.mark.parametrize("use", [exposure.EVALSET_DEV, exposure.EVALSET_TEST,
+                                 exposure.LABEL_WAQF_EVENTS, exposure.SEALED_PANEL])
+def test_a_planted_recording_use_checksum_collision_is_found(use, tmp_path):
+    """A use registered after S4's screen still holds its recordings: the direct check sees it."""
+    stolen = _pool_row(1)["audio_sha256"]
+    _disjoint_registry(tmp_path)
+    exposure.write_use(use, [_tadabur_row(sha=stolen)], tmp_path)
+    with pytest.raises(ExposureOverlap, match="audio_sha256"):
+        exposure.check_row_set_disjoint(_training(), registry=load_registry(tmp_path),
+                                        eval_groups={})
+
+
+def test_a_planted_recording_use_filename_collision_is_found(tmp_path):
+    registry = _disjoint_registry(tmp_path)
+    planted = replace(registry, recordings={
+        **registry.recordings,
+        exposure.EVALSET_DEV: (_tadabur_row(name=_pool_row(1)["audio_path"]),)})
+    with pytest.raises(ExposureOverlap, match="audio_path"):
+        exposure.check_row_set_disjoint(_training(), registry=planted, eval_groups={})
+
+
+def test_a_training_recording_use_is_not_checked_as_an_evaluation_use(tmp_path):
+    """`TRAINING_BARRED_USES` is the barred vocabulary; a mining/training pool is not a leak."""
+    _disjoint_registry(tmp_path)
+    exposure.write_use(exposure.MINING_POOL,
+                       [_tadabur_row(sha=_pool_row(1)["audio_sha256"])], tmp_path)
+    exposure.check_row_set_disjoint(_training(), registry=load_registry(tmp_path), eval_groups={})

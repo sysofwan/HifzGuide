@@ -731,8 +731,12 @@ def check_row_set_disjoint(
     checked in that order, is:
 
     * ``audio_path``: a clip id of any clip use (``registry.clips``, the non-professional
-      corpora's and each tlog role's) equals a row's ``audio_path``;
-    * ``audio_sha256``: a clip's checksum, or a QUD ayah's MP3 checksum, equals a row's;
+      corpora's and each tlog role's), or the ``audio_filename`` of a registered Tadabur
+      recording of a use in :data:`TRAINING_BARRED_USES`, equals a row's ``audio_path``;
+    * ``audio_sha256``: a clip's checksum, a QUD ayah's MP3 checksum, or a registered Tadabur
+      recording's (non-null) ``audio_sha256`` of a :data:`TRAINING_BARRED_USES` use, equals a
+      row's. The S4 ``eval_overlap`` screen cannot stand in for this: a use registered after
+      the screen holds recordings the row's frozen record never saw;
     * ``fingerprint``: a row carries an S4 ``eval_overlap`` hit -- the live case. Also a row
       whose ``duplicate_of`` names a row outside this set, which no usable pool row can carry
       (S4 excludes a duplicate: ``usable`` is false when ``duplicate_of`` is set), so this
@@ -741,31 +745,47 @@ def check_row_set_disjoint(
       (``eval_groups``, a ``use -> {group_key}`` map; by default the committed split tree's
       groups of each ``tlog.<role>``, :func:`tadabur.tlog_tranches.split_groups`).
 
+    :data:`TRAINING_BARRED_USES` is the canonical barred vocabulary -- the frozen evalsets, the
+    sealed panel, the truth sites, the human-label fixtures and both Ship A halves -- so a
+    training or mining use is not matched, and a tlog row's missing Tadabur ``(shard, row)``
+    identity leaves the file name and the checksum as the applicable direct checks. A barred
+    use with no file contributes nothing here: :func:`require_complete` is the completeness
+    check, and a use's absence is not evidence of disjointness.
+
     ``eval_groups`` defaults to the committed split tree, so the real registry is checked
     without passing anything. The registry is loaded from ``exposure/`` unless one is passed.
     """
     registry = registry or load_registry()
     rows = list(rows)
     keys = {_row_key(row) for row in rows}
-    paths = {clip.audio_filename: use
-             for use, clips in sorted(registry.clips.items()) for clip in clips}
-    checksums: dict[str, str] = {}
+    paths: dict[str, tuple[str, str]] = {}
     for use, clips in sorted(registry.clips.items()):
         for clip in clips:
-            checksums.setdefault(clip.audio_sha256, use)
+            paths.setdefault(clip.audio_filename, ("clip", use))
+    checksums: dict[str, tuple[str, str]] = {}
+    for use, clips in sorted(registry.clips.items()):
+        for clip in clips:
+            checksums.setdefault(clip.audio_sha256, ("clip", use))
     for use, ayat in sorted(registry.qud.items()):
         for ayah in ayat:
-            checksums.setdefault(ayah.mp3_sha256, use)
+            checksums.setdefault(ayah.mp3_sha256, ("QUD ayah", use))
+    for use in TRAINING_BARRED_USES:
+        for recording in registry.recordings.get(use, ()):
+            paths.setdefault(recording.audio_filename, ("Tadabur recording", use))
+            if recording.audio_sha256 is not None:
+                checksums.setdefault(recording.audio_sha256, ("Tadabur recording", use))
     groups = _tlog_eval_groups() if eval_groups is None else {
         use: set(members) for use, members in eval_groups.items()}
     for row in rows:
         key = _row_key(row)
-        if (use := paths.get(row["audio_path"])) is not None:
-            raise ExposureOverlap(f"{key}: audio_path {row['audio_path']} is a clip of the "
+        if (owner := paths.get(row["audio_path"])) is not None:
+            kind, use = owner
+            raise ExposureOverlap(f"{key}: audio_path {row['audio_path']} is a {kind} of the "
                                   f"evaluation use {use}")
-        if (use := checksums.get(row["audio_sha256"])) is not None:
-            raise ExposureOverlap(f"{key}: audio_sha256 {row['audio_sha256']} is an evaluation "
-                                  f"clip's, in {use}")
+        if (owner := checksums.get(row["audio_sha256"])) is not None:
+            kind, use = owner
+            raise ExposureOverlap(f"{key}: audio_sha256 {row['audio_sha256']} is a {kind}'s, "
+                                  f"in the evaluation use {use}")
         if row["eval_overlap"]:
             hit = row["eval_overlap"][0]
             raise ExposureOverlap(f"{key}: fingerprint match to {hit['set']} clip {hit['clip']} "

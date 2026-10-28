@@ -188,3 +188,7 @@ tools/tadabur/aug_readout/restricted/
 # The tlog S5b Common Voice manifest (#204): one line per drawn clip with its id, sentence,
 # audio SHA-256 and duration; committed, no audio. *.jsonl is ignored by default.
 !tools/tadabur/tlog/ident/confirm/common_voice.jsonl
+# The tlog S6 audit (#191): the 150-item worklist and the owner's verdicts are source-of-truth
+# (each verdict carries its split, shard, row, audio path and SHA-256). No audio is committed.
+!tools/tadabur/tlog/audit/worklist.jsonl
+!tools/tadabur/tlog/audit/verdicts.jsonl

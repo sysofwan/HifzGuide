@@ -949,6 +949,22 @@ def write_references(path: Path = REFERENCES_PATH,
     return payload
 
 
+def canonical_label(database: ReferenceDatabase, label: object) -> str | None:
+    """The text class's canonical ``surah:ayah`` label, or ``None`` for a label the database
+    does not hold.
+
+    Identical recitations share a text class and the mushaf order fixes the class's label, so
+    two labels are the same recitation exactly when their canonical labels are equal. This is
+    the comparison the frozen contract uses: ayah numbers alone cannot say which copy of a
+    repeated ayah a reciter meant.
+    """
+    try:
+        surah, ayah = _split_label(str(label))
+        return database.class_label(database.text_class(surah, ayah))
+    except (KeyError, ValueError):
+        return None
+
+
 def load_references(path: Path = REFERENCES_PATH) -> ReferenceDatabase:
     """The committed reference database, from the file alone — no phonetizer import.
 
@@ -1029,15 +1045,17 @@ def identify(decode: str, *, database: ReferenceDatabase, filename_ayah: str | N
     return _with_label(identification, bars)
 
 
-def identification_record(identification: Identification) -> dict:
+def identification_record(identification: Identification, *, decode_mode: str) -> dict:
     """The committed row for one identification: the one place its field names are fixed.
 
     The keys are the issue's output list — span, ``straddles``, class, score, decoy, Δ,
     ``margin``, ``margin_class``, ``id_floor_ok``, ``label_source``, ``assigned_label`` — plus
-    the inputs a consumer joins on and the ``floor_rule`` that produced ``id_floor_ok``.
-    ``id_floor_ok`` is the S5b recitation verdict (:func:`identify`), under its own
-    pre-registration; no row is left unverified.
+    the inputs a consumer joins on, the ``floor_rule`` that produced ``id_floor_ok`` and the
+    ``decode_mode`` that produced the decode (S5b I3.3: required, never defaulted, so S6/S7
+    cannot omit which mode a verdict belongs to).
     """
+    if not isinstance(decode_mode, str) or not decode_mode:
+        raise ValueError("decode_mode is required on every identification record")
     match = identification.match
     span = ({"surah": match.surah, "ayah_from": match.ayah_from,
              "word_from": match.word_from, "ayah_to": match.ayah_to,
@@ -1060,6 +1078,7 @@ def identification_record(identification: Identification) -> dict:
         "label_source": identification.label_source,
         "assigned_label": identification.assigned_label,
         "floor_rule": floor_rule(),
+        "decode_mode": decode_mode,
     }
 
 
@@ -1635,9 +1654,10 @@ def _phase(message: str) -> None:
 def pool_summary(rows: Iterable[Mapping[str, Any]]) -> tuple[dict, int]:
     """The pool's length facts and b_u's reach, from :func:`tadabur.tlog_overlap.iter_pool_rows`.
 
-    A row's length fact is ``speech_s``: the frozen row carries the pass-1 facts
-    ``speech_s``/``speech_ratio`` (not the clip's ``duration_s``), and speech is what the decode's
-    character length tracks. ``usable`` rows only, so a row the codec floor rejected (and whose
+    A row's length fact is ``speech_s``: the frozen view joins the pass-1 facts
+    ``speech_s``/``speech_ratio`` and the clip's ``duration_s`` as distinct fields, and speech is
+    what the decode's character length tracks (``duration_s`` is what the whole-clip decode limit
+    bounds). ``usable`` rows only, so a row the codec floor rejected (and whose
     ``speech_s`` is ``None``) is skipped before any conversion.
     """
     usable = unlabelled = 0
@@ -1880,9 +1900,10 @@ def _bar(value: float | None) -> str:
 def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
     """The page's pool section: an indicative VAD speech histogram, not decode-bin membership.
 
-    The pool's decode lengths do not exist until S7 runs, and `speech_s` is not one of them:
-    characters per second vary between clips, so speech seconds say nothing certain about a
-    row's floor bin (a short row can still decode past 160 characters).
+    The whole pool's decode lengths arrive with S7 (#192). S6 decoded the look half and a
+    2,000-row sample, and its amendment fixed the mode, not the pool's lengths; `speech_s` is
+    not a length either: characters per second vary between clips, so speech seconds say
+    nothing certain about a row's floor bin (a short row can still decode past 160 characters).
     """
     pool = report["pool_lengths"]
     usable = pool["usable"]
@@ -1892,13 +1913,17 @@ def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
 
     return [
         "The floors are keyed on the **decode's** character length. The look half's longest "
-        "decode is 138 characters, so none reached `161-` and that bin has no floor. The pool's "
-        "decode lengths do not exist until S7 runs. Its only committed length fact is the "
-        "pass-1 VAD speech seconds (`speech_s`; the frozen row does not carry the clip's "
-        "`duration_s`), which is **not** the decode's length: characters per second vary "
-        "between clips, so a row with little speech can still decode past 160 characters. Read "
-        "this as an indicative distribution of speech seconds, with no inference about a row's "
-        "floor bin:",
+        "decode is 138 characters, so none reached `161-` and that bin has no floor. The whole "
+        "pool's decode lengths do not exist until S7 runs (#192): the S6 amendment decided the "
+        "mode (whole-clip up to a measured `D_max`, rows above it recorded as "
+        "`not_decoded:over_d_max`), not the pool's lengths. The only committed length fact for "
+        "the pool is the pass-1 VAD speech seconds (`speech_s`): the frozen view joins "
+        "`speech_s` and the clip's `duration_s` as two distinct fields, this histogram uses the "
+        "former and the whole-clip decode limit `D_max` applies to the latter (total clip "
+        "duration, not speech). Speech seconds are **not** the decode's length: characters per "
+        "second vary between clips, so a row with little speech can still decode past 160 "
+        "characters. Read this as an indicative distribution of speech seconds, with no "
+        "inference about a row's floor bin:",
         "",
         "| VAD speech | rows | share |",
         "|---|---|---|",
@@ -2147,16 +2172,17 @@ def render(report: Mapping[str, Any]) -> str:
         "SHA-256 and counts, the floor rule and the `L_min`/`DELTA` the pinned document states, "
         "and the edlib version.",
         f"- **Decode mode.** The frozen rule fixes a whole-clip greedy decode "
-        f"(`docs/tlog-holdout-preregistration.md`), and both look decodes and these floors are "
-        f"whole-clip. The pool is not: "
-        f"{report['pool_lengths']['over_60_s']:,} usable rows carry over 60 s of speech, the "
-        f"longest {report['pool_lengths']['longest_s']:,.0f} s, which a whole pass cannot "
-        f"decode within "
-        f"the VRAM budget (S5's Freesound pool already needed `{report['decodes']['noise']['mode']}`, "
-        f"as its own row above says). `identify` takes a bare string and cannot tell the modes "
-        f"apart. S7 must either obtain an amendment of the decode mode or record `decode_mode` "
-        f"beside every identification and report the whole-clip and streamed populations "
-        f"separately; S5 decides neither.",
+        f"(`docs/tlog-holdout-preregistration.md`), and the S6 amendment (#191) decided it for "
+        f"the pool: every row is decoded whole-clip when its pass-1 `duration_s` is at most a "
+        f"measured `D_max` (committed in `tlog/ident/decode_limit.json`), and a row above it is "
+        f"written as `not_decoded:over_d_max` with `label_source = \"none\"` — never decoded, "
+        f"assigned or relabelled. `decode_mode` is required on every decode and identification "
+        f"row (`identification_record(..., decode_mode=)`), so no tree can mix modes silently. "
+        f"The pool carries {report['pool_lengths']['over_60_s']:,} usable rows of over 60 s of "
+        f"speech, the longest {report['pool_lengths']['longest_s']:,.0f} s, so S6 measured the "
+        f"limit on synthetic audio before decoding rather than guessing it; S7 reuses S6's "
+        f"decoded rows verbatim (`tadabur.tlog_pool.decode_rows(..., already=...)`) and decodes "
+        f"the rest the same way.",
         "",
         "## Floor status",
         "",

@@ -540,12 +540,12 @@ def test_identification_record_is_the_committed_row_contract(ident, rule_databas
     rule that produced the verdict on every row (architect r19: ``floor_rule``)."""
     decoded = ident.identify("طظعغفقكل", database=rule_database, filename_ayah="1:1",
                              bars={"b": 0.01, "b_u": 0.01})
-    record = ident.identification_record(decoded)
+    record = ident.identification_record(decoded, decode_mode="whole_clip")
     assert set(record) == {
         "surah", "ayah_from", "word_from", "ayah_to", "word_to", "straddles", "score",
         "length", "class_label", "decoy", "exhaustive_decoy", "delta", "margin",
         "margin_class", "id_floor_ok", "overlaps_filename", "filename_label",
-        "label_source", "assigned_label", "floor_rule"}
+        "label_source", "assigned_label", "floor_rule", "decode_mode"}
     assert record["floor_rule"] == ident.floor_rule()
     assert record["floor_rule"]["sha256"] == _sha256(FLOOR_PREREGISTRATION)
     assert (record["surah"], record["ayah_from"], record["word_from"]) == (2, 1, 1)
@@ -557,7 +557,8 @@ def test_identification_record_is_the_committed_row_contract(ident, rule_databas
     assert json.loads(json.dumps(record, ensure_ascii=False)) == record
 
     # A row with no match keeps every key: it is non_recitation, never "unverified".
-    empty = ident.identification_record(ident.identify("", database=rule_database))
+    empty = ident.identification_record(ident.identify("", database=rule_database),
+                                       decode_mode="whole_clip")
     assert set(empty) == set(record)
     assert (empty["surah"], empty["score"], empty["straddles"]) == (None, None, None)
     assert empty["id_floor_ok"] is False
@@ -1025,7 +1026,8 @@ def test_load_identifier_binds_the_database_bars_and_engine(ident, calibration, 
     assert (bars, k) == (calibration["bars"], calibration["parameters"]["k"])
     assert len(database.ayat) == calibration["reference"]["ayat"]
     record = ident.identification_record(
-        ident.identify("بتثج", database=database, filename_ayah="1:1", k=k))
+        ident.identify("بتثج", database=database, filename_ayah="1:1", k=k),
+        decode_mode="whole_clip")
     assert record["floor_rule"] == ident.floor_rule()
     assert record["id_floor_ok"] is False  # 4 characters < L_MIN
 
@@ -1360,7 +1362,14 @@ def test_the_calibration_rederives_from_its_committed_inputs(ident, calibration)
         "source": "tadabur.tlog_overlap.iter_pool_rows", "usable": usable}
 
     assert ident.DOC_PATH.is_file()
-    assert all(path.name.endswith(".base.json") for path in ident.DECODES_DIR.iterdir())
+    # S6's per-population trees (r20 Q2) share this directory, so the guard enumerates the exact
+    # set (I4.7): a new file here must be a deliberate addition, never a loosened suffix rule.
+    assert {path.name for path in ident.DECODES_DIR.iterdir()} == {
+        "confirm_cv_ar.base.json", "confirm_cv_other.base.json", "confirm_freesound.base.json",
+        "noise.base.json", "real_mistake.base.json", "look", "train_sample.jsonl.gz",
+        "train_sample.meta.json"}
+    assert {path.name for path in (ident.DECODES_DIR / "look").iterdir()} == {
+        "clean.jsonl.gz", "unclean.jsonl.gz", "meta.json"}
     for path in (ident.REAL_MISTAKE_DECODES_PATH, ident.NOISE_DECODES_PATH):
         store = ident.load_decode_store(path)
         assert store["identity"] == {"model_ref": ident.BASE_MODEL,

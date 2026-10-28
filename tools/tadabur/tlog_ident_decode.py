@@ -101,7 +101,7 @@ def _write_store(path: Path, identity: dict, mode: str, fingerprint: dict,
         payload, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
 
 
-def _decoder():
+def load_decoder():
     decoder = Decoder.load(BASE_MODEL, DEVICE_TYPE, weights_dtype=WEIGHTS_DTYPE,
                            batch_size=BATCH_SIZE, revision=BASE_REVISION)
     identity = model_identity(BASE_MODEL, decoder)
@@ -317,7 +317,7 @@ def main() -> None:
     if args.only in (None, "confirm") and args.cv_clips_dir is None:
         parser.error("--cv-clips-dir is required for the confirmation stores")
 
-    decoder, identity, fingerprint = _decoder()
+    decoder, identity, fingerprint = load_decoder()
     if args.only in (None, "clips"):
         decode_clips(decoder, real_mistake_clips(), args.clips_dir,
                      args.out_dir / REAL_MISTAKE_DECODES_PATH.name, identity, fingerprint)

@@ -60,7 +60,10 @@ SCHEMA_VERSION = tlog_pool.SCHEMA_VERSION
 ROLES = ("look", "confirm.1", "confirm.2", "confirm.3", "confirm.4")
 CONFIRM_ROLES = ROLES[1:]
 GATING = "gating"
-#: One stratum per manifest row, in precedence order (architect r24 item 2).
+#: One stratum per manifest row: the six names in **summary** order (``gating`` first, the
+#: primary count). This is not the precedence — that is the branch order in
+#: :func:`stratum_of` (r24 item 2), and rebuilding the rule from this tuple would gate
+#: ``unclean`` rows.
 STRATA = (GATING, "reported:unclean", "reported:undecided", "reported:straddles",
           "reported:identified", "reported:below_bar")
 #: The label sources an ident row may carry; anything else is a broken tree, not a stratum.
@@ -110,9 +113,11 @@ def manifest_rows(ident_rows: Iterable[Mapping[str, Any]],
                   group_keys: Mapping[tuple[str, str, int], str]) -> list[dict]:
     """One manifest row per ident row, sorted by row key, carrying exactly :data:`MANIFEST_FIELDS`.
 
-    ``group_keys`` is the split tree's ``(split, shard_file, row) -> group_key``: the bootstrap
-    cluster a row was assigned before any content was read. A row the split tree does not cover
-    is refused rather than written without its cluster.
+    ``group_keys`` is the split tree's ``(split, shard_file, row) -> group_key``: the S1 id
+    group's smallest ``audio_path``. Under the owner's S2 fallback the bootstrap cluster is the
+    **surah** — ``assigned_label``'s, counted as ``gating_surahs`` — not ``group_key``
+    (``docs/tlog-holdout-preregistration.md``, ``docs/tlog-speaker-clustering.md``). A row the
+    split tree does not cover is refused rather than written without its group.
     """
     rows = []
     for record in sorted(ident_rows, key=tlog_pool.row_key):

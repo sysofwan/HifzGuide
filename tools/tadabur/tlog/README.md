@@ -459,12 +459,15 @@ pre-registration's gating rule) plus the S6 amendment's decode mode
   student, C95 or candidate model may decode a confirm row; a locked AST test checks the
   module's imports, and the trees' metas record the base model and revision.
 - **Manifest rows:** one per usable row of a role, never omitted, with the row key,
-  `audio_sha256`, `group_key` (the bootstrap cluster, from `split/`), `filename_label`,
+  `audio_sha256`, `group_key` (the S1 id group's smallest `audio_path`, from `split/`; the
+  **bootstrap cluster is the surah** under the owner's S2 fallback — `assigned_label`'s,
+  counted in the meta as `gating_surahs`), `filename_label`,
   `assigned_label`, `label_source`, `straddles`, `decode_mode`, `id_floor_ok` and one
   `stratum`. The strata are single-valued in a fixed precedence: `reported:unclean`, then
   `reported:undecided` (`label_source == none`), then `reported:straddles`, then `gating`
   (`label_source == both` — amendment §1), then `reported:identified`, then
-  `reported:below_bar` (the old below-bar rows). `tranches/meta.json` counts every stratum per
+  `reported:below_bar` (the old below-bar rows); `STRATA` is only the summary order.
+  `tranches/meta.json` counts every stratum per
   role, plus `gating ∧ id_floor_ok` (amendment §5's sensitivity line), the gating surah count
   (the cluster count), the pre-registration, amendment, calibration and decode-limit SHAs, the
   split/overlap overlay commits and the timed slice.

@@ -507,3 +507,54 @@ python -m tadabur.tlog_tranches decode --cache-dir /root/scratch/tlog/s7/cache -
 python -m tadabur.tlog_tranches identify --pr 211
 python -m tadabur.tlog_tranches manifests --pr 211
 ```
+
+## Overlay v1
+
+The overlay is the committed per-row metadata of `tarteel-ai/tlog` at revision
+`9fe4f7e6d1b372c2c11157d6d2f0f91ca344eb51`: the source dataset is Tarteel's
+(`tarteel-ai/tlog`, "Tarteel"), released under **CC BY 4.0** per its dataset card's tag, and
+every tree here derives from it. This section is the format, **version 1**; it may be
+published as a public subset later (S9, the owner's call), and publishing it never changes the
+committed trees. The format also lives as data in `tadabur.tlog_schema` (`STAGES`,
+`PUBLIC_DROPPED`, `public_subset()`), and a test checks this section, that table and the
+committed rows against each other.
+
+**Four per-row trees**, one file per split and shard,
+`tlog/<stage>/<clean|unclean>/<shard_file>.jsonl.gz`, sorted by row key. Every stage joins on
+the immutable row identity `(split, shard_file, row)`; no stage carries an id of its own, and
+no two rows of a tree share a key. Rows are never deleted: a row that fails a check is
+**excluded**, with the reason recorded in `overlap` (`codec`, `silence`,
+`eval_overlap:<set>`, `duplicate`), so every row of the source dataset that entered the index
+is still there and the counts reconcile stage by stage.
+
+- `index/`: `audio_path`, `filename_label`, `id_group`, `recording_id`, `row`, `schema_version`, `shard_file`, `split`, `tarteel_v1_any_overlap`, `tarteel_v1_eval_overlap`
+- `pass1/`: `audio_path`, `audio_sha256`, `codec_ok`, `decoder`, `duration_s`, `row`, `sample_rate`, `schema_version`, `shard_file`, `speech_ratio`, `speech_s`, `split`
+- `split/`: `audio_path`, `group_key`, `role`, `row`, `shard_file`, `speaker_cluster`, `split`
+- `overlap/`: `duplicate_ber`, `duplicate_of`, `eval_overlap`, `excluded`, `row`, `schema_version`, `shard_file`, `split`
+
+`schema_version` is 1 in `index`, `pass1` and `overlap`; `split` rows carry none, because the
+split tree is a freeze of a whole pass rather than a re-derivable pass (its `meta.json` names
+the pass). Each stage's `meta.json` is its provenance: the code commit (and PR ref) that wrote
+the tree, the model and revision where one ran, input checksums, and the census, so a stage is
+reproducible without a run log. The other directories are not row trees:
+
+- `ident/`: S5's identification and its teacher decodes (`ident/decodes/`), one tree per
+  population, with `meta.json`, `calibration.json` and `decode_limit.json`.
+- `tranches/`: S7's per-role manifests, `meta.json` and the opening claims (not yet written).
+- `audit/`: S6's audit sample, verdicts and report.
+- `s2/`: the S2 validation's (page-aware preprocessing) records.
+
+`schema_version` is the format's only version field; a reader that does not know it refuses
+the tree rather than guessing.
+
+### Public subset
+
+The subset drops what identifies a speaker, names the leakage unit, carries a teacher's answer
+or reveals the hold-out assignment: `speaker_cluster`, `group_key`, `nn_train_sim` (if
+present; no committed stage has it), `role` until a tranche is spent, and the teacher decodes.
+
+- `index`: `audio_path`, `filename_label`, `id_group`, `recording_id`, `row`, `schema_version`, `shard_file`, `split`, `tarteel_v1_any_overlap`, `tarteel_v1_eval_overlap`
+- `pass1`: `audio_path`, `audio_sha256`, `codec_ok`, `decoder`, `duration_s`, `row`, `sample_rate`, `schema_version`, `shard_file`, `speech_ratio`, `speech_s`, `split`
+- `split`: `audio_path`, `row`, `shard_file`, `split`
+- `overlap`: `duplicate_ber`, `duplicate_of`, `eval_overlap`, `excluded`, `row`, `schema_version`, `shard_file`, `split`
+- dropped: `speaker_cluster`, `group_key`, `nn_train_sim`, `role`, and the teacher decodes (`ident/decodes/`)

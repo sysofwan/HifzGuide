@@ -103,6 +103,9 @@ FLOOR = ROOT / "docs" / "tlog-ident-floor-preregistration.md"
 FLOOR_SHA256 = "7bd2e1958ea8330df472030aefb6c97de7d0e9ccc2aa81ac133db682e1d58e3a"
 NOTE = ROOT / "docs" / "tlog-s6-amendment-note-overlap.md"
 NOTE_SHA256 = "e47856b8f34b1bd10704498a896fdf7fcc88d903705eb665d12763ed675e285a"
+GATING = ROOT / "docs" / "tlog-gating-amendment.md"
+GATING_SHA256 = "23d6bf7abc9882909e9686d19b2bdcd8b19fb19ed49a38829c4db9e58a4ce085"
+AMENDMENT = ROOT / "docs" / "tlog-s6-amendment.md"
 CALIBRATION = ROOT / "tools" / "tadabur" / "tlog" / "ident" / "ident_calibration.json"
 LOOK_ROWS = 9_710
 TRAIN_ROWS = 426_825
@@ -224,6 +227,31 @@ def test_the_overlap_note_is_frozen_and_cites_the_amendment(run):
     assert "2026-10-27" in text
     assert "unclear" in text and "right ayah" in text
     assert "whatever other stratum they also belong to" in text
+
+
+def test_the_gating_amendment_is_the_owner_approved_post_look_rule(run):
+    """The dated post-look amendment S7 and S8 cite: pinned by SHA-256, dated 2026-10-28,
+    approved on #173, citing the frozen rules it supersedes, and its gating counts re-derived
+    from the committed identification tree."""
+    text = GATING.read_text(encoding="utf-8")
+    assert _sha256(GATING.read_bytes()) == GATING_SHA256
+    assert "2026-10-28" in text and "post-look" in text and "owner-approved" in text
+    assert "#issuecomment-6466464463" in text
+    assert "da76351" in text
+    assert FROZEN_SHA256 in text and FLOOR_SHA256 in text
+    assert _sha256(AMENDMENT.read_bytes()) in text and NOTE_SHA256 in text
+    assert "`label_source == both`" in text
+    assert "obadx/muaalem-model-v3_2@01a1ef9f" in text
+    assert "no `non_recitation` term" in text
+    assert "2,853" in text and "3,059" in text and "208" in text
+
+    rows = [row for row in read_jsonl_gz(run.IDENT_DIR / "look" / "clean.jsonl.gz")
+            if row["filename_label"] is not None and not row["straddles"]]
+    frozen = {_key(row) for row in rows
+              if row["id_floor_ok"] and row["label_source"] in ("both", "filename")}
+    new = {_key(row) for row in rows if row["label_source"] == "both"}
+    assert len(frozen) == 3_059 and len(new) == 2_853
+    assert len(new - frozen) == 208 and len(frozen - new) == 414
 
 
 def test_the_amendment_and_decode_limit_must_exist_before_a_decode(run, tmp_path, monkeypatch):

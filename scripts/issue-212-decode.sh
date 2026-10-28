@@ -71,11 +71,14 @@ write_slice_runner() {
   remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
 #!/usr/bin/env bash
 set -uo pipefail
-source '$CONDA'
-conda activate $ENV_NAME
-cd '$REPO/tools' || exit 1
-python -u -m tadabur.tlog_eval_decode slice --parts-dir '$PARTS' --cache-dir '$CACHE' \\
-    --rows $SLICE_ROWS
+run() {
+  source '$CONDA' || return 1
+  conda activate $ENV_NAME || return 1
+  cd '$REPO/tools' || return 1
+  python -u -m tadabur.tlog_eval_decode slice --parts-dir '$PARTS' --cache-dir '$CACHE' \\
+      --rows $SLICE_ROWS
+}
+run
 code=\$?
 if [ \$code -eq 3 ]; then touch '$LOGS/$NAME.needs-post'; fi
 echo \"\$code\" > '$LOGS/$NAME.exit'
@@ -88,22 +91,22 @@ write_decode_runner() {
   remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
 #!/usr/bin/env bash
 set -uo pipefail
-source '$CONDA'
-conda activate $ENV_NAME
-cd '$REPO/tools' || exit 1
-pids=()
-for index in \$(seq 0 $((PARALLEL - 1))); do
-  python -u -m tadabur.tlog_eval_decode decode --parts-dir '$PARTS' --cache-dir '$CACHE' \\
-      --shard-index \"\$index\" --shard-count $PARALLEL &
-  pids+=(\"\$!\")
-done
-failed=0
-for pid in \"\${pids[@]}\"; do wait \"\$pid\" || failed=1; done
-if [ \"\$failed\" -ne 0 ]; then
-  echo 1 > '$LOGS/$NAME.exit'
-  exit 1
-fi
-python -u -m tadabur.tlog_eval_decode merge --parts-dir '$PARTS' --out-dir '$REPO/$OUT' $(pr_args)
+run() {
+  source '$CONDA' || return 1
+  conda activate $ENV_NAME || return 1
+  cd '$REPO/tools' || return 1
+  pids=()
+  for index in \$(seq 0 $((PARALLEL - 1))); do
+    python -u -m tadabur.tlog_eval_decode decode --parts-dir '$PARTS' --cache-dir '$CACHE' \\
+        --shard-index \"\$index\" --shard-count $PARALLEL &
+    pids+=(\"\$!\")
+  done
+  failed=0
+  for pid in \"\${pids[@]}\"; do wait \"\$pid\" || failed=1; done
+  [ \"\$failed\" -eq 0 ] || return 1
+  python -u -m tadabur.tlog_eval_decode merge --parts-dir '$PARTS' --out-dir '$REPO/$OUT' $(pr_args)
+}
+run
 code=\$?
 echo \"\$code\" > '$LOGS/$NAME.exit'
 exit \$code
@@ -127,8 +130,11 @@ require_within_budget() {
 }
 
 launch() {
+  remote "mkdir -p '$ROOT' '$LOGS' '$CACHE' '$PARTS'"
   case "$job" in
-    slice) write_slice_runner ;;
+    slice)
+      stage_repo
+      write_slice_runner ;;
     decode)
       [ -z "$(git -C "$REPO_DIR" status --porcelain)" ] \
         || { echo "the worktree is dirty; commit before launching" >&2; return 1; }

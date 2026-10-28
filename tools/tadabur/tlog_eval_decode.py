@@ -310,9 +310,10 @@ def total_audio_seconds(directory: Path = IDENT_LOOK_DIR) -> float:
 
 def shard_stream(cache_dir: Path, on_download: Callable[[str], None] | None = None):
     """The row source :func:`recordings` streams: tlog shards, downloaded into ``cache_dir``
-    and deleted once read."""
+    and deleted once read. ``name`` is the dataset-relative shard path
+    (``data/<shard_file>.parquet``), as :func:`tadabur.tlog_pass1.shard_rows` names it."""
     def stream(name: str) -> Iterator[dict]:
-        return shard_rows(Path(name).stem, Path(cache_dir), on_download=on_download)
+        return shard_rows(name, Path(cache_dir), on_download=on_download)
     return stream
 
 

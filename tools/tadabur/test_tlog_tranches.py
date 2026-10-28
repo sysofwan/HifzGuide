@@ -443,11 +443,35 @@ def test_no_reader_globs_the_confirm_prefix_so_s5bs_confirm_directory_stays_apar
 # --- the claim order (r24 item 4) ---------------------------------------------------------------
 
 
-def _claim(tmp_path: Path, role: str, **overrides) -> Path:
+def _git(directory: Path, *args: str) -> None:
+    subprocess.run(["git", "-c", "user.name=test", "-c", "user.email=test@example.com",
+                    "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *args],
+                   cwd=directory, check=True, capture_output=True)
+
+
+@pytest.fixture
+def repo(tmp_path) -> Path:
+    """The tranches directory of a temporary git repository: a claim counts only once committed."""
+    _git(tmp_path, "init", "-q")
+    directory = tmp_path / "tranches"
+    directory.mkdir()
+    (directory / "meta.json").write_text("{}", encoding="utf-8")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-q", "-m", "tranches")
+    return directory
+
+
+def _claim(directory: Path, role: str, *, stage: bool = True, commit: bool = True,
+           **overrides) -> Path:
+    """Write one claim file; by default stage and commit it, as the opening round must."""
     record = {"role": role, "issue": 195, "commit": CLAIM_COMMIT, "date": "2026-11-02"}
     record.update(overrides)
-    path = tmp_path / f"{role}.claim.json"
+    path = directory / f"{role}.claim.json"
     path.write_text(json.dumps(record), encoding="utf-8")
+    if stage:
+        _git(directory, "add", path.name)
+    if stage and commit:
+        _git(directory, "commit", "-q", "-m", f"claim {role}")
     return path
 
 
@@ -456,53 +480,108 @@ def test_the_claim_schema_and_tranche_directory_are_pinned(tranches):
     assert tranches.TRANCHES_DIR == TLOG_DIR / "tranches"
 
 
-def test_confirm_one_needs_no_claim(tranches, tmp_path):
-    tranches.require_claim_order("confirm.1", tmp_path)
+def test_confirm_one_needs_no_claim(tranches, tmp_path, repo):
+    tranches.require_claim_order("confirm.1", tmp_path)  # not even a git repository
+    tranches.require_claim_order("confirm.1", repo)
 
 
-def test_a_tranche_cannot_be_claimed_before_its_predecessor(tranches, tmp_path):
+def test_a_tranche_cannot_be_claimed_before_its_predecessor(tranches, repo):
     for role in ("confirm.2", "confirm.3", "confirm.4"):
         with pytest.raises(ValueError, match=r"confirm\.\d"):
-            tranches.require_claim_order(role, tmp_path)
-    _claim(tmp_path, "confirm.1")
-    tranches.require_claim_order("confirm.2", tmp_path)
+            tranches.require_claim_order(role, repo)
+    _claim(repo, "confirm.1")
+    tranches.require_claim_order("confirm.2", repo)
 
 
-def test_a_skipped_tranche_blocks_the_ones_after_it(tranches, tmp_path):
-    _claim(tmp_path, "confirm.1")
+def test_a_skipped_tranche_blocks_the_ones_after_it(tranches, repo):
+    _claim(repo, "confirm.1")
     with pytest.raises(ValueError, match=r"confirm\.2"):
-        tranches.require_claim_order("confirm.3", tmp_path)
+        tranches.require_claim_order("confirm.3", repo)
     with pytest.raises(ValueError):
-        tranches.require_claim_order("confirm.4", tmp_path)
-    tranches.require_claim_order("confirm.2", tmp_path)
+        tranches.require_claim_order("confirm.4", repo)
+    tranches.require_claim_order("confirm.2", repo)
 
 
-def test_one_round_may_claim_two_consecutive_tranches_in_order(tranches, tmp_path):
-    tranches.require_claim_order("confirm.1", tmp_path)
-    _claim(tmp_path, "confirm.1")
-    tranches.require_claim_order("confirm.2", tmp_path)
-    _claim(tmp_path, "confirm.2")
-    tranches.require_claim_order("confirm.3", tmp_path)
+def test_one_round_may_claim_two_consecutive_tranches_in_order(tranches, repo):
+    tranches.require_claim_order("confirm.1", repo)
+    _claim(repo, "confirm.1")
+    tranches.require_claim_order("confirm.2", repo)
+    _claim(repo, "confirm.2")
+    tranches.require_claim_order("confirm.3", repo)
     with pytest.raises(ValueError):
-        tranches.require_claim_order("confirm.4", tmp_path)
+        tranches.require_claim_order("confirm.4", repo)
 
 
-def test_a_predecessor_claim_must_follow_the_pinned_schema(tranches, tmp_path):
-    path = _claim(tmp_path, "confirm.1")
+def test_a_predecessor_claim_must_follow_the_pinned_schema(tranches, repo):
+    path = _claim(repo, "confirm.1", commit=False)
     path.write_text(json.dumps({"role": "confirm.1", "issue": 195}), encoding="utf-8")
+    _git(repo, "add", path.name)
+    _git(repo, "commit", "-q", "-m", "short claim")
     with pytest.raises(ValueError):
-        tranches.require_claim_order("confirm.2", tmp_path)
-    _claim(tmp_path, "confirm.2")  # a claim file in another's name does not count
+        tranches.require_claim_order("confirm.2", repo)
+    _claim(repo, "confirm.2")  # a claim file in another's name does not count
     path.write_text(json.dumps({"role": "confirm.2", "issue": 195, "commit": CLAIM_COMMIT,
                                 "date": "2026-11-02"}), encoding="utf-8")
+    _git(repo, "add", path.name)
+    _git(repo, "commit", "-q", "-m", "wrong role")
     with pytest.raises(ValueError):
-        tranches.require_claim_order("confirm.2", tmp_path)
+        tranches.require_claim_order("confirm.2", repo)
+
+
+def test_a_claim_outside_a_git_repository_does_not_count(tranches, tmp_path):
+    directory = tmp_path / "plain"
+    directory.mkdir()
+    (directory / "confirm.1.claim.json").write_text(json.dumps(
+        {"role": "confirm.1", "issue": 195, "commit": CLAIM_COMMIT, "date": "2026-11-02"}),
+        encoding="utf-8")
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.require_claim_order("confirm.2", directory)
+
+
+def test_an_untracked_claim_does_not_open_the_next_tranche(tranches, repo):
+    _claim(repo, "confirm.1", stage=False)
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.require_claim_order("confirm.2", repo)
+
+
+def test_a_staged_but_uncommitted_claim_does_not_open_the_next_tranche(tranches, repo):
+    _claim(repo, "confirm.1", commit=False)
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.require_claim_order("confirm.2", repo)
+    _git(repo, "commit", "-q", "-m", "claim confirm.1")
+    tranches.require_claim_order("confirm.2", repo)
+
+
+@pytest.mark.parametrize("staged", [False, True])
+def test_a_committed_claim_rewritten_in_the_working_tree_is_refused(tranches, repo, staged):
+    path = _claim(repo, "confirm.1")
+    tranches.require_claim_order("confirm.2", repo)
+    path.write_text(json.dumps({"role": "confirm.1", "issue": 196, "commit": "b" * 40,
+                                "date": "2026-11-03"}), encoding="utf-8")
+    if staged:
+        _git(repo, "add", path.name)
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.require_claim_order("confirm.2", repo)
+
+
+def test_a_committed_claim_deleted_from_the_working_tree_is_refused(tranches, repo):
+    _claim(repo, "confirm.1").unlink()
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.require_claim_order("confirm.2", repo)
+
+
+def test_the_refusal_of_an_uncommitted_claim_holds_for_a_later_tranche_too(tranches, repo):
+    _claim(repo, "confirm.1")
+    _claim(repo, "confirm.2", stage=False)
+    tranches.require_claim_order("confirm.2", repo)
+    with pytest.raises(ValueError, match=r"confirm\.2"):
+        tranches.require_claim_order("confirm.3", repo)
 
 
 @pytest.mark.parametrize("role", ["look", "confirm.5", "train"])
-def test_look_and_unknown_roles_are_not_claimable(tranches, tmp_path, role):
+def test_look_and_unknown_roles_are_not_claimable(tranches, repo, role):
     with pytest.raises(ValueError):
-        tranches.require_claim_order(role, tmp_path)
+        tranches.require_claim_order(role, repo)
 
 
 def test_no_claim_file_is_committed_for_any_tranche():

@@ -58,6 +58,8 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import os
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -731,3 +733,118 @@ def test_the_totals_refuse_a_timing_record_naming_another_model_or_store(
          "decode_seconds": decode_seconds}])
     with pytest.raises(ValueError, match=named):
         ted.timing_totals(tmp_path, models=("base",), stores={"checks": object()})
+
+
+# --- the launcher (reviewer R2) -----------------------------------------------------------------
+
+LAUNCHER = Path(__file__).parents[2] / "scripts" / "issue-212-decode.sh"
+
+
+def _launcher_env(tmp_path: Path, **overrides) -> dict:
+    env = dict(os.environ)
+    env.update({
+        "ISSUE_ROOT": str(tmp_path / "root"),
+        "CACHE": str(tmp_path / "root" / "cache"),
+        "CLIP_CACHE_DIR": str(tmp_path / "root" / "clips"),
+        "PARTS_DIR": str(tmp_path / "root" / "parts"),
+        "PROCESSES": "3", "THREADS": "1", "GATE_ROWS": "0", "GATE_WAIT": "15",
+        "CONDA": "/dev/null", "ENV_NAME": "x", "MODELS": "base", "PR": "", "OUT": "out",
+    })
+    env.update({key: str(value) for key, value in overrides.items()})
+    return env
+
+
+def _launcher_call(tmp_path: Path, job: str, body: str, env: dict) -> subprocess.CompletedProcess:
+    """Run ``body`` after the launcher's own functions, whose ``remote`` acts locally.
+
+    The dispatch below the functions is cut off: a test calls exactly one action, so nothing
+    can reach ssh or start a job for real.
+    """
+    library = tmp_path / "launcher.sh"
+    library.write_text(LAUNCHER.read_text(encoding="utf-8").rsplit('case "$action" in', 1)[0],
+                       encoding="utf-8")
+    return subprocess.run(
+        ["bash", "-c", f"source '{library}'; remote() {{ bash -c \"$*\"; }}; {body}", job, job],
+        env=env, capture_output=True, text=True, timeout=120)
+
+
+def _stub_launcher_box(tmp_path: Path, env: dict) -> tuple[Path, Path]:
+    """A fake box: the staged tools dir, a conda stub and a python stub that logs its argv."""
+    (tmp_path / "root" / "repo" / "tools").mkdir(parents=True)
+    (tmp_path / "root" / "cache").mkdir(parents=True)
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    (binaries / "conda").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    log = tmp_path / "argv.log"
+    (binaries / "python").write_text(
+        f"#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> '{log}'\n", encoding="utf-8")
+    for path in binaries.iterdir():
+        path.chmod(0o755)
+    return binaries, log
+
+
+def test_the_generated_decode_runner_passes_the_clip_cache_to_every_worker(tmp_path):
+    env = _launcher_env(tmp_path)
+    binaries, log = _stub_launcher_box(tmp_path, env)
+    assert _launcher_call(tmp_path, "decode", "write_runner abc123", env).returncode == 0
+    run = subprocess.run(["bash", str(tmp_path / "root" / "run-decode.sh")],
+                         env={**env, "PATH": f"{binaries}:{env['PATH']}"},
+                         capture_output=True, text=True, timeout=120)
+    assert run.returncode == 0, run.stderr
+    decodes = [line for line in log.read_text(encoding="utf-8").splitlines()
+               if "tadabur.tlog_eval_decode decode" in line]
+    assert len(decodes) == 3
+    assert {line.split("--shard-index ")[1].split()[0] for line in decodes} == {"0", "1", "2"}
+    for line in decodes:
+        assert f"--clip-cache {env['CLIP_CACHE_DIR']}" in line
+        assert "--shard-count 3" in line
+
+
+def test_the_generated_cache_runner_populates_the_cache_then_reports_coverage(tmp_path):
+    env = _launcher_env(tmp_path)
+    binaries, log = _stub_launcher_box(tmp_path, env)
+    assert _launcher_call(tmp_path, "cache", "write_cache_runner", env).returncode == 0
+    run = subprocess.run(["bash", str(tmp_path / "root" / "run-cache.sh")],
+                         env={**env, "PATH": f"{binaries}:{env['PATH']}"},
+                         capture_output=True, text=True, timeout=120)
+    assert run.returncode == 0, run.stderr
+    calls = log.read_text(encoding="utf-8").splitlines()
+    caches = [line for line in calls if "tadabur.tlog_eval_decode cache " in line]
+    assert len(caches) == 3 and all(
+        f"--clip-cache {env['CLIP_CACHE_DIR']}" in line for line in caches)
+    coverage = [line for line in calls if "tadabur.tlog_eval_decode coverage " in line]
+    assert len(coverage) == 1 and f"--clip-cache {env['CLIP_CACHE_DIR']}" in coverage[0]
+
+
+@pytest.mark.parametrize("target,live", [
+    ("launch_decode", "cache"), ("launch_cache", "decode"),
+    ("merge_job", "cache"), ("merge_job", "decode")])
+def test_a_launch_refuses_while_another_jobs_runner_is_live(tmp_path, target, live):
+    env = _launcher_env(tmp_path, RESUME="1")  # a resume must not bypass a live job
+    logs = tmp_path / "root" / "logs"
+    logs.mkdir(parents=True)
+    (logs / f"{live}.pid").write_text(str(os.getpid()), encoding="utf-8")
+    marker = tmp_path / "marker"
+    body = (f"stage_repo() {{ echo staged >> '{marker}'; }}; "
+            f"start_job() {{ echo started >> '{marker}'; }}; "
+            f"require_manifest_on_main() {{ echo sha; }}; {target}")
+    result = _launcher_call(tmp_path, "cache" if target == "launch_cache" else "decode",
+                            body, env)
+    assert result.returncode != 0
+    assert f"the {live} runner is live" in result.stderr
+    assert not marker.exists()
+
+
+def test_a_launch_proceeds_once_the_other_runner_has_written_its_exit(tmp_path):
+    env = _launcher_env(tmp_path)
+    logs = tmp_path / "root" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "cache.pid").write_text(str(os.getpid()), encoding="utf-8")
+    (logs / "cache.exit").write_text("0\n", encoding="utf-8")
+    marker = tmp_path / "marker"
+    body = (f"stage_repo() {{ echo staged >> '{marker}'; }}; "
+            f"start_job() {{ echo started >> '{marker}'; }}; "
+            f"require_manifest_on_main() {{ echo sha; }}; launch_cache")
+    result = _launcher_call(tmp_path, "cache", body, env)
+    assert result.returncode == 0, result.stderr
+    assert marker.read_text(encoding="utf-8").split() == ["staged", "started"]

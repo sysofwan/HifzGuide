@@ -26,9 +26,11 @@
 # Either job stages the current branch as a bundle on the box, writes one log, and writes its
 # exit file last, so `check` never reads a log tail. It runs under setsid with stdin closed, so
 # it survives the ssh session; the decode runner holds /root/scratch/gpu.lock. Shards are
-# downloaded into $ROOT/cache and deleted once read; no audio leaves the box. `launch` refuses
-# unless PR #211 is merged (origin/main holds the look manifest) and the worktree is clean. The
-# fresh parts directory is the default: thread settings are never mixed in one output.
+# downloaded into $ROOT/cache and deleted once read; no audio leaves the box. `launch` (and a
+# merge) refuses unless PR #211 is merged (origin/main holds the look manifest), the worktree is
+# clean, and neither job's runner is live — both run from the one staged checkout, so staging
+# under either would pull it out from under that runner. The fresh parts directory is the
+# default: thread settings are never mixed in one output.
 set -euo pipefail
 
 HOST=${HOST:-root@cuda-dev}
@@ -98,7 +100,8 @@ run() {
   local pids=() index lines gate_code failed pid
   for index in \$(seq 0 $((PROCESSES - 1))); do
     python -u -m tadabur.tlog_eval_decode decode --parts-dir '$PARTS' --cache-dir '$CACHE' \\
-        --models ${MODELS//,/ } --shard-index \"\$index\" --shard-count $PROCESSES &
+        --clip-cache '$CLIPS' --models ${MODELS//,/ } \\
+        --shard-index \"\$index\" --shard-count $PROCESSES &
     pids+=(\"\$!\")
   done
   lines=0
@@ -182,16 +185,28 @@ require_manifest_on_main() {
   git -C "$REPO_DIR" log -1 --format=%H origin/main -- "$MANIFEST"
 }
 
-# The checks every launch shares: a clean worktree, no live runner, no second run in a parts
-# dir ("parts" only for the decode job), and PR #211 on main. Echoes the manifest commit.
+# Both jobs run from the one checked-out $REPO, and staging replaces it. Every stage_repo is
+# guarded by this check, for both runner names, so a live job is never pulled out from under
+# its own imports; RESUME deliberately does not bypass it.
+refuse_if_live() {
+  local other
+  for other in decode cache; do
+    if remote "test -f '$LOGS/$other.pid' && test ! -f '$LOGS/$other.exit' \\
+               && kill -0 \"\$(cat '$LOGS/$other.pid')\" 2>/dev/null"; then
+      echo "the $other runner is live on $HOST; not replacing $REPO under it" >&2
+      return 1
+    fi
+  done
+}
+
+# The checks every launch shares: a clean worktree, no live runner of either job, no second
+# run in a parts dir ("parts" only for the decode job), and PR #211 on main. Echoes the
+# manifest commit.
 preflight() {
   [ -z "$(git -C "$REPO_DIR" status --porcelain)" ] \
     || { echo "the worktree is dirty; commit before launching" >&2; return 1; }
+  refuse_if_live || return 1
   if [ "${RESUME:-0}" != 1 ]; then
-    if remote "test -f '$LOGS/$NAME.pid' && kill -0 \"\$(cat '$LOGS/$NAME.pid')\" 2>/dev/null"; then
-      echo "a $NAME runner is live on $HOST; RESUME=1 to stage anyway" >&2
-      return 1
-    fi
     if [ "${1:-}" = parts ] && remote "test -f '$PARTS/timing.jsonl'"; then
       echo "$HOST:$PARTS already holds timings; pass PARTS_DIR=<fresh dir> " \
            "(RESUME=1 to continue it)" >&2
@@ -253,6 +268,7 @@ merge_job() {
   local manifest_commit elapsed
   [ -z "$(git -C "$REPO_DIR" status --porcelain)" ] \
     || { echo "the worktree is dirty; commit before merging" >&2; return 1; }
+  refuse_if_live || return 1
   manifest_commit=$(require_manifest_on_main) \
     || { echo "PR #211 is not merged: origin/main does not hold $MANIFEST" >&2; return 1; }
   elapsed=''

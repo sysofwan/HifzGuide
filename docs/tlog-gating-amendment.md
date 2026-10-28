@@ -72,8 +72,10 @@ the best class **14 of 15**, and **11 of the 14** were the adjacent ayah (e.g. 1
 - Training-pool non-recitation: 397 of the 2,000-row sample are flagged (19.85%) and the flag's
   audited precision is 4/25 = 16%, so the composed estimate is about 3%. By split the flagged
   rate is 15.7% clean and 27.6% unclean; audited, 3 of 12 clean and 1 of 13 unclean flagged
-  clips were non-recitation, giving about 4% clean and 2% unclean, weighted about 3%. Roughly
-  3–5%, from small samples; not pre-registered.
+  clips were non-recitation, giving about 4% clean and 2% unclean, weighted about 3%. Principal
+  r7's 3/9 and 1/16 split does not reproduce from the committed `worklist.jsonl` and
+  `verdicts.jsonl`; the owner-approved 3–5% range covers the recomputed value. Not
+  pre-registered; small samples.
 
 ## 4. Training (S8, #193)
 

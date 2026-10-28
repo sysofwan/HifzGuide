@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# issue-212-decode.sh — the narrowed tlog look decode for round 2 on cuda-dev (#212, r26).
+# issue-212-decode.sh — the narrowed tlog look decode for round 2 on cuda-dev (#212, r27).
 #
 # Mac side, from the worktree root:
-#   scripts/issue-212-decode.sh decode launch   # the gating rows, serial, under gpu.lock
+#   scripts/issue-212-decode.sh decode launch   # gating rows, 3 models, checks, 6 x OMP=1
 #   scripts/issue-212-decode.sh decode check    # 0 = done, 3 = the 11 h gate stopped it
 #   scripts/issue-212-decode.sh decode fetch DIR # pull the merged decodes and meta.json
 #
 # The run is the look tranche's 2,853 `gating` rows (the frozen manifest's stratum) decoded by
-# the teacher, C95 and the #178 candidate's EMA, `checks` only, one process (the work is
-# CPU-bound; parallel processes are unmeasured). After 20 shards it projects the rest from the
-# audio covered; over 11 h it stops, writes `logs/decode.needs-post` and exits 3, so the
-# orchestrator decides — the architect's fallback is the teacher and C95 alone. Nothing is
-# graded or read.
+# the teacher, C95 and the #178 candidate's EMA, `checks` only, as PROCESSES processes with
+# OMP_NUM_THREADS=1 each (round 1 measured that configuration at ~3x this box's serial
+# per-model rate). After GATE_ROWS shard timing lines it projects the selection from the wall
+# the run has taken; over LIMIT_HOURS it kills the workers, writes `logs/decode.needs-post`
+# and exits 3, so the orchestrator decides — the architect's fallback is the teacher and C95
+# alone. Nothing is graded or read.
 #
 # The job stages the current branch as a bundle on the box, writes one log, and writes its
 # exit file last, so `check` never reads a log tail. It runs under setsid with stdin closed, so
-# it survives the ssh session, and the whole runner holds /root/scratch/gpu.lock. The look
-# shards are cached in $ROOT/cache and deleted once read; no audio leaves the box.
-# `launch` refuses unless PR #211 is merged (origin/main holds the look manifest) and the
-# worktree is clean. A fresh parts directory is the default, so a stopped or earlier run's
-# parts can never be resumed into this one by accident.
+# it survives the ssh session, and the whole runner holds /root/scratch/gpu.lock. Shards are
+# cached in $ROOT/cache and deleted once read; no audio leaves the box. `launch` refuses unless
+# PR #211 is merged (origin/main holds the look manifest) and the worktree is clean. The fresh
+# parts directory is the default: thread settings are never mixed in one output.
 set -euo pipefail
 
 HOST=${HOST:-root@cuda-dev}
@@ -30,12 +30,16 @@ ROOT=${ISSUE_ROOT:-/root/scratch/tlog/r2}
 LOGS=$ROOT/logs
 REPO=$ROOT/repo
 CACHE=$ROOT/cache
-PARTS=${PARTS_DIR:-$ROOT/parts-gating}
+PARTS=${PARTS_DIR:-$ROOT/parts-gating-o1x6}
 OUT=tools/tadabur/consonant2_readout/decodes
 MANIFEST=tools/tadabur/tlog/tranches/look.jsonl
 MODELS=${MODELS:-base,c95,candidate_ema}
-GATE_SHARDS=${GATE_SHARDS:-20}
+PROCESSES=${PROCESSES:-6}
+THREADS=${THREADS:-1}
+GATE_ROWS=${GATE_ROWS:-12}
 LIMIT_HOURS=${LIMIT_HOURS:-11}
+# Seconds the gate waits for GATE_ROWS timing lines before projecting what it has.
+GATE_WAIT=${GATE_WAIT:-1200}
 # The PR that keeps the cited code SHA resolvable after the squash merge (refs/pull/<N>/head).
 PR=${PR:-}
 
@@ -74,13 +78,44 @@ write_runner() {
 #!/usr/bin/env bash
 set -uo pipefail
 run() {
+  local start=\$SECONDS
   source '$CONDA' || return 1
   conda activate $ENV_NAME || return 1
   cd '$REPO/tools' || return 1
-  python -u -m tadabur.tlog_eval_decode decode --parts-dir '$PARTS' --cache-dir '$CACHE' \\
-      --models ${MODELS//,/ } --gate-shards $GATE_SHARDS --limit-hours $LIMIT_HOURS || return \$?
+  export OMP_NUM_THREADS=$THREADS
+  local pids=() index lines gate_code failed pid
+  for index in \$(seq 0 $((PROCESSES - 1))); do
+    python -u -m tadabur.tlog_eval_decode decode --parts-dir '$PARTS' --cache-dir '$CACHE' \\
+        --models ${MODELS//,/ } --shard-index \"\$index\" --shard-count $PROCESSES &
+    pids+=(\"\$!\")
+  done
+  lines=0
+  for _ in \$(seq 1 $((GATE_WAIT / 15))); do
+    lines=\$(wc -l < '$PARTS/timing.jsonl' 2>/dev/null || echo 0)
+    [ \"\$lines\" -ge $GATE_ROWS ] && break
+    [ \"\$(jobs -pr | wc -l)\" -eq 0 ] && break
+    sleep 15
+  done
+  if [ \"\$lines\" -ge $GATE_ROWS ]; then
+    python -u -m tadabur.tlog_eval_decode gate --parts-dir '$PARTS' \\
+        --elapsed-seconds \$((SECONDS - start)) --limit-hours $LIMIT_HOURS \\
+        --processes $PROCESSES --threads $THREADS
+    gate_code=\$?
+    if [ \"\$gate_code\" -eq 3 ]; then
+      kill \"\${pids[@]}\" 2>/dev/null
+      wait
+      return 3
+    elif [ \"\$gate_code\" -ne 0 ]; then
+      kill \"\${pids[@]}\" 2>/dev/null
+      wait
+      return 1
+    fi
+  fi
+  failed=0
+  for pid in \"\${pids[@]}\"; do wait \"\$pid\" || failed=1; done
+  [ \"\$failed\" -eq 0 ] || return 1
   python -u -m tadabur.tlog_eval_decode merge --parts-dir '$PARTS' --out-dir '$REPO/$OUT' \\
-      --models ${MODELS//,/ } $(pr_args)
+      --models ${MODELS//,/ } --processes $PROCESSES --threads $THREADS $(pr_args)
 }
 run
 code=\$?

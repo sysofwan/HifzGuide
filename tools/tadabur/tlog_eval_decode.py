@@ -12,8 +12,10 @@ look row whose row key also appears in a committed ``confirm.<k>.jsonl`` is refu
 confirm row is ever opened. Each wanted shard is streamed once, its audio's SHA-256 checked
 before it is decoded, and the shard deleted once read; audio is never written.
 
-The run is serial and the work is CPU-bound. After :data:`GATE_SHARDS` shards it projects the
-rest of the selection from the audio it has covered; over :data:`RUN_LIMIT_HOURS` it stops and
+The run is several processes over disjoint shard subsets, each with ``OMP_NUM_THREADS=1``
+(the work is CPU-bound; round 1 measured that configuration at ~3x this box's serial
+per-model rate). A gate reads the first :data:`GATE_ROWS` timing lines and projects the
+selection from the wall the run has taken; over :data:`RUN_LIMIT_HOURS` it stops the run and
 writes ``<parts-dir>/gate_timing.json`` (exit 3), so nobody spends a day on a run the
 orchestrator has not sized. The fallback the architect named is the teacher and C95 alone.
 
@@ -28,17 +30,18 @@ every model must cover every selected row exactly once.
 
 Usage, from ``tools/`` (GPU box, under ``flock /root/scratch/gpu.lock``)::
 
-    python -m tadabur.tlog_eval_decode decode --parts-dir DIR --cache-dir DIR \\
-        --models base c95 candidate_ema --gate-shards 20 --limit-hours 11
+    OMP_NUM_THREADS=1 python -m tadabur.tlog_eval_decode decode --parts-dir DIR \\
+        --cache-dir DIR --models base c95 candidate_ema --shard-index 0 --shard-count 6
+    python -m tadabur.tlog_eval_decode gate   --parts-dir DIR --elapsed-seconds 600 \\
+        --processes 6 --threads 1 --limit-hours 11
     python -m tadabur.tlog_eval_decode merge  --parts-dir DIR --out-dir DIR \\
-        --models base c95 candidate_ema --pr 213
+        --models base c95 candidate_ema --processes 6 --threads 1 --pr 213
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import time
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
@@ -67,11 +70,14 @@ H448_SHA256 = "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a"
 PINNED_SHA256 = {"c95": C95_SHA256, "candidate_ema": CANDIDATE_SHA256, "h448": H448_SHA256}
 #: The teacher's hub commit: the loaded config must resolve to it, checked after the load.
 PINNED_BASE_REVISION = BASE_REVISION
-#: Rows the timed slice decodes before the full pass (the locked 8 h slice gate).
-SLICE_ROWS = 500
+#: The locked 8 h slice gate's default limit (``slice_verdict``); the run's gate uses 11 h.
 LIMIT_HOURS = 8.0
-#: Shards the narrowed run covers before it projects the rest, and the wall it may project.
-GATE_SHARDS = 20
+#: The narrowed run's parallelism (architect r27): round 1 measured OMP_NUM_THREADS=1 run as
+#: several processes at ~3x this box's serial per-model rate, so each process is single-threaded.
+RUN_PROCESSES = 6
+RUN_THREADS = 1
+#: Shard timing lines the gate waits for before it projects the rest of the selection.
+GATE_ROWS = 12
 RUN_LIMIT_HOURS = 11.0
 DECODES_ROOT = Path(__file__).parent / "consonant2_readout" / "decodes"
 #: S6's identified look tree: the per-row audio durations the gate's projection sums.
@@ -403,45 +409,46 @@ def _totals(timings: Sequence[Mapping], models: Sequence[str], stores: Mapping) 
 
 
 def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = RUN_MODELS,
-                  stores: Mapping = RUN_STORES, gate_shards: int = GATE_SHARDS,
-                  limit_hours: float = RUN_LIMIT_HOURS,
+                  stores: Mapping = RUN_STORES, shard_index: int = 0, shard_count: int = 1,
                   on_download: Callable[[str], None] | None = None) -> dict:
-    """Decode the look gating rows serially, with an in-run budget gate.
+    """Decode one process's share of the look gating rows: ``shards[shard_index::shard_count]``.
 
-    One shard is streamed once for every model in ``models`` under ``stores``, so a rerun
-    resumes by key. After ``gate_shards`` shards the whole selection is projected from the
-    audio covered so far; over ``limit_hours`` the run stops there, writes
-    ``<parts-dir>/gate_timing.json`` and returns ``stopped`` true — the caller posts that
-    instead of continuing (architect r26).
+    Each shard is streamed once for every model in ``models`` under ``stores``; processes
+    write disjoint part files and resume by key, so they share no state but the parts.
     """
-    if gate_shards <= 0:
-        raise ValueError("the run gates on a positive --gate-shards")
+    if not 0 <= shard_index < shard_count:
+        raise ValueError(f"--shard-index must be in [0, {shard_count})")
     rows = gating_rows(read_manifest(LOOK))
     by_shard: dict[str, list[Mapping]] = defaultdict(list)
     for row in rows:
         by_shard[row["shard_file"]].append(row)
-    shards = sorted(by_shard)
-    started = time.time()
-    decoders = load_models(parts_dir, models)
-    word_counts = ayah_word_counts()
-    timings = _decode_shards(shards[:gate_shards], by_shard, parts_dir=parts_dir,
-                             cache_dir=cache_dir, decoders=decoders,
-                             word_counts=word_counts, stores=stores, on_download=on_download)
-    gate = None
-    if len(shards) > gate_shards:
-        gate = slice_verdict(sum(timing["audio_seconds"] for timing in timings),
-                             time.time() - started,
-                             selection_audio_seconds(rows), limit_hours)
-        write_json({**gate, "shards": len(timings),
-                    "rows": sum(timing["items"] for timing in timings)},
-                   Path(parts_dir) / "gate_timing.json")
-    stopped = gate is not None and not gate["within_budget"]
-    if stopped:
-        return {"stopped": True, "gate": gate, **_totals(timings, models, stores)}
-    timings += _decode_shards(shards[gate_shards:], by_shard, parts_dir=parts_dir,
-                              cache_dir=cache_dir, decoders=decoders,
-                              word_counts=word_counts, stores=stores, on_download=on_download)
-    return {"stopped": False, "gate": gate, **_totals(timings, models, stores)}
+    shards = sorted(by_shard)[shard_index::shard_count]
+    timings = _decode_shards(shards, by_shard, parts_dir=parts_dir, cache_dir=cache_dir,
+                             decoders=load_models(parts_dir, models),
+                             word_counts=ayah_word_counts(), stores=stores,
+                             on_download=on_download)
+    return _totals(timings, models, stores)
+
+
+def gate_verdict(parts_dir: Path, *, elapsed_seconds: float,
+                 limit_hours: float = RUN_LIMIT_HOURS, processes: int = RUN_PROCESSES,
+                 threads: int = RUN_THREADS,
+                 total_audio_s: float | None = None) -> dict:
+    """Project the whole selection from the timing lines written so far, and record it.
+
+    ``elapsed_seconds`` is the wall the run itself has taken (all processes together, not the
+    summed shard walls, which double-count), so the projection is in this configuration's
+    terms. The record lands in ``<parts-dir>/gate_timing.json``.
+    """
+    lines = read_jsonl(Path(parts_dir) / "timing.jsonl")
+    total = (selection_audio_seconds(gating_rows(read_manifest(LOOK)))
+             if total_audio_s is None else total_audio_s)
+    record = {**slice_verdict(sum(line["audio_seconds"] for line in lines), elapsed_seconds,
+                              total, limit_hours),
+              "shards": len(lines), "items": sum(line["items"] for line in lines),
+              "total_audio_s": total, "processes": processes, "threads": threads}
+    write_json(record, Path(parts_dir) / "gate_timing.json")
+    return record
 
 
 def timing_totals(parts_dir: Path, models: Sequence[str] = RUN_MODELS,
@@ -452,13 +459,16 @@ def timing_totals(parts_dir: Path, models: Sequence[str] = RUN_MODELS,
 
 
 def run_provenance(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
-                   stores: Mapping = RUN_STORES, pull_request: int | None = None) -> dict:
-    """What ``meta.json`` records of the run: code, models, the selection, its inputs,
-    the gate's verdict and the timings."""
+                   stores: Mapping = RUN_STORES, processes: int = RUN_PROCESSES,
+                   threads: int = RUN_THREADS, pull_request: int | None = None) -> dict:
+    """What ``meta.json`` records of the run: code, models, the selection, its inputs, the
+    parallelism, the gate's verdict and the timings."""
     gate = Path(parts_dir) / "gate_timing.json"
     return {**provenance(head_sha(), pull_request),
             "selection": f"{LOOK}.{GATING}",
             "stores": list(stores),
+            "processes": processes,
+            "threads": threads,
             "base_revision": PINNED_BASE_REVISION if "base" in models else None,
             "checkpoint_sha256": {name: sha for name, sha in PINNED_SHA256.items()
                                   if name in models},
@@ -475,32 +485,47 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    decode_ = commands.add_parser("decode", help="decode the look gating rows on the GPU box")
+    decode_ = commands.add_parser("decode", help="decode one process's share of the gating rows")
     decode_.add_argument("--parts-dir", type=Path, required=True)
     decode_.add_argument("--cache-dir", type=Path, required=True)
     decode_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
-    decode_.add_argument("--gate-shards", type=int, default=GATE_SHARDS)
-    decode_.add_argument("--limit-hours", type=float, default=RUN_LIMIT_HOURS)
+    decode_.add_argument("--shard-index", type=int, default=0)
+    decode_.add_argument("--shard-count", type=int, default=RUN_PROCESSES)
+    gate_ = commands.add_parser("gate", help="project the selection from the timing lines so far")
+    gate_.add_argument("--parts-dir", type=Path, required=True)
+    gate_.add_argument("--elapsed-seconds", type=float, required=True)
+    gate_.add_argument("--limit-hours", type=float, default=RUN_LIMIT_HOURS)
+    gate_.add_argument("--processes", type=int, default=RUN_PROCESSES)
+    gate_.add_argument("--threads", type=int, default=RUN_THREADS)
     merge_ = commands.add_parser("merge", help="merge the parts into the committed decodes")
     merge_.add_argument("--parts-dir", type=Path, required=True)
     merge_.add_argument("--out-dir", type=Path, default=DECODES_ROOT)
     merge_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
+    merge_.add_argument("--processes", type=int, default=RUN_PROCESSES)
+    merge_.add_argument("--threads", type=int, default=RUN_THREADS)
     merge_.add_argument("--pr", type=int, default=None,
                         help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     args = parser.parse_args()
     if args.command == "decode":
         result = decode_shards(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
-                               models=args.models, gate_shards=args.gate_shards,
-                               limit_hours=args.limit_hours)
-        print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
-        # 3 is the launcher's "the gate stopped the run; post it" code.
-        raise SystemExit(3 if result["stopped"] else 0)
-    result = merge_decodes(args.parts_dir, args.out_dir,
-                           manifest_path=TRANCHES_DIR / f"{LOOK}.jsonl",
-                           provenance=run_provenance(args.parts_dir, models=args.models,
-                                                    pull_request=args.pr),
-                           models=args.models)
+                               models=args.models, shard_index=args.shard_index,
+                               shard_count=args.shard_count)
+    elif args.command == "gate":
+        result = gate_verdict(args.parts_dir, elapsed_seconds=args.elapsed_seconds,
+                              limit_hours=args.limit_hours, processes=args.processes,
+                              threads=args.threads)
+    else:
+        result = merge_decodes(args.parts_dir, args.out_dir,
+                               manifest_path=TRANCHES_DIR / f"{LOOK}.jsonl",
+                               provenance=run_provenance(
+                                   args.parts_dir, models=args.models,
+                                   processes=args.processes, threads=args.threads,
+                                   pull_request=args.pr),
+                               models=args.models)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
+    # 3 is the launcher's "the gate stopped the run; post it" code.
+    if result.get("within_budget") is False:
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":

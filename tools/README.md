@@ -34,13 +34,13 @@ hand-rolled `pytest` flags are 2-10x slower). Its dependencies are test-only:
 ```bash
 pip install -r tools/requirements-test.txt
 scripts/test.sh          # inner loop: every test except the `slow` tier
-scripts/test.sh --full   # merge gate: every test, slow tier included
+scripts/test.sh --full   # every test, slow tier included: before a merge when the change needs it
 ```
 
 `TEST_WORKERS` overrides the worker count (default 6), `TEST_PYTHON` the interpreter (default
 `.venv-test/bin/python` when present, else `python`). Extra arguments go to pytest, e.g.
 `scripts/test.sh -k waqf -x`. A test belongs in the `slow` tier only when it regenerates a
-full-corpus artifact (marker declared in `tools/pytest.ini`); the merge gate's
+full-corpus artifact (marker declared in `tools/pytest.ini`); the full run's
 `--durations=15` output is the baseline for the next speed complaint.
 
 ## Python Scripts

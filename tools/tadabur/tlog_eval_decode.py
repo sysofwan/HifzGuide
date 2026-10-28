@@ -1,35 +1,37 @@
-"""Decode the tlog ``look`` tranche with the four round-2 models (#212); no grading.
+"""Decode the tlog ``look`` tranche's gating rows for round 2 (#212); no grading.
 
 Round 2 reads tlog look gating and bar 4's teacher check sequence, but S6/S7 committed only
-whole-clip ``spans``. This module streams every look row once and decodes it with all four
-models at once — the base teacher, C95, the #178 candidate's averaged weights and ``h448`` —
-into the Tarteel v1 record shape ``training.aug_readout`` already grades, under the two stores
-that readout needs: the app's ``checks`` and the flushed ``stream_b0``. It decodes **only**:
-nothing here scores, counts a flag or compares a model.
+whole-clip ``spans``. This module streams each shard once and decodes its gating rows with the
+three models the narrowed run needs — the base teacher, C95 and the #178 candidate's averaged
+weights — into the Tarteel v1 record shape ``training.aug_readout`` already grades, under the
+one store that readout reads: the app's ``checks``. It decodes **only**: nothing here scores,
+counts a flag or compares a model.
 
 The look tranche is the only input. Any other role is refused before a file is opened, and a
 look row whose row key also appears in a committed ``confirm.<k>.jsonl`` is refused too, so no
 confirm row is ever opened. Each wanted shard is streamed once, its audio's SHA-256 checked
 before it is decoded, and the shard deleted once read; audio is never written.
 
+The run is serial and the work is CPU-bound. After :data:`GATE_SHARDS` shards it projects the
+rest of the selection from the audio it has covered; over :data:`RUN_LIMIT_HOURS` it stops and
+writes ``<parts-dir>/gate_timing.json`` (exit 3), so nobody spends a day on a run the
+orchestrator has not sized. The fallback the architect named is the teacher and C95 alone.
+
 Model identities are the round's pins, checked here rather than through
-``training.aug_readout_decode``'s #95 gate: C95, the #178 candidate and ``h448`` by their
-checkpoint SHA-256, the teacher by the hub revision its loaded config resolved to.
+``training.aug_readout_decode``'s #95 gate: C95 and the #178 candidate by their checkpoint
+SHA-256, the teacher by the hub revision its loaded config resolved to.
 
 Parts go to ``<parts-dir>/tlog.look.<shard_file>.<model>.jsonl``, one file per shard and
-model, so shards decode side by side and a killed run resumes by key. ``merge`` gathers them
-into ``tools/tadabur/consonant2_readout/decodes/tlog.look.<model>.jsonl.gz`` with a
-``meta.json``; every model must cover every manifest row exactly once.
+model, so a killed run resumes by key. ``merge`` gathers them into
+``tools/tadabur/consonant2_readout/decodes/tlog.look.<model>.jsonl.gz`` with a ``meta.json``;
+every model must cover every selected row exactly once.
 
 Usage, from ``tools/`` (GPU box, under ``flock /root/scratch/gpu.lock``)::
 
-    python -m tadabur.tlog_eval_decode slice  --parts-dir DIR --cache-dir DIR --rows 500
     python -m tadabur.tlog_eval_decode decode --parts-dir DIR --cache-dir DIR \\
-        --shard-index 0 --shard-count 2
-    python -m tadabur.tlog_eval_decode merge  --parts-dir DIR --out-dir DIR --pr 213
-
-``slice`` exits 3 when the projected full pass is over the 8 h budget, so the launcher stops
-and posts instead of continuing.
+        --models base c95 candidate_ema --gate-shards 20 --limit-hours 11
+    python -m tadabur.tlog_eval_decode merge  --parts-dir DIR --out-dir DIR \\
+        --models base c95 candidate_ema --pr 213
 """
 
 from __future__ import annotations
@@ -47,7 +49,7 @@ from .tlog_index import (commit_of, head_sha, provenance, read_jsonl, sha256_fil
                          write_shard)
 from .tlog_pass1 import read_jsonl_gz, shard_rows
 from .tlog_pool import default_audio, row_key
-from .tlog_tranches import CONFIRM_ROLES, TRANCHES_DIR
+from .tlog_tranches import CONFIRM_ROLES, GATING, TRANCHES_DIR
 from training.aug_readout_gate import model_spec
 from training.aug_readout_spec import C95_SHA256, CANDIDATE_SHA256, CONSONANT1
 from training.external_decode import (ModelSpec, Recording, append_timing, decode_recordings,
@@ -56,18 +58,23 @@ from training.truth_baseline import CHECK_STORE, DECODES_DIR, DEFAULT_MODELS, PR
 
 #: The tranche this decoder reads; every other role is refused.
 LOOK = "look"
-#: The four models round 2 reads, in the order their merged files and meta list them.
+#: The four models round 2 can read, in the order their merged files and meta list them.
 MODELS = ("base", "c95", "candidate_ema", "h448")
+#: The narrowed run: the teacher, C95 and the #178 candidate (architect r26 drops ``h448``).
+RUN_MODELS = ("base", "c95", "candidate_ema")
 #: The three checkpoints, by the SHA-256 of their bytes (#174's C95, #178's candidate, h448).
 H448_SHA256 = "eadc3f7504653cf4f88f4fb77482e1eb0f307e786ca5844d54ad72bc5483aa7a"
 PINNED_SHA256 = {"c95": C95_SHA256, "candidate_ema": CANDIDATE_SHA256, "h448": H448_SHA256}
 #: The teacher's hub commit: the loaded config must resolve to it, checked after the load.
 PINNED_BASE_REVISION = BASE_REVISION
-#: Rows the timed slice decodes before the full pass; the launcher gates on its projection.
+#: Rows the timed slice decodes before the full pass (the locked 8 h slice gate).
 SLICE_ROWS = 500
 LIMIT_HOURS = 8.0
+#: Shards the narrowed run covers before it projects the rest, and the wall it may project.
+GATE_SHARDS = 20
+RUN_LIMIT_HOURS = 11.0
 DECODES_ROOT = Path(__file__).parent / "consonant2_readout" / "decodes"
-#: S6's identified look tree: the per-row audio durations the slice's projection sums.
+#: S6's identified look tree: the per-row audio durations the gate's projection sums.
 IDENT_LOOK_DIR = Path(__file__).parent / "tlog" / "ident" / "look"
 
 
@@ -80,6 +87,8 @@ def _stream_b0(decoder, span) -> dict:
 #: is not), and no store here grades anything.
 STORES = {"checks": CHECK_STORE,
           "stream_b0": Store(DECODES_DIR, {"stream_b0": PROTOCOLS["stream_b0"]}, _stream_b0)}
+#: The narrowed run takes the check sequence only (architect r26).
+RUN_STORES = {"checks": CHECK_STORE}
 
 
 # --- the models and their pins ------------------------------------------------------------------
@@ -96,29 +105,31 @@ def model_specs() -> dict[str, ModelSpec]:
     return {name: model_spec(name, CONSONANT1) for name in MODELS}
 
 
-def require_pinned_identities(identities: Mapping[str, Mapping[str, object]]) -> None:
-    """Refuse an identity record that is not one of the four models at its pin.
+def require_pinned_identities(identities: Mapping[str, Mapping[str, object]],
+                              models: Sequence[str] = MODELS) -> None:
+    """Refuse an identity record that is not one of ``models`` at its pin.
 
     ``identities`` is the ``identity`` record ``load_decoders`` wrote for each model. The
     teacher is its reference plus the hub revision the loaded config resolved to — the check
     that pins a moving ``main`` after the load; a checkpoint is the SHA-256 of its bytes. A
     missing or extra model is a refusal naming it, never a silently smaller run.
     """
-    missing = set(MODELS) - set(identities)
+    missing = set(models) - set(identities)
     if missing:
-        raise ValueError(f"no identity for {sorted(missing)[0]}; the run needs {list(MODELS)}")
-    extra = set(identities) - set(MODELS)
+        raise ValueError(f"no identity for {sorted(missing)[0]}; the run needs {list(models)}")
+    extra = set(identities) - set(models)
     if extra:
-        raise ValueError(f"{sorted(extra)[0]} is not one of the round's models {list(MODELS)}")
-    base = identities["base"]
-    if (base.get("model_ref"), base.get("hub_revision")) != (
-            DEFAULT_MODELS["base"], PINNED_BASE_REVISION):
-        raise ValueError(f"base is {base.get('model_ref')}@{base.get('hub_revision')}, not "
-                         f"{DEFAULT_MODELS['base']}@{PINNED_BASE_REVISION}")
-    for name, sha256 in PINNED_SHA256.items():
+        raise ValueError(f"{sorted(extra)[0]} is not one of the run's models {list(models)}")
+    if "base" in models:
+        base = identities["base"]
+        if (base.get("model_ref"), base.get("hub_revision")) != (
+                DEFAULT_MODELS["base"], PINNED_BASE_REVISION):
+            raise ValueError(f"base is {base.get('model_ref')}@{base.get('hub_revision')}, "
+                             f"not {DEFAULT_MODELS['base']}@{PINNED_BASE_REVISION}")
+    for name in (name for name in models if name in PINNED_SHA256):
         found = identities[name].get("checkpoint_sha256")
-        if found != sha256:
-            raise ValueError(f"{name} is {found}, not the pinned {sha256}")
+        if found != PINNED_SHA256[name]:
+            raise ValueError(f"{name} is {found}, not the pinned {PINNED_SHA256[name]}")
 
 
 # --- the look tranche only ----------------------------------------------------------------------
@@ -146,6 +157,15 @@ def read_manifest(role: str, *, tranches_dir: Path = TRANCHES_DIR) -> list[dict]
         raise ValueError(f"look row {key} is also in {name}: a confirm row is never decoded "
                          f"here ({len(planted)} of {len(rows)} rows)")
     return rows
+
+
+def gating_rows(rows: Sequence[Mapping]) -> list[dict]:
+    """The rows the narrowed run decodes: the manifest's ``gating`` stratum (architect r26).
+
+    Gating is the owner-approved rule's own stratum (``docs/tlog-gating-amendment.md`` §1), so
+    it is read off the frozen manifest, never recomputed from a decode.
+    """
+    return [row for row in rows if row["stratum"] == GATING]
 
 
 # --- one shard, every model ---------------------------------------------------------------------
@@ -229,7 +249,8 @@ def recordings(rows: Sequence[Mapping], *, stream, word_counts: Callable[[str], 
 
 def run_shard(shard_file: str, rows: Sequence[Mapping], out_dir: Path, decoders: dict, *,
               stream, word_counts: Callable[[str], int],
-              load_audio: Callable[[bytes], object] | None = None) -> dict:
+              load_audio: Callable[[bytes], object] | None = None,
+              stores: Mapping = STORES) -> dict:
     """Read ``shard_file`` once and decode each wanted row with every decoder in ``decoders``.
 
     The records are appended to :func:`decodes_path` (one file per shard and model), so a
@@ -240,7 +261,7 @@ def run_shard(shard_file: str, rows: Sequence[Mapping], out_dir: Path, decoders:
     paths = {name: decodes_path(out_dir, shard_file, name) for name in decoders}
     return decode_recordings(
         recordings(rows, stream=stream, word_counts=word_counts, load_audio=load_audio),
-        decoders, paths, f"tlog look {shard_file}", stores=STORES)
+        decoders, paths, f"tlog look {shard_file}", stores=stores)
 
 
 # --- merging the parts --------------------------------------------------------------------------
@@ -284,9 +305,9 @@ def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
 
 def slice_verdict(slice_audio_s: float, slice_wall_s: float, total_audio_s: float,
                   limit_hours: float = LIMIT_HOURS) -> dict:
-    """The full pass's wall time projected from the slice's, and whether it fits the budget.
+    """The selection's wall time projected from the shards covered so far, and whether it fits.
 
-    The projection is linear in audio seconds, which is what the four models' work tracks; the
+    The projection is linear in audio seconds, which is what the models' work tracks; the
     budget is inclusive at the limit.
     """
     if slice_audio_s <= 0:
@@ -297,12 +318,24 @@ def slice_verdict(slice_audio_s: float, slice_wall_s: float, total_audio_s: floa
             "limit_hours": limit_hours, "within_budget": projected <= limit_hours}
 
 
-def total_audio_seconds(directory: Path = IDENT_LOOK_DIR) -> float:
-    """The look tranche's audio seconds, summed from S6's identified tree's durations."""
+def selection_audio_seconds(rows: Sequence[Mapping],
+                            directory: Path = IDENT_LOOK_DIR) -> float:
+    """The audio seconds of ``rows``, from S6's identified look tree's durations.
+
+    A selected row the tree does not cover is refused: a short total would understate the
+    projection the run gates on.
+    """
     files = sorted(Path(directory).glob("*.jsonl.gz"))
     if not files:
         raise ValueError(f"{directory} holds no identified look tree")
-    return sum(row["duration_s"] for path in files for row in read_jsonl_gz(path))
+    durations = {row_key(row): row["duration_s"] for path in files
+                 for row in read_jsonl_gz(path)}
+    keys = {row_key(row) for row in rows}
+    missing = keys - set(durations)
+    if missing:
+        raise ValueError(f"{len(missing)} of {len(keys)} selected rows are not in {directory}: "
+                         f"first {sorted(missing)[0]}")
+    return sum(durations[key] for key in keys)
 
 
 # --- the run ------------------------------------------------------------------------------------
@@ -327,108 +360,112 @@ def ayah_word_counts() -> Callable[[str], int]:
     return word_counts
 
 
-def load_models(parts_dir: Path) -> dict:
-    """The four decoders, with every identity checked against its pin after the load."""
+def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict:
+    """The run's decoders, with every identity checked against its pin after the load."""
     parts_dir = Path(parts_dir)
     parts_dir.mkdir(parents=True, exist_ok=True)
-    specs = model_specs()
+    unknown = set(models) - set(MODELS)
+    if unknown:
+        raise ValueError(f"{sorted(unknown)[0]} is not a round-2 model {list(MODELS)}")
+    specs = {name: spec for name, spec in model_specs().items() if name in models}
     decoders = load_decoders(lambda name: parts_dir / f"{name}.identity.json", specs)
     identities = {name: json.loads((parts_dir / f"{name}.identity.json").read_text(
         encoding="utf-8"))["identity"] for name in specs}
-    require_pinned_identities(identities)
+    require_pinned_identities(identities, models)
     return decoders
 
 
-def _decode_rows(rows: Sequence[Mapping], *, parts_dir: Path, cache_dir: Path, decoders: dict,
-                 word_counts: Callable[[str], int],
-                 on_download: Callable[[str], None] | None = None) -> list[dict]:
-    """Decode ``rows`` shard by shard through :func:`run_shard`, one timing line per shard."""
-    by_shard: dict[str, list[Mapping]] = defaultdict(list)
-    for row in rows:
-        by_shard[row["shard_file"]].append(row)
+def _decode_shards(shards: Sequence[str], by_shard: Mapping[str, list[Mapping]], *,
+                   parts_dir: Path, cache_dir: Path, decoders: dict,
+                   word_counts: Callable[[str], int], stores: Mapping,
+                   on_download: Callable[[str], None] | None = None) -> list[dict]:
+    """Decode ``shards`` in order through :func:`run_shard`, one timing line per shard."""
     stream = shard_stream(cache_dir, on_download)
     timings = []
-    for shard_file in sorted(by_shard):
+    for shard_file in shards:
         timing = run_shard(shard_file, by_shard[shard_file], parts_dir, decoders,
-                           stream=stream, word_counts=word_counts)
+                           stream=stream, word_counts=word_counts, stores=stores)
         append_timing(Path(parts_dir) / "timing.jsonl", {"shard_file": shard_file, **timing})
         timings.append(timing)
     return timings
 
 
-def time_slice(*, parts_dir: Path, cache_dir: Path, rows: int = SLICE_ROWS,
-               total_audio_s: float | None = None, limit_hours: float = LIMIT_HOURS,
-               on_download: Callable[[str], None] | None = None) -> dict:
-    """Decode the first ``rows`` look rows by row key, time them and project the full pass.
-
-    The slice writes through the same parts the full pass reads, so no row is decoded twice.
-    Its record lands in ``<parts_dir>/slice_timing.json``.
-    """
-    if rows <= 0:
-        raise ValueError("the slice needs a positive --rows")
-    wanted = sorted(read_manifest(LOOK), key=row_key)[:rows]
-    decoders = load_models(parts_dir)
-    word_counts = ayah_word_counts()
-    started = time.time()
-    timings = _decode_rows(wanted, parts_dir=parts_dir, cache_dir=cache_dir,
-                           decoders=decoders, word_counts=word_counts, on_download=on_download)
-    verdict = slice_verdict(sum(timing["audio_seconds"] for timing in timings),
-                            round(time.time() - started, 1),
-                            total_audio_seconds() if total_audio_s is None else total_audio_s,
-                            limit_hours)
-    record = {"rows": sum(timing["items"] for timing in timings),
-              "shards": len(timings), **verdict}
-    write_json(record, Path(parts_dir) / "slice_timing.json")
-    return record
+def _totals(timings: Sequence[Mapping], models: Sequence[str], stores: Mapping) -> dict:
+    """The shards' timings summed: shards, items, audio, wall and decode seconds."""
+    return {"shards": len(timings),
+            "items": sum(timing["items"] for timing in timings),
+            "audio_seconds": round(sum(timing["audio_seconds"] for timing in timings), 1),
+            "wall_seconds": round(sum(timing["wall_seconds"] for timing in timings), 1),
+            "decode_seconds": {model: {store: round(sum(
+                timing["decode_seconds"][model][store] for timing in timings), 1)
+                for store in stores}
+                for model in models}}
 
 
-def decode_shards(*, parts_dir: Path, cache_dir: Path, shard_index: int = 0,
-                  shard_count: int = 1,
+def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = RUN_MODELS,
+                  stores: Mapping = RUN_STORES, gate_shards: int = GATE_SHARDS,
+                  limit_hours: float = RUN_LIMIT_HOURS,
                   on_download: Callable[[str], None] | None = None) -> dict:
-    """Decode every look row of the shards ``sorted(shards)[shard_index::shard_count]``.
+    """Decode the look gating rows serially, with an in-run budget gate.
 
-    Each shard is streamed once for all four models; processes with disjoint shard subsets
-    write disjoint part files, so they share no state but the resume.
+    One shard is streamed once for every model in ``models`` under ``stores``, so a rerun
+    resumes by key. After ``gate_shards`` shards the whole selection is projected from the
+    audio covered so far; over ``limit_hours`` the run stops there, writes
+    ``<parts-dir>/gate_timing.json`` and returns ``stopped`` true — the caller posts that
+    instead of continuing (architect r26).
     """
-    if not 0 <= shard_index < shard_count:
-        raise ValueError(f"--shard-index must be in [0, {shard_count})")
-    rows = read_manifest(LOOK)
-    shards = sorted({row["shard_file"] for row in rows})
-    chosen = set(shards[shard_index::shard_count])
-    selected = [row for row in rows if row["shard_file"] in chosen]
-    timings = _decode_rows(selected, parts_dir=parts_dir, cache_dir=cache_dir,
-                           decoders=load_models(parts_dir),
-                           word_counts=ayah_word_counts(), on_download=on_download)
-    return {"shards": len(timings), "items": sum(timing["items"] for timing in timings),
-            "audio_seconds": sum(timing["audio_seconds"] for timing in timings),
-            "decode_seconds": {name: {store: round(sum(timing["decode_seconds"][name][store]
-                                                       for timing in timings), 1)
-                                      for store in STORES}
-                               for name in MODELS}}
+    if gate_shards <= 0:
+        raise ValueError("the run gates on a positive --gate-shards")
+    rows = gating_rows(read_manifest(LOOK))
+    by_shard: dict[str, list[Mapping]] = defaultdict(list)
+    for row in rows:
+        by_shard[row["shard_file"]].append(row)
+    shards = sorted(by_shard)
+    started = time.time()
+    decoders = load_models(parts_dir, models)
+    word_counts = ayah_word_counts()
+    timings = _decode_shards(shards[:gate_shards], by_shard, parts_dir=parts_dir,
+                             cache_dir=cache_dir, decoders=decoders,
+                             word_counts=word_counts, stores=stores, on_download=on_download)
+    gate = None
+    if len(shards) > gate_shards:
+        gate = slice_verdict(sum(timing["audio_seconds"] for timing in timings),
+                             time.time() - started,
+                             selection_audio_seconds(rows), limit_hours)
+        write_json({**gate, "shards": len(timings),
+                    "rows": sum(timing["items"] for timing in timings)},
+                   Path(parts_dir) / "gate_timing.json")
+    stopped = gate is not None and not gate["within_budget"]
+    if stopped:
+        return {"stopped": True, "gate": gate, **_totals(timings, models, stores)}
+    timings += _decode_shards(shards[gate_shards:], by_shard, parts_dir=parts_dir,
+                              cache_dir=cache_dir, decoders=decoders,
+                              word_counts=word_counts, stores=stores, on_download=on_download)
+    return {"stopped": False, "gate": gate, **_totals(timings, models, stores)}
 
 
-def timing_totals(parts_dir: Path) -> dict:
-    """The parts' per-shard timing lines summed: shards, items, audio, and decode seconds."""
+def timing_totals(parts_dir: Path, models: Sequence[str] = RUN_MODELS,
+                  stores: Mapping = RUN_STORES) -> dict:
+    """The parts' per-shard timing lines summed, as :func:`_totals` reports a run."""
     path = Path(parts_dir) / "timing.jsonl"
-    lines = read_jsonl(path) if path.exists() else []
-    return {"shards": len(lines),
-            "items": sum(line["items"] for line in lines),
-            "audio_seconds": round(sum(line["audio_seconds"] for line in lines), 1),
-            "summed_wall_seconds": round(sum(line["wall_seconds"] for line in lines), 1),
-            "decode_seconds": {model: {store: round(sum(line["decode_seconds"][model][store]
-                                                        for line in lines), 1)
-                                       for store in STORES}
-                               for model in MODELS}}
+    return _totals(read_jsonl(path) if path.exists() else [], models, stores)
 
 
-def run_provenance(parts_dir: Path, pull_request: int | None = None) -> dict:
-    """What ``meta.json`` records of the run: code, models, the look manifest and timings."""
+def run_provenance(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
+                   stores: Mapping = RUN_STORES, pull_request: int | None = None) -> dict:
+    """What ``meta.json`` records of the run: code, models, the selection, its inputs,
+    the gate's verdict and the timings."""
+    gate = Path(parts_dir) / "gate_timing.json"
     return {**provenance(head_sha(), pull_request),
-            "base_revision": PINNED_BASE_REVISION,
-            "checkpoint_sha256": dict(PINNED_SHA256),
+            "selection": f"{LOOK}.{GATING}",
+            "stores": list(stores),
+            "base_revision": PINNED_BASE_REVISION if "base" in models else None,
+            "checkpoint_sha256": {name: sha for name, sha in PINNED_SHA256.items()
+                                  if name in models},
             "manifest_commit": commit_of(TRANCHES_DIR / f"{LOOK}.jsonl"),
             "tranche_meta_sha256": sha256_file(TRANCHES_DIR / "meta.json"),
-            "timings": timing_totals(parts_dir)}
+            "gate": json.loads(gate.read_text(encoding="utf-8")) if gate.exists() else None,
+            "timings": timing_totals(parts_dir, models, stores)}
 
 
 # --- CLI ----------------------------------------------------------------------------------------
@@ -438,35 +475,31 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    slice_ = commands.add_parser("slice", help="time the look decode on a slice of rows")
-    slice_.add_argument("--parts-dir", type=Path, required=True)
-    slice_.add_argument("--cache-dir", type=Path, required=True)
-    slice_.add_argument("--rows", type=int, default=SLICE_ROWS)
-    slice_.add_argument("--limit-hours", type=float, default=LIMIT_HOURS)
-    decode_ = commands.add_parser("decode", help="decode a shard subset of the look tranche")
+    decode_ = commands.add_parser("decode", help="decode the look gating rows on the GPU box")
     decode_.add_argument("--parts-dir", type=Path, required=True)
     decode_.add_argument("--cache-dir", type=Path, required=True)
-    decode_.add_argument("--shard-index", type=int, default=0)
-    decode_.add_argument("--shard-count", type=int, default=1)
+    decode_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
+    decode_.add_argument("--gate-shards", type=int, default=GATE_SHARDS)
+    decode_.add_argument("--limit-hours", type=float, default=RUN_LIMIT_HOURS)
     merge_ = commands.add_parser("merge", help="merge the parts into the committed decodes")
     merge_.add_argument("--parts-dir", type=Path, required=True)
     merge_.add_argument("--out-dir", type=Path, default=DECODES_ROOT)
+    merge_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
     merge_.add_argument("--pr", type=int, default=None,
                         help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     args = parser.parse_args()
-    if args.command == "slice":
-        record = time_slice(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
-                            rows=args.rows, limit_hours=args.limit_hours)
-        print(json.dumps(record, ensure_ascii=False, sort_keys=True), flush=True)
-        # 3 is the launcher's "over budget, post and wait for a decision" code.
-        raise SystemExit(0 if record["within_budget"] else 3)
     if args.command == "decode":
         result = decode_shards(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
-                               shard_index=args.shard_index, shard_count=args.shard_count)
-    else:
-        result = merge_decodes(args.parts_dir, args.out_dir,
-                               manifest_path=TRANCHES_DIR / f"{LOOK}.jsonl",
-                               provenance=run_provenance(args.parts_dir, args.pr))
+                               models=args.models, gate_shards=args.gate_shards,
+                               limit_hours=args.limit_hours)
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
+        # 3 is the launcher's "the gate stopped the run; post it" code.
+        raise SystemExit(3 if result["stopped"] else 0)
+    result = merge_decodes(args.parts_dir, args.out_dir,
+                           manifest_path=TRANCHES_DIR / f"{LOOK}.jsonl",
+                           provenance=run_provenance(args.parts_dir, models=args.models,
+                                                    pull_request=args.pr),
+                           models=args.models)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
 
 

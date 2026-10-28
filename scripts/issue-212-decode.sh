@@ -1,28 +1,25 @@
 #!/usr/bin/env bash
-# issue-212-decode.sh — the tlog look decode of the four round-2 models on cuda-dev (#212).
+# issue-212-decode.sh — the narrowed tlog look decode for round 2 on cuda-dev (#212, r26).
 #
 # Mac side, from the worktree root:
-#   scripts/issue-212-decode.sh slice launch    # the timed 500-row slice; never the full pass
-#   scripts/issue-212-decode.sh slice check     # 0 = clean, 3 = over the 8 h budget (needs-post)
-#   scripts/issue-212-decode.sh slice fetch DIR # pull slice_timing.json back
-#   scripts/issue-212-decode.sh decode launch   # after PR #211 merges and the slice passes
-#   scripts/issue-212-decode.sh decode check
+#   scripts/issue-212-decode.sh decode launch   # the gating rows, serial, under gpu.lock
+#   scripts/issue-212-decode.sh decode check    # 0 = done, 3 = the 11 h gate stopped it
 #   scripts/issue-212-decode.sh decode fetch DIR # pull the merged decodes and meta.json
 #
-# The job stages the current branch as a bundle on the box, writes one log, and writes its exit
-# file last, so `check` never reads a log tail. It runs under setsid with stdin closed, so it
-# survives the ssh session, and the whole runner holds /root/scratch/gpu.lock: the slice and
-# the full pass both decode on the GPU. Logs carry aggregate counts only.
+# The run is the look tranche's 2,853 `gating` rows (the frozen manifest's stratum) decoded by
+# the teacher, C95 and the #178 candidate's EMA, `checks` only, one process (the work is
+# CPU-bound; parallel processes are unmeasured). After 20 shards it projects the rest from the
+# audio covered; over 11 h it stops, writes `logs/decode.needs-post` and exits 3, so the
+# orchestrator decides — the architect's fallback is the teacher and C95 alone. Nothing is
+# graded or read.
 #
-# The look shards are cached in $ROOT/cache and deleted once read; no audio leaves the box.
-# `decode launch` refuses unless PR #211 is merged (origin/main holds the look manifest), the
-# worktree is clean, and the slice's projection fits the 8 h budget. A slice over budget
-# writes `logs/slice.needs-post` and exits 3: the orchestrator decides, nothing auto-continues.
-#
-# The slice's record is a SERIAL projection (one decode process over the look rows). The full
-# pass runs PARALLEL processes with disjoint shards — CPU-bound work that scales with cores —
-# so its wall time is roughly the projection over PARALLEL. An over-budget record still stops
-# the launch; OVER_BUDGET=1 is the orchestrator's explicit decision to continue anyway.
+# The job stages the current branch as a bundle on the box, writes one log, and writes its
+# exit file last, so `check` never reads a log tail. It runs under setsid with stdin closed, so
+# it survives the ssh session, and the whole runner holds /root/scratch/gpu.lock. The look
+# shards are cached in $ROOT/cache and deleted once read; no audio leaves the box.
+# `launch` refuses unless PR #211 is merged (origin/main holds the look manifest) and the
+# worktree is clean. A fresh parts directory is the default, so a stopped or earlier run's
+# parts can never be resumed into this one by accident.
 set -euo pipefail
 
 HOST=${HOST:-root@cuda-dev}
@@ -33,22 +30,20 @@ ROOT=${ISSUE_ROOT:-/root/scratch/tlog/r2}
 LOGS=$ROOT/logs
 REPO=$ROOT/repo
 CACHE=$ROOT/cache
-PARTS=$ROOT/parts
+PARTS=${PARTS_DIR:-$ROOT/parts-gating}
 OUT=tools/tadabur/consonant2_readout/decodes
 MANIFEST=tools/tadabur/tlog/tranches/look.jsonl
-PARALLEL=${PARALLEL:-2}
-#: torch threads per decode process: the box's 12 cores shared by PARALLEL processes.
-OMP_THREADS=${OMP_THREADS:-6}
-SLICE_ROWS=${SLICE_ROWS:-500}
+MODELS=${MODELS:-base,c95,candidate_ema}
+GATE_SHARDS=${GATE_SHARDS:-20}
+LIMIT_HOURS=${LIMIT_HOURS:-11}
 # The PR that keeps the cited code SHA resolvable after the squash merge (refs/pull/<N>/head).
 PR=${PR:-}
 
 job=${1:-}
 action=${2:-}
 case "$job" in
-  slice)  NAME=slice ;;
   decode) NAME=decode ;;
-  *) echo "usage: $0 slice|decode [launch|check|fetch DIR]" >&2
+  *) echo "usage: $0 decode [launch|check|fetch DIR]" >&2
      exit 2 ;;
 esac
 
@@ -74,7 +69,7 @@ stage_repo() {
     || { echo "the box's clone is not $sha" >&2; return 1; }
 }
 
-write_slice_runner() {
+write_runner() {
   remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
 #!/usr/bin/env bash
 set -uo pipefail
@@ -82,40 +77,14 @@ run() {
   source '$CONDA' || return 1
   conda activate $ENV_NAME || return 1
   cd '$REPO/tools' || return 1
-  python -u -m tadabur.tlog_eval_decode slice --parts-dir '$PARTS' --cache-dir '$CACHE' \\
-      --rows $SLICE_ROWS
+  python -u -m tadabur.tlog_eval_decode decode --parts-dir '$PARTS' --cache-dir '$CACHE' \\
+      --models ${MODELS//,/ } --gate-shards $GATE_SHARDS --limit-hours $LIMIT_HOURS || return \$?
+  python -u -m tadabur.tlog_eval_decode merge --parts-dir '$PARTS' --out-dir '$REPO/$OUT' \\
+      --models ${MODELS//,/ } $(pr_args)
 }
 run
 code=\$?
 if [ \$code -eq 3 ]; then touch '$LOGS/$NAME.needs-post'; fi
-echo \"\$code\" > '$LOGS/$NAME.exit'
-exit \$code
-SH
-chmod +x '$ROOT/run-$NAME.sh'"
-}
-
-write_decode_runner() {
-  remote "cat > '$ROOT/run-$NAME.sh' <<'SH'
-#!/usr/bin/env bash
-set -uo pipefail
-run() {
-  source '$CONDA' || return 1
-  conda activate $ENV_NAME || return 1
-  cd '$REPO/tools' || return 1
-  pids=()
-  for index in \$(seq 0 $((PARALLEL - 1))); do
-    env OMP_NUM_THREADS=$OMP_THREADS python -u -m tadabur.tlog_eval_decode decode \\
-        --parts-dir '$PARTS' --cache-dir '$CACHE' \\
-        --shard-index \"\$index\" --shard-count $PARALLEL &
-    pids+=(\"\$!\")
-  done
-  failed=0
-  for pid in \"\${pids[@]}\"; do wait \"\$pid\" || failed=1; done
-  [ \"\$failed\" -eq 0 ] || return 1
-  python -u -m tadabur.tlog_eval_decode merge --parts-dir '$PARTS' --out-dir '$REPO/$OUT' $(pr_args)
-}
-run
-code=\$?
 echo \"\$code\" > '$LOGS/$NAME.exit'
 exit \$code
 SH
@@ -128,32 +97,13 @@ require_manifest_on_main() {
     || { echo "PR #211 is not merged: origin/main does not hold $MANIFEST" >&2; return 1; }
 }
 
-require_within_budget() {
-  local verdict
-  verdict=$(remote "source '$CONDA' && conda activate $ENV_NAME && python -c \"import json; print(json.load(open('$PARTS/slice_timing.json'))['within_budget'])\"" 2>/dev/null) \
-    || { echo "no slice record on $HOST; run '$0 slice launch' first" >&2; return 1; }
-  echo "slice verdict: $(remote "cat '$PARTS/slice_timing.json'")"
-  if [ "$verdict" != "True" ] && [ "${OVER_BUDGET:-0}" != "1" ]; then
-    echo "the slice projected the full pass over the 8 h budget; post it and wait" >&2
-    echo "  the orchestrator continues explicitly with OVER_BUDGET=1" >&2
-    return 1
-  fi
-}
-
 launch() {
+  [ -z "$(git -C "$REPO_DIR" status --porcelain)" ] \
+    || { echo "the worktree is dirty; commit before launching" >&2; return 1; }
+  require_manifest_on_main
   remote "mkdir -p '$ROOT' '$LOGS' '$CACHE' '$PARTS'"
-  case "$job" in
-    slice)
-      stage_repo
-      write_slice_runner ;;
-    decode)
-      [ -z "$(git -C "$REPO_DIR" status --porcelain)" ] \
-        || { echo "the worktree is dirty; commit before launching" >&2; return 1; }
-      require_manifest_on_main
-      require_within_budget
-      stage_repo
-      write_decode_runner ;;
-  esac
+  stage_repo
+  write_runner
   remote "rm -f '$LOGS/$NAME.exit' '$LOGS/$NAME.needs-post' '$LOGS/$NAME.pid'
           setsid flock /root/scratch/gpu.lock bash '$ROOT/run-$NAME.sh' </dev/null \\
             >'$LOGS/$NAME.log' 2>&1 &
@@ -161,14 +111,14 @@ launch() {
   echo "job started on $HOST"
   echo "  pid:  $(remote "cat '$LOGS/$NAME.pid'")"
   echo "  log:  $HOST:$LOGS/$NAME.log"
-  echo "  exit: $HOST:$LOGS/$NAME.exit (0 = clean; absent while running)"
+  echo "  exit: $HOST:$LOGS/$NAME.exit (0 = clean; 3 = the gate stopped it; absent while running)"
   echo "  check with: scripts/issue-212-decode.sh $job check"
 }
 
 check() {
   if remote "test -f '$LOGS/$NAME.needs-post'"; then
-    echo "needs-post: $HOST:$PARTS/slice_timing.json"
-    remote "cat '$PARTS/slice_timing.json'"
+    echo "needs-post: the gate stopped the run"
+    remote "cat '$PARTS/gate_timing.json' 2>/dev/null || true"
   fi
   if remote "test -f '$LOGS/$NAME.exit'"; then
     echo "exit $(remote "cat '$LOGS/$NAME.exit'")"
@@ -181,10 +131,7 @@ check() {
 fetch() {
   local destination=${1:?fetch needs a destination directory}
   mkdir -p "$destination"
-  case "$job" in
-    slice) rsync -a "$HOST:$PARTS/slice_timing.json" "$destination/" ;;
-    decode) rsync -a "$HOST:$REPO/$OUT/" "$destination/" ;;
-  esac
+  rsync -a "$HOST:$REPO/$OUT/" "$destination/"
   echo "fetched $job into $destination"
 }
 

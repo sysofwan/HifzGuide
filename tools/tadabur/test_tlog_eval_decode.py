@@ -436,3 +436,82 @@ def test_the_budget_is_inclusive_at_the_limit():
     assert at_limit["projected_hours"] == pytest.approx(8.0) and at_limit["within_budget"] is True
     assert ted.slice_verdict(500.0, 500.0, 28_801.0)["within_budget"] is False
     assert ted.slice_verdict(500.0, 500.0, 36_000.0, limit_hours=10.0)["within_budget"] is True
+
+
+# --- the narrowed run (architect r26) -----------------------------------------------------------
+
+
+OTHER_SHARD = "clean-00001-of-00411"
+
+
+def _run(monkeypatch, tmp_path, payloads: dict[str, dict[int, bytes]], total_audio_s: float):
+    """Run ``decode_shards`` over one base decoder with the shard stream faked per shard."""
+    rows = [_manifest_row(0, payload=b"a"),
+            _manifest_row(1, shard_file=OTHER_SHARD, payload=b"cc")]
+    decoder = FakeDecoder("base")
+    monkeypatch.setattr(ted, "read_manifest", lambda *args, **kwargs: rows)
+    monkeypatch.setattr(ted, "load_models", lambda parts_dir, models: {"base": decoder})
+    monkeypatch.setattr(ted, "ayah_word_counts", lambda: _word_counts)
+    monkeypatch.setattr(ted, "selection_audio_seconds", lambda rows: total_audio_s)
+    monkeypatch.setattr(ted, "default_audio", _load_audio)
+
+    def stream(name: str):
+        return iter({"audio": {"bytes": data}}
+                    for _, data in sorted(payloads[name].items()))
+
+    monkeypatch.setattr(ted, "shard_stream", lambda *args, **kwargs: stream)
+    result = ted.decode_shards(parts_dir=tmp_path, cache_dir=tmp_path, models=("base",),
+                               gate_shards=1, limit_hours=11.0)
+    return result, decoder
+
+
+def test_the_run_is_the_three_gating_models_with_checks_only():
+    assert ted.RUN_MODELS == ("base", "c95", "candidate_ema")
+    assert set(ted.RUN_STORES) == {"checks"}
+    assert (ted.GATE_SHARDS, ted.RUN_LIMIT_HOURS) == (20, 11.0)
+
+
+def test_the_gating_selection_is_the_committed_gating_stratum():
+    rows = ted.read_manifest("look")
+    gating = ted.gating_rows(rows)
+    assert len(gating) == 2_853
+    assert all(row["stratum"] == "gating" for row in gating)
+
+
+def test_the_selection_audio_joins_the_identified_tree_by_row_key():
+    rows = ted.read_manifest("look")
+    gating = ted.gating_rows(rows)
+    keys = {_key(row) for row in gating}
+    expected = 0.0
+    for path in sorted(ted.IDENT_LOOK_DIR.glob("*.jsonl.gz")):
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            for line in handle:
+                row = json.loads(line)
+                if _key(row) in keys:
+                    expected += row["duration_s"]
+    assert ted.selection_audio_seconds(gating) == pytest.approx(expected)
+    assert 0 < expected < ted.selection_audio_seconds(rows)
+
+
+def test_the_gate_stops_the_run_and_leaves_the_rest_undecoded(monkeypatch, tmp_path):
+    result, decoder = _run(monkeypatch, tmp_path,
+                           {f"data/{SHARD}.parquet": {0: b"a"},
+                            f"data/{OTHER_SHARD}.parquet": {1: b"cc"}},
+                           total_audio_s=30_000_000.0)
+    assert result["stopped"] is True and result["gate"]["within_budget"] is False
+    assert [path.name for path in tmp_path.glob("tlog.look.*.jsonl")] == [
+        f"tlog.look.{SHARD}.base.jsonl"]
+    assert json.loads((tmp_path / "gate_timing.json").read_text(encoding="utf-8"))["shards"] == 1
+    assert decoder.checks == 1 and decoder.streams == []
+
+
+def test_a_run_within_the_gate_decodes_the_whole_selection_checks_only(monkeypatch, tmp_path):
+    result, decoder = _run(monkeypatch, tmp_path,
+                           {f"data/{SHARD}.parquet": {0: b"a"},
+                            f"data/{OTHER_SHARD}.parquet": {1: b"cc"}},
+                           total_audio_s=10.0)
+    assert result["stopped"] is False and result["gate"]["within_budget"] is True
+    assert result["items"] == 2
+    assert sorted(path.name for path in tmp_path.glob("tlog.look.*.jsonl")) == [
+        f"tlog.look.{SHARD}.base.jsonl", f"tlog.look.{OTHER_SHARD}.base.jsonl"]
+    assert decoder.checks == 2 and decoder.streams == []

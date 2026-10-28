@@ -10,7 +10,13 @@ counts a flag or compares a model.
 The look tranche is the only input. Any other role is refused before a file is opened, and a
 look row whose row key also appears in a committed ``confirm.<k>.jsonl`` is refused too, so no
 confirm row is ever opened. Each wanted shard is streamed once, its audio's SHA-256 checked
-before it is decoded, and the shard deleted once read; audio is never written.
+before it is decoded, and the shard deleted once read.
+
+The selected clips are kept in a box-local clip cache (never the repository, never the fetched
+output), each file named by the checksum it must hold: ``cache`` populates it for the gating
+rows and ``coverage`` re-verifies and counts it. A later pass over the same rows decodes from
+the cache without reading the source shards again; the shard download directory stays a
+throwaway and its parquet files are deleted after use.
 
 The run is several processes over disjoint shard subsets, each with ``OMP_NUM_THREADS=1``
 (the work is CPU-bound; round 1 measured that configuration at ~3x this box's serial
@@ -29,10 +35,15 @@ model, so a killed run resumes by key. ``merge`` gathers them into
 every model must cover every selected row exactly once, and a labelled row's ``word_from``/
 ``word_to`` become S6's identified span of the clip (the decode wrote the whole ayah).
 
-Usage, from ``tools/`` (GPU box, under ``flock /root/scratch/gpu.lock``)::
+Usage, from ``tools/`` on the GPU box (``decode`` and ``merge`` under
+``flock /root/scratch/gpu.lock``; ``cache``/``coverage`` are CPU and network only)::
 
+    OMP_NUM_THREADS=1 python -m tadabur.tlog_eval_decode cache  --clip-cache DIR \\
+        --shard-cache DIR --shard-index 0 --shard-count 6
+    python -m tadabur.tlog_eval_decode coverage --clip-cache DIR
     OMP_NUM_THREADS=1 python -m tadabur.tlog_eval_decode decode --parts-dir DIR \\
-        --cache-dir DIR --models base c95 candidate_ema --shard-index 0 --shard-count 6
+        --cache-dir DIR --clip-cache DIR --models base c95 candidate_ema \\
+        --shard-index 0 --shard-count 6
     python -m tadabur.tlog_eval_decode gate   --parts-dir DIR --elapsed-seconds 600 \\
         --processes 6 --threads 1 --limit-hours 11
     python -m tadabur.tlog_eval_decode merge  --parts-dir DIR --out-dir DIR \\
@@ -43,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
@@ -183,55 +195,26 @@ def decodes_path(out_dir: Path, shard_file: str, model: str) -> Path:
     return Path(out_dir) / f"tlog.look.{shard_file}.{model}.jsonl"
 
 
-def recordings(rows: Sequence[Mapping], *, stream, word_counts: Callable[[str], int],
-               load_audio: Callable[[bytes], object] | None = None) -> Iterator[Recording]:
-    """One shard's wanted manifest rows as recordings, in the shard's own row order.
+def shard_items(rows: Sequence[Mapping], *, stream) -> Iterator[tuple[Mapping, bytes]]:
+    """One shard's wanted manifest rows and their clip bytes, in the shard's own row order.
 
     ``stream(name)`` yields the parquet rows of ``data/<shard_file>.parquet``; it is called
-    once, and only the rows ``rows`` names are turned into recordings (each the whole clip,
-    one item). A streamed row is a wanted row when its position is that row's index; a source
-    that does not number its rows as the shard does is matched by the clip's recorded
-    checksum, which is its identity either way. ``load_audio`` turns the row's bytes into
-    16 kHz mono samples and is called only when the item is still to be decoded. The
-    recording verifies the audio's SHA-256 before it decodes anything, and a wanted row the
-    shard does not hold is an error.
+    once, and only the rows ``rows`` names are yielded. A streamed row is a wanted row when
+    its position is that row's index; a source that does not number its rows as the shard
+    does is matched by the clip's recorded checksum, which is its identity either way. A
+    wanted row the shard does not hold is an error.
     """
     rows = list(rows)
     if not rows:
         return
     shard_files = {row["shard_file"] for row in rows}
     if len(shard_files) != 1:
-        raise ValueError(f"recordings takes one shard's rows, got {sorted(shard_files)}")
+        raise ValueError(f"one shard's rows at a time, got {sorted(shard_files)}")
     shard_file = shard_files.pop()
-    load = default_audio if load_audio is None else load_audio
     by_index = {row["row"]: row for row in rows}
     if len(by_index) != len(rows):
         raise ValueError(f"{shard_file}: a manifest row index appears twice")
     by_sha256 = {row["audio_sha256"]: row for row in rows}
-
-    def record(row: Mapping, data: bytes) -> tuple[object, list[dict]]:
-        checksum = audio_sha256(data)
-        if checksum != row["audio_sha256"]:
-            raise ValueError(f"{row_key(row)} is {checksum}, not the recorded "
-                             f"{row['audio_sha256']}")
-        samples = load(data)
-        label = row["filename_label"]
-        return samples, [{
-            "key": item_key(row["audio_path"]),
-            "audio_filename": row["audio_path"],
-            "audio_sha256": checksum,
-            "surah_ayah": label,
-            "word_from": None if label is None else 1,
-            "word_to": None if label is None else word_counts(label),
-            "start_sample": 0,
-            "end_sample": len(samples),
-            "split": row["split"],
-            "shard_file": row["shard_file"],
-            "row": row["row"],
-            "stratum": row["stratum"],
-            "assigned_label": row["assigned_label"],
-        }]
-
     for index, item in enumerate(stream(f"data/{shard_file}.parquet")):
         data = item["audio"]["bytes"]
         row = by_index.pop(index, None)
@@ -244,27 +227,158 @@ def recordings(rows: Sequence[Mapping], *, stream, word_counts: Callable[[str], 
             by_index.pop(row["row"], None)
         else:
             by_sha256.pop(row["audio_sha256"], None)
-        yield Recording((item_key(row["audio_path"]),),
-                        lambda row=row, data=data: record(row, data))
+        yield row, data
     if by_index:
         raise ValueError(f"{shard_file}: rows {sorted(by_index)} were not in the streamed shard")
+
+
+def _record(row: Mapping, data: bytes, load: Callable[[bytes], object],
+            word_counts: Callable[[str], int]) -> tuple[object, list[dict]]:
+    """One verified clip's samples and its Tarteel v1 record."""
+    checksum = audio_sha256(data)
+    if checksum != row["audio_sha256"]:
+        raise ValueError(f"{row_key(row)} is {checksum}, not the recorded "
+                         f"{row['audio_sha256']}")
+    samples = load(data)
+    label = row["filename_label"]
+    return samples, [{
+        "key": item_key(row["audio_path"]),
+        "audio_filename": row["audio_path"],
+        "audio_sha256": checksum,
+        "surah_ayah": label,
+        "word_from": None if label is None else 1,
+        "word_to": None if label is None else word_counts(label),
+        "start_sample": 0,
+        "end_sample": len(samples),
+        "split": row["split"],
+        "shard_file": row["shard_file"],
+        "row": row["row"],
+        "stratum": row["stratum"],
+        "assigned_label": row["assigned_label"],
+    }]
+
+
+def recordings(rows: Sequence[Mapping], *, stream, word_counts: Callable[[str], int],
+               load_audio: Callable[[bytes], object] | None = None,
+               clip_cache: Path | None = None) -> Iterator[Recording]:
+    """One shard's wanted manifest rows as recordings, in the shard's own row order.
+
+    ``load_audio`` turns the row's bytes into 16 kHz mono samples and is called only when the
+    item is still to be decoded. The recording verifies the audio's SHA-256 before it decodes
+    anything. With ``clip_cache``, a clip already cached under its recorded checksum
+    (:func:`clip_path`) is read on load rather than streamed, so a pass whose rows are all
+    cached never calls ``stream``.
+    """
+    load = default_audio if load_audio is None else load_audio
+    pending = []
+    for row in rows:
+        path = None if clip_cache is None else clip_path(clip_cache, row["audio_sha256"])
+        if path is None or not path.is_file():
+            pending.append(row)
+            continue
+        yield Recording((item_key(row["audio_path"]),),
+                        lambda row=row, path=path: _record(row, path.read_bytes(), load,
+                                                           word_counts))
+    for row, data in shard_items(pending, stream=stream):
+        yield Recording((item_key(row["audio_path"]),),
+                        lambda row=row, data=data: _record(row, data, load, word_counts))
 
 
 def run_shard(shard_file: str, rows: Sequence[Mapping], out_dir: Path, decoders: dict, *,
               stream, word_counts: Callable[[str], int],
               load_audio: Callable[[bytes], object] | None = None,
-              stores: Mapping = STORES) -> dict:
+              stores: Mapping = STORES, clip_cache: Path | None = None) -> dict:
     """Read ``shard_file`` once and decode each wanted row with every decoder in ``decoders``.
 
     The records are appended to :func:`decodes_path` (one file per shard and model), so a
-    rerun decodes only what is missing; returns ``decode_recordings``' timing.
+    rerun decodes only what is missing; returns ``decode_recordings``' timing. Clips in
+    ``clip_cache`` are decoded without reading the shard.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = {name: decodes_path(out_dir, shard_file, name) for name in decoders}
     return decode_recordings(
-        recordings(rows, stream=stream, word_counts=word_counts, load_audio=load_audio),
+        recordings(rows, stream=stream, word_counts=word_counts, load_audio=load_audio,
+                   clip_cache=clip_cache),
         decoders, paths, f"tlog look {shard_file}", stores=stores)
+
+
+# --- the on-box clip cache ----------------------------------------------------------------------
+
+
+def clip_path(directory: Path, sha256: str) -> Path:
+    """A cached clip's path: named by the checksum it must hold."""
+    return Path(directory) / f"{sha256}.audio"
+
+
+def cache_shard(shard_file: str, rows: Sequence[Mapping], clip_cache: Path, *,
+                stream) -> dict:
+    """Persist one shard's selected clips, each verified against its recorded checksum.
+
+    A row already cached is not fetched, so a second population pass reads no shard. The
+    stored bytes are the source clip's own (written atomically), never samples or decodes.
+    """
+    pending = [row for row in rows
+               if not clip_path(clip_cache, row["audio_sha256"]).is_file()]
+    written = cached_bytes = 0
+    for row, data in shard_items(pending, stream=stream):
+        checksum = audio_sha256(data)
+        if checksum != row["audio_sha256"]:
+            raise ValueError(f"{row_key(row)} is {checksum}, not the recorded "
+                             f"{row['audio_sha256']}")
+        path = clip_path(clip_cache, checksum)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+        temporary.write_bytes(data)
+        os.replace(temporary, path)
+        written += 1
+        cached_bytes += len(data)
+    return {"shard_file": shard_file, "rows": len(rows), "written": written,
+            "bytes": cached_bytes}
+
+
+def cache_selection(clip_cache: Path, shard_cache: Path, *,
+                    rows: Sequence[Mapping] | None = None, shard_index: int = 0,
+                    shard_count: int = 1, stream: Callable | None = None,
+                    on_download: Callable[[str], None] | None = None) -> dict:
+    """Populate the box's clip cache with the selected rows, one pass over their shards.
+
+    The rows are the manifest's gating stratum unless given; each clip is stored under its
+    verified checksum, and the shard is deleted once read (``shard_rows``'s contract), so the
+    selection can be decoded again without the source. Nothing is decoded or graded.
+    """
+    if not 0 <= shard_index < shard_count:
+        raise ValueError(f"--shard-index must be in [0, {shard_count})")
+    rows = gating_rows(read_manifest(LOOK)) if rows is None else list(rows)
+    by_shard: dict[str, list[Mapping]] = defaultdict(list)
+    for row in rows:
+        by_shard[row["shard_file"]].append(row)
+    if stream is None:
+        stream = shard_stream(shard_cache, on_download)
+    shards = sorted(by_shard)[shard_index::shard_count]
+    written = cached_bytes = 0
+    for shard_file in shards:
+        timing = cache_shard(shard_file, by_shard[shard_file], clip_cache, stream=stream)
+        written += timing["written"]
+        cached_bytes += timing["bytes"]
+    return {"shards": len(shards), "rows": sum(len(by_shard[name]) for name in shards),
+            "written": written, "bytes": cached_bytes}
+
+
+def cache_coverage(rows: Sequence[Mapping], directory: Path) -> dict:
+    """How much of ``rows`` the clip cache holds, each cached clip re-verified."""
+    missing = [row_key(row) for row in rows
+               if not clip_path(directory, row["audio_sha256"]).is_file()]
+    absent = set(missing)
+    held = [row for row in rows if row_key(row) not in absent]
+    stored = 0
+    for row in held:
+        path = clip_path(directory, row["audio_sha256"])
+        if sha256_file(path) != row["audio_sha256"]:
+            raise ValueError(f"{path} is not the clip its name records")
+        stored += path.stat().st_size
+    return {"rows": len(rows), "cached": len(held), "missing": len(missing),
+            "missing_first": missing[:1], "bytes": stored}
 
 
 # --- merging the parts --------------------------------------------------------------------------
@@ -420,14 +534,16 @@ def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict:
 def _decode_shards(shards: Sequence[str], by_shard: Mapping[str, list[Mapping]], *,
                    parts_dir: Path, cache_dir: Path, decoders: dict,
                    word_counts: Callable[[str], int], stores: Mapping,
+                   clip_cache: Path | None = None,
                    on_download: Callable[[str], None] | None = None) -> list[dict]:
     """Decode ``shards`` in order through :func:`run_shard`, one timing line per shard."""
     stream = shard_stream(cache_dir, on_download)
     timings = []
     for shard_file in shards:
-        timing = run_shard(shard_file, by_shard[shard_file], parts_dir, decoders,
-                           stream=stream, word_counts=word_counts, stores=stores)
-        append_timing(Path(parts_dir) / "timing.jsonl", {"shard_file": shard_file, **timing})
+        timing = {"shard_file": shard_file, **run_shard(
+            shard_file, by_shard[shard_file], parts_dir, decoders, stream=stream,
+            word_counts=word_counts, stores=stores, clip_cache=clip_cache)}
+        append_timing(Path(parts_dir) / "timing.jsonl", timing)
         timings.append(timing)
     return timings
 
@@ -435,28 +551,44 @@ def _decode_shards(shards: Sequence[str], by_shard: Mapping[str, list[Mapping]],
 def _totals(timings: Sequence[Mapping], models: Sequence[str], stores: Mapping) -> dict:
     """The shards' timings summed: shards, items, audio, wall and decode seconds.
 
+    A shard counts once however often a resume visited it; its visits' work is summed, and a
+    model that decoded nothing in a visit has no store seconds there — a legitimate zero, not
+    a missing key. A record naming another model or store is refused.
+
     ``wall_seconds_summed_over_processes`` adds every shard's own wall, so with several
     processes it is not the run's wall (the gate's ``slice_wall_s`` and the run's
     ``elapsed_seconds`` are).
     """
-    return {"shards": len(timings),
+    seconds = {(model, store): 0.0 for model in models for store in stores}
+    for timing in timings:
+        for model, arms in timing["decode_seconds"].items():
+            if model not in models:
+                raise ValueError(f"{timing['shard_file']}: timing names {model!r}, "
+                                 f"not one of {list(models)}")
+            for store, value in arms.items():
+                if store not in stores:
+                    raise ValueError(f"{timing['shard_file']}: timing names {store!r}, "
+                                     f"not one of {list(stores)}")
+                seconds[(model, store)] += value
+    return {"shards": len({timing["shard_file"] for timing in timings}),
             "items": sum(timing["items"] for timing in timings),
             "audio_seconds": round(sum(timing["audio_seconds"] for timing in timings), 1),
             "wall_seconds_summed_over_processes": round(
                 sum(timing["wall_seconds"] for timing in timings), 1),
-            "decode_seconds": {model: {store: round(sum(
-                timing["decode_seconds"][model][store] for timing in timings), 1)
-                for store in stores}
-                for model in models}}
+            "decode_seconds": {model: {store: round(seconds[(model, store)], 1)
+                                       for store in stores}
+                               for model in models}}
 
 
 def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = RUN_MODELS,
                   stores: Mapping = RUN_STORES, shard_index: int = 0, shard_count: int = 1,
+                  clip_cache: Path | None = None,
                   on_download: Callable[[str], None] | None = None) -> dict:
     """Decode one process's share of the look gating rows: ``shards[shard_index::shard_count]``.
 
     Each shard is streamed once for every model in ``models`` under ``stores``; processes
-    write disjoint part files and resume by key, so they share no state but the parts.
+    write disjoint part files and resume by key, so they share no state but the parts. Clips
+    already in ``clip_cache`` are decoded without fetching their shard.
     """
     if not 0 <= shard_index < shard_count:
         raise ValueError(f"--shard-index must be in [0, {shard_count})")
@@ -468,7 +600,7 @@ def decode_shards(*, parts_dir: Path, cache_dir: Path, models: Sequence[str] = R
     timings = _decode_shards(shards, by_shard, parts_dir=parts_dir, cache_dir=cache_dir,
                              decoders=load_models(parts_dir, models),
                              word_counts=ayah_word_counts(), stores=stores,
-                             on_download=on_download)
+                             clip_cache=clip_cache, on_download=on_download)
     return _totals(timings, models, stores)
 
 
@@ -547,6 +679,15 @@ def main() -> None:
     decode_.add_argument("--models", nargs="+", default=list(RUN_MODELS))
     decode_.add_argument("--shard-index", type=int, default=0)
     decode_.add_argument("--shard-count", type=int, default=RUN_PROCESSES)
+    decode_.add_argument("--clip-cache", type=Path, default=None,
+                         help="the box cache of selected clips, keyed by their checksum")
+    cache_ = commands.add_parser("cache", help="persist the gating rows' clips into the box cache")
+    cache_.add_argument("--clip-cache", type=Path, required=True)
+    cache_.add_argument("--shard-cache", type=Path, required=True)
+    cache_.add_argument("--shard-index", type=int, default=0)
+    cache_.add_argument("--shard-count", type=int, default=1)
+    coverage_ = commands.add_parser("coverage", help="verify and count the cached gating clips")
+    coverage_.add_argument("--clip-cache", type=Path, required=True)
     gate_ = commands.add_parser("gate", help="project the selection from the timing lines so far")
     gate_.add_argument("--parts-dir", type=Path, required=True)
     gate_.add_argument("--elapsed-seconds", type=float, required=True)
@@ -569,11 +710,16 @@ def main() -> None:
     if args.command == "decode":
         result = decode_shards(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
                                models=args.models, shard_index=args.shard_index,
-                               shard_count=args.shard_count)
+                               shard_count=args.shard_count, clip_cache=args.clip_cache)
     elif args.command == "gate":
         result = gate_verdict(args.parts_dir, elapsed_seconds=args.elapsed_seconds,
                               limit_hours=args.limit_hours, processes=args.processes,
                               threads=args.threads)
+    elif args.command == "cache":
+        result = cache_selection(args.clip_cache, args.shard_cache,
+                                 shard_index=args.shard_index, shard_count=args.shard_count)
+    elif args.command == "coverage":
+        result = cache_coverage(gating_rows(read_manifest(LOOK)), args.clip_cache)
     else:
         result = merge_decodes(args.parts_dir, args.out_dir,
                                manifest_path=TRANCHES_DIR / f"{LOOK}.jsonl",

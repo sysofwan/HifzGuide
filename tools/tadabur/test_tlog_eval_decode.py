@@ -614,3 +614,120 @@ def test_the_provenance_reads_the_parts_identity_records_and_refuses_a_wrong_pin
         encoding="utf-8")
     with pytest.raises(ValueError, match="c95"):
         ted.run_provenance(tmp_path, models=("base", "c95"))
+
+
+# --- the on-box clip cache (reviewer R1.1) ------------------------------------------------------
+
+
+def _refusing_stream(name: str):
+    raise AssertionError(f"streamed {name}, which the clip cache should have covered")
+
+
+def test_the_clip_cache_keeps_a_verified_clip_and_a_later_pass_never_streams_the_shard(tmp_path):
+    payload = b"clip-1"
+    row = _manifest_row(1, payload=payload)
+    clips = tmp_path / "clips"
+    calls: list[str] = []
+    assert ted.cache_selection(clips, tmp_path / "shards", rows=[row],
+                               stream=_stream({1: payload}, calls)) == {
+        "shards": 1, "rows": 1, "written": 1, "bytes": len(payload)}
+    assert calls == [f"data/{SHARD}.parquet"]
+    assert [path.name for path in clips.iterdir()] == [f"{_sha256(payload)}.audio"]
+    decoder = FakeDecoder()
+    timing = ted.run_shard(SHARD, [row], tmp_path / "parts", {"base": decoder},
+                           stream=_refusing_stream, word_counts=_word_counts,
+                           load_audio=_load_audio, clip_cache=clips)
+    assert timing["items"] == 1 and decoder.checks == 1
+    written = [path for path in (tmp_path / "parts").rglob("*") if path.is_file()]
+    assert written and all(path.suffix in (".jsonl", ".json") for path in written)
+    assert all(payload not in path.read_bytes() for path in written)
+    assert json.loads(written[0].read_text(encoding="utf-8"))["audio_sha256"] == _sha256(payload)
+
+
+def test_the_clip_cache_is_idempotent_and_coverage_names_what_is_missing(tmp_path):
+    row = _manifest_row(1, payload=b"clip-1")
+    clips = tmp_path / "clips"
+    ted.cache_selection(clips, tmp_path / "shards", rows=[row], stream=_stream({1: b"clip-1"}))
+    again = ted.cache_selection(clips, tmp_path / "shards", rows=[row], stream=_refusing_stream)
+    assert again == {"shards": 1, "rows": 1, "written": 0, "bytes": 0}
+    other = _manifest_row(2)
+    assert ted.cache_coverage([row, other], clips) == {
+        "rows": 2, "cached": 1, "missing": 1, "missing_first": [_key(other)],
+        "bytes": len(b"clip-1")}
+
+
+def test_a_cached_clip_that_is_not_its_checksum_is_refused_on_read_and_in_coverage(tmp_path):
+    row = _manifest_row(1)
+    clips = tmp_path / "clips"
+    clips.mkdir()
+    ted.clip_path(clips, row["audio_sha256"]).write_bytes(b"another clip")
+    with pytest.raises(ValueError):
+        ted.run_shard(SHARD, [row], tmp_path / "parts", {"base": FakeDecoder()},
+                      stream=_refusing_stream, word_counts=_word_counts,
+                      load_audio=_load_audio, clip_cache=clips)
+    with pytest.raises(ValueError):
+        ted.cache_coverage([row], clips)
+
+
+def test_a_decode_process_reads_the_clip_cache_and_never_opens_a_shard(monkeypatch, tmp_path):
+    rows = [_manifest_row(0, payload=b"a"), _manifest_row(1, payload=b"bb")]
+    monkeypatch.setattr(ted, "read_manifest", lambda *args, **kwargs: rows)
+    monkeypatch.setattr(ted, "load_models", lambda parts_dir, models: {"base": FakeDecoder()})
+    monkeypatch.setattr(ted, "ayah_word_counts", lambda: _word_counts)
+    monkeypatch.setattr(ted, "default_audio", _load_audio)
+    monkeypatch.setattr(ted, "shard_stream", lambda *args, **kwargs: _refusing_stream)
+    clips = tmp_path / "clips"
+    ted.cache_selection(clips, tmp_path / "shards", rows=rows, stream=_stream({0: b"a", 1: b"bb"}))
+    result = ted.decode_shards(parts_dir=tmp_path / "parts", cache_dir=tmp_path / "shards",
+                               models=("base",), clip_cache=clips)
+    assert (result["shards"], result["items"]) == (1, 2)
+
+
+# --- a resumed run (reviewer R1.2) --------------------------------------------------------------
+
+
+def test_a_resumed_run_totals_zero_work_as_zero_and_counts_each_shard_once(monkeypatch, tmp_path):
+    rows = [_manifest_row(0, shard_file=SHARD, payload=b"a"),
+            _manifest_row(1, shard_file=OTHER_SHARD, payload=b"bb"),
+            _manifest_row(2, shard_file=OTHER_SHARD, payload=b"ccc")]
+    decoders = {"base": FakeDecoder("base"), "c95": FakeDecoder("c95")}
+    # base has every item; c95 misses only the second shard's second row.
+    _write_jsonl(ted.decodes_path(tmp_path, SHARD, "base"), [{"key": "2_1_0.flac#0", "checks": []}])
+    _write_jsonl(ted.decodes_path(tmp_path, OTHER_SHARD, "base"),
+                 [{"key": "2_1_1.flac#0", "checks": []},
+                  {"key": "2_1_2.flac#0", "checks": []}])
+    _write_jsonl(ted.decodes_path(tmp_path, SHARD, "c95"), [{"key": "2_1_0.flac#0", "checks": []}])
+    _write_jsonl(ted.decodes_path(tmp_path, OTHER_SHARD, "c95"),
+                 [{"key": "2_1_1.flac#0", "checks": []}])
+    streams = {f"data/{SHARD}.parquet": [b"a"],
+               f"data/{OTHER_SHARD}.parquet": [b"bb", b"ccc"]}
+    monkeypatch.setattr(ted, "read_manifest", lambda *args, **kwargs: rows)
+    monkeypatch.setattr(ted, "load_models", lambda parts_dir, models: decoders)
+    monkeypatch.setattr(ted, "ayah_word_counts", lambda: _word_counts)
+    monkeypatch.setattr(ted, "default_audio", _load_audio)
+    monkeypatch.setattr(ted, "shard_stream", lambda *args, **kwargs: lambda name: iter(
+        [{"audio": {"bytes": payload}} for payload in streams[name]]))
+    first = ted.decode_shards(parts_dir=tmp_path, cache_dir=tmp_path,
+                              models=("base", "c95"))
+    assert (first["shards"], first["items"]) == (2, 1)
+    assert first["decode_seconds"]["base"] == {"checks": 0.0}
+    assert set(first["decode_seconds"]["c95"]) == {"checks"}
+    second = ted.decode_shards(parts_dir=tmp_path, cache_dir=tmp_path,
+                               models=("base", "c95"))
+    assert (second["shards"], second["items"]) == (2, 0)
+    assert second["decode_seconds"] == {"base": {"checks": 0.0},
+                                        "c95": {"checks": 0.0}}
+    totals = ted.timing_totals(tmp_path, models=("base", "c95"))
+    assert (totals["shards"], totals["items"]) == (2, 1)
+
+
+@pytest.mark.parametrize("decode_seconds,named", [
+    ({"h448": {"checks": 1.0}}, "h448"),
+    ({"base": {"stream_b0": 1.0}}, "stream_b0")])
+def test_the_totals_refuse_a_timing_record_naming_another_model_or_store(
+        tmp_path, decode_seconds, named):
+    _write_jsonl(tmp_path / "timing.jsonl", [
+        {"shard_file": SHARD, "items": 1, "audio_seconds": 1.0, "wall_seconds": 1.0,
+         "decode_seconds": decode_seconds}])
+    with pytest.raises(ValueError, match=named):
+        ted.timing_totals(tmp_path, models=("base",), stores={"checks": object()})

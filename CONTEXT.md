@@ -293,9 +293,10 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
 
 **Tranche**
 : One role's rows as a frozen set: `look`, or `confirm.k` for k = 1…4. `look` may be inspected
-  freely. `confirm.k` is opened by one round, in order, and never listened to before it: the base
-  teacher's identification is fixed in the manifest before any candidate is scored, and **no
-  student, C95 or candidate model decodes a confirm row** — not even to prepare the tranche
+  freely. `confirm.k` is opened by one round, in order, and is never listened to, audited or
+  inspected before that round: **no student, C95 or candidate model decodes a confirm row before
+  its opening round**, and only for that round's verdict (`docs/tlog-holdout-preregistration.md`
+  §7). S7's identification of all four tranches used the base teacher only
   (`docs/tlog-gating-amendment.md`).
 
 **Gating item**
@@ -321,10 +322,12 @@ The vocabulary of `tarteel-ai/tlog` (#185, `tadabur.tlog_index`), whose clips ar
 **Claim**
 : A committed `tranches/confirm.k.claim.json` (`{role, issue, commit, date}`) written by the round
   that opens that tranche (`tadabur.tlog_tranches.claim_tranche`). `confirm.k` cannot be opened or
-  read while `confirm.(k-1)`'s claim is not in HEAD with no staged or unstaged change; one round
-  may claim two consecutive tranches, in order. `commit` binds the commit the round opens from: it
-  holds the claim and the round's pre-registration, so the manifest at that commit is what the
-  round read.
+  read while `confirm.(k-1)`'s claim is not in HEAD with no staged or unstaged change; reading
+  `tranches/confirm.k.jsonl` needs `confirm.k`'s own claim in HEAD unchanged too, and the manifest
+  itself must be committed. One round may claim two consecutive tranches, in order. `commit` names
+  the existing input commit the round opens from — it holds the frozen tranche manifest and the
+  round's pre-registration, so the manifest at that commit is what the round read; the claim is
+  committed after it is written and cannot name its own enclosing commit.
 
 **Freeze**
 : The committed `tools/tadabur/tlog/split/` tree: one row per tlog row with its `group_key`

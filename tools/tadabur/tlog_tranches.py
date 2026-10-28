@@ -76,9 +76,11 @@ LABEL_SOURCES = (BOTH, IDENTIFIED, FILENAME, NONE)
 MANIFEST_FIELDS = ("split", "shard_file", "row", "audio_path", "audio_sha256", "group_key",
                    "filename_label", "assigned_label", "label_source", "straddles",
                    "decode_mode", "id_floor_ok", "stratum")
-#: A claim record's schema (r24 item 4). ``commit`` binds the commit the round opens from: it
-#: must hold the claim and the round's pre-registration, so the tranche manifest at that commit
-#: is what the round read. S7 writes none; the round that opens a tranche does.
+#: A claim record's schema (r24 item 4). ``commit`` names the commit the round opens from — an
+#: existing input commit that holds the frozen tranche manifest and the round's pre-registration,
+#: so the manifest at that commit is what the round read. The claim is committed after it is
+#: written and cannot name its own enclosing commit (that would be a self-referential hash).
+#: S7 writes none; the round that opens a tranche does.
 CLAIM_FIELDS = ("role", "issue", "commit", "date")
 #: The rows the timed slice decodes before the full run (r24 item 6).
 SLICE_ROWS = 500
@@ -243,14 +245,7 @@ def require_claim_order(role: str, tranches_dir: Path = TRANCHES_DIR) -> None:
     if position == 0:
         return
     previous = CONFIRM_ROLES[position - 1]
-    path = Path(tranches_dir) / f"{previous}.claim.json"
-    if not path.is_file():
-        raise ValueError(f"{role} needs {previous} claimed first; {path} is absent")
-    _require_committed_claim(path)
-    record = json.loads(path.read_text(encoding="utf-8"))
-    if record.get("role") != previous:
-        raise ValueError(f"{path} is not a {previous} claim: it names {record.get('role')!r}")
-    _require_claim(record, path)
+    _require_own_claim(previous, tranches_dir)
 
 
 def claim_tranche(role: str, *, issue: int, commit: str, date: str,
@@ -259,9 +254,10 @@ def claim_tranche(role: str, *, issue: int, commit: str, date: str,
 
     The order is checked first (:func:`require_claim_order`), and the file is created
     exclusively: a tranche is claimed once, and a second opening round is a decision, not a
-    silent overwrite. ``commit`` binds the commit the round opens from — it must hold this claim
-    and the round's pre-registration — so the tranche manifest at that commit is what the round
-    read. S7 writes no claim; the next round calls this and commits the file.
+    silent overwrite. ``commit`` is the existing input commit the round opens from — it holds
+    the frozen tranche manifest and the round's pre-registration — and the claim is committed on
+    top of it, so it never names its own enclosing commit. S7 writes no claim; the next round
+    calls this and commits the file.
     """
     require_claim_order(role, tranches_dir)
     record = {"role": role, "issue": issue, "commit": commit, "date": date}
@@ -277,12 +273,33 @@ def claim_tranche(role: str, *, issue: int, commit: str, date: str,
 
 
 def load_tranche(role: str, tranches_dir: Path = TRANCHES_DIR) -> list[dict]:
-    """One role's committed manifest rows; a confirm tranche only after its claim is committed."""
+    """One role's committed manifest rows; a confirm tranche only once its own claim is committed.
+
+    A confirm read is gated twice: the predecessor's claim (:func:`require_claim_order`, which
+    ``confirm.1`` does not need) and this role's own opening claim, so consuming a tranche always
+    leaves the opening round's record behind. ``look`` has no claim. The manifest itself must be
+    the committed, unchanged file, so no row is read from a working tree.
+    """
     if role not in ROLES:
         raise ValueError(f"{role!r} is not a tranche role {ROLES}")
+    path = Path(tranches_dir) / f"{role}.jsonl"
     if role in CONFIRM_ROLES:
         require_claim_order(role, tranches_dir)
-    return read_jsonl(Path(tranches_dir) / f"{role}.jsonl")
+        _require_own_claim(role, tranches_dir)
+    _require_in_head(path, what="manifest")
+    return read_jsonl(path)
+
+
+def _require_own_claim(role: str, tranches_dir: Path) -> None:
+    """The requested role's own claim: present, committed, unchanged, and naming that role."""
+    path = Path(tranches_dir) / f"{role}.claim.json"
+    if not path.is_file():
+        raise ValueError(f"{role} is opened by a committed claim; {path} is absent")
+    _require_in_head(path, what="claim")
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if record.get("role") != role:
+        raise ValueError(f"{path} is not a {role} claim: it names {record.get('role')!r}")
+    _require_claim(record, path)
 
 
 def _require_claim(record: Mapping[str, Any], path: Path) -> None:
@@ -298,16 +315,16 @@ def _require_claim(record: Mapping[str, Any], path: Path) -> None:
                          f"YYYY-MM-DD date")
 
 
-def _require_committed_claim(path: Path) -> None:
-    """Refuse a claim outside a repository, untracked, staged-only, or changed since HEAD."""
+def _require_in_head(path: Path, *, what: str) -> None:
+    """Refuse a path outside a repository, untracked, staged-only, or changed since HEAD."""
     root = subprocess.run(["git", "-C", str(path.parent), "rev-parse", "--show-toplevel"],
                           capture_output=True, text=True).stdout.strip()
     if not root:
-        raise ValueError(f"{path} is in no git repository: a claim counts only once committed")
+        raise ValueError(f"{path} is in no git repository: a {what} counts only once committed")
     try:
         require_committed([path], repo=Path(root))
     except RuntimeError as error:
-        raise ValueError(f"{path} is not a committed claim: {error}") from error
+        raise ValueError(f"{path} is not a committed {what}: {error}") from error
 
 
 # --- the committed tree readers -----------------------------------------------------------------
@@ -341,9 +358,10 @@ def decode(*, cache_dir: Path, out_dir: Path = tlog_pool.DECODES_DIR,
     """Decode every usable row of ``roles`` whole-clip, after timing a ~500-row slice.
 
     The slice runs first through the same path as the full pass, and the full pass reuses its
-    rows via ``already``: no row is decoded or downloaded twice for the timing. Its record
-    (``rows``, ``seconds``) is written to ``<out_dir>/slice_timing.json`` for the manifests'
-    meta (r24 item 6).
+    rows via ``already``: no row is decoded or downloaded twice for the timing. The run record
+    (``rows``, ``seconds``, ``includes_shard_streaming``, ``full_pass_seconds``) is written to
+    ``<out_dir>/slice_timing.json`` for the manifests' meta (r24 item 6), so they are regenerated
+    from committed data rather than a run log.
     """
     require_clean_tree()
     d_max = float(tlog_pool.decode_limit()["d_max_seconds"] if d_max is None else d_max)
@@ -412,7 +430,6 @@ def identify(*, decodes_dir: Path = tlog_pool.DECODES_DIR,
 def manifests(*, ident_dir: Path = tlog_pool.IDENT_DIR, tranches_dir: Path = TRANCHES_DIR,
               exposure_dir: Path = EXPOSURE_DIR,
               slice_timing: Path = tlog_pool.DECODES_DIR / "slice_timing.json",
-              full_pass_seconds: float | None = None,
               pull_request: int | None = None) -> dict:
     """Write the five manifests, their eval uses and ``tranches/meta.json``.
 
@@ -420,16 +437,15 @@ def manifests(*, ident_dir: Path = tlog_pool.IDENT_DIR, tranches_dir: Path = TRA
     S7's. Each row keeps ``group_key``, its label facts and ``stratum``, so any re-slice can
     be recomputed from the committed files.
 
-    ``slice_timing`` is the decode run's record. A record that predates ``full_pass_seconds``
-    (the slice's stage timing alone does not show whether the run was download-bound) takes the
-    figure from ``full_pass_seconds``, read off the run's own log.
+    ``slice_timing`` is the decode run's committed record (``rows``, ``seconds``,
+    ``includes_shard_streaming``, ``full_pass_seconds``); the manifests take the full pass's
+    wall time from it, so regenerating them needs no run log and no new decode.
     """
     require_clean_tree()
     timing = json.loads(Path(slice_timing).read_text(encoding="utf-8"))
-    seconds = timing.get("full_pass_seconds", full_pass_seconds)
-    if seconds is None:
-        raise ValueError(f"{slice_timing} records no full_pass_seconds; pass the decode run's "
-                         f"own wall time as --full-pass-seconds")
+    if "full_pass_seconds" not in timing:
+        raise ValueError(f"{slice_timing} is not a decode run record: it records no "
+                         f"full_pass_seconds")
     group_keys = split_group_keys()
     summaries = {}
     d_max = {}
@@ -445,9 +461,7 @@ def manifests(*, ident_dir: Path = tlog_pool.IDENT_DIR, tranches_dir: Path = TRA
                 "preregistration_sha256": sha256_file(PREREGISTRATION_PATH),
                 "gating_amendment_sha256": sha256_file(GATING_AMENDMENT_PATH),
                 "overlay": overlay_commit(),
-                "slice_timing": {"rows": timing["rows"], "seconds": timing["seconds"],
-                                 "includes_shard_streaming": True,
-                                 "full_pass_seconds": seconds},
+                "slice_timing": timing,
                 "d_max": {"stop_share": tlog_pool.D_MAX_STOP_SHARE, "tranches": d_max},
                 "tranches": summaries},
                Path(tranches_dir) / "meta.json")
@@ -481,8 +495,6 @@ def main() -> None:
     manifests_.add_argument("--exposure-dir", type=Path, default=EXPOSURE_DIR)
     manifests_.add_argument("--slice-timing", type=Path,
                             default=tlog_pool.DECODES_DIR / "slice_timing.json")
-    manifests_.add_argument("--full-pass-seconds", type=float, default=None,
-                            help="the decode run's wall time, for a record that predates it")
     manifests_.add_argument("--pr", type=int, default=None,
                             help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
     args = parser.parse_args()
@@ -496,7 +508,6 @@ def main() -> None:
     else:
         result = manifests(ident_dir=args.ident_dir, tranches_dir=args.tranches_dir,
                            exposure_dir=args.exposure_dir, slice_timing=args.slice_timing,
-                           full_pass_seconds=args.full_pass_seconds,
                            pull_request=args.pr)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
 

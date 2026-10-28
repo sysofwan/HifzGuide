@@ -1,4 +1,6 @@
 {
+ "full_pass_seconds": 9877.0,
+ "includes_shard_streaming": true,
  "rows": 500,
  "seconds": 276.0
 }

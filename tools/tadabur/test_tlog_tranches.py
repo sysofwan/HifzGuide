@@ -944,23 +944,66 @@ def test_claim_tranche_writes_the_pinned_schema_once_and_in_order(tranches, repo
                                tranches_dir=repo)
 
 
-def test_load_tranche_opens_a_confirm_role_only_through_its_committed_claim(tranches, repo):
-    """I5.3: the only reader of ``tranches/<role>.jsonl`` for a confirm role, claim first.
+def test_load_tranche_opens_a_confirm_role_only_through_its_own_committed_claim(tranches, repo):
+    """R3.1: the reader's guarantee — the requested role's own claim in HEAD, unchanged.
 
-    ``confirm.1`` needs no claim (r24 item 4), so it reads at once; ``confirm.2`` waits for
-    ``confirm.1``'s claim to be committed, so no reader sees a tranche before it opened.
+    ``confirm.1``'s exemption from the predecessor chain is not permission to read it
+    unclaimed: every confirm role is opened by its own committed claim, needs its predecessor's
+    claim, and its manifest must be committed and unchanged. ``look`` has no claim.
     """
     rows = tranches.manifest_rows([_ident()], {_key(_ident()): "g1"})
-    for role in ("confirm.1", "confirm.2"):
+    for role in ("look", "confirm.1", "confirm.2"):
         (repo / f"{role}.jsonl").write_text(
             "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows), encoding="utf-8")
-    assert [row["row"] for row in tranches.load_tranche("confirm.1", repo)] == [1]
-    with pytest.raises(ValueError, match=r"confirm\.1"):
-        tranches.load_tranche("confirm.2", repo)  # no claim yet
-    tranches.claim_tranche("confirm.1", issue=195, commit=CLAIM_COMMIT, date="2026-11-02",
-                           tranches_dir=repo)
-    with pytest.raises(ValueError, match=r"confirm\.1"):
-        tranches.load_tranche("confirm.2", repo)  # claim not committed yet
     _git(repo, "add", ".")
-    _git(repo, "commit", "-q", "-m", "claim confirm.1 and the manifests")
+    _git(repo, "commit", "-q", "-m", "the manifests")
+    assert [row["row"] for row in tranches.load_tranche("look", repo)] == [1]
+
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.load_tranche("confirm.1", repo)  # no claim at all
+    path = _claim(repo, "confirm.1", stage=False)
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.load_tranche("confirm.1", repo)  # an untracked claim
+    _git(repo, "add", path.name)
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.load_tranche("confirm.1", repo)  # a staged, uncommitted claim
+    _git(repo, "commit", "-q", "-m", "claim confirm.1")
+    assert [row["row"] for row in tranches.load_tranche("confirm.1", repo)] == [1]
+
+    with pytest.raises(ValueError, match=r"confirm\.2"):
+        tranches.load_tranche("confirm.2", repo)  # its own claim is absent
+    path = _claim(repo, "confirm.2")
     assert [row["row"] for row in tranches.load_tranche("confirm.2", repo)] == [1]
+    path.write_text(json.dumps({"role": "confirm.2", "issue": 196, "commit": CLAIM_COMMIT,
+                                "date": "2026-11-03"}), encoding="utf-8")
+    with pytest.raises(ValueError, match=r"confirm\.2"):
+        tranches.load_tranche("confirm.2", repo)  # a claim changed after its commit
+
+    (repo / "confirm.1.jsonl").write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"confirm\.1"):
+        tranches.load_tranche("confirm.1", repo)  # an uncommitted manifest
+
+
+def test_the_committed_run_record_regenerates_the_manifests_without_a_log(
+        tranches, tmp_path, monkeypatch):
+    """R3.3: ``manifests`` takes the full pass time from the committed run record, not a log.
+
+    Regenerating is a re-slice of committed inputs: the five manifests and their uses must come
+    out byte-identical, so the committed data is reproducible without a private run log or a new
+    decode. The clean-tree gate has its own test; it is bypassed so a developer's tree is fine.
+    """
+    monkeypatch.setattr(tranches, "require_clean_tree", lambda: None)
+    record = json.loads((pool.DECODES_DIR / "slice_timing.json").read_text(encoding="utf-8"))
+    assert {"rows", "seconds", "includes_shard_streaming", "full_pass_seconds"} <= set(record)
+    tranches.manifests(tranches_dir=tmp_path / "tranches", exposure_dir=tmp_path / "exposure")
+    meta = json.loads((tmp_path / "tranches" / "meta.json").read_text(encoding="utf-8"))
+    assert meta["slice_timing"] == record
+    for role in ROLES:
+        for generated, committed in (
+                (tmp_path / "tranches" / f"{role}.jsonl",
+                 TLOG_DIR / "tranches" / f"{role}.jsonl"),
+                (tmp_path / "exposure" / f"tlog.{role}.clips.jsonl",
+                 exposure.EXPOSURE_DIR / f"tlog.{role}.clips.jsonl")):
+            assert (hashlib.sha256(generated.read_bytes()).hexdigest()
+                    == hashlib.sha256(committed.read_bytes()).hexdigest()), (
+                f"{role}: {generated.name} did not regenerate")

@@ -130,7 +130,7 @@ Publishing a new asset release is handled by the **`hifzguide-asset-release`** s
 ### Git
 
 - Include the co-author trailer for the harness that made the commit:
-  - Claude Code: `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>`
+  - Claude Code (any Claude model, including the `orchestrate` skill's Sonnet tester): `Co-Authored-By: Claude <noreply@anthropic.com>`
   - Copilot: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
   - omp (DeepSeek coder, via the user-level `orchestrate` skill): `Co-authored-by: DeepSeek V4 Flash (omp) <noreply@deepseek.com>`
 

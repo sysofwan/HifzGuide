@@ -538,3 +538,66 @@ def test_the_merge_refuses_a_part_row_outside_the_gating_selection(tmp_path):
     with pytest.raises(ValueError, match="base"):
         ted.merge_decodes(parts, tmp_path / "decodes", manifest_path=_manifest(tmp_path, rows),
                           provenance={}, models=("base",))
+
+
+# --- the merge's word span, and the committed artifact (read-only) -------------------------------
+
+
+def test_the_merge_writes_the_identified_span_and_counts_a_row_it_could_not_join(
+        tmp_path, monkeypatch):
+    rows = [_manifest_row(1), _manifest_row(2), _manifest_row(3, label=None, assigned_label="2:1")]
+    monkeypatch.setattr(ted, "ident_spans", lambda: {"2_1_1.flac#0": (3, 5)})
+    parts = tmp_path / "parts"
+    _write_jsonl(ted.decodes_path(parts, SHARD, "base"), [
+        {"key": "2_1_1.flac#0", "surah_ayah": "2:1", "word_from": 1, "word_to": 3,
+         "checks": []},
+        {"key": "2_1_2.flac#0", "surah_ayah": "2:1", "word_from": 1, "word_to": 3,
+         "checks": []},
+        {"key": "2_1_3.flac#0", "surah_ayah": None, "word_from": None, "word_to": None,
+         "checks": []}])
+    ted.merge_decodes(parts, tmp_path / "decodes", manifest_path=_manifest(tmp_path, rows),
+                      provenance={}, models=("base",))
+    with gzip.open(tmp_path / "decodes" / "tlog.look.base.jsonl.gz", "rt",
+                   encoding="utf-8") as handle:
+        lines = [json.loads(line) for line in handle]
+    assert [(line["word_from"], line["word_to"]) for line in lines] == [(3, 5), (1, 3),
+                                                                       (None, None)]
+    meta = json.loads((tmp_path / "decodes" / "meta.json").read_text(encoding="utf-8"))
+    assert meta["word_spans"]["identified"] == 1 and meta["word_spans"]["fallback"] == 1
+
+
+def _committed(model: str) -> list[dict]:
+    with gzip.open(ted.DECODES_ROOT / f"tlog.look.{model}.jsonl.gz", "rt",
+                   encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle]
+
+
+def test_the_committed_decodes_cover_the_gating_selection_once_with_checks_and_the_span():
+    gating = ted.gating_rows(ted.read_manifest("look"))
+    manifest = {ted.item_key(row["audio_path"]): row for row in gating}
+    spans = ted.ident_spans()
+    keys = {}
+    for model in ("base", "c95", "candidate_ema"):
+        lines = _committed(model)
+        keys[model] = [line["key"] for line in lines]
+        assert keys[model] == sorted(manifest)
+        assert len(set(keys[model])) == len(keys[model])
+        for line in lines:
+            assert "checks" in line and "spans" not in line and "stream_b0" not in line
+            assert (line["split"], line["stratum"]) == ("clean", "gating")
+            assert line["audio_sha256"] == manifest[line["key"]]["audio_sha256"]
+            assert (line["word_from"], line["word_to"]) == spans[line["key"]]
+    assert keys["base"] == keys["c95"] == keys["candidate_ema"]
+
+
+def test_the_committed_meta_cites_the_frozen_manifest_and_its_selection():
+    meta = json.loads((ted.DECODES_ROOT / "meta.json").read_text(encoding="utf-8"))
+    assert meta["models"] == ["base", "c95", "candidate_ema"]
+    assert meta["manifest_sha256"] == _sha256((TRANCHES_DIR / "look.jsonl").read_bytes())
+    assert meta["manifest_commit"] == "e11fbf52fef85adcadbad4cd468bdd37e6c4b944"
+    assert meta["manifest_rows"] == 2_853
+    assert meta["rows"] == {model: 2_853 for model in meta["models"]}
+    assert meta["stores"] == ["checks"]
+    assert (meta["processes"], meta["threads"]) == (6, 1)
+    assert meta["word_spans"]["identified"] == 2_853
+    assert meta["word_spans"]["fallback"] == 0

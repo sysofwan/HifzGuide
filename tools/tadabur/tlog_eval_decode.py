@@ -26,7 +26,8 @@ SHA-256, the teacher by the hub revision its loaded config resolved to.
 Parts go to ``<parts-dir>/tlog.look.<shard_file>.<model>.jsonl``, one file per shard and
 model, so a killed run resumes by key. ``merge`` gathers them into
 ``tools/tadabur/consonant2_readout/decodes/tlog.look.<model>.jsonl.gz`` with a ``meta.json``;
-every model must cover every selected row exactly once.
+every model must cover every selected row exactly once, and a labelled row's ``word_from``/
+``word_to`` become S6's identified span of the clip (the decode wrote the whole ayah).
 
 Usage, from ``tools/`` (GPU box, under ``flock /root/scratch/gpu.lock``)::
 
@@ -57,6 +58,7 @@ from training.aug_readout_gate import model_spec
 from training.aug_readout_spec import C95_SHA256, CANDIDATE_SHA256, CONSONANT1
 from training.external_decode import (ModelSpec, Recording, append_timing, decode_recordings,
                                       load_decoders)
+from training.nonpro_decode import item_key
 from training.truth_baseline import CHECK_STORE, DECODES_DIR, DEFAULT_MODELS, PROTOCOLS, Store
 
 #: The tranche this decoder reads; every other role is refused.
@@ -177,11 +179,6 @@ def gating_rows(rows: Sequence[Mapping]) -> list[dict]:
 # --- one shard, every model ---------------------------------------------------------------------
 
 
-def item_key(audio_path: str) -> str:
-    """A clip's one item, named as a QUD segment is (``<clip>#<segment>``)."""
-    return f"{audio_path}#0"
-
-
 def decodes_path(out_dir: Path, shard_file: str, model: str) -> Path:
     return Path(out_dir) / f"tlog.look.{shard_file}.{model}.jsonl"
 
@@ -273,6 +270,17 @@ def run_shard(shard_file: str, rows: Sequence[Mapping], out_dir: Path, decoders:
 # --- merging the parts --------------------------------------------------------------------------
 
 
+def ident_spans(directory: Path = IDENT_LOOK_DIR) -> dict[str, tuple[int, int]]:
+    """S6's identified word span of each look clip, keyed by its item.
+
+    The identified tree names the clip's own ``word_from``/``word_to`` (words of its ayah),
+    which is what the grader builds its reference from; a gating row's decode records the whole
+    ayah instead. The join is the row key the tree and the manifest share.
+    """
+    return {item_key(row["audio_path"]): (row["word_from"], row["word_to"])
+            for row in ident_rows(directory)}
+
+
 def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
                   provenance: Mapping, models: Sequence[str] = MODELS) -> dict:
     """Gather the per-shard parts into one sorted file per model, and write ``meta.json``.
@@ -282,9 +290,17 @@ def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
     Every model must hold each selected row exactly once: a missing, repeated or foreign row
     is a ``ValueError`` naming the model, so a partial run can never look complete. The merged
     files are gzipped without a timestamp (:func:`tlog_index.write_shard`), sorted by item key.
+
+    A labelled row's ``word_from``/``word_to`` become the clip's identified span
+    (:func:`ident_spans`), not the whole ayah's; a labelled row the identified tree does not
+    cover keeps the span its decode recorded, and ``meta["word_spans"]["fallback"]`` counts it.
     """
     selected = gating_rows(read_jsonl(Path(manifest_path)))
     expected = {item_key(row["audio_path"]) for row in selected}
+    labelled = {item_key(row["audio_path"]) for row in selected
+                if row["filename_label"] is not None}
+    spans = ident_spans()
+    identified = sorted(labelled & set(spans))
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     counts = {}
@@ -301,10 +317,19 @@ def merge_decodes(parts_dir: Path, out_dir: Path, *, manifest_path: Path,
             raise ValueError(f"{model}: {len(missing)} look rows missing "
                              f"(first {missing[:1]}), {len(extra)} not in the manifest "
                              f"(first {extra[:1]})")
+        for line in lines:
+            span = spans.get(line["key"]) if line.get("surah_ayah") is not None else None
+            if span is not None:
+                line["word_from"], line["word_to"] = span
         write_shard(lines, out_dir / f"tlog.look.{model}.jsonl.gz")
         counts[model] = len(lines)
     write_json({**provenance, "manifest_sha256": sha256_file(Path(manifest_path)),
-                "manifest_rows": len(expected), "models": list(models), "rows": counts},
+                "manifest_rows": len(expected), "models": list(models), "rows": counts,
+                "word_spans": {"rule": "the clip's S6 identified word_from/word_to "
+                                       "(tlog/ident/look), joined by the row key",
+                               "source": "tlog/ident/look",
+                               "identified": len(identified),
+                               "fallback": len(labelled) - len(identified)}},
                out_dir / "meta.json")
     return counts
 
@@ -327,6 +352,14 @@ def slice_verdict(slice_audio_s: float, slice_wall_s: float, total_audio_s: floa
             "limit_hours": limit_hours, "within_budget": projected <= limit_hours}
 
 
+def ident_rows(directory: Path = IDENT_LOOK_DIR) -> Iterator[dict]:
+    """S6's identified look rows, from the committed tree's shards (one per shard)."""
+    files = sorted(Path(directory).glob("*.jsonl.gz"))
+    if not files:
+        raise ValueError(f"{directory} holds no identified look tree")
+    return (row for path in files for row in read_jsonl_gz(path))
+
+
 def selection_audio_seconds(rows: Sequence[Mapping],
                             directory: Path = IDENT_LOOK_DIR) -> float:
     """The audio seconds of ``rows``, from S6's identified look tree's durations.
@@ -334,11 +367,7 @@ def selection_audio_seconds(rows: Sequence[Mapping],
     A selected row the tree does not cover is refused: a short total would understate the
     projection the run gates on.
     """
-    files = sorted(Path(directory).glob("*.jsonl.gz"))
-    if not files:
-        raise ValueError(f"{directory} holds no identified look tree")
-    durations = {row_key(row): row["duration_s"] for path in files
-                 for row in read_jsonl_gz(path)}
+    durations = {row_key(row): row["duration_s"] for row in ident_rows(directory)}
     keys = {row_key(row) for row in rows}
     missing = keys - set(durations)
     if missing:
@@ -369,6 +398,12 @@ def ayah_word_counts() -> Callable[[str], int]:
     return word_counts
 
 
+def run_identities(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict[str, dict]:
+    """The identity records ``load_decoders`` wrote for ``models`` into ``parts_dir``."""
+    return {name: json.loads((Path(parts_dir) / f"{name}.identity.json").read_text(
+        encoding="utf-8"))["identity"] for name in models}
+
+
 def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict:
     """The run's decoders, with every identity checked against its pin after the load."""
     parts_dir = Path(parts_dir)
@@ -378,9 +413,7 @@ def load_models(parts_dir: Path, models: Sequence[str] = RUN_MODELS) -> dict:
         raise ValueError(f"{sorted(unknown)[0]} is not a round-2 model {list(MODELS)}")
     specs = {name: spec for name, spec in model_specs().items() if name in models}
     decoders = load_decoders(lambda name: parts_dir / f"{name}.identity.json", specs)
-    identities = {name: json.loads((parts_dir / f"{name}.identity.json").read_text(
-        encoding="utf-8"))["identity"] for name in specs}
-    require_pinned_identities(identities, models)
+    require_pinned_identities(run_identities(parts_dir, models), models)
     return decoders
 
 
@@ -400,11 +433,17 @@ def _decode_shards(shards: Sequence[str], by_shard: Mapping[str, list[Mapping]],
 
 
 def _totals(timings: Sequence[Mapping], models: Sequence[str], stores: Mapping) -> dict:
-    """The shards' timings summed: shards, items, audio, wall and decode seconds."""
+    """The shards' timings summed: shards, items, audio, wall and decode seconds.
+
+    ``wall_seconds_summed_over_processes`` adds every shard's own wall, so with several
+    processes it is not the run's wall (the gate's ``slice_wall_s`` and the run's
+    ``elapsed_seconds`` are).
+    """
     return {"shards": len(timings),
             "items": sum(timing["items"] for timing in timings),
             "audio_seconds": round(sum(timing["audio_seconds"] for timing in timings), 1),
-            "wall_seconds": round(sum(timing["wall_seconds"] for timing in timings), 1),
+            "wall_seconds_summed_over_processes": round(
+                sum(timing["wall_seconds"] for timing in timings), 1),
             "decode_seconds": {model: {store: round(sum(
                 timing["decode_seconds"][model][store] for timing in timings), 1)
                 for store in stores}
@@ -463,19 +502,33 @@ def timing_totals(parts_dir: Path, models: Sequence[str] = RUN_MODELS,
 
 def run_provenance(parts_dir: Path, *, models: Sequence[str] = RUN_MODELS,
                    stores: Mapping = RUN_STORES, processes: int = RUN_PROCESSES,
-                   threads: int = RUN_THREADS, pull_request: int | None = None) -> dict:
+                   threads: int = RUN_THREADS, pull_request: int | None = None,
+                   elapsed_seconds: float | None = None,
+                   manifest_commit: str | None = None) -> dict:
     """What ``meta.json`` records of the run: code, models, the selection, its inputs, the
-    parallelism, the gate's verdict and the timings."""
+    parallelism, the gate's verdict and the timings.
+
+    The model pins are read from the parts' own identity records and checked against the
+    module's pins, so a parts dir carried from another run cannot cite weights this merge never
+    saw. ``manifest_commit`` is the commit main holds the frozen manifest at (the launcher
+    resolves it); without one the branch's last commit touching the file is recorded.
+    ``elapsed_seconds`` is the run's own wall, when the launcher measured it.
+    """
+    identities = run_identities(parts_dir, models)
+    require_pinned_identities(identities, models)
     gate = Path(parts_dir) / "gate_timing.json"
     return {**provenance(head_sha(), pull_request),
             "selection": f"{LOOK}.{GATING}",
             "stores": list(stores),
             "processes": processes,
             "threads": threads,
-            "base_revision": PINNED_BASE_REVISION if "base" in models else None,
-            "checkpoint_sha256": {name: sha for name, sha in PINNED_SHA256.items()
-                                  if name in models},
-            "manifest_commit": commit_of(TRANCHES_DIR / f"{LOOK}.jsonl"),
+            "elapsed_seconds": elapsed_seconds,
+            "base_revision": (identities["base"]["hub_revision"]
+                              if "base" in models else None),
+            "checkpoint_sha256": {name: identities[name]["checkpoint_sha256"]
+                                  for name in models if name in PINNED_SHA256},
+            "manifest_commit": (manifest_commit
+                                or commit_of(TRANCHES_DIR / f"{LOOK}.jsonl")),
             "tranche_meta_sha256": sha256_file(TRANCHES_DIR / "meta.json"),
             "gate": json.loads(gate.read_text(encoding="utf-8")) if gate.exists() else None,
             "timings": timing_totals(parts_dir, models, stores)}
@@ -508,6 +561,10 @@ def main() -> None:
     merge_.add_argument("--threads", type=int, default=RUN_THREADS)
     merge_.add_argument("--pr", type=int, default=None,
                         help="the PR whose refs/pull/<N>/head keeps the cited code SHA")
+    merge_.add_argument("--elapsed-seconds", type=float, default=None,
+                        help="the run's own wall, for meta.json")
+    merge_.add_argument("--manifest-commit", default=None,
+                        help="the commit main holds the frozen manifest at")
     args = parser.parse_args()
     if args.command == "decode":
         result = decode_shards(parts_dir=args.parts_dir, cache_dir=args.cache_dir,
@@ -523,7 +580,9 @@ def main() -> None:
                                provenance=run_provenance(
                                    args.parts_dir, models=args.models,
                                    processes=args.processes, threads=args.threads,
-                                   pull_request=args.pr),
+                                   pull_request=args.pr,
+                                   elapsed_seconds=args.elapsed_seconds,
+                                   manifest_commit=args.manifest_commit),
                                models=args.models)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
     # 3 is the launcher's "the gate stopped the run; post it" code.

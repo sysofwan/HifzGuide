@@ -1548,7 +1548,7 @@ def approve_margin(issue: int = 204, *, path: Path = MARGIN_APPROVAL_PATH,
     amendment's SHA-256, the committed calibration's ``b_u`` and today's date, after refusing a
     dirty tree or an existing record. The written file is committed; S6/S7 then load it.
     """
-    from .tlog_ident_confirm import require_committed  # lazy: one import direction at load
+    from .tlog_index import require_committed  # lazy: one import direction at load
 
     require_committed([MARGIN_AMENDMENT_PATH, FLOOR_PREREGISTRATION_PATH, calibration_path])
     if Path(path).exists():
@@ -1900,10 +1900,11 @@ def _bar(value: float | None) -> str:
 def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
     """The page's pool section: an indicative VAD speech histogram, not decode-bin membership.
 
-    The whole pool's decode lengths arrive with S7 (#192). S6 decoded the look half and a
-    2,000-row sample, and its amendment fixed the mode, not the pool's lengths; `speech_s` is
-    not a length either: characters per second vary between clips, so speech seconds say
-    nothing certain about a row's floor bin (a short row can still decode past 160 characters).
+    S7 (#192) decoded every usable confirm row, but its committed summaries report gating and
+    floor counts, not the pool's decode lengths; S6 decoded the look half and a 2,000-row sample,
+    and its amendment fixed the mode, not the lengths. `speech_s` is not a length either:
+    characters per second vary between clips, so speech seconds say nothing certain about a row's
+    floor bin (a short row can still decode past 160 characters).
     """
     pool = report["pool_lengths"]
     usable = pool["usable"]
@@ -1913,10 +1914,11 @@ def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
 
     return [
         "The floors are keyed on the **decode's** character length. The look half's longest "
-        "decode is 138 characters, so none reached `161-` and that bin has no floor. The whole "
-        "pool's decode lengths do not exist until S7 runs (#192): the S6 amendment decided the "
-        "mode (whole-clip up to a measured `D_max`, rows above it recorded as "
-        "`not_decoded:over_d_max`), not the pool's lengths. The only committed length fact for "
+        "decode is 138 characters, so none reached `161-` and that bin has no floor. S7 (#192) "
+        "decoded the confirm tranches, but its committed summaries report gating and floor "
+        "counts, not the pool's decode lengths: the S6 amendment decided the mode (whole-clip up "
+        "to a measured `D_max`, rows above it recorded as `not_decoded:over_d_max`), not the "
+        "lengths. The only committed length fact for "
         "the pool is the pass-1 VAD speech seconds (`speech_s`): the frozen view joins "
         "`speech_s` and the clip's `duration_s` as two distinct fields, this histogram uses the "
         "former and the whole-clip decode limit `D_max` applies to the latter (total clip "
@@ -1932,9 +1934,9 @@ def pool_length_lines(report: Mapping[str, Any]) -> list[str]:
         f"| > 30 s | {pool['over_30_s']:,} | {share(pool['over_30_s'])} |",
         f"| > 60 s | {pool['over_60_s']:,} | {share(pool['over_60_s'])} |",
         "",
-        f"The share of the {usable:,} usable rows whose decode lands in `161-` is unknown until "
-        "S7 decodes and measures normalised lengths (#192); this section claims nothing about "
-        "it. Until then no row in that bin is assigned or relabelled.",
+        f"The share of the {usable:,} usable rows whose decode lands in `161-` is not reported: "
+        "S7 (#192) reports gating and floor verdicts, not normalised lengths, so this section "
+        "claims nothing about it and no row in that bin is assigned or relabelled.",
     ]
 
 

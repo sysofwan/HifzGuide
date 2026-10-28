@@ -29,7 +29,7 @@ from training.tashkeel_eval import write_text_atomically
 
 from . import tlog_ident
 from .tlog_ident import BASE_MODEL, BASE_REVISION, NONE, identification_record, identify
-from .tlog_index import head_sha, provenance, sha256_file, write_shard
+from .tlog_index import head_sha, provenance, sha256_file, write_json, write_shard
 from .tlog_pass1 import read_jsonl_gz, shard_rows
 
 SCHEMA_VERSION = 1
@@ -40,6 +40,8 @@ NOT_DECODED = "not_decoded:over_d_max"
 LADDER = (60, 90, 120, 150, 180, 240, 300)
 HEADROOM_GIB = 1.5
 MEASURE_SEED = 19_100_620
+#: The amendment's stop: more than this share of a population's usable rows above D_max halts.
+D_MAX_STOP_SHARE = 0.01
 
 ROOT = Path(__file__).resolve().parents[2]
 IDENT_DIR = Path(__file__).parent / "tlog" / "ident"
@@ -117,6 +119,18 @@ def sample_rows(rows: Sequence[Mapping[str, Any]], *, count: int, salt: str) -> 
     """The first ``count`` rows by the salted rank of their key: the seeded sample."""
     ranked = sorted(rows, key=lambda row: rank(salt, *row_key(row)))
     return [dict(row) for row in ranked[:count]]
+
+
+def require_d_max_share(over_d_max: int, total: int, label: str) -> None:
+    """Stop when strictly more than :data:`D_MAX_STOP_SHARE` of ``label``'s rows exceed D_max.
+
+    One definition for S6's whole pool and S7's per-tranche recheck (r24 item 6): a slice may
+    not slip past the amendment's stop on the other slices' rows.
+    """
+    share = over_d_max / total if total else 0.0
+    if share > D_MAX_STOP_SHARE:
+        raise RuntimeError(f"{label}: {over_d_max} of {total} usable rows ({share:.2%}) are "
+                           f"above D_max, over the {D_MAX_STOP_SHARE:.0%} stop; ask the owner")
 
 
 # --- decode records and the one streaming pass -------------------------------------------------
@@ -339,6 +353,22 @@ def tree_census(counts: Mapping[tuple[str, str], int]) -> dict:
               if tlog_split(shard) in ("clean", "unclean")]
     return {f"{tlog_split(shard)}/{Path(shard).stem}": counts.get(
         (tlog_split(shard), Path(shard).stem), 0) for shard in shards}
+
+
+def write_tree(directory: Path, splits: Mapping[str, Sequence[Mapping[str, Any]]],
+               base: Mapping[str, Any]) -> None:
+    """Write one population's tree: a shard per split, sorted by row key, and its meta.
+
+    ``base`` is the meta's provenance; ``rows`` and ``census`` are computed from the rows
+    written here, so the census of one tree is never read off another's. S6's look tree and
+    S7's tranche trees share this, so the meta's shape changes in one place.
+    """
+    for split, rows in splits.items():
+        write_shard(sorted(rows, key=row_key), Path(directory) / f"{split}.jsonl.gz")
+    written = [row for rows in splits.values() for row in rows]
+    write_json({**base, "census": tree_census(count_by_shard(written)),
+                "rows": {split: len(rows) for split, rows in splits.items()}},
+               Path(directory) / "meta.json")
 
 
 def tree_provenance(pull_request: int | None = None) -> dict:

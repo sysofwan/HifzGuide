@@ -999,9 +999,9 @@ def test_approve_margin_writes_the_record_the_loader_accepts(ident, calibration,
     """r3: the approval needs a producer, not a hand-written JSON. The command records the live
     amendment's SHA-256 and the committed ``b_u``, refuses to overwrite, and the loader accepts
     exactly what it writes."""
-    import tadabur.tlog_ident_confirm as confirm
+    import tadabur.tlog_index as index
 
-    monkeypatch.setattr(confirm, "require_committed", lambda *args, **kwargs: None)
+    monkeypatch.setattr(index, "require_committed", lambda *args, **kwargs: None)
     path = tmp_path / "margin_approval.json"
     record = ident.approve_margin(204, path=path)
 

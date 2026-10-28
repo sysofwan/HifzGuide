@@ -63,13 +63,12 @@ from .tlog_pool import (
     tree_census,
     tree_provenance,
     with_keys,
+    write_tree,
 )
 
 #: The seeded sample's size and the 5% rule's limit (the pre-registration's "Training pool").
 SAMPLE_SIZE = 2_000
 FIVE_PERCENT_LIMIT = 0.05
-#: The amendment's stop: more than this share of the usable pool above D_max halts before S7.
-D_MAX_STOP_SHARE = 0.01
 #: The draw salt for the training sample and the audit (pinned in the amendment).
 SALT = "tlog-s6-2026-10-27-v1"
 #: The owner's approval of the S6 amendment. The frozen amendment says "requested"; the
@@ -142,15 +141,6 @@ def _provenance(pull_request: int | None = None) -> dict:
             "amendment_sha256": sha256_file(AMENDMENT_PATH)}
 
 
-def _require_d_max_share(counts: Mapping[str, int]) -> None:
-    """Stop before S7 when more than 1% of the usable pool is above D_max (r20 Q1)."""
-    total = counts["look_rows"] + counts["train_rows"]
-    over = counts["look_over_d_max"] + counts["train_over_d_max"]
-    if total and over / total > D_MAX_STOP_SHARE:
-        raise RuntimeError(f"{over} of {total} usable rows ({over / total:.2%}) are above "
-                           f"D_max, over the {D_MAX_STOP_SHARE:.0%} stop; ask the owner")
-
-
 def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
            scratch: Path | None = None, d_max: float | None = None,
            pull_request: int | None = None) -> dict:
@@ -159,7 +149,9 @@ def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
     limit = require_decode_preconditions()
     d_max = float(limit["d_max_seconds"] if d_max is None else d_max)
     selection = select(d_max=d_max)
-    _require_d_max_share(selection.counts)
+    counts = selection.counts
+    tlog_pool.require_d_max_share(counts["look_over_d_max"] + counts["train_over_d_max"],
+                                  counts["look_rows"] + counts["train_rows"], "the S6 pool")
     scratch = Path(scratch) if scratch is not None else Path(cache_dir).parent / "decoded"
     started = time.time()
     records = decode_rows([*selection.look, *selection.train_sample], d_max=d_max,
@@ -169,18 +161,12 @@ def decode(*, cache_dir: Path, out_dir: Path = DECODES_DIR,
     sample = []
     for row in records:
         (sample if row_key(row) in sample_keys else look[row["split"]]).append(row)
-    for split, rows in look.items():
-        write_shard(rows, out_dir / "look" / f"{split}.jsonl.gz")
-    write_shard(sample, out_dir / "train_sample.jsonl.gz")
     # Each meta's census counts the rows written to its own tree: ``rows`` and the census
     # must agree, so the provenance of one tree is never read off another's.
     base = {**_provenance(pull_request), "schema_version": SCHEMA_VERSION,
             "selection": {"salt": SALT, **selection.counts}}
-    look_census = tree_census(count_by_shard(
-        [row for split in ("clean", "unclean") for row in look[split]]))
-    write_json({**base, "census": look_census,
-                "rows": {split: len(rows) for split, rows in look.items()}},
-               out_dir / "look" / "meta.json")
+    write_tree(out_dir / "look", look, base)
+    write_shard(sample, out_dir / "train_sample.jsonl.gz")
     write_json({**base, "census": tree_census(count_by_shard(sample)),
                 "rows": len(sample)}, out_dir / "train_sample.meta.json")
     return {"look": {split: len(rows) for split, rows in look.items()},
@@ -248,14 +234,8 @@ def identify_trees(*, decodes_dir: Path = DECODES_DIR, out_dir: Path = IDENT_DIR
                 with_keys(not_decoded_record(row, d_max=d_max), row))
     sample = identify_rows(read_jsonl_gz(decodes_dir / "train_sample.jsonl.gz"),
                            database=database, bars=bars, k=k)
-    for split in ("clean", "unclean"):
-        write_shard(sorted(look_rows[split], key=row_key),
-                    out_dir / "look" / f"{split}.jsonl.gz")
-    write_json({**provenance, "schema_version": SCHEMA_VERSION,
-                "rows": {split: len(rows) for split, rows in look_rows.items()},
-                "census": tree_census(count_by_shard(
-                    [row for rows in look_rows.values() for row in rows]))},
-               out_dir / "look" / "meta.json")
+    write_tree(out_dir / "look", look_rows,
+               {**provenance, "schema_version": SCHEMA_VERSION})
     write_shard(sorted(sample, key=row_key), out_dir / "train_sample.jsonl.gz")
     rule = five_percent_rule(sample)
     decode_meta = json.loads((decodes_dir / "train_sample.meta.json").read_text(encoding="utf-8"))

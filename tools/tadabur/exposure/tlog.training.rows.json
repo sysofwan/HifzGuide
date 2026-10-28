@@ -1,0 +1,9 @@
+{
+ "count": 426825,
+ "overlay_commit": "d9e3834d8d40a17b69cae275dd3a597034ad7d5a",
+ "predicate": {
+  "code": "tadabur.tlog_pool.training_rows",
+  "text": "role == train and usable: not excluded (codec_ok and not silence, no S1 tarteel_v1 id overlap, no S4 eval_overlap and no S4 duplicate), the pool view of tadabur.tlog_overlap.iter_pool_rows"
+ },
+ "rows_sha256": "6a608bc72ffa54bebe7402c6ff91bfbb72f89866c469822729761d0facf7cb58"
+}

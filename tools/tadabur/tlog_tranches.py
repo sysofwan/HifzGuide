@@ -330,15 +330,32 @@ def _require_in_head(path: Path, *, what: str) -> None:
 # --- the committed tree readers -----------------------------------------------------------------
 
 
-def split_group_keys(roles: Sequence[str] = ROLES,
-                     split_dir: Path = SPLIT_DIR) -> dict[tuple[str, str, int], str]:
-    """Every manifest role's ``group_key`` from the committed split tree, by row key."""
-    keys: dict[tuple[str, str, int], str] = {}
+def _split_rows(roles: Sequence[str], split_dir: Path):
+    """The committed split tree's rows of ``roles``, file by file."""
     for path in sorted(Path(split_dir).glob("*/*.jsonl.gz")):
         for row in read_jsonl_gz(path):
             if row["role"] in roles:
-                keys[tlog_pool.row_key(row)] = row["group_key"]
-    return keys
+                yield row
+
+
+def split_group_keys(roles: Sequence[str] = ROLES,
+                     split_dir: Path = SPLIT_DIR) -> dict[tuple[str, str, int], str]:
+    """Every manifest role's ``group_key`` from the committed split tree, by row key."""
+    return {tlog_pool.row_key(row): row["group_key"] for row in _split_rows(roles, split_dir)}
+
+
+def split_groups(roles: Sequence[str] = ROLES,
+                 split_dir: Path = SPLIT_DIR) -> dict[str, set[str]]:
+    """Each role's ``group_key``s, keyed by its exposure use (``tlog.<role>``).
+
+    The group is the leakage unit of S4's overlap screen (``tlog/overlap/``): two rows of one
+    group are held-out together, so a training row in a group an evaluation role holds is a
+    leak even when the rows differ.
+    """
+    groups: dict[str, set[str]] = {f"tlog.{role}": set() for role in roles}
+    for row in _split_rows(roles, split_dir):
+        groups[f"tlog.{row['role']}"].add(row["group_key"])
+    return groups
 
 
 def overlay_commit() -> dict:

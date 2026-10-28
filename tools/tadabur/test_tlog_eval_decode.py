@@ -599,5 +599,18 @@ def test_the_committed_meta_cites_the_frozen_manifest_and_its_selection():
     assert meta["rows"] == {model: 2_853 for model in meta["models"]}
     assert meta["stores"] == ["checks"]
     assert (meta["processes"], meta["threads"]) == (6, 1)
+    assert meta["elapsed_seconds"] == 4_265.0
     assert meta["word_spans"]["identified"] == 2_853
     assert meta["word_spans"]["fallback"] == 0
+
+
+def test_the_provenance_reads_the_parts_identity_records_and_refuses_a_wrong_pin(tmp_path):
+    identities = _identities()
+    for name in ("base", "c95"):
+        (tmp_path / f"{name}.identity.json").write_text(
+            json.dumps({"identity": identities[name]}), encoding="utf-8")
+    (tmp_path / "c95.identity.json").write_text(json.dumps(
+        {"identity": {"model_ref": "/ckpt/c95.pt", "checkpoint_sha256": "0" * 64}}),
+        encoding="utf-8")
+    with pytest.raises(ValueError, match="c95"):
+        ted.run_provenance(tmp_path, models=("base", "c95"))

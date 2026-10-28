@@ -243,6 +243,15 @@ def write_jsonl(rows: Iterable[Mapping[str, object]], path: Path, *,
     _write_atomically(path, text.encode("utf-8"))
 
 
+def write_json(record: Mapping[str, object], path: Path) -> None:
+    """Write one JSON record atomically, indent 1 and sorted keys: a tlog ``meta.json``.
+
+    Every tlog meta uses this shape, so a meta diff shows only what changed.
+    """
+    text = json.dumps(dict(record), ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+    _write_atomically(path, text.encode("utf-8"))
+
+
 def _write_atomically(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")

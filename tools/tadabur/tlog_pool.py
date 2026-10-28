@@ -210,13 +210,16 @@ def decoder():
 
 
 def decode_rows(rows: Iterable[Mapping[str, Any]], *, d_max: float, cache_dir: Path,
-                scratch: Path, already: Iterable[Mapping[str, Any]] = ()) -> list[dict]:
+                scratch: Path, already: Iterable[Mapping[str, Any]] = (),
+                teacher=None) -> list[dict]:
     """Decode ``rows`` whole-clip, streaming each shard once; return them in row-key order.
 
     ``already`` is committed decode rows to reuse verbatim: a row S6 decoded is never decoded
     again, so a pool tree agrees bit for bit with the rows the audit heard. ``scratch`` keeps one
     file per streamed shard, stamped with the exact wanted keys and D_max, so a rerun reads what
     a previous one wrote instead of spending GPU time again; a stale scratch is refused.
+    ``teacher`` is the model :func:`decoder` returned, when the caller loaded it itself (S7
+    records its identity in the meta): loaded here otherwise, never a second copy.
     """
     wanted = sorted(rows, key=row_key)
     for row in wanted:
@@ -243,7 +246,7 @@ def decode_rows(rows: Iterable[Mapping[str, Any]], *, d_max: float, cache_dir: P
                                                      sort_keys=True) + "\n")
     decoded: dict[tuple[str, str, int], dict] = {}
     if by_shard:
-        teacher, _identity, _fingerprint = decoder()
+        teacher = decoder() if teacher is None else teacher
         started = time.time()
         for position, ((split, stem), shard_wanted) in enumerate(sorted(by_shard.items()),
                                                                  start=1):

@@ -136,7 +136,14 @@ QUD_USES = frozenset({QUD_CORRECT_RECITATION})
 #: evaluation only. Hub dataset clips, a use of their own shape (:class:`ClipExposure`,
 #: ``exposure/<use>.clips.jsonl``).
 NONPRO_EVALUATION = "nonpro.evaluation_only"
-CLIP_USES = frozenset({NONPRO_EVALUATION})
+#: The tlog hold-out's five roles (#192, S7): ``look`` and the four sealed ``confirm``
+#: tranches, each a use of its whole role — every usable row, whatever its stratum — so a
+#: future consonant round can open one tranche knowing what was reserved. A tranche's rows are
+#: committed in ``tlog/tranches/<role>.jsonl`` and written here by
+#: ``python -m tadabur.tlog_tranches manifests``.
+TLOG_USES = frozenset({f"tlog.{role}" for role in
+                       ("look", "confirm.1", "confirm.2", "confirm.3", "confirm.4")})
+CLIP_USES = frozenset({NONPRO_EVALUATION}) | TLOG_USES
 #: Every use of audio from outside Tadabur. Each is evaluation only, and holds no Tadabur
 #: recording: :func:`check_disjoint` refuses to certify anything with one.
 EXTERNAL_USES = QUD_USES | CLIP_USES
@@ -602,10 +609,11 @@ def check_disjoint(
         raise ValueError(f"by must be 'reciter' or 'source', not {by!r}")
     registry = registry or load_registry()
     if external := {use, *others} & EXTERNAL_USES:
-        raise ValueError(f"{sorted(external)}: an external use (QUD, #156's corpora) is "
-                         "evaluation only and holds no Tadabur recording, so it certifies no "
-                         "training use; its overlap with Tadabur is an audio check's "
-                         "(qud_eval/overlap_results.json, nonpro_eval/overlap.json)")
+        raise ValueError(f"{sorted(external)}: an external use (QUD, #156's corpora, #192's "
+                         "tlog tranches) is evaluation only and holds no Tadabur recording, so "
+                         "it certifies no training use; its overlap with Tadabur is an audio "
+                         "check's (qud_eval/overlap_results.json, nonpro_eval/overlap.json, "
+                         "tlog/overlap/)")
     for name in (use, *others):
         registry._require(name)
     problems = []

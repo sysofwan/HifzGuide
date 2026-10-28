@@ -443,3 +443,51 @@ python -m tadabur.tlog_audit_ui --worklist tools/tadabur/tlog/audit/worklist.jso
 # tools/tadabur/tlog/audit/verdicts.jsonl, then `report` renders the doc from the committed copy.
 python -m tadabur.tlog_audit report --audio-dir /root/scratch/tlog/s6/audio
 ```
+
+## The S7 confirm tranches, manifests and eval uses (#192)
+
+`tadabur.tlog_tranches` applies S5's frozen identification **mechanically** to `confirm.1` …
+`confirm.4` with the base teacher only, and writes the five manifests of the hold-out. Its
+rules are `docs/tlog-gating-amendment.md` (owner-approved 2026-10-28; it REPLACES the frozen
+pre-registration's gating rule) plus the S6 amendment's decode mode
+(`docs/tlog-s6-amendment.md` §1) — both never edited in place.
+
+- **Decode:** every usable row of each confirm tranche, whole-clip up to D_max; a row above it
+  is `not_decoded:over_d_max` with no label and no floor verdict. The 1% D_max stop is checked
+  **per tranche**. `look` is not decoded again: S7 reuses S6's trees verbatim.
+- **The teacher:** only `tlog_pool.decoder()` (`obadx/muaalem-model-v3_2@01a1ef9f`). No
+  student, C95 or candidate model may decode a confirm row; a locked AST test checks the
+  module's imports, and the trees' metas record the base model and revision.
+- **Manifest rows:** one per usable row of a role, never omitted, with the row key,
+  `audio_sha256`, `group_key` (the bootstrap cluster, from `split/`), `filename_label`,
+  `assigned_label`, `label_source`, `straddles`, `decode_mode`, `id_floor_ok` and one
+  `stratum`. The strata are single-valued in a fixed precedence: `reported:unclean`, then
+  `reported:undecided` (`label_source == none`), then `reported:straddles`, then `gating`
+  (`label_source == both` — amendment §1), then `reported:identified`, then
+  `reported:below_bar` (the old below-bar rows). `tranches/meta.json` counts every stratum per
+  role, plus `gating ∧ id_floor_ok` (amendment §5's sensitivity line), the gating surah count
+  (the cluster count), the pre-registration, amendment, calibration and decode-limit SHAs, the
+  split/overlap overlay commits and the timed slice.
+- **Eval uses:** `exposure/tlog.<role>.clips.jsonl` lists **every** manifest row of the role —
+  the whole role is reserved for evaluation, whatever its stratum. `surah_ayah` is the assigned
+  label or `unknown`, the dataset is `tarteel-ai/tlog` at the recorded revision, and the reciter
+  is `unknown`. One clip carrying two ayahs inside a use, or appearing in two uses, is an error.
+- **Claim order:** a future round writes `tranches/<role>.claim.json`
+  (`{role, issue, commit, date}`) when it opens a tranche; `require_claim_order` refuses
+  `confirm.k` until `confirm.(k-1)` is claimed, so one round may claim two consecutive
+  tranches. S7 writes no claim.
+- **Sealed discipline:** logs, failure messages and the PR carry aggregate counts and row keys
+  only — never a label, a decode or audio. Nobody listens to or inspects a tranche's items.
+
+Trees follow S6's layout (`ident/decodes/confirm.k/` and `ident/confirm.k/`); this is a
+deliberate deviation from the issue's `tlog/decodes/`, so one tree layout serves both slices.
+`ident/confirm/` (S5b's Common Voice and Freesound) is a different population: a tree is read by
+its exact name, never a `confirm*` glob (a test enforces it).
+
+```bash
+# GPU box, from tools/; `scripts/issue-192-ident.sh` drives these detached (decode holds
+# /root/scratch/gpu.lock). Commit the decodes, then the ident trees, then run manifests.
+python -m tadabur.tlog_tranches decode --cache-dir /root/scratch/tlog/s7/cache --pr 211
+python -m tadabur.tlog_tranches identify --pr 211
+python -m tadabur.tlog_tranches manifests --pr 211
+```

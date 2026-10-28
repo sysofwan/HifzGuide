@@ -18,6 +18,11 @@
 # `decode launch` refuses unless PR #211 is merged (origin/main holds the look manifest), the
 # worktree is clean, and the slice's projection fits the 8 h budget. A slice over budget
 # writes `logs/slice.needs-post` and exits 3: the orchestrator decides, nothing auto-continues.
+#
+# The slice's record is a SERIAL projection (one decode process over the look rows). The full
+# pass runs PARALLEL processes with disjoint shards — CPU-bound work that scales with cores —
+# so its wall time is roughly the projection over PARALLEL. An over-budget record still stops
+# the launch; OVER_BUDGET=1 is the orchestrator's explicit decision to continue anyway.
 set -euo pipefail
 
 HOST=${HOST:-root@cuda-dev}
@@ -32,6 +37,8 @@ PARTS=$ROOT/parts
 OUT=tools/tadabur/consonant2_readout/decodes
 MANIFEST=tools/tadabur/tlog/tranches/look.jsonl
 PARALLEL=${PARALLEL:-2}
+#: torch threads per decode process: the box's 12 cores shared by PARALLEL processes.
+OMP_THREADS=${OMP_THREADS:-6}
 SLICE_ROWS=${SLICE_ROWS:-500}
 # The PR that keeps the cited code SHA resolvable after the squash merge (refs/pull/<N>/head).
 PR=${PR:-}
@@ -97,7 +104,8 @@ run() {
   cd '$REPO/tools' || return 1
   pids=()
   for index in \$(seq 0 $((PARALLEL - 1))); do
-    python -u -m tadabur.tlog_eval_decode decode --parts-dir '$PARTS' --cache-dir '$CACHE' \\
+    env OMP_NUM_THREADS=$OMP_THREADS python -u -m tadabur.tlog_eval_decode decode \\
+        --parts-dir '$PARTS' --cache-dir '$CACHE' \\
         --shard-index \"\$index\" --shard-count $PARALLEL &
     pids+=(\"\$!\")
   done
@@ -124,9 +132,12 @@ require_within_budget() {
   local verdict
   verdict=$(remote "source '$CONDA' && conda activate $ENV_NAME && python -c \"import json; print(json.load(open('$PARTS/slice_timing.json'))['within_budget'])\"" 2>/dev/null) \
     || { echo "no slice record on $HOST; run '$0 slice launch' first" >&2; return 1; }
-  [ "$verdict" = "True" ] \
-    || { echo "the slice projected the full pass over the 8 h budget; post it and wait" >&2;
-         return 1; }
+  echo "slice verdict: $(remote "cat '$PARTS/slice_timing.json'")"
+  if [ "$verdict" != "True" ] && [ "${OVER_BUDGET:-0}" != "1" ]; then
+    echo "the slice projected the full pass over the 8 h budget; post it and wait" >&2
+    echo "  the orchestrator continues explicitly with OVER_BUDGET=1" >&2
+    return 1
+  fi
 }
 
 launch() {

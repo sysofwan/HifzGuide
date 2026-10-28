@@ -77,6 +77,14 @@
   "plain-p6": 148.0,
   "shared-p6": 139.2
  },
+ "repeats_p6": {
+  "shared_wall_seconds": [149, 150, 150],
+  "plain_wall_seconds": [161, 157, 157],
+  "shared_mean_wall_seconds": 149.7,
+  "plain_mean_wall_seconds": 158.3,
+  "wall_saving_percent_per_repeat": [7.5, 4.5, 4.5],
+  "mean_wall_saving_percent": 5.4
+ },
  "profile": {
   "warmup_shards": ["clean-00000-of-00411"],
   "shard_files": [

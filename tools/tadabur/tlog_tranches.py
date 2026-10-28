@@ -206,7 +206,7 @@ def exposure_rows(rows: Iterable[Mapping[str, Any]]) -> list[ClipExposure]:
 
 
 def require_disjoint_uses(uses: Mapping[str, Iterable[ClipExposure]]) -> None:
-    """Refuse a clip in two uses: cross-tranche leakage S4's overlap screen should have excluded."""
+    """Refuse a clip in two uses: cross-tranche leakage that S4's overlap screen excludes."""
     owner: dict[tuple[str, str], str] = {}
     for use, clips in uses.items():
         for clip in clips:

@@ -10,6 +10,13 @@ The population, the sampling salt and the 5% rule belong to S6 and live in
 :mod:`tadabur.tlog_ident_run`; the audit belongs to :mod:`tadabur.tlog_audit`. Nothing here
 knows either.
 
+S8 (#193) adds the pool's training side: :data:`TRAINING_PREDICATE` selects the usable
+``train`` rows, :func:`load_training_rows` re-materialises them from the committed overlay and
+verifies the row-set use's count and hash, and :func:`iter_training_rows` streams their audio
+shard by shard, deleting each shard after use. The predicate has no recitation term: the
+owner-approved gating amendment (2026-10-28 §4) leaves the training pool unfiltered by S6's
+rule, so nothing decodes the pool to select it.
+
 Every tree is written by :func:`tadabur.tlog_index.write_shard` (sorted keys, ``mtime`` 0) and
 every meta by :func:`tree_provenance`, so the cited commit survives the squash merge under
 ``refs/pull/<N>/head``. No audio is kept: a shard is streamed once and dropped.
@@ -19,15 +26,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import time
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from training.tashkeel_eval import write_text_atomically
 
-from . import tlog_ident
+from . import exposure, tlog_ident
+from .nonpro_sources import audio_sha256
 from .tlog_ident import BASE_MODEL, BASE_REVISION, NONE, identification_record, identify
 from .tlog_index import head_sha, provenance, sha256_file, write_json, write_shard
 from .tlog_pass1 import read_jsonl_gz, shard_rows
@@ -47,6 +56,27 @@ ROOT = Path(__file__).resolve().parents[2]
 IDENT_DIR = Path(__file__).parent / "tlog" / "ident"
 DECODES_DIR = IDENT_DIR / "decodes"
 DECODE_LIMIT_PATH = IDENT_DIR / "decode_limit.json"
+
+#: The tlog overlay's data (#193): the four per-row trees and the silence floors. A row-set
+#: use cites the commit that last touched these, and the loader refuses an overlay that has
+#: moved from it -- the overlay is the training pool's input, not a scratch tree.
+OVERLAY_PATHS = (
+    "tools/tadabur/tlog/index",
+    "tools/tadabur/tlog/pass1",
+    "tools/tadabur/tlog/split",
+    "tools/tadabur/tlog/overlap",
+    "tools/tadabur/tlog/silence_floors.json",
+)
+#: The training use's predicate, as committed in its row-set file: what
+#: :func:`training_rows` applies and what the loader checks the file against. It has no
+#: recitation term -- the owner-approved gating amendment (2026-10-28 §4) leaves the training
+#: pool unfiltered by S6's ``non_recitation`` rule, so the pool is never decoded to filter it.
+TRAINING_PREDICATE = {
+    "text": "role == train and usable: not excluded (codec_ok and not silence, no S1 "
+            "tarteel_v1 id overlap, no S4 eval_overlap and no S4 duplicate), the pool view of "
+            "tadabur.tlog_overlap.iter_pool_rows",
+    "code": "tadabur.tlog_pool.training_rows",
+}
 
 
 def row_key(row: Mapping[str, Any]) -> tuple[str, str, int]:
@@ -421,3 +451,180 @@ def measure_decode_limit(*, seed: int = MEASURE_SEED) -> dict:
             "batch_size": 1, "model": BASE_MODEL, "revision": BASE_REVISION,
             "ladder": list(LADDER), "rungs": rungs, "d_max_seconds": d_max,
             "headroom_gib": chosen["headroom_gib"]}
+
+
+# --- the training pool (#193, S8) --------------------------------------------------------------
+
+
+def training_rows(pool_rows: Iterable[Mapping[str, Any]]) -> list[dict]:
+    """:data:`TRAINING_PREDICATE` applied: the usable ``train`` rows, in row-key order.
+
+    ``usable`` is :func:`tadabur.tlog_overlap.iter_pool_rows`' flag -- no exclusion at all
+    (codec, silence, S1's tarteel_v1 id overlap, S4's eval overlap or duplicate) -- so the
+    predicate is one field, not a re-derivation of the union. Every other role is a sealed
+    evaluation tranche and never trains.
+    """
+    return sorted((row for row in pool_rows if row["role"] == "train" and row["usable"]),
+                  key=row_key)
+
+
+def rows_digest(rows: Iterable[Mapping[str, Any]]) -> str:
+    """The row-set use's ``rows_sha256``: the SHA-256 of the sorted keys, ``split:shard:row``
+    per line. Sorting the keys makes it independent of the input's order.
+    """
+    text = "".join(f"{split}:{shard}:{row}\n"
+                   for split, shard, row in sorted(row_key(row) for row in rows))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+
+
+def overlay_data_commit(repo: Path = ROOT) -> str:
+    """The last commit touching :data:`OVERLAY_PATHS`: what a row-set use cites.
+
+    The overlay's code SHAs (``tlog_tranches.overlay_commit``) say which builders wrote the
+    trees; this says which commit holds the data, which is what a row can be re-materialised
+    from. The branch is squash-merged, so the commit survives on ``main``.
+    """
+    result = _git(repo, "log", "-1", "--format=%H", "--", *OVERLAY_PATHS)
+    commit = result.stdout.strip()
+    if result.returncode != 0 or not commit:
+        raise ValueError(f"{repo} has no commit touching the tlog overlay data")
+    return commit
+
+
+def require_overlay_at(commit: str, repo: Path = ROOT) -> None:
+    """Refuse unless the working tree's overlay is exactly ``commit``'s.
+
+    A modified, deleted or untracked overlay file refuses, as does any later commit that
+    touched it: the rows a use file names are the rows of the overlay it cites.
+    """
+    if _git(repo, "cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
+        raise ValueError(f"{repo} has no overlay commit {commit}")
+    if _git(repo, "diff", "--quiet", commit, "--", *OVERLAY_PATHS).returncode != 0:
+        raise ValueError(f"the tlog overlay has moved from {commit}")
+    status = _git(repo, "status", "--porcelain", "--untracked-files=all", "--", *OVERLAY_PATHS)
+    if status.returncode != 0 or status.stdout.strip():
+        raise ValueError(f"the tlog overlay has uncommitted changes from {commit}:\n"
+                         f"{status.stdout}")
+
+
+def empty_training_use(repo: Path = ROOT) -> exposure.RowSetExposure:
+    """A row-set use with no rows: the shape a registry records for an unused use."""
+    return exposure.RowSetExposure(overlay_data_commit(repo), dict(TRAINING_PREDICATE), 0,
+                                   rows_digest([]))
+
+
+def load_training_rows(registry: exposure.ExposureRegistry | None = None, *,
+                       pool_rows: Iterable[Mapping[str, Any]] | None = None,
+                       repo: Path = ROOT) -> list[dict]:
+    """The committed ``tlog.training`` rows, re-materialised from the overlay and verified.
+
+    The use file records the overlay commit, the predicate, the count and the hash; here the
+    overlay of that commit is checked to be the working tree's, the predicate to be
+    :data:`TRAINING_PREDICATE`, and the rows the predicate selects to have exactly the recorded
+    count and hash. ``pool_rows`` is the pool read (default
+    :func:`tadabur.tlog_overlap.iter_pool_rows`, one full pass); a use with no file raises
+    :class:`tadabur.exposure.ExposureIncomplete` -- absent evidence is not an empty pool.
+    """
+    registry = exposure.load_registry() if registry is None else registry
+    use = registry.row_sets.get(exposure.TLOG_TRAINING)
+    if use is None:
+        raise exposure.ExposureIncomplete(
+            f"{exposure.TLOG_TRAINING} has no file in the registry: write it (empty if the "
+            "training pool has no rows) before reading it")
+    require_overlay_at(use.overlay_commit, repo)
+    if dict(use.predicate) != TRAINING_PREDICATE:
+        raise ValueError(f"{exposure.TLOG_TRAINING}: the recorded predicate is "
+                         f"{use.predicate}, not {TRAINING_PREDICATE}")
+    if pool_rows is None:
+        from .tlog_overlap import iter_pool_rows
+
+        pool_rows = iter_pool_rows()
+    rows = training_rows(pool_rows)
+    if len(rows) != use.count:
+        raise ValueError(f"{exposure.TLOG_TRAINING}: the overlay has {len(rows)} training rows, "
+                         f"not the recorded count {use.count}")
+    if (digest := rows_digest(rows)) != use.rows_sha256:
+        raise ValueError(f"{exposure.TLOG_TRAINING}: rows_sha256 is {digest}, not the recorded "
+                         f"{use.rows_sha256}")
+    return rows
+
+
+def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
+                       cache_dir: Path, stream=None,
+                       load_audio=None) -> Iterator[tuple[tuple[str, str, int], Any]]:
+    """Stream the training rows' audio, one shard at a time and then deleted (#193).
+
+    Yields ``((split, shard_file, row), samples)`` for exactly ``rows`` (default:
+    :func:`load_training_rows`, the verified committed use), shard by shard in
+    ``(split, shard_file)`` order and row order within a shard. Each shard is read once and
+    dropped -- the disk budget is an invariant. The shard is deleted when the reader is
+    exhausted, when it is closed (:meth:`close`), and when it raises (a checksum mismatch, a
+    wanted row the shard lacks); a consumer that raises inside its own loop never resumes the
+    reader, so it must hold it in :func:`contextlib.closing` (or close it in a ``finally``) or
+    the download is dropped only when the generator is finalised. ``stream`` is the row source
+    (default :func:`tadabur.tlog_pass1.shard_rows` at the pinned revision, downloading into
+    ``cache_dir``) and ``load_audio`` the decoder (default :func:`default_audio`, 16 kHz mono
+    float32). A row outside :data:`TRAINING_PREDICATE` refuses before any shard is read; a
+    checksum mismatch refuses before that row is decoded, and a wanted row the shard lacks
+    refuses after it.
+
+    The first log line reports the rows, their windows per clip at the round-2 stream's 5 s
+    window and 2.5 s hop, and the total, so a run's example count is visible before the first
+    window is cut.
+    """
+    rows = load_training_rows() if rows is None else rows
+    wanted = sorted(rows, key=row_key)
+    if outside := next((row for row in wanted
+                        if row["role"] != "train" or not row["usable"]), None):
+        raise ValueError(f"{row_key(outside)} is not a training row: "
+                         f"{TRAINING_PREDICATE['text']}")
+    windows = [_windows_per_clip(row) for row in wanted]
+    print(f"[training] {len(wanted)} rows, windows per clip: "
+          f"{sum(windows) / len(windows) if windows else 0.0:.1f} at a 5.0 s window and a "
+          f"2.5 s hop, {sum(windows)} windows", flush=True)
+    by_shard: dict[tuple[str, str], list[Mapping[str, Any]]] = defaultdict(list)
+    for row in wanted:
+        by_shard[(row["split"], row["shard_file"])].append(row)
+    open_shard = (lambda shard: shard_rows(shard, Path(cache_dir))) if stream is None else stream
+    load = default_audio if load_audio is None else load_audio
+    for _split, stem in sorted(by_shard):
+        yield from _training_shard_rows(f"data/{stem}.parquet", by_shard[(_split, stem)],
+                                        open_shard=open_shard, load=load)
+
+
+def _windows_per_clip(row: Mapping[str, Any]) -> int:
+    """The round-2 stream's windows for one clip: 5 s windows at a 2.5 s hop."""
+    from training.distill_data import SAMPLE_RATE, window_starts
+
+    return len(window_starts(int(round(row["duration_s"] * SAMPLE_RATE))))
+
+
+def _training_shard_rows(shard: str, wanted: Sequence[Mapping[str, Any]], *, open_shard,
+                         load) -> Iterator[tuple[tuple[str, str, int], Any]]:
+    """One shard's wanted rows, in row order; the shard source is closed even on a raise."""
+    by_index = {row["row"]: row for row in wanted}
+    found: set[int] = set()
+    items = open_shard(shard)
+    try:
+        for index, item in enumerate(items):
+            row = by_index.get(index)
+            if row is None:
+                continue
+            data = item["audio"]["bytes"]
+            checksum = audio_sha256(data)
+            if checksum != row["audio_sha256"]:
+                raise ValueError(f"{row_key(row)} is {checksum}, not the recorded "
+                                 f"{row['audio_sha256']}")
+            found.add(index)
+            yield row_key(row), load(data)
+    finally:
+        # The shard reader is a generator that deletes its download in a ``finally``, so the
+        # close is what drops the shard when the consumer stops early or a row raises.
+        if (close := getattr(items, "close", None)) is not None:
+            close()
+    if missing := sorted(set(by_index) - found):
+        raise ValueError(f"{shard}: rows {missing} were not in the streamed shard")

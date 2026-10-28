@@ -561,7 +561,10 @@ def test_a_clip_use_round_trips_and_is_refused_as_evidence_of_disjointness(tmp_p
 def test_every_external_use_is_declared_and_missing_until_written(tmp_path):
     assert exposure.TLOG_USES == {"tlog.look", "tlog.confirm.1", "tlog.confirm.2",
                                   "tlog.confirm.3", "tlog.confirm.4"}
-    assert EXTERNAL_USES == QUD_USES | {NONPRO_EVALUATION} | exposure.TLOG_USES
+    # #193 amends the S7-era equality: tlog.training joins the external uses (the one external
+    # use that may train), so every external use is no longer evaluation only.
+    assert EXTERNAL_USES == (QUD_USES | {NONPRO_EVALUATION} | exposure.TLOG_USES
+                             | {exposure.TLOG_TRAINING})
     write_use(WAQF, [_row()], tmp_path)
     assert NONPRO_EVALUATION in load_registry(tmp_path).missing()
 

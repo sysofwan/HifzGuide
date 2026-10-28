@@ -99,12 +99,18 @@ Publishing a new asset release is handled by the **`hifzguide-asset-release`** s
 ### Tests (`tools/`)
 
 - One command, from the repo root: `scripts/test.sh` (inner loop — everything but the `slow`
-  tier, thread-pinned xdist). Before a merge run `scripts/test.sh --full`. Both resolve the test
-  interpreter themselves: the worktree's `.venv-test`, else the primary checkout's, else
+  tier, thread-pinned xdist); `scripts/test.sh --full` adds the `slow` tier. Both resolve the
+  test interpreter themselves: the worktree's `.venv-test`, else the primary checkout's, else
   `python`; `TEST_PYTHON` overrides, `TEST_WORKERS` sets the worker count (default 6).
+- The full run is a judgment call, not a fixed merge gate. Before a merge, the reviewer decides
+  whether the change needs it: yes when it could break code the targeted tests don't exercise
+  (shared modules or helpers, public interfaces, test infrastructure such as `conftest.py`,
+  fixtures, `pytest.ini` or `scripts/test.sh`, dependencies, or data, schemas and generated
+  artifacts other code reads); no when it stays inside code the targeted tests cover, or is
+  docs-only.
 - Mark a test `@pytest.mark.slow` only when it regenerates a full-corpus artifact or re-derives
-  a whole frozen result (a parity pass); the tier is declared in `tools/pytest.ini` and the
-  merge gate always runs it. See `tools/README.md` "Tests".
+  a whole frozen result (a parity pass); the tier is declared in `tools/pytest.ini` and only
+  `--full` runs it. See `tools/README.md` "Tests".
 
 ### Data & assets
 

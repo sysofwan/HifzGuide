@@ -48,8 +48,10 @@ whole clip from the box's look clip cache (`/root/scratch/tlog/r2/clips`, #212),
 against the worklist's `audio_sha256` before the server starts. The page receives the ayah with the
 target word highlighted and nothing else: no stratum, model output, grade, weight or tally. On
 cuda-dev, `scripts/issue-225-audit.sh` runs `draw`, `ui` and `backup` (a per-minute copy of the
-verdicts) from a `git archive`-like bundle clone under `/root/scratch/catch_loss`, and `ui fetch`
-pulls `verdicts.jsonl` back after every sitting.
+verdicts and the review list) from a bundle clone under `/root/scratch/catch_loss`, keeping both
+files beside the worklist in the scratch root, and `ui fetch` pulls `verdicts.jsonl` and
+`review.jsonl` back after every sitting. Neither file lives inside the clone the launcher
+rebuilds, so a relaunch keeps every answer and every "review later" marker.
 
 ## Dry run, 2026-10-29
 

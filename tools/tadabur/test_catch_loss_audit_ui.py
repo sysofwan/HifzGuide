@@ -27,7 +27,7 @@ import pytest
 import soundfile as sf
 
 from tadabur.listening_session import read_verdicts
-from tadabur.tashkeel_audit_ui import SessionState, page_key
+from tadabur.tashkeel_audit_ui import LISTENER_REVIEW_NOTE, SessionState, page_key
 
 WORDS = ("بِسْمِ", "ٱللَّهِ", "ٱلرَّحْمَٰنِ", "ٱلرَّحِيمِ", "ٱلْحَمْدُ", "لِلَّهِ", "رَبِّ",
          "ٱلْعَٰلَمِينَ", "مَٰلِكِ", "يَوْمِ")
@@ -216,3 +216,23 @@ def test_only_the_word_questions_answers_are_accepted(tmp_path):
     with pytest.raises(ValueError):
         state.record(key, "yes", "", "unclear")  # the page says "Yes"; the stored answer is "correct"
     assert read_verdicts(audit.verdicts)[row["id"]].heard == "unclear"
+
+
+def test_an_answer_and_its_review_marker_survive_a_relaunch_beside_the_worklist(tmp_path):
+    """The launcher keeps verdicts and review outside the clone it rebuilds on every launch:
+    both files persist, and a fresh session over the same worklist shows both."""
+    audit = Audit(tmp_path)
+    keep = tmp_path / "keep"
+    keep.mkdir()
+    verdicts, review = keep / "verdicts.jsonl", keep / "review.jsonl"
+    first = SessionState.load_catch_loss(audit.worklist, verdicts, audit.cache, _words, review)
+    row = audit.rows[3]
+    key = page_key(row["id"])
+    first.record(key, "mistake", "", None)
+    first.mark_for_review(key, True)
+
+    second = SessionState.load_catch_loss(audit.worklist, verdicts, audit.cache, _words, review)
+
+    view = next(view for view in second.payload()["sites"] if view["key"] == key)
+    assert view["heard"] == "mistake"
+    assert view["review"] == LISTENER_REVIEW_NOTE

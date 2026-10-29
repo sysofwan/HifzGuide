@@ -1,0 +1,50 @@
+{
+ "chosen_processes": 6,
+ "code_sha": "7491d2e7c81cf1e7879d39232134e8476c05a949",
+ "models": [
+  "base",
+  "c95",
+  "candidate_ema",
+  "h448"
+ ],
+ "pass_peak_mib": 14500,
+ "pull_request": 217,
+ "pull_request_ref": "refs/pull/217/head",
+ "settings": [
+  {
+   "baseline_mib": 2,
+   "items": 140,
+   "passed": true,
+   "peak_mib": 12419,
+   "processes": 6,
+   "samples": 186,
+   "seconds": 190.6,
+   "shards": 20
+  }
+ ],
+ "shards": [
+  "clean-00000-of-00411",
+  "clean-00001-of-00411",
+  "clean-00002-of-00411",
+  "clean-00003-of-00411",
+  "clean-00004-of-00411",
+  "clean-00005-of-00411",
+  "clean-00006-of-00411",
+  "clean-00007-of-00411",
+  "clean-00008-of-00411",
+  "clean-00009-of-00411",
+  "clean-00010-of-00411",
+  "clean-00011-of-00411",
+  "clean-00012-of-00411",
+  "clean-00013-of-00411",
+  "clean-00014-of-00411",
+  "clean-00015-of-00411",
+  "clean-00016-of-00411",
+  "clean-00017-of-00411",
+  "clean-00018-of-00411",
+  "clean-00019-of-00411"
+ ],
+ "share_features": true,
+ "threads": 1,
+ "total_mib": 16311
+}

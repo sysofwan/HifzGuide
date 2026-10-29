@@ -21,7 +21,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 
 from tadabur.qud_text import ItemReference, Unmapped, item_reference
-from tadabur.tlog_tranches import GATING
+from tadabur.tlog_tranches import CONFIRM_ROLES, GATING
 from training.aug_readout_gate import TLOG_CONFIRM
 from training.nonpro_decode import item_key
 from training.nonpro_eval import ClipItem
@@ -31,9 +31,13 @@ REPORTED_PREFIX = "reported:"
 #: Gating's id-floor sensitivity set: reported only, never pooled into gating.
 ID_FLOOR_OK = f"{GATING}.id_floor_ok"
 #: The tranches pooled into one confirm set (owner 2026-10-28), in S7's claim order: confirm.2
-#: is opened by confirm.1's committed claim, so it is never read alone.
-CONFIRM_TRANCHES = ("confirm.1", "confirm.2")
+#: is opened by confirm.1's committed claim, so it is never read alone. The round reads the
+#: first two of S7's confirm roles and never claims the rest (#227's pre-registration).
+CONFIRM_TRANCHES = CONFIRM_ROLES[:2]
 POOLED_CONFIRM = TLOG_CONFIRM
+#: Why a tlog row has no readout item: the row cannot be graded on its filename ayah.
+EXCLUDED_REASON = ("no item: the row names no ayah, or the phonetizer cannot handle the ayah "
+                   "the row names")
 
 
 def _canonical_words(label: str) -> list[str]:
@@ -131,6 +135,15 @@ def reported_item_sets(rows: Sequence[Mapping], lines: Mapping[str, Mapping], *,
             sets[name] = _items(rows, lines, reference_of=reference_of, words_of=words_of,
                                 segment_of=_whole_ayah, stratum=name)[0]
     return sets
+
+
+def excluded_record(excluded: Mapping[str, str | None]) -> dict:
+    """The rows an item builder left out, by key, with their filename ayat and why: written into
+    the freeze and the look artifact so a graded population smaller than its manifest names the
+    difference instead of silently dropping it."""
+    return {"keys": sorted(excluded), "count": len(excluded),
+            "ayat": sorted({label for label in excluded.values() if label}),
+            "reason": EXCLUDED_REASON}
 
 
 def confirm_views(tranches: Mapping[str, list[ClipItem]]) -> dict[str, list[ClipItem]]:

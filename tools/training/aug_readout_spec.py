@@ -113,9 +113,12 @@ class RoundSpec:
     #: checkpoints, named ``<arm>_<weights>``; round 2's four arms are its own checkpoints,
     #: named ``r2_<arm>_<weights>`` and pinned in ``models``.
     arm_prefix: str = ""
-    #: The qdat_bench letter kinds G3 gates (#174 gates all three; round 2 reports shaddah
-    #: only, owner 2026-10-28).
+    #: The qdat_bench letter kinds G3 gates (#174 gates all three; round 2 gates consonant and
+    #: haraka and reports shaddah, owner 2026-10-28).
     g3_kinds: tuple[str, ...] = ("consonant", "haraka", "shaddah")
+    #: The qdat_bench kinds the verdict computes and reports beside its gates, never folded
+    #: into the verdict (round 2's shaddah reading: reported, not dropped).
+    g3_reported_kinds: tuple[str, ...] = ()
     #: The doc the round's freeze renders to.
     freeze_doc_path: Path = CONSONANT_FREEZE_DOC_PATH
 
@@ -196,7 +199,11 @@ CONSONANT2 = RoundSpec(
     #: the round's root is #178, so ``c178`` reads it. The round's four arms land beside them,
     #: and every non-tlog set reads the decodes round 1 committed for C95 and #178.
     decode_sources={
+        # #212's committed look decodes, under the names #227 reads them as: C95 and the
+        # teacher are the round's too, so a merge never rewrites them.
         (TLOG_LOOK, C178): Decodes(CONSONANT2_ROOT, "candidate_ema"),
+        (TLOG_LOOK, C95): Decodes(CONSONANT2_ROOT, "c95"),
+        (TLOG_LOOK, BASE): Decodes(CONSONANT2_ROOT, "base"),
         **{(name, C95): Decodes(AUG95_ROOT, "candidate_ema") for name in REUSED_SETS},
         **{(name, C178): Decodes(CONSONANT_ROOT, "candidate_ema") for name in REUSED_SETS},
         # ``qud_other`` is round 1's own set: its C95 and #178 decodes are round 1's too.
@@ -211,8 +218,10 @@ CONSONANT2 = RoundSpec(
     look_roles=(CANDIDATE, CONTROL),
     arm_prefix="r2_",
     #: G3's shaddah part is reported only (owner 2026-10-28): the catch side of a geminate is
-    #: no longer gated; flags the app shows stay in the all-cause bars.
+    #: no longer gated; flags the app shows stay in the all-cause bars. The reading is still
+    #: computed and shown beside the verdict, never dropped.
     g3_kinds=("consonant", "haraka"),
+    g3_reported_kinds=("shaddah",),
     freeze_doc_path=CONSONANT2_FREEZE_DOC_PATH)
 
 SPECS = {AUG95.name: AUG95, CONSONANT1.name: CONSONANT1, CONSONANT2.name: CONSONANT2}

@@ -237,11 +237,13 @@ def look_wording(spec: RoundSpec) -> tuple[str, str]:
 @dataclass(frozen=True)
 class SetData:
     """One set's items (external-corpus items), their decode lines per model by item key, and
-    (graded sets) every word's grade per model."""
+    (graded sets) every word's grade per model. ``excluded`` names the rows the item builder
+    left out, by key, with their filename ayah (a tlog tranche's unsupported rows, #227)."""
 
     items: list
     decodes: Mapping[str, Mapping[str, dict]]
     grades: list = field(default_factory=list)
+    excluded: Mapping[str, str | None] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -391,13 +393,15 @@ class Sources:
         return TadaburData(clips, decodes, blanks, identical)
 
     def tlog(self, role: str, models: Sequence[str]) -> SetData:
-        """One tlog tranche's gating items and their decodes, and every model's decoded
-        checks. The manifest is read only through :func:`tadabur.tlog_tranches.load_tranche`,
-        whose claim gate refuses an unopened confirm tranche; part 1 reads the look tranche
-        (its pooled confirm read is part 2, #227)."""
+        """One tlog tranche's gating items and their decodes, every model's decoded checks, and
+        the rows the item builder left out (with their filename ayah). The manifest is read only
+        through :func:`tadabur.tlog_tranches.load_tranche`, whose claim gate refuses an unopened
+        confirm tranche; part 1 reads the look tranche (its pooled confirm read is part 2,
+        #227)."""
         from tadabur.tlog_tranches import load_tranche
         from tadabur.waqf_segments import hafs_segment_reference
         from training.external_corpus import read_decode_file
+        from training.nonpro_decode import item_key
         from training.tlog_eval import gating_items
 
         if role != LOOK:
@@ -406,12 +410,14 @@ class Sources:
         rows = load_tranche(role)
         set_name = f"tlog.{role}"
         base = read_decode_file(self.decode_path(set_name, BASE))
-        items, _ = gating_items(rows, base, reference_of=hafs_segment_reference())
+        items, unsupported = gating_items(rows, base, reference_of=hafs_segment_reference())
         keys = {item.key for item in items}
         decodes = {BASE: base,
                    **{m: read_readout(set_name, m, base, keys, spec=self.spec)
                       for m in models if m != BASE}}
-        return SetData(items, {m: decodes[m] for m in models})
+        labels = {item_key(row["audio_path"]): row["filename_label"] for row in rows}
+        return SetData(items, {m: decodes[m] for m in models},
+                       excluded={key: labels.get(key) for key in unsupported})
 
     def bench(self) -> dict[str, str]:
         from training.nonpro_eval import bench_transcripts
@@ -578,6 +584,16 @@ def write_look_grades(path: Path, rows: Sequence[dict]) -> None:
     os.replace(temporary, path)
 
 
+def require_look_baseline(manifest: Mapping[str, Mapping], spec: RoundSpec) -> dict:
+    """The round's baseline's identity on the look set, checked against its pin. A tlog round
+    grades it there (the catch-loss audit's C95 side) but never chooses between it and an arm,
+    so it is not in ``needs``; an absent record still refuses (#227)."""
+    record = manifest.get(f"{spec.look_set}/{spec.baseline}")
+    if record is None:
+        raise ValueError(f"no identity record for {spec.look_set}/{spec.baseline}")
+    return validate_identity(spec.look_set, spec.baseline, record, spec=spec)
+
+
 def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
              spec: RoundSpec = AUG95) -> dict:
     """Read the look set once and write the choice. Refused once a choice exists, on a round
@@ -588,8 +604,10 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
         raise SystemExit(f"the look half was read: {layout.choice.name} exists; it is read once")
     if tlog_round(spec):
         require_preregistration(spec, sources.harness_identity())
-    identities = require_manifest(read_manifest(layout), needs(LOOK, None, spec), None,
-                                  spec=spec)
+    manifest = read_manifest(layout)
+    identities = require_manifest(manifest, needs(LOOK, None, spec), None, spec=spec)
+    if tlog_round(spec):  # the catch-loss audit grades C95, so its identity is checked too
+        require_look_baseline(manifest, spec)
     sitting = {"phase": LOOK, "identities": identities,
                "inputs": digests(sources.input_files(LOOK, None)),
                "harness": sources.harness_identity()}
@@ -600,20 +618,23 @@ def run_look(sources: Sources, layout: Layout = Layout(), workers: int = 1,
                                                  for i in data.items):
             raise ValueError("an item outside the look half reached the look")
         data = SetData(data.items, data.decodes,
-                       sources.grade(data.items, data.decodes, graded))
+                       sources.grade(data.items, data.decodes, graded), data.excluded)
         inputs = look_inputs(data, workers, look_models(spec))
         weights = look_weights(spec, inputs)
         same_harness(sources, sitting)
+        rule, control = look_wording(spec)
+        payload = {"issue": spec.issue, "half": LOOK, "items": len(data.items),
+                   "inputs": inputs, "rule": rule, "choice": weights,
+                   "control": control, "identities": identities,
+                   "input_sha256": sitting["inputs"], "harness": sitting["harness"]}
         if tlog_round(spec):  # the catch-loss audit reads C95 beside the chosen candidate
+            from training.tlog_eval import excluded_record
+
             export = (spec.baseline, choice_models(spec, weights)[CANDIDATE])
             write_look_grades(layout.root / LOOK_GRADES,
                               look_grade_rows(data.grades, export, data.decodes))
-        rule, control = look_wording(spec)
-        look_text = canonical({"issue": spec.issue, "half": LOOK, "items": len(data.items),
-                               "inputs": inputs, "rule": rule, "choice": weights,
-                               "control": control, "identities": identities,
-                               "input_sha256": sitting["inputs"],
-                               "harness": sitting["harness"]})
+            payload["excluded"] = excluded_record(data.excluded)
+        look_text = canonical(payload)
         write_text_atomically(layout.look, look_text)
         choice = make_choice(weights, look_text, sitting, spec=spec)
         write_text_atomically(layout.choice, canonical(choice))
@@ -942,6 +963,11 @@ def merge(decodes_dir: Path, layout: Layout = Layout(),
     committed and names their weights."""
     from training.external_corpus import merge_decode_files
 
+    if tlog_round(spec):
+        raise SystemExit(f"{spec.name}'s tlog decodes are merged by "
+                         "`python -m tadabur.tlog_eval_decode merge`, and its readout "
+                         "identities are written by `consonant_readout models "
+                         f"--spec {spec.name}`: this merge has no tlog set to count")
     found = {}
     for path in sorted(decodes_dir.glob("*.identity.json")):
         set_name, model = path.name.removesuffix(".identity.json").rsplit(".", 1)

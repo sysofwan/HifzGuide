@@ -20,6 +20,7 @@ confirm row.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -53,9 +54,14 @@ RULE = ("C95's tlog look gating false flags per 1,000 graded words by word_flags
 
 
 def freeze_inputs(sources) -> list[Path]:
-    """The committed decodes the freeze reads: the look set's C95, #178 and teacher decodes."""
+    """The committed decodes the freeze reads, the look set's C95, #178 and teacher decodes, and
+    the tranche manifest that selects the graded rows (a manifest edit moves the population, so
+    its digest belongs beside theirs)."""
+    from tadabur.tlog_tranches import TRANCHES_DIR
+
     set_name = f"tlog.{LOOK}"
-    return [sources.decode_path(set_name, model) for model in FREEZE_MODELS]
+    return [*(sources.decode_path(set_name, model) for model in FREEZE_MODELS),
+            TRANCHES_DIR / f"{LOOK}.jsonl"]
 
 
 def dal_ta_reading(grades: Sequence) -> dict[str, dict]:
@@ -98,6 +104,7 @@ def freeze_record(sources, spec: RoundSpec) -> dict:
     the ``د→ت`` reading, the power line and the coverage. Refuses unless the pre-registration
     is committed and pinned, before reading any decode."""
     from training.consonant_readout import freeze_tables
+    from training.tlog_eval import excluded_record
 
     harness = sources.harness_identity()
     prereg = require_preregistration(spec, harness)
@@ -115,6 +122,7 @@ def freeze_record(sources, spec: RoundSpec) -> dict:
         "harness": harness,
         "inputs": digests(freeze_inputs(sources)),
         "items": len(data.items),
+        "excluded": excluded_record(data.excluded),
         **freeze_tables(grades, models=FREEZE_MODELS, labels=FREEZE_LABELS,
                         baseline=spec.baseline, required=(DAL_TA,)),
         "dal_ta_reading": dal_ta_reading(grades),
@@ -132,6 +140,44 @@ def run_freeze(spec: RoundSpec, sources, model: str | None = None) -> dict:
     require_preregistration(spec, sources.harness_identity())
     data = sources.tlog(LOOK, (model,))
     return freeze_report(sources.grade(data.items, data.decodes, (model,)), model)
+
+
+def models_record(spec: RoundSpec) -> dict:
+    """The look sitting's ``models.json``: each model it reads, its identity record from the
+    round's pins (the teacher's from the truth baseline's committed identity). The run issues
+    fill the four arms' pins; an unpinned arm is refused by name, never resolved to #94's
+    checkpoint."""
+    from training.aug_readout import look_graded_models
+    from training.aug_readout_gate import (baseline_identities, expected_fingerprints,
+                                           identity_record, model_spec)
+
+    for model in look_graded_models(spec):
+        if model not in spec.models:
+            raise SystemExit(f"{model} is not pinned by {spec.name}: the run issue fills in its "
+                             "checkpoint, and no manifest can name it before that")
+    records = {}
+    for model in (*look_graded_models(spec), BASE):
+        pinned = spec.models.get(model)
+        records[f"{spec.look_set}/{model}"] = {
+            "model": model,
+            "fingerprints": expected_fingerprints(model_spec(model, spec=spec).ref),
+            "identity": identity_record(pinned) if pinned is not None
+                        else baseline_identities()[model]}
+    return records
+
+
+def write_models(spec: RoundSpec, path: Path | None = None) -> dict:
+    """Write the round's ``models.json``, once: the look sitting's identities from the spec's
+    pins. It reads no decode and grades nothing; the look phase refuses without it."""
+    from training.aug_readout_gate import Layout
+    from training.tashkeel_eval import write_text_atomically
+
+    path = Layout(spec.root).models if path is None else path
+    if path.exists():
+        raise SystemExit(f"{path.name} exists: the round's look identities are fixed")
+    records = models_record(spec)
+    write_text_atomically(path, json.dumps(records, ensure_ascii=False, indent=1) + "\n")
+    return records
 
 
 def input_files(sources, phase: str) -> list[Path]:

@@ -202,10 +202,14 @@ def round_decodes_file(spec: RoundSpec, set_name: str, model: str) -> Path:
 def chosen_weights(spec: RoundSpec, choice: Mapping) -> dict[str, str]:
     """Each of the round's arms and the weights it was chosen at. A choice's ``weights`` is one
     selector for every arm (#95, the consonant round) or each arm's own (round 2, whose arms
-    choose independently on the look set) — the one place either form is read."""
+    choose independently on the look set) — the one place either form is read, and validated:
+    a partial per-arm mapping names no model."""
     weights = choice["weights"]
-    per_arm = weights if isinstance(weights, Mapping) else {}
-    return {role: per_arm.get(role, weights) for role in spec.students if role in ARMS}
+    arms = [role for role in spec.students if role in ARMS]
+    if not _valid_weights(spec, weights):
+        raise SystemExit(f"the choice's weights {weights!r} are not {list(WEIGHTS)}"
+                         f"{f', one per arm {arms}' if isinstance(weights, Mapping) else ''}")
+    return {role: weights[role] if isinstance(weights, Mapping) else weights for role in arms}
 
 
 def _valid_weights(spec: RoundSpec, weights) -> bool:

@@ -141,9 +141,18 @@ def render(record: Mapping) -> str:
         *[f"| {models[m]['label']} | {row['words']} | {row['graded']} | "
           f"{row['graded_share']:.4f} |" for m, row in record["coverage"].items()],
         "",
+        f"{record['items']} gating rows carry an item. **{record['excluded']['count']} more "
+        "have none** — the row names no ayah, or the phonetizer cannot handle the ayah it "
+        "names — and are not graded: "
+        + (", ".join(f"`{key}`" for key in record['excluded']['keys']) if
+           record['excluded']['keys'] else "none")
+        + f". Their keys and filename ayat ({len(record['excluded']['ayat'])} ayat) are in "
+        "`freeze.json`.",
+        "",
         "## The inputs, harness and pins",
         "",
-        "The freeze read three committed decode files:",
+        "The freeze read three committed decode files and the tranche manifest that selects "
+        "its rows:",
         "",
         "| input | SHA-256 |",
         "|---|---|",

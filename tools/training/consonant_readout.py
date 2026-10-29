@@ -966,8 +966,9 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("select-qud", help="freeze the QUD other half")
     commands.add_parser("g6", help="freeze G6's held-out site ids")
-    commands.add_parser("models", help="record C95's identity per set")
     freeze_rounds = tuple(name for name in SPECS if name != "aug95")
+    models = commands.add_parser("models", help="write the round's readout identities")
+    models.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
     freeze = commands.add_parser("freeze", help="write the round's look-half freeze and its doc")
     freeze.add_argument("--half", required=True, choices=(LOOK, CONFIRM))
     freeze.add_argument("--dry-run", action="store_true",
@@ -987,7 +988,15 @@ def main() -> None:
     elif args.command == "g6":
         print(f"wrote {G6_SITES_PATH}: {write_g6_sites()}")
     elif args.command == "models":
-        print(f"wrote {MODELS_PATH}: {sorted(write_models())}")
+        specification = round_spec(args.spec)
+        if tlog_round(specification):
+            from training.aug_readout_gate import Layout
+            from training.consonant2_readout import write_models as write_round2
+
+            path = Layout(specification.root).models
+            print(f"wrote {path}: {sorted(write_round2(specification, path))}")
+        else:
+            print(f"wrote {MODELS_PATH}: {sorted(write_models())}")
     elif args.command == "freeze":
         from training import aug_readout as ar
 

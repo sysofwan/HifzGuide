@@ -33,10 +33,10 @@ FILENAME = "frame_manifest.json"
 
 
 def shards_digest(shards: Iterable[int]) -> str:
-    """SHA-256 of the shard list *in the order given*: one decimal number per line.
+    """SHA-256 of the shard list as given: one decimal number per line.
 
-    Order-sensitive on purpose: the digest stands for the stream's shard list, and two runs
-    that stream the same set in another order are not the same input.
+    Order-sensitive, so it can pin either the frame (the sorted set the run draws from,
+    ``shards_sha256``) or the order it actually streams (``stream_order_sha256``).
     """
     text = "".join(f"{shard}\n" for shard in shards)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -45,12 +45,19 @@ def shards_digest(shards: Iterable[int]) -> str:
 def frame_manifest(
     shards: Iterable[int], *, shard_order_seed: int, exposure_use: str
 ) -> dict:
-    """The manifest of a run streaming ``shards`` with ``shard_order_seed``."""
-    ordered = sorted(shards)
+    """The manifest of a run streaming ``shards`` with ``shard_order_seed``.
+
+    ``shards_sha256`` is the frame's membership digest (over the sorted list, so it is the
+    same for any run drawing from the same set); ``stream_order_sha256`` is over the order
+    the run actually streams, which is what a replay has to reproduce.
+    """
+    frame = sorted(shards)
+    order = shard_permutation(frame, shard_order_seed)
     return {
-        "shards": ordered,
-        "shards_sha256": shards_digest(ordered),
-        "stream_order": shard_permutation(ordered, shard_order_seed),
+        "shards": frame,
+        "shards_sha256": shards_digest(frame),
+        "stream_order": order,
+        "stream_order_sha256": shards_digest(order),
         "shard_order_seed": shard_order_seed,
         "window_shuffle_seed": window_shuffle_seed(shard_order_seed),
         "augmentation": recipe_record(),
@@ -83,8 +90,10 @@ def main() -> None:
     )
     path = write_frame_manifest(args.run_dir, manifest)
     print(f"frame manifest: {len(manifest['shards'])} shards, shards_sha256 "
-          f"{manifest['shards_sha256']}, stream-order seed {manifest['shard_order_seed']}, "
-          f"window-shuffle seed {manifest['window_shuffle_seed']}, recipe "
+          f"{manifest['shards_sha256']}, stream_order_sha256 "
+          f"{manifest['stream_order_sha256']}, stream-order seed "
+          f"{manifest['shard_order_seed']}, window-shuffle seed "
+          f"{manifest['window_shuffle_seed']}, recipe "
           f"{manifest['augmentation']['version']} -> {path}")
 
 

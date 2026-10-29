@@ -342,7 +342,7 @@ fetch() {
 
 fetch_vram() {
   mkdir -p "$REPO_DIR/$(dirname "$VRAM_OUT")"
-  remote "cat '$REPO/$VRAM_OUT'" > "$REPO_DIR/$VRAM_OUT"
+  rsync -a "$HOST:$REPO/$VRAM_OUT" "$REPO_DIR/$VRAM_OUT"
   echo "fetched $VRAM_OUT"
 }
 

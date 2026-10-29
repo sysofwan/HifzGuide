@@ -241,8 +241,13 @@ def verdict(report: Mapping, spec: RoundSpec | None = None) -> dict:
                 "verdict": aggregate([c["verdict"] for c in parts]),
                 "attribution": attribution(report)}
     parts = consonant_conditions(report, specification)
-    return {"bars": dict(specification.bars), "conditions": parts,
-            "verdict": aggregate([c["verdict"] for c in parts])}
+    out = {"bars": dict(specification.bars), "conditions": parts,
+           "verdict": aggregate([c["verdict"] for c in parts])}
+    if reported := consonant_reported(report, specification):
+        # Only a round that declares reported readings carries the key: round 1's verdict is
+        # reproduced byte for byte by the code that wrote it (#227 review R1.1).
+        out["reported"] = reported
+    return out
 
 
 # --- the consonant round's bars (#174) ----------------------------------------------------------
@@ -343,7 +348,7 @@ def consonant_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
               bars["tadabur_lower_at_least"], False),
         *(bound(f"g3.qdat_bench.{kind}", guards["qdat_bench"][kind], "lower",
                 bars["bench_lower_at_least"], False)
-          for kind in ("consonant", "haraka", "shaddah")),
+          for kind in spec.g3_kinds),
         bound("g4.tashkeel_cause", main["tashkeel_cause"], "upper",
               bars["tashkeel_upper_at_most"], False),
         # The round's report always writes ``g5_frozen`` (empty before #177). A report that
@@ -352,3 +357,15 @@ def consonant_conditions(report: Mapping, spec: RoundSpec) -> list[dict]:
                          report.get("g5_frozen", tuple(report["substitutions"])), spec),
         catch_condition(report["catch"]["ship_a_verified"], spec),
     ]
+
+
+def consonant_reported(report: Mapping, spec: RoundSpec) -> list[dict]:
+    """The readings computed beside the verdict and shown with it, never folded into it: round
+    2's shaddah G3 line (the owner reports it rather than gating it), same table and bar. An
+    absent reading is reported as cannot-certify, never as a pass."""
+    comparison = comparison_name(CANDIDATE, spec.baseline)
+    guards = report["guards"]
+    return [bound_condition(f"g3.qdat_bench.{kind}", guards["qdat_bench"][kind], comparison,
+                            "lower", spec.bars["bench_lower_at_least"], False,
+                            text=CONSONANT_BAR_TEXT[f"g3.qdat_bench.{kind}"])
+            for kind in spec.g3_reported_kinds]

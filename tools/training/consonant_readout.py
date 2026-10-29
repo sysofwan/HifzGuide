@@ -8,7 +8,9 @@ module holds what the round adds to :mod:`training.aug_readout`'s pipeline:
 * **The freeze** (:func:`run_freeze`, :func:`write_freeze`): a model's cause split and its top
   substitution list, read from the look half only — the confirm half is never frozen (data
   discipline 1). :func:`write_freeze` writes #177's committed ``freeze.json`` and its generated
-  doc; the dry run prints one model's summary and writes nothing.
+  doc; the dry run prints one model's summary and writes nothing. ``--spec consonant2`` freezes
+  round 2 on the tlog look gating rows instead (:mod:`training.consonant2_readout`), refusing
+  without its committed pre-registration.
 * **The catch arm** (G6, :func:`catch_arm`): Ship A's held-out verified real mistakes at
   ط↔ق and س↔ش, graded through :mod:`training.truth_baseline`'s recorded check sequences, read
   read-only from its caches. The site ids are frozen in ``g6_sites.json``.
@@ -22,6 +24,7 @@ Usage (from ``tools/``)::
   python -m training.consonant_readout models
   python -m training.consonant_readout freeze --half look
   python -m training.consonant_readout freeze --half look --dry-run
+  python -m training.consonant_readout freeze --spec consonant2 --half look
   python -m training.consonant_readout doc
   python -m training.consonant_readout tracer
 
@@ -62,7 +65,8 @@ from training.aug_readout_metrics import (
     teacher_agreement_terms,
     word_agreement_terms,
 )
-from training.aug_readout_spec import C95, CONSONANT1, RoundSpec
+from training.aug_readout_spec import C95, CONSONANT1, RoundSpec, SPECS, tlog_round
+from training.aug_readout_spec import spec as round_spec
 from training.muraja_policy import SHIPPED_DEFAULT
 from training.tashkeel_eval import write_text_atomically
 from training.word_flags import CAUSES
@@ -74,7 +78,7 @@ MODELS_PATH = ROUND_DIR / "models.json"
 #: #177's artifact, written by :func:`write_freeze`; its list fixes G5.
 FREEZE_PATH = ROUND_DIR / "freeze.json"
 #: #177's generated doc, rendered from ``freeze.json`` by :mod:`training.consonant_freeze_doc`.
-FREEZE_DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "consonant-round-freeze.md"
+FREEZE_DOC_PATH = CONSONANT1.freeze_doc_path
 #: The command that writes the freeze; recorded in the artifact for the PR's command log.
 FREEZE_COMMAND = "python -m training.consonant_readout freeze --half look"
 #: The models the freeze reads on the look half: C95 and the two baseline columns (#174).
@@ -173,10 +177,25 @@ def _require_look(half: str) -> None:
                          "phase")
 
 
+def freeze_path(spec: RoundSpec) -> Path:
+    """The round's freeze artifact: its own root's ``freeze.json``."""
+    return spec.root / "freeze.json"
+
+
+def freeze_doc_path(spec: RoundSpec) -> Path:
+    """The doc the round's freeze renders to."""
+    return spec.freeze_doc_path
+
+
 def run_freeze(spec: RoundSpec, sources, half: str, model: str | None = None) -> dict:
     """A model's cause split and top substitutions on the **look** half, for the freeze command's
-    dry run: it grades and prints, and writes nothing."""
+    dry run: it grades and prints, and writes nothing. A round that reads the tlog tranches
+    refuses without its committed pre-registration before grading anything."""
     _require_look(half)
+    if tlog_round(spec):
+        from training.consonant2_readout import run_freeze as tlog_freeze
+
+        return tlog_freeze(spec, sources, model)
     model = model or spec.baseline
     data = sources.tarteel(LOOK, (model,))
     return freeze_report(sources.grade(data.items, data.decodes, (model,)), model)
@@ -186,18 +205,23 @@ def _per_1000(count: int, graded: int) -> float:
     return round(1000 * count / graded, 2) if graded else 0.0
 
 
-def freeze_tables(grades: Sequence) -> dict:
+def freeze_tables(grades: Sequence, *, models: Sequence[str] = FREEZE_MODELS,
+                  labels: Mapping[str, str] = FREEZE_LABELS, baseline: str = C95,
+                  required: Sequence[str] = ()) -> dict:
     """The freeze's two readings from the look half's grades: each model's false flags by
-    ``word_flags`` cause under both scorings (with their rates) and C95's canonical
-    substitution tally, whole, with each cause's top ten reported beside it — shaddah and the
-    madd alif (``ا→∅``) included — plus G5, derived separately from the untruncated
-    shipped-default tally: the ten consonant substitutions behind the most C95 false-flagged
-    words, the madd alif aside, ties by substitution (Unicode order)."""
+    ``word_flags`` cause under every scoring present (with their rates) and the baseline's
+    canonical substitution tally, whole, with each cause's top ten reported beside it —
+    shaddah and the madd alif (``ا→∅``) included — plus G5, derived separately from the
+    untruncated shipped-default tally: the ten consonant substitutions behind the most
+    baseline false-flagged words, the madd alif aside, ties by substitution (Unicode order).
+    ``required`` names substitutions G5 keeps whether or not the ten rank them (round 2's
+    ``د→ت``), each read from the same tally. A baseline that flags no word has no list to
+    derive, and the freeze refuses rather than write an empty veto."""
     from training.external_corpus import app_scorings, flag_view
 
-    models: dict[str, dict] = {}
+    tables: dict[str, dict] = {}
     g5_rows: list[dict] = []
-    for model in FREEZE_MODELS:
+    for model in models:
         scorings = {}
         for scoring in (s.name for s in app_scorings()):
             mine = [grade for grade in grades
@@ -223,18 +247,26 @@ def freeze_tables(grades: Sequence) -> dict:
                 "substitution_tally": by_cause,
                 "substitutions": {cause: rows[:10] for cause, rows in by_cause.items()},
             }
-            if model == C95 and scoring == SHIPPED_DEFAULT.name:
+            if model == baseline and scoring == SHIPPED_DEFAULT.name:
+                if view["flagged"] == 0:
+                    raise SystemExit(f"{model} flags no word on the look half: it carries no "
+                                     "substitution tally for G5 to be built from")
                 # G5 alone applies the round's exclusions (#174), and it reads the whole tally:
                 # the madd alif still takes a display slot, so a truncated list can be short.
                 g5_rows = [row for cause in sorted(CONSONANT_FLAG_CAUSES)
                            for row in by_cause[cause]
                            if row["substitution"] != MADD_ALIF]
         if scorings:
-            models[model] = {"label": FREEZE_LABELS[model], "scorings": scorings}
-    g5 = sorted(g5_rows, key=lambda row: (-row["words"], row["substitution"]))[:10]
-    if len(g5) < 10:
-        raise SystemExit(f"the look half yields {len(g5)} consonant substitutions; G5 needs 10")
-    return {"models": models, "substitutions": g5}
+            tables[model] = {"label": labels[model], "scorings": scorings}
+    top = sorted(g5_rows, key=lambda row: (-row["words"], row["substitution"]))[:10]
+    if len(top) < 10:
+        raise SystemExit(f"the look half yields {len(top)} consonant substitutions; G5 needs 10")
+    named = {row["substitution"] for row in top}
+    tally = {row["substitution"]: row for row in g5_rows}
+    return {"models": tables,
+            "substitutions": [*top, *(tally.get(name, {"cause": None, "substitution": name,
+                                                       "words": 0})
+                                      for name in required if name not in named)]}
 
 
 def freeze_input_paths(sources) -> list[Path]:
@@ -285,25 +317,34 @@ def freeze_record(sources) -> dict:
     }
 
 
-def write_freeze(sources, half: str, path: Path = FREEZE_PATH,
-                 doc_path: Path = FREEZE_DOC_PATH) -> dict:
-    """Write #177's committed record and its generated doc. Refuses the confirm half before
-    reading anything, and refuses to move a freeze that already exists."""
+def write_freeze(sources, half: str, path: Path | None = None, doc_path: Path | None = None,
+                 spec: RoundSpec = CONSONANT1) -> dict:
+    """Write the round's committed freeze record and its generated doc. Refuses the confirm
+    half before reading anything, and refuses to move a freeze that already exists."""
     _require_look(half)
+    path = freeze_path(spec) if path is None else path
+    doc_path = freeze_doc_path(spec) if doc_path is None else doc_path
     if path.exists():
         raise SystemExit(f"{path.name} exists: the freeze is fixed")
-    from training.consonant_freeze_doc import render
+    if tlog_round(spec):
+        from training import consonant2_readout as round2
 
-    record = freeze_record(sources)
+        record = round2.freeze_record(sources, spec)
+        render = round2.render
+    else:
+        from training.consonant_freeze_doc import render
+
+        record = freeze_record(sources)
     write_text_atomically(path, json.dumps(record, ensure_ascii=False, indent=1) + "\n")
     write_text_atomically(doc_path, render(record))
     return record
 
 
-def frozen_substitutions(spec: RoundSpec, path: Path = FREEZE_PATH) -> tuple[str, ...]:
-    """The substitution list #177 froze before training; empty until it lands, so G5 cannot
-    certify."""
-    if spec.name != CONSONANT1.name or not path.exists():
+def frozen_substitutions(spec: RoundSpec, path: Path | None = None) -> tuple[str, ...]:
+    """The substitution list the round froze before training; empty until it lands, so G5
+    cannot certify."""
+    path = freeze_path(spec) if path is None else path
+    if not path.exists():
         return ()
     record = json.loads(path.read_text(encoding="utf-8"))
     return tuple(row["substitution"] for row in record["substitutions"])
@@ -925,14 +966,18 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("select-qud", help="freeze the QUD other half")
     commands.add_parser("g6", help="freeze G6's held-out site ids")
-    commands.add_parser("models", help="record C95's identity per set")
+    freeze_rounds = tuple(name for name in SPECS if name != "aug95")
+    models = commands.add_parser("models", help="write the round's readout identities")
+    models.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
     freeze = commands.add_parser("freeze", help="write the round's look-half freeze and its doc")
     freeze.add_argument("--half", required=True, choices=(LOOK, CONFIRM))
     freeze.add_argument("--dry-run", action="store_true",
                         help="print one model's look-half summary; write nothing")
     freeze.add_argument("--model", default=None,
-                        help="with --dry-run: the model to summarise (C95 by default)")
-    commands.add_parser("doc", help=f"render {FREEZE_DOC_PATH.name} from freeze.json")
+                        help="with --dry-run: the model to summarise (the baseline by default)")
+    freeze.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
+    doc = commands.add_parser("doc", help="render the round's freeze doc from freeze.json")
+    doc.add_argument("--spec", default=CONSONANT1.name, choices=freeze_rounds)
     tracer_command = commands.add_parser("tracer", help="C95 against C95 on committed decodes")
     tracer_command.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
@@ -943,27 +988,40 @@ def main() -> None:
     elif args.command == "g6":
         print(f"wrote {G6_SITES_PATH}: {write_g6_sites()}")
     elif args.command == "models":
-        print(f"wrote {MODELS_PATH}: {sorted(write_models())}")
+        specification = round_spec(args.spec)
+        if tlog_round(specification):
+            from training.aug_readout_gate import Layout
+            from training.consonant2_readout import write_models as write_round2
+
+            path = Layout(specification.root).models
+            print(f"wrote {path}: {sorted(write_round2(specification, path))}")
+        else:
+            print(f"wrote {MODELS_PATH}: {sorted(write_models())}")
     elif args.command == "freeze":
         from training import aug_readout as ar
 
-        sources = ar.Sources(CONSONANT1)
+        specification = round_spec(args.spec)
+        sources = ar.Sources(specification)
         if args.dry_run:
-            print(json.dumps(run_freeze(CONSONANT1, sources, args.half, args.model),
+            print(json.dumps(run_freeze(specification, sources, args.half, args.model),
                              ensure_ascii=False, indent=1))
         else:
             if args.model:
-                raise SystemExit("--model belongs to --dry-run: the freeze reads "
-                                 f"{', '.join(FREEZE_LABELS[m] for m in FREEZE_MODELS)}")
-            record = write_freeze(sources, args.half)
-            print(f"wrote {FREEZE_PATH} and {FREEZE_DOC_PATH}: "
-                  f"{len(record['substitutions'])} G5 substitutions, {record['items']} clips")
+                raise SystemExit("--model belongs to --dry-run: the freeze reads its own "
+                                 "model set")
+            record = write_freeze(sources, args.half, spec=specification)
+            print(f"wrote {freeze_path(specification)} and "
+                  f"{freeze_doc_path(specification)}: {len(record['substitutions'])} G5 "
+                  f"substitutions, {record['items']} clips")
     elif args.command == "doc":
-        from training.consonant_freeze_doc import render
+        from training import consonant2_readout, consonant_freeze_doc
 
-        write_text_atomically(FREEZE_DOC_PATH,
-                              render(json.loads(FREEZE_PATH.read_text(encoding="utf-8"))))
-        print(f"wrote {FREEZE_DOC_PATH}")
+        specification = round_spec(args.spec)
+        render = (consonant2_readout.render if tlog_round(specification)
+                  else consonant_freeze_doc.render)
+        path, doc_path = freeze_path(specification), freeze_doc_path(specification)
+        write_text_atomically(doc_path, render(json.loads(path.read_text(encoding="utf-8"))))
+        print(f"wrote {doc_path}")
     else:
         from training import aug_readout as ar
 

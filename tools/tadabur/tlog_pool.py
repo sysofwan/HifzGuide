@@ -17,6 +17,10 @@ shard by shard, deleting each shard after use. The predicate has no recitation t
 owner-approved gating amendment (2026-10-28 §4) leaves the training pool unfiltered by S6's
 rule, so nothing decodes the pool to select it.
 
+#224 gives the reader its order: :mod:`tadabur.tlog_schedule` freezes a seeded, 8-way
+interleaved shuffle of both splits' shards, and :func:`iter_training_rows` requires it, so a
+prefix of the stream is representative of ``tlog.training`` and the sorted walk cannot return.
+
 Every tree is written by :func:`tadabur.tlog_index.write_shard` (sorted keys, ``mtime`` 0) and
 every meta by :func:`tree_provenance`, so the cited commit survives the squash merge under
 ``refs/pull/<N>/head``. No audio is kept: a shard is streamed once and dropped.
@@ -24,6 +28,7 @@ every meta by :func:`tree_provenance`, so the cited commit survives the squash m
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import subprocess
@@ -35,7 +40,7 @@ from typing import Any
 
 from training.tashkeel_eval import write_text_atomically
 
-from . import exposure, tlog_ident
+from . import exposure, tlog_ident, tlog_schedule
 from .nonpro_sources import audio_sha256
 from .tlog_ident import BASE_MODEL, BASE_REVISION, NONE, identification_record, identify
 from .tlog_index import head_sha, provenance, sha256_file, write_json, write_shard
@@ -51,6 +56,10 @@ HEADROOM_GIB = 1.5
 MEASURE_SEED = 19_100_620
 #: The amendment's stop: more than this share of a population's usable rows above D_max halts.
 D_MAX_STOP_SHARE = 0.01
+
+#: The training reader's run log, written beside the run (#224): one JSON line per consumed
+#: row key, appended across restarts, so a run's actual prefix can be compared with the plan.
+RUN_LOG_NAME = "consumed.jsonl.gz"
 
 ROOT = Path(__file__).resolve().parents[2]
 IDENT_DIR = Path(__file__).parent / "tlog" / "ident"
@@ -554,46 +563,88 @@ def load_training_rows(registry: exposure.ExposureRegistry | None = None, *,
 
 
 def iter_training_rows(rows: Iterable[Mapping[str, Any]] | None = None, *,
-                       cache_dir: Path, stream=None,
-                       load_audio=None) -> Iterator[tuple[tuple[str, str, int], Any]]:
-    """Stream the training rows' audio, one shard at a time and then deleted (#193).
+                       cache_dir: Path, schedule: tlog_schedule.Schedule, stream=None,
+                       load_audio=None, run_log: Path | None = None
+                       ) -> Iterator[tuple[tuple[str, str, int], Any]]:
+    """Stream the training rows' audio in the frozen shard schedule (#224).
 
     Yields ``((split, shard_file, row), samples)`` for exactly ``rows`` (default:
-    :func:`load_training_rows`, the verified committed use), shard by shard in
-    ``(split, shard_file)`` order and row order within a shard. Each shard is read once and
-    dropped -- the disk budget is an invariant. The shard is deleted when the reader is
-    exhausted, when it is closed (:meth:`close`), and when it raises (a checksum mismatch, a
-    wanted row the shard lacks); a consumer that raises inside its own loop never resumes the
-    reader, so it must hold it in :func:`contextlib.closing` (or close it in a ``finally``) or
-    the download is dropped only when the generator is finalised. ``stream`` is the row source
-    (default :func:`tadabur.tlog_pass1.shard_rows` at the pinned revision, downloading into
+    :func:`load_training_rows`, the verified committed use), in
+    :func:`tadabur.tlog_schedule.interleave_order`: the schedule's shards in its order,
+    ``schedule.interleave_width`` of them open at once and one row per open shard per round, so
+    consecutive windows come from different shards and both splits appear within the first
+    round. Row order within a shard is kept; the downstream shuffle buffer does the rest.
+
+    ``schedule`` is required: a training call without one refuses, so the sorted
+    ``(split, shard_file)`` walk cannot come back unnoticed. The schedule must cover exactly
+    the shards of ``rows``, and its count and ``rows_sha256`` must be theirs -- a missing,
+    duplicated or extra shard, or a schedule built for another overlay, refuses before any
+    download.
+
+    Each shard is read once and dropped -- the disk budget is at most ``interleave_width``
+    shards -- and every open shard is closed, and so deleted, when the reader is exhausted, when
+    it is closed (:meth:`close`), and when it raises (a checksum mismatch, a wanted row the
+    shard lacks); a consumer that raises inside its own loop never resumes the reader, so it
+    must hold it in :func:`contextlib.closing` (or close it in a ``finally``) or the download is
+    dropped only when the generator is finalised. ``stream`` is the row source (default
+    :func:`tadabur.tlog_pass1.shard_rows` at the pinned revision, downloading into
     ``cache_dir``) and ``load_audio`` the decoder (default :func:`default_audio`, 16 kHz mono
     float32). A row outside :data:`TRAINING_PREDICATE` refuses before any shard is read; a
     checksum mismatch refuses before that row is decoded, and a wanted row the shard lacks
     refuses after it.
 
-    The first log line reports the rows, their windows per clip at the round-2 stream's 5 s
-    window and 2.5 s hop, and the total, so a run's example count is visible before the first
-    window is cut.
+    Every consumed row key is appended as one JSON line to ``run_log`` (default
+    ``cache_dir / RUN_LOG_NAME``), opened for append so a resumed run keeps its earlier lines,
+    and the end of the run prints one line per split with its rows, clips, windows and
+    real-audio seconds. The first log line reports the rows, their windows per clip at the
+    round-2 stream's 5 s window and 2.5 s hop, and the total, so a run's example count is
+    visible before the first window is cut.
     """
-    rows = load_training_rows() if rows is None else rows
-    wanted = sorted(rows, key=row_key)
-    if outside := next((row for row in wanted
+    if schedule is None:
+        raise ValueError("a training run needs the frozen shard schedule "
+                         "(tadabur.tlog_schedule); the sorted walk is gone (#224)")
+    rows = list(load_training_rows() if rows is None else rows)
+    if outside := next((row for row in rows
                         if row["role"] != "train" or not row["usable"]), None):
         raise ValueError(f"{row_key(outside)} is not a training row: "
                          f"{TRAINING_PREDICATE['text']}")
-    windows = [_windows_per_clip(row) for row in wanted]
-    print(f"[training] {len(wanted)} rows, windows per clip: "
+    by_shard = tlog_schedule.rows_by_shard(rows, schedule)
+    digest = rows_digest(rows)
+    if (len(rows), digest) != (schedule.count, schedule.rows_sha256):
+        raise ValueError(f"the schedule is for {schedule.count} rows with rows_sha256 "
+                         f"{schedule.rows_sha256}, not these {len(rows)} rows with {digest}")
+    windows = [_windows_per_clip(row) for row in rows]
+    print(f"[training] {len(rows)} rows, windows per clip: "
           f"{sum(windows) / len(windows) if windows else 0.0:.1f} at a 5.0 s window and a "
           f"2.5 s hop, {sum(windows)} windows", flush=True)
-    by_shard: dict[tuple[str, str], list[Mapping[str, Any]]] = defaultdict(list)
-    for row in wanted:
-        by_shard[(row["split"], row["shard_file"])].append(row)
     open_shard = (lambda shard: shard_rows(shard, Path(cache_dir))) if stream is None else stream
     load = default_audio if load_audio is None else load_audio
-    for _split, stem in sorted(by_shard):
-        yield from _training_shard_rows(f"data/{stem}.parquet", by_shard[(_split, stem)],
+
+    def shard_stream(shard: tuple[str, str]):
+        yield from _training_shard_rows(f"data/{shard[1]}.parquet", by_shard[shard],
                                         open_shard=open_shard, load=load)
+
+    # The shard generators are created up front but start nothing until their first ``next()``,
+    # so the downloads happen in slot order and at most ``interleave_width`` are open.
+    shard_streams = {shard: shard_stream(shard) for shard in schedule.shards}
+    log_path = Path(cache_dir) / RUN_LOG_NAME if run_log is None else Path(run_log)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log = gzip.open(log_path, "at", encoding="utf-8")
+    consumed: list[Mapping[str, Any]] = []
+    try:
+        for row, audio in tlog_schedule.interleave_streams(shard_streams, schedule):
+            consumed.append(row)
+            log.write(json.dumps({"split": row["split"], "shard_file": row["shard_file"],
+                                  "row": row["row"]}) + "\n")
+            yield row_key(row), audio
+    finally:
+        log.close()
+        for stream_ in shard_streams.values():
+            stream_.close()
+    for split, totals in sorted(tlog_schedule.split_totals(consumed).items()):
+        print(f"[training] {split}: {totals['rows']} rows, {totals['clips']} clips, "
+              f"{totals['windows']} windows, {totals['audio_seconds']} s of real audio",
+              flush=True)
 
 
 def _windows_per_clip(row: Mapping[str, Any]) -> int:
@@ -604,8 +655,9 @@ def _windows_per_clip(row: Mapping[str, Any]) -> int:
 
 
 def _training_shard_rows(shard: str, wanted: Sequence[Mapping[str, Any]], *, open_shard,
-                         load) -> Iterator[tuple[tuple[str, str, int], Any]]:
-    """One shard's wanted rows, in row order; the shard source is closed even on a raise."""
+                         load) -> Iterator[tuple[Mapping[str, Any], Any]]:
+    """One shard's wanted rows, in row order, each with its decoded audio; the shard source is
+    closed even on a raise."""
     by_index = {row["row"]: row for row in wanted}
     found: set[int] = set()
     items = open_shard(shard)
@@ -620,7 +672,7 @@ def _training_shard_rows(shard: str, wanted: Sequence[Mapping[str, Any]], *, ope
                 raise ValueError(f"{row_key(row)} is {checksum}, not the recorded "
                                  f"{row['audio_sha256']}")
             found.add(index)
-            yield row_key(row), load(data)
+            yield row, load(data)
     finally:
         # The shard reader is a generator that deletes its download in a ``finally``, so the
         # close is what drops the shard when the consumer stops early or a row raises.

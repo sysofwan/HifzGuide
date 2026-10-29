@@ -69,6 +69,20 @@ def filled_spec(*, root: Path | None = None, prereg: tuple[Path, str] | None = N
     return spec
 
 
+#: The roles ``CONSONANT2`` pinned before the run issues filled its arms: its baseline and
+#: #178's context column.
+UNFILLED_ROLES = (asp.C95, asp.C178)
+
+
+def unfilled_spec() -> asp.RoundSpec:
+    """``CONSONANT2`` as it stood before the run issues filled the arms: every ``r2_*`` role is
+    refused by name, never resolved to #94's checkpoints."""
+    return dataclasses.replace(
+        asp.CONSONANT2, models={name: identity
+                                for name, identity in asp.CONSONANT2.models.items()
+                                if name in UNFILLED_ROLES})
+
+
 def model_record(spec: asp.RoundSpec, model: str) -> dict:
     """The identity record a decode run writes for one pinned model."""
     return {"model": model,

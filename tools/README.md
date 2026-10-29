@@ -342,6 +342,17 @@ number this work is accountable for. See ADR-0010.
   training as the data diversified. At 1024 fixed windows, KL-only reached decoded 0.847 while
   KL+CTC collapsed to 0.000. Removing both moved the full run **84.58% → 89.37%**.
 
+- **`distill_mixed`** — round 2's 3:1 input: the control's `StreamingWindowDataset` untouched
+  plus the frozen #224 tlog shard schedule, emitted in a repeating 24 tlog + 8 Tadabur
+  pattern so every batched step is exactly the mix (asserted per batch, never left to sampling
+  odds). tlog clips are cut like Tadabur's (5 s window, 2.5 s hop) after being augmented whole
+  under `(split:shard_file, row)`, so a tlog draw cannot collide with a Tadabur row's; the
+  stream stops when either side runs out and never emits a short or skewed batch.
+  `per_source_stats` reports KL, blank ratios and the collapse margin per source from the same
+  weighted KL the step optimised. `distill_train --mix tlog=24,tadabur=8` builds it; a mixed
+  run refuses `--resume`, because its consumed-keys log cannot be replayed without duplicating
+  rows.
+
 - **`distill_train`** — frozen bf16 teacher online, the `whole_clip_phoneme` VRAM preflight,
   and a resume guard that refuses a config differing from the checkpoint's. Defaults are
   lr **1e-4** (3e-4 destabilises once warmup ends) and the KL-only objective. Watch

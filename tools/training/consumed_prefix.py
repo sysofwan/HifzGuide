@@ -29,8 +29,10 @@ Usage::
     # ... with the monitoring shard and the point it would be entered (monitor=, position=)
     python -m training.consumed_prefix --log <log> --monitor-seed 178
 
-    # Two rounds deep (:func:`remaining_after_logs`), what a second continuation trains on
-    remaining_after_logs([(c95_log, AUG94_SEED), (continuation_log, 178)])
+    # A second continuation (:func:`remaining_after_logs`): each --log carries its own stream
+    # seed, in the order the runs happened
+    python -m training.consumed_prefix --log <c95 log>:9494 --log <continuation log>:178 \\
+        --monitor-seed 2026
 """
 
 from __future__ import annotations
@@ -155,14 +157,28 @@ def remaining_from_log(
     return remaining_after_logs([(log, seed)], shards=shards)
 
 
+def _source_log(value: str) -> tuple[Path, int | None]:
+    """One ``--log`` argument: ``PATH:SEED``, or a bare ``PATH`` for ``--seed``."""
+    path, _, seed = value.rpartition(":")
+    if path and seed.isdigit():
+        return Path(path), int(seed)
+    return Path(value), None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--log", type=Path, required=True,
-                        help="the source run's stdout log, with its shard-completion lines")
-    parser.add_argument("--seed", type=int, default=AUG94_SEED)
+    parser.add_argument(
+        "--log", action="append", required=True,
+        help="a source run's stdout log, as PATH:SEED with that run's stream seed; repeat in "
+             "the order the runs happened, so a continuation is derived from what its "
+             "predecessors left (a bare PATH takes --seed)",
+    )
+    parser.add_argument("--seed", type=int, default=AUG94_SEED,
+                        help=f"the stream seed of a --log given without one (default "
+                             f"{AUG94_SEED}, #94's)")
     parser.add_argument(
         "--shards", default="",
-        help="the source run's --stream-shards (default: h448's training spec, the only "
+        help="the first run's --stream-shards (default: h448's training spec, the only "
              "shard set a training run may use)",
     )
     parser.add_argument(
@@ -173,8 +189,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    remaining = remaining_from_log(args.log, seed=args.seed, shards=args.shards)
-    print(f"{len(remaining)} shards remaining after the source run's consumed prefix",
+    runs = []
+    for value in args.log:
+        path, seed = _source_log(value)
+        runs.append((path, args.seed if seed is None else seed))
+    remaining = remaining_after_logs(runs, shards=args.shards)
+    print(f"{len(remaining)} shards remaining after the source runs' consumed prefixes",
           file=sys.stderr)
     if args.monitor_seed is not None:
         monitor, position = monitoring_shard(remaining, args.monitor_seed)

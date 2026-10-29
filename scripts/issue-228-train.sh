@@ -26,12 +26,14 @@
 # disjointness, the warm start's checksum), writes the frame manifest the run records, samples
 # the tlog cache's shard count while it runs, smoke-tests 700 steps, gates the smoke on
 # throughput, both sources' finite KL, every batch 24 + 8, both splits consumed, at most
-# interleave-width tlog shards on disk and the averaged warm start, then runs 10,000 steps. It
-# appends one line per stage to logs/events and writes, last, logs/train.exit and then
-# logs/train.done; `check` reads that, never a log tail. A run stopped by the budget writes exit
-# 2 and a `budget-exceeded` done-file. No evaluation set is decoded during training: validation
-# reads clips staged from the frame's monitor shard, and `assert_monitor` refuses a finished log
-# that entered it.
+# interleave-width tlog shards on disk and the averaged warm start, then runs 10,000 steps. A
+# full `run` first re-checks the freeze against the staged checkout itself, so a direct on-box
+# restart cannot bypass `launch`'s refusal; a smoke-only run is exempt. `run` appends one line
+# per stage to logs/events and writes, last, logs/train.exit and then logs/train.done;
+# `check` reads that, never a log tail. A run stopped by the budget writes exit 2 and a
+# `budget-exceeded` done-file. No evaluation set is decoded during training: validation reads
+# clips staged from the frame's monitor shard, and `assert_monitor` refuses a finished log that
+# entered it.
 #
 # Budget: the 700-step smoke is ~0.25 GPU-h and 10,000 steps ~3.5 GPU-h at #178's 0.83 steps/s, so BUDGET
 # defaults to six hours from the lock's acquisition.
@@ -383,6 +385,13 @@ smoke_is_current() {  # <commit>
 }
 
 chain() {
+  # The full arm's gate at the execution boundary. `launch` checks the freeze on the Mac
+  # before staging, but `run` is a documented on-box restart path: a pre-freeze smoke leaves a
+  # checkout, `launch.txt` and a matching `smoke.done`, and a bare `run` must not reuse them to
+  # spend the round's one 10,000-step attempt. A smoke-only run is exempt by design.
+  if [ -z "${SMOKE_ONLY:-}" ]; then
+    freeze_check "$ROOT/repo" || return 1
+  fi
   assert_ready || return 1
   manifest || return 1
   local commit
@@ -580,12 +589,16 @@ assert_disk() {
   echo "free space: $((avail / 1024 / 1024 / 1024)) GiB on /root/scratch"
 }
 
-freeze_check() {
+freeze_check() {  # [<checkout>]
   # The full run may start only after the round's pre-registration and freeze artefacts are
   # **committed**, not merely on disk: a draft is not a pre-registration, and a run launched
   # against one cannot be cited. Locally runnable so the refusal is tested without a box.
-  local root missing="" name
-  root=$(git rev-parse --show-toplevel) || return 1
+  # `<checkout>` is the staged tree `chain` re-checks on the box; the Mac-side `launch` and the
+  # `freeze-check` subcommand derive it from the checkout they run in.
+  local root=${1:-} missing="" name
+  if [ -z "$root" ]; then
+    root=$(git rev-parse --show-toplevel) || return 1
+  fi
   for name in "${FROZEN[@]}"; do
     if ! git -C "$root" cat-file -e "HEAD:$name" 2>/dev/null; then
       echo "freeze-check: $name is not committed in HEAD" >&2

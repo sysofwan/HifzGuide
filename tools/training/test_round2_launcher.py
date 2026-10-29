@@ -415,6 +415,45 @@ def _ssh_log(tmp_path: Path) -> str:
     return log.read_text(encoding="utf-8") if log.exists() else ""
 
 
+# --- the on-box execution boundary ------------------------------------------------------------
+
+
+def _staged_root(tmp_path: Path) -> Path:
+    """The box's ``$ISSUE_ROOT`` after a permitted pre-freeze smoke: a checkout, ``launch.txt``
+    and a ``smoke.done`` that belongs to that commit."""
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    commit = "a" * 40
+    (logs / "launch.txt").write_text(f"{commit} 2026-10-29T00:00:00Z\n", encoding="utf-8")
+    (logs / "smoke.done").write_text(commit + "\n", encoding="utf-8")
+    (tmp_path / "repo" / "tools").mkdir(parents=True)
+    return logs
+
+
+def test_the_on_box_run_refuses_the_full_arm_without_the_committed_freeze(tmp_path):
+    """R1.2: `run` is the documented on-box restart path. Even with a current smoke already
+    behind it, a bare `run` must not spend the round's 10,000-step attempt on a checkout whose
+    HEAD lacks the freeze."""
+    logs = _staged_root(tmp_path)
+    done = _run(_fresh_shell_env(tmp_path), "run")
+    assert done.returncode != 0
+    assert "refusing the full run" in (logs / "chain.out").read_text(encoding="utf-8")
+    assert "full start" not in (logs / "events").read_text(encoding="utf-8")
+    # The refusal is reported through the done-files, so `check` never waits on a dead run.
+    assert (logs / "train.exit").read_text(encoding="utf-8").strip() == "1"
+    assert "chain exit" in (logs / "train.done").read_text(encoding="utf-8")
+
+
+def test_a_smoke_only_run_is_exempt_from_the_freeze(tmp_path):
+    """The window before the freeze is exactly what `launch --smoke` exists for."""
+    logs = _staged_root(tmp_path)
+    done = _run(_fresh_shell_env(tmp_path, SMOKE_ONLY="1"), "run")
+    assert done.returncode != 0  # the warm start is absent here, so it stops there
+    chain = (logs / "chain.out").read_text(encoding="utf-8")
+    assert "refusing the full run" not in chain
+    assert "[assert] warm start" in chain
+
+
 def test_a_full_launch_without_the_preregistration_in_head_never_touches_the_box(tmp_path):
     repo = _repo(tmp_path, FROZEN[1:])
     done = _launch(tmp_path, repo)
